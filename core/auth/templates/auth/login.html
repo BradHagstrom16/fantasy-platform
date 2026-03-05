@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+
+{% block title %}Sign In — Fantasy Platform{% endblock %}
+
+{% block content %}
+<div class="auth-page">
+    <!-- Brand panel (visible at md+) -->
+    <div class="auth-panel-brand">
+        <div class="brand-content">
+            <div class="brand-logo">🎯 Fantasy Platform</div>
+            <h2 class="brand-headline">
+                The Commissioner's<br>
+                <span style="color:var(--gold);">Hub.</span>
+            </h2>
+            <p class="brand-sub">
+                One account. Every game. Compete with your group all year long.
+            </p>
+            <div class="brand-games">
+                <div class="brand-game-item">
+                    <span>⛳</span><span>Golf Pick 'Em</span>
+                </div>
+                <div class="brand-game-item">
+                    <span>🏈</span><span>CFB Survivor Pool</span>
+                </div>
+                <div class="brand-game-item">
+                    <span>🏆</span><span>Masters Fantasy</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Form panel -->
+    <div class="auth-form-panel">
+        <div class="auth-card card shadow-sm">
+            <div class="card-body">
+                <h1 class="auth-title">Welcome Back</h1>
+                <p class="auth-subtitle">Sign in to your account</p>
+
+                <form method="POST" action="{{ url_for('auth.login') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+
+                    <div class="mb-3">
+                        <label for="username" class="form-label">Username</label>
+                        <input type="text" class="form-control" id="username" name="username"
+                               placeholder="Your username" autocomplete="username" autofocus required>
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="password" class="form-label">Password</label>
+                        <input type="password" class="form-control" id="password" name="password"
+                               placeholder="••••••••" autocomplete="current-password" required>
+                    </div>
+
+                    <div class="d-grid mb-3">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="bi bi-box-arrow-in-right me-1"></i> Sign In
+                        </button>
+                    </div>
+
+                    <div class="text-center mb-2">
+                        <a href="#" class="text-muted" style="font-size:.83rem;"
+                           data-bs-toggle="modal" data-bs-target="#forgotModal">
+                            Forgot your password?
+                        </a>
+                    </div>
+                </form>
+
+                <hr>
+                <p class="text-center text-muted mb-0" style="font-size:.88rem;">
+                    New to the platform?
+                    <a href="{{ url_for('auth.register') }}" class="fw-semibold text-decoration-none text-gold">
+                        Create an account
+                    </a>
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Forgot Password Modal -->
+<div class="modal fade" id="forgotModal" tabindex="-1" aria-labelledby="forgotModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title" id="forgotModalLabel">Forgot Password?</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body pt-2">
+                <p class="text-muted mb-0">
+                    Password resets are handled by the commissioner.
+                    Reach out directly and they'll reset your account.
+                </p>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Got it</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

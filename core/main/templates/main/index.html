@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block title %}Fantasy Sports Platform{% endblock %}
+
+{% block content %}
+<!-- Hero -->
+<div class="home-hero text-center">
+    <div class="container position-relative" style="z-index:1;">
+        <p class="hero-eyebrow">Commissioner's League Hub</p>
+        <h1>
+            Your Fantasy Games,
+            <span class="gold-line">All in One Place.</span>
+        </h1>
+        <p class="hero-body">
+            Pick 'ems, survivor pools, tournament drafts — compete with your group across every sport.
+        </p>
+
+        {% if not current_user.is_authenticated %}
+        <div class="hero-actions d-flex gap-3 justify-content-center flex-wrap">
+            <a href="{{ url_for('auth.register') }}" class="btn btn-warning btn-lg px-5">
+                <i class="bi bi-trophy-fill me-1"></i> Join Now
+            </a>
+            <a href="{{ url_for('auth.login') }}" class="btn btn-outline-light btn-lg px-4">
+                Sign In
+            </a>
+        </div>
+        {% else %}
+        <p class="hero-welcome">
+            Welcome back, <strong style="color:var(--gold);">{{ current_user.get_display_name() }}</strong>
+        </p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Game Cards -->
+<div class="container my-5">
+    <div class="text-center mb-5 animate-in">
+        <p class="section-heading">Available Games</p>
+        <hr class="gold-rule">
+        <p class="text-muted" style="font-size:.95rem;">Seasons open for registration will appear here.</p>
+    </div>
+
+    <div class="row g-4 justify-content-center">
+        {% set colors = {'success': '#1A7A45', 'danger': '#C0392B', 'warning': '#D4A820'} %}
+        {% for game in games %}
+        <div class="col-sm-6 col-md-4 animate-in stagger-{{ loop.index }}">
+            <div class="card game-card h-100 border-{{ game.color }}">
+                <div class="card-body text-center py-4 px-3">
+                    <span class="game-emoji">{{ game.emoji }}</span>
+                    <h5 class="card-title mb-2"
+                        style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:1.3rem;text-transform:uppercase;letter-spacing:.05em;">
+                        {{ game.name }}
+                    </h5>
+                    <p class="card-text text-muted" style="font-size:.88rem;line-height:1.5;">
+                        {{ game.description }}
+                    </p>
+                </div>
+                <div class="card-footer text-center bg-transparent py-3">
+                    <span class="badge"
+                          style="background:rgba({{ '26,122,69' if game.color=='success' else '192,57,43' if game.color=='danger' else '212,168,32' }},.12);
+                                 color:{{ colors.get(game.color, '#6B7A99') }};
+                                 border:1px solid {{ colors.get(game.color, '#6B7A99') }}33;
+                                 font-size:.8rem;padding:.4em .9em;">
+                        {{ game.status }}
+                    </span>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+
+{% block title %}Profile — Fantasy Platform{% endblock %}
+
+{% block content %}
+<div class="container my-5" style="max-width:600px;">
+    <div class="card shadow" style="border-top:4px solid var(--gold);">
+        <div class="card-body p-4">
+            <div class="text-center mb-4">
+                <div style="width:72px;height:72px;background:linear-gradient(135deg,var(--navy),var(--navy-mid));border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto .75rem;">
+                    <span style="font-size:2rem;color:var(--gold);">
+                        {{ current_user.get_display_name()[0].upper() }}
+                    </span>
+                </div>
+                <h1 class="auth-title">{{ current_user.get_display_name() }}</h1>
+                <p class="auth-subtitle mb-0">
+                    Member since {{ current_user.created_at.strftime('%B %Y') }}
+                    {% if current_user.is_admin %}
+                        &nbsp;<span class="admin-badge"><i class="bi bi-shield-fill me-1"></i>Admin</span>
+                    {% endif %}
+                </p>
+            </div>
+
+            <form method="POST" action="{{ url_for('auth.profile') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+
+                <div class="mb-3">
+                    <label class="form-label">Username</label>
+                    <input type="text" class="form-control" value="{{ current_user.username }}" disabled>
+                    <div class="form-text">Username cannot be changed.</div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="display_name" class="form-label">Display Name</label>
+                    <input type="text" class="form-control" id="display_name" name="display_name"
+                           value="{{ current_user.display_name or '' }}"
+                           placeholder="How others see you"
+                           maxlength="100">
+                </div>
+
+                <div class="mb-4">
+                    <label for="email" class="form-label">Email</label>
+                    <input type="email" class="form-control" id="email" name="email"
+                           value="{{ current_user.email }}"
+                           autocomplete="email" required>
+                </div>
+
+                <div class="d-grid mb-3">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-lg me-1"></i> Save Changes
+                    </button>
+                </div>
+            </form>
+
+            <hr>
+            <p class="text-center mb-0">
+                <a href="{{ url_for('auth.change_password') }}" class="text-muted small">
+                    <i class="bi bi-key me-1"></i>Change Password
+                </a>
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}

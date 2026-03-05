@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Dashboard — Fantasy Platform{% endblock %}
+
+{% block content %}
+<div class="page-hero">
+    <div class="hero-glow"></div>
+    <div class="container">
+        <h1><i class="bi bi-gear-fill me-2"></i>Admin Dashboard</h1>
+        <p class="lead mb-0">Platform management &amp; overview</p>
+    </div>
+</div>
+
+<div class="container">
+    <!-- Stats Row -->
+    <div class="row g-4 mb-5">
+        <div class="col-6 col-md-3 animate-in stagger-1">
+            <div class="stat-block">
+                <div class="stat-value">{{ total_users }}</div>
+                <div class="stat-label">Total Users</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3 animate-in stagger-2">
+            <div class="stat-block">
+                <div class="stat-value">0</div>
+                <div class="stat-label">Active Games</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3 animate-in stagger-3">
+            <div class="stat-block">
+                <div class="stat-value">0</div>
+                <div class="stat-label">Paid Users</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3 animate-in stagger-4">
+            <div class="stat-block">
+                <div class="stat-value text-gold" style="font-size:1.8rem;padding-top:.4rem;">Phase 0</div>
+                <div class="stat-label">Platform Status</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Links -->
+    <div class="mb-3">
+        <h2 class="section-heading">Management</h2>
+        <hr class="gold-rule" style="margin:0 0 1.5rem;">
+    </div>
+
+    <div class="row g-4 mb-5">
+        <div class="col-md-4 animate-in stagger-1">
+            <div class="card h-100">
+                <div class="card-body p-4">
+                    <div style="font-size:1.8rem;margin-bottom:.5rem;">👥</div>
+                    <h5 class="card-title mb-1">Users</h5>
+                    <p class="text-muted small mb-3">Manage accounts, toggle admin access, reset passwords.</p>
+                    <a href="{{ url_for('admin.users') }}" class="btn btn-primary btn-sm">
+                        Manage Users
+                    </a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 animate-in stagger-2">
+            <div class="card h-100">
+                <div class="card-body p-4">
+                    <div style="font-size:1.8rem;margin-bottom:.5rem;">🎮</div>
+                    <h5 class="card-title mb-1">Games</h5>
+                    <p class="text-muted small mb-3">Game-specific admin panels appear here as games are added.</p>
+                    <span class="badge bg-secondary">Coming Soon</span>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 animate-in stagger-3">
+            <div class="card h-100">
+                <div class="card-body p-4">
+                    <div style="font-size:1.8rem;margin-bottom:.5rem;">💰</div>
+                    <h5 class="card-title mb-1">Payments</h5>
+                    <p class="text-muted small mb-3">Track entry fees and per-user payment status.</p>
+                    <span class="badge bg-secondary">Coming Soon</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

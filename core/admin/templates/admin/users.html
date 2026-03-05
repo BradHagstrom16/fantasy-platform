@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+
+{% block title %}User Management — Fantasy Platform{% endblock %}
+
+{% block content %}
+<div class="page-hero">
+    <div class="container">
+        <h1><i class="bi bi-people-fill me-2"></i>User Management</h1>
+        <p class="lead mb-0">{{ users|length }} registered user{{ 's' if users|length != 1 }}</p>
+    </div>
+</div>
+
+<div class="container">
+    <div class="card shadow-sm">
+        <div class="card-header d-flex align-items-center justify-content-between py-3">
+            <span><i class="bi bi-table me-2"></i>All Users</span>
+            <a href="{{ url_for('admin.dashboard') }}" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-arrow-left me-1"></i>Dashboard
+            </a>
+        </div>
+
+        {% if users %}
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Username</th>
+                        <th>Display Name</th>
+                        <th>Email</th>
+                        <th>Role</th>
+                        <th>Joined</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in users %}
+                    <tr>
+                        <td class="text-muted small">{{ user.id }}</td>
+                        <td>
+                            <span class="fw-semibold">{{ user.username }}</span>
+                        </td>
+                        <td class="text-muted">{{ user.display_name or '—' }}</td>
+                        <td class="text-muted small">{{ user.email }}</td>
+                        <td>
+                            {% if user.is_admin %}
+                                <span class="admin-badge"><i class="bi bi-shield-fill me-1"></i>Admin</span>
+                            {% else %}
+                                <span class="text-muted small">Player</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-muted small">{{ user.created_at.strftime('%b %d, %Y') }}</td>
+                        <td class="text-end">
+                            <div class="d-flex gap-2 justify-content-end">
+                                <!-- Toggle Admin -->
+                                {% if user.id != current_user.id %}
+                                <form method="POST"
+                                      action="{{ url_for('admin.toggle_admin', user_id=user.id) }}"
+                                      onsubmit="return confirm('Change admin status for {{ user.username }}?')">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                    <button type="submit"
+                                            class="btn btn-outline-secondary btn-sm"
+                                            title="{{ 'Remove Admin' if user.is_admin else 'Make Admin' }}">
+                                        <i class="bi bi-shield{{ '-fill' if user.is_admin else '' }}"></i>
+                                    </button>
+                                </form>
+
+                                <!-- Reset Password -->
+                                <form method="POST"
+                                      action="{{ url_for('admin.reset_password', user_id=user.id) }}"
+                                      onsubmit="return confirm('Reset password for {{ user.username }} to changeme123?')">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                    <button type="submit"
+                                            class="btn btn-outline-secondary btn-sm"
+                                            title="Reset Password">
+                                        <i class="bi bi-key"></i>
+                                    </button>
+                                </form>
+                                {% else %}
+                                <span class="text-muted small fst-italic">You</span>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="card-body text-center py-5 text-muted">
+            <i class="bi bi-people display-4 d-block mb-3 opacity-25"></i>
+            No users registered yet.
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
