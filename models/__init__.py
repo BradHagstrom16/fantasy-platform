@@ -6,4 +6,24 @@ When adding a new game, import its models here too.
 """
 from models.user import User
 
-__all__ = ['User']
+# Golf Pick 'Em models
+from games.golf.models import (
+    GolfEnrollment,
+    GolfPlayer,
+    GolfTournament,
+    GolfTournamentField,
+    GolfSeasonPlayerUsage,
+    GolfTournamentResult,
+    GolfPick,
+)
+
+__all__ = [
+    'User',
+    'GolfEnrollment',
+    'GolfPlayer',
+    'GolfTournament',
+    'GolfTournamentField',
+    'GolfSeasonPlayerUsage',
+    'GolfTournamentResult',
+    'GolfPick',
+]

@@ -6,8 +6,8 @@ This file provides guidance to Claude Code when working with this repository.
 
 Fantasy Sports Platform — modular monolith Flask app hosting multiple fantasy sports games under one domain with shared authentication. Games are Flask blueprints in `games/`.
 
-**Current games:** None (platform skeleton only)
-**Planned:** Golf Pick 'Em, CFB Survivor Pool, Masters Fantasy, Olympics Pool
+**Current games:** Golf Pick 'Em (Phase 1A — models complete, routes/services pending)
+**Planned:** CFB Survivor Pool, Masters Fantasy, Olympics Pool
 
 ## Environment
 
@@ -61,8 +61,14 @@ Modular monolith using `create_app()` in `app.py` with blueprints.
 - `core/main/` — platform home page
 - `core/admin/` — platform-level admin (user management)
 
-### Game Blueprints (future)
-- `games/golf/` — Golf Pick 'Em (Phase 1)
+### Game Blueprints
+- `games/golf/` — Golf Pick 'Em (Phase 1A complete — models done, routes/services pending)
+  - `models.py` — GolfEnrollment, GolfPlayer, GolfTournament, GolfTournamentField,
+                   GolfTournamentResult, GolfPick, GolfSeasonPlayerUsage
+  - `utils.py` — format_score_to_par(), parse_score_to_par(), calculate_projected_earnings(),
+                  PAYOUT_PERCENTAGES, GOLF_LEAGUE_TZ
+  - `services/` — placeholder (Phase 1B: sync API + email reminders)
+  - `templates/golf/` — placeholder (Phase 1C: all golf UI templates)
 - `games/cfb/` — CFB Survivor Pool (Phase 2)
 - `games/masters/` — Masters Fantasy (Phase 3)
 
@@ -81,6 +87,10 @@ Modular monolith using `create_app()` in `app.py` with blueprints.
 - CSRF via Flask-WTF on all POST forms: `<input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>`
 - Login rate-limited to 10/min via Flask-Limiter
 - Open redirect prevention on login `next` param via `urlparse(...).netloc == ''` check
+- Golf tables use `golf_` prefix (e.g., `golf_tournament`, `golf_pick`)
+- Golf-specific user data lives in `GolfEnrollment`, NOT on the shared User model
+- `GolfPick.resolve_pick()` is the core pick resolution logic — do not simplify
+- Golf league timezone: `games.golf.utils.GOLF_LEAGUE_TZ` (America/Chicago)
 
 ## Adding a New Game
 
