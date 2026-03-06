@@ -14,5 +14,4 @@ golf_bp = Blueprint(
     url_prefix='/golf'
 )
 
-# Routes will be imported here in Phase 1C:
-# from games.golf import routes  # noqa: E402, F401
+from games.golf import routes  # noqa: E402, F401

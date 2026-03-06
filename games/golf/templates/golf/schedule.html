@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+
+{% block title %}Golf Pick 'Em — Schedule{% endblock %}
+
+{% block content %}
+<div class="page-hero">
+    <div class="hero-glow"></div>
+    <div class="container">
+        <h1>{{ season_year }} Schedule</h1>
+        <p class="lead mb-0">{{ tournaments|length }} tournaments</p>
+    </div>
+</div>
+
+<div class="container pb-5">
+
+    <!-- Stats Row -->
+    <div class="row g-3 mb-4">
+        {% set upcoming = tournaments|selectattr('status','equalto','upcoming')|list|length %}
+        {% set active = tournaments|selectattr('status','equalto','active')|list|length %}
+        {% set complete = tournaments|selectattr('status','equalto','complete')|list|length %}
+        <div class="col-4">
+            <div class="stat-block animate-in stagger-1">
+                <div class="stat-value">{{ upcoming }}</div>
+                <div class="stat-label">Upcoming</div>
+            </div>
+        </div>
+        <div class="col-4">
+            <div class="stat-block animate-in stagger-2">
+                <div class="stat-value text-success">{{ active }}</div>
+                <div class="stat-label">Active</div>
+            </div>
+        </div>
+        <div class="col-4">
+            <div class="stat-block animate-in stagger-3">
+                <div class="stat-value">{{ complete }}</div>
+                <div class="stat-label">Complete</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Schedule Table -->
+    <div class="card animate-in stagger-4">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0 align-middle">
+                    <thead>
+                        <tr>
+                            <th style="width:50px;">Wk</th>
+                            <th>Tournament</th>
+                            <th class="d-none d-md-table-cell">Dates</th>
+                            <th class="d-none d-sm-table-cell">Deadline</th>
+                            <th class="text-end d-none d-md-table-cell">Purse</th>
+                            <th class="text-center">Status</th>
+                            <th class="text-end"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for t in tournaments %}
+                        <tr>
+                            <td><span class="text-muted fw-bold">{{ t.week_number or '—' }}</span></td>
+                            <td>
+                                <a href="{{ url_for('golf.tournament_detail', tournament_id=t.id) }}" class="text-decoration-none text-navy fw-semibold">
+                                    {{ t.name }}
+                                </a>
+                                {% if t.is_major %}
+                                <span class="badge bg-warning text-dark ms-1" style="font-size:.6rem;">MAJOR</span>
+                                {% endif %}
+                                {% if t.is_team_event %}
+                                <span class="badge bg-info text-dark ms-1" style="font-size:.6rem;">TEAM</span>
+                                {% endif %}
+                                <br>
+                                <small class="text-muted d-md-none">
+                                    {{ t.start_date.strftime('%b %d') }} – {{ t.end_date.strftime('%b %d') }}
+                                </small>
+                            </td>
+                            <td class="d-none d-md-table-cell">
+                                <small>{{ t.start_date.strftime('%b %d') }} – {{ t.end_date.strftime('%b %d, %Y') }}</small>
+                            </td>
+                            <td class="d-none d-sm-table-cell">
+                                <small>{{ t.get_deadline_display() }}</small>
+                            </td>
+                            <td class="text-end d-none d-md-table-cell">
+                                {% if t.purse %}
+                                ${{ '{:,.0f}'.format(t.purse) }}
+                                {% else %}
+                                <span class="text-muted">TBD</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                {% if t.status == 'active' %}
+                                    <span class="badge bg-success">Live</span>
+                                {% elif t.status == 'complete' %}
+                                    <span class="badge bg-secondary">Complete</span>
+                                {% else %}
+                                    <span class="badge bg-light text-dark border">Upcoming</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-end">
+                                {% if t.status == 'upcoming' and not t.is_deadline_passed() and current_user.is_authenticated %}
+                                    <a href="{{ url_for('golf.make_pick', tournament_id=t.id) }}" class="btn btn-warning btn-sm">Pick</a>
+                                {% elif t.status == 'complete' %}
+                                    <a href="{{ url_for('golf.tournament_detail', tournament_id=t.id) }}" class="btn btn-outline-secondary btn-sm">Results</a>
+                                {% elif t.status == 'active' %}
+                                    <a href="{{ url_for('golf.tournament_detail', tournament_id=t.id) }}" class="btn btn-primary btn-sm">Live</a>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    {% if not tournaments %}
+    <div class="text-center py-5">
+        <i class="bi bi-calendar3" style="font-size:3rem;color:var(--gold);"></i>
+        <h5 class="mt-3" style="font-family:'Barlow Condensed',sans-serif;">No Tournaments Yet</h5>
+        <p class="text-muted">The {{ season_year }} schedule hasn't been synced yet.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+
+{% block title %}Golf Admin — Dashboard{% endblock %}
+
+{% block content %}
+<div class="page-hero">
+    <div class="hero-glow"></div>
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-end">
+            <div>
+                <h1 class="mb-1">Golf Admin</h1>
+                <p class="lead mb-0">{{ season_year }} Season Dashboard</p>
+            </div>
+            <div>
+                <span class="admin-badge">Admin</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container pb-5">
+
+    <!-- Stats Row -->
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-lg-3">
+            <div class="stat-block animate-in stagger-1">
+                <div class="stat-value">{{ upcoming_count }}</div>
+                <div class="stat-label">Upcoming</div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="stat-block animate-in stagger-2">
+                <div class="stat-value text-success">{{ active_count }}</div>
+                <div class="stat-label">Active</div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="stat-block animate-in stagger-3">
+                <div class="stat-value">{{ complete_count }}</div>
+                <div class="stat-label">Complete</div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="stat-block animate-in stagger-4">
+                <div class="stat-value">{{ total_enrolled }}</div>
+                <div class="stat-label">Enrolled</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- Quick Links -->
+        <div class="col-md-6">
+            <div class="card animate-in stagger-5">
+                <div class="card-header">
+                    <i class="bi bi-grid me-2"></i>Quick Links
+                </div>
+                <div class="list-group list-group-flush">
+                    <a href="{{ url_for('golf.admin_tournaments') }}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                        <span><i class="bi bi-calendar3 me-2 text-gold"></i>Tournaments</span>
+                        <span class="badge bg-primary rounded-pill">{{ tournaments|length }}</span>
+                    </a>
+                    <a href="{{ url_for('golf.admin_users') }}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                        <span><i class="bi bi-people me-2 text-gold"></i>Users</span>
+                        <span class="badge bg-primary rounded-pill">{{ total_users }}</span>
+                    </a>
+                    <a href="{{ url_for('golf.admin_payments') }}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                        <span><i class="bi bi-credit-card me-2 text-gold"></i>Payments</span>
+                        <span class="badge bg-success rounded-pill">{{ total_paid }}/{{ total_enrolled }}</span>
+                    </a>
+                    <a href="{{ url_for('golf.admin_override_pick') }}" class="list-group-item list-group-item-action">
+                        <i class="bi bi-pencil-square me-2 text-gold"></i>Override Pick
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Alerts & Info -->
+        <div class="col-md-6">
+            {% if pending_finalization %}
+            <div class="card border-warning mb-3 animate-in stagger-5">
+                <div class="card-header" style="color:var(--gold);">
+                    <i class="bi bi-exclamation-triangle me-2"></i>Pending Finalization
+                </div>
+                <div class="card-body">
+                    {% for t in pending_finalization %}
+                    <div class="d-flex justify-content-between align-items-center {% if not loop.last %}mb-2{% endif %}">
+                        <span>{{ t.name }}</span>
+                        <form method="POST" action="{{ url_for('golf.admin_process_results', tournament_id=t.id) }}" class="d-inline">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                            <button type="submit" class="btn btn-warning btn-sm">Process</button>
+                        </form>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="card animate-in stagger-6">
+                <div class="card-header">
+                    <i class="bi bi-bar-chart me-2"></i>Season Summary
+                </div>
+                <div class="card-body">
+                    <dl class="row mb-0">
+                        <dt class="col-7" style="font-size:.85rem;">Total Players (DB)</dt>
+                        <dd class="col-5 text-end fw-bold">{{ total_players }}</dd>
+
+                        <dt class="col-7" style="font-size:.85rem;">Enrolled Users</dt>
+                        <dd class="col-5 text-end fw-bold">{{ total_enrolled }}</dd>
+
+                        <dt class="col-7" style="font-size:.85rem;">Paid</dt>
+                        <dd class="col-5 text-end fw-bold text-success">{{ total_paid }}</dd>
+
+                        <dt class="col-7" style="font-size:.85rem;">Unpaid</dt>
+                        <dd class="col-5 text-end fw-bold {% if total_enrolled - total_paid > 0 %}text-danger{% endif %}">{{ total_enrolled - total_paid }}</dd>
+
+                        <dt class="col-7 mb-0" style="font-size:.85rem;">Collected</dt>
+                        <dd class="col-5 text-end fw-bold mb-0">${{ '{:,.0f}'.format(total_paid * entry_fee) }}</dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

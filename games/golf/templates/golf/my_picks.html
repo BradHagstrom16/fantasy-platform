@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+
+{% block title %}Golf Pick 'Em — My Picks{% endblock %}
+
+{% block content %}
+<div class="page-hero">
+    <div class="hero-glow"></div>
+    <div class="container">
+        <h1>My Picks</h1>
+        <p class="lead mb-0">{{ season_year }} Season History</p>
+    </div>
+</div>
+
+<div class="container pb-5">
+
+    <!-- Stats Row -->
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-md-3">
+            <div class="stat-block animate-in stagger-1">
+                <div class="stat-value">${{ '{:,.0f}'.format(total_points) }}</div>
+                <div class="stat-label">Total Points</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="stat-block animate-in stagger-2">
+                <div class="stat-value">{{ picks_made }}</div>
+                <div class="stat-label">Picks Made</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="stat-block animate-in stagger-3">
+                <div class="stat-value">{{ used_count }}</div>
+                <div class="stat-label">Golfers Used</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="stat-block animate-in stagger-4">
+                {% if best_pick %}
+                <div class="stat-value" style="font-size:1.4rem;">${{ '{:,.0f}'.format(best_pick.points_earned) }}</div>
+                <div class="stat-label">Best Pick</div>
+                {% else %}
+                <div class="stat-value">—</div>
+                <div class="stat-label">Best Pick</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Picks Table -->
+    <div class="card animate-in stagger-5">
+        <div class="card-header">
+            <i class="bi bi-list-check me-2"></i>Pick History
+        </div>
+        <div class="card-body p-0">
+            {% if tournaments %}
+            <div class="table-responsive">
+                <table class="table table-hover mb-0 align-middle">
+                    <thead>
+                        <tr>
+                            <th style="width:50px;">Wk</th>
+                            <th>Tournament</th>
+                            <th>Primary</th>
+                            <th class="d-none d-md-table-cell">Backup</th>
+                            <th class="text-center">Active</th>
+                            <th class="text-center">Status</th>
+                            <th class="text-end">Points</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for t in tournaments %}
+                        {% set pick = picks_map.get(t.id) %}
+                        <tr>
+                            <td><span class="text-muted fw-bold">{{ t.week_number or '—' }}</span></td>
+                            <td>
+                                <a href="{{ url_for('golf.tournament_detail', tournament_id=t.id) }}" class="text-decoration-none text-navy">
+                                    {{ t.name }}
+                                </a>
+                                {% if t.is_major %}<span class="badge bg-warning text-dark" style="font-size:.55rem;">MAJOR</span>{% endif %}
+                            </td>
+                            <td>
+                                {% if pick %}
+                                    <span class="fw-semibold">{{ pick.primary_player.full_name() }}</span>
+                                {% elif t.status == 'upcoming' and not t.is_deadline_passed() %}
+                                    <a href="{{ url_for('golf.make_pick', tournament_id=t.id) }}" class="btn btn-warning btn-sm py-0 px-2" style="font-size:.75rem;">
+                                        Pick Now
+                                    </a>
+                                {% else %}
+                                    <span class="text-muted">—</span>
+                                {% endif %}
+                            </td>
+                            <td class="d-none d-md-table-cell">
+                                {% if pick %}
+                                    {{ pick.backup_player.full_name() }}
+                                {% else %}
+                                    <span class="text-muted">—</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                {% if pick and pick.active_player_id %}
+                                    {% if pick.active_player_id == pick.backup_player_id %}
+                                        <span class="badge bg-info text-dark" style="font-size:.65rem;">BACKUP</span>
+                                    {% else %}
+                                        <span class="badge bg-light text-dark border" style="font-size:.65rem;">PRIMARY</span>
+                                    {% endif %}
+                                {% elif pick %}
+                                    <span class="text-muted small">TBD</span>
+                                {% else %}
+                                    <span class="text-muted">—</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                {% if t.status == 'active' %}
+                                    <span class="badge bg-success">Live</span>
+                                {% elif t.status == 'complete' %}
+                                    <span class="badge bg-secondary">Final</span>
+                                {% else %}
+                                    <span class="badge bg-light text-dark border">Upcoming</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-end">
+                                {% if pick and pick.points_earned is not none %}
+                                    <strong {% if pick.points_earned > 0 %}class="text-success"{% endif %}>
+                                        ${{ '{:,.0f}'.format(pick.points_earned) }}
+                                    </strong>
+                                {% elif pick and t.status == 'active' %}
+                                    {% set live = pick.get_current_earnings() %}
+                                    <span class="text-muted">${{ '{:,.0f}'.format(live) }}</span>
+                                {% else %}
+                                    <span class="text-muted">—</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-5">
+                <i class="bi bi-calendar3" style="font-size:3rem;color:var(--gold);"></i>
+                <h5 class="mt-3" style="font-family:'Barlow Condensed',sans-serif;">No Tournaments Yet</h5>
+                <p class="text-muted">The schedule hasn't been loaded.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

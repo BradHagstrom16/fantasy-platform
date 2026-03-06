@@ -1,0 +1,197 @@
+{% extends "base.html" %}
+
+{% block title %}Golf Pick 'Em — {{ tournament.name }}{% endblock %}
+
+{% block content %}
+<div class="page-hero">
+    <div class="hero-glow"></div>
+    <div class="container">
+        <div class="row align-items-end">
+            <div class="col-md-8">
+                <h1 class="mb-1">{{ tournament.name }}</h1>
+                <p class="lead mb-0">
+                    {{ tournament.start_date.strftime('%b %d') }} – {{ tournament.end_date.strftime('%b %d, %Y') }}
+                    {% if tournament.is_major %}<span class="badge bg-warning text-dark ms-2">MAJOR</span>{% endif %}
+                    {% if tournament.is_team_event %}<span class="badge bg-info text-dark ms-2">TEAM</span>{% endif %}
+                </p>
+            </div>
+            <div class="col-md-4 text-md-end mt-2 mt-md-0">
+                {% if tournament.status == 'active' %}
+                    <span class="badge bg-success fs-6">LIVE</span>
+                {% elif tournament.status == 'complete' %}
+                    <span class="badge bg-secondary fs-6">COMPLETE</span>
+                {% else %}
+                    <span class="badge bg-light text-dark border fs-6">UPCOMING</span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container pb-5">
+
+    <!-- Tournament Stats -->
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-md-3">
+            <div class="stat-block animate-in stagger-1">
+                <div class="stat-value" style="font-size:1.6rem;">
+                    {% if tournament.purse %}${{ '{:,.0f}'.format(tournament.purse) }}{% else %}TBD{% endif %}
+                </div>
+                <div class="stat-label">Purse</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="stat-block animate-in stagger-2">
+                <div class="stat-value">{{ tournament.get_field_count() }}</div>
+                <div class="stat-label">Field Size</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="stat-block animate-in stagger-3">
+                <div class="stat-value">{{ picks|length }}</div>
+                <div class="stat-label">Picks</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="stat-block animate-in stagger-4">
+                {% set max_pts = namespace(val=0) %}
+                {% for p in picks if p.points_earned is not none and p.points_earned > max_pts.val %}
+                    {% set max_pts.val = p.points_earned %}
+                {% endfor %}
+                <div class="stat-value" style="font-size:1.6rem;">
+                    {% if max_pts.val > 0 %}${{ '{:,.0f}'.format(max_pts.val) }}{% else %}—{% endif %}
+                </div>
+                <div class="stat-label">Best Pick</div>
+            </div>
+        </div>
+    </div>
+
+    {% if not picks_visible and tournament.status == 'upcoming' %}
+    <!-- Picks Not Visible Yet -->
+    <div class="card animate-in stagger-5">
+        <div class="card-body text-center py-5">
+            <i class="bi bi-eye-slash" style="font-size:3rem;color:var(--gold);"></i>
+            <h5 class="mt-3" style="font-family:'Barlow Condensed',sans-serif;">Picks Hidden Until Deadline</h5>
+            <p class="text-muted">Picks become visible after {{ tournament.get_deadline_display() }}</p>
+            {% if current_user.is_authenticated %}
+            <a href="{{ url_for('golf.make_pick', tournament_id=tournament.id) }}" class="btn btn-warning">
+                Make Your Pick
+            </a>
+            {% endif %}
+        </div>
+    </div>
+
+    {% else %}
+    <!-- Picks Table -->
+    <div class="card animate-in stagger-5">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <span><i class="bi bi-people me-2"></i>Picks</span>
+            {% if not picks_visible %}
+            <small class="text-muted" style="text-transform:none;font-weight:400;">Picks hidden until deadline</small>
+            {% endif %}
+        </div>
+        <div class="card-body p-0">
+            {% if picks %}
+            <div class="table-responsive">
+                <table class="table table-hover mb-0 align-middle">
+                    <thead>
+                        <tr>
+                            <th>Player</th>
+                            <th>Primary Pick</th>
+                            {% if any_backup_activated %}
+                            <th class="d-none d-md-table-cell">Backup</th>
+                            {% endif %}
+                            {% if tournament.status in ('active', 'complete') %}
+                            <th class="text-center">Position</th>
+                            <th class="text-center d-none d-sm-table-cell">Score</th>
+                            <th class="text-end">
+                                {% if tournament.status == 'complete' %}Earnings{% else %}Projected{% endif %}
+                            </th>
+                            {% endif %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for pick in picks|sort(attribute='user.username') %}
+                        <tr {% if current_user.is_authenticated and pick.user_id == current_user.id %}style="background:#f0f4fb;"{% endif %}>
+                            <td>
+                                <span class="fw-semibold">{{ pick.user.get_display_name() }}</span>
+                                {% if pick.admin_override %}
+                                <span class="badge bg-warning text-dark" style="font-size:.55rem;">OVERRIDE</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if picks_visible %}
+                                    {{ pick.primary_player.full_name() }}
+                                    {% if pick.active_player_id == pick.backup_player_id and pick.active_player_id is not none %}
+                                        <span class="badge bg-info text-dark" style="font-size:.6rem;">WD</span>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="text-muted">Hidden</span>
+                                {% endif %}
+                            </td>
+                            {% if any_backup_activated %}
+                            <td class="d-none d-md-table-cell">
+                                {% if picks_visible %}
+                                    {{ pick.backup_player.full_name() }}
+                                    {% if pick.active_player_id == pick.backup_player_id and pick.active_player_id is not none %}
+                                        <span class="badge bg-success" style="font-size:.6rem;">ACTIVE</span>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="text-muted">Hidden</span>
+                                {% endif %}
+                            </td>
+                            {% endif %}
+                            {% if tournament.status in ('active', 'complete') %}
+                            {% set active_id = pick.active_player_id or pick.primary_player_id %}
+                            {% set result = results_map.get(active_id) %}
+                            <td class="text-center">
+                                {% if result and result.final_position %}
+                                    <span class="badge bg-light text-dark border">{{ result.final_position }}</span>
+                                {% else %}
+                                    <span class="text-muted">—</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center d-none d-sm-table-cell">
+                                {% if result and result.score_to_par is not none %}
+                                    <span class="{% if result.score_to_par < 0 %}text-success{% elif result.score_to_par > 0 %}text-danger{% endif %}">
+                                        {{ format_score_to_par(result.score_to_par) }}
+                                    </span>
+                                {% else %}
+                                    <span class="text-muted">—</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-end">
+                                {% if tournament.status == 'complete' and pick.points_earned is not none %}
+                                    <strong {% if pick.points_earned > 0 %}class="text-success"{% endif %}>
+                                        ${{ '{:,.0f}'.format(pick.points_earned) }}
+                                    </strong>
+                                {% elif result and result.final_position %}
+                                    {% set proj = calculate_projected_earnings(result.final_position, tournament.purse or 0, all_positions) %}
+                                    <span class="text-muted">${{ '{:,.0f}'.format(proj) }}</span>
+                                {% else %}
+                                    <span class="text-muted">—</span>
+                                {% endif %}
+                            </td>
+                            {% endif %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-5">
+                <i class="bi bi-people" style="font-size:2.5rem;color:var(--text-muted);"></i>
+                <h6 class="mt-3 text-muted">No picks submitted yet</h6>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="mt-3">
+        <a href="{{ url_for('golf.schedule') }}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left me-1"></i>Back to Schedule
+        </a>
+    </div>
+</div>
+{% endblock %}

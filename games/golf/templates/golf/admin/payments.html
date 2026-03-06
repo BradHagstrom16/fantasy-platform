@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+
+{% block title %}Golf Admin — Payments{% endblock %}
+
+{% block content %}
+<div class="page-hero">
+    <div class="hero-glow"></div>
+    <div class="container">
+        <h1>Payment Tracking</h1>
+        <p class="lead mb-0">{{ season_year }} Season &mdash; ${{ entry_fee }} entry fee</p>
+    </div>
+</div>
+
+<div class="container pb-5">
+
+    <!-- Payment Stats -->
+    <div class="row g-3 mb-4">
+        <div class="col-4">
+            <div class="stat-block animate-in stagger-1">
+                <div class="stat-value text-success">{{ total_paid }}</div>
+                <div class="stat-label">Paid</div>
+            </div>
+        </div>
+        <div class="col-4">
+            <div class="stat-block animate-in stagger-2">
+                <div class="stat-value {% if total_unpaid > 0 %}text-danger{% endif %}">{{ total_unpaid }}</div>
+                <div class="stat-label">Unpaid</div>
+            </div>
+        </div>
+        <div class="col-4">
+            <div class="stat-block animate-in stagger-3">
+                <div class="stat-value" style="font-size:1.8rem;">${{ '{:,.0f}'.format(total_collected) }}</div>
+                <div class="stat-label">Collected</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Payment List -->
+    <div class="card animate-in stagger-4">
+        <div class="card-header">
+            <i class="bi bi-credit-card me-2"></i>Enrollment Payments
+        </div>
+        <div class="card-body p-0">
+            {% if enrollments %}
+            <div class="table-responsive">
+                <table class="table table-hover mb-0 align-middle">
+                    <thead>
+                        <tr>
+                            <th>Player</th>
+                            <th class="d-none d-sm-table-cell">Email</th>
+                            <th class="text-center">Status</th>
+                            <th class="text-center">Toggle</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for e in enrollments|sort(attribute='user.username') %}
+                        <tr>
+                            <td class="fw-semibold">{{ e.user.get_display_name() }}</td>
+                            <td class="d-none d-sm-table-cell">
+                                <small class="text-muted">{{ e.user.email }}</small>
+                            </td>
+                            <td class="text-center">
+                                {% if e.has_paid %}
+                                    <span class="badge bg-success">Paid</span>
+                                {% else %}
+                                    <span class="badge bg-danger">Unpaid</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                <div class="form-check form-switch d-flex justify-content-center mb-0">
+                                    <input class="form-check-input payment-toggle" type="checkbox"
+                                           data-user-id="{{ e.user_id }}"
+                                           {% if e.has_paid %}checked{% endif %}>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-5">
+                <p class="text-muted">No enrollments yet.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="mt-3">
+        <a href="{{ url_for('golf.admin_dashboard') }}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left me-1"></i>Back to Dashboard
+        </a>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.payment-toggle').forEach(function(toggle) {
+        toggle.addEventListener('change', function() {
+            const userId = this.dataset.userId;
+            const hasPaid = this.checked;
+            const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+            const row = this.closest('tr');
+            const badge = row.querySelector('.badge');
+
+            fetch(`{{ url_for('golf.admin_update_payment', user_id=0) }}`.replace('0', userId), {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken,
+                },
+                body: JSON.stringify({has_paid: hasPaid}),
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    badge.className = 'badge ' + (data.has_paid ? 'bg-success' : 'bg-danger');
+                    badge.textContent = data.has_paid ? 'Paid' : 'Unpaid';
+                } else {
+                    toggle.checked = !hasPaid;
+                }
+            })
+            .catch(() => {
+                toggle.checked = !hasPaid;
+            });
+        });
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+
+{% block title %}Golf Pick 'Em — Make Pick{% endblock %}
+
+{% block head %}
+<link href="https://cdn.jsdelivr.net/npm/tom-select@2.4.3/dist/css/tom-select.bootstrap5.min.css" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<div class="page-hero">
+    <div class="hero-glow"></div>
+    <div class="container">
+        <h1>Make Your Pick</h1>
+        <p class="lead mb-0">{{ tournament.name }}</p>
+    </div>
+</div>
+
+<div class="container pb-5">
+    <div class="row g-4">
+        <!-- Pick Form -->
+        <div class="col-lg-8">
+            <div class="card animate-in">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-flag me-2"></i>{{ 'Edit Pick' if existing_pick else 'Submit Pick' }}</span>
+                    <span class="badge bg-light text-dark border">{{ available_players|length }} available</span>
+                </div>
+                <div class="card-body">
+                    {% if existing_pick %}
+                    <div class="alert alert-info py-2 mb-3">
+                        <small>
+                            <i class="bi bi-info-circle me-1"></i>
+                            Current pick: <strong>{{ existing_pick.primary_player.full_name() }}</strong>
+                            / Backup: <strong>{{ existing_pick.backup_player.full_name() }}</strong>
+                        </small>
+                    </div>
+                    {% endif %}
+
+                    <form method="POST" action="{{ url_for('golf.make_pick', tournament_id=tournament.id) }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+
+                        <div class="mb-4">
+                            <label for="primary_player_id" class="form-label">Primary Player</label>
+                            <select name="primary_player_id" id="primary_player_id" class="form-select" required>
+                                <option value="">Search for a player...</option>
+                                {% for player in available_players %}
+                                <option value="{{ player.id }}"
+                                    {% if existing_pick and existing_pick.primary_player_id == player.id %}selected{% endif %}>
+                                    {{ player.full_name() }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-text">Your main pick. This player's earnings = your points.</div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="backup_player_id" class="form-label">Backup Player</label>
+                            <select name="backup_player_id" id="backup_player_id" class="form-select" required>
+                                <option value="">Search for a player...</option>
+                                {% for player in available_players %}
+                                <option value="{{ player.id }}"
+                                    {% if existing_pick and existing_pick.backup_player_id == player.id %}selected{% endif %}>
+                                    {{ player.full_name() }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-text">Activates only if primary WDs before completing Round 2.</div>
+                        </div>
+
+                        <button type="submit" class="btn btn-warning w-100">
+                            <i class="bi bi-check-lg me-1"></i>
+                            {{ 'Update Pick' if existing_pick else 'Submit Pick' }}
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="col-lg-4">
+            <!-- Tournament Info -->
+            <div class="card mb-3 animate-in stagger-1">
+                <div class="card-header">
+                    <i class="bi bi-info-circle me-2"></i>Tournament Info
+                </div>
+                <div class="card-body">
+                    <dl class="mb-0">
+                        <dt style="font-size:.8rem;" class="text-muted text-uppercase">Purse</dt>
+                        <dd class="fw-bold">
+                            {% if tournament.purse %}
+                            ${{ '{:,.0f}'.format(tournament.purse) }}
+                            {% else %}
+                            TBD
+                            {% endif %}
+                            {% if tournament.is_major %}<span class="badge bg-warning text-dark ms-1">MAJOR 1.5x</span>{% endif %}
+                            {% if tournament.is_team_event %}<span class="badge bg-info text-dark ms-1">TEAM &divide;2</span>{% endif %}
+                        </dd>
+                        <dt style="font-size:.8rem;" class="text-muted text-uppercase">Deadline</dt>
+                        <dd class="fw-bold" id="deadline-display">{{ tournament.get_deadline_display() }}</dd>
+                        <dt style="font-size:.8rem;" class="text-muted text-uppercase">Field Size</dt>
+                        <dd class="mb-0 fw-bold">{{ tournament.get_field_count() }} players</dd>
+                    </dl>
+                </div>
+            </div>
+
+            <!-- Rules -->
+            <div class="card animate-in stagger-2">
+                <div class="card-header">
+                    <i class="bi bi-book me-2"></i>Quick Rules
+                </div>
+                <div class="card-body">
+                    <ul class="list-unstyled mb-0" style="font-size:.88rem;">
+                        <li class="mb-2"><i class="bi bi-check2 text-gold me-2"></i>Pick one primary + one backup per tournament</li>
+                        <li class="mb-2"><i class="bi bi-check2 text-gold me-2"></i>Points = actual prize money earned</li>
+                        <li class="mb-2"><i class="bi bi-check2 text-gold me-2"></i>Each golfer usable only once per season</li>
+                        <li class="mb-2"><i class="bi bi-check2 text-gold me-2"></i>Backup activates only if primary WDs before R2</li>
+                        <li class="mb-2"><i class="bi bi-check2 text-gold me-2"></i>Majors earn 1.5x points</li>
+                        <li><i class="bi bi-check2 text-gold me-2"></i>Team events earn half points</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/tom-select@2.4.3/dist/js/tom-select.complete.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const primarySelect = new TomSelect('#primary_player_id', {
+        placeholder: 'Search for a player...',
+        allowEmptyOption: true,
+        onChange: function(value) {
+            // Disable selected primary in backup dropdown
+            if (backupSelect) {
+                backupSelect.clearOptions();
+                const options = document.querySelectorAll('#primary_player_id option');
+                options.forEach(opt => {
+                    if (opt.value && opt.value !== value) {
+                        backupSelect.addOption({value: opt.value, text: opt.text});
+                    }
+                });
+                backupSelect.refreshOptions(false);
+            }
+        }
+    });
+
+    const backupSelect = new TomSelect('#backup_player_id', {
+        placeholder: 'Search for a player...',
+        allowEmptyOption: true,
+    });
+});
+</script>
+{% endblock %}

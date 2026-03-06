@@ -6,7 +6,7 @@ This file provides guidance to Claude Code when working with this repository.
 
 Fantasy Sports Platform — modular monolith Flask app hosting multiple fantasy sports games under one domain with shared authentication. Games are Flask blueprints in `games/`.
 
-**Current games:** Golf Pick 'Em (Phase 1B — models + services complete, routes/templates pending)
+**Current games:** Golf Pick 'Em (Phase 1 COMPLETE — fully ported)
 **Planned:** CFB Survivor Pool, Masters Fantasy, Olympics Pool
 
 ## Environment
@@ -62,16 +62,17 @@ Modular monolith using `create_app()` in `app.py` with blueprints.
 - `core/admin/` — platform-level admin (user management)
 
 ### Game Blueprints
-- `games/golf/` — Golf Pick 'Em (Phase 1B complete — models + services done, routes pending)
-  - `models.py` — GolfEnrollment, GolfPlayer, GolfTournament, GolfTournamentField,
-                   GolfTournamentResult, GolfPick, GolfSeasonPlayerUsage
-  - `utils.py` — format_score_to_par(), parse_score_to_par(), calculate_projected_earnings(),
-                  PAYOUT_PERCENTAGES, GOLF_LEAGUE_TZ
-  - `constants.py` — EXCLUDED_TOURNAMENTS, SEASON_CUTOFF_DATE, PURSE_ESTIMATES, MIN_FIELD_SIZE
-  - `services/sync.py` — SlashGolfAPI client, TournamentSync orchestrator, tournament helper functions
-  - `services/reminders.py` — Email notifications (picks open, deadline reminders, admin alerts)
-  - `cli.py` — All `flask golf *` commands (sync-run, sync-schedule, sync-field, etc.)
-  - `templates/golf/` — placeholder (Phase 1C: all golf UI templates)
+- `games/golf/` — Golf Pick 'Em (Phase 1 COMPLETE)
+  - `__init__.py` — Blueprint definition with route imports
+  - `models.py` — 7 models (GolfEnrollment, GolfPlayer, GolfTournament, etc.)
+  - `utils.py` — Score formatting, payout calculations, timezone
+  - `constants.py` — Excluded tournaments, purse estimates
+  - `routes.py` — All route handlers (~15 routes: standings, schedule, pick, admin)
+  - `services/sync.py` — SlashGolfAPI + TournamentSync
+  - `services/reminders.py` — Email notifications
+  - `cli.py` — All `flask golf *` CLI commands
+  - `templates/golf/` — All golf UI templates (index, schedule, make_pick, my_picks,
+                          tournament_detail, admin/dashboard, admin/tournaments, etc.)
 - `games/cfb/` — CFB Survivor Pool (Phase 2)
 - `games/masters/` — Masters Fantasy (Phase 3)
 
@@ -126,6 +127,23 @@ FLASK_APP=app.py venv/bin/flask golf sync-earnings
 FLASK_APP=app.py venv/bin/flask golf check-wd
 FLASK_APP=app.py venv/bin/flask golf remind
 ```
+
+## Golf URL Map
+
+| URL | Endpoint | Auth | Description |
+|-----|----------|------|-------------|
+| `/golf/` | `golf.index` | Public | Season standings |
+| `/golf/schedule` | `golf.schedule` | Public | Tournament schedule |
+| `/golf/tournament/<id>` | `golf.tournament_detail` | Public | Tournament detail/results |
+| `/golf/results` | `golf.results` | Public | Redirect to latest results |
+| `/golf/pick/<id>` | `golf.make_pick` | Login | Submit/edit pick |
+| `/golf/my-picks` | `golf.my_picks` | Login | User's pick history |
+| `/golf/admin/` | `golf.admin_dashboard` | Admin | Golf admin overview |
+| `/golf/admin/tournaments` | `golf.admin_tournaments` | Admin | Manage tournaments |
+| `/golf/admin/users` | `golf.admin_users` | Admin | User management |
+| `/golf/admin/payments` | `golf.admin_payments` | Admin | Payment tracking |
+| `/golf/admin/override-pick` | `golf.admin_override_pick` | Admin | Override picks |
+| `/golf/admin/process-results/<id>` | `golf.admin_process_results` | Admin | Process results |
 
 ## Environment Variables
 

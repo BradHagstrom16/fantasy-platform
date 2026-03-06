@@ -35,18 +35,36 @@
                         <a class="nav-link {% if request.endpoint == 'main.index' %}active{% endif %}"
                            href="{{ url_for('main.index') }}">Home</a>
                     </li>
-                    <!-- Game links will be uncommented as blueprints are registered -->
-                    <!--
                     <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                        <a class="nav-link dropdown-toggle {% if request.blueprint == 'golf' %}active{% endif %}"
+                           href="#" role="button" data-bs-toggle="dropdown">
                             Games
                         </a>
                         <ul class="dropdown-menu">
-                            <li><a class="dropdown-item" href="/golf">⛳ Golf Pick 'Em</a></li>
-                            <li><a class="dropdown-item" href="/cfb">🏈 CFB Survivor</a></li>
+                            <li>
+                                <a class="dropdown-item" href="{{ url_for('golf.index') }}">
+                                    <i class="bi bi-flag me-2"></i>Golf Pick 'Em
+                                </a>
+                            </li>
+                            <!-- Future games will be added here -->
                         </ul>
                     </li>
-                    -->
+                    {% if request.blueprint == 'golf' %}
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.endpoint == 'golf.index' %}active{% endif %}"
+                           href="{{ url_for('golf.index') }}">Standings</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.endpoint == 'golf.schedule' %}active{% endif %}"
+                           href="{{ url_for('golf.schedule') }}">Schedule</a>
+                    </li>
+                    {% if current_user.is_authenticated %}
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.endpoint == 'golf.my_picks' %}active{% endif %}"
+                           href="{{ url_for('golf.my_picks') }}">My Picks</a>
+                    </li>
+                    {% endif %}
+                    {% endif %}
                 </ul>
 
                 <ul class="navbar-nav">

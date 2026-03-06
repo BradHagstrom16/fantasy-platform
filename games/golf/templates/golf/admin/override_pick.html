@@ -1,0 +1,192 @@
+{% extends "base.html" %}
+
+{% block title %}Golf Admin — Override Pick{% endblock %}
+
+{% block head %}
+<link href="https://cdn.jsdelivr.net/npm/tom-select@2.4.3/dist/css/tom-select.bootstrap5.min.css" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<div class="page-hero">
+    <div class="hero-glow"></div>
+    <div class="container">
+        <h1>Override Pick</h1>
+        <p class="lead mb-0">Admin pick management</p>
+    </div>
+</div>
+
+<div class="container pb-5">
+    <div class="row g-4">
+        <!-- Override Form -->
+        <div class="col-lg-8">
+            <div class="card animate-in">
+                <div class="card-header">
+                    <i class="bi bi-pencil-square me-2"></i>Override Pick
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('golf.admin_override_pick') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label for="tournament_id" class="form-label">Tournament</label>
+                                <select name="tournament_id" id="tournament_id" class="form-select" required>
+                                    <option value="">Select tournament...</option>
+                                    {% for t in tournaments %}
+                                    <option value="{{ t.id }}"
+                                        {% if selected_tournament and selected_tournament.id == t.id %}selected{% endif %}>
+                                        {{ t.name }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="user_id" class="form-label">User</label>
+                                <select name="user_id" id="user_id" class="form-select" required>
+                                    <option value="">Select user...</option>
+                                    {% for u in users %}
+                                    <option value="{{ u.id }}"
+                                        {% if selected_user and selected_user.id == u.id %}selected{% endif %}>
+                                        {{ u.get_display_name() }} ({{ u.username }})
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+
+                        {% if existing_pick %}
+                        <div class="alert alert-info py-2 mb-3">
+                            <small>
+                                <i class="bi bi-info-circle me-1"></i>
+                                Existing pick: <strong>{{ existing_pick.primary_player.full_name() }}</strong>
+                                / <strong>{{ existing_pick.backup_player.full_name() }}</strong>
+                                {% if existing_pick.admin_override %}(previously overridden){% endif %}
+                            </small>
+                        </div>
+                        {% endif %}
+
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label for="primary_player_id" class="form-label">Primary Player</label>
+                                <select name="primary_player_id" id="primary_player_id" class="form-select ts-select" required>
+                                    <option value="">Select player...</option>
+                                    {% for player in field_players %}
+                                    <option value="{{ player.id }}"
+                                        {% if player.id in used_player_ids %}disabled{% endif %}
+                                        {% if existing_pick and existing_pick.primary_player_id == player.id %}selected{% endif %}>
+                                        {{ player.full_name() }}{% if player.id in used_player_ids %} (used){% endif %}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="backup_player_id" class="form-label">Backup Player</label>
+                                <select name="backup_player_id" id="backup_player_id" class="form-select ts-select" required>
+                                    <option value="">Select player...</option>
+                                    {% for player in field_players %}
+                                    <option value="{{ player.id }}"
+                                        {% if player.id in used_player_ids %}disabled{% endif %}
+                                        {% if existing_pick and existing_pick.backup_player_id == player.id %}selected{% endif %}>
+                                        {{ player.full_name() }}{% if player.id in used_player_ids %} (used){% endif %}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="override_note" class="form-label">Override Note</label>
+                            <textarea name="override_note" id="override_note" class="form-control" rows="2"
+                                      placeholder="Reason for override..."></textarea>
+                        </div>
+
+                        <button type="submit" class="btn btn-warning w-100"
+                                {% if not field_players %}disabled{% endif %}>
+                            <i class="bi bi-check-lg me-1"></i>Save Override
+                        </button>
+                    </form>
+
+                    {% if not selected_tournament %}
+                    <div class="text-center text-muted mt-3">
+                        <small>Select a tournament and user to load the field.</small>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Overrides -->
+        <div class="col-lg-4">
+            <div class="card animate-in stagger-1">
+                <div class="card-header">
+                    <i class="bi bi-clock-history me-2"></i>Recent Overrides
+                </div>
+                <div class="card-body p-0">
+                    {% if recent_overrides %}
+                    <div class="list-group list-group-flush">
+                        {% for pick in recent_overrides %}
+                        <div class="list-group-item">
+                            <div class="d-flex justify-content-between">
+                                <small class="fw-semibold">{{ pick.user.get_display_name() }}</small>
+                                <small class="text-muted">{{ pick.updated_at.strftime('%b %d') }}</small>
+                            </div>
+                            <small class="text-muted d-block">
+                                {{ pick.tournament.name }}: {{ pick.primary_player.full_name() }} / {{ pick.backup_player.full_name() }}
+                            </small>
+                            {% if pick.admin_override_note %}
+                            <small class="text-muted fst-italic">{{ pick.admin_override_note }}</small>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4">
+                        <small class="text-muted">No overrides yet</small>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="mt-3">
+        <a href="{{ url_for('golf.admin_dashboard') }}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left me-1"></i>Back to Dashboard
+        </a>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/tom-select@2.4.3/dist/js/tom-select.complete.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize Tom Select on player dropdowns if they have options
+    document.querySelectorAll('.ts-select').forEach(function(el) {
+        if (el.options.length > 1) {
+            new TomSelect(el, {
+                placeholder: 'Search for a player...',
+                allowEmptyOption: true,
+            });
+        }
+    });
+
+    // Auto-submit tournament/user selection to load field
+    const tournamentSelect = document.getElementById('tournament_id');
+    const userSelect = document.getElementById('user_id');
+
+    function loadField() {
+        const tid = tournamentSelect.value;
+        const uid = userSelect.value;
+        if (tid && uid) {
+            window.location.href = `{{ url_for('golf.admin_override_pick') }}?tournament_id=${tid}&user_id=${uid}`;
+        } else if (tid) {
+            window.location.href = `{{ url_for('golf.admin_override_pick') }}?tournament_id=${tid}`;
+        }
+    }
+
+    tournamentSelect.addEventListener('change', loadField);
+    userSelect.addEventListener('change', loadField);
+});
+</script>
+{% endblock %}
