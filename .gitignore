@@ -37,3 +37,5 @@ logs/
 .claude/settings.local.json
 
 # DO NOT ignore migrations/ — these must be committed
+
+_migration_source/
