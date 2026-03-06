@@ -1,0 +1,26 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if echo \"$CLAUDE_TOOL_INPUT\" | grep -q '\\.env\"'; then echo 'BLOCKED: .env is protected. Edit .env.example instead.' && exit 1; fi"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if echo \"$CLAUDE_TOOL_INPUT\" | grep -qE '(routes|models|app)\\.py'; then cd \"$(git rev-parse --show-toplevel)\" && FLASK_APP=app.py ENVIRONMENT=testing venv/bin/python -c \"from app import create_app; app = create_app('testing'); print('Smoke test OK')\" 2>&1 | tail -5; fi"
+          }
+        ]
+      }
+    ]
+  }
+}

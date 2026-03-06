@@ -33,4 +33,7 @@ Thumbs.db
 logs/
 *.log
 
+# Claude local overrides only — project config in .claude/ is committed
+.claude/settings.local.json
+
 # DO NOT ignore migrations/ — these must be committed
