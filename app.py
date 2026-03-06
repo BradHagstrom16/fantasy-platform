@@ -53,6 +53,14 @@ def create_app(config_name=None):
     from games.golf.cli import register_golf_cli
     register_golf_cli(app)
 
+    # Register CFB Survivor blueprint
+    from games.cfb import cfb_bp
+    app.register_blueprint(cfb_bp)
+
+    # Register CFB CLI commands
+    from games.cfb.cli import register_cfb_cli
+    register_cfb_cli(app)
+
     # Error handlers
     @app.errorhandler(404)
     def not_found(e):

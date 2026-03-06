@@ -17,6 +17,15 @@ from games.golf.models import (
     GolfPick,
 )
 
+# CFB Survivor Pool models
+from games.cfb.models import (
+    CfbEnrollment,
+    CfbTeam,
+    CfbWeek,
+    CfbGame,
+    CfbPick,
+)
+
 __all__ = [
     'User',
     'GolfEnrollment',
@@ -26,4 +35,9 @@ __all__ = [
     'GolfSeasonPlayerUsage',
     'GolfTournamentResult',
     'GolfPick',
+    'CfbEnrollment',
+    'CfbTeam',
+    'CfbWeek',
+    'CfbGame',
+    'CfbPick',
 ]
