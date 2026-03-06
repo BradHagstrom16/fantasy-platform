@@ -39,3 +39,6 @@ logs/
 # DO NOT ignore migrations/ — these must be committed
 
 _migration_source/
+
+# Git worktrees
+.worktrees/
