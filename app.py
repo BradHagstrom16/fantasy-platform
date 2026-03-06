@@ -45,9 +45,13 @@ def create_app(config_name=None):
     app.register_blueprint(main_bp)
     app.register_blueprint(admin_bp)
 
-    # Future: register game blueprints here
-    # from games.golf import golf_bp
-    # app.register_blueprint(golf_bp, url_prefix='/golf')
+    # Register golf blueprint
+    from games.golf import golf_bp
+    app.register_blueprint(golf_bp)
+
+    # Register golf CLI commands
+    from games.golf.cli import register_golf_cli
+    register_golf_cli(app)
 
     # Error handlers
     @app.errorhandler(404)

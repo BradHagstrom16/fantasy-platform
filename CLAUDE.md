@@ -6,7 +6,7 @@ This file provides guidance to Claude Code when working with this repository.
 
 Fantasy Sports Platform — modular monolith Flask app hosting multiple fantasy sports games under one domain with shared authentication. Games are Flask blueprints in `games/`.
 
-**Current games:** Golf Pick 'Em (Phase 1A — models complete, routes/services pending)
+**Current games:** Golf Pick 'Em (Phase 1B — models + services complete, routes/templates pending)
 **Planned:** CFB Survivor Pool, Masters Fantasy, Olympics Pool
 
 ## Environment
@@ -62,12 +62,15 @@ Modular monolith using `create_app()` in `app.py` with blueprints.
 - `core/admin/` — platform-level admin (user management)
 
 ### Game Blueprints
-- `games/golf/` — Golf Pick 'Em (Phase 1A complete — models done, routes/services pending)
+- `games/golf/` — Golf Pick 'Em (Phase 1B complete — models + services done, routes pending)
   - `models.py` — GolfEnrollment, GolfPlayer, GolfTournament, GolfTournamentField,
                    GolfTournamentResult, GolfPick, GolfSeasonPlayerUsage
   - `utils.py` — format_score_to_par(), parse_score_to_par(), calculate_projected_earnings(),
                   PAYOUT_PERCENTAGES, GOLF_LEAGUE_TZ
-  - `services/` — placeholder (Phase 1B: sync API + email reminders)
+  - `constants.py` — EXCLUDED_TOURNAMENTS, SEASON_CUTOFF_DATE, PURSE_ESTIMATES, MIN_FIELD_SIZE
+  - `services/sync.py` — SlashGolfAPI client, TournamentSync orchestrator, tournament helper functions
+  - `services/reminders.py` — Email notifications (picks open, deadline reminders, admin alerts)
+  - `cli.py` — All `flask golf *` commands (sync-run, sync-schedule, sync-field, etc.)
   - `templates/golf/` — placeholder (Phase 1C: all golf UI templates)
 - `games/cfb/` — CFB Survivor Pool (Phase 2)
 - `games/masters/` — Masters Fantasy (Phase 3)
@@ -103,6 +106,27 @@ Modular monolith using `create_app()` in `app.py` with blueprints.
 7. Create templates in `games/your_game/templates/your_game/`
 8. Uncomment/add nav link in `templates/base.html`
 
+## Golf CLI Commands
+
+```bash
+# Unified sync (most common — used by scheduled tasks)
+FLASK_APP=app.py venv/bin/flask golf sync-run --mode schedule    # Mon: refresh schedule
+FLASK_APP=app.py venv/bin/flask golf sync-run --mode field       # Tue/Wed: sync tournament field
+FLASK_APP=app.py venv/bin/flask golf sync-run --mode live        # Thu-Sun: update leaderboard
+FLASK_APP=app.py venv/bin/flask golf sync-run --mode live-with-wd # Fri 8PM: live + withdrawals
+FLASK_APP=app.py venv/bin/flask golf sync-run --mode results     # Sun/Mon: finalize results
+FLASK_APP=app.py venv/bin/flask golf sync-run --mode earnings    # Mon: retry pending earnings
+FLASK_APP=app.py venv/bin/flask golf sync-run --mode all         # Full sync cycle
+
+# Individual commands
+FLASK_APP=app.py venv/bin/flask golf sync-schedule
+FLASK_APP=app.py venv/bin/flask golf sync-field
+FLASK_APP=app.py venv/bin/flask golf sync-results
+FLASK_APP=app.py venv/bin/flask golf sync-earnings
+FLASK_APP=app.py venv/bin/flask golf check-wd
+FLASK_APP=app.py venv/bin/flask golf remind
+```
+
 ## Environment Variables
 
 ```
@@ -115,4 +139,9 @@ EMAIL_PASSWORD=...
 SMTP_SERVER=smtp.gmail.com
 SMTP_PORT=587
 SITE_URL=http://localhost:5000
+SEASON_YEAR=2026
+ENTRY_FEE=25
+SYNC_MODE=standard
+FIXED_DEADLINE_HOUR_CT=7
+SLASHGOLF_API_KEY=...
 ```

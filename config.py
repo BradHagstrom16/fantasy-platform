@@ -31,6 +31,15 @@ class Config:
     SMTP_PORT = int(os.environ.get('SMTP_PORT', '587'))
     SITE_URL = os.environ.get('SITE_URL', 'http://localhost:5000')
 
+    # Golf Pick 'Em Settings
+    SEASON_YEAR = int(os.environ.get('SEASON_YEAR', '2026'))
+    ENTRY_FEE = int(os.environ.get('ENTRY_FEE', '25'))
+    SYNC_MODE = os.environ.get('SYNC_MODE', 'standard').lower()
+    FIXED_DEADLINE_HOUR_CT = int(os.environ.get('FIXED_DEADLINE_HOUR_CT', '7'))
+    SLASHGOLF_API_HOST = 'live-golf-data.p.rapidapi.com'
+    STATUS_REFRESH_INTERVAL_SECONDS = int(os.environ.get('STATUS_REFRESH_INTERVAL_SECONDS', '300'))
+    PICKS_VISIBLE_AFTER_DEADLINE = True
+
     # CSRF
     WTF_CSRF_ENABLED = True
 
