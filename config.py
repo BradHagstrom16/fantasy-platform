@@ -40,6 +40,11 @@ class Config:
     STATUS_REFRESH_INTERVAL_SECONDS = int(os.environ.get('STATUS_REFRESH_INTERVAL_SECONDS', '300'))
     PICKS_VISIBLE_AFTER_DEADLINE = True
 
+    # CFB Survivor Pool Settings
+    ODDS_API_KEY = os.environ.get('ODDS_API_KEY', '')
+    CFB_ENTRY_FEE = int(os.environ.get('CFB_ENTRY_FEE', '25'))
+    CFB_SEASON_YEAR = int(os.environ.get('CFB_SEASON_YEAR', '2026'))
+
     # CSRF
     WTF_CSRF_ENABLED = True
 
