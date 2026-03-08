@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% block title %}Payment Management — CFB Admin{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Payment Management</h2>
+
+    <div class="row">
+        <div class="col-md-8">
+            <div class="alert alert-info">
+                <strong>Pool Status:</strong>
+                {{ paid_count }} of {{ total_users }} enrolled users have paid
+                ({{ unpaid_count }} still owe)
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">Total Collected</h5>
+                    <h2 class="text-success">${{ total_collected }}</h2>
+                    <small class="text-muted">Based on ${{ entry_fee }} entry fee</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mt-3">
+        <div class="card-header"><h4 class="mb-0">User Payment Status</h4></div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+            <table class="table mb-0">
+                <thead>
+                    <tr>
+                        <th>Username</th>
+                        <th>Email</th>
+                        <th>Lives</th>
+                        <th>Payment Status</th>
+                        <th>Quick Update</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for enrollment in enrollments %}
+                    <tr class="{% if not enrollment.has_paid %}table-warning{% endif %}">
+                        <td>
+                            <strong>{{ enrollment.get_display_name() }}</strong>
+                            {% if enrollment.is_admin %}
+                                <span class="badge bg-primary">Admin</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ enrollment.user.email }}</td>
+                        <td>
+                            {% for i in range(enrollment.lives_remaining) %}
+                                <span class="text-success">&#9679;</span>
+                            {% endfor %}
+                            {% for i in range(2 - enrollment.lives_remaining) %}
+                                <span class="text-danger">&#9679;</span>
+                            {% endfor %}
+                        </td>
+                        <td>
+                            {% if enrollment.has_paid %}
+                                <span class="badge bg-success">PAID</span>
+                            {% else %}
+                                <span class="badge bg-warning text-dark">UNPAID</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input payment-toggle"
+                                       type="checkbox"
+                                       data-user-id="{{ enrollment.user_id }}"
+                                       data-username="{{ enrollment.get_display_name() }}"
+                                       {% if enrollment.has_paid %}checked{% endif %}>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="mt-3">
+        <a href="{{ url_for('cfb.admin_dashboard') }}" class="btn btn-secondary">&larr; Back to Dashboard</a>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.querySelectorAll('.payment-toggle').forEach(function(toggle) {
+    toggle.addEventListener('change', function() {
+        var userId = this.dataset.userId;
+        var username = this.dataset.username;
+        var isPaid = this.checked;
+        var toggleEl = this;
+
+        fetch('{{ url_for("cfb.admin_update_payment", user_id=0) }}'.replace('/0', '/' + userId), {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+            },
+            body: JSON.stringify({ has_paid: isPaid })
+        })
+        .then(function(response) { return response.json(); })
+        .then(function(data) {
+            if (data.success) {
+                var row = toggleEl.closest('tr');
+                var badge = row.querySelector('td:nth-child(4) .badge');
+                if (isPaid) {
+                    row.classList.remove('table-warning');
+                    badge.className = 'badge bg-success';
+                    badge.textContent = 'PAID';
+                } else {
+                    row.classList.add('table-warning');
+                    badge.className = 'badge bg-warning text-dark';
+                    badge.textContent = 'UNPAID';
+                }
+            } else {
+                alert('Failed to update payment status');
+                toggleEl.checked = !isPaid;
+            }
+        })
+        .catch(function() {
+            alert('Error updating payment status');
+            toggleEl.checked = !isPaid;
+        });
+    });
+});
+</script>
+{% endblock %}

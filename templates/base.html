@@ -36,7 +36,7 @@
                            href="{{ url_for('main.index') }}">Home</a>
                     </li>
                     <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle {% if request.blueprint == 'golf' %}active{% endif %}"
+                        <a class="nav-link dropdown-toggle {% if request.blueprint == 'golf' or request.blueprint == 'cfb' %}active{% endif %}"
                            href="#" role="button" data-bs-toggle="dropdown">
                             Games
                         </a>
@@ -44,6 +44,11 @@
                             <li>
                                 <a class="dropdown-item" href="{{ url_for('golf.index') }}">
                                     <i class="bi bi-flag me-2"></i>Golf Pick 'Em
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="{{ url_for('cfb.index') }}">
+                                    <i class="bi bi-trophy me-2"></i>CFB Survivor Pool
                                 </a>
                             </li>
                             <!-- Future games will be added here -->
@@ -62,6 +67,22 @@
                     <li class="nav-item">
                         <a class="nav-link {% if request.endpoint == 'golf.my_picks' %}active{% endif %}"
                            href="{{ url_for('golf.my_picks') }}">My Picks</a>
+                    </li>
+                    {% endif %}
+                    {% endif %}
+                    {% if request.blueprint == 'cfb' %}
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.endpoint == 'cfb.index' %}active{% endif %}"
+                           href="{{ url_for('cfb.index') }}">Standings</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.endpoint == 'cfb.weekly_results' %}active{% endif %}"
+                           href="{{ url_for('cfb.weekly_results') }}">Results</a>
+                    </li>
+                    {% if current_user.is_authenticated %}
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.endpoint == 'cfb.my_picks' %}active{% endif %}"
+                           href="{{ url_for('cfb.my_picks') }}">My Picks</a>
                     </li>
                     {% endif %}
                     {% endif %}

@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+{% block title %}CFB Admin Dashboard{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1>CFB Admin Dashboard</h1>
+    <div class="alert alert-info">
+        <strong>Pool Status:</strong>
+        {{ active_users }} active players out of {{ total_users }} total
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card mb-3">
+                <div class="card-header"><h4 class="mb-0">Season Weeks</h4></div>
+                <div class="card-body">
+                    <a href="{{ url_for('cfb.admin_create_week') }}" class="btn btn-success mb-3">+ Create New Week</a>
+
+                    <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Week</th>
+                                <th>Start Date</th>
+                                <th>Deadline</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for week in weeks %}
+                            <tr>
+                                <td><strong>{{ get_week_display_name(week) }}</strong></td>
+                                <td>{{ week.start_date.strftime('%m/%d/%Y') }}</td>
+                                <td>{{ format_deadline(week.deadline) }}</td>
+                                <td>
+                                    {% if week.is_active %}
+                                        <span class="badge bg-success">Active</span>
+                                    {% elif week.is_complete %}
+                                        <span class="badge bg-secondary">Complete</span>
+                                    {% else %}
+                                        <span class="badge bg-warning text-dark">Inactive</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        <a href="{{ url_for('cfb.admin_manage_games', week_id=week.id) }}"
+                                           class="btn btn-primary btn-sm">Games</a>
+
+                                        {% if not week.is_active and not week.is_complete %}
+                                            <form method="POST" action="{{ url_for('cfb.admin_activate_week', week_id=week.id) }}" class="d-inline">
+                                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                                <button type="submit" class="btn btn-success btn-sm">Activate</button>
+                                            </form>
+                                        {% endif %}
+
+                                        {% if week.is_active and not week.is_complete %}
+                                            <a href="{{ url_for('cfb.admin_fetch_scores', week_id=week.id) }}"
+                                               class="btn btn-info btn-sm">Fetch Scores</a>
+                                            <a href="{{ url_for('cfb.admin_mark_results', week_id=week.id) }}"
+                                               class="btn btn-warning btn-sm">Results</a>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="5" class="text-center text-muted">No weeks created yet</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    </div>
+                </div>
+            </div>
+
+            {# Auto-Pick Management #}
+            <div class="card">
+                <div class="card-header"><h4 class="mb-0">Auto-Pick Management</h4></div>
+                <div class="card-body">
+                    <p class="text-muted">Trigger auto-picks for any week past its deadline.</p>
+                    <div class="list-group">
+                        {% for week in weeks %}
+                            {% if week._aware_deadline < current_time %}
+                            <div class="list-group-item d-flex justify-content-between align-items-center">
+                                <div>
+                                    <strong>{{ get_week_display_name(week) }}</strong>
+                                    <small class="text-muted ms-2">Deadline: {{ format_deadline(week.deadline) }}</small>
+                                </div>
+                                {% if not week.is_complete %}
+                                    <form method="POST" action="{{ url_for('cfb.admin_process_autopicks', week_id=week.id) }}" class="d-inline">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                        <button type="submit" class="btn btn-sm btn-warning">Process Auto-picks</button>
+                                    </form>
+                                {% else %}
+                                    <span class="badge bg-secondary">Complete</span>
+                                {% endif %}
+                            </div>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card mb-3">
+                <div class="card-header"><h4 class="mb-0">Quick Actions</h4></div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{{ url_for('cfb.admin_create_week') }}" class="btn btn-primary">Create New Week</a>
+                        <a href="{{ url_for('cfb.admin_manage_teams') }}" class="btn btn-secondary">Manage Teams</a>
+                        <a href="{{ url_for('cfb.index') }}" class="btn btn-secondary">View Standings</a>
+                        <a href="{{ url_for('cfb.admin_users') }}" class="btn btn-secondary">Manage Users</a>
+                        <a href="{{ url_for('cfb.admin_payments') }}" class="btn btn-secondary">Track Payments</a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header"><h4 class="mb-0">How to Run Your Pool</h4></div>
+                <div class="card-body">
+                    <ol class="small mb-0 text-muted">
+                        <li>Create a new week</li>
+                        <li>Add games with point spreads</li>
+                        <li>Activate the week to allow picks</li>
+                        <li>After games finish, mark results</li>
+                        <li>System auto-deducts lives for losses</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

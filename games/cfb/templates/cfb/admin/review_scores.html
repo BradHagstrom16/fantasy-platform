@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+{% block title %}Review Scores — {{ get_week_display_name(week) }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Review Fetched Scores &mdash; {{ get_week_display_name(week) }}</h2>
+
+    {% if results.api_credits_remaining is not none %}
+    <div class="alert alert-info">
+        <strong>API Credits Remaining:</strong> {{ results.api_credits_remaining }}
+    </div>
+    {% endif %}
+
+    <form method="POST" action="{{ url_for('cfb.admin_apply_scores', week_id=week.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+
+        {% if results.matched_completed %}
+        <div class="card mb-3">
+            <div class="card-header bg-success text-white"><h4 class="mb-0">Completed Games ({{ results.matched_completed|length }})</h4></div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                <table class="table mb-0">
+                    <thead>
+                        <tr>
+                            <th>Game</th>
+                            <th>Home Score</th>
+                            <th>Away Score</th>
+                            <th>Winner</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for match in results.matched_completed %}
+                        <tr>
+                            <td>{{ match.away_team }} @ {{ match.home_team }}</td>
+                            <td>
+                                <input type="number" class="form-control form-control-sm" style="width: 80px;"
+                                       name="home_score_{{ match.game_id }}" value="{{ match.home_score }}">
+                            </td>
+                            <td>
+                                <input type="number" class="form-control form-control-sm" style="width: 80px;"
+                                       name="away_score_{{ match.game_id }}" value="{{ match.away_score }}">
+                            </td>
+                            <td>
+                                <select name="winner_{{ match.game_id }}" class="form-select form-select-sm" style="width: 120px;">
+                                    <option value="">--</option>
+                                    <option value="home" {% if match.home_score is not none and match.away_score is not none and match.home_score > match.away_score %}selected{% endif %}>Home</option>
+                                    <option value="away" {% if match.home_score is not none and match.away_score is not none and match.away_score > match.home_score %}selected{% endif %}>Away</option>
+                                </select>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if results.matched_in_progress %}
+        <div class="card mb-3">
+            <div class="card-header bg-warning text-dark"><h4 class="mb-0">In Progress ({{ results.matched_in_progress|length }})</h4></div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                <table class="table mb-0">
+                    <thead>
+                        <tr>
+                            <th>Game</th>
+                            <th>Home Score</th>
+                            <th>Away Score</th>
+                            <th>Winner</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for match in results.matched_in_progress %}
+                        <tr>
+                            <td>{{ match.away_team }} @ {{ match.home_team }}</td>
+                            <td>
+                                <input type="number" class="form-control form-control-sm" style="width: 80px;"
+                                       name="home_score_{{ match.game_id }}" value="{{ match.home_score|default('', true) }}">
+                            </td>
+                            <td>
+                                <input type="number" class="form-control form-control-sm" style="width: 80px;"
+                                       name="away_score_{{ match.game_id }}" value="{{ match.away_score|default('', true) }}">
+                            </td>
+                            <td>
+                                <select name="winner_{{ match.game_id }}" class="form-select form-select-sm" style="width: 120px;">
+                                    <option value="">--</option>
+                                    <option value="home">Home</option>
+                                    <option value="away">Away</option>
+                                </select>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if results.unmatched %}
+        <div class="card mb-3">
+            <div class="card-header bg-secondary text-white"><h4 class="mb-0">Unmatched API Events ({{ results.unmatched|length }})</h4></div>
+            <div class="card-body">
+                <ul class="mb-0">
+                    {% for event in results.unmatched %}
+                    <li>{{ event.home_team }} vs {{ event.away_team }} — {{ event.status|default('Unknown') }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="alert alert-warning">
+            <strong>Review carefully!</strong> Confirming scores may trigger result processing if all games are decided.
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-lg"
+                onclick="return confirm('Apply these scores? This may trigger result processing.')">
+            Apply Scores
+        </button>
+        <a href="{{ url_for('cfb.admin_dashboard') }}" class="btn btn-secondary btn-lg ms-2">Cancel</a>
+    </form>
+</div>
+{% endblock %}

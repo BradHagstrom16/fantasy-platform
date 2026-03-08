@@ -1,0 +1,266 @@
+{% extends "base.html" %}
+{% block title %}Standings — CFB Survivor{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+
+{% if enrollments|length == 1 and eliminated_enrollments|length > 0 %}
+{# CHAMPIONSHIP PAGE #}
+<div class="text-center mb-4">
+    <h1 class="display-4">{{ enrollments[0].get_display_name() }}</h1>
+    <h2 class="text-muted">CFB Survivor Pool Champion</h2>
+    <p class="lead">Outlasting {{ eliminated_enrollments|length }} competitors through {{ weeks_played }} weeks of college football.</p>
+    <span class="badge bg-success fs-5 p-2">Winner: ${{ prize_pool }}</span>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card mb-3">
+            <div class="card-header"><h4 class="mb-0">Champion's Stats</h4></div>
+            <div class="card-body">
+                <div class="row g-3 text-center">
+                    <div class="col-6 col-md-3">
+                        <div class="fs-3 fw-bold">{{ enrollments[0].lives_remaining }}</div>
+                        <small class="text-muted">Lives Remaining</small>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div class="fs-3 fw-bold">{{ champion_picks|length }}</div>
+                        <small class="text-muted">Total Picks</small>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div class="fs-3 fw-bold">{{ champion_correct }}</div>
+                        <small class="text-muted">Correct Picks</small>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div class="fs-3 fw-bold">{{ "%.1f"|format(enrollments[0].cumulative_spread) }}</div>
+                        <small class="text-muted">Final Spread</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {% if champion_picks %}
+        <div class="card mb-3">
+            <div class="card-header"><h4 class="mb-0">Championship Journey</h4></div>
+            <div class="card-body p-0">
+                <table class="table mb-0">
+                    <thead>
+                        <tr>
+                            <th>Week</th>
+                            <th>Team Picked</th>
+                            <th>Spread</th>
+                            <th>Result</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for pick in champion_picks %}
+                        <tr class="{% if pick.is_correct == False %}table-danger{% elif pick.is_correct == True %}table-success{% endif %}">
+                            <td><strong>{{ get_week_display_name(pick.week) }}</strong></td>
+                            <td>{{ pick.team.name }}</td>
+                            <td>
+                                {% if pick.spread is not none %}
+                                    {{ "%+.1f"|format(pick.spread) }}
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if pick.is_correct == True %}
+                                    <span class="badge bg-success">W</span>
+                                {% elif pick.is_correct == False %}
+                                    <span class="badge bg-danger">L</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">--</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="card">
+            <div class="card-header"><h4 class="mb-0">Fallen Competitors</h4></div>
+            <div class="card-body">
+                <div class="row g-2">
+                    {% for e in eliminated_enrollments|sort(attribute='get_display_name') %}
+                    <div class="col-6 col-md-3">
+                        <span class="badge bg-secondary w-100 p-2">{{ e.get_display_name() }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header"><h4 class="mb-0">Season Summary</h4></div>
+            <div class="card-body">
+                <ul class="list-unstyled mb-0">
+                    <li class="mb-2"><strong>Participants:</strong> {{ total_participants }}</li>
+                    <li class="mb-2"><strong>Prize Pool:</strong> ${{ prize_pool }}</li>
+                    <li class="mb-2"><strong>Weeks Played:</strong> {{ weeks_played }}</li>
+                    <li><strong>Champion:</strong> {{ enrollments[0].get_display_name() }}</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% else %}
+{# REGULAR STANDINGS PAGE #}
+<div class="row">
+    <div class="col-lg-8">
+        {% if not current_user.is_authenticated %}
+        <div class="text-center mb-4">
+            <a href="{{ url_for('auth.login') }}" class="btn btn-primary btn-lg me-2">Login</a>
+            <a href="{{ url_for('auth.register') }}" class="btn btn-warning btn-lg">Register</a>
+            <p class="mt-2 text-muted">Login or register to make your picks.</p>
+        </div>
+        {% endif %}
+
+        <h1>Standings</h1>
+
+        {% if current_week %}
+            {% if is_week_playoff(current_week) %}
+            <div class="alert alert-danger mb-3">
+                <h5 class="mb-1">College Football Playoff</h5>
+                <p class="mb-0">All teams reset. Pick any of the 12 playoff teams, even if used in regular season.</p>
+            </div>
+            {% endif %}
+
+            <div class="card mb-3">
+                <div class="card-body">
+                    <h5>{{ get_week_display_name(current_week) }}</h5>
+                    <p class="text-muted mb-2">Deadline: {{ format_deadline(current_week.deadline) }}</p>
+
+                    {% if current_user.is_authenticated and cfb_enrollment %}
+                        {% if cfb_enrollment.is_eliminated %}
+                            <div class="alert alert-danger mb-0">
+                                <strong>You have been eliminated from the pool.</strong>
+                            </div>
+                        {% elif user_pick %}
+                            <div class="d-flex align-items-center gap-2 flex-wrap">
+                                <span class="text-muted small text-uppercase">Your Pick:</span>
+                                <strong class="fs-5">{{ user_pick.team.name }}</strong>
+                                {% if user_pick_spread is not none %}
+                                    <span class="badge bg-secondary">{{ "%+.1f"|format(user_pick_spread) }}</span>
+                                {% endif %}
+                                <a href="{{ url_for('cfb.make_pick', week_number=current_week.week_number) }}"
+                                   class="btn btn-warning btn-sm">Change Pick</a>
+                            </div>
+                        {% else %}
+                            <a href="{{ url_for('cfb.make_pick', week_number=current_week.week_number) }}"
+                               class="btn btn-primary">Make Your Pick</a>
+                        {% endif %}
+                    {% endif %}
+                </div>
+            </div>
+        {% endif %}
+
+        <h3 class="mt-4 mb-3">Active Players</h3>
+        <div class="card">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                <table class="table mb-0">
+                    <thead>
+                        <tr>
+                            <th style="width: 3rem;">#</th>
+                            <th>Player</th>
+                            <th>Lives</th>
+                            <th>Spread</th>
+                            {% if current_week %}
+                            <th>{{ get_week_short_label(current_week) }} Pick</th>
+                            {% endif %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for enrollment in enrollments %}
+                        <tr class="{% if current_user.is_authenticated and enrollment.user_id == current_user.id %}table-active{% endif %}">
+                            <td>{{ loop.index }}</td>
+                            <td><strong>{{ enrollment.get_display_name() }}</strong></td>
+                            <td>
+                                {% for i in range(enrollment.lives_remaining) %}
+                                    <span class="text-success">&#9679;</span>
+                                {% endfor %}
+                                {% for i in range(2 - enrollment.lives_remaining) %}
+                                    <span class="text-danger">&#9679;</span>
+                                {% endfor %}
+                            </td>
+                            <td>{{ "%.1f"|format(enrollment.cumulative_spread) }}</td>
+                            {% if current_week %}
+                            <td>
+                                {% if show_picks %}
+                                    {% if enrollment.user_id in week_picks %}
+                                        <strong>{{ week_picks[enrollment.user_id] }}</strong>
+                                    {% else %}
+                                        <span class="text-muted">No Pick</span>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="text-muted fst-italic">Hidden until deadline</span>
+                                {% endif %}
+                            </td>
+                            {% endif %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="alert alert-info mt-3">
+            <h6 class="mb-2">Tiebreaker Rules</h6>
+            <ol class="mb-0 small">
+                <li><strong>Lives Remaining:</strong> Two lives is better than one</li>
+                <li><strong>Cumulative Spread:</strong> Lower is better &mdash; picking favorites adds points, underdogs subtract</li>
+            </ol>
+        </div>
+
+        {% if eliminated_enrollments %}
+        <h3 class="mt-4">Eliminated Players</h3>
+        <div class="row g-2 mt-2">
+            {% for enrollment in eliminated_enrollments %}
+            <div class="col-6 col-md-4">
+                <span class="badge bg-secondary w-100 p-2">{{ enrollment.get_display_name() }}</span>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header"><h4 class="mb-0">Pool Rules</h4></div>
+            <div class="card-body">
+                <ul>
+                    <li>Pick one team each week to win</li>
+                    <li>Each team can only be picked once per season</li>
+                    <li>If your team loses, you lose a life</li>
+                    <li>Each player gets 2 lives total</li>
+                    <li>Teams favored by 16.5+ points are ineligible</li>
+                    <li>Last survivor wins!</li>
+                    <li><strong>{{ total_participants }} entries &times; ${{ cfb_entry_fee }} = ${{ prize_pool }} pot</strong></li>
+                </ul>
+            </div>
+        </div>
+
+        {% if cfb_enrollment and cfb_enrollment.is_admin %}
+        <div class="card mt-3">
+            <div class="card-header"><h4 class="mb-0">Admin</h4></div>
+            <div class="card-body">
+                <div class="d-grid">
+                    <a href="{{ url_for('cfb.admin_dashboard') }}" class="btn btn-outline-primary">CFB Admin Dashboard</a>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+</div>
+{% endblock %}

@@ -15,4 +15,4 @@ cfb_bp = Blueprint(
 )
 
 # Routes imported at bottom to avoid circular imports (added in Phase 2C)
-# from games.cfb import routes  # noqa: E402, F401
+from games.cfb import routes  # noqa: E402, F401
