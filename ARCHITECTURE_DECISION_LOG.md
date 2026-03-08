@@ -1,7 +1,7 @@
 # Architecture Decision Log — Fantasy Sports Platform
 
-**Last Updated:** March 6, 2026
-**Status:** Active — Phase 1 complete, Phase 2 planning
+**Last Updated:** March 8, 2026
+**Status:** Active — Phase 1 & 2 complete
 
 ---
 
@@ -26,6 +26,9 @@
 | ADR-015 | Golf-specific user data | GolfPlayerProfile (1:1), GolfEnrollment (seasonal) | **GolfEnrollment** (keyed on user_id + season_year) | Naturally answers "who's playing golf?" and supports multi-season data. Pattern reusable for CFBEnrollment. | 2026-03-06 | Yes |
 | ADR-016 | Email notifications | Shared service, Game-specific | **Game-specific for now** (golf in `games/golf/services/reminders.py`) | Premature to generalize without seeing CFB's needs. Refactor to shared service after Phase 2 when both implementations exist. | 2026-03-06 | Yes |
 | ADR-017 | Handoff file improvements | Based on Phase 1 Claude Code feedback | **Incorporated for Phase 2** | See "Phase 1 Lessons Learned" section below. | 2026-03-06 | N/A |
+| ADR-018 | CFB admin authorization | Use platform `User.is_admin`, Use `CfbEnrollment.is_admin` | **`CfbEnrollment.is_admin`** | Game-level admin is separate from platform admin. CFB admins manage their pool; platform admins manage users. Password reset scoped to enrolled users only. | 2026-03-08 | Yes |
+| ADR-019 | CFB state-changing routes | GET links, POST forms | **POST with CSRF** | All state-mutating operations (autopicks, score apply, results) use POST with CSRF tokens. GET only for read-only pages. Consistent with OWASP best practices. | 2026-03-08 | No |
+| ADR-020 | CFB spread cap enforcement | UI-only filtering, Server + UI | **Server + UI with matching thresholds** | POST validation and GET display use identical `> -16.5` threshold. Null-spread teams rejected by POST and hidden in UI. No gap for crafted form submissions. | 2026-03-08 | Yes |
 
 ---
 
@@ -64,6 +67,27 @@
 | **1C: Routes + Templates** | ✅ Done | (latest) | `games/golf/routes.py` (~15 routes), 12 template files, nav link |
 
 **Phase 1 delivers:** Complete Golf Pick 'Em as a blueprint under `/golf/` with standings, schedule, pick submission, tournament detail, admin dashboard, payments, override picks, API sync CLI, and email reminders.
+
+### Phase 2 — CFB Survivor Pool Blueprint (March 7-8, 2026) ✅
+
+| Sub-task | Status | Commit | Key Files |
+|----------|--------|--------|-----------|
+| **2A: Models + Constants + Utils + Migration** | ✅ Done | `42f0ac5` | `games/cfb/models.py` (5 models), `constants.py`, `utils.py`, migration |
+| **2B: Services + CLI + Config** | ✅ Done | `a09d354` | `services/game_logic.py`, `score_fetcher.py`, `automation.py`, `reminders.py`, `cli.py` |
+| **2C: Routes + Templates + Nav** | ✅ Done | `da301fb` | `routes.py` (~20 routes), 13 templates, `base.html` nav integration |
+
+**Phase 2 delivers:** Complete CFB Survivor Pool as a blueprint under `/cfb/` with standings, weekly pick submission, results tracking, 2-life elimination system, cumulative spread tiebreaker, team usage tracking (with CFP reset), admin dashboard, week/game management, score fetching via The Odds API, auto-picks, payment tracking, team management, and CLI automation.
+
+---
+
+## Phase 2 Lessons Learned
+
+| # | Issue | Lesson |
+|---|-------|--------|
+| 1 | Spread cap threshold mismatch between GET display and POST validation | Always use identical thresholds in UI filtering and server-side validation — test both paths |
+| 2 | GET routes for state-changing operations (autopicks) | All state-mutating operations must be POST with CSRF, even behind admin auth — no exceptions |
+| 3 | Game-level admin could reset any platform user's password | Scope game-admin actions to game-enrolled users only — game admin ≠ platform admin |
+| 4 | `is_complete` committed before `process_week_results` — orphan on failure | Let the processing function own the completion flag — don't commit it prematurely |
 
 ---
 
@@ -133,7 +157,7 @@ The CFB Survivor app already uses app factory + blueprints, making the port clea
 | 0 | Scaffold new platform | March 2026 | ✅ **Complete** |
 | 1 | Port Golf Pick 'Em blueprint | March 2026 | ✅ **Complete** |
 | — | UI/Design upgrade (full platform + golf surfaces) | April 2026 | ⬜ **Up next** |
-| 2 | Port CFB Survivor blueprint + user merge | June–July 2026 | ⬜ Planned |
+| 2 | Port CFB Survivor blueprint | March 2026 | ✅ **Complete** |
 | — | **Golf season ends → cutover to unified platform** | **August 2026** | ⬜ |
 | — | **CFB season starts on unified platform** | **September 1, 2026** | ⬜ |
 | 3 | Build Major Fantasy blueprint | Oct–Nov 2026 | ⬜ Not started |
@@ -145,9 +169,9 @@ The CFB Survivor app already uses app factory + blueprints, making the port clea
 
 ## Immediate Next Actions
 
-1. ⬜ **UI/Design upgrade** — One cohesive design pass across platform + golf surfaces (Brad has existing UI upgrade .md files to adapt)
+1. ⬜ **UI/Design upgrade** — One cohesive design pass across platform + golf + CFB surfaces (Brad has existing UI upgrade .md files to adapt)
 2. ⬜ **Deploy platform to B1G Brad PA account** — Currently local only
-3. ⬜ **Phase 2: Port CFB Survivor Pool** — June-July 2026 timeline
+3. ⬜ **User merge strategy** — Implement merge-by-email for golf + CFB user bases
 
 ---
 

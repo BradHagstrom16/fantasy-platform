@@ -6,8 +6,8 @@ This file provides guidance to Claude Code when working with this repository.
 
 Fantasy Sports Platform — modular monolith Flask app hosting multiple fantasy sports games under one domain with shared authentication. Games are Flask blueprints in `games/`.
 
-**Current games:** Golf Pick 'Em (Phase 1 COMPLETE — fully ported)
-**Planned:** CFB Survivor Pool, Masters Fantasy, Olympics Pool
+**Current games:** Golf Pick 'Em (Phase 1 COMPLETE), CFB Survivor Pool (Phase 2 COMPLETE)
+**Planned:** Masters Fantasy, Olympics Pool
 
 ## Environment
 
@@ -73,7 +73,19 @@ Modular monolith using `create_app()` in `app.py` with blueprints.
   - `cli.py` — All `flask golf *` CLI commands
   - `templates/golf/` — All golf UI templates (index, schedule, make_pick, my_picks,
                           tournament_detail, admin/dashboard, admin/tournaments, etc.)
-- `games/cfb/` — CFB Survivor Pool (Phase 2)
+- `games/cfb/` — CFB Survivor Pool (Phase 2 COMPLETE)
+  - `__init__.py` — Blueprint definition with route imports
+  - `models.py` — 5 models (CfbEnrollment, CfbTeam, CfbWeek, CfbGame, CfbPick)
+  - `utils.py` — Timezone helpers, week display names, CFP tracking
+  - `constants.py` — FBS master teams, conferences, dev seed data
+  - `routes.py` — All route handlers (~20 routes: standings, pick, results, admin)
+  - `services/game_logic.py` — Pick processing, autopicks, spread calculation
+  - `services/score_fetcher.py` — The Odds API score fetching
+  - `services/automation.py` — Automated sync tasks
+  - `services/reminders.py` — Pick reminder emails
+  - `cli.py` — All `flask cfb *` CLI commands
+  - `templates/cfb/` — All CFB UI templates (index, pick, my_picks, weekly_results,
+                         admin/dashboard, admin/create_week, admin/manage_games, etc.)
 - `games/masters/` — Masters Fantasy (Phase 3)
 
 ### Templates
@@ -87,7 +99,13 @@ Modular monolith using `create_app()` in `app.py` with blueprints.
 - Platform timezone: `America/Chicago` (Central), configured in `config.py`
 - Game-specific data goes in game-specific models linked by `user_id` FK — never cram into User
 - All schema changes via Alembic — never raw SQL or `db.create_all()` in production
-- Admin routes use `@admin_required` decorator from `core/admin/routes.py`
+- Platform admin routes use `@admin_required` decorator from `core/admin/routes.py`
+- CFB admin routes use `@cfb_admin_required` in `games/cfb/routes.py` (checks `CfbEnrollment.is_admin`, NOT `User.is_admin`)
+- CFB tables use `cfb_` prefix (e.g., `cfb_week`, `cfb_pick`)
+- CFB-specific user data lives in `CfbEnrollment`, NOT on the shared User model
+- CFB pick eligibility: 5 rules (used teams, 16.5-pt spread cap, game started, CFP eliminated, no game scheduled)
+- CFB team usage resets for College Football Playoff (CFP) phase
+- CFB pool timezone: `games.cfb.utils` (America/Chicago)
 - CSRF via Flask-WTF on all POST forms: `<input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>`
 - Login rate-limited to 10/min via Flask-Limiter
 - Open redirect prevention on login `next` param via `urlparse(...).netloc == ''` check
@@ -128,6 +146,49 @@ FLASK_APP=app.py venv/bin/flask golf check-wd
 FLASK_APP=app.py venv/bin/flask golf remind
 ```
 
+## CFB CLI Commands
+
+```bash
+# Unified sync (most common — used by scheduled tasks)
+FLASK_APP=app.py venv/bin/flask cfb sync --mode setup       # Create next week + import games
+FLASK_APP=app.py venv/bin/flask cfb sync --mode spreads     # Update spreads from The Odds API
+FLASK_APP=app.py venv/bin/flask cfb sync --mode scores      # Fetch scores + auto-process
+FLASK_APP=app.py venv/bin/flask cfb sync --mode autopick    # Process missed-deadline auto-picks
+FLASK_APP=app.py venv/bin/flask cfb sync --mode remind      # Send pick reminders
+FLASK_APP=app.py venv/bin/flask cfb sync --mode status      # Print season summary
+
+# Individual commands
+FLASK_APP=app.py venv/bin/flask cfb populate-teams           # Seed dev teams
+FLASK_APP=app.py venv/bin/flask cfb setup
+FLASK_APP=app.py venv/bin/flask cfb scores
+FLASK_APP=app.py venv/bin/flask cfb spreads
+FLASK_APP=app.py venv/bin/flask cfb autopick
+FLASK_APP=app.py venv/bin/flask cfb remind
+FLASK_APP=app.py venv/bin/flask cfb status
+```
+
+## CFB URL Map
+
+| URL | Endpoint | Auth | Description |
+|-----|----------|------|-------------|
+| `/cfb/` | `cfb.index` | Public | Season standings |
+| `/cfb/results` | `cfb.weekly_results` | Public | Weekly results (latest or by week) |
+| `/cfb/results/<week>` | `cfb.weekly_results` | Public | Results for specific week |
+| `/cfb/pick/<week>` | `cfb.make_pick` | Login | Submit/edit weekly pick |
+| `/cfb/my-picks` | `cfb.my_picks` | Login | User's pick history |
+| `/cfb/admin/` | `cfb.admin_dashboard` | CFB Admin | Admin overview + week management |
+| `/cfb/admin/week/new` | `cfb.admin_create_week` | CFB Admin | Create new week |
+| `/cfb/admin/week/<id>/activate` | `cfb.admin_activate_week` | CFB Admin | Activate a week |
+| `/cfb/admin/week/<id>/complete` | `cfb.admin_complete_week` | CFB Admin | Mark week complete |
+| `/cfb/admin/week/<id>/games` | `cfb.admin_manage_games` | CFB Admin | Add/manage games |
+| `/cfb/admin/week/<id>/mark-results` | `cfb.admin_mark_results` | CFB Admin | Mark game winners |
+| `/cfb/admin/week/<id>/fetch-scores` | `cfb.admin_fetch_scores` | CFB Admin | Fetch API scores |
+| `/cfb/admin/week/<id>/apply-scores` | `cfb.admin_apply_scores` | CFB Admin | Apply fetched scores |
+| `/cfb/admin/process-autopicks/<id>` | `cfb.admin_process_autopicks` | CFB Admin | Trigger auto-picks |
+| `/cfb/admin/users` | `cfb.admin_users` | CFB Admin | User management |
+| `/cfb/admin/payments` | `cfb.admin_payments` | CFB Admin | Payment tracking |
+| `/cfb/admin/manage-teams` | `cfb.admin_manage_teams` | CFB Admin | FBS team selection |
+
 ## Golf URL Map
 
 | URL | Endpoint | Auth | Description |
@@ -162,4 +223,7 @@ ENTRY_FEE=25
 SYNC_MODE=standard
 FIXED_DEADLINE_HOUR_CT=7
 SLASHGOLF_API_KEY=...
+CFB_SEASON_YEAR=2026
+CFB_ENTRY_FEE=25
+THE_ODDS_API_KEY=...
 ```
