@@ -590,7 +590,7 @@ def admin_override_pick():
     tournaments = (
         GolfTournament.query
         .filter_by(season_year=season_year)
-        .filter(GolfTournament.status.in_(['upcoming', 'active']))
+        .filter(GolfTournament.status.in_(['upcoming', 'active', 'complete']))
         .order_by(GolfTournament.start_date)
         .all()
     )
@@ -622,13 +622,17 @@ def admin_override_pick():
                 ).first()
 
                 if existing_pick:
+                    # Clear old resolution for completed tournaments
+                    if selected_tournament.status == 'complete':
+                        existing_pick.clear_resolution(season_year)
                     existing_pick.primary_player_id = primary_id
                     existing_pick.backup_player_id = backup_id
                     existing_pick.admin_override = True
                     existing_pick.admin_override_note = override_note or 'Admin override'
                     existing_pick.updated_at = datetime.now(timezone.utc)
+                    pick = existing_pick
                 else:
-                    new_pick = GolfPick(
+                    pick = GolfPick(
                         user_id=user_id,
                         tournament_id=tournament_id,
                         primary_player_id=primary_id,
@@ -636,7 +640,7 @@ def admin_override_pick():
                         admin_override=True,
                         admin_override_note=override_note or 'Admin override',
                     )
-                    db.session.add(new_pick)
+                    db.session.add(pick)
 
                 # Ensure enrollment exists
                 enrollment = GolfEnrollment.query.filter_by(
@@ -645,6 +649,13 @@ def admin_override_pick():
                 if not enrollment:
                     enrollment = GolfEnrollment(user_id=user_id, season_year=season_year)
                     db.session.add(enrollment)
+
+                # Re-resolve for completed tournaments
+                if selected_tournament.status == 'complete':
+                    db.session.flush()
+                    resolved = pick.resolve_pick()
+                    if resolved and enrollment:
+                        enrollment.calculate_total_points()
 
                 db.session.commit()
 

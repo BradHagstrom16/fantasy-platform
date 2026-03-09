@@ -307,8 +307,8 @@ class GolfTournamentResult(db.Model):
     )
 
     def wd_before_round_2_complete(self):
-        """Check if this was a WD before completing round 2."""
-        return self.status == 'wd' and self.rounds_completed < 2
+        """Check if player did not complete round 2 (WD or never started)."""
+        return self.status in ('wd', 'not started') and self.rounds_completed < 2
 
     def format_score_to_par(self):
         """Format score to par for display."""
@@ -400,6 +400,31 @@ class GolfPick(db.Model):
 
         return errors
 
+    def clear_resolution(self, season_year: int):
+        """Clear previous resolution state and clean up season usage.
+
+        Call before re-resolving a pick (e.g., after admin override or
+        re-processing). Only deletes the old active player's usage if that
+        player isn't active in any other resolved pick for this user.
+        """
+        if self.active_player_id:
+            other_active = GolfPick.query.filter(
+                GolfPick.user_id == self.user_id,
+                GolfPick.active_player_id == self.active_player_id,
+                GolfPick.id != self.id,
+                GolfPick.points_earned.isnot(None),
+            ).first()
+            if not other_active:
+                GolfSeasonPlayerUsage.query.filter_by(
+                    user_id=self.user_id,
+                    player_id=self.active_player_id,
+                    season_year=season_year,
+                ).delete()
+        self.active_player_id = None
+        self.points_earned = None
+        self.primary_used = False
+        self.backup_used = False
+
     def resolve_pick(self):
         """
         Determine which player was active and calculate points.
@@ -435,10 +460,10 @@ class GolfPick(db.Model):
             self.backup_used = False
             return False
 
-        # Determine if primary WD'd before completing R2
+        # Determine if primary WD'd or never started before completing R2
         primary_wd_early = (
             primary_result and
-            primary_result.status == 'wd' and
+            primary_result.status in ('wd', 'not started') and
             primary_result.rounds_completed < 2
         )
 
@@ -446,7 +471,7 @@ class GolfPick(db.Model):
         if primary_wd_early:
             backup_wd_early = (
                 backup_result and
-                backup_result.status == 'wd' and
+                backup_result.status in ('wd', 'not started') and
                 backup_result.rounds_completed < 2
             )
 

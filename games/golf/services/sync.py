@@ -649,6 +649,8 @@ class TournamentSync:
 
         for pick in picks:
             try:
+                # Clean up old resolution state (handles re-processing scenarios)
+                pick.clear_resolution(tournament.season_year)
                 resolved = pick.resolve_pick()
                 if not resolved:
                     skipped += 1
