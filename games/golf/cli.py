@@ -61,7 +61,7 @@ def sync_run_cmd(mode):
     year = current_app.config.get('SEASON_YEAR', datetime.now().year)
     exit_code = 0
 
-    free_tier_blocked = {'withdrawals'}  # 'live' now allowed for projected earnings
+    free_tier_blocked = set()  # withdrawal sync now permitted on free tier
     if sync_mode == 'free' and mode in free_tier_blocked:
         click.echo(f"Free tier mode: '{mode}' sync disabled to stay within RapidAPI limits")
         sys.exit(0)
@@ -132,7 +132,7 @@ def sync_run_cmd(mode):
             if not active:
                 click.echo("No active tournaments for withdrawal checks")
             for tournament in active:
-                withdrawals = sync.check_withdrawals(tournament)
+                withdrawals = sync.check_withdrawals(tournament, force=True)
                 if withdrawals:
                     click.echo(f"Withdrawals detected for {tournament.name}: {len(withdrawals)}")
 

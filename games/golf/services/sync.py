@@ -872,17 +872,16 @@ def get_upcoming_tournaments_window(days_ahead: int = 10) -> List[GolfTournament
     return tournaments
 
 
-def get_active_tournaments(include_upcoming_hours: int = 12) -> List[GolfTournament]:
-    now = datetime.now(GOLF_LEAGUE_TZ)
-    window_start = now - timedelta(hours=6)
-    window_end = now + timedelta(hours=include_upcoming_hours)
-    tournaments = GolfTournament.query.filter(
-        GolfTournament.start_date <= window_end,
-        GolfTournament.end_date >= window_start,
-        GolfTournament.status != "complete",
+def get_active_tournaments() -> List[GolfTournament]:
+    """Return all tournaments currently in 'active' status.
+
+    Queries by status directly — the authoritative field maintained by
+    update_status_from_time(). Avoids brittle end_date window math that
+    breaks when end_date is stored as midnight UTC rather than end-of-day.
+    """
+    return GolfTournament.query.filter(
+        GolfTournament.status == "active"
     ).order_by(GolfTournament.start_date).all()
-    _refresh_statuses(tournaments)
-    return tournaments
 
 
 def get_recently_completed_tournaments(days_back: int = 2) -> List[GolfTournament]:
