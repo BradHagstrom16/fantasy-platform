@@ -28,6 +28,10 @@ FLASK_APP=app.py venv/bin/flask db upgrade
 FLASK_APP=app.py venv/bin/flask db downgrade
 FLASK_APP=app.py venv/bin/flask db current
 
+# Type checking (run after any Python changes)
+venv/bin/pyright                                # Full project check (should be 0 errors)
+venv/bin/pyright games/golf/services/sync.py   # Check specific file
+
 # Utilities
 FLASK_APP=app.py venv/bin/flask init-db        # Direct table create (use migrations instead)
 FLASK_APP=app.py venv/bin/flask create-admin   # Interactive admin user creation

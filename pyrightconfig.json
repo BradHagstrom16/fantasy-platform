@@ -1,0 +1,16 @@
+{
+  "venvPath": ".",
+  "venv": "venv",
+  "pythonVersion": "3.13",
+  "typeCheckingMode": "basic",
+  "include": ["app.py", "wsgi.py", "config.py", "extensions.py", "models", "core", "games"],
+  "exclude": ["venv", "instance", "migrations", "**/__pycache__"],
+  "reportCallIssue": false,
+  "reportArgumentType": false,
+  "reportAttributeAccessIssue": false,
+  "reportAssignmentType": false,
+  "reportOperatorIssue": false,
+  "reportOptionalMemberAccess": false,
+  "reportOptionalOperand": false,
+  "reportGeneralTypeIssues": false
+}
