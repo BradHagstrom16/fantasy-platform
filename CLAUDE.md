@@ -1,233 +1,269 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code when working with this repository.
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+---
+
+## Available Tools & Plugins
+
+### How to Use Plugins and Skills
+
+Two distinct mechanisms — use them correctly:
+
+- **Plugins** are invoked by **mentioning the plugin name** in task instructions (e.g., "run `pyright-lsp`", "use `commit-commands`"). Claude Code activates the plugin's behavior when it sees the name.
+- **Skills** are invoked by **skill name** using the `/skills` command or by referencing the skill name in instructions (e.g., "invoke `executing-plans`", "use `brainstorming`"). Skills appear in `/skills` and teach Claude Code domain expertise or workflows.
+
+Some plugins contribute skills; others extend behavior directly without appearing in `/skills`.
+
+---
+
+### Installed Plugins (13)
+
+Invoke by plugin name in task instructions.
+
+| Plugin | Purpose |
+|--------|---------|
+| `claude-code-setup` | Environment and project setup management |
+| `claude-md-management` | Markdown file handling and organization |
+| `code-review` | Automated code review and quality checks |
+| `code-simplifier` | Code refactoring and simplification |
+| `coderabbit` | AI-powered holistic code analysis |
+| `commit-commands` | Git commit management and automation |
+| `context7` | Upstream library/framework docs awareness (MCP-connected) |
+| `feature-dev` | Feature development scaffolding workflows |
+| `frontend-design` | Design-forward UI/UX implementation |
+| `playwright` | Browser automation and testing (MCP-connected) |
+| `pr-review-toolkit` | Pull request review utilities |
+| `pyright-lsp` | Python type checking via language server |
+| `superpowers` | Advanced multi-file analysis and development capabilities |
+
+---
+
+### Available Skills (19)
+
+Invoke by skill name. Skills from `superpowers` are the most commonly used.
+
+**Project skills** (`.claude/skills`)
+| Skill | Purpose |
+|-------|---------|
+| `add-game` | Scaffold a new game blueprint |
+
+**`superpowers` plugin skills**
+| Skill | Purpose |
+|-------|---------|
+| `brainstorming` | Explore requirements and design before building anything |
+| `writing-plans` | Draft implementation plans before executing |
+| `executing-plans` | Work through a structured plan step-by-step |
+| `systematic-debugging` | Methodical debugging across multiple files |
+| `test-driven-development` | TDD workflow — write tests before implementation |
+| `verification-before-completion` | Verify correctness before marking work done |
+| `receiving-code-review` | Respond to and incorporate code review feedback |
+| `requesting-code-review` | Prepare code for review |
+| `finishing-a-development-branch` | Complete and close out a development branch |
+| `using-git-worktrees` | Manage parallel work with git worktrees |
+| `using-superpowers` | Meta-skill: use superpowers effectively |
+| `dispatching-parallel-agents` | Run multiple agents in parallel |
+| `subagent-driven-development` | Delegate work to subagents |
+| `writing-skills` | Write and improve Claude Code skills |
+
+**`coderabbit` plugin skill**
+| Skill | Purpose |
+|-------|---------|
+| `code-review` | Holistic multi-file code review |
+
+**`claude-code-setup` plugin skill**
+| Skill | Purpose |
+|-------|---------|
+| `claude-automation-recommender` | Recommend automation improvements |
+
+**`claude-md-management` plugin skill**
+| Skill | Purpose |
+|-------|---------|
+| `claude-md-improver` | Review and improve CLAUDE.md files |
+
+**`frontend-design` plugin skill**
+| Skill | Purpose |
+|-------|---------|
+| `frontend-design` | Design-forward UI implementation |
+
+---
+
+### Plugin Prescription Reference
+
+Use this table to prescribe the right tool at the right step.
+
+| When to prescribe | Plugin or Skill |
+|-------------------|----------------|
+| Any new feature or component — before writing code | `brainstorming` skill |
+| Implementing any feature or bugfix | `test-driven-development` skill |
+| After implementing any route/model change | `code-review` (coderabbit) |
+| After modifying `.py` files | `pyright-lsp` |
+| After completing a feature — reduce complexity | `code-simplifier` |
+| Multi-file holistic analysis | `coderabbit` |
+| UI changes needing browser verification | `playwright` |
+| Needs awareness of library/framework APIs | `context7` |
+| End of each logical unit of work | `commit-commands` |
+| Before merging any branch to main | `pr-review-toolkit` |
+| Scaffolding a new feature end-to-end | `feature-dev` |
+| Modifying templates or CSS | `frontend-design` skill |
+| Environment/dependency setup | `claude-code-setup` |
+| Organizing project documentation | `claude-md-management` |
+| Complex multi-file tasks | `superpowers` + `executing-plans` skill |
+
+---
 
 ## Project Overview
 
-Fantasy Sports Platform — modular monolith Flask app hosting multiple fantasy sports games under one domain with shared authentication. Games are Flask blueprints in `games/`.
+A unified fantasy sports platform consolidating multiple games under one domain, one login, and one codebase. Flask modular monolith using blueprints. Each game lives in `games/<game>/` with its own models, routes, services, templates, and CLI commands.
 
-**Current games:** Golf Pick 'Em (Phase 1 COMPLETE), CFB Survivor Pool (Phase 2 COMPLETE)
-**Planned:** Masters Fantasy, Olympics Pool
+**Active games:**
+- `games/golf/` — Golf Pick 'Em (Phase 1 ✅)
+- `games/cfb/` — CFB Survivor Pool (Phase 2 ✅)
+- `games/masters/` — Masters Fantasy (Phase 3, not started)
 
-## Environment
-
-- Python 3.13 via pyenv. Always use `venv/bin/python` and `venv/bin/flask` — do not rely on system Python.
-- Set `FLASK_APP=app.py` for all `flask` CLI commands.
-- `instance/` must exist before running `flask db migrate` (SQLite can't create its own parent dir). Run `mkdir -p instance/` if missing.
-- Use `ENVIRONMENT=testing` for in-memory SQLite during smoke tests.
+---
 
 ## Commands
 
 ```bash
-# Run dev server
+# Run development server
 FLASK_APP=app.py venv/bin/flask run
 
 # Database
-FLASK_APP=app.py venv/bin/flask db migrate -m "description"
-FLASK_APP=app.py venv/bin/flask db upgrade
-FLASK_APP=app.py venv/bin/flask db downgrade
-FLASK_APP=app.py venv/bin/flask db current
+FLASK_APP=app.py venv/bin/flask db upgrade          # Apply migrations
+FLASK_APP=app.py venv/bin/flask db migrate -m "..."  # Generate new migration
+FLASK_APP=app.py venv/bin/flask create-admin        # Create platform admin user
 
-# Type checking (run after any Python changes)
-venv/bin/pyright                                # Full project check (should be 0 errors)
-venv/bin/pyright games/golf/services/sync.py   # Check specific file
+# Golf CLI
+FLASK_APP=app.py venv/bin/flask golf sync-run --mode schedule   # Import season schedule
+FLASK_APP=app.py venv/bin/flask golf sync-run --mode field      # Sync tournament field
+FLASK_APP=app.py venv/bin/flask golf sync-run --mode live       # Update live leaderboard
+FLASK_APP=app.py venv/bin/flask golf sync-run --mode results    # Finalize results + process picks
 
-# Utilities
-FLASK_APP=app.py venv/bin/flask init-db        # Direct table create (use migrations instead)
-FLASK_APP=app.py venv/bin/flask create-admin   # Interactive admin user creation
+# CFB CLI
+FLASK_APP=app.py venv/bin/flask cfb sync --mode setup       # Create next week, import games, activate
+FLASK_APP=app.py venv/bin/flask cfb sync --mode spreads     # Lock spreads with latest odds
+FLASK_APP=app.py venv/bin/flask cfb sync --mode scores      # Fetch scores, auto-process completed weeks
+FLASK_APP=app.py venv/bin/flask cfb sync --mode autopick    # Process auto-picks for past-deadline weeks
+FLASK_APP=app.py venv/bin/flask cfb sync --mode remind      # Send email reminders (Fri/Sat only)
+FLASK_APP=app.py venv/bin/flask cfb sync --mode status      # Print season summary
 
-# Smoke test (no server needed)
-FLASK_APP=app.py ENVIRONMENT=testing venv/bin/python -c "
-from app import create_app
-app = create_app('testing')
-with app.test_client() as c:
-    assert c.get('/').status_code == 200
-print('OK')
-"
+# Type checking
+venv/bin/pyright                                  # Full project (target: 0 errors)
+venv/bin/pyright games/golf/services/sync.py      # Check specific file
 ```
 
-## Architecture
+No test suite. No linter configured.
 
-Modular monolith using `create_app()` in `app.py` with blueprints.
-
-### Core Files
-- `app.py` — app factory, CLI commands, error handlers
-- `wsgi.py` — WSGI entry point for PythonAnywhere
-- `config.py` — dev/prod/test config classes
-- `extensions.py` — db, migrate, login_manager, csrf, limiter
-
-### Models
-- `models/user.py` — shared User model (all games reference this)
-- `models/__init__.py` — re-exports all models for Alembic discovery
-
-### Core Blueprints
-- `core/auth/` — login, register, logout, change password, profile
-- `core/main/` — platform home page
-- `core/admin/` — platform-level admin (user management)
-
-### Game Blueprints
-- `games/golf/` — Golf Pick 'Em (Phase 1 COMPLETE)
-  - `__init__.py` — Blueprint definition with route imports
-  - `models.py` — 7 models (GolfEnrollment, GolfPlayer, GolfTournament, etc.)
-  - `utils.py` — Score formatting, payout calculations, timezone
-  - `constants.py` — Excluded tournaments, purse estimates
-  - `routes.py` — All route handlers (~15 routes: standings, schedule, pick, admin)
-  - `services/sync.py` — SlashGolfAPI + TournamentSync
-  - `services/reminders.py` — Email notifications
-  - `cli.py` — All `flask golf *` CLI commands
-  - `templates/golf/` — All golf UI templates (index, schedule, make_pick, my_picks,
-                          tournament_detail, admin/dashboard, admin/tournaments, etc.)
-- `games/cfb/` — CFB Survivor Pool (Phase 2 COMPLETE)
-  - `__init__.py` — Blueprint definition with route imports
-  - `models.py` — 5 models (CfbEnrollment, CfbTeam, CfbWeek, CfbGame, CfbPick)
-  - `utils.py` — Timezone helpers, week display names, CFP tracking
-  - `constants.py` — FBS master teams, conferences, dev seed data
-  - `routes.py` — All route handlers (~20 routes: standings, pick, results, admin)
-  - `services/game_logic.py` — Pick processing, autopicks, spread calculation
-  - `services/score_fetcher.py` — The Odds API score fetching
-  - `services/automation.py` — Automated sync tasks
-  - `services/reminders.py` — Pick reminder emails
-  - `cli.py` — All `flask cfb *` CLI commands
-  - `templates/cfb/` — All CFB UI templates (index, pick, my_picks, weekly_results,
-                         admin/dashboard, admin/create_week, admin/manage_games, etc.)
-- `games/masters/` — Masters Fantasy (Phase 3)
-
-### Templates
-- `templates/base.html` — platform base (Bootstrap 5.3 + Barlow Condensed font)
-- Each blueprint has its own `templates/<blueprint>/` subdirectory
-- CSS variables in `static/css/style.css` — edit `--navy`, `--gold`, etc. for brand changes
+---
 
 ## Key Conventions
 
-- All timestamps: `datetime.now(timezone.utc)` (never `utcnow()`)
-- Platform timezone: `America/Chicago` (Central), configured in `config.py`
-- Game-specific data goes in game-specific models linked by `user_id` FK — never cram into User
-- All schema changes via Alembic — never raw SQL or `db.create_all()` in production
-- Platform admin routes use `@admin_required` decorator from `core/admin/routes.py`
-- CFB admin routes use `@cfb_admin_required` in `games/cfb/routes.py` (checks `CfbEnrollment.is_admin`, NOT `User.is_admin`)
-- CFB tables use `cfb_` prefix (e.g., `cfb_week`, `cfb_pick`)
-- CFB-specific user data lives in `CfbEnrollment`, NOT on the shared User model
-- CFB pick eligibility: 5 rules (used teams, 16.5-pt spread cap, game started, CFP eliminated, no game scheduled)
-- CFB team usage resets for College Football Playoff (CFP) phase
-- CFB pool timezone: `games.cfb.utils` (America/Chicago)
-- CSRF via Flask-WTF on all POST forms: `<input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>`
-- Login rate-limited to 10/min via Flask-Limiter
-- Open redirect prevention on login `next` param via `urlparse(...).netloc == ''` check
-- Golf tables use `golf_` prefix (e.g., `golf_tournament`, `golf_pick`)
-- Golf-specific user data lives in `GolfEnrollment`, NOT on the shared User model
-- `GolfPick.resolve_pick()` is the core pick resolution logic — do not simplify
-- Golf league timezone: `games.golf.utils.GOLF_LEAGUE_TZ` (America/Chicago)
+- **Timestamps:** `datetime.now(timezone.utc)` — never `utcnow()`
+- **Timezones:** `zoneinfo.ZoneInfo` — `.replace(tzinfo=tz)`, never pytz
+- **ORM:** SQLAlchemy 2.0 style — `db.session.get(Model, id)`, `db.get_or_404()`
+- **ORM safety:** Never mutate ORM attributes for display — use transient attributes
+- **Schema changes:** Flask-Migrate (Alembic) only — never raw SQL
+- **CSRF:** All POST forms include CSRF token; AJAX includes `X-CSRFToken` header
+- **POST-only:** All state-mutating operations use POST — no GET routes that change data
+- **Admin scoping:** Game admin is scoped to enrolled users only; game admin ≠ platform admin
 
-## Adding a New Game
+---
 
-1. Create `games/your_game/` with `__init__.py`, `models.py`, `routes.py`, `services.py`
-2. Define blueprint in `__init__.py`
-3. Import game models in `models/__init__.py`
-4. Register blueprint in `app.py` with URL prefix
-5. `mkdir -p instance/ && FLASK_APP=app.py venv/bin/flask db migrate -m "add your_game models"`
-6. `FLASK_APP=app.py venv/bin/flask db upgrade`
-7. Create templates in `games/your_game/templates/your_game/`
-8. Uncomment/add nav link in `templates/base.html`
+## Blueprint Pattern (required for all games)
 
-## Golf CLI Commands
+- Blueprint in `games/<game>/` with `<game>_` table prefix on all models
+- `<Game>Enrollment` model for game-specific user data, FK to shared `User`
+- `@<game>_admin_required` decorator scoped to enrolled users
+- Templates extend `templates/base.html`, rendered under `<game>/` prefix
+- Games dropdown in `base.html` gets a new `<li>` per game
+- CLI commands under `flask <game> *` namespace using `AppGroup`
+- Context processor on the blueprint for game-specific template variables
+- `before_request` hook for auto-refresh logic
 
-```bash
-# Unified sync (most common — used by scheduled tasks)
-FLASK_APP=app.py venv/bin/flask golf sync-run --mode schedule    # Mon: refresh schedule
-FLASK_APP=app.py venv/bin/flask golf sync-run --mode field       # Tue/Wed: sync tournament field
-FLASK_APP=app.py venv/bin/flask golf sync-run --mode live        # Thu-Sun: update leaderboard
-FLASK_APP=app.py venv/bin/flask golf sync-run --mode live-with-wd # Fri 8PM: live + withdrawals
-FLASK_APP=app.py venv/bin/flask golf sync-run --mode results     # Sun/Mon: finalize results
-FLASK_APP=app.py venv/bin/flask golf sync-run --mode earnings    # Mon: retry pending earnings
-FLASK_APP=app.py venv/bin/flask golf sync-run --mode all         # Full sync cycle
+---
 
-# Individual commands
-FLASK_APP=app.py venv/bin/flask golf sync-schedule
-FLASK_APP=app.py venv/bin/flask golf sync-field
-FLASK_APP=app.py venv/bin/flask golf sync-results
-FLASK_APP=app.py venv/bin/flask golf sync-earnings
-FLASK_APP=app.py venv/bin/flask golf check-wd
-FLASK_APP=app.py venv/bin/flask golf remind
+## Project Structure
+
+```
+fantasy-platform/
+├── app.py                  # App factory (create_app)
+├── wsgi.py                 # WSGI entry for PythonAnywhere
+├── config.py               # Environment-based config classes
+├── extensions.py           # db, migrate, login_manager, csrf, limiter
+├── models/
+│   ├── __init__.py         # Re-exports all models for Alembic
+│   └── user.py             # Shared User model
+├── core/
+│   ├── auth/               # Login, register, logout, change password
+│   ├── admin/              # Platform-level admin
+│   └── main/               # Home page
+├── games/
+│   ├── golf/               # Golf Pick 'Em blueprint
+│   └── cfb/                # CFB Survivor Pool blueprint
+├── templates/
+│   ├── base.html           # Platform base template
+│   └── errors/             # 404, 500
+├── static/css/style.css    # Platform styles (CSS custom properties)
+├── migrations/             # Alembic history
+└── .claude/
+    ├── settings.json       # Hooks (.env protection, smoke tests)
+    └── skills/
+        └── add-game/SKILL.md   # Project skill: scaffold a new game
 ```
 
-## CFB CLI Commands
+---
+
+## Database Migrations
+
+Always use Flask-Migrate. Never raw SQL.
 
 ```bash
-# Unified sync (most common — used by scheduled tasks)
-FLASK_APP=app.py venv/bin/flask cfb sync --mode setup       # Create next week + import games
-FLASK_APP=app.py venv/bin/flask cfb sync --mode spreads     # Update spreads from The Odds API
-FLASK_APP=app.py venv/bin/flask cfb sync --mode scores      # Fetch scores + auto-process
-FLASK_APP=app.py venv/bin/flask cfb sync --mode autopick    # Process missed-deadline auto-picks
-FLASK_APP=app.py venv/bin/flask cfb sync --mode remind      # Send pick reminders
-FLASK_APP=app.py venv/bin/flask cfb sync --mode status      # Print season summary
-
-# Individual commands
-FLASK_APP=app.py venv/bin/flask cfb populate-teams           # Seed dev teams
-FLASK_APP=app.py venv/bin/flask cfb setup
-FLASK_APP=app.py venv/bin/flask cfb scores
-FLASK_APP=app.py venv/bin/flask cfb spreads
-FLASK_APP=app.py venv/bin/flask cfb autopick
-FLASK_APP=app.py venv/bin/flask cfb remind
-FLASK_APP=app.py venv/bin/flask cfb status
+# After editing models:
+FLASK_APP=app.py venv/bin/flask db migrate -m "descriptive message"
+# Review the generated file in migrations/versions/
+FLASK_APP=app.py venv/bin/flask db upgrade
+# Commit the migration file with the model changes
 ```
 
-## CFB URL Map
+---
 
-| URL | Endpoint | Auth | Description |
-|-----|----------|------|-------------|
-| `/cfb/` | `cfb.index` | Public | Season standings |
-| `/cfb/results` | `cfb.weekly_results` | Public | Weekly results (latest or by week) |
-| `/cfb/results/<week>` | `cfb.weekly_results` | Public | Results for specific week |
-| `/cfb/pick/<week>` | `cfb.make_pick` | Login | Submit/edit weekly pick |
-| `/cfb/my-picks` | `cfb.my_picks` | Login | User's pick history |
-| `/cfb/admin/` | `cfb.admin_dashboard` | CFB Admin | Admin overview + week management |
-| `/cfb/admin/week/new` | `cfb.admin_create_week` | CFB Admin | Create new week |
-| `/cfb/admin/week/<id>/activate` | `cfb.admin_activate_week` | CFB Admin | Activate a week |
-| `/cfb/admin/week/<id>/complete` | `cfb.admin_complete_week` | CFB Admin | Mark week complete |
-| `/cfb/admin/week/<id>/games` | `cfb.admin_manage_games` | CFB Admin | Add/manage games |
-| `/cfb/admin/week/<id>/mark-results` | `cfb.admin_mark_results` | CFB Admin | Mark game winners |
-| `/cfb/admin/week/<id>/fetch-scores` | `cfb.admin_fetch_scores` | CFB Admin | Fetch API scores |
-| `/cfb/admin/week/<id>/apply-scores` | `cfb.admin_apply_scores` | CFB Admin | Apply fetched scores |
-| `/cfb/admin/process-autopicks/<id>` | `cfb.admin_process_autopicks` | CFB Admin | Trigger auto-picks |
-| `/cfb/admin/users` | `cfb.admin_users` | CFB Admin | User management |
-| `/cfb/admin/payments` | `cfb.admin_payments` | CFB Admin | Payment tracking |
-| `/cfb/admin/manage-teams` | `cfb.admin_manage_teams` | CFB Admin | FBS team selection |
+## Smoke Test Standard
 
-## Golf URL Map
+All smoke test snippets in handoff files must include `db.create_all()` when using `ENVIRONMENT=testing` with in-memory SQLite:
 
-| URL | Endpoint | Auth | Description |
-|-----|----------|------|-------------|
-| `/golf/` | `golf.index` | Public | Season standings |
-| `/golf/schedule` | `golf.schedule` | Public | Tournament schedule |
-| `/golf/tournament/<id>` | `golf.tournament_detail` | Public | Tournament detail/results |
-| `/golf/results` | `golf.results` | Public | Redirect to latest results |
-| `/golf/pick/<id>` | `golf.make_pick` | Login | Submit/edit pick |
-| `/golf/my-picks` | `golf.my_picks` | Login | User's pick history |
-| `/golf/admin/` | `golf.admin_dashboard` | Admin | Golf admin overview |
-| `/golf/admin/tournaments` | `golf.admin_tournaments` | Admin | Manage tournaments |
-| `/golf/admin/users` | `golf.admin_users` | Admin | User management |
-| `/golf/admin/payments` | `golf.admin_payments` | Admin | Payment tracking |
-| `/golf/admin/override-pick` | `golf.admin_override_pick` | Admin | Override picks |
-| `/golf/admin/process-results/<id>` | `golf.admin_process_results` | Admin | Process results |
+```python
+from app import create_app
+app = create_app('testing')
+with app.app_context():
+    from extensions import db
+    db.create_all()
+    print('Smoke test OK')
+```
+
+Auth routes have **no URL prefix** — login is at `/login`, not `/auth/login`.
+
+---
+
+## Deploy to PythonAnywhere
+
+1. Open Bash console (auto-activates venv, auto-cds to project)
+2. `git pull`
+3. `pip install -r requirements.txt` (if deps changed)
+4. `flask db upgrade` (if migrations added)
+5. Reload web app from the Web tab
+
+---
 
 ## Environment Variables
 
 ```
-ENVIRONMENT=development|production|testing
+FLASK_APP=app.py
+ENVIRONMENT=development|testing|production
 SECRET_KEY=...
-DATABASE_URL=sqlite:///instance/fantasy_platform.db
-PLATFORM_TIMEZONE=America/Chicago
-EMAIL_ADDRESS=...
-EMAIL_PASSWORD=...
-SMTP_SERVER=smtp.gmail.com
-SMTP_PORT=587
-SITE_URL=http://localhost:5000
-SEASON_YEAR=2026
-ENTRY_FEE=25
-SYNC_MODE=standard
-FIXED_DEADLINE_HOUR_CT=7
-SLASHGOLF_API_KEY=...
-CFB_SEASON_YEAR=2026
-CFB_ENTRY_FEE=25
-THE_ODDS_API_KEY=...
+DATABASE_URL=sqlite:///instance/fantasy.db
+ODDS_API_KEY=...          # The Odds API (CFB scores/spreads)
+SLASHGOLF_API_KEY=...     # SlashGolf API (Golf leaderboards)
+MAIL_USERNAME=...
+MAIL_PASSWORD=...
 ```
