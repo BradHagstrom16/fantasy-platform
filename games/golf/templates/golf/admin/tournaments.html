@@ -33,7 +33,7 @@
                         <tr>
                             <td><span class="text-muted fw-bold">{{ t.week_number or '—' }}</span></td>
                             <td>
-                                <a href="{{ url_for('golf.tournament_detail', tournament_id=t.id) }}" class="text-decoration-none text-navy fw-semibold">
+                                <a href="{{ url_for('golf.tournament_detail', tournament_id=t.id) }}" class="text-decoration-none fw-semibold">
                                     {{ t.name }}
                                 </a>
                                 {% if t.is_major %}<span class="badge bg-warning text-dark" style="font-size:.55rem;">MAJOR</span>{% endif %}

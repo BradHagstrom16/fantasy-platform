@@ -62,13 +62,116 @@
 
 /* ── 2. Game-Specific Overrides ──────────────────────────── */
 
-/* Golf overrides — PROVISIONAL: finalized in File 2 */
+/* Golf overrides */
 body.game-golf {
   --game-primary:            #006747;
   --game-primary-dark:       #00432e;
   --game-primary-light:      #1a7a57;
   --game-accent:             #b8993e;
   --game-accent-light:       #d4b55a;
+}
+
+/* === GOLF PICK 'EM === */
+
+/* Golf table — dark green header, themed hover */
+.table-golf > thead > tr > th {
+  background: var(--game-primary-dark);
+  color: var(--text-on-dark);
+  border-bottom: 2px solid var(--game-primary);
+}
+
+.table-golf > tbody > tr:hover { background: rgba(0,103,71,.04); }
+
+/* Current user row highlight */
+.table-golf .row-current-user > td,
+.row-current-user > td {
+  background: rgba(184,153,62,.08) !important;
+  border-left: 3px solid var(--game-accent);
+}
+.table-golf .row-current-user > td:not(:first-child),
+.row-current-user > td:not(:first-child) {
+  border-left: none;
+}
+
+/* Leader row — subtle green tint */
+.table-golf .row-leader > td {
+  background: rgba(0,103,71,.04) !important;
+}
+
+/* Column divider — visual separator between season and tournament data */
+.col-divider {
+  border-left: 2px solid rgba(0,103,71,.12) !important;
+}
+.table-golf > thead > tr > th.col-divider {
+  border-left: 2px solid rgba(0,103,71,.25) !important;
+}
+
+/* Major tournament badge */
+.badge-major {
+  background: rgba(184,153,62,.12);
+  color: #92722a;
+  font-weight: 700;
+  font-size: .65rem;
+  padding: .25em .55em;
+  border: 1px solid rgba(184,153,62,.3);
+}
+
+/* Pick CTA banner */
+.golf-pick-cta {
+  border-top: 3px solid var(--game-primary);
+  background: linear-gradient(135deg, rgba(0,103,71,.04) 0%, var(--bg-card) 100%);
+}
+
+/* Empty state icon */
+.golf-empty-icon {
+  font-size: 3rem;
+  color: var(--game-accent);
+}
+
+/* Hero season progress — label + value */
+.hero-progress-label {
+  letter-spacing: .08em;
+  font-weight: 700;
+  font-family: 'Teko', sans-serif;
+  color: rgba(255,255,255,.55);
+  font-size: .75rem;
+  text-transform: uppercase;
+}
+
+.hero-progress-value {
+  color: var(--game-accent);
+  font-weight: 700;
+  font-family: 'Teko', sans-serif;
+}
+
+/* Tom Select overrides — golf palette integration */
+body.game-golf .ts-control {
+  border-color: rgba(0,103,71,.15);
+  border-radius: var(--radius);
+}
+body.game-golf .ts-control:focus-within {
+  border-color: var(--game-primary-light);
+  box-shadow: 0 0 0 3px rgba(0,103,71,.15);
+}
+body.game-golf .ts-dropdown {
+  border-color: rgba(0,103,71,.12);
+  box-shadow: var(--shadow-md);
+  border-radius: var(--radius);
+}
+body.game-golf .ts-dropdown .option.active {
+  background: rgba(0,103,71,.08);
+  color: var(--game-primary-dark);
+}
+
+@media (max-width: 767px) {
+  body.game-golf .ts-control {
+    min-height: 48px !important;
+    font-size: 1rem !important;
+  }
+  body.game-golf .ts-dropdown .option {
+    padding: .6rem .75rem !important;
+    font-size: 1rem !important;
+  }
 }
 
 /* CFB overrides — PROVISIONAL: finalized in File 3 */
