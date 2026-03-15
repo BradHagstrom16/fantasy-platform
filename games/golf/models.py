@@ -146,6 +146,7 @@ class GolfTournament(db.Model):
     # Email notification tracking
     picks_open_notified = db.Column(db.Boolean, default=False)
     field_alert_sent = db.Column(db.Boolean, default=False)
+    recap_email_sent = db.Column(db.Boolean, default=False, nullable=False)
 
     # Week number in the league (1-32)
     week_number = db.Column(db.Integer, nullable=True)

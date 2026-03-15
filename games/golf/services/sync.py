@@ -681,6 +681,20 @@ class TournamentSync:
             skipped,
         )
 
+        # Send results recap email (once per tournament)
+        if processed > 0 and not tournament.recap_email_sent:
+            try:
+                from games.golf.services.reminders import send_results_recap_email
+                tournament_id = tournament.id
+                emails_sent = send_results_recap_email(tournament_id)
+                if emails_sent > 0:
+                    tournament = db.session.get(GolfTournament, tournament_id)
+                    tournament.recap_email_sent = True
+                    db.session.commit()
+                    logger.info("Sent results recap to %s users for %s", emails_sent, tournament.name)
+            except Exception as e:
+                logger.error("Failed to send results recap for tournament %s: %s", tournament.id, e)
+
         return processed
 
     def check_withdrawals(self, tournament: GolfTournament, force: bool = False) -> List[Dict]:
