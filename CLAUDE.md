@@ -159,10 +159,16 @@ No test suite. No linter configured.
 
 ## Key Conventions
 
+- **Design system:** "The Commissioner's Club" — platform purple/gold + per-game palettes via `body.game-<game>` CSS class
+- **Game theming:** Platform components (`.page-hero`, `.stat-block`, `.btn-game`) consume `--game-primary`/`--game-accent` automatically — game CSS must NOT duplicate this
+- **Game CSS sections:** Each game has its own section in `style.css` (e.g., `/* === CFB SURVIVOR POOL === */`) with game-specific component classes
+- **Emails:** Each game has `_EMAIL` constants dict + HTML helpers in `games/<game>/services/reminders.py`; `MIMEMultipart('alternative')` with plain-text fallback; table layout + inline styles for Gmail compatibility
 - **Timestamps:** `datetime.now(timezone.utc)` — never `utcnow()`
 - **Timezones:** `zoneinfo.ZoneInfo` — `.replace(tzinfo=tz)`, never pytz
 - **ORM:** SQLAlchemy 2.0 style — `db.session.get(Model, id)`, `db.get_or_404()`
 - **ORM safety:** Never mutate ORM attributes for display — use transient attributes
+- **Jinja2 sorting:** Never use `sort(attribute='method_name')` — Jinja2 retrieves the bound method, not its return value. Sort in the route instead.
+- **Template restyling:** When restyling templates with JavaScript, audit all `querySelector`/`querySelectorAll`/`getElementById` calls first. Add CSS classes alongside JS-critical ones — never rename or remove them.
 - **Schema changes:** Flask-Migrate (Alembic) only — never raw SQL
 - **CSRF:** All POST forms include CSRF token; AJAX includes `X-CSRFToken` header
 - **POST-only:** All state-mutating operations use POST — no GET routes that change data

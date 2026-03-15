@@ -1,7 +1,7 @@
 # Architecture Decision Log — Fantasy Sports Platform
 
-**Last Updated:** March 8, 2026
-**Status:** Active — Phase 1 & 2 complete
+**Last Updated:** March 14, 2026
+**Status:** Active — Phases 1, 2, & 3a complete
 
 ---
 
@@ -77,6 +77,16 @@
 | **2C: Routes + Templates + Nav** | ✅ Done | `da301fb` | `routes.py` (~20 routes), 13 templates, `base.html` nav integration |
 
 **Phase 2 delivers:** Complete CFB Survivor Pool as a blueprint under `/cfb/` with standings, weekly pick submission, results tracking, 2-life elimination system, cumulative spread tiebreaker, team usage tracking (with CFP reset), admin dashboard, week/game management, score fetching via The Odds API, auto-picks, payment tracking, team management, and CLI automation.
+
+### Phase 3a — UI/Design Upgrade (March 11-14, 2026) ✅
+
+| Sub-task | Status | Key Files |
+|----------|--------|-----------|
+| **Platform foundation** | ✅ Done | `static/css/style.css` (CSS custom properties, design tokens), `templates/base.html`, auth templates |
+| **Golf UI + email** | ✅ Done | Golf CSS section, `.table-golf`, `.row-current-user`, HTML email infrastructure, Results Recap |
+| **CFB UI + email** | ✅ Done | CFB CSS section (15+ components), all public templates, HTML email infrastructure, Results Recap |
+
+**Phase 3a delivers:** "The Commissioner's Club" design system — platform purple/gold identity with game-specific palettes (Golf: Augusta green/gold, CFB: Badger crimson/midnight). CSS custom properties with `body.game-<game>` auto-theming. Gmail-compatible HTML emails with game-branded wrappers for both games. Weekly/tournament Results Recap emails with per-user personalization. All templates restyled with `.page-hero`, `.stat-block`, game-specific table and badge classes.
 
 ---
 
@@ -157,8 +167,8 @@ The CFB Survivor app already uses app factory + blueprints, making the port clea
 | 0 | Scaffold new platform | March 2026 | ✅ **Complete** |
 | 1 | Port Golf Pick 'Em blueprint | March 2026 | ✅ **Complete** |
 | 2 | Port CFB Survivor blueprint | March 2026 | ✅ **Complete** |
-| 3a | UI/Design upgrade (full platform + golf surfaces) | April 2026 | ⬜ **Current** |
-| 3b | Mobile-friendly UI overhaul | April 2026 | ⬜ **up next**|
+| 3a | UI/Design upgrade (platform + golf + CFB surfaces + HTML emails) | March 2026 | ✅ **Complete** |
+| 3b | Mobile-friendly UI overhaul | April 2026 | ⬜ **Up next** |
 | 4 | Go Live on PythonAnywhere. | TBD | ⬜ Not started |
 | 5 | Build Major Fantasy blueprint locally and then deploy to PythonAnywhere | Oct–Nov 2026 | ⬜ Not started |
 | 6 | PostgreSQL + REST API + Railway/Render | Feb–Mar 2027 | ⬜ Not started |
@@ -171,9 +181,10 @@ The CFB Survivor app already uses app factory + blueprints, making the port clea
 
 ## Immediate Next Actions
 
-1. ⬜ **UI/Design upgrade** — One cohesive design pass across platform + golf + CFB surfaces (Brad has existing UI upgrade .md files to adapt)
-2. ⬜ **Deploy platform to B1G Brad PA account** — Currently local only
-3. ⬜ **User merge strategy** — Implement merge-by-email for golf + CFB user bases
+1. ✅ ~~**UI/Design upgrade**~~ — Complete (Phase 3a)
+2. ⬜ **Mobile-friendly UI overhaul** — Responsive polish pass across all game surfaces
+3. ⬜ **Deploy platform to B1G Brad PA account** — Currently local only
+4. ⬜ **User merge strategy** — Implement merge-by-email for golf + CFB user bases
 
 ---
 
