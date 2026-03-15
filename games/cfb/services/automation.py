@@ -408,6 +408,21 @@ def run_scores():
             **result,
         })
 
+        # Send weekly recap email (once per week)
+        week = db.session.get(CfbWeek, week.id)
+        if week and week.is_complete and not week.recap_email_sent:
+            try:
+                from games.cfb.services.reminders import send_weekly_recap_email
+                emails_sent = send_weekly_recap_email(week.id)
+                if emails_sent > 0:
+                    week.recap_email_sent = True
+                    db.session.commit()
+                    logger.info("Sent weekly recap to %s users for Week %s",
+                                emails_sent, week.week_number)
+            except Exception as e:
+                logger.error("Failed to send recap for Week %s: %s",
+                             week.week_number, e)
+
     if not results:
         summary = 'No incomplete weeks past deadline'
     else:

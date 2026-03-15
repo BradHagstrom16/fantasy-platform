@@ -86,6 +86,7 @@ class CfbWeek(db.Model):
     is_complete = db.Column(db.Boolean, default=False)
     is_playoff_week = db.Column(db.Boolean, default=False)
     round_name = db.Column(db.String(100), nullable=True)
+    recap_email_sent = db.Column(db.Boolean, default=False, nullable=False)
 
     def __repr__(self):
         return f'<CfbWeek {self.week_number}>'
