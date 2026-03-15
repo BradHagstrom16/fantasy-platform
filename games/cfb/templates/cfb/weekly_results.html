@@ -2,14 +2,21 @@
 {% block title %}{{ get_week_display_name(week) }} Results — CFB Survivor{% endblock %}
 
 {% block content %}
-<div class="container mt-4">
-    <h2>{{ get_week_display_name(week) }} Results</h2>
+{# Page Hero #}
+<div class="page-hero">
+  <div class="hero-glow"></div>
+  <div class="container">
+    <h1>{{ get_week_display_name(week) }} Results</h1>
+    <p class="lead">CFB Survivor Pool</p>
+  </div>
+</div>
 
+<div class="container mt-4">
     {# Week Navigation #}
     <div class="d-flex flex-wrap gap-1 mb-4">
         {% for w in viewable_weeks %}
             <a href="{{ url_for('cfb.weekly_results', week_number=w.week_number) }}"
-               class="btn btn-sm {% if w.week_number == week.week_number %}btn-primary{% else %}btn-outline-secondary{% endif %}">
+               class="btn btn-sm {% if w.week_number == week.week_number %}btn-game{% else %}btn-outline-secondary{% endif %}">
                 {{ get_week_short_label(w) }}
                 {% if w.is_complete %}&#10003;{% endif %}
             </a>
@@ -37,11 +44,11 @@
             </div>
             <div>
                 {% if current_user_pick.is_correct == True %}
-                    <span class="badge bg-success fs-6 p-2">SURVIVED</span>
+                    <span class="badge badge-survived fs-5 p-2">SURVIVED</span>
                 {% elif current_user_pick.is_correct == False %}
-                    <span class="badge bg-danger fs-6 p-2">LOST A LIFE</span>
+                    <span class="badge badge-lost-life fs-5 p-2">LOST A LIFE</span>
                 {% else %}
-                    <span class="badge bg-warning fs-6 p-2">PENDING</span>
+                    <span class="badge bg-warning fs-5 p-2">PENDING</span>
                 {% endif %}
             </div>
         </div>
@@ -51,151 +58,149 @@
     {# Week Summary Stats #}
     <div class="row g-3 mb-4">
         <div class="col-6 col-md-3">
-            <div class="card text-center">
-                <div class="card-body py-2">
-                    <div class="fs-4 fw-bold">{{ picks|length }}</div>
-                    <small class="text-muted">Total Picks</small>
-                </div>
+            <div class="stat-block animate-in stagger-1">
+                <div class="stat-value">{{ picks|length }}</div>
+                <div class="stat-label">Total Picks</div>
             </div>
         </div>
         <div class="col-6 col-md-3">
-            <div class="card text-center border-success">
-                <div class="card-body py-2">
-                    <div class="fs-4 fw-bold text-success">{{ correct_picks|length }}</div>
-                    <small class="text-muted">Correct</small>
-                </div>
+            <div class="stat-block animate-in stagger-2">
+                <div class="stat-value" style="color: var(--cfb-survived);">{{ correct_picks|length }}</div>
+                <div class="stat-label">Correct</div>
             </div>
         </div>
         <div class="col-6 col-md-3">
-            <div class="card text-center border-danger">
-                <div class="card-body py-2">
-                    <div class="fs-4 fw-bold text-danger">{{ incorrect_picks|length }}</div>
-                    <small class="text-muted">Incorrect</small>
-                </div>
+            <div class="stat-block animate-in stagger-3">
+                <div class="stat-value" style="color: var(--cfb-lost-life);">{{ incorrect_picks|length }}</div>
+                <div class="stat-label">Incorrect</div>
             </div>
         </div>
         <div class="col-6 col-md-3">
-            <div class="card text-center">
-                <div class="card-body py-2">
-                    <div class="fs-4 fw-bold">{{ pending_picks|length }}</div>
-                    <small class="text-muted">Pending</small>
-                </div>
+            <div class="stat-block animate-in stagger-4">
+                <div class="stat-value">{{ pending_picks|length }}</div>
+                <div class="stat-label">Pending</div>
             </div>
         </div>
     </div>
 
     {# Eliminations #}
     {% if eliminated_this_week %}
-    <div class="alert alert-danger">
-        <h5>Eliminated This Week</h5>
-        <div class="d-flex flex-wrap gap-2 mt-2">
+    <div class="elimination-alert animate-in">
+        <h4>Eliminated This Week</h4>
+        <div class="d-flex flex-wrap gap-2">
             {% for e in eliminated_this_week %}
-                <span class="badge bg-danger fs-6 p-2">{{ e.get_display_name() }}</span>
+                <span class="badge badge-lost-life fs-6 p-2">{{ e.get_display_name() }}</span>
             {% endfor %}
         </div>
     </div>
     {% endif %}
 
     {# All Picks Table #}
-    <div class="card">
-        <div class="card-header">
-            <h4 class="mb-0">All Picks &mdash; {{ get_week_display_name(week) }}</h4>
-        </div>
-        <div class="card-body p-0">
-            <div class="table-responsive">
-            <table class="table mb-0">
-                <thead>
-                    <tr>
-                        <th>Player</th>
-                        <th>Team Picked</th>
-                        <th>Opponent</th>
-                        <th>Score</th>
-                        <th>Result</th>
-                        <th>Lives</th>
-                        <th>Status</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for pick in picks %}
-                    <tr class="{% if pick.is_correct == False %}table-danger{% elif pick.is_correct == True %}table-success{% endif %} {% if current_user.is_authenticated and pick.user_id == current_user.id %}fw-bold{% endif %}">
-                        <td>
-                            {{ pick.user.username }}
-                            {% if pick.is_autopick %}
-                                <span class="badge bg-warning text-dark" style="font-size: 0.65rem;">AUTO</span>
-                            {% endif %}
-                        </td>
-                        <td><strong>{{ pick.team.name }}</strong></td>
-                        <td>
-                            {% if pick.team_id in game_results %}
-                                {% set game = game_results[pick.team_id] %}
-                                {% if game.was_home %}vs {{ game.opponent }}{% else %}@ {{ game.opponent }}{% endif %}
-                            {% else %}
-                                <span class="text-muted">--</span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            {% if pick.team_id in game_results %}
-                                {% set game = game_results[pick.team_id] %}
-                                {% if game.home_score is not none and game.away_score is not none %}
-                                    {% if game.was_home %}{{ game.home_score }}&ndash;{{ game.away_score }}{% else %}{{ game.away_score }}&ndash;{{ game.home_score }}{% endif %}
+    <div class="results-scoreboard">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0">All Picks &mdash; {{ get_week_display_name(week) }}</h4>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                <table class="table table-cfb mb-0">
+                    <thead>
+                        <tr>
+                            <th>Player</th>
+                            <th>Team Picked</th>
+                            <th>Opponent</th>
+                            <th>Score</th>
+                            <th>Result</th>
+                            <th>Lives</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for pick in picks %}
+                        <tr class="{% if current_user.is_authenticated and pick.user_id == current_user.id %}row-current-user{% endif %}">
+                            <td>
+                                {{ pick.user.username }}
+                                {% if pick.is_autopick %}
+                                    <span class="badge bg-warning text-dark badge-xs">AUTO</span>
+                                {% endif %}
+                            </td>
+                            <td><strong>{{ pick.team.name }}</strong></td>
+                            <td>
+                                {% if pick.team_id in game_results %}
+                                    {% set game = game_results[pick.team_id] %}
+                                    {% if game.was_home %}vs {{ game.opponent }}{% else %}@ {{ game.opponent }}{% endif %}
+                                {% else %}
+                                    <span class="text-muted">--</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if pick.team_id in game_results %}
+                                    {% set game = game_results[pick.team_id] %}
+                                    {% if game.home_score is not none and game.away_score is not none %}
+                                        {% if game.was_home %}{{ game.home_score }}&ndash;{{ game.away_score }}{% else %}{{ game.away_score }}&ndash;{{ game.home_score }}{% endif %}
+                                    {% else %}
+                                        <span class="text-muted">&mdash;</span>
+                                    {% endif %}
                                 {% else %}
                                     <span class="text-muted">&mdash;</span>
                                 {% endif %}
-                            {% else %}
-                                <span class="text-muted">&mdash;</span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            {% if pick.is_correct == True %}
-                                <span class="badge bg-success">W</span>
-                            {% elif pick.is_correct == False %}
-                                <span class="badge bg-danger">L</span>
-                            {% else %}
-                                <span class="badge bg-secondary">--</span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            {% for i in range(pick.lives_after) %}
-                                <span class="text-success">&#9679;</span>
-                            {% endfor %}
-                            {% for i in range(2 - pick.lives_after) %}
-                                <span class="text-danger">&#9679;</span>
-                            {% endfor %}
-                        </td>
-                        <td>
-                            {% if pick.was_eliminated %}
-                                <span class="badge bg-danger">OUT</span>
-                            {% else %}
-                                <span class="badge bg-success">IN</span>
-                            {% endif %}
-                        </td>
-                    </tr>
-                    {% endfor %}
+                            </td>
+                            <td>
+                                {% if pick.is_correct == True %}
+                                    <span class="badge badge-survived">W</span>
+                                {% elif pick.is_correct == False %}
+                                    <span class="badge badge-lost-life">L</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">--</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="lives-indicator">
+                                    {% for i in range(pick.lives_after) %}
+                                        <span class="life"></span>
+                                    {% endfor %}
+                                    {% for i in range(2 - pick.lives_after) %}
+                                        <span class="life lost"></span>
+                                    {% endfor %}
+                                </span>
+                            </td>
+                            <td>
+                                {% if pick.was_eliminated %}
+                                    <span class="badge badge-eliminated">OUT</span>
+                                {% else %}
+                                    <span class="badge badge-survived">IN</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
 
-                    {% for enrollment in enrollments_no_pick %}
-                    <tr class="table-warning">
-                        <td>{{ enrollment.get_display_name() }}</td>
-                        <td colspan="3" class="text-muted fst-italic">No pick submitted</td>
-                        <td><span class="badge bg-warning text-dark">--</span></td>
-                        <td>
-                            {% for i in range(enrollment.lives_after) %}
-                                <span class="text-success">&#9679;</span>
-                            {% endfor %}
-                            {% for i in range(2 - enrollment.lives_after) %}
-                                <span class="text-danger">&#9679;</span>
-                            {% endfor %}
-                        </td>
-                        <td>
-                            {% if enrollment.was_eliminated %}
-                                <span class="badge bg-danger">OUT</span>
-                            {% else %}
-                                <span class="badge bg-success">IN</span>
-                            {% endif %}
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+                        {% for enrollment in enrollments_no_pick %}
+                        <tr class="table-warning">
+                            <td>{{ enrollment.get_display_name() }}</td>
+                            <td colspan="3" class="text-muted fst-italic">No pick submitted</td>
+                            <td><span class="badge bg-warning text-dark">--</span></td>
+                            <td>
+                                <span class="lives-indicator">
+                                    {% for i in range(enrollment.lives_after) %}
+                                        <span class="life"></span>
+                                    {% endfor %}
+                                    {% for i in range(2 - enrollment.lives_after) %}
+                                        <span class="life lost"></span>
+                                    {% endfor %}
+                                </span>
+                            </td>
+                            <td>
+                                {% if enrollment.was_eliminated %}
+                                    <span class="badge badge-eliminated">OUT</span>
+                                {% else %}
+                                    <span class="badge badge-survived">IN</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                </div>
             </div>
         </div>
     </div>

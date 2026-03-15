@@ -156,14 +156,16 @@ The CFB Survivor app already uses app factory + blueprints, making the port clea
 | Pre-0 | Alembic + tech debt cleanup on live apps | March 2026 | ✅ **Complete** |
 | 0 | Scaffold new platform | March 2026 | ✅ **Complete** |
 | 1 | Port Golf Pick 'Em blueprint | March 2026 | ✅ **Complete** |
-| — | UI/Design upgrade (full platform + golf surfaces) | April 2026 | ⬜ **Up next** |
 | 2 | Port CFB Survivor blueprint | March 2026 | ✅ **Complete** |
+| 3a | UI/Design upgrade (full platform + golf surfaces) | April 2026 | ⬜ **Current** |
+| 3b | Mobile-friendly UI overhaul | April 2026 | ⬜ **up next**|
+| 4 | Go Live on PythonAnywhere. | TBD | ⬜ Not started |
+| 5 | Build Major Fantasy blueprint locally and then deploy to PythonAnywhere | Oct–Nov 2026 | ⬜ Not started |
+| 6 | PostgreSQL + REST API + Railway/Render | Feb–Mar 2027 | ⬜ Not started |
+| 7 | Olympics/World Cup event template | Q2 2027 | ⬜ Not started |
+
 | — | **Golf season ends → cutover to unified platform** | **August 2026** | ⬜ |
 | — | **CFB season starts on unified platform** | **September 1, 2026** | ⬜ |
-| 3 | Build Major Fantasy blueprint | Oct–Nov 2026 | ⬜ Not started |
-| 4 | Mobile-friendly UI overhaul | Dec 2026–Jan 2027 | ⬜ Not started |
-| 5 | PostgreSQL + REST API + Railway/Render | Feb–Mar 2027 | ⬜ Not started |
-| 6 | Olympics/World Cup event template | Q2 2027 | ⬜ Not started |
 
 ---
 
@@ -180,5 +182,4 @@ The CFB Survivor app already uses app factory + blueprints, making the port clea
 - Golf Pick 'Em stays live on GolfPickEm PA account through August 2026
 - CFB Survivor must be live on new platform by September 1, 2026
 - Masters 2026 runs on Google Sheets (web app deferred)
-- Budget: ~$5/mo for hosting
 - Task files (.md) are the preferred handoff format for Claude Code work

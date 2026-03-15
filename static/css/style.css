@@ -174,14 +174,213 @@ body.game-golf .ts-dropdown .option.active {
   }
 }
 
-/* CFB overrides — PROVISIONAL: finalized in File 3 */
-/* Inspiration: Wisconsin Badger red/white with midnight dark backdrop */
+/* CFB overrides */
 body.game-cfb {
   --game-primary:            #C5050C;
   --game-primary-dark:       #0f0f1a;
-  --game-primary-light:      #d63a40;
+  --game-primary-light:      #e8282f;
   --game-accent:             #FFFFFF;
   --game-accent-light:       #e8e8e8;
+  --cfb-survived:            #22c55e;
+  --cfb-lost-life:           #ef4444;
+  --cfb-eliminated:          #6b7280;
+}
+
+/* === CFB SURVIVOR POOL === */
+
+/* CFB table — midnight header, crimson accent */
+.table-cfb > thead > tr > th {
+  background: var(--game-primary-dark);
+  color: var(--text-on-dark);
+  border-bottom: 2px solid var(--game-primary);
+}
+
+.table-cfb > tbody > tr:hover { background: rgba(197,5,12,.04); }
+
+/* Current user row highlight (CFB-specific tint) */
+.table-cfb .row-current-user > td {
+  background: rgba(197,5,12,.06) !important;
+  border-left: 3px solid var(--game-primary);
+}
+.table-cfb .row-current-user > td:not(:first-child) {
+  border-left: none;
+}
+
+/* Lives indicator — filled/hollow dots */
+.lives-indicator {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  vertical-align: middle;
+}
+.lives-indicator .life {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--cfb-survived);
+  border: 2px solid var(--cfb-survived);
+  transition: all var(--transition);
+}
+.lives-indicator .life.lost {
+  background: transparent;
+  border-color: var(--cfb-eliminated);
+}
+
+/* Team pick card — selectable card in pick.html */
+.team-pick-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--bg-card);
+  transition: border-color var(--transition), box-shadow var(--transition);
+  overflow: hidden;
+}
+.team-pick-card:not(.ineligible):hover {
+  border-color: var(--game-primary-light);
+  box-shadow: var(--shadow-sm);
+}
+.team-pick-card.selected {
+  border-color: var(--game-primary);
+  box-shadow: 0 0 0 2px rgba(197,5,12,.2);
+}
+.team-pick-card.ineligible {
+  opacity: .55;
+  pointer-events: none;
+}
+
+/* Spread badge — inline chip */
+.spread-badge {
+  display: inline-block;
+  font-family: 'Teko', sans-serif;
+  font-weight: 500;
+  font-size: .8rem;
+  letter-spacing: .03em;
+  padding: .2em .55em;
+  border-radius: .25rem;
+  background: rgba(197,5,12,.08);
+  color: var(--text-secondary);
+  vertical-align: middle;
+}
+.spread-badge.favorable { color: var(--cfb-survived); }
+.spread-badge.unfavorable { color: var(--cfb-lost-life); }
+
+/* Outcome badges */
+.badge-survived {
+  background: var(--cfb-survived);
+  color: #fff;
+  font-family: 'Teko', sans-serif;
+  font-weight: 600;
+  letter-spacing: .05em;
+  padding: .35em .8em;
+}
+.badge-lost-life {
+  background: var(--cfb-lost-life);
+  color: #fff;
+  font-family: 'Teko', sans-serif;
+  font-weight: 600;
+  letter-spacing: .05em;
+  padding: .35em .8em;
+}
+.badge-eliminated {
+  background: var(--cfb-eliminated);
+  color: #fff;
+  font-family: 'Teko', sans-serif;
+  font-weight: 500;
+  letter-spacing: .04em;
+  padding: .3em .65em;
+}
+
+/* Extra-small badge */
+.badge-xs {
+  font-size: .65rem !important;
+  padding: .2em .45em;
+}
+
+/* Elimination alert — headline treatment */
+.elimination-alert {
+  background: linear-gradient(135deg, rgba(239,68,68,.06) 0%, rgba(239,68,68,.02) 100%);
+  border: 1px solid rgba(239,68,68,.2);
+  border-left: 4px solid var(--cfb-lost-life);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+.elimination-alert h3,
+.elimination-alert h4,
+.elimination-alert h5 {
+  color: var(--cfb-lost-life);
+  margin-bottom: .75rem;
+}
+
+/* Championship hero — winner reveal */
+.championship-hero {
+  text-align: center;
+  padding: 3rem 1.5rem;
+  background: linear-gradient(135deg, var(--game-primary-dark) 0%, #1a0a0c 100%);
+  color: var(--text-on-dark);
+  border-radius: var(--radius-lg);
+  margin-bottom: 2rem;
+  position: relative;
+  overflow: hidden;
+}
+.championship-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(circle, rgba(197,5,12,.08) 1px, transparent 1px);
+  background-size: 24px 24px;
+  pointer-events: none;
+}
+.championship-hero .trophy-icon {
+  font-size: 4rem;
+  display: block;
+  margin-bottom: 1rem;
+  animation: fadeInScale .6s ease both;
+}
+.championship-hero .champion-name {
+  font-family: 'Teko', sans-serif;
+  font-size: clamp(2.4rem, 6vw, 3.5rem);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: #fff;
+  margin-bottom: .5rem;
+  animation: fadeInUp .5s .15s ease both;
+  position: relative;
+}
+.championship-hero .champion-subtitle {
+  font-family: 'Newsreader', Georgia, serif;
+  font-size: 1.15rem;
+  color: rgba(255,255,255,.6);
+  animation: fadeInUp .5s .25s ease both;
+  position: relative;
+}
+.championship-hero .prize-badge {
+  display: inline-block;
+  background: var(--game-primary);
+  color: #fff;
+  font-family: 'Teko', sans-serif;
+  font-size: 1.3rem;
+  font-weight: 700;
+  letter-spacing: .05em;
+  padding: .5em 1.5em;
+  border-radius: var(--radius);
+  margin-top: 1rem;
+  animation: fadeInUp .5s .35s ease both;
+  position: relative;
+}
+
+/* Results scoreboard — weekly results table */
+.results-scoreboard {
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+/* CFB pick CTA banner */
+.cfb-pick-cta {
+  border-top: 3px solid var(--game-primary);
+  background: linear-gradient(135deg, rgba(197,5,12,.04) 0%, var(--bg-card) 100%);
 }
 
 /* ── 3. Keyframe Animations ─────────────────────────────── */

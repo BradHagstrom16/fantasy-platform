@@ -2,20 +2,28 @@
 {% block title %}My Picks & Strategy — CFB Survivor{% endblock %}
 
 {% block content %}
-<div class="container mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-        <h2>My Picks & Strategy</h2>
-        {% if current_week_display %}
-        <div>
-            {% if current_week_display.badge_type == 'playoff' %}
-                <span class="badge bg-danger">{{ current_week_display.progress_text }}</span>
-            {% else %}
-                <span class="badge bg-secondary">{{ current_week_display.progress_text }}</span>
+<div class="page-hero">
+    <div class="hero-glow"></div>
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div>
+                <h1>My Picks & Strategy</h1>
+                <p class="lead">Track your season journey</p>
+            </div>
+            {% if current_week_display %}
+            <div>
+                {% if current_week_display.badge_type == 'playoff' %}
+                    <span class="badge bg-danger fs-6 p-2">{{ current_week_display.progress_text }}</span>
+                {% else %}
+                    <span class="badge bg-light text-dark fs-6 p-2">{{ current_week_display.progress_text }}</span>
+                {% endif %}
+            </div>
             {% endif %}
         </div>
-        {% endif %}
     </div>
+</div>
 
+<div class="container mt-4">
     {% if in_cfp %}
     <div class="alert alert-danger mb-3">
         <h5 class="mb-1">College Football Playoff Phase</h5>
@@ -26,35 +34,27 @@
     {# Statistics #}
     <div class="row g-3 mb-4">
         <div class="col-6 col-md-3">
-            <div class="card text-center">
-                <div class="card-body py-2">
-                    <div class="fs-4 fw-bold">{{ total_picks }}</div>
-                    <small class="text-muted">Total Picks</small>
-                </div>
+            <div class="stat-block animate-in stagger-1">
+                <div class="stat-value">{{ total_picks }}</div>
+                <div class="stat-label">Total Picks</div>
             </div>
         </div>
         <div class="col-6 col-md-3">
-            <div class="card text-center border-success">
-                <div class="card-body py-2">
-                    <div class="fs-4 fw-bold text-success">{{ correct_picks }}</div>
-                    <small class="text-muted">Correct</small>
-                </div>
+            <div class="stat-block animate-in stagger-2">
+                <div class="stat-value" style="color: var(--cfb-survived);">{{ correct_picks }}</div>
+                <div class="stat-label">Correct</div>
             </div>
         </div>
         <div class="col-6 col-md-3">
-            <div class="card text-center border-danger">
-                <div class="card-body py-2">
-                    <div class="fs-4 fw-bold text-danger">{{ incorrect_picks }}</div>
-                    <small class="text-muted">Incorrect</small>
-                </div>
+            <div class="stat-block animate-in stagger-3">
+                <div class="stat-value" style="color: var(--cfb-lost-life);">{{ incorrect_picks }}</div>
+                <div class="stat-label">Incorrect</div>
             </div>
         </div>
         <div class="col-6 col-md-3">
-            <div class="card text-center">
-                <div class="card-body py-2">
-                    <div class="fs-4 fw-bold">{% if enrollment %}{{ "%.1f"|format(enrollment.cumulative_spread) }}{% else %}0.0{% endif %}</div>
-                    <small class="text-muted">Spread</small>
-                </div>
+            <div class="stat-block animate-in stagger-4">
+                <div class="stat-value">{% if enrollment %}{{ "%.1f"|format(enrollment.cumulative_spread) }}{% else %}0.0{% endif %}</div>
+                <div class="stat-label">Spread</div>
             </div>
         </div>
     </div>
@@ -68,7 +68,7 @@
                     {% if user_picks %}
                         <h5 class="mb-3">Regular Season & Conference Championships</h5>
                         <div class="table-responsive">
-                        <table class="table table-sm mb-4">
+                        <table class="table table-sm table-cfb mb-4">
                             <thead>
                                 <tr>
                                     <th>Week</th>
@@ -85,7 +85,7 @@
                                         <td>
                                             <strong>{{ pick.week_display.display_name if pick.week_display else 'Week ' + pick.week.week_number|string }}</strong>
                                             {% if pick.week.is_active %}
-                                                <span class="badge bg-primary" style="font-size: 0.6rem;">NOW</span>
+                                                <span class="badge bg-primary badge-xs">NOW</span>
                                             {% endif %}
                                         </td>
                                         <td>{{ pick.team.name }}</td>
@@ -99,9 +99,9 @@
                                         </td>
                                         <td>
                                             {% if pick.is_correct == True %}
-                                                <span class="badge bg-success">W</span>
+                                                <span class="badge badge-survived">W</span>
                                             {% elif pick.is_correct == False %}
-                                                <span class="badge bg-danger">L</span>
+                                                <span class="badge badge-lost-life">L</span>
                                             {% else %}
                                                 <span class="badge bg-secondary">--</span>
                                             {% endif %}
@@ -118,7 +118,7 @@
                         {% if playoff_picks %}
                         <h5 class="mb-3 text-danger">College Football Playoff</h5>
                         <div class="table-responsive">
-                        <table class="table table-sm">
+                        <table class="table table-sm table-cfb">
                             <thead>
                                 <tr>
                                     <th>Round</th>
@@ -133,7 +133,7 @@
                                     <td>
                                         <strong>{{ pick.week_display.display_name if pick.week_display else 'Week ' + pick.week.week_number|string }}</strong>
                                         {% if pick.week.is_active %}
-                                            <span class="badge bg-danger" style="font-size: 0.6rem;">NOW</span>
+                                            <span class="badge bg-danger badge-xs">NOW</span>
                                         {% endif %}
                                     </td>
                                     <td>{{ pick.team.name }}</td>
@@ -146,9 +146,9 @@
                                     </td>
                                     <td>
                                         {% if pick.is_correct == True %}
-                                            <span class="badge bg-success">W</span>
+                                            <span class="badge badge-survived">W</span>
                                         {% elif pick.is_correct == False %}
-                                            <span class="badge bg-danger">L</span>
+                                            <span class="badge badge-lost-life">L</span>
                                         {% else %}
                                             <span class="badge bg-secondary">--</span>
                                         {% endif %}
@@ -180,7 +180,7 @@
             {# Strategy Tips #}
             <div class="card mb-3">
                 <div class="card-body">
-                    <h5>Strategy Tips</h5>
+                    <h5 class="section-heading">Strategy Tips</h5>
                     <ul>
                         <li><strong>{{ available_teams|length }}</strong> teams available for {{ phase_description|default('future weeks') }}</li>
                         <li>Cumulative spread ({% if enrollment %}{{ "%.1f"|format(enrollment.cumulative_spread) }}{% else %}0.0{% endif %}) is the 2nd tiebreaker after lives</li>
@@ -205,15 +205,15 @@
                     <h5>Lives Remaining</h5>
                     {% if enrollment %}
                     <div class="d-flex align-items-center gap-3">
-                        <span>
+                        <span class="lives-indicator">
                             {% for i in range(enrollment.lives_remaining) %}
-                                <span class="text-success fs-4">&#9679;</span>
+                                <span class="life"></span>
                             {% endfor %}
                             {% for i in range(2 - enrollment.lives_remaining) %}
-                                <span class="text-danger fs-4">&#9679;</span>
+                                <span class="life lost"></span>
                             {% endfor %}
                         </span>
-                        <span class="text-muted">{{ enrollment.lives_remaining }} of 2 lives remaining</span>
+                        <span class="text-muted ms-2">{{ enrollment.lives_remaining }} of 2 lives remaining</span>
                     </div>
                     {% if enrollment.is_eliminated %}
                         <div class="alert alert-danger mt-2 mb-0">You have been eliminated from the pool.</div>
@@ -228,7 +228,7 @@
         {# Available Teams Column #}
         <div class="col-lg-5">
             <div class="card mb-3">
-                <div class="card-header bg-primary text-white">
+                <div class="card-header">
                     <h4 class="mb-0">{{ available_teams|length }} Teams Available</h4>
                 </div>
                 <div class="card-body">
@@ -355,9 +355,9 @@
                                     <small class="text-muted">({{ item.week_display|default('W' + item.week|string) }})</small>
                                 </span>
                                 {% if item.is_correct == True %}
-                                    <span class="badge bg-success" style="font-size: 0.6rem;">W</span>
+                                    <span class="badge badge-survived badge-xs">W</span>
                                 {% elif item.is_correct == False %}
-                                    <span class="badge bg-danger" style="font-size: 0.6rem;">L</span>
+                                    <span class="badge badge-lost-life badge-xs">L</span>
                                 {% endif %}
                             </div>
                         </div>
