@@ -1,16 +1,14 @@
 {% extends "base.html" %}
 
-{% block title %}Profile — Fantasy Platform{% endblock %}
+{% block title %}Profile — The Commissioner's Club{% endblock %}
 
 {% block content %}
 <div class="container my-5" style="max-width:600px;">
-    <div class="card shadow" style="border-top:4px solid var(--gold);">
+    <div class="card shadow auth-card">
         <div class="card-body p-4">
             <div class="text-center mb-4">
-                <div style="width:72px;height:72px;background:linear-gradient(135deg,var(--navy),var(--navy-mid));border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto .75rem;">
-                    <span style="font-size:2rem;color:var(--gold);">
-                        {{ current_user.get_display_name()[0].upper() }}
-                    </span>
+                <div class="avatar-circle">
+                    <span>{{ current_user.get_display_name()[0].upper() }}</span>
                 </div>
                 <h1 class="auth-title">{{ current_user.get_display_name() }}</h1>
                 <p class="auth-subtitle mb-0">

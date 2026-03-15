@@ -77,6 +77,7 @@ def inject_cfb_globals():
     helpers = get_display_helpers()
 
     return {
+        'body_class': 'game-cfb',
         'cfb_season_year': season_year,
         'cfb_entry_fee': entry_fee,
         'cfb_enrollment': cfb_enrollment,

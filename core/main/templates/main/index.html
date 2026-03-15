@@ -1,12 +1,12 @@
 {% extends "base.html" %}
 
-{% block title %}Fantasy Sports Platform{% endblock %}
+{% block title %}The Commissioner's Club{% endblock %}
 
 {% block content %}
 <!-- Hero -->
 <div class="home-hero text-center">
     <div class="container position-relative" style="z-index:1;">
-        <p class="hero-eyebrow">Commissioner's League Hub</p>
+        <p class="hero-eyebrow">The Commissioner's Club</p>
         <h1>
             Your Fantasy Games,
             <span class="gold-line">All in One Place.</span>
@@ -26,7 +26,7 @@
         </div>
         {% else %}
         <p class="hero-welcome">
-            Welcome back, <strong style="color:var(--gold);">{{ current_user.get_display_name() }}</strong>
+            Welcome back, <strong class="text-gold">{{ current_user.get_display_name() }}</strong>
         </p>
         {% endif %}
     </div>
@@ -41,26 +41,19 @@
     </div>
 
     <div class="row g-4 justify-content-center">
-        {% set colors = {'success': '#1A7A45', 'danger': '#C0392B', 'warning': '#D4A820'} %}
         {% for game in games %}
         <div class="col-sm-6 col-md-4 animate-in stagger-{{ loop.index }}">
-            <div class="card game-card h-100 border-{{ game.color }}">
+            <div class="card game-card h-100">
                 <div class="card-body text-center py-4 px-3">
-                    <span class="game-emoji">{{ game.emoji }}</span>
-                    <h5 class="card-title mb-2"
-                        style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:1.3rem;text-transform:uppercase;letter-spacing:.05em;">
-                        {{ game.name }}
-                    </h5>
-                    <p class="card-text text-muted" style="font-size:.88rem;line-height:1.5;">
-                        {{ game.description }}
-                    </p>
+                    <span class="game-icon">{{ game.emoji }}</span>
+                    <h5 class="game-title">{{ game.name }}</h5>
+                    <p class="game-desc">{{ game.description }}</p>
                 </div>
                 <div class="card-footer text-center bg-transparent py-3">
-                    <span class="badge"
-                          style="background:rgba({{ '26,122,69' if game.color=='success' else '192,57,43' if game.color=='danger' else '212,168,32' }},.12);
-                                 color:{{ colors.get(game.color, '#6B7A99') }};
-                                 border:1px solid {{ colors.get(game.color, '#6B7A99') }}33;
-                                 font-size:.8rem;padding:.4em .9em;">
+                    <span class="status-badge"
+                          style="background: rgba({% if game.color == 'success' %}26,122,69{% elif game.color == 'danger' %}192,57,43{% else %}212,168,32{% endif %},.12);
+                                 color: var(--{{ game.color }});
+                                 border: 1px solid rgba({% if game.color == 'success' %}26,122,69{% elif game.color == 'danger' %}192,57,43{% else %}212,168,32{% endif %},.25);">
                         {{ game.status }}
                     </span>
                 </div>

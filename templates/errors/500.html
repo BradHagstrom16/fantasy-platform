@@ -1,11 +1,9 @@
 {% extends "base.html" %}
-{% block title %}Server Error — Fantasy Platform{% endblock %}
+{% block title %}Server Error — The Commissioner's Club{% endblock %}
 {% block content %}
 <div class="text-center py-5" style="padding-top:5rem!important;">
-    <div style="font-size:5rem;line-height:1;font-family:'Barlow Condensed',sans-serif;font-weight:800;color:var(--border);">500</div>
-    <h2 style="font-family:'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:.06em;color:var(--navy);" class="mt-2 mb-3">
-        Something Went Wrong
-    </h2>
+    <div class="section-heading" style="font-size:5rem;color:var(--border);">500</div>
+    <h2 class="section-heading mt-2 mb-3">Something Went Wrong</h2>
     <p class="text-muted mb-4">An unexpected error occurred. Please try again.</p>
     <a href="{{ url_for('main.index') }}" class="btn btn-primary">
         <i class="bi bi-house me-1"></i> Go Home

@@ -56,6 +56,7 @@ def golf_admin_required(f):
 def inject_golf_globals():
     """Inject golf-specific variables into all golf templates."""
     return {
+        'body_class': 'game-golf',
         'golf_current_time': get_current_time(),
         'season_year': current_app.config['SEASON_YEAR'],
         'entry_fee': current_app.config['ENTRY_FEE'],
