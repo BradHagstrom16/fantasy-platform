@@ -102,7 +102,7 @@
                 </div>
                 <div class="card-body">
                     <div class="row g-2">
-                        {% for e in eliminated_enrollments|sort(attribute='get_display_name') %}
+                        {% for e in eliminated_enrollments %}
                         <div class="col-6 col-md-3">
                             <span class="badge badge-eliminated w-100 p-2">{{ e.get_display_name() }}</span>
                         </div>

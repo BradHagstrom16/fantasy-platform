@@ -163,10 +163,11 @@ def index():
         .all()
     )
 
-    eliminated_enrollments = (
+    eliminated_enrollments = sorted(
         CfbEnrollment.query
         .filter_by(season_year=season_year, is_eliminated=True)
-        .all()
+        .all(),
+        key=lambda e: e.get_display_name().lower(),
     )
 
     # Championship detection
