@@ -79,7 +79,8 @@ class SlashGolfAPI:
         self.api_key = api_key
         self.headers = {
             "X-RapidAPI-Key": api_key,
-            "X-RapidAPI-Host": api_host
+            "X-RapidAPI-Host": api_host,
+            "Accept": "application/json",
         }
         self.org_id = "1"  # PGA Tour
         self.sync_mode = (sync_mode or "standard").lower()
@@ -355,7 +356,16 @@ class TournamentSync:
 
             # Skip events that start on or after the season cutoff date
             try:
-                start_ts = int(event["date"]["start"]["$date"]["$numberLong"]) / 1000
+                start_val = event["date"]["start"]
+                # EJSON: {"$date": {"$numberLong": "..."}} — plain JSON: int (ms)
+                if isinstance(start_val, dict) and "$date" in start_val:
+                    date_inner = start_val["$date"]
+                    if isinstance(date_inner, dict) and "$numberLong" in date_inner:
+                        start_ts = int(date_inner["$numberLong"]) / 1000
+                    else:
+                        start_ts = int(date_inner) / 1000
+                else:
+                    start_ts = int(start_val) / 1000
                 start_date = datetime.fromtimestamp(start_ts, tz=pytz.UTC)
                 if start_date >= SEASON_CUTOFF_DATE:
                     continue
