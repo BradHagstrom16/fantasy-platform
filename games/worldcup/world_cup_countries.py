@@ -21,6 +21,7 @@ Fields:
     tier            — Integer 1-5
     multiplier      — Float scoring multiplier
     confederation   — AFC / CAF / CONCACAF / CONMEBOL / OFC / UEFA
+    group           — Group letter A-L (2026 FIFA World Cup draw, Dec 5, 2025)
     aliases         — List of common alternate names for search/display
 """
 
@@ -36,6 +37,7 @@ TEAMS = {
         "tier": 1,
         "multiplier": 1.0,
         "confederation": "UEFA",
+        "group": "H",
         "aliases": [],
     },
     "FRA": {
@@ -46,6 +48,7 @@ TEAMS = {
         "tier": 1,
         "multiplier": 1.0,
         "confederation": "UEFA",
+        "group": "I",
         "aliases": [],
     },
     "ENG": {
@@ -56,6 +59,7 @@ TEAMS = {
         "tier": 1,
         "multiplier": 1.0,
         "confederation": "UEFA",
+        "group": "L",
         "aliases": [],
     },
     "ARG": {
@@ -66,6 +70,7 @@ TEAMS = {
         "tier": 1,
         "multiplier": 1.0,
         "confederation": "CONMEBOL",
+        "group": "J",
         "aliases": [],
     },
     "BRA": {
@@ -76,6 +81,7 @@ TEAMS = {
         "tier": 1,
         "multiplier": 1.0,
         "confederation": "CONMEBOL",
+        "group": "C",
         "aliases": [],
     },
     "POR": {
@@ -86,6 +92,7 @@ TEAMS = {
         "tier": 1,
         "multiplier": 1.0,
         "confederation": "UEFA",
+        "group": "K",
         "aliases": [],
     },
     "GER": {
@@ -96,6 +103,7 @@ TEAMS = {
         "tier": 1,
         "multiplier": 1.0,
         "confederation": "UEFA",
+        "group": "E",
         "aliases": [],
     },
 
@@ -110,6 +118,7 @@ TEAMS = {
         "tier": 2,
         "multiplier": 1.5,
         "confederation": "UEFA",
+        "group": "F",
         "aliases": ["Holland"],
     },
     "NOR": {
@@ -120,6 +129,7 @@ TEAMS = {
         "tier": 2,
         "multiplier": 1.5,
         "confederation": "UEFA",
+        "group": "I",
         "aliases": [],
     },
     "BEL": {
@@ -130,6 +140,7 @@ TEAMS = {
         "tier": 2,
         "multiplier": 1.5,
         "confederation": "UEFA",
+        "group": "G",
         "aliases": [],
     },
     "COL": {
@@ -140,6 +151,7 @@ TEAMS = {
         "tier": 2,
         "multiplier": 1.5,
         "confederation": "CONMEBOL",
+        "group": "K",
         "aliases": [],
     },
 
@@ -154,6 +166,7 @@ TEAMS = {
         "tier": 3,
         "multiplier": 2.5,
         "confederation": "CONCACAF",
+        "group": "D",
         "aliases": ["US", "America", "USMNT"],
     },
     "MAR": {
@@ -164,6 +177,7 @@ TEAMS = {
         "tier": 3,
         "multiplier": 2.5,
         "confederation": "CAF",
+        "group": "C",
         "aliases": [],
     },
     "JPN": {
@@ -174,6 +188,7 @@ TEAMS = {
         "tier": 3,
         "multiplier": 2.5,
         "confederation": "AFC",
+        "group": "F",
         "aliases": [],
     },
     "URU": {
@@ -184,6 +199,7 @@ TEAMS = {
         "tier": 3,
         "multiplier": 2.5,
         "confederation": "CONMEBOL",
+        "group": "H",
         "aliases": [],
     },
     "MEX": {
@@ -194,6 +210,7 @@ TEAMS = {
         "tier": 3,
         "multiplier": 2.5,
         "confederation": "CONCACAF",
+        "group": "A",
         "aliases": [],
     },
     "SUI": {
@@ -204,6 +221,7 @@ TEAMS = {
         "tier": 3,
         "multiplier": 2.5,
         "confederation": "UEFA",
+        "group": "B",
         "aliases": [],
     },
     "TUR": {
@@ -214,6 +232,7 @@ TEAMS = {
         "tier": 3,
         "multiplier": 2.5,
         "confederation": "UEFA",
+        "group": "D",
         "aliases": ["Turkiye"],
     },
     "ECU": {
@@ -224,6 +243,7 @@ TEAMS = {
         "tier": 3,
         "multiplier": 2.5,
         "confederation": "CONMEBOL",
+        "group": "E",
         "aliases": [],
     },
     "SWE": {
@@ -234,6 +254,7 @@ TEAMS = {
         "tier": 3,
         "multiplier": 2.5,
         "confederation": "UEFA",
+        "group": "F",
         "aliases": [],
     },
     "CRO": {
@@ -244,6 +265,7 @@ TEAMS = {
         "tier": 3,
         "multiplier": 2.5,
         "confederation": "UEFA",
+        "group": "L",
         "aliases": [],
     },
     "SEN": {
@@ -254,6 +276,7 @@ TEAMS = {
         "tier": 3,
         "multiplier": 2.5,
         "confederation": "CAF",
+        "group": "I",
         "aliases": [],
     },
 
@@ -268,6 +291,7 @@ TEAMS = {
         "tier": 4,
         "multiplier": 4.0,
         "confederation": "UEFA",
+        "group": "J",
         "aliases": [],
     },
     "CAN": {
@@ -278,6 +302,7 @@ TEAMS = {
         "tier": 4,
         "multiplier": 4.0,
         "confederation": "CONCACAF",
+        "group": "B",
         "aliases": [],
     },
     "PAR": {
@@ -288,6 +313,7 @@ TEAMS = {
         "tier": 4,
         "multiplier": 4.0,
         "confederation": "CONMEBOL",
+        "group": "D",
         "aliases": [],
     },
     "CZE": {
@@ -298,6 +324,7 @@ TEAMS = {
         "tier": 4,
         "multiplier": 4.0,
         "confederation": "UEFA",
+        "group": "A",
         "aliases": ["Czechia"],
     },
     "SCO": {
@@ -308,6 +335,7 @@ TEAMS = {
         "tier": 4,
         "multiplier": 4.0,
         "confederation": "UEFA",
+        "group": "C",
         "aliases": [],
     },
     "CIV": {
@@ -318,6 +346,7 @@ TEAMS = {
         "tier": 4,
         "multiplier": 4.0,
         "confederation": "CAF",
+        "group": "E",
         "aliases": ["Cote d'Ivoire", "Côte d'Ivoire"],
     },
     "EGY": {
@@ -328,6 +357,7 @@ TEAMS = {
         "tier": 4,
         "multiplier": 4.0,
         "confederation": "CAF",
+        "group": "G",
         "aliases": [],
     },
     "GHA": {
@@ -338,6 +368,7 @@ TEAMS = {
         "tier": 4,
         "multiplier": 4.0,
         "confederation": "CAF",
+        "group": "L",
         "aliases": [],
     },
     "BIH": {
@@ -348,6 +379,7 @@ TEAMS = {
         "tier": 4,
         "multiplier": 4.0,
         "confederation": "UEFA",
+        "group": "B",
         "aliases": ["Bosnia", "Bosnia-Herzegovina"],
     },
     "ALG": {
@@ -358,6 +390,7 @@ TEAMS = {
         "tier": 4,
         "multiplier": 4.0,
         "confederation": "CAF",
+        "group": "J",
         "aliases": [],
     },
     "KOR": {
@@ -368,6 +401,7 @@ TEAMS = {
         "tier": 4,
         "multiplier": 4.0,
         "confederation": "AFC",
+        "group": "A",
         "aliases": ["Korea", "Republic of Korea"],
     },
 
@@ -382,6 +416,7 @@ TEAMS = {
         "tier": 5,
         "multiplier": 7.0,
         "confederation": "AFC",
+        "group": "G",
         "aliases": ["Islamic Republic of Iran"],
     },
     "AUS": {
@@ -392,6 +427,7 @@ TEAMS = {
         "tier": 5,
         "multiplier": 7.0,
         "confederation": "AFC",
+        "group": "D",
         "aliases": [],
     },
     "TUN": {
@@ -402,6 +438,7 @@ TEAMS = {
         "tier": 5,
         "multiplier": 7.0,
         "confederation": "CAF",
+        "group": "F",
         "aliases": [],
     },
     "COD": {
@@ -412,6 +449,7 @@ TEAMS = {
         "tier": 5,
         "multiplier": 7.0,
         "confederation": "CAF",
+        "group": "K",
         "aliases": [
             "Democratic Republic of the Congo",
             "Congo DR",
@@ -426,6 +464,7 @@ TEAMS = {
         "tier": 5,
         "multiplier": 7.0,
         "confederation": "AFC",
+        "group": "H",
         "aliases": [],
     },
     "RSA": {
@@ -436,6 +475,7 @@ TEAMS = {
         "tier": 5,
         "multiplier": 7.0,
         "confederation": "CAF",
+        "group": "A",
         "aliases": [],
     },
     "PAN": {
@@ -446,6 +486,7 @@ TEAMS = {
         "tier": 5,
         "multiplier": 7.0,
         "confederation": "CONCACAF",
+        "group": "L",
         "aliases": [],
     },
     "QAT": {
@@ -456,6 +497,7 @@ TEAMS = {
         "tier": 5,
         "multiplier": 7.0,
         "confederation": "AFC",
+        "group": "B",
         "aliases": [],
     },
     "IRQ": {
@@ -466,6 +508,7 @@ TEAMS = {
         "tier": 5,
         "multiplier": 7.0,
         "confederation": "AFC",
+        "group": "I",
         "aliases": [],
     },
     "NZL": {
@@ -476,6 +519,7 @@ TEAMS = {
         "tier": 5,
         "multiplier": 7.0,
         "confederation": "OFC",
+        "group": "G",
         "aliases": [],
     },
     "CPV": {
@@ -486,6 +530,7 @@ TEAMS = {
         "tier": 5,
         "multiplier": 7.0,
         "confederation": "CAF",
+        "group": "H",
         "aliases": ["Cabo Verde", "Cape Verde Islands"],
     },
     "UZB": {
@@ -496,6 +541,7 @@ TEAMS = {
         "tier": 5,
         "multiplier": 7.0,
         "confederation": "AFC",
+        "group": "K",
         "aliases": [],
     },
     "JOR": {
@@ -506,6 +552,7 @@ TEAMS = {
         "tier": 5,
         "multiplier": 7.0,
         "confederation": "AFC",
+        "group": "J",
         "aliases": [],
     },
     "CUW": {
@@ -516,6 +563,7 @@ TEAMS = {
         "tier": 5,
         "multiplier": 7.0,
         "confederation": "CONCACAF",
+        "group": "E",
         "aliases": ["Curaçao"],
     },
     "HAI": {
@@ -526,6 +574,7 @@ TEAMS = {
         "tier": 5,
         "multiplier": 7.0,
         "confederation": "CONCACAF",
+        "group": "C",
         "aliases": [],
     },
 }
@@ -543,6 +592,25 @@ TIERS = {
 }
 
 TOTAL_PICKS = sum(t["picks"] for t in TIERS.values())  # 9
+
+
+# =============================================================================
+# GROUP ASSIGNMENTS — 2026 FIFA World Cup Draw (Dec 5, 2025)
+# =============================================================================
+GROUPS = {
+    "A": ["MEX", "RSA", "KOR", "CZE"],
+    "B": ["CAN", "BIH", "QAT", "SUI"],
+    "C": ["BRA", "MAR", "HAI", "SCO"],
+    "D": ["USA", "PAR", "AUS", "TUR"],
+    "E": ["GER", "CUW", "CIV", "ECU"],
+    "F": ["NED", "JPN", "SWE", "TUN"],
+    "G": ["BEL", "EGY", "IRN", "NZL"],
+    "H": ["ESP", "CPV", "KSA", "URU"],
+    "I": ["FRA", "SEN", "NOR", "IRQ"],
+    "J": ["ARG", "ALG", "AUT", "JOR"],
+    "K": ["POR", "COD", "UZB", "COL"],
+    "L": ["ENG", "CRO", "GHA", "PAN"],
+}
 
 
 # =============================================================================
@@ -576,6 +644,12 @@ def teams_in_tier(tier: int) -> list[dict]:
         [t for t in TEAMS.values() if t["tier"] == tier],
         key=lambda t: t["display_name"],
     )
+
+
+def teams_in_group(group: str) -> list[dict]:
+    """Return all teams in the given group (A-L), in draw order."""
+    codes = GROUPS.get(group.upper(), [])
+    return [TEAMS[code] for code in codes if code in TEAMS]
 
 
 # =============================================================================
@@ -619,6 +693,21 @@ def _validate():
 
     # Total team count
     assert len(TEAMS) == 48, f"Expected 48 teams, got {len(TEAMS)}"
+
+    # Group assignments
+    all_grouped = set()
+    for group_letter, codes in GROUPS.items():
+        assert len(codes) == 4, f"Group {group_letter}: expected 4 teams, got {len(codes)}"
+        for code in codes:
+            assert code in TEAMS, f"Group {group_letter}: unknown team code {code}"
+            assert TEAMS[code]["group"] == group_letter, (
+                f"Group mismatch for {code}: GROUPS says {group_letter}, "
+                f"team record says {TEAMS[code].get('group')}"
+            )
+            assert code not in all_grouped, f"Team {code} appears in multiple groups"
+            all_grouped.add(code)
+    assert len(all_grouped) == 48, f"Groups contain {len(all_grouped)} teams, expected 48"
+    assert len(GROUPS) == 12, f"Expected 12 groups, got {len(GROUPS)}"
 
 
 _validate()
