@@ -26,6 +26,14 @@ from games.cfb.models import (
     CfbPick,
 )
 
+# World Cup Fantasy Pool models
+from games.worldcup.models import (
+    WorldCupEnrollment,
+    WorldCupTeam,
+    WorldCupMatch,
+    WorldCupPick,
+)
+
 __all__ = [
     'User',
     'GolfEnrollment',
@@ -40,4 +48,8 @@ __all__ = [
     'CfbWeek',
     'CfbGame',
     'CfbPick',
+    'WorldCupEnrollment',
+    'WorldCupTeam',
+    'WorldCupMatch',
+    'WorldCupPick',
 ]

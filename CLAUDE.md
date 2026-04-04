@@ -119,7 +119,8 @@ A unified fantasy sports platform consolidating multiple games under one domain,
 **Active games:**
 - `games/golf/` — Golf Pick 'Em (Phase 1 ✅)
 - `games/cfb/` — CFB Survivor Pool (Phase 2 ✅)
-- `games/masters/` — Masters Fantasy (Phase 3, not started)
+- `games/worldcup/` — World Cup Fantasy Pool (Phase 4 🔄)
+- `games/masters/` — Masters Fantasy (TBD)
 
 ---
 
@@ -147,6 +148,13 @@ FLASK_APP=app.py venv/bin/flask cfb sync --mode scores      # Fetch scores, auto
 FLASK_APP=app.py venv/bin/flask cfb sync --mode autopick    # Process auto-picks for past-deadline weeks
 FLASK_APP=app.py venv/bin/flask cfb sync --mode remind      # Send email reminders (Fri/Sat only)
 FLASK_APP=app.py venv/bin/flask cfb sync --mode status      # Print season summary
+
+# World Cup CLI
+FLASK_APP=app.py venv/bin/flask worldcup seed-teams    # Populate teams from world_cup_countries.py
+FLASK_APP=app.py venv/bin/flask worldcup seed-matches   # Seed all 104 match shells
+FLASK_APP=app.py venv/bin/flask worldcup init            # Seed teams + matches (fresh setup)
+FLASK_APP=app.py venv/bin/flask worldcup recalc          # Recalculate all scores (idempotent)
+FLASK_APP=app.py venv/bin/flask worldcup status          # Print tournament state summary
 
 # Type checking
 venv/bin/pyright                                  # Full project (target: 0 errors)

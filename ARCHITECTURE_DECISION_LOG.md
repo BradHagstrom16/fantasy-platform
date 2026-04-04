@@ -32,6 +32,10 @@
 | ADR-021 | Mobile UI overhaul timing | Phase 3b (dedicated pass), Baked into Phase 3a | **Baked into Phase 3a** | Phase 3a handoff files included comprehensive mobile directives (dual-render tables, 44px touch targets, no horizontal scroll, card-based pick submission). Treated as complete. Dedicated mobile polish deferred indefinitely — revisit if user feedback surfaces specific issues. | 2026-03-18 | Yes |
 | ADR-022 | Platform go-live trigger | After Golf/CFB polish, After World Cup game build | **World Cup Fantasy game as go-live target** | Rather than deploying Golf + CFB to PA and migrating users twice, build the World Cup game first, deploy everything together, and use the 2026 World Cup (June–July) as the platform launch event. Gives a clean go-live moment with a new game none of Brad's users have played before. | 2026-03-18 | Yes |
 | ADR-023 | World Cup Fantasy game design | Design inline with build, Design-first in separate session | **Design-first in a dedicated game design chat** | Game mechanics must be locked before a handoff file can be written. A separate chat avoids mixing exploratory game design with implementation context. Game spec produced there becomes input to the Phase 4 implementation chat. | 2026-03-18 | N/A |
+| ADR-024 | World Cup score storage | Separate TeamResult/Score tables, Denormalized on team + pick | **Denormalized on team + pick (4 tables, not 6)** | 48 teams and ≤50 players. Separate TeamResult and Score tables add complexity without performance benefit. Every number rebuildable via `flask worldcup recalc`. | 2026-04-03 | Yes |
+| ADR-025 | World Cup match pre-seeding | Create matches as played, All 104 matches seeded at init | **All 104 matches seeded at init, knockouts as shells** | Reduces admin work during tournament. Admin enters scores for existing records instead of creating each match. Knockout teams filled in as bracket resolves. | 2026-04-03 | Yes |
+| ADR-026 | World Cup leaderboard access | Login required, Public | **Public (no login required)** | Doubles as marketing — players share link with friends. Enrollment required only for pick submission. | 2026-04-03 | Yes |
+| ADR-027 | World Cup admin scoping | Platform admin, Enrollment-scoped | **Enrollment-scoped (CFB pattern)** | `WorldCupEnrollment.is_admin`, not `User.is_admin`. Consistent with CFB and the platform's game admin ≠ platform admin principle. | 2026-04-03 | Yes |
 
 ---
 
@@ -101,7 +105,7 @@
 | 1 | Port Golf Pick 'Em blueprint | March 2026 | ✅ **Complete** |
 | 2 | Port CFB Survivor blueprint | March 2026 | ✅ **Complete** |
 | 3 | UI/Design upgrade + mobile | March 2026 | ✅ **Complete** |
-| 4 | Design + build World Cup Fantasy game | April–May 2026 | 🔄 **In progress — design phase** |
+| 4 | Design + build World Cup Fantasy game | April–May 2026 | 🔄 **In progress — 4A foundation** |
 | 5 | Go live on PythonAnywhere — World Cup launch | June 2026 | ⬜ Not started |
 | 6 | Golf cutover to unified platform | August 2026 | ⬜ Not started |
 | 7 | CFB Survivor on unified platform | September 1, 2026 | ⬜ Not started |

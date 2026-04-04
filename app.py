@@ -61,6 +61,14 @@ def create_app(config_name=None):
     from games.cfb.cli import register_cfb_cli
     register_cfb_cli(app)
 
+    # Register World Cup Fantasy blueprint
+    from games.worldcup import worldcup_bp
+    app.register_blueprint(worldcup_bp)
+
+    # Register World Cup CLI commands
+    from games.worldcup.cli import register_worldcup_cli
+    register_worldcup_cli(app)
+
     # Error handlers
     @app.errorhandler(404)
     def not_found(e):

@@ -41,7 +41,7 @@
                            href="{{ url_for('main.index') }}">Home</a>
                     </li>
                     <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle {% if request.blueprint == 'golf' or request.blueprint == 'cfb' %}active{% endif %}"
+                        <a class="nav-link dropdown-toggle {% if request.blueprint == 'golf' or request.blueprint == 'cfb' or request.blueprint == 'worldcup' %}active{% endif %}"
                            href="#" role="button" data-bs-toggle="dropdown">
                             Games
                         </a>
@@ -54,6 +54,11 @@
                             <li>
                                 <a class="dropdown-item" href="{{ url_for('cfb.index') }}">
                                     <i class="bi bi-trophy me-2"></i>CFB Survivor Pool
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="{{ url_for('worldcup.index') }}">
+                                    <i class="bi bi-globe2 me-2"></i>World Cup Fantasy
                                 </a>
                             </li>
                             <!-- Future games will be added here -->
@@ -88,6 +93,22 @@
                     <li class="nav-item">
                         <a class="nav-link {% if request.endpoint == 'cfb.my_picks' %}active{% endif %}"
                            href="{{ url_for('cfb.my_picks') }}">My Picks</a>
+                    </li>
+                    {% endif %}
+                    {% endif %}
+                    {% if request.blueprint == 'worldcup' %}
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.endpoint == 'worldcup.index' %}active{% endif %}"
+                           href="{{ url_for('worldcup.index') }}">Dashboard</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.endpoint == 'worldcup.leaderboard' %}active{% endif %}"
+                           href="{{ url_for('worldcup.leaderboard') }}">Leaderboard</a>
+                    </li>
+                    {% if current_user.is_authenticated %}
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.endpoint == 'worldcup.picks' %}active{% endif %}"
+                           href="{{ url_for('worldcup.picks') }}">My Picks</a>
                     </li>
                     {% endif %}
                     {% endif %}

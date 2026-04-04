@@ -80,10 +80,10 @@ See `CLAUDE.md` for the full step-by-step process. In brief:
 
 | Game | Status |
 |---|---|
-| Golf Pick 'Em | Phase 1 |
-| CFB Survivor Pool | Phase 2 |
-| Masters Fantasy | Phase 3 |
-| Olympics Pool | TBD |
+| Golf Pick 'Em | Phase 1 (Complete) |
+| CFB Survivor Pool | Phase 2 (Complete) |
+| World Cup Fantasy Pool | Phase 4 (Active) |
+| Masters Fantasy | TBD |
 
 ## Reference
 
