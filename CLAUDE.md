@@ -155,13 +155,18 @@ FLASK_APP=app.py venv/bin/flask worldcup seed-matches   # Seed all 104 match she
 FLASK_APP=app.py venv/bin/flask worldcup init            # Seed teams + matches (fresh setup)
 FLASK_APP=app.py venv/bin/flask worldcup recalc          # Recalculate all scores (idempotent)
 FLASK_APP=app.py venv/bin/flask worldcup status          # Print tournament state summary
+FLASK_APP=app.py venv/bin/flask worldcup process-match   # Enter match result (dev/testing)
 
 # Type checking
 venv/bin/pyright                                  # Full project (target: 0 errors)
 venv/bin/pyright games/golf/services/sync.py      # Check specific file
+
+# Tests
+venv/bin/python -m pytest tests/                          # Run all tests
+venv/bin/python -m pytest tests/test_worldcup_scoring.py  # World Cup scoring tests only
 ```
 
-No test suite. No linter configured.
+No linter configured.
 
 ---
 
@@ -214,7 +219,9 @@ fantasy-platform/
 │   └── main/               # Home page
 ├── games/
 │   ├── golf/               # Golf Pick 'Em blueprint
-│   └── cfb/                # CFB Survivor Pool blueprint
+│   ├── cfb/                # CFB Survivor Pool blueprint
+│   └── worldcup/           # World Cup Fantasy Pool blueprint
+├── tests/                   # pytest test suite
 ├── templates/
 │   ├── base.html           # Platform base template
 │   └── errors/             # 404, 500
