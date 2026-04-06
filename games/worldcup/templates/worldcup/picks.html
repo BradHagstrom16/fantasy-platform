@@ -1,0 +1,270 @@
+{% extends "base.html" %}
+{% block title %}My Picks — World Cup Fantasy Pool{% endblock %}
+
+{% block content %}
+<div class="page-hero">
+  <div class="hero-glow"></div>
+  <div class="container">
+    <h1>{% if deadline_passed %}Your Picks{% else %}Submit Your Picks{% endif %}</h1>
+    <p class="lead mb-0">
+      {% if deadline_passed %}
+        Picks are locked. The tournament is underway.
+      {% else %}
+        Deadline: <strong>{{ deadline_ct.strftime('%b %-d, %Y at %-I:%M %p CT') }}</strong>
+      {% endif %}
+    </p>
+  </div>
+</div>
+
+<div class="container pb-5">
+
+{% if deadline_passed %}
+  {# ══════════════════════════════════════════════════
+     POST-DEADLINE — Read-Only View
+     ══════════════════���═══════════════════════════════ #}
+  <div class="row justify-content-center">
+    <div class="col-lg-8">
+
+      {% if existing_picks %}
+      <div class="card border-0 shadow-sm mb-4 animate-in">
+        <div class="card-header d-flex align-items-center justify-content-between">
+          <h4 class="mb-0"><i class="bi bi-check2-square me-2"></i>Your 9 Picks</h4>
+          <span class="fw-bold" style="font-family:'Teko',sans-serif; font-size:1.3rem; letter-spacing:.03em;">
+            Total: {{ "%.1f"|format(enrollment.total_score) }} pts
+          </span>
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-worldcup mb-0">
+              <thead>
+                <tr>
+                  <th>Team</th>
+                  <th>Tier</th>
+                  <th class="text-center">Multiplier</th>
+                  <th class="text-end">Base</th>
+                  <th class="text-end">Points</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for pick in existing_picks %}
+                <tr>
+                  <td class="fw-medium">{{ pick.team.display_name }}</td>
+                  <td><span class="tier-badge tier-badge-{{ pick.tier }}">{{ tiers[pick.tier]['name'] }}</span></td>
+                  <td class="text-center"><span class="multiplier-badge">&times;{{ pick.team.multiplier }}</span></td>
+                  <td class="text-end">{{ "%.1f"|format(pick.base_points) }}</td>
+                  <td class="text-end fw-bold">{{ "%.1f"|format(pick.multiplied_points) }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      {% if enrollment.usa_goals_guess is not none %}
+      <div class="card border-0 shadow-sm animate-in stagger-1">
+        <div class="card-body p-3 d-flex align-items-center justify-content-between">
+          <span class="text-muted"><i class="bi bi-bullseye me-2"></i>USA Goals Tiebreaker</span>
+          <span class="fw-bold" style="font-family:'Teko',sans-serif; font-size:1.2rem;">{{ enrollment.usa_goals_guess }}</span>
+        </div>
+      </div>
+      {% endif %}
+
+      {% else %}
+      <div class="text-center py-5 text-muted">
+        <i class="bi bi-x-circle" style="font-size:2.5rem; opacity:.3;"></i>
+        <p class="mt-2">You did not submit picks before the deadline.</p>
+      </div>
+      {% endif %}
+
+    </div>
+  </div>
+
+{% else %}
+  {# ═══════════════════════════════════════���══════════
+     PRE-DEADLINE — Pick Form
+     ═════════════��════════════════════════════════════ #}
+  <form method="POST" id="pickForm">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+
+    <div class="row">
+      <div class="col-lg-8">
+
+        {% for tier_num in range(1, 6) %}
+        {% set tier = tiers[tier_num] %}
+        {% set tier_teams = teams_by_tier.get(tier_num, []) %}
+        <div class="tier-card animate-in stagger-{{ tier_num }}">
+          <div class="tier-card-header">
+            <h3>
+              <span class="tier-badge tier-badge-{{ tier_num }}">Tier {{ tier_num }}</span>
+              {{ tier['name'] }}
+              <span class="multiplier-badge ms-1">&times;{{ tier['multiplier'] }}</span>
+            </h3>
+            <span class="tier-counter" id="counter-{{ tier_num }}">
+              0/{{ tier['picks'] }} selected
+            </span>
+          </div>
+          <div class="tier-card-body">
+            {% for team in tier_teams %}
+            <div class="wc-team-card {% if team.id in selected_team_ids %}selected{% endif %}"
+                 data-team-id="{{ team.id }}"
+                 data-tier="{{ tier_num }}"
+                 onclick="toggleTeam(this)">
+              <input type="checkbox" name="tier_{{ tier_num }}" value="{{ team.id }}"
+                     class="d-none team-checkbox"
+                     {% if team.id in selected_team_ids %}checked{% endif %}>
+              <span class="team-name">{{ team.display_name }}</span>
+              <span class="team-meta">
+                <span>Group {{ team.group_letter }}</span>
+                <span>&middot;</span>
+                <span>{{ team.confederation }}</span>
+              </span>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+        {% endfor %}
+
+      </div>
+
+      {# ── Sidebar: Summary + Tiebreaker + Submit ── #}
+      <div class="col-lg-4">
+        <div class="position-sticky" style="top:1rem;">
+
+          <div class="pick-summary animate-in stagger-2" id="pickSummary">
+            <h4><i class="bi bi-list-check me-2"></i>Pick Summary</h4>
+            <ul class="pick-summary-list" id="summaryList">
+              <li class="text-muted" id="summaryEmpty">Select your 9 teams...</li>
+            </ul>
+            <div class="mt-3 text-end fw-bold" style="font-family:'Teko',sans-serif; font-size:1.1rem; letter-spacing:.03em;" id="summaryCount">
+              0/9 picks
+            </div>
+          </div>
+
+          <div class="card border-0 shadow-sm mt-3">
+            <div class="card-body p-3">
+              <label for="usa_goals_guess" class="form-label fw-medium">
+                <i class="bi bi-bullseye me-2"></i>USA Goals Tiebreaker
+              </label>
+              <p class="text-muted small mb-2">
+                How many total goals will the USA score in the tournament?
+              </p>
+              <input type="number" class="form-control" id="usa_goals_guess" name="usa_goals_guess"
+                     min="0" step="1" placeholder="e.g. 7"
+                     value="{{ usa_goals_guess if usa_goals_guess is not none and usa_goals_guess != '' else '' }}"
+                     oninput="updateSubmitState()">
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-game btn-lg w-100 mt-3" id="submitBtn" disabled>
+            <i class="bi bi-check-lg me-2"></i>Submit Picks
+          </button>
+          <p class="text-muted small text-center mt-2">
+            You can change picks until the deadline.
+          </p>
+
+        </div>
+      </div>
+    </div>
+  </form>
+{% endif %}
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+{% if not deadline_passed %}
+<script>
+(function() {
+  const TIER_REQUIREMENTS = {{ tiers|tojson }};
+  const TOTAL_REQUIRED = 9;
+
+  function getTierSelections() {
+    const selections = {};
+    for (let t = 1; t <= 5; t++) {
+      selections[t] = document.querySelectorAll(
+        `.wc-team-card[data-tier="${t}"].selected`
+      ).length;
+    }
+    return selections;
+  }
+
+  window.toggleTeam = function(card) {
+    const tier = parseInt(card.dataset.tier);
+    const cb = card.querySelector('.team-checkbox');
+    const isSelected = card.classList.contains('selected');
+    const tierReq = TIER_REQUIREMENTS[tier].picks;
+    const currentCount = getTierSelections()[tier];
+
+    if (!isSelected && currentCount >= tierReq) {
+      // Tier full — flash the counter
+      const counter = document.getElementById('counter-' + tier);
+      counter.style.color = 'var(--game-accent)';
+      setTimeout(() => counter.style.color = '', 400);
+      return;
+    }
+
+    card.classList.toggle('selected');
+    cb.checked = !isSelected;
+    updateCounters();
+    updateSummary();
+    updateSubmitState();
+  };
+
+  function updateCounters() {
+    const sel = getTierSelections();
+    for (let t = 1; t <= 5; t++) {
+      const counter = document.getElementById('counter-' + t);
+      const req = TIER_REQUIREMENTS[t].picks;
+      counter.textContent = sel[t] + '/' + req + ' selected';
+      counter.classList.toggle('complete', sel[t] === req);
+    }
+  }
+
+  function updateSummary() {
+    const list = document.getElementById('summaryList');
+    const empty = document.getElementById('summaryEmpty');
+    const count = document.getElementById('summaryCount');
+    const selected = document.querySelectorAll('.wc-team-card.selected');
+
+    // Clear
+    list.innerHTML = '';
+
+    if (selected.length === 0) {
+      list.innerHTML = '<li class="text-muted" id="summaryEmpty">Select your 9 teams...</li>';
+    } else {
+      selected.forEach(card => {
+        const li = document.createElement('li');
+        const name = card.querySelector('.team-name').textContent;
+        const tier = card.dataset.tier;
+        li.innerHTML = '<span>' + name + '</span><span class="tier-badge tier-badge-' + tier + '">' + TIER_REQUIREMENTS[tier].name + '</span>';
+        list.appendChild(li);
+      });
+    }
+
+    count.textContent = selected.length + '/' + TOTAL_REQUIRED + ' picks';
+  }
+
+  window.updateSubmitState = function() {
+    const btn = document.getElementById('submitBtn');
+    const sel = getTierSelections();
+    const goalsInput = document.getElementById('usa_goals_guess');
+    const goalsVal = goalsInput.value.trim();
+
+    let allTiersOk = true;
+    for (let t = 1; t <= 5; t++) {
+      if (sel[t] !== TIER_REQUIREMENTS[t].picks) allTiersOk = false;
+    }
+
+    const goalsOk = goalsVal !== '' && /^\d+$/.test(goalsVal) && parseInt(goalsVal) >= 0;
+    btn.disabled = !(allTiersOk && goalsOk);
+  };
+
+  // Init on load
+  updateCounters();
+  updateSummary();
+  updateSubmitState();
+})();
+</script>
+{% endif %}
+{% endblock %}

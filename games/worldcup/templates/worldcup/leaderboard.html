@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}Leaderboard — World Cup Fantasy Pool{% endblock %}
+
+{% block content %}
+<div class="page-hero">
+  <div class="hero-glow"></div>
+  <div class="container">
+    <h1>Leaderboard</h1>
+    <p class="lead mb-0">{{ total_players }} player{{ 's' if total_players != 1 }} &mdash; 2026 FIFA World Cup</p>
+  </div>
+</div>
+
+<div class="container pb-5">
+  {% if ranked_enrollments %}
+
+  {# Desktop table #}
+  <div class="card border-0 shadow-sm d-none d-md-block animate-in">
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-worldcup mb-0">
+          <thead>
+            <tr>
+              <th style="width:60px">#</th>
+              <th>Player</th>
+              <th class="text-end">Points</th>
+              <th class="text-end">Tiebreaker</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in ranked_enrollments %}
+            {% set e = item.enrollment %}
+            <tr {% if current_user.is_authenticated and e.user_id == current_user.id %}class="row-current-user"{% endif %}>
+              <td class="fw-bold">{{ item.rank }}</td>
+              <td>
+                <a href="{{ url_for('worldcup.player_detail', enrollment_id=e.id) }}" class="text-decoration-none fw-medium">
+                  {{ e.get_display_name() }}
+                </a>
+              </td>
+              <td class="text-end fw-bold">{{ "%.1f"|format(e.total_score) }}</td>
+              <td class="text-end text-muted">{{ e.usa_goals_guess if e.usa_goals_guess is not none else '—' }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  {# Mobile cards #}
+  <div class="d-md-none">
+    {% for item in ranked_enrollments %}
+    {% set e = item.enrollment %}
+    <div class="card border-0 shadow-sm mb-2 {% if current_user.is_authenticated and e.user_id == current_user.id %}border-start border-3{% endif %} animate-in"
+         {% if current_user.is_authenticated and e.user_id == current_user.id %}style="border-color:var(--game-accent) !important;"{% endif %}>
+      <div class="card-body p-3 d-flex align-items-center justify-content-between">
+        <div class="d-flex align-items-center gap-3">
+          <span class="fw-bold text-muted" style="font-family:'Teko',sans-serif; font-size:1.3rem; min-width:2rem;">{{ item.rank }}</span>
+          <div>
+            <a href="{{ url_for('worldcup.player_detail', enrollment_id=e.id) }}" class="text-decoration-none fw-medium d-block">
+              {{ e.get_display_name() }}
+            </a>
+            {% if e.usa_goals_guess is not none %}
+            <small class="text-muted">TB: {{ e.usa_goals_guess }}</small>
+            {% endif %}
+          </div>
+        </div>
+        <span class="fw-bold" style="font-family:'Teko',sans-serif; font-size:1.4rem; letter-spacing:.03em;">
+          {{ "%.1f"|format(e.total_score) }}
+        </span>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  {% else %}
+  <div class="text-center py-5 text-muted animate-in">
+    <i class="bi bi-trophy" style="font-size:3rem; opacity:.3;"></i>
+    <p class="mt-3 mb-0">No players enrolled yet. <a href="{{ url_for('worldcup.join') }}">Be the first!</a></p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

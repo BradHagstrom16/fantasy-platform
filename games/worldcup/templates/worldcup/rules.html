@@ -1,0 +1,219 @@
+{% extends "base.html" %}
+{% block title %}Rules — World Cup Fantasy Pool{% endblock %}
+
+{% block content %}
+<div class="page-hero">
+  <div class="hero-glow"></div>
+  <div class="container">
+    <h1>Rules &amp; Scoring</h1>
+    <p class="lead mb-0">How the World Cup Fantasy Pool works</p>
+  </div>
+</div>
+
+<div class="container pb-5">
+  <div class="row justify-content-center">
+    <div class="col-lg-9">
+
+      {# ── How It Works ── #}
+      <div class="card border-0 shadow-sm mb-4 animate-in">
+        <div class="card-body p-4">
+          <h3 class="mb-3" style="font-family:'Teko',sans-serif; text-transform:uppercase; letter-spacing:.04em;">
+            <i class="bi bi-globe2 me-2"></i>How It Works
+          </h3>
+          <p>Each player selects <strong>9 national teams</strong> across 5 tiers before the tournament starts. Points accumulate as those teams win matches and advance through the bracket. Lower-tier teams carry higher multipliers.</p>
+          <p class="mb-0">Entry fee: <strong>${{ entry_fee }}</strong>. Picks lock at first match kickoff.</p>
+        </div>
+      </div>
+
+      {# ── Tier Structure ── #}
+      <div class="card border-0 shadow-sm mb-4 animate-in stagger-1">
+        <div class="card-body p-4">
+          <h3 class="mb-3" style="font-family:'Teko',sans-serif; text-transform:uppercase; letter-spacing:.04em;">
+            <i class="bi bi-layers me-2"></i>Tier Structure
+          </h3>
+          <div class="table-responsive">
+            <table class="table table-worldcup mb-0">
+              <thead>
+                <tr>
+                  <th>Tier</th>
+                  <th>Name</th>
+                  <th class="text-center">Picks</th>
+                  <th class="text-center">Multiplier</th>
+                  <th>Teams</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% set tier_teams = {
+                  1: 'Spain, France, England, Argentina, Brazil, Portugal, Germany',
+                  2: 'Netherlands, Norway, Belgium, Colombia',
+                  3: 'USA, Morocco, Japan, Uruguay, Mexico, Switzerland, Turkey, Ecuador, Sweden, Croatia, Senegal',
+                  4: 'Austria, Canada, Paraguay, Czech Republic, Scotland, Ivory Coast, Egypt, Ghana, Bosnia & Herzegovina, Algeria, South Korea',
+                  5: 'Iran, Australia, Tunisia, DR Congo, Saudi Arabia, South Africa, Panama, Qatar, Iraq, New Zealand, Cape Verde, Uzbekistan, Jordan, Curacao, Haiti'
+                } %}
+                {% for tier_num in range(1, 6) %}
+                <tr>
+                  <td><span class="tier-badge tier-badge-{{ tier_num }}">{{ tier_num }}</span></td>
+                  <td class="fw-medium">{{ tiers[tier_num]['name'] }}</td>
+                  <td class="text-center">{{ tiers[tier_num]['picks'] }}</td>
+                  <td class="text-center"><span class="multiplier-badge">&times;{{ tiers[tier_num]['multiplier'] }}</span></td>
+                  <td><small class="text-muted">{{ tier_teams[tier_num] }}</small></td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      {# ── Group Stage Scoring ── #}
+      <div class="card border-0 shadow-sm mb-4 animate-in stagger-2">
+        <div class="card-body p-4">
+          <h3 class="mb-3" style="font-family:'Teko',sans-serif; text-transform:uppercase; letter-spacing:.04em;">
+            <i class="bi bi-calendar3 me-2"></i>Group Stage Scoring
+          </h3>
+
+          <h5 class="mb-2">Match Results</h5>
+          <div class="table-responsive mb-4">
+            <table class="table table-worldcup mb-0">
+              <thead>
+                <tr>
+                  <th>Result</th>
+                  <th class="text-center">Base Points</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td>Win</td><td class="text-center fw-bold">3</td></tr>
+                <tr><td>Draw</td><td class="text-center fw-bold">1</td></tr>
+                <tr><td>Loss</td><td class="text-center fw-bold">0</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h5 class="mb-2">Advancement Milestones</h5>
+          <div class="table-responsive">
+            <table class="table table-worldcup mb-0">
+              <thead>
+                <tr>
+                  <th>Milestone</th>
+                  <th>How Earned</th>
+                  <th class="text-center">Base Points</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td>Win Group</td><td>Finish 1st in group</td><td class="text-center fw-bold">{{ advance_group_winner }}</td></tr>
+                <tr><td>Runner-Up</td><td>Finish 2nd in group</td><td class="text-center fw-bold">{{ advance_runner_up }}</td></tr>
+                <tr><td>Best 3rd</td><td>Finish 3rd, among best 8 of 12</td><td class="text-center fw-bold">{{ advance_best_third }}</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      {# ── Knockout Scoring ── #}
+      <div class="card border-0 shadow-sm mb-4 animate-in stagger-3">
+        <div class="card-body p-4">
+          <h3 class="mb-3" style="font-family:'Teko',sans-serif; text-transform:uppercase; letter-spacing:.04em;">
+            <i class="bi bi-trophy me-2"></i>Knockout Stage Scoring
+          </h3>
+          <p class="text-muted small mb-3">Each knockout result has a single point value (no separate match + milestone).</p>
+          <div class="table-responsive">
+            <table class="table table-worldcup mb-0">
+              <thead>
+                <tr>
+                  <th>Result</th>
+                  <th class="text-center">Base Points</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td>Win Round of 32</td><td class="text-center fw-bold">{{ knockout_points['R32'] }}</td></tr>
+                <tr><td>Win Round of 16</td><td class="text-center fw-bold">{{ knockout_points['R16'] }}</td></tr>
+                <tr><td>Win Quarterfinal</td><td class="text-center fw-bold">{{ knockout_points['QF'] }}</td></tr>
+                <tr><td>Win Semifinal</td><td class="text-center fw-bold">{{ knockout_points['SF'] }}</td></tr>
+                <tr style="background:rgba(0,40,104,.04);"><td class="fw-bold">Champion</td><td class="text-center fw-bold">{{ knockout_points['champion'] }}</td></tr>
+                <tr><td>Runner-Up (lost Final)</td><td class="text-center fw-bold">{{ knockout_points['runner_up'] }}</td></tr>
+                <tr><td>Win 3rd-Place Match</td><td class="text-center fw-bold">{{ knockout_points['third_place'] }}</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      {# ── Points Matrix ── #}
+      <div class="card border-0 shadow-sm mb-4 animate-in stagger-4">
+        <div class="card-body p-4">
+          <h3 class="mb-3" style="font-family:'Teko',sans-serif; text-transform:uppercase; letter-spacing:.04em;">
+            <i class="bi bi-calculator me-2"></i>Points Per Achievement by Tier
+          </h3>
+          <div class="table-responsive">
+            <table class="table table-worldcup mb-0">
+              <thead>
+                <tr>
+                  <th>Achievement</th>
+                  <th class="text-center">Base</th>
+                  <th class="text-center"><span class="tier-badge tier-badge-1">T1</span> &times;1</th>
+                  <th class="text-center"><span class="tier-badge tier-badge-2">T2</span> &times;1.5</th>
+                  <th class="text-center"><span class="tier-badge tier-badge-3">T3</span> &times;2.5</th>
+                  <th class="text-center"><span class="tier-badge tier-badge-4">T4</span> &times;4</th>
+                  <th class="text-center"><span class="tier-badge tier-badge-5">T5</span> &times;7</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% set matrix = [
+                  ('Group Win', 3),
+                  ('Group Draw', 1),
+                  ('Win Group', 4),
+                  ('Runner-Up', 3),
+                  ('Best 3rd', 1),
+                  ('Win R32', 8),
+                  ('Win R16', 11),
+                  ('Win QF', 15),
+                  ('Win SF', 19),
+                  ('Champion', 50),
+                  ('Runner-Up (Final)', 8),
+                  ('Win 3rd Place', 8),
+                ] %}
+                {% set multipliers = [1.0, 1.5, 2.5, 4.0, 7.0] %}
+                {% for label, base in matrix %}
+                <tr {% if label == 'Champion' %}style="background:rgba(0,40,104,.04); font-weight:700;"{% endif %}>
+                  <td>{{ label }}</td>
+                  <td class="text-center">{{ base }}</td>
+                  {% for m in multipliers %}
+                  <td class="text-center">{{ "%.1f"|format(base * m) if base * m != base * m | int else (base * m)|int }}</td>
+                  {% endfor %}
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      {# ── Tiebreaker ── #}
+      <div class="card border-0 shadow-sm mb-4 animate-in stagger-5">
+        <div class="card-body p-4">
+          <h3 class="mb-3" style="font-family:'Teko',sans-serif; text-transform:uppercase; letter-spacing:.04em;">
+            <i class="bi bi-bullseye me-2"></i>Tiebreaker
+          </h3>
+          <p class="mb-0">If two or more players are tied on total points, the tiebreaker is <strong>total USA goals scored in the tournament</strong>. The player whose guess is closest wins. If still tied, those players split the relevant prize pool equally.</p>
+        </div>
+      </div>
+
+      {# ── Edge Cases ── #}
+      <div class="card border-0 shadow-sm animate-in stagger-6">
+        <div class="card-body p-4">
+          <h3 class="mb-3" style="font-family:'Teko',sans-serif; text-transform:uppercase; letter-spacing:.04em;">
+            <i class="bi bi-info-circle me-2"></i>Edge Cases
+          </h3>
+          <ul class="mb-0">
+            <li><strong>Extra time / penalties:</strong> If a knockout match goes to extra time or penalties, the winning team still receives the full knockout points for that round. There is no penalty or bonus for the method of victory.</li>
+            <li><strong>Group stage draws:</strong> Both teams receive 1 point each (base), multiplied by their respective tier multipliers.</li>
+            <li><strong>Best 3rd advancement:</strong> 8 of 12 third-place teams advance. Those 8 receive the Best 3rd milestone bonus.</li>
+            <li><strong>Multiplier application:</strong> All base points are multiplied by the team's tier multiplier. A Tier 5 (&times;7) team that wins the World Cup earns 50 &times; 7 = 350 points for the championship alone.</li>
+          </ul>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+{% endblock %}

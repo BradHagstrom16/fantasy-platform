@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Group Standings — World Cup Fantasy Pool{% endblock %}
+
+{% block content %}
+<div class="page-hero">
+  <div class="hero-glow"></div>
+  <div class="container">
+    <h1>Group Standings</h1>
+    <p class="lead mb-0">12 groups &mdash; 48 teams &mdash; 2026 FIFA World Cup</p>
+  </div>
+</div>
+
+<div class="container pb-5">
+  <div class="row g-3">
+    {% for letter, teams in groups.items() %}
+    <div class="col-lg-4 col-md-6 animate-in">
+      <div class="group-table">
+        <div class="group-table-header">Group {{ letter }}</div>
+        <table>
+          <thead>
+            <tr>
+              <th>Team</th>
+              <th class="text-center" style="width:35px">W</th>
+              <th class="text-center" style="width:35px">D</th>
+              <th class="text-center" style="width:35px">L</th>
+              <th class="text-center" style="width:40px">Pts</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for team in teams %}
+            <tr>
+              <td class="team-name-cell">
+                {{ team.display_name }}
+                {% if team.advancement_method == 'group_winner' %}
+                  <span class="advancement-badge winner">1st</span>
+                {% elif team.advancement_method == 'runner_up' %}
+                  <span class="advancement-badge runner-up">2nd</span>
+                {% elif team.advancement_method == 'best_third' %}
+                  <span class="advancement-badge best-third">3rd</span>
+                {% elif team.is_eliminated %}
+                  <span class="advancement-badge eliminated">Out</span>
+                {% endif %}
+              </td>
+              <td class="text-center">{{ team.group_wins }}</td>
+              <td class="text-center">{{ team.group_draws }}</td>
+              <td class="text-center">{{ team.group_losses }}</td>
+              <td class="text-center fw-bold">{{ team.group_wins * 3 + team.group_draws }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

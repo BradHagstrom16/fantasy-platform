@@ -383,6 +383,366 @@ body.game-cfb {
   background: linear-gradient(135deg, rgba(197,5,12,.04) 0%, var(--bg-card) 100%);
 }
 
+/* World Cup overrides */
+body.game-worldcup {
+  --game-primary:            #002868;
+  --game-primary-dark:       #001040;
+  --game-primary-light:      #1a4890;
+  --game-accent:             #BF0A30;
+  --game-accent-light:       #D42040;
+  --wc-tier1:                #D97706;
+  --wc-tier2:                #4B7399;
+  --wc-tier3:                #B45309;
+  --wc-tier4:                #0D7377;
+  --wc-tier5:                #9333EA;
+}
+
+/* === WORLD CUP FANTASY POOL === */
+
+/* World Cup table — navy header, patriot blue accent */
+.table-worldcup > thead > tr > th {
+  background: var(--game-primary-dark);
+  color: var(--text-on-dark);
+  border-bottom: 2px solid var(--game-primary);
+}
+.table-worldcup > tbody > tr:hover { background: rgba(0,40,104,.04); }
+
+/* Current user row highlight */
+.table-worldcup .row-current-user > td {
+  background: rgba(191,10,48,.06) !important;
+  border-left: 3px solid var(--game-accent);
+}
+.table-worldcup .row-current-user > td:not(:first-child) {
+  border-left: none;
+}
+
+/* Tier badges — colored pill per tier */
+.tier-badge {
+  display: inline-block;
+  font-family: 'Teko', sans-serif;
+  font-weight: 600;
+  font-size: .75rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  padding: .25em .7em;
+  border-radius: 1rem;
+  color: #fff;
+  line-height: 1.3;
+}
+.tier-badge-1 { background: var(--wc-tier1); }
+.tier-badge-2 { background: var(--wc-tier2); }
+.tier-badge-3 { background: var(--wc-tier3); }
+.tier-badge-4 { background: var(--wc-tier4); }
+.tier-badge-5 { background: var(--wc-tier5); }
+
+/* Multiplier badge — inline chip */
+.multiplier-badge {
+  display: inline-block;
+  font-family: 'Teko', sans-serif;
+  font-weight: 500;
+  font-size: .8rem;
+  letter-spacing: .03em;
+  padding: .15em .5em;
+  border-radius: .25rem;
+  background: rgba(0,40,104,.08);
+  color: var(--game-primary);
+  vertical-align: middle;
+}
+
+/* Tier card — pick submission section per tier */
+.tier-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  margin-bottom: 1.5rem;
+}
+.tier-card-header {
+  padding: 1rem 1.25rem;
+  background: linear-gradient(135deg, rgba(0,40,104,.04) 0%, rgba(0,40,104,.01) 100%);
+  border-bottom: 1px solid var(--border-light);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: .5rem;
+}
+.tier-card-header h3 {
+  font-family: 'Teko', sans-serif;
+  font-size: 1.35rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+}
+.tier-card-header .tier-counter {
+  font-family: 'Teko', sans-serif;
+  font-weight: 500;
+  font-size: .95rem;
+  color: var(--text-muted);
+  letter-spacing: .03em;
+}
+.tier-counter.complete {
+  color: var(--success);
+}
+.tier-card-body {
+  padding: 1rem 1.25rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: .75rem;
+}
+
+/* Team pick card — individual team in pick form */
+.wc-team-card {
+  border: 2px solid var(--border-light);
+  border-radius: var(--radius);
+  background: var(--bg-card);
+  padding: .75rem .875rem;
+  cursor: pointer;
+  transition: border-color var(--transition), box-shadow var(--transition), background var(--transition);
+  display: flex;
+  flex-direction: column;
+  gap: .25rem;
+  min-height: 72px;
+  position: relative;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.wc-team-card:hover {
+  border-color: var(--game-primary-light);
+  box-shadow: var(--shadow-sm);
+}
+.wc-team-card.selected {
+  border-color: var(--game-primary);
+  background: rgba(0,40,104,.04);
+  box-shadow: 0 0 0 2px rgba(0,40,104,.18);
+}
+.wc-team-card.selected::after {
+  content: '\2713';
+  position: absolute;
+  top: .4rem;
+  right: .5rem;
+  font-size: .85rem;
+  font-weight: 700;
+  color: var(--game-primary);
+  line-height: 1;
+}
+.wc-team-card.disabled {
+  opacity: .4;
+  pointer-events: none;
+}
+.wc-team-card .team-name {
+  font-family: 'Teko', sans-serif;
+  font-weight: 600;
+  font-size: 1.1rem;
+  letter-spacing: .02em;
+  line-height: 1.2;
+  color: var(--text-primary);
+}
+.wc-team-card .team-meta {
+  font-size: .75rem;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+}
+
+/* Pick summary — pre-submit review panel */
+.pick-summary {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-top: 3px solid var(--game-primary);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem;
+}
+.pick-summary h4 {
+  font-family: 'Teko', sans-serif;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  font-size: 1.2rem;
+  margin-bottom: .75rem;
+}
+.pick-summary-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.pick-summary-list li {
+  padding: .35rem 0;
+  border-bottom: 1px solid var(--border-light);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .5rem;
+  font-size: .9rem;
+}
+.pick-summary-list li:last-child { border-bottom: none; }
+
+/* Match result card — schedule/results display */
+.match-result-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: .875rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+  transition: box-shadow var(--transition);
+}
+.match-result-card:hover {
+  box-shadow: var(--shadow-sm);
+}
+.match-result-card .match-team {
+  font-family: 'Teko', sans-serif;
+  font-weight: 600;
+  font-size: 1.05rem;
+  letter-spacing: .02em;
+  flex: 1;
+  min-width: 0;
+}
+.match-result-card .match-team.home { text-align: right; }
+.match-result-card .match-team.away { text-align: left; }
+.match-result-card .match-score {
+  font-family: 'Teko', sans-serif;
+  font-weight: 700;
+  font-size: 1.3rem;
+  color: var(--game-primary);
+  background: rgba(0,40,104,.06);
+  padding: .2em .6em;
+  border-radius: var(--radius);
+  min-width: 60px;
+  text-align: center;
+  flex-shrink: 0;
+}
+.match-result-card .match-score.pending {
+  color: var(--text-muted);
+  background: rgba(0,0,0,.03);
+  font-size: 1rem;
+  font-weight: 500;
+}
+.match-result-card .match-detail {
+  font-size: .75rem;
+  color: var(--text-muted);
+  text-align: center;
+  flex-shrink: 0;
+}
+
+/* Group table — compact 4-team standings */
+.group-table {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+.group-table-header {
+  background: var(--game-primary-dark);
+  color: var(--text-on-dark);
+  padding: .65rem 1rem;
+  font-family: 'Teko', sans-serif;
+  font-weight: 600;
+  font-size: 1.1rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+.group-table table {
+  width: 100%;
+  margin: 0;
+  font-size: .85rem;
+}
+.group-table table th {
+  font-family: 'Teko', sans-serif;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: var(--text-muted);
+  padding: .4rem .5rem;
+  font-size: .75rem;
+  border-bottom: 1px solid var(--border-light);
+}
+.group-table table td {
+  padding: .45rem .5rem;
+  border-bottom: 1px solid var(--border-light);
+}
+.group-table table tr:last-child td { border-bottom: none; }
+.group-table .team-name-cell {
+  font-weight: 500;
+  white-space: nowrap;
+}
+.group-table .advancement-badge {
+  display: inline-block;
+  font-size: .6rem;
+  font-family: 'Teko', sans-serif;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  padding: .15em .4em;
+  border-radius: .25rem;
+  margin-left: .35rem;
+  vertical-align: middle;
+}
+.advancement-badge.winner { background: var(--success-bg); color: var(--success); }
+.advancement-badge.runner-up { background: var(--info-bg); color: var(--info); }
+.advancement-badge.best-third { background: var(--warning-bg); color: var(--warning-text); }
+.advancement-badge.eliminated { background: rgba(107,114,128,.1); color: var(--text-muted); }
+
+/* Phase indicator — tournament status chip */
+.phase-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  font-family: 'Teko', sans-serif;
+  font-weight: 500;
+  font-size: .85rem;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  padding: .3em .75em;
+  border-radius: 1rem;
+  background: rgba(0,40,104,.08);
+  color: var(--game-primary);
+}
+.phase-indicator .phase-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--game-primary);
+}
+.phase-indicator.active .phase-dot {
+  animation: pulseGold .8s ease infinite;
+  background: var(--game-accent);
+}
+
+/* World Cup pick CTA banner */
+.wc-pick-cta {
+  border-top: 3px solid var(--game-primary);
+  background: linear-gradient(135deg, rgba(0,40,104,.04) 0%, var(--bg-card) 100%);
+}
+
+/* World Cup mobile overrides */
+@media (max-width: 767px) {
+  .tier-card-body {
+    grid-template-columns: repeat(2, 1fr);
+    gap: .5rem;
+    padding: .75rem;
+  }
+  .wc-team-card {
+    min-height: 64px;
+    padding: .6rem .75rem;
+  }
+  .match-result-card {
+    flex-wrap: wrap;
+    gap: .4rem;
+    padding: .65rem .75rem;
+  }
+  .match-result-card .match-team {
+    font-size: .95rem;
+  }
+}
+
 /* ── 3. Keyframe Animations ─────────────────────────────── */
 @keyframes fadeInUp {
   from { opacity: 0; transform: translateY(18px); }

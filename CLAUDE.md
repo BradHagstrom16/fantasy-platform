@@ -119,7 +119,7 @@ A unified fantasy sports platform consolidating multiple games under one domain,
 **Active games:**
 - `games/golf/` — Golf Pick 'Em (Phase 1 ✅)
 - `games/cfb/` — CFB Survivor Pool (Phase 2 ✅)
-- `games/worldcup/` — World Cup Fantasy Pool (Phase 4 🔄)
+- `games/worldcup/` — World Cup Fantasy Pool (Phase 4A-C ✅, 4D admin/picks TBD)
 - `games/masters/` — Masters Fantasy (TBD)
 
 ---
@@ -175,6 +175,7 @@ No linter configured.
 - **Design system:** "The Commissioner's Club" — platform purple/gold + per-game palettes via `body.game-<game>` CSS class
 - **Game theming:** Platform components (`.page-hero`, `.stat-block`, `.btn-game`) consume `--game-primary`/`--game-accent` automatically — game CSS must NOT duplicate this
 - **Game CSS sections:** Each game has its own section in `style.css` (e.g., `/* === CFB SURVIVOR POOL === */`) with game-specific component classes
+- **Game palettes:** Golf: Augusta green `#006747` + gold `#b8993e`; CFB: crimson `#C5050C` + midnight `#0f0f1a`; World Cup: Old Glory blue `#002868` + red `#BF0A30`
 - **Emails:** Each game has `_EMAIL` constants dict + HTML helpers in `games/<game>/services/reminders.py`; `MIMEMultipart('alternative')` with plain-text fallback; table layout + inline styles for Gmail compatibility
 - **Timestamps:** `datetime.now(timezone.utc)` — never `utcnow()`
 - **Timezones:** `zoneinfo.ZoneInfo` — `.replace(tzinfo=tz)`, never pytz

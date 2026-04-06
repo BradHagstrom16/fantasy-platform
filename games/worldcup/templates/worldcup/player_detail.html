@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}{{ enrollment.get_display_name() }} — World Cup Fantasy Pool{% endblock %}
+
+{% block content %}
+<div class="page-hero">
+  <div class="hero-glow"></div>
+  <div class="container">
+    <h1>{{ enrollment.get_display_name() }}</h1>
+    <p class="lead mb-0">
+      Total Score: <strong>{{ "%.1f"|format(enrollment.total_score) }}</strong> pts
+      {% if enrollment.usa_goals_guess is not none %}
+       &mdash; Tiebreaker: {{ enrollment.usa_goals_guess }} USA goals
+      {% endif %}
+    </p>
+  </div>
+</div>
+
+<div class="container pb-5">
+  <div class="row justify-content-center">
+    <div class="col-lg-8">
+
+      <div class="mb-3">
+        <a href="{{ url_for('worldcup.leaderboard') }}" class="text-muted small text-decoration-none">
+          <i class="bi bi-arrow-left me-1"></i>Back to Leaderboard
+        </a>
+      </div>
+
+      {% if picks %}
+      <div class="card border-0 shadow-sm animate-in">
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-worldcup mb-0">
+              <thead>
+                <tr>
+                  <th>Team</th>
+                  <th>Tier</th>
+                  <th class="text-center">Multiplier</th>
+                  <th class="text-end">Base</th>
+                  <th class="text-end">Points</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% set ns = namespace(total_base=0.0, total_mult=0.0) %}
+                {% for pick in picks %}
+                <tr>
+                  <td class="fw-medium">{{ pick.team.display_name }}</td>
+                  <td><span class="tier-badge tier-badge-{{ pick.tier }}">{{ tiers[pick.tier]['name'] }}</span></td>
+                  <td class="text-center"><span class="multiplier-badge">&times;{{ pick.team.multiplier }}</span></td>
+                  <td class="text-end">{{ "%.1f"|format(pick.base_points) }}</td>
+                  <td class="text-end fw-bold">{{ "%.1f"|format(pick.multiplied_points) }}</td>
+                </tr>
+                {% set ns.total_base = ns.total_base + pick.base_points %}
+                {% set ns.total_mult = ns.total_mult + pick.multiplied_points %}
+                {% endfor %}
+              </tbody>
+              <tfoot>
+                <tr style="border-top:2px solid var(--border);">
+                  <td colspan="3" class="fw-bold">Total</td>
+                  <td class="text-end fw-bold">{{ "%.1f"|format(ns.total_base) }}</td>
+                  <td class="text-end fw-bold">{{ "%.1f"|format(ns.total_mult) }}</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+      </div>
+      {% else %}
+      <div class="text-center py-5 text-muted">
+        <i class="bi bi-x-circle" style="font-size:2.5rem; opacity:.3;"></i>
+        <p class="mt-2 mb-0">No picks submitted.</p>
+      </div>
+      {% endif %}
+
+    </div>
+  </div>
+</div>
+{% endblock %}

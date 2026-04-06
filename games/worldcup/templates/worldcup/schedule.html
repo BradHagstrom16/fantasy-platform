@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}Schedule — World Cup Fantasy Pool{% endblock %}
+
+{% block content %}
+<div class="page-hero">
+  <div class="hero-glow"></div>
+  <div class="container">
+    <h1>Match Schedule</h1>
+    <p class="lead mb-0">All 104 matches &mdash; 2026 FIFA World Cup</p>
+  </div>
+</div>
+
+<div class="container pb-5">
+
+  {# ── Group Stage ── #}
+  {% if group_matches %}
+  <h2 class="section-heading mb-3 animate-in">
+    <i class="bi bi-grid-3x3 me-2"></i>Group Stage
+    <small class="text-muted ms-2" style="font-size:.6em; font-weight:400;">{{ group_matches|length }} matches</small>
+  </h2>
+
+  {% set ns = namespace(current_group='') %}
+  {% for m in group_matches %}
+    {% if m.group_letter != ns.current_group %}
+      {% if ns.current_group != '' %}</div>{% endif %}
+      {% set ns.current_group = m.group_letter %}
+      <h4 class="mt-4 mb-2" style="font-family:'Teko',sans-serif; text-transform:uppercase; letter-spacing:.06em; font-size:1.1rem; color:var(--text-muted);">
+        Group {{ m.group_letter }}
+      </h4>
+      <div class="d-flex flex-column gap-2 mb-3">
+    {% endif %}
+
+    <div class="match-result-card">
+      <span class="match-team home">{{ m.home_team.display_name if m.home_team else 'TBD' }}</span>
+      {% if m.is_completed %}
+        <span class="match-score">{{ m.home_score }}&ndash;{{ m.away_score }}</span>
+      {% elif m.kickoff_utc %}
+        <span class="match-score pending">{{ format_ct(m.kickoff_utc).strftime('%-m/%-d %-I:%M%p') }}</span>
+      {% else %}
+        <span class="match-score pending">TBD</span>
+      {% endif %}
+      <span class="match-team away">{{ m.away_team.display_name if m.away_team else 'TBD' }}</span>
+    </div>
+  {% endfor %}
+  {% if group_matches %}</div>{% endif %}
+  {% endif %}
+
+  {# ── Knockout Rounds ── #}
+  {% macro render_stage(matches, title, icon) %}
+  {% if matches %}
+  <h2 class="section-heading mt-5 mb-3 animate-in">
+    <i class="bi bi-{{ icon }} me-2"></i>{{ title }}
+    <small class="text-muted ms-2" style="font-size:.6em; font-weight:400;">{{ matches|length }} match{{ 'es' if matches|length != 1 }}</small>
+  </h2>
+  <div class="d-flex flex-column gap-2">
+    {% for m in matches %}
+    <div class="match-result-card">
+      <span class="match-team home">{{ m.home_team.display_name if m.home_team else 'TBD' }}</span>
+      {% if m.is_completed %}
+        <span class="match-score">{{ m.home_score }}&ndash;{{ m.away_score }}</span>
+      {% elif m.kickoff_utc %}
+        <span class="match-score pending">{{ format_ct(m.kickoff_utc).strftime('%-m/%-d %-I:%M%p') }}</span>
+      {% else %}
+        <span class="match-score pending">TBD</span>
+      {% endif %}
+      <span class="match-team away">{{ m.away_team.display_name if m.away_team else 'TBD' }}</span>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+  {% endmacro %}
+
+  {{ render_stage(r32_matches, 'Round of 32', 'trophy') }}
+  {{ render_stage(r16_matches, 'Round of 16', 'trophy') }}
+  {{ render_stage(qf_matches, 'Quarterfinals', 'trophy-fill') }}
+  {{ render_stage(sf_matches, 'Semifinals', 'trophy-fill') }}
+  {{ render_stage(third_place, 'Third Place Match', 'award') }}
+  {{ render_stage(final, 'Final', 'star-fill') }}
+
+</div>
+{% endblock %}

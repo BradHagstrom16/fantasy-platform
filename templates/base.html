@@ -102,8 +102,16 @@
                            href="{{ url_for('worldcup.index') }}">Dashboard</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link {% if request.endpoint == 'worldcup.leaderboard' %}active{% endif %}"
+                        <a class="nav-link {% if request.endpoint == 'worldcup.leaderboard' or request.endpoint == 'worldcup.player_detail' %}active{% endif %}"
                            href="{{ url_for('worldcup.leaderboard') }}">Leaderboard</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.endpoint == 'worldcup.schedule' %}active{% endif %}"
+                           href="{{ url_for('worldcup.schedule') }}">Schedule</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.endpoint == 'worldcup.groups' %}active{% endif %}"
+                           href="{{ url_for('worldcup.groups') }}">Groups</a>
                     </li>
                     {% if current_user.is_authenticated %}
                     <li class="nav-item">
@@ -111,6 +119,10 @@
                            href="{{ url_for('worldcup.picks') }}">My Picks</a>
                     </li>
                     {% endif %}
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.endpoint == 'worldcup.rules' %}active{% endif %}"
+                           href="{{ url_for('worldcup.rules') }}">Rules</a>
+                    </li>
                     {% endif %}
                 </ul>
 
