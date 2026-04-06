@@ -120,7 +120,6 @@ A unified fantasy sports platform consolidating multiple games under one domain,
 - `games/golf/` — Golf Pick 'Em (Phase 1 ✅)
 - `games/cfb/` — CFB Survivor Pool (Phase 2 ✅)
 - `games/worldcup/` — World Cup Fantasy Pool (Phase 4A-C ✅, 4D admin/picks TBD)
-- `games/masters/` — Masters Fantasy (TBD)
 
 ---
 
@@ -187,6 +186,7 @@ No linter configured.
 - **CSRF:** All POST forms include CSRF token; AJAX includes `X-CSRFToken` header
 - **POST-only:** All state-mutating operations use POST — no GET routes that change data
 - **Admin scoping:** Game admin is scoped to enrolled users only; game admin ≠ platform admin
+- **Homepage games list:** `core/main/routes.py` — set `'url': url_for('<game>.index')` for live games, `'url': None` for coming-soon; controls card clickability and Play Now vs Coming Soon badge
 
 ---
 
@@ -196,7 +196,7 @@ No linter configured.
 - `<Game>Enrollment` model for game-specific user data, FK to shared `User`
 - `@<game>_admin_required` decorator scoped to enrolled users
 - Templates extend `templates/base.html`, rendered under `<game>/` prefix
-- Games dropdown in `base.html` gets a new `<li>` per game
+- Add a flat `<li class="nav-item">` in the games nav section of `base.html` per game (no dropdown — games fit inline)
 - CLI commands under `flask <game> *` namespace using `AppGroup`
 - Context processor on the blueprint for game-specific template variables
 - `before_request` hook for auto-refresh logic
