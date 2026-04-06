@@ -903,6 +903,82 @@ main { flex: 1; }
   background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba(212,168,32,0.85)' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
 }
 
+/* === GAME SUB-NAV === */
+/* Contextual strip that appears below the platform bar when inside a game blueprint.
+   Per-game palette is set via --subnav-accent and --subnav-accent-rgb on the
+   game class; shared pill rules consume those variables. */
+
+.game-subnav {
+  padding: .42rem 0;
+  border-bottom: 1px solid rgba(255,255,255,.07);
+}
+
+.game-subnav .container {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+}
+
+/* Per-game palettes */
+.subnav-worldcup { background: #00122e; --subnav-accent: #BF0A30; --subnav-accent-rgb: 191,10,48; }
+.subnav-golf     { background: #001a0d; --subnav-accent: #b8993e; --subnav-accent-rgb: 184,153,62; }
+.subnav-cfb      { background: #0a080f; --subnav-accent: #C5050C; --subnav-accent-rgb: 197,5,12; }
+
+/* Game label — links back to game index */
+.subnav-game-label {
+  font-family: 'Teko', sans-serif;
+  font-weight: 700;
+  font-size: .88rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,.9);
+  text-decoration: none;
+  white-space: nowrap;
+  padding-right: .9rem;
+  margin-right: .3rem;
+  border-right: 1px solid rgba(255,255,255,.14);
+  transition: opacity var(--transition);
+  flex-shrink: 0;
+}
+.subnav-game-label:hover { opacity: .7; color: #fff; }
+
+/* Pill container — scrolls horizontally on mobile */
+.subnav-pills {
+  display: flex;
+  gap: .4rem;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  flex-wrap: nowrap;
+}
+.subnav-pills::-webkit-scrollbar { display: none; }
+
+/* Individual pill */
+.subnav-pill {
+  font-family: 'Teko', sans-serif;
+  font-weight: 500;
+  font-size: .78rem;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,.48);
+  text-decoration: none;
+  padding: .26rem .72rem;
+  border-radius: 20px;
+  border: 1px solid transparent;
+  white-space: nowrap;
+  transition: color var(--transition), border-color var(--transition), background var(--transition);
+}
+.subnav-pill:hover {
+  color: rgba(255,255,255,.85);
+  border-color: rgba(255,255,255,.2);
+  text-decoration: none;
+}
+.subnav-pill.active {
+  color: #fff;
+  background: rgba(var(--subnav-accent-rgb), .18);
+  border-color: var(--subnav-accent);
+}
+
 /* ── 7. Flash Messages / Alerts ─────────────────────────── */
 .alert {
   border: none;
@@ -1631,6 +1707,9 @@ hr { border-color: var(--border); opacity: 1; }
   .stat-block .stat-value { font-size: 2.2rem; }
 
   .home-hero { padding: 3.5rem 0 3rem; }
+
+  /* Sub-nav: hide label text on mobile — emoji stays visible */
+  .subnav-label-text { display: none; }
 }
 
 @media (max-width: 576px) {
