@@ -92,6 +92,69 @@
         </div>
     </nav>
 
+    <!-- Game Sub-Nav: contextual strip, only inside game blueprints -->
+    {% if request.blueprint == 'worldcup' %}
+    <div class="game-subnav subnav-worldcup">
+        <div class="container">
+            <a class="subnav-game-label" href="{{ url_for('worldcup.index') }}">
+                ⚽ <span class="subnav-label-text">WC 2026</span>
+            </a>
+            <div class="subnav-pills">
+                <a class="subnav-pill {% if request.endpoint == 'worldcup.index' %}active{% endif %}"
+                   href="{{ url_for('worldcup.index') }}">Dashboard</a>
+                <a class="subnav-pill {% if request.endpoint in ['worldcup.leaderboard', 'worldcup.player_detail'] %}active{% endif %}"
+                   href="{{ url_for('worldcup.leaderboard') }}">Leaderboard</a>
+                <a class="subnav-pill {% if request.endpoint == 'worldcup.schedule' %}active{% endif %}"
+                   href="{{ url_for('worldcup.schedule') }}">Schedule</a>
+                <a class="subnav-pill {% if request.endpoint == 'worldcup.groups' %}active{% endif %}"
+                   href="{{ url_for('worldcup.groups') }}">Groups</a>
+                {% if current_user.is_authenticated %}
+                <a class="subnav-pill {% if request.endpoint == 'worldcup.picks' %}active{% endif %}"
+                   href="{{ url_for('worldcup.picks') }}">My Picks</a>
+                {% endif %}
+                <a class="subnav-pill {% if request.endpoint == 'worldcup.rules' %}active{% endif %}"
+                   href="{{ url_for('worldcup.rules') }}">Rules</a>
+            </div>
+        </div>
+    </div>
+    {% elif request.blueprint == 'golf' %}
+    <div class="game-subnav subnav-golf">
+        <div class="container">
+            <a class="subnav-game-label" href="{{ url_for('golf.index') }}">
+                ⛳ <span class="subnav-label-text">Golf 2026</span>
+            </a>
+            <div class="subnav-pills">
+                <a class="subnav-pill {% if request.endpoint == 'golf.index' %}active{% endif %}"
+                   href="{{ url_for('golf.index') }}">Standings</a>
+                <a class="subnav-pill {% if request.endpoint == 'golf.schedule' %}active{% endif %}"
+                   href="{{ url_for('golf.schedule') }}">Schedule</a>
+                {% if current_user.is_authenticated %}
+                <a class="subnav-pill {% if request.endpoint == 'golf.my_picks' %}active{% endif %}"
+                   href="{{ url_for('golf.my_picks') %}">My Picks</a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% elif request.blueprint == 'cfb' %}
+    <div class="game-subnav subnav-cfb">
+        <div class="container">
+            <a class="subnav-game-label" href="{{ url_for('cfb.index') }}">
+                🏈 <span class="subnav-label-text">CFB 2025</span>
+            </a>
+            <div class="subnav-pills">
+                <a class="subnav-pill {% if request.endpoint == 'cfb.index' %}active{% endif %}"
+                   href="{{ url_for('cfb.index') }}">Standings</a>
+                <a class="subnav-pill {% if request.endpoint == 'cfb.weekly_results' %}active{% endif %}"
+                   href="{{ url_for('cfb.weekly_results') }}">Results</a>
+                {% if current_user.is_authenticated %}
+                <a class="subnav-pill {% if request.endpoint == 'cfb.my_picks' %}active{% endif %}"
+                   href="{{ url_for('cfb.my_picks') }}">My Picks</a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
     <!-- Flash Messages -->
     <div class="container mt-3">
         {% with messages = get_flashed_messages(with_categories=true) %}
