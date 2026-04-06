@@ -1667,13 +1667,6 @@ hr { border-color: var(--border); opacity: 1; }
   border: 1px solid rgba(120,120,120,.2);
 }
 
-/* Muted nav link — coming-soon games in navbar */
-.navbar .nav-link-muted {
-  opacity: .55;
-}
-.navbar .nav-link-muted.active {
-  opacity: 1;
-}
 
 /* ── 17. Responsive ─────────────────────────────────────── */
 
