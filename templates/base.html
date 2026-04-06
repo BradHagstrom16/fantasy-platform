@@ -130,7 +130,7 @@
                    href="{{ url_for('golf.schedule') }}">Schedule</a>
                 {% if current_user.is_authenticated %}
                 <a class="subnav-pill {% if request.endpoint == 'golf.my_picks' %}active{% endif %}"
-                   href="{{ url_for('golf.my_picks') %}">My Picks</a>
+                   href="{{ url_for('golf.my_picks') }}">My Picks</a>
                 {% endif %}
             </div>
         </div>
