@@ -909,6 +909,7 @@ main { flex: 1; }
    game class; shared pill rules consume those variables. */
 
 .game-subnav {
+  background: #0d0d1a; /* fallback if modifier class omitted — prevents white-on-white */
   padding: .42rem 0;
   border-bottom: 1px solid rgba(255,255,255,.07);
 }
