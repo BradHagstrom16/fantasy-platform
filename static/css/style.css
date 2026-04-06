@@ -973,6 +973,28 @@ main { flex: 1; }
 
 .game-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-md); }
 
+/* Live game card — clickable, accent glow */
+.game-card--live {
+  border-top-color: var(--platform-accent);
+  cursor: pointer;
+  color: inherit;
+}
+.game-card--live:hover {
+  color: inherit;
+}
+
+/* Coming-soon game card — muted, non-interactive */
+.game-card--coming-soon {
+  opacity: .55;
+  filter: grayscale(35%);
+  cursor: default;
+  pointer-events: none;
+}
+.game-card--coming-soon:hover {
+  transform: none;
+  box-shadow: none;
+}
+
 .game-card .game-icon {
   font-size: 2.8rem;
   line-height: 1;
@@ -1559,6 +1581,21 @@ hr { border-color: var(--border); opacity: 1; }
   font-size: .85rem;
   padding: .35em .9em;
   border-radius: var(--radius);
+}
+
+/* Muted status badge — coming soon state */
+.status-badge--muted {
+  background: rgba(120,120,120,.1);
+  color: var(--text-secondary);
+  border: 1px solid rgba(120,120,120,.2);
+}
+
+/* Muted nav link — coming-soon games in navbar */
+.navbar .nav-link-muted {
+  opacity: .55;
+}
+.navbar .nav-link-muted.active {
+  opacity: 1;
 }
 
 /* ── 17. Responsive ─────────────────────────────────────── */

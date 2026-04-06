@@ -40,29 +40,17 @@
                         <a class="nav-link {% if request.endpoint == 'main.index' %}active{% endif %}"
                            href="{{ url_for('main.index') }}">Home</a>
                     </li>
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle {% if request.blueprint == 'golf' or request.blueprint == 'cfb' or request.blueprint == 'worldcup' %}active{% endif %}"
-                           href="#" role="button" data-bs-toggle="dropdown">
-                            Games
-                        </a>
-                        <ul class="dropdown-menu">
-                            <li>
-                                <a class="dropdown-item" href="{{ url_for('golf.index') }}">
-                                    <i class="bi bi-flag me-2"></i>Golf Pick 'Em
-                                </a>
-                            </li>
-                            <li>
-                                <a class="dropdown-item" href="{{ url_for('cfb.index') }}">
-                                    <i class="bi bi-trophy me-2"></i>CFB Survivor Pool
-                                </a>
-                            </li>
-                            <li>
-                                <a class="dropdown-item" href="{{ url_for('worldcup.index') }}">
-                                    <i class="bi bi-globe2 me-2"></i>World Cup Fantasy
-                                </a>
-                            </li>
-                            <!-- Future games will be added here -->
-                        </ul>
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.blueprint == 'worldcup' %}active{% endif %}"
+                           href="{{ url_for('worldcup.index') }}">World Cup</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link nav-link-muted {% if request.blueprint == 'golf' %}active{% endif %}"
+                           href="{{ url_for('golf.index') }}">Golf Pick 'Em</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link nav-link-muted {% if request.blueprint == 'cfb' %}active{% endif %}"
+                           href="{{ url_for('cfb.index') }}">CFB Survivor</a>
                     </li>
                     {% if request.blueprint == 'golf' %}
                     <li class="nav-item">

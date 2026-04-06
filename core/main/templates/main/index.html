@@ -43,21 +43,24 @@
     <div class="row g-4 justify-content-center">
         {% for game in games %}
         <div class="col-sm-6 col-md-4 animate-in stagger-{{ loop.index }}">
-            <div class="card game-card h-100">
+            {% if game.url %}
+            <a href="{{ game.url }}" class="card game-card game-card--live h-100 text-decoration-none">
+            {% else %}
+            <div class="card game-card game-card--coming-soon h-100">
+            {% endif %}
                 <div class="card-body text-center py-4 px-3">
                     <span class="game-icon">{{ game.emoji }}</span>
                     <h5 class="game-title">{{ game.name }}</h5>
                     <p class="game-desc">{{ game.description }}</p>
                 </div>
                 <div class="card-footer text-center bg-transparent py-3">
-                    <span class="status-badge"
-                          style="background: rgba({% if game.color == 'success' %}26,122,69{% elif game.color == 'danger' %}192,57,43{% else %}212,168,32{% endif %},.12);
-                                 color: var(--{{ game.color }});
-                                 border: 1px solid rgba({% if game.color == 'success' %}26,122,69{% elif game.color == 'danger' %}192,57,43{% else %}212,168,32{% endif %},.25);">
-                        {{ game.status }}
-                    </span>
+                    {% if game.url %}
+                    <span class="btn btn-warning btn-sm px-4">Play Now</span>
+                    {% else %}
+                    <span class="status-badge status-badge--muted">Coming Soon</span>
+                    {% endif %}
                 </div>
-            </div>
+            {% if game.url %}</a>{% else %}</div>{% endif %}
         </div>
         {% endfor %}
     </div>
