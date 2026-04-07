@@ -119,7 +119,7 @@ A unified fantasy sports platform consolidating multiple games under one domain,
 **Active games:**
 - `games/golf/` — Golf Pick 'Em (Phase 1 ✅)
 - `games/cfb/` — CFB Survivor Pool (Phase 2 ✅)
-- `games/worldcup/` — World Cup Fantasy Pool (Phase 4A-C ✅, 4D admin/picks TBD)
+- `games/worldcup/` — World Cup Fantasy Pool (Phase 4 ✅)
 
 ---
 
