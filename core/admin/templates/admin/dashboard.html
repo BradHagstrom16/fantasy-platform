@@ -22,25 +22,25 @@
         </div>
         <div class="col-6 col-md-3 animate-in stagger-2">
             <div class="stat-block">
-                <div class="stat-value">0</div>
+                <div class="stat-value">{{ active_games }}</div>
                 <div class="stat-label">Active Games</div>
             </div>
         </div>
         <div class="col-6 col-md-3 animate-in stagger-3">
             <div class="stat-block">
-                <div class="stat-value">0</div>
+                <div class="stat-value">{{ paid_users }}</div>
                 <div class="stat-label">Paid Users</div>
             </div>
         </div>
         <div class="col-6 col-md-3 animate-in stagger-4">
             <div class="stat-block">
-                <div class="stat-value text-gold" style="font-size:1.8rem;padding-top:.4rem;">Phase 0</div>
-                <div class="stat-label">Platform Status</div>
+                <div class="stat-value">{{ games|length }}</div>
+                <div class="stat-label">Total Games</div>
             </div>
         </div>
     </div>
 
-    <!-- Quick Links -->
+    <!-- Management -->
     <div class="mb-3">
         <h2 class="section-heading">Management</h2>
         <hr class="gold-rule" style="margin:0 0 1.5rem;">
@@ -63,9 +63,16 @@
             <div class="card h-100">
                 <div class="card-body p-4">
                     <div style="font-size:1.8rem;margin-bottom:.5rem;">🎮</div>
-                    <h5 class="card-title mb-1">Games</h5>
-                    <p class="text-muted small mb-3">Game-specific admin panels appear here as games are added.</p>
-                    <span class="badge bg-secondary">Coming Soon</span>
+                    <h5 class="card-title mb-1">Game Admin Panels</h5>
+                    <p class="text-muted small mb-3">Jump to any game's admin dashboard.</p>
+                    <div class="d-flex flex-column gap-2">
+                        {% for game in games %}
+                        <a href="{{ game.admin_url }}" class="btn btn-outline-primary btn-sm text-start">
+                            {{ game.emoji }} {{ game.name }}
+                            <span class="badge bg-secondary ms-1">{{ game.enrolled }} enrolled</span>
+                        </a>
+                        {% endfor %}
+                    </div>
                 </div>
             </div>
         </div>
@@ -74,8 +81,15 @@
                 <div class="card-body p-4">
                     <div style="font-size:1.8rem;margin-bottom:.5rem;">💰</div>
                     <h5 class="card-title mb-1">Payments</h5>
-                    <p class="text-muted small mb-3">Track entry fees and per-user payment status.</p>
-                    <span class="badge bg-secondary">Coming Soon</span>
+                    <p class="text-muted small mb-3">{{ paid_users }} paid across all games.</p>
+                    <div class="d-flex flex-column gap-2">
+                        {% for game in games %}
+                        <a href="{{ game.payments_url }}" class="btn btn-outline-primary btn-sm text-start">
+                            {{ game.emoji }} {{ game.name }}
+                            <span class="badge bg-success ms-1">{{ game.paid }} paid</span>
+                        </a>
+                        {% endfor %}
+                    </div>
                 </div>
             </div>
         </div>
