@@ -1,0 +1,197 @@
+{% extends "base.html" %}
+{% block title %}Group Advancement — World Cup Admin{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('worldcup.admin_dashboard') }}">Admin</a></li>
+            <li class="breadcrumb-item active">Group Advancement</li>
+        </ol>
+    </nav>
+
+    <h2>Group Advancement</h2>
+    <p class="text-muted">Confirm which teams advance from each group after all 3 group matches are complete. You can re-visit groups to update best 3rd-place status.</p>
+
+    <div class="row">
+        {% for group in groups_status %}
+        <div class="col-lg-6 mb-4">
+            <div class="card {% if group.all_complete and not group.advancement_confirmed %}border-warning{% endif %}">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Group {{ group.letter }}</h5>
+                    {% if not group.all_complete %}
+                        <span class="badge bg-secondary">Matches Incomplete</span>
+                    {% elif group.advancement_confirmed %}
+                        <span class="badge bg-success">Confirmed</span>
+                    {% else %}
+                        <span class="badge bg-warning text-dark">Needs Advancement</span>
+                    {% endif %}
+                </div>
+                <div class="card-body">
+                    {# Group standings table #}
+                    <table class="table table-sm mb-3">
+                        <thead>
+                            <tr>
+                                <th>Team</th>
+                                <th class="text-center">W</th>
+                                <th class="text-center">D</th>
+                                <th class="text-center">L</th>
+                                <th class="text-center">Pts</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for team in group.teams %}
+                            <tr>
+                                <td>
+                                    <strong>{{ team.display_name }}</strong>
+                                    <small class="text-muted">{{ team.fifa_code }}</small>
+                                </td>
+                                <td class="text-center">{{ team.group_wins }}</td>
+                                <td class="text-center">{{ team.group_draws }}</td>
+                                <td class="text-center">{{ team.group_losses }}</td>
+                                <td class="text-center"><strong>{{ team.group_wins * 3 + team.group_draws }}</strong></td>
+                                <td>
+                                    {% if team.advancement_method == 'group_winner' %}
+                                        <span class="badge bg-success">Winner</span>
+                                    {% elif team.advancement_method == 'runner_up' %}
+                                        <span class="badge bg-primary">Runner-up</span>
+                                    {% elif team.advancement_method == 'best_third' %}
+                                        <span class="badge bg-info">Best 3rd</span>
+                                    {% elif team.is_eliminated %}
+                                        <span class="badge bg-danger">Eliminated</span>
+                                    {% else %}
+                                        <span class="text-muted">—</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+
+                    {% if group.all_complete %}
+                    {# Show advancement form — both for unconfirmed and for re-editing confirmed groups #}
+                    <form method="POST" action="{{ url_for('worldcup.admin_advancement') }}"
+                          id="advancement-form-{{ group.letter }}"
+                          onsubmit="return confirm('Confirm advancement for Group {{ group.letter }}? This will update scores.');">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="group_letter" value="{{ group.letter }}">
+
+                        <div class="mb-2">
+                            <label class="form-label fw-bold">Group Winner</label>
+                            {% for team in group.teams %}
+                            <div class="form-check">
+                                <input class="form-check-input advancement-radio" type="radio"
+                                       name="group_winner" value="{{ team.fifa_code }}"
+                                       id="winner_{{ group.letter }}_{{ team.fifa_code }}"
+                                       data-group="{{ group.letter }}"
+                                       {% if team.advancement_method == 'group_winner' %}checked{% endif %}>
+                                <label class="form-check-label" for="winner_{{ group.letter }}_{{ team.fifa_code }}">
+                                    {{ team.display_name }} ({{ team.fifa_code }})
+                                </label>
+                            </div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="mb-2">
+                            <label class="form-label fw-bold">Runner-Up</label>
+                            {% for team in group.teams %}
+                            <div class="form-check">
+                                <input class="form-check-input advancement-radio" type="radio"
+                                       name="runner_up" value="{{ team.fifa_code }}"
+                                       id="runner_{{ group.letter }}_{{ team.fifa_code }}"
+                                       data-group="{{ group.letter }}"
+                                       {% if team.advancement_method == 'runner_up' %}checked{% endif %}>
+                                <label class="form-check-label" for="runner_{{ group.letter }}_{{ team.fifa_code }}">
+                                    {{ team.display_name }} ({{ team.fifa_code }})
+                                </label>
+                            </div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Best 3rd Place <small class="text-muted">(optional)</small></label>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio"
+                                       name="best_third" value=""
+                                       id="third_{{ group.letter }}_none"
+                                       {% if not group.teams|selectattr('advancement_method', 'equalto', 'best_third')|list %}checked{% endif %}>
+                                <label class="form-check-label text-muted" for="third_{{ group.letter }}_none">
+                                    None (3rd &amp; 4th eliminated)
+                                </label>
+                            </div>
+                            {% for team in group.teams %}
+                            <div class="form-check">
+                                <input class="form-check-input advancement-radio" type="radio"
+                                       name="best_third" value="{{ team.fifa_code }}"
+                                       id="third_{{ group.letter }}_{{ team.fifa_code }}"
+                                       data-group="{{ group.letter }}"
+                                       {% if team.advancement_method == 'best_third' %}checked{% endif %}>
+                                <label class="form-check-label" for="third_{{ group.letter }}_{{ team.fifa_code }}">
+                                    {{ team.display_name }} ({{ team.fifa_code }})
+                                </label>
+                            </div>
+                            {% endfor %}
+                        </div>
+
+                        <button type="submit" class="btn btn-success btn-sm">
+                            {% if group.advancement_confirmed %}Update{% else %}Confirm{% endif %} Advancement
+                        </button>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Prevent selecting the same team as winner and runner-up
+document.querySelectorAll('.advancement-radio').forEach(function(radio) {
+    radio.addEventListener('change', function() {
+        var group = this.dataset.group;
+        var form = document.getElementById('advancement-form-' + group);
+        if (!form) return;
+
+        var winnerVal = form.querySelector('input[name="group_winner"]:checked');
+        var runnerVal = form.querySelector('input[name="runner_up"]:checked');
+
+        winnerVal = winnerVal ? winnerVal.value : null;
+        runnerVal = runnerVal ? runnerVal.value : null;
+
+        // Re-enable all radios in this group first
+        form.querySelectorAll('input[name="runner_up"]').forEach(function(r) {
+            r.disabled = false;
+            r.closest('.form-check').classList.remove('text-muted');
+        });
+        form.querySelectorAll('input[name="group_winner"]').forEach(function(r) {
+            r.disabled = false;
+            r.closest('.form-check').classList.remove('text-muted');
+        });
+
+        // Disable winner's value in runner-up options
+        if (winnerVal) {
+            var conflict = form.querySelector('input[name="runner_up"][value="' + winnerVal + '"]');
+            if (conflict) {
+                conflict.disabled = true;
+                conflict.checked = false;
+                conflict.closest('.form-check').classList.add('text-muted');
+            }
+        }
+
+        // Disable runner-up's value in winner options
+        if (runnerVal) {
+            var conflict2 = form.querySelector('input[name="group_winner"][value="' + runnerVal + '"]');
+            if (conflict2) {
+                conflict2.disabled = true;
+                conflict2.checked = false;
+                conflict2.closest('.form-check').classList.add('text-muted');
+            }
+        }
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}Assign Teams — Match #{{ match.match_number }} — World Cup Admin{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('worldcup.admin_dashboard') }}">Admin</a></li>
+            <li class="breadcrumb-item active">Set Knockout Teams — Match #{{ match.match_number }}</li>
+        </ol>
+    </nav>
+
+    <h2>Assign Teams to Match #{{ match.match_number }}</h2>
+
+    <div class="card mb-3">
+        <div class="card-body">
+            <ul class="list-unstyled mb-0">
+                <li><strong>Stage:</strong> <span class="badge bg-secondary">{{ match.stage }}</span></li>
+                {% if match.venue %}<li><strong>Venue:</strong> {{ match.venue }}{% if match.city %}, {{ match.city }}{% endif %}</li>{% endif %}
+                {% if match.kickoff_utc %}
+                <li><strong>Kickoff:</strong> {{ format_ct(match.kickoff_utc).strftime('%A, %b %d, %Y — %I:%M %p CT') }}</li>
+                {% endif %}
+                {% if match.home_team %}
+                <li><strong>Current Home:</strong> {{ match.home_team.display_name }} ({{ match.home_team.fifa_code }})</li>
+                {% endif %}
+                {% if match.away_team %}
+                <li><strong>Current Away:</strong> {{ match.away_team.display_name }} ({{ match.away_team.fifa_code }})</li>
+                {% endif %}
+            </ul>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header"><h4 class="mb-0">Select Teams</h4></div>
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('worldcup.admin_set_knockout', match_id=match.id) }}"
+                  onsubmit="return confirm('Set these teams for Match #{{ match.match_number }}?');">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Home Team</label>
+                        <select class="form-select" name="home_team" required>
+                            <option value="">— Select Home Team —</option>
+                            {% for team in available_teams %}
+                            <option value="{{ team.fifa_code }}"
+                                    {% if match.home_team and match.home_team.id == team.id %}selected{% endif %}
+                                    {% if team.is_eliminated %}class="text-muted"{% endif %}>
+                                {{ team.display_name }} ({{ team.fifa_code }})
+                                {% if team.is_eliminated %} [ELIMINATED]{% endif %}
+                                {% if team.advancement_method %} — {{ team.advancement_method|replace('_', ' ')|title }}{% endif %}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Away Team</label>
+                        <select class="form-select" name="away_team" required>
+                            <option value="">— Select Away Team —</option>
+                            {% for team in available_teams %}
+                            <option value="{{ team.fifa_code }}"
+                                    {% if match.away_team and match.away_team.id == team.id %}selected{% endif %}
+                                    {% if team.is_eliminated %}class="text-muted"{% endif %}>
+                                {{ team.display_name }} ({{ team.fifa_code }})
+                                {% if team.is_eliminated %} [ELIMINATED]{% endif %}
+                                {% if team.advancement_method %} — {{ team.advancement_method|replace('_', ' ')|title }}{% endif %}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-success">Assign Teams</button>
+                <a href="{{ url_for('worldcup.admin_dashboard') }}" class="btn btn-secondary ms-2">Cancel</a>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

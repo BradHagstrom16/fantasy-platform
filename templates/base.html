@@ -114,6 +114,11 @@
                 {% endif %}
                 <a class="subnav-pill {% if request.endpoint == 'worldcup.rules' %}active{% endif %}"
                    href="{{ url_for('worldcup.rules') }}">Rules</a>
+                {% if worldcup_enrollment and worldcup_enrollment.is_admin %}
+                <a class="subnav-pill {% if request.endpoint and 'admin' in request.endpoint %}active{% endif %}"
+                   href="{{ url_for('worldcup.admin_dashboard') }}">
+                    <i class="bi bi-gear-fill"></i> Admin</a>
+                {% endif %}
             </div>
         </div>
     </div>

@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+{% block title %}Match #{{ match.match_number }} — World Cup Admin{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('worldcup.admin_dashboard') }}">Admin</a></li>
+            <li class="breadcrumb-item active">Match #{{ match.match_number }}</li>
+        </ol>
+    </nav>
+
+    <h2>Match #{{ match.match_number }} &middot;
+        <span class="badge bg-secondary">{{ match.stage }}</span>
+        {% if match.group_letter %} Group {{ match.group_letter }}{% endif %}
+    </h2>
+
+    {# Match Details #}
+    <div class="card mb-3">
+        <div class="card-body">
+            <div class="row text-center">
+                <div class="col">
+                    {% if match.venue %}<small class="text-muted">{{ match.venue }}{% if match.city %}, {{ match.city }}{% endif %}</small><br>{% endif %}
+                    {% if match.kickoff_utc %}
+                        <small class="text-muted">{{ format_ct(match.kickoff_utc).strftime('%A, %b %d, %Y — %I:%M %p CT') }}</small>
+                    {% endif %}
+                </div>
+            </div>
+
+            {% if not match.home_team or not match.away_team %}
+            {# No teams assigned yet #}
+            <div class="alert alert-warning mt-3 mb-0">
+                <i class="bi bi-exclamation-triangle"></i>
+                Teams have not been assigned to this match yet.
+                {% if match.stage != 'group' %}
+                <a href="{{ url_for('worldcup.admin_set_knockout', match_id=match.id) }}" class="alert-link">Assign teams first</a>.
+                {% endif %}
+            </div>
+            {% else %}
+            {# Teams are assigned #}
+            <div class="row text-center mt-3">
+                <div class="col-5">
+                    <h3>{{ match.home_team.display_name }}</h3>
+                    <span class="badge bg-info">{{ match.home_team.fifa_code }}</span>
+                    <span class="badge bg-secondary">Tier {{ match.home_team.tier }}</span>
+                </div>
+                <div class="col-2 d-flex align-items-center justify-content-center">
+                    <strong class="fs-4">vs</strong>
+                </div>
+                <div class="col-5">
+                    <h3>{{ match.away_team.display_name }}</h3>
+                    <span class="badge bg-info">{{ match.away_team.fifa_code }}</span>
+                    <span class="badge bg-secondary">Tier {{ match.away_team.tier }}</span>
+                </div>
+            </div>
+
+            {% if match.is_completed %}
+            {# Show existing result #}
+            <div class="alert alert-success mt-3">
+                <div class="text-center">
+                    <h4>
+                        {{ match.home_team.display_name }} {{ match.home_score }}
+                        &ndash;
+                        {{ match.away_score }} {{ match.away_team.display_name }}
+                    </h4>
+                    {% if match.is_draw %}
+                        <span class="badge bg-secondary">Draw</span>
+                    {% else %}
+                        <span class="badge bg-success">Winner: {{ match.winner_team.display_name if match.winner_team else '?' }}</span>
+                    {% endif %}
+                    {% if match.extra_time %}<span class="badge bg-warning text-dark">Extra Time</span>{% endif %}
+                    {% if match.penalties %}<span class="badge bg-danger">Penalties</span>{% endif %}
+                </div>
+            </div>
+
+            <form method="POST" action="{{ url_for('worldcup.admin_match_result', match_id=match.id) }}"
+                  onsubmit="return confirm('Clear this result? All scores will be recalculated.');">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="action" value="clear">
+                <button type="submit" class="btn btn-outline-danger">Clear Result &amp; Re-enter</button>
+            </form>
+
+            {% else %}
+            {# Score entry form #}
+            <form method="POST" action="{{ url_for('worldcup.admin_match_result', match_id=match.id) }}" class="mt-4"
+                  onsubmit="return confirm('Submit this result? Scores will be recalculated immediately.');">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-5">
+                        <label class="form-label"><strong>{{ match.home_team.display_name }}</strong> Score</label>
+                        <input type="number" class="form-control form-control-lg text-center" name="home_score" min="0" required>
+                    </div>
+                    <div class="col-md-2 text-center">
+                        <span class="fs-3">&ndash;</span>
+                    </div>
+                    <div class="col-md-5">
+                        <label class="form-label"><strong>{{ match.away_team.display_name }}</strong> Score</label>
+                        <input type="number" class="form-control form-control-lg text-center" name="away_score" min="0" required>
+                    </div>
+                </div>
+
+                <div class="mt-3">
+                    <label class="form-label fw-bold">Winner</label>
+                    <div class="d-flex gap-3 flex-wrap">
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="winner" id="winner_home" value="home">
+                            <label class="form-check-label" for="winner_home">{{ match.home_team.display_name }}</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="winner" id="winner_away" value="away">
+                            <label class="form-check-label" for="winner_away">{{ match.away_team.display_name }}</label>
+                        </div>
+                        {% if match.stage == 'group' %}
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="winner" id="winner_draw" value="draw">
+                            <label class="form-check-label" for="winner_draw">Draw</label>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                {% if match.stage != 'group' %}
+                <div class="mt-3">
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="checkbox" name="extra_time" id="extra_time">
+                        <label class="form-check-label" for="extra_time">Extra Time</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="checkbox" name="penalties" id="penalties">
+                        <label class="form-check-label" for="penalties">Penalties</label>
+                    </div>
+                </div>
+                {% endif %}
+
+                <div class="mt-4">
+                    <button type="submit" class="btn btn-success btn-lg">Submit Result</button>
+                    <a href="{{ url_for('worldcup.admin_dashboard') }}" class="btn btn-secondary ms-2">Cancel</a>
+                </div>
+            </form>
+            {% endif %}
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

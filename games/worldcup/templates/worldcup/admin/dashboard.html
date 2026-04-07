@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+{% block title %}World Cup Admin Dashboard{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1>World Cup Admin Dashboard</h1>
+
+    <div class="alert alert-info">
+        <strong>Tournament Status:</strong>
+        {{ completed_matches }} of {{ total_matches }} matches completed
+        &middot; Phase: <strong>{{ tournament_phase.replace('_', ' ').title() }}</strong>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            {# Matches Needing Scores #}
+            <div class="card mb-3">
+                <div class="card-header"><h4 class="mb-0">Matches Needing Scores</h4></div>
+                <div class="card-body">
+                    {% if pending_matches %}
+                    <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Stage</th>
+                                <th>Home</th>
+                                <th>Away</th>
+                                <th>Kickoff (CT)</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for match in pending_matches %}
+                            <tr>
+                                <td>{{ match.match_number }}</td>
+                                <td>
+                                    <span class="badge bg-secondary">{{ match.stage }}</span>
+                                    {% if match.group_letter %}({{ match.group_letter }}){% endif %}
+                                </td>
+                                <td>{{ match.home_team.display_name if match.home_team else '?' }} <small class="text-muted">{{ match.home_team.fifa_code if match.home_team else '' }}</small></td>
+                                <td>{{ match.away_team.display_name if match.away_team else '?' }} <small class="text-muted">{{ match.away_team.fifa_code if match.away_team else '' }}</small></td>
+                                <td>
+                                    {% if match.kickoff_utc %}
+                                        {{ format_ct(match.kickoff_utc).strftime('%b %d, %I:%M %p') }}
+                                    {% else %}
+                                        TBD
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <a href="{{ url_for('worldcup.admin_match_result', match_id=match.id) }}"
+                                       class="btn btn-sm btn-warning">Enter Result</a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    </div>
+                    {% else %}
+                    <p class="text-muted mb-0">No matches awaiting scores.</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            {# Groups Needing Advancement #}
+            {% if groups_needing_advancement %}
+            <div class="card mb-3">
+                <div class="card-header"><h4 class="mb-0">Groups Needing Advancement</h4></div>
+                <div class="card-body">
+                    <div class="d-flex flex-wrap gap-2">
+                        {% for letter in groups_needing_advancement %}
+                        <a href="{{ url_for('worldcup.admin_advancement') }}"
+                           class="btn btn-outline-primary">
+                            Group {{ letter }} &rarr; Confirm Advancement
+                        </a>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            {# Knockout Matches Needing Teams #}
+            {% if knockout_unassigned %}
+            <div class="card mb-3">
+                <div class="card-header"><h4 class="mb-0">Knockout Matches Needing Teams</h4></div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Stage</th>
+                                <th>Venue</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for match in knockout_unassigned %}
+                            <tr>
+                                <td>{{ match.match_number }}</td>
+                                <td><span class="badge bg-secondary">{{ match.stage }}</span></td>
+                                <td>{{ match.venue or 'TBD' }}</td>
+                                <td>
+                                    <a href="{{ url_for('worldcup.admin_set_knockout', match_id=match.id) }}"
+                                       class="btn btn-sm btn-primary">Assign Teams</a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="col-lg-4">
+            {# Quick Actions #}
+            <div class="card mb-3">
+                <div class="card-header"><h4 class="mb-0">Quick Actions</h4></div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <form method="POST" action="{{ url_for('worldcup.admin_recalc') }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="btn btn-warning w-100">Recalculate All Scores</button>
+                        </form>
+                        <a href="{{ url_for('worldcup.admin_advancement') }}" class="btn btn-secondary">Group Advancement</a>
+                        <a href="{{ url_for('worldcup.admin_all_picks') }}" class="btn btn-secondary">View All Picks</a>
+                        <a href="{{ url_for('worldcup.admin_users') }}" class="btn btn-secondary">Manage Users</a>
+                        <a href="{{ url_for('worldcup.admin_payments') }}" class="btn btn-secondary">Track Payments</a>
+                        <a href="{{ url_for('worldcup.leaderboard') }}" class="btn btn-outline-secondary">View Leaderboard</a>
+                    </div>
+                </div>
+            </div>
+
+            {# Pool Stats #}
+            <div class="card mb-3">
+                <div class="card-header"><h4 class="mb-0">Pool Stats</h4></div>
+                <div class="card-body">
+                    <ul class="list-unstyled mb-0">
+                        <li><strong>Enrolled:</strong> {{ total_enrolled }}</li>
+                        <li><strong>Picks Submitted:</strong> {{ picks_submitted }} / {{ total_enrolled }}</li>
+                        <li><strong>Paid:</strong> {{ total_paid }} / {{ total_enrolled }}</li>
+                        <li><strong>Unpaid:</strong> {{ total_enrolled - total_paid }}</li>
+                        <li><strong>Total Collected:</strong> ${{ total_paid * entry_fee }}</li>
+                    </ul>
+                </div>
+            </div>
+
+            {# Admin Workflow #}
+            <div class="card">
+                <div class="card-header"><h4 class="mb-0">Tournament Workflow</h4></div>
+                <div class="card-body">
+                    <ol class="small mb-0 text-muted">
+                        <li>Enter match scores as games complete</li>
+                        <li>Confirm group advancement after groups finish</li>
+                        <li>Mark best 3rd-place teams after all groups complete</li>
+                        <li>Assign teams to knockout bracket shells</li>
+                        <li>Enter knockout results through to the final</li>
+                        <li>Run final recalc and announce winner</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
