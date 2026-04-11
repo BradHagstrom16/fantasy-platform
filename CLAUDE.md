@@ -186,7 +186,7 @@ No linter configured.
 - **Schema changes:** Flask-Migrate (Alembic) only — never raw SQL
 - **CSRF:** All POST forms include CSRF token; AJAX includes `X-CSRFToken` header
 - **POST-only:** All state-mutating operations use POST — no GET routes that change data
-- **Admin scoping:** Game admin is scoped to enrolled users only; game admin ≠ platform admin
+- **Admin scoping:** Two-tier game admin — platform admin (`User.is_admin`) always has access to every game's admin routes. Game-specific admin (`<Game>Enrollment.is_admin`) allows delegating admin to enrolled non-platform-admins. All `<game>_admin_required` decorators must check platform admin first, enrollment admin second.
 - **Homepage games list:** `core/main/routes.py` — set `'url': url_for('<game>.index')` for live games, `'url': None` for coming-soon; controls card clickability and Play Now vs Coming Soon badge
 
 ---
@@ -195,7 +195,7 @@ No linter configured.
 
 - Blueprint in `games/<game>/` with `<game>_` table prefix on all models
 - `<Game>Enrollment` model for game-specific user data, FK to shared `User`
-- `@<game>_admin_required` decorator scoped to enrolled users
+- `@<game>_admin_required` decorator — two-tier: platform admin override first, then enrollment-scoped admin
 - Templates extend `templates/base.html`, rendered under `<game>/` prefix
 - Add a game switcher `<li class="nav-item">` to `<ul class="navbar-nav me-auto">` in `base.html`; also add a `{% elif request.blueprint == '<game>' %}` branch in the game sub-nav block (below `</nav>`) with `.game-subnav .subnav-<game>` div, game label, and pill links
 - CLI commands under `flask <game> *` namespace using `AppGroup`

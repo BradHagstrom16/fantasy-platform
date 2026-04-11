@@ -35,10 +35,16 @@ from games.worldcup.services.scoring import (
 # ============================================================================
 
 def worldcup_admin_required(f):
-    """Decorator requiring World Cup admin access (WorldCupEnrollment.is_admin)."""
+    """Decorator requiring World Cup admin access.
+
+    Two-tier check: platform admin (User.is_admin) always passes.
+    Otherwise requires WorldCupEnrollment.is_admin for the current season.
+    """
     @wraps(f)
     @login_required
     def decorated_function(*args, **kwargs):
+        if current_user.is_admin:
+            return f(*args, **kwargs)
         enrollment = WorldCupEnrollment.query.filter_by(
             user_id=current_user.id, season_year=SEASON_YEAR
         ).first()

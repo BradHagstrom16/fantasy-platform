@@ -47,6 +47,9 @@ class GolfEnrollment(db.Model):
     # Payment tracking
     has_paid = db.Column(db.Boolean, default=False)
 
+    # Game admin delegation (non-platform-admins can run the game)
+    is_admin = db.Column(db.Boolean, default=False, nullable=False)
+
     # Timestamps
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 

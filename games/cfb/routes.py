@@ -43,10 +43,16 @@ logger = logging.getLogger(__name__)
 # ============================================================================
 
 def cfb_admin_required(f):
-    """Decorator requiring CFB admin access (CfbEnrollment.is_admin)."""
+    """Decorator requiring CFB admin access.
+
+    Two-tier check: platform admin (User.is_admin) always passes.
+    Otherwise requires CfbEnrollment.is_admin for the current season.
+    """
     @wraps(f)
     @login_required
     def decorated_function(*args, **kwargs):
+        if current_user.is_admin:
+            return f(*args, **kwargs)
         season_year = current_app.config.get('CFB_SEASON_YEAR', 2026)
         enrollment = CfbEnrollment.query.filter_by(
             user_id=current_user.id, season_year=season_year

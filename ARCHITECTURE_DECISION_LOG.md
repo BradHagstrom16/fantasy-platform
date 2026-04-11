@@ -1,6 +1,6 @@
 # Architecture Decision Log — Fantasy Sports Platform
 
-**Last Updated:** March 18, 2026
+**Last Updated:** April 11, 2026
 **Status:** Active — Phases 0–3 complete; Phase 4 (World Cup Fantasy) in design
 
 ---
@@ -36,6 +36,7 @@
 | ADR-025 | World Cup match pre-seeding | Create matches as played, All 104 matches seeded at init | **All 104 matches seeded at init, knockouts as shells** | Reduces admin work during tournament. Admin enters scores for existing records instead of creating each match. Knockout teams filled in as bracket resolves. | 2026-04-03 | Yes |
 | ADR-026 | World Cup leaderboard access | Login required, Public | **Public (no login required)** | Doubles as marketing — players share link with friends. Enrollment required only for pick submission. | 2026-04-03 | Yes |
 | ADR-027 | World Cup admin scoping | Platform admin, Enrollment-scoped | **Enrollment-scoped (CFB pattern)** | `WorldCupEnrollment.is_admin`, not `User.is_admin`. Consistent with CFB and the platform's game admin ≠ platform admin principle. | 2026-04-03 | Yes |
+| ADR-028 | Platform admin vs game admin access | Enrollment-only check, Platform admin universal override | **Platform admin is a universal override** | All `<game>_admin_required` decorators check `User.is_admin` first — platform admin always passes. Enrollment-scoped `is_admin` remains the mechanism for delegating game admin to non-platform-admins. Prevents the platform owner from being locked out of any game. Clarifies ADR-020 and ADR-027 — those established game admin scoping, this establishes the override hierarchy. Applies to Golf, CFB, World Cup, and all future games. | 2026-04-11 | Yes |
 
 ---
 

@@ -37,12 +37,22 @@ logger = logging.getLogger(__name__)
 # ============================================================================
 
 def golf_admin_required(f):
-    """Decorator to require admin access for golf admin routes."""
+    """Decorator requiring Golf admin access.
+
+    Two-tier check: platform admin (User.is_admin) always passes.
+    Otherwise requires GolfEnrollment.is_admin for the current season.
+    """
     @wraps(f)
     @login_required
     def decorated_function(*args, **kwargs):
-        if not current_user.is_admin:
-            flash('Admin access required.', 'error')
+        if current_user.is_admin:
+            return f(*args, **kwargs)
+        season_year = current_app.config['SEASON_YEAR']
+        enrollment = GolfEnrollment.query.filter_by(
+            user_id=current_user.id, season_year=season_year
+        ).first()
+        if not enrollment or not enrollment.is_admin:
+            flash('Golf admin access required.', 'error')
             return redirect(url_for('golf.index'))
         return f(*args, **kwargs)
     return decorated_function

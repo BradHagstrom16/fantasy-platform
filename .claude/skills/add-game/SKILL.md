@@ -33,7 +33,25 @@ Ask for the game name if not provided (e.g. "cfb", "masters", "worldcup").
    - Follow SQLAlchemy 2.0 style throughout
 
 4. **Scaffold routes.py with:**
-   - `@<name>_admin_required` decorator
+   - `@<name>_admin_required` decorator — **must use the two-tier pattern:**
+     ```python
+     def <name>_admin_required(f):
+         """Two-tier admin: platform admin (User.is_admin) always passes,
+         otherwise requires <Name>Enrollment.is_admin."""
+         @wraps(f)
+         @login_required
+         def decorated_function(*args, **kwargs):
+             if current_user.is_admin:
+                 return f(*args, **kwargs)
+             enrollment = <Name>Enrollment.query.filter_by(
+                 user_id=current_user.id, season_year=SEASON_YEAR
+             ).first()
+             if not enrollment or not enrollment.is_admin:
+                 flash('<Game> admin access required.', 'error')
+                 return redirect(url_for('<name>.index'))
+             return f(*args, **kwargs)
+         return decorated_function
+     ```
    - `before_request` hook for auto-refresh logic
    - Context processor for game-specific template variables
    - Placeholder routes: index, admin dashboard
