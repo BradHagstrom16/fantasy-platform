@@ -1,7 +1,7 @@
 # Architecture Decision Log — Fantasy Sports Platform
 
 **Last Updated:** April 11, 2026
-**Status:** Active — Phases 0–3 complete; Phase 4 (World Cup Fantasy) in design
+**Status:** Active — Phases 0–4 complete; Phase 5 (PythonAnywhere go-live) next
 
 ---
 
@@ -36,7 +36,7 @@
 | ADR-025 | World Cup match pre-seeding | Create matches as played, All 104 matches seeded at init | **All 104 matches seeded at init, knockouts as shells** | Reduces admin work during tournament. Admin enters scores for existing records instead of creating each match. Knockout teams filled in as bracket resolves. | 2026-04-03 | Yes |
 | ADR-026 | World Cup leaderboard access | Login required, Public | **Public (no login required)** | Doubles as marketing — players share link with friends. Enrollment required only for pick submission. | 2026-04-03 | Yes |
 | ADR-027 | World Cup admin scoping | Platform admin, Enrollment-scoped | **Enrollment-scoped (CFB pattern)** | `WorldCupEnrollment.is_admin`, not `User.is_admin`. Consistent with CFB and the platform's game admin ≠ platform admin principle. | 2026-04-03 | Yes |
-| ADR-028 | Platform admin vs game admin access | Enrollment-only check, Platform admin universal override | **Platform admin is a universal override** | All `<game>_admin_required` decorators check `User.is_admin` first — platform admin always passes. Enrollment-scoped `is_admin` remains the mechanism for delegating game admin to non-platform-admins. Prevents the platform owner from being locked out of any game. Clarifies ADR-020 and ADR-027 — those established game admin scoping, this establishes the override hierarchy. Applies to Golf, CFB, World Cup, and all future games. | 2026-04-11 | Yes |
+| ADR-028 | Platform admin vs game admin access | Enrollment-only check, Platform admin universal override | **Platform admin is a universal override** | All `<game>_admin_required` decorators check `User.is_admin` first — platform admin always passes. Enrollment-scoped `is_admin` remains the mechanism for delegating game admin to non-platform-admins. Prevents the platform owner from being locked out of any game. Clarifies ADR-020 and ADR-027. Applies to Golf, CFB, World Cup, and all future games. | 2026-04-11 | Yes |
 
 ---
 
@@ -72,7 +72,7 @@
 |----------|--------|--------|-----------|
 | **1A: Models + Migration** | ✅ Done | `9744be4c108a` | `games/golf/models.py` (7 models), `games/golf/utils.py`, migration |
 | **1B: Services + CLI** | ✅ Done | `ced489d` | `games/golf/services/sync.py`, `reminders.py`, `cli.py`, `constants.py` |
-| **1C: Routes + Templates** | ✅ Done | (latest) | `games/golf/routes.py` (~15 routes), 12 template files, nav link |
+| **1C: Routes + Templates** | ✅ Done | — | `games/golf/routes.py` (~15 routes), 12 template files, nav link |
 
 **Phase 1 delivers:** Complete Golf Pick 'Em as a blueprint under `/golf/` with standings, schedule, pick submission, tournament detail, admin dashboard, payments, override picks, API sync CLI, and email reminders.
 
@@ -95,6 +95,18 @@
 
 **Phase 3 delivers:** "The Commissioner's Club" design system — platform purple/gold identity with game-specific palettes (Golf: Augusta green/gold, CFB: Badger crimson/midnight). CSS custom properties with `body.game-<game>` auto-theming. Gmail-compatible HTML emails with game-branded wrappers for both games. Weekly Results Recap emails for both games. All templates restyled. Mobile-first responsive layout throughout.
 
+### Phase 4 — World Cup Fantasy Pool (April 3-11, 2026) ✅
+
+| Sub-task | Status | Commit | Key Files |
+|----------|--------|--------|-----------|
+| **4A: Foundation — Models, Migration, CLI, Blueprint scaffold** | ✅ Done | `021cf0e` | `games/worldcup/models.py` (4 models), `constants.py`, `match_schedule.py`, `world_cup_countries.py`, `cli.py`, migration |
+| **4B: Scoring engine** | ✅ Done | `56f6dbf` | `games/worldcup/services/scoring.py` — idempotent recalc pipeline (matches → teams → picks → enrollments) |
+| **4C: Player-facing UI** | ✅ Done | `054ede9` | Enrollment, pick submission (tier-grouped cards), leaderboard (public), schedule, group standings, rules page, World Cup CSS theming |
+| **4D: Admin dashboard** | ✅ Done | `8f9112f` | Admin dashboard, match result entry, knockout team assignment, score recalc trigger, player management |
+| **4D (post): Platform admin override standardization** | ✅ Done | `64ed475` | All `<game>_admin_required` decorators updated — platform `User.is_admin` is universal override (ADR-028) |
+
+**Phase 4 delivers:** Complete World Cup Fantasy Pool blueprint under `/worldcup/`. Players pick 9 national teams across 5 tiers; picks lock June 11 at 2:00 PM CT; points accumulate as teams win and advance through 104 matches. Public leaderboard. Admin can enter match scores and trigger recalc. USA goals tiebreaker. Full game design locked in `WORLD_CUP_GAME_DESIGN.md` (v6).
+
 ---
 
 ## Timeline Summary
@@ -106,28 +118,29 @@
 | 1 | Port Golf Pick 'Em blueprint | March 2026 | ✅ **Complete** |
 | 2 | Port CFB Survivor blueprint | March 2026 | ✅ **Complete** |
 | 3 | UI/Design upgrade + mobile | March 2026 | ✅ **Complete** |
-| 4 | Design + build World Cup Fantasy game | April–May 2026 | 🔄 **In progress — 4A foundation** |
-| 5 | Go live on PythonAnywhere — World Cup launch | June 2026 | ⬜ Not started |
+| 4 | World Cup Fantasy Pool — design + build | April 2026 | ✅ **Complete** |
+| 5 | Go live on PythonAnywhere — World Cup launch | May–June 2026 | 🔄 **Next** |
 | 6 | Golf cutover to unified platform | August 2026 | ⬜ Not started |
 | 7 | CFB Survivor on unified platform | September 1, 2026 | ⬜ Not started |
 | 8 | Masters Fantasy blueprint | Oct–Nov 2026 | ⬜ Not started |
 | 9 | PostgreSQL + REST API + Railway/Render | Feb–Mar 2027 | ⬜ Not started |
 | 10 | Olympics/World Cup event template (reusable) | Q2 2027 | ⬜ Not started |
 
+| — | **World Cup pick deadline** | **June 11, 2026 2:00 PM CT** | ⚠️ Hard deadline |
 | — | **Golf season ends → cutover to unified platform** | **August 2026** | ⬜ |
-| — | **CFB season starts on unified platform** | **September 1, 2026** | ⬜ |
+| — | **CFB season starts on unified platform** | **September 1, 2026** | ⬜ Hard deadline |
 | — | **2026 FIFA World Cup** | **June 11 – July 19, 2026** | ⬜ |
 
 ---
 
 ## Immediate Next Actions
 
-1. ✅ ~~UI/Design upgrade~~ — Complete (Phase 3)
-2. 🔄 **Design World Cup Fantasy game** — Game mechanics, scoring, tiers, pick rules, admin workflow. Run in a dedicated game design chat; output is a complete game spec.
-3. ⬜ **Build World Cup Fantasy blueprint** — New implementation chat, takes game spec as input. Follows established blueprint pattern.
-4. ⬜ **End-to-end local testing** — All three games working together before any PA deployment.
-5. ⬜ **Go live on PythonAnywhere** — Deploy unified platform to B1G Brad PA account. World Cup as launch event.
-6. ⬜ **User onboarding** — New user registration flow. User merge strategy (ADR-010) for Golf/CFB players who join the platform.
+1. ✅ ~~Phase 4: World Cup Fantasy Pool~~ — Complete
+2. 🔄 **Human end-to-end test** — Full walkthrough of all three games (Golf, CFB, World Cup) locally before deploying. World Cup focus: enrollment, pick submission, pick editing, deadline lock, admin score entry, leaderboard, public access.
+3. ⬜ **Deploy to PythonAnywhere** — B1G Brad account. WSGI config, migration, seed teams/matches, smoke test from live URL. World Cup as platform launch event.
+4. ⬜ **User onboarding** — Invite players via direct link/email. Self-serve registration. ADR-010 user merge strategy for Golf/CFB players registering new accounts.
+5. ⬜ **Golf cutover** — After BMW Championship (Aug 2026). Drop GolfPickEm PA account. Migrate Golf `.db` data to unified platform.
+6. ⬜ **CFB Survivor** — Confirm on unified platform by September 1, 2026.
 
 ---
 
@@ -135,7 +148,7 @@
 
 - Golf Pick 'Em stays live on GolfPickEm PA account through August 2026
 - CFB Survivor must be live on unified platform by September 1, 2026
-- 2026 World Cup runs June 11 – July 19 — platform must be live before June 11
+- 2026 World Cup pick deadline: June 11, 2026 2:00 PM CT — platform **must** be live and accepting enrollments before this date
 - Masters 2026 runs on Google Sheets (web app deferred)
 - Handoff files (`.md`) are the preferred format for Claude Code work
 - No JavaScript build step — vanilla JS or CDN-loaded libraries only
@@ -143,31 +156,34 @@
 
 ---
 
+## Phase 4 Lessons Learned
+
+| # | Issue | Lesson |
+|---|-------|--------|
+| 1 | Platform admin locked out of game admin routes | `<game>_admin_required` decorators must check `User.is_admin` first as a universal override before checking enrollment-scoped `is_admin`. Established as ADR-028. |
+| 2 | First live-built game (not a port) requires a complete game spec before handoff | The design-first approach (ADR-023) proved correct — game spec locked in `WORLD_CUP_GAME_DESIGN.md` before a single line of blueprint code was written. |
+
 ## Phase 3 Lessons Learned
 
 | # | Issue | Lesson |
 |---|-------|--------|
-| 1 | Mobile directives embedded in design handoff vs. separate phase | Mobile-first directives baked directly into game template handoffs are more effective than a separate mobile pass — the context is already there when the template is being written |
-| 2 | Design after all games are ported | Designing against one game's templates produces worse decisions than designing with full context of both games present (confirmed ADR-013) |
-
----
+| 1 | Mobile directives embedded in design handoff vs. separate phase | Mobile-first directives baked directly into game template handoffs are more effective than a separate mobile pass — the context is already there when the template is being written. |
+| 2 | Design after all games are ported | Designing against one game's templates produces worse decisions than designing with full context of both games present (confirmed ADR-013). |
 
 ## Phase 2 Lessons Learned
 
 | # | Issue | Lesson |
 |---|-------|--------|
-| 1 | Spread cap threshold mismatch between GET display and POST validation | Always use identical thresholds in UI filtering and server-side validation — test both paths |
-| 2 | GET routes for state-changing operations (autopicks) | All state-mutating operations must be POST with CSRF, even behind admin auth — no exceptions |
-| 3 | Game-level admin could reset any platform user's password | Scope game-admin actions to game-enrolled users only — game admin ≠ platform admin |
-| 4 | `is_complete` committed before `process_week_results` — orphan on failure | Let the processing function own the completion flag — don't commit it prematurely |
-
----
+| 1 | Spread cap threshold mismatch between GET display and POST validation | Always use identical thresholds in UI filtering and server-side validation — test both paths. |
+| 2 | GET routes for state-changing operations (autopicks) | All state-mutating operations must be POST with CSRF, even behind admin auth — no exceptions. |
+| 3 | Game-level admin could reset any platform user's password | Scope game-admin actions to game-enrolled users only — game admin ≠ platform admin. |
+| 4 | `is_complete` committed before `process_week_results` — orphan on failure | Let the processing function own the completion flag — don't commit it prematurely. |
 
 ## Phase 1 Lessons Learned
 
 | # | Issue | Fix Applied in Phase 2+ |
 |---|-------|-----------------|
-| 1 | Smoke tests assumed tables exist in in-memory SQLite | All test snippets include `db.create_all()` inside `ENVIRONMENT=testing` context |
-| 2 | Auth routes have no URL prefix | Explicitly documented in all handoff files — login is at `/login`, not `/auth/login` |
-| 3 | Cross-game patterns (before_request hooks) not documented | Document in handoff context block so future games follow the same approach |
-| 4 | Handoff files referenced source code inline | All source files staged in `_migration_source/` and referenced by path |
+| 1 | Smoke tests assumed tables exist in in-memory SQLite | All test snippets include `db.create_all()` inside `ENVIRONMENT=testing` context. |
+| 2 | Auth routes have no URL prefix | Explicitly documented in all handoff files — login is at `/login`, not `/auth/login`. |
+| 3 | Cross-game patterns (before_request hooks) not documented | Document in handoff context block so future games follow the same approach. |
+| 4 | Handoff files referenced source code inline | All source files staged in `_migration_source/` and referenced by path. |
