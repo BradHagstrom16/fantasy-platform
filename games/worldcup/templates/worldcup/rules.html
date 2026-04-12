@@ -78,7 +78,7 @@
               <thead>
                 <tr>
                   <th>Result</th>
-                  <th class="text-center">Base Points</th>
+                  <th class="text-center">Points</th>
                 </tr>
               </thead>
               <tbody>
@@ -96,7 +96,7 @@
                 <tr>
                   <th>Milestone</th>
                   <th>How Earned</th>
-                  <th class="text-center">Base Points</th>
+                  <th class="text-center">Points</th>
                 </tr>
               </thead>
               <tbody>
@@ -121,7 +121,7 @@
               <thead>
                 <tr>
                   <th>Result</th>
-                  <th class="text-center">Base Points</th>
+                  <th class="text-center">Points</th>
                 </tr>
               </thead>
               <tbody>
@@ -149,7 +149,6 @@
               <thead>
                 <tr>
                   <th>Achievement</th>
-                  <th class="text-center">Base</th>
                   <th class="text-center"><span class="tier-badge tier-badge-1">T1</span> &times;1</th>
                   <th class="text-center"><span class="tier-badge tier-badge-2">T2</span> &times;1.5</th>
                   <th class="text-center"><span class="tier-badge tier-badge-3">T3</span> &times;2.5</th>
@@ -176,7 +175,6 @@
                 {% for label, base in matrix %}
                 <tr {% if label == 'Champion' %}style="background:rgba(0,40,104,.04); font-weight:700;"{% endif %}>
                   <td>{{ label }}</td>
-                  <td class="text-center">{{ base }}</td>
                   {% for m in multipliers %}
                   <td class="text-center">{{ "%.1f"|format(base * m) if base * m != base * m | int else (base * m)|int }}</td>
                   {% endfor %}

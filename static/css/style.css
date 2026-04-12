@@ -1060,6 +1060,105 @@ main { flex: 1; }
   color: inherit;
 }
 
+/* Featured game card — WC hero prominence (temporary for WC launch) */
+.game-card--featured {
+  border: none;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  cursor: pointer;
+  color: inherit;
+}
+
+.game-card--featured::before {
+  background: none;
+}
+
+.game-card--featured .featured-game-inner {
+  background:
+    radial-gradient(ellipse at 80% 20%, rgba(191,10,48,.15) 0%, transparent 50%),
+    radial-gradient(ellipse at 20% 80%, rgba(0,40,104,.12) 0%, transparent 50%),
+    linear-gradient(145deg, #00122e 0%, #002868 40%, #001a44 100%);
+  padding: 3rem 2.5rem;
+  text-align: center;
+  position: relative;
+}
+
+.game-card--featured .featured-game-inner::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(circle, rgba(255,255,255,.03) 1px, transparent 1px);
+  background-size: 24px 24px;
+  pointer-events: none;
+}
+
+.game-card--featured .featured-badge {
+  display: inline-block;
+  font-family: 'Teko', sans-serif;
+  font-size: .8rem;
+  font-weight: 600;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: #BF0A30;
+  background: rgba(191,10,48,.12);
+  border: 1px solid rgba(191,10,48,.25);
+  padding: .25rem .85rem;
+  border-radius: 2rem;
+  margin-bottom: 1rem;
+}
+
+.game-card--featured .featured-icon {
+  display: block;
+  font-size: 3.5rem;
+  line-height: 1;
+  margin-bottom: 1rem;
+  filter: drop-shadow(0 4px 12px rgba(0,0,0,.3));
+  transition: transform .3s cubic-bezier(.34,1.56,.64,1);
+}
+
+.game-card--featured:hover .featured-icon {
+  transform: scale(1.12) rotate(-3deg);
+}
+
+.game-card--featured .featured-title {
+  font-family: 'Teko', sans-serif;
+  font-weight: 700;
+  font-size: clamp(1.8rem, 4vw, 2.6rem);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  line-height: 1.05;
+  color: #FFFFFF;
+  margin-bottom: .6rem;
+}
+
+.game-card--featured .featured-desc {
+  color: rgba(255,255,255,.55);
+  font-size: .95rem;
+  line-height: 1.6;
+  max-width: 480px;
+  margin: 0 auto 1.5rem;
+}
+
+.game-card--featured .featured-cta {
+  font-weight: 600;
+  box-shadow: var(--shadow-gold);
+}
+
+.game-card--featured:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 32px rgba(0,40,104,.35);
+  color: inherit;
+}
+
+@media (max-width: 576px) {
+  .game-card--featured .featured-game-inner {
+    padding: 2rem 1.25rem;
+  }
+  .game-card--featured .featured-icon {
+    font-size: 2.8rem;
+  }
+}
+
 /* Coming-soon game card — muted, non-interactive */
 .game-card--coming-soon {
   opacity: .55;
@@ -1518,6 +1617,27 @@ main { flex: 1; }
 }
 
 .auth-panel-brand .brand-game-item span:first-child { font-size: 1.2rem; }
+
+/* Featured game highlight in brand panel */
+.auth-panel-brand .brand-game-item--featured {
+  background: rgba(191,10,48,.1);
+  border-color: rgba(191,10,48,.2);
+  color: rgba(255,255,255,.9);
+}
+
+/* World Cup callout on login form */
+.wc-login-callout {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  justify-content: center;
+  font-size: .82rem;
+  color: var(--text-secondary);
+  background: rgba(0,40,104,.04);
+  border: 1px solid rgba(0,40,104,.1);
+  border-radius: var(--radius);
+  padding: .5rem .75rem;
+}
 
 .auth-form-panel {
   flex: 1;

@@ -44,7 +44,7 @@
                   {% set ns = namespace(total_base=0.0, total_mult=0.0) %}
                   {% for pick in picks %}
                   <tr>
-                    <td class="fw-medium">{{ pick.team.display_name }}</td>
+                    <td class="fw-medium">{{ pick.team.flag_emoji }} {{ pick.team.display_name }} <small class="text-muted">Group {{ pick.team.group_letter }}</small></td>
                     <td><span class="tier-badge tier-badge-{{ pick.tier }}">{{ tiers[pick.tier]['name'] }}</span></td>
                     <td class="text-center"><span class="multiplier-badge">&times;{{ pick.team.multiplier }}</span></td>
                     <td class="text-end">{{ "%.1f"|format(pick.base_points) }}</td>

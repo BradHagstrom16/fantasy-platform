@@ -16,14 +16,14 @@
                 One account. Every game. Compete with your group all year long.
             </p>
             <div class="brand-games">
+                <div class="brand-game-item brand-game-item--featured">
+                    <span>⚽</span><span>World Cup Fantasy Pool</span>
+                </div>
                 <div class="brand-game-item">
                     <span><i class="bi bi-flag"></i></span><span>Golf Pick 'Em</span>
                 </div>
                 <div class="brand-game-item">
                     <span><i class="bi bi-trophy"></i></span><span>CFB Survivor Pool</span>
-                </div>
-                <div class="brand-game-item">
-                    <span><i class="bi bi-award"></i></span><span>Masters Fantasy</span>
                 </div>
             </div>
         </div>
@@ -72,6 +72,18 @@
                         Create an account
                     </a>
                 </p>
+
+                {% if request.args.get('next', '').startswith('/worldcup') %}
+                <div class="wc-login-callout mt-3">
+                    <span>⚽</span>
+                    <span>You're one step away from the <strong>World Cup Fantasy Pool</strong></span>
+                </div>
+                {% else %}
+                <div class="wc-login-callout mt-3">
+                    <span>⚽</span>
+                    <span>The <strong>2026 World Cup Pool</strong> is live — join today</span>
+                </div>
+                {% endif %}
             </div>
         </div>
     </div>

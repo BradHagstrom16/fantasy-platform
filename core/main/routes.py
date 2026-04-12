@@ -12,33 +12,32 @@ from core.main import main_bp
 @main_bp.route('/')
 def index():
     """Platform home page — shows available games."""
-    games = [
-        {
-            'name': 'World Cup Fantasy',
-            'slug': 'worldcup',
-            'description': 'Draft 5 tiers of national teams. Earn points as your picks advance through the tournament.',
-            'status': 'Live Now',
-            'emoji': '🌍',
-            'color': 'primary',
-            'url': url_for('worldcup.index'),
-        },
+    featured_game = {
+        'name': '2026 FIFA World Cup',
+        'slug': 'worldcup',
+        'description': 'Pick 9 national teams across 5 tiers. Points accumulate as your teams win and advance through the bracket.',
+        'emoji': '⚽',
+        'url': url_for('worldcup.index'),
+    }
+
+    other_games = [
         {
             'name': "Golf Pick 'Em",
             'slug': 'golf',
             'description': 'Season-long PGA Tour fantasy. Pick one golfer per tournament. Points = prize money.',
-            'status': 'Coming Soon',
             'emoji': '⛳',
-            'color': 'success',
             'url': None,
         },
         {
             'name': 'CFB Survivor Pool',
             'slug': 'cfb',
             'description': 'Weekly college football picks against the spread. Two lives. Last survivor wins.',
-            'status': 'Coming Soon',
             'emoji': '🏈',
-            'color': 'danger',
             'url': None,
         },
     ]
-    return render_template('main/index.html', games=games)
+    return render_template(
+        'main/index.html',
+        featured_game=featured_game,
+        other_games=other_games,
+    )

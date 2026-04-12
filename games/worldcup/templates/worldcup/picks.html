@@ -51,7 +51,7 @@
               <tbody>
                 {% for pick in existing_picks %}
                 <tr>
-                  <td class="fw-medium">{{ pick.team.display_name }}</td>
+                  <td class="fw-medium">{{ pick.team.flag_emoji }} {{ pick.team.display_name }} <small class="text-muted">Group {{ pick.team.group_letter }}</small></td>
                   <td><span class="tier-badge tier-badge-{{ pick.tier }}">{{ tiers[pick.tier]['name'] }}</span></td>
                   <td class="text-center"><span class="multiplier-badge">&times;{{ pick.team.multiplier }}</span></td>
                   <td class="text-end">{{ "%.1f"|format(pick.base_points) }}</td>
@@ -123,15 +123,15 @@
             <div class="wc-team-card {% if team.id in selected_team_ids %}selected{% endif %}"
                  data-team-id="{{ team.id }}"
                  data-tier="{{ tier_num }}"
+                 data-flag="{{ team.flag_emoji }}"
+                 data-group="{{ team.group_letter }}"
                  onclick="toggleTeam(this)">
               <input type="checkbox" name="tier_{{ tier_num }}" value="{{ team.id }}"
                      class="d-none team-checkbox"
                      {% if team.id in selected_team_ids %}checked{% endif %}>
-              <span class="team-name">{{ team.display_name }}</span>
+              <span class="team-name">{{ team.flag_emoji }} {{ team.display_name }}</span>
               <span class="team-meta">
                 <span>Group {{ team.group_letter }}</span>
-                <span>&middot;</span>
-                <span>{{ team.confederation }}</span>
               </span>
             </div>
             {% endfor %}
@@ -247,9 +247,10 @@
     } else {
       selected.forEach(card => {
         const li = document.createElement('li');
-        const name = card.querySelector('.team-name').textContent;
+        const name = card.querySelector('.team-name').textContent.trim();
+        const group = card.dataset.group || '';
         const tier = card.dataset.tier;
-        li.innerHTML = '<span>' + name + '</span><span class="tier-badge tier-badge-' + tier + '">' + TIER_REQUIREMENTS[tier].name + '</span>';
+        li.innerHTML = '<span>' + name + ' <small class="text-muted">Grp ' + group + '</small></span><span class="tier-badge tier-badge-' + tier + '">' + TIER_REQUIREMENTS[tier].name + '</span>';
         list.appendChild(li);
       });
     }

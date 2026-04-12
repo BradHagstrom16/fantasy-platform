@@ -30,7 +30,7 @@
             {% for team in teams %}
             <tr>
               <td class="team-name-cell">
-                {{ team.display_name }}
+                {{ team.flag_emoji }} {{ team.display_name }}
                 {% if team.advancement_method == 'group_winner' %}
                   <span class="advancement-badge winner">1st</span>
                 {% elif team.advancement_method == 'runner_up' %}
