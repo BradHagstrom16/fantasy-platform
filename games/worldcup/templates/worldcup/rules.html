@@ -31,36 +31,38 @@
           <h3 class="mb-3" style="font-family:'Teko',sans-serif; text-transform:uppercase; letter-spacing:.04em;">
             <i class="bi bi-layers me-2"></i>Tier Structure
           </h3>
-          <div class="table-responsive">
-            <table class="table table-worldcup mb-0">
-              <thead>
-                <tr>
-                  <th>Tier</th>
-                  <th>Name</th>
-                  <th class="text-center">Picks</th>
-                  <th class="text-center">Multiplier</th>
-                  <th>Teams</th>
-                </tr>
-              </thead>
-              <tbody>
-                {% set tier_teams = {
-                  1: 'Spain, France, England, Argentina, Brazil, Portugal, Germany',
-                  2: 'Netherlands, Norway, Belgium, Colombia',
-                  3: 'USA, Morocco, Japan, Uruguay, Mexico, Switzerland, Turkey, Ecuador, Sweden, Croatia, Senegal',
-                  4: 'Austria, Canada, Paraguay, Czech Republic, Scotland, Ivory Coast, Egypt, Ghana, Bosnia & Herzegovina, Algeria, South Korea',
-                  5: 'Iran, Australia, Tunisia, DR Congo, Saudi Arabia, South Africa, Panama, Qatar, Iraq, New Zealand, Cape Verde, Uzbekistan, Jordan, Curacao, Haiti'
-                } %}
-                {% for tier_num in range(1, 6) %}
-                <tr>
-                  <td><span class="tier-badge tier-badge-{{ tier_num }}">{{ tier_num }}</span></td>
-                  <td class="fw-medium">{{ tiers[tier_num]['name'] }}</td>
-                  <td class="text-center">{{ tiers[tier_num]['picks'] }}</td>
-                  <td class="text-center"><span class="multiplier-badge">&times;{{ tiers[tier_num]['multiplier'] }}</span></td>
-                  <td><small class="text-muted">{{ tier_teams[tier_num] }}</small></td>
-                </tr>
-                {% endfor %}
-              </tbody>
-            </table>
+          <div class="table-scroll-wrapper">
+            <div class="table-responsive">
+              <table class="table table-worldcup mb-0">
+                <thead>
+                  <tr>
+                    <th>Tier</th>
+                    <th>Name</th>
+                    <th class="text-center">Picks</th>
+                    <th class="text-center">Multiplier</th>
+                    <th>Teams</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% set tier_teams = {
+                    1: 'Spain, France, England, Argentina, Brazil, Portugal, Germany',
+                    2: 'Netherlands, Norway, Belgium, Colombia',
+                    3: 'USA, Morocco, Japan, Uruguay, Mexico, Switzerland, Turkey, Ecuador, Sweden, Croatia, Senegal',
+                    4: 'Austria, Canada, Paraguay, Czech Republic, Scotland, Ivory Coast, Egypt, Ghana, Bosnia & Herzegovina, Algeria, South Korea',
+                    5: 'Iran, Australia, Tunisia, DR Congo, Saudi Arabia, South Africa, Panama, Qatar, Iraq, New Zealand, Cape Verde, Uzbekistan, Jordan, Curacao, Haiti'
+                  } %}
+                  {% for tier_num in range(1, 6) %}
+                  <tr>
+                    <td><span class="tier-badge tier-badge-{{ tier_num }}">{{ tier_num }}</span></td>
+                    <td class="fw-medium">{{ tiers[tier_num]['name'] }}</td>
+                    <td class="text-center">{{ tiers[tier_num]['picks'] }}</td>
+                    <td class="text-center"><span class="multiplier-badge">&times;{{ tiers[tier_num]['multiplier'] }}</span></td>
+                    <td><small class="text-muted">{{ tier_teams[tier_num] }}</small></td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       </div>
@@ -144,6 +146,7 @@
           <h3 class="mb-3" style="font-family:'Teko',sans-serif; text-transform:uppercase; letter-spacing:.04em;">
             <i class="bi bi-calculator me-2"></i>Points Per Achievement by Tier
           </h3>
+          <div class="table-scroll-wrapper">
           <div class="table-responsive">
             <table class="table table-worldcup mb-0">
               <thead>
@@ -183,6 +186,7 @@
               </tbody>
             </table>
           </div>
+          </div>
         </div>
       </div>
 
@@ -214,4 +218,20 @@
     </div>
   </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.querySelectorAll('.table-scroll-wrapper').forEach(function(wrapper) {
+  var inner = wrapper.querySelector('.table-responsive');
+  if (!inner) return;
+  function check() {
+    var atEnd = inner.scrollLeft + inner.clientWidth >= inner.scrollWidth - 2;
+    wrapper.classList.toggle('scrolled-end', atEnd);
+  }
+  inner.addEventListener('scroll', check);
+  check();
+  window.addEventListener('resize', check);
+});
+</script>
 {% endblock %}

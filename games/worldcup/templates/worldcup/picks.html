@@ -29,7 +29,8 @@
     <div class="col-lg-8">
 
       {% if existing_picks %}
-      <div class="card border-0 shadow-sm mb-4 animate-in">
+      {# Desktop table #}
+      <div class="card border-0 shadow-sm mb-4 animate-in player-picks-desktop">
         <div class="card-header d-flex align-items-center justify-content-between">
           <h4 class="mb-0"><i class="bi bi-check2-square me-2"></i>Your 9 Picks</h4>
           <span class="fw-bold" style="font-family:'Teko',sans-serif; font-size:1.3rem; letter-spacing:.03em;">
@@ -61,6 +62,32 @@
               </tbody>
             </table>
           </div>
+        </div>
+      </div>
+
+      {# Mobile cards #}
+      <div class="player-picks-mobile mb-4 animate-in">
+        <div class="card-header d-flex align-items-center justify-content-between border-0 px-1 mb-2">
+          <h4 class="mb-0" style="font-family:'Teko',sans-serif; font-weight:600; text-transform:uppercase; letter-spacing:.04em; font-size:1.1rem;">
+            <i class="bi bi-check2-square me-2"></i>Your 9 Picks
+          </h4>
+          <span class="fw-bold" style="font-family:'Teko',sans-serif; font-size:1.2rem; letter-spacing:.03em;">
+            {{ "%.1f"|format(enrollment.total_score) }} pts
+          </span>
+        </div>
+        <div class="d-flex flex-column gap-2">
+          {% for pick in existing_picks %}
+          <div class="player-pick-card">
+            <div>
+              <span class="tier-badge tier-badge-{{ pick.tier }} me-1" style="font-size:.65rem; vertical-align:middle;">T{{ pick.tier }}</span>
+              <span class="pick-team">{{ pick.team.flag_emoji }} {{ pick.team.display_name }} <small>Grp {{ pick.team.group_letter }}</small></span>
+            </div>
+            <div class="pick-points">
+              {{ "%.1f"|format(pick.multiplied_points) }}
+              <small>&times;{{ pick.team.multiplier }}</small>
+            </div>
+          </div>
+          {% endfor %}
         </div>
       </div>
 
@@ -170,15 +197,25 @@
             </div>
           </div>
 
-          <button type="submit" class="btn btn-game btn-lg w-100 mt-3" id="submitBtn" disabled>
+          <button type="submit" class="btn btn-game btn-lg w-100 mt-3 pick-form-sidebar-desktop" id="submitBtn" disabled>
             <i class="bi bi-check-lg me-2"></i>Submit Picks
           </button>
-          <p class="text-muted small text-center mt-2">
+          <p class="text-muted small text-center mt-2 pick-form-sidebar-desktop">
             You can change picks until the deadline.
           </p>
 
         </div>
       </div>
+    </div>
+
+    {# -- Mobile sticky bottom bar -- #}
+    <div class="wc-mobile-sticky-bar" id="mobileStickyBar">
+      <div class="pick-count">
+        <span class="count-num" id="mobilePickCount">0</span>/9 picks
+      </div>
+      <button type="submit" class="btn btn-game" id="mobileSubmitBtn" disabled>
+        <i class="bi bi-check-lg me-1"></i>Submit
+      </button>
     </div>
   </form>
 {% endif %}
@@ -260,17 +297,24 @@
 
   window.updateSubmitState = function() {
     const btn = document.getElementById('submitBtn');
+    const mobileBtn = document.getElementById('mobileSubmitBtn');
+    const mobileCount = document.getElementById('mobilePickCount');
     const sel = getTierSelections();
     const goalsInput = document.getElementById('usa_goals_guess');
     const goalsVal = goalsInput.value.trim();
 
     let allTiersOk = true;
+    let totalPicks = 0;
     for (let t = 1; t <= 5; t++) {
+      totalPicks += sel[t];
       if (sel[t] !== TIER_REQUIREMENTS[t].picks) allTiersOk = false;
     }
 
     const goalsOk = goalsVal !== '' && /^\d+$/.test(goalsVal) && parseInt(goalsVal) >= 0;
-    btn.disabled = !(allTiersOk && goalsOk);
+    const canSubmit = allTiersOk && goalsOk;
+    btn.disabled = !canSubmit;
+    if (mobileBtn) mobileBtn.disabled = !canSubmit;
+    if (mobileCount) mobileCount.textContent = totalPicks;
   };
 
   updateCounters();

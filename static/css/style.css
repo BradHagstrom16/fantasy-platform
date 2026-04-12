@@ -1831,3 +1831,278 @@ hr { border-color: var(--border); opacity: 1; }
   .page-hero { padding: 2.5rem 0 2rem; }
   h1 { font-size: 1.9rem; }
 }
+
+/* ── 18. Mobile-First Overhaul (Group C2) ──────────────── */
+/* Foundation: 16px form inputs (prevent iOS zoom), touch targets,
+   font-size floor, and per-area mobile refinements.
+   New rules use min-width where practical; existing max-width kept. */
+
+/* --- 18a. Form inputs — 16px prevents iOS Safari zoom on focus --- */
+@media (max-width: 767px) {
+  .form-control,
+  .form-select,
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="number"],
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
+/* --- 18b. Navbar brand — truncate on very narrow screens --- */
+@media (max-width: 400px) {
+  .navbar-brand {
+    font-size: 1.1rem;
+    max-width: 220px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+/* --- 18c. Footer — compact on mobile --- */
+@media (max-width: 576px) {
+  footer {
+    padding: .75rem 0;
+    font-size: .8rem;
+  }
+}
+
+/* --- 18d. Auth pages — full-width card, form input sizing --- */
+@media (max-width: 576px) {
+  .auth-card {
+    max-width: 100%;
+  }
+  .auth-form-panel {
+    padding: 1.5rem 1rem;
+  }
+  .auth-title {
+    font-size: 1.7rem;
+  }
+}
+
+/* --- 18e. Profile emoji picker — tighter grid on mobile --- */
+@media (max-width: 576px) {
+  #avatarPicker {
+    gap: .35rem !important;
+  }
+  .avatar-pick-btn {
+    width: 40px !important;
+    height: 40px !important;
+    font-size: 1.15rem !important;
+  }
+}
+
+/* --- 18f. Platform home — featured card + game cards mobile --- */
+@media (max-width: 576px) {
+  .game-card--featured .featured-cta {
+    display: block;
+    width: 100%;
+  }
+  .game-card--featured .featured-game-inner {
+    padding: 2rem 1rem;
+  }
+}
+
+/* --- 18g. Stat blocks — reduce padding on mobile --- */
+@media (max-width: 576px) {
+  .stat-block {
+    padding: 1rem .75rem;
+  }
+}
+
+/* --- 18h. WC Pick Form — sticky bottom bar on mobile --- */
+.wc-mobile-sticky-bar {
+  display: none;
+}
+
+@media (max-width: 991px) {
+  .wc-mobile-sticky-bar {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 1030;
+    background: var(--game-primary-dark);
+    border-top: 2px solid var(--game-accent);
+    padding: .65rem 1rem;
+    align-items: center;
+    justify-content: space-between;
+    gap: .75rem;
+    box-shadow: 0 -4px 20px rgba(0,0,0,.35);
+    animation: slideUpBar .3s ease both;
+  }
+
+  .wc-mobile-sticky-bar .pick-count {
+    font-family: 'Teko', sans-serif;
+    font-weight: 600;
+    font-size: 1.1rem;
+    letter-spacing: .04em;
+    color: var(--text-on-dark);
+    white-space: nowrap;
+  }
+
+  .wc-mobile-sticky-bar .pick-count .count-num {
+    color: var(--game-accent);
+    font-size: 1.3rem;
+  }
+
+  .wc-mobile-sticky-bar .btn {
+    flex-shrink: 0;
+    min-height: 44px;
+    padding: .5rem 1.5rem;
+  }
+
+  /* Add bottom padding to form so sticky bar doesn't cover content */
+  #pickForm {
+    padding-bottom: 80px;
+  }
+
+  /* Hide the desktop sidebar submit button text on mobile — sticky bar replaces it */
+  .pick-form-sidebar-desktop {
+    display: none;
+  }
+}
+
+@keyframes slideUpBar {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+
+/* --- 18i. WC Player Detail — mobile card alternative --- */
+.player-picks-mobile {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .player-picks-desktop {
+    display: none !important;
+  }
+  .player-picks-mobile {
+    display: block;
+  }
+  .player-pick-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: .75rem 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .5rem;
+  }
+  .player-pick-card .pick-team {
+    font-family: 'Teko', sans-serif;
+    font-weight: 600;
+    font-size: 1.05rem;
+    letter-spacing: .02em;
+  }
+  .player-pick-card .pick-team small {
+    font-family: 'Newsreader', Georgia, serif;
+    font-weight: 400;
+    font-size: .75rem;
+    color: var(--text-muted);
+  }
+  .player-pick-card .pick-points {
+    text-align: right;
+    font-family: 'Teko', sans-serif;
+    font-weight: 700;
+    font-size: 1.2rem;
+    color: var(--game-primary);
+    white-space: nowrap;
+  }
+  .player-pick-card .pick-points small {
+    display: block;
+    font-weight: 400;
+    font-size: .7rem;
+    color: var(--text-muted);
+    letter-spacing: .03em;
+  }
+}
+
+/* --- 18j. WC Schedule — match cards on very narrow screens --- */
+@media (max-width: 400px) {
+  .match-result-card {
+    flex-direction: column;
+    text-align: center;
+    gap: .3rem;
+    padding: .75rem;
+  }
+  .match-result-card .match-team {
+    text-align: center !important;
+  }
+  .match-result-card .match-team.home {
+    order: 1;
+  }
+  .match-result-card .match-score {
+    order: 2;
+  }
+  .match-result-card .match-team.away {
+    order: 3;
+  }
+}
+
+/* --- 18k. WC Rules — scroll indicator for wide tables --- */
+.table-scroll-wrapper {
+  position: relative;
+  overflow: hidden;
+}
+.table-scroll-wrapper .table-responsive {
+  position: relative;
+}
+.table-scroll-wrapper::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 24px;
+  background: linear-gradient(90deg, transparent, rgba(0,0,0,.06));
+  pointer-events: none;
+  z-index: 1;
+  opacity: 1;
+  transition: opacity .2s;
+}
+.table-scroll-wrapper.scrolled-end::after {
+  opacity: 0;
+}
+
+/* --- 18l. WC Groups — use FIFA code on very narrow screens --- */
+@media (max-width: 400px) {
+  .group-table table {
+    font-size: .8rem;
+  }
+  .group-table .team-name-cell {
+    font-size: .82rem;
+  }
+}
+
+/* --- 18m. Error pages — mobile spacing --- */
+@media (max-width: 576px) {
+  .error-page-wrap {
+    padding-top: 3rem !important;
+  }
+  .error-page-wrap .section-heading {
+    font-size: 3.5rem;
+  }
+}
+
+/* --- 18n. Cards — disable hover lift on touch devices --- */
+@media (hover: none) {
+  .card:hover {
+    transform: none;
+    box-shadow: var(--shadow-sm);
+  }
+  .stat-block:hover {
+    transform: none;
+    box-shadow: var(--shadow-sm);
+  }
+  .game-card:hover {
+    transform: none;
+  }
+  .game-card:hover .game-icon {
+    transform: none;
+  }
+}
