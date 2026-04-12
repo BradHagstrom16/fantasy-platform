@@ -14,12 +14,11 @@ All functions run inside the existing Flask app context (called from CLI).
 """
 
 import logging
-import smtplib
 from datetime import timedelta
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
 
 from flask import current_app
+
+from utils.email import send_platform_email
 
 from extensions import db
 from models import User
@@ -137,40 +136,6 @@ def _cfb_html_week_card(week_name: str, deadline_str: str,
 
 
 # ============================================================================
-# Email Sending
-# ============================================================================
-
-def _send_email(to_addr, subject, body, html_body=None):
-    """Send an email with plain text and optional HTML body."""
-    email_address = current_app.config.get('EMAIL_ADDRESS', '')
-    email_password = current_app.config.get('EMAIL_PASSWORD', '')
-    smtp_server = current_app.config.get('SMTP_SERVER', 'smtp.gmail.com')
-    smtp_port = current_app.config.get('SMTP_PORT', 587)
-
-    if not email_address or not email_password:
-        logger.warning("Email credentials not configured; skipping.")
-        return False
-
-    msg = MIMEMultipart('alternative')
-    msg['From'] = email_address
-    msg['To'] = to_addr
-    msg['Subject'] = subject
-    msg.attach(MIMEText(body, 'plain'))
-    if html_body:
-        msg.attach(MIMEText(html_body, 'html'))
-
-    try:
-        with smtplib.SMTP(smtp_server, smtp_port) as server:
-            server.starttls()
-            server.login(email_address, email_password)
-            server.send_message(msg)
-        logger.info("Email sent to %s", to_addr)
-        return True
-    except Exception as e:
-        logger.error("Failed to send to %s: %s", to_addr, e)
-        return False
-
-
 # ============================================================================
 # Utility Functions
 # ============================================================================
@@ -397,7 +362,7 @@ Good luck!
             season_year=season_year,
         )
 
-        if _send_email(user.email, subject, body, html_body=html):
+        if send_platform_email(user.email, subject, body, html):
             success_count += 1
 
     print(f"\nSummary: {success_count}/{len(recipients)} reminders sent")
@@ -539,7 +504,7 @@ def send_weekly_recap_email(week_id: int) -> int:
             is_playoff, site_url, week.week_number, season_year,
         )
 
-        if _send_email(user.email, subject, plain, html_body=html):
+        if send_platform_email(user.email, subject, plain, html):
             success_count += 1
 
     print(f"\nResults Recap Summary: {success_count}/{len(all_enrollments)} emails sent")

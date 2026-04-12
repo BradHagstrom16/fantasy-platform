@@ -6,13 +6,13 @@ and admin notifications.
 """
 
 import logging
-import smtplib
 from datetime import datetime, timedelta, timezone
-from email.mime.text import MIMEText
 
 from zoneinfo import ZoneInfo
 import requests
 from flask import current_app
+
+from utils.email import send_platform_email
 
 from extensions import db
 from games.cfb.models import CfbTeam, CfbWeek, CfbGame, CfbEnrollment, CfbPick
@@ -31,32 +31,17 @@ CHICAGO_TZ = ZoneInfo('America/Chicago')
 # Helpers
 # ---------------------------------------------------------------------------
 
-def send_admin_email(subject, body):
-    """Send an email to the admin using app config SMTP credentials."""
+def _send_admin_email(subject: str, body: str) -> bool:
+    """Send a plain-text admin notification to the platform email address."""
     email_address = current_app.config.get('EMAIL_ADDRESS', '')
-    email_password = current_app.config.get('EMAIL_PASSWORD', '')
-    smtp_server = current_app.config.get('SMTP_SERVER', 'smtp.gmail.com')
-    smtp_port = current_app.config.get('SMTP_PORT', 587)
-
-    if not email_address or not email_password:
-        logger.warning("Email credentials not configured; skipping admin email.")
+    if not email_address:
+        logger.warning("EMAIL_ADDRESS not configured; skipping admin email.")
         return False
-
-    msg = MIMEText(body)
-    msg['From'] = email_address
-    msg['To'] = email_address  # send to self (admin)
-    msg['Subject'] = f'[CFB Survivor] {subject}'
-
-    try:
-        with smtplib.SMTP(smtp_server, smtp_port) as server:
-            server.starttls()
-            server.login(email_address, email_password)
-            server.send_message(msg)
-        logger.info("Admin email sent: %s", subject)
-        return True
-    except Exception as e:
-        logger.error("Failed to send admin email: %s", e)
-        return False
+    return send_platform_email(
+        email_address,
+        f'[CFB Survivor] {subject}',
+        body,
+    )
 
 
 def _calculate_week_dates(week_number):
@@ -434,7 +419,7 @@ def run_scores():
     # Send admin email with summary
     if results:
         try:
-            send_admin_email(
+            _send_admin_email(
                 'Score Sync Results',
                 f'Score sync completed at {datetime.now(CHICAGO_TZ).strftime("%Y-%m-%d %I:%M %p CT")}\n\n{summary}',
             )

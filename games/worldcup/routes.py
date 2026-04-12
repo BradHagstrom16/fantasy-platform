@@ -153,6 +153,16 @@ def index():
     deadline_passed = datetime.now(timezone.utc) >= TOURNAMENT_DEADLINE_UTC
     total_enrolled = WorldCupEnrollment.query.filter_by(season_year=SEASON_YEAR).count()
 
+    user_picks = None
+    if enrollment and enrollment.picks_submitted:
+        user_picks = (
+            WorldCupPick.query
+            .filter_by(enrollment_id=enrollment.id)
+            .join(WorldCupTeam)
+            .order_by(WorldCupTeam.tier, WorldCupTeam.display_name)
+            .all()
+        )
+
     return render_template('worldcup/index.html',
         enrollment=enrollment,
         top_enrollments=top_enrollments,
@@ -160,6 +170,7 @@ def index():
         deadline_ct=deadline_ct,
         deadline_passed=deadline_passed,
         total_enrolled=total_enrolled,
+        user_picks=user_picks,
     )
 
 

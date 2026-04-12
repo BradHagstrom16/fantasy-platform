@@ -176,7 +176,8 @@ No linter configured.
 - **Game CSS sections:** Each game has its own section in `style.css` (e.g., `/* === CFB SURVIVOR POOL === */`) with game-specific component classes
 - **Game sub-nav:** Each game needs a `.subnav-<game>` class in the `/* === GAME SUB-NAV === */` section of `style.css` setting `background`, `--subnav-accent` (hex), and `--subnav-accent-rgb` (comma-separated R,G,B) — the shared pill `.active` rule consumes these variables
 - **Game palettes:** Golf: Augusta green `#006747` + gold `#b8993e`; CFB: crimson `#C5050C` + midnight `#0f0f1a`; World Cup: Old Glory blue `#002868` + red `#BF0A30`
-- **Emails:** Each game has `_EMAIL` constants dict + HTML helpers in `games/<game>/services/reminders.py`; `MIMEMultipart('alternative')` with plain-text fallback; table layout + inline styles for Gmail compatibility
+- **Emails:** All outbound email routes through `utils/email.py` → `send_platform_email()`. From-name: "The Commissioner's Club". Game-specific content assembly stays in `games/<game>/services/reminders.py`. HTML emails: table layout + inline styles for Gmail compatibility.
+- **Avatars:** All game standings must display `user.get_avatar()` inline before the player display name. `User.avatar_emoji` is nullable String(4); default is ⚽. Required integration point for every game blueprint.
 - **Timestamps:** `datetime.now(timezone.utc)` — never `utcnow()`
 - **Timezones:** `zoneinfo.ZoneInfo` — `.replace(tzinfo=tz)`, never pytz
 - **ORM:** SQLAlchemy 2.0 style — `db.session.get(Model, id)`, `db.get_or_404()`
@@ -215,8 +216,10 @@ fantasy-platform/
 ├── models/
 │   ├── __init__.py         # Re-exports all models for Alembic
 │   └── user.py             # Shared User model
+├── utils/
+│   └── email.py            # Shared platform email helper (send_platform_email)
 ├── core/
-│   ├── auth/               # Login, register, logout, change password
+│   ├── auth/               # Login, register, logout, change/forgot/reset password
 │   ├── admin/              # Platform-level admin
 │   └── main/               # Home page
 ├── games/
@@ -226,6 +229,7 @@ fantasy-platform/
 ├── tests/                   # pytest test suite
 ├── templates/
 │   ├── base.html           # Platform base template
+│   ├── email/              # Platform email templates (reset password)
 │   └── errors/             # 404, 500
 ├── static/css/style.css    # Platform styles (CSS custom properties)
 ├── migrations/             # Alembic history

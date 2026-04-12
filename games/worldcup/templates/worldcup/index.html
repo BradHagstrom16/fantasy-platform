@@ -37,9 +37,14 @@
             Pick 9 national teams across 5 tiers. Points accumulate as your teams win matches and advance through the bracket.
             Entry fee: <strong>${{ entry_fee }}</strong>.
           </p>
-          <a href="{{ url_for('worldcup.join') }}" class="btn btn-game btn-lg px-5">
-            <i class="bi bi-globe2 me-2"></i>Join Now
-          </a>
+          <div class="d-flex justify-content-center gap-2 flex-wrap">
+            <a href="{{ url_for('worldcup.join') }}" class="btn btn-game btn-lg px-5">
+              <i class="bi bi-globe2 me-2"></i>Join Now
+            </a>
+            <a href="{{ url_for('worldcup.rules') }}" class="btn btn-outline-secondary btn-lg px-4">
+              <i class="bi bi-info-circle me-2"></i>See How It Works
+            </a>
+          </div>
           {% if total_enrolled > 0 %}
           <div class="mt-3 text-muted small">{{ total_enrolled }} player{{ 's' if total_enrolled != 1 }} enrolled</div>
           {% endif %}
@@ -87,6 +92,34 @@
       </div>
     </div>
     {% endif %}
+
+    {# ── My Roster widget (enrolled with picks) ── #}
+    {% if user_picks %}
+    <div class="col-12">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body p-4">
+          <h5 class="mb-3" style="font-family:'Teko',sans-serif; text-transform:uppercase; letter-spacing:.04em;">
+            <i class="bi bi-people-fill me-2"></i>My Roster
+          </h5>
+          <div class="d-flex flex-wrap gap-2">
+            {% set current_tier = [0] %}
+            {% for pick in user_picks %}
+              {% if pick.team.tier != current_tier[0] %}
+                {% if current_tier[0] != 0 %}<span class="mx-1"></span>{% endif %}
+                {% if current_tier.append(pick.team.tier) %}{% endif %}
+                {% if current_tier.pop(0) or true %}{% endif %}
+                <span class="badge tier-badge tier-{{ pick.team.tier }} me-1" style="font-size:.65rem; vertical-align:middle;">T{{ pick.team.tier }}</span>
+              {% endif %}
+              <span class="badge bg-light text-dark border" style="font-size:.85rem;">
+                {{ pick.team.flag_emoji }} {{ pick.team.fifa_code }}
+              </span>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
   </div>
   {% endif %}
 
@@ -194,6 +227,11 @@
           <h5 class="mb-0"><i class="bi bi-signpost-split me-2"></i>Quick Links</h5>
         </div>
         <div class="list-group list-group-flush">
+          {% if enrollment and enrollment.picks_submitted %}
+          <a href="{{ url_for('worldcup.picks') }}" class="list-group-item list-group-item-action">
+            <i class="bi bi-clipboard-check me-2"></i>My Picks
+          </a>
+          {% endif %}
           <a href="{{ url_for('worldcup.schedule') }}" class="list-group-item list-group-item-action">
             <i class="bi bi-calendar3 me-2"></i>Match Schedule
           </a>

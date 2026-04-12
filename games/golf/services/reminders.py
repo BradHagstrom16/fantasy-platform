@@ -21,12 +21,11 @@ already have an app context.
 """
 
 import logging
-import smtplib
 from datetime import datetime, timedelta
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
 
 from flask import current_app
+
+from utils.email import send_platform_email
 
 from extensions import db
 from games.golf.models import (
@@ -182,48 +181,6 @@ def is_field_ready(tournament_id, minimum=MIN_FIELD_SIZE):
     return get_field_count(tournament_id) >= minimum
 
 
-# ============================================================================
-# Email Sending
-# ============================================================================
-
-def send_email(to_addr: str, subject: str, body: str,
-               html_body: str | None = None) -> bool:
-    """Send an email with plain text and optional HTML body."""
-    config = current_app.config
-    email_address = config.get('EMAIL_ADDRESS', '')
-    email_password = config.get('EMAIL_PASSWORD', '')
-    smtp_server = config.get('SMTP_SERVER', 'smtp.gmail.com')
-    smtp_port = config.get('SMTP_PORT', 587)
-    commissioner_name = config.get('COMMISSIONER_NAME', 'The Commissioner')
-
-    if not email_address or not email_password:
-        logger.warning("Cannot send to %s: Email credentials not configured", to_addr)
-        return False
-
-    msg = MIMEMultipart('alternative')
-    msg["From"] = f"{commissioner_name} <{email_address}>"
-    msg["To"] = to_addr
-    msg["Subject"] = subject
-
-    # Plain text first (lowest priority in 'alternative')
-    msg.attach(MIMEText(body, "plain"))
-
-    # HTML second (highest priority — email clients prefer this)
-    if html_body:
-        msg.attach(MIMEText(html_body, "html"))
-
-    try:
-        with smtplib.SMTP(smtp_server, smtp_port) as server:
-            server.starttls()
-            server.login(email_address, email_password)
-            server.send_message(msg)
-        print(f"  Email sent to {to_addr}")
-        return True
-    except Exception as e:
-        print(f"  Failed to send to {to_addr}: {e}")
-        return False
-
-
 # =============================================================================
 # PICKS OPEN NOTIFICATION (Called from sync.py after field sync)
 # =============================================================================
@@ -334,7 +291,7 @@ Golf Pick 'Em {season_year}
 
         html = _html_wrapper(content, season_year, site_url)
 
-        if send_email(user_email, subject, plain, html_body=html):
+        if send_platform_email(user_email, subject, plain, html):
             success_count += 1
 
     print(f"\nPicks Open Summary: {success_count}/{len(users)} emails sent")
@@ -527,7 +484,7 @@ This alert will only be sent once per tournament.
 Golf Pick 'Em Automated Alert System
 """
 
-    return send_email(ADMIN_EMAIL, subject, body)
+    return send_platform_email(ADMIN_EMAIL, subject, body)
 
 
 # =============================================================================
@@ -676,7 +633,7 @@ def send_results_recap_email(tournament_id: int) -> int:
             top_3, user.id, season_year, site_url
         )
 
-        if send_email(user_email, subject, plain, html_body=html):
+        if send_platform_email(user_email, subject, plain, html):
             success_count += 1
 
     print(f"\nResults Recap Summary: {success_count}/{len(users)} emails sent")
@@ -1033,7 +990,7 @@ def run_reminder_check():
             commissioner_name=commissioner_name,
         )
 
-        if send_email(user_email, subject, plain, html_body=html):
+        if send_platform_email(user_email, subject, plain, html):
             success_count += 1
 
     print()

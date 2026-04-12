@@ -7,8 +7,8 @@
     <div class="card shadow auth-card">
         <div class="card-body p-4">
             <div class="text-center mb-4">
-                <div class="avatar-circle">
-                    <span>{{ current_user.get_display_name()[0].upper() }}</span>
+                <div class="avatar-circle" style="font-size:2.5rem; line-height:1;">
+                    <span id="avatarPreview">{{ current_user.get_avatar() }}</span>
                 </div>
                 <h1 class="auth-title">{{ current_user.get_display_name() }}</h1>
                 <p class="auth-subtitle mb-0">
@@ -21,6 +21,8 @@
 
             <form method="POST" action="{{ url_for('auth.profile') }}">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <input type="hidden" name="avatar_emoji" id="avatarInput"
+                       value="{{ current_user.avatar_emoji or '' }}">
 
                 <div class="mb-3">
                     <label class="form-label">Username</label>
@@ -34,6 +36,21 @@
                            value="{{ current_user.display_name or '' }}"
                            placeholder="How others see you"
                            maxlength="100">
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Avatar</label>
+                    <div class="form-text mb-2">Pick an emoji that represents you in the standings.</div>
+                    <div class="d-flex flex-wrap gap-2" id="avatarPicker">
+                        {% for emoji in avatar_choices %}
+                        <button type="button"
+                                class="btn btn-outline-secondary avatar-pick-btn{% if current_user.avatar_emoji == emoji %} active{% endif %}"
+                                data-emoji="{{ emoji }}"
+                                style="width:44px; height:44px; font-size:1.3rem; padding:0; display:inline-flex; align-items:center; justify-content:center; border-radius:8px;">
+                            {{ emoji }}
+                        </button>
+                        {% endfor %}
+                    </div>
                 </div>
 
                 <div class="mb-4">
@@ -59,4 +76,44 @@
         </div>
     </div>
 </div>
+
+<style>
+.avatar-pick-btn { transition: all .15s ease; }
+.avatar-pick-btn:hover { transform: scale(1.15); border-color: var(--platform-primary, #6C3FA0); }
+.avatar-pick-btn.active {
+    border-color: var(--platform-primary, #6C3FA0);
+    background-color: rgba(108, 63, 160, 0.12);
+    box-shadow: 0 0 0 2px var(--platform-primary, #6C3FA0);
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var picker = document.getElementById('avatarPicker');
+    var input = document.getElementById('avatarInput');
+    var preview = document.getElementById('avatarPreview');
+
+    picker.addEventListener('click', function(e) {
+        var btn = e.target.closest('.avatar-pick-btn');
+        if (!btn) return;
+
+        // Toggle: clicking active button clears selection
+        var emoji = btn.dataset.emoji;
+        var wasActive = btn.classList.contains('active');
+
+        picker.querySelectorAll('.avatar-pick-btn').forEach(function(b) {
+            b.classList.remove('active');
+        });
+
+        if (wasActive) {
+            input.value = '';
+            preview.textContent = '\u26bd';
+        } else {
+            btn.classList.add('active');
+            input.value = emoji;
+            preview.textContent = emoji;
+        }
+    });
+});
+</script>
 {% endblock %}

@@ -71,6 +71,21 @@ class WorldCupTeam(db.Model):
     base_points = db.Column(db.Float, default=0.0)
     multiplied_points = db.Column(db.Float, default=0.0)
 
+    # FIFA codes whose first two letters do NOT match ISO 3166-1 alpha-2
+    _FIFA_TO_ISO: dict[str, str] = {
+        'ENG': 'GB', 'SCO': 'GB', 'GER': 'DE', 'NED': 'NL', 'POR': 'PT',
+        'SUI': 'CH', 'CRO': 'HR', 'URU': 'UY', 'PAR': 'PY', 'SEN': 'SN',
+        'BIH': 'BA', 'ALG': 'DZ', 'KOR': 'KR', 'KSA': 'SA', 'RSA': 'ZA',
+        'COD': 'CD', 'CPV': 'CV', 'HAI': 'HT', 'TUR': 'TR', 'CIV': 'CI',
+    }
+
+    @property
+    def flag_emoji(self) -> str:
+        """Derive Unicode flag emoji from the FIFA code."""
+        code = self.fifa_code or ''
+        iso = self._FIFA_TO_ISO.get(code, code[:2])
+        return ''.join(chr(0x1F1E6 + ord(c) - ord('A')) for c in iso)
+
     def __repr__(self):
         return f'<WorldCupTeam {self.fifa_code} ({self.display_name})>'
 

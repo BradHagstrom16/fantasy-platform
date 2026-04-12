@@ -21,6 +21,7 @@ class User(UserMixin, db.Model):
     email = db.Column(db.String(120), unique=True, nullable=False, index=True)
     password_hash = db.Column(db.String(256), nullable=False)
     display_name = db.Column(db.String(100), nullable=True)
+    avatar_emoji = db.Column(db.String(4), nullable=True)
 
     # Platform role
     is_admin = db.Column(db.Boolean, default=False)
@@ -44,6 +45,10 @@ class User(UserMixin, db.Model):
     def get_display_name(self):
         """Return display name, falling back to username."""
         return self.display_name or self.username
+
+    def get_avatar(self) -> str:
+        """Return the user's avatar emoji, or a sensible default."""
+        return self.avatar_emoji or '\u26bd'
 
     def __repr__(self):
         return f'<User {self.username}>'

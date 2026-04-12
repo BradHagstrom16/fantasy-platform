@@ -111,7 +111,7 @@
                                 <span class="fw-bold {% if loop.index <= 3 %}text-gold{% endif %}">{{ loop.index }}</span>
                             </td>
                             <td>
-                                <span class="fw-semibold">{{ u.user.get_display_name() }}</span>
+                                <span class="me-1">{{ u.user.get_avatar() }}</span><span class="fw-semibold">{{ u.user.get_display_name() }}</span>
                                 {% if current_user.is_authenticated and uid == current_user.id %}
                                 <span class="badge bg-primary ms-1" style="font-size:.6rem;">YOU</span>
                                 {% endif %}

@@ -5,7 +5,7 @@
 <div class="page-hero">
   <div class="hero-glow"></div>
   <div class="container">
-    <h1>{{ enrollment.get_display_name() }}</h1>
+    <h1><span class="me-2">{{ enrollment.user.get_avatar() }}</span>{{ enrollment.get_display_name() }}</h1>
     <p class="lead mb-0">
       Total Score: <strong>{{ "%.1f"|format(enrollment.total_score) }}</strong> pts
       {% if enrollment.usa_goals_guess is not none %}

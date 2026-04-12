@@ -32,9 +32,16 @@
             <tr {% if current_user.is_authenticated and e.user_id == current_user.id %}class="row-current-user"{% endif %}>
               <td class="fw-bold">{{ item.rank }}</td>
               <td>
+                <span class="me-1">{{ e.user.get_avatar() }}</span>
+                {% if current_user.is_authenticated and e.user_id == current_user.id %}
+                <a href="{{ url_for('worldcup.picks') }}" class="text-decoration-none fw-medium">
+                  {{ e.get_display_name() }}
+                </a>
+                {% else %}
                 <a href="{{ url_for('worldcup.player_detail', enrollment_id=e.id) }}" class="text-decoration-none fw-medium">
                   {{ e.get_display_name() }}
                 </a>
+                {% endif %}
               </td>
               <td class="text-end fw-bold">{{ "%.1f"|format(e.total_score) }}</td>
               <td class="text-end text-muted">{{ e.usa_goals_guess if e.usa_goals_guess is not none else '—' }}</td>
@@ -56,9 +63,16 @@
         <div class="d-flex align-items-center gap-3">
           <span class="fw-bold text-muted" style="font-family:'Teko',sans-serif; font-size:1.3rem; min-width:2rem;">{{ item.rank }}</span>
           <div>
+            <span class="me-1">{{ e.user.get_avatar() }}</span>
+            {% if current_user.is_authenticated and e.user_id == current_user.id %}
+            <a href="{{ url_for('worldcup.picks') }}" class="text-decoration-none fw-medium d-block">
+              {{ e.get_display_name() }}
+            </a>
+            {% else %}
             <a href="{{ url_for('worldcup.player_detail', enrollment_id=e.id) }}" class="text-decoration-none fw-medium d-block">
               {{ e.get_display_name() }}
             </a>
+            {% endif %}
             {% if e.usa_goals_guess is not none %}
             <small class="text-muted">TB: {{ e.usa_goals_guess }}</small>
             {% endif %}
