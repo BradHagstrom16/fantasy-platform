@@ -32,7 +32,7 @@ def login():
         if user and user.check_password(password):
             login_user(user, remember=True)
             flash('Logged in successfully!', 'success')
-            next_page = request.args.get('next')
+            next_page = request.form.get('next') or request.args.get('next')
             if next_page and urlparse(next_page).netloc == '':
                 return redirect(next_page)
             return redirect(url_for('main.index'))

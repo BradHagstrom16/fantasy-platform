@@ -213,6 +213,11 @@ def picks():
     existing_picks = WorldCupPick.query.filter_by(enrollment_id=enrollment.id).all()
     selected_team_ids = {p.team_id for p in existing_picks}
 
+    # Determine display mode for GET requests
+    edit_mode = request.args.get('edit') == '1'
+    has_picks = enrollment.picks_submitted and bool(existing_picks)
+    show_edit_form = not deadline_passed and (not has_picks or edit_mode)
+
     if request.method == 'POST':
         if deadline_passed:
             flash('The pick deadline has passed. Picks are locked.', 'error')
@@ -273,6 +278,8 @@ def picks():
                 deadline_passed=deadline_passed,
                 deadline_ct=deadline_ct,
                 usa_goals_guess=request.form.get('usa_goals_guess', ''),
+                show_edit_form=True,
+                has_picks=has_picks,
             )
 
         # Save picks
@@ -303,6 +310,8 @@ def picks():
         deadline_passed=deadline_passed,
         deadline_ct=deadline_ct,
         usa_goals_guess=enrollment.usa_goals_guess,
+        show_edit_form=show_edit_form,
+        has_picks=has_picks,
     )
 
 
@@ -338,20 +347,36 @@ def leaderboard():
 def player_detail(enrollment_id):
     """One player's 9 picks with per-team scores."""
     enrollment = db.get_or_404(WorldCupEnrollment, enrollment_id)
-    picks = (
-        WorldCupPick.query
-        .filter_by(enrollment_id=enrollment.id)
-        .join(WorldCupTeam)
-        .order_by(WorldCupTeam.tier, WorldCupTeam.display_name)
-        .all()
+    deadline_passed = datetime.now(timezone.utc) >= TOURNAMENT_DEADLINE_UTC
+
+    is_owner = (
+        current_user.is_authenticated
+        and current_user.id == enrollment.user_id
     )
+    is_admin = current_user.is_authenticated and current_user.is_admin
+    picks_visible = deadline_passed or is_owner or is_admin
+
+    picks = []
+    if picks_visible:
+        picks = (
+            WorldCupPick.query
+            .filter_by(enrollment_id=enrollment.id)
+            .join(WorldCupTeam)
+            .order_by(WorldCupTeam.tier, WorldCupTeam.display_name)
+            .all()
+        )
 
     from games.worldcup.world_cup_countries import TIERS
+
+    deadline_ct = TOURNAMENT_DEADLINE_UTC.astimezone(WORLDCUP_TZ)
 
     return render_template('worldcup/player_detail.html',
         enrollment=enrollment,
         picks=picks,
         tiers=TIERS,
+        picks_visible=picks_visible,
+        deadline_passed=deadline_passed,
+        deadline_ct=deadline_ct,
     )
 
 

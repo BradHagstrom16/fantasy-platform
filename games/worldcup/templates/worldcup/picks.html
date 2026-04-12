@@ -5,7 +5,7 @@
 <div class="page-hero">
   <div class="hero-glow"></div>
   <div class="container">
-    <h1>{% if deadline_passed %}Your Picks{% else %}Submit Your Picks{% endif %}</h1>
+    <h1>{% if deadline_passed %}Your Picks{% elif show_edit_form %}Submit Your Picks{% else %}Your Picks{% endif %}</h1>
     <p class="lead mb-0">
       {% if deadline_passed %}
         Picks are locked. The tournament is underway.
@@ -18,10 +18,10 @@
 
 <div class="container pb-5">
 
-{% if deadline_passed %}
-  {# ══════════════════════════════════════════════════
-     POST-DEADLINE — Read-Only View
-     ══════════════════���═══════════════════════════════ #}
+{% if deadline_passed or (not show_edit_form and has_picks) %}
+  {# ==============================================================
+     READ-ONLY VIEW -- Post-deadline OR pre-deadline submitted picks
+     ============================================================== #}
   <div class="row justify-content-center">
     <div class="col-lg-8">
 
@@ -70,6 +70,17 @@
       </div>
       {% endif %}
 
+      {% if not deadline_passed %}
+      <div class="text-center mt-4 animate-in stagger-2">
+        <a href="{{ url_for('worldcup.picks', edit=1) }}" class="btn btn-game btn-lg px-5">
+          <i class="bi bi-pencil-square me-2"></i>Edit My Picks
+        </a>
+        <p class="text-muted small mt-2 mb-0">
+          You can change your picks until {{ deadline_ct.strftime('%b %-d at %-I:%M %p CT') }}.
+        </p>
+      </div>
+      {% endif %}
+
       {% else %}
       <div class="text-center py-5 text-muted">
         <i class="bi bi-x-circle" style="font-size:2.5rem; opacity:.3;"></i>
@@ -81,9 +92,9 @@
   </div>
 
 {% else %}
-  {# ═══════════════════════════════════════���══════════
-     PRE-DEADLINE — Pick Form
-     ═════════════��════════════════════════════════════ #}
+  {# ==============================================================
+     PRE-DEADLINE -- Pick Form (no picks yet, or ?edit=1)
+     ============================================================== #}
   <form method="POST" id="pickForm">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
 
@@ -127,7 +138,7 @@
 
       </div>
 
-      {# ── Sidebar: Summary + Tiebreaker + Submit ── #}
+      {# -- Sidebar: Summary + Tiebreaker + Submit -- #}
       <div class="col-lg-4">
         <div class="position-sticky" style="top:1rem;">
 
@@ -173,7 +184,7 @@
 {% endblock %}
 
 {% block scripts %}
-{% if not deadline_passed %}
+{% if show_edit_form %}
 <script>
 (function() {
   const TIER_REQUIREMENTS = {{ tiers|tojson }};
@@ -197,7 +208,6 @@
     const currentCount = getTierSelections()[tier];
 
     if (!isSelected && currentCount >= tierReq) {
-      // Tier full — flash the counter
       const counter = document.getElementById('counter-' + tier);
       counter.style.color = 'var(--game-accent)';
       setTimeout(() => counter.style.color = '', 400);
@@ -227,7 +237,6 @@
     const count = document.getElementById('summaryCount');
     const selected = document.querySelectorAll('.wc-team-card.selected');
 
-    // Clear
     list.innerHTML = '';
 
     if (selected.length === 0) {
@@ -260,7 +269,6 @@
     btn.disabled = !(allTiersOk && goalsOk);
   };
 
-  // Init on load
   updateCounters();
   updateSummary();
   updateSubmitState();

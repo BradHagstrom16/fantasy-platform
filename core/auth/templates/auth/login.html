@@ -38,6 +38,7 @@
 
                 <form method="POST" action="{{ url_for('auth.login') }}">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <input type="hidden" name="next" value="{{ request.args.get('next', '') }}">
 
                     <div class="mb-3">
                         <label for="username" class="form-label">Username</label>
