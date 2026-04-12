@@ -188,6 +188,7 @@ No linter configured.
 - **CSRF:** All POST forms include CSRF token; AJAX includes `X-CSRFToken` header
 - **POST-only:** All state-mutating operations use POST — no GET routes that change data
 - **Admin scoping:** Two-tier game admin — platform admin (`User.is_admin`) always has access to every game's admin routes. Game-specific admin (`<Game>Enrollment.is_admin`) allows delegating admin to enrolled non-platform-admins. All `<game>_admin_required` decorators must check platform admin first, enrollment admin second.
+- **Password reset tokens:** `core/auth/tokens.py` uses `itsdangerous.URLSafeTimedSerializer` with 1-hour expiry. Forgot-password route uses anti-enumeration pattern (identical flash message regardless of email existence).
 - **Homepage games list:** `core/main/routes.py` — set `'url': url_for('<game>.index')` for live games, `'url': None` for coming-soon; controls card clickability and Play Now vs Coming Soon badge
 
 ---
@@ -220,6 +221,7 @@ fantasy-platform/
 │   └── email.py            # Shared platform email helper (send_platform_email)
 ├── core/
 │   ├── auth/               # Login, register, logout, change/forgot/reset password
+│   │   └── tokens.py       # Password reset token generation/verification
 │   ├── admin/              # Platform-level admin
 │   └── main/               # Home page
 ├── games/
@@ -291,6 +293,8 @@ SECRET_KEY=...
 DATABASE_URL=sqlite:///instance/fantasy.db
 ODDS_API_KEY=...          # The Odds API (CFB scores/spreads)
 SLASHGOLF_API_KEY=...     # SlashGolf API (Golf leaderboards)
-MAIL_USERNAME=...
-MAIL_PASSWORD=...
+EMAIL_ADDRESS=...         # Platform "from" address (send_platform_email)
+EMAIL_PASSWORD=...        # SMTP app password
+SMTP_SERVER=...           # Default: smtp.gmail.com
+SMTP_PORT=...             # Default: 587
 ```
