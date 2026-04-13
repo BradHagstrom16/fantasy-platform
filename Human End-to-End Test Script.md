@@ -9,23 +9,29 @@
 
 Open: `http://127.0.0.1:5000`
 
-Features Brad wants to develop as he works through testing:
-- In the world cup game, can we add Flags to the submit your picks page? I think it would be a nice visual enhancement. Could extend to the schedule page too, along with the group standings page. 
-- The world cup game is the only active game until CFB, we should make it very prominent upon login and once users sign up. 
-- In the world cups rules page, lets get rid of the base column since T1 and base are the exact same. 
-- This is very much an optional enhancement but could we allow users to somehow have like a profile pic? That could be shown in the standings of their respective game, not a big deal if this is too much work.
-- We should add a forgot password methodoolgy for users that have an account but don't remember their password
-- A user that is not joined in world cup should have a button similar to the join now button that links them to the rules so they can easily see what they are getting into.
-- When on the form to fill out world cup roster, we should easily be able to see a "see full rules and scoring" kinda button, front end design should choose actual button text I'm just spitballing.
-- In the world cup quick links and on the leaderboard, as a logged in user I should see a My Picks and my entry name should be a link to My picks respectively.
-- My picks and countries, can be abbreviated or flags, front end design here, should be displayed on the main WC game page so I can always easily see who I have picked. 
-- I was able to see another users picks even though the game hasn't started. I shouldn't be able to see anyone elses picks, if I am not an admin, until the picks lock and WC kicks off. 
-- On mobile, the WC top tool bar with leaderboard, schedule, etc. is a scrolling feature that isn't super obvious it is a scroll. Maybe we can use front end design skills to rework this bar for mobile as majority of use will come from mobile.
-- Should a games top toolbar be frozen so it always is being shown no matter how far down a user has scrolled, both on mobile and web?
-- The edit picks button for the WC game could stand out more and use more contrast
-- I don't care about which Org a WC team belongs to, let's not show that to users (CAF, UEFA, AFC, etc.). Noise we can trim.
-- On the pick summary, we should always display the group by the country. Could help users so they don't accidentally load up on one group.
-- If i have a submitted picks, and I navigate to picks I should see my picks and not immediately be presented with form to change and edit picks. There should be a button for that.
+## Still Needs Work
+
+- Should a games top toolbar (the pill-link subnav strip) be sticky/frozen so it always shows no matter how far the user has scrolled, both on mobile and web?
+
+---
+
+## Completed Enhancements (shipped)
+
+- ✅ Flags on pick form, schedule, group standings, pick summary sidebar, and player detail — Group C1
+- ✅ World Cup is now prominently featured on homepage (hero card) and login page — Group C1
+- ✅ Removed redundant "Base" column from rules scoring matrix — Group C1
+- ✅ Emoji avatar system: profile picker + displayed in all game standings — Group B
+- ✅ Forgot/reset password flow with anti-enumeration pattern — Group B
+- ✅ "See How It Works" CTA for non-enrolled users on the WC index — Group B
+- ✅ "See full rules and scoring" link visible on the pick submission form — Group B
+- ✅ Leaderboard: logged-in user's own row links to their picks — Group B
+- ✅ My Roster widget on WC main page showing your 9 picks at a glance — Group B
+- ✅ Other players' picks are hidden until tournament deadline (privacy enforced server-side) — commit 02599f3
+- ✅ Mobile subnav reworked: scroll indicator, pill overflow, mobile-first layout overhaul — Group C2
+- ✅ Edit Picks button now uses btn-game with full contrast — Group C1
+- ✅ Confederation labels (CAF, UEFA, AFC, etc.) hidden from pick form — Group C1
+- ✅ Group letter shown on pick summary sidebar and player detail view — Group C1
+- ✅ Picks page shows read-only summary with an "Edit My Picks" button when picks already submitted — commit 02599f3
 
 
 ---
@@ -93,11 +99,11 @@ Still in incognito. Log out first if you're still logged in.
 - [x] Log out from `testplayer1` — nav updates, you're no longer logged in
 - [x] Navigate to a protected page (e.g., `/worldcup/picks`) — should redirect to `/login` with a flash message
 - [x] After redirect: the login form shows (not a 500)
-- [fail] Log back in as `testplayer1` — should redirect back to `/worldcup/picks` (the `next` param should work)
+- [x] Log back in as `testplayer1` — should redirect back to `/worldcup/picks` (the `next` param should work)
 - [x] Confirm you're logged in (username in nav)
 - [x] Log out again
 
-**Notes: Will need to look into fail, not a huge deal so moving on.**
+**Notes: Fixed in commit 02599f3 — login POST now reads `next` from a hidden form field so the redirect survives the GET→POST round-trip.**
 
 ---
 

@@ -815,6 +815,13 @@ main { flex: 1; }
   position: sticky;
   top: 0;
   z-index: 1030;
+  transition: padding var(--transition), border-width var(--transition);
+}
+
+/* Compact navbar after user scrolls — tighter padding, thinner accent border */
+.navbar-scrolled {
+  padding: .3rem 0;
+  border-bottom-width: 2px;
 }
 
 .navbar-brand {
@@ -918,6 +925,12 @@ main { flex: 1; }
   position: sticky;
   top: 58px;
   z-index: 1020;
+  transition: top var(--transition);
+}
+
+/* Adjust subnav offset when navbar compacts */
+.game-subnav.subnav-shifted {
+  top: 48px;
 }
 
 .game-subnav .container {
@@ -957,6 +970,7 @@ main { flex: 1; }
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
   flex-wrap: nowrap;
+  padding: .15rem 0;  /* breathing room so pill borders aren't clipped by overflow-x */
 }
 .subnav-pills::-webkit-scrollbar { display: none; }
 
@@ -1818,6 +1832,7 @@ hr { border-color: var(--border); opacity: 1; }
   }
 
   .game-subnav { top: 52px; }
+  .game-subnav.subnav-shifted { top: 42px; }
 }
 
 @media (max-width: 768px) {
@@ -1832,6 +1847,12 @@ hr { border-color: var(--border); opacity: 1; }
 
   /* Sub-nav: hide label text on mobile — emoji stays visible */
   .subnav-label-text { display: none; }
+
+  /* Sub-nav: trailing fade to hint horizontal scroll */
+  .subnav-pills {
+    -webkit-mask-image: linear-gradient(to right, #000 85%, transparent 100%);
+    mask-image: linear-gradient(to right, #000 85%, transparent 100%);
+  }
 }
 
 @media (max-width: 576px) {

@@ -189,6 +189,29 @@
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
+    <!-- Compact navbar on scroll -->
+    <script>
+    (function(){
+      var nav = document.querySelector('.navbar');
+      if (!nav) return;
+      var sub = document.querySelector('.game-subnav');
+      var threshold = 40;
+      var scrolled = false;
+      window.addEventListener('scroll', function(){
+        var y = window.scrollY;
+        if (y > threshold && !scrolled) {
+          scrolled = true;
+          nav.classList.add('navbar-scrolled');
+          if (sub) sub.classList.add('subnav-shifted');
+        } else if (y <= threshold && scrolled) {
+          scrolled = false;
+          nav.classList.remove('navbar-scrolled');
+          if (sub) sub.classList.remove('subnav-shifted');
+        }
+      }, {passive: true});
+    })();
+    </script>
+
     {% block scripts %}{% endblock %}
 </body>
 </html>
