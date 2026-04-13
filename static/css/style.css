@@ -2150,6 +2150,7 @@ hr { border-color: var(--border); opacity: 1; }
 }
 .roster-team-card {
   flex: 1;
+  max-width: calc(50% - .3rem);
   display: flex;
   align-items: center;
   gap: .55rem;
