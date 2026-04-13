@@ -2187,10 +2187,16 @@ hr { border-color: var(--border); opacity: 1; }
   border-radius: .3rem;
 }
 @media (max-width: 575px) {
-  .roster-tier-teams { flex-direction: column; gap: .4rem; }
-  .roster-team-card { flex: none; }
-  .roster-team-mult { display: none; }
+  .roster-tier-row { padding: .35rem .6rem; }
+  .roster-tier-label { width: 2rem; font-size: .78rem; height: 2rem; }
+  .roster-tier-teams { gap: .4rem; }
+  .roster-team-card { padding: .35rem .55rem; gap: .35rem; }
+  .roster-team-flag { font-size: 1.1rem; }
+  .roster-team-name { display: none; }
+  .roster-team-abbr { flex: 1; font-size: .8rem; font-weight: 600; letter-spacing: .04em; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; color: var(--text-main); }
+  .roster-team-mult { font-size: .68rem; }
 }
+.roster-team-abbr { display: none; }
 
 /* --- 18l. WC Groups — use FIFA code on very narrow screens --- */
 @media (max-width: 400px) {

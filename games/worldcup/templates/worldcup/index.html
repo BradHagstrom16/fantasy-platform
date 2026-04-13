@@ -118,6 +118,7 @@
                 <div class="roster-team-card">
                   <span class="roster-team-flag">{{ pick.team.flag_emoji }}</span>
                   <span class="roster-team-name">{{ pick.team.display_name }}</span>
+                  <span class="roster-team-abbr">{{ pick.team.fifa_code }}</span>
                   <span class="roster-team-mult">×{{ pick.team.multiplier | int if pick.team.multiplier == (pick.team.multiplier | int) else pick.team.multiplier }}</span>
                 </div>
                 {% endfor %}
