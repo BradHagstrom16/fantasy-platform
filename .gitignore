@@ -42,3 +42,18 @@ _migration_source/
 
 # Git worktrees
 .worktrees/
+
+# Graphify — keep GRAPH_REPORT.md and manifest.json; ignore large generated artifacts
+graphify-out/graph.json
+graphify-out/graph.html
+graphify-out/cache/
+graphify-out/cost.json
+
+# Playwright MCP session snapshots (ephemeral)
+.playwright-mcp/
+
+# Superpowers brainstorm session state (ephemeral)
+.superpowers/
+
+# Pytest cache
+.pytest_cache/
