@@ -31,7 +31,8 @@
           <h3 class="mb-3" style="font-family:'Teko',sans-serif; text-transform:uppercase; letter-spacing:.04em;">
             <i class="bi bi-layers me-2"></i>Tier Structure
           </h3>
-          <div class="table-scroll-wrapper">
+          {# Desktop: tier table #}
+          <div class="table-scroll-wrapper d-none d-md-block">
             <div class="table-responsive">
               <table class="table table-worldcup mb-0">
                 <thead>
@@ -63,6 +64,34 @@
                 </tbody>
               </table>
             </div>
+          </div>
+
+          {# Mobile: tier cards #}
+          <div class="d-md-none">
+            {% set tier_teams = {
+              1: 'Spain, France, England, Argentina, Brazil, Portugal, Germany',
+              2: 'Netherlands, Norway, Belgium, Colombia',
+              3: 'USA, Morocco, Japan, Uruguay, Mexico, Switzerland, Turkey, Ecuador, Sweden, Croatia, Senegal',
+              4: 'Austria, Canada, Paraguay, Czech Republic, Scotland, Ivory Coast, Egypt, Ghana, Bosnia & Herzegovina, Algeria, South Korea',
+              5: 'Iran, Australia, Tunisia, DR Congo, Saudi Arabia, South Africa, Panama, Qatar, Iraq, New Zealand, Cape Verde, Uzbekistan, Jordan, Curacao, Haiti'
+            } %}
+            {% for tier_num in range(1, 6) %}
+            <div class="tier-mobile-card mb-3">
+              <div class="d-flex align-items-center justify-content-between mb-2">
+                <div class="d-flex align-items-center gap-2">
+                  <span class="tier-badge tier-badge-{{ tier_num }}">{{ tier_num }}</span>
+                  <span class="fw-medium" style="font-family:'Teko',sans-serif; font-size:1.1rem; text-transform:uppercase; letter-spacing:.03em;">{{ tiers[tier_num]['name'] }}</span>
+                </div>
+                <div class="d-flex align-items-center gap-3">
+                  <span class="text-muted" style="font-size:.8rem;">{{ tiers[tier_num]['picks'] }} picks</span>
+                  <span class="multiplier-badge">&times;{{ tiers[tier_num]['multiplier'] }}</span>
+                </div>
+              </div>
+              <div style="font-size:.85rem; color:rgba(255,255,255,.55); line-height:1.5;">
+                {{ tier_teams[tier_num] }}
+              </div>
+            </div>
+            {% endfor %}
           </div>
         </div>
       </div>

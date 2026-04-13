@@ -920,7 +920,7 @@ main { flex: 1; }
 
 .game-subnav {
   background: #0d0d1a; /* fallback if modifier class omitted — prevents white-on-white */
-  padding: .42rem 0;
+  padding: .55rem 0;
   border-bottom: 1px solid rgba(255,255,255,.07);
   position: sticky;
   top: 58px;
@@ -983,7 +983,7 @@ main { flex: 1; }
   text-transform: uppercase;
   color: rgba(255,255,255,.48);
   text-decoration: none;
-  padding: .26rem .72rem;
+  padding: .32rem .72rem;
   border-radius: 20px;
   border: 1px solid transparent;
   white-space: nowrap;
@@ -1879,17 +1879,6 @@ hr { border-color: var(--border); opacity: 1; }
   }
 }
 
-/* --- 18b. Navbar brand — truncate on very narrow screens --- */
-@media (max-width: 400px) {
-  .navbar-brand {
-    font-size: 1.1rem;
-    max-width: 220px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-}
-
 /* --- 18c. Footer — compact on mobile --- */
 @media (max-width: 576px) {
   footer {
@@ -2096,6 +2085,14 @@ hr { border-color: var(--border); opacity: 1; }
 }
 .table-scroll-wrapper.scrolled-end::after {
   opacity: 0;
+}
+
+/* --- 18o. WC Rules — mobile tier cards --- */
+.tier-mobile-card {
+  background: rgba(255,255,255,.03);
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: var(--radius);
+  padding: .85rem 1rem;
 }
 
 /* --- 18l. WC Groups — use FIFA code on very narrow screens --- */
