@@ -812,6 +812,9 @@ main { flex: 1; }
   border-bottom: 3px solid var(--platform-accent);
   padding: .65rem 0;
   box-shadow: 0 2px 20px rgba(0,0,0,.35);
+  position: sticky;
+  top: 0;
+  z-index: 1030;
 }
 
 .navbar-brand {
@@ -912,6 +915,9 @@ main { flex: 1; }
   background: #0d0d1a; /* fallback if modifier class omitted — prevents white-on-white */
   padding: .42rem 0;
   border-bottom: 1px solid rgba(255,255,255,.07);
+  position: sticky;
+  top: 58px;
+  z-index: 1020;
 }
 
 .game-subnav .container {
@@ -1810,6 +1816,8 @@ hr { border-color: var(--border); opacity: 1; }
     display: flex;
     align-items: center;
   }
+
+  .game-subnav { top: 52px; }
 }
 
 @media (max-width: 768px) {
