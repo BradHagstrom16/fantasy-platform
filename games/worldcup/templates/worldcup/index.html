@@ -101,18 +101,27 @@
           <h5 class="mb-3" style="font-family:'Teko',sans-serif; text-transform:uppercase; letter-spacing:.04em;">
             <i class="bi bi-people-fill me-2"></i>My Roster
           </h5>
-          <div class="d-flex flex-wrap gap-2">
-            {% set current_tier = [0] %}
-            {% for pick in user_picks %}
-              {% if pick.team.tier != current_tier[0] %}
-                {% if current_tier[0] != 0 %}<span class="mx-1"></span>{% endif %}
-                {% if current_tier.append(pick.team.tier) %}{% endif %}
-                {% if current_tier.pop(0) or true %}{% endif %}
-                <span class="badge tier-badge tier-{{ pick.team.tier }} me-1" style="font-size:.65rem; vertical-align:middle;">T{{ pick.team.tier }}</span>
-              {% endif %}
-              <span class="badge bg-light text-dark border" style="font-size:.85rem;">
-                {{ pick.team.flag_emoji }} {{ pick.team.fifa_code }}
-              </span>
+          {% set picks_by_tier = {} %}
+          {% for pick in user_picks %}
+            {% if pick.team.tier not in picks_by_tier %}
+              {% set _ = picks_by_tier.update({pick.team.tier: []}) %}
+            {% endif %}
+            {% set _ = picks_by_tier[pick.team.tier].append(pick) %}
+          {% endfor %}
+          <div class="roster-tiers">
+            {% for tier_num in range(1, 6) %}
+            {% if tier_num in picks_by_tier %}
+            <div class="roster-tier-row">
+              <span class="roster-tier-label tier-badge tier-badge-{{ tier_num }}">T{{ tier_num }}</span>
+              <div class="roster-tier-teams">
+                {% for pick in picks_by_tier[tier_num] %}
+                <span class="badge bg-light text-dark border roster-team-badge">
+                  {{ pick.team.flag_emoji }} {{ pick.team.fifa_code }}
+                </span>
+                {% endfor %}
+              </div>
+            </div>
+            {% endif %}
             {% endfor %}
           </div>
         </div>

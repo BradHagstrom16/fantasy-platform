@@ -2100,6 +2100,32 @@ hr { border-color: var(--border); opacity: 1; }
   line-height: 1.5;
 }
 
+/* --- 18p. WC Dashboard — roster widget tier rows --- */
+.roster-tiers {
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+}
+.roster-tier-row {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+}
+.roster-tier-label {
+  flex-shrink: 0;
+  width: 2rem;
+  text-align: center;
+  font-size: .65rem;
+}
+.roster-tier-teams {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .35rem;
+}
+.roster-team-badge {
+  font-size: .85rem !important;
+}
+
 /* --- 18l. WC Groups — use FIFA code on very narrow screens --- */
 @media (max-width: 400px) {
   .group-table table {
