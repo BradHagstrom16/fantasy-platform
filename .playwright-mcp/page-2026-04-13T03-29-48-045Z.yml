@@ -1,0 +1,316 @@
+- generic [active] [ref=e1]:
+  - navigation [ref=e2]:
+    - generic [ref=e3]:
+      - link " The Commissioner's Club" [ref=e4] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e5]: 
+        - text: The Commissioner's Club
+      - generic [ref=e6]:
+        - list [ref=e7]:
+          - listitem [ref=e8]:
+            - link "World Cup" [ref=e9] [cursor=pointer]:
+              - /url: /worldcup/
+          - listitem [ref=e10]:
+            - link "Golf Pick 'Em" [ref=e11] [cursor=pointer]:
+              - /url: /golf/
+          - listitem [ref=e12]:
+            - link "CFB Survivor" [ref=e13] [cursor=pointer]:
+              - /url: /cfb/
+        - list [ref=e14]:
+          - listitem [ref=e15]:
+            - link "Login" [ref=e16] [cursor=pointer]:
+              - /url: /login
+          - listitem [ref=e17]:
+            - link "Join Now" [ref=e18] [cursor=pointer]:
+              - /url: /register
+  - generic [ref=e20]:
+    - link "⚽ WC 2026" [ref=e21] [cursor=pointer]:
+      - /url: /worldcup/
+    - generic [ref=e22]:
+      - link "Dashboard" [ref=e23] [cursor=pointer]:
+        - /url: /worldcup/
+      - link "Leaderboard" [ref=e24] [cursor=pointer]:
+        - /url: /worldcup/leaderboard
+      - link "Schedule" [ref=e25] [cursor=pointer]:
+        - /url: /worldcup/schedule
+      - link "Groups" [ref=e26] [cursor=pointer]:
+        - /url: /worldcup/groups
+      - link "Rules" [ref=e27] [cursor=pointer]:
+        - /url: /worldcup/rules
+  - main [ref=e28]:
+    - generic [ref=e30]:
+      - heading "Rules & Scoring" [level=1] [ref=e31]
+      - paragraph [ref=e32]: How the World Cup Fantasy Pool works
+    - generic [ref=e35]:
+      - generic [ref=e37]:
+        - heading " How It Works" [level=3] [ref=e38]:
+          - generic [ref=e39]: 
+          - text: How It Works
+        - paragraph [ref=e40]:
+          - text: Each player selects
+          - strong [ref=e41]: 9 national teams
+          - text: across 5 tiers before the tournament starts. Points accumulate as those teams win matches and advance through the bracket. Lower-tier teams carry higher multipliers.
+        - paragraph [ref=e42]:
+          - text: "Entry fee:"
+          - strong [ref=e43]: $25
+          - text: . Picks lock at first match kickoff.
+      - generic [ref=e45]:
+        - heading " Tier Structure" [level=3] [ref=e46]:
+          - generic [ref=e47]: 
+          - text: Tier Structure
+        - table [ref=e50]:
+          - rowgroup [ref=e51]:
+            - row "Tier Name Picks Multiplier Teams" [ref=e52]:
+              - columnheader "Tier" [ref=e53]
+              - columnheader "Name" [ref=e54]
+              - columnheader "Picks" [ref=e55]
+              - columnheader "Multiplier" [ref=e56]
+              - columnheader "Teams" [ref=e57]
+          - rowgroup [ref=e58]:
+            - row "1 Favorites 2 ×1.0 Spain, France, England, Argentina, Brazil, Portugal, Germany" [ref=e59]:
+              - cell "1" [ref=e60]:
+                - generic [ref=e61]: "1"
+              - cell "Favorites" [ref=e62]
+              - cell "2" [ref=e63]
+              - cell "×1.0" [ref=e64]:
+                - generic [ref=e65]: ×1.0
+              - cell "Spain, France, England, Argentina, Brazil, Portugal, Germany" [ref=e66]
+            - row "2 Contenders 1 ×1.5 Netherlands, Norway, Belgium, Colombia" [ref=e67]:
+              - cell "2" [ref=e68]:
+                - generic [ref=e69]: "2"
+              - cell "Contenders" [ref=e70]
+              - cell "1" [ref=e71]
+              - cell "×1.5" [ref=e72]:
+                - generic [ref=e73]: ×1.5
+              - cell "Netherlands, Norway, Belgium, Colombia" [ref=e74]
+            - row "3 Dark Horses 2 ×2.5 USA, Morocco, Japan, Uruguay, Mexico, Switzerland, Turkey, Ecuador, Sweden, Croatia, Senegal" [ref=e75]:
+              - cell "3" [ref=e76]:
+                - generic [ref=e77]: "3"
+              - cell "Dark Horses" [ref=e78]
+              - cell "2" [ref=e79]
+              - cell "×2.5" [ref=e80]:
+                - generic [ref=e81]: ×2.5
+              - cell "USA, Morocco, Japan, Uruguay, Mexico, Switzerland, Turkey, Ecuador, Sweden, Croatia, Senegal" [ref=e82]
+            - row "4 Underdogs 2 ×4.0 Austria, Canada, Paraguay, Czech Republic, Scotland, Ivory Coast, Egypt, Ghana, Bosnia & Herzegovina, Algeria, South Korea" [ref=e83]:
+              - cell "4" [ref=e84]:
+                - generic [ref=e85]: "4"
+              - cell "Underdogs" [ref=e86]
+              - cell "2" [ref=e87]
+              - cell "×4.0" [ref=e88]:
+                - generic [ref=e89]: ×4.0
+              - cell "Austria, Canada, Paraguay, Czech Republic, Scotland, Ivory Coast, Egypt, Ghana, Bosnia & Herzegovina, Algeria, South Korea" [ref=e90]
+            - row "5 Wildcards 2 ×7.0 Iran, Australia, Tunisia, DR Congo, Saudi Arabia, South Africa, Panama, Qatar, Iraq, New Zealand, Cape Verde, Uzbekistan, Jordan, Curacao, Haiti" [ref=e91]:
+              - cell "5" [ref=e92]:
+                - generic [ref=e93]: "5"
+              - cell "Wildcards" [ref=e94]
+              - cell "2" [ref=e95]
+              - cell "×7.0" [ref=e96]:
+                - generic [ref=e97]: ×7.0
+              - cell "Iran, Australia, Tunisia, DR Congo, Saudi Arabia, South Africa, Panama, Qatar, Iraq, New Zealand, Cape Verde, Uzbekistan, Jordan, Curacao, Haiti" [ref=e98]
+      - generic [ref=e100]:
+        - heading " Group Stage Scoring" [level=3] [ref=e101]:
+          - generic [ref=e102]: 
+          - text: Group Stage Scoring
+        - heading "Match Results" [level=5] [ref=e103]
+        - table [ref=e105]:
+          - rowgroup [ref=e106]:
+            - row "Result Points" [ref=e107]:
+              - columnheader "Result" [ref=e108]
+              - columnheader "Points" [ref=e109]
+          - rowgroup [ref=e110]:
+            - row "Win 3" [ref=e111]:
+              - cell "Win" [ref=e112]
+              - cell "3" [ref=e113]
+            - row "Draw 1" [ref=e114]:
+              - cell "Draw" [ref=e115]
+              - cell "1" [ref=e116]
+            - row "Loss 0" [ref=e117]:
+              - cell "Loss" [ref=e118]
+              - cell "0" [ref=e119]
+        - heading "Advancement Milestones" [level=5] [ref=e120]
+        - table [ref=e122]:
+          - rowgroup [ref=e123]:
+            - row "Milestone How Earned Points" [ref=e124]:
+              - columnheader "Milestone" [ref=e125]
+              - columnheader "How Earned" [ref=e126]
+              - columnheader "Points" [ref=e127]
+          - rowgroup [ref=e128]:
+            - row "Win Group Finish 1st in group 4" [ref=e129]:
+              - cell "Win Group" [ref=e130]
+              - cell "Finish 1st in group" [ref=e131]
+              - cell "4" [ref=e132]
+            - row "Runner-Up Finish 2nd in group 3" [ref=e133]:
+              - cell "Runner-Up" [ref=e134]
+              - cell "Finish 2nd in group" [ref=e135]
+              - cell "3" [ref=e136]
+            - row "Best 3rd Finish 3rd, among best 8 of 12 1" [ref=e137]:
+              - cell "Best 3rd" [ref=e138]
+              - cell "Finish 3rd, among best 8 of 12" [ref=e139]
+              - cell "1" [ref=e140]
+      - generic [ref=e142]:
+        - heading " Knockout Stage Scoring" [level=3] [ref=e143]:
+          - generic [ref=e144]: 
+          - text: Knockout Stage Scoring
+        - paragraph [ref=e145]: Each knockout result has a single point value (no separate match + milestone).
+        - table [ref=e147]:
+          - rowgroup [ref=e148]:
+            - row "Result Points" [ref=e149]:
+              - columnheader "Result" [ref=e150]
+              - columnheader "Points" [ref=e151]
+          - rowgroup [ref=e152]:
+            - row "Win Round of 32 8" [ref=e153]:
+              - cell "Win Round of 32" [ref=e154]
+              - cell "8" [ref=e155]
+            - row "Win Round of 16 11" [ref=e156]:
+              - cell "Win Round of 16" [ref=e157]
+              - cell "11" [ref=e158]
+            - row "Win Quarterfinal 15" [ref=e159]:
+              - cell "Win Quarterfinal" [ref=e160]
+              - cell "15" [ref=e161]
+            - row "Win Semifinal 19" [ref=e162]:
+              - cell "Win Semifinal" [ref=e163]
+              - cell "19" [ref=e164]
+            - row "Champion 50" [ref=e165]:
+              - cell "Champion" [ref=e166]
+              - cell "50" [ref=e167]
+            - row "Runner-Up (lost Final) 8" [ref=e168]:
+              - cell "Runner-Up (lost Final)" [ref=e169]
+              - cell "8" [ref=e170]
+            - row "Win 3rd-Place Match 8" [ref=e171]:
+              - cell "Win 3rd-Place Match" [ref=e172]
+              - cell "8" [ref=e173]
+      - generic [ref=e175]:
+        - heading " Points Per Achievement by Tier" [level=3] [ref=e176]:
+          - generic [ref=e177]: 
+          - text: Points Per Achievement by Tier
+        - table [ref=e180]:
+          - rowgroup [ref=e181]:
+            - row "Achievement T1 ×1 T2 ×1.5 T3 ×2.5 T4 ×4 T5 ×7" [ref=e182]:
+              - columnheader "Achievement" [ref=e183]
+              - columnheader "T1 ×1" [ref=e184]:
+                - generic [ref=e185]: T1
+                - text: ×1
+              - columnheader "T2 ×1.5" [ref=e186]:
+                - generic [ref=e187]: T2
+                - text: ×1.5
+              - columnheader "T3 ×2.5" [ref=e188]:
+                - generic [ref=e189]: T3
+                - text: ×2.5
+              - columnheader "T4 ×4" [ref=e190]:
+                - generic [ref=e191]: T4
+                - text: ×4
+              - columnheader "T5 ×7" [ref=e192]:
+                - generic [ref=e193]: T5
+                - text: ×7
+          - rowgroup [ref=e194]:
+            - row "Group Win 3 4.5 7.5 12 21" [ref=e195]:
+              - cell "Group Win" [ref=e196]
+              - cell "3" [ref=e197]
+              - cell "4.5" [ref=e198]
+              - cell "7.5" [ref=e199]
+              - cell "12" [ref=e200]
+              - cell "21" [ref=e201]
+            - row "Group Draw 1 1.5 2.5 4 7" [ref=e202]:
+              - cell "Group Draw" [ref=e203]
+              - cell "1" [ref=e204]
+              - cell "1.5" [ref=e205]
+              - cell "2.5" [ref=e206]
+              - cell "4" [ref=e207]
+              - cell "7" [ref=e208]
+            - row "Win Group 4 6.0 10.0 16 28" [ref=e209]:
+              - cell "Win Group" [ref=e210]
+              - cell "4" [ref=e211]
+              - cell "6.0" [ref=e212]
+              - cell "10.0" [ref=e213]
+              - cell "16" [ref=e214]
+              - cell "28" [ref=e215]
+            - row "Runner-Up 3 4.5 7.5 12 21" [ref=e216]:
+              - cell "Runner-Up" [ref=e217]
+              - cell "3" [ref=e218]
+              - cell "4.5" [ref=e219]
+              - cell "7.5" [ref=e220]
+              - cell "12" [ref=e221]
+              - cell "21" [ref=e222]
+            - row "Best 3rd 1 1.5 2.5 4 7" [ref=e223]:
+              - cell "Best 3rd" [ref=e224]
+              - cell "1" [ref=e225]
+              - cell "1.5" [ref=e226]
+              - cell "2.5" [ref=e227]
+              - cell "4" [ref=e228]
+              - cell "7" [ref=e229]
+            - row "Win R32 8 12.0 20.0 32 56" [ref=e230]:
+              - cell "Win R32" [ref=e231]
+              - cell "8" [ref=e232]
+              - cell "12.0" [ref=e233]
+              - cell "20.0" [ref=e234]
+              - cell "32" [ref=e235]
+              - cell "56" [ref=e236]
+            - row "Win R16 11 16.5 27.5 44 77" [ref=e237]:
+              - cell "Win R16" [ref=e238]
+              - cell "11" [ref=e239]
+              - cell "16.5" [ref=e240]
+              - cell "27.5" [ref=e241]
+              - cell "44" [ref=e242]
+              - cell "77" [ref=e243]
+            - row "Win QF 15 22.5 37.5 60 105" [ref=e244]:
+              - cell "Win QF" [ref=e245]
+              - cell "15" [ref=e246]
+              - cell "22.5" [ref=e247]
+              - cell "37.5" [ref=e248]
+              - cell "60" [ref=e249]
+              - cell "105" [ref=e250]
+            - row "Win SF 19 28.5 47.5 76 133" [ref=e251]:
+              - cell "Win SF" [ref=e252]
+              - cell "19" [ref=e253]
+              - cell "28.5" [ref=e254]
+              - cell "47.5" [ref=e255]
+              - cell "76" [ref=e256]
+              - cell "133" [ref=e257]
+            - row "Champion 50 75.0 125.0 200 350" [ref=e258]:
+              - cell "Champion" [ref=e259]
+              - cell "50" [ref=e260]
+              - cell "75.0" [ref=e261]
+              - cell "125.0" [ref=e262]
+              - cell "200" [ref=e263]
+              - cell "350" [ref=e264]
+            - row "Runner-Up (Final) 8 12.0 20.0 32 56" [ref=e265]:
+              - cell "Runner-Up (Final)" [ref=e266]
+              - cell "8" [ref=e267]
+              - cell "12.0" [ref=e268]
+              - cell "20.0" [ref=e269]
+              - cell "32" [ref=e270]
+              - cell "56" [ref=e271]
+            - row "Win 3rd Place 8 12.0 20.0 32 56" [ref=e272]:
+              - cell "Win 3rd Place" [ref=e273]
+              - cell "8" [ref=e274]
+              - cell "12.0" [ref=e275]
+              - cell "20.0" [ref=e276]
+              - cell "32" [ref=e277]
+              - cell "56" [ref=e278]
+      - generic [ref=e280]:
+        - heading " Tiebreaker" [level=3] [ref=e281]:
+          - generic [ref=e282]: 
+          - text: Tiebreaker
+        - paragraph [ref=e283]:
+          - text: If two or more players are tied on total points, the tiebreaker is
+          - strong [ref=e284]: total USA goals scored in the tournament
+          - text: . The player whose guess is closest wins. If still tied, those players split the relevant prize pool equally.
+      - generic [ref=e286]:
+        - heading " Edge Cases" [level=3] [ref=e287]:
+          - generic [ref=e288]: 
+          - text: Edge Cases
+        - list [ref=e289]:
+          - listitem [ref=e290]:
+            - strong [ref=e291]: "Extra time / penalties:"
+            - text: If a knockout match goes to extra time or penalties, the winning team still receives the full knockout points for that round. There is no penalty or bonus for the method of victory.
+          - listitem [ref=e292]:
+            - strong [ref=e293]: "Group stage draws:"
+            - text: Both teams receive 1 point each (base), multiplied by their respective tier multipliers.
+          - listitem [ref=e294]:
+            - strong [ref=e295]: "Best 3rd advancement:"
+            - text: 8 of 12 third-place teams advance. Those 8 receive the Best 3rd milestone bonus.
+          - listitem [ref=e296]:
+            - strong [ref=e297]: "Multiplier application:"
+            - text: All base points are multiplied by the team's tier multiplier. A Tier 5 (×7) team that wins the World Cup earns 50 × 7 = 350 points for the championship alone.
+  - contentinfo [ref=e298]:
+    - generic [ref=e299]: © 2026 The Commissioner's Club

@@ -1,0 +1,103 @@
+<h2>Sticky Nav + Subnav Design</h2>
+<p class="subtitle">Both bars stick to the top of the viewport as you scroll. Pure CSS — no JavaScript.</p>
+
+<div class="section">
+  <h3>How It Works</h3>
+  <div class="split">
+    <div class="mockup">
+      <div class="mockup-header">Before scroll (normal position)</div>
+      <div class="mockup-body" style="padding:0; overflow:hidden;">
+        <div style="background:linear-gradient(90deg,#1a0a2e,#2d1b69); padding:10px 16px; border-bottom:3px solid #d4a820; font-family:sans-serif;">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span style="color:#d4a820; font-weight:700; font-size:13px; letter-spacing:1px;">🏆 THE COMMISSIONER'S CLUB</span>
+            <span style="color:rgba(255,255,255,.7); font-size:11px;">World Cup · Golf · CFB · 👤 Brad</span>
+          </div>
+        </div>
+        <div style="background:#00122e; padding:6px 16px; border-bottom:1px solid rgba(255,255,255,.07);">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="color:rgba(255,255,255,.9); font-size:11px; font-weight:700; letter-spacing:1px; border-right:1px solid rgba(255,255,255,.14); padding-right:10px;">⚽ WC 2026</span>
+            <span style="font-size:10px; padding:3px 10px; border-radius:20px; background:rgba(191,10,48,.18); border:1px solid #BF0A30; color:#fff;">Leaderboard</span>
+            <span style="font-size:10px; padding:3px 10px; color:rgba(255,255,255,.48);">Schedule</span>
+            <span style="font-size:10px; padding:3px 10px; color:rgba(255,255,255,.48);">Groups</span>
+          </div>
+        </div>
+        <div style="padding:16px; background:#0d0d1a; min-height:120px;">
+          <div style="background:rgba(255,255,255,.05); border-radius:8px; padding:12px; margin-bottom:8px;">
+            <div style="color:rgba(255,255,255,.4); font-size:11px;">Page content...</div>
+          </div>
+          <div style="background:rgba(255,255,255,.05); border-radius:8px; padding:12px; margin-bottom:8px;">
+            <div style="color:rgba(255,255,255,.4); font-size:11px;">More content...</div>
+          </div>
+          <div style="background:rgba(255,255,255,.05); border-radius:8px; padding:12px;">
+            <div style="color:rgba(255,255,255,.4); font-size:11px;">Even more content...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="mockup">
+      <div class="mockup-header">After scroll (both bars stuck)</div>
+      <div class="mockup-body" style="padding:0; overflow:hidden;">
+        <div style="background:linear-gradient(90deg,#1a0a2e,#2d1b69); padding:10px 16px; border-bottom:3px solid #d4a820; font-family:sans-serif; box-shadow:0 2px 12px rgba(0,0,0,.4);">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span style="color:#d4a820; font-weight:700; font-size:13px; letter-spacing:1px;">🏆 THE COMMISSIONER'S CLUB</span>
+            <span style="color:rgba(255,255,255,.7); font-size:11px;">World Cup · Golf · CFB · 👤 Brad</span>
+          </div>
+        </div>
+        <div style="background:#00122e; padding:6px 16px; border-bottom:1px solid rgba(255,255,255,.07); box-shadow:0 2px 12px rgba(0,0,0,.3);">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="color:rgba(255,255,255,.9); font-size:11px; font-weight:700; letter-spacing:1px; border-right:1px solid rgba(255,255,255,.14); padding-right:10px;">⚽ WC 2026</span>
+            <span style="font-size:10px; padding:3px 10px; border-radius:20px; background:rgba(191,10,48,.18); border:1px solid #BF0A30; color:#fff;">Leaderboard</span>
+            <span style="font-size:10px; padding:3px 10px; color:rgba(255,255,255,.48);">Schedule</span>
+            <span style="font-size:10px; padding:3px 10px; color:rgba(255,255,255,.48);">Groups</span>
+          </div>
+        </div>
+        <div style="padding:16px; background:#0d0d1a; min-height:120px;">
+          <div style="background:rgba(255,255,255,.05); border-radius:8px; padding:12px; margin-bottom:8px;">
+            <div style="color:rgba(255,255,255,.4); font-size:11px;">...scrolled content midway...</div>
+          </div>
+          <div style="background:rgba(255,255,255,.05); border-radius:8px; padding:12px; margin-bottom:8px;">
+            <div style="color:rgba(255,255,255,.4); font-size:11px;">More scrolled content...</div>
+          </div>
+          <div style="background:rgba(255,255,255,.05); border-radius:8px; padding:12px;">
+            <div style="color:rgba(255,255,255,.4); font-size:11px;">Bottom of page...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>CSS Changes (3 rules)</h3>
+  <div style="background:#1a1a2e; border-radius:8px; padding:20px; font-family:monospace; font-size:13px; color:#e0e0e0; line-height:1.7; overflow-x:auto;">
+    <div style="color:#888;">/* 1. Navbar — stick to top */</div>
+    <div><span style="color:#7ec8e3;">.navbar</span> {</div>
+    <div style="padding-left:20px;"><span style="color:#98c379;">position</span>: <span style="color:#d19a66;">sticky</span>;</div>
+    <div style="padding-left:20px;"><span style="color:#98c379;">top</span>: <span style="color:#d19a66;">0</span>;</div>
+    <div style="padding-left:20px;"><span style="color:#98c379;">z-index</span>: <span style="color:#d19a66;">1030</span>;</div>
+    <div>}</div>
+    <br>
+    <div style="color:#888;">/* 2. Subnav — stick below navbar */</div>
+    <div><span style="color:#7ec8e3;">.game-subnav</span> {</div>
+    <div style="padding-left:20px;"><span style="color:#98c379;">position</span>: <span style="color:#d19a66;">sticky</span>;</div>
+    <div style="padding-left:20px;"><span style="color:#98c379;">top</span>: <span style="color:#d19a66;">58px</span>; <span style="color:#888;">/* navbar height on desktop */</span></div>
+    <div style="padding-left:20px;"><span style="color:#98c379;">z-index</span>: <span style="color:#d19a66;">1020</span>;</div>
+    <div>}</div>
+    <br>
+    <div style="color:#888;">/* 3. Mobile navbar is shorter */</div>
+    <div><span style="color:#c678dd;">@media</span> (<span style="color:#98c379;">max-width</span>: <span style="color:#d19a66;">991px</span>) {</div>
+    <div style="padding-left:20px;"><span style="color:#7ec8e3;">.game-subnav</span> { <span style="color:#98c379;">top</span>: <span style="color:#d19a66;">52px</span>; }</div>
+    <div>}</div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Key Details</h3>
+  <ul style="color:#ccc; font-size:14px; line-height:2;">
+    <li><strong>z-index 1030/1020</strong> — navbar on top of subnav, both above page content. Matches existing <code>wc-mobile-sticky-bar</code> layer (1030).</li>
+    <li><strong>No body padding needed</strong> — <code>sticky</code> keeps elements in document flow (unlike <code>fixed</code>).</li>
+    <li><strong>Hamburger expansion</strong> — works automatically. The expanded menu pushes the subnav down because both are in flow.</li>
+    <li><strong>Non-game pages</strong> — no subnav exists, so only the navbar sticks. No special handling needed.</li>
+    <li><strong>Top values</strong> — 58px desktop / 52px mobile. Will verify exact heights in the dev server before shipping.</li>
+  </ul>
+</div>
