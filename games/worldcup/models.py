@@ -77,6 +77,7 @@ class WorldCupTeam(db.Model):
         'SUI': 'CH', 'CRO': 'HR', 'URU': 'UY', 'PAR': 'PY', 'SEN': 'SN',
         'BIH': 'BA', 'ALG': 'DZ', 'KOR': 'KR', 'KSA': 'SA', 'RSA': 'ZA',
         'COD': 'CD', 'CPV': 'CV', 'HAI': 'HT', 'TUR': 'TR', 'CIV': 'CI',
+        'SWE': 'SE', 'TUN': 'TN',
     }
 
     @property

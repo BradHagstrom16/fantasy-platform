@@ -96,11 +96,11 @@
     {# ── My Roster widget (enrolled with picks) ── #}
     {% if user_picks %}
     <div class="col-12">
-      <div class="card border-0 shadow-sm">
-        <div class="card-body p-4">
-          <h5 class="mb-3" style="font-family:'Teko',sans-serif; text-transform:uppercase; letter-spacing:.04em;">
-            <i class="bi bi-people-fill me-2"></i>My Roster
-          </h5>
+      <div class="card border-0 shadow-sm roster-card">
+        <div class="card-body p-0">
+          <div class="roster-header">
+            <i class="bi bi-people-fill"></i>My Roster
+          </div>
           {% set picks_by_tier = {} %}
           {% for pick in user_picks %}
             {% if pick.team.tier not in picks_by_tier %}
@@ -111,13 +111,15 @@
           <div class="roster-tiers">
             {% for tier_num in range(1, 6) %}
             {% if tier_num in picks_by_tier %}
-            <div class="roster-tier-row">
-              <span class="roster-tier-label tier-badge tier-badge-{{ tier_num }}">T{{ tier_num }}</span>
+            <div class="roster-tier-row" style="--tier-color: var(--wc-tier{{ tier_num }});">
+              <div class="roster-tier-label tier-badge tier-badge-{{ tier_num }}">T{{ tier_num }}</div>
               <div class="roster-tier-teams">
                 {% for pick in picks_by_tier[tier_num] %}
-                <span class="badge bg-light text-dark border roster-team-badge">
-                  {{ pick.team.flag_emoji }} {{ pick.team.fifa_code }}
-                </span>
+                <div class="roster-team-card">
+                  <span class="roster-team-flag">{{ pick.team.flag_emoji }}</span>
+                  <span class="roster-team-name">{{ pick.team.display_name }}</span>
+                  <span class="roster-team-mult">×{{ pick.team.multiplier | int if pick.team.multiplier == (pick.team.multiplier | int) else pick.team.multiplier }}</span>
+                </div>
                 {% endfor %}
               </div>
             </div>

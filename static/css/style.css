@@ -2100,30 +2100,95 @@ hr { border-color: var(--border); opacity: 1; }
   line-height: 1.5;
 }
 
-/* --- 18p. WC Dashboard — roster widget tier rows --- */
-.roster-tiers {
-  display: flex;
-  flex-direction: column;
-  gap: .5rem;
+/* --- 18p. WC Dashboard — roster widget (matchday sheet) --- */
+.roster-card {
+  overflow: hidden;
 }
-.roster-tier-row {
+.roster-header {
+  font-family: 'Teko', sans-serif;
+  font-size: 1.05rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: #1a1a2e;
+  padding: 1rem 1.25rem .75rem;
+  border-bottom: 1px solid rgba(0,0,0,.07);
   display: flex;
   align-items: center;
   gap: .5rem;
 }
+.roster-tiers {
+  display: flex;
+  flex-direction: column;
+}
+.roster-tier-row {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  padding: .6rem 1.25rem;
+  border-bottom: 1px solid rgba(0,0,0,.05);
+}
+.roster-tier-row:last-child {
+  border-bottom: none;
+}
 .roster-tier-label {
   flex-shrink: 0;
-  width: 2rem;
-  text-align: center;
-  font-size: .65rem;
+  width: 2.4rem;
+  height: 2.4rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: .7rem;
+  align-self: center;
+  margin-right: .9rem;
 }
 .roster-tier-teams {
+  flex: 1;
   display: flex;
-  flex-wrap: wrap;
-  gap: .35rem;
+  gap: .6rem;
+  align-items: stretch;
 }
-.roster-team-badge {
-  font-size: .85rem !important;
+.roster-team-card {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: .55rem;
+  padding: .55rem .85rem;
+  background: #fff;
+  border: 1px solid rgba(0,0,0,.09);
+  border-left: 3px solid var(--tier-color);
+  border-radius: .45rem;
+  min-width: 0;
+}
+.roster-team-flag {
+  font-size: 1.3rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.roster-team-name {
+  flex: 1;
+  font-size: .88rem;
+  font-weight: 500;
+  color: #1a1a2e;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.roster-team-mult {
+  flex-shrink: 0;
+  font-size: .72rem;
+  font-family: 'Teko', sans-serif;
+  font-weight: 500;
+  letter-spacing: .03em;
+  color: var(--tier-color);
+  background: color-mix(in srgb, var(--tier-color) 12%, transparent);
+  padding: .15em .45em;
+  border-radius: .3rem;
+}
+@media (max-width: 575px) {
+  .roster-tier-teams { flex-direction: column; gap: .4rem; }
+  .roster-team-card { flex: none; }
+  .roster-team-mult { display: none; }
 }
 
 /* --- 18l. WC Groups — use FIFA code on very narrow screens --- */
