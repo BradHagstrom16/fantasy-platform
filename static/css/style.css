@@ -920,7 +920,7 @@ main { flex: 1; }
 
 .game-subnav {
   background: #0d0d1a; /* fallback if modifier class omitted — prevents white-on-white */
-  padding: .55rem 0;
+  padding: .5rem 0 .3rem;
   border-bottom: 1px solid rgba(255,255,255,.07);
   position: sticky;
   top: 58px;
@@ -2089,10 +2089,15 @@ hr { border-color: var(--border); opacity: 1; }
 
 /* --- 18o. WC Rules — mobile tier cards --- */
 .tier-mobile-card {
-  background: rgba(255,255,255,.03);
-  border: 1px solid rgba(255,255,255,.08);
+  background: var(--bg-muted);
+  border: 1px solid var(--border-light);
   border-radius: var(--radius);
   padding: .85rem 1rem;
+}
+.tier-mobile-card .tier-teams-list {
+  font-size: .85rem;
+  color: var(--text-muted);
+  line-height: 1.5;
 }
 
 /* --- 18l. WC Groups — use FIFA code on very narrow screens --- */
