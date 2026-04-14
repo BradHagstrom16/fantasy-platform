@@ -125,6 +125,7 @@ def test_wc_index_shows_youre_in_post_deadline(client, app):
     assert b"You&#39;re In!" in resp.data or b"You're In!" in resp.data
     assert b'View My Picks' in resp.data
     assert b'Edit My Picks' not in resp.data
+    assert b'/worldcup/join' not in resp.data
 
 
 def test_wc_index_shows_tournament_underway_unenrolled_post_deadline(client):
