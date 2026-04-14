@@ -44,7 +44,9 @@
                         <h3 class="featured-title">{{ featured_game.name }}</h3>
                         <p class="featured-desc">{{ featured_game.description }}</p>
                         <span class="btn btn-warning btn-lg px-5 featured-cta">
-                            {% if current_user.is_authenticated %}
+                            {% if deadline_passed %}
+                                <i class="bi bi-bar-chart me-2"></i>View Standings
+                            {% elif current_user.is_authenticated %}
                                 <i class="bi bi-globe2 me-2"></i>Enter the Pool
                             {% else %}
                                 <i class="bi bi-globe2 me-2"></i>Join the World Cup Pool
