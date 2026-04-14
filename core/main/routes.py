@@ -3,10 +3,13 @@ Fantasy Sports Platform - Main Routes
 =======================================
 Home page and platform-level pages.
 """
+from datetime import datetime, timezone
+
 from flask import render_template, url_for
 from flask_login import current_user
 
 from core.main import main_bp
+from games.worldcup.constants import TOURNAMENT_DEADLINE_UTC
 
 
 @main_bp.route('/')
@@ -36,8 +39,12 @@ def index():
             'url': None,
         },
     ]
+
+    deadline_passed = datetime.now(timezone.utc) >= TOURNAMENT_DEADLINE_UTC
+
     return render_template(
         'main/index.html',
         featured_game=featured_game,
         other_games=other_games,
+        deadline_passed=deadline_passed,
     )
