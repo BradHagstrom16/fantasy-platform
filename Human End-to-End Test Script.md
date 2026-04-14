@@ -11,7 +11,7 @@ Open: `http://127.0.0.1:5000`
 
 ## Still Needs Work
 
-- Should a games top toolbar (the pill-link subnav strip) be sticky/frozen so it always shows no matter how far the user has scrolled, both on mobile and web?
+- Should a games top toolbar (the pill-link subnav strip) be sticky/frozen so it always shows no matter how far the user has scrolled, both on mobile and web? I think there is room for improvement on this, it works but could be more aestetically pleasing and work a little better.
 
 ---
 
@@ -141,9 +141,9 @@ Log in as `testplayer1` (or your main admin account — whichever you prefer for
 ### 3A: Join page
 
 - [x] Navigate to `/worldcup/join` (or click the World Cup link in nav)
-- [pass with noted enhancement request] The game index page loads — does it describe the game clearly? Does it have a CTA to join?
+- [x] The game index page loads — does it describe the game clearly? Does it have a CTA to join?
 - [x] Click through to the join/enrollment page
-- [pass with noted enhancement] Page renders correctly — form shows entry fee, any rules summary, submit button
+- [x] Page renders correctly — form shows entry fee, any rules summary, submit button
 - [x] Submit enrollment — should redirect to the picks page
 - [x] Confirm enrollment: nav should now show "My Picks" or similar World Cup nav items
 
