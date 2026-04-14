@@ -25,73 +25,120 @@
   {% if tournament_phase == 'pre_tournament' %}
   <div class="row g-3 mb-4 animate-in">
 
-    {% if not enrollment %}
-    {# Not enrolled — join CTA #}
-    <div class="col-12">
-      <div class="card border-0 shadow-sm">
-        <div class="card-body p-4 text-center">
-          <h3 class="mb-2" style="font-family:'Teko',sans-serif; text-transform:uppercase; letter-spacing:.04em;">
-            Join the Pool
-          </h3>
-          <p class="text-muted mb-3">
-            Pick 9 national teams across 5 tiers. Points accumulate as your teams win matches and advance through the bracket.
-            Entry fee: <strong>${{ entry_fee }}</strong>.
-          </p>
-          <div class="d-flex justify-content-center gap-2 flex-wrap">
-            <a href="{{ url_for('worldcup.join') }}" class="btn btn-game btn-lg px-5">
-              <i class="bi bi-globe2 me-2"></i>Join Now
-            </a>
-            <a href="{{ url_for('worldcup.rules') }}" class="btn btn-outline-secondary btn-lg px-4">
-              <i class="bi bi-info-circle me-2"></i>See How It Works
-            </a>
-          </div>
-          {% if total_enrolled > 0 %}
-          <div class="mt-3 text-muted small">{{ total_enrolled }} player{{ 's' if total_enrolled != 1 }} enrolled</div>
-          {% endif %}
-        </div>
-      </div>
-    </div>
+    {% if deadline_passed %}
 
-    {% elif not enrollment.picks_submitted %}
-    {# Enrolled but no picks — picks CTA #}
-    <div class="col-12">
-      <div class="card border-0 shadow-sm wc-pick-cta">
-        <div class="card-body p-4 d-flex align-items-center justify-content-between flex-wrap gap-3">
-          <div>
-            <h4 class="mb-1" style="font-family:'Teko',sans-serif; text-transform:uppercase; letter-spacing:.04em;">
-              <i class="bi bi-exclamation-triangle-fill text-warning me-2"></i>Submit Your Picks
-            </h4>
-            <p class="mb-0 text-muted">
-              Deadline: <strong>{{ deadline_ct.strftime('%b %-d, %Y at %-I:%M %p CT') }}</strong>
-            </p>
+      {% if enrollment and enrollment.picks_submitted %}
+      {# Deadline passed — enrolled with picks: You're In! #}
+      <div class="col-12">
+        <div class="card border-0 shadow-sm border-start border-success border-3">
+          <div class="card-body p-4 d-flex align-items-center justify-content-between flex-wrap gap-3">
+            <div>
+              <h4 class="mb-1 text-success" style="font-family:'Teko',sans-serif; text-transform:uppercase; letter-spacing:.04em;">
+                <i class="bi bi-check-circle-fill me-2"></i>You're In!
+              </h4>
+              <p class="mb-0 text-muted">
+                The tournament has started &mdash; track your teams on the leaderboard.
+              </p>
+            </div>
+            <a href="{{ url_for('worldcup.picks') }}" class="btn btn-game px-4">
+              <i class="bi bi-clipboard-check me-1"></i>View My Picks
+            </a>
           </div>
-          <a href="{{ url_for('worldcup.picks') }}" class="btn btn-game btn-lg">
-            <i class="bi bi-pencil-square me-2"></i>Make Picks
-          </a>
         </div>
       </div>
-    </div>
+
+      {% else %}
+      {# Deadline passed — unenrolled or enrolled with no picks: Tournament Underway #}
+      <div class="col-12">
+        <div class="card border-0 shadow-sm border-start border-3" style="border-color: var(--game-primary) !important;">
+          <div class="card-body p-4 d-flex align-items-center justify-content-between flex-wrap gap-3">
+            <div>
+              <h4 class="mb-1" style="font-family:'Teko',sans-serif; text-transform:uppercase; letter-spacing:.04em;">
+                <i class="bi bi-globe2 me-2"></i>Tournament Underway
+              </h4>
+              <p class="mb-0 text-muted">
+                Registration is closed, but you can follow the action.
+              </p>
+            </div>
+            <a href="{{ url_for('worldcup.leaderboard') }}" class="btn btn-outline-secondary px-4">
+              <i class="bi bi-bar-chart me-1"></i>View Leaderboard
+            </a>
+          </div>
+        </div>
+      </div>
+      {% endif %}
 
     {% else %}
-    {# Enrolled with picks — confirmation #}
-    <div class="col-12">
-      <div class="card border-0 shadow-sm border-start border-success border-3">
-        <div class="card-body p-4 d-flex align-items-center justify-content-between flex-wrap gap-3">
-          <div>
-            <h4 class="mb-1 text-success" style="font-family:'Teko',sans-serif; text-transform:uppercase; letter-spacing:.04em;">
-              <i class="bi bi-check-circle-fill me-2"></i>You're All Set!
-            </h4>
-            <p class="mb-0 text-muted">
-              Picks submitted. You can edit until <strong>{{ deadline_ct.strftime('%b %-d at %-I:%M %p CT') }}</strong>.
+
+      {% if not enrollment %}
+      {# Not enrolled — join CTA #}
+      <div class="col-12">
+        <div class="card border-0 shadow-sm">
+          <div class="card-body p-4 text-center">
+            <h3 class="mb-2" style="font-family:'Teko',sans-serif; text-transform:uppercase; letter-spacing:.04em;">
+              Join the Pool
+            </h3>
+            <p class="text-muted mb-3">
+              Pick 9 national teams across 5 tiers. Points accumulate as your teams win matches and advance through the bracket.
+              Entry fee: <strong>${{ entry_fee }}</strong>.
             </p>
+            <div class="d-flex justify-content-center gap-2 flex-wrap">
+              <a href="{{ url_for('worldcup.join') }}" class="btn btn-game btn-lg px-5">
+                <i class="bi bi-globe2 me-2"></i>Join Now
+              </a>
+              <a href="{{ url_for('worldcup.rules') }}" class="btn btn-outline-secondary btn-lg px-4">
+                <i class="bi bi-info-circle me-2"></i>See How It Works
+              </a>
+            </div>
+            {% if total_enrolled > 0 %}
+            <div class="mt-3 text-muted small">{{ total_enrolled }} player{{ 's' if total_enrolled != 1 }} enrolled</div>
+            {% endif %}
           </div>
-          <a href="{{ url_for('worldcup.picks', edit=1) }}" class="btn btn-game px-4">
-            <i class="bi bi-pencil-square me-1"></i>Edit My Picks
-          </a>
         </div>
       </div>
-    </div>
-    {% endif %}
+
+      {% elif not enrollment.picks_submitted %}
+      {# Enrolled but no picks — picks CTA #}
+      <div class="col-12">
+        <div class="card border-0 shadow-sm wc-pick-cta">
+          <div class="card-body p-4 d-flex align-items-center justify-content-between flex-wrap gap-3">
+            <div>
+              <h4 class="mb-1" style="font-family:'Teko',sans-serif; text-transform:uppercase; letter-spacing:.04em;">
+                <i class="bi bi-exclamation-triangle-fill text-warning me-2"></i>Submit Your Picks
+              </h4>
+              <p class="mb-0 text-muted">
+                Deadline: <strong>{{ deadline_ct.strftime('%b %-d, %Y at %-I:%M %p CT') }}</strong>
+              </p>
+            </div>
+            <a href="{{ url_for('worldcup.picks') }}" class="btn btn-game btn-lg">
+              <i class="bi bi-pencil-square me-2"></i>Make Picks
+            </a>
+          </div>
+        </div>
+      </div>
+
+      {% else %}
+      {# Enrolled with picks — edit CTA #}
+      <div class="col-12">
+        <div class="card border-0 shadow-sm border-start border-success border-3">
+          <div class="card-body p-4 d-flex align-items-center justify-content-between flex-wrap gap-3">
+            <div>
+              <h4 class="mb-1 text-success" style="font-family:'Teko',sans-serif; text-transform:uppercase; letter-spacing:.04em;">
+                <i class="bi bi-check-circle-fill me-2"></i>You're All Set!
+              </h4>
+              <p class="mb-0 text-muted">
+                Picks submitted. You can edit until <strong>{{ deadline_ct.strftime('%b %-d at %-I:%M %p CT') }}</strong>.
+              </p>
+            </div>
+            <a href="{{ url_for('worldcup.picks', edit=1) }}" class="btn btn-game px-4">
+              <i class="bi bi-pencil-square me-1"></i>Edit My Picks
+            </a>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+
+    {% endif %}{# end deadline_passed #}
 
     {# ── My Roster widget (enrolled with picks) ── #}
     {% if user_picks %}
