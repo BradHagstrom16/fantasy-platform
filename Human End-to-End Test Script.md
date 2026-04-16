@@ -226,9 +226,9 @@ Before submitting valid picks, test the guards.
 TOURNAMENT_DEADLINE_UTC = datetime(2026, 4, 10, 19, 0, tzinfo=timezone.utc)  # yesterday
 ```
 
-- [ ] Navigate to `/worldcup/picks` — picks should be displayed as **read-only** (no edit form, no submit button)
-- [ ] A message should indicate that picks are locked / deadline has passed
-- [ ] Attempt to POST to `/worldcup/picks` directly (use browser dev tools or curl) — server should reject with a proper error, not silently save
+- [x] Navigate to `/worldcup/picks` — picks should be displayed as **read-only** (no edit form, no submit button)
+- [x] A message should indicate that picks are locked / deadline has passed
+- [x] Attempt to POST to `/worldcup/picks` directly (use browser dev tools or curl) — server should reject with a proper error, not silently save
 
 ```bash
 # Quick POST test — replace SESSION_COOKIE with your actual session cookie value
@@ -239,7 +239,7 @@ curl -X POST http://localhost:5000/worldcup/picks \
   --verbose 2>&1 | grep "< HTTP"
 ```
 
-- [ ] **Revert `TOURNAMENT_DEADLINE_UTC` to the real date and restart the server before continuing**
+- [x] **Revert `TOURNAMENT_DEADLINE_UTC` to the real date and restart the server before continuing**
 
 **Notes:**
 
@@ -249,22 +249,22 @@ curl -X POST http://localhost:5000/worldcup/picks \
 
 ### 5A: Leaderboard — public access
 
-- [ ] **Log out completely**
-- [ ] Navigate to `/worldcup/leaderboard` directly (no login)
-- [ ] Page loads — **no redirect to login** (this is a public page per ADR-026)
-- [ ] Your `testplayer1` enrollment is visible in the leaderboard (score: 0.0 — correct)
-- [ ] Rank column is populated
-- [ ] Tiebreaker column is visible
+- [x] **Log out completely**
+- [x] Navigate to `/worldcup/leaderboard` directly (no login)
+- [x] Page loads — **no redirect to login** (this is a public page per ADR-026)
+- [x] Your `testplayer1` enrollment is visible in the leaderboard (score: 0.0 — correct)
+- [x] Rank column is populated
+- [x] Tiebreaker column is visible
 
-**Notes:**
+**Notes: The tiebreaker should also be hidden pre deadline, it is visible now.**
 
 ---
 
 ### 5B: Leaderboard — player detail
 
-- [ ] Click on `testplayer1`'s name in the leaderboard
-- [ ] Player detail page loads — shows their 9 teams with per-team scores (all 0.0 currently)
-- [ ] Page is accessible **without login** (still logged out)
+- [x] Click on `testplayer1`'s name in the leaderboard
+- [x] Player detail is correctl hidden since deadline has not passed
+- [x] Page is accessible **without login** (still logged out)
 
 **Notes:**
 
@@ -274,8 +274,8 @@ curl -X POST http://localhost:5000/worldcup/picks \
 
 If you created a second user account earlier, enroll them too and submit different picks. Then:
 
-- [ ] Leaderboard shows both players
-- [ ] Ranking is correct (tied at 0.0 — order may be arbitrary, that's fine)
+- [x] Leaderboard shows both players
+- [x] Ranking is correct (tied at 0.0 — order may be arbitrary, that's fine)
 
 **Notes:**
 
@@ -285,12 +285,12 @@ If you created a second user account earlier, enroll them too and submit differe
 
 Quick renders-without-errors check. No deep interaction needed.
 
-- [ ] `/worldcup/schedule` — loads, shows match schedule with dates/times (in Central Time), organized by group or round
-- [ ] `/worldcup/groups` — loads, shows 12 group tables (A–L), all showing 0 points/0 matches played (correct pre-tournament state)
-- [ ] `/worldcup/rules` — loads, shows scoring rules including tier multipliers, group stage points, knockout points, tiebreaker explanation
-- [ ] All times on the schedule page are in **Central Time** (not UTC) — spot-check Match 1: Jun 11 at 2:00 PM CT
+- [x] `/worldcup/schedule` — loads, shows match schedule with dates/times (in Central Time), organized by group or round
+- [x] `/worldcup/groups` — loads, shows 12 group tables (A–L), all showing 0 points/0 matches played (correct pre-tournament state)
+- [x] `/worldcup/rules` — loads, shows scoring rules including tier multipliers, group stage points, knockout points, tiebreaker explanation
+- [x] All times on the schedule page are in **Central Time** (not UTC) — spot-check Match 1: Jun 11 at 2:00 PM CT
 
-**Notes:**
+**Notes: We may want a small display somewhere that says times displayed are central time**
 
 ---
 
@@ -300,10 +300,10 @@ Log back in as your **admin account** (the one with `User.is_admin = True`).
 
 ### 7A: Admin access
 
-- [ ] Navigate to `/worldcup/admin/` — admin dashboard loads
-- [ ] Dashboard shows: tournament status, matches needing scores, enrolled players
-- [ ] Player count shows `testplayer1` (and any other test enrollments)
-- [ ] "Matches needing scores" section shows upcoming matches (all 104 if no results entered yet)
+- [x] Navigate to `/worldcup/admin/` — admin dashboard loads
+- [x] Dashboard shows: tournament status, matches needing scores, enrolled players
+- [x] Player count shows `testplayer1` (and any other test enrollments)
+- [x] "Matches needing scores" section shows upcoming matches (all 104 if no results entered yet)
 
 **Notes:**
 
@@ -313,32 +313,34 @@ Log back in as your **admin account** (the one with `User.is_admin = True`).
 
 Pick any group stage match (e.g., Match 1: Mexico vs South Africa, Jun 11).
 
-- [ ] Navigate to the match result entry page for Match 1 (via admin dashboard or `/worldcup/admin/match/1`)
-- [ ] Page shows: match details (teams, stage, kickoff time), score entry form
-- [ ] Enter a result: e.g., Mexico 2, South Africa 1
-- [ ] Submit — should redirect back to admin dashboard or show success
-- [ ] Confirm: admin dashboard now shows Match 1 as completed with the entered score
-- [ ] Confirm: **leaderboard updates** — navigate to `/worldcup/leaderboard`. If `testplayer1` picked Mexico, their score should be > 0. If they didn't, score stays 0 (also correct).
+- [x] Navigate to the match result entry page for Match 1 (via admin dashboard or `/worldcup/admin/match/1`)
+- [x] Page shows: match details (teams, stage, kickoff time), score entry form
+- [x] Enter a result: e.g., Mexico 2, South Africa 1
+- [x] Submit — should redirect back to admin dashboard or show success
+- [x] Confirm: admin dashboard now shows Match 1 as completed with the entered score
+- [x] Confirm: **leaderboard updates** — navigate to `/worldcup/leaderboard`. If `testplayer1` picked Mexico, their score should be > 0. If they didn't, score stays 0 (also correct).
 
 > **Scoring spot-check:** Mexico is a Tier 3 team (×2.5 multiplier). A win = 3 base points. Expected score if Mexico was picked: 3 × 2.5 = **7.5 points**. Verify this is what appears on the leaderboard.
 
 - [ ] Score is mathematically correct based on the game design
 
-**Notes:**
+**Notes:
+- One thing I find weird: I as admin can enter the score and I still need to enter the winning team. I feel like there should be an auto way to dereive the winning team or draw based on what the final score is. 
+- A needed enhancement is someway to see how your teams and other peoples teams are actually scoring the points. On the schedule, when a game is finished it should say you know X points awarded to winning country. And then when I drill into my team or another users team, I can click on a country that they have and a drop down or something similar pops up and I can see exactly how that country scored its points.**
 
 ---
 
 ### 7C: Clear a result and re-enter
 
-- [ ] From the match detail page for Match 1, click "Clear Result"
-- [ ] Confirm the result is cleared — match shows as incomplete again
-- [ ] Leaderboard score drops back to 0.0 for affected players
-- [ ] Re-enter the same result
-- [ ] Leaderboard returns to the correct score
+- [x] From the match detail page for Match 1, click "Clear Result"
+- [x] Confirm the result is cleared — match shows as incomplete again
+- [x] Leaderboard score drops back to 0.0 for affected players
+- [x] Re-enter the same result
+- [x] Leaderboard returns to the correct score
 
 > This tests the idempotency of the recalc — scores should always reflect what's in the DB, not accumulate.
 
-**Notes:**
+**Notes: I can get to an entered/finalized match if I type directly into my broswer bar, but there should be some admin UI that allows me to alter scores that I may have misentered.**
 
 ---
 
@@ -346,23 +348,23 @@ Pick any group stage match (e.g., Match 1: Mexico vs South Africa, Jun 11).
 
 The knockout round shells have no teams yet — they're filled in as the bracket resolves. Test that the admin UI for this works.
 
-- [ ] Navigate to `/worldcup/admin/knockout` (or the knockout team assignment section on the admin dashboard)
-- [ ] Find a Round of 32 match shell
-- [ ] Assign two teams to it (pick any two teams from the DB)
-- [ ] Confirm the assignment saves — the match now shows the assigned teams
-- [ ] Navigate to the match result entry for that match — teams should appear in the score form
-- [ ] Clear the team assignment (or assign different teams) to restore the clean state
+- [x] Navigate to `/worldcup/admin/knockout` (or the knockout team assignment section on the admin dashboard)
+- [x] Find a Round of 32 match shell
+- [x] Assign two teams to it (pick any two teams from the DB)
+- [x] Confirm the assignment saves — the match now shows the assigned teams
+- [x] Navigate to the match result entry for that match — teams should appear in the score form
+- [fail] Clear the team assignment (or assign different teams) to restore the clean state
 
-**Notes:**
+**Notes:'/worldcup/admin/knockout` does not exist. I can assign knockout teams from admin and I think that is good. I cannot clear teams, we need to find a way for me to be able to clear teams from knockout http://127.0.0.1:5000/worldcup/admin/set-knockout/73**
 
 ---
 
 ### 7E: Admin advancement (group stage advancement milestones)
 
-- [ ] Navigate to `/worldcup/admin/advancement`
-- [ ] Page loads without error
-- [ ] Understand what this page does: it's where you'd manually record group advancement status (who won their group, who advanced as runner-up, best 3rd, etc.) for milestone points
-- [ ] You don't need to submit anything — just confirm the page renders correctly and the form makes sense
+- [x] Navigate to `/worldcup/admin/advancement`
+- [x] Page loads without error
+- [x] Understand what this page does: it's where you'd manually record group advancement status (who won their group, who advanced as runner-up, best 3rd, etc.) for milestone points
+- [x] You don't need to submit anything — just confirm the page renders correctly and the form makes sense
 
 **Notes:**
 
@@ -370,10 +372,10 @@ The knockout round shells have no teams yet — they're filled in as the bracket
 
 ### 7F: Admin player management
 
-- [ ] Find the player management section in the admin dashboard
-- [ ] `testplayer1`'s enrollment is visible
-- [ ] You can see their picks (or there's a link to them)
-- [ ] Payment status is visible (if that field exists for World Cup)
+- [x] Find the player management section in the admin dashboard
+- [x] `testplayer1`'s enrollment is visible
+- [x] You can see their picks (or there's a link to them)
+- [x] Payment status is visible (if that field exists for World Cup)
 
 **Notes:**
 
@@ -383,8 +385,8 @@ The knockout round shells have no teams yet — they're filled in as the bracket
 
 Log out of admin. Log in as `testplayer1` (a non-admin account without enrollment-scoped `is_admin`).
 
-- [ ] Navigate to `/worldcup/admin/` — should redirect away with a flash error (not show the admin dashboard)
-- [ ] Navigate to `/worldcup/admin/match/1` — same, should be blocked
+- [x] Navigate to `/worldcup/admin/` — should redirect away with a flash error (not show the admin dashboard)
+- [x] Navigate to `/worldcup/admin/match/1` — same, should be blocked
 
 **Notes:**
 
@@ -425,40 +427,6 @@ Open `http://<your-local-IP>:5000` on your phone, or use Chrome DevTools device 
 - [ ] Login page: usable on mobile
 
 **Notes:**
-
----
-
-## Test Results Summary
-
-| Section | Status | Blocker? |
-|---------|--------|----------|
-| 1 — Pre-flight | ✅ | No |
-| 2A — Registration happy path | | |
-| 2B — Registration validation | | |
-| 2C — Login/logout | | |
-| 2D — Login validation | | |
-| 2E — Profile/change password | | |
-| 3A — World Cup enrollment | | |
-| 3B — Double enrollment guard | | |
-| 4A — Pick form rendering | | |
-| 4B — Pick validation | | |
-| 4C — Valid pick submission | | |
-| 4D — Pick editing | | |
-| 4E — Post-deadline lock | | |
-| 5A — Leaderboard public access | | |
-| 5B — Player detail | | |
-| 5C — Leaderboard multiple players | | |
-| 6 — Info pages | | |
-| 7A — Admin dashboard | | |
-| 7B — Enter match result + scoring | | |
-| 7C — Clear + re-enter result | | |
-| 7D — Knockout team assignment | | |
-| 7E — Advancement page | | |
-| 7F — Player management | | |
-| 7G — Non-admin blocked | | |
-| 8A — Golf smoke | | |
-| 8B — CFB smoke | | |
-| 9 — Mobile | | |
 
 ---
 
