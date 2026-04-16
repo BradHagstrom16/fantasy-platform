@@ -807,3 +807,78 @@ class TestHalfPointPrecision:
             db.session.refresh(team)
             assert team.base_points == 3.0
             assert team.multiplied_points == 4.5
+
+
+# ============================================================
+# Score Event Attribution (display-time derivation, ADR-024)
+# ============================================================
+
+class TestComputeTeamScoreEventsGroup:
+    """compute_team_score_events derives per-team scoring sources from match state."""
+
+    def test_group_win_emits_single_event(self, app):
+        with app.app_context():
+            from games.worldcup.services.scoring import (
+                process_match_result, compute_team_score_events,
+            )
+            mex = _make_team(db.session, 'MEX', 'Mexico', 3, 2.5, 'A')
+            rsa = _make_team(db.session, 'RSA', 'South Africa', 5, 7.0, 'A')
+            match = _make_match(db.session, 1, 'group', mex, rsa, 'A')
+            db.session.commit()
+
+            process_match_result(
+                match_id=match.id, home_score=2, away_score=1,
+                winner_fifa_code='MEX',
+            )
+            db.session.refresh(mex)
+
+            events = compute_team_score_events(mex)
+            assert len(events) == 1
+            assert events[0].source == 'group_win'
+            assert events[0].base_points == 3.0
+            assert events[0].match_id == match.id
+            assert 'RSA' in events[0].label or 'South Africa' in events[0].label
+
+    def test_group_draw_emits_event_for_both_teams(self, app):
+        with app.app_context():
+            from games.worldcup.services.scoring import (
+                process_match_result, compute_team_score_events,
+            )
+            bra = _make_team(db.session, 'BRA', 'Brazil', 1, 1.0, 'B')
+            mar = _make_team(db.session, 'MAR', 'Morocco', 3, 2.5, 'B')
+            match = _make_match(db.session, 6, 'group', bra, mar, 'B')
+            db.session.commit()
+
+            process_match_result(
+                match_id=match.id, home_score=0, away_score=0,
+                winner_fifa_code=None, is_draw=True,
+            )
+            db.session.refresh(bra)
+            db.session.refresh(mar)
+
+            bra_events = compute_team_score_events(bra)
+            mar_events = compute_team_score_events(mar)
+            assert len(bra_events) == 1
+            assert bra_events[0].source == 'group_draw'
+            assert bra_events[0].base_points == 1.0
+            assert len(mar_events) == 1
+            assert mar_events[0].source == 'group_draw'
+
+    def test_group_loss_emits_no_event(self, app):
+        with app.app_context():
+            from games.worldcup.services.scoring import (
+                process_match_result, compute_team_score_events,
+            )
+            arg = _make_team(db.session, 'ARG', 'Argentina', 1, 1.0, 'C')
+            ksa = _make_team(db.session, 'KSA', 'Saudi Arabia', 5, 7.0, 'C')
+            match = _make_match(db.session, 10, 'group', arg, ksa, 'C')
+            db.session.commit()
+
+            process_match_result(
+                match_id=match.id, home_score=1, away_score=2,
+                winner_fifa_code='KSA',
+            )
+            db.session.refresh(arg)
+
+            events = compute_team_score_events(arg)
+            assert events == []

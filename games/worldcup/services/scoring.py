@@ -9,6 +9,10 @@ and 48 team rows, a full recalc takes milliseconds.
 Match data is the source of truth. Team scores, pick scores, and
 enrollment totals are all derived from completed matches + advancement data.
 """
+from dataclasses import dataclass
+from datetime import date
+from typing import Literal
+
 from extensions import db
 from games.worldcup.models import (
     WorldCupEnrollment, WorldCupTeam, WorldCupMatch, WorldCupPick,
@@ -30,6 +34,23 @@ STAGE_ORDER = {
     'runner_up': 6,
     'champion': 7,
 }
+
+
+ScoreSource = Literal['group_win', 'group_draw', 'advancement', 'knockout', 'podium']
+
+
+@dataclass(frozen=True)
+class ScoreEvent:
+    """A single scoring event contributing to a team's base_points total.
+
+    Returned by compute_team_score_events() for UI drill-down. Not persisted —
+    derived fresh each render from current match/team state (ADR-024).
+    """
+    source: ScoreSource
+    label: str
+    base_points: float
+    match_id: int | None
+    occurred_on: date | None
 
 
 def recalculate_all_scores() -> dict:
@@ -341,3 +362,49 @@ def set_knockout_teams(
         'home': home.display_name,
         'away': away.display_name,
     }
+
+
+def compute_team_score_events(team: WorldCupTeam) -> list[ScoreEvent]:
+    """Replay this team's scoring sources against current match/team state.
+
+    Returns a chronologically-ordered list of ScoreEvents. The sum of
+    `base_points` across events equals `team.base_points` (enforced via
+    unit test). Pure function — performs no DB writes.
+    """
+    events: list[ScoreEvent] = []
+
+    # Group-stage match events
+    group_matches = (
+        WorldCupMatch.query
+        .filter_by(stage='group', is_completed=True)
+        .filter(
+            (WorldCupMatch.home_team_id == team.id)
+            | (WorldCupMatch.away_team_id == team.id)
+        )
+        .order_by(WorldCupMatch.kickoff_utc)
+        .all()
+    )
+    for match in group_matches:
+        opponent = (
+            match.away_team if match.home_team_id == team.id else match.home_team
+        )
+        opp_code = opponent.fifa_code if opponent else '???'
+        kickoff_date = match.kickoff_utc.date() if match.kickoff_utc else None
+        if match.is_draw:
+            events.append(ScoreEvent(
+                source='group_draw',
+                label=f'Draw vs {opp_code}',
+                base_points=float(GROUP_DRAW),
+                match_id=match.id,
+                occurred_on=kickoff_date,
+            ))
+        elif match.winner_team_id == team.id:
+            events.append(ScoreEvent(
+                source='group_win',
+                label=f'Win vs {opp_code}',
+                base_points=float(GROUP_WIN),
+                match_id=match.id,
+                occurred_on=kickoff_date,
+            ))
+
+    return events
