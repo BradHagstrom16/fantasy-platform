@@ -23,7 +23,9 @@
               <th style="width:60px">#</th>
               <th>Player</th>
               <th class="text-end">Points</th>
+              {% if deadline_passed %}
               <th class="text-end">Tiebreaker</th>
+              {% endif %}
             </tr>
           </thead>
           <tbody>
@@ -44,7 +46,9 @@
                 {% endif %}
               </td>
               <td class="text-end fw-bold">{{ "%.1f"|format(e.total_score) }}</td>
+              {% if deadline_passed %}
               <td class="text-end text-muted">{{ e.usa_goals_guess if e.usa_goals_guess is not none else '—' }}</td>
+              {% endif %}
             </tr>
             {% endfor %}
           </tbody>
@@ -73,7 +77,7 @@
               {{ e.get_display_name() }}
             </a>
             {% endif %}
-            {% if e.usa_goals_guess is not none %}
+            {% if deadline_passed and e.usa_goals_guess is not none %}
             <small class="text-muted">TB: {{ e.usa_goals_guess }}</small>
             {% endif %}
           </div>

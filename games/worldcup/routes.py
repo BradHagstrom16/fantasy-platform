@@ -349,9 +349,12 @@ def leaderboard():
         ranked.append({'rank': current_rank, 'enrollment': e})
         prev_score = e.total_score
 
+    deadline_passed = datetime.now(timezone.utc) >= TOURNAMENT_DEADLINE_UTC
+
     return render_template('worldcup/leaderboard.html',
         ranked_enrollments=ranked,
         total_players=len(enrollments),
+        deadline_passed=deadline_passed,
     )
 
 
