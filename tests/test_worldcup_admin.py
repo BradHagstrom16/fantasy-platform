@@ -149,6 +149,21 @@ def test_admin_dashboard_lists_completed_matches(client, app):
     assert b'>2<' in resp.data or b'#2' in resp.data
 
 
+def test_admin_dashboard_shows_edit_teams_for_assigned_knockout(client, app):
+    admin_id = _make_admin_user(app)
+    # _seed_knockout_match_with_teams is defined below; call via module globals at runtime.
+    match_id = _seed_knockout_match_with_teams(app, completed=False)
+
+    with client.session_transaction() as sess:
+        sess['_user_id'] = str(admin_id)
+        sess['_fresh'] = True
+
+    resp = client.get('/worldcup/admin/')
+    assert resp.status_code == 200
+    assert f'/worldcup/admin/set-knockout/{match_id}'.encode() in resp.data
+    assert b'Edit Teams' in resp.data
+
+
 # ── Clear knockout team assignment ──────────────────────────────────────
 
 def _seed_knockout_match_with_teams(app, completed=False):

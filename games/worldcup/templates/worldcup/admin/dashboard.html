@@ -50,6 +50,10 @@
                                 <td>
                                     <a href="{{ url_for('worldcup.admin_match_result', match_id=match.id) }}"
                                        class="btn btn-sm btn-warning">Enter Result</a>
+                                    {% if match.stage != 'group' %}
+                                    <a href="{{ url_for('worldcup.admin_set_knockout', match_id=match.id) }}"
+                                       class="btn btn-sm btn-outline-secondary">Edit Teams</a>
+                                    {% endif %}
                                 </td>
                             </tr>
                             {% endfor %}
