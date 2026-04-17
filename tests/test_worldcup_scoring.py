@@ -882,3 +882,134 @@ class TestComputeTeamScoreEventsGroup:
 
             events = compute_team_score_events(arg)
             assert events == []
+
+
+class TestComputeTeamScoreEventsAdvancement:
+    """Advancement methods emit events worth the matching constant."""
+
+    def test_group_winner_advancement_emits_event(self, app):
+        with app.app_context():
+            from games.worldcup.services.scoring import (
+                apply_group_advancement, compute_team_score_events,
+            )
+            from games.worldcup.constants import ADVANCE_GROUP_WINNER
+
+            esp = _make_team(db.session, 'ESP', 'Spain', 1, 1.0, 'A')
+            uru = _make_team(db.session, 'URU', 'Uruguay', 2, 1.5, 'A')
+            ksa = _make_team(db.session, 'KSA', 'Saudi Arabia', 5, 7.0, 'A')
+            jpn = _make_team(db.session, 'JPN', 'Japan', 4, 4.0, 'A')
+            db.session.commit()
+
+            apply_group_advancement('A', {
+                'ESP': 'group_winner',
+                'URU': 'runner_up',
+                'KSA': 'best_third',
+            })
+            db.session.refresh(esp)
+
+            events = compute_team_score_events(esp)
+            adv_events = [e for e in events if e.source == 'advancement']
+            assert len(adv_events) == 1
+            assert adv_events[0].base_points == float(ADVANCE_GROUP_WINNER)
+            assert 'winner' in adv_events[0].label.lower()
+
+
+class TestComputeTeamScoreEventsKnockout:
+    """Knockout wins emit events worth KNOCKOUT_POINTS[stage]."""
+
+    def test_r16_win_emits_knockout_event(self, app):
+        with app.app_context():
+            from games.worldcup.services.scoring import (
+                process_match_result, compute_team_score_events,
+            )
+            from games.worldcup.constants import KNOCKOUT_POINTS
+
+            arg = _make_team(db.session, 'ARG', 'Argentina', 1, 1.0, 'A')
+            cro = _make_team(db.session, 'CRO', 'Croatia', 3, 2.5, 'B')
+            match = _make_match(db.session, 105, 'R16', arg, cro)
+            db.session.commit()
+
+            process_match_result(
+                match_id=match.id, home_score=2, away_score=1,
+                winner_fifa_code='ARG',
+            )
+            db.session.refresh(arg)
+
+            events = compute_team_score_events(arg)
+            ko_events = [e for e in events if e.source == 'knockout']
+            assert len(ko_events) == 1
+            assert ko_events[0].base_points == float(KNOCKOUT_POINTS['R16'])
+            assert ko_events[0].match_id == match.id
+
+
+class TestComputeTeamScoreEventsPodium:
+    """Champion / runner_up / third_place each add a podium event."""
+
+    def test_champion_emits_podium_event(self, app):
+        with app.app_context():
+            from games.worldcup.services.scoring import (
+                process_match_result, compute_team_score_events,
+            )
+            from games.worldcup.constants import KNOCKOUT_POINTS
+
+            arg = _make_team(db.session, 'ARG', 'Argentina', 1, 1.0, 'A')
+            fra = _make_team(db.session, 'FRA', 'France', 1, 1.0, 'B')
+            match = _make_match(db.session, 104, 'final', arg, fra)
+            db.session.commit()
+
+            process_match_result(
+                match_id=match.id, home_score=3, away_score=2,
+                winner_fifa_code='ARG',
+            )
+            db.session.refresh(arg)
+
+            events = compute_team_score_events(arg)
+            podium = [e for e in events if e.source == 'podium']
+            assert len(podium) == 1
+            assert podium[0].base_points == float(KNOCKOUT_POINTS['champion'])
+
+
+class TestComputeTeamScoreEventsInvariant:
+    """Invariant: sum of event base_points == team.base_points."""
+
+    def test_sum_matches_base_points_after_full_recalc(self, app):
+        with app.app_context():
+            from games.worldcup.services.scoring import (
+                process_match_result, apply_group_advancement,
+                compute_team_score_events,
+            )
+
+            # Build a tiny simulated tournament: one group + one R32
+            esp = _make_team(db.session, 'ESP', 'Spain', 1, 1.0, 'A')
+            uru = _make_team(db.session, 'URU', 'Uruguay', 2, 1.5, 'A')
+            ksa = _make_team(db.session, 'KSA', 'Saudi Arabia', 5, 7.0, 'A')
+            jpn = _make_team(db.session, 'JPN', 'Japan', 4, 4.0, 'A')
+            m1 = _make_match(db.session, 1, 'group', esp, uru, 'A')
+            m2 = _make_match(db.session, 2, 'group', ksa, jpn, 'A')
+            m3 = _make_match(db.session, 3, 'group', esp, ksa, 'A')
+            db.session.commit()
+
+            process_match_result(
+                match_id=m1.id, home_score=2, away_score=1,
+                winner_fifa_code='ESP',
+            )
+            process_match_result(
+                match_id=m2.id, home_score=0, away_score=0,
+                winner_fifa_code=None, is_draw=True,
+            )
+            process_match_result(
+                match_id=m3.id, home_score=3, away_score=0,
+                winner_fifa_code='ESP',
+            )
+            apply_group_advancement('A', {
+                'ESP': 'group_winner',
+                'URU': 'runner_up',
+            })
+
+            for team in WorldCupTeam.query.all():
+                db.session.refresh(team)
+                events = compute_team_score_events(team)
+                derived = sum(e.base_points for e in events)
+                assert derived == team.base_points, (
+                    f'{team.fifa_code}: derived {derived} != stored {team.base_points}'
+                )

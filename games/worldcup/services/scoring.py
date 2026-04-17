@@ -407,4 +407,63 @@ def compute_team_score_events(team: WorldCupTeam) -> list[ScoreEvent]:
                 occurred_on=kickoff_date,
             ))
 
+    # Advancement milestone
+    if team.advancement_method:
+        adv_points = _apply_advancement_points(team)
+        if adv_points > 0:
+            adv_labels = {
+                'group_winner': 'Group winner',
+                'runner_up': 'Group runner-up',
+                'best_third': 'Best 3rd place',
+            }
+            events.append(ScoreEvent(
+                source='advancement',
+                label=adv_labels.get(team.advancement_method, team.advancement_method),
+                base_points=float(adv_points),
+                match_id=None,
+                occurred_on=None,
+            ))
+
+    # Knockout-match wins (R32, R16, QF, SF)
+    knockout_matches = (
+        WorldCupMatch.query
+        .filter(WorldCupMatch.stage != 'group')
+        .filter(WorldCupMatch.is_completed == True)  # noqa: E712
+        .filter(WorldCupMatch.winner_team_id == team.id)
+        .order_by(WorldCupMatch.kickoff_utc)
+        .all()
+    )
+    for match in knockout_matches:
+        stage_points = _apply_knockout_points(match)
+        if stage_points <= 0:
+            continue
+        opponent = (
+            match.away_team if match.home_team_id == team.id else match.home_team
+        )
+        opp_code = opponent.fifa_code if opponent else '???'
+        kickoff_date = match.kickoff_utc.date() if match.kickoff_utc else None
+        events.append(ScoreEvent(
+            source='knockout',
+            label=f'{match.stage}: beat {opp_code}',
+            base_points=float(stage_points),
+            match_id=match.id,
+            occurred_on=kickoff_date,
+        ))
+
+    # Podium bonus
+    podium_points = _apply_podium_bonus(team)
+    if podium_points > 0:
+        podium_labels = {
+            'champion': 'Champion',
+            'runner_up': 'Runner-up (final)',
+            '3rd': 'Third place',
+        }
+        events.append(ScoreEvent(
+            source='podium',
+            label=podium_labels.get(team.best_finish or '', team.best_finish or ''),
+            base_points=float(podium_points),
+            match_id=None,
+            occurred_on=None,
+        ))
+
     return events
