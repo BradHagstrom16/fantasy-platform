@@ -157,14 +157,15 @@ def test_cfb_join_duplicate_redirects_to_dashboard(app, client, monkeypatch):
     assert '/cfb' in resp.location
 
 
-def test_cfb_pick_route_redirects_non_enrolled_to_join(app, client, monkeypatch):
+@pytest.mark.parametrize('path', ['/cfb/my-picks', '/cfb/pick/1'])
+def test_cfb_pick_route_redirects_non_enrolled_to_join(app, client, monkeypatch, path):
     """Regression: an unenrolled logged-in user hitting a CFB pick route
     is redirected to /cfb/join?next=..., NOT silently auto-enrolled."""
     _set_status(monkeypatch, 'cfb', 'open')
-    uid = _make_user(app, 'cfb_pick')
+    uid = _make_user(app, f'cfb_pick_{path.replace("/", "_")}')
     _login(client, uid)
-    resp = client.get('/cfb/my-picks', follow_redirects=False)
+    resp = client.get(path, follow_redirects=False)
     if resp.status_code == 404:
-        pytest.skip("CFB my-picks route not present; adjust URL when adding")
+        pytest.skip(f"{path} not present; adjust URL when adding")
     assert resp.status_code == 302
     assert '/cfb/join' in resp.location
