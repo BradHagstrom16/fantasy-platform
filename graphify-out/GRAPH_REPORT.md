@@ -1,12 +1,12 @@
-# Graph Report - .  (2026-04-14)
+# Graph Report - .  (2026-04-17)
 
 ## Corpus Check
-- 57 files · ~68,205 words
+- 58 files · ~79,521 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 770 nodes · 2230 edges · 48 communities detected
-- Extraction: 43% EXTRACTED · 57% INFERRED · 0% AMBIGUOUS · INFERRED: 1282 edges (avg confidence: 0.5)
+- 847 nodes · 2536 edges · 47 communities detected
+- Extraction: 41% EXTRACTED · 59% INFERRED · 0% AMBIGUOUS · INFERRED: 1506 edges (avg confidence: 0.5)
 - Token cost: 0 input · 0 output
 
 ## Community Hubs (Navigation)
@@ -57,19 +57,18 @@
 - [[_COMMUNITY_Community 44|Community 44]]
 - [[_COMMUNITY_Community 45|Community 45]]
 - [[_COMMUNITY_Community 46|Community 46]]
-- [[_COMMUNITY_Community 47|Community 47]]
 
 ## God Nodes (most connected - your core abstractions)
-1. `WorldCupEnrollment` - 88 edges
-2. `User` - 87 edges
-3. `CfbGame` - 87 edges
-4. `WorldCupTeam` - 86 edges
-5. `WorldCupMatch` - 84 edges
-6. `CfbWeek` - 84 edges
-7. `CfbTeam` - 83 edges
-8. `GolfTournament` - 82 edges
-9. `GolfEnrollment` - 80 edges
-10. `WorldCupPick` - 78 edges
+1. `WorldCupEnrollment` - 141 edges
+2. `WorldCupTeam` - 139 edges
+3. `WorldCupMatch` - 137 edges
+4. `WorldCupPick` - 126 edges
+5. `User` - 104 edges
+6. `CfbGame` - 87 edges
+7. `CfbWeek` - 84 edges
+8. `CfbTeam` - 83 edges
+9. `GolfTournament` - 82 edges
+10. `GolfEnrollment` - 80 edges
 
 ## Surprising Connections (you probably didn't know these)
 - `CFB Survivor Pool — Routes ============================== All route handlers for` --uses--> `User`  [INFERRED]
@@ -95,15 +94,15 @@
 
 ### Community 0 - "Community 0"
 Cohesion: 0.04
-Nodes (116): init_cmd(), populate_teams_cmd(), process_match_cmd(), Seed teams + matches (fresh setup convenience command)., Recalculate all scores from match results (idempotent)., Print tournament state summary., Enter a match result and recalculate scores., Register World Cup CLI commands with the Flask app. (+108 more)
+Nodes (150): Seed teams + matches (fresh setup convenience command)., Recalculate all scores from match results (idempotent)., Print tournament state summary., Enter a match result and recalculate scores., Register World Cup CLI commands with the Flask app., Seed all 104 match shells from match_schedule.py., A player's pick of a national team in the fantasy pool.      Each enrollment has, Game-specific user data for World Cup Fantasy Pool.      Linked to the shared Us (+142 more)
 
 ### Community 1 - "Community 1"
-Cohesion: 0.06
-Nodes (105): check_wd_cmd(), _make_api_and_sync(), CFB Survivor Pool — CLI Commands =================================== Flask CLI c, Import season schedule from API., Sync field for upcoming tournament., Sync results for just-completed tournament., Finalize earnings for completed tournaments that haven't been finalized yet., Check for withdrawals in active tournament. (+97 more)
+Cohesion: 0.05
+Nodes (109): CFB Survivor Pool — CLI Commands =================================== Flask CLI c, Import season schedule from API., Sync field for upcoming tournament., Sync results for just-completed tournament., Finalize earnings for completed tournaments that haven't been finalized yet., Check for withdrawals in active tournament., Run reminder check for upcoming tournaments., Register golf CLI commands with the Flask app. (+101 more)
 
 ### Community 2 - "Community 2"
-Cohesion: 0.06
-Nodes (107): _calculate_week_dates(), _get_special_week_info(), _import_games_for_week(), CFB Survivor Pool — Automation Service ========================================, Create the next week, import games, and activate it.      Idempotent: skips if t, Fetch latest odds and update spreads for the active week's games.      Skips gam, Send a plain-text admin notification to the platform email address., Find incomplete weeks past deadline and auto-process scores.      Returns a stat (+99 more)
+Cohesion: 0.04
+Nodes (134): _calculate_week_dates(), _get_special_week_info(), _import_games_for_week(), CFB Survivor Pool — Automation Service ========================================, Create the next week, import games, and activate it.      Idempotent: skips if t, Fetch latest odds and update spreads for the active week's games.      Skips gam, Send a plain-text admin notification to the platform email address., Find incomplete weeks past deadline and auto-process scores.      Returns a stat (+126 more)
 
 ### Community 3 - "Community 3"
 Cohesion: 0.05
@@ -111,31 +110,31 @@ Nodes (56): ADR-016: Email Notifications (Game-Specific to Shared), ADR-018: CFB
 
 ### Community 4 - "Community 4"
 Cohesion: 0.05
-Nodes (48): admin_activate_week(), admin_advancement(), admin_all_picks(), admin_apply_scores(), admin_complete_week(), admin_dashboard(), admin_delete_game(), admin_fetch_scores() (+40 more)
+Nodes (49): admin_activate_week(), admin_advancement(), admin_all_picks(), admin_apply_scores(), admin_complete_week(), admin_dashboard(), admin_delete_game(), admin_fetch_scores() (+41 more)
 
 ### Community 5 - "Community 5"
-Cohesion: 0.11
-Nodes (28): calculate_projected_earnings(), deadline_has_passed(), format_deadline(), format_score_to_par(), format_week_for_title(), get_cfp_active_teams(), get_cfp_available_teams_for_user(), get_cfp_eliminated_teams() (+20 more)
+Cohesion: 0.08
+Nodes (34): autopick_cmd(), check_wd_cmd(), init_cmd(), _make_api_and_sync(), populate_teams_cmd(), process_match_cmd(), Update spreads from The Odds API., Process auto-picks for users who missed the deadline. (+26 more)
 
 ### Community 6 - "Community 6"
-Cohesion: 0.2
-Nodes (24): _build_recap_html(), _build_recap_plain_text(), build_reminder_email(), _build_reminder_html(), _cfb_html_button(), _cfb_html_week_card(), _cfb_html_wrapper(), format_time_remaining() (+16 more)
+Cohesion: 0.21
+Nodes (23): _build_recap_html(), _build_recap_plain_text(), build_reminder_email(), _build_reminder_html(), _cfb_html_button(), _cfb_html_week_card(), _cfb_html_wrapper(), format_time_remaining() (+15 more)
 
 ### Community 7 - "Community 7"
-Cohesion: 0.15
-Nodes (18): autopick_cmd(), Update spreads from The Odds API., Process auto-picks for users who missed the deadline., Send pick reminders for the active week., Print season summary., Register CFB CLI commands with the Flask app., Execute a sync mode and print results., Unified CFB automation CLI -- run weekly tasks by mode. (+10 more)
-
-### Community 8 - "Community 8"
 Cohesion: 0.12
 Nodes (16): ADR-001: Modular Monolith Architecture, ADR-003: Flask Framework Choice, ADR-006: Alembic / Flask-Migrate Tooling, ADR-007: Bootstrap 5.3 + Jinja2 Frontend, Architecture Decision Log, Rationale: Modular Monolith (right-sized for 20-30 users), Alembic / Flask-Migrate Migration Convention, Fantasy Sports Platform (+8 more)
 
-### Community 9 - "Community 9"
+### Community 8 - "Community 8"
 Cohesion: 0.14
 Nodes (3): admin_required(), Decorator to require admin access., reset_password()
 
+### Community 9 - "Community 9"
+Cohesion: 0.28
+Nodes (10): _make_admin_user(), _make_enrolled_user_with_tiebreaker(), _seed_knockout_match_with_teams(), _seed_two_completed_group_matches(), test_admin_dashboard_lists_completed_matches(), test_admin_dashboard_shows_edit_teams_for_assigned_knockout(), test_clear_knockout_blocked_when_match_completed(), test_clear_knockout_nulls_both_teams() (+2 more)
+
 ### Community 10 - "Community 10"
-Cohesion: 0.21
-Nodes (10): get_active_tournaments(), _get_event_timezone(), get_just_completed_tournament(), get_recently_completed_tournaments(), get_tournaments_pending_finalization(), get_upcoming_tournament(), get_upcoming_tournaments_window(), _parse_tee_time() (+2 more)
+Cohesion: 0.33
+Nodes (11): _apply_advancement_points(), apply_group_advancement(), _apply_knockout_points(), _apply_match_to_teams(), _apply_podium_bonus(), compute_match_attribution(), compute_team_score_events(), process_match_result() (+3 more)
 
 ### Community 11 - "Community 11"
 Cohesion: 0.22
@@ -150,80 +149,80 @@ Cohesion: 0.39
 Nodes (7): get_engine(), get_engine_url(), get_metadata(), Run migrations in 'offline' mode.      This configures the context with just a U, Run migrations in 'online' mode.      In this scenario we need to create an Engi, run_migrations_offline(), run_migrations_online()
 
 ### Community 14 - "Community 14"
-Cohesion: 0.29
-Nodes (1): CFB Survivor Pool — Services ================================ Game logic, API in
-
-### Community 15 - "Community 15"
 Cohesion: 0.53
 Nodes (5): Config, DevelopmentConfig, ProductionConfig, Fantasy Sports Platform - Configuration ========================================, TestingConfig
 
-### Community 16 - "Community 16"
+### Community 15 - "Community 15"
 Cohesion: 0.5
 Nodes (3): create_app(), Fantasy Sports Platform - Application Factory ==================================, Create and configure the Flask application.
 
-### Community 17 - "Community 17"
+### Community 16 - "Community 16"
 Cohesion: 0.5
 Nodes (1): add avatar_emoji to users  Revision ID: 6ca93808bcd2 Revises: 8c282ed0beac Creat
 
-### Community 18 - "Community 18"
+### Community 17 - "Community 17"
 Cohesion: 0.5
 Nodes (1): add is_admin to golf_enrollment  Revision ID: 8c282ed0beac Revises: bd07defd2be6
 
-### Community 19 - "Community 19"
+### Community 18 - "Community 18"
 Cohesion: 0.5
 Nodes (1): add CFB Survivor models  Revision ID: c65c548ea245 Revises: 9744be4c108a Create
 
-### Community 20 - "Community 20"
+### Community 19 - "Community 19"
 Cohesion: 0.5
 Nodes (1): add World Cup Fantasy Pool models  Revision ID: bd07defd2be6 Revises: f38ecaec82
 
-### Community 21 - "Community 21"
+### Community 20 - "Community 20"
 Cohesion: 0.5
 Nodes (1): initial: shared User model  Revision ID: a6bd9748bf4d Revises:  Create Date: 202
 
-### Community 22 - "Community 22"
+### Community 21 - "Community 21"
 Cohesion: 0.5
 Nodes (1): add golf pick em models  Revision ID: 9744be4c108a Revises: a6bd9748bf4d Create
 
-### Community 23 - "Community 23"
+### Community 22 - "Community 22"
 Cohesion: 0.5
 Nodes (1): add golf_tournament recap_email_sent flag  Revision ID: 4bcfd710a229 Revises: c6
 
-### Community 24 - "Community 24"
+### Community 23 - "Community 23"
 Cohesion: 0.5
 Nodes (1): add cfb_week recap_email_sent flag  Revision ID: f38ecaec8224 Revises: 4bcfd710a
 
-### Community 25 - "Community 25"
+### Community 24 - "Community 24"
 Cohesion: 0.5
 Nodes (3): utils/email.py ============== Shared platform email helper.  All platform-level, Send a transactional platform email.      Args:         to_addr:    Recipient em, send_platform_email()
 
-### Community 26 - "Community 26"
+### Community 25 - "Community 25"
 Cohesion: 0.5
 Nodes (2): Get the number of players in the tournament field., Check if tournament has a sufficient field size for picks.
 
-### Community 27 - "Community 27"
+### Community 26 - "Community 26"
 Cohesion: 0.5
 Nodes (1): CFB Survivor Pool — Constants ================================ FBS master team l
 
-### Community 28 - "Community 28"
+### Community 27 - "Community 27"
 Cohesion: 1.0
 Nodes (1): Fantasy Sports Platform - Flask Extensions =====================================
 
-### Community 29 - "Community 29"
+### Community 28 - "Community 28"
 Cohesion: 1.0
 Nodes (1): Fantasy Sports Platform - WSGI Entry Point =====================================
 
-### Community 30 - "Community 30"
+### Community 29 - "Community 29"
 Cohesion: 1.0
 Nodes (1): World Cup Fantasy Pool — Match Schedule ========================================
 
-### Community 31 - "Community 31"
+### Community 30 - "Community 30"
 Cohesion: 1.0
 Nodes (2): ADR-004: SQLite Database (Phase 1), SQLAlchemy 2.0.48
 
-### Community 32 - "Community 32"
+### Community 31 - "Community 31"
 Cohesion: 1.0
 Nodes (2): CSS position:sticky Approach (vs fixed/JS), Rationale: position:sticky over fixed or JS IntersectionObserver
+
+### Community 32 - "Community 32"
+Cohesion: 1.0
+Nodes (0): 
 
 ### Community 33 - "Community 33"
 Cohesion: 1.0
@@ -251,52 +250,50 @@ Nodes (0):
 
 ### Community 39 - "Community 39"
 Cohesion: 1.0
-Nodes (0): 
+Nodes (1): Derive Unicode flag emoji from the FIFA code.
 
 ### Community 40 - "Community 40"
 Cohesion: 1.0
-Nodes (1): Derive Unicode flag emoji from the FIFA code.
+Nodes (0): 
 
 ### Community 41 - "Community 41"
 Cohesion: 1.0
-Nodes (0): 
+Nodes (1): Platform home page — shows available games.
 
 ### Community 42 - "Community 42"
 Cohesion: 1.0
-Nodes (1): Platform home page — shows available games.
+Nodes (1): requests >=2.32.0
 
 ### Community 43 - "Community 43"
 Cohesion: 1.0
-Nodes (1): requests >=2.32.0
+Nodes (1): CSRF Protection Convention
 
 ### Community 44 - "Community 44"
 Cohesion: 1.0
-Nodes (1): CSRF Protection Convention
+Nodes (1): POST-Only State Mutation Convention
 
 ### Community 45 - "Community 45"
 Cohesion: 1.0
-Nodes (1): POST-Only State Mutation Convention
-
-### Community 46 - "Community 46"
-Cohesion: 1.0
 Nodes (1): ADR-005: PythonAnywhere Hosting
 
-### Community 47 - "Community 47"
+### Community 46 - "Community 46"
 Cohesion: 1.0
 Nodes (1): ADR-019: CFB State-Changing Routes (POST + CSRF)
 
 ## Knowledge Gaps
 - **99 isolated node(s):** `Fantasy Sports Platform - Configuration ========================================`, `Fantasy Sports Platform - Flask Extensions =====================================`, `Fantasy Sports Platform - Application Factory ==================================`, `Create and configure the Flask application.`, `Fantasy Sports Platform - WSGI Entry Point =====================================` (+94 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **Thin community `Community 28`** (2 nodes): `extensions.py`, `Fantasy Sports Platform - Flask Extensions =====================================`
+- **Thin community `Community 27`** (2 nodes): `extensions.py`, `Fantasy Sports Platform - Flask Extensions =====================================`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 29`** (2 nodes): `wsgi.py`, `Fantasy Sports Platform - WSGI Entry Point =====================================`
+- **Thin community `Community 28`** (2 nodes): `wsgi.py`, `Fantasy Sports Platform - WSGI Entry Point =====================================`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 30`** (2 nodes): `match_schedule.py`, `World Cup Fantasy Pool — Match Schedule ========================================`
+- **Thin community `Community 29`** (2 nodes): `match_schedule.py`, `World Cup Fantasy Pool — Match Schedule ========================================`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 31`** (2 nodes): `ADR-004: SQLite Database (Phase 1)`, `SQLAlchemy 2.0.48`
+- **Thin community `Community 30`** (2 nodes): `ADR-004: SQLite Database (Phase 1)`, `SQLAlchemy 2.0.48`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 32`** (2 nodes): `CSS position:sticky Approach (vs fixed/JS)`, `Rationale: position:sticky over fixed or JS IntersectionObserver`
+- **Thin community `Community 31`** (2 nodes): `CSS position:sticky Approach (vs fixed/JS)`, `Rationale: position:sticky over fixed or JS IntersectionObserver`
+  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
+- **Thin community `Community 32`** (1 nodes): `__init__.py`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
 - **Thin community `Community 33`** (1 nodes): `__init__.py`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
@@ -310,39 +307,37 @@ Nodes (1): ADR-019: CFB State-Changing Routes (POST + CSRF)
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
 - **Thin community `Community 38`** (1 nodes): `__init__.py`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 39`** (1 nodes): `__init__.py`
+- **Thin community `Community 39`** (1 nodes): `Derive Unicode flag emoji from the FIFA code.`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 40`** (1 nodes): `Derive Unicode flag emoji from the FIFA code.`
+- **Thin community `Community 40`** (1 nodes): `__init__.py`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 41`** (1 nodes): `__init__.py`
+- **Thin community `Community 41`** (1 nodes): `Platform home page — shows available games.`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 42`** (1 nodes): `Platform home page — shows available games.`
+- **Thin community `Community 42`** (1 nodes): `requests >=2.32.0`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 43`** (1 nodes): `requests >=2.32.0`
+- **Thin community `Community 43`** (1 nodes): `CSRF Protection Convention`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 44`** (1 nodes): `CSRF Protection Convention`
+- **Thin community `Community 44`** (1 nodes): `POST-Only State Mutation Convention`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 45`** (1 nodes): `POST-Only State Mutation Convention`
+- **Thin community `Community 45`** (1 nodes): `ADR-005: PythonAnywhere Hosting`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 46`** (1 nodes): `ADR-005: PythonAnywhere Hosting`
-  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 47`** (1 nodes): `ADR-019: CFB State-Changing Routes (POST + CSRF)`
+- **Thin community `Community 46`** (1 nodes): `ADR-019: CFB State-Changing Routes (POST + CSRF)`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `CFB Survivor Pool — Routes ============================== All route handlers for` connect `Community 1` to `Community 0`, `Community 9`, `Community 2`, `Community 4`?**
-  _High betweenness centrality (0.134) - this node is a cross-community bridge._
-- **Why does `User` connect `Community 0` to `Community 1`, `Community 6`, `Community 9`, `Community 14`?**
-  _High betweenness centrality (0.100) - this node is a cross-community bridge._
-- **Why does `CfbTeam` connect `Community 2` to `Community 0`, `Community 1`, `Community 14`, `Community 7`?**
-  _High betweenness centrality (0.077) - this node is a cross-community bridge._
-- **Are the 84 inferred relationships involving `WorldCupEnrollment` (e.g. with `CFB Survivor Pool — Routes ============================== All route handlers for` and `Decorator to require admin access.`) actually correct?**
-  _`WorldCupEnrollment` has 84 INFERRED edges - model-reasoned connections that need verification._
-- **Are the 79 inferred relationships involving `User` (e.g. with `CFB Survivor Pool — Routes ============================== All route handlers for` and `Decorator to require admin access.`) actually correct?**
-  _`User` has 79 INFERRED edges - model-reasoned connections that need verification._
-- **Are the 81 inferred relationships involving `CfbGame` (e.g. with `CFB Survivor Pool — Services ================================ Game logic, API in` and `CFB Survivor Pool — Utilities ================================ Timezone helpers`) actually correct?**
-  _`CfbGame` has 81 INFERRED edges - model-reasoned connections that need verification._
-- **Are the 83 inferred relationships involving `WorldCupTeam` (e.g. with `TestGroupWin` and `TestGroupDraw`) actually correct?**
-  _`WorldCupTeam` has 83 INFERRED edges - model-reasoned connections that need verification._
+- **Why does `CFB Survivor Pool — Routes ============================== All route handlers for` connect `Community 1` to `Community 8`, `Community 0`, `Community 2`, `Community 4`?**
+  _High betweenness centrality (0.124) - this node is a cross-community bridge._
+- **Why does `User` connect `Community 0` to `Community 8`, `Community 1`?**
+  _High betweenness centrality (0.109) - this node is a cross-community bridge._
+- **Why does `WorldCupEnrollment` connect `Community 0` to `Community 8`, `Community 1`, `Community 2`, `Community 5`?**
+  _High betweenness centrality (0.080) - this node is a cross-community bridge._
+- **Are the 137 inferred relationships involving `WorldCupEnrollment` (e.g. with `CFB Survivor Pool — Routes ============================== All route handlers for` and `Decorator to require admin access.`) actually correct?**
+  _`WorldCupEnrollment` has 137 INFERRED edges - model-reasoned connections that need verification._
+- **Are the 136 inferred relationships involving `WorldCupTeam` (e.g. with `TestGroupWin` and `TestGroupDraw`) actually correct?**
+  _`WorldCupTeam` has 136 INFERRED edges - model-reasoned connections that need verification._
+- **Are the 134 inferred relationships involving `WorldCupMatch` (e.g. with `TestGroupWin` and `TestGroupDraw`) actually correct?**
+  _`WorldCupMatch` has 134 INFERRED edges - model-reasoned connections that need verification._
+- **Are the 123 inferred relationships involving `WorldCupPick` (e.g. with `TestGroupWin` and `TestGroupDraw`) actually correct?**
+  _`WorldCupPick` has 123 INFERRED edges - model-reasoned connections that need verification._
