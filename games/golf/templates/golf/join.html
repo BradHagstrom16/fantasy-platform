@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Join — Golf Pick 'Em{% endblock %}
+
+{% block content %}
+<div class="page-hero">
+  <div class="hero-glow"></div>
+  <div class="container">
+    <h1>Join Golf Pick 'Em</h1>
+    <p class="lead mb-0">{{ season_year }} PGA Tour Season &mdash; ${{ entry_fee }} entry</p>
+  </div>
+</div>
+
+<div class="container pb-5">
+  <div class="row justify-content-center">
+    <div class="col-lg-6 col-md-8">
+
+      <div class="card border-0 shadow-sm animate-in">
+        <div class="card-body p-4">
+          <h3 class="mb-3" style="font-family:'Teko',sans-serif; text-transform:uppercase; letter-spacing:.04em;">How It Works</h3>
+          <ul class="mb-4">
+            <li>Pick <strong>one primary + one backup golfer</strong> per tournament</li>
+            <li>Points equal actual prize money earned by your active pick</li>
+            <li>Each golfer can be used only <strong>once per season</strong></li>
+            <li>Backup activates if your primary withdraws before Round 2</li>
+            <li>Majors earn 1.5× points; team events half</li>
+          </ul>
+
+          <form method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+
+            <button type="submit" class="btn btn-game btn-lg w-100">
+              <i class="bi bi-flag-fill me-2"></i>Join the League
+            </button>
+          </form>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+{% endblock %}

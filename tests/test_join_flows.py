@@ -169,3 +169,54 @@ def test_cfb_pick_route_redirects_non_enrolled_to_join(app, client, monkeypatch,
         pytest.skip(f"{path} not present; adjust URL when adding")
     assert resp.status_code == 302
     assert '/cfb/join' in resp.location
+
+
+# ── Golf /join ───────────────────────────────────────────────────────────
+
+def test_golf_join_anonymous_redirects_to_login(client):
+    resp = client.get('/golf/join', follow_redirects=False)
+    assert resp.status_code == 302
+    assert '/login' in resp.location
+
+
+def test_golf_join_coming_soon_rejects(app, client):
+    uid = _make_user(app, 'g1')
+    _login(client, uid)
+    resp = client.get('/golf/join', follow_redirects=False)
+    assert resp.status_code == 302
+    assert resp.location.endswith('/')
+
+
+def test_golf_join_open_renders_form(app, client, monkeypatch):
+    _set_status(monkeypatch, 'golf', 'open')
+    uid = _make_user(app, 'g2')
+    _login(client, uid)
+    resp = client.get('/golf/join')
+    assert resp.status_code == 200
+    assert b"Pick 'Em" in resp.data or b"Golf" in resp.data
+
+
+def test_golf_join_post_creates_enrollment(app, client, monkeypatch):
+    _set_status(monkeypatch, 'golf', 'open')
+    uid = _make_user(app, 'g3')
+    _login(client, uid)
+    resp = client.post('/golf/join', data={'csrf_token': 'x'}, follow_redirects=False)
+    assert resp.status_code == 302
+    from games.golf.models import GolfEnrollment
+    with app.app_context():
+        enr = GolfEnrollment.query.filter_by(user_id=uid).first()
+        assert enr is not None
+        assert enr.season_year == 2026
+
+
+def test_golf_join_duplicate_redirects_to_dashboard(app, client, monkeypatch):
+    _set_status(monkeypatch, 'golf', 'open')
+    uid = _make_user(app, 'g4')
+    _login(client, uid)
+    from games.golf.models import GolfEnrollment
+    with app.app_context():
+        db.session.add(GolfEnrollment(user_id=uid, season_year=2026))
+        db.session.commit()
+    resp = client.get('/golf/join', follow_redirects=False)
+    assert resp.status_code == 302
+    assert '/golf' in resp.location

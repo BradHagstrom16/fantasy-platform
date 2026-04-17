@@ -28,6 +28,7 @@ from games.golf.utils import (
     format_score_to_par, calculate_projected_earnings,
     get_current_time, GOLF_LEAGUE_TZ,
 )
+from games.common import game_must_be_open
 
 logger = logging.getLogger(__name__)
 
@@ -246,6 +247,32 @@ def index():
         user_has_picked_next=user_has_picked_next,
         calculate_projected_earnings=calculate_projected_earnings,
     )
+
+
+@golf_bp.route('/join', methods=['GET', 'POST'])
+@login_required
+@game_must_be_open('golf')
+def join():
+    """Enrollment page for Golf Pick 'Em."""
+    season_year = current_app.config['SEASON_YEAR']
+    existing = GolfEnrollment.query.filter_by(
+        user_id=current_user.id, season_year=season_year
+    ).first()
+    if existing:
+        flash("You are already enrolled in Golf Pick 'Em!", 'info')
+        return redirect(url_for('golf.index'))
+
+    if request.method == 'POST':
+        enrollment = GolfEnrollment(
+            user_id=current_user.id,
+            season_year=season_year,
+        )
+        db.session.add(enrollment)
+        db.session.commit()
+        flash("Welcome to Golf Pick 'Em!", 'success')
+        return redirect(url_for('golf.index'))
+
+    return render_template('golf/join.html')
 
 
 @golf_bp.route('/leaderboard')
