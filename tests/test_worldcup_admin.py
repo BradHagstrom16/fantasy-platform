@@ -147,3 +147,78 @@ def test_admin_dashboard_lists_completed_matches(client, app):
     # Both match numbers surface
     assert b'>1<' in resp.data or b'#1' in resp.data
     assert b'>2<' in resp.data or b'#2' in resp.data
+
+
+# ── Clear knockout team assignment ──────────────────────────────────────
+
+def _seed_knockout_match_with_teams(app, completed=False):
+    """Seed an R16 knockout match with teams assigned; optionally completed."""
+    with app.app_context():
+        a = WorldCupTeam(
+            fifa_code='AAA', name='Alpha', display_name='Alpha',
+            tier=3, multiplier=2.5, confederation='TEST', group_letter='A',
+        )
+        b = WorldCupTeam(
+            fifa_code='BBB', name='Beta', display_name='Beta',
+            tier=3, multiplier=2.5, confederation='TEST', group_letter='B',
+        )
+        db.session.add_all([a, b])
+        db.session.flush()
+        match = WorldCupMatch(
+            match_number=105, stage='R16',
+            home_team_id=a.id, away_team_id=b.id,
+        )
+        db.session.add(match)
+        db.session.commit()
+
+        if completed:
+            from games.worldcup.services.scoring import process_match_result
+            process_match_result(
+                match_id=match.id, home_score=2, away_score=1,
+                winner_fifa_code='AAA',
+            )
+        return match.id
+
+
+def test_clear_knockout_nulls_both_teams(client, app):
+    admin_id = _make_admin_user(app)
+    match_id = _seed_knockout_match_with_teams(app, completed=False)
+
+    with client.session_transaction() as sess:
+        sess['_user_id'] = str(admin_id)
+        sess['_fresh'] = True
+
+    resp = client.post(
+        f'/worldcup/admin/set-knockout/{match_id}',
+        data={'action': 'clear', 'csrf_token': 'test'},
+        follow_redirects=False,
+    )
+    assert resp.status_code in (302, 303)
+
+    with app.app_context():
+        match = db.session.get(WorldCupMatch, match_id)
+        assert match.home_team_id is None
+        assert match.away_team_id is None
+
+
+def test_clear_knockout_blocked_when_match_completed(client, app):
+    admin_id = _make_admin_user(app)
+    match_id = _seed_knockout_match_with_teams(app, completed=True)
+
+    with client.session_transaction() as sess:
+        sess['_user_id'] = str(admin_id)
+        sess['_fresh'] = True
+
+    resp = client.post(
+        f'/worldcup/admin/set-knockout/{match_id}',
+        data={'action': 'clear', 'csrf_token': 'test'},
+        follow_redirects=False,
+    )
+    # Redirect back to same page with flash; teams unchanged
+    assert resp.status_code in (302, 303)
+
+    with app.app_context():
+        match = db.session.get(WorldCupMatch, match_id)
+        assert match.home_team_id is not None
+        assert match.away_team_id is not None
+        assert match.is_completed is True

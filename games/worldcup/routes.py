@@ -746,6 +746,26 @@ def admin_set_knockout(match_id):
         return redirect(url_for('worldcup.admin_dashboard'))
 
     if request.method == 'POST':
+        action = request.form.get('action')
+
+        # Handle clear action
+        if action == 'clear':
+            if match.is_completed:
+                flash(
+                    'Clear the match result first before clearing the team assignment.',
+                    'error',
+                )
+                return redirect(url_for('worldcup.admin_set_knockout', match_id=match_id))
+            match.home_team_id = None
+            match.away_team_id = None
+            db.session.commit()
+            flash(
+                f'Match #{match.match_number}: team assignment cleared.',
+                'warning',
+            )
+            return redirect(url_for('worldcup.admin_dashboard'))
+
+        # Handle assign action (default)
         home_code = request.form.get('home_team', '').strip()
         away_code = request.form.get('away_team', '').strip()
 

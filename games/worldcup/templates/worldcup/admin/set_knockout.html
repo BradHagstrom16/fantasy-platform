@@ -73,6 +73,29 @@
                 <button type="submit" class="btn btn-success">Assign Teams</button>
                 <a href="{{ url_for('worldcup.admin_dashboard') }}" class="btn btn-secondary ms-2">Cancel</a>
             </form>
+            {# Clear-assignment action (incomplete matches only). #}
+            {% if (match.home_team or match.away_team) and not match.is_completed %}
+            <hr class="my-4">
+            <form method="POST" action="{{ url_for('worldcup.admin_set_knockout', match_id=match.id) }}"
+                  onsubmit="return confirm('Clear both team assignments for Match #{{ match.match_number }}?');">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="action" value="clear">
+                <button type="submit" class="btn btn-outline-danger">
+                    <i class="bi bi-x-octagon me-1"></i>Clear Team Assignment
+                </button>
+                <small class="text-muted ms-2">
+                    Nulls both home and away. Restores the match to an empty shell.
+                </small>
+            </form>
+            {% elif match.is_completed %}
+            <hr class="my-4">
+            <p class="text-muted small mb-0">
+                <i class="bi bi-lock me-1"></i>
+                Match result is recorded. Clear the result on
+                <a href="{{ url_for('worldcup.admin_match_result', match_id=match.id) }}">the result page</a>
+                before reassigning teams.
+            </p>
+            {% endif %}
         </div>
     </div>
 </div>
