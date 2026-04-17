@@ -9,7 +9,11 @@ from functools import wraps
 from flask import redirect, url_for, flash, request, abort
 from flask_login import current_user, login_required
 
-from games.registry import get_entry
+# games.registry is imported lazily inside each decorator wrapper body to break
+# the cycle: games/<game>/routes.py -> games.common -> games.registry ->
+# games/<game>/services/enrollment -> games/<game>/models -> games/<game>/__init__
+# -> games/<game>/routes.py. Deferring the import to request time (when all
+# modules are fully loaded) avoids partial-init imports.
 
 
 def game_must_be_open(slug: str):
@@ -20,6 +24,7 @@ def game_must_be_open(slug: str):
     def decorator(f):
         @wraps(f)
         def wrapper(*args, **kwargs):
+            from games.registry import get_entry
             entry = get_entry(slug)
             if entry.status != 'open':
                 flash(
@@ -47,6 +52,7 @@ def enrollment_required(slug: str):
         @wraps(f)
         @login_required
         def wrapper(*args, **kwargs):
+            from games.registry import get_entry
             entry = get_entry(slug)
             is_platform_admin = bool(
                 current_user.is_authenticated and getattr(current_user, 'is_admin', False)

@@ -29,29 +29,8 @@ class GameRegistryEntry:
     admin_enroll: Callable[[int], Any]
 
 
-# Enrollment services are imported lazily inside the lambdas below to avoid
-# circular imports: games.common -> games.registry -> games.<game>.services.enrollment
-# -> games.<game>.models -> games.<game>/__init__.py -> games.<game>/routes.py
-# -> games.common (partially initialized).
-def _wc_get_enrollment(user_id: int):
-    from games.worldcup.services import enrollment
-    return enrollment.get_enrollment(user_id)
-
-
-def _wc_admin_enroll(user_id: int):
-    from games.worldcup.services import enrollment
-    return enrollment.admin_enroll(user_id)
-
-
-def _cfb_get_enrollment(user_id: int):
-    from games.cfb.services import enrollment
-    return enrollment.get_enrollment(user_id)
-
-
-def _cfb_admin_enroll(user_id: int):
-    from games.cfb.services import enrollment
-    return enrollment.admin_enroll(user_id)
-
+from games.worldcup.services import enrollment as _worldcup_enrollment
+from games.cfb.services import enrollment as _cfb_enrollment
 
 # Populated in Tasks 3, 5, 8. Intentionally empty at file-creation time so
 # helpers remain testable against mock lists via monkeypatch.
@@ -68,8 +47,8 @@ GAMES: list[GameRegistryEntry] = [
         is_featured=True,
         blueprint_index='worldcup.index',
         blueprint_join='worldcup.join',
-        get_enrollment=_wc_get_enrollment,
-        admin_enroll=_wc_admin_enroll,
+        get_enrollment=_worldcup_enrollment.get_enrollment,
+        admin_enroll=_worldcup_enrollment.admin_enroll,
     ),
     GameRegistryEntry(
         slug='cfb',
@@ -83,8 +62,8 @@ GAMES: list[GameRegistryEntry] = [
         is_featured=False,
         blueprint_index='cfb.index',
         blueprint_join='cfb.join',
-        get_enrollment=_cfb_get_enrollment,
-        admin_enroll=_cfb_admin_enroll,
+        get_enrollment=_cfb_enrollment.get_enrollment,
+        admin_enroll=_cfb_enrollment.admin_enroll,
     ),
 ]
 
