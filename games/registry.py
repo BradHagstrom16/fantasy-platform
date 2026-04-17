@@ -29,9 +29,27 @@ class GameRegistryEntry:
     admin_enroll: Callable[[int], Any]
 
 
+from games.worldcup.services import enrollment as _worldcup_enrollment
+
 # Populated in Tasks 3, 5, 8. Intentionally empty at file-creation time so
 # helpers remain testable against mock lists via monkeypatch.
-GAMES: list[GameRegistryEntry] = []
+GAMES: list[GameRegistryEntry] = [
+    GameRegistryEntry(
+        slug='worldcup',
+        display_name='2026 FIFA World Cup',
+        description=(
+            'Pick 9 national teams across 5 tiers. Points accumulate as your teams '
+            'win and advance through the bracket.'
+        ),
+        emoji='⚽',
+        status='open',
+        is_featured=True,
+        blueprint_index='worldcup.index',
+        blueprint_join='worldcup.join',
+        get_enrollment=_worldcup_enrollment.get_enrollment,
+        admin_enroll=_worldcup_enrollment.admin_enroll,
+    ),
+]
 
 
 def get_entry(slug: str) -> GameRegistryEntry:

@@ -143,3 +143,29 @@ def test_games_for_user_pairs_entries_with_enrollments(app, monkeypatch):
         user = db.session.get(User, uid)
         pairs = registry.games_for_user(user)
     assert [(p[0].slug, p[1]) for p in pairs] == [('alpha', enr), ('beta', None)]
+
+
+# ── World Cup enrollment service ─────────────────────────────────────────
+
+def test_worldcup_get_enrollment_returns_none_when_absent(app):
+    uid = _make_user(app, username='wcuser')
+    from games.worldcup.services import enrollment
+    with app.app_context():
+        assert enrollment.get_enrollment(uid) is None
+
+
+def test_worldcup_admin_enroll_is_idempotent(app):
+    uid = _make_user(app, username='wcuser')
+    from games.worldcup.services import enrollment
+    with app.app_context():
+        e1 = enrollment.admin_enroll(uid)
+        e2 = enrollment.admin_enroll(uid)
+        assert e1.id == e2.id
+        assert e1.user_id == uid
+        assert e1.season_year == 2026
+
+
+def test_worldcup_entry_registered_in_GAMES(app):
+    from games.registry import GAMES
+    slugs = {e.slug for e in GAMES}
+    assert 'worldcup' in slugs
