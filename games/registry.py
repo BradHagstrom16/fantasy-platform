@@ -30,6 +30,7 @@ class GameRegistryEntry:
 
 
 from games.worldcup.services import enrollment as _worldcup_enrollment
+from games.cfb.services import enrollment as _cfb_enrollment
 
 # Populated in Tasks 3, 5, 8. Intentionally empty at file-creation time so
 # helpers remain testable against mock lists via monkeypatch.
@@ -48,6 +49,21 @@ GAMES: list[GameRegistryEntry] = [
         blueprint_join='worldcup.join',
         get_enrollment=_worldcup_enrollment.get_enrollment,
         admin_enroll=_worldcup_enrollment.admin_enroll,
+    ),
+    GameRegistryEntry(
+        slug='cfb',
+        display_name='CFB Survivor Pool',
+        description=(
+            'Weekly college football picks against the spread. Two lives. '
+            'Last survivor wins.'
+        ),
+        emoji='🏈',
+        status='coming_soon',
+        is_featured=False,
+        blueprint_index='cfb.index',
+        blueprint_join='cfb.join',
+        get_enrollment=_cfb_enrollment.get_enrollment,
+        admin_enroll=_cfb_enrollment.admin_enroll,
     ),
 ]
 

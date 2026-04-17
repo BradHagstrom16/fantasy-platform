@@ -169,3 +169,29 @@ def test_worldcup_entry_registered_in_GAMES(app):
     from games.registry import GAMES
     slugs = {e.slug for e in GAMES}
     assert 'worldcup' in slugs
+
+
+# ── CFB enrollment service ───────────────────────────────────────────────
+
+def test_cfb_get_enrollment_returns_none_when_absent(app):
+    uid = _make_user(app, username='cfbuser')
+    from games.cfb.services import enrollment
+    with app.app_context():
+        assert enrollment.get_enrollment(uid) is None
+
+
+def test_cfb_admin_enroll_is_idempotent(app):
+    uid = _make_user(app, username='cfbuser')
+    from games.cfb.services import enrollment
+    with app.app_context():
+        e1 = enrollment.admin_enroll(uid)
+        e2 = enrollment.admin_enroll(uid)
+        assert e1.id == e2.id
+        assert e1.user_id == uid
+        assert e1.season_year == 2026
+
+
+def test_cfb_entry_registered_in_GAMES(app):
+    from games.registry import GAMES
+    slugs = {e.slug for e in GAMES}
+    assert 'cfb' in slugs
