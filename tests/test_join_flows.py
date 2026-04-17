@@ -1,6 +1,5 @@
 """Tests for /join flows across all games."""
 import pytest
-from unittest.mock import patch
 
 from app import create_app
 from extensions import db
