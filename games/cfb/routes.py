@@ -34,6 +34,7 @@ from games.cfb.services.game_logic import (
     process_autopicks, calculate_cumulative_spread,
 )
 from games.cfb.services.score_fetcher import ScoreFetcher
+from games.common import game_must_be_open
 
 logger = logging.getLogger(__name__)
 
@@ -223,6 +224,34 @@ def index():
         total_participants=total_participants,
         prize_pool=prize_pool,
     )
+
+
+@cfb_bp.route('/join', methods=['GET', 'POST'])
+@login_required
+@game_must_be_open('cfb')
+def join():
+    """Enrollment page for CFB Survivor."""
+    season_year = current_app.config.get('CFB_SEASON_YEAR', 2026)
+    existing = CfbEnrollment.query.filter_by(
+        user_id=current_user.id, season_year=season_year
+    ).first()
+    if existing:
+        flash('You are already enrolled in the CFB Survivor Pool!', 'info')
+        return redirect(url_for('cfb.index'))
+
+    if request.method == 'POST':
+        display_name = request.form.get('display_name', '').strip()
+        enrollment = CfbEnrollment(
+            user_id=current_user.id,
+            season_year=season_year,
+            display_name=display_name or None,
+        )
+        db.session.add(enrollment)
+        db.session.commit()
+        flash('Welcome to the CFB Survivor Pool!', 'success')
+        return redirect(url_for('cfb.index'))
+
+    return render_template('cfb/join.html')
 
 
 @cfb_bp.route('/results')

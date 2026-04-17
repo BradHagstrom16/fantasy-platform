@@ -101,3 +101,72 @@ def test_wc_join_rejected_when_status_not_open(app, client, monkeypatch):
     assert resp.status_code == 302
     # redirected to homepage
     assert resp.location.endswith('/')
+
+
+# ── CFB /join ────────────────────────────────────────────────────────────
+
+def _set_status(monkeypatch, slug, status):
+    from games import registry
+    patched = [
+        registry.GameRegistryEntry(
+            slug=e.slug, display_name=e.display_name, description=e.description,
+            emoji=e.emoji, status=(status if e.slug == slug else e.status),
+            is_featured=e.is_featured, blueprint_index=e.blueprint_index,
+            blueprint_join=e.blueprint_join, get_enrollment=e.get_enrollment,
+            admin_enroll=e.admin_enroll,
+        ) for e in registry.GAMES
+    ]
+    monkeypatch.setattr(registry, 'GAMES', patched)
+
+
+def test_cfb_join_anonymous_redirects_to_login(client):
+    resp = client.get('/cfb/join', follow_redirects=False)
+    assert resp.status_code == 302
+    assert '/login' in resp.location
+
+
+def test_cfb_join_coming_soon_rejects_logged_in(app, client):
+    """CFB is seeded 'coming_soon' in registry, so /join must reject even
+    logged-in users until status flips to 'open'."""
+    uid = _make_user(app, 'cfb1')
+    _login(client, uid)
+    resp = client.get('/cfb/join', follow_redirects=False)
+    assert resp.status_code == 302
+    assert resp.location.endswith('/')
+
+
+def test_cfb_join_open_renders_form(app, client, monkeypatch):
+    _set_status(monkeypatch, 'cfb', 'open')
+    uid = _make_user(app, 'cfb2')
+    _login(client, uid)
+    resp = client.get('/cfb/join')
+    assert resp.status_code == 200
+    assert b'CFB Survivor' in resp.data
+
+
+def test_cfb_join_post_creates_enrollment(app, client, monkeypatch):
+    _set_status(monkeypatch, 'cfb', 'open')
+    uid = _make_user(app, 'cfb3')
+    _login(client, uid)
+    resp = client.post('/cfb/join',
+                       data={'display_name': '', 'csrf_token': 'x'},
+                       follow_redirects=False)
+    assert resp.status_code == 302
+    from games.cfb.models import CfbEnrollment
+    with app.app_context():
+        enr = CfbEnrollment.query.filter_by(user_id=uid).first()
+        assert enr is not None
+        assert enr.season_year == 2026
+
+
+def test_cfb_join_duplicate_redirects_to_dashboard(app, client, monkeypatch):
+    _set_status(monkeypatch, 'cfb', 'open')
+    uid = _make_user(app, 'cfb4')
+    _login(client, uid)
+    from games.cfb.models import CfbEnrollment
+    with app.app_context():
+        db.session.add(CfbEnrollment(user_id=uid, season_year=2026))
+        db.session.commit()
+    resp = client.get('/cfb/join', follow_redirects=False)
+    assert resp.status_code == 302
+    assert '/cfb' in resp.location
