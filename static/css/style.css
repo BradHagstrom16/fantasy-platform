@@ -632,6 +632,33 @@ body.game-worldcup {
   flex-shrink: 0;
 }
 
+/* Match attribution chip — "ARG +3 base" etc. */
+.match-points-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: .35em;
+  padding: .15rem .55rem;
+  background: rgba(0, 40, 104, .08);
+  border-left: 2px solid var(--game-accent, #BF0A30);
+  color: var(--game-primary, #002868);
+  font-family: 'Teko', sans-serif;
+  font-size: .85rem;
+  font-weight: 500;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  border-radius: 2px;
+  margin-top: .4rem;
+  white-space: nowrap;
+}
+.match-points-chip .chip-pts {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.match-points-chip .chip-sep {
+  opacity: .5;
+  margin: 0 .2em;
+}
+
 /* Group table — compact 4-team standings */
 .group-table {
   background: var(--bg-card);

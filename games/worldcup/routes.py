@@ -27,6 +27,7 @@ from games.worldcup.services.scoring import (
     apply_group_advancement,
     set_knockout_teams,
     recalculate_all_scores,
+    compute_match_attribution,
 )
 
 
@@ -400,6 +401,10 @@ def schedule():
         .all()
     )
 
+    attribution_by_match = {
+        m.id: compute_match_attribution(m) for m in matches if m.is_completed
+    }
+
     group_matches = [m for m in matches if m.stage == 'group']
     r32_matches = [m for m in matches if m.stage == 'R32']
     r16_matches = [m for m in matches if m.stage == 'R16']
@@ -416,6 +421,7 @@ def schedule():
         sf_matches=sf_matches,
         third_place=third_place,
         final=final,
+        attribution_by_match=attribution_by_match,
     )
 
 
