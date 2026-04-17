@@ -9,9 +9,7 @@ from datetime import datetime, timezone
 from app import create_app
 from extensions import db
 from models.user import User
-from games.worldcup.models import (
-    WorldCupEnrollment, WorldCupTeam, WorldCupMatch, WorldCupPick,
-)
+from games.worldcup.models import WorldCupEnrollment
 
 
 PAST_DEADLINE = datetime(2000, 1, 1, tzinfo=timezone.utc)
@@ -74,4 +72,4 @@ def test_leaderboard_shows_tiebreaker_post_deadline(client, app):
         resp = client.get('/worldcup/leaderboard')
     assert resp.status_code == 200
     assert b'Tiebreaker' in resp.data
-    assert b'7' in resp.data
+    assert b'>7<' in resp.data
