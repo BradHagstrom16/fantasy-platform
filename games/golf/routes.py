@@ -28,7 +28,7 @@ from games.golf.utils import (
     format_score_to_par, calculate_projected_earnings,
     get_current_time, GOLF_LEAGUE_TZ,
 )
-from games.common import game_must_be_open
+from games.common import game_must_be_open, enrollment_required
 
 logger = logging.getLogger(__name__)
 
@@ -363,6 +363,7 @@ def results():
 
 @golf_bp.route('/pick/<int:tournament_id>', methods=['GET', 'POST'])
 @login_required
+@enrollment_required('golf')
 def make_pick(tournament_id):
     """Pick submission form."""
     tournament = db.get_or_404(GolfTournament, tournament_id)
@@ -378,14 +379,11 @@ def make_pick(tournament_id):
         flash('The tournament field is not yet available. Check back later.', 'info')
         return redirect(url_for('golf.schedule'))
 
-    # Get or create enrollment
+    # Enrollment is required; decorator above already short-circuits,
+    # but we still need the object for used-player-ids lookup.
     enrollment = GolfEnrollment.query.filter_by(
         user_id=current_user.id, season_year=season_year
     ).first()
-    if not enrollment:
-        enrollment = GolfEnrollment(user_id=current_user.id, season_year=season_year)
-        db.session.add(enrollment)
-        db.session.commit()
 
     # Get used player IDs for this season
     used_player_ids = enrollment.get_used_player_ids()
@@ -466,6 +464,7 @@ def make_pick(tournament_id):
 
 @golf_bp.route('/my-picks')
 @login_required
+@enrollment_required('golf')
 def my_picks():
     """User's pick history for the season."""
     season_year = current_app.config['SEASON_YEAR']
