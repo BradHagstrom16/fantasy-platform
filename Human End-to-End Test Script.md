@@ -256,7 +256,7 @@ curl -X POST http://localhost:5000/worldcup/picks \
 - [x] Rank column is populated
 - [x] Tiebreaker column is visible
 
-**Notes: The tiebreaker should also be hidden pre deadline, it is visible now.**
+**Notes:** ✅ Resolved — tiebreaker column/value is now hidden pre-deadline on both desktop and mobile (commit c5e4149, tightened in 49821a3).
 
 ---
 
@@ -290,7 +290,7 @@ Quick renders-without-errors check. No deep interaction needed.
 - [x] `/worldcup/rules` — loads, shows scoring rules including tier multipliers, group stage points, knockout points, tiebreaker explanation
 - [x] All times on the schedule page are in **Central Time** (not UTC) — spot-check Match 1: Jun 11 at 2:00 PM CT
 
-**Notes: We may want a small display somewhere that says times displayed are central time**
+**Notes:** ✅ Resolved — schedule page now shows a "All kickoff times shown in Central Time" caption under the hero lead (commit 566128b).
 
 ---
 
@@ -324,9 +324,9 @@ Pick any group stage match (e.g., Match 1: Mexico vs South Africa, Jun 11).
 
 - [ ] Score is mathematically correct based on the game design
 
-**Notes:
-- One thing I find weird: I as admin can enter the score and I still need to enter the winning team. I feel like there should be an auto way to dereive the winning team or draw based on what the final score is. 
-- A needed enhancement is someway to see how your teams and other peoples teams are actually scoring the points. On the schedule, when a game is finished it should say you know X points awarded to winning country. And then when I drill into my team or another users team, I can click on a country that they have and a drop down or something similar pops up and I can see exactly how that country scored its points.**
+**Notes:** ✅ Both resolved.
+- Admin match entry auto-derives the winner (or draw) from the score, with an aria-live hint confirming the selection (commits bf3ea6d, 25cd5af).
+- Schedule page shows per-team attribution chips under completed-match scores (e.g., `MEX +3 base`), derived from a `compute_match_attribution` helper (commits b5a7b07, 90833ca, 71147b1, 566128b). Own-picks and player-detail pages have a per-pick drill-down accordion that reveals the underlying ScoreEvent breakdown (commits f260c07, d336ded, 925b96e).
 
 ---
 
@@ -340,7 +340,7 @@ Pick any group stage match (e.g., Match 1: Mexico vs South Africa, Jun 11).
 
 > This tests the idempotency of the recalc — scores should always reflect what's in the DB, not accumulate.
 
-**Notes: I can get to an entered/finalized match if I type directly into my broswer bar, but there should be some admin UI that allows me to alter scores that I may have misentered.**
+**Notes:** ✅ Resolved — admin dashboard now has a "Completed Matches" card with per-match Edit buttons, collapsing if >5 rows (commits 1513343, 63cea8e).
 
 ---
 
@@ -353,9 +353,11 @@ The knockout round shells have no teams yet — they're filled in as the bracket
 - [x] Assign two teams to it (pick any two teams from the DB)
 - [x] Confirm the assignment saves — the match now shows the assigned teams
 - [x] Navigate to the match result entry for that match — teams should appear in the score form
-- [fail] Clear the team assignment (or assign different teams) to restore the clean state
+- [x] Clear the team assignment (or assign different teams) to restore the clean state
 
-**Notes:'/worldcup/admin/knockout` does not exist. I can assign knockout teams from admin and I think that is good. I cannot clear teams, we need to find a way for me to be able to clear teams from knockout http://127.0.0.1:5000/worldcup/admin/set-knockout/73**
+**Notes:** ✅ Resolved.
+- The set-knockout page (`/worldcup/admin/set-knockout/<match_id>`) now has a "Clear Team Assignment" button that nulls both teams. Blocked when the match has a recorded result (lock hint links to the result page to clear it first). Commit 359c278.
+- Admin dashboard "Matches Needing Scores" card now shows an "Edit Teams" button on knockout-stage rows, so you no longer need to type the URL. Commit 06781e4.
 
 ---
 
