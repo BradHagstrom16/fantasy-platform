@@ -34,7 +34,7 @@ from games.cfb.services.game_logic import (
     process_autopicks, calculate_cumulative_spread,
 )
 from games.cfb.services.score_fetcher import ScoreFetcher
-from games.common import game_must_be_open
+from games.common import game_must_be_open, enrollment_required
 
 logger = logging.getLogger(__name__)
 
@@ -405,6 +405,7 @@ def weekly_results(week_number=None):
 
 @cfb_bp.route('/pick/<int:week_number>', methods=['GET', 'POST'])
 @login_required
+@enrollment_required('cfb')
 def make_pick(week_number):
     """Submit or change a weekly pick."""
     season_year = current_app.config.get('CFB_SEASON_YEAR', 2026)
@@ -554,6 +555,7 @@ def make_pick(week_number):
 
 @cfb_bp.route('/my-picks')
 @login_required
+@enrollment_required('cfb')
 def my_picks():
     """User's pick history and available teams."""
     season_year = current_app.config.get('CFB_SEASON_YEAR', 2026)
