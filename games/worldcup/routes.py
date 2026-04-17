@@ -15,6 +15,7 @@ from sqlalchemy import func
 from extensions import db
 from models import User
 from games.worldcup import worldcup_bp
+from games.common import game_must_be_open
 from games.worldcup.models import WorldCupEnrollment, WorldCupTeam, WorldCupMatch, WorldCupPick
 from games.worldcup.constants import (
     SEASON_YEAR, ENTRY_FEE, TOURNAMENT_DEADLINE_UTC,
@@ -178,6 +179,7 @@ def index():
 
 @worldcup_bp.route('/join', methods=['GET', 'POST'])
 @login_required
+@game_must_be_open('worldcup')
 def join():
     """Enrollment page."""
     existing = WorldCupEnrollment.query.filter_by(
