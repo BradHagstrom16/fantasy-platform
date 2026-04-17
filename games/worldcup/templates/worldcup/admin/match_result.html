@@ -100,7 +100,7 @@
                     </div>
                 </div>
 
-                <div class="mt-3">
+                <div class="mt-3" id="winnerBlock" data-stage="{{ match.stage }}">
                     <label class="form-label fw-bold">Winner</label>
                     <div class="d-flex gap-3 flex-wrap">
                         <div class="form-check">
@@ -118,6 +118,10 @@
                         </div>
                         {% endif %}
                     </div>
+                    <small id="winnerHint" class="text-muted d-none mt-1 d-block">
+                        <i class="bi bi-exclamation-circle me-1"></i>
+                        Equal score — pick the winner and mark ET or penalties below.
+                    </small>
                 </div>
 
                 {% if match.stage != 'group' %}
@@ -143,4 +147,72 @@
         </div>
     </div>
 </div>
+
+<script>
+(function() {
+  var home = document.querySelector('input[name="home_score"]');
+  var away = document.querySelector('input[name="away_score"]');
+  var block = document.getElementById('winnerBlock');
+  var hint = document.getElementById('winnerHint');
+  if (!home || !away || !block) return; // form not rendered (completed match)
+
+  var stage = block.dataset.stage || 'group';
+  var userOverride = false;
+
+  var radios = block.querySelectorAll('input[name="winner"]');
+  radios.forEach(function(r) {
+    r.addEventListener('change', function(ev) {
+      if (ev.isTrusted) userOverride = true;
+    });
+  });
+
+  function clearRadios() {
+    radios.forEach(function(r) { r.checked = false; });
+  }
+
+  function setRadio(value) {
+    var r = block.querySelector('input[name="winner"][value="' + value + '"]');
+    if (!r || r.checked) return;
+    clearRadios();
+    r.checked = true;
+    var label = block.querySelector('label[for="' + r.id + '"]');
+    if (label) {
+      label.classList.remove('wc-auto-picked');
+      // Force reflow so the animation re-runs if the same choice is re-picked.
+      void label.offsetWidth;
+      label.classList.add('wc-auto-picked');
+    }
+  }
+
+  function deriveAndApply() {
+    if (userOverride) return;
+    var h = parseInt(home.value, 10);
+    var a = parseInt(away.value, 10);
+    if (isNaN(h) || isNaN(a)) {
+      hint.classList.add('d-none');
+      return;
+    }
+    if (h > a) {
+      hint.classList.add('d-none');
+      setRadio('home');
+    } else if (a > h) {
+      hint.classList.add('d-none');
+      setRadio('away');
+    } else {
+      // Equal scores
+      if (stage === 'group') {
+        hint.classList.add('d-none');
+        setRadio('draw');
+      } else {
+        // Knockout tie — admin must pick
+        clearRadios();
+        hint.classList.remove('d-none');
+      }
+    }
+  }
+
+  home.addEventListener('input', deriveAndApply);
+  away.addEventListener('input', deriveAndApply);
+})();
+</script>
 {% endblock %}
