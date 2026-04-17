@@ -225,6 +225,7 @@ def picks():
 
     existing_picks = WorldCupPick.query.filter_by(enrollment_id=enrollment.id).all()
     selected_team_ids = {p.team_id for p in existing_picks}
+    events_by_pick = {p.id: compute_team_score_events(p.team) for p in existing_picks}
 
     # Determine display mode for GET requests
     edit_mode = request.args.get('edit') == '1'
@@ -288,6 +289,7 @@ def picks():
                 tiers=TIERS,
                 selected_team_ids=form_ids,
                 existing_picks=existing_picks,
+                events_by_pick=events_by_pick,
                 deadline_passed=deadline_passed,
                 deadline_ct=deadline_ct,
                 usa_goals_guess=request.form.get('usa_goals_guess', ''),
@@ -320,6 +322,7 @@ def picks():
         tiers=TIERS,
         selected_team_ids=selected_team_ids,
         existing_picks=existing_picks,
+        events_by_pick=events_by_pick,
         deadline_passed=deadline_passed,
         deadline_ct=deadline_ct,
         usa_goals_guess=enrollment.usa_goals_guess,

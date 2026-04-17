@@ -29,7 +29,7 @@
     <div class="col-lg-8">
 
       {% if existing_picks %}
-      {# Desktop table #}
+      {# Desktop table with drill-down accordion #}
       <div class="card border-0 shadow-sm mb-4 animate-in player-picks-desktop">
         <div class="card-header d-flex align-items-center justify-content-between">
           <h4 class="mb-0"><i class="bi bi-check2-square me-2"></i>Your 9 Picks</h4>
@@ -51,13 +51,9 @@
               </thead>
               <tbody>
                 {% for pick in existing_picks %}
-                <tr>
-                  <td class="fw-medium">{{ pick.team.flag_emoji }} {{ pick.team.display_name }} <small class="text-muted">Group {{ pick.team.group_letter }}</small></td>
-                  <td><span class="tier-badge tier-badge-{{ pick.tier }}">{{ tiers[pick.tier]['name'] }}</span></td>
-                  <td class="text-center"><span class="multiplier-badge">&times;{{ pick.team.multiplier }}</span></td>
-                  <td class="text-end">{{ "%.1f"|format(pick.base_points) }}</td>
-                  <td class="text-end fw-bold">{{ "%.1f"|format(pick.multiplied_points) }}</td>
-                </tr>
+                  {% with events = events_by_pick.get(pick.id, []) %}
+                    {% include 'worldcup/_pick_row.html' %}
+                  {% endwith %}
                 {% endfor %}
               </tbody>
             </table>
@@ -322,5 +318,8 @@
   updateSubmitState();
 })();
 </script>
+{% endif %}
+{% if deadline_passed or (not show_edit_form and has_picks) %}
+{% include 'worldcup/_pick_accordion_script.html' %}
 {% endif %}
 {% endblock %}
