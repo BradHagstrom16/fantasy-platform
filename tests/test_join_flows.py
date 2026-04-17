@@ -37,18 +37,17 @@ def _login(client, user_id):
         sess['_fresh'] = True
 
 
-def _set_wc_status(monkeypatch, status):
-    """Rewrite the WC registry entry's status for this test."""
+def _set_status(monkeypatch, slug, status):
+    """Rewrite a single registry entry's status for this test."""
     from games import registry
-    original = registry.GAMES
     patched = [
         registry.GameRegistryEntry(
             slug=e.slug, display_name=e.display_name, description=e.description,
-            emoji=e.emoji, status=(status if e.slug == 'worldcup' else e.status),
+            emoji=e.emoji, status=(status if e.slug == slug else e.status),
             is_featured=e.is_featured, blueprint_index=e.blueprint_index,
             blueprint_join=e.blueprint_join, get_enrollment=e.get_enrollment,
             admin_enroll=e.admin_enroll,
-        ) for e in original
+        ) for e in registry.GAMES
     ]
     monkeypatch.setattr(registry, 'GAMES', patched)
 
@@ -96,7 +95,7 @@ def test_wc_join_duplicate_redirects_to_dashboard(app, client):
 def test_wc_join_rejected_when_status_not_open(app, client, monkeypatch):
     uid = _make_user(app, 'wc4')
     _login(client, uid)
-    _set_wc_status(monkeypatch, 'closed')
+    _set_status(monkeypatch, 'worldcup', 'closed')
     resp = client.get('/worldcup/join', follow_redirects=False)
     assert resp.status_code == 302
     # redirected to homepage
@@ -104,20 +103,6 @@ def test_wc_join_rejected_when_status_not_open(app, client, monkeypatch):
 
 
 # ── CFB /join ────────────────────────────────────────────────────────────
-
-def _set_status(monkeypatch, slug, status):
-    from games import registry
-    patched = [
-        registry.GameRegistryEntry(
-            slug=e.slug, display_name=e.display_name, description=e.description,
-            emoji=e.emoji, status=(status if e.slug == slug else e.status),
-            is_featured=e.is_featured, blueprint_index=e.blueprint_index,
-            blueprint_join=e.blueprint_join, get_enrollment=e.get_enrollment,
-            admin_enroll=e.admin_enroll,
-        ) for e in registry.GAMES
-    ]
-    monkeypatch.setattr(registry, 'GAMES', patched)
-
 
 def test_cfb_join_anonymous_redirects_to_login(client):
     resp = client.get('/cfb/join', follow_redirects=False)
