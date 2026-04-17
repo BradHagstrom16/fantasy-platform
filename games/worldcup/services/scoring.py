@@ -467,3 +467,51 @@ def compute_team_score_events(team: WorldCupTeam) -> list[ScoreEvent]:
         ))
 
     return events
+
+
+def compute_match_attribution(match: WorldCupMatch) -> dict | None:
+    """Return scoring-chip data for a completed match. None for incomplete.
+
+    Shape:
+        group_win:   {'type': 'group_win',   'events': [(name, code, +base)]}
+        group_draw:  {'type': 'group_draw',  'events': [(name, code, +1), (name, code, +1)]}
+        knockout:    {'type': 'knockout', 'stage': 'R16', 'events': [(name, code, +stage_pts)]}
+
+    Podium bonuses are NOT included here — they attach to the final/3rd-place
+    match's winner but are owned by `best_finish`, and are surfaced in the
+    per-pick drill-down instead. Schedule chips show match-contribution only.
+    """
+    if not match.is_completed:
+        return None
+
+    if match.stage == 'group':
+        if match.is_draw:
+            if not match.home_team or not match.away_team:
+                return None
+            return {
+                'type': 'group_draw',
+                'events': [
+                    (match.home_team.display_name, match.home_team.fifa_code, float(GROUP_DRAW)),
+                    (match.away_team.display_name, match.away_team.fifa_code, float(GROUP_DRAW)),
+                ],
+            }
+        winner = match.winner_team
+        if not winner:
+            return None
+        return {
+            'type': 'group_win',
+            'events': [(winner.display_name, winner.fifa_code, float(GROUP_WIN))],
+        }
+
+    # Knockout (R32 / R16 / QF / SF / third_place / final)
+    winner = match.winner_team
+    if not winner:
+        return None
+    stage_points = _apply_knockout_points(match)
+    if stage_points <= 0:
+        return None
+    return {
+        'type': 'knockout',
+        'stage': match.stage,
+        'events': [(winner.display_name, winner.fifa_code, float(stage_points))],
+    }

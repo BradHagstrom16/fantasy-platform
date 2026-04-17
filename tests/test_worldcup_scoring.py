@@ -1013,3 +1013,86 @@ class TestComputeTeamScoreEventsInvariant:
                 assert derived == team.base_points, (
                     f'{team.fifa_code}: derived {derived} != stored {team.base_points}'
                 )
+
+
+class TestComputeMatchAttribution:
+    """compute_match_attribution emits chip data for completed matches."""
+
+    def test_incomplete_match_returns_none(self, app):
+        with app.app_context():
+            from games.worldcup.services.scoring import compute_match_attribution
+
+            a = _make_team(db.session, 'AAA', 'Team A', 3, 2.5, 'A')
+            b = _make_team(db.session, 'BBB', 'Team B', 3, 2.5, 'A')
+            match = _make_match(db.session, 1, 'group', a, b, 'A')
+            db.session.commit()
+
+            assert compute_match_attribution(match) is None
+
+    def test_group_win_returns_winner_plus_three(self, app):
+        with app.app_context():
+            from games.worldcup.services.scoring import (
+                process_match_result, compute_match_attribution,
+            )
+            mex = _make_team(db.session, 'MEX', 'Mexico', 3, 2.5, 'A')
+            rsa = _make_team(db.session, 'RSA', 'South Africa', 5, 7.0, 'A')
+            match = _make_match(db.session, 1, 'group', mex, rsa, 'A')
+            db.session.commit()
+
+            process_match_result(
+                match_id=match.id, home_score=2, away_score=1,
+                winner_fifa_code='MEX',
+            )
+            db.session.refresh(match)
+
+            attr = compute_match_attribution(match)
+            assert attr is not None
+            assert attr['type'] == 'group_win'
+            assert attr['events'] == [('Mexico', 'MEX', 3.0)]
+
+    def test_group_draw_returns_both_teams_plus_one(self, app):
+        with app.app_context():
+            from games.worldcup.services.scoring import (
+                process_match_result, compute_match_attribution,
+            )
+            bra = _make_team(db.session, 'BRA', 'Brazil', 1, 1.0, 'B')
+            mar = _make_team(db.session, 'MAR', 'Morocco', 3, 2.5, 'B')
+            match = _make_match(db.session, 6, 'group', bra, mar, 'B')
+            db.session.commit()
+
+            process_match_result(
+                match_id=match.id, home_score=1, away_score=1,
+                winner_fifa_code=None, is_draw=True,
+            )
+            db.session.refresh(match)
+
+            attr = compute_match_attribution(match)
+            assert attr is not None
+            assert attr['type'] == 'group_draw'
+            assert ('Brazil', 'BRA', 1.0) in attr['events']
+            assert ('Morocco', 'MAR', 1.0) in attr['events']
+            assert len(attr['events']) == 2
+
+    def test_knockout_win_includes_stage_points(self, app):
+        with app.app_context():
+            from games.worldcup.services.scoring import (
+                process_match_result, compute_match_attribution,
+            )
+            from games.worldcup.constants import KNOCKOUT_POINTS
+
+            arg = _make_team(db.session, 'ARG', 'Argentina', 1, 1.0, 'A')
+            cro = _make_team(db.session, 'CRO', 'Croatia', 3, 2.5, 'B')
+            match = _make_match(db.session, 105, 'R16', arg, cro)
+            db.session.commit()
+
+            process_match_result(
+                match_id=match.id, home_score=2, away_score=1,
+                winner_fifa_code='ARG',
+            )
+            db.session.refresh(match)
+
+            attr = compute_match_attribution(match)
+            assert attr is not None
+            assert attr['type'] == 'knockout'
+            assert attr['stage'] == 'R16'
+            assert attr['events'] == [('Argentina', 'ARG', float(KNOCKOUT_POINTS['R16']))]
