@@ -476,7 +476,7 @@ def rules():
 def admin_dashboard():
     """Admin overview: tournament status, pending actions, pool stats."""
     total_matches = WorldCupMatch.query.count()
-    completed_matches = WorldCupMatch.query.filter_by(is_completed=True).count()
+    completed_count = WorldCupMatch.query.filter_by(is_completed=True).count()
 
     # Matches needing results (incomplete, with both teams assigned)
     pending_matches = (
@@ -485,6 +485,16 @@ def admin_dashboard():
         .filter(WorldCupMatch.home_team_id.isnot(None))
         .filter(WorldCupMatch.away_team_id.isnot(None))
         .order_by(WorldCupMatch.kickoff_utc)
+        .all()
+    )
+
+    completed_matches = (
+        WorldCupMatch.query
+        .filter_by(is_completed=True)
+        .order_by(
+            WorldCupMatch.updated_at.desc(),
+            WorldCupMatch.match_number.desc(),
+        )
         .all()
     )
 
@@ -520,6 +530,7 @@ def admin_dashboard():
 
     return render_template('worldcup/admin/dashboard.html',
         total_matches=total_matches,
+        completed_count=completed_count,
         completed_matches=completed_matches,
         pending_matches=pending_matches,
         groups_needing_advancement=groups_needing_advancement,

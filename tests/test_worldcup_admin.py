@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 from app import create_app
 from extensions import db
 from models.user import User
-from games.worldcup.models import WorldCupEnrollment
+from games.worldcup.models import WorldCupEnrollment, WorldCupTeam, WorldCupMatch
 
 
 PAST_DEADLINE = datetime(2000, 1, 1, tzinfo=timezone.utc)
@@ -73,3 +73,77 @@ def test_leaderboard_shows_tiebreaker_post_deadline(client, app):
     assert resp.status_code == 200
     assert b'Tiebreaker' in resp.data
     assert b'>7<' in resp.data
+
+
+# ── Admin dashboard completed-matches list ──────────────────────────────
+
+def _make_admin_user(app):
+    """Create a platform admin user and return their id."""
+    with app.app_context():
+        user = User(username='wcadmin', email='wcadmin@test.com', is_admin=True)
+        user.set_password('pass')
+        db.session.add(user)
+        db.session.commit()
+        return user.id
+
+
+def _seed_two_completed_group_matches(app):
+    """Seed two completed group matches with different update times."""
+    with app.app_context():
+        a = WorldCupTeam(
+            fifa_code='AAA', name='Alpha', display_name='Alpha',
+            tier=3, multiplier=2.5, confederation='TEST', group_letter='A',
+        )
+        b = WorldCupTeam(
+            fifa_code='BBB', name='Beta', display_name='Beta',
+            tier=3, multiplier=2.5, confederation='TEST', group_letter='A',
+        )
+        c = WorldCupTeam(
+            fifa_code='CCC', name='Gamma', display_name='Gamma',
+            tier=3, multiplier=2.5, confederation='TEST', group_letter='A',
+        )
+        d = WorldCupTeam(
+            fifa_code='DDD', name='Delta', display_name='Delta',
+            tier=3, multiplier=2.5, confederation='TEST', group_letter='A',
+        )
+        db.session.add_all([a, b, c, d])
+        db.session.flush()
+
+        from games.worldcup.services.scoring import process_match_result
+        m1 = WorldCupMatch(
+            match_number=1, stage='group', group_letter='A',
+            home_team_id=a.id, away_team_id=b.id,
+        )
+        m2 = WorldCupMatch(
+            match_number=2, stage='group', group_letter='A',
+            home_team_id=c.id, away_team_id=d.id,
+        )
+        db.session.add_all([m1, m2])
+        db.session.commit()
+
+        process_match_result(
+            match_id=m1.id, home_score=1, away_score=0,
+            winner_fifa_code='AAA',
+        )
+        process_match_result(
+            match_id=m2.id, home_score=2, away_score=1,
+            winner_fifa_code='CCC',
+        )
+        return m1.id, m2.id
+
+
+def test_admin_dashboard_lists_completed_matches(client, app):
+    admin_id = _make_admin_user(app)
+    _seed_two_completed_group_matches(app)
+
+    with client.session_transaction() as sess:
+        sess['_user_id'] = str(admin_id)
+        sess['_fresh'] = True
+
+    resp = client.get('/worldcup/admin/')
+    assert resp.status_code == 200
+    # Card header must be rendered
+    assert b'Completed Matches' in resp.data
+    # Both match numbers surface
+    assert b'>1<' in resp.data or b'#1' in resp.data
+    assert b'>2<' in resp.data or b'#2' in resp.data

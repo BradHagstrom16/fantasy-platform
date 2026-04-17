@@ -7,7 +7,7 @@
 
     <div class="alert alert-info">
         <strong>Tournament Status:</strong>
-        {{ completed_matches }} of {{ total_matches }} matches completed
+        {{ completed_count }} of {{ total_matches }} matches completed
         &middot; Phase: <strong>{{ tournament_phase.replace('_', ' ').title() }}</strong>
     </div>
 
@@ -61,6 +61,62 @@
                     {% endif %}
                 </div>
             </div>
+
+            {# Completed Matches (reachable for edit) #}
+            {% if completed_matches %}
+            <div class="card mb-3">
+                <div class="card-header d-flex align-items-center justify-content-between">
+                    <h4 class="mb-0">Completed Matches</h4>
+                    {% if completed_matches|length > 5 %}
+                    <button class="btn btn-sm btn-outline-secondary" type="button"
+                            data-bs-toggle="collapse" data-bs-target="#completedMatchesBody">
+                        Show all {{ completed_matches|length }}
+                    </button>
+                    {% endif %}
+                </div>
+                <div id="completedMatchesBody" class="card-body {% if completed_matches|length > 5 %}collapse{% endif %}">
+                    <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Stage</th>
+                                <th>Result</th>
+                                <th>Updated</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for match in completed_matches %}
+                            <tr>
+                                <td>{{ match.match_number }}</td>
+                                <td>
+                                    <span class="badge bg-secondary">{{ match.stage }}</span>
+                                    {% if match.group_letter %}({{ match.group_letter }}){% endif %}
+                                </td>
+                                <td>
+                                    {{ match.home_team.display_name if match.home_team else '?' }}
+                                    {{ match.home_score }}&ndash;{{ match.away_score }}
+                                    {{ match.away_team.display_name if match.away_team else '?' }}
+                                    {% if match.is_draw %}<small class="text-muted">(draw)</small>{% endif %}
+                                </td>
+                                <td>
+                                    <small class="text-muted">
+                                        {% if match.updated_at %}{{ match.updated_at.strftime('%b %-d, %-I:%M %p') }}{% else %}&mdash;{% endif %}
+                                    </small>
+                                </td>
+                                <td>
+                                    <a href="{{ url_for('worldcup.admin_match_result', match_id=match.id) }}"
+                                       class="btn btn-sm btn-outline-primary">Edit</a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
 
             {# Groups Needing Advancement #}
             {% if groups_needing_advancement %}
