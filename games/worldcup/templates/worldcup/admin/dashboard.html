@@ -69,7 +69,8 @@
                     <h4 class="mb-0">Completed Matches</h4>
                     {% if completed_matches|length > 5 %}
                     <button class="btn btn-sm btn-outline-secondary" type="button"
-                            data-bs-toggle="collapse" data-bs-target="#completedMatchesBody">
+                            data-bs-toggle="collapse" data-bs-target="#completedMatchesBody"
+                            aria-expanded="false" aria-controls="completedMatchesBody">
                         Show all {{ completed_matches|length }}
                     </button>
                     {% endif %}
