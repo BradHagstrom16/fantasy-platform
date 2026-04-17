@@ -1,0 +1,45 @@
+{# Shared pick-row partial. Expects: pick, events (list[ScoreEvent]), pick_index (int for id namespacing). #}
+{% set row_id = 'pick-row-' ~ pick.id %}
+<tr>
+  <td class="fw-medium">
+    <button type="button" class="pick-accordion-toggle"
+            aria-controls="{{ row_id }}-body" aria-expanded="false"
+            data-accordion-target="{{ row_id }}">
+      <i class="bi bi-chevron-right"></i>
+    </button>
+    {{ pick.team.flag_emoji }} {{ pick.team.display_name }}
+    <small class="text-muted">Group {{ pick.team.group_letter }}</small>
+  </td>
+  <td><span class="tier-badge tier-badge-{{ pick.tier }}">{{ tiers[pick.tier]['name'] }}</span></td>
+  <td class="text-center"><span class="multiplier-badge">&times;{{ pick.team.multiplier }}</span></td>
+  <td class="text-end">{{ "%.1f"|format(pick.base_points) }}</td>
+  <td class="text-end fw-bold">{{ "%.1f"|format(pick.multiplied_points) }}</td>
+</tr>
+<tr class="pick-accordion-row">
+  <td colspan="5" class="p-0">
+    <div class="pick-accordion" id="{{ row_id }}-body">
+      {% if events and events|length > 0 %}
+      <ul class="score-events-list">
+        {% for event in events %}
+        <li style="--event-i: {{ loop.index0 }};">
+          <span>
+            <span class="event-source-dot"></span>
+            {% if event.occurred_on %}
+            <span class="event-meta">{{ event.occurred_on.strftime('%b %-d') }}</span> ·
+            {% endif %}
+            {{ event.label }}
+          </span>
+          <span class="event-pts">+{{ "%g"|format(event.base_points) }} base</span>
+        </li>
+        {% endfor %}
+      </ul>
+      <div class="score-events-total">
+        Total base <strong>{{ "%.1f"|format(pick.base_points) }}</strong> &times; {{ pick.team.multiplier }} =
+        <strong>{{ "%.1f"|format(pick.multiplied_points) }}</strong> multiplied
+      </div>
+      {% else %}
+      <div class="score-events-empty">No scoring events yet.</div>
+      {% endif %}
+    </div>
+  </td>
+</tr>

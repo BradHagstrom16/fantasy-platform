@@ -27,7 +27,7 @@
 
       {% if picks_visible %}
         {% if picks %}
-        {# Desktop table #}
+        {# Desktop table with drill-down accordion #}
         <div class="card border-0 shadow-sm animate-in player-picks-desktop">
           <div class="card-body p-0">
             <div class="table-responsive">
@@ -44,15 +44,11 @@
                 <tbody>
                   {% set ns = namespace(total_base=0.0, total_mult=0.0) %}
                   {% for pick in picks %}
-                  <tr>
-                    <td class="fw-medium">{{ pick.team.flag_emoji }} {{ pick.team.display_name }} <small class="text-muted">Group {{ pick.team.group_letter }}</small></td>
-                    <td><span class="tier-badge tier-badge-{{ pick.tier }}">{{ tiers[pick.tier]['name'] }}</span></td>
-                    <td class="text-center"><span class="multiplier-badge">&times;{{ pick.team.multiplier }}</span></td>
-                    <td class="text-end">{{ "%.1f"|format(pick.base_points) }}</td>
-                    <td class="text-end fw-bold">{{ "%.1f"|format(pick.multiplied_points) }}</td>
-                  </tr>
-                  {% set ns.total_base = ns.total_base + pick.base_points %}
-                  {% set ns.total_mult = ns.total_mult + pick.multiplied_points %}
+                    {% with events = events_by_pick.get(pick.id, []) %}
+                      {% include 'worldcup/_pick_row.html' %}
+                    {% endwith %}
+                    {% set ns.total_base = ns.total_base + pick.base_points %}
+                    {% set ns.total_mult = ns.total_mult + pick.multiplied_points %}
                   {% endfor %}
                 </tbody>
                 <tfoot>
@@ -111,5 +107,20 @@
 
     </div>
   </div>
+
+  <script>
+  (function() {
+    document.querySelectorAll('.pick-accordion-toggle').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var targetId = btn.dataset.accordionTarget + '-body';
+        var body = document.getElementById(targetId);
+        if (!body) return;
+        var open = body.classList.toggle('open');
+        btn.classList.toggle('open', open);
+        btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      });
+    });
+  })();
+  </script>
 </div>
 {% endblock %}

@@ -28,6 +28,7 @@ from games.worldcup.services.scoring import (
     set_knockout_teams,
     recalculate_all_scores,
     compute_match_attribution,
+    compute_team_score_events,
 )
 
 
@@ -360,7 +361,7 @@ def leaderboard():
 
 @worldcup_bp.route('/leaderboard/<int:enrollment_id>')
 def player_detail(enrollment_id):
-    """One player's 9 picks with per-team scores."""
+    """One player's 9 picks with per-team scores and drill-down events."""
     enrollment = db.get_or_404(WorldCupEnrollment, enrollment_id)
     deadline_passed = datetime.now(timezone.utc) >= TOURNAMENT_DEADLINE_UTC
 
@@ -372,6 +373,7 @@ def player_detail(enrollment_id):
     picks_visible = deadline_passed or is_owner or is_admin
 
     picks = []
+    events_by_pick: dict[int, list] = {}
     if picks_visible:
         picks = (
             WorldCupPick.query
@@ -380,6 +382,7 @@ def player_detail(enrollment_id):
             .order_by(WorldCupTeam.tier, WorldCupTeam.display_name)
             .all()
         )
+        events_by_pick = {p.id: compute_team_score_events(p.team) for p in picks}
 
     from games.worldcup.world_cup_countries import TIERS
 
@@ -388,6 +391,7 @@ def player_detail(enrollment_id):
     return render_template('worldcup/player_detail.html',
         enrollment=enrollment,
         picks=picks,
+        events_by_pick=events_by_pick,
         tiers=TIERS,
         picks_visible=picks_visible,
         deadline_passed=deadline_passed,

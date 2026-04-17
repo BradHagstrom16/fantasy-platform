@@ -659,6 +659,88 @@ body.game-worldcup {
   margin: 0 .2em;
 }
 
+/* Pick drill-down accordion */
+.pick-accordion {
+  border-top: 1px dashed var(--border, #dee2e6);
+  background: rgba(0, 40, 104, .03);
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  transition: max-height 140ms ease-out, opacity 140ms ease-out;
+}
+.pick-accordion.open {
+  max-height: 600px; /* generous upper bound */
+  opacity: 1;
+}
+.pick-accordion-toggle {
+  background: transparent;
+  border: 0;
+  color: var(--text-muted, #6c757d);
+  cursor: pointer;
+  padding: 0 .35rem;
+  font-size: .9rem;
+  transition: transform 140ms ease-out;
+}
+.pick-accordion-toggle.open {
+  transform: rotate(90deg);
+  color: var(--game-primary, #002868);
+}
+.score-events-list {
+  list-style: none;
+  margin: 0;
+  padding: .75rem 1rem;
+  font-size: .85rem;
+}
+.score-events-list li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: .75rem;
+  padding: .2rem 0;
+  animation: wc-event-fade-in 200ms ease-out both;
+  animation-delay: calc(var(--event-i, 0) * 40ms);
+}
+.score-events-list .event-meta {
+  color: var(--text-muted, #6c757d);
+  font-size: .8rem;
+  letter-spacing: .02em;
+  text-transform: uppercase;
+}
+.score-events-list .event-pts {
+  font-family: 'Teko', sans-serif;
+  font-weight: 600;
+  letter-spacing: .03em;
+  color: var(--game-primary, #002868);
+}
+.score-events-list .event-source-dot {
+  display: inline-block;
+  width: .45em;
+  height: .45em;
+  border-radius: 50%;
+  background: var(--game-accent, #BF0A30);
+  margin-right: .5em;
+  vertical-align: middle;
+  opacity: .7;
+}
+.score-events-total {
+  padding: .5rem 1rem .75rem;
+  border-top: 1px dotted var(--border, #dee2e6);
+  color: var(--text-muted, #6c757d);
+  font-size: .8rem;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.score-events-empty {
+  padding: .75rem 1rem;
+  font-size: .85rem;
+  color: var(--text-muted, #6c757d);
+  font-style: italic;
+}
+@keyframes wc-event-fade-in {
+  from { opacity: 0; transform: translateY(2px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
 /* Group table — compact 4-team standings */
 .group-table {
   background: var(--bg-card);
