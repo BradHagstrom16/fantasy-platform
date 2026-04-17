@@ -162,7 +162,9 @@ venv/bin/pyright games/golf/services/sync.py      # Check specific file
 
 # Tests
 venv/bin/python -m pytest tests/                          # Run all tests
-venv/bin/python -m pytest tests/test_worldcup_scoring.py  # World Cup scoring tests only
+venv/bin/python -m pytest tests/test_worldcup_scoring.py  # Scoring engine tests
+venv/bin/python -m pytest tests/test_worldcup_admin.py    # Admin + public route tests
+venv/bin/python -m pytest tests/test_post_deadline_ui.py  # Post-deadline UI tests
 ```
 
 No linter configured.
@@ -190,6 +192,8 @@ No linter configured.
 - **Admin scoping:** Two-tier game admin — platform admin (`User.is_admin`) always has access to every game's admin routes. Game-specific admin (`<Game>Enrollment.is_admin`) allows delegating admin to enrolled non-platform-admins. All `<game>_admin_required` decorators must check platform admin first, enrollment admin second.
 - **Password reset tokens:** `core/auth/tokens.py` uses `itsdangerous.URLSafeTimedSerializer` with 1-hour expiry. Forgot-password route uses anti-enumeration pattern (identical flash message regardless of email existence).
 - **Homepage games list:** `core/main/routes.py` — set `'url': url_for('<game>.index')` for live games, `'url': None` for coming-soon; controls card clickability and Play Now vs Coming Soon badge
+- **Admin destructive actions:** Destructive admin POST handlers (e.g., `admin_match_result`, `admin_set_knockout`) branch on `request.form.get('action')` — `action=clear` is a distinct, guarded path that short-circuits before the main mutation. Keep this pattern for new admin routes that both mutate and reset.
+- **Scoring attribution:** `games/worldcup/services/scoring.compute_team_score_events` (per-team) and `compute_match_attribution` (per-match) are the single source of truth for scoring breakdowns. Stored `total_score` must equal the sum of those ScoreEvents. Any new UI that surfaces scoring detail must derive from these helpers, not recompute.
 
 ---
 
@@ -271,6 +275,22 @@ with app.app_context():
 ```
 
 Auth routes have **no URL prefix** — login is at `/login`, not `/auth/login`.
+
+---
+
+## Admin Route Testing
+
+Auth-gated admin routes use this pattern (see `tests/test_worldcup_admin.py`):
+
+```python
+admin_id = _make_admin_user(app)  # creates User with is_admin=True
+with client.session_transaction() as sess:
+    sess['_user_id'] = str(admin_id)
+    sess['_fresh'] = True
+resp = client.post('/worldcup/admin/...', data={...})
+```
+
+Testing config sets `WTF_CSRF_ENABLED=False`, so form data may include a placeholder `csrf_token`.
 
 ---
 
