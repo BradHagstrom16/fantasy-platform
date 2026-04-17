@@ -1,0 +1,15 @@
+{# Companion to _pick_row.html. Include once per page that renders pick rows. #}
+<script>
+(function() {
+  document.querySelectorAll('.pick-accordion-toggle').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var targetId = btn.dataset.accordionTarget + '-body';
+      var body = document.getElementById(targetId);
+      if (!body) return;
+      var open = body.classList.toggle('open');
+      btn.classList.toggle('open', open);
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
+  });
+})();
+</script>

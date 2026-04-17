@@ -108,19 +108,6 @@
     </div>
   </div>
 
-  <script>
-  (function() {
-    document.querySelectorAll('.pick-accordion-toggle').forEach(function(btn) {
-      btn.addEventListener('click', function() {
-        var targetId = btn.dataset.accordionTarget + '-body';
-        var body = document.getElementById(targetId);
-        if (!body) return;
-        var open = body.classList.toggle('open');
-        btn.classList.toggle('open', open);
-        btn.setAttribute('aria-expanded', open ? 'true' : 'false');
-      });
-    });
-  })();
-  </script>
+  {% include 'worldcup/_pick_accordion_script.html' %}
 </div>
 {% endblock %}

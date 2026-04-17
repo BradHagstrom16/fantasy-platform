@@ -1,11 +1,12 @@
-{# Shared pick-row partial. Expects: pick, events (list[ScoreEvent]), pick_index (int for id namespacing). #}
+{# Shared pick-row partial. Expects: pick, events (list[ScoreEvent]), tiers (dict). #}
 {% set row_id = 'pick-row-' ~ pick.id %}
 <tr>
   <td class="fw-medium">
     <button type="button" class="pick-accordion-toggle"
             aria-controls="{{ row_id }}-body" aria-expanded="false"
             data-accordion-target="{{ row_id }}">
-      <i class="bi bi-chevron-right"></i>
+      <i class="bi bi-chevron-right" aria-hidden="true"></i>
+      <span class="visually-hidden">Toggle scoring details</span>
     </button>
     {{ pick.team.flag_emoji }} {{ pick.team.display_name }}
     <small class="text-muted">Group {{ pick.team.group_letter }}</small>
