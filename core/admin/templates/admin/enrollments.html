@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}Enrollments — Admin{% endblock %}
+
+{% block content %}
+<div class="page-hero">
+  <div class="hero-glow"></div>
+  <div class="container">
+    <h1><i class="bi bi-person-plus-fill me-2"></i>Manage Enrollments</h1>
+    <p class="lead mb-0">Add a user to a live league.</p>
+  </div>
+</div>
+
+<div class="container pb-5">
+  <div class="row justify-content-center">
+    <div class="col-lg-7 col-md-9">
+      <div class="card border-0 shadow-sm animate-in">
+        <div class="card-body p-4">
+
+          {% if not open_entries %}
+          <p class="text-muted mb-0">
+            No games are currently open for enrollment.
+          </p>
+          {% else %}
+          <form method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+
+            <div class="mb-3">
+              <label for="user_id" class="form-label">User</label>
+              <select id="user_id" name="user_id" class="form-select" required>
+                <option value="">— Select a user —</option>
+                {% for u in users %}
+                <option value="{{ u.id }}">{{ u.username }} — {{ u.email }}</option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <div class="mb-4">
+              <label for="game_slug" class="form-label">Game</label>
+              <select id="game_slug" name="game_slug" class="form-select" required>
+                <option value="">— Select a game —</option>
+                {% for entry in open_entries %}
+                <option value="{{ entry.slug }}">
+                  {{ entry.emoji }} {{ entry.display_name }}
+                </option>
+                {% endfor %}
+              </select>
+              <div class="form-text">
+                Only games with status='open' appear here. Flip the registry
+                to add coming-soon games to this list.
+              </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-lg w-100">
+              <i class="bi bi-plus-lg me-1"></i>Add to League
+            </button>
+          </form>
+          {% endif %}
+
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
