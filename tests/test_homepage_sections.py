@@ -82,3 +82,14 @@ def test_navbar_shows_only_joined_games(app, client):
     assert 'World Cup' in nav_section
     assert 'CFB' not in nav_section
     assert 'Golf' not in nav_section
+
+
+def test_game_card_partial_renders_each_state(app):
+    """_game_card.html must render cleanly for every state value."""
+    from games.registry import GAMES
+    wc = next(g for g in GAMES if g.slug == 'worldcup')
+    with app.test_request_context('/'):
+        from flask import render_template
+        for state in ('featured', 'joined', 'available', 'coming_soon', 'logged_out'):
+            html = render_template('main/_game_card.html', game=wc, state=state)
+            assert wc.display_name in html, f"state={state} missing name"

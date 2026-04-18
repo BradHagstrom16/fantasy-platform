@@ -1,0 +1,78 @@
+{# _game_card.html
+   Renders a single game card.
+
+   Params:
+     game   — GameRegistryEntry
+     state  — 'featured' | 'joined' | 'available' | 'coming_soon' | 'logged_out'
+#}
+
+{% if state == 'featured' %}
+  <a href="{{ url_for(game.blueprint_index) }}"
+     class="card game-card game-card--featured text-decoration-none">
+    <div class="card-body p-0">
+      <div class="featured-game-inner">
+        <div class="featured-game-content">
+          <span class="featured-badge">Live Now</span>
+          <span class="featured-icon">{{ game.emoji }}</span>
+          <h3 class="featured-title">{{ game.display_name }}</h3>
+          <p class="featured-desc">{{ game.description }}</p>
+          <span class="btn btn-warning btn-lg px-5 featured-cta">
+            <i class="bi bi-globe2 me-2"></i>Enter the Pool
+          </span>
+        </div>
+      </div>
+    </div>
+  </a>
+
+{% elif state == 'joined' %}
+  <a href="{{ url_for(game.blueprint_index) }}"
+     class="card game-card game-card--live h-100 text-decoration-none">
+    <div class="card-body text-center py-4 px-3">
+      <span class="game-icon">{{ game.emoji }}</span>
+      <h5 class="game-title">{{ game.display_name }}</h5>
+      <p class="game-desc">{{ game.description }}</p>
+      <span class="status-badge status-badge--joined">Joined ✓</span>
+    </div>
+    <div class="card-footer text-center bg-transparent py-3">
+      <span class="btn btn-warning btn-sm px-4">Play Now</span>
+    </div>
+  </a>
+
+{% elif state == 'available' %}
+  <a href="{{ url_for(game.blueprint_join) }}"
+     class="card game-card game-card--live h-100 text-decoration-none">
+    <div class="card-body text-center py-4 px-3">
+      <span class="game-icon">{{ game.emoji }}</span>
+      <h5 class="game-title">{{ game.display_name }}</h5>
+      <p class="game-desc">{{ game.description }}</p>
+    </div>
+    <div class="card-footer text-center bg-transparent py-3">
+      <span class="btn btn-warning btn-sm px-4">Join the League</span>
+    </div>
+  </a>
+
+{% elif state == 'coming_soon' %}
+  <div class="card game-card game-card--coming-soon h-100">
+    <div class="card-body text-center py-4 px-3">
+      <span class="game-icon">{{ game.emoji }}</span>
+      <h5 class="game-title">{{ game.display_name }}</h5>
+      <p class="game-desc">{{ game.description }}</p>
+    </div>
+    <div class="card-footer text-center bg-transparent py-3">
+      <span class="status-badge status-badge--muted">Coming Soon</span>
+    </div>
+  </div>
+
+{% elif state == 'logged_out' %}
+  <a href="{{ url_for('auth.register', next=url_for(game.blueprint_join)) }}"
+     class="card game-card game-card--live h-100 text-decoration-none">
+    <div class="card-body text-center py-4 px-3">
+      <span class="game-icon">{{ game.emoji }}</span>
+      <h5 class="game-title">{{ game.display_name }}</h5>
+      <p class="game-desc">{{ game.description }}</p>
+    </div>
+    <div class="card-footer text-center bg-transparent py-3">
+      <span class="btn btn-warning btn-sm px-4">Sign Up to Play</span>
+    </div>
+  </a>
+{% endif %}
