@@ -46,34 +46,32 @@
 <div class="container my-5">
 
 {% if mode == 'logged_in' %}
-  {% if joined %}
+  {% set joined_nonfeatured = joined | rejectattr('is_featured') | list %}
+  {% if joined_nonfeatured %}
   <div class="text-center mt-5 mb-4 animate-in">
     <p class="section-heading">Your Leagues</p>
     <hr class="gold-rule">
   </div>
   <div class="row g-4 justify-content-center">
-    {% for game in joined %}
-      {% if not game.is_featured %}
-      <div class="col-sm-6 col-md-5 animate-in stagger-{{ loop.index }}">
-        {% with state='joined' %}{% include 'main/_game_card.html' %}{% endwith %}
-      </div>
-      {% endif %}
+    {% for game in joined_nonfeatured %}
+    <div class="col-sm-6 col-md-5 animate-in stagger-{{ loop.index }}">
+      {% with state='joined' %}{% include 'main/_game_card.html' %}{% endwith %}
+    </div>
     {% endfor %}
   </div>
   {% endif %}
 
-  {% if available %}
+  {% set available_nonfeatured = available | rejectattr('is_featured') | list %}
+  {% if available_nonfeatured %}
   <div class="text-center mt-5 mb-4 animate-in">
     <p class="section-heading">Available to Join</p>
     <hr class="gold-rule">
   </div>
   <div class="row g-4 justify-content-center">
-    {% for game in available %}
-      {% if not game.is_featured %}
-      <div class="col-sm-6 col-md-5 animate-in stagger-{{ loop.index }}">
-        {% with state='available' %}{% include 'main/_game_card.html' %}{% endwith %}
-      </div>
-      {% endif %}
+    {% for game in available_nonfeatured %}
+    <div class="col-sm-6 col-md-5 animate-in stagger-{{ loop.index }}">
+      {% with state='available' %}{% include 'main/_game_card.html' %}{% endwith %}
+    </div>
     {% endfor %}
   </div>
   {% endif %}

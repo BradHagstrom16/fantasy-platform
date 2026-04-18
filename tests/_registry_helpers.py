@@ -14,3 +14,13 @@ def set_status(monkeypatch, slug, status):
         for entry in registry.GAMES
     ]
     monkeypatch.setattr(registry, 'GAMES', patched)
+
+
+def set_is_featured(monkeypatch, slug, is_featured):
+    """Rewrite a single registry entry's is_featured flag for the duration of one test."""
+    from games import registry
+    patched = [
+        replace(entry, is_featured=is_featured) if entry.slug == slug else entry
+        for entry in registry.GAMES
+    ]
+    monkeypatch.setattr(registry, 'GAMES', patched)

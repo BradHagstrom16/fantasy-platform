@@ -105,16 +105,22 @@ def test_homepage_logged_out_shows_available_and_coming_soon(client):
     assert 'Coming Soon' in data
 
 
-def test_homepage_zero_joined_shows_available_section(app, client):
+def test_homepage_zero_joined_shows_available_section(app, client, monkeypatch):
+    from tests._registry_helpers import set_is_featured as _set_is_featured
+    _set_is_featured(monkeypatch, 'worldcup', False)
     uid = _make_user(app, 'newuser')
     _login(client, uid)
     resp = client.get('/')
     data = resp.data.decode()
     assert 'Available to Join' in data
     assert '2026 FIFA World Cup' in data
+    # Card actually rendered in the grid, not just the header
+    assert 'Join the League' in data  # CTA button text for 'available' state
 
 
-def test_homepage_one_joined_shows_your_leagues_section(app, client):
+def test_homepage_one_joined_shows_your_leagues_section(app, client, monkeypatch):
+    from tests._registry_helpers import set_is_featured as _set_is_featured
+    _set_is_featured(monkeypatch, 'worldcup', False)
     uid = _make_user(app, 'wcjoined')
     _login(client, uid)
     with app.app_context():
@@ -124,10 +130,13 @@ def test_homepage_one_joined_shows_your_leagues_section(app, client):
     data = resp.data.decode()
     assert 'Your Leagues' in data
     assert '2026 FIFA World Cup' in data
+    assert 'Joined ✓' in data  # badge rendered inside the joined card
 
 
-def test_homepage_hides_empty_sections(app, client):
-    """When a user has joined every available game, 'Available to Join' is absent."""
+def test_homepage_hides_empty_sections(app, client, monkeypatch):
+    """When a user has joined every available (non-featured) game, 'Available to Join' is absent."""
+    from tests._registry_helpers import set_is_featured as _set_is_featured
+    _set_is_featured(monkeypatch, 'worldcup', False)
     uid = _make_user(app, 'alljoined')
     _login(client, uid)
     with app.app_context():
@@ -137,3 +146,24 @@ def test_homepage_hides_empty_sections(app, client):
     data = resp.data.decode()
     assert 'Available to Join' not in data
     assert 'Your Leagues' in data
+
+
+def test_homepage_featured_not_duplicated_in_joined_grid(app, client):
+    """A joined featured game appears only as the hero, not in Your Leagues grid."""
+    uid = _make_user(app, 'wcfeat')
+    _login(client, uid)
+    with app.app_context():
+        db.session.add(WorldCupEnrollment(user_id=uid, season_year=SEASON_YEAR))
+        db.session.commit()
+    resp = client.get('/')
+    data = resp.data.decode()
+    # Strip out the navbar (which renders joined-game display names) so we count
+    # only main-content occurrences.
+    body_start = data.find('<!-- Hero -->')
+    body = data[body_start:] if body_start != -1 else data
+    # WC appears once (as featured hero) in the main content
+    assert body.count('2026 FIFA World Cup') == 1
+    # No Your Leagues section since the only joined game is featured
+    assert 'Your Leagues' not in data
+    # Featured CTA text present (proving it rendered as featured, not joined)
+    assert 'Enter the Pool' in data
