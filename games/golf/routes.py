@@ -688,9 +688,9 @@ def admin_override_pick():
                 ).first()
                 if not enrollment:
                     flash(
-                        f'User must be enrolled in Golf Pick \'Em before an '
-                        f'admin override can be applied. Add them via '
-                        f'Admin → Enrollments first.',
+                        'User must be enrolled in Golf Pick \'Em before an '
+                        'admin override can be applied. Add them via '
+                        'Admin → Enrollments first.',
                         'error',
                     )
                     db.session.rollback()

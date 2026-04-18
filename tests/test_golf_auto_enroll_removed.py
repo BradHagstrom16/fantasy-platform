@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 from app import create_app
 from extensions import db
 from models.user import User
-from games.golf.models import GolfEnrollment, GolfTournament
+from games.golf.models import GolfEnrollment, GolfPick, GolfPlayer, GolfTournament
 from tests._registry_helpers import set_status as _set_status
 
 
@@ -91,3 +91,31 @@ def test_admin_update_payment_rejects_unenrolled_user(app, client, monkeypatch):
     assert resp.status_code == 400
     with app.app_context():
         assert GolfEnrollment.query.filter_by(user_id=target_id).count() == 0
+
+
+def test_admin_override_pick_blocks_unenrolled_user(app, client, monkeypatch):
+    _set_status(monkeypatch, 'golf', 'open')
+    admin_id = _make_user(app, 'golfadmin2', is_admin=True)
+    target_id = _make_user(app, 'orphan2')
+    tid = _seed_open_tournament(app)
+    with app.app_context():
+        p1 = GolfPlayer(api_player_id='P1', first_name='Tiger', last_name='Woods')
+        p2 = GolfPlayer(api_player_id='P2', first_name='Phil', last_name='Mickelson')
+        db.session.add_all([p1, p2])
+        db.session.commit()
+        p1_id, p2_id = p1.id, p2.id
+
+    _login(client, admin_id)
+    resp = client.post('/golf/admin/override-pick', data={
+        'tournament_id': tid,
+        'user_id': target_id,
+        'primary_player_id': p1_id,
+        'backup_player_id': p2_id,
+        'csrf_token': 'x',
+    }, follow_redirects=False)
+
+    assert resp.status_code == 302
+    assert '/golf/admin/override-pick' in resp.location
+    with app.app_context():
+        assert GolfEnrollment.query.filter_by(user_id=target_id).count() == 0
+        assert GolfPick.query.filter_by(user_id=target_id).count() == 0
