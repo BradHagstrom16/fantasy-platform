@@ -78,3 +78,16 @@ def test_make_pick_does_not_create_enrollment_when_user_not_joined(app, client, 
 
     with app.app_context():
         assert GolfEnrollment.query.filter_by(user_id=uid).count() == 0
+
+
+def test_admin_update_payment_rejects_unenrolled_user(app, client, monkeypatch):
+    _set_status(monkeypatch, 'golf', 'open')
+    admin_id = _make_user(app, 'golfadmin', is_admin=True)
+    target_id = _make_user(app, 'orphan')
+    _login(client, admin_id)
+
+    resp = client.post(f'/golf/admin/update-payment/{target_id}',
+                       json={'has_paid': True})
+    assert resp.status_code == 400
+    with app.app_context():
+        assert GolfEnrollment.query.filter_by(user_id=target_id).count() == 0

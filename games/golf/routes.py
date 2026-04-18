@@ -609,8 +609,10 @@ def admin_update_payment(user_id):
         user_id=user_id, season_year=season_year
     ).first()
     if not enrollment:
-        enrollment = GolfEnrollment(user_id=user_id, season_year=season_year)
-        db.session.add(enrollment)
+        return jsonify({
+            'success': False,
+            'error': 'User is not enrolled in Golf Pick \'Em.',
+        }), 400
 
     data = request.get_json()
     enrollment.has_paid = data.get('has_paid', False)
@@ -679,13 +681,20 @@ def admin_override_pick():
                     )
                     db.session.add(pick)
 
-                # Ensure enrollment exists
+                # Enrollment must exist — admins add users to a league via
+                # Platform Admin → Enrollments before overriding picks.
                 enrollment = GolfEnrollment.query.filter_by(
                     user_id=user_id, season_year=season_year
                 ).first()
                 if not enrollment:
-                    enrollment = GolfEnrollment(user_id=user_id, season_year=season_year)
-                    db.session.add(enrollment)
+                    flash(
+                        f'User must be enrolled in Golf Pick \'Em before an '
+                        f'admin override can be applied. Add them via '
+                        f'Admin → Enrollments first.',
+                        'error',
+                    )
+                    db.session.rollback()
+                    return redirect(url_for('golf.admin_override_pick'))
 
                 # Re-resolve for completed tournaments
                 if selected_tournament.status == 'complete':
