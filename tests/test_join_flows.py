@@ -5,6 +5,7 @@ from app import create_app
 from extensions import db
 from models.user import User
 from games.worldcup.models import WorldCupEnrollment
+from tests._registry_helpers import set_status as _set_status
 
 
 @pytest.fixture()
@@ -35,21 +36,6 @@ def _login(client, user_id):
     with client.session_transaction() as sess:
         sess['_user_id'] = str(user_id)
         sess['_fresh'] = True
-
-
-def _set_status(monkeypatch, slug, status):
-    """Rewrite a single registry entry's status for this test."""
-    from games import registry
-    patched = [
-        registry.GameRegistryEntry(
-            slug=e.slug, display_name=e.display_name, description=e.description,
-            emoji=e.emoji, status=(status if e.slug == slug else e.status),
-            is_featured=e.is_featured, blueprint_index=e.blueprint_index,
-            blueprint_join=e.blueprint_join, get_enrollment=e.get_enrollment,
-            admin_enroll=e.admin_enroll,
-        ) for e in registry.GAMES
-    ]
-    monkeypatch.setattr(registry, 'GAMES', patched)
 
 
 # ── World Cup /join ──────────────────────────────────────────────────────

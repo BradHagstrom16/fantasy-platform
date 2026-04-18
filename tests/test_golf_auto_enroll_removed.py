@@ -6,6 +6,7 @@ from app import create_app
 from extensions import db
 from models.user import User
 from games.golf.models import GolfEnrollment, GolfTournament
+from tests._registry_helpers import set_status as _set_status
 
 
 @pytest.fixture()
@@ -38,20 +39,6 @@ def _login(client, user_id):
         sess['_fresh'] = True
 
 
-def _set_golf_open(monkeypatch):
-    from games import registry
-    patched = [
-        registry.GameRegistryEntry(
-            slug=e.slug, display_name=e.display_name, description=e.description,
-            emoji=e.emoji, status=('open' if e.slug == 'golf' else e.status),
-            is_featured=e.is_featured, blueprint_index=e.blueprint_index,
-            blueprint_join=e.blueprint_join, get_enrollment=e.get_enrollment,
-            admin_enroll=e.admin_enroll,
-        ) for e in registry.GAMES
-    ]
-    monkeypatch.setattr(registry, 'GAMES', patched)
-
-
 def _seed_open_tournament(app):
     """Seed a GolfTournament with fields matching the actual model."""
     with app.app_context():
@@ -71,7 +58,7 @@ def _seed_open_tournament(app):
 
 
 def test_make_pick_redirects_unenrolled_user_to_join(app, client, monkeypatch):
-    _set_golf_open(monkeypatch)
+    _set_status(monkeypatch, 'golf', 'open')
     uid = _make_user(app, 'not_enrolled')
     tid = _seed_open_tournament(app)
     _login(client, uid)
@@ -82,7 +69,7 @@ def test_make_pick_redirects_unenrolled_user_to_join(app, client, monkeypatch):
 
 
 def test_make_pick_does_not_create_enrollment_when_user_not_joined(app, client, monkeypatch):
-    _set_golf_open(monkeypatch)
+    _set_status(monkeypatch, 'golf', 'open')
     uid = _make_user(app, 'not_enrolled2')
     tid = _seed_open_tournament(app)
     _login(client, uid)
