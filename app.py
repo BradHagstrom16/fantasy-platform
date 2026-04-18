@@ -69,6 +69,10 @@ def create_app(config_name=None):
     from games.worldcup.cli import register_worldcup_cli
     register_worldcup_cli(app)
 
+    # Platform-wide context processors
+    from core.context import register_context_processors
+    register_context_processors(app)
+
     # Error handlers
     @app.errorhandler(404)
     def not_found(e):

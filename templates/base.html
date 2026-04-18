@@ -38,18 +38,12 @@
 
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav me-auto">
+                    {% for game in nav_games %}
                     <li class="nav-item">
-                        <a class="nav-link {% if request.blueprint == 'worldcup' %}active{% endif %}"
-                           href="{{ url_for('worldcup.index') }}">World Cup</a>
+                        <a class="nav-link {% if request.blueprint == game.slug %}active{% endif %}"
+                           href="{{ url_for(game.blueprint_index) }}">{{ game.display_name }}</a>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link {% if request.blueprint == 'golf' %}active{% endif %}"
-                           href="{{ url_for('golf.index') }}">Golf Pick 'Em</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link {% if request.blueprint == 'cfb' %}active{% endif %}"
-                           href="{{ url_for('cfb.index') }}">CFB Survivor</a>
-                    </li>
+                    {% endfor %}
                 </ul>
 
                 <ul class="navbar-nav">
