@@ -93,3 +93,47 @@ def test_game_card_partial_renders_each_state(app):
         for state in ('featured', 'joined', 'available', 'coming_soon', 'logged_out'):
             html = render_template('main/_game_card.html', game=wc, state=state)
             assert wc.display_name in html, f"state={state} missing name"
+
+
+# ── Homepage sections ────────────────────────────────────────────────────
+
+def test_homepage_logged_out_shows_available_and_coming_soon(client):
+    resp = client.get('/')
+    assert resp.status_code == 200
+    data = resp.data.decode()
+    assert '2026 FIFA World Cup' in data
+    assert 'Coming Soon' in data
+
+
+def test_homepage_zero_joined_shows_available_section(app, client):
+    uid = _make_user(app, 'newuser')
+    _login(client, uid)
+    resp = client.get('/')
+    data = resp.data.decode()
+    assert 'Available to Join' in data
+    assert '2026 FIFA World Cup' in data
+
+
+def test_homepage_one_joined_shows_your_leagues_section(app, client):
+    uid = _make_user(app, 'wcjoined')
+    _login(client, uid)
+    with app.app_context():
+        db.session.add(WorldCupEnrollment(user_id=uid, season_year=SEASON_YEAR))
+        db.session.commit()
+    resp = client.get('/')
+    data = resp.data.decode()
+    assert 'Your Leagues' in data
+    assert '2026 FIFA World Cup' in data
+
+
+def test_homepage_hides_empty_sections(app, client):
+    """When a user has joined every available game, 'Available to Join' is absent."""
+    uid = _make_user(app, 'alljoined')
+    _login(client, uid)
+    with app.app_context():
+        db.session.add(WorldCupEnrollment(user_id=uid, season_year=SEASON_YEAR))
+        db.session.commit()
+    resp = client.get('/')
+    data = resp.data.decode()
+    assert 'Available to Join' not in data
+    assert 'Your Leagues' in data

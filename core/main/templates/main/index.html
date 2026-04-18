@@ -5,88 +5,109 @@
 {% block content %}
 <!-- Hero -->
 <div class="home-hero text-center">
-    <div class="container position-relative" style="z-index:1;">
-        <p class="hero-eyebrow">The Commissioner's Club</p>
-        <h1>
-            Your Fantasy Games,
-            <span class="gold-line">All in One Place.</span>
-        </h1>
-        <p class="hero-body">
-            Pick 'ems, survivor pools, tournament drafts — compete with your group across every sport.
-        </p>
+  <div class="container position-relative" style="z-index:1;">
+    <p class="hero-eyebrow">The Commissioner's Club</p>
+    <h1>
+      Your Fantasy Games,
+      <span class="gold-line">All in One Place.</span>
+    </h1>
+    <p class="hero-body">
+      Pick 'ems, survivor pools, tournament drafts — compete with your group across every sport.
+    </p>
 
-        {% if not current_user.is_authenticated %}
-        <div class="hero-actions d-flex gap-3 justify-content-center flex-wrap">
-            <a href="{{ url_for('auth.register') }}" class="btn btn-warning btn-lg px-5">
-                <i class="bi bi-trophy-fill me-1"></i> Join Now
-            </a>
-            <a href="{{ url_for('auth.login') }}" class="btn btn-outline-light btn-lg px-4">
-                Sign In
-            </a>
-        </div>
-        {% else %}
-        <p class="hero-welcome">
-            Welcome back, <strong class="text-gold">{{ current_user.get_display_name() }}</strong>
-        </p>
-        {% endif %}
+    {% if mode == 'logged_out' %}
+    <div class="hero-actions d-flex gap-3 justify-content-center flex-wrap">
+      <a href="{{ url_for('auth.register') }}" class="btn btn-warning btn-lg px-5">
+        <i class="bi bi-trophy-fill me-1"></i> Join Now
+      </a>
+      <a href="{{ url_for('auth.login') }}" class="btn btn-outline-light btn-lg px-4">
+        Sign In
+      </a>
     </div>
+    {% else %}
+    <p class="hero-welcome">
+      Welcome back, <strong class="text-gold">{{ current_user.get_display_name() }}</strong>
+    </p>
+    {% endif %}
+  </div>
 </div>
 
-<!-- Featured Game: World Cup -->
+{# Featured hero card — only for open featured games #}
+{% if featured %}
 <div class="container my-5">
-    <div class="animate-in">
-        <a href="{{ featured_game.url }}" class="card game-card game-card--featured text-decoration-none">
-            <div class="card-body p-0">
-                <div class="featured-game-inner">
-                    <div class="featured-game-content">
-                        <span class="featured-badge">Live Now</span>
-                        <span class="featured-icon">{{ featured_game.emoji }}</span>
-                        <h3 class="featured-title">{{ featured_game.name }}</h3>
-                        <p class="featured-desc">{{ featured_game.description }}</p>
-                        <span class="btn btn-warning btn-lg px-5 featured-cta">
-                            {% if deadline_passed %}
-                                <i class="bi bi-bar-chart me-2"></i>View Standings
-                            {% elif current_user.is_authenticated %}
-                                <i class="bi bi-globe2 me-2"></i>Enter the Pool
-                            {% else %}
-                                <i class="bi bi-globe2 me-2"></i>Join the World Cup Pool
-                            {% endif %}
-                        </span>
-                    </div>
-                </div>
-            </div>
-        </a>
-    </div>
+  {% for game in featured %}
+  <div class="animate-in">
+    {% with state='featured' %}{% include 'main/_game_card.html' %}{% endwith %}
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
 
-    <!-- Other Games -->
-    <div class="text-center mt-5 mb-4 animate-in stagger-1">
-        <p class="section-heading">More Games</p>
-        <hr class="gold-rule">
-    </div>
+<div class="container my-5">
 
-    <div class="row g-4 justify-content-center">
-        {% for game in other_games %}
-        <div class="col-sm-6 col-md-5 animate-in stagger-{{ loop.index + 1 }}">
-            {% if game.url %}
-            <a href="{{ game.url }}" class="card game-card game-card--live h-100 text-decoration-none">
-            {% else %}
-            <div class="card game-card game-card--coming-soon h-100">
-            {% endif %}
-                <div class="card-body text-center py-4 px-3">
-                    <span class="game-icon">{{ game.emoji }}</span>
-                    <h5 class="game-title">{{ game.name }}</h5>
-                    <p class="game-desc">{{ game.description }}</p>
-                </div>
-                <div class="card-footer text-center bg-transparent py-3">
-                    {% if game.url %}
-                    <span class="btn btn-warning btn-sm px-4">Play Now</span>
-                    {% else %}
-                    <span class="status-badge status-badge--muted">Coming Soon</span>
-                    {% endif %}
-                </div>
-            {% if game.url %}</a>{% else %}</div>{% endif %}
-        </div>
-        {% endfor %}
+{% if mode == 'logged_in' %}
+  {% if joined %}
+  <div class="text-center mt-5 mb-4 animate-in">
+    <p class="section-heading">Your Leagues</p>
+    <hr class="gold-rule">
+  </div>
+  <div class="row g-4 justify-content-center">
+    {% for game in joined %}
+      {% if not game.is_featured %}
+      <div class="col-sm-6 col-md-5 animate-in stagger-{{ loop.index }}">
+        {% with state='joined' %}{% include 'main/_game_card.html' %}{% endwith %}
+      </div>
+      {% endif %}
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% if available %}
+  <div class="text-center mt-5 mb-4 animate-in">
+    <p class="section-heading">Available to Join</p>
+    <hr class="gold-rule">
+  </div>
+  <div class="row g-4 justify-content-center">
+    {% for game in available %}
+      {% if not game.is_featured %}
+      <div class="col-sm-6 col-md-5 animate-in stagger-{{ loop.index }}">
+        {% with state='available' %}{% include 'main/_game_card.html' %}{% endwith %}
+      </div>
+      {% endif %}
+    {% endfor %}
+  </div>
+  {% endif %}
+
+{% else %}
+  {% set remaining = available | rejectattr('is_featured') | list %}
+  {% if remaining %}
+  <div class="text-center mt-5 mb-4 animate-in">
+    <p class="section-heading">Play Now</p>
+    <hr class="gold-rule">
+  </div>
+  <div class="row g-4 justify-content-center">
+    {% for game in remaining %}
+    <div class="col-sm-6 col-md-5 animate-in stagger-{{ loop.index }}">
+      {% with state='logged_out' %}{% include 'main/_game_card.html' %}{% endwith %}
     </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+{% endif %}
+
+{% if coming_soon %}
+<div class="text-center mt-5 mb-4 animate-in">
+  <p class="section-heading">Coming Soon</p>
+  <hr class="gold-rule">
+</div>
+<div class="row g-4 justify-content-center">
+  {% for game in coming_soon %}
+  <div class="col-sm-6 col-md-5 animate-in stagger-{{ loop.index }}">
+    {% with state='coming_soon' %}{% include 'main/_game_card.html' %}{% endwith %}
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
 </div>
 {% endblock %}

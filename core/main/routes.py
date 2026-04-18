@@ -1,50 +1,34 @@
 """
 Fantasy Sports Platform - Main Routes
 =======================================
-Home page and platform-level pages.
+Home page and platform-level pages. Registry-driven.
 """
-from datetime import datetime, timezone
-
-from flask import render_template, url_for
+from flask import render_template
 from flask_login import current_user
 
 from core.main import main_bp
-from games.worldcup.constants import TOURNAMENT_DEADLINE_UTC
+from games.registry import (
+    joined_games, available_games, coming_soon_games, featured_games,
+)
 
 
 @main_bp.route('/')
 def index():
-    """Platform home page — shows available games."""
-    featured_game = {
-        'name': '2026 FIFA World Cup',
-        'slug': 'worldcup',
-        'description': 'Pick 9 national teams across 5 tiers. Points accumulate as your teams win and advance through the bracket.',
-        'emoji': '⚽',
-        'url': url_for('worldcup.index'),
-    }
-
-    other_games = [
-        {
-            'name': "Golf Pick 'Em",
-            'slug': 'golf',
-            'description': 'Season-long PGA Tour fantasy. Pick one golfer per tournament. Points = prize money.',
-            'emoji': '⛳',
-            'url': None,
-        },
-        {
-            'name': 'CFB Survivor Pool',
-            'slug': 'cfb',
-            'description': 'Weekly college football picks against the spread. Two lives. Last survivor wins.',
-            'emoji': '🏈',
-            'url': None,
-        },
-    ]
-
-    deadline_passed = datetime.now(timezone.utc) >= TOURNAMENT_DEADLINE_UTC
-
+    """Platform home page. Sections driven by games.registry."""
+    if current_user.is_authenticated:
+        return render_template(
+            'main/index.html',
+            mode='logged_in',
+            joined=joined_games(current_user),
+            available=available_games(current_user),
+            coming_soon=coming_soon_games(),
+            featured=featured_games(current_user),
+        )
     return render_template(
         'main/index.html',
-        featured_game=featured_game,
-        other_games=other_games,
-        deadline_passed=deadline_passed,
+        mode='logged_out',
+        joined=[],
+        available=available_games(current_user),
+        coming_soon=coming_soon_games(),
+        featured=featured_games(current_user),
     )

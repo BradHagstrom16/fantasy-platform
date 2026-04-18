@@ -1926,6 +1926,18 @@ hr { border-color: var(--border); opacity: 1; }
   border: 1px solid rgba(120,120,120,.2);
 }
 
+.status-badge--joined {
+  background: rgba(184, 153, 62, 0.15);
+  color: var(--platform-accent);
+  border: 1px solid rgba(184, 153, 62, 0.35);
+  padding: 0.2rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
 
 /* ── 17. Responsive ─────────────────────────────────────── */
 
