@@ -38,7 +38,6 @@ def main() -> int:
             GolfEnrollment, GolfPick, GolfSeasonPlayerUsage, GolfTournament,
         )
 
-        cfb_season = app.config.get('CFB_SEASON_YEAR', 2026)
         golf_season = app.config.get('SEASON_YEAR', 2026)
 
         # Safety: refuse to run if the current season has seen real play.
