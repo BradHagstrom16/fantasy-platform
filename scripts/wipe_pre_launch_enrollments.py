@@ -40,20 +40,33 @@ def main() -> int:
 
         golf_season = app.config.get('SEASON_YEAR', 2026)
 
-        # Safety: refuse to run if the current season has seen real play.
+        # Safety: refuse to run if the current season has in-flight or
+        # completed play. We check both "completed" signals (weeks marked
+        # complete, games with recorded outcomes, tournaments in 'complete')
+        # and "in-flight" signals (scored picks, tournaments in 'active').
         cfb_complete_weeks = CfbWeek.query.filter_by(is_complete=True).count()
         cfb_complete_games = CfbGame.query.filter(
             CfbGame.home_team_won.isnot(None)
         ).count()
-        golf_complete_tournaments = GolfTournament.query.filter_by(
-            season_year=golf_season, status='complete',
+        cfb_scored_picks = CfbPick.query.filter(
+            CfbPick.is_correct.isnot(None)
+        ).count()
+        golf_active_or_complete_tournaments = GolfTournament.query.filter(
+            GolfTournament.season_year == golf_season,
+            GolfTournament.status.in_(['active', 'complete']),
         ).count()
 
-        if cfb_complete_weeks or cfb_complete_games or golf_complete_tournaments:
-            print('ABORT: Refusing to wipe — real play appears to have occurred:')
+        if (
+            cfb_complete_weeks
+            or cfb_complete_games
+            or cfb_scored_picks
+            or golf_active_or_complete_tournaments
+        ):
+            print('ABORT: Refusing to wipe — in-flight or completed play detected:')
             print(f'  CFB completed weeks: {cfb_complete_weeks}')
             print(f'  CFB games with recorded outcome: {cfb_complete_games}')
-            print(f'  Golf completed tournaments: {golf_complete_tournaments}')
+            print(f'  CFB scored picks: {cfb_scored_picks}')
+            print(f'  Golf active/completed tournaments: {golf_active_or_complete_tournaments}')
             return 1
 
         cfb_pick_count = CfbPick.query.count()
