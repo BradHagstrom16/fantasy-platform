@@ -191,7 +191,8 @@ No linter configured.
 - **POST-only:** All state-mutating operations use POST — no GET routes that change data
 - **Admin scoping:** Two-tier game admin — platform admin (`User.is_admin`) always has access to every game's admin routes. Game-specific admin (`<Game>Enrollment.is_admin`) allows delegating admin to enrolled non-platform-admins. All `<game>_admin_required` decorators must check platform admin first, enrollment admin second.
 - **Password reset tokens:** `core/auth/tokens.py` uses `itsdangerous.URLSafeTimedSerializer` with 1-hour expiry. Forgot-password route uses anti-enumeration pattern (identical flash message regardless of email existence).
-- **Homepage games list:** `core/main/routes.py` — set `'url': url_for('<game>.index')` for live games, `'url': None` for coming-soon; controls card clickability and Play Now vs Coming Soon badge
+- **Game registry:** `games/registry.py` is the single source of truth — every game has one `GameRegistryEntry` (slug, status, is_featured, blueprint_index/join endpoints, `get_enrollment` + `admin_enroll` callables). Helpers `joined_games`/`available_games`/`coming_soon_games`/`featured_games`/`get_entry` drive homepage, navbar, and admin add-user page. Flip `status` from `'coming_soon'` to `'open'` at launch.
+- **Enrollment is explicit:** users reach a game's interior routes only via `/<game>/join` (guarded by `@game_must_be_open(slug)` in `games/common.py`). Interior pick routes carry `@enrollment_required(slug)`, which redirects unenrolled users to `/<game>/join?next=<current>`. **Never** create `<Game>Enrollment` rows from pick or admin paths — platform admins enroll users via `/admin/enrollments`.
 - **Admin destructive actions:** Destructive admin POST handlers (e.g., `admin_match_result`, `admin_set_knockout`) branch on `request.form.get('action')` — `action=clear` is a distinct, guarded path that short-circuits before the main mutation. Keep this pattern for new admin routes that both mutate and reset.
 - **Scoring attribution:** `games/worldcup/services/scoring.compute_team_score_events` (per-team) and `compute_match_attribution` (per-match) are the single source of truth for scoring breakdowns. Stored `total_score` must equal the sum of those ScoreEvents. Any new UI that surfaces scoring detail must derive from these helpers, not recompute.
 
@@ -207,6 +208,9 @@ No linter configured.
 - CLI commands under `flask <game> *` namespace using `AppGroup`
 - Context processor on the blueprint for game-specific template variables
 - `before_request` hook for auto-refresh logic
+- `games/<game>/services/enrollment.py` exposing `get_enrollment(user_id)` + `admin_enroll(user_id)` (idempotent), wired into `games/registry.py` as a new `GameRegistryEntry`
+- `/<game>/join` route + `games/<game>/templates/<game>/join.html` following the World Cup shape (`page-hero` + how-it-works card + form + `btn-game`), decorated with `@game_must_be_open('<game>')`
+- `@enrollment_required('<game>')` on every interior pick/mutation route (not on leaderboards or public standings)
 
 ---
 
@@ -229,6 +233,8 @@ fantasy-platform/
 │   ├── admin/              # Platform-level admin
 │   └── main/               # Home page
 ├── games/
+│   ├── registry.py         # GameRegistryEntry + joined/available/coming_soon/featured helpers
+│   ├── common.py           # @game_must_be_open, @enrollment_required decorators
 │   ├── golf/               # Golf Pick 'Em blueprint
 │   ├── cfb/                # CFB Survivor Pool blueprint
 │   └── worldcup/           # World Cup Fantasy Pool blueprint
