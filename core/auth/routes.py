@@ -186,11 +186,28 @@ def change_password():
     return render_template('auth/change_password.html')
 
 
-AVATAR_CHOICES = [
-    '\u26bd', '\U0001F3C8', '\u26f3', '\U0001F3C6', '\U0001F3AF', '\U0001F985', '\U0001F43B', '\U0001F981',
-    '\U0001F42F', '\U0001F98A', '\U0001F43A', '\U0001F99D', '\U0001F3B2', '\U0001F0CF', '\U0001F4B0', '\U0001F525',
-    '\u26a1', '\U0001F31F', '\U0001F451', '\U0001F920',
-]
+AVATAR_CATEGORIES = {
+    "Sports & Games": [
+        "⚽", "🏈", "⛳", "🏒", "🎾", "🏀", "🎱", "🥊",
+        "🏆", "🎯", "🏊", "🚴", "🎿", "🏇", "🤺",
+    ],
+    "Animals": [
+        "🦊", "🐺", "🦁", "🐯", "🦅", "🐬", "🦈", "🐻",
+        "🦝", "🐸", "🦉", "🐊", "🦌", "🐆", "🦏",
+    ],
+    "Characters & Vibes": [
+        "🤠", "👑", "💀", "🥷", "🧙", "🤖", "👻", "🎭",
+        "🧐", "🧛", "🧟", "🤡", "🎪", "🦸", "🧝",
+    ],
+    "Food & Drink": [
+        "🌮", "🍕", "🍺", "🎂", "🍔", "🫑", "🍣", "🍩",
+        "🥃", "🧀", "🍦", "🥐", "🥩", "🍜", "🧁",
+    ],
+    "Nature & Elements": [
+        "🌊", "🗻", "⚡", "🔥", "🌙", "🌤", "🍀", "🌋",
+        "🎋", "🌸", "🍂", "🦋", "🌿", "🪨", "🌀",
+    ],
+}
 
 
 @auth_bp.route('/profile', methods=['GET', 'POST'])
@@ -201,14 +218,15 @@ def profile():
         email = request.form.get('email', '').strip().lower()
 
         avatar_emoji = request.form.get('avatar_emoji', '').strip()
-        if avatar_emoji and avatar_emoji not in AVATAR_CHOICES:
+        all_avatars = [e for choices in AVATAR_CATEGORIES.values() for e in choices]
+        if avatar_emoji and avatar_emoji not in all_avatars:
             avatar_emoji = None
 
         if email != current_user.email:
             if User.query.filter(func.lower(User.email) == email.casefold()).first():
                 flash('That email is already registered.', 'error')
                 return render_template('auth/profile.html',
-                                       avatar_choices=AVATAR_CHOICES)
+                                       avatar_categories=AVATAR_CATEGORIES)
             current_user.email = email
 
         current_user.display_name = display_name
@@ -216,4 +234,4 @@ def profile():
         db.session.commit()
         flash('Profile updated.', 'success')
 
-    return render_template('auth/profile.html', avatar_choices=AVATAR_CHOICES)
+    return render_template('auth/profile.html', avatar_categories=AVATAR_CATEGORIES)

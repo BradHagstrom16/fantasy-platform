@@ -41,14 +41,47 @@
                 <div class="mb-3">
                     <label class="form-label">Avatar</label>
                     <div class="form-text mb-2">Pick an emoji that represents you in the standings.</div>
-                    <div class="d-flex flex-wrap gap-2" id="avatarPicker">
-                        {% for emoji in avatar_choices %}
-                        <button type="button"
-                                class="btn btn-outline-secondary avatar-pick-btn{% if current_user.avatar_emoji == emoji %} active{% endif %}"
-                                data-emoji="{{ emoji }}"
-                                style="width:44px; height:44px; font-size:1.3rem; padding:0; display:inline-flex; align-items:center; justify-content:center; border-radius:8px;">
-                            {{ emoji }}
-                        </button>
+
+                    {% set short_labels = {
+                        'Sports & Games': 'Sports',
+                        'Animals': 'Animals',
+                        'Characters & Vibes': 'Characters',
+                        'Food & Drink': 'Food',
+                        'Nature & Elements': 'Nature'
+                    } %}
+
+                    <ul class="nav nav-tabs nav-fill avatar-tabs mb-0" id="avatarTabs" role="tablist">
+                        {% for category, emojis in avatar_categories.items() %}
+                        {% set tab_id = category | lower | replace(' ', '-') | replace('&', 'and') %}
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link{% if loop.first %} active{% endif %}"
+                                    id="tab-{{ tab_id }}"
+                                    data-bs-toggle="tab"
+                                    data-bs-target="#pane-{{ tab_id }}"
+                                    type="button" role="tab">
+                                {{ short_labels[category] }}
+                            </button>
+                        </li>
+                        {% endfor %}
+                    </ul>
+
+                    <div class="tab-content avatar-tab-content" id="avatarTabContent">
+                        {% for category, emojis in avatar_categories.items() %}
+                        {% set tab_id = category | lower | replace(' ', '-') | replace('&', 'and') %}
+                        <div class="tab-pane fade{% if loop.first %} show active{% endif %} pt-2 pb-1"
+                             id="pane-{{ tab_id }}"
+                             role="tabpanel">
+                            <div class="d-flex flex-wrap gap-2">
+                                {% for emoji in emojis %}
+                                <button type="button"
+                                        class="btn avatar-pick-btn{% if current_user.avatar_emoji == emoji %} active{% endif %}"
+                                        data-emoji="{{ emoji }}"
+                                        aria-label="{{ emoji }}">
+                                    {{ emoji }}
+                                </button>
+                                {% endfor %}
+                            </div>
+                        </div>
                         {% endfor %}
                     </div>
                 </div>
@@ -78,36 +111,82 @@
 </div>
 
 <style>
-.avatar-pick-btn { transition: all .15s ease; }
-.avatar-pick-btn:hover { transform: scale(1.15); border-color: var(--platform-primary, #6C3FA0); }
+.avatar-tabs {
+    border-bottom: 2px solid rgba(108, 63, 160, 0.15);
+}
+.avatar-tabs .nav-link {
+    font-size: 0.78rem;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    color: #6c757d;
+    border: none;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    padding: 0.5rem 0.25rem;
+    border-radius: 0;
+    transition: color .15s ease, border-color .15s ease;
+}
+.avatar-tabs .nav-link:hover {
+    color: var(--platform-primary, #6C3FA0);
+    border-bottom-color: rgba(108, 63, 160, 0.35);
+}
+.avatar-tabs .nav-link.active {
+    color: var(--platform-primary, #6C3FA0);
+    font-weight: 700;
+    border-bottom-color: var(--platform-primary, #6C3FA0);
+    background: transparent;
+}
+.avatar-tab-content {
+    border: 1px solid rgba(108, 63, 160, 0.15);
+    border-top: none;
+    border-radius: 0 0 8px 8px;
+    padding: 0.75rem;
+    background: rgba(108, 63, 160, 0.03);
+}
+.avatar-pick-btn {
+    width: 44px;
+    height: 44px;
+    font-size: 1.3rem;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    border: 2px solid #dee2e6;
+    background: transparent;
+    transition: transform .12s ease, border-color .12s ease, box-shadow .12s ease;
+}
+.avatar-pick-btn:hover {
+    transform: scale(1.15);
+    border-color: #C9A227;
+}
 .avatar-pick-btn.active {
-    border-color: var(--platform-primary, #6C3FA0);
-    background-color: rgba(108, 63, 160, 0.12);
-    box-shadow: 0 0 0 2px var(--platform-primary, #6C3FA0);
+    border-color: #C9A227;
+    background-color: rgba(201, 162, 39, 0.1);
+    box-shadow: 0 0 0 2px rgba(201, 162, 39, 0.4);
 }
 </style>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    var picker = document.getElementById('avatarPicker');
+    var tabContent = document.getElementById('avatarTabContent');
     var input = document.getElementById('avatarInput');
     var preview = document.getElementById('avatarPreview');
 
-    picker.addEventListener('click', function(e) {
+    tabContent.addEventListener('click', function(e) {
         var btn = e.target.closest('.avatar-pick-btn');
         if (!btn) return;
 
-        // Toggle: clicking active button clears selection
         var emoji = btn.dataset.emoji;
         var wasActive = btn.classList.contains('active');
 
-        picker.querySelectorAll('.avatar-pick-btn').forEach(function(b) {
+        tabContent.querySelectorAll('.avatar-pick-btn').forEach(function(b) {
             b.classList.remove('active');
         });
 
         if (wasActive) {
             input.value = '';
-            preview.textContent = '\u26bd';
+            preview.textContent = '⚽';
         } else {
             btn.classList.add('active');
             input.value = emoji;
