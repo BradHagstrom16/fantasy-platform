@@ -9,10 +9,6 @@
 
 Open: `http://127.0.0.1:5000`
 
-## Still Needs Work
-
-- Should a games top toolbar (the pill-link subnav strip) be sticky/frozen so it always shows no matter how far the user has scrolled, both on mobile and web? I think there is room for improvement on this, it works but could be more aestetically pleasing and work a little better.
-
 ---
 
 ## Completed Enhancements (shipped)
@@ -322,7 +318,7 @@ Pick any group stage match (e.g., Match 1: Mexico vs South Africa, Jun 11).
 
 > **Scoring spot-check:** Mexico is a Tier 3 team (×2.5 multiplier). A win = 3 base points. Expected score if Mexico was picked: 3 × 2.5 = **7.5 points**. Verify this is what appears on the leaderboard.
 
-- [ ] Score is mathematically correct based on the game design
+- [x] Score is mathematically correct based on the game design
 
 **Notes:** ✅ Both resolved.
 - Admin match entry auto-derives the winner (or draw) from the score, with an aria-live hint confirming the selection (commits bf3ea6d, 25cd5af).
@@ -400,9 +396,9 @@ Quick regression check — just confirm these haven't broken.
 
 ### 8A: Golf Pick 'Em
 
-- [ ] `/golf/` loads — standings page or home page renders
-- [ ] `/golf/schedule` loads (or equivalent schedule/tournament list page)
-- [ ] No 500 errors in Flask console
+- [x] `/golf/` loads — standings page or home page renders
+- [x] `/golf/schedule` loads (or equivalent schedule/tournament list page)
+- [x] No 500 errors in Flask console
 
 **Notes:**
 
@@ -410,8 +406,8 @@ Quick regression check — just confirm these haven't broken.
 
 ### 8B: CFB Survivor
 
-- [ ] `/cfb/` loads — standings or home page renders
-- [ ] No 500 errors in Flask console
+- [x] `/cfb/` loads — standings or home page renders
+- [x] No 500 errors in Flask console
 
 **Notes:**
 
@@ -421,12 +417,12 @@ Quick regression check — just confirm these haven't broken.
 
 Open `http://<your-local-IP>:5000` on your phone, or use Chrome DevTools device emulation (F12 → toggle device toolbar → iPhone or Pixel).
 
-- [ ] Platform homepage: nav collapses to hamburger, readable
-- [ ] `/worldcup/join`: enrollment form is usable, button is tappable
-- [ ] `/worldcup/picks`: tier cards are full-width, teams are selectable, no horizontal scroll
-- [ ] `/worldcup/leaderboard`: table either scrolls horizontally with a scroll indicator, or uses the card/stacked layout — either is fine as long as it's not cutting off data
-- [ ] `/worldcup/schedule`: same — table readable on mobile
-- [ ] Login page: usable on mobile
+- [x] Platform homepage: nav collapses to hamburger, readable
+- [x] `/worldcup/join`: enrollment form is usable, button is tappable
+- [x] `/worldcup/picks`: tier cards are full-width, teams are selectable, no horizontal scroll
+- [x] `/worldcup/leaderboard`: table either scrolls horizontally with a scroll indicator, or uses the card/stacked layout — either is fine as long as it's not cutting off data
+- [x] `/worldcup/schedule`: same — table readable on mobile
+- [x] Login page: usable on mobile
 
 **Notes:**
 
