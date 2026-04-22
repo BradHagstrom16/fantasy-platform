@@ -8,6 +8,7 @@ import os
 
 import click
 from flask import Flask, render_template
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 from config import config
 from extensions import db, migrate, login_manager, csrf, limiter
@@ -108,6 +109,9 @@ def create_app(config_name=None):
         db.session.add(user)
         db.session.commit()
         click.echo(f'Admin user "{username}" created.')
+
+    # Trust one level of proxy headers (Cloudflare → Nginx → Gunicorn)
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
 
     return app
 

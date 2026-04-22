@@ -217,7 +217,7 @@ ProxyFix tells Flask to trust the `X-Forwarded-Proto: https` header that Cloudfl
 In `app.py`, add `ProxyFix` to the import block (after the existing imports, before `from config import config`):
 
 ```python
-from werkzeug.middleware.proxyfix import ProxyFix
+from werkzeug.middleware.proxy_fix import ProxyFix
 ```
 
 The import block should look like:
@@ -228,7 +228,7 @@ import os
 
 import click
 from flask import Flask, render_template
-from werkzeug.middleware.proxyfix import ProxyFix
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 from config import config
 from extensions import db, migrate, login_manager, csrf, limiter
@@ -342,7 +342,7 @@ server {
 
     # Proxy all other requests to Gunicorn via Unix socket
     location / {
-        proxy_pass         http://unix:/run/fantasy-platform.sock;
+        proxy_pass         http://unix:/run/fantasy-platform/gunicorn.sock;
         proxy_set_header   Host              $host;
         proxy_set_header   X-Real-IP         $remote_addr;
         proxy_set_header   X-Forwarded-For   $proxy_add_x_forwarded_for;
@@ -384,9 +384,10 @@ User=deploy
 Group=deploy
 WorkingDirectory=/home/deploy/fantasy-platform
 EnvironmentFile=/home/deploy/fantasy-platform/.env
+RuntimeDirectory=fantasy-platform
 ExecStart=/home/deploy/fantasy-platform/venv/bin/gunicorn \
     --workers 3 \
-    --bind unix:/run/fantasy-platform.sock \
+    --bind unix:/run/fantasy-platform/gunicorn.sock \
     --umask 007 \
     wsgi:application
 Restart=on-failure
@@ -975,7 +976,7 @@ Expected: the output includes `Active: active (running)`. If you see `failed`, r
 - [ ] **Step 3: Verify the socket file was created**
 
 ```bash
-ls -la /run/fantasy-platform.sock
+ls -la /run/fantasy-platform/gunicorn.sock
 ```
 
 Expected: the socket file exists with permissions `srw-rw----` (or similar — just needs to exist).
