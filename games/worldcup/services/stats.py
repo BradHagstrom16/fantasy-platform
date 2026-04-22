@@ -26,7 +26,7 @@ def get_country_stats(season_year: int) -> tuple[list[dict], int]:
     )
 
     result = []
-    for team in WorldCupTeam.query.all():
+    for team in WorldCupTeam.query.all():  # teams are global (no season_year column)
         events = compute_team_score_events(team)
         group_base = sum(e.base_points for e in events if e.source in _GROUP_SOURCES)
         ko_base = sum(e.base_points for e in events if e.source in _KO_SOURCES)

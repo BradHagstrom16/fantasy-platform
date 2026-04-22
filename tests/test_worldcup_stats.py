@@ -17,8 +17,7 @@ def app():
 
 @pytest.fixture()
 def session(app):
-    with app.app_context():
-        yield db.session
+    yield db.session
 
 
 def _make_user(session, username):
