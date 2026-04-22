@@ -58,6 +58,12 @@ class ProductionConfig(Config):
     SESSION_COOKIE_SECURE = True
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = 'Lax'
+    # Managed Postgres closes idle connections; long-lived Gunicorn workers
+    # must re-check before use and recycle before the provider's idle timeout.
+    SQLALCHEMY_ENGINE_OPTIONS = {
+        'pool_pre_ping': True,
+        'pool_recycle': 280,
+    }
 
 
 class TestingConfig(Config):

@@ -12,7 +12,7 @@ echo "==> Installing/updating Python dependencies..."
 venv/bin/pip install -r requirements.txt --quiet
 
 echo "==> Applying database migrations..."
-FLASK_APP=app.py venv/bin/flask db upgrade
+ENVIRONMENT=production FLASK_APP=app.py venv/bin/flask db upgrade
 
 echo "==> Restarting application..."
 sudo systemctl restart fantasy-platform
