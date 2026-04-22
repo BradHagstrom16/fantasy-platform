@@ -104,6 +104,8 @@
                    href="{{ url_for('worldcup.schedule') }}">Schedule</a>
                 <a class="subnav-pill {% if request.endpoint == 'worldcup.groups' %}active{% endif %}"
                    href="{{ url_for('worldcup.groups') }}">Groups</a>
+                <a class="subnav-pill {% if request.endpoint == 'worldcup.stats' %}active{% endif %}"
+                   href="{{ url_for('worldcup.stats') }}">Stats Hub</a>
                 {% if current_user.is_authenticated %}
                 <a class="subnav-pill {% if request.endpoint == 'worldcup.picks' %}active{% endif %}"
                    href="{{ url_for('worldcup.picks') }}">My Picks</a>
