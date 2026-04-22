@@ -165,6 +165,7 @@ venv/bin/python -m pytest tests/                          # Run all tests
 venv/bin/python -m pytest tests/test_worldcup_scoring.py  # Scoring engine tests
 venv/bin/python -m pytest tests/test_worldcup_admin.py    # Admin + public route tests
 venv/bin/python -m pytest tests/test_post_deadline_ui.py  # Post-deadline UI tests
+venv/bin/python -m pytest tests/test_worldcup_stats.py    # Stats Hub service + route tests
 ```
 
 No linter configured.
@@ -195,6 +196,7 @@ No linter configured.
 - **Enrollment is explicit:** users reach a game's interior routes only via `/<game>/join` (guarded by `@game_must_be_open(slug)` in `games/common.py`). Interior pick routes carry `@enrollment_required(slug)`, which redirects unenrolled users to `/<game>/join?next=<current>`. **Never** create `<Game>Enrollment` rows from pick or admin paths — platform admins enroll users via `/admin/enrollments`.
 - **Admin destructive actions:** Destructive admin POST handlers (e.g., `admin_match_result`, `admin_set_knockout`) branch on `request.form.get('action')` — `action=clear` is a distinct, guarded path that short-circuits before the main mutation. Keep this pattern for new admin routes that both mutate and reset.
 - **Scoring attribution:** `games/worldcup/services/scoring.compute_team_score_events` (per-team) and `compute_match_attribution` (per-match) are the single source of truth for scoring breakdowns. Stored `total_score` must equal the sum of those ScoreEvents. Any new UI that surfaces scoring detail must derive from these helpers, not recompute.
+- **Stats analytics layer:** `games/worldcup/services/stats.py` exposes 4 public functions (`get_country_stats`, `get_tier_stats`, `get_overview_kpis`, `get_tier_combos`) consumed by the public `/worldcup/stats` route. Public analytics routes must NOT use `@login_required`; build `my_picks` via `WorldCupPick.query.join(WorldCupTeam)` (never `enrollment.picks` — N+1).
 
 ---
 

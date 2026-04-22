@@ -1,5 +1,5 @@
 {
-  "venvPath": ".",
+  "venvPath": "/Users/bhagstrom/fantasy-platform",
   "venv": "venv",
   "pythonVersion": "3.13",
   "typeCheckingMode": "basic",

@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Stats Hub — World Cup Fantasy Pool</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=Teko:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --platform-primary:#3A1D72; --platform-primary-dark:#1E0E42; --platform-primary-light:#5B3A9E;
+      --platform-accent:#D4A820; --platform-accent-light:#E8C040;
+      --bg-page:#F5F3F0; --bg-card:#FFFFFF; --bg-muted:#EDEBF4;
+      --text-primary:#1C1730; --text-secondary:#5A5470; --text-muted:#8A849B; --text-on-dark:#F5F3F0;
+      --border:#D8DDE8; --border-light:#E8E5F0;
+      --shadow-sm:0 2px 8px rgba(58,29,114,.07); --shadow-md:0 4px 20px rgba(58,29,114,.12);
+      --radius:.5rem; --radius-lg:.875rem; --transition:.2s cubic-bezier(.4,0,.2,1);
+      --success:#1A7A45; --success-bg:#ecfdf5;
+      --game-primary:#002868; --game-primary-dark:#001040; --game-primary-light:#1a4890;
+      --game-accent:#BF0A30; --game-accent-light:#D42040;
+      --wc-tier1:#D97706; --wc-tier2:#4B7399; --wc-tier3:#B45309; --wc-tier4:#0D7377; --wc-tier5:#9333EA;
+    }
+    body.theme-dark {
+      --bg-page:#00122e; --bg-card:#001840; --bg-muted:#002060;
+      --text-primary:#E0E8F5; --text-secondary:#90AACC; --text-muted:#5070A0;
+      --border:#1a3870; --border-light:#0d2a5c;
+      --shadow-sm:0 2px 8px rgba(0,0,0,.35); --shadow-md:0 4px 20px rgba(0,0,0,.5);
+    }
+    *,*::before,*::after{box-sizing:border-box}
+    html{scroll-behavior:smooth}
+    body{font-family:'Newsreader',Georgia,serif;background:var(--bg-page);color:var(--text-primary);min-height:100vh;display:flex;flex-direction:column;transition:background .3s,color .3s}
+    h1,h2,h3,h4,h5,h6{font-family:'Teko',sans-serif;font-weight:600;letter-spacing:.03em;line-height:1.1}
+    /* Navbar */
+    .navbar{background:linear-gradient(90deg,var(--platform-primary-dark) 0%,var(--platform-primary) 100%)!important;border-bottom:3px solid var(--platform-accent);padding:.65rem 0;box-shadow:0 2px 20px rgba(0,0,0,.35);position:sticky;top:0;z-index:1030}
+    .navbar-brand{font-family:'Teko',sans-serif;font-size:1.35rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--platform-accent)!important}
+    .navbar .nav-link{font-family:'Teko',sans-serif;font-weight:500;font-size:1.05rem;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.72)!important;padding:.5rem .85rem;border-radius:var(--radius)}
+    .navbar .nav-link:hover,.navbar .nav-link.active{color:var(--platform-accent)!important}
+    /* Subnav */
+    .game-subnav{background:#00122e;padding:.5rem 0 .3rem;border-bottom:1px solid rgba(255,255,255,.07);position:sticky;top:58px;z-index:1020}
+    .game-subnav .container{display:flex;align-items:center;gap:.5rem}
+    .subnav-game-label{font-family:'Teko',sans-serif;font-weight:700;font-size:.88rem;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.9);text-decoration:none;white-space:nowrap;padding-right:.9rem;margin-right:.3rem;border-right:1px solid rgba(255,255,255,.14)}
+    .subnav-pills{display:flex;gap:.4rem;overflow-x:auto;scrollbar-width:none}
+    .subnav-pills::-webkit-scrollbar{display:none}
+    .subnav-pill{font-family:'Teko',sans-serif;font-weight:500;font-size:.78rem;letter-spacing:.05em;text-transform:uppercase;color:rgba(255,255,255,.48);text-decoration:none;padding:.32rem .72rem;border-radius:20px;border:1px solid transparent;white-space:nowrap;transition:all .15s}
+    .subnav-pill:hover{color:rgba(255,255,255,.85);border-color:rgba(255,255,255,.2)}
+    .subnav-pill.active{color:#fff;background:rgba(191,10,48,.18);border-color:#BF0A30}
+    /* Hero */
+    .page-hero{background:linear-gradient(135deg,var(--game-primary-dark) 0%,var(--game-primary) 100%);color:var(--text-on-dark);padding:3rem 0 2.5rem;margin-bottom:0;position:relative;overflow:hidden}
+    .page-hero::before{content:'';position:absolute;inset:0;background-image:radial-gradient(circle,rgba(212,168,32,.06) 1px,transparent 1px);background-size:24px 24px}
+    .page-hero::after{content:'';position:absolute;bottom:-1px;left:0;right:0;height:3px;background:linear-gradient(90deg,transparent 0%,var(--platform-accent) 30%,var(--platform-accent-light) 50%,var(--platform-accent) 70%,transparent 100%);opacity:.6}
+    .page-hero .container{position:relative;z-index:1}
+    .phase-chip{display:inline-flex;align-items:center;gap:.4rem;font-family:'Teko',sans-serif;font-weight:600;font-size:.82rem;letter-spacing:.1em;text-transform:uppercase;padding:.28em .9em;border-radius:2rem;background:rgba(191,10,48,.2);border:1px solid rgba(191,10,48,.4);color:#ff8fa0}
+    .phase-dot{width:7px;height:7px;border-radius:50%;background:#BF0A30;animation:pulseDot 1.4s ease infinite}
+    @keyframes pulseDot{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.6)}}
+    /* Tab bar */
+    .tab-bar{background:var(--bg-card);border-bottom:1px solid var(--border);position:sticky;top:93px;z-index:900;overflow-x:auto;scrollbar-width:none;transition:background .3s}
+    .tab-bar::-webkit-scrollbar{display:none}
+    .tab-bar-inner{display:flex;min-width:max-content}
+    .tab-btn{font-family:'Teko',sans-serif;font-weight:500;font-size:.82rem;letter-spacing:.07em;text-transform:uppercase;color:var(--text-muted);background:none;border:none;border-bottom:2px solid transparent;padding:.7rem 1.15rem;white-space:nowrap;cursor:pointer;transition:color .15s,border-color .15s}
+    .tab-btn:hover{color:var(--game-primary);border-color:var(--game-primary-light)}
+    .tab-btn.active{color:var(--game-primary);border-color:var(--game-accent);font-weight:700}
+    body.theme-dark .tab-btn{color:var(--text-muted)}
+    body.theme-dark .tab-btn.active{color:#90c0ff}
+    /* Tab panels */
+    .tab-panel{display:none;animation:fadeInUp .22s ease both}
+    .tab-panel.active{display:block}
+    /* KPI */
+    .kpi-block{background:var(--bg-card);border:1px solid var(--border);border-top:3px solid var(--game-accent);border-radius:var(--radius-lg);padding:1.25rem 1rem;text-align:center;box-shadow:var(--shadow-sm);transition:background .3s,border-color .3s}
+    .kpi-value{font-family:'Teko',sans-serif;font-size:2.5rem;font-weight:700;color:var(--text-primary);line-height:1}
+    .kpi-label{font-family:'Teko',sans-serif;font-size:.78rem;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted);margin-top:.3rem}
+    .kpi-sub{font-size:.76rem;color:var(--text-muted);margin-top:.15rem}
+    /* Section heading */
+    .sec-rule{width:48px;height:3px;border:none;border-radius:2px;margin-bottom:.6rem}
+    .sec-heading{font-family:'Teko',sans-serif;font-size:1.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-primary);margin-bottom:.2rem}
+    .sec-sub{color:var(--text-muted);font-size:.9rem;margin-bottom:1.5rem}
+    /* Cards */
+    .stat-card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);box-shadow:var(--shadow-sm);padding:1.5rem;height:100%;transition:background .3s,border-color .3s}
+    .card-head{font-family:'Teko',sans-serif;font-weight:600;font-size:1rem;letter-spacing:.07em;text-transform:uppercase;color:var(--text-secondary);margin-bottom:1.25rem;display:flex;align-items:center;justify-content:space-between}
+    /* Tier badges */
+    .tb{display:inline-block;font-family:'Teko',sans-serif;font-weight:700;font-size:.68rem;letter-spacing:.06em;text-transform:uppercase;padding:.18em .55em;border-radius:1rem;color:#fff;line-height:1.4;vertical-align:middle}
+    .tb-1{background:var(--wc-tier1)} .tb-2{background:var(--wc-tier2)} .tb-3{background:var(--wc-tier3)} .tb-4{background:var(--wc-tier4)} .tb-5{background:var(--wc-tier5)}
+    /* Pick bars */
+    .pbar-wrap{margin-bottom:.55rem}
+    .pbar-wrap.my-pick .pbar-label{color:var(--platform-accent);font-weight:700}
+    .pbar-label{display:flex;justify-content:space-between;align-items:center;font-family:'Teko',sans-serif;font-size:.92rem;font-weight:500;color:var(--text-primary);margin-bottom:.18rem;gap:.5rem}
+    .pbar-track{height:7px;background:var(--bg-muted);border-radius:4px;overflow:hidden}
+    .pbar-fill{height:100%;border-radius:4px;transition:width .55s cubic-bezier(.4,0,.2,1)}
+    /* Scoring list */
+    .lb-row{display:grid;grid-template-columns:1.8rem 1fr 4rem;align-items:center;gap:.6rem;padding:.55rem .6rem;border-radius:var(--radius);transition:background .15s}
+    .lb-row:hover{background:var(--bg-muted)}
+    .lb-rank{font-family:'Teko',sans-serif;font-weight:700;font-size:1.05rem;color:var(--text-muted);text-align:center}
+    .lb-score{font-family:'Teko',sans-serif;font-weight:700;font-size:1.1rem;color:var(--game-primary);text-align:right}
+    body.theme-dark .lb-score{color:#7AABFF}
+    .still-in{display:inline-block;font-family:'Teko',sans-serif;font-size:.65rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;padding:.12em .45em;border-radius:.25rem;background:rgba(26,122,69,.15);color:#1A7A45;margin-left:.3rem}
+    .sbar{display:flex;height:5px;background:var(--bg-muted);border-radius:3px;overflow:hidden;margin-top:.25rem}
+    .sbar-g{background:var(--game-primary)} .sbar-k{background:var(--game-accent)}
+    /* Combo rows */
+    .combo-row{display:flex;align-items:center;justify-content:space-between;padding:.45rem .6rem;border-radius:var(--radius);transition:background .15s}
+    .combo-row:hover{background:var(--bg-muted)}
+    .combo-count{font-family:'Teko',sans-serif;font-weight:700;font-size:.95rem;color:var(--game-primary);text-align:right;white-space:nowrap}
+    body.theme-dark .combo-count{color:#7AABFF}
+    /* Impact list */
+    .imp-row{display:flex;align-items:center;justify-content:space-between;padding:.4rem .6rem;border-radius:var(--radius);transition:background .15s;margin-bottom:.15rem}
+    .imp-row:hover{background:var(--bg-muted)}
+    /* Tweaks */
+    .tweaks-panel{position:fixed;bottom:1.5rem;right:1.5rem;z-index:9999;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);box-shadow:var(--shadow-md);padding:1.25rem;min-width:220px;display:none;transition:background .3s}
+    .tweaks-panel.open{display:block}
+    .tw-title{font-family:'Teko',sans-serif;font-weight:700;font-size:1.05rem;letter-spacing:.08em;text-transform:uppercase;color:var(--text-primary);margin-bottom:.9rem;padding-bottom:.5rem;border-bottom:1px solid var(--border)}
+    .tw-label{font-family:'Teko',sans-serif;font-size:.72rem;font-weight:500;letter-spacing:.09em;text-transform:uppercase;color:var(--text-muted);display:block;margin-bottom:.3rem;margin-top:.75rem}
+    .tw-row{display:flex;gap:.35rem}
+    .tw-btn{font-family:'Teko',sans-serif;font-weight:500;font-size:.78rem;letter-spacing:.05em;text-transform:uppercase;padding:.28rem .65rem;border-radius:var(--radius);border:1px solid var(--border);background:var(--bg-muted);color:var(--text-secondary);cursor:pointer;transition:all .15s}
+    .tw-btn.active{background:var(--game-primary);border-color:var(--game-primary);color:#fff}
+    .tw-select{width:100%;padding:.3rem .5rem;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-muted);color:var(--text-primary);font-family:'Teko',sans-serif;font-size:.82rem;margin-top:.3rem;cursor:pointer}
+    footer{background:linear-gradient(90deg,var(--platform-primary-dark) 0%,var(--platform-primary) 100%);color:rgba(255,255,255,.4);border-top:3px solid var(--platform-accent);font-family:'Teko',sans-serif;font-size:.9rem;letter-spacing:.06em;text-transform:uppercase;padding:1.25rem 0;margin-top:auto;text-align:center}
+    @keyframes fadeInUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+    .anim{animation:fadeInUp .4s ease both}
+    .chart-wrap{position:relative}
+    @media(max-width:767px){.page-hero h1{font-size:2rem}.kpi-value{font-size:2rem}.tab-bar{top:86px}}
+  </style>
+</head>
+<body class="game-worldcup">
+
+<!-- ── Navbar ── -->
+<nav class="navbar navbar-expand-lg navbar-dark">
+  <div class="container">
+    <a class="navbar-brand" href="#"><i class="bi bi-trophy-fill me-1"></i><span class="d-none d-md-inline">The Commissioner's Club</span><span class="d-md-none">TCC</span></a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nav"><span class="navbar-toggler-icon"></span></button>
+    <div class="collapse navbar-collapse" id="nav">
+      <ul class="navbar-nav me-auto">
+        <li class="nav-item"><a class="nav-link active" href="#">World Cup</a></li>
+        <li class="nav-item"><a class="nav-link" href="#">Golf</a></li>
+        <li class="nav-item"><a class="nav-link" href="#">CFB</a></li>
+      </ul>
+      <ul class="navbar-nav">
+        <li class="nav-item"><a class="nav-link" href="#">Login</a></li>
+        <li class="nav-item ms-1"><a class="btn btn-warning btn-sm" href="#">Join Now</a></li>
+      </ul>
+    </div>
+  </div>
+</nav>
+
+<!-- ── Subnav ── -->
+<div class="game-subnav">
+  <div class="container">
+    <a class="subnav-game-label" href="#">⚽ WC 2026</a>
+    <div class="subnav-pills">
+      <a class="subnav-pill" href="#">Dashboard</a>
+      <a class="subnav-pill" href="#">Leaderboard</a>
+      <a class="subnav-pill" href="#">Schedule</a>
+      <a class="subnav-pill" href="#">Groups</a>
+      <a class="subnav-pill active" href="#">Stats Hub</a>
+      <a class="subnav-pill" href="#">My Picks</a>
+      <a class="subnav-pill" href="#">Rules</a>
+    </div>
+  </div>
+</div>
+
+<!-- ── Hero ── -->
+<div class="page-hero">
+  <div class="container">
+    <div class="d-flex align-items-center gap-3 mb-2 flex-wrap">
+      <span class="phase-chip"><span class="phase-dot"></span>Quarterfinals Complete</span>
+      <span style="color:rgba(255,255,255,.4);font-family:'Teko',sans-serif;font-size:.82rem;letter-spacing:.07em;text-transform:uppercase;">Semifinals · June 28–29, 2026</span>
+    </div>
+    <h1 class="mb-1" style="font-size:2.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;">Stats Hub</h1>
+    <p class="mb-0" style="color:rgba(255,255,255,.6);font-size:1rem;">35 players · 315 picks locked · Full tournament analytics</p>
+  </div>
+</div>
+
+<!-- ── Tab Bar ── -->
+<div class="tab-bar">
+  <div class="container p-0">
+    <div class="tab-bar-inner">
+      <button class="tab-btn active" onclick="switchTab('overview')">Overview</button>
+      <button class="tab-btn" onclick="switchTab('selection')">Selection</button>
+      <button class="tab-btn" onclick="switchTab('scoring')">Scoring</button>
+      <button class="tab-btn" onclick="switchTab('tiers')">Tier Performance</button>
+      <button class="tab-btn" onclick="switchTab('impact')">Portfolio Impact</button>
+      <button class="tab-btn" onclick="switchTab('combos')">Pick Combos</button>
+    </div>
+  </div>
+</div>
+
+<main>
+<div class="container pb-5">
+
+  <!-- ════ OVERVIEW ════ -->
+  <div id="tab-overview" class="tab-panel active pt-4 pb-5">
+    <div class="row g-3">
+      <div class="col-6 col-md-3"><div class="kpi-block anim" style="border-top-color:var(--game-primary);">
+        <div class="kpi-value">35</div><div class="kpi-label">Players Enrolled</div><div class="kpi-sub">Picks locked Jun 11</div>
+      </div></div>
+      <div class="col-6 col-md-3"><div class="kpi-block anim" style="animation-delay:.06s;border-top-color:var(--game-accent);">
+        <div class="kpi-value">4</div><div class="kpi-label">Teams Still Active</div><div class="kpi-sub">Spain · Morocco · USA · NED</div>
+      </div></div>
+      <div class="col-6 col-md-3"><div class="kpi-block anim" style="animation-delay:.12s;border-top-color:var(--wc-tier3);">
+        <div class="kpi-value">117.5</div><div class="kpi-label">Top Country Score</div><div class="kpi-sub">Morocco · Tier 3 · ×2.5</div>
+      </div></div>
+      <div class="col-6 col-md-3"><div class="kpi-block anim" style="animation-delay:.18s;border-top-color:var(--wc-tier5);">
+        <div class="kpi-value">2,061</div><div class="kpi-label">Total Pts Awarded</div><div class="kpi-sub">Group + Knockout combined</div>
+      </div></div>
+    </div>
+    <!-- quick phase timeline -->
+    <div class="stat-card mt-4 anim" style="animation-delay:.24s;">
+      <div class="card-head"><span>Tournament Progress</span><span style="font-family:'Teko',sans-serif;font-size:.75rem;color:var(--text-muted);">Jun 11 – Jul 19 · 104 matches</span></div>
+      <div class="d-flex gap-0 align-items-stretch" style="border-radius:var(--radius);overflow:hidden;height:36px;font-family:'Teko',sans-serif;font-size:.78rem;letter-spacing:.05em;text-transform:uppercase;">
+        <div style="background:var(--game-primary);color:#fff;display:flex;align-items:center;justify-content:center;flex:3;padding:0 .75rem;">Group Stage ✓</div>
+        <div style="background:var(--game-primary-light);color:#fff;display:flex;align-items:center;justify-content:center;flex:1;padding:0 .75rem;">R32 ✓</div>
+        <div style="background:var(--game-accent);color:#fff;display:flex;align-items:center;justify-content:center;flex:1;padding:0 .75rem;">R16 ✓</div>
+        <div style="background:#B45309;color:#fff;display:flex;align-items:center;justify-content:center;flex:1;padding:0 .75rem;">QF ✓</div>
+        <div style="background:rgba(212,168,32,.2);color:var(--platform-accent);border:2px solid var(--platform-accent);display:flex;align-items:center;justify-content:center;flex:1;padding:0 .75rem;font-weight:700;">SF ←</div>
+        <div style="background:var(--bg-muted);color:var(--text-muted);display:flex;align-items:center;justify-content:center;flex:1;padding:0 .75rem;">Final</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════ SELECTION STATS ════ -->
+  <div id="tab-selection" class="tab-panel pt-4 pb-5">
+    <h2 class="sec-heading">Selection Stats</h2>
+    <p class="sec-sub">How 35 players distributed their 315 picks — who the field trusts, who they ignored</p>
+
+    <div class="row g-4 mb-4">
+      <div class="col-lg-6">
+        <div class="stat-card">
+          <div class="card-head"><span>Most Popular Picks</span><span style="font-family:'Teko',sans-serif;font-size:.72rem;color:var(--text-muted);">% of 35 players</span></div>
+          <div id="bars-popular"></div>
+        </div>
+      </div>
+      <div class="col-lg-6">
+        <div class="stat-card">
+          <div class="card-head"><span>Least Popular Picks</span><span style="font-family:'Teko',sans-serif;font-size:.72rem;color:var(--text-muted);">Hidden gems?</span></div>
+          <div id="bars-unpopular"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tier breakdowns -->
+    <div class="stat-card">
+      <div class="card-head"><span>Pick Distribution by Tier</span></div>
+      <div class="row g-4">
+        <div class="col-md-6">
+          <div id="bars-t1"></div>
+        </div>
+        <div class="col-md-6">
+          <div id="bars-t2"></div>
+        </div>
+        <div class="col-12">
+          <div id="bars-t3"></div>
+        </div>
+        <div class="col-md-6">
+          <div id="bars-t4"></div>
+        </div>
+        <div class="col-md-6">
+          <div id="bars-t5"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════ SCORING ════ -->
+  <div id="tab-scoring" class="tab-panel pt-4 pb-5">
+    <h2 class="sec-heading">Country Scoring</h2>
+    <p class="sec-sub">Multiplied points earned — group stage (navy) stacked with knockout rounds (red)</p>
+    <div class="row g-4">
+      <div class="col-xl-8">
+        <div class="stat-card">
+          <div class="card-head">
+            <span>Top Scorers</span>
+            <span style="display:flex;gap:.6rem;align-items:center;font-family:'Teko',sans-serif;font-size:.72rem;">
+              <span style="display:flex;align-items:center;gap:.3rem;"><span style="width:10px;height:10px;border-radius:2px;background:var(--game-primary);display:inline-block;"></span>Group</span>
+              <span style="display:flex;align-items:center;gap:.3rem;"><span style="width:10px;height:10px;border-radius:2px;background:var(--game-accent);display:inline-block;"></span>Knockout</span>
+            </span>
+          </div>
+          <div id="scoring-list"></div>
+        </div>
+      </div>
+      <div class="col-xl-4">
+        <div class="stat-card">
+          <div class="card-head"><span>Pts Breakdown</span></div>
+          <div class="chart-wrap" style="height:260px;"><canvas id="ch-accum"></canvas></div>
+          <div class="mt-3" style="font-family:'Teko',sans-serif;font-size:.8rem;color:var(--text-muted);letter-spacing:.04em;text-transform:uppercase;">
+            <div class="d-flex justify-content-between mb-1"><span>Group Stage</span><strong style="color:var(--game-primary);">814 pts</strong></div>
+            <div class="d-flex justify-content-between mb-1"><span>Knockout Rounds</span><strong style="color:var(--game-accent);">1,247 pts</strong></div>
+            <div class="d-flex justify-content-between pt-2" style="border-top:1px solid var(--border);"><span>Total Awarded</span><strong style="color:var(--text-primary);">2,061 pts</strong></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════ TIER PERFORMANCE ════ -->
+  <div id="tab-tiers" class="tab-panel pt-4 pb-5">
+    <h2 class="sec-heading">Tier Performance</h2>
+    <p class="sec-sub">Which multiplier tiers are delivering — average multiplied score per country within each tier</p>
+    <div class="row g-3 mb-4" id="tier-kpis"></div>
+    <div class="row g-4">
+      <div class="col-lg-7">
+        <div class="stat-card">
+          <div class="card-head"><span>Avg Multiplied Score by Tier</span></div>
+          <div class="chart-wrap" style="height:260px;"><canvas id="ch-tier-bar"></canvas></div>
+        </div>
+      </div>
+      <div class="col-lg-5">
+        <div class="stat-card">
+          <div class="card-head"><span>Total Points by Tier</span></div>
+          <div class="chart-wrap" style="height:260px;"><canvas id="ch-tier-donut"></canvas></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════ PORTFOLIO IMPACT ════ -->
+  <div id="tab-impact" class="tab-panel pt-4 pb-5">
+    <h2 class="sec-heading">Portfolio Impact</h2>
+    <p class="sec-sub">Countries mapped by selection popularity vs. score — find the carries, gems, and dead weight</p>
+    <div class="row g-4">
+      <div class="col-xl-8">
+        <div class="stat-card">
+          <div class="card-head">
+            <span>Popularity vs. Score (bubble = # of players)</span>
+            <span style="display:flex;gap:.75rem;font-family:'Teko',sans-serif;font-size:.7rem;letter-spacing:.04em;text-transform:uppercase;color:var(--text-muted);">
+              <span>High pick % + high score = <strong style="color:#1A7A45;">carrying</strong></span>
+              <span>Low pick % + high score = <strong style="color:var(--platform-accent);">gem</strong></span>
+            </span>
+          </div>
+          <div class="chart-wrap" style="height:380px;"><canvas id="ch-scatter"></canvas></div>
+        </div>
+      </div>
+      <div class="col-xl-4 d-flex flex-column gap-4">
+        <div class="stat-card">
+          <div class="card-head"><span>🟢 Helping Most Players</span></div>
+          <div id="help-list"></div>
+        </div>
+        <div class="stat-card">
+          <div class="card-head"><span>🔴 Disappointing Most</span></div>
+          <div id="hurt-list"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════ PICK COMBOS ════ -->
+  <div id="tab-combos" class="tab-panel pt-4 pb-5">
+    <h2 class="sec-heading">Pick Combos &amp; Overlap</h2>
+    <p class="sec-sub">Most common team pairings within tiers — how many players share the same picks</p>
+    <div class="row g-4">
+      <div class="col-lg-6"><div class="stat-card"><div class="card-head"><span>Tier 1 Pairs</span><span class="tb tb-1">Favorites</span></div><div id="combos-t1"></div></div></div>
+      <div class="col-lg-6"><div class="stat-card"><div class="card-head"><span>Tier 3 Pairs</span><span class="tb tb-3">Dark Horses</span></div><div id="combos-t3"></div></div></div>
+      <div class="col-lg-6"><div class="stat-card"><div class="card-head"><span>Tier 4 Pairs</span><span class="tb tb-4">Underdogs</span></div><div id="combos-t4"></div></div></div>
+      <div class="col-lg-6"><div class="stat-card"><div class="card-head"><span>Tier 5 Pairs</span><span class="tb tb-5">Wildcards</span></div><div id="combos-t5"></div></div></div>
+    </div>
+  </div>
+
+</div><!-- /container -->
+</main>
+
+<footer>&copy; 2026 The Commissioner's Club</footer>
+
+<!-- ── Tweaks Panel ── -->
+<div class="tweaks-panel" id="tweaks-panel">
+  <div class="tw-title">Tweaks</div>
+
+  <span class="tw-label">Theme</span>
+  <div class="tw-row">
+    <button class="tw-btn active" id="tw-light" onclick="setTheme('light')">Light</button>
+    <button class="tw-btn" id="tw-dark" onclick="setTheme('dark')">Dark</button>
+  </div>
+
+  <span class="tw-label">Data Display</span>
+  <div class="tw-row">
+    <button class="tw-btn active" id="tw-visual" onclick="setMode('visual')">Charts</button>
+    <button class="tw-btn" id="tw-table" onclick="setMode('table')">Tables</button>
+  </div>
+
+  <span class="tw-label">Highlight My Picks</span>
+  <select class="tw-select" id="tw-picks" onchange="setHighlight(this.value)">
+    <option value="">— Select a portfolio —</option>
+    <option value="Spain,France,Netherlands,USA,Morocco,Canada,Austria,Iran,Australia">Spain+France / NED / USA+Morocco / CAN+AUT / IRN+AUS</option>
+    <option value="Spain,Argentina,Norway,Morocco,Japan,Scotland,South Korea,Iran,Australia">Spain+ARG / NOR / MOR+JAP / SCO+KOR / IRN+AUS</option>
+    <option value="France,Argentina,Colombia,USA,Croatia,Canada,Austria,Iran,Tunisia">FRA+ARG / COL / USA+CRO / CAN+AUT / IRN+TUN</option>
+  </select>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+// ── DATA ─────────────────────────────────────────────────────
+const N = 35;
+const TC = {1:'#D97706',2:'#4B7399',3:'#B45309',4:'#0D7377',5:'#9333EA'};
+const TN = {1:'Favorites',2:'Contenders',3:'Dark Horses',4:'Underdogs',5:'Wildcards'};
+const TM = {1:1,2:1.5,3:2.5,4:4,5:7};
+
+const COUNTRIES = [
+  // Tier 1 (×1) – pick 2
+  {name:'Spain',        t:1,picks:23,gb:13,kb:34,active:true},
+  {name:'France',       t:1,picks:18,gb:10,kb:19,active:false},
+  {name:'Argentina',    t:1,picks:14,gb:12,kb:19,active:false},
+  {name:'England',      t:1,picks:8, gb:7, kb:8, active:false},
+  {name:'Germany',      t:1,picks:2, gb:11,kb:19,active:false},
+  {name:'Brazil',       t:1,picks:4, gb:9, kb:0, active:false},
+  {name:'Portugal',     t:1,picks:1, gb:8, kb:8, active:false},
+  // Tier 2 (×1.5) – pick 1
+  {name:'Netherlands',  t:2,picks:18,gb:12,kb:34,active:true},
+  {name:'Norway',       t:2,picks:12,gb:12,kb:8, active:false},
+  {name:'Colombia',     t:2,picks:3, gb:9, kb:8, active:false},
+  {name:'Belgium',      t:2,picks:2, gb:4, kb:0, active:false},
+  // Tier 3 (×2.5) – pick 2
+  {name:'USA',          t:3,picks:15,gb:11,kb:34,active:true},
+  {name:'Morocco',      t:3,picks:12,gb:13,kb:34,active:true},
+  {name:'Japan',        t:3,picks:10,gb:10,kb:19,active:false},
+  {name:'Croatia',      t:3,picks:8, gb:8, kb:8, active:false},
+  {name:'Uruguay',      t:3,picks:7, gb:9, kb:0, active:false},
+  {name:'Türkiye',      t:3,picks:5, gb:7, kb:8, active:false},
+  {name:'Sweden',       t:3,picks:4, gb:3, kb:0, active:false},
+  {name:'Mexico',       t:3,picks:3, gb:4, kb:0, active:false},
+  {name:'Ecuador',      t:3,picks:2, gb:4, kb:0, active:false},
+  {name:'Switzerland',  t:3,picks:2, gb:1, kb:8, active:false},
+  {name:'Senegal',      t:3,picks:2, gb:7, kb:0, active:false},
+  // Tier 4 (×4) – pick 2
+  {name:'Canada',       t:4,picks:16,gb:8, kb:19,active:false},
+  {name:'Austria',      t:4,picks:12,gb:10,kb:8, active:false},
+  {name:'South Korea',  t:4,picks:10,gb:4, kb:0, active:false},
+  {name:'Scotland',     t:4,picks:8, gb:4, kb:8, active:false},
+  {name:"Côte d'Ivoire",t:4,picks:7, gb:7, kb:0, active:false},
+  {name:'Ghana',        t:4,picks:5, gb:1, kb:8, active:false},
+  {name:'Algeria',      t:4,picks:4, gb:3, kb:0, active:false},
+  {name:'Czechia',      t:4,picks:3, gb:0, kb:0, active:false},
+  {name:'Egypt',        t:4,picks:2, gb:4, kb:0, active:false},
+  {name:'Paraguay',     t:4,picks:2, gb:1, kb:0, active:false},
+  {name:'Bosnia',       t:4,picks:1, gb:3, kb:0, active:false},
+  // Tier 5 (×7) – pick 2
+  {name:'Iran',         t:5,picks:20,gb:8, kb:8, active:false},
+  {name:'Australia',    t:5,picks:18,gb:4, kb:8, active:false},
+  {name:'Tunisia',      t:5,picks:10,gb:1, kb:0, active:false},
+  {name:'South Africa', t:5,picks:8, gb:4, kb:0, active:false},
+  {name:'Saudi Arabia', t:5,picks:5, gb:3, kb:0, active:false},
+  {name:'Panama',       t:5,picks:3, gb:0, kb:0, active:false},
+  {name:'Qatar',        t:5,picks:2, gb:1, kb:0, active:false},
+  {name:'New Zealand',  t:5,picks:2, gb:0, kb:0, active:false},
+  {name:'Cape Verde',   t:5,picks:1, gb:4, kb:0, active:false},
+  {name:'Curaçao',      t:5,picks:1, gb:0, kb:0, active:false},
+];
+COUNTRIES.forEach(c=>{
+  const m=TM[c.t];
+  c.gs=c.gb*m; c.ks=c.kb*m; c.total=c.gs+c.ks;
+  c.pct=Math.round(c.picks/N*100);
+});
+
+// ── STATE ────────────────────────────────────────────────────
+let hlTeams=[];
+let currentMode='visual';
+
+// ── HELPERS ──────────────────────────────────────────────────
+const tb=(t)=>`<span class="tb tb-${t}">T${t}</span>`;
+const tbl=(t)=>`<span class="tb tb-${t}">T${t} · ${TN[t]}</span>`;
+
+function pbarHtml(c,maxPct){
+  const hl=hlTeams.includes(c.name);
+  const fill=Math.max(2,(c.pct/maxPct)*100);
+  return `<div class="pbar-wrap${hl?' my-pick':''}">
+    <div class="pbar-label">
+      <span>${c.name} ${hl?'<span style="color:var(--platform-accent)">★</span>':''} ${tb(c.t)}</span>
+      <span style="font-family:'Teko',sans-serif;font-weight:700;color:${TC[c.t]};">${c.pct}%</span>
+    </div>
+    <div class="pbar-track"><div class="pbar-fill" style="width:${fill}%;background:${TC[c.t]};"></div></div>
+  </div>`;
+}
+
+function tierHeader(t){
+  return `<div style="font-family:'Teko',sans-serif;font-weight:700;font-size:.9rem;letter-spacing:.06em;text-transform:uppercase;color:${TC[t]};margin-bottom:.65rem;">${tbl(t)} <span style="color:var(--text-muted);font-weight:500;">×${TM[t]} multiplier</span></div>`;
+}
+
+// ── RENDER: SELECTION ─────────────────────────────────────────
+function renderSelection(){
+  const sorted=[...COUNTRIES].sort((a,b)=>b.picks-a.picks).filter(c=>c.picks>0);
+  const top=sorted.slice(0,10);
+  const bot=[...COUNTRIES].filter(c=>c.picks>0&&c.picks<=4).sort((a,b)=>a.picks-b.picks).slice(0,8);
+  document.getElementById('bars-popular').innerHTML=top.map(c=>pbarHtml(c,top[0].pct)).join('');
+  document.getElementById('bars-unpopular').innerHTML=bot.map(c=>pbarHtml(c,Math.max(...bot.map(x=>x.pct))+4)).join('');
+  [1,2,3,4,5].forEach(t=>{
+    const tc=COUNTRIES.filter(c=>c.t===t).sort((a,b)=>b.picks-a.picks);
+    const mx=tc[0]?.pct||10;
+    document.getElementById(`bars-t${t}`).innerHTML=tierHeader(t)+tc.map(c=>pbarHtml(c,mx)).join('');
+  });
+}
+
+// ── RENDER: SCORING LIST ──────────────────────────────────────
+function renderScoring(){
+  const sorted=[...COUNTRIES].sort((a,b)=>b.total-a.total).slice(0,16);
+  const mx=sorted[0].total||1;
+  document.getElementById('scoring-list').innerHTML=sorted.map((c,i)=>{
+    const hl=hlTeams.includes(c.name);
+    const gf=Math.max(1,c.gs/mx*100);
+    const kf=Math.max(0,c.ks/mx*100);
+    return `<div class="lb-row${hl?' my-pick':''}">
+      <div class="lb-rank">${i+1}</div>
+      <div>
+        <div style="font-family:'Teko',sans-serif;font-weight:600;font-size:.95rem;color:var(--text-primary);">
+          ${c.name}${hl?' <span style="color:var(--platform-accent)">★</span>':''} ${tb(c.t)}${c.active?'<span class="still-in ms-1">In SF</span>':''}
+        </div>
+        <div class="sbar" style="margin-top:.2rem;">
+          <div class="sbar-g" style="width:${gf}%;"></div>
+          <div class="sbar-k" style="width:${kf}%;"></div>
+        </div>
+        <div style="font-family:'Teko',sans-serif;font-size:.68rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;margin-top:.1rem;">Grp: ${c.gs} · KO: ${c.ks}</div>
+      </div>
+      <div class="lb-score">${c.total}</div>
+    </div>`;
+  }).join('');
+}
+
+// ── RENDER: TIER KPIS ─────────────────────────────────────────
+function renderTierKPIs(){
+  document.getElementById('tier-kpis').innerHTML=[1,2,3,4,5].map(t=>{
+    const tc=COUNTRIES.filter(c=>c.t===t);
+    const avg=tc.reduce((s,c)=>s+c.total,0)/tc.length;
+    const best=tc.reduce((a,b)=>a.total>b.total?a:b);
+    return `<div class="col-6 col-md">
+      <div class="kpi-block" style="border-top-color:${TC[t]};">
+        <div class="kpi-value" style="font-size:1.9rem;">${avg.toFixed(1)}</div>
+        <div class="kpi-label">${tbl(t)}</div>
+        <div class="kpi-sub">Best: ${best.name} (${best.total})</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── RENDER: IMPACT ────────────────────────────────────────────
+function renderImpact(){
+  const withScore=COUNTRIES.filter(c=>c.total>0&&c.picks>0);
+  const byImpact=withScore.map(c=>({...c,impact:c.picks*c.total})).sort((a,b)=>b.impact-a.impact);
+  document.getElementById('help-list').innerHTML=byImpact.slice(0,5).map(c=>`
+    <div class="imp-row">
+      <div><span style="font-family:'Teko',sans-serif;font-weight:600;">${c.name}</span> ${tb(c.t)}</div>
+      <div style="text-align:right;">
+        <div class="combo-count">${c.pct}% · ${c.total}pts</div>
+        <div style="font-family:'Teko',sans-serif;font-size:.7rem;color:var(--text-muted);">Impact: ${c.impact.toFixed(0)}</div>
+      </div>
+    </div>`).join('');
+
+  const byDisappoint=COUNTRIES.filter(c=>c.picks>=4).map(c=>({...c,ratio:c.total/c.picks})).sort((a,b)=>a.ratio-b.ratio);
+  document.getElementById('hurt-list').innerHTML=byDisappoint.slice(0,5).map(c=>`
+    <div class="imp-row">
+      <div><span style="font-family:'Teko',sans-serif;font-weight:600;">${c.name}</span> ${tb(c.t)}</div>
+      <div style="text-align:right;">
+        <div class="combo-count" style="color:var(--game-accent);">${c.pct}% · ${c.total}pts</div>
+      </div>
+    </div>`).join('');
+}
+
+// ── RENDER: COMBOS ────────────────────────────────────────────
+function renderCombos(){
+  const t1=[{teams:['Spain','France'],n:15},{teams:['Spain','Argentina'],n:11},{teams:['France','Argentina'],n:7},{teams:['Spain','England'],n:4},{teams:['France','England'],n:3}];
+  const t3=[{teams:['USA','Morocco'],n:9},{teams:['Morocco','Japan'],n:7},{teams:['USA','Croatia'],n:6},{teams:['Morocco','Croatia'],n:5},{teams:['USA','Japan'],n:5}];
+  const t4=[{teams:['Canada','Austria'],n:11},{teams:['Canada','South Korea'],n:7},{teams:['Austria','South Korea'],n:6},{teams:['Canada','Scotland'],n:5},{teams:['Austria','Scotland'],n:4}];
+  const t5=[{teams:['Iran','Australia'],n:17},{teams:['Iran','Tunisia'],n:5},{teams:['Australia','Tunisia'],n:3},{teams:['Iran','South Africa'],n:3},{teams:['Australia','South Africa'],n:2}];
+
+  function renderList(combos,containerId,tierNum){
+    const mx=combos[0].n;
+    document.getElementById(containerId).innerHTML=combos.map(combo=>{
+      const pct=Math.round(combo.n/N*100);
+      const hl=combo.teams.every(t=>hlTeams.includes(t));
+      return `<div class="combo-row${hl?' my-pick':''}">
+        <div style="display:flex;flex-wrap:wrap;gap:.3rem;align-items:center;">
+          ${combo.teams.map(t=>`<strong style="font-family:'Teko',sans-serif;">${t}</strong>`).join('<span style="color:var(--text-muted);margin:0 .1rem;">+</span>')}
+          ${hl?'<span style="color:var(--platform-accent);font-family:\'Teko\',sans-serif;font-size:.8rem;">★ Your picks</span>':''}
+        </div>
+        <div style="text-align:right;">
+          <div class="combo-count">${combo.n} players</div>
+          <div style="font-family:'Teko',sans-serif;font-size:.68rem;color:var(--text-muted);">${pct}% of field</div>
+        </div>
+      </div>
+      <div style="height:3px;background:var(--bg-muted);border-radius:2px;overflow:hidden;margin:0 .6rem .4rem;">
+        <div style="height:100%;width:${(combo.n/mx)*100}%;background:${TC[tierNum]};border-radius:2px;"></div>
+      </div>`;
+    }).join('');
+  }
+  renderList(t1,'combos-t1',1);
+  renderList(t3,'combos-t3',3);
+  renderList(t4,'combos-t4',4);
+  renderList(t5,'combos-t5',5);
+}
+
+// ── CHARTS (lazy per tab) ───────────────────────────────────
+const chartsInitialized=new Set();
+let charts={};
+
+function initAccumChart(){
+  Chart.defaults.font.family='Teko';
+  charts.accum=new Chart(document.getElementById('ch-accum'),{
+    type:'doughnut',
+    data:{labels:['Group Stage','Knockout Rounds'],datasets:[{data:[814,1247],backgroundColor:['#002868','#BF0A30'],borderWidth:0,hoverOffset:4}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'70%',
+      plugins:{legend:{position:'bottom',labels:{font:{size:12},color:'#8A849B',padding:14,boxWidth:12}},
+      tooltip:{callbacks:{label:ctx=>` ${ctx.label}: ${ctx.parsed} pts`}}}}
+  });
+}
+function initTierCharts(){
+  Chart.defaults.font.family='Teko';
+
+  const tierAvgs=[1,2,3,4,5].map(t=>{const tc=COUNTRIES.filter(c=>c.t===t);return tc.reduce((s,c)=>s+c.total,0)/tc.length});
+  charts.tierBar=new Chart(document.getElementById('ch-tier-bar'),{
+    type:'bar',
+    data:{labels:['T1 ×1','T2 ×1.5','T3 ×2.5','T4 ×4','T5 ×7'],
+      datasets:[{label:'Avg Score',data:tierAvgs,backgroundColor:[TC[1],TC[2],TC[3],TC[4],TC[5]],borderRadius:5,borderWidth:0}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>` ${ctx.parsed.y.toFixed(1)} avg pts`}}},
+      scales:{x:{grid:{display:false},ticks:{font:{size:12}}},y:{grid:{color:'rgba(0,0,0,.05)'},ticks:{font:{size:11}}}}}
+  });
+
+  // Tier donut
+  const tierTotals=[1,2,3,4,5].map(t=>COUNTRIES.filter(c=>c.t===t).reduce((s,c)=>s+c.total,0));
+  charts.tierDonut=new Chart(document.getElementById('ch-tier-donut'),{
+    type:'doughnut',
+    data:{labels:['T1 Favorites','T2 Contenders','T3 Dark Horses','T4 Underdogs','T5 Wildcards'],
+      datasets:[{data:tierTotals,backgroundColor:[TC[1],TC[2],TC[3],TC[4],TC[5]],borderWidth:0,hoverOffset:5}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'62%',
+      plugins:{legend:{position:'bottom',labels:{font:{size:11},padding:10,boxWidth:11,color:'#8A849B'}},
+      tooltip:{callbacks:{label:ctx=>` ${ctx.label}: ${ctx.parsed} pts`}}}}
+  });
+
+  // Bubble scatter: x=pct, y=score
+  const datasets=[1,2,3,4,5].map(t=>({
+    label:`Tier ${t}`,
+    data:COUNTRIES.filter(c=>c.t===t&&c.picks>0).map(c=>({x:c.pct,y:c.total,r:Math.max(5,Math.sqrt(c.picks)*3.2),name:c.name})),
+    backgroundColor:TC[t]+'BB',borderColor:TC[t],borderWidth:1.5
+  }));
+  charts.scatter=new Chart(document.getElementById('ch-scatter'),{
+    type:'bubble',data:{datasets},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'right',labels:{font:{size:12},padding:12,boxWidth:11}},
+      tooltip:{callbacks:{label:ctx=>` ${ctx.raw.name}: ${ctx.raw.x}% picked · ${ctx.raw.y} pts`}}},
+      scales:{
+        x:{title:{display:true,text:'% of Players Who Picked',font:{size:12},color:'#8A849B'},grid:{color:'rgba(0,0,0,.05)'},ticks:{font:{size:11},callback:v=>v+'%'},min:0,max:75},
+        y:{title:{display:true,text:'Multiplied Points',font:{size:12},color:'#8A849B'},grid:{color:'rgba(0,0,0,.05)'},ticks:{font:{size:11}},min:0}
+      }}
+  });
+
+  const scatterPlugin={id:'quadrant',afterDraw(chart){
+    const {ctx,chartArea:{left,right,top,bottom},scales:{x,y}}=chart;
+    const mx=x.getPixelForValue(37);const my=y.getPixelForValue(50);
+    ctx.save();ctx.setLineDash([4,4]);ctx.strokeStyle='rgba(0,0,0,.12)';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(mx,top);ctx.lineTo(mx,bottom);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(left,my);ctx.lineTo(right,my);ctx.stroke();
+    ctx.restore();
+    const labels=[{text:'📈 High demand,\nhigh return',x:right-20,y:top+30,align:'right'},{text:'💎 Hidden gem',x:left+20,y:top+30,align:'left'},{text:'💀 Deadweight',x:right-20,y:bottom-16,align:'right'},{text:'🎲 Longshot',x:left+20,y:bottom-16,align:'left'}];
+    ctx.save();ctx.font='700 10px Teko';ctx.fillStyle='rgba(0,0,0,.25)';
+    labels.forEach(l=>{ctx.textAlign=l.align;ctx.fillText(l.text,l.x,l.y);});
+    ctx.restore();
+  }};
+  Chart.register(scatterPlugin);
+  charts.scatter.update();
+}
+
+// ── TWEAKS ───────────────────────────────────────────────────
+const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+  "theme": "dark",
+  "mode": "visual",
+  "highlight": "Spain,France,Netherlands,USA,Morocco,Canada,Austria,Iran,Australia"
+}/*EDITMODE-END*/;
+
+function setTheme(t){
+  document.body.classList.toggle('theme-dark',t==='dark');
+  document.getElementById('tw-light').classList.toggle('active',t==='light');
+  document.getElementById('tw-dark').classList.toggle('active',t==='dark');
+  window.parent.postMessage({type:'__edit_mode_set_keys',edits:{theme:t}},'*');
+}
+function setMode(m){
+  currentMode=m;
+  document.getElementById('tw-visual').classList.toggle('active',m==='visual');
+  document.getElementById('tw-table').classList.toggle('active',m==='table');
+  document.querySelectorAll('.chart-wrap').forEach(el=>{el.style.display=m==='visual'?'':'none';});
+  window.parent.postMessage({type:'__edit_mode_set_keys',edits:{mode:m}},'*');
+}
+function setHighlight(val){
+  hlTeams=val?val.split(',').map(s=>s.trim()):[];
+  renderSelection();renderScoring();renderImpact();renderCombos();
+  window.parent.postMessage({type:'__edit_mode_set_keys',edits:{highlight:val}},'*');
+}
+
+window.addEventListener('message',e=>{
+  if(e.data?.type==='__activate_edit_mode') document.getElementById('tweaks-panel').classList.add('open');
+  if(e.data?.type==='__deactivate_edit_mode') document.getElementById('tweaks-panel').classList.remove('open');
+});
+window.parent.postMessage({type:'__edit_mode_available'},'*');
+
+// ── TABS ─────────────────────────────────────────────────────
+const TAB_IDS=['overview','selection','scoring','tiers','impact','combos'];
+let activeTab='overview';
+
+function switchTab(id){
+  TAB_IDS.forEach(t=>{
+    document.getElementById('tab-'+t).classList.toggle('active',t===id);
+  });
+  document.querySelectorAll('.tab-btn').forEach((btn,i)=>{
+    btn.classList.toggle('active',TAB_IDS[i]===id);
+  });
+  activeTab=id;
+  setTimeout(()=>{
+    if(id==='scoring'&&!chartsInitialized.has('scoring')){chartsInitialized.add('scoring');initAccumChart();}
+    if(id==='tiers'&&!chartsInitialized.has('tiers')){chartsInitialized.add('tiers');initTierCharts();}
+    if(id==='impact'&&!chartsInitialized.has('impact')){chartsInitialized.add('impact');initScatterChart();}
+  },40);
+  window.scrollTo({top:0,behavior:'instant'});
+  try{localStorage.setItem('wc_stats_tab',id);}catch(e){}
+}
+
+// ── INIT ─────────────────────────────────────────────────────
+renderSelection();
+renderScoring();
+renderTierKPIs();
+renderImpact();
+renderCombos();
+
+try{const saved=localStorage.getItem('wc_stats_tab');if(saved&&TAB_IDS.includes(saved))switchTab(saved);}catch(e){}
+
+if(TWEAK_DEFAULTS.theme==='dark')setTheme('dark');
+if(TWEAK_DEFAULTS.highlight){document.getElementById('tw-picks').value=TWEAK_DEFAULTS.highlight;setHighlight(TWEAK_DEFAULTS.highlight);}
+if(TWEAK_DEFAULTS.mode==='table')setMode('table');
+</script>
+</body>
+</html>
