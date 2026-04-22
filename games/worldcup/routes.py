@@ -489,7 +489,13 @@ def stats():
             user_id=current_user.id, season_year=SEASON_YEAR
         ).first()
         if enrollment:
-            my_picks = [p.team.display_name for p in enrollment.picks]
+            picks = (
+                WorldCupPick.query
+                .filter_by(enrollment_id=enrollment.id)
+                .join(WorldCupTeam)
+                .all()
+            )
+            my_picks = [p.team.display_name for p in picks]
 
     return render_template(
         'worldcup/stats.html',
