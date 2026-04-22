@@ -1,7 +1,610 @@
 {% extends "base.html" %}
 {% block title %}Stats Hub — World Cup Fantasy Pool{% endblock %}
+
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+{% endblock %}
+
 {% block content %}
-<div class="wc-stats-tab-bar"></div>
-<p>Stats Hub</p>
-<script>const MY_PICKS = {{ my_picks | tojson }};</script>
+<script>
+if (window.matchMedia('(prefers-color-scheme: dark)').matches)
+  document.body.classList.add('theme-dark');
+</script>
+
+<!-- ── Hero ── -->
+<div class="page-hero">
+  <div class="container">
+    <div class="d-flex align-items-center gap-3 mb-2 flex-wrap">
+      <span class="phase-chip">
+        <span class="phase-dot"></span>
+        {% if current_phase == 'completed' %}Tournament Complete
+        {% elif current_phase == 'knockout' %}Knockout Stage
+        {% elif current_phase == 'group_stage' %}Group Stage
+        {% else %}Pre-Tournament{% endif %}
+      </span>
+    </div>
+    <h1 class="mb-1" style="font-size:2.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;">Stats Hub</h1>
+    <p class="mb-0" style="color:rgba(255,255,255,.6);font-size:1rem;">
+      {{ kpis.total_players }} player{{ 's' if kpis.total_players != 1 }} &middot; Full tournament analytics
+    </p>
+  </div>
+</div>
+
+<!-- ── Tab Bar ── -->
+<div class="wc-stats-tab-bar">
+  <div class="container p-0">
+    <div class="wc-stats-tab-bar-inner">
+      <button class="wc-stats-tab-btn active" onclick="switchTab('overview')">Overview</button>
+      <button class="wc-stats-tab-btn" onclick="switchTab('selection')">Selection</button>
+      <button class="wc-stats-tab-btn" onclick="switchTab('scoring')">Scoring</button>
+      <button class="wc-stats-tab-btn" onclick="switchTab('tiers')">Tier Performance</button>
+      <button class="wc-stats-tab-btn" onclick="switchTab('impact')">Portfolio Impact</button>
+      <button class="wc-stats-tab-btn" onclick="switchTab('combos')">Pick Combos</button>
+    </div>
+  </div>
+</div>
+
+<main>
+<div class="container pb-5">
+
+  <!-- ════ OVERVIEW ════ -->
+  <div id="tab-overview" class="wc-stats-panel active pt-4 pb-5">
+    <div class="row g-3">
+      <div class="col-6 col-md-3">
+        <div class="wc-kpi-block" style="border-top-color:var(--game-primary);">
+          <div class="wc-kpi-value">{{ kpis.total_players }}</div>
+          <div class="wc-kpi-label">Players Enrolled</div>
+          <div class="wc-kpi-sub">Picks locked Jun 11</div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="wc-kpi-block" style="border-top-color:var(--game-accent);">
+          <div class="wc-kpi-value">{{ kpis.active_countries }}</div>
+          <div class="wc-kpi-label">Teams Still Active</div>
+          <div class="wc-kpi-sub">{{ kpis.top_country_name }} &amp; others</div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="wc-kpi-block" style="border-top-color:var(--wc-tier3);">
+          <div class="wc-kpi-value">{{ kpis.top_country_score | round(1) }}</div>
+          <div class="wc-kpi-label">Top Country Score</div>
+          <div class="wc-kpi-sub">{{ kpis.top_country_name }}</div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="wc-kpi-block" style="border-top-color:var(--wc-tier5);">
+          <div class="wc-kpi-value">{{ kpis.total_pts_awarded | round(0) | int }}</div>
+          <div class="wc-kpi-label">Total Pts Awarded</div>
+          <div class="wc-kpi-sub">Group + Knockout combined</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tournament Progress Bar -->
+    <div class="wc-stat-card mt-4">
+      <div class="wc-card-head">
+        <span>Tournament Progress</span>
+        <span style="font-family:'Teko',sans-serif;font-size:.75rem;color:var(--text-muted);">Jun 11 – Jul 19 · 104 matches</span>
+      </div>
+      <div id="progress-bar-wrap" class="d-flex gap-0 align-items-stretch"
+           style="border-radius:var(--radius);overflow:hidden;height:36px;font-family:'Teko',sans-serif;font-size:.78rem;letter-spacing:.05em;text-transform:uppercase;">
+      </div>
+    </div>
+  </div>
+
+  <!-- ════ SELECTION STATS ════ -->
+  <div id="tab-selection" class="wc-stats-panel pt-4 pb-5">
+    <h2 style="font-family:'Teko',sans-serif;font-size:1.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-primary);margin-bottom:.2rem;">Selection Stats</h2>
+    <p style="color:var(--text-muted);font-size:.9rem;margin-bottom:1.5rem;">How players distributed their picks — who the field trusts, who they ignored</p>
+
+    <div class="row g-4 mb-4">
+      <div class="col-lg-6">
+        <div class="wc-stat-card">
+          <div class="wc-card-head">
+            <span>Most Popular Picks</span>
+            <span style="font-family:'Teko',sans-serif;font-size:.72rem;color:var(--text-muted);">% of players</span>
+          </div>
+          <div id="bars-popular"></div>
+        </div>
+      </div>
+      <div class="col-lg-6">
+        <div class="wc-stat-card">
+          <div class="wc-card-head">
+            <span>Least Popular Picks</span>
+            <span style="font-family:'Teko',sans-serif;font-size:.72rem;color:var(--text-muted);">Hidden gems?</span>
+          </div>
+          <div id="bars-unpopular"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="wc-stat-card">
+      <div class="wc-card-head"><span>Pick Distribution by Tier</span></div>
+      <div class="row g-4">
+        <div class="col-md-6"><div id="bars-t1"></div></div>
+        <div class="col-md-6"><div id="bars-t2"></div></div>
+        <div class="col-12"><div id="bars-t3"></div></div>
+        <div class="col-md-6"><div id="bars-t4"></div></div>
+        <div class="col-md-6"><div id="bars-t5"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════ SCORING ════ -->
+  <div id="tab-scoring" class="wc-stats-panel pt-4 pb-5">
+    <h2 style="font-family:'Teko',sans-serif;font-size:1.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-primary);margin-bottom:.2rem;">Country Scoring</h2>
+    <p style="color:var(--text-muted);font-size:.9rem;margin-bottom:1.5rem;">Multiplied points earned — group stage (navy) stacked with knockout rounds (red)</p>
+    <div class="row g-4">
+      <div class="col-xl-8">
+        <div class="wc-stat-card">
+          <div class="wc-card-head">
+            <span>Top Scorers</span>
+            <span style="display:flex;gap:.6rem;align-items:center;font-family:'Teko',sans-serif;font-size:.72rem;">
+              <span style="display:flex;align-items:center;gap:.3rem;"><span style="width:10px;height:10px;border-radius:2px;background:var(--game-primary);display:inline-block;"></span>Group</span>
+              <span style="display:flex;align-items:center;gap:.3rem;"><span style="width:10px;height:10px;border-radius:2px;background:var(--game-accent);display:inline-block;"></span>Knockout</span>
+            </span>
+          </div>
+          <div id="scoring-list"></div>
+        </div>
+      </div>
+      <div class="col-xl-4">
+        <div class="wc-stat-card">
+          <div class="wc-card-head"><span>Pts Breakdown</span></div>
+          <div style="position:relative;height:260px;"><canvas id="ch-accum"></canvas></div>
+          <div class="mt-3" id="accum-summary" style="font-family:'Teko',sans-serif;font-size:.8rem;color:var(--text-muted);letter-spacing:.04em;text-transform:uppercase;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════ TIER PERFORMANCE ════ -->
+  <div id="tab-tiers" class="wc-stats-panel pt-4 pb-5">
+    <h2 style="font-family:'Teko',sans-serif;font-size:1.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-primary);margin-bottom:.2rem;">Tier Performance</h2>
+    <p style="color:var(--text-muted);font-size:.9rem;margin-bottom:1.5rem;">Which multiplier tiers are delivering — average multiplied score per country within each tier</p>
+    <div class="row g-3 mb-4" id="tier-kpis"></div>
+    <div class="row g-4">
+      <div class="col-lg-7">
+        <div class="wc-stat-card">
+          <div class="wc-card-head"><span>Avg Multiplied Score by Tier</span></div>
+          <div style="position:relative;height:260px;"><canvas id="ch-tier-bar"></canvas></div>
+        </div>
+      </div>
+      <div class="col-lg-5">
+        <div class="wc-stat-card">
+          <div class="wc-card-head"><span>Total Points by Tier</span></div>
+          <div style="position:relative;height:260px;"><canvas id="ch-tier-donut"></canvas></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════ PORTFOLIO IMPACT ════ -->
+  <div id="tab-impact" class="wc-stats-panel pt-4 pb-5">
+    <h2 style="font-family:'Teko',sans-serif;font-size:1.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-primary);margin-bottom:.2rem;">Portfolio Impact</h2>
+    <p style="color:var(--text-muted);font-size:.9rem;margin-bottom:1.5rem;">Countries mapped by selection popularity vs. score — find the carries, gems, and dead weight</p>
+    <div class="row g-4">
+      <div class="col-xl-8">
+        <div class="wc-stat-card">
+          <div class="wc-card-head">
+            <span>Popularity vs. Score (bubble = # of players)</span>
+            <span style="display:flex;gap:.75rem;font-family:'Teko',sans-serif;font-size:.7rem;letter-spacing:.04em;text-transform:uppercase;color:var(--text-muted);">
+              <span>High pick % + high score = <strong style="color:#1A7A45;">carrying</strong></span>
+              <span>Low pick % + high score = <strong style="color:var(--platform-accent);">gem</strong></span>
+            </span>
+          </div>
+          <div style="position:relative;height:380px;"><canvas id="ch-scatter"></canvas></div>
+        </div>
+      </div>
+      <div class="col-xl-4 d-flex flex-column gap-4">
+        <div class="wc-stat-card">
+          <div class="wc-card-head"><span>🟢 Helping Most Players</span></div>
+          <div id="help-list"></div>
+        </div>
+        <div class="wc-stat-card">
+          <div class="wc-card-head"><span>🔴 Disappointing Most</span></div>
+          <div id="hurt-list"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════ PICK COMBOS ════ -->
+  <div id="tab-combos" class="wc-stats-panel pt-4 pb-5">
+    <h2 style="font-family:'Teko',sans-serif;font-size:1.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-primary);margin-bottom:.2rem;">Pick Combos &amp; Overlap</h2>
+    <p style="color:var(--text-muted);font-size:.9rem;margin-bottom:1.5rem;">Most common team pairings within tiers — how many players share the same picks</p>
+    <div class="row g-4">
+      <div class="col-lg-6"><div class="wc-stat-card"><div class="wc-card-head"><span>Tier 1 Pairs</span><span class="wc-tb wc-tb-1">Favorites</span></div><div id="combos-t1"></div></div></div>
+      <div class="col-lg-6"><div class="wc-stat-card"><div class="wc-card-head"><span>Tier 3 Pairs</span><span class="wc-tb wc-tb-3">Dark Horses</span></div><div id="combos-t3"></div></div></div>
+      <div class="col-lg-6"><div class="wc-stat-card"><div class="wc-card-head"><span>Tier 4 Pairs</span><span class="wc-tb wc-tb-4">Underdogs</span></div><div id="combos-t4"></div></div></div>
+      <div class="col-lg-6"><div class="wc-stat-card"><div class="wc-card-head"><span>Tier 5 Pairs</span><span class="wc-tb wc-tb-5">Wildcards</span></div><div id="combos-t5"></div></div></div>
+    </div>
+  </div>
+
+</div><!-- /container -->
+</main>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// ── DATA BRIDGE ───────────────────────────────────────────────
+const MY_PICKS = {{ my_picks | tojson }};
+const COUNTRY_STATS = {{ country_stats | tojson }};
+const TIER_STATS = {{ tier_stats | tojson }};
+const COMBOS = {{ combos | tojson }};
+const KPIS = {{ kpis | tojson }};
+
+// ── CONSTANTS ─────────────────────────────────────────────────
+const TC = {1:'#D97706',2:'#4B7399',3:'#B45309',4:'#0D7377',5:'#9333EA'};
+const TN = {1:'Favorites',2:'Contenders',3:'Dark Horses',4:'Underdogs',5:'Wildcards'};
+const TM = {1:1,2:1.5,3:2.5,4:4,5:7};
+const TAB_IDS = ['overview','selection','scoring','tiers','impact','combos'];
+
+// ── HELPERS ───────────────────────────────────────────────────
+function tb(t){ return `<span class="wc-tb wc-tb-${t}">T${t}</span>`; }
+function tbl(t){ return `<span class="wc-tb wc-tb-${t}">T${t} · ${TN[t]}</span>`; }
+
+function pbarHtml(c, maxPct) {
+  const hl = MY_PICKS.includes(c.name);
+  const pct = Math.round(c.pick_pct);
+  const fill = Math.max(2, (pct / maxPct) * 100);
+  return `<div class="wc-pick-bar${hl ? ' my-pick' : ''}">
+    <div class="wc-pick-bar-label">
+      <span>${c.flag_emoji} ${c.name} ${hl ? '<span style="color:var(--platform-accent)">★</span>' : ''} ${tb(c.tier)}</span>
+      <span style="font-family:'Teko',sans-serif;font-weight:700;color:${TC[c.tier]};">${pct}%</span>
+    </div>
+    <div class="wc-pick-bar-track"><div class="wc-pick-bar-fill" style="width:${fill}%;background:${TC[c.tier]};"></div></div>
+  </div>`;
+}
+
+function tierHeader(t) {
+  return `<div style="font-family:'Teko',sans-serif;font-weight:700;font-size:.9rem;letter-spacing:.06em;text-transform:uppercase;color:${TC[t]};margin-bottom:.65rem;">${tbl(t)} <span style="color:var(--text-muted);font-weight:500;">×${TM[t]} multiplier</span></div>`;
+}
+
+// ── OVERVIEW PROGRESS BAR ─────────────────────────────────────
+function renderProgressBar() {
+  const phase = '{{ current_phase }}';
+  const phases = [
+    {id:'group',   label:'Group Stage', flex:3, doneStyle:`background:var(--game-primary);color:#fff;`},
+    {id:'R32',     label:'R32',         flex:1, doneStyle:`background:var(--game-primary-light);color:#fff;`},
+    {id:'R16',     label:'R16',         flex:1, doneStyle:`background:var(--game-accent);color:#fff;`},
+    {id:'QF',      label:'QF',          flex:1, doneStyle:`background:#B45309;color:#fff;`},
+    {id:'SF',      label:'SF',          flex:1, doneStyle:`background:rgba(212,168,32,.9);color:#fff;`},
+    {id:'final',   label:'Final',       flex:1, doneStyle:`background:var(--platform-accent);color:var(--platform-primary-dark);font-weight:800;`},
+  ];
+  const phaseOrder = ['pre_tournament','group_stage','knockout','completed'];
+  const currentIdx = phaseOrder.indexOf(phase);
+
+  const segDone = {
+    group:  currentIdx >= 1,
+    R32:    currentIdx >= 2,
+    R16:    currentIdx >= 2,
+    QF:     currentIdx >= 2,
+    SF:     currentIdx >= 3,
+    final:  currentIdx >= 3,
+  };
+  const segCurrent = {
+    group:  currentIdx === 1,
+    R32:    currentIdx === 2,
+    R16:    false,
+    QF:     false,
+    SF:     currentIdx === 2,
+    final:  currentIdx === 2,
+  };
+
+  const wrap = document.getElementById('progress-bar-wrap');
+  wrap.innerHTML = phases.map(p => {
+    const done = segDone[p.id];
+    const cur = segCurrent[p.id];
+    const label = done ? p.label + ' ✓' : cur ? p.label + ' ←' : p.label;
+    let style = `flex:${p.flex};display:flex;align-items:center;justify-content:center;padding:0 .75rem;`;
+    if (done) style += p.doneStyle;
+    else if (cur) style += `background:rgba(212,168,32,.2);color:var(--platform-accent);border:2px solid var(--platform-accent);font-weight:700;`;
+    else style += `background:var(--bg-muted);color:var(--text-muted);`;
+    return `<div style="${style}">${label}</div>`;
+  }).join('');
+}
+
+// ── RENDER: SELECTION ─────────────────────────────────────────
+function renderSelection() {
+  const withPicks = COUNTRY_STATS.filter(c => c.pick_count > 0);
+  const sorted = [...withPicks].sort((a,b) => b.pick_count - a.pick_count);
+  const top = sorted.slice(0, 10);
+  const bot = [...withPicks].filter(c => c.pick_count <= 4).sort((a,b) => a.pick_count - b.pick_count).slice(0, 8);
+
+  const topMax = top[0]?.pick_pct || 10;
+  document.getElementById('bars-popular').innerHTML = top.map(c => pbarHtml(c, topMax)).join('');
+
+  const botMax = (Math.max(...bot.map(c => c.pick_pct)) || 10) + 4;
+  document.getElementById('bars-unpopular').innerHTML = bot.map(c => pbarHtml(c, botMax)).join('');
+
+  [1,2,3,4,5].forEach(t => {
+    const tc = COUNTRY_STATS.filter(c => c.tier === t).sort((a,b) => b.pick_count - a.pick_count);
+    const mx = tc[0]?.pick_pct || 10;
+    document.getElementById(`bars-t${t}`).innerHTML = tierHeader(t) + tc.map(c => pbarHtml(c, mx)).join('');
+  });
+}
+
+// ── RENDER: SCORING LIST ──────────────────────────────────────
+function renderScoring() {
+  const sorted = [...COUNTRY_STATS].sort((a,b) => b.total_score - a.total_score).slice(0, 16);
+  const mx = sorted[0]?.total_score || 1;
+  document.getElementById('scoring-list').innerHTML = sorted.map((c,i) => {
+    const hl = MY_PICKS.includes(c.name);
+    const gf = Math.max(1, c.group_score / mx * 100);
+    const kf = Math.max(0, c.ko_score / mx * 100);
+    return `<div class="wc-lb-row${hl ? ' my-pick' : ''}">
+      <div class="wc-lb-rank">${i+1}</div>
+      <div>
+        <div style="font-family:'Teko',sans-serif;font-weight:600;font-size:.95rem;color:var(--text-primary);">
+          ${c.flag_emoji} ${c.name}${hl ? ' <span style="color:var(--platform-accent)">★</span>' : ''} ${tb(c.tier)}${c.is_active ? '<span class="wc-still-in ms-1">Active</span>' : ''}
+        </div>
+        <div class="wc-sbar" style="margin-top:.2rem;">
+          <div class="wc-sbar-g" style="width:${gf}%;"></div>
+          <div class="wc-sbar-k" style="width:${kf}%;"></div>
+        </div>
+        <div style="font-family:'Teko',sans-serif;font-size:.68rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;margin-top:.1rem;">
+          Grp: ${c.group_score.toFixed(1)} · KO: ${c.ko_score.toFixed(1)}
+        </div>
+      </div>
+      <div class="wc-lb-score">${c.total_score.toFixed(1)}</div>
+    </div>`;
+  }).join('');
+}
+
+// ── RENDER: TIER KPIS ─────────────────────────────────────────
+function renderTierKPIs() {
+  document.getElementById('tier-kpis').innerHTML = [1,2,3,4,5].map(t => {
+    const ts = TIER_STATS[t];
+    if (!ts) return '';
+    return `<div class="col-6 col-md">
+      <div class="wc-kpi-block" style="border-top-color:${TC[t]};">
+        <div class="wc-kpi-value" style="font-size:1.9rem;">${ts.avg_score.toFixed(1)}</div>
+        <div class="wc-kpi-label">${tbl(t)}</div>
+        <div class="wc-kpi-sub">Best: ${ts.best_country} (${ts.best_score.toFixed(1)})</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── RENDER: IMPACT ────────────────────────────────────────────
+function renderImpact() {
+  const withScore = COUNTRY_STATS.filter(c => c.total_score > 0 && c.pick_count > 0);
+  const byImpact = withScore
+    .map(c => ({...c, impact: c.pick_count * c.total_score}))
+    .sort((a,b) => b.impact - a.impact);
+
+  document.getElementById('help-list').innerHTML = byImpact.slice(0, 5).map(c => `
+    <div class="wc-imp-row">
+      <div><span style="font-family:'Teko',sans-serif;font-weight:600;">${c.flag_emoji} ${c.name}</span> ${tb(c.tier)}</div>
+      <div style="text-align:right;">
+        <div class="wc-combo-count">${Math.round(c.pick_pct)}% · ${c.total_score.toFixed(1)}pts</div>
+        <div style="font-family:'Teko',sans-serif;font-size:.7rem;color:var(--text-muted);">Impact: ${c.impact.toFixed(0)}</div>
+      </div>
+    </div>`).join('');
+
+  const byDisappoint = COUNTRY_STATS
+    .filter(c => c.pick_count >= 4)
+    .map(c => ({...c, ratio: c.total_score / c.pick_count}))
+    .sort((a,b) => a.ratio - b.ratio);
+
+  document.getElementById('hurt-list').innerHTML = byDisappoint.slice(0, 5).map(c => `
+    <div class="wc-imp-row">
+      <div><span style="font-family:'Teko',sans-serif;font-weight:600;">${c.flag_emoji} ${c.name}</span> ${tb(c.tier)}</div>
+      <div style="text-align:right;">
+        <div class="wc-combo-count" style="color:var(--game-accent);">${Math.round(c.pick_pct)}% · ${c.total_score.toFixed(1)}pts</div>
+      </div>
+    </div>`).join('');
+}
+
+// ── RENDER: COMBOS ────────────────────────────────────────────
+function renderCombos() {
+  function renderComboList(combos, containerId, tierNum) {
+    if (!combos || combos.length === 0) {
+      document.getElementById(containerId).innerHTML =
+        '<p style="font-family:\'Teko\',sans-serif;color:var(--text-muted);font-size:.9rem;">No pairs yet — picks still open or no data.</p>';
+      return;
+    }
+    const mx = combos[0].count;
+    document.getElementById(containerId).innerHTML = combos.map(combo => {
+      const hl = [combo.team_a, combo.team_b].every(t => MY_PICKS.includes(t));
+      return `<div class="wc-combo-row${hl ? ' my-pick' : ''}">
+        <div style="display:flex;flex-wrap:wrap;gap:.3rem;align-items:center;">
+          <strong style="font-family:'Teko',sans-serif;">${combo.team_a}</strong>
+          <span style="color:var(--text-muted);margin:0 .1rem;">+</span>
+          <strong style="font-family:'Teko',sans-serif;">${combo.team_b}</strong>
+          ${hl ? '<span style="color:var(--platform-accent);font-family:\'Teko\',sans-serif;font-size:.8rem;">★ Your picks</span>' : ''}
+        </div>
+        <div style="text-align:right;">
+          <div class="wc-combo-count">${combo.count} players</div>
+          <div style="font-family:'Teko',sans-serif;font-size:.68rem;color:var(--text-muted);">${combo.pct.toFixed(0)}% of field</div>
+        </div>
+      </div>
+      <div style="height:3px;background:var(--bg-muted);border-radius:2px;overflow:hidden;margin:0 .6rem .4rem;">
+        <div style="height:100%;width:${(combo.count/mx)*100}%;background:${TC[tierNum]};border-radius:2px;"></div>
+      </div>`;
+    }).join('');
+  }
+  renderComboList(COMBOS[1], 'combos-t1', 1);
+  renderComboList(COMBOS[3], 'combos-t3', 3);
+  renderComboList(COMBOS[4], 'combos-t4', 4);
+  renderComboList(COMBOS[5], 'combos-t5', 5);
+}
+
+// ── CHARTS (lazy per tab) ─────────────────────────────────────
+const chartsInitialized = new Set();
+let charts = {};
+
+function initScoringCharts() {
+  Chart.defaults.font.family = 'Teko';
+  const totalGroup = COUNTRY_STATS.reduce((s,c) => s + c.group_score, 0);
+  const totalKO = COUNTRY_STATS.reduce((s,c) => s + c.ko_score, 0);
+  const totalAwarded = totalGroup + totalKO;
+
+  charts.accum = new Chart(document.getElementById('ch-accum'), {
+    type: 'doughnut',
+    data: {
+      labels: ['Group Stage', 'Knockout Rounds'],
+      datasets: [{
+        data: [totalGroup, totalKO],
+        backgroundColor: ['#002868', '#BF0A30'],
+        borderWidth: 0,
+        hoverOffset: 4,
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      cutout: '70%',
+      plugins: {
+        legend: {position:'bottom',labels:{font:{size:12},color:'#8A849B',padding:14,boxWidth:12}},
+        tooltip: {callbacks:{label:ctx=>` ${ctx.label}: ${ctx.parsed.toFixed(1)} pts`}},
+      },
+    },
+  });
+
+  document.getElementById('accum-summary').innerHTML = `
+    <div class="d-flex justify-content-between mb-1"><span>Group Stage</span><strong style="color:var(--game-primary);">${totalGroup.toFixed(1)} pts</strong></div>
+    <div class="d-flex justify-content-between mb-1"><span>Knockout Rounds</span><strong style="color:var(--game-accent);">${totalKO.toFixed(1)} pts</strong></div>
+    <div class="d-flex justify-content-between pt-2" style="border-top:1px solid var(--border);">
+      <span>Total Awarded</span><strong style="color:var(--text-primary);">${totalAwarded.toFixed(1)} pts</strong>
+    </div>`;
+}
+
+function initTierCharts() {
+  Chart.defaults.font.family = 'Teko';
+
+  const tierAvgs = [1,2,3,4,5].map(t => {
+    const ts = TIER_STATS[t];
+    return ts ? ts.avg_score : 0;
+  });
+  charts.tierBar = new Chart(document.getElementById('ch-tier-bar'), {
+    type: 'bar',
+    data: {
+      labels: ['T1 ×1','T2 ×1.5','T3 ×2.5','T4 ×4','T5 ×7'],
+      datasets: [{
+        label: 'Avg Score',
+        data: tierAvgs,
+        backgroundColor: [TC[1],TC[2],TC[3],TC[4],TC[5]],
+        borderRadius: 5,
+        borderWidth: 0,
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {display:false},
+        tooltip: {callbacks:{label:ctx=>` ${ctx.parsed.y.toFixed(1)} avg pts`}},
+      },
+      scales: {
+        x: {grid:{display:false},ticks:{font:{size:12}}},
+        y: {grid:{color:'rgba(0,0,0,.05)'},ticks:{font:{size:11}}},
+      },
+    },
+  });
+
+  const tierTotals = [1,2,3,4,5].map(t => TIER_STATS[t]?.total_score || 0);
+  charts.tierDonut = new Chart(document.getElementById('ch-tier-donut'), {
+    type: 'doughnut',
+    data: {
+      labels: ['T1 Favorites','T2 Contenders','T3 Dark Horses','T4 Underdogs','T5 Wildcards'],
+      datasets: [{
+        data: tierTotals,
+        backgroundColor: [TC[1],TC[2],TC[3],TC[4],TC[5]],
+        borderWidth: 0,
+        hoverOffset: 5,
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      cutout: '62%',
+      plugins: {
+        legend: {position:'bottom',labels:{font:{size:11},padding:10,boxWidth:11,color:'#8A849B'}},
+        tooltip: {callbacks:{label:ctx=>` ${ctx.label}: ${ctx.parsed.toFixed(1)} pts`}},
+      },
+    },
+  });
+}
+
+function initImpactCharts() {
+  Chart.defaults.font.family = 'Teko';
+
+  const datasets = [1,2,3,4,5].map(t => ({
+    label: `Tier ${t}`,
+    data: COUNTRY_STATS.filter(c => c.tier === t && c.pick_count > 0).map(c => ({
+      x: c.pick_pct,
+      y: c.total_score,
+      r: Math.max(5, Math.sqrt(c.pick_count) * 3.2),
+      name: c.name,
+    })),
+    backgroundColor: TC[t] + 'BB',
+    borderColor: TC[t],
+    borderWidth: 1.5,
+  }));
+
+  charts.scatter = new Chart(document.getElementById('ch-scatter'), {
+    type: 'bubble',
+    data: {datasets},
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {position:'right',labels:{font:{size:12},padding:12,boxWidth:11}},
+        tooltip: {callbacks:{label:ctx=>` ${ctx.raw.name}: ${ctx.raw.x.toFixed(0)}% picked · ${ctx.raw.y.toFixed(1)} pts`}},
+      },
+      scales: {
+        x: {
+          title:{display:true,text:'% of Players Who Picked',font:{size:12},color:'#8A849B'},
+          grid:{color:'rgba(0,0,0,.05)'},
+          ticks:{font:{size:11},callback:v=>v+'%'},
+          min:0,max:100,
+        },
+        y: {
+          title:{display:true,text:'Multiplied Points',font:{size:12},color:'#8A849B'},
+          grid:{color:'rgba(0,0,0,.05)'},
+          ticks:{font:{size:11}},
+          min:0,
+        },
+      },
+    },
+  });
+}
+
+// ── TABS ──────────────────────────────────────────────────────
+function switchTab(id) {
+  TAB_IDS.forEach(t => {
+    document.getElementById('tab-' + t).classList.toggle('active', t === id);
+  });
+  document.querySelectorAll('.wc-stats-tab-btn').forEach((btn, i) => {
+    btn.classList.toggle('active', TAB_IDS[i] === id);
+  });
+  setTimeout(() => {
+    if (id === 'scoring' && !chartsInitialized.has('scoring')) {
+      chartsInitialized.add('scoring'); initScoringCharts();
+    }
+    if (id === 'tiers' && !chartsInitialized.has('tiers')) {
+      chartsInitialized.add('tiers'); initTierCharts();
+    }
+    if (id === 'impact' && !chartsInitialized.has('impact')) {
+      chartsInitialized.add('impact'); initImpactCharts();
+    }
+  }, 40);
+  window.scrollTo({top: 0, behavior: 'instant'});
+  try { localStorage.setItem('wc_stats_tab', id); } catch(e) {}
+}
+
+// ── INIT ──────────────────────────────────────────────────────
+renderProgressBar();
+renderSelection();
+renderScoring();
+renderTierKPIs();
+renderImpact();
+renderCombos();
+
+try {
+  const saved = localStorage.getItem('wc_stats_tab');
+  if (saved && TAB_IDS.includes(saved)) switchTab(saved);
+} catch(e) {}
+</script>
 {% endblock %}
