@@ -197,6 +197,8 @@ No linter configured.
 - **Admin destructive actions:** Destructive admin POST handlers (e.g., `admin_match_result`, `admin_set_knockout`) branch on `request.form.get('action')` — `action=clear` is a distinct, guarded path that short-circuits before the main mutation. Keep this pattern for new admin routes that both mutate and reset.
 - **Scoring attribution:** `games/worldcup/services/scoring.compute_team_score_events` (per-team) and `compute_match_attribution` (per-match) are the single source of truth for scoring breakdowns. Stored `total_score` must equal the sum of those ScoreEvents. Any new UI that surfaces scoring detail must derive from these helpers, not recompute.
 - **Stats analytics layer:** `games/worldcup/services/stats.py` exposes 4 public functions (`get_country_stats`, `get_tier_stats`, `get_overview_kpis`, `get_tier_combos`) consumed by the public `/worldcup/stats` route. Public analytics routes must NOT use `@login_required`; build `my_picks` via `WorldCupPick.query.join(WorldCupTeam)` (never `enrollment.picks` — N+1).
+- **Production environment selection:** `ENVIRONMENT=production` is set in three places as defense-in-depth — the server's `.env`, the systemd unit's `Environment=ENVIRONMENT=production` override, and every flask-command line in `deploy.sh` and the crontab. `migrations/env.py` reads the DB engine from `create_app()`'s loaded config, so a stray `ENVIRONMENT=development` would silently migrate against SQLite instead of Postgres. Keep all three layers in sync when adding new cron entries or deploy steps.
+- **Postgres connection hygiene:** `ProductionConfig.SQLALCHEMY_ENGINE_OPTIONS = {'pool_pre_ping': True, 'pool_recycle': 280}` — DO Managed Postgres closes idle connections; without this, long-lived Gunicorn workers throw `OperationalError` on first request after an idle gap. Do not remove.
 
 ---
 
@@ -221,7 +223,7 @@ No linter configured.
 ```
 fantasy-platform/
 ├── app.py                  # App factory (create_app)
-├── wsgi.py                 # WSGI entry for PythonAnywhere
+├── wsgi.py                 # WSGI entry (Gunicorn loads `wsgi:application`)
 ├── config.py               # Environment-based config classes
 ├── extensions.py           # db, migrate, login_manager, csrf, limiter
 ├── models/
@@ -247,6 +249,10 @@ fantasy-platform/
 │   └── errors/             # 404, 500
 ├── static/css/style.css    # Platform styles (CSS custom properties)
 ├── migrations/             # Alembic history
+├── deploy/                 # Production deploy artifacts
+│   ├── nginx.conf
+│   └── fantasy-platform.service
+├── deploy.sh               # One-command deploy (runs on server)
 └── .claude/
     ├── settings.json       # Hooks (.env protection, smoke tests)
     └── skills/
@@ -302,13 +308,23 @@ Testing config sets `WTF_CSRF_ENABLED=False`, so form data may include a placeho
 
 ---
 
-## Deploy to PythonAnywhere
+## Production Deployment (DigitalOcean)
 
-1. Open Bash console (auto-activates venv, auto-cds to project)
-2. `git pull`
-3. `pip install -r requirements.txt` (if deps changed)
-4. `flask db upgrade` (if migrations added)
-5. Reload web app from the Web tab
+Live architecture: DO Droplet (Ubuntu 24.04) running Nginx → Gunicorn (unix socket) → Flask; DO Managed Postgres over private VPC; Cloudflare proxy + Origin Certificate for TLS. Cron jobs run sync commands on the Droplet.
+
+Deploy files live in `deploy/`:
+- `deploy/nginx.conf` — site config (HTTPS, HTTP/2, gzip, HSTS, security headers)
+- `deploy/fantasy-platform.service` — systemd unit for Gunicorn (3 workers, `RuntimeDirectory=fantasy-platform`, socket at `/run/fantasy-platform/gunicorn.sock`)
+- `deploy.sh` — one-command deploy on the server: `git pull` → `pip install` → `flask db upgrade` → `systemctl restart`
+
+To ship an update from local:
+```bash
+git push origin main                     # local
+ssh deploy@<droplet-ip>                  # server
+./deploy.sh                              # runs inside /home/deploy/fantasy-platform
+```
+
+First-time setup: `docs/superpowers/plans/2026-04-21-production-deployment.md`.
 
 ---
 
@@ -318,13 +334,18 @@ Testing config sets `WTF_CSRF_ENABLED=False`, so form data may include a placeho
 FLASK_APP=app.py
 ENVIRONMENT=development|testing|production
 SECRET_KEY=...
-DATABASE_URL=sqlite:///instance/fantasy.db
-ODDS_API_KEY=...          # The Odds API (CFB scores/spreads)
-SLASHGOLF_API_KEY=...     # SlashGolf API (Golf leaderboards)
-EMAIL_ADDRESS=...         # Platform "from" address (send_platform_email)
-EMAIL_PASSWORD=...        # SMTP app password
-SMTP_SERVER=...           # Default: smtp.gmail.com
-SMTP_PORT=...             # Default: 587
+# Dev (default): SQLite
+DATABASE_URL=sqlite:///instance/fantasy_platform.db
+# Prod: DO Managed Postgres connection string (requires ?sslmode=require)
+# DATABASE_URL=postgresql://doadmin:<pw>@<host>.db.ondigitalocean.com:25060/defaultdb?sslmode=require
+SITE_URL=...             # Used in password-reset and reminder email links (https://<domain> in prod)
+PLATFORM_TIMEZONE=...    # Default: America/Chicago
+ODDS_API_KEY=...         # The Odds API (CFB scores/spreads)
+SLASHGOLF_API_KEY=...    # SlashGolf API (Golf leaderboards)
+EMAIL_ADDRESS=...        # Platform "from" address (send_platform_email)
+EMAIL_PASSWORD=...       # SMTP app password
+SMTP_SERVER=...          # Default: smtp.gmail.com
+SMTP_PORT=...            # Default: 587
 ```
 
 ## graphify

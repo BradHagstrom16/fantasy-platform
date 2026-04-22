@@ -457,18 +457,42 @@ git push origin main
 
 Go to https://digitalocean.com and sign up. You'll need a credit card. You get $200 free credit if you use a referral link.
 
-- [ ] **Step 2: Create a Droplet**
+- [ ] **Step 2: Prepare an SSH key on your Mac**
+
+SSH keys let you log in without typing a password, and Task 13 relies on having one. In a terminal on your Mac, check whether you already have a key:
+
+```bash
+ls ~/.ssh/id_ed25519.pub 2>/dev/null || ls ~/.ssh/id_rsa.pub 2>/dev/null
+```
+
+If you see a file path, you already have a key — skip ahead. If the command prints nothing, generate one:
+
+```bash
+ssh-keygen -t ed25519 -C "bhagstrom0@gmail.com"
+```
+
+Press Enter at each prompt to accept the defaults (an empty passphrase is fine for a solo setup; set one if you want extra security — you'll be asked for it each time you SSH).
+
+Print the public key so you can copy it:
+
+```bash
+cat ~/.ssh/id_ed25519.pub
+```
+
+Copy the entire output (one line starting with `ssh-ed25519`).
+
+- [ ] **Step 3: Create a Droplet**
 
 In the DigitalOcean dashboard:
 1. Click **Create → Droplets**
 2. **Region:** Choose the one closest to you (e.g., New York or San Francisco)
 3. **Image:** Ubuntu 24.04 LTS x64
 4. **Size:** Basic → Regular (SSD) → **$12/mo** (2 GB RAM / 1 vCPU / 50 GB SSD)
-5. **Authentication:** Choose **Password** and set a strong root password (save it — you'll use it once)
+5. **Authentication:** Choose **SSH Key** → **New SSH Key**. Paste the public key you copied in Step 2. Name it `my-mac`. Click **Add SSH Key**. Make sure the new key is checked under "Choose authentication method."
 6. **Hostname:** `fantasy-platform`
 7. Click **Create Droplet**
 
-- [ ] **Step 3: Copy the Droplet's IP address**
+- [ ] **Step 4: Copy the Droplet's IP address**
 
 After creation, you'll see your Droplet's public IP address (e.g., `143.110.152.42`). Save it — you'll need it throughout the setup.
 
@@ -543,7 +567,7 @@ In your terminal, run (replace with your actual IP):
 ssh root@143.110.152.42
 ```
 
-Type `yes` when asked about the fingerprint. Enter the root password you set in Task 10.
+Type `yes` when asked about the fingerprint. If you set a passphrase on your SSH key (Task 10 Step 2), you'll be asked for it once per terminal session.
 
 You are now on the server. Your prompt will look like `root@fantasy-platform:~#`.
 
@@ -571,6 +595,8 @@ usermod -aG sudo deploy
 
 - [ ] **Step 5: Copy your SSH key to the deploy user**
 
+Your Mac's public key was added to root's `~/.ssh/authorized_keys` automatically during Droplet creation (Task 10 Step 3). Copy it to the deploy user so you can SSH in as deploy too:
+
 ```bash
 mkdir -p /home/deploy/.ssh
 cp ~/.ssh/authorized_keys /home/deploy/.ssh/
@@ -587,7 +613,7 @@ Open a **new** terminal window on your Mac and run:
 ssh deploy@143.110.152.42
 ```
 
-You should log in without entering a password. Your prompt will look like `deploy@fantasy-platform:~$`.
+You should log in without entering a password (or with just your key's passphrase, if you set one). Your prompt will look like `deploy@fantasy-platform:~$`.
 
 **From this point forward, all server commands are run as the `deploy` user, not root.**
 
@@ -630,6 +656,23 @@ OpenSSH (v6)               ALLOW       Anywhere (v6)
 Nginx Full (v6)            ALLOW       Anywhere (v6)
 ```
 
+- [ ] **Step 4: Install fail2ban to block SSH brute-force attempts**
+
+fail2ban watches auth logs and temporarily IP-bans addresses that fail too many SSH logins in a row. It's a standard hardening step for any public-facing VPS.
+
+```bash
+sudo apt install -y fail2ban
+sudo systemctl enable --now fail2ban
+```
+
+Verify it's running:
+
+```bash
+sudo systemctl status fail2ban --no-pager | head -5
+```
+
+Expected: `Active: active (running)`.
+
 ---
 
 ### Task 15: Install system dependencies
@@ -670,6 +713,17 @@ Nginx runs as `www-data`. Gunicorn runs as `deploy`. The socket file needs to be
 ```bash
 sudo usermod -aG deploy www-data
 ```
+
+- [ ] **Step 5: Enable automatic security updates**
+
+Ubuntu's `unattended-upgrades` package applies security patches without manual intervention — critical for a server that runs unattended for months.
+
+```bash
+sudo apt install -y unattended-upgrades
+sudo dpkg-reconfigure --priority=low unattended-upgrades
+```
+
+When prompted "Automatically download and install stable updates?", select **Yes**. This writes `/etc/apt/apt.conf.d/20auto-upgrades` so the system applies security-only updates daily.
 
 ---
 
@@ -737,11 +791,13 @@ EMAIL_ADDRESS=bhagstrom0@gmail.com
 EMAIL_PASSWORD=<your Gmail app password>
 SMTP_SERVER=smtp.gmail.com
 SMTP_PORT=587
-SITE_URL=https://yourdomain.com
+SITE_URL=https://<your-actual-domain>
 PLATFORM_TIMEZONE=America/Chicago
 ```
 
 > **How to save in nano:** Press `Ctrl+X`, then `Y`, then `Enter`.
+
+> **Note:** Replace `<your-actual-domain>` (Task 12) in `SITE_URL` before saving — password-reset emails and any other outbound links will embed this value, so it must be your live domain (e.g., `https://commissionersclub.com`).
 
 - [ ] **Step 3: Lock down the file permissions**
 
@@ -773,13 +829,19 @@ You'll see `yourdomain.com` as a placeholder. You need to replace it with your a
 
 - [ ] **Step 2: Copy it to the Nginx sites directory with your domain substituted**
 
-Replace `yourdomain.com` with your actual domain in this command (in two places):
+Replace `commissionersclub.com` in the sed command below with **your actual domain** from Task 12:
 
 ```bash
 sudo sed 's/yourdomain.com/commissionersclub.com/g' \
     /home/deploy/fantasy-platform/deploy/nginx.conf \
     > /tmp/fantasy-platform.conf
 sudo cp /tmp/fantasy-platform.conf /etc/nginx/sites-available/fantasy-platform
+```
+
+After the copy, confirm there are no residual `yourdomain.com` strings:
+
+```bash
+grep -n "yourdomain\.com" /etc/nginx/sites-available/fantasy-platform || echo "OK — no placeholders remain"
 ```
 
 - [ ] **Step 3: Enable the site**
@@ -806,7 +868,7 @@ nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
 nginx: configuration file /etc/nginx/nginx.conf test is successful
 ```
 
-**Do not restart Nginx yet** — you need the SSL certificate first (Task 20).
+**Do not restart Nginx yet** — you need the Cloudflare Origin Certificate installed first (Task 22). Starting Nginx with no cert at `/etc/ssl/cloudflare/cert.pem` will fail the `listen 443 ssl` block.
 
 ---
 
@@ -848,15 +910,17 @@ sudo chown deploy:deploy /var/log/fantasy
 
 ```bash
 cd /home/deploy/fantasy-platform
-FLASK_APP=app.py venv/bin/flask db upgrade
+ENVIRONMENT=production FLASK_APP=app.py venv/bin/flask db upgrade
 ```
 
 Expected: Alembic applies all migrations. No errors.
 
+> **Why the `ENVIRONMENT=production` prefix?** `migrations/env.py` reads the database URL from whichever config class `create_app()` loads. Explicitly setting `ENVIRONMENT=production` guarantees migrations run against the Postgres `DATABASE_URL` from `.env` and never against a stray dev SQLite. The deploy.sh script and systemd unit use the same belt-and-suspenders approach.
+
 - [ ] **Step 3: Create your admin user**
 
 ```bash
-FLASK_APP=app.py venv/bin/flask create-admin
+ENVIRONMENT=production FLASK_APP=app.py venv/bin/flask create-admin
 ```
 
 You'll be prompted for username, email, and password. This is your platform admin account.
@@ -949,9 +1013,11 @@ sudo chmod 600 /etc/ssl/cloudflare/key.pem
 sudo chmod 644 /etc/ssl/cloudflare/cert.pem
 ```
 
-- [ ] **Step 5: Set Cloudflare SSL mode to Full**
+- [ ] **Step 5: Set Cloudflare SSL mode to Full (strict)**
 
-In Cloudflare dashboard → **SSL/TLS → Overview** → set encryption mode to **Full** (not "Flexible", not "Full (strict)").
+In Cloudflare dashboard → **SSL/TLS → Overview** → set encryption mode to **Full (strict)**.
+
+> Cloudflare Origin Certificates are signed by Cloudflare's internal CA, which Cloudflare trusts in "Full (strict)" mode. This gives end-to-end TLS validation all the way to the origin — strictly better than plain "Full", which accepts any origin certificate (including expired or self-signed ones). Do **not** pick "Flexible" — it leaves the Cloudflare → origin hop unencrypted.
 
 ---
 
@@ -1034,22 +1100,22 @@ The first time you run this it may ask which editor to use — type `1` and pres
 # Fantasy Platform sync jobs — all times are UTC
 
 # Golf — live leaderboard (every 5 min, 11:00–23:59 UTC = 6am–6:59pm CDT)
-*/5 11-23 * * * cd /home/deploy/fantasy-platform && FLASK_APP=app.py venv/bin/flask golf sync-run --mode live >> /var/log/fantasy/golf-live.log 2>&1
+*/5 11-23 * * * cd /home/deploy/fantasy-platform && ENVIRONMENT=production FLASK_APP=app.py venv/bin/flask golf sync-run --mode live >> /var/log/fantasy/golf-live.log 2>&1
 
 # Golf — live leaderboard continued (every 5 min, 00:00–03:00 UTC = 7pm–10pm CDT)
-*/5 0-3 * * * cd /home/deploy/fantasy-platform && FLASK_APP=app.py venv/bin/flask golf sync-run --mode live >> /var/log/fantasy/golf-live.log 2>&1
+*/5 0-3 * * * cd /home/deploy/fantasy-platform && ENVIRONMENT=production FLASK_APP=app.py venv/bin/flask golf sync-run --mode live >> /var/log/fantasy/golf-live.log 2>&1
 
 # Golf — finalize results (daily at 05:00 UTC = midnight CDT)
-0 5 * * * cd /home/deploy/fantasy-platform && FLASK_APP=app.py venv/bin/flask golf sync-run --mode results >> /var/log/fantasy/golf-results.log 2>&1
+0 5 * * * cd /home/deploy/fantasy-platform && ENVIRONMENT=production FLASK_APP=app.py venv/bin/flask golf sync-run --mode results >> /var/log/fantasy/golf-results.log 2>&1
 
 # CFB — fetch scores + auto-process (every 15 min)
-*/15 * * * * cd /home/deploy/fantasy-platform && FLASK_APP=app.py venv/bin/flask cfb sync --mode scores >> /var/log/fantasy/cfb-scores.log 2>&1
+*/15 * * * * cd /home/deploy/fantasy-platform && ENVIRONMENT=production FLASK_APP=app.py venv/bin/flask cfb sync --mode scores >> /var/log/fantasy/cfb-scores.log 2>&1
 
 # CFB — email reminders (Fri + Sat at 15:00 UTC = 10am CDT)
-0 15 * * 5,6 cd /home/deploy/fantasy-platform && FLASK_APP=app.py venv/bin/flask cfb sync --mode remind >> /var/log/fantasy/cfb-remind.log 2>&1
+0 15 * * 5,6 cd /home/deploy/fantasy-platform && ENVIRONMENT=production FLASK_APP=app.py venv/bin/flask cfb sync --mode remind >> /var/log/fantasy/cfb-remind.log 2>&1
 
 # World Cup — recalculate scores (every 10 min during tournament)
-*/10 * * * * cd /home/deploy/fantasy-platform && FLASK_APP=app.py venv/bin/flask worldcup recalc >> /var/log/fantasy/worldcup-recalc.log 2>&1
+*/10 * * * * cd /home/deploy/fantasy-platform && ENVIRONMENT=production FLASK_APP=app.py venv/bin/flask worldcup recalc >> /var/log/fantasy/worldcup-recalc.log 2>&1
 ```
 
 Save: `Ctrl+X` → `Y` → `Enter`
