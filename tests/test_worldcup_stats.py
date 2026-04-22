@@ -153,3 +153,56 @@ def test_get_overview_kpis(session):
     assert kpis['top_country_score'] == 50.0
     assert kpis['top_country_name'] == 'USA'
     assert kpis['total_pts_awarded'] == 60.0
+
+
+def test_get_tier_combos_returns_pairs(session):
+    from games.worldcup.services.stats import get_tier_combos
+
+    u1 = _make_user(session, 'carol')
+    u2 = _make_user(session, 'dave')
+    u3 = _make_user(session, 'eve')
+    t1 = _make_team(session, 'SPA', 'Spain', tier=1, multiplier=1.0)
+    t2 = _make_team(session, 'FRA', 'France', tier=1, multiplier=1.0)
+    t3 = _make_team(session, 'ARG', 'Argentina', tier=1, multiplier=1.0)
+    e1 = _make_enrollment(session, u1.id)
+    e2 = _make_enrollment(session, u2.id)
+    e3 = _make_enrollment(session, u3.id)
+    # Spain+France: players 1 and 2
+    _make_pick(session, e1.id, t1.id, tier=1)
+    _make_pick(session, e1.id, t2.id, tier=1)
+    _make_pick(session, e2.id, t1.id, tier=1)
+    _make_pick(session, e2.id, t2.id, tier=1)
+    # Player 3 picks Spain+Argentina
+    _make_pick(session, e3.id, t1.id, tier=1)
+    _make_pick(session, e3.id, t3.id, tier=1)
+    session.commit()
+
+    combos = get_tier_combos(2026)
+
+    assert 1 in combos
+    assert 3 not in combos  # no tier 3 picks
+    top_pair = combos[1][0]
+    # Spain+France appear together 2x; Spain+Argentina 1x
+    assert top_pair['count'] == 2
+    assert {top_pair['team_a'], top_pair['team_b']} == {'Spain', 'France'}
+    assert abs(top_pair['pct'] - (2 / 3 * 100)) < 0.1
+
+
+def test_get_tier_combos_excludes_tier2(session):
+    from games.worldcup.services.stats import get_tier_combos
+
+    session.commit()
+    combos = get_tier_combos(2026)
+
+    assert 2 not in combos
+
+
+def test_get_tier_combos_empty_season(session):
+    from games.worldcup.services.stats import get_tier_combos
+
+    session.commit()
+    combos = get_tier_combos(2026)
+
+    # No picks at all — all tiers either absent or empty
+    for tier_data in combos.values():
+        assert tier_data == []

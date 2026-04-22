@@ -1,4 +1,5 @@
 from sqlalchemy import func
+from sqlalchemy.orm import aliased
 
 from extensions import db
 from games.worldcup.models import WorldCupEnrollment, WorldCupTeam, WorldCupPick
@@ -87,3 +88,52 @@ def get_overview_kpis(country_stats: list[dict], total_players: int) -> dict:
         'top_country_name': top['name'],
         'total_pts_awarded': sum(c['total_score'] for c in country_stats),
     }
+
+
+def get_tier_combos(season_year: int) -> dict[int, list[dict]]:
+    """Return top-5 team pairs per tier for tiers 1, 3, 4, 5.
+
+    Tier 2 is excluded — players pick only 1 Tier 2 team, so no pairs exist.
+    """
+    total_players: int = WorldCupEnrollment.query.filter_by(
+        season_year=season_year
+    ).count()
+
+    P1 = aliased(WorldCupPick)
+    P2 = aliased(WorldCupPick)
+    T1 = aliased(WorldCupTeam)
+    T2 = aliased(WorldCupTeam)
+
+    result: dict[int, list[dict]] = {}
+    for tier in [1, 3, 4, 5]:
+        rows = (
+            db.session.query(
+                T1.display_name.label('team_a'),
+                T2.display_name.label('team_b'),
+                func.count().label('count'),
+            )
+            .select_from(P1)
+            .join(WorldCupEnrollment, P1.enrollment_id == WorldCupEnrollment.id)
+            .join(P2, (P2.enrollment_id == P1.enrollment_id) & (P1.team_id < P2.team_id))
+            .join(T1, T1.id == P1.team_id)
+            .join(T2, T2.id == P2.team_id)
+            .filter(WorldCupEnrollment.season_year == season_year)
+            .filter(P1.tier == tier)
+            .filter(P2.tier == tier)
+            .group_by(T1.display_name, T2.display_name)
+            .order_by(func.count().desc())
+            .limit(5)
+            .all()
+        )
+        pairs = [
+            {
+                'team_a': row.team_a,
+                'team_b': row.team_b,
+                'count': row.count,
+                'pct': round(row.count / total_players * 100, 1) if total_players > 0 else 0.0,
+            }
+            for row in rows
+        ]
+        if pairs:
+            result[tier] = pairs
+    return result
