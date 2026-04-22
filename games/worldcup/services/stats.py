@@ -48,3 +48,42 @@ def get_country_stats(season_year: int) -> tuple[list[dict], int]:
         })
 
     return result, total_players
+
+
+def get_tier_stats(country_stats: list[dict]) -> dict[int, dict]:
+    """Pure Python — no DB calls. Groups country_stats by tier."""
+    tiers: dict[int, list[dict]] = {}
+    for c in country_stats:
+        tiers.setdefault(c['tier'], []).append(c)
+
+    result: dict[int, dict] = {}
+    for tier, countries in tiers.items():
+        scores = [c['total_score'] for c in countries]
+        best = max(countries, key=lambda c: c['total_score'])
+        result[tier] = {
+            'avg_score': sum(scores) / len(scores),
+            'total_score': sum(scores),
+            'best_country': best['name'],
+            'best_score': best['total_score'],
+        }
+    return result
+
+
+def get_overview_kpis(country_stats: list[dict], total_players: int) -> dict:
+    """No DB calls — derived from country_stats and total_players."""
+    if not country_stats:
+        return {
+            'total_players': total_players,
+            'active_countries': 0,
+            'top_country_score': 0.0,
+            'top_country_name': '',
+            'total_pts_awarded': 0.0,
+        }
+    top = max(country_stats, key=lambda c: c['total_score'])
+    return {
+        'total_players': total_players,
+        'active_countries': sum(1 for c in country_stats if c['is_active']),
+        'top_country_score': top['total_score'],
+        'top_country_name': top['name'],
+        'total_pts_awarded': sum(c['total_score'] for c in country_stats),
+    }
