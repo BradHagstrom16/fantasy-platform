@@ -31,6 +31,12 @@ from games.worldcup.services.scoring import (
     compute_match_attribution,
     compute_team_score_events,
 )
+from games.worldcup.services.stats import (
+    get_country_stats,
+    get_tier_stats,
+    get_overview_kpis,
+    get_tier_combos,
+)
 
 
 # ============================================================================
@@ -466,6 +472,33 @@ def rules():
         advance_group_winner=ADVANCE_GROUP_WINNER,
         advance_runner_up=ADVANCE_RUNNER_UP,
         advance_best_third=ADVANCE_BEST_THIRD,
+    )
+
+
+@worldcup_bp.route('/stats')
+def stats():
+    """Stats Hub — public, no login required."""
+    country_stats, total_players = get_country_stats(SEASON_YEAR)
+    tier_stats = get_tier_stats(country_stats)
+    kpis = get_overview_kpis(country_stats, total_players)
+    combos = get_tier_combos(SEASON_YEAR)
+
+    my_picks: list[str] = []
+    if current_user.is_authenticated:
+        enrollment = WorldCupEnrollment.query.filter_by(
+            user_id=current_user.id, season_year=SEASON_YEAR
+        ).first()
+        if enrollment:
+            my_picks = [p.team.display_name for p in enrollment.picks]
+
+    return render_template(
+        'worldcup/stats.html',
+        country_stats=country_stats,
+        tier_stats=tier_stats,
+        kpis=kpis,
+        combos=combos,
+        my_picks=my_picks,
+        current_phase=_derive_tournament_phase(),
     )
 
 

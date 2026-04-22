@@ -206,3 +206,30 @@ def test_get_tier_combos_empty_season(session):
     # No picks at all — all tiers either absent or empty
     for tier_data in combos.values():
         assert tier_data == []
+
+
+@pytest.fixture()
+def client(app):
+    return app.test_client()
+
+
+def test_stats_route_public(client, session):
+    """Stats page is public — no login required."""
+    # Need at least one team for country_stats to work
+    _make_team(session, 'BRA', 'Brazil', tier=1, multiplier=1.0)
+    session.commit()
+
+    resp = client.get('/worldcup/stats')
+    assert resp.status_code == 200
+    assert b'Stats Hub' in resp.data
+    assert b'wc-stats-tab-bar' in resp.data
+
+
+def test_stats_route_my_picks_unauthenticated(client, session):
+    """Unauthenticated users get MY_PICKS = [] — no error."""
+    _make_team(session, 'BRA', 'Brazil', tier=1, multiplier=1.0)
+    session.commit()
+
+    resp = client.get('/worldcup/stats')
+    assert resp.status_code == 200
+    assert b'MY_PICKS = []' in resp.data

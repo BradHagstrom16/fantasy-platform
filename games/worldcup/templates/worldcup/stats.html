@@ -1,0 +1,7 @@
+{% extends "base.html" %}
+{% block title %}Stats Hub — World Cup Fantasy Pool{% endblock %}
+{% block content %}
+<div class="wc-stats-tab-bar"></div>
+<p>Stats Hub</p>
+<script>const MY_PICKS = {{ my_picks | tojson }};</script>
+{% endblock %}
