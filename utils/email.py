@@ -6,7 +6,7 @@ Shared platform email helper.
 All platform-level transactional email (auth, notifications) and game-specific
 reminder content (Golf, CFB, World Cup) route through send_platform_email().
 
-From-name: "The Commissioner's Club" for all outbound email.
+From-name: "Corrupt Commish Club" for all outbound email.
 """
 import logging
 import smtplib
@@ -17,7 +17,7 @@ from flask import current_app
 
 logger = logging.getLogger(__name__)
 
-PLATFORM_FROM_NAME = "The Commissioner's Club"
+PLATFORM_FROM_NAME = "Corrupt Commish Club"
 
 
 def send_platform_email(
