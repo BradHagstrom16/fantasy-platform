@@ -97,7 +97,7 @@ def _cfb_html_wrapper(content_html: str, season_year: int) -> str:
 <!-- FOOTER -->
 <tr><td style="background-color: {c['primary_dark']}; padding: 20px 32px; text-align: center;">
 <p style="margin: 0; font-size: 13px; color: rgba(247,248,249,0.6); font-family: {c['font_body']};">
-CFB Survivor Pool {season_year} &middot; <a href="{site_url}" style="color: {c['primary_light']}; text-decoration: none;">The Commissioner&#8217;s Club</a>
+CFB Survivor Pool {season_year} &middot; <a href="{site_url}" style="color: {c['primary_light']}; text-decoration: none;">Corrupt Commish Club</a>
 </p>
 </td></tr>
 

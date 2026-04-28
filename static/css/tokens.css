@@ -1,0 +1,40 @@
+/* ============================================================
+   Corrupt Commish Club — Design Tokens (Layer 1)
+   Source: fantasy-platform-and-world-cup-design/project/styles/tokens.css
+   Loaded BEFORE style.css in templates/base.html.
+   ============================================================ */
+:root{
+  --ink:           #0A0612;
+  --purple-950:    #140828;
+  --purple-900:    #1C0A3A;
+  --purple-850:    #230E48;
+  --purple-800:    #2A1150;
+  --purple-700:    #3A1D72;
+  --purple-600:    #4E2A8F;
+  --purple-500:    #6B3FAD;
+  --purple-400:    #8E63C9;
+
+  --gold-dark:     #8A6A1A;
+  --gold:          #C9A227;
+  --gold-light:    #F2D36B;
+  --gold-hi:       #FFF1B8;
+
+  --bone:          #F3EFE6;
+  --bone-dim:      #D8D1BE;
+  --bone-mute:     rgba(243,239,230,.55);
+
+  /* WC scoped tokens — inert in Spec A; activated in Spec C */
+  --wc-navy:       #001A4D;
+  --wc-red:        #BF0A30;
+  --wc-white:      #F5F1E8;
+
+  --metal-gold: linear-gradient(180deg,
+    #FFF1B8 0%, #F2D36B 18%, #C9A227 52%, #8A6A1A 78%, #E2B947 100%);
+  --metal-gold-flat: linear-gradient(135deg, #F2D36B 0%, #C9A227 45%, #8A6A1A 100%);
+
+  --live-red:      #E63946;
+  --live-green:    #64DBA0;
+
+  --font-teko: 'Teko', sans-serif;
+  --font-news: 'Newsreader', Georgia, serif;
+}

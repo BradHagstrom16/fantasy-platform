@@ -117,7 +117,7 @@ def _html_wrapper(content_html: str, season_year: int, site_url: str) -> str:
 <!-- FOOTER -->
 <tr><td style="background-color: {_GREEN_900}; padding: 20px 32px; text-align: center;">
 <p style="margin: 0; font-size: 13px; color: rgba(247,248,249,0.6); font-family: {_FONT_BODY};">
-Golf Pick &#8217;Em {season_year} &middot; <a href="{site_url}" style="color: {_GOLD_300}; text-decoration: none;">The Commissioner&#8217;s Club</a>
+Golf Pick &#8217;Em {season_year} &middot; <a href="{site_url}" style="color: {_GOLD_300}; text-decoration: none;">Corrupt Commish Club</a>
 </p>
 </td></tr>
 
@@ -212,7 +212,7 @@ def send_picks_open_email(tournament_id_or_obj) -> int:
         return 0
 
     site_url = config.get('SITE_URL', 'http://localhost:5000')
-    commissioner_name = config.get('COMMISSIONER_NAME', 'The Commissioner')
+    commissioner_name = config.get('COMMISSIONER_NAME', 'The Commish')
 
     # Re-query tournament to ensure it's bound to this session
     tournament = db.session.get(GolfTournament, tournament_id)
@@ -506,7 +506,7 @@ def send_results_recap_email(tournament_id: int) -> int:
 
     config = current_app.config
     site_url = config.get('SITE_URL', 'http://localhost:5000')
-    commissioner_name = config.get('COMMISSIONER_NAME', 'The Commissioner')
+    commissioner_name = config.get('COMMISSIONER_NAME', 'The Commish')
 
     tournament = db.session.get(GolfTournament, tournament_id)
     if not tournament:
@@ -917,7 +917,7 @@ def run_reminder_check():
     email_address = config.get('EMAIL_ADDRESS', '')
     email_password = config.get('EMAIL_PASSWORD', '')
     site_url = config.get('SITE_URL', 'http://localhost:5000')
-    commissioner_name = config.get('COMMISSIONER_NAME', 'The Commissioner')
+    commissioner_name = config.get('COMMISSIONER_NAME', 'The Commish')
 
     if not email_address or not email_password:
         print("\nCannot proceed without email configuration")

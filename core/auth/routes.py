@@ -121,7 +121,7 @@ def forgot_password():
                                    reset_url=reset_url, user=user)
             send_platform_email(
                 user.email,
-                "Reset your password — The Commissioner's Club",
+                "Reset your password — Corrupt Commish Club",
                 plain,
                 html,
             )
