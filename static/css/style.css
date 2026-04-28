@@ -111,6 +111,31 @@
   color: var(--purple-900);
 }
 
+/* === CCC FOOTER === */
+.ccc-footer {
+  margin-top: 4rem;
+}
+.ccc-footer-voice {
+  background: var(--purple-800);
+  color: var(--gold-light);
+  padding: 1.25rem 0;
+  font-family: var(--font-news);
+  font-style: italic;
+  font-size: .95rem;
+  text-align: center;
+  border-top: 2px solid var(--gold);
+}
+.ccc-footer-utility {
+  background: var(--purple-900);
+  color: var(--bone-mute);
+  padding: .75rem 0;
+  font-family: var(--font-teko);
+  font-size: .8rem;
+  letter-spacing: .12em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
 /* ── 2. Game-Specific Overrides ──────────────────────────── */
 
 /* Golf overrides */
