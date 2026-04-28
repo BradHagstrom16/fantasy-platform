@@ -175,10 +175,11 @@ No linter configured.
 ## Key Conventions
 
 - **Design system:** "Corrupt Commish Club" (CCC) — CCC purple/gold tokens in `static/css/tokens.css` + per-game palettes via `body.game-<game>` CSS class. See `docs/superpowers/specs/2026-04-28-ccc-brand-foundation-design.md`.
+- **CSS layering:** Layer 1 (`static/css/tokens.css` — CCC house tokens: purples, golds, bone, gradients, fonts) loads BEFORE Layer 2 (`static/css/style.css` — platform aliases + components). New design tokens go in tokens.css; component styles consume them via `var(--purple-700)` etc. in style.css. Both linked from `templates/base.html` head.
 - **Game theming:** Platform components (`.page-hero`, `.stat-block`, `.btn-game`) consume `--game-primary`/`--game-accent` automatically — game CSS must NOT duplicate this
 - **Game CSS sections:** Each game has its own section in `style.css` (e.g., `/* === CFB SURVIVOR POOL === */`) with game-specific component classes
 - **Game sub-nav:** Each game needs a `.subnav-<game>` class in the `/* === GAME SUB-NAV === */` section of `style.css` setting `background`, `--subnav-accent` (hex), and `--subnav-accent-rgb` (comma-separated R,G,B) — the shared pill `.active` rule consumes these variables
-- **Game palettes:** Golf: Augusta green `#006747` + gold `#b8993e`; CFB: crimson `#C5050C` + midnight `#0f0f1a`; World Cup: Old Glory blue `#002868` + red `#BF0A30`
+- **Game palettes:** Golf: Augusta green `#006747` + gold `#b8993e`; CFB: crimson `#C5050C` + midnight `#0f0f1a`; World Cup: navy `#001A4D` + red `#BF0A30` (matches `--wc-navy` / `--wc-red` in tokens.css)
 - **Emails:** All outbound email routes through `utils/email.py` → `send_platform_email()`. From-name: "The Commissioner's Club". Game-specific content assembly stays in `games/<game>/services/reminders.py`. HTML emails: table layout + inline styles for Gmail compatibility.
 - **Avatars:** All game standings must display `user.get_avatar()` inline before the player display name. `User.avatar_emoji` is nullable String(4); default is ⚽. Required integration point for every game blueprint.
 - **Timestamps:** `datetime.now(timezone.utc)` — never `utcnow()`
@@ -208,6 +209,7 @@ No linter configured.
 - `<Game>Enrollment` model for game-specific user data, FK to shared `User`
 - `@<game>_admin_required` decorator — two-tier: platform admin override first, then enrollment-scoped admin
 - Templates extend `templates/base.html`, rendered under `<game>/` prefix
+- Body class: game blueprints inject `body_class` via context processor (e.g., `'body_class': 'game-golf'`); platform/chrome templates can override via `{% block body_class %}<class>{% endblock %}` (e.g., `auth-page`). `base.html` resolves both via `<body class="{% block body_class %}{{ body_class|default('') }}{% endblock %}">`.
 - Add a game switcher `<li class="nav-item">` to `<ul class="navbar-nav me-auto">` in `base.html`; also add a `{% elif request.blueprint == '<game>' %}` branch in the game sub-nav block (below `</nav>`) with `.game-subnav .subnav-<game>` div, game label, and pill links
 - CLI commands under `flask <game> *` namespace using `AppGroup`
 - Context processor on the blueprint for game-specific template variables
@@ -288,7 +290,7 @@ with app.app_context():
     print('Smoke test OK')
 ```
 
-Auth routes have **no URL prefix** — login is at `/login`, not `/auth/login`.
+Auth routes have **no URL prefix** — login is at `/login`, not `/auth/login`. Same for `/register`, `/forgot-password`, `/reset-password/<token>`, `/change-password`, `/profile`.
 
 ---
 
