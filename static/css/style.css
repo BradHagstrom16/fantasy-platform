@@ -136,6 +136,106 @@
   text-transform: uppercase;
 }
 
+/* === CCC AUTH PAGES === */
+body.auth-page {
+  background: var(--purple-950);
+  background-image: radial-gradient(ellipse at center, var(--purple-900) 0%, var(--purple-950) 70%);
+  color: var(--bone);
+  min-height: 100vh;
+}
+body.auth-page main {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(100vh - 220px); /* offset for navbar + footer */
+  padding: 2rem 1rem;
+}
+body.auth-page .brand-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: .75rem;
+  font-family: var(--font-teko);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  font-size: 1.5rem;
+  color: var(--gold);
+  margin-bottom: 1.5rem;
+}
+body.auth-page .auth-card,
+body.auth-page .card {
+  background: var(--bone);
+  color: var(--text-primary);
+  border: 1px solid var(--bone-dim);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  padding: 2.5rem 2rem;
+  max-width: 440px;
+  width: 100%;
+}
+body.auth-page h1, body.auth-page .auth-title {
+  font-family: var(--font-teko);
+  font-size: 2rem;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: var(--purple-700);
+  margin-bottom: .5rem;
+  text-align: center;
+}
+body.auth-page .auth-subhead, body.auth-page .text-muted {
+  font-family: var(--font-news);
+  font-style: italic;
+  color: var(--text-secondary);
+}
+body.auth-page .form-control {
+  background: #fff;
+  border: 1px solid rgba(58, 29, 114, .18);
+  color: var(--text-primary);
+}
+body.auth-page .form-control:focus {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 .2rem rgba(201, 162, 39, .25);
+  outline: none;
+}
+body.auth-page .form-label {
+  font-family: var(--font-teko);
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  font-size: .85rem;
+  color: var(--purple-700);
+}
+body.auth-page .btn-primary {
+  background: var(--metal-gold-flat);
+  border: none;
+  color: var(--purple-900);
+  font-family: var(--font-teko);
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  font-weight: 600;
+  padding: .65rem 1.5rem;
+  transition: transform .15s, box-shadow .15s;
+}
+body.auth-page .btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(201, 162, 39, .35);
+  background: var(--metal-gold-flat);
+  color: var(--purple-900);
+}
+body.auth-page a {
+  color: var(--purple-700);
+}
+body.auth-page a:hover { color: var(--gold-dark); }
+body.auth-page .alert-danger {
+  background: var(--danger-bg);
+  border: 1px solid var(--danger);
+  color: var(--danger);
+}
+body.auth-page .alert-success {
+  background: var(--success-bg);
+  border: 1px solid var(--success);
+  color: var(--success);
+}
+
 /* ── 2. Game-Specific Overrides ──────────────────────────── */
 
 /* Golf overrides */

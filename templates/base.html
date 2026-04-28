@@ -29,7 +29,7 @@
 
     {% block head %}{% endblock %}
 </head>
-<body class="{{ body_class|default('') }}">
+<body class="{% block body_class %}{{ body_class|default('') }}{% endblock %}">
     <!-- Navigation -->
     <nav class="navbar navbar-expand-lg navbar-dark">
         <div class="container">
