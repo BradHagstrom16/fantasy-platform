@@ -1,20 +1,21 @@
 /* ============================================================
-   The Commissioner's Club — Platform Design System
+   Corrupt Commish Club — Platform Design System (Layer 2)
    Identity: Broadcast Authority — premium sports editorial
    Fonts: Teko (display/headings) + Newsreader (body/editorial)
+   Token source: static/css/tokens.css (Layer 1)
    ============================================================ */
 
 /* ── 1. CSS Custom Properties (:root) ────────────────────── */
 :root {
-  /* Platform identity */
-  --platform-primary:        #3A1D72;
-  --platform-primary-dark:   #1E0E42;
-  --platform-primary-light:  #5B3A9E;
-  --platform-accent:         #D4A820;
-  --platform-accent-light:   #E8C040;
+  /* Platform identity — alias into Layer 1 CCC tokens */
+  --platform-primary:        var(--purple-700);
+  --platform-primary-dark:   var(--purple-900);
+  --platform-primary-light:  var(--purple-500);
+  --platform-accent:         var(--gold);
+  --platform-accent-light:   var(--gold-light);
 
   /* Surfaces */
-  --bg-page:                 #F5F3F0;
+  --bg-page:                 var(--bone);
   --bg-card:                 #FFFFFF;
   --bg-muted:                #EDEBF4;
 
@@ -22,14 +23,14 @@
   --text-primary:            #1C1730;
   --text-secondary:          #5A5470;
   --text-muted:              #8A849B;
-  --text-on-dark:            #F5F3F0;
+  --text-on-dark:            var(--bone);
 
   /* Semantic */
   --success:                 #1A7A45;
   --success-bg:              #ecfdf5;
   --danger:                  #C0392B;
   --danger-bg:               #fef2f2;
-  --warning:                 #D4A820;
+  --warning:                 var(--gold);
   --warning-bg:              #FBF3DC;
   --warning-text:            #92400e;
   --info:                    #3B5998;
@@ -43,7 +44,7 @@
   --shadow-sm:               0 2px 8px rgba(58,29,114,.07);
   --shadow-md:               0 4px 20px rgba(58,29,114,.12);
   --shadow-lg:               0 8px 40px rgba(58,29,114,.17);
-  --shadow-gold:             0 4px 24px rgba(212,168,32,.25);
+  --shadow-gold:             0 4px 24px rgba(201,162,39,.25);
 
   /* Radius */
   --radius:                  .5rem;
@@ -59,6 +60,10 @@
   --game-accent:             var(--platform-accent);
   --game-accent-light:       var(--platform-accent-light);
 }
+
+/* Brand mark sizing — used in nav, auth heroes, email headers */
+.brand-mark { width: 28px; height: 28px; vertical-align: -.35em; margin-right: .5rem; }
+.brand-mark--lg { width: 56px; height: 56px; }
 
 /* ── 2. Game-Specific Overrides ──────────────────────────── */
 
