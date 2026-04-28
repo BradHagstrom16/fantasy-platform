@@ -34,7 +34,7 @@
     <nav class="navbar navbar-expand-lg navbar-dark">
         <div class="container">
             <a class="navbar-brand" href="{{ url_for('main.index') }}">
-                <i class="bi bi-trophy-fill me-1"></i>
+                <img src="{{ url_for('static', filename='img/ccc-logo-mark.png') }}" class="brand-mark" alt="">
                 <span class="d-none d-md-inline">Corrupt Commish Club</span>
                 <span class="d-md-none">CCC</span>
             </a>
@@ -60,7 +60,7 @@
                         <li class="nav-item">
                             <a class="nav-link {% if request.blueprint == 'admin' %}active{% endif %}"
                                href="{{ url_for('admin.dashboard') }}">
-                                <i class="bi bi-gear-fill"></i> Admin
+                                <i class="bi bi-gear-fill"></i> the Commish
                             </a>
                         </li>
                         {% endif %}
@@ -77,18 +77,18 @@
                                 </a></li>
                                 <li><hr class="dropdown-divider"></li>
                                 <li><a class="dropdown-item" href="{{ url_for('auth.logout') }}">
-                                    <i class="bi bi-box-arrow-right me-2"></i>Logout
+                                    <i class="bi bi-box-arrow-right me-2"></i>Step Out
                                 </a></li>
                             </ul>
                         </li>
                     {% else %}
                         <li class="nav-item">
                             <a class="nav-link {% if request.endpoint == 'auth.login' %}active{% endif %}"
-                               href="{{ url_for('auth.login') }}">Login</a>
+                               href="{{ url_for('auth.login') }}">Sign In</a>
                         </li>
                         <li class="nav-item ms-1">
                             <a class="btn btn-warning btn-sm"
-                               href="{{ url_for('auth.register') }}">Join Now</a>
+                               href="{{ url_for('auth.register') }}">Join the Club</a>
                         </li>
                     {% endif %}
                 </ul>

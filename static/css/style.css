@@ -65,6 +65,52 @@
 .brand-mark { width: 28px; height: 28px; vertical-align: -.35em; margin-right: .5rem; }
 .brand-mark--lg { width: 56px; height: 56px; }
 
+/* === CCC NAVBAR === */
+.navbar.navbar-dark {
+  background: var(--purple-700);
+  border-bottom: 1px solid var(--purple-800);
+}
+.navbar.navbar-dark .navbar-brand {
+  font-family: var(--font-teko);
+  font-size: 1.25rem;
+  letter-spacing: .04em;
+  color: var(--bone);
+  display: inline-flex;
+  align-items: center;
+}
+.navbar.navbar-dark .nav-link {
+  font-family: var(--font-teko);
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--bone-mute);
+  position: relative;
+  padding: .5rem .85rem;
+}
+.navbar.navbar-dark .nav-link:hover { color: var(--gold-light); }
+.navbar.navbar-dark .nav-link.active {
+  color: var(--gold);
+}
+.navbar.navbar-dark .nav-link.active::after {
+  content: '';
+  position: absolute;
+  left: 12%; right: 12%; bottom: 4px;
+  height: 2px;
+  background: var(--gold);
+  border-radius: 1px;
+}
+.navbar.navbar-dark .btn-warning {
+  background: var(--metal-gold-flat);
+  border: none;
+  color: var(--purple-900);
+  font-family: var(--font-teko);
+  text-transform: uppercase;
+  letter-spacing: .08em;
+}
+.navbar.navbar-dark .btn-warning:hover {
+  filter: brightness(1.05);
+  color: var(--purple-900);
+}
+
 /* ── 2. Game-Specific Overrides ──────────────────────────── */
 
 /* Golf overrides */
