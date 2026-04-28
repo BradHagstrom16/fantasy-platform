@@ -236,6 +236,25 @@ body.auth-page .alert-success {
   color: var(--success);
 }
 
+/* === CCC ADMIN EYEBROW === */
+.admin-eyebrow {
+  font-family: var(--font-teko);
+  font-size: .85rem;
+  letter-spacing: .14em;
+  color: var(--gold);
+  text-transform: uppercase;
+  margin-bottom: .25rem;
+  display: block;
+}
+.admin-page-title {
+  font-family: var(--font-teko);
+  font-size: 2.25rem;
+  letter-spacing: .04em;
+  color: var(--purple-700);
+  text-transform: uppercase;
+  margin-bottom: 1.5rem;
+}
+
 /* ── 2. Game-Specific Overrides ──────────────────────────── */
 
 /* Golf overrides */
