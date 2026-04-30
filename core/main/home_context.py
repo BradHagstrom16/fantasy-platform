@@ -17,6 +17,7 @@ from games.worldcup.models import (
     WorldCupRankSnapshot,
 )
 from games.worldcup.services.state import WorldCupState
+from games.worldcup.world_cup_countries import TIERS
 from games.registry import (
     available_games, coming_soon_games, joined_games,
 )
@@ -38,18 +39,6 @@ def build_home_context(user: Any, state: Optional[WorldCupState]) -> dict:
     if state == 'live':
         return _context_live(user, enrollment)
     return _context_post(user, enrollment)
-
-
-def _context_out() -> dict:
-    """Logged-out marketing surface — no user, no WC enrollment."""
-    anon = AnonymousUserMixin()
-    return {
-        'available_games': available_games(anon),
-        'coming_soon_games': coming_soon_games(),
-        'total_enrolled': WorldCupEnrollment.query.filter_by(
-            season_year=SEASON_YEAR
-        ).count(),
-    }
 
 
 def _tagline_for(rank: int, week_delta_rank: Optional[int],
@@ -76,6 +65,30 @@ def _tagline_for(rank: int, week_delta_rank: Optional[int],
     if rank in (2, 3):
         return "Played the favorites."
     return None
+
+
+def _stage_label(stage: str) -> str:
+    """Map WorldCupMatch.stage to a display label."""
+    return {
+        'group': 'Group Stage',
+        'r32': 'Round of 32',
+        'r16': 'Round of 16',
+        'qf': 'Quarterfinals',
+        'sf': 'Semifinals',
+        'final': 'The Final',
+    }.get(stage, 'Group Stage')
+
+
+def _context_out() -> dict:
+    """Logged-out marketing surface — no user, no WC enrollment."""
+    anon = AnonymousUserMixin()
+    return {
+        'available_games': available_games(anon),
+        'coming_soon_games': coming_soon_games(),
+        'total_enrolled': WorldCupEnrollment.query.filter_by(
+            season_year=SEASON_YEAR
+        ).count(),
+    }
 
 
 def _context_pre(user, enrollment) -> dict:
@@ -154,25 +167,42 @@ def _context_live(user, enrollment) -> dict:
         .all()
     )
     total_count = len(all_enrollments)
+    top_3 = all_enrollments[:3]
+
+    # Single batched picks fetch for the leaderboard rows we render
+    # (top 3 + the viewer if enrolled). Joined with WorldCupTeam so we
+    # can derive both alive_count and the viewer's roster set without
+    # round-tripping per enrollment.
+    relevant_ids = [e.id for e in top_3]
+    if is_enrolled and enrollment.id not in relevant_ids:
+        relevant_ids.append(enrollment.id)
+
+    picks_by_enr: dict[int, list] = {}
+    if relevant_ids:
+        rows = (
+            WorldCupPick.query
+            .filter(WorldCupPick.enrollment_id.in_(relevant_ids))
+            .join(WorldCupTeam)
+            .all()
+        )
+        for p in rows:
+            picks_by_enr.setdefault(p.enrollment_id, []).append(p)
+
+    def _alive_count(eid: int) -> int:
+        return sum(1 for p in picks_by_enr.get(eid, []) if not p.team.is_eliminated)
+
+    user_team_ids: set[int] = set()
+    if is_enrolled:
+        user_team_ids = {p.team_id for p in picks_by_enr.get(enrollment.id, [])}
 
     dossier = None
     if is_enrolled:
-        # Find user's rank (1-indexed)
         user_rank = next(
             (i + 1 for i, e in enumerate(all_enrollments) if e.id == enrollment.id),
             None,
         )
 
-        # Alive count
-        picks_with_teams = (
-            WorldCupPick.query
-            .filter_by(enrollment_id=enrollment.id)
-            .join(WorldCupTeam)
-            .all()
-        )
-        alive_count = sum(1 for p in picks_with_teams if not p.team.is_eliminated)
-
-        # Week-delta from snapshot history
+        # Week-delta + sparkline from snapshot history
         week_delta_rank = None
         week_delta_points = None
         sparkline_data = []
@@ -194,21 +224,20 @@ def _context_live(user, enrollment) -> dict:
             'rank': user_rank,
             'total_count': total_count,
             'total_score': enrollment.total_score,
-            'alive_count': alive_count,
+            'alive_count': _alive_count(enrollment.id),
             'week_delta_rank': week_delta_rank,
             'week_delta_points': week_delta_points,
             'sparkline_data': sparkline_data,
         }
 
     # Top 3 + you row (if user is enrolled and outside top 3)
-    top_3 = all_enrollments[:3]
     top_3_plus_you = []
     for i, enr in enumerate(top_3, start=1):
         top_3_plus_you.append({
             'rank': i,
             'enrollment': enr,
             'is_you': is_enrolled and enr.id == enrollment.id,
-            'tagline': _tagline_for(i, None, 0, is_you=False),
+            'tagline': _tagline_for(i, None, _alive_count(enr.id), is_you=False),
         })
     if is_enrolled and dossier and dossier['rank'] and dossier['rank'] > 3:
         top_3_plus_you.append({
@@ -230,13 +259,6 @@ def _context_live(user, enrollment) -> dict:
         .limit(5)
         .all()
     )
-
-    # Roster intersection — for foot-row rendering
-    user_team_ids = set()
-    if is_enrolled:
-        user_team_ids = {p.team_id for p in WorldCupPick.query.filter_by(
-            enrollment_id=enrollment.id
-        ).all()}
 
     your_pick_results = []
     for match in recent_results:
@@ -291,12 +313,17 @@ def _context_post(user, enrollment) -> dict:
     champion_summary = ''
     if final_match and final_match.winner_team_id:
         champion_team = final_match.winner_team
-        loser = (
-            final_match.home_team if final_match.away_team_id == final_match.winner_team_id
-            else final_match.away_team
-        )
-        winner_score = max(final_match.home_score or 0, final_match.away_score or 0)
-        loser_score = min(final_match.home_score or 0, final_match.away_score or 0)
+        # Derive winner/loser scores from winner_team_id alignment so the
+        # summary is right even if a future score-edit ever produced data
+        # where the higher-scoring side wasn't the winner.
+        if final_match.winner_team_id == final_match.home_team_id:
+            loser = final_match.away_team
+            winner_score = final_match.home_score or 0
+            loser_score = final_match.away_score or 0
+        else:
+            loser = final_match.home_team
+            winner_score = final_match.away_score or 0
+            loser_score = final_match.home_score or 0
         suffix = ''
         if final_match.penalties:
             suffix = ' on penalties'
@@ -337,7 +364,6 @@ def _context_post(user, enrollment) -> dict:
             your_climbed_n = first.rank - your_final_rank  # positive = climbed
 
         # Roster recap — every pick with points + best_finish
-        from games.worldcup.world_cup_countries import TIERS
         picks = (
             WorldCupPick.query
             .filter_by(enrollment_id=enrollment.id)
@@ -374,15 +400,3 @@ def _context_post(user, enrollment) -> dict:
         'joined_games': joined_games(user),
         'coming_soon_games': coming_soon_games(),
     }
-
-
-def _stage_label(stage: str) -> str:
-    """Map WorldCupMatch.stage to a display label."""
-    return {
-        'group': 'Group Stage',
-        'r32': 'Round of 32',
-        'r16': 'Round of 16',
-        'qf': 'Quarterfinals',
-        'sf': 'Semifinals',
-        'final': 'The Final',
-    }.get(stage, 'Group Stage')
