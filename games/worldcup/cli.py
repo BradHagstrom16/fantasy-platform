@@ -11,7 +11,7 @@ Usage:
     flask worldcup recalc         # Recalculate all scores (idempotent)
     flask worldcup status         # Print tournament state summary
 """
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 
 import click
 from flask.cli import AppGroup
@@ -214,14 +214,10 @@ def snapshot_ranks(backfill: int):
     With --backfill N, writes snapshots for the past N days using the
     current rank/score (best-effort backfill for first deploy).
     """
-    days_to_capture = list(range(backfill, -1, -1)) if backfill else [0]
+    today_local = datetime.now(WORLDCUP_TZ).date()
 
-    for days_ago in days_to_capture:
-        target_day_local = (
-            datetime.now(WORLDCUP_TZ).replace(hour=0, minute=0, second=0, microsecond=0)
-            - timedelta(days=days_ago)
-        )
-        captured_at_utc = target_day_local.astimezone(timezone.utc).replace(tzinfo=None)
+    for days_ago in range(backfill, -1, -1):
+        target_date = today_local - timedelta(days=days_ago)
 
         enrollments = (
             WorldCupEnrollment.query
@@ -233,20 +229,20 @@ def snapshot_ranks(backfill: int):
         rows_added = 0
         for rank, enr in enumerate(enrollments, start=1):
             existing = WorldCupRankSnapshot.query.filter_by(
-                enrollment_id=enr.id, captured_at=captured_at_utc
+                enrollment_id=enr.id, captured_date=target_date
             ).first()
             if existing:
                 continue
             db.session.add(WorldCupRankSnapshot(
                 enrollment_id=enr.id,
-                captured_at=captured_at_utc,
+                captured_date=target_date,
                 rank=rank,
                 total_score=enr.total_score,
             ))
             rows_added += 1
 
         db.session.commit()
-        click.echo(f'Snapshot for {captured_at_utc.date()} — {rows_added} new rows')
+        click.echo(f'Snapshot for {target_date} — {rows_added} new rows')
 
 
 def register_worldcup_cli(app):

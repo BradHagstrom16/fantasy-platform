@@ -179,7 +179,7 @@ def _context_live(user, enrollment) -> dict:
         recent_snapshots = (
             WorldCupRankSnapshot.query
             .filter_by(enrollment_id=enrollment.id)
-            .order_by(WorldCupRankSnapshot.captured_at.asc())
+            .order_by(WorldCupRankSnapshot.captured_date.asc())
             .limit(7)
             .all()
         )
@@ -329,7 +329,7 @@ def _context_post(user, enrollment) -> dict:
         snapshots = (
             WorldCupRankSnapshot.query
             .filter_by(enrollment_id=enrollment.id)
-            .order_by(WorldCupRankSnapshot.captured_at.asc())
+            .order_by(WorldCupRankSnapshot.captured_date.asc())
             .all()
         )
         if snapshots and your_final_rank:

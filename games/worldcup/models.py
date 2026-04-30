@@ -170,7 +170,7 @@ class WorldCupRankSnapshot(db.Model):
         db.Integer, db.ForeignKey('worldcup_enrollment.id'),
         nullable=False, index=True
     )
-    captured_at = db.Column(db.DateTime, nullable=False, index=True)
+    captured_date = db.Column(db.Date, nullable=False, index=True)
     rank = db.Column(db.Integer, nullable=False)
     total_score = db.Column(db.Float, nullable=False)
 
@@ -178,10 +178,10 @@ class WorldCupRankSnapshot(db.Model):
 
     __table_args__ = (
         db.UniqueConstraint(
-            'enrollment_id', 'captured_at',
+            'enrollment_id', 'captured_date',
             name='unique_worldcup_snapshot_per_day'
         ),
     )
 
     def __repr__(self):
-        return f'<WorldCupRankSnapshot enr={self.enrollment_id} at={self.captured_at} rank={self.rank}>'
+        return f'<WorldCupRankSnapshot enr={self.enrollment_id} on={self.captured_date} rank={self.rank}>'
