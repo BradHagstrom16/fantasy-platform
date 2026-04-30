@@ -1,0 +1,46 @@
+"""World Cup tournament-state detection for home-page rendering.
+
+Single function: ``worldcup_state()`` returns 'pre' | 'live' | 'post'.
+
+Used by ``core/main/routes.py`` to dispatch the home page to the
+correct state partial. Spec B section 4a is the canonical reference.
+"""
+import os
+from datetime import datetime, timezone
+from typing import Literal
+
+from games.worldcup.constants import TOURNAMENT_DEADLINE_UTC
+from games.worldcup.models import WorldCupMatch
+
+WorldCupState = Literal['pre', 'live', 'post']
+
+FINAL_MATCH_NUMBER = 104  # The Final per FIFA bracket numbering
+
+
+def _now_utc() -> datetime:
+    """Current UTC time, with a development-only test seam.
+
+    In dev (ENVIRONMENT=development), if WC_FAKE_NOW is set to an
+    ISO 8601 string, return that instead of real time. Production
+    never reads WC_FAKE_NOW.
+    """
+    if os.environ.get('ENVIRONMENT') == 'development':
+        fake = os.environ.get('WC_FAKE_NOW')
+        if fake:
+            return datetime.fromisoformat(fake.replace('Z', '+00:00'))
+    return datetime.now(timezone.utc)
+
+
+def worldcup_state() -> WorldCupState:
+    """Return the current World Cup phase.
+
+    pre  — picks open, deadline not yet passed
+    live — deadline passed, final (#104) not yet marked complete
+    post — final match marked complete (single source of truth per Spec B D7)
+    """
+    if _now_utc() < TOURNAMENT_DEADLINE_UTC:
+        return 'pre'
+    final = WorldCupMatch.query.filter_by(
+        match_number=FINAL_MATCH_NUMBER, is_completed=True
+    ).first()
+    return 'post' if final is not None else 'live'
