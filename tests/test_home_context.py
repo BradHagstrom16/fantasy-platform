@@ -91,3 +91,93 @@ def test_context_out_basic(app):
         assert ctx['total_enrolled'] == 0  # no enrollments seeded
         # WC is the only open game in the registry currently
         assert any(g.slug == 'worldcup' for g in ctx['available_games'])
+
+
+def _make_user(username='alice', email='alice@example.com'):
+    """Create + persist a User. Returns the User."""
+    from models.user import User
+    user = User(username=username, email=email)
+    user.set_password('test1234')
+    db.session.add(user)
+    db.session.commit()
+    return user
+
+
+def _make_enrollment(user, picks_submitted=False, total_score=0.0):
+    """Create + persist a WorldCupEnrollment for the current SEASON_YEAR."""
+    from games.worldcup.models import WorldCupEnrollment
+    from games.worldcup.constants import SEASON_YEAR
+    enr = WorldCupEnrollment(
+        user_id=user.id,
+        season_year=SEASON_YEAR,
+        picks_submitted=picks_submitted,
+        total_score=total_score,
+    )
+    db.session.add(enr)
+    db.session.commit()
+    return enr
+
+
+def test_context_pre_unenrolled(app):
+    """Logged-in but no WC enrollment → is_enrolled=False, no picks."""
+    from core.main.home_context import build_home_context
+    with app.app_context():
+        user = _make_user()
+        os.environ['ENVIRONMENT'] = 'development'
+        os.environ['WC_FAKE_NOW'] = '2026-05-01T00:00:00Z'
+        try:
+            ctx = build_home_context(user, 'pre')
+            assert ctx['is_enrolled'] is False
+            assert ctx['picks'] == []
+            assert ctx['display_name'] == 'alice'
+            assert 'court_line' in ctx
+            assert 'deadline_utc' in ctx
+        finally:
+            del os.environ['WC_FAKE_NOW']
+            os.environ.pop('ENVIRONMENT', None)
+
+
+def test_context_pre_enrolled_no_picks(app):
+    """Enrolled but picks_submitted=False → is_enrolled=True, picks=[]."""
+    from core.main.home_context import build_home_context
+    with app.app_context():
+        user = _make_user()
+        _make_enrollment(user, picks_submitted=False)
+        os.environ['ENVIRONMENT'] = 'development'
+        os.environ['WC_FAKE_NOW'] = '2026-05-01T00:00:00Z'
+        try:
+            ctx = build_home_context(user, 'pre')
+            assert ctx['is_enrolled'] is True
+            assert ctx['picks'] == []
+        finally:
+            del os.environ['WC_FAKE_NOW']
+            os.environ.pop('ENVIRONMENT', None)
+
+
+def test_context_pre_enrolled_sealed(app):
+    """Enrolled + picks_submitted=True → picks list populated."""
+    from core.main.home_context import build_home_context
+    from games.worldcup.models import WorldCupTeam, WorldCupPick
+    with app.app_context():
+        user = _make_user()
+        enr = _make_enrollment(user, picks_submitted=True)
+        # Seed one team + one pick (the test only checks structure, not 9 picks)
+        team = WorldCupTeam(
+            fifa_code='USA', name='United States', display_name='USA',
+            tier=1, multiplier=1.0, confederation='CONCACAF', group_letter='A',
+        )
+        db.session.add(team)
+        db.session.commit()
+        pick = WorldCupPick(enrollment_id=enr.id, team_id=team.id, tier=1)
+        db.session.add(pick)
+        db.session.commit()
+        os.environ['ENVIRONMENT'] = 'development'
+        os.environ['WC_FAKE_NOW'] = '2026-05-01T00:00:00Z'
+        try:
+            ctx = build_home_context(user, 'pre')
+            assert ctx['is_enrolled'] is True
+            assert len(ctx['picks']) == 1
+            assert ctx['picks'][0].team.fifa_code == 'USA'
+        finally:
+            del os.environ['WC_FAKE_NOW']
+            os.environ.pop('ENVIRONMENT', None)
