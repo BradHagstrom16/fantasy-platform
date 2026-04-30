@@ -181,3 +181,40 @@ def test_context_pre_enrolled_sealed(app):
         finally:
             del os.environ['WC_FAKE_NOW']
             os.environ.pop('ENVIRONMENT', None)
+
+
+def test_context_live_unenrolled(app):
+    """Live state, no enrollment → is_enrolled=False, dossier dict missing."""
+    from core.main.home_context import build_home_context
+    with app.app_context():
+        user = _make_user()
+        os.environ['ENVIRONMENT'] = 'development'
+        os.environ['WC_FAKE_NOW'] = '2026-06-15T00:00:00Z'
+        try:
+            ctx = build_home_context(user, 'live')
+            assert ctx['is_enrolled'] is False
+            assert ctx['dossier'] is None
+            assert ctx['top_3_plus_you'] == []  # no enrollments seeded
+        finally:
+            del os.environ['WC_FAKE_NOW']
+            os.environ.pop('ENVIRONMENT', None)
+
+
+def test_context_live_enrolled_basic(app):
+    """Live state, enrolled → dossier populated with rank/points/alive."""
+    from core.main.home_context import build_home_context
+    with app.app_context():
+        user = _make_user()
+        _make_enrollment(user, picks_submitted=True, total_score=100.0)
+        os.environ['ENVIRONMENT'] = 'development'
+        os.environ['WC_FAKE_NOW'] = '2026-06-15T00:00:00Z'
+        try:
+            ctx = build_home_context(user, 'live')
+            assert ctx['is_enrolled'] is True
+            assert ctx['dossier']['rank'] == 1  # only 1 enrollment
+            assert ctx['dossier']['total_score'] == 100.0
+            assert ctx['dossier']['alive_count'] == 0  # no picks seeded
+            assert ctx['dossier']['week_delta_rank'] is None  # no snapshots
+        finally:
+            del os.environ['WC_FAKE_NOW']
+            os.environ.pop('ENVIRONMENT', None)
