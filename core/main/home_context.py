@@ -281,8 +281,99 @@ def _context_live(user, enrollment) -> dict:
     }
 
 
-# Stub for the post-state; filled in by Task 8.
-def _context_post(user, enrollment): raise NotImplementedError
+def _context_post(user, enrollment) -> dict:
+    """Post-tournament state: champion banner + podium + roster recap."""
+    is_enrolled = enrollment is not None
+
+    # Champion data — match #104
+    final_match = WorldCupMatch.query.filter_by(match_number=104).first()
+    champion_team = None
+    champion_summary = ''
+    if final_match and final_match.winner_team_id:
+        champion_team = final_match.winner_team
+        loser = (
+            final_match.home_team if final_match.away_team_id == final_match.winner_team_id
+            else final_match.away_team
+        )
+        winner_score = max(final_match.home_score or 0, final_match.away_score or 0)
+        loser_score = min(final_match.home_score or 0, final_match.away_score or 0)
+        suffix = ''
+        if final_match.penalties:
+            suffix = ' on penalties'
+        elif final_match.extra_time:
+            suffix = ' in extra time'
+        if loser:
+            champion_summary = (
+                f'Defeated {loser.display_name} {winner_score}–{loser_score}{suffix}'
+            )
+
+    # Final podium — top 3
+    all_enrollments = (
+        WorldCupEnrollment.query
+        .filter_by(season_year=SEASON_YEAR)
+        .order_by(WorldCupEnrollment.total_score.desc())
+        .all()
+    )
+    top_3_final = all_enrollments[:3]
+    total_count = len(all_enrollments)
+
+    your_final_rank = None
+    your_climbed_n = None
+    your_roster_recap = []
+    if is_enrolled:
+        your_final_rank = next(
+            (i + 1 for i, e in enumerate(all_enrollments) if e.id == enrollment.id),
+            None,
+        )
+        # Climbed N spots — first snapshot vs latest
+        snapshots = (
+            WorldCupRankSnapshot.query
+            .filter_by(enrollment_id=enrollment.id)
+            .order_by(WorldCupRankSnapshot.captured_at.asc())
+            .all()
+        )
+        if snapshots and your_final_rank:
+            first = snapshots[0]
+            your_climbed_n = first.rank - your_final_rank  # positive = climbed
+
+        # Roster recap — every pick with points + best_finish
+        from games.worldcup.world_cup_countries import TIERS
+        picks = (
+            WorldCupPick.query
+            .filter_by(enrollment_id=enrollment.id)
+            .join(WorldCupTeam)
+            .order_by(WorldCupTeam.tier, WorldCupTeam.display_name)
+            .all()
+        )
+        for pick in picks:
+            your_roster_recap.append({
+                'pick': pick,
+                'tier_name': TIERS[pick.tier]['name'],
+                'best_finish': pick.team.best_finish or 'Group',
+                'points': pick.multiplied_points,
+                'is_champion': champion_team and pick.team_id == champion_team.id,
+            })
+
+    display_name = (
+        enrollment.get_display_name() if is_enrolled
+        else user.get_display_name()
+    )
+
+    return {
+        'enrollment': enrollment,
+        'is_enrolled': is_enrolled,
+        'champion_team': champion_team,
+        'champion_summary': champion_summary,
+        'final_match': final_match,
+        'top_3_final': top_3_final,
+        'total_count': total_count,
+        'your_final_rank': your_final_rank,
+        'your_climbed_n': your_climbed_n,
+        'your_roster_recap': your_roster_recap,
+        'display_name': display_name,
+        'joined_games': joined_games(user),
+        'coming_soon_games': coming_soon_games(),
+    }
 
 
 def _stage_label(stage: str) -> str:

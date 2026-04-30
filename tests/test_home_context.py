@@ -218,3 +218,36 @@ def test_context_live_enrolled_basic(app):
         finally:
             del os.environ['WC_FAKE_NOW']
             os.environ.pop('ENVIRONMENT', None)
+
+
+def test_context_post_with_champion(app):
+    """Post state with match #104 completed → champion_team populated."""
+    from core.main.home_context import build_home_context
+    from games.worldcup.models import WorldCupTeam, WorldCupMatch
+    with app.app_context():
+        # Seed the champion + final match
+        bra = WorldCupTeam(
+            fifa_code='BRA', name='Brazil', display_name='Brazil',
+            tier=2, multiplier=1.5, confederation='CONMEBOL', group_letter='C',
+        )
+        arg = WorldCupTeam(
+            fifa_code='ARG', name='Argentina', display_name='Argentina',
+            tier=2, multiplier=1.5, confederation='CONMEBOL', group_letter='B',
+        )
+        db.session.add_all([bra, arg])
+        db.session.commit()
+        final = WorldCupMatch(
+            match_number=104, stage='final',
+            home_team_id=bra.id, away_team_id=arg.id,
+            home_score=3, away_score=2, extra_time=True,
+            winner_team_id=bra.id, is_completed=True,
+        )
+        db.session.add(final)
+        db.session.commit()
+
+        user = _make_user()
+        ctx = build_home_context(user, 'post')
+        assert ctx['champion_team'].fifa_code == 'BRA'
+        assert 'Argentina' in ctx['champion_summary']
+        assert '3' in ctx['champion_summary']
+        assert ctx['is_enrolled'] is False
