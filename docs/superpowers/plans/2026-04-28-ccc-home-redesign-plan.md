@@ -16,6 +16,23 @@
 
 ---
 
+## Revision Notes (2026-04-30)
+
+Tasks 1–9 are complete on `redesign/ccc-home`. During execution, code review surfaced several issues with the original plan text. The plan body below has been **edited in place** so that re-reading it later matches the as-built code on the branch. The corrections, with the rationale for each:
+
+1. **Snapshot column is `captured_date` (Date), not `captured_at` (DateTime).** The constraint name (`unique_*_per_day`) always implied calendar-day granularity; the column type now matches. Eliminates the midnight-CT-to-UTC truncation, the `.replace(tzinfo=None)` dance, and any clock-skew window where two cron runs the same day could produce duplicates. Updates Tasks 2, 3, 7, 8.
+2. **`snapshot-ranks` backfill range is unconditional.** `range(backfill, -1, -1)` covers the no-backfill case (`[0]`) without needing a separate `if backfill else [0]` branch — and avoids the falsy-zero gotcha where `--backfill 0` silently took the no-backfill path. Updates Task 3.
+3. **`WC_FAKE_NOW` seam guard accepts `testing` as well as `development`.** Both are non-production by definition. Lets pytest tests run under their real `ENVIRONMENT=testing` and use `patch.dict` for `WC_FAKE_NOW` only — no manual env-var bookkeeping or asymmetric teardown. Updates Task 4.
+4. **`_context_live` uses one batched picks query.** Picks for `top_3 ∪ {viewer}` are loaded once into a `picks_by_enr` dict; both `alive_count` per enrollment and the viewer's `user_team_ids` derive from that dict. Replaces two narrower queries and unblocks the previously-dead `"Still warm. Still winning."` tagline (top-3 rows now receive a real `alive_count` instead of a hardcoded `0`). Updates Task 7.
+5. **`_context_post` derives champion/loser scores from `winner_team_id` alignment.** Reads as intent and is robust against any future data state where the higher-scoring side isn't the recorded winner. Updates Task 8.
+6. **`TIERS` is imported at module top.** No deferral benefit; matches project convention. Updates Task 8.
+7. **`_stage_label` is defined above `_context_live` (its caller).** Read order: dispatcher → helpers → builders. Updates Task 7.
+8. **Task 9 deletes 5 obsolete tests in `tests/test_homepage_sections.py`.** The original plan didn't anticipate that the pre-Spec-B home-page assertions would still be living in the suite. The 4 navbar / game-card-partial tests in that file remain — only the 5 section-content tests were removed.
+
+If a future task in this plan diverges from what is on `redesign/ccc-home`, trust the branch — `git log` on this file will show how the divergence happened.
+
+---
+
 ## File Structure
 
 | File | Action | Responsibility |
@@ -137,7 +154,7 @@ class WorldCupRankSnapshot(db.Model):
         db.Integer, db.ForeignKey('worldcup_enrollment.id'),
         nullable=False, index=True
     )
-    captured_at = db.Column(db.DateTime, nullable=False, index=True)
+    captured_date = db.Column(db.Date, nullable=False, index=True)
     rank = db.Column(db.Integer, nullable=False)
     total_score = db.Column(db.Float, nullable=False)
 
@@ -145,13 +162,13 @@ class WorldCupRankSnapshot(db.Model):
 
     __table_args__ = (
         db.UniqueConstraint(
-            'enrollment_id', 'captured_at',
+            'enrollment_id', 'captured_date',
             name='unique_worldcup_snapshot_per_day'
         ),
     )
 
     def __repr__(self):
-        return f'<WorldCupRankSnapshot enr={self.enrollment_id} at={self.captured_at} rank={self.rank}>'
+        return f'<WorldCupRankSnapshot enr={self.enrollment_id} on={self.captured_date} rank={self.rank}>'
 ```
 
 - [ ] **Step 2: Re-export the model so Alembic discovers it**
@@ -174,7 +191,7 @@ Expected: a new file appears under `migrations/versions/` with a hash prefix. Ou
 
 - [ ] **Step 4: Have the migration reviewed**
 
-Use the `migration-reviewer` agent to scan the new migration file for safety. The migration should be a single `op.create_table('worldcup_rank_snapshot', ...)` with a `op.create_index` for the `enrollment_id` and `captured_at` columns and a `op.create_unique_constraint`. The downgrade should be a single `op.drop_table`. No destructive ops.
+Use the `migration-reviewer` agent to scan the new migration file for safety. The migration should be a single `op.create_table('worldcup_rank_snapshot', ...)` with a `op.create_index` for the `enrollment_id` and `captured_date` columns and a `op.create_unique_constraint`. The downgrade should be a single `op.drop_table`. No destructive ops.
 
 - [ ] **Step 5: Apply the migration in dev**
 
@@ -215,7 +232,7 @@ dossier sparkline and week-delta on the home page (Spec B)."
 Add to the imports at the top:
 
 ```python
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from games.worldcup.constants import SEASON_YEAR, WORLDCUP_TZ
 from games.worldcup.models import WorldCupTeam, WorldCupMatch, WorldCupEnrollment, WorldCupRankSnapshot
 ```
@@ -235,14 +252,10 @@ def snapshot_ranks(backfill: int):
     With --backfill N, writes snapshots for the past N days using the
     current rank/score (best-effort backfill for first deploy).
     """
-    days_to_capture = list(range(backfill, -1, -1)) if backfill else [0]
+    today_local = datetime.now(WORLDCUP_TZ).date()
 
-    for days_ago in days_to_capture:
-        target_day_local = (
-            datetime.now(WORLDCUP_TZ).replace(hour=0, minute=0, second=0, microsecond=0)
-            - timedelta(days=days_ago)
-        )
-        captured_at_utc = target_day_local.astimezone(timezone.utc).replace(tzinfo=None)
+    for days_ago in range(backfill, -1, -1):
+        target_date = today_local - timedelta(days=days_ago)
 
         enrollments = (
             WorldCupEnrollment.query
@@ -254,23 +267,23 @@ def snapshot_ranks(backfill: int):
         rows_added = 0
         for rank, enr in enumerate(enrollments, start=1):
             existing = WorldCupRankSnapshot.query.filter_by(
-                enrollment_id=enr.id, captured_at=captured_at_utc
+                enrollment_id=enr.id, captured_date=target_date
             ).first()
             if existing:
                 continue
             db.session.add(WorldCupRankSnapshot(
                 enrollment_id=enr.id,
-                captured_at=captured_at_utc,
+                captured_date=target_date,
                 rank=rank,
                 total_score=enr.total_score,
             ))
             rows_added += 1
 
         db.session.commit()
-        click.echo(f'Snapshot for {captured_at_utc.date()} — {rows_added} new rows')
+        click.echo(f'Snapshot for {target_date} — {rows_added} new rows')
 ```
 
-(Note `.replace(tzinfo=None)` on `captured_at_utc` — Flask-SQLAlchemy with SQLite stores naive UTC datetimes for `db.DateTime`; matches existing patterns in `models.py`'s `created_at` defaults.)
+(`captured_date` is `db.Date`, so we work in calendar dates throughout — no UTC conversion or `tzinfo` stripping is needed. `datetime.now(WORLDCUP_TZ).date()` gives today's calendar date in CT, which is what the cron run wants to record.)
 
 - [ ] **Step 3: Smoke test the command (no enrollments yet → 0 rows)**
 
@@ -322,7 +335,6 @@ to re-run any day. Backfill mode for first-deploy seeding."
 ```python
 """Unit tests for home-page state detection and context assembly (Spec B)."""
 import os
-from datetime import datetime, timezone
 from unittest.mock import patch
 
 import pytest
@@ -364,44 +376,26 @@ def _seed_final_match(completed: bool, winner_id: int | None = None):
 def test_worldcup_state_pre_when_before_deadline(app):
     """Before TOURNAMENT_DEADLINE_UTC, state is 'pre'."""
     from games.worldcup.services.state import worldcup_state
-    # Default: TOURNAMENT_DEADLINE_UTC = 2026-06-11 19:00 UTC. Today is well before.
-    with app.app_context():
-        # In test runs after kickoff this would naturally fail; force-mock:
-        os.environ['ENVIRONMENT'] = 'development'
-        os.environ['WC_FAKE_NOW'] = '2026-05-01T00:00:00Z'
-        try:
-            assert worldcup_state() == 'pre'
-        finally:
-            del os.environ['WC_FAKE_NOW']
-            os.environ.pop('ENVIRONMENT', None)
+    with app.app_context(), patch.dict(os.environ, {'WC_FAKE_NOW': '2026-05-01T00:00:00Z'}):
+        assert worldcup_state() == 'pre'
 
 
 def test_worldcup_state_live_after_deadline_no_final(app):
     """After deadline + final not complete, state is 'live'."""
     from games.worldcup.services.state import worldcup_state
-    with app.app_context():
-        os.environ['ENVIRONMENT'] = 'development'
-        os.environ['WC_FAKE_NOW'] = '2026-06-15T00:00:00Z'
-        try:
-            assert worldcup_state() == 'live'
-        finally:
-            del os.environ['WC_FAKE_NOW']
-            os.environ.pop('ENVIRONMENT', None)
+    with app.app_context(), patch.dict(os.environ, {'WC_FAKE_NOW': '2026-06-15T00:00:00Z'}):
+        assert worldcup_state() == 'live'
 
 
 def test_worldcup_state_post_when_final_completed(app):
     """After deadline + final marked complete, state is 'post'."""
     from games.worldcup.services.state import worldcup_state
-    with app.app_context():
+    with app.app_context(), patch.dict(os.environ, {'WC_FAKE_NOW': '2026-07-20T00:00:00Z'}):
         _seed_final_match(completed=True, winner_id=None)
-        os.environ['ENVIRONMENT'] = 'development'
-        os.environ['WC_FAKE_NOW'] = '2026-07-20T00:00:00Z'
-        try:
-            assert worldcup_state() == 'post'
-        finally:
-            del os.environ['WC_FAKE_NOW']
-            os.environ.pop('ENVIRONMENT', None)
+        assert worldcup_state() == 'post'
 ```
+
+(Tests run under `ENVIRONMENT=testing` already — set externally by the pytest invocation — so `patch.dict` only needs to manage `WC_FAKE_NOW`. `patch.dict` automatically restores the prior env state on context exit.)
 
 - [ ] **Step 2: Run the tests — verify they fail**
 
@@ -434,13 +428,13 @@ FINAL_MATCH_NUMBER = 104  # The Final per FIFA bracket numbering
 
 
 def _now_utc() -> datetime:
-    """Current UTC time, with a development-only test seam.
+    """Current UTC time, with a non-production test seam.
 
-    In dev (ENVIRONMENT=development), if WC_FAKE_NOW is set to an
-    ISO 8601 string, return that instead of real time. Production
-    never reads WC_FAKE_NOW.
+    In development or testing (ENVIRONMENT in {'development', 'testing'}),
+    if WC_FAKE_NOW is set to an ISO 8601 string, return that instead of
+    real time. Production never reads WC_FAKE_NOW.
     """
-    if os.environ.get('ENVIRONMENT') == 'development':
+    if os.environ.get('ENVIRONMENT') in ('development', 'testing'):
         fake = os.environ.get('WC_FAKE_NOW')
         if fake:
             return datetime.fromisoformat(fake.replace('Z', '+00:00'))
@@ -655,44 +649,32 @@ def _make_enrollment(user, picks_submitted=False, total_score=0.0):
 def test_context_pre_unenrolled(app):
     """Logged-in but no WC enrollment → is_enrolled=False, no picks."""
     from core.main.home_context import build_home_context
-    with app.app_context():
+    with app.app_context(), patch.dict(os.environ, {'WC_FAKE_NOW': '2026-05-01T00:00:00Z'}):
         user = _make_user()
-        os.environ['ENVIRONMENT'] = 'development'
-        os.environ['WC_FAKE_NOW'] = '2026-05-01T00:00:00Z'
-        try:
-            ctx = build_home_context(user, 'pre')
-            assert ctx['is_enrolled'] is False
-            assert ctx['picks'] == []
-            assert ctx['display_name'] == 'alice'
-            assert 'court_line' in ctx
-            assert 'deadline_utc' in ctx
-        finally:
-            del os.environ['WC_FAKE_NOW']
-            os.environ.pop('ENVIRONMENT', None)
+        ctx = build_home_context(user, 'pre')
+        assert ctx['is_enrolled'] is False
+        assert ctx['picks'] == []
+        assert ctx['display_name'] == 'alice'
+        assert 'court_line' in ctx
+        assert 'deadline_utc' in ctx
 
 
 def test_context_pre_enrolled_no_picks(app):
     """Enrolled but picks_submitted=False → is_enrolled=True, picks=[]."""
     from core.main.home_context import build_home_context
-    with app.app_context():
+    with app.app_context(), patch.dict(os.environ, {'WC_FAKE_NOW': '2026-05-01T00:00:00Z'}):
         user = _make_user()
         _make_enrollment(user, picks_submitted=False)
-        os.environ['ENVIRONMENT'] = 'development'
-        os.environ['WC_FAKE_NOW'] = '2026-05-01T00:00:00Z'
-        try:
-            ctx = build_home_context(user, 'pre')
-            assert ctx['is_enrolled'] is True
-            assert ctx['picks'] == []
-        finally:
-            del os.environ['WC_FAKE_NOW']
-            os.environ.pop('ENVIRONMENT', None)
+        ctx = build_home_context(user, 'pre')
+        assert ctx['is_enrolled'] is True
+        assert ctx['picks'] == []
 
 
 def test_context_pre_enrolled_sealed(app):
     """Enrolled + picks_submitted=True → picks list populated."""
     from core.main.home_context import build_home_context
     from games.worldcup.models import WorldCupTeam, WorldCupPick
-    with app.app_context():
+    with app.app_context(), patch.dict(os.environ, {'WC_FAKE_NOW': '2026-05-01T00:00:00Z'}):
         user = _make_user()
         enr = _make_enrollment(user, picks_submitted=True)
         # Seed one team + one pick (the test only checks structure, not 9 picks)
@@ -705,16 +687,10 @@ def test_context_pre_enrolled_sealed(app):
         pick = WorldCupPick(enrollment_id=enr.id, team_id=team.id, tier=1)
         db.session.add(pick)
         db.session.commit()
-        os.environ['ENVIRONMENT'] = 'development'
-        os.environ['WC_FAKE_NOW'] = '2026-05-01T00:00:00Z'
-        try:
-            ctx = build_home_context(user, 'pre')
-            assert ctx['is_enrolled'] is True
-            assert len(ctx['picks']) == 1
-            assert ctx['picks'][0].team.fifa_code == 'USA'
-        finally:
-            del os.environ['WC_FAKE_NOW']
-            os.environ.pop('ENVIRONMENT', None)
+        ctx = build_home_context(user, 'pre')
+        assert ctx['is_enrolled'] is True
+        assert len(ctx['picks']) == 1
+        assert ctx['picks'][0].team.fifa_code == 'USA'
 ```
 
 - [ ] **Step 2: Run the 3 new tests — verify they fail with NotImplementedError**
@@ -844,38 +820,26 @@ kickoff order, and registry game lists for the compact tile strip."
 def test_context_live_unenrolled(app):
     """Live state, no enrollment → is_enrolled=False, dossier dict missing."""
     from core.main.home_context import build_home_context
-    with app.app_context():
+    with app.app_context(), patch.dict(os.environ, {'WC_FAKE_NOW': '2026-06-15T00:00:00Z'}):
         user = _make_user()
-        os.environ['ENVIRONMENT'] = 'development'
-        os.environ['WC_FAKE_NOW'] = '2026-06-15T00:00:00Z'
-        try:
-            ctx = build_home_context(user, 'live')
-            assert ctx['is_enrolled'] is False
-            assert ctx['dossier'] is None
-            assert ctx['top_3_plus_you'] == []  # no enrollments seeded
-        finally:
-            del os.environ['WC_FAKE_NOW']
-            os.environ.pop('ENVIRONMENT', None)
+        ctx = build_home_context(user, 'live')
+        assert ctx['is_enrolled'] is False
+        assert ctx['dossier'] is None
+        assert ctx['top_3_plus_you'] == []  # no enrollments seeded
 
 
 def test_context_live_enrolled_basic(app):
     """Live state, enrolled → dossier populated with rank/points/alive."""
     from core.main.home_context import build_home_context
-    with app.app_context():
+    with app.app_context(), patch.dict(os.environ, {'WC_FAKE_NOW': '2026-06-15T00:00:00Z'}):
         user = _make_user()
         _make_enrollment(user, picks_submitted=True, total_score=100.0)
-        os.environ['ENVIRONMENT'] = 'development'
-        os.environ['WC_FAKE_NOW'] = '2026-06-15T00:00:00Z'
-        try:
-            ctx = build_home_context(user, 'live')
-            assert ctx['is_enrolled'] is True
-            assert ctx['dossier']['rank'] == 1  # only 1 enrollment
-            assert ctx['dossier']['total_score'] == 100.0
-            assert ctx['dossier']['alive_count'] == 0  # no picks seeded
-            assert ctx['dossier']['week_delta_rank'] is None  # no snapshots
-        finally:
-            del os.environ['WC_FAKE_NOW']
-            os.environ.pop('ENVIRONMENT', None)
+        ctx = build_home_context(user, 'live')
+        assert ctx['is_enrolled'] is True
+        assert ctx['dossier']['rank'] == 1  # only 1 enrollment
+        assert ctx['dossier']['total_score'] == 100.0
+        assert ctx['dossier']['alive_count'] == 0  # no picks seeded
+        assert ctx['dossier']['week_delta_rank'] is None  # no snapshots
 ```
 
 - [ ] **Step 2: Run the new tests — verify they fail with NotImplementedError**
@@ -888,13 +852,7 @@ Expected: 2 failures with `NotImplementedError`.
 
 - [ ] **Step 3: Implement `_context_live()` and the tagline helper in `core/main/home_context.py`**
 
-Replace the `_context_live` stub. Also add the imports at the top if not present:
-
-```python
-from games.worldcup.models import WorldCupRankSnapshot
-```
-
-Then replace `def _context_live(user, enrollment): raise NotImplementedError` with:
+Add `WorldCupRankSnapshot` to the existing `from games.worldcup.models import (...)` line. `Optional, Any` is already imported. Then add two helpers — `_tagline_for` and `_stage_label` — above the builders so the read order is dispatcher → helpers → builders, and replace `def _context_live(user, enrollment): raise NotImplementedError` with the real builder:
 
 ```python
 def _tagline_for(rank: int, week_delta_rank: Optional[int],
@@ -923,6 +881,18 @@ def _tagline_for(rank: int, week_delta_rank: Optional[int],
     return None
 
 
+def _stage_label(stage: str) -> str:
+    """Map WorldCupMatch.stage to a display label."""
+    return {
+        'group': 'Group Stage',
+        'r32': 'Round of 32',
+        'r16': 'Round of 16',
+        'qf': 'Quarterfinals',
+        'sf': 'Semifinals',
+        'final': 'The Final',
+    }.get(stage, 'Group Stage')
+
+
 def _context_live(user, enrollment) -> dict:
     """Live-tournament state: dossier, leaderboard preview, recent results."""
     is_enrolled = enrollment is not None
@@ -935,32 +905,49 @@ def _context_live(user, enrollment) -> dict:
         .all()
     )
     total_count = len(all_enrollments)
+    top_3 = all_enrollments[:3]
+
+    # Single batched picks fetch for the leaderboard rows we render
+    # (top 3 + the viewer if enrolled). Joined with WorldCupTeam so we
+    # can derive both alive_count and the viewer's roster set without
+    # round-tripping per enrollment.
+    relevant_ids = [e.id for e in top_3]
+    if is_enrolled and enrollment.id not in relevant_ids:
+        relevant_ids.append(enrollment.id)
+
+    picks_by_enr: dict[int, list] = {}
+    if relevant_ids:
+        rows = (
+            WorldCupPick.query
+            .filter(WorldCupPick.enrollment_id.in_(relevant_ids))
+            .join(WorldCupTeam)
+            .all()
+        )
+        for p in rows:
+            picks_by_enr.setdefault(p.enrollment_id, []).append(p)
+
+    def _alive_count(eid: int) -> int:
+        return sum(1 for p in picks_by_enr.get(eid, []) if not p.team.is_eliminated)
+
+    user_team_ids: set[int] = set()
+    if is_enrolled:
+        user_team_ids = {p.team_id for p in picks_by_enr.get(enrollment.id, [])}
 
     dossier = None
     if is_enrolled:
-        # Find user's rank (1-indexed)
         user_rank = next(
             (i + 1 for i, e in enumerate(all_enrollments) if e.id == enrollment.id),
             None,
         )
 
-        # Alive count
-        picks_with_teams = (
-            WorldCupPick.query
-            .filter_by(enrollment_id=enrollment.id)
-            .join(WorldCupTeam)
-            .all()
-        )
-        alive_count = sum(1 for p in picks_with_teams if not p.team.is_eliminated)
-
-        # Week-delta from snapshot history
+        # Week-delta + sparkline from snapshot history
         week_delta_rank = None
         week_delta_points = None
         sparkline_data = []
         recent_snapshots = (
             WorldCupRankSnapshot.query
             .filter_by(enrollment_id=enrollment.id)
-            .order_by(WorldCupRankSnapshot.captured_at.asc())
+            .order_by(WorldCupRankSnapshot.captured_date.asc())
             .limit(7)
             .all()
         )
@@ -975,21 +962,20 @@ def _context_live(user, enrollment) -> dict:
             'rank': user_rank,
             'total_count': total_count,
             'total_score': enrollment.total_score,
-            'alive_count': alive_count,
+            'alive_count': _alive_count(enrollment.id),
             'week_delta_rank': week_delta_rank,
             'week_delta_points': week_delta_points,
             'sparkline_data': sparkline_data,
         }
 
     # Top 3 + you row (if user is enrolled and outside top 3)
-    top_3 = all_enrollments[:3]
     top_3_plus_you = []
     for i, enr in enumerate(top_3, start=1):
         top_3_plus_you.append({
             'rank': i,
             'enrollment': enr,
             'is_you': is_enrolled and enr.id == enrollment.id,
-            'tagline': _tagline_for(i, None, 0, is_you=False),
+            'tagline': _tagline_for(i, None, _alive_count(enr.id), is_you=False),
         })
     if is_enrolled and dossier and dossier['rank'] and dossier['rank'] > 3:
         top_3_plus_you.append({
@@ -1011,13 +997,6 @@ def _context_live(user, enrollment) -> dict:
         .limit(5)
         .all()
     )
-
-    # Roster intersection — for foot-row rendering
-    user_team_ids = set()
-    if is_enrolled:
-        user_team_ids = {p.team_id for p in WorldCupPick.query.filter_by(
-            enrollment_id=enrollment.id
-        ).all()}
 
     your_pick_results = []
     for match in recent_results:
@@ -1060,25 +1039,9 @@ def _context_live(user, enrollment) -> dict:
         'joined_games': joined_games(user),
         'coming_soon_games': coming_soon_games(),
     }
-
-
-def _stage_label(stage: str) -> str:
-    """Map WorldCupMatch.stage to a display label."""
-    return {
-        'group': 'Group Stage',
-        'r32': 'Round of 32',
-        'r16': 'Round of 16',
-        'qf': 'Quarterfinals',
-        'sf': 'Semifinals',
-        'final': 'The Final',
-    }.get(stage, 'Group Stage')
 ```
 
-Also add `Optional` to the imports:
-
-```python
-from typing import Optional, Any
-```
+The single batched picks query feeds both the per-row `alive_count` (which makes the "Still warm. Still winning." tagline reachable for top-3 long-game players) and the viewer's `user_team_ids` for roster intersection — replacing what would otherwise be one query per concern.
 
 - [ ] **Step 4: Run the tests — verify they pass**
 
@@ -1161,7 +1124,13 @@ Expected: failure with `NotImplementedError`.
 
 - [ ] **Step 3: Implement `_context_post()` in `core/main/home_context.py`**
 
-Replace the `_context_post` stub:
+Add to the module-top imports (it's the only consumer, but module-level imports are the project convention — no deferral benefit since `world_cup_countries` is loaded transitively at startup anyway):
+
+```python
+from games.worldcup.world_cup_countries import TIERS
+```
+
+Then replace the `_context_post` stub:
 
 ```python
 def _context_post(user, enrollment) -> dict:
@@ -1174,12 +1143,17 @@ def _context_post(user, enrollment) -> dict:
     champion_summary = ''
     if final_match and final_match.winner_team_id:
         champion_team = final_match.winner_team
-        loser = (
-            final_match.home_team if final_match.away_team_id == final_match.winner_team_id
-            else final_match.away_team
-        )
-        winner_score = max(final_match.home_score or 0, final_match.away_score or 0)
-        loser_score = min(final_match.home_score or 0, final_match.away_score or 0)
+        # Derive winner/loser scores from winner_team_id alignment so the
+        # summary is right even if a future score-edit ever produced data
+        # where the higher-scoring side wasn't the winner.
+        if final_match.winner_team_id == final_match.home_team_id:
+            loser = final_match.away_team
+            winner_score = final_match.home_score or 0
+            loser_score = final_match.away_score or 0
+        else:
+            loser = final_match.home_team
+            winner_score = final_match.away_score or 0
+            loser_score = final_match.home_score or 0
         suffix = ''
         if final_match.penalties:
             suffix = ' on penalties'
@@ -1212,7 +1186,7 @@ def _context_post(user, enrollment) -> dict:
         snapshots = (
             WorldCupRankSnapshot.query
             .filter_by(enrollment_id=enrollment.id)
-            .order_by(WorldCupRankSnapshot.captured_at.asc())
+            .order_by(WorldCupRankSnapshot.captured_date.asc())
             .all()
         )
         if snapshots and your_final_rank:
@@ -1220,7 +1194,7 @@ def _context_post(user, enrollment) -> dict:
             your_climbed_n = first.rank - your_final_rank  # positive = climbed
 
         # Roster recap — every pick with points + best_finish
-        from games.worldcup.world_cup_countries import TIERS
+        # (TIERS is imported at module top per project convention)
         picks = (
             WorldCupPick.query
             .filter_by(enrollment_id=enrollment.id)
@@ -1455,15 +1429,28 @@ db.session.commit()
 EOF
 ```
 
-- [ ] **Step 8: Run the full test suite — verify nothing broke**
+- [ ] **Step 8: Drop the 5 obsolete pre-Spec-B homepage-section tests**
+
+The route rewrite intentionally removes the old "Your Leagues / Available to Join / Coming Soon / Enter the Pool" surface. Five tests in `tests/test_homepage_sections.py` assert that markup and now fail by design — none of them are regressions. Delete them in place; the new state-aware home is covered by `tests/test_home_context.py`. The 4 navbar / `_game_card.html` tests in the same file remain unchanged (those components still exist and ship).
+
+The five tests to remove (everything under the `# ── Homepage sections` comment):
+- `test_homepage_logged_out_shows_available_and_coming_soon`
+- `test_homepage_zero_joined_shows_available_section`
+- `test_homepage_one_joined_shows_your_leagues_section`
+- `test_homepage_hides_empty_sections`
+- `test_homepage_featured_not_duplicated_in_joined_grid`
+
+Replace the section with a brief note explaining the move so the diff reads cleanly in review.
+
+- [ ] **Step 9: Run the full test suite — verify nothing broke**
 
 ```bash
 ENVIRONMENT=testing FLASK_APP=app.py venv/bin/python -m pytest tests/ -q
 ```
 
-Expected: 119 prior tests + 10 new = 129 passed.
+Expected: 119 prior tests − 5 obsolete tests removed in step 8 + 10 new home-context tests = 124 passed, 0 failed.
 
-- [ ] **Step 9: Commit**
+- [ ] **Step 10: Commit (route + templates separately from the test cleanup)**
 
 ```bash
 git add core/main/routes.py core/main/templates/main/
@@ -1472,6 +1459,14 @@ git commit -m "feat(home): state-aware route + dispatcher shell + state stubs
 Route dispatches on worldcup_state(); index.html includes one of four
 state partials. Stub partials render placeholder content so the four
 states are individually verifiable in dev before real templates land."
+
+git add tests/test_homepage_sections.py
+git commit -m "test: drop 5 obsolete homepage-section tests
+
+The tests asserted markup the Spec B home redesign intentionally
+removes. The new state-aware home is covered by tests/test_home_
+context.py. Navbar + game-card-partial tests in the same file are
+preserved because those components still exist."
 ```
 
 ---
