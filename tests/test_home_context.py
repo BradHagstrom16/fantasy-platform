@@ -79,3 +79,15 @@ def test_worldcup_state_post_when_final_completed(app):
         finally:
             del os.environ['WC_FAKE_NOW']
             os.environ.pop('ENVIRONMENT', None)
+
+
+def test_context_out_basic(app):
+    """Logged-out context returns game tiles + total_enrolled."""
+    from core.main.home_context import build_home_context
+    with app.app_context():
+        ctx = build_home_context(None, None)
+        assert 'available_games' in ctx
+        assert 'coming_soon_games' in ctx
+        assert ctx['total_enrolled'] == 0  # no enrollments seeded
+        # WC is the only open game in the registry currently
+        assert any(g.slug == 'worldcup' for g in ctx['available_games'])
