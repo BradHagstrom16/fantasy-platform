@@ -3,109 +3,15 @@
 {% block title %}Corrupt Commish Club{% endblock %}
 
 {% block content %}
-<!-- Hero -->
-<div class="home-hero text-center">
-  <div class="container position-relative" style="z-index:1;">
-    <p class="hero-eyebrow">Corrupt Commish Club</p>
-    <h1>
-      Your Fantasy Games,
-      <span class="gold-line">All in One Place.</span>
-    </h1>
-    <p class="hero-body">
-      Pick 'ems, survivor pools, tournament drafts — compete with your group across every sport.
-    </p>
-
-    {% if mode == 'logged_out' %}
-    <div class="hero-actions d-flex gap-3 justify-content-center flex-wrap">
-      <a href="{{ url_for('auth.register') }}" class="btn btn-warning btn-lg px-5">
-        <i class="bi bi-trophy-fill me-1"></i> Join Now
-      </a>
-      <a href="{{ url_for('auth.login') }}" class="btn btn-outline-light btn-lg px-4">
-        Sign In
-      </a>
-    </div>
-    {% else %}
-    <p class="hero-welcome">
-      Welcome back, <strong class="text-gold">{{ current_user.get_display_name() }}</strong>
-    </p>
-    {% endif %}
-  </div>
-</div>
-
-{# Featured hero card — only for open featured games #}
-{% if featured %}
-<div class="container my-5">
-  {% for game in featured %}
-  <div class="animate-in">
-    {% with state='featured' %}{% include 'main/_game_card.html' %}{% endwith %}
-  </div>
-  {% endfor %}
-</div>
+<div class="home-shell home-shell--{{ state }}">
+{% if state == 'out' %}
+  {% include 'main/_home_out.html' %}
+{% elif state == 'pre' %}
+  {% include 'main/_home_pre.html' %}
+{% elif state == 'live' %}
+  {% include 'main/_home_live.html' %}
+{% elif state == 'post' %}
+  {% include 'main/_home_post.html' %}
 {% endif %}
-
-<div class="container my-5">
-
-{% if mode == 'logged_in' %}
-  {% set joined_nonfeatured = joined | rejectattr('is_featured') | list %}
-  {% if joined_nonfeatured %}
-  <div class="text-center mt-5 mb-4 animate-in">
-    <p class="section-heading">Your Leagues</p>
-    <hr class="gold-rule">
-  </div>
-  <div class="row g-4 justify-content-center">
-    {% for game in joined_nonfeatured %}
-    <div class="col-sm-6 col-md-5 animate-in stagger-{{ loop.index }}">
-      {% with state='joined' %}{% include 'main/_game_card.html' %}{% endwith %}
-    </div>
-    {% endfor %}
-  </div>
-  {% endif %}
-
-  {% set available_nonfeatured = available | rejectattr('is_featured') | list %}
-  {% if available_nonfeatured %}
-  <div class="text-center mt-5 mb-4 animate-in">
-    <p class="section-heading">Available to Join</p>
-    <hr class="gold-rule">
-  </div>
-  <div class="row g-4 justify-content-center">
-    {% for game in available_nonfeatured %}
-    <div class="col-sm-6 col-md-5 animate-in stagger-{{ loop.index }}">
-      {% with state='available' %}{% include 'main/_game_card.html' %}{% endwith %}
-    </div>
-    {% endfor %}
-  </div>
-  {% endif %}
-
-{% else %}
-  {% set remaining = available | rejectattr('is_featured') | list %}
-  {% if remaining %}
-  <div class="text-center mt-5 mb-4 animate-in">
-    <p class="section-heading">Play Now</p>
-    <hr class="gold-rule">
-  </div>
-  <div class="row g-4 justify-content-center">
-    {% for game in remaining %}
-    <div class="col-sm-6 col-md-5 animate-in stagger-{{ loop.index }}">
-      {% with state='logged_out' %}{% include 'main/_game_card.html' %}{% endwith %}
-    </div>
-    {% endfor %}
-  </div>
-  {% endif %}
-{% endif %}
-
-{% if coming_soon %}
-<div class="text-center mt-5 mb-4 animate-in">
-  <p class="section-heading">Coming Soon</p>
-  <hr class="gold-rule">
-</div>
-<div class="row g-4 justify-content-center">
-  {% for game in coming_soon %}
-  <div class="col-sm-6 col-md-5 animate-in stagger-{{ loop.index }}">
-    {% with state='coming_soon' %}{% include 'main/_game_card.html' %}{% endwith %}
-  </div>
-  {% endfor %}
-</div>
-{% endif %}
-
 </div>
 {% endblock %}

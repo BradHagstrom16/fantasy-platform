@@ -1,0 +1,10 @@
+<div class="container my-5 text-center">
+  <h1>HOME LIVE — stub</h1>
+  <p>Display name: {{ display_name }}</p>
+  <p>Court line: {{ court_line }}</p>
+  <p>Enrolled: {{ is_enrolled }}</p>
+  {% if dossier %}
+    <p>Rank: {{ dossier.rank }} of {{ dossier.total_count }}</p>
+    <p>Score: {{ dossier.total_score }} · Alive: {{ dossier.alive_count }}</p>
+  {% endif %}
+</div>
