@@ -18,13 +18,13 @@ FINAL_MATCH_NUMBER = 104  # The Final per FIFA bracket numbering
 
 
 def _now_utc() -> datetime:
-    """Current UTC time, with a development-only test seam.
+    """Current UTC time, with a non-production test seam.
 
-    In dev (ENVIRONMENT=development), if WC_FAKE_NOW is set to an
-    ISO 8601 string, return that instead of real time. Production
-    never reads WC_FAKE_NOW.
+    In development or testing (ENVIRONMENT in {'development', 'testing'}),
+    if WC_FAKE_NOW is set to an ISO 8601 string, return that instead of
+    real time. Production never reads WC_FAKE_NOW.
     """
-    if os.environ.get('ENVIRONMENT') == 'development':
+    if os.environ.get('ENVIRONMENT') in ('development', 'testing'):
         fake = os.environ.get('WC_FAKE_NOW')
         if fake:
             return datetime.fromisoformat(fake.replace('Z', '+00:00'))
