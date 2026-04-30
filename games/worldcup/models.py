@@ -154,3 +154,34 @@ class WorldCupPick(db.Model):
 
     def __repr__(self):
         return f'<WorldCupPick enrollment={self.enrollment_id} team={self.team_id}>'
+
+
+class WorldCupRankSnapshot(db.Model):
+    """Daily snapshot of each enrollment's rank + total_score.
+
+    Written by ``flask worldcup snapshot-ranks``, run nightly via cron.
+    Powers the live-state dossier sparkline and week-delta calculations
+    on the home page (Spec B).
+    """
+    __tablename__ = 'worldcup_rank_snapshot'
+
+    id = db.Column(db.Integer, primary_key=True)
+    enrollment_id = db.Column(
+        db.Integer, db.ForeignKey('worldcup_enrollment.id'),
+        nullable=False, index=True
+    )
+    captured_at = db.Column(db.DateTime, nullable=False, index=True)
+    rank = db.Column(db.Integer, nullable=False)
+    total_score = db.Column(db.Float, nullable=False)
+
+    enrollment = db.relationship('WorldCupEnrollment', backref='rank_snapshots')
+
+    __table_args__ = (
+        db.UniqueConstraint(
+            'enrollment_id', 'captured_at',
+            name='unique_worldcup_snapshot_per_day'
+        ),
+    )
+
+    def __repr__(self):
+        return f'<WorldCupRankSnapshot enr={self.enrollment_id} at={self.captured_at} rank={self.rank}>'
