@@ -266,6 +266,94 @@ body.game-golf {
   --game-accent-light:       #d4b55a;
 }
 
+/* === HOME (CCC) ============================================== */
+/* Components used by core/main/templates/main/_home_*.html      */
+/* Ported from fantasy-platform-and-world-cup-design/project/    */
+/*   styles/app.css, scoped under .home-shell to avoid           */
+/*   collisions with platform components.                        */
+
+.home-shell {
+  position: relative;
+  min-height: calc(100vh - 56px - 200px); /* nav minus footer */
+  background: var(--purple-950);
+  background-image: radial-gradient(
+    ellipse at top,
+    var(--purple-900) 0%,
+    var(--purple-950) 60%
+  );
+  color: var(--bone);
+  font-family: var(--font-news);
+  padding: 2rem 1rem 3rem;
+}
+
+.home-shell--out {
+  /* Logged-out hero gets a slightly stronger vignette */
+  background-image: radial-gradient(
+    ellipse at center top,
+    var(--purple-800) 0%,
+    var(--purple-950) 70%
+  );
+}
+
+.home-shell--post {
+  /* Champion banner backdrop is gentler than live */
+  background-image: radial-gradient(
+    ellipse at top,
+    var(--purple-850) 0%,
+    var(--purple-950) 65%
+  );
+}
+
+@media (min-width: 768px) {
+  .home-shell {
+    padding: 3rem 1rem 4rem;
+  }
+}
+
+/* Home content max-width for non-live states (mobile-first single column) */
+.home-shell .home-col {
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+/* Section heads — shared across all home states */
+.home-shell .sec-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 1.5rem 0 0.75rem;
+}
+.home-shell .sec-head .t {
+  font-family: var(--font-teko);
+  font-weight: 600;
+  font-size: 1.25rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--bone);
+}
+.home-shell .sec-head .more {
+  font-family: var(--font-teko);
+  font-weight: 500;
+  font-size: 0.85rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--gold-light);
+  text-decoration: none;
+}
+.home-shell .sec-head .more:hover {
+  color: var(--gold-hi);
+}
+
+/* Metal-text helper (renamed from design's .metal-text per Spec B 9c) */
+.home-metal-text {
+  background: var(--metal-gold);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* === HOME — END ============================================== */
+
 /* === GOLF PICK 'EM === */
 
 /* Golf table — dark green header, themed hover */
