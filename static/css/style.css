@@ -1383,6 +1383,97 @@ body.game-golf {
   .home-shell .home-live .greet { text-align: left; }
 }
 
+/* --- Post-state: final podium --- */
+.home-shell .podium {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 0.75rem;
+  align-items: end;
+  margin: 1rem 0 2rem;
+}
+.home-shell .podium-tier {
+  text-align: center;
+  padding: 1rem 0.5rem 1.25rem;
+  background: linear-gradient(180deg,
+    rgba(58,29,114,.6) 0%,
+    var(--purple-950) 100%);
+  border: 1px solid rgba(243,239,230,.08);
+  border-radius: 8px 8px 0 0;
+  position: relative;
+}
+.home-shell .podium-tier--first {
+  background: linear-gradient(180deg,
+    rgba(201,162,39,.25) 0%,
+    var(--purple-900) 100%);
+  border: 1px solid rgba(201,162,39,.5);
+  padding-top: 1.5rem;
+  padding-bottom: 1.75rem;
+}
+.home-shell .podium-tier--first::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--podium-glow);
+  pointer-events: none;
+  border-radius: inherit;
+}
+.home-shell .podium-tier--second { transform: translateY(20px); }
+.home-shell .podium-tier--third { transform: translateY(35px); }
+.home-shell .podium-rank {
+  font-family: var(--font-teko);
+  font-weight: 700;
+  font-size: 1.6rem;
+  color: var(--bone-mute);
+  margin-bottom: 0.5rem;
+  position: relative;
+  z-index: 1;
+}
+.home-shell .podium-tier--first .podium-rank {
+  color: var(--gold-light);
+  font-size: 2rem;
+}
+.home-shell .podium-name {
+  font-family: var(--font-teko);
+  font-weight: 600;
+  font-size: 0.95rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--bone);
+  position: relative;
+  z-index: 1;
+  word-break: break-word;
+}
+.home-shell .podium-pts {
+  font-family: var(--font-teko);
+  font-weight: 700;
+  font-size: 1.5rem;
+  color: var(--bone);
+  margin-top: 0.5rem;
+  font-variant-numeric: tabular-nums;
+  position: relative;
+  z-index: 1;
+}
+.home-shell .podium-pts span {
+  font-size: 0.6rem;
+  letter-spacing: 0.18em;
+  margin-left: 0.25rem;
+  color: var(--bone-mute);
+  font-weight: 500;
+}
+
+@media (max-width: 480px) {
+  /* Mobile: stack vertically with #1 on top */
+  .home-shell .podium {
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+  }
+  .home-shell .podium-tier--second,
+  .home-shell .podium-tier--third {
+    transform: none;
+  }
+  .home-shell .podium-tier--first { order: -1; }
+}
+
 /* === HOME — END ============================================== */
 
 /* === GOLF PICK 'EM === */
