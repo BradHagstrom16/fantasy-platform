@@ -35,19 +35,19 @@
     {% if top_3_final|length >= 2 %}
     <div class="podium-tier podium-tier--second">
       <div class="podium-rank">2</div>
-      <div class="podium-name">{{ top_3_final[1].get_display_name() }}</div>
+      <div class="podium-name">{{ top_3_final[1].user.get_avatar() }} {{ top_3_final[1].get_display_name() }}</div>
       <div class="podium-pts">{{ '%.0f'|format(top_3_final[1].total_score) }} <span>PTS</span></div>
     </div>
     {% endif %}
     <div class="podium-tier podium-tier--first">
       <div class="podium-rank">1</div>
-      <div class="podium-name">{{ top_3_final[0].get_display_name() }}</div>
+      <div class="podium-name">{{ top_3_final[0].user.get_avatar() }} {{ top_3_final[0].get_display_name() }}</div>
       <div class="podium-pts">{{ '%.0f'|format(top_3_final[0].total_score) }} <span>PTS</span></div>
     </div>
     {% if top_3_final|length >= 3 %}
     <div class="podium-tier podium-tier--third">
       <div class="podium-rank">3</div>
-      <div class="podium-name">{{ top_3_final[2].get_display_name() }}</div>
+      <div class="podium-name">{{ top_3_final[2].user.get_avatar() }} {{ top_3_final[2].get_display_name() }}</div>
       <div class="podium-pts">{{ '%.0f'|format(top_3_final[2].total_score) }} <span>PTS</span></div>
     </div>
     {% endif %}
