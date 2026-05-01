@@ -352,6 +352,185 @@ body.game-golf {
   color: transparent;
 }
 
+/* --- Logged-out: hero --- */
+.home-shell .out-hero {
+  text-align: center;
+  padding: 2rem 0 2.5rem;
+}
+.home-shell .out-eyebrow {
+  font-family: var(--font-teko);
+  font-weight: 500;
+  font-size: 0.75rem;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--gold-light);
+  margin-bottom: 1.5rem;
+}
+.home-shell .out-title {
+  font-family: var(--font-teko);
+  font-weight: 700;
+  font-size: 2.4rem;
+  line-height: 0.95;
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+.home-shell .out-title .out-title-a {
+  display: block;
+  background: var(--metal-gold);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.home-shell .out-title .out-title-b {
+  display: block;
+  color: var(--bone);
+  margin-top: 0.2rem;
+}
+@media (min-width: 768px) {
+  .home-shell .out-title { font-size: 3.5rem; }
+}
+.home-shell .out-sub {
+  font-family: var(--font-news);
+  font-size: 1.05rem;
+  line-height: 1.5;
+  color: var(--bone-mute);
+  margin: 1.5rem auto 0;
+  max-width: 480px;
+}
+
+/* --- Logged-out: value props --- */
+.home-shell .out-props {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 1.5rem 0;
+  border-top: 1px solid rgba(243,239,230,.08);
+  border-bottom: 1px solid rgba(243,239,230,.08);
+}
+.home-shell .out-prop {
+  display: flex;
+  gap: 1rem;
+  padding: 1.25rem 0.5rem;
+  border-bottom: 1px solid rgba(243,239,230,.05);
+}
+.home-shell .out-prop:last-child { border-bottom: none; }
+.home-shell .out-prop-icon {
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--gold-light);
+  font-size: 1.1rem;
+}
+.home-shell .out-prop-text .t {
+  font-family: var(--font-teko);
+  font-weight: 600;
+  font-size: 1.05rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--bone);
+}
+.home-shell .out-prop-text .s {
+  font-family: var(--font-news);
+  font-size: 0.9rem;
+  color: var(--bone-mute);
+  margin-top: 0.25rem;
+  line-height: 1.4;
+}
+
+/* --- Logged-out: Join CTA card --- */
+.home-shell .join {
+  margin-top: 2rem;
+  padding: 1.75rem 1.5rem 2rem;
+  background: linear-gradient(180deg,
+    var(--purple-800) 0%,
+    var(--purple-900) 100%);
+  border: 1px solid rgba(201,162,39,.3);
+  border-radius: 14px;
+  text-align: center;
+}
+.home-shell .join-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+.home-shell .join-head .seal {
+  font-family: var(--font-teko);
+  font-weight: 500;
+  font-size: 0.7rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--gold-light);
+}
+.home-shell .join-head .count {
+  font-family: var(--font-news);
+  font-size: 0.85rem;
+  color: var(--bone-mute);
+  font-style: italic;
+}
+.home-shell .join-head .count .v {
+  color: var(--bone);
+  font-style: normal;
+  font-family: var(--font-teko);
+  font-weight: 600;
+  font-size: 1rem;
+}
+.home-shell .join-title {
+  font-family: var(--font-teko);
+  font-weight: 700;
+  font-size: 2rem;
+  line-height: 1;
+  text-transform: uppercase;
+  color: var(--bone);
+  margin: 0.5rem 0 1rem;
+}
+.home-shell .join-sub {
+  font-family: var(--font-news);
+  font-size: 0.95rem;
+  color: var(--bone-mute);
+  line-height: 1.5;
+  max-width: 380px;
+  margin: 0 auto 1.5rem;
+}
+.home-shell .join-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.85rem 2rem;
+  background: var(--metal-gold);
+  color: var(--purple-950) !important;
+  font-family: var(--font-teko);
+  font-weight: 600;
+  font-size: 1rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  text-decoration: none;
+  border-radius: 8px;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.home-shell .join-cta:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(201,162,39,.25);
+  color: var(--purple-950) !important;
+}
+.home-shell .join-alt {
+  margin-top: 1rem;
+  font-family: var(--font-news);
+  font-size: 0.9rem;
+  color: var(--bone-mute);
+}
+.home-shell .join-alt a {
+  color: var(--gold-light);
+  text-decoration: underline;
+}
+.home-shell .join-alt a:hover { color: var(--gold-hi); }
+
 /* === HOME — END ============================================== */
 
 /* === GOLF PICK 'EM === */
