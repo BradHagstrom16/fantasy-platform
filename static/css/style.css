@@ -729,6 +729,161 @@ body.game-golf {
 }
 .home-shell .decree-links a:hover { color: var(--gold-light); }
 
+/* --- Pre-state: sealed ballot card --- */
+.home-shell .ballot-card {
+  display: block;
+  margin: 1.5rem 0;
+  padding: 1.25rem 1.25rem 1.5rem;
+  background: linear-gradient(180deg,
+    rgba(100,219,160,.08) 0%,
+    rgba(26,10,54,.5) 100%);
+  border: 1px solid rgba(100,219,160,.3);
+  border-radius: 12px;
+  text-decoration: none;
+  color: var(--bone);
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+.home-shell .ballot-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(100,219,160,.5);
+  color: var(--bone);
+}
+.home-shell .ballot-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 0.75rem;
+}
+.home-shell .ballot-label {
+  font-family: var(--font-teko);
+  font-weight: 500;
+  font-size: 0.7rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--bone-mute);
+}
+.home-shell .ballot-status {
+  font-family: var(--font-teko);
+  font-weight: 600;
+  font-size: 1.1rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--bone);
+  margin-top: 0.2rem;
+}
+.home-shell .ballot-locked {
+  font-family: var(--font-teko);
+  font-weight: 600;
+  font-size: 0.7rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #64DBA0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.home-shell .ballot-locked .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #64DBA0;
+}
+.home-shell .ballot-flags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0.75rem 0;
+}
+.home-shell .ballot-flag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  font-size: 1.6rem;
+  line-height: 1;
+  background: rgba(10,6,18,.5);
+  border: 1px solid rgba(201,162,39,.22);
+  border-radius: 8px;
+}
+.home-shell .ballot-foot {
+  font-family: var(--font-news);
+  font-style: italic;
+  font-size: 0.85rem;
+  color: var(--bone-mute);
+  line-height: 1.4;
+  margin-top: 0.5rem;
+}
+.home-shell .ballot-foot em {
+  color: var(--gold-light);
+  font-style: italic;
+}
+
+/* --- CTA cards (join, view, seal) --- */
+.home-shell .cta-card {
+  display: block;
+  margin: 1.5rem 0;
+  padding: 1.5rem 1.25rem;
+  border-radius: 12px;
+  text-decoration: none;
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+.home-shell .cta-card:hover { transform: translateY(-2px); }
+.home-shell .cta-card-eyebrow {
+  font-family: var(--font-teko);
+  font-weight: 500;
+  font-size: 0.7rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--gold-light);
+  margin-bottom: 0.5rem;
+}
+.home-shell .cta-card-title {
+  font-family: var(--font-teko);
+  font-weight: 700;
+  font-size: 1.6rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--bone);
+  margin-bottom: 0.5rem;
+}
+.home-shell .cta-card-body {
+  font-family: var(--font-news);
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: var(--bone-mute);
+  margin-bottom: 1rem;
+}
+.home-shell .cta-card-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-family: var(--font-teko);
+  font-weight: 600;
+  font-size: 0.95rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--gold-light);
+}
+.home-shell .cta-card--seal {
+  background: linear-gradient(180deg,
+    rgba(201,162,39,.1) 0%,
+    rgba(26,10,54,.5) 100%);
+  border: 1px solid rgba(201,162,39,.35);
+}
+.home-shell .cta-card--join {
+  background: linear-gradient(180deg,
+    var(--purple-800) 0%,
+    var(--purple-900) 100%);
+  border: 1px solid rgba(201,162,39,.3);
+}
+.home-shell .cta-card--view {
+  background: linear-gradient(180deg,
+    var(--purple-850) 0%,
+    var(--purple-950) 100%);
+  border: 1px solid rgba(243,239,230,.12);
+}
+
 /* === HOME — END ============================================== */
 
 /* === GOLF PICK 'EM === */
