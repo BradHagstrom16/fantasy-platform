@@ -1741,6 +1741,81 @@ body.game-golf {
   .home-shell .rr-tier { display: none; }
 }
 
+/* --- Polish: focus rings (a11y) --- */
+.home-shell a:focus-visible,
+.home-shell button:focus-visible {
+  outline: 2px solid var(--gold-light);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* --- Polish: subtle gold underline on compact tile hover --- */
+.home-shell .cg--active:hover .n {
+  text-decoration: underline;
+  text-decoration-color: var(--gold-light);
+  text-underline-offset: 4px;
+}
+
+/* --- Polish: card-style links use the same lift as auth buttons --- */
+.home-shell .ballot-card,
+.home-shell .cta-card,
+.home-shell .cg--active {
+  transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.home-shell .ballot-card:hover,
+.home-shell .cta-card:hover,
+.home-shell .cg--active:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(0,0,0,.3);
+}
+
+/* --- Polish: prevent layout shift on countdown digit changes --- */
+.home-shell .decree-days .d-cell .v {
+  display: inline-block;
+  min-width: 2.6rem;
+  text-align: center;
+}
+
+/* --- Polish: touch device hover suppression --- */
+@media (hover: none) {
+  .home-shell .ballot-card:hover,
+  .home-shell .cta-card:hover,
+  .home-shell .cg:hover,
+  .home-shell .cg--active:hover,
+  .home-shell .join-cta:hover,
+  .home-shell .decree-cta:hover,
+  .home-shell .roster-recap-cta:hover {
+    transform: none;
+    box-shadow: none;
+  }
+  /* Hover-underline on the compact tile won't dismiss on tap — suppress it on touch */
+  .home-shell .cg--active:hover .n {
+    text-decoration: none;
+  }
+}
+
+/* --- Polish: reduced-motion respect for hover lifts --- */
+@media (prefers-reduced-motion: reduce) {
+  .home-shell .ballot-card:hover,
+  .home-shell .cta-card:hover,
+  .home-shell .cg--active:hover,
+  .home-shell .join-cta:hover,
+  .home-shell .decree-cta:hover,
+  .home-shell .roster-recap-cta:hover {
+    transform: none;
+  }
+}
+
+/* --- Polish: print-friendly fallback (just in case) --- */
+@media print {
+  .home-shell {
+    background: white !important;
+    color: black !important;
+  }
+  .home-shell .champion-glow-bg,
+  .home-shell .decree::after { display: none; }
+}
+
 /* === HOME — END ============================================== */
 
 /* === GOLF PICK 'EM === */
