@@ -71,10 +71,11 @@ def _stage_label(stage: str) -> str:
     """Map WorldCupMatch.stage to a display label."""
     return {
         'group': 'Group Stage',
-        'r32': 'Round of 32',
-        'r16': 'Round of 16',
-        'qf': 'Quarterfinals',
-        'sf': 'Semifinals',
+        'R32': 'Round of 32',
+        'R16': 'Round of 16',
+        'QF': 'Quarterfinals',
+        'SF': 'Semifinals',
+        'third_place': 'Third-Place Match',
         'final': 'The Final',
     }.get(stage, 'Group Stage')
 
@@ -129,11 +130,13 @@ def _context_pre(user, enrollment) -> dict:
         proximity = f'{days} days to kickoff'
     elif days == 1:
         proximity = '1 day to kickoff'
-    elif hours > 1:
+    elif hours >= 2:
         proximity = f'{hours} hours to kickoff'
+    elif hours == 1:
+        proximity = '1 hour to kickoff'
     elif delta.total_seconds() > 0:
         minutes = (delta.seconds // 60) % 60
-        proximity = f'{minutes} minutes to kickoff'
+        proximity = f'{minutes} minute{"s" if minutes != 1 else ""} to kickoff'
     else:
         proximity = 'kickoff imminent'
     court_line = f'{weekday} ◆ Tribute window open ◆ {proximity}'
@@ -207,13 +210,13 @@ def _context_live(user, enrollment) -> dict:
         week_delta_rank = None
         week_delta_points = None
         sparkline_data = []
-        recent_snapshots = (
+        recent_snapshots = list(reversed(
             WorldCupRankSnapshot.query
             .filter_by(enrollment_id=enrollment.id)
-            .order_by(WorldCupRankSnapshot.captured_date.asc())
+            .order_by(WorldCupRankSnapshot.captured_date.desc())
             .limit(7)
             .all()
-        )
+        ))
         if recent_snapshots:
             sparkline_data = [s.rank for s in recent_snapshots]
             if len(recent_snapshots) >= 2:
