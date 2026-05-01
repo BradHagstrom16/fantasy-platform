@@ -22,12 +22,23 @@ def _now_utc() -> datetime:
 
     In development or testing (ENVIRONMENT in {'development', 'testing'}),
     if WC_FAKE_NOW is set to an ISO 8601 string, return that instead of
-    real time. Production never reads WC_FAKE_NOW.
+    real time. A naive ISO string is treated as UTC. Malformed values
+    are logged and ignored (falls through to real time). Production
+    never reads WC_FAKE_NOW.
     """
     if os.environ.get('ENVIRONMENT') in ('development', 'testing'):
         fake = os.environ.get('WC_FAKE_NOW')
         if fake:
-            return datetime.fromisoformat(fake.replace('Z', '+00:00'))
+            try:
+                dt = datetime.fromisoformat(fake.replace('Z', '+00:00'))
+            except ValueError:
+                import logging
+                logging.getLogger(__name__).warning(
+                    'WC_FAKE_NOW is not a valid ISO 8601 datetime: %r — falling back to real time',
+                    fake,
+                )
+            else:
+                return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
     return datetime.now(timezone.utc)
 
 
