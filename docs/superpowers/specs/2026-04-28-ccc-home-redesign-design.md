@@ -817,7 +817,7 @@ Added to `deploy/crontab.txt`:
 ```bash
 venv/bin/python -m pytest tests/
 ```
-Expected: all 119 prior tests pass + `tests/test_home_context.py` adds ~8 unit tests (one per state × enrolled/unenrolled, plus one for `worldcup_state()`'s 3 phases).
+Expected: 124 passed on `redesign/ccc-home`. (`tests/test_home_context.py` is part of that count; the prior implementation session also pruned 5 obsolete homepage-section tests.)
 
 **Gate 2 — Type checking clean:**
 ```bash

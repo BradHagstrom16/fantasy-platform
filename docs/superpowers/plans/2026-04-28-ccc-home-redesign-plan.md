@@ -16,6 +16,49 @@
 
 ---
 
+## ⚠ Resumption note (2026-04-30, end of day)
+
+**Tasks 1-18 are complete on `redesign/ccc-home`.** The pre-state home (greet → countdown → ballot/CTA → opening matches → compact game tiles → Commish's Note) renders end-to-end. Logged-out marketing surface is shipped. 124/124 tests pass; pyright is clean. Verify head state via `git log --oneline main..HEAD` from the worktree.
+
+**Resume at Task 19.** The remaining 14 tasks are split into three sessions:
+
+| Session | Tasks | Skill | Notes |
+|---|---|---|---|
+| **A** | 19-22 + manual 23 | `/subagent-driven-development` for 19-22; drive Task 23 manually | Live state. Mechanical ports of designed components. Task 23 needs `WC_FAKE_NOW=2026-06-12T00:00:00Z`, seeded completed matches, and `flask worldcup snapshot-ranks --backfill 7`. |
+| **B** | 24-29 | `/executing-plans` (hybrid) — invoke `/frontend-design:frontend-design` once at session start | Post state + polish. [FD]-marked tasks. The post-state was undesigned by the bundle and brainstormed in the spec — design judgment matters here. Subagent-drive 24/26/27 (structural); do 25 (banner glow) and 29 (polish) with frontend-design context in the main thread after eyeballing the screen. |
+| **C** | 30-32 | None (direct Claude Code) | Cross-state checklist (15 items, manual), pyright + pytest sweep, migration round-trip (`db downgrade && db upgrade`), `gh pr create`. |
+
+**Test count:** the prior session pruned 5 obsolete homepage-section tests. Plan body still says "129 passed" in places — actual head count is **124**. Treat the plan's 119/129 numbers as out-of-date; expect 124 throughout 18/23/28/31.
+
+**Worktree noise:** `graphify-out/GRAPH_REPORT.md` gets auto-rebuilt during agent runs and shows up in `git status` as modified. Untracked-noise — leave it alone.
+
+### Tasks 1-18 — completed commits (skip these tasks; they're done)
+
+| Task | Commit | Subject |
+|---|---|---|
+| 1 | (worktree creation) | Worktree at `../fantasy-platform-ccc-home` on `redesign/ccc-home` |
+| 2 | `1db983b` | WorldCupRankSnapshot model + migration (refined later in `7ca69af`: stores Date, not DateTime) |
+| 3 | `aef3bcb` | snapshot-ranks CLI with --backfill |
+| 4 | `b55c754` | worldcup_state() phase detection (seam later widened in `733d301`) |
+| 5 | `4891d86` | build_home_context dispatcher + _context_out |
+| 6 | `c4a3fcb` | _context_pre with countdown + ballot + opening matches |
+| 7 | `03731f1` | _context_live with dossier + tagline helper |
+| 8 | `e816381` | _context_post with champion + podium + roster recap |
+| 9 | `268cfbc` | State-aware route + dispatcher shell + state stubs (refined in `9744675`) |
+| 10 | (no-op) | Confirmed `'completed'` already in `GameStatus` Literal |
+| 11 | `aa93186` | Tokens + HOME section scaffold to style.css |
+| 12 | `f560d26` | Logged-out marketing surface |
+| 13 | `8da9487` | Pre-state shell + greet block |
+| 14 | `d35113f` | Pre-state countdown card with tick JS |
+| 15 | `1b8d189` + `cb431d2` | Ballot variants + CTA cards (fix-up: consume `--live-green` token) |
+| 16 | `c664c24` | Opening matches fixture card + compact game tiles |
+| 17 | `012ac75` | Commish-note + dispatches partials (file-edited) |
+| 18 | (verification only) | Manual browser scenarios + 124/124 tests passing |
+
+(Plus prior-session housekeeping: `27cffdc` test cleanup, `978fe7d` plan body alignment.)
+
+---
+
 ## Revision Notes (2026-04-30)
 
 Tasks 1–9 are complete on `redesign/ccc-home`. During execution, code review surfaced several issues with the original plan text. The plan body below has been **edited in place** so that re-reading it later matches the as-built code on the branch. The corrections, with the rationale for each:
@@ -3234,13 +3277,28 @@ In Chrome DevTools, switch to iPhone 13 (390x844). All three logged-in scenarios
 ENVIRONMENT=testing FLASK_APP=app.py venv/bin/python -m pytest tests/ -q
 ```
 
-Expected: all 129 tests pass.
+Expected: 124 passed.
 
 - [ ] **Step 4: Commit (no code change — this is a verification milestone)**
 
 If you needed to fix any visual bugs during verification, commit those. Otherwise no commit; tag this milestone in the PR description.
 
 ---
+
+═══════════════════════════════════════════════════════════════
+## ▶ SESSION A — Tasks 19-23 (live state)
+
+Skill: `/subagent-driven-development` for Tasks 19-22 (mechanical ports). Task 23 is verification — drive it manually in this same session.
+
+Setup for Task 23 (do once near the top of the session, then leave running):
+```bash
+cd /Users/bhagstrom/fantasy-platform-ccc-home
+ENVIRONMENT=development FLASK_APP=app.py venv/bin/flask worldcup init   # if dev DB is empty
+ENVIRONMENT=development FLASK_APP=app.py venv/bin/flask worldcup snapshot-ranks --backfill 7
+WC_FAKE_NOW=2026-06-12T00:00:00Z ENVIRONMENT=development FLASK_APP=app.py venv/bin/flask run --port 5001
+```
+Then seed at least one completed match via shell (snippet inside Task 21).
+═══════════════════════════════════════════════════════════════
 
 ## Task 19: Live-state shell + greet (with dossier slot)
 
@@ -3926,13 +3984,27 @@ Chrome DevTools, iPhone 13 (390x844). Live state should:
 ENVIRONMENT=testing FLASK_APP=app.py venv/bin/python -m pytest tests/ -q
 ```
 
-Expected: 129 passed.
+Expected: 124 passed.
 
 - [ ] **Step 4: Verification milestone (no commit unless bug fixes)**
 
 If any visual bugs were caught and fixed, commit those.
 
 ---
+
+═══════════════════════════════════════════════════════════════
+## ▶ SESSION B — Tasks 24-29 (post state + polish, [FD] territory)
+
+Skill: `/executing-plans` hybrid. **Invoke `/frontend-design:frontend-design` at session start** to bring design context in.
+
+Recommended path:
+1. Subagent-drive Tasks 24, 26, 27 (structural — spec gives the layout).
+2. **Stop. Set up post-state in browser:** in `flask shell`, mark match #104 `is_completed=True` with a `winner_team_id`. With `WC_FAKE_NOW=2026-07-20T00:00:00Z` the home will render `state='post'`.
+3. Eyeball the rendering. Iterate Tasks 25 (champion banner glow) and 29 (polish) WITH frontend-design context in the main thread. Subagent reports can't replace seeing the screen here.
+4. Task 28 is verification — drive manually.
+
+Real risk: the post-state has 0 design reference. Plan to bounce off the screen and revise once before declaring 28 done.
+═══════════════════════════════════════════════════════════════
 
 ## Task 24: Post-state shell + greet [FD]
 
@@ -4619,7 +4691,7 @@ iPhone 13 (390x844):
 ENVIRONMENT=testing FLASK_APP=app.py venv/bin/python -m pytest tests/ -q
 ```
 
-Expected: 129 passed.
+Expected: 124 passed.
 
 - [ ] **Step 4: Reset dev DB for next task**
 
@@ -4728,6 +4800,18 @@ fixed-width cells to prevent layout shift on tick. Print fallback."
 
 ---
 
+═══════════════════════════════════════════════════════════════
+## ▶ SESSION C — Tasks 30-32 (final verification + PR)
+
+Skill: none — direct Claude Code. Short, ceremonial session.
+
+Order: Task 30 (you drive the 15-item manual checklist; Claude takes notes + fixes) → Task 31 (pyright + pytest + migration round-trip — `flask db downgrade && db upgrade && db downgrade && db upgrade`) → Task 32 (`gh pr create`).
+
+Pre-PR sanity check: `git diff main..redesign/ccc-home -- '*.py' | head -200` — confirm only `home_context.py` (new), `routes.py`, `home_context.py:_context_pre.now_utc`, `models.py:WorldCupRankSnapshot`, `cli.py:snapshot-ranks`, `services/state.py` (new), `services/__init__.py` (re-export), `registry.py:GameStatus` Literal, and the migration are touched.
+
+Don't push the PR until Task 30's checklist comes back clean.
+═══════════════════════════════════════════════════════════════
+
 ## Task 30: Cross-state full verification
 
 **Files:**
@@ -4739,7 +4823,7 @@ fixed-width cells to prevent layout shift on tick. Print fallback."
 ```bash
 ENVIRONMENT=testing FLASK_APP=app.py venv/bin/python -m pytest tests/ -q
 ```
-Expected: 129 passed (119 prior + 10 new).
+Expected: 124 passed.
 
 **Gate 2 — type checking:**
 ```bash
@@ -4899,7 +4983,7 @@ sparkline and week-delta.
 
 ## Verification gates passed
 
-- [x] All 119 prior tests + 10 new = 129 passed
+- [x] All 124 tests pass on `redesign/ccc-home`
 - [x] pyright: 0 errors
 - [x] Migration round-trip clean
 - [x] Snapshot CLI idempotent
