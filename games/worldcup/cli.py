@@ -206,13 +206,14 @@ def process_match_cmd(match_number, home_score, away_score, winner_code,
 
 @worldcup_cli.command('snapshot-ranks')
 @click.option('--backfill', type=int, default=0,
-              help='Backfill N past days (one snapshot per day) using current rank/score')
+              help='Also backfill N past days using current rank/score (writes N+1 rows per enrollment: today + N prior)')
 def snapshot_ranks(backfill: int):
     """Capture today's rank + score snapshot for every enrollment.
 
     Idempotent: re-running for the same day is a no-op.
-    With --backfill N, writes snapshots for the past N days using the
-    current rank/score (best-effort backfill for first deploy).
+    With --backfill N, also writes snapshots for the past N days using
+    the current rank/score (best-effort backfill for first deploy).
+    Net rows per enrollment: N+1 (today + N prior days).
     """
     today_local = datetime.now(WORLDCUP_TZ).date()
 

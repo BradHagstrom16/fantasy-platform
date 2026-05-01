@@ -23,7 +23,7 @@ def upgrade():
     sa.Column('captured_date', sa.Date(), nullable=False),
     sa.Column('rank', sa.Integer(), nullable=False),
     sa.Column('total_score', sa.Float(), nullable=False),
-    sa.ForeignKeyConstraint(['enrollment_id'], ['worldcup_enrollment.id'], ),
+    sa.ForeignKeyConstraint(['enrollment_id'], ['worldcup_enrollment.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('enrollment_id', 'captured_date', name='unique_worldcup_snapshot_per_day')
     )

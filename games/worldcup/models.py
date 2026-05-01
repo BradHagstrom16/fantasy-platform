@@ -159,15 +159,17 @@ class WorldCupPick(db.Model):
 class WorldCupRankSnapshot(db.Model):
     """Daily snapshot of each enrollment's rank + total_score.
 
-    Written by ``flask worldcup snapshot-ranks``, run nightly via cron.
-    Powers the live-state dossier sparkline and week-delta calculations
-    on the home page (Spec B).
+    Written by ``flask worldcup snapshot-ranks``. Intended to run nightly
+    via cron once the production deploy plan reaches Task 25 — not yet
+    wired up at branch-merge time. Powers the live-state dossier
+    sparkline and week-delta calculations on the home page (Spec B).
     """
     __tablename__ = 'worldcup_rank_snapshot'
 
     id = db.Column(db.Integer, primary_key=True)
     enrollment_id = db.Column(
-        db.Integer, db.ForeignKey('worldcup_enrollment.id'),
+        db.Integer,
+        db.ForeignKey('worldcup_enrollment.id', ondelete='CASCADE'),
         nullable=False, index=True
     )
     captured_date = db.Column(db.Date, nullable=False, index=True)
