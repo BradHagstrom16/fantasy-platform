@@ -1058,6 +1058,91 @@ body.game-golf {
   color: var(--bone-mute);
 }
 
+/* --- Commish's Note (long-form narrative) --- */
+.home-shell .commish-note {
+  margin: 1.5rem 0;
+}
+.home-shell .commish-note-body {
+  background: linear-gradient(180deg,
+    var(--purple-850) 0%,
+    var(--purple-950) 100%);
+  border: 1px solid rgba(243,239,230,.08);
+  border-left: 3px solid var(--gold);
+  border-radius: 8px;
+  padding: 1.25rem 1.5rem;
+}
+.home-shell .commish-note-body p {
+  font-family: var(--font-news);
+  font-size: 1rem;
+  line-height: 1.65;
+  color: var(--bone);
+  margin: 0 0 1rem;
+}
+.home-shell .commish-note-body p:last-child { margin-bottom: 0; }
+.home-shell .commish-note-byline {
+  font-family: var(--font-teko);
+  font-weight: 500;
+  font-size: 0.8rem !important;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--gold-light) !important;
+  font-style: normal !important;
+  margin-top: 1rem !important;
+}
+
+/* --- Dispatches (short-feed) --- */
+.home-shell .dispatches {
+  margin: 1rem 0;
+}
+.home-shell .dispatch {
+  display: grid;
+  grid-template-columns: 48px 1fr auto;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.85rem 1rem;
+  background: rgba(26,10,54,.4);
+  border: 1px solid rgba(243,239,230,.05);
+  border-radius: 8px;
+  margin-bottom: 0.5rem;
+}
+.home-shell .dispatch--yours {
+  border-left: 3px solid var(--gold-light);
+}
+.home-shell .dispatch--pool {
+  border-left: 3px solid var(--bone-mute);
+}
+.home-shell .dispatch-num {
+  font-family: var(--font-teko);
+  font-weight: 700;
+  font-size: 1.4rem;
+  color: var(--gold-light);
+  text-align: center;
+  line-height: 1;
+}
+.home-shell .dispatch-text .who {
+  font-family: var(--font-teko);
+  font-weight: 600;
+  font-size: 0.95rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--bone);
+}
+.home-shell .dispatch-text .what {
+  font-family: var(--font-news);
+  font-size: 0.85rem;
+  color: var(--bone-mute);
+  margin-top: 0.2rem;
+  line-height: 1.4;
+}
+.home-shell .dispatch-time {
+  font-family: var(--font-teko);
+  font-weight: 500;
+  font-size: 0.7rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--bone-mute);
+}
+
 /* === HOME — END ============================================== */
 
 /* === GOLF PICK 'EM === */
