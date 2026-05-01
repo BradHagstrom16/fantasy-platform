@@ -1,0 +1,27 @@
+{# Post-state champion banner — Spec B section 8b #}
+<div class="champion-banner">
+  <div class="champion-glow-bg"></div>
+  <div class="champion-content">
+    <div class="champion-eyebrow">◈ 2026 FIFA World Cup Champions ◈</div>
+
+    {% if champion_team %}
+    <div class="champion-flag">{{ champion_team.flag_emoji }}</div>
+    <div class="champion-name">{{ champion_team.display_name }}</div>
+    <div class="champion-rule" aria-hidden="true"></div>
+    {% if champion_summary %}
+    <div class="champion-summary">{{ champion_summary }}</div>
+    {% endif %}
+    {% if final_match and final_match.venue %}
+    <div class="champion-detail">
+      Final &middot; {{ final_match.venue }}{% if final_match.city %}, {{ final_match.city }}{% endif %}
+      {% if final_match.kickoff_utc %} &middot; {{ final_match.kickoff_utc.strftime('%d %b %Y') }}{% endif %}
+    </div>
+    {% endif %}
+    {% else %}
+    <div class="champion-flag">🏆</div>
+    <div class="champion-name">Champion Pending</div>
+    <div class="champion-rule" aria-hidden="true"></div>
+    <div class="champion-summary">The final result hasn't been entered yet.</div>
+    {% endif %}
+  </div>
+</div>

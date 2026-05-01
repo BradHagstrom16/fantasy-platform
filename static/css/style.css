@@ -1383,6 +1383,129 @@ body.game-golf {
   .home-shell .home-live .greet { text-align: left; }
 }
 
+/* --- Post-state: champion banner (full-bleed) --- */
+.home-shell .champion-banner {
+  position: relative;
+  margin: 1.5rem -1rem;
+  padding: 3rem 1rem 3.5rem;
+  text-align: center;
+  background:
+    radial-gradient(ellipse at 50% 100%, rgba(58,29,114,.45) 0%, transparent 60%),
+    linear-gradient(180deg,
+      var(--purple-950) 0%,
+      var(--purple-900) 50%,
+      var(--purple-950) 100%);
+  border-top: 1px solid rgba(201,162,39,.3);
+  border-bottom: 1px solid rgba(201,162,39,.3);
+  overflow: hidden;
+}
+@media (min-width: 768px) {
+  .home-shell .champion-banner {
+    max-width: 960px;
+    margin: 1.5rem auto;
+    border: 1px solid rgba(201,162,39,.3);
+    border-radius: 16px;
+  }
+}
+.home-shell .champion-glow-bg {
+  position: absolute;
+  inset: 0;
+  background: var(--champion-glow);
+  pointer-events: none;
+  animation: champion-pulse 4s ease-in-out infinite;
+}
+.home-shell .champion-glow-bg::before {
+  /* Tighter halo pinned behind the flag — pulses against the ambient glow */
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 38%,
+    rgba(242,211,107,.55) 0%,
+    transparent 32%);
+  animation: champion-halo 4s ease-in-out infinite;
+}
+@keyframes champion-pulse {
+  0%, 100% { opacity: 0.4; transform: scale(1); }
+  50%      { opacity: 0.7; transform: scale(1.05); }
+}
+@keyframes champion-halo {
+  0%, 100% { opacity: 0.55; }
+  50%      { opacity: 0.95; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .home-shell .champion-glow-bg,
+  .home-shell .champion-glow-bg::before {
+    animation: none;
+  }
+  .home-shell .champion-glow-bg          { opacity: 0.5; }
+  .home-shell .champion-glow-bg::before  { opacity: 0.7; }
+}
+.home-shell .champion-content {
+  position: relative;
+  z-index: 1;
+}
+.home-shell .champion-eyebrow {
+  font-family: var(--font-teko);
+  font-weight: 600;
+  font-size: 0.8rem;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--gold-light);
+  margin-bottom: 1.5rem;
+}
+.home-shell .champion-flag {
+  font-size: 5rem;
+  line-height: 1;
+  margin-bottom: 1rem;
+  filter: drop-shadow(0 4px 16px rgba(0,0,0,.4))
+          drop-shadow(0 0 24px rgba(242,211,107,.25));
+}
+@media (min-width: 768px) {
+  .home-shell .champion-flag { font-size: 7rem; }
+}
+.home-shell .champion-name {
+  font-family: var(--font-teko);
+  font-weight: 700;
+  font-size: 2.8rem;
+  line-height: 1;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: var(--metal-gold);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  margin: 0.5rem 0 0.6rem;
+}
+@media (min-width: 768px) {
+  .home-shell .champion-name { font-size: 4rem; }
+}
+.home-shell .champion-rule {
+  width: 64px;
+  height: 1px;
+  margin: 0 auto;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    var(--gold-light) 50%,
+    transparent 100%);
+  opacity: 0.6;
+}
+.home-shell .champion-summary {
+  font-family: var(--font-news);
+  font-size: 1.05rem;
+  color: var(--bone);
+  margin-top: 1rem;
+  font-style: italic;
+}
+.home-shell .champion-detail {
+  font-family: var(--font-teko);
+  font-weight: 500;
+  font-size: 0.75rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--bone-mute);
+  margin-top: 0.5rem;
+}
+
 /* --- Post-state: final podium --- */
 .home-shell .podium {
   display: grid;
