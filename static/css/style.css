@@ -777,7 +777,7 @@ body.game-golf {
   font-size: 0.7rem;
   letter-spacing: 0.2em;
   text-transform: uppercase;
-  color: #64DBA0;
+  color: var(--live-green);
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
@@ -786,7 +786,7 @@ body.game-golf {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #64DBA0;
+  background: var(--live-green);
 }
 .home-shell .ballot-flags {
   display: flex;
