@@ -884,6 +884,180 @@ body.game-golf {
   border: 1px solid rgba(243,239,230,.12);
 }
 
+/* --- Match card — shared (upcoming + final) --- */
+.home-shell .match-card {
+  margin: 0.75rem 0;
+  background: linear-gradient(180deg,
+    var(--purple-850) 0%,
+    var(--purple-950) 100%);
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.home-shell .match-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid rgba(255,255,255,.06);
+}
+.home-shell .match-head .grp {
+  font-family: var(--font-teko);
+  font-weight: 500;
+  font-size: 0.7rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--bone-mute);
+}
+.home-shell .live-pill {
+  font-family: var(--font-teko);
+  font-weight: 600;
+  font-size: 0.7rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  padding: 0.2rem 0.6rem;
+  border-radius: 4px;
+}
+.home-shell .live-pill--kickoff {
+  background: rgba(242,211,107,.08);
+  border: 1px solid rgba(242,211,107,.32);
+  color: var(--gold-light);
+}
+.home-shell .live-pill--final {
+  background: rgba(243,239,230,.08);
+  border: 1px solid rgba(243,239,230,.22);
+  color: rgba(243,239,230,.7);
+}
+.home-shell .match-body {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 1rem;
+}
+.home-shell .m-side {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+.home-shell .m-flag {
+  font-size: 2rem;
+  line-height: 1;
+}
+.home-shell .m-name {
+  font-family: var(--font-teko);
+  font-weight: 600;
+  font-size: 0.85rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--bone);
+}
+.home-shell .m-score {
+  font-family: var(--font-teko);
+  font-weight: 700;
+  font-size: 2.4rem;
+  line-height: 0.9;
+  color: var(--bone);
+  font-variant-numeric: tabular-nums;
+}
+.home-shell .m-center {
+  text-align: center;
+}
+.home-shell .m-center .clock {
+  font-family: var(--font-teko);
+  font-weight: 600;
+  font-size: 1.1rem;
+  color: var(--gold-light);
+}
+.home-shell .m-center .ft {
+  font-family: var(--font-teko);
+  font-weight: 500;
+  font-size: 0.65rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--bone-mute);
+  margin-top: 0.2rem;
+}
+.home-shell .match-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.6rem 1rem;
+  border-top: 1px solid rgba(255,255,255,.06);
+  background: rgba(0,0,0,.25);
+}
+.home-shell .match-foot-note {
+  font-family: var(--font-news);
+  font-style: italic;
+  font-size: 0.8rem;
+  color: var(--bone-mute);
+}
+.home-shell .match-foot-status {
+  font-family: var(--font-teko);
+  font-weight: 600;
+  font-size: 0.7rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--gold-light);
+}
+
+/* --- Compact game tiles strip (pre/live/post) --- */
+.home-shell .court-games-wrap {
+  margin-top: 1.5rem;
+}
+.home-shell .court-games {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 0.6rem;
+}
+.home-shell .cg {
+  display: block;
+  text-align: center;
+  padding: 0.85rem 0.5rem 0.65rem;
+  border-radius: 10px;
+  text-decoration: none;
+  transition: transform 0.15s ease;
+}
+.home-shell .cg:hover { transform: translateY(-2px); }
+.home-shell .cg--active {
+  background: linear-gradient(180deg,
+    rgba(201,162,39,.12) 0%,
+    rgba(26,10,54,.5) 100%);
+  border: 1px solid rgba(201,162,39,.4);
+}
+.home-shell .cg--soon {
+  background: rgba(26,10,54,.5);
+  border: 1px solid rgba(243,239,230,.08);
+  opacity: 0.7;
+  cursor: default;
+}
+.home-shell .cg .g {
+  font-size: 1.6rem;
+  line-height: 1;
+  margin-bottom: 0.4rem;
+}
+.home-shell .cg .n {
+  font-family: var(--font-teko);
+  font-weight: 600;
+  font-size: 0.85rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--bone);
+}
+.home-shell .cg .p {
+  font-family: var(--font-teko);
+  font-weight: 500;
+  font-size: 0.65rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--gold-light);
+  margin-top: 0.25rem;
+}
+.home-shell .cg--soon .p {
+  color: var(--bone-mute);
+}
+
 /* === HOME — END ============================================== */
 
 /* === GOLF PICK 'EM === */

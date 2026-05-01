@@ -1,0 +1,34 @@
+{# Fixture card — upcoming match with kickoff time #}
+<div class="match-card match-card--upcoming">
+  <div class="match-head">
+    <div class="grp">{{ match.stage|title }}{% if match.group_letter %} · Group {{ match.group_letter }}{% endif %}</div>
+    {% if match.kickoff_utc %}
+    <span class="live-pill live-pill--kickoff">
+      {{ match.kickoff_utc.strftime('%a %d %b · %H:%M UTC') }}
+    </span>
+    {% endif %}
+  </div>
+  <div class="match-body">
+    <div class="m-side">
+      <div class="m-flag">{{ match.home_team.flag_emoji if match.home_team else '🏳️' }}</div>
+      <div class="m-name">{{ match.home_team.fifa_code if match.home_team else 'TBD' }}</div>
+    </div>
+    <div class="m-center">
+      <div class="clock">vs</div>
+    </div>
+    <div class="m-side">
+      <div class="m-flag">{{ match.away_team.flag_emoji if match.away_team else '🏳️' }}</div>
+      <div class="m-name">{{ match.away_team.fifa_code if match.away_team else 'TBD' }}</div>
+    </div>
+  </div>
+  {% if match.venue or match.city %}
+  <div class="match-foot">
+    <div class="match-foot-note">
+      {{ match.venue or '' }}{% if match.venue and match.city %} · {% endif %}{{ match.city or '' }}
+    </div>
+    <div class="match-foot-status">
+      ◯ PICK DUE
+    </div>
+  </div>
+  {% endif %}
+</div>
