@@ -1474,6 +1474,150 @@ body.game-golf {
   .home-shell .podium-tier--first { order: -1; }
 }
 
+/* --- Post-state: roster recap --- */
+.home-shell .roster-recap {
+  margin: 2rem 0 1.5rem;
+  padding: 1.5rem 1.25rem 1.75rem;
+  background: linear-gradient(180deg,
+    var(--purple-850) 0%,
+    var(--purple-950) 100%);
+  border: 1px solid rgba(243,239,230,.08);
+  border-radius: 14px;
+}
+.home-shell .roster-recap-head {
+  text-align: center;
+  padding-bottom: 1.25rem;
+  border-bottom: 1px solid rgba(243,239,230,.08);
+  margin-bottom: 1.25rem;
+}
+.home-shell .recap-eyebrow {
+  font-family: var(--font-teko);
+  font-weight: 500;
+  font-size: 0.75rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--bone-mute);
+  margin-bottom: 0.5rem;
+}
+.home-shell .recap-rank {
+  font-family: var(--font-teko);
+  font-weight: 700;
+  font-size: 3.2rem;
+  line-height: 1;
+  background: var(--metal-gold);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.home-shell .recap-rank .hash {
+  font-size: 1.6rem;
+  -webkit-text-fill-color: var(--gold-light);
+}
+.home-shell .recap-rank .of {
+  font-family: var(--font-news);
+  font-style: italic;
+  font-size: 1rem;
+  -webkit-text-fill-color: var(--bone-mute);
+  color: var(--bone-mute);
+  margin-left: 0.4rem;
+}
+.home-shell .recap-sub {
+  font-family: var(--font-news);
+  font-style: italic;
+  font-size: 0.95rem;
+  color: var(--bone-mute);
+  margin-top: 0.5rem;
+}
+.home-shell .sec-head--inset {
+  padding-top: 0.5rem;
+}
+
+.home-shell .roster-recap-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin-bottom: 1.5rem;
+}
+.home-shell .roster-recap-row {
+  display: grid;
+  grid-template-columns: 32px 48px 1fr auto auto;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.75rem 0.75rem;
+  border-bottom: 1px solid rgba(243,239,230,.05);
+}
+.home-shell .roster-recap-row:last-child { border-bottom: none; }
+.home-shell .roster-recap-row--champion {
+  background: linear-gradient(90deg,
+    rgba(201,162,39,.18) 0%,
+    rgba(201,162,39,.05) 100%);
+  border-left: 3px solid var(--gold-light);
+  margin-left: -3px;
+  padding-left: calc(0.75rem - 3px);
+}
+.home-shell .rr-flag {
+  font-size: 1.4rem;
+  line-height: 1;
+}
+.home-shell .rr-code {
+  font-family: var(--font-teko);
+  font-weight: 600;
+  font-size: 0.95rem;
+  letter-spacing: 0.06em;
+  color: var(--bone);
+}
+.home-shell .rr-tier {
+  font-family: var(--font-news);
+  font-style: italic;
+  font-size: 0.85rem;
+  color: var(--bone-mute);
+}
+.home-shell .rr-finish {
+  font-family: var(--font-teko);
+  font-weight: 500;
+  font-size: 0.8rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--gold-light);
+}
+.home-shell .rr-pts {
+  font-family: var(--font-teko);
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: var(--bone);
+  font-variant-numeric: tabular-nums;
+  min-width: 48px;
+  text-align: right;
+}
+.home-shell .roster-recap-cta {
+  display: block;
+  width: 100%;
+  text-align: center;
+  padding: 0.85rem 1.5rem;
+  background: var(--metal-gold);
+  color: var(--purple-950) !important;
+  font-family: var(--font-teko);
+  font-weight: 600;
+  font-size: 0.95rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  text-decoration: none;
+  border-radius: 6px;
+  transition: transform 0.15s ease;
+}
+.home-shell .roster-recap-cta:hover {
+  transform: translateY(-1px);
+  color: var(--purple-950) !important;
+}
+
+@media (max-width: 480px) {
+  /* Mobile: hide tier name, show only flag/code/finish/pts */
+  .home-shell .roster-recap-row {
+    grid-template-columns: 32px 48px 1fr auto;
+  }
+  .home-shell .rr-tier { display: none; }
+}
+
 /* === HOME — END ============================================== */
 
 /* === GOLF PICK 'EM === */
