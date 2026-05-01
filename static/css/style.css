@@ -1362,6 +1362,27 @@ body.game-golf {
   border-radius: 8px;
 }
 
+/* --- Live state: container sizing --- */
+.home-shell .home-live {
+  max-width: 1280px;
+  margin: 0 auto;
+}
+@media (max-width: 991px) {
+  /* Mobile: each column gets a max-width like the other states */
+  .home-shell .home-live-left,
+  .home-shell .home-live-right {
+    max-width: 640px;
+    margin: 0 auto;
+  }
+}
+@media (min-width: 992px) {
+  /* Desktop: tighter padding between columns */
+  .home-shell .home-live-left { padding-right: 1.5rem; }
+  .home-shell .home-live-right { padding-left: 1.5rem; }
+  /* Greet stays text-aligned-left on desktop instead of centered */
+  .home-shell .home-live .greet { text-align: left; }
+}
+
 /* === HOME — END ============================================== */
 
 /* === GOLF PICK 'EM === */
