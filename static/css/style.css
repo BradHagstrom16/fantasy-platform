@@ -531,6 +531,51 @@ body.game-golf {
 }
 .home-shell .join-alt a:hover { color: var(--gold-hi); }
 
+/* --- Greet (used by pre/live/post) --- */
+.home-shell .greet {
+  text-align: center;
+  padding: 1rem 0 1.5rem;
+}
+.home-shell .greet-line {
+  font-family: var(--font-news);
+  font-style: italic;
+  font-size: 0.95rem;
+  color: var(--bone-mute);
+  margin: 0 0 0.75rem;
+}
+.home-shell .greet-line .v {
+  color: var(--gold-light);
+  font-style: normal;
+  font-family: var(--font-teko);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  margin-left: 0.4rem;
+}
+.home-shell .greet-title {
+  font-family: var(--font-teko);
+  font-weight: 700;
+  font-size: 2.4rem;
+  line-height: 0.95;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--bone);
+  margin: 0;
+}
+@media (min-width: 768px) {
+  .home-shell .greet-title { font-size: 3.2rem; }
+}
+.home-shell .greet-court {
+  font-family: var(--font-news);
+  font-style: italic;
+  font-size: 0.9rem;
+  color: var(--bone-mute);
+  margin-top: 0.75rem;
+}
+.home-shell .greet-court .sep {
+  color: rgba(242,211,107,.5);
+  margin: 0 0.4rem;
+}
+
 /* === HOME — END ============================================== */
 
 /* === GOLF PICK 'EM === */
