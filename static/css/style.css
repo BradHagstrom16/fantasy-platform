@@ -576,6 +576,159 @@ body.game-golf {
   margin: 0 0.4rem;
 }
 
+/* --- Pre-state: countdown card --- */
+.home-shell .decree {
+  position: relative;
+  margin: 1.5rem 0;
+  padding: 0;
+  background: linear-gradient(180deg,
+    var(--purple-800) 0%,
+    var(--purple-900) 100%);
+  border: 1px solid rgba(201,162,39,.35);
+  border-radius: 14px;
+  overflow: hidden;
+}
+.home-shell .decree::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse at top,
+    rgba(242,211,107,.06) 0%,
+    transparent 60%
+  );
+}
+.home-shell .decree-seal {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px dashed rgba(201,162,39,.25);
+  position: relative;
+  z-index: 1;
+}
+.home-shell .decree-seal .s {
+  font-family: var(--font-teko);
+  font-weight: 500;
+  font-size: 0.7rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--gold-light);
+}
+.home-shell .decree-seal .s .num {
+  color: var(--bone-mute);
+  margin-left: 0.4rem;
+}
+.home-shell .decree-seal-year {
+  color: var(--bone-mute) !important;
+}
+.home-shell .decree-body {
+  padding: 1.5rem 1rem 1rem;
+  text-align: center;
+  position: relative;
+  z-index: 1;
+}
+.home-shell .decree-body h2 {
+  font-family: var(--font-teko);
+  font-weight: 600;
+  font-size: 1rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--gold-light);
+  margin: 0 0 1.25rem;
+}
+.home-shell .decree-days {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.5rem;
+}
+.home-shell .decree-days .d-cell {
+  text-align: center;
+  min-width: 56px;
+}
+.home-shell .decree-days .d-cell .v {
+  font-family: var(--font-teko);
+  font-weight: 700;
+  font-size: 2.8rem;
+  line-height: 1;
+  color: var(--bone);
+  font-variant-numeric: tabular-nums;
+}
+.home-shell .decree-days .d-cell .u {
+  font-family: var(--font-teko);
+  font-weight: 500;
+  font-size: 0.7rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--bone-mute);
+  margin-top: 0.25rem;
+}
+.home-shell .decree-days .d-sep {
+  font-family: var(--font-teko);
+  font-weight: 700;
+  font-size: 2.4rem;
+  color: var(--gold-light);
+  opacity: 0.5;
+}
+@media (min-width: 768px) {
+  .home-shell .decree-days .d-cell .v { font-size: 3.6rem; }
+  .home-shell .decree-days .d-cell { min-width: 72px; }
+}
+.home-shell .decree-foot {
+  font-family: var(--font-news);
+  font-style: italic;
+  font-size: 0.85rem;
+  color: var(--bone-mute);
+  margin: 1rem 0 0;
+}
+.home-shell .decree-actions {
+  padding: 1rem 1rem 1.25rem;
+  text-align: center;
+  position: relative;
+  z-index: 1;
+  border-top: 1px solid rgba(243,239,230,.06);
+}
+.home-shell .decree-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.7rem 1.5rem;
+  background: var(--metal-gold);
+  color: var(--purple-950) !important;
+  font-family: var(--font-teko);
+  font-weight: 600;
+  font-size: 0.95rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  text-decoration: none;
+  border-radius: 6px;
+  transition: transform 0.15s ease;
+}
+.home-shell .decree-cta:hover {
+  transform: translateY(-1px);
+  color: var(--purple-950) !important;
+}
+.home-shell .decree-links {
+  margin-top: 0.75rem;
+  display: flex;
+  justify-content: center;
+  gap: 1.25rem;
+}
+.home-shell .decree-links a {
+  font-family: var(--font-teko);
+  font-weight: 500;
+  font-size: 0.75rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--bone-mute);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+.home-shell .decree-links a:hover { color: var(--gold-light); }
+
 /* === HOME — END ============================================== */
 
 /* === GOLF PICK 'EM === */

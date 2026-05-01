@@ -15,3 +15,10 @@
 {% endif %}
 </div>
 {% endblock %}
+
+{% block scripts %}
+  {{ super() }}
+  {% if state == 'pre' %}
+    <script src="{{ url_for('static', filename='js/countdown.js') }}"></script>
+  {% endif %}
+{% endblock %}

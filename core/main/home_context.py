@@ -144,6 +144,7 @@ def _context_pre(user, enrollment) -> dict:
         'picks': picks,
         'display_name': display_name,
         'deadline_utc': TOURNAMENT_DEADLINE_UTC,
+        'now_utc': datetime.now(timezone.utc),
         'deadline_ct': deadline_ct,
         'total_enrolled': WorldCupEnrollment.query.filter_by(
             season_year=SEASON_YEAR
