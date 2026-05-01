@@ -1,0 +1,46 @@
+{# Live-state recent results — last 5 completed matches with roster intersection #}
+{% if your_pick_results %}
+{% for item in your_pick_results %}
+{% set match = item.match %}
+<div class="match-card match-card--final">
+  <div class="match-head">
+    <div class="grp">
+      {{ match.stage|title }}{% if match.group_letter %} · Group {{ match.group_letter }}{% endif %}
+    </div>
+    <span class="live-pill live-pill--final">Final</span>
+  </div>
+  <div class="match-body">
+    <div class="m-side">
+      <div class="m-flag">{{ match.home_team.flag_emoji if match.home_team else '🏳️' }}</div>
+      <div class="m-name">{{ match.home_team.fifa_code if match.home_team else 'TBD' }}</div>
+      <div class="m-score">{{ match.home_score if match.home_score is not none else '—' }}</div>
+    </div>
+    <div class="m-center">
+      <div class="ft">FT</div>
+    </div>
+    <div class="m-side">
+      <div class="m-flag">{{ match.away_team.flag_emoji if match.away_team else '🏳️' }}</div>
+      <div class="m-name">{{ match.away_team.fifa_code if match.away_team else 'TBD' }}</div>
+      <div class="m-score">{{ match.away_score if match.away_score is not none else '—' }}</div>
+    </div>
+  </div>
+  {% if item.roster_match and is_enrolled %}
+  <div class="match-foot">
+    <div class="match-foot-note">
+      YOUR ROSTER &middot;
+      {% set rm_team = match.home_team if item.roster_match.side == 'home' else match.away_team %}
+      <strong>{{ rm_team.display_name }}</strong>
+    </div>
+    {% set won = (item.roster_match.side == 'home' and match.winner_team_id == match.home_team_id) or (item.roster_match.side == 'away' and match.winner_team_id == match.away_team_id) %}
+    <div class="match-foot-status{% if won %} match-foot-status--win{% else %} match-foot-status--loss{% endif %}">
+      {% if won %}+ POINTS EARNED{% else %}NO POINTS{% endif %}
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endfor %}
+{% else %}
+<div class="match-empty">
+  <p>No completed matches yet. Once results roll in, they'll land here.</p>
+</div>
+{% endif %}
