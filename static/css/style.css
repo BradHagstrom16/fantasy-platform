@@ -1143,6 +1143,131 @@ body.game-golf {
   color: var(--bone-mute);
 }
 
+/* --- Live-state: dossier card --- */
+.home-shell .dossier {
+  position: relative;
+  margin: 1rem 0 1.5rem;
+  padding: 1.25rem;
+  background: linear-gradient(180deg,
+    var(--purple-800) 0%,
+    var(--purple-950) 100%);
+  border: 1px solid rgba(201,162,39,.3);
+  border-radius: 14px;
+}
+.home-shell .dossier-stamp {
+  position: absolute;
+  top: 0.85rem;
+  right: 1rem;
+  font-family: var(--font-teko);
+  font-weight: 500;
+  font-size: 0.65rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--gold-light);
+  opacity: 0.6;
+}
+.home-shell .dossier-rank {
+  display: flex;
+  align-items: flex-end;
+  gap: 1rem;
+  padding-top: 0.5rem;
+}
+.home-shell .rank-num {
+  font-family: var(--font-teko);
+  font-weight: 700;
+  font-size: 4.5rem;
+  line-height: 0.85;
+  color: var(--bone);
+  font-variant-numeric: tabular-nums;
+}
+.home-shell .rank-hash {
+  font-size: 2.2rem;
+  color: var(--gold-light);
+}
+.home-shell .rank-meta {
+  flex: 1;
+  padding-bottom: 0.4rem;
+}
+.home-shell .rank-of {
+  font-family: var(--font-news);
+  font-size: 0.85rem;
+  font-style: italic;
+  color: var(--bone-mute);
+}
+.home-shell .rank-mvmt {
+  font-family: var(--font-teko);
+  font-weight: 600;
+  font-size: 0.75rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  margin-top: 0.4rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+.home-shell .rank-mvmt--up { color: #64DBA0; }
+.home-shell .rank-mvmt--down { color: #FF8089; }
+.home-shell .rank-mvmt--flat { color: var(--bone-mute); }
+
+.home-shell .dossier-sparkline {
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(243,239,230,.06);
+}
+.home-shell .sparkline-cap {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-teko);
+  font-weight: 500;
+  font-size: 0.7rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--bone-mute);
+  margin-bottom: 0.5rem;
+}
+.home-shell .dossier-sparkline-empty {
+  margin-top: 1.25rem;
+  padding: 0.85rem 0;
+  border-top: 1px solid rgba(243,239,230,.06);
+  font-family: var(--font-news);
+  font-style: italic;
+  font-size: 0.85rem;
+  color: var(--bone-mute);
+  text-align: center;
+}
+
+.home-shell .dossier-meta {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 0.5rem;
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(243,239,230,.06);
+}
+.home-shell .d-meta {
+  text-align: center;
+}
+.home-shell .d-meta .k {
+  font-family: var(--font-teko);
+  font-weight: 700;
+  font-size: 1.6rem;
+  line-height: 1;
+  color: var(--bone);
+  font-variant-numeric: tabular-nums;
+}
+.home-shell .d-meta-k--gold { color: var(--gold-light); }
+.home-shell .d-meta-k--green { color: #64DBA0; }
+.home-shell .d-meta-k--red { color: #FF8089; }
+.home-shell .d-meta .l {
+  font-family: var(--font-teko);
+  font-weight: 500;
+  font-size: 0.65rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--bone-mute);
+  margin-top: 0.35rem;
+}
+
 /* === HOME — END ============================================== */
 
 /* === GOLF PICK 'EM === */
