@@ -4,7 +4,6 @@ Public entry point: ``build_home_context(user, state)`` dispatches to
 one of four private builders based on state, returning a dict the
 template consumes via ``**ctx``.
 """
-from datetime import datetime, timezone
 from typing import Optional, Any
 
 from flask_login import AnonymousUserMixin
@@ -16,7 +15,7 @@ from games.worldcup.models import (
     WorldCupEnrollment, WorldCupPick, WorldCupTeam, WorldCupMatch,
     WorldCupRankSnapshot,
 )
-from games.worldcup.services.state import WorldCupState
+from games.worldcup.services.state import WorldCupState, now_utc
 from games.worldcup.world_cup_countries import TIERS
 from games.registry import (
     available_games, coming_soon_games, joined_games,
@@ -121,9 +120,10 @@ def _context_pre(user, enrollment) -> dict:
     deadline_ct = TOURNAMENT_DEADLINE_UTC.astimezone(WORLDCUP_TZ)
 
     # court_line: "Thursday ◆ Tribute window open ◆ 2 days to kickoff"
-    now_local = datetime.now(WORLDCUP_TZ)
+    now = now_utc()
+    now_local = now.astimezone(WORLDCUP_TZ)
     weekday = now_local.strftime('%A')
-    delta = TOURNAMENT_DEADLINE_UTC - datetime.now(timezone.utc)
+    delta = TOURNAMENT_DEADLINE_UTC - now
     days = delta.days
     hours = delta.seconds // 3600
     if days > 1:
@@ -147,7 +147,7 @@ def _context_pre(user, enrollment) -> dict:
         'picks': picks,
         'display_name': display_name,
         'deadline_utc': TOURNAMENT_DEADLINE_UTC,
-        'now_utc': datetime.now(timezone.utc),
+        'now_utc': now,
         'deadline_ct': deadline_ct,
         'total_enrolled': WorldCupEnrollment.query.filter_by(
             season_year=SEASON_YEAR
@@ -162,12 +162,16 @@ def _context_pre(user, enrollment) -> dict:
 def _context_live(user, enrollment) -> dict:
     """Live-tournament state: dossier, leaderboard preview, recent results."""
     is_enrolled = enrollment is not None
+    now = now_utc()
 
     # Leaderboard query — used for both rank and top-3
     all_enrollments = (
         WorldCupEnrollment.query
         .filter_by(season_year=SEASON_YEAR)
-        .order_by(WorldCupEnrollment.total_score.desc())
+        .order_by(
+            WorldCupEnrollment.total_score.desc(),
+            WorldCupEnrollment.id.asc(),
+        )
         .all()
     )
     total_count = len(all_enrollments)
@@ -259,7 +263,7 @@ def _context_live(user, enrollment) -> dict:
     recent_results = (
         WorldCupMatch.query
         .filter_by(is_completed=True)
-        .order_by(WorldCupMatch.match_number.desc())
+        .order_by(WorldCupMatch.kickoff_utc.desc())
         .limit(5)
         .all()
     )
@@ -276,7 +280,7 @@ def _context_live(user, enrollment) -> dict:
     # Court line + stage label
     most_recent = recent_results[0] if recent_results else None
     stage_label = _stage_label(most_recent.stage if most_recent else 'group')
-    weekday = datetime.now(WORLDCUP_TZ).strftime('%A')
+    weekday = now.astimezone(WORLDCUP_TZ).strftime('%A')
     if dossier and dossier['week_delta_rank'] is not None:
         if dossier['week_delta_rank'] < 0:
             trend = "you're climbing"
@@ -342,7 +346,10 @@ def _context_post(user, enrollment) -> dict:
     all_enrollments = (
         WorldCupEnrollment.query
         .filter_by(season_year=SEASON_YEAR)
-        .order_by(WorldCupEnrollment.total_score.desc())
+        .order_by(
+            WorldCupEnrollment.total_score.desc(),
+            WorldCupEnrollment.id.asc(),
+        )
         .all()
     )
     top_3_final = all_enrollments[:3]

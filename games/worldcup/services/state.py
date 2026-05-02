@@ -17,7 +17,7 @@ WorldCupState = Literal['pre', 'live', 'post']
 FINAL_MATCH_NUMBER = 104  # The Final per FIFA bracket numbering
 
 
-def _now_utc() -> datetime:
+def now_utc() -> datetime:
     """Current UTC time, with a non-production test seam.
 
     In development or testing (ENVIRONMENT in {'development', 'testing'}),
@@ -49,7 +49,7 @@ def worldcup_state() -> WorldCupState:
     live — deadline passed, final (#104) not yet marked complete
     post — final match marked complete (single source of truth per Spec B D7)
     """
-    if _now_utc() < TOURNAMENT_DEADLINE_UTC:
+    if now_utc() < TOURNAMENT_DEADLINE_UTC:
         return 'pre'
     final = WorldCupMatch.query.filter_by(
         match_number=FINAL_MATCH_NUMBER, is_completed=True
