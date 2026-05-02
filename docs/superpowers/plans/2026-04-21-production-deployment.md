@@ -1169,9 +1169,11 @@ The first time you run this it may ask which editor to use — type `1` and pres
 ```
 
 > **Snapshot backfill note (Spec B):** After the cron is verified loaded (Step 3 below), run the backfill helper once to seed the snapshot table so the sparkline isn't empty on Day 1:
+>
 > ```bash
-> ENVIRONMENT=production FLASK_APP=app.py venv/bin/flask worldcup snapshot-ranks --backfill 7
+> cd /home/deploy/fantasy-platform && ENVIRONMENT=production FLASK_APP=app.py venv/bin/flask worldcup snapshot-ranks --backfill 7
 > ```
+>
 > Best-effort backfill (all 7 backfilled days will share the current rank/score since we don't have historical data); real differentiation accumulates after the first nightly cron run.
 
 Save: `Ctrl+X` → `Y` → `Enter`

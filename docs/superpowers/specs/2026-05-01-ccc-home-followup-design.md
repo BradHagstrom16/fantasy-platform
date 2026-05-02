@@ -105,10 +105,15 @@ The internal `worldcup_state()` callsite of `_now_utc()` stays — it just calls
 CLAUDE.md is explicit: *"`games/worldcup/services/scoring.compute_team_score_events` (per-team) and `compute_match_attribution` (per-match) are the single source of truth for scoring breakdowns."* This helper is the per-pick-per-match analogue and belongs in the same module.
 
 ```python
-# games/worldcup/services/scoring.py
+# games/worldcup/services/scoring.py — final shipped form
+# (post follow-up CR-fix commit d239cea: adds participation guard +
+# routes knockout through _apply_knockout_points so the helper inherits
+# the same exclusion logic as compute_team_score_events).
 def points_for_pick_on_match(pick: WorldCupPick, match: WorldCupMatch) -> float:
     """Multiplied points the pick earns from this completed match. 0.0 if no scoring event."""
     if not match.is_completed:
+        return 0.0
+    if pick.team_id not in (match.home_team_id, match.away_team_id):
         return 0.0
     multiplier = TIERS[pick.tier]['multiplier']
     if match.stage == 'group':
@@ -117,9 +122,12 @@ def points_for_pick_on_match(pick: WorldCupPick, match: WorldCupMatch) -> float:
         if match.winner_team_id == pick.team_id:
             return float(GROUP_WIN) * multiplier
         return 0.0
-    # Knockout — no draws (winner_team_id always resolved post-completion)
+    # Knockout — no draws (winner_team_id always resolved post-completion).
+    # Route through _apply_knockout_points so per-pick attribution stays
+    # in lockstep with per-team scoring (excludes third_place / champion /
+    # runner_up — those flow through podium bonus, not match wins).
     if match.winner_team_id == pick.team_id:
-        return float(KNOCKOUT_POINTS.get(match.stage, 0)) * multiplier
+        return float(_apply_knockout_points(match)) * multiplier
     return 0.0
 ```
 
@@ -215,14 +223,18 @@ Use `app.test_cli_runner().invoke(snapshot_ranks, [...])` so we can assert exit 
 
 ### 4c. `tests/test_home_context.py` — 2 augmented tests (CR10)
 
-The existing `test_context_pre_unenrolled` and `test_context_live_enrolled_basic` each gain one assertion:
+The existing `test_context_pre_unenrolled` and `test_context_live_enrolled_basic` each gain one assertion. Two equivalent forms are used in the shipped tests — pre-state asserts the raw value, live-state asserts the derived `court_line` weekday (which is computed from `now_utc()` in the same builder, so a regression of the seam fails either form):
 
 ```python
-expected_now = datetime(2026, 5, 1, tzinfo=timezone.utc)  # or 6, 15 for live
-assert ctx['now_utc'] == expected_now
+# tests/test_home_context.py::test_context_pre_unenrolled — raw form
+assert ctx['now_utc'] == datetime(2026, 5, 1, tzinfo=timezone.utc)
+
+# tests/test_home_context.py::test_context_live_enrolled_basic — derived form
+# 2026-06-15T00:00:00Z = 2026-06-14 19:00 CDT (UTC-5) → Sunday
+assert 'Sunday' in ctx['court_line']
 ```
 
-Proves `WC_FAKE_NOW` flows from env-var → `now_utc()` → builder → context.
+Both prove `WC_FAKE_NOW` flows from env-var → `now_utc()` → builder → context.
 
 ### 4d. Coverage delta
 
