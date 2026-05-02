@@ -712,32 +712,32 @@ Three new tokens. Lives at the bottom of `tokens.css` under a `/* Spec B additio
 # games/worldcup/models.py
 class WorldCupRankSnapshot(db.Model):
     """Daily snapshot of each enrollment's rank + total_score.
-    
+
     Written by `flask worldcup snapshot-ranks`, run nightly via cron.
     Powers the live-state dossier sparkline and week-delta calculations.
     """
     __tablename__ = 'worldcup_rank_snapshot'
-    
+
     id = db.Column(db.Integer, primary_key=True)
     enrollment_id = db.Column(
-        db.Integer, db.ForeignKey('worldcup_enrollment.id'),
+        db.Integer, db.ForeignKey('worldcup_enrollment.id', ondelete='CASCADE'),
         nullable=False, index=True
     )
-    captured_at = db.Column(db.DateTime, nullable=False, index=True)
+    captured_date = db.Column(db.Date, nullable=False, index=True)
     rank = db.Column(db.Integer, nullable=False)
     total_score = db.Column(db.Float, nullable=False)
-    
+
     enrollment = db.relationship('WorldCupEnrollment', backref='rank_snapshots')
-    
+
     __table_args__ = (
         db.UniqueConstraint(
-            'enrollment_id', 'captured_at',
+            'enrollment_id', 'captured_date',
             name='unique_worldcup_snapshot_per_day'
         ),
     )
 ```
 
-`captured_at` stored as midnight CT for the day captured (date-equivalent precision; the unique constraint enforces one row per enrollment per day).
+`captured_date` stored as a `Date` (date-only, day-equivalent precision); the unique constraint `unique_worldcup_snapshot_per_day` enforces one row per enrollment per day.
 
 ### 10b. Migration
 
@@ -798,7 +798,7 @@ Added to `deploy/crontab.txt`:
 
 ```
 # Worldcup: daily rank snapshot at midnight CT
-# 05:05 UTC = 00:05 CST (winter) or 23:05 CDT prior day (summer); this offset
+# 05:05 UTC = 23:05 CST (prior day, winter) or 00:05 CDT (summer); this offset
 # gives any midnight match-result processing time to settle before snapshotting.
 5 5 * * * cd /home/deploy/fantasy-platform && ENVIRONMENT=production FLASK_APP=app.py venv/bin/flask worldcup snapshot-ranks >> /var/log/fantasy-platform/snapshot.log 2>&1
 ```
@@ -838,7 +838,7 @@ Expected: clean round-trip.
 FLASK_APP=app.py venv/bin/flask worldcup snapshot-ranks
 # verify row count, then re-run, verify no new rows added (idempotency)
 FLASK_APP=app.py venv/bin/flask worldcup snapshot-ranks --backfill 7
-# verify 7 distinct captured_at dates per enrollment
+# verify 8 distinct captured_date values per enrollment (today + 7 backfilled)
 ```
 
 **Gate 5 — App boots clean in dev:**

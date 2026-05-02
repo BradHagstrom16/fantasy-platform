@@ -1163,7 +1163,7 @@ The first time you run this it may ask which editor to use — type `1` and pres
 */10 * * * * cd /home/deploy/fantasy-platform && ENVIRONMENT=production FLASK_APP=app.py venv/bin/flask worldcup recalc >> /var/log/fantasy/worldcup-recalc.log 2>&1
 
 # World Cup — daily rank snapshot at midnight CT (added by Spec B — CCC home redesign)
-# 05:05 UTC = 00:05 CST (winter) / 23:05 CDT prior day (summer); 5-min offset gives midnight match-result processing time to settle
+# 05:05 UTC = 23:05 CST (prior day, winter) / 00:05 CDT (summer); 5-min offset gives midnight match-result processing time to settle
 # Powers the live-state dossier sparkline + week-delta on the home page
 5 5 * * * cd /home/deploy/fantasy-platform && ENVIRONMENT=production FLASK_APP=app.py venv/bin/flask worldcup snapshot-ranks >> /var/log/fantasy/worldcup-snapshot.log 2>&1
 ```
@@ -1182,7 +1182,7 @@ Save: `Ctrl+X` → `Y` → `Enter`
 crontab -l
 ```
 
-Expected: the six job entries are listed.
+Expected: the seven job entries are listed.
 
 > **Tip:** When a game's season is over (e.g., World Cup ends), open `crontab -e` and add a `#` at the start of that job's line to disable it. Remove the `#` when the season begins again.
 
