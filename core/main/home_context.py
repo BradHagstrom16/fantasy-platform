@@ -298,6 +298,11 @@ def _context_live(user, enrollment) -> dict:
             'roster_match': roster_match,
             'points_earned': points_earned,
             'is_draw': match.is_draw,
+            # Display-ready label so the template doesn't fall back to
+            # `match.stage|title` (which mangles 'SF' → 'Sf', 'QF' → 'Qf',
+            # 'third_place' → 'Third_Place'). _stage_label is the same
+            # mapping the court_line uses below — single source of truth.
+            'stage_label': _stage_label(match.stage),
         })
 
     # Court line + stage label

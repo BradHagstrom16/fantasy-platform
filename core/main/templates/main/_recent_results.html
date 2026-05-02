@@ -5,7 +5,7 @@
 <div class="match-card match-card--final">
   <div class="match-head">
     <div class="grp">
-      {{ match.stage|title }}{% if match.group_letter %} · Group {{ match.group_letter }}{% endif %}
+      {{ item.stage_label }}{% if match.stage == 'group' and match.group_letter %} · Group {{ match.group_letter }}{% endif %}
     </div>
     <span class="live-pill live-pill--final">Final</span>
   </div>

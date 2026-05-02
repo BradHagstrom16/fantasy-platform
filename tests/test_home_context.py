@@ -500,3 +500,42 @@ def test_context_pre_next_3_matches_excludes_completed(app):
         assert all(m.match_number != 1 for m in ctx['next_3_matches'])
         # First three by kickoff among incomplete ones: 2, 3, 4
         assert [m.match_number for m in ctx['next_3_matches']] == [2, 3, 4]
+
+
+def test_context_live_pick_results_carry_display_ready_stage_label(app):
+    """Each your_pick_results item gets a precomputed stage_label so the
+    template doesn't fall back to match.stage|title (which mangles
+    'SF' → 'Sf', 'QF' → 'Qf', 'third_place' → 'Third_Place').
+    """
+    from core.main.home_context import build_home_context
+    from games.worldcup.models import WorldCupTeam, WorldCupMatch, WorldCupPick
+    with app.app_context(), patch.dict(os.environ, {'WC_FAKE_NOW': '2026-07-15T00:00:00Z'}):
+        nor = WorldCupTeam(
+            fifa_code='NOR', name='Norway', display_name='Norway',
+            tier=5, multiplier=7.0, confederation='UEFA', group_letter='I',
+        )
+        opp = WorldCupTeam(
+            fifa_code='OPP', name='Opp', display_name='Opp',
+            tier=1, multiplier=1.0, confederation='TEST', group_letter='Z',
+        )
+        db.session.add_all([nor, opp])
+        db.session.commit()
+        # Knockout stage where match.stage|title would have produced 'Sf'
+        sf_match = WorldCupMatch(
+            match_number=99, stage='SF',
+            home_team_id=nor.id, away_team_id=opp.id,
+            home_score=2, away_score=1, is_completed=True,
+            winner_team_id=nor.id,
+        )
+        db.session.add(sf_match)
+        user = _make_user()
+        enr = _make_enrollment(user, picks_submitted=True)
+        db.session.add(WorldCupPick(enrollment_id=enr.id, team_id=nor.id, tier=5))
+        db.session.commit()
+
+        ctx = build_home_context(user, 'live')
+        results = ctx['your_pick_results']
+        assert len(results) == 1
+        assert results[0]['stage_label'] == 'Semifinals'
+        # Defensively: not the mangled fallback
+        assert results[0]['stage_label'] != 'Sf'
