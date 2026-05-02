@@ -1350,6 +1350,7 @@ body.game-golf {
 
 /* --- Match foot status variants (live-state recent results) --- */
 .home-shell .match-foot-status--win { color: #64DBA0; }
+.home-shell .match-foot-status--draw { color: var(--gold-light); }
 .home-shell .match-foot-status--loss { color: var(--bone-mute); }
 .home-shell .match-empty {
   padding: 2rem 1rem;

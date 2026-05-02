@@ -16,6 +16,7 @@ from games.worldcup.models import (
     WorldCupRankSnapshot,
 )
 from games.worldcup.services.state import WorldCupState, now_utc
+from games.worldcup.services.scoring import points_for_pick_on_match
 from games.worldcup.world_cup_countries import TIERS
 from games.registry import (
     available_games, coming_soon_games, joined_games,
@@ -200,8 +201,11 @@ def _context_live(user, enrollment) -> dict:
         return sum(1 for p in picks_by_enr.get(eid, []) if not p.team.is_eliminated)
 
     user_team_ids: set[int] = set()
+    user_picks_by_team_id: dict[int, WorldCupPick] = {}
     if is_enrolled:
         user_team_ids = {p.team_id for p in picks_by_enr.get(enrollment.id, [])}
+        for p in picks_by_enr.get(enrollment.id, []):
+            user_picks_by_team_id[p.team_id] = p
 
     dossier = None
     if is_enrolled:
@@ -271,11 +275,23 @@ def _context_live(user, enrollment) -> dict:
     your_pick_results = []
     for match in recent_results:
         roster_match = None
+        points_earned: Optional[float] = None
         if match.home_team_id in user_team_ids:
             roster_match = {'team_id': match.home_team_id, 'side': 'home'}
+            points_earned = points_for_pick_on_match(
+                user_picks_by_team_id[match.home_team_id], match
+            )
         elif match.away_team_id in user_team_ids:
             roster_match = {'team_id': match.away_team_id, 'side': 'away'}
-        your_pick_results.append({'match': match, 'roster_match': roster_match})
+            points_earned = points_for_pick_on_match(
+                user_picks_by_team_id[match.away_team_id], match
+            )
+        your_pick_results.append({
+            'match': match,
+            'roster_match': roster_match,
+            'points_earned': points_earned,
+            'is_draw': match.is_draw,
+        })
 
     # Court line + stage label
     most_recent = recent_results[0] if recent_results else None

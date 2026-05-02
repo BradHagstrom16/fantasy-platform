@@ -31,10 +31,17 @@
       {% set rm_team = match.home_team if item.roster_match.side == 'home' else match.away_team %}
       <strong>{{ rm_team.display_name }}</strong>
     </div>
-    {% set won = (item.roster_match.side == 'home' and match.winner_team_id == match.home_team_id) or (item.roster_match.side == 'away' and match.winner_team_id == match.away_team_id) %}
-    <div class="match-foot-status{% if won %} match-foot-status--win{% else %} match-foot-status--loss{% endif %}">
-      {% if won %}+ POINTS EARNED{% else %}NO POINTS{% endif %}
-    </div>
+    {% if item.points_earned and item.points_earned > 0 %}
+      {% if item.is_draw %}
+        <div class="match-foot-status match-foot-status--draw">
+          DRAW &middot; +{{ '%.0f'|format(item.points_earned) }} {% if item.points_earned == 1 %}PT{% else %}PTS{% endif %}
+        </div>
+      {% else %}
+        <div class="match-foot-status match-foot-status--win">+ POINTS EARNED</div>
+      {% endif %}
+    {% else %}
+      <div class="match-foot-status match-foot-status--loss">NO POINTS</div>
+    {% endif %}
   </div>
   {% endif %}
 </div>

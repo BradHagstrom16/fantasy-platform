@@ -1096,3 +1096,68 @@ class TestComputeMatchAttribution:
             assert attr['type'] == 'knockout'
             assert attr['stage'] == 'R16'
             assert attr['events'] == [('Argentina', 'ARG', float(KNOCKOUT_POINTS['R16']))]
+
+
+def test_points_for_pick_on_match_group_win_t1(app, session):
+    """A T1 (mult 1.0) pick wins a group match → +3.0 points."""
+    from games.worldcup.services.scoring import points_for_pick_on_match
+    with app.app_context():
+        bra = _make_team(session, 'BRA', 'Brazil', tier=1, multiplier=1.0)
+        arg = _make_team(session, 'ARG', 'Argentina', tier=1, multiplier=1.0)
+        match = _make_match(session, 1, 'group', bra, arg, group_letter='C')
+        match.is_completed = True
+        match.winner_team_id = bra.id
+        user = _make_user(session, 'tester1')
+        enr = _make_enrollment(session, user)
+        pick = _make_pick(session, enr, bra, tier=1)
+        session.commit()
+        assert points_for_pick_on_match(pick, match) == 3.0
+
+
+def test_points_for_pick_on_match_group_draw_t5(app, session):
+    """A T5 (mult 7.0) pick draws → +7.0 points (1 base × 7.0 multiplier)."""
+    from games.worldcup.services.scoring import points_for_pick_on_match
+    with app.app_context():
+        nor = _make_team(session, 'NOR', 'Norway', tier=5, multiplier=7.0)
+        usa = _make_team(session, 'USA', 'United States', tier=1, multiplier=1.0)
+        match = _make_match(session, 2, 'group', nor, usa, group_letter='I')
+        match.is_completed = True
+        match.is_draw = True
+        match.winner_team_id = None
+        user = _make_user(session, 'tester2')
+        enr = _make_enrollment(session, user)
+        pick = _make_pick(session, enr, nor, tier=5)
+        session.commit()
+        assert points_for_pick_on_match(pick, match) == 7.0
+
+
+def test_points_for_pick_on_match_loss_returns_zero(app, session):
+    """The losing side of a group match earns 0 from that match."""
+    from games.worldcup.services.scoring import points_for_pick_on_match
+    with app.app_context():
+        bra = _make_team(session, 'BRA', 'Brazil', tier=1, multiplier=1.0)
+        arg = _make_team(session, 'ARG', 'Argentina', tier=1, multiplier=1.0)
+        match = _make_match(session, 3, 'group', bra, arg, group_letter='C')
+        match.is_completed = True
+        match.winner_team_id = bra.id  # bra wins
+        user = _make_user(session, 'tester3')
+        enr = _make_enrollment(session, user)
+        pick = _make_pick(session, enr, arg, tier=1)  # user picked the loser
+        session.commit()
+        assert points_for_pick_on_match(pick, match) == 0.0
+
+
+def test_points_for_pick_on_match_uncompleted_returns_zero(app, session):
+    """A match with is_completed=False yields 0, regardless of winner_team_id."""
+    from games.worldcup.services.scoring import points_for_pick_on_match
+    with app.app_context():
+        bra = _make_team(session, 'BRA', 'Brazil', tier=1, multiplier=1.0)
+        arg = _make_team(session, 'ARG', 'Argentina', tier=1, multiplier=1.0)
+        match = _make_match(session, 4, 'group', bra, arg, group_letter='C')
+        match.is_completed = False
+        match.winner_team_id = bra.id  # set but match not completed
+        user = _make_user(session, 'tester4')
+        enr = _make_enrollment(session, user)
+        pick = _make_pick(session, enr, bra, tier=1)
+        session.commit()
+        assert points_for_pick_on_match(pick, match) == 0.0
