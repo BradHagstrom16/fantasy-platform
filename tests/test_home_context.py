@@ -1,5 +1,6 @@
 """Unit tests for home-page state detection and context assembly (Spec B)."""
 import os
+from datetime import datetime, timezone
 from unittest.mock import patch
 
 import pytest
@@ -108,6 +109,7 @@ def test_context_pre_unenrolled(app):
         assert ctx['display_name'] == 'alice'
         assert 'court_line' in ctx
         assert 'deadline_utc' in ctx
+        assert ctx['now_utc'] == datetime(2026, 5, 1, tzinfo=timezone.utc)
 
 
 def test_context_pre_enrolled_no_picks(app):
@@ -167,6 +169,9 @@ def test_context_live_enrolled_basic(app):
         assert ctx['dossier']['total_score'] == 100.0
         assert ctx['dossier']['alive_count'] == 0  # no picks seeded
         assert ctx['dossier']['week_delta_rank'] is None  # no snapshots
+        # CR10: prove WC_FAKE_NOW flowed through to court_line weekday.
+        # 2026-06-15T00:00:00Z = 2026-06-14 19:00 CDT (UTC-5) → Sunday.
+        assert 'Sunday' in ctx['court_line']
 
 
 def test_context_post_with_champion(app):
