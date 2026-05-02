@@ -18,6 +18,7 @@ from flask.cli import AppGroup
 
 from extensions import db
 from games.worldcup.constants import SEASON_YEAR, WORLDCUP_TZ
+from games.worldcup.services.state import now_utc
 from games.worldcup.models import (
     WorldCupTeam,
     WorldCupMatch,
@@ -218,7 +219,7 @@ def snapshot_ranks(backfill: int):
     if backfill < 0:
         raise click.BadParameter('--backfill must be >= 0')
 
-    today_local = datetime.now(WORLDCUP_TZ).date()
+    today_local = now_utc().astimezone(WORLDCUP_TZ).date()
 
     for days_ago in range(backfill, -1, -1):
         target_date = today_local - timedelta(days=days_ago)

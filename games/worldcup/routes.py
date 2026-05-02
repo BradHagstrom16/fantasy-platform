@@ -4,7 +4,6 @@ World Cup Fantasy Pool — Routes
 All route handlers for the World Cup Fantasy Pool game.
 Mounted at /worldcup/ via blueprint url_prefix.
 """
-from datetime import datetime, timezone
 from functools import wraps
 from collections import defaultdict
 
@@ -16,6 +15,7 @@ from extensions import db
 from models import User
 from games.worldcup import worldcup_bp
 from games.common import game_must_be_open
+from games.worldcup.services.state import now_utc
 from games.worldcup.models import WorldCupEnrollment, WorldCupTeam, WorldCupMatch, WorldCupPick
 from games.worldcup.constants import (
     SEASON_YEAR, ENTRY_FEE, TOURNAMENT_DEADLINE_UTC,
@@ -159,7 +159,7 @@ def index():
     )
 
     deadline_ct = TOURNAMENT_DEADLINE_UTC.astimezone(WORLDCUP_TZ)
-    deadline_passed = datetime.now(timezone.utc) >= TOURNAMENT_DEADLINE_UTC
+    deadline_passed = now_utc() >= TOURNAMENT_DEADLINE_UTC
     total_enrolled = WorldCupEnrollment.query.filter_by(season_year=SEASON_YEAR).count()
 
     user_picks = None
@@ -221,7 +221,7 @@ def picks():
         flash('Join the pool first!', 'info')
         return redirect(url_for('worldcup.join'))
 
-    deadline_passed = datetime.now(timezone.utc) >= TOURNAMENT_DEADLINE_UTC
+    deadline_passed = now_utc() >= TOURNAMENT_DEADLINE_UTC
     deadline_ct = TOURNAMENT_DEADLINE_UTC.astimezone(WORLDCUP_TZ)
 
     teams = WorldCupTeam.query.order_by(WorldCupTeam.tier, WorldCupTeam.display_name).all()
@@ -361,7 +361,7 @@ def leaderboard():
         ranked.append({'rank': current_rank, 'enrollment': e})
         prev_score = e.total_score
 
-    deadline_passed = datetime.now(timezone.utc) >= TOURNAMENT_DEADLINE_UTC
+    deadline_passed = now_utc() >= TOURNAMENT_DEADLINE_UTC
 
     return render_template('worldcup/leaderboard.html',
         ranked_enrollments=ranked,
@@ -374,7 +374,7 @@ def leaderboard():
 def player_detail(enrollment_id):
     """One player's 9 picks with per-team scores and drill-down events."""
     enrollment = db.get_or_404(WorldCupEnrollment, enrollment_id)
-    deadline_passed = datetime.now(timezone.utc) >= TOURNAMENT_DEADLINE_UTC
+    deadline_passed = now_utc() >= TOURNAMENT_DEADLINE_UTC
 
     is_owner = (
         current_user.is_authenticated
