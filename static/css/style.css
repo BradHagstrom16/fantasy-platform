@@ -2146,6 +2146,87 @@ body.game-worldcup {
   --wc-tier5:                #9333EA;
 }
 
+/* ============================================================
+   Spec C — Cross-cutting WC utility classes
+   Consume Spec A's tokens.css; no new tokens.
+   ============================================================ */
+
+/* Eyebrow label — small uppercase Teko text above section headers */
+.wc-eyebrow {
+  font-family: 'Teko', sans-serif;
+  font-size: .7rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--bone-mute);
+  display: inline-block;
+}
+.wc-eyebrow-red { color: var(--wc-red); }
+.wc-eyebrow-gold { color: var(--gold-light); }
+
+/* Display numeral utility — Teko, tabular figures */
+.wc-numeral {
+  font-family: 'Teko', sans-serif;
+  font-weight: 700;
+  font-feature-settings: 'tnum';
+  letter-spacing: .03em;
+}
+
+/* Hero gradient — radial gold-tint over linear navy-to-near-black.
+   Apply via class on .page-hero or a custom hero container. */
+.wc-hero-grad {
+  background:
+    radial-gradient(500px 200px at 100% -20%, rgba(242, 211, 107, .15), transparent 65%),
+    linear-gradient(180deg, #0A1A50 0%, #00102E 100%);
+}
+
+/* Tier dot — circular tier indicator. Sibling pattern to tier-badge-{n}. */
+.wc-tier-dot {
+  display: inline-block;
+  width: .85rem;
+  height: .85rem;
+  border-radius: 50%;
+  vertical-align: middle;
+  margin-right: .35rem;
+  flex-shrink: 0;
+}
+.wc-tier-dot-1 { background: var(--wc-tier1); }
+.wc-tier-dot-2 { background: var(--wc-tier2); }
+.wc-tier-dot-3 { background: var(--wc-tier3); }
+.wc-tier-dot-4 { background: var(--wc-tier4); }
+.wc-tier-dot-5 { background: var(--wc-tier5); }
+
+/* Multiplier chip — flat numeral chip for ×N displays */
+.wc-multiplier-chip {
+  display: inline-block;
+  font-family: 'Teko', sans-serif;
+  font-weight: 600;
+  font-size: .82rem;
+  letter-spacing: .03em;
+  padding: .15rem .45rem;
+  background: rgba(245, 241, 232, .08);
+  border: 1px solid rgba(245, 241, 232, .14);
+  border-radius: 4px;
+  color: var(--wc-white);
+  white-space: nowrap;
+}
+
+/* WC card — refreshed card pattern with metalwork accent.
+   Coexists with Bootstrap .card; use .wc-card for design-driven surfaces. */
+.wc-card {
+  background: rgba(0, 17, 46, .8);
+  border: 1px solid rgba(245, 241, 232, .08);
+  border-radius: 8px;
+  padding: 1rem;
+  transition: border-color var(--transition);
+}
+.wc-card:hover {
+  border-color: rgba(242, 211, 107, .25);
+}
+.wc-card-flush {
+  padding: 0;
+}
+
 /* === WORLD CUP FANTASY POOL === */
 
 /* World Cup table — navy header, patriot blue accent */
