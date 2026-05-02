@@ -1161,3 +1161,123 @@ def test_points_for_pick_on_match_uncompleted_returns_zero(app, session):
         pick = _make_pick(session, enr, bra, tier=1)
         session.commit()
         assert points_for_pick_on_match(pick, match) == 0.0
+
+
+def test_points_for_pick_on_match_group_draw_non_participant_returns_zero(app, session):
+    """A pick on a team that did NOT play in a drawn match earns 0.
+
+    Regression: prior to this guard the helper returned GROUP_DRAW × multiplier
+    for any pick on any drawn group match, regardless of participation.
+    """
+    from games.worldcup.services.scoring import points_for_pick_on_match
+    with app.app_context():
+        esp = _make_team(session, 'ESP', 'Spain', tier=1, multiplier=1.0)
+        ger = _make_team(session, 'GER', 'Germany', tier=1, multiplier=1.0)
+        bra = _make_team(session, 'BRA', 'Brazil', tier=5, multiplier=7.0)
+        match = _make_match(session, 5, 'group', esp, ger, group_letter='B')
+        match.is_completed = True
+        match.is_draw = True
+        match.winner_team_id = None
+        user = _make_user(session, 'tester5')
+        enr = _make_enrollment(session, user)
+        bra_pick = _make_pick(session, enr, bra, tier=5)  # picked a third party
+        session.commit()
+        assert points_for_pick_on_match(bra_pick, match) == 0.0
+
+
+def test_points_for_pick_on_match_third_place_winner_returns_zero(app, session):
+    """Bronze-medal match yields 0 per-match (points come via podium bonus).
+
+    Regression: prior to routing through _apply_knockout_points, the helper
+    returned KNOCKOUT_POINTS['third_place'] × multiplier (8 × m), drifting
+    from per-team scoring where third_place points flow through podium bonus.
+    """
+    from games.worldcup.services.scoring import points_for_pick_on_match
+    with app.app_context():
+        cro = _make_team(session, 'CRO', 'Croatia', tier=2, multiplier=2.0)
+        mar = _make_team(session, 'MAR', 'Morocco', tier=3, multiplier=3.0)
+        match = _make_match(session, 103, 'third_place', cro, mar)
+        match.is_completed = True
+        match.winner_team_id = cro.id
+        user = _make_user(session, 'tester6')
+        enr = _make_enrollment(session, user)
+        cro_pick = _make_pick(session, enr, cro, tier=2)
+        session.commit()
+        assert points_for_pick_on_match(cro_pick, match) == 0.0
+
+
+def test_points_for_pick_on_match_parity_with_compute_team_score_events(app, session):
+    """Sum of per-match per-pick points equals multiplier × match-tied ScoreEvents.
+
+    Locks the per-pick helper in lockstep with compute_team_score_events
+    (the canonical per-team helper). Only match-tied events count — advancement
+    and podium events are not match-attributable. This is the invariant the
+    'single source of truth' rule in CLAUDE.md implies for the three helpers.
+
+    Scenario: T5 team wins group (2W/1D), advances as winner, wins R32/R16/QF,
+    loses SF, wins bronze. Match-tied total: 2×3 + 1 + 8 + 11 + 15 = 41 base.
+    With mult 7.0 → 287. (Advancement +4 and podium +8 are excluded — they are
+    not per-match.)
+    """
+    from games.worldcup.services.scoring import (
+        points_for_pick_on_match, compute_team_score_events,
+    )
+    with app.app_context():
+        # T5 hero team plus 6 distinct opponents
+        nor = _make_team(session, 'NOR', 'Norway', tier=5, multiplier=7.0)
+        op1 = _make_team(session, 'OP1', 'Opp1', tier=1, multiplier=1.0)
+        op2 = _make_team(session, 'OP2', 'Opp2', tier=1, multiplier=1.0)
+        op3 = _make_team(session, 'OP3', 'Opp3', tier=1, multiplier=1.0)
+        r32 = _make_team(session, 'R32', 'Opp R32', tier=1, multiplier=1.0)
+        r16 = _make_team(session, 'R16', 'Opp R16', tier=1, multiplier=1.0)
+        qf = _make_team(session, 'QFO', 'Opp QF', tier=1, multiplier=1.0)
+        sf = _make_team(session, 'SFO', 'Opp SF', tier=1, multiplier=1.0)
+        bro = _make_team(session, 'BRO', 'Opp 3rd', tier=1, multiplier=1.0)
+
+        # Group stage: 2 wins + 1 draw
+        m1 = _make_match(session, 11, 'group', nor, op1, group_letter='I')
+        m1.is_completed = True
+        m1.winner_team_id = nor.id
+        m2 = _make_match(session, 12, 'group', nor, op2, group_letter='I')
+        m2.is_completed = True
+        m2.winner_team_id = nor.id
+        m3 = _make_match(session, 13, 'group', nor, op3, group_letter='I')
+        m3.is_completed = True
+        m3.is_draw = True
+        m3.winner_team_id = None
+
+        # Advancement (match_id=None — excluded from match-tied sum)
+        nor.advancement_method = 'group_winner'
+
+        # Knockout chain: win R32, R16, QF; lose SF; win bronze
+        m_r32 = _make_match(session, 50, 'R32', nor, r32)
+        m_r32.is_completed = True
+        m_r32.winner_team_id = nor.id
+        m_r16 = _make_match(session, 60, 'R16', nor, r16)
+        m_r16.is_completed = True
+        m_r16.winner_team_id = nor.id
+        m_qf = _make_match(session, 70, 'QF', nor, qf)
+        m_qf.is_completed = True
+        m_qf.winner_team_id = nor.id
+        m_sf = _make_match(session, 80, 'SF', nor, sf)
+        m_sf.is_completed = True
+        m_sf.winner_team_id = sf.id  # NOR loses
+        m_bronze = _make_match(session, 103, 'third_place', nor, bro)
+        m_bronze.is_completed = True
+        m_bronze.winner_team_id = nor.id
+        nor.best_finish = '3rd'  # podium bonus 8 — match_id=None, excluded
+
+        user = _make_user(session, 'parity_tester')
+        enr = _make_enrollment(session, user)
+        pick = _make_pick(session, enr, nor, tier=5)
+        session.commit()
+
+        all_matches = [m1, m2, m3, m_r32, m_r16, m_qf, m_sf, m_bronze]
+        per_match_total = sum(points_for_pick_on_match(pick, m) for m in all_matches)
+
+        events = compute_team_score_events(nor)
+        match_tied_base = sum(e.base_points for e in events if e.match_id is not None)
+
+        # 2 wins + 1 draw + R32 + R16 + QF = 6 + 1 + 8 + 11 + 15 = 41
+        assert match_tied_base == 41.0
+        assert per_match_total == match_tied_base * nor.multiplier  # 287.0

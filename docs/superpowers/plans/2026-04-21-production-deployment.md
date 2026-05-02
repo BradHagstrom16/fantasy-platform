@@ -968,7 +968,7 @@ print(inspect(db.engine).get_table_names())
 exit()
 ```
 
-Expected: a list of table names including `user`, `golf_enrollment`, `cfb_enrollment`, `world_cup_enrollment`, and others. If you see an empty list, something is wrong with `DATABASE_URL` in your `.env`.
+Expected: a list of table names including `user`, `golf_enrollment`, `cfb_enrollment`, `worldcup_enrollment`, and others. If you see an empty list, something is wrong with `DATABASE_URL` in your `.env`.
 
 ---
 

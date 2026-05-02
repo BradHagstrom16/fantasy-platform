@@ -27,11 +27,26 @@ def client(app):
 
 
 def _seed_final_match(completed: bool, winner_id: int | None = None):
-    """Seed match #104 (the Final). Used to flip live → post."""
-    from games.worldcup.models import WorldCupMatch
+    """Seed match #104 (the Final). Used to flip live → post.
+
+    Seeds two minimal teams to satisfy NOT NULL home_team_id / away_team_id.
+    """
+    from games.worldcup.models import WorldCupMatch, WorldCupTeam
+    home = WorldCupTeam(
+        fifa_code='FNA', name='Finalist A', display_name='Finalist A',
+        tier=1, multiplier=1.0, confederation='TEST', group_letter='Z',
+    )
+    away = WorldCupTeam(
+        fifa_code='FNB', name='Finalist B', display_name='Finalist B',
+        tier=1, multiplier=1.0, confederation='TEST', group_letter='Z',
+    )
+    db.session.add_all([home, away])
+    db.session.flush()
     match = WorldCupMatch(
         match_number=104,
         stage='final',
+        home_team_id=home.id,
+        away_team_id=away.id,
         is_completed=completed,
         winner_team_id=winner_id,
     )

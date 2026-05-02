@@ -226,7 +226,7 @@ Proves `WC_FAKE_NOW` flows from env-var → `now_utc()` → builder → context.
 
 ### 4d. Coverage delta
 
-Spec B PR #3 ships with 124 tests. This follow-up adds 11 (7 + 4) and modifies 2. New total: **135**. No tests are removed.
+Spec B PR #3 ships with 124 tests (PR description math: 119 prior + 10 new − 5 obsolete). This follow-up adds 15 and modifies 2 on top of that baseline. New total: **139**. No tests are removed.
 
 ---
 
@@ -261,7 +261,7 @@ Nine commits, source fixes first and tests trailing their topics so each test ca
 
 Same shape as Spec B's verification gates (PR #3 sec "Verification gates passed"):
 
-- **Gate 1 — Tests pass.** `venv/bin/python -m pytest tests/` reports all green. New count: 135.
+- **Gate 1 — Tests pass.** `venv/bin/python -m pytest tests/` reports all green. New count: 139.
 - **Gate 2 — Type checks pass.** `venv/bin/pyright` reports 0 errors across the project, 0 errors on touched files.
 - **Gate 3 — Migrations clean.** No new migrations expected; `flask db upgrade && flask db downgrade <prev> && flask db upgrade` round-trip remains clean.
 - **Gate 4 — Snapshot CLI guards work.** `flask worldcup snapshot-ranks --backfill -1` exits non-zero with `BadParameter` message; `flask worldcup snapshot-ranks` re-run on the same day adds 0 rows.

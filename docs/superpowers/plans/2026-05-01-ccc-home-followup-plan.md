@@ -8,7 +8,7 @@
 
 **Tech Stack:** Flask, Jinja2, SQLAlchemy 2.0, Flask-Migrate, pytest, Flask `CliRunner`, `WC_FAKE_NOW` env-var test seam already in `games/worldcup/services/state.py`.
 
-**Worktree:** All work happens in `/Users/bhagstrom/fantasy-platform-ccc-home` on branch `redesign/ccc-home`. Commits stack on top of PR #3.
+**Worktree:** All work happens in the `redesign/ccc-home` worktree on branch `redesign/ccc-home`. Resolve the worktree root once with `REPO_ROOT="$(git rev-parse --show-toplevel)"` and reference `$REPO_ROOT` in subsequent shell steps. Commits stack on top of PR #3.
 
 **Spec:** `docs/superpowers/specs/2026-05-01-ccc-home-followup-design.md` (committed as `b046a9e`).
 

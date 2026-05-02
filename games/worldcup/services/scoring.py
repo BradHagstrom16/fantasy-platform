@@ -209,6 +209,8 @@ def points_for_pick_on_match(pick: WorldCupPick, match: WorldCupMatch) -> float:
     """
     if not match.is_completed:
         return 0.0
+    if pick.team_id not in (match.home_team_id, match.away_team_id):
+        return 0.0
     multiplier = TIERS[pick.tier]['multiplier']
     if match.stage == 'group':
         if match.is_draw:
@@ -216,9 +218,12 @@ def points_for_pick_on_match(pick: WorldCupPick, match: WorldCupMatch) -> float:
         if match.winner_team_id == pick.team_id:
             return float(GROUP_WIN) * multiplier
         return 0.0
-    # Knockout — no draws (winner_team_id always resolved post-completion)
+    # Knockout — no draws (winner_team_id always resolved post-completion).
+    # Route through _apply_knockout_points so per-pick attribution stays in
+    # lockstep with per-team scoring (excludes third_place / champion /
+    # runner_up — those flow through podium bonus, not match wins).
     if match.winner_team_id == pick.team_id:
-        return float(KNOCKOUT_POINTS.get(match.stage, 0)) * multiplier
+        return float(_apply_knockout_points(match)) * multiplier
     return 0.0
 
 

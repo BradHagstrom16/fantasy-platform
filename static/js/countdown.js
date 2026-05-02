@@ -25,14 +25,20 @@
 
   function pad(n) { return n < 10 ? '0' + n : '' + n; }
 
+  var timerId = null;
+  var reloading = false;
+
   function tick() {
     var now = Date.now();
     var diff = deadline - now;
     if (diff <= 0) {
+      if (reloading) return;
+      reloading = true;
       dEl.textContent = '00';
       hEl.textContent = '00';
       mEl.textContent = '00';
       sEl.textContent = '00';
+      if (timerId) clearInterval(timerId);
       // Wait one tick so the user sees zero, then reload for state transition
       setTimeout(function () { window.location.reload(); }, 1500);
       return;
@@ -48,5 +54,5 @@
   }
 
   tick();
-  setInterval(tick, 1000);
+  timerId = setInterval(tick, 1000);
 })();
