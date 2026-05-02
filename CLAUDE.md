@@ -149,19 +149,20 @@ FLASK_APP=app.py venv/bin/flask cfb sync --mode remind      # Send email reminde
 FLASK_APP=app.py venv/bin/flask cfb sync --mode status      # Print season summary
 
 # World Cup CLI
-FLASK_APP=app.py venv/bin/flask worldcup seed-teams    # Populate teams from world_cup_countries.py
-FLASK_APP=app.py venv/bin/flask worldcup seed-matches   # Seed all 104 match shells
+FLASK_APP=app.py venv/bin/flask worldcup seed-teams      # Populate teams from world_cup_countries.py
+FLASK_APP=app.py venv/bin/flask worldcup seed-matches    # Seed all 104 match shells
 FLASK_APP=app.py venv/bin/flask worldcup init            # Seed teams + matches (fresh setup)
 FLASK_APP=app.py venv/bin/flask worldcup recalc          # Recalculate all scores (idempotent)
 FLASK_APP=app.py venv/bin/flask worldcup status          # Print tournament state summary
 FLASK_APP=app.py venv/bin/flask worldcup process-match   # Enter match result (dev/testing)
+FLASK_APP=app.py venv/bin/flask worldcup snapshot-ranks  # Capture daily rank+score snapshot (cron; --backfill N for historical seed)
 
 # Type checking
 venv/bin/pyright                                  # Full project (target: 0 errors)
 venv/bin/pyright games/golf/services/sync.py      # Check specific file
 
 # Tests
-venv/bin/python -m pytest tests/                          # Run all tests
+ENVIRONMENT=testing venv/bin/python -m pytest tests/      # Run all tests (env var enables WC_FAKE_NOW seam in state-detection tests)
 venv/bin/python -m pytest tests/test_worldcup_scoring.py  # Scoring engine tests
 venv/bin/python -m pytest tests/test_worldcup_admin.py    # Admin + public route tests
 venv/bin/python -m pytest tests/test_post_deadline_ui.py  # Post-deadline UI tests
@@ -180,9 +181,10 @@ No linter configured.
 - **Game CSS sections:** Each game has its own section in `style.css` (e.g., `/* === CFB SURVIVOR POOL === */`) with game-specific component classes
 - **Game sub-nav:** Each game needs a `.subnav-<game>` class in the `/* === GAME SUB-NAV === */` section of `style.css` setting `background`, `--subnav-accent` (hex), and `--subnav-accent-rgb` (comma-separated R,G,B) — the shared pill `.active` rule consumes these variables
 - **Game palettes:** Golf: Augusta green `#006747` + gold `#b8993e`; CFB: crimson `#C5050C` + midnight `#0f0f1a`; World Cup: navy `#001A4D` + red `#BF0A30` (matches `--wc-navy` / `--wc-red` in tokens.css)
-- **Emails:** All outbound email routes through `utils/email.py` → `send_platform_email()`. From-name: "The Commissioner's Club". Game-specific content assembly stays in `games/<game>/services/reminders.py`. HTML emails: table layout + inline styles for Gmail compatibility.
+- **Emails:** All outbound email routes through `utils/email.py` → `send_platform_email()`. From-name: "Corrupt Commish Club". Game-specific content assembly stays in `games/<game>/services/reminders.py`. HTML emails: table layout + inline styles for Gmail compatibility.
 - **Avatars:** All game standings must display `user.get_avatar()` inline before the player display name. `User.avatar_emoji` is nullable String(4); default is ⚽. Required integration point for every game blueprint.
 - **Timestamps:** `datetime.now(timezone.utc)` — never `utcnow()`
+- **Time test seam:** `games/worldcup/services/state.now_utc()` is the canonical "now" reader for any code path involved in home-page state detection or the `_context_*()` builders. It honors `WC_FAKE_NOW` (ISO 8601) when `ENVIRONMENT` is `development` or `testing`. Call it once per builder; never reach for `datetime.now()` directly in those paths.
 - **Timezones:** `zoneinfo.ZoneInfo` — `.replace(tzinfo=tz)`, never pytz
 - **ORM:** SQLAlchemy 2.0 style — `db.session.get(Model, id)`, `db.get_or_404()`
 - **ORM safety:** Never mutate ORM attributes for display — use transient attributes
@@ -196,7 +198,9 @@ No linter configured.
 - **Game registry:** `games/registry.py` is the single source of truth — every game has one `GameRegistryEntry` (slug, status, is_featured, blueprint_index/join endpoints, `get_enrollment` + `admin_enroll` callables). Helpers `joined_games`/`available_games`/`coming_soon_games`/`featured_games`/`get_entry` drive homepage, navbar, and admin add-user page. Flip `status` from `'coming_soon'` to `'open'` at launch.
 - **Enrollment is explicit:** users reach a game's interior routes only via `/<game>/join` (guarded by `@game_must_be_open(slug)` in `games/common.py`). Interior pick routes carry `@enrollment_required(slug)`, which redirects unenrolled users to `/<game>/join?next=<current>`. **Never** create `<Game>Enrollment` rows from pick or admin paths — platform admins enroll users via `/admin/enrollments`.
 - **Admin destructive actions:** Destructive admin POST handlers (e.g., `admin_match_result`, `admin_set_knockout`) branch on `request.form.get('action')` — `action=clear` is a distinct, guarded path that short-circuits before the main mutation. Keep this pattern for new admin routes that both mutate and reset.
-- **Scoring attribution:** `games/worldcup/services/scoring.compute_team_score_events` (per-team) and `compute_match_attribution` (per-match) are the single source of truth for scoring breakdowns. Stored `total_score` must equal the sum of those ScoreEvents. Any new UI that surfaces scoring detail must derive from these helpers, not recompute.
+- **Scoring attribution:** `games/worldcup/services/scoring.compute_team_score_events` (per-team), `compute_match_attribution` (per-match), and `points_for_pick_on_match` (per-pick-per-match) are the single source of truth for scoring breakdowns. Stored `total_score` must equal the sum of those ScoreEvents. Any new UI that surfaces scoring detail must derive from these helpers, not recompute. The per-pick helper guards participation (`pick.team_id in (home, away)`) and routes knockout points via `_apply_knockout_points()` so it stays in lockstep with the per-team helper — a parity invariant test in `tests/test_worldcup_scoring.py` locks this.
+- **Home-page state shell:** `core/main/home_context.build_home_context(user, state)` dispatches to one of four per-state builders (`_context_out` / `_pre` / `_live` / `_post`); the home route resolves `state` from `worldcup_state()` and renders the matching `_home_<state>.html` partial inside `home_shell.html`. New home-page work goes through these builders — never recompute scoring or rank in the template. Live-state dossier sparkline + week-delta read from `WorldCupRankSnapshot` rows captured nightly by `flask worldcup snapshot-ranks` (idempotent; `--backfill N` seeds historical days). Week-delta is gated behind `len(snapshots) >= 7` to avoid overstating early-deploy trends.
+- **Stage labels:** `core/main/home_context._stage_label(stage)` is the single source of truth for display labels of `WorldCupMatch.stage` (`'SF'` → `'Semifinals'`, `'third_place'` → `'Third-Place Match'`, etc.). Templates must NOT use `match.stage|title` — Jinja's `|title` filter mangles ALL-CAPS knockout codes (`'SF'` → `'Sf'`, `'QF'` → `'Qf'`) and underscored values (`'third_place'` → `'Third_Place'`). Plumb `stage_label` through the context dict instead.
 - **Stats analytics layer:** `games/worldcup/services/stats.py` exposes 4 public functions (`get_country_stats`, `get_tier_stats`, `get_overview_kpis`, `get_tier_combos`) consumed by the public `/worldcup/stats` route. Public analytics routes must NOT use `@login_required`; build `my_picks` via `WorldCupPick.query.join(WorldCupTeam)` (never `enrollment.picks` — N+1).
 - **Production environment selection:** `ENVIRONMENT=production` is set in three places as defense-in-depth — the server's `.env`, the systemd unit's `Environment=ENVIRONMENT=production` override, and every flask-command line in `deploy.sh` and the crontab. `migrations/env.py` reads the DB engine from `create_app()`'s loaded config, so a stray `ENVIRONMENT=development` would silently migrate against SQLite instead of Postgres. Keep all three layers in sync when adding new cron entries or deploy steps.
 - **Postgres connection hygiene:** `ProductionConfig.SQLALCHEMY_ENGINE_OPTIONS = {'pool_pre_ping': True, 'pool_recycle': 280}` — DO Managed Postgres closes idle connections; without this, long-lived Gunicorn workers throw `OperationalError` on first request after an idle gap. Do not remove.
@@ -349,12 +353,3 @@ EMAIL_PASSWORD=...       # SMTP app password
 SMTP_SERVER=...          # Default: smtp.gmail.com
 SMTP_PORT=...            # Default: 587
 ```
-
-## graphify
-
-This project has a graphify knowledge graph at graphify-out/.
-
-Rules:
-- Before answering architecture or codebase questions, read graphify-out/GRAPH_REPORT.md for god nodes and community structure
-- If graphify-out/wiki/index.md exists, navigate it instead of reading raw files
-- After modifying code files in this session, run `python3 -c "from graphify.watch import _rebuild_code; from pathlib import Path; _rebuild_code(Path('.'))"` to keep the graph current
