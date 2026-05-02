@@ -3131,6 +3131,16 @@ main { flex: 1; }
   border-color: var(--subnav-accent);
 }
 
+/* Spec C Plan 1 — mobile compactions: fit 6 pills on 375px without scroll */
+@media (max-width: 575.98px) {
+  .subnav-pills { gap: .25rem; }
+  .subnav-pill {
+    font-size: .72rem;
+    padding: .28rem .55rem;
+    letter-spacing: .04em;
+  }
+}
+
 /* ── 7. Flash Messages / Alerts ─────────────────────────── */
 .alert {
   border: none;
