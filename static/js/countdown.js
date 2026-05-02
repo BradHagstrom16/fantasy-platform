@@ -8,9 +8,19 @@
     return;
   }
 
-  var deadline = new Date(el.getAttribute('data-deadline-utc')).getTime();
+  var deadlineStr = el.getAttribute('data-deadline-utc');
+  // Defense-in-depth: the attribute is named `-utc`, so the string MUST
+  // carry an explicit UTC marker. Without one, Chrome/Safari parse a
+  // space-separated ISO datetime as LOCAL time and silently drift the
+  // countdown. Today the Jinja side always emits trailing `Z`; this guard
+  // catches any future template regression.
+  if (!/(Z|[+-]\d{2}:?\d{2})$/.test(deadlineStr)) {
+    console.warn('[countdown] data-deadline-utc lacks timezone marker (Z or ±HH:MM):', deadlineStr);
+    return;
+  }
+  var deadline = new Date(deadlineStr).getTime();
   if (isNaN(deadline)) {
-    console.warn('[countdown] data-deadline-utc is not parseable as a date:', el.getAttribute('data-deadline-utc'));
+    console.warn('[countdown] data-deadline-utc is not parseable as a date:', deadlineStr);
     return;
   }
 

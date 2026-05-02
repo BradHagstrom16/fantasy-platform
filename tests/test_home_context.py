@@ -220,3 +220,283 @@ def test_context_post_with_champion(app):
         assert 'Argentina' in ctx['champion_summary']
         assert '3' in ctx['champion_summary']
         assert ctx['is_enrolled'] is False
+
+
+def test_context_post_enrolled_with_climb_and_roster_recap(app):
+    """Post state, enrolled with picks: your_final_rank, your_climbed_n,
+    and your_roster_recap (with is_champion flag) all populate.
+
+    Covers the previously-untested ~30 lines of the enrolled branch in
+    _context_post — your_climbed_n sign convention, tier_name lookup,
+    best_finish fallback, and is_champion flag against the right pick.
+    """
+    from core.main.home_context import build_home_context
+    from games.worldcup.models import (
+        WorldCupTeam, WorldCupMatch, WorldCupPick, WorldCupRankSnapshot,
+    )
+    from datetime import date, timedelta
+    with app.app_context():
+        bra = WorldCupTeam(
+            fifa_code='BRA', name='Brazil', display_name='Brazil',
+            tier=2, multiplier=1.5, confederation='CONMEBOL', group_letter='C',
+            best_finish='champion',
+        )
+        arg = WorldCupTeam(
+            fifa_code='ARG', name='Argentina', display_name='Argentina',
+            tier=2, multiplier=1.5, confederation='CONMEBOL', group_letter='B',
+            best_finish='runner_up',
+        )
+        db.session.add_all([bra, arg])
+        db.session.commit()
+        final = WorldCupMatch(
+            match_number=104, stage='final',
+            home_team_id=bra.id, away_team_id=arg.id,
+            home_score=3, away_score=2, extra_time=True,
+            winner_team_id=bra.id, is_completed=True,
+        )
+        db.session.add(final)
+        # Two enrollments so the user has someone to climb past
+        u1 = _make_user(username='other', email='other@test.com')
+        e1 = _make_enrollment(u1, picks_submitted=True, total_score=50.0)
+        u2 = _make_user()
+        e2 = _make_enrollment(u2, picks_submitted=True, total_score=200.0)
+        # User picks BRA (champion) + ARG (runner-up)
+        db.session.add_all([
+            WorldCupPick(enrollment_id=e2.id, team_id=bra.id, tier=2),
+            WorldCupPick(enrollment_id=e2.id, team_id=arg.id, tier=2),
+        ])
+        # Snapshots: user started at rank 2, ended at rank 1 → climbed 1
+        today = date(2026, 7, 20)
+        db.session.add_all([
+            WorldCupRankSnapshot(enrollment_id=e2.id, captured_date=today - timedelta(days=10), rank=2, total_score=50.0),
+            WorldCupRankSnapshot(enrollment_id=e2.id, captured_date=today, rank=1, total_score=200.0),
+        ])
+        db.session.commit()
+
+        ctx = build_home_context(u2, 'post')
+        assert ctx['is_enrolled'] is True
+        assert ctx['your_final_rank'] == 1
+        assert ctx['your_climbed_n'] == 1  # first.rank (2) - your_final_rank (1)
+        assert len(ctx['your_roster_recap']) == 2
+        champion_recaps = [r for r in ctx['your_roster_recap'] if r['is_champion']]
+        assert len(champion_recaps) == 1
+        assert champion_recaps[0]['pick'].team_id == bra.id
+
+
+def test_context_live_roster_match_away_side(app):
+    """Live state with user's pick on the away side of a recent result.
+
+    Covers the elif match.away_team_id in user_team_ids branch — previously
+    untested. A regression in side mapping or away-side
+    user_picks_by_team_id lookup would silently lose the roster banner
+    + points-earned chip for half of viewers.
+    """
+    from core.main.home_context import build_home_context
+    from games.worldcup.models import WorldCupTeam, WorldCupMatch, WorldCupPick
+    with app.app_context(), patch.dict(os.environ, {'WC_FAKE_NOW': '2026-06-15T00:00:00Z'}):
+        home_team = WorldCupTeam(
+            fifa_code='ESP', name='Spain', display_name='Spain',
+            tier=1, multiplier=1.0, confederation='UEFA', group_letter='B',
+        )
+        away_team = WorldCupTeam(
+            fifa_code='NOR', name='Norway', display_name='Norway',
+            tier=5, multiplier=7.0, confederation='UEFA', group_letter='B',
+        )
+        db.session.add_all([home_team, away_team])
+        db.session.commit()
+        # Spain home wins, but the user's roster has Norway (away)
+        match = WorldCupMatch(
+            match_number=20, stage='group', group_letter='B',
+            home_team_id=home_team.id, away_team_id=away_team.id,
+            home_score=2, away_score=1, is_completed=True,
+            winner_team_id=home_team.id,
+        )
+        db.session.add(match)
+        user = _make_user()
+        enr = _make_enrollment(user, picks_submitted=True)
+        db.session.add(WorldCupPick(enrollment_id=enr.id, team_id=away_team.id, tier=5))
+        db.session.commit()
+
+        ctx = build_home_context(user, 'live')
+        results = ctx['your_pick_results']
+        assert len(results) == 1
+        assert results[0]['roster_match'] is not None
+        assert results[0]['roster_match']['side'] == 'away'
+        assert results[0]['roster_match']['team_id'] == away_team.id
+        # Norway lost → 0 points (not a draw)
+        assert results[0]['points_earned'] == 0.0
+        assert results[0]['is_draw'] is False
+
+
+def test_context_post_champion_summary_away_winner_on_penalties(app):
+    """Post state with away-team winner on penalties.
+
+    Verifies (a) score order is winner-first regardless of home/away
+    alignment, and (b) ' on penalties' suffix is appended.
+    """
+    from core.main.home_context import build_home_context
+    from games.worldcup.models import WorldCupTeam, WorldCupMatch
+    with app.app_context():
+        bra = WorldCupTeam(
+            fifa_code='BRA', name='Brazil', display_name='Brazil',
+            tier=2, multiplier=1.5, confederation='CONMEBOL', group_letter='C',
+        )
+        arg = WorldCupTeam(
+            fifa_code='ARG', name='Argentina', display_name='Argentina',
+            tier=2, multiplier=1.5, confederation='CONMEBOL', group_letter='B',
+        )
+        db.session.add_all([bra, arg])
+        db.session.commit()
+        # ARG (away) wins on penalties, regulation 1-2 (home_score=1, away_score=2)
+        final = WorldCupMatch(
+            match_number=104, stage='final',
+            home_team_id=bra.id, away_team_id=arg.id,
+            home_score=1, away_score=2, penalties=True,
+            winner_team_id=arg.id, is_completed=True,
+        )
+        db.session.add(final)
+        db.session.commit()
+
+        user = _make_user()
+        ctx = build_home_context(user, 'post')
+        assert ctx['champion_team'].fifa_code == 'ARG'
+        # Winner score (2) listed first; loser is Brazil
+        assert 'Defeated Brazil 2–1 on penalties' == ctx['champion_summary']
+
+
+def test_context_post_malformed_final_no_corrupted_summary(app):
+    """Post state with a malformed Final still renders the champion banner
+    but skips the defeat summary rather than rendering corrupted data.
+
+    Triggers: (a) winner_team_id matches neither team (admin manual edit
+    error), (b) scores left null on a row marked complete.
+    """
+    from core.main.home_context import build_home_context
+    from games.worldcup.models import WorldCupTeam, WorldCupMatch
+    with app.app_context():
+        bra = WorldCupTeam(
+            fifa_code='BRA', name='Brazil', display_name='Brazil',
+            tier=2, multiplier=1.5, confederation='CONMEBOL', group_letter='C',
+        )
+        arg = WorldCupTeam(
+            fifa_code='ARG', name='Argentina', display_name='Argentina',
+            tier=2, multiplier=1.5, confederation='CONMEBOL', group_letter='B',
+        )
+        ghost = WorldCupTeam(
+            fifa_code='GHO', name='Ghost', display_name='Ghost',
+            tier=1, multiplier=1.0, confederation='TEST', group_letter='Z',
+        )
+        db.session.add_all([bra, arg, ghost])
+        db.session.commit()
+        # winner_team_id = ghost.id, but match teams are BRA + ARG
+        final = WorldCupMatch(
+            match_number=104, stage='final',
+            home_team_id=bra.id, away_team_id=arg.id,
+            home_score=3, away_score=2,
+            winner_team_id=ghost.id, is_completed=True,
+        )
+        db.session.add(final)
+        db.session.commit()
+
+        user = _make_user()
+        ctx = build_home_context(user, 'post')
+        # Banner still shows the (anomalous) champion_team
+        assert ctx['champion_team'].fifa_code == 'GHO'
+        # But summary is empty rather than "Defeated X 0-0" or score-flipped nonsense
+        assert ctx['champion_summary'] == ''
+
+
+def test_context_post_malformed_final_null_scores_no_summary(app):
+    """Post state with Final marked complete but scores=None → no summary."""
+    from core.main.home_context import build_home_context
+    from games.worldcup.models import WorldCupTeam, WorldCupMatch
+    with app.app_context():
+        bra = WorldCupTeam(
+            fifa_code='BRA', name='Brazil', display_name='Brazil',
+            tier=2, multiplier=1.5, confederation='CONMEBOL', group_letter='C',
+        )
+        arg = WorldCupTeam(
+            fifa_code='ARG', name='Argentina', display_name='Argentina',
+            tier=2, multiplier=1.5, confederation='CONMEBOL', group_letter='B',
+        )
+        db.session.add_all([bra, arg])
+        db.session.commit()
+        final = WorldCupMatch(
+            match_number=104, stage='final',
+            home_team_id=bra.id, away_team_id=arg.id,
+            home_score=None, away_score=None,
+            winner_team_id=bra.id, is_completed=True,
+        )
+        db.session.add(final)
+        db.session.commit()
+
+        user = _make_user()
+        ctx = build_home_context(user, 'post')
+        assert ctx['champion_team'].fifa_code == 'BRA'
+        assert ctx['champion_summary'] == ''  # not "Defeated ARG 0-0"
+
+
+def test_context_live_week_delta_requires_seven_snapshots(app):
+    """Week-delta only populates once we have a full week of snapshots.
+
+    Earlier days only fill the sparkline (so the dossier still shows
+    movement) but suppress the trend tagline that overstates a 2-day
+    swing as a "weekly" trend.
+    """
+    from core.main.home_context import build_home_context
+    from games.worldcup.models import WorldCupRankSnapshot
+    from datetime import date, timedelta
+    with app.app_context(), patch.dict(os.environ, {'WC_FAKE_NOW': '2026-06-20T00:00:00Z'}):
+        user = _make_user()
+        enr = _make_enrollment(user, picks_submitted=True, total_score=100.0)
+        today = date(2026, 6, 20)
+        # Only 6 snapshots (< 7 threshold)
+        for i in range(6):
+            db.session.add(WorldCupRankSnapshot(
+                enrollment_id=enr.id,
+                captured_date=today - timedelta(days=i),
+                rank=i + 1,
+                total_score=100.0 - i,
+            ))
+        db.session.commit()
+        ctx = build_home_context(user, 'live')
+        # Sparkline still populated (UX: show what we have)
+        assert len(ctx['dossier']['sparkline_data']) == 6
+        # But week-delta is suppressed until we have 7
+        assert ctx['dossier']['week_delta_rank'] is None
+        assert ctx['dossier']['week_delta_points'] is None
+
+
+def test_context_pre_next_3_matches_excludes_completed(app):
+    """Pre-state next_3_matches must exclude already-completed matches."""
+    from core.main.home_context import build_home_context
+    from games.worldcup.models import WorldCupTeam, WorldCupMatch
+    from datetime import datetime as dt
+    with app.app_context(), patch.dict(os.environ, {'WC_FAKE_NOW': '2026-05-01T00:00:00Z'}):
+        a = WorldCupTeam(fifa_code='AAA', name='A', display_name='A', tier=1, multiplier=1.0, confederation='T', group_letter='A')
+        b = WorldCupTeam(fifa_code='BBB', name='B', display_name='B', tier=1, multiplier=1.0, confederation='T', group_letter='A')
+        db.session.add_all([a, b])
+        db.session.commit()
+        # 1 completed (earliest kickoff) + 4 future incomplete
+        kickoffs = [
+            (1, dt(2026, 6, 11, 19, tzinfo=timezone.utc), True),
+            (2, dt(2026, 6, 12, 19, tzinfo=timezone.utc), False),
+            (3, dt(2026, 6, 13, 19, tzinfo=timezone.utc), False),
+            (4, dt(2026, 6, 14, 19, tzinfo=timezone.utc), False),
+            (5, dt(2026, 6, 15, 19, tzinfo=timezone.utc), False),
+        ]
+        for num, ko, completed in kickoffs:
+            db.session.add(WorldCupMatch(
+                match_number=num, stage='group', group_letter='A',
+                home_team_id=a.id, away_team_id=b.id,
+                kickoff_utc=ko, is_completed=completed,
+            ))
+        db.session.commit()
+
+        user = _make_user()
+        ctx = build_home_context(user, 'pre')
+        assert len(ctx['next_3_matches']) == 3
+        # The completed match (#1) must not appear
+        assert all(m.match_number != 1 for m in ctx['next_3_matches'])
+        # First three by kickoff among incomplete ones: 2, 3, 4
+        assert [m.match_number for m in ctx['next_3_matches']] == [2, 3, 4]

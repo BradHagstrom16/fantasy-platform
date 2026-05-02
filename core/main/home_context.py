@@ -7,6 +7,7 @@ template consumes via ``**ctx``.
 from typing import Optional, Any
 
 from flask_login import AnonymousUserMixin
+from sqlalchemy.orm import joinedload
 
 from games.worldcup.constants import (
     SEASON_YEAR, TOURNAMENT_DEADLINE_UTC, WORLDCUP_TZ,
@@ -113,6 +114,7 @@ def _context_pre(user, enrollment) -> dict:
     next_3_matches = (
         WorldCupMatch.query
         .filter(WorldCupMatch.kickoff_utc.isnot(None))
+        .filter(WorldCupMatch.is_completed == False)  # noqa: E712
         .order_by(WorldCupMatch.kickoff_utc.asc())
         .limit(3)
         .all()
@@ -188,10 +190,12 @@ def _context_live(user, enrollment) -> dict:
 
     picks_by_enr: dict[int, list] = {}
     if relevant_ids:
+        # joinedload(WorldCupPick.team) so _alive_count below can read
+        # p.team.is_eliminated without firing one query per pick.
         rows = (
             WorldCupPick.query
             .filter(WorldCupPick.enrollment_id.in_(relevant_ids))
-            .join(WorldCupTeam)
+            .options(joinedload(WorldCupPick.team))
             .all()
         )
         for p in rows:
@@ -227,7 +231,10 @@ def _context_live(user, enrollment) -> dict:
         ))
         if recent_snapshots:
             sparkline_data = [s.rank for s in recent_snapshots]
-            if len(recent_snapshots) >= 2:
+            # Only surface the "week delta" trend once we actually have a
+            # week of data — otherwise early-deploy days overstate trends
+            # (e.g., "you're climbing" computed from a 2-day window).
+            if len(recent_snapshots) >= 7:
                 oldest = recent_snapshots[0]
                 week_delta_rank = (user_rank or 0) - oldest.rank
                 week_delta_points = float(enrollment.total_score) - float(oldest.total_score)
@@ -331,32 +338,41 @@ def _context_post(user, enrollment) -> dict:
     """Post-tournament state: champion banner + podium + roster recap."""
     is_enrolled = enrollment is not None
 
-    # Champion data — match #104
+    # Champion data — match #104. Guards against malformed Final rows
+    # (admin manual edit dropping a winner FK to neither side, or scores
+    # left null on a row marked complete). In either case we surface the
+    # champion banner without the defeat summary rather than silently
+    # rendering "Defeated X 0-0" or score-flipped nonsense.
     final_match = WorldCupMatch.query.filter_by(match_number=104).first()
     champion_team = None
     champion_summary = ''
     if final_match and final_match.winner_team_id:
         champion_team = final_match.winner_team
-        # Derive winner/loser scores from winner_team_id alignment so the
-        # summary is right even if a future score-edit ever produced data
-        # where the higher-scoring side wasn't the winner.
-        if final_match.winner_team_id == final_match.home_team_id:
-            loser = final_match.away_team
-            winner_score = final_match.home_score or 0
-            loser_score = final_match.away_score or 0
-        else:
-            loser = final_match.home_team
-            winner_score = final_match.away_score or 0
-            loser_score = final_match.home_score or 0
-        suffix = ''
-        if final_match.penalties:
-            suffix = ' on penalties'
-        elif final_match.extra_time:
-            suffix = ' in extra time'
-        if loser:
-            champion_summary = (
-                f'Defeated {loser.display_name} {winner_score}–{loser_score}{suffix}'
-            )
+        winner_id = final_match.winner_team_id
+        winner_is_home = winner_id == final_match.home_team_id
+        winner_is_away = winner_id == final_match.away_team_id
+        scores_present = (
+            final_match.home_score is not None
+            and final_match.away_score is not None
+        )
+        if (winner_is_home or winner_is_away) and scores_present:
+            if winner_is_home:
+                loser = final_match.away_team
+                winner_score = final_match.home_score
+                loser_score = final_match.away_score
+            else:
+                loser = final_match.home_team
+                winner_score = final_match.away_score
+                loser_score = final_match.home_score
+            suffix = ''
+            if final_match.penalties:
+                suffix = ' on penalties'
+            elif final_match.extra_time:
+                suffix = ' in extra time'
+            if loser:
+                champion_summary = (
+                    f'Defeated {loser.display_name} {winner_score}–{loser_score}{suffix}'
+                )
 
     # Final podium — top 3
     all_enrollments = (

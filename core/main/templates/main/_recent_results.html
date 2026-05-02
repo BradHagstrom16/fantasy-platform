@@ -31,13 +31,20 @@
       {% set rm_team = match.home_team if item.roster_match.side == 'home' else match.away_team %}
       <strong>{{ rm_team.display_name }}</strong>
     </div>
-    {% if item.points_earned and item.points_earned > 0 %}
+    {# Invariant: when roster_match is set, _context_live always supplies
+       points_earned as a float (>=0) — points_for_pick_on_match returns
+       0.0 for non-scoring cases. The `is not none` guard is defensive
+       so any future regression of that invariant fails into NO POINTS
+       rather than a Jinja comparison error. #}
+    {% if item.points_earned is not none and item.points_earned > 0 %}
       {% if item.is_draw %}
         <div class="match-foot-status match-foot-status--draw">
           DRAW &middot; +{{ '%.0f'|format(item.points_earned) }} {% if item.points_earned == 1 %}PT{% else %}PTS{% endif %}
         </div>
       {% else %}
-        <div class="match-foot-status match-foot-status--win">+ POINTS EARNED</div>
+        <div class="match-foot-status match-foot-status--win">
+          +{{ '%.0f'|format(item.points_earned) }} {% if item.points_earned == 1 %}PT{% else %}PTS{% endif %}
+        </div>
       {% endif %}
     {% else %}
       <div class="match-foot-status match-foot-status--loss">NO POINTS</div>
