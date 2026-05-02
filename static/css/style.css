@@ -2621,12 +2621,15 @@ body.game-worldcup {
   to   { opacity: 1; transform: translateY(0); }
 }
 
-/* Group table — compact 4-team standings */
+/* Group table — compact 4-team standings.
+   scroll-margin-top clears the sticky .navbar (~58px) + .game-subnav (~40px)
+   stack so #group-{LETTER} deep-links land below the chrome, not under it. */
 .group-table {
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   overflow: hidden;
+  scroll-margin-top: 6.5rem;
 }
 .group-table-header {
   background: var(--game-primary-dark);
