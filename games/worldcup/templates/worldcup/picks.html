@@ -6,7 +6,7 @@
   <div class="hero-glow"></div>
   <div class="container">
     <span class="wc-eyebrow wc-eyebrow-red">Roster · 9 nations</span>
-    <h1>{% if deadline_passed %}The Oath is sealed{% elif show_edit_form %}Submit Your Picks{% else %}Sealed. Still amendable.{% endif %}</h1>
+    <h1>{% if deadline_passed %}The Oath is sealed{% elif show_edit_form and has_picks %}Amend the Oath{% elif show_edit_form %}Submit Your Picks{% else %}Sealed. Still amendable.{% endif %}</h1>
     <p class="lead mb-0">
       {% if deadline_passed %}
         Picks are locked. The tournament is underway.
