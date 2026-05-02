@@ -2173,8 +2173,9 @@ body.game-worldcup {
 }
 
 /* Hero gradient — radial gold-tint over linear navy-to-near-black.
-   Apply via class on .page-hero or a custom hero container. */
-.wc-hero-grad {
+   Scoped as .page-hero.wc-hero-grad so it wins over the later
+   single-class .page-hero { background: ... } rule on equal-specificity. */
+.page-hero.wc-hero-grad {
   background:
     radial-gradient(500px 200px at 100% -20%, rgba(242, 211, 107, .15), transparent 65%),
     linear-gradient(180deg, #0A1A50 0%, #00102E 100%);
@@ -2212,18 +2213,19 @@ body.game-worldcup {
 }
 
 /* WC card — refreshed card pattern with metalwork accent.
-   Coexists with Bootstrap .card; use .wc-card for design-driven surfaces. */
-.wc-card {
+   Composes with Bootstrap .card; scoped as .card.wc-card so it wins over
+   the later single-class .card { ... } rule on equal-specificity. */
+.card.wc-card {
   background: rgba(0, 17, 46, .8);
   border: 1px solid rgba(245, 241, 232, .08);
   border-radius: 8px;
   padding: 1rem;
   transition: border-color var(--transition);
 }
-.wc-card:hover {
+.card.wc-card:hover {
   border-color: rgba(242, 211, 107, .25);
 }
-.wc-card-flush {
+.card.wc-card-flush {
   padding: 0;
 }
 
