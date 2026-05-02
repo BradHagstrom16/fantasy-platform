@@ -128,6 +128,8 @@ A unified fantasy sports platform consolidating multiple games under one domain,
 ```bash
 # Run development server
 FLASK_APP=app.py venv/bin/flask run
+# Parallel worktree dev server (avoid colliding with main checkout; debug flag auto-reloads Jinja)
+FLASK_APP=app.py FLASK_DEBUG=1 venv/bin/flask run --port 5099
 
 # Database
 FLASK_APP=app.py venv/bin/flask db upgrade          # Apply migrations
@@ -177,6 +179,7 @@ No linter configured.
 
 - **Design system:** "Corrupt Commish Club" (CCC) — CCC purple/gold tokens in `static/css/tokens.css` + per-game palettes via `body.game-<game>` CSS class. See `docs/superpowers/specs/2026-04-28-ccc-brand-foundation-design.md`.
 - **CSS layering:** Layer 1 (`static/css/tokens.css` — CCC house tokens: purples, golds, bone, gradients, fonts) loads BEFORE Layer 2 (`static/css/style.css` — platform aliases + components). New design tokens go in tokens.css; component styles consume them via `var(--purple-700)` etc. in style.css. Both linked from `templates/base.html` head.
+- **CSS specificity for utility classes:** Single-class utilities (e.g., `.wc-card`, `.wc-hero-grad`) defined earlier in `style.css` lose cascade to later base rules of equal specificity (`.card`, `.page-hero`). Scope new utilities as `.base.utility` (e.g., `.card.wc-card`, `.page-hero.wc-hero-grad`) to win on (0,0,2,0). Foundation `.wc-*` block already follows this pattern after PR #5; extend it for any new `.wc-*` that overlaps with a later base rule rather than relying on source order.
 - **Game theming:** Platform components (`.page-hero`, `.stat-block`, `.btn-game`) consume `--game-primary`/`--game-accent` automatically — game CSS must NOT duplicate this
 - **Game CSS sections:** Each game has its own section in `style.css` (e.g., `/* === CFB SURVIVOR POOL === */`) with game-specific component classes
 - **Game sub-nav:** Each game needs a `.subnav-<game>` class in the `/* === GAME SUB-NAV === */` section of `style.css` setting `background`, `--subnav-accent` (hex), and `--subnav-accent-rgb` (comma-separated R,G,B) — the shared pill `.active` rule consumes these variables
