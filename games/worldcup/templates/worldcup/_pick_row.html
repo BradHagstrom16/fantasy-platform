@@ -1,42 +1,52 @@
-{# Shared pick-row partial. Expects: pick, events (list[ScoreEvent]), tiers (dict). #}
+{# Shared pick-row partial. Expects: pick, events (list[ScoreEvent]), tiers (dict).
+   DOM hooks consumed by _pick_accordion_script.html: .pick-accordion-toggle,
+   data-accordion-target, aria-controls, id="{row_id}-body", .pick-accordion. #}
 {% set row_id = 'pick-row-' ~ pick.id %}
 <tr>
-  <td class="fw-medium">
+  <td class="fw-medium pick-team-cell">
     <button type="button" class="pick-accordion-toggle"
             aria-controls="{{ row_id }}-body" aria-expanded="false"
             data-accordion-target="{{ row_id }}">
       <i class="bi bi-chevron-right" aria-hidden="true"></i>
       <span class="visually-hidden">Toggle scoring details</span>
     </button>
-    {{ pick.team.flag_emoji }} {{ pick.team.display_name }}
-    <small class="text-muted">Group {{ pick.team.group_letter }}</small>
+    <span class="me-2 fs-5">{{ pick.team.flag_emoji }}</span>
+    <span class="fw-medium">{{ pick.team.display_name }}</span>
+    <small class="text-muted ms-1">Grp {{ pick.team.group_letter }}</small>
   </td>
-  <td><span class="tier-badge tier-badge-{{ pick.tier }}">{{ tiers[pick.tier]['name'] }}</span></td>
-  <td class="text-center"><span class="multiplier-badge">&times;{{ pick.team.multiplier }}</span></td>
-  <td class="text-end">{{ "%.1f"|format(pick.base_points) }}</td>
-  <td class="text-end fw-bold">{{ "%.1f"|format(pick.multiplied_points) }}</td>
+  <td>
+    <span class="wc-tier-dot wc-tier-dot-{{ pick.tier }}"></span>
+    <span class="wc-eyebrow">T{{ pick.tier }}</span>
+  </td>
+  <td class="text-center">
+    <span class="wc-multiplier-chip">&times;{{ pick.team.multiplier }}</span>
+  </td>
+  <td class="text-end wc-numeral">{{ "%.1f"|format(pick.base_points) }}</td>
+  <td class="text-end wc-numeral fw-bold">{{ "%.1f"|format(pick.multiplied_points) }}</td>
 </tr>
 <tr class="pick-accordion-row">
   <td colspan="5" class="p-0">
     <div class="pick-accordion" id="{{ row_id }}-body">
       {% if events and events|length > 0 %}
-      <ul class="score-events-list">
-        {% for event in events %}
-        <li style="--event-i: {{ loop.index0 }};">
-          <span>
-            <span class="event-source-dot"></span>
-            {% if event.occurred_on %}
-            <span class="event-meta">{{ event.occurred_on.strftime('%b %-d') }}</span> ·
-            {% endif %}
-            {{ event.label }}
-          </span>
-          <span class="event-pts">+{{ "%g"|format(event.base_points) }} base</span>
-        </li>
-        {% endfor %}
-      </ul>
+      <div class="pick-events-inner">
+        <span class="wc-eyebrow d-block mb-2">Score events</span>
+        <ul class="pick-events-list list-unstyled m-0">
+          {% for event in events %}
+          <li class="pick-event-item" style="--event-i: {{ loop.index0 }};">
+            <span class="pick-event-stage wc-eyebrow">
+              {% if event.occurred_on %}{{ event.occurred_on.strftime('%b %-d') }}{% endif %}
+            </span>
+            <span class="pick-event-desc">{{ event.label }}</span>
+            <span class="pick-event-pts wc-numeral {% if event.base_points >= 0 %}text-success{% else %}text-danger{% endif %}">
+              {{ "+%g"|format(event.base_points) if event.base_points >= 0 else "%g"|format(event.base_points) }}
+            </span>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
       <div class="score-events-total">
-        Total base <strong>{{ "%.1f"|format(pick.base_points) }}</strong> &times; {{ pick.team.multiplier }} =
-        <strong>{{ "%.1f"|format(pick.multiplied_points) }}</strong> multiplied
+        Total base <strong class="wc-numeral">{{ "%.1f"|format(pick.base_points) }}</strong> &times; {{ pick.team.multiplier }} =
+        <strong class="wc-numeral">{{ "%.1f"|format(pick.multiplied_points) }}</strong> multiplied
       </div>
       {% else %}
       <div class="score-events-empty">No scoring events yet.</div>

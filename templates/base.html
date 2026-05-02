@@ -100,24 +100,22 @@
     {% if request.blueprint == 'worldcup' %}
     <div class="game-subnav subnav-worldcup">
         <div class="container">
-            <a class="subnav-game-label" href="{{ url_for('worldcup.index') }}">
+            <a class="subnav-game-label d-none d-sm-inline-flex" href="{{ url_for('worldcup.index') }}">
                 ⚽ <span class="subnav-label-text">WC 2026</span>
             </a>
             <div class="subnav-pills">
                 <a class="subnav-pill {% if request.endpoint == 'worldcup.index' %}active{% endif %}"
-                   href="{{ url_for('worldcup.index') }}">Dashboard</a>
-                <a class="subnav-pill {% if request.endpoint in ['worldcup.leaderboard', 'worldcup.player_detail'] %}active{% endif %}"
-                   href="{{ url_for('worldcup.leaderboard') }}">Leaderboard</a>
-                <a class="subnav-pill {% if request.endpoint == 'worldcup.schedule' %}active{% endif %}"
-                   href="{{ url_for('worldcup.schedule') }}">Schedule</a>
-                <a class="subnav-pill {% if request.endpoint == 'worldcup.groups' %}active{% endif %}"
-                   href="{{ url_for('worldcup.groups') }}">Groups</a>
-                <a class="subnav-pill {% if request.endpoint == 'worldcup.stats' %}active{% endif %}"
-                   href="{{ url_for('worldcup.stats') }}">Stats Hub</a>
+                   href="{{ url_for('worldcup.index') }}">Hub</a>
                 {% if current_user.is_authenticated %}
                 <a class="subnav-pill {% if request.endpoint == 'worldcup.picks' %}active{% endif %}"
-                   href="{{ url_for('worldcup.picks') }}">My Picks</a>
+                   href="{{ url_for('worldcup.picks') }}">Roster</a>
                 {% endif %}
+                <a class="subnav-pill {% if request.endpoint in ['worldcup.leaderboard', 'worldcup.player_detail', 'worldcup.team_detail'] %}active{% endif %}"
+                   href="{{ url_for('worldcup.leaderboard') }}">Board</a>
+                <a class="subnav-pill {% if request.endpoint == 'worldcup.schedule' %}active{% endif %}"
+                   href="{{ url_for('worldcup.schedule') }}">Schedule</a>
+                <a class="subnav-pill {% if request.endpoint == 'worldcup.stats' %}active{% endif %}"
+                   href="{{ url_for('worldcup.stats') }}">Stats</a>
                 <a class="subnav-pill {% if request.endpoint == 'worldcup.rules' %}active{% endif %}"
                    href="{{ url_for('worldcup.rules') }}">Rules</a>
                 {% if worldcup_enrollment and worldcup_enrollment.is_admin %}

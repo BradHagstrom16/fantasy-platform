@@ -2146,6 +2146,137 @@ body.game-worldcup {
   --wc-tier5:                #9333EA;
 }
 
+/* ============================================================
+   Spec C — Cross-cutting WC utility classes
+   Consume Spec A's tokens.css; no new tokens.
+   ============================================================ */
+
+/* Eyebrow label — small uppercase Teko text above section headers */
+.wc-eyebrow {
+  font-family: 'Teko', sans-serif;
+  font-size: .7rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--bone-mute);
+  display: inline-block;
+}
+.wc-eyebrow-red { color: var(--wc-red); }
+.wc-eyebrow-gold { color: var(--gold-light); }
+
+/* Display numeral utility — Teko, tabular figures */
+.wc-numeral {
+  font-family: 'Teko', sans-serif;
+  font-weight: 700;
+  font-feature-settings: 'tnum';
+  letter-spacing: .03em;
+}
+
+/* Hero gradient — radial gold-tint over linear navy-to-near-black.
+   Scoped as .page-hero.wc-hero-grad so it wins over the later
+   single-class .page-hero { background: ... } rule on equal-specificity. */
+.page-hero.wc-hero-grad {
+  background:
+    radial-gradient(500px 200px at 100% -20%, rgba(242, 211, 107, .15), transparent 65%),
+    linear-gradient(180deg, #0A1A50 0%, #00102E 100%);
+}
+
+/* Tier dot — circular tier indicator. Sibling pattern to tier-badge-{n}. */
+.wc-tier-dot {
+  display: inline-block;
+  width: .85rem;
+  height: .85rem;
+  border-radius: 50%;
+  vertical-align: middle;
+  margin-right: .35rem;
+  flex-shrink: 0;
+}
+.wc-tier-dot-1 { background: var(--wc-tier1); }
+.wc-tier-dot-2 { background: var(--wc-tier2); }
+.wc-tier-dot-3 { background: var(--wc-tier3); }
+.wc-tier-dot-4 { background: var(--wc-tier4); }
+.wc-tier-dot-5 { background: var(--wc-tier5); }
+
+/* Multiplier chip — flat numeral chip for ×N displays */
+.wc-multiplier-chip {
+  display: inline-block;
+  font-family: 'Teko', sans-serif;
+  font-weight: 600;
+  font-size: .82rem;
+  letter-spacing: .03em;
+  padding: .15rem .45rem;
+  background: rgba(245, 241, 232, .08);
+  border: 1px solid rgba(245, 241, 232, .14);
+  border-radius: 4px;
+  color: var(--wc-white);
+  white-space: nowrap;
+}
+
+/* WC card — refreshed card pattern with metalwork accent.
+   Composes with Bootstrap .card; scoped as .card.wc-card so it wins over
+   the later single-class .card { ... } rule on equal-specificity. */
+.card.wc-card {
+  background: rgba(0, 17, 46, .8);
+  border: 1px solid rgba(245, 241, 232, .08);
+  border-radius: 8px;
+  padding: 1rem;
+  transition: border-color var(--transition);
+}
+.card.wc-card:hover {
+  border-color: rgba(242, 211, 107, .25);
+}
+.card.wc-card-flush {
+  padding: 0;
+}
+
+/* picks.html team card descendants */
+.wc-team-card .team-flag { margin-right: .4rem; }
+.wc-team-card .team-group-pill {
+  display: inline-block;
+  font-family: 'Teko', sans-serif;
+  font-size: .68rem;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  padding: .1rem .35rem;
+  background: rgba(245, 241, 232, .06);
+  border-radius: 3px;
+  color: var(--bone-mute);
+  text-decoration: none;
+}
+.wc-team-card .team-group-pill:hover {
+  color: var(--wc-white);
+  background: rgba(245, 241, 232, .12);
+}
+
+/* picks.html / player_detail.html — pick row tier + multiplier on light card */
+.player-picks-desktop .wc-multiplier-chip {
+  color: var(--text-primary, #212529);
+  background: rgba(0, 40, 104, .04);
+  border-color: rgba(0, 40, 104, .12);
+}
+.player-picks-desktop td .wc-eyebrow {
+  color: var(--text-muted, #6c757d);
+}
+
+/* picks.html / player_detail.html — three-column event-item grid (drill-down) */
+.pick-events-inner {
+  padding: .75rem 1rem .25rem;
+}
+.pick-events-list .pick-event-item {
+  display: grid;
+  grid-template-columns: 90px 1fr auto;
+  gap: .75rem;
+  align-items: baseline;
+  padding: .25rem 0;
+  border-bottom: 1px dashed rgba(0, 40, 104, .07);
+  animation: wc-event-fade-in 200ms ease-out both;
+  animation-delay: calc(var(--event-i, 0) * 40ms);
+}
+.pick-events-list .pick-event-item:last-child { border-bottom: none; }
+.pick-event-stage { color: var(--text-muted, #6c757d); }
+.pick-event-desc { font-size: .9rem; }
+.pick-event-pts { font-size: 1rem; }
+
 /* === WORLD CUP FANTASY POOL === */
 
 /* World Cup table — navy header, patriot blue accent */
@@ -2490,12 +2621,15 @@ body.game-worldcup {
   to   { opacity: 1; transform: translateY(0); }
 }
 
-/* Group table — compact 4-team standings */
+/* Group table — compact 4-team standings.
+   scroll-margin-top clears the sticky .navbar (~58px) + .game-subnav (~40px)
+   stack so #group-{LETTER} deep-links land below the chrome, not under it. */
 .group-table {
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   overflow: hidden;
+  scroll-margin-top: 6.5rem;
 }
 .group-table-header {
   background: var(--game-primary-dark);
@@ -3048,6 +3182,16 @@ main { flex: 1; }
   color: #fff;
   background: rgba(var(--subnav-accent-rgb), .18);
   border-color: var(--subnav-accent);
+}
+
+/* Spec C Plan 1 — mobile compactions: fit 6 pills on 375px without scroll */
+@media (max-width: 575.98px) {
+  .subnav-pills { gap: .25rem; }
+  .subnav-pill {
+    font-size: .72rem;
+    padding: .28rem .55rem;
+    letter-spacing: .04em;
+  }
 }
 
 /* ── 7. Flash Messages / Alerts ─────────────────────────── */

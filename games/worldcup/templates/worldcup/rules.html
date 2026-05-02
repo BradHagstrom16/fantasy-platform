@@ -2,9 +2,10 @@
 {% block title %}Rules — World Cup Fantasy Pool{% endblock %}
 
 {% block content %}
-<div class="page-hero">
+<div class="page-hero wc-hero-grad">
   <div class="hero-glow"></div>
   <div class="container">
+    <span class="wc-eyebrow">Scoring reference</span>
     <h1>Rules &amp; Scoring</h1>
     <p class="lead mb-0">How the World Cup Fantasy Pool works</p>
   </div>
@@ -15,8 +16,9 @@
     <div class="col-lg-9">
 
       {# ── How It Works ── #}
-      <div class="card border-0 shadow-sm mb-4 animate-in">
+      <div class="card border-0 shadow-sm mb-4 animate-in wc-card">
         <div class="card-body p-4">
+          <span class="wc-eyebrow">Overview</span>
           <h3 class="mb-3" style="font-family:'Teko',sans-serif; text-transform:uppercase; letter-spacing:.04em;">
             <i class="bi bi-globe2 me-2"></i>How It Works
           </h3>
@@ -26,8 +28,9 @@
       </div>
 
       {# ── Tier Structure ── #}
-      <div class="card border-0 shadow-sm mb-4 animate-in stagger-1">
+      <div class="card border-0 shadow-sm mb-4 animate-in stagger-1 wc-card">
         <div class="card-body p-4">
+          <span class="wc-eyebrow wc-eyebrow-red">Tiers</span>
           <h3 class="mb-3" style="font-family:'Teko',sans-serif; text-transform:uppercase; letter-spacing:.04em;">
             <i class="bi bi-layers me-2"></i>Tier Structure
           </h3>
@@ -54,10 +57,10 @@
                   } %}
                   {% for tier_num in range(1, 6) %}
                   <tr>
-                    <td><span class="tier-badge tier-badge-{{ tier_num }}">{{ tier_num }}</span></td>
+                    <td><span class="wc-tier-dot wc-tier-dot-{{ tier_num }}"></span><span class="tier-badge tier-badge-{{ tier_num }}">{{ tier_num }}</span></td>
                     <td class="fw-medium">{{ tiers[tier_num]['name'] }}</td>
                     <td class="text-center">{{ tiers[tier_num]['picks'] }}</td>
-                    <td class="text-center"><span class="multiplier-badge">&times;{{ tiers[tier_num]['multiplier'] }}</span></td>
+                    <td class="text-center"><span class="wc-multiplier-chip">&times;{{ tiers[tier_num]['multiplier'] }}</span></td>
                     <td><small class="text-muted">{{ tier_teams[tier_num] }}</small></td>
                   </tr>
                   {% endfor %}
@@ -79,12 +82,12 @@
             <div class="tier-mobile-card mb-3">
               <div class="d-flex align-items-center justify-content-between mb-2">
                 <div class="d-flex align-items-center gap-2">
-                  <span class="tier-badge tier-badge-{{ tier_num }}">{{ tier_num }}</span>
+                  <span class="wc-tier-dot wc-tier-dot-{{ tier_num }}"></span><span class="tier-badge tier-badge-{{ tier_num }}">{{ tier_num }}</span>
                   <span class="fw-medium" style="font-family:'Teko',sans-serif; font-size:1.1rem; text-transform:uppercase; letter-spacing:.03em;">{{ tiers[tier_num]['name'] }}</span>
                 </div>
                 <div class="d-flex align-items-center gap-3">
                   <span class="text-muted" style="font-size:.8rem;">{{ tiers[tier_num]['picks'] }} picks</span>
-                  <span class="multiplier-badge">&times;{{ tiers[tier_num]['multiplier'] }}</span>
+                  <span class="wc-multiplier-chip">&times;{{ tiers[tier_num]['multiplier'] }}</span>
                 </div>
               </div>
               <div class="tier-teams-list">
@@ -97,8 +100,9 @@
       </div>
 
       {# ── Group Stage Scoring ── #}
-      <div class="card border-0 shadow-sm mb-4 animate-in stagger-2">
+      <div class="card border-0 shadow-sm mb-4 animate-in stagger-2 wc-card">
         <div class="card-body p-4">
+          <span class="wc-eyebrow">Group stage</span>
           <h3 class="mb-3" style="font-family:'Teko',sans-serif; text-transform:uppercase; letter-spacing:.04em;">
             <i class="bi bi-calendar3 me-2"></i>Group Stage Scoring
           </h3>
@@ -141,8 +145,9 @@
       </div>
 
       {# ── Knockout Scoring ── #}
-      <div class="card border-0 shadow-sm mb-4 animate-in stagger-3">
+      <div class="card border-0 shadow-sm mb-4 animate-in stagger-3 wc-card">
         <div class="card-body p-4">
+          <span class="wc-eyebrow wc-eyebrow-red">Knockouts</span>
           <h3 class="mb-3" style="font-family:'Teko',sans-serif; text-transform:uppercase; letter-spacing:.04em;">
             <i class="bi bi-trophy me-2"></i>Knockout Stage Scoring
           </h3>
@@ -170,8 +175,9 @@
       </div>
 
       {# ── Points Matrix ── #}
-      <div class="card border-0 shadow-sm mb-4 animate-in stagger-4">
+      <div class="card border-0 shadow-sm mb-4 animate-in stagger-4 wc-card">
         <div class="card-body p-4">
+          <span class="wc-eyebrow">Points matrix</span>
           <h3 class="mb-3" style="font-family:'Teko',sans-serif; text-transform:uppercase; letter-spacing:.04em;">
             <i class="bi bi-calculator me-2"></i>Points Per Achievement by Tier
           </h3>
@@ -181,11 +187,11 @@
               <thead>
                 <tr>
                   <th>Achievement</th>
-                  <th class="text-center"><span class="tier-badge tier-badge-1">T1</span> &times;1</th>
-                  <th class="text-center"><span class="tier-badge tier-badge-2">T2</span> &times;1.5</th>
-                  <th class="text-center"><span class="tier-badge tier-badge-3">T3</span> &times;2.5</th>
-                  <th class="text-center"><span class="tier-badge tier-badge-4">T4</span> &times;4</th>
-                  <th class="text-center"><span class="tier-badge tier-badge-5">T5</span> &times;7</th>
+                  <th class="text-center"><span class="wc-tier-dot wc-tier-dot-1"></span><span class="tier-badge tier-badge-1">T1</span> &times;1</th>
+                  <th class="text-center"><span class="wc-tier-dot wc-tier-dot-2"></span><span class="tier-badge tier-badge-2">T2</span> &times;1.5</th>
+                  <th class="text-center"><span class="wc-tier-dot wc-tier-dot-3"></span><span class="tier-badge tier-badge-3">T3</span> &times;2.5</th>
+                  <th class="text-center"><span class="wc-tier-dot wc-tier-dot-4"></span><span class="tier-badge tier-badge-4">T4</span> &times;4</th>
+                  <th class="text-center"><span class="wc-tier-dot wc-tier-dot-5"></span><span class="tier-badge tier-badge-5">T5</span> &times;7</th>
                 </tr>
               </thead>
               <tbody>
@@ -220,8 +226,9 @@
       </div>
 
       {# ── Tiebreaker ── #}
-      <div class="card border-0 shadow-sm mb-4 animate-in stagger-5">
+      <div class="card border-0 shadow-sm mb-4 animate-in stagger-5 wc-card">
         <div class="card-body p-4">
+          <span class="wc-eyebrow">Tiebreaker</span>
           <h3 class="mb-3" style="font-family:'Teko',sans-serif; text-transform:uppercase; letter-spacing:.04em;">
             <i class="bi bi-bullseye me-2"></i>Tiebreaker
           </h3>
@@ -230,8 +237,9 @@
       </div>
 
       {# ── Edge Cases ── #}
-      <div class="card border-0 shadow-sm animate-in stagger-6">
+      <div class="card border-0 shadow-sm animate-in stagger-6 wc-card">
         <div class="card-body p-4">
+          <span class="wc-eyebrow">Edge cases</span>
           <h3 class="mb-3" style="font-family:'Teko',sans-serif; text-transform:uppercase; letter-spacing:.04em;">
             <i class="bi bi-info-circle me-2"></i>Edge Cases
           </h3>
