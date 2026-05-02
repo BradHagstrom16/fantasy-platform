@@ -13,6 +13,21 @@
 
 ---
 
+## Sequencing note (added 2026-04-28, post-pause)
+
+Brad paused this plan after completing Phase 2 Task 10. Resume sequence:
+
+1. Finish **Spec B — CCC home redesign** (`docs/superpowers/specs/2026-04-28-ccc-home-redesign-design.md`) and merge to `main`.
+2. Finish **Spec C — World Cup reskin** (next brainstorm) and merge to `main`.
+3. Source / build a sports-data API integration for live World Cup scores (out of scope for B and C).
+4. Resume this plan at **Task 11** and continue through Task 27.
+
+Spec B adds one new cron entry (`flask worldcup snapshot-ranks`) which has been **already woven into Task 25's cron schedule below** — no separate task needed. If Spec C or the API work introduces additional infra requirements, append them to the appropriate task here at that time.
+
+**Snapshot timing tradeoff to know about:** the snapshot infra collects rank-history daily once the production cron is live. If this plan resumes only shortly before WC kickoff (June 11), the live-state sparkline on the home page will start with an empty/flat line and accumulate real data from the first cron run forward. The dossier copy handles this honestly ("tracking starts {date}") so the launch-day experience is acceptable either way — but earlier production resume = richer sparkline at launch.
+
+---
+
 ## Files Created / Modified
 
 | File | Action | Purpose |
@@ -453,11 +468,11 @@ git push origin main
 
 ### Task 10: Create a DigitalOcean account and Droplet
 
-- [ ] **Step 1: Create a DigitalOcean account**
+- [x] **Step 1: Create a DigitalOcean account**
 
 Go to https://digitalocean.com and sign up. You'll need a credit card. You get $200 free credit if you use a referral link.
 
-- [ ] **Step 2: Prepare an SSH key on your Mac**
+- [x] **Step 2: Prepare an SSH key on your Mac**
 
 SSH keys let you log in without typing a password, and Task 13 relies on having one. In a terminal on your Mac, check whether you already have a key:
 
@@ -481,7 +496,7 @@ cat ~/.ssh/id_ed25519.pub
 
 Copy the entire output (one line starting with `ssh-ed25519`).
 
-- [ ] **Step 3: Create a Droplet**
+- [x] **Step 3: Create a Droplet**
 
 In the DigitalOcean dashboard:
 1. Click **Create → Droplets**
@@ -492,7 +507,7 @@ In the DigitalOcean dashboard:
 6. **Hostname:** `fantasy-platform`
 7. Click **Create Droplet**
 
-- [ ] **Step 4: Copy the Droplet's IP address**
+- [x] **Step 4: Copy the Droplet's IP address**
 
 After creation, you'll see your Droplet's public IP address (e.g., `143.110.152.42`). Save it — you'll need it throughout the setup.
 
@@ -927,6 +942,36 @@ You'll be prompted for username, email, and password. This is your platform admi
 
 ---
 
+### Task 20.5: Initialize the production database schema
+
+- [ ] **Step 1: Run migrations against the production database**
+
+```bash
+cd /home/deploy/fantasy-platform
+ENVIRONMENT=production FLASK_APP=app.py venv/bin/flask db upgrade
+```
+
+Expected: Alembic applies all migrations in order. You will see output like `Running upgrade -> abc123, ...` for each migration. No errors.
+
+- [ ] **Step 2: Verify the tables exist**
+
+```bash
+ENVIRONMENT=production FLASK_APP=app.py venv/bin/flask shell
+```
+
+Then in the shell:
+
+```python
+from extensions import db
+from sqlalchemy import inspect
+print(inspect(db.engine).get_table_names())
+exit()
+```
+
+Expected: a list of table names including `user`, `golf_enrollment`, `cfb_enrollment`, `worldcup_enrollment`, and others. If you see an empty list, something is wrong with `DATABASE_URL` in your `.env`.
+
+---
+
 ## Phase 4: DNS and SSL (Brad)
 
 ### Task 21: Set up Cloudflare DNS
@@ -1116,7 +1161,20 @@ The first time you run this it may ask which editor to use — type `1` and pres
 
 # World Cup — recalculate scores (every 10 min during tournament)
 */10 * * * * cd /home/deploy/fantasy-platform && ENVIRONMENT=production FLASK_APP=app.py venv/bin/flask worldcup recalc >> /var/log/fantasy/worldcup-recalc.log 2>&1
+
+# World Cup — daily rank snapshot at midnight CT (added by Spec B — CCC home redesign)
+# 05:05 UTC = 23:05 CST (prior day, winter) / 00:05 CDT (summer); 5-min offset gives midnight match-result processing time to settle
+# Powers the live-state dossier sparkline + week-delta on the home page
+5 5 * * * cd /home/deploy/fantasy-platform && ENVIRONMENT=production FLASK_APP=app.py venv/bin/flask worldcup snapshot-ranks >> /var/log/fantasy/worldcup-snapshot.log 2>&1
 ```
+
+> **Snapshot backfill note (Spec B):** After the cron is verified loaded (Step 3 below), run the backfill helper once to seed the snapshot table so the sparkline isn't empty on Day 1:
+>
+> ```bash
+> cd /home/deploy/fantasy-platform && ENVIRONMENT=production FLASK_APP=app.py venv/bin/flask worldcup snapshot-ranks --backfill 7
+> ```
+>
+> Best-effort backfill (all 7 backfilled days will share the current rank/score since we don't have historical data); real differentiation accumulates after the first nightly cron run.
 
 Save: `Ctrl+X` → `Y` → `Enter`
 
@@ -1126,7 +1184,7 @@ Save: `Ctrl+X` → `Y` → `Enter`
 crontab -l
 ```
 
-Expected: the six job entries are listed.
+Expected: the seven job entries are listed.
 
 > **Tip:** When a game's season is over (e.g., World Cup ends), open `crontab -e` and add a `#` at the start of that job's line to disable it. Remove the `#` when the season begins again.
 

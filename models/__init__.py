@@ -32,6 +32,7 @@ from games.worldcup.models import (
     WorldCupTeam,
     WorldCupMatch,
     WorldCupPick,
+    WorldCupRankSnapshot,
 )
 
 __all__ = [
@@ -52,4 +53,5 @@ __all__ = [
     'WorldCupTeam',
     'WorldCupMatch',
     'WorldCupPick',
+    'WorldCupRankSnapshot',
 ]

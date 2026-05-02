@@ -1,0 +1,106 @@
+{# Post-tournament home — Spec B section 8 #}
+<div class="home-col">
+
+  {# Greet #}
+  <div class="greet">
+    <p class="greet-line">
+      The Court has adjourned &mdash;
+      <span class="v">{{ display_name }}</span>
+    </p>
+    <h1 class="greet-title">
+      The 2026
+      <span class="home-metal-text">World Cup</span>
+    </h1>
+    <div class="greet-court">
+      That's a wrap
+      {% if champion_team %}◆ {{ champion_team.display_name }} took it{% endif %}
+      ◆ the Commish closes the ledger
+    </div>
+  </div>
+
+</div>{# /.home-col — banner breaks out below #}
+
+{# Champion banner — full-bleed #}
+{% include 'main/_champion_banner.html' %}
+
+<div class="home-col">
+
+  {# Final podium — top 3 #}
+  {% if top_3_final %}
+  <div class="sec-head">
+    <div class="t">The Final Standings</div>
+    <a class="more" href="{{ url_for('worldcup.leaderboard') }}">Full ledger &rsaquo;</a>
+  </div>
+  <div class="podium">
+    {% if top_3_final|length >= 2 %}
+    <div class="podium-tier podium-tier--second">
+      <div class="podium-rank">2</div>
+      <div class="podium-name">{{ top_3_final[1].user.get_avatar() }} {{ top_3_final[1].get_display_name() }}</div>
+      <div class="podium-pts">{{ '%.0f'|format(top_3_final[1].total_score) }} <span>PTS</span></div>
+    </div>
+    {% endif %}
+    <div class="podium-tier podium-tier--first">
+      <div class="podium-rank">1</div>
+      <div class="podium-name">{{ top_3_final[0].user.get_avatar() }} {{ top_3_final[0].get_display_name() }}</div>
+      <div class="podium-pts">{{ '%.0f'|format(top_3_final[0].total_score) }} <span>PTS</span></div>
+    </div>
+    {% if top_3_final|length >= 3 %}
+    <div class="podium-tier podium-tier--third">
+      <div class="podium-rank">3</div>
+      <div class="podium-name">{{ top_3_final[2].user.get_avatar() }} {{ top_3_final[2].get_display_name() }}</div>
+      <div class="podium-pts">{{ '%.0f'|format(top_3_final[2].total_score) }} <span>PTS</span></div>
+    </div>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {# Roster recap slot — enrolled or view-CTA #}
+  {% if not is_enrolled %}
+    {% include 'main/_view_cta_card.html' %}
+  {% else %}
+    <div class="roster-recap">
+      <div class="roster-recap-head">
+        <div class="recap-eyebrow">You finished</div>
+        <div class="recap-rank">
+          <span class="hash">#</span>{{ your_final_rank }}
+          <span class="of">of {{ total_count }}</span>
+        </div>
+        <div class="recap-sub">
+          {{ '%.0f'|format(enrollment.total_score) }} points
+          {% if your_climbed_n is not none and your_climbed_n != 0 %}
+          &middot;
+          {% if your_climbed_n > 0 %}climbed {{ your_climbed_n }} spots{% else %}slipped {{ your_climbed_n|abs }} spots{% endif %}
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="sec-head sec-head--inset">
+        <div class="t">Your Nine Nations</div>
+      </div>
+      <div class="roster-recap-rows">
+        {% for row in your_roster_recap %}
+        <div class="roster-recap-row{% if row.is_champion %} roster-recap-row--champion{% endif %}">
+          <div class="rr-flag">{{ row.pick.team.flag_emoji }}</div>
+          <div class="rr-code">{{ row.pick.team.fifa_code }}</div>
+          <div class="rr-tier">{{ row.tier_name }}</div>
+          <div class="rr-finish">{{ row.best_finish }}</div>
+          <div class="rr-pts">+{{ '%.0f'|format(row.points) }}</div>
+        </div>
+        {% endfor %}
+      </div>
+
+      <a href="{{ url_for('worldcup.leaderboard') }}" class="roster-recap-cta">
+        View Full Leaderboard
+        <i class="bi bi-arrow-right"></i>
+      </a>
+    </div>
+  {% endif %}
+
+  {# Narrative partials #}
+  {% include 'main/_commish_note.html' ignore missing %}
+  {% include 'main/_dispatches.html' ignore missing %}
+
+  {# Compact game tiles strip #}
+  {% include 'main/_game_tiles_compact.html' %}
+
+</div>{# /.home-col #}

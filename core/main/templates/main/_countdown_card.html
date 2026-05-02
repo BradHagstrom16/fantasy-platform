@@ -1,0 +1,48 @@
+{# Pre-deadline countdown card — Spec B section 6 + D8 #}
+<div class="decree" data-deadline-utc="{{ deadline_utc.strftime('%Y-%m-%dT%H:%M:%SZ') }}">
+  <div class="decree-seal">
+    <div class="s">By Decree of the Commish <span class="num">No 001</span></div>
+    <div class="s decree-seal-year">2026 WC</div>
+  </div>
+
+  <div class="decree-body">
+    <h2>Tribute Due In</h2>
+    <div class="decree-days">
+      <div class="d-cell">
+        <div class="v" data-cd-days>{{ '%02d'|format(((deadline_utc - now_utc).days)|default(0)) }}</div>
+        <div class="u">Days</div>
+      </div>
+      <div class="d-sep">:</div>
+      <div class="d-cell">
+        <div class="v" data-cd-hours>00</div>
+        <div class="u">Hours</div>
+      </div>
+      <div class="d-sep">:</div>
+      <div class="d-cell">
+        <div class="v" data-cd-mins>00</div>
+        <div class="u">Min</div>
+      </div>
+      <div class="d-sep">:</div>
+      <div class="d-cell">
+        <div class="v" data-cd-secs>00</div>
+        <div class="u">Sec</div>
+      </div>
+    </div>
+    <p class="decree-foot">Once group stage begins, all picks lock.</p>
+  </div>
+
+  <div class="decree-actions">
+    <a class="decree-cta" href="{{ url_for('worldcup.picks') }}">
+      <i class="bi bi-pencil-square"></i>
+      Review &amp; Edit My Roster
+    </a>
+    <div class="decree-links">
+      <a href="{{ url_for('worldcup.rules') }}">
+        <i class="bi bi-journal"></i> House Rules
+      </a>
+      <a href="{{ url_for('worldcup.rules') }}#scoring">
+        <i class="bi bi-check-circle"></i> Scoring
+      </a>
+    </div>
+  </div>
+</div>

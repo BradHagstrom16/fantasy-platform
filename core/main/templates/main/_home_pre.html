@@ -1,0 +1,47 @@
+{# Pre-deadline home — Spec B section 6 #}
+<div class="home-col">
+
+  {# Greet block #}
+  <div class="greet">
+    <p class="greet-line">
+      Welcome back to the fiefdom &mdash;
+      <span class="v">{{ display_name }}</span>
+    </p>
+    <h1 class="greet-title">
+      The Council
+      <span class="home-metal-text">Awaits</span>
+    </h1>
+    <div class="greet-court">{{ court_line }}</div>
+  </div>
+
+  {# Countdown #}
+  {% include 'main/_countdown_card.html' %}
+
+  {# Dossier slot — three variants #}
+  {% if not is_enrolled %}
+    {% include 'main/_join_cta_card.html' %}
+  {% elif not enrollment.picks_submitted %}
+    {% include 'main/_submit_picks_cta.html' %}
+  {% else %}
+    {% include 'main/_ballot_card.html' %}
+  {% endif %}
+
+  {# Opening matches #}
+  {% if next_3_matches %}
+  <div class="sec-head">
+    <div class="t">Opening Matches</div>
+    <a class="more" href="{{ url_for('worldcup.schedule') }}">Schedule &rsaquo;</a>
+  </div>
+  {% for match in next_3_matches %}
+    {% include 'main/_fixture_card.html' %}
+  {% endfor %}
+  {% endif %}
+
+  {# Compact game tiles #}
+  {% include 'main/_game_tiles_compact.html' %}
+
+  {# Optional narrative partials — silently absent if empty #}
+  {% include 'main/_commish_note.html' ignore missing %}
+  {% include 'main/_dispatches.html' ignore missing %}
+
+</div>{# /.home-col #}

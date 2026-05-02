@@ -1,0 +1,33 @@
+{# Compact 3-tile game strip — used by pre/live/post #}
+<div class="court-games-wrap">
+  <div class="sec-head">
+    <div class="t">Your Games</div>
+  </div>
+  <div class="court-games">
+    {# WC tile — always present, label depends on state #}
+    {% set wc_label = 'ROSTER OPEN' %}
+    {% if state == 'pre' and is_enrolled and enrollment.picks_submitted %}
+      {% set wc_label = 'SEALED' %}
+    {% elif state == 'live' and dossier and dossier.rank %}
+      {% set wc_label = 'LIVE · #' ~ dossier.rank %}
+    {% elif state == 'live' %}
+      {% set wc_label = 'LIVE' %}
+    {% elif state == 'post' %}
+      {% set wc_label = 'COMPLETED' %}
+    {% endif %}
+    <a class="cg cg--active" href="{{ url_for('worldcup.index') }}">
+      <div class="g">⚽</div>
+      <div class="n">World Cup</div>
+      <div class="p">{{ wc_label }}</div>
+    </a>
+
+    {# CFB and Golf — pulled from coming_soon_games registry #}
+    {% for game in coming_soon_games %}
+    <div class="cg cg--soon">
+      <div class="g">{{ game.emoji }}</div>
+      <div class="n">{{ game.display_name.split()[0] if game.slug == 'cfb' else 'Golf' }}</div>
+      <div class="p">{% if game.slug == 'cfb' %}Sep 3{% else %}2027{% endif %}</div>
+    </div>
+    {% endfor %}
+  </div>
+</div>

@@ -11,14 +11,19 @@ Usage:
     flask worldcup recalc         # Recalculate all scores (idempotent)
     flask worldcup status         # Print tournament state summary
 """
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import click
 from flask.cli import AppGroup
 
 from extensions import db
-from games.worldcup.constants import SEASON_YEAR
-from games.worldcup.models import WorldCupTeam, WorldCupMatch, WorldCupEnrollment
+from games.worldcup.constants import SEASON_YEAR, WORLDCUP_TZ
+from games.worldcup.models import (
+    WorldCupTeam,
+    WorldCupMatch,
+    WorldCupEnrollment,
+    WorldCupRankSnapshot,
+)
 
 worldcup_cli = AppGroup('worldcup', help="World Cup Fantasy Pool management commands.")
 
@@ -197,6 +202,54 @@ def process_match_cmd(match_number, home_score, away_score, winner_code,
     if match.away_team:
         at = match.away_team
         click.echo(f"  {at.display_name}: {at.base_points:.1f} base / {at.multiplied_points:.1f} multiplied")
+
+
+@worldcup_cli.command('snapshot-ranks')
+@click.option('--backfill', type=int, default=0,
+              help='Also backfill N past days using current rank/score (writes N+1 rows per enrollment: today + N prior)')
+def snapshot_ranks(backfill: int):
+    """Capture today's rank + score snapshot for every enrollment.
+
+    Idempotent: re-running for the same day is a no-op.
+    With --backfill N, also writes snapshots for the past N days using
+    the current rank/score (best-effort backfill for first deploy).
+    Net rows per enrollment: N+1 (today + N prior days).
+    """
+    if backfill < 0:
+        raise click.BadParameter('--backfill must be >= 0')
+
+    today_local = datetime.now(WORLDCUP_TZ).date()
+
+    for days_ago in range(backfill, -1, -1):
+        target_date = today_local - timedelta(days=days_ago)
+
+        enrollments = (
+            WorldCupEnrollment.query
+            .filter_by(season_year=SEASON_YEAR)
+            .order_by(
+                WorldCupEnrollment.total_score.desc(),
+                WorldCupEnrollment.id.asc(),
+            )
+            .all()
+        )
+
+        rows_added = 0
+        for rank, enr in enumerate(enrollments, start=1):
+            existing = WorldCupRankSnapshot.query.filter_by(
+                enrollment_id=enr.id, captured_date=target_date
+            ).first()
+            if existing:
+                continue
+            db.session.add(WorldCupRankSnapshot(
+                enrollment_id=enr.id,
+                captured_date=target_date,
+                rank=rank,
+                total_score=enr.total_score,
+            ))
+            rows_added += 1
+
+        db.session.commit()
+        click.echo(f'Snapshot for {target_date} — {rows_added} new rows')
 
 
 def register_worldcup_cli(app):

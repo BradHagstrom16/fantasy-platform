@@ -1,0 +1,122 @@
+{# Live-state dossier card — Spec B section 7c #}
+<div class="dossier">
+  <div class="dossier-stamp">◈ Classified · CCC ◈</div>
+
+  <div class="dossier-rank">
+    <div class="rank-num">
+      <span class="rank-hash">#</span>{{ dossier.rank }}
+    </div>
+    <div class="rank-meta">
+      <div class="rank-of">of {{ dossier.total_count }} competitors</div>
+      {% if dossier.week_delta_rank is not none %}
+        {% if dossier.week_delta_rank < 0 %}
+        <div class="rank-mvmt rank-mvmt--up">
+          <i class="bi bi-caret-up-fill"></i>
+          Up {{ dossier.week_delta_rank|abs }} this week
+        </div>
+        {% elif dossier.week_delta_rank > 0 %}
+        <div class="rank-mvmt rank-mvmt--down">
+          <i class="bi bi-caret-down-fill"></i>
+          Down {{ dossier.week_delta_rank }} this week
+        </div>
+        {% else %}
+        <div class="rank-mvmt rank-mvmt--flat">
+          <i class="bi bi-dash"></i>
+          Holding this week
+        </div>
+        {% endif %}
+      {% endif %}
+    </div>
+  </div>
+
+  {# Sparkline — server-rendered SVG #}
+  {% if dossier.sparkline_data and dossier.sparkline_data|length >= 2 %}
+  <div class="dossier-sparkline">
+    <div class="sparkline-cap">
+      <span>Rank · last {{ dossier.sparkline_data|length }} days</span>
+      <span>{{ dossier.sparkline_data[0] }} &rarr; {{ dossier.sparkline_data[-1] }}</span>
+    </div>
+    {% set data = dossier.sparkline_data %}
+    {% set width = 318 %}
+    {% set height = 48 %}
+    {% set pad = 3 %}
+    {% set max_v = data|max %}
+    {% set min_v = data|min %}
+    {% set range_v = (max_v - min_v) if (max_v - min_v) > 0 else 1 %}
+    {% set step_x = (width - pad*2) / (data|length - 1) %}
+    <svg width="100%" height="{{ height }}" viewBox="0 0 {{ width }} {{ height }}" preserveAspectRatio="none">
+      <defs>
+        <linearGradient id="spark-fill" x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0%" stop-color="#F2D36B" stop-opacity="0.35"/>
+          <stop offset="100%" stop-color="#F2D36B" stop-opacity="0"/>
+        </linearGradient>
+      </defs>
+      {# Baseline dashes #}
+      {% for t in [0, 0.5, 1] %}
+      <line x1="{{ pad }}" x2="{{ width - pad }}"
+            y1="{{ pad + t * (height - pad*2) }}" y2="{{ pad + t * (height - pad*2) }}"
+            stroke="rgba(242,211,107,0.1)" stroke-dasharray="2 4"/>
+      {% endfor %}
+      {# Path — invert y so smaller rank = higher visual #}
+      {% set path = [] %}
+      {% set area = [] %}
+      {% for v in data %}
+        {% set i = loop.index0 %}
+        {% set x = pad + i * step_x %}
+        {% set y = pad + ((v - min_v) / range_v) * (height - pad*2) %}
+        {% if i == 0 %}
+          {% set _ = path.append('M' ~ x ~ ',' ~ y) %}
+          {% set _ = area.append('M' ~ x ~ ',' ~ y) %}
+        {% else %}
+          {% set _ = path.append('L' ~ x ~ ',' ~ y) %}
+          {% set _ = area.append('L' ~ x ~ ',' ~ y) %}
+        {% endif %}
+        {% if loop.last %}
+          {% set _ = area.append('L' ~ x ~ ',' ~ height) %}
+          {% set _ = area.append('L' ~ pad ~ ',' ~ height) %}
+          {% set _ = area.append('Z') %}
+        {% endif %}
+      {% endfor %}
+      <path d="{{ area|join(' ') }}" fill="url(#spark-fill)"/>
+      <path d="{{ path|join(' ') }}" fill="none" stroke="#F2D36B" stroke-width="1.8"
+            stroke-linecap="round" stroke-linejoin="round"/>
+      {# Dots — last point is bigger and brighter #}
+      {% for v in data %}
+        {% set i = loop.index0 %}
+        {% set x = pad + i * step_x %}
+        {% set y = pad + ((v - min_v) / range_v) * (height - pad*2) %}
+        <circle cx="{{ x }}" cy="{{ y }}"
+                r="{{ 3 if loop.last else 1.4 }}"
+                fill="{{ '#FFF1B8' if loop.last else '#F2D36B' }}"
+                {% if loop.last %}stroke="#F2D36B" stroke-width="1"{% endif %}/>
+      {% endfor %}
+    </svg>
+  </div>
+  {% else %}
+  <div class="dossier-sparkline-empty">
+    Tracking starts tonight &mdash; trends arrive after the first daily snapshot.
+  </div>
+  {% endif %}
+
+  {# 3-stat strip #}
+  <div class="dossier-meta">
+    <div class="d-meta">
+      <div class="k">{{ '%.0f'|format(dossier.total_score) }}</div>
+      <div class="l">Points</div>
+    </div>
+    <div class="d-meta">
+      <div class="k{% if dossier.alive_count == 9 %} d-meta-k--gold{% elif dossier.alive_count <= 4 %} d-meta-k--red{% endif %}">{{ dossier.alive_count }} / 9</div>
+      <div class="l">Alive</div>
+    </div>
+    <div class="d-meta">
+      {% if dossier.week_delta_points is not none %}
+      <div class="k{% if dossier.week_delta_points > 0 %} d-meta-k--green{% elif dossier.week_delta_points < 0 %} d-meta-k--red{% endif %}">
+        {% if dossier.week_delta_points >= 0 %}+{% endif %}{{ '%.0f'|format(dossier.week_delta_points) }}
+      </div>
+      {% else %}
+      <div class="k">—</div>
+      {% endif %}
+      <div class="l">This Week</div>
+    </div>
+  </div>
+</div>

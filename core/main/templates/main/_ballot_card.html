@@ -1,0 +1,22 @@
+{# Sealed roster card — pre-state, enrolled, picks_submitted=True #}
+<a href="{{ url_for('worldcup.picks') }}?edit=1" class="ballot-card">
+  <div class="ballot-head">
+    <div>
+      <div class="ballot-label">Your roster</div>
+      <div class="ballot-status">Sealed &amp; delivered</div>
+    </div>
+    <div class="ballot-locked">
+      <span class="dot"></span>
+      Locked in
+    </div>
+  </div>
+  <div class="ballot-flags">
+    {% for pick in picks %}
+    <span class="ballot-flag" title="{{ pick.team.display_name }}">{{ pick.team.flag_emoji }}</span>
+    {% endfor %}
+  </div>
+  <div class="ballot-foot">
+    Nine nations bend the knee to you.
+    <em>Edit any time before the whistle.</em>
+  </div>
+</a>

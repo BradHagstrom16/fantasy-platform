@@ -22,6 +22,7 @@ from games.worldcup.constants import (
     ADVANCE_GROUP_WINNER, ADVANCE_RUNNER_UP, ADVANCE_BEST_THIRD,
     KNOCKOUT_POINTS,
 )
+from games.worldcup.world_cup_countries import TIERS
 
 # Stage ordering for best_finish comparisons — higher = deeper run
 STAGE_ORDER = {
@@ -196,6 +197,33 @@ def _apply_podium_bonus(team: WorldCupTeam) -> float:
         return KNOCKOUT_POINTS['runner_up']
     elif team.best_finish == '3rd':
         return KNOCKOUT_POINTS['third_place']
+    return 0.0
+
+
+def points_for_pick_on_match(pick: WorldCupPick, match: WorldCupMatch) -> float:
+    """Multiplied points the pick earns from this completed match. 0.0 if no scoring event.
+
+    Per-pick, per-match analogue of compute_match_attribution. Pure function;
+    no DB writes. Used by the live-state home page to surface per-result
+    points in the recent-results strip (see _recent_results.html draw branch).
+    """
+    if not match.is_completed:
+        return 0.0
+    if pick.team_id not in (match.home_team_id, match.away_team_id):
+        return 0.0
+    multiplier = TIERS[pick.tier]['multiplier']
+    if match.stage == 'group':
+        if match.is_draw:
+            return float(GROUP_DRAW) * multiplier
+        if match.winner_team_id == pick.team_id:
+            return float(GROUP_WIN) * multiplier
+        return 0.0
+    # Knockout — no draws (winner_team_id always resolved post-completion).
+    # Route through _apply_knockout_points so per-pick attribution stays in
+    # lockstep with per-team scoring (excludes third_place / champion /
+    # runner_up — those flow through podium bonus, not match wins).
+    if match.winner_team_id == pick.team_id:
+        return float(_apply_knockout_points(match)) * multiplier
     return 0.0
 
 

@@ -1,0 +1,77 @@
+{# Live-tournament home — Spec B section 7 #}
+<div class="container-fluid home-live">
+  <div class="row">
+
+    {# Mobile: single column. Desktop: two columns (60/40 split). #}
+    <div class="col-12 col-lg-7 home-live-left">
+
+      {# Greet — full width on mobile, left col on desktop #}
+      <div class="greet">
+        <p class="greet-line">
+          Council is in session &mdash;
+          <span class="v">{{ display_name }}</span>
+        </p>
+        <h1 class="greet-title">
+          Your <span class="home-metal-text">Dossier</span>
+        </h1>
+        <div class="greet-court">{{ court_line }}</div>
+      </div>
+
+      {# Dossier slot — enrolled or view-CTA #}
+      {% if not is_enrolled %}
+        {% include 'main/_view_cta_card.html' %}
+      {% else %}
+        {% include 'main/_dossier_card.html' %}
+      {% endif %}
+
+      {# Recent Results — left col on desktop #}
+      <div class="sec-head">
+        <div class="t">Recent Results</div>
+        <a class="more" href="{{ url_for('worldcup.schedule') }}">All fixtures &rsaquo;</a>
+      </div>
+      {% include 'main/_recent_results.html' %}
+
+    </div>{# /.col-lg-7 #}
+
+    <div class="col-12 col-lg-5 home-live-right">
+
+      {# Leaderboard preview — full width mobile, right col desktop #}
+      <div class="sec-head">
+        <div class="t">Leaderboard</div>
+        <a class="more" href="{{ url_for('worldcup.leaderboard') }}">Full ledger &rsaquo;</a>
+      </div>
+      <div class="rolls">
+        {% for row in top_3_plus_you %}
+        {% if row.separator_above %}<div class="roll-dots">&middot; &middot; &middot;</div>{% endif %}
+        <div class="roll-row{% if row.is_you %} roll-row--you{% endif %}">
+          <div class="roll-rank{% if row.rank == 1 %} roll-rank--gold{% endif %}">{{ row.rank }}</div>
+          <div class="roll-meta">
+            <div class="roll-name">
+              {{ row.enrollment.user.get_avatar() }} {{ row.enrollment.get_display_name() }}
+              {% if row.is_you %}<span class="roll-you-chip">YOU</span>{% endif %}
+            </div>
+            {% if row.tagline %}
+            <div class="roll-tagline">{{ row.tagline }}</div>
+            {% endif %}
+          </div>
+          <div class="roll-pts">{{ '%.0f'|format(row.enrollment.total_score) }}<span class="u">PTS</span></div>
+        </div>
+        {% endfor %}
+      </div>
+
+      {# Narrative partials — bottom of right col on desktop #}
+      {% include 'main/_commish_note.html' ignore missing %}
+      {% include 'main/_dispatches.html' ignore missing %}
+
+    </div>{# /.col-lg-5 #}
+
+  </div>{# /.row #}
+
+  {# Compact game tiles strip — full width below both columns #}
+  <div class="row">
+    <div class="col-12">
+      {% include 'main/_game_tiles_compact.html' %}
+    </div>
+  </div>
+
+</div>

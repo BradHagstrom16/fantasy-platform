@@ -37,4 +37,9 @@
 
   --font-teko: 'Teko', sans-serif;
   --font-news: 'Newsreader', Georgia, serif;
+
+  /* === Spec B additions (CCC home redesign) === */
+  --live-orange:        #FF8A3C;
+  --podium-glow:        radial-gradient(circle, rgba(242,211,107,.5) 0%, transparent 70%);
+  --champion-glow:      radial-gradient(circle, rgba(242,211,107,.4) 0%, transparent 60%);
 }
