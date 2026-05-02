@@ -215,6 +215,9 @@ def snapshot_ranks(backfill: int):
     the current rank/score (best-effort backfill for first deploy).
     Net rows per enrollment: N+1 (today + N prior days).
     """
+    if backfill < 0:
+        raise click.BadParameter('--backfill must be >= 0')
+
     today_local = datetime.now(WORLDCUP_TZ).date()
 
     for days_ago in range(backfill, -1, -1):
@@ -223,7 +226,10 @@ def snapshot_ranks(backfill: int):
         enrollments = (
             WorldCupEnrollment.query
             .filter_by(season_year=SEASON_YEAR)
-            .order_by(WorldCupEnrollment.total_score.desc())
+            .order_by(
+                WorldCupEnrollment.total_score.desc(),
+                WorldCupEnrollment.id.asc(),
+            )
             .all()
         )
 
