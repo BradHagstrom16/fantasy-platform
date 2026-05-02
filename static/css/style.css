@@ -2227,6 +2227,25 @@ body.game-worldcup {
   padding: 0;
 }
 
+/* picks.html team card descendants */
+.wc-team-card .team-flag { margin-right: .4rem; }
+.wc-team-card .team-group-pill {
+  display: inline-block;
+  font-family: 'Teko', sans-serif;
+  font-size: .68rem;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  padding: .1rem .35rem;
+  background: rgba(245, 241, 232, .06);
+  border-radius: 3px;
+  color: var(--bone-mute);
+  text-decoration: none;
+}
+.wc-team-card .team-group-pill:hover {
+  color: var(--wc-white);
+  background: rgba(245, 241, 232, .12);
+}
+
 /* === WORLD CUP FANTASY POOL === */
 
 /* World Cup table — navy header, patriot blue accent */
