@@ -1565,7 +1565,8 @@ body.game-golf {
   color: var(--bone);
   position: relative;
   z-index: 1;
-  word-break: break-word;
+  word-break: normal;
+  overflow-wrap: anywhere;
 }
 .home-shell .podium-pts {
   font-family: var(--font-teko);

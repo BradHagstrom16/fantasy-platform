@@ -3,16 +3,25 @@
 // the page when the deadline is reached so the next request sees state='live'.
 (function () {
   var el = document.querySelector('.decree[data-deadline-utc]');
-  if (!el) return;
+  if (!el) {
+    console.warn('[countdown] no .decree[data-deadline-utc] element on page');
+    return;
+  }
 
   var deadline = new Date(el.getAttribute('data-deadline-utc')).getTime();
-  if (isNaN(deadline)) return;
+  if (isNaN(deadline)) {
+    console.warn('[countdown] data-deadline-utc is not parseable as a date:', el.getAttribute('data-deadline-utc'));
+    return;
+  }
 
   var dEl = el.querySelector('[data-cd-days]');
   var hEl = el.querySelector('[data-cd-hours]');
   var mEl = el.querySelector('[data-cd-mins]');
   var sEl = el.querySelector('[data-cd-secs]');
-  if (!dEl || !hEl || !mEl || !sEl) return;
+  if (!dEl || !hEl || !mEl || !sEl) {
+    console.warn('[countdown] missing one or more [data-cd-*] children inside .decree');
+    return;
+  }
 
   function pad(n) { return n < 10 ? '0' + n : '' + n; }
 
