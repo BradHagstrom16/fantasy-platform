@@ -2246,6 +2246,35 @@ body.game-worldcup {
   background: rgba(245, 241, 232, .12);
 }
 
+/* picks.html / player_detail.html — pick row tier + multiplier on light card */
+.player-picks-desktop .wc-multiplier-chip {
+  color: var(--text-primary, #212529);
+  background: rgba(0, 40, 104, .04);
+  border-color: rgba(0, 40, 104, .12);
+}
+.player-picks-desktop td .wc-eyebrow {
+  color: var(--text-muted, #6c757d);
+}
+
+/* picks.html / player_detail.html — three-column event-item grid (drill-down) */
+.pick-events-inner {
+  padding: .75rem 1rem .25rem;
+}
+.pick-events-list .pick-event-item {
+  display: grid;
+  grid-template-columns: 90px 1fr auto;
+  gap: .75rem;
+  align-items: baseline;
+  padding: .25rem 0;
+  border-bottom: 1px dashed rgba(0, 40, 104, .07);
+  animation: wc-event-fade-in 200ms ease-out both;
+  animation-delay: calc(var(--event-i, 0) * 40ms);
+}
+.pick-events-list .pick-event-item:last-child { border-bottom: none; }
+.pick-event-stage { color: var(--text-muted, #6c757d); }
+.pick-event-desc { font-size: .9rem; }
+.pick-event-pts { font-size: 1rem; }
+
 /* === WORLD CUP FANTASY POOL === */
 
 /* World Cup table — navy header, patriot blue accent */
