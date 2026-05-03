@@ -37,6 +37,7 @@ from games.worldcup.services.stats import (
     get_overview_kpis,
     get_tier_combos,
 )
+from games.worldcup.services.ranking import compute_rank_neighbors
 
 
 # ============================================================================
@@ -399,6 +400,9 @@ def player_detail(enrollment_id):
 
     deadline_ct = TOURNAMENT_DEADLINE_UTC.astimezone(WORLDCUP_TZ)
 
+    # Rank + lead deltas for hero stat block. Always computed (cheap query).
+    neighbors = compute_rank_neighbors(enrollment.id)
+
     return render_template('worldcup/player_detail.html',
         enrollment=enrollment,
         picks=picks,
@@ -407,6 +411,7 @@ def player_detail(enrollment_id):
         picks_visible=picks_visible,
         deadline_passed=deadline_passed,
         deadline_ct=deadline_ct,
+        neighbors=neighbors,
     )
 
 

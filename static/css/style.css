@@ -2277,6 +2277,56 @@ body.game-worldcup {
 .pick-event-desc { font-size: .9rem; }
 .pick-event-pts { font-size: 1rem; }
 
+/* Spec C Plan 2 — player_detail / team_detail hero stat grid.
+   NOTE: uses .hero-stat (not .stat-block) to avoid collision with the
+   later platform .stat-block rule which has its own card chrome. */
+.player-hero-stats,
+.team-hero-stats {
+  display: flex;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  margin-top: .75rem;
+}
+.player-hero-stats .hero-stat,
+.team-hero-stats .hero-stat {
+  display: flex;
+  flex-direction: column;
+  gap: .2rem;
+  min-width: 70px;
+}
+.player-hero-stats .hero-stat strong,
+.team-hero-stats .hero-stat strong {
+  font-size: 1.6rem;
+  line-height: 1;
+  color: var(--wc-white);
+  font-weight: 700;
+}
+
+/* Back-affordance link — small, bone-mute, hover-bright */
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  font-family: 'Teko', sans-serif;
+  font-size: .85rem;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: var(--bone-mute);
+  text-decoration: none;
+}
+.back-link:hover { color: var(--wc-white); }
+
+/* Deep-link from a pick row's team name to /worldcup/team/<id> */
+.team-link {
+  color: inherit;
+  text-decoration: none;
+  border-bottom: 1px dotted rgba(245, 241, 232, .25);
+  transition: border-color var(--transition);
+}
+.team-link:hover {
+  color: var(--wc-white);
+  border-bottom-color: var(--wc-red);
+}
+
 /* === WORLD CUP FANTASY POOL === */
 
 /* World Cup table — navy header, patriot blue accent */
