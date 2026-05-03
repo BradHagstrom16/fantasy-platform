@@ -10,6 +10,7 @@ from collections import defaultdict
 from flask import render_template, redirect, url_for, flash, request, jsonify
 from flask_login import login_required, current_user
 from sqlalchemy import func, or_
+from sqlalchemy.orm import joinedload
 
 from extensions import db
 from models import User
@@ -467,12 +468,17 @@ def team_detail(team_id):
 
     path = compute_path_to_crown(team)
 
-    # Picker links: post-deadline only, list of (display_name, enrollment_id) for "Who Picked This".
+    # Picker links: post-deadline only, list of (display_name, enrollment_id) for
+    # "Who Picked This". joinedload() eager-loads enrollment so the per-pick
+    # get_display_name() walk doesn't trigger N+1 lazy SELECTs (CLAUDE.md
+    # stats-layer rule: never traverse enrollment.picks-style relationships
+    # in public analytics paths).
     picker_links: list[tuple[str, int]] = []
     if deadline_passed:
         picks = (
             WorldCupPick.query
             .join(WorldCupEnrollment)
+            .options(joinedload(WorldCupPick.enrollment))
             .filter(
                 WorldCupPick.team_id == team_id,
                 WorldCupEnrollment.season_year == SEASON_YEAR,
