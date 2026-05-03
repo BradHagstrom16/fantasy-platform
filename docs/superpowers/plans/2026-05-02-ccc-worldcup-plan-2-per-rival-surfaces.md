@@ -602,6 +602,12 @@ Refs Spec C Plan 2."
 - Create: `games/worldcup/services/team_detail.py`
 - Create: `tests/test_worldcup_team_detail_service.py`
 
+> **Plan revision (2026-05-02):** Initial draft of this task used fictional `best_finish` strings (`'advanced_R32'`, etc.) and assumed `team.is_eliminated` reflected KO losses. Both were wrong:
+> - `scoring._update_best_finish` writes the bare-stage strings `'group'`, `'R32'`, `'R16'`, `'QF'`, `'SF'`, `'3rd'`, `'runner_up'`, `'champion'` (per `STAGE_ORDER` in `games/worldcup/services/scoring.py`). The `'advanced_*'` form does not exist.
+> - `team.is_eliminated` is set ONLY by group-stage advancement (`scoring.py:256/259`); KO losses never update it. Detecting KO elimination requires querying `WorldCupMatch` for the next-stage match the team played and didn't win.
+>
+> The corrected design below uses the canonical strings, derives KO elimination from the matches table, and disambiguates the `best_finish='SF'` case (intermediate state for both SF winners awaiting Final and SF losers awaiting/exiting 3rd-place playoff).
+
 - [ ] **Step 1: Write the failing tests**
 
 Create `tests/test_worldcup_team_detail_service.py`:
@@ -614,8 +620,9 @@ from app import create_app
 from extensions import db
 from models.user import User
 from games.worldcup.models import (
-    WorldCupEnrollment, WorldCupTeam, WorldCupPick,
+    WorldCupEnrollment, WorldCupMatch, WorldCupPick, WorldCupTeam,
 )
+from games.worldcup.constants import ADVANCE_GROUP_WINNER, KNOCKOUT_POINTS
 from games.worldcup.services.team_detail import (
     compute_team_ownership, current_user_owns_team, compute_path_to_crown,
 )
@@ -643,6 +650,19 @@ def _seed_team(fifa='USA', tier=1, multiplier=1.0, group='A',
     db.session.add(t)
     db.session.flush()
     return t
+
+
+def _seed_completed_match(home_id, away_id, stage, winner_id,
+                          match_number=49, home_score=0, away_score=1):
+    m = WorldCupMatch(
+        match_number=match_number, stage=stage,
+        home_team_id=home_id, away_team_id=away_id,
+        home_score=home_score, away_score=away_score,
+        winner_team_id=winner_id, is_completed=True,
+    )
+    db.session.add(m)
+    db.session.commit()
+    return m
 
 
 def _seed_enrollment_with_pick(team_id, tier, username='owner'):
@@ -726,39 +746,159 @@ def test_current_user_owns_team_false_when_no_pick(app):
 
 
 # ── compute_path_to_crown ───────────────────────────────────────────────
+# best_finish strings come verbatim from scoring._update_best_finish:
+# None | 'group' | 'R32' | 'R16' | 'QF' | 'SF' | '3rd' | 'runner_up' | 'champion'.
 
-def test_path_to_crown_pre_knockout(app):
-    """Team in group stage, not yet advanced → all 6 segments are future."""
+def test_path_to_crown_group_in_progress(app):
+    """No advancement, no elimination → Group is 'current', rest 'future'."""
     with app.app_context():
         team = _seed_team(multiplier=1.0)
         result = compute_path_to_crown(team)
         assert result['eliminated'] is False
+        assert result['eliminated_at_label'] is None
         assert [s['stage'] for s in result['segments']] == [
             'Group', 'R32', 'R16', 'QF', 'SF', 'Final',
         ]
-        # All segments future when team has no advancement method yet
         assert [s['status'] for s in result['segments']] == [
             'current', 'future', 'future', 'future', 'future', 'future',
         ]
-        # Projected ceiling: ADVANCE_GROUP_WINNER (4) + R32 (8) + R16 (11)
-        # + QF (15) + SF (19) + champion (50) = 107 base, ×1.0 = 107
+        # Win-out projection: 0 + 4 (group) + 8 + 11 + 15 + 19 + 50 = 107
         assert result['projected_ceiling'] == 107.0
 
 
-def test_path_to_crown_advanced_group_winner(app):
+def test_path_to_crown_group_eliminated(app):
     with app.app_context():
-        team = _seed_team(multiplier=1.0, adv='group_winner', finish='advanced_R32')
+        team = _seed_team(multiplier=1.0, finish='group', eliminated=True,
+                          base=3.0, multiplied=3.0)
         result = compute_path_to_crown(team)
-        assert result['segments'][0]['status'] == 'won'    # group complete
-        assert result['segments'][1]['status'] == 'current' # R32 next
+        assert result['eliminated'] is True
+        assert result['eliminated_at_label'] == 'Group Stage'
+        assert [s['status'] for s in result['segments']] == [
+            'eliminated', 'future', 'future', 'future', 'future', 'future',
+        ]
+        # Eliminated → ceiling reflects only earned multiplied points
+        assert result['projected_ceiling'] == 3.0
 
 
-def test_path_to_crown_eliminated(app):
+def test_path_to_crown_advanced_from_group(app):
+    """Cleared group, R32 not yet played: bf=None + advancement_method set."""
     with app.app_context():
-        team = _seed_team(adv='group_winner', finish='advanced_R16', eliminated=True)
+        team = _seed_team(multiplier=1.0, adv='group_winner',
+                          base=ADVANCE_GROUP_WINNER)  # 4 pts in base
+        result = compute_path_to_crown(team)
+        assert result['eliminated'] is False
+        assert [s['status'] for s in result['segments']] == [
+            'won', 'current', 'future', 'future', 'future', 'future',
+        ]
+        # base=4 includes group-winner bonus; remaining = 8+11+15+19+50 = 103
+        assert result['projected_ceiling'] == 107.0
+
+
+def test_path_to_crown_won_R32(app):
+    with app.app_context():
+        team = _seed_team(multiplier=1.0, adv='group_winner', finish='R32',
+                          base=ADVANCE_GROUP_WINNER + KNOCKOUT_POINTS['R32'])
+        result = compute_path_to_crown(team)
+        assert result['eliminated'] is False
+        assert [s['status'] for s in result['segments']] == [
+            'won', 'won', 'current', 'future', 'future', 'future',
+        ]
+
+
+def test_path_to_crown_lost_R16_via_match(app):
+    """Won R32, then lost R16 — KO elimination derived from completed match."""
+    with app.app_context():
+        team = _seed_team(adv='group_winner', finish='R32',
+                          base=ADVANCE_GROUP_WINNER + KNOCKOUT_POINTS['R32'],
+                          multiplied=ADVANCE_GROUP_WINNER + KNOCKOUT_POINTS['R32'])
+        opp = _seed_team(fifa='OPP', group='B')
+        _seed_completed_match(team.id, opp.id, stage='R16',
+                              winner_id=opp.id, match_number=49)
         result = compute_path_to_crown(team)
         assert result['eliminated'] is True
         assert result['eliminated_at_label'] == 'Round of 16'
+        assert [s['status'] for s in result['segments']] == [
+            'won', 'won', 'eliminated', 'future', 'future', 'future',
+        ]
+        # Eliminated → ceiling = multiplied_points (4 + 8 = 12.0)
+        assert result['projected_ceiling'] == 12.0
+
+
+def test_path_to_crown_runner_up(app):
+    """Lost the Final → cleared SF, segment 5 'eliminated'."""
+    with app.app_context():
+        team = _seed_team(multiplier=1.0, adv='group_winner', finish='runner_up')
+        result = compute_path_to_crown(team)
+        assert result['eliminated'] is True
+        assert result['eliminated_at_label'] == 'Final'
+        assert [s['status'] for s in result['segments']] == [
+            'won', 'won', 'won', 'won', 'won', 'eliminated',
+        ]
+
+
+def test_path_to_crown_third_place_winner(app):
+    """Lost SF, won 3rd-place playoff → cleared QF, SF 'eliminated', Final 'future'.
+
+    The 6-segment shape doesn't include the consolation match; the bonus
+    surfaces in projected_ceiling/multiplied_points elsewhere.
+    """
+    with app.app_context():
+        team = _seed_team(adv='group_winner', finish='3rd')
+        result = compute_path_to_crown(team)
+        assert result['eliminated'] is True
+        assert result['eliminated_at_label'] == 'Semifinals'
+        assert [s['status'] for s in result['segments']] == [
+            'won', 'won', 'won', 'won', 'eliminated', 'future',
+        ]
+
+
+def test_path_to_crown_champion(app):
+    """Won everything — all segments 'won', not eliminated."""
+    with app.app_context():
+        team = _seed_team(adv='group_winner', finish='champion')
+        result = compute_path_to_crown(team)
+        assert result['eliminated'] is False
+        assert result['eliminated_at_label'] is None
+        assert [s['status'] for s in result['segments']] == [
+            'won', 'won', 'won', 'won', 'won', 'won',
+        ]
+
+
+def test_path_to_crown_sf_state_with_no_terminal_match(app):
+    """bf='SF' before any third_place/final completes → treated as alive at depth=5.
+
+    This covers both the SF winner awaiting Final and the SF loser awaiting
+    3rd-place. Display ambiguity is acceptable for this brief intermediate
+    window; resolves naturally once a terminal match is recorded.
+    """
+    with app.app_context():
+        team = _seed_team(adv='group_winner', finish='SF')
+        result = compute_path_to_crown(team)
+        assert result['eliminated'] is False
+        assert [s['status'] for s in result['segments']] == [
+            'won', 'won', 'won', 'won', 'won', 'current',
+        ]
+
+
+def test_path_to_crown_fourth_place_finisher(app):
+    """bf='SF' + completed third_place match → 4th-place finisher.
+
+    A team with bf='3rd' would have won 3rd-place; bf='SF' + completed
+    third_place means they LOST 3rd-place (they're the loser, otherwise
+    scoring would have updated bf). So they finished 4th: cleared QF,
+    eliminated at SF, Final 'future'.
+    """
+    with app.app_context():
+        team = _seed_team(adv='group_winner', finish='SF')
+        opp = _seed_team(fifa='OPP', group='B')
+        _seed_completed_match(team.id, opp.id, stage='third_place',
+                              winner_id=opp.id, match_number=63)
+        result = compute_path_to_crown(team)
+        assert result['eliminated'] is True
+        assert result['eliminated_at_label'] == 'Semifinals'
+        assert [s['status'] for s in result['segments']] == [
+            'won', 'won', 'won', 'won', 'eliminated', 'future',
+        ]
 ```
 
 Run:
@@ -785,15 +925,20 @@ Pure read-only helpers powering the public /worldcup/team/<id> route:
 Privacy invariant (Spec C D11): pre-deadline, picker_names is None and
 count/percent are zero — no roster information leaks before the tournament
 begins, mirroring the player_detail.html roster-hiding rule.
+
+best_finish strings consumed here come verbatim from scoring._update_best_finish:
+  None | 'group' | 'R32' | 'R16' | 'QF' | 'SF' | '3rd' | 'runner_up' | 'champion'
+The 'advanced_*' shape used by an earlier draft of this plan does NOT exist
+in the data model. KO elimination is derived from the WorldCupMatch table
+because team.is_eliminated is only set during group-stage processing.
 """
 from typing import Optional, TypedDict
 
-from sqlalchemy import func
+from sqlalchemy import or_
 
 from extensions import db
-from models.user import User
 from games.worldcup.models import (
-    WorldCupEnrollment, WorldCupTeam, WorldCupPick,
+    WorldCupEnrollment, WorldCupMatch, WorldCupPick, WorldCupTeam,
 )
 from games.worldcup.constants import (
     SEASON_YEAR,
@@ -801,17 +946,14 @@ from games.worldcup.constants import (
 )
 
 
-# Display labels for the path-to-crown finish-stage strings used by
-# scoring._update_best_finish (e.g., 'advanced_R32', 'advanced_R16', etc.).
-_FINISH_LABEL = {
-    'advanced_R32': 'Round of 32',
-    'advanced_R16': 'Round of 16',
-    'advanced_QF':  'Quarterfinals',
-    'advanced_SF':  'Semifinals',
-    'runner_up':    'Final',
-    '3rd':          'Third-Place Match',
-    'champion':     'Final',
-}
+_SEGMENT_LABELS = ['Group', 'R32', 'R16', 'QF', 'SF', 'Final']
+_SEGMENT_DISPLAY = ['Group Stage', 'Round of 32', 'Round of 16',
+                    'Quarterfinals', 'Semifinals', 'Final']
+# WorldCupMatch.stage value the team plays at each segment-index ahead.
+# Index 0 is multi-match group play and is handled via best_finish='group'.
+_NEXT_MATCH_STAGE: list[Optional[str]] = [
+    None, 'R32', 'R16', 'QF', 'SF', 'final',
+]
 
 
 class TeamOwnership(TypedDict):
@@ -867,7 +1009,7 @@ def compute_team_ownership(team_id: int, deadline_passed: bool) -> TeamOwnership
 
 def current_user_owns_team(user_id: int, team_id: int) -> bool:
     """True iff the user has a pick on this team in the SEASON_YEAR pool."""
-    return db.session.query(
+    return bool(db.session.query(
         WorldCupPick.query
         .join(WorldCupEnrollment)
         .filter(
@@ -876,25 +1018,7 @@ def current_user_owns_team(user_id: int, team_id: int) -> bool:
             WorldCupPick.team_id == team_id,
         )
         .exists()
-    ).scalar()
-
-
-# Path-to-crown segment ordering. 'Group' is segment 0 (always 'won' or 'current'
-# depending on team.advancement_method); subsequent segments are knockout rounds.
-_SEGMENT_ORDER = ['Group', 'R32', 'R16', 'QF', 'SF', 'Final']
-
-# How deep is each finish string? Index aligns with _SEGMENT_ORDER.
-# A team with best_finish='advanced_R16' has cleared Group + R32 (index 1).
-_FINISH_DEPTH = {
-    None:            0,  # group stage in progress / not yet advanced
-    'advanced_R32':  1,  # cleared group → R32 segment current/won
-    'advanced_R16':  2,
-    'advanced_QF':   3,
-    'advanced_SF':   4,
-    'runner_up':     5,
-    '3rd':           5,
-    'champion':      5,
-}
+    ).scalar())
 
 
 def compute_path_to_crown(team: WorldCupTeam) -> PathToCrown:
@@ -902,54 +1026,60 @@ def compute_path_to_crown(team: WorldCupTeam) -> PathToCrown:
 
     Segments are: Group · R32 · R16 · QF · SF · Final.
     Status per segment:
-      - 'won':  team has already cleared this stage
-      - 'current': next stage the team needs to win (or 'eliminated' if out)
-      - 'future': stage hasn't been reached yet
-      - 'eliminated': for the segment where the team lost (only when eliminated)
+      - 'won':         team has cleared this stage
+      - 'current':     team's next stage (only when not eliminated)
+      - 'eliminated':  the segment where the team was knocked out
+      - 'future':      stage hasn't been reached yet
 
     projected_ceiling: if the team wins every remaining segment, what total
-    multiplied score does their team contribute? Pre-knockout this is
-    ADVANCE_GROUP_WINNER + sum(KNOCKOUT_POINTS for R32..SF) + champion bonus,
-    all multiplied by team.multiplier. If the team is already eliminated,
-    projected_ceiling reflects only points already earned (= team.multiplied_points).
+    multiplied score does their team contribute? team.base_points already
+    holds everything earned to date (group match points, advancement bonus,
+    KO wins), so we add only the unearned remainder before multiplying.
+    Eliminated teams' ceiling = team.multiplied_points (no further upside).
     """
-    depth = _FINISH_DEPTH.get(team.best_finish, 0)
-    eliminated = bool(team.is_eliminated)
+    cleared, eliminated_at = _path_status(team)
+    eliminated = eliminated_at is not None
 
-    # Build segments
     segments: list[PathSegment] = []
-    for i, stage_label in enumerate(_SEGMENT_ORDER):
-        if i < depth:
+    for i, label in enumerate(_SEGMENT_LABELS):
+        if i < cleared:
             status = 'won'
-        elif i == depth and eliminated:
+        elif eliminated and i == eliminated_at:
             status = 'eliminated'
-        elif i == depth:
+        elif i == cleared and not eliminated:
             status = 'current'
         else:
             status = 'future'
-        segments.append(PathSegment(stage=stage_label, status=status))
+        segments.append(PathSegment(stage=label, status=status))
 
     eliminated_at_label = (
-        _FINISH_LABEL.get(team.best_finish or '') if eliminated else None
+        _SEGMENT_DISPLAY[eliminated_at]
+        if eliminated and eliminated_at is not None
+        else None
     )
 
     if eliminated:
         projected_ceiling = float(team.multiplied_points)
     else:
-        # Sum of remaining base points if team wins out from current depth.
-        remaining_base = float(team.base_points)
-        if depth == 0:
-            # Group stage in progress — assume full group winner advancement.
+        # Sum unearned base contributions assuming team wins out.
+        remaining_base = 0.0
+        if cleared == 0:
+            # Group still in progress — assume group winner advancement bonus.
             remaining_base += ADVANCE_GROUP_WINNER
-        # Add every knockout segment from current depth onward.
+        # Knockout match wins yet to earn:
+        #   cleared=1 (cleared group)         → R32, R16, QF, SF
+        #   cleared=2 (won R32)               → R16, QF, SF
+        #   cleared=k                         → keys at index >= k-1
         knockout_keys = ['R32', 'R16', 'QF', 'SF']
-        for i, key in enumerate(knockout_keys, start=1):
-            if i >= depth:
+        for i, key in enumerate(knockout_keys):
+            if (i + 1) >= cleared:
                 remaining_base += KNOCKOUT_POINTS[key]
-        # Plus champion bonus if not already at finals depth.
-        if depth < 5:
+        # Champion bonus only if not already champion.
+        if cleared < 6:
             remaining_base += KNOCKOUT_POINTS['champion']
-        projected_ceiling = round(remaining_base * team.multiplier, 1)
+        projected_ceiling = round(
+            (float(team.base_points) + remaining_base) * team.multiplier, 1,
+        )
 
     return PathToCrown(
         segments=segments,
@@ -957,6 +1087,86 @@ def compute_path_to_crown(team: WorldCupTeam) -> PathToCrown:
         eliminated_at_label=eliminated_at_label,
         projected_ceiling=projected_ceiling,
     )
+
+
+def _path_status(team: WorldCupTeam) -> tuple[int, Optional[int]]:
+    """Return (cleared_depth, eliminated_at_index).
+
+    cleared_depth: how many of the 6 segments the team has won (0..6).
+    eliminated_at_index: the segment index where the team was knocked out,
+    or None if still alive / champion.
+
+    Sources of truth:
+    - Terminal best_finish values ('champion', 'runner_up', '3rd', 'group')
+      resolve directly without a query.
+    - For intermediate KO states (best_finish in {'R32','R16','QF','SF'} or
+      bf=None+advancement_method), elimination is derived from a completed
+      WorldCupMatch at the team's next stage where they are not the winner.
+      team.is_eliminated cannot be used because scoring only sets it during
+      group-stage processing (scoring.py:256/259) — never for KO losses.
+    """
+    bf = team.best_finish
+
+    # Terminal states resolved directly.
+    if bf == 'champion':
+        return (6, None)
+    if bf == 'runner_up':
+        return (5, 5)            # cleared SF, lost Final
+    if bf == '3rd':
+        return (4, 4)            # cleared QF, lost SF (won 3rd-place playoff)
+    if bf == 'group':
+        return (0, 0)            # group eliminated
+
+    # bf='SF' is intermediate: SF winner awaiting Final, OR SF loser
+    # awaiting/exiting 3rd-place playoff. Disambiguate via matches:
+    # any completed third_place match for this team means they lost it
+    # (otherwise bf would be '3rd') → 4th-place finisher.
+    if bf == 'SF':
+        completed_third = WorldCupMatch.query.filter(
+            WorldCupMatch.stage == 'third_place',
+            WorldCupMatch.is_completed.is_(True),
+            or_(
+                WorldCupMatch.home_team_id == team.id,
+                WorldCupMatch.away_team_id == team.id,
+            ),
+        ).first()
+        if completed_third is not None:
+            return (4, 4)
+        return (5, None)
+
+    # Cleared depth from bf + advancement_method.
+    if bf == 'QF':
+        cleared = 4
+    elif bf == 'R16':
+        cleared = 3
+    elif bf == 'R32':
+        cleared = 2
+    elif bf is None and team.advancement_method:
+        cleared = 1
+    else:
+        # bf is None and no advancement_method → group stage in progress
+        return (0, None)
+
+    # KO elimination check: completed match at the next stage where the team
+    # didn't win (winner_team_id is the opponent, or NULL for unresolved draws).
+    next_stage = _NEXT_MATCH_STAGE[cleared]
+    if next_stage is None:
+        return (cleared, None)
+    elim = WorldCupMatch.query.filter(
+        WorldCupMatch.stage == next_stage,
+        WorldCupMatch.is_completed.is_(True),
+        or_(
+            WorldCupMatch.home_team_id == team.id,
+            WorldCupMatch.away_team_id == team.id,
+        ),
+        or_(
+            WorldCupMatch.winner_team_id != team.id,
+            WorldCupMatch.winner_team_id.is_(None),
+        ),
+    ).first()
+    if elim is not None:
+        return (cleared, cleared)
+    return (cleared, None)
 ```
 
 - [ ] **Step 3: Run tests — they should pass**
@@ -965,9 +1175,9 @@ def compute_path_to_crown(team: WorldCupTeam) -> PathToCrown:
 ENVIRONMENT=testing venv/bin/python -m pytest tests/test_worldcup_team_detail_service.py -v
 ```
 
-Expected: all 8 tests PASS.
+Expected: all 15 tests PASS (5 ownership + owns + 10 path-to-crown).
 
-If `test_path_to_crown_pre_knockout` fails on the `projected_ceiling == 107.0` assertion, double-check the arithmetic against `KNOCKOUT_POINTS` in `games/worldcup/constants.py`: ADVANCE_GROUP_WINNER (4) + R32 (8) + R16 (11) + QF (15) + SF (19) + champion (50) = 107. Adjust the implementation if the constants differ at run-time.
+If `test_path_to_crown_group_in_progress` fails on `projected_ceiling == 107.0`, double-check: ADVANCE_GROUP_WINNER (4) + R32 (8) + R16 (11) + QF (15) + SF (19) + champion (50) = 107.
 
 - [ ] **Step 4: Run pyright + full test suite**
 
@@ -976,7 +1186,7 @@ venv/bin/pyright games/worldcup/
 ENVIRONMENT=testing venv/bin/python -m pytest tests/ -q
 ```
 
-Expected: 0 errors; 163 tests pass (155 + 8 new).
+Expected: 0 errors; **170 tests pass** (155 + 15 new).
 
 - [ ] **Step 5: Commit**
 
@@ -988,8 +1198,14 @@ git commit -m "feat(ccc-wc): add team_detail service helpers (ownership + path-t
   returns count=0/percent=0/picker_names=None per spec D11.
 - current_user_owns_team(user_id, team_id): cheap exists() check.
 - compute_path_to_crown(team): 6-segment Group/R32/R16/QF/SF/Final payload
-  with per-segment status + projected_ceiling under win-out assumption,
-  consuming ADVANCE_GROUP_WINNER + KNOCKOUT_POINTS from constants.
+  driven by canonical best_finish strings ('group'/'R32'/.../'champion'
+  per scoring._update_best_finish). KO elimination derived from completed
+  WorldCupMatch entries at the team's next stage, since scoring only sets
+  team.is_eliminated during group-stage processing. bf='SF' disambiguates
+  4th-place finishers from SF winners by checking for a completed
+  third_place match. projected_ceiling is base_points + unearned win-out
+  contributions, multiplied by tier multiplier (or multiplied_points if
+  already eliminated).
 
 Refs Spec C Plan 2."
 ```
@@ -1296,7 +1512,7 @@ venv/bin/pyright games/worldcup/
 ENVIRONMENT=testing venv/bin/python -m pytest tests/ -q
 ```
 
-Expected: 0 errors; 167 tests pass (163 + 4 new).
+Expected: 0 errors; 174 tests pass (170 + 4 new).
 
 - [ ] **Step 8: Commit**
 
