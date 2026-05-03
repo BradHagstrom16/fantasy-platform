@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}{{ team.display_name }} ({{ team.fifa_code }}) — World Cup Fantasy Pool{% endblock %}
+
+{% block content %}
+<div class="page-hero wc-hero-grad">
+  <div class="hero-glow"></div>
+  <div class="container">
+    <span class="wc-eyebrow wc-eyebrow-red">{{ team.fifa_code }} · Group {{ team.group_letter }}</span>
+    <h1>
+      <span class="me-2 fs-1">{{ team.flag_emoji }}</span>{{ team.display_name }}
+    </h1>
+  </div>
+</div>
+
+<div class="container pb-5">
+  <div class="row justify-content-center">
+    <div class="col-lg-8">
+      <div class="mb-3">
+        <a href="{{ url_for('worldcup.leaderboard') }}" class="back-link">
+          <i class="bi bi-arrow-left me-1"></i>Back to Board
+        </a>
+      </div>
+      <p class="text-muted small">Team detail under construction (Plan 2 Tasks 5–6).</p>
+    </div>
+  </div>
+</div>
+{% endblock %}

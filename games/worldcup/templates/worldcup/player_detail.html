@@ -94,7 +94,10 @@
                 <span class="wc-tier-dot wc-tier-dot-{{ pick.tier }}"></span>
                 <span class="wc-eyebrow">T{{ pick.tier }}</span>
                 <span class="pick-team d-block mt-1">
-                  {{ pick.team.flag_emoji }} {{ pick.team.display_name }}
+                  <a href="{{ url_for('worldcup.team_detail', team_id=pick.team_id) }}"
+                     class="team-link">
+                    {{ pick.team.flag_emoji }} {{ pick.team.display_name }}
+                  </a>
                   <small class="text-muted">Grp {{ pick.team.group_letter }}</small>
                 </span>
               </div>

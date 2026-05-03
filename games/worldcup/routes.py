@@ -9,7 +9,7 @@ from collections import defaultdict
 
 from flask import render_template, redirect, url_for, flash, request, jsonify
 from flask_login import login_required, current_user
-from sqlalchemy import func
+from sqlalchemy import func, or_
 
 from extensions import db
 from models import User
@@ -38,6 +38,9 @@ from games.worldcup.services.stats import (
     get_tier_combos,
 )
 from games.worldcup.services.ranking import compute_rank_neighbors
+from games.worldcup.services.team_detail import (
+    compute_team_ownership, current_user_owns_team, compute_path_to_crown,
+)
 
 
 # ============================================================================
@@ -412,6 +415,89 @@ def player_detail(enrollment_id):
         deadline_passed=deadline_passed,
         deadline_ct=deadline_ct,
         neighbors=neighbors,
+    )
+
+
+@worldcup_bp.route('/team/<int:team_id>')
+def team_detail(team_id):
+    """Public per-team surface: fixtures, score events, ownership, path to crown.
+
+    No @login_required — matches access policy of leaderboard/stats. Pre-deadline,
+    ownership data is strictly hidden (no count, no names) per spec D11.
+    """
+    team = db.get_or_404(WorldCupTeam, team_id)
+
+    matches = (
+        WorldCupMatch.query
+        .filter(or_(
+            WorldCupMatch.home_team_id == team_id,
+            WorldCupMatch.away_team_id == team_id,
+        ))
+        .order_by(WorldCupMatch.match_number)
+        .all()
+    )
+
+    score_events = compute_team_score_events(team)
+
+    # Per-match points map (match_id → sum of base_points for events on that match).
+    # 'team.multiplier' applied at display time only; SSoT keeps base in events.
+    points_by_match: dict[int, float] = {}
+    for ev in score_events:
+        if ev.match_id is not None:
+            points_by_match[ev.match_id] = points_by_match.get(ev.match_id, 0.0) + ev.base_points
+
+    # Pre-format kickoff dates in CT for the template — kickoff_utc is naive UTC
+    # in the DB, so build a (match.id → CT-aware datetime) map here rather than
+    # smuggling tzinfo logic into Jinja.
+    from zoneinfo import ZoneInfo
+    match_dates_ct: dict[int, str] = {}
+    for m in matches:
+        if m.kickoff_utc:
+            aware = m.kickoff_utc.replace(tzinfo=ZoneInfo('UTC')).astimezone(WORLDCUP_TZ)
+            match_dates_ct[m.id] = aware.strftime('%b %-d')
+
+    deadline_passed = now_utc() >= TOURNAMENT_DEADLINE_UTC
+
+    ownership = compute_team_ownership(team_id, deadline_passed)
+
+    user_owns = (
+        current_user.is_authenticated
+        and current_user_owns_team(current_user.id, team_id)
+    )
+
+    path = compute_path_to_crown(team)
+
+    # Picker links: post-deadline only, list of (display_name, enrollment_id) for "Who Picked This".
+    picker_links: list[tuple[str, int]] = []
+    if deadline_passed:
+        picks = (
+            WorldCupPick.query
+            .join(WorldCupEnrollment)
+            .filter(
+                WorldCupPick.team_id == team_id,
+                WorldCupEnrollment.season_year == SEASON_YEAR,
+            )
+            .all()
+        )
+        picker_links = sorted(
+            (p.enrollment.get_display_name(), p.enrollment.id) for p in picks
+        )
+
+    # Inline _stage_label so we don't depend on core/main internals from a game blueprint.
+    # If Plan 4 lifts _stage_label() into games/worldcup/services/stage.py, swap to that import.
+    from core.main.home_context import _stage_label
+
+    return render_template('worldcup/team_detail.html',
+        team=team,
+        matches=matches,
+        points_by_match=points_by_match,
+        match_dates_ct=match_dates_ct,
+        ownership=ownership,
+        user_owns=user_owns,
+        deadline_passed=deadline_passed,
+        path=path,
+        picker_links=picker_links,
+        stage_label=_stage_label,
     )
 
 
