@@ -3246,11 +3246,17 @@ body.game-worldcup {
   color: rgba(245, 241, 232, .55) !important;
 }
 
-.leaderboard-card,
-.leaderboard-card a {
+/* Compound selector .card.wc-card.leaderboard-card (not descendant) —
+   in leaderboard.html all three classes sit on the same <div>, so
+   `.card.wc-card .leaderboard-card` (with a space) would not match.
+   Scoping to the compound prevents bleed if .leaderboard-card is ever
+   reused on a non-wc-card surface and aligns with CLAUDE.md's
+   "scoped to .card.wc-card .<surface>" rule. */
+.card.wc-card.leaderboard-card,
+.card.wc-card.leaderboard-card a {
   color: var(--wc-white);
 }
-.leaderboard-card .text-muted {
+.card.wc-card.leaderboard-card .text-muted {
   color: rgba(245, 241, 232, .55) !important;
 }
 
@@ -3261,11 +3267,11 @@ body.game-worldcup {
    Don't broadcast to .card.wc-card .leaderboard-trend-* — that would
    match desktop non-current rows where Bootstrap's white td bg paints
    over the navy, making the lighter colors low-contrast on white. */
-.leaderboard-card .leaderboard-trend-up,
+.card.wc-card.leaderboard-card .leaderboard-trend-up,
 .card.wc-card .leaderboard-table .row-current-user > td .leaderboard-trend-up {
   color: var(--live-green);
 }
-.leaderboard-card .leaderboard-trend-down,
+.card.wc-card.leaderboard-card .leaderboard-trend-down,
 .card.wc-card .leaderboard-table .row-current-user > td .leaderboard-trend-down {
   color: var(--live-red);
 }
