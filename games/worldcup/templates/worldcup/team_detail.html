@@ -132,11 +132,53 @@
         {% endif %}
       </section>
 
-      {# ── Path to the Crown (Task 6) ──────────────────────────────────── #}
-      {# Path-to-crown section is added in Task 6. #}
+      {# ── Path to the Crown ──────────────────────────────────────────── #}
+      <section class="mb-4">
+        <span class="wc-eyebrow {% if path.eliminated %}wc-eyebrow-red{% endif %}">
+          {% if path.eliminated %}Out of the running{% else %}Path to the Crown{% endif %}
+        </span>
+        <h3 class="mb-3">
+          {% if path.eliminated %}
+            Eliminated · {{ path.eliminated_at_label }}
+          {% else %}
+            Projected ceiling: <span class="wc-numeral">{{ "%.1f"|format(path.projected_ceiling) }}</span>
+          {% endif %}
+        </h3>
+        <div class="path-segments">
+          {% for seg in path.segments %}
+          <div class="path-segment path-segment-{{ seg.status }}">
+            <span class="wc-eyebrow">{{ seg.stage }}</span>
+            {% if seg.status == 'won' %}
+              <i class="bi bi-check-lg" aria-label="won"></i>
+            {% elif seg.status == 'eliminated' %}
+              <i class="bi bi-x-lg" aria-label="eliminated"></i>
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+        {% if not path.eliminated %}
+        <p class="text-muted small mt-2 mb-0">
+          If <strong>{{ team.fifa_code }}</strong> wins out from here, this is the team's
+          maximum possible contribution to a roster.
+        </p>
+        {% endif %}
+      </section>
 
-      {# ── Who Picked This (Task 6, post-deadline only) ─────────────────── #}
-      {# Picker list section is added in Task 6. #}
+      {# ── Who Picked This (post-deadline only — privacy gate per spec D11) ── #}
+      {% if deadline_passed and picker_links %}
+      <section class="mb-4">
+        <span class="wc-eyebrow">Roster overlap</span>
+        <h3 class="mb-3">Who Picked This</h3>
+        <ul class="picker-list list-unstyled m-0">
+          {% for name, enrollment_id in picker_links %}
+          <li class="picker-list-item">
+            <a href="{{ url_for('worldcup.player_detail', enrollment_id=enrollment_id) }}"
+               class="picker-link">{{ name }}</a>
+          </li>
+          {% endfor %}
+        </ul>
+      </section>
+      {% endif %}
 
     </div>
   </div>

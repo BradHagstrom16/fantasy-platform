@@ -2397,6 +2397,69 @@ body.game-worldcup {
   }
 }
 
+/* Spec C Plan 2 — path-to-crown segments + picker list.
+   6 stage tiles (Group · R32 · R16 · QF · SF · Final) × 4 statuses.
+   Won = gold-tinted ✓; current = red-bordered (next-up); eliminated = red ✗;
+   future = dim. flex 1-1-0 keeps tiles equal at 1280px and wraps gracefully
+   under 375px. */
+.path-segments {
+  display: flex;
+  gap: .4rem;
+  flex-wrap: wrap;
+}
+.path-segment {
+  flex: 1 1 0;
+  min-width: 56px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .15rem;
+  padding: .5rem .25rem;
+  border: 1px solid rgba(245, 241, 232, .08);
+  border-radius: 4px;
+  background: rgba(0, 17, 46, .5);
+  color: var(--bone-mute);
+  transition: border-color var(--transition);
+}
+.path-segment-won {
+  color: var(--wc-white);
+  border-color: rgba(242, 211, 107, .35);
+  background: rgba(242, 211, 107, .08);
+}
+.path-segment-current {
+  color: var(--wc-white);
+  border-color: var(--wc-red);
+  background: rgba(191, 10, 48, .12);
+}
+.path-segment-eliminated {
+  color: var(--bone-mute);
+  border-color: var(--wc-red);
+  background: rgba(191, 10, 48, .06);
+}
+
+.picker-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: .35rem .5rem;
+}
+/* Picker pills sit on the bone page surface (not inside a dark card),
+   so they need dark-on-light text to read. var(--wc-navy) mirrors the
+   surrounding h3 heading color. */
+.picker-list-item .picker-link {
+  display: inline-block;
+  padding: .25rem .5rem;
+  color: var(--wc-navy);
+  text-decoration: none;
+  border: 1px solid rgba(0, 26, 77, .15);
+  border-radius: 4px;
+  font-size: .9rem;
+  transition: border-color var(--transition), background-color var(--transition);
+}
+.picker-list-item .picker-link:hover {
+  border-color: var(--wc-red);
+  background: rgba(191, 10, 48, .05);
+}
+
 /* === WORLD CUP FANTASY POOL === */
 
 /* World Cup table — navy header, patriot blue accent */
