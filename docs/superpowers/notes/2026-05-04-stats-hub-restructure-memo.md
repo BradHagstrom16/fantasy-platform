@@ -34,7 +34,7 @@ Each pair was two views of one question: *How is the tournament going?* (Board),
 ## 3. Hero treatment
 
 Single `.page-hero.wc-hero-grad` (Plan 1 utility, wins on `(0,0,2,0)`):
-- `.phase-chip` — copy from `_stage_label` (passed in the route context dict as `current_phase_label`), never `current_phase|title`. See risk #7.
+- `.phase-chip` — copy mapped inline from `current_phase` via `{% if %}/{% elif %}` (existing pattern: `'completed'`→"Tournament Complete", `'knockout'`→"Knockout Stage", `'group_stage'`→"Group Stage", else "Pre-Tournament"). Never `current_phase|title`. `_stage_label` is **not** used here — it maps `WorldCupMatch.stage` (`'SF'`/`'final'`/`'third_place'`/etc.), a different value space.
 - Eyebrow `<small>`: "Public dossier".
 - `<h1>` "**The Field Office**" (replaces "Stats Hub").
 - Sub-line: `{{ kpis.total_players }} oaths sealed · {{ kpis.active_countries }} nations standing`.
@@ -88,4 +88,4 @@ Tier names already match spec — unchanged.
 4. **`TAB_IDS` order pairs positionally** with `document.querySelectorAll('.wc-stats-tab-btn')`. Buttons must emit in array order (`board`, `field`, `tiers`).
 5. **`Chart.defaults.font.family`** is currently set inside each `init*` — hoist to script top so it isn't re-applied per tab switch.
 6. **Inline tier hex outside charts** (`pbarHtml`, `tierHeader`, `TC[t] + 'BB'`) routes through the token-populated `TC` lookup; no per-call-site substitutions.
-7. **`current_phase`** is server-rendered into JS as a literal in `renderProgressBar()`. Keep that, but pipe the human-readable phase label through `_stage_label` in the route context dict as `current_phase_label` (not the template) to avoid re-introducing `|title` mangling. Template consumes `{{ current_phase_label }}` for the phase chip in §3.
+7. **`current_phase`** is server-rendered into JS as a literal in `renderProgressBar()` (`const phase = '{{ current_phase }}';`). Keep that — it's a state code, not a display string. The `.phase-chip` display string is built in the template via `{% if %}/{% elif %}` over the same `current_phase` value (see §3). The route context dict is unchanged.
