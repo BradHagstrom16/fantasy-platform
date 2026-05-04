@@ -47,10 +47,18 @@
       </div>
 
       {# ── Ownership ribbon ────────────────────────────────────────────── #}
-      {# Three branches per spec D11:
-           1. user_owns           → red ribbon with "You Own This Nation" + count/percent
-           2. deadline_passed     → ribbon with count/percent only (no names here)
-           3. pre-deadline + non-owner → ribbon entirely hidden #}
+      {# Visibility matrix per spec D11 (privacy invariant: pre-deadline
+         counts are hidden from ALL viewers — even the owner — because a
+         non-zero count tells the owner who else picked their team, which
+         is roster info about a third party):
+           pre-deadline  + non-owner → ribbon entirely hidden
+           pre-deadline  + owner     → red "You Own This Nation" eyebrow only;
+                                       count/percent suppressed (helper returns
+                                       0 pre-deadline, so showing it would
+                                       display "0" misleadingly anyway)
+           post-deadline + non-owner → "Roster ownership" eyebrow + count/percent
+           post-deadline + owner     → red "You Own This Nation" + count/percent
+         #}
       {% if user_owns or deadline_passed %}
       <div class="ownership-ribbon {% if user_owns %}ownership-ribbon-owned{% endif %} animate-in mb-4">
         {% if user_owns %}
