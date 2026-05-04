@@ -63,7 +63,7 @@ def test_team_detail_returns_200_for_valid_team(client, app):
     assert resp.status_code == 200
 
 
-def test_team_detail_returns_404_for_invalid_team(client, app):
+def test_team_detail_returns_404_for_invalid_team(client):
     resp = client.get('/worldcup/team/99999')
     assert resp.status_code == 404
 

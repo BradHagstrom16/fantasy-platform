@@ -232,7 +232,8 @@ def _path_status(team: WorldCupTeam) -> tuple[int, Optional[int]]:
         return (0, None)
 
     # KO elimination check: completed match at the next stage where the team
-    # didn't win (winner_team_id is the opponent, or NULL for unresolved draws).
+    # didn't win (winner_team_id is the opponent, or NULL if the row was
+    # entered without a winner — knockouts never legitimately end as draws).
     next_stage = _NEXT_MATCH_STAGE[cleared]
     if next_stage is None:
         return (cleared, None)
