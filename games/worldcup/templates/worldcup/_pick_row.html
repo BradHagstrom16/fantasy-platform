@@ -11,7 +11,8 @@
       <span class="visually-hidden">Toggle scoring details</span>
     </button>
     <span class="me-2 fs-5">{{ pick.team.flag_emoji }}</span>
-    <span class="fw-medium">{{ pick.team.display_name }}</span>
+    <a href="{{ url_for('worldcup.team_detail', team_id=pick.team_id) }}"
+       class="fw-medium team-link">{{ pick.team.display_name }}</a>
     <small class="text-muted ms-1">Grp {{ pick.team.group_letter }}</small>
   </td>
   <td>

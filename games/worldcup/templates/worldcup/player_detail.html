@@ -2,16 +2,37 @@
 {% block title %}{{ enrollment.get_display_name() }} — World Cup Fantasy Pool{% endblock %}
 
 {% block content %}
-<div class="page-hero">
+<div class="page-hero wc-hero-grad">
   <div class="hero-glow"></div>
   <div class="container">
-    <h1><span class="me-2">{{ enrollment.user.get_avatar() }}</span>{{ enrollment.get_display_name() }}</h1>
-    <p class="lead mb-0">
-      Total Score: <strong>{{ "%.1f"|format(enrollment.total_score) }}</strong> pts
+    <span class="wc-eyebrow {% if neighbors.rank == 1 %}wc-eyebrow-gold{% else %}wc-eyebrow-red{% endif %}">
+      {% if neighbors.rank == 1 %}Current Leader{% else %}Rank {{ neighbors.rank }}{% endif %}
+    </span>
+    <h1>
+      <span class="me-2">{{ enrollment.user.get_avatar() }}</span>{{ enrollment.get_display_name() }}
+    </h1>
+    <div class="player-hero-stats">
+      <div class="hero-stat">
+        <span class="wc-eyebrow">Total</span>
+        <strong class="wc-numeral">{{ "%.1f"|format(enrollment.total_score) }}</strong>
+      </div>
+      <div class="hero-stat">
+        <span class="wc-eyebrow">Lead</span>
+        <strong class="wc-numeral">
+          {% if neighbors.lead_delta_up is none %}
+            &mdash;
+          {% else %}
+            -{{ "%.1f"|format(neighbors.lead_delta_up) }}
+          {% endif %}
+        </strong>
+      </div>
       {% if enrollment.usa_goals_guess is not none %}
-       &mdash; Tiebreaker: {{ enrollment.usa_goals_guess }} USA goals
+      <div class="hero-stat">
+        <span class="wc-eyebrow">Tiebreak</span>
+        <strong class="wc-numeral">{{ enrollment.usa_goals_guess }}</strong>
+      </div>
       {% endif %}
-    </p>
+    </div>
   </div>
 </div>
 
@@ -20,15 +41,15 @@
     <div class="col-lg-8">
 
       <div class="mb-3">
-        <a href="{{ url_for('worldcup.leaderboard') }}" class="text-muted small text-decoration-none">
-          <i class="bi bi-arrow-left me-1"></i>Back to Leaderboard
+        <a href="{{ url_for('worldcup.leaderboard') }}" class="back-link">
+          <i class="bi bi-arrow-left me-1"></i>Back to Board
         </a>
       </div>
 
       {% if picks_visible %}
         {% if picks %}
         {# Desktop table with drill-down accordion #}
-        <div class="card border-0 shadow-sm animate-in player-picks-desktop">
+        <div class="card border-0 shadow-sm animate-in player-picks-desktop wc-card wc-card-flush">
           <div class="card-body p-0">
             <div class="table-responsive">
               <table class="table table-worldcup mb-0">
@@ -54,8 +75,8 @@
                 <tfoot>
                   <tr style="border-top:2px solid var(--border);">
                     <td colspan="3" class="fw-bold">Total</td>
-                    <td class="text-end fw-bold">{{ "%.1f"|format(ns.total_base) }}</td>
-                    <td class="text-end fw-bold">{{ "%.1f"|format(ns.total_mult) }}</td>
+                    <td class="text-end fw-bold wc-numeral">{{ "%.1f"|format(ns.total_base) }}</td>
+                    <td class="text-end fw-bold wc-numeral">{{ "%.1f"|format(ns.total_mult) }}</td>
                   </tr>
                 </tfoot>
               </table>
@@ -70,10 +91,17 @@
             {% for pick in picks %}
             <div class="player-pick-card">
               <div>
-                <span class="tier-badge tier-badge-{{ pick.tier }} me-1" style="font-size:.65rem; vertical-align:middle;">T{{ pick.tier }}</span>
-                <span class="pick-team">{{ pick.team.flag_emoji }} {{ pick.team.display_name }} <small>Grp {{ pick.team.group_letter }}</small></span>
+                <span class="wc-tier-dot wc-tier-dot-{{ pick.tier }}"></span>
+                <span class="wc-eyebrow">T{{ pick.tier }}</span>
+                <span class="pick-team d-block mt-1">
+                  <a href="{{ url_for('worldcup.team_detail', team_id=pick.team_id) }}"
+                     class="team-link">
+                    {{ pick.team.flag_emoji }} {{ pick.team.display_name }}
+                  </a>
+                  <small class="text-muted">Grp {{ pick.team.group_letter }}</small>
+                </span>
               </div>
-              <div class="pick-points">
+              <div class="pick-points wc-numeral">
                 {{ "%.1f"|format(pick.multiplied_points) }}
                 <small>&times;{{ pick.team.multiplier }}</small>
               </div>
@@ -81,7 +109,7 @@
             {% set ns2.total = ns2.total + pick.multiplied_points %}
             {% endfor %}
           </div>
-          <div class="d-flex justify-content-between align-items-center px-1 fw-bold" style="font-family:'Teko',sans-serif; font-size:1.15rem; letter-spacing:.03em;">
+          <div class="d-flex justify-content-between align-items-center px-1 fw-bold wc-numeral" style="font-size:1.15rem;">
             <span>Total</span>
             <span>{{ "%.1f"|format(ns2.total) }} pts</span>
           </div>
@@ -93,10 +121,11 @@
         </div>
         {% endif %}
       {% else %}
-        <div class="card border-0 shadow-sm animate-in">
+        <div class="card border-0 shadow-sm animate-in wc-card wc-card-flush">
           <div class="card-body text-center py-5">
-            <i class="bi bi-lock-fill" style="font-size:2.5rem; color:var(--game-primary); opacity:.6;"></i>
-            <h5 class="mt-3 mb-2">Picks are hidden</h5>
+            <i class="bi bi-lock-fill" style="font-size:2.5rem; color:var(--wc-red); opacity:.7;"></i>
+            <span class="wc-eyebrow d-block mt-3">Roster sealed</span>
+            <h5 class="mt-1 mb-2">Picks are hidden</h5>
             <p class="text-muted mb-0">
               Picks will be revealed when the tournament begins.<br>
               <span class="small">Deadline: {{ deadline_ct.strftime('%b %-d, %Y at %-I:%M %p CT') }}</span>
