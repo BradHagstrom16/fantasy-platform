@@ -34,7 +34,7 @@ Each pair was two views of one question: *How is the tournament going?* (Board),
 ## 3. Hero treatment
 
 Single `.page-hero.wc-hero-grad` (Plan 1 utility, wins on `(0,0,2,0)`):
-- `.phase-chip` — copy from `_stage_label`, never `current_phase|title`.
+- `.phase-chip` — copy from `_stage_label` (passed in the route context dict as `current_phase_label`), never `current_phase|title`. See risk #7.
 - Eyebrow `<small>`: "Public dossier".
 - `<h1>` "**The Field Office**" (replaces "Stats Hub").
 - Sub-line: `{{ kpis.total_players }} oaths sealed · {{ kpis.active_countries }} nations standing`.
@@ -42,7 +42,7 @@ Single `.page-hero.wc-hero-grad` (Plan 1 utility, wins on `(0,0,2,0)`):
 
 ## 4. Tab bar treatment
 
-Reuse Plan 1's `.subnav-pills` / `.subnav-pill` — one consistent pills idiom across WC. In-page container, not the global subnav: `<div class="wc-stats-pills"><div class="subnav-pills">…</div></div>` with `--subnav-accent: var(--wc-red)` and `--subnav-accent-rgb: 191, 10, 48` set inline so the active pill paints red.
+Reuse Plan 1's `.subnav-pills` / `.subnav-pill` — one consistent pills idiom across WC. In-page container, not the global subnav: `<div class="wc-stats-pills"><div class="subnav-pills" style="--subnav-accent: var(--wc-red); --subnav-accent-rgb: 191, 10, 48;">…</div></div>` (wrapper `style=""` attribute, not an inline `<style>` block) so the active pill paints red.
 
 **DOM IDs preserved** (JS reads them): `#progress-bar-wrap`, `#scoring-list`, `#ch-accum`, `#accum-summary`, `#bars-popular`, `#bars-unpopular`, `#bars-t1`–`#bars-t5`, `#tier-kpis`, `#ch-tier-bar`, `#ch-tier-donut`, `#ch-scatter`, `#help-list`, `#hurt-list`, `#combos-t1`/`t3`/`t4`/`t5`.
 
@@ -82,10 +82,10 @@ Tier names already match spec — unchanged.
 
 ## 7. Risks — JS hooks the rewrite must preserve
 
-1. **`switchTab(id)` lazy init.** Gate keys and `setTimeout` branches must move with the rename: Board triggers scoring charts (`'board'`), Field triggers impact (`'field'`), By Tier keeps `'tiers'` (now also covers donut + bar). Update both in lockstep.
-2. **`localStorage` key bump to `wc_stats_tab_v2`** — old `wc_stats_tab` holds `'overview'` etc. that no longer resolve.
+1. **`switchTab(id)` lazy init.** Gate keys and `setTimeout` branches must move with the rename: Board triggers scoring charts (`'board'`), Field triggers impact (`'field'`), By Tier keeps `'tiers'` (now also covers donut + bar). Init function names (`initScoringCharts`, `initImpactCharts`, `initTierCharts`) keep their existing names — only the gate keys and the `data-*` attributes rename.
+2. **`localStorage` key bump to `wc_stats_tab_v2`** — old `wc_stats_tab` holds `'overview'` etc. that no longer resolve. No migration shim needed: the existing `TAB_IDS.includes(saved)` guard treats stale values as missing and falls through to default `tab-board`.
 3. **`MY_PICKS = []` is correct for anon viewers.** Every `MY_PICKS.includes(...)` branch evaluates false. Do NOT add `if (MY_PICKS.length)` guards that suppress the bars themselves — the public dossier must render fully for logged-out users.
 4. **`TAB_IDS` order pairs positionally** with `document.querySelectorAll('.wc-stats-tab-btn')`. Buttons must emit in array order (`board`, `field`, `tiers`).
 5. **`Chart.defaults.font.family`** is currently set inside each `init*` — hoist to script top so it isn't re-applied per tab switch.
 6. **Inline tier hex outside charts** (`pbarHtml`, `tierHeader`, `TC[t] + 'BB'`) routes through the token-populated `TC` lookup; no per-call-site substitutions.
-7. **`current_phase`** is server-rendered into JS as a literal in `renderProgressBar()`. Keep that, but pipe the human-readable phase label through `_stage_label` in the route context dict (not the template) to avoid re-introducing `|title` mangling.
+7. **`current_phase`** is server-rendered into JS as a literal in `renderProgressBar()`. Keep that, but pipe the human-readable phase label through `_stage_label` in the route context dict as `current_phase_label` (not the template) to avoid re-introducing `|title` mangling. Template consumes `{{ current_phase_label }}` for the phase chip in §3.
