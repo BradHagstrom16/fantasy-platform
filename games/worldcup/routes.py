@@ -9,7 +9,7 @@ from collections import defaultdict
 
 from flask import render_template, redirect, url_for, flash, request, jsonify
 from flask_login import login_required, current_user
-from sqlalchemy import func, or_
+from sqlalchemy import func, or_, distinct
 from sqlalchemy.orm import joinedload
 
 from extensions import db
@@ -17,7 +17,7 @@ from models import User
 from games.worldcup import worldcup_bp
 from games.common import game_must_be_open
 from games.worldcup.services.state import now_utc
-from games.worldcup.models import WorldCupEnrollment, WorldCupTeam, WorldCupMatch, WorldCupPick
+from games.worldcup.models import WorldCupEnrollment, WorldCupTeam, WorldCupMatch, WorldCupPick, WorldCupRankSnapshot
 from games.worldcup.constants import (
     SEASON_YEAR, ENTRY_FEE, TOURNAMENT_DEADLINE_UTC,
     TIER_PICK_COUNTS, TOTAL_PICKS, WORLDCUP_TZ,
@@ -344,9 +344,142 @@ def picks():
     )
 
 
+def _compute_your_standing(enrollments):
+    """Return Your Standing block dict for the current user, or None.
+
+    Returns None when:
+    - User is anonymous, or
+    - User has no WorldCupEnrollment in SEASON_YEAR
+
+    Returns a dict with: rank, total, of_n, lead_delta_up, lead_delta_down,
+    caption (a string voice line for the block).
+    """
+    if not current_user.is_authenticated:
+        return None
+
+    enrollment = next(
+        (e for e in enrollments if e.user_id == current_user.id), None
+    )
+    if enrollment is None:
+        return None
+
+    neighbors = compute_rank_neighbors(enrollment.id)
+    of_n = len(enrollments)
+
+    return {
+        'rank': neighbors['rank'],
+        'total': neighbors['points'],
+        'of_n': of_n,
+        'lead_delta_up': neighbors['lead_delta_up'],
+        'lead_delta_down': neighbors['lead_delta_down'],
+        'caption': _your_standing_caption(neighbors),
+    }
+
+
+def _your_standing_caption(neighbors):
+    """Compose a voice caption tuned to the user's rank position.
+
+    - Sole entry: "You are the only one in the running."
+    - Leader (rank 1, has chasers): "{down} ahead of the next pursuer."
+    - Tail (no one below): "{up} pts from the lead."
+    - Middle: "{up} pts from 1st · {down} ahead of next."
+    """
+    up = neighbors['lead_delta_up']
+    down = neighbors['lead_delta_down']
+
+    if up is None and down is None:
+        return 'You are the only one in the running.'
+    if up is None:
+        return f'{down} ahead of the next pursuer.'
+    if down is None:
+        return f'{up} pts from the lead.'
+    return f'{up} pts from 1st · {down} ahead of next.'
+
+
+def _show_trend_column():
+    """True if count(distinct captured_date) >= 7 within the active season.
+
+    Per ambiguity-A1 resolution: a single global gate, not per-user. The
+    season filter (joined via WorldCupEnrollment.season_year == SEASON_YEAR)
+    is forward-compat for multi-season — without it, snapshots from a prior
+    World Cup would falsely satisfy the gate at the start of the next one.
+    Mirrors Spec B's >= 7 gating on the home-page sparkline.
+    """
+    distinct_days = (
+        db.session.query(func.count(distinct(WorldCupRankSnapshot.captured_date)))
+        .join(
+            WorldCupEnrollment,
+            WorldCupEnrollment.id == WorldCupRankSnapshot.enrollment_id,
+        )
+        .filter(WorldCupEnrollment.season_year == SEASON_YEAR)
+        .scalar() or 0
+    )
+    return distinct_days >= 7
+
+
+def _compute_trend_by_enrollment(enrollment_ids):
+    """For each enrollment id, compute trend = current_score - latest_snapshot_score.
+
+    "Latest" = MAX(captured_date) per enrollment. Returns None if the enrollment
+    has no snapshot history at all (template renders '—').
+
+    Implementation: one round-trip — pull the latest snapshot per enrollment via
+    a (enrollment_id, MAX(captured_date)) subquery joined back to the snapshot
+    table for total_score. SQLite-friendly; no window functions required.
+    """
+    if not enrollment_ids:
+        return {}
+
+    latest_dates = (
+        db.session.query(
+            WorldCupRankSnapshot.enrollment_id.label('eid'),
+            func.max(WorldCupRankSnapshot.captured_date).label('max_date'),
+        )
+        .filter(WorldCupRankSnapshot.enrollment_id.in_(enrollment_ids))
+        .group_by(WorldCupRankSnapshot.enrollment_id)
+        .subquery()
+    )
+
+    rows = (
+        db.session.query(
+            WorldCupRankSnapshot.enrollment_id,
+            WorldCupRankSnapshot.total_score,
+        )
+        .join(
+            latest_dates,
+            (WorldCupRankSnapshot.enrollment_id == latest_dates.c.eid) &
+            (WorldCupRankSnapshot.captured_date == latest_dates.c.max_date),
+        )
+        .all()
+    )
+
+    snapshot_score_by_eid = {eid: score for eid, score in rows}
+
+    trend = {}
+    enrollments_by_id = {
+        e.id: e for e in WorldCupEnrollment.query
+        .filter(WorldCupEnrollment.id.in_(enrollment_ids))
+        .all()
+    }
+    for eid in enrollment_ids:
+        snap = snapshot_score_by_eid.get(eid)
+        enr = enrollments_by_id.get(eid)
+        if snap is None or enr is None:
+            trend[eid] = None
+        else:
+            trend[eid] = round(enr.total_score - snap, 2)
+    return trend
+
+
 @worldcup_bp.route('/leaderboard')
 def leaderboard():
-    """Public leaderboard — no login required."""
+    """Public leaderboard — no login required.
+
+    Plan 3 adds three payload keys:
+    - your_standing: dict | None (rank-neighbor block for authenticated+enrolled user)
+    - trend_by_enrollment: dict[int, float | None] (per-row matchday trend)
+    - show_trend_column: bool (gated on count(distinct captured_date) >= 7)
+    """
     enrollments = (
         WorldCupEnrollment.query
         .filter_by(season_year=SEASON_YEAR)
@@ -371,10 +504,20 @@ def leaderboard():
 
     deadline_passed = now_utc() >= TOURNAMENT_DEADLINE_UTC
 
+    your_standing = _compute_your_standing(enrollments)
+    show_trend_column = _show_trend_column()
+    trend_by_enrollment = (
+        _compute_trend_by_enrollment([e.id for e in enrollments])
+        if show_trend_column else {}
+    )
+
     return render_template('worldcup/leaderboard.html',
         ranked_enrollments=ranked,
         total_players=len(enrollments),
         deadline_passed=deadline_passed,
+        your_standing=your_standing,
+        show_trend_column=show_trend_column,
+        trend_by_enrollment=trend_by_enrollment,
     )
 
 

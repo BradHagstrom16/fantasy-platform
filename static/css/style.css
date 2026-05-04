@@ -2930,37 +2930,46 @@ body.game-worldcup {
   animation: wc-auto-pulse 160ms ease-out;
 }
 
-/* — Stats Hub — */
-.wc-stats-tab-bar {
+/* — The Field Office (stats) tab bar —
+   In-page pills idiom: reuses .subnav-pills/.subnav-pill from Plan 1 for
+   layout/sizing, then overrides colors so pills read on a light page bg
+   instead of the dark global subnav. Active pill paints --subnav-accent
+   (set inline to var(--wc-red) on the .subnav-pills wrapper). */
+.wc-stats-pills {
   background: var(--bg-card);
   border-bottom: 1px solid var(--border);
   position: sticky;
   top: 93px;
   z-index: 900;
-  overflow-x: auto;
-  scrollbar-width: none;
-  transition: background .3s;
+  transition: background .3s, top var(--transition);
 }
-.wc-stats-tab-bar::-webkit-scrollbar { display: none; }
-.wc-stats-tab-bar-inner { display: flex; min-width: max-content; }
-
-.wc-stats-tab-btn {
-  font-family: 'Teko', sans-serif;
-  font-weight: 500;
-  font-size: .82rem;
-  letter-spacing: .07em;
-  text-transform: uppercase;
+/* Stay 10px below the .game-subnav when the navbar compacts.
+   Matches .game-subnav.subnav-shifted's 58px → 48px desktop shift
+   (and 52px → 42px mobile, in the @media (max-width: 767px) block).
+   Sibling combinator works because .game-subnav and <main> are
+   body-level siblings (see templates/base.html). */
+.game-subnav.subnav-shifted ~ main .wc-stats-pills {
+  top: 83px;
+}
+.wc-stats-pills .subnav-pills {
+  padding: .55rem .75rem;
+}
+.wc-stats-pills .subnav-pill {
   color: var(--text-muted);
-  background: none;
-  border: none;
-  border-bottom: 2px solid transparent;
-  padding: .7rem 1.15rem;
-  white-space: nowrap;
+  background: transparent;
+  border: 1px solid transparent;
   cursor: pointer;
-  transition: color .15s, border-color .15s;
 }
-.wc-stats-tab-btn:hover { color: var(--game-primary); border-color: var(--game-primary-light); }
-.wc-stats-tab-btn.active { color: var(--game-primary); border-color: var(--game-accent); font-weight: 700; }
+.wc-stats-pills .subnav-pill:hover {
+  color: var(--text-primary);
+  background: var(--bg-muted);
+  border-color: var(--border);
+}
+.wc-stats-pills .subnav-pill.active {
+  color: #fff;
+  background: var(--subnav-accent);
+  border-color: var(--subnav-accent);
+}
 
 .wc-stats-panel { display: none; animation: wc-fadeInUp .22s ease both; }
 .wc-stats-panel.active { display: block; }
@@ -3108,8 +3117,177 @@ body.game-worldcup {
 .wc-imp-row:hover { background: var(--bg-muted); }
 
 @media (max-width: 767px) {
-  .wc-stats-tab-bar { top: 86px; }
+  .wc-stats-pills { top: 86px; }
+  .game-subnav.subnav-shifted ~ main .wc-stats-pills { top: 76px; }
   .wc-kpi-value { font-size: 2rem; }
+}
+
+/* Plan 3: leaderboard reskin — table + mobile cards
+   ------------------------------------------------- */
+/* Compound selector (.table.leaderboard-table) wins over the later
+   single-class .table thead th rule (line ~3942) which has equal
+   specificity (0,0,2,0) and would otherwise override font-size /
+   letter-spacing / padding on source-order alone. Pattern matches
+   CLAUDE.md "CSS specificity for utility classes". */
+.table.leaderboard-table thead th {
+  font-family: 'Teko', sans-serif;
+  font-size: .85rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.leaderboard-rank {
+  font-size: 1.3rem;
+  min-width: 2rem;
+}
+
+.leaderboard-score {
+  font-size: 1.4rem;
+  letter-spacing: .03em;
+}
+
+/* Multi-class: wins specificity over the bare .card.wc-card border rule.
+   See CLAUDE.md "CSS specificity for utility classes". */
+.card.wc-card.leaderboard-card-current {
+  border-left: 3px solid var(--game-accent) !important;
+}
+
+/* Plan 3: Your Standing hero block (auth + enrolled only)
+   ------------------------------------------------------- */
+.your-standing {
+  background: linear-gradient(135deg,
+    rgba(0, 26, 77, .08) 0%,
+    rgba(191, 10, 48, .05) 100%);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--game-accent);
+  border-radius: var(--radius);
+  padding: 1.1rem 1.25rem;
+}
+
+.your-standing .wc-eyebrow {
+  display: block;
+  margin-bottom: .35rem;
+  color: var(--game-accent);
+}
+
+.your-standing-grid {
+  display: flex;
+  align-items: baseline;
+  gap: 2rem;
+  flex-wrap: wrap;
+  margin-bottom: .25rem;
+}
+
+.your-standing-rank-numeral {
+  font-size: 3rem;
+  line-height: 1;
+  letter-spacing: .02em;
+  color: var(--text-primary);
+}
+
+.your-standing-rank-label {
+  font-family: 'Teko', sans-serif;
+  font-size: .9rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-top: .15rem;
+}
+
+.your-standing-points {
+  display: flex;
+  flex-direction: column;
+}
+
+.your-standing-points-label {
+  font-family: 'Teko', sans-serif;
+  font-size: .8rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.your-standing-points-numeral {
+  font-size: 2rem;
+  letter-spacing: .03em;
+  color: var(--text-primary);
+}
+
+.your-standing-caption {
+  font-family: 'Teko', sans-serif;
+  font-size: .95rem;
+  letter-spacing: .03em;
+  color: var(--text-muted);
+}
+
+@media (max-width: 575.98px) {
+  .your-standing-grid { gap: 1.25rem; }
+  .your-standing-rank-numeral { font-size: 2.4rem; }
+  .your-standing-points-numeral { font-size: 1.6rem; }
+}
+
+/* Plan 3: Trend column (gated, count(distinct captured_date) >= 7)
+   --------------------------------------------------------------- */
+.leaderboard-trend-up {
+  color: #1A7A45;
+  font-weight: 600;
+}
+
+.leaderboard-trend-down {
+  color: var(--game-accent);
+  font-weight: 600;
+}
+
+/* Plan 3 follow-up: legibility fixes for the dark .card.wc-card surface.
+   Bootstrap's .table tbody td paints opaque white over the navy so plain
+   data rows are fine — the actually-low-contrast surfaces are:
+     1. <thead th> (no td bg, sits directly on navy)
+     2. .row-current-user > td (translucent gold tint, navy bleeds through)
+     3. .leaderboard-card mobile cards (no inner table to mask the navy)
+   Keeping the dark "premium dossier" look; only fixing readability. */
+.card.wc-card .leaderboard-table thead th {
+  color: rgba(245, 241, 232, .82);
+}
+.card.wc-card .leaderboard-table .row-current-user > td {
+  background: rgba(0, 26, 77, .85) !important;
+  color: var(--wc-white);
+}
+.card.wc-card .leaderboard-table .row-current-user > td a {
+  color: var(--wc-white);
+}
+.card.wc-card .leaderboard-table .row-current-user > td .text-muted {
+  color: rgba(245, 241, 232, .55) !important;
+}
+
+/* Compound selector .card.wc-card.leaderboard-card (not descendant) —
+   in leaderboard.html all three classes sit on the same <div>, so
+   `.card.wc-card .leaderboard-card` (with a space) would not match.
+   Scoping to the compound prevents bleed if .leaderboard-card is ever
+   reused on a non-wc-card surface and aligns with CLAUDE.md's
+   "scoped to .card.wc-card .<surface>" rule. */
+.card.wc-card.leaderboard-card,
+.card.wc-card.leaderboard-card a {
+  color: var(--wc-white);
+}
+.card.wc-card.leaderboard-card .text-muted {
+  color: rgba(245, 241, 232, .55) !important;
+}
+
+/* Trend colors fail on dark navy: the light-page palette
+   (#1A7A45 / #BF0A30) reads dark-on-dark inside .leaderboard-card and
+   on the .row-current-user solid-navy override. Lift to the live-state
+   tokens (--live-green / --live-red) only on those two surfaces.
+   Don't broadcast to .card.wc-card .leaderboard-trend-* — that would
+   match desktop non-current rows where Bootstrap's white td bg paints
+   over the navy, making the lighter colors low-contrast on white. */
+.card.wc-card.leaderboard-card .leaderboard-trend-up,
+.card.wc-card .leaderboard-table .row-current-user > td .leaderboard-trend-up {
+  color: var(--live-green);
+}
+.card.wc-card.leaderboard-card .leaderboard-trend-down,
+.card.wc-card .leaderboard-table .row-current-user > td .leaderboard-trend-down {
+  color: var(--live-red);
 }
 
 /* ── 3. Keyframe Animations ─────────────────────────────── */

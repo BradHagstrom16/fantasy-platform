@@ -221,8 +221,8 @@ def test_stats_route_public(client, session):
 
     resp = client.get('/worldcup/stats')
     assert resp.status_code == 200
-    assert b'Stats Hub' in resp.data
-    assert b'wc-stats-tab-bar' in resp.data
+    assert b'The Field Office' in resp.data
+    assert b'wc-stats-pills' in resp.data
 
 
 def test_stats_route_my_picks_unauthenticated(client, session):
