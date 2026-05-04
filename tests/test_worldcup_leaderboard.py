@@ -11,7 +11,6 @@ Trend semantics (per spec §8 + plan ambiguity-A2):
 """
 import pytest
 from datetime import date, datetime, timezone, timedelta
-from unittest.mock import patch
 
 from app import create_app
 from extensions import db
@@ -207,7 +206,7 @@ def test_trend_column_shows_dash_when_no_prior_snapshot_for_user(client, app):
         u_with = _seed_user('alice')
         e_with = _seed_enrollment(u_with.id, score=50.0)
         u_without = _seed_user('bob')
-        e_without = _seed_enrollment(u_without.id, score=30.0)
+        _seed_enrollment(u_without.id, score=30.0)
         # Open the gate by seeding 7 distinct dates against alice only.
         # bob has no snapshot history.
         today = date.today()

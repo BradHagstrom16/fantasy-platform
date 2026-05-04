@@ -372,11 +372,11 @@ def _compute_your_standing(enrollments):
         'of_n': of_n,
         'lead_delta_up': neighbors['lead_delta_up'],
         'lead_delta_down': neighbors['lead_delta_down'],
-        'caption': _your_standing_caption(neighbors, of_n),
+        'caption': _your_standing_caption(neighbors),
     }
 
 
-def _your_standing_caption(neighbors, of_n):
+def _your_standing_caption(neighbors):
     """Compose a voice caption tuned to the user's rank position.
 
     - Sole entry: "You are the only one in the running."
