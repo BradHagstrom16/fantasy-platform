@@ -281,7 +281,7 @@ Deliberately shallow — page-hero alignment + card pattern modernization only.
 Maps to `wc-player.jsx`. Existing route logic preserved verbatim — markup + classes change only.
 
 - Hero rebuilt: rival's avatar (gold disk) + display name as title-xl; eyebrow "Rank N" or "Current Leader"; stat grid (Total · Lead · Tiebreak)
-- **Lead delta** is new computed data: current rank's delta from rank 1 (or rank N+1's delta from N if leader). Computed in route, not template. Plan 2 introduces the shared helper `_compute_rank_neighbors(enrollment_id)` (in `games/worldcup/routes.py` or a new `games/worldcup/services/ranking.py`) returning `{rank, points, lead_delta_up, lead_delta_down}`. Plan 3 reuses it for the leaderboard "Your Standing" block.
+- **Lead delta** is new computed data: current rank's delta from rank 1 (or rank N+1's delta from N if leader). Computed in route, not template. Plan 2 introduces the shared helper `compute_rank_neighbors(enrollment_id)` (in `games/worldcup/routes.py` or a new `games/worldcup/services/ranking.py`) returning `{rank, points, lead_delta_up, lead_delta_down}`. Plan 3 reuses it for the leaderboard "Your Standing" block.
 - Roster grid uses Plan 1's reskinned `_pick_row.html`; pre-deadline lock state preserved with new `.wc-card` styling
 - Per-pick drill-down accordion preserved (script + DOM hooks unchanged)
 - Each pick row gets a "View team →" link deep-linking to `/worldcup/team/<team_id>` — added in Plan 2 (Plan 1 does not reference the team route)
@@ -368,7 +368,7 @@ Existing `player_detail.html` tests stay green. May add a parity test for `lead_
 - Big numeral: rank · "of N"
 - Right side: Points (Teko numeral) + matchday-trend caption
 - Voice-it caption: "X pts from 1st · Y ahead of next" (or appropriate variants for leader / tail)
-- Reuses `_compute_rank_neighbors(enrollment_id)` introduced by Plan 2
+- Reuses `compute_rank_neighbors(enrollment_id)` introduced by Plan 2
 
 **Trend column** (added):
 - Per-row `+N.N` matchday trend
