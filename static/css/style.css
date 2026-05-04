@@ -2941,7 +2941,15 @@ body.game-worldcup {
   position: sticky;
   top: 93px;
   z-index: 900;
-  transition: background .3s;
+  transition: background .3s, top var(--transition);
+}
+/* Stay 10px below the .game-subnav when the navbar compacts.
+   Matches .game-subnav.subnav-shifted's 58px → 48px desktop shift
+   (and 52px → 42px mobile, in the @media (max-width: 767px) block).
+   Sibling combinator works because .game-subnav and <main> are
+   body-level siblings (see templates/base.html). */
+.game-subnav.subnav-shifted ~ main .wc-stats-pills {
+  top: 83px;
 }
 .wc-stats-pills .subnav-pills {
   padding: .55rem .75rem;
@@ -3110,12 +3118,18 @@ body.game-worldcup {
 
 @media (max-width: 767px) {
   .wc-stats-pills { top: 86px; }
+  .game-subnav.subnav-shifted ~ main .wc-stats-pills { top: 76px; }
   .wc-kpi-value { font-size: 2rem; }
 }
 
 /* Plan 3: leaderboard reskin — table + mobile cards
    ------------------------------------------------- */
-.leaderboard-table thead th {
+/* Compound selector (.table.leaderboard-table) wins over the later
+   single-class .table thead th rule (line ~3942) which has equal
+   specificity (0,0,2,0) and would otherwise override font-size /
+   letter-spacing / padding on source-order alone. Pattern matches
+   CLAUDE.md "CSS specificity for utility classes". */
+.table.leaderboard-table thead th {
   font-family: 'Teko', sans-serif;
   font-size: .85rem;
   letter-spacing: .06em;
