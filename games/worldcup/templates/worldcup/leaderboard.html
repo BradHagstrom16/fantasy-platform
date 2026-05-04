@@ -16,7 +16,29 @@
 </div>
 
 <div class="container pb-5">
-  {# Plan 3 Task 3 will mount Your Standing here #}
+  {# Your Standing block — rendered only for authenticated + enrolled users #}
+  {% if your_standing %}
+  <div class="your-standing animate-in mt-4">
+    <span class="wc-eyebrow">Your Standing</span>
+    <div class="your-standing-grid">
+      <div class="your-standing-rank">
+        <div class="your-standing-rank-numeral wc-numeral">
+          {{ your_standing.rank }}
+        </div>
+        <div class="your-standing-rank-label">
+          of <span class="wc-numeral">{{ your_standing.of_n }}</span>
+        </div>
+      </div>
+      <div class="your-standing-points">
+        <div class="your-standing-points-label">Points</div>
+        <div class="your-standing-points-numeral wc-numeral">
+          {{ "%.1f"|format(your_standing.total) }}
+        </div>
+      </div>
+    </div>
+    <p class="your-standing-caption mb-0">{{ your_standing.caption }}</p>
+  </div>
+  {% endif %}
   {# Plan 3 Task 4 will mount the Trend column inside the desktop table + mobile cards #}
 
   {% if ranked_enrollments %}
