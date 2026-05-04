@@ -2930,37 +2930,38 @@ body.game-worldcup {
   animation: wc-auto-pulse 160ms ease-out;
 }
 
-/* — Stats Hub — */
-.wc-stats-tab-bar {
+/* — The Field Office (stats) tab bar —
+   In-page pills idiom: reuses .subnav-pills/.subnav-pill from Plan 1 for
+   layout/sizing, then overrides colors so pills read on a light page bg
+   instead of the dark global subnav. Active pill paints --subnav-accent
+   (set inline to var(--wc-red) on the .subnav-pills wrapper). */
+.wc-stats-pills {
   background: var(--bg-card);
   border-bottom: 1px solid var(--border);
   position: sticky;
   top: 93px;
   z-index: 900;
-  overflow-x: auto;
-  scrollbar-width: none;
   transition: background .3s;
 }
-.wc-stats-tab-bar::-webkit-scrollbar { display: none; }
-.wc-stats-tab-bar-inner { display: flex; min-width: max-content; }
-
-.wc-stats-tab-btn {
-  font-family: 'Teko', sans-serif;
-  font-weight: 500;
-  font-size: .82rem;
-  letter-spacing: .07em;
-  text-transform: uppercase;
-  color: var(--text-muted);
-  background: none;
-  border: none;
-  border-bottom: 2px solid transparent;
-  padding: .7rem 1.15rem;
-  white-space: nowrap;
-  cursor: pointer;
-  transition: color .15s, border-color .15s;
+.wc-stats-pills .subnav-pills {
+  padding: .55rem .75rem;
 }
-.wc-stats-tab-btn:hover { color: var(--game-primary); border-color: var(--game-primary-light); }
-.wc-stats-tab-btn.active { color: var(--game-primary); border-color: var(--game-accent); font-weight: 700; }
+.wc-stats-pills .subnav-pill {
+  color: var(--text-muted);
+  background: transparent;
+  border: 1px solid transparent;
+  cursor: pointer;
+}
+.wc-stats-pills .subnav-pill:hover {
+  color: var(--text-primary);
+  background: var(--bg-muted);
+  border-color: var(--border);
+}
+.wc-stats-pills .subnav-pill.active {
+  color: #fff;
+  background: var(--subnav-accent);
+  border-color: var(--subnav-accent);
+}
 
 .wc-stats-panel { display: none; animation: wc-fadeInUp .22s ease both; }
 .wc-stats-panel.active { display: block; }
@@ -3108,7 +3109,7 @@ body.game-worldcup {
 .wc-imp-row:hover { background: var(--bg-muted); }
 
 @media (max-width: 767px) {
-  .wc-stats-tab-bar { top: 86px; }
+  .wc-stats-pills { top: 86px; }
   .wc-kpi-value { font-size: 2rem; }
 }
 
