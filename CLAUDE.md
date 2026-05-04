@@ -172,6 +172,7 @@ venv/bin/python -m pytest tests/test_worldcup_scoring.py  # Scoring engine tests
 venv/bin/python -m pytest tests/test_worldcup_admin.py    # Admin + public route tests
 venv/bin/python -m pytest tests/test_post_deadline_ui.py  # Post-deadline UI tests
 venv/bin/python -m pytest tests/test_worldcup_stats.py    # Stats Hub service + route tests
+venv/bin/python -m pytest tests/test_worldcup_leaderboard.py  # Leaderboard route + Your Standing + Trend gate
 ```
 
 No linter configured.
