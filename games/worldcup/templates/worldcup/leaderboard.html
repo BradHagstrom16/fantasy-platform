@@ -39,7 +39,6 @@
     <p class="your-standing-caption mb-0">{{ your_standing.caption }}</p>
   </div>
   {% endif %}
-  {# Plan 3 Task 4 will mount the Trend column inside the desktop table + mobile cards #}
 
   {% if ranked_enrollments %}
 
@@ -53,6 +52,9 @@
               <th style="width:60px">#</th>
               <th>Player</th>
               <th class="text-end">Points</th>
+              {% if show_trend_column %}
+              <th class="text-end">Trend</th>
+              {% endif %}
               {% if deadline_passed %}
               <th class="text-end">Tiebreaker</th>
               {% endif %}
@@ -76,6 +78,20 @@
                 {% endif %}
               </td>
               <td class="text-end fw-bold wc-numeral">{{ "%.1f"|format(e.total_score) }}</td>
+              {% if show_trend_column %}
+              <td class="text-end leaderboard-trend">
+                {% set t = trend_by_enrollment.get(e.id) %}
+                {% if t is none %}
+                <span class="text-muted">—</span>
+                {% elif t > 0 %}
+                <span class="leaderboard-trend-up wc-numeral">+{{ "%.1f"|format(t) }}</span>
+                {% elif t < 0 %}
+                <span class="leaderboard-trend-down wc-numeral">{{ "%.1f"|format(t) }}</span>
+                {% else %}
+                <span class="text-muted">—</span>
+                {% endif %}
+              </td>
+              {% endif %}
               {% if deadline_passed %}
               <td class="text-end text-muted">{{ e.usa_goals_guess if e.usa_goals_guess is not none else '—' }}</td>
               {% endif %}
@@ -106,8 +122,20 @@
               {{ e.get_display_name() }}
             </a>
             {% endif %}
+            {% if show_trend_column %}
+            {% set t = trend_by_enrollment.get(e.id) %}
+            {% if t is none %}
+            <small class="text-muted">Trend: —</small>
+            {% elif t > 0 %}
+            <small class="leaderboard-trend-up">Trend: <span class="wc-numeral">+{{ "%.1f"|format(t) }}</span></small>
+            {% elif t < 0 %}
+            <small class="leaderboard-trend-down">Trend: <span class="wc-numeral">{{ "%.1f"|format(t) }}</span></small>
+            {% else %}
+            <small class="text-muted">Trend: —</small>
+            {% endif %}
+            {% endif %}
             {% if deadline_passed and e.usa_goals_guess is not none %}
-            <small class="text-muted">TB: {{ e.usa_goals_guess }}</small>
+            <small class="text-muted ms-2">TB: {{ e.usa_goals_guess }}</small>
             {% endif %}
           </div>
         </div>

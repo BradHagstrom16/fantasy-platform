@@ -3212,6 +3212,18 @@ body.game-worldcup {
   .your-standing-points-numeral { font-size: 1.6rem; }
 }
 
+/* Plan 3: Trend column (gated, count(distinct captured_date) >= 7)
+   --------------------------------------------------------------- */
+.leaderboard-trend-up {
+  color: #1A7A45;
+  font-weight: 600;
+}
+
+.leaderboard-trend-down {
+  color: var(--game-accent);
+  font-weight: 600;
+}
+
 /* ── 3. Keyframe Animations ─────────────────────────────── */
 @keyframes fadeInUp {
   from { opacity: 0; transform: translateY(18px); }
