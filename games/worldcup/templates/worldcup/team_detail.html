@@ -5,22 +5,139 @@
 <div class="page-hero wc-hero-grad">
   <div class="hero-glow"></div>
   <div class="container">
-    <span class="wc-eyebrow wc-eyebrow-red">{{ team.fifa_code }} · Group {{ team.group_letter }}</span>
-    <h1>
-      <span class="me-2 fs-1">{{ team.flag_emoji }}</span>{{ team.display_name }}
+    <span class="wc-eyebrow wc-eyebrow-red">
+      {{ team.fifa_code }} · Group {{ team.group_letter }} · Tier {{ team.tier }}
+    </span>
+    <h1 class="d-flex align-items-center gap-3">
+      <span class="team-hero-flag">{{ team.flag_emoji }}</span>
+      {{ team.display_name }}
     </h1>
+    <div class="team-hero-stats">
+      <div class="hero-stat">
+        <span class="wc-eyebrow">Tier</span>
+        <strong>
+          <span class="wc-tier-dot wc-tier-dot-{{ team.tier }}"></span>
+          <span class="wc-numeral">{{ team.tier }}</span>
+        </strong>
+      </div>
+      <div class="hero-stat">
+        <span class="wc-eyebrow">Multiplier</span>
+        <strong><span class="wc-multiplier-chip">×{{ team.multiplier }}</span></strong>
+      </div>
+      <div class="hero-stat">
+        <span class="wc-eyebrow">Base</span>
+        <strong class="wc-numeral">{{ "%.1f"|format(team.base_points) }}</strong>
+      </div>
+      <div class="hero-stat">
+        <span class="wc-eyebrow">Scored</span>
+        <strong class="wc-numeral">{{ "%.1f"|format(team.multiplied_points) }}</strong>
+      </div>
+    </div>
   </div>
 </div>
 
 <div class="container pb-5">
   <div class="row justify-content-center">
     <div class="col-lg-8">
+
       <div class="mb-3">
         <a href="{{ url_for('worldcup.leaderboard') }}" class="back-link">
           <i class="bi bi-arrow-left me-1"></i>Back to Board
         </a>
       </div>
-      <p class="text-muted small">Team detail under construction (Plan 2 Tasks 5–6).</p>
+
+      {# ── Ownership ribbon ────────────────────────────────────────────── #}
+      {# Three branches per spec D11:
+           1. user_owns           → red ribbon with "You Own This Nation" + count/percent
+           2. deadline_passed     → ribbon with count/percent only (no names here)
+           3. pre-deadline + non-owner → ribbon entirely hidden #}
+      {% if user_owns or (deadline_passed and ownership.count > 0) %}
+      <div class="ownership-ribbon {% if user_owns %}ownership-ribbon-owned{% endif %} animate-in mb-4">
+        {% if user_owns %}
+        <div>
+          <span class="wc-eyebrow wc-eyebrow-red">You Own This Nation</span>
+          <div class="small text-muted mt-1">Counts toward your roster.</div>
+        </div>
+        {% else %}
+        <div>
+          <span class="wc-eyebrow">Roster ownership</span>
+          <div class="small text-muted mt-1">Across the Club this tournament.</div>
+        </div>
+        {% endif %}
+        {% if deadline_passed %}
+        <div class="ownership-ribbon-stat">
+          <div class="wc-numeral ownership-ribbon-count">{{ ownership.count }}</div>
+          <div class="wc-eyebrow">{{ "%.1f"|format(ownership.percent) }}% of Club</div>
+        </div>
+        {% endif %}
+      </div>
+      {% endif %}
+
+      {# ── Tournament Fixtures ─────────────────────────────────────────── #}
+      <section class="mb-4">
+        <span class="wc-eyebrow">Tournament fixtures</span>
+        <h3 class="mb-3">Match log</h3>
+
+        {% if matches %}
+        <div class="card border-0 shadow-sm wc-card wc-card-flush">
+          <div class="card-body p-0">
+            <ul class="list-unstyled m-0 fixture-list">
+              {% set ns = namespace(next_set=false) %}
+              {% for match in matches %}
+                {% set is_team_home = match.home_team_id == team.id %}
+                {% set opponent = match.away_team if is_team_home else match.home_team %}
+                {% set match_pts = points_by_match.get(match.id, 0.0) %}
+                {# Mark first not-completed match as "Next" #}
+                {% set is_next = (not match.is_completed) and (not ns.next_set) %}
+                {% if is_next %}{% set ns.next_set = true %}{% endif %}
+                <li class="fixture-row {% if is_next %}fixture-row-next{% endif %}">
+                  <div class="fixture-stage">
+                    <span class="wc-eyebrow">{{ stage_label(match.stage) }}</span>
+                    {% if match_dates_ct.get(match.id) %}
+                    <small class="text-muted d-block">{{ match_dates_ct[match.id] }}</small>
+                    {% endif %}
+                  </div>
+                  <div class="fixture-opponent">
+                    <span class="text-muted small me-1">{% if is_team_home %}vs{% else %}@{% endif %}</span>
+                    {% if opponent %}
+                      <span class="me-1">{{ opponent.flag_emoji }}</span>{{ opponent.fifa_code }}
+                    {% else %}
+                      <span class="text-muted">TBD</span>
+                    {% endif %}
+                  </div>
+                  <div class="fixture-result wc-numeral">
+                    {% if match.is_completed %}
+                      {% if is_team_home %}{{ match.home_score }}–{{ match.away_score }}{% else %}{{ match.away_score }}–{{ match.home_score }}{% endif %}
+                    {% else %}
+                      <span class="text-muted">—</span>
+                    {% endif %}
+                  </div>
+                  <div class="fixture-pts wc-numeral {% if match_pts > 0 %}text-success{% elif match_pts < 0 %}text-danger{% endif %}">
+                    {% if match.is_completed %}
+                      {{ "+%.1f"|format(match_pts) if match_pts >= 0 else "%.1f"|format(match_pts) }}
+                    {% else %}
+                      <span class="text-muted">—</span>
+                    {% endif %}
+                  </div>
+                  {% if is_next %}
+                  <div class="fixture-next-pip wc-eyebrow wc-eyebrow-red">Next</div>
+                  {% endif %}
+                </li>
+              {% endfor %}
+            </ul>
+          </div>
+        </div>
+        {% else %}
+        <p class="text-muted">No fixtures available.</p>
+        {% endif %}
+      </section>
+
+      {# ── Path to the Crown (Task 6) ──────────────────────────────────── #}
+      {# Path-to-crown section is added in Task 6. #}
+
+      {# ── Who Picked This (Task 6, post-deadline only) ─────────────────── #}
+      {# Picker list section is added in Task 6. #}
+
     </div>
   </div>
 </div>

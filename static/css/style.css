@@ -2327,6 +2327,76 @@ body.game-worldcup {
   border-bottom-color: var(--wc-red);
 }
 
+/* Spec C Plan 2 — team_detail hero + ownership ribbon + fixture list */
+.team-hero-flag {
+  font-size: 2.4rem;
+  line-height: 1;
+}
+
+/* Ownership ribbon — flex row, label/blurb on left, count on right.
+   Owned-variant carries the red border + tinted gradient to signal personal ownership. */
+.ownership-ribbon {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: .85rem 1rem;
+  border: 1px solid rgba(245, 241, 232, .1);
+  border-radius: 6px;
+  background: rgba(0, 17, 46, .6);
+}
+.ownership-ribbon-owned {
+  border-color: var(--wc-red);
+  background: linear-gradient(90deg,
+              rgba(191, 10, 48, .15) 0%,
+              rgba(0, 17, 46, .6) 100%);
+}
+.ownership-ribbon-stat {
+  text-align: right;
+  flex-shrink: 0;
+}
+.ownership-ribbon-count {
+  font-size: 1.6rem;
+  line-height: 1;
+  color: var(--wc-white);
+  font-weight: 700;
+}
+
+/* Fixture row grid — 4-col layout: stage / opponent / score / points.
+   Mobile compresses to 80/1fr/50/50 with reduced padding. */
+.fixture-list { padding: 0; }
+.fixture-row {
+  display: grid;
+  grid-template-columns: 110px 1fr 60px 60px;
+  gap: .75rem;
+  align-items: center;
+  padding: .65rem 1rem;
+  border-bottom: 1px solid rgba(245, 241, 232, .05);
+  position: relative;
+}
+.fixture-row:last-child { border-bottom: none; }
+.fixture-row-next {
+  background: rgba(191, 10, 48, .08);
+  box-shadow: inset 3px 0 0 var(--wc-red);
+}
+.fixture-stage { line-height: 1.2; }
+.fixture-result { text-align: right; }
+.fixture-pts { text-align: right; font-weight: 700; }
+.fixture-next-pip {
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  font-size: .6rem;
+}
+
+@media (max-width: 575.98px) {
+  .fixture-row {
+    grid-template-columns: 80px 1fr 50px 50px;
+    padding: .55rem .75rem;
+    gap: .5rem;
+  }
+}
+
 /* === WORLD CUP FANTASY POOL === */
 
 /* World Cup table — navy header, patriot blue accent */
