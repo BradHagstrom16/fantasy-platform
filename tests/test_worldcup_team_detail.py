@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 from app import create_app
 from extensions import db
 from models.user import User
+from games.worldcup.constants import SEASON_YEAR
 from games.worldcup.models import (
     WorldCupEnrollment, WorldCupTeam, WorldCupPick, WorldCupMatch,
 )
@@ -49,7 +50,7 @@ def _seed_owner_with_pick(app, team_id, username='owner'):
         u.set_password('pass')
         db.session.add(u)
         db.session.flush()
-        e = WorldCupEnrollment(user_id=u.id, season_year=2026, picks_submitted=True)
+        e = WorldCupEnrollment(user_id=u.id, season_year=SEASON_YEAR, picks_submitted=True)
         db.session.add(e)
         db.session.flush()
         p = WorldCupPick(enrollment_id=e.id, team_id=team_id, tier=1)
@@ -228,4 +229,51 @@ def test_team_detail_score_events_match_canonical_helper(client, app):
     )
     assert re.search(pattern, resp.data), (
         f'expected Base stat block to render {base_str!r}'
+    )
+
+
+def test_team_detail_fixture_pts_apply_multiplier(client, app):
+    """Per-match fixture-pts column displays base × team.multiplier so the unit
+    matches the hero's 'Scored' stat. Without the multiplier, a tier-5 team's
+    group win would show '+3.0' in the match log while the hero reports
+    '+21.0' Scored — confusing and easy to misread as undercounting."""
+    from games.worldcup.constants import GROUP_WIN
+
+    with app.app_context():
+        # Tier 5 team (multiplier 7.0) — pick a multiplier that makes
+        # base vs multiplied unambiguously distinguishable.
+        team = WorldCupTeam(
+            fifa_code='SAU', name='SAU', display_name='SAU',
+            tier=5, multiplier=7.0, confederation='AFC',
+            group_letter='A',
+        )
+        opponent = WorldCupTeam(
+            fifa_code='AUS', name='AUS', display_name='AUS',
+            tier=4, multiplier=4.0, confederation='AFC',
+            group_letter='A',
+        )
+        db.session.add_all([team, opponent])
+        db.session.flush()
+        m = WorldCupMatch(
+            match_number=42, stage='group', group_letter='A',
+            home_team_id=team.id, away_team_id=opponent.id,
+            home_score=1, away_score=0, is_completed=True,
+            winner_team_id=team.id, is_draw=False,
+        )
+        db.session.add(m)
+        team.group_wins = 1
+        team.base_points = float(GROUP_WIN)  # base = 3
+        db.session.commit()
+        team_id = team.id
+
+    resp = client.get(f'/worldcup/team/{team_id}')
+    assert resp.status_code == 200
+    # Multiplied points = 3 × 7 = 21.0. Base (3.0) must NOT appear in the
+    # fixture-pts cell — only the multiplied display value.
+    pattern = (
+        rb'<div class="fixture-pts wc-numeral[^"]*">\s*\+21\.0\s*</div>'
+    )
+    assert re.search(pattern, resp.data), (
+        'fixture-pts cell expected to render multiplied points (+21.0) for '
+        'a tier-5 group win, not raw base points'
     )

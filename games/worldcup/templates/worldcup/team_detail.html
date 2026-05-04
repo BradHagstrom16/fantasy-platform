@@ -86,7 +86,14 @@
               {% for match in matches %}
                 {% set is_team_home = match.home_team_id == team.id %}
                 {% set opponent = match.away_team if is_team_home else match.home_team %}
-                {% set match_pts = points_by_match.get(match.id, 0.0) %}
+                {# points_by_match holds raw base points (compute_team_score_events
+                   keeps base as the SSoT; multiplier is applied at display time
+                   per the route's points_by_match comment). The hero's "Scored"
+                   stat is base × multiplier, so we multiply per-match here too
+                   to keep the fixture-pts column in the same unit — otherwise a
+                   tier-5 team would show "+3" per group win while the hero
+                   reports "+21" total Scored. #}
+                {% set match_pts = (points_by_match.get(match.id, 0.0) * team.multiplier)|round(1) %}
                 {# Mark first not-completed match as "Next" #}
                 {% set is_next = (not match.is_completed) and (not ns.next_set) %}
                 {% if is_next %}{% set ns.next_set = true %}{% endif %}

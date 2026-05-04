@@ -45,7 +45,7 @@ Expected: log shows `6434cae` (Plan 1 squash); style.css contains `.wc-eyebrow`,
 ENVIRONMENT=testing venv/bin/python -m pytest tests/ -q
 ```
 
-Expected: all 150 tests pass. If any fail, stop and investigate before proceeding — they are baseline regressions, not introduced by this plan.
+Expected: all baseline tests pass. If any fail, stop and investigate before proceeding — they are baseline regressions, not introduced by this plan. Capture the count locally to compare against deltas in later steps.
 
 - [ ] **Step 4: Verify pyright is clean on the WC blueprint**
 
@@ -273,7 +273,7 @@ venv/bin/pyright games/worldcup/
 ENVIRONMENT=testing venv/bin/python -m pytest tests/ -q
 ```
 
-Expected: pyright 0 errors; all tests green (155 = 150 baseline + 5 new).
+Expected: pyright 0 errors; all tests pass — baseline + 5 new ranking tests.
 
 - [ ] **Step 5: Commit**
 
@@ -571,7 +571,7 @@ venv/bin/pyright games/worldcup/
 ENVIRONMENT=testing venv/bin/python -m pytest tests/ -q
 ```
 
-Expected: pyright 0 errors; all 155 tests pass.
+Expected: pyright 0 errors; all tests pass (no Task 2 deltas yet — pure UI reskin).
 
 - [ ] **Step 7: Commit**
 
@@ -1185,7 +1185,7 @@ venv/bin/pyright games/worldcup/
 ENVIRONMENT=testing venv/bin/python -m pytest tests/ -q
 ```
 
-Expected: 0 errors; **170 tests pass** (155 + 15 new).
+Expected: 0 errors; all tests pass — baseline + ~15 new team_detail_service tests added in this task (the exact count depends on which edge-case tests you keep).
 
 - [ ] **Step 5: Commit**
 
@@ -1511,7 +1511,7 @@ venv/bin/pyright games/worldcup/
 ENVIRONMENT=testing venv/bin/python -m pytest tests/ -q
 ```
 
-Expected: 0 errors; 174 tests pass (170 + 4 new).
+Expected: 0 errors; all tests pass — baseline + 4 new team_detail route tests.
 
 - [ ] **Step 8: Commit**
 
@@ -1775,7 +1775,7 @@ venv/bin/pyright games/worldcup/
 ENVIRONMENT=testing venv/bin/python -m pytest tests/ -q
 ```
 
-Expected: 0 errors; 167 tests pass.
+Expected: 0 errors; all tests pass (Task 5 is pure template/CSS — no test deltas).
 
 - [ ] **Step 5: Commit**
 
@@ -2068,7 +2068,7 @@ venv/bin/pyright games/worldcup/
 ENVIRONMENT=testing venv/bin/python -m pytest tests/ -q
 ```
 
-Expected: 0 errors; 173 tests pass (167 + 6 new).
+Expected: 0 errors; all tests pass — baseline + 6 new privacy/parity tests for Task 6.
 
 - [ ] **Step 6: Visual smoke**
 
@@ -2246,7 +2246,7 @@ Plan: `docs/superpowers/plans/2026-05-02-ccc-worldcup-plan-2-per-rival-surfaces.
 
 ## Test plan
 
-- [x] All 173 tests pass (150 baseline + 23 new across ranking/team_detail_service/team_detail)
+- [x] All tests pass — baseline + ~23 new across ranking/team_detail_service/team_detail (ranking + service-layer + route tests + privacy/parity)
 - [x] `pyright` clean on `games/worldcup/`
 - [x] Manual visual checklist passed for every touched surface at 375px and 1280px
 - [x] Pre-deadline ownership privacy verified — count, percent, and picker names all hidden for non-owners (test + manual)
