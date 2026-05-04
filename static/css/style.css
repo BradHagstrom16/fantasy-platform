@@ -3112,6 +3112,32 @@ body.game-worldcup {
   .wc-kpi-value { font-size: 2rem; }
 }
 
+/* Plan 3: leaderboard reskin — table + mobile cards
+   ------------------------------------------------- */
+.leaderboard-table thead th {
+  font-family: 'Teko', sans-serif;
+  font-size: .85rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.leaderboard-rank {
+  font-size: 1.3rem;
+  min-width: 2rem;
+}
+
+.leaderboard-score {
+  font-size: 1.4rem;
+  letter-spacing: .03em;
+}
+
+/* Multi-class: wins specificity over the bare .card.wc-card border rule.
+   See CLAUDE.md "CSS specificity for utility classes". */
+.card.wc-card.leaderboard-card-current {
+  border-left: 3px solid var(--game-accent) !important;
+}
+
 /* ── 3. Keyframe Animations ─────────────────────────────── */
 @keyframes fadeInUp {
   from { opacity: 0; transform: translateY(18px); }
