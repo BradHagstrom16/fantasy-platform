@@ -3254,6 +3254,22 @@ body.game-worldcup {
   color: rgba(245, 241, 232, .55) !important;
 }
 
+/* Trend colors fail on dark navy: the light-page palette
+   (#1A7A45 / #BF0A30) reads dark-on-dark inside .leaderboard-card and
+   on the .row-current-user solid-navy override. Lift to the live-state
+   tokens (--live-green / --live-red) only on those two surfaces.
+   Don't broadcast to .card.wc-card .leaderboard-trend-* — that would
+   match desktop non-current rows where Bootstrap's white td bg paints
+   over the navy, making the lighter colors low-contrast on white. */
+.leaderboard-card .leaderboard-trend-up,
+.card.wc-card .leaderboard-table .row-current-user > td .leaderboard-trend-up {
+  color: var(--live-green);
+}
+.leaderboard-card .leaderboard-trend-down,
+.card.wc-card .leaderboard-table .row-current-user > td .leaderboard-trend-down {
+  color: var(--live-red);
+}
+
 /* ── 3. Keyframe Animations ─────────────────────────────── */
 @keyframes fadeInUp {
   from { opacity: 0; transform: translateY(18px); }
