@@ -51,7 +51,7 @@
            1. user_owns           → red ribbon with "You Own This Nation" + count/percent
            2. deadline_passed     → ribbon with count/percent only (no names here)
            3. pre-deadline + non-owner → ribbon entirely hidden #}
-      {% if user_owns or (deadline_passed and ownership.count > 0) %}
+      {% if user_owns or deadline_passed %}
       <div class="ownership-ribbon {% if user_owns %}ownership-ribbon-owned{% endif %} animate-in mb-4">
         {% if user_owns %}
         <div>

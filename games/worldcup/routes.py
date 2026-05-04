@@ -357,12 +357,15 @@ def leaderboard():
         .all()
     )
 
+    # Dense rank: tied scores share a rank and the next distinct score is
+    # rank+1 (no gap). Matches compute_rank_neighbors() so a player's rank
+    # on the board agrees with /worldcup/leaderboard/<id> hero rank.
     ranked = []
     current_rank = 0
     prev_score = None
-    for i, e in enumerate(enrollments):
+    for e in enrollments:
         if e.total_score != prev_score:
-            current_rank = i + 1
+            current_rank += 1
         ranked.append({'rank': current_rank, 'enrollment': e})
         prev_score = e.total_score
 
@@ -378,7 +381,12 @@ def leaderboard():
 @worldcup_bp.route('/leaderboard/<int:enrollment_id>')
 def player_detail(enrollment_id):
     """One player's 9 picks with per-team scores and drill-down events."""
-    enrollment = db.get_or_404(WorldCupEnrollment, enrollment_id)
+    # Restrict to the current SEASON_YEAR pool — compute_rank_neighbors() raises
+    # ValueError for stale-season enrollments, which would surface as a 500
+    # after season rollover. 404 is the correct user-facing response.
+    enrollment = WorldCupEnrollment.query.filter_by(
+        id=enrollment_id, season_year=SEASON_YEAR
+    ).first_or_404()
     deadline_passed = now_utc() >= TOURNAMENT_DEADLINE_UTC
 
     is_owner = (
@@ -469,16 +477,19 @@ def team_detail(team_id):
     path = compute_path_to_crown(team)
 
     # Picker links: post-deadline only, list of (display_name, enrollment_id) for
-    # "Who Picked This". joinedload() eager-loads enrollment so the per-pick
-    # get_display_name() walk doesn't trigger N+1 lazy SELECTs (CLAUDE.md
-    # stats-layer rule: never traverse enrollment.picks-style relationships
-    # in public analytics paths).
+    # "Who Picked This". The joinedload chain eager-loads enrollment AND its
+    # user so get_display_name()'s null-display-name fallback to user.username
+    # doesn't trigger N+1 lazy SELECTs (CLAUDE.md stats-layer rule: never
+    # traverse enrollment.picks-style relationships in public analytics paths).
     picker_links: list[tuple[str, int]] = []
     if deadline_passed:
         picks = (
             WorldCupPick.query
             .join(WorldCupEnrollment)
-            .options(joinedload(WorldCupPick.enrollment))
+            .options(
+                joinedload(WorldCupPick.enrollment)
+                .joinedload(WorldCupEnrollment.user)
+            )
             .filter(
                 WorldCupPick.team_id == team_id,
                 WorldCupEnrollment.season_year == SEASON_YEAR,

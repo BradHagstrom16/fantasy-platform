@@ -559,8 +559,7 @@ Visit `/worldcup/leaderboard` → click any player. Verify on mobile (375px) + d
 - Stat grid shows Total / Lead / Tiebreak with Teko numerals
 - Back link reads "Back to Board"
 - Desktop table renders with `_pick_row.html` (Plan 1's reskinned partial)
-- Mobile cards include tier dot + tier eyebrow above team name; team name is a dotted-underline link
-- Click a mobile team name → currently 404s (route lands in Task 4). For now, expected behavior is *the link exists* (the 404 is acceptable mid-plan)
+- Mobile cards include tier dot + tier eyebrow above team name; team name renders as plain text in this task — Task 4 Step 5 wraps it in the dotted-underline link to `team_detail` (deferred to avoid `url_for()` `BuildError` before the route lands)
 - Pre-deadline + non-owner → roster-hidden card shows "Roster sealed" eyebrow + lock icon
 
 If the lock card or stat blocks look unstyled, the Plan 1 foundation utility cascade is broken — re-run the verification step from Task 0 step 2.
@@ -2180,7 +2179,7 @@ Refs Spec C Plan 2."
 ENVIRONMENT=testing venv/bin/python -m pytest tests/ -v
 ```
 
-Expected: 173 tests pass (150 baseline + 5 ranking + 8 team_detail_service + 10 team_detail route).
+Expected: all tests pass — baseline + Plan 2 deltas (5 ranking + 8 team_detail_service + 10 team_detail route + any privacy/parity tests added during execution). Don't anchor to a fixed total; the baseline shifts as other PRs land.
 
 - [ ] **Step 2: Run pyright on the entire WC blueprint**
 

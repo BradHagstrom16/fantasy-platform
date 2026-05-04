@@ -4,6 +4,7 @@ import pytest
 from app import create_app
 from extensions import db
 from models.user import User
+from games.worldcup.constants import SEASON_YEAR
 from games.worldcup.models import WorldCupEnrollment
 from games.worldcup.services.ranking import compute_rank_neighbors
 
@@ -27,7 +28,7 @@ def _seed_enrollments(scores: list[float]) -> list[int]:
         db.session.add(u)
         db.session.flush()
         e = WorldCupEnrollment(
-            user_id=u.id, season_year=2026,
+            user_id=u.id, season_year=SEASON_YEAR,
             picks_submitted=True, total_score=score,
             usa_goals_guess=5,
         )
