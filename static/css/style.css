@@ -3225,6 +3225,35 @@ body.game-worldcup {
   font-weight: 600;
 }
 
+/* Plan 3 follow-up: legibility fixes for the dark .card.wc-card surface.
+   Bootstrap's .table tbody td paints opaque white over the navy so plain
+   data rows are fine — the actually-low-contrast surfaces are:
+     1. <thead th> (no td bg, sits directly on navy)
+     2. .row-current-user > td (translucent gold tint, navy bleeds through)
+     3. .leaderboard-card mobile cards (no inner table to mask the navy)
+   Keeping the dark "premium dossier" look; only fixing readability. */
+.card.wc-card .leaderboard-table thead th {
+  color: rgba(245, 241, 232, .82);
+}
+.card.wc-card .leaderboard-table .row-current-user > td {
+  background: rgba(0, 26, 77, .85) !important;
+  color: var(--wc-white);
+}
+.card.wc-card .leaderboard-table .row-current-user > td a {
+  color: var(--wc-white);
+}
+.card.wc-card .leaderboard-table .row-current-user > td .text-muted {
+  color: rgba(245, 241, 232, .55) !important;
+}
+
+.leaderboard-card,
+.leaderboard-card a {
+  color: var(--wc-white);
+}
+.leaderboard-card .text-muted {
+  color: rgba(245, 241, 232, .55) !important;
+}
+
 /* ── 3. Keyframe Animations ─────────────────────────────── */
 @keyframes fadeInUp {
   from { opacity: 0; transform: translateY(18px); }

@@ -25,7 +25,7 @@ PAST_DEADLINE = datetime(2000, 1, 1, tzinfo=timezone.utc)
 FUTURE_DEADLINE = datetime(2099, 1, 1, tzinfo=timezone.utc)
 
 
-@pytest.fixture()
+@pytest.fixture
 def app():
     app = create_app('testing')
     with app.app_context():
@@ -35,7 +35,7 @@ def app():
         db.drop_all()
 
 
-@pytest.fixture()
+@pytest.fixture
 def client(app):
     return app.test_client()
 
@@ -197,6 +197,50 @@ def test_trend_column_hidden_when_fewer_than_seven_snapshots(client, app):
     # The literal column header "Trend" must not appear in the desktop table
     # OR mobile-card line — but other usages of the word "trend" in templates
     # are fine. Gate by the unique <th> markup.
+    assert b'<th class="text-end">Trend</th>' not in resp.data
+
+
+def test_trend_column_gate_scoped_to_active_season(client, app):
+    """Snapshots from a previous season must not open the gate for the active season.
+
+    Without season-scoping, prior-cup snapshots would falsely satisfy the
+    >= 7 distinct captured_date threshold at the start of a new season.
+    """
+    with app.app_context():
+        # Active-season enrollment with only 3 snapshot days — gate must stay closed.
+        active_user = _seed_user('alice')
+        active_e = _seed_enrollment(active_user.id, score=50.0)
+        today = date.today()
+        for i in range(3):
+            _seed_snapshot(
+                enrollment_id=active_e.id,
+                captured_date=today - timedelta(days=i + 1),
+                rank=1,
+                total_score=40.0,
+            )
+
+        # Prior-season enrollment with 10 distinct days — must NOT count toward the gate.
+        prior_user = _seed_user('archie')
+        prior_e = WorldCupEnrollment(
+            user_id=prior_user.id,
+            season_year=SEASON_YEAR - 4,  # prior World Cup
+            picks_submitted=True, total_score=99.0,
+            usa_goals_guess=5,
+        )
+        db.session.add(prior_e)
+        db.session.flush()
+        for i in range(10):
+            _seed_snapshot(
+                enrollment_id=prior_e.id,
+                captured_date=date(2022, 11, 20) + timedelta(days=i),
+                rank=1,
+                total_score=10.0 + i,
+            )
+        db.session.commit()
+        resp = client.get('/worldcup/leaderboard')
+    assert resp.status_code == 200
+    # Active season has only 3 days of snapshot history — Trend column stays closed
+    # despite the 10 prior-season days that exist in the table.
     assert b'<th class="text-end">Trend</th>' not in resp.data
 
 

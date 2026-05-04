@@ -397,13 +397,21 @@ def _your_standing_caption(neighbors):
 
 
 def _show_trend_column():
-    """True if count(distinct captured_date) >= 7 across all snapshots.
+    """True if count(distinct captured_date) >= 7 within the active season.
 
-    Per ambiguity-A1 resolution: a single global gate, not per-user.
+    Per ambiguity-A1 resolution: a single global gate, not per-user. The
+    season filter (joined via WorldCupEnrollment.season_year == SEASON_YEAR)
+    is forward-compat for multi-season — without it, snapshots from a prior
+    World Cup would falsely satisfy the gate at the start of the next one.
     Mirrors Spec B's >= 7 gating on the home-page sparkline.
     """
     distinct_days = (
         db.session.query(func.count(distinct(WorldCupRankSnapshot.captured_date)))
+        .join(
+            WorldCupEnrollment,
+            WorldCupEnrollment.id == WorldCupRankSnapshot.enrollment_id,
+        )
+        .filter(WorldCupEnrollment.season_year == SEASON_YEAR)
         .scalar() or 0
     )
     return distinct_days >= 7
