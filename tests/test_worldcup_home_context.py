@@ -20,7 +20,10 @@ from games.worldcup.services.home_context import (
     _context_post,
 )
 from games.worldcup.services.scoring import points_for_pick_on_match
-from tests._worldcup_fixtures import make_user, make_enrollment, seed_full_tournament
+from games.worldcup.models import WorldCupMatch
+from tests._worldcup_fixtures import (
+    make_enrollment, make_match, make_user, seed_full_tournament,
+)
 
 
 @pytest.fixture()
@@ -94,7 +97,6 @@ def test_context_out_authenticated_unenrolled_live(app):
 def test_context_out_authenticated_unenrolled_post(app):
     user = make_user()
     # Mark final complete to trigger 'post' phase
-    from games.worldcup.models import WorldCupMatch
     final = WorldCupMatch(match_number=104, stage='final', is_completed=True)
     db.session.add(final)
     db.session.commit()
@@ -309,7 +311,6 @@ def test_context_live_recent_matches_has_points_earned(app):
     seed = seed_full_tournament(num_enrollments=2)
     user = seed['users'][0]
     # Mark a match completed so it shows up in recent_matches
-    from tests._worldcup_fixtures import make_match
     teams = seed['teams']
     make_match(
         match_number=1, home_team=teams[0], away_team=teams[5],
@@ -347,7 +348,6 @@ def test_context_live_recent_matches_sums_when_both_teams_are_picks(app):
     # (tier 1) and teams[5] (tier 2) — both in the user's roster, different
     # tiers. Use a draw so BOTH picks earn positive points (otherwise the
     # loser earns 0 and the test wouldn't actually exercise the bug).
-    from tests._worldcup_fixtures import make_match
     match = make_match(
         match_number=1, home_team=teams[0], away_team=teams[5],
         is_completed=True, home_score=1, away_score=1, winner_team=None,
@@ -423,7 +423,6 @@ def test_dispatcher_routes_to_post_builder(app):
     seed = seed_full_tournament(num_enrollments=2)
     user = seed['users'][0]
     teams = seed['teams']
-    from tests._worldcup_fixtures import make_match
     make_match(
         match_number=104, stage='final',
         home_team=teams[0], away_team=teams[1],
@@ -442,7 +441,6 @@ def test_context_post_includes_champion_team(app):
     user = seed['users'][0]
     teams = seed['teams']
     # Mark final completed with a winner
-    from tests._worldcup_fixtures import make_match
     make_match(
         match_number=104, stage='final',
         home_team=teams[0], away_team=teams[1],
@@ -456,13 +454,13 @@ def test_context_post_includes_champion_team(app):
     assert ctx['state'] == 'post'
     assert ctx['champion_team'] is not None
     assert ctx['champion_team'].id == teams[0].id
+    assert ctx['final_match'].match_number == 104
 
 
 def test_context_post_champion_summary_includes_score(app):
     seed = seed_full_tournament(num_enrollments=2)
     user = seed['users'][0]
     teams = seed['teams']
-    from tests._worldcup_fixtures import make_match
     make_match(
         match_number=104, stage='final',
         home_team=teams[0], away_team=teams[1],
@@ -473,14 +471,13 @@ def test_context_post_champion_summary_includes_score(app):
     fake_post = (TOURNAMENT_DEADLINE_UTC + timedelta(days=40)).isoformat()
     with patch.dict(os.environ, {'WC_FAKE_NOW': fake_post}):
         ctx = _context_post(user=user)
-    assert '3' in ctx['champion_summary'] and '1' in ctx['champion_summary']
+    assert '3–1' in ctx['champion_summary']
 
 
 def test_context_post_branch_champion_for_rank_one(app):
     seed = seed_full_tournament(num_enrollments=5)
     user = seed['users'][0]
     teams = seed['teams']
-    from tests._worldcup_fixtures import make_match
     make_match(
         match_number=104, stage='final',
         home_team=teams[0], away_team=teams[1],
@@ -497,7 +494,6 @@ def test_context_post_branch_top_3_for_rank_two(app):
     seed = seed_full_tournament(num_enrollments=5)
     user = seed['users'][1]
     teams = seed['teams']
-    from tests._worldcup_fixtures import make_match
     make_match(
         match_number=104, stage='final',
         home_team=teams[0], away_team=teams[1],
@@ -517,7 +513,6 @@ def test_context_post_roster_recap_marks_champion_pick(app):
     # Pick that user's tier-1 team and use it as champion
     user_picks = seed['picks_by_enr'][seed['enrollments'][0].id]
     champion_pick_team = user_picks[0].team   # tier-1 pick
-    from tests._worldcup_fixtures import make_match
     other = next(t for t in teams if t.id != champion_pick_team.id)
     make_match(
         match_number=104, stage='final',
@@ -539,7 +534,6 @@ def test_context_post_handles_missing_final_gracefully(app):
     seed = seed_full_tournament(num_enrollments=2)
     user = seed['users'][0]
     teams = seed['teams']
-    from tests._worldcup_fixtures import make_match
     # No winner_team — defensive guard path
     make_match(
         match_number=104, stage='final',
@@ -559,7 +553,6 @@ def test_context_post_top_3_final(app):
     seed = seed_full_tournament(num_enrollments=5)
     user = seed['users'][0]
     teams = seed['teams']
-    from tests._worldcup_fixtures import make_match
     make_match(
         match_number=104, stage='final',
         home_team=teams[0], away_team=teams[1],

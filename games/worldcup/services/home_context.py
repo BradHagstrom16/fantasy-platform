@@ -27,7 +27,9 @@ from games.worldcup.services.scoring import (
     compute_team_score_events, points_for_pick_on_match,
 )
 from games.worldcup.services.stage import stage_label
-from games.worldcup.services.state import WorldCupHubState, worldcup_state
+from games.worldcup.services.state import (
+    FINAL_MATCH_NUMBER, WorldCupHubState, worldcup_state,
+)
 from games.worldcup.services.trends import (
     compute_trend_by_enrollment, show_trend_column,
 )
@@ -336,7 +338,7 @@ def _context_post(user: Any) -> dict:
     #   - scores may be None even on is_completed=True (admin oversight)
     # In any of those cases, surface the banner WITHOUT a defeat summary
     # rather than rendering "Defeated X 0-0" or score-flipped nonsense.
-    final_match = WorldCupMatch.query.filter_by(match_number=104).first()
+    final_match = WorldCupMatch.query.filter_by(match_number=FINAL_MATCH_NUMBER).first()
     champion_team = None
     champion_summary = ''
     if final_match and final_match.winner_team_id:
@@ -365,7 +367,7 @@ def _context_post(user: Any) -> dict:
             if loser:
                 champion_summary = (
                     f'Defeated {loser.display_name} '
-                    f'{winner_score}-{loser_score}{suffix}'
+                    f'{winner_score}–{loser_score}{suffix}'
                 )
 
     # Final podium + total
@@ -396,6 +398,8 @@ def _context_post(user: Any) -> dict:
     )
     your_climbed_n = None
     if snapshots and your_final_rank:
+        # May be negative if the player dropped from their first snapshot to final.
+        # Templates must branch on sign rather than always labeling "climbed".
         your_climbed_n = snapshots[0].rank - your_final_rank
 
     # Roster recap — every pick with points + best_finish
@@ -410,7 +414,7 @@ def _context_post(user: Any) -> dict:
     for pick in picks:
         your_roster_recap.append({
             'pick': pick,
-            'tier_name': TIERS[pick.tier]['name'],
+            'tier_name': TIERS[pick.team.tier]['name'],
             'best_finish': pick.team.best_finish or 'Group',
             'points': pick.multiplied_points,
             'is_champion': (
