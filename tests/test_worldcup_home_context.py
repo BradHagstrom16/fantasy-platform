@@ -16,7 +16,7 @@ from games.worldcup.constants import (
     SEASON_YEAR, ENTRY_FEE, TOURNAMENT_DEADLINE_UTC,
 )
 from games.worldcup.services.home_context import (
-    build_worldcup_home_context, _context_out, _context_pre,
+    build_worldcup_home_context, _context_out, _context_pre, _context_live,
 )
 from tests._worldcup_fixtures import make_user, make_enrollment, seed_full_tournament
 
@@ -32,14 +32,13 @@ def app():
 
 
 @pytest.mark.parametrize('state,expected_marker', [
-    ('live', '_marker_live'),
     ('post', '_marker_post'),
 ])
 def test_dispatcher_routes_to_correct_builder(app, state, expected_marker):
     """Each remaining builder stub returns a context dict containing a unique
-    marker key. Assert the dispatcher returns the right one. The 'out' and
-    'pre' branches are implemented (Tasks 6 + 7) and asserted via their
-    real-shape tests below."""
+    marker key. Assert the dispatcher returns the right one. The 'out',
+    'pre', and 'live' branches are implemented (Tasks 6/7/8) and asserted via
+    their real-shape tests below."""
     ctx = build_worldcup_home_context(user=None, state=state)
     assert expected_marker in ctx, (
         f'state={state} expected marker {expected_marker} in context, '
@@ -235,3 +234,137 @@ def test_context_pre_total_enrolled_count(app):
     with patch.dict(os.environ, {'WC_FAKE_NOW': fake_pre}):
         ctx = _context_pre(user=user)
     assert ctx['total_enrolled'] == 5  # 4 + the outsider
+
+
+# =====================================================================
+# Task 8: dispatcher routing to _context_live + builder tests
+# =====================================================================
+
+def test_dispatcher_routes_to_live_builder(app):
+    """The 'live' builder is implemented (Task 8), so the dispatcher should
+    return its real-shape dict (state='live') rather than a stub marker."""
+    seed = seed_full_tournament(num_enrollments=2)
+    user = seed['users'][0]
+    fake_live = (TOURNAMENT_DEADLINE_UTC + timedelta(days=2)).isoformat()
+    with patch.dict(os.environ, {'WC_FAKE_NOW': fake_live}):
+        ctx = build_worldcup_home_context(user=user, state='live')
+    assert ctx['state'] == 'live'
+    assert 'your_standing' in ctx
+    assert 'branch' in ctx
+
+
+def test_context_live_includes_your_standing(app):
+    seed = seed_full_tournament(num_enrollments=5)
+    user = seed['users'][0]  # rank 1
+    fake_live = (TOURNAMENT_DEADLINE_UTC + timedelta(days=2)).isoformat()
+    with patch.dict(os.environ, {'WC_FAKE_NOW': fake_live}):
+        ctx = _context_live(user=user)
+    assert ctx['state'] == 'live'
+    assert ctx['your_standing']['rank'] == 1
+    assert ctx['your_standing']['of_n'] == 5
+    assert ctx['your_standing']['lead_delta_up'] is None  # leader
+    assert ctx['your_standing']['lead_delta_down'] == 5.0  # 100 - 95
+
+
+def test_context_live_branch_for_leader(app):
+    seed = seed_full_tournament(num_enrollments=5)
+    user = seed['users'][0]  # rank 1
+    fake_live = (TOURNAMENT_DEADLINE_UTC + timedelta(days=2)).isoformat()
+    with patch.dict(os.environ, {'WC_FAKE_NOW': fake_live}):
+        ctx = _context_live(user=user)
+    assert ctx['branch'] == 'leader'
+
+
+def test_context_live_branch_for_tail(app):
+    # NOTE: plan spec uses num_enrollments=6; seed_full_tournament caps at 5
+    # (T5 fixup commit 768324e). With 5 enrollments, rank 5 -> tail per
+    # rank_tier(5, 5): 5 > (5*2)//3 = 3 -> True -> 'tail'. users[4] is rank 5.
+    seed = seed_full_tournament(num_enrollments=5)
+    user = seed['users'][4]  # rank 5 of 5 — bottom third
+    fake_live = (TOURNAMENT_DEADLINE_UTC + timedelta(days=2)).isoformat()
+    with patch.dict(os.environ, {'WC_FAKE_NOW': fake_live}):
+        ctx = _context_live(user=user)
+    assert ctx['branch'] == 'tail'
+
+
+def test_context_live_branch_for_chasing(app):
+    seed = seed_full_tournament(num_enrollments=5)
+    user = seed['users'][1]  # rank 2
+    fake_live = (TOURNAMENT_DEADLINE_UTC + timedelta(days=2)).isoformat()
+    with patch.dict(os.environ, {'WC_FAKE_NOW': fake_live}):
+        ctx = _context_live(user=user)
+    assert ctx['branch'] == 'chasing'
+
+
+def test_context_live_top_5_preview(app):
+    # seed_full_tournament caps at 5 enrollments; top-5 here equals all 5.
+    seed = seed_full_tournament(num_enrollments=5)
+    user = seed['users'][0]
+    fake_live = (TOURNAMENT_DEADLINE_UTC + timedelta(days=2)).isoformat()
+    with patch.dict(os.environ, {'WC_FAKE_NOW': fake_live}):
+        ctx = _context_live(user=user)
+    assert len(ctx['top_5_preview']) == 5
+
+
+def test_context_live_user_picks_carry_score_events(app):
+    seed = seed_full_tournament(num_enrollments=2)
+    user = seed['users'][0]
+    fake_live = (TOURNAMENT_DEADLINE_UTC + timedelta(days=2)).isoformat()
+    with patch.dict(os.environ, {'WC_FAKE_NOW': fake_live}):
+        ctx = _context_live(user=user)
+    for pick in ctx['user_picks']:
+        # transient attr — list (may be empty if no scoring data seeded)
+        assert hasattr(pick, 'score_events')
+        assert isinstance(pick.score_events, list)
+
+
+def test_context_live_recent_matches_has_points_earned(app):
+    seed = seed_full_tournament(num_enrollments=2)
+    user = seed['users'][0]
+    # Mark a match completed so it shows up in recent_matches
+    from tests._worldcup_fixtures import make_match
+    teams = seed['teams']
+    make_match(
+        match_number=1, home_team=teams[0], away_team=teams[5],
+        is_completed=True, home_score=2, away_score=1, winner_team=teams[0],
+    )
+    db.session.commit()
+    fake_live = (TOURNAMENT_DEADLINE_UTC + timedelta(days=2)).isoformat()
+    with patch.dict(os.environ, {'WC_FAKE_NOW': fake_live}):
+        ctx = _context_live(user=user)
+    assert len(ctx['recent_matches']) >= 1
+    for entry in ctx['recent_matches']:
+        # entry is a dict with 'match' + 'points_earned' + 'stage_label'
+        assert 'match' in entry
+        assert 'points_earned' in entry  # None or float
+        assert 'stage_label' in entry
+
+
+def test_context_live_trend_gate_closed_when_under_seven_days(app):
+    seed = seed_full_tournament(num_enrollments=2, seed_snapshots=True, snapshot_days=3)
+    user = seed['users'][0]
+    fake_live = (TOURNAMENT_DEADLINE_UTC + timedelta(days=2)).isoformat()
+    with patch.dict(os.environ, {'WC_FAKE_NOW': fake_live}):
+        ctx = _context_live(user=user)
+    assert ctx['trend']['show_column'] is False
+
+
+def test_context_live_trend_open_when_seven_days(app):
+    seed = seed_full_tournament(num_enrollments=2, seed_snapshots=True, snapshot_days=7)
+    user = seed['users'][0]
+    fake_live = (TOURNAMENT_DEADLINE_UTC + timedelta(days=2)).isoformat()
+    with patch.dict(os.environ, {'WC_FAKE_NOW': fake_live}):
+        ctx = _context_live(user=user)
+    assert ctx['trend']['show_column'] is True
+    # delta = current 100 - latest snapshot (day 0) score
+    assert ctx['trend']['delta'] is not None
+
+
+def test_context_live_stage_label_callable_in_context(app):
+    seed = seed_full_tournament(num_enrollments=2)
+    user = seed['users'][0]
+    fake_live = (TOURNAMENT_DEADLINE_UTC + timedelta(days=2)).isoformat()
+    with patch.dict(os.environ, {'WC_FAKE_NOW': fake_live}):
+        ctx = _context_live(user=user)
+    assert callable(ctx['stage_label'])
+    assert ctx['stage_label']('SF') == 'Semifinals'

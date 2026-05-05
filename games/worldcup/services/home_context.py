@@ -20,8 +20,16 @@ from games.worldcup.constants import (
 from games.worldcup.models import (
     WorldCupEnrollment, WorldCupMatch, WorldCupPick, WorldCupTeam,
 )
+from games.worldcup.services.ranking import compute_rank_neighbors
+from games.worldcup.services.scoring import (
+    compute_team_score_events, points_for_pick_on_match,
+)
+from games.worldcup.services.stage import stage_label
 from games.worldcup.services.state import WorldCupHubState, worldcup_state
-from games.worldcup.services.voice import hub_copy
+from games.worldcup.services.trends import (
+    compute_trend_by_enrollment, show_trend_column,
+)
+from games.worldcup.services.voice import hub_copy, rank_tier
 
 
 def _derive_tournament_phase() -> str:
@@ -190,8 +198,111 @@ def _context_pre(user: Any) -> dict:
 
 
 def _context_live(user: Any) -> dict:
-    """Stub — replaced in Task 8."""
-    return {'_marker_live': True}
+    """Live-tournament state — full dossier for an enrolled user.
+
+    Combines: rank/lead deltas via compute_rank_neighbors, top-5 leaderboard
+    preview, user picks with transient score_events, recent matches with
+    per-pick points-earned, trend payload (gated on show_trend_column),
+    and a rank-tier-keyed voice copy variant.
+    """
+    enrollment = WorldCupEnrollment.query.filter_by(
+        user_id=user.id, season_year=SEASON_YEAR,
+    ).first()
+    # _context_live is only invoked when state == 'live' which requires the
+    # user to be enrolled (worldcup_hub_state guarantees this). Asserting
+    # rather than redirecting — fail loud if invariant violated.
+    assert enrollment is not None, (
+        f'_context_live invoked for user {user.id} with no SEASON_YEAR enrollment'
+    )
+
+    # Rank/standing — reuses Plan 2's helper (parity with leaderboard).
+    neighbors = compute_rank_neighbors(enrollment.id)
+    total_enrolled = WorldCupEnrollment.query.filter_by(
+        season_year=SEASON_YEAR,
+    ).count()
+    your_standing = {
+        'rank': neighbors['rank'],
+        'total': neighbors['points'],
+        'of_n': total_enrolled,
+        'lead_delta_up': neighbors['lead_delta_up'],
+        'lead_delta_down': neighbors['lead_delta_down'],
+    }
+
+    # Voice tier
+    branch = rank_tier(neighbors['rank'], total_enrolled)
+
+    # Top-5 preview
+    top_5 = (
+        WorldCupEnrollment.query
+        .filter_by(season_year=SEASON_YEAR)
+        .order_by(
+            WorldCupEnrollment.total_score.desc(),
+            WorldCupEnrollment.id.asc(),
+        )
+        .limit(5)
+        .all()
+    )
+
+    # User's picks with transient score_events
+    user_picks = (
+        WorldCupPick.query
+        .filter_by(enrollment_id=enrollment.id)
+        .join(WorldCupTeam)
+        .order_by(WorldCupTeam.tier, WorldCupTeam.display_name)
+        .all()
+    )
+    user_team_ids = {p.team_id for p in user_picks}
+    user_picks_by_team_id = {p.team_id: p for p in user_picks}
+    for pick in user_picks:
+        # Transient attr — never persisted (CLAUDE.md ORM safety rule).
+        pick.score_events = compute_team_score_events(pick.team)
+
+    # Recent matches with per-match points-earned for user's roster
+    recent = (
+        WorldCupMatch.query
+        .filter_by(is_completed=True)
+        .order_by(WorldCupMatch.kickoff_utc.desc())
+        .limit(5)
+        .all()
+    )
+    recent_matches = []
+    for match in recent:
+        points_earned = None
+        if match.home_team_id in user_team_ids:
+            points_earned = points_for_pick_on_match(
+                user_picks_by_team_id[match.home_team_id], match,
+            )
+        elif match.away_team_id in user_team_ids:
+            points_earned = points_for_pick_on_match(
+                user_picks_by_team_id[match.away_team_id], match,
+            )
+        recent_matches.append({
+            'match': match,
+            'points_earned': points_earned,
+            'stage_label': stage_label(match.stage),
+        })
+
+    # Trend payload — gated globally
+    show_trend = show_trend_column()
+    delta = None
+    if show_trend:
+        delta_map = compute_trend_by_enrollment([enrollment.id])
+        delta = delta_map.get(enrollment.id)
+
+    return {
+        'state': 'live',
+        'branch': branch,
+        'copy': hub_copy('live', branch),
+        'enrollment': enrollment,
+        'display_name': enrollment.get_display_name(),
+        'your_standing': your_standing,
+        'user_picks': user_picks,
+        'top_5_preview': top_5,
+        'recent_matches': recent_matches,
+        'stage_label': stage_label,
+        'trend': {'show_column': show_trend, 'delta': delta},
+        'tournament_phase': _derive_tournament_phase(),
+    }
 
 
 def _context_post(user: Any) -> dict:
