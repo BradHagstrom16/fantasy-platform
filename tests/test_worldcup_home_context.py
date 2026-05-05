@@ -5,6 +5,7 @@ Tasks 6 (out), 7 (pre), 8 (live), 9 (post).
 """
 import os
 from datetime import timedelta
+from itertools import groupby
 from unittest.mock import patch
 
 import pytest
@@ -17,7 +18,6 @@ from games.worldcup.constants import (
 from games.worldcup.services.home_context import (
     build_worldcup_home_context, _context_out, _context_pre,
 )
-from games.worldcup.models import WorldCupPick, WorldCupTeam
 from tests._worldcup_fixtures import make_user, make_enrollment, seed_full_tournament
 
 
@@ -162,7 +162,7 @@ def test_context_out_includes_entry_fee_and_deadline(app):
 
 def test_context_pre_unsubmitted_branch(app):
     user = make_user()
-    enr = make_enrollment(user, picks_submitted=False)
+    make_enrollment(user, picks_submitted=False)
     db.session.commit()
     fake_pre = (TOURNAMENT_DEADLINE_UTC - timedelta(days=1)).isoformat()
     with patch.dict(os.environ, {'WC_FAKE_NOW': fake_pre}):
@@ -193,6 +193,12 @@ def test_context_pre_user_picks_ordered_by_tier_then_team_name(app):
     tiers = [p.team.tier for p in ctx['user_picks']]
     # Tier 1 picks come first, tier 5 last
     assert tiers == sorted(tiers)
+    # Within each tier, picks must be sorted by team display_name
+    for tier_value, group in groupby(ctx['user_picks'], key=lambda p: p.team.tier):
+        names = [p.team.display_name for p in group]
+        assert names == sorted(names), (
+            f'tier {tier_value} display_name not sorted: {names}'
+        )
 
 
 def test_context_pre_top_3_preview_renders_even_with_zero_scores(app):
@@ -211,7 +217,7 @@ def test_context_pre_top_3_preview_renders_even_with_zero_scores(app):
 
 def test_context_pre_includes_voice_copy_per_branch(app):
     user = make_user()
-    enr = make_enrollment(user, picks_submitted=False)
+    make_enrollment(user, picks_submitted=False)
     db.session.commit()
     fake_pre = (TOURNAMENT_DEADLINE_UTC - timedelta(days=1)).isoformat()
     with patch.dict(os.environ, {'WC_FAKE_NOW': fake_pre}):
@@ -223,7 +229,7 @@ def test_context_pre_includes_voice_copy_per_branch(app):
 def test_context_pre_total_enrolled_count(app):
     seed_full_tournament(num_enrollments=4)
     user = make_user(email='outsider@test')
-    enr = make_enrollment(user, picks_submitted=False)
+    make_enrollment(user, picks_submitted=False)
     db.session.commit()
     fake_pre = (TOURNAMENT_DEADLINE_UTC - timedelta(days=1)).isoformat()
     with patch.dict(os.environ, {'WC_FAKE_NOW': fake_pre}):
