@@ -30,6 +30,10 @@
 </div>
 
 <div class="container pb-5">
+  {# Partial contract: each _home_<state>.html partial renders direct children
+     of this .container.pb-5 wrapper. Don't open your own <div class="container">
+     or use margins beyond mb-4 — the shell handles outer spacing. #}
+
   {% if state == 'out' %}
     {% include 'worldcup/_home_out.html' %}
   {% elif state == 'pre' %}
