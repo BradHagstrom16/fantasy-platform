@@ -1,18 +1,24 @@
 """World Cup tournament-state detection for home-page rendering.
 
-Single function: ``worldcup_state()`` returns 'pre' | 'live' | 'post'.
+Two functions:
+- ``worldcup_state()`` returns 'pre' | 'live' | 'post' (used by the platform
+  home page in core/main/routes.py — Spec B).
+- ``worldcup_hub_state(user)`` returns 'out' | 'pre' | 'live' | 'post'
+  (used by the WC blueprint home — Plan 4). 'out' overrides phase: anonymous
+  or unenrolled-for-current-season users always see the marketing surface.
 
-Used by ``core/main/routes.py`` to dispatch the home page to the
-correct state partial. Spec B section 4a is the canonical reference.
+Spec B section 4a is the canonical reference for the 3-state semantics;
+Plan 4 of Spec C extends it with 'out'.
 """
 import os
 from datetime import datetime, timezone
-from typing import Literal
+from typing import Literal, Optional
 
-from games.worldcup.constants import TOURNAMENT_DEADLINE_UTC
-from games.worldcup.models import WorldCupMatch
+from games.worldcup.constants import SEASON_YEAR, TOURNAMENT_DEADLINE_UTC
+from games.worldcup.models import WorldCupMatch, WorldCupEnrollment
 
 WorldCupState = Literal['pre', 'live', 'post']
+WorldCupHubState = Literal['out', 'pre', 'live', 'post']
 
 FINAL_MATCH_NUMBER = 104  # The Final per FIFA bracket numbering
 
@@ -55,3 +61,25 @@ def worldcup_state() -> WorldCupState:
         match_number=FINAL_MATCH_NUMBER, is_completed=True
     ).first()
     return 'post' if final is not None else 'live'
+
+
+def worldcup_hub_state(user) -> WorldCupHubState:
+    """Resolve the WC hub state for a given user. 4-state.
+
+    'out' overrides phase: anonymous OR unenrolled-for-current-season users
+    always see the marketing surface, regardless of tournament phase.
+    Otherwise delegates to worldcup_state() (3-state).
+
+    Accepts None or any object with `is_authenticated` (Flask-Login's
+    AnonymousUserMixin returns False for that attribute).
+    """
+    if user is None or not getattr(user, 'is_authenticated', False):
+        return 'out'
+
+    enrolled = WorldCupEnrollment.query.filter_by(
+        user_id=user.id, season_year=SEASON_YEAR,
+    ).first() is not None
+    if not enrolled:
+        return 'out'
+
+    return worldcup_state()
