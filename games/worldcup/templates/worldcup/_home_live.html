@@ -19,13 +19,13 @@
         </div>
         <div class="text-muted small mt-1">
           {% if your_standing.lead_delta_up is not none %}
-            {{ your_standing.lead_delta_up }} pts from the lead
+            {{ "%.1f"|format(your_standing.lead_delta_up) }} pts from the lead
           {% endif %}
           {% if your_standing.lead_delta_up is not none and your_standing.lead_delta_down is not none %}
             ·
           {% endif %}
           {% if your_standing.lead_delta_down is not none %}
-            {{ your_standing.lead_delta_down }} ahead of next
+            {{ "%.1f"|format(your_standing.lead_delta_down) }} ahead of next
           {% endif %}
         </div>
       </div>

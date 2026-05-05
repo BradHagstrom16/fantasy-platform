@@ -8,17 +8,25 @@
      - copy / state from shell
 #}
 
-{# Champion banner #}
-{% if champion_team %}
+{# Champion banner — always render the hero when state='post' (final_match is
+   guaranteed by worldcup_hub_state). Fall back to a neutral "Tournament
+   Complete" surface when champion_team is None (defensive admin-error
+   case where final.is_completed=True but winner_team_id wasn't set). #}
+{% if final_match %}
 <div class="card wc-card wc-hero-grad mb-4 animate-in">
   <div class="card-body p-4 text-center">
-    <div class="wc-eyebrow mb-1">Champion</div>
-    <div class="display-4 mb-1">
-      <span class="champion-flag">{{ champion_team.flag_emoji }}</span>
-      {{ champion_team.display_name }}
-    </div>
-    {% if champion_summary %}
-      <div class="text-muted">{{ champion_summary }}</div>
+    {% if champion_team %}
+      <div class="wc-eyebrow mb-1">Champion</div>
+      <div class="display-4 mb-1">
+        <span class="champion-flag">{{ champion_team.flag_emoji }}</span>
+        {{ champion_team.display_name }}
+      </div>
+      {% if champion_summary %}
+        <div class="text-muted">{{ champion_summary }}</div>
+      {% endif %}
+    {% else %}
+      <div class="wc-eyebrow mb-1">Tournament Complete</div>
+      <div class="text-muted">Champion not yet declared — see final standings below.</div>
     {% endif %}
   </div>
 </div>
