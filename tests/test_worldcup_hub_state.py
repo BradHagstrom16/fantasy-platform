@@ -63,7 +63,9 @@ def test_authenticated_enrolled_pre_deadline_resolves_pre(app):
     _enroll(user)
     db.session.commit()
     fake_pre = (TOURNAMENT_DEADLINE_UTC - timedelta(days=1)).isoformat()
-    with patch.dict(os.environ, {'WC_FAKE_NOW': fake_pre}):
+    # ENVIRONMENT=testing activates the WC_FAKE_NOW seam in now_utc()
+    # without depending on outside process env.
+    with patch.dict(os.environ, {'ENVIRONMENT': 'testing', 'WC_FAKE_NOW': fake_pre}):
         assert worldcup_hub_state(user) == 'pre'
 
 
@@ -72,7 +74,7 @@ def test_authenticated_enrolled_post_deadline_resolves_live_when_final_open(app)
     _enroll(user)
     db.session.commit()
     fake_live = (TOURNAMENT_DEADLINE_UTC + timedelta(days=1)).isoformat()
-    with patch.dict(os.environ, {'WC_FAKE_NOW': fake_live}):
+    with patch.dict(os.environ, {'ENVIRONMENT': 'testing', 'WC_FAKE_NOW': fake_live}):
         assert worldcup_hub_state(user) == 'live'
 
 
@@ -86,7 +88,7 @@ def test_authenticated_enrolled_resolves_post_when_final_completed(app):
     db.session.add(final)
     db.session.commit()
     fake_post = (TOURNAMENT_DEADLINE_UTC + timedelta(days=30)).isoformat()
-    with patch.dict(os.environ, {'WC_FAKE_NOW': fake_post}):
+    with patch.dict(os.environ, {'ENVIRONMENT': 'testing', 'WC_FAKE_NOW': fake_post}):
         assert worldcup_hub_state(user) == 'post'
 
 

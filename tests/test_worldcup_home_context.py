@@ -295,18 +295,6 @@ def test_context_live_top_5_preview(app):
     assert len(ctx['top_5_preview']) == 5
 
 
-def test_context_live_user_picks_carry_score_events(app):
-    seed = seed_full_tournament(num_enrollments=2)
-    user = seed['users'][0]
-    fake_live = (TOURNAMENT_DEADLINE_UTC + timedelta(days=2)).isoformat()
-    with patch.dict(os.environ, {'WC_FAKE_NOW': fake_live}):
-        ctx = _context_live(user=user)
-    for pick in ctx['user_picks']:
-        # transient attr — list (may be empty if no scoring data seeded)
-        assert hasattr(pick, 'score_events')
-        assert isinstance(pick.score_events, list)
-
-
 def test_context_live_recent_matches_has_points_earned(app):
     seed = seed_full_tournament(num_enrollments=2)
     user = seed['users'][0]

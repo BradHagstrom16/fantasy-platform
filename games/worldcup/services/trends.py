@@ -52,12 +52,20 @@ def compute_trend_by_enrollment(enrollment_ids):
     if not enrollment_ids:
         return {}
 
+    # Season-scoped: any aggregate over WorldCupRankSnapshot must join
+    # WorldCupEnrollment and filter season_year (CLAUDE.md invariant; the
+    # show_trend_column() gate scopes the same way).
     latest_dates = (
         db.session.query(
             WorldCupRankSnapshot.enrollment_id.label('eid'),
             func.max(WorldCupRankSnapshot.captured_date).label('max_date'),
         )
+        .join(
+            WorldCupEnrollment,
+            WorldCupEnrollment.id == WorldCupRankSnapshot.enrollment_id,
+        )
         .filter(WorldCupRankSnapshot.enrollment_id.in_(enrollment_ids))
+        .filter(WorldCupEnrollment.season_year == SEASON_YEAR)
         .group_by(WorldCupRankSnapshot.enrollment_id)
         .subquery()
     )
@@ -79,7 +87,10 @@ def compute_trend_by_enrollment(enrollment_ids):
 
     enrollments_by_id = {
         e.id: e for e in WorldCupEnrollment.query
-        .filter(WorldCupEnrollment.id.in_(enrollment_ids))
+        .filter(
+            WorldCupEnrollment.id.in_(enrollment_ids),
+            WorldCupEnrollment.season_year == SEASON_YEAR,
+        )
         .all()
     }
 

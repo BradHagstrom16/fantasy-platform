@@ -23,9 +23,7 @@ from games.worldcup.models import (
 )
 from games.worldcup.world_cup_countries import TIERS
 from games.worldcup.services.ranking import compute_rank_neighbors
-from games.worldcup.services.scoring import (
-    compute_team_score_events, points_for_pick_on_match,
-)
+from games.worldcup.services.scoring import points_for_pick_on_match
 from games.worldcup.services.stage import stage_label
 from games.worldcup.services.state import (
     FINAL_MATCH_NUMBER, WorldCupHubState, worldcup_state,
@@ -213,9 +211,9 @@ def _context_live(user: Any) -> dict:
     Branch: 'leader' | 'chasing' | 'mid' | 'tail' (drives voice copy variant).
 
     Combines: rank/lead deltas via compute_rank_neighbors, top-5 leaderboard
-    preview, user picks with transient score_events, recent matches with
-    per-pick points-earned, trend payload (gated on show_trend_column),
-    and a rank-tier-keyed voice copy variant.
+    preview, user picks (team + multiplier + multiplied_points), recent
+    matches with per-pick points-earned, trend payload (gated on
+    show_trend_column), and a rank-tier-keyed voice copy variant.
     """
     enrollment = _resolve_enrollment_or_die(user, 'live')
 
@@ -238,7 +236,8 @@ def _context_live(user: Any) -> dict:
     # Top-5 preview
     top_5 = _top_n_preview(5)
 
-    # User's picks with transient score_events
+    # User's picks — _home_live.html renders team, multiplier, and
+    # multiplied_points only; no per-event drill-down.
     user_picks = (
         WorldCupPick.query
         .filter_by(enrollment_id=enrollment.id)
@@ -248,12 +247,6 @@ def _context_live(user: Any) -> dict:
     )
     user_team_ids = {p.team_id for p in user_picks}
     user_picks_by_team_id = {p.team_id: p for p in user_picks}
-    for pick in user_picks:
-        # Transient attr — never persisted (CLAUDE.md ORM safety rule).
-        # ~18 queries per render (2 per pick × 9 picks). Acceptable at current
-        # pool size (~25 enrollments). Revisit with a batched
-        # compute_team_score_events_for_teams(...) helper if the pool grows.
-        pick.score_events = compute_team_score_events(pick.team)
 
     # Recent matches with per-match points-earned for user's roster
     recent = (
@@ -364,10 +357,18 @@ def _context_post(user: Any) -> dict:
     top_3_final = all_enrollments[:3]
     total_count = len(all_enrollments)
 
-    your_final_rank = next(
-        (i + 1 for i, e in enumerate(all_enrollments) if e.id == enrollment.id),
-        None,
-    )
+    # Dense rank — tied scores share a rank (CLAUDE.md "dense rank everywhere":
+    # parity with routes.leaderboard() / compute_rank_neighbors).
+    your_final_rank = None
+    dense_rank = 0
+    prev_score = None
+    for e in all_enrollments:
+        if e.total_score != prev_score:
+            dense_rank += 1
+            prev_score = e.total_score
+        if e.id == enrollment.id:
+            your_final_rank = dense_rank
+            break
 
     # Climbed-N — first snapshot vs final rank (positive = climbed, since a
     # lower rank number is better)
