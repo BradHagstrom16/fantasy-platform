@@ -39,6 +39,7 @@ from games.worldcup.services.stats import (
     get_tier_combos,
 )
 from games.worldcup.services.ranking import compute_rank_neighbors
+from games.worldcup.services.stage import stage_label
 from games.worldcup.services.team_detail import (
     compute_team_ownership, current_user_owns_team, compute_path_to_crown,
 )
@@ -643,10 +644,6 @@ def team_detail(team_id):
             (p.enrollment.get_display_name(), p.enrollment.id) for p in picks
         )
 
-    # Inline _stage_label so we don't depend on core/main internals from a game blueprint.
-    # If Plan 4 lifts _stage_label() into games/worldcup/services/stage.py, swap to that import.
-    from core.main.home_context import _stage_label
-
     return render_template('worldcup/team_detail.html',
         team=team,
         matches=matches,
@@ -657,7 +654,7 @@ def team_detail(team_id):
         deadline_passed=deadline_passed,
         path=path,
         picker_links=picker_links,
-        stage_label=_stage_label,
+        stage_label=stage_label,
     )
 
 
