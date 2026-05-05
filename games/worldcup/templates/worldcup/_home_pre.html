@@ -1,0 +1,97 @@
+{# Pre-deadline state — picks open, deadline not yet passed.
+   branch: 'submitted' | 'unsubmitted' (drives CTA + roster visibility).
+   copy / state already in scope from the shell. #}
+
+<div class="card wc-card mb-4 animate-in">
+  <div class="card-body p-4 d-flex align-items-center justify-content-between flex-wrap gap-3">
+    <div>
+      <p class="mb-1 text-muted">
+        Deadline: <strong>{{ deadline_ct.strftime('%b %-d, %Y at %-I:%M %p CT') }}</strong>
+      </p>
+    </div>
+    {% if branch == 'unsubmitted' %}
+      <a href="{{ url_for('worldcup.picks') }}" class="btn btn-game btn-lg">
+        <i class="bi bi-pencil-square me-2"></i>Seal the Oath
+      </a>
+    {% else %}
+      <a href="{{ url_for('worldcup.picks', edit=1) }}" class="btn btn-game px-4">
+        <i class="bi bi-pencil-square me-1"></i>Amend the Oath
+      </a>
+    {% endif %}
+  </div>
+</div>
+
+{# Roster preview — only when picks submitted #}
+{% if branch == 'submitted' and user_picks %}
+<div class="card wc-card mb-4 animate-in">
+  <div class="card-body p-0">
+    <div class="card-header">
+      <span class="wc-eyebrow"><i class="bi bi-people-fill me-2"></i>Roster</span>
+    </div>
+    {% set picks_by_tier = {} %}
+    {% for pick in user_picks %}
+      {% if pick.team.tier not in picks_by_tier %}
+        {% set _ = picks_by_tier.update({pick.team.tier: []}) %}
+      {% endif %}
+      {% set _ = picks_by_tier[pick.team.tier].append(pick) %}
+    {% endfor %}
+    <div class="roster-tiers p-3">
+      {% for tier_num in range(1, 6) %}
+      {% if tier_num in picks_by_tier %}
+      <div class="roster-tier-row" style="--tier-color: var(--wc-tier{{ tier_num }});">
+        <div class="roster-tier-label tier-badge tier-badge-{{ tier_num }}">T{{ tier_num }}</div>
+        <div class="roster-tier-teams">
+          {% for pick in picks_by_tier[tier_num] %}
+          <div class="roster-team-card">
+            <span class="roster-team-flag">{{ pick.team.flag_emoji }}</span>
+            <span class="roster-team-name">{{ pick.team.display_name }}</span>
+            <span class="roster-team-abbr">{{ pick.team.fifa_code }}</span>
+            <span class="wc-multiplier-chip">×{{ pick.team.multiplier | int if pick.team.multiplier == (pick.team.multiplier | int) else pick.team.multiplier }}</span>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{# Top-3 preview (zeros until kickoff) #}
+{% if top_3_preview %}
+<div class="card wc-card mb-4 animate-in">
+  <div class="card-body">
+    <div class="d-flex align-items-center justify-content-between mb-2">
+      <span class="wc-eyebrow"><i class="bi bi-trophy me-2"></i>Top of the Pool</span>
+      <a href="{{ url_for('worldcup.leaderboard') }}" class="btn btn-sm btn-game">View All</a>
+    </div>
+    <table class="table table-worldcup mb-0">
+      <thead>
+        <tr>
+          <th style="width:50px">#</th>
+          <th>Player</th>
+          <th class="text-end">Points</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for e in top_3_preview %}
+        <tr {% if e.user_id == enrollment.user_id %}class="row-current-user"{% endif %}>
+          <td><span class="wc-numeral">{{ loop.index }}</span></td>
+          <td>
+            <span class="me-1">{{ e.user.get_avatar() }}</span>
+            <a href="{{ url_for('worldcup.player_detail', enrollment_id=e.id) }}" class="text-decoration-none fw-medium">
+              {{ e.get_display_name() }}
+            </a>
+          </td>
+          <td class="text-end"><span class="wc-numeral">{{ "%.1f"|format(e.total_score) }}</span></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% if total_enrolled > 0 and (top_3_preview | sum(attribute='total_score') == 0.0) %}
+    <p class="text-muted small mb-0 mt-2">Awaiting kickoff.</p>
+    {% endif %}
+  </div>
+</div>
+{% endif %}

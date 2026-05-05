@@ -9,7 +9,7 @@ from collections import defaultdict
 
 from flask import render_template, redirect, url_for, flash, request, jsonify
 from flask_login import login_required, current_user
-from sqlalchemy import func, or_, distinct
+from sqlalchemy import func, or_
 from sqlalchemy.orm import joinedload
 
 from extensions import db
@@ -17,7 +17,7 @@ from models import User
 from games.worldcup import worldcup_bp
 from games.common import game_must_be_open
 from games.worldcup.services.state import now_utc
-from games.worldcup.models import WorldCupEnrollment, WorldCupTeam, WorldCupMatch, WorldCupPick, WorldCupRankSnapshot
+from games.worldcup.models import WorldCupEnrollment, WorldCupTeam, WorldCupMatch, WorldCupPick
 from games.worldcup.constants import (
     SEASON_YEAR, ENTRY_FEE, TOURNAMENT_DEADLINE_UTC,
     TIER_PICK_COUNTS, TOTAL_PICKS, WORLDCUP_TZ,
@@ -39,9 +39,15 @@ from games.worldcup.services.stats import (
     get_tier_combos,
 )
 from games.worldcup.services.ranking import compute_rank_neighbors
+from games.worldcup.services.stage import stage_label
 from games.worldcup.services.team_detail import (
     compute_team_ownership, current_user_owns_team, compute_path_to_crown,
 )
+from games.worldcup.services.trends import (
+    show_trend_column, compute_trend_by_enrollment,
+)
+from games.worldcup.services.state import worldcup_hub_state
+from games.worldcup.services.home_context import build_worldcup_home_context
 
 
 # ============================================================================
@@ -140,52 +146,17 @@ def worldcup_before_request():
 
 @worldcup_bp.route('/')
 def index():
-    """World Cup dashboard / landing page."""
-    enrollment = None
-    if current_user.is_authenticated:
-        enrollment = WorldCupEnrollment.query.filter_by(
-            user_id=current_user.id, season_year=SEASON_YEAR
-        ).first()
+    """World Cup hub — dispatches to a state-keyed partial.
 
-    top_enrollments = (
-        WorldCupEnrollment.query
-        .filter_by(season_year=SEASON_YEAR)
-        .order_by(WorldCupEnrollment.total_score.desc())
-        .limit(10)
-        .all()
-    )
-
-    recent_matches = (
-        WorldCupMatch.query
-        .filter_by(is_completed=True)
-        .order_by(WorldCupMatch.match_number.desc())
-        .limit(5)
-        .all()
-    )
-
-    deadline_ct = TOURNAMENT_DEADLINE_UTC.astimezone(WORLDCUP_TZ)
-    deadline_passed = now_utc() >= TOURNAMENT_DEADLINE_UTC
-    total_enrolled = WorldCupEnrollment.query.filter_by(season_year=SEASON_YEAR).count()
-
-    user_picks = None
-    if enrollment and enrollment.picks_submitted:
-        user_picks = (
-            WorldCupPick.query
-            .filter_by(enrollment_id=enrollment.id)
-            .join(WorldCupTeam)
-            .order_by(WorldCupTeam.tier, WorldCupTeam.display_name)
-            .all()
-        )
-
-    return render_template('worldcup/index.html',
-        enrollment=enrollment,
-        top_enrollments=top_enrollments,
-        recent_matches=recent_matches,
-        deadline_ct=deadline_ct,
-        deadline_passed=deadline_passed,
-        total_enrolled=total_enrolled,
-        user_picks=user_picks,
-    )
+    State resolved by worldcup_hub_state(user) (4-state: out/pre/live/post).
+    Each state's context is built by games.worldcup.services.home_context;
+    home_shell.html includes the matching _home_<state>.html partial.
+    """
+    user = current_user if current_user.is_authenticated else None
+    state = worldcup_hub_state(user)
+    context = build_worldcup_home_context(user, state)
+    context['state'] = state
+    return render_template('worldcup/home_shell.html', **context)
 
 
 @worldcup_bp.route('/join', methods=['GET', 'POST'])
@@ -396,81 +367,6 @@ def _your_standing_caption(neighbors):
     return f'{up} pts from 1st · {down} ahead of next.'
 
 
-def _show_trend_column():
-    """True if count(distinct captured_date) >= 7 within the active season.
-
-    Per ambiguity-A1 resolution: a single global gate, not per-user. The
-    season filter (joined via WorldCupEnrollment.season_year == SEASON_YEAR)
-    is forward-compat for multi-season — without it, snapshots from a prior
-    World Cup would falsely satisfy the gate at the start of the next one.
-    Mirrors Spec B's >= 7 gating on the home-page sparkline.
-    """
-    distinct_days = (
-        db.session.query(func.count(distinct(WorldCupRankSnapshot.captured_date)))
-        .join(
-            WorldCupEnrollment,
-            WorldCupEnrollment.id == WorldCupRankSnapshot.enrollment_id,
-        )
-        .filter(WorldCupEnrollment.season_year == SEASON_YEAR)
-        .scalar() or 0
-    )
-    return distinct_days >= 7
-
-
-def _compute_trend_by_enrollment(enrollment_ids):
-    """For each enrollment id, compute trend = current_score - latest_snapshot_score.
-
-    "Latest" = MAX(captured_date) per enrollment. Returns None if the enrollment
-    has no snapshot history at all (template renders '—').
-
-    Implementation: one round-trip — pull the latest snapshot per enrollment via
-    a (enrollment_id, MAX(captured_date)) subquery joined back to the snapshot
-    table for total_score. SQLite-friendly; no window functions required.
-    """
-    if not enrollment_ids:
-        return {}
-
-    latest_dates = (
-        db.session.query(
-            WorldCupRankSnapshot.enrollment_id.label('eid'),
-            func.max(WorldCupRankSnapshot.captured_date).label('max_date'),
-        )
-        .filter(WorldCupRankSnapshot.enrollment_id.in_(enrollment_ids))
-        .group_by(WorldCupRankSnapshot.enrollment_id)
-        .subquery()
-    )
-
-    rows = (
-        db.session.query(
-            WorldCupRankSnapshot.enrollment_id,
-            WorldCupRankSnapshot.total_score,
-        )
-        .join(
-            latest_dates,
-            (WorldCupRankSnapshot.enrollment_id == latest_dates.c.eid) &
-            (WorldCupRankSnapshot.captured_date == latest_dates.c.max_date),
-        )
-        .all()
-    )
-
-    snapshot_score_by_eid = {eid: score for eid, score in rows}
-
-    trend = {}
-    enrollments_by_id = {
-        e.id: e for e in WorldCupEnrollment.query
-        .filter(WorldCupEnrollment.id.in_(enrollment_ids))
-        .all()
-    }
-    for eid in enrollment_ids:
-        snap = snapshot_score_by_eid.get(eid)
-        enr = enrollments_by_id.get(eid)
-        if snap is None or enr is None:
-            trend[eid] = None
-        else:
-            trend[eid] = round(enr.total_score - snap, 2)
-    return trend
-
-
 @worldcup_bp.route('/leaderboard')
 def leaderboard():
     """Public leaderboard — no login required.
@@ -505,10 +401,10 @@ def leaderboard():
     deadline_passed = now_utc() >= TOURNAMENT_DEADLINE_UTC
 
     your_standing = _compute_your_standing(enrollments)
-    show_trend_column = _show_trend_column()
+    show_trend = show_trend_column()
     trend_by_enrollment = (
-        _compute_trend_by_enrollment([e.id for e in enrollments])
-        if show_trend_column else {}
+        compute_trend_by_enrollment([e.id for e in enrollments])
+        if show_trend else {}
     )
 
     return render_template('worldcup/leaderboard.html',
@@ -516,7 +412,7 @@ def leaderboard():
         total_players=len(enrollments),
         deadline_passed=deadline_passed,
         your_standing=your_standing,
-        show_trend_column=show_trend_column,
+        show_trend_column=show_trend,
         trend_by_enrollment=trend_by_enrollment,
     )
 
@@ -643,10 +539,6 @@ def team_detail(team_id):
             (p.enrollment.get_display_name(), p.enrollment.id) for p in picks
         )
 
-    # Inline _stage_label so we don't depend on core/main internals from a game blueprint.
-    # If Plan 4 lifts _stage_label() into games/worldcup/services/stage.py, swap to that import.
-    from core.main.home_context import _stage_label
-
     return render_template('worldcup/team_detail.html',
         team=team,
         matches=matches,
@@ -657,7 +549,7 @@ def team_detail(team_id):
         deadline_passed=deadline_passed,
         path=path,
         picker_links=picker_links,
-        stage_label=_stage_label,
+        stage_label=stage_label,
     )
 
 

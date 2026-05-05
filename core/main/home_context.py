@@ -16,6 +16,7 @@ from games.worldcup.models import (
     WorldCupEnrollment, WorldCupPick, WorldCupTeam, WorldCupMatch,
     WorldCupRankSnapshot,
 )
+from games.worldcup.services.stage import stage_label as _stage_label
 from games.worldcup.services.state import WorldCupState, now_utc
 from games.worldcup.services.scoring import points_for_pick_on_match
 from games.worldcup.world_cup_countries import TIERS
@@ -66,19 +67,6 @@ def _tagline_for(rank: int, week_delta_rank: Optional[int],
     if rank in (2, 3):
         return "Played the favorites."
     return None
-
-
-def _stage_label(stage: str) -> str:
-    """Map WorldCupMatch.stage to a display label."""
-    return {
-        'group': 'Group Stage',
-        'R32': 'Round of 32',
-        'R16': 'Round of 16',
-        'QF': 'Quarterfinals',
-        'SF': 'Semifinals',
-        'third_place': 'Third-Place Match',
-        'final': 'The Final',
-    }.get(stage, 'Group Stage')
 
 
 def _context_out() -> dict:

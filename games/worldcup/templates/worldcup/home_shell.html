@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}World Cup Fantasy Pool{% endblock %}
+
+{% block content %}
+<div class="page-hero wc-hero-grad">
+  <div class="hero-glow"></div>
+  <div class="container">
+    <div class="d-flex align-items-center gap-3 flex-wrap">
+      <h1 class="mb-0">World Cup Fantasy Pool</h1>
+      <span class="phase-indicator {% if tournament_phase in ('group_stage', 'knockout') %}active{% endif %}">
+        <span class="phase-dot"></span>
+        {% if tournament_phase == 'pre_tournament' %}Pre-Tournament
+        {% elif tournament_phase == 'group_stage' %}Group Stage
+        {% elif tournament_phase == 'knockout' %}Knockout Round
+        {% else %}Completed{% endif %}
+      </span>
+    </div>
+    <p class="lead mb-0">
+      {% if copy and copy.eyebrow %}
+        <span class="wc-eyebrow">{{ copy.eyebrow }}</span>
+      {% endif %}
+    </p>
+    {% if copy and copy.headline %}
+      <h2 class="hero-headline mb-0">{{ copy.headline }}</h2>
+    {% endif %}
+    {% if copy and copy.subhead %}
+      <p class="hero-subhead mb-0 text-muted">{{ copy.subhead }}</p>
+    {% endif %}
+  </div>
+</div>
+
+<div class="container pb-5">
+  {# Partial contract: each _home_<state>.html partial renders direct children
+     of this .container.pb-5 wrapper. Don't open your own <div class="container">
+     or use margins beyond mb-4 — the shell handles outer spacing. #}
+
+  {% if state == 'out' %}
+    {% include 'worldcup/_home_out.html' %}
+  {% elif state == 'pre' %}
+    {% include 'worldcup/_home_pre.html' %}
+  {% elif state == 'live' %}
+    {% include 'worldcup/_home_live.html' %}
+  {% elif state == 'post' %}
+    {% include 'worldcup/_home_post.html' %}
+  {% endif %}
+
+  {# Quick-links footer — absorbs Schedule / Groups / Rules nav demotions per spec D5 #}
+  <div class="card wc-card mt-4">
+    <div class="card-body">
+      <div class="wc-eyebrow mb-2">Around the Pool</div>
+      <div class="d-flex flex-wrap gap-2">
+        <a href="{{ url_for('worldcup.schedule') }}" class="btn btn-sm btn-outline-secondary">
+          <i class="bi bi-calendar3 me-1"></i>Schedule
+        </a>
+        <a href="{{ url_for('worldcup.groups') }}" class="btn btn-sm btn-outline-secondary">
+          <i class="bi bi-grid-3x3 me-1"></i>Groups
+        </a>
+        <a href="{{ url_for('worldcup.rules') }}" class="btn btn-sm btn-outline-secondary">
+          <i class="bi bi-book me-1"></i>Rules &amp; Scoring
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
