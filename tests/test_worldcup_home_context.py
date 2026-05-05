@@ -17,6 +17,7 @@ from games.worldcup.constants import (
 )
 from games.worldcup.services.home_context import (
     build_worldcup_home_context, _context_out, _context_pre, _context_live,
+    _context_post,
 )
 from games.worldcup.services.scoring import points_for_pick_on_match
 from tests._worldcup_fixtures import make_user, make_enrollment, seed_full_tournament
@@ -30,21 +31,6 @@ def app():
         yield app
         db.session.remove()
         db.drop_all()
-
-
-@pytest.mark.parametrize('state,expected_marker', [
-    ('post', '_marker_post'),
-])
-def test_dispatcher_routes_to_correct_builder(app, state, expected_marker):
-    """Each remaining builder stub returns a context dict containing a unique
-    marker key. Assert the dispatcher returns the right one. The 'out',
-    'pre', and 'live' branches are implemented (Tasks 6/7/8) and asserted via
-    their real-shape tests below."""
-    ctx = build_worldcup_home_context(user=None, state=state)
-    assert expected_marker in ctx, (
-        f'state={state} expected marker {expected_marker} in context, '
-        f'got keys: {list(ctx.keys())}'
-    )
 
 
 def test_dispatcher_routes_to_out_builder(app):
@@ -425,3 +411,163 @@ def test_context_live_stage_label_callable_in_context(app):
         ctx = _context_live(user=user)
     assert callable(ctx['stage_label'])
     assert ctx['stage_label']('SF') == 'Semifinals'
+
+
+# =====================================================================
+# Task 9: dispatcher routing to _context_post + builder tests
+# =====================================================================
+
+def test_dispatcher_routes_to_post_builder(app):
+    """The 'post' builder is implemented (Task 9), so the dispatcher should
+    return its real-shape dict (state='post') rather than a stub marker."""
+    seed = seed_full_tournament(num_enrollments=2)
+    user = seed['users'][0]
+    teams = seed['teams']
+    from tests._worldcup_fixtures import make_match
+    make_match(
+        match_number=104, stage='final',
+        home_team=teams[0], away_team=teams[1],
+        is_completed=True, home_score=2, away_score=1, winner_team=teams[0],
+    )
+    db.session.commit()
+    fake_post = (TOURNAMENT_DEADLINE_UTC + timedelta(days=40)).isoformat()
+    with patch.dict(os.environ, {'WC_FAKE_NOW': fake_post}):
+        ctx = build_worldcup_home_context(user=user, state='post')
+    assert ctx['state'] == 'post'
+    assert 'champion_team' in ctx
+
+
+def test_context_post_includes_champion_team(app):
+    seed = seed_full_tournament(num_enrollments=2)
+    user = seed['users'][0]
+    teams = seed['teams']
+    # Mark final completed with a winner
+    from tests._worldcup_fixtures import make_match
+    make_match(
+        match_number=104, stage='final',
+        home_team=teams[0], away_team=teams[1],
+        is_completed=True,
+        home_score=2, away_score=1, winner_team=teams[0],
+    )
+    db.session.commit()
+    fake_post = (TOURNAMENT_DEADLINE_UTC + timedelta(days=40)).isoformat()
+    with patch.dict(os.environ, {'WC_FAKE_NOW': fake_post}):
+        ctx = _context_post(user=user)
+    assert ctx['state'] == 'post'
+    assert ctx['champion_team'] is not None
+    assert ctx['champion_team'].id == teams[0].id
+
+
+def test_context_post_champion_summary_includes_score(app):
+    seed = seed_full_tournament(num_enrollments=2)
+    user = seed['users'][0]
+    teams = seed['teams']
+    from tests._worldcup_fixtures import make_match
+    make_match(
+        match_number=104, stage='final',
+        home_team=teams[0], away_team=teams[1],
+        is_completed=True,
+        home_score=3, away_score=1, winner_team=teams[0],
+    )
+    db.session.commit()
+    fake_post = (TOURNAMENT_DEADLINE_UTC + timedelta(days=40)).isoformat()
+    with patch.dict(os.environ, {'WC_FAKE_NOW': fake_post}):
+        ctx = _context_post(user=user)
+    assert '3' in ctx['champion_summary'] and '1' in ctx['champion_summary']
+
+
+def test_context_post_branch_champion_for_rank_one(app):
+    seed = seed_full_tournament(num_enrollments=5)
+    user = seed['users'][0]
+    teams = seed['teams']
+    from tests._worldcup_fixtures import make_match
+    make_match(
+        match_number=104, stage='final',
+        home_team=teams[0], away_team=teams[1],
+        is_completed=True, home_score=2, away_score=1, winner_team=teams[0],
+    )
+    db.session.commit()
+    fake_post = (TOURNAMENT_DEADLINE_UTC + timedelta(days=40)).isoformat()
+    with patch.dict(os.environ, {'WC_FAKE_NOW': fake_post}):
+        ctx = _context_post(user=user)
+    assert ctx['branch'] == 'champion'
+
+
+def test_context_post_branch_top_3_for_rank_two(app):
+    seed = seed_full_tournament(num_enrollments=5)
+    user = seed['users'][1]
+    teams = seed['teams']
+    from tests._worldcup_fixtures import make_match
+    make_match(
+        match_number=104, stage='final',
+        home_team=teams[0], away_team=teams[1],
+        is_completed=True, home_score=2, away_score=1, winner_team=teams[0],
+    )
+    db.session.commit()
+    fake_post = (TOURNAMENT_DEADLINE_UTC + timedelta(days=40)).isoformat()
+    with patch.dict(os.environ, {'WC_FAKE_NOW': fake_post}):
+        ctx = _context_post(user=user)
+    assert ctx['branch'] == 'top_3'
+
+
+def test_context_post_roster_recap_marks_champion_pick(app):
+    seed = seed_full_tournament(num_enrollments=2)
+    user = seed['users'][0]
+    teams = seed['teams']
+    # Pick that user's tier-1 team and use it as champion
+    user_picks = seed['picks_by_enr'][seed['enrollments'][0].id]
+    champion_pick_team = user_picks[0].team   # tier-1 pick
+    from tests._worldcup_fixtures import make_match
+    other = next(t for t in teams if t.id != champion_pick_team.id)
+    make_match(
+        match_number=104, stage='final',
+        home_team=champion_pick_team, away_team=other,
+        is_completed=True,
+        home_score=2, away_score=0, winner_team=champion_pick_team,
+    )
+    db.session.commit()
+    fake_post = (TOURNAMENT_DEADLINE_UTC + timedelta(days=40)).isoformat()
+    with patch.dict(os.environ, {'WC_FAKE_NOW': fake_post}):
+        ctx = _context_post(user=user)
+    champ_entries = [r for r in ctx['your_roster_recap'] if r['is_champion']]
+    assert len(champ_entries) == 1
+
+
+def test_context_post_handles_missing_final_gracefully(app):
+    """If admin error left winner_team_id null on a 'completed' final,
+    surface the banner without a defeat summary rather than crashing."""
+    seed = seed_full_tournament(num_enrollments=2)
+    user = seed['users'][0]
+    teams = seed['teams']
+    from tests._worldcup_fixtures import make_match
+    # No winner_team — defensive guard path
+    make_match(
+        match_number=104, stage='final',
+        home_team=teams[0], away_team=teams[1],
+        is_completed=True, home_score=2, away_score=1,
+        # winner_team intentionally omitted -> winner_team_id is None
+    )
+    db.session.commit()
+    fake_post = (TOURNAMENT_DEADLINE_UTC + timedelta(days=40)).isoformat()
+    with patch.dict(os.environ, {'WC_FAKE_NOW': fake_post}):
+        ctx = _context_post(user=user)
+    assert ctx['champion_team'] is None
+    assert ctx['champion_summary'] == ''
+
+
+def test_context_post_top_3_final(app):
+    seed = seed_full_tournament(num_enrollments=5)
+    user = seed['users'][0]
+    teams = seed['teams']
+    from tests._worldcup_fixtures import make_match
+    make_match(
+        match_number=104, stage='final',
+        home_team=teams[0], away_team=teams[1],
+        is_completed=True, home_score=2, away_score=1, winner_team=teams[0],
+    )
+    db.session.commit()
+    fake_post = (TOURNAMENT_DEADLINE_UTC + timedelta(days=40)).isoformat()
+    with patch.dict(os.environ, {'WC_FAKE_NOW': fake_post}):
+        ctx = _context_post(user=user)
+    assert len(ctx['top_3_final']) == 3
+    assert ctx['total_count'] == 5

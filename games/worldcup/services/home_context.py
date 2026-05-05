@@ -18,8 +18,10 @@ from games.worldcup.constants import (
     SEASON_YEAR, ENTRY_FEE, TOURNAMENT_DEADLINE_UTC, WORLDCUP_TZ,
 )
 from games.worldcup.models import (
-    WorldCupEnrollment, WorldCupMatch, WorldCupPick, WorldCupTeam,
+    WorldCupEnrollment, WorldCupMatch, WorldCupPick, WorldCupRankSnapshot,
+    WorldCupTeam,
 )
+from games.worldcup.world_cup_countries import TIERS
 from games.worldcup.services.ranking import compute_rank_neighbors
 from games.worldcup.services.scoring import (
     compute_team_score_events, points_for_pick_on_match,
@@ -312,5 +314,131 @@ def _context_live(user: Any) -> dict:
 
 
 def _context_post(user: Any) -> dict:
-    """Stub — replaced in Task 9."""
-    return {'_marker_post': True}
+    """Tournament-complete state — champion banner, podium, roster recap.
+
+    Branch: 'champion' | 'top_3' | 'mid' | 'tail' (mapped from rank_tier:
+    'leader' -> 'champion', 'chasing' -> 'top_3').
+    """
+    enrollment = WorldCupEnrollment.query.filter_by(
+        user_id=user.id, season_year=SEASON_YEAR,
+    ).first()
+    # _context_post is only invoked when state == 'post' which requires the
+    # user to be enrolled (worldcup_hub_state guarantees this). Asserting
+    # rather than redirecting — fail loud if invariant violated.
+    assert enrollment is not None, (
+        f'_context_post invoked for user {user.id} with no SEASON_YEAR enrollment'
+    )
+
+    # Champion data — match #104. Defensive guards mirror Spec B's
+    # core/main/home_context._context_post:
+    #   - winner_team_id may be None (admin error)
+    #   - winner_team_id may FK to neither home nor away (admin error)
+    #   - scores may be None even on is_completed=True (admin oversight)
+    # In any of those cases, surface the banner WITHOUT a defeat summary
+    # rather than rendering "Defeated X 0-0" or score-flipped nonsense.
+    final_match = WorldCupMatch.query.filter_by(match_number=104).first()
+    champion_team = None
+    champion_summary = ''
+    if final_match and final_match.winner_team_id:
+        champion_team = final_match.winner_team
+        winner_id = final_match.winner_team_id
+        winner_is_home = winner_id == final_match.home_team_id
+        winner_is_away = winner_id == final_match.away_team_id
+        scores_present = (
+            final_match.home_score is not None
+            and final_match.away_score is not None
+        )
+        if (winner_is_home or winner_is_away) and scores_present:
+            if winner_is_home:
+                loser = final_match.away_team
+                winner_score = final_match.home_score
+                loser_score = final_match.away_score
+            else:
+                loser = final_match.home_team
+                winner_score = final_match.away_score
+                loser_score = final_match.home_score
+            suffix = ''
+            if final_match.penalties:
+                suffix = ' on penalties'
+            elif final_match.extra_time:
+                suffix = ' in extra time'
+            if loser:
+                champion_summary = (
+                    f'Defeated {loser.display_name} '
+                    f'{winner_score}-{loser_score}{suffix}'
+                )
+
+    # Final podium + total
+    all_enrollments = (
+        WorldCupEnrollment.query
+        .filter_by(season_year=SEASON_YEAR)
+        .order_by(
+            WorldCupEnrollment.total_score.desc(),
+            WorldCupEnrollment.id.asc(),
+        )
+        .all()
+    )
+    top_3_final = all_enrollments[:3]
+    total_count = len(all_enrollments)
+
+    your_final_rank = next(
+        (i + 1 for i, e in enumerate(all_enrollments) if e.id == enrollment.id),
+        None,
+    )
+
+    # Climbed-N — first snapshot vs final rank (positive = climbed, since a
+    # lower rank number is better)
+    snapshots = (
+        WorldCupRankSnapshot.query
+        .filter_by(enrollment_id=enrollment.id)
+        .order_by(WorldCupRankSnapshot.captured_date.asc())
+        .all()
+    )
+    your_climbed_n = None
+    if snapshots and your_final_rank:
+        your_climbed_n = snapshots[0].rank - your_final_rank
+
+    # Roster recap — every pick with points + best_finish
+    picks = (
+        WorldCupPick.query
+        .filter_by(enrollment_id=enrollment.id)
+        .join(WorldCupTeam)
+        .order_by(WorldCupTeam.tier, WorldCupTeam.display_name)
+        .all()
+    )
+    your_roster_recap = []
+    for pick in picks:
+        your_roster_recap.append({
+            'pick': pick,
+            'tier_name': TIERS[pick.tier]['name'],
+            'best_finish': pick.team.best_finish or 'Group',
+            'points': pick.multiplied_points,
+            'is_champion': (
+                champion_team is not None
+                and pick.team_id == champion_team.id
+            ),
+        })
+
+    # Voice variant: 'leader' -> 'champion', 'chasing' -> 'top_3', else passthrough
+    raw_branch = rank_tier(your_final_rank or total_count, total_count)
+    branch = {
+        'leader': 'champion',
+        'chasing': 'top_3',
+    }.get(raw_branch, raw_branch)
+
+    return {
+        'state': 'post',
+        'branch': branch,
+        'copy': hub_copy('post', branch),
+        'enrollment': enrollment,
+        'display_name': enrollment.get_display_name(),
+        'champion_team': champion_team,
+        'champion_summary': champion_summary,
+        'final_match': final_match,
+        'your_final_rank': your_final_rank,
+        'your_climbed_n': your_climbed_n,
+        'your_roster_recap': your_roster_recap,
+        'top_3_final': top_3_final,
+        'total_count': total_count,
+        'tournament_phase': _derive_tournament_phase(),
+    }
