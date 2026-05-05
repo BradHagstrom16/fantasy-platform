@@ -36,6 +36,38 @@ from games.worldcup.services.trends import (
 from games.worldcup.services.voice import hub_copy, rank_tier
 
 
+def _top_n_preview(n: int) -> list[WorldCupEnrollment]:
+    """Season-scoped leaderboard slice — top-N by total_score DESC, tiebreak by id ASC.
+
+    Used by every state builder (out shows top-3 in live/post; pre shows
+    top-3; live shows top-5). Centralized so the season-scope filter and
+    deterministic tiebreak don't drift between sites.
+    """
+    return (
+        WorldCupEnrollment.query
+        .filter_by(season_year=SEASON_YEAR)
+        .order_by(
+            WorldCupEnrollment.total_score.desc(),
+            WorldCupEnrollment.id.asc(),
+        )
+        .limit(n)
+        .all()
+    )
+
+
+def _resolve_enrollment_or_die(user: Any, state_name: str) -> WorldCupEnrollment:
+    """Fetch the SEASON_YEAR enrollment for `user`; assert non-null because
+    worldcup_hub_state guarantees enrollment for non-'out' states.
+    """
+    enrollment = WorldCupEnrollment.query.filter_by(
+        user_id=user.id, season_year=SEASON_YEAR,
+    ).first()
+    assert enrollment is not None, (
+        f'_context_{state_name} invoked for user {user.id} with no SEASON_YEAR enrollment'
+    )
+    return enrollment
+
+
 def _derive_tournament_phase() -> str:
     """Match-data derived tournament phase. Returns one of:
     'pre_tournament' | 'group_stage' | 'knockout' | 'completed'.
@@ -119,16 +151,7 @@ def _context_out(user: Any) -> dict:
 
     top_3_preview = []
     if cta_state in ('unenrolled_live', 'unenrolled_post'):
-        top_3_preview = (
-            WorldCupEnrollment.query
-            .filter_by(season_year=SEASON_YEAR)
-            .order_by(
-                WorldCupEnrollment.total_score.desc(),
-                WorldCupEnrollment.id.asc(),
-            )
-            .limit(3)
-            .all()
-        )
+        top_3_preview = _top_n_preview(3)
 
     return {
         'state': 'out',
@@ -149,15 +172,7 @@ def _context_pre(user: Any) -> dict:
 
     Branch: 'submitted' | 'unsubmitted' (drives voice copy variant).
     """
-    enrollment = WorldCupEnrollment.query.filter_by(
-        user_id=user.id, season_year=SEASON_YEAR,
-    ).first()
-    # _context_pre is only invoked when state == 'pre' which requires the
-    # user to be enrolled (worldcup_hub_state guarantees this). Asserting
-    # rather than redirecting — fail loud if invariant violated.
-    assert enrollment is not None, (
-        f'_context_pre invoked for user {user.id} with no SEASON_YEAR enrollment'
-    )
+    enrollment = _resolve_enrollment_or_die(user, 'pre')
 
     branch = 'submitted' if enrollment.picks_submitted else 'unsubmitted'
 
@@ -171,16 +186,7 @@ def _context_pre(user: Any) -> dict:
             .all()
         )
 
-    top_3_preview = (
-        WorldCupEnrollment.query
-        .filter_by(season_year=SEASON_YEAR)
-        .order_by(
-            WorldCupEnrollment.total_score.desc(),
-            WorldCupEnrollment.id.asc(),
-        )
-        .limit(3)
-        .all()
-    )
+    top_3_preview = _top_n_preview(3)
 
     total_enrolled = WorldCupEnrollment.query.filter_by(
         season_year=SEASON_YEAR,
@@ -211,15 +217,7 @@ def _context_live(user: Any) -> dict:
     per-pick points-earned, trend payload (gated on show_trend_column),
     and a rank-tier-keyed voice copy variant.
     """
-    enrollment = WorldCupEnrollment.query.filter_by(
-        user_id=user.id, season_year=SEASON_YEAR,
-    ).first()
-    # _context_live is only invoked when state == 'live' which requires the
-    # user to be enrolled (worldcup_hub_state guarantees this). Asserting
-    # rather than redirecting — fail loud if invariant violated.
-    assert enrollment is not None, (
-        f'_context_live invoked for user {user.id} with no SEASON_YEAR enrollment'
-    )
+    enrollment = _resolve_enrollment_or_die(user, 'live')
 
     # Rank/standing — reuses Plan 2's helper (parity with leaderboard).
     neighbors = compute_rank_neighbors(enrollment.id)
@@ -238,16 +236,7 @@ def _context_live(user: Any) -> dict:
     branch = rank_tier(neighbors['rank'], total_enrolled)
 
     # Top-5 preview
-    top_5 = (
-        WorldCupEnrollment.query
-        .filter_by(season_year=SEASON_YEAR)
-        .order_by(
-            WorldCupEnrollment.total_score.desc(),
-            WorldCupEnrollment.id.asc(),
-        )
-        .limit(5)
-        .all()
-    )
+    top_5 = _top_n_preview(5)
 
     # User's picks with transient score_events
     user_picks = (
@@ -321,15 +310,7 @@ def _context_post(user: Any) -> dict:
     Branch: 'champion' | 'top_3' | 'mid' | 'tail' (mapped from rank_tier:
     'leader' -> 'champion', 'chasing' -> 'top_3').
     """
-    enrollment = WorldCupEnrollment.query.filter_by(
-        user_id=user.id, season_year=SEASON_YEAR,
-    ).first()
-    # _context_post is only invoked when state == 'post' which requires the
-    # user to be enrolled (worldcup_hub_state guarantees this). Asserting
-    # rather than redirecting — fail loud if invariant violated.
-    assert enrollment is not None, (
-        f'_context_post invoked for user {user.id} with no SEASON_YEAR enrollment'
-    )
+    enrollment = _resolve_enrollment_or_die(user, 'post')
 
     # Champion data — match #104. Defensive guards mirror Spec B's
     # core/main/home_context._context_post:
