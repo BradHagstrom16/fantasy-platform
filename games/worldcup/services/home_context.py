@@ -18,7 +18,7 @@ from games.worldcup.constants import (
     SEASON_YEAR, ENTRY_FEE, TOURNAMENT_DEADLINE_UTC, WORLDCUP_TZ,
 )
 from games.worldcup.models import (
-    WorldCupEnrollment, WorldCupMatch,
+    WorldCupEnrollment, WorldCupMatch, WorldCupPick, WorldCupTeam,
 )
 from games.worldcup.services.state import WorldCupHubState, worldcup_state
 from games.worldcup.services.voice import hub_copy
@@ -133,8 +133,60 @@ def _context_out(user: Any) -> dict:
 
 
 def _context_pre(user: Any) -> dict:
-    """Stub — replaced in Task 7."""
-    return {'_marker_pre': True}
+    """Pre-deadline state for enrolled users.
+
+    Branch: 'submitted' | 'unsubmitted' (drives voice copy variant).
+    """
+    enrollment = WorldCupEnrollment.query.filter_by(
+        user_id=user.id, season_year=SEASON_YEAR,
+    ).first()
+    # _context_pre is only invoked when state == 'pre' which requires the
+    # user to be enrolled (worldcup_hub_state guarantees this). Asserting
+    # rather than redirecting — fail loud if invariant violated.
+    assert enrollment is not None, (
+        f'_context_pre invoked for user {user.id} with no SEASON_YEAR enrollment'
+    )
+
+    branch = 'submitted' if enrollment.picks_submitted else 'unsubmitted'
+
+    user_picks = []
+    if enrollment.picks_submitted:
+        user_picks = (
+            WorldCupPick.query
+            .filter_by(enrollment_id=enrollment.id)
+            .join(WorldCupTeam)
+            .order_by(WorldCupTeam.tier, WorldCupTeam.display_name)
+            .all()
+        )
+
+    top_3_preview = (
+        WorldCupEnrollment.query
+        .filter_by(season_year=SEASON_YEAR)
+        .order_by(
+            WorldCupEnrollment.total_score.desc(),
+            WorldCupEnrollment.id.asc(),
+        )
+        .limit(3)
+        .all()
+    )
+
+    total_enrolled = WorldCupEnrollment.query.filter_by(
+        season_year=SEASON_YEAR,
+    ).count()
+
+    return {
+        'state': 'pre',
+        'branch': branch,
+        'copy': hub_copy('pre', branch),
+        'enrollment': enrollment,
+        'display_name': enrollment.get_display_name(),
+        'deadline_ct': TOURNAMENT_DEADLINE_UTC.astimezone(WORLDCUP_TZ),
+        'picks_submitted': enrollment.picks_submitted,
+        'user_picks': user_picks,
+        'top_3_preview': top_3_preview,
+        'total_enrolled': total_enrolled,
+        'tournament_phase': _derive_tournament_phase(),
+    }
 
 
 def _context_live(user: Any) -> dict:
