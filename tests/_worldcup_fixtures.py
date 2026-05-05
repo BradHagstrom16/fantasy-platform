@@ -122,8 +122,16 @@ def seed_full_tournament(num_enrollments=5, num_picks_each=9,
         picks_by_enr  — dict[enrollment_id, list[WorldCupPick]]
 
     The ``num_picks_each`` matches TIER_PICK_COUNTS = (1, 1, 2, 2, 3) -> 9.
-    Each enrollment gets distinct teams to avoid roster overlap.
+    Each enrollment gets distinct teams across all 5 tiers — this caps
+    ``num_enrollments`` at 5 (tier 1 has only 5 teams). The function
+    raises ValueError if the cap is exceeded.
     """
+    if num_enrollments > 5:
+        raise ValueError(
+            f'seed_full_tournament currently supports up to 5 enrollments '
+            f'with disjoint picks (tier 1 has only 5 teams). Got {num_enrollments}. '
+            f'Either lower the count or extend the helper to allow shared picks.'
+        )
     # 48 teams: 5 across tier 1, 5 tier 2, 11 tier 3, 11 tier 4, 16 tier 5
     teams = []
     for tier_num, count in [(1, 5), (2, 5), (3, 11), (4, 11), (5, 16)]:

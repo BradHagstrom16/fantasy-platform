@@ -11,7 +11,7 @@ consumed by the matching _home_<state>.html partial.
 
 Each builder's return-shape contract is documented at the function level.
 """
-from typing import Optional, Any
+from typing import Any
 
 from games.worldcup.services.state import WorldCupHubState
 
@@ -37,7 +37,7 @@ def build_worldcup_home_context(user: Any, state: WorldCupHubState) -> dict:
 # with the full implementation + tests.
 # =====================================================================
 
-def _context_out(user: Optional[Any]) -> dict:
+def _context_out(user: Any) -> dict:
     """Stub — replaced in Task 6."""
     return {'_marker_out': True}
 
