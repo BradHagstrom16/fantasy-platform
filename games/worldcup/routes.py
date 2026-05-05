@@ -9,7 +9,7 @@ from collections import defaultdict
 
 from flask import render_template, redirect, url_for, flash, request, jsonify
 from flask_login import login_required, current_user
-from sqlalchemy import func, or_, distinct
+from sqlalchemy import func, or_
 from sqlalchemy.orm import joinedload
 
 from extensions import db
@@ -42,6 +42,9 @@ from games.worldcup.services.ranking import compute_rank_neighbors
 from games.worldcup.services.stage import stage_label
 from games.worldcup.services.team_detail import (
     compute_team_ownership, current_user_owns_team, compute_path_to_crown,
+)
+from games.worldcup.services.trends import (
+    show_trend_column, compute_trend_by_enrollment,
 )
 
 
@@ -397,81 +400,6 @@ def _your_standing_caption(neighbors):
     return f'{up} pts from 1st · {down} ahead of next.'
 
 
-def _show_trend_column():
-    """True if count(distinct captured_date) >= 7 within the active season.
-
-    Per ambiguity-A1 resolution: a single global gate, not per-user. The
-    season filter (joined via WorldCupEnrollment.season_year == SEASON_YEAR)
-    is forward-compat for multi-season — without it, snapshots from a prior
-    World Cup would falsely satisfy the gate at the start of the next one.
-    Mirrors Spec B's >= 7 gating on the home-page sparkline.
-    """
-    distinct_days = (
-        db.session.query(func.count(distinct(WorldCupRankSnapshot.captured_date)))
-        .join(
-            WorldCupEnrollment,
-            WorldCupEnrollment.id == WorldCupRankSnapshot.enrollment_id,
-        )
-        .filter(WorldCupEnrollment.season_year == SEASON_YEAR)
-        .scalar() or 0
-    )
-    return distinct_days >= 7
-
-
-def _compute_trend_by_enrollment(enrollment_ids):
-    """For each enrollment id, compute trend = current_score - latest_snapshot_score.
-
-    "Latest" = MAX(captured_date) per enrollment. Returns None if the enrollment
-    has no snapshot history at all (template renders '—').
-
-    Implementation: one round-trip — pull the latest snapshot per enrollment via
-    a (enrollment_id, MAX(captured_date)) subquery joined back to the snapshot
-    table for total_score. SQLite-friendly; no window functions required.
-    """
-    if not enrollment_ids:
-        return {}
-
-    latest_dates = (
-        db.session.query(
-            WorldCupRankSnapshot.enrollment_id.label('eid'),
-            func.max(WorldCupRankSnapshot.captured_date).label('max_date'),
-        )
-        .filter(WorldCupRankSnapshot.enrollment_id.in_(enrollment_ids))
-        .group_by(WorldCupRankSnapshot.enrollment_id)
-        .subquery()
-    )
-
-    rows = (
-        db.session.query(
-            WorldCupRankSnapshot.enrollment_id,
-            WorldCupRankSnapshot.total_score,
-        )
-        .join(
-            latest_dates,
-            (WorldCupRankSnapshot.enrollment_id == latest_dates.c.eid) &
-            (WorldCupRankSnapshot.captured_date == latest_dates.c.max_date),
-        )
-        .all()
-    )
-
-    snapshot_score_by_eid = {eid: score for eid, score in rows}
-
-    trend = {}
-    enrollments_by_id = {
-        e.id: e for e in WorldCupEnrollment.query
-        .filter(WorldCupEnrollment.id.in_(enrollment_ids))
-        .all()
-    }
-    for eid in enrollment_ids:
-        snap = snapshot_score_by_eid.get(eid)
-        enr = enrollments_by_id.get(eid)
-        if snap is None or enr is None:
-            trend[eid] = None
-        else:
-            trend[eid] = round(enr.total_score - snap, 2)
-    return trend
-
-
 @worldcup_bp.route('/leaderboard')
 def leaderboard():
     """Public leaderboard — no login required.
@@ -506,10 +434,10 @@ def leaderboard():
     deadline_passed = now_utc() >= TOURNAMENT_DEADLINE_UTC
 
     your_standing = _compute_your_standing(enrollments)
-    show_trend_column = _show_trend_column()
+    show_trend = show_trend_column()
     trend_by_enrollment = (
-        _compute_trend_by_enrollment([e.id for e in enrollments])
-        if show_trend_column else {}
+        compute_trend_by_enrollment([e.id for e in enrollments])
+        if show_trend else {}
     )
 
     return render_template('worldcup/leaderboard.html',
@@ -517,7 +445,7 @@ def leaderboard():
         total_players=len(enrollments),
         deadline_passed=deadline_passed,
         your_standing=your_standing,
-        show_trend_column=show_trend_column,
+        show_trend_column=show_trend,
         trend_by_enrollment=trend_by_enrollment,
     )
 
