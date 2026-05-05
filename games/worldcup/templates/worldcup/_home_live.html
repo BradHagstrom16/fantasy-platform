@@ -63,7 +63,7 @@
         <tbody>
           {% for pick in user_picks %}
           <tr>
-            <td><span class="wc-tier-dot tier-badge-{{ pick.team.tier }}"></span> T{{ pick.team.tier }}</td>
+            <td><span class="wc-tier-dot wc-tier-dot-{{ pick.team.tier }}"></span> T{{ pick.team.tier }}</td>
             <td>
               <a href="{{ url_for('worldcup.team_detail', team_id=pick.team_id) }}" class="text-decoration-none">
                 {{ pick.team.flag_emoji }} {{ pick.team.display_name }}
