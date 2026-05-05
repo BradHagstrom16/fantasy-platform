@@ -11,8 +11,9 @@ consumed by the matching _home_<state>.html partial.
 
 Each builder's return-shape contract is documented at the function level.
 """
-from typing import Any, Optional
+from typing import Any
 
+from extensions import db
 from games.worldcup.constants import (
     SEASON_YEAR, ENTRY_FEE, TOURNAMENT_DEADLINE_UTC, WORLDCUP_TZ,
 )
@@ -32,16 +33,17 @@ def _derive_tournament_phase() -> str:
     between the routes module and a service it depends on. CLAUDE.md
     "phase != stage" — distinct value space from stage_label.
     """
-    completed_group = WorldCupMatch.query.filter_by(
-        stage='group', is_completed=True,
+    completed_group = db.session.query(WorldCupMatch).filter_by(
+        stage='group', is_completed=True
     ).count()
-    completed_knockout = WorldCupMatch.query.filter(
+    completed_knockout = db.session.query(WorldCupMatch).filter(
         WorldCupMatch.stage != 'group',
-        WorldCupMatch.is_completed == True,  # noqa: E712
+        WorldCupMatch.is_completed == True  # noqa: E712
     ).count()
-    final_completed = WorldCupMatch.query.filter_by(
-        stage='final', is_completed=True,
+    final_completed = db.session.query(WorldCupMatch).filter_by(
+        stage='final', is_completed=True
     ).count()
+
     if final_completed > 0:
         return 'completed'
     if completed_knockout > 0:
@@ -71,7 +73,7 @@ def build_worldcup_home_context(user: Any, state: WorldCupHubState) -> dict:
 # Per-state builders
 # =====================================================================
 
-def _context_out(user: Optional[Any]) -> dict:
+def _context_out(user: Any) -> dict:
     """Marketing surface for anonymous + authenticated-unenrolled users.
 
     cta_state branches on (auth, tournament phase):

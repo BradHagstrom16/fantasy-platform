@@ -17,9 +17,7 @@ from games.worldcup.constants import (
 from games.worldcup.services.home_context import (
     build_worldcup_home_context, _context_out,
 )
-from tests._worldcup_fixtures import (
-    make_user, make_enrollment, seed_full_tournament,
-)
+from tests._worldcup_fixtures import make_user, seed_full_tournament
 
 
 @pytest.fixture()
