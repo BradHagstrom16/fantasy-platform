@@ -12,7 +12,7 @@ Plan 4 of Spec C extends it with 'out'.
 """
 import os
 from datetime import datetime, timezone
-from typing import Literal, Optional
+from typing import Literal
 
 from games.worldcup.constants import SEASON_YEAR, TOURNAMENT_DEADLINE_UTC
 from games.worldcup.models import WorldCupMatch, WorldCupEnrollment
