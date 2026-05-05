@@ -46,6 +46,8 @@ from games.worldcup.services.team_detail import (
 from games.worldcup.services.trends import (
     show_trend_column, compute_trend_by_enrollment,
 )
+from games.worldcup.services.state import worldcup_hub_state
+from games.worldcup.services.home_context import build_worldcup_home_context
 
 
 # ============================================================================
@@ -144,52 +146,17 @@ def worldcup_before_request():
 
 @worldcup_bp.route('/')
 def index():
-    """World Cup dashboard / landing page."""
-    enrollment = None
-    if current_user.is_authenticated:
-        enrollment = WorldCupEnrollment.query.filter_by(
-            user_id=current_user.id, season_year=SEASON_YEAR
-        ).first()
+    """World Cup hub — dispatches to a state-keyed partial.
 
-    top_enrollments = (
-        WorldCupEnrollment.query
-        .filter_by(season_year=SEASON_YEAR)
-        .order_by(WorldCupEnrollment.total_score.desc())
-        .limit(10)
-        .all()
-    )
-
-    recent_matches = (
-        WorldCupMatch.query
-        .filter_by(is_completed=True)
-        .order_by(WorldCupMatch.match_number.desc())
-        .limit(5)
-        .all()
-    )
-
-    deadline_ct = TOURNAMENT_DEADLINE_UTC.astimezone(WORLDCUP_TZ)
-    deadline_passed = now_utc() >= TOURNAMENT_DEADLINE_UTC
-    total_enrolled = WorldCupEnrollment.query.filter_by(season_year=SEASON_YEAR).count()
-
-    user_picks = None
-    if enrollment and enrollment.picks_submitted:
-        user_picks = (
-            WorldCupPick.query
-            .filter_by(enrollment_id=enrollment.id)
-            .join(WorldCupTeam)
-            .order_by(WorldCupTeam.tier, WorldCupTeam.display_name)
-            .all()
-        )
-
-    return render_template('worldcup/index.html',
-        enrollment=enrollment,
-        top_enrollments=top_enrollments,
-        recent_matches=recent_matches,
-        deadline_ct=deadline_ct,
-        deadline_passed=deadline_passed,
-        total_enrolled=total_enrolled,
-        user_picks=user_picks,
-    )
+    State resolved by worldcup_hub_state(user) (4-state: out/pre/live/post).
+    Each state's context is built by games.worldcup.services.home_context;
+    home_shell.html includes the matching _home_<state>.html partial.
+    """
+    user = current_user if current_user.is_authenticated else None
+    state = worldcup_hub_state(user)
+    context = build_worldcup_home_context(user, state)
+    context['state'] = state
+    return render_template('worldcup/home_shell.html', **context)
 
 
 @worldcup_bp.route('/join', methods=['GET', 'POST'])
