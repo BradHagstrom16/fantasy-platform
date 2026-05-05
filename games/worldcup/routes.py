@@ -17,7 +17,7 @@ from models import User
 from games.worldcup import worldcup_bp
 from games.common import game_must_be_open
 from games.worldcup.services.state import now_utc
-from games.worldcup.models import WorldCupEnrollment, WorldCupTeam, WorldCupMatch, WorldCupPick, WorldCupRankSnapshot
+from games.worldcup.models import WorldCupEnrollment, WorldCupTeam, WorldCupMatch, WorldCupPick
 from games.worldcup.constants import (
     SEASON_YEAR, ENTRY_FEE, TOURNAMENT_DEADLINE_UTC,
     TIER_PICK_COUNTS, TOTAL_PICKS, WORLDCUP_TZ,

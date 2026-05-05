@@ -65,6 +65,8 @@ venv/bin/python -m pytest tests/test_worldcup_admin.py    # Admin + public route
 venv/bin/python -m pytest tests/test_post_deadline_ui.py  # Post-deadline UI tests
 venv/bin/python -m pytest tests/test_worldcup_stats.py    # Stats Hub service + route tests
 venv/bin/python -m pytest tests/test_worldcup_leaderboard.py  # Leaderboard route + Your Standing + Trend gate
+venv/bin/python -m pytest tests/test_worldcup_stage.py    # Stage-label SSoT (services/stage.py)
+venv/bin/python -m pytest tests/test_worldcup_trends.py   # Trend helpers (services/trends.py)
 ```
 
 No linter configured.
