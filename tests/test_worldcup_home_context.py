@@ -18,6 +18,7 @@ from games.worldcup.constants import (
 from games.worldcup.services.home_context import (
     build_worldcup_home_context, _context_out, _context_pre, _context_live,
 )
+from games.worldcup.services.scoring import points_for_pick_on_match
 from tests._worldcup_fixtures import make_user, make_enrollment, seed_full_tournament
 
 
@@ -338,6 +339,62 @@ def test_context_live_recent_matches_has_points_earned(app):
         assert 'match' in entry
         assert 'points_earned' in entry  # None or float
         assert 'stage_label' in entry
+    # Verify the seeded match's points_earned actually flows through (was
+    # only checking key presence). teams[0] is in user[0]'s tier-1 roster
+    # via seed_full_tournament's offset=0 disjoint slice, so this should
+    # be a non-null, non-negative float.
+    seeded = next(
+        e for e in ctx['recent_matches'] if e['match'].match_number == 1
+    )
+    assert seeded['points_earned'] is not None
+    assert seeded['points_earned'] >= 0
+
+
+def test_context_live_recent_matches_sums_when_both_teams_are_picks(app):
+    """Regression: when BOTH teams in a completed match are user picks (common
+    in knockout), points_earned must SUM both picks' contributions — not just
+    the home pick's. The previous if/elif silently dropped the away pick."""
+    seed = seed_full_tournament(num_enrollments=2)
+    user = seed['users'][0]
+    teams = seed['teams']
+    # User[0]'s picks span teams[0,5,10,11,21,22,32,33,34]. Pick teams[0]
+    # (tier 1) and teams[5] (tier 2) — both in the user's roster, different
+    # tiers. Use a draw so BOTH picks earn positive points (otherwise the
+    # loser earns 0 and the test wouldn't actually exercise the bug).
+    from tests._worldcup_fixtures import make_match
+    match = make_match(
+        match_number=1, home_team=teams[0], away_team=teams[5],
+        is_completed=True, home_score=1, away_score=1, winner_team=None,
+    )
+    match.is_draw = True
+    db.session.commit()
+
+    picks_by_team = {
+        p.team_id: p for p in seed['picks_by_enr'][seed['enrollments'][0].id]
+    }
+    pick_a = picks_by_team[teams[0].id]
+    pick_b = picks_by_team[teams[5].id]
+    expected_a = points_for_pick_on_match(pick_a, match)
+    expected_b = points_for_pick_on_match(pick_b, match)
+
+    fake_live = (TOURNAMENT_DEADLINE_UTC + timedelta(days=2)).isoformat()
+    with patch.dict(os.environ, {'WC_FAKE_NOW': fake_live}):
+        ctx = _context_live(user=user)
+
+    seeded = next(
+        e for e in ctx['recent_matches'] if e['match'].match_number == 1
+    )
+    # Both picks must contribute positive points — otherwise the test
+    # collapses to the single-pick path and wouldn't catch the if/elif bug.
+    assert expected_a > 0, (
+        f'Test setup invalid: expected_a={expected_a}; need both picks > 0 '
+        f'to exercise the both-teams-are-picks summing path.'
+    )
+    assert expected_b > 0, (
+        f'Test setup invalid: expected_b={expected_b}; need both picks > 0 '
+        f'to exercise the both-teams-are-picks summing path.'
+    )
+    assert seeded['points_earned'] == pytest.approx(expected_a + expected_b)
 
 
 def test_context_live_trend_gate_closed_when_under_seven_days(app):

@@ -200,6 +200,8 @@ def _context_pre(user: Any) -> dict:
 def _context_live(user: Any) -> dict:
     """Live-tournament state — full dossier for an enrolled user.
 
+    Branch: 'leader' | 'chasing' | 'mid' | 'tail' (drives voice copy variant).
+
     Combines: rank/lead deltas via compute_rank_neighbors, top-5 leaderboard
     preview, user picks with transient score_events, recent matches with
     per-pick points-earned, trend payload (gated on show_trend_column),
@@ -255,6 +257,9 @@ def _context_live(user: Any) -> dict:
     user_picks_by_team_id = {p.team_id: p for p in user_picks}
     for pick in user_picks:
         # Transient attr — never persisted (CLAUDE.md ORM safety rule).
+        # ~18 queries per render (2 per pick × 9 picks). Acceptable at current
+        # pool size (~25 enrollments). Revisit with a batched
+        # compute_team_score_events_for_teams(...) helper if the pool grows.
         pick.score_events = compute_team_score_events(pick.team)
 
     # Recent matches with per-match points-earned for user's roster
@@ -268,13 +273,14 @@ def _context_live(user: Any) -> dict:
     recent_matches = []
     for match in recent:
         points_earned = None
-        if match.home_team_id in user_team_ids:
-            points_earned = points_for_pick_on_match(
-                user_picks_by_team_id[match.home_team_id], match,
-            )
-        elif match.away_team_id in user_team_ids:
-            points_earned = points_for_pick_on_match(
-                user_picks_by_team_id[match.away_team_id], match,
+        matched_picks = [
+            user_picks_by_team_id[tid]
+            for tid in (match.home_team_id, match.away_team_id)
+            if tid in user_team_ids
+        ]
+        if matched_picks:
+            points_earned = sum(
+                points_for_pick_on_match(p, match) for p in matched_picks
             )
         recent_matches.append({
             'match': match,
