@@ -4962,3 +4962,18 @@ hr { border-color: var(--border); opacity: 1; }
   color: #8a6a1a !important;
 }
 
+/* .match-result-card.is-roster-match — Subtle "your team played" accent
+   on the live-state Recent Results card. Applies on top of
+   .match-result-card (defined at :2651, white card with var(--bg-card)
+   bg). Compound selector (0,0,2,0) wins over the bare card rule
+   (0,0,1,0).
+
+   Soft gold-to-white gradient lets the row read as flagged at a glance
+   but stays scannable when 3-5 of 7 matches involve the user's picks
+   during group-stage worst case (per brainstorm decision 3 — Subtle was
+   chosen over Prominent specifically to handle this density). */
+.match-result-card.is-roster-match {
+  border-left: 3px solid var(--gold-light);
+  background: linear-gradient(90deg, rgba(242, 211, 107, .10) 0%, var(--bg-card) 35%);
+}
+
