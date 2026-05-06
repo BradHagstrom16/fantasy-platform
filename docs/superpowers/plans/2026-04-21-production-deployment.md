@@ -13,16 +13,15 @@
 
 ---
 
-## Sequencing note (added 2026-04-28, post-pause)
+## Resume status as of 2026-05-06
 
-Brad paused this plan after completing Phase 2 Task 10. Resume sequence:
+Brad paused this plan after completing Phase 2 Task 10. Resume status:
 
-1. Finish **Spec B — CCC home redesign** (`docs/superpowers/specs/2026-04-28-ccc-home-redesign-design.md`) and merge to `main`.
-2. Finish **Spec C — World Cup reskin** (next brainstorm) and merge to `main`.
-3. Source / build a sports-data API integration for live World Cup scores (out of scope for B and C).
-4. Resume this plan at **Task 11** and continue through Task 27.
-
-Spec B adds one new cron entry (`flask worldcup snapshot-ranks`) which has been **already woven into Task 25's cron schedule below** — no separate task needed. If Spec C or the API work introduces additional infra requirements, append them to the appropriate task here at that time.
+- **Specs A, B, and C Plans 1–5 all merged.** `main` at `890bf66` (or later); 264/264 tests; pyright clean.
+- **Sports-data API integration deferred to post-launch.** Manual admin match entry powers tournament scoring at launch — adequate for the small private cup audience.
+- **Snapshot-ranks cron** is already woven into Task 25 below — no further infra changes from any of the three specs.
+- **Resume at Task 11** and continue through Task 27.
+- **Then immediately** run the new `docs/production-launch-test-script.md` against the live URL before announcing launch (see Phase 5.5 callout below Task 25).
 
 **Snapshot timing tradeoff to know about:** the snapshot infra collects rank-history daily once the production cron is live. If this plan resumes only shortly before WC kickoff (June 11), the live-state sparkline on the home page will start with an empty/flat line and accumulate real data from the first cron run forward. The dossier copy handles this honestly ("tracking starts {date}") so the launch-day experience is acceptable either way — but earlier production resume = richer sparkline at launch.
 
@@ -95,7 +94,7 @@ class ProductionConfig(Config):
     DEBUG = False
 ```
 
-- [ ] **Step 2: Add session cookie security flags**
+- [ ] **Step 2: Add session cookie security flags + DO Managed Postgres connection hygiene**
 
 Replace the existing `ProductionConfig` block with:
 
@@ -105,21 +104,26 @@ class ProductionConfig(Config):
     SESSION_COOKIE_SECURE = True
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = 'Lax'
+    # DO Managed Postgres closes idle connections; long-lived Gunicorn workers
+    # need pool_pre_ping to avoid OperationalError on first request after idle.
+    SQLALCHEMY_ENGINE_OPTIONS = {'pool_pre_ping': True, 'pool_recycle': 280}
 ```
 
 - [ ] **Step 3: Verify the change looks correct**
 
 ```bash
-grep -A 5 "class ProductionConfig" config.py
+grep -A 8 "class ProductionConfig" config.py
 ```
 
-Expected output:
+Expected output includes both the cookie flags and the engine options:
 ```
 class ProductionConfig(Config):
     DEBUG = False
     SESSION_COOKIE_SECURE = True
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = 'Lax'
+    # DO Managed Postgres closes idle connections; ...
+    SQLALCHEMY_ENGINE_OPTIONS = {'pool_pre_ping': True, 'pool_recycle': 280}
 ```
 
 - [ ] **Step 4: Run the test suite to verify nothing is broken**
@@ -128,7 +132,7 @@ class ProductionConfig(Config):
 venv/bin/python -m pytest tests/ -q
 ```
 
-Expected: all tests pass (119 tests).
+Expected: all tests pass — current baseline is 264 on `main`. Verify pytest's reported count matches the count on `main` at deploy time.
 
 ---
 
@@ -229,25 +233,13 @@ ProxyFix tells Flask to trust the `X-Forwarded-Proto: https` header that Cloudfl
 
 - [ ] **Step 1: Add the import**
 
-In `app.py`, add `ProxyFix` to the import block (after the existing imports, before `from config import config`):
+In `app.py`, add `ProxyFix` to the import block (alongside the existing `werkzeug` / `flask` imports):
 
 ```python
 from werkzeug.middleware.proxy_fix import ProxyFix
 ```
 
-The import block should look like:
-
-```python
-import logging
-import os
-
-import click
-from flask import Flask, render_template
-from werkzeug.middleware.proxy_fix import ProxyFix
-
-from config import config
-from extensions import db, migrate, login_manager, csrf, limiter
-```
+Expected after this edit: `ProxyFix` is imported from `werkzeug.middleware.proxy_fix` somewhere in the top-of-file import block, and the rest of the existing imports remain untouched. (Don't worry about exact line ordering — the file may have grown additional imports since this plan was authored.)
 
 - [ ] **Step 2: Apply ProxyFix before the return statement**
 
@@ -266,7 +258,7 @@ In `create_app()`, add two lines directly before `return app` (currently at line
 venv/bin/python -m pytest tests/ -q
 ```
 
-Expected: all tests pass.
+Expected: all tests pass — current baseline is 264 on `main`. Verify pytest's reported count matches the count on `main` at deploy time.
 
 ---
 
@@ -442,7 +434,7 @@ Expected: 7 files changed.
 venv/bin/python -m pytest tests/ -q
 ```
 
-Expected: all tests pass.
+Expected: all tests pass — current baseline is 264 on `main`. Verify pytest's reported count matches the count on `main` at deploy time.
 
 - [ ] **Step 4: Commit**
 
@@ -940,20 +932,7 @@ ENVIRONMENT=production FLASK_APP=app.py venv/bin/flask create-admin
 
 You'll be prompted for username, email, and password. This is your platform admin account.
 
----
-
-### Task 20.5: Initialize the production database schema
-
-- [ ] **Step 1: Run migrations against the production database**
-
-```bash
-cd /home/deploy/fantasy-platform
-ENVIRONMENT=production FLASK_APP=app.py venv/bin/flask db upgrade
-```
-
-Expected: Alembic applies all migrations in order. You will see output like `Running upgrade -> abc123, ...` for each migration. No errors.
-
-- [ ] **Step 2: Verify the tables exist**
+- [ ] **Step 4: Verify migrations created the expected tables**
 
 ```bash
 ENVIRONMENT=production FLASK_APP=app.py venv/bin/flask shell
@@ -964,11 +943,14 @@ Then in the shell:
 ```python
 from extensions import db
 from sqlalchemy import inspect
-print(inspect(db.engine).get_table_names())
-exit()
+sorted(inspect(db.engine).get_table_names())
 ```
 
-Expected: a list of table names including `user`, `golf_enrollment`, `cfb_enrollment`, `worldcup_enrollment`, and others. If you see an empty list, something is wrong with `DATABASE_URL` in your `.env`.
+Expected: a list including `user`, `golf_enrollment`, `cfb_enrollment`, `worldcup_enrollment`, `worldcup_pick`, `worldcup_match`, `worldcup_team`, `worldcup_rank_snapshot`, and others. If empty, `DATABASE_URL` in `.env` is wrong — re-check it before continuing.
+
+```python
+exit()
+```
 
 ---
 
@@ -1187,6 +1169,12 @@ crontab -l
 Expected: the seven job entries are listed.
 
 > **Tip:** When a game's season is over (e.g., World Cup ends), open `crontab -e` and add a `#` at the start of that job's line to disable it. Remove the `#` when the season begins again.
+
+---
+
+## Phase 5.5: Production Launch Test (Brad)
+
+> **Before configuring monitoring (Task 26), run the full Production Launch Test Script (`docs/production-launch-test-script.md`).** UptimeRobot creates real alerts for real outages — you don't want it firing on test-induced systemd restarts during the tournament simulation. The test script registers two test users, simulates a complete World Cup with admin-entered match results, then resets the database to a clean launch baseline before any real player is invited in.
 
 ---
 
