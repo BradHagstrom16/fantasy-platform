@@ -4847,6 +4847,47 @@ hr { border-color: var(--border); opacity: 1; }
 
 /* --- Cluster 2: Champion banner orphans (Task 3) --- */
 
+/* .champion-flag — display:block lifts the flag onto its own line above
+   the country name (markup wraps both inside one .display-4 div). Filter
+   values match .home-shell .champion-flag at :1457 verbatim — Spec B has
+   validated the visual; we want parity. Scoped to the WC-specific
+   .card.wc-card.wc-hero-grad container so it doesn't reach Spec B's
+   .home-shell platform home, which keeps its own copy at :1457. */
+.card.wc-card.wc-hero-grad .champion-flag {
+  display: block;
+  font-size: 5rem;
+  line-height: 1;
+  margin-bottom: 0.75rem;
+  filter: drop-shadow(0 4px 16px rgba(0, 0, 0, .4))
+          drop-shadow(0 0 24px rgba(242, 211, 107, .25));
+}
+@media (min-width: 768px) {
+  .card.wc-card.wc-hero-grad .champion-flag { font-size: 7rem; }
+}
+
+/* .champion-name — Teko gold-gradient country name. Mirrors
+   .home-shell .champion-name at :1467-1482 with the same tokens
+   (--font-teko, --metal-gold) so Spec B and the WC hub render identical
+   typography on their respective champion banners. Requires the markup
+   wrap in _home_post.html (Task 4). */
+.card.wc-card.wc-hero-grad .champion-name {
+  display: block;
+  font-family: var(--font-teko);
+  font-weight: 700;
+  font-size: 2.8rem;
+  line-height: 1;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: var(--metal-gold);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  margin: 0.5rem 0 0.6rem;
+}
+@media (min-width: 768px) {
+  .card.wc-card.wc-hero-grad .champion-name { font-size: 4rem; }
+}
+
 /* --- Cluster 3: Dark-surface .text-muted lift + table exclusion (Task 5) --- */
 
 /* --- Cluster 4: Dark-surface .text-success/.text-danger lift (Task 6) --- */
