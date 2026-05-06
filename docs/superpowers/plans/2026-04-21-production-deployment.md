@@ -193,7 +193,7 @@ PLATFORM_TIMEZONE=America/Chicago
 # Development:
 SITE_URL=http://localhost:5000
 # Production: set to your actual domain
-# SITE_URL=https://yourdomain.com
+# SITE_URL=https://cccfantasy.com
 
 # Email (Gmail SMTP for reminders and password resets)
 EMAIL_ADDRESS=your-email@gmail.com
@@ -323,19 +323,19 @@ File contents for `deploy/nginx.conf`:
 
 ```nginx
 # Fantasy Sports Platform — Nginx site config
-# Replace every instance of "yourdomain.com" with your actual domain before use.
+# Replace every instance of "cccfantasy.com" with your actual domain before use.
 # Install: sudo cp /home/deploy/fantasy-platform/deploy/nginx.conf /etc/nginx/sites-available/fantasy-platform
 # Enable: sudo ln -s /etc/nginx/sites-available/fantasy-platform /etc/nginx/sites-enabled/
 
 server {
     listen 80;
-    server_name yourdomain.com www.yourdomain.com;
+    server_name cccfantasy.com www.cccfantasy.com;
     return 301 https://$host$request_uri;
 }
 
 server {
     listen 443 ssl;
-    server_name yourdomain.com www.yourdomain.com;
+    server_name cccfantasy.com www.cccfantasy.com;
 
     ssl_certificate     /etc/ssl/cloudflare/cert.pem;
     ssl_certificate_key /etc/ssl/cloudflare/key.pem;
@@ -507,19 +507,19 @@ After creation, you'll see your Droplet's public IP address (e.g., `143.110.152.
 
 ### Task 11: Create a DO Managed PostgreSQL cluster
 
-- [ ] **Step 1: Create the database**
+- [x] **Step 1: Create the database**
 
 In the DigitalOcean dashboard:
 1. Click **Create → Databases**
-2. **Database engine:** PostgreSQL (latest version — 16 or 17)
-3. **Region:** Choose the **same region as your Droplet** (important for private VPC)
-4. **Machine type:** Basic → $15/mo (1 GB RAM / 1 vCPU / 10 GB SSD)
+2. **Database engine:** PostgreSQL (version 18)
+3. **Region:** Choose the **same region as your Droplet** (important for private VPC - NYC3)
+4. **Machine type:** Basic → $15.15/mo (1 GB RAM / 1 vCPU / 10 GB SSD)
 5. **Cluster name:** `fantasy-platform-db`
 6. Click **Create Database Cluster**
 
 Creation takes 2–3 minutes.
 
-- [ ] **Step 2: Restrict access to your Droplet only**
+- [x] **Step 2: Restrict access to your Droplet only**
 
 Once the cluster is created:
 1. Go to the database's **Settings** tab
@@ -529,7 +529,7 @@ Once the cluster is created:
 
 This ensures the DB port is only reachable from your Droplet, not the public internet.
 
-- [ ] **Step 3: Copy the connection string**
+- [x] **Step 3: Copy the connection string**
 
 1. Go to the database's **Overview** tab
 2. Under **Connection Details**, select **Connection string** from the dropdown
@@ -543,17 +543,17 @@ This ensures the DB port is only reachable from your Droplet, not the public int
 
 ### Task 12: Register a domain
 
-- [ ] **Step 1: Choose and register a domain**
+- [x] **Step 1: Choose and register a domain**
 
-Go to https://www.namecheap.com (or https://www.cloudflare.com/products/registrar/ — Cloudflare charges at-cost with no markup).
+Go to https://www.cloudflare.com/products/registrar/ — Cloudflare
 
 Search for your desired name. Suggested TLDs for a sports platform: `.com`, `.app`, `.io`, `.gg`.
 
 Purchase the domain (~$9–15/yr).
 
-- [ ] **Step 2: Note your domain name**
+- [x] **Step 2: Note your domain name**
 
-Save your domain name (e.g., `commissionersclub.com`) — you'll use it in every step below that says `yourdomain.com`.
+Save your domain name (`cccfantasy.com`) — you'll use it in every step below that says `cccfantasy.com`.
 
 ---
 
@@ -566,19 +566,19 @@ Save your domain name (e.g., `commissionersclub.com`) — you'll use it in every
 
 ### Task 13: First login and create a deploy user
 
-- [ ] **Step 1: SSH into the server as root**
+- [x] **Step 1: SSH into the server as root**
 
 In your terminal, run (replace with your actual IP):
 
 ```bash
-ssh root@143.110.152.42
+ssh root@104.131.28.136
 ```
 
 Type `yes` when asked about the fingerprint. If you set a passphrase on your SSH key (Task 10 Step 2), you'll be asked for it once per terminal session.
 
 You are now on the server. Your prompt will look like `root@fantasy-platform:~#`.
 
-- [ ] **Step 2: Update the system**
+- [x] **Step 2: Update the system**
 
 ```bash
 apt update && apt upgrade -y
@@ -586,7 +586,7 @@ apt update && apt upgrade -y
 
 This takes 1–2 minutes. Wait for it to finish.
 
-- [ ] **Step 3: Create a deploy user**
+- [x] **Step 3: Create a deploy user**
 
 ```bash
 adduser deploy
@@ -594,13 +594,13 @@ adduser deploy
 
 You'll be prompted to set a password. Choose a strong one and save it. Press Enter to skip the other fields (Full Name, Room Number, etc.).
 
-- [ ] **Step 4: Give deploy user sudo access**
+- [x] **Step 4: Give deploy user sudo access**
 
 ```bash
 usermod -aG sudo deploy
 ```
 
-- [ ] **Step 5: Copy your SSH key to the deploy user**
+- [x] **Step 5: Copy your SSH key to the deploy user**
 
 Your Mac's public key was added to root's `~/.ssh/authorized_keys` automatically during Droplet creation (Task 10 Step 3). Copy it to the deploy user so you can SSH in as deploy too:
 
@@ -612,12 +612,12 @@ chmod 700 /home/deploy/.ssh
 chmod 600 /home/deploy/.ssh/authorized_keys
 ```
 
-- [ ] **Step 6: Verify you can SSH as deploy**
+- [x] **Step 6: Verify you can SSH as deploy**
 
 Open a **new** terminal window on your Mac and run:
 
 ```bash
-ssh deploy@143.110.152.42
+ssh deploy@104.131.28.136
 ```
 
 You should log in without entering a password (or with just your key's passphrase, if you set one). Your prompt will look like `deploy@fantasy-platform:~$`.
@@ -630,14 +630,14 @@ You should log in without entering a password (or with just your key's passphras
 
 Run these commands in your deploy SSH session:
 
-- [ ] **Step 1: Allow SSH, HTTP, and HTTPS**
+- [x] **Step 1: Allow SSH, HTTP, and HTTPS**
 
 ```bash
 sudo ufw allow OpenSSH
 sudo ufw allow 'Nginx Full'
 ```
 
-- [ ] **Step 2: Enable the firewall**
+- [x] **Step 2: Enable the firewall**
 
 ```bash
 sudo ufw enable
@@ -645,7 +645,7 @@ sudo ufw enable
 
 Type `y` when prompted.
 
-- [ ] **Step 3: Verify the rules**
+- [x] **Step 3: Verify the rules**
 
 ```bash
 sudo ufw status
@@ -663,7 +663,7 @@ OpenSSH (v6)               ALLOW       Anywhere (v6)
 Nginx Full (v6)            ALLOW       Anywhere (v6)
 ```
 
-- [ ] **Step 4: Install fail2ban to block SSH brute-force attempts**
+- [x] **Step 4: Install fail2ban to block SSH brute-force attempts**
 
 fail2ban watches auth logs and temporarily IP-bans addresses that fail too many SSH logins in a row. It's a standard hardening step for any public-facing VPS.
 
@@ -684,13 +684,13 @@ Expected: `Active: active (running)`.
 
 ### Task 15: Install system dependencies
 
-- [ ] **Step 1: Install Nginx and Git**
+- [x] **Step 1: Install Nginx and Git**
 
 ```bash
 sudo apt install -y nginx git
 ```
 
-- [ ] **Step 2: Add the deadsnakes PPA for Python 3.13**
+- [x] **Step 2: Add the deadsnakes PPA for Python 3.13**
 
 Ubuntu 24.04 ships Python 3.12 by default. Your app requires 3.13.
 
@@ -705,7 +705,7 @@ sudo apt update
 sudo apt install -y python3.13 python3.13-venv python3.13-dev
 ```
 
-- [ ] **Step 3: Verify Python version**
+- [x] **Step 3: Verify Python version**
 
 ```bash
 python3.13 --version
@@ -713,7 +713,7 @@ python3.13 --version
 
 Expected output: `Python 3.13.x`
 
-- [ ] **Step 4: Allow Nginx to access the Gunicorn socket**
+- [x] **Step 4: Allow Nginx to access the Gunicorn socket**
 
 Nginx runs as `www-data`. Gunicorn runs as `deploy`. The socket file needs to be readable by both.
 
@@ -721,7 +721,7 @@ Nginx runs as `www-data`. Gunicorn runs as `deploy`. The socket file needs to be
 sudo usermod -aG deploy www-data
 ```
 
-- [ ] **Step 5: Enable automatic security updates**
+- [x] **Step 5: Enable automatic security updates**
 
 Ubuntu's `unattended-upgrades` package applies security patches without manual intervention — critical for a server that runs unattended for months.
 
@@ -832,20 +832,20 @@ Expected: `-rw-------` (only owner can read/write).
 cat /home/deploy/fantasy-platform/deploy/nginx.conf
 ```
 
-You'll see `yourdomain.com` as a placeholder. You need to replace it with your actual domain.
+You'll see `cccfantasy.com` as a placeholder. You need to replace it with your actual domain.
 
 - [ ] **Step 2: Copy it to the Nginx sites directory with your domain substituted**
 
 Replace `commissionersclub.com` in the sed command below with **your actual domain** from Task 12:
 
 ```bash
-sudo sed 's/yourdomain.com/commissionersclub.com/g' \
+sudo sed 's/cccfantasy.com/commissionersclub.com/g' \
     /home/deploy/fantasy-platform/deploy/nginx.conf \
     > /tmp/fantasy-platform.conf
 sudo cp /tmp/fantasy-platform.conf /etc/nginx/sites-available/fantasy-platform
 ```
 
-After the copy, confirm there are no residual `yourdomain.com` strings:
+After the copy, confirm there are no residual `cccfantasy.com` strings:
 
 ```bash
 grep -n "yourdomain\.com" /etc/nginx/sites-available/fantasy-platform || echo "OK — no placeholders remain"
@@ -1091,7 +1091,7 @@ Wait 10 minutes for DNS to propagate after Task 21 before running these tests.
 
 - [ ] **Step 1: Test via browser**
 
-Open a browser and go to `https://yourdomain.com`. You should see the Commissioner's Club homepage with a padlock icon in the browser bar (HTTPS).
+Open a browser and go to `https://cccfantasy.com`. You should see the Commissioner's Club homepage with a padlock icon in the browser bar (HTTPS).
 
 - [ ] **Step 2: Test login**
 
@@ -1107,7 +1107,7 @@ Open DevTools (F12) → Network tab. Reload the page. Confirm that `/static/css/
 
 - [ ] **Step 5: Test HTTP → HTTPS redirect**
 
-In your browser, go to `http://yourdomain.com` (plain HTTP). It should redirect to `https://yourdomain.com`.
+In your browser, go to `http://cccfantasy.com` (plain HTTP). It should redirect to `https://cccfantasy.com`.
 
 ---
 
@@ -1191,7 +1191,7 @@ Go to https://uptimerobot.com and sign up (free tier: 50 monitors, 5-minute chec
 1. Click **Add New Monitor**
 2. Monitor type: **HTTP(s)**
 3. Friendly name: `Fantasy Platform`
-4. URL: `https://yourdomain.com`
+4. URL: `https://cccfantasy.com`
 5. Monitoring interval: **5 minutes**
 6. Click **Create Monitor**
 
