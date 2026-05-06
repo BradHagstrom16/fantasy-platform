@@ -4938,3 +4938,27 @@ hr { border-color: var(--border); opacity: 1; }
 
 /* --- Cluster 5: Roster recap row + Recent results accent (Tasks 7, 8) --- */
 
+/* .row-champion-pick — Premium gold treatment for the user's champion
+   pick in the Final Roster recap (post-state). Mirrors the
+   .table-worldcup .row-current-user pattern at :2476 — same three
+   properties (bg tint + left-border + first-td-only) — but at .16 alpha
+   (vs .06) and gold instead of red, plus a weight bump for "this row
+   matters most" emphasis. White td bg + gold tint at .16 = pale cream,
+   keeps Bootstrap dark text high-contrast. */
+.table-worldcup .row-champion-pick > td {
+  background: rgba(242, 211, 107, .16) !important;
+  border-left: 3px solid var(--gold-light);
+  font-weight: 600;
+}
+.table-worldcup .row-champion-pick > td:not(:first-child) {
+  border-left: none;
+}
+
+/* The inline "Champion" badge inside the row uses .text-warning
+   (Bootstrap #ffc107 with !important) which collides with the gold tint
+   and reads poorly. Override to a darker gold (the dark end stop of
+   --metal-gold-flat at tokens.css:33) for legibility on the cream bg. */
+.table-worldcup .row-champion-pick .text-warning {
+  color: #8a6a1a !important;
+}
+
