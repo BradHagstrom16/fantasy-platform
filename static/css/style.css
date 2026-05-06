@@ -4939,14 +4939,15 @@ hr { border-color: var(--border); opacity: 1; }
 /* --- Cluster 5: Roster recap row + Recent results accent (Tasks 7, 8) --- */
 
 /* .row-champion-pick — Premium gold treatment for the user's champion
-   pick in the Final Roster recap (post-state). Mirrors the
-   .table-worldcup .row-current-user pattern at :2476 — same three
-   properties (bg tint + left-border + first-td-only) — but at .16 alpha
-   (vs .06) and gold instead of red, plus a weight bump for "this row
-   matters most" emphasis. White td bg + gold tint at .16 = pale cream,
-   keeps Bootstrap dark text high-contrast. */
+   pick in the Final Roster recap (post-state). Solid cream bg (NOT
+   translucent) — the parent .card.wc-card surface is navy(.8α), so a
+   translucent gold tint would composite to dark grey, defeating the
+   "premium cream" intent. Solid value renders consistently regardless
+   of the hover state on the underlying .table-worldcup tr:hover rule
+   (:2473). Pattern parallel to .row-current-user at :2476 (bg tint +
+   left-border + first-td-only) but with gold instead of red. */
 .table-worldcup .row-champion-pick > td {
-  background: rgba(242, 211, 107, .16) !important;
+  background: #f7e9c2 !important;
   border-left: 3px solid var(--gold-light);
   font-weight: 600;
 }
@@ -4954,12 +4955,26 @@ hr { border-color: var(--border); opacity: 1; }
   border-left: none;
 }
 
-/* The inline "Champion" badge inside the row uses .text-warning
-   (Bootstrap #ffc107 with !important) which collides with the gold tint
-   and reads poorly. Override to a darker gold (the dark end stop of
-   --metal-gold-flat at tokens.css:33) for legibility on the cream bg. */
-.table-worldcup .row-champion-pick .text-warning {
-  color: #8a6a1a !important;
+/* Premium "Champion" rendering for the Best Finish cell on the row that
+   has is_champion=True. Mirrors the .champion-name banner above (Teko +
+   gold-gradient text fill) so the badge in the column ties back to the
+   hero typography. Uses --metal-gold-flat (no near-white top stop) for
+   stronger contrast against the cream row bg — --metal-gold's #FFF1B8
+   stop blends into the cream and reads washed-out. Markup hook:
+   <span class="best-finish-champion"> wrapping the label only when
+   r.is_champion (see _home_post.html). */
+.table-worldcup .row-champion-pick .best-finish-champion {
+  display: inline-block;
+  font-family: var(--font-teko);
+  font-weight: 700;
+  font-size: 1.4rem;
+  line-height: 1;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: var(--metal-gold-flat);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }
 
 /* .match-result-card.is-roster-match — Subtle "your team played" accent
