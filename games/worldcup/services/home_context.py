@@ -409,12 +409,14 @@ def _context_post(user: Any) -> dict:
     )
     your_roster_recap = []
     for pick in picks:
+        # Fall back to the raw code (not 'Group') if scoring.py grows a new
+        # finish value not yet in _BEST_FINISH_LABELS — surfacing the unknown
+        # code beats silently mislabeling a deep run as a group-stage exit.
+        finish_code = pick.team.best_finish or 'group'
         your_roster_recap.append({
             'pick': pick,
             'tier_name': TIERS[pick.team.tier]['name'],
-            'best_finish': _BEST_FINISH_LABELS.get(
-                pick.team.best_finish or 'group', 'Group'
-            ),
+            'best_finish': _BEST_FINISH_LABELS.get(finish_code, finish_code),
             'points': pick.multiplied_points,
             'is_champion': (
                 champion_team is not None
