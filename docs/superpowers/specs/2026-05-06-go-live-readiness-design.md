@@ -34,7 +34,7 @@ Two outputs are required to ship safely:
 | Deadline flip mechanic | **SSH hand-edit** of `TOURNAMENT_DEADLINE_UTC` in `games/worldcup/constants.py` (the canonical definition site; `services/state.py` re-imports it) + `systemctl restart fantasy-platform`. Reverted before final DB reset. |
 | Score-recalc trigger | **Admin Recalc button** (`POST /worldcup/admin/recalc`) — instant, also tests the route. |
 | Match volume during simulation | **Representative subset** — 4 group results (Tier-1 win, Tier-3 draw, Tier-4 underdog, Tier-5 win) covering each multiplier path; one group-advancement form run; 6 knockout matches (R32 → R16 → QF → SF → final → third-place). |
-| Deliverable packaging | **Two docs** — in-place edits to the deployment plan + new `docs/Production Launch Test Script.md`. |
+| Deliverable packaging | **Two docs** — in-place edits to the deployment plan + new `docs/production-launch-test-script.md`. |
 
 ---
 
@@ -99,7 +99,7 @@ Task 5 Step 1 shows the import block ending at `from extensions import ...`. Thr
 
 After Task 25 (cron) and before Task 26 (UptimeRobot), insert a one-line callout:
 
-> **Before configuring monitoring (Task 26), run the full Production Launch Test Script (`docs/Production Launch Test Script.md`).** UptimeRobot creates real alerts for real outages — you don't want it firing on test-induced systemd restarts during the tournament simulation.
+> **Before configuring monitoring (Task 26), run the full Production Launch Test Script (`docs/production-launch-test-script.md`).** UptimeRobot creates real alerts for real outages — you don't want it firing on test-induced systemd restarts during the tournament simulation.
 
 ### 3.7 No other infrastructure deltas
 
@@ -109,7 +109,7 @@ The .env list in Task 17 still covers every variable `config.py` reads. No new e
 
 ## 4. Deliverable 2 — Production Launch Test Script
 
-**Target path:** `docs/Production Launch Test Script.md` (new).
+**Target path:** `docs/production-launch-test-script.md` (new).
 **Archive:** rename existing `docs/Human End-to-End Test Script.md` → `docs/archive/2026-04-11-human-e2e-test-script.md` (preserves the pre-redesign record).
 
 ### 4.1 Front matter
@@ -219,6 +219,6 @@ To remove all ambiguity, §9 pins exact values. Example:
 ## 6. Done definition
 
 - Deployment plan committed with the seven edits in §3, no other touches.
-- New `docs/Production Launch Test Script.md` committed; old script moved to `docs/archive/`.
+- New `docs/production-launch-test-script.md` committed; old script moved to `docs/archive/`.
 - Brainstorming spec (this doc) committed at `docs/superpowers/specs/2026-05-06-go-live-readiness-design.md`.
 - After Brad reviews this spec, the writing-plans skill takes over to produce the implementation plan.

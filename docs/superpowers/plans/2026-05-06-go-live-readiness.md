@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Audit and edit `docs/superpowers/plans/2026-04-21-production-deployment.md` per spec §3 (six discrete deltas), archive the existing `docs/Human End-to-End Test Script.md`, and write a new `docs/Production Launch Test Script.md` per spec §4 (15-section production-launch script with full World Cup simulation + DB reset).
+**Goal:** Audit and edit `docs/superpowers/plans/2026-04-21-production-deployment.md` per spec §3 (six discrete deltas), archive the existing `docs/Human End-to-End Test Script.md`, and write a new `docs/production-launch-test-script.md` per spec §4 (15-section production-launch script with full World Cup simulation + DB reset).
 
 **Architecture:** Doc-only changes in an isolated git worktree on branch `worktree/go-live-readiness`. All edits ship in two commits inside the worktree, then a PR is opened against `main` so CodeRabbit can review the docs before Brad executes the test against production.
 
@@ -17,7 +17,7 @@
 | `docs/superpowers/plans/2026-04-21-production-deployment.md` | Modify (6 in-place edits) | §3.1–§3.6 |
 | `docs/Human End-to-End Test Script.md` | Move to `docs/archive/2026-04-11-human-e2e-test-script.md` | §4 (one-liner) |
 | `docs/archive/2026-04-11-human-e2e-test-script.md` | Created by `git mv` | §4 |
-| `docs/Production Launch Test Script.md` | Create | §4.1 + §4.2 + §4.5 |
+| `docs/production-launch-test-script.md` | Create | §4.1 + §4.2 + §4.5 |
 
 No code files. No tests. No migrations. No CSS.
 
@@ -121,7 +121,7 @@ Brad paused this plan after completing Phase 2 Task 10. Resume status:
 - **Sports-data API integration deferred to post-launch.** Manual admin match entry powers tournament scoring at launch — adequate for the small private cup audience.
 - **Snapshot-ranks cron** is already woven into Task 25 below — no further infra changes from any of the three specs.
 - **Resume at Task 11** and continue through Task 27.
-- **Then immediately** run the new `docs/Production Launch Test Script.md` against the live URL before announcing launch (see Phase 5.5 callout below Task 25).
+- **Then immediately** run the new `docs/production-launch-test-script.md` against the live URL before announcing launch (see Phase 5.5 callout below Task 25).
 
 **Snapshot timing tradeoff to know about:** the snapshot infra collects rank-history daily once the production cron is live. If this plan resumes only shortly before WC kickoff (June 11), the live-state sparkline on the home page will start with an empty/flat line and accumulate real data from the first cron run forward. The dossier copy handles this honestly ("tracking starts {date}") so the launch-day experience is acceptable either way — but earlier production resume = richer sparkline at launch.
 ```
@@ -432,7 +432,7 @@ Use `Edit`:
 
 ## Phase 5.5: Production Launch Test (Brad)
 
-> **Before configuring monitoring (Task 26), run the full Production Launch Test Script (`docs/Production Launch Test Script.md`).** UptimeRobot creates real alerts for real outages — you don't want it firing on test-induced systemd restarts during the tournament simulation. The test script registers two test users, simulates a complete World Cup with admin-entered match results, then resets the database to a clean launch baseline before any real player is invited in.
+> **Before configuring monitoring (Task 26), run the full Production Launch Test Script (`docs/production-launch-test-script.md`).** UptimeRobot creates real alerts for real outages — you don't want it firing on test-induced systemd restarts during the tournament simulation. The test script registers two test users, simulates a complete World Cup with admin-entered match results, then resets the database to a clean launch baseline before any real player is invited in.
 
 ---
 
@@ -516,7 +516,7 @@ git commit -m "$(cat <<'EOF'
 docs(archive): move pre-redesign Human E2E test script to docs/archive
 
 The April-11 test script predates Specs A, B, and C Plans 1-5 and is
-replaced by docs/Production Launch Test Script.md (next commit). Archived
+replaced by docs/production-launch-test-script.md (next commit). Archived
 for historical record only.
 EOF
 )"
@@ -529,7 +529,7 @@ Expected: commit succeeds.
 ## Task 4: Write the new Production Launch Test Script
 
 **Files:**
-- Create: `docs/Production Launch Test Script.md`
+- Create: `docs/production-launch-test-script.md`
 
 This is a single `Write` tool call producing the complete file. The structure is fixed by spec §4.2 (15 sections), front matter from §4.1, and section template from §4.3. Score-math expected values for §9 must be verified against `games/worldcup/services/scoring.py` before the file is written (see sub-step 1).
 
@@ -582,7 +582,7 @@ Expected: a list of Tier 4 team names. Record one (e.g., "Senegal" — exact val
 
 - [ ] **Step 1: Write the file in one `Write` tool call**
 
-Path: `docs/Production Launch Test Script.md`
+Path: `docs/production-launch-test-script.md`
 
 The file structure must match this exact outline. Each `## Section N` heading uses the title and risk marker from spec §4.2's table verbatim. Each section follows the template from spec §4.3:
 
@@ -1328,9 +1328,9 @@ UptimeRobot will fire within 5 minutes. Re-start with `sudo systemctl start ngin
 - [ ] **Step 2: Verify the file was written correctly**
 
 ```bash
-wc -l "docs/Production Launch Test Script.md"
-grep -c "^## Section" "docs/Production Launch Test Script.md"
-grep -c "^- \[ \]" "docs/Production Launch Test Script.md"
+wc -l "docs/production-launch-test-script.md"
+grep -c "^## Section" "docs/production-launch-test-script.md"
+grep -c "^- \[ \]" "docs/production-launch-test-script.md"
 ```
 
 Expected: ~750+ lines; **15** section headings (Sections 0–15 = 16 actually, including the "How to use" preamble — but `## Section ` matches only the numbered ones); 100+ checkboxes.
@@ -1338,7 +1338,7 @@ Expected: ~750+ lines; **15** section headings (Sections 0–15 = 16 actually, i
 - [ ] **Step 3: Spot-check the substituted values**
 
 ```bash
-grep -n "<T1_MULT>\|<T4_MULT>\|<T4_TEAM>\|<GROUP_WIN_POINTS>\|<GROUP_DRAW_POINTS>" "docs/Production Launch Test Script.md"
+grep -n "<T1_MULT>\|<T4_MULT>\|<T4_TEAM>\|<GROUP_WIN_POINTS>\|<GROUP_DRAW_POINTS>" "docs/production-launch-test-script.md"
 ```
 
 Expected: **zero matches.** If any placeholder remains, the §4.1 fact-finding values weren't substituted. Fix inline before commit.
@@ -1348,11 +1348,11 @@ Expected: **zero matches.** If any placeholder remains, the §4.1 fact-finding v
 - [ ] **Step 1: Stage and commit the new test script + the archive move (if not already)**
 
 ```bash
-git add "docs/Production Launch Test Script.md"
+git add "docs/production-launch-test-script.md"
 git status --short
 ```
 
-Expected: `A  docs/Production Launch Test Script.md` (and the rename from Task 3 should already be committed).
+Expected: `A  docs/production-launch-test-script.md` (and the rename from Task 3 should already be committed).
 
 ```bash
 git commit -m "$(cat <<'EOF'
@@ -1409,14 +1409,14 @@ gh pr create --title "Go-live readiness — deployment plan refresh + new Produc
 ## Summary
 - Refreshes `docs/superpowers/plans/2026-04-21-production-deployment.md` with six in-place edits reflecting post-redesign reality (Specs A, B, and C Plans 1–5 merged; sports-data API deferred; Task 20.5 dropped; pool-pre-ping callout; Task 5 expected-diff softened; Phase 5.5 cross-reference)
 - Archives the April-11 Human E2E test script to `docs/archive/`
-- Adds a new `docs/Production Launch Test Script.md` for post-redesign go-live: full World Cup simulation on production via SSH-edited deadline + admin-entered match results, then DB reset to clean launch baseline
+- Adds a new `docs/production-launch-test-script.md` for post-redesign go-live: full World Cup simulation on production via SSH-edited deadline + admin-entered match results, then DB reset to clean launch baseline
 
 ## Driver spec
 `docs/superpowers/specs/2026-05-06-go-live-readiness-design.md`
 
 ## Test plan
 - [ ] CodeRabbit review of the two doc changes
-- [ ] Brad reads `docs/Production Launch Test Script.md` end-to-end and flags any section that's unclear before executing it against the live URL
+- [ ] Brad reads `docs/production-launch-test-script.md` end-to-end and flags any section that's unclear before executing it against the live URL
 - [ ] Brad reads the deployment-plan diff and confirms the edits don't break any in-flight task he was about to run
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
@@ -1458,7 +1458,7 @@ gh pr view --web
 
 **3. Type / path consistency:**
 - All references to the deadline constant use `games/worldcup/constants.py` (the canonical site).
-- All references to the test script use the new path `docs/Production Launch Test Script.md`.
+- All references to the test script use the new path `docs/production-launch-test-script.md`.
 - All references to the spec use the committed spec path.
 
 ---

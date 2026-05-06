@@ -21,7 +21,7 @@ Brad paused this plan after completing Phase 2 Task 10. Resume status:
 - **Sports-data API integration deferred to post-launch.** Manual admin match entry powers tournament scoring at launch — adequate for the small private cup audience.
 - **Snapshot-ranks cron** is already woven into Task 25 below — no further infra changes from any of the three specs.
 - **Resume at Task 11** and continue through Task 27.
-- **Then immediately** run the new `docs/Production Launch Test Script.md` against the live URL before announcing launch (see Phase 5.5 callout below Task 25).
+- **Then immediately** run the new `docs/production-launch-test-script.md` against the live URL before announcing launch (see Phase 5.5 callout below Task 25).
 
 **Snapshot timing tradeoff to know about:** the snapshot infra collects rank-history daily once the production cron is live. If this plan resumes only shortly before WC kickoff (June 11), the live-state sparkline on the home page will start with an empty/flat line and accumulate real data from the first cron run forward. The dossier copy handles this honestly ("tracking starts {date}") so the launch-day experience is acceptable either way — but earlier production resume = richer sparkline at launch.
 
@@ -1174,7 +1174,7 @@ Expected: the seven job entries are listed.
 
 ## Phase 5.5: Production Launch Test (Brad)
 
-> **Before configuring monitoring (Task 26), run the full Production Launch Test Script (`docs/Production Launch Test Script.md`).** UptimeRobot creates real alerts for real outages — you don't want it firing on test-induced systemd restarts during the tournament simulation. The test script registers two test users, simulates a complete World Cup with admin-entered match results, then resets the database to a clean launch baseline before any real player is invited in.
+> **Before configuring monitoring (Task 26), run the full Production Launch Test Script (`docs/production-launch-test-script.md`).** UptimeRobot creates real alerts for real outages — you don't want it firing on test-induced systemd restarts during the tournament simulation. The test script registers two test users, simulates a complete World Cup with admin-entered match results, then resets the database to a clean launch baseline before any real player is invited in.
 
 ---
 
