@@ -4804,3 +4804,27 @@ hr { border-color: var(--border); opacity: 1; }
     transform: none;
   }
 }
+
+/* ============================================================
+   Plan 5: WC visual polish — orphan utilities + dark-surface legibility
+   ----------------------------------------------------------------
+   Closes the polish gap Plan 4 (WC Hub migration, PR #8) deferred:
+   defines CSS for orphan utility classes emitted by the home-shell
+   state partials, and lifts contrast on dark surfaces where Bootstrap
+   defaults fail. All selectors scope through parent surfaces so the
+   rules don't leak into Spec B's .home-shell platform home.
+
+   Pattern reference: extends the dark-surface-legibility approach
+   from the Plan 3 follow-up block at :3242-3286.
+   ============================================================ */
+
+/* --- Cluster 1: Hero typography (Task 2) --- */
+
+/* --- Cluster 2: Champion banner orphans (Task 3) --- */
+
+/* --- Cluster 3: Dark-surface .text-muted lift + table exclusion (Task 5) --- */
+
+/* --- Cluster 4: Dark-surface .text-success/.text-danger lift (Task 6) --- */
+
+/* --- Cluster 5: Roster recap row + Recent results accent (Tasks 7, 8) --- */
+
