@@ -4916,5 +4916,25 @@ hr { border-color: var(--border); opacity: 1; }
 
 /* --- Cluster 4: Dark-surface .text-success/.text-danger lift (Task 6) --- */
 
+/* Lift Bootstrap's .text-success/.text-danger to live tokens on audited
+   navy surfaces. Two surface families:
+     1. Home-shell hero stat blocks (Your Standing, Your Finish) — direct
+        children of .card-body > .row, no white-td masking.
+     2. team_detail.html .fixture-pts — sits in <li class="fixture-row">
+        (CSS grid li, not a Bootstrap table cell), so navy bleeds through.
+   Explicitly NOT broadcasting on .card.wc-card — _pick_row.html:41 lives
+   inside <td colspan="5"> (white-td masking, Bootstrap green readable),
+   and _home_live.html:99 lives inside .match-result-card (white card,
+   Bootstrap green readable, --live-green at #64DBA0 would actually have
+   WORSE contrast on white than Bootstrap's #198754). */
+.card.wc-card > .card-body > .row .text-success,
+.card.wc-card .fixture-pts.text-success {
+  color: var(--live-green) !important;
+}
+.card.wc-card > .card-body > .row .text-danger,
+.card.wc-card .fixture-pts.text-danger {
+  color: var(--live-red) !important;
+}
+
 /* --- Cluster 5: Roster recap row + Recent results accent (Tasks 7, 8) --- */
 
