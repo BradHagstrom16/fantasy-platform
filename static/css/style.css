@@ -4820,6 +4820,31 @@ hr { border-color: var(--border); opacity: 1; }
 
 /* --- Cluster 1: Hero typography (Task 2) --- */
 
+/* .hero-headline + .hero-subhead are emitted by home_shell.html on every
+   state. .page-hero h1 (the brand mark) at :4021 is the visual lead at
+   2.8rem/700/uppercase; .hero-headline must sit clearly below to support
+   without competing. Subordinate spec (per brainstorm decision 4): no Teko,
+   no uppercase, weight 600. */
+.page-hero.wc-hero-grad .hero-headline {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--bone, #f5f1e8);
+  letter-spacing: 0.005em;
+  margin-top: 0.25rem;
+}
+
+.page-hero.wc-hero-grad .hero-subhead {
+  font-size: 1rem;
+  margin-top: 0.5rem;
+}
+
+/* Lift Bootstrap's .text-muted on the navy gradient hero. .82 alpha matches
+   the existing thead-on-navy treatment at :3250 (Plan 3 follow-up).
+   !important needed because Bootstrap's .text-muted ships with !important. */
+.page-hero.wc-hero-grad .hero-subhead.text-muted {
+  color: rgba(245, 241, 232, .82) !important;
+}
+
 /* --- Cluster 2: Champion banner orphans (Task 3) --- */
 
 /* --- Cluster 3: Dark-surface .text-muted lift + table exclusion (Task 5) --- */
