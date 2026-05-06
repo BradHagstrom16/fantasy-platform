@@ -4804,3 +4804,191 @@ hr { border-color: var(--border); opacity: 1; }
     transform: none;
   }
 }
+
+/* ============================================================
+   Plan 5: WC visual polish — orphan utilities + dark-surface legibility
+   ----------------------------------------------------------------
+   Closes the polish gap Plan 4 (WC Hub migration, PR #8) deferred:
+   defines CSS for orphan utility classes emitted by the home-shell
+   state partials, and lifts contrast on dark surfaces where Bootstrap
+   defaults fail. All selectors scope through parent surfaces so the
+   rules don't leak into Spec B's .home-shell platform home.
+
+   Pattern reference: extends the dark-surface-legibility approach
+   from the Plan 3 follow-up block at :3242-3286.
+   ============================================================ */
+
+/* --- Cluster 1: Hero typography (Task 2) --- */
+
+/* .hero-headline + .hero-subhead are emitted by home_shell.html on every
+   state. .page-hero h1 (the brand mark) at :4021 is the visual lead at
+   2.8rem/700/uppercase; .hero-headline must sit clearly below to support
+   without competing. Subordinate spec (per brainstorm decision 4): no Teko,
+   no uppercase, weight 600. */
+.page-hero.wc-hero-grad .hero-headline {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--bone, #f5f1e8);
+  letter-spacing: 0.005em;
+  margin-top: 0.25rem;
+}
+
+.page-hero.wc-hero-grad .hero-subhead {
+  font-size: 1rem;
+  margin-top: 0.5rem;
+}
+
+/* Lift Bootstrap's .text-muted on the navy gradient hero. .82 alpha matches
+   the existing thead-on-navy treatment at :3250 (Plan 3 follow-up).
+   !important needed because Bootstrap's .text-muted ships with !important. */
+.page-hero.wc-hero-grad .hero-subhead.text-muted {
+  color: rgba(245, 241, 232, .82) !important;
+}
+
+/* --- Cluster 2: Champion banner orphans (Task 3) --- */
+
+/* .champion-flag — display:block lifts the flag onto its own line above
+   the country name (markup wraps both inside one .display-4 div). Filter
+   values match .home-shell .champion-flag at :1457 verbatim — Spec B has
+   validated the visual; we want parity. Scoped to the WC-specific
+   .card.wc-card.wc-hero-grad container so it doesn't reach Spec B's
+   .home-shell platform home, which keeps its own copy at :1457. */
+.card.wc-card.wc-hero-grad .champion-flag {
+  display: block;
+  font-size: 5rem;
+  line-height: 1;
+  margin-bottom: 0.75rem;
+  filter: drop-shadow(0 4px 16px rgba(0, 0, 0, .4))
+          drop-shadow(0 0 24px rgba(242, 211, 107, .25));
+}
+@media (min-width: 768px) {
+  .card.wc-card.wc-hero-grad .champion-flag { font-size: 7rem; }
+}
+
+/* .champion-name — Teko gold-gradient country name. Mirrors
+   .home-shell .champion-name at :1467-1482 with the same tokens
+   (--font-teko, --metal-gold) so Spec B and the WC hub render identical
+   typography on their respective champion banners. Requires the markup
+   wrap in _home_post.html (Task 4). */
+.card.wc-card.wc-hero-grad .champion-name {
+  display: block;
+  font-family: var(--font-teko);
+  font-weight: 700;
+  font-size: 2.8rem;
+  line-height: 1;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: var(--metal-gold);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  margin: 0.5rem 0 0.6rem;
+}
+@media (min-width: 768px) {
+  .card.wc-card.wc-hero-grad .champion-name { font-size: 4rem; }
+}
+
+/* --- Cluster 3: Dark-surface .text-muted lift + table exclusion (Task 5) --- */
+
+/* Lift .text-muted to readable on the navy .card.wc-card surface. The
+   broadcast catches every direct-on-navy use across the hub: champion
+   summary, hero stat block "of N" copy, deadline-date captions in
+   pre/out states, fixture-row text-muted in team_detail. .82 alpha
+   matches the existing thead-on-navy treatment at :3250 (Plan 3
+   follow-up). Bootstrap's .text-muted ships !important so override
+   matches. Plan 3's deeper-specificity rules (:3259, :3273) at .55
+   alpha for tertiary leaderboard content win on (0,0,4-5,0+) — leave
+   intact. */
+.card.wc-card .text-muted {
+  color: rgba(245, 241, 232, .82) !important;
+}
+
+/* Surgical exclusion: restore Bootstrap default for any .text-muted
+   that lives inside a Bootstrap table cell. Bootstrap's white td bg
+   masks the navy parent, and the lifted bone color would render
+   invisible there. Concrete affected case: _pick_row.html:16 "Grp X"
+   caption inside the picks accordion <td>. Mirrors the don't-broadcast
+   logic from the Plan 3 follow-up block. */
+.card.wc-card .table > tbody > tr > td .text-muted,
+.card.wc-card .table > tbody > tr > td.text-muted {
+  color: var(--bs-secondary-color) !important;
+}
+
+/* --- Cluster 4: Dark-surface .text-success/.text-danger lift (Task 6) --- */
+
+/* Lift Bootstrap's .text-success/.text-danger to live tokens on audited
+   navy surfaces. Two surface families:
+     1. Home-shell hero stat blocks (Your Standing, Your Finish) — direct
+        children of .card-body > .row, no white-td masking.
+     2. team_detail.html .fixture-pts — sits in <li class="fixture-row">
+        (CSS grid li, not a Bootstrap table cell), so navy bleeds through.
+   Explicitly NOT broadcasting on .card.wc-card — _pick_row.html:41 lives
+   inside <td colspan="5"> (white-td masking, Bootstrap green readable),
+   and _home_live.html:99 lives inside .match-result-card (white card,
+   Bootstrap green readable, --live-green at #64DBA0 would actually have
+   WORSE contrast on white than Bootstrap's #198754). */
+.card.wc-card > .card-body > .row .text-success,
+.card.wc-card .fixture-pts.text-success {
+  color: var(--live-green) !important;
+}
+.card.wc-card > .card-body > .row .text-danger,
+.card.wc-card .fixture-pts.text-danger {
+  color: var(--live-red) !important;
+}
+
+/* --- Cluster 5: Roster recap row + Recent results accent (Tasks 7, 8) --- */
+
+/* .row-champion-pick — Premium gold treatment for the user's champion
+   pick in the Final Roster recap (post-state). Solid cream bg (NOT
+   translucent) — the parent .card.wc-card surface is navy(.8α), so a
+   translucent gold tint would composite to dark grey, defeating the
+   "premium cream" intent. Solid value renders consistently regardless
+   of the hover state on the underlying .table-worldcup tr:hover rule
+   (:2473). Pattern parallel to .row-current-user at :2476 (bg tint +
+   left-border + first-td-only) but with gold instead of red. */
+.table-worldcup .row-champion-pick > td {
+  background: #f7e9c2 !important;
+  border-left: 3px solid var(--gold-light);
+  font-weight: 600;
+}
+.table-worldcup .row-champion-pick > td:not(:first-child) {
+  border-left: none;
+}
+
+/* Premium "Champion" rendering for the Best Finish cell on the row that
+   has is_champion=True. Mirrors the .champion-name banner above (Teko +
+   gold-gradient text fill) so the badge in the column ties back to the
+   hero typography. Uses --metal-gold-flat (no near-white top stop) for
+   stronger contrast against the cream row bg — --metal-gold's #FFF1B8
+   stop blends into the cream and reads washed-out. Markup hook:
+   <span class="best-finish-champion"> wrapping the label only when
+   r.is_champion (see _home_post.html). */
+.table-worldcup .row-champion-pick .best-finish-champion {
+  display: inline-block;
+  font-family: var(--font-teko);
+  font-weight: 700;
+  font-size: 1.4rem;
+  line-height: 1;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: var(--metal-gold-flat);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* .match-result-card.is-roster-match — Subtle "your team played" accent
+   on the live-state Recent Results card. Applies on top of
+   .match-result-card (defined at :2651, white card with var(--bg-card)
+   bg). Compound selector (0,0,2,0) wins over the bare card rule
+   (0,0,1,0).
+
+   Soft gold-to-white gradient lets the row read as flagged at a glance
+   but stays scannable when 3-5 of 7 matches involve the user's picks
+   during group-stage worst case (per brainstorm decision 3 — Subtle was
+   chosen over Prominent specifically to handle this density). */
+.match-result-card.is-roster-match {
+  border-left: 3px solid var(--gold-light);
+  background: linear-gradient(90deg, rgba(242, 211, 107, .10) 0%, var(--bg-card) 35%);
+}
+

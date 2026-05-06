@@ -19,7 +19,7 @@
       <div class="wc-eyebrow mb-1">Champion</div>
       <div class="display-4 mb-1">
         <span class="champion-flag">{{ champion_team.flag_emoji }}</span>
-        {{ champion_team.display_name }}
+        <span class="champion-name">{{ champion_team.display_name }}</span>
       </div>
       {% if champion_summary %}
         <div class="text-muted">{{ champion_summary }}</div>
@@ -129,11 +129,14 @@
               <a href="{{ url_for('worldcup.team_detail', team_id=r.pick.team_id) }}" class="text-decoration-none">
                 {{ r.pick.team.flag_emoji }} {{ r.pick.team.display_name }}
               </a>
+            </td>
+            <td>
               {% if r.is_champion %}
-                <span class="wc-eyebrow text-warning ms-1">Champion</span>
+                <span class="best-finish-champion">{{ r.best_finish }}</span>
+              {% else %}
+                {{ r.best_finish }}
               {% endif %}
             </td>
-            <td>{{ r.best_finish }}</td>
             <td class="text-end"><span class="wc-numeral">{{ "%.1f"|format(r.points) }}</span></td>
           </tr>
           {% endfor %}

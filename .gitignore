@@ -6,12 +6,14 @@ dist/
 build/
 *.egg
 
-# Virtual environment
-venv/
-.venv/
+# Virtual environment (no trailing slash — also matches `venv`/`.venv`
+# symlinks devs create in worktrees pointing at the main checkout's venv)
+venv
+.venv
 
-# Database
-instance/
+# Database (no trailing slash — also matches the `instance` symlink devs
+# create in worktrees pointing at the main checkout's instance/)
+instance
 *.db
 
 # Environment
