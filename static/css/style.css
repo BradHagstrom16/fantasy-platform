@@ -4890,6 +4890,30 @@ hr { border-color: var(--border); opacity: 1; }
 
 /* --- Cluster 3: Dark-surface .text-muted lift + table exclusion (Task 5) --- */
 
+/* Lift .text-muted to readable on the navy .card.wc-card surface. The
+   broadcast catches every direct-on-navy use across the hub: champion
+   summary, hero stat block "of N" copy, deadline-date captions in
+   pre/out states, fixture-row text-muted in team_detail. .82 alpha
+   matches the existing thead-on-navy treatment at :3250 (Plan 3
+   follow-up). Bootstrap's .text-muted ships !important so override
+   matches. Plan 3's deeper-specificity rules (:3259, :3273) at .55
+   alpha for tertiary leaderboard content win on (0,0,4-5,0+) — leave
+   intact. */
+.card.wc-card .text-muted {
+  color: rgba(245, 241, 232, .82) !important;
+}
+
+/* Surgical exclusion: restore Bootstrap default for any .text-muted
+   that lives inside a Bootstrap table cell. Bootstrap's white td bg
+   masks the navy parent, and the lifted bone color would render
+   invisible there. Concrete affected case: _pick_row.html:16 "Grp X"
+   caption inside the picks accordion <td>. Mirrors the don't-broadcast
+   logic from the Plan 3 follow-up block. */
+.card.wc-card .table > tbody > tr > td .text-muted,
+.card.wc-card .table > tbody > tr > td.text-muted {
+  color: var(--bs-secondary-color) !important;
+}
+
 /* --- Cluster 4: Dark-surface .text-success/.text-danger lift (Task 6) --- */
 
 /* --- Cluster 5: Roster recap row + Recent results accent (Tasks 7, 8) --- */
