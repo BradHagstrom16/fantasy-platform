@@ -259,6 +259,7 @@ ssh deploy@<droplet-ip>                  # server
 ```
 
 First-time setup: `docs/superpowers/plans/2026-04-21-production-deployment.md`.
+Pre-launch verification: `docs/production-launch-test-script.md` — full World Cup simulation on production (out → pre → live → post via SSH-edited deadline + admin match entry) then DB reset to a clean launch baseline. Run after Task 25 (cron) and before Task 26 (UptimeRobot).
 
 ---
 
