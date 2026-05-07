@@ -1,8 +1,8 @@
-# Impeccable Design Workflow — Spec
+# Impeccable Design and Production Test Script Feedback Workflow — Spec
 
 **Date:** 2026-05-07
 **Scope:** Global platform pages + World Cup pages only (Golf and CFB excluded)
-**Goal:** Collect, categorize, and fix design issues discovered during the Phase 5.5 production test script, then merge to main before World Cup user signups open.
+**Goal:** Collect, categorize, and fix design issues discovered during the Phase 5.5 production test script along with Impecabble utilization and processes then merge to main before World Cup user signups open.
 
 ---
 
@@ -41,21 +41,24 @@ Both files live in the `design/wc-polish` branch and merge into `main` with the 
 Claude Code creates the issue tracking document at:
 
 ```
-docs/superpowers/notes/wc-design-issues.md
+docs/superpowers/notes/wc-test-feedback.md
 ```
 
-The document uses four categories that map directly to impeccable commands:
+This is the single source of truth for **everything** found during the Phase 5.5 test script — design issues and code bugs alike. Five categories cover the full range:
 
-| Category | What goes here | Likely impeccable command |
+| Category | What goes here | How it gets fixed |
 |---|---|---|
-| **Critical** | Broken layout, unreadable text, mobile collapse | `audit`, `adapt` |
-| **Functional** | Wrong state shown, missing feedback, confusing flow | `clarify`, `harden` |
-| **Visual Polish** | Spacing off, color inconsistency, typography rough | `layout`, `typeset`, `polish` |
-| **Delight** | Nice-to-have: animations, empty states, personality | `animate`, `delight` |
+| **Bug** | Scoring errors, broken logic, wrong data displayed | `systematic-debugging` skill + normal code session |
+| **Critical** | Broken layout, unreadable text, mobile collapse | `impeccable audit`, `impeccable adapt` |
+| **Functional** | Wrong state shown, missing feedback, confusing flow | `impeccable clarify`, `impeccable harden` |
+| **Visual Polish** | Spacing off, color inconsistency, typography rough | `impeccable layout`, `impeccable typeset`, `impeccable polish` |
+| **Delight** | Nice-to-have: animations, empty states, personality | `impeccable animate`, `impeccable delight` |
 
-Each entry: one line with page/component, observed behavior, and expected behavior. No fix required — that is determined in the design session with Claude.
+Each entry: one line with page/component, observed behavior, and expected behavior. No fix required — that is determined in the session with Claude.
 
-Claude creates the template (pre-populated with headers, instructions, and example entries) as the first task of the implementation plan.
+Bug category items skip impeccable entirely and are handled in a separate debugging session. Design categories (Critical through Delight) go through the impeccable design iteration loop.
+
+Claude creates the template (pre-populated with headers, instructions, and example entries per category) as the first task of the implementation plan.
 
 ---
 
@@ -93,12 +96,12 @@ When all design issues are resolved:
 6. `/clean_gone` removes the worktree and branch
 7. User deploys: `git push origin main` locally, then `ssh deploy@<droplet-ip> ./deploy.sh`
 
-**Merge deadline:** Before World Cup user signups open (date TBD — update this when known).
+**Merge deadline:** Before World Cup user signups open (June 1st 2026 at the latest).
 
 ---
 
 ## Session-to-Session Continuity
 
 - Impeccable context (`PRODUCT.md` / `DESIGN.md`) loads automatically each session via the impeccable skill's context loader — no re-running `teach` or `document`
-- Issue doc at `docs/superpowers/notes/wc-design-issues.md` is the persistent backlog — add to it any time, work through it in design sessions
+- Issue doc at `docs/superpowers/notes/wc-test-feedback.md` is the persistent backlog — add to it any time during testing, work through it in design or debugging sessions
 - Claude Code must be opened from `~/fantasy-design/` (not `~/fantasy-platform/`) for all design sessions
