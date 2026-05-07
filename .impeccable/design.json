@@ -1,0 +1,361 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-05-07T00:00:00Z",
+  "title": "Design System: Corrupt Commish Club",
+  "extensions": {
+    "colorMeta": {
+      "council-purple": {
+        "role": "primary",
+        "displayName": "Council Purple",
+        "canonical": "#3A1D72",
+        "tonalRamp": ["#0A0612", "#140828", "#1C0A3A", "#2A1150", "#3A1D72", "#4E2A8F", "#6B3FAD", "#8E63C9"]
+      },
+      "chamber-purple": {
+        "role": "primary",
+        "displayName": "Chamber Purple",
+        "canonical": "#1C0A3A",
+        "tonalRamp": ["#0A0612", "#140828", "#1C0A3A", "#230E48", "#2A1150", "#3A1D72", "#4E2A8F", "#6B3FAD"]
+      },
+      "tribunal-black": {
+        "role": "primary",
+        "displayName": "Tribunal Black",
+        "canonical": "#140828",
+        "tonalRamp": ["#0A0612", "#140828", "#1C0A3A", "#230E48", "#2A1150", "#3A1D72", "#4E2A8F", "#6B3FAD"]
+      },
+      "press-purple": {
+        "role": "primary",
+        "displayName": "Press Purple",
+        "canonical": "#6B3FAD",
+        "tonalRamp": ["#1C0A3A", "#2A1150", "#3A1D72", "#4E2A8F", "#6B3FAD", "#8E63C9", "#B091DC", "#D5C2EC"]
+      },
+      "commish-gold": {
+        "role": "secondary",
+        "displayName": "Commish Gold",
+        "canonical": "#C9A227",
+        "tonalRamp": ["#3D2F08", "#5C4710", "#7A5F18", "#8A6A1A", "#A98620", "#C9A227", "#F2D36B", "#FFF1B8"]
+      },
+      "trophy-light": {
+        "role": "secondary",
+        "displayName": "Trophy Light",
+        "canonical": "#F2D36B",
+        "tonalRamp": ["#5C4710", "#7A5F18", "#8A6A1A", "#A98620", "#C9A227", "#E0B847", "#F2D36B", "#FFF1B8"]
+      },
+      "gold-dark": {
+        "role": "secondary",
+        "displayName": "Gold Dark",
+        "canonical": "#8A6A1A"
+      },
+      "gold-hi": {
+        "role": "secondary",
+        "displayName": "Gold Hi",
+        "canonical": "#FFF1B8"
+      },
+      "pressroom-bone": {
+        "role": "neutral",
+        "displayName": "Pressroom Bone",
+        "canonical": "#F3EFE6",
+        "tonalRamp": ["#5A5470", "#8A849B", "#A8A0B5", "#C5BCD0", "#D8D1BE", "#E8E2D2", "#F3EFE6", "#FAF7F0"]
+      },
+      "bone-dim": {
+        "role": "neutral",
+        "displayName": "Bone Dim",
+        "canonical": "#D8D1BE"
+      },
+      "text-ink": {
+        "role": "neutral",
+        "displayName": "Text Ink",
+        "canonical": "#1C1730"
+      },
+      "text-secondary": {
+        "role": "neutral",
+        "displayName": "Text Secondary",
+        "canonical": "#5A5470"
+      },
+      "text-muted": {
+        "role": "neutral",
+        "displayName": "Text Muted",
+        "canonical": "#8A849B"
+      },
+      "surface-card": {
+        "role": "neutral",
+        "displayName": "Surface Card",
+        "canonical": "#FFFFFF"
+      },
+      "surface-muted": {
+        "role": "neutral",
+        "displayName": "Surface Muted",
+        "canonical": "#EDEBF4"
+      },
+      "border-default": {
+        "role": "neutral",
+        "displayName": "Border Default",
+        "canonical": "#D8DDE8"
+      },
+      "success": {
+        "role": "semantic",
+        "displayName": "Success Green",
+        "canonical": "#1A7A45"
+      },
+      "danger": {
+        "role": "semantic",
+        "displayName": "Danger Red",
+        "canonical": "#C0392B"
+      },
+      "info": {
+        "role": "semantic",
+        "displayName": "Info Blue",
+        "canonical": "#3B5998"
+      },
+      "live-red": {
+        "role": "live",
+        "displayName": "Live Red",
+        "canonical": "#E63946"
+      },
+      "live-green": {
+        "role": "live",
+        "displayName": "Live Green",
+        "canonical": "#64DBA0"
+      },
+      "live-orange": {
+        "role": "live",
+        "displayName": "Live Orange",
+        "canonical": "#FF8A3C"
+      },
+      "golf-green": {
+        "role": "tertiary",
+        "displayName": "Augusta Green",
+        "canonical": "#006747"
+      },
+      "golf-gold": {
+        "role": "tertiary",
+        "displayName": "Augusta Gold",
+        "canonical": "#B8993E"
+      },
+      "cfb-crimson": {
+        "role": "tertiary",
+        "displayName": "Survivor Crimson",
+        "canonical": "#C5050C"
+      },
+      "cfb-midnight": {
+        "role": "tertiary",
+        "displayName": "Survivor Midnight",
+        "canonical": "#0F0F1A"
+      },
+      "wc-navy": {
+        "role": "tertiary",
+        "displayName": "Pitch Navy",
+        "canonical": "#002868"
+      },
+      "wc-red": {
+        "role": "tertiary",
+        "displayName": "Match Red",
+        "canonical": "#BF0A30"
+      },
+      "wc-card-navy": {
+        "role": "tertiary",
+        "displayName": "Tribune-Dark Navy",
+        "canonical": "rgba(0, 17, 46, 0.8)"
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display (Teko)",
+        "purpose": "Page-level h1, hero mastheads. The largest type on any page."
+      },
+      "headline": {
+        "displayName": "Headline (Teko)",
+        "purpose": "Section h2, admin page titles."
+      },
+      "title": {
+        "displayName": "Title (Teko)",
+        "purpose": "Card-header level h3, table sub-heads."
+      },
+      "body": {
+        "displayName": "Body (Newsreader)",
+        "purpose": "Paragraphs, list items, default text. Cap line length at 65 to 75 ch."
+      },
+      "label": {
+        "displayName": "Label (Teko)",
+        "purpose": "Form labels, tab labels, eyebrow-style metadata."
+      },
+      "eyebrow": {
+        "displayName": "Eyebrow (Teko)",
+        "purpose": "Small uppercase context line above section headlines, gold colored. Signature CCC primitive."
+      }
+    },
+    "shadows": [
+      {
+        "name": "shadow-sm",
+        "value": "0 2px 8px rgba(58, 29, 114, 0.07)",
+        "purpose": "Card resting state. Subtle hover for interactive list items. Always present on cards by default."
+      },
+      {
+        "name": "shadow-md",
+        "value": "0 4px 20px rgba(58, 29, 114, 0.12)",
+        "purpose": "Card hover state. Lift when an interactive surface acknowledges intent."
+      },
+      {
+        "name": "shadow-lg",
+        "value": "0 8px 40px rgba(58, 29, 114, 0.17)",
+        "purpose": "Auth cards, modals, the substantial substrates. Used at rest, not as hover lift."
+      },
+      {
+        "name": "shadow-gold",
+        "value": "0 4px 24px rgba(201, 162, 39, 0.25)",
+        "purpose": "Gold CTA hover glow. The literal trophy glint. Reserved for primary-CTA hover."
+      },
+      {
+        "name": "btn-primary-hover-shadow",
+        "value": "0 4px 14px rgba(58, 29, 114, 0.3)",
+        "purpose": "Quiet-primary button hover shadow (purple-tinted)."
+      }
+    ],
+    "motion": [
+      {
+        "name": "transition-standard",
+        "value": ".2s cubic-bezier(0.4, 0, 0.2, 1)",
+        "purpose": "Default ease for state transitions on color, border, opacity, box-shadow."
+      },
+      {
+        "name": "card-hover-curve",
+        "value": ".25s cubic-bezier(0.34, 1.56, 0.64, 1)",
+        "purpose": "Card transform on hover. Slight overshoot (1.56 peak) gives the lift a confident flick."
+      },
+      {
+        "name": "card-shadow-curve",
+        "value": ".25s ease",
+        "purpose": "Card box-shadow on hover. Standard ease while transform overshoots."
+      }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "576px" },
+      { "name": "md", "value": "768px" },
+      { "name": "lg", "value": "992px" },
+      { "name": "xl", "value": "1200px" },
+      { "name": "mobile-floor", "value": "375px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Quiet Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The default purple primary button. Used everywhere except the ceremonial trophy moments.",
+      "html": "<button class=\"ds-btn-primary\">Submit Picks</button>",
+      "css": ".ds-btn-primary { background: #3A1D72; color: #F3EFE6; font-family: 'Teko', sans-serif; font-weight: 500; font-size: 1rem; letter-spacing: 0.04em; border: 1px solid #3A1D72; border-radius: 0.5rem; padding: 0.5rem 1rem; min-height: 44px; cursor: pointer; transition: background 0.2s cubic-bezier(0.4, 0, 0.2, 1), transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s ease; } .ds-btn-primary:hover { background: #6B3FAD; border-color: #6B3FAD; transform: translateY(-2px); box-shadow: 0 4px 14px rgba(58, 29, 114, 0.3); } .ds-btn-primary:focus-visible { outline: 3px solid rgba(212, 168, 32, 0.4); outline-offset: 2px; }"
+    },
+    {
+      "name": "Trophy Button",
+      "kind": "button",
+      "refersTo": "button-trophy",
+      "description": "The ceremonial gold-gradient CTA. Reserved for primary moments (auth submit, navbar action, the loud-moments slot).",
+      "html": "<button class=\"ds-btn-trophy\">Lock It In</button>",
+      "css": ".ds-btn-trophy { background: linear-gradient(135deg, #F2D36B 0%, #C9A227 45%, #8A6A1A 100%); color: #1C0A3A; font-family: 'Teko', sans-serif; font-weight: 600; font-size: 1rem; text-transform: uppercase; letter-spacing: 0.08em; border: none; border-radius: 0.5rem; padding: 0.65rem 1.5rem; min-height: 44px; cursor: pointer; transition: filter 0.15s, transform 0.15s, box-shadow 0.15s; } .ds-btn-trophy:hover { filter: brightness(1.05); transform: translateY(-1px); box-shadow: 0 4px 24px rgba(201, 162, 39, 0.35); } .ds-btn-trophy:focus-visible { outline: 3px solid rgba(212, 168, 32, 0.5); outline-offset: 2px; }"
+    },
+    {
+      "name": "Default Card (Tribune Light)",
+      "kind": "card",
+      "refersTo": "card-default",
+      "description": "The default light card on Pressroom Bone pages. White interior, brand-tinted shadow at rest, lift-with-overshoot on hover.",
+      "html": "<article class=\"ds-card\"><h3 class=\"ds-card-header\">Standings</h3><p class=\"ds-card-body\">You are 3rd of 24, two points behind the leader. Round of 16 begins Saturday.</p></article>",
+      "css": ".ds-card { background: #FFFFFF; color: #1C1730; border: 1px solid #D8DDE8; border-radius: 0.875rem; box-shadow: 0 2px 8px rgba(58, 29, 114, 0.07); padding: 1rem; transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.25s ease; } .ds-card:hover { transform: translateY(-3px); box-shadow: 0 4px 20px rgba(58, 29, 114, 0.12); } .ds-card-header { font-family: 'Teko', sans-serif; font-weight: 600; font-size: 1.1rem; letter-spacing: 0.05em; text-transform: uppercase; color: #1C1730; margin: 0 0 0.5rem; padding-bottom: 0.5rem; border-bottom: 1px solid #D8DDE8; } .ds-card-body { font-family: 'Newsreader', Georgia, serif; font-size: 1rem; line-height: 1.65; margin: 0; color: #1C1730; }"
+    },
+    {
+      "name": "Tribune-Dark Card (WC)",
+      "kind": "card",
+      "refersTo": "card-tribune-dark",
+      "description": "The dark navy card variant used inside World Cup surfaces. Light foreground, gold-whisper border on hover.",
+      "html": "<article class=\"ds-card-dark\"><span class=\"ds-eyebrow\">Match 47 / Round of 16</span><h3 class=\"ds-card-dark-header\">France vs Argentina</h3><p class=\"ds-card-dark-body\">Saturday 14:00 local. Knockout. Multiplier active.</p></article>",
+      "css": ".ds-card-dark { background: rgba(0, 17, 46, 0.8); color: #F3EFE6; border: 1px solid rgba(245, 241, 232, 0.08); border-radius: 0.5rem; padding: 1rem; transition: border-color 0.2s cubic-bezier(0.4, 0, 0.2, 1); } .ds-card-dark:hover { border-color: rgba(242, 211, 107, 0.25); } .ds-eyebrow { display: block; font-family: 'Teko', sans-serif; font-weight: 500; font-size: 0.85rem; letter-spacing: 0.14em; text-transform: uppercase; color: #C9A227; margin-bottom: 0.4rem; } .ds-card-dark-header { font-family: 'Teko', sans-serif; font-weight: 600; font-size: 1.5rem; letter-spacing: 0.03em; line-height: 1.1; margin: 0 0 0.5rem; color: #F3EFE6; } .ds-card-dark-body { font-family: 'Newsreader', Georgia, serif; font-size: 1rem; line-height: 1.65; margin: 0; color: #F3EFE6; }"
+    },
+    {
+      "name": "Form Field (Input + Label)",
+      "kind": "input",
+      "refersTo": "form-control",
+      "description": "Standard form input with Teko-uppercase label. 44px touch-friendly height, gold focus ring.",
+      "html": "<div class=\"ds-form-field\"><label class=\"ds-form-label\" for=\"ds-input-1\">Email</label><input id=\"ds-input-1\" class=\"ds-form-control\" type=\"email\" placeholder=\"you@cccfantasy.com\" /></div>",
+      "css": ".ds-form-field { display: flex; flex-direction: column; gap: 0.3rem; } .ds-form-label { font-family: 'Teko', sans-serif; font-weight: 500; font-size: 0.9rem; letter-spacing: 0.06em; text-transform: uppercase; color: #8A849B; } .ds-form-control { background: #FFFFFF; color: #1C1730; border: 1.5px solid #D8DDE8; border-radius: 0.5rem; padding: 0.6rem 0.9rem; min-height: 44px; font-family: 'Newsreader', Georgia, serif; font-size: 1rem; line-height: 1.65; transition: border-color 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1); } .ds-form-control:focus { outline: none; border-color: #C9A227; box-shadow: 0 0 0 3px rgba(212, 168, 32, 0.18); } .ds-form-control::placeholder { color: #A8A0B5; }"
+    },
+    {
+      "name": "Navbar Brand + Link",
+      "kind": "nav",
+      "refersTo": "navbar",
+      "description": "Dark Council-Purple navbar with Teko brand and gold-active links. The chrome that anchors every page.",
+      "html": "<nav class=\"ds-navbar\"><a class=\"ds-navbar-brand\" href=\"#\">Corrupt Commish Club</a><ul class=\"ds-nav-list\"><li><a class=\"ds-nav-link\" href=\"#\">Golf</a></li><li><a class=\"ds-nav-link ds-nav-link--active\" href=\"#\">World Cup</a></li><li><a class=\"ds-nav-link\" href=\"#\">CFB</a></li></ul></nav>",
+      "css": ".ds-navbar { display: flex; align-items: center; gap: 1.5rem; background: #3A1D72; border-bottom: 1px solid #2A1150; padding: 0.75rem 1.25rem; } .ds-navbar-brand { font-family: 'Teko', sans-serif; font-weight: 600; font-size: 1.25rem; letter-spacing: 0.04em; color: #F3EFE6; text-decoration: none; } .ds-nav-list { display: flex; gap: 0.25rem; list-style: none; margin: 0; padding: 0; } .ds-nav-link { position: relative; display: inline-block; font-family: 'Teko', sans-serif; font-weight: 500; font-size: 1rem; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(243, 239, 230, 0.55); text-decoration: none; padding: 0.5rem 0.85rem; transition: color 0.2s cubic-bezier(0.4, 0, 0.2, 1); } .ds-nav-link:hover { color: #F2D36B; } .ds-nav-link--active { color: #C9A227; } .ds-nav-link--active::after { content: ''; position: absolute; left: 12%; right: 12%; bottom: 4px; height: 2px; background: #C9A227; border-radius: 1px; }"
+    },
+    {
+      "name": "Page Hero Masthead",
+      "kind": "custom",
+      "refersTo": "page-hero",
+      "description": "The masthead band that opens game pages. Linear gradient from game-primary-dark to game-primary at 135deg, halftone-dot pattern overlay.",
+      "html": "<header class=\"ds-page-hero\"><span class=\"ds-eyebrow ds-eyebrow--on-dark\">Round of 16 / Saturday</span><h1 class=\"ds-hero-title\">The Knockouts Begin</h1><p class=\"ds-hero-sub\">Multipliers double from this round forward. Lock your roster before kickoff.</p></header>",
+      "css": ".ds-page-hero { position: relative; overflow: hidden; background: linear-gradient(135deg, #001040 0%, #002868 100%); color: #F3EFE6; padding: 3.5rem 1.5rem 3rem; margin-bottom: 2.5rem; } .ds-page-hero::before { content: ''; position: absolute; inset: 0; background-image: radial-gradient(circle, rgba(212, 168, 32, 0.06) 1px, transparent 1px); background-size: 24px 24px; pointer-events: none; } .ds-eyebrow--on-dark { display: block; font-family: 'Teko', sans-serif; font-weight: 500; font-size: 0.85rem; letter-spacing: 0.14em; text-transform: uppercase; color: #C9A227; margin-bottom: 0.5rem; position: relative; } .ds-hero-title { position: relative; font-family: 'Teko', sans-serif; font-weight: 600; font-size: clamp(2rem, 5vw, 3rem); letter-spacing: 0.03em; line-height: 1.05; margin: 0 0 0.5rem; color: #F3EFE6; } .ds-hero-sub { position: relative; font-family: 'Newsreader', Georgia, serif; font-size: 1.05rem; line-height: 1.55; margin: 0; max-width: 60ch; color: rgba(243, 239, 230, 0.85); }"
+    },
+    {
+      "name": "Live Indicator (dot + label)",
+      "kind": "custom",
+      "refersTo": "live-indicator",
+      "description": "A small pill that signals a game is live in progress. Live Red dot with subtle pulse, paired with a Teko label. Color is never alone.",
+      "html": "<span class=\"ds-live-indicator\"><span class=\"ds-live-dot\" aria-hidden=\"true\"></span><span class=\"ds-live-label\">Live</span></span>",
+      "css": ".ds-live-indicator { display: inline-flex; align-items: center; gap: 0.4rem; font-family: 'Teko', sans-serif; font-weight: 500; font-size: 0.85rem; letter-spacing: 0.12em; text-transform: uppercase; color: #E63946; } .ds-live-dot { width: 0.5rem; height: 0.5rem; border-radius: 50%; background: #E63946; box-shadow: 0 0 0 0 rgba(230, 57, 70, 0.6); animation: ds-live-pulse 2s cubic-bezier(0.4, 0, 0.2, 1) infinite; } @keyframes ds-live-pulse { 0% { box-shadow: 0 0 0 0 rgba(230, 57, 70, 0.6); } 70% { box-shadow: 0 0 0 6px rgba(230, 57, 70, 0); } 100% { box-shadow: 0 0 0 0 rgba(230, 57, 70, 0); } } .ds-live-label { color: #E63946; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Commissioner's Club Tribune",
+    "overview": "The official sports paper of an exclusive members' club. Every leaderboard reads as published. Every result archives itself into club history. The UI combines editorial hierarchy with lounge-level exclusivity. A private sports bulletin assembled inside the club itself. Editorial hierarchy, trophy-room warmth, live-game intensity, and insider rivalry coexist on the same surface. Gold accents feel ceremonial and noble, never corporate. Purple feels like the room itself: deep, social, competitive, royal.",
+    "emotionalAnchor": "Tonight's results matter because the club will remember them.",
+    "keyCharacteristics": [
+      "Editorial newspaper hierarchy, not SaaS-dashboard density",
+      "Brand-tinted depth (purple shadows, gold glow), never neutral gray",
+      "Quiet authority in chrome, loud moments at primary CTAs",
+      "Mobile-first surfaces (375 px viewport is the design floor)",
+      "Three game palettes layered over CCC chrome via body.game-<slug> overrides",
+      "Newsreader serif paragraphs, Teko condensed-sans headlines, no third font"
+    ],
+    "rules": [
+      { "name": "The Trophy Rule", "section": "colors", "body": "The metal-gold gradients are reserved for primary CTAs and the active navbar button. Gold gradients on cards, page backgrounds, badges, or decorative chrome dilute the trophy." },
+      { "name": "The Two-Color Rule", "section": "colors", "body": "CCC is purple plus gold on bone. Game tertiaries layer only when the surface is scoped under a body.game-<slug> class." },
+      { "name": "The No-Pure-White Rule", "section": "colors", "body": "Page background is Pressroom Bone (#F3EFE6), not white. Literal #FFFFFF is reserved for nested .card interiors." },
+      { "name": "The Tinted-Neutral Rule", "section": "colors", "body": "All text and gray-feeling utility colors carry a subtle purple cast. Never neutrally gray." },
+      { "name": "The Newsroom Rule", "section": "typography", "body": "Every heading is Teko. Every paragraph is Newsreader. The two never mix mid-sentence." },
+      { "name": "The Eyebrow Rule", "section": "typography", "body": "Section context labels use the Eyebrow primitive: Teko 500, 0.85rem, uppercase, 0.14em letter-spacing, color gold. Don't invent a kicker pattern." },
+      { "name": "The Uppercase Rule", "section": "typography", "body": "Uppercase is for Teko only (labels, eyebrows, button text, table heads, navbar links). Newsreader is never uppercased." },
+      { "name": "The Line-Length Rule", "section": "typography", "body": "Newsreader paragraphs cap at 65 to 75 ch. Wider walls of text break the editorial register." },
+      { "name": "The Press-Room Shadow Rule", "section": "elevation", "body": "All shadows tint with brand purple (or gold on CTA hover). Neutral-gray shadows are slop." },
+      { "name": "The Lift-At-Rest Rule", "section": "elevation", "body": "Cards lift slightly (--shadow-sm) at rest, harder on hover (--shadow-md). Flat-at-rest is wrong for CCC." },
+      { "name": "The Atmospheric-Layer Rule", "section": "elevation", "body": "When a surface needs more than card-level shadow, add a radial gradient atmosphere on top of, not in place of, the tinted shadow scale." }
+    ],
+    "dos": [
+      "Do open every primary page with a Teko-display masthead, not a navbar that flows directly into content.",
+      "Do use Teko for every heading, eyebrow, button label, table head, and navbar link.",
+      "Do use Newsreader for every paragraph, body text, list item, and editorial caption.",
+      "Do reserve the metal-gold gradients for primary CTAs and the active navbar button. Nothing else.",
+      "Do use the brand-tinted shadow scale on every elevated surface. Cards lift slightly at rest, harder on hover.",
+      "Do scope every non-platform color through a body.game-<slug> class. Game palettes layer on the chrome; they never replace it.",
+      "Do use Pressroom Bone (#F3EFE6) as the page background. White is for nested cards only.",
+      "Do apply gold dividers between major page sections when separation is needed, not colored side-stripes on cards.",
+      "Do put light foreground colors on .card.wc-card content, scoped to the card surface.",
+      "Do keep button and form min-height at 44 px or larger.",
+      "Do cap Newsreader paragraph line length at 65 to 75 ch.",
+      "Do carry the Eyebrow primitive above section headlines that need contextual labeling."
+    ],
+    "donts": [
+      "Don't use border-left greater than 1 px as a colored accent on cards, list items, callouts, or alerts. The current .card.border-success / .card.border-danger / .card.border-warning / .card.border-primary rules are existing violations to migrate.",
+      "Don't apply background-clip text plus a gradient background. The metal-gold gradient is for surfaces, never for type.",
+      "Don't use #000 or #fff as text or background colors. Tint every neutral toward brand purple.",
+      "Don't use Inter, system-ui, or any other font. Teko and Newsreader define the system.",
+      "Don't use neutral-gray shadows. CCC shadows are purple-tinted by design.",
+      "Don't apply --metal-gold outside primary-CTA contexts. It is the trophy.",
+      "Don't introduce repeating identical card grids (icon plus heading plus text, eight in a row).",
+      "Don't apply the hero-metric template (big number, small label, supporting stats, gradient accent) without justification.",
+      "Don't add a third top-level color outside CCC purple plus gold without scoping it under a game class.",
+      "Don't use match.stage|title in Jinja templates. Use the stage_label SSoT helper.",
+      "Don't mock dark mode on light surfaces. Auth backdrops and .card.wc-card are the only dark registers.",
+      "Don't use bounce or elastic easing on motion. Card hover overshoot is the only deliberate exception.",
+      "Don't use em dashes or double hyphens in UI copy. Replace with commas, colons, semicolons, periods, or parentheses.",
+      "Don't add navbar items beyond joined-games plus auth links. Navigation overload is an ESPN/Yahoo anti-reference.",
+      "Don't introduce 'Powered by' footers, trust badges, or marketing-style hero sections aimed at strangers."
+    ]
+  }
+}
