@@ -2,6 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> ⚠️ **SKILL PRESCRIPTION ENFORCEMENT — READ BEFORE STARTING:**
+> This plan specifies skills at each task. Skipping a skill invocation — for any reason, including "I know the commands" — is a **plan failure**. This applies to every skill in this plan, and is most critical for `impeccable`: it carries design laws, anti-pattern rules, a preflight checklist, and context-loading logic that cannot be replicated by running commands manually. Every task that calls a skill must invoke it via the `Skill` tool and follow its output exactly. If a skill's preflight gate fails (e.g., PRODUCT.md missing, context not loaded), resolve the gate before touching any files.
+
 **Goal:** Stand up the `design/wc-polish` git worktree and fully initialize the impeccable design studio so Brad can immediately begin logging and fixing design issues discovered during the Phase 5.5 production test script at cccfantasy.com.
 
 **Architecture:** Git worktree at `../fantasy-design` (sibling to `~/fantasy-platform/`) linked to branch `design/wc-polish`. Impeccable context files (`PRODUCT.md`, `DESIGN.md`) created inside the worktree. Issue tracking template pre-populated and committed. All future design sessions open Claude Code from `~/fantasy-design/`.
@@ -22,22 +25,22 @@ All three files live on the `design/wc-polish` branch and merge into `main` when
 
 ---
 
-## Task 1: Create the Git Worktree
+## Task 1: Create the Git Worktree ✅ COMPLETE
 
 **Files:**
 - No files created — git operation only
 
-> **Note:** This task uses the `superpowers:using-git-worktrees` skill to handle all git complexity. Brad does not need to run git commands manually.
+> **SKILL REQUIRED:** Invoke `superpowers:using-git-worktrees` first. Do not run `git worktree add` directly — `EnterWorktree` is the native harness tool (Step 1a of the skill) and must be used. Running raw git commands when a native tool exists is the #1 mistake called out in the skill. The skill also drives project setup (venv) and baseline test verification that raw git commands skip entirely.
 
-- [ ] **Step 1: Invoke the worktree skill**
+- [x] **Step 1: Invoke the worktree skill**
 
-In Claude Code (opened from `~/fantasy-platform/`), type:
+In Claude Code (opened from `~/fantasy-platform/`), invoke:
 ```
 /superpowers:using-git-worktrees
 ```
-Follow the skill's prompts. When asked for branch name, use `design/wc-polish`. When asked for worktree path, use `../fantasy-design`.
+The skill detects you are in the main repo, checks for native tools, and uses `EnterWorktree` (not `git worktree add`) to create and enter `design/wc-polish` at `../fantasy-design`. Follow its output exactly.
 
-- [ ] **Step 2: Verify the worktree was created**
+- [x] **Step 2: Verify the worktree was created**
 
 ```bash
 git worktree list
@@ -49,7 +52,7 @@ Expected output (both rows present):
 /Users/bhagstrom/fantasy-design     <sha>  [design/wc-polish]
 ```
 
-- [ ] **Step 3: Verify the worktree folder has the full project**
+- [x] **Step 3: Verify the worktree folder has the full project**
 
 ```bash
 ls ../fantasy-design/
@@ -57,9 +60,20 @@ ls ../fantasy-design/
 
 Expected: same structure as `~/fantasy-platform/` — `app.py`, `games/`, `static/`, `templates/`, etc.
 
-- [ ] **Step 4: Close this Claude Code session and reopen from the worktree**
+- [x] **Step 4: Project setup and baseline (driven by the skill)**
 
-Close Claude Code. Reopen it, setting the working directory to `~/fantasy-design/`. All remaining tasks in this plan run from that session.
+The `superpowers:using-git-worktrees` skill runs these. Verify they passed:
+
+```bash
+ls venv/
+ENVIRONMENT=testing venv/bin/python -m pytest tests/ -q
+```
+
+Expected: venv present, `264 passed`. If tests fail, stop and investigate before proceeding.
+
+- [x] **Step 5: Session is now inside the worktree**
+
+`EnterWorktree` switches the session automatically. All remaining tasks run in this same session from `~/fantasy-design/`.
 
 ---
 
@@ -68,14 +82,17 @@ Close Claude Code. Reopen it, setting the working directory to `~/fantasy-design
 **Files:**
 - Create: `PRODUCT.md` (at worktree root, written by the skill)
 
-> **Important:** This step is a back-and-forth conversation. Claude will ask questions about cccfantasy.com one at a time; Brad answers each one. Do not skip or rush this — the output powers every impeccable command going forward.
+> **SKILL REQUIRED — NO EXCEPTIONS:** Invoke `/impeccable teach` via the `Skill` tool. Do not synthesize PRODUCT.md manually, do not summarize assumptions, do not write it from the user's original prompt. The impeccable skill's preflight explicitly fails if PRODUCT.md is missing, empty, or placeholder. PRODUCT.md is the foundation every subsequent impeccable command (`polish`, `audit`, `layout`, etc.) reads — a bad or skipped teach poisons every design session that follows.
+>
+> This step is a back-and-forth conversation. Claude asks questions one at a time; Brad answers. Do not skip or rush — the output powers every impeccable command going forward.
 
-- [ ] **Step 1: Invoke impeccable teach**
+- [ ] **Step 1: Invoke impeccable teach via the Skill tool**
 
-In Claude Code (opened from `~/fantasy-design/`), type:
+In Claude Code (opened from `~/fantasy-design/`), invoke:
 ```
 /impeccable teach
 ```
+The skill must be loaded — do not type impeccable commands freehand. Confirm the skill output is visible before answering any questions.
 
 - [ ] **Step 2: Answer Claude's discovery questions**
 
@@ -105,13 +122,15 @@ Expected: a number greater than 200 (the impeccable minimum). If the file is mis
 **Files:**
 - Create: `DESIGN.md` (at worktree root, written by the skill)
 
-- [ ] **Step 1: Invoke impeccable document**
+> **SKILL REQUIRED — NO EXCEPTIONS:** Invoke `/impeccable document` via the `Skill` tool. Do not write DESIGN.md by hand or by reading tokens.css yourself. The skill loads the full impeccable context (including PRODUCT.md from Task 2) before scanning — running the command without the skill skips that context load and produces a generic design doc that ignores the CCC brand. PRODUCT.md must exist and pass the preflight check before this step starts.
+
+- [ ] **Step 1: Invoke impeccable document via the Skill tool**
 
 ```
 /impeccable document
 ```
 
-Claude will scan `static/css/tokens.css` and `static/css/style.css` automatically. No input required from Brad.
+The skill scans `static/css/tokens.css` and `static/css/style.css` automatically. No input required from Brad. Confirm the skill is loaded (visible in output) before the scan begins.
 
 - [ ] **Step 2: Review the generated DESIGN.md briefly**
 
@@ -260,16 +279,17 @@ The design studio is ready. From here, the workflow is:
 
 **Starting a design session:**
 1. Open Claude Code from `~/fantasy-design/` (not `~/fantasy-platform/`)
-2. Tell Claude which category of issues to work on (e.g., "let's work through the Visual Polish items")
-3. Claude picks the right impeccable command and runs it
-4. Start the local dev server in a terminal: `FLASK_APP=app.py FLASK_DEBUG=1 venv/bin/flask run --port 5099`
-5. Open `localhost:5099` alongside `cccfantasy.com` for side-by-side comparison
-6. Approve, request tweaks, or reject — Claude commits each accepted change
+2. Claude must invoke `/impeccable` via the `Skill` tool and run the context loader (`load-context.mjs`) before touching any files — this is the impeccable preflight. Skipping it means design laws, anti-patterns, and brand context are not loaded. This is a session failure, not a shortcut.
+3. Tell Claude which category of issues to work on (e.g., "let's work through the Visual Polish items")
+4. Claude picks the matching impeccable sub-command and invokes it (e.g., `/impeccable polish`, `/impeccable layout`) — again via the `Skill` tool, not freehand
+5. Start the local dev server in a terminal: `FLASK_APP=app.py FLASK_DEBUG=1 venv/bin/flask run --port 5099`
+6. Open `localhost:5099` alongside `cccfantasy.com` for side-by-side comparison
+7. Approve, request tweaks, or reject — Claude commits each accepted change
 
 **Starting a bug-fix session:**
 1. Open Claude Code from `~/fantasy-design/`
 2. Share the Bug category items
-3. Claude uses the `systematic-debugging` skill — no impeccable involved
+3. Claude invokes `systematic-debugging` via the `Skill` tool — no impeccable involved, but the skill must still be loaded
 
 **Merging when done (deadline: June 1, 2026):**
 1. Claude runs `ENVIRONMENT=testing venv/bin/python -m pytest tests/` — all 264 tests must pass
