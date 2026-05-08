@@ -225,6 +225,13 @@ The four gates carry equal weight. **Anti-perfectionism note**: if all four pass
 
 **What an iteration session looks like.** Same per-session pattern as §4 (boot dev server → before-screenshots → critique → triage 3-5 priority fixes → execute → tests → after-screenshots → re-critique → commit → check convergence gate). The 3-5 priority-fix budget per iteration stays in force; the iterative model means **more iterations**, never bigger ones.
 
+**Budget bookkeeping (calibrated against S2.1.1 experience):**
+
+- **The 3-5 cap counts Priority Issues, not total edits.** A "Priority Issue" is anything the critique flagged as P0/P1/P2 with its own what/why/fix. Mechanical scope (an issue that requires editing 3 CSS rules + a template + a test) is one Priority Issue, not five edits.
+- **Polish freebies don't count against the cap.** A "freebie" is <2 minutes of work, single file (or one CSS rule), with at most one source-pattern lock. Examples from S2.1.1: removing `&ndash;` from one byline; renaming "competitors" → "in the Club"; bumping `.ra-stage` opacity .45→.55 to clear AA. Cap freebies at ~3 per iteration; batch them at end-of-iteration so they don't fragment the main work.
+- **Iteration 2+ inherits its own backlog.** Items tagged `[Sx.y.N-1 in-surface]` in §0.4 already passed Priority-Issue triage; they count toward the 3-5 cap of the picking-up iteration. If 6 backlog items exist and a fresh critique adds 2 more, the iteration picks the highest-value 3-5 and routes the rest forward to `Sx.y.N+1`.
+- **Soft total-edit ceiling.** ~8-10 distinct edits per iteration is the comfort line where session quality starts degrading. If a session blows past that, the next iteration is right around the corner — bank the work and `/clear`.
+
 **Backlog routing within an iteration.** When a critique surfaces an in-scope P0/P1 outside the iteration's 3-5 budget, route it to the next iteration of the same surface. When it surfaces a cross-cluster pattern (visible only when comparing two or more surfaces in the cluster), route to the cluster polish session (S2.6 / S3.4 / S4.5 / S5.3). When it surfaces a cross-phase pattern (visible only when comparing across phases), route to S6.1. The §0.4 Backlog rules in this plan have the precise routing matrix.
 
 ### 1.6 Out-of-scope guardrails
