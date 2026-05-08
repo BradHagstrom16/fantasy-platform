@@ -1,7 +1,9 @@
 {# Fixture card — upcoming match with kickoff time #}
 <div class="match-card match-card--upcoming">
   <div class="match-head">
-    <div class="grp">{{ match.stage|title }}{% if match.group_letter %} · Group {{ match.group_letter }}{% endif %}</div>
+    {# Use stage_label SSoT (passed in by core/main/home_context._context_pre).
+       `match.stage|title` mangles ALL-CAPS codes — DESIGN.md §6 Don't #10. #}
+    <div class="grp">{{ stage_label(match.stage) }}{% if match.group_letter %} · Group {{ match.group_letter }}{% endif %}</div>
     {% if match.kickoff_utc %}
     <span class="live-pill live-pill--kickoff">
       {{ match.kickoff_utc.strftime('%a %d %b · %H:%M UTC') }}

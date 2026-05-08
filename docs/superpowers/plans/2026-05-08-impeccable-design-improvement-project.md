@@ -79,6 +79,12 @@ When a session surfaces a finding outside its scope, append it here with the ses
 - **[S1.1]** `leaderboard.html` desktop table renders the Tiebreaker cell as the literal lowercase string `'none'` (`{{ e.usa_goals_guess if e.usa_goals_guess is not none else 'none' }}`) — breaks the editorial register. Use a voiced fallback like `No guess` or render an actual blank cell. Pre-existing; defer to **P6 S6.1** (cross-surface polish) unless an earlier deadline-related session reopens the leaderboard.
 - **[S1.1]** Move column header (`<th scope="col" class="text-end">Move</th>`) gives no since-when context. Add a `title=` tooltip (e.g., "Change since yesterday's snapshot") on the header for the analyst register. Cheap progressive disclosure; defer to **P6 S6.1**.
 - **[S1.1]** The Your Position tribune block sits on the bone canvas above the standings table with no visual thread between them — the gap reads as forgotten space rather than editorial breathing room. Candidates: a `border-top: 2px solid var(--gold)` rule above the table, or a section eyebrow ("THE LEDGER") above it. Defer to **P6 S6.1** so the cross-surface polish session can compare similar gap moments across the cluster (home dossier, schedule, team_detail) and pick a consistent treatment.
+- **[S2.1]** Sparkline read-only in dossier card (`_dossier_card.html:33-99`) — no per-day rank reveal on hover/tap. Adds ~30 lines of progressive-enhancement JS. Defer to **P6 S6.1** (cross-surface polish) or a delight-pass session if user testing surfaces it earlier.
+- **[S2.1]** Repeating gradient-card silhouette across 7 home components (dossier, view-CTA, commish-note-body, match-card, ballot-card, decree, join). S2.1 differentiates *match-cards on the live home* only. The broader cluster-wide pass on the gradient-card monotony belongs to **S2.6** (live cluster polish + re-critique) where pre/live/post home variants can be compared against each other for consistent silhouette diversification.
+- **[S2.1]** Home-live right column starves on desktop (~700px void below the 4-line Commish note). Caused by 60/40 split presuming richer content density that hasn't shipped yet. Cheapest fix is moving Commish full-width below the row; richer fix is a sticky standings chip. Defer to **S2.6** so the cluster polish can see all four home states' column-balance behavior.
+- **[S2.1]** Leaderboard rolls (`_home_live.html:46`) are non-interactive `<div>`s — no tap-through to competitor detail. Conflicts with S2.6 leaderboard concerns; defer to **S2.6** so the wrap-around (`<a>`-vs-`<div>` decision) can apply consistently across leaderboard preview + full leaderboard.
+- **[S2.1]** Section "more" links (`.sec-head .more`, `style.css:336-344`) read at ~28px tall — below the 44×44 floor. P0 S0.3 mobile tap-target work missed this surface (it's `.home-shell`-scoped). Self-contained padding fix; defer to **S2.6** so the same pattern can be applied uniformly to all home-state sec-heads.
+- **[S2.1]** "Test1 / Test2 / Test3" tagline duplication (`_home_live.html:54` via `_tagline_for()` in `home_context.py:46-69`) — current finite-string set returns the same line for ranks #2 and #3. Production rotates per actual user but the sample data shows the dupe. Defer until real users surface it; small scoped fix to `_tagline_for()` adding rank-#3 alternatives.
 
 ---
 
@@ -97,6 +103,7 @@ These apply to every session unless overridden in-session. Read them once; sessi
 ### 1.2 Skill and command usage
 
 - Every session begins with the user (or the agent on their behalf) invoking `Skill { skill: "impeccable" }`. The skill loads PRODUCT.md and DESIGN.md context. Failure to do any of the 3 is unacceptable. Every session and/or agent MUST invoke impeccable, fully read PRODUCT.md, and fully read DESIGN.md. 
+- **Sub-agent skill-invocation proof is mandatory.** When dispatching a sub-agent that runs any impeccable workflow (critique, audit, polish, shape, etc.), the prompt MUST require the sub-agent to (a) invoke `Skill { skill: "impeccable", args: "<command> <target>" }` as its first action, (b) run the loader (`node ~/.claude/skills/impeccable/scripts/load-context.mjs`), and (c) read the matching `~/.claude/skills/impeccable/reference/<command>.md` reference file plus any references that file links to (e.g., `heuristics-scoring.md`, `cognitive-load.md`, `personas.md` for critique). The prompt MUST require **content-fingerprint proof** at the top of the agent's reply: short verbatim quotes from each loaded file (e.g., a unique line from `SKILL.md`, the row beginning `| **P0** |` from `heuristics-scoring.md`, a line from `PRODUCT.md` and `DESIGN.md`). If the fingerprints aren't quoted, the report is invalid — discard and re-dispatch. **Why this rule exists:** prior sessions burned 100k+ tokens on agents that claimed gate-pass without observable Skill invocation; the design laws came from the prompt context, not the skill, so the critique was effectively the orchestrator critiquing itself in someone else's voice. Never quote DESIGN.md / PRODUCT.md content into a sub-agent prompt as a substitute for making the agent load them — that defeats the impeccable discipline. Pass paths, require loads, demand fingerprints.
 - Sub-commands are invoked by writing `$impeccable <command> <target>` in chat. The skill routes to the relevant reference file.
 - For cross-cutting hardens, use `$impeccable harden <surface>` with `<surface>` as a description of the systemic issue (e.g., `$impeccable harden bootstrap-shadow-leak across all .card.wc-card`).
 - For per-page work, the typical session pattern is:
@@ -1433,20 +1440,20 @@ Each session takes one live-state surface from "no critique done" → "critique 
 
 **Files in scope (READ):** PRODUCT.md, DESIGN.md, CLAUDE.md, the target template, supporting routes/services, related CSS sections, the live-state context builder (`core/main/home_context.py` for state-bearing pages).
 
-**Tasks:**
+**Tasks** (S2.1 ran this list end-to-end; subsequent S2.x sessions reset these to `[ ]` in their own commit when starting):
 
-- [ ] **Step 1: Boot dev server, capture before-screenshots at desktop + mobile.** Save under `.impeccable-review/<session-id>/before/`.
-- [ ] **Step 2: Run `$impeccable critique <target>`.** Two-assessment workflow per the impeccable critique reference. Sub-agent for design review; deterministic detector against rendered+inlined HTML; combined report.
-- [ ] **Step 3: Read the report; decide which Priority Issues land in this session.** Stretch issues go to Backlog (§0.4). Don't push past 3-5 priority fixes per session.
-- [ ] **Step 4: For each Priority Issue, execute its recommended impeccable command.** `$impeccable shape <component>`, `$impeccable clarify <copy>`, `$impeccable adapt <responsive>`, etc.
-- [ ] **Step 5: Add session-specific regression tests** under `tests/test_design_p2_<session>.py`. Lock the most important shape decisions in source.
-- [ ] **Step 6: Capture after-screenshots** under `.impeccable-review/<session-id>/after/`.
-- [ ] **Step 7: Re-run `$impeccable critique <target>`.** Record score delta.
-- [ ] **Step 8: Run `pytest`. Commit.**
+- [x] **Step 1: Boot dev server, capture before-screenshots at desktop + mobile.** Save under `.impeccable-review/<session-id>/before/`.
+- [x] **Step 2: Run `$impeccable critique <target>`.** Two-assessment workflow per the impeccable critique reference. Sub-agent for design review; deterministic detector against rendered+inlined HTML; combined report.
+- [x] **Step 3: Read the report; decide which Priority Issues land in this session.** Stretch issues go to Backlog (§0.4). Don't push past 3-5 priority fixes per session.
+- [x] **Step 4: For each Priority Issue, execute its recommended impeccable command.** `$impeccable shape <component>`, `$impeccable clarify <copy>`, `$impeccable adapt <responsive>`, etc.
+- [x] **Step 5: Add session-specific regression tests** under `tests/test_design_p2_<session>.py`. Lock the most important shape decisions in source.
+- [x] **Step 6: Capture after-screenshots** under `.impeccable-review/<session-id>/after/`.
+- [x] **Step 7: Re-run `$impeccable critique <target>`.** Record score delta.
+- [x] **Step 8: Run `pytest`. Commit.**
 
 ### Session inventory
 
-- [ ] **S2.1 — `home_shell.html` + `_home_live.html`** (the World Cup home in live state). Cross-cutting note: this surface uses `core/main/home_context.py` builders. Critique covers the page state but execution may need the partials in `core/main/templates/main/_home_live.html` plus `_dossier_card.html` / `_fixture_card.html`. Likely Priority Issues: dossier card hierarchy, live-state sparkline communication, week-delta gating UX.
+- [x] **S2.1 — `home_shell.html` + `_home_live.html`** (the World Cup home in live state). **Done.** Cross-cutting note: this surface uses `core/main/home_context.py` builders. Critique covers the page state but execution may need the partials in `core/main/templates/main/_home_live.html` plus `_dossier_card.html` / `_fixture_card.html`. Priority Issues fixed: gradient text on H1 + sparkline (impeccable absolute ban), dossier hero-metric 3-up grid (impeccable absolute ban) → Tribune Ledger composition, Recent Results identical-card-grid → roster card + "Also Today" strip, "this week" copy honesty (gated to "over 7 days"), banned `match.stage|title` → `stage_label()` SSoT. Score delta: heuristics 26/40 → 30/40, audit 15/20 → 17/20, anti-pattern hard hits 5 → 0 (both absolute bans cleared). 12 regression locks in `tests/test_design_p2_s2_1.py`; 323 tests green (was 311). Backlog items appended: sparkline interactivity, 7-component gradient-card repeat (S2.6), right-rail starvation (S2.6), leaderboard rolls dead-`<div>` (S2.6), section "more" tap-targets (S2.6), `_tagline_for` rank-#3 dupe.
 
 - [ ] **S2.2 — `schedule.html`** (live mode shows in-progress + recently-finished matches). Likely Priority Issues: live-dot indicator clarity, live-vs-final visual differentiation, kickoff time formatting (PRODUCT.md: short-burst comprehension).
 
@@ -1554,7 +1561,7 @@ Mark each session as it completes. Append the session-completion commit SHA for 
 - [x] **PR P1** opened: `#12`
 
 ### Phase 2 — Live state cluster
-- [ ] S2.1 — `home_shell` + `_home_live` (commit: `____`)
+- [x] S2.1 — `home_shell` + `_home_live` (commit: pending — see HEAD after S2.1 commit lands)
 - [ ] S2.2 — schedule (commit: ____)
 - [ ] S2.3 — team_detail (commit: ____)
 - [ ] S2.4 — stats (commit: ____)

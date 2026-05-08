@@ -346,12 +346,13 @@ body.game-golf {
   color: var(--gold-hi);
 }
 
-/* Metal-text helper (renamed from design's .metal-text per Spec B 9c) */
+/* Trophy-light flat gold for masthead emphasis. The metal-gold gradient is
+   reserved for primary CTAs (Trophy Rule, DESIGN.md §6); using it on text
+   would also violate the absolute ban on gradient text (background-clip:text
+   + gradient bg). Solid gold-light carries weight + register without diluting
+   the trophy. */
 .home-metal-text {
-  background: var(--metal-gold);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  color: var(--gold-light);
 }
 
 /* --- Logged-out: hero --- */
@@ -379,10 +380,7 @@ body.game-golf {
 }
 .home-shell .out-title .out-title-a {
   display: block;
-  background: var(--metal-gold);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  color: var(--gold-light);
 }
 .home-shell .out-title .out-title-b {
   display: block;
@@ -1239,37 +1237,52 @@ body.game-golf {
   text-align: center;
 }
 
-.home-shell .dossier-meta {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 0.5rem;
+/* The Ledger — Tribune-style editorial summary inside the dossier.
+   Replaces the prior 3-up hero-metric grid (impeccable absolute ban; DESIGN.md
+   §6 Don't #8). Numerals carry Teko-bold + tabular emphasis so casual users
+   still scan them in a glance; surrounding prose is Newsreader italic so the
+   block reads as a press-room ledger entry, not a SaaS metric strip. */
+.home-shell .dossier-ledger {
   margin-top: 1.25rem;
   padding-top: 1rem;
   border-top: 1px solid rgba(243,239,230,.06);
 }
-.home-shell .d-meta {
-  text-align: center;
-}
-.home-shell .d-meta .k {
+.home-shell .ledger-eyebrow {
   font-family: var(--font-teko);
+  font-weight: 500;
+  font-size: 0.85rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gold-light);
+  margin-bottom: 0.5rem;
+}
+.home-shell .ledger-line {
+  font-family: var(--font-news);
+  font-style: italic;
+  font-size: 1rem;
+  line-height: 1.5;
+  color: var(--bone);
+  margin: 0;
+  max-width: 60ch;
+}
+.home-shell .ledger-line .lk {
+  font-family: var(--font-teko);
+  font-style: normal;
   font-weight: 700;
-  font-size: 1.6rem;
-  line-height: 1;
+  font-size: 1.05rem;
+  letter-spacing: 0.02em;
   color: var(--bone);
   font-variant-numeric: tabular-nums;
 }
-.home-shell .d-meta-k--gold { color: var(--gold-light); }
-.home-shell .d-meta-k--green { color: #64DBA0; }
-.home-shell .d-meta-k--red { color: #FF8089; }
-.home-shell .d-meta .l {
-  font-family: var(--font-teko);
-  font-weight: 500;
-  font-size: 0.65rem;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: var(--bone-mute);
-  margin-top: 0.35rem;
+.home-shell .ledger-line .lk--gold { color: var(--gold-light); }
+.home-shell .ledger-line .lk--red  { color: #FF8089; }
+.home-shell .ledger-delta {
+  display: inline;
+  font-style: italic;
 }
+.home-shell .ledger-delta--up   { color: #64DBA0; }
+.home-shell .ledger-delta--down { color: #FF8089; }
+.home-shell .ledger-delta--flat { color: var(--bone-mute); }
 
 /* --- Live-state: leaderboard preview (rolls) --- */
 .home-shell .rolls {
@@ -1354,7 +1367,85 @@ body.game-golf {
 /* --- Match foot status variants (live-state recent results) --- */
 .home-shell .match-foot-status--win { color: #64DBA0; }
 .home-shell .match-foot-status--draw { color: var(--gold-light); }
-.home-shell .match-foot-status--loss { color: var(--bone-mute); }
+.home-shell .match-foot-status--loss { color: #FF8089; }
+
+/* Roster-intersection card carries a faint gold rail so the user's match
+   stands apart from the surrounding press-room ledger context. */
+.home-shell .match-card--roster {
+  border-color: rgba(201,162,39,.4);
+}
+
+/* Also Today — compact, ledger-style strip for non-roster results.
+   Replaces what used to be 4-of-5 identical match-cards (DESIGN.md §6 Don't
+   #7 "identical card grids"). The user's match stays a card; the room's
+   matches collapse to a single dossier entry. */
+.home-shell .results-also {
+  margin-top: 1rem;
+  padding: 0.85rem 1rem;
+  background: rgba(243,239,230,.03);
+  border: 1px solid rgba(243,239,230,.08);
+  border-radius: 8px;
+}
+.home-shell .results-also-eyebrow {
+  font-family: var(--font-teko);
+  font-weight: 500;
+  font-size: 0.7rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--bone-mute);
+  margin-bottom: 0.5rem;
+}
+.home-shell .results-also-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.home-shell .results-also-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.75rem;
+  padding: 0.4rem 0;
+  border-bottom: 1px solid rgba(243,239,230,.05);
+  font-family: var(--font-teko);
+  font-size: 0.9rem;
+  letter-spacing: 0.05em;
+  color: var(--bone-mute);
+}
+.home-shell .results-also-row:last-child { border-bottom: none; }
+.home-shell .ra-stage {
+  font-size: 0.7rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  /* Was rgba(243,239,230,.45) — fell to 4.03:1 on purple-950, below the
+     WCAG AA 4.5:1 floor for normal text. .55 lifts it to ~5.5:1. */
+  color: rgba(243,239,230,.55);
+  flex-shrink: 0;
+  min-width: 6.5rem;
+}
+.home-shell .ra-line {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  font-variant-numeric: tabular-nums;
+}
+.home-shell .ra-team {
+  font-weight: 600;
+  color: var(--bone);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.home-shell .ra-score {
+  font-weight: 700;
+  color: var(--bone);
+  font-size: 1rem;
+}
+.home-shell .ra-sep {
+  font-size: 0.65rem;
+  letter-spacing: 0.16em;
+  color: var(--bone-mute);
+  text-transform: uppercase;
+}
 .home-shell .match-empty {
   padding: 2rem 1rem;
   text-align: center;
