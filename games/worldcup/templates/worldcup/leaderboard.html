@@ -18,8 +18,8 @@
 <div class="container pb-5">
   {# Your Standing block — rendered only for authenticated + enrolled users #}
   {% if your_standing %}
-  <div class="your-standing animate-in mt-4">
-    <span class="wc-eyebrow">Your Standing</span>
+  <section role="region" aria-labelledby="your-standing-title" class="your-standing animate-in mt-4">
+    <span class="wc-eyebrow" id="your-standing-title">Your Standing</span>
     <div class="your-standing-grid">
       <div class="your-standing-rank">
         <div class="your-standing-rank-numeral wc-numeral">
@@ -37,7 +37,7 @@
       </div>
     </div>
     <p class="your-standing-caption mb-0">{{ your_standing.caption }}</p>
-  </div>
+  </section>
   {% endif %}
 
   {% if ranked_enrollments %}
@@ -47,16 +47,17 @@
     <div class="card-body p-0">
       <div class="table-responsive">
         <table class="table table-worldcup leaderboard-table mb-0">
+          <caption class="visually-hidden">2026 World Cup Pool standings, ranked by points.</caption>
           <thead>
             <tr>
-              <th style="width:60px">#</th>
-              <th>Player</th>
-              <th class="text-end">Points</th>
+              <th scope="col" style="width:60px">#</th>
+              <th scope="col">Player</th>
+              <th scope="col" class="text-end">Points</th>
               {% if show_trend_column %}
-              <th class="text-end">Trend</th>
+              <th scope="col" class="text-end">Trend</th>
               {% endif %}
               {% if deadline_passed %}
-              <th class="text-end">Tiebreaker</th>
+              <th scope="col" class="text-end">Tiebreaker</th>
               {% endif %}
             </tr>
           </thead>

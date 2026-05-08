@@ -67,11 +67,12 @@
       <a href="{{ url_for('worldcup.leaderboard') }}" class="btn btn-sm btn-game">View All</a>
     </div>
     <table class="table table-worldcup mb-0">
+      <caption class="visually-hidden">Top of the pool preview, ranked by current points.</caption>
       <thead>
         <tr>
-          <th style="width:50px">#</th>
-          <th>Player</th>
-          <th class="text-end">Points</th>
+          <th scope="col" style="width:50px">#</th>
+          <th scope="col">Player</th>
+          <th scope="col" class="text-end">Points</th>
         </tr>
       </thead>
       <tbody>

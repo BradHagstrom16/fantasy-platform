@@ -1067,7 +1067,7 @@ body.game-golf {
     var(--purple-850) 0%,
     var(--purple-950) 100%);
   border: 1px solid rgba(243,239,230,.08);
-  border-left: 3px solid var(--gold);
+  border-top: 2px solid var(--gold);
   border-radius: 8px;
   padding: 1.25rem 1.5rem;
 }
@@ -1106,10 +1106,11 @@ body.game-golf {
   margin-bottom: 0.5rem;
 }
 .home-shell .dispatch--yours {
-  border-left: 3px solid var(--gold-light);
+  border-color: rgba(242, 211, 107, .35);
+  background: rgba(242, 211, 107, .06);
 }
 .home-shell .dispatch--pool {
-  border-left: 3px solid var(--bone-mute);
+  border-color: rgba(243, 239, 230, .12);
 }
 .home-shell .dispatch-num {
   font-family: var(--font-teko);
@@ -1676,9 +1677,8 @@ body.game-golf {
   background: linear-gradient(90deg,
     rgba(201,162,39,.18) 0%,
     rgba(201,162,39,.05) 100%);
-  border-left: 3px solid var(--gold-light);
-  margin-left: -3px;
-  padding-left: calc(0.75rem - 3px);
+  border-bottom-color: rgba(242, 211, 107, .35);
+  box-shadow: inset 0 1px 0 rgba(242, 211, 107, .35);
 }
 .home-shell .rr-flag {
   font-size: 1.4rem;
@@ -1831,15 +1831,20 @@ body.game-golf {
 
 .table-golf > tbody > tr:hover { background: rgba(0,103,71,.04); }
 
-/* Current user row highlight */
-.table-golf .row-current-user > td,
-.row-current-user > td {
+/* Current user row highlight — Golf-scoped (game-specific stripe retained) */
+.table-golf .row-current-user > td {
   background: rgba(184,153,62,.08) !important;
   border-left: 3px solid var(--game-accent);
 }
-.table-golf .row-current-user > td:not(:first-child),
-.row-current-user > td:not(:first-child) {
+.table-golf .row-current-user > td:not(:first-child) {
   border-left: none;
+}
+
+/* Platform fallback: bg tint only, no side-stripe (P0 S0.2 — impeccable
+   side-stripe ban). Game-scoped tables (.table-cfb, .table-worldcup,
+   .table-golf) provide their own override. */
+.row-current-user > td {
+  background: rgba(184,153,62,.08) !important;
 }
 
 /* Leader row — subtle green tint */
@@ -2472,13 +2477,11 @@ body.game-worldcup {
 }
 .table-worldcup > tbody > tr:hover { background: rgba(0,40,104,.04); }
 
-/* Current user row highlight */
+/* Current user row highlight — bg tint carries the "you" cue
+   (P0 S0.2: side-stripe replaced by tint + leading rank numeral). */
 .table-worldcup .row-current-user > td {
   background: rgba(191,10,48,.06) !important;
-  border-left: 3px solid var(--game-accent);
-}
-.table-worldcup .row-current-user > td:not(:first-child) {
-  border-left: none;
+  font-weight: 600;
 }
 
 /* Tier badges — colored pill per tier */
@@ -2704,7 +2707,7 @@ body.game-worldcup {
   gap: .35em;
   padding: .15rem .55rem;
   background: rgba(0, 40, 104, .08);
-  border-left: 2px solid var(--game-accent, #BF0A30);
+  border: 1px solid rgba(191, 10, 48, .3);
   color: var(--game-primary, #002868);
   font-family: 'Teko', sans-serif;
   font-size: .85rem;
@@ -3148,19 +3151,24 @@ body.game-worldcup {
 }
 
 /* Multi-class: wins specificity over the bare .card.wc-card border rule.
-   See CLAUDE.md "CSS specificity for utility classes". */
+   See CLAUDE.md "CSS specificity for utility classes".
+   P0 S0.2: full border replaces the prior 3px left-stripe per the impeccable
+   absolute ban. The accent border + existing card surface still flag "this is
+   you" without the alert frequency of a side-stripe. */
 .card.wc-card.leaderboard-card-current {
-  border-left: 3px solid var(--game-accent) !important;
+  border: 1px solid var(--game-accent) !important;
 }
 
 /* Plan 3: Your Standing hero block (auth + enrolled only)
    ------------------------------------------------------- */
+/* P0 S0.2: side-stripe removed (impeccable absolute ban). The Your Standing
+   reshape lands in P1 S1.1; for now this is a plain bone-tinted card without
+   the alert frequency of a 3px left-stripe. */
 .your-standing {
   background: linear-gradient(135deg,
     rgba(0, 26, 77, .08) 0%,
     rgba(191, 10, 48, .05) 100%);
   border: 1px solid var(--border);
-  border-left: 3px solid var(--game-accent);
   border-radius: var(--radius);
   padding: 1.1rem 1.25rem;
 }
@@ -3558,19 +3566,21 @@ main { flex: 1; }
 }
 
 /* ── 7. Flash Messages / Alerts ─────────────────────────── */
+/* P0 S0.2: full border replaces the prior 4px left-stripe per the impeccable
+   absolute ban. The bg tint + state color carry status without the alert
+   frequency of a side-stripe. */
 .alert {
-  border: none;
-  border-left: 4px solid currentColor;
+  border: 1px solid currentColor;
   border-radius: var(--radius);
   font-weight: 500;
   box-shadow: var(--shadow-sm);
   animation: slideDown .25s ease both;
 }
 
-.alert-success  { background: var(--success-bg); color: var(--success); border-left-color: var(--success); }
-.alert-danger   { background: var(--danger-bg);  color: var(--danger);  border-left-color: var(--danger); }
-.alert-info     { background: var(--info-bg);    color: var(--info);    border-left-color: var(--info); }
-.alert-warning  { background: var(--warning-bg); color: var(--warning-text); border-left-color: var(--warning); }
+.alert-success  { background: var(--success-bg); color: var(--success); border-color: var(--success); }
+.alert-danger   { background: var(--danger-bg);  color: var(--danger);  border-color: var(--danger); }
+.alert-info     { background: var(--info-bg);    color: var(--info);    border-color: var(--info); }
+.alert-warning  { background: var(--warning-bg); color: var(--warning-text); border-color: var(--warning); }
 
 /* ── 8. Cards ───────────────────────────────────────────── */
 .card {
@@ -3599,10 +3609,13 @@ main { flex: 1; }
   color: var(--text-primary);
 }
 
-.card.border-success { border-left: 4px solid var(--success) !important; border-top: 1px solid var(--border); border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); }
-.card.border-danger  { border-left: 4px solid var(--danger)  !important; border-top: 1px solid var(--border); border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); }
-.card.border-warning { border-left: 4px solid var(--warning) !important; border-top: 1px solid var(--border); border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); }
-.card.border-primary { border-left: 4px solid var(--platform-primary) !important; border-top: 1px solid var(--border); border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+/* P0 S0.2: full border + tinted background replaces the prior 4px side-stripe
+   per the impeccable absolute ban. The state communication moves from a
+   colored stripe to the surface itself. */
+.card.border-success { border: 1px solid var(--success); background-color: rgba(26, 122, 69, 0.05); }
+.card.border-danger  { border: 1px solid var(--danger);  background-color: rgba(192, 57, 43, 0.05); }
+.card.border-warning { border: 1px solid var(--warning); background-color: rgba(201, 162, 39, 0.06); }
+.card.border-primary { border: 1px solid var(--platform-primary); background-color: rgba(58, 29, 114, 0.05); }
 
 .card-footer {
   background: transparent;
@@ -4725,8 +4738,11 @@ hr { border-color: var(--border); opacity: 1; }
   gap: .55rem;
   padding: .55rem .85rem;
   background: #fff;
-  border: 1px solid rgba(0,0,0,.09);
-  border-left: 3px solid var(--tier-color);
+  /* P0 S0.2: tier-tinted full border replaces the 3px left-stripe per the
+     impeccable absolute ban. The .roster-team-mult chip on the right and
+     the leading flag glyph already carry the tier identity at full strength;
+     the border keeps a tier whisper without the alert frequency. */
+  border: 1px solid color-mix(in srgb, var(--tier-color) 35%, rgba(0, 0, 0, .09));
   border-radius: .45rem;
   min-width: 0;
 }
@@ -4946,13 +4962,12 @@ hr { border-color: var(--border); opacity: 1; }
    of the hover state on the underlying .table-worldcup tr:hover rule
    (:2473). Pattern parallel to .row-current-user at :2476 (bg tint +
    left-border + first-td-only) but with gold instead of red. */
+/* P0 S0.2: cream background + the .best-finish-champion gold-gradient cell
+   carry the champion signal. The 3px left-stripe was redundant and broke
+   the impeccable absolute ban. */
 .table-worldcup .row-champion-pick > td {
   background: #f7e9c2 !important;
-  border-left: 3px solid var(--gold-light);
   font-weight: 600;
-}
-.table-worldcup .row-champion-pick > td:not(:first-child) {
-  border-left: none;
 }
 
 /* Premium "Champion" rendering for the Best Finish cell on the row that
@@ -4987,8 +5002,12 @@ hr { border-color: var(--border); opacity: 1; }
    but stays scannable when 3-5 of 7 matches involve the user's picks
    during group-stage worst case (per brainstorm decision 3 — Subtle was
    chosen over Prominent specifically to handle this density). */
+/* P0 S0.2: full gold-tinted border replaces the 3px left-stripe per the
+   impeccable absolute ban. The leading gold-tinted gradient already flags
+   "your team played"; the bordered card pulls the cue together at low
+   alert frequency. */
 .match-result-card.is-roster-match {
-  border-left: 3px solid var(--gold-light);
+  border-color: rgba(242, 211, 107, .55);
   background: linear-gradient(90deg, rgba(242, 211, 107, .10) 0%, var(--bg-card) 35%);
 }
 

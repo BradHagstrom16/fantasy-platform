@@ -18,13 +18,14 @@
       <div class="group-table" id="group-{{ letter }}">
         <div class="group-table-header">Group {{ letter }}</div>
         <table>
+          <caption class="visually-hidden">Group {{ letter }} standings: wins, draws, losses, and points.</caption>
           <thead>
             <tr>
-              <th>Team</th>
-              <th class="text-center" style="width:35px">W</th>
-              <th class="text-center" style="width:35px">D</th>
-              <th class="text-center" style="width:35px">L</th>
-              <th class="text-center" style="width:40px">Pts</th>
+              <th scope="col">Team</th>
+              <th scope="col" class="text-center" style="width:35px">W</th>
+              <th scope="col" class="text-center" style="width:35px">D</th>
+              <th scope="col" class="text-center" style="width:35px">L</th>
+              <th scope="col" class="text-center" style="width:40px">Pts</th>
             </tr>
           </thead>
           <tbody>

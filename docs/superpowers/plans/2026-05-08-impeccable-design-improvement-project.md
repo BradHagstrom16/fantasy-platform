@@ -71,7 +71,8 @@ Phase ordering follows §0.2 priority. Live state goes first because it's the hi
 
 When a session surfaces a finding outside its scope, append it here with the session ID that found it. Future sessions in the same cluster pick up the relevant items.
 
-> _(empty at plan creation; will fill as sessions execute)_
+- **[S0.2]** `groups.html:10` lead copy uses `&mdash;` HTML entity (`12 groups &mdash; 48 teams &mdash; 2026 FIFA World Cup`) — em-dash sweep target. Picked up by **S0.3**.
+- **[S0.2]** `leaderboard.html:85` trend dash placeholder renders an em-dash glyph (`<span class="text-muted">—</span>`) — em-dash sweep target. Picked up by **S0.3**.
 
 ---
 
@@ -244,7 +245,7 @@ These sessions execute the systemic findings from the leaderboard exemplar befor
 
 **Tasks:**
 
-- [ ] **Step 1: Confirm baseline**
+- [x] **Step 1: Confirm baseline**
 
 ```bash
 grep -rn 'shadow-sm\|shadow-lg\|shadow ' games/worldcup/templates/ core/ templates/ 2>/dev/null | grep -v '.pyc'
@@ -253,7 +254,7 @@ grep -nE '\.card\.wc-card|\.card\b|\.shadow-sm|\.shadow-lg' static/css/style.css
 
 Expected: a list of every Bootstrap shadow utility currently applied to CCC cards. Capture the count.
 
-- [ ] **Step 2: Add `.gitignore` entry**
+- [x] **Step 2: Add `.gitignore` entry**
 
 Read `.gitignore`. If `.impeccable-review/` is not present, add it.
 
@@ -262,7 +263,7 @@ Read `.gitignore`. If `.impeccable-review/` is not present, add it.
 .impeccable-review/
 ```
 
-- [ ] **Step 3: Write the failing test**
+- [x] **Step 3: Write the failing test**
 
 Create `tests/test_design_p0_shadow.py`:
 
@@ -294,7 +295,7 @@ def test_card_wc_card_uses_brand_shadow_token():
     assert 'var(--shadow-sm)' in src or 'var(--shadow-md)' in src, "Brand shadow tokens must be referenced somewhere"
 ```
 
-- [ ] **Step 4: Run the test, see it fail**
+- [x] **Step 4: Run the test, see it fail**
 
 ```bash
 ENVIRONMENT=testing venv/bin/python -m pytest tests/test_design_p0_shadow.py -v
@@ -302,7 +303,7 @@ ENVIRONMENT=testing venv/bin/python -m pytest tests/test_design_p0_shadow.py -v
 
 Expected: failures (Bootstrap's `.shadow-sm` rule with `rgba(0, 0, 0, 0.075)` is in the cascade via the linked Bootstrap CSS — but NOT in our `style.css`. So this specific test may already pass since the offending shadow comes from Bootstrap CDN, not local source. **If both tests pass on the first run**, the issue is that Bootstrap's utility is being *applied via class*, not declared in our CSS. In that case skip Step 5's local-CSS edit and go to Step 6 (template scrub).
 
-- [ ] **Step 5: Add scoped shadow override in `style.css`**
+- [x] **Step 5: Add scoped shadow override in `style.css`**
 
 Find the existing `.card.wc-card` block (around line 3242-3291 per the leaderboard audit). Above or alongside it, add:
 
@@ -326,7 +327,7 @@ Find the existing `.card.wc-card` block (around line 3242-3291 per the leaderboa
 
 The `!important` is the only honest way to win against Bootstrap's `.shadow-sm` utility class once it's present in markup; a cleaner alternative is to **remove the utility class from templates** (Step 6) and drop `!important` here. Prefer that path.
 
-- [ ] **Step 6: Strip Bootstrap shadow utilities from templates**
+- [x] **Step 6: Strip Bootstrap shadow utilities from templates**
 
 For each occurrence found in Step 1, edit the template to remove `shadow-sm` / `shadow-lg` / `shadow` from the class list when the element already carries a `.card`, `.card.wc-card`, `.game-card`, or `.leaderboard-card` class. The CSS rule from Step 5 supplies the brand shadow.
 
@@ -343,7 +344,7 @@ grep -rn 'shadow-sm\|shadow-lg' games/worldcup/templates/ core/ templates/ 2>/de
 
 Expected: zero results in templates that already carry a `.card` class.
 
-- [ ] **Step 7: Verify computed style via Playwright MCP (Layer B)**
+- [x] **Step 7: Verify computed style via Playwright MCP (Layer B)**
 
 Start dev server: `FLASK_APP=app.py FLASK_DEBUG=1 venv/bin/flask run --port 5099`. Use the Playwright MCP plugin (`mcp__plugin_playwright_playwright__*`) to:
 
@@ -357,7 +358,7 @@ Start dev server: `FLASK_APP=app.py FLASK_DEBUG=1 venv/bin/flask run --port 5099
 
 If the Playwright MCP is unavailable, fall back to `mcp__plugin_chrome-devtools-mcp_chrome-devtools__evaluate_script` with the same probe.
 
-- [ ] **Step 8: Run the test, see it pass**
+- [x] **Step 8: Run the test, see it pass**
 
 ```bash
 ENVIRONMENT=testing venv/bin/python -m pytest tests/test_design_p0_shadow.py -v
@@ -367,7 +368,7 @@ venv/bin/pyright
 
 All green.
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 ```bash
 git add tests/test_design_p0_shadow.py static/css/style.css games/worldcup/templates/ core/ templates/ .gitignore
@@ -1511,7 +1512,7 @@ Mark each session as it completes. Append the session-completion commit SHA for 
 
 ### Phase 0 — Cross-cutting harden
 - [x] S0.1 — Bootstrap shadow leak migration (commit: 60aee97)
-- [ ] S0.2 — Side-stripe ban migration + table semantics sweep (commit: ____)
+- [x] S0.2 — Side-stripe ban migration + table semantics sweep (commit: ____)
 - [ ] S0.3 — Mobile tap-target floor + white-on-gold contrast + em-dash sweep (commit: ____)
 - [ ] **PR P0** opened: ____
 

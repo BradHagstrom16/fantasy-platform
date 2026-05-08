@@ -52,12 +52,13 @@
     </div>
     <div class="table-responsive">
       <table class="table table-worldcup mb-0">
+        <caption class="visually-hidden">Your live roster: tier, team, multiplier, and current points.</caption>
         <thead>
           <tr>
-            <th>Tier</th>
-            <th>Team</th>
-            <th class="text-end">Multiplier</th>
-            <th class="text-end">Points</th>
+            <th scope="col">Tier</th>
+            <th scope="col">Team</th>
+            <th scope="col" class="text-end">Multiplier</th>
+            <th scope="col" class="text-end">Points</th>
           </tr>
         </thead>
         <tbody>
@@ -114,11 +115,12 @@
       <a href="{{ url_for('worldcup.leaderboard') }}" class="btn btn-sm btn-game">View All</a>
     </div>
     <table class="table table-worldcup mb-0">
+      <caption class="visually-hidden">Top five players, ranked by live points.</caption>
       <thead>
         <tr>
-          <th style="width:50px">#</th>
-          <th>Player</th>
-          <th class="text-end">Points</th>
+          <th scope="col" style="width:50px">#</th>
+          <th scope="col">Player</th>
+          <th scope="col" class="text-end">Points</th>
         </tr>
       </thead>
       <tbody>
