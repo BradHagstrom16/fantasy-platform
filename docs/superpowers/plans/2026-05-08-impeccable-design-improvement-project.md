@@ -1512,7 +1512,7 @@ Mark each session as it completes. Append the session-completion commit SHA for 
 
 ### Phase 0 — Cross-cutting harden
 - [x] S0.1 — Bootstrap shadow leak migration (commit: 60aee97)
-- [x] S0.2 — Side-stripe ban migration + table semantics sweep (commit: ____)
+- [x] S0.2 — Side-stripe ban migration + table semantics sweep (commit: e4882ca)
 - [ ] S0.3 — Mobile tap-target floor + white-on-gold contrast + em-dash sweep (commit: ____)
 - [ ] **PR P0** opened: ____
 
