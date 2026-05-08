@@ -420,7 +420,7 @@ EOF
 
 **Tasks:**
 
-- [ ] **Step 1: Inventory side-stripes in `style.css`**
+- [x] **Step 1: Inventory side-stripes in `style.css`**
 
 ```bash
 grep -nE 'border-(left|right):\s*[2-9]px|border-(left|right):\s*[1-9][0-9]+px' static/css/style.css
@@ -428,7 +428,7 @@ grep -nE 'border-(left|right):\s*[2-9]px|border-(left|right):\s*[1-9][0-9]+px' s
 
 Expected: ~15-20 hits. Note line numbers and the rule each is attached to.
 
-- [ ] **Step 2: Categorize each side-stripe**
+- [x] **Step 2: Categorize each side-stripe**
 
 For each hit, decide its replacement strategy:
 
@@ -441,7 +441,7 @@ For each hit, decide its replacement strategy:
 | Game-specific stripes (CFB, Golf) | **Skip** — out of scope for this project. |
 | `currentColor` stripes (`style.css:3563`) | Audit the rule. If it's an alert pattern, full-border + icon. |
 
-- [ ] **Step 3: Write the failing test**
+- [x] **Step 3: Write the failing test**
 
 Create `tests/test_design_p0_side_stripes.py`:
 
@@ -488,7 +488,7 @@ def test_card_border_state_classes_use_full_border_not_side_stripe():
             f".card.{class_name} still uses border-left side-stripe: {body[:200]}"
 ```
 
-- [ ] **Step 4: Run the test, see it fail**
+- [x] **Step 4: Run the test, see it fail**
 
 ```bash
 ENVIRONMENT=testing venv/bin/python -m pytest tests/test_design_p0_side_stripes.py -v
@@ -496,7 +496,7 @@ ENVIRONMENT=testing venv/bin/python -m pytest tests/test_design_p0_side_stripes.
 
 Expected: 1-2 failures with offender selectors listed.
 
-- [ ] **Step 5: Migrate each side-stripe rule in `style.css`**
+- [x] **Step 5: Migrate each side-stripe rule in `style.css`**
 
 For each rule from Step 2, edit `style.css`:
 
@@ -531,7 +531,7 @@ For tier rows (line ~4729): remove `border-left: 3px solid var(--tier-color);`. 
 
 For any other rule from Step 2: full-border-or-pill replacement, never re-introduce a stripe.
 
-- [ ] **Step 6: Add table semantics across in-scope tables**
+- [x] **Step 6: Add table semantics across in-scope tables**
 
 For each public table in WC + global surfaces:
 - `games/worldcup/templates/worldcup/leaderboard.html`
@@ -559,7 +559,7 @@ Apply this pattern:
 
 Add `<th scope="row">` to any first-column `<th>` if a table uses row-headers.
 
-- [ ] **Step 7: Add region role to `.your-standing`**
+- [x] **Step 7: Add region role to `.your-standing`**
 
 In `games/worldcup/templates/worldcup/leaderboard.html`, wrap the Your Standing block:
 
@@ -572,7 +572,7 @@ In `games/worldcup/templates/worldcup/leaderboard.html`, wrap the Your Standing 
 
 Or use `aria-label="Your standing"` on the wrapper if a heading element isn't present.
 
-- [ ] **Step 8: Write the table-semantics test**
+- [x] **Step 8: Write the table-semantics test**
 
 Create `tests/test_design_p0_table_semantics.py`:
 
@@ -618,7 +618,7 @@ def test_tables_carry_scope_col_and_caption(client, path):
 
 (Note: this test will skip auth-gated paths; per-page integration tests in later sessions cover them with a logged-in client. Adjust if `tests/conftest.py` already exposes an authenticated client fixture — check before writing.)
 
-- [ ] **Step 9: Run all tests**
+- [x] **Step 9: Run all tests**
 
 ```bash
 ENVIRONMENT=testing venv/bin/python -m pytest tests/test_design_p0_side_stripes.py tests/test_design_p0_table_semantics.py -v
@@ -627,7 +627,7 @@ ENVIRONMENT=testing venv/bin/python -m pytest tests/ -q
 
 All green.
 
-- [ ] **Step 10: Playwright MCP verification (Layer B)**
+- [x] **Step 10: Playwright MCP verification (Layer B)**
 
 Use the Playwright MCP plugin to confirm the rendered tables and the no-stripe state:
 
@@ -654,7 +654,7 @@ Use the Playwright MCP plugin to confirm the rendered tables and the no-stripe s
 
 If Playwright MCP isn't available, fall back to chrome-devtools-mcp with the same probes.
 
-- [ ] **Step 11: Commit**
+- [x] **Step 11: Commit**
 
 ```bash
 git add tests/test_design_p0_side_stripes.py tests/test_design_p0_table_semantics.py static/css/style.css games/ core/ templates/
@@ -711,7 +711,7 @@ EOF
 
 **Tasks:**
 
-- [ ] **Step 1: Tap-target inventory via Playwright MCP (Layer B)**
+- [x] **Step 1: Tap-target inventory via Playwright MCP (Layer B)**
 
 Boot dev server. Use the Playwright MCP plugin: `browser_resize` to 375×812 (or `browser_emulate` mobile preset), `browser_navigate` to each in-scope page (`/worldcup/leaderboard`, `/worldcup/`, `/worldcup/schedule`, `/worldcup/picks`, `/worldcup/stats`, `/worldcup/rules`, `/login`, `/`). For each, run:
 
@@ -742,7 +742,7 @@ Likely failures elsewhere (verify with the probe above):
 
 The Playwright MCP probe is the source of truth for which elements need fixing in this session — don't pre-commit to a list.
 
-- [ ] **Step 2: Write the source-pattern test (tap-targets)**
+- [x] **Step 2: Write the source-pattern test (tap-targets)**
 
 Source-grep test confirms every fixed selector declares its min-height in `style.css`. The Playwright MCP probe in Step 1 confirms the rendered rect; the source test below locks the CSS so the rect can't regress in source.
 
@@ -786,7 +786,7 @@ def test_leaderboard_card_link_covers_card():
         'Mobile leaderboard cards must use whole-card-as-link pattern'
 ```
 
-- [ ] **Step 3: Run, see it fail**
+- [x] **Step 3: Run, see it fail**
 
 ```bash
 ENVIRONMENT=testing venv/bin/python -m pytest tests/test_design_p0_tap_targets.py -v
@@ -794,7 +794,7 @@ ENVIRONMENT=testing venv/bin/python -m pytest tests/test_design_p0_tap_targets.p
 
 Expected: both fail.
 
-- [ ] **Step 4: Fix sub-nav pills in `style.css`**
+- [x] **Step 4: Fix sub-nav pills in `style.css`**
 
 Find the `.subnav-pill` block (search for `.subnav-pill {`). Edit:
 
@@ -811,7 +811,7 @@ Find the `.subnav-pill` block (search for `.subnav-pill {`). Edit:
 
 If the surrounding container needs more vertical space, adjust `.subnav-pills` padding and `.game-subnav` height accordingly. Verify the navbar+sub-nav stack doesn't push hero content off-screen.
 
-- [ ] **Step 5: Convert mobile leaderboard cards to whole-card links**
+- [x] **Step 5: Convert mobile leaderboard cards to whole-card links**
 
 Edit `games/worldcup/templates/worldcup/leaderboard.html` mobile section. Replace the existing per-card structure:
 
@@ -865,7 +865,7 @@ Add `.leaderboard-card-link` to `style.css` to neutralize default link styling o
 }
 ```
 
-- [ ] **Step 6: Run tap-target tests, see them pass**
+- [x] **Step 6: Run tap-target tests, see them pass**
 
 ```bash
 ENVIRONMENT=testing venv/bin/python -m pytest tests/test_design_p0_tap_targets.py -v
@@ -898,7 +898,7 @@ def test_navbar_btn_warning_text_color_locked_to_purple():
             f'navbar .btn-warning {label}: text color must be chamber-purple, found: {body[:200]}'
 ```
 
-- [ ] **Step 7.5: Playwright MCP — measure actual rendered contrast (Layer B)**
+- [x] **Step 7.5: Playwright MCP — measure actual rendered contrast (Layer B)**
 
 Use the Playwright MCP to confirm the rendered contrast of the trophy CTA, before AND after the fix:
 
@@ -917,7 +917,7 @@ Use the Playwright MCP to confirm the rendered contrast of the trophy CTA, befor
 
 This catches the gradient-stop trap that source-grep can't see (a source `color: var(--bone)` declaration may pass source review but fail rendered contrast against the gold gradient).
 
-- [ ] **Step 8: Repair the trophy CTA color in `style.css`**
+- [x] **Step 8: Repair the trophy CTA color in `style.css`**
 
 Find `.navbar.navbar-dark .btn-warning` (around line 101) and `.navbar.navbar-dark .btn-warning:hover` (around line 109). Confirm both declare `color: var(--purple-900);` (or `#1C0A3A`). If hover declares a different color (e.g., `color: var(--bg-card)`), fix it.
 
@@ -936,7 +936,7 @@ Find `.navbar.navbar-dark .btn-warning` (around line 101) and `.navbar.navbar-da
 }
 ```
 
-- [ ] **Step 9: Em-dash sweep across templates**
+- [x] **Step 9: Em-dash sweep across templates**
 
 ```bash
 grep -rn '—\|&mdash;\|&#8212;' games/worldcup/templates/ core/ templates/ --include='*.html' | grep -v 'CCC tokens — must load' | grep -v 'inline comment' | head -100
@@ -951,7 +951,7 @@ Expected: dozens of hits. For each:
 
 Edit each in place. This is mechanical but careful work — the meaning of each `—` depends on context.
 
-- [ ] **Step 10: Write the failing test (em-dash discipline)**
+- [x] **Step 10: Write the failing test (em-dash discipline)**
 
 Create `tests/test_design_p0_copy_discipline.py`:
 
@@ -995,7 +995,7 @@ def test_no_em_dash_in_user_facing_copy():
     assert not offenders, f'Em-dash discipline violations: {offenders[:20]}'
 ```
 
-- [ ] **Step 11: Run all tests**
+- [x] **Step 11: Run all tests**
 
 ```bash
 ENVIRONMENT=testing venv/bin/python -m pytest tests/test_design_p0_tap_targets.py tests/test_design_p0_contrast.py tests/test_design_p0_copy_discipline.py -v
@@ -1004,11 +1004,11 @@ ENVIRONMENT=testing venv/bin/python -m pytest tests/ -q
 
 All green.
 
-- [ ] **Step 12: Visual smoke**
+- [x] **Step 12: Visual smoke**
 
 Boot dev server, take desktop + 375 mobile screenshots of `/worldcup/leaderboard`, `/worldcup/`, `/worldcup/picks`, `/`, `/login`. Save under `.impeccable-review/s0.3/`. Confirm sub-nav pills are taller (~44px) and the metal-gold trophy CTA in the navbar reads dark-on-gold.
 
-- [ ] **Step 13: Commit**
+- [x] **Step 13: Commit**
 
 ```bash
 git add tests/test_design_p0_tap_targets.py tests/test_design_p0_contrast.py tests/test_design_p0_copy_discipline.py static/css/style.css games/ core/ templates/
@@ -1521,7 +1521,7 @@ Mark each session as it completes. Append the session-completion commit SHA for 
 - [x] S0.1 — Bootstrap shadow leak migration (commit: 60aee97)
 - [x] S0.2 — Side-stripe ban migration + table semantics sweep (commit: e4882ca)
 - [x] S0.3 — Mobile tap-target floor + white-on-gold contrast + em-dash sweep (commit: 37a57cf)
-- [ ] **PR P0** opened: ____
+- [x] **PR P0** opened: `#11`
 
 ### Phase 1 — Leaderboard close
 - [ ] S1.1 — Shape Your Standing + trend rank-delta + clarify copy (commit: ____)
