@@ -3600,7 +3600,7 @@ main { flex: 1; }
    absolute ban. The bg tint + state color carry status without the alert
    frequency of a side-stripe. */
 .alert {
-  border: 1px solid currentColor;
+  border: 1px solid currentcolor;
   border-radius: var(--radius);
   font-weight: 500;
   box-shadow: var(--shadow-sm);

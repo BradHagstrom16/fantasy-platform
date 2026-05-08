@@ -7,6 +7,8 @@ by per-page session integration tests in later phases). The public WC routes
 already in scope: leaderboard, schedule, stats, groups, rules.
 """
 
+import re
+
 import pytest
 
 from app import create_app
@@ -46,8 +48,6 @@ def test_tables_carry_scope_col_and_caption(client, path):
 
     # Every <th> in every <thead> on the page must carry scope="col",
     # and every <table> must include a <caption> with the visually-hidden class.
-    import re
-
     thead_blocks = re.findall(r'<thead[^>]*>(.*?)</thead>', body, re.DOTALL | re.IGNORECASE)
     for block in thead_blocks:
         header_cells = re.findall(r'<th\b[^>]*>', block, re.IGNORECASE)
@@ -90,7 +90,6 @@ def test_your_standing_carries_region_role(client):
     if 'your-standing' not in body:
         pytest.skip('Your Standing block is not rendered in the anonymous state')
 
-    import re
     # Look for the .your-standing element and confirm it carries a region role
     # and aria-labelledby OR aria-label attribute.
     section_match = re.search(

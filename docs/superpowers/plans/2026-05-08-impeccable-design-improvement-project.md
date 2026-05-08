@@ -3,7 +3,7 @@
 > **For agentic workers:** REQUIRED SUB-SKILL: Use `superpowers:subagent-driven-development` (recommended)
 > For In line execution use: `superpowers:executing-plans`  Steps use checkbox (`- [ ]`) syntax for tracking. **The user manually `/clear`s between sessions; each session is designed to be self-contained.** Meticulously decide for a given task whether inline or subagent is better.
 
-**Goal:** Apply `impeccable` design discipline to every public-facing CCC surface — every World Cup state (live > pre > post), all global chrome (auth, errors, base layout). Eliminate the systemic anti-patterns surfaced in the WC leaderboard exemplar critique (Tier 1 baseline) and execute per-page `critque` / `shape` / `clarify` / `adapt` work across each cluster, then run a final `polish` pass.
+**Goal:** Apply `impeccable` design discipline to every public-facing CCC surface — every World Cup state (live > pre > post), all global chrome (auth, errors, base layout). Eliminate the systemic anti-patterns surfaced in the WC leaderboard exemplar critique (Tier 1 baseline) and execute per-page `critique` / `shape` / `clarify` / `adapt` work across each cluster, then run a final `polish` pass.
 
 **Architecture:** Single multi-session plan structured as **Phases (P0–P6)** containing **Sessions (S\*.\*)**. Each session is a single Claude Code chat — context-isolated, prerequisites noted at the top of the session, deliverables and verification at the bottom. The user `/clear`s between sessions and points the new session at this plan plus the session ID. Phases break at meaningful milestones (cross-cutting fixes complete, a cluster complete, etc.) and each phase ends with a PR to keep review batches manageable.
 
@@ -939,7 +939,7 @@ Find `.navbar.navbar-dark .btn-warning` (around line 101) and `.navbar.navbar-da
 - [ ] **Step 9: Em-dash sweep across templates**
 
 ```bash
-grep -rn '—\|–\|&mdash;\|&#8212;\|--' games/worldcup/templates/ core/ templates/ --include='*.html' | grep -v 'CCC tokens — must load' | grep -v 'inline comment' | head -100
+grep -rn '—\|&mdash;\|&#8212;' games/worldcup/templates/ core/ templates/ --include='*.html' | grep -v 'CCC tokens — must load' | grep -v 'inline comment' | head -100
 ```
 
 Expected: dozens of hits. For each:
@@ -1119,17 +1119,26 @@ def compute_rank_delta(enrollment, window_days: int = 1) -> int | None:
     """Return positive int if rank improved (smaller rank number) over `window_days`,
     negative if rank dropped, zero if held, None if insufficient snapshot history.
     Snapshots must be season-scoped via the enrollment FK (CLAUDE.md invariant)."""
+    from sqlalchemy import select
+    from extensions import db
     from games.worldcup.models import WorldCupRankSnapshot
     from games.worldcup.services.state import now_utc
     from games.worldcup.constants import WORLDCUP_TZ
     from datetime import timedelta
     cutoff = now_utc().astimezone(WORLDCUP_TZ).date() - timedelta(days=window_days)
-    today = WorldCupRankSnapshot.query.filter_by(enrollment_id=enrollment.id).order_by(
-        WorldCupRankSnapshot.captured_on.desc()).first()
-    prior = WorldCupRankSnapshot.query.filter(
-        WorldCupRankSnapshot.enrollment_id == enrollment.id,
-        WorldCupRankSnapshot.captured_on <= cutoff,
-    ).order_by(WorldCupRankSnapshot.captured_on.desc()).first()
+    today = db.session.scalars(
+        select(WorldCupRankSnapshot)
+        .where(WorldCupRankSnapshot.enrollment_id == enrollment.id)
+        .order_by(WorldCupRankSnapshot.captured_on.desc())
+    ).first()
+    prior = db.session.scalars(
+        select(WorldCupRankSnapshot)
+        .where(
+            WorldCupRankSnapshot.enrollment_id == enrollment.id,
+            WorldCupRankSnapshot.captured_on <= cutoff,
+        )
+        .order_by(WorldCupRankSnapshot.captured_on.desc())
+    ).first()
     if today is None or prior is None:
         return None
     return prior.rank - today.rank  # smaller rank = better
@@ -1519,7 +1528,7 @@ Mark each session as it completes. Append the session-completion commit SHA for 
 - [ ] **PR P1** opened: ____
 
 ### Phase 2 — Live state cluster
-- [ ] S2.1 — home_shell + _home_live (commit: ____)
+- [ ] S2.1 — `home_shell` + `_home_live` (commit: `____`)
 - [ ] S2.2 — schedule (commit: ____)
 - [ ] S2.3 — team_detail (commit: ____)
 - [ ] S2.4 — stats (commit: ____)
@@ -1535,7 +1544,7 @@ Mark each session as it completes. Append the session-completion commit SHA for 
 - [ ] **PR P3** opened: ____
 
 ### Phase 4 — Pre-live state cluster
-- [ ] S4.1 — _home_pre + _home_out (commit: ____)
+- [ ] S4.1 — `_home_pre` + `_home_out` (commit: `____`)
 - [ ] S4.2 — picks + _pick_row (commit: ____)
 - [ ] S4.3 — join + rules (commit: ____)
 - [ ] S4.4 — groups (commit: ____)
@@ -1543,7 +1552,7 @@ Mark each session as it completes. Append the session-completion commit SHA for 
 - [ ] **PR P4** opened: ____
 
 ### Phase 5 — Post-live state cluster
-- [ ] S5.1 — _home_post (commit: ____)
+- [ ] S5.1 — `_home_post` (commit: `____`)
 - [ ] S5.2 — post-state component partials (commit: ____)
 - [ ] S5.3 — post-live cluster polish + re-critique (commit: ____)
 - [ ] **PR P5** opened: ____
