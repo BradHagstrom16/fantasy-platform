@@ -10,8 +10,9 @@ Ranks are dense — tied scores share a rank. The sort order matches
 games/worldcup/routes.leaderboard():
     total_score DESC, usa_goals_guess ASC.
 """
+from collections.abc import Iterable
 from datetime import date, timedelta
-from typing import Iterable, Optional, TypedDict
+from typing import Optional, TypedDict
 
 from sqlalchemy import func
 
@@ -199,4 +200,4 @@ def _latest_rank_by_enrollment(
         )
         .all()
     )
-    return {eid: rank for eid, rank in rows}
+    return dict(rows)
