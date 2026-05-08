@@ -160,14 +160,15 @@ The agent's first three actions in any session:
 
 ### 1.5 How to end a session
 
-Every session ends with the same six steps:
+Every session ends with the same seven steps:
 
 1. **Run pytest**: `ENVIRONMENT=testing venv/bin/python -m pytest tests/` — must be green.
 2. **Take after-screenshots** of any visually-changed pages at desktop (1470×900) and mobile (375×812). Save under `.impeccable-review/<session-id>/`. Add `.impeccable-review/` to `.gitignore` if not already (one-time, in P0 S0.1).
 3. **Re-run impeccable critique** for any page touched (per-page sessions only). Record score delta in the commit message body.
 4. **Commit** with conventional-commits prefix and a summary that names the session ID.
-5. **Update the plan checklist** (Section 9 of this document) — mark the session complete, append any newly-found out-of-scope items to the Backlog (Section 0.4).
-6. If any session findings would be beneficial for future sessions, update this document accordingly so future sessions and phases go smoothly. Usage of the remember skill is also encouraged.
+5. **Flip every checkbox you completed.** This is non-negotiable. Sweep the session's `**Step N: ...**` list and turn each finished `- [ ]` into `- [x]` in the same commit. Then update the §9 rollup (mark the session row `[x]` and fill in its commit hash). When you open a phase PR, fill in the `**PR PN** opened:` row with the PR number and check it.
+6. Append any newly-found out-of-scope items to the Backlog (Section 0.4) with the session ID that surfaced them.
+7. If any session findings would be beneficial for future sessions, update this document accordingly so future sessions and phases go smoothly. Usage of the remember skill is also encouraged.
 
 ### 1.6 Out-of-scope guardrails
 
@@ -183,6 +184,28 @@ If a per-page critique surfaces a P0 or P1 issue that doesn't fit the session's 
 1. **Don't push past it.** Mark the session as partially complete in the plan.
 2. Append the new finding to the Backlog (Section 0.4).
 3. Either: (a) handle it in the same session if the fix is self-contained, or (b) defer to a future session and note the dependency. Default to (a) unless (b) is clearly more beneficial and logical.
+
+### 1.8 CR-feedback-approval sessions
+
+A phase-work session does not end with the merge — it ends with PR open. Once a phase PR is open, the cycle shifts to a distinct session type dedicated to CodeRabbit feedback approval. Do NOT bundle CR iteration into the next phase's session; treat it as its own discipline.
+
+The cycle:
+
+1. **Phase-work session(s)** complete. PR is open per §1.1.
+2. **`/clear`** — context isolation between every session, per §1.4.
+3. **CR-feedback-approval session.** Skills loaded first thing: `Skill { skill: "impeccable" }` (so design laws stay binding when CR flags style/token/spec issues) + `Skill { skill: "superpowers:receiving-code-review" }` (technical rigor over performative agreement; push back when CR is wrong). The session's only purpose is to:
+   - Triage every actionable CR finding on the latest commit.
+   - Verify each against current source before changing anything.
+   - Implement valid fixes, push back on incorrect ones with technical reasoning.
+   - Reply on each inline thread (`gh api ... pulls/<n>/comments/<id>/replies`) — fix-confirmation OR pushback rationale.
+   - Run pytest green; commit; push.
+4. **Repeat step 3** if CR returns more findings on the new commit. Each round is its own session — `/clear` between them if context grows large.
+5. **Approval gate.** The phase is ready to merge when **both** CR and Claude approve:
+   - **CR approval**: latest CR review state is `APPROVED`, or no findings posted on the latest scan.
+   - **Claude approval**: pytest green, every CR finding either implemented or has a posted technical pushback you genuinely believe in. Performative "looks good" doesn't count.
+6. Then `/clear` and start the next phase-work session.
+
+Why this is its own session type: phase-work and CR-iteration require different mental models. Mixing them dilutes both — phase work loses focus, and CR iteration loses the receiving-code-review discipline (verify, evaluate, push back when wrong). Per `feedback_cr_approval_sessions.md` in user memory.
 4. Add a note in the session's "Handoff" block.
 
 ### 1.8 Impeccable is the source of truth — the plan is scaffolding
@@ -871,7 +894,7 @@ Add `.leaderboard-card-link` to `style.css` to neutralize default link styling o
 ENVIRONMENT=testing venv/bin/python -m pytest tests/test_design_p0_tap_targets.py -v
 ```
 
-- [ ] **Step 7: Write the failing test (white-on-gold contrast)**
+- [x] **Step 7: Write the failing test (white-on-gold contrast)**
 
 Create `tests/test_design_p0_contrast.py`:
 

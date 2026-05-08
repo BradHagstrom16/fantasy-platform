@@ -45,6 +45,14 @@
   --shadow-md:               0 4px 20px rgba(58,29,114,.12);
   --shadow-lg:               0 8px 40px rgba(58,29,114,.17);
   --shadow-gold:             0 4px 24px rgba(201,162,39,.25);
+  /* Component shadows: distinct intensities/directions the generic scale
+     above can't carry. Per CLAUDE.md "new design tokens go in tokens.css /
+     style.css :root; components consume via var()". */
+  --shadow-lift-strong:      0 6px 20px rgba(58,29,114,.30);  /* heavier card-hover lift than --shadow-md */
+  --shadow-navbar:           0 2px 20px rgba(58,29,114,.35);  /* sticky navbar ambient */
+  --shadow-dropdown:         0 12px 40px rgba(58,29,114,.50); /* dropdown panel */
+  --shadow-sticky-up:        0 -4px 20px rgba(58,29,114,.35); /* bottom-anchored bar (upward cast) */
+  --shadow-btn-primary-hover: 0 4px 14px rgba(58,29,114,.30); /* Quiet-primary CTA hover (DESIGN.md §Buttons) */
 
   /* Radius */
   --radius:                  .5rem;
@@ -1771,7 +1779,7 @@ body.game-golf {
 .home-shell .cta-card:hover,
 .home-shell .cg--active:hover {
   transform: translateY(-1px);
-  box-shadow: 0 6px 20px rgba(58,29,114,.3);
+  box-shadow: var(--shadow-lift-strong);
 }
 
 /* --- Polish: prevent layout shift on countdown digit changes --- */
@@ -2385,9 +2393,13 @@ body.game-worldcup {
   position: relative;
 }
 .fixture-row:last-child { border-bottom: none; }
+/* P0 S0.2 follow-up: side-stripe ban applies in spirit, not just to
+   border-left. The prior rule used `box-shadow: inset 3px 0 0` to draw a
+   3px leading red accent — visually identical to a border-left side-stripe.
+   The bg tint + the existing .fixture-next-pip corner indicator carry the
+   "next match" affordance without re-introducing the leading stripe. */
 .fixture-row-next {
   background: rgba(191, 10, 48, .08);
-  box-shadow: inset 3px 0 0 var(--wc-red);
 }
 .fixture-stage { line-height: 1.2; }
 .fixture-result { text-align: right; }
@@ -3388,7 +3400,7 @@ main { flex: 1; }
   background: linear-gradient(90deg, var(--platform-primary-dark) 0%, var(--platform-primary) 100%) !important;
   border-bottom: 3px solid var(--platform-accent);
   padding: .65rem 0;
-  box-shadow: 0 2px 20px rgba(58,29,114,.35);
+  box-shadow: var(--shadow-navbar);
   position: sticky;
   top: 0;
   z-index: 1030;
@@ -3455,7 +3467,7 @@ main { flex: 1; }
   border: 1px solid rgba(212,168,32,.18);
   border-top: 2px solid var(--platform-accent);
   border-radius: 0 0 var(--radius) var(--radius);
-  box-shadow: 0 12px 40px rgba(58,29,114,.5);
+  box-shadow: var(--shadow-dropdown);
   min-width: 13rem;
   animation: slideDown .18s ease both;
 }
@@ -3900,7 +3912,7 @@ main { flex: 1; }
   background: var(--platform-primary-light);
   border-color: var(--platform-primary-light);
   transform: translateY(-2px);
-  box-shadow: 0 4px 14px rgba(58,29,114,.3);
+  box-shadow: var(--shadow-btn-primary-hover);
 }
 
 .btn-warning {
@@ -4561,7 +4573,7 @@ hr { border-color: var(--border); opacity: 1; }
     align-items: center;
     justify-content: space-between;
     gap: .75rem;
-    box-shadow: 0 -4px 20px rgba(58,29,114,.35);
+    box-shadow: var(--shadow-sticky-up);
     animation: slideUpBar .3s ease both;
   }
 

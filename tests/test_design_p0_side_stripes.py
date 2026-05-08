@@ -1,12 +1,15 @@
 """P0 S0.2 — lock: no `border-left/right: Npx` colored side-stripe accent on
-CCC platform/WC components. Side-stripe accents are an impeccable absolute
-ban (DESIGN.md, §6 Don'ts).
+CCC platform/WC components, and no `box-shadow: inset Npx 0 0` /
+`inset -Npx 0 0` declarations that draw a leading-edge stripe by other
+means. Side-stripe accents are an impeccable absolute ban (DESIGN.md,
+§6 Don'ts), and the ban applies to the visual effect, not just the CSS
+property.
 
 Scope: walks `static/css/style.css` and flags any single-class rule that
-declares `border-left` or `border-right` of 2px or more. Game-specific
-selectors (Golf and CFB) are explicitly out of scope for the impeccable
-design improvement project (see `docs/superpowers/plans/2026-05-08-...`,
-§1.6) and are skipped here.
+declares either form of leading-stripe. Game-specific selectors (Golf
+and CFB) are explicitly out of scope for the impeccable design improvement
+project (see `docs/superpowers/plans/2026-05-08-...`, §1.6) and are
+skipped here.
 """
 
 import re
@@ -49,6 +52,37 @@ def test_no_colored_side_stripes_on_platform_components():
         'Side-stripe ban violations on platform/WC components: '
         f'{offenders}. Replace with full borders, leading icons/numerals, '
         'or background tints.'
+    )
+
+
+def test_no_inset_box_shadow_side_stripes_on_platform_components():
+    """The side-stripe ban applies to the visual effect, not just to
+    `border-left`/`border-right` declarations. A `box-shadow: inset Npx 0 0`
+    (N >= 2) draws a left-edge stripe; `inset -Npx 0 0` draws a right-edge
+    stripe. Both are banned on platform/WC components.
+
+    Discovered post-S0.2: `.fixture-row-next` used `box-shadow: inset 3px 0 0`
+    to render a 3px red leading accent, slipping the original border-left
+    regex. This test closes that loophole.
+    """
+    src = _strip_comments(CSS_PATH.read_text())
+    pattern = re.compile(
+        r'(\.[\w\-\.]+)\s*\{[^}]*box-shadow:\s*inset\s+(-?)([2-9]|[1-9]\d+)px\s+0\s+0[^}]*\}',
+        re.MULTILINE | re.DOTALL,
+    )
+    offenders = []
+    for match in pattern.finditer(src):
+        selector = match.group(1)
+        if any(re.search(p, selector) for p in GAME_SCOPED_PATTERNS):
+            continue
+        sign, width = match.group(2), match.group(3)
+        edge = 'right' if sign == '-' else 'left'
+        offenders.append((selector, f'inset {sign}{width}px 0 0', edge))
+    assert not offenders, (
+        'Inset-box-shadow side-stripe violations on platform/WC components: '
+        f'{offenders}. The 3px-leading-accent visual is banned regardless of '
+        'whether it is drawn via border-left or box-shadow. Replace with full '
+        'borders, leading icons/numerals, or background tints.'
     )
 
 
