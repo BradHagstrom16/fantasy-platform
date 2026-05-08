@@ -2,8 +2,12 @@
 
 Plan 3 adds three payload keys:
 - your_standing: None | dict (rank-neighbor data for authenticated+enrolled user)
+- rank_delta_by_enrollment: dict[int, int | None] — per-row rank-delta (Pending when None)
 - trend_by_enrollment: dict[int, float | None] mapping enrollment.id -> trend score
-- show_trend_column: bool (gated on count(distinct captured_date) >= 7)
+- trend_by_enrollment: dict[int, float | None] — points-delta tooltip; empty
+  until services.trends.show_trend_column() opens at >= 7 distinct snapshot days.
+  The Move column itself ALWAYS renders — only the per-cell `title="Points: ..."`
+  tooltip is gated on the >= 7-day snapshot window.
 
 Trend semantics (per spec §8 + plan ambiguity-A2):
   trend = enrollment.total_score - latest_snapshot.total_score for that enrollment
@@ -15,10 +19,23 @@ from datetime import date, datetime, timezone, timedelta
 from app import create_app
 from extensions import db
 from models.user import User
-from games.worldcup.constants import SEASON_YEAR
+from games.worldcup.constants import SEASON_YEAR, WORLDCUP_TZ
 from games.worldcup.models import (
     WorldCupEnrollment, WorldCupRankSnapshot,
 )
+from games.worldcup.services.state import now_utc
+
+
+def _wc_today() -> date:
+    """World-Cup-local "today" — matches services.ranking.compute_rank_delta's
+    cutoff derivation (`now_utc().astimezone(WORLDCUP_TZ).date()`).
+
+    Tests that seed snapshot dates relative to "today" must use this, not
+    `date.today()`. The runner's local timezone can differ from WORLDCUP_TZ
+    near midnight in either zone, which would shift the cutoff by a day and
+    flake the rank-delta and points-delta-tooltip assertions.
+    """
+    return now_utc().astimezone(WORLDCUP_TZ).date()
 
 
 PAST_DEADLINE = datetime(2000, 1, 1, tzinfo=timezone.utc)
@@ -79,8 +96,8 @@ def _login(client, user_id):
 
 # ── your_standing block ──────────────────────────────────────────────
 
-def test_your_standing_block_renders_for_authenticated_enrolled_user(client, app):
-    """Authenticated + enrolled user sees Your Standing block in payload + DOM."""
+def test_your_position_block_renders_for_authenticated_enrolled_user(client, app):
+    """Authenticated + enrolled user sees the Your Position tribune block (P1 S1.1)."""
     with app.app_context():
         u = _seed_user('alice')
         _seed_enrollment(u.id, score=42.0)
@@ -88,23 +105,25 @@ def test_your_standing_block_renders_for_authenticated_enrolled_user(client, app
         _login(client, u.id)
         resp = client.get('/worldcup/leaderboard')
     assert resp.status_code == 200
-    assert b'Your Standing' in resp.data
+    assert b'Your Position' in resp.data
+    assert b'your-standing-tribune' in resp.data
 
 
-def test_your_standing_omitted_for_anonymous(client, app):
-    """Anonymous user does not see Your Standing block."""
+def test_anonymous_viewer_sees_join_callout(client, app):
+    """Anon viewer gets the editorial join callout, not silence (P1 S1.1)."""
     with app.app_context():
         u = _seed_user('alice')
         _seed_enrollment(u.id, score=42.0)
         db.session.commit()
-        # No login
         resp = client.get('/worldcup/leaderboard')
     assert resp.status_code == 200
-    assert b'Your Standing' not in resp.data
+    assert b'Your Position' not in resp.data  # owner block is gated on enrollment
+    assert b'your-standing-tribune-empty' in resp.data
+    assert b'Join the pool' in resp.data
 
 
-def test_your_standing_omitted_for_authenticated_unenrolled(client, app):
-    """Authenticated but unenrolled user does not see Your Standing block."""
+def test_authenticated_unenrolled_viewer_sees_join_callout(client, app):
+    """Authenticated but unenrolled user sees the join callout, not silence."""
     with app.app_context():
         u_enr = _seed_user('alice')
         _seed_enrollment(u_enr.id, score=42.0)
@@ -113,20 +132,21 @@ def test_your_standing_omitted_for_authenticated_unenrolled(client, app):
         _login(client, u_unenr.id)
         resp = client.get('/worldcup/leaderboard')
     assert resp.status_code == 200
-    assert b'Your Standing' not in resp.data
+    assert b'Your Position' not in resp.data
+    assert b'your-standing-tribune-empty' in resp.data
+    assert b'Join the pool' in resp.data
 
 
-def test_lead_delta_calculation(client, app):
-    """Five-enrollment fixture with known scores — Your Standing caption reflects neighbors.
+def test_standing_caption_voices_lead_and_chase(client, app):
+    """Five-enrollment fixture, mid-rank user — caption surfaces both deltas.
 
-    Caption format from _your_standing_caption: '{up} pts from 1st · {down} ahead of next.'
     With scores [100, 80, 60, 40, 20] and target rank 3 (score 60):
-      up = 100 - 60 = 40.0  (rounded to 2 decimals -> 40.0)
-      down = 60 - 40 = 20.0
+      lead_delta_up   = 100 - 60 = 40.0  ("40 from the top")
+      lead_delta_down = 60 - 40  = 20.0  ("20 ahead of the chase")
+    No snapshot history so rank_delta is None, hitting the "Holding" branch.
     """
     with app.app_context():
         users = [_seed_user(f'p{i}') for i in range(5)]
-        # scores: 100 (rank 1), 80 (rank 2), 60 (rank 3, target), 40 (rank 4), 20 (rank 5)
         _seed_enrollment(users[0].id, 100.0)
         _seed_enrollment(users[1].id, 80.0)
         _seed_enrollment(users[2].id, 60.0)
@@ -137,10 +157,7 @@ def test_lead_delta_calculation(client, app):
         resp = client.get('/worldcup/leaderboard')
     assert resp.status_code == 200
     body = resp.data.decode()
-    # Verify the literal caption rendered. The leader/tail/sole variants use
-    # different copy, so a hit on this exact phrase confirms the mid-rank path
-    # AND the deltas are correct.
-    assert '40.0 pts from 1st · 20.0 ahead of next.' in body
+    assert 'Holding 3. 40 from the top, 20 ahead of the chase.' in body
 
 
 # ── trend column ─────────────────────────────────────────────────────
@@ -155,7 +172,7 @@ def test_trend_column_uses_latest_snapshot(client, app):
         u = _seed_user('alice')
         e = _seed_enrollment(u.id, score=50.0)
         # Seed 8 distinct dates so the gate opens (see A1 below).
-        today = date.today()
+        today = _wc_today()
         for i in range(8):
             # Enrollment's snapshots: oldest=10 pts, latest (i=0) = 47 pts
             _seed_snapshot(
@@ -173,17 +190,22 @@ def test_trend_column_uses_latest_snapshot(client, app):
     assert b'+5.0' in resp.data or b'+5' in resp.data
 
 
-def test_trend_column_hidden_when_fewer_than_seven_snapshots(client, app):
+def test_points_delta_tooltip_hidden_when_fewer_than_seven_snapshots(client, app):
     """show_trend_column = False when count(distinct captured_date) < 7.
 
     Per ambiguity-A1 resolution: gate is on distinct captured_date count
     across the whole table — not per-user.
+
+    P1 S1.1 follow-up (CR R1): the Move column is decoupled from this gate
+    and always renders. What this gate now controls is the per-cell points-delta
+    tooltip (`title="Points: ..."`). The Move header must be present even when
+    the tooltip is absent.
     """
     with app.app_context():
         u = _seed_user('alice')
         e = _seed_enrollment(u.id, score=50.0)
-        # Only 6 distinct dates → gate stays closed
-        today = date.today()
+        # Only 6 distinct dates → tooltip gate stays closed
+        today = _wc_today()
         for i in range(6):
             _seed_snapshot(
                 enrollment_id=e.id,
@@ -194,10 +216,10 @@ def test_trend_column_hidden_when_fewer_than_seven_snapshots(client, app):
         db.session.commit()
         resp = client.get('/worldcup/leaderboard')
     assert resp.status_code == 200
-    # The literal column header "Trend" must not appear in the desktop table
-    # OR mobile-card line — but other usages of the word "trend" in templates
-    # are fine. Gate by the unique <th> markup.
-    assert b'<th scope="col" class="text-end">Trend</th>' not in resp.data
+    # Move column always renders.
+    assert b'<th scope="col" class="text-end">Move</th>' in resp.data
+    # Points-delta tooltip is gated — no `title="Points: ..."` on any row.
+    assert b'title="Points:' not in resp.data
 
 
 def test_trend_column_gate_scoped_to_active_season(client, app):
@@ -205,12 +227,17 @@ def test_trend_column_gate_scoped_to_active_season(client, app):
 
     Without season-scoping, prior-cup snapshots would falsely satisfy the
     >= 7 distinct captured_date threshold at the start of a new season.
+
+    P1 S1.1 follow-up (CR R1): the Move column is no longer governed by this
+    gate. What the gate scopes is the points-delta tooltip — locked here so the
+    season-scoping protection (CLAUDE.md "WorldCupRankSnapshot aggregates must
+    be season-scoped") still has a regression assertion against rendered HTML.
     """
     with app.app_context():
-        # Active-season enrollment with only 3 snapshot days — gate must stay closed.
+        # Active-season enrollment with only 3 snapshot days — tooltip gate must stay closed.
         active_user = _seed_user('alice')
         active_e = _seed_enrollment(active_user.id, score=50.0)
-        today = date.today()
+        today = _wc_today()
         for i in range(3):
             _seed_snapshot(
                 enrollment_id=active_e.id,
@@ -239,13 +266,17 @@ def test_trend_column_gate_scoped_to_active_season(client, app):
         db.session.commit()
         resp = client.get('/worldcup/leaderboard')
     assert resp.status_code == 200
-    # Active season has only 3 days of snapshot history — Trend column stays closed
-    # despite the 10 prior-season days that exist in the table.
-    assert b'<th scope="col" class="text-end">Trend</th>' not in resp.data
+    # Move column always renders.
+    assert b'<th scope="col" class="text-end">Move</th>' in resp.data
+    # Points-delta tooltip stays closed — prior-season days don't open it.
+    assert b'title="Points:' not in resp.data
 
 
-def test_trend_column_shows_dash_when_no_prior_snapshot_for_user(client, app):
-    """When a row has no snapshot history but the column is open, render '—'."""
+def test_move_column_shows_pending_when_no_prior_snapshot_for_user(client, app):
+    """When a row has no snapshot history but the column is open, render 'Pending'.
+
+    P1 S1.1: replaces the old em-dash placeholder with a voiced word; em-dashes
+    are banned from user copy by P0 S0.3."""
     with app.app_context():
         u_with = _seed_user('alice')
         e_with = _seed_enrollment(u_with.id, score=50.0)
@@ -253,7 +284,7 @@ def test_trend_column_shows_dash_when_no_prior_snapshot_for_user(client, app):
         _seed_enrollment(u_without.id, score=30.0)
         # Open the gate by seeding 7 distinct dates against alice only.
         # bob has no snapshot history.
-        today = date.today()
+        today = _wc_today()
         for i in range(7):
             _seed_snapshot(
                 enrollment_id=e_with.id,
@@ -264,20 +295,19 @@ def test_trend_column_shows_dash_when_no_prior_snapshot_for_user(client, app):
         db.session.commit()
         resp = client.get('/worldcup/leaderboard')
     assert resp.status_code == 200
-    # Column is open
-    assert b'<th scope="col" class="text-end">Trend</th>' in resp.data
-    # Bob's row trend cell renders '—'
+    assert b'<th scope="col" class="text-end">Move</th>' in resp.data
     body = resp.data.decode()
     assert 'bob' in body
-    # We can't easily isolate bob's row without parsing, but at minimum:
-    assert '—' in body
+    # Bob has no snapshot history; his row's Move cell reads "Pending".
+    assert 'Pending' in body
 
 
 # ── basic reskin smoke (Tasks 2-4 will harden) ────────────────────────
 
 def test_leaderboard_route_still_returns_200_with_no_data(client, app):
-    """Empty leaderboard renders the empty-state copy."""
+    """Empty leaderboard renders the new editorial empty-state copy (P1 S1.1)."""
     with app.app_context():
         resp = client.get('/worldcup/leaderboard')
     assert resp.status_code == 200
-    assert b'No players enrolled yet' in resp.data
+    assert b'The ledger awaits its first name.' in resp.data
+    assert b'Lock your roster.' in resp.data

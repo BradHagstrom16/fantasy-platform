@@ -3165,92 +3165,126 @@ body.game-worldcup {
   border: 1px solid var(--game-accent) !important;
 }
 
-/* Plan 3: Your Standing hero block (auth + enrolled only)
-   ------------------------------------------------------- */
-/* P0 S0.2: side-stripe removed (impeccable absolute ban). The Your Standing
-   reshape lands in P1 S1.1; for now this is a plain bone-tinted card without
-   the alert frequency of a 3px left-stripe. */
-.your-standing {
-  background: linear-gradient(135deg,
-    rgba(0, 26, 77, .08) 0%,
-    rgba(191, 10, 48, .05) 100%);
+/* P1 S1.1 — Your Position tribune sidebar
+   ----------------------------------------
+   Reshape from the prior hero-metric SaaS block (rank + points side by
+   side) to a Tribune sidebar: a single Teko numeral plus a Newsreader
+   editorial caption that voices position relative to the leader and the
+   chase. Honors the Newsroom Rule (Newsreader for paragraphs), the
+   Lift-At-Rest Rule (--shadow-sm at rest), and the Press-Room Shadow
+   Rule (purple-tinted, never gray). No side-stripe (P0 S0.2 ban). */
+.your-standing-tribune {
+  background: var(--bg-card);
   border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 1.1rem 1.25rem;
+  border-radius: var(--radius-lg);
+  padding: 1.25rem 1.5rem;
+  box-shadow: var(--shadow-sm);
 }
 
-.your-standing .wc-eyebrow {
+.your-standing-tribune .wc-eyebrow {
   display: block;
-  margin-bottom: .35rem;
-  color: var(--game-accent);
+  margin-bottom: .5rem;
+  color: var(--gold);
 }
 
-.your-standing-grid {
-  display: flex;
-  align-items: baseline;
-  gap: 2rem;
-  flex-wrap: wrap;
-  margin-bottom: .25rem;
+.your-standing-tribune-grid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 1.5rem;
+  align-items: center;
 }
 
-.your-standing-rank-numeral {
-  font-size: 3rem;
-  line-height: 1;
-  letter-spacing: .02em;
-  color: var(--text-primary);
-}
-
-.your-standing-rank-label {
-  font-family: 'Teko', sans-serif;
-  font-size: .9rem;
-  letter-spacing: .06em;
-  text-transform: uppercase;
-  color: var(--text-muted);
-  margin-top: .15rem;
-}
-
-.your-standing-points {
+.your-standing-tribune-rank {
   display: flex;
   flex-direction: column;
+  align-items: center;
+  line-height: 1;
 }
 
-.your-standing-points-label {
+.your-standing-tribune-numeral {
   font-family: 'Teko', sans-serif;
-  font-size: .8rem;
-  letter-spacing: .06em;
+  font-size: 3.5rem;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--platform-primary);
+  font-feature-settings: 'tnum';
+}
+
+.your-standing-tribune-of {
+  font-family: 'Teko', sans-serif;
+  font-size: .85rem;
+  font-weight: 500;
+  letter-spacing: .14em;
   text-transform: uppercase;
   color: var(--text-muted);
+  margin-top: .35rem;
 }
 
-.your-standing-points-numeral {
-  font-size: 2rem;
-  letter-spacing: .03em;
+.your-standing-tribune-caption {
+  font-family: 'Newsreader', Georgia, serif;
+  font-size: 1.05rem;
+  line-height: 1.5;
   color: var(--text-primary);
+  max-width: 65ch;
 }
 
-.your-standing-caption {
-  font-family: 'Teko', sans-serif;
-  font-size: .95rem;
-  letter-spacing: .03em;
-  color: var(--text-muted);
+.your-standing-tribune-empty p {
+  font-family: 'Newsreader', Georgia, serif;
+  font-size: 1rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.your-standing-tribune-empty-link {
+  color: var(--platform-primary);
+  font-weight: 500;
+  text-decoration: underline;
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 3px;
+}
+
+.your-standing-tribune-empty-link:hover,
+.your-standing-tribune-empty-link:focus {
+  color: var(--platform-primary-dark);
 }
 
 @media (max-width: 575.98px) {
-  .your-standing-grid { gap: 1.25rem; }
-  .your-standing-rank-numeral { font-size: 2.4rem; }
-  .your-standing-points-numeral { font-size: 1.6rem; }
+  .your-standing-tribune { padding: 1rem 1.15rem; }
+  .your-standing-tribune-grid { gap: 1.15rem; }
+  .your-standing-tribune-numeral { font-size: 2.75rem; }
+  .your-standing-tribune-caption { font-size: 1rem; }
 }
 
-/* Plan 3: Trend column (gated, count(distinct captured_date) >= 7)
-   --------------------------------------------------------------- */
-.leaderboard-trend-up {
-  color: #1A7A45;
-  font-weight: 600;
+/* P1 S1.1 — Move column rank-delta indicators
+   --------------------------------------------
+   Replaces the prior points-delta "Trend" column. Points-delta survives
+   as a title= tooltip on the desktop cell for the analyst register. */
+.rank-delta-up   { color: var(--success); font-weight: 600; }
+.rank-delta-down { color: var(--danger);  font-weight: 600; }
+.rank-delta-even { font-weight: 500; }
+.rank-delta-pending { font-weight: 500; }
+
+/* Lift the dark-surface variants for parity with the prior trend lift —
+   live tokens read against the navy .card.wc-card backdrop. */
+.card.wc-card.leaderboard-card .rank-delta-up,
+.card.wc-card .leaderboard-table .row-current-user > td .rank-delta-up {
+  color: var(--live-green);
+}
+.card.wc-card.leaderboard-card .rank-delta-down,
+.card.wc-card .leaderboard-table .row-current-user > td .rank-delta-down {
+  color: var(--live-red);
 }
 
-.leaderboard-trend-down {
-  color: var(--game-accent);
-  font-weight: 600;
+/* The Even / Pending states inherit `.text-muted` (#8A849B) which fades
+   into the navy .card.wc-card backdrop. Lift to a bone tone scoped to
+   exactly the Move-column surfaces so we don't broadcast bone text to
+   the white-bg <td> rows on desktop (CLAUDE.md "scoped to .card.wc-card
+   .<surface>" rule). */
+.card.wc-card.leaderboard-card .leaderboard-move-mobile .rank-delta-even,
+.card.wc-card.leaderboard-card .leaderboard-move-mobile .rank-delta-pending,
+.card.wc-card .leaderboard-table .row-current-user > td .rank-delta-even,
+.card.wc-card .leaderboard-table .row-current-user > td .rank-delta-pending {
+  color: rgba(245, 241, 232, .82) !important;
 }
 
 /* Plan 3 follow-up: legibility fixes for the dark .card.wc-card surface.
@@ -3286,22 +3320,6 @@ body.game-worldcup {
 }
 .card.wc-card.leaderboard-card .text-muted {
   color: rgba(245, 241, 232, .55) !important;
-}
-
-/* Trend colors fail on dark navy: the light-page palette
-   (#1A7A45 / #BF0A30) reads dark-on-dark inside .leaderboard-card and
-   on the .row-current-user solid-navy override. Lift to the live-state
-   tokens (--live-green / --live-red) only on those two surfaces.
-   Don't broadcast to .card.wc-card .leaderboard-trend-* — that would
-   match desktop non-current rows where Bootstrap's white td bg paints
-   over the navy, making the lighter colors low-contrast on white. */
-.card.wc-card.leaderboard-card .leaderboard-trend-up,
-.card.wc-card .leaderboard-table .row-current-user > td .leaderboard-trend-up {
-  color: var(--live-green);
-}
-.card.wc-card.leaderboard-card .leaderboard-trend-down,
-.card.wc-card .leaderboard-table .row-current-user > td .leaderboard-trend-down {
-  color: var(--live-red);
 }
 
 /* P0 S0.3: whole-card-as-link on the mobile leaderboard rows. The card

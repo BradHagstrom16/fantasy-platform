@@ -141,13 +141,17 @@ def test_alert_uses_full_border_not_side_stripe():
     assert bad is None, f'.alert still uses border-left {bad.group(0)}: {body[:200]}'
 
 
-def test_your_standing_has_no_side_stripe():
-    """`.your-standing` must not carry a `border-left: Npx` accent.
-    The proper Your Standing reshape lands in P1 S1.1; for now it's a plain
-    bone-tinted card without the alert frequency."""
+def test_your_standing_tribune_has_no_side_stripe():
+    """`.your-standing-tribune` must not carry a `border-left: Npx` accent.
+    P1 S1.1 reshaped the block from .your-standing to .your-standing-tribune;
+    the side-stripe ban carries forward."""
     src = _strip_comments(CSS_PATH.read_text())
-    rule_match = re.search(r'(?<!\w)\.your-standing\s*\{([^}]+)\}', src, re.MULTILINE)
-    assert rule_match is not None, '.your-standing rule not found in style.css'
+    rule_match = re.search(
+        r'(?<!\w)\.your-standing-tribune\s*\{([^}]+)\}', src, re.MULTILINE
+    )
+    assert rule_match is not None, \
+        '.your-standing-tribune rule not found in style.css'
     body = rule_match.group(1)
     bad = re.search(r'border-left:\s*([2-9]|[1-9]\d+)px', body)
-    assert bad is None, f'.your-standing still has a side-stripe: {bad.group(0)}'
+    assert bad is None, \
+        f'.your-standing-tribune still has a side-stripe: {bad.group(0)}'

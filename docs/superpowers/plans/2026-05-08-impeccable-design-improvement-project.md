@@ -76,6 +76,9 @@ When a session surfaces a finding outside its scope, append it here with the ses
 - **[S0.3]** `.navbar-brand` renders 68×38 at 375 viewport across every page (height-only fail, 6px short). Mobile-first 44×44 floor target. Self-contained CSS fix; defer to **P3 S3.1** (Global chrome) where the navbar is the focus.
 - **[S0.3]** `/login` link rows ("Forgot your password?" 128×14, "Create an account" 116×37) fail the 44×44 floor. Self-contained auth-page CSS adjustment; defer to **P3 S3.2** (Auth surfaces).
 - **[S0.3]** Navbar trophy CTA: chamber-purple text on `--metal-gold-flat` lands at 3.6:1 against the gradient's darkest stop (`--gold-dark` = `#8A6A1A`) at the bottom-right corner of the button. AA-passing across most of the surface (7.5:1 mid-stop, 12.4:1 lightest), but the worst-stop pixel-corner reads 3.6:1 — below the 4.5:1 normal-text floor. Fix requires retuning `--metal-gold-flat`'s dark stop in `tokens.css`, which is a DESIGN.md token spec change and out of scope for S0.3. Pick up in **P6 S6.1** (cross-surface polish) or as a one-off DESIGN.md spec session if a critique re-surfaces it earlier.
+- **[S1.1]** `leaderboard.html` desktop table renders the Tiebreaker cell as the literal lowercase string `'none'` (`{{ e.usa_goals_guess if e.usa_goals_guess is not none else 'none' }}`) — breaks the editorial register. Use a voiced fallback like `No guess` or render an actual blank cell. Pre-existing; defer to **P6 S6.1** (cross-surface polish) unless an earlier deadline-related session reopens the leaderboard.
+- **[S1.1]** Move column header (`<th scope="col" class="text-end">Move</th>`) gives no since-when context. Add a `title=` tooltip (e.g., "Change since yesterday's snapshot") on the header for the analyst register. Cheap progressive disclosure; defer to **P6 S6.1**.
+- **[S1.1]** The Your Position tribune block sits on the bone canvas above the standings table with no visual thread between them — the gap reads as forgotten space rather than editorial breathing room. Candidates: a `border-top: 2px solid var(--gold)` rule above the table, or a section eyebrow ("THE LEDGER") above it. Defer to **P6 S6.1** so the cross-surface polish session can compare similar gap moments across the cluster (home dossier, schedule, team_detail) and pick a consistent treatment.
 
 ---
 
@@ -1091,11 +1094,11 @@ EOF
 
 **Tasks:**
 
-- [ ] **Step 1: Read brief**
+- [x] **Step 1: Read brief**
 
 Re-read this plan's S1.1 block, the leaderboard's Critique Report (in chat history if available; otherwise carry the Priority Issues forward from the leaderboard's commit messages of P0 sessions), and DESIGN.md's Eyebrow + Newsroom + Lift-At-Rest rules.
 
-- [ ] **Step 2: Compute-rank-delta helper — failing test**
+- [x] **Step 2: Compute-rank-delta helper — failing test**
 
 Edit `tests/test_worldcup_ranking.py` (or create if absent). Add:
 
@@ -1129,13 +1132,13 @@ def test_compute_rank_delta_returns_none_when_no_prior_snapshot(app, db_session)
 
 (Adapt to existing test fixtures — check what `tests/conftest.py` provides.)
 
-- [ ] **Step 3: Run, see fail**
+- [x] **Step 3: Run, see fail**
 
 ```bash
 ENVIRONMENT=testing venv/bin/python -m pytest tests/test_worldcup_ranking.py -v -k delta
 ```
 
-- [ ] **Step 4: Implement `compute_rank_delta` in `services/ranking.py`**
+- [x] **Step 4: Implement `compute_rank_delta` in `services/ranking.py`**
 
 ```python
 def compute_rank_delta(enrollment, window_days: int = 1) -> int | None:
@@ -1167,17 +1170,17 @@ def compute_rank_delta(enrollment, window_days: int = 1) -> int | None:
     return prior.rank - today.rank  # smaller rank = better
 ```
 
-- [ ] **Step 5: Run, see pass**
+- [x] **Step 5: Run, see pass**
 
 ```bash
 ENVIRONMENT=testing venv/bin/python -m pytest tests/test_worldcup_ranking.py -v -k delta
 ```
 
-- [ ] **Step 6: Wire `rank_delta` into the leaderboard route**
+- [x] **Step 6: Wire `rank_delta` into the leaderboard route**
 
 Edit `games/worldcup/routes.py`'s `leaderboard()` view. For each enrollment in the standings, compute `rank_delta` (1-day window). Pass into the template context as part of each row's dict.
 
-- [ ] **Step 7: Reshape Your Standing block in `leaderboard.html`**
+- [x] **Step 7: Reshape Your Standing block in `leaderboard.html`**
 
 Replace the existing `.your-standing` block with a Tribune-shaped version:
 
@@ -1208,7 +1211,7 @@ Replace the existing `.your-standing` block with a Tribune-shaped version:
 
 The `standing_caption` is computed in the route as a voice-driven string (Step 8).
 
-- [ ] **Step 8: Voice-drive the standing caption in the route**
+- [x] **Step 8: Voice-drive the standing caption in the route**
 
 In `routes.py`, after computing your_standing's position, build a voice-driven caption string:
 
@@ -1235,7 +1238,7 @@ def _standing_caption(your_standing, total_players, ranked_enrollments, rank_del
 
 Pass `standing_caption` into the template.
 
-- [ ] **Step 9: Replace trend column with rank-delta**
+- [x] **Step 9: Replace trend column with rank-delta**
 
 In the desktop table:
 
@@ -1261,7 +1264,7 @@ Same pattern in the mobile card. Replace `<small>Trend: ...</small>` with the ra
 <span class="rank-delta-up" title="Points: +{{ e.points_delta }}">↑{{ e.rank_delta }}</span>
 ```
 
-- [ ] **Step 10: Update CSS for new shape**
+- [x] **Step 10: Update CSS for new shape**
 
 In `static/css/style.css`, replace `.your-standing` rules with `.your-standing-tribune` rules. Caption font-family **Newsreader** (Newsroom Rule). Eyebrow color stays gold (the override to red is gone). Rank numeral large in Teko. No side-stripe (already removed in S0.2; lock).
 
@@ -1309,7 +1312,7 @@ In `static/css/style.css`, replace `.your-standing` rules with `.your-standing-t
 .rank-delta-even { font-weight: 500; }
 ```
 
-- [ ] **Step 11: Voice rewrite of remaining microcopy**
+- [x] **Step 11: Voice rewrite of remaining microcopy**
 
 Rewrite headers + supporting copy on `leaderboard.html`:
 
@@ -1324,7 +1327,7 @@ Rewrite headers + supporting copy on `leaderboard.html`:
 
 Apply similarly throughout.
 
-- [ ] **Step 12: Surface-shape regression test**
+- [x] **Step 12: Surface-shape regression test**
 
 Create `tests/test_design_p1_leaderboard.py`:
 
@@ -1355,7 +1358,7 @@ def test_trend_column_renders_rank_delta_not_points_delta():
         'Trend column should render rank delta, header "Move"'
 ```
 
-- [ ] **Step 13: Run pytest + Playwright MCP verification (Layer B)**
+- [x] **Step 13: Run pytest + Playwright MCP verification (Layer B)**
 
 ```bash
 ENVIRONMENT=testing venv/bin/python -m pytest tests/ -q
@@ -1382,11 +1385,11 @@ Then via Playwright MCP, against the running dev server:
 2. Assert: `captionFontFamily` contains `Newsreader`; `eyebrowColor` is the gold token (around `rgb(201, 162, 39)`), not red; `wrapperBorderLeft` width is `0px`; `trendUpRendered` is true and the text starts with `↑`.
 3. Take desktop + mobile screenshots to `.impeccable-review/s1.1/after/`.
 
-- [ ] **Step 14: Re-run impeccable critique on the leaderboard**
+- [x] **Step 14: Re-run impeccable critique on the leaderboard**
 
 `$impeccable critique games/worldcup/templates/worldcup/leaderboard.html`. Compare to baseline (Design Health 23/40, Audit 11/20). Record new scores in commit message.
 
-- [ ] **Step 15: Commit**
+- [x] **Step 15: Commit**
 
 ```bash
 git add tests/test_design_p1_leaderboard.py tests/test_worldcup_ranking.py games/worldcup/services/ranking.py games/worldcup/routes.py games/worldcup/templates/worldcup/leaderboard.html static/css/style.css
@@ -1547,8 +1550,8 @@ Mark each session as it completes. Append the session-completion commit SHA for 
 - [x] **PR P0** opened: `#11`
 
 ### Phase 1 — Leaderboard close
-- [ ] S1.1 — Shape Your Standing + trend rank-delta + clarify copy (commit: ____)
-- [ ] **PR P1** opened: ____
+- [x] S1.1 — Shape Your Standing + trend rank-delta + clarify copy (commit: 56416ee)
+- [x] **PR P1** opened: `#12`
 
 ### Phase 2 — Live state cluster
 - [ ] S2.1 — `home_shell` + `_home_live` (commit: `____`)
@@ -1623,6 +1626,8 @@ These are subtleties the `impeccable` skill and command references encode but th
 - **Playwright MCP availability check first.** At session start, confirm `mcp__plugin_playwright_playwright__*` tools are loadable via ToolSearch. If not, fall through to `mcp__plugin_chrome-devtools-mcp_chrome-devtools__*` — both expose `browser_navigate`, `browser_evaluate`, `browser_take_screenshot` equivalents. Don't fail the session over which MCP is reachable; pick the one that loads.
 - **Auth-gated routes during Playwright probes.** The dev DB at `instance/fantasy_platform.db` carries a session cookie persisted across runs (the Tier 1 baseline session created a `review_user`). If the browser navigates and lands on `/login`, fill the form once; subsequent probes within the same session reuse the cookie. If a fresh review user is needed, follow the pattern from the Tier 1 baseline (Python script that adds a user with `username` + email + password set, season-scoped enrollment).
 - **Inlining linked CSS for `$impeccable detect`.** The CLI detector won't resolve `/static/css/style.css` from a saved HTML file. Inline `tokens.css` + `style.css` into the HTML before scanning, OR point the detector at the live URL via Puppeteer (which loads CSS fully). The Tier 1 baseline used the inline approach; either is fine.
+- **Auth-gated probes via temporary dev password.** The persisted dev session cookie can drift between sessions and `instance/fantasy_platform.db` does not store reusable plaintext passwords. The reliable pattern is: `User.set_password('dev-impeccable-<sid>')` for a known seeded user, drive the login form via `browser_evaluate` (`?next=/<route>` redirects post-login), then **always reset the password to `secrets.token_urlsafe(24)`** at session end so the temporary credential never lingers. Forgot-password flow recovers it for the real user.
+- **Full-page Playwright screenshots can render misleadingly in tool previews.** A 1470×1242 PNG that shows "table missing" in the chat preview may be fine in the actual file — the renderer downsamples and chops content. When a screenshot looks suspicious, take an element-scoped screenshot (`browser_take_screenshot` with `target=<selector>`) of the suspect region to confirm. Don't conclude "regression" from one full-page preview; cross-reference the DOM probe (`getComputedStyle`, `getBoundingClientRect`) — the source-of-truth.
 
 ---
 

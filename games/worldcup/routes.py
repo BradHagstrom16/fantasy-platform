@@ -38,7 +38,9 @@ from games.worldcup.services.stats import (
     get_overview_kpis,
     get_tier_combos,
 )
-from games.worldcup.services.ranking import compute_rank_neighbors
+from games.worldcup.services.ranking import (
+    compute_rank_delta, compute_rank_deltas_bulk, compute_rank_neighbors,
+)
 from games.worldcup.services.stage import stage_label
 from games.worldcup.services.team_detail import (
     compute_team_ownership, current_user_owns_team, compute_path_to_crown,
@@ -315,15 +317,12 @@ def picks():
     )
 
 
-def _compute_your_standing(enrollments):
+def _compute_your_standing(enrollments, total_players):
     """Return Your Standing block dict for the current user, or None.
 
-    Returns None when:
-    - User is anonymous, or
-    - User has no WorldCupEnrollment in SEASON_YEAR
-
-    Returns a dict with: rank, total, of_n, lead_delta_up, lead_delta_down,
-    caption (a string voice line for the block).
+    Returns None when the viewer is anonymous or has no WorldCupEnrollment
+    in SEASON_YEAR. Otherwise returns rank, of_n, rank_delta, and a voice
+    caption shaped for the Tribune sidebar (P1 S1.1).
     """
     if not current_user.is_authenticated:
         return None
@@ -335,46 +334,67 @@ def _compute_your_standing(enrollments):
         return None
 
     neighbors = compute_rank_neighbors(enrollment.id)
-    of_n = len(enrollments)
+    rank_delta = compute_rank_delta(enrollment, window_days=1)
 
     return {
         'rank': neighbors['rank'],
-        'total': neighbors['points'],
-        'of_n': of_n,
-        'lead_delta_up': neighbors['lead_delta_up'],
-        'lead_delta_down': neighbors['lead_delta_down'],
-        'caption': _your_standing_caption(neighbors),
+        'of_n': total_players,
+        'rank_delta': rank_delta,
+        'caption': _standing_caption(
+            rank=neighbors['rank'],
+            total_players=total_players,
+            lead_delta_up=neighbors['lead_delta_up'],
+            lead_delta_down=neighbors['lead_delta_down'],
+            rank_delta=rank_delta,
+        ),
     }
 
 
-def _your_standing_caption(neighbors):
-    """Compose a voice caption tuned to the user's rank position.
+def _standing_caption(rank, total_players, lead_delta_up, lead_delta_down, rank_delta):
+    """Voice caption for the Your Position tribune block.
 
-    - Sole entry: "You are the only one in the running."
-    - Leader (rank 1, has chasers): "{down} ahead of the next pursuer."
-    - Tail (no one below): "{up} pts from the lead."
-    - Middle: "{up} pts from 1st · {down} ahead of next."
+    Sharp, competitive, pleasure-coded. Leads with the rank-delta when there is
+    one (Up N / Down N), otherwise reports the user's position relative to the
+    leader and the next chaser. Dense-rank ties at the floor surface as
+    "Cellar for now"; the lone enrollment surfaces as "the only one in the
+    running."
     """
-    up = neighbors['lead_delta_up']
-    down = neighbors['lead_delta_down']
-
-    if up is None and down is None:
+    if total_players == 1:
         return 'You are the only one in the running.'
-    if up is None:
-        return f'{down} ahead of the next pursuer.'
-    if down is None:
-        return f'{up} pts from the lead.'
-    return f'{up} pts from 1st · {down} ahead of next.'
+
+    if lead_delta_up is None:  # rank 1 (or tied at top)
+        if rank_delta and rank_delta > 0:
+            return "You took the top. Don't look down."
+        return 'Top of the table. The chase is yours to lose.'
+
+    if lead_delta_down is None:  # no one strictly below — at the floor
+        if rank_delta and rank_delta < 0:
+            return f'Down {-rank_delta}. {lead_delta_up:.0f} from the top.'
+        return f'Cellar for now. {lead_delta_up:.0f} from the top.'
+
+    if rank_delta and rank_delta > 0:
+        return (f'Up {rank_delta}. {lead_delta_up:.0f} from the top, '
+                f'{lead_delta_down:.0f} ahead of the chase.')
+    if rank_delta and rank_delta < 0:
+        return (f'Down {-rank_delta}. {lead_delta_up:.0f} from the top, '
+                f'{lead_delta_down:.0f} ahead of the chase.')
+    return (f'Holding {rank}. {lead_delta_up:.0f} from the top, '
+            f'{lead_delta_down:.0f} ahead of the chase.')
 
 
 @worldcup_bp.route('/leaderboard')
 def leaderboard():
     """Public leaderboard — no login required.
 
-    Plan 3 adds three payload keys:
+    Payload keys:
     - your_standing: dict | None (rank-neighbor block for authenticated+enrolled user)
-    - trend_by_enrollment: dict[int, float | None] (per-row matchday trend)
-    - show_trend_column: bool (gated on count(distinct captured_date) >= 7)
+    - rank_delta_by_enrollment: dict[int, int | None] (per-row rank-delta; None = "Pending")
+    - trend_by_enrollment: dict[int, float | None] (per-row points-delta tooltip; empty
+      until services.trends.show_trend_column() opens at >= 7 distinct snapshot days)
+
+    The Move column always renders — its "Pending" state covers days 0-6 of the
+    season. The points-delta tooltip is the only thing the snapshot-history gate
+    governs in the UI.
     """
     enrollments = (
         WorldCupEnrollment.query
@@ -399,20 +419,22 @@ def leaderboard():
         prev_score = e.total_score
 
     deadline_passed = now_utc() >= TOURNAMENT_DEADLINE_UTC
+    total_players = len(enrollments)
 
-    your_standing = _compute_your_standing(enrollments)
-    show_trend = show_trend_column()
+    your_standing = _compute_your_standing(enrollments, total_players)
+    enrollment_ids = [e.id for e in enrollments]
+    rank_delta_by_enrollment = compute_rank_deltas_bulk(enrollment_ids, window_days=1)
     trend_by_enrollment = (
-        compute_trend_by_enrollment([e.id for e in enrollments])
-        if show_trend else {}
+        compute_trend_by_enrollment(enrollment_ids)
+        if show_trend_column() else {}
     )
 
     return render_template('worldcup/leaderboard.html',
         ranked_enrollments=ranked,
-        total_players=len(enrollments),
+        total_players=total_players,
         deadline_passed=deadline_passed,
         your_standing=your_standing,
-        show_trend_column=show_trend,
+        rank_delta_by_enrollment=rank_delta_by_enrollment,
         trend_by_enrollment=trend_by_enrollment,
     )
 

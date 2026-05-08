@@ -1,43 +1,44 @@
 {% extends "base.html" %}
-{% block title %}Leaderboard · World Cup Fantasy Pool{% endblock %}
+{% block title %}The Standings · 2026 World Cup Pool{% endblock %}
 
 {% block content %}
 {# ── Hero ── #}
 <div class="page-hero wc-hero-grad">
   <div class="hero-glow"></div>
   <div class="container">
-    <span class="wc-eyebrow">Live Standings</span>
-    <h1 class="mb-1">Leaderboard</h1>
+    <span class="wc-eyebrow">{% if deadline_passed %}Tonight's Ledger{% else %}Tribute Window Open{% endif %}</span>
+    <h1 class="mb-1">The Standings</h1>
     <p class="lead mb-0 text-muted-on-dark">
       <span class="wc-numeral">{{ total_players }}</span>
-      player{{ 's' if total_players != 1 }} &middot; 2026 FIFA World Cup
+      player{{ 's' if total_players != 1 }}, 2026 FIFA World Cup
     </p>
   </div>
 </div>
 
 <div class="container pb-5">
-  {# Your Standing block — rendered only for authenticated + enrolled users #}
+  {# Your Position — Tribune sidebar shape (P1 S1.1).
+     Authenticated + enrolled: rank numeral + voice caption.
+     Otherwise: a small editorial join callout, never silent. #}
   {% if your_standing %}
-  <section role="region" aria-labelledby="your-standing-title" class="your-standing animate-in mt-4">
-    <span class="wc-eyebrow" id="your-standing-title">Your Standing</span>
-    <div class="your-standing-grid">
-      <div class="your-standing-rank">
-        <div class="your-standing-rank-numeral wc-numeral">
-          {{ your_standing.rank }}
-        </div>
-        <div class="your-standing-rank-label">
-          of <span class="wc-numeral">{{ your_standing.of_n }}</span>
-        </div>
+  <section class="your-standing-tribune animate-in mt-4" role="region" aria-labelledby="your-standing-h">
+    <span class="wc-eyebrow" id="your-standing-h">Your Position</span>
+    <div class="your-standing-tribune-grid">
+      <div class="your-standing-tribune-rank">
+        <span class="wc-numeral your-standing-tribune-numeral">{{ your_standing.rank }}</span>
+        <span class="your-standing-tribune-of">of {{ total_players }}</span>
       </div>
-      <div class="your-standing-points">
-        <div class="your-standing-points-label">Points</div>
-        <div class="your-standing-points-numeral wc-numeral">
-          {{ "%.1f"|format(your_standing.total) }}
-        </div>
-      </div>
+      <p class="your-standing-tribune-caption mb-0">
+        {{ your_standing.caption }}
+      </p>
     </div>
-    <p class="your-standing-caption mb-0">{{ your_standing.caption }}</p>
   </section>
+  {% else %}
+  <aside class="your-standing-tribune your-standing-tribune-empty animate-in mt-4" aria-label="Join callout">
+    <p class="mb-0">
+      <a href="{{ url_for('worldcup.join') }}" class="your-standing-tribune-empty-link">Join the pool</a>
+      to claim your seat in the standings.
+    </p>
+  </aside>
   {% endif %}
 
   {% if ranked_enrollments %}
@@ -53,9 +54,7 @@
               <th scope="col" style="width:60px">#</th>
               <th scope="col">Player</th>
               <th scope="col" class="text-end">Points</th>
-              {% if show_trend_column %}
-              <th scope="col" class="text-end">Trend</th>
-              {% endif %}
+              <th scope="col" class="text-end">Move</th>
               {% if deadline_passed %}
               <th scope="col" class="text-end">Tiebreaker</th>
               {% endif %}
@@ -79,20 +78,20 @@
                 {% endif %}
               </td>
               <td class="text-end fw-bold wc-numeral">{{ "%.1f"|format(e.total_score) }}</td>
-              {% if show_trend_column %}
-              <td class="text-end leaderboard-trend">
-                {% set t = trend_by_enrollment.get(e.id) %}
-                {% if t is none %}
-                <span class="text-muted">even</span>
-                {% elif t > 0 %}
-                <span class="leaderboard-trend-up wc-numeral">+{{ "%.1f"|format(t) }}</span>
-                {% elif t < 0 %}
-                <span class="leaderboard-trend-down wc-numeral">{{ "%.1f"|format(t) }}</span>
+              {% set rd = rank_delta_by_enrollment.get(e.id) %}
+              {% set pd = trend_by_enrollment.get(e.id) %}
+              {% set pd_title %}{% if pd is not none %}Points: {% if pd > 0 %}+{% endif %}{{ "%.1f"|format(pd) }}{% endif %}{% endset %}
+              <td class="text-end leaderboard-move">
+                {% if rd is none %}
+                <span class="rank-delta-pending text-muted" aria-label="Awaiting first matchday">Pending</span>
+                {% elif rd > 0 %}
+                <span class="rank-delta-up wc-numeral" aria-label="Up {{ rd }}"{% if pd is not none %} title="{{ pd_title }}"{% endif %}>&uarr;{{ rd }}</span>
+                {% elif rd < 0 %}
+                <span class="rank-delta-down wc-numeral" aria-label="Down {{ -rd }}"{% if pd is not none %} title="{{ pd_title }}"{% endif %}>&darr;{{ -rd }}</span>
                 {% else %}
-                <span class="text-muted">even</span>
+                <span class="rank-delta-even text-muted" aria-label="Even"{% if pd is not none %} title="{{ pd_title }}"{% endif %}>Even</span>
                 {% endif %}
               </td>
-              {% endif %}
               {% if deadline_passed %}
               <td class="text-end text-muted">{{ e.usa_goals_guess if e.usa_goals_guess is not none else 'none' }}</td>
               {% endif %}
@@ -119,18 +118,20 @@
           <div>
             <span class="me-1">{{ e.user.get_avatar() }}</span>
             <span class="fw-medium d-block leaderboard-card-name">{{ e.get_display_name() }}</span>
-            {% if show_trend_column %}
-            {% set t = trend_by_enrollment.get(e.id) %}
-            {% if t is none %}
-            <small class="text-muted">Trend: even</small>
-            {% elif t > 0 %}
-            <small class="leaderboard-trend-up">Trend: <span class="wc-numeral">+{{ "%.1f"|format(t) }}</span></small>
-            {% elif t < 0 %}
-            <small class="leaderboard-trend-down">Trend: <span class="wc-numeral">{{ "%.1f"|format(t) }}</span></small>
-            {% else %}
-            <small class="text-muted">Trend: even</small>
-            {% endif %}
-            {% endif %}
+            {% set rd = rank_delta_by_enrollment.get(e.id) %}
+            {% set pd = trend_by_enrollment.get(e.id) %}
+            {% set pd_title %}{% if pd is not none %}Points: {% if pd > 0 %}+{% endif %}{{ "%.1f"|format(pd) }}{% endif %}{% endset %}
+            <small class="leaderboard-move-mobile">
+              {% if rd is none %}
+              <span class="rank-delta-pending text-muted">Move: Pending</span>
+              {% elif rd > 0 %}
+              <span class="rank-delta-up"{% if pd is not none %} title="{{ pd_title }}"{% endif %}>Move: <span class="wc-numeral">&uarr;{{ rd }}</span></span>
+              {% elif rd < 0 %}
+              <span class="rank-delta-down"{% if pd is not none %} title="{{ pd_title }}"{% endif %}>Move: <span class="wc-numeral">&darr;{{ -rd }}</span></span>
+              {% else %}
+              <span class="rank-delta-even text-muted"{% if pd is not none %} title="{{ pd_title }}"{% endif %}>Move: Even</span>
+              {% endif %}
+            </small>
             {% if deadline_passed and e.usa_goals_guess is not none %}
             <small class="text-muted ms-2">TB: {{ e.usa_goals_guess }}</small>
             {% endif %}
@@ -147,7 +148,9 @@
   {% else %}
   <div class="text-center py-5 text-muted animate-in">
     <i class="bi bi-trophy" style="font-size:3rem; opacity:.3;"></i>
-    <p class="mt-3 mb-0">No players enrolled yet. <a href="{{ url_for('worldcup.join') }}">Be the first!</a></p>
+    <p class="mt-3 mb-0">The ledger awaits its first name.
+      <a href="{{ url_for('worldcup.join') }}">Lock your roster.</a>
+    </p>
   </div>
   {% endif %}
 </div>

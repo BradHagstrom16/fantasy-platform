@@ -2,9 +2,11 @@
 on each header cell and a `<caption class="visually-hidden">` describing the
 table contents. WCAG 2.1 SC 1.3.1 (Info and Relationships).
 
-Auth-gated paths are skipped here (the WC pool's interior surfaces are covered
-by per-page session integration tests in later phases). The public WC routes
-already in scope: leaderboard, schedule, stats, groups, rules.
+The table-semantics tests run against the public anonymous routes. The Tribune
+landmark test (P1 S1.1) covers BOTH branches — anonymous (`<aside>`) and
+authenticated+enrolled (`<section role="region">`) — because the populated
+branch only renders for an enrolled user, and CR R1 caught that the original
+anon-only test left the populated assertion as dead code.
 """
 
 import re
@@ -13,6 +15,9 @@ import pytest
 
 from app import create_app
 from extensions import db
+from games.worldcup.constants import SEASON_YEAR
+from games.worldcup.models import WorldCupEnrollment
+from models.user import User
 
 
 PATHS_WITH_TABLES = [
@@ -25,11 +30,38 @@ PATHS_WITH_TABLES = [
 
 
 @pytest.fixture
-def client():
+def app():
     app = create_app('testing')
     with app.app_context():
         db.create_all()
-        yield app.test_client()
+        yield app
+        db.session.remove()
+        db.drop_all()
+
+
+@pytest.fixture
+def client(app):
+    return app.test_client()
+
+
+def _seed_enrolled_user(username='alice'):
+    u = User(username=username, email=f'{username}@test.com')
+    u.set_password('pass')
+    db.session.add(u)
+    db.session.flush()
+    e = WorldCupEnrollment(
+        user_id=u.id, season_year=SEASON_YEAR,
+        picks_submitted=True, total_score=42.0, usa_goals_guess=5,
+    )
+    db.session.add(e)
+    db.session.commit()
+    return u
+
+
+def _login(client, user_id):
+    with client.session_transaction() as sess:
+        sess['_user_id'] = str(user_id)
+        sess['_fresh'] = True
 
 
 @pytest.mark.parametrize('path', PATHS_WITH_TABLES)
@@ -74,32 +106,59 @@ def test_tables_carry_scope_col_and_caption(client, path):
         )
 
 
-def test_your_standing_carries_region_role(client):
-    """The leaderboard's Your Standing block is a self-contained landmark; it
-    must wrap as `<section role="region" aria-labelledby=...>` (or an aria-label
-    equivalent) so screen readers can navigate to it."""
+_TRIBUNE_OPEN_TAG_RE = re.compile(
+    r'<(?:section|aside|div)[^>]*class="[^"]*your-standing-tribune[^"]*"[^>]*>',
+)
+
+
+def test_your_standing_tribune_anon_branch_landmark(client):
+    """Anon viewer hits the empty branch — `<aside aria-label=...>`.
+
+    `<aside>` is an HTML landmark by default; the aria-label names it for
+    screen readers.
+    """
     resp = client.get('/worldcup/leaderboard', follow_redirects=False)
     if resp.status_code == 302:
         pytest.skip('leaderboard requires auth in this config')
     assert resp.status_code == 200
 
     body = resp.data.decode('utf-8')
-    # Anonymous leaderboard renders without your_standing context, so this
-    # check is conditional. When present, the wrapping element MUST be a
-    # landmark with role="region" + aria-labelledby (or aria-label).
-    if 'your-standing' not in body:
-        pytest.skip('Your Standing block is not rendered in the anonymous state')
+    open_tag_match = _TRIBUNE_OPEN_TAG_RE.search(body)
+    assert open_tag_match, 'Could not find the .your-standing-tribune wrapper'
+    open_tag = open_tag_match.group(0)
 
-    # Look for the .your-standing element and confirm it carries a region role
-    # and aria-labelledby OR aria-label attribute.
-    section_match = re.search(
-        r'<(?:section|div)[^>]*class="[^"]*your-standing[^"]*"[^>]*>', body
+    assert open_tag.startswith('<aside'), (
+        f'Anon viewer must hit the <aside> empty branch, got: {open_tag}'
     )
-    assert section_match, 'Could not find the .your-standing wrapper element'
-    open_tag = section_match.group(0)
+    assert 'aria-label="' in open_tag, (
+        f'Empty tribune <aside> needs aria-label: {open_tag}'
+    )
+
+
+def test_your_standing_tribune_populated_branch_landmark(client, app):
+    """Authenticated + enrolled viewer hits the populated branch — must render
+    as `<section role="region" aria-labelledby=...>`.
+
+    Locks the landmark contract on the populated path (CR R1 caught that the
+    prior single-test version only ever exercised the anon path).
+    """
+    with app.app_context():
+        u = _seed_enrolled_user('alice')
+        _login(client, u.id)
+        resp = client.get('/worldcup/leaderboard', follow_redirects=False)
+    assert resp.status_code == 200
+
+    body = resp.data.decode('utf-8')
+    open_tag_match = _TRIBUNE_OPEN_TAG_RE.search(body)
+    assert open_tag_match, 'Could not find the .your-standing-tribune wrapper'
+    open_tag = open_tag_match.group(0)
+
+    assert open_tag.startswith('<section'), (
+        f'Populated viewer must hit the <section> branch, got: {open_tag}'
+    )
     assert 'role="region"' in open_tag, (
-        f'.your-standing wrapper is missing role="region": {open_tag}'
+        f'Populated tribune wrapper is missing role="region": {open_tag}'
     )
-    assert ('aria-labelledby="' in open_tag) or ('aria-label="' in open_tag), (
-        f'.your-standing wrapper needs aria-labelledby or aria-label: {open_tag}'
+    assert 'aria-labelledby="' in open_tag or 'aria-label="' in open_tag, (
+        f'Populated tribune wrapper needs aria-labelledby or aria-label: {open_tag}'
     )
