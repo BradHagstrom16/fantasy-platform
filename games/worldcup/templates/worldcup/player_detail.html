@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}{{ enrollment.get_display_name() }} — World Cup Fantasy Pool{% endblock %}
+{% block title %}{{ enrollment.get_display_name() }} · World Cup Fantasy Pool{% endblock %}
 
 {% block content %}
 <div class="page-hero wc-hero-grad">
@@ -20,7 +20,7 @@
         <span class="wc-eyebrow">Lead</span>
         <strong class="wc-numeral">
           {% if neighbors.lead_delta_up is none %}
-            &mdash;
+            none
           {% else %}
             -{{ "%.1f"|format(neighbors.lead_delta_up) }}
           {% endif %}

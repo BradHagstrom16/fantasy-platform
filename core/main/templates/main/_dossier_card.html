@@ -94,7 +94,7 @@
   </div>
   {% else %}
   <div class="dossier-sparkline-empty">
-    Tracking starts tonight &mdash; trends arrive after the first daily snapshot.
+    Tracking starts tonight. Trends arrive after the first daily snapshot.
   </div>
   {% endif %}
 
@@ -114,7 +114,7 @@
         {% if dossier.week_delta_points >= 0 %}+{% endif %}{{ '%.0f'|format(dossier.week_delta_points) }}
       </div>
       {% else %}
-      <div class="k">—</div>
+      <div class="k">even</div>
       {% endif %}
       <div class="l">This Week</div>
     </div>

@@ -73,6 +73,9 @@ When a session surfaces a finding outside its scope, append it here with the ses
 
 - **[S0.2]** `groups.html:10` lead copy uses `&mdash;` HTML entity (`12 groups &mdash; 48 teams &mdash; 2026 FIFA World Cup`) — em-dash sweep target. Picked up by **S0.3**.
 - **[S0.2]** `leaderboard.html:85` trend dash placeholder renders an em-dash glyph (`<span class="text-muted">—</span>`) — em-dash sweep target. Picked up by **S0.3**.
+- **[S0.3]** `.navbar-brand` renders 68×38 at 375 viewport across every page (height-only fail, 6px short). Mobile-first 44×44 floor target. Self-contained CSS fix; defer to **P3 S3.1** (Global chrome) where the navbar is the focus.
+- **[S0.3]** `/login` link rows ("Forgot your password?" 128×14, "Create an account" 116×37) fail the 44×44 floor. Self-contained auth-page CSS adjustment; defer to **P3 S3.2** (Auth surfaces).
+- **[S0.3]** Navbar trophy CTA: chamber-purple text on `--metal-gold-flat` lands at 3.6:1 against the gradient's darkest stop (`--gold-dark` = `#8A6A1A`) at the bottom-right corner of the button. AA-passing across most of the surface (7.5:1 mid-stop, 12.4:1 lightest), but the worst-stop pixel-corner reads 3.6:1 — below the 4.5:1 normal-text floor. Fix requires retuning `--metal-gold-flat`'s dark stop in `tokens.css`, which is a DESIGN.md token spec change and out of scope for S0.3. Pick up in **P6 S6.1** (cross-surface polish) or as a one-off DESIGN.md spec session if a critique re-surfaces it earlier.
 
 ---
 
@@ -1513,7 +1516,7 @@ Mark each session as it completes. Append the session-completion commit SHA for 
 ### Phase 0 — Cross-cutting harden
 - [x] S0.1 — Bootstrap shadow leak migration (commit: 60aee97)
 - [x] S0.2 — Side-stripe ban migration + table semantics sweep (commit: e4882ca)
-- [ ] S0.3 — Mobile tap-target floor + white-on-gold contrast + em-dash sweep (commit: ____)
+- [x] S0.3 — Mobile tap-target floor + white-on-gold contrast + em-dash sweep (commit: pending)
 - [ ] **PR P0** opened: ____
 
 ### Phase 1 — Leaderboard close

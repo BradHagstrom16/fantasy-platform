@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Leaderboard — World Cup Fantasy Pool{% endblock %}
+{% block title %}Leaderboard · World Cup Fantasy Pool{% endblock %}
 
 {% block content %}
 {# ── Hero ── #}
@@ -83,18 +83,18 @@
               <td class="text-end leaderboard-trend">
                 {% set t = trend_by_enrollment.get(e.id) %}
                 {% if t is none %}
-                <span class="text-muted">—</span>
+                <span class="text-muted">even</span>
                 {% elif t > 0 %}
                 <span class="leaderboard-trend-up wc-numeral">+{{ "%.1f"|format(t) }}</span>
                 {% elif t < 0 %}
                 <span class="leaderboard-trend-down wc-numeral">{{ "%.1f"|format(t) }}</span>
                 {% else %}
-                <span class="text-muted">—</span>
+                <span class="text-muted">even</span>
                 {% endif %}
               </td>
               {% endif %}
               {% if deadline_passed %}
-              <td class="text-end text-muted">{{ e.usa_goals_guess if e.usa_goals_guess is not none else '—' }}</td>
+              <td class="text-end text-muted">{{ e.usa_goals_guess if e.usa_goals_guess is not none else 'none' }}</td>
               {% endif %}
             </tr>
             {% endfor %}
@@ -104,35 +104,31 @@
     </div>
   </div>
 
-  {# Mobile cards #}
+  {# Mobile cards. P0 S0.3: whole-card-as-link — the entire card is the tap
+     target so the row meets the 44x44 floor and keyboard focus lands on a
+     single anchor with a visible focus ring. #}
   <div class="d-md-none mt-4">
     {% for item in ranked_enrollments %}
     {% set e = item.enrollment %}
-    <div class="card wc-card border-0 mb-2 leaderboard-card{% if current_user.is_authenticated and e.user_id == current_user.id %} leaderboard-card-current{% endif %} animate-in">
+    {% set is_me = current_user.is_authenticated and e.user_id == current_user.id %}
+    {% set row_href = url_for('worldcup.picks') if is_me else url_for('worldcup.player_detail', enrollment_id=e.id) %}
+    <a href="{{ row_href }}" class="card wc-card border-0 mb-2 leaderboard-card leaderboard-card-link{% if is_me %} leaderboard-card-current{% endif %} animate-in">
       <div class="card-body p-3 d-flex align-items-center justify-content-between">
         <div class="d-flex align-items-center gap-3">
           <span class="fw-bold text-muted wc-numeral leaderboard-rank">{{ item.rank }}</span>
           <div>
             <span class="me-1">{{ e.user.get_avatar() }}</span>
-            {% if current_user.is_authenticated and e.user_id == current_user.id %}
-            <a href="{{ url_for('worldcup.picks') }}" class="text-decoration-none fw-medium d-block">
-              {{ e.get_display_name() }}
-            </a>
-            {% else %}
-            <a href="{{ url_for('worldcup.player_detail', enrollment_id=e.id) }}" class="text-decoration-none fw-medium d-block">
-              {{ e.get_display_name() }}
-            </a>
-            {% endif %}
+            <span class="fw-medium d-block leaderboard-card-name">{{ e.get_display_name() }}</span>
             {% if show_trend_column %}
             {% set t = trend_by_enrollment.get(e.id) %}
             {% if t is none %}
-            <small class="text-muted">Trend: —</small>
+            <small class="text-muted">Trend: even</small>
             {% elif t > 0 %}
             <small class="leaderboard-trend-up">Trend: <span class="wc-numeral">+{{ "%.1f"|format(t) }}</span></small>
             {% elif t < 0 %}
             <small class="leaderboard-trend-down">Trend: <span class="wc-numeral">{{ "%.1f"|format(t) }}</span></small>
             {% else %}
-            <small class="text-muted">Trend: —</small>
+            <small class="text-muted">Trend: even</small>
             {% endif %}
             {% endif %}
             {% if deadline_passed and e.usa_goals_guess is not none %}
@@ -144,7 +140,7 @@
           {{ "%.1f"|format(e.total_score) }}
         </span>
       </div>
-    </div>
+    </a>
     {% endfor %}
   </div>
 
