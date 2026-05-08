@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}{{ team.display_name }} ({{ team.fifa_code }}) — World Cup Fantasy Pool{% endblock %}
+{% block title %}{{ team.display_name }} ({{ team.fifa_code }}) · World Cup Fantasy Pool{% endblock %}
 
 {% block content %}
 <div class="page-hero wc-hero-grad">
@@ -87,7 +87,7 @@
         <h3 class="mb-3">Match log</h3>
 
         {% if matches %}
-        <div class="card border-0 shadow-sm wc-card wc-card-flush">
+        <div class="card border-0 wc-card wc-card-flush">
           <div class="card-body p-0">
             <ul class="list-unstyled m-0 fixture-list">
               {% set ns = namespace(next_set=false) %}
@@ -122,16 +122,16 @@
                   </div>
                   <div class="fixture-result wc-numeral">
                     {% if match.is_completed %}
-                      {% if is_team_home %}{{ match.home_score }}–{{ match.away_score }}{% else %}{{ match.away_score }}–{{ match.home_score }}{% endif %}
+                      {% if is_team_home %}{{ match.home_score }}&ndash;{{ match.away_score }}{% else %}{{ match.away_score }}&ndash;{{ match.home_score }}{% endif %}
                     {% else %}
-                      <span class="text-muted">—</span>
+                      <span class="text-muted">TBD</span>
                     {% endif %}
                   </div>
                   <div class="fixture-pts wc-numeral {% if match_pts > 0 %}text-success{% elif match_pts < 0 %}text-danger{% endif %}">
                     {% if match.is_completed %}
                       {{ "+%.1f"|format(match_pts) if match_pts >= 0 else "%.1f"|format(match_pts) }}
                     {% else %}
-                      <span class="text-muted">—</span>
+                      <span class="text-muted">&middot;</span>
                     {% endif %}
                   </div>
                   {% if is_next %}

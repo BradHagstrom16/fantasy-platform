@@ -67,17 +67,22 @@
       <a href="{{ url_for('worldcup.leaderboard') }}" class="btn btn-sm btn-game">View All</a>
     </div>
     <table class="table table-worldcup mb-0">
+      <caption class="visually-hidden">Top of the pool preview, ranked by current points.</caption>
       <thead>
         <tr>
-          <th style="width:50px">#</th>
-          <th>Player</th>
-          <th class="text-end">Points</th>
+          <th scope="col" style="width:50px">#</th>
+          <th scope="col">Player</th>
+          <th scope="col" class="text-end">Points</th>
         </tr>
       </thead>
       <tbody>
+        {% set ns = namespace(rank=0, prev_score=None) %}
         {% for e in top_3_preview %}
+        {% if e.total_score != ns.prev_score %}
+          {% set ns.rank = ns.rank + 1 %}
+        {% endif %}
         <tr {% if e.user_id == enrollment.user_id %}class="row-current-user"{% endif %}>
-          <td><span class="wc-numeral">{{ loop.index }}</span></td>
+          <td><span class="wc-numeral">{{ ns.rank }}</span></td>
           <td>
             <span class="me-1">{{ e.user.get_avatar() }}</span>
             <a href="{{ url_for('worldcup.player_detail', enrollment_id=e.id) }}" class="text-decoration-none fw-medium">
@@ -86,6 +91,7 @@
           </td>
           <td class="text-end"><span class="wc-numeral">{{ "%.1f"|format(e.total_score) }}</span></td>
         </tr>
+        {% set ns.prev_score = e.total_score %}
         {% endfor %}
       </tbody>
     </table>

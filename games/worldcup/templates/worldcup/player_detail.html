@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}{{ enrollment.get_display_name() }} — World Cup Fantasy Pool{% endblock %}
+{% block title %}{{ enrollment.get_display_name() }} · World Cup Fantasy Pool{% endblock %}
 
 {% block content %}
 <div class="page-hero wc-hero-grad">
@@ -20,7 +20,7 @@
         <span class="wc-eyebrow">Lead</span>
         <strong class="wc-numeral">
           {% if neighbors.lead_delta_up is none %}
-            &mdash;
+            none
           {% else %}
             -{{ "%.1f"|format(neighbors.lead_delta_up) }}
           {% endif %}
@@ -49,17 +49,18 @@
       {% if picks_visible %}
         {% if picks %}
         {# Desktop table with drill-down accordion #}
-        <div class="card border-0 shadow-sm animate-in player-picks-desktop wc-card wc-card-flush">
+        <div class="card border-0 animate-in player-picks-desktop wc-card wc-card-flush">
           <div class="card-body p-0">
             <div class="table-responsive">
               <table class="table table-worldcup mb-0">
+                <caption class="visually-hidden">Player picks: team, tier, multiplier, base points, and total points.</caption>
                 <thead>
                   <tr>
-                    <th>Team</th>
-                    <th>Tier</th>
-                    <th class="text-center">Multiplier</th>
-                    <th class="text-end">Base</th>
-                    <th class="text-end">Points</th>
+                    <th scope="col">Team</th>
+                    <th scope="col">Tier</th>
+                    <th scope="col" class="text-center">Multiplier</th>
+                    <th scope="col" class="text-end">Base</th>
+                    <th scope="col" class="text-end">Points</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -121,7 +122,7 @@
         </div>
         {% endif %}
       {% else %}
-        <div class="card border-0 shadow-sm animate-in wc-card wc-card-flush">
+        <div class="card border-0 animate-in wc-card wc-card-flush">
           <div class="card-body text-center py-5">
             <i class="bi bi-lock-fill" style="font-size:2.5rem; color:var(--wc-red); opacity:.7;"></i>
             <span class="wc-eyebrow d-block mt-3">Roster sealed</span>

@@ -26,7 +26,7 @@
       {% endif %}
     {% else %}
       <div class="wc-eyebrow mb-1">Tournament Complete</div>
-      <div class="text-muted">Champion not yet declared — see final standings below.</div>
+      <div class="text-muted">Champion not yet declared. See final standings below.</div>
     {% endif %}
   </div>
 </div>
@@ -68,11 +68,12 @@
       <span class="wc-eyebrow"><i class="bi bi-trophy me-2"></i>Final Podium</span>
     </div>
     <table class="table table-worldcup mb-0">
+      <caption class="visually-hidden">Final podium: top three players by total points.</caption>
       <thead>
         <tr>
-          <th style="width:50px">#</th>
-          <th>Player</th>
-          <th class="text-end">Points</th>
+          <th scope="col" style="width:50px">#</th>
+          <th scope="col">Player</th>
+          <th scope="col" class="text-end">Points</th>
         </tr>
       </thead>
       <tbody>
@@ -110,12 +111,13 @@
     </div>
     <div class="table-responsive">
       <table class="table table-worldcup mb-0">
+        <caption class="visually-hidden">Your final roster: tier, team, best finish, and total points scored.</caption>
         <thead>
           <tr>
-            <th>Tier</th>
-            <th>Team</th>
-            <th>Best Finish</th>
-            <th class="text-end">Points</th>
+            <th scope="col">Tier</th>
+            <th scope="col">Team</th>
+            <th scope="col">Best Finish</th>
+            <th scope="col" class="text-end">Points</th>
           </tr>
         </thead>
         <tbody>

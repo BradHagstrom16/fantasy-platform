@@ -61,3 +61,6 @@ verify-*.png
 post-state-*.png
 fantasy-platform-and-world-cup-design/
 .remember/
+
+# Impeccable design-review screenshots and rendered HTML (regenerated per session)
+.impeccable-review/

@@ -13,7 +13,7 @@
     <div class="m-side">
       <div class="m-flag">{{ match.home_team.flag_emoji if match.home_team else '🏳️' }}</div>
       <div class="m-name">{{ match.home_team.fifa_code if match.home_team else 'TBD' }}</div>
-      <div class="m-score">{{ match.home_score if match.home_score is not none else '—' }}</div>
+      <div class="m-score">{{ match.home_score if match.home_score is not none else '·' }}</div>
     </div>
     <div class="m-center">
       <div class="ft">FT</div>
@@ -21,7 +21,7 @@
     <div class="m-side">
       <div class="m-flag">{{ match.away_team.flag_emoji if match.away_team else '🏳️' }}</div>
       <div class="m-name">{{ match.away_team.fifa_code if match.away_team else 'TBD' }}</div>
-      <div class="m-score">{{ match.away_score if match.away_score is not none else '—' }}</div>
+      <div class="m-score">{{ match.away_score if match.away_score is not none else '·' }}</div>
     </div>
   </div>
   {% if item.roster_match and is_enrolled %}

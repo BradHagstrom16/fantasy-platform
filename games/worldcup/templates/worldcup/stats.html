@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}The Field Office — World Cup Fantasy Pool{% endblock %}
+{% block title %}The Field Office · World Cup Fantasy Pool{% endblock %}
 
 {% block head %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
@@ -116,7 +116,7 @@ if (window.matchMedia('(prefers-color-scheme: dark)').matches)
   <!-- ════ THE FIELD ════ -->
   <div id="tab-field" class="wc-stats-panel pt-4 pb-5">
     <h2 style="font-family:'Teko',sans-serif;font-size:1.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-primary);margin-bottom:.2rem;">Who the field trusted</h2>
-    <p style="color:var(--text-muted);font-size:.9rem;margin-bottom:1.5rem;">Popularity vs. payoff — find the carries, the gems, and the dead weight.</p>
+    <p style="color:var(--text-muted);font-size:.9rem;margin-bottom:1.5rem;">Popularity vs. payoff: find the carries, the gems, and the dead weight.</p>
 
     <div class="row g-4 mb-4">
       <div class="col-lg-6">
@@ -168,7 +168,7 @@ if (window.matchMedia('(prefers-color-scheme: dark)').matches)
   <!-- ════ BY TIER ════ -->
   <div id="tab-tiers" class="wc-stats-panel pt-4 pb-5">
     <h2 style="font-family:'Teko',sans-serif;font-size:1.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-primary);margin-bottom:.2rem;">Did the multiplier ladder pay off?</h2>
-    <p style="color:var(--text-muted);font-size:.9rem;margin-bottom:1.5rem;">Average and total scoring per multiplier tier — and the most common pairings inside each.</p>
+    <p style="color:var(--text-muted);font-size:.9rem;margin-bottom:1.5rem;">Average and total scoring per multiplier tier, plus the most common pairings inside each.</p>
 
     <div class="row g-3 mb-4" id="tier-kpis"></div>
     <div class="row g-4 mb-4">
@@ -409,7 +409,7 @@ function renderCombos() {
   function renderComboList(combos, containerId, tierNum) {
     if (!combos || combos.length === 0) {
       document.getElementById(containerId).innerHTML =
-        '<p style="font-family:\'Teko\',sans-serif;color:var(--text-muted);font-size:.9rem;">No pairs yet — picks still open or no data.</p>';
+        '<p style="font-family:\'Teko\',sans-serif;color:var(--text-muted);font-size:.9rem;">No pairs yet. Picks still open or no data.</p>';
       return;
     }
     const mx = combos[0].count;

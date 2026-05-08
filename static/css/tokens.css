@@ -42,4 +42,20 @@
   --live-orange:        #FF8A3C;
   --podium-glow:        radial-gradient(circle, rgba(242,211,107,.5) 0%, transparent 70%);
   --champion-glow:      radial-gradient(circle, rgba(242,211,107,.4) 0%, transparent 60%);
+
+  /* === Shadow scale ===
+     Layer 1 design tokens. Brand-tinted (purple) by default; gold variant
+     is the trophy glint. Components consume via var() in style.css per the
+     CLAUDE.md token/component boundary. */
+  --shadow-sm:                0 2px 8px rgba(58,29,114,.07);
+  --shadow-md:                0 4px 20px rgba(58,29,114,.12);
+  --shadow-lg:                0 8px 40px rgba(58,29,114,.17);
+  --shadow-gold:              0 4px 24px rgba(201,162,39,.25);
+  /* Component shadows: distinct intensities/directions the generic scale
+     above can't carry. */
+  --shadow-lift-strong:       0 6px 20px rgba(58,29,114,.30);  /* heavier card-hover lift than --shadow-md */
+  --shadow-navbar:            0 2px 20px rgba(58,29,114,.35);  /* sticky navbar ambient */
+  --shadow-dropdown:          0 12px 40px rgba(58,29,114,.50); /* dropdown panel */
+  --shadow-sticky-up:         0 -4px 20px rgba(58,29,114,.35); /* bottom-anchored bar (upward cast) */
+  --shadow-btn-primary-hover: 0 4px 14px rgba(58,29,114,.30);  /* Quiet-primary CTA hover (DESIGN.md §Buttons) */
 }

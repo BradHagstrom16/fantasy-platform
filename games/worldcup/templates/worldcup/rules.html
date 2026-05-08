@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Rules — World Cup Fantasy Pool{% endblock %}
+{% block title %}Rules · World Cup Fantasy Pool{% endblock %}
 
 {% block content %}
 <div class="page-hero wc-hero-grad">
@@ -16,7 +16,7 @@
     <div class="col-lg-9">
 
       {# ── How It Works ── #}
-      <div class="card border-0 shadow-sm mb-4 animate-in wc-card">
+      <div class="card border-0 mb-4 animate-in wc-card">
         <div class="card-body p-4">
           <span class="wc-eyebrow">Overview</span>
           <h3 class="mb-3" style="font-family:'Teko',sans-serif; text-transform:uppercase; letter-spacing:.04em;">
@@ -28,7 +28,7 @@
       </div>
 
       {# ── Tier Structure ── #}
-      <div class="card border-0 shadow-sm mb-4 animate-in stagger-1 wc-card">
+      <div class="card border-0 mb-4 animate-in stagger-1 wc-card">
         <div class="card-body p-4">
           <span class="wc-eyebrow wc-eyebrow-red">Tiers</span>
           <h3 class="mb-3" style="font-family:'Teko',sans-serif; text-transform:uppercase; letter-spacing:.04em;">
@@ -38,13 +38,14 @@
           <div class="table-scroll-wrapper d-none d-md-block">
             <div class="table-responsive">
               <table class="table table-worldcup mb-0">
+                <caption class="visually-hidden">Tier structure: number, name, picks required, multiplier, and example teams.</caption>
                 <thead>
                   <tr>
-                    <th>Tier</th>
-                    <th>Name</th>
-                    <th class="text-center">Picks</th>
-                    <th class="text-center">Multiplier</th>
-                    <th>Teams</th>
+                    <th scope="col">Tier</th>
+                    <th scope="col">Name</th>
+                    <th scope="col" class="text-center">Picks</th>
+                    <th scope="col" class="text-center">Multiplier</th>
+                    <th scope="col">Teams</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -100,7 +101,7 @@
       </div>
 
       {# ── Group Stage Scoring ── #}
-      <div class="card border-0 shadow-sm mb-4 animate-in stagger-2 wc-card">
+      <div class="card border-0 mb-4 animate-in stagger-2 wc-card">
         <div class="card-body p-4">
           <span class="wc-eyebrow">Group stage</span>
           <h3 class="mb-3" style="font-family:'Teko',sans-serif; text-transform:uppercase; letter-spacing:.04em;">
@@ -110,10 +111,11 @@
           <h5 class="mb-2">Match Results</h5>
           <div class="table-responsive mb-4">
             <table class="table table-worldcup mb-0">
+              <caption class="visually-hidden">Group stage match-result scoring: points awarded for win, draw, and loss.</caption>
               <thead>
                 <tr>
-                  <th>Result</th>
-                  <th class="text-center">Points</th>
+                  <th scope="col">Result</th>
+                  <th scope="col" class="text-center">Points</th>
                 </tr>
               </thead>
               <tbody>
@@ -127,11 +129,12 @@
           <h5 class="mb-2">Advancement Milestones</h5>
           <div class="table-responsive">
             <table class="table table-worldcup mb-0">
+              <caption class="visually-hidden">Group-stage advancement milestones and the points each one awards.</caption>
               <thead>
                 <tr>
-                  <th>Milestone</th>
-                  <th>How Earned</th>
-                  <th class="text-center">Points</th>
+                  <th scope="col">Milestone</th>
+                  <th scope="col">How Earned</th>
+                  <th scope="col" class="text-center">Points</th>
                 </tr>
               </thead>
               <tbody>
@@ -145,7 +148,7 @@
       </div>
 
       {# ── Knockout Scoring ── #}
-      <div class="card border-0 shadow-sm mb-4 animate-in stagger-3 wc-card">
+      <div class="card border-0 mb-4 animate-in stagger-3 wc-card">
         <div class="card-body p-4">
           <span class="wc-eyebrow wc-eyebrow-red">Knockouts</span>
           <h3 class="mb-3" style="font-family:'Teko',sans-serif; text-transform:uppercase; letter-spacing:.04em;">
@@ -154,10 +157,11 @@
           <p class="text-muted small mb-3">Each knockout result has a single point value (no separate match + milestone).</p>
           <div class="table-responsive">
             <table class="table table-worldcup mb-0">
+              <caption class="visually-hidden">Knockout-stage scoring: points awarded for each round and final result.</caption>
               <thead>
                 <tr>
-                  <th>Result</th>
-                  <th class="text-center">Points</th>
+                  <th scope="col">Result</th>
+                  <th scope="col" class="text-center">Points</th>
                 </tr>
               </thead>
               <tbody>
@@ -175,7 +179,7 @@
       </div>
 
       {# ── Points Matrix ── #}
-      <div class="card border-0 shadow-sm mb-4 animate-in stagger-4 wc-card">
+      <div class="card border-0 mb-4 animate-in stagger-4 wc-card">
         <div class="card-body p-4">
           <span class="wc-eyebrow">Points matrix</span>
           <h3 class="mb-3" style="font-family:'Teko',sans-serif; text-transform:uppercase; letter-spacing:.04em;">
@@ -184,14 +188,15 @@
           <div class="table-scroll-wrapper">
           <div class="table-responsive">
             <table class="table table-worldcup mb-0">
+              <caption class="visually-hidden">Points per achievement, by tier multiplier (T1 through T5).</caption>
               <thead>
                 <tr>
-                  <th>Achievement</th>
-                  <th class="text-center"><span class="wc-tier-dot wc-tier-dot-1"></span><span class="tier-badge tier-badge-1">T1</span> &times;1</th>
-                  <th class="text-center"><span class="wc-tier-dot wc-tier-dot-2"></span><span class="tier-badge tier-badge-2">T2</span> &times;1.5</th>
-                  <th class="text-center"><span class="wc-tier-dot wc-tier-dot-3"></span><span class="tier-badge tier-badge-3">T3</span> &times;2.5</th>
-                  <th class="text-center"><span class="wc-tier-dot wc-tier-dot-4"></span><span class="tier-badge tier-badge-4">T4</span> &times;4</th>
-                  <th class="text-center"><span class="wc-tier-dot wc-tier-dot-5"></span><span class="tier-badge tier-badge-5">T5</span> &times;7</th>
+                  <th scope="col">Achievement</th>
+                  <th scope="col" class="text-center"><span class="wc-tier-dot wc-tier-dot-1"></span><span class="tier-badge tier-badge-1">T1</span> &times;1</th>
+                  <th scope="col" class="text-center"><span class="wc-tier-dot wc-tier-dot-2"></span><span class="tier-badge tier-badge-2">T2</span> &times;1.5</th>
+                  <th scope="col" class="text-center"><span class="wc-tier-dot wc-tier-dot-3"></span><span class="tier-badge tier-badge-3">T3</span> &times;2.5</th>
+                  <th scope="col" class="text-center"><span class="wc-tier-dot wc-tier-dot-4"></span><span class="tier-badge tier-badge-4">T4</span> &times;4</th>
+                  <th scope="col" class="text-center"><span class="wc-tier-dot wc-tier-dot-5"></span><span class="tier-badge tier-badge-5">T5</span> &times;7</th>
                 </tr>
               </thead>
               <tbody>
@@ -226,7 +231,7 @@
       </div>
 
       {# ── Tiebreaker ── #}
-      <div class="card border-0 shadow-sm mb-4 animate-in stagger-5 wc-card">
+      <div class="card border-0 mb-4 animate-in stagger-5 wc-card">
         <div class="card-body p-4">
           <span class="wc-eyebrow">Tiebreaker</span>
           <h3 class="mb-3" style="font-family:'Teko',sans-serif; text-transform:uppercase; letter-spacing:.04em;">
@@ -237,7 +242,7 @@
       </div>
 
       {# ── Edge Cases ── #}
-      <div class="card border-0 shadow-sm animate-in stagger-6 wc-card">
+      <div class="card border-0 animate-in stagger-6 wc-card">
         <div class="card-body p-4">
           <span class="wc-eyebrow">Edge cases</span>
           <h3 class="mb-3" style="font-family:'Teko',sans-serif; text-transform:uppercase; letter-spacing:.04em;">

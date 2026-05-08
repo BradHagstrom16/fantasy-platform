@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Group Standings — World Cup Fantasy Pool{% endblock %}
+{% block title %}Group Standings · World Cup Fantasy Pool{% endblock %}
 
 {% block content %}
 <div class="page-hero wc-hero-grad">
@@ -7,7 +7,7 @@
   <div class="container">
     <span class="wc-eyebrow">Group standings</span>
     <h1>Group Standings</h1>
-    <p class="lead mb-0">12 groups &mdash; 48 teams &mdash; 2026 FIFA World Cup</p>
+    <p class="lead mb-0">12 groups &middot; 48 teams &middot; 2026 FIFA World Cup</p>
   </div>
 </div>
 
@@ -18,13 +18,14 @@
       <div class="group-table" id="group-{{ letter }}">
         <div class="group-table-header">Group {{ letter }}</div>
         <table>
+          <caption class="visually-hidden">Group {{ letter }} standings: wins, draws, losses, and points.</caption>
           <thead>
             <tr>
-              <th>Team</th>
-              <th class="text-center" style="width:35px">W</th>
-              <th class="text-center" style="width:35px">D</th>
-              <th class="text-center" style="width:35px">L</th>
-              <th class="text-center" style="width:40px">Pts</th>
+              <th scope="col">Team</th>
+              <th scope="col" class="text-center" style="width:35px">W</th>
+              <th scope="col" class="text-center" style="width:35px">D</th>
+              <th scope="col" class="text-center" style="width:35px">L</th>
+              <th scope="col" class="text-center" style="width:40px">Pts</th>
             </tr>
           </thead>
           <tbody>

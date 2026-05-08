@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}My Picks — World Cup Fantasy Pool{% endblock %}
+{% block title %}My Picks · World Cup Fantasy Pool{% endblock %}
 
 {% block content %}
 <div class="page-hero wc-hero-grad">
@@ -31,7 +31,7 @@
 
       {% if existing_picks %}
       {# Desktop table with drill-down accordion #}
-      <div class="card border-0 shadow-sm mb-4 animate-in player-picks-desktop wc-card wc-card-flush">
+      <div class="card border-0 mb-4 animate-in player-picks-desktop wc-card wc-card-flush">
         <div class="card-header d-flex align-items-center justify-content-between">
           <div>
             <span class="wc-eyebrow {% if deadline_passed %}wc-eyebrow-red{% endif %}">
@@ -46,13 +46,14 @@
         <div class="card-body p-0">
           <div class="table-responsive">
             <table class="table table-worldcup mb-0">
+              <caption class="visually-hidden">Your nine picks with tier, multiplier, base points, and total points.</caption>
               <thead>
                 <tr>
-                  <th>Team</th>
-                  <th>Tier</th>
-                  <th class="text-center">Multiplier</th>
-                  <th class="text-end">Base</th>
-                  <th class="text-end">Points</th>
+                  <th scope="col">Team</th>
+                  <th scope="col">Tier</th>
+                  <th scope="col" class="text-center">Multiplier</th>
+                  <th scope="col" class="text-end">Base</th>
+                  <th scope="col" class="text-end">Points</th>
                 </tr>
               </thead>
               <tbody>
@@ -99,11 +100,11 @@
       </div>
 
       {% if enrollment.usa_goals_guess is not none %}
-      <div class="card border-0 shadow-sm animate-in stagger-1 wc-card wc-card-flush">
+      <div class="card border-0 animate-in stagger-1 wc-card wc-card-flush">
         <div class="card-body p-3 d-flex align-items-center justify-content-between">
           <div>
             <span class="wc-eyebrow">The Tiebreak</span>
-            <div class="text-muted mt-1"><i class="bi bi-bullseye me-2"></i>USA — Tournament total goals</div>
+            <div class="text-muted mt-1"><i class="bi bi-bullseye me-2"></i>USA tournament total goals</div>
           </div>
           <span class="fw-bold wc-numeral" style="font-size:1.4rem;">{{ enrollment.usa_goals_guess }}</span>
         </div>
@@ -199,11 +200,11 @@
             </div>
           </div>
 
-          <div class="card border-0 shadow-sm mt-3 wc-card wc-card-flush">
+          <div class="card border-0 mt-3 wc-card wc-card-flush">
             <div class="card-body p-3">
               <span class="wc-eyebrow wc-eyebrow-red">The Tiebreak</span>
               <label for="usa_goals_guess" class="form-label fw-medium mt-1">
-                <i class="bi bi-bullseye me-2"></i>USA Goals — Tournament Total
+                <i class="bi bi-bullseye me-2"></i>USA Goals: Tournament Total
               </label>
               <p class="text-muted small mb-2">
                 How many total goals will the USA score in the tournament?
