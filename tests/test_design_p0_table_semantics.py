@@ -74,32 +74,41 @@ def test_tables_carry_scope_col_and_caption(client, path):
         )
 
 
-def test_your_standing_carries_region_role(client):
-    """The leaderboard's Your Standing block is a self-contained landmark; it
-    must wrap as `<section role="region" aria-labelledby=...>` (or an aria-label
-    equivalent) so screen readers can navigate to it."""
+def test_your_standing_tribune_carries_landmark_semantics(client):
+    """The Your Position tribune block (P1 S1.1) is a self-contained landmark.
+
+    Populated branch must render as `<section role="region" aria-labelledby=...>`.
+    Empty branch (anon / unenrolled) renders as `<aside aria-label=...>` —
+    `<aside>` is an HTML landmark by default and the aria-label names it.
+    """
     resp = client.get('/worldcup/leaderboard', follow_redirects=False)
     if resp.status_code == 302:
         pytest.skip('leaderboard requires auth in this config')
     assert resp.status_code == 200
 
     body = resp.data.decode('utf-8')
-    # Anonymous leaderboard renders without your_standing context, so this
-    # check is conditional. When present, the wrapping element MUST be a
-    # landmark with role="region" + aria-labelledby (or aria-label).
-    if 'your-standing' not in body:
-        pytest.skip('Your Standing block is not rendered in the anonymous state')
+    if 'your-standing-tribune' not in body:
+        pytest.skip('Your Position tribune block not rendered in this state')
 
-    # Look for the .your-standing element and confirm it carries a region role
-    # and aria-labelledby OR aria-label attribute.
-    section_match = re.search(
-        r'<(?:section|div)[^>]*class="[^"]*your-standing[^"]*"[^>]*>', body
+    open_tag_match = re.search(
+        r'<(?:section|aside|div)[^>]*class="[^"]*your-standing-tribune[^"]*"[^>]*>',
+        body,
     )
-    assert section_match, 'Could not find the .your-standing wrapper element'
-    open_tag = section_match.group(0)
-    assert 'role="region"' in open_tag, (
-        f'.your-standing wrapper is missing role="region": {open_tag}'
-    )
-    assert ('aria-labelledby="' in open_tag) or ('aria-label="' in open_tag), (
-        f'.your-standing wrapper needs aria-labelledby or aria-label: {open_tag}'
-    )
+    assert open_tag_match, 'Could not find the .your-standing-tribune wrapper'
+    open_tag = open_tag_match.group(0)
+
+    is_aside = open_tag.startswith('<aside')
+    if is_aside:
+        # Empty branch — <aside> is an implicit complementary landmark; an
+        # aria-label is enough to name it for screen readers.
+        assert 'aria-label="' in open_tag, (
+            f'Empty tribune <aside> needs aria-label: {open_tag}'
+        )
+    else:
+        # Populated branch — explicit region role + named labelledby/aria-label.
+        assert 'role="region"' in open_tag, (
+            f'Populated tribune wrapper is missing role="region": {open_tag}'
+        )
+        assert ('aria-labelledby="' in open_tag) or ('aria-label="' in open_tag), (
+            f'Populated tribune wrapper needs aria-labelledby or aria-label: {open_tag}'
+        )

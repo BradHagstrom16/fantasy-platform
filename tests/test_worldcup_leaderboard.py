@@ -79,8 +79,8 @@ def _login(client, user_id):
 
 # ── your_standing block ──────────────────────────────────────────────
 
-def test_your_standing_block_renders_for_authenticated_enrolled_user(client, app):
-    """Authenticated + enrolled user sees Your Standing block in payload + DOM."""
+def test_your_position_block_renders_for_authenticated_enrolled_user(client, app):
+    """Authenticated + enrolled user sees the Your Position tribune block (P1 S1.1)."""
     with app.app_context():
         u = _seed_user('alice')
         _seed_enrollment(u.id, score=42.0)
@@ -88,23 +88,25 @@ def test_your_standing_block_renders_for_authenticated_enrolled_user(client, app
         _login(client, u.id)
         resp = client.get('/worldcup/leaderboard')
     assert resp.status_code == 200
-    assert b'Your Standing' in resp.data
+    assert b'Your Position' in resp.data
+    assert b'your-standing-tribune' in resp.data
 
 
-def test_your_standing_omitted_for_anonymous(client, app):
-    """Anonymous user does not see Your Standing block."""
+def test_anonymous_viewer_sees_join_callout(client, app):
+    """Anon viewer gets the editorial join callout, not silence (P1 S1.1)."""
     with app.app_context():
         u = _seed_user('alice')
         _seed_enrollment(u.id, score=42.0)
         db.session.commit()
-        # No login
         resp = client.get('/worldcup/leaderboard')
     assert resp.status_code == 200
-    assert b'Your Standing' not in resp.data
+    assert b'Your Position' not in resp.data  # owner block is gated on enrollment
+    assert b'your-standing-tribune-empty' in resp.data
+    assert b'Join the pool' in resp.data
 
 
-def test_your_standing_omitted_for_authenticated_unenrolled(client, app):
-    """Authenticated but unenrolled user does not see Your Standing block."""
+def test_authenticated_unenrolled_viewer_sees_join_callout(client, app):
+    """Authenticated but unenrolled user sees the join callout, not silence."""
     with app.app_context():
         u_enr = _seed_user('alice')
         _seed_enrollment(u_enr.id, score=42.0)
@@ -113,20 +115,21 @@ def test_your_standing_omitted_for_authenticated_unenrolled(client, app):
         _login(client, u_unenr.id)
         resp = client.get('/worldcup/leaderboard')
     assert resp.status_code == 200
-    assert b'Your Standing' not in resp.data
+    assert b'Your Position' not in resp.data
+    assert b'your-standing-tribune-empty' in resp.data
+    assert b'Join the pool' in resp.data
 
 
-def test_lead_delta_calculation(client, app):
-    """Five-enrollment fixture with known scores — Your Standing caption reflects neighbors.
+def test_standing_caption_voices_lead_and_chase(client, app):
+    """Five-enrollment fixture, mid-rank user — caption surfaces both deltas.
 
-    Caption format from _your_standing_caption: '{up} pts from 1st · {down} ahead of next.'
     With scores [100, 80, 60, 40, 20] and target rank 3 (score 60):
-      up = 100 - 60 = 40.0  (rounded to 2 decimals -> 40.0)
-      down = 60 - 40 = 20.0
+      lead_delta_up   = 100 - 60 = 40.0  ("40 from the top")
+      lead_delta_down = 60 - 40  = 20.0  ("20 ahead of the chase")
+    No snapshot history so rank_delta is None, hitting the "Holding" branch.
     """
     with app.app_context():
         users = [_seed_user(f'p{i}') for i in range(5)]
-        # scores: 100 (rank 1), 80 (rank 2), 60 (rank 3, target), 40 (rank 4), 20 (rank 5)
         _seed_enrollment(users[0].id, 100.0)
         _seed_enrollment(users[1].id, 80.0)
         _seed_enrollment(users[2].id, 60.0)
@@ -137,10 +140,7 @@ def test_lead_delta_calculation(client, app):
         resp = client.get('/worldcup/leaderboard')
     assert resp.status_code == 200
     body = resp.data.decode()
-    # Verify the literal caption rendered. The leader/tail/sole variants use
-    # different copy, so a hit on this exact phrase confirms the mid-rank path
-    # AND the deltas are correct.
-    assert '40.0 pts from 1st · 20.0 ahead of next.' in body
+    assert 'Holding 3. 40 from the top, 20 ahead of the chase.' in body
 
 
 # ── trend column ─────────────────────────────────────────────────────
@@ -194,10 +194,10 @@ def test_trend_column_hidden_when_fewer_than_seven_snapshots(client, app):
         db.session.commit()
         resp = client.get('/worldcup/leaderboard')
     assert resp.status_code == 200
-    # The literal column header "Trend" must not appear in the desktop table
-    # OR mobile-card line — but other usages of the word "trend" in templates
-    # are fine. Gate by the unique <th> markup.
-    assert b'<th scope="col" class="text-end">Trend</th>' not in resp.data
+    # P1 S1.1: column header is now "Move" (rank-delta). The gate still
+    # protects it the same way — under 7 distinct snapshot days, the column
+    # is absent entirely (no Pending column polluting the empty table).
+    assert b'<th scope="col" class="text-end">Move</th>' not in resp.data
 
 
 def test_trend_column_gate_scoped_to_active_season(client, app):
@@ -239,13 +239,16 @@ def test_trend_column_gate_scoped_to_active_season(client, app):
         db.session.commit()
         resp = client.get('/worldcup/leaderboard')
     assert resp.status_code == 200
-    # Active season has only 3 days of snapshot history — Trend column stays closed
-    # despite the 10 prior-season days that exist in the table.
-    assert b'<th scope="col" class="text-end">Trend</th>' not in resp.data
+    # Active season has only 3 days of snapshot history — Move column stays
+    # closed despite the 10 prior-season days that exist in the table.
+    assert b'<th scope="col" class="text-end">Move</th>' not in resp.data
 
 
-def test_trend_column_shows_dash_when_no_prior_snapshot_for_user(client, app):
-    """When a row has no snapshot history but the column is open, render '—'."""
+def test_move_column_shows_pending_when_no_prior_snapshot_for_user(client, app):
+    """When a row has no snapshot history but the column is open, render 'Pending'.
+
+    P1 S1.1: replaces the old em-dash placeholder with a voiced word; em-dashes
+    are banned from user copy by P0 S0.3."""
     with app.app_context():
         u_with = _seed_user('alice')
         e_with = _seed_enrollment(u_with.id, score=50.0)
@@ -264,20 +267,19 @@ def test_trend_column_shows_dash_when_no_prior_snapshot_for_user(client, app):
         db.session.commit()
         resp = client.get('/worldcup/leaderboard')
     assert resp.status_code == 200
-    # Column is open
-    assert b'<th scope="col" class="text-end">Trend</th>' in resp.data
-    # Bob's row trend cell renders '—'
+    assert b'<th scope="col" class="text-end">Move</th>' in resp.data
     body = resp.data.decode()
     assert 'bob' in body
-    # We can't easily isolate bob's row without parsing, but at minimum:
-    assert '—' in body
+    # Bob has no snapshot history; his row's Move cell reads "Pending".
+    assert 'Pending' in body
 
 
 # ── basic reskin smoke (Tasks 2-4 will harden) ────────────────────────
 
 def test_leaderboard_route_still_returns_200_with_no_data(client, app):
-    """Empty leaderboard renders the empty-state copy."""
+    """Empty leaderboard renders the new editorial empty-state copy (P1 S1.1)."""
     with app.app_context():
         resp = client.get('/worldcup/leaderboard')
     assert resp.status_code == 200
-    assert b'No players enrolled yet' in resp.data
+    assert b'The ledger awaits its first name.' in resp.data
+    assert b'Lock your roster.' in resp.data

@@ -10,10 +10,13 @@ Ranks are dense — tied scores share a rank. The sort order matches
 games/worldcup/routes.leaderboard():
     total_score DESC, usa_goals_guess ASC.
 """
+from datetime import timedelta
 from typing import Optional, TypedDict
 
-from games.worldcup.models import WorldCupEnrollment
-from games.worldcup.constants import SEASON_YEAR
+from extensions import db
+from games.worldcup.constants import SEASON_YEAR, WORLDCUP_TZ
+from games.worldcup.models import WorldCupEnrollment, WorldCupRankSnapshot
+from games.worldcup.services.state import now_utc
 
 
 class RankNeighbors(TypedDict):
@@ -78,3 +81,39 @@ def compute_rank_neighbors(enrollment_id: int) -> RankNeighbors:
         lead_delta_up=lead_delta_up,
         lead_delta_down=lead_delta_down,
     )
+
+
+def compute_rank_delta(
+    enrollment: WorldCupEnrollment, window_days: int = 1
+) -> Optional[int]:
+    """Signed change in rank over ``window_days`` for one enrollment.
+
+    Positive = rank improved (smaller rank number is better). Negative = rank
+    dropped. Zero = held. None = insufficient snapshot history (no prior
+    snapshot at or before today minus ``window_days``).
+
+    Snapshots are scoped per enrollment, which is itself season-scoped via the
+    enrollment FK (CLAUDE.md: WorldCupRankSnapshot aggregates must be
+    season-scoped). The "today" pole is the latest snapshot row; the "prior"
+    pole is the latest snapshot on or before the cutoff date.
+    """
+    cutoff = now_utc().astimezone(WORLDCUP_TZ).date() - timedelta(days=window_days)
+
+    today = (
+        db.session.query(WorldCupRankSnapshot)
+        .filter(WorldCupRankSnapshot.enrollment_id == enrollment.id)
+        .order_by(WorldCupRankSnapshot.captured_date.desc())
+        .first()
+    )
+    prior = (
+        db.session.query(WorldCupRankSnapshot)
+        .filter(
+            WorldCupRankSnapshot.enrollment_id == enrollment.id,
+            WorldCupRankSnapshot.captured_date <= cutoff,
+        )
+        .order_by(WorldCupRankSnapshot.captured_date.desc())
+        .first()
+    )
+    if today is None or prior is None:
+        return None
+    return prior.rank - today.rank
