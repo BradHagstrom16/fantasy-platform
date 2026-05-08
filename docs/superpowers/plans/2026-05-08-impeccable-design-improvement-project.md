@@ -1550,7 +1550,7 @@ Mark each session as it completes. Append the session-completion commit SHA for 
 - [x] **PR P0** opened: `#11`
 
 ### Phase 1 — Leaderboard close
-- [x] S1.1 — Shape Your Standing + trend rank-delta + clarify copy (commit: __PENDING__)
+- [x] S1.1 — Shape Your Standing + trend rank-delta + clarify copy (commit: 56416ee)
 - [ ] **PR P1** opened: ____
 
 ### Phase 2 — Live state cluster
