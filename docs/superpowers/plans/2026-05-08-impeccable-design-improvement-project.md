@@ -1551,7 +1551,7 @@ Mark each session as it completes. Append the session-completion commit SHA for 
 
 ### Phase 1 — Leaderboard close
 - [x] S1.1 — Shape Your Standing + trend rank-delta + clarify copy (commit: 56416ee)
-- [ ] **PR P1** opened: ____
+- [x] **PR P1** opened: `#12`
 
 ### Phase 2 — Live state cluster
 - [ ] S2.1 — `home_shell` + `_home_live` (commit: `____`)
