@@ -1561,7 +1561,7 @@ Mark each session as it completes. Append the session-completion commit SHA for 
 - [x] **PR P1** opened: `#12`
 
 ### Phase 2 — Live state cluster
-- [x] S2.1 — `home_shell` + `_home_live` (commit: pending — see HEAD after S2.1 commit lands)
+- [x] S2.1 — `home_shell` + `_home_live` (commit: e69966f)
 - [ ] S2.2 — schedule (commit: ____)
 - [ ] S2.3 — team_detail (commit: ____)
 - [ ] S2.4 — stats (commit: ____)
