@@ -1510,7 +1510,7 @@ Same per-session pattern.
 Mark each session as it completes. Append the session-completion commit SHA for traceability.
 
 ### Phase 0 — Cross-cutting harden
-- [ ] S0.1 — Bootstrap shadow leak migration (commit: ____)
+- [x] S0.1 — Bootstrap shadow leak migration (commit: 60aee97)
 - [ ] S0.2 — Side-stripe ban migration + table semantics sweep (commit: ____)
 - [ ] S0.3 — Mobile tap-target floor + white-on-gold contrast + em-dash sweep (commit: ____)
 - [ ] **PR P0** opened: ____
