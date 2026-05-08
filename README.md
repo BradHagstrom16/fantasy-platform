@@ -79,3 +79,4 @@ See `CLAUDE.md` § *Blueprint Pattern* for the full required pattern (table-pref
 
 - [CLAUDE.md](CLAUDE.md) — operational conventions, gotchas, blueprint pattern
 - [ARCHITECTURE_DECISION_LOG.md](ARCHITECTURE_DECISION_LOG.md) — historical decisions
+- ![CodeRabbit Pull Request Reviews](https://img.shields.io/coderabbit/prs/github/BradHagstrom16/fantasy-platform?utm_source=oss&utm_medium=github&utm_campaign=BradHagstrom16%2Ffantasy-platform&labelColor=171717&color=FF570A&link=https%3A%2F%2Fcoderabbit.ai&label=CodeRabbit+Reviews)
