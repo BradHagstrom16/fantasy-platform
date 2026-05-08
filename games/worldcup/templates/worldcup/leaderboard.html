@@ -43,7 +43,7 @@
   {% if ranked_enrollments %}
 
   {# Desktop table #}
-  <div class="card wc-card border-0 shadow-sm d-none d-md-block animate-in mt-4">
+  <div class="card wc-card border-0 d-none d-md-block animate-in mt-4">
     <div class="card-body p-0">
       <div class="table-responsive">
         <table class="table table-worldcup leaderboard-table mb-0">
@@ -107,7 +107,7 @@
   <div class="d-md-none mt-4">
     {% for item in ranked_enrollments %}
     {% set e = item.enrollment %}
-    <div class="card wc-card border-0 shadow-sm mb-2 leaderboard-card{% if current_user.is_authenticated and e.user_id == current_user.id %} leaderboard-card-current{% endif %} animate-in">
+    <div class="card wc-card border-0 mb-2 leaderboard-card{% if current_user.is_authenticated and e.user_id == current_user.id %} leaderboard-card-current{% endif %} animate-in">
       <div class="card-body p-3 d-flex align-items-center justify-content-between">
         <div class="d-flex align-items-center gap-3">
           <span class="fw-bold text-muted wc-numeral leaderboard-rank">{{ item.rank }}</span>

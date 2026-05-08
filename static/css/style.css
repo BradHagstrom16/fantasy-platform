@@ -1768,7 +1768,7 @@ body.game-golf {
 .home-shell .cta-card:hover,
 .home-shell .cg--active:hover {
   transform: translateY(-1px);
-  box-shadow: 0 6px 20px rgba(0,0,0,.3);
+  box-shadow: 0 6px 20px rgba(58,29,114,.3);
 }
 
 /* --- Polish: prevent layout shift on countdown digit changes --- */
@@ -3358,7 +3358,7 @@ main { flex: 1; }
   background: linear-gradient(90deg, var(--platform-primary-dark) 0%, var(--platform-primary) 100%) !important;
   border-bottom: 3px solid var(--platform-accent);
   padding: .65rem 0;
-  box-shadow: 0 2px 20px rgba(0,0,0,.35);
+  box-shadow: 0 2px 20px rgba(58,29,114,.35);
   position: sticky;
   top: 0;
   z-index: 1030;
@@ -3425,7 +3425,7 @@ main { flex: 1; }
   border: 1px solid rgba(212,168,32,.18);
   border-top: 2px solid var(--platform-accent);
   border-radius: 0 0 var(--radius) var(--radius);
-  box-shadow: 0 12px 40px rgba(0,0,0,.5);
+  box-shadow: 0 12px 40px rgba(58,29,114,.5);
   min-width: 13rem;
   animation: slideDown .18s ease both;
 }
@@ -4518,7 +4518,7 @@ hr { border-color: var(--border); opacity: 1; }
     align-items: center;
     justify-content: space-between;
     gap: .75rem;
-    box-shadow: 0 -4px 20px rgba(0,0,0,.35);
+    box-shadow: 0 -4px 20px rgba(58,29,114,.35);
     animation: slideUpBar .3s ease both;
   }
 
