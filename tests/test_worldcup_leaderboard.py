@@ -19,10 +19,23 @@ from datetime import date, datetime, timezone, timedelta
 from app import create_app
 from extensions import db
 from models.user import User
-from games.worldcup.constants import SEASON_YEAR
+from games.worldcup.constants import SEASON_YEAR, WORLDCUP_TZ
 from games.worldcup.models import (
     WorldCupEnrollment, WorldCupRankSnapshot,
 )
+from games.worldcup.services.state import now_utc
+
+
+def _wc_today() -> date:
+    """World-Cup-local "today" — matches services.ranking.compute_rank_delta's
+    cutoff derivation (`now_utc().astimezone(WORLDCUP_TZ).date()`).
+
+    Tests that seed snapshot dates relative to "today" must use this, not
+    `date.today()`. The runner's local timezone can differ from WORLDCUP_TZ
+    near midnight in either zone, which would shift the cutoff by a day and
+    flake the rank-delta and points-delta-tooltip assertions.
+    """
+    return now_utc().astimezone(WORLDCUP_TZ).date()
 
 
 PAST_DEADLINE = datetime(2000, 1, 1, tzinfo=timezone.utc)
@@ -159,7 +172,7 @@ def test_trend_column_uses_latest_snapshot(client, app):
         u = _seed_user('alice')
         e = _seed_enrollment(u.id, score=50.0)
         # Seed 8 distinct dates so the gate opens (see A1 below).
-        today = date.today()
+        today = _wc_today()
         for i in range(8):
             # Enrollment's snapshots: oldest=10 pts, latest (i=0) = 47 pts
             _seed_snapshot(
@@ -192,7 +205,7 @@ def test_points_delta_tooltip_hidden_when_fewer_than_seven_snapshots(client, app
         u = _seed_user('alice')
         e = _seed_enrollment(u.id, score=50.0)
         # Only 6 distinct dates → tooltip gate stays closed
-        today = date.today()
+        today = _wc_today()
         for i in range(6):
             _seed_snapshot(
                 enrollment_id=e.id,
@@ -224,7 +237,7 @@ def test_trend_column_gate_scoped_to_active_season(client, app):
         # Active-season enrollment with only 3 snapshot days — tooltip gate must stay closed.
         active_user = _seed_user('alice')
         active_e = _seed_enrollment(active_user.id, score=50.0)
-        today = date.today()
+        today = _wc_today()
         for i in range(3):
             _seed_snapshot(
                 enrollment_id=active_e.id,
@@ -271,7 +284,7 @@ def test_move_column_shows_pending_when_no_prior_snapshot_for_user(client, app):
         _seed_enrollment(u_without.id, score=30.0)
         # Open the gate by seeding 7 distinct dates against alice only.
         # bob has no snapshot history.
-        today = date.today()
+        today = _wc_today()
         for i in range(7):
             _seed_snapshot(
                 enrollment_id=e_with.id,

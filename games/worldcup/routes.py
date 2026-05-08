@@ -38,7 +38,9 @@ from games.worldcup.services.stats import (
     get_overview_kpis,
     get_tier_combos,
 )
-from games.worldcup.services.ranking import compute_rank_delta, compute_rank_neighbors
+from games.worldcup.services.ranking import (
+    compute_rank_delta, compute_rank_deltas_bulk, compute_rank_neighbors,
+)
 from games.worldcup.services.stage import stage_label
 from games.worldcup.services.team_detail import (
     compute_team_ownership, current_user_owns_team, compute_path_to_crown,
@@ -420,11 +422,10 @@ def leaderboard():
     total_players = len(enrollments)
 
     your_standing = _compute_your_standing(enrollments, total_players)
-    rank_delta_by_enrollment = {
-        e.id: compute_rank_delta(e, window_days=1) for e in enrollments
-    }
+    enrollment_ids = [e.id for e in enrollments]
+    rank_delta_by_enrollment = compute_rank_deltas_bulk(enrollment_ids, window_days=1)
     trend_by_enrollment = (
-        compute_trend_by_enrollment([e.id for e in enrollments])
+        compute_trend_by_enrollment(enrollment_ids)
         if show_trend_column() else {}
     )
 
