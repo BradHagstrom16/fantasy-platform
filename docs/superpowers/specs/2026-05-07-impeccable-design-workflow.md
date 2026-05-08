@@ -2,7 +2,7 @@
 
 **Date:** 2026-05-07
 **Scope:** Global platform pages + World Cup pages only (Golf and CFB excluded)
-**Goal:** Collect, categorize, and fix design issues discovered during the Phase 5.5 production test script along with Impecabble utilization and processes then merge to main before World Cup user signups open.
+**Goal:** Collect, categorize, and fix design issues discovered during the Phase 5.5 production test script along with Impeccable utilization and processes then merge to main before World Cup user signups open.
 
 ---
 
@@ -88,7 +88,7 @@ Claude handles all git commits inside the worktree. No manual git commands requi
 
 When all design issues are resolved:
 
-1. Claude runs the full test suite — all 264 tests must pass
+1. Claude runs the full test suite, all tests must pass
 2. Claude runs pyright — 0 errors required
 3. `/commit-push-pr` opens a PR: `design/wc-polish → main`
 4. Wait for CodeRabbit's full review (not just the processing stub) before merging

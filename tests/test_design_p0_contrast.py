@@ -1,13 +1,18 @@
-"""P0 S0.3 — lock: trophy CTA text on metal-gold gradient meets WCAG AA contrast.
+"""P0 S0.3 — color-token lock: trophy CTA text declares chamber-purple in CSS.
 
-The metal-gold gradient runs from gold-dark (#8A6A1A) through commish-gold
-(#C9A227) to gold-hi (#FFF1B8). White text on the lightest stop reads
-~1.5:1. The DESIGN.md trophy contract requires chamber-purple text:
-`color: var(--purple-900)` (#1C0A3A) — that yields ~14:1 against the
-darkest stop and ~9:1 against the lightest, comfortably above 4.5:1.
+This is a SOURCE-PATTERN lock, NOT a WCAG AA contrast guarantee. The
+assertions only verify that the rule body declares chamber-purple text
+(`var(--purple-900)` / `var(--chamber)` / `#1C0A3A`); they do not compute
+the rendered contrast ratio against the metal-gold gradient stops.
 
-This test pins both rest and hover so a future hover-flip can't quietly
-re-introduce the contrast bug.
+Rendered contrast against gold-dark (#8A6A1A, the gradient's worst-stop)
+is currently ~3.6:1 — below WCAG AA 4.5:1. The DESIGN.md token retune
+that lifts the gold floor is tracked in plan §0.4 (P6 S6.1 backlog) and
+will close that gap. Until then, the locks below freeze the text-color
+half of the fix; pair them with the rendered probe in browser DevTools.
+
+Hover is pinned alongside rest so a future hover-flip can't quietly
+re-introduce the white-on-gold bug (~1.5:1 against the lightest stop).
 """
 import re
 from pathlib import Path
@@ -31,7 +36,11 @@ def _has_valid_trophy_text_color(body: str) -> bool:
 
 
 def test_navbar_trophy_cta_text_color_rest():
-    """Navbar `.btn-warning` rest must declare chamber-purple text on gold."""
+    """Navbar `.btn-warning` rest must DECLARE chamber-purple text in source.
+
+    Token-presence check only; rendered AA contrast against the gradient's
+    worst-stop is tracked separately (see module docstring).
+    """
     css = CSS_PATH.read_text()
     body = _rule_body(css, '.navbar.navbar-dark .btn-warning')
     assert body is not None, '.navbar.navbar-dark .btn-warning rule not found'
@@ -42,9 +51,10 @@ def test_navbar_trophy_cta_text_color_rest():
 
 
 def test_navbar_trophy_cta_text_color_hover():
-    """Navbar `.btn-warning:hover` must keep chamber-purple text — never flip
-    to bone/white. The metal-gold gradient's top stop (#FFF1B8) renders
-    white-on-gold at ~1.5:1; chamber-purple stays comfortably above 4.5:1."""
+    """Navbar `.btn-warning:hover` must keep the chamber-purple declaration
+    in source, never flip to bone/white. White on the gradient's top stop
+    (#FFF1B8) renders ~1.5:1 in the browser; this token lock prevents the
+    white-on-gold regression at the source level."""
     css = CSS_PATH.read_text()
     body = _rule_body(css, '.navbar.navbar-dark .btn-warning:hover')
     assert body is not None, '.navbar.navbar-dark .btn-warning:hover rule not found'
@@ -56,7 +66,9 @@ def test_navbar_trophy_cta_text_color_hover():
 
 def test_auth_trophy_cta_text_color_rest_and_hover():
     """`body.auth-page .btn-primary` (the trophy CTA on auth pages) must also
-    keep chamber-purple text on rest AND hover. Same gradient, same trap."""
+    declare chamber-purple text on rest AND hover. Same gradient, same trap.
+    Token-presence check only; same rendered-contrast caveat as the navbar
+    tests above."""
     css = CSS_PATH.read_text()
     rest = _rule_body(css, 'body.auth-page .btn-primary')
     hover = _rule_body(css, 'body.auth-page .btn-primary:hover')

@@ -115,21 +115,26 @@ def test_leaderboard_card_link_uses_whole_card_pattern():
         / 'games' / 'worldcup' / 'templates' / 'worldcup' / 'leaderboard.html'
     )
     src = template.read_text()
-    # Find the mobile cards block and confirm the outermost element is an <a>
-    # carrying the leaderboard-card class, NOT a <div>.
-    mobile_block = re.search(
+    # Find the mobile cards marker and scope the assertions to the source AFTER
+    # it, so an unrelated `leaderboard-card-link` anchor elsewhere in the file
+    # cannot satisfy this lock if the mobile section regresses.
+    mobile_marker = re.search(
         r'<!--\s*Mobile cards.*?-->|{#\s*Mobile cards.*?#}',
         src,
         re.DOTALL | re.IGNORECASE,
     )
-    # The plan uses Jinja {# Mobile cards #} as the marker; fall back to text search.
-    assert 'leaderboard-card-link' in src, (
+    assert mobile_marker is not None, (
+        'Mobile cards marker not found in leaderboard.html — the test cannot '
+        'verify that the whole-card-as-link pattern lives in the mobile section.'
+    )
+    mobile_src = src[mobile_marker.end():]
+    assert 'leaderboard-card-link' in mobile_src, (
         'Expected `.leaderboard-card-link` class used to indicate whole-card-as-link '
         'pattern in leaderboard.html mobile section.'
     )
     # And the wrapping element of the per-row mobile card must be an anchor.
     anchor_pattern = r'<a[^>]+class="[^"]*\bleaderboard-card-link\b'
-    assert re.search(anchor_pattern, src), (
+    assert re.search(anchor_pattern, mobile_src), (
         'Mobile leaderboard card must be wrapped in <a class="... leaderboard-card-link ...">; '
         'the inner-name-only <a> pattern fails the 44x44 tap-target floor.'
     )

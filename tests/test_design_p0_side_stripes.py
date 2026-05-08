@@ -64,7 +64,8 @@ def test_card_border_state_classes_use_full_border_not_side_stripe():
         if rule_match is None:
             continue  # rule may have been removed entirely
         body = rule_match.group(1)
-        assert ('border-left:' not in body) or ('border-left: 1px' in body), (
+        bad = re.search(r'border-left:\s*([2-9]|[1-9]\d+)px\b', body)
+        assert bad is None, (
             f'.card.{class_name} still uses a heavy border-left side-stripe: '
             f'{body[:200]}'
         )

@@ -107,6 +107,7 @@
   letter-spacing: .08em;
 }
 .navbar.navbar-dark .btn-warning:hover {
+  background: var(--metal-gold-flat);
   filter: brightness(1.05);
   color: var(--purple-900);
 }

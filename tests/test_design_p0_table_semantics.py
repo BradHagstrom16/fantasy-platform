@@ -44,15 +44,21 @@ def test_tables_carry_scope_col_and_caption(client, path):
     if '<table' not in body:
         return  # page may not render a table in this state (e.g., empty leaderboard)
 
-    # Every <thead> block on the page must contain at least one scope="col" attr,
+    # Every <th> in every <thead> on the page must carry scope="col",
     # and every <table> must include a <caption> with the visually-hidden class.
     import re
 
-    thead_blocks = re.findall(r'<thead[^>]*>(.*?)</thead>', body, re.DOTALL)
+    thead_blocks = re.findall(r'<thead[^>]*>(.*?)</thead>', body, re.DOTALL | re.IGNORECASE)
     for block in thead_blocks:
-        assert 'scope="col"' in block, (
-            f'{path}: a <thead> on this page is missing scope="col" on its <th>: '
-            f'{block[:200]}'
+        header_cells = re.findall(r'<th\b[^>]*>', block, re.IGNORECASE)
+        assert header_cells, f'{path}: <thead> has no <th> cells: {block[:200]}'
+        missing_scope = [
+            th for th in header_cells
+            if not re.search(r'\bscope\s*=\s*["\']col["\']', th, re.IGNORECASE)
+        ]
+        assert not missing_scope, (
+            f'{path}: <thead> has <th> without scope="col": '
+            f'{missing_scope[:3]}'
         )
 
     # Per-table caption check.

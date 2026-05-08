@@ -69,7 +69,7 @@ ls venv/
 ENVIRONMENT=testing venv/bin/python -m pytest tests/ -q
 ```
 
-Expected: venv present, `264 passed`. If tests fail, stop and investigate before proceeding.
+Expected: venv present, full test suite passes. If tests fail, stop and investigate before proceeding.
 
 - [x] **Step 5: Session is now inside the worktree**
 
@@ -292,7 +292,7 @@ The design studio is ready. From here, the workflow is:
 3. Claude invokes `systematic-debugging` via the `Skill` tool — no impeccable involved, but the skill must still be loaded
 
 **Merging when done (deadline: June 1, 2026):**
-1. Claude runs `ENVIRONMENT=testing venv/bin/python -m pytest tests/` — all 264 tests must pass
+1. Claude runs `ENVIRONMENT=testing venv/bin/python -m pytest tests/`, full test suite must pass
 2. Claude runs `venv/bin/pyright` — 0 errors
 3. Run `/commit-push-pr` to open the PR: `design/wc-polish → main`
 4. Wait for CodeRabbit's full review comment (not just the "processing" stub)

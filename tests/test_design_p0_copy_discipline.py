@@ -40,14 +40,17 @@ def _strip_comments(src: str) -> str:
     """Remove all Jinja `{# ... #}`, HTML `<!-- ... -->`, JS line comments
     (`//...`), and JS/CSS block comments (`/* ... */`).
 
-    Multi-line comments are handled — `re.DOTALL` makes `.` cross newlines.
-    Replacing with a single newline preserves line numbering for offender
-    reporting; the policy only cares about presence/absence after stripping,
-    not original line numbers.
+    Multi-line comments preserve their original newline count so reported
+    offender line numbers match the source file. Single-line comments
+    collapse to empty (no line-count change). JS line comments stop at
+    end-of-line and are stripped without touching the trailing newline.
     """
-    src = JINJA_COMMENT.sub('\n', src)
-    src = HTML_COMMENT.sub('\n', src)
-    src = BLOCK_COMMENT.sub('\n', src)
+    def _preserve_newlines(match: 're.Match[str]') -> str:
+        return '\n' * match.group(0).count('\n')
+
+    src = JINJA_COMMENT.sub(_preserve_newlines, src)
+    src = HTML_COMMENT.sub(_preserve_newlines, src)
+    src = BLOCK_COMMENT.sub(_preserve_newlines, src)
     src = JS_LINE_COMMENT.sub('', src)
     return src
 

@@ -1088,15 +1088,17 @@ def test_compute_rank_delta_returns_signed_int_or_none(app, db_session):
     """compute_rank_delta(enrollment, window_days) returns positive int (rank improved),
     negative (rank dropped), zero (held), or None (insufficient snapshot history)."""
     from games.worldcup.services.ranking import compute_rank_delta
+    from games.worldcup.services.state import now_utc
     from games.worldcup.models import WorldCupEnrollment, WorldCupRankSnapshot
-    from games.worldcup.constants import SEASON_YEAR
-    from datetime import date, timedelta
+    from games.worldcup.constants import SEASON_YEAR, WORLDCUP_TZ
+    from datetime import timedelta
     # Setup: an enrollment with two snapshots (yesterday rank=5, today rank=3 → delta=+2)
+    today = now_utc().astimezone(WORLDCUP_TZ).date()
     e = WorldCupEnrollment(user_id=..., season_year=SEASON_YEAR)  # fill via fixture
     db_session.add(e); db_session.flush()
     db_session.add_all([
-        WorldCupRankSnapshot(enrollment_id=e.id, rank=5, total_score=10.0, captured_on=date.today() - timedelta(days=1)),
-        WorldCupRankSnapshot(enrollment_id=e.id, rank=3, total_score=18.0, captured_on=date.today()),
+        WorldCupRankSnapshot(enrollment_id=e.id, rank=5, total_score=10.0, captured_on=today - timedelta(days=1)),
+        WorldCupRankSnapshot(enrollment_id=e.id, rank=3, total_score=18.0, captured_on=today),
     ])
     db_session.flush()
     assert compute_rank_delta(e, window_days=1) == 2
@@ -1125,8 +1127,10 @@ def compute_rank_delta(enrollment, window_days: int = 1) -> int | None:
     negative if rank dropped, zero if held, None if insufficient snapshot history.
     Snapshots must be season-scoped via the enrollment FK (CLAUDE.md invariant)."""
     from games.worldcup.models import WorldCupRankSnapshot
-    from datetime import date, timedelta
-    cutoff = date.today() - timedelta(days=window_days)
+    from games.worldcup.services.state import now_utc
+    from games.worldcup.constants import WORLDCUP_TZ
+    from datetime import timedelta
+    cutoff = now_utc().astimezone(WORLDCUP_TZ).date() - timedelta(days=window_days)
     today = WorldCupRankSnapshot.query.filter_by(enrollment_id=enrollment.id).order_by(
         WorldCupRankSnapshot.captured_on.desc()).first()
     prior = WorldCupRankSnapshot.query.filter(

@@ -11,29 +11,33 @@ This file scans `static/css/style.css` for two violations:
   2. Absence of the brand-tinted `--shadow-sm`/`--shadow-md` token references
      anywhere in the file (proving the brand scale is in active use).
 """
+import re
 from pathlib import Path
 
 CSS_PATH = Path(__file__).parent.parent / 'static' / 'css' / 'style.css'
 
 
 def test_no_neutral_gray_box_shadow_in_card_rules():
-    """No line in style.css may declare a `box-shadow` with neutral-gray
+    """No `box-shadow` declaration in style.css may use neutral-gray
     `rgba(0, 0, 0, ...)`. All shadows route through the brand-tinted scale.
 
-    The `.card.wc-card` background is `rgba(0, 17, 46, ...)` (navy fill, not a
-    shadow) so we explicitly skip lines that use the navy triplet.
+    Scans the full declaration (terminated by `;`), not a single line, so a
+    multi-line `box-shadow:` with offsets on one line and the neutral rgba on
+    the next is still caught. The navy card-fill triplet `rgba(0, 17, 46, ...)`
+    is exempt for refactors that inline background+shadow.
     """
     src = CSS_PATH.read_text()
     offenders = []
-    for line_no, line in enumerate(src.splitlines(), start=1):
-        if 'box-shadow' not in line:
+    pattern = re.compile(
+        r'box-shadow\s*:\s*[^;]*rgba\(\s*0\s*,\s*0\s*,\s*0\s*,',
+        re.IGNORECASE | re.DOTALL,
+    )
+    for match in pattern.finditer(src):
+        snippet = match.group(0)
+        if re.search(r'rgba\(\s*0\s*,\s*17\s*,', snippet):
             continue
-        # Skip the navy card-fill triplet so a future refactor that inlines
-        # background+shadow on one line doesn't trip this lock.
-        if 'rgba(0, 17' in line or 'rgba(0,17' in line:
-            continue
-        if 'rgba(0, 0, 0' in line or 'rgba(0,0,0' in line:
-            offenders.append((line_no, line.strip()))
+        line_no = src.count('\n', 0, match.start()) + 1
+        offenders.append((line_no, snippet[:160].strip()))
     assert not offenders, f"Neutral-gray box-shadows found: {offenders}"
 
 
