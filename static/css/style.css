@@ -341,9 +341,24 @@ body.game-golf {
   text-transform: uppercase;
   color: var(--gold-light);
   text-decoration: none;
+  /* S2.1.2 — 44×44 tap-target floor. Padding expands the hit area; the
+     negative margin neutralizes the visual offset so the baseline alignment
+     with the section title stays where it was at 22px. */
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0.65rem 0.5rem;
+  margin: -0.65rem -0.5rem;
 }
-.home-shell .sec-head .more:hover {
+.home-shell .sec-head .more:hover,
+.home-shell .sec-head .more:focus-visible {
   color: var(--gold-hi);
+}
+.home-shell .sec-head .more:focus-visible {
+  outline: 2px solid var(--gold-light);
+  outline-offset: 2px;
+  border-radius: 4px;
 }
 
 /* Trophy-light flat gold for masthead emphasis. The metal-gold gradient is
@@ -1156,9 +1171,12 @@ body.game-golf {
   border-radius: 14px;
 }
 .home-shell .dossier-stamp {
-  position: absolute;
-  top: 0.85rem;
-  right: 1rem;
+  /* S2.1.2 — was position:absolute, top:.85rem, right:1rem; on narrow viewports
+     it overlapped the rank-meta column when "Holding rank over 7 days" wrapped.
+     Now an in-flow Tribune-register eyebrow sitting above the rank, right-
+     aligned to keep the masthead-stamp feel without colliding with anything. */
+  display: block;
+  text-align: right;
   font-family: var(--font-teko);
   font-weight: 500;
   font-size: 0.65rem;
@@ -1166,12 +1184,12 @@ body.game-golf {
   text-transform: uppercase;
   color: var(--gold-light);
   opacity: 0.6;
+  margin-bottom: 0.5rem;
 }
 .home-shell .dossier-rank {
   display: flex;
   align-items: flex-end;
   gap: 1rem;
-  padding-top: 0.5rem;
 }
 .home-shell .rank-num {
   font-family: var(--font-teko);

@@ -69,7 +69,10 @@
   {# Pass 2: collapse non-roster results into a single compact strip. #}
   {% if ns.neutral %}
   <div class="results-also">
-    <div class="results-also-eyebrow">Also Today</div>
+    {# Eyebrow was "Also Today" but rows aren't time-tagged — promised a temporal
+       anchor we never delivered. "Around the Tournament" carries the same
+       editorial-context register without claiming a window we don't render. #}
+    <div class="results-also-eyebrow">Around the Tournament</div>
     <ul class="results-also-list">
       {% for item in ns.neutral %}
         {% set match = item.match %}
