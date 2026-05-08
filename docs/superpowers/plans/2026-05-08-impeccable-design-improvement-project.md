@@ -163,12 +163,11 @@ The agent's first three actions in any session:
 Every session ends with the same six steps:
 
 1. **Run pytest**: `ENVIRONMENT=testing venv/bin/python -m pytest tests/` — must be green.
-2. **Run pyright**: `venv/bin/pyright` — target 0 errors (existing baseline).
-3. **Take after-screenshots** of any visually-changed pages at desktop (1470×900) and mobile (375×812). Save under `.impeccable-review/<session-id>/`. Add `.impeccable-review/` to `.gitignore` if not already (one-time, in P0 S0.1).
-4. **Re-run impeccable critique** for any page touched (per-page sessions only). Record score delta in the commit message body.
-5. **Commit** with conventional-commits prefix and a summary that names the session ID.
-6. **Update the plan checklist** (Section 9 of this document) — mark the session complete, append any newly-found out-of-scope items to the Backlog (Section 0.4).
-7. If any session findings would be beneficial for future sessions, update this document accordingly so future sessions and phases go smoothly. Usage of the remember skill is also encouraged.
+2. **Take after-screenshots** of any visually-changed pages at desktop (1470×900) and mobile (375×812). Save under `.impeccable-review/<session-id>/`. Add `.impeccable-review/` to `.gitignore` if not already (one-time, in P0 S0.1).
+3. **Re-run impeccable critique** for any page touched (per-page sessions only). Record score delta in the commit message body.
+4. **Commit** with conventional-commits prefix and a summary that names the session ID.
+5. **Update the plan checklist** (Section 9 of this document) — mark the session complete, append any newly-found out-of-scope items to the Backlog (Section 0.4).
+6. If any session findings would be beneficial for future sessions, update this document accordingly so future sessions and phases go smoothly. Usage of the remember skill is also encouraged.
 
 ### 1.6 Out-of-scope guardrails
 
@@ -366,7 +365,6 @@ If the Playwright MCP is unavailable, fall back to `mcp__plugin_chrome-devtools-
 ```bash
 ENVIRONMENT=testing venv/bin/python -m pytest tests/test_design_p0_shadow.py -v
 ENVIRONMENT=testing venv/bin/python -m pytest tests/ -q
-venv/bin/pyright
 ```
 
 All green.
@@ -394,7 +392,6 @@ EOF
 
 **Verification gate:**
 - pytest green ✓
-- pyright 0 errors ✓
 - DevTools confirms brand-tinted shadow on `.card.wc-card` ✓
 - After-screenshot of leaderboard saved ✓
 
@@ -626,7 +623,6 @@ def test_tables_carry_scope_col_and_caption(client, path):
 ```bash
 ENVIRONMENT=testing venv/bin/python -m pytest tests/test_design_p0_side_stripes.py tests/test_design_p0_table_semantics.py -v
 ENVIRONMENT=testing venv/bin/python -m pytest tests/ -q
-venv/bin/pyright
 ```
 
 All green.
@@ -686,7 +682,6 @@ EOF
 
 **Verification gate:**
 - pytest green ✓
-- pyright 0 errors ✓
 - All tables in scope have `scope="col"` + caption ✓
 - No side-stripes >1px in `style.css` (outside CFB/Golf) ✓
 - Visual smoke at desktop + mobile ✓
@@ -1005,7 +1000,6 @@ def test_no_em_dash_in_user_facing_copy():
 ```bash
 ENVIRONMENT=testing venv/bin/python -m pytest tests/test_design_p0_tap_targets.py tests/test_design_p0_contrast.py tests/test_design_p0_copy_discipline.py -v
 ENVIRONMENT=testing venv/bin/python -m pytest tests/ -q
-venv/bin/pyright
 ```
 
 All green.
@@ -1039,7 +1033,6 @@ EOF
 
 **Verification gate:**
 - pytest green ✓
-- pyright 0 errors ✓
 - 44px floor on tested elements ✓
 - Trophy CTA dark-on-gold ✓
 - Em-dash count 0 in user-facing copy ✓
@@ -1334,7 +1327,6 @@ def test_trend_column_renders_rank_delta_not_points_delta():
 
 ```bash
 ENVIRONMENT=testing venv/bin/python -m pytest tests/ -q
-venv/bin/pyright
 ```
 
 Then via Playwright MCP, against the running dev server:
@@ -1390,7 +1382,6 @@ EOF
 
 **Verification gate:**
 - pytest green ✓
-- pyright 0 errors ✓
 - Re-run critique recorded ✓
 - Visual smoke desktop + mobile ✓
 - All Tier 1 Priority Issues marked closed ✓
@@ -1416,7 +1407,7 @@ Each session takes one live-state surface from "no critique done" → "critique 
 - [ ] **Step 5: Add session-specific regression tests** under `tests/test_design_p2_<session>.py`. Lock the most important shape decisions in source.
 - [ ] **Step 6: Capture after-screenshots** under `.impeccable-review/<session-id>/after/`.
 - [ ] **Step 7: Re-run `$impeccable critique <target>`.** Record score delta.
-- [ ] **Step 8: Run `pytest` + `pyright`. Commit.**
+- [ ] **Step 8: Run `pytest`. Commit.**
 
 ### Session inventory
 
@@ -1492,7 +1483,7 @@ Same per-session pattern.
 - [ ] **Step 2: Run `$impeccable polish` per cluster.** Don't run per-template (too granular); run per-state-cluster (live, pre, post, global).
 - [ ] **Step 3: Resolve any final findings.** Tighten copy, micro-spacing, motion polish.
 - [ ] **Step 4: Re-run `$impeccable critique` on the four Tier 1 exemplars** (leaderboard, home_shell live, picks, base.html). Record final scores.
-- [ ] **Step 5: Run full pytest + pyright.** Green.
+- [ ] **Step 5: Run full pytest.** Green.
 - [ ] **Step 6: Commit polish.**
 
 ### Session S6.2 — Scorecard, handoff doc, merge

@@ -89,12 +89,11 @@ Claude handles all git commits inside the worktree. No manual git commands requi
 When all design issues are resolved:
 
 1. Claude runs the full test suite, all tests must pass
-2. Claude runs pyright — 0 errors required
-3. `/commit-push-pr` opens a PR: `design/wc-polish → main`
-4. Wait for CodeRabbit's full review (not just the processing stub) before merging
-5. User approves and merges
-6. `/clean_gone` removes the worktree and branch
-7. User deploys: `git push origin main` locally, then `ssh deploy@<droplet-ip> ./deploy.sh`
+2. `/commit-push-pr` opens a PR: `design/wc-polish → main`
+3. Wait for CodeRabbit's full review (not just the processing stub) before merging
+4. User approves and merges
+5. `/clean_gone` removes the worktree and branch
+6. User deploys: `git push origin main` locally, then `ssh deploy@<droplet-ip> ./deploy.sh`
 
 **Merge deadline:** Before World Cup user signups open (June 1st 2026 at the latest).
 

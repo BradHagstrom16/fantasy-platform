@@ -105,11 +105,13 @@
   font-family: var(--font-teko);
   text-transform: uppercase;
   letter-spacing: .08em;
+  transition: filter .15s, box-shadow .15s;
 }
 .navbar.navbar-dark .btn-warning:hover {
   background: var(--metal-gold-flat);
   filter: brightness(1.05);
   color: var(--purple-900);
+  box-shadow: var(--shadow-gold);
 }
 
 /* === CCC FOOTER === */

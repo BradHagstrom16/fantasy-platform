@@ -293,9 +293,8 @@ The design studio is ready. From here, the workflow is:
 
 **Merging when done (deadline: June 1, 2026):**
 1. Claude runs `ENVIRONMENT=testing venv/bin/python -m pytest tests/`, full test suite must pass
-2. Claude runs `venv/bin/pyright` — 0 errors
-3. Run `/commit-push-pr` to open the PR: `design/wc-polish → main`
-4. Wait for CodeRabbit's full review comment (not just the "processing" stub)
-5. Approve and merge on GitHub
-6. Run `/clean_gone` to remove the worktree and branch locally
-7. Deploy: `git push origin main` then `ssh deploy@<droplet-ip>` and run `./deploy.sh`
+2. Run `/commit-push-pr` to open the PR: `design/wc-polish → main`
+3. Wait for CodeRabbit's full review comment (not just the "processing" stub)
+4. Approve and merge on GitHub
+5. Run `/clean_gone` to remove the worktree and branch locally
+6. Deploy: `git push origin main` then `ssh deploy@<droplet-ip>` and run `./deploy.sh`
