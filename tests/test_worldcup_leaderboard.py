@@ -2,8 +2,12 @@
 
 Plan 3 adds three payload keys:
 - your_standing: None | dict (rank-neighbor data for authenticated+enrolled user)
+- rank_delta_by_enrollment: dict[int, int | None] — per-row rank-delta (Pending when None)
 - trend_by_enrollment: dict[int, float | None] mapping enrollment.id -> trend score
-- show_trend_column: bool (gated on count(distinct captured_date) >= 7)
+- trend_by_enrollment: dict[int, float | None] — points-delta tooltip; empty
+  until services.trends.show_trend_column() opens at >= 7 distinct snapshot days.
+  The Move column itself ALWAYS renders — only the per-cell `title="Points: ..."`
+  tooltip is gated on the >= 7-day snapshot window.
 
 Trend semantics (per spec §8 + plan ambiguity-A2):
   trend = enrollment.total_score - latest_snapshot.total_score for that enrollment
@@ -173,16 +177,21 @@ def test_trend_column_uses_latest_snapshot(client, app):
     assert b'+5.0' in resp.data or b'+5' in resp.data
 
 
-def test_trend_column_hidden_when_fewer_than_seven_snapshots(client, app):
+def test_points_delta_tooltip_hidden_when_fewer_than_seven_snapshots(client, app):
     """show_trend_column = False when count(distinct captured_date) < 7.
 
     Per ambiguity-A1 resolution: gate is on distinct captured_date count
     across the whole table — not per-user.
+
+    P1 S1.1 follow-up (CR R1): the Move column is decoupled from this gate
+    and always renders. What this gate now controls is the per-cell points-delta
+    tooltip (`title="Points: ..."`). The Move header must be present even when
+    the tooltip is absent.
     """
     with app.app_context():
         u = _seed_user('alice')
         e = _seed_enrollment(u.id, score=50.0)
-        # Only 6 distinct dates → gate stays closed
+        # Only 6 distinct dates → tooltip gate stays closed
         today = date.today()
         for i in range(6):
             _seed_snapshot(
@@ -194,10 +203,10 @@ def test_trend_column_hidden_when_fewer_than_seven_snapshots(client, app):
         db.session.commit()
         resp = client.get('/worldcup/leaderboard')
     assert resp.status_code == 200
-    # P1 S1.1: column header is now "Move" (rank-delta). The gate still
-    # protects it the same way — under 7 distinct snapshot days, the column
-    # is absent entirely (no Pending column polluting the empty table).
-    assert b'<th scope="col" class="text-end">Move</th>' not in resp.data
+    # Move column always renders.
+    assert b'<th scope="col" class="text-end">Move</th>' in resp.data
+    # Points-delta tooltip is gated — no `title="Points: ..."` on any row.
+    assert b'title="Points:' not in resp.data
 
 
 def test_trend_column_gate_scoped_to_active_season(client, app):
@@ -205,9 +214,14 @@ def test_trend_column_gate_scoped_to_active_season(client, app):
 
     Without season-scoping, prior-cup snapshots would falsely satisfy the
     >= 7 distinct captured_date threshold at the start of a new season.
+
+    P1 S1.1 follow-up (CR R1): the Move column is no longer governed by this
+    gate. What the gate scopes is the points-delta tooltip — locked here so the
+    season-scoping protection (CLAUDE.md "WorldCupRankSnapshot aggregates must
+    be season-scoped") still has a regression assertion against rendered HTML.
     """
     with app.app_context():
-        # Active-season enrollment with only 3 snapshot days — gate must stay closed.
+        # Active-season enrollment with only 3 snapshot days — tooltip gate must stay closed.
         active_user = _seed_user('alice')
         active_e = _seed_enrollment(active_user.id, score=50.0)
         today = date.today()
@@ -239,9 +253,10 @@ def test_trend_column_gate_scoped_to_active_season(client, app):
         db.session.commit()
         resp = client.get('/worldcup/leaderboard')
     assert resp.status_code == 200
-    # Active season has only 3 days of snapshot history — Move column stays
-    # closed despite the 10 prior-season days that exist in the table.
-    assert b'<th scope="col" class="text-end">Move</th>' not in resp.data
+    # Move column always renders.
+    assert b'<th scope="col" class="text-end">Move</th>' in resp.data
+    # Points-delta tooltip stays closed — prior-season days don't open it.
+    assert b'title="Points:' not in resp.data
 
 
 def test_move_column_shows_pending_when_no_prior_snapshot_for_user(client, app):

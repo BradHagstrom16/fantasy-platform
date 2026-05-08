@@ -54,9 +54,7 @@
               <th scope="col" style="width:60px">#</th>
               <th scope="col">Player</th>
               <th scope="col" class="text-end">Points</th>
-              {% if show_trend_column %}
               <th scope="col" class="text-end">Move</th>
-              {% endif %}
               {% if deadline_passed %}
               <th scope="col" class="text-end">Tiebreaker</th>
               {% endif %}
@@ -80,7 +78,6 @@
                 {% endif %}
               </td>
               <td class="text-end fw-bold wc-numeral">{{ "%.1f"|format(e.total_score) }}</td>
-              {% if show_trend_column %}
               {% set rd = rank_delta_by_enrollment.get(e.id) %}
               {% set pd = trend_by_enrollment.get(e.id) %}
               {% set pd_title %}{% if pd is not none %}Points: {% if pd > 0 %}+{% endif %}{{ "%.1f"|format(pd) }}{% endif %}{% endset %}
@@ -95,7 +92,6 @@
                 <span class="rank-delta-even text-muted" aria-label="Even"{% if pd is not none %} title="{{ pd_title }}"{% endif %}>Even</span>
                 {% endif %}
               </td>
-              {% endif %}
               {% if deadline_passed %}
               <td class="text-end text-muted">{{ e.usa_goals_guess if e.usa_goals_guess is not none else 'none' }}</td>
               {% endif %}
@@ -122,7 +118,6 @@
           <div>
             <span class="me-1">{{ e.user.get_avatar() }}</span>
             <span class="fw-medium d-block leaderboard-card-name">{{ e.get_display_name() }}</span>
-            {% if show_trend_column %}
             {% set rd = rank_delta_by_enrollment.get(e.id) %}
             {% set pd = trend_by_enrollment.get(e.id) %}
             {% set pd_title %}{% if pd is not none %}Points: {% if pd > 0 %}+{% endif %}{{ "%.1f"|format(pd) }}{% endif %}{% endset %}
@@ -137,7 +132,6 @@
               <span class="rank-delta-even text-muted"{% if pd is not none %} title="{{ pd_title }}"{% endif %}>Move: Even</span>
               {% endif %}
             </small>
-            {% endif %}
             {% if deadline_passed and e.usa_goals_guess is not none %}
             <small class="text-muted ms-2">TB: {{ e.usa_goals_guess }}</small>
             {% endif %}

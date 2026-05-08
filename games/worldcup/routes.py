@@ -384,10 +384,15 @@ def _standing_caption(rank, total_players, lead_delta_up, lead_delta_down, rank_
 def leaderboard():
     """Public leaderboard — no login required.
 
-    Plan 3 adds three payload keys:
+    Payload keys:
     - your_standing: dict | None (rank-neighbor block for authenticated+enrolled user)
-    - trend_by_enrollment: dict[int, float | None] (per-row matchday trend)
-    - show_trend_column: bool (gated on count(distinct captured_date) >= 7)
+    - rank_delta_by_enrollment: dict[int, int | None] (per-row rank-delta; None = "Pending")
+    - trend_by_enrollment: dict[int, float | None] (per-row points-delta tooltip; empty
+      until services.trends.show_trend_column() opens at >= 7 distinct snapshot days)
+
+    The Move column always renders — its "Pending" state covers days 0-6 of the
+    season. The points-delta tooltip is the only thing the snapshot-history gate
+    governs in the UI.
     """
     enrollments = (
         WorldCupEnrollment.query
@@ -418,10 +423,9 @@ def leaderboard():
     rank_delta_by_enrollment = {
         e.id: compute_rank_delta(e, window_days=1) for e in enrollments
     }
-    show_trend = show_trend_column()
     trend_by_enrollment = (
         compute_trend_by_enrollment([e.id for e in enrollments])
-        if show_trend else {}
+        if show_trend_column() else {}
     )
 
     return render_template('worldcup/leaderboard.html',
@@ -430,7 +434,6 @@ def leaderboard():
         deadline_passed=deadline_passed,
         your_standing=your_standing,
         rank_delta_by_enrollment=rank_delta_by_enrollment,
-        show_trend_column=show_trend,
         trend_by_enrollment=trend_by_enrollment,
     )
 
