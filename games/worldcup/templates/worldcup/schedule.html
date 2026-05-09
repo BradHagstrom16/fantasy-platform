@@ -7,11 +7,8 @@
   <div class="container">
     <span class="wc-eyebrow">Tournament fixtures</span>
     <h1>Match Schedule</h1>
-    <p class="lead mb-0">All 104 matches &middot; 2026 FIFA World Cup</p>
-    <small class="d-block mt-1 opacity-75"
-           style="letter-spacing:.08em; text-transform:uppercase; font-size:.72rem;">
-      All kickoff times shown in Central Time
-    </small>
+    <p class="lead mb-0">All 104 matches · 2026 FIFA World Cup</p>
+    <small class="d-block mt-1 opacity-75 schedule-tz-stamp">All kickoff times shown in Central Time</small>
   </div>
 </div>
 
@@ -20,7 +17,7 @@
   {% macro render_chip(match) %}
     {% set attr = attribution_by_match.get(match.id) %}
     {% if attr %}
-      <div class="match-points-chip">
+      <div class="match-points-chip" title="Base points scored toward each team's tier value. Multiplier applies on the team detail page.">
         {% if attr.type == 'group_draw' %}
           <span>{{ attr.events[0][1] }} <span class="chip-pts">+{{ "%g"|format(attr.events[0][2]) }}</span></span>
           <span class="chip-sep">·</span>
@@ -34,40 +31,45 @@
     {% endif %}
   {% endmacro %}
 
-  {# ── Group Stage ── #}
-  {% if group_matches %}
-  <h2 class="section-heading mb-3 animate-in">
-    <i class="bi bi-grid-3x3 me-2"></i>Group Stage
-    <small class="text-muted ms-2" style="font-size:.6em; font-weight:400;">{{ group_matches|length }} matches</small>
-  </h2>
-
-  {% set ns = namespace(current_group='') %}
-  {% for m in group_matches %}
-    {% if m.group_letter != ns.current_group %}
-      {% if ns.current_group != '' %}</div>{% endif %}
-      {% set ns.current_group = m.group_letter %}
-      <h4 class="mt-4 mb-2" style="font-family:'Teko',sans-serif; text-transform:uppercase; letter-spacing:.06em; font-size:1.1rem; color:var(--text-muted);">
-        Group {{ m.group_letter }}
-      </h4>
-      <div class="d-flex flex-column gap-2 mb-3">
-    {% endif %}
-
-    <div>
-      <div class="match-result-card">
-        <span class="match-team home">{% if m.home_team %}{{ m.home_team.flag_emoji }} {{ m.home_team.display_name }}{% else %}TBD{% endif %}</span>
-        {% if m.is_completed %}
-          <span class="match-score wc-numeral">{{ m.home_score }}&ndash;{{ m.away_score }}</span>
-        {% elif m.kickoff_utc %}
-          <span class="match-score pending wc-numeral">{{ format_ct(m.kickoff_utc).strftime('%-m/%-d %-I:%M%p') }}</span>
-        {% else %}
-          <span class="match-score pending wc-numeral">TBD</span>
-        {% endif %}
-        <span class="match-team away">{% if m.away_team %}{{ m.away_team.flag_emoji }} {{ m.away_team.display_name }}{% else %}TBD{% endif %}</span>
-      </div>
-      {{ render_chip(m) }}
+  {% macro render_match(m) %}
+    <div class="match-result-card">
+      {% if m.group_letter %}<span class="match-group-tag" aria-label="Group {{ m.group_letter }}">{{ m.group_letter }}</span>{% endif %}
+      <span class="match-team home">{% if m.home_team %}{{ m.home_team.flag_emoji }} {{ m.home_team.display_name }}{% else %}TBD{% endif %}</span>
+      {% if m.is_completed %}
+        <span class="match-score wc-numeral">{{ m.home_score }}–{{ m.away_score }}</span>
+      {% elif m.kickoff_utc %}
+        <span class="match-score pending wc-numeral">{{ format_ct(m.kickoff_utc).strftime('%-I:%M %p') }}</span>
+      {% else %}
+        <span class="match-score pending wc-numeral">TBD</span>
+      {% endif %}
+      <span class="match-team away">{% if m.away_team %}{{ m.away_team.flag_emoji }} {{ m.away_team.display_name }}{% else %}TBD{% endif %}</span>
     </div>
+  {% endmacro %}
+
+  {# ── Group Stage (matchday-grouped) ── #}
+  {% if matchdays_group %}
+  <h2 class="section-heading mb-2 animate-in">
+    <i class="bi bi-grid-3x3 me-2"></i>Group Stage
+    <small class="text-muted ms-2 schedule-stage-count">{{ matchdays_group|length }} match days</small>
+  </h2>
+  <p class="schedule-legend">Numbers under completed matches show <strong>base points</strong> toward each team's tier value. Multipliers apply on the team detail page.</p>
+
+  {% for day in matchdays_group %}
+    <section class="schedule-day-block mb-3"{% if day.is_today %} id="today"{% endif %}>
+      <h3 class="schedule-day-header{% if day.is_today %} is-today{% endif %}">
+        <span class="schedule-day-date">{{ day.date_label }}</span>
+        {% if day.is_today %}<span class="schedule-today-badge">Today</span>{% endif %}
+      </h3>
+      <div class="d-flex flex-column gap-2">
+        {% for m in day.matches %}
+        <div>
+          {{ render_match(m) }}
+          {{ render_chip(m) }}
+        </div>
+        {% endfor %}
+      </div>
+    </section>
   {% endfor %}
-  {% if group_matches %}</div>{% endif %}
   {% endif %}
 
   {# ── Knockout Rounds ── #}
@@ -75,22 +77,12 @@
   {% if matches %}
   <h2 class="section-heading mt-5 mb-3 animate-in">
     <i class="bi bi-{{ icon }} me-2"></i>{{ title }}
-    <small class="text-muted ms-2" style="font-size:.6em; font-weight:400;">{{ matches|length }} match{{ 'es' if matches|length != 1 }}</small>
+    <small class="text-muted ms-2 schedule-stage-count">{{ matches|length }} match{{ 'es' if matches|length != 1 }}</small>
   </h2>
   <div class="d-flex flex-column gap-2">
     {% for m in matches %}
     <div>
-      <div class="match-result-card">
-        <span class="match-team home">{% if m.home_team %}{{ m.home_team.flag_emoji }} {{ m.home_team.display_name }}{% else %}TBD{% endif %}</span>
-        {% if m.is_completed %}
-          <span class="match-score wc-numeral">{{ m.home_score }}&ndash;{{ m.away_score }}</span>
-        {% elif m.kickoff_utc %}
-          <span class="match-score pending wc-numeral">{{ format_ct(m.kickoff_utc).strftime('%-m/%-d %-I:%M%p') }}</span>
-        {% else %}
-          <span class="match-score pending wc-numeral">TBD</span>
-        {% endif %}
-        <span class="match-team away">{% if m.away_team %}{{ m.away_team.flag_emoji }} {{ m.away_team.display_name }}{% else %}TBD{% endif %}</span>
-      </div>
+      {{ render_match(m) }}
       {{ render_chip(m) }}
     </div>
     {% endfor %}

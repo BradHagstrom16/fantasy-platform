@@ -5,7 +5,7 @@ All route handlers for the World Cup Fantasy Pool game.
 Mounted at /worldcup/ via blueprint url_prefix.
 """
 from functools import wraps
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 
 from flask import render_template, redirect, url_for, flash, request, jsonify
 from flask_login import login_required, current_user
@@ -588,7 +588,42 @@ def schedule():
         m.id: compute_match_attribution(m) for m in matches if m.is_completed
     }
 
-    group_matches = [m for m in matches if m.stage == 'group']
+    # S2.2.1 — group stage rendered by matchday (Central-Time date), not by
+    # group letter. Match rows are sorted by match_number which interleaves the
+    # 12 groups chronologically; the previous group_letter divider therefore
+    # fired up to 48 times across the group stage as a per-match label rather
+    # than as a real section separator. Day grouping preserves the chronology
+    # the schedule promises and lets live-state surface "today" naturally.
+    today_ct_date = _format_ct(now_utc()).date()
+    matchdays_group = []
+    by_day = OrderedDict()
+    tbd_group_matches = []
+    for m in matches:
+        if m.stage != 'group':
+            continue
+        if m.kickoff_utc is None:
+            tbd_group_matches.append(m)
+            continue
+        ct_dt = _format_ct(m.kickoff_utc)
+        day_key = ct_dt.date().isoformat()
+        by_day.setdefault(day_key, {'sample_dt': ct_dt, 'matches': []})
+        by_day[day_key]['matches'].append(m)
+    for day_key, bucket in by_day.items():
+        sample_dt = bucket['sample_dt']
+        matchdays_group.append({
+            'day_iso': day_key,
+            'date_label': sample_dt.strftime('%a %b %-d'),
+            'is_today': sample_dt.date() == today_ct_date,
+            'matches': bucket['matches'],
+        })
+    if tbd_group_matches:
+        matchdays_group.append({
+            'day_iso': None,
+            'date_label': 'Date TBD',
+            'is_today': False,
+            'matches': tbd_group_matches,
+        })
+
     r32_matches = [m for m in matches if m.stage == 'R32']
     r16_matches = [m for m in matches if m.stage == 'R16']
     qf_matches = [m for m in matches if m.stage == 'QF']
@@ -597,7 +632,7 @@ def schedule():
     final = [m for m in matches if m.stage == 'final']
 
     return render_template('worldcup/schedule.html',
-        group_matches=group_matches,
+        matchdays_group=matchdays_group,
         r32_matches=r32_matches,
         r16_matches=r16_matches,
         qf_matches=qf_matches,

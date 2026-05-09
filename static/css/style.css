@@ -2815,6 +2815,88 @@ body.game-worldcup {
   flex-shrink: 0;
 }
 
+/* S2.2.1 — Schedule day header (matchday section) and per-card group tag.
+   Replaces the inline-styled H4 group divider that fired up to 48 times across
+   the chronologically-interleaved group stage with a single primitive that
+   labels each calendar day instead. The .is-today modifier surfaces the
+   current matchday in live state. */
+.schedule-day-header {
+  font-family: 'Teko', sans-serif;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  font-size: 1.1rem;
+  /* --text-secondary clears AA on the bone canvas (~5.5:1); the prior
+     --text-muted regressed to ~3:1, below the 4.5:1 normal-text floor. */
+  color: var(--text-secondary);
+  margin: 1.25rem 0 .5rem;
+  display: flex;
+  align-items: baseline;
+  gap: .6rem;
+}
+.schedule-day-header .schedule-day-date {
+  /* date glyph holds its own weight; the badge sits beside it */
+}
+.schedule-day-header.is-today {
+  color: var(--purple-700);
+}
+.schedule-today-badge {
+  display: inline-flex;
+  align-items: center;
+  font-family: 'Teko', sans-serif;
+  font-size: .72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .1em;
+  color: var(--bone);
+  background: var(--wc-red);
+  padding: .15em .55em;
+  border-radius: 2px;
+  position: relative;
+  top: -.05em;
+}
+.schedule-day-block {
+  /* day-scoped wrapper so each matchday's matches share a compact rhythm */
+}
+.schedule-day-block:first-of-type .schedule-day-header {
+  margin-top: .5rem;
+}
+
+/* Group letter badge inside .match-result-card. Position absolute so it
+   doesn't disturb the existing 3-column flex layout (home / score / away). */
+.match-result-card { position: relative; }
+.match-result-card .match-group-tag {
+  position: absolute;
+  top: .35rem;
+  right: .55rem;
+  font-family: 'Teko', sans-serif;
+  font-size: .68rem;
+  font-weight: 600;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Schedule-page microcopy: legend under Group Stage H2 + small Central-Time
+   stamp under the hero lead. Replaces inline style attributes. */
+.schedule-legend {
+  font-size: .85rem;
+  color: var(--text-secondary);
+  margin-bottom: 1rem;
+  max-width: 60ch;
+}
+.schedule-tz-stamp {
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  font-size: .72rem;
+}
+.schedule-stage-count {
+  font-size: .6em;
+  font-weight: 400;
+}
+
 /* Match attribution chip — "ARG +3 base" etc. */
 .match-points-chip {
   display: inline-flex;
