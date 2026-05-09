@@ -2,36 +2,30 @@
 {% block title %}{{ team.display_name }} ({{ team.fifa_code }}) · World Cup Fantasy Pool{% endblock %}
 
 {% block content %}
-<div class="page-hero wc-hero-grad">
+<div class="page-hero wc-hero-grad{% if user_owns %} wc-hero-grad-owned{% endif %}">
   <div class="hero-glow"></div>
   <div class="container">
-    <span class="wc-eyebrow wc-eyebrow-red">
-      {{ team.fifa_code }} · Group {{ team.group_letter }} · Tier {{ team.tier }}
+    <span class="wc-eyebrow{% if user_owns %} wc-eyebrow-red{% endif %}">
+      {% if user_owns %}Your pick · {% endif %}{{ team.fifa_code }} · Group {{ team.group_letter }} · Tier
+      <span class="wc-tier-dot wc-tier-dot-{{ team.tier }}" aria-hidden="true"></span>{{ team.tier }}
     </span>
     <h1 class="d-flex align-items-center gap-3">
       <span class="team-hero-flag">{{ team.flag_emoji }}</span>
       {{ team.display_name }}
     </h1>
-    <div class="team-hero-stats">
-      <div class="hero-stat">
-        <span class="wc-eyebrow">Tier</span>
-        <strong>
-          <span class="wc-tier-dot wc-tier-dot-{{ team.tier }}"></span>
-          <span class="wc-numeral">{{ team.tier }}</span>
-        </strong>
+    {# Hero stat line: one dominant Scored numeral with the multiplier chip
+       inline; the Base × Multiplier derivation reads as supporting microcopy.
+       The duplicate Tier tile moved up onto the eyebrow line. #}
+    <div class="team-hero-line">
+      <div class="team-hero-score">
+        <span class="wc-meta-label">Tournament points</span>
+        <strong class="wc-numeral team-hero-score-value">{{ "%.1f"|format(team.multiplied_points) }}</strong>
       </div>
-      <div class="hero-stat">
-        <span class="wc-eyebrow">Multiplier</span>
-        <strong><span class="wc-multiplier-chip">×{{ team.multiplier }}</span></strong>
-      </div>
-      <div class="hero-stat">
-        <span class="wc-eyebrow">Base</span>
-        <strong class="wc-numeral">{{ "%.1f"|format(team.base_points) }}</strong>
-      </div>
-      <div class="hero-stat">
-        <span class="wc-eyebrow">Scored</span>
-        <strong class="wc-numeral">{{ "%.1f"|format(team.multiplied_points) }}</strong>
-      </div>
+      <span class="wc-multiplier-chip team-hero-mult">×{{ team.multiplier }}</span>
+      <p class="team-hero-derivation mb-0">
+        Base <strong class="wc-numeral">{{ "%.1f"|format(team.base_points) }}</strong>
+        × Multiplier <strong class="wc-numeral">{{ team.multiplier }}</strong>
+      </p>
     </div>
   </div>
 </div>
@@ -64,12 +58,12 @@
         {% if user_owns %}
         <div>
           <span class="wc-eyebrow wc-eyebrow-red">You Own This Nation</span>
-          <div class="small text-muted mt-1">Counts toward your roster.</div>
+          <div class="ownership-ribbon-blurb mt-1">Counts toward your roster.</div>
         </div>
         {% else %}
         <div>
           <span class="wc-eyebrow">Roster ownership</span>
-          <div class="small text-muted mt-1">Across the Club this tournament.</div>
+          <div class="ownership-ribbon-blurb mt-1">Across the Club this tournament.</div>
         </div>
         {% endif %}
         {% if deadline_passed %}
@@ -105,35 +99,40 @@
                 {# Mark first not-completed match as "Next" #}
                 {% set is_next = (not match.is_completed) and (not ns.next_set) %}
                 {% if is_next %}{% set ns.next_set = true %}{% endif %}
-                <li class="fixture-row {% if is_next %}fixture-row-next{% endif %}">
+                <li class="fixture-row {% if is_next %}fixture-row-next{% endif %}{% if not match.is_completed %} fixture-row-pending{% endif %}">
                   <div class="fixture-stage">
                     <span class="wc-eyebrow">{{ stage_label(match.stage) }}</span>
                     {% if match_dates_ct.get(match.id) %}
-                    <small class="text-muted d-block">{{ match_dates_ct[match.id] }}</small>
+                    <small class="fixture-stage-date d-block">{{ match_dates_ct[match.id] }}</small>
                     {% endif %}
                   </div>
                   <div class="fixture-opponent">
-                    <span class="text-muted small me-1">{% if is_team_home %}vs{% else %}@{% endif %}</span>
+                    <span class="fixture-vs me-1">{% if is_team_home %}vs{% else %}@{% endif %}</span>
                     {% if opponent %}
-                      <span class="me-1">{{ opponent.flag_emoji }}</span>{{ opponent.fifa_code }}
+                      <span class="fixture-flag">{{ opponent.flag_emoji }}</span>
+                      <span class="fixture-code">{{ opponent.fifa_code }}</span>
                     {% else %}
-                      <span class="text-muted">TBD</span>
+                      <span class="fixture-tbd">TBD</span>
                     {% endif %}
                   </div>
                   <div class="fixture-result wc-numeral">
                     {% if match.is_completed %}
-                      {% if is_team_home %}{{ match.home_score }}&ndash;{{ match.away_score }}{% else %}{{ match.away_score }}&ndash;{{ match.home_score }}{% endif %}
+                      {% if is_team_home %}{{ match.home_score }}–{{ match.away_score }}{% else %}{{ match.away_score }}–{{ match.home_score }}{% endif %}
                     {% else %}
-                      <span class="text-muted">TBD</span>
+                      <span class="fixture-tbd">TBD</span>
                     {% endif %}
                   </div>
+                  {# Pts column drops on un-played rows (mobile + desktop):
+                     desktop renders an empty cell so the grid stays aligned;
+                     mobile collapses the row to 3 columns so the dead column
+                     doesn't claim 12% of horizontal space pre-tournament. #}
+                  {% if match.is_completed %}
                   <div class="fixture-pts wc-numeral {% if match_pts > 0 %}text-success{% elif match_pts < 0 %}text-danger{% endif %}">
-                    {% if match.is_completed %}
-                      {{ "+%.1f"|format(match_pts) if match_pts >= 0 else "%.1f"|format(match_pts) }}
-                    {% else %}
-                      <span class="text-muted">&middot;</span>
-                    {% endif %}
+                    {{ "+%.1f"|format(match_pts) if match_pts >= 0 else "%.1f"|format(match_pts) }}
                   </div>
+                  {% else %}
+                  <div class="fixture-pts fixture-pts-empty" aria-hidden="true"></div>
+                  {% endif %}
                   {% if is_next %}
                   <div class="fixture-next-pip wc-eyebrow wc-eyebrow-red">Next</div>
                   {% endif %}
@@ -159,18 +158,25 @@
             Projected ceiling: <span class="wc-numeral">{{ "%.1f"|format(path.projected_ceiling) }}</span>
           {% endif %}
         </h3>
-        <div class="path-segments">
+        {# PI-2 (S2.3.1): every segment carries an icon so status no longer
+           reads as color-only (PRODUCT.md a11y rule). Icons pair with the
+           red/gold/bone tint already on .path-segment-{status}. #}
+        <ol class="path-segments" aria-label="Path through the tournament">
           {% for seg in path.segments %}
-          <div class="path-segment path-segment-{{ seg.status }}">
+          <li class="path-segment path-segment-{{ seg.status }}"
+              aria-current="{% if seg.status == 'current' %}step{% else %}false{% endif %}">
             <span class="wc-eyebrow">{{ seg.stage }}</span>
-            {% if seg.status == 'won' %}
-              <i class="bi bi-check-lg" aria-label="won"></i>
-            {% elif seg.status == 'eliminated' %}
-              <i class="bi bi-x-lg" aria-label="eliminated"></i>
-            {% endif %}
-          </div>
+            <span class="path-segment-icon" aria-hidden="true">
+              {% if seg.status == 'won' %}<i class="bi bi-check-lg"></i>
+              {% elif seg.status == 'eliminated' %}<i class="bi bi-x-lg"></i>
+              {% elif seg.status == 'current' %}<i class="bi bi-record-circle-fill"></i>
+              {% else %}<i class="bi bi-circle"></i>
+              {% endif %}
+            </span>
+            <span class="visually-hidden">{{ seg.status }}</span>
+          </li>
           {% endfor %}
-        </div>
+        </ol>
         {% if not path.eliminated %}
         <p class="text-muted small mt-2 mb-0">
           If <strong>{{ team.fifa_code }}</strong> wins out from here, this is the team's

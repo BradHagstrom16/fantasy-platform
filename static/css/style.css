@@ -2297,6 +2297,17 @@ body.game-worldcup {
     linear-gradient(180deg, #0A1A50 0%, #00102E 100%);
 }
 
+/* P2 S2.3.1 PI-3 — owned-state hero variant: warmer gold radial.
+   Voice in copy + a tilt of atmosphere; chrome stays restrained. The
+   "Your pick · " eyebrow prefix carries the social weight; the variant
+   gradient lifts the masthead without inventing new chrome. */
+.page-hero.wc-hero-grad.wc-hero-grad-owned {
+  background:
+    radial-gradient(680px 260px at 100% -10%, rgba(242, 211, 107, .28), transparent 68%),
+    radial-gradient(420px 180px at 0% 100%, rgba(191, 10, 48, .22), transparent 70%),
+    linear-gradient(180deg, #11215C 0%, #00102E 100%);
+}
+
 /* Tier dot — circular tier indicator. Sibling pattern to tier-badge-{n}. */
 .wc-tier-dot {
   display: inline-block;
@@ -2393,29 +2404,82 @@ body.game-worldcup {
 .pick-event-desc { font-size: .9rem; }
 .pick-event-pts { font-size: 1rem; }
 
-/* Spec C Plan 2 — player_detail / team_detail hero stat grid.
+/* Spec C Plan 2 — player_detail hero stat grid. team_detail moved to the
+   .team-hero-line shape in S2.3.1 (PI-1: hero re-shape).
    NOTE: uses .hero-stat (not .stat-block) to avoid collision with the
    later platform .stat-block rule which has its own card chrome. */
-.player-hero-stats,
-.team-hero-stats {
+.player-hero-stats {
   display: flex;
   gap: 1.5rem;
   flex-wrap: wrap;
   margin-top: .75rem;
 }
-.player-hero-stats .hero-stat,
-.team-hero-stats .hero-stat {
+.player-hero-stats .hero-stat {
   display: flex;
   flex-direction: column;
   gap: .2rem;
   min-width: 70px;
 }
-.player-hero-stats .hero-stat strong,
-.team-hero-stats .hero-stat strong {
+.player-hero-stats .hero-stat strong {
   font-size: 1.6rem;
   line-height: 1;
   color: var(--wc-white);
   font-weight: 700;
+}
+
+/* P2 S2.3.1 PI-1 — team_detail hero stat line.
+   Re-shape: one dominant Scored numeral, multiplier chip inline, the Base
+   × Multiplier derivation reads as supporting microcopy. The duplicate
+   Tier tile moved up onto the eyebrow line so the masthead doesn't render
+   four equal-weight 1.6rem numerals (hero-metric template adjacency). */
+.team-hero-line {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 1rem 1.25rem;
+  margin-top: .85rem;
+}
+.team-hero-score {
+  display: flex;
+  flex-direction: column;
+  gap: .15rem;
+  flex-shrink: 0;
+}
+.team-hero-score-value {
+  font-size: 2.6rem;
+  line-height: 1;
+  color: var(--wc-white);
+  font-weight: 700;
+}
+.team-hero-mult {
+  align-self: center;
+  font-size: 1.05rem;
+}
+.team-hero-derivation {
+  font-family: 'Newsreader', Georgia, serif;
+  font-size: .92rem;
+  line-height: 1.4;
+  color: rgba(245, 241, 232, .82);
+  flex: 1 1 240px;
+  min-width: 0;
+}
+.team-hero-derivation .wc-numeral {
+  color: var(--wc-white);
+  font-size: 1.05rem;
+  margin: 0 .12rem;
+}
+
+/* Reusable Teko meta-label primitive — smaller cousin of .wc-eyebrow.
+   Distinct shape (no letter-spacing, lower-contrast color) so the eyebrow
+   stays a singular section-kicker primitive while in-row labels read as
+   captions. Introduced in S2.3.1 to support the hero re-shape. */
+.wc-meta-label {
+  font-family: 'Teko', sans-serif;
+  font-size: .7rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: rgba(245, 241, 232, .68);
 }
 
 /* Back-affordance link — small, bone-mute, hover-bright */
@@ -2479,6 +2543,13 @@ body.game-worldcup {
   color: var(--wc-white);
   font-weight: 700;
 }
+/* PI-4 freebie (S2.3.1): replace Bootstrap .text-muted (#6c757d, neutral
+   gray) on the dark navy ribbon with a bone-mute tint so the ribbon
+   blurb holds AA against the rgba(0,17,46,.6) substrate. */
+.ownership-ribbon .ownership-ribbon-blurb {
+  font-size: .85rem;
+  color: var(--bone-mute);
+}
 
 /* Fixture row grid — 4-col layout: stage / opponent / score / points.
    Mobile compresses to 80/1fr/50/50 with reduced padding. */
@@ -2511,23 +2582,75 @@ body.game-worldcup {
   font-size: .6rem;
 }
 
+/* PI-4 (S2.3.1): scoped legibility helpers replace inline `.text-muted`
+   tokens that read at #6c757d (neutral gray) on the .card.wc-card navy
+   surface. Each tints toward the bone family so micro-copy holds AA. */
+.fixture-stage-date,
+.fixture-vs,
+.fixture-tbd {
+  color: var(--bone-mute);
+}
+.fixture-stage-date { font-size: .8rem; }
+.fixture-vs        { font-size: .85rem; }
+.fixture-tbd       { font-size: .9rem; }
+/* Opponent cell: explicit gap + flag flex-shrink so emoji glyphs don't
+   collide with the FIFA code at the squeezed 1fr column on mobile. */
+.fixture-opponent {
+  display: flex;
+  align-items: center;
+  gap: .35rem;
+  min-width: 0;
+}
+.fixture-opponent .fixture-flag {
+  flex-shrink: 0;
+  line-height: 1;
+}
+.fixture-opponent .fixture-code {
+  font-weight: 600;
+  letter-spacing: .02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* Empty pts cell: invisible spacer keeps desktop grid alignment without
+   rendering the "·" dead-placeholder dot on every un-played row. */
+.fixture-pts-empty {
+  visibility: hidden;
+}
+
 @media (max-width: 575.98px) {
+  /* Played rows keep 4 columns (results + pts both fit). Pending rows
+     collapse to 3 columns so the dead pts cell stops claiming ~12% of
+     horizontal space and the opponent cell gets breathing room. */
   .fixture-row {
     grid-template-columns: 80px 1fr 50px 50px;
     padding: .55rem .75rem;
     gap: .5rem;
   }
+  .fixture-row-pending {
+    grid-template-columns: 80px 1fr 60px;
+  }
+  .fixture-row-pending .fixture-pts-empty {
+    display: none;
+  }
 }
 
-/* Spec C Plan 2 — path-to-crown segments + picker list.
+/* Path-to-crown segments + picker list.
    6 stage tiles (Group · R32 · R16 · QF · SF · Final) × 4 statuses.
-   Won = gold-tinted ✓; current = red-bordered (next-up); eliminated = red ✗;
-   future = dim. flex 1-1-0 keeps tiles equal at 1280px and wraps gracefully
-   under 375px. */
+   Won = gold-tinted ✓; current = red-bordered ◉ (next-up); eliminated = red ✗;
+   future = bone-outline ○. Each status carries an icon so status reads
+   without color (PRODUCT.md a11y rule). flex 1-1-0 keeps tiles equal at
+   1280px and wraps gracefully under 375px.
+   S2.3.1 PI-2: <ol> + <li> for proper sequence semantics; explicit list
+   reset because the parent .container's Bootstrap reset doesn't reach. */
 .path-segments {
   display: flex;
   gap: .4rem;
   flex-wrap: wrap;
+  list-style: none;
+  padding-left: 0;
+  margin-bottom: 0;
+  counter-reset: path-step;
 }
 .path-segment {
   flex: 1 1 0;
@@ -2535,7 +2658,7 @@ body.game-worldcup {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: .15rem;
+  gap: .25rem;
   padding: .5rem .25rem;
   border: 1px solid rgba(245, 241, 232, .08);
   border-radius: 4px;
@@ -2543,43 +2666,78 @@ body.game-worldcup {
   color: var(--bone-mute);
   transition: border-color var(--transition);
 }
+/* Icon wrapper sits beneath the stage eyebrow at a consistent line-height
+   so the row stays vertically aligned across status mixes. */
+.path-segment-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  line-height: 1;
+  height: 1.05rem;
+}
+.path-segment-future .path-segment-icon { color: rgba(245, 241, 232, .35); }
 .path-segment-won {
   color: var(--wc-white);
   border-color: rgba(242, 211, 107, .35);
   background: rgba(242, 211, 107, .08);
 }
+.path-segment-won .path-segment-icon { color: var(--gold-light); }
 .path-segment-current {
   color: var(--wc-white);
   border-color: var(--wc-red);
   background: rgba(191, 10, 48, .12);
+}
+.path-segment-current .path-segment-icon {
+  color: var(--wc-red);
+  animation: path-current-pulse 2.4s ease-in-out infinite;
 }
 .path-segment-eliminated {
   color: var(--bone-mute);
   border-color: var(--wc-red);
   background: rgba(191, 10, 48, .06);
 }
+.path-segment-eliminated .path-segment-icon { color: var(--wc-red); }
+
+@keyframes path-current-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .55; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .path-segment-current .path-segment-icon { animation: none; }
+}
 
 .picker-list {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  gap: .35rem .5rem;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: .4rem .5rem;
 }
 /* Picker pills sit on the bone page surface (not inside a dark card),
    so they need dark-on-light text to read. var(--wc-navy) mirrors the
-   surrounding h3 heading color. */
+   surrounding h3 heading color.
+   PI-5 (S2.3.1): inline-flex + min-height 44px enforces the 44×44 mobile
+   tap-target floor (PRODUCT.md / CLAUDE.md S0.3 lock). The grid step drops
+   from 160 → 140px so two pills still fit on a 375px viewport. */
 .picker-list-item .picker-link {
-  display: inline-block;
-  padding: .25rem .5rem;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: .55rem .8rem;
   color: var(--wc-navy);
   text-decoration: none;
   border: 1px solid rgba(0, 26, 77, .15);
-  border-radius: 4px;
-  font-size: .9rem;
+  border-radius: 6px;
+  font-size: .95rem;
   transition: border-color var(--transition), background-color var(--transition);
 }
-.picker-list-item .picker-link:hover {
+.picker-list-item .picker-link:hover,
+.picker-list-item .picker-link:focus-visible {
   border-color: var(--wc-red);
   background: rgba(191, 10, 48, .05);
+}
+.picker-list-item .picker-link:focus-visible {
+  outline: 2px solid var(--wc-red);
+  outline-offset: 2px;
 }
 
 /* === WORLD CUP FANTASY POOL === */
