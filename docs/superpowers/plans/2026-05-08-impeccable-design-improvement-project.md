@@ -1693,7 +1693,7 @@ Mark each session as it completes. Append the session-completion commit SHA for 
 - [x] **S2.2** — schedule (converged: 2026-05-08, S2.2.1)
   - [x] S2.2.1 (commit: d8b0f10) — heur 19→30/40 (Δ +11), audit ~11→16/20 (Δ +5), anti-pat 4→0. Gate: **PASS** (0 P0, 0 P1, 0 anti-pat, heur ≥ baseline+6 [25 floor, 30 actual]). 4 P2/P3 routed forward (3 to S2.6 cross-cluster live framing, 1 to S6.1 cross-phase `<time datetime>` semantic harden).
 - [x] **S2.3** — team_detail (converged: 2026-05-08, S2.3.1)
-  - [x] S2.3.1 (commit: ______) — heur 24→31/40 (Δ +7), audit 14→18/20 (Δ +4), anti-pat 0→0. Gate: **PASS** (0 P0, 0 unrouted P1, 0 anti-pat, heur ≥ baseline+6 [30 floor, 31 actual]). 5 P2/P3 routed forward (3 to S2.3.2 [in-surface] for comparator + state-shell + ceiling-rank, 1 to S2.6 [cross-cluster] for eyebrow saturation, 2 [ship-as-is] for bottom back-link + tier-1 multiplier-token coincidence).
+  - [x] S2.3.1 (commit: 7e44752) — heur 24→31/40 (Δ +7), audit 14→18/20 (Δ +4), anti-pat 0→0. Gate: **PASS** (0 P0, 0 unrouted P1, 0 anti-pat, heur ≥ baseline+6 [30 floor, 31 actual]). 5 P2/P3 routed forward (3 to S2.3.2 [in-surface] for comparator + state-shell + ceiling-rank, 1 to S2.6 [cross-cluster] for eyebrow saturation, 2 [ship-as-is] for bottom back-link + tier-1 multiplier-token coincidence).
 - [ ] **S2.4** — stats (converged: ___)
   - [ ] S2.4.1 (commit: ____) — score: ____. Gate: ____.
   - [ ] S2.4.N (commit: ____) — score: ____. Gate: ____.
