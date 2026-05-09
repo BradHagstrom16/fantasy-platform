@@ -1684,7 +1684,7 @@ Mark each session as it completes. Append the session-completion commit SHA for 
   - [x] S2.1.1 (commit: e69966f) — heur 26→30/40, audit 15→17/20, anti-pat 5→0. Gate: failed (heur < 32 floor; 6 in-surface backlog).
   - [x] S2.1.2 (commit: 296a122) — heur 28→32/40 (re-critique pre/post), audit 16→18/20, anti-pat 0→0. Gate: **PASS** (0 P0, 0 unrouted P1, 0 anti-pat, heur ≥ 32). 4 of 6 inherited backlog items closed; 2 routed forward (sparkline delight + a11y polish) to S2.1.3.
 - [x] **S2.2** — schedule (converged: 2026-05-08, S2.2.1)
-  - [x] S2.2.1 (commit: ____) — heur 19→30/40 (Δ +11), audit ~11→16/20 (Δ +5), anti-pat 4→0. Gate: **PASS** (0 P0, 0 P1, 0 anti-pat, heur ≥ baseline+6 [25 floor, 30 actual]). 4 P2/P3 routed forward (3 to S2.6 cross-cluster live framing, 1 to S6.1 cross-phase `<time datetime>` semantic harden).
+  - [x] S2.2.1 (commit: d8b0f10) — heur 19→30/40 (Δ +11), audit ~11→16/20 (Δ +5), anti-pat 4→0. Gate: **PASS** (0 P0, 0 P1, 0 anti-pat, heur ≥ baseline+6 [25 floor, 30 actual]). 4 P2/P3 routed forward (3 to S2.6 cross-cluster live framing, 1 to S6.1 cross-phase `<time datetime>` semantic harden).
 - [ ] **S2.3** — team_detail (converged: ___)
   - [ ] S2.3.1 (commit: ____) — score: ____. Gate: ____.
   - [ ] S2.3.N (commit: ____) — score: ____. Gate: ____.
