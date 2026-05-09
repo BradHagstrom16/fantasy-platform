@@ -3373,10 +3373,14 @@ body.game-worldcup {
   font-weight: 500;
   letter-spacing: .1em;
   text-transform: uppercase;
-  color: var(--text-muted);
+  /* S2.4.1 PI-1: --text-secondary clears AA on white card (~7.15:1).
+     --text-muted (#8A849B) on white = 3.59:1, sub-AA at 12-13px body
+     weight. Same family as project_text_muted_aa_on_bone.md (bone variant)
+     applied to the stats white-card surface. */
+  color: var(--text-secondary);
   margin-top: .3rem;
 }
-.wc-kpi-sub { font-size: .76rem; color: var(--text-muted); margin-top: .15rem; }
+.wc-kpi-sub { font-size: .76rem; color: var(--text-secondary); margin-top: .15rem; }
 
 .wc-stat-card {
   background: var(--bg-card);
@@ -3420,6 +3424,118 @@ body.game-worldcup {
 .wc-tb-4 { background: var(--wc-tier4); }
 .wc-tb-5 { background: var(--wc-tier5); }
 
+/* S2.4.1 PI-2: Stats Hub masthead — one dominant Teko numeral + Newsreader
+   derivation line. Replaces the prior 4-tile .wc-kpi-block band on Board
+   per the §1.5b "hero-metric ban applies to adjacency" pattern from S2.3.1. */
+.wc-stats-masthead {
+  border-top: 2px solid var(--gold);
+  padding: 1.1rem 0 1.25rem;
+  margin-bottom: 1.5rem;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 1.5rem;
+  align-items: end;
+}
+.wc-stats-masthead-numeral {
+  font-family: 'Teko', sans-serif;
+  font-size: 3.4rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--text-primary);
+  font-feature-settings: 'tnum';
+}
+.wc-stats-masthead-derivation {
+  font-family: 'Newsreader', Georgia, serif;
+  font-size: 1.05rem;
+  line-height: 1.45;
+  color: var(--text-primary);
+  margin: 0 0 .35rem;
+  max-width: 60ch;
+}
+.wc-stats-masthead-derivation strong { font-weight: 600; color: var(--game-primary); }
+@media (max-width: 575px) {
+  .wc-stats-masthead { grid-template-columns: 1fr; gap: .65rem; padding: .95rem 0 1rem; }
+  .wc-stats-masthead-numeral { font-size: 2.8rem; }
+  .wc-stats-masthead-derivation { font-size: 1rem; }
+}
+
+/* S2.4.1 PI-2: By-Tier ledger strip — replaces the prior 5-tile .wc-kpi-block
+   band on Tiers tab. Horizontal ledger with gold-rule top + per-cell border
+   reads as editorial summary, not as KPI dashboard. */
+.wc-stats-ledger {
+  border-top: 2px solid var(--gold);
+  border-bottom: 1px solid var(--border);
+  padding: .55rem 0;
+  margin-bottom: 1.5rem;
+}
+.wc-stats-ledger-eyebrow {
+  font-family: 'Teko', sans-serif;
+  font-size: .72rem;
+  font-weight: 500;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  padding: 0 .9rem .35rem;
+}
+.wc-stats-ledger-row { display: flex; flex-wrap: wrap; }
+.wc-stats-ledger-cell {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: .45rem .85rem;
+  border-right: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: .55rem;
+  font-family: 'Teko', sans-serif;
+  font-size: .95rem;
+  letter-spacing: .04em;
+  color: var(--text-primary);
+}
+.wc-stats-ledger-cell:last-child { border-right: 0; }
+.wc-stats-ledger-cell .wc-tier-dot {
+  width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0;
+}
+.wc-stats-ledger-cell-label { font-weight: 500; text-transform: uppercase; letter-spacing: .06em; }
+.wc-stats-ledger-cell-value {
+  margin-left: auto;
+  font-weight: 700;
+  font-size: 1.15rem;
+  color: var(--text-primary);
+  font-feature-settings: 'tnum';
+}
+@media (max-width: 767px) {
+  .wc-stats-ledger-cell {
+    flex: 1 1 50%;
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .wc-stats-ledger-cell:nth-last-child(-n+2) { border-bottom: 0; }
+  .wc-stats-ledger-cell:nth-child(odd) { border-right: 1px solid var(--border); }
+}
+
+/* S2.4.1 PI-3: Lead-card variant — one card per tab earns the dominant
+   editorial register. Gold-rule top, no body border, larger pad. Breaks
+   the 15-card-identical silhouette flagged by the critique. */
+.wc-stat-card.is-lead {
+  border: 0;
+  border-top: 2px solid var(--gold);
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: 1.5rem 1.5rem 1.75rem;
+}
+.wc-stat-card.is-lead .wc-card-head {
+  margin-bottom: 1.4rem;
+  font-size: 1.1rem;
+  letter-spacing: .08em;
+}
+.wc-stat-card.is-lead .wc-eyebrow {
+  display: block;
+  color: var(--text-secondary);
+  font-size: .68rem;
+  letter-spacing: .14em;
+  margin-bottom: .35rem;
+}
+
 /* Scoring list */
 .wc-lb-row {
   display: grid;
@@ -3431,7 +3547,7 @@ body.game-worldcup {
   transition: background .15s;
 }
 .wc-lb-row:hover { background: var(--bg-muted); }
-.wc-lb-rank { font-family: 'Teko', sans-serif; font-weight: 700; font-size: 1.05rem; color: var(--text-muted); text-align: center; }
+.wc-lb-rank { font-family: 'Teko', sans-serif; font-weight: 700; font-size: 1.05rem; color: var(--text-secondary); text-align: center; }
 .wc-lb-score { font-family: 'Teko', sans-serif; font-weight: 700; font-size: 1.1rem; color: var(--game-primary); text-align: right; }
 .wc-still-in {
   display: inline-block;
