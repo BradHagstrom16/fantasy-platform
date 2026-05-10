@@ -22,7 +22,7 @@ Iteration map:
   light surfaces leaked Bootstrap `.text-muted` (`#6c757d` neutral gray) on
   microcopy that the rest of the surface renders in CCC purple-tinted
   `--text-secondary` (`#5A5470`). Three sites identified by the S2.6 sweep:
-  schedule stage-count `<small>` (×2), team_detail no-fixtures empty state,
+  schedule stage-count `<small>` (x2), team_detail no-fixtures empty state,
   team_detail path-to-crown explainer. Each carries a surface-honest class
   (`.schedule-stage-count` / `.team-fixtures-empty` / `.team-path-fineprint`)
   that resolves to `--text-secondary` via scoped CSS, with the `text-muted`
@@ -172,7 +172,7 @@ def test_schedule_pi4_jump_to_today_anchor_in_hero():
 
 
 def test_schedule_pi4_jump_to_today_chip_meets_44_floor():
-    """Per P0 S0.3 the global 44×44 tap-target floor applies to every new
+    """Per P0 S0.3 the global 44x44 tap-target floor applies to every new
     affordance. The .schedule-jump-today rule sets min-height: 44px."""
     pattern = re.compile(
         r'\.schedule-jump-today\s*\{[^}]*min-height:\s*44px',

@@ -189,7 +189,7 @@ def test_schedule_template_uses_real_unicode_glyphs():
         "Replace '&middot;' with the real '·' glyph."
     )
     assert '&ndash;' not in SCHEDULE_TPL, (
-        "Replace '&ndash;' with the real '–' glyph."
+        "Replace '&ndash;' with the real '\N{EN DASH}' glyph."
     )
 
 
@@ -247,23 +247,37 @@ def test_schedule_route_renders_with_day_headers(app):
     )
 
 
-def test_schedule_route_today_badge_only_when_today_matchday_exists(app):
+def test_schedule_route_today_badge_only_when_today_matchday_exists(app, monkeypatch):
     """The is-today modifier and fragment id must only appear when the
-    fixture's date set actually intersects today (Central Time). With a
-    fixture pinned to 2026-06-11/12 and no WC_FAKE_NOW, today's date won't
-    match any matchday, so the badge must NOT render."""
+    fixture's date set actually intersects today (Central Time). Pin the
+    time seam to a date outside the seeded matchdays (2026-06-11/12) so
+    the assertion is strict and deterministic regardless of when the test
+    runs. Patch `now_utc` at the schedule route's read-site
+    (`games.worldcup.routes`) — the schedule view binds the symbol there
+    via `from games.worldcup.services.state import now_utc`, so the
+    route's `today_ct_date = _format_ct(now_utc()).date()` resolves
+    against this monkeypatch."""
+    from datetime import datetime, timezone
+    import games.worldcup.routes as wc_routes
+
+    monkeypatch.setattr(
+        wc_routes,
+        'now_utc',
+        lambda: datetime(2026, 5, 1, 12, 0, tzinfo=timezone.utc),
+    )
+
     client = app.test_client()
     resp = client.get('/worldcup/schedule')
+    assert resp.status_code == 200
     html = resp.data.decode()
-    # If the fixture days don't include today's CT date, the today badge
-    # should be absent. If it accidentally fires every render, this test
-    # catches the regression.
-    today_marker_count = html.count('schedule-today-badge')
-    if today_marker_count > 0:
-        # If today's date happened to land on 2026-06-11 or 06-12 (it won't
-        # in 2026-05+ runs of this test), the badge would be valid. We
-        # assert at most 1 occurrence — never duplicated.
-        assert today_marker_count == 1, (
-            "schedule-today-badge must render at most once (one matchday is "
-            "today)."
-        )
+    # With now pinned to 2026-05-01 and the fixture pinned to 2026-06-11/12,
+    # no matchday is "today" — the badge and the anchor id must both be
+    # absent. A bug that renders the badge unconditionally (e.g.,
+    # always-true `is_today`) now fails this test instead of slipping
+    # through on a date-dependent lenient branch.
+    assert 'schedule-today-badge' not in html, (
+        "schedule-today-badge rendered with no matchday on today's date."
+    )
+    assert 'id="today"' not in html, (
+        "today anchor id rendered with no matchday on today's date."
+    )
