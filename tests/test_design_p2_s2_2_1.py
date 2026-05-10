@@ -46,14 +46,21 @@ def test_schedule_route_passes_matchdays_group_not_group_matches():
         "schedule() must pass matchdays_group to render_template; the "
         "matchday data structure is what enables the day-header grouping."
     )
-    assert "[m for m in matches if m.stage == 'group']" not in routes_src or (
-        # the legacy assignment was removed; if it returns later for a
-        # different reason, the template must still receive matchdays_group
-        'matchdays_group=matchdays_group' in routes_src
-    ), (
-        "schedule() may compute group_matches internally but must not "
-        "pass the flat list to the template — that re-enables the "
-        "recurring Group-A divider."
+    # Two separate strict assertions, not an OR. The earlier OR collapsed
+    # to a tautology: line 45 already requires
+    # `matchdays_group=matchdays_group` to be present, so the OR's right
+    # branch was unconditionally true at this point and a reintroduced
+    # list-comp would have slipped through the regression lock.
+    assert "[m for m in matches if m.stage == 'group']" not in routes_src, (
+        "Legacy flat group-stage list-comprehension reappeared in "
+        "routes.py. Matchday grouping is the only supported shape for the "
+        "schedule view; an internal recompute risks drifting back to the "
+        "recurring Group-A divider path."
+    )
+    assert 'group_matches=group_matches' not in routes_src, (
+        "schedule() must not pass a legacy `group_matches` kwarg to "
+        "render_template — only `matchdays_group` is wired into the "
+        "matchday-grouped template."
     )
 
 
