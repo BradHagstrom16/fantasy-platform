@@ -165,15 +165,23 @@ def test_schedule_template_strips_inline_teko_h4_styles():
 def test_match_points_chip_carries_title_tooltip():
     """The chip is opaque to the casual user without a tooltip. Casual is the
     default; depth (the base/multiplier explanation) is available on hover."""
-    assert 'class="match-points-chip"' in SCHEDULE_TPL
-    # The chip's macro must declare a title attribute so every rendered chip
-    # inherits the explanation. Match class and title on the *same* tag so
-    # the assertion survives harmless attribute-order or spacing changes
-    # that the previous `split('match-points-chip')[1][:200]` probe would
-    # false-fail on (a wider tag pushes `title=` past the 200-char window,
-    # or a stray earlier mention of the class name skews the slice).
+    # Match class and title on the *same* tag, tolerating either attribute
+    # order. The earlier strict `class="match-points-chip"` substring check
+    # was dropped because it false-fails on a harmless second class
+    # (`class="match-points-chip is-knockout"`) and on quote-style changes;
+    # the regex alone is enough — if `match-points-chip` is absent or the
+    # tag carries no `title=`, the search returns None and the assertion
+    # fails. The alternation handles both `class=… title=` and
+    # `title=… class=…` orderings so a formatter swap doesn't break the
+    # lock. `[^>]*` between the two attributes enforces the "same tag"
+    # invariant; `\b…\b` keeps the class match resilient to additional
+    # classes in the same attribute.
     assert re.search(
-        r'class="[^"]*\bmatch-points-chip\b[^"]*"[^>]*\btitle=',
+        r'<[^>]*(?:'
+        r'\bclass=["\'][^"\']*\bmatch-points-chip\b[^"\']*["\'][^>]*\btitle\s*='
+        r'|'
+        r'\btitle\s*=[^>]*\bclass=["\'][^"\']*\bmatch-points-chip\b[^"\']*["\']'
+        r')',
         SCHEDULE_TPL,
     ), (
         ".match-points-chip must carry a title= tooltip on the same tag so "
