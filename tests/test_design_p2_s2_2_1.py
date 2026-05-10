@@ -23,6 +23,7 @@ Iteration map:
 - Freebies: `&middot;` and `&ndash;` HTML entities removed from the schedule
   template in favor of real Unicode glyphs.
 """
+import re
 from pathlib import Path
 
 import pytest
@@ -166,11 +167,17 @@ def test_match_points_chip_carries_title_tooltip():
     default; depth (the base/multiplier explanation) is available on hover."""
     assert 'class="match-points-chip"' in SCHEDULE_TPL
     # The chip's macro must declare a title attribute so every rendered chip
-    # inherits the explanation.
-    chip_macro = SCHEDULE_TPL.split('match-points-chip')[1][:200]
-    assert 'title=' in chip_macro, (
-        ".match-points-chip must carry a title= tooltip on the macro so the "
-        "chip is self-explaining for the casual user."
+    # inherits the explanation. Match class and title on the *same* tag so
+    # the assertion survives harmless attribute-order or spacing changes
+    # that the previous `split('match-points-chip')[1][:200]` probe would
+    # false-fail on (a wider tag pushes `title=` past the 200-char window,
+    # or a stray earlier mention of the class name skews the slice).
+    assert re.search(
+        r'class="[^"]*\bmatch-points-chip\b[^"]*"[^>]*\btitle=',
+        SCHEDULE_TPL,
+    ), (
+        ".match-points-chip must carry a title= tooltip on the same tag so "
+        "every rendered chip is self-explaining for the casual user."
     )
 
 
