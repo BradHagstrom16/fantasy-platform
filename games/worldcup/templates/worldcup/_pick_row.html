@@ -10,14 +10,14 @@
       <i class="bi bi-chevron-right" aria-hidden="true"></i>
       <span class="visually-hidden">Toggle scoring details</span>
     </button>
-    <span class="me-2 fs-5">{{ pick.team.flag_emoji }}</span>
+    <span class="me-2 fs-5" aria-hidden="true">{{ pick.team.flag_emoji }}</span>
     <a href="{{ url_for('worldcup.team_detail', team_id=pick.team_id) }}"
        class="fw-medium team-link">{{ pick.team.display_name }}</a>
     <small class="text-muted ms-1">Grp {{ pick.team.group_letter }}</small>
   </td>
   <td>
-    <span class="wc-tier-dot wc-tier-dot-{{ pick.tier }}"></span>
-    <span class="wc-eyebrow">T{{ pick.tier }}</span>
+    <span class="wc-tier-dot wc-tier-dot-{{ pick.tier }}" aria-hidden="true"></span>
+    <span class="wc-eyebrow">{{ tiers[pick.tier].name }}</span>
   </td>
   <td class="text-center">
     <span class="wc-multiplier-chip">&times;{{ pick.team.multiplier }}</span>

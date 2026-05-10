@@ -5,33 +5,33 @@
 <div class="page-hero wc-hero-grad">
   <div class="hero-glow"></div>
   <div class="container">
-    <span class="wc-eyebrow {% if neighbors.rank == 1 %}wc-eyebrow-gold{% else %}wc-eyebrow-red{% endif %}">
-      {% if neighbors.rank == 1 %}Current Leader{% else %}Rank {{ neighbors.rank }}{% endif %}
-    </span>
-    <h1>
-      <span class="me-2">{{ enrollment.user.get_avatar() }}</span>{{ enrollment.get_display_name() }}
-    </h1>
-    <div class="player-hero-stats">
-      <div class="hero-stat">
-        <span class="wc-eyebrow">Total</span>
-        <strong class="wc-numeral">{{ "%.1f"|format(enrollment.total_score) }}</strong>
-      </div>
-      <div class="hero-stat">
-        <span class="wc-eyebrow">Lead</span>
-        <strong class="wc-numeral">
-          {% if neighbors.lead_delta_up is none %}
-            none
-          {% else %}
-            -{{ "%.1f"|format(neighbors.lead_delta_up) }}
-          {% endif %}
-        </strong>
-      </div>
+    <div class="player-hero-eyebrows">
+      <span class="wc-eyebrow {% if neighbors.rank == 1 %}wc-eyebrow-gold{% else %}wc-eyebrow-red{% endif %}">
+        {% if neighbors.rank == 1 %}Current Leader{% else %}Rank {{ neighbors.rank }}{% endif %}
+      </span>
       {% if enrollment.usa_goals_guess is not none %}
-      <div class="hero-stat">
-        <span class="wc-eyebrow">Tiebreak</span>
-        <strong class="wc-numeral">{{ enrollment.usa_goals_guess }}</strong>
-      </div>
+      <span class="wc-eyebrow player-hero-tiebreak" aria-label="Tiebreaker: {{ enrollment.usa_goals_guess }} US goals predicted">
+        Tiebreak <strong>{{ enrollment.usa_goals_guess }}</strong> US&nbsp;goals
+      </span>
       {% endif %}
+    </div>
+    <h1>
+      <span class="me-2" aria-hidden="true">{{ enrollment.user.get_avatar() }}</span>{{ enrollment.get_display_name() }}
+    </h1>
+    <div class="player-hero-line">
+      <div class="player-hero-score">
+        <span class="wc-eyebrow">Total</span>
+        <strong class="player-hero-score-value wc-numeral">{{ "%.1f"|format(enrollment.total_score) }}</strong>
+      </div>
+      <p class="player-hero-derivation">
+        {% if neighbors.rank == 1 %}
+          Leads the table.{% if neighbors.lead_delta_down is not none %} {{ "%.1f"|format(neighbors.lead_delta_down) }} ahead of next.{% endif %}
+        {% elif neighbors.lead_delta_up is not none and neighbors.lead_delta_down is not none %}
+          Trails leader by {{ "%.1f"|format(neighbors.lead_delta_up) }}, {{ "%.1f"|format(neighbors.lead_delta_down) }} ahead of next.
+        {% elif neighbors.lead_delta_up is not none %}
+          Trails leader by {{ "%.1f"|format(neighbors.lead_delta_up) }}.
+        {% endif %}
+      </p>
     </div>
   </div>
 </div>
@@ -92,12 +92,12 @@
             {% for pick in picks %}
             <div class="player-pick-card">
               <div>
-                <span class="wc-tier-dot wc-tier-dot-{{ pick.tier }}"></span>
-                <span class="wc-eyebrow">T{{ pick.tier }}</span>
+                <span class="wc-tier-dot wc-tier-dot-{{ pick.tier }}" aria-hidden="true"></span>
+                <span class="wc-eyebrow">{{ tiers[pick.tier].name }}</span>
                 <span class="pick-team d-block mt-1">
                   <a href="{{ url_for('worldcup.team_detail', team_id=pick.team_id) }}"
                      class="team-link">
-                    {{ pick.team.flag_emoji }} {{ pick.team.display_name }}
+                    <span aria-hidden="true">{{ pick.team.flag_emoji }}</span> {{ pick.team.display_name }}
                   </a>
                   <small class="text-muted">Grp {{ pick.team.group_letter }}</small>
                 </span>

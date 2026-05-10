@@ -2375,17 +2375,48 @@ body.game-worldcup {
   background: rgba(245, 241, 232, .12);
 }
 
-/* picks.html / player_detail.html — pick row tier + multiplier on light card */
-.player-picks-desktop .wc-multiplier-chip {
-  color: var(--text-primary, #212529);
-  background: rgba(0, 40, 104, .04);
-  border-color: rgba(0, 40, 104, .12);
+/* === P2 S2.5.1 PI-1 — player_detail / picks contrast lock on .card.wc-card.
+   The wrapping <div class="card wc-card wc-card-flush"> puts the desktop
+   picks table on the dark navy surface (rgba(0,17,46,.8)). The previous
+   block here assumed a LIGHT card (forcing dark text on multiplier chip,
+   eyebrow, pick-event-stage, dashed border) — which rendered the entire
+   table invisible on the actual dark substrate. Per CLAUDE.md "`.card.wc-card`
+   is a dark navy surface", lift every cell on this scope to light tokens. */
+.player-picks-desktop .table-worldcup > tbody > tr > td {
+  color: var(--text-on-dark);
+  border-color: rgba(245, 241, 232, .08);
+  background-color: transparent;
 }
-.player-picks-desktop td .wc-eyebrow {
-  color: var(--text-muted, #6c757d);
+.player-picks-desktop .table-worldcup > tbody > tr:hover > td {
+  background-color: rgba(245, 241, 232, .04);
+}
+.player-picks-desktop .table-worldcup > tfoot > tr > td {
+  color: var(--text-on-dark);
+  border-color: rgba(245, 241, 232, .14);
+  background-color: transparent;
+}
+.player-picks-desktop .team-link {
+  color: var(--text-on-dark);
+}
+.player-picks-desktop .team-link:hover {
+  color: var(--gold-light);
+  border-bottom-color: var(--gold-light);
+}
+/* Override the surgical exclusion at the cluster 3 .card.wc-card .table
+   .text-muted rule below — that exclusion exists because Bootstrap's
+   white-td default masks navy on most surfaces, but player_detail's
+   .card.wc-card-flush + transparent td bg LEAVES navy bleeding through.
+   The card IS the .player-picks-desktop element (.card.wc-card.wc-card-flush
+   .player-picks-desktop), so the selector compounds three classes on the
+   same element to beat the cluster-3 specificity (.card.wc-card .table > tbody
+   > tr > td .text-muted = 4 classes + 3 elements). */
+.card.wc-card.player-picks-desktop .table-worldcup > tbody > tr > td .text-muted,
+.card.wc-card.player-picks-desktop .table-worldcup > tbody > tr > td.text-muted {
+  color: var(--bone-mute) !important;
 }
 
-/* picks.html / player_detail.html — three-column event-item grid (drill-down) */
+/* picks.html / player_detail.html — three-column event-item grid (drill-down).
+   Lives inside .pick-accordion which inherits .card.wc-card (dark navy). */
 .pick-events-inner {
   padding: .75rem 1rem .25rem;
 }
@@ -2395,36 +2426,67 @@ body.game-worldcup {
   gap: .75rem;
   align-items: baseline;
   padding: .25rem 0;
-  border-bottom: 1px dashed rgba(0, 40, 104, .07);
+  border-bottom: 1px dashed rgba(245, 241, 232, .12);
   animation: wc-event-fade-in 200ms ease-out both;
   animation-delay: calc(var(--event-i, 0) * 40ms);
+  color: var(--text-on-dark);
 }
 .pick-events-list .pick-event-item:last-child { border-bottom: none; }
-.pick-event-stage { color: var(--text-muted, #6c757d); }
+.pick-event-stage { color: var(--bone-mute); }
 .pick-event-desc { font-size: .9rem; }
 .pick-event-pts { font-size: 1rem; }
 
-/* Spec C Plan 2 — player_detail hero stat grid. team_detail moved to the
-   .team-hero-line shape in S2.3.1 (PI-1: hero re-shape).
-   NOTE: uses .hero-stat (not .stat-block) to avoid collision with the
-   later platform .stat-block rule which has its own card chrome. */
-.player-hero-stats {
+/* P2 S2.5.1 PI-2 — player_detail hero re-shape.
+   Mirrors the team_detail .team-hero-line pattern locked in S2.3.1: one
+   dominant numeral (Total at 2.6rem), Newsreader derivation prose carrying
+   the rivalry framing (trails leader by X · Y ahead of next), Tiebreak
+   moved off the masthead onto the eyebrow line as a chip with units.
+   Replaces the prior three-equal-weight 1.6rem grid (hero-metric template
+   adjacency, banned per impeccable + DESIGN.md §6). */
+.player-hero-eyebrows {
   display: flex;
-  gap: 1.5rem;
+  align-items: center;
   flex-wrap: wrap;
-  margin-top: .75rem;
+  gap: .5rem .9rem;
+  margin-bottom: .25rem;
 }
-.player-hero-stats .hero-stat {
+.player-hero-tiebreak {
+  color: var(--bone-mute);
+  letter-spacing: .08em;
+}
+.player-hero-tiebreak strong {
+  color: var(--text-on-dark);
+  font-weight: 700;
+  margin: 0 .15rem;
+  font-variant-numeric: tabular-nums;
+}
+.player-hero-line {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: .65rem 1.25rem;
+  margin-top: .85rem;
+}
+.player-hero-score {
   display: flex;
   flex-direction: column;
-  gap: .2rem;
-  min-width: 70px;
+  gap: .15rem;
+  flex-shrink: 0;
 }
-.player-hero-stats .hero-stat strong {
-  font-size: 1.6rem;
+.player-hero-score-value {
+  font-size: 2.6rem;
   line-height: 1;
   color: var(--wc-white);
   font-weight: 700;
+}
+.player-hero-derivation {
+  font-family: 'Newsreader', Georgia, serif;
+  font-size: .98rem;
+  line-height: 1.4;
+  color: rgba(245, 241, 232, .82);
+  flex: 1 1 240px;
+  min-width: 0;
+  margin: 0;
 }
 
 /* P2 S2.3.1 PI-1 — team_detail hero stat line.
@@ -3082,10 +3144,13 @@ body.game-worldcup {
   margin: 0 .2em;
 }
 
-/* Pick drill-down accordion */
+/* Pick drill-down accordion.
+   P2 S2.5.1 PI-1: surface sits inside .card.wc-card (dark navy). Lift the
+   panel tint to a bone wash so the drill-down reads as a distinct band on
+   navy, and shift toggle + total + empty copy to light tokens. */
 .pick-accordion {
-  border-top: 1px dashed var(--border, #dee2e6);
-  background: rgba(0, 40, 104, .03);
+  border-top: 1px dashed rgba(245, 241, 232, .14);
+  background: rgba(245, 241, 232, .04);
   max-height: 0;
   opacity: 0;
   overflow: hidden;
@@ -3098,65 +3163,33 @@ body.game-worldcup {
 .pick-accordion-toggle {
   background: transparent;
   border: 0;
-  color: var(--text-muted, #6c757d);
+  color: var(--bone-mute);
   cursor: pointer;
   padding: 0 .35rem;
   font-size: .9rem;
-  transition: transform 140ms ease-out;
+  transition: transform 140ms ease-out, color var(--transition);
+}
+.pick-accordion-toggle:hover,
+.pick-accordion-toggle:focus-visible {
+  color: var(--gold-light);
 }
 .pick-accordion-toggle.open {
   transform: rotate(90deg);
-  color: var(--game-primary, #002868);
-}
-.score-events-list {
-  list-style: none;
-  margin: 0;
-  padding: .75rem 1rem;
-  font-size: .85rem;
-}
-.score-events-list li {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: .75rem;
-  padding: .2rem 0;
-  animation: wc-event-fade-in 200ms ease-out both;
-  animation-delay: calc(var(--event-i, 0) * 40ms);
-}
-.score-events-list .event-meta {
-  color: var(--text-muted, #6c757d);
-  font-size: .8rem;
-  letter-spacing: .02em;
-  text-transform: uppercase;
-}
-.score-events-list .event-pts {
-  font-family: 'Teko', sans-serif;
-  font-weight: 600;
-  letter-spacing: .03em;
-  color: var(--game-primary, #002868);
-}
-.score-events-list .event-source-dot {
-  display: inline-block;
-  width: .45em;
-  height: .45em;
-  border-radius: 50%;
-  background: var(--game-accent, #BF0A30);
-  margin-right: .5em;
-  vertical-align: middle;
-  opacity: .7;
+  color: var(--gold-light);
 }
 .score-events-total {
   padding: .5rem 1rem .75rem;
-  border-top: 1px dotted var(--border, #dee2e6);
-  color: var(--text-muted, #6c757d);
+  border-top: 1px dotted rgba(245, 241, 232, .14);
+  color: var(--bone-mute);
   font-size: .8rem;
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
+.score-events-total strong { color: var(--text-on-dark); }
 .score-events-empty {
   padding: .75rem 1rem;
   font-size: .85rem;
-  color: var(--text-muted, #6c757d);
+  color: var(--bone-mute);
   font-style: italic;
 }
 @keyframes wc-event-fade-in {
@@ -5108,6 +5141,14 @@ hr { border-color: var(--border); opacity: 1; }
     align-items: center;
     justify-content: space-between;
     gap: .5rem;
+  }
+  /* P2 S2.5.1 PI-5 freebie: the .wc-eyebrow default `--bone-mute` reads
+     sub-AA on the white .player-pick-card surface (the picks-mobile card
+     is the light-surface sibling of the now-dark .player-picks-desktop).
+     Lift the tier-name eyebrow to --text-secondary, the AA-passing token
+     for headings/legends on bone per memory project_text_muted_aa_on_bone. */
+  .player-pick-card .wc-eyebrow {
+    color: var(--text-secondary);
   }
   .player-pick-card .pick-team {
     font-family: 'Teko', sans-serif;
