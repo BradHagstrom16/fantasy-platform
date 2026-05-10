@@ -266,6 +266,34 @@ The four gates carry equal weight. **Anti-perfectionism note**: if all four pass
 
 **Backlog routing within an iteration.** When a critique surfaces an in-scope P0/P1 outside the iteration's 3-5 budget, route it to the next iteration of the same surface. When it surfaces a cross-cluster pattern (visible only when comparing two or more surfaces in the cluster), route to the cluster polish session (S2.6 / S3.4 / S4.5 / S5.3). When it surfaces a cross-phase pattern (visible only when comparing across phases), route to S6.1. The §0.4 Backlog rules in this plan have the precise routing matrix.
 
+### 1.5c Cluster polish session pattern (S2.6 / S3.4 / S4.5 / S5.3 / S6.1)
+
+Cluster polish sessions are **not** per-surface iterations and do **not** trigger the §1.5b convergence gate. They receive routed `[Sx.y.N cross-cluster]` items from §0.4 and produce 3-5 cluster-level fixes. Calibrated against S2.6 (the first cluster polish session to run end-to-end under the iterative model).
+
+**Triage discipline.** Three pitfalls a cluster session must avoid:
+
+1. **DESIGN.md cross-check before fixing every routed item.** A `[cross-cluster]` route from a per-surface iteration is the *critique's* judgment that something looks like an anti-pattern. The *committed* design policy may have already considered and accepted it. Calibrated against S2.6 PI-2: the S2.4.1 critique flagged `.wc-stat-card`'s border+`--shadow-sm` as "double elevation, pick one" — but DESIGN.md §4.4 "Lift-At-Rest Rule" and §6 card primitive explicitly mandate both at rest ("the Tribune is a printed object, not a wireframe"). Shipping the "fix" would have regressed the committed brand policy. Impeccable's priority rule (user instructions > skill heuristics) means **DESIGN.md wins on any conflict**. Pre-fix check: for each routed item, search DESIGN.md for the relevant primitive/policy section. If DESIGN.md mandates the pattern the critique flagged, the routed item resolves as a **decided no-op with rationale** in §0.4 (counts toward the 3-5 cap as a triage finding, but produces no code change).
+
+2. **Verify the cross-cluster premise at session-time, not at route-time.** A finding gets the `[cross-cluster]` tag during a per-surface iteration when the surface critique notes "pattern likely shared with other surfaces." That's a *guess* about cross-surface scope; the cluster session is the place to confirm it. Calibrated against S2.6: the S2.4.1-routed "inline-Teko duplication likely shared with `_home_live` impact rows / leaderboard mobile cards" turned out to be **0 hits** outside `stats.html` in the live cluster. The actual cross-surface usage was P4 pre-live templates (picks/rules/join, 11+ instances). One grep at session-time saved a premature extraction that would have needed a second migration pass in P4. **Verification action**: for each routed item that names "likely shared" surfaces, run a one-line grep across those surfaces before scoping the fix. If the cross-surface premise doesn't hold, **re-route** the item with the corrected receiving session (e.g., to a different phase's cluster session) instead of fixing it in the wrong cluster.
+
+3. **"Cap 3-5 PIs" includes triage outcomes, not just code changes.** A decided no-op (per #1) or a re-route (per #2) is a legitimate PI outcome and counts toward the cap. The cap measures triage work, not edit count.
+
+**Verification bar (lighter than per-surface convergence).** A cluster session does not need to run `$impeccable critique` against each child surface. The bar is "all S2.x.M surfaces hold; no in-surface P0/P1 surfaced; the cluster session's own edits don't regress adjacent surfaces." Concretely:
+
+- **Layer A**: source-pattern locks for every code-change PI under `tests/test_design_<phase>_s<num>_<cluster>.py`.
+- **Layer B (the cluster verification layer)**: Playwright MCP computed-style probes and visual smoke on **touched surfaces + adjacent surfaces where the change could bleed**. Touched = surfaces directly edited by a PI. Adjacent = surfaces that share the changed CSS scope (e.g., a `.card.wc-card .table` change touches every surface containing that selector pattern). S2.6 calibration: PI-1 touched no template directly but altered the cluster-3 surgical-exclusion environment, so leaderboard + player_detail + picks were probed; PI-3 touched schedule + team_detail, so those were probed; PI-4 touched schedule, probed at desktop + mobile.
+- **Layer C is skipped by default.** Re-running `$impeccable critique` against 5–6 surfaces is ~3-6 hours of sub-agent work; Layer B catches the regressions that matter (computed contrast, layout, focus, tap-target floor). Re-run Layer C only if Layer B surfaces unexplained visual differences or if the cluster work was structurally large (e.g., a chrome-component rewrite that re-flows every cluster surface).
+
+**Output shape.** A cluster session produces (in this order):
+
+1. The 3-5 PI triage table in the session message — for each item: source `[Sx.y.N cross-cluster]` route, S2.6-time DESIGN.md/grep verification result, outcome (fix / no-op / re-route).
+2. Code changes per fix PI (minimal, scoped, additive — never broadcast).
+3. Layer A regression locks per fix PI.
+4. Layer B verification log (computed values + screenshot paths).
+5. §0.4 amendments: routed items get `CLOSED in S<this session>` / `[S<this session> routed]` annotations with rationale; un-touched cross-cluster items stay open.
+6. §9 rollup row flipped; commit hash backfilled per §1.5 step 5.
+7. Phase PR opened (cluster session is the last session of its phase per §1.1).
+
 ### 1.6 Out-of-scope guardrails
 
 - **Don't touch Golf or CFB.** They're explicitly excluded.
