@@ -2652,6 +2652,17 @@ body.game-worldcup {
 .fixture-tbd {
   color: var(--bone-mute);
 }
+
+/* P2 S2.6 PI-3: page-level team_detail microcopy sits OUTSIDE .card.wc-card
+   (on the bone page background), so replace Bootstrap .text-muted (#6c757d
+   neutral gray) with the CCC purple-tinted --text-secondary (#5A5470).
+   --bone-mute would over-fade on bone; --text-secondary holds AA at body
+   sizes and matches the tonal register of other page-level microcopy
+   (.schedule-stage-count / .wc-meta-label / .schedule-legend). */
+.team-fixtures-empty,
+.team-path-fineprint {
+  color: var(--text-secondary);
+}
 .fixture-stage-date { font-size: .8rem; }
 .fixture-vs        { font-size: .85rem; }
 .fixture-tbd       { font-size: .9rem; }
@@ -3115,6 +3126,52 @@ body.game-worldcup {
 .schedule-stage-count {
   font-size: .6em;
   font-weight: 400;
+  /* P2 S2.6 PI-3: replaces Bootstrap .text-muted (#6c757d neutral gray).
+     --text-secondary (#5A5470) reads as CCC purple-tinted on bone, holding
+     tonal consistency with .schedule-day-date / .schedule-legend on the
+     same surface. */
+  color: var(--text-secondary);
+}
+
+/* P2 S2.6 PI-4: above-the-fold jump-to-today affordance on schedule hero.
+   Pill chip styled to sit on the dark wc-hero-grad; arrow icon implies
+   downward navigation. Hover lifts to gold border. Visible only when a
+   today matchday exists (template-side conditional). Mid-tournament the
+   id="today" anchor lives 6-11 matchdays into the page; this chip closes
+   the live-state surfacing gap surfaced by S2.2.1. */
+.schedule-jump-today {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  margin-top: 1rem;
+  padding: .55rem 1rem;
+  font-family: 'Teko', sans-serif;
+  font-size: .9rem;
+  font-weight: 600;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--bone);
+  background: rgba(245, 241, 232, .08);
+  border: 1px solid rgba(245, 241, 232, .2);
+  border-radius: 999px;
+  text-decoration: none;
+  transition: border-color var(--transition), background var(--transition), color var(--transition);
+  min-height: 44px;
+}
+.schedule-jump-today:hover,
+.schedule-jump-today:focus-visible {
+  color: var(--gold-light);
+  background: rgba(242, 211, 107, .08);
+  border-color: rgba(242, 211, 107, .45);
+  text-decoration: none;
+}
+.schedule-jump-today:focus-visible {
+  outline: 2px solid var(--gold-light);
+  outline-offset: 2px;
+}
+.schedule-jump-today .bi {
+  font-size: 1.1rem;
+  line-height: 1;
 }
 
 /* Match attribution chip — "ARG +3 base" etc. */
@@ -5476,12 +5533,36 @@ hr { border-color: var(--border); opacity: 1; }
   color: rgba(245, 241, 232, .82) !important;
 }
 
+/* P2 S2.6 PI-1 — Cluster-wide invariant lock for .card.wc-card .table.
+   The .text-muted surgical exclusion below relies on Bootstrap masking the
+   navy parent with a white td background. Bootstrap 5.3 supplies that via
+   `--bs-table-bg: var(--bs-body-bg)` (default #fff), but the assumption is
+   implicit — a future Bootstrap upgrade, a stray `--bs-body-bg` retune, or
+   a new .card.wc-card-wrapped table could silently break it and re-surface
+   the dark-on-dark bug that S2.5.1 PI-1 caught on .player-picks-desktop.
+
+   Lock the white-td invariant explicitly via a CCC-owned token assignment.
+   Bootstrap's own .table rule then consumes --bs-table-bg on every cell,
+   masking the navy with --bg-card. The masking becomes our design decision,
+   not Bootstrap's default.
+
+   Surfaces that want the dark navy bleed-through (e.g., .player-picks-desktop
+   on player_detail.html / picks.html) opt out by setting
+     background-color: transparent
+   on their own scoped > tbody > tr > td rule AND scope a counter-rule that
+   lifts .text-muted to a dark-surface-safe token (--bone-mute). See the
+   .card.wc-card.player-picks-desktop overrides at :2385-2416 above for the
+   canonical opt-out pattern. */
+.card.wc-card .table {
+  --bs-table-bg: var(--bg-card);
+}
+
 /* Surgical exclusion: restore Bootstrap default for any .text-muted
-   that lives inside a Bootstrap table cell. Bootstrap's white td bg
-   masks the navy parent, and the lifted bone color would render
-   invisible there. Concrete affected case: _pick_row.html:16 "Grp X"
-   caption inside the picks accordion <td>. Mirrors the don't-broadcast
-   logic from the Plan 3 follow-up block. */
+   that lives inside a Bootstrap table cell. The --bs-table-bg lock above
+   guarantees the cell renders on a light substrate, so the dark token is
+   readable. Concrete affected case: _pick_row.html:16 "Grp X" caption
+   inside the picks accordion <td>. Mirrors the don't-broadcast logic
+   from the Plan 3 follow-up block. */
 .card.wc-card .table > tbody > tr > td .text-muted,
 .card.wc-card .table > tbody > tr > td.text-muted {
   color: var(--bs-secondary-color) !important;

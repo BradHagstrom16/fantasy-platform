@@ -9,6 +9,18 @@
     <h1>Match Schedule</h1>
     <p class="lead mb-0">All 104 matches · 2026 FIFA World Cup</p>
     <small class="d-block mt-1 opacity-75 schedule-tz-stamp">All kickoff times shown in Central Time</small>
+    {# P2 S2.6 PI-4: above-the-fold jump-to-today affordance. The id="today"
+       anchor on .schedule-day-block landed in S2.2.1; nothing in the hero
+       surfaced it. Mid-tournament the today block sits 6-11 matchdays into
+       the page, so live-state surfacing required a scroll. Render only
+       when a today matchday actually exists (pre/post tournament: hide). #}
+    {% set today_days = (matchdays_group or [])|selectattr('is_today')|list %}
+    {% if today_days %}
+    <a href="#today" class="schedule-jump-today" aria-label="Jump to today's matches">
+      <i class="bi bi-arrow-down-short" aria-hidden="true"></i>
+      <span>Jump to today's matches</span>
+    </a>
+    {% endif %}
   </div>
 </div>
 
@@ -50,7 +62,7 @@
   {% if matchdays_group %}
   <h2 class="section-heading mb-2 animate-in">
     <i class="bi bi-grid-3x3 me-2"></i>Group Stage
-    <small class="text-muted ms-2 schedule-stage-count">{{ matchdays_group|length }} match days</small>
+    <small class="ms-2 schedule-stage-count">{{ matchdays_group|length }} match days</small>
   </h2>
   <p class="schedule-legend">Numbers under completed matches show <strong>base points</strong> toward each team's tier value. Multipliers apply on the team detail page.</p>
 
@@ -77,7 +89,7 @@
   {% if matches %}
   <h2 class="section-heading mt-5 mb-3 animate-in">
     <i class="bi bi-{{ icon }} me-2"></i>{{ title }}
-    <small class="text-muted ms-2 schedule-stage-count">{{ matches|length }} match{{ 'es' if matches|length != 1 }}</small>
+    <small class="ms-2 schedule-stage-count">{{ matches|length }} match{{ 'es' if matches|length != 1 }}</small>
   </h2>
   <div class="d-flex flex-column gap-2">
     {% for m in matches %}

@@ -142,7 +142,7 @@
           </div>
         </div>
         {% else %}
-        <p class="text-muted">No fixtures available.</p>
+        <p class="team-fixtures-empty">No fixtures available.</p>
         {% endif %}
       </section>
 
@@ -178,7 +178,7 @@
           {% endfor %}
         </ol>
         {% if not path.eliminated %}
-        <p class="text-muted small mt-2 mb-0">
+        <p class="team-path-fineprint small mt-2 mb-0">
           If <strong>{{ team.fifa_code }}</strong> wins out from here, this is the team's
           maximum possible contribution to a roster.
         </p>
