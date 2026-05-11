@@ -1649,9 +1649,9 @@ Same iterative model as P2 (per §1.5b). Global chrome runs before pre/post-stat
 - [x] **S3.2 — Auth pages cluster.** `login.html`, `register.html`, `forgot_password.html`, `reset_password.html`, `change_password.html`, `profile.html`. Run a single `$impeccable critique` per page (they're small, batch is feasible). Likely Priority Issues at first iteration: auth-page Tribunal Black backdrop atmosphere, focus management, error message voice, password-reset-token UX.
   - [x] **S3.2.1** — first iteration.
 
-- [ ] **S3.3 — Platform home (`core/main/templates/main/index.html`) + non-state component partials.** Biggest single template by partial-count. The home page dispatcher critiques separately from the four state partials (which are covered in P2/P4/P5). This surface focuses on the dispatcher and any partials not already touched (e.g., `_game_card.html`, `_game_tiles_compact.html`).
-  - [ ] **S3.3.1** — first iteration.
-  - [ ] **S3.3.N** — until convergence.
+- [x] **S3.3 — Platform home (`core/main/templates/main/index.html`) + non-state component partials.** Biggest single template by partial-count. The home page dispatcher critiques separately from the four state partials (which are covered in P2/P4/P5). This surface focuses on the dispatcher and any partials not already touched (e.g., `_game_card.html`, `_game_tiles_compact.html`).
+  - [x] **S3.3.1** — first iteration.
+  - [x] **S3.3.N** — until convergence (converged at S3.3.2).
 
 - [ ] **S3.4 — Errors + cross-cluster polish (NOT cluster mop-up).** Runs only after S3.1–S3.3 converge. Combines: (a) `404.html` / `500.html` first-iteration critique (these are small enough that one iteration usually converges them), (b) cross-cluster polish per the S2.6 model — patterns visible only when comparing 2+ chrome surfaces. **Step 0:** sweep §0.4 for `[Sx.y.N cross-cluster]` items routed to S3.4. **Step 1:** errors first-pass critique + fix. **Step 2:** cross-cluster polish (cap 3-5 findings). **Step 3:** re-run `$impeccable critique` against S3.1–S3.3 + errors; confirm no regressions. **Step 4:** open PR `Impeccable P3 — Global chrome + auth + errors`. If S3.4 finds an in-surface P0/P1, route to that surface's `Sx.y.N+1` iteration before opening the PR.
 
