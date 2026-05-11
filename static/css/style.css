@@ -6652,6 +6652,15 @@ hr { border-color: var(--border); opacity: 1; }
   margin-bottom: 1rem;
 }
 
+/* Anchor-target offset for `.wc-rules-index` pill jumps (S4.5 PI-3) — matches
+   the `.group-table` lock above so #rules-* deep-links land below the sticky
+   .navbar + .game-subnav stack (~98px), not under it. Scoped to id-bearing
+   headings only so non-anchor uses of the primitive don't inherit the offset. */
+.wc-section-heading[id],
+.wc-subsection-heading[id] {
+  scroll-margin-top: 6.5rem;
+}
+
 /* PI-4 companion: `.wc-subsection-heading` — the H3 sub-head primitive
    that promotes the prior <h5> "Match Results" / "Advancement Milestones"
    inside the Group Stage Scoring card. Closes the H3 → H5 outline skip

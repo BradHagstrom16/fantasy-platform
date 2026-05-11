@@ -85,7 +85,7 @@ def test_pi1_mobile_card_uses_wc_tier_dot_not_tier_badge():
     # Strip the script block from the search so we're only checking the HTML markup.
     markup_only = src.split('{% block scripts %}')[0]
     assert 'tier-badge-' not in markup_only, \
-        f"tier-badge-* must not appear in picks.html template body; only in summaryList JS"
+        "tier-badge-* must not appear in picks.html template body; only in summaryList JS"
     # Tier-dot is the canonical mobile readonly tier visual.
     assert 'wc-tier-dot-{{ pick.tier }}' in src, "wc-tier-dot must encode tier on mobile readonly card"
 
@@ -195,7 +195,7 @@ def test_pi4_pick_summary_no_top_stripe():
     block_end = css.find('}', start)
     block = css[start:block_end]
     assert 'border-top:' not in block, \
-        f".pick-summary must not declare border-top (was '3px solid var(--game-primary)' pre-S4.2.2)"
+        ".pick-summary must not declare border-top (was '3px solid var(--game-primary)' pre-S4.2.2)"
 
 
 def test_pi4_pick_summary_keeps_full_border():

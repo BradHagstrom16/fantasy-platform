@@ -173,6 +173,22 @@ def test_pi3_wc_rules_index_pill_has_focus_visible_ring(css_source: str):
 
 # ---------- PI-4: .wc-group-index ultra-wide max-width cap ----------
 
+def test_pi3_rules_h2_targets_carry_scroll_margin_offset(css_source: str):
+    """`.wc-rules-index` pill jumps land on id-bearing `.wc-section-heading`
+    H2s; without `scroll-margin-top` matching the sticky `.navbar` +
+    `.game-subnav` stack (~98px), the section title would hide under the
+    chrome on jump. Mirrors the `.group-table { scroll-margin-top: 6.5rem }`
+    lock from S4.4.1 PI-3. Scoped to id-bearing headings so non-anchor uses
+    of the primitive don't inherit the offset."""
+    expected = (
+        '.wc-section-heading[id],\n'
+        '.wc-subsection-heading[id] {\n'
+        '  scroll-margin-top: 6.5rem;\n'
+        '}'
+    )
+    assert expected in css_source
+
+
 def test_pi4_xl_breakpoint_caps_group_and_rules_index_max_width(css_source: str):
     """`@media (min-width: 1200px)` block applies a max-width to both
     `.wc-group-index` and the new `.wc-rules-index` sibling so the rail

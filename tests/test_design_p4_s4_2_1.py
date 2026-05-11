@@ -79,10 +79,12 @@ def _css_rule(selector: str) -> str:
     """Concatenate the bodies of every CSS rule whose opening selector
     list contains the given selector. Used to assert on specific
     declarations regardless of media-query branch."""
+    normalized = selector.rstrip().removesuffix('{').rstrip()
     blocks = re.findall(
-        rf'{re.escape(selector)}[^{{]*\{{[^}}]*\}}',
+        rf'{re.escape(normalized)}\s*\{{[^}}]*\}}',
         CSS,
     )
+    assert blocks, f'css rule not found for {normalized!r}'
     return '\n'.join(blocks)
 
 
