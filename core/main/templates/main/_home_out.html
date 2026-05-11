@@ -71,18 +71,54 @@
 
 </div>{# /.home-col #}
 
-{# Full game cards — registry-driven, breaks out of .home-col for full-width grid #}
-<div class="container my-5">
-  <div class="row g-4 justify-content-center">
-    {% for game in available_games %}
-    <div class="col-sm-6 col-md-4">
-      {% with state='logged_out' %}{% include 'main/_game_card.html' %}{% endwith %}
+{# Registry-driven pools section. Breaks out of .home-col for full container.
+   Composition: one featured pool + a stacked rail of coming-soon strips, so
+   the silhouettes vary (DESIGN.md §6 Don't #7, PRODUCT.md "Generic SaaS
+   Dashboards" anti-reference). #}
+<section class="out-registry" aria-labelledby="out-registry-head">
+  <div class="container">
+    <header class="out-registry-head">
+      <span class="out-registry-eyebrow">◈ The Court This Year</span>
+      <h2 id="out-registry-head" class="out-registry-title">Pools in <span class="home-metal-text">Session</span></h2>
+    </header>
+
+    <div class="out-registry-grid">
+      {# Featured pool — the open game (typically World Cup). The logged-out
+         viewer hasn't registered, so the link routes through auth.register
+         with `next=blueprint_join` so they land on the join page after sign-up. #}
+      {% for game in available_games %}
+      <a class="out-featured"
+         href="{{ url_for('auth.register', next=url_for(game.blueprint_join)) }}"
+         aria-label="Sign up to play {{ game.display_name }}">
+        <div class="out-featured-inner">
+          <span class="out-featured-eyebrow">The Featured Pool</span>
+          <span class="out-featured-icon" aria-hidden="true">{{ game.emoji }}</span>
+          <h3 class="out-featured-title">{{ game.display_name }}</h3>
+          <p class="out-featured-desc">{{ game.description }}</p>
+          <span class="out-featured-cta">
+            Sign Up to Play
+            <i class="bi bi-arrow-right" aria-hidden="true"></i>
+          </span>
+        </div>
+      </a>
+      {% endfor %}
+
+      {# Coming-soon rail — horizontal strips, distinct silhouette from the
+         featured card. Each strip names the game + its opening label. #}
+      {% if coming_soon_games %}
+      <aside class="out-coming-rail" aria-label="Pools coming soon">
+        <div class="out-coming-rail-head">Up Next on the Docket</div>
+        {% for game in coming_soon_games %}
+        <div class="out-coming-strip">
+          <span class="out-coming-strip-icon" aria-hidden="true">{{ game.emoji }}</span>
+          <div class="out-coming-strip-text">
+            <div class="out-coming-strip-title">{{ game.display_name }}</div>
+            <div class="out-coming-strip-meta">Opens {{ game.launch_label or 'TBA' }}</div>
+          </div>
+        </div>
+        {% endfor %}
+      </aside>
+      {% endif %}
     </div>
-    {% endfor %}
-    {% for game in coming_soon_games %}
-    <div class="col-sm-6 col-md-4">
-      {% with state='coming_soon' %}{% include 'main/_game_card.html' %}{% endwith %}
-    </div>
-    {% endfor %}
   </div>
-</div>
+</section>

@@ -597,8 +597,245 @@ body.game-golf {
 .home-shell .join-alt a {
   color: var(--gold-light);
   text-decoration: underline;
+  /* S4.1.1 F1 — 44×44 tap-target floor. Inline-flex with padding expands the
+     hit area; negative margins neutralize the visual offset so the link still
+     reads inline inside the running "Already sworn in? Sign in" text. */
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0.6rem 0.5rem;
+  margin: -0.6rem -0.5rem;
 }
 .home-shell .join-alt a:hover { color: var(--gold-hi); }
+.home-shell .join-alt a:focus-visible {
+  outline: 2px solid var(--gold-light);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* --- Logged-out: registry section (featured pool + coming-soon rail) ---
+   Replaces the 3-up identical-card grid that lived in _home_out.html before
+   S4.1.1. The featured card is a hero-sized panel; the coming-soon rail is
+   a stack of horizontal strips. Different silhouettes break the
+   identical-card-grid pattern (DESIGN.md §6 Don't #7). Lives outside .home-col
+   so it can span the full container at desktop. */
+.home-shell .out-registry {
+  margin: 2.5rem 0 1rem;
+}
+.home-shell .out-registry-head {
+  text-align: center;
+  margin-bottom: 1.75rem;
+}
+.home-shell .out-registry-eyebrow {
+  display: block;
+  font-family: var(--font-teko);
+  font-weight: 500;
+  font-size: 0.75rem;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--gold-light);
+  margin-bottom: 0.5rem;
+}
+.home-shell .out-registry-title {
+  font-family: var(--font-teko);
+  font-weight: 700;
+  font-size: 2rem;
+  line-height: 1;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--bone);
+  margin: 0;
+}
+@media (min-width: 768px) {
+  .home-shell .out-registry-title { font-size: 2.6rem; }
+}
+.home-shell .out-registry-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.25rem;
+  align-items: stretch;
+}
+@media (min-width: 992px) {
+  .home-shell .out-registry-grid {
+    /* Featured pool gets the 7-column-equivalent slot; the coming-soon rail
+       gets the narrower 5-column-equivalent. Aspect imbalance breaks
+       identical-card-grid silhouette. */
+    grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+    gap: 1.5rem;
+  }
+}
+
+/* Featured pool card (replaces the .game-card--featured wrapper for the
+   home-shell context; the standalone .game-card--featured variant in this
+   file is retained but unwired). */
+.home-shell .out-featured {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  border-radius: 14px;
+  overflow: hidden;
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1),
+              box-shadow 0.2s var(--transition);
+}
+.home-shell .out-featured-inner {
+  position: relative;
+  padding: 2.25rem 1.5rem 2.5rem;
+  background:
+    radial-gradient(ellipse at 80% 20%, rgba(201,162,39,.10) 0%, transparent 50%),
+    radial-gradient(ellipse at 20% 80%, rgba(58,29,114,.18) 0%, transparent 50%),
+    linear-gradient(145deg, var(--purple-950) 0%, var(--purple-800) 50%, var(--purple-950) 100%);
+  border: 1px solid rgba(201,162,39,.32);
+  border-radius: 14px;
+  text-align: center;
+}
+.home-shell .out-featured-inner::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(circle, rgba(201,162,39,.06) 1px, transparent 1px);
+  background-size: 24px 24px;
+  pointer-events: none;
+  border-radius: 14px;
+}
+.home-shell .out-featured-eyebrow {
+  position: relative;
+  display: inline-block;
+  font-family: var(--font-teko);
+  font-weight: 500;
+  font-size: 0.75rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--gold-light);
+  margin-bottom: 0.75rem;
+}
+.home-shell .out-featured-icon {
+  position: relative;
+  display: block;
+  font-size: 3rem;
+  line-height: 1;
+  margin: 0.25rem 0 0.75rem;
+  filter: drop-shadow(0 4px 12px rgba(28,10,58,.45));
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.home-shell .out-featured:hover .out-featured-icon {
+  transform: scale(1.08) rotate(-3deg);
+}
+.home-shell .out-featured-title {
+  position: relative;
+  font-family: var(--font-teko);
+  font-weight: 700;
+  font-size: clamp(1.6rem, 4vw, 2.4rem);
+  line-height: 1.05;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--bone);
+  margin: 0 0 0.5rem;
+}
+.home-shell .out-featured-desc {
+  position: relative;
+  font-family: var(--font-news);
+  font-size: 0.98rem;
+  line-height: 1.55;
+  color: rgba(243,239,230,.82);
+  margin: 0 auto 1.5rem;
+  max-width: 44ch;
+}
+.home-shell .out-featured-cta {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.85rem 2rem;
+  background: var(--metal-gold);
+  color: var(--purple-950);
+  font-family: var(--font-teko);
+  font-weight: 600;
+  font-size: 1rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  border-radius: 8px;
+  box-shadow: var(--shadow-gold);
+  min-height: 44px;
+}
+.home-shell .out-featured:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 32px rgba(58,29,114,.35);
+  color: inherit;
+}
+.home-shell .out-featured:focus-visible {
+  outline: 2px solid var(--gold-light);
+  outline-offset: 4px;
+  border-radius: 14px;
+}
+
+/* Coming-soon rail — horizontal strips */
+.home-shell .out-coming-rail {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1.25rem;
+  background: linear-gradient(180deg,
+    var(--purple-850) 0%,
+    var(--purple-950) 100%);
+  border: 1px solid rgba(243,239,230,.10);
+  border-radius: 14px;
+}
+.home-shell .out-coming-rail-head {
+  font-family: var(--font-teko);
+  font-weight: 500;
+  font-size: 0.75rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--bone-mute);
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid rgba(201,162,39,.18);
+  margin-bottom: 0.25rem;
+}
+.home-shell .out-coming-strip {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.75rem 0.5rem;
+  border-radius: 8px;
+  opacity: 0.78;
+}
+.home-shell .out-coming-strip-icon {
+  flex: 0 0 auto;
+  width: 48px;
+  height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.75rem;
+  line-height: 1;
+  filter: grayscale(0.18);
+  background: rgba(10,6,18,.55);
+  border: 1px solid rgba(201,162,39,.18);
+  border-radius: 10px;
+}
+.home-shell .out-coming-strip-text {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.home-shell .out-coming-strip-title {
+  font-family: var(--font-teko);
+  font-weight: 600;
+  font-size: 1.05rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--bone);
+  line-height: 1.1;
+}
+.home-shell .out-coming-strip-meta {
+  font-family: var(--font-teko);
+  font-weight: 500;
+  font-size: 0.8rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--bone-mute);
+  margin-top: 0.2rem;
+}
 
 /* --- Greet (used by pre/live/post) --- */
 .home-shell .greet {
@@ -706,43 +943,67 @@ body.game-golf {
   color: var(--gold-light);
   margin: 0 0 1.25rem;
 }
-.home-shell .decree-days {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 0.5rem;
-}
-.home-shell .decree-days .d-cell {
+/* S4.1.1 PI-2 — countdown hero: one dominant Days numeral. The former
+   4-cell .decree-days strip (Days · Hours · Min · Sec at equal weight)
+   read as hero-metric adjacency (DESIGN.md §6 Don't #8 + S2.3.1
+   calibration: ban applies to 3+ equal-weight numerals in a row). The
+   tick still updates live via static/js/countdown.js (data-cd-* preserved);
+   it now lives in the .decree-derivation prose line below the hero. */
+.home-shell .decree-hero {
   text-align: center;
-  min-width: 56px;
+  margin: 0.25rem auto 1rem;
 }
-.home-shell .decree-days .d-cell .v {
+.home-shell .decree-hero-num {
   font-family: var(--font-teko);
   font-weight: 700;
-  font-size: 2.8rem;
-  line-height: 1;
+  font-size: 4.5rem;
+  line-height: 0.9;
   color: var(--bone);
   font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
 }
-.home-shell .decree-days .d-cell .u {
+.home-shell .decree-hero-unit {
   font-family: var(--font-teko);
   font-weight: 500;
-  font-size: 0.7rem;
-  letter-spacing: 0.2em;
+  font-size: 0.78rem;
+  letter-spacing: 0.22em;
   text-transform: uppercase;
-  color: var(--bone-mute);
-  margin-top: 0.25rem;
-}
-.home-shell .decree-days .d-sep {
-  font-family: var(--font-teko);
-  font-weight: 700;
-  font-size: 2.4rem;
   color: var(--gold-light);
-  opacity: 0.5;
+  margin-top: 0.4rem;
 }
 @media (min-width: 768px) {
-  .home-shell .decree-days .d-cell .v { font-size: 3.6rem; }
-  .home-shell .decree-days .d-cell { min-width: 72px; }
+  .home-shell .decree-hero-num { font-size: 6rem; }
+  .home-shell .decree-hero-unit { font-size: 0.88rem; }
+}
+.home-shell .decree-derivation {
+  font-family: var(--font-news);
+  font-size: 0.92rem;
+  font-style: italic;
+  color: var(--bone-mute);
+  line-height: 1.4;
+  margin: 0.5rem auto 0;
+  max-width: 30ch;
+  text-align: center;
+}
+.home-shell .decree-tick {
+  font-style: normal;
+  font-variant-numeric: tabular-nums;
+  color: var(--bone);
+  font-family: var(--font-teko);
+  font-weight: 500;
+  letter-spacing: 0.04em;
+}
+.home-shell .decree-tick .u {
+  color: var(--bone-mute);
+  margin-left: 0.05em;
+  font-weight: 400;
+}
+.home-shell .decree-tick-sep {
+  color: rgba(242,211,107,.45);
+  margin: 0 0.35rem;
+}
+.home-shell .decree-tick-trail {
+  font-style: italic;
 }
 .home-shell .decree-foot {
   font-family: var(--font-news);
@@ -779,10 +1040,11 @@ body.game-golf {
   color: var(--purple-950) !important;
 }
 .home-shell .decree-links {
-  margin-top: 0.75rem;
+  margin-top: 0.5rem;
   display: flex;
   justify-content: center;
-  gap: 1.25rem;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.75rem;
 }
 .home-shell .decree-links a {
   font-family: var(--font-teko);
@@ -792,11 +1054,24 @@ body.game-golf {
   text-transform: uppercase;
   color: var(--bone-mute);
   text-decoration: none;
+  /* S4.1.1 PI-3 — 44×44 tap-target floor. Padding expands the hit area to
+     the 44px floor PRODUCT.md "Mobile-First Requirements" mandates. Without
+     this, the links measured 93×20 (House Rules) and 67×20 (Scoring) at the
+     375 viewport — caught by the S2.1.2 tap-target sweep recipe. */
   display: inline-flex;
   align-items: center;
   gap: 0.3rem;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0.65rem 0.75rem;
+  border-radius: 4px;
 }
 .home-shell .decree-links a:hover { color: var(--gold-light); }
+.home-shell .decree-links a:focus-visible {
+  outline: 2px solid var(--gold-light);
+  outline-offset: 2px;
+  color: var(--gold-light);
+}
 
 /* --- Pre-state: sealed ballot card --- */
 .home-shell .ballot-card {
