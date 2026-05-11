@@ -232,9 +232,9 @@ def test_game_card_pib_featured_no_neutral_black_shadow():
     region = _featured_css()
     black_shadow = re.findall(r'rgba\(\s*0\s*,\s*0\s*,\s*0', region)
     assert not black_shadow, (
-        f"PI-B: `.game-card--featured` CSS region still contains neutral-"
-        f"black `rgba(0,0,0,...)` shadow. Replace with chamber-purple "
-        f"`rgba(28,10,58,...)` per the Press-Room Shadow Rule."
+        "PI-B: `.game-card--featured` CSS region still contains neutral-"
+        "black `rgba(0,0,0,...)` shadow. Replace with chamber-purple "
+        "`rgba(28,10,58,...)` per the Press-Room Shadow Rule."
     )
 
 

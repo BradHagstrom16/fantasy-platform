@@ -125,6 +125,7 @@ def test_pi1_registry_populates_cfb_and_golf_metadata():
     # WC tile only as wc_label which still derives from state, but the
     # registry-side metadata exists for any future caller.
     assert "short_name='World Cup'" in REGISTRY, "PI-1: WC entry must set short_name='World Cup'."
+    assert "launch_label='Jun 11'" in REGISTRY, "PI-1: WC entry must set launch_label='Jun 11'."
 
 
 def test_pi1_tiles_compact_drops_slug_ternaries():

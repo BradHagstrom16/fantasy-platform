@@ -321,7 +321,7 @@ def test_auth_pi5_no_generic_saas_subtitles_across_cluster():
             if phrase in src:
                 offenders.append(f"{name} :: '{phrase}'")
     assert not offenders, (
-        f"PI-5: generic SaaS phrasings reappeared in auth templates:\n  "
+        "PI-5: generic SaaS phrasings reappeared in auth templates:\n  "
         + "\n  ".join(offenders)
     )
 
@@ -350,7 +350,7 @@ def test_auth_pi5_tribune_phrases_present():
         if phrase not in ALL_AUTH[name]:
             missing.append(f"{name} :: '{phrase}'")
     assert not missing, (
-        f"PI-5: Tribune-register phrases missing from auth templates:\n  "
+        "PI-5: Tribune-register phrases missing from auth templates:\n  "
         + "\n  ".join(missing)
     )
 
@@ -472,17 +472,28 @@ def test_auth_pi5_forgot_password_renders_tribune_copy():
         assert 'Found it?' in body
 
 
+def _strip_safe_contexts_for_dash_check(src: str) -> str:
+    """Strip regions where `--` is legitimate (HTML comments, `<style>`
+    blocks, BEM modifier classes, `var(--…)` references) so the residual
+    text is only user-visible copy + tag/attribute scaffolding. A `--`
+    surviving this scrub is a typographic em-dash substitute regression."""
+    cleaned = re.sub(r'<!--.*?-->', ' ', src, flags=re.DOTALL)
+    cleaned = re.sub(r'<style[^>]*>.*?</style>', ' ', cleaned, flags=re.DOTALL)
+    cleaned = re.sub(r'var\(\s*--[\w-]+(?:\s*,[^)]*)?\)', ' ', cleaned)
+    cleaned = re.sub(r'\b[a-zA-Z][\w-]*--[\w-]+\b', ' ', cleaned)
+    return cleaned
+
+
 def test_auth_no_em_dash_in_voice_rewrite():
     """P0 S0.3 banned em-dashes from UI copy. PI-5's rewrite must not
-    reintroduce them via `—` or `--`."""
-    em_dash_offenders = []
+    reintroduce them via `—` or `--` (the plain-ASCII substitute)."""
+    offenders = []
     for name, src in ALL_AUTH.items():
-        # `--` legitimately appears in CSS var refs, but no template body
-        # carries CSS. So a `--` outside `var(--…)` shouldn't appear
-        # anywhere. Em-dash `—` is unambiguous.
         if '—' in src:
-            em_dash_offenders.append(name)
-    assert not em_dash_offenders, (
-        f"PI-5: em-dash `—` reintroduced in auth template(s): {em_dash_offenders}. "
-        f"P0 S0.3 locked these out."
+            offenders.append(f"{name} :: '—'")
+        if '--' in _strip_safe_contexts_for_dash_check(src):
+            offenders.append(f"{name} :: '--'")
+    assert not offenders, (
+        "PI-5: em-dash (or its `--` ASCII substitute) reintroduced in auth "
+        f"template(s): {offenders}. P0 S0.3 locked these out."
     )
