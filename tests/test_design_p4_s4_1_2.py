@@ -42,7 +42,7 @@ Iteration map:
   ceremonial recipe. Base `.cta-card` no longer sets `border-radius`
   itself — per-variant overrides carry the register-specific value.
 
-- PI-4 (`$impeccable delight` — `.out-prop` ×3 row differentiation):
+- PI-4 (`$impeccable delight` — `.out-prop` x3 row differentiation):
   the logged-out value-props strip rendered as three identical
   icon-text rows. Row-by-row texture now breaks the within-strip
   identical-grid signal: row 1 keeps the trophy icon, row 2 swaps for
@@ -227,7 +227,10 @@ def test_pi2_ballot_card_no_longer_whole_area_link():
     # would otherwise trip the assertion.
     body = re.sub(r'\{#.*?#\}', '', BALLOT, flags=re.DOTALL)
     before_foot = body.split('<div class="ballot-foot">')[0]
-    assert '<a href=' not in before_foot, (
+    # Regex catches `<a href=...` AND `<a class="..." href=...` — the literal
+    # substring form would miss the latter and silently pass.
+    wrapper_anchor = re.search(r'<a\b[^>]*\bhref\s*=', before_foot, flags=re.IGNORECASE)
+    assert wrapper_anchor is None, (
         "PI-2: `_ballot_card.html` still opens with an `<a>` wrapper. "
         "The card body should be wrapped in `<section>`; the explicit "
         "edit action lives inside `.ballot-foot`."
@@ -321,12 +324,12 @@ def test_pi2_ballot_card_no_longer_lifts_on_hover_at_card_level():
 
 def test_pi2_ballot_edit_action_meets_44px_tap_floor_and_has_focus_ring():
     """The explicit edit action must satisfy the PRODUCT.md
-    Mobile-First 44×44 tap floor and carry the canonical CCC
+    Mobile-First 44x44 tap floor and carry the canonical CCC
     gold-light `:focus-visible` ring."""
     action_block = _css_rule('.home-shell .ballot-edit-action')
     assert 'min-height: 44px' in action_block, (
         "PI-2: `.ballot-edit-action` must declare `min-height: 44px` "
-        "to satisfy the 44×44 mobile tap floor."
+        "to satisfy the 44x44 mobile tap floor."
     )
     focus_block = _css_rule('.home-shell .ballot-edit-action:focus-visible')
     assert 'outline: 2px solid var(--gold-light)' in focus_block, (
@@ -406,7 +409,9 @@ def test_pi3_decree_normalized_to_canonical_30_percent_gold_border():
     normalizes to `.3` to match `.cta-card--seal` + `.cta-card--join`
     + the value DESIGN.md §5 names."""
     decree_block = _css_rule('.home-shell .decree')
-    assert 'rgba(201,162,39,.3)' in decree_block, (
+    # Anchor on the `border` property so a `background: rgba(201,162,39,.3)`
+    # elsewhere in the block can't false-pass.
+    assert re.search(r'border[^:]*:\s*[^;]*rgba\(201,162,39,\.3\)', decree_block), (
         "PI-3: `.decree` must normalize its border to "
         "`1px solid rgba(201,162,39,.3)` so the Ceremonial recipe "
         "shares one canonical opacity with `.cta-card--seal/join`."
@@ -458,7 +463,9 @@ def test_pi3_cta_card_view_holds_informational_recipe():
         "PI-3: `.cta-card--view` must reach `--purple-950` at the "
         "gradient terminus."
     )
-    assert 'rgba(255,255,255,.08)' in view_block, (
+    # Anchor on the `border` property so a `background: rgba(255,255,255,.08)`
+    # elsewhere in the block can't false-pass.
+    assert re.search(r'border[^:]*:\s*[^;]*rgba\(255,255,255,\.08\)', view_block), (
         "PI-3: `.cta-card--view` must carry the 8%-bone border per "
         "the Informational recipe (matches `.match-card`)."
     )
@@ -519,7 +526,7 @@ def test_pi3_design_md_documents_home_shell_card_recipes():
 
 
 # ---------------------------------------------------------------------------
-# PI-4: `.out-prop` ×3 row differentiation.
+# PI-4: `.out-prop` x3 row differentiation.
 # ---------------------------------------------------------------------------
 
 def test_pi4_out_props_row_one_keeps_icon():
@@ -591,7 +598,7 @@ def test_pi4_out_props_row_three_swaps_for_monogram():
 
 
 def test_pi4_out_prop_previews_share_36px_box_so_row_baselines_hold():
-    """Each row-2 / row-3 swap must keep the 36×36 box footprint of
+    """Each row-2 / row-3 swap must keep the 36x36 box footprint of
     `.out-prop-icon` so the row baselines stay aligned."""
     spark_block = _css_rule('.home-shell .out-prop-spark')
     assert 'width: 36px' in spark_block, (

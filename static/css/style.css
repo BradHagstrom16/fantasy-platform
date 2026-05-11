@@ -4088,6 +4088,15 @@ body.game-worldcup {
   background: var(--live-red, #E63946);
   animation: pulseGold .9s ease infinite;
 }
+
+/* PR #15 CR R3 — reduced-motion opt-out for the live-state pulse so users
+   who request reduced motion don't get a continuous animation. The chip
+   stays present + colored; only the pulse is disabled. */
+@media (prefers-reduced-motion: reduce) {
+  .wc-state-chip--live .wc-state-chip-dot {
+    animation: none;
+  }
+}
 .wc-state-chip--post {
   color: var(--text-primary);
   background: rgba(201, 162, 39, .12);

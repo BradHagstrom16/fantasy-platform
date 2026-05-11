@@ -308,9 +308,14 @@ def test_pi4_tier_badge_color_lifts_off_pure_white():
     rule = _css_rule('.tier-badge {')
     # The badge background is colored (per-tier), and the foreground must
     # be a CCC bone token, not the literal `#fff` or `white` keyword.
-    assert 'color: #fff' not in rule, '.tier-badge still uses literal #fff color'
-    assert 'color: white' not in rule.lower(), '.tier-badge still uses literal white color'
-    assert 'color: var(--text-on-dark)' in rule, \
+    # Anchor each assertion on the `color` property via a negative-lookbehind
+    # so a `background-color: ...` or `border-color: ...` value substring can't
+    # false-pass (PR #15 CR R3, same hygiene as R2-D's checkmark contract).
+    assert not re.search(r'(?<!-)color:\s*#fff\b', rule, flags=re.IGNORECASE), \
+        '.tier-badge still uses literal #fff color'
+    assert not re.search(r'(?<!-)color:\s*white\b', rule, flags=re.IGNORECASE), \
+        '.tier-badge still uses literal white color'
+    assert re.search(r'(?<!-)color:\s*var\(--text-on-dark\)', rule), \
         f'.tier-badge color must reference --text-on-dark token: {rule}'
 
 

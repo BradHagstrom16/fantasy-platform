@@ -54,6 +54,7 @@ Iteration map:
   worldcup` mirroring S3.2.1 PI-2's `body.auth-page` scope. Site-wide
   retire of the underlying token is routed cross-phase to S6.1.
 """
+import re
 from pathlib import Path
 
 REPO = Path(__file__).parent.parent
@@ -130,7 +131,10 @@ def test_pi2_tier_mobile_card_text_muted_lifted():
     block_start = css.index('.tier-mobile-card .text-muted {')
     block_end = css.index('}', block_start)
     block = css[block_start:block_end]
-    assert 'var(--text-secondary)' in block
+    # Anchor on `color` so a future `border-color: var(--text-secondary)` or
+    # similar can't false-pass (PR #15 CR R3).
+    assert re.search(r'(?<!-)color:\s*var\(--text-secondary\)', block), \
+        '.tier-mobile-card .text-muted must set color: var(--text-secondary)'
 
 
 def test_pi2_tier_teams_list_lifted_off_text_muted():
@@ -338,11 +342,13 @@ def test_pi5_game_worldcup_form_label_scoped_to_text_secondary():
     # their token (the site-wide fix is routed to S6.1).
     assert 'body.game-worldcup .form-label,' in css
     assert 'body.game-worldcup .form-text' in css
-    # Color points at --text-secondary.
+    # Color points at --text-secondary. Anchor on `color` property so the
+    # token can't false-pass on another declaration (PR #15 CR R3).
     block_start = css.index('body.game-worldcup .form-label,')
     block_end = css.index('}', block_start)
     block = css[block_start:block_end]
-    assert 'var(--text-secondary)' in block
+    assert re.search(r'(?<!-)color:\s*var\(--text-secondary\)', block), \
+        'body.game-worldcup .form-label/.form-text must set color: var(--text-secondary)'
 
 
 # ---------- Cross-PI: render-time HTML lock via Flask test client ----------
