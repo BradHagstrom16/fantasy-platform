@@ -398,6 +398,11 @@ def test_index_dispatcher_loads_countdown_only_in_pre():
         "index.html `countdown.js` must load only inside the "
         "`state == 'pre'` script gate."
     )
+    outside_pre = INDEX.replace(pre_block.group(0), '')
+    assert 'countdown.js' not in outside_pre, (
+        "index.html must not load `countdown.js` outside the "
+        "`state == 'pre'` script gate."
+    )
 
 
 # ---------------------------------------------------------------------------

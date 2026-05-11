@@ -221,14 +221,20 @@ def test_auth_pi2_text_muted_override_uses_important_to_beat_bootstrap():
     inside the card. The cluster-wide `.text-muted` migration (paint all
     sites in `--text-secondary` without the !important fight) routes
     forward to S6.1 per §0.4."""
-    pattern = re.compile(
-        r'body\.auth-page\s+a\.text-muted[^{]*\{[^}]*color:\s*var\(--text-secondary\)\s*!important',
-        re.DOTALL,
-    )
-    assert pattern.search(CSS), (
-        "PI-2: `body.auth-page <tag>.text-muted` override missing the "
-        "`!important` modifier — Bootstrap's own `!important` will win the "
-        "cascade and the cluster falls back to sub-AA gray."
+    missing = []
+    for tag in ('a', 'span', 'p', 'small'):
+        pattern = re.compile(
+            rf'body\.auth-page\s+{tag}\.text-muted[^{{]*\{{[^}}]*'
+            r'color:\s*var\(--text-secondary\)\s*!important',
+            re.DOTALL,
+        )
+        if not pattern.search(CSS):
+            missing.append(tag)
+    assert not missing, (
+        f"PI-2: `body.auth-page <tag>.text-muted` override missing the "
+        f"`!important` modifier for tag(s) {missing} — Bootstrap's own "
+        "`!important` can retake those nodes and the cluster falls back "
+        "to sub-AA gray."
     )
 
 
@@ -484,16 +490,25 @@ def _strip_safe_contexts_for_dash_check(src: str) -> str:
     return cleaned
 
 
+HTML_EM_DASH_ENTITIES = ('&mdash;', '&#8212;', '&#x2014;')
+
+
 def test_auth_no_em_dash_in_voice_rewrite():
     """P0 S0.3 banned em-dashes from UI copy. PI-5's rewrite must not
-    reintroduce them via `—` or `--` (the plain-ASCII substitute)."""
+    reintroduce them via `—`, `--` (the plain-ASCII substitute), or the
+    HTML entities (`&mdash;`, `&#8212;`, `&#x2014;`) that render the
+    same forbidden glyph."""
     offenders = []
     for name, src in ALL_AUTH.items():
         if '—' in src:
             offenders.append(f"{name} :: '—'")
         if '--' in _strip_safe_contexts_for_dash_check(src):
             offenders.append(f"{name} :: '--'")
+        for entity in HTML_EM_DASH_ENTITIES:
+            if entity in src:
+                offenders.append(f"{name} :: '{entity}'")
     assert not offenders, (
-        "PI-5: em-dash (or its `--` ASCII substitute) reintroduced in auth "
-        f"template(s): {offenders}. P0 S0.3 locked these out."
+        "PI-5: em-dash (or its `--` ASCII / HTML-entity substitute) "
+        f"reintroduced in auth template(s): {offenders}. P0 S0.3 locked "
+        "these out."
     )
