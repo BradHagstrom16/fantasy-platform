@@ -2814,21 +2814,68 @@ body.game-worldcup {
 
 /* picks.html team card descendants */
 .wc-team-card .team-flag { margin-right: .4rem; }
+/* P4 S4.2.1 PI-3 — 44×44 tap-target floor (PRODUCT.md mobile-first).
+   The pill is a secondary affordance inside the .wc-team-card primitive;
+   inline-flex + min-height/min-width keeps the visual footprint compact
+   while making the touch target meet the floor. Negative margin clears
+   the pill's own padding without re-flowing the team-meta row. */
 .wc-team-card .team-group-pill {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   font-family: 'Teko', sans-serif;
   font-size: .68rem;
   text-transform: uppercase;
   letter-spacing: .06em;
-  padding: .1rem .35rem;
+  min-height: 44px;
+  min-width: 44px;
+  padding: .55rem .65rem;
+  margin: -.55rem -.1rem;
   background: rgba(245, 241, 232, .06);
-  border-radius: 3px;
+  border-radius: 6px;
   color: var(--bone-mute);
   text-decoration: none;
 }
 .wc-team-card .team-group-pill:hover {
   color: var(--wc-white);
   background: rgba(245, 241, 232, .12);
+}
+.wc-team-card .team-group-pill:focus-visible {
+  outline: 2px solid var(--gold-light);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* P4 S4.2.1 PI-3 — picks hero "View Scoring Rules" link 44×44 floor.
+   Inline-flex with the S2.1.2-locked negative-margin recipe so the link
+   reads as a tight inline affordance below the deadline copy while
+   clearing the touch floor. Bone-alpha color replaces Bootstrap's
+   .text-white-50 utility (which is the cross-phase Bootstrap-leak
+   pattern routed to S6.1) — scoped here so it doesn't broadcast. */
+.picks-rules-link {
+  display: inline-flex;
+  align-items: center;
+  font-family: 'Newsreader', Georgia, serif;
+  font-style: italic;
+  font-size: .9rem;
+  color: rgba(243, 239, 230, .72);
+  text-decoration: none;
+  min-height: 44px;
+  min-width: 44px;
+  padding: .65rem .25rem;
+  margin: -.4rem -.25rem;
+  margin-top: .35rem;
+  transition: color var(--transition);
+}
+.picks-rules-link:hover,
+.picks-rules-link:focus {
+  color: var(--gold-light);
+  text-decoration: underline;
+}
+.picks-rules-link:focus-visible {
+  outline: 2px solid var(--gold-light);
+  outline-offset: 2px;
+  border-radius: var(--radius);
 }
 
 /* === P2 S2.5.1 PI-1 — player_detail / picks contrast lock on .card.wc-card.
@@ -3296,7 +3343,9 @@ body.game-worldcup {
   text-transform: uppercase;
   padding: .25em .7em;
   border-radius: 1rem;
-  color: #fff;
+  /* P4 S4.2.1 PI-4 — `#fff` literal violates DESIGN.md No-Pure-White Rule.
+     `--text-on-dark` (= pressroom-bone) tints toward the brand neutral. */
+  color: var(--text-on-dark);
   line-height: 1.3;
 }
 .tier-badge-1 { background: var(--wc-tier1); }
@@ -3329,7 +3378,11 @@ body.game-worldcup {
 }
 .tier-card-header {
   padding: 1rem 1.25rem;
-  background: linear-gradient(135deg, rgba(0,40,104,.04) 0%, rgba(0,40,104,.01) 100%);
+  /* P4 S4.2.1 PI-4 — literal WC navy (`rgba(0,40,104,…)`) on a platform
+     component (tier-card lives on bone, not under .game-worldcup scope).
+     CCC tinted-neutral per DESIGN.md: the resting accent on platform
+     surfaces is Council Purple, not the game tertiary. */
+  background: linear-gradient(135deg, rgba(58, 29, 114, .04) 0%, rgba(58, 29, 114, .01) 100%);
   border-bottom: 1px solid var(--border-light);
   display: flex;
   align-items: center;
@@ -3385,10 +3438,37 @@ body.game-worldcup {
   border-color: var(--game-primary-light);
   box-shadow: var(--shadow-sm);
 }
+/* P4 S4.2.1 PI-1 — keyboard focus ring on the role=checkbox primitive.
+   Canonical 2px gold-light + 2px offset matches the S2.1.2/S3.4 lock. */
+.wc-team-card:focus-visible {
+  outline: 2px solid var(--gold-light);
+  outline-offset: 2px;
+  border-radius: var(--radius);
+}
+
+/* P4 S4.2.1 F2 — readonly card-header heading-order fix (H1 → H4 → H2).
+   The page H1 sits in the hero; the card-header was an H4 (skipping H2/H3),
+   an axe heading-order violation. Promote to H2 + preserve the prior Teko
+   visual via this surface class so the visual doesn't shift. */
+.pick-card-head {
+  font-family: 'Teko', sans-serif;
+  font-weight: 600;
+  font-size: 1.35rem;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  line-height: 1.25;
+}
+.pick-card-head--mobile {
+  font-size: 1.1rem;
+}
 .wc-team-card.selected {
   border-color: var(--game-primary);
-  background: rgba(0,40,104,.04);
-  box-shadow: 0 0 0 2px rgba(0,40,104,.18);
+  /* P4 S4.2.1 PI-4 — selected affordance reads as CCC purple, not WC navy.
+     The border keeps the game accent (WC navy) so cross-game scoping works;
+     the background tint + ring lift to Council Purple so a CCC user reads
+     the selected state in the brand register on the bone canvas. */
+  background: rgba(58, 29, 114, .05);
+  box-shadow: 0 0 0 2px rgba(58, 29, 114, .18);
 }
 .wc-team-card.selected::after {
   content: '\2713';
@@ -3397,7 +3477,7 @@ body.game-worldcup {
   right: .5rem;
   font-size: .85rem;
   font-weight: 700;
-  color: var(--game-primary);
+  color: var(--platform-primary);
   line-height: 1;
 }
 .wc-team-card.disabled {
@@ -3661,16 +3741,26 @@ body.game-worldcup {
    P2 S2.5.1 PI-1: surface sits inside .card.wc-card (dark navy). Lift the
    panel tint to a bone wash so the drill-down reads as a distinct band on
    navy, and shift toggle + total + empty copy to light tokens. */
+/* P4 S4.2.1 PI-2 — CSS Grid row-template technique replaces max-height.
+   Animating layout properties (max-height) is an impeccable absolute ban
+   AND the 600px ceiling clipped deep-run teams (Champion-tier with 10+
+   score events). Grid 0fr↔1fr expands to content's natural size without
+   the fixed ceiling. The .pick-accordion-inner wrapper carries overflow
+   so the single grid row collapses cleanly. */
 .pick-accordion {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition: grid-template-rows 140ms ease-out, opacity 140ms ease-out;
+}
+.pick-accordion-inner {
   border-top: 1px dashed rgba(245, 241, 232, .14);
   background: rgba(245, 241, 232, .04);
-  max-height: 0;
-  opacity: 0;
   overflow: hidden;
-  transition: max-height 140ms ease-out, opacity 140ms ease-out;
+  min-height: 0;
 }
 .pick-accordion.open {
-  max-height: 600px; /* generous upper bound */
+  grid-template-rows: 1fr;
   opacity: 1;
 }
 .pick-accordion-toggle {
@@ -5823,7 +5913,11 @@ hr { border-color: var(--border); opacity: 1; }
     font-family: 'Newsreader', Georgia, serif;
     font-weight: 400;
     font-size: .75rem;
-    color: var(--text-muted);
+    /* P4 S4.2.1 F3 — `--text-muted` (#8A849B) on bone is ~3.7:1 (AA fail
+       for body text). `--text-secondary` (#5A5470) clears AA at ~6.9:1
+       per project_text_muted_aa_on_bone memory + S2.5.1 lock on .wc-eyebrow
+       on this same surface. */
+    color: var(--text-secondary);
   }
   .player-pick-card .pick-points {
     text-align: right;

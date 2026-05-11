@@ -14,8 +14,8 @@
         Deadline: <strong>{{ deadline_ct.strftime('%b %-d, %Y at %-I:%M %p CT') }}</strong>
       {% endif %}
     </p>
-    <a href="{{ url_for('worldcup.rules') }}" class="text-white-50 small text-decoration-none mt-2 d-inline-block">
-      <i class="bi bi-info-circle me-1"></i>View Scoring Rules
+    <a href="{{ url_for('worldcup.rules') }}" class="picks-rules-link">
+      <i class="bi bi-info-circle me-1" aria-hidden="true"></i>View Scoring Rules
     </a>
   </div>
 </div>
@@ -37,7 +37,7 @@
             <span class="wc-eyebrow {% if deadline_passed %}wc-eyebrow-red{% endif %}">
               {% if deadline_passed %}The Oath is sealed{% else %}Sealed · still amendable{% endif %}
             </span>
-            <h4 class="mb-0 mt-1"><i class="bi bi-check2-square me-2"></i>Your 9 Picks</h4>
+            <h2 class="pick-card-head mb-0 mt-1"><i class="bi bi-check2-square me-2" aria-hidden="true"></i>Your 9 Picks</h2>
           </div>
           <span class="fw-bold wc-numeral" style="font-size:1.3rem;">
             Total: {{ "%.1f"|format(enrollment.total_score) }} pts
@@ -75,9 +75,9 @@
             <span class="wc-eyebrow {% if deadline_passed %}wc-eyebrow-red{% endif %}">
               {% if deadline_passed %}The Oath is sealed{% else %}Sealed · still amendable{% endif %}
             </span>
-            <h4 class="mb-0 mt-1" style="font-family:'Teko',sans-serif; font-weight:600; text-transform:uppercase; letter-spacing:.04em; font-size:1.1rem;">
-              <i class="bi bi-check2-square me-2"></i>Your 9 Picks
-            </h4>
+            <h2 class="pick-card-head pick-card-head--mobile mb-0 mt-1">
+              <i class="bi bi-check2-square me-2" aria-hidden="true"></i>Your 9 Picks
+            </h2>
           </div>
           <span class="fw-bold wc-numeral" style="font-size:1.2rem;">
             {{ "%.1f"|format(enrollment.total_score) }} pts
@@ -155,7 +155,7 @@
                 <span class="wc-multiplier-chip">&times;{{ tier['multiplier'] }}</span>
               </h3>
             </div>
-            <span class="tier-counter wc-numeral" id="counter-{{ tier_num }}">
+            <span class="tier-counter wc-numeral" id="counter-{{ tier_num }}" aria-live="polite" aria-atomic="true">
               0/{{ tier['picks'] }} selected
             </span>
           </div>
@@ -166,16 +166,23 @@
                  data-tier="{{ tier_num }}"
                  data-flag="{{ team.flag_emoji }}"
                  data-group="{{ team.group_letter }}"
-                 onclick="toggleTeam(this)">
+                 role="checkbox"
+                 tabindex="0"
+                 aria-checked="{% if team.id in selected_team_ids %}true{% else %}false{% endif %}"
+                 aria-label="{{ team.display_name }}, Group {{ team.group_letter }}, Tier {{ tier_num }}"
+                 onclick="toggleTeam(this)"
+                 onkeydown="if (event.key === ' ' || event.key === 'Enter') { event.preventDefault(); toggleTeam(this); }">
               <input type="checkbox" name="tier_{{ tier_num }}" value="{{ team.id }}"
-                     class="d-none team-checkbox"
+                     class="team-checkbox visually-hidden"
+                     aria-hidden="true" tabindex="-1"
                      {% if team.id in selected_team_ids %}checked{% endif %}>
-              <span class="team-flag fs-4">{{ team.flag_emoji }}</span>
+              <span class="team-flag fs-4" aria-hidden="true">{{ team.flag_emoji }}</span>
               <span class="team-name">{{ team.display_name }}</span>
               <span class="team-meta">
                 <a href="{{ url_for('worldcup.groups') }}#group-{{ team.group_letter }}"
                    class="team-group-pill"
-                   onclick="event.stopPropagation();">Group {{ team.group_letter }}</a>
+                   onclick="event.stopPropagation();"
+                   onkeydown="event.stopPropagation();">Group {{ team.group_letter }}</a>
               </span>
             </div>
             {% endfor %}
@@ -230,7 +237,7 @@
     {# -- Mobile sticky bottom bar -- #}
     <div class="wc-mobile-sticky-bar" id="mobileStickyBar">
       <div class="pick-count">
-        <span class="count-num wc-numeral" id="mobilePickCount">0</span>/9 picks
+        <span class="count-num wc-numeral" id="mobilePickCount" aria-live="polite" aria-atomic="true">0</span>/9 picks
       </div>
       <button type="submit" class="btn btn-game" id="mobileSubmitBtn" disabled>
         <i class="bi bi-check-lg me-1"></i>Seal
@@ -275,6 +282,7 @@
 
     card.classList.toggle('selected');
     cb.checked = !isSelected;
+    card.setAttribute('aria-checked', String(!isSelected));
     updateCounters();
     updateSummary();
     updateSubmitState();

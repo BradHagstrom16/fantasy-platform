@@ -28,30 +28,32 @@
 <tr class="pick-accordion-row">
   <td colspan="5" class="p-0">
     <div class="pick-accordion" id="{{ row_id }}-body">
-      {% if events and events|length > 0 %}
-      <div class="pick-events-inner">
-        <span class="wc-eyebrow d-block mb-2">Score events</span>
-        <ul class="pick-events-list list-unstyled m-0">
-          {% for event in events %}
-          <li class="pick-event-item" style="--event-i: {{ loop.index0 }};">
-            <span class="pick-event-stage wc-eyebrow">
-              {% if event.occurred_on %}{{ event.occurred_on.strftime('%b %-d') }}{% endif %}
-            </span>
-            <span class="pick-event-desc">{{ event.label }}</span>
-            <span class="pick-event-pts wc-numeral {% if event.base_points >= 0 %}text-success{% else %}text-danger{% endif %}">
-              {{ "+%g"|format(event.base_points) if event.base_points >= 0 else "%g"|format(event.base_points) }}
-            </span>
-          </li>
-          {% endfor %}
-        </ul>
+      <div class="pick-accordion-inner">
+        {% if events and events|length > 0 %}
+        <div class="pick-events-inner">
+          <span class="wc-eyebrow d-block mb-2">Score events</span>
+          <ul class="pick-events-list list-unstyled m-0">
+            {% for event in events %}
+            <li class="pick-event-item" style="--event-i: {{ loop.index0 }};">
+              <span class="pick-event-stage wc-eyebrow">
+                {% if event.occurred_on %}{{ event.occurred_on.strftime('%b %-d') }}{% endif %}
+              </span>
+              <span class="pick-event-desc">{{ event.label }}</span>
+              <span class="pick-event-pts wc-numeral {% if event.base_points >= 0 %}text-success{% else %}text-danger{% endif %}">
+                {{ "+%g"|format(event.base_points) if event.base_points >= 0 else "%g"|format(event.base_points) }}
+              </span>
+            </li>
+            {% endfor %}
+          </ul>
+        </div>
+        <div class="score-events-total">
+          Total base <strong class="wc-numeral">{{ "%.1f"|format(pick.base_points) }}</strong> &times; {{ pick.team.multiplier }} =
+          <strong class="wc-numeral">{{ "%.1f"|format(pick.multiplied_points) }}</strong> multiplied
+        </div>
+        {% else %}
+        <div class="score-events-empty">No scoring events yet.</div>
+        {% endif %}
       </div>
-      <div class="score-events-total">
-        Total base <strong class="wc-numeral">{{ "%.1f"|format(pick.base_points) }}</strong> &times; {{ pick.team.multiplier }} =
-        <strong class="wc-numeral">{{ "%.1f"|format(pick.multiplied_points) }}</strong> multiplied
-      </div>
-      {% else %}
-      <div class="score-events-empty">No scoring events yet.</div>
-      {% endif %}
     </div>
   </td>
 </tr>
