@@ -12,6 +12,7 @@ Covers the 4 Priority Issues + 2 freebies landed in iteration S3.1.1:
 - F1: `.navbar-brand:hover` no longer paints a 20px gold `text-shadow` glow
   (Trophy Rule, DESIGN.md §2).
 """
+import re
 from pathlib import Path
 
 CSS_PATH = Path(__file__).parent.parent / 'static' / 'css' / 'style.css'
@@ -177,36 +178,58 @@ def test_pi4_skip_link_css_rule_present():
     assert 'top: .5rem' in focus_block, ".skip-link:focus must drop the link into view (top: .5rem)"
 
 
-# ---------- F1: Trophy Rule — drop navbar-brand gold-glow text-shadow ----------
+# ---------- F1: Trophy Rule — no gold-glow text-shadow on navbar-brand ----------
+#
+# S3.4 superseded the original F1 implementation: the orphan `.navbar-brand`
+# block at `style.css:~4019` (where the F1 fix lived) was deleted entirely,
+# and its load-bearing declarations (`font-weight: 700`, `text-transform:
+# uppercase`) were folded into the spec-correct `.navbar.navbar-dark
+# .navbar-brand` block at line 101. The F1 contract (Trophy Rule: no gold
+# halo on the brand wordmark) is now enforced by *absence* of any
+# `.navbar-brand` rule that paints `text-shadow`, which is a stronger
+# guarantee than the original lock (the original required the orphan block
+# to exist sans text-shadow; the new shape forbids any text-shadow on the
+# brand in any rule).
 
-def test_f1_navbar_brand_hover_has_no_gold_text_shadow():
-    """`.navbar-brand:hover` must not declare a gold `text-shadow` — DESIGN.md §2
-    Trophy Rule reserves gold-glow effects for `--shadow-gold` on primary-CTA
-    hover; a 20px gold halo on a chrome brand wordmark dilutes the trophy."""
+
+def test_f1_navbar_brand_has_no_text_shadow_anywhere():
+    """Trophy Rule (DESIGN.md §2): gold-glow effects reserve for
+    `--shadow-gold` on primary-CTA hover. No `.navbar-brand` rule —
+    resting, hover, focus, or otherwise — may declare `text-shadow`.
+    S3.4 stripped the orphan rule entirely, so the only `.navbar-brand`
+    rules left are inside the CCC block, and they must remain
+    text-shadow-free."""
     src = CSS_PATH.read_text()
-    # The orphan `.navbar-brand:hover` block.
-    hover_idx = src.find('.navbar-brand:hover {')
-    assert hover_idx > 0
-    block_end = src.find('}', hover_idx)
-    block = src[hover_idx:block_end]
-    assert 'text-shadow' not in block, (
-        ".navbar-brand:hover must not declare text-shadow — Trophy Rule (DESIGN.md §2)"
+    # Match any rule whose selector list includes `.navbar-brand` (as a
+    # whole class token). For each such block, the body must not contain
+    # `text-shadow`.
+    pattern = re.compile(
+        r"([^{}]*\.navbar-brand(?:[:.][^{,]*)?[^{}]*)\{([^{}]*)\}",
+        re.DOTALL,
     )
+    for selector, body in pattern.findall(src):
+        # Selector list must mention `.navbar-brand` specifically (not just
+        # as a substring of e.g. `.navbar-brand-mark`). Token boundary:
+        # `.navbar-brand` followed by space, comma, colon, dot, brace, or
+        # end-of-string.
+        if not re.search(r"\.navbar-brand(?=[\s,:.{]|$)", selector):
+            continue
+        assert 'text-shadow' not in body, (
+            f"Trophy Rule violation: `text-shadow` reintroduced in a "
+            f"`.navbar-brand` rule. Selector: {selector.strip()}"
+        )
 
 
-def test_f1_navbar_brand_transition_excludes_text_shadow():
-    """Paired with F1: `.navbar-brand` transition list must not include
-    `text-shadow` (no shadow on hover → no need to animate it)."""
+def test_f1_no_orphan_navbar_brand_hover_block():
+    """S3.4 deleted the orphan `.navbar-brand:hover` block. Any
+    reintroduction of `.navbar-brand:hover` outside the CCC `.navbar.navbar-
+    dark` scope is a regression — the brand wordmark is a masthead, not a
+    CTA, and the Trophy Rule keeps gold off it on hover too. Cursor change
+    carries the affordance per DESIGN.md §5."""
     src = CSS_PATH.read_text()
-    # The orphan `.navbar-brand` block (selector specificity 0,0,1,0).
-    # Locate by finding the first .navbar-brand { ... } where transition includes color.
-    nb_idx = src.find('.navbar-brand {\n  font-size: 1.35rem;')
-    assert nb_idx > 0, "Orphan .navbar-brand block (font-size 1.35rem) not found"
-    block_end = src.find('}', nb_idx)
-    block = src[nb_idx:block_end]
-    assert 'transition: color var(--transition);' in block, (
-        ".navbar-brand transition must be color-only after the gold-glow removal"
-    )
-    assert 'text-shadow' not in block, (
-        ".navbar-brand transition must not include text-shadow — the hover no longer paints one"
+    # Forbid the bare-class hover form anywhere in the stylesheet.
+    bare_hover = re.compile(r"^\.navbar-brand\s*:\s*hover\s*\{", re.MULTILINE)
+    assert not bare_hover.search(src), (
+        "Orphan `.navbar-brand:hover` block reintroduced. The brand "
+        "wordmark must not declare a hover color shift (DESIGN.md §5)."
     )

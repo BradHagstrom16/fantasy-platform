@@ -101,7 +101,9 @@
 .navbar.navbar-dark .navbar-brand {
   font-family: var(--font-teko);
   font-size: 1.25rem;
+  font-weight: 700;
   letter-spacing: .04em;
+  text-transform: uppercase;
   color: var(--bone);
   display: inline-flex;
   align-items: center;
@@ -109,7 +111,12 @@
      brand is otherwise 28-30px tall at 375 (logo mark + uppercase wordmark),
      which fails WCAG 2.5.5 + PRODUCT.md §Accessibility's ≥ 44 × 44 px touch
      target. Inline-flex centers the brand label vertically inside the larger
-     hit-box without enlarging the visual mark. */
+     hit-box without enlarging the visual mark.
+     P3 S3.4 — `font-weight: 700` + `text-transform: uppercase` folded in
+     from the now-deleted orphan block at the bottom of the file. They were
+     rendering anyway (via source-order vs the headings rule for weight, and
+     as the only transform rule); moving them here puts the masthead voice
+     inside the spec-correct cascade and lets the orphan disappear cleanly. */
   min-height: 44px;
 }
 .navbar.navbar-dark .nav-link {
@@ -123,6 +130,18 @@
 .navbar.navbar-dark .nav-link:hover { color: var(--gold-light); }
 .navbar.navbar-dark .nav-link.active {
   color: var(--gold);
+}
+/* P3 S3.4 — keyboard focus ring on chrome nav-links. Matches the canonical
+   CCC focus pattern (`outline: 2px solid var(--gold-light); outline-offset:
+   2px`) locked in S2.1.2 / S3.3.2. The auth-link-row, picker-list-item,
+   leaderboard-card-link, schedule-jump-today, and game-card--live selectors
+   already use this exact ring; chrome nav-links inherited the browser-default
+   outline pre-S3.4. Use `.navbar` (not `.navbar.navbar-dark`) so any future
+   navbar variant inherits the same focus ring. */
+.navbar .nav-link:focus-visible {
+  outline: 2px solid var(--gold-light);
+  outline-offset: 2px;
+  border-radius: var(--radius);
 }
 .navbar.navbar-dark .nav-link.active::after {
   content: '';
@@ -4016,22 +4035,19 @@ main { flex: 1; }
   padding: .3rem 0;
 }
 
-.navbar-brand {
-  font-size: 1.35rem;
-  font-weight: 700;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-  color: var(--platform-accent) !important;
-  transition: color var(--transition);
-}
-
-/* P3 S3.1.1 — Trophy Rule (DESIGN.md §2): gold-glow effects are reserved for
-   `--shadow-gold` on primary-CTA hover. A 20px text-shadow gold halo on the
-   brand wordmark was decorative gold on chrome; dropped to keep the trophy
-   ceremonial. Color shift to `--platform-accent-light` carries the hover. */
-.navbar-brand:hover {
-  color: var(--platform-accent-light) !important;
-}
+/* P3 S3.4 — orphan `.navbar-brand` block removed (was `style.css:~4019`).
+   It painted the wordmark `var(--platform-accent) !important` (Commish Gold)
+   plus `font-size: 1.35rem`, `font-weight: 700`, `letter-spacing: .08em`,
+   `text-transform: uppercase` — only the gold !important and the orphan
+   font-weight/text-transform actually rendered (CCC block won the other
+   declarations on specificity). Per DESIGN.md §5 "Brand (`.navbar-brand`):
+   Teko 1.25rem, letter-spacing 0.04em, Pressroom Bone color." The orphan
+   `!important` was overriding the spec-correct CCC block at line 101. The
+   `:hover` orphan also dropped — the Trophy Rule (DESIGN.md §2) reserves
+   gold-glow effects for `--shadow-gold` on primary-CTA hover, not on the
+   brand wordmark. CCC `.navbar.navbar-dark .navbar-brand` now carries the
+   spec on its own (bone color, 1.25rem, .04em, font-weight 600 inherited
+   from the headings block below). */
 
 .navbar .nav-link {
   font-family: 'Teko', sans-serif;
@@ -4206,6 +4222,19 @@ main { flex: 1; }
   color: #fff;
   background: rgba(var(--subnav-accent-rgb), .18);
   border-color: var(--subnav-accent);
+}
+/* P3 S3.4 — keyboard focus ring on sub-nav pills, matching the canonical
+   CCC focus pattern (S2.1.2 / S3.3.2 lock). Pre-S3.4, the pill's `.active`
+   state was the only visible cue and only for the focused-on-load case;
+   tabbing between pills inherited the browser-default outline ring,
+   inconsistent across browsers and easy to miss on the dark game-tinted
+   substrate. Gold-light is the universal CCC focus color and reads against
+   every per-game subnav background (`#00122e` WC, `#001a0d` Golf, `#0a080f`
+   CFB) at ≥ 7:1. The pill already carries `border-radius: 22px`, so the
+   `outline-offset: 2px` traces the pill silhouette cleanly. */
+.subnav-pill:focus-visible {
+  outline: 2px solid var(--gold-light);
+  outline-offset: 2px;
 }
 
 /* Spec C Plan 1 — mobile compactions: fit 6 pills on 375px without scroll */
@@ -4940,6 +4969,16 @@ main { flex: 1; }
   padding: 2rem 1rem;
 }
 
+/* P3 S3.4 — profile-wrapper modifier widens the auth-card from its default
+   440px floor (set by `body.auth-page .auth-card`) to 600px so the avatar
+   picker grid fits without re-introducing a third auth wrapper. Per
+   DESIGN.md §5 Auth Surface Composition, profile is a logged-in utility
+   surface and uses `.auth-wrapper`; the modifier carries the form-specific
+   width without breaking the contract. */
+.auth-wrapper.profile-wrapper .auth-card {
+  max-width: 600px;
+}
+
 /* === P3 S3.2.1 — Auth cluster: contrast + 44×44 + Tribunal Black bleed-through === */
 
 /* PI-2: lift `.auth-subtitle` + `.form-text` off `--text-muted` (#8A849B), which
@@ -5572,13 +5611,58 @@ hr { border-color: var(--border); opacity: 1; }
   }
 }
 
-/* --- 18m. Error pages — mobile spacing --- */
+/* --- 18m. Error pages (404, 500) — Tribune-voice editorial masthead.
+   P3 S3.4 — replaced prior hero-metric template (giant `--border` numeral on
+   bone, ~1.06:1 contrast — effectively invisible — paired with `.text-muted`
+   subhead that fails AA on bone). The reshape uses the canonical CCC Eyebrow
+   primitive (DESIGN.md §3 "Eyebrow Rule": Teko 500, .85rem, .14em letter-
+   spacing, uppercase, gold) above a Teko display headline, with a Newsreader
+   serif lede painting `--text-secondary` (~6.9:1 on bone, AA-pass) and a
+   Quiet primary CTA. Tribune voice replaces SaaS-utility copy. */
+.error-page-wrap {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 5rem 1rem 4rem;
+  text-align: center;
+}
+.error-eyebrow {
+  font-family: var(--font-teko);
+  font-weight: 500;
+  font-size: .85rem;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin-bottom: 1rem;
+}
+.error-headline {
+  font-family: var(--font-teko);
+  font-size: 2.4rem;
+  font-weight: 600;
+  letter-spacing: .03em;
+  line-height: 1.1;
+  color: var(--text-primary);
+  margin: 0 0 1rem;
+}
+.error-lede {
+  font-family: var(--font-news);
+  font-size: 1.05rem;
+  line-height: 1.65;
+  color: var(--text-secondary);
+  max-width: 56ch;
+  margin: 0 auto 2rem;
+}
+.error-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
 @media (max-width: 576px) {
   .error-page-wrap {
-    padding-top: 3rem !important;
+    padding: 3rem 1rem 3rem;
   }
-  .error-page-wrap .section-heading {
-    font-size: 3.5rem;
+  .error-headline {
+    font-size: 1.9rem;
   }
 }
 
