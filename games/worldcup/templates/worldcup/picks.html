@@ -39,7 +39,7 @@
             </span>
             <h2 class="pick-card-head mb-0 mt-1"><i class="bi bi-check2-square me-2" aria-hidden="true"></i>Your 9 Picks</h2>
           </div>
-          <span class="fw-bold wc-numeral" style="font-size:1.3rem;">
+          <span class="fw-bold wc-numeral wc-numeral--lg">
             Total: {{ "%.1f"|format(enrollment.total_score) }} pts
           </span>
         </div>
@@ -79,22 +79,25 @@
               <i class="bi bi-check2-square me-2" aria-hidden="true"></i>Your 9 Picks
             </h2>
           </div>
-          <span class="fw-bold wc-numeral" style="font-size:1.2rem;">
+          <span class="fw-bold wc-numeral wc-numeral--md">
             {{ "%.1f"|format(enrollment.total_score) }} pts
           </span>
         </div>
         <div class="d-flex flex-column gap-2">
           {% for pick in existing_picks %}
-          <div class="player-pick-card">
-            <div>
-              <span class="tier-badge tier-badge-{{ pick.tier }} me-1" style="font-size:.65rem; vertical-align:middle;">T{{ pick.tier }}</span>
-              <span class="pick-team">{{ pick.team.flag_emoji }} {{ pick.team.display_name }} <small>Grp {{ pick.team.group_letter }}</small></span>
+          <a href="{{ url_for('worldcup.team_detail', team_id=pick.team_id) }}" class="player-pick-card">
+            <div class="pick-info">
+              <div class="pick-tier-line">
+                <span class="wc-tier-dot wc-tier-dot-{{ pick.tier }}" aria-hidden="true"></span>
+                <span class="wc-eyebrow">{{ tiers[pick.tier].name }}</span>
+              </div>
+              <div class="pick-team">{{ pick.team.flag_emoji }} {{ pick.team.display_name }} <small>Grp {{ pick.team.group_letter }}</small></div>
             </div>
             <div class="pick-points">
-              {{ "%.1f"|format(pick.multiplied_points) }}
+              <span class="wc-numeral wc-numeral--lg">{{ "%.1f"|format(pick.multiplied_points) }}</span>
               <small>&times;{{ pick.team.multiplier }}</small>
             </div>
-          </div>
+          </a>
           {% endfor %}
         </div>
       </div>
@@ -106,7 +109,7 @@
             <span class="wc-eyebrow">The Tiebreak</span>
             <div class="text-muted mt-1"><i class="bi bi-bullseye me-2"></i>USA tournament total goals</div>
           </div>
-          <span class="fw-bold wc-numeral" style="font-size:1.4rem;">{{ enrollment.usa_goals_guess }}</span>
+          <span class="fw-bold wc-numeral wc-numeral--xl">{{ enrollment.usa_goals_guess }}</span>
         </div>
       </div>
       {% endif %}
@@ -149,11 +152,11 @@
           <div class="tier-card-header">
             <div>
               <span class="wc-eyebrow wc-eyebrow-red">Tier {{ tier_num }} · {{ tier['name'] }}</span>
-              <h3 class="d-flex align-items-center gap-2 mb-0">
-                <span class="wc-tier-dot wc-tier-dot-{{ tier_num }}"></span>
+              <h2 class="tier-card-heading">
+                <span class="wc-tier-dot wc-tier-dot-{{ tier_num }}" aria-hidden="true"></span>
                 {{ tier['name'] }}
                 <span class="wc-multiplier-chip">&times;{{ tier['multiplier'] }}</span>
-              </h3>
+              </h2>
             </div>
             <span class="tier-counter wc-numeral" id="counter-{{ tier_num }}" aria-live="polite" aria-atomic="true">
               0/{{ tier['picks'] }} selected
@@ -198,11 +201,11 @@
 
           <div class="pick-summary animate-in stagger-2" id="pickSummary">
             <span class="wc-eyebrow">Your selections</span>
-            <h4 class="mb-3"><i class="bi bi-list-check me-2"></i>Pick Summary</h4>
+            <h2 class="pick-summary-heading"><i class="bi bi-list-check me-2" aria-hidden="true"></i>Pick Summary</h2>
             <ul class="pick-summary-list" id="summaryList">
               <li class="text-muted" id="summaryEmpty">Select your 9 teams...</li>
             </ul>
-            <div class="mt-3 text-end fw-bold wc-numeral" style="font-size:1.1rem;" id="summaryCount">
+            <div class="mt-3 text-end fw-bold wc-numeral wc-numeral--sm" id="summaryCount">
               0/9 picks
             </div>
           </div>
