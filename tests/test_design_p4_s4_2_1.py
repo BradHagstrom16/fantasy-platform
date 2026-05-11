@@ -290,10 +290,15 @@ def test_pi4_wc_team_card_selected_uses_ccc_purple_for_tint_and_ring():
 def test_pi4_wc_team_card_selected_checkmark_recolored_to_platform_primary():
     """The pseudo-element checkmark recolors from `var(--game-primary)`
     (WC navy) to `var(--platform-primary)` (Council Purple) so it
-    matches the new tint + ring register."""
+    matches the new tint + ring register. S4.2.2 F1 swapped the Unicode
+    glyph for a CSS-mask SVG, so the color contract is now expressed via
+    `background-color` (the mask paints whatever fill the box carries),
+    NOT via `color`. Asserting `color:` would pass on substring match
+    against `background-color:` and silently mask a regression — lock
+    the actual property the implementation uses."""
     rule = _css_rule('.wc-team-card.selected::after')
-    assert 'color: var(--platform-primary)' in rule, \
-        f'.wc-team-card.selected::after checkmark not on platform-primary: {rule}'
+    assert 'background-color: var(--platform-primary)' in rule, \
+        f'.wc-team-card.selected::after mask not painted with platform-primary: {rule}'
 
 
 def test_pi4_tier_badge_color_lifts_off_pure_white():

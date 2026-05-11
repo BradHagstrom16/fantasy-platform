@@ -97,10 +97,19 @@ def test_pi1_direct_child_selector_excludes_nested_light_substrate():
 # ---------- PI-2: light-substrate multiplier chip + tier-mobile-card lifts ----------
 
 def test_pi2_table_worldcup_multiplier_chip_inked_on_light():
-    """Rules-page tables: chip lifts to ink on a council-purple tint."""
+    """Rules-page tables: chip lifts to ink on a council-purple tint.
+
+    PR #15 CR R2 — scoped to `.card.wc-card:not(.player-picks-desktop)
+    .table-worldcup` so the `.player-picks-desktop` dark-navy surface
+    (picks readonly + player_detail) keeps the default bone-on-bone-alpha
+    chip rule and stays visible on its transparent-td substrate."""
     css = CSS.read_text()
-    assert '.table-worldcup .wc-multiplier-chip {' in css
-    block_start = css.index('.table-worldcup .wc-multiplier-chip {')
+    selector = '.card.wc-card:not(.player-picks-desktop) .table-worldcup .wc-multiplier-chip {'
+    assert selector in css, f'expected scoped selector {selector!r} in style.css'
+    # The unscoped form must NOT exist — that's the bug R2 caught.
+    assert '\n.table-worldcup .wc-multiplier-chip {' not in css, \
+        'unscoped .table-worldcup .wc-multiplier-chip retint would re-introduce the dark-on-dark leak'
+    block_start = css.index(selector)
     block_end = css.index('}', block_start)
     block = css[block_start:block_end]
     assert 'color: var(--text-primary)' in block

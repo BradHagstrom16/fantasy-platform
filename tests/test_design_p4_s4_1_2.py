@@ -340,6 +340,37 @@ def test_pi2_ballot_edit_action_meets_44px_tap_floor_and_has_focus_ring():
     )
 
 
+def test_pi2_ballot_edit_action_hover_respects_reduced_motion():
+    """`.ballot-edit-action:hover` adds `transform: translateY(-1px)`.
+    The home-shell `prefers-reduced-motion: reduce` opt-out (paired with
+    `.ballot-card`, `.cta-card`, `.cg--active`, `.join-cta`, `.decree-cta`,
+    `.roster-recap-cta`) must include this selector so users who request
+    reduced motion don't still see the lift. PR #15 CR R2 caught the
+    missing entry — locking it so it doesn't drift again when a future
+    hover affordance is added/removed."""
+    # Match the specific home-shell reduced-motion block (anchored on
+    # `.home-shell .ballot-card:hover`, the canonical first selector), not
+    # any other reduced-motion @media block that targets unrelated surfaces
+    # like `.champion-glow-bg` animation.
+    reduced_motion_block = re.search(
+        r'@media \(prefers-reduced-motion: reduce\) \{\s*'
+        r'(\.home-shell \.ballot-card:hover[^}]+\{[^}]+\})',
+        CSS,
+        re.DOTALL,
+    )
+    assert reduced_motion_block, (
+        "home-shell reduced-motion opt-out block (anchored on "
+        "`.home-shell .ballot-card:hover`) must exist in style.css."
+    )
+    selector_list = reduced_motion_block.group(1)
+    assert '.home-shell .ballot-edit-action:hover' in selector_list, (
+        "`.home-shell .ballot-edit-action:hover` must appear in the "
+        "`@media (prefers-reduced-motion: reduce)` opt-out so the "
+        "`translateY(-1px)` lift is reset for users who request "
+        "reduced motion."
+    )
+
+
 # ---------------------------------------------------------------------------
 # PI-3: card recipe vocabulary consolidation.
 # ---------------------------------------------------------------------------

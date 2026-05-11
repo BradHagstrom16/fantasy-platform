@@ -2366,6 +2366,7 @@ body.game-golf {
 /* --- Polish: reduced-motion respect for hover lifts --- */
 @media (prefers-reduced-motion: reduce) {
   .home-shell .ballot-card:hover,
+  .home-shell .ballot-edit-action:hover,
   .home-shell .cta-card:hover,
   .home-shell .cg--active:hover,
   .home-shell .join-cta:hover,
@@ -6627,8 +6628,19 @@ hr { border-color: var(--border); opacity: 1; }
    (white td via the --bs-table-bg lock) and inside the .tier-mobile-card
    lavender bg — both light substrates, both invisible without an override.
    Mirrors the S4.2.2 PI-A1 pattern that re-tinted the chip inside
-   .tier-card-heading. Council-purple-on-bone reads ~14.5:1, far above AA. */
-.table-worldcup .wc-multiplier-chip {
+   .tier-card-heading. Council-purple-on-bone reads ~14.5:1, far above AA.
+
+   PR #15 CR R2 — scope to NON-.player-picks-desktop tables only. The
+   .player-picks-desktop wrapper (picks.html readonly + player_detail.html)
+   sits inside .card.wc-card with `background-color: transparent` on
+   `> tbody > tr > td` (:2926-2937), so dark navy substrate bleeds through.
+   A broad `.table-worldcup .wc-multiplier-chip` retint flips the chip to
+   dark-ink-on-dark-navy (≈invisible — live-probed at /worldcup/leaderboard/1:
+   chip color `rgb(28, 23, 48)` on td bg `rgba(0, 17, 46, 0.8)`). The
+   `:not(.player-picks-desktop)` carve-out keeps the rules.html / _home_live
+   light-td case dark-ink while letting the .player-picks-desktop case
+   fall back to the default `.wc-multiplier-chip` rule's bone-on-bone-alpha. */
+.card.wc-card:not(.player-picks-desktop) .table-worldcup .wc-multiplier-chip {
   color: var(--text-primary);
   background: rgba(58, 29, 114, .07);
   border-color: rgba(58, 29, 114, .25);
