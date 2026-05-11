@@ -372,6 +372,44 @@ body.game-golf {
   margin: 0 auto;
 }
 
+/* S4.1.2 PI-1 — pre-state desktop 2-col layout. The pre-S4.1.2 single
+   `.home-col` floored `_home_pre.html` to a phone-shaped column at every
+   viewport, wasting ~830px of horizontal space on the 1280-canvas. The new
+   `.home-pre-grid` collapses to a 640-floored single column below md
+   (parity with `.home-col` so the mobile reading order is unchanged), then
+   becomes a 7fr/5fr grid at md+. Col-A carries time-sensitive masthead
+   surfaces (greet + countdown + dossier); col-B carries the supporting
+   rail (opening matches + game tiles + commish + dispatches). The grid is
+   pre-state-only — `.home-live` keeps its `.container-fluid > .row`
+   layout, and `.home-shell--out` keeps its single-column hero + full-width
+   registry composition (PI-1 of S4.1.1). */
+.home-shell .home-pre-grid {
+  max-width: 640px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0;
+}
+@media (min-width: 768px) {
+  .home-shell .home-pre-grid {
+    max-width: 1180px;
+    grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+    gap: 2rem;
+    align-items: start;
+  }
+}
+.home-shell .home-pre-col {
+  min-width: 0;
+}
+@media (min-width: 768px) {
+  /* On the wide canvas the rail's first child (`.sec-head` for Opening
+     Matches) renders above any countdown-card whitespace. Pull its top
+     padding back so the rail and masthead share a baseline at md+. */
+  .home-shell .home-pre-col--rail > .sec-head:first-child {
+    padding-top: 0;
+  }
+}
+
 /* Section heads — shared across all home states */
 .home-shell .sec-head {
   display: flex;
@@ -493,6 +531,49 @@ body.game-golf {
   justify-content: center;
   color: var(--gold-light);
   font-size: 1.1rem;
+}
+/* S4.1.2 PI-4 — row 2 swaps the icon for an inline leaderboard
+   sparkline (matches the leaderboard preview register and breaks the
+   three-identical-icon-row silhouette). Same 36px box footprint as
+   .out-prop-icon so the row baselines hold. */
+.home-shell .out-prop-spark {
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--live-green);
+}
+.home-shell .out-prop-spark svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+/* S4.1.2 PI-4 — row 3 swaps the icon for a Tribune monogram. The
+   `◈ C ◈` mark mirrors the in-product Commish seals (decree-seal,
+   out-eyebrow) so the row visually previews the voice it describes. */
+.home-shell .out-prop-monogram {
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.18rem;
+  font-family: var(--font-teko);
+  font-weight: 600;
+  color: var(--gold-light);
+  letter-spacing: 0;
+}
+.home-shell .out-prop-monogram-mark {
+  font-size: 0.7rem;
+  line-height: 1;
+  color: rgba(242,211,107,.55);
+}
+.home-shell .out-prop-monogram-letter {
+  font-size: 1.35rem;
+  line-height: 1;
 }
 .home-shell .out-prop-text .t {
   font-family: var(--font-teko);
@@ -882,7 +963,11 @@ body.game-golf {
   margin: 0 0.4rem;
 }
 
-/* --- Pre-state: countdown card --- */
+/* --- Pre-state: countdown card.
+   S4.1.2 PI-3 — Ceremonial recipe lock. Border opacity normalized from
+   .35 to .3 so the gold-border-30% value is shared with
+   `.cta-card--seal` + `.cta-card--join`. DESIGN.md §5 documents the
+   canonical recipe. */
 .home-shell .decree {
   position: relative;
   margin: 1.5rem 0;
@@ -890,7 +975,7 @@ body.game-golf {
   background: linear-gradient(180deg,
     var(--purple-800) 0%,
     var(--purple-900) 100%);
-  border: 1px solid rgba(201,162,39,.35);
+  border: 1px solid rgba(201,162,39,.3);
   border-radius: 14px;
   overflow: hidden;
 }
@@ -1073,7 +1158,11 @@ body.game-golf {
   color: var(--gold-light);
 }
 
-/* --- Pre-state: sealed ballot card --- */
+/* --- Pre-state: sealed ballot card ---
+   S4.1.2 PI-2 — semantic split. The card is no longer a single `<a>`
+   wrapper; hover lift moves to `.ballot-edit-action` below. The
+   container keeps the green-tinted "sealed" register but no longer
+   pretends to be a tap-route. */
 .home-shell .ballot-card {
   display: block;
   margin: 1.5rem 0;
@@ -1083,13 +1172,6 @@ body.game-golf {
     rgba(26,10,54,.5) 100%);
   border: 1px solid rgba(100,219,160,.3);
   border-radius: 12px;
-  text-decoration: none;
-  color: var(--bone);
-  transition: transform 0.15s ease, border-color 0.15s ease;
-}
-.home-shell .ballot-card:hover {
-  transform: translateY(-2px);
-  border-color: rgba(100,219,160,.5);
   color: var(--bone);
 }
 .home-shell .ballot-head {
@@ -1151,24 +1233,68 @@ body.game-golf {
   border-radius: 8px;
 }
 .home-shell .ballot-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  margin-top: 0.75rem;
+}
+.home-shell .ballot-foot-prose {
   font-family: var(--font-news);
   font-style: italic;
   font-size: 0.85rem;
   color: var(--bone-mute);
   line-height: 1.4;
-  margin-top: 0.5rem;
+  margin: 0;
+  flex: 1 1 auto;
+  min-width: 0;
 }
-.home-shell .ballot-foot em {
+.home-shell .ballot-edit-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 44px;
+  padding: 0.5rem 0.85rem;
+  font-family: var(--font-teko);
+  font-weight: 600;
+  font-size: 0.85rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
   color: var(--gold-light);
-  font-style: italic;
+  text-decoration: none;
+  border: 1px solid rgba(201,162,39,.32);
+  border-radius: 6px;
+  transition: transform 0.15s ease,
+              background-color 0.15s ease,
+              border-color 0.15s ease,
+              color 0.15s ease;
+}
+.home-shell .ballot-edit-action:hover {
+  transform: translateY(-1px);
+  background: rgba(201,162,39,.10);
+  border-color: rgba(201,162,39,.5);
+  color: var(--gold-hi);
+}
+.home-shell .ballot-edit-action:focus-visible {
+  outline: 2px solid var(--gold-light);
+  outline-offset: 2px;
+  color: var(--gold-hi);
 }
 
-/* --- CTA cards (join, view, seal) --- */
+/* --- CTA cards (join, view, seal) ---
+   S4.1.2 PI-3 — card recipe vocabulary. The home-shell now codifies two
+   tiers (documented in DESIGN.md §5 "Card recipes inside .home-shell"):
+   Ceremonial = purple-800→purple-900 + 30%-gold border + 14px radius
+   (`.decree`, `.cta-card--join`, `.cta-card--seal`); Informational =
+   purple-850→purple-950 + 8%-bone border + 12px radius (`.match-card`,
+   `.cta-card--view`). Per-variant overrides below set the
+   register-specific border and radius — the base `.cta-card` carries
+   only the layout/spacing common to both registers. */
 .home-shell .cta-card {
   display: block;
   margin: 1.5rem 0;
   padding: 1.5rem 1.25rem;
-  border-radius: 12px;
   text-decoration: none;
   transition: transform 0.15s ease, border-color 0.15s ease;
 }
@@ -1209,23 +1335,24 @@ body.game-golf {
   text-transform: uppercase;
   color: var(--gold-light);
 }
-.home-shell .cta-card--seal {
-  background: linear-gradient(180deg,
-    rgba(201,162,39,.1) 0%,
-    rgba(26,10,54,.5) 100%);
-  border: 1px solid rgba(201,162,39,.35);
-}
+/* Ceremonial register: time-sensitive CTAs (seal a roster, join the
+   pool). Same recipe as `.decree`. */
+.home-shell .cta-card--seal,
 .home-shell .cta-card--join {
   background: linear-gradient(180deg,
     var(--purple-800) 0%,
     var(--purple-900) 100%);
   border: 1px solid rgba(201,162,39,.3);
+  border-radius: 14px;
 }
+/* Informational register: standing affordances that don't carry
+   deadline urgency. Same recipe as `.match-card`. */
 .home-shell .cta-card--view {
   background: linear-gradient(180deg,
     var(--purple-850) 0%,
     var(--purple-950) 100%);
-  border: 1px solid rgba(243,239,230,.12);
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 12px;
 }
 
 /* --- Match card — shared (upcoming + final) --- */
@@ -2198,13 +2325,13 @@ body.game-golf {
   text-underline-offset: 4px;
 }
 
-/* --- Polish: card-style links use the same lift as auth buttons --- */
-.home-shell .ballot-card,
+/* --- Polish: card-style links use the same lift as auth buttons.
+   S4.1.2 PI-2 dropped .ballot-card from this set — the card no longer is
+   an anchor, so the hover lift moved to .ballot-edit-action above. --- */
 .home-shell .cta-card,
 .home-shell .cg--active {
   transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
 }
-.home-shell .ballot-card:hover,
 .home-shell .cta-card:hover,
 .home-shell .cg--active:hover {
   transform: translateY(-1px);
@@ -2220,13 +2347,13 @@ body.game-golf {
 
 /* --- Polish: touch device hover suppression --- */
 @media (hover: none) {
-  .home-shell .ballot-card:hover,
   .home-shell .cta-card:hover,
   .home-shell .cg:hover,
   .home-shell .cg--active:hover,
   .home-shell .join-cta:hover,
   .home-shell .decree-cta:hover,
-  .home-shell .roster-recap-cta:hover {
+  .home-shell .roster-recap-cta:hover,
+  .home-shell .ballot-edit-action:hover {
     transform: none;
     box-shadow: none;
   }

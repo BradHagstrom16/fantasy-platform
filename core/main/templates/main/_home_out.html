@@ -14,10 +14,18 @@
     </p>
   </div>
 
-  {# Value props #}
+  {# Value props.
+
+     S4.1.2 PI-4 — row-specific texture so the strip no longer reads as
+     three identical icon-text rows (the within-strip identical-grid
+     signal the S4.1.1 critique flagged). Row 1 keeps the trophy icon;
+     row 2 swaps the icon for an inline sparkline preview (leaderboard
+     register); row 3 swaps for a Tribune monogram. Each preview is
+     decorative (`aria-hidden="true"`) — the row's title + sub line
+     carry the semantic content. #}
   <div class="out-props">
     <div class="out-prop">
-      <div class="out-prop-icon">
+      <div class="out-prop-icon" aria-hidden="true">
         <i class="bi bi-trophy-fill"></i>
       </div>
       <div class="out-prop-text">
@@ -26,8 +34,13 @@
       </div>
     </div>
     <div class="out-prop">
-      <div class="out-prop-icon">
-        <i class="bi bi-graph-up-arrow"></i>
+      <div class="out-prop-spark" aria-hidden="true">
+        <svg viewBox="0 0 64 36" preserveAspectRatio="none" focusable="false">
+          <polyline points="2,28 14,22 24,26 34,14 46,18 62,6"
+                    fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round" />
+          <circle cx="62" cy="6" r="3" fill="currentColor" />
+        </svg>
       </div>
       <div class="out-prop-text">
         <div class="t">Climb the leaderboard</div>
@@ -35,8 +48,10 @@
       </div>
     </div>
     <div class="out-prop">
-      <div class="out-prop-icon">
-        <i class="bi bi-journal-text"></i>
+      <div class="out-prop-monogram" aria-hidden="true">
+        <span class="out-prop-monogram-mark">◈</span>
+        <span class="out-prop-monogram-letter">C</span>
+        <span class="out-prop-monogram-mark">◈</span>
       </div>
       <div class="out-prop-text">
         <div class="t">Read the Commish&rsquo;s Note</div>

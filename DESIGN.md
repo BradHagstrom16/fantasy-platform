@@ -291,6 +291,15 @@ Two card registers: the default light Tribune card and the dark Tribune-Dark car
 - **Card Header** (`.card-header`): transparent fill, `1px solid var(--border)` bottom border, Teko 600 uppercase title.
 - **Game Card** (`.game-card`): default card with a `3px solid var(--platform-accent)` (gold) top border. Used on the home page game grid.
 
+#### Card recipes inside `.home-shell`
+
+The home shell is a dark editorial surface (purple radial atmosphere), not the bone page. Its panels split into two registers; a returning user should be able to predict, from the silhouette alone, whether a card is a ceremonial CTA or an informational fixture.
+
+- **Ceremonial** (`.decree`, `.cta-card--join`, `.cta-card--seal`): `linear-gradient(180deg, var(--purple-800), var(--purple-900))` + `1px solid rgba(201, 162, 39, 0.3)` + `border-radius: 14px`. Optional dashed-gold internal rules separate multi-band layouts (`.decree-seal` border-bottom). Used for time-sensitive moments: the countdown decree, the join-pool CTA, the seal-your-roster CTA. The gold-30% border is the visual contract; it tells a returning user "this asks something of you before a deadline."
+- **Informational** (`.match-card`, `.cta-card--view`): `linear-gradient(180deg, var(--purple-850), var(--purple-950))` + `1px solid rgba(255, 255, 255, 0.08)` + `border-radius: 12px`. The bone-opacity-8 border reads as the standing-affordance baseline (fixtures, the view-only dossier shell). It carries no deadline pressure; the recipe says "this is the record, look as long as you want."
+
+The two recipes are non-overlapping by construction — a new home-shell panel picks one, not both. The `.ballot-card` is a third, narrower register (green-tinted "sealed" state) and is not part of the two-tier set.
+
 ### Form Controls
 
 - **Style:** `1.5px solid var(--border)` border, `--radius` corners, `var(--bg-card)` fill, `Newsreader 400` body type, `0.6rem 0.9rem` padding, `min-height: 44px` (touch-friendly, the floor).
