@@ -4916,6 +4916,100 @@ main { flex: 1; }
   padding: 2rem 1rem;
 }
 
+/* === P3 S3.2.1 — Auth cluster: contrast + 44×44 + Tribunal Black bleed-through === */
+
+/* PI-2: lift `.auth-subtitle` + `.form-text` off `--text-muted` (#8A849B), which
+   fails AA on the bone card (~3.13:1 at 14.4px). Bootstrap 5.3 paints `.text-muted`
+   via `--bs-secondary-color !important`; raise our auth-scoped override specificity
+   so the auth card lands at `--text-secondary` (~6.9:1 on bone). */
+body.auth-page .auth-subtitle,
+body.auth-page .form-text {
+  color: var(--text-secondary);
+}
+body.auth-page a.text-muted,
+body.auth-page span.text-muted,
+body.auth-page p.text-muted,
+body.auth-page small.text-muted {
+  color: var(--text-secondary) !important;
+}
+
+/* PI-3: brand-panel sub-copy and game-row labels fail AA on the council-purple
+   gradient mid-stop. Lift alpha so the white reads AA at body sizes. */
+.auth-panel-brand .brand-sub {
+  color: rgba(255, 255, 255, .78);
+}
+.auth-panel-brand .brand-game-item {
+  color: rgba(255, 255, 255, .82);
+}
+
+/* PI-4: below the split-panel breakpoint the brand panel collapses and the
+   form-panel's bone fill no longer serves the split — it erases the Tribunal
+   Black atmosphere the body radial gradient paints. Drop the bone fill on
+   mobile so the backdrop bleeds through and the card lifts off it cleanly. */
+@media (max-width: 767.98px) {
+  .auth-form-panel {
+    background: transparent;
+  }
+}
+
+/* PI-1 (carries §0.4 S0.3 backlog): cross-flow link rows ("Forgot your key?",
+   "Not on the rolls yet?", "Back to Profile", "Change Password") need the 44×44
+   floor for mobile, and a focus-visible ring so keyboard users see the moment
+   they land. Lift link copy off `--gold` (3.6:1 on bone, AA-fail) onto
+   `--gold-dark` (~5.07:1 on bone). */
+.auth-link-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: .35rem;
+  min-height: 44px;
+  margin: 0;
+  font-family: var(--font-news);
+  font-size: .92rem;
+  color: var(--text-secondary);
+  text-align: center;
+}
+.auth-link-row a {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  min-height: 44px;
+  padding: .45rem .65rem;
+  font-family: var(--font-teko);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  font-size: .95rem;
+  font-weight: 600;
+  text-decoration: none;
+  border-radius: var(--radius);
+  transition: background-color .15s ease, color .15s ease;
+}
+body.auth-page .auth-link-row a {
+  color: var(--gold-dark);
+}
+body.auth-page .auth-link-row a:hover {
+  color: var(--purple-900);
+  background-color: rgba(201, 162, 39, .12);
+}
+body.auth-page .auth-link-row a:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+  color: var(--purple-900);
+  background-color: rgba(201, 162, 39, .12);
+}
+
+/* Freebie F2: lift the "(optional)" parenthetical off the Teko/uppercase label
+   inheritance so it reads as the editorial aside it is — without inline styles. */
+.form-label-meta {
+  font-family: var(--font-news);
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: .78rem;
+  color: var(--text-secondary);
+}
+
 /* ── 15. Footer ─────────────────────────────────────────── */
 footer {
   background: linear-gradient(90deg, var(--platform-primary-dark) 0%, var(--platform-primary) 100%);
