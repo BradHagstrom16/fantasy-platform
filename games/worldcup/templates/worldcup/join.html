@@ -5,8 +5,9 @@
 <div class="page-hero">
   <div class="hero-glow"></div>
   <div class="container">
-    <h1>Join the World Cup Fantasy Pool</h1>
-    <p class="lead mb-0">2026 FIFA World Cup &middot; ${{ entry_fee }} entry</p>
+    <span class="wc-eyebrow">2026 World Cup · Membership</span>
+    <h1>Sign the ledger.</h1>
+    <p class="lead mb-0">Nine teams, five tiers, one vote at kickoff.</p>
   </div>
 </div>
 
@@ -16,34 +17,31 @@
 
       <div class="card border-0 animate-in">
         <div class="card-body p-4">
-          <h3 class="mb-3" style="font-family:'Teko',sans-serif; text-transform:uppercase; letter-spacing:.04em;">How It Works</h3>
-          <ul class="mb-4">
-            <li>Pick <strong>9 national teams</strong> across 5 tiers before kickoff</li>
-            <li>Points accumulate as your teams win matches and advance</li>
-            <li>Lower-tier teams carry higher multipliers</li>
-            <li>Tiebreaker: predict total USA goals in the tournament</li>
-          </ul>
+          <h2 class="wc-section-heading">How the pool works</h2>
+          <p>Pick nine national teams across five tiers before first kickoff. Points accumulate as your teams win matches and advance, and lower-tier teams carry steeper multipliers. If two of you finish level, the closer guess to total USA goals takes the prize.</p>
+          <p class="mb-4">Membership opens for <strong>${{ entry_fee }}</strong>. Picks lock the moment the first whistle blows.</p>
 
           <form method="POST">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
 
             <div class="mb-3">
-              <label for="display_name" class="form-label">Display Name <small class="text-muted">(optional)</small></label>
+              <label for="display_name" class="form-label">Display name <span class="form-label-meta">(optional)</span></label>
               <input type="text" class="form-control" id="display_name" name="display_name"
                      placeholder="{{ current_user.username }}" maxlength="80">
               <div class="form-text">Leave blank to use your username.</div>
             </div>
 
             <button type="submit" class="btn btn-game btn-lg w-100">
-              <i class="bi bi-globe2 me-2"></i>Join the Pool
+              <i class="bi bi-globe2 me-2" aria-hidden="true"></i>Take your seat
             </button>
           </form>
         </div>
       </div>
 
-      <div class="text-center mt-3">
-        <a href="{{ url_for('worldcup.rules') }}" class="text-muted small">
-          <i class="bi bi-book me-1"></i>Read the full rules &amp; scoring
+      <div class="text-center mt-4">
+        <a href="{{ url_for('worldcup.rules') }}" class="join-rules-link">
+          <i class="bi bi-book" aria-hidden="true"></i>
+          <span>Read the house rules</span>
         </a>
       </div>
 
