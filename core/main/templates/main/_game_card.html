@@ -55,7 +55,8 @@
       <span class="status-badge status-badge--muted mb-3">Coming Soon</span>
       <span class="game-icon">{{ game.emoji }}</span>
       <h3 class="game-title">{{ game.display_name }}</h3>
-      <p class="game-desc mb-0">{{ game.description }}</p>
+      <p class="game-desc">{{ game.description }}</p>
+      <p class="game-launch-meta mb-0">Opens {{ game.launch_label or 'TBA' }}</p>
     </div>
   </div>
 

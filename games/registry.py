@@ -27,6 +27,10 @@ class GameRegistryEntry:
     blueprint_join: str
     get_enrollment: Callable[[int], Optional[Any]]
     admin_enroll: Callable[[int], Any]
+    # Display metadata for compact tile / coming-soon variants. Defaults keep
+    # the partial slug-agnostic when an entry omits them.
+    short_name: str = ''
+    launch_label: str = ''
 
 
 from games.worldcup.services import enrollment as _worldcup_enrollment
@@ -50,6 +54,8 @@ GAMES: list[GameRegistryEntry] = [
         blueprint_join='worldcup.join',
         get_enrollment=_worldcup_enrollment.get_enrollment,
         admin_enroll=_worldcup_enrollment.admin_enroll,
+        short_name='World Cup',
+        launch_label='Jun 11',
     ),
     GameRegistryEntry(
         slug='cfb',
@@ -65,6 +71,8 @@ GAMES: list[GameRegistryEntry] = [
         blueprint_join='cfb.join',
         get_enrollment=_cfb_enrollment.get_enrollment,
         admin_enroll=_cfb_enrollment.admin_enroll,
+        short_name='CFB',
+        launch_label='Sep 3',
     ),
     GameRegistryEntry(
         slug='golf',
@@ -80,6 +88,8 @@ GAMES: list[GameRegistryEntry] = [
         blueprint_join='golf.join',
         get_enrollment=_golf_enrollment.get_enrollment,
         admin_enroll=_golf_enrollment.admin_enroll,
+        short_name='Golf',
+        launch_label='2027',
     ),
 ]
 

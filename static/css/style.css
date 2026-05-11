@@ -4302,6 +4302,14 @@ main { flex: 1; }
 .game-card--live:hover {
   color: inherit;
 }
+/* Keyboard-first focus ring — matches the canonical .home-shell .sec-head
+   .more pattern (gold-light, 2px outline, 2px offset) so playable game
+   tiles announce keyboard focus consistently across home surfaces. */
+.game-card--live:focus-visible {
+  outline: 2px solid var(--gold-light);
+  outline-offset: 2px;
+  border-radius: var(--radius);
+}
 
 /* Featured game card — WC hero prominence (temporary for WC launch) */
 .game-card--featured {
@@ -4440,6 +4448,22 @@ main { flex: 1; }
   font-size: .92rem;
   color: var(--text-secondary);
   line-height: 1.55;
+}
+
+/* Coming-soon launch label — Teko microcopy that gives the muted card a
+   temporal anchor instead of an open-ended "Coming Soon" promise. Lives on
+   the bone surface so we use --text-secondary (not Bootstrap --text-muted,
+   which fails AA on bone per project_text_muted_aa_on_bone memory). */
+.game-card--coming-soon .game-desc {
+  margin-bottom: .85rem;
+}
+.game-card--coming-soon .game-launch-meta {
+  font-family: 'Teko', sans-serif;
+  font-size: .9rem;
+  font-weight: 500;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
 }
 
 /* Stat blocks */
