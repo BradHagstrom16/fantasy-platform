@@ -30,6 +30,11 @@
     {% block head %}{% endblock %}
 </head>
 <body class="{% block body_class %}{{ body_class|default('') }}{% endblock %}">
+    {# P3 S3.1.1 — keyboard skip-link (WCAG 2.4.1 Bypass Blocks). Hidden until
+       focused; first focusable element on the page so Tab from address bar lands
+       on it. Targets the <main> region below. #}
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+
     <!-- Navigation -->
     <nav class="navbar navbar-expand-lg navbar-dark">
         <div class="container">
@@ -179,7 +184,7 @@
     </div>
 
     <!-- Main Content -->
-    <main>
+    <main id="main-content" tabindex="-1">
         {% block content %}{% endblock %}
     </main>
 

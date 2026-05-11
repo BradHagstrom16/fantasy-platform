@@ -64,6 +64,35 @@
 .brand-mark { width: 28px; height: 28px; vertical-align: -.35em; margin-right: .5rem; }
 .brand-mark--lg { width: 56px; height: 56px; }
 
+/* === CCC SKIP-LINK ===
+   P3 S3.1.1 — WCAG 2.4.1 Bypass Blocks. Hidden off-screen until focused, then
+   anchored over the top-left of the navbar (`top: .5rem`) so keyboard users
+   see a high-contrast gold-on-purple chip the moment they Tab into the page.
+   Routed before the navbar in base.html so it's the first focusable target. */
+.skip-link {
+  position: absolute;
+  top: -100px;
+  left: 1rem;
+  z-index: 1100;
+  padding: .5rem 1rem;
+  background: var(--purple-700);
+  color: var(--gold) !important;
+  font-family: var(--font-teko);
+  font-size: .9rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  text-decoration: none;
+  border: 2px solid var(--gold);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
+  transition: top var(--transition);
+}
+.skip-link:focus,
+.skip-link:focus-visible {
+  top: .5rem;
+  outline: none;
+}
+
 /* === CCC NAVBAR === */
 .navbar.navbar-dark {
   background: var(--purple-700);
@@ -76,6 +105,12 @@
   color: var(--bone);
   display: inline-flex;
   align-items: center;
+  /* P3 S3.1.1 — 44×44 mobile floor for the most-tapped "home" target. The
+     brand is otherwise 28-30px tall at 375 (logo mark + uppercase wordmark),
+     which fails WCAG 2.5.5 + PRODUCT.md §Accessibility's ≥ 44 × 44 px touch
+     target. Inline-flex centers the brand label vertically inside the larger
+     hit-box without enlarging the visual mark. */
+  min-height: 44px;
 }
 .navbar.navbar-dark .nav-link {
   font-family: var(--font-teko);
@@ -3960,21 +3995,25 @@ a:hover { color: var(--platform-primary-light); }
 main { flex: 1; }
 
 /* ── 6. Navbar ──────────────────────────────────────────── */
+/* P3 S3.1.1 — sticky-chrome wiring only. The navbar's brand surface (background,
+   border-bottom, brand color) is owned by the CCC `.navbar.navbar-dark` block at
+   the top of this file, which honors DESIGN.md §5 (solid `var(--purple-700)` fill
+   + `1px solid var(--purple-800)` rule). Prior iterations applied a chamber→council
+   linear-gradient here with `!important` that masked the spec; removed.
+   `transition` excludes `border-width` per impeccable's "don't animate layout
+   properties" rule. */
 .navbar {
-  background: linear-gradient(90deg, var(--platform-primary-dark) 0%, var(--platform-primary) 100%) !important;
-  border-bottom: 3px solid var(--platform-accent);
   padding: .65rem 0;
   box-shadow: var(--shadow-navbar);
   position: sticky;
   top: 0;
   z-index: 1030;
-  transition: padding var(--transition), border-width var(--transition);
+  transition: padding var(--transition);
 }
 
-/* Compact navbar after user scrolls — tighter padding, thinner accent border */
+/* Compact navbar after user scrolls — tighter padding. */
 .navbar-scrolled {
   padding: .3rem 0;
-  border-bottom-width: 2px;
 }
 
 .navbar-brand {
@@ -3983,12 +4022,15 @@ main { flex: 1; }
   letter-spacing: .08em;
   text-transform: uppercase;
   color: var(--platform-accent) !important;
-  transition: color var(--transition), text-shadow var(--transition);
+  transition: color var(--transition);
 }
 
+/* P3 S3.1.1 — Trophy Rule (DESIGN.md §2): gold-glow effects are reserved for
+   `--shadow-gold` on primary-CTA hover. A 20px text-shadow gold halo on the
+   brand wordmark was decorative gold on chrome; dropped to keep the trophy
+   ceremonial. Color shift to `--platform-accent-light` carries the hover. */
 .navbar-brand:hover {
   color: var(--platform-accent-light) !important;
-  text-shadow: 0 0 20px rgba(212,168,32,.4);
 }
 
 .navbar .nav-link {
@@ -4130,14 +4172,19 @@ main { flex: 1; }
 /* Individual pill.
    P0 S0.3: 44px min-height for the mobile-first touch floor (WCAG 2.5.5/2.5.8 +
    DESIGN.md). inline-flex centers the label vertically inside the larger box
-   without stretching the pill border-radius perception. */
+   without stretching the pill border-radius perception.
+   P3 S3.1.1: inactive text alpha bumped from .48 (≈3.7:1 on the WC `#00122e`
+   sub-nav substrate, fails AA for small text per WCAG 1.4.3) to .75 (≈6.5:1).
+   The active pill (white on the accent-tinted background, line below) still
+   wins the visual weight — inactive pills now read as "secondary but legible"
+   rather than "ghosted". */
 .subnav-pill {
   font-family: 'Teko', sans-serif;
   font-weight: 500;
   font-size: .78rem;
   letter-spacing: .05em;
   text-transform: uppercase;
-  color: rgba(255,255,255,.48);
+  color: rgba(255,255,255,.75);
   text-decoration: none;
   padding: .55rem 1rem;
   min-height: 44px;
