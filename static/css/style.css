@@ -341,17 +341,33 @@ body.game-golf {
   text-transform: uppercase;
   color: var(--gold-light);
   text-decoration: none;
+  /* S2.1.2 — 44×44 tap-target floor. Padding expands the hit area; the
+     negative margin neutralizes the visual offset so the baseline alignment
+     with the section title stays where it was at 22px. */
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0.65rem 0.5rem;
+  margin: -0.65rem -0.5rem;
 }
-.home-shell .sec-head .more:hover {
+.home-shell .sec-head .more:hover,
+.home-shell .sec-head .more:focus-visible {
   color: var(--gold-hi);
 }
+.home-shell .sec-head .more:focus-visible {
+  outline: 2px solid var(--gold-light);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
 
-/* Metal-text helper (renamed from design's .metal-text per Spec B 9c) */
+/* Trophy-light flat gold for masthead emphasis. The metal-gold gradient is
+   reserved for primary CTAs (Trophy Rule, DESIGN.md §6); using it on text
+   would also violate the absolute ban on gradient text (background-clip:text
+   + gradient bg). Solid gold-light carries weight + register without diluting
+   the trophy. */
 .home-metal-text {
-  background: var(--metal-gold);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  color: var(--gold-light);
 }
 
 /* --- Logged-out: hero --- */
@@ -379,10 +395,7 @@ body.game-golf {
 }
 .home-shell .out-title .out-title-a {
   display: block;
-  background: var(--metal-gold);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  color: var(--gold-light);
 }
 .home-shell .out-title .out-title-b {
   display: block;
@@ -1158,9 +1171,12 @@ body.game-golf {
   border-radius: 14px;
 }
 .home-shell .dossier-stamp {
-  position: absolute;
-  top: 0.85rem;
-  right: 1rem;
+  /* S2.1.2 — was position:absolute, top:.85rem, right:1rem; on narrow viewports
+     it overlapped the rank-meta column when "Holding rank over 7 days" wrapped.
+     Now an in-flow Tribune-register eyebrow sitting above the rank, right-
+     aligned to keep the masthead-stamp feel without colliding with anything. */
+  display: block;
+  text-align: right;
   font-family: var(--font-teko);
   font-weight: 500;
   font-size: 0.65rem;
@@ -1168,12 +1184,12 @@ body.game-golf {
   text-transform: uppercase;
   color: var(--gold-light);
   opacity: 0.6;
+  margin-bottom: 0.5rem;
 }
 .home-shell .dossier-rank {
   display: flex;
   align-items: flex-end;
   gap: 1rem;
-  padding-top: 0.5rem;
 }
 .home-shell .rank-num {
   font-family: var(--font-teko);
@@ -1239,37 +1255,52 @@ body.game-golf {
   text-align: center;
 }
 
-.home-shell .dossier-meta {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 0.5rem;
+/* The Ledger — Tribune-style editorial summary inside the dossier.
+   Replaces the prior 3-up hero-metric grid (impeccable absolute ban; DESIGN.md
+   §6 Don't #8). Numerals carry Teko-bold + tabular emphasis so casual users
+   still scan them in a glance; surrounding prose is Newsreader italic so the
+   block reads as a press-room ledger entry, not a SaaS metric strip. */
+.home-shell .dossier-ledger {
   margin-top: 1.25rem;
   padding-top: 1rem;
   border-top: 1px solid rgba(243,239,230,.06);
 }
-.home-shell .d-meta {
-  text-align: center;
-}
-.home-shell .d-meta .k {
+.home-shell .ledger-eyebrow {
   font-family: var(--font-teko);
+  font-weight: 500;
+  font-size: 0.85rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gold-light);
+  margin-bottom: 0.5rem;
+}
+.home-shell .ledger-line {
+  font-family: var(--font-news);
+  font-style: italic;
+  font-size: 1rem;
+  line-height: 1.5;
+  color: var(--bone);
+  margin: 0;
+  max-width: 60ch;
+}
+.home-shell .ledger-line .lk {
+  font-family: var(--font-teko);
+  font-style: normal;
   font-weight: 700;
-  font-size: 1.6rem;
-  line-height: 1;
+  font-size: 1.05rem;
+  letter-spacing: 0.02em;
   color: var(--bone);
   font-variant-numeric: tabular-nums;
 }
-.home-shell .d-meta-k--gold { color: var(--gold-light); }
-.home-shell .d-meta-k--green { color: #64DBA0; }
-.home-shell .d-meta-k--red { color: #FF8089; }
-.home-shell .d-meta .l {
-  font-family: var(--font-teko);
-  font-weight: 500;
-  font-size: 0.65rem;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: var(--bone-mute);
-  margin-top: 0.35rem;
+.home-shell .ledger-line .lk--gold { color: var(--gold-light); }
+.home-shell .ledger-line .lk--red  { color: #FF8089; }
+.home-shell .ledger-delta {
+  display: inline;
+  font-style: italic;
 }
+.home-shell .ledger-delta--up   { color: #64DBA0; }
+.home-shell .ledger-delta--down { color: #FF8089; }
+.home-shell .ledger-delta--flat { color: var(--bone-mute); }
 
 /* --- Live-state: leaderboard preview (rolls) --- */
 .home-shell .rolls {
@@ -1354,7 +1385,85 @@ body.game-golf {
 /* --- Match foot status variants (live-state recent results) --- */
 .home-shell .match-foot-status--win { color: #64DBA0; }
 .home-shell .match-foot-status--draw { color: var(--gold-light); }
-.home-shell .match-foot-status--loss { color: var(--bone-mute); }
+.home-shell .match-foot-status--loss { color: #FF8089; }
+
+/* Roster-intersection card carries a faint gold rail so the user's match
+   stands apart from the surrounding press-room ledger context. */
+.home-shell .match-card--roster {
+  border-color: rgba(201,162,39,.4);
+}
+
+/* Also Today — compact, ledger-style strip for non-roster results.
+   Replaces what used to be 4-of-5 identical match-cards (DESIGN.md §6 Don't
+   #7 "identical card grids"). The user's match stays a card; the room's
+   matches collapse to a single dossier entry. */
+.home-shell .results-also {
+  margin-top: 1rem;
+  padding: 0.85rem 1rem;
+  background: rgba(243,239,230,.03);
+  border: 1px solid rgba(243,239,230,.08);
+  border-radius: 8px;
+}
+.home-shell .results-also-eyebrow {
+  font-family: var(--font-teko);
+  font-weight: 500;
+  font-size: 0.7rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--bone-mute);
+  margin-bottom: 0.5rem;
+}
+.home-shell .results-also-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.home-shell .results-also-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.75rem;
+  padding: 0.4rem 0;
+  border-bottom: 1px solid rgba(243,239,230,.05);
+  font-family: var(--font-teko);
+  font-size: 0.9rem;
+  letter-spacing: 0.05em;
+  color: var(--bone-mute);
+}
+.home-shell .results-also-row:last-child { border-bottom: none; }
+.home-shell .ra-stage {
+  font-size: 0.7rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  /* Was rgba(243,239,230,.45) — fell to 4.03:1 on purple-950, below the
+     WCAG AA 4.5:1 floor for normal text. .55 lifts it to ~5.5:1. */
+  color: rgba(243,239,230,.55);
+  flex-shrink: 0;
+  min-width: 6.5rem;
+}
+.home-shell .ra-line {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  font-variant-numeric: tabular-nums;
+}
+.home-shell .ra-team {
+  font-weight: 600;
+  color: var(--bone);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.home-shell .ra-score {
+  font-weight: 700;
+  color: var(--bone);
+  font-size: 1rem;
+}
+.home-shell .ra-sep {
+  font-size: 0.65rem;
+  letter-spacing: 0.16em;
+  color: var(--bone-mute);
+  text-transform: uppercase;
+}
 .home-shell .match-empty {
   padding: 2rem 1rem;
   text-align: center;
@@ -2188,6 +2297,17 @@ body.game-worldcup {
     linear-gradient(180deg, #0A1A50 0%, #00102E 100%);
 }
 
+/* P2 S2.3.1 PI-3 — owned-state hero variant: warmer gold radial.
+   Voice in copy + a tilt of atmosphere; chrome stays restrained. The
+   "Your pick · " eyebrow prefix carries the social weight; the variant
+   gradient lifts the masthead without inventing new chrome. */
+.page-hero.wc-hero-grad.wc-hero-grad-owned {
+  background:
+    radial-gradient(680px 260px at 100% -10%, rgba(242, 211, 107, .28), transparent 68%),
+    radial-gradient(420px 180px at 0% 100%, rgba(191, 10, 48, .22), transparent 70%),
+    linear-gradient(180deg, #11215C 0%, #00102E 100%);
+}
+
 /* Tier dot — circular tier indicator. Sibling pattern to tier-badge-{n}. */
 .wc-tier-dot {
   display: inline-block;
@@ -2255,17 +2375,48 @@ body.game-worldcup {
   background: rgba(245, 241, 232, .12);
 }
 
-/* picks.html / player_detail.html — pick row tier + multiplier on light card */
-.player-picks-desktop .wc-multiplier-chip {
-  color: var(--text-primary, #212529);
-  background: rgba(0, 40, 104, .04);
-  border-color: rgba(0, 40, 104, .12);
+/* === P2 S2.5.1 PI-1 — player_detail / picks contrast lock on .card.wc-card.
+   The wrapping <div class="card wc-card wc-card-flush"> puts the desktop
+   picks table on the dark navy surface (rgba(0,17,46,.8)). The previous
+   block here assumed a LIGHT card (forcing dark text on multiplier chip,
+   eyebrow, pick-event-stage, dashed border) — which rendered the entire
+   table invisible on the actual dark substrate. Per CLAUDE.md "`.card.wc-card`
+   is a dark navy surface", lift every cell on this scope to light tokens. */
+.player-picks-desktop .table-worldcup > tbody > tr > td {
+  color: var(--text-on-dark);
+  border-color: rgba(245, 241, 232, .08);
+  background-color: transparent;
 }
-.player-picks-desktop td .wc-eyebrow {
-  color: var(--text-muted, #6c757d);
+.player-picks-desktop .table-worldcup > tbody > tr:hover > td {
+  background-color: rgba(245, 241, 232, .04);
+}
+.player-picks-desktop .table-worldcup > tfoot > tr > td {
+  color: var(--text-on-dark);
+  border-color: rgba(245, 241, 232, .14);
+  background-color: transparent;
+}
+.player-picks-desktop .team-link {
+  color: var(--text-on-dark);
+}
+.player-picks-desktop .team-link:hover {
+  color: var(--gold-light);
+  border-bottom-color: var(--gold-light);
+}
+/* Override the surgical exclusion at the cluster 3 .card.wc-card .table
+   .text-muted rule below — that exclusion exists because Bootstrap's
+   white-td default masks navy on most surfaces, but player_detail's
+   .card.wc-card-flush + transparent td bg LEAVES navy bleeding through.
+   The card IS the .player-picks-desktop element (.card.wc-card.wc-card-flush
+   .player-picks-desktop), so the selector compounds three classes on the
+   same element to beat the cluster-3 specificity (.card.wc-card .table > tbody
+   > tr > td .text-muted = 4 classes + 3 elements). */
+.card.wc-card.player-picks-desktop .table-worldcup > tbody > tr > td .text-muted,
+.card.wc-card.player-picks-desktop .table-worldcup > tbody > tr > td.text-muted {
+  color: var(--bone-mute) !important;
 }
 
-/* picks.html / player_detail.html — three-column event-item grid (drill-down) */
+/* picks.html / player_detail.html — three-column event-item grid (drill-down).
+   Lives inside .pick-accordion which inherits .card.wc-card (dark navy). */
 .pick-events-inner {
   padding: .75rem 1rem .25rem;
 }
@@ -2275,38 +2426,122 @@ body.game-worldcup {
   gap: .75rem;
   align-items: baseline;
   padding: .25rem 0;
-  border-bottom: 1px dashed rgba(0, 40, 104, .07);
+  border-bottom: 1px dashed rgba(245, 241, 232, .12);
   animation: wc-event-fade-in 200ms ease-out both;
   animation-delay: calc(var(--event-i, 0) * 40ms);
+  color: var(--text-on-dark);
 }
 .pick-events-list .pick-event-item:last-child { border-bottom: none; }
-.pick-event-stage { color: var(--text-muted, #6c757d); }
+.pick-event-stage { color: var(--bone-mute); }
 .pick-event-desc { font-size: .9rem; }
 .pick-event-pts { font-size: 1rem; }
 
-/* Spec C Plan 2 — player_detail / team_detail hero stat grid.
-   NOTE: uses .hero-stat (not .stat-block) to avoid collision with the
-   later platform .stat-block rule which has its own card chrome. */
-.player-hero-stats,
-.team-hero-stats {
+/* P2 S2.5.1 PI-2 — player_detail hero re-shape.
+   Mirrors the team_detail .team-hero-line pattern locked in S2.3.1: one
+   dominant numeral (Total at 2.6rem), Newsreader derivation prose carrying
+   the rivalry framing (trails leader by X · Y ahead of next), Tiebreak
+   moved off the masthead onto the eyebrow line as a chip with units.
+   Replaces the prior three-equal-weight 1.6rem grid (hero-metric template
+   adjacency, banned per impeccable + DESIGN.md §6). */
+.player-hero-eyebrows {
   display: flex;
-  gap: 1.5rem;
+  align-items: center;
   flex-wrap: wrap;
-  margin-top: .75rem;
+  gap: .5rem .9rem;
+  margin-bottom: .25rem;
 }
-.player-hero-stats .hero-stat,
-.team-hero-stats .hero-stat {
+.player-hero-tiebreak {
+  color: var(--bone-mute);
+  letter-spacing: .08em;
+}
+.player-hero-tiebreak strong {
+  color: var(--text-on-dark);
+  font-weight: 700;
+  margin: 0 .15rem;
+  font-variant-numeric: tabular-nums;
+}
+.player-hero-line {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: .65rem 1.25rem;
+  margin-top: .85rem;
+}
+.player-hero-score {
   display: flex;
   flex-direction: column;
-  gap: .2rem;
-  min-width: 70px;
+  gap: .15rem;
+  flex-shrink: 0;
 }
-.player-hero-stats .hero-stat strong,
-.team-hero-stats .hero-stat strong {
-  font-size: 1.6rem;
+.player-hero-score-value {
+  font-size: 2.6rem;
   line-height: 1;
   color: var(--wc-white);
   font-weight: 700;
+}
+.player-hero-derivation {
+  font-family: 'Newsreader', Georgia, serif;
+  font-size: .98rem;
+  line-height: 1.4;
+  color: rgba(245, 241, 232, .82);
+  flex: 1 1 240px;
+  min-width: 0;
+  margin: 0;
+}
+
+/* P2 S2.3.1 PI-1 — team_detail hero stat line.
+   Re-shape: one dominant Scored numeral, multiplier chip inline, the Base
+   × Multiplier derivation reads as supporting microcopy. The duplicate
+   Tier tile moved up onto the eyebrow line so the masthead doesn't render
+   four equal-weight 1.6rem numerals (hero-metric template adjacency). */
+.team-hero-line {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 1rem 1.25rem;
+  margin-top: .85rem;
+}
+.team-hero-score {
+  display: flex;
+  flex-direction: column;
+  gap: .15rem;
+  flex-shrink: 0;
+}
+.team-hero-score-value {
+  font-size: 2.6rem;
+  line-height: 1;
+  color: var(--wc-white);
+  font-weight: 700;
+}
+.team-hero-mult {
+  align-self: center;
+  font-size: 1.05rem;
+}
+.team-hero-derivation {
+  font-family: 'Newsreader', Georgia, serif;
+  font-size: .92rem;
+  line-height: 1.4;
+  color: rgba(245, 241, 232, .82);
+  flex: 1 1 240px;
+  min-width: 0;
+}
+.team-hero-derivation .wc-numeral {
+  color: var(--wc-white);
+  font-size: 1.05rem;
+  margin: 0 .12rem;
+}
+
+/* Reusable Teko meta-label primitive — smaller cousin of .wc-eyebrow.
+   Distinct shape (no letter-spacing, lower-contrast color) so the eyebrow
+   stays a singular section-kicker primitive while in-row labels read as
+   captions. Introduced in S2.3.1 to support the hero re-shape. */
+.wc-meta-label {
+  font-family: 'Teko', sans-serif;
+  font-size: .7rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: rgba(245, 241, 232, .68);
 }
 
 /* Back-affordance link — small, bone-mute, hover-bright */
@@ -2370,6 +2605,13 @@ body.game-worldcup {
   color: var(--wc-white);
   font-weight: 700;
 }
+/* PI-4 freebie (S2.3.1): replace Bootstrap .text-muted (#6c757d, neutral
+   gray) on the dark navy ribbon with a bone-mute tint so the ribbon
+   blurb holds AA against the rgba(0,17,46,.6) substrate. */
+.ownership-ribbon .ownership-ribbon-blurb {
+  font-size: .85rem;
+  color: var(--bone-mute);
+}
 
 /* Fixture row grid — 4-col layout: stage / opponent / score / points.
    Mobile compresses to 80/1fr/50/50 with reduced padding. */
@@ -2402,23 +2644,86 @@ body.game-worldcup {
   font-size: .6rem;
 }
 
+/* PI-4 (S2.3.1): scoped legibility helpers replace inline `.text-muted`
+   tokens that read at #6c757d (neutral gray) on the .card.wc-card navy
+   surface. Each tints toward the bone family so micro-copy holds AA. */
+.fixture-stage-date,
+.fixture-vs,
+.fixture-tbd {
+  color: var(--bone-mute);
+}
+
+/* P2 S2.6 PI-3: page-level team_detail microcopy sits OUTSIDE .card.wc-card
+   (on the bone page background), so replace Bootstrap .text-muted (#6c757d
+   neutral gray) with the CCC purple-tinted --text-secondary (#5A5470).
+   --bone-mute would over-fade on bone; --text-secondary holds AA at body
+   sizes and matches the tonal register of other page-level microcopy
+   (.schedule-stage-count / .wc-meta-label / .schedule-legend). */
+.team-fixtures-empty,
+.team-path-fineprint {
+  color: var(--text-secondary);
+}
+.fixture-stage-date { font-size: .8rem; }
+.fixture-vs        { font-size: .85rem; }
+.fixture-tbd       { font-size: .9rem; }
+/* Opponent cell: explicit gap + flag flex-shrink so emoji glyphs don't
+   collide with the FIFA code at the squeezed 1fr column on mobile. */
+.fixture-opponent {
+  display: flex;
+  align-items: center;
+  gap: .35rem;
+  min-width: 0;
+}
+.fixture-opponent .fixture-flag {
+  flex-shrink: 0;
+  line-height: 1;
+}
+.fixture-opponent .fixture-code {
+  font-weight: 600;
+  letter-spacing: .02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* Empty pts cell: invisible spacer keeps desktop grid alignment without
+   rendering the "·" dead-placeholder dot on every un-played row. */
+.fixture-pts-empty {
+  visibility: hidden;
+}
+
 @media (max-width: 575.98px) {
+  /* Played rows keep 4 columns (results + pts both fit). Pending rows
+     collapse to 3 columns so the dead pts cell stops claiming ~12% of
+     horizontal space and the opponent cell gets breathing room. */
   .fixture-row {
     grid-template-columns: 80px 1fr 50px 50px;
     padding: .55rem .75rem;
     gap: .5rem;
   }
+  .fixture-row-pending {
+    grid-template-columns: 80px 1fr 60px;
+  }
+  .fixture-row-pending .fixture-pts-empty {
+    display: none;
+  }
 }
 
-/* Spec C Plan 2 — path-to-crown segments + picker list.
+/* Path-to-crown segments + picker list.
    6 stage tiles (Group · R32 · R16 · QF · SF · Final) × 4 statuses.
-   Won = gold-tinted ✓; current = red-bordered (next-up); eliminated = red ✗;
-   future = dim. flex 1-1-0 keeps tiles equal at 1280px and wraps gracefully
-   under 375px. */
+   Won = gold-tinted ✓; current = red-bordered ◉ (next-up); eliminated = red ✗;
+   future = bone-outline ○. Each status carries an icon so status reads
+   without color (PRODUCT.md a11y rule). flex 1-1-0 keeps tiles equal at
+   1280px and wraps gracefully under 375px.
+   S2.3.1 PI-2: <ol> + <li> for proper sequence semantics; explicit list
+   reset because the parent .container's Bootstrap reset doesn't reach. */
 .path-segments {
   display: flex;
   gap: .4rem;
   flex-wrap: wrap;
+  list-style: none;
+  padding-left: 0;
+  margin-bottom: 0;
+  counter-reset: path-step;
 }
 .path-segment {
   flex: 1 1 0;
@@ -2426,7 +2731,7 @@ body.game-worldcup {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: .15rem;
+  gap: .25rem;
   padding: .5rem .25rem;
   border: 1px solid rgba(245, 241, 232, .08);
   border-radius: 4px;
@@ -2434,43 +2739,78 @@ body.game-worldcup {
   color: var(--bone-mute);
   transition: border-color var(--transition);
 }
+/* Icon wrapper sits beneath the stage eyebrow at a consistent line-height
+   so the row stays vertically aligned across status mixes. */
+.path-segment-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  line-height: 1;
+  height: 1.05rem;
+}
+.path-segment-future .path-segment-icon { color: rgba(245, 241, 232, .35); }
 .path-segment-won {
   color: var(--wc-white);
   border-color: rgba(242, 211, 107, .35);
   background: rgba(242, 211, 107, .08);
 }
+.path-segment-won .path-segment-icon { color: var(--gold-light); }
 .path-segment-current {
   color: var(--wc-white);
   border-color: var(--wc-red);
   background: rgba(191, 10, 48, .12);
+}
+.path-segment-current .path-segment-icon {
+  color: var(--wc-red);
+  animation: path-current-pulse 2.4s ease-in-out infinite;
 }
 .path-segment-eliminated {
   color: var(--bone-mute);
   border-color: var(--wc-red);
   background: rgba(191, 10, 48, .06);
 }
+.path-segment-eliminated .path-segment-icon { color: var(--wc-red); }
+
+@keyframes path-current-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .55; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .path-segment-current .path-segment-icon { animation: none; }
+}
 
 .picker-list {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  gap: .35rem .5rem;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: .4rem .5rem;
 }
 /* Picker pills sit on the bone page surface (not inside a dark card),
    so they need dark-on-light text to read. var(--wc-navy) mirrors the
-   surrounding h3 heading color. */
+   surrounding h3 heading color.
+   PI-5 (S2.3.1): inline-flex + min-height 44px enforces the 44×44 mobile
+   tap-target floor (PRODUCT.md / CLAUDE.md S0.3 lock). The grid step drops
+   from 160 → 140px so two pills still fit on a 375px viewport. */
 .picker-list-item .picker-link {
-  display: inline-block;
-  padding: .25rem .5rem;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: .55rem .8rem;
   color: var(--wc-navy);
   text-decoration: none;
   border: 1px solid rgba(0, 26, 77, .15);
-  border-radius: 4px;
-  font-size: .9rem;
+  border-radius: 6px;
+  font-size: .95rem;
   transition: border-color var(--transition), background-color var(--transition);
 }
-.picker-list-item .picker-link:hover {
+.picker-list-item .picker-link:hover,
+.picker-list-item .picker-link:focus-visible {
   border-color: var(--wc-red);
   background: rgba(191, 10, 48, .05);
+}
+.picker-list-item .picker-link:focus-visible {
+  outline: 2px solid var(--wc-red);
+  outline-offset: 2px;
 }
 
 /* === WORLD CUP FANTASY POOL === */
@@ -2706,6 +3046,134 @@ body.game-worldcup {
   flex-shrink: 0;
 }
 
+/* S2.2.1 — Schedule day header (matchday section) and per-card group tag.
+   Replaces the inline-styled H4 group divider that fired up to 48 times across
+   the chronologically-interleaved group stage with a single primitive that
+   labels each calendar day instead. The .is-today modifier surfaces the
+   current matchday in live state. */
+.schedule-day-header {
+  font-family: 'Teko', sans-serif;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  font-size: 1.1rem;
+  /* --text-secondary clears AA on the bone canvas (~5.5:1); the prior
+     --text-muted regressed to ~3:1, below the 4.5:1 normal-text floor. */
+  color: var(--text-secondary);
+  margin: 1.25rem 0 .5rem;
+  display: flex;
+  align-items: baseline;
+  gap: .6rem;
+}
+.schedule-day-header .schedule-day-date {
+  /* date glyph holds its own weight; the badge sits beside it */
+}
+.schedule-day-header.is-today {
+  color: var(--purple-700);
+}
+.schedule-today-badge {
+  display: inline-flex;
+  align-items: center;
+  font-family: 'Teko', sans-serif;
+  font-size: .72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .1em;
+  color: var(--bone);
+  background: var(--wc-red);
+  padding: .15em .55em;
+  border-radius: 2px;
+  position: relative;
+  top: -.05em;
+}
+.schedule-day-block {
+  /* day-scoped wrapper so each matchday's matches share a compact rhythm */
+}
+.schedule-day-block:first-of-type .schedule-day-header {
+  margin-top: .5rem;
+}
+
+/* Group letter badge inside .match-result-card. Position absolute so it
+   doesn't disturb the existing 3-column flex layout (home / score / away). */
+.match-result-card { position: relative; }
+.match-result-card .match-group-tag {
+  position: absolute;
+  top: .35rem;
+  right: .55rem;
+  font-family: 'Teko', sans-serif;
+  font-size: .68rem;
+  font-weight: 600;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Schedule-page microcopy: legend under Group Stage H2 + small Central-Time
+   stamp under the hero lead. Replaces inline style attributes. */
+.schedule-legend {
+  font-size: .85rem;
+  color: var(--text-secondary);
+  margin-bottom: 1rem;
+  max-width: 60ch;
+}
+.schedule-tz-stamp {
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  font-size: .72rem;
+}
+.schedule-stage-count {
+  font-size: .6em;
+  font-weight: 400;
+  /* P2 S2.6 PI-3: replaces Bootstrap .text-muted (#6c757d neutral gray).
+     --text-secondary (#5A5470) reads as CCC purple-tinted on bone, holding
+     tonal consistency with .schedule-day-date / .schedule-legend on the
+     same surface. */
+  color: var(--text-secondary);
+}
+
+/* P2 S2.6 PI-4: above-the-fold jump-to-today affordance on schedule hero.
+   Pill chip styled to sit on the dark wc-hero-grad; arrow icon implies
+   downward navigation. Hover lifts to gold border. Visible only when a
+   today matchday exists (template-side conditional). Mid-tournament the
+   id="today" anchor lives 6-11 matchdays into the page; this chip closes
+   the live-state surfacing gap surfaced by S2.2.1. */
+.schedule-jump-today {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  margin-top: 1rem;
+  padding: .55rem 1rem;
+  font-family: 'Teko', sans-serif;
+  font-size: .9rem;
+  font-weight: 600;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--bone);
+  background: rgba(245, 241, 232, .08);
+  border: 1px solid rgba(245, 241, 232, .2);
+  border-radius: 999px;
+  text-decoration: none;
+  transition: border-color var(--transition), background var(--transition), color var(--transition);
+  min-height: 44px;
+}
+.schedule-jump-today:hover,
+.schedule-jump-today:focus-visible {
+  color: var(--gold-light);
+  background: rgba(242, 211, 107, .08);
+  border-color: rgba(242, 211, 107, .45);
+  text-decoration: none;
+}
+.schedule-jump-today:focus-visible {
+  outline: 2px solid var(--gold-light);
+  outline-offset: 2px;
+}
+.schedule-jump-today .bi {
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
 /* Match attribution chip — "ARG +3 base" etc. */
 .match-points-chip {
   display: inline-flex;
@@ -2733,10 +3201,13 @@ body.game-worldcup {
   margin: 0 .2em;
 }
 
-/* Pick drill-down accordion */
+/* Pick drill-down accordion.
+   P2 S2.5.1 PI-1: surface sits inside .card.wc-card (dark navy). Lift the
+   panel tint to a bone wash so the drill-down reads as a distinct band on
+   navy, and shift toggle + total + empty copy to light tokens. */
 .pick-accordion {
-  border-top: 1px dashed var(--border, #dee2e6);
-  background: rgba(0, 40, 104, .03);
+  border-top: 1px dashed rgba(245, 241, 232, .14);
+  background: rgba(245, 241, 232, .04);
   max-height: 0;
   opacity: 0;
   overflow: hidden;
@@ -2749,65 +3220,33 @@ body.game-worldcup {
 .pick-accordion-toggle {
   background: transparent;
   border: 0;
-  color: var(--text-muted, #6c757d);
+  color: var(--bone-mute);
   cursor: pointer;
   padding: 0 .35rem;
   font-size: .9rem;
-  transition: transform 140ms ease-out;
+  transition: transform 140ms ease-out, color var(--transition);
+}
+.pick-accordion-toggle:hover,
+.pick-accordion-toggle:focus-visible {
+  color: var(--gold-light);
 }
 .pick-accordion-toggle.open {
   transform: rotate(90deg);
-  color: var(--game-primary, #002868);
-}
-.score-events-list {
-  list-style: none;
-  margin: 0;
-  padding: .75rem 1rem;
-  font-size: .85rem;
-}
-.score-events-list li {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: .75rem;
-  padding: .2rem 0;
-  animation: wc-event-fade-in 200ms ease-out both;
-  animation-delay: calc(var(--event-i, 0) * 40ms);
-}
-.score-events-list .event-meta {
-  color: var(--text-muted, #6c757d);
-  font-size: .8rem;
-  letter-spacing: .02em;
-  text-transform: uppercase;
-}
-.score-events-list .event-pts {
-  font-family: 'Teko', sans-serif;
-  font-weight: 600;
-  letter-spacing: .03em;
-  color: var(--game-primary, #002868);
-}
-.score-events-list .event-source-dot {
-  display: inline-block;
-  width: .45em;
-  height: .45em;
-  border-radius: 50%;
-  background: var(--game-accent, #BF0A30);
-  margin-right: .5em;
-  vertical-align: middle;
-  opacity: .7;
+  color: var(--gold-light);
 }
 .score-events-total {
   padding: .5rem 1rem .75rem;
-  border-top: 1px dotted var(--border, #dee2e6);
-  color: var(--text-muted, #6c757d);
+  border-top: 1px dotted rgba(245, 241, 232, .14);
+  color: var(--bone-mute);
   font-size: .8rem;
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
+.score-events-total strong { color: var(--text-on-dark); }
 .score-events-empty {
   padding: .75rem 1rem;
   font-size: .85rem;
-  color: var(--text-muted, #6c757d);
+  color: var(--bone-mute);
   font-style: italic;
 }
 @keyframes wc-event-fade-in {
@@ -3024,10 +3463,14 @@ body.game-worldcup {
   font-weight: 500;
   letter-spacing: .1em;
   text-transform: uppercase;
-  color: var(--text-muted);
+  /* S2.4.1 PI-1: --text-secondary clears AA on white card (~7.15:1).
+     --text-muted (#8A849B) on white = 3.59:1, sub-AA at 12-13px body
+     weight. Same family as project_text_muted_aa_on_bone.md (bone variant)
+     applied to the stats white-card surface. */
+  color: var(--text-secondary);
   margin-top: .3rem;
 }
-.wc-kpi-sub { font-size: .76rem; color: var(--text-muted); margin-top: .15rem; }
+.wc-kpi-sub { font-size: .76rem; color: var(--text-secondary); margin-top: .15rem; }
 
 .wc-stat-card {
   background: var(--bg-card);
@@ -3071,6 +3514,118 @@ body.game-worldcup {
 .wc-tb-4 { background: var(--wc-tier4); }
 .wc-tb-5 { background: var(--wc-tier5); }
 
+/* S2.4.1 PI-2: Stats Hub masthead — one dominant Teko numeral + Newsreader
+   derivation line. Replaces the prior 4-tile .wc-kpi-block band on Board
+   per the §1.5b "hero-metric ban applies to adjacency" pattern from S2.3.1. */
+.wc-stats-masthead {
+  border-top: 2px solid var(--gold);
+  padding: 1.1rem 0 1.25rem;
+  margin-bottom: 1.5rem;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 1.5rem;
+  align-items: end;
+}
+.wc-stats-masthead-numeral {
+  font-family: 'Teko', sans-serif;
+  font-size: 3.4rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--text-primary);
+  font-feature-settings: 'tnum';
+}
+.wc-stats-masthead-derivation {
+  font-family: 'Newsreader', Georgia, serif;
+  font-size: 1.05rem;
+  line-height: 1.45;
+  color: var(--text-primary);
+  margin: 0 0 .35rem;
+  max-width: 60ch;
+}
+.wc-stats-masthead-derivation strong { font-weight: 600; color: var(--game-primary); }
+@media (max-width: 575px) {
+  .wc-stats-masthead { grid-template-columns: 1fr; gap: .65rem; padding: .95rem 0 1rem; }
+  .wc-stats-masthead-numeral { font-size: 2.8rem; }
+  .wc-stats-masthead-derivation { font-size: 1rem; }
+}
+
+/* S2.4.1 PI-2: By-Tier ledger strip — replaces the prior 5-tile .wc-kpi-block
+   band on Tiers tab. Horizontal ledger with gold-rule top + per-cell border
+   reads as editorial summary, not as KPI dashboard. */
+.wc-stats-ledger {
+  border-top: 2px solid var(--gold);
+  border-bottom: 1px solid var(--border);
+  padding: .55rem 0;
+  margin-bottom: 1.5rem;
+}
+.wc-stats-ledger-eyebrow {
+  font-family: 'Teko', sans-serif;
+  font-size: .72rem;
+  font-weight: 500;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  padding: 0 .9rem .35rem;
+}
+.wc-stats-ledger-row { display: flex; flex-wrap: wrap; }
+.wc-stats-ledger-cell {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: .45rem .85rem;
+  border-right: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: .55rem;
+  font-family: 'Teko', sans-serif;
+  font-size: .95rem;
+  letter-spacing: .04em;
+  color: var(--text-primary);
+}
+.wc-stats-ledger-cell:last-child { border-right: 0; }
+.wc-stats-ledger-cell .wc-tier-dot {
+  width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0;
+}
+.wc-stats-ledger-cell-label { font-weight: 500; text-transform: uppercase; letter-spacing: .06em; }
+.wc-stats-ledger-cell-value {
+  margin-left: auto;
+  font-weight: 700;
+  font-size: 1.15rem;
+  color: var(--text-primary);
+  font-feature-settings: 'tnum';
+}
+@media (max-width: 767px) {
+  .wc-stats-ledger-cell {
+    flex: 1 1 50%;
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .wc-stats-ledger-cell:nth-last-child(-n+2) { border-bottom: 0; }
+  .wc-stats-ledger-cell:nth-child(odd) { border-right: 1px solid var(--border); }
+}
+
+/* S2.4.1 PI-3: Lead-card variant — one card per tab earns the dominant
+   editorial register. Gold-rule top, no body border, larger pad. Breaks
+   the 15-card-identical silhouette flagged by the critique. */
+.wc-stat-card.is-lead {
+  border: 0;
+  border-top: 2px solid var(--gold);
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: 1.5rem 1.5rem 1.75rem;
+}
+.wc-stat-card.is-lead .wc-card-head {
+  margin-bottom: 1.4rem;
+  font-size: 1.1rem;
+  letter-spacing: .08em;
+}
+.wc-stat-card.is-lead .wc-eyebrow {
+  display: block;
+  color: var(--text-secondary);
+  font-size: .68rem;
+  letter-spacing: .14em;
+  margin-bottom: .35rem;
+}
+
 /* Scoring list */
 .wc-lb-row {
   display: grid;
@@ -3082,7 +3637,7 @@ body.game-worldcup {
   transition: background .15s;
 }
 .wc-lb-row:hover { background: var(--bg-muted); }
-.wc-lb-rank { font-family: 'Teko', sans-serif; font-weight: 700; font-size: 1.05rem; color: var(--text-muted); text-align: center; }
+.wc-lb-rank { font-family: 'Teko', sans-serif; font-weight: 700; font-size: 1.05rem; color: var(--text-secondary); text-align: center; }
 .wc-lb-score { font-family: 'Teko', sans-serif; font-weight: 700; font-size: 1.1rem; color: var(--game-primary); text-align: right; }
 .wc-still-in {
   display: inline-block;
@@ -4644,6 +5199,14 @@ hr { border-color: var(--border); opacity: 1; }
     justify-content: space-between;
     gap: .5rem;
   }
+  /* P2 S2.5.1 PI-5 freebie: the .wc-eyebrow default `--bone-mute` reads
+     sub-AA on the white .player-pick-card surface (the picks-mobile card
+     is the light-surface sibling of the now-dark .player-picks-desktop).
+     Lift the tier-name eyebrow to --text-secondary, the AA-passing token
+     for headings/legends on bone per memory project_text_muted_aa_on_bone. */
+  .player-pick-card .wc-eyebrow {
+    color: var(--text-secondary);
+  }
   .player-pick-card .pick-team {
     font-family: 'Teko', sans-serif;
     font-weight: 600;
@@ -4970,12 +5533,36 @@ hr { border-color: var(--border); opacity: 1; }
   color: rgba(245, 241, 232, .82) !important;
 }
 
+/* P2 S2.6 PI-1 — Cluster-wide invariant lock for .card.wc-card .table.
+   The .text-muted surgical exclusion below relies on Bootstrap masking the
+   navy parent with a white td background. Bootstrap 5.3 supplies that via
+   `--bs-table-bg: var(--bs-body-bg)` (default #fff), but the assumption is
+   implicit — a future Bootstrap upgrade, a stray `--bs-body-bg` retune, or
+   a new .card.wc-card-wrapped table could silently break it and re-surface
+   the dark-on-dark bug that S2.5.1 PI-1 caught on .player-picks-desktop.
+
+   Lock the white-td invariant explicitly via a CCC-owned token assignment.
+   Bootstrap's own .table rule then consumes --bs-table-bg on every cell,
+   masking the navy with --bg-card. The masking becomes our design decision,
+   not Bootstrap's default.
+
+   Surfaces that want the dark navy bleed-through (e.g., .player-picks-desktop
+   on player_detail.html / picks.html) opt out by setting
+     background-color: transparent
+   on their own scoped > tbody > tr > td rule AND scope a counter-rule that
+   lifts .text-muted to a dark-surface-safe token (--bone-mute). See the
+   .card.wc-card.player-picks-desktop overrides at :2385-2416 above for the
+   canonical opt-out pattern. */
+.card.wc-card .table {
+  --bs-table-bg: var(--bg-card);
+}
+
 /* Surgical exclusion: restore Bootstrap default for any .text-muted
-   that lives inside a Bootstrap table cell. Bootstrap's white td bg
-   masks the navy parent, and the lifted bone color would render
-   invisible there. Concrete affected case: _pick_row.html:16 "Grp X"
-   caption inside the picks accordion <td>. Mirrors the don't-broadcast
-   logic from the Plan 3 follow-up block. */
+   that lives inside a Bootstrap table cell. The --bs-table-bg lock above
+   guarantees the cell renders on a light substrate, so the dark token is
+   readable. Concrete affected case: _pick_row.html:16 "Grp X" caption
+   inside the picks accordion <td>. Mirrors the don't-broadcast logic
+   from the Plan 3 follow-up block. */
 .card.wc-card .table > tbody > tr > td .text-muted,
 .card.wc-card .table > tbody > tr > td.text-muted {
   color: var(--bs-secondary-color) !important;

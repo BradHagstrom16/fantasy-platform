@@ -1,9 +1,16 @@
-{# Live-tournament home — Spec B section 7 #}
+{# Live-tournament home — Spec B section 7.
+
+   Layout (S2.1.2): the side-by-side "above the fold" pairs the user's
+   dossier (left) with the standings rolls (right). Recent Results, Commish
+   note, and game tiles flow full-width below — the right rail used to
+   starve under a 4-line Commish note while the left kept producing
+   results cards. Mobile reading order is preserved by `order-*` so the
+   small-screen sequence is dossier → results → leaderboard → commish. #}
 <div class="container-fluid home-live">
   <div class="row">
 
-    {# Mobile: single column. Desktop: two columns (60/40 split). #}
-    <div class="col-12 col-lg-7 home-live-left">
+    {# Mobile: each block stacks (single column). Desktop: 60/40 split. #}
+    <div class="col-12 col-lg-7 home-live-left order-lg-0">
 
       {# Greet — full width on mobile, left col on desktop #}
       <div class="greet">
@@ -24,16 +31,9 @@
         {% include 'main/_dossier_card.html' %}
       {% endif %}
 
-      {# Recent Results — left col on desktop #}
-      <div class="sec-head">
-        <div class="t">Recent Results</div>
-        <a class="more" href="{{ url_for('worldcup.schedule') }}">All fixtures &rsaquo;</a>
-      </div>
-      {% include 'main/_recent_results.html' %}
-
     </div>{# /.col-lg-7 #}
 
-    <div class="col-12 col-lg-5 home-live-right">
+    <div class="col-12 col-lg-5 home-live-right order-3 order-lg-0">
 
       {# Leaderboard preview — full width mobile, right col desktop #}
       <div class="sec-head">
@@ -59,15 +59,29 @@
         {% endfor %}
       </div>
 
-      {# Narrative partials — bottom of right col on desktop #}
+    </div>{# /.col-lg-5 #}
+
+    {# Recent Results — full width below the dossier/leaderboard pair on
+       desktop; on mobile, sits between the dossier and the leaderboard
+       (order-2 puts it ahead of the right-col leaderboard's order-3). #}
+    <div class="col-12 home-live-results order-2 order-lg-0">
+      <div class="sec-head">
+        <div class="t">Recent Results</div>
+        <a class="more" href="{{ url_for('worldcup.schedule') }}">All fixtures &rsaquo;</a>
+      </div>
+      {% include 'main/_recent_results.html' %}
+    </div>
+
+    {# Narrative partials — full width below results on desktop;
+       on mobile they stay last in the stack (after leaderboard). #}
+    <div class="col-12 home-live-narrative order-4 order-lg-0">
       {% include 'main/_commish_note.html' ignore missing %}
       {% include 'main/_dispatches.html' ignore missing %}
-
-    </div>{# /.col-lg-5 #}
+    </div>
 
   </div>{# /.row #}
 
-  {# Compact game tiles strip — full width below both columns #}
+  {# Compact game tiles strip — full width below everything #}
   <div class="row">
     <div class="col-12">
       {% include 'main/_game_tiles_compact.html' %}

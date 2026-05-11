@@ -69,7 +69,29 @@ Phase ordering follows §0.2 priority. Live state goes first because it's the hi
 
 ### 0.4 Backlog (living section)
 
-When a session surfaces a finding outside its scope, append it here with the session ID that found it. Future sessions in the same cluster pick up the relevant items.
+Findings that surface during an iteration but don't fit its 3-5-priority-fix budget land here. Items are **routed by type**, not by who found them.
+
+**Routing matrix** (assign one tag per item):
+
+| Tag | What | Receiving session |
+|---|---|---|
+| `[in-surface]` | Fixable by editing files inside the discovering surface's scope. Default for findings an iteration didn't reach. | Next iteration of the same surface (`Sx.y.N+1`). |
+| `[cross-cluster]` | Only visible when comparing two or more surfaces inside the cluster (e.g., visual rhythm between `_home_live` and `schedule.html`). | Cluster polish session: `S2.6` / `S3.4` / `S4.5` / `S5.3`. |
+| `[cross-phase]` | Pattern spans multiple clusters (e.g., a chrome treatment repeating across pre/live/post home, auth, and game tiles). | `S6.1` cross-surface polish. |
+| `[deferred-data]` | Requires real production data to surface meaningfully (e.g., tagline duplication only visible with N real users). | Revisit only when the trigger lands; no scheduled session. |
+| `[ship-as-is]` | Documented decision not to fix, with written rationale. | Closed at write-time. |
+
+**Format per item:**
+
+```
+- **[Sx.y.N tag]** <one-line description with file:line>. <why deferred>. <which session picks it up>.
+```
+
+**Convergence implication.** When an iteration converges (per §1.5b), every P1 finding it didn't fix must carry a routing tag with a specific receiving session. Untagged P1s block convergence by definition.
+
+When the receiving session lands, sweep §0.4 for items tagged with that session ID and address them as the session's first agenda. Cluster polish sessions (S2.6 etc.) and S6.1 explicitly include this sweep as Step 0 of their task list.
+
+The legacy "session ID that surfaced it" prefix (`[S0.2]`, `[S1.1]`, etc.) is preserved on all pre-iterative items below — they still tell you which work surfaced the finding.
 
 - **[S0.2]** `groups.html:10` lead copy uses `&mdash;` HTML entity (`12 groups &mdash; 48 teams &mdash; 2026 FIFA World Cup`) — em-dash sweep target. Picked up by **S0.3**.
 - **[S0.2]** `leaderboard.html:85` trend dash placeholder renders an em-dash glyph (`<span class="text-muted">—</span>`) — em-dash sweep target. Picked up by **S0.3**.
@@ -79,6 +101,40 @@ When a session surfaces a finding outside its scope, append it here with the ses
 - **[S1.1]** `leaderboard.html` desktop table renders the Tiebreaker cell as the literal lowercase string `'none'` (`{{ e.usa_goals_guess if e.usa_goals_guess is not none else 'none' }}`) — breaks the editorial register. Use a voiced fallback like `No guess` or render an actual blank cell. Pre-existing; defer to **P6 S6.1** (cross-surface polish) unless an earlier deadline-related session reopens the leaderboard.
 - **[S1.1]** Move column header (`<th scope="col" class="text-end">Move</th>`) gives no since-when context. Add a `title=` tooltip (e.g., "Change since yesterday's snapshot") on the header for the analyst register. Cheap progressive disclosure; defer to **P6 S6.1**.
 - **[S1.1]** The Your Position tribune block sits on the bone canvas above the standings table with no visual thread between them — the gap reads as forgotten space rather than editorial breathing room. Candidates: a `border-top: 2px solid var(--gold)` rule above the table, or a section eyebrow ("THE LEDGER") above it. Defer to **P6 S6.1** so the cross-surface polish session can compare similar gap moments across the cluster (home dossier, schedule, team_detail) and pick a consistent treatment.
+- **[S2.1.1 in-surface] CLOSED in S2.1.2** Home-live right column starved on desktop — ~700px void below the 4-line Commish note. Fixed by moving Recent Results out of the left rail and Commish out of the right rail into full-width rows below the dossier/leaderboard side-by-side; mobile reading order preserved via Bootstrap `order-*` utilities. Locked by `tests/test_design_p2_s2_1_2.py::test_home_live_recent_results_lives_outside_left_rail` + `..._commish_lives_outside_right_rail` + `..._mobile_order_preserves_dossier_results_leaderboard`.
+- **[S2.1.1 in-surface] CLOSED in S2.1.2** Section "more" links (`.sec-head .more`) read at ~28px tall, below the 44×44 floor. Fixed via inline-flex + min-height/width 44px + negative-margin trick + focus-visible ring. Locked by `tests/test_design_p2_s2_1_2.py::test_sec_head_more_link_meets_44x44_tap_floor`.
+- **[S2.1.1 in-surface] CLOSED in S2.1.2** Dossier-stamp `◈ Classified · CCC ◈` register-shift. Renamed to `◈ Council Filings · CCC ◈` (Tribune voice) and switched from `position: absolute` to in-flow `display: block; text-align: right;` (which also closes the mobile rank-meta overlap). Locked by `tests/test_design_p2_s2_1_2.py::test_dossier_stamp_drops_classified_register` + `..._no_longer_position_absolute`.
+- **[S2.1.1 in-surface] CLOSED in S2.1.2** "Also Today" eyebrow promised a temporal anchor the rows never delivered. Renamed to `Around the Tournament` (no time promise). Locked by `tests/test_design_p2_s2_1_2.py::test_results_also_eyebrow_does_not_promise_today_anchor`.
+- **[S2.1.1 in-surface] CLOSED in S2.1.2** Mobile dossier-stamp positioning at `position: absolute` overlapped rank-meta on narrow viewports. Folded into PI-2 above (single CSS edit fixed both register and position).
+- **[S2.1.1 in-surface] [S2.1.2 in-surface] DEFERRED to S2.1.3** Sparkline read-only in dossier card (`_dossier_card.html:33-99`) — no per-day rank reveal on hover/tap. Inherited from S2.1.1; not landed in S2.1.2 because the iteration's 3-5 cap absorbed the four higher-impact backlog items first. Receiving session: **S2.1.3** (delight pass; `$impeccable delight`). The convergence gate passed without it (heur 32/40 ≥ floor) so this is a Want, not a Need.
+- **[S2.1.2 in-surface]** Sparkline lacks `aria-label` / `<title>` describing the trend; `rank-mvmt` carets are decorative-icon-with-hidden-text but not marked `aria-hidden="true"`. Surfaced by the S2.1.2 re-critique as soft P1s; both fit cleanly into the S2.1.3 a11y/delight pass alongside the per-day reveal. Receiving session: **S2.1.3**.
+- **[S2.1.1 cross-cluster] [S2.6 routed]** Repeating gradient-card silhouette across 7 home components (dossier, view-CTA, commish-note-body, match-card, ballot-card, decree, join). S2.1.1 differentiated *match-cards on the live home* only; the broader silhouette pattern needs cross-state comparison. **Re-routed by S2.6:** the live cluster surfaces alone don't expose the pre/post home variants (`_home_pre` / `_home_out` / `_home_post`) — diversification can only be evaluated against all four state partials side-by-side. Re-routed receiving session: **S6.1** (cross-phase polish; compares across phases once P4/P5 surfaces have converged).
+- **[S2.1.1 cross-cluster] [S2.6 routed]** Leaderboard rolls (`_home_live.html:46`) are non-interactive `<div>`s — no tap-through to competitor detail. Decision affects `/worldcup/leaderboard` (already shipped in S1.1) too; the `<a>`-vs-`<div>` choice should apply consistently across both surfaces. **Re-routed by S2.6:** wraps as anchors only makes sense once a competitor-detail / rivalry surface exists for them to link to (player_detail handles the "another player's standing" view, but the leaderboard rolls list opaque `display_name` strings without enrollment IDs threaded). Routing into S6.1 keeps the decision paired with the player_detail rivalry-comparison-strip work that S2.5.2 will add. Re-routed receiving session: **S6.1**.
+- **[S2.1.1 deferred-data]** "Test1 / Test2 / Test3" tagline duplication (`_home_live.html:54` via `_tagline_for()` in `home_context.py:46-69`). Current finite-string set returns the same line for ranks #2 and #3. Production rotates per actual user; only visible with N real users in the standings. Revisit when production rotation is observed.
+- **[S2.2.1 cross-cluster] CLOSED in S2.6** No jump-to-today affordance from above-the-fold on `/worldcup/schedule`. Closed by S2.6 PI-4: `.schedule-jump-today` pill chip rendered inside `.page-hero` linking to `#today`, guarded by `{% if (matchdays_group or [])|selectattr('is_today')|list %}` so it disappears pre/post-tournament when no today matchday exists. 44×44 tap floor + `:focus-visible` outline; gold-light hover lift. Live computed-style verification: chip 216×44, color `rgb(243,239,230)`, `min-height: 44px`, `href="#today"`. The team_detail "Recent" / stats "Today" anchor adoption noted in the original entry remains as future work; route forward to **S6.1** once team_detail and stats have a "today" / "now" anchor concept (currently they don't, so the affordance has nothing to link to). Locked by `tests/test_design_p2_s2_6.py::test_schedule_pi4_jump_to_today_anchor_in_hero` + `..._chip_meets_44_floor` + `..._has_focus_visible`.
+- **[S2.2.1 cross-cluster] CLOSED in S2.6** Stage-count `<small>` in the schedule section headings used Bootstrap `.text-muted` (`#6c757d`) instead of the CCC tinted `--text-secondary` (`#5A5470`). Closed by S2.6 PI-3: dropped `text-muted` from the section-heading `<small>` (×2: Group Stage + the `render_stage` knockout macro), kept the `.schedule-stage-count` surface class, and added `color: var(--text-secondary)` to the existing `.schedule-stage-count` CSS rule. Live computed-style verification: `getComputedStyle(.schedule-stage-count).color === 'rgb(90, 84, 112)'` (`#5A5470`). The "Likely shared with similar `<small>` count helpers across live-cluster surfaces" concern surfaced only on `team_detail.html:145, 181` (no-fixtures empty state + path-to-crown explainer — both on the bone page background, not inside `.card.wc-card`), both folded into the same S2.6 PI-3. Locked by `tests/test_design_p2_s2_6.py::test_schedule_stage_count_pi3_no_longer_carries_text_muted` + `..._scoped_to_text_secondary` + `test_team_detail_pi3_empty_and_fineprint_surface_classes`.
+- **[S2.2.1 ship-as-is]** Group-letter tag at upper-right of `.match-result-card` reads as a bare letter ("J", "I") to sighted users without prior context (the H1 "Group Stage" is far above when scrolled deep). `aria-label="Group X"` covers SR users; sighted users can still infer from the surrounding section. Lower priority than the Today affordance and not load-bearing for picks; defer until a future critique re-flags it.
+- **[S2.2.1 cross-phase]** `.schedule-day-date` lacks `<time datetime="...">` semantics. Cross-page pattern (any page that prints a date should expose machine-readable form for screen readers, calendar extensions, and crawlers — `home_shell` time stamps, `team_detail` recent-result dates, `leaderboard` snapshot dates). Receiving session: **S6.1** cross-phase polish.
+- **[S2.3.1 in-surface]** Owned-state celebration delta — full PI-3 ask (rank-among-picks + personalized voice in path heading, e.g., "Your roster's GER ceiling is 107.0, 4th-best in the Club"). The S2.3.1 atomic-edit pairing closed the eyebrow + gradient-variant minimum; the comparator requires a new `pick_ceiling_rank` route-level helper that joins `WorldCupPick` + `compute_path_to_crown` per enrollment, season-scoped via `WorldCupEnrollment.season_year` per the CLAUDE.md "WorldCupRankSnapshot aggregates must be season-scoped" pattern. Receiving session: **S2.3.2** (hero/path-section copy + new route data).
+- **[S2.3.1 in-surface]** Projected-ceiling bare numeral. `team_detail.html:159` renders 749.0 / 107.0 with no group anchor — casual users have no calibration, analysts get no breakdown. Add a comparator chip (vs. median ceiling, vs. user's own picks) and progressive-disclosure detail (group-stage wins + R32 + R16 + QF + SF + Final base × multiplier). Same `pick_ceiling_rank` route data unlocks both. Receiving session: **S2.3.2**.
+- **[S2.3.1 in-surface]** Pre-tournament state shell. `deadline_passed=False` + zero completed matches: hero shows `0.0 Tournament points`, ownership ribbon hidden, Match log of three TBDs, Path of one current + 5 future. *No copy* anywhere on the page says "the tournament hasn't started yet" — the page reads as broken rather than pre-roll. Mirrors the `core/main/home_context.build_home_context` four-state dispatcher pattern but team_detail has no equivalent state-shell. Receiving session: **S2.3.2** (route adds `state` flag; template branches on it).
+- **[S2.3.1 cross-cluster] [S2.6 routed]** Eyebrow primitive saturation. `.wc-eyebrow` renders 9-14× per page on team_detail (hero pre-headline, hero stat labels, ribbon labels, fixture stage rows, path stage tiles, picker section). DESIGN.md §3 defines the primitive as "the small uppercase line above section headlines", singular. The new `.wc-meta-label` primitive (introduced in S2.3.1 for the hero stat caption) is a candidate for in-row labels but needs cluster-level review against home/leaderboard/stats/player_detail before promoting it. **Re-routed by S2.6:** the cluster-level decision on `.wc-eyebrow` vs `.wc-meta-label` would ratify a new primitive in DESIGN.md §3 — that ratification needs to compare usage across ALL phases (live + pre + post home, picks, rules, join, errors), not just the live cluster. Promoting prematurely from a live-only audit risks reverse engineering later when pre/post surfaces show different label needs. Re-routed receiving session: **S6.1** (cross-phase polish; ratifies primitive scope after every surface family has rendered through at least one iteration).
+- **[S2.3.1 ship-as-is]** Bottom-of-page back-link. `team_detail.html:44` carries the only "Back to Board" affordance; on a long mobile scroll the user must scroll back up to navigate out. Lower priority than the comparator + state-shell work; defer until a future critique re-flags it.
+- **[S2.3.1 ship-as-is]** Three "1.0" tokens stacked in a 90px band on tier-1 mobile (multiplier == 1.0). Visual coincidence on tier-1 teams (no analyst tension to surface); copy could elide the "× Multiplier 1.0" prose when multiplier == 1, but the canonical Base × Multiplier reading is consistent and honest. Defer until a future critique re-flags it (likely S2.4 multiplier-explanation revisit).
+- **[S2.4.1 in-surface]** T1 amber tier badge at `static/css/style.css:3417` (`.wc-tb-1 { background: var(--wc-tier1); }` = `#D97706`) renders white-on-amber at **3.19:1** at 10.88px bold — sub-AA (4.5:1 floor for small bold text). The other four `.wc-tb-N` variants pass AA (4.99–5.62:1). The cleanest fix is a shared tinted-bg + dark-text pattern across all five badges (parallel to the existing `.wc-still-in` pattern: `background: rgba(token,.15); color: dark-token; border: 1px solid rgba(token,.4)`); the alternative is a token retune of `--wc-tier1` (DESIGN.md spec change, also affects chart palette + pick-bar fills). S2.4.1 deferred because either fix is bigger than a same-iteration P2 — token retune touches DESIGN.md tokens, shared variant touches all five badge classes + visual rhythm across the surface. Receiving session: **S2.4.2** (in-surface, dedicated badge variant work).
+- **[S2.4.1 in-surface]** Phase-aware editorial copy on stats masthead. The Board's masthead derivation prose ("X leads the field with Y pts. Z oaths sealed across N nations still standing.") is currently hard-coded for live-state. Pre-deadline ("Vault opens Jun 11"), post-tournament ("Champion sealed Jul 19"), and "no completed matches yet" need branched copy via `current_phase` + `kpis.top_country_score > 0`. Routes-side plumbing minimal (already pass `current_phase`); just template-side `{% if %}/{% elif %}` branches on the prose line. Receiving session: **S2.4.2**.
+- **[S2.4.1 in-surface]** No "my picks only" filter affordance on the Field tab's Popularity vs. Score bubble chart. Analyst persona red flag — they want to isolate their own roster against the field. Bubble chart datasets are tier-grouped (5 datasets); a sixth filter dataset that toggles "MY_PICKS only" would land cleanly. Receiving session: **S2.4.2**.
+- **[S2.4.1 in-surface]** Carrying the Field + Dead Weight stack vertically inside the right rail at desktop (`.col-xl-4 .d-flex.flex-column`). Adjacent comparison is the analyst's primary use of these two lists; vertical stacking forces them to scroll between. Side-by-side on `>= xl` would close it. Receiving session: **S2.4.2**.
+- **[S2.4.1 in-surface]** Tier 2 Pairs absence on the By Tier tab. `get_tier_combos()` deliberately excludes tier 2 (only 1 T2 pick per player → no pairs). The Tier Pairs section silently drops T2 with no explanatory line; an analyst reads it as a data bug. A one-sentence inline note ("Tier 2 has no pairs — only one T2 pick allowed.") would defuse the ambiguity. Receiving session: **S2.4.2**.
+- **[S2.4.1 cross-cluster] [S2.6 routed]** Inline-style Teko declarations duplicated ~25× across `stats.html` JS render functions (`font-family:'Teko',sans-serif;font-size:.7rem;...`). Pattern likely shared with other JS-rendered surfaces (home _home_live impact rows, leaderboard mobile cards). Extract to a `.wc-microcaption` utility set after auditing cross-surface usage. **Re-routed by S2.6:** the S2.6 grep surfaced **0** inline Teko declarations in `_home_live.html` and `leaderboard.html` — the only verified additional inline-Teko surfaces are P4 pre-live templates (`picks.html`, `rules.html`, `join.html`, 11+ instances combined). Extracting a `.wc-microcaption` utility now would consolidate stats.html alone, then need a second migration pass when the P4 surfaces are touched. Re-routed receiving session: **P4.5** (pre-live cross-cluster polish, after picks/rules/join converge), so the extraction lands once and matches the actual cross-surface usage.
+- **[S2.4.1 cross-cluster] CLOSED in S2.6 (decided no-op)** `.wc-stat-card` carries both `box-shadow: var(--shadow-sm)` AND `border: 1px solid var(--border)` — double elevation. Original entry asked "pick one." **S2.6 verdict: keep both.** DESIGN.md §4.4 "The Lift-At-Rest Rule" explicitly mandates `--shadow-sm` at rest on cards ("Flat-at-rest is the wrong elevation philosophy for CCC; the Tribune is a printed object, not a wireframe") and DESIGN.md §6 defines the canonical `.card` primitive as "`var(--bg-card)` (white) fill on a Pressroom Bone page, `--radius-lg` corner radius, `1px solid var(--border)` border, `--shadow-sm` at rest, `--shadow-md` on hover with `translateY(-3px)` lift." `.wc-stat-card` and `.your-standing-tribune` both follow that primitive contract. The generic impeccable "single-encoding of elevation" heuristic is overridden by the committed DESIGN.md policy (per impeccable's own priority rule: user instructions > skill heuristics). If a future critique re-flags this, point to this §0.4 entry and DESIGN.md §4.4 / §6.
+- **[S2.4.1 cross-phase]** Tournament-progress phase labels in `stats.html:302` use markup-as-icon (`✓` for done, `←` for current) without `aria-label`. Screen readers speak "check" / "left arrow", not "completed" / "current". Same pattern likely on home progress widgets (`_home_live` / pre-state countdown) and any future post-state recap progress bar. Receiving session: **S6.1** cross-phase polish.
+- **[S2.4.1 ship-as-is]** Phase chip in stats hero shows "Pre-Tournament" even with `WC_FAKE_NOW` set to mid-group-stage — backend artifact (no completed matches in dev DB → `_derive_tournament_phase()` returns `pre_tournament`). Won't surface in production where match data is live. Won't be re-flagged.
+- **[S2.4.1 ship-as-is]** `.wc-still-in` "Active" green chip + `.wc-tb` orange tier badge of equal size and weight in Top Scorers row split visual attention. Lower priority than the comparator + state-shell work; defer until a future critique re-flags it.
+- **[S2.5.1 in-surface]** Rivalry comparison strip (you vs them). The S2.5.1 hero re-shape closed the *voice* dimension of rivalry framing (Newsreader derivation prose carries "Leads the table. 117.0 ahead of next." / "Trails leader by X, Y ahead of next."), but the structural you-vs-them comparison strip below the eyebrow line — `<viewer> trails <target> by <delta> · <N> shared picks · their edge: <team> (+<pts>)` — needs a new route-level helper `compute_comparison(viewer_enrollment, target_enrollment) -> {viewer_total, target_total, delta, shared_picks, their_advantage, your_advantage}` joined per `WorldCupPick` + season-scoped via `WorldCupEnrollment.season_year`. Suppress the strip when `viewer == target` or when viewer is logged out. Receiving session: **S2.5.2**.
+- **[S2.5.1 in-surface]** "Roster sealed" pre-deadline empty-state re-shape (`player_detail.html:124-136`). Current implementation is a Bootstrap icon-stack: 2.5rem bi-lock-fill at opacity .7 + `Roster sealed` eyebrow + "Picks are hidden" h5 + 2-line muted paragraph with deadline_ct. The S2.5.1 admin-session probes bypassed `picks_visible = deadline_passed or is_owner or is_admin`, so this branch was not visually rehearsed; the icon-on-navy at .7 opacity will read marginal, and the empty-state apologizes rather than rewards participation (PRODUCT.md Design Principle "Empty states reward participation"). Re-shape options: editorial "Sealed envelope" / "Locked in the vault until kickoff" frame, target avatar + name as dominant element, countdown when deadline within 7 days, replace low-opacity icon with Teko "SEALED" eyebrow or "9 PICKS LOCKED" numeric chip. Requires an un-priv viewer probe (logout + visit another player's `/worldcup/leaderboard/<id>` pre-deadline). Receiving session: **S2.5.2**.
+- **[S2.5.1 in-surface]** Above-fold density / wrapper reduction. The picks table currently sits at y≈481 on a 1470×900 viewport (probed) — the `.page-hero.wc-hero-grad` consumes ~280px, then `.container > .row.justify-content-center > .col-lg-8 > .card.wc-card.wc-card-flush > .card-body.p-0 > .table-responsive > <table>` adds 6 layers of wrapper before the table renders. Most of the 9 picks sit below the fold. Targeted fix: scope `.page-hero` padding compaction to player_detail (e.g., page-specific class on the hero or a `.page-hero.is-comparison` modifier) without touching the platform default; collapse `row > col-lg-8` to a `.container-md` or `max-width: 880px` inner block. The platform-global `.page-hero` padding is OUT of scope for this surface — never edit it from a per-surface iteration. Receiving session: **S2.5.2**.
+- **[S2.5.1 cross-cluster] CLOSED in S2.6** Bootstrap-on-`.card.wc-card` contrast leak is a cluster-wide latent risk. The original entry routed "either lock the white-td assumption or extend the counter-rule." Closed by S2.6 PI-1: **locked the white-td assumption**. Bootstrap 5.3 supplies the white td bg via `--bs-table-bg: var(--bs-body-bg)` (default `#fff`), but the assumption was implicit. Added `.card.wc-card .table { --bs-table-bg: var(--bg-card); }` directly above the cluster-3 surgical-exclusion at `style.css:~5485` so the masking becomes a CCC-owned design decision rather than an implicit Bootstrap default. The original `.text-muted` surgical exclusion stays intact (it now rests on a guaranteed-white substrate). Surfaces that want dark navy bleed-through still opt out via their own scoped `background-color: transparent` on `> tbody > tr > td` (see `.card.wc-card.player-picks-desktop` overrides at `style.css:2385-2416`). Live computed-style verification: leaderboard table cell `--bs-table-bg = #FFFFFF` (light substrate, fix wins) and player_detail picks table cell `--bs-table-bg = #FFFFFF` but explicit `background-color: transparent` from the S2.5.1 opt-out wins at the property level (dark substrate preserved). Locked by `tests/test_design_p2_s2_6.py::test_card_wc_card_table_pi1_locks_bs_table_bg_to_bg_card` + `..._surgical_exclusion_still_present`.
 
 ---
 
@@ -88,15 +144,16 @@ These apply to every session unless overridden in-session. Read them once; sessi
 
 ### 1.1 Branch and commit strategy
 
-- All sessions commit to `design/wc-polish` (the existing worktree branch).
+- All sessions commit to `design/wc-polish` (the existing worktree branch). The branch is **dedicated to impeccable design work** for the remainder of the project — no interleaving feature work, no merges from main except to resolve conflicts, no June 1 hard merge deadline. Quality > velocity.
 - Commit per logical unit within a session (often 1-3 commits per session). Squashing to one commit per session is allowed if the session's work is genuinely atomic.
-- **PR cadence**: open a PR at the **end of each Phase**, not per session. PR title format: `Impeccable PN — <phase name>`. PR body summarizes per-session deliverables, lists impeccable findings closed, and links to before/after screenshots. Final merge of `design/wc-polish` → `main` happens at the close of P6.
+- **PR cadence**: open a PR at the **end of each Phase**, not per session. PR title format: `Impeccable PN — <phase name>`. PR body summarizes per-iteration deliverables, lists impeccable findings closed, and links to before/after screenshots. Per-phase PRs land on `main` as the work progresses (P0 PR #11 + P1 PR #12 already merged); the final state at P6 close is also on `main`. After P6 close: production deploy + Brad runs the full production-launch test script and applies any production-only adjustments directly on `main`.
 - Commit messages follow conventional commits (`fix:`, `feat:`, `style:`, `refactor:`, `test:`, `docs:`). For impeccable work, prefer `style:` for visual changes, `fix:` for a11y/contrast/correctness, `refactor:` for migrations (side-stripe, shadow), `feat:` only when a genuinely new component or capability lands.
 - Tag @CodeRabbit AI Review so CR can review the code
 
 ### 1.2 Skill and command usage
 
 - Every session begins with the user (or the agent on their behalf) invoking `Skill { skill: "impeccable" }`. The skill loads PRODUCT.md and DESIGN.md context. Failure to do any of the 3 is unacceptable. Every session and/or agent MUST invoke impeccable, fully read PRODUCT.md, and fully read DESIGN.md. 
+- **Sub-agent skill-invocation proof is mandatory.** When dispatching a sub-agent that runs any impeccable workflow (critique, audit, polish, shape, etc.), the prompt MUST require the sub-agent to (a) invoke `Skill { skill: "impeccable", args: "<command> <target>" }` as its first action, (b) run the loader (`node ~/.claude/skills/impeccable/scripts/load-context.mjs`), and (c) read the matching `~/.claude/skills/impeccable/reference/<command>.md` reference file plus any references that file links to (e.g., `heuristics-scoring.md`, `cognitive-load.md`, `personas.md` for critique). The prompt MUST require **content-fingerprint proof** at the top of the agent's reply: short verbatim quotes from each loaded file (e.g., a unique line from `SKILL.md`, the row beginning `| **P0** |` from `heuristics-scoring.md`, a line from `PRODUCT.md` and `DESIGN.md`). If the fingerprints aren't quoted, the report is invalid — discard and re-dispatch. **Why this rule exists:** prior sessions burned 100k+ tokens on agents that claimed gate-pass without observable Skill invocation; the design laws came from the prompt context, not the skill, so the critique was effectively the orchestrator critiquing itself in someone else's voice. Never quote DESIGN.md / PRODUCT.md content into a sub-agent prompt as a substitute for making the agent load them — that defeats the impeccable discipline. Pass paths, require loads, demand fingerprints.
 - Sub-commands are invoked by writing `$impeccable <command> <target>` in chat. The skill routes to the relevant reference file.
 - For cross-cutting hardens, use `$impeccable harden <surface>` with `<surface>` as a description of the systemic issue (e.g., `$impeccable harden bootstrap-shadow-leak across all .card.wc-card`).
 - For per-page work, the typical session pattern is:
@@ -173,6 +230,70 @@ Every session ends with the same seven steps:
 6. Append any newly-found out-of-scope items to the Backlog (Section 0.4) with the session ID that surfaced them.
 7. If any session findings would be beneficial for future sessions, update this document accordingly so future sessions and phases go smoothly. Usage of the remember skill is also encouraged.
 
+### 1.5b Iteration convergence gate (per-surface sessions only)
+
+A per-surface session (S2.1, S2.2, S3.1, S4.x, etc.) **iterates** until the surface converges. Each iteration is its own session, suffixed `.1`, `.2`, `.3` (so S2.1 fans into S2.1.1, S2.1.2, ...). After every iteration's end-of-session critique re-run, check convergence. If any one of the four gates below fails, `/clear` and start the next iteration.
+
+A surface is converged when **all four** are true:
+
+1. **Zero P0 issues** in the latest `$impeccable critique` re-run on this surface.
+2. **Zero P1 issues**, OR every remaining P1 carries a written deferral rationale that names its receiving session (a specific cluster polish session like S2.6, the cross-phase polish S6.1, a dedicated future iteration `Sx.y.N`, or `[deferred-data]` if it requires real production data to surface). The rationale lives in §0.4 Backlog with the routing tag.
+3. **Anti-pattern hard hits = 0** in the latest critique. (Hard hits = impeccable absolute-ban violations + DESIGN.md §6 Don't violations. Soft observations don't count.)
+4. **One of the following score gates** holds:
+   - (a) Heuristics ≥ 32/40 (the "consistently good" bar — most heuristics scored ≥ 3, which means "real-world acceptable; some heuristics scored ≥ 4 = excellent").
+   - (b) Heuristics ≥ baseline + 6 (the "you've moved this surface materially" gate, for surfaces that started low — e.g., a 22/40 baseline converges at 28/40 if asymptotic).
+   - (c) Two consecutive iterations land within 1 point of each other (the "asymptotic" gate — the surface has hit its ceiling for now; further iteration is sub-marginal). **First-iteration exclusion**: this gate compares iteration N's score to iteration N-1's score. The first iteration of any surface (`Sx.y.1`) cannot trigger asymptotic by definition — there's no prior iteration to compare to. A first iteration relies on (a) or (b) only.
+
+The four gates carry equal weight. **Anti-perfectionism note**: if all four pass and Claude's instinct is "we could keep going," stop anyway. The signal that a surface is done is the gate, not Claude's appetite for more findings.
+
+**Iteration naming convention.** The first per-surface session is `S<phase>.<surface>.1` (e.g., S2.1.1, S2.2.1). Each subsequent iteration of the same surface is `.2`, `.3`, etc. The §9 rollup gets one row per iteration, each with its own commit hash + score delta. Earlier sessions completed under the original "one session per surface" model (S0.1, S0.2, S0.3, S1.1, the initial S2.1 commit `e69966f`) keep their original IDs and are treated as "iteration .1" of their respective surfaces — if they're re-opened later, the next iteration is `.2`.
+
+**What an iteration session looks like.** Same per-session pattern as §4 (boot dev server → before-screenshots → critique → triage 3-5 priority fixes → execute → tests → after-screenshots → re-critique → commit → check convergence gate). The 3-5 priority-fix budget per iteration stays in force; the iterative model means **more iterations**, never bigger ones.
+
+**Budget bookkeeping (calibrated against S2.1.1 experience):**
+
+- **The 3-5 cap counts Priority Issues, not total edits.** A "Priority Issue" is anything the critique flagged as P0/P1/P2 with its own what/why/fix. Mechanical scope (an issue that requires editing 3 CSS rules + a template + a test) is one Priority Issue, not five edits.
+- **Atomic-edit rule.** When two semantically distinct backlog items resolve to the same atomic edit, count them as **one** Priority Issue. Calibrated against S2.1.2: PI-2 combined "dossier-stamp register-shift" (`◈ Classified · CCC ◈` reads as spy register) with "mobile dossier-stamp position collision" (the absolute-positioned stamp overlapped rank-meta on narrow viewports). Both close in a single rewrite of the `.dossier-stamp` rule plus a one-token text change. Counting them as two Priority Issues would have inflated the cap without producing distinct work; counting as one keeps the cap honest. Watch out for the inverse failure mode — combining items that *aren't* actually atomic ("we'll fix the rail layout AND the sparkline a11y in one PI") hides scope creep behind the rule.
+- **Polish freebies don't count against the cap.** A "freebie" is <2 minutes of work, single file (or one CSS rule), with at most one source-pattern lock. Examples from S2.1.1: removing `&ndash;` from one byline; renaming "competitors" → "in the Club"; bumping `.ra-stage` opacity .45→.55 to clear AA. Cap freebies at ~3 per iteration; batch them at end-of-iteration so they don't fragment the main work.
+- **Iteration 2+ inherits its own backlog.** Items tagged `[Sx.y.N-1 in-surface]` in §0.4 already passed Priority-Issue triage; they count toward the 3-5 cap of the picking-up iteration. If 6 backlog items exist and a fresh critique adds 2 more, the iteration picks the highest-value 3-5 and routes the rest forward to `Sx.y.N+1`. Inherited-backlog iterations typically spend 4 of the cap on backlog and 0-1 on fresh findings (calibrated against S2.1.2: 4 of 6 inherited items closed, 2 routed forward, 0 fresh items added).
+- **Soft total-edit ceiling.** ~8-10 distinct edits per iteration is the comfort line where session quality starts degrading. If a session blows past that, the next iteration is right around the corner — bank the work and `/clear`.
+
+**Layout patterns the iterative model has surfaced (extend as future iterations add to this list):**
+
+- **Bootstrap `order-*` is the canonical "mobile reading order vs desktop balance" tool.** When a desktop layout reshape would shuffle the mobile reading order out of intent, use Bootstrap order utilities (`order-2`, `order-3`, `order-lg-0`, etc.) on the row's children rather than introducing duplicate templates or breakpoint-specific includes. Pattern lock: see `_home_live.html` post-S2.1.2 — the four primary blocks (`home-live-left` / `home-live-right` / `home-live-results` / `home-live-narrative`) sit in a single `.row` with mobile order `0/3/2/4` and desktop order `0/0/0/0` so source order drives the desktop grid while the mobile stack reads dossier → results → leaderboard → commish.
+- **The hero-metric-template ban applies to *adjacency*, not just presence.** Four equal-weight numerals in a row (Tier · Multiplier · Base · Scored, each at `1.6rem`) reads as the SaaS cliché DESIGN.md §6 bans even when each tile carries a distinct, justified data point. Surfaced by S2.3.1: the team_detail masthead avoided gradient-text and the literal big-number-small-label trap, but four side-by-side `1.6rem` numerals + small Teko labels still triggered the persona "AI made that" reflex. The escape pattern: collapse to one dominant numeral (Scored at `2.6rem`), one supporting chip (multiplier ×N), one prose derivation line (Base × Multiplier as Newsreader microcopy). Then the hero reads as editorial masthead, not stat strip. Apply this on every CCC surface that's tempted toward 3+ equal-weight stat tiles — the home dossier, player_detail hero, stats overview KPIs, post-state champion banner.
+- **Bootstrap `.text-muted` on dark `.card.wc-card` substrates always fails AA.** `#6c757d` against `rgba(0, 17, 46, .8)` is sub-AA. Surface-scoped class migration (`.fixture-stage-date / .fixture-vs / .fixture-tbd / .ownership-ribbon-blurb`, each tinted toward `--bone-mute`) is now the canonical pattern, established in S2.3.1's PI-4 freebie. Future iterations on dark-card surfaces (`.card.wc-card .* .text-muted`) should sweep this proactively instead of waiting for the critique to surface it.
+
+**Backlog routing within an iteration.** When a critique surfaces an in-scope P0/P1 outside the iteration's 3-5 budget, route it to the next iteration of the same surface. When it surfaces a cross-cluster pattern (visible only when comparing two or more surfaces in the cluster), route to the cluster polish session (S2.6 / S3.4 / S4.5 / S5.3). When it surfaces a cross-phase pattern (visible only when comparing across phases), route to S6.1. The §0.4 Backlog rules in this plan have the precise routing matrix.
+
+### 1.5c Cluster polish session pattern (S2.6 / S3.4 / S4.5 / S5.3 / S6.1)
+
+Cluster polish sessions are **not** per-surface iterations and do **not** trigger the §1.5b convergence gate. They receive routed `[Sx.y.N cross-cluster]` items from §0.4 and produce 3-5 cluster-level fixes. Calibrated against S2.6 (the first cluster polish session to run end-to-end under the iterative model).
+
+**Triage discipline.** Three pitfalls a cluster session must avoid:
+
+1. **DESIGN.md cross-check before fixing every routed item.** A `[cross-cluster]` route from a per-surface iteration is the *critique's* judgment that something looks like an anti-pattern. The *committed* design policy may have already considered and accepted it. Calibrated against S2.6 PI-2: the S2.4.1 critique flagged `.wc-stat-card`'s border+`--shadow-sm` as "double elevation, pick one" — but DESIGN.md §4.4 "Lift-At-Rest Rule" and §6 card primitive explicitly mandate both at rest ("the Tribune is a printed object, not a wireframe"). Shipping the "fix" would have regressed the committed brand policy. Impeccable's priority rule (user instructions > skill heuristics) means **DESIGN.md wins on any conflict**. Pre-fix check: for each routed item, search DESIGN.md for the relevant primitive/policy section. If DESIGN.md mandates the pattern the critique flagged, the routed item resolves as a **decided no-op with rationale** in §0.4 (counts toward the 3-5 cap as a triage finding, but produces no code change).
+
+2. **Verify the cross-cluster premise at session-time, not at route-time.** A finding gets the `[cross-cluster]` tag during a per-surface iteration when the surface critique notes "pattern likely shared with other surfaces." That's a *guess* about cross-surface scope; the cluster session is the place to confirm it. Calibrated against S2.6: the S2.4.1-routed "inline-Teko duplication likely shared with `_home_live` impact rows / leaderboard mobile cards" turned out to be **0 hits** outside `stats.html` in the live cluster. The actual cross-surface usage was P4 pre-live templates (picks/rules/join, 11+ instances). One grep at session-time saved a premature extraction that would have needed a second migration pass in P4. **Verification action**: for each routed item that names "likely shared" surfaces, run a one-line grep across those surfaces before scoping the fix. If the cross-surface premise doesn't hold, **re-route** the item with the corrected receiving session (e.g., to a different phase's cluster session) instead of fixing it in the wrong cluster.
+
+3. **"Cap 3-5 PIs" includes triage outcomes, not just code changes.** A decided no-op (per #1) or a re-route (per #2) is a legitimate PI outcome and counts toward the cap. The cap measures triage work, not edit count.
+
+**Verification bar (lighter than per-surface convergence).** A cluster session does not need to run `$impeccable critique` against each child surface. The bar is "all S2.x.M surfaces hold; no in-surface P0/P1 surfaced; the cluster session's own edits don't regress adjacent surfaces." Concretely:
+
+- **Layer A**: source-pattern locks for every code-change PI under `tests/test_design_<phase>_s<num>_<cluster>.py`.
+- **Layer B (the cluster verification layer)**: Playwright MCP computed-style probes and visual smoke on **touched surfaces + adjacent surfaces where the change could bleed**. Touched = surfaces directly edited by a PI. Adjacent = surfaces that share the changed CSS scope (e.g., a `.card.wc-card .table` change touches every surface containing that selector pattern). S2.6 calibration: PI-1 touched no template directly but altered the cluster-3 surgical-exclusion environment, so leaderboard + player_detail + picks were probed; PI-3 touched schedule + team_detail, so those were probed; PI-4 touched schedule, probed at desktop + mobile.
+- **Layer C is skipped by default.** Re-running `$impeccable critique` against 5–6 surfaces is ~3-6 hours of sub-agent work; Layer B catches the regressions that matter (computed contrast, layout, focus, tap-target floor). Re-run Layer C only if Layer B surfaces unexplained visual differences or if the cluster work was structurally large (e.g., a chrome-component rewrite that re-flows every cluster surface).
+
+**Output shape.** A cluster session produces (in this order):
+
+1. The 3-5 PI triage table in the session message — for each item: source `[Sx.y.N cross-cluster]` route, S2.6-time DESIGN.md/grep verification result, outcome (fix / no-op / re-route).
+2. Code changes per fix PI (minimal, scoped, additive — never broadcast).
+3. Layer A regression locks per fix PI.
+4. Layer B verification log (computed values + screenshot paths).
+5. §0.4 amendments: routed items get `CLOSED in S<this session>` / `[S<this session> routed]` annotations with rationale; un-touched cross-cluster items stay open.
+6. §9 rollup row flipped; commit hash backfilled per §1.5 step 5.
+7. Phase PR opened (cluster session is the last session of its phase per §1.1).
+
 ### 1.6 Out-of-scope guardrails
 
 - **Don't touch Golf or CFB.** They're explicitly excluded.
@@ -182,11 +303,16 @@ Every session ends with the same seven steps:
 
 ### 1.7 Failure mode: critique surfaces something we hadn't planned for
 
-If a per-page critique surfaces a P0 or P1 issue that doesn't fit the session's scope:
+If a per-page critique surfaces a P0 or P1 issue that doesn't fit the iteration's 3-5-fix budget:
 
-1. **Don't push past it.** Mark the session as partially complete in the plan.
-2. Append the new finding to the Backlog (Section 0.4).
-3. Either: (a) handle it in the same session if the fix is self-contained, or (b) defer to a future session and note the dependency. Default to (a) unless (b) is clearly more beneficial and logical.
+1. **Don't push past it.** The 3-5-per-iteration cap is load-bearing — exceeding it produces lower-quality fixes and a session-end critique that doesn't reliably show whether each fix landed.
+2. **Route the finding via §0.4 Backlog** using the routing-by-type rules at the top of §0.4. The most common routings:
+   - **In-surface** (the finding is fixable by editing files inside this surface's scope) → next iteration of the same surface (`Sx.y.N+1`). Default for findings the iteration didn't reach.
+   - **Cross-cluster** (the finding is only visible when comparing two or more surfaces in the same cluster, e.g., visual-rhythm consistency between `_home_live` and `schedule.html`) → cluster polish session (`S2.6` / `S3.4` / `S4.5` / `S5.3`).
+   - **Cross-phase** (pattern spans multiple clusters, e.g., the 7-component gradient-card silhouette repeating across pre/live/post home + auth + game tiles) → `S6.1` cross-surface polish.
+   - **Production-data-dependent** (the finding requires real user/match data to surface meaningfully) → tag `[deferred-data]` in §0.4; revisit only when the trigger lands.
+3. **Convergence not assumed.** A session that surfaces a P0/P1 it can't fit is **not converged** — §1.5b gate #1 or #2 will block. The next iteration of the same surface picks the deferred item up. This is the default loop, not a special case.
+4. **Same-iteration handling allowed only if cheap.** If a self-contained fix takes <10 minutes and doesn't bump the iteration past 6 priority fixes, fold it in. Don't stretch the iteration to chase a P2 that turned into a P1 mid-session — defer to the next iteration.
 
 ### 1.8 CR-feedback-approval sessions
 
@@ -1425,101 +1551,148 @@ EOF
 
 ---
 
-## 4. Phase 2 — Live state cluster (6 sessions)
+## 4. Phase 2 — Live state cluster (5 surfaces, iterative)
 
-Each session takes one live-state surface from "no critique done" → "critique done + per-page execution complete + re-critique scored." The pattern is identical across S2.1–S2.5; S2.6 is a cross-cluster polish.
+Each surface (S2.1 home_shell+_home_live, S2.2 schedule, S2.3 team_detail, S2.4 stats, S2.5 player_detail) iterates per §1.5b until convergence. The original "6 sessions" estimate became iterative on 2026-05-08; the actual session count per surface is 1-3 depending on baseline score and per-iteration progress. S2.6 is a cross-cluster polish that runs only after all 5 surfaces have converged.
 
-### Per-session pattern (applies to S2.1–S2.5)
+**Per-surface iteration model:**
+
+- First iteration: `S2.x.1`. Baseline critique → triage 3-5 priority fixes → execute → re-critique → check §1.5b convergence gate.
+- If gate fails: `/clear` and start `S2.x.2`. Repeat.
+- A surface's iterations end when all four gates pass. Move to the next surface (S2.x+1.1).
+- All 5 surfaces converge → S2.6 runs.
+
+**Why iterative.** The previous "one session per surface" pattern shipped surfaces at heuristics ~28-30/40 with P2/P3 backlog deferred to S2.6, which would have bloated S2.6 into a multi-session amorphous cleanup. The iterative model holds each surface to a real convergence bar (§1.5b gates) and keeps S2.6 small and sharp (cross-cluster patterns only). See §1.5b for full convergence gate; see §0.4 for backlog routing rules.
+
+**Dev-data setup ritual (P2 specifically — same shape applies to P4 pre-cluster and P5 post-cluster).** Before booting the dev server for a state-cluster iteration, confirm the dev DB is in the target tournament state. The state seam in `games/worldcup/services/state.worldcup_state()` returns `'post'` whenever match #104 has `is_completed=True` regardless of `WC_FAKE_NOW` — see memory `project_ccc_wc_reskin_gotchas.md` for the full gotcha. Quick recipe per state:
+
+- **Live** (P2): set `match #104 is_completed=False` (one-line `flask shell` or inline python). `WC_FAKE_NOW='2026-06-22T18:00:00+00:00'` in the boot env puts the clock past the deadline. Restore #104 to `True` at session end so the dev DB stays consistent.
+- **Pre** (P4): `match #104 is_completed=False`; pick any `WC_FAKE_NOW` before `2026-06-11T19:00:00+00:00` (e.g., `'2026-06-05T12:00:00+00:00'`).
+- **Post** (P5): `match #104 is_completed=True` AND `winner_team_id` set AND `home_score`/`away_score` non-null. Scoring helpers return 0.0 if the winner FK is missing.
+
+The boot command shape is `ENVIRONMENT=development WC_FAKE_NOW='<iso>' FLASK_APP=app.py FLASK_DEBUG=1 venv/bin/flask run --port 5099`. Without `ENVIRONMENT=development`, `now_utc()` ignores `WC_FAKE_NOW` silently. For Playwright auth: set the test user's password to a known value via `flask shell` (`u.set_password('s2_iter_dev'); db.session.commit()`) at the start of the session; the test user enrolled in the current season is `B1G_Brad` (uid 1).
+
+### Per-iteration pattern (applies to every `S2.x.N` session)
 
 **Files in scope (READ):** PRODUCT.md, DESIGN.md, CLAUDE.md, the target template, supporting routes/services, related CSS sections, the live-state context builder (`core/main/home_context.py` for state-bearing pages).
 
-**Tasks:**
+**Tasks** (this checklist describes the canonical iteration shape — every iteration session resets these to `[ ]` in its own commit when starting; the checked state above is from S2.1.1, the first iteration that ran end-to-end under this pattern):
 
-- [ ] **Step 1: Boot dev server, capture before-screenshots at desktop + mobile.** Save under `.impeccable-review/<session-id>/before/`.
-- [ ] **Step 2: Run `$impeccable critique <target>`.** Two-assessment workflow per the impeccable critique reference. Sub-agent for design review; deterministic detector against rendered+inlined HTML; combined report.
-- [ ] **Step 3: Read the report; decide which Priority Issues land in this session.** Stretch issues go to Backlog (§0.4). Don't push past 3-5 priority fixes per session.
-- [ ] **Step 4: For each Priority Issue, execute its recommended impeccable command.** `$impeccable shape <component>`, `$impeccable clarify <copy>`, `$impeccable adapt <responsive>`, etc.
-- [ ] **Step 5: Add session-specific regression tests** under `tests/test_design_p2_<session>.py`. Lock the most important shape decisions in source.
-- [ ] **Step 6: Capture after-screenshots** under `.impeccable-review/<session-id>/after/`.
-- [ ] **Step 7: Re-run `$impeccable critique <target>`.** Record score delta.
-- [ ] **Step 8: Run `pytest`. Commit.**
+- [x] **Step 0: Pick up §0.4 backlog items tagged `[Sx.y.N-1 in-surface]` for this surface** (if this is iteration 2+). Treat them as the iteration's primary agenda before running the fresh critique.
+- [x] **Step 1: Boot dev server, capture before-screenshots at desktop + mobile.** Save under `.impeccable-review/<session-id>/before/`.
+- [x] **Step 2: Run `$impeccable critique <target>`.** Two-assessment workflow per the impeccable critique reference. Sub-agent for design review (with content-fingerprint proof per §1.2); deterministic detector; combined report.
+  - **Detector scope guidance (calibrated against S2.1.2):** run `npx impeccable --json --fast` against the **source template files** (the surface's `.html` partials), NOT against an inlined-CSS HTML snapshot. Inlined snapshots include the entire `style.css`, so the detector flags rules from outside the surface scope (S2.1.2 saw 10 hits, all from picks-accordion / champion-banner / navbar that weren't in scope). When you do want to detect inline-style issues on the rendered page, run the detector against the inlined snapshot and cross-reference each hit against the surface's namespace before triaging.
+  - **Tap-target sweep as a deterministic in-Step-2 check.** Inside the critique, sweep all `<a>`, `<button>`, and clickable container rects in the surface for `min-height < 44px || min-width < 44px`. P0 S0.3 globalized chrome (subnav, navbar, leaderboard cards), but surface-scoped utilities recur — S2.1.1 missed `.home-shell .sec-head .more` (caught by S2.1.2). Use a Playwright MCP `browser_evaluate` one-liner: `Array.from(document.querySelectorAll('a, button, [role="button"], [onclick]')).map(el => { const r = el.getBoundingClientRect(); return r.height < 44 || r.width < 44 ? { sel: el.outerHTML.slice(0, 80), w: Math.round(r.width), h: Math.round(r.height) } : null; }).filter(Boolean)`.
+- [x] **Step 3: Read the report; decide which Priority Issues land in this iteration.** Items beyond the 3-5 budget go to §0.4 with `[in-surface]` / `[cross-cluster]` / `[cross-phase]` / `[deferred-data]` tag per §0.4 routing matrix.
+- [x] **Step 4: For each Priority Issue, execute its recommended impeccable command.** `$impeccable shape <component>`, `$impeccable clarify <copy>`, `$impeccable adapt <responsive>`, etc.
+- [x] **Step 5: Add iteration-specific regression tests** under `tests/test_design_p2_s2_<surface>_<iteration>.py` (e.g., `test_design_p2_s2_1_2.py` for S2.1.2). Lock the most important shape decisions in source.
+- [x] **Step 6: Capture after-screenshots** under `.impeccable-review/<session-id>/after/`.
+- [x] **Step 7: Re-run `$impeccable critique <target>`.** Record score delta.
+- [x] **Step 8: Check §1.5b convergence gate** (4 conditions). If all pass → mark surface converged in §9 rollup; next session moves to the next surface. If any fail → next session is `S2.<surface>.N+1` on the same surface.
+- [x] **Step 9: Run `pytest`. Commit.**
 
-### Session inventory
+### Surface inventory (each iterates per §1.5b until converged)
 
-- [ ] **S2.1 — `home_shell.html` + `_home_live.html`** (the World Cup home in live state). Cross-cutting note: this surface uses `core/main/home_context.py` builders. Critique covers the page state but execution may need the partials in `core/main/templates/main/_home_live.html` plus `_dossier_card.html` / `_fixture_card.html`. Likely Priority Issues: dossier card hierarchy, live-state sparkline communication, week-delta gating UX.
+- [ ] **S2.1 — `home_shell.html` + `_home_live.html`** (the World Cup home in live state). Cross-cutting note: this surface uses `core/main/home_context.py` builders. Critique covers the page state but execution may need the partials in `core/main/templates/main/_home_live.html` plus `_dossier_card.html` / `_fixture_card.html`.
+  - [x] **S2.1.1** done (commit `e69966f`). Heur 26→30/40, audit 15→17/20, anti-pat 5→0. Fixed: gradient-text + hero-metric absolute bans, identical-card grid, "this week" copy lie, banned `stage|title`. **Convergence gate: failed** (heur 30 < 32 floor; 6 in-surface backlog items remain). Next: S2.1.2.
+  - [x] **S2.1.2** done. Heur 28→32/40 (re-critique baseline), audit 16→18/20, anti-pat 0 (held). Fixed: section-more 44×44 tap-target floor, dossier-stamp Tribune voice + in-flow position (closes mobile rank-meta overlap), right-rail starvation (Recent Results + Commish lifted to full-width rows below dossier/leaderboard side-by-side, with Bootstrap `order-*` preserving mobile reading order), "Also Today" eyebrow rename. **Convergence gate: PASS** (zero P0, zero unrouted P1 — two soft P1s deferred to S2.1.3 with `[in-surface]` rationale, 0 anti-pat hits, heuristics 32/40 hits the floor). Surface S2.1 marked converged below.
 
-- [ ] **S2.2 — `schedule.html`** (live mode shows in-progress + recently-finished matches). Likely Priority Issues: live-dot indicator clarity, live-vs-final visual differentiation, kickoff time formatting (PRODUCT.md: short-burst comprehension).
+- [x] **S2.2 — `schedule.html`** (converged 2026-05-08 in S2.2.1). The "live mode" Priority Issues at first iteration turned out to be: (1) chronologically-interleaved group stage that fired the group_letter divider 48 times across the page as a per-match label rather than as a section separator, (2) no live-state framing — the page rendered identically out/pre/live/post, (3) date-and-time per-row stamp `'%-m/%-d %-I:%M%p'` that omitted day-of-week and duplicated date info, (4) 48 inline-styled H4 group dividers that bypassed the eyebrow primitive, (5) opaque match-points-chip with no legend or tooltip, (6) `&middot;` and `&ndash;` HTML entities. Live-dot / live-vs-final differentiation didn't surface — the schedule template has no in-progress concept and the existing completed/pending dichotomy is sufficient.
+  - [x] **S2.2.1** done. Heur 19→30/40, audit ~11→16/20, anti-pat 4→0. Fixed: matchday grouping (route now passes `matchdays_group` instead of flat `group_matches`), `.is-today` modifier + `id="today"` deep-link anchor, `.schedule-day-header` primitive (replaces 48 inline-styled H4s), per-row stamp time-only (`'%-I:%M %p'`), match-group-tag badge with `aria-label="Group X"`, match-points-chip `title=` tooltip, `.schedule-legend` microcopy, `--text-muted` → `--text-secondary` AA bump on day-header / legend / group-tag, entity sweep. **Convergence gate: PASS** on first iteration. Surface S2.2 marked converged below.
 
-- [ ] **S2.3 — `team_detail.html`** (live ownership ribbon, score events stream, per-match column). Likely Priority Issues: ownership ribbon information density (D11 privacy invariant locks the count display, see CLAUDE.md), per-match column unit consistency, live score-event motion.
+- [x] **S2.3 — `team_detail.html`** (converged 2026-05-08 in S2.3.1). The "live ownership ribbon / score events / per-match column" predictions partially landed (per-match unit consistency was already locked by `tests/test_worldcup_team_detail.py::test_team_detail_fixture_pts_apply_multiplier`); the actual first-iteration Priority Issues were: (1) hero-metric template adjacency — four equal-weight 1.6rem stat tiles (Tier · Multiplier · Base · Scored) fired the SaaS cliché even when each tile carried distinct data; (2) path-to-crown 6-tile row encoded status (won/current/eliminated/future) by color alone, with `current` and `future` carrying no icon (PRODUCT.md a11y rule); (3) mobile fixture-row flag/code overlap at the squeezed 1fr column + dead Pts column claiming ~12% horizontal on un-played rows; (4) `.picker-link` ~28px tall on mobile (regression of P0 S0.3's 44×44 floor); (5) Bootstrap `.text-muted` micro-copy on the dark-navy `.card.wc-card` substrate failing AA; (6) the user's own team felt indistinguishable from any other team beyond the red-tinted ownership ribbon. The owned-state celebration delta (ceiling-rank-among-picks comparator) and the projected-ceiling group-relative comparator both routed forward to S2.3.2 because they require new route-level data; pre-tournament empty-state shell routed forward for the same reason; eyebrow-primitive saturation routed to S2.6 cross-cluster.
+  - [x] **S2.3.1** done. Heur 24→31/40 (Δ +7), audit 14→18/20 (Δ +4), anti-pat 0→0 (held). Fixed: hero re-shape (one dominant Scored numeral at 2.6rem, multiplier chip inline, Base × Multiplier as Newsreader derivation, duplicate Tier tile moved up onto eyebrow line); owned-state via Voice in Copy (`Your pick · ` eyebrow prefix) + warmer `wc-hero-grad-owned` radial variant; path-to-crown `<ol>+<li>` semantics + `aria-current="step"` + per-status icons (won → check, current → record-circle pulse, eliminated → x, future → empty circle), pulse gated under `prefers-reduced-motion`; mobile fixture-row 3-col collapse for `.fixture-row-pending`, named flag/code flex children with explicit gap, empty pts cell as `aria-hidden visibility:hidden` desktop spacer, surface-scoped `.fixture-stage-date / .fixture-vs / .fixture-tbd` replacing Bootstrap `.text-muted` on dark navy, entity sweep on `&ndash;` / `&middot;`; `.picker-link` 44×44 floor (`min-height: 44px` + `inline-flex` + `:focus-visible` outline), grid step 160→140px so two pills seat at 375; freebie `.ownership-ribbon-blurb` scoped color so AA holds against navy substrate. **Convergence gate: PASS** (0 P0, 0 unrouted P1 — 5 P2/P3 routed forward via §0.4, 0 anti-pat hits, heuristics ≥ baseline+6 [30 floor, 31 actual]). Surface S2.3 marked converged below.
 
-- [ ] **S2.4 — `stats.html`** (Stats Hub: country/tier KPIs, tier combos). Likely Priority Issues: stats-curious vs analyst register layering, table semantics (catch any tables S0.2 missed), filter/segment affordances.
+- [x] **S2.4 — `stats.html`** (converged 2026-05-09 in S2.4.1). The "stats-curious vs analyst register layering" prediction landed (PI-3 lead-card variant + eyebrow primitive + Newsreader masthead derivation closed it); table semantics didn't surface (the surface has no `<table>` — it's div-based bar/list/row UI). The actual first-iteration Priority Issues were: (1) `--text-muted` (3.59:1 on white card) sub-AA across every card-interior microcopy slot — KPI labels, sub-lines, card-head asides, chart axis ticks; (2) hero-metric-template *adjacency* fired twice on one page (Board 4-tile band + Tiers 5-tile band, exactly the §1.5b lesson from S2.3.1 that 3+ equal-weight numerals trip the SaaS reflex even with distinct data); (3) 15 `.wc-stat-card` instances all white + 1px border + same shadow + same Teko head — the identical-card-grid silhouette ban; (4) bare `T#` tier badges in row scan paths (Top Scorers / Carrying / Dead Weight / Combos) demanding recall instead of recognition, with no nearby legend. The T1 amber badge AA fail (3.19:1), phase-aware copy on the masthead, bubble-chart "my picks" filter, Carrying/Dead-Weight side-by-side, and T2 Tier Pairs explanatory copy all routed forward to S2.4.2 (each requires either token spec change, route-side data plumbing, or new affordance JS — too big for the same iteration's atomic-edit budget). Inline-Teko duplication and double-elevation on `.wc-stat-card` routed to S2.6 cross-cluster. Markup-as-icon ✓/← in progress bar routed to S6.1 cross-phase.
+  - [x] **S2.4.1** done. Heur 19→32/40 (Δ +7), audit 9→14/20 (Δ +5), anti-pat 3→0. Fixed: `--text-muted` → `--text-secondary` sweep (CSS rules + ~12 inline strings + chart `TICK_COLOR`; rendered ratios sampled at 7.15:1 / 6.23:1 / 15.07:1, well above AA); both KPI bands collapsed (Board → `.wc-stats-masthead` with one dominant Teko numeral + Newsreader serif derivation prose, max-width 60ch; Tiers → `.wc-stats-ledger` horizontal strip with gold-rule top + per-cell border + 5 `.wc-stats-ledger-cell` flex children, mobile reflows 50%); `.wc-stat-card.is-lead` variant (gold-rule top, no body border) on Top Scorers (Board, "The lead" eyebrow), Popularity vs. Score (Field, "The map"), Pick Distribution by Tier (Tiers, "The cross-section") — breaks the 15-identical-card silhouette; `tb()` (T#) → `tbl()` (T# · Name) in `renderScoring` / `renderImpact` help+hurt lists, `tb()` preserved in `pbarHtml` only (where the surrounding `tierHeader` names the tier) and given `aria-label="Tier N · Name"` for SR; freebies — `&middot;` entity sweep, "Pts" → "Points" on Board card heads, ★ glyph wrapped `aria-hidden="true"` plus `.visually-hidden` SR text "your pick"/"your picks", hero-subtitle alpha .6→.7, inline `#1A7A45` "carrying" emphasis bumped to `#125F36` for ~6.5:1 at small bold. **Convergence gate: PASS** (0 P0, 0 unrouted P1 — 5 in-surface routed to S2.4.2, 2 cross-cluster routed to S2.6, 1 cross-phase routed to S6.1, 2 ship-as-is, 0 anti-pat hard hits, heuristics 32 ≥ baseline+6 [25 floor]). Surface S2.4 marked converged below.
 
-- [ ] **S2.5 — `player_detail.html`** (other player's roster + score breakdown). Likely Priority Issues: rivalry framing, comparison shape (you vs them), pre/post-deadline differential.
+- [x] **S2.5 — `player_detail.html`** (converged 2026-05-10 in S2.5.1). The "rivalry framing / you-vs-them comparison shape / pre-post-deadline differential" predictions partially landed at first iteration (PI-2 Newsreader derivation prose now carries the rivalry framing voice "Leads the table. 117.0 ahead of next." / "Trails leader by X, Y ahead of next."; the structural you-vs-them comparison strip routed forward to S2.5.2 because it needs a new `compute_comparison` route helper). The actual first-iteration Priority Issues were: (1) Bootstrap-on-`.card.wc-card` contrast catastrophe — the entire 18-row picks table rendered invisible (computed `<td>` color `rgb(33,37,41)` on `rgba(0,17,46,.8)` navy substrate) because legacy CSS at `style.css:2378-2386` assumed a *light* card surface that never existed; same systemic issue surfaced inline-eyebrow color, pick-event-stage, accordion-toggle, score-events-total/empty, and the cluster-3 surgical-exclusion at `style.css:5444` actively forced dark-on-dark on the "Grp X" microcopy; (2) hero-metric template adjacency — three equal-weight 1.6rem numerals (Total · Lead · Tiebreak) in a flex row, the exact pattern S2.3.1 locked out of team_detail and that project memory `project_ccc_wc_reskin_gotchas.md` flagged as the SaaS-reflex trap "even with distinct data"; (3) Tiebreak rendered as a bare integer `12` with no unit, hero "Lead: none" reading as a missing value not a rank-1 state; (4) bare `T#` tier badges in the pick rows (same recall-not-recognition pattern S2.4.1 retired via `tb()` → `tbl()` on stats.html) — and the `tiers` dict was already passed to the template, just unconsumed. Rivalry comparison strip, "Roster sealed" empty-state re-shape, and above-fold wrapper-nesting reduction routed forward to S2.5.2.
+  - [x] **S2.5.1** done. Heur 21→31/40 (Δ +10), audit 13→17/20 (Δ +4), anti-pat 2→0. Fixed: contrast lock on `.card.wc-card` dark substrate — replaced the stale "light card" overrides at `style.css:2378-2386` with `.player-picks-desktop .table-worldcup > tbody > tr > td { color: var(--text-on-dark); background-color: transparent; }` to defuse Bootstrap's `--bs-table-bg` white-cell forcing, lifted `:hover > td` to bone-wash `rgba(245,241,232,.04)`, scoped `.team-link` to bone with gold-light hover, beat the cluster-3 `.text-muted` surgical-exclusion with a compound-class counter-rule (`.card.wc-card.player-picks-desktop .table-worldcup > tbody > tr > td .text-muted`) so "Grp X" microcopy reads `--bone-mute`, re-tinted `.pick-accordion` panel from `rgba(0,40,104,.03)` (navy-on-navy) to bone wash with `rgba(245,241,232,.14)` dashed border, lifted `.pick-accordion-toggle` to bone-mute (rest) + gold-light (open/hover) with `:focus-visible` color, lifted `.score-events-total` / `.score-events-empty` / `.pick-event-stage` to bone-mute, deleted the orphaned `.score-events-list` block; hero re-shape mirrors S2.3.1's `.team-hero-line` lock — replaced the 3-equal-weight `1.6rem` `.player-hero-stats` grid with `.player-hero-line` carrying one dominant `2.6rem` `.player-hero-score-value` numeral plus Newsreader `.player-hero-derivation` prose for rivalry framing ("Leads the table." / "Trails leader by X, Y ahead of next." / "Trails leader by X."), Tiebreak moved off the masthead onto the eyebrow line as `.player-hero-tiebreak` chip with explicit unit ("Tiebreak 12 US goals") and `aria-label="Tiebreaker: N US goals predicted"`, hero avatar emoji + decorative tier dot + flag emoji marked `aria-hidden`; tier names replace bare `T#` in both desktop `_pick_row.html` and mobile `.player-pick-card` via `{{ tiers[pick.tier].name }}` (Favorites / Contenders / Dark Horses / Underdogs / Wildcards); freebie discovered during verify — `.player-pick-card .wc-eyebrow` was inheriting `--bone-mute` (dark-surface token) but the mobile card is white (`--bg-card`), lifted to `--text-secondary` per memory `project_text_muted_aa_on_bone`. **Convergence gate: PASS** (0 P0, 0 unrouted P1 — 3 P1s routed forward via §0.4: PI-3 rivalry comparison strip [needs `compute_comparison` route helper], PI-6 "Roster sealed" empty-state re-shape [needs un-priv probe], PI-7 above-fold density / 6-deep wrapper reduction — all to S2.5.2 in-surface; 0 anti-pat hits, heuristics 31 ≥ baseline+6 [27 floor]). Surface S2.5 marked converged below; the prediction "rivalry framing" surfaced exactly as expected in PI-3 routed forward.
 
-- [ ] **S2.6 — Live cluster polish + re-critique.** Run `$impeccable polish <target>` against each S2.1–S2.5 surface. Re-run `$impeccable critique` on each + on the leaderboard (in case S2 work touched shared chrome or partials). Aggregate score lift across the cluster. Open PR `Impeccable P2 — Live state cluster`.
-
----
-
-## 5. Phase 3 — Global chrome + auth + errors (4 sessions)
-
-Same per-session pattern as P2. Global chrome runs before pre/post-state cluster work because every state-bearing surface inherits the chrome — fixing chrome first means later state-cluster sessions don't fight chrome regressions.
-
-### Session inventory
-
-- [ ] **S3.1 — `templates/base.html` (navbar, footer, sub-nav slot, body class flow).** This sets the chrome every other surface inherits. Likely Priority Issues: navbar dropdown a11y, footer voice/utility split (DESIGN.md defines the two-band structure), sub-nav scroll behavior on mobile, navbar-scrolled compaction smoothness.
-
-- [ ] **S3.2 — Auth pages cluster.** `login.html`, `register.html`, `forgot_password.html`, `reset_password.html`, `change_password.html`, `profile.html`. Run a single `$impeccable critique` per page (they're small, batch is feasible). Likely Priority Issues: auth-page Tribunal Black backdrop atmosphere, focus management, error message voice, password-reset-token UX.
-
-- [ ] **S3.3 — Platform home (`core/main/templates/main/index.html`) + 12 component partials.** This is the biggest single template by partial-count. The home page dispatcher critiques separately from the four state partials (which are covered in P2/P4/P5). This session focuses on the dispatcher and any partials not already touched (e.g., `_game_card.html`, `_game_tiles_compact.html`).
-
-- [ ] **S3.4 — Errors (`404.html`, `500.html`) + cluster polish + re-critique.** Errors are small — 30-min work. Wrap with cluster-wide polish. Open PR `Impeccable P3 — Global chrome + auth + errors`.
+- [ ] **S2.6 — Cross-cluster live polish (NOT cluster mop-up).** Runs only after S2.1–S2.5 have all converged per §1.5b. **Step 0:** sweep §0.4 for items tagged `[Sx.y.N cross-cluster]` and route them as agenda. **Step 1:** identify patterns visible only when comparing 2+ live-cluster surfaces — visual-rhythm consistency across `_home_live` / `schedule` / `team_detail`, repeated chrome treatments, eyebrow-primitive consistency, cross-surface motion language. Cap: 3-5 cross-surface findings. **Step 2:** re-run `$impeccable critique` against each S2.1–S2.5 surface (and the leaderboard, in case live-cluster shared-chrome work bled into it). Confirm none regressed. **Step 3:** open PR `Impeccable P2 — Live state cluster`. S2.6 is **not** the place for surface-internal polish — that work was done in each surface's own iteration loop. If S2.6 finds an in-surface P0/P1, route it back to a `S2.x.N+1` iteration before opening the PR.
 
 ---
 
-## 6. Phase 4 — Pre-live state cluster (5 sessions)
+## 5. Phase 3 — Global chrome + auth + errors (3 surfaces + cluster polish, iterative)
 
-Same per-session pattern.
+Same iterative model as P2 (per §1.5b). Global chrome runs before pre/post-state cluster work because every state-bearing surface inherits the chrome — fixing chrome first means later state-cluster sessions don't fight chrome regressions.
 
-### Session inventory
+### Surface inventory (each iterates per §1.5b until converged)
 
-- [ ] **S4.1 — `_home_pre.html` + `_home_out.html`** (the World Cup home in pre states). Likely Priority Issues: countdown card emotional fatigue if user visits often, ballot card readability, Tribute Window framing.
+- [ ] **S3.1 — `templates/base.html` (navbar, footer, sub-nav slot, body class flow).** This sets the chrome every other surface inherits. Likely Priority Issues at first iteration: navbar dropdown a11y, footer voice/utility split (DESIGN.md defines the two-band structure), sub-nav scroll behavior on mobile, navbar-scrolled compaction smoothness.
+  - [ ] **S3.1.1** — first iteration.
+  - [ ] **S3.1.N** — until convergence.
 
-- [ ] **S4.2 — `picks.html` + `_pick_row.html`** (the pick UI cluster). This is the highest-stakes pre-live surface; users spend the most time here. Likely Priority Issues: pick accordion UX (the `transition: max-height` finding from the leaderboard detector applies here), tier visualization, multiplier explanation, save/lock affordance, mobile single-handed pick flow.
+- [ ] **S3.2 — Auth pages cluster.** `login.html`, `register.html`, `forgot_password.html`, `reset_password.html`, `change_password.html`, `profile.html`. Run a single `$impeccable critique` per page (they're small, batch is feasible). Likely Priority Issues at first iteration: auth-page Tribunal Black backdrop atmosphere, focus management, error message voice, password-reset-token UX.
+  - [ ] **S3.2.1** — first iteration.
+  - [ ] **S3.2.N** — until convergence.
 
-- [ ] **S4.3 — `join.html` + `rules.html`**. Lower-frequency but first-impression critical. Likely Priority Issues: rules typography (long-form Newsreader prose), join CTA voice, scoring system explanation depth.
+- [ ] **S3.3 — Platform home (`core/main/templates/main/index.html`) + non-state component partials.** Biggest single template by partial-count. The home page dispatcher critiques separately from the four state partials (which are covered in P2/P4/P5). This surface focuses on the dispatcher and any partials not already touched (e.g., `_game_card.html`, `_game_tiles_compact.html`).
+  - [ ] **S3.3.1** — first iteration.
+  - [ ] **S3.3.N** — until convergence.
 
-- [ ] **S4.4 — `groups.html`**. Likely Priority Issues: group fixture grid density, country-flag legibility, mobile column collapse, table semantics.
-
-- [ ] **S4.5 — Pre-live cluster polish + re-critique.** Per pattern. Open PR `Impeccable P4 — Pre-live state cluster`.
-
----
-
-## 7. Phase 5 — Post-live state cluster (3 sessions)
-
-Same per-session pattern.
-
-### Session inventory
-
-- [ ] **S5.1 — `_home_post.html`** (the World Cup home in post state). Likely Priority Issues: champion banner emotional payoff, retrospective tone, "the club will remember" voice from DESIGN.md's North Star.
-
-- [ ] **S5.2 — Post-state component partials.** `_champion_banner.html`, `_dispatches.html`, `_commish_note.html`, `_recent_results.html` (post variant). The shared partials get their own session because they're used across multiple post-state contexts. Likely Priority Issues: champion typographic moment, dispatches narrative voice, commish note signature.
-
-- [ ] **S5.3 — Post-live cluster polish + re-critique.** Open PR `Impeccable P5 — Post-live state cluster`.
+- [ ] **S3.4 — Errors + cross-cluster polish (NOT cluster mop-up).** Runs only after S3.1–S3.3 converge. Combines: (a) `404.html` / `500.html` first-iteration critique (these are small enough that one iteration usually converges them), (b) cross-cluster polish per the S2.6 model — patterns visible only when comparing 2+ chrome surfaces. **Step 0:** sweep §0.4 for `[Sx.y.N cross-cluster]` items routed to S3.4. **Step 1:** errors first-pass critique + fix. **Step 2:** cross-cluster polish (cap 3-5 findings). **Step 3:** re-run `$impeccable critique` against S3.1–S3.3 + errors; confirm no regressions. **Step 4:** open PR `Impeccable P3 — Global chrome + auth + errors`. If S3.4 finds an in-surface P0/P1, route to that surface's `Sx.y.N+1` iteration before opening the PR.
 
 ---
 
-## 8. Phase 6 — Final polish + scorecard (2 sessions)
+## 6. Phase 4 — Pre-live state cluster (4 surfaces + cluster polish, iterative)
 
-### Session S6.1 — Cross-surface `$impeccable polish`
+Same iterative model as P2/P3.
 
-**Goal:** Run the polish command across every public WC + global surface as a final pass. Catch anything missed in cluster-level polish.
+### Surface inventory (each iterates per §1.5b until converged)
 
-- [ ] **Step 1: Inventory.** List every template touched in P1–P5. ~38 templates.
-- [ ] **Step 2: Run `$impeccable polish` per cluster.** Don't run per-template (too granular); run per-state-cluster (live, pre, post, global).
-- [ ] **Step 3: Resolve any final findings.** Tighten copy, micro-spacing, motion polish.
-- [ ] **Step 4: Re-run `$impeccable critique` on the four Tier 1 exemplars** (leaderboard, home_shell live, picks, base.html). Record final scores.
-- [ ] **Step 5: Run full pytest.** Green.
-- [ ] **Step 6: Commit polish.**
+- [ ] **S4.1 — `_home_pre.html` + `_home_out.html`** (the World Cup home in pre states). Likely Priority Issues at first iteration: countdown card emotional fatigue if user visits often, ballot card readability, Tribute Window framing.
+  - [ ] **S4.1.1** — first iteration.
+  - [ ] **S4.1.N** — until convergence.
+
+- [ ] **S4.2 — `picks.html` + `_pick_row.html`** (the pick UI cluster). This is the highest-stakes pre-live surface; users spend the most time here. Likely Priority Issues at first iteration: pick accordion UX (the `transition: max-height` finding from the leaderboard detector applies here), tier visualization, multiplier explanation, save/lock affordance, mobile single-handed pick flow. Expect 3+ iterations on this surface; it's the densest in the cluster.
+  - [ ] **S4.2.1** — first iteration.
+  - [ ] **S4.2.N** — until convergence.
+
+- [ ] **S4.3 — `join.html` + `rules.html`**. Lower-frequency but first-impression critical. Likely Priority Issues at first iteration: rules typography (long-form Newsreader prose), join CTA voice, scoring system explanation depth.
+  - [ ] **S4.3.1** — first iteration.
+  - [ ] **S4.3.N** — until convergence.
+
+- [ ] **S4.4 — `groups.html`**. Likely Priority Issues at first iteration: group fixture grid density, country-flag legibility, mobile column collapse, table semantics.
+  - [ ] **S4.4.1** — first iteration.
+  - [ ] **S4.4.N** — until convergence.
+
+- [ ] **S4.5 — Cross-cluster pre-live polish (NOT cluster mop-up).** Runs only after S4.1–S4.4 converge. **Step 0:** sweep §0.4 for `[Sx.y.N cross-cluster]` items routed to S4.5. **Step 1:** identify cross-cluster patterns (visual-rhythm consistency between countdown / picks / join / groups; shared chrome treatments; deadline-related copy register across surfaces). Cap 3-5 findings. **Step 2:** re-run `$impeccable critique` against S4.1–S4.4; confirm no regressions. **Step 3:** open PR `Impeccable P4 — Pre-live state cluster`.
+
+---
+
+## 7. Phase 5 — Post-live state cluster (2 surfaces + cluster polish, iterative)
+
+Same iterative model as P2/P3/P4.
+
+### Surface inventory (each iterates per §1.5b until converged)
+
+- [ ] **S5.1 — `_home_post.html`** (the World Cup home in post state). Likely Priority Issues at first iteration: champion banner emotional payoff, retrospective tone, "the club will remember" voice from DESIGN.md's North Star.
+  - [ ] **S5.1.1** — first iteration.
+  - [ ] **S5.1.N** — until convergence.
+
+- [ ] **S5.2 — Post-state component partials.** `_champion_banner.html`, `_dispatches.html`, `_commish_note.html`, `_recent_results.html` (post variant). The shared partials get their own surface because they're used across multiple post-state contexts. Likely Priority Issues at first iteration: champion typographic moment, dispatches narrative voice, commish note signature.
+  - [ ] **S5.2.1** — first iteration.
+  - [ ] **S5.2.N** — until convergence.
+
+- [ ] **S5.3 — Cross-cluster post-live polish (NOT cluster mop-up).** Runs only after S5.1–S5.2 converge. **Step 0:** sweep §0.4 for `[Sx.y.N cross-cluster]` items routed to S5.3. **Step 1:** cross-cluster patterns (champion-moment vs. recap-prose register, post-state Tribune voice consistency, retrospective-vs-celebratory tonal balance). Cap 3-5 findings. **Step 2:** re-run `$impeccable critique` against S5.1–S5.2; confirm no regressions. **Step 3:** open PR `Impeccable P5 — Post-live state cluster`.
+
+---
+
+## 8. Phase 6 — Final polish + scorecard (iterative)
+
+### S6.1 — Cross-phase polish (cross-surface patterns spanning multiple clusters)
+
+**Goal:** Address patterns visible only when comparing across clusters — chrome treatments shared between live/pre/post home variants and auth, cross-game palette consistency, recurring component silhouettes (e.g., the 7-component gradient-card repeat surfaced by S2.1.1). NOT a final mop-up of single-surface issues; those are caught by per-surface convergence in P2-P5.
+
+- [ ] **Step 0: Sweep §0.4 for `[cross-phase]` items.** Every backlog item tagged for S6.1 goes here as the agenda. Plus any `[ship-as-is]` items needing a final review.
+- [ ] **Step 1: Inventory the cross-phase patterns surfaced during P2-P5.** Group findings by pattern, not by surface — the goal is to spot what repeats across clusters.
+- [ ] **Step 2: Run `$impeccable polish` per cluster** as a final sweep. Don't run per-template; run per-state-cluster (live, pre, post, global). Cap 3-5 findings per polish run.
+- [ ] **Step 3: Resolve cross-phase findings.** Each fix should land on every surface that exhibits the pattern, not just one.
+- [ ] **Step 4: Re-run `$impeccable critique` on the four Tier 1 exemplars** (leaderboard, home_shell live, picks, base.html). Record final scores. Confirm no regressions on previously-converged surfaces.
+- [ ] **Step 5: Iterate per §1.5b** if any Tier 1 exemplar regressed or remains below convergence. S6.1 itself can fan into S6.1.1 / S6.1.2 / etc.
+- [ ] **Step 6: Run full pytest.** Green.
+- [ ] **Step 7: Commit polish.**
 
 ### Session S6.2 — Scorecard, handoff doc, merge
 
@@ -1541,7 +1714,7 @@ Same per-session pattern.
 
 ## 9. Session checklist (update as you go)
 
-Mark each session as it completes. Append the session-completion commit SHA for traceability.
+Mark each session as it completes. Append the session-completion commit SHA for traceability. Iterations under the §1.5b model nest under their parent surface row; each iteration is its own line with its own commit hash. A surface is "done" when its convergence gate passes — flip the parent row `[x]` only then.
 
 ### Phase 0 — Cross-cutting harden
 - [x] S0.1 — Bootstrap shadow leak migration (commit: 60aee97)
@@ -1554,41 +1727,68 @@ Mark each session as it completes. Append the session-completion commit SHA for 
 - [x] **PR P1** opened: `#12`
 
 ### Phase 2 — Live state cluster
-- [ ] S2.1 — `home_shell` + `_home_live` (commit: `____`)
-- [ ] S2.2 — schedule (commit: ____)
-- [ ] S2.3 — team_detail (commit: ____)
-- [ ] S2.4 — stats (commit: ____)
-- [ ] S2.5 — player_detail (commit: ____)
-- [ ] S2.6 — live cluster polish + re-critique (commit: ____)
-- [ ] **PR P2** opened: ____
+- [x] **S2.1** — `home_shell` + `_home_live` (converged: 2026-05-08, S2.1.2)
+  - [x] S2.1.1 (commit: e69966f) — heur 26→30/40, audit 15→17/20, anti-pat 5→0. Gate: failed (heur < 32 floor; 6 in-surface backlog).
+  - [x] S2.1.2 (commit: 296a122) — heur 28→32/40 (re-critique pre/post), audit 16→18/20, anti-pat 0→0. Gate: **PASS** (0 P0, 0 unrouted P1, 0 anti-pat, heur ≥ 32). 4 of 6 inherited backlog items closed; 2 routed forward (sparkline delight + a11y polish) to S2.1.3.
+- [x] **S2.2** — schedule (converged: 2026-05-08, S2.2.1)
+  - [x] S2.2.1 (commit: d8b0f10) — heur 19→30/40 (Δ +11), audit ~11→16/20 (Δ +5), anti-pat 4→0. Gate: **PASS** (0 P0, 0 P1, 0 anti-pat, heur ≥ baseline+6 [25 floor, 30 actual]). 4 P2/P3 routed forward (3 to S2.6 cross-cluster live framing, 1 to S6.1 cross-phase `<time datetime>` semantic harden).
+- [x] **S2.3** — team_detail (converged: 2026-05-08, S2.3.1)
+  - [x] S2.3.1 (commit: 7e44752) — heur 24→31/40 (Δ +7), audit 14→18/20 (Δ +4), anti-pat 0→0. Gate: **PASS** (0 P0, 0 unrouted P1, 0 anti-pat, heur ≥ baseline+6 [30 floor, 31 actual]). 5 P2/P3 routed forward (3 to S2.3.2 [in-surface] for comparator + state-shell + ceiling-rank, 1 to S2.6 [cross-cluster] for eyebrow saturation, 2 [ship-as-is] for bottom back-link + tier-1 multiplier-token coincidence).
+- [x] **S2.4** — stats (converged: 2026-05-09, S2.4.1)
+  - [x] S2.4.1 (commit: 8b3ef65) — heur 19→32/40 (Δ +7), audit 9→14/20 (Δ +5), anti-pat 3→0. Gate: **PASS** (0 P0, 0 unrouted P1, 0 anti-pat, heur ≥ baseline+6 [25 floor, 32 actual]). 10 P2/P3 routed forward (5 to S2.4.2 [in-surface] for T1 badge AA + phase-aware copy + bubble filter + Carrying/Dead-Weight pairing + T2 Tier Pairs explanatory copy, 2 to S2.6 [cross-cluster] for inline-Teko duplication + double-elevation on .wc-stat-card, 1 to S6.1 [cross-phase] for progress-bar markup-as-icon aria-label, 2 [ship-as-is] for backend phase-chip artifact + wc-still-in/T-badge weight collision).
+- [x] **S2.5** — player_detail (converged: 2026-05-10, S2.5.1)
+  - [x] S2.5.1 (commit: db51590) — heur 21→31/40 (Δ +10), audit 13→17/20 (Δ +4), anti-pat 2→0. Gate: **PASS** (0 P0, 0 unrouted P1, 0 anti-pat, heur ≥ baseline+6 [27 floor, 31 actual]). 4 P1s routed forward (3 to S2.5.2 [in-surface] for rivalry-comparison strip [needs `compute_comparison` route helper] + "Roster sealed" empty-state re-shape [needs un-priv probe] + above-fold density / 6-deep wrapper reduction, 1 to S2.6 [cross-cluster] for the latent `.card.wc-card .table` Bootstrap-on-navy contrast risk that the cluster-3 surgical-exclusion `style.css:5444` would let resurface on any future dark-table surface without white-td masking).
+- [x] **S2.6** — cross-cluster live polish (commit: 9b7cc2f). 4 §0.4 [cross-cluster] items CLOSED, 3 re-routed to S6.1 cross-phase polish, 1 re-routed to P4.5 pre-live cross-cluster polish (per S2.6 Step 1 cap 3-5; 4 PIs landed). Closed: (PI-1) Bootstrap-on-`.card.wc-card .table` contrast safety lock via `--bs-table-bg: var(--bg-card)` defensive default — makes the white-td masking a CCC-owned design decision rather than an implicit Bootstrap default; surfaces that want dark navy bleed-through still opt out via scoped `background-color: transparent` on `> tbody > tr > td` (the canonical `.player-picks-desktop` pattern). (PI-3) `.text-muted` Bootstrap gray (`#6c757d`) retired on light live-cluster surfaces in favor of CCC purple-tinted `--text-secondary` (`#5A5470`) — schedule stage-count `<small>` (×2) keeps the `.schedule-stage-count` class only (no Bootstrap `text-muted`) with scoped color, team_detail no-fixtures empty state lifted to `.team-fixtures-empty`, team_detail path-to-crown explainer lifted to `.team-path-fineprint`, both resolved to `--text-secondary` via a shared CSS rule. (PI-4) `.schedule-jump-today` pill chip in the schedule `.page-hero` linking to the S2.2.1 `id="today"` anchor, guarded by a `selectattr('is_today')` template filter so it disappears pre/post-tournament — closes the live-state surfacing gap where the today block sat 6-11 matchdays into the page. (PI-2, decided no-op) double-elevation on `.wc-stat-card` / `.your-standing-tribune` is **not** a violation — DESIGN.md §4.4 "Lift-At-Rest Rule" and §6 card primitive explicitly mandate `1px solid var(--border)` + `--shadow-sm` at rest; the impeccable generic "single-elevation" heuristic is overridden by the committed policy. Re-routed to S6.1: (a) gradient-card silhouette across home variants (needs pre/live/post comparison after P4/P5); (b) leaderboard rolls non-interactive `<div>` (paired with player_detail rivalry-comparison-strip work in S2.5.2); (c) `.wc-eyebrow` saturation + `.wc-meta-label` primitive ratification (needs cross-phase comparison after every surface family has rendered through ≥1 iteration). Re-routed to P4.5: inline-Teko `.wc-microcaption` utility extraction (S2.6 grep verified the duplication exists only in stats.html + picks.html / rules.html / join.html — extracting now would consolidate stats.html alone and need a second migration pass when P4 lands). 8 Layer A regression tests added under `tests/test_design_p2_s2_6.py`; pytest green (404 passed). Live computed-style verification on schedule (chip 216×44, color `rgb(243,239,230)`, `min-height: 44px`, `href="#today"`; stage-count `rgb(90,84,112)`), team_detail (path-fineprint `rgb(90,84,112)`), leaderboard (`--bs-table-bg = #FFFFFF`), player_detail (`--bs-table-bg = #FFFFFF` set, explicit `background-color: transparent` from S2.5.1 wins). Screenshots under `.impeccable-review/S2.6/after/`. Per §1.5b: S2.6 is not a per-surface iteration so no convergence gate applies; the bar is "all S2.1–S2.5 surfaces hold; no in-surface P0/P1 surfaced" — held.
+- [x] **PR P2** opened: `#13`
 
 ### Phase 3 — Global chrome + auth + errors
-- [ ] S3.1 — base.html (chrome) (commit: ____)
-- [ ] S3.2 — auth cluster (commit: ____)
-- [ ] S3.3 — platform home + partials (commit: ____)
-- [ ] S3.4 — errors + cluster polish (commit: ____)
+- [ ] **S3.1** — base.html chrome (converged: ___)
+  - [ ] S3.1.1 (commit: ____). Gate: ____.
+  - [ ] S3.1.N (commit: ____). Gate: ____.
+- [ ] **S3.2** — auth cluster (converged: ___)
+  - [ ] S3.2.1 (commit: ____). Gate: ____.
+  - [ ] S3.2.N (commit: ____). Gate: ____.
+- [ ] **S3.3** — platform home + partials (converged: ___)
+  - [ ] S3.3.1 (commit: ____). Gate: ____.
+  - [ ] S3.3.N (commit: ____). Gate: ____.
+- [ ] **S3.4** — errors + cross-cluster chrome polish (commit: ____)
 - [ ] **PR P3** opened: ____
 
 ### Phase 4 — Pre-live state cluster
-- [ ] S4.1 — `_home_pre` + `_home_out` (commit: `____`)
-- [ ] S4.2 — picks + _pick_row (commit: ____)
-- [ ] S4.3 — join + rules (commit: ____)
-- [ ] S4.4 — groups (commit: ____)
-- [ ] S4.5 — pre-live cluster polish + re-critique (commit: ____)
+- [ ] **S4.1** — `_home_pre` + `_home_out` (converged: ___)
+  - [ ] S4.1.1 (commit: ____). Gate: ____.
+  - [ ] S4.1.N (commit: ____). Gate: ____.
+- [ ] **S4.2** — picks + _pick_row (converged: ___)
+  - [ ] S4.2.1 (commit: ____). Gate: ____.
+  - [ ] S4.2.N (commit: ____). Gate: ____.
+- [ ] **S4.3** — join + rules (converged: ___)
+  - [ ] S4.3.1 (commit: ____). Gate: ____.
+  - [ ] S4.3.N (commit: ____). Gate: ____.
+- [ ] **S4.4** — groups (converged: ___)
+  - [ ] S4.4.1 (commit: ____). Gate: ____.
+  - [ ] S4.4.N (commit: ____). Gate: ____.
+- [ ] **S4.5** — cross-cluster pre-live polish (commit: ____)
 - [ ] **PR P4** opened: ____
 
 ### Phase 5 — Post-live state cluster
-- [ ] S5.1 — `_home_post` (commit: `____`)
-- [ ] S5.2 — post-state component partials (commit: ____)
-- [ ] S5.3 — post-live cluster polish + re-critique (commit: ____)
+- [ ] **S5.1** — `_home_post` (converged: ___)
+  - [ ] S5.1.1 (commit: ____). Gate: ____.
+  - [ ] S5.1.N (commit: ____). Gate: ____.
+- [ ] **S5.2** — post-state component partials (converged: ___)
+  - [ ] S5.2.1 (commit: ____). Gate: ____.
+  - [ ] S5.2.N (commit: ____). Gate: ____.
+- [ ] **S5.3** — cross-cluster post-live polish (commit: ____)
 - [ ] **PR P5** opened: ____
 
 ### Phase 6 — Final polish
-- [ ] S6.1 — cross-surface polish (commit: ____)
+- [ ] **S6.1** — cross-phase polish (converged: ___)
+  - [ ] S6.1.1 (commit: ____). Gate: ____.
+  - [ ] S6.1.N (commit: ____). Gate: ____.
 - [ ] S6.2 — scorecard + merge (commit: ____)
 - [ ] **PR P6** opened: ____
 - [ ] **Merge `design/wc-polish` → `main`**: ____
 - [ ] **Tag**: `impeccable-v1`
+- [ ] **Production deploy + Brad's production-launch test script run** on `main` (post-merge): ____
 
 ---
 

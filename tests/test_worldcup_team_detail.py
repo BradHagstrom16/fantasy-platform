@@ -219,16 +219,18 @@ def test_team_detail_score_events_match_canonical_helper(client, app):
 
     resp = client.get(f'/worldcup/team/{team_id}')
     assert resp.status_code == 200
-    # Anchor the assertion to the hero's "Base" stat block specifically —
-    # an unscoped substring check could pass if the same numeric appeared
-    # elsewhere (e.g., a fixture-points cell) even after a Base-binding regression.
+    # Anchor the assertion to the hero's "Base × Multiplier" derivation
+    # microline (S2.3.1 hero re-shape moved Base out of a 4-tile stat strip
+    # into a Newsreader derivation line). An unscoped substring check could
+    # pass if the same numeric appeared elsewhere (e.g., a fixture-points
+    # cell) even after a Base-binding regression.
     base_str = f"{canonical_total:.1f}".encode()
     pattern = (
-        rb'<span class="wc-eyebrow">Base</span>\s*'
-        rb'<strong class="wc-numeral">' + re.escape(base_str) + rb'</strong>'
+        rb'<p class="team-hero-derivation mb-0">\s*'
+        rb'Base\s*<strong class="wc-numeral">' + re.escape(base_str) + rb'</strong>'
     )
     assert re.search(pattern, resp.data), (
-        f'expected Base stat block to render {base_str!r}'
+        f'expected hero derivation line to bind canonical Base {base_str!r}'
     )
 
 

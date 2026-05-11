@@ -25,8 +25,8 @@ if (window.matchMedia('(prefers-color-scheme: dark)').matches)
       <small style="font-family:'Teko',sans-serif;font-size:.78rem;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.55);">Public dossier</small>
     </div>
     <h1 class="mb-1" style="font-size:2.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;">The Field Office</h1>
-    <p class="mb-0" style="color:rgba(255,255,255,.6);font-size:1rem;">
-      {{ kpis.total_players }} oath{{ 's' if kpis.total_players != 1 }} sealed &middot; {{ kpis.active_countries }} nation{{ 's' if kpis.active_countries != 1 }} standing
+    <p class="mb-0" style="color:rgba(255,255,255,.7);font-size:1rem;">
+      {{ kpis.total_players }} oath{{ 's' if kpis.total_players != 1 }} sealed · {{ kpis.active_countries }} nation{{ 's' if kpis.active_countries != 1 }} standing
     </p>
   </div>
 </div>
@@ -47,57 +47,45 @@ if (window.matchMedia('(prefers-color-scheme: dark)').matches)
 
   <!-- ════ THE BOARD ════ -->
   <div id="tab-board" class="wc-stats-panel active pt-4 pb-5">
-    <div class="row g-3">
-      <div class="col-6 col-md-3">
-        <div class="wc-kpi-block" style="border-top-color:var(--game-primary);">
-          <div class="wc-kpi-value">{{ kpis.total_players }}</div>
-          <div class="wc-kpi-label">Oaths Sealed</div>
-          <div class="wc-kpi-sub">Picks locked Jun 11</div>
-        </div>
-      </div>
-      <div class="col-6 col-md-3">
-        <div class="wc-kpi-block" style="border-top-color:var(--game-accent);">
-          <div class="wc-kpi-value">{{ kpis.active_countries }}</div>
-          <div class="wc-kpi-label">Teams Still Active</div>
-          <div class="wc-kpi-sub">{{ kpis.top_country_name }} &amp; others</div>
-        </div>
-      </div>
-      <div class="col-6 col-md-3">
-        <div class="wc-kpi-block" style="border-top-color:var(--wc-tier3);">
-          <div class="wc-kpi-value">{{ kpis.top_country_score | round(1) }}</div>
-          <div class="wc-kpi-label">Top Country Score</div>
-          <div class="wc-kpi-sub">{{ kpis.top_country_name }}</div>
-        </div>
-      </div>
-      <div class="col-6 col-md-3">
-        <div class="wc-kpi-block" style="border-top-color:var(--wc-tier5);">
-          <div class="wc-kpi-value">{{ kpis.total_pts_awarded | round(0) | int }}</div>
-          <div class="wc-kpi-label">Total Pts Awarded</div>
-          <div class="wc-kpi-sub">Group + Knockout combined</div>
-        </div>
+
+    {# S2.4.1 PI-2: Editorial masthead replacing the prior 4-tile KPI band.
+       One dominant numeral (Total Pts Awarded) + Newsreader derivation prose
+       carrying the four data points the four tiles used to surface. Per S2.3.1's
+       hero-metric-adjacency lesson — distinct data does not redeem 3+ equal-weight
+       numerals adjacent. #}
+    <div class="wc-stats-masthead">
+      <div class="wc-stats-masthead-numeral">{{ kpis.total_pts_awarded | round(0) | int }}</div>
+      <div>
+        <div class="wc-eyebrow" style="color:var(--text-secondary);margin-bottom:.3rem;">Points awarded · Group + Knockout</div>
+        <p class="wc-stats-masthead-derivation">
+          {% if kpis.top_country_score and kpis.top_country_score > 0 %}
+            <strong>{{ kpis.top_country_name }}</strong> leads the field with {{ kpis.top_country_score | round(1) }} pts.
+          {% endif %}
+          {{ kpis.total_players }} oath{{ 's' if kpis.total_players != 1 }} sealed across {{ kpis.active_countries }} nation{{ 's' if kpis.active_countries != 1 }} still standing.
+        </p>
       </div>
     </div>
 
     <!-- Tournament Progress Bar -->
-    <div class="wc-stat-card mt-4">
+    <div class="wc-stat-card mt-1">
       <div class="wc-card-head">
         <span>Tournament Progress</span>
-        <span style="font-family:'Teko',sans-serif;font-size:.75rem;color:var(--text-muted);">Jun 11 – Jul 19 · 104 matches</span>
+        <span style="font-family:'Teko',sans-serif;font-size:.75rem;color:var(--text-secondary);">Jun 11 to Jul 19 · 104 matches</span>
       </div>
       <div id="progress-bar-wrap" class="d-flex gap-0 align-items-stretch"
            style="border-radius:var(--radius);overflow:hidden;height:36px;font-family:'Teko',sans-serif;font-size:.78rem;letter-spacing:.05em;text-transform:uppercase;">
       </div>
     </div>
 
-    <!-- Top Scorers + Pts Breakdown -->
-    <div class="row g-4 mt-1">
+    <!-- Top Scorers + Points Breakdown -->
+    <div class="row g-4 mt-4">
       <div class="col-xl-8">
-        <div class="wc-stat-card">
+        <div class="wc-stat-card is-lead">
           <div class="wc-card-head">
-            <span>Top Scorers</span>
-            <span style="display:flex;gap:.6rem;align-items:center;font-family:'Teko',sans-serif;font-size:.72rem;">
-              <span style="display:flex;align-items:center;gap:.3rem;"><span style="width:10px;height:10px;border-radius:2px;background:var(--game-primary);display:inline-block;"></span>Group</span>
-              <span style="display:flex;align-items:center;gap:.3rem;"><span style="width:10px;height:10px;border-radius:2px;background:var(--game-accent);display:inline-block;"></span>Knockout</span>
+            <span><span class="wc-eyebrow">The lead</span>Top Scorers</span>
+            <span style="display:flex;gap:.6rem;align-items:center;font-family:'Teko',sans-serif;font-size:.72rem;color:var(--text-secondary);">
+              <span style="display:flex;align-items:center;gap:.3rem;"><span style="width:10px;height:10px;border-radius:2px;background:var(--game-primary);display:inline-block;" aria-hidden="true"></span>Group</span>
+              <span style="display:flex;align-items:center;gap:.3rem;"><span style="width:10px;height:10px;border-radius:2px;background:var(--game-accent);display:inline-block;" aria-hidden="true"></span>Knockout</span>
             </span>
           </div>
           <div id="scoring-list"></div>
@@ -105,9 +93,9 @@ if (window.matchMedia('(prefers-color-scheme: dark)').matches)
       </div>
       <div class="col-xl-4">
         <div class="wc-stat-card">
-          <div class="wc-card-head"><span>Pts Breakdown</span></div>
+          <div class="wc-card-head"><span>Points Breakdown</span></div>
           <div style="position:relative;height:260px;"><canvas id="ch-accum"></canvas></div>
-          <div class="mt-3" id="accum-summary" style="font-family:'Teko',sans-serif;font-size:.8rem;color:var(--text-muted);letter-spacing:.04em;text-transform:uppercase;"></div>
+          <div class="mt-3" id="accum-summary" style="font-family:'Teko',sans-serif;font-size:.8rem;color:var(--text-secondary);letter-spacing:.04em;text-transform:uppercase;"></div>
         </div>
       </div>
     </div>
@@ -116,14 +104,14 @@ if (window.matchMedia('(prefers-color-scheme: dark)').matches)
   <!-- ════ THE FIELD ════ -->
   <div id="tab-field" class="wc-stats-panel pt-4 pb-5">
     <h2 style="font-family:'Teko',sans-serif;font-size:1.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-primary);margin-bottom:.2rem;">Who the field trusted</h2>
-    <p style="color:var(--text-muted);font-size:.9rem;margin-bottom:1.5rem;">Popularity vs. payoff: find the carries, the gems, and the dead weight.</p>
+    <p style="color:var(--text-secondary);font-size:.95rem;margin-bottom:1.5rem;">Popularity vs. payoff: find the carries, the gems, and the dead weight.</p>
 
     <div class="row g-4 mb-4">
       <div class="col-lg-6">
         <div class="wc-stat-card">
           <div class="wc-card-head">
             <span>Most Popular Picks</span>
-            <span style="font-family:'Teko',sans-serif;font-size:.72rem;color:var(--text-muted);">% of players</span>
+            <span style="font-family:'Teko',sans-serif;font-size:.72rem;color:var(--text-secondary);">% of players</span>
           </div>
           <div id="bars-popular"></div>
         </div>
@@ -132,7 +120,7 @@ if (window.matchMedia('(prefers-color-scheme: dark)').matches)
         <div class="wc-stat-card">
           <div class="wc-card-head">
             <span>Least Popular Picks</span>
-            <span style="font-family:'Teko',sans-serif;font-size:.72rem;color:var(--text-muted);">Hidden gems?</span>
+            <span style="font-family:'Teko',sans-serif;font-size:.72rem;color:var(--text-secondary);">Hidden gems?</span>
           </div>
           <div id="bars-unpopular"></div>
         </div>
@@ -141,11 +129,11 @@ if (window.matchMedia('(prefers-color-scheme: dark)').matches)
 
     <div class="row g-4">
       <div class="col-xl-8">
-        <div class="wc-stat-card">
+        <div class="wc-stat-card is-lead">
           <div class="wc-card-head">
-            <span>Popularity vs. Score (bubble = # of players)</span>
-            <span style="display:flex;gap:.75rem;font-family:'Teko',sans-serif;font-size:.7rem;letter-spacing:.04em;text-transform:uppercase;color:var(--text-muted);">
-              <span>High pick % + high score = <strong style="color:#1A7A45;">carrying</strong></span>
+            <span><span class="wc-eyebrow">The map</span>Popularity vs. Score (bubble = # of players)</span>
+            <span style="display:flex;gap:.75rem;font-family:'Teko',sans-serif;font-size:.7rem;letter-spacing:.04em;text-transform:uppercase;color:var(--text-secondary);">
+              <span>High pick % + high score = <strong style="color:#125F36;">carrying</strong></span>
               <span>Low pick % + high score = <strong style="color:var(--platform-accent);">gem</strong></span>
             </span>
           </div>
@@ -168,9 +156,17 @@ if (window.matchMedia('(prefers-color-scheme: dark)').matches)
   <!-- ════ BY TIER ════ -->
   <div id="tab-tiers" class="wc-stats-panel pt-4 pb-5">
     <h2 style="font-family:'Teko',sans-serif;font-size:1.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-primary);margin-bottom:.2rem;">Did the multiplier ladder pay off?</h2>
-    <p style="color:var(--text-muted);font-size:.9rem;margin-bottom:1.5rem;">Average and total scoring per multiplier tier, plus the most common pairings inside each.</p>
+    <p style="color:var(--text-secondary);font-size:.95rem;margin-bottom:1.5rem;">Average and total scoring per multiplier tier, plus the most common pairings inside each.</p>
 
-    <div class="row g-3 mb-4" id="tier-kpis"></div>
+    {# S2.4.1 PI-2: Ledger strip replaces the prior 5-tile .wc-kpi-block band.
+       Per-tier averages render inline as a single horizontal ledger with
+       gold-rule top + per-cell border. Reads as editorial summary, not
+       dashboard. JS populates via renderTierLedger() (replaces renderTierKPIs). #}
+    <div class="wc-stats-ledger" aria-labelledby="tier-ledger-eyebrow">
+      <div class="wc-stats-ledger-eyebrow" id="tier-ledger-eyebrow">Average score by tier</div>
+      <div class="wc-stats-ledger-row" id="tier-ledger-row" role="list"></div>
+    </div>
+
     <div class="row g-4 mb-4">
       <div class="col-lg-7">
         <div class="wc-stat-card">
@@ -186,8 +182,8 @@ if (window.matchMedia('(prefers-color-scheme: dark)').matches)
       </div>
     </div>
 
-    <div class="wc-stat-card mb-4">
-      <div class="wc-card-head"><span>Pick Distribution by Tier</span></div>
+    <div class="wc-stat-card is-lead mb-4">
+      <div class="wc-card-head"><span><span class="wc-eyebrow">The cross-section</span>Pick Distribution by Tier</span></div>
       <div class="row g-4">
         <div class="col-md-6"><div id="bars-t1"></div></div>
         <div class="col-md-6"><div id="bars-t2"></div></div>
@@ -234,7 +230,9 @@ const TC = {
 };
 const WC_NAVY = _tok('--wc-navy');
 const WC_RED = _tok('--wc-red');
-const TICK_COLOR = _tok('--text-muted') || '#8A849B';
+// S2.4.1 PI-1: Chart axis labels use --text-secondary; --text-muted on bone
+// canvas (~3.7:1) is sub-AA at chart-tick font sizes (11-12px).
+const TICK_COLOR = _tok('--text-secondary') || '#5A5470';
 const GRID_COLOR = 'rgba(0,0,0,.05)';
 const CHART_FONT = _tok('--font-teko') || 'Teko';
 
@@ -248,8 +246,17 @@ const TM = {1:1,2:1.5,3:2.5,4:4,5:7};
 const TAB_IDS = ['board','field','tiers'];
 
 // ── HELPERS ───────────────────────────────────────────────────
-function tb(t){ return `<span class="wc-tb wc-tb-${t}">T${t}</span>`; }
+// S2.4.1 PI-4: tb() = compact code-only badge (T1, T3) for adjacent uses
+// where the surrounding head already names the tier (e.g. inside .wc-pick-bar
+// rows under a tierHeader). tbl() = code-plus-name (T1 · Favorites) for row
+// scan paths where the user has no nearby legend (Top Scorers, Carrying,
+// Dead Weight, Combos) — recognition over recall per Nielsen #6.
+function tb(t){ return `<span class="wc-tb wc-tb-${t}" aria-label="Tier ${t} · ${TN[t]}">T${t}</span>`; }
 function tbl(t){ return `<span class="wc-tb wc-tb-${t}">T${t} · ${TN[t]}</span>`; }
+
+// S2.4.1 PI-3 + a11y: gold star marks "your pick" — visible to sighted users,
+// announced by SR via the .visually-hidden text. The glyph itself is decoration.
+const STAR_HL = '<span aria-hidden="true" style="color:var(--platform-accent)">★</span><span class="visually-hidden">your pick</span>';
 
 function pbarHtml(c, maxPct) {
   const hl = MY_PICKS.includes(c.name);
@@ -257,7 +264,7 @@ function pbarHtml(c, maxPct) {
   const fill = Math.max(2, (pct / maxPct) * 100);
   return `<div class="wc-pick-bar${hl ? ' my-pick' : ''}">
     <div class="wc-pick-bar-label">
-      <span>${c.flag_emoji} ${c.name} ${hl ? '<span style="color:var(--platform-accent)">★</span>' : ''} ${tb(c.tier)}</span>
+      <span>${c.flag_emoji} ${c.name} ${hl ? STAR_HL + ' ' : ''}${tb(c.tier)}</span>
       <span style="font-family:'Teko',sans-serif;font-weight:700;color:${TC[c.tier]};">${pct}%</span>
     </div>
     <div class="wc-pick-bar-track"><div class="wc-pick-bar-fill" style="width:${fill}%;background:${TC[c.tier]};"></div></div>
@@ -265,7 +272,7 @@ function pbarHtml(c, maxPct) {
 }
 
 function tierHeader(t) {
-  return `<div style="font-family:'Teko',sans-serif;font-weight:700;font-size:.9rem;letter-spacing:.06em;text-transform:uppercase;color:${TC[t]};margin-bottom:.65rem;">${tbl(t)} <span style="color:var(--text-muted);font-weight:500;">×${TM[t]} multiplier</span></div>`;
+  return `<div style="font-family:'Teko',sans-serif;font-weight:700;font-size:.9rem;letter-spacing:.06em;text-transform:uppercase;color:${TC[t]};margin-bottom:.65rem;">${tbl(t)} <span style="color:var(--text-secondary);font-weight:500;">×${TM[t]} multiplier</span></div>`;
 }
 
 // ── BOARD: PROGRESS BAR ───────────────────────────────────────
@@ -333,6 +340,9 @@ function renderSelection() {
 }
 
 // ── BOARD: SCORING LIST ───────────────────────────────────────
+// S2.4.1 PI-4: row scan path — full T# · NAME badge replaces bare T#
+// (recognition over recall). Inline --text-muted swept to --text-secondary
+// for AA on the white card surface.
 function renderScoring() {
   const sorted = [...COUNTRY_STATS].sort((a,b) => b.total_score - a.total_score).slice(0, 16);
   const mx = sorted[0]?.total_score || 1;
@@ -344,13 +354,13 @@ function renderScoring() {
       <div class="wc-lb-rank">${i+1}</div>
       <div>
         <div style="font-family:'Teko',sans-serif;font-weight:600;font-size:.95rem;color:var(--text-primary);">
-          ${c.flag_emoji} ${c.name}${hl ? ' <span style="color:var(--platform-accent)">★</span>' : ''} ${tb(c.tier)}${c.is_active ? '<span class="wc-still-in ms-1">Active</span>' : ''}
+          ${c.flag_emoji} ${c.name}${hl ? ' ' + STAR_HL : ''} ${tbl(c.tier)}${c.is_active ? '<span class="wc-still-in ms-1">Active</span>' : ''}
         </div>
         <div class="wc-sbar" style="margin-top:.2rem;">
           <div class="wc-sbar-g" style="width:${gf}%;"></div>
           <div class="wc-sbar-k" style="width:${kf}%;"></div>
         </div>
-        <div style="font-family:'Teko',sans-serif;font-size:.68rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;margin-top:.1rem;">
+        <div style="font-family:'Teko',sans-serif;font-size:.7rem;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.04em;margin-top:.1rem;">
           Grp: ${c.group_score.toFixed(1)} · KO: ${c.ko_score.toFixed(1)}
         </div>
       </div>
@@ -359,22 +369,28 @@ function renderScoring() {
   }).join('');
 }
 
-// ── BY TIER: TIER KPIS ────────────────────────────────────────
-function renderTierKPIs() {
-  document.getElementById('tier-kpis').innerHTML = [1,2,3,4,5].map(t => {
+// ── BY TIER: LEDGER ROW ───────────────────────────────────────
+// S2.4.1 PI-2: replaces the prior 5-tile .wc-kpi-block band. Five values
+// inline as a horizontal ledger with per-tier color dots, tier name, avg
+// score; reads as editorial summary, not dashboard. Mobile reflows 2-up
+// per the .wc-stats-ledger-cell breakpoint.
+function renderTierLedger() {
+  const row = document.getElementById('tier-ledger-row');
+  if (!row) return;
+  row.innerHTML = [1,2,3,4,5].map(t => {
     const ts = TIER_STATS[t];
-    if (!ts) return '';
-    return `<div class="col-6 col-md">
-      <div class="wc-kpi-block" style="border-top-color:${TC[t]};">
-        <div class="wc-kpi-value" style="font-size:1.9rem;">${ts.avg_score.toFixed(1)}</div>
-        <div class="wc-kpi-label">${tbl(t)}</div>
-        <div class="wc-kpi-sub">Best: ${ts.best_country} (${ts.best_score.toFixed(1)})</div>
-      </div>
+    const avg = ts ? ts.avg_score.toFixed(1) : '-';
+    return `<div class="wc-stats-ledger-cell" role="listitem">
+      <span class="wc-tier-dot wc-tier-dot-${t}" aria-hidden="true"></span>
+      <span class="wc-stats-ledger-cell-label">T${t} · ${TN[t]}</span>
+      <span class="wc-stats-ledger-cell-value">${avg}</span>
     </div>`;
   }).join('');
 }
 
 // ── FIELD: IMPACT LISTS ───────────────────────────────────────
+// S2.4.1 PI-4: row scan paths use tbl() (T# · name) — Carrying / Dead Weight
+// rows had no nearby legend, casual readers couldn't decode bare T#.
 function renderImpact() {
   const withScore = COUNTRY_STATS.filter(c => c.total_score > 0 && c.pick_count > 0);
   const byImpact = withScore
@@ -383,10 +399,10 @@ function renderImpact() {
 
   document.getElementById('help-list').innerHTML = byImpact.slice(0, 5).map(c => `
     <div class="wc-imp-row">
-      <div><span style="font-family:'Teko',sans-serif;font-weight:600;">${c.flag_emoji} ${c.name}</span> ${tb(c.tier)}</div>
+      <div><span style="font-family:'Teko',sans-serif;font-weight:600;">${c.flag_emoji} ${c.name}</span> ${tbl(c.tier)}</div>
       <div style="text-align:right;">
         <div class="wc-combo-count">${Math.round(c.pick_pct)}% · ${c.total_score.toFixed(1)}pts</div>
-        <div style="font-family:'Teko',sans-serif;font-size:.7rem;color:var(--text-muted);">Impact: ${c.impact.toFixed(0)}</div>
+        <div style="font-family:'Teko',sans-serif;font-size:.72rem;color:var(--text-secondary);">Impact: ${c.impact.toFixed(0)}</div>
       </div>
     </div>`).join('');
 
@@ -397,7 +413,7 @@ function renderImpact() {
 
   document.getElementById('hurt-list').innerHTML = byDisappoint.slice(0, 5).map(c => `
     <div class="wc-imp-row">
-      <div><span style="font-family:'Teko',sans-serif;font-weight:600;">${c.flag_emoji} ${c.name}</span> ${tb(c.tier)}</div>
+      <div><span style="font-family:'Teko',sans-serif;font-weight:600;">${c.flag_emoji} ${c.name}</span> ${tbl(c.tier)}</div>
       <div style="text-align:right;">
         <div class="wc-combo-count" style="color:var(--game-accent);">${Math.round(c.pick_pct)}% · ${c.total_score.toFixed(1)}pts</div>
       </div>
@@ -409,7 +425,7 @@ function renderCombos() {
   function renderComboList(combos, containerId, tierNum) {
     if (!combos || combos.length === 0) {
       document.getElementById(containerId).innerHTML =
-        '<p style="font-family:\'Teko\',sans-serif;color:var(--text-muted);font-size:.9rem;">No pairs yet. Picks still open or no data.</p>';
+        '<p style="font-family:\'Teko\',sans-serif;color:var(--text-secondary);font-size:.9rem;">No pairs yet. Picks still open or no data.</p>';
       return;
     }
     const mx = combos[0].count;
@@ -418,13 +434,13 @@ function renderCombos() {
       return `<div class="wc-combo-row${hl ? ' my-pick' : ''}">
         <div style="display:flex;flex-wrap:wrap;gap:.3rem;align-items:center;">
           <strong style="font-family:'Teko',sans-serif;">${combo.team_a}</strong>
-          <span style="color:var(--text-muted);margin:0 .1rem;">+</span>
+          <span style="color:var(--text-secondary);margin:0 .1rem;" aria-hidden="true">+</span>
           <strong style="font-family:'Teko',sans-serif;">${combo.team_b}</strong>
-          ${hl ? '<span style="color:var(--platform-accent);font-family:\'Teko\',sans-serif;font-size:.8rem;">★ Your picks</span>' : ''}
+          ${hl ? '<span aria-hidden="true" style="color:var(--platform-accent);font-family:\'Teko\',sans-serif;font-size:.8rem;">★ Your picks</span><span class="visually-hidden">your picks</span>' : ''}
         </div>
         <div style="text-align:right;">
           <div class="wc-combo-count">${combo.count} players</div>
-          <div style="font-family:'Teko',sans-serif;font-size:.68rem;color:var(--text-muted);">${combo.pct.toFixed(0)}% of field</div>
+          <div style="font-family:'Teko',sans-serif;font-size:.7rem;color:var(--text-secondary);">${combo.pct.toFixed(0)}% of field</div>
         </div>
       </div>
       <div style="height:3px;background:var(--bg-muted);border-radius:2px;overflow:hidden;margin:0 .6rem .4rem;">
@@ -602,7 +618,7 @@ function switchTab(id) {
 renderProgressBar();
 renderSelection();
 renderScoring();
-renderTierKPIs();
+renderTierLedger();
 renderImpact();
 renderCombos();
 

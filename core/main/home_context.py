@@ -147,6 +147,12 @@ def _context_pre(user, enrollment) -> dict:
         'court_line': court_line,
         'joined_games': joined_games(user),
         'coming_soon_games': coming_soon_games(),
+        # Expose stage_label so partials (e.g., _fixture_card.html) can render
+        # match.stage through the SSoT mapping instead of falling back to the
+        # banned `match.stage|title` filter (DESIGN.md §6 Don't #10; CLAUDE.md
+        # "Stage labels"). Jinja's |title mangles ALL-CAPS knockout codes
+        # ('SF' -> 'Sf') and underscored values ('third_place' -> 'Third_Place').
+        'stage_label': _stage_label,
     }
 
 
