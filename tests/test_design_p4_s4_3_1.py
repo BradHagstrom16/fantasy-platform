@@ -242,9 +242,14 @@ def test_pi3_join_heading_outline_has_no_skip():
 def test_pi4_rules_section_headings_promoted_to_h2():
     """All seven section heads in rules.html are H2 with .wc-section-heading.
     The seven cards: How It Works · Tier Structure · Group Stage Scoring ·
-    Knockout Stage Scoring · Points Matrix · Tiebreaker · Edge Cases."""
+    Knockout Stage Scoring · Points Matrix · Tiebreaker · Edge Cases.
+    The class-attribute form survives the S4.5 PI-3 id additions
+    (`<h2 id="rules-*" class="wc-section-heading">`)."""
+    import re
     src = RULES.read_text()
-    h2_section_count = src.count('<h2 class="wc-section-heading">')
+    h2_section_count = len(
+        re.findall(r'<h2[^>]*\bclass="wc-section-heading"', src)
+    )
     assert h2_section_count == 7, \
         f"Expected 7 .wc-section-heading H2s; found {h2_section_count}"
 
@@ -379,7 +384,9 @@ def test_rendered_join_page_carries_section_h2_and_join_rules_link():
 
 
 def test_rendered_rules_page_carries_six_section_h2s_and_two_h3_subheads():
-    """End-to-end render check for the rules page outline."""
+    """End-to-end render check for the rules page outline. The class-
+    attribute form survives the S4.5 PI-3 id additions."""
+    import re
     from app import create_app
     from extensions import db
     app = create_app('testing')
@@ -389,7 +396,7 @@ def test_rendered_rules_page_carries_six_section_h2s_and_two_h3_subheads():
     resp = client.get('/worldcup/rules')
     assert resp.status_code == 200
     body = resp.data.decode('utf-8')
-    assert body.count('<h2 class="wc-section-heading">') == 7
+    assert len(re.findall(r'<h2[^>]*\bclass="wc-section-heading"', body)) == 7
     assert body.count('<h3 class="wc-subsection-heading">') == 2
     assert body.count('wc-champion-row') == 2
     # No inline-Teko declarations remain.

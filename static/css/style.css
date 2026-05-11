@@ -3986,6 +3986,64 @@ body.game-worldcup {
   outline: 2px solid var(--gold-light);
   outline-offset: 2px;
 }
+/* S4.5 PI-4: cap the 12-pill rail at a content-narrow width on ≥xl so it
+   stops stretching ~540px+ on ultra-wide canvases (1470 viewport). The
+   rail's purpose is in-page navigation, not a horizontal banner — keep it
+   compact and aligned with the page text column. Same cap applies to the
+   .wc-rules-index sibling below. */
+@media (min-width: 1200px) {
+  .wc-group-index,
+  .wc-rules-index {
+    max-width: 720px;
+  }
+}
+
+/* S4.5 PI-3: rules-page in-page navigation accelerator. Sibling primitive
+   to .wc-group-index (S4.4.1 PI-3) and .schedule-jump-today (S2.6 PI-4).
+   Same shape as .wc-group-index but pills carry text labels rather than
+   single letters, so horizontal padding widens and min-width is dropped
+   in favor of natural label width. Sits between hero and content; 7
+   anchors map to the rules.html H2 outline (overview, tiers, group,
+   knockout, by-tier, tiebreaker, edge-cases). */
+.wc-rules-index {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .4rem;
+  margin: 0 0 1.5rem;
+  padding: .5rem .75rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+.wc-rules-index-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: .2rem .9rem;
+  font-family: 'Teko', sans-serif;
+  font-weight: 600;
+  font-size: 1rem;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  text-decoration: none;
+  color: var(--text-primary);
+  background: var(--surface-muted, rgba(58, 29, 114, .06));
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  transition: background-color .15s ease, border-color .15s ease, color .15s ease, transform .15s ease;
+}
+.wc-rules-index-pill:hover {
+  background: rgba(58, 29, 114, .12);
+  border-color: var(--purple-700, var(--council-purple, #3A1D72));
+  color: var(--purple-900, var(--chamber-purple, #1C0A3A));
+  transform: translateY(-1px);
+}
+.wc-rules-index-pill:focus-visible {
+  outline: 2px solid var(--gold-light);
+  outline-offset: 2px;
+}
 
 /* S4.4.1 PI-5: state chip — a tournament-phase signpost above the index
    rail. Renders only on the bone canvas (below the hero), so colors are

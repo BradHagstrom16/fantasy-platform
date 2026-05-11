@@ -15,11 +15,21 @@
   <div class="row justify-content-center">
     <div class="col-lg-9">
 
+      <nav class="wc-rules-index" aria-label="Jump to section">
+        <a href="#rules-overview" class="wc-rules-index-pill">Overview</a>
+        <a href="#rules-tiers" class="wc-rules-index-pill">Tiers</a>
+        <a href="#rules-group-stage" class="wc-rules-index-pill">Group stage</a>
+        <a href="#rules-knockout" class="wc-rules-index-pill">Knockout</a>
+        <a href="#rules-points-matrix" class="wc-rules-index-pill">By tier</a>
+        <a href="#rules-tiebreaker" class="wc-rules-index-pill">Tiebreaker</a>
+        <a href="#rules-edge-cases" class="wc-rules-index-pill">Edge cases</a>
+      </nav>
+
       {# ── How It Works ── #}
       <div class="card border-0 mb-4 animate-in wc-card">
         <div class="card-body p-4">
           <span class="wc-eyebrow">Overview</span>
-          <h2 class="wc-section-heading">
+          <h2 id="rules-overview" class="wc-section-heading">
             <i class="bi bi-globe2 me-2" aria-hidden="true"></i>How It Works
           </h2>
           <p>Each player selects <strong>9 national teams</strong> across 5 tiers before the tournament starts. Points accumulate as those teams win matches and advance through the bracket. Lower-tier teams carry higher multipliers.</p>
@@ -31,7 +41,7 @@
       <div class="card border-0 mb-4 animate-in stagger-1 wc-card">
         <div class="card-body p-4">
           <span class="wc-eyebrow wc-eyebrow-red">Tiers</span>
-          <h2 class="wc-section-heading">
+          <h2 id="rules-tiers" class="wc-section-heading">
             <i class="bi bi-layers me-2" aria-hidden="true"></i>Tier Structure
           </h2>
           {# Desktop: tier table #}
@@ -104,7 +114,7 @@
       <div class="card border-0 mb-4 animate-in stagger-2 wc-card">
         <div class="card-body p-4">
           <span class="wc-eyebrow">Group stage</span>
-          <h2 class="wc-section-heading">
+          <h2 id="rules-group-stage" class="wc-section-heading">
             <i class="bi bi-calendar3 me-2" aria-hidden="true"></i>Group Stage Scoring
           </h2>
 
@@ -151,7 +161,7 @@
       <div class="card border-0 mb-4 animate-in stagger-3 wc-card">
         <div class="card-body p-4">
           <span class="wc-eyebrow wc-eyebrow-red">Knockouts</span>
-          <h2 class="wc-section-heading">
+          <h2 id="rules-knockout" class="wc-section-heading">
             <i class="bi bi-trophy me-2" aria-hidden="true"></i>Knockout Stage Scoring
           </h2>
           <p class="small mb-3">Each knockout result has a single point value (no separate match + milestone).</p>
@@ -182,7 +192,7 @@
       <div class="card border-0 mb-4 animate-in stagger-4 wc-card">
         <div class="card-body p-4">
           <span class="wc-eyebrow">Points matrix</span>
-          <h2 class="wc-section-heading">
+          <h2 id="rules-points-matrix" class="wc-section-heading">
             <i class="bi bi-calculator me-2" aria-hidden="true"></i>Points Per Achievement by Tier
           </h2>
           <div class="table-scroll-wrapper">
@@ -234,7 +244,7 @@
       <div class="card border-0 mb-4 animate-in stagger-5 wc-card">
         <div class="card-body p-4">
           <span class="wc-eyebrow">Tiebreaker</span>
-          <h2 class="wc-section-heading">
+          <h2 id="rules-tiebreaker" class="wc-section-heading">
             <i class="bi bi-bullseye me-2" aria-hidden="true"></i>Tiebreaker
           </h2>
           <p class="mb-0">If two or more players are tied on total points, the tiebreaker is <strong>total USA goals scored in the tournament</strong>. The player whose guess is closest wins. If still tied, those players split the relevant prize pool equally.</p>
@@ -245,7 +255,7 @@
       <div class="card border-0 animate-in stagger-6 wc-card">
         <div class="card-body p-4">
           <span class="wc-eyebrow">Edge cases</span>
-          <h2 class="wc-section-heading">
+          <h2 id="rules-edge-cases" class="wc-section-heading">
             <i class="bi bi-info-circle me-2" aria-hidden="true"></i>Edge Cases
           </h2>
           <ul class="mb-0">

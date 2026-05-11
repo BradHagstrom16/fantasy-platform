@@ -22,11 +22,10 @@
   <td class="text-center">
     <span class="wc-multiplier-chip">&times;{{ pick.team.multiplier }}</span>
   </td>
-  <td class="text-end wc-numeral">{{ "%.1f"|format(pick.base_points) }}</td>
   <td class="text-end wc-numeral fw-bold">{{ "%.1f"|format(pick.multiplied_points) }}</td>
 </tr>
 <tr class="pick-accordion-row">
-  <td colspan="5" class="p-0">
+  <td colspan="4" class="p-0">
     <div class="pick-accordion" id="{{ row_id }}-body">
       <div class="pick-accordion-inner">
         {% if events and events|length > 0 %}
