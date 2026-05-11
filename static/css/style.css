@@ -3840,6 +3840,23 @@ body.game-worldcup {
   transform: rotate(90deg);
   color: var(--gold-light);
 }
+
+/* PR #15 CR R4 — reduced-motion opt-out covering the three drill-down
+   motion sources: the staggered wc-event-fade-in animation on
+   `.pick-event-item`, the grid-template-rows expand/collapse transition
+   on `.pick-accordion`, and the rotate-on-open transition on
+   `.pick-accordion-toggle`. The drill-down still WORKS — only the
+   transitions/animations are disabled. */
+@media (prefers-reduced-motion: reduce) {
+  .pick-events-list .pick-event-item {
+    animation: none;
+  }
+  .pick-accordion,
+  .pick-accordion-toggle {
+    transition: none;
+  }
+}
+
 .score-events-total {
   padding: .5rem 1rem .75rem;
   border-top: 1px dotted rgba(245, 241, 232, .14);

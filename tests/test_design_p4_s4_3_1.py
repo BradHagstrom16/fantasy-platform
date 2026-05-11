@@ -118,9 +118,24 @@ def test_pi2_table_worldcup_multiplier_chip_inked_on_light():
 
 
 def test_pi2_tier_mobile_card_multiplier_chip_inked_on_light():
-    """Mobile tier card: chip lifts to ink on a council-purple tint."""
+    """Mobile tier card: chip lifts to ink on a council-purple tint.
+
+    PR #15 CR R4 — selector-presence alone is too weak; lock the three
+    declarations (ink color + purple tint bg + matching border) so a
+    future edit that keeps the selector but changes the values fails
+    the test loudly."""
     css = CSS.read_text()
-    assert '.tier-mobile-card .wc-multiplier-chip {' in css
+    selector = '.tier-mobile-card .wc-multiplier-chip {'
+    assert selector in css, f'expected {selector!r} in style.css'
+    block_start = css.index(selector)
+    block_end = css.index('}', block_start)
+    block = css[block_start:block_end]
+    assert re.search(r'(?<!-)color:\s*var\(--text-primary\)', block), \
+        '.tier-mobile-card .wc-multiplier-chip must set color: var(--text-primary)'
+    assert 'background: rgba(58, 29, 114, .07)' in block, \
+        '.tier-mobile-card .wc-multiplier-chip must carry the council-purple tint background'
+    assert 'border-color: rgba(58, 29, 114, .25)' in block, \
+        '.tier-mobile-card .wc-multiplier-chip must carry the matching border-color'
 
 
 def test_pi2_tier_mobile_card_text_muted_lifted():
@@ -138,12 +153,20 @@ def test_pi2_tier_mobile_card_text_muted_lifted():
 
 
 def test_pi2_tier_teams_list_lifted_off_text_muted():
-    """tier-teams-list now reads --text-secondary, not --text-muted."""
+    """tier-teams-list now reads --text-secondary, not --text-muted.
+
+    PR #15 CR R4 — positive check now anchors on the `color` property
+    (my R3 reply was partially wrong: I argued the whole function's
+    asserts were absence-checks, but the positive `'var(--text-secondary)'
+    in block` was still substring-prone). The absence assertion below
+    stays as substring `not in` — a regression that places `--text-muted`
+    on any property in the block is still a regression we want to catch."""
     css = CSS.read_text()
     block_start = css.index('.tier-mobile-card .tier-teams-list')
     block_end = css.index('}', block_start)
     block = css[block_start:block_end]
-    assert 'var(--text-secondary)' in block
+    assert re.search(r'(?<!-)color:\s*var\(--text-secondary\)', block), \
+        '.tier-mobile-card .tier-teams-list must set color: var(--text-secondary)'
     assert 'var(--text-muted)' not in block, \
         "tier-teams-list must lift off --text-muted; that token fails AA on bone"
 

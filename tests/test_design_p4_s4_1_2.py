@@ -70,11 +70,16 @@ def _css_rule(selector: str) -> str:
     """Return the concatenated body of every CSS rule whose opening
     selector list contains the given selector. Useful for asserting on
     specific declarations regardless of which media-query branch they
-    appear in."""
+    appear in. Mirrors the helper in test_design_p4_s4_2_1.py — selector
+    is normalized (trailing `{` + whitespace stripped) and the regex
+    anchors on `\\s*\\{` so it can't bleed across comment boundaries or
+    adjacent rule blocks (PR #15 CR R1 PI-3 → R4-A parity)."""
+    normalized = selector.rstrip().removesuffix('{').rstrip()
     blocks = re.findall(
-        rf'{re.escape(selector)}[^{{]*\{{[^}}]*\}}',
+        rf'{re.escape(normalized)}\s*\{{[^}}]*\}}',
         CSS,
     )
+    assert blocks, f'css rule not found for {normalized!r}'
     return '\n'.join(blocks)
 
 
@@ -296,9 +301,15 @@ def test_pi2_ballot_card_no_longer_lifts_on_hover_at_card_level():
     positive translate on hover — sighted users see the action lift,
     not the whole card. (A `transform: none` reset inside the
     `@media (hover: none)` touch suppression block is fine; the ban is
-    on positive `translateY(-Npx)` lifts at the card level.)"""
-    ballot_card_hover = _css_rule('.home-shell .ballot-card:hover')
-    assert 'translateY' not in ballot_card_hover, (
+    on positive `translateY(-Npx)` lifts at the card level.)
+
+    The `.ballot-card:hover` rule may be absent entirely — that's an
+    even stronger guarantee than "present without translateY", so the
+    block-search-then-assert pattern below tolerates both shapes."""
+    pattern = re.escape('.home-shell .ballot-card:hover') + r'\s*\{[^}]*\}'
+    blocks = re.findall(pattern, CSS)
+    combined = '\n'.join(blocks)
+    assert 'translateY' not in combined, (
         "PI-2: `.home-shell .ballot-card:hover` must not declare a "
         "`translateY` lift. Hover lift belongs on `.ballot-edit-action`."
     )

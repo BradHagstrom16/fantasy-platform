@@ -382,7 +382,10 @@ def test_f3_player_pick_card_grp_small_uses_text_secondary_not_text_muted():
     `project_text_muted_aa_on_bone` memory + S2.5.1 PI-5 lock on the
     same surface."""
     rule = _css_rule('.player-pick-card .pick-team small')
-    assert 'color: var(--text-secondary)' in rule, \
+    # Anchor on the `color` property via negative-lookbehind so a
+    # `background-color: var(--text-secondary)` or `border-color: ...`
+    # value can't false-pass either check (same hygiene as R3-E).
+    assert re.search(r'(?<!-)color:\s*var\(--text-secondary\)', rule), \
         f'.player-pick-card .pick-team small not on --text-secondary: {rule}'
-    assert 'color: var(--text-muted)' not in rule, \
+    assert not re.search(r'(?<!-)color:\s*var\(--text-muted\)', rule), \
         f'.player-pick-card .pick-team small still uses --text-muted: {rule}'
