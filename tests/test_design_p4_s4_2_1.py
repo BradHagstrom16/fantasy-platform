@@ -93,9 +93,20 @@ def _css_rule(selector: str) -> str:
 def test_pi1_team_card_carries_role_checkbox_and_tabindex():
     """`.wc-team-card` must declare `role="checkbox"` + `tabindex="0"` so
     keyboard users can land focus on the primitive and AT announces the
-    selectable role."""
-    assert 'role="checkbox"' in PICKS, 'team card missing role="checkbox"'
-    assert 'tabindex="0"' in PICKS, 'team card missing tabindex="0"'
+    selectable role. PR #15 CR R5-F — bind both attributes to the
+    `.wc-team-card` element itself via lookahead regex; an unrelated
+    element elsewhere in `picks.html` carrying either attribute must not
+    satisfy the lock."""
+    card = re.search(
+        r'<div(?=[^>]*class="[^"]*\bwc-team-card\b[^"]*")'
+        r'(?=[^>]*role="checkbox")'
+        r'(?=[^>]*tabindex="0")[^>]*>',
+        PICKS,
+    )
+    assert card, (
+        '.wc-team-card must carry both role="checkbox" AND tabindex="0" '
+        'on the same element (keyboard focus + AT-announced selectable role).'
+    )
 
 
 def test_pi1_team_card_carries_aria_checked_with_initial_state():
@@ -323,21 +334,33 @@ def test_pi4_tier_badge_color_lifts_off_pure_white():
 
 def test_f1_tier_counter_carries_aria_live_polite_and_atomic():
     """`#counter-{N}` announces "{m}/{n} selected" updates politely
-    so AT users hear progress as they pick."""
-    # The counter span sits inside a Jinja loop; the aria-live attribute
-    # must be present on the templated element shape.
+    so AT users hear progress as they pick. PR #15 CR R5-G — use
+    lookahead assertions so HTML attribute order can shift without
+    breaking the lock; presence of each attribute on the same span
+    is what we care about."""
     assert re.search(
-        r'<span\s+class="tier-counter\s+wc-numeral"\s+id="counter-\{\{\s*tier_num\s*\}\}"\s+aria-live="polite"\s+aria-atomic="true"',
+        r'<span'
+        r'(?=[^>]*class="[^"]*\btier-counter\b[^"]*")'
+        r'(?=[^>]*\bwc-numeral\b)'
+        r'(?=[^>]*id="counter-\{\{\s*tier_num\s*\}\}")'
+        r'(?=[^>]*aria-live="polite")'
+        r'(?=[^>]*aria-atomic="true")[^>]*>',
         PICKS,
-    ), 'tier counter missing aria-live="polite" aria-atomic="true"'
+    ), 'tier counter missing aria-live="polite" aria-atomic="true" on the .tier-counter.wc-numeral span'
 
 
 def test_f1_mobile_pick_count_carries_aria_live_polite_and_atomic():
-    """`#mobilePickCount` in the sticky bar also announces updates."""
+    """`#mobilePickCount` in the sticky bar also announces updates.
+    PR #15 CR R5-G — lookahead assertions decouple from attribute order."""
     assert re.search(
-        r'<span\s+class="count-num\s+wc-numeral"\s+id="mobilePickCount"\s+aria-live="polite"\s+aria-atomic="true"',
+        r'<span'
+        r'(?=[^>]*class="[^"]*\bcount-num\b[^"]*")'
+        r'(?=[^>]*\bwc-numeral\b)'
+        r'(?=[^>]*id="mobilePickCount")'
+        r'(?=[^>]*aria-live="polite")'
+        r'(?=[^>]*aria-atomic="true")[^>]*>',
         PICKS,
-    ), 'mobilePickCount missing aria-live="polite" aria-atomic="true"'
+    ), 'mobilePickCount missing aria-live="polite" aria-atomic="true" on the .count-num.wc-numeral span'
 
 
 # ----- F2: heading-order H1 → H4 → H2 -----

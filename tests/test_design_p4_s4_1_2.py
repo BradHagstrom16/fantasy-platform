@@ -188,12 +188,15 @@ def test_pi1_grid_css_defines_mobile_single_column_and_md_split():
         "PI-1: `.home-pre-grid` must floor to 640px on mobile so the "
         "single-column register matches the legacy `.home-col` width."
     )
-    # md+ rule lives inside an @media block; flatten the CSS and search
-    # for both the breakpoint and the 7fr/5fr template together.
+    # md+ rule lives inside an @media block; flatten the CSS and search for
+    # both the breakpoint and the 7fr/5fr template together. PR #15 CR R5-C
+    # — `[^}]*` would stop at the first closing brace, breaking the lock if
+    # any unrelated rule appears before `.home-pre-grid` inside the media
+    # block. Use a dotall non-greedy `[\s\S]*?` so the match spans nested
+    # rule blocks correctly.
     md_pattern = re.compile(
-        r'@media\s*\(min-width:\s*768px\)\s*\{[^}]*\.home-shell\s+\.home-pre-grid'
-        r'\s*\{[^}]*minmax\(0,\s*7fr\)\s+minmax\(0,\s*5fr\)',
-        re.DOTALL,
+        r'@media\s*\(min-width:\s*768px\)\s*\{[\s\S]*?\.home-shell\s+\.home-pre-grid'
+        r'\s*\{[\s\S]*?minmax\(0,\s*7fr\)\s+minmax\(0,\s*5fr\)',
     )
     assert md_pattern.search(CSS), (
         "PI-1: `.home-pre-grid` must declare a 7fr/5fr "
@@ -336,11 +339,16 @@ def test_pi2_ballot_card_no_longer_lifts_on_hover_at_card_level():
 def test_pi2_ballot_edit_action_meets_44px_tap_floor_and_has_focus_ring():
     """The explicit edit action must satisfy the PRODUCT.md
     Mobile-First 44x44 tap floor and carry the canonical CCC
-    gold-light `:focus-visible` ring."""
+    gold-light `:focus-visible` ring. PR #15 CR R5-D — both dimensions
+    are locked; min-height alone doesn't guarantee a 44x44 contract."""
     action_block = _css_rule('.home-shell .ballot-edit-action')
     assert 'min-height: 44px' in action_block, (
         "PI-2: `.ballot-edit-action` must declare `min-height: 44px` "
         "to satisfy the 44x44 mobile tap floor."
+    )
+    assert 'min-width: 44px' in action_block, (
+        "PI-2: `.ballot-edit-action` must declare `min-width: 44px` "
+        "to satisfy the 44x44 mobile tap floor (height alone is not enough)."
     )
     focus_block = _css_rule('.home-shell .ballot-edit-action:focus-visible')
     assert 'outline: 2px solid var(--gold-light)' in focus_block, (
@@ -356,29 +364,31 @@ def test_pi2_ballot_edit_action_meets_44px_tap_floor_and_has_focus_ring():
 
 def test_pi2_ballot_edit_action_hover_respects_reduced_motion():
     """`.ballot-edit-action:hover` adds `transform: translateY(-1px)`.
-    The home-shell `prefers-reduced-motion: reduce` opt-out (paired with
-    `.ballot-card`, `.cta-card`, `.cg--active`, `.join-cta`, `.decree-cta`,
-    `.roster-recap-cta`) must include this selector so users who request
-    reduced motion don't still see the lift. PR #15 CR R2 caught the
-    missing entry — locking it so it doesn't drift again when a future
-    hover affordance is added/removed."""
-    # Match the specific home-shell reduced-motion block (anchored on
-    # `.home-shell .ballot-card:hover`, the canonical first selector), not
-    # any other reduced-motion @media block that targets unrelated surfaces
-    # like `.champion-glow-bg` animation.
-    reduced_motion_block = re.search(
-        r'@media \(prefers-reduced-motion: reduce\) \{\s*'
-        r'(\.home-shell \.ballot-card:hover[^}]+\{[^}]+\})',
+    The `prefers-reduced-motion: reduce` opt-out must reset that lift so
+    users who request reduced motion don't still see it. PR #15 CR R2
+    caught the missing entry; PR #15 CR R5-E decoupled this lock from
+    the previous `.ballot-card:hover` sentinel (which assumed selector
+    ordering AND coupled the test to a selector whose lift was
+    intentionally removed). The new shape just asserts that SOME
+    `prefers-reduced-motion: reduce` block declares the reset — the
+    selector ordering and sibling selectors inside that block are free
+    to evolve."""
+    # Find every `@media (prefers-reduced-motion: reduce)` block in the CSS
+    # and check at least one contains the `.ballot-edit-action:hover` reset.
+    blocks = re.findall(
+        r'@media\s*\(prefers-reduced-motion:\s*reduce\)\s*\{(?:[^{}]|\{[^}]*\})*\}',
         CSS,
-        re.DOTALL,
     )
-    assert reduced_motion_block, (
-        "home-shell reduced-motion opt-out block (anchored on "
-        "`.home-shell .ballot-card:hover`) must exist in style.css."
+    assert blocks, (
+        "Expected at least one `@media (prefers-reduced-motion: reduce)` "
+        "block in style.css."
     )
-    selector_list = reduced_motion_block.group(1)
-    assert '.home-shell .ballot-edit-action:hover' in selector_list, (
-        "`.home-shell .ballot-edit-action:hover` must appear in the "
+    matched = any(
+        '.home-shell .ballot-edit-action:hover' in block
+        for block in blocks
+    )
+    assert matched, (
+        "`.home-shell .ballot-edit-action:hover` must appear in some "
         "`@media (prefers-reduced-motion: reduce)` opt-out so the "
         "`translateY(-1px)` lift is reset for users who request "
         "reduced motion."

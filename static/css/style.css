@@ -1255,6 +1255,7 @@ body.game-golf {
   align-items: center;
   gap: 0.35rem;
   min-height: 44px;
+  min-width: 44px;
   padding: 0.5rem 0.85rem;
   font-family: var(--font-teko);
   font-weight: 600;
@@ -2750,10 +2751,14 @@ body.game-worldcup {
    compose against; xl is the loud-datum size (tiebreaker total), lg is
    the card-header total, md is the mobile-card-header total, sm is the
    sidebar summary count. */
-.wc-numeral--xl { font-size: 1.4rem; }
-.wc-numeral--lg { font-size: 1.3rem; }
-.wc-numeral--md { font-size: 1.2rem; }
-.wc-numeral--sm { font-size: 1.1rem; }
+/* PR #15 CR R5-A — scope modifiers as compound `.wc-numeral.wc-numeral--*`
+   so they hold (0,0,2,0) specificity against later single-class composed
+   surfaces. Matches CLAUDE.md "scope new utilities as `.base.utility`"
+   convention and project memory `project_ccc_wc_reskin_gotchas`. */
+.wc-numeral.wc-numeral--xl { font-size: 1.4rem; }
+.wc-numeral.wc-numeral--lg { font-size: 1.3rem; }
+.wc-numeral.wc-numeral--md { font-size: 1.2rem; }
+.wc-numeral.wc-numeral--sm { font-size: 1.1rem; }
 
 /* Hero gradient — radial gold-tint over linear navy-to-near-black.
    Scoped as .page-hero.wc-hero-grad so it wins over the later
@@ -4061,6 +4066,21 @@ body.game-worldcup {
 .wc-rules-index-pill:focus-visible {
   outline: 2px solid var(--gold-light);
   outline-offset: 2px;
+}
+
+/* PR #15 CR R5-B — reduced-motion opt-out for the new pill-rail hover lifts
+   (.wc-group-index-pill from S4.4.1 PI-3 + .wc-rules-index-pill from S4.5
+   PI-3). Hover transforms drop entirely; transitions disabled so the rest
+   state hold is instant. `:focus-visible` rings stay live regardless. */
+@media (prefers-reduced-motion: reduce) {
+  .wc-group-index-pill,
+  .wc-rules-index-pill {
+    transition: none;
+  }
+  .wc-group-index-pill:hover,
+  .wc-rules-index-pill:hover {
+    transform: none;
+  }
 }
 
 /* S4.4.1 PI-5: state chip — a tournament-phase signpost above the index

@@ -131,12 +131,15 @@ def test_pi2_numeral_modifier_classes_defined_in_css():
 
 
 def test_pi2_modifier_classes_carry_expected_rem_values():
-    """xl=1.4rem, lg=1.3rem, md=1.2rem, sm=1.1rem so each is a discrete scale step."""
+    """xl=1.4rem, lg=1.3rem, md=1.2rem, sm=1.1rem so each is a discrete scale
+    step. PR #15 CR R5-A — modifiers are scoped as compound utilities
+    (`.wc-numeral.wc-numeral--*`) to hold (0,0,2,0) specificity against
+    composed descendant rules (matches CLAUDE.md utility-scope convention)."""
     css = CSS.read_text()
-    assert '.wc-numeral--xl { font-size: 1.4rem; }' in css
-    assert '.wc-numeral--lg { font-size: 1.3rem; }' in css
-    assert '.wc-numeral--md { font-size: 1.2rem; }' in css
-    assert '.wc-numeral--sm { font-size: 1.1rem; }' in css
+    assert '.wc-numeral.wc-numeral--xl { font-size: 1.4rem; }' in css
+    assert '.wc-numeral.wc-numeral--lg { font-size: 1.3rem; }' in css
+    assert '.wc-numeral.wc-numeral--md { font-size: 1.2rem; }' in css
+    assert '.wc-numeral.wc-numeral--sm { font-size: 1.1rem; }' in css
 
 
 def test_pi2_each_modifier_is_consumed_at_least_once_in_picks():

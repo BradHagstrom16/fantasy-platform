@@ -72,11 +72,13 @@ def test_pi1_card_wc_card_card_body_prose_lifted_to_bone():
     assert '.card.wc-card > .card-body > ul,' in css
     assert '.card.wc-card > .card-body > h2,' in css
     assert '.card.wc-card > .card-body > h5,' in css
-    # Must use --text-on-dark (bone), not raw color literal.
+    # Must use --text-on-dark (bone), not raw color literal. Property-
+    # anchored regex (PR #15 CR R5-H, R3-E pattern) so a future
+    # `background-color: var(--text-on-dark)` can't false-pass.
     block_start = css.index('.card.wc-card > .card-body > p,')
     block_end = css.index('}', block_start)
     block = css[block_start:block_end]
-    assert 'color: var(--text-on-dark)' in block, \
+    assert re.search(r'(?<!-)color:\s*var\(--text-on-dark\)', block), \
         "Prose color must lift to --text-on-dark (bone) — not a raw value"
 
 
@@ -113,8 +115,13 @@ def test_pi2_table_worldcup_multiplier_chip_inked_on_light():
     block_start = css.index(selector)
     block_end = css.index('}', block_start)
     block = css[block_start:block_end]
-    assert 'color: var(--text-primary)' in block
-    assert 'rgba(58, 29, 114' in block, "Council-purple tint must drive the bg"
+    # Anchor on `color` property + `background:` property so a future
+    # `background-color: var(--text-primary)` or `border-color: rgba(58,
+    # 29, 114, ...)` can't false-pass (PR #15 CR R5-H).
+    assert re.search(r'(?<!-)color:\s*var\(--text-primary\)', block), \
+        '.table-worldcup .wc-multiplier-chip must set color: var(--text-primary)'
+    assert re.search(r'background:\s*rgba\(58,\s*29,\s*114,\s*\.07\)', block), \
+        "Council-purple tint must drive the background"
 
 
 def test_pi2_tier_mobile_card_multiplier_chip_inked_on_light():
@@ -237,7 +244,10 @@ def test_pi3_join_rules_link_class_defined_with_44_floor_and_focus_ring():
     block = css[block_start:block_end]
     assert 'min-height: 44px' in block, "Must lock the 44px tap floor"
     assert "font-family: 'Newsreader'" in block, "Body font, not Teko"
-    assert '1rem' in block, "Must clear the 16px body-text floor"
+    # Anchor on the `font-size` property (PR #15 CR R5-H) — bare `1rem`
+    # could match a `padding: 0 1rem` or `margin: 1rem` declaration.
+    assert re.search(r'font-size:\s*1rem\b', block), \
+        "Must clear the 16px body-text floor (font-size: 1rem)"
     # Focus ring uses --gold-light per S2.1.2 / S3.2.1 / S4.2.1 lock.
     focus_start = css.index('.join-rules-link:focus-visible')
     focus_end = css.index('}', focus_start)
