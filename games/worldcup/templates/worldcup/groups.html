@@ -5,27 +5,56 @@
 <div class="page-hero wc-hero-grad">
   <div class="hero-glow"></div>
   <div class="container">
-    <span class="wc-eyebrow">Group standings</span>
+    <span class="wc-eyebrow">The pairings are drawn.</span>
     <h1>Group Standings</h1>
-    <p class="lead mb-0">12 groups &middot; 48 teams &middot; 2026 FIFA World Cup</p>
+    <p class="lead mb-0">Top two from each group plus the eight best third-place finishers carry into the Round of 16.</p>
   </div>
 </div>
 
 <div class="container pb-5">
+  {% if wc_state == 'pre' %}
+    <div class="wc-state-line">
+      <span class="wc-state-chip wc-state-chip--pre">
+        <span class="wc-state-chip-dot" aria-hidden="true"></span>
+        Group Stage opens Jun 11
+      </span>
+    </div>
+  {% elif wc_state == 'live' %}
+    <div class="wc-state-line">
+      <span class="wc-state-chip wc-state-chip--live">
+        <span class="wc-state-chip-dot" aria-hidden="true"></span>
+        Tournament in play
+      </span>
+    </div>
+  {% elif wc_state == 'post' %}
+    <div class="wc-state-line">
+      <span class="wc-state-chip wc-state-chip--post">
+        <span class="wc-state-chip-dot" aria-hidden="true"></span>
+        Final sealed
+      </span>
+    </div>
+  {% endif %}
+
+  <nav class="wc-group-index" aria-label="Jump to group">
+    {% for letter in groups.keys() %}
+      <a href="#group-{{ letter }}" class="wc-group-index-pill">{{ letter }}</a>
+    {% endfor %}
+  </nav>
+
   <div class="row g-3">
     {% for letter, teams in groups.items() %}
     <div class="col-lg-4 col-md-6 animate-in">
       <div class="group-table" id="group-{{ letter }}">
-        <div class="group-table-header">Group {{ letter }}</div>
-        <table>
+        <h2 id="group-{{ letter }}-heading" class="group-table-header wc-section-heading">Group {{ letter }}</h2>
+        <table aria-labelledby="group-{{ letter }}-heading">
           <caption class="visually-hidden">Group {{ letter }} standings: wins, draws, losses, and points.</caption>
           <thead>
             <tr>
               <th scope="col">Team</th>
-              <th scope="col" class="text-center" style="width:35px">W</th>
-              <th scope="col" class="text-center" style="width:35px">D</th>
-              <th scope="col" class="text-center" style="width:35px">L</th>
-              <th scope="col" class="text-center" style="width:40px">Pts</th>
+              <th scope="col" class="text-center group-stat-col">W</th>
+              <th scope="col" class="text-center group-stat-col">D</th>
+              <th scope="col" class="text-center group-stat-col">L</th>
+              <th scope="col" class="text-center group-stat-col group-pts-col">Pts</th>
             </tr>
           </thead>
           <tbody>
