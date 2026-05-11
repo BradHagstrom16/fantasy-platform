@@ -35,10 +35,10 @@
 
     <!-- Form panel -->
     <div class="auth-form-panel">
-        <div class="auth-card card" style="max-width:460px;">
+        <div class="auth-card card">
             <div class="card-body">
                 <h1 class="auth-title">Create Account</h1>
-                <p class="auth-subtitle">Sign up to enter games</p>
+                <p class="auth-subtitle">Inscribe your name on the rolls.</p>
 
                 <form method="POST" action="{{ url_for('auth.register') }}">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
@@ -54,7 +54,7 @@
 
                     <div class="mb-3">
                         <label for="display_name" class="form-label">
-                            Display Name <span class="text-muted fw-normal" style="font-size:.78rem;text-transform:none;letter-spacing:0;">(optional)</span>
+                            Display Name <span class="form-label-meta">(optional)</span>
                         </label>
                         <input type="text" class="form-control" id="display_name" name="display_name"
                                placeholder="e.g. Brad H." maxlength="100"
@@ -82,16 +82,16 @@
                     </div>
 
                     <div class="d-grid mb-3">
-                        <button type="submit" class="btn btn-warning btn-lg">
+                        <button type="submit" class="btn btn-primary btn-lg">
                             <i class="bi bi-person-plus-fill me-1"></i> Create Account
                         </button>
                     </div>
                 </form>
 
                 <hr>
-                <p class="text-center text-muted mb-0" style="font-size:.88rem;">
-                    Already have an account?
-                    <a href="{{ url_for('auth.login') }}" class="fw-semibold text-decoration-none text-gold">
+                <p class="auth-link-row mb-0">
+                    Already on the rolls?
+                    <a href="{{ url_for('auth.login') }}">
                         Sign in
                     </a>
                 </p>

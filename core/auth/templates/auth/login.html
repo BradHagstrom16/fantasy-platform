@@ -38,7 +38,7 @@
         <div class="auth-card card">
             <div class="card-body">
                 <h1 class="auth-title">Welcome Back</h1>
-                <p class="auth-subtitle">Sign in to your account</p>
+                <p class="auth-subtitle">Step back into the chamber.</p>
 
                 <form method="POST" action="{{ url_for('auth.login') }}">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
@@ -62,18 +62,18 @@
                         </button>
                     </div>
 
-                    <div class="text-center mb-2">
-                        <a href="{{ url_for('auth.forgot_password') }}" class="text-muted" style="font-size:.83rem;">
-                            Forgot your password?
+                    <p class="auth-link-row mb-2">
+                        <a href="{{ url_for('auth.forgot_password') }}">
+                            Lost your key?
                         </a>
-                    </div>
+                    </p>
                 </form>
 
                 <hr>
-                <p class="text-center text-muted mb-0" style="font-size:.88rem;">
-                    New to the platform?
-                    <a href="{{ url_for('auth.register') }}" class="fw-semibold text-decoration-none text-gold">
-                        Create an account
+                <p class="auth-link-row mb-0">
+                    Not on the rolls yet?
+                    <a href="{{ url_for('auth.register') }}">
+                        Join the Club
                     </a>
                 </p>
 

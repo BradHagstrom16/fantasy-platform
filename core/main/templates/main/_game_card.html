@@ -16,9 +16,7 @@
           <span class="featured-icon">{{ game.emoji }}</span>
           <h3 class="featured-title">{{ game.display_name }}</h3>
           <p class="featured-desc">{{ game.description }}</p>
-          <span class="btn btn-warning btn-lg px-5 featured-cta">
-            <i class="bi bi-globe2 me-2"></i>Enter the Pool
-          </span>
+          <span class="btn btn-warning btn-lg px-5 featured-cta">Enter the Pool</span>
         </div>
       </div>
     </div>
@@ -29,9 +27,9 @@
      class="card game-card game-card--live h-100 text-decoration-none">
     <div class="card-body text-center py-4 px-3">
       <span class="game-icon">{{ game.emoji }}</span>
-      <h5 class="game-title">{{ game.display_name }}</h5>
+      <h3 class="game-title">{{ game.display_name }}</h3>
       <p class="game-desc">{{ game.description }}</p>
-      <span class="status-badge status-badge--joined">Joined ✓</span>
+      <span class="status-badge status-badge--joined">Joined</span>
     </div>
     <div class="card-footer text-center bg-transparent py-3">
       <span class="btn btn-warning btn-sm px-4">Play Now</span>
@@ -43,7 +41,7 @@
      class="card game-card game-card--live h-100 text-decoration-none">
     <div class="card-body text-center py-4 px-3">
       <span class="game-icon">{{ game.emoji }}</span>
-      <h5 class="game-title">{{ game.display_name }}</h5>
+      <h3 class="game-title">{{ game.display_name }}</h3>
       <p class="game-desc">{{ game.description }}</p>
     </div>
     <div class="card-footer text-center bg-transparent py-3">
@@ -54,12 +52,11 @@
 {% elif state == 'coming_soon' %}
   <div class="card game-card game-card--coming-soon h-100">
     <div class="card-body text-center py-4 px-3">
+      <span class="status-badge status-badge--muted mb-3">Coming Soon</span>
       <span class="game-icon">{{ game.emoji }}</span>
-      <h5 class="game-title">{{ game.display_name }}</h5>
+      <h3 class="game-title">{{ game.display_name }}</h3>
       <p class="game-desc">{{ game.description }}</p>
-    </div>
-    <div class="card-footer text-center bg-transparent py-3">
-      <span class="status-badge status-badge--muted">Coming Soon</span>
+      <p class="game-launch-meta mb-0">Opens {{ game.launch_label or 'TBA' }}</p>
     </div>
   </div>
 
@@ -68,7 +65,7 @@
      class="card game-card game-card--live h-100 text-decoration-none">
     <div class="card-body text-center py-4 px-3">
       <span class="game-icon">{{ game.emoji }}</span>
-      <h5 class="game-title">{{ game.display_name }}</h5>
+      <h3 class="game-title">{{ game.display_name }}</h3>
       <p class="game-desc">{{ game.description }}</p>
     </div>
     <div class="card-footer text-center bg-transparent py-3">

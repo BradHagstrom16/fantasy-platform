@@ -21,12 +21,14 @@
       <div class="p">{{ wc_label }}</div>
     </a>
 
-    {# CFB and Golf — pulled from coming_soon_games registry #}
+    {# CFB and Golf — pulled from coming_soon_games registry.
+       short_name + launch_label live on GameRegistryEntry so this partial
+       carries no slug knowledge. #}
     {% for game in coming_soon_games %}
     <div class="cg cg--soon">
       <div class="g">{{ game.emoji }}</div>
-      <div class="n">{{ game.display_name.split()[0] if game.slug == 'cfb' else 'Golf' }}</div>
-      <div class="p">{% if game.slug == 'cfb' %}Sep 3{% else %}2027{% endif %}</div>
+      <div class="n">{{ game.short_name or game.display_name }}</div>
+      <div class="p">{{ game.launch_label or 'TBA' }}</div>
     </div>
     {% endfor %}
   </div>

@@ -301,9 +301,18 @@ Two card registers: the default light Tribune card and the dark Tribune-Dark car
 ### Navigation
 
 - **Navbar** (`.navbar.navbar-dark`): `var(--purple-700)` (Council Purple) fill, `1px solid var(--purple-800)` bottom border. The dark editorial chrome that anchors every page.
-- **Brand** (`.navbar-brand`): Teko `1.25rem`, letter-spacing `0.04em`, Pressroom Bone color, with brand mark image at 28px.
-- **Nav Link**: Teko, uppercase, letter-spacing `0.08em`, `var(--bone-mute)` color at rest. Hover brightens to `var(--gold-light)`. Active goes `var(--gold)` with a `2px solid var(--gold)` underline rule beneath.
-- **Game Sub-nav** (per blueprint, e.g. `.game-subnav .subnav-worldcup`): a horizontal pill bar that sits under the navbar, scoped per game. The active pill carries the game's accent color via `--subnav-accent` plus its RGB triplet for translucent backgrounds. Each game must register its own `.subnav-<slug>` class with `background`, `--subnav-accent`, and `--subnav-accent-rgb`.
+- **Brand** (`.navbar-brand`): Teko 700, `1.25rem`, uppercase, letter-spacing `0.04em`, Pressroom Bone color, with brand mark image at 28px. Hover does not shift color: the brand wordmark is a masthead, not a CTA, so the Trophy Rule keeps gold off it (no color hover, no gold halo). Cursor change carries the affordance.
+- **Nav Link**: Teko, uppercase, letter-spacing `0.08em`, `var(--bone-mute)` color at rest. Hover brightens to `var(--gold-light)`. Active goes `var(--gold)` with a `2px solid var(--gold)` underline rule beneath. Keyboard focus paints a `2px solid var(--gold-light)` outline with `2px` offset (the canonical CCC focus ring) so keyboard users see the same target the mouse does.
+- **Game Sub-nav** (per blueprint, e.g. `.game-subnav .subnav-worldcup`): a horizontal pill bar that sits under the navbar, scoped per game. The active pill carries the game's accent color via `--subnav-accent` plus its RGB triplet for translucent backgrounds. Each game must register its own `.subnav-<slug>` class with `background`, `--subnav-accent`, and `--subnav-accent-rgb`. The container is a semantic `<nav>` with `aria-label="<Game> section"` so screen-reader users hear the game context when the inline `.subnav-game-label` text is hidden on mobile. Pills carry the same `2px gold-light` keyboard-focus ring as nav-links.
+
+### Auth Surface Composition
+
+CCC auth surfaces split into two registers. The split is intentional: marketing-context surfaces serve users who haven't joined the Club yet (or are returning to it) and earn the brand re-introduction; logged-in utility surfaces serve members who are already inside the Club and just need the form.
+
+- **Marketing-context (`.auth-page > .auth-panel-brand + .auth-form-panel`)**: split panel. Brand panel on the left at `md+` (council-purple gradient, brand mark, headline, games preview); form panel on the right (bone card on the Tribunal Black backdrop). Used by `login.html`, `register.html`, `forgot_password.html`, `reset_password.html`. The brand panel collapses on `<768px`; the form panel goes transparent so the body radial gradient bleeds through (`body.auth-page main` centers the card on the atmosphere).
+- **Logged-in utility (`.auth-wrapper > .card.auth-card`)**: single bone card centered on the Tribunal Black backdrop, no brand panel. The Tribune voice carries through the eyebrow and copy inside the card. Used by `change_password.html` and `profile.html`. Both surfaces are reached through the navbar dropdown after login; the brand re-introduction would be redundant.
+
+Both registers share `body.auth-page` (the Tribunal Black radial-gradient backdrop) and `.card.auth-card` (the bone card primitive). The split is purely the wrapper: marketing surfaces wrap with `.auth-page > .auth-panel-brand + .auth-form-panel`; utility surfaces wrap with `.auth-wrapper`. A new auth surface picks one register and never both.
 
 ### Tables
 

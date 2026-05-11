@@ -30,6 +30,11 @@
     {% block head %}{% endblock %}
 </head>
 <body class="{% block body_class %}{{ body_class|default('') }}{% endblock %}">
+    {# P3 S3.1.1 — keyboard skip-link (WCAG 2.4.1 Bypass Blocks). Hidden until
+       focused; first focusable element on the page so Tab from address bar lands
+       on it. Targets the <main> region below. #}
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+
     <!-- Navigation -->
     <nav class="navbar navbar-expand-lg navbar-dark">
         <div class="container">
@@ -96,9 +101,15 @@
         </div>
     </nav>
 
-    <!-- Game Sub-Nav: contextual strip, only inside game blueprints -->
+    {# Game Sub-Nav: contextual strip, only inside game blueprints.
+       P3 S3.4 — wrapper switched from `<div>` to `<nav aria-label="…">` so
+       screen-reader users hear the game context. On mobile the inline
+       `.subnav-game-label` ("⚽ WC 2026" / "⛳ Golf 2026" / "🏈 CFB 2025") is
+       `display: none` via `d-none d-sm-inline-flex`, so without the label
+       SR users lost the "Hub of what?" cue. Per-game `aria-label` closes
+       the gap without affecting sighted users. #}
     {% if request.blueprint == 'worldcup' %}
-    <div class="game-subnav subnav-worldcup">
+    <nav class="game-subnav subnav-worldcup" aria-label="World Cup section">
         <div class="container">
             <a class="subnav-game-label d-none d-sm-inline-flex" href="{{ url_for('worldcup.index') }}">
                 ⚽ <span class="subnav-label-text">WC 2026</span>
@@ -125,9 +136,9 @@
                 {% endif %}
             </div>
         </div>
-    </div>
+    </nav>
     {% elif request.blueprint == 'golf' %}
-    <div class="game-subnav subnav-golf">
+    <nav class="game-subnav subnav-golf" aria-label="Golf section">
         <div class="container">
             <a class="subnav-game-label" href="{{ url_for('golf.index') }}">
                 ⛳ <span class="subnav-label-text">Golf 2026</span>
@@ -143,9 +154,9 @@
                 {% endif %}
             </div>
         </div>
-    </div>
+    </nav>
     {% elif request.blueprint == 'cfb' %}
-    <div class="game-subnav subnav-cfb">
+    <nav class="game-subnav subnav-cfb" aria-label="CFB section">
         <div class="container">
             <a class="subnav-game-label" href="{{ url_for('cfb.index') }}">
                 🏈 <span class="subnav-label-text">CFB 2025</span>
@@ -161,7 +172,7 @@
                 {% endif %}
             </div>
         </div>
-    </div>
+    </nav>
     {% endif %}
 
     <!-- Flash Messages -->
@@ -179,7 +190,7 @@
     </div>
 
     <!-- Main Content -->
-    <main>
+    <main id="main-content" tabindex="-1">
         {% block content %}{% endblock %}
     </main>
 

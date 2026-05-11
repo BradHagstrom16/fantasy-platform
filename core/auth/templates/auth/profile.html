@@ -4,7 +4,13 @@
 {% block title %}Profile · Corrupt Commish Club{% endblock %}
 
 {% block content %}
-<div class="container my-5" style="max-width:600px;">
+{# P3 S3.4: profile is a logged-in utility auth surface. Per DESIGN.md §5
+   Auth Surface Composition, utility surfaces use `.auth-wrapper`. Pre-S3.4
+   this template used `.container.my-5 style="max-width:600px"` which made
+   it the third auth pattern (split-panel, .auth-wrapper, .container). The
+   `.profile-wrapper` modifier preserves the wider max-width the avatar
+   picker needs without re-introducing the third register. #}
+<div class="auth-wrapper profile-wrapper">
     <div class="card auth-card">
         <div class="card-body p-4">
             <div class="text-center mb-4">
@@ -102,8 +108,8 @@
             </form>
 
             <hr>
-            <p class="text-center mb-0">
-                <a href="{{ url_for('auth.change_password') }}" class="text-muted small">
+            <p class="auth-link-row mb-0">
+                <a href="{{ url_for('auth.change_password') }}">
                     <i class="bi bi-key me-1"></i>Change Password
                 </a>
             </p>

@@ -64,6 +64,35 @@
 .brand-mark { width: 28px; height: 28px; vertical-align: -.35em; margin-right: .5rem; }
 .brand-mark--lg { width: 56px; height: 56px; }
 
+/* === CCC SKIP-LINK ===
+   P3 S3.1.1 — WCAG 2.4.1 Bypass Blocks. Hidden off-screen until focused, then
+   anchored over the top-left of the navbar (`top: .5rem`) so keyboard users
+   see a high-contrast gold-on-purple chip the moment they Tab into the page.
+   Routed before the navbar in base.html so it's the first focusable target. */
+.skip-link {
+  position: absolute;
+  top: -100px;
+  left: 1rem;
+  z-index: 1100;
+  padding: .5rem 1rem;
+  background: var(--purple-700);
+  color: var(--gold) !important;
+  font-family: var(--font-teko);
+  font-size: .9rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  text-decoration: none;
+  border: 2px solid var(--gold);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
+  transition: top var(--transition);
+}
+.skip-link:focus,
+.skip-link:focus-visible {
+  top: .5rem;
+  outline: none;
+}
+
 /* === CCC NAVBAR === */
 .navbar.navbar-dark {
   background: var(--purple-700);
@@ -72,10 +101,23 @@
 .navbar.navbar-dark .navbar-brand {
   font-family: var(--font-teko);
   font-size: 1.25rem;
+  font-weight: 700;
   letter-spacing: .04em;
+  text-transform: uppercase;
   color: var(--bone);
   display: inline-flex;
   align-items: center;
+  /* P3 S3.1.1 — 44×44 mobile floor for the most-tapped "home" target. The
+     brand is otherwise 28-30px tall at 375 (logo mark + uppercase wordmark),
+     which fails WCAG 2.5.5 + PRODUCT.md §Accessibility's ≥ 44 × 44 px touch
+     target. Inline-flex centers the brand label vertically inside the larger
+     hit-box without enlarging the visual mark.
+     P3 S3.4 — `font-weight: 700` + `text-transform: uppercase` folded in
+     from the now-deleted orphan block at the bottom of the file. They were
+     rendering anyway (via source-order vs the headings rule for weight, and
+     as the only transform rule); moving them here puts the masthead voice
+     inside the spec-correct cascade and lets the orphan disappear cleanly. */
+  min-height: 44px;
 }
 .navbar.navbar-dark .nav-link {
   font-family: var(--font-teko);
@@ -88,6 +130,18 @@
 .navbar.navbar-dark .nav-link:hover { color: var(--gold-light); }
 .navbar.navbar-dark .nav-link.active {
   color: var(--gold);
+}
+/* P3 S3.4 — keyboard focus ring on chrome nav-links. Matches the canonical
+   CCC focus pattern (`outline: 2px solid var(--gold-light); outline-offset:
+   2px`) locked in S2.1.2 / S3.3.2. The auth-link-row, picker-list-item,
+   leaderboard-card-link, schedule-jump-today, and game-card--live selectors
+   already use this exact ring; chrome nav-links inherited the browser-default
+   outline pre-S3.4. Use `.navbar` (not `.navbar.navbar-dark`) so any future
+   navbar variant inherits the same focus ring. */
+.navbar .nav-link:focus-visible {
+  outline: 2px solid var(--gold-light);
+  outline-offset: 2px;
+  border-radius: var(--radius);
 }
 .navbar.navbar-dark .nav-link.active::after {
   content: '';
@@ -3960,36 +4014,40 @@ a:hover { color: var(--platform-primary-light); }
 main { flex: 1; }
 
 /* ── 6. Navbar ──────────────────────────────────────────── */
+/* P3 S3.1.1 — sticky-chrome wiring only. The navbar's brand surface (background,
+   border-bottom, brand color) is owned by the CCC `.navbar.navbar-dark` block at
+   the top of this file, which honors DESIGN.md §5 (solid `var(--purple-700)` fill
+   + `1px solid var(--purple-800)` rule). Prior iterations applied a chamber→council
+   linear-gradient here with `!important` that masked the spec; removed.
+   `transition` excludes `border-width` per impeccable's "don't animate layout
+   properties" rule. */
 .navbar {
-  background: linear-gradient(90deg, var(--platform-primary-dark) 0%, var(--platform-primary) 100%) !important;
-  border-bottom: 3px solid var(--platform-accent);
   padding: .65rem 0;
   box-shadow: var(--shadow-navbar);
   position: sticky;
   top: 0;
   z-index: 1030;
-  transition: padding var(--transition), border-width var(--transition);
+  transition: padding var(--transition);
 }
 
-/* Compact navbar after user scrolls — tighter padding, thinner accent border */
+/* Compact navbar after user scrolls — tighter padding. */
 .navbar-scrolled {
   padding: .3rem 0;
-  border-bottom-width: 2px;
 }
 
-.navbar-brand {
-  font-size: 1.35rem;
-  font-weight: 700;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-  color: var(--platform-accent) !important;
-  transition: color var(--transition), text-shadow var(--transition);
-}
-
-.navbar-brand:hover {
-  color: var(--platform-accent-light) !important;
-  text-shadow: 0 0 20px rgba(212,168,32,.4);
-}
+/* P3 S3.4 — orphan `.navbar-brand` block removed (was `style.css:~4019`).
+   It painted the wordmark `var(--platform-accent) !important` (Commish Gold)
+   plus `font-size: 1.35rem`, `font-weight: 700`, `letter-spacing: .08em`,
+   `text-transform: uppercase` — only the gold !important and the orphan
+   font-weight/text-transform actually rendered (CCC block won the other
+   declarations on specificity). Per DESIGN.md §5 "Brand (`.navbar-brand`):
+   Teko 1.25rem, letter-spacing 0.04em, Pressroom Bone color." The orphan
+   `!important` was overriding the spec-correct CCC block at line 101. The
+   `:hover` orphan also dropped — the Trophy Rule (DESIGN.md §2) reserves
+   gold-glow effects for `--shadow-gold` on primary-CTA hover, not on the
+   brand wordmark. CCC `.navbar.navbar-dark .navbar-brand` now carries the
+   spec on its own (bone color, 1.25rem, .04em, font-weight 600 inherited
+   from the headings block below). */
 
 .navbar .nav-link {
   font-family: 'Teko', sans-serif;
@@ -4130,14 +4188,19 @@ main { flex: 1; }
 /* Individual pill.
    P0 S0.3: 44px min-height for the mobile-first touch floor (WCAG 2.5.5/2.5.8 +
    DESIGN.md). inline-flex centers the label vertically inside the larger box
-   without stretching the pill border-radius perception. */
+   without stretching the pill border-radius perception.
+   P3 S3.1.1: inactive text alpha bumped from .48 (≈3.7:1 on the WC `#00122e`
+   sub-nav substrate, fails AA for small text per WCAG 1.4.3) to .75 (≈6.5:1).
+   The active pill (white on the accent-tinted background, line below) still
+   wins the visual weight — inactive pills now read as "secondary but legible"
+   rather than "ghosted". */
 .subnav-pill {
   font-family: 'Teko', sans-serif;
   font-weight: 500;
   font-size: .78rem;
   letter-spacing: .05em;
   text-transform: uppercase;
-  color: rgba(255,255,255,.48);
+  color: rgba(255,255,255,.75);
   text-decoration: none;
   padding: .55rem 1rem;
   min-height: 44px;
@@ -4159,6 +4222,19 @@ main { flex: 1; }
   color: #fff;
   background: rgba(var(--subnav-accent-rgb), .18);
   border-color: var(--subnav-accent);
+}
+/* P3 S3.4 — keyboard focus ring on sub-nav pills, matching the canonical
+   CCC focus pattern (S2.1.2 / S3.3.2 lock). Pre-S3.4, the pill's `.active`
+   state was the only visible cue and only for the focused-on-load case;
+   tabbing between pills inherited the browser-default outline ring,
+   inconsistent across browsers and easy to miss on the dark game-tinted
+   substrate. Gold-light is the universal CCC focus color and reads against
+   every per-game subnav background (`#00122e` WC, `#001a0d` Golf, `#0a080f`
+   CFB) at ≥ 7:1. The pill already carries `border-radius: 22px`, so the
+   `outline-offset: 2px` traces the pill silhouette cleanly. */
+.subnav-pill:focus-visible {
+  outline: 2px solid var(--gold-light);
+  outline-offset: 2px;
 }
 
 /* Spec C Plan 1 — mobile compactions: fit 6 pills on 375px without scroll */
@@ -4255,6 +4331,14 @@ main { flex: 1; }
 .game-card--live:hover {
   color: inherit;
 }
+/* Keyboard-first focus ring — matches the canonical .home-shell .sec-head
+   .more pattern (gold-light, 2px outline, 2px offset) so playable game
+   tiles announce keyboard focus consistently across home surfaces. */
+.game-card--live:focus-visible {
+  outline: 2px solid var(--gold-light);
+  outline-offset: 2px;
+  border-radius: var(--radius);
+}
 
 /* Featured game card — WC hero prominence (temporary for WC launch) */
 .game-card--featured {
@@ -4271,9 +4355,9 @@ main { flex: 1; }
 
 .game-card--featured .featured-game-inner {
   background:
-    radial-gradient(ellipse at 80% 20%, rgba(191,10,48,.15) 0%, transparent 50%),
-    radial-gradient(ellipse at 20% 80%, rgba(0,40,104,.12) 0%, transparent 50%),
-    linear-gradient(145deg, #00122e 0%, #002868 40%, #001a44 100%);
+    radial-gradient(ellipse at 80% 20%, rgba(201,162,39,.10) 0%, transparent 50%),
+    radial-gradient(ellipse at 20% 80%, rgba(58,29,114,.18) 0%, transparent 50%),
+    linear-gradient(145deg, var(--purple-950) 0%, var(--purple-800) 50%, var(--purple-950) 100%);
   padding: 3rem 2.5rem;
   text-align: center;
   position: relative;
@@ -4283,7 +4367,7 @@ main { flex: 1; }
   content: '';
   position: absolute;
   inset: 0;
-  background-image: radial-gradient(circle, rgba(255,255,255,.03) 1px, transparent 1px);
+  background-image: radial-gradient(circle, rgba(201,162,39,.06) 1px, transparent 1px);
   background-size: 24px 24px;
   pointer-events: none;
 }
@@ -4295,9 +4379,9 @@ main { flex: 1; }
   font-weight: 600;
   letter-spacing: .18em;
   text-transform: uppercase;
-  color: #BF0A30;
-  background: rgba(191,10,48,.12);
-  border: 1px solid rgba(191,10,48,.25);
+  color: var(--live-red);
+  background: rgba(230,57,70,.12);
+  border: 1px solid rgba(230,57,70,.28);
   padding: .25rem .85rem;
   border-radius: 2rem;
   margin-bottom: 1rem;
@@ -4308,7 +4392,7 @@ main { flex: 1; }
   font-size: 3.5rem;
   line-height: 1;
   margin-bottom: 1rem;
-  filter: drop-shadow(0 4px 12px rgba(0,0,0,.3));
+  filter: drop-shadow(0 4px 12px rgba(28,10,58,.45));
   transition: transform .3s cubic-bezier(.34,1.56,.64,1);
 }
 
@@ -4323,12 +4407,12 @@ main { flex: 1; }
   text-transform: uppercase;
   letter-spacing: .04em;
   line-height: 1.05;
-  color: #FFFFFF;
+  color: var(--bone);
   margin-bottom: .6rem;
 }
 
 .game-card--featured .featured-desc {
-  color: rgba(255,255,255,.55);
+  color: rgba(243,239,230,.78);
   font-size: .95rem;
   line-height: 1.6;
   max-width: 480px;
@@ -4342,7 +4426,7 @@ main { flex: 1; }
 
 .game-card--featured:hover {
   transform: translateY(-4px);
-  box-shadow: 0 8px 32px rgba(0,40,104,.35);
+  box-shadow: 0 8px 32px rgba(58,29,114,.35);
   color: inherit;
 }
 
@@ -4357,8 +4441,8 @@ main { flex: 1; }
 
 /* Coming-soon game card — muted, non-interactive */
 .game-card--coming-soon {
-  opacity: .55;
-  filter: grayscale(35%);
+  opacity: .78;
+  filter: grayscale(18%);
   cursor: default;
   pointer-events: none;
 }
@@ -4393,6 +4477,22 @@ main { flex: 1; }
   font-size: .92rem;
   color: var(--text-secondary);
   line-height: 1.55;
+}
+
+/* Coming-soon launch label — Teko microcopy that gives the muted card a
+   temporal anchor instead of an open-ended "Coming Soon" promise. Lives on
+   the bone surface so we use --text-secondary (not Bootstrap --text-muted,
+   which fails AA on bone per project_text_muted_aa_on_bone memory). */
+.game-card--coming-soon .game-desc {
+  margin-bottom: .85rem;
+}
+.game-card--coming-soon .game-launch-meta {
+  font-family: 'Teko', sans-serif;
+  font-size: .9rem;
+  font-weight: 500;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
 }
 
 /* Stat blocks */
@@ -4869,6 +4969,110 @@ main { flex: 1; }
   padding: 2rem 1rem;
 }
 
+/* P3 S3.4 — profile-wrapper modifier widens the auth-card from its default
+   440px floor (set by `body.auth-page .auth-card`) to 600px so the avatar
+   picker grid fits without re-introducing a third auth wrapper. Per
+   DESIGN.md §5 Auth Surface Composition, profile is a logged-in utility
+   surface and uses `.auth-wrapper`; the modifier carries the form-specific
+   width without breaking the contract. */
+.auth-wrapper.profile-wrapper .auth-card {
+  max-width: 600px;
+}
+
+/* === P3 S3.2.1 — Auth cluster: contrast + 44×44 + Tribunal Black bleed-through === */
+
+/* PI-2: lift `.auth-subtitle` + `.form-text` off `--text-muted` (#8A849B), which
+   fails AA on the bone card (~3.13:1 at 14.4px). Bootstrap 5.3 paints `.text-muted`
+   via `--bs-secondary-color !important`; raise our auth-scoped override specificity
+   so the auth card lands at `--text-secondary` (~6.9:1 on bone). */
+body.auth-page .auth-subtitle,
+body.auth-page .form-text {
+  color: var(--text-secondary);
+}
+body.auth-page a.text-muted,
+body.auth-page span.text-muted,
+body.auth-page p.text-muted,
+body.auth-page small.text-muted {
+  color: var(--text-secondary) !important;
+}
+
+/* PI-3: brand-panel sub-copy and game-row labels fail AA on the council-purple
+   gradient mid-stop. Lift alpha so the white reads AA at body sizes. */
+.auth-panel-brand .brand-sub {
+  color: rgba(255, 255, 255, .78);
+}
+.auth-panel-brand .brand-game-item {
+  color: rgba(255, 255, 255, .82);
+}
+
+/* PI-4: below the split-panel breakpoint the brand panel collapses and the
+   form-panel's bone fill no longer serves the split — it erases the Tribunal
+   Black atmosphere the body radial gradient paints. Drop the bone fill on
+   mobile so the backdrop bleeds through and the card lifts off it cleanly. */
+@media (max-width: 767.98px) {
+  .auth-form-panel {
+    background: transparent;
+  }
+}
+
+/* PI-1 (carries §0.4 S0.3 backlog): cross-flow link rows ("Forgot your key?",
+   "Not on the rolls yet?", "Back to Profile", "Change Password") need the 44×44
+   floor for mobile, and a focus-visible ring so keyboard users see the moment
+   they land. Lift link copy off `--gold` (3.6:1 on bone, AA-fail) onto
+   `--gold-dark` (~5.07:1 on bone). */
+.auth-link-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: .35rem;
+  min-height: 44px;
+  margin: 0;
+  font-family: var(--font-news);
+  font-size: .92rem;
+  color: var(--text-secondary);
+  text-align: center;
+}
+.auth-link-row a {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  min-height: 44px;
+  padding: .45rem .65rem;
+  font-family: var(--font-teko);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  font-size: .95rem;
+  font-weight: 600;
+  text-decoration: none;
+  border-radius: var(--radius);
+  transition: background-color .15s ease, color .15s ease;
+}
+body.auth-page .auth-link-row a {
+  color: var(--gold-dark);
+}
+body.auth-page .auth-link-row a:hover {
+  color: var(--purple-900);
+  background-color: rgba(201, 162, 39, .12);
+}
+body.auth-page .auth-link-row a:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+  color: var(--purple-900);
+  background-color: rgba(201, 162, 39, .12);
+}
+
+/* Freebie F2: lift the "(optional)" parenthetical off the Teko/uppercase label
+   inheritance so it reads as the editorial aside it is — without inline styles. */
+.form-label-meta {
+  font-family: var(--font-news);
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: .78rem;
+  color: var(--text-secondary);
+}
+
 /* ── 15. Footer ─────────────────────────────────────────── */
 footer {
   background: linear-gradient(90deg, var(--platform-primary-dark) 0%, var(--platform-primary) 100%);
@@ -4976,11 +5180,11 @@ hr { border-color: var(--border); opacity: 1; }
   border-radius: var(--radius);
 }
 
-/* Muted status badge — coming soon state */
+/* Muted status badge — coming soon state. Council-purple tint per DESIGN.md §2 Tinted-Neutral Rule. */
 .status-badge--muted {
-  background: rgba(120,120,120,.1);
+  background: rgba(58,29,114,.07);
   color: var(--text-secondary);
-  border: 1px solid rgba(120,120,120,.2);
+  border: 1px solid rgba(58,29,114,.20);
 }
 
 .status-badge--joined {
@@ -5407,13 +5611,58 @@ hr { border-color: var(--border); opacity: 1; }
   }
 }
 
-/* --- 18m. Error pages — mobile spacing --- */
+/* --- 18m. Error pages (404, 500) — Tribune-voice editorial masthead.
+   P3 S3.4 — replaced prior hero-metric template (giant `--border` numeral on
+   bone, ~1.06:1 contrast — effectively invisible — paired with `.text-muted`
+   subhead that fails AA on bone). The reshape uses the canonical CCC Eyebrow
+   primitive (DESIGN.md §3 "Eyebrow Rule": Teko 500, .85rem, .14em letter-
+   spacing, uppercase, gold) above a Teko display headline, with a Newsreader
+   serif lede painting `--text-secondary` (~6.9:1 on bone, AA-pass) and a
+   Quiet primary CTA. Tribune voice replaces SaaS-utility copy. */
+.error-page-wrap {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 5rem 1rem 4rem;
+  text-align: center;
+}
+.error-eyebrow {
+  font-family: var(--font-teko);
+  font-weight: 500;
+  font-size: .85rem;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin-bottom: 1rem;
+}
+.error-headline {
+  font-family: var(--font-teko);
+  font-size: 2.4rem;
+  font-weight: 600;
+  letter-spacing: .03em;
+  line-height: 1.1;
+  color: var(--text-primary);
+  margin: 0 0 1rem;
+}
+.error-lede {
+  font-family: var(--font-news);
+  font-size: 1.05rem;
+  line-height: 1.65;
+  color: var(--text-secondary);
+  max-width: 56ch;
+  margin: 0 auto 2rem;
+}
+.error-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
 @media (max-width: 576px) {
   .error-page-wrap {
-    padding-top: 3rem !important;
+    padding: 3rem 1rem 3rem;
   }
-  .error-page-wrap .section-heading {
-    font-size: 3.5rem;
+  .error-headline {
+    font-size: 1.9rem;
   }
 }
 
