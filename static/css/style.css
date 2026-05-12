@@ -1358,7 +1358,12 @@ body.game-golf {
   background: linear-gradient(180deg,
     var(--purple-850) 0%,
     var(--purple-950) 100%);
-  border: 1px solid rgba(255,255,255,.08);
+  /* S6.1.4 PI-1 — tinted-neutral consolidation. Border lifted from
+     literal white-8 to bone-8 so the Informational recipe across
+     match-card / cta-card--view / commish-note-body shares one
+     canonical border color (DESIGN.md §5; impeccable tinted-neutral
+     law in PRODUCT.md). */
+  border: 1px solid rgba(243,239,230,.08);
   border-radius: 12px;
 }
 
@@ -1368,7 +1373,12 @@ body.game-golf {
   background: linear-gradient(180deg,
     var(--purple-850) 0%,
     var(--purple-950) 100%);
-  border: 1px solid rgba(255,255,255,.08);
+  /* S6.1.4 PI-1 — tinted-neutral consolidation. Border lifted from
+     literal white-8 to bone-8 so the Informational recipe across
+     match-card / cta-card--view / commish-note-body shares one
+     canonical border color (DESIGN.md §5; impeccable tinted-neutral
+     law in PRODUCT.md). */
+  border: 1px solid rgba(243,239,230,.08);
   border-radius: 12px;
   overflow: hidden;
 }
@@ -1540,13 +1550,18 @@ body.game-golf {
 .home-shell .commish-note {
   margin: 1.5rem 0;
 }
+/* S6.1.4 PI-1 — silhouette consolidation. Radius normalized from 8px to 12px
+   so `.commish-note-body` lands cleanly on the DESIGN.md §5 Informational
+   recipe; the `border-top: 2px solid var(--gold)` is the documented §5/§6
+   Do major-section separator applied at card level (an Informational variant
+   for editorial long-form, not a new register). */
 .home-shell .commish-note-body {
   background: linear-gradient(180deg,
     var(--purple-850) 0%,
     var(--purple-950) 100%);
   border: 1px solid rgba(243,239,230,.08);
   border-top: 2px solid var(--gold);
-  border-radius: 8px;
+  border-radius: 12px;
   padding: 1.25rem 1.5rem;
 }
 .home-shell .commish-note-body p {

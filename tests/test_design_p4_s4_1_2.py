@@ -496,11 +496,16 @@ def test_pi3_cta_card_view_holds_informational_recipe():
         "PI-3: `.cta-card--view` must reach `--purple-950` at the "
         "gradient terminus."
     )
-    # Anchor on the `border` property so a `background: rgba(255,255,255,.08)`
-    # elsewhere in the block can't false-pass.
-    assert re.search(r'border[^:]*:\s*[^;]*rgba\(255,255,255,\.08\)', view_block), (
-        "PI-3: `.cta-card--view` must carry the 8%-bone border per "
-        "the Informational recipe (matches `.match-card`)."
+    # Anchor on the `border` property so a `background: rgba(...)` elsewhere
+    # in the block can't false-pass. S6.1.4 PI-1 hardened the canonical
+    # Informational border value from literal white-8 (`rgba(255,255,255,.08)`)
+    # to bone-8 (`rgba(243,239,230,.08)`) so the recipe across `.match-card`
+    # / `.cta-card--view` / `.commish-note-body` shares one tinted-neutral
+    # color (impeccable "no pure white" law; DESIGN.md §5).
+    assert re.search(r'border[^:]*:\s*[^;]*rgba\(243,239,230,\.08\)', view_block), (
+        "PI-3 / S6.1.4 PI-1: `.cta-card--view` must carry the bone-8 "
+        "border per the Informational recipe (matches `.match-card` + "
+        "`.commish-note-body`)."
     )
     assert 'border-radius: 12px' in view_block, (
         "PI-3: `.cta-card--view` must use `border-radius: 12px` per "
