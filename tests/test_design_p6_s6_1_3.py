@@ -320,3 +320,24 @@ def test_pi4_reduced_motion_disables_auto_fade():
         'flash animation to the entrance-only `slideDown` (S6.1.3 PI-4, '
         'Group E PI-B).'
     )
+    # And the auto-fade must NOT leak into the reduced-motion override —
+    # `[^;]+` in the regex above traverses commas, so a hypothetical
+    # `animation: slideDown ..., ccc-flash-success-fade ...;` would
+    # false-pass the positive assertion. Extract the specific reduced-
+    # motion rule body for `.alert.alert-success.alert-dismissible` and
+    # assert the fade keyframe name isn't inside it. (`[^}]+` keeps the
+    # capture bounded to the inner rule — the outer media block may
+    # contain unrelated selectors, but the inner `{ ... }` is exact.)
+    reduced_motion_alert = re.search(
+        r'@media\s*\(prefers-reduced-motion:\s*reduce\)\s*\{[^{}]*'
+        r'\.alert\.alert-success\.alert-dismissible\s*\{([^}]+)\}',
+        css,
+    )
+    assert reduced_motion_alert is not None, (
+        'Could not locate the reduced-motion `.alert.alert-success.alert-'
+        'dismissible` rule body to verify fade absence.'
+    )
+    assert 'ccc-flash-success-fade' not in reduced_motion_alert.group(1), (
+        '`prefers-reduced-motion` override must not include '
+        '`ccc-flash-success-fade`; reduced-motion is entrance-only.'
+    )
