@@ -311,8 +311,11 @@ function renderProgressBar() {
   wrap.innerHTML = phases.map(p => {
     const done = segDone[p.id];
     const cur = segCurrent[p.id];
-    const status = done ? 'completed' : cur ? 'current' : 'upcoming';
-    const glyph = done ? '<span aria-hidden="true"> ✓</span>' : cur ? '<span aria-hidden="true"> ←</span>' : '';
+    // Prefer `cur` over `done` — at currentIdx=1 (group_stage) and
+    // currentIdx=2 (knockout/R32), both flags are true; the segment is
+    // the one we're playing through, not one we've finished.
+    const status = cur ? 'current' : done ? 'completed' : 'upcoming';
+    const glyph = cur ? '<span aria-hidden="true"> ←</span>' : done ? '<span aria-hidden="true"> ✓</span>' : '';
     let style = `flex:${p.flex};display:flex;align-items:center;justify-content:center;padding:0 .75rem;`;
     if (done) style += p.doneStyle;
     else if (cur) style += `background:rgba(212,168,32,.2);color:var(--platform-accent);border:2px solid var(--platform-accent);font-weight:700;`;

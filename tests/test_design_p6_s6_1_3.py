@@ -203,6 +203,18 @@ def test_pi3_picks_card_header_eyebrow_collapses_to_the_ballot():
         'Card-header eyebrow text "Sealed · still amendable" must not '
         're-appear — it echoed the H1 (S6.1.3 PI-3, Group E PI-A).'
     )
+    # The other half of the legacy eyebrow ternary ("The Oath is sealed")
+    # must also stay out of eyebrow contexts. Scoped to the eyebrow span
+    # because the same phrase is the legitimate post-deadline H1 (line 9
+    # of picks.html) — a blanket `not in html` would false-positive.
+    assert re.search(
+        r'<span class="wc-eyebrow">\s*The Oath is sealed\s*</span>',
+        html,
+    ) is None, (
+        'Eyebrow span "The Oath is sealed" must not re-appear in a card-'
+        'header context — it echoed the H1 (S6.1.3 PI-3, Group E PI-A). '
+        'The H1 itself retains the phrase as the post-deadline title.'
+    )
     # The new section anchor must appear at least twice (desktop card-header
     # + mobile card-header) inside `wc-eyebrow` spans.
     matches = re.findall(
@@ -259,8 +271,14 @@ def test_pi4_flash_fade_keyframes_only_animate_opacity():
         '(S6.1.3 PI-4, Group E PI-B).'
     )
     body = match.group(1)
-    # Allowed properties only: opacity, pointer-events. Anything else is a
-    # layout-animation regression risk.
+    # Positively require `opacity` so an empty/non-fading keyframe block
+    # can't false-pass the banned-property check below.
+    assert re.search(r'\bopacity\s*:', body), (
+        '`@keyframes ccc-flash-success-fade` must animate `opacity` to '
+        'implement the intended auto-fade (S6.1.3 PI-4, Group E PI-B).'
+    )
+    # Allowed properties only: opacity, pointer-events, visibility.
+    # Anything else is a layout-animation regression risk.
     banned = ('max-height', 'height', 'padding', 'margin', 'transform', 'top', 'left')
     for prop in banned:
         assert f'{prop}:' not in body, (

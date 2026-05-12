@@ -98,10 +98,21 @@ def test_pi1_variant_classes_preserved():
     becomes dead syntax.
     """
     css = STYLE_CSS.read_text()
-    assert re.search(r'\.wc-eyebrow-red\s*\{\s*color:\s*var\(--wc-red\)', css), (
+    # Property-order agnostic: `[^}]*?` + `(?<!-)color:` lets `color` sit
+    # anywhere in the rule block and excludes `background-color:` /
+    # `border-color:` false-positives.
+    assert re.search(
+        r'\.wc-eyebrow-red\s*\{[^}]*?(?<!-)color:\s*var\(--wc-red\)',
+        css,
+        re.DOTALL,
+    ), (
         '`.wc-eyebrow-red` variant must remain a named primitive.'
     )
-    assert re.search(r'\.wc-eyebrow-gold\s*\{\s*color:\s*var\(--gold-light\)', css), (
+    assert re.search(
+        r'\.wc-eyebrow-gold\s*\{[^}]*?(?<!-)color:\s*var\(--gold-light\)',
+        css,
+        re.DOTALL,
+    ), (
         '`.wc-eyebrow-gold` variant must remain a named primitive.'
     )
 

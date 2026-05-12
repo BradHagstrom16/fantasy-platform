@@ -502,7 +502,7 @@ def test_pi3_cta_card_view_holds_informational_recipe():
     # to bone-8 (`rgba(243,239,230,.08)`) so the recipe across `.match-card`
     # / `.cta-card--view` / `.commish-note-body` shares one tinted-neutral
     # color (impeccable "no pure white" law; DESIGN.md §5).
-    assert re.search(r'border[^:]*:\s*[^;]*rgba\(243,239,230,\.08\)', view_block), (
+    assert re.search(r'\bborder\s*:\s*[^;]*rgba\(243,\s*239,\s*230,\s*\.08\)', view_block), (
         "PI-3 / S6.1.4 PI-1: `.cta-card--view` must carry the bone-8 "
         "border per the Informational recipe (matches `.match-card` + "
         "`.commish-note-body`)."

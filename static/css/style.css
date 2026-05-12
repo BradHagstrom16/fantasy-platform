@@ -5181,8 +5181,13 @@ main { flex: 1; }
   animation: slideDown .25s ease both, ccc-flash-success-fade 4.4s ease-out forwards;
 }
 @keyframes ccc-flash-success-fade {
-  0%, 88% { opacity: 1; }
-  100%    { opacity: 0; pointer-events: none; }
+  /* `visibility` flips to `hidden` at 100% so the faded alert is removed
+     from the tab order + accessibility tree once opacity reaches 0 —
+     otherwise the dismiss button and any links inside stay keyboard-
+     focusable as invisible targets. visibility isn't a layout property
+     (no reflow), so the impeccable layout-animation ban still holds. */
+  0%, 88% { opacity: 1; visibility: visible; }
+  100%    { opacity: 0; visibility: hidden; }
 }
 @media (prefers-reduced-motion: reduce) {
   .alert.alert-success.alert-dismissible {
