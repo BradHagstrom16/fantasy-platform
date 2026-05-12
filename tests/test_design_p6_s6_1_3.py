@@ -142,10 +142,15 @@ def test_pi2_metal_gold_flat_dark_stop_is_lifted():
         '`--metal-gold-flat` must terminate at `#A88420` (S6.1.3 PI-2, Group I).'
     )
     # Regression lock: the prior `#8A6A1A 100%` stop must not re-appear in
-    # `--metal-gold-flat`. (The literal still appears in `--metal-gold` and
-    # in `--gold-dark`; those are intentional.)
-    assert '#8A6A1A 100%' not in css, (
-        'Old `#8A6A1A 100%` stop must not re-appear in any gradient definition '
+    # `--metal-gold-flat`. Scoped to the `--metal-gold-flat: linear-gradient(...)`
+    # declaration so a future token that legitimately uses `#8A6A1A 100%`
+    # elsewhere doesn't false-trip this lock. (`#8A6A1A` still appears as the
+    # `--gold-dark` token and at the 78% stop of `--metal-gold`; both intentional.)
+    assert re.search(
+        r'--metal-gold-flat:\s*linear-gradient\([^;]*#8A6A1A\s+100%',
+        css,
+    ) is None, (
+        'Old `#8A6A1A 100%` stop must not re-appear in `--metal-gold-flat` '
         '— retuned to clear AA at the worst-corner.'
     )
 

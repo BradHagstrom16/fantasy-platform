@@ -59,9 +59,14 @@ def test_pi1_dark_card_eyebrow_lift_rule_exists():
         'rule in style.css (S6.1.1 PI-1).'
     )
     block = match.group(1)
-    # Bone @ .85 alpha = rgba(243, 239, 230, .85). Lock the exact value so a
-    # future refactor that lowers alpha back into the sub-AA band trips the test.
-    assert 'rgba(243, 239, 230, .85)' in block, (
+    # Bone @ .85 alpha = rgba(243, 239, 230, .85). Pin to `color:` so a
+    # future refactor that puts the same value on `background:` (or any
+    # other property) can't false-pass — and lower alpha back into the
+    # sub-AA band still trips the test.
+    assert re.search(
+        r'(?<!-)color:\s*rgba\(243,\s*239,\s*230,\s*\.85\)',
+        block,
+    ), (
         f'PI-1 must paint bone @ .85 alpha (~7.1:1 on #313D53); block={block!r}.'
     )
 
@@ -181,15 +186,18 @@ def test_pi2_dark_surface_overrides_still_win():
     would re-surface the same bug class on the navy hub.
     """
     css = STYLE_CSS.read_text()
+    # Pin to the actual `color:` !important declaration (not just an rgba+!important
+    # pair sitting on different properties). `[^}]*?` lets earlier declarations
+    # appear before color; `(?<!-)` excludes `background-color` / `border-color`.
     assert re.search(
-        r'\.card\.wc-card\s+\.text-muted\s*\{[^}]*rgba\(245,\s*241,\s*232,\s*\.82\)[^}]*!important',
+        r'\.card\.wc-card\s+\.text-muted\s*\{[^}]*?(?<!-)color:\s*rgba\(245,\s*241,\s*232,\s*\.82\)\s*!important',
         css,
     ), (
         'Expected the pre-existing `.card.wc-card .text-muted` `!important` '
         'lift to bone @ .82 in style.css (originally landed in Plan 3).'
     )
     assert re.search(
-        r'\.page-hero\.wc-hero-grad\s+\.hero-subhead\.text-muted\s*\{[^}]*rgba\(245,\s*241,\s*232,\s*\.82\)[^}]*!important',
+        r'\.page-hero\.wc-hero-grad\s+\.hero-subhead\.text-muted\s*\{[^}]*?(?<!-)color:\s*rgba\(245,\s*241,\s*232,\s*\.82\)\s*!important',
         css,
     ), (
         'Expected the pre-existing `.page-hero.wc-hero-grad .hero-subhead.text-muted` '
