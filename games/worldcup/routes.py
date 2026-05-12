@@ -646,6 +646,7 @@ def schedule():
 @worldcup_bp.route('/groups')
 def groups():
     """Group standings — 12 groups."""
+    from games.worldcup.services.state import worldcup_state
     teams = WorldCupTeam.query.order_by(WorldCupTeam.group_letter).all()
     groups_dict = defaultdict(list)
     for team in teams:
@@ -659,6 +660,7 @@ def groups():
 
     return render_template('worldcup/groups.html',
         groups=dict(sorted(groups_dict.items())),
+        wc_state=worldcup_state(),
     )
 
 

@@ -1,22 +1,36 @@
-{# Sealed roster card — pre-state, enrolled, picks_submitted=True #}
-<a href="{{ url_for('worldcup.picks') }}?edit=1" class="ballot-card">
+{# Sealed roster card — pre-state, enrolled, picks_submitted=True.
+
+   S4.1.2 PI-2 — whole-area-link semantic split. Pre-S4.1.2 the card was
+   wrapped in `<a href="...?edit=1">`, which (a) concatenated the flag
+   ribbon + foot copy into one screen-reader link and (b) routed every
+   flag tap to "edit pick" rather than the team-detail surface a sighted
+   user would expect. The new shape is a `<section>` with an explicit
+   inline `Edit roster ›` action sitting next to the foot prose. The
+   flags are a non-interactive ribbon (decorative emoji + tooltip
+   `title=`); they don't pretend to be tap-routes to team detail until
+   that surface exists. Hover lift moves from the card to the explicit
+   action. #}
+<section class="ballot-card" aria-labelledby="ballot-status">
   <div class="ballot-head">
     <div>
       <div class="ballot-label">Your roster</div>
-      <div class="ballot-status">Sealed &amp; delivered</div>
+      <div class="ballot-status" id="ballot-status">Sealed &amp; delivered</div>
     </div>
     <div class="ballot-locked">
       <span class="dot"></span>
       Locked in
     </div>
   </div>
-  <div class="ballot-flags">
+  <div class="ballot-flags" aria-label="Your nine selected nations">
     {% for pick in picks %}
-    <span class="ballot-flag" title="{{ pick.team.display_name }}">{{ pick.team.flag_emoji }}</span>
+    <span class="ballot-flag" title="{{ pick.team.display_name }}" aria-hidden="true">{{ pick.team.flag_emoji }}</span>
     {% endfor %}
   </div>
   <div class="ballot-foot">
-    Nine nations bend the knee to you.
-    <em>Edit any time before the whistle.</em>
+    <p class="ballot-foot-prose">Nine nations bend the knee to you.</p>
+    <a class="ballot-edit-action" href="{{ url_for('worldcup.picks') }}?edit=1">
+      Edit roster
+      <i class="bi bi-arrow-right" aria-hidden="true"></i>
+    </a>
   </div>
-</a>
+</section>

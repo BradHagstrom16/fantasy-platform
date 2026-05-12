@@ -53,30 +53,27 @@
           <div class="card-body p-0">
             <div class="table-responsive">
               <table class="table table-worldcup mb-0">
-                <caption class="visually-hidden">Player picks: team, tier, multiplier, base points, and total points.</caption>
+                <caption class="visually-hidden">Player picks: team, tier, multiplier, and total points. Expand a row to see base points and per-match scoring.</caption>
                 <thead>
                   <tr>
                     <th scope="col">Team</th>
                     <th scope="col">Tier</th>
                     <th scope="col" class="text-center">Multiplier</th>
-                    <th scope="col" class="text-end">Base</th>
                     <th scope="col" class="text-end">Points</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {% set ns = namespace(total_base=0.0, total_mult=0.0) %}
+                  {% set ns = namespace(total_mult=0.0) %}
                   {% for pick in picks %}
                     {% with events = events_by_pick.get(pick.id, []) %}
                       {% include 'worldcup/_pick_row.html' %}
                     {% endwith %}
-                    {% set ns.total_base = ns.total_base + pick.base_points %}
                     {% set ns.total_mult = ns.total_mult + pick.multiplied_points %}
                   {% endfor %}
                 </tbody>
                 <tfoot>
                   <tr style="border-top:2px solid var(--border);">
                     <td colspan="3" class="fw-bold">Total</td>
-                    <td class="text-end fw-bold wc-numeral">{{ "%.1f"|format(ns.total_base) }}</td>
                     <td class="text-end fw-bold wc-numeral">{{ "%.1f"|format(ns.total_mult) }}</td>
                   </tr>
                 </tfoot>
