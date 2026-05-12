@@ -356,7 +356,7 @@ def _context_post(user: Any) -> dict:
             if loser:
                 champion_summary = (
                     f'Defeated {loser.display_name} '
-                    f'{winner_score}–{loser_score}{suffix}'
+                    f'{winner_score}–{loser_score} in the Final{suffix}'
                 )
 
     # Final podium + total

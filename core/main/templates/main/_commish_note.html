@@ -1,16 +1,42 @@
-{# Commish's Note — file-edited long-form. Spec B D9. Edit this file
-   directly when writing weekly recaps; commit + deploy.
-   Set the entire file contents to empty string to suppress. #}
+{# Commish's Note — file-edited long-form. Spec B D9.
+
+   S5.2.1 PI-2: branched on `state` (the home-shell state variable, supplied
+   by core/main/routes.py). The body changed by tournament phase — the pre-
+   state body promising "Tribute window opens until June 11" rendered in live
+   and post too, leaving the Commish anticipating a deadline weeks after the
+   trophy was lifted. The branch keeps a single file (edit-friendly per the
+   original intent) while letting voice track the tournament moment.
+
+   To suppress the entire note in any state, set the matching branch body to
+   empty. Each state's prose is independently editable. #}
 <div class="commish-note">
   <div class="sec-head">
     <div class="t">From the Commish</div>
   </div>
   <div class="commish-note-body">
-    <p>
-      Welcome to the Club. The Commish keeps the ledger; you keep the picks.
-      Tribute window opens until June 11. Pick nine nations, take
-      your seat, and we'll see who reads the table on the other side.
-    </p>
+    {% if state == 'live' %}
+      <p>
+        The tournament runs and the ledger updates daily. Picks are sealed.
+        Goals fall where they fall. The Commish will not entertain appeals,
+        sympathies, or revisions to the roster. Watch your nations, watch the
+        Club, and keep the trash talk inside the room.
+      </p>
+    {% elif state == 'post' %}
+      <p>
+        The 2026 ledger is closed. {% if champion_team %}{{ champion_team.display_name }} lifted the trophy and the Club records it as such.{% else %}The trophy has been lifted and the Club records the season as final.{% endif %}
+        Whatever your finish, the rivalry held, the picks paid out where they
+        paid out, and the receipts are now part of the Club's history.
+      </p>
+      <p>
+        Rest the legs. The Commish will be in touch when the next ledger opens.
+      </p>
+    {% else %}
+      <p>
+        Welcome to the Club. The Commish keeps the ledger; you keep the picks.
+        Tribute window opens until June 11. Pick nine nations, take
+        your seat, and we'll see who reads the table on the other side.
+      </p>
+    {% endif %}
     <p class="commish-note-byline">The Commish</p>
   </div>
 </div>

@@ -2039,6 +2039,11 @@ body.game-golf {
 @media (min-width: 768px) {
   .home-shell .champion-flag { font-size: 7rem; }
 }
+/* S5.2.1 PI-1: gradient-text treatment retired (impeccable absolute ban +
+   DESIGN.md §6 Don't list). Solid gold-light matches the `.home-metal-text`
+   precedent at :461 — flat gold carries the masthead register without
+   diluting the metal-gold trophy gradient, which stays reserved for primary
+   CTAs per the Trophy Rule. */
 .home-shell .champion-name {
   font-family: var(--font-teko);
   font-weight: 700;
@@ -2046,10 +2051,7 @@ body.game-golf {
   line-height: 1;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  background: var(--metal-gold);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  color: var(--gold-light);
   margin: 0.5rem 0 0.6rem;
 }
 @media (min-width: 768px) {
@@ -2080,6 +2082,24 @@ body.game-golf {
   text-transform: uppercase;
   color: var(--bone-mute);
   margin-top: 0.5rem;
+}
+/* P5 S5.3 PI-4 — Tribune retrospection line on the platform champion
+   banner. Mirrors the WC variant's recipe at :7009 (Newsreader italic,
+   ~1.05rem, bone .82 alpha) so the cluster's two retrospection lines
+   read as one Tribune voice with two distinct sentences. Sits below
+   .champion-detail (the wire-service venue/date) so the banner reads:
+   country → score → venue → editorial significance — decreasing
+   factuality, ending in voice. */
+.home-shell .champion-retrospect {
+  font-family: var(--font-news);
+  font-style: italic;
+  font-size: 1.05rem;
+  letter-spacing: 0.005em;
+  color: rgba(245, 241, 232, 0.82);
+  margin: 0.75rem 0 0;
+}
+@media (min-width: 768px) {
+  .home-shell .champion-retrospect { font-size: 1.15rem; }
 }
 
 /* --- Post-state: final podium --- */
@@ -2847,6 +2867,50 @@ body.game-worldcup {
    reach. */
 .card.wc-card .wc-numeral {
   color: var(--text-on-dark);
+}
+
+/* P5 S5.3 PI-1 — Selector-scope the bone override above so it skips
+   Bootstrap-table substrates. S2.6 PI-1's lock at :6691 set
+   `--bs-table-bg: var(--bg-card)` (white) on .card.wc-card .table, which
+   made every .wc-numeral inside a tbody cell paint bone-on-white (1.05:1
+   on .row-champion-pick cream, 1.14:1 on default white — axe-confirmed
+   8 hits on _home_post alone). The bone is correct for masthead /
+   card-header / card-body direct-child .wc-numeral spans on the navy
+   parent (Total totals, tiebreaker, the .post-finish-rank still owns its
+   own bone color); the bug only fires inside Bootstrap tables. Restore
+   platform ink for in-cell .wc-numeral so default body color reads
+   ~14.5:1 on the white-masked td.
+
+   The :not(.player-picks-desktop) carve-out mirrors PR #15 CR R2's
+   .wc-multiplier-chip pattern at :6748: .player-picks-desktop opts out of
+   the white-td mask via `background-color: transparent` (:2966) so its
+   tds bleed navy through, where bone is correct. Routed from S5.1.1
+   §0.4 cross-cluster sweep; taken in S5.3 as §1.8 deviation (fix is one
+   selector-scoped rule; splitting to S6.1 adds overhead without value). */
+.card.wc-card:not(.player-picks-desktop) .table .wc-numeral {
+  color: var(--text-primary);
+}
+
+/* P5 S5.3 PI-2 — Lift .btn-outline-secondary quicklinks on .card.wc-card.
+   The home_shell.html quicklink trio (Schedule / Groups / Rules at :48-62)
+   renders inside a .card.wc-card.mt-4 wrapper that bleeds navy
+   rgba(0,17,46,.8) through its .card-body. Bootstrap's default
+   --bs-secondary-color (#8a849b) on that navy reads 3.04:1 (axe-confirmed),
+   failing AA. The trio is universal to every state partial (pre/live/out/
+   post), so this lift lands cluster-wide. Mirror the .card.wc-card
+   .text-muted pattern at :6666: 82%-alpha bone on navy carries AA at
+   body size; full bone on hover/focus reads ~13:1. Border is the lower
+   visual weight — bone-alpha at .35 keeps the button shape readable
+   without screaming. */
+.card.wc-card .btn-outline-secondary {
+  color: var(--text-on-dark);
+  border-color: rgba(245, 241, 232, .35);
+}
+.card.wc-card .btn-outline-secondary:hover,
+.card.wc-card .btn-outline-secondary:focus-visible {
+  color: var(--text-primary);
+  background-color: var(--bone);
+  border-color: var(--bone);
 }
 
 /* P4 S4.2.2 PI-5 — multiplier chip surface override for light-substrate.
@@ -6947,5 +7011,85 @@ body.game-worldcup .form-text {
 .match-result-card.is-roster-match {
   border-color: rgba(242, 211, 107, .55);
   background: linear-gradient(90deg, rgba(242, 211, 107, .10) 0%, var(--bg-card) 35%);
+}
+
+/* --- P5 S5.1.1 — Post-state Tribune finale moments (PI-1 + PI-2) --- */
+
+/* PI-2: Tribune retrospection line on the champion banner. Closes the
+   wire-service register the prior "Defeated X N–N" string carried.
+   Newsreader italic to match the DESIGN.md §3 editorial register
+   ("the Tribune is a printed object"). Subordinated to the
+   gold-gradient champion name above by font-size + .82 alpha tint,
+   so the banner reads: country → defeat summary → retrospection,
+   in decreasing visual weight. Gated to the success branch
+   (champion_team present) in markup; this rule has no fallback
+   for the admin-error state, by design. */
+.card.wc-card.wc-hero-grad .champion-retrospect {
+  font-family: var(--font-news);
+  font-style: italic;
+  font-size: 1.05rem;
+  letter-spacing: 0.005em;
+  color: rgba(245, 241, 232, 0.82);
+  margin: 0.5rem 0 0;
+}
+@media (min-width: 768px) {
+  .card.wc-card.wc-hero-grad .champion-retrospect { font-size: 1.15rem; }
+}
+
+/* PI-1: Your Finish hero collapse — one dominant rank numeral, one
+   Newsreader derivation line. Replaces the prior two-display-4 50/50
+   split that triggered the hero-metric-adjacency ban (the same reflex
+   S2.3.1 broke on team_detail). Scoped to .post-finish-card so the
+   selectors live next to their only call site in _home_post.html. */
+.post-finish-card .post-finish-rank-cluster {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+.post-finish-card .post-finish-rank {
+  font-family: var(--font-teko);
+  font-weight: 700;
+  font-size: 3.6rem;
+  line-height: 1;
+  color: var(--bone);
+  letter-spacing: 0.02em;
+}
+@media (min-width: 768px) {
+  .post-finish-card .post-finish-rank { font-size: 4.4rem; }
+}
+.post-finish-card .post-finish-of {
+  font-family: var(--font-teko);
+  font-weight: 500;
+  font-size: 1rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(245, 241, 232, 0.7);
+}
+.post-finish-card .post-finish-derivation {
+  font-family: var(--font-news);
+  font-style: italic;
+  font-size: 1rem;
+  color: rgba(245, 241, 232, 0.88);
+  margin: 0.5rem 0 0;
+  line-height: 1.4;
+}
+
+/* S5.1.2 PI-1 — 44×44 mobile tap-target floor on _home_post.html table
+   anchors (Final Podium player links + Final Roster team links). Pre-fix
+   the bare `text-decoration-none [fw-medium]` anchors rendered ~15px tall
+   at 375 (S5.1.1 sweep: B1G_Brad 68×15, test2 33×15) — well below the
+   PRODUCT.md mobile floor. Class-scoped (not `.card.wc-card .table a`
+   broadcast) so other WC tables that already carry their own classed
+   anchors (.picker-link, .team-link) aren't double-targeted. Uses
+   inline-flex + align-items center + min-height — NOT inline-block +
+   line-height: 44px, which collapses multi-line wrap onto a 44px
+   baseline and breaks long display names at the 320px viewport. */
+.post-table-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0.25rem 0;
 }
 
