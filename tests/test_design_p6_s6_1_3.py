@@ -9,7 +9,7 @@ impeccable design improvement plan (P6 §8 docket):
   (b) Move column header gains `title="Change since yesterday's
   snapshot"` for analyst context. (c) Gold-divider rule threads the
   Your Position tribune block to the standings cards. Closes
-  S1.1 × 3 routes.
+  S1.1 x 3 routes.
 
 - PI-2 (Group I): `--metal-gold-flat`'s 100% stop retuned from
   `#8A6A1A` → `#A88420` so chamber-purple text on the navbar

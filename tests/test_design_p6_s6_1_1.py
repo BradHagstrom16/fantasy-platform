@@ -121,18 +121,28 @@ def test_pi1_design_md_ratifies_two_primitive_shape():
     """DESIGN.md §3 + §5.5 document the as-built two-primitive eyebrow."""
     design = DESIGN_MD.read_text()
     # §3 Hierarchy bullet ratifies `.admin-eyebrow` and `.wc-eyebrow` distinctly.
-    assert '`.admin-eyebrow`' in design and '`.wc-eyebrow`' in design, (
-        'DESIGN.md must call out both eyebrow primitives by name.'
+    # Split per Ruff PT018 so a failure names the exact missing primitive.
+    assert '`.admin-eyebrow`' in design, (
+        'DESIGN.md must call out the `.admin-eyebrow` primitive by name.'
+    )
+    assert '`.wc-eyebrow`' in design, (
+        'DESIGN.md must call out the `.wc-eyebrow` primitive by name.'
     )
     # The doc must explicitly mention the `.wc-eyebrow` variants so a future
     # editor knows they are part of the ratified primitive, not invented stragglers.
-    assert '`.wc-eyebrow-red`' in design and '`.wc-eyebrow-gold`' in design, (
-        'DESIGN.md must document `.wc-eyebrow-red` + `.wc-eyebrow-gold` variants.'
+    assert '`.wc-eyebrow-red`' in design, (
+        'DESIGN.md must document the `.wc-eyebrow-red` variant.'
+    )
+    assert '`.wc-eyebrow-gold`' in design, (
+        'DESIGN.md must document the `.wc-eyebrow-gold` variant.'
     )
     # The bone-mute default + dark-card lift must appear in the doc so future
     # work understands the scope rule belongs to the primitive, not to one surface.
-    assert 'bone-mute' in design and '.card.wc-card' in design, (
-        'DESIGN.md must mention the bone-mute default + .card.wc-card scope lift.'
+    assert 'bone-mute' in design, (
+        'DESIGN.md must mention the `bone-mute` default color.'
+    )
+    assert '.card.wc-card' in design, (
+        'DESIGN.md must mention the `.card.wc-card` scope lift.'
     )
 
 
@@ -221,19 +231,23 @@ def test_pi3_no_background_clip_text_rules_remain():
     css = STYLE_CSS.read_text()
     # Strip /* ... */ comments before scanning so rationale text doesn't false-trip.
     code_only = re.sub(r'/\*.*?\*/', '', css, flags=re.DOTALL)
-    violations = [
-        line for line in code_only.splitlines()
-        if re.search(r'background-clip:\s*text', line)
-    ]
+    # Scan the full comment-stripped blob (not per-line) so a declaration
+    # split across lines like `background-clip:\n  text;` can't slip through.
+    # `\s*` matches newlines, and `(?<!-webkit-)` keeps the prefixed form
+    # in the separate webkit check below.
+    violations = re.findall(
+        r'(?<!-webkit-)background-clip\s*:\s*text',
+        code_only,
+    )
     assert violations == [], (
         f'Gradient-text ban (DESIGN.md §6) violated by {len(violations)} '
         f'rule(s): {violations!r}'
     )
     # Same check for the prefixed -webkit- form (Safari/iOS compatibility).
-    webkit_violations = [
-        line for line in code_only.splitlines()
-        if re.search(r'-webkit-background-clip:\s*text', line)
-    ]
+    webkit_violations = re.findall(
+        r'-webkit-background-clip\s*:\s*text',
+        code_only,
+    )
     assert webkit_violations == [], (
         f'Prefixed `-webkit-background-clip: text` violations: {webkit_violations!r}'
     )
@@ -251,8 +265,10 @@ def test_pi3_recap_rank_uses_solid_gold_light():
     assert re.search(r'(?<!-)color:\s*var\(--gold-light\)', block), (
         f'`.home-shell .recap-rank` must paint solid gold-light; block={block!r}.'
     )
-    # And no leftover transparent / gradient declarations.
-    assert 'color: transparent' not in block, (
+    # And no leftover transparent / gradient declarations. `(?<!-)color:`
+    # so `background-color: transparent` / `border-color: transparent`
+    # can't false-pass (repo learning, mirrored from S4.2.2 tests).
+    assert re.search(r'(?<!-)color:\s*transparent\b', block) is None, (
         f'`color: transparent` leftover from gradient-text recipe; block={block!r}.'
     )
     assert 'var(--metal-gold)' not in block, (
@@ -272,7 +288,7 @@ def test_pi3_champion_name_dark_hero_uses_solid_gold_light():
     assert re.search(r'(?<!-)color:\s*var\(--gold-light\)', block), (
         f'Champion name on dark hero must paint solid gold-light; block={block!r}.'
     )
-    assert 'color: transparent' not in block
+    assert re.search(r'(?<!-)color:\s*transparent\b', block) is None
     assert 'var(--metal-gold)' not in block
 
 
@@ -293,5 +309,5 @@ def test_pi3_best_finish_champion_cream_uses_solid_gold_dark():
     assert re.search(r'(?<!-)color:\s*var\(--gold-dark\)', block), (
         f'Champion-row label on cream must paint solid gold-dark; block={block!r}.'
     )
-    assert 'color: transparent' not in block
+    assert re.search(r'(?<!-)color:\s*transparent\b', block) is None
     assert 'var(--metal-gold-flat)' not in block
