@@ -4735,6 +4735,18 @@ body.game-worldcup {
   .your-standing-tribune-caption { font-size: 1rem; }
 }
 
+/* P6 S6.1.3 Group J PI-1: gold-divider thread between Your Position tribune
+   and the standings cards. DESIGN.md §6 Do — major-section separator pattern.
+   Targets desktop card + mobile cards wrapper as adjacent siblings. The
+   `!important` is required to win against Bootstrap's `.border-0` utility
+   class (which the desktop card carries to strip the wc-card's resting
+   border); without it the gold rule paints only on mobile. Established
+   codebase pattern for fighting Bootstrap utility specificity. */
+.your-standing-tribune + .card.wc-card,
+.your-standing-tribune + .card.wc-card + .d-md-none {
+  border-top: 2px solid var(--gold) !important;
+}
+
 /* P1 S1.1 — Move column rank-delta indicators
    --------------------------------------------
    Replaces the prior points-delta "Trend" column. Points-delta survives
@@ -5143,6 +5155,25 @@ main { flex: 1; }
 .alert-danger   { background: var(--danger-bg);  color: var(--danger);  border-color: var(--danger); }
 .alert-info     { background: var(--info-bg);    color: var(--info);    border-color: var(--info); }
 .alert-warning  { background: var(--warning-bg); color: var(--warning-text); border-color: var(--warning); }
+
+/* P6 S6.1.3 Group E PI-B: success flash banners auto-fade after ~4s so they
+   don't compete with the page masthead at every navigation. Only opacity
+   animates (no layout reflow per the impeccable ban on animating layout
+   properties); the alert stays in the document but reads recessive. Scoped
+   to `.alert-dismissible` so only chrome flash messages decay — static page
+   alerts keep their visibility. Errors/warnings stay loud until dismissed. */
+.alert.alert-success.alert-dismissible {
+  animation: slideDown .25s ease both, ccc-flash-success-fade 4.4s ease-out forwards;
+}
+@keyframes ccc-flash-success-fade {
+  0%, 88% { opacity: 1; }
+  100%    { opacity: 0; pointer-events: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .alert.alert-success.alert-dismissible {
+    animation: slideDown .25s ease both;
+  }
+}
 
 /* ── 8. Cards ───────────────────────────────────────────── */
 .card {

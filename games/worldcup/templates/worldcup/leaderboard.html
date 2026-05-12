@@ -54,7 +54,7 @@
               <th scope="col" style="width:60px">#</th>
               <th scope="col">Player</th>
               <th scope="col" class="text-end">Points</th>
-              <th scope="col" class="text-end">Move</th>
+              <th scope="col" class="text-end" title="Change since yesterday's snapshot">Move</th>
               {% if deadline_passed %}
               <th scope="col" class="text-end">Tiebreaker</th>
               {% endif %}
@@ -93,7 +93,7 @@
                 {% endif %}
               </td>
               {% if deadline_passed %}
-              <td class="text-end text-muted">{{ e.usa_goals_guess if e.usa_goals_guess is not none else 'none' }}</td>
+              <td class="text-end text-muted">{{ e.usa_goals_guess if e.usa_goals_guess is not none else 'No guess' }}</td>
               {% endif %}
             </tr>
             {% endfor %}

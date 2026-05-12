@@ -179,10 +179,11 @@ The CCC gold family. The trophy-case accent. Reserved for ceremonial moments (ac
 
 - **Commish Gold** (`#C9A227`): the canonical brand gold. Active nav indicator, focus ring color, eyebrow text color, `--warning` semantic alias.
 - **Trophy Light** (`#F2D36B`): the lighter gold. Hover states for gold elements, mid-stop in the metal-gold gradient.
-- **Gold Dark** (`#8A6A1A`): the deeper gold. Anchor stop in the metal-gold gradient, link-hover color on auth pages.
+- **Gold Dark** (`#8A6A1A`): the deeper gold. Anchor stop in the vertical `--metal-gold` gradient, link-hover color on auth pages.
+- **Gold Dark Anchor** (`#A88420`): the diagonal `--metal-gold-flat` gradient's terminal stop. Lifted from `#8A6A1A` so chamber-purple text (`var(--purple-900)`) on the navbar `.btn-warning` clears WCAG AA 4.5:1 at the bottom-right pixel-corner where the 135° gradient terminates.
 - **Gold Hi** (`#FFF1B8`): the highlight tone. Top stop in the metal-gold gradient (the chrome-y shimmer).
 
-The two metal-gold gradients (`--metal-gold` for vertical, `--metal-gold-flat` for diagonal) are the literal trophy. They appear on primary CTAs (`btn-primary` on auth pages, navbar `btn-warning`) and nowhere else.
+The two metal-gold gradients (`--metal-gold` for vertical, `--metal-gold-flat` for diagonal) are the literal trophy. They appear on primary CTAs (`btn-primary` on auth pages, navbar `btn-warning`) and nowhere else. The diagonal variant carries a slightly lifted dark stop (`#A88420` vs the vertical's `#8A6A1A`) so chamber-purple text clears AA at the gradient's worst-corner pixel — the diagonal's terminal sits exactly at the button's bottom-right corner where text descenders can land.
 
 ### Tertiary: Per-game Palettes
 

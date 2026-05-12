@@ -73,10 +73,16 @@ def test_your_standing_tribune_renders_only_the_rank_numeral():
 
 
 def test_move_column_replaces_trend_column_header():
-    """Desktop column header is "Move" (rank-delta), not "Trend" (points-delta)."""
+    """Desktop column header is "Move" (rank-delta), not "Trend" (points-delta).
+
+    Match attributes loosely so the S6.1.3 PI-1 `title=` tooltip on the
+    header (analyst progressive disclosure) doesn't break this lock —
+    the contract here is "Move header exists, Trend header doesn't",
+    not the literal attribute set.
+    """
     src = TEMPLATE.read_text()
-    assert '<th scope="col" class="text-end">Move</th>' in src
-    assert '<th scope="col" class="text-end">Trend</th>' not in src
+    assert re.search(r'<th[^>]*>Move</th>', src) is not None
+    assert re.search(r'<th[^>]*>Trend</th>', src) is None
 
 
 def test_move_column_uses_rank_delta_classes():

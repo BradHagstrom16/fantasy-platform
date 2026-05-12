@@ -13,6 +13,7 @@ Trend semantics (per spec §8 + plan ambiguity-A2):
   trend = enrollment.total_score - latest_snapshot.total_score for that enrollment
   None if no snapshot exists for that enrollment
 """
+import re
 import pytest
 from datetime import date, datetime, timezone, timedelta
 
@@ -217,7 +218,10 @@ def test_points_delta_tooltip_hidden_when_fewer_than_seven_snapshots(client, app
         resp = client.get('/worldcup/leaderboard')
     assert resp.status_code == 200
     # Move column always renders.
-    assert b'<th scope="col" class="text-end">Move</th>' in resp.data
+    # Loose match on the Move <th> so the S6.1.3 PI-1 `title=` tooltip
+    # attribute on the header doesn't break this lock. The contract is
+    # "Move header renders", not the literal attribute set.
+    assert re.search(rb'<th[^>]*>Move</th>', resp.data) is not None
     # Points-delta tooltip is gated — no `title="Points: ..."` on any row.
     assert b'title="Points:' not in resp.data
 
@@ -267,7 +271,10 @@ def test_trend_column_gate_scoped_to_active_season(client, app):
         resp = client.get('/worldcup/leaderboard')
     assert resp.status_code == 200
     # Move column always renders.
-    assert b'<th scope="col" class="text-end">Move</th>' in resp.data
+    # Loose match on the Move <th> so the S6.1.3 PI-1 `title=` tooltip
+    # attribute on the header doesn't break this lock. The contract is
+    # "Move header renders", not the literal attribute set.
+    assert re.search(rb'<th[^>]*>Move</th>', resp.data) is not None
     # Points-delta tooltip stays closed — prior-season days don't open it.
     assert b'title="Points:' not in resp.data
 
@@ -295,7 +302,10 @@ def test_move_column_shows_pending_when_no_prior_snapshot_for_user(client, app):
         db.session.commit()
         resp = client.get('/worldcup/leaderboard')
     assert resp.status_code == 200
-    assert b'<th scope="col" class="text-end">Move</th>' in resp.data
+    # Loose match on the Move <th> so the S6.1.3 PI-1 `title=` tooltip
+    # attribute on the header doesn't break this lock. The contract is
+    # "Move header renders", not the literal attribute set.
+    assert re.search(rb'<th[^>]*>Move</th>', resp.data) is not None
     body = resp.data.decode()
     assert 'bob' in body
     # Bob has no snapshot history; his row's Move cell reads "Pending".
