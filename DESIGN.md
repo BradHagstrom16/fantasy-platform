@@ -234,13 +234,15 @@ The bone family. The pressroom paper. Default page background, light card text o
 - **Title** (Teko 600, `1.5rem`, line-height `1.1`): card-header level h3, table sub-heads.
 - **Body** (Newsreader 400, `1rem`, line-height `1.65`): paragraphs, list items, default text. Cap line length at 65 to 75 characters per line.
 - **Label** (Teko 500, `0.9rem`, letter-spacing `0.06em`, uppercase): form labels, tab labels, eyebrow-style metadata.
-- **Eyebrow** (Teko 500, `0.85rem`, letter-spacing `0.14em`, uppercase, gold): the small uppercase line above section headers (`.admin-eyebrow`, `.wc-eyebrow`). Signature CCC primitive; reuse it generously on game-specific section heads.
+- **Eyebrow** — two co-existing primitives, ratified across P2-P5:
+    - **`.admin-eyebrow`** (Teko 500, `0.85rem`, letter-spacing `0.14em`, uppercase, `var(--gold)`): the bone-canvas admin masthead label. One color, one size.
+    - **`.wc-eyebrow`** (Teko 500, `0.7rem`, letter-spacing `0.08em`, uppercase, `var(--bone-mute)`): the WC-surface contextual label. Tonal variants are part of the primitive: `.wc-eyebrow-red` (`var(--wc-red)`) for game-accent emphasis, `.wc-eyebrow-gold` (`var(--gold-light)`) for ceremonial moments. The bone-mute default is calibrated for the `.card.wc-card` navy substrate (scope rule lifts to bone @ .85 alpha there for AA); light-surface contexts override to `--text-secondary` or `--gold` via scoped rules (`.wc-stat-card.is-lead`, `.your-standing-tribune`, `.player-pick-card`).
 
 ### Named Rules
 
 **The Newsroom Rule.** Every heading is Teko. Every paragraph is Newsreader. The two fonts never mix mid-sentence. If a heading reads in serif, you've broken the masthead. If a paragraph reads in condensed sans, you've broken the editorial.
 
-**The Eyebrow Rule.** When a section needs context above its headline (category, game name, status), use the Eyebrow primitive: Teko 500, `0.85rem`, uppercase, letter-spacing `0.14em`, color `--gold`. Don't invent a new "kicker" or "subhead" pattern.
+**The Eyebrow Rule.** When a section needs context above its headline (category, game name, status), use one of the two Eyebrow primitives — `.admin-eyebrow` on admin pages (gold on bone), `.wc-eyebrow` on user-facing WC surfaces (bone-mute default plus `-red` and `-gold` tonal variants; auto-lifts on `.card.wc-card`). Don't invent a new "kicker" or "subhead" pattern.
 
 **The Uppercase Rule.** Uppercase is for Teko (labels, eyebrows, button text, table heads, navbar links). Newsreader is never uppercased. Mixing is a slop signal.
 
@@ -332,7 +334,11 @@ Both registers share `body.auth-page` (the Tribunal Black radial-gradient backdr
 
 ### Eyebrow and Label Primitives
 
-- **Eyebrow** (`.admin-eyebrow`, `.wc-eyebrow`, etc.): Teko 500, `0.85rem`, letter-spacing `0.14em`, uppercase, `var(--gold)`. The small contextual label that sits above section headlines. Reuse this for any new section that needs a category label (game name, week, deadline, status). Don't invent a new "kicker" pattern.
+- **Eyebrow** — see §3 for the full two-primitive shape. Quick reference:
+    - **`.admin-eyebrow`**: Teko 500, `0.85rem`, `0.14em`, uppercase, `var(--gold)`. Admin masthead label on bone canvas.
+    - **`.wc-eyebrow`**: Teko 500, `0.7rem`, `0.08em`, uppercase, `var(--bone-mute)` default; `.wc-eyebrow-red` and `.wc-eyebrow-gold` are the tonal variants; `.card.wc-card .wc-eyebrow` scope lifts the bone alpha to .85 for AA on the navy substrate.
+    
+    Reuse the matching primitive for any new section that needs a category label (game name, week, deadline, status). Don't invent a new "kicker" pattern.
 - **Form Label**: see Form Controls above.
 
 ### Live Indicators

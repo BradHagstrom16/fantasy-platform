@@ -2224,10 +2224,10 @@ body.game-golf {
   font-weight: 700;
   font-size: 3.2rem;
   line-height: 1;
-  background: var(--metal-gold);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  /* P6 S6.1.1 PI-3 — gradient-text retire (impeccable absolute ban +
+     DESIGN.md §6 Don't). Solid gold-light mirrors the .home-metal-text
+     precedent at :461. */
+  color: var(--gold-light);
 }
 .home-shell .recap-rank .hash {
   font-size: 1.6rem;
@@ -6704,10 +6704,10 @@ hr { border-color: var(--border); opacity: 1; }
   line-height: 1;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  background: var(--metal-gold);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  /* P6 S6.1.1 PI-3 — gradient-text retire (impeccable absolute ban +
+     DESIGN.md §6 Don't). Solid gold-light mirrors the S5.2.1 PI-1 fix on
+     .home-shell .champion-name at :461. */
+  color: var(--gold-light);
   margin: 0.5rem 0 0.6rem;
 }
 @media (min-width: 768px) {
@@ -6973,11 +6973,8 @@ body.game-worldcup .form-text {
 }
 
 /* Premium "Champion" rendering for the Best Finish cell on the row that
-   has is_champion=True. Mirrors the .champion-name banner above (Teko +
-   gold-gradient text fill) so the badge in the column ties back to the
-   hero typography. Uses --metal-gold-flat (no near-white top stop) for
-   stronger contrast against the cream row bg — --metal-gold's #FFF1B8
-   stop blends into the cream and reads washed-out. Markup hook:
+   has is_champion=True. Ties back to the .champion-name banner above
+   via shared Teko 700 + gold semantic. Markup hook:
    <span class="best-finish-champion"> wrapping the label only when
    r.is_champion (see _home_post.html). */
 .table-worldcup .row-champion-pick .best-finish-champion {
@@ -6988,10 +6985,12 @@ body.game-worldcup .form-text {
   line-height: 1;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  background: var(--metal-gold-flat);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  /* P6 S6.1.1 PI-3 — gradient-text retire (impeccable absolute ban +
+     DESIGN.md §6 Don't). Substrate is cream #f7e9c2, not dark — solid
+     `--gold-dark` (#8A6A1A) lands ~4.2:1 on cream and qualifies for
+     AA-large at Teko 700 / 22.4px (≥18.66px bold floor). The gold
+     semantic survives the retire; the gradient does not. */
+  color: var(--gold-dark);
 }
 
 /* .match-result-card.is-roster-match — Subtle "your team played" accent
@@ -7092,4 +7091,49 @@ body.game-worldcup .form-text {
   min-width: 44px;
   padding: 0.25rem 0;
 }
+
+/* ============================================================
+   P6 S6.1.1 — Cross-phase polish (Iter 1)
+   ============================================================ */
+
+/* PI-1 (Group A) — .wc-eyebrow contrast lift on .card.wc-card.
+   Default .wc-eyebrow color is `--bone-mute` (bone @ .55 alpha). On the
+   navy .card.wc-card substrate (`rgba(0,17,46,.8)` over bone ≈ #313D53),
+   that resolves to ~#9C9FA4 at 4.11:1 — sub-AA for the 11.2px Teko label.
+   Lift to bone @ .85 (~#D6D4D0 on #313D53, ~7.1:1) only inside dark cards.
+   `:not(.wc-eyebrow-red):not(.wc-eyebrow-gold)` preserves the tonal
+   variants (red game-accent, gold-light ceremonial) so they keep their
+   semantic signal where they sit on dark surfaces. Closes routed
+   S5.1.1 cross-phase (5 axe hits in _home_post), S4.2.2 cross-phase
+   (readonly tier-name eyebrow), and S2.3.1 cross-cluster (team_detail
+   primitive saturation — DESIGN.md §3 ratification below). */
+.card.wc-card .wc-eyebrow:not(.wc-eyebrow-red):not(.wc-eyebrow-gold) {
+  color: rgba(243, 239, 230, .85);
+}
+
+/* PI-2 (Group B) — site-wide `.text-muted` retire on bone canvas.
+   Bootstrap 5.3's `.text-muted { color: var(--bs-secondary-color) !important; }`
+   resolves `--bs-secondary-color` against the cascade — redefining it
+   at `:root` flips every bone-canvas `.text-muted` from the Bootstrap
+   neutral gray (`#6c757d`, ~3.5:1 on bone, sub-AA) to `--text-secondary`
+   (`#5A5470`, ~6.9:1, AA-pass) without specificity wars or `!important`.
+   Dark substrates are already handled by pre-existing higher-specificity
+   `!important` rules: `.card.wc-card .text-muted` at :6728 and
+   `.page-hero.wc-hero-grad .hero-subhead.text-muted` at :6670 (both
+   render bone @ .82 alpha and win the cascade either way).
+   Closes S3.2.1 cross-phase + S4.3.1 cross-phase. */
+:root {
+  --bs-secondary-color: var(--text-secondary);
+}
+
+/* PI-3 (Group C) — gradient-text retire on the three remaining sites.
+   Each `background: var(--metal-gold[-flat])` + `background-clip: text`
+   recipe violates the impeccable absolute ban + DESIGN.md §6 ("Don't
+   apply background-clip: text plus a gradient background"). Mirrors
+   S5.2.1 PI-1's `.home-shell .champion-name` retire to solid
+   `var(--gold-light)`; the three sites here are the cluster-3 remainder
+   (Your Finish rank numeral, team_detail/leaderboard champion-name,
+   leaderboard champion-row marker). Edits land inline at each rule
+   site (style.css:2227, :6707, :6991); this block exists only to host
+   the rationale. Closes S5.2.1 cross-phase. */
 
