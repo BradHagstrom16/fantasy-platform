@@ -94,7 +94,7 @@
             <td><span class="wc-numeral">{{ ns.rank }}</span></td>
             <td>
               <span class="me-1">{{ e.user.get_avatar() }}</span>
-              <a href="{{ url_for('worldcup.player_detail', enrollment_id=e.id) }}" class="text-decoration-none fw-medium">
+              <a href="{{ url_for('worldcup.player_detail', enrollment_id=e.id) }}" class="post-table-link text-decoration-none fw-medium">
                 {{ e.get_display_name() }}
               </a>
             </td>
@@ -134,7 +134,7 @@
               {{ r.tier_name }}
             </td>
             <td>
-              <a href="{{ url_for('worldcup.team_detail', team_id=r.pick.team_id) }}" class="text-decoration-none">
+              <a href="{{ url_for('worldcup.team_detail', team_id=r.pick.team_id) }}" class="post-table-link text-decoration-none">
                 {{ r.pick.team.flag_emoji }} {{ r.pick.team.display_name }}
               </a>
             </td>
