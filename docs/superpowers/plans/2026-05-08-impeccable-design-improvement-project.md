@@ -300,41 +300,26 @@ Every session ends with the same seven steps:
 6. Append any newly-found out-of-scope items to the Backlog (Section 0.4) with the session ID that surfaced them.
 7. If any session findings would be beneficial for future sessions, update this document accordingly so future sessions and phases go smoothly. Usage of the remember skill is also encouraged.
 
-### 1.5b Iteration convergence gate (per-surface sessions only)
+**On any plan vs. impeccable conflict during execution:** impeccable wins. Append findings to §0.4 with the discovering session ID; flip §9 rollup checkboxes with the commit hash; update memory if the lesson is durable.
 
-A per-surface session (S2.1, S2.2, S3.1, S4.x, etc.) **iterates** until the surface converges. Each iteration is its own session, suffixed `.1`, `.2`, `.3` (so S2.1 fans into S2.1.1, S2.1.2, ...). After every iteration's end-of-session critique re-run, check convergence. If any one of the four gates below fails, `/clear` and start the next iteration.
+### 1.5b Iteration convergence gate (per-surface sessions only — historical reference)
+
+Per-surface sessions during P2–P5 iterated until convergence under this gate. **S6.1 and S6.2 are not per-surface sessions** (S6.1 is a cluster session per §1.5c; S6.2 is the project's merge/tag close), so this gate does not apply to Phase 6 work. Kept here as reference for the scorecard write-up in S6.2.
 
 A surface is converged when **all four** are true:
 
 1. **Zero P0 issues** in the latest `$impeccable critique` re-run on this surface.
-2. **Zero P1 issues**, OR every remaining P1 carries a written deferral rationale that names its receiving session (a specific cluster polish session like S2.6, the cross-phase polish S6.1, a dedicated future iteration `Sx.y.N`, or `[deferred-data]` if it requires real production data to surface). The rationale lives in §0.4 Backlog with the routing tag.
-3. **Anti-pattern hard hits = 0** in the latest critique. (Hard hits = impeccable absolute-ban violations + DESIGN.md §6 Don't violations. Soft observations don't count.)
-4. **One of the following score gates** holds:
-   - (a) Heuristics ≥ 32/40 (the "consistently good" bar — most heuristics scored ≥ 3, which means "real-world acceptable; some heuristics scored ≥ 4 = excellent").
-   - (b) Heuristics ≥ baseline + 6 (the "you've moved this surface materially" gate, for surfaces that started low — e.g., a 22/40 baseline converges at 28/40 if asymptotic).
-   - (c) Two consecutive iterations land within 1 point of each other (the "asymptotic" gate — the surface has hit its ceiling for now; further iteration is sub-marginal). **First-iteration exclusion**: this gate compares iteration N's score to iteration N-1's score. The first iteration of any surface (`Sx.y.1`) cannot trigger asymptotic by definition — there's no prior iteration to compare to. A first iteration relies on (a) or (b) only.
+2. **Zero P1 issues**, OR every remaining P1 carries a written deferral rationale that names its receiving session (`Sx.y.N+1`, cluster polish, S6.1, `[deferred-data]`). The rationale lives in §0.4 Backlog with the routing tag.
+3. **Anti-pattern hard hits = 0** in the latest critique. (Hard hits = impeccable absolute-ban + DESIGN.md §6 Don't violations; soft observations don't count.)
+4. **One of:** (a) Heuristics ≥ 32/40, (b) Heuristics ≥ baseline + 6, or (c) two consecutive iterations land within 1 point (first iteration excluded from (c)).
 
-The four gates carry equal weight. **Anti-perfectionism note**: if all four pass and Claude's instinct is "we could keep going," stop anyway. The signal that a surface is done is the gate, not Claude's appetite for more findings.
+The four gates carry equal weight. If all four pass, stop — the signal is the gate, not Claude's appetite for more findings.
 
-**Iteration naming convention.** The first per-surface session is `S<phase>.<surface>.1` (e.g., S2.1.1, S2.2.1). Each subsequent iteration of the same surface is `.2`, `.3`, etc. The §9 rollup gets one row per iteration, each with its own commit hash + score delta. Earlier sessions completed under the original "one session per surface" model (S0.1, S0.2, S0.3, S1.1, the initial S2.1 commit `e69966f`) keep their original IDs and are treated as "iteration .1" of their respective surfaces — if they're re-opened later, the next iteration is `.2`.
+**Patterns surfaced during P2–P5 (binding for S6.1 + any future surface work):**
 
-**What an iteration session looks like.** Same per-session pattern as §4 (boot dev server → before-screenshots → critique → triage 3-5 priority fixes → execute → tests → after-screenshots → re-critique → commit → check convergence gate). The 3-5 priority-fix budget per iteration stays in force; the iterative model means **more iterations**, never bigger ones.
-
-**Budget bookkeeping (calibrated against S2.1.1 experience):**
-
-- **The 3-5 cap counts Priority Issues, not total edits.** A "Priority Issue" is anything the critique flagged as P0/P1/P2 with its own what/why/fix. Mechanical scope (an issue that requires editing 3 CSS rules + a template + a test) is one Priority Issue, not five edits.
-- **Atomic-edit rule.** When two semantically distinct backlog items resolve to the same atomic edit, count them as **one** Priority Issue. Calibrated against S2.1.2: PI-2 combined "dossier-stamp register-shift" (`◈ Classified · CCC ◈` reads as spy register) with "mobile dossier-stamp position collision" (the absolute-positioned stamp overlapped rank-meta on narrow viewports). Both close in a single rewrite of the `.dossier-stamp` rule plus a one-token text change. Counting them as two Priority Issues would have inflated the cap without producing distinct work; counting as one keeps the cap honest. Watch out for the inverse failure mode — combining items that *aren't* actually atomic ("we'll fix the rail layout AND the sparkline a11y in one PI") hides scope creep behind the rule.
-- **Polish freebies don't count against the cap.** A "freebie" is <2 minutes of work, single file (or one CSS rule), with at most one source-pattern lock. Examples from S2.1.1: removing `&ndash;` from one byline; renaming "competitors" → "in the Club"; bumping `.ra-stage` opacity .45→.55 to clear AA. Cap freebies at ~3 per iteration; batch them at end-of-iteration so they don't fragment the main work.
-- **Iteration 2+ inherits its own backlog.** Items tagged `[Sx.y.N-1 in-surface]` in §0.4 already passed Priority-Issue triage; they count toward the 3-5 cap of the picking-up iteration. If 6 backlog items exist and a fresh critique adds 2 more, the iteration picks the highest-value 3-5 and routes the rest forward to `Sx.y.N+1`. Inherited-backlog iterations typically spend 4 of the cap on backlog and 0-1 on fresh findings (calibrated against S2.1.2: 4 of 6 inherited items closed, 2 routed forward, 0 fresh items added).
-- **Soft total-edit ceiling.** ~8-10 distinct edits per iteration is the comfort line where session quality starts degrading. If a session blows past that, the next iteration is right around the corner — bank the work and `/clear`.
-
-**Layout patterns the iterative model has surfaced (extend as future iterations add to this list):**
-
-- **Bootstrap `order-*` is the canonical "mobile reading order vs desktop balance" tool.** When a desktop layout reshape would shuffle the mobile reading order out of intent, use Bootstrap order utilities (`order-2`, `order-3`, `order-lg-0`, etc.) on the row's children rather than introducing duplicate templates or breakpoint-specific includes. Pattern lock: see `_home_live.html` post-S2.1.2 — the four primary blocks (`home-live-left` / `home-live-right` / `home-live-results` / `home-live-narrative`) sit in a single `.row` with mobile order `0/3/2/4` and desktop order `0/0/0/0` so source order drives the desktop grid while the mobile stack reads dossier → results → leaderboard → commish.
-- **The hero-metric-template ban applies to *adjacency*, not just presence.** Four equal-weight numerals in a row (Tier · Multiplier · Base · Scored, each at `1.6rem`) reads as the SaaS cliché DESIGN.md §6 bans even when each tile carries a distinct, justified data point. Surfaced by S2.3.1: the team_detail masthead avoided gradient-text and the literal big-number-small-label trap, but four side-by-side `1.6rem` numerals + small Teko labels still triggered the persona "AI made that" reflex. The escape pattern: collapse to one dominant numeral (Scored at `2.6rem`), one supporting chip (multiplier ×N), one prose derivation line (Base × Multiplier as Newsreader microcopy). Then the hero reads as editorial masthead, not stat strip. Apply this on every CCC surface that's tempted toward 3+ equal-weight stat tiles — the home dossier, player_detail hero, stats overview KPIs, post-state champion banner.
-- **Bootstrap `.text-muted` on dark `.card.wc-card` substrates always fails AA.** `#6c757d` against `rgba(0, 17, 46, .8)` is sub-AA. Surface-scoped class migration (`.fixture-stage-date / .fixture-vs / .fixture-tbd / .ownership-ribbon-blurb`, each tinted toward `--bone-mute`) is now the canonical pattern, established in S2.3.1's PI-4 freebie. Future iterations on dark-card surfaces (`.card.wc-card .* .text-muted`) should sweep this proactively instead of waiting for the critique to surface it.
-
-**Backlog routing within an iteration.** When a critique surfaces an in-scope P0/P1 outside the iteration's 3-5 budget, route it to the next iteration of the same surface. When it surfaces a cross-cluster pattern (visible only when comparing two or more surfaces in the cluster), route to the cluster polish session (S2.6 / S3.4 / S4.5 / S5.3). When it surfaces a cross-phase pattern (visible only when comparing across phases), route to S6.1. The §0.4 Backlog rules in this plan have the precise routing matrix.
+- **Bootstrap `order-*` is the canonical "mobile reading order vs desktop balance" tool.** Use `order-N` / `order-lg-0` on row children rather than duplicate templates or breakpoint-specific includes. Pattern lock: `_home_live.html` post-S2.1.2 — four primary blocks sit in one `.row` with mobile order `0/3/2/4` and desktop `0/0/0/0`.
+- **The hero-metric-template ban applies to *adjacency*, not just presence.** 3+ equal-weight numerals in a row reads as SaaS cliché even with distinct data. Escape: one dominant numeral (2.6rem) + supporting chip + prose derivation. Apply on every CCC surface tempted toward 3+ equal-weight stat tiles.
+- **Bootstrap `.text-muted` on dark `.card.wc-card` substrates always fails AA.** `#6c757d` against `rgba(0,17,46,.8)` is sub-AA. Surface-scoped class migration (`.fixture-stage-date`, `.fixture-vs`, `.ownership-ribbon-blurb`, etc., each tinted toward `--bone-mute`) is the canonical pattern. Site-wide retire is queued at S6.1 Group B.
 
 ### 1.5c Cluster polish session pattern (S2.6 / S3.4 / S4.5 / S5.3 / S6.1)
 
@@ -371,19 +356,6 @@ Cluster polish sessions are **not** per-surface iterations and do **not** trigge
 - **Don't introduce new design tokens** without a spec session. CCC tokens live in `tokens.css` and additions need explicit DESIGN.md updates.
 - **Don't refactor business logic** as a side effect of design work. If a route handler needs to change shape to support a UI fix, scope it minimally and call it out in the commit message.
 
-### 1.7 Failure mode: critique surfaces something we hadn't planned for
-
-If a per-page critique surfaces a P0 or P1 issue that doesn't fit the iteration's 3-5-fix budget:
-
-1. **Don't push past it.** The 3-5-per-iteration cap is load-bearing — exceeding it produces lower-quality fixes and a session-end critique that doesn't reliably show whether each fix landed.
-2. **Route the finding via §0.4 Backlog** using the routing-by-type rules at the top of §0.4. The most common routings:
-   - **In-surface** (the finding is fixable by editing files inside this surface's scope) → next iteration of the same surface (`Sx.y.N+1`). Default for findings the iteration didn't reach.
-   - **Cross-cluster** (the finding is only visible when comparing two or more surfaces in the same cluster, e.g., visual-rhythm consistency between `_home_live` and `schedule.html`) → cluster polish session (`S2.6` / `S3.4` / `S4.5` / `S5.3`).
-   - **Cross-phase** (pattern spans multiple clusters, e.g., the 7-component gradient-card silhouette repeating across pre/live/post home + auth + game tiles) → `S6.1` cross-surface polish.
-   - **Production-data-dependent** (the finding requires real user/match data to surface meaningfully) → tag `[deferred-data]` in §0.4; revisit only when the trigger lands.
-3. **Convergence not assumed.** A session that surfaces a P0/P1 it can't fit is **not converged** — §1.5b gate #1 or #2 will block. The next iteration of the same surface picks the deferred item up. This is the default loop, not a special case.
-4. **Same-iteration handling allowed only if cheap.** If a self-contained fix takes <10 minutes and doesn't bump the iteration past 6 priority fixes, fold it in. Don't stretch the iteration to chase a P2 that turned into a P1 mid-session — defer to the next iteration.
-
 ### 1.8 CR-feedback-approval sessions
 
 A phase-work session does not end with the merge — it ends with PR open. Once a phase PR is open, the cycle shifts to a distinct session type dedicated to CodeRabbit feedback approval. Do NOT bundle CR iteration into the next phase's session; treat it as its own discipline.
@@ -405,42 +377,6 @@ The cycle:
 6. Then `/clear` and start the next phase-work session.
 
 Why this is its own session type: phase-work and CR-iteration require different mental models. Mixing them dilutes both — phase work loses focus, and CR iteration loses the receiving-code-review discipline (verify, evaluate, push back when wrong). Per `feedback_cr_approval_sessions.md` in user memory.
-4. Add a note in the session's "Handoff" block.
-
-### 1.8 Impeccable is the source of truth — the plan is scaffolding
-
-This plan was written **before** most of the surfaces in scope had been critiqued. Its specifics for P2–P5 are educated guesses, not ground truth. The leaderboard's per-page priority issues were ground truth for P1; the cross-cutting findings are ground truth for P0. Everything beyond that is a starting point for the agent's actual critique work.
-
-When the plan and impeccable findings disagree, **impeccable wins**. The agent's job in any per-page session is not to execute pre-specified edits — it's to:
-
-1. Run the impeccable workflow (`$impeccable critique <target>` or the relevant sub-command).
-2. Trust the resulting report.
-3. Execute against the report's Priority Issues and Recommended Actions.
-4. Update this plan if the truth surfaced is durable enough to benefit future sessions.
-
-**Deviations from the plan are expected and welcome.** Specific examples of legitimate deviation:
-
-- The plan predicts a per-page session will surface ~3 priority issues; the actual critique surfaces 7. → **Adapt scope.** Take the top 3-5 in this session per §1.7; backlog the rest. Do not push all 7 in one session.
-- The plan suggests a specific impeccable command for a finding (e.g., `$impeccable clarify`); the critique recommends a different command (`$impeccable shape`). → **Trust the critique.** It saw the surface; the plan didn't.
-- The plan's Priority Issues for a future session don't match what the actual critique surfaces. → **Trust the critique.** Update §0.4 (Backlog) and the affected session's notes.
-- A regression test pattern in the plan turns out to be brittle for this codebase. → **Replace it.** Don't twist the codebase to fit the test pattern.
-- A pattern locked in CLAUDE.md or an existing memory file conflicts with a critique finding. → **Surface the conflict to the user via `AskUserQuestion`.** Don't unilaterally override CLAUDE.md or invent a new rule.
-
-**Plan-update mechanics during execution:**
-
-- Append new findings to §0.4 Backlog with the discovering session ID.
-- If a session discovers a fact that future sessions need (e.g., "the rank-delta helper actually lives at `services/snapshots.py`, not `services/ranking.py`"), edit the affected future-session block in the plan to reference the correct file.
-- If a phase's session inventory is wrong (a session needed for a critical surface was missed; a planned session is no longer needed), insert/remove sessions and renumber. Update §9 checklist accordingly.
-- Use the `remember` skill to capture durable lessons about the impeccable workflow itself or about this project's specific gotchas. Memory benefits future sessions across the project's life.
-
-**What does NOT count as a deviation worth touching the plan over:**
-
-- Style choices in copy rewrites (those happen per session and don't need plan amendments).
-- One-off CSS edits that don't generalize (commit them; move on).
-- Per-session test additions (each session writes its own; the plan describes the pattern, not the specific tests).
-
-The plan's role is **scaffolding**: it gives every session a clean place to start, locks the strategic priorities, and tracks completion. Impeccable's role is **the design discipline**. Don't confuse the two.
-
 ---
 
 ## 2. Phase 0 — Cross-cutting harden (3 sessions, COMPLETE)
