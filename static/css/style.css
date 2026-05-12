@@ -756,8 +756,14 @@ body.game-golf {
   color: inherit;
   border-radius: 14px;
   overflow: hidden;
+  /* PR #15 CR R9 — `var(--transition)` is `.2s cubic-bezier(.4,0,.2,1)`
+     (duration + easing). The previous `box-shadow 0.2s var(--transition)`
+     form expanded to `box-shadow 0.2s 0.2s cubic-bezier(...)` — the
+     second time becomes a 200ms DELAY in CSS transition shorthand, so
+     the shadow lagged behind the transform on hover. Drop the hardcoded
+     duration so box-shadow inherits the token's duration cleanly. */
   transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1),
-              box-shadow 0.2s var(--transition);
+              box-shadow var(--transition);
 }
 .home-shell .out-featured-inner {
   position: relative;
