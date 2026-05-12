@@ -235,7 +235,9 @@ def test_pi2_no_fixed_600px_max_height_ceiling_anywhere():
         CSS,
     )
     assert accordion_blocks, '.pick-accordion rules must still exist in style.css'
-    assert all('max-height: 600px' not in block for block in accordion_blocks), (
+    # PR #15 CR R8-B — whitespace-tolerant regex so `max-height:600px` (no
+    # space) or `max-height :  600px` variants can't false-pass.
+    assert all(not re.search(r'max-height\s*:\s*600px\b', block) for block in accordion_blocks), (
         'style.css still carries a 600px max-height on a `.pick-accordion` rule '
         '(the deep-run-clipping ceiling)'
     )
@@ -363,10 +365,12 @@ def test_f1_tier_counter_carries_aria_live_polite_and_atomic():
     lookahead assertions so HTML attribute order can shift without
     breaking the lock; presence of each attribute on the same span
     is what we care about."""
+    # PR #15 CR R8-C — scope `wc-numeral` to the `class` attribute so an
+    # unrelated attribute carrying the token can't false-satisfy the lookahead.
     assert re.search(
         r'<span'
         r'(?=[^>]*class="[^"]*\btier-counter\b[^"]*")'
-        r'(?=[^>]*\bwc-numeral\b)'
+        r'(?=[^>]*class="[^"]*\bwc-numeral\b[^"]*")'
         r'(?=[^>]*id="counter-\{\{\s*tier_num\s*\}\}")'
         r'(?=[^>]*aria-live="polite")'
         r'(?=[^>]*aria-atomic="true")[^>]*>',
@@ -377,10 +381,11 @@ def test_f1_tier_counter_carries_aria_live_polite_and_atomic():
 def test_f1_mobile_pick_count_carries_aria_live_polite_and_atomic():
     """`#mobilePickCount` in the sticky bar also announces updates.
     PR #15 CR R5-G — lookahead assertions decouple from attribute order."""
+    # PR #15 CR R8-C — same class-attribute scoping as the tier counter above.
     assert re.search(
         r'<span'
         r'(?=[^>]*class="[^"]*\bcount-num\b[^"]*")'
-        r'(?=[^>]*\bwc-numeral\b)'
+        r'(?=[^>]*class="[^"]*\bwc-numeral\b[^"]*")'
         r'(?=[^>]*id="mobilePickCount")'
         r'(?=[^>]*aria-live="polite")'
         r'(?=[^>]*aria-atomic="true")[^>]*>',

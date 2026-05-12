@@ -6357,6 +6357,15 @@ hr { border-color: var(--border); opacity: 1; }
   color: var(--text-secondary);
   line-height: 1.5;
 }
+/* PR #15 CR R8-A — defensive lock against composition: `.card.wc-card
+   .text-muted !important` (0,0,3,0) at :6649 wins on specificity over a
+   plain `.tier-mobile-card .text-muted !important` (0,0,2,0), so the
+   defensive bone-lift would slip through if a future surface places a
+   `.text-muted` element inside `.tier-mobile-card` inside `.card.wc-card`.
+   The compound selector below is (0,0,4,0) — wins on specificity
+   regardless of source order. Currently latent (no template renders
+   that exact descent), but the lock is meant to be defensive. */
+.card.wc-card .tier-mobile-card .text-muted,
 .tier-mobile-card .text-muted {
   color: var(--text-secondary) !important;
 }
