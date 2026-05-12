@@ -459,36 +459,91 @@ Iterated per §1.5b until convergence. PR P5 #16 merged (1 CR round). Detail in 
 
 ---
 
-## 8. Phase 6 — Final polish + scorecard (iterative)
+## 8. Phase 6 — Final polish + scorecard
 
-### S6.1 — Cross-phase polish (cross-surface patterns spanning multiple clusters)
+P6 closes the project: cross-phase polish (S6.1) and scorecard + merge + tag (S6.2). S6.1 is a **cluster session** per §1.5c (Step 0 sweep → §1.5c triage discipline → Layer A locks + Layer B verification on touched + adjacent surfaces; Layer C skipped by default; §1.5b convergence gate does not apply). Expect S6.1 to fan into 2-4 iterations (S6.1.1, S6.1.2, ...) — each iteration caps at 3-5 triage outcomes per §1.5c.
 
-**Goal:** Address patterns visible only when comparing across clusters — chrome treatments shared between live/pre/post home variants and auth, cross-game palette consistency, recurring component silhouettes (e.g., the 7-component gradient-card repeat surfaced by S2.1.1). NOT a final mop-up of single-surface issues; those are caught by per-surface convergence in P2-P5.
+### S6.1 — Cross-phase polish
 
-- [ ] **Step 0: Sweep §0.4 for `[cross-phase]` items.** Every backlog item tagged for S6.1 goes here as the agenda. Plus any `[ship-as-is]` items needing a final review.
-- [ ] **Step 1: Inventory the cross-phase patterns surfaced during P2-P5.** Group findings by pattern, not by surface — the goal is to spot what repeats across clusters.
-- [ ] **Step 2: Run `$impeccable polish` per cluster** as a final sweep. Don't run per-template; run per-state-cluster (live, pre, post, global). Cap 3-5 findings per polish run.
-- [ ] **Step 3: Resolve cross-phase findings.** Each fix should land on every surface that exhibits the pattern, not just one.
-- [ ] **Step 4: Re-run `$impeccable critique` on the four Tier 1 exemplars** (leaderboard, home_shell live, picks, base.html). Record final scores. Confirm no regressions on previously-converged surfaces.
-- [ ] **Step 5: Iterate per §1.5b** if any Tier 1 exemplar regressed or remains below convergence. S6.1 itself can fan into S6.1.1 / S6.1.2 / etc.
-- [ ] **Step 6: Run full pytest.** Green.
-- [ ] **Step 7: Commit polish.**
+**19 items routed in from §0.4, organized into 10 primitive groups.** Each group is internally close to atomic — most of S6.1's work is bundling routed items by primitive so one CSS rule + one DESIGN.md amendment + one Layer A lock file closes 2-3 items at once. Item count ≠ PI count: a group is one PI per the §1.5b/§1.5c atomic-edit rule.
+
+**Group A — Eyebrow primitive + saturation (3 items, 1 PI).** Closes all `.wc-eyebrow` saturation findings in one alpha-lift + DESIGN.md §3 primitive ratification pass.
+
+- **[S2.3.1 cross-cluster] → S6.1** Eyebrow primitive saturation. `.wc-eyebrow` renders 9-14× per page on team_detail (hero pre-headline, hero stat labels, ribbon labels, fixture stage rows, path stage tiles, picker section). DESIGN.md §3 defines the primitive as "the small uppercase line above section headlines", singular. The new `.wc-meta-label` primitive (introduced in S2.3.1) is a candidate for in-row labels but needs cluster-level review against home/leaderboard/stats/player_detail before promoting. Re-routed by S2.6: ratification needs cross-phase comparison.
+- **[S4.2.2 cross-phase] → S6.1** Dark readonly tier-name eyebrow at ~0.55 alpha on navy (`rgba(0,17,46,.8)`) at 11.2px Teko letter-spaced — borderline AA. Bundle: lift the dark-card `.wc-eyebrow` alpha to .72 (the `picks-rules-link` precedent from S4.2.1 PI-3) or .85 across every `.card.wc-card .wc-eyebrow` instance in one pass.
+- **[S5.1.1 cross-phase] → S6.1** `.wc-eyebrow` saturation on `.card.wc-card` substrates renders `#9c9fa4` on `#313d53` at 4.11:1 (axe surfaces 5 hits in _home_post: champion banner, your-finish, podium header, roster header, around-the-pool).
+
+**Group B — `.text-muted` site-wide retire (2 items, 1 PI).** One global override or migration off `.text-muted` to CCC scope classes.
+
+- **[S3.2.1 cross-phase] [S6.1 routed]** Bootstrap `.text-muted` paints via `--bs-secondary-color !important`, so any project-side override loses the cascade unless it also carries `!important`. S3.2.1 PI-2 patched this inside `body.auth-page`; S2.6 PI-3 closed three live-cluster instances; pattern recurs site-wide on leaderboard, schedule, team_detail, stats, player_detail. A single `!important`-bearing override (or complete migration off `.text-muted` to CCC scope classes) closes the whole bug class.
+- **[S4.3.1 cross-phase] → S6.1** Residual Bootstrap `<small class="text-muted">` on `rules.html:65` (desktop tier-team-list cell, hidden on mobile via `d-md-block`). One additional instance to fold into the cross-phase retire above.
+
+**Group C — Gradient-text retire (1 item, 1 PI — 3 sites).**
+
+- **[S5.2.1 cross-phase] → S6.1** Three remaining gradient-text rules form a system-wide pattern after S5.2.1 PI-1 retired the champion-banner instance: `style.css:2208` (`.home-shell .recap-rank` — S5.1 "Your Finish" rank numeral); `style.css:6644` (`.card.wc-card.wc-hero-grad .champion-name` — team_detail / leaderboard hero); `style.css:6928` (`.table-worldcup .row-champion-pick .best-finish-champion` — leaderboard champion-row marker). All use `var(--metal-gold)` `background-clip: text`, violating the impeccable absolute ban + DESIGN.md §6. Fix shape: solid `var(--gold-light)` mirror of `.home-metal-text` precedent at `style.css:461`. One atomic retire pass + one Layer A test file locking all three rules.
+
+**Group D — Tribune-voice H1 + DESIGN.md §3 primitive (1 item, 1 PI — 8 surfaces).**
+
+- **[S4.4.1 cross-phase] → S6.1** Page H1 "Group Standings" stays as functional chrome rather than masthead voice; the S4.4.1 eyebrow + lead rewrite carry the Tribune register but the H1 itself reads as SaaS-utility. Same pattern affects 8+ surfaces (leaderboard "Leaderboard", schedule "Tournament Schedule", stats "Stats Hub", picks "Pick Your Roster", rules "Rules", join "Join the Pool", profile "Profile"). A system-wide Tribune-register pass that ratifies a primitive shape (Teko display + Tribune voiced title + functional fallback id) in DESIGN.md §3 once every primary surface has been touched.
+
+**Group E — Voice repetition / SaaS-cliché copy (2 items, 1-2 PIs).**
+
+- **[S4.2.1 cross-phase] → S6.1** Voice repetition stack on read-only picks: "Sealed · still amendable" eyebrow + "Sealed. Still amendable." H1 + "You can amend your picks until {{ deadline_ct }}." microcopy + "Amend the Oath" CTA — same fact stated 4× above the fold. PRODUCT.md "Sharp / Competitive" register asks for one decisive line. Pattern recurs across deadline-bearing WC surfaces (`_home_pre` countdown decree, `_home_live` deadline awareness, `team_detail` fixture statuses).
+- **[S4.1.1 cross-phase] → S6.1** Flash banner ("Logged in successfully!" etc.) competing with home-shell masthead. Flash lives in `base.html` chrome and persists across every authenticated home + game page; reads as the highest-contrast object on a screen whose hero is supposed to be the masthead. Auto-dismiss success flashes after ~4s with CSS transition, OR restyle inside `.home-shell` to read as a thin gold-rule + small italic Newsreader inline confirmation that doesn't compete with the masthead.
+
+**Group F — Markup-as-icon a11y + `<time datetime>` semantics (2 items, 1 PI).**
+
+- **[S2.4.1 cross-phase] → S6.1** Tournament-progress phase labels in `stats.html:302` use markup-as-icon (`✓` for done, `←` for current) without `aria-label`. Screen readers speak "check" / "left arrow", not "completed" / "current". Same pattern likely on home progress widgets (`_home_live` / pre-state countdown) and any future post-state recap progress bar.
+- **[S2.2.1 cross-phase] → S6.1** `.schedule-day-date` lacks `<time datetime="...">` semantics. Cross-page pattern: any page that prints a date should expose machine-readable form for screen readers, calendar extensions, and crawlers — `home_shell` time stamps, `team_detail` recent-result dates, `leaderboard` snapshot dates.
+
+**Group G — DESIGN.md primitive docs (2 items, 1 PI — doc-only).** Both re-routed by S4.5 as "decided no-op + DESIGN.md route" — code is correct; doc gap.
+
+- **[S4.2.1 cross-cluster] → S6.1 (re-routed by S4.5)** `.tier-badge` vs `.wc-multiplier-chip` vocabulary canonical primitive. Session-time grep refuted the original "wider than picks alone — team_detail / player_detail / stats" premise: `tier-badge` is absent from those three surfaces (they use only `wc-tier-dot`). Actual scope: `rules.html` (×5, displaying literal "T1/T2/..." numeric text companion to `wc-tier-dot`) + `_home_pre.html:42` (ballot `roster-tier-label`). Three primitives play distinct roles: `wc-tier-dot` = visual mark, `tier-badge` = numeric text companion, `wc-multiplier-chip` = multiplier indicator. DESIGN.md §6 doc PI.
+- **[S4.3.1 cross-cluster] → S6.1 (re-routed by S4.5 as decided no-op + DESIGN.md route)** Mobile tier-meta text below 16px body floor (`.tier-mobile-card-picks` + `.tier-teams-list` 13.6px on rules.html, `.player-pick-card .pick-team small` 12px + `.pick-points small` 11.2px on picks.html, all caption/metadata semantics under a dominant Teko read-target on the same row). Decided no-op at S4.5: caption-tier <16px is a deliberate, repeated cross-cluster pattern. DESIGN.md §3 caption-tier dispensation note: "≥16px applies to body text and primary read-targets; explicit caption/metadata classes may step down to ≥0.75rem (12px) when the primary read-target on the same row carries the dominant hierarchy".
+
+**Group H — Component silhouettes / cross-state chrome (2 items, 1-2 PIs).** Both were gated on P4/P5 surfaces having converged — now true.
+
+- **[S2.1.1 cross-cluster] → S6.1 (re-routed by S2.6)** Repeating gradient-card silhouette across 7 home components (dossier, view-CTA, commish-note-body, match-card, ballot-card, decree, join). S2.1.1 differentiated *match-cards on the live home* only; the broader silhouette pattern needs cross-state comparison. Re-routed by S2.6: live-cluster surfaces alone don't expose the pre/post home variants (`_home_pre` / `_home_out` / `_home_post`) — diversification can only be evaluated against all four state partials side-by-side. Now possible.
+- **[S2.1.1 cross-cluster] → S6.1 (re-routed by S2.6)** Leaderboard rolls (`_home_live.html:46`) are non-interactive `<div>`s — no tap-through to competitor detail. Decision affects `/worldcup/leaderboard` (already shipped in S1.1) too; the `<a>`-vs-`<div>` choice should apply consistently. Re-routed by S2.6 to pair with the player_detail rivalry-comparison-strip work routed forward in S2.5.2 (note: S2.5 converged at .1 so the rivalry strip never landed — if S6.1 wraps the rolls as anchors, the player_detail `/worldcup/leaderboard/<id>` becomes the canonical landing surface).
+
+**Group I — Trophy CTA worst-stop AA / token retune (1 item, 1 PI — DESIGN.md spec change).**
+
+- **[S0.3] → S6.1** Navbar trophy CTA: chamber-purple text on `--metal-gold-flat` lands at 3.6:1 against the gradient's darkest stop (`--gold-dark` = `#8A6A1A`) at the bottom-right corner of the button. AA-passing across most of the surface (7.5:1 mid-stop, 12.4:1 lightest), but the worst-stop pixel-corner reads 3.6:1 — below the 4.5:1 normal-text floor. Fix requires retuning `--metal-gold-flat`'s dark stop in `tokens.css` (DESIGN.md token spec change — out of scope for S0.3 at the time).
+
+**Group J — Leaderboard pre-existing polish (3 items, 1-2 PIs).** Three small leaderboard items deferred since S1.1.
+
+- **[S1.1] → S6.1** `leaderboard.html` desktop table renders the Tiebreaker cell as the literal lowercase string `'none'` (`{{ e.usa_goals_guess if e.usa_goals_guess is not none else 'none' }}`) — breaks the editorial register. Use a voiced fallback like "No guess" or render an actual blank cell.
+- **[S1.1] → S6.1** Move column header (`<th scope="col" class="text-end">Move</th>`) gives no since-when context. Add a `title=` tooltip (e.g., "Change since yesterday's snapshot") on the header for the analyst register.
+- **[S1.1] → S6.1** The Your Position tribune block sits on the bone canvas above the standings table with no visual thread between them — the gap reads as forgotten space rather than editorial breathing room. Candidates: a `border-top: 2px solid var(--gold)` rule above the table, or a section eyebrow ("THE LEDGER") above it. Cross-surface polish session compares similar gap moments across the cluster (home dossier, schedule, team_detail) and picks a consistent treatment.
+
+### S6.1 execution shape
+
+1. **Skill load + context warm**: `Skill { skill: "impeccable" }` (loads PRODUCT.md + DESIGN.md). Read this plan, §0.4 + §8 docket in full, DESIGN.md §3 (Eyebrow + H1 primitives) + §5 (chrome / auth composition) + §6 (Don't list).
+2. **Step 0 (cluster sweep, per §1.5c)**: confirm each of the 19 items still applies — grep the surfaces named in each item; some may have been incidentally closed by a P5 freebie. Annotate §0.4 with any "no longer applies — closed by S5.X.Y" notes before fixing.
+3. **Iteration triage per §1.5c**: pick 3-5 groups per iteration (each group ≈ 1 PI per the atomic-edit rule). Suggested bundles (re-evaluate at session-time):
+   - **Iter 1 candidates:** Group A (eyebrow alpha + DESIGN.md §3) + Group C (gradient-text retire) + Group B (`.text-muted` retire) — all CSS + DESIGN.md doc + Layer A locks; high-leverage, low blast radius.
+   - **Iter 2 candidates:** Group D (Tribune H1 across 8 surfaces) + Group F (markup-as-icon + `<time datetime>`) + Group G (DESIGN.md §3 / §6 doc-only).
+   - **Iter 3+ as needed:** Groups E + H + I + J.
+4. **Per-iteration verification**: Layer A source-pattern locks under `tests/test_design_p6_s6_1_<iter>.py`. Layer B Playwright/Chrome MCP probes on touched + adjacent surfaces (per §1.5c). Layer C skipped by default unless cluster work re-flowed every surface.
+5. **Plan amendments**: as each routed item closes, annotate §0.4 with `CLOSED in S6.1.N`. Update §9 rollup with commit + headline.
+6. **PR**: open `Impeccable P6 — Final polish` at the end of the last iteration. CR-feedback-approval session(s) per §1.8 between push and merge.
 
 ### Session S6.2 — Scorecard, handoff doc, merge
 
-**Goal:** Document the project's outcomes. Merge `design/wc-polish` → `main`.
+**Goal:** Document outcomes. Merge `design/wc-polish` → `main`. Tag release.
 
 - [ ] **Step 1: Write a project scorecard.** Save under `docs/superpowers/specs/2026-XX-XX-impeccable-design-improvement-scorecard.md`. Include:
   - Baseline scores per Tier 1 exemplar (Tier 1: 23/40, 11/20).
   - Final scores per Tier 1 exemplar.
   - Anti-patterns count: before/after.
   - Cumulative findings closed.
-  - Backlog items deferred (with rationale).
+  - Backlog items deferred with rationale (the `[ship-as-is]` items in §0.4).
   - Lessons learned for future impeccable work.
-- [ ] **Step 2: Update CLAUDE.md if any patterns warrant locking** (e.g., the new Tribune sidebar shape if it becomes a reusable component, the rank-delta helper, the regression-test patterns).
-- [ ] **Step 3: Open final PR** `Impeccable P6 — Final polish + project close`.
+- [ ] **Step 2: Update CLAUDE.md if any patterns warrant locking** (e.g., reusable component shapes that emerged from S6.1's primitive ratifications, new tokens, regression-test patterns).
+- [ ] **Step 3: Open final PR** `Impeccable P6 — Final polish + project close` (already open from S6.1; this step confirms merge-ready status: pytest green + CR approved per §1.8).
 - [ ] **Step 4: Merge `design/wc-polish` → `main`** after PR review.
-- [ ] **Step 5: Tag the release** (e.g., `impeccable-v1`).
+- [ ] **Step 5: Tag the release** `impeccable-v1`.
+- [ ] **Step 6: Production deploy + run Brad's production-launch test script** on `main` post-merge (per `docs/production-launch-test-script.md`).
 
 ---
 
