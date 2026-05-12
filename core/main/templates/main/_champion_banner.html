@@ -2,7 +2,13 @@
 <div class="champion-banner">
   <div class="champion-glow-bg"></div>
   <div class="champion-content">
-    <div class="champion-eyebrow">◈ 2026 FIFA World Cup Champions ◈</div>
+    {# S5.2.1 PI-3: eyebrow retired the "2026 FIFA World Cup Champions" line —
+       it restated the H1 above ("The 2026 World Cup") + the gold name below.
+       "Final Decree" carries the Council voice (mirroring "By Decree of the
+       Commish No 001" on the pre-state decree stamp) without restating the
+       fact the gold name already states. PRODUCT.md Copy Discipline: every
+       word earns its place; no restated headings. #}
+    <div class="champion-eyebrow">◈ Final Decree ◈</div>
 
     {% if champion_team %}
     <div class="champion-flag">{{ champion_team.flag_emoji }}</div>

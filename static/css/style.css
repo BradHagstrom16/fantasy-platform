@@ -2039,6 +2039,11 @@ body.game-golf {
 @media (min-width: 768px) {
   .home-shell .champion-flag { font-size: 7rem; }
 }
+/* S5.2.1 PI-1: gradient-text treatment retired (impeccable absolute ban +
+   DESIGN.md §6 Don't list). Solid gold-light matches the `.home-metal-text`
+   precedent at :461 — flat gold carries the masthead register without
+   diluting the metal-gold trophy gradient, which stays reserved for primary
+   CTAs per the Trophy Rule. */
 .home-shell .champion-name {
   font-family: var(--font-teko);
   font-weight: 700;
@@ -2046,10 +2051,7 @@ body.game-golf {
   line-height: 1;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  background: var(--metal-gold);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  color: var(--gold-light);
   margin: 0.5rem 0 0.6rem;
 }
 @media (min-width: 768px) {
