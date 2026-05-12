@@ -6949,3 +6949,65 @@ body.game-worldcup .form-text {
   background: linear-gradient(90deg, rgba(242, 211, 107, .10) 0%, var(--bg-card) 35%);
 }
 
+/* --- P5 S5.1.1 — Post-state Tribune finale moments (PI-1 + PI-2) --- */
+
+/* PI-2: Tribune retrospection line on the champion banner. Closes the
+   wire-service register the prior "Defeated X N–N" string carried.
+   Newsreader italic to match the DESIGN.md §3 editorial register
+   ("the Tribune is a printed object"). Subordinated to the
+   gold-gradient champion name above by font-size + .82 alpha tint,
+   so the banner reads: country → defeat summary → retrospection,
+   in decreasing visual weight. Gated to the success branch
+   (champion_team present) in markup; this rule has no fallback
+   for the admin-error state, by design. */
+.card.wc-card.wc-hero-grad .champion-retrospect {
+  font-family: var(--font-news);
+  font-style: italic;
+  font-size: 1.05rem;
+  letter-spacing: 0.005em;
+  color: rgba(245, 241, 232, 0.82);
+  margin: 0.5rem 0 0;
+}
+@media (min-width: 768px) {
+  .card.wc-card.wc-hero-grad .champion-retrospect { font-size: 1.15rem; }
+}
+
+/* PI-1: Your Finish hero collapse — one dominant rank numeral, one
+   Newsreader derivation line. Replaces the prior two-display-4 50/50
+   split that triggered the hero-metric-adjacency ban (the same reflex
+   S2.3.1 broke on team_detail). Scoped to .post-finish-card so the
+   selectors live next to their only call site in _home_post.html. */
+.post-finish-card .post-finish-rank-cluster {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+.post-finish-card .post-finish-rank {
+  font-family: var(--font-teko);
+  font-weight: 700;
+  font-size: 3.6rem;
+  line-height: 1;
+  color: var(--bone);
+  letter-spacing: 0.02em;
+}
+@media (min-width: 768px) {
+  .post-finish-card .post-finish-rank { font-size: 4.4rem; }
+}
+.post-finish-card .post-finish-of {
+  font-family: var(--font-teko);
+  font-weight: 500;
+  font-size: 1rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(245, 241, 232, 0.7);
+}
+.post-finish-card .post-finish-derivation {
+  font-family: var(--font-news);
+  font-style: italic;
+  font-size: 1rem;
+  color: rgba(245, 241, 232, 0.88);
+  margin: 0.5rem 0 0;
+  line-height: 1.4;
+}
+

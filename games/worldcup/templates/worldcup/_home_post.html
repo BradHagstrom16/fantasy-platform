@@ -12,11 +12,17 @@
    guaranteed by worldcup_hub_state). Fall back to a neutral "Tournament
    Complete" surface when champion_team is None (defensive admin-error
    case where final.is_completed=True but winner_team_id wasn't set). #}
+{# S5.1.1 PI-3 — eyebrow disambiguates from the page-hero "Champion of the
+   Pool" eyebrow (which speaks to the viewer, rank=1 branch). The banner
+   eyebrow speaks to the tournament's winner — distinct register, distinct
+   word. S5.1.1 PI-2 — gild the summary with a Tribune retrospection line
+   ("A final the club will remember.") so the moment reads as editorial
+   record, not wire-service teletype. #}
 {% if final_match %}
 <div class="card wc-card wc-hero-grad mb-4 animate-in">
   <div class="card-body p-4 text-center">
     {% if champion_team %}
-      <div class="wc-eyebrow mb-1">Champion</div>
+      <div class="wc-eyebrow mb-1">World Cup Winner</div>
       <div class="display-4 mb-1">
         <span class="champion-flag">{{ champion_team.flag_emoji }}</span>
         <span class="champion-name">{{ champion_team.display_name }}</span>
@@ -24,6 +30,7 @@
       {% if champion_summary %}
         <div class="text-muted">{{ champion_summary }}</div>
       {% endif %}
+      <p class="champion-retrospect">A final the club will remember.</p>
     {% else %}
       <div class="wc-eyebrow mb-1">Tournament Complete</div>
       <div class="text-muted">Champion not yet declared. See final standings below.</div>
@@ -32,31 +39,30 @@
 </div>
 {% endif %}
 
-{# Your finish #}
+{# S5.1.1 PI-1 — collapse the prior two-display-4 50/50 split (rank +
+   final-points adjacency) into one dominant rank numeral with the final
+   total + climb prose as Newsreader derivation. Calibrated against
+   S2.3.1's hero-metric-adjacency escape pattern (DESIGN.md §6 + plan
+   §1.5b "hero-metric-template ban applies to adjacency"): one dominant
+   numeral, one supporting eyebrow, one prose derivation. The post-state
+   is the user's Tribune finale, not a SaaS stat strip. #}
 <div class="card wc-card mb-4 animate-in">
-  <div class="card-body">
-    <div class="row align-items-center g-3">
-      <div class="col-md-6">
-        <div class="wc-eyebrow mb-1">Your Finish</div>
-        <div class="d-flex align-items-baseline gap-2">
-          <span class="wc-numeral display-4">{{ your_final_rank }}</span>
-          <span class="text-muted">of {{ total_count }}</span>
-        </div>
-        {% if your_climbed_n is not none and your_climbed_n != 0 %}
-          <div class="small {% if your_climbed_n > 0 %}text-success{% else %}text-danger{% endif %}">
-            {% if your_climbed_n > 0 %}
-              Climbed {{ your_climbed_n }} spot{{ 's' if your_climbed_n != 1 }} since the start.
-            {% else %}
-              Slipped {{ -your_climbed_n }} spot{{ 's' if your_climbed_n != -1 }} since the start.
-            {% endif %}
-          </div>
-        {% endif %}
-      </div>
-      <div class="col-md-6 text-md-end">
-        <div class="wc-eyebrow mb-1">Final Points</div>
-        <div class="wc-numeral display-4">{{ "%.1f"|format(enrollment.total_score) }}</div>
-      </div>
+  <div class="card-body post-finish-card">
+    <div class="wc-eyebrow mb-1">Your Finish</div>
+    <div class="post-finish-rank-cluster">
+      <span class="post-finish-rank">{{ your_final_rank }}</span>
+      <span class="post-finish-of">of {{ total_count }}</span>
     </div>
+    <p class="post-finish-derivation">
+      {{ "%.1f"|format(enrollment.total_score) }} final points
+      {%- if your_climbed_n is not none and your_climbed_n != 0 -%}
+        {% if your_climbed_n > 0 %}
+          · climbed {{ your_climbed_n }} spot{{ 's' if your_climbed_n != 1 }} since the start.
+        {% else %}
+          · slipped {{ -your_climbed_n }} spot{{ 's' if your_climbed_n != -1 }} since the start.
+        {% endif %}
+      {%- else -%}.{%- endif %}
+    </p>
   </div>
 </div>
 
