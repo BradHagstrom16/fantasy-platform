@@ -97,7 +97,14 @@ def test_pi1_home_pre_uses_home_pre_grid_wrapper():
         "so the md+ 2-col reshape applies. The single `.home-col` "
         "floor wasted ~830px on a 1280-px canvas."
     )
-    assert 'class="home-col"' not in HOME_PRE, (
+    # PR #15 CR R6-B — match `.home-col` as a class token within any
+    # class list, not just the exact `class="home-col"` form. The literal
+    # check would miss `class="home-col foo"` or reordered class lists
+    # like `class="bar home-col"`.
+    assert not re.search(
+        r'class="(?:[^"]*\s)?home-col(?:\s[^"]*)?"',
+        HOME_PRE,
+    ), (
         "PI-1: `_home_pre.html` re-introduced the legacy `.home-col` "
         "wrapper. The pre-state must compose under `.home-pre-grid` so "
         "the masthead and rail can sit side-by-side at md+."
@@ -278,22 +285,27 @@ def test_pi2_ballot_flags_are_decorative_ribbon():
     inside the wrapper anchor — they're a decorative ribbon. Each flag
     is `aria-hidden`; the ribbon container has an `aria-label` so AT
     users hear what the ribbon shows."""
-    assert 'class="ballot-flags" aria-label="Your nine selected nations"' in BALLOT, (
+    # PR #15 CR R6-C — attribute-order-agnostic ribbon container lookup
+    # via lookahead assertions (presence of both class + aria-label on
+    # the same opening tag, in any order).
+    ribbon = re.search(
+        r'<div(?=[^>]*class="[^"]*\bballot-flags\b[^"]*")'
+        r'(?=[^>]*aria-label="Your nine selected nations")[^>]*>',
+        BALLOT,
+    )
+    assert ribbon, (
         "PI-2: `.ballot-flags` container must carry "
         "`aria-label=\"Your nine selected nations\"` so the ribbon has "
         "an accessible name (the individual flag emojis are "
         "`aria-hidden`)."
     )
-    assert 'class="ballot-flag"' in BALLOT, (
-        "PI-2: `.ballot-flag` spans should still render."
-    )
-    # Each flag span must carry aria-hidden so AT users don't hear nine
-    # individual flag emoji on top of the ribbon's label.
-    flag_pattern = re.compile(
-        r'<span class="ballot-flag"[^>]*aria-hidden="true"',
-    )
-    assert flag_pattern.search(BALLOT), (
-        "PI-2: individual `.ballot-flag` spans must be "
+    # PR #15 CR R6-C — verify EVERY `.ballot-flag` span carries
+    # `aria-hidden="true"`, not just one. The previous `search()` lock
+    # would pass even if 8 of 9 flags regressed (one match was enough).
+    flag_spans = re.findall(r'<span\s+class="ballot-flag"[^>]*>', BALLOT)
+    assert flag_spans, "PI-2: `.ballot-flag` spans should still render."
+    assert all('aria-hidden="true"' in span for span in flag_spans), (
+        "PI-2: every `.ballot-flag` span must carry "
         "`aria-hidden=\"true\"` so AT users hear the ribbon label, not "
         "nine bare flag emoji."
     )

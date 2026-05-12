@@ -276,11 +276,20 @@ def test_pia1_wc_numeral_scoped_to_bone_on_dark_card_wc_card():
 
 
 def test_pia1_multiplier_chip_re_tinted_on_tier_card_heading():
-    """`.tier-card-heading .wc-multiplier-chip` overrides the dark default for the white tier-card body."""
+    """`.tier-card-heading .wc-multiplier-chip` overrides the dark default
+    for the white tier-card body. PR #15 CR R6-G — uses `var(--text-primary)`
+    (the platform text-on-light alias declared at style.css:23); the original
+    `var(--text-ink)` was an undefined token that rendered by cascade
+    fallback. Matches the sibling chip retint pattern in PI-2 (R3-E /
+    R5-H lock at `.card.wc-card:not(.player-picks-desktop) .table-worldcup
+    .wc-multiplier-chip`)."""
     css = CSS.read_text()
     idx = css.find('.tier-card-heading .wc-multiplier-chip {')
     assert idx >= 0, "Light-surface chip override must exist"
     block_end = css.find('}', idx)
     block = css[idx:block_end]
-    assert 'color: var(--text-ink)' in block
+    assert 'color: var(--text-primary)' in block, \
+        '.tier-card-heading .wc-multiplier-chip must use the defined platform ink token (--text-primary)'
+    assert 'var(--text-ink)' not in block, \
+        '.tier-card-heading .wc-multiplier-chip must not reference the undefined --text-ink token'
     assert 'rgba(58, 29, 114' in block, "Must use Council Purple tint to match S4.2.1 PI-4 idiom"

@@ -210,17 +210,35 @@ def test_pi2_pick_row_wraps_content_in_pick_accordion_inner():
     """The `_pick_row.html` partial must wrap its accordion body in a
     single `.pick-accordion-inner` div so the grid technique works
     (multiple direct children would each get their own grid row, only
-    one of which would animate)."""
-    assert '<div class="pick-accordion-inner">' in PICK_ROW, \
-        '_pick_row.html missing .pick-accordion-inner wrapper'
+    one of which would animate). PR #15 CR R6-D — lock the direct-child
+    shape (`.pick-accordion` > `.pick-accordion-inner`), not just
+    presence anywhere in the partial."""
+    # The outer `.pick-accordion` carries other attributes (e.g., id), so
+    # the lookahead matches the opening tag regardless of attribute set;
+    # the `\s*<div class="pick-accordion-inner">` then locks the direct-
+    # child relationship (no intervening element).
+    assert re.search(
+        r'<div\b(?=[^>]*class="pick-accordion")[^>]*>\s*'
+        r'<div\s+class="pick-accordion-inner">',
+        PICK_ROW,
+    ), '_pick_row.html missing direct `.pick-accordion > .pick-accordion-inner` structure'
 
 
 def test_pi2_no_fixed_600px_max_height_ceiling_anywhere():
     """The 600px max-height ceiling clipped deep-run teams. No CSS rule
     targeting `.pick-accordion` may declare a max-height anywhere
-    (including `.pick-accordion.open`)."""
-    assert 'max-height: 600px' not in CSS, \
-        'style.css still carries 600px max-height (pick-accordion ceiling)'
+    (including `.pick-accordion.open`). PR #15 CR R6-E — narrowed from
+    a global `not in CSS` ban (which would fail on any unrelated 600px
+    usage) to a scoped scan of `.pick-accordion(.open)?` rule blocks."""
+    accordion_blocks = re.findall(
+        r'\.pick-accordion(?:\.open)?\s*\{[^}]*\}',
+        CSS,
+    )
+    assert accordion_blocks, '.pick-accordion rules must still exist in style.css'
+    assert all('max-height: 600px' not in block for block in accordion_blocks), (
+        'style.css still carries a 600px max-height on a `.pick-accordion` rule '
+        '(the deep-run-clipping ceiling)'
+    )
 
 
 # ----- PI-3: 44×44 tap-target floor (hero rules link + .team-group-pill) -----

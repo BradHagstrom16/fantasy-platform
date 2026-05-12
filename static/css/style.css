@@ -2354,9 +2354,15 @@ body.game-golf {
   .home-shell .join-cta:hover,
   .home-shell .decree-cta:hover,
   .home-shell .roster-recap-cta:hover,
-  .home-shell .ballot-edit-action:hover {
+  .home-shell .ballot-edit-action:hover,
+  .home-shell .out-featured:hover {
     transform: none;
     box-shadow: none;
+  }
+  /* PR #15 CR R6-A — also suppress the featured-card icon scale/rotate
+     so the hover state doesn't stick on touch devices after a tap. */
+  .home-shell .out-featured:hover .out-featured-icon {
+    transform: none;
   }
   /* Hover-underline on the compact tile won't dismiss on tap — suppress it on touch */
   .home-shell .cg--active:hover .n {
@@ -2372,7 +2378,17 @@ body.game-golf {
   .home-shell .cg--active:hover,
   .home-shell .join-cta:hover,
   .home-shell .decree-cta:hover,
-  .home-shell .roster-recap-cta:hover {
+  .home-shell .roster-recap-cta:hover,
+  .home-shell .out-featured:hover {
+    transform: none;
+  }
+  /* PR #15 CR R6-A — kill the featured-card icon transition + the
+     scale/rotate hover transform under reduced motion. */
+  .home-shell .out-featured,
+  .home-shell .out-featured-icon {
+    transition: none;
+  }
+  .home-shell .out-featured:hover .out-featured-icon {
     transform: none;
   }
 }
@@ -2830,10 +2846,18 @@ body.game-worldcup {
 /* P4 S4.2.2 PI-5 — multiplier chip surface override for light-substrate.
    F2 lifted .wc-multiplier-chip default to bone for its canonical dark
    home. Inside .tier-card-heading the chip sits on a white .tier-card
-   body where bone reads ~1.04:1 (invisible). Re-tint to Council Purple
-   ink so the multiplier reads on white. */
+   body where bone reads ~1.04:1 (invisible). Re-tint to platform-text
+   ink so the multiplier reads on white.
+
+   PR #15 CR R6-G — original commit used `var(--text-ink)`, an undefined
+   token (only `--ink` is declared in tokens.css; this file's platform
+   aliases are `--text-primary/--text-secondary/--text-muted/--text-on-
+   dark`). The chip rendered correctly only by cascade fallback. Lifted
+   to `var(--text-primary)` (#1C1730) to match the sibling chip retint
+   pattern at `.card.wc-card:not(.player-picks-desktop) .table-worldcup
+   .wc-multiplier-chip` (PI-2 at line 6657). */
 .tier-card-heading .wc-multiplier-chip {
-  color: var(--text-ink);
+  color: var(--text-primary);
   background: rgba(58, 29, 114, .07);
   border-color: rgba(58, 29, 114, .25);
 }
@@ -4071,8 +4095,17 @@ body.game-worldcup {
 /* PR #15 CR R5-B — reduced-motion opt-out for the new pill-rail hover lifts
    (.wc-group-index-pill from S4.4.1 PI-3 + .wc-rules-index-pill from S4.5
    PI-3). Hover transforms drop entirely; transitions disabled so the rest
-   state hold is instant. `:focus-visible` rings stay live regardless. */
+   state hold is instant. `:focus-visible` rings stay live regardless.
+
+   PR #15 CR R6-F — also override the global `html { scroll-behavior:
+   smooth }` (line 4778). The pill rails are long in-page anchor jumps
+   (12 group letters + 7 rules sections); under reduced motion the
+   smooth-scroll animation itself is a motion source the lift opt-out
+   doesn't cover. */
 @media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
   .wc-group-index-pill,
   .wc-rules-index-pill {
     transition: none;
