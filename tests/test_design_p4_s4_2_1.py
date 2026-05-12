@@ -295,8 +295,12 @@ def test_pi4_tier_card_header_uses_ccc_purple_not_wc_navy():
     rule = _css_rule('.tier-card-header {')
     # Strip CSS block comments so the assertion checks declarations only.
     rule_body = re.sub(r'/\*.*?\*/', '', rule, flags=re.DOTALL)
-    assert 'rgba(0,40,104' not in rule_body and 'rgba(0, 40, 104' not in rule_body, \
-        f'.tier-card-header still uses WC navy literal: {rule_body}'
+    # PR #15 CR R7-C — split the compound `assert X and Y` so failure
+    # diagnostics point at the specific spacing variant (Ruff PT018).
+    assert 'rgba(0,40,104' not in rule_body, \
+        f'.tier-card-header still uses WC navy literal (no-space form): {rule_body}'
+    assert 'rgba(0, 40, 104' not in rule_body, \
+        f'.tier-card-header still uses WC navy literal (spaced form): {rule_body}'
     assert 'rgba(58, 29, 114' in rule_body, \
         f'.tier-card-header missing CCC purple (Council Purple): {rule_body}'
 
@@ -308,8 +312,11 @@ def test_pi4_wc_team_card_selected_uses_ccc_purple_for_tint_and_ring():
     `var(--game-primary)` so cross-game scoping still works."""
     rule = _css_rule('.wc-team-card.selected {')
     rule_body = re.sub(r'/\*.*?\*/', '', rule, flags=re.DOTALL)
-    assert 'rgba(0,40,104' not in rule_body and 'rgba(0, 40, 104' not in rule_body, \
-        f'.wc-team-card.selected still references WC navy literal: {rule_body}'
+    # PR #15 CR R7-C — split the compound `assert X and Y` (Ruff PT018).
+    assert 'rgba(0,40,104' not in rule_body, \
+        f'.wc-team-card.selected still references WC navy literal (no-space form): {rule_body}'
+    assert 'rgba(0, 40, 104' not in rule_body, \
+        f'.wc-team-card.selected still references WC navy literal (spaced form): {rule_body}'
     assert 'rgba(58, 29, 114, .05)' in rule_body, \
         f'.wc-team-card.selected background tint not Council Purple at .05: {rule_body}'
     assert 'rgba(58, 29, 114, .18)' in rule_body, \

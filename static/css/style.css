@@ -4096,16 +4096,12 @@ body.game-worldcup {
    (.wc-group-index-pill from S4.4.1 PI-3 + .wc-rules-index-pill from S4.5
    PI-3). Hover transforms drop entirely; transitions disabled so the rest
    state hold is instant. `:focus-visible` rings stay live regardless.
-
-   PR #15 CR R6-F — also override the global `html { scroll-behavior:
-   smooth }` (line 4778). The pill rails are long in-page anchor jumps
-   (12 group letters + 7 rules sections); under reduced motion the
-   smooth-scroll animation itself is a motion source the lift opt-out
-   doesn't cover. */
+   NOTE: the `html { scroll-behavior: auto }` companion override originally
+   added here in R6-F was lost to source order against the unconditional
+   `html { scroll-behavior: smooth }` further down the file. PR #15 CR R7-A
+   moved it to a separate block immediately after that unconditional rule
+   so the cascade resolves correctly. */
 @media (prefers-reduced-motion: reduce) {
-  html {
-    scroll-behavior: auto;
-  }
   .wc-group-index-pill,
   .wc-rules-index-pill {
     transition: none;
@@ -4785,6 +4781,15 @@ body.game-worldcup {
 *, *::before, *::after { box-sizing: border-box; }
 
 html { scroll-behavior: smooth; }
+/* PR #15 CR R7-A — override the smooth scroll under reduced motion. The
+   R6-F attempt placed this block earlier in the file (next to the pill-
+   rail hover opt-outs), but source order let the unconditional smooth
+   rule above win. Re-declared here, immediately after the unconditional
+   rule, so the cascade resolves to `auto` for users who request reduced
+   motion. */
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+}
 
 body {
   font-family: 'Newsreader', Georgia, serif;
@@ -6277,7 +6282,11 @@ hr { border-color: var(--border); opacity: 1; }
     display: block;
     font-weight: 400;
     font-size: .7rem;
-    color: var(--text-muted);
+    /* PR #15 CR R7-B — lift off --text-muted (~3.7:1 on white) per the
+       project_text_muted_aa_on_bone pattern; --text-secondary (~6.9:1)
+       matches the surrounding card lifts (.pick-team small at S2.5.1
+       PI-5 / S4.2.1 F3, ".eyebrow" siblings, etc.). */
+    color: var(--text-secondary);
     letter-spacing: .03em;
   }
 }

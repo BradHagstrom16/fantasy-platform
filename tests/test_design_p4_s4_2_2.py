@@ -56,6 +56,7 @@ Iteration map:
   define. Lifted to `var(--text-on-dark)` matching the S4.2.1 PI-4 lift
   on `.tier-badge`. No visual delta (both resolve to pressroom-bone).
 """
+import re
 from pathlib import Path
 
 REPO = Path(__file__).parent.parent
@@ -243,13 +244,19 @@ def test_f1_selected_after_uses_svg_mask():
 # ---------- F2: --wc-white token hygiene ----------
 
 def test_f2_multiplier_chip_uses_text_on_dark_not_wc_white():
-    """`.wc-multiplier-chip` color is `var(--text-on-dark)`, not the undefined `var(--wc-white)`."""
+    """`.wc-multiplier-chip` color is `var(--text-on-dark)`, not the
+    undefined `var(--wc-white)`. PR #15 CR R7-D — anchor on the `color`
+    property via negative-lookbehind regex so a future
+    `background-color: var(--text-on-dark)` or
+    `border-color: var(--wc-white)` can't silently flip either assertion."""
     css = CSS.read_text()
     start = css.find('.wc-multiplier-chip {')
     block_end = css.find('}', start)
     block = css[start:block_end]
-    assert 'color: var(--text-on-dark)' in block
-    assert 'color: var(--wc-white)' not in block
+    assert re.search(r'(?<!-)color:\s*var\(--text-on-dark\)', block), \
+        '.wc-multiplier-chip must set color: var(--text-on-dark)'
+    assert not re.search(r'(?<!-)color:\s*var\(--wc-white\)', block), \
+        '.wc-multiplier-chip must not reference the undefined var(--wc-white) token'
 
 
 # ---------- PI-A1: contrast scope lock (folded in-iteration per §1.7) ----------
@@ -265,14 +272,17 @@ def test_f2_multiplier_chip_uses_text_on_dark_not_wc_white():
 
 
 def test_pia1_wc_numeral_scoped_to_bone_on_dark_card_wc_card():
-    """`.card.wc-card .wc-numeral` must explicitly read `var(--text-on-dark)`."""
+    """`.card.wc-card .wc-numeral` must explicitly read `var(--text-on-dark)`.
+    PR #15 CR R7-D — anchor on `color` property so `background-color` or
+    `border-color` can't false-pass."""
     css = CSS.read_text()
     # Find the scoped block. Use a marker comment string so refactors are loud.
     idx = css.find('.card.wc-card .wc-numeral {')
     assert idx >= 0, "Scoped .card.wc-card .wc-numeral rule must exist"
     block_end = css.find('}', idx)
     block = css[idx:block_end]
-    assert 'color: var(--text-on-dark)' in block
+    assert re.search(r'(?<!-)color:\s*var\(--text-on-dark\)', block), \
+        '.card.wc-card .wc-numeral must set color: var(--text-on-dark)'
 
 
 def test_pia1_multiplier_chip_re_tinted_on_tier_card_heading():
@@ -288,8 +298,13 @@ def test_pia1_multiplier_chip_re_tinted_on_tier_card_heading():
     assert idx >= 0, "Light-surface chip override must exist"
     block_end = css.find('}', idx)
     block = css[idx:block_end]
-    assert 'color: var(--text-primary)' in block, \
-        '.tier-card-heading .wc-multiplier-chip must use the defined platform ink token (--text-primary)'
+    # PR #15 CR R7-D — anchor `color` on the property, and anchor the
+    # Council Purple tint on the `background` property (not `color` or
+    # `border-color`, both of which also use rgba(58, 29, 114, ...) values
+    # in this rule).
+    assert re.search(r'(?<!-)color:\s*var\(--text-primary\)', block), \
+        '.tier-card-heading .wc-multiplier-chip must set color: var(--text-primary)'
     assert 'var(--text-ink)' not in block, \
         '.tier-card-heading .wc-multiplier-chip must not reference the undefined --text-ink token'
-    assert 'rgba(58, 29, 114' in block, "Must use Council Purple tint to match S4.2.1 PI-4 idiom"
+    assert re.search(r'background:\s*rgba\(58,\s*29,\s*114', block), \
+        "Council Purple tint must drive the background (S4.2.1 PI-4 idiom)"
