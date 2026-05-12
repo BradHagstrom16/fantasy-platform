@@ -60,6 +60,25 @@ def app():
         db.drop_all()
 
 
+def _champion_branches(src: str) -> tuple[str, str]:
+    """Slice the ``{% if champion_team %} … {% else %} … {% endif %}`` block.
+
+    Returns ``(success_branch, fallback_branch)`` substrings so eyebrow / glyph
+    assertions can scope to the correct branch instead of grepping the whole
+    template (which would silently match the wrong branch if source order ever
+    changed, or if a second ``.wc-eyebrow`` div is added above).
+    """
+    match = re.search(
+        r'\{%\s*if\s+champion_team\s*%\}(.*?)\{%\s*else\s*%\}(.*?)\{%\s*endif\s*%\}',
+        src,
+        re.DOTALL,
+    )
+    assert match is not None, (
+        'Expected an {% if champion_team %} / {% else %} / {% endif %} block.'
+    )
+    return match.group(1), match.group(2)
+
+
 # ---------------------------------------------------------------------------
 # PI-1 locks: .card.wc-card:not(.player-picks-desktop) .table .wc-numeral
 # ---------------------------------------------------------------------------
@@ -82,7 +101,9 @@ def test_pi1_in_cell_wc_numeral_restores_platform_ink():
         'rule in style.css (S5.3 PI-1).'
     )
     block = match.group(1)
-    assert 'color: var(--text-primary)' in block, (
+    # Negative-lookbehind so the assertion can't false-pass against a future
+    # `background-color: …` or `border-color: …` edit using the same token.
+    assert re.search(r'(?<!-)color:\s*var\(--text-primary\)', block), (
         f'Rule must paint --text-primary so default body color reads on '
         f'the white-masked td; block={block!r}.'
     )
@@ -104,7 +125,7 @@ def test_pi1_parent_bone_override_still_exists():
     )
     assert match is not None
     block = match.group(1)
-    assert 'color: var(--text-on-dark)' in block, (
+    assert re.search(r'(?<!-)color:\s*var\(--text-on-dark\)', block), (
         f'The canonical bone override on non-table .wc-numeral spans '
         f'must persist; block={block!r}.'
     )
@@ -153,7 +174,7 @@ def test_pi2_quicklink_rest_state_lifts_to_bone_on_navy():
         'Expected `.card.wc-card .btn-outline-secondary` rule (S5.3 PI-2).'
     )
     block = match.group(1)
-    assert 'color: var(--text-on-dark)' in block, (
+    assert re.search(r'(?<!-)color:\s*var\(--text-on-dark\)', block), (
         f'Rest-state color must lift to --text-on-dark; block={block!r}.'
     )
     assert 'border-color: rgba(245, 241, 232, .35)' in block, (
@@ -178,7 +199,7 @@ def test_pi2_quicklink_hover_focus_invert_to_ink_on_bone():
         'Hover + focus-visible combined block missing.'
     )
     block = match.group(1)
-    assert 'color: var(--text-primary)' in block
+    assert re.search(r'(?<!-)color:\s*var\(--text-primary\)', block)
     assert 'background-color: var(--bone)' in block
     assert 'border-color: var(--bone)' in block
 
@@ -209,12 +230,16 @@ def test_pi3_wc_banner_eyebrow_carries_final_decree_voice():
     _champion_banner.html eyebrow set by S5.2.1 PI-3.
     """
     src = WC_HOME_POST.read_text()
-    # Pull the eyebrow inside the champion_team branch.
+    success, _ = _champion_branches(src)
+    # Scope to the champion_team success branch so a future second
+    # .wc-eyebrow div above (or branch reorder) can't false-pass.
     match = re.search(
         r'<div class="wc-eyebrow mb-1">([^<]+)</div>',
-        src,
+        success,
     )
-    assert match is not None, 'wc-eyebrow div missing from _home_post.html.'
+    assert match is not None, (
+        'wc-eyebrow div missing from the champion_team success branch.'
+    )
     text = match.group(1).strip()
     assert text == 'Final Decree', (
         f'Expected "Final Decree" eyebrow; got {text!r}.'
@@ -229,9 +254,10 @@ def test_pi3_wc_banner_eyebrow_does_not_carry_platform_glyphs():
     not borrow chrome.
     """
     src = WC_HOME_POST.read_text()
+    success, _ = _champion_branches(src)
     match = re.search(
         r'<div class="wc-eyebrow mb-1">([^<]+)</div>',
-        src,
+        success,
     )
     assert match is not None
     text = match.group(1).strip()
@@ -263,8 +289,20 @@ def test_pi3_defensive_eyebrow_kept_for_admin_error_branch():
     success branch; admin-error state stays factual.
     """
     src = WC_HOME_POST.read_text()
-    assert 'Tournament Complete' in src, (
-        'Defensive eyebrow for the no-champion branch must persist.'
+    _, fallback = _champion_branches(src)
+    # Anchor to the {% else %} branch so a future edit can't move
+    # "Tournament Complete" into the success branch and silently still pass.
+    match = re.search(
+        r'<div class="wc-eyebrow mb-1">([^<]+)</div>',
+        fallback,
+    )
+    assert match is not None, (
+        'wc-eyebrow div missing from the no-champion fallback branch.'
+    )
+    text = match.group(1).strip()
+    assert text == 'Tournament Complete', (
+        f'Defensive fallback eyebrow expected "Tournament Complete"; '
+        f'got {text!r}.'
     )
 
 

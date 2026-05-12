@@ -76,7 +76,9 @@ def test_pi1_champion_name_uses_solid_gold_light_not_gradient():
         '.home-shell .champion-name rule missing from style.css.'
     )
     block = match.group(1)
-    assert 'color: var(--gold-light)' in block, (
+    # Negative-lookbehind so the assertion can't false-pass against a future
+    # `background-color: var(--gold-light)` or `border-color: …` edit.
+    assert re.search(r'(?<!-)color:\s*var\(--gold-light\)', block), (
         f'Expected solid color: var(--gold-light); block={block!r}.'
     )
     assert 'background-clip' not in block, (
