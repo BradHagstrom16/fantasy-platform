@@ -535,9 +535,9 @@ P6 closes the project: cross-phase polish (S6.1) and scorecard + merge + tag (S6
 - [x] **Step 1: Write a project scorecard.** Saved at `docs/superpowers/specs/2026-05-12-impeccable-design-improvement-scorecard.md`. Captures Tier 1 baseline → final, cross-surface heur/audit deltas, cumulative findings closed (78 §0.4 routes resolved), 22 `[ship-as-is]` backlog items with rationale, and lessons-learned digest for future impeccable work.
 - [x] **Step 2a: Update CLAUDE.md.** Two pattern locks added to "Design system & CSS": Bootstrap `.text-muted` site-wide override (the `:root --bs-secondary-color` redirect trick) and gradient-text retire (zero `background-clip: text` rules; precedent is `.home-metal-text`). Other S6.1 ratifications (eyebrow co-existence, Tribune-voice H1 dispensations, 2-tier card vocabulary, Tier Primitives, caption-tier dispensation, single-instance hero silhouettes) stay in DESIGN.md where future sessions will look first.
 - [x] **Step 2b: Plan cleanup pass.** All converged work flipped to `[x]`. S6.2 in-progress + post-merge steps stay `[ ]` (Steps 3–6 below).
-- [ ] **Step 3: Open final PR** `Impeccable P6 — Final polish + project close`. Confirm merge-ready status: pytest green + CR approved per §1.8.
-- [ ] **Step 4: Merge `design/wc-polish` → `main`** after PR review.
-- [ ] **Step 5: Tag the release** `impeccable-v1`.
+- [x] **Step 3: Open final PR** `Impeccable P6 — Final polish + project close` — [#17](https://github.com/BradHagstrom16/fantasy-platform/pull/17). Pytest 709/709 green; GitGuardian PASS; CR cycle completed across 5 rounds (14 findings: real bugs + progressive test-strictness hardens).
+- [x] **Step 4: Merge `design/wc-polish` → `main`** — merge commit `2ff3858` (2026-05-12).
+- [x] **Step 5: Tag the release** `impeccable-v1` at `2ff3858`.
 - [ ] **Step 6: Production deploy + run Brad's production-launch test script** on `main` post-merge (per `docs/production-launch-test-script.md`).
 
 ---
@@ -613,8 +613,8 @@ Per-session scoreboard: `commit · heur Δ · audit Δ · anti-pat Δ · gate st
   - [x] S6.1.4 (commit: `189f545`) · 2 PIs · Group H PI-1 (cross-state silhouette consolidation: DESIGN.md §5 Informational bullet folds in `.commish-note-body`; closing paragraph ratifies `.dossier` + `.ballot-card` as single-instance hero silhouettes with do-not-duplicate language; CSS normalizes `.commish-note-body` `border-radius: 8px → 12px` and lifts `.match-card` + `.cta-card--view` border `rgba(255,255,255,.08) → rgba(243,239,230,.08)` (bone-8) so the Informational recipe's border color is one tinted-neutral value across all three members — closes S2.1.1 cross-cluster silhouette route) + Group H PI-2 (decided-already-closed: `_home_live.html` top-5 preview + `leaderboard.html` desktop + mobile-cards all already anchor each row to `worldcup.player_detail`; Layer A locks the anchor coverage — closes S2.1.1 cross-cluster rolls route). 12 Layer A locks + 1 contract update (`tests/test_design_p4_s4_1_2.py` Informational border value `white-8 → bone-8`); 709 tests. **19 of 19 §0.4 routes closed.** Cluster bar PASS (Layer A + B on pre + post home + leaderboard; Layer C skipped per §1.5c).
 - [x] S6.2 (commit: `901d949`) · Step 1 scorecard at `docs/superpowers/specs/2026-05-12-impeccable-design-improvement-scorecard.md` (Tier 1 baseline → final, cross-surface deltas, 22 `[ship-as-is]` items with rationale, lessons learned). Step 2a two CLAUDE.md pattern locks added (`.text-muted` site-wide redirect, gradient-text zero-rule lock). Step 2b plan cleanup pass — all converged work flipped to `[x]`. Steps 3–6 (PR open, merge, tag, prod deploy) tracked below.
 - [x] **PR P6** opened: [#17](https://github.com/BradHagstrom16/fantasy-platform/pull/17) — pytest 709/709 green; GitGuardian PASS; CR review pending (handled in follow-up CR-feedback-approval session per §1.8).
-- [ ] **Merge `design/wc-polish` → `main`**: ____
-- [ ] **Tag**: `impeccable-v1`
+- [x] **Merge `design/wc-polish` → `main`**: `2ff3858` (PR #17, 2026-05-12).
+- [x] **Tag**: `impeccable-v1` → `2ff3858`.
 - [ ] **Production deploy + Brad's production-launch test script run** on `main` (post-merge): ____
 
 ---
