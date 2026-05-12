@@ -229,10 +229,10 @@ The bone family. The pressroom paper. Default page background, light card text o
 
 ### Hierarchy
 
-- **Display** (Teko 600, `2.4rem`, line-height `1.1`, letter-spacing `0.03em`): page-level h1, hero mastheads. The largest type on any page.
+- **Display** (Teko 600, `2.4rem`, line-height `1.1`, letter-spacing `0.03em`): page-level h1, hero mastheads. The largest type on any page. On user-facing WC surfaces the H1 carries **Tribune voice** — an editorial section name, not a functional chrome label ("The Match Sheet" / "The Standings" / "The Field Office" / "House Rules", not "Schedule" / "Leaderboard" / "Stats Hub" / "Rules"). Two dispensations: (a) dynamic H1s that interpolate a noun (`{{ team.name }}` / `{{ current_user.get_display_name() }}`) read functionally because the value carries the voice; (b) the logged-in utility auth register (§5 Auth Surface Composition) keeps functional H1s because the Tribune voice carries through the eyebrow + Newsreader copy inside the card.
 - **Headline** (Teko 600, `1.9rem`, line-height `1.1`): section h2, admin page titles (`2.25rem` variant on admin pages).
 - **Title** (Teko 600, `1.5rem`, line-height `1.1`): card-header level h3, table sub-heads.
-- **Body** (Newsreader 400, `1rem`, line-height `1.65`): paragraphs, list items, default text. Cap line length at 65 to 75 characters per line.
+- **Body** (Newsreader 400, `1rem`, line-height `1.65`): paragraphs, list items, default text. Cap line length at 65 to 75 characters per line. The `≥16px` body floor applies to body text and primary read-targets; explicit caption/metadata classes (`.tier-mobile-card-picks`, `.tier-teams-list`, `.player-pick-card .pick-team small`, `.player-pick-card .pick-points small`, `.wc-microcaption`) may step down to `≥0.75rem` (12px) when the primary read-target on the same row carries the dominant hierarchy — captions report, they don't lead.
 - **Label** (Teko 500, `0.9rem`, letter-spacing `0.06em`, uppercase): form labels, tab labels, eyebrow-style metadata.
 - **Eyebrow** — two co-existing primitives, ratified across P2-P5:
     - **`.admin-eyebrow`** (Teko 500, `0.85rem`, letter-spacing `0.14em`, uppercase, `var(--gold)`): the bone-canvas admin masthead label. One color, one size.
@@ -331,6 +331,16 @@ Both registers share `body.auth-page` (the Tribunal Black radial-gradient backdr
 - **Row hover**: `var(--bg-muted)` fill on `0.15s` transition.
 - **Cell typography**: Newsreader, `0.92rem` (`.table` opt-in size).
 - **Current-user row** (`.row-current-user`): tinted highlight scoped per game (CFB uses crimson tint, WC uses gold tint). The highlight is the user's own line in the standings; it should be subtle, not loud.
+
+### Tier Primitives
+
+WC surfaces carry three distinct tier primitives. Each plays a non-overlapping role; do not collapse them into a single class.
+
+- **`.wc-tier-dot`** — the **visual mark**. A compact circular dot tinted per tier (`--wc-tier1`…`--wc-tier5`) used inline next to a country name. Read at a glance; never carries text. Used on `team_detail`, `player_detail`, `stats`, `picks`, and `rules`.
+- **`.tier-badge`** — the **numeric text companion**. A small pill rendering the literal tier number ("T1" / "T2" / …) when the dot alone would leave a sighted reader guessing. Used on `rules.html` (×5, paired with `.wc-tier-dot` in the tier-table cell) and `_home_pre.html` (`roster-tier-label` on the ballot dossier). Not for use on team/player detail — the dot alone carries enough signal there.
+- **`.wc-multiplier-chip`** — the **multiplier indicator**. A dark-surface chip rendering the tier's points multiplier (×N). Used on `picks.html` desktop readonly table and tier-card-header. Never paired with `.tier-badge` on the same row; the chip's "×N" reading and the badge's "T#" reading would collide.
+
+Rule of thumb: dot for the mark, badge for the number, chip for the multiplier. New tier-adjacent UI picks one, not two.
 
 ### Eyebrow and Label Primitives
 

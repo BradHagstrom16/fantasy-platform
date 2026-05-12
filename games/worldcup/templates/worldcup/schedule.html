@@ -6,7 +6,7 @@
   <div class="hero-glow"></div>
   <div class="container">
     <span class="wc-eyebrow">Tournament fixtures</span>
-    <h1>Match Schedule</h1>
+    <h1>The Match Sheet</h1>
     <p class="lead mb-0">All 104 matches · 2026 FIFA World Cup</p>
     <small class="d-block mt-1 opacity-75 schedule-tz-stamp">All kickoff times shown in Central Time</small>
     {# P2 S2.6 PI-4: above-the-fold jump-to-today affordance. The id="today"
@@ -69,7 +69,7 @@
   {% for day in matchdays_group %}
     <section class="schedule-day-block mb-3"{% if day.is_today %} id="today"{% endif %}>
       <h3 class="schedule-day-header{% if day.is_today %} is-today{% endif %}">
-        <span class="schedule-day-date">{{ day.date_label }}</span>
+        {% if day.day_iso %}<time class="schedule-day-date" datetime="{{ day.day_iso }}">{{ day.date_label }}</time>{% else %}<span class="schedule-day-date">{{ day.date_label }}</span>{% endif %}
         {% if day.is_today %}<span class="schedule-today-badge">Today</span>{% endif %}
       </h3>
       <div class="d-flex flex-column gap-2">
