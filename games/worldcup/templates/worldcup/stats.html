@@ -73,6 +73,7 @@ if (window.matchMedia('(prefers-color-scheme: dark)').matches)
         <span style="font-family:'Teko',sans-serif;font-size:.75rem;color:var(--text-secondary);">Jun 11 to Jul 19 · 104 matches</span>
       </div>
       <div id="progress-bar-wrap" class="d-flex gap-0 align-items-stretch"
+           role="list" aria-label="Tournament progress by stage"
            style="border-radius:var(--radius);overflow:hidden;height:36px;font-family:'Teko',sans-serif;font-size:.78rem;letter-spacing:.05em;text-transform:uppercase;">
       </div>
     </div>
@@ -310,12 +311,19 @@ function renderProgressBar() {
   wrap.innerHTML = phases.map(p => {
     const done = segDone[p.id];
     const cur = segCurrent[p.id];
-    const label = done ? p.label + ' ✓' : cur ? p.label + ' ←' : p.label;
+    // Prefer `cur` over `done` — at currentIdx=1 (group_stage) and
+    // currentIdx=2 (knockout/R32), both flags are true; the segment is
+    // the one we're playing through, not one we've finished.
+    const status = cur ? 'current' : done ? 'completed' : 'upcoming';
+    const glyph = cur ? '<span aria-hidden="true"> ←</span>' : done ? '<span aria-hidden="true"> ✓</span>' : '';
     let style = `flex:${p.flex};display:flex;align-items:center;justify-content:center;padding:0 .75rem;`;
-    if (done) style += p.doneStyle;
-    else if (cur) style += `background:rgba(212,168,32,.2);color:var(--platform-accent);border:2px solid var(--platform-accent);font-weight:700;`;
+    // Same precedence as `status` / `glyph` above — `cur` wins over `done`
+    // at the overlap points (group@idx=1, R32@idx=2) so the visual matches
+    // the aria-label.
+    if (cur) style += `background:rgba(212,168,32,.2);color:var(--platform-accent);border:2px solid var(--platform-accent);font-weight:700;`;
+    else if (done) style += p.doneStyle;
     else style += `background:var(--bg-muted);color:var(--text-muted);`;
-    return `<div style="${style}">${label}</div>`;
+    return `<div role="listitem" aria-label="${p.label}, ${status}" style="${style}">${p.label}${glyph}</div>`;
   }).join('');
 }
 

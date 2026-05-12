@@ -179,10 +179,11 @@ The CCC gold family. The trophy-case accent. Reserved for ceremonial moments (ac
 
 - **Commish Gold** (`#C9A227`): the canonical brand gold. Active nav indicator, focus ring color, eyebrow text color, `--warning` semantic alias.
 - **Trophy Light** (`#F2D36B`): the lighter gold. Hover states for gold elements, mid-stop in the metal-gold gradient.
-- **Gold Dark** (`#8A6A1A`): the deeper gold. Anchor stop in the metal-gold gradient, link-hover color on auth pages.
+- **Gold Dark** (`#8A6A1A`): the deeper gold. Anchor stop in the vertical `--metal-gold` gradient, link-hover color on auth pages.
+- **Gold Dark Anchor** (`#A88420`): the diagonal `--metal-gold-flat` gradient's terminal stop. Lifted from `#8A6A1A` so chamber-purple text (`var(--purple-900)`) on the navbar `.btn-warning` clears WCAG AA 4.5:1 at the bottom-right pixel-corner where the 135° gradient terminates.
 - **Gold Hi** (`#FFF1B8`): the highlight tone. Top stop in the metal-gold gradient (the chrome-y shimmer).
 
-The two metal-gold gradients (`--metal-gold` for vertical, `--metal-gold-flat` for diagonal) are the literal trophy. They appear on primary CTAs (`btn-primary` on auth pages, navbar `btn-warning`) and nowhere else.
+The two metal-gold gradients (`--metal-gold` for vertical, `--metal-gold-flat` for diagonal) are the literal trophy. They appear on primary CTAs (`btn-primary` on auth pages, navbar `btn-warning`) and nowhere else. The diagonal variant carries a slightly lifted dark stop (`#A88420` vs the vertical's `#8A6A1A`) so chamber-purple text clears AA at the gradient's worst-corner pixel — the diagonal's terminal sits exactly at the button's bottom-right corner where text descenders can land.
 
 ### Tertiary: Per-game Palettes
 
@@ -229,18 +230,20 @@ The bone family. The pressroom paper. Default page background, light card text o
 
 ### Hierarchy
 
-- **Display** (Teko 600, `2.4rem`, line-height `1.1`, letter-spacing `0.03em`): page-level h1, hero mastheads. The largest type on any page.
+- **Display** (Teko 600, `2.4rem`, line-height `1.1`, letter-spacing `0.03em`): page-level h1, hero mastheads. The largest type on any page. On user-facing WC surfaces the H1 carries **Tribune voice** — an editorial section name, not a functional chrome label ("The Match Sheet" / "The Standings" / "The Field Office" / "House Rules", not "Schedule" / "Leaderboard" / "Stats Hub" / "Rules"). Two dispensations: (a) dynamic H1s that interpolate a noun (`{{ team.name }}` / `{{ current_user.get_display_name() }}`) read functionally because the value carries the voice; (b) the logged-in utility auth register (§5 Auth Surface Composition) keeps functional H1s because the Tribune voice carries through the eyebrow + Newsreader copy inside the card.
 - **Headline** (Teko 600, `1.9rem`, line-height `1.1`): section h2, admin page titles (`2.25rem` variant on admin pages).
 - **Title** (Teko 600, `1.5rem`, line-height `1.1`): card-header level h3, table sub-heads.
-- **Body** (Newsreader 400, `1rem`, line-height `1.65`): paragraphs, list items, default text. Cap line length at 65 to 75 characters per line.
+- **Body** (Newsreader 400, `1rem`, line-height `1.65`): paragraphs, list items, default text. Cap line length at 65 to 75 characters per line. The `≥16px` body floor applies to body text and primary read-targets; explicit caption/metadata classes (`.tier-mobile-card-picks`, `.tier-teams-list`, `.player-pick-card .pick-team small`, `.player-pick-card .pick-points small`, `.wc-microcaption`) may step down to `≥0.75rem` (12px) when the primary read-target on the same row carries the dominant hierarchy — captions report, they don't lead.
 - **Label** (Teko 500, `0.9rem`, letter-spacing `0.06em`, uppercase): form labels, tab labels, eyebrow-style metadata.
-- **Eyebrow** (Teko 500, `0.85rem`, letter-spacing `0.14em`, uppercase, gold): the small uppercase line above section headers (`.admin-eyebrow`, `.wc-eyebrow`). Signature CCC primitive; reuse it generously on game-specific section heads.
+- **Eyebrow** — two co-existing primitives, ratified across P2-P5:
+    - **`.admin-eyebrow`** (Teko 500, `0.85rem`, letter-spacing `0.14em`, uppercase, `var(--gold)`): the bone-canvas admin masthead label. One color, one size.
+    - **`.wc-eyebrow`** (Teko 500, `0.7rem`, letter-spacing `0.08em`, uppercase, `var(--bone-mute)`): the WC-surface contextual label. Tonal variants are part of the primitive: `.wc-eyebrow-red` (`var(--wc-red)`) for game-accent emphasis, `.wc-eyebrow-gold` (`var(--gold-light)`) for ceremonial moments. The bone-mute default is calibrated for the `.card.wc-card` navy substrate (scope rule lifts to bone @ .85 alpha there for AA); light-surface contexts override to `--text-secondary` or `--gold` via scoped rules (`.wc-stat-card.is-lead`, `.your-standing-tribune`, `.player-pick-card`).
 
 ### Named Rules
 
 **The Newsroom Rule.** Every heading is Teko. Every paragraph is Newsreader. The two fonts never mix mid-sentence. If a heading reads in serif, you've broken the masthead. If a paragraph reads in condensed sans, you've broken the editorial.
 
-**The Eyebrow Rule.** When a section needs context above its headline (category, game name, status), use the Eyebrow primitive: Teko 500, `0.85rem`, uppercase, letter-spacing `0.14em`, color `--gold`. Don't invent a new "kicker" or "subhead" pattern.
+**The Eyebrow Rule.** When a section needs context above its headline (category, game name, status), use one of the two Eyebrow primitives — `.admin-eyebrow` on admin pages (gold on bone), `.wc-eyebrow` on user-facing WC surfaces (bone-mute default plus `-red` and `-gold` tonal variants; auto-lifts on `.card.wc-card`). Don't invent a new "kicker" or "subhead" pattern.
 
 **The Uppercase Rule.** Uppercase is for Teko (labels, eyebrows, button text, table heads, navbar links). Newsreader is never uppercased. Mixing is a slop signal.
 
@@ -296,9 +299,9 @@ Two card registers: the default light Tribune card and the dark Tribune-Dark car
 The home shell is a dark editorial surface (purple radial atmosphere), not the bone page. Its panels split into two registers; a returning user should be able to predict, from the silhouette alone, whether a card is a ceremonial CTA or an informational fixture.
 
 - **Ceremonial** (`.decree`, `.cta-card--join`, `.cta-card--seal`): `linear-gradient(180deg, var(--purple-800), var(--purple-900))` + `1px solid rgba(201, 162, 39, 0.3)` + `border-radius: 14px`. Optional dashed-gold internal rules separate multi-band layouts (`.decree-seal` border-bottom). Used for time-sensitive moments: the countdown decree, the join-pool CTA, the seal-your-roster CTA. The gold-30% border is the visual contract; it tells a returning user "this asks something of you before a deadline."
-- **Informational** (`.match-card`, `.cta-card--view`): `linear-gradient(180deg, var(--purple-850), var(--purple-950))` + `1px solid rgba(255, 255, 255, 0.08)` + `border-radius: 12px`. The bone-opacity-8 border reads as the standing-affordance baseline (fixtures, the view-only dossier shell). It carries no deadline pressure; the recipe says "this is the record, look as long as you want."
+- **Informational** (`.match-card`, `.cta-card--view`, `.commish-note-body`): `linear-gradient(180deg, var(--purple-850), var(--purple-950))` + `1px solid rgba(243, 239, 230, 0.08)` + `border-radius: 12px`. The bone-opacity-8 border reads as the standing-affordance baseline (fixtures, the view-only dossier shell, the Commish's Note long-form). It carries no deadline pressure; the recipe says "this is the record, look as long as you want." `.commish-note-body` adds the §6 Do canonical `border-top: 2px solid var(--gold)` major-section separator on top of the Informational recipe — a documented variant for editorial long-form, not a third register.
 
-The two recipes are non-overlapping by construction — a new home-shell panel picks one, not both. The `.ballot-card` is a third, narrower register (green-tinted "sealed" state) and is not part of the two-tier set.
+The two recipes are non-overlapping by construction — a new home-shell panel picks one, not both. Two single-instance hero silhouettes layer on top of the two-tier system: `.ballot-card` (green-tinted "sealed" state on the pre-state ballot, a third narrower register) and `.dossier` (live-state standing hero — Ceremonial recipe with an extended `purple-800 → purple-950` gradient terminus for the live hero's gravitas; same `1px solid rgba(201, 162, 39, 0.3)` + 14px radius as Ceremonial). Both are locked to a single surface; do not duplicate the silhouette onto a new card.
 
 ### Form Controls
 
@@ -330,9 +333,23 @@ Both registers share `body.auth-page` (the Tribunal Black radial-gradient backdr
 - **Cell typography**: Newsreader, `0.92rem` (`.table` opt-in size).
 - **Current-user row** (`.row-current-user`): tinted highlight scoped per game (CFB uses crimson tint, WC uses gold tint). The highlight is the user's own line in the standings; it should be subtle, not loud.
 
+### Tier Primitives
+
+WC surfaces carry three distinct tier primitives. Each plays a non-overlapping role; do not collapse them into a single class.
+
+- **`.wc-tier-dot`** — the **visual mark**. A compact circular dot tinted per tier (`--wc-tier1`…`--wc-tier5`) used inline next to a country name. Read at a glance; never carries text. Used on `team_detail`, `player_detail`, `stats`, `picks`, and `rules`.
+- **`.tier-badge`** — the **numeric text companion**. A small pill rendering the literal tier number ("T1" / "T2" / …) when the dot alone would leave a sighted reader guessing. Used on `rules.html` (×5, paired with `.wc-tier-dot` in the tier-table cell) and `_home_pre.html` (`roster-tier-label` on the ballot dossier). Not for use on team/player detail — the dot alone carries enough signal there.
+- **`.wc-multiplier-chip`** — the **multiplier indicator**. A dark-surface chip rendering the tier's points multiplier (×N). Used on `picks.html` desktop readonly table and tier-card-header. Never paired with `.tier-badge` on the same row; the chip's "×N" reading and the badge's "T#" reading would collide.
+
+Rule of thumb: dot for the mark, badge for the number, chip for the multiplier. New tier-adjacent UI picks one, not two.
+
 ### Eyebrow and Label Primitives
 
-- **Eyebrow** (`.admin-eyebrow`, `.wc-eyebrow`, etc.): Teko 500, `0.85rem`, letter-spacing `0.14em`, uppercase, `var(--gold)`. The small contextual label that sits above section headlines. Reuse this for any new section that needs a category label (game name, week, deadline, status). Don't invent a new "kicker" pattern.
+- **Eyebrow** — see §3 for the full two-primitive shape. Quick reference:
+    - **`.admin-eyebrow`**: Teko 500, `0.85rem`, `0.14em`, uppercase, `var(--gold)`. Admin masthead label on bone canvas.
+    - **`.wc-eyebrow`**: Teko 500, `0.7rem`, `0.08em`, uppercase, `var(--bone-mute)` default; `.wc-eyebrow-red` and `.wc-eyebrow-gold` are the tonal variants; `.card.wc-card .wc-eyebrow` scope lifts the bone alpha to .85 for AA on the navy substrate.
+    
+    Reuse the matching primitive for any new section that needs a category label (game name, week, deadline, status). Don't invent a new "kicker" pattern.
 - **Form Label**: see Form Controls above.
 
 ### Live Indicators
