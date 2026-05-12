@@ -1832,7 +1832,7 @@ Mark each session as it completes. Append the session-completion commit SHA for 
 
 ### Phase 5 — Post-live state cluster
 - [ ] **S5.1** — `_home_post` (converged: ___)
-  - [x] S5.1.1 (commit: pending). Gate: not converged — first iteration; 3 PIs landed (PI-1 hero-metric-adjacency collapse, PI-2 Tribune retrospection, PI-3 eyebrow disambiguation), 4 backlog items routed (S5.1.2 in-surface tap targets, S5.3 cross-cluster numeral contrast + quicklink contrast, S6.1 cross-phase eyebrow). 9 Layer A locks under `tests/test_design_p5_s5_1_1.py` + Layer B Playwright probes confirm rendered values; 635 tests passing (was 626, +9).
+  - [x] S5.1.1 (commit: 302abe6). Gate: not converged — first iteration; 3 PIs landed (PI-1 hero-metric-adjacency collapse, PI-2 Tribune retrospection, PI-3 eyebrow disambiguation), 4 backlog items routed (S5.1.2 in-surface tap targets, S5.3 cross-cluster numeral contrast + quicklink contrast, S6.1 cross-phase eyebrow). 9 Layer A locks under `tests/test_design_p5_s5_1_1.py` + Layer B Playwright probes confirm rendered values; 635 tests passing (was 626, +9).
   - [ ] S5.1.N (commit: ____). Gate: ____.
 - [ ] **S5.2** — post-state component partials (converged: ___)
   - [ ] S5.2.1 (commit: ____). Gate: ____.
