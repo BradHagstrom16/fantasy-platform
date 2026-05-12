@@ -187,7 +187,7 @@ def test_pi2_champion_retrospect_css_present():
 # PI-3 locks: Champion banner eyebrow disambiguates from page-hero
 # ---------------------------------------------------------------------------
 
-def test_pi3_champion_banner_eyebrow_renamed_to_world_cup_winner():
+def test_pi3_champion_banner_eyebrow_disambiguates_from_page_hero():
     """The banner eyebrow no longer doubles the page-hero 'Champion ...'.
 
     For rank=1 viewers the page-hero voice copy renders eyebrow
@@ -195,9 +195,15 @@ def test_pi3_champion_banner_eyebrow_renamed_to_world_cup_winner():
     champion banner directly below was eyebrowed 'Champion' (speaking
     to the tournament's winning country). Two literal 'Champion'
     eyebrows in 80px of vertical space read as one repeated label
-    rather than two distinct registers. Renaming the banner eyebrow
-    to 'World Cup Winner' separates user-register from tournament-
-    register cleanly.
+    rather than two distinct registers.
+
+    S5.1.1 first replaced 'Champion' with 'World Cup Winner' to
+    separate user-register from tournament-register. S5.3 PI-3
+    superseded that with 'Final Decree' for cross-cluster Tribune
+    voice consistency with the platform _champion_banner.html (which
+    S5.2.1 PI-3 set to 'Final Decree'). Both retired strings stay
+    locked out; the new lock anchors the current 'Final Decree' state
+    via the S5.3 test file's positive assertion.
     """
     src = TEMPLATE.read_text()
     # The banner eyebrow text inside the champion_team branch
@@ -207,12 +213,17 @@ def test_pi3_champion_banner_eyebrow_renamed_to_world_cup_winner():
     )
     assert champion_branch is not None
     branch_src = champion_branch.group(1)
-    # The retired wording — bare "Champion" eyebrow on this banner.
+    # Both retired wordings stay out.
     assert (
         '<div class="wc-eyebrow mb-1">Champion</div>' not in branch_src
     ), 'Banner eyebrow still says bare "Champion" — clashes with page-hero.'
-    # The new framing.
-    assert '<div class="wc-eyebrow mb-1">World Cup Winner</div>' in branch_src
+    assert (
+        '<div class="wc-eyebrow mb-1">World Cup Winner</div>'
+        not in branch_src
+    ), (
+        'Banner eyebrow still says "World Cup Winner" — superseded by S5.3 '
+        'PI-3 with "Final Decree" for cross-cluster Tribune voice alignment.'
+    )
 
 
 def test_pi3_admin_error_fallback_eyebrow_unchanged():
@@ -271,5 +282,9 @@ def test_home_post_renders_expected_tribune_voice(app):
     assert 'A final the club will remember' in body
     assert 'in the Final' in body
 
-    # PI-3: Banner eyebrow renamed.
-    assert 'World Cup Winner' in body
+    # PI-3: Banner eyebrow renamed. S5.1.1 set this to 'World Cup Winner';
+    # S5.3 PI-3 superseded with 'Final Decree' for cross-cluster Tribune
+    # voice alignment. Render-smoke now asserts the current 'Final Decree'
+    # state.
+    assert 'Final Decree' in body
+    assert 'World Cup Winner' not in body

@@ -2083,6 +2083,24 @@ body.game-golf {
   color: var(--bone-mute);
   margin-top: 0.5rem;
 }
+/* P5 S5.3 PI-4 — Tribune retrospection line on the platform champion
+   banner. Mirrors the WC variant's recipe at :7009 (Newsreader italic,
+   ~1.05rem, bone .82 alpha) so the cluster's two retrospection lines
+   read as one Tribune voice with two distinct sentences. Sits below
+   .champion-detail (the wire-service venue/date) so the banner reads:
+   country → score → venue → editorial significance — decreasing
+   factuality, ending in voice. */
+.home-shell .champion-retrospect {
+  font-family: var(--font-news);
+  font-style: italic;
+  font-size: 1.05rem;
+  letter-spacing: 0.005em;
+  color: rgba(245, 241, 232, 0.82);
+  margin: 0.75rem 0 0;
+}
+@media (min-width: 768px) {
+  .home-shell .champion-retrospect { font-size: 1.15rem; }
+}
 
 /* --- Post-state: final podium --- */
 .home-shell .podium {
@@ -2849,6 +2867,50 @@ body.game-worldcup {
    reach. */
 .card.wc-card .wc-numeral {
   color: var(--text-on-dark);
+}
+
+/* P5 S5.3 PI-1 — Selector-scope the bone override above so it skips
+   Bootstrap-table substrates. S2.6 PI-1's lock at :6691 set
+   `--bs-table-bg: var(--bg-card)` (white) on .card.wc-card .table, which
+   made every .wc-numeral inside a tbody cell paint bone-on-white (1.05:1
+   on .row-champion-pick cream, 1.14:1 on default white — axe-confirmed
+   8 hits on _home_post alone). The bone is correct for masthead /
+   card-header / card-body direct-child .wc-numeral spans on the navy
+   parent (Total totals, tiebreaker, the .post-finish-rank still owns its
+   own bone color); the bug only fires inside Bootstrap tables. Restore
+   platform ink for in-cell .wc-numeral so default body color reads
+   ~14.5:1 on the white-masked td.
+
+   The :not(.player-picks-desktop) carve-out mirrors PR #15 CR R2's
+   .wc-multiplier-chip pattern at :6748: .player-picks-desktop opts out of
+   the white-td mask via `background-color: transparent` (:2966) so its
+   tds bleed navy through, where bone is correct. Routed from S5.1.1
+   §0.4 cross-cluster sweep; taken in S5.3 as §1.8 deviation (fix is one
+   selector-scoped rule; splitting to S6.1 adds overhead without value). */
+.card.wc-card:not(.player-picks-desktop) .table .wc-numeral {
+  color: var(--text-primary);
+}
+
+/* P5 S5.3 PI-2 — Lift .btn-outline-secondary quicklinks on .card.wc-card.
+   The home_shell.html quicklink trio (Schedule / Groups / Rules at :48-62)
+   renders inside a .card.wc-card.mt-4 wrapper that bleeds navy
+   rgba(0,17,46,.8) through its .card-body. Bootstrap's default
+   --bs-secondary-color (#8a849b) on that navy reads 3.04:1 (axe-confirmed),
+   failing AA. The trio is universal to every state partial (pre/live/out/
+   post), so this lift lands cluster-wide. Mirror the .card.wc-card
+   .text-muted pattern at :6666: 82%-alpha bone on navy carries AA at
+   body size; full bone on hover/focus reads ~13:1. Border is the lower
+   visual weight — bone-alpha at .35 keeps the button shape readable
+   without screaming. */
+.card.wc-card .btn-outline-secondary {
+  color: var(--text-on-dark);
+  border-color: rgba(245, 241, 232, .35);
+}
+.card.wc-card .btn-outline-secondary:hover,
+.card.wc-card .btn-outline-secondary:focus-visible {
+  color: var(--text-primary);
+  background-color: var(--bone);
+  border-color: var(--bone);
 }
 
 /* P4 S4.2.2 PI-5 — multiplier chip surface override for light-substrate.

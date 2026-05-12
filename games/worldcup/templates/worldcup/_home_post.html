@@ -17,12 +17,20 @@
    eyebrow speaks to the tournament's winner — distinct register, distinct
    word. S5.1.1 PI-2 — gild the summary with a Tribune retrospection line
    ("A final the club will remember.") so the moment reads as editorial
-   record, not wire-service teletype. #}
+   record, not wire-service teletype.
+
+   S5.3 PI-3 — cross-cluster Tribune voice alignment with the platform
+   _champion_banner.html eyebrow ("Final Decree", set by S5.2.1 PI-3).
+   "World Cup Winner" carried wire-service register; "Final Decree" lands
+   the Council-Tribune voice both banners now share. WC chrome convention
+   omits the platform's ◈ glyphs (the wc-eyebrow primitive doesn't carry
+   them anywhere else in the WC surface set), so voice aligns without
+   borrowing chrome. #}
 {% if final_match %}
 <div class="card wc-card wc-hero-grad mb-4 animate-in">
   <div class="card-body p-4 text-center">
     {% if champion_team %}
-      <div class="wc-eyebrow mb-1">World Cup Winner</div>
+      <div class="wc-eyebrow mb-1">Final Decree</div>
       <div class="display-4 mb-1">
         <span class="champion-flag">{{ champion_team.flag_emoji }}</span>
         <span class="champion-name">{{ champion_team.display_name }}</span>

@@ -23,6 +23,15 @@
       {% if final_match.kickoff_utc %} &middot; {{ final_match.kickoff_utc.strftime('%d %b %Y') }}{% endif %}
     </div>
     {% endif %}
+    {# S5.3 PI-4 — Tribune retrospection line on the cluster's primary
+       full-bleed champion banner. The WC variant (_home_post.html S5.1.1
+       PI-2) added "A final the club will remember." but this platform
+       partial — the cluster's biggest moment — carried only wire-service
+       voice (eyebrow + name + summary score + venue/date). The retrospection
+       line lifts this surface to match. Distinct line from the WC variant
+       (no cross-cluster repetition) and avoids the "ledger" image already
+       carried by the greet line above and the Commish Note below. #}
+    <div class="champion-retrospect">The Club records the night.</div>
     {% else %}
     <div class="champion-flag">🏆</div>
     <div class="champion-name">Champion Pending</div>
