@@ -13,6 +13,8 @@ A unified fantasy sports platform consolidating multiple games under one domain,
 - `games/cfb/` — CFB Survivor Pool (Phase 2 ✅)
 - `games/worldcup/` — World Cup Fantasy Pool (Phase 4 ✅)
 
+**Production:** Live at `cccfantasy.com` (Phase 5 complete). CCC design system shipped at tag `impeccable-v1` (2026-05-12, PR #17). See `PRODUCT.md` + `DESIGN.md` (repo root) for the product/design spine; any UI work invokes the `impeccable` skill which preflight-loads them. `docs/superpowers/specs/2026-05-12-impeccable-design-improvement-scorecard.md` holds the ship-as-is backlog (22 deferred items — check before adding new polish).
+
 ---
 
 ## Commands
@@ -54,11 +56,7 @@ FLASK_APP=app.py venv/bin/flask worldcup status          # Print tournament stat
 FLASK_APP=app.py venv/bin/flask worldcup process-match   # Enter match result (dev/testing)
 FLASK_APP=app.py venv/bin/flask worldcup snapshot-ranks  # Capture daily rank+score snapshot (cron; --backfill N for historical seed)
 
-# Type checking
-venv/bin/pyright                                  # Full project (target: 0 errors)
-venv/bin/pyright games/golf/services/sync.py      # Check specific file
-
-# Tests
+# Tests (this project verifies via pytest only — pyright is not part of the workflow)
 ENVIRONMENT=testing venv/bin/python -m pytest tests/      # Run all tests (env var enables WC_FAKE_NOW seam in state-detection tests)
 venv/bin/python -m pytest tests/test_worldcup_scoring.py  # Scoring engine tests
 venv/bin/python -m pytest tests/test_worldcup_admin.py    # Admin + public route tests
@@ -68,7 +66,7 @@ venv/bin/python -m pytest tests/test_worldcup_stage.py    # Stage-label SSoT (se
 venv/bin/python -m pytest tests/test_worldcup_trends.py   # Trend helpers (services/trends.py)
 ```
 
-No linter configured.
+No linter configured. No pyright either — verify code with pytest.
 
 ---
 
