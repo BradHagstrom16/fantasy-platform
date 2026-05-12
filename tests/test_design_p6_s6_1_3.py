@@ -163,7 +163,9 @@ def test_pi2_gold_dark_token_unchanged():
     into a different audit; the gradient fix is surgical.
     """
     css = TOKENS_CSS.read_text()
-    assert '--gold-dark:     #8A6A1A;' in css, (
+    # Whitespace-agnostic so a future formatter pass that normalizes the
+    # column alignment between `:` and the value doesn't trip the lock.
+    assert re.search(r'--gold-dark:\s*#8A6A1A\s*;', css), (
         '`--gold-dark` token must remain `#8A6A1A` — the retune is gradient-only.'
     )
 
@@ -284,9 +286,13 @@ def test_pi4_flash_fade_keyframes_only_animate_opacity():
     )
     # Allowed properties only: opacity, pointer-events, visibility.
     # Anything else is a layout-animation regression risk.
+    # Property-scoped regex: `(?<![a-zA-Z-])` ensures the property name
+    # isn't part of a longer identifier — `top:` must not match `stop:`,
+    # `height:` must not match `line-height:`, etc. (`max-height` has its
+    # own entry in the banned tuple so it's still caught directly.)
     banned = ('max-height', 'height', 'padding', 'margin', 'transform', 'top', 'left')
     for prop in banned:
-        assert f'{prop}:' not in body, (
+        assert re.search(rf'(?<![a-zA-Z-]){prop}\s*:', body) is None, (
             f'`@keyframes ccc-flash-success-fade` must not animate `{prop}` '
             '— the impeccable shared design law bans animating CSS layout '
             'properties.'
