@@ -47,7 +47,7 @@ Iteration map:
   icon-text rows. The S4.1.2 fix differentiated rows by gutter mark
   (icon / sparkline / monogram). Revised in design/home-out-polish
   (2026-05-13) after first-impression critique: three different gutter
-  shapes at the same 36×36 footprint read as "discombobulated" rather
+  shapes at the same 36x36 footprint read as "discombobulated" rather
   than rhythmic — the variety intervention created a new noise problem.
   The current lock drops all three gutter marks and separates rows
   with a single hairline gold rule, letting the Teko all-caps titles
@@ -574,7 +574,7 @@ def test_pi3_design_md_documents_home_shell_card_recipes():
 
 def test_pi4_out_props_drop_all_gutter_marks():
     """The S4.1.2 fix differentiated rows by gutter mark (icon /
-    sparkline / monogram) at the same 36×36 footprint. First-impression
+    sparkline / monogram) at the same 36x36 footprint. First-impression
     critique judged the variety itself as noise; the revised pattern
     drops all three marks so the rows read as a clean three-line
     editorial list with Teko titles doing the structural work."""

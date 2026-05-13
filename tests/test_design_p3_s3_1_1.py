@@ -148,16 +148,30 @@ def test_pi3_subnav_pill_inactive_text_color_meets_aa():
 def test_pi4_skip_link_removed_from_base_html():
     """The `.skip-link` anchor must not return to base.html. Re-introducing
     it requires a deliberate design revision (revise this lock + the
-    rationale comment above)."""
+    rationale comment above).
+
+    Assertions are scoped to the anchor element + its visible text (CR
+    PR #18 R1-B) so a stray substring in an unrelated comment or
+    attribute can't false-positive the lock."""
     html = BASE_HTML_PATH.read_text()
-    assert 'skip-link' not in html, (
-        "base.html re-introduced the skip-link anchor. The pattern was "
-        "retired in design/home-out-polish; if you want to restore it, "
-        "revise the rationale comment and these tests together."
+    skip_anchor = re.search(
+        r'<a\b[^>]*class="[^"]*\bskip-link\b[^"]*"[^>]*>',
+        html,
     )
-    assert 'Skip to main content' not in html, (
-        "base.html re-introduced the 'Skip to main content' anchor text. "
-        "The pattern was retired in design/home-out-polish."
+    assert skip_anchor is None, (
+        "base.html re-introduced an `<a class=\"skip-link\">` anchor. "
+        "The pattern was retired in design/home-out-polish; if you "
+        "want to restore it, revise the rationale comment and these "
+        "tests together."
+    )
+    skip_text = re.search(
+        r'<a\b[^>]*>\s*Skip to main content\s*</a>',
+        html,
+        flags=re.IGNORECASE,
+    )
+    assert skip_text is None, (
+        "base.html re-introduced a 'Skip to main content' anchor. The "
+        "pattern was retired in design/home-out-polish."
     )
 
 
@@ -165,28 +179,41 @@ def test_pi4_main_element_keeps_id_but_drops_orphan_tabindex():
     """`<main>` retains `id=\"main-content\"` (useful for in-page anchor
     links and AT landmarks) but no longer carries `tabindex=\"-1\"` —
     that attribute only existed to receive programmatic focus from the
-    now-removed skip-link, so it's an orphan otherwise."""
+    now-removed skip-link, so it's an orphan otherwise.
+
+    Both checks are scoped to the opening `<main>` tag (CR PR #18 R1-B)
+    so attribute order is irrelevant and the previous brittle
+    string-split form is retired."""
     html = BASE_HTML_PATH.read_text()
-    assert '<main id="main-content">' in html, (
-        "<main> must keep id=\"main-content\" (semantic landmark + future "
-        "in-page anchor target)."
+    main_open = re.search(r'<main\b[^>]*>', html)
+    assert main_open is not None, "<main> opening tag missing from base.html."
+    main_tag = main_open.group(0)
+    assert 'id="main-content"' in main_tag, (
+        "<main> must keep `id=\"main-content\"` (semantic landmark + "
+        "future in-page anchor target)."
     )
-    assert 'tabindex="-1"' not in html.split('<main')[1].split('>')[0] + '>', (
-        "<main> must not carry `tabindex=\"-1\"` — that attribute existed "
-        "only to receive programmatic focus from the (now-removed) "
-        "skip-link. Re-adding it implies the skip-link is coming back; "
-        "do both deliberately."
+    assert 'tabindex="-1"' not in main_tag, (
+        "<main> must not carry `tabindex=\"-1\"` — that attribute "
+        "existed only to receive programmatic focus from the "
+        "(now-removed) skip-link. Re-adding it implies the skip-link "
+        "is coming back; do both deliberately."
     )
 
 
 def test_pi4_skip_link_css_rule_removed():
     """`style.css` must not define a `.skip-link` rule. The CSS was the
-    other half of the removed pattern."""
+    other half of the removed pattern.
+
+    The assertion targets an actual rule selector (CR PR #18 R1-B) so
+    documentation comments mentioning `.skip-link` (e.g., this rationale
+    block in the test file's git blame) can coexist."""
     src = CSS_PATH.read_text()
-    assert '.skip-link' not in src, (
-        "style.css re-introduced a `.skip-link` rule. The skip-link "
-        "pattern was retired in design/home-out-polish; restoring it "
-        "requires revising the rationale comment + these tests."
+    skip_rule = re.search(r'(?m)^\s*\.skip-link\b[^,{]*\{', src)
+    assert skip_rule is None, (
+        "style.css re-introduced a `.skip-link {...}` rule. The "
+        "skip-link pattern was retired in design/home-out-polish; "
+        "restoring it requires revising the rationale comment + these "
+        "tests."
     )
 
 
