@@ -19,7 +19,10 @@ content/layout changes that need locking against future drift:
 """
 from __future__ import annotations
 
+import os
+import re
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
@@ -126,7 +129,6 @@ def test_countdown_card_drops_ticking_trail():
     # Strip Jinja `{# ... #}` comments before scanning so a code comment
     # documenting the JS file (which legitimately mentions "ticking") does
     # not mask the user-facing-markup assertion.
-    import re
     visible = re.sub(r'\{#.*?#\}', '', COUNTDOWN, flags=re.DOTALL)
     assert 'ticking' not in visible, (
         'The word "ticking" reappeared in the user-visible countdown markup.'
@@ -198,7 +200,6 @@ def test_commish_note_pre_state_copy_verbatim():
     # Collapse runs of whitespace so phrases that wrap across lines in the
     # template (with indentation) still match. The user-facing render
     # collapses whitespace the same way.
-    import re
     normalized = re.sub(r'\s+', ' ', COMMISH)
     expected_phrases = [
         'Welcome to the Club, I hope you enjoy the site.',
@@ -275,7 +276,6 @@ def test_home_shell_min_height_uses_chrome_tokens():
     css = STYLE_CSS.read_text()
     # Capture just the .home-shell { ... } block (first match — there are
     # later @media overrides for breakpoints).
-    import re
     m = re.search(r'\.home-shell\s*\{[^}]*\}', css)
     assert m, '.home-shell rule not found in style.css'
     block = m.group(0)
@@ -312,18 +312,64 @@ def test_flash_messages_container_is_conditional():
 # End-to-end: rendered HTML at `/` for the unenrolled pre-state user
 # ---------------------------------------------------------------------------
 
+def _extract_decree_block(html: str) -> str:
+    """Return the substring covering the `<div class="decree">...</div>`
+    countdown card, with nested divs balanced.
+
+    The countdown card is the surface the assertion in
+    `test_unenrolled_pre_state_home_renders_correct_cta_and_copy` scopes to.
+    A blanket `phrase not in body` check would pass spuriously the moment
+    any unrelated future template introduces the phrase elsewhere on the
+    home page; scoping to this fragment keeps the assertion intent-aligned
+    with what the polish pass actually changed (P0 #2: CTA removed from
+    THIS card, the dossier slot below owns the conditional CTA).
+    """
+    start = html.find('<div class="decree"')
+    assert start >= 0, '.decree countdown card not found in rendered HTML'
+    depth = 0
+    i = start
+    while i < len(html):
+        if html.startswith('<div', i):
+            depth += 1
+            i += 4
+        elif html.startswith('</div>', i):
+            depth -= 1
+            if depth == 0:
+                return html[start:i + len('</div>')]
+            i += len('</div>')
+        else:
+            i += 1
+    raise AssertionError('.decree block has unbalanced <div> tags')
+
+
+# Clock is frozen to a known pre-deadline UTC instant so `worldcup_state()`
+# always resolves to 'pre' in CI, regardless of when the suite runs.
+# TOURNAMENT_DEADLINE_UTC is 2026-06-11 19:00 UTC; we pick a day in early
+# May so the countdown shows a comfortable double-digit `Days` value if a
+# future failure dumps the rendered body. The env-var seam requires BOTH
+# WC_FAKE_NOW and ENVIRONMENT in the same patch dict — see CLAUDE.md
+# "Mocking the time/deadline seam" + the `now_utc()` guard in
+# `games/worldcup/services/state.py`. Without ENVIRONMENT=testing the
+# seam silently no-ops (test-isolated processes don't inherit it).
+_FROZEN_PRE_DEADLINE_NOW = '2026-05-15T12:00:00+00:00'
+
+
+@patch.dict(os.environ, {
+    'WC_FAKE_NOW': _FROZEN_PRE_DEADLINE_NOW,
+    'ENVIRONMENT': 'testing',
+})
 def test_unenrolled_pre_state_home_renders_correct_cta_and_copy(app, client):
-    """The integrated render: log in a fresh user with no enrollment, hit
-    `/`, and verify (a) the dossier shows the Join CTA, (b) the Commish
-    copy reads the user-supplied text, (c) the countdown does NOT show
+    """Integrated render: log in a fresh user with no enrollment, hit `/`,
+    and verify (a) the dossier shows the Join CTA, (b) the Commish copy
+    reads the user-supplied text, (c) the countdown card does NOT carry
     the deleted "Review & Edit My Roster" button copy.
 
-    The home route resolves `state='pre'` from `worldcup_state()` for any
-    pre-deadline time (TOURNAMENT_DEADLINE_UTC is 2026-06-11), so we don't
-    need to mock the clock — the test inherits whatever pre-deadline time
-    the test session sees. (At runtime past the deadline, the test would
-    flip to 'live' and assertions would no longer apply; the deadline
-    sits far enough out that this is a non-issue for the lock's lifespan.)
+    Wall-clock independence: the test patches `WC_FAKE_NOW` to a fixed
+    pre-deadline instant so `worldcup_state()` resolves to 'pre' on any
+    CI run, including post-2026-06-11. The pre-fix version of this test
+    relied on real time, which would have flipped the home to 'live'
+    state and silently broken the assertions for the rest of time
+    (caught by CR on PR #20).
     """
     _login_as_unenrolled(app, client)
     resp = client.get('/')
@@ -340,10 +386,15 @@ def test_unenrolled_pre_state_home_renders_correct_cta_and_copy(app, client):
         'Pre-state Commish note is not rendering the user-supplied copy.'
     )
 
-    # The deleted countdown CTA copy must not appear inside the countdown
-    # card. (The ballot card carries the same string for enrolled-with-picks
-    # users; this test has no enrollment, so the ballot card is not rendered.)
-    assert 'Review &amp; Edit My Roster' not in body, (
-        'The countdown CTA was supposed to be removed for unenrolled '
-        'users, but its label is leaking into the rendered HTML.'
+    # The deleted countdown CTA copy must not appear *inside the countdown
+    # card itself*. The ballot card (which carries the same phrase for
+    # enrolled-with-picks users) lives in the dossier slot below and isn't
+    # rendered here anyway, but scoping to .decree future-proofs the lock
+    # against any other home-page surface ever using the phrase legitimately
+    # — convention per CR on PR #20.
+    decree = _extract_decree_block(body)
+    assert 'Review &amp; Edit My Roster' not in decree, (
+        'The countdown CTA was supposed to be removed, but the phrase '
+        '"Review & Edit My Roster" is leaking back into the .decree '
+        'countdown card markup.'
     )
