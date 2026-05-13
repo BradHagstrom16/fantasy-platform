@@ -182,7 +182,10 @@ def test_fixture_card_kickoff_uses_ct_filter_not_utc_strftime():
         'Fixture card reverted to a UTC strftime. Use the `|ct` Jinja '
         'filter (registered in app.py); the helper lives at utils/time.py.'
     )
-    assert '|ct(' in FIXTURE, (
+    # Word-boundary so the default-arg form `{{ x|ct }}` (no parentheses)
+    # is also accepted — both `|ct(...)` and `|ct ` / `|ct}}` are valid
+    # invocations of the filter registered in app.py.
+    assert re.search(r'\|ct\b', FIXTURE), (
         'Fixture card is no longer piping kickoff through the `ct` filter. '
         'The platform display TZ is America/Chicago — see utils/time.py.'
     )
@@ -329,8 +332,17 @@ def _extract_decree_block(html: str) -> str:
     with what the polish pass actually changed (P0 #2: CTA removed from
     THIS card, the dossier slot below owns the conditional CTA).
     """
-    start = html.find('<div class="decree"')
-    assert start >= 0, '.decree countdown card not found in rendered HTML'
+    # Resilient to attribute order + quote style: matches `<div ... class="…
+    # decree …" …>` whether `class` is first or last, single- or double-
+    # quoted, with or without other classes alongside `decree`. Word
+    # boundaries on `decree` so a future `.decree-foo` class on a different
+    # element doesn't accidentally match.
+    open_re = re.compile(
+        r'<div\b[^>]*\bclass=["\'][^"\']*\bdecree\b[^"\']*["\']'
+    )
+    m = open_re.search(html)
+    assert m, '.decree countdown card not found in rendered HTML'
+    start = m.start()
     depth = 0
     i = start
     while i < len(html):
