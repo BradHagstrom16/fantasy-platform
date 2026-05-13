@@ -194,20 +194,39 @@ def test_pi1_home_out_renders_coming_soon_rail_with_aria_label():
     )
 
 
-def test_pi1_css_defines_out_registry_grid_with_responsive_split():
-    """The new CSS scaffolds the 1-col-mobile / 7fr+5fr-desktop grid. The
-    7fr/5fr asymmetry is what breaks the identical-card silhouette at
-    desktop (compared to the pre-S4.1.1 1fr/1fr/1fr equal grid)."""
+def test_pi1_css_defines_out_registry_grid_centered_single_column():
+    """The S4.1.1 PI-1 7fr+5fr-desktop split was revised in
+    design/home-out-polish (2026-05-13). First-impression critique by
+    the product owner flagged the featured card as "crammed into a
+    corner" at desktop: the 7fr column floated left within the home-
+    shell container with no balancing centering moment. The fix stacks
+    the featured card centered above the coming-soon rail at every
+    viewport, capped with `max-width` so the centered column doesn't
+    stretch edge-to-edge. The identical-card-grid silhouette stays
+    broken because the featured card and the rail strips remain
+    structurally different shapes (hero card vs horizontal strips)."""
     grid_block = _css_block('.home-shell .out-registry-grid')
     assert 'grid-template-columns: 1fr;' in grid_block, (
-        "PI-1: `.out-registry-grid` must default to `1fr` (single column "
-        "stack) so mobile reads as one large featured card above a stacked "
-        "coming-soon rail."
+        "PI-1 (revised): `.out-registry-grid` must default to `1fr` so "
+        "the featured card stacks above the coming-soon rail."
     )
-    assert 'minmax(0, 7fr) minmax(0, 5fr)' in grid_block, (
-        "PI-1: at ≥992px `.out-registry-grid` must use a 7fr+5fr "
-        "split-column template. Equal columns would re-introduce the "
-        "identical-card-grid silhouette ban."
+    assert 'max-width:' in grid_block, (
+        "PI-1 (revised): `.out-registry-grid` must cap its width with "
+        "`max-width:` so the centered single-column layout doesn't "
+        "stretch the featured card edge-to-edge inside the container."
+    )
+    assert 'margin: 0 auto' in grid_block or 'margin-inline: auto' in grid_block, (
+        "PI-1 (revised): `.out-registry-grid` must center itself "
+        "(`margin: 0 auto`) so the featured card and rail land in the "
+        "visual middle of the container, not against its left edge."
+    )
+    # The pre-revision split must NOT come back; if a future iteration
+    # wants to re-introduce side-by-side, revise this lock together with
+    # the new design rationale.
+    assert 'minmax(0, 7fr) minmax(0, 5fr)' not in grid_block, (
+        "PI-1 (revised): the legacy 7fr+5fr split must not return. The "
+        "stacked-centered layout is the locked design after the "
+        "design/home-out-polish revision."
     )
 
 
