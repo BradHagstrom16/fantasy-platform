@@ -6,7 +6,7 @@
     <div class="grp">{{ stage_label(match.stage) }}{% if match.group_letter %} · Group {{ match.group_letter }}{% endif %}</div>
     {% if match.kickoff_utc %}
     <span class="live-pill live-pill--kickoff">
-      {{ match.kickoff_utc.strftime('%a %d %b · %H:%M UTC') }}
+      {{ match.kickoff_utc|ct('%a %d %b · %-I:%M %p CT') }}
     </span>
     {% endif %}
   </div>
@@ -27,9 +27,6 @@
   <div class="match-foot">
     <div class="match-foot-note">
       {{ match.venue or '' }}{% if match.venue and match.city %} · {% endif %}{{ match.city or '' }}
-    </div>
-    <div class="match-foot-status">
-      ◯ PICK DUE
     </div>
   </div>
   {% endif %}

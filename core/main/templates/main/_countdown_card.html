@@ -15,31 +15,17 @@
        static/js/countdown.js keeps ticking. #}
     <div class="decree-hero">
       <div class="decree-hero-num" data-cd-days>{{ '%02d'|format(((deadline_utc - now_utc).days)|default(0)) }}</div>
-      <div class="decree-hero-unit">Days to the Whistle</div>
+      <div class="decree-hero-unit">Days</div>
     </div>
-    <p class="decree-derivation" aria-label="Live countdown by hours, minutes, seconds">
+    <div class="decree-derivation" role="timer"
+         aria-label="Time remaining until World Cup tribute window closes"
+         aria-live="off">
       <span class="decree-tick"><span data-cd-hours>00</span><span class="u">h</span></span>
       <span class="decree-tick-sep" aria-hidden="true">·</span>
       <span class="decree-tick"><span data-cd-mins>00</span><span class="u">m</span></span>
       <span class="decree-tick-sep" aria-hidden="true">·</span>
       <span class="decree-tick"><span data-cd-secs>00</span><span class="u">s</span></span>
-      <span class="decree-tick-trail"> ticking</span>
-    </p>
-    <p class="decree-foot">Once group stage begins, all picks lock.</p>
-  </div>
-
-  <div class="decree-actions">
-    <a class="decree-cta" href="{{ url_for('worldcup.picks') }}">
-      <i class="bi bi-pencil-square"></i>
-      Review &amp; Edit My Roster
-    </a>
-    <div class="decree-links">
-      <a href="{{ url_for('worldcup.rules') }}">
-        <i class="bi bi-journal"></i> House Rules
-      </a>
-      <a href="{{ url_for('worldcup.rules') }}#scoring">
-        <i class="bi bi-check-circle"></i> Scoring
-      </a>
     </div>
+    <p class="decree-foot">Once group stage begins, all picks lock.</p>
   </div>
 </div>
