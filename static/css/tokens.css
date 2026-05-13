@@ -64,4 +64,14 @@
   --shadow-dropdown:          0 12px 40px rgba(58,29,114,.50); /* dropdown panel */
   --shadow-sticky-up:         0 -4px 20px rgba(58,29,114,.35); /* bottom-anchored bar (upward cast) */
   --shadow-btn-primary-hover: 0 4px 14px rgba(58,29,114,.30);  /* Quiet-primary CTA hover (DESIGN.md §Buttons) */
+
+  /* Chrome heights consumed by layout calc()s.
+     Bootstrap navbar (`.navbar` with no fixed height set) renders ~56px in
+     CCC's configuration; the .ccc-footer voice + utility stack measures
+     ~200px at mobile. `.home-shell` uses these to size its min-height so the
+     purple gradient fills the viewport even on short pages. If either chrome
+     element changes height, update only these tokens — every dependent
+     calc() resolves through them. */
+  --ccc-nav-h: 56px;
+  --ccc-footer-h: 200px;
 }

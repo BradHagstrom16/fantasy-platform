@@ -301,7 +301,10 @@ body.game-golf {
 
 .home-shell {
   position: relative;
-  min-height: calc(100vh - 56px - 200px); /* nav minus footer */
+  /* Heights live as tokens in tokens.css (--ccc-nav-h, --ccc-footer-h) so
+     the calc resolves through one source of truth; see DESIGN.md / CLAUDE.md
+     for the chrome height convention. */
+  min-height: calc(100vh - var(--ccc-nav-h) - var(--ccc-footer-h));
   background: var(--purple-950);
   background-image: radial-gradient(
     ellipse at top,
@@ -1035,75 +1038,12 @@ body.game-golf {
   color: rgba(242,211,107,.45);
   margin: 0 0.35rem;
 }
-.home-shell .decree-tick-trail {
-  font-style: italic;
-}
 .home-shell .decree-foot {
   font-family: var(--font-news);
   font-style: italic;
   font-size: 0.85rem;
   color: var(--bone-mute);
   margin: 1rem 0 0;
-}
-.home-shell .decree-actions {
-  padding: 1rem 1rem 1.25rem;
-  text-align: center;
-  position: relative;
-  z-index: 1;
-  border-top: 1px solid rgba(243,239,230,.06);
-}
-.home-shell .decree-cta {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.7rem 1.5rem;
-  background: var(--metal-gold);
-  color: var(--purple-950) !important;
-  font-family: var(--font-teko);
-  font-weight: 600;
-  font-size: 0.95rem;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  text-decoration: none;
-  border-radius: 6px;
-  transition: transform 0.15s ease;
-}
-.home-shell .decree-cta:hover {
-  transform: translateY(-1px);
-  color: var(--purple-950) !important;
-}
-.home-shell .decree-links {
-  margin-top: 0.5rem;
-  display: flex;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 0.25rem 0.75rem;
-}
-.home-shell .decree-links a {
-  font-family: var(--font-teko);
-  font-weight: 500;
-  font-size: 0.75rem;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: var(--bone-mute);
-  text-decoration: none;
-  /* S4.1.1 PI-3 — 44×44 tap-target floor. Padding expands the hit area to
-     the 44px floor PRODUCT.md "Mobile-First Requirements" mandates. Without
-     this, the links measured 93×20 (House Rules) and 67×20 (Scoring) at the
-     375 viewport — caught by the S2.1.2 tap-target sweep recipe. */
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  min-height: 44px;
-  min-width: 44px;
-  padding: 0.65rem 0.75rem;
-  border-radius: 4px;
-}
-.home-shell .decree-links a:hover { color: var(--gold-light); }
-.home-shell .decree-links a:focus-visible {
-  outline: 2px solid var(--gold-light);
-  outline-offset: 2px;
-  color: var(--gold-light);
 }
 
 /* --- Pre-state: sealed ballot card ---
@@ -2335,7 +2275,6 @@ body.game-golf {
   .home-shell .cg:hover,
   .home-shell .cg--active:hover,
   .home-shell .join-cta:hover,
-  .home-shell .decree-cta:hover,
   .home-shell .roster-recap-cta:hover,
   .home-shell .ballot-edit-action:hover,
   .home-shell .out-featured:hover {
@@ -2360,7 +2299,6 @@ body.game-golf {
   .home-shell .cta-card:hover,
   .home-shell .cg--active:hover,
   .home-shell .join-cta:hover,
-  .home-shell .decree-cta:hover,
   .home-shell .roster-recap-cta:hover,
   .home-shell .out-featured:hover {
     transform: none;

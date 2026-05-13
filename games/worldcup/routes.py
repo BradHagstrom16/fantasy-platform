@@ -32,6 +32,11 @@ from games.worldcup.services.scoring import (
     compute_match_attribution,
     compute_team_score_events,
 )
+# Platform tz helper. Re-exported as `format_ct` in the WC blueprint context
+# processor (see below) so existing WC templates (`{{ format_ct(dt).strftime(...) }}`)
+# keep working with the same datetime-returning contract. Platform templates
+# use the `|ct` Jinja filter registered in `app.create_app` instead.
+from utils.time import to_ct as _format_ct
 from games.worldcup.services.stats import (
     get_country_stats,
     get_tier_stats,
@@ -101,16 +106,6 @@ def _derive_tournament_phase():
     if completed_group > 0:
         return 'group_stage'
     return 'pre_tournament'
-
-
-def _format_ct(dt_utc):
-    """Convert a UTC datetime to Central Time for display."""
-    if dt_utc is None:
-        return None
-    from zoneinfo import ZoneInfo
-    if dt_utc.tzinfo is None:
-        dt_utc = dt_utc.replace(tzinfo=ZoneInfo("UTC"))
-    return dt_utc.astimezone(WORLDCUP_TZ)
 
 
 @worldcup_bp.context_processor

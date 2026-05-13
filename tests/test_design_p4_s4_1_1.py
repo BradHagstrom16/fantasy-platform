@@ -361,36 +361,13 @@ def test_pi2_css_decree_hero_unit_uses_gold_light_eyebrow_register():
 
 
 # ---------------------------------------------------------------------------
-# PI-3: `.decree-links a` tap-target floor (was 93×20 + 67×20 at 375).
+# PI-3 retired: the `.decree-links` (House Rules + Scoring) lived inside the
+# countdown card's CTA block, which the home-pre polish pass (PR following
+# S6.x) removed entirely — the dossier slot now owns the single CTA surface.
+# No element to protect, no tap-target floor to assert. The historical
+# locks lived here; if .decree-links is ever reintroduced, the 44×44 floor
+# applies (S2.1.2 recipe).
 # ---------------------------------------------------------------------------
-
-def test_pi3_decree_links_meet_44px_tap_floor():
-    """`min-height: 44px` + `min-width: 44px` push the link's hit area to
-    the PRODUCT.md "Mobile-First Requirements" floor. The padding expands
-    the touch area inside the existing line; the visible text stays the
-    same size."""
-    block = _css_block('.home-shell .decree-links a')
-    assert 'min-height: 44px' in block, (
-        "PI-3: `.decree-links a` must declare `min-height: 44px`. Without "
-        "it, the House Rules + Scoring links measure 20px tall at the 375 "
-        "viewport — every pre-state mobile user trips this fail."
-    )
-    assert 'min-width: 44px' in block, (
-        "PI-3: `.decree-links a` must also declare `min-width: 44px` so "
-        "single-word labels (e.g., 'Scoring' at 67px wide) still hit the "
-        "floor on both axes."
-    )
-
-
-def test_pi3_decree_links_carry_focus_visible_ring():
-    """Keyboard users must see the same affordance the mouse hover gives.
-    The canonical CCC focus ring is 2px gold-light + 2px offset."""
-    block = _css_block('.home-shell .decree-links a:focus-visible')
-    assert 'outline: 2px solid var(--gold-light)' in block, (
-        "PI-3: `.decree-links a:focus-visible` must carry the canonical "
-        "2px gold-light focus ring (the S2.1.2-locked pattern). Without "
-        "it, tab users lose the affordance."
-    )
 
 
 # ---------------------------------------------------------------------------

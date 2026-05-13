@@ -147,16 +147,18 @@ def test_pi2_commish_note_branches_on_state():
 
 
 def test_pi2_pre_state_keeps_tribute_window_copy(app):
-    """Pre-state body still carries the canonical tribute-window prose.
+    """Pre-state body still anchors on the tribute-window phrase.
 
-    The PI fixed live/post bleed-through — it did NOT rewrite the pre body.
-    Locking against a future pass that "tidies" the pre branch into
-    something less specific.
+    The PI fixed live/post bleed-through. A later home pre-state polish pass
+    rewrote the prose to user-supplied first-person copy (lowercase "tribute
+    window"); the semantic anchor — the words "tribute window" + the welcome
+    line — survives. Locking against a future pass that "tidies" the pre
+    branch into something that loses both anchors.
     """
     out = render_template('main/_commish_note.html',
                           state='pre',
                           champion_team=None)
-    assert 'Tribute window' in out
+    assert 'tribute window' in out.lower()
     assert 'Welcome to the Club' in out
 
 

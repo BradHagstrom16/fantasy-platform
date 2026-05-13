@@ -74,6 +74,14 @@ def create_app(config_name=None):
     from core.context import register_context_processors
     register_context_processors(app)
 
+    # Platform-wide Jinja filters. `ct` converts a UTC datetime to platform
+    # display TZ (America/Chicago) and formats it. Lives at app level so
+    # both platform (`core/main`) and game blueprints share one rendering
+    # path; see utils/time.py for the helper and games/worldcup/routes.py
+    # for the legacy context-processor callable that re-exports it.
+    from utils.time import format_ct as _format_ct
+    app.jinja_env.filters['ct'] = _format_ct
+
     # Error handlers
     @app.errorhandler(404)
     def not_found(e):

@@ -71,13 +71,17 @@ class WorldCupTeam(db.Model):
     base_points = db.Column(db.Float, default=0.0)
     multiplied_points = db.Column(db.Float, default=0.0)
 
-    # FIFA codes whose first two letters do NOT match ISO 3166-1 alpha-2
+    # FIFA codes whose first two letters do NOT match ISO 3166-1 alpha-2.
+    # Missing entries fall through to `code[:2]` and render the wrong country's
+    # flag. tests/test_worldcup_flag_emoji.py locks all 48 codes against a
+    # canonical map so a regression is caught at PR time, not in production.
     _FIFA_TO_ISO: dict[str, str] = {
         'ENG': 'GB', 'SCO': 'GB', 'GER': 'DE', 'NED': 'NL', 'POR': 'PT',
         'SUI': 'CH', 'CRO': 'HR', 'URU': 'UY', 'PAR': 'PY', 'SEN': 'SN',
         'BIH': 'BA', 'ALG': 'DZ', 'KOR': 'KR', 'KSA': 'SA', 'RSA': 'ZA',
         'COD': 'CD', 'CPV': 'CV', 'HAI': 'HT', 'TUR': 'TR', 'CIV': 'CI',
         'SWE': 'SE', 'TUN': 'TN',
+        'MEX': 'MX', 'AUT': 'AT', 'CUW': 'CW', 'IRQ': 'IQ',
     }
 
     @property
