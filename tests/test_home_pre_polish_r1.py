@@ -297,11 +297,16 @@ def test_flash_messages_container_is_conditional():
     mt-3">` for flash messages, leaving a cream stripe between the navbar
     and the purple home-shell even when no message existed. The container
     now sits inside the `{% if messages %}` guard."""
-    # The container div must follow the `{% if messages %}` check.
-    if_then_container = (
-        '{% if messages %}\n        <div class="container mt-3">'
+    # Whitespace-flexible regex so reindenting `base.html` (auto-formatter,
+    # tab→space conversion, etc.) does not break this lock without
+    # behavior actually regressing. The semantic invariant is: an `{% if
+    # messages %}` block appears, and the `<div class="container mt-3">`
+    # sits inside it.
+    pattern = re.compile(
+        r'\{%\s*if\s+messages\s*%\}\s*<div\s+class="container\s+mt-3"',
+        re.DOTALL,
     )
-    assert if_then_container in BASE_HTML, (
+    assert pattern.search(BASE_HTML), (
         'Flash-messages container is no longer guarded by `{% if messages '
         '%}`. The unconditional render leaves a cream gap between navbar '
         'and home-shell on the pre-state home page.'
