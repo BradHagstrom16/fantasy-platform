@@ -9,53 +9,32 @@
       <span class="out-title-b">Is In.</span>
     </h1>
     <p class="out-sub">
-      A fantasy pool for fiefdoms, not spreadsheets. Pay tribute.
-      Bend the odds to your will. No honor required.
+      Pay tribute. Bend the odds to your will. No honor required.
     </p>
   </div>
 
-  {# Value props.
-
-     S4.1.2 PI-4 — row-specific texture so the strip no longer reads as
-     three identical icon-text rows (the within-strip identical-grid
-     signal the S4.1.1 critique flagged). Row 1 keeps the trophy icon;
-     row 2 swaps the icon for an inline sparkline preview (leaderboard
-     register); row 3 swaps for a Tribune monogram. Each preview is
-     decorative (`aria-hidden="true"`) — the row's title + sub line
-     carry the semantic content. #}
+  {# Value props. Three-line editorial list separated by a hairline gold
+     rule. The S4.1.2 differentiated-gutter-marks pattern (icon /
+     sparkline / monogram) was retired in design/home-out-polish after
+     first-impression critique: the variety read as noise rather than
+     rhythm. Teko all-caps titles now carry the structural rhythm. #}
   <div class="out-props">
     <div class="out-prop">
-      <div class="out-prop-icon" aria-hidden="true">
-        <i class="bi bi-trophy-fill"></i>
-      </div>
       <div class="out-prop-text">
         <div class="t">Rule the fiefdom</div>
         <div class="s">Pick a Favorite, a Dark Horse, a Sacred Underdog. Every choice pays.</div>
       </div>
     </div>
     <div class="out-prop">
-      <div class="out-prop-spark" aria-hidden="true">
-        <svg viewBox="0 0 64 36" preserveAspectRatio="none" focusable="false">
-          <polyline points="2,28 14,22 24,26 34,14 46,18 62,6"
-                    fill="none" stroke="currentColor" stroke-width="2"
-                    stroke-linecap="round" stroke-linejoin="round" />
-          <circle cx="62" cy="6" r="3" fill="currentColor" />
-        </svg>
-      </div>
       <div class="out-prop-text">
         <div class="t">Climb the leaderboard</div>
         <div class="s">Live rank. Weekly dispatches when rivals fall.</div>
       </div>
     </div>
     <div class="out-prop">
-      <div class="out-prop-monogram" aria-hidden="true">
-        <span class="out-prop-monogram-mark">◈</span>
-        <span class="out-prop-monogram-letter">C</span>
-        <span class="out-prop-monogram-mark">◈</span>
-      </div>
       <div class="out-prop-text">
         <div class="t">Read the Commish&rsquo;s Note</div>
-        <div class="s">Weekly recaps in plain language. No shame. Just receipts.</div>
+        <div class="s">Weekly recaps written by yours truly. Mostly receipts with some shame.</div>
       </div>
     </div>
   </div>
@@ -72,12 +51,13 @@
     </div>
     <div class="join-title">Join the <span class="home-metal-text">competition</span>.</div>
     <p class="join-sub">
-      Pre-kickoff: anyone can join the game. Once group stage locks on June 11,
-      you can still join the club, but your ballot closes with the rest.
+      World Cup 2026 Pre-kickoff: anyone can join the game. Once games
+      start on June 11, your ballot of countries locks for the entirety
+      of the tournament.
     </p>
     <a class="join-cta" href="{{ url_for('auth.register') }}">
       Join the Club
-      <i class="bi bi-arrow-right"></i>
+      <i class="bi bi-arrow-right" aria-hidden="true"></i>
     </a>
     <div class="join-alt">
       Already sworn in? <a href="{{ url_for('auth.login') }}">Sign in</a>

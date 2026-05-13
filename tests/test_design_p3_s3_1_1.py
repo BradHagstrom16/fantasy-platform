@@ -133,49 +133,88 @@ def test_pi3_subnav_pill_inactive_text_color_meets_aa():
     )
 
 
-# ---------- PI-4: skip-link ----------
+# ---------- PI-4: skip-link removed in design/home-out-polish (2026-05-13) ----------
+#
+# The S3.1.1 PI-4 skip-link (WCAG 2.4.1 Bypass Blocks) was removed by product
+# decision after first-impression critique. Trade-off: this is a small-group
+# fantasy-pool product (PRODUCT.md: "10 to 30 people with existing
+# camaraderie"); the marginal AT benefit was judged not worth the chrome
+# real estate over the navbar even at off-screen-until-focused. If a future
+# member uses a screen reader or keyboard navigation as a primary input,
+# revisit and restore. These locks now ASSERT the removal so a future
+# automated patch doesn't silently re-introduce the pattern without an
+# explicit design decision.
 
-def test_pi4_skip_link_present_in_base_html():
-    """base.html must carry a `.skip-link` anchor as the first focusable child
-    of `<body>`, targeting `#main-content` (WCAG 2.4.1 Bypass Blocks)."""
+def test_pi4_skip_link_removed_from_base_html():
+    """The `.skip-link` anchor must not return to base.html. Re-introducing
+    it requires a deliberate design revision (revise this lock + the
+    rationale comment above).
+
+    Assertions are scoped to the anchor element + its visible text (CR
+    PR #18 R1-B) so a stray substring in an unrelated comment or
+    attribute can't false-positive the lock."""
     html = BASE_HTML_PATH.read_text()
-    assert '<a class="skip-link" href="#main-content">Skip to main content</a>' in html, (
-        "base.html must include the skip-link anchor — WCAG 2.4.1 chrome a11y baseline"
+    skip_anchor = re.search(
+        r'<a\b[^>]*class="[^"]*\bskip-link\b[^"]*"[^>]*>',
+        html,
     )
-    # The skip-link must precede the navbar in source order so Tab lands on it first.
-    skip_idx = html.find('<a class="skip-link"')
-    nav_idx = html.find('<nav class="navbar')
-    assert 0 < skip_idx < nav_idx, (
-        "Skip-link must appear before <nav> in base.html so it's the first focusable target"
+    assert skip_anchor is None, (
+        "base.html re-introduced an `<a class=\"skip-link\">` anchor. "
+        "The pattern was retired in design/home-out-polish; if you "
+        "want to restore it, revise the rationale comment and these "
+        "tests together."
+    )
+    skip_text = re.search(
+        r'<a\b[^>]*>\s*Skip to main content\s*</a>',
+        html,
+        flags=re.IGNORECASE,
+    )
+    assert skip_text is None, (
+        "base.html re-introduced a 'Skip to main content' anchor. The "
+        "pattern was retired in design/home-out-polish."
     )
 
 
-def test_pi4_main_element_carries_target_id():
-    """The `<main>` element must carry `id="main-content"` so the skip-link
-    anchor resolves to a real region. `tabindex="-1"` makes the region
-    programmatically focusable on activation."""
+def test_pi4_main_element_keeps_id_but_drops_orphan_tabindex():
+    """`<main>` retains `id=\"main-content\"` (useful for in-page anchor
+    links and AT landmarks) but no longer carries `tabindex=\"-1\"` —
+    that attribute only existed to receive programmatic focus from the
+    now-removed skip-link, so it's an orphan otherwise.
+
+    Both checks are scoped to the opening `<main>` tag (CR PR #18 R1-B)
+    so attribute order is irrelevant and the previous brittle
+    string-split form is retired."""
     html = BASE_HTML_PATH.read_text()
-    assert '<main id="main-content" tabindex="-1">' in html, (
-        "<main> must carry id=\"main-content\" and tabindex=\"-1\" so the skip-link "
-        "lands programmatic focus on the main region (a11y baseline)"
+    main_open = re.search(r'<main\b[^>]*>', html)
+    assert main_open is not None, "<main> opening tag missing from base.html."
+    main_tag = main_open.group(0)
+    assert 'id="main-content"' in main_tag, (
+        "<main> must keep `id=\"main-content\"` (semantic landmark + "
+        "future in-page anchor target)."
+    )
+    assert 'tabindex="-1"' not in main_tag, (
+        "<main> must not carry `tabindex=\"-1\"` — that attribute "
+        "existed only to receive programmatic focus from the "
+        "(now-removed) skip-link. Re-adding it implies the skip-link "
+        "is coming back; do both deliberately."
     )
 
 
-def test_pi4_skip_link_css_rule_present():
-    """`style.css` must define `.skip-link` and `.skip-link:focus` rules with the
-    off-screen → reveal-on-focus pattern (top: -100px → top: .5rem)."""
+def test_pi4_skip_link_css_rule_removed():
+    """`style.css` must not define a `.skip-link` rule. The CSS was the
+    other half of the removed pattern.
+
+    The assertion targets an actual rule selector (CR PR #18 R1-B) so
+    documentation comments mentioning `.skip-link` (e.g., this rationale
+    block in the test file's git blame) can coexist."""
     src = CSS_PATH.read_text()
-    assert '.skip-link {' in src, "style.css must define a .skip-link rule"
-    # Reveal-on-focus shape.
-    skip_idx = src.find('.skip-link {')
-    block_end = src.find('}', skip_idx)
-    block = src[skip_idx:block_end]
-    assert 'top: -100px' in block, ".skip-link must rest off-screen (top: -100px) until focused"
-    # Focus reveal rule.
-    focus_idx = src.find('.skip-link:focus')
-    assert focus_idx > 0, ".skip-link:focus reveal rule must exist"
-    focus_block = src[focus_idx:src.find('}', focus_idx)]
-    assert 'top: .5rem' in focus_block, ".skip-link:focus must drop the link into view (top: .5rem)"
+    skip_rule = re.search(r'(?m)^\s*\.skip-link\b[^,{]*\{', src)
+    assert skip_rule is None, (
+        "style.css re-introduced a `.skip-link {...}` rule. The "
+        "skip-link pattern was retired in design/home-out-polish; "
+        "restoring it requires revising the rationale comment + these "
+        "tests."
+    )
 
 
 # ---------- F1: Trophy Rule — no gold-glow text-shadow on navbar-brand ----------

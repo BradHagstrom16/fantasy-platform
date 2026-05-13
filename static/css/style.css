@@ -64,35 +64,6 @@
 .brand-mark { width: 28px; height: 28px; vertical-align: -.35em; margin-right: .5rem; }
 .brand-mark--lg { width: 56px; height: 56px; }
 
-/* === CCC SKIP-LINK ===
-   P3 S3.1.1 — WCAG 2.4.1 Bypass Blocks. Hidden off-screen until focused, then
-   anchored over the top-left of the navbar (`top: .5rem`) so keyboard users
-   see a high-contrast gold-on-purple chip the moment they Tab into the page.
-   Routed before the navbar in base.html so it's the first focusable target. */
-.skip-link {
-  position: absolute;
-  top: -100px;
-  left: 1rem;
-  z-index: 1100;
-  padding: .5rem 1rem;
-  background: var(--purple-700);
-  color: var(--gold) !important;
-  font-family: var(--font-teko);
-  font-size: .9rem;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-  text-decoration: none;
-  border: 2px solid var(--gold);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow-md);
-  transition: top var(--transition);
-}
-.skip-link:focus,
-.skip-link:focus-visible {
-  top: .5rem;
-  outline: none;
-}
-
 /* === CCC NAVBAR === */
 .navbar.navbar-dark {
   background: var(--purple-700);
@@ -470,10 +441,15 @@ body.game-golf {
 .home-shell .out-eyebrow {
   font-family: var(--font-teko);
   font-weight: 500;
-  font-size: 0.75rem;
-  letter-spacing: 0.28em;
+  /* design/home-out-polish: promoted from 0.75rem / 0.28em / gold-light
+     after the eyebrow was out-ranked by the join-card seal below it.
+     The hero's voice tagline carries Tribune identity and needs to read
+     larger than a status label. Looser tracking (0.18em vs 0.28em)
+     prevents the larger size from ghosting out on the dark substrate. */
+  font-size: clamp(0.95rem, 2.4vw, 1.15rem);
+  letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--gold-light);
+  color: var(--gold);
   margin-bottom: 1.5rem;
 }
 .home-shell .out-title {
@@ -506,75 +482,25 @@ body.game-golf {
   max-width: 480px;
 }
 
-/* --- Logged-out: value props --- */
+/* --- Logged-out: value props ---
+   design/home-out-polish: dropped the S4.1.2 PI-4 differentiated gutter
+   marks (icon / sparkline / monogram). The variety read as visual noise
+   rather than rhythm. Rows are now three editorial lines separated by a
+   single gold hairline rule (DESIGN.md §3 gold divider rules), letting
+   the Teko all-caps titles carry the structural rhythm. */
 .home-shell .out-props {
   display: flex;
   flex-direction: column;
   gap: 0;
   padding: 1.5rem 0;
-  border-top: 1px solid rgba(243,239,230,.08);
-  border-bottom: 1px solid rgba(243,239,230,.08);
+  border-top: 1px solid rgba(201,162,39,.18);
+  border-bottom: 1px solid rgba(201,162,39,.18);
 }
 .home-shell .out-prop {
-  display: flex;
-  gap: 1rem;
-  padding: 1.25rem 0.5rem;
-  border-bottom: 1px solid rgba(243,239,230,.05);
+  padding: 1.25rem 0;
+  border-bottom: 1px solid rgba(201,162,39,.18);
 }
 .home-shell .out-prop:last-child { border-bottom: none; }
-.home-shell .out-prop-icon {
-  flex: 0 0 auto;
-  width: 36px;
-  height: 36px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--gold-light);
-  font-size: 1.1rem;
-}
-/* S4.1.2 PI-4 — row 2 swaps the icon for an inline leaderboard
-   sparkline (matches the leaderboard preview register and breaks the
-   three-identical-icon-row silhouette). Same 36px box footprint as
-   .out-prop-icon so the row baselines hold. */
-.home-shell .out-prop-spark {
-  flex: 0 0 auto;
-  width: 36px;
-  height: 36px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--live-green);
-}
-.home-shell .out-prop-spark svg {
-  width: 100%;
-  height: 100%;
-  display: block;
-}
-/* S4.1.2 PI-4 — row 3 swaps the icon for a Tribune monogram. The
-   `◈ C ◈` mark mirrors the in-product Commish seals (decree-seal,
-   out-eyebrow) so the row visually previews the voice it describes. */
-.home-shell .out-prop-monogram {
-  flex: 0 0 auto;
-  width: 36px;
-  height: 36px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.18rem;
-  font-family: var(--font-teko);
-  font-weight: 600;
-  color: var(--gold-light);
-  letter-spacing: 0;
-}
-.home-shell .out-prop-monogram-mark {
-  font-size: 0.7rem;
-  line-height: 1;
-  color: rgba(242,211,107,.55);
-}
-.home-shell .out-prop-monogram-letter {
-  font-size: 1.35rem;
-  line-height: 1;
-}
 .home-shell .out-prop-text .t {
   font-family: var(--font-teko);
   font-weight: 600;
@@ -739,11 +665,17 @@ body.game-golf {
 }
 @media (min-width: 992px) {
   .home-shell .out-registry-grid {
-    /* Featured pool gets the 7-column-equivalent slot; the coming-soon rail
-       gets the narrower 5-column-equivalent. Aspect imbalance breaks
-       identical-card-grid silhouette. */
-    grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
-    gap: 1.5rem;
+    /* design/home-out-polish: stacked-centered replaces the S4.1.1 7fr+5fr
+       split. First-impression critique flagged the featured card as
+       "crammed into a corner" at desktop because the 7fr column floated
+       left with no balancing centering moment. The featured card now
+       sits centered above the coming-soon rail; the identical-card-grid
+       silhouette stays broken because the featured card and the rail
+       strips are still structurally different shapes. */
+    grid-template-columns: 1fr;
+    max-width: 720px;
+    margin: 0 auto;
+    gap: 2rem;
   }
 }
 
@@ -768,11 +700,14 @@ body.game-golf {
 .home-shell .out-featured-inner {
   position: relative;
   padding: 2.25rem 1.5rem 2.5rem;
+  /* design/home-out-polish: dropped the two interior radial highlights
+     (gold + purple ellipses) that fought the halftone dot pattern; the
+     featured card now leans on the linear gradient + dot texture + a
+     stronger gold edge so the silhouette lifts off the home-shell
+     purple atmosphere instead of dissolving into it. */
   background:
-    radial-gradient(ellipse at 80% 20%, rgba(201,162,39,.10) 0%, transparent 50%),
-    radial-gradient(ellipse at 20% 80%, rgba(58,29,114,.18) 0%, transparent 50%),
     linear-gradient(145deg, var(--purple-950) 0%, var(--purple-800) 50%, var(--purple-950) 100%);
-  border: 1px solid rgba(201,162,39,.32);
+  border: 1.5px solid rgba(201,162,39,.5);
   border-radius: 14px;
   text-align: center;
 }
@@ -807,6 +742,13 @@ body.game-golf {
 }
 .home-shell .out-featured:hover .out-featured-icon {
   transform: scale(1.08) rotate(-3deg);
+}
+@media (prefers-reduced-motion: reduce) {
+  .home-shell .out-featured-icon,
+  .home-shell .out-featured:hover .out-featured-icon {
+    transition: none;
+    transform: none;
+  }
 }
 .home-shell .out-featured-title {
   position: relative;

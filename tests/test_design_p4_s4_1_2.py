@@ -44,14 +44,17 @@ Iteration map:
 
 - PI-4 (`$impeccable delight` — `.out-prop` x3 row differentiation):
   the logged-out value-props strip rendered as three identical
-  icon-text rows. Row-by-row texture now breaks the within-strip
-  identical-grid signal: row 1 keeps the trophy icon, row 2 swaps for
-  an inline SVG sparkline preview (`.out-prop-spark` with a polyline
-  rising over six points + terminal dot), row 3 swaps for a Tribune
-  monogram (`.out-prop-monogram` rendering `◈ C ◈` in Teko 600 + 700
-  per the in-product Commish-seal pattern). All three previews are
-  decorative (`aria-hidden="true"`); semantic content lives in the
-  title + sub line.
+  icon-text rows. The S4.1.2 fix differentiated rows by gutter mark
+  (icon / sparkline / monogram). Revised in design/home-out-polish
+  (2026-05-13) after first-impression critique: three different gutter
+  shapes at the same 36x36 footprint read as "discombobulated" rather
+  than rhythmic — the variety intervention created a new noise problem.
+  The current lock drops all three gutter marks and separates rows
+  with a single hairline gold rule, letting the Teko all-caps titles
+  carry the structural rhythm. The identical-card-grid concern is
+  addressed at the page level (the value-props strip + featured card
+  + coming-soon rail are still structurally distinct) so the strip
+  doesn't need within-itself differentiation.
 """
 from pathlib import Path
 import re
@@ -564,95 +567,46 @@ def test_pi3_design_md_documents_home_shell_card_recipes():
 
 
 # ---------------------------------------------------------------------------
-# PI-4: `.out-prop` x3 row differentiation.
+# PI-4 (revised in design/home-out-polish, 2026-05-13): drop all `.out-prop`
+# gutter marks; rows are separated by a single hairline gold rule. The Teko
+# all-caps titles carry the rhythm.
 # ---------------------------------------------------------------------------
 
-def test_pi4_out_props_row_one_keeps_icon():
-    """Row 1 keeps the trophy icon so the icon affordance still
-    appears once in the strip (it's the baseline; rows 2 and 3
-    diverge from it)."""
-    first_prop = re.search(
-        r'<div class="out-prop">(.*?)</div>\s*</div>\s*<div class="out-prop">',
-        HOME_OUT,
-        re.DOTALL,
-    )
-    assert first_prop, (
-        "PI-4: `_home_out.html` first `.out-prop` block not found."
-    )
-    block = first_prop.group(1)
-    assert 'out-prop-icon' in block, (
-        "PI-4: row 1 must keep `.out-prop-icon`. It's the baseline the "
-        "other two rows differentiate from."
-    )
-    assert 'bi-trophy-fill' in block, (
-        "PI-4: row 1 must keep the `bi-trophy-fill` icon (Rule the "
-        "fiefdom)."
+def test_pi4_out_props_drop_all_gutter_marks():
+    """The S4.1.2 fix differentiated rows by gutter mark (icon /
+    sparkline / monogram) at the same 36x36 footprint. First-impression
+    critique judged the variety itself as noise; the revised pattern
+    drops all three marks so the rows read as a clean three-line
+    editorial list with Teko titles doing the structural work."""
+    for marker in ('out-prop-icon', 'out-prop-spark', 'out-prop-monogram'):
+        assert marker not in HOME_OUT, (
+            f"PI-4 (revised): `_home_out.html` still carries "
+            f"`.{marker}`. The design/home-out-polish revision dropped "
+            f"all three gutter marks; the rows must render title + sub "
+            f"only, separated by a single hairline gold rule."
+        )
+    # The pre-revision Bootstrap-icon trophy element must not return either.
+    assert 'bi-trophy-fill' not in HOME_OUT, (
+        "PI-4 (revised): the `bi-trophy-fill` icon (the S4.1.2 row-1 "
+        "baseline) must not return in `_home_out.html`."
     )
 
 
-def test_pi4_out_props_row_two_swaps_for_sparkline():
-    """Row 2 swaps the icon for an inline SVG sparkline so the
-    leaderboard register reads visually."""
-    assert 'out-prop-spark' in HOME_OUT, (
-        "PI-4: `_home_out.html` missing `.out-prop-spark` — row 2 "
-        "should swap the icon for an inline sparkline preview."
+def test_pi4_out_props_separated_by_hairline_gold_rule():
+    """Without gutter marks, the row separator carries the visual
+    rhythm. The hairline is a 1px gold rule (per DESIGN.md §3 'gold
+    divider rules between sections'), tuned to a low alpha so it
+    reads as a Tribune rule, not as a forced grid divider."""
+    prop_block = _css_rule('.home-shell .out-prop')
+    # Match either the bare `border-bottom: ...rgba(201,162,39,...)`
+    # form or a `border-bottom: 1px solid rgba(201,162,39,...)` form,
+    # so the alpha calibration can evolve without breaking the lock.
+    rule_pattern = re.compile(
+        r'border-bottom\s*:\s*1px\s+solid\s+rgba\(201,\s*162,\s*39,'
     )
-    spark_pattern = re.compile(
-        r'<div class="out-prop-spark"[^>]*>\s*<svg[^>]*>.*?<polyline',
-        re.DOTALL,
-    )
-    assert spark_pattern.search(HOME_OUT), (
-        "PI-4: `.out-prop-spark` must contain an inline `<svg>` with "
-        "a `<polyline>` so the leaderboard movement reads visually."
-    )
-    # Spark must be `aria-hidden` (decorative; semantic content lives
-    # in the title + sub line).
-    aria_pattern = re.compile(
-        r'<div class="out-prop-spark"[^>]*aria-hidden="true"',
-    )
-    assert aria_pattern.search(HOME_OUT), (
-        "PI-4: `.out-prop-spark` must be `aria-hidden=\"true\"` — the "
-        "semantic content lives in the title + sub line, the preview "
-        "is decorative."
-    )
-
-
-def test_pi4_out_props_row_three_swaps_for_monogram():
-    """Row 3 swaps the icon for a Tribune monogram (`◈ C ◈`) that
-    mirrors the in-product Commish seal."""
-    assert 'out-prop-monogram' in HOME_OUT, (
-        "PI-4: `_home_out.html` missing `.out-prop-monogram` — row 3 "
-        "should swap the icon for the Tribune monogram."
-    )
-    mark_pattern = re.compile(
-        r'<span class="out-prop-monogram-mark">◈</span>\s*'
-        r'<span class="out-prop-monogram-letter">C</span>\s*'
-        r'<span class="out-prop-monogram-mark">◈</span>',
-    )
-    assert mark_pattern.search(HOME_OUT), (
-        "PI-4: `.out-prop-monogram` must render `◈ C ◈` (two marks "
-        "flanking the letter) per the in-product Commish-seal pattern."
-    )
-
-
-def test_pi4_out_prop_previews_share_36px_box_so_row_baselines_hold():
-    """Each row-2 / row-3 swap must keep the 36x36 box footprint of
-    `.out-prop-icon` so the row baselines stay aligned."""
-    spark_block = _css_rule('.home-shell .out-prop-spark')
-    assert 'width: 36px' in spark_block, (
-        "PI-4: `.out-prop-spark` must declare `width: 36px` to match "
-        "`.out-prop-icon`'s footprint; otherwise the row 1 / row 2 "
-        "baselines drift."
-    )
-    assert 'height: 36px' in spark_block, (
-        "PI-4: `.out-prop-spark` must declare `height: 36px` to match "
-        "`.out-prop-icon`."
-    )
-    monogram_block = _css_rule('.home-shell .out-prop-monogram')
-    assert 'width: 36px' in monogram_block, (
-        "PI-4: `.out-prop-monogram` must declare `width: 36px` to "
-        "match `.out-prop-icon`'s footprint."
-    )
-    assert 'height: 36px' in monogram_block, (
-        "PI-4: `.out-prop-monogram` must declare `height: 36px`."
+    assert rule_pattern.search(prop_block), (
+        "PI-4 (revised): `.home-shell .out-prop` must separate rows "
+        "with `border-bottom: 1px solid rgba(201,162,39, …)` (a gold "
+        "hairline rule, DESIGN.md §3). The bone hairline the S4.1.2 "
+        "iteration carried no longer fits without the gutter marks."
     )
