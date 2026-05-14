@@ -14,7 +14,7 @@
 | Phase | Description | PR | Status | Closed |
 |---|---|---|---|---|
 | P0 | Quick wins + scorecard codification | [#22](https://github.com/BradHagstrom16/fantasy-platform/pull/22) | Open (awaiting review) | — |
-| P1 | HUB body migration | — | Pending | — |
+| P1 | HUB body migration | TBD | Open (awaiting review) | — |
 | P2 | BOARD body migration | — | Pending | — |
 | P3 | ROSTER read-only migration | — | Pending | — |
 | P4 | SCHEDULE light polish | — | Pending | — |
@@ -69,11 +69,23 @@ Carried over from the plan (and the in-session question-tool answers).
 
 ### P1 — HUB body migration
 
-**Branch (planned)**: `worldcup/tab-unification-phase-1`.
-**Targets**:
-- Migrate the hub's three `.card.wc-card` surfaces (deadline / roster preview / leaderboard preview) onto `.wc-stat-card`.
-- Reconcile PR #21's gold-on-dark accents to red-on-light per the new doctrine.
-- Pattern-lock touches anticipated: `test_design_p6_s6_1_1.py` (`.card.wc-card .wc-eyebrow` lock — possibly no-op if the hub stops using `.card.wc-card`), `test_design_p6_s6_1_4.py` (commish-note gold-top — flip to red if it's in the hub flow).
+**Branch**: `worldcup/tab-unification-phase-1`.
+**Shipped**:
+- 12 of 13 hub `.card.wc-card` containers migrated to `.wc-stat-card` across `_home_out.html` (2), `_home_pre.html` (3), `_home_live.html` (4), and `_home_post.html` (3). Plan exploration found more than the strategy doc's "three surfaces" estimate — the actual surface inventory was 13.
+- **Champion banner exception**: `_home_post.html:30` (`.card.wc-card.wc-hero-grad`) deliberately kept dark + gold per the new accent doctrine (gold reserved for champion banners / podium glow). Wrapper-class migration to a dedicated `.wc-champion-banner` deferred to P5 so `.card.wc-card` can be fully retired then.
+- **Global WC button repaint**: new `body.game-worldcup .btn-game` rule paints CTAs `var(--wc-red)` with `var(--wc-red-dark)` hover across every WC substrate. The prior `.card.wc-card .btn-game` dark-card scoped lift (to `--game-accent`) was removed in lockstep; the global rule supersedes it. New token `--wc-red-dark` (`#9C0826`, ~6.94:1 white-on-red AA) added to `tokens.css`.
+- **Hero phase chip gold→red+white**: `.page-hero.wc-hero-grad .phase-indicator` flipped from gold-14% / gold-light to red-14% / white / red dot. New `@keyframes pulseRed` backs the hero-scoped `.active .phase-dot` ripple; `pulseGold` retained for non-hero consumers (e.g., `.wc-state-chip--live`).
+- **`.wc-card-deadline` modifier retired**: the gold-top-on-dark deadline variant was rederived as `.wc-stat-card.is-lead` (red-top on light, locked by P0). The class is gone from CSS and templates.
+- **`.row-current-user` light-substrate anchor flipped**: was `--gold-dark` → now `var(--game-primary)` (navy) with `var(--wc-red)` hover. The `.card.wc-card .table-worldcup .row-current-user > td a` dark-scoped override (gold-light → gold-hi) is preserved for BOARD/ROSTER until P2/P3 migrate those tabs.
+- **Light-substrate eyebrow lift added**: `.wc-stat-card .wc-eyebrow:not(.wc-eyebrow-red):not(.wc-eyebrow-gold) → --text-secondary` so the migrated hub eyebrows remain legible on white. Mirrors the existing dark-substrate lifts at `:2685` (hero) and `:7134` (dark card); together the three rules cover all WC substrates without disturbing the base `--bone-mute` token.
+
+**Tests**:
+- New: `tests/test_design_wc_tab_unification_p1.py` — 8 regression locks (global red rule exists, old scoped rule removed, hub partials have zero `.card.wc-card` except champion banner, `.card.wc-card-deadline` retired, `--wc-red-dark` defined, hero phase chip uses red not gold, `pulseRed` keyframe exists).
+- Unchanged: `test_design_p6_s6_1_1.py::test_pi1_dark_card_eyebrow_lift_rule_exists` (invariant until P5 — BOARD/ROSTER still consume the rule).
+- Unchanged: `test_design_p6_s6_1_4.py` (`commish-note-body` not on hub — confirmed via grep; no test flip needed).
+- Full suite: **739 / 739 passing** (baseline 626 design+WC + 8 new P1 locks + the rest of the platform suite).
+
+**Visual smoke**: Confirmed via Playwright on dev (`WC_FAKE_NOW='2026-06-01T12:00:00+00:00'`, pre state, branch=submitted): dark hero unchanged with red phase chip; `.is-lead` red-top deadline card; white `.wc-stat-card` roster + Top-of-the-Pool surfaces; red "AMEND THE OATH" / "VIEW ALL" CTAs; navy thead bar on table preview. Cross-tab eye-test against STATS reference passed; BOARD/ROSTER remain dark (deliberately untouched, P2/P3 territory). Zero browser console errors.
 
 ### P2 — BOARD body migration
 

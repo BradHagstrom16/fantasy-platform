@@ -26,6 +26,7 @@
   /* WC scoped tokens — inert in Spec A; activated in Spec C */
   --wc-navy:       #001A4D;
   --wc-red:        #BF0A30;
+  --wc-red-dark:   #9C0826;
   --wc-white:      #F5F1E8;
 
   --metal-gold: linear-gradient(180deg,

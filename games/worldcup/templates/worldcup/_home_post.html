@@ -54,34 +54,31 @@
    §1.5b "hero-metric-template ban applies to adjacency"): one dominant
    numeral, one supporting eyebrow, one prose derivation. The post-state
    is the user's Tribune finale, not a SaaS stat strip. #}
-<div class="card wc-card mb-4 animate-in">
-  <div class="card-body post-finish-card">
-    <div class="wc-eyebrow mb-1">Your Finish</div>
-    <div class="post-finish-rank-cluster">
-      <span class="post-finish-rank">{{ your_final_rank }}</span>
-      <span class="post-finish-of">of {{ total_count }}</span>
-    </div>
-    <p class="post-finish-derivation">
-      {{ "%.1f"|format(enrollment.total_score) }} final points
-      {%- if your_climbed_n is not none and your_climbed_n != 0 -%}
-        {% if your_climbed_n > 0 %}
-          · climbed {{ your_climbed_n }} spot{{ 's' if your_climbed_n != 1 }} since the start.
-        {% else %}
-          · slipped {{ -your_climbed_n }} spot{{ 's' if your_climbed_n != -1 }} since the start.
-        {% endif %}
-      {%- else -%}.{%- endif %}
-    </p>
+<div class="wc-stat-card mb-4 animate-in post-finish-card">
+  <div class="wc-eyebrow mb-1">Your Finish</div>
+  <div class="post-finish-rank-cluster">
+    <span class="post-finish-rank">{{ your_final_rank }}</span>
+    <span class="post-finish-of">of {{ total_count }}</span>
   </div>
+  <p class="post-finish-derivation">
+    {{ "%.1f"|format(enrollment.total_score) }} final points
+    {%- if your_climbed_n is not none and your_climbed_n != 0 -%}
+      {% if your_climbed_n > 0 %}
+        · climbed {{ your_climbed_n }} spot{{ 's' if your_climbed_n != 1 }} since the start.
+      {% else %}
+        · slipped {{ -your_climbed_n }} spot{{ 's' if your_climbed_n != -1 }} since the start.
+      {% endif %}
+    {%- else -%}.{%- endif %}
+  </p>
 </div>
 
 {# Final podium #}
 {% if top_3_final %}
-<div class="card wc-card mb-4 animate-in">
-  <div class="card-body p-0">
-    <div class="card-header">
-      <span class="wc-eyebrow"><i class="bi bi-trophy me-2"></i>Final Podium</span>
-    </div>
-    <table class="table table-worldcup mb-0">
+<div class="wc-stat-card mb-4 animate-in">
+  <div class="wc-card-head">
+    <span class="wc-eyebrow"><i class="bi bi-trophy me-2"></i>Final Podium</span>
+  </div>
+  <table class="table table-worldcup mb-0">
       <caption class="visually-hidden">Final podium: top three players by total points.</caption>
       <thead>
         <tr>
@@ -108,23 +105,21 @@
             </td>
             <td class="text-end"><span class="wc-numeral">{{ "%.1f"|format(e.total_score) }}</span></td>
           </tr>
-          {% set ns.prev_score = e.total_score %}
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
+        {% set ns.prev_score = e.total_score %}
+      {% endfor %}
+    </tbody>
+  </table>
 </div>
 {% endif %}
 
 {# Roster recap #}
 {% if your_roster_recap %}
-<div class="card wc-card mb-4 animate-in">
-  <div class="card-body p-0">
-    <div class="card-header">
-      <span class="wc-eyebrow"><i class="bi bi-people-fill me-2"></i>Final Roster</span>
-    </div>
-    <div class="table-responsive">
-      <table class="table table-worldcup mb-0">
+<div class="wc-stat-card mb-4 animate-in">
+  <div class="wc-card-head">
+    <span class="wc-eyebrow"><i class="bi bi-people-fill me-2"></i>Final Roster</span>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-worldcup mb-0">
         <caption class="visually-hidden">Your final roster: tier, team, best finish, and total points scored.</caption>
         <thead>
           <tr>
@@ -153,12 +148,11 @@
                 {{ r.best_finish }}
               {% endif %}
             </td>
-            <td class="text-end"><span class="wc-numeral">{{ "%.1f"|format(r.points) }}</span></td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
+          <td class="text-end"><span class="wc-numeral">{{ "%.1f"|format(r.points) }}</span></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
   </div>
 </div>
 {% endif %}
