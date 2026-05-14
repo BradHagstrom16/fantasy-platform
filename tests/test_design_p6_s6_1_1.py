@@ -127,34 +127,42 @@ def test_pi1_variant_classes_preserved():
 
 
 def test_pi1_design_md_ratifies_two_primitive_shape():
-    """DESIGN.md §3 + §5.5 document the as-built two-primitive eyebrow."""
+    """The platform foundation + the WC specialization together document the
+    two-primitive eyebrow shape.
+
+    WC tab unification P5 split the design doctrine across two files:
+    top-level `DESIGN.md` owns the platform-foundation primitive
+    (`.admin-eyebrow`); `games/worldcup/DESIGN.md` owns the WC specialization
+    (`.wc-eyebrow` + the two tonal variants + the bone-mute default
+    calibrated for the navy substrate). Both files must carry their
+    respective primitives.
+    """
     design = DESIGN_MD.read_text()
-    # §3 Hierarchy bullet ratifies `.admin-eyebrow` and `.wc-eyebrow` distinctly.
-    # Split per Ruff PT018 so a failure names the exact missing primitive.
+    wc_design = (REPO_ROOT / 'games' / 'worldcup' / 'DESIGN.md').read_text()
+    # Top-level: the platform-foundation primitive.
     assert '`.admin-eyebrow`' in design, (
-        'DESIGN.md must call out the `.admin-eyebrow` primitive by name.'
+        'Top-level DESIGN.md must call out the `.admin-eyebrow` primitive by name.'
     )
+    # Top-level must reference the per-game eyebrow pattern so a reader knows
+    # to look at the game's own DESIGN.md for variant details.
     assert '`.wc-eyebrow`' in design, (
-        'DESIGN.md must call out the `.wc-eyebrow` primitive by name.'
+        'Top-level DESIGN.md must reference the per-game `.wc-eyebrow` '
+        'primitive (with a pointer to games/worldcup/DESIGN.md for the full shape).'
     )
-    # The doc must explicitly mention the `.wc-eyebrow` variants so a future
-    # editor knows they are part of the ratified primitive, not invented stragglers.
-    assert '`.wc-eyebrow-red`' in design, (
-        'DESIGN.md must document the `.wc-eyebrow-red` variant.'
+    # WC file: the variants + the calibration default. Each must appear
+    # explicitly so the variant taxonomy doesn't drift back to "is this
+    # `-red` or just a styled eyebrow" ambiguity.
+    assert '`.wc-eyebrow-red`' in wc_design, (
+        'games/worldcup/DESIGN.md must document the `.wc-eyebrow-red` variant.'
     )
-    assert '`.wc-eyebrow-gold`' in design, (
-        'DESIGN.md must document the `.wc-eyebrow-gold` variant.'
+    assert '`.wc-eyebrow-gold`' in wc_design, (
+        'games/worldcup/DESIGN.md must document the `.wc-eyebrow-gold` variant.'
     )
-    # The bone-mute default must appear in the doc so future work
-    # understands the scope rule belongs to the primitive, not to one surface.
-    assert 'bone-mute' in design, (
-        'DESIGN.md must mention the `bone-mute` default color.'
+    assert 'bone-mute' in wc_design, (
+        'games/worldcup/DESIGN.md must mention the `bone-mute` default color '
+        'so future work understands the scope rule belongs to the primitive, '
+        'not to one surface.'
     )
-    # WC tab unification P5 retired the `.card.wc-card` substrate; the
-    # surviving dark-substrate eyebrow consumer is `.wc-champion-banner`.
-    # The DESIGN.md doctrine rewrite landing later in P5 (Brad-drafted)
-    # ratifies that primitive — locked by
-    # `tests/test_design_wc_tab_unification_p5.py` instead of here.
 
 
 # ---------------------------------------------------------------------------

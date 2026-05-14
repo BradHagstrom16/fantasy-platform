@@ -13,7 +13,7 @@ A unified fantasy sports platform consolidating multiple games under one domain,
 - `games/cfb/` — CFB Survivor Pool (Phase 2 ✅)
 - `games/worldcup/` — World Cup Fantasy Pool (Phase 4 ✅)
 
-**Production:** Live at `cccfantasy.com` (Phase 5 complete). CCC design system shipped at tag `impeccable-v1` (2026-05-12, PR #17). See `PRODUCT.md` + `DESIGN.md` (repo root) for the product/design spine; any UI work invokes the `impeccable` skill which preflight-loads them. `docs/superpowers/specs/2026-05-12-impeccable-design-improvement-scorecard.md` holds the ship-as-is backlog (22 deferred items — check before adding new polish).
+**Production:** Live at `cccfantasy.com` (Phase 5 complete). CCC design system shipped at tag `impeccable-v1` (2026-05-12, PR #17). See `PRODUCT.md` + `DESIGN.md` (repo root) for the product/design spine; per-game specialization lives in `games/<slug>/DESIGN.md` (currently `games/worldcup/DESIGN.md`). Any UI work invokes the `impeccable` skill which preflight-loads both — the local impeccable loader is customized to discover per-game files; see `docs/impeccable-loader-customization.md` for the re-apply snippet if an impeccable upgrade ever overwrites it. `docs/superpowers/specs/2026-05-12-impeccable-design-improvement-scorecard.md` holds the ship-as-is backlog (22 deferred items — check before adding new polish).
 
 ---
 

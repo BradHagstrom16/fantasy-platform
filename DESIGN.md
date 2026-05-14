@@ -37,7 +37,6 @@ colors:
   cfb-midnight: "#0F0F1A"
   wc-navy: "#002868"
   wc-red: "#BF0A30"
-  wc-card-navy: "#001A4DCC"
 typography:
   display:
     fontFamily: "'Teko', sans-serif"
@@ -110,11 +109,6 @@ components:
     textColor: "{colors.text-ink}"
     rounded: "{rounded.lg}"
     padding: "1rem"
-  card-tribune-dark:
-    backgroundColor: "{colors.wc-card-navy}"
-    textColor: "{colors.pressroom-bone}"
-    rounded: "{rounded.sm}"
-    padding: "1rem"
   form-control:
     backgroundColor: "{colors.surface-card}"
     textColor: "{colors.text-ink}"
@@ -159,6 +153,16 @@ A private sports bulletin assembled inside the club itself. Editorial hierarchy,
 
 The system explicitly rejects: ESPN/Yahoo fantasy chrome (banner ads, untiered tables, navigation overload); generic SaaS dashboards (Inter on gray-on-white, hero-metric template, identical card grids); Bootstrap-starter regression (stock `.card`, unscoped `.btn-primary`, default navbar); crypto/Web3 aesthetic (neon-on-black, glassmorphism); generic sports skeuomorphism (stadium textures, scoreboard fonts).
 
+## 1.5. Per-game specialization
+
+This file is the platform foundation. Per-game design doctrine — palette specialization, game-scoped primitives, register vocabulary, copy voice — lives in each game's own `DESIGN.md` so the foundation stays lean and a game's doctrine evolves on its own cadence.
+
+- **World Cup**: `games/worldcup/DESIGN.md`. Owns the WC accent rank (red → white → navy → gold-quaternary), the Casual-Light substrate pattern, the `.wc-champion-banner` ceremonial primitive, the `.wc-stat-card` reference, the `.wc-eyebrow` variants (`-red` / `-gold`), the team-tier palette (`--wc-tier1`…`--wc-tier5`), the three tier primitives (`.wc-tier-dot` / `.tier-badge` / `.wc-multiplier-chip`), the Tribune voice for WC H1s.
+- **Golf**: `games/golf/DESIGN.md` (planned). Augusta Green + warm gold palette; tournament-rhythm primitives.
+- **CFB**: `games/cfb/DESIGN.md` (planned). Crimson + Midnight palette; Survivor-pressure primitives.
+
+When working on a game's surfaces, treat the game-scoped file as authoritative for game-specific decisions; this top-level file remains authoritative for cross-game concerns (the palette framework, typography, elevation, motion, design laws). Tooling note: the impeccable skill loader discovers `games/*/DESIGN.md` automatically (see `docs/impeccable-loader-customization.md` for the loader's discovery contract).
+
 ## 2. Colors: The Commissioner's Club Palette
 
 A two-color brand system (deep purple + ceremonial gold) on a warm bone neutral, with three per-game palettes layered selectively. Shadows tint with the purple. Live indicators are the only saturated reds and greens permitted; everything else routes through the brand's two-axis identity.
@@ -191,7 +195,7 @@ Each game blueprint adds a palette layered over the CCC chrome via a `body.game-
 
 - **Golf** (`body.game-golf`): Augusta Green (`#006747`) + warm gold (`#B8993E`). Tournament rhythm, season progression.
 - **CFB** (`body.game-cfb`): Crimson (`#C5050C`) + Midnight (`#0F0F1A`) + white accent. Survivor pressure, weekly spreads.
-- **World Cup** (`body.game-worldcup`): Navy (`#002868`) + Match Red (`#BF0A30`). Knockout urgency, multipliers. WC also defines a 5-tier color set for team tiers (`--wc-tier1` through `--wc-tier5`); these are scoped utilities, not part of the platform palette.
+- **World Cup** (`body.game-worldcup`): Navy (`#002868`) + Match Red (`#BF0A30`). Knockout urgency, multipliers. WC additionally specializes the accent rank (red primary, gold quaternary) and adds a team-tier color set — see `games/worldcup/DESIGN.md`.
 
 ### Neutral
 
@@ -230,20 +234,20 @@ The bone family. The pressroom paper. Default page background, light card text o
 
 ### Hierarchy
 
-- **Display** (Teko 600, `2.4rem`, line-height `1.1`, letter-spacing `0.03em`): page-level h1, hero mastheads. The largest type on any page. On user-facing WC surfaces the H1 carries **Tribune voice** — an editorial section name, not a functional chrome label ("The Match Sheet" / "The Standings" / "The Field Office" / "House Rules", not "Schedule" / "Leaderboard" / "Stats Hub" / "Rules"). Two dispensations: (a) dynamic H1s that interpolate a noun (`{{ team.name }}` / `{{ current_user.get_display_name() }}`) read functionally because the value carries the voice; (b) the logged-in utility auth register (§5 Auth Surface Composition) keeps functional H1s because the Tribune voice carries through the eyebrow + Newsreader copy inside the card.
+- **Display** (Teko 600, `2.4rem`, line-height `1.1`, letter-spacing `0.03em`): page-level h1, hero mastheads. The largest type on any page. Per-game surfaces may apply a **Tribune voice** rule to H1s that converts functional chrome labels into editorial section names; the World Cup register codifies this in `games/worldcup/DESIGN.md`. Two dispensations carry across games: (a) dynamic H1s that interpolate a noun (`{{ team.name }}` / `{{ current_user.get_display_name() }}`) read functionally because the value carries the voice; (b) the logged-in utility auth register (§5 Auth Surface Composition) keeps functional H1s because the Tribune voice carries through the eyebrow + Newsreader copy inside the card.
 - **Headline** (Teko 600, `1.9rem`, line-height `1.1`): section h2, admin page titles (`2.25rem` variant on admin pages).
 - **Title** (Teko 600, `1.5rem`, line-height `1.1`): card-header level h3, table sub-heads.
 - **Body** (Newsreader 400, `1rem`, line-height `1.65`): paragraphs, list items, default text. Cap line length at 65 to 75 characters per line. The `≥16px` body floor applies to body text and primary read-targets; explicit caption/metadata classes (`.tier-mobile-card-picks`, `.tier-teams-list`, `.player-pick-card .pick-team small`, `.player-pick-card .pick-points small`, `.wc-microcaption`) may step down to `≥0.75rem` (12px) when the primary read-target on the same row carries the dominant hierarchy — captions report, they don't lead.
 - **Label** (Teko 500, `0.9rem`, letter-spacing `0.06em`, uppercase): form labels, tab labels, eyebrow-style metadata.
-- **Eyebrow** — two co-existing primitives, ratified across P2-P5:
+- **Eyebrow** — the platform foundation defines one primitive; games may add their own variants:
     - **`.admin-eyebrow`** (Teko 500, `0.85rem`, letter-spacing `0.14em`, uppercase, `var(--gold)`): the bone-canvas admin masthead label. One color, one size.
-    - **`.wc-eyebrow`** (Teko 500, `0.7rem`, letter-spacing `0.08em`, uppercase, `var(--bone-mute)`): the WC-surface contextual label. Tonal variants are part of the primitive: `.wc-eyebrow-red` (`var(--wc-red)`) for game-accent emphasis, `.wc-eyebrow-gold` (`var(--gold-light)`) for ceremonial moments. The bone-mute default is calibrated for the `.card.wc-card` navy substrate (scope rule lifts to bone @ .85 alpha there for AA); light-surface contexts override to `--text-secondary` or `--gold` via scoped rules (`.wc-stat-card.is-lead`, `.your-standing-tribune`, `.player-pick-card`).
+    - Per-game eyebrow primitives (e.g., the World Cup `.wc-eyebrow` with its `-red` / `-gold` tonal variants and bone-mute default calibrated for navy substrates) are documented in the game's own `DESIGN.md`. New games adopt the same "one default + tonal variants" shape rather than inventing parallel "kicker" patterns.
 
 ### Named Rules
 
 **The Newsroom Rule.** Every heading is Teko. Every paragraph is Newsreader. The two fonts never mix mid-sentence. If a heading reads in serif, you've broken the masthead. If a paragraph reads in condensed sans, you've broken the editorial.
 
-**The Eyebrow Rule.** When a section needs context above its headline (category, game name, status), use one of the two Eyebrow primitives — `.admin-eyebrow` on admin pages (gold on bone), `.wc-eyebrow` on user-facing WC surfaces (bone-mute default plus `-red` and `-gold` tonal variants; auto-lifts on `.card.wc-card`). Don't invent a new "kicker" or "subhead" pattern.
+**The Eyebrow Rule.** When a section needs context above its headline (category, game name, status), reach for an Eyebrow primitive — `.admin-eyebrow` on admin pages (the platform default), or the per-game variant documented in the game's `DESIGN.md` (e.g., `.wc-eyebrow` on World Cup surfaces). Don't invent a new "kicker" or "subhead" pattern.
 
 **The Uppercase Rule.** Uppercase is for Teko (labels, eyebrows, button text, table heads, navbar links). Newsreader is never uppercased. Mixing is a slop signal.
 
@@ -287,10 +291,9 @@ CCC has three button registers: Quiet (purple primary, the default), Loud Trophy
 
 ### Cards
 
-Two card registers: the default light Tribune card and the dark Tribune-Dark card (used inside World Cup surfaces).
+The platform foundation defines one card register — the default light Tribune card — plus the home-shell ceremonial / informational recipes below. Games may add their own card primitives (e.g., the World Cup `.wc-stat-card` reference and the `.wc-champion-banner` ceremonial dark surface); those primitives are documented in the game's `DESIGN.md`.
 
 - **Default** (`.card`): `var(--bg-card)` (white) fill on a Pressroom Bone page, `--radius-lg` (`0.875rem`, ~14px) corner radius, `1px solid var(--border)` border, `--shadow-sm` at rest, `--shadow-md` on hover with `translateY(-3px)` lift (cubic-bezier overshoot).
-- **Tribune-Dark** (`.card.wc-card`): `rgba(0, 17, 46, 0.8)` (WC Card Navy) fill, `1px solid rgba(245, 241, 232, 0.08)` border, `--radius` (~8px) corner radius, `1rem` padding. Hover brightens border to `rgba(242, 211, 107, 0.25)` (gold whisper). Used wherever the World Cup surface needs to break the bone-page register and feel like a knockout match. Any content layered on this surface must explicitly carry a light foreground color, scoped to the surface (don't broadcast `tbody td { color: light }` globally; it breaks Bootstrap-default rows).
 - **Card Header** (`.card-header`): transparent fill, `1px solid var(--border)` bottom border, Teko 600 uppercase title.
 - **Game Card** (`.game-card`): default card with a `3px solid var(--platform-accent)` (gold) top border. Used on the home page game grid.
 
@@ -333,21 +336,15 @@ Both registers share `body.auth-page` (the Tribunal Black radial-gradient backdr
 - **Cell typography**: Newsreader, `0.92rem` (`.table` opt-in size).
 - **Current-user row** (`.row-current-user`): tinted highlight scoped per game (CFB uses crimson tint, WC uses gold tint). The highlight is the user's own line in the standings; it should be subtle, not loud.
 
-### Tier Primitives
+### Per-game primitives
 
-WC surfaces carry three distinct tier primitives. Each plays a non-overlapping role; do not collapse them into a single class.
-
-- **`.wc-tier-dot`** — the **visual mark**. A compact circular dot tinted per tier (`--wc-tier1`…`--wc-tier5`) used inline next to a country name. Read at a glance; never carries text. Used on `team_detail`, `player_detail`, `stats`, `picks`, and `rules`.
-- **`.tier-badge`** — the **numeric text companion**. A small pill rendering the literal tier number ("T1" / "T2" / …) when the dot alone would leave a sighted reader guessing. Used on `rules.html` (×5, paired with `.wc-tier-dot` in the tier-table cell) and `_home_pre.html` (`roster-tier-label` on the ballot dossier). Not for use on team/player detail — the dot alone carries enough signal there.
-- **`.wc-multiplier-chip`** — the **multiplier indicator**. A dark-surface chip rendering the tier's points multiplier (×N). Used on `picks.html` desktop readonly table and tier-card-header. Never paired with `.tier-badge` on the same row; the chip's "×N" reading and the badge's "T#" reading would collide.
-
-Rule of thumb: dot for the mark, badge for the number, chip for the multiplier. New tier-adjacent UI picks one, not two.
+Games define their own primitives for surfaces and patterns specific to that game (tier indicators, ceremonial slots, sub-nav accents, etc.). See each game's `DESIGN.md` — World Cup at `games/worldcup/DESIGN.md` codifies the three-primitive tier trio (`.wc-tier-dot` / `.tier-badge` / `.wc-multiplier-chip`), the `.wc-stat-card` Casual-Light reference, the `.wc-champion-banner` ceremonial dark surface, and the `.wc-eyebrow` variants.
 
 ### Eyebrow and Label Primitives
 
-- **Eyebrow** — see §3 for the full two-primitive shape. Quick reference:
+- **Eyebrow** — see §3 for the platform-foundation primitive. Quick reference:
     - **`.admin-eyebrow`**: Teko 500, `0.85rem`, `0.14em`, uppercase, `var(--gold)`. Admin masthead label on bone canvas.
-    - **`.wc-eyebrow`**: Teko 500, `0.7rem`, `0.08em`, uppercase, `var(--bone-mute)` default; `.wc-eyebrow-red` and `.wc-eyebrow-gold` are the tonal variants; `.card.wc-card .wc-eyebrow` scope lifts the bone alpha to .85 for AA on the navy substrate.
+    - Per-game eyebrow variants are documented in the game's own `DESIGN.md` (e.g., the WC `.wc-eyebrow` with its `-red` / `-gold` tonal variants).
     
     Reuse the matching primitive for any new section that needs a category label (game name, week, deadline, status). Don't invent a new "kicker" pattern.
 - **Form Label**: see Form Controls above.
@@ -360,7 +357,7 @@ Rule of thumb: dot for the mark, badge for the number, chip for the multiplier. 
 ### Page Hero
 
 - **`.page-hero`**: linear gradient from `var(--game-primary-dark)` to `var(--game-primary)` at `135deg`, `var(--text-on-dark)` text, `3.5rem 0 3rem` vertical padding, halftone-dot pattern overlay (`radial-gradient(circle, rgba(212, 168, 32, 0.06) 1px, transparent 1px)` at `24px` tile). The masthead band that opens game pages. Game palettes flow through automatically.
-- **`.page-hero.wc-hero-grad`**: WC-scoped variant that overrides the gradient to navy + red (the World Cup palette). Demonstrates the per-game scoping pattern; new game-specific hero variants follow the same `.page-hero.<game>-hero-grad` shape.
+- Game-specific hero variants follow the `.page-hero.<game>-hero-grad` shape (e.g., World Cup's `.page-hero.wc-hero-grad` navy-+-red gradient documented in `games/worldcup/DESIGN.md`).
 
 ## 6. Do's and Don'ts
 
@@ -376,7 +373,7 @@ Concrete guardrails. Each is forceful on purpose; the design director is in the 
 - **Do** scope every non-platform color through a `body.game-<slug>` class. Game palettes layer on the chrome; they never replace it.
 - **Do** use Pressroom Bone (`#F3EFE6`) as the page background. White (`#FFFFFF`) is for nested cards only.
 - **Do** apply gold dividers (`border-top: 2px solid var(--gold)`) between major page sections when separation is needed, not colored side-stripes on cards.
-- **Do** put light foreground colors on `.card.wc-card` content, scoped to the card surface. Bootstrap defaults will read black-on-navy without it.
+- **Do** scope any light-foreground overrides needed on a game's dark-substrate primitive to that surface (e.g., `.wc-champion-banner .text-muted`). Bootstrap defaults will read black-on-dark without it; broadcasting `tbody td { color: light }` globally breaks the masked-by-Bootstrap rows on every other surface.
 - **Do** keep button and form min-height at 44px or larger (mobile-first touch floor).
 - **Do** cap Newsreader paragraph line length at 65 to 75 ch.
 - **Do** carry the Eyebrow primitive (Teko 500, 0.85rem, 0.14em letter-spacing, gold, uppercase) above section headlines that need contextual labeling.
@@ -393,7 +390,7 @@ Concrete guardrails. Each is forceful on purpose; the design director is in the 
 - **Don't** apply the hero-metric template (big number + small label + supporting stats + gradient accent) without justification. Listed in shared design laws as an absolute ban for SaaS cliches.
 - **Don't** add a third top-level color outside CCC purple plus gold without scoping it under a game class. WC navy/red, CFB crimson, Golf green only ever appear on `body.game-worldcup` / `body.game-cfb` / `body.game-golf` surfaces.
 - **Don't** use `match.stage|title` in Jinja templates. Use the `stage_label` SSoT helper. (Documented gotcha in `CLAUDE.md`; surfaces as a typography slip.)
-- **Don't** mock dark mode on light surfaces. The auth pages (Tribunal Black backdrop) and `.card.wc-card` (Tribune-Dark) are the only first-party dark surfaces; everything else is bone-on-light. Don't invent a third dark register.
+- **Don't** mock dark mode on light surfaces. The auth pages (Tribunal Black backdrop) plus each game's named ceremonial dark primitive (e.g., the World Cup `.wc-champion-banner`) are the only first-party dark surfaces; everything else is bone-on-light. Don't invent a third dark register. New game-scoped dark primitives belong in the game's `DESIGN.md`.
 - **Don't** use bounce or elastic easing on motion. Card hover is the only deliberately overshooting curve in the system; everywhere else, ease out with `cubic-bezier(0.4, 0, 0.2, 1)` or steeper exponential curves.
 - **Don't** use em dashes (`—`) or double hyphens (`--`) in UI copy, error messages, button labels, or any prose generated for CCC surfaces. Replace with commas, colons, semicolons, periods, or parentheses. (Carried from PRODUCT.md's Copy Discipline.)
 - **Don't** add a navbar item beyond the joined-games list plus auth links. PRODUCT.md flags "navigation overload" as an ESPN/Yahoo anti-reference.

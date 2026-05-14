@@ -34,6 +34,8 @@ CSS_PATH = ROOT / 'static' / 'css' / 'style.css'
 TEMPLATE_PATH = (
     ROOT / 'games' / 'worldcup' / 'templates' / 'worldcup' / '_home_post.html'
 )
+TOP_DESIGN_PATH = ROOT / 'DESIGN.md'
+WC_DESIGN_PATH = ROOT / 'games' / 'worldcup' / 'DESIGN.md'
 
 CSS = CSS_PATH.read_text()
 TEMPLATE = TEMPLATE_PATH.read_text()
@@ -292,4 +294,73 @@ def test_pi7_wc_champion_banner_champion_retrospect_rule_exists():
     )
     assert 'italic' in block, (
         f'Italic required; block={block!r}.'
+    )
+
+
+# ---------------------------------------------------------------------------
+# PI-8: DESIGN.md file-split — top-level delegates to per-game files.
+# ---------------------------------------------------------------------------
+# P5 split the design doctrine across two files: top-level `DESIGN.md` carries
+# the platform foundation; `games/worldcup/DESIGN.md` carries WC-specific
+# specialization (accent rank, Casual-Light pattern, `.wc-champion-banner`
+# ceremonial primitive, tier trio, `.wc-eyebrow` variants). The split lets
+# Golf and CFB add their own per-game files later without bloating the
+# foundation. These locks enforce the structural contract.
+
+def test_pi8_top_level_design_delegates_to_per_game_files():
+    """Top-level `DESIGN.md` references `games/worldcup/DESIGN.md` so a reader
+    walking the platform foundation can discover the per-game specialization.
+
+    The delegation pointer is the single source-of-truth for "where does WC
+    doctrine live"; if the path moves or the pointer disappears, future
+    Claude sessions / impeccable invocations lose the discovery anchor.
+    """
+    top_design = TOP_DESIGN_PATH.read_text()
+    assert 'games/worldcup/DESIGN.md' in top_design, (
+        'Top-level DESIGN.md must reference `games/worldcup/DESIGN.md` so '
+        'readers walking the platform foundation discover the WC '
+        'specialization (P5 file-split contract).'
+    )
+
+
+def test_pi8_wc_design_file_exists():
+    """`games/worldcup/DESIGN.md` exists and is non-trivial."""
+    assert WC_DESIGN_PATH.exists(), (
+        'games/worldcup/DESIGN.md must exist (P5 per-game specialization).'
+    )
+    content = WC_DESIGN_PATH.read_text()
+    # Non-trivial floor: at least 1KB of substance so an accidental empty
+    # file doesn't pass the existence check.
+    assert len(content) > 1000, (
+        f'games/worldcup/DESIGN.md is too small ({len(content)} bytes); '
+        'expected substantive WC doctrine content.'
+    )
+
+
+def test_pi8_wc_design_codifies_champion_banner_primitive():
+    """`games/worldcup/DESIGN.md` names the new ceremonial primitive.
+
+    The `.wc-champion-banner` primitive is the load-bearing P5 doctrine
+    addition; the WC file must document it so future maintainers know it's
+    the only surviving body-area dark surface (not a generic dark card).
+    """
+    wc_design = WC_DESIGN_PATH.read_text()
+    assert '.wc-champion-banner' in wc_design, (
+        'games/worldcup/DESIGN.md must name the `.wc-champion-banner` '
+        'primitive (P5 ceremonial-slot doctrine).'
+    )
+
+
+def test_pi8_wc_design_codifies_casual_light_pattern():
+    """`games/worldcup/DESIGN.md` names the Casual-Light substrate pattern.
+
+    The accent rank + Casual-Light pattern + Tribune-Dark retirement is the
+    headline doctrine shift P5 introduces. The file must carry the term so
+    a future maintainer reading WC code can find the doctrine that explains
+    "why is every body card white?"
+    """
+    wc_design = WC_DESIGN_PATH.read_text()
+    assert 'Casual-Light' in wc_design, (
+        'games/worldcup/DESIGN.md must name the Casual-Light pattern '
+        '(P5 doctrine shift).'
     )
