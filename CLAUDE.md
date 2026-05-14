@@ -9,11 +9,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 A unified fantasy sports platform consolidating multiple games under one domain, one login, and one codebase. Flask modular monolith using blueprints. Each game lives in `games/<game>/` with its own models, routes, services, templates, and CLI commands.
 
 **Active games:**
-- `games/golf/` — Golf Pick 'Em (Phase 1 ✅)
-- `games/cfb/` — CFB Survivor Pool (Phase 2 ✅)
-- `games/worldcup/` — World Cup Fantasy Pool (Phase 4 ✅)
+- `games/golf/` — Golf Pick 'Em (live)
+- `games/cfb/` — CFB Survivor Pool (live)
+- `games/worldcup/` — World Cup Fantasy Pool (live)
 
-**Production:** Live at `cccfantasy.com` (Phase 5 complete). CCC design system shipped at tag `impeccable-v1` (2026-05-12, PR #17). See `PRODUCT.md` + `DESIGN.md` (repo root) for the product/design spine; per-game specialization lives in `games/<slug>/DESIGN.md` (currently `games/worldcup/DESIGN.md`). Any UI work invokes the `impeccable` skill which preflight-loads both — the local impeccable loader is customized to discover per-game files; see `docs/impeccable-loader-customization.md` for the re-apply snippet if an impeccable upgrade ever overwrites it. `docs/superpowers/specs/2026-05-12-impeccable-design-improvement-scorecard.md` holds the ship-as-is backlog (22 deferred items — check before adding new polish).
+**Production:** Live at `cccfantasy.com`. CCC design system shipped at tag `impeccable-v1` (2026-05-12, PR #17); WC Tab Unification closed 2026-05-14 (PR #28) putting every WC tab body on the Casual-Light pattern. See `PRODUCT.md` + `DESIGN.md` (repo root) for the product/design spine; per-game specialization lives in `games/<slug>/DESIGN.md` (currently `games/worldcup/DESIGN.md`). Any UI work invokes the `impeccable` skill which preflight-loads both — the local impeccable loader is customized to discover per-game files; see `docs/impeccable-loader-customization.md` for the re-apply snippet if an impeccable upgrade ever overwrites it. Two ship-as-is backlogs predate new polish work: `docs/superpowers/specs/2026-05-12-impeccable-design-improvement-scorecard.md` (22 deferred items) and `docs/superpowers/specs/2026-05-13-worldcup-tab-unification-scorecard.md` (per-tab finals + WC-specific debt) — check both before adding new polish.
 
 ---
 
@@ -212,7 +212,7 @@ FLASK_APP=app.py venv/bin/flask db upgrade
 
 ## Smoke Test Standard
 
-All smoke test snippets in handoff files must include `db.create_all()` when using `ENVIRONMENT=testing` with in-memory SQLite:
+Smoke-test snippets that use `ENVIRONMENT=testing` with in-memory SQLite must include `db.create_all()`:
 
 ```python
 from app import create_app

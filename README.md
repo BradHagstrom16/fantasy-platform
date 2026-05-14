@@ -1,6 +1,6 @@
 # Fantasy Sports Platform
 
-A modular monolith Flask application hosting multiple fantasy sports games — **Corrupt Commish Club (CCC)** — under a single domain with shared authentication. Each game is a Flask blueprint that plugs into a shared platform foundation (auth, admin, registry, email).
+A modular monolith Flask application hosting multiple fantasy sports games — **Corrupt Commish Club (CCC)** — under a single domain with shared authentication. Each game is a Flask blueprint that plugs into a shared platform foundation (auth, admin, registry, email). Live at **[cccfantasy.com](https://cccfantasy.com)**.
 
 ## Tech Stack
 
@@ -67,9 +67,9 @@ fantasy-platform/
 
 | Game | Status |
 |---|---|
-| Golf Pick 'Em | ✅ Phase 1 |
-| CFB Survivor Pool | ✅ Phase 2 |
-| World Cup Fantasy Pool | ✅ Phase 4 |
+| Golf Pick 'Em | ✅ Live |
+| CFB Survivor Pool | ✅ Live |
+| World Cup Fantasy Pool | ✅ Live |
 
 ## Adding a New Game
 
@@ -77,6 +77,9 @@ See `CLAUDE.md` § *Blueprint Pattern* for the full required pattern (table-pref
 
 ## Reference
 
+- [PRODUCT.md](PRODUCT.md) — product spine (audience, voice, what we're building)
+- [DESIGN.md](DESIGN.md) — platform-foundation design system (CCC palette, typography, primitives)
+- `games/<slug>/DESIGN.md` — per-game design specialization (currently `games/worldcup/DESIGN.md`)
 - [CLAUDE.md](CLAUDE.md) — operational conventions, gotchas, blueprint pattern
 - [ARCHITECTURE_DECISION_LOG.md](ARCHITECTURE_DECISION_LOG.md) — historical decisions
 - ![CodeRabbit Pull Request Reviews](https://img.shields.io/coderabbit/prs/github/BradHagstrom16/fantasy-platform?utm_source=oss&utm_medium=github&utm_campaign=BradHagstrom16%2Ffantasy-platform&labelColor=171717&color=FF570A&link=https%3A%2F%2Fcoderabbit.ai&label=CodeRabbit+Reviews)
