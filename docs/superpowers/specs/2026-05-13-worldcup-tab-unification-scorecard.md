@@ -18,7 +18,7 @@
 | P2 | BOARD body migration | [#24](https://github.com/BradHagstrom16/fantasy-platform/pull/24) | Merged | 2026-05-14 |
 | P3 | ROSTER read-only migration | [#25](https://github.com/BradHagstrom16/fantasy-platform/pull/25) | Merged | 2026-05-14 |
 | P3.5 | Audit-miss cleanup: `team_detail.html` + `rules.html` migration | [#26](https://github.com/BradHagstrom16/fantasy-platform/pull/26) | Open (awaiting review) | — |
-| P4 | SCHEDULE light polish | — | Pending | — |
+| P4 | SCHEDULE light polish | — | Open (awaiting review) | — |
 | P5 | Cleanup: retire `.card.wc-card` + update DESIGN.md/CLAUDE.md | — | Pending | — |
 
 Predecessor PR (precondition, not part of this project): **#21** — `worldcup/hub-color-rebalance-r1` (hub pre-state polish landed under the *old* dark-card paradigm; its gold pieces will be re-derived to red in P1).
@@ -34,7 +34,7 @@ Captured pre-P0 from the impeccable critique that opened this project.
 | HUB (pre-state) | 28 (post-PR-21) | — | 0 detector | Critique 2026-05-13 |
 | ROSTER | — | — | 1 (group-letter pill ~1.05:1) | Phase 0 reconnaissance |
 | BOARD | — | — | — | TBD before P2 |
-| SCHEDULE | — | — | — | TBD before P4 |
+| SCHEDULE | 3 gaps pre / 0 post (3.5/5 → 4.5/5) | — | 0 detector | P4 baseline 2026-05-14 |
 | STATS | — | — | 0 | Already at target |
 | RULES | — | — | 0 | Already at target — **AUDIT MISS** (see note below) |
 | team_detail | — | — | — | Discovered during P3 (not in original grid) |
@@ -172,9 +172,25 @@ Carried over from the plan (and the in-session question-tool answers).
 
 ### P4 — SCHEDULE light polish
 
-**Branch (planned)**: `worldcup/tab-unification-phase-4`.
-**Targets**:
-- Audit match-row patterns against the locked Stats reference. Typography + spacing alignment. No substrate change.
+**Branch**: `worldcup/tab-unification-phase-4`.
+**Shipped**:
+- Three CSS edits in `static/css/style.css`, no template changes, no substrate change:
+  - `.schedule-day-header.is-today` color: `var(--purple-700)` → `var(--wc-red)` (style.css :3748). Closes an accent-rank-doctrine miss — purple is CCC platform chrome per DESIGN.md §2 and does not belong on a WC body surface scoped under `body.game-worldcup`. The adjacent `.schedule-today-badge` was already `--wc-red`; the header now agrees with the badge.
+  - `.schedule-legend` font-size: `.85rem` → `.95rem` (style.css :3792). Aligns with the Stats reference panel-supporting paragraph rhythm at `stats.html` line 108.
+  - New scoped rule `body.game-worldcup .section-heading { font-size: 1.75rem; }` co-located with the platform `.section-heading` definition (style.css :6012). Matches the Stats reference panel H2 size (`stats.html` line 107). The base `.section-heading` rule stays at 1.6rem so CFB's h3/h4/h5 consumers (`cfb/index.html`, `cfb/pick.html` x2, `cfb/my_picks.html`) are untouched — a global lift would balloon the CFB heading hierarchy.
+
+**Tests**:
+- New: `tests/test_design_wc_tab_unification_p4.py` — 4 regression locks (PI-1 `.schedule-day-header.is-today` paints `--wc-red` and contains no `--purple-` token in the rule block; PI-2 `.schedule-legend` declares `font-size: .95rem`; PI-3 `body.game-worldcup .section-heading` rule exists with `font-size: 1.75rem`; PI-4 negative lock asserting base `.section-heading` stays at 1.6rem so a future "fix" that lifts the platform default instead of the WC scope is caught). Regex idioms inherit P3 / P3.5 hardening: `^...` + `re.MULTILINE` start-of-line anchoring on CSS scans; property-anchored `(?<![-\w])` lookbehinds; forbidden-rule terminator pattern in PI-4.
+- Full suite: **761 / 761 passing** (757 P3.5 baseline + 4 new P4 locks; zero pre-existing tests modified).
+
+**Visual smoke**: Confirmed via Playwright on dev server across every per-state partial (per `feedback_state_shell_smoke_coverage.md`). All probes run with the worktree's edited `static/css/style.css` served fresh:
+- **Live** (`WC_FAKE_NOW='2026-06-15T12:00:00+00:00'`): `.schedule-day-header.is-today` paints `rgb(191, 10, 48)` (= `--wc-red` `#BF0A30`); `.schedule-jump-today` chip visible; `.section-heading` `28px` (= 1.75rem) on `body.game-worldcup`; `.schedule-legend` `15.2px` (= .95rem). 7 section headings render across Group Stage + 6 knockout rounds.
+- **Pre** (`WC_FAKE_NOW='2026-06-01T12:00:00+00:00'`): no `.is-today` element, no jump-to-today chip — both gated behind `today_days`. Typography lift still applied (`.section-heading` 28px, `.schedule-legend` 15.2px).
+- **Post** (`WC_FAKE_NOW='2026-07-20T12:00:00+00:00'`): same as pre on chip + is-today; typography lift persists.
+- **Mobile** (375x812 viewport): `.section-heading` still 28px (Teko sports-headline scale, no breakpoint reduction); `.match-result-card` reflows to `flex-direction: column` at the 400px breakpoint (existing behavior, untouched by P4).
+- **Cross-tab eye-test**: HUB / BOARD / SCHEDULE / STATS / RULES all probed in one session with `body.game-worldcup` flowing through, `.card.wc-card` count = 0 on each (post-P3.5 invariant holds; the home-state champion banner only renders when match #104 is flipped `is_completed=True` with `winner_team_id` set, neither true on the dev DB). All 5 tabs read as one Casual-Light game on bone. ROSTER (auth-gated) skipped — P4 didn't touch any ROSTER-relevant CSS and P3 verified the substrate-split retirement.
+
+**Detector**: skipped per the per-phase cadence (P1/P2/P3/P3.5 also skipped; routed to P5 if any new findings surface).
 
 ### P5 — Cleanup + DESIGN.md/CLAUDE.md update
 

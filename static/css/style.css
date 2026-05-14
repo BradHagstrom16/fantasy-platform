@@ -3746,7 +3746,10 @@ body.game-worldcup {
   /* date glyph holds its own weight; the badge sits beside it */
 }
 .schedule-day-header.is-today {
-  color: var(--purple-700);
+  /* WC Tab Unification P4: accent rank doctrine -- primary callouts on WC body
+     surfaces use --wc-red, not platform-chrome purple. Lockstep with the
+     adjacent .schedule-today-badge (already --wc-red). */
+  color: var(--wc-red);
 }
 .schedule-today-badge {
   display: inline-flex;
@@ -3790,7 +3793,9 @@ body.game-worldcup {
 /* Schedule-page microcopy: legend under Group Stage H2 + small Central-Time
    stamp under the hero lead. Replaces inline style attributes. */
 .schedule-legend {
-  font-size: .85rem;
+  /* WC Tab Unification P4: bumped .85 -> .95rem to match the Stats reference's
+     panel-supporting paragraph rhythm (stats.html line 108: .95rem). */
+  font-size: .95rem;
   color: var(--text-secondary);
   margin-bottom: 1rem;
   max-width: 60ch;
@@ -6017,6 +6022,14 @@ footer {
   letter-spacing: .06em;
   color: var(--text-primary);
   margin-bottom: .3rem;
+}
+
+/* WC Tab Unification P4: panel-level section H2s on the WC body lift to
+   1.75rem to match the Stats reference (stats.html line 107). The platform
+   default stays 1.6rem because .section-heading is consumed by CFB at
+   h3/h4/h5 levels where a 1.75rem lift would balloon the hierarchy. */
+body.game-worldcup .section-heading {
+  font-size: 1.75rem;
 }
 
 /* Animate in */
