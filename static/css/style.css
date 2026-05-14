@@ -2702,13 +2702,9 @@ body.game-worldcup {
    `.player-picks-desktop`. After P2, player_detail.html's picks table sits
    on plain `.card` (not `.wc-stat-card`), so the rule above doesn't reach
    the tier-name eyebrows or the accordion "Score events" header. This
-   sibling rule covers them with the same `--text-secondary` color.
-
-   ROSTER overlap: picks.html still wraps `.player-picks-desktop` in
-   `.card.wc-card.wc-card-flush` until P3. There, the more-specific
-   `.card.wc-card .wc-eyebrow:not(...)` rule at :7194 wins on specificity
-   (5 classes vs 4 here) and paints the dark-substrate bone variant, so
-   adding this light lift does NOT need a `.card.wc-card`-scoped carve-out. */
+   sibling rule covers them with the same `--text-secondary` color. P3
+   added picks.html to the light-substrate path; `.player-picks-desktop`
+   now consumes this lift uniformly across both templates. */
 .player-picks-desktop .wc-eyebrow:not(.wc-eyebrow-red):not(.wc-eyebrow-gold) {
   color: var(--text-secondary);
 }
@@ -2778,9 +2774,10 @@ body.game-worldcup {
    form's .tier-card-heading on a white .tier-card body), a scoped
    override below re-tints to ink-on-purple. */
 /* Multiplier chip — used inside `.player-picks-desktop` (both player_detail
-   and picks.html). Same substrate split as the table cells above: light base
-   for player_detail post-P2, `.card.wc-card`-scoped carve-out for ROSTER
-   until P3. */
+   and picks.html). After WC tab unification P3 migrated picks.html off
+   `.card.wc-card`, the chip lives only on light substrates — the dark
+   `.card.wc-card`-scoped carve-out was retired in lockstep with the template
+   migration. */
 .wc-multiplier-chip {
   display: inline-block;
   font-family: 'Teko', sans-serif;
@@ -2793,11 +2790,6 @@ body.game-worldcup {
   border-radius: 4px;
   color: var(--text-primary);
   white-space: nowrap;
-}
-.card.wc-card .wc-multiplier-chip {
-  background: rgba(245, 241, 232, .08);
-  border-color: rgba(245, 241, 232, .14);
-  color: var(--text-on-dark);
 }
 
 /* P4 S4.2.2 PI-5 — dark-substrate contrast lock on `.card.wc-card`.
@@ -2970,13 +2962,10 @@ body.game-worldcup {
 }
 
 /* === player_detail / picks table contrast lock.
-   The `.player-picks-desktop` table-wrapper appears on TWO substrates:
-   - player_detail.html (post-P2): plain `.card` (white) — dark text on white.
-   - picks.html ROSTER read-only (until P3): `.card.wc-card.wc-card-flush`
-     (dark navy) — bone text on navy.
-   Base rule paints the LIGHT substrate; the `.card.wc-card.player-picks-desktop`
-   carve-out preserves the dark variant until P3 migrates ROSTER. Mirrors P1's
-   `.table-worldcup .row-current-user > td a` split (style.css :3422 + :3429). */
+   After WC tab unification P3, `.player-picks-desktop` lives only on light
+   substrates (plain `.card` on both player_detail.html and picks.html); the
+   `.card.wc-card.player-picks-desktop` dark carve-out introduced in P2 was
+   retired in lockstep with the picks.html template migration. */
 .player-picks-desktop .table-worldcup > tbody > tr > td {
   color: var(--text-primary);
   border-color: var(--border);
@@ -2998,41 +2987,24 @@ body.game-worldcup {
   border-bottom-color: var(--wc-red);
 }
 
-/* ROSTER read-only carve-out — dark navy substrate until P3 migrates picks.html. */
-.card.wc-card.player-picks-desktop .table-worldcup > tbody > tr > td {
-  color: var(--text-on-dark);
-  border-color: rgba(245, 241, 232, .08);
-}
-.card.wc-card.player-picks-desktop .table-worldcup > tbody > tr:hover > td {
-  background-color: rgba(245, 241, 232, .04);
-}
-.card.wc-card.player-picks-desktop .table-worldcup > tfoot > tr > td {
-  color: var(--text-on-dark);
-  border-color: rgba(245, 241, 232, .14);
-}
-.card.wc-card.player-picks-desktop .team-link {
-  color: var(--text-on-dark);
-}
-.card.wc-card.player-picks-desktop .team-link:hover {
-  color: var(--gold-light);
-  border-bottom-color: var(--gold-light);
-}
-/* Override the surgical exclusion at the cluster 3 .card.wc-card .table
-   .text-muted rule below — that exclusion exists because Bootstrap's
-   white-td default masks navy on most surfaces, but player_detail's
-   .card.wc-card-flush + transparent td bg LEAVES navy bleeding through.
-   The card IS the .player-picks-desktop element (.card.wc-card.wc-card-flush
-   .player-picks-desktop), so the selector compounds three classes on the
-   same element to beat the cluster-3 specificity (.card.wc-card .table > tbody
-   > tr > td .text-muted = 4 classes + 3 elements). */
+/* Cluster-3 `.card.wc-card .table .text-muted` exclusion — vestigial.
+   The rule below was originally needed because picks.html wrapped the
+   `.player-picks-desktop` table in `.card.wc-card.wc-card-flush`, where the
+   transparent td bg let navy bleed through, defeating the `.card.wc-card
+   .table .text-muted` cluster-3 override at :7167. P3 migrated that wrapper
+   off `.card.wc-card`, so the compound selector no longer matches any DOM.
+   Left in place as an orphan awaiting P5's full `.card.wc-card` retirement
+   so the cluster-3 lift, this counter-lift, and the surrounding doctrine
+   all retire as one unit. */
 .card.wc-card.player-picks-desktop .table-worldcup > tbody > tr > td .text-muted,
 .card.wc-card.player-picks-desktop .table-worldcup > tbody > tr > td.text-muted {
   color: var(--bone-mute) !important;
 }
 
 /* picks.html / player_detail.html — three-column event-item grid (drill-down).
-   Same substrate split as `.player-picks-desktop` above: light base for
-   player_detail post-P2, `.card.wc-card`-scoped carve-out for ROSTER until P3. */
+   After WC tab unification P3 both consumers (picks.html ROSTER + player_detail
+   BOARD) sit on light substrates; the `.card.wc-card`-scoped dark carve-out
+   introduced in P2 was retired in lockstep with the picks.html migration. */
 .pick-events-inner {
   padding: .75rem 1rem .25rem;
 }
@@ -3051,13 +3023,6 @@ body.game-worldcup {
 .pick-event-stage { color: var(--text-secondary); }
 .pick-event-desc { font-size: .9rem; }
 .pick-event-pts { font-size: 1rem; }
-
-/* ROSTER read-only carve-out — dark navy substrate until P3 migrates picks.html. */
-.card.wc-card .pick-events-list .pick-event-item {
-  border-bottom-color: rgba(245, 241, 232, .12);
-  color: var(--text-on-dark);
-}
-.card.wc-card .pick-event-stage { color: var(--bone-mute); }
 
 /* P2 S2.5.1 PI-2 — player_detail hero re-shape.
    Mirrors the team_detail .team-hero-line pattern locked in S2.3.1: one
@@ -3973,9 +3938,9 @@ body.game-worldcup {
   }
 }
 
-/* Accordion footer + empty state — same substrate split as `.pick-events-*`
-   above: light base for player_detail post-P2, `.card.wc-card`-scoped
-   carve-out for ROSTER's read-only picks table until P3. */
+/* Accordion footer + empty state — light substrate only after WC tab
+   unification P3. The `.card.wc-card`-scoped dark carve-out introduced in P2
+   was retired in lockstep with the picks.html migration. */
 .score-events-total {
   padding: .5rem 1rem .75rem;
   border-top: 1px dotted var(--border);
@@ -3991,14 +3956,6 @@ body.game-worldcup {
   color: var(--text-secondary);
   font-style: italic;
 }
-
-/* ROSTER read-only carve-out — dark navy substrate until P3 migrates picks.html. */
-.card.wc-card .score-events-total {
-  border-top-color: rgba(245, 241, 232, .14);
-  color: var(--bone-mute);
-}
-.card.wc-card .score-events-total strong { color: var(--text-on-dark); }
-.card.wc-card .score-events-empty { color: var(--bone-mute); }
 @keyframes wc-event-fade-in {
   from { opacity: 0; transform: translateY(2px); }
   to   { opacity: 1; transform: translateY(0); }
