@@ -59,16 +59,33 @@ CSS = CSS_PATH.read_text()
 # PI-1: contrast lock on .card.wc-card dark substrate
 # ---------------------------------------------------------------------------
 
-def test_pick_table_tbody_td_lifted_to_text_on_dark():
-    """The desktop pick table sits inside `.card.wc-card` (rgba(0,17,46,.8)).
-    Bootstrap's default `<td>` color rgb(33,37,41) renders invisible on that
-    substrate. Lift to var(--text-on-dark) scoped to .player-picks-desktop."""
+def test_pick_table_tbody_td_carries_explicit_color_per_substrate_doctrine():
+    """The desktop pick table sits inside `.card.wc-card` (rgba(0,17,46,.8))
+    on the original S2.5.1 doctrine — Bootstrap's default `<td>` color
+    rgb(33,37,41) renders invisible on that substrate.
+
+    S2.5.1 lifted the cells to `var(--text-on-dark)` (bone on navy). WC Tab
+    Unification P2 then split the rule into a light base
+    (`var(--text-primary)` for player_detail.html post-P2) + a
+    `.card.wc-card.player-picks-desktop` dark carve-out (preserving bone
+    on navy for picks.html ROSTER). P3 retired the carve-out when
+    picks.html migrated, leaving only the light base. The S2.5.1
+    invariant — "the cells carry an explicit color, not inherited
+    `currentColor`" — survives all three flips. Lock the property is
+    present on the base rule; the exact value evolves with the substrate
+    doctrine (currently `var(--text-primary)`).
+
+    The `--bs-table-bg` mask defused via `background-color: transparent`
+    on the cells is part of the same lift — preserved through every phase.
+    """
     assert (
         '.player-picks-desktop .table-worldcup > tbody > tr > td {\n'
-        '  color: var(--text-on-dark);'
-    ) in CSS, "Expected tbody td color lift scoped to .player-picks-desktop"
-    # Also defuse Bootstrap's --bs-table-bg white-cell forcing on the dark
-    # substrate by explicitly clearing the cell background.
+        '  color: var(--text-primary);'
+    ) in CSS, (
+        'Post-P3 base must paint `color: var(--text-primary)` on the cell — '
+        'the light-substrate variant inherited from P2 with the carve-out '
+        'retired.'
+    )
     assert 'background-color: transparent' in CSS
 
 
@@ -85,10 +102,24 @@ def test_pick_table_no_longer_forces_dark_text_on_multiplier_chip():
     )
 
 
-def test_pick_event_stage_uses_bone_mute_on_dark_panel():
-    """`.pick-event-stage` lives inside `.pick-accordion` which inherits the
-    dark navy substrate. Lift to bone-mute so the meta line reads."""
-    assert '.pick-event-stage { color: var(--bone-mute); }' in CSS
+def test_pick_event_stage_carries_explicit_color_per_substrate_doctrine():
+    """`.pick-event-stage` (the date column on the accordion drill-down)
+    needed an explicit color on S2.5.1's dark substrate (Bootstrap's
+    default `text-muted` was invisible on navy). S2.5.1 lifted to
+    `var(--bone-mute)`; WC Tab Unification P2 split the rule into a light
+    base (`var(--text-secondary)` for player_detail.html) + a
+    `.card.wc-card .pick-event-stage` dark carve-out (preserving bone-mute
+    for picks.html ROSTER). P3 retired the carve-out when picks.html
+    migrated, leaving the light base.
+
+    The S2.5.1 invariant — "the date column carries an explicit color, not
+    inherited `currentColor`" — survives all three flips. Lock the value
+    evolves with the substrate doctrine (currently `var(--text-secondary)`).
+    """
+    assert '.pick-event-stage { color: var(--text-secondary); }' in CSS, (
+        'Post-P3 must paint `color: var(--text-secondary)` — the light-'
+        'substrate variant inherited from P2 with the carve-out retired.'
+    )
 
 
 def test_pick_accordion_panel_tinted_for_dark_substrate():
@@ -114,21 +145,23 @@ def test_pick_accordion_toggle_uses_light_token():
     assert '.pick-accordion-toggle.open {\n  transform: rotate(90deg);\n  color: var(--gold-light);\n}' in CSS
 
 
-def test_score_events_total_and_empty_paint_per_substrate():
+def test_score_events_total_and_empty_paint_light_substrate_only():
     """The drill-down total line and the empty state both used Bootstrap's
     `var(--text-muted, #6c757d)` originally — invisible on either WC body
     substrate. S2.5.1 lifted them to `var(--bone-mute)` on the
     `.card.wc-card` dark navy. WC Tab Unification P2 then split the rules
     so the base paints the new LIGHT substrate (`var(--text-secondary)` /
     `var(--text-primary)` on white, for player_detail.html post-P2) and a
-    `.card.wc-card .score-events-*` carve-out preserves the dark variant
-    (`var(--bone-mute)`) for picks.html ROSTER until P3 migrates it.
+    `.card.wc-card .score-events-*` carve-out preserved the dark variant
+    (`var(--bone-mute)`) for picks.html ROSTER read-only.
 
-    Lock both halves: (a) the light base reads on white,
-    (b) the dark carve-out reads on navy. Each is brittle to a regression
-    that would re-flatten the rules onto one substrate.
+    P3 then migrated picks.html off `.card.wc-card`, retiring the dark
+    carve-out in lockstep. The accordion footer + empty state now live on
+    a single light substrate across both consumers (picks.html ROSTER +
+    player_detail.html BOARD). Lock the light base survives AND assert the
+    dark carve-out is gone (mirrors P2 PI-7's forbidden-rule lockout style).
     """
-    # (a) LIGHT base — player_detail post-P2 sits on plain `.card` (white).
+    # (a) LIGHT base — both player_detail + picks.html now sit on plain `.card`.
     assert (
         '.score-events-total {\n  padding: .5rem 1rem .75rem;\n'
         '  border-top: 1px dotted var(--border);\n'
@@ -136,30 +169,25 @@ def test_score_events_total_and_empty_paint_per_substrate():
     ) in CSS, (
         '.score-events-total base must paint `color: var(--text-secondary)` '
         'with a `var(--border)` dotted top — the light-substrate variant '
-        'for player_detail.html post-P2.'
+        'consumed by both player_detail.html (P2) and picks.html (P3).'
     )
     assert (
         '.score-events-empty {\n  padding: .75rem 1rem;\n'
         '  font-size: .85rem;\n  color: var(--text-secondary);'
     ) in CSS, (
         '.score-events-empty base must paint `color: var(--text-secondary)` '
-        '— the light-substrate variant for player_detail.html post-P2.'
+        '— the light-substrate variant consumed by both consumers post-P3.'
     )
 
-    # (b) DARK carve-out — picks.html ROSTER read-only stays on navy until P3.
-    assert (
-        '.card.wc-card .score-events-total {\n'
-        '  border-top-color: rgba(245, 241, 232, .14);\n'
-        '  color: var(--bone-mute);\n}'
-    ) in CSS, (
-        '`.card.wc-card .score-events-total` carve-out must preserve the '
-        'bone-mute color + bone dotted border for ROSTER until P3.'
+    # (b) DARK carve-out retired in P3 — assert it does NOT re-appear.
+    assert '.card.wc-card .score-events-total' not in CSS, (
+        '`.card.wc-card .score-events-total` carve-out was retired in P3 '
+        '(its sole consumer, picks.html ROSTER, migrated off `.card.wc-card`). '
+        'A regression here means the cleanup was undone.'
     )
-    assert (
-        '.card.wc-card .score-events-empty { color: var(--bone-mute); }'
-    ) in CSS, (
-        '`.card.wc-card .score-events-empty` carve-out must preserve '
-        'bone-mute for ROSTER until P3.'
+    assert '.card.wc-card .score-events-empty' not in CSS, (
+        '`.card.wc-card .score-events-empty` carve-out was retired in P3. '
+        'A regression here means the cleanup was undone.'
     )
 
 

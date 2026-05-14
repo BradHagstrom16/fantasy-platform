@@ -19,12 +19,16 @@ These tests pin the migration so it can't silently drift back:
 - PI-4: `.player-picks-desktop .table-worldcup > tbody > tr > td` base
   paints `var(--text-primary)` (light substrate, player_detail.html).
 - PI-5: `.card.wc-card.player-picks-desktop .table-worldcup > tbody > tr
-  > td` carve-out exists and paints `var(--text-on-dark)` (preserves
-  ROSTER's read-only picks table on dark navy until P3 migrates picks.html).
+  > td` (and the four sibling rules in that carve-out block) were
+  retired in P3 when picks.html migrated off `.card.wc-card`. Locked here
+  in the lockstep-rewrite style P2 used for the tribune gold→red flip
+  (`test_pi1_red_divider_rule_threads_tribune_to_standings`): the same
+  test ID survives, its invariant is now "carve-out absent" instead of
+  "carve-out present".
 - PI-6: `.pick-events-list .pick-event-item` base paints a dark-on-light
-  pair (`var(--text-primary)` text + `var(--border)` dashed border); a
-  `.card.wc-card .pick-events-list .pick-event-item` carve-out preserves
-  the bone-on-navy variant for ROSTER.
+  pair (`var(--text-primary)` text + `var(--border)` dashed border); the
+  `.card.wc-card .pick-events-list .pick-event-item` carve-out was
+  retired in P3 in the same lockstep rewrite.
 - PI-7: BOARD-only dark-card rule families removed in lockstep
   (`.card.wc-card .leaderboard-table ...`, `.card.wc-card.leaderboard-card`,
   `.card.wc-card.leaderboard-card .rank-delta-*`). Parallels P1's removal
@@ -177,30 +181,34 @@ def test_player_picks_desktop_base_paints_light_substrate():
     )
 
 
-def test_player_picks_desktop_dark_carve_out_preserved_for_roster():
-    """`.card.wc-card.player-picks-desktop .table-worldcup > tbody > tr > td
-    { color: var(--text-on-dark); … }` — the carve-out for ROSTER's read-only
-    picks table until P3 retires it.
+def test_player_picks_desktop_dark_carve_out_was_retired_in_p3():
+    """`.card.wc-card.player-picks-desktop` carve-out for the `.table-worldcup
+    > tbody > tr > td` cell (and its four siblings: `tr:hover > td`,
+    `tfoot > tr > td`, `.team-link`, `.team-link:hover`) was retired in P3
+    when picks.html migrated off `.card.wc-card` — the carve-out's only
+    consumer disappeared. Mirrors P2 PI-7's "BOARD-only dark-card rule
+    families removed in lockstep" pattern.
 
-    Mirrors P1's two-substrate split at `.table-worldcup .row-current-user
-    > td a` (style.css :3422 + :3429). Without this carve-out, ROSTER's
-    post-deadline desktop table would render dark text on dark navy.
+    The cluster-3 `.text-muted` counter-rule at
+    `.card.wc-card.player-picks-desktop .table-worldcup > tbody > tr > td
+    .text-muted` is NOT asserted here — it survives as an orphan awaiting
+    P5's full `.card.wc-card` retirement (deferred per the strategy doc's
+    "preserve cross-tab carve-outs until P5" note).
     """
-    match = re.search(
-        r'\.card\.wc-card\.player-picks-desktop \.table-worldcup > tbody > tr > td\s*\{([^}]+)\}',
-        CSS,
-    )
-    assert match is not None, (
-        'Expected a `.card.wc-card.player-picks-desktop .table-worldcup > '
-        'tbody > tr > td` ROSTER carve-out to preserve dark-substrate '
-        'styling until P3 migrates picks.html.'
-    )
-    block = match.group(1)
-    # Property-scoped — see PR #15 CR R7-D pattern.
-    assert re.search(r'(?<![-\w])color:\s*var\(--text-on-dark\)', block), (
-        f'ROSTER carve-out must paint `color: var(--text-on-dark)`; '
-        f'block={block!r}.'
-    )
+    forbidden = [
+        r'\.card\.wc-card\.player-picks-desktop \.table-worldcup > tbody > tr > td\s*\{',
+        r'\.card\.wc-card\.player-picks-desktop \.table-worldcup > tbody > tr:hover > td\s*\{',
+        r'\.card\.wc-card\.player-picks-desktop \.table-worldcup > tfoot > tr > td\s*\{',
+        r'\.card\.wc-card\.player-picks-desktop \.team-link\s*\{',
+        r'\.card\.wc-card\.player-picks-desktop \.team-link:hover\s*\{',
+    ]
+    for pattern in forbidden:
+        assert re.search(pattern, CSS) is None, (
+            f'Forbidden ROSTER dark carve-out rule re-appeared in style.css: '
+            f'`{pattern}`. P3 retired this in lockstep with the picks.html '
+            f'template migration; a regression here means the cleanup was '
+            f'undone.'
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -230,31 +238,24 @@ def test_pick_events_item_base_paints_light_substrate():
     )
 
 
-def test_pick_events_item_dark_carve_out_preserved_for_roster():
-    """`.card.wc-card .pick-events-list .pick-event-item` carve-out exists and
-    paints `var(--text-on-dark)` text + a bone dashed border for ROSTER's
-    still-dark accordion until P3."""
-    match = re.search(
-        r'\.card\.wc-card \.pick-events-list \.pick-event-item\s*\{([^}]+)\}',
-        CSS,
-    )
-    assert match is not None, (
-        'Expected a `.card.wc-card .pick-events-list .pick-event-item` '
-        'ROSTER carve-out.'
-    )
-    block = match.group(1)
-    # Property-scoped — see PR #15 CR R7-D pattern.
-    assert re.search(r'(?<![-\w])color:\s*var\(--text-on-dark\)', block), (
-        f'ROSTER accordion carve-out must paint `color: var(--text-on-dark)`; '
-        f'block={block!r}.'
-    )
-    # The bone dashed border tuple from the pre-P2 base — locked here so a
-    # future "clean up the rgba" refactor doesn't accidentally flatten the
-    # carve-out's appearance.
-    assert 'border-bottom-color: rgba(245, 241, 232, .12)' in block, (
-        f'ROSTER accordion carve-out must keep the bone dashed border '
-        f'(`rgba(245, 241, 232, .12)`); block={block!r}.'
-    )
+def test_pick_events_item_dark_carve_out_was_retired_in_p3():
+    """`.card.wc-card .pick-events-list .pick-event-item` and the companion
+    `.card.wc-card .pick-event-stage` rule were retired in P3 when picks.html
+    migrated off `.card.wc-card` — the carve-outs' only DOM consumer (the
+    ROSTER read-only desktop accordion) disappeared. Mirrors P2 PI-7's
+    "removed in lockstep" pattern.
+    """
+    forbidden = [
+        r'\.card\.wc-card \.pick-events-list \.pick-event-item\s*\{',
+        r'\.card\.wc-card \.pick-event-stage\s*\{',
+    ]
+    for pattern in forbidden:
+        assert re.search(pattern, CSS) is None, (
+            f'Forbidden ROSTER accordion dark carve-out rule re-appeared in '
+            f'style.css: `{pattern}`. P3 retired this in lockstep with the '
+            f'picks.html template migration; a regression here means the '
+            f'cleanup was undone.'
+        )
 
 
 # ---------------------------------------------------------------------------
