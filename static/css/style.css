@@ -7095,7 +7095,15 @@ body.game-worldcup .form-text {
    Newsreader derivation line. Replaces the prior two-display-4 50/50
    split that triggered the hero-metric-adjacency ban (the same reflex
    S2.3.1 broke on team_detail). Scoped to .post-finish-card so the
-   selectors live next to their only call site in _home_post.html. */
+   selectors live next to their only call site in _home_post.html.
+
+   WC tab unification P1 follow-up — the original `--bone` / bone-alpha
+   colors were designed for the prior `.card.wc-card` (dark navy)
+   substrate. After P1 migrated the wrapper to `.wc-stat-card` (white),
+   bone-on-white collapses to ~1.1:1 (unreadable). Lift to the
+   light-substrate text tokens: `--text-primary` (#1C1730, ~13.9:1 on
+   bone) for the dominant rank + derivation prose, `--text-secondary`
+   (#5A5470, ~6.9:1 on bone, AA) for the "of N" subordinate label. */
 .post-finish-card .post-finish-rank-cluster {
   display: flex;
   align-items: baseline;
@@ -7107,7 +7115,7 @@ body.game-worldcup .form-text {
   font-weight: 700;
   font-size: 3.6rem;
   line-height: 1;
-  color: var(--bone);
+  color: var(--text-primary);
   letter-spacing: 0.02em;
 }
 @media (min-width: 768px) {
@@ -7119,13 +7127,13 @@ body.game-worldcup .form-text {
   font-size: 1rem;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: rgba(245, 241, 232, 0.7);
+  color: var(--text-secondary);
 }
 .post-finish-card .post-finish-derivation {
   font-family: var(--font-news);
   font-style: italic;
   font-size: 1rem;
-  color: rgba(245, 241, 232, 0.88);
+  color: var(--text-primary);
   margin: 0.5rem 0 0;
   line-height: 1.4;
 }

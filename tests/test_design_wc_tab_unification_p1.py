@@ -66,12 +66,15 @@ def test_global_wc_btn_game_red_rule_exists():
         'red CTA paint introduced in WC tab unification P1.'
     )
     block = match.group(1)
-    assert 'var(--wc-red)' in block, (
-        f'Global WC btn-game rule must paint background/border with '
-        f'var(--wc-red); block={block!r}.'
+    # CR follow-up: bind each property to the expected token so the
+    # assertions can't false-positive on a hypothetical block that uses
+    # `--wc-red` for one property and a different token for the other.
+    assert 'background: var(--wc-red)' in block, (
+        f'Global WC btn-game rule must paint `background: var(--wc-red)`; '
+        f'block={block!r}.'
     )
-    assert 'background:' in block and 'border-color:' in block, (
-        f'Global WC btn-game rule must set both background and border-color; '
+    assert 'border-color: var(--wc-red)' in block, (
+        f'Global WC btn-game rule must paint `border-color: var(--wc-red)`; '
         f'block={block!r}.'
     )
 
@@ -87,9 +90,17 @@ def test_global_wc_btn_game_hover_uses_red_dark():
         'Expected a `body.game-worldcup .btn-game:hover[, …:focus-visible]` '
         'rule for the global red CTA hover state.'
     )
-    assert 'var(--wc-red-dark)' in match.group(1), (
-        f'Hover rule must darken to var(--wc-red-dark); '
-        f'block={match.group(1)!r}.'
+    block = match.group(1)
+    # CR follow-up: pin each property to `--wc-red-dark` explicitly so a
+    # future refactor can't accidentally split the token across only one
+    # property and still pass.
+    assert 'background: var(--wc-red-dark)' in block, (
+        f'Hover rule must paint `background: var(--wc-red-dark)`; '
+        f'block={block!r}.'
+    )
+    assert 'border-color: var(--wc-red-dark)' in block, (
+        f'Hover rule must paint `border-color: var(--wc-red-dark)`; '
+        f'block={block!r}.'
     )
 
 
@@ -189,10 +200,18 @@ def test_hero_phase_indicator_uses_red_not_gold():
         'still exist (the chip lives in the dark hero on every state).'
     )
     block = match.group(1)
-    # Red-tinted bg + red-tinted border, no gold tokens
-    assert '191, 10, 48' in block or '191,10,48' in block, (
-        f'Hero phase chip background/border should reference the red triplet '
-        f'(rgba 191, 10, 48, …); block={block!r}.'
+    # CR follow-up: pin each property to its specific red-triplet value
+    # (background = 14% alpha tint, border = 35% alpha tint). Avoids the
+    # generic-triplet-substring false-positive where one property could
+    # carry red but the other could regress to gold without the test
+    # catching it.
+    assert 'background: rgba(191, 10, 48, .14)' in block, (
+        f'Hero phase chip must paint `background: rgba(191, 10, 48, .14)` '
+        f'(red @ 14% alpha tint); block={block!r}.'
+    )
+    assert 'border: 1px solid rgba(191, 10, 48, .35)' in block, (
+        f'Hero phase chip must paint `border: 1px solid rgba(191, 10, 48, '
+        f'.35)` (red @ 35% alpha border); block={block!r}.'
     )
     assert 'gold' not in block.lower(), (
         f'Hero phase chip should no longer reference any gold token after '
