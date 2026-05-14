@@ -13,13 +13,13 @@
 
 | Phase | Description | PR | Status | Closed |
 |---|---|---|---|---|
-| P0 | Quick wins + scorecard codification | [#22](https://github.com/BradHagstrom16/fantasy-platform/pull/22) | Open (awaiting review) | — |
-| P1 | HUB body migration | [#23](https://github.com/BradHagstrom16/fantasy-platform/pull/23) | Open (awaiting review) | — |
+| P0 | Quick wins + scorecard codification | [#22](https://github.com/BradHagstrom16/fantasy-platform/pull/22) | Merged | 2026-05-14 |
+| P1 | HUB body migration | [#23](https://github.com/BradHagstrom16/fantasy-platform/pull/23) | Merged | 2026-05-14 |
 | P2 | BOARD body migration | [#24](https://github.com/BradHagstrom16/fantasy-platform/pull/24) | Merged | 2026-05-14 |
 | P3 | ROSTER read-only migration | [#25](https://github.com/BradHagstrom16/fantasy-platform/pull/25) | Merged | 2026-05-14 |
-| P3.5 | Audit-miss cleanup: `team_detail.html` + `rules.html` migration | [#26](https://github.com/BradHagstrom16/fantasy-platform/pull/26) | Open (awaiting review) | — |
-| P4 | SCHEDULE light polish | [#27](https://github.com/BradHagstrom16/fantasy-platform/pull/27) | Open (awaiting review) | — |
-| P5 | Cleanup: retire `.card.wc-card` + update DESIGN.md/CLAUDE.md | — | Pending | — |
+| P3.5 | Audit-miss cleanup: `team_detail.html` + `rules.html` migration | [#26](https://github.com/BradHagstrom16/fantasy-platform/pull/26) | Merged | 2026-05-14 |
+| P4 | SCHEDULE light polish | [#27](https://github.com/BradHagstrom16/fantasy-platform/pull/27) | Merged | 2026-05-14 |
+| P5 | Cleanup: retire `.card.wc-card` + split DESIGN.md (top-level + games/worldcup) + CLAUDE.md doctrine update + impeccable loader customization | [#28](https://github.com/BradHagstrom16/fantasy-platform/pull/28) | Open (awaiting review) | — |
 
 Predecessor PR (precondition, not part of this project): **#21** — `worldcup/hub-color-rebalance-r1` (hub pre-state polish landed under the *old* dark-card paradigm; its gold pieces will be re-derived to red in P1).
 
@@ -29,19 +29,21 @@ Predecessor PR (precondition, not part of this project): **#21** — `worldcup/h
 
 Captured pre-P0 from the impeccable critique that opened this project.
 
-| Tab | Heur baseline | Audit baseline | Anti-pat hits | Source |
-|---|---|---|---|---|
-| HUB (pre-state) | 28 (post-PR-21) | — | 0 detector | Critique 2026-05-13 |
-| ROSTER | — | — | 1 (group-letter pill ~1.05:1) | Phase 0 reconnaissance |
-| BOARD | — | — | — | TBD before P2 |
-| SCHEDULE | 3 gaps pre / 0 post (3.5/5 → 4.5/5) | — | 0 detector | P4 baseline 2026-05-14 |
-| STATS | — | — | 0 | Already at target |
-| RULES | — | — | 0 | Already at target — **AUDIT MISS** (see note below) |
-| team_detail | — | — | — | Discovered during P3 (not in original grid) |
+| Tab | Heur baseline | Final (post-P5) | Lift | Anti-pat hits (post-P5) | Source |
+|---|---|---|---|---|---|
+| HUB (pre/live/post) | 28 (post-PR-21) | 4.7 / 5 | Casual-Light substrate adopted across every state partial; `.card.wc-card` count = 0; navy hero preserved; red CTAs + red-rule `.is-lead` + `.wc-stat-card` reference pattern throughout. | 0 (cross-tab probe + P5 visual smoke) | Critique 2026-05-13 → P5 close-out 2026-05-14 |
+| ROSTER | — | 4.7 / 5 | Pre-deadline edit form + post-deadline read-only both on light substrate; substrate carve-outs retired in P3; eyebrows + multiplier chips read ink-on-light. | 0 (P3 visual smoke + P5 cross-tab probe) | P3 + P5 close-out |
+| BOARD | — | 4.7 / 5 | `leaderboard.html` + `player_detail.html` on plain Bootstrap `.card`; `.your-standing-tribune + .card` red-divider; `.card.leaderboard-card-current` red border; navy thead retained as the structural anchor. | 0 (P2 visual smoke + P5 cross-tab probe) | P2 + P5 close-out |
+| SCHEDULE | 3.5 / 5 (3 gaps pre) | 4.7 / 5 (was 4.5 post-P4) | `.schedule-day-header.is-today` flipped purple → `var(--wc-red)`; `.schedule-legend` typography lift to .95rem; `body.game-worldcup .section-heading` 1.75rem WC-scoped lift. | 0 (P4 visual smoke + P5 cross-tab probe) | P4 baseline 2026-05-14 → P5 close-out |
+| STATS | 5 / 5 (reference) | 5 / 5 | Already the reference pattern at project open; unchanged. Casual-Light grammar, `.wc-stat-card.is-lead` red-rule, accent rank discipline — every other tab now mirrors this. | 0 (4 pre-existing detector hits unchanged from baseline) | Already at target — locked as reference |
+| RULES | 5 / 5 (audit miss — actual baseline 3 / 5) | 4.7 / 5 | P3.5 migrated 7 wrappers off `.card.wc-card` (the audit-miss correction). Inner tables already white-masked; substrate flip resolved the cross-tab inconsistency the original audit missed. | 0 (P3.5 visual smoke + P5 cross-tab probe) | P3.5 + P5 close-out |
+| team_detail | — | 4.7 / 5 | Single `.card.wc-card.wc-card-flush` wrapper migrated in P3.5 to plain Bootstrap `.card` with the `wc-card-flush` zero-padding utility preserved. | 0 (P3.5 visual smoke + P5 cross-tab probe) | Discovered during P3 → P5 close-out |
 
-**RULES audit miss** (recorded 2026-05-14, after P3): the original "white throughout (5/5)" rating was a misread. The page's 7 content cards (`rules.html:29, 41, 114, 161, 192, 244, 255`) wrap in `.card.wc-card` (dark navy substrate at `rgba(0, 17, 46, .8)`); only the inner tables read white because `.card.wc-card .table { --bs-table-bg: var(--bg-card) }` (style.css:6794) masks Bootstrap. The eye lands on the white tables and misses the dark substrate underneath the prose sections. P3.5 captures the correction — `rules.html` migrates to plain `.card` alongside `team_detail.html`. Visual confirmation 2026-05-14: dark substrate live-probed via DevTools (`background-color: rgba(0, 17, 46, 0.8)`) on the "How It Works" card outer wrapper.
+**Project headline lift**: every WC tab clears 4.7 / 5 (the STATS reference holds at 5 / 5), and the cross-tab `.card.wc-card` count is locked at zero (verified live across all 6 tabs in the P5 visual smoke; locked by `tests/test_design_wc_tab_unification_p5.py::test_pi1_zero_card_wc_card_rule_heads_in_style_css`). The headline outcome the project targeted — "this is one game" across HUB / ROSTER / BOARD / SCHEDULE / STATS / RULES — is achieved.
 
-Per-tab final scores recorded as phases close.
+**Scoring methodology**: per-tab finals captured by walking each tab against the new `games/worldcup/DESIGN.md` doctrine (Casual-Light substrate adoption, accent rank discipline, ceremonial restraint, editorial register, cross-tab continuity) during the P5 cross-tab visual smoke. Tabs that started fragmented and now read as one game land at 4.7 (one notch below the STATS reference because the STATS pattern was authored against the doctrine from inception, while the others arrived at conformity through migration and retain minor heritage in their CSS comment trail). The 0 anti-pattern hits figure is the count of `.card.wc-card` rule heads in `style.css` plus the count of `.card.wc-card` markup in WC templates — both project-locked at zero by the new P5 test file.
+
+**RULES audit miss** (historical record, 2026-05-14, after P3): the original "white throughout (5/5)" rating was a misread. The page's 7 content cards (`rules.html:29, 41, 114, 161, 192, 244, 255`) wrapped in `.card.wc-card` (dark navy substrate at `rgba(0, 17, 46, .8)`); only the inner tables read white because `.card.wc-card .table { --bs-table-bg: var(--bg-card) }` (style.css:6794 pre-P3.5) masked Bootstrap. The eye landed on the white tables and missed the dark substrate underneath the prose sections. P3.5 captured the correction — `rules.html` migrated to plain `.card` alongside `team_detail.html`. Visual confirmation 2026-05-14: dark substrate live-probed via DevTools (`background-color: rgba(0, 17, 46, 0.8)`) on the "How It Works" card outer wrapper pre-migration.
 
 ---
 
@@ -195,18 +197,49 @@ Carried over from the plan (and the in-session question-tool answers).
 ### P5 — Cleanup + DESIGN.md/CLAUDE.md update
 
 **Branch (planned)**: `worldcup/tab-unification-phase-5`.
-**Targets**:
-- After P3.5 the only `.card.wc-card` consumer left is the deliberate `_home_post.html` champion banner. P5 either retires that too (migrating to a dedicated `.wc-champion-banner` primitive) or scopes `.card.wc-card` to that single surface as the final dark-gold ceremonial slot.
-- Retire orphan rules preserved across prior phases:
-  - `.card.wc-card.player-picks-desktop .table-worldcup > tbody > tr > td .text-muted` cluster-buster (P3-orphaned, harmless until parent rule retires).
-  - `.card.wc-card .wc-eyebrow:not(.wc-eyebrow-red):not(.wc-eyebrow-gold)` (cross-tab dark-substrate eyebrow lift, S6.1.1 PI-1).
-  - `.card.wc-card .table-worldcup .row-current-user > td a` (P1-preserved cross-tab carve-out).
-  - `.card.wc-card .wc-numeral` (`:2810`), `.card.wc-card .btn-outline-secondary` (`:2839`) — verify each against champion banner before retiring.
-  - Two `:not(.player-picks-desktop)` selectors at `style.css:2824` + `:6852` simplify (negation redundant after P3, deferred from P3.5 per discoveries-routing decision above).
-- Retire associated pattern-lock tests (`test_design_p6_s6_1_1.py::test_pi1_dark_card_eyebrow_lift_rule_exists` and siblings).
-- Update CLAUDE.md's "dark `.card.wc-card` surface" guidance — replace with Casual-Light pattern documentation.
-- Update DESIGN.md: Brad drafts the Casual-Light pattern + accent rank doctrine. Assistant restructures for consumption per the load-bearing-doc preference.
-- Per-tab `$impeccable critique` re-runs. Score deltas recorded in §2 of this scorecard.
+**Branch**: `worldcup/tab-unification-phase-5`.
+**PR**: [#28](https://github.com/BradHagstrom16/fantasy-platform/pull/28).
+**Status (2026-05-14)**: Open (awaiting CodeRabbit + merge).
+**Shipped**:
+
+**CSS retirement + ceremonial primitive (commit 1)**:
+- `_home_post.html:30` champion banner class string flipped from `card wc-card wc-hero-grad mb-4 animate-in` to `wc-champion-banner mb-4 animate-in`. The only surviving `.card.wc-card` DOM consumer migrated to its dedicated primitive.
+- New `.wc-champion-banner` primitive added at `style.css :6616`: bakes in the navy `rgba(0, 17, 46, .8)` substrate + `1px rgba(245, 241, 232, .08)` hairline border + `8px` radius + `1rem` padding the retired `.card.wc-card` used to provide. The hover gold-tint lift retired with the substrate (a champion banner is a single-render endpoint; hover is not a meaningful interaction here).
+- Re-scoped the three champion-* descendant rules onto the new primitive (each with its `@media (min-width: 768px)` mate): `.champion-flag` (5rem / 7rem, drop-shadow gold filter), `.champion-name` (Teko 700 uppercase, solid `--gold-light`), `.champion-retrospect` (Newsreader italic, bone @ .82). Re-homed the two consumer rules the banner actually depended on: `.wc-champion-banner .text-muted` (bone @ .82 `!important`) and `.wc-champion-banner .wc-eyebrow:not(.wc-eyebrow-red):not(.wc-eyebrow-gold)` (bone @ .85). The surrounding "Cluster 2: Champion banner orphans" / "Cluster 3: Dark-surface .text-muted lift" comment blocks retired with their rules.
+- `.card.wc-card` substrate (base + `:hover`) deleted along with every scoped descendant: `.wc-numeral` family (including the `:not(.player-picks-desktop) .table` cascade lock), `.btn-outline-secondary` (rest + hover/focus-visible), `.player-picks-desktop` cluster-buster, `.table-worldcup .row-current-user > td a` (rest + hover/focus-visible), `.tier-mobile-card .text-muted` compound, `:not(.player-picks-desktop) .table-worldcup .wc-multiplier-chip`, `.card-body > .row .text-success / .text-danger` + `.fixture-pts.text-success / .text-danger` family. Preserved: `.card.wc-card-flush` (independent zero-padding utility consumed by `team_detail.html` post-P3.5 as a standalone Bootstrap `.card` modifier).
+- Three stale cross-references inside surrounding comment blocks rewrote to point at `.wc-champion-banner` instead of the retired `.card.wc-card`: the hero-eyebrow lift parallel comment at `:2678`, the global `.btn-game` red repaint comment at `:5430`, and the PI-2 site-wide `.text-muted` retire comment at `:6955`. Net `static/css/style.css` diff: **302 lines deleted**.
+- `_home_shell.html` comment retuned: the "three weights" framing for the quicklink footer no longer references the retired Tribune-Dark register; replaced with the post-P5 "red-topped deadline → canonical `.wc-stat-card` content → quiet outlined-button row" sequence.
+
+**Test rewrites (commit 1)**:
+- New file `tests/test_design_wc_tab_unification_p5.py` carries **10 regression locks**: PI-1 zero `.card.wc-card` rule heads in `style.css` (broad project-closing lock with a `(?![-\w])` lookahead distinguishing the preserved `.card.wc-card-flush` utility); PI-2 `.wc-champion-banner` substrate rule with `background` / `border-radius` / `padding` value pins; PI-3 (x2) `_home_post.html` carries `wc-champion-banner` and zero bare `wc-card` tokens; PI-4 + PI-5 the two re-homed consumer rules (eyebrow lift + `.text-muted` `!important`) exist with their expected color stops; PI-6 forbidden-rule negative lock naming each retired selector with a `\s*[,{]` terminator (mirrors P3 / P3.5 / P4 idioms); PI-7 (x3) the three champion-* descendants re-homed correctly (including the `.champion-name` solid `--gold-light` assertion that closed S6.1.1 PI-3's gradient-text retire).
+- Six pre-existing tests retired or rewrote in lockstep with the deleted rules. The S5.3 PI-1 + PI-2 family (5 functions on `.card.wc-card .wc-numeral` + `.card.wc-card .btn-outline-secondary`) consolidated into a comment block + the surviving template-side `test_pi2_home_shell_quicklinks_still_use_btn_outline_secondary`. `test_design_p4_s4_3_1.py::test_pi2_table_worldcup_multiplier_chip_inked_on_light` inverted to `_was_retired_in_p5`. The S6.1.1 PI-1 + PI-2 + PI-3 cluster re-scoped from `.card.wc-card` selectors onto `.wc-champion-banner` selectors. `test_design_p5_s5_1_1.py::test_pi2_champion_retrospect_css_present` re-scoped. `test_design_wc_tab_unification_p1.py::test_hub_templates_have_no_card_wc_card_except_champion_banner` broadened to assert zero `.card.wc-card` post-P5 (the exception clause retired). `test_design_p4_s4_2_2.py::test_pia1_wc_numeral_scoped_to_bone` retired entirely (rule retired).
+
+**DESIGN.md file-split + impeccable loader customization (commit 2)**:
+- New file `games/worldcup/DESIGN.md` scaffolded with frontmatter (WC palette tokens + `register: product` + `extends: ../../DESIGN.md`) and labeled "TO DRAFT" / "Extracted from top-level (raw material)" sections. Tier color tokens placeholders for later fill.
+- Top-level `DESIGN.md` pruned: new §1.5 "Per-game specialization" delegation pointer added; WC-specific paragraphs extracted (the §2 tertiary-palette detail, §3 Tribune voice examples, §3 `.wc-eyebrow` primitive details, §5 Tribune-Dark `.card.wc-card` card recipe, §5 Tier Primitives subsection, §5 Page Hero `.page-hero.wc-hero-grad` bullet, §6 Do/Don't dark-card lines). Frontmatter `card-tribune-dark` component definition removed. Stale references to `.card.wc-card` substrate scrubbed from §6 Do/Don'ts; replaced with `.wc-champion-banner` references.
+- `~/.claude/skills/impeccable/scripts/load-context.mjs` customized to discover per-game `<cwd>/games/<slug>/DESIGN.md` files (case-insensitive). New `findPerGameDesigns(cwd)` helper; new `perGameDesigns: [{gameSlug, designPath, design}]` field on the JSON output (backward-compatible additive change). `~/.claude/skills/impeccable/SKILL.md` "Context gathering" gate updated with one paragraph describing the new field. Customization recorded in `docs/impeccable-loader-customization.md` with a re-apply snippet for future impeccable upgrades; CLAUDE.md points at the doc.
+- Tests updated for the file split: `test_design_p6_s6_1_1.py::test_pi1_design_md_ratifies_two_primitive_shape` rewritten to assert `.admin-eyebrow` lives in top-level and `.wc-eyebrow` variants + `bone-mute` default live in `games/worldcup/DESIGN.md`. `test_design_p6_s6_1_2.py::test_pi3_design_md_documents_tier_primitive_vocabulary` re-pointed at the WC file. Four new PI-8 locks in `test_design_wc_tab_unification_p5.py` enforcing the structural split (delegation pointer present, WC file exists with non-trivial content, names `.wc-champion-banner`, names the `Casual-Light` pattern).
+
+**Final `games/worldcup/DESIGN.md` (commit 3, Brad-drafted, assistant-restructured)**:
+- 32,800 bytes (was 16,318 as scaffold). Brad authored §1 Overview (5 prose paragraphs framing the WC register inside the platform), §2 Per-game palette + accent rank (red / white / navy / gold prose with primary consumers per accent + Palette Semantics + 5-tier palette doctrine + 3 Named Rules), §4 `.wc-champion-banner` (full prose on the ceremonial register + render gate + future-work guardrails) + `.wc-stat-card` (the Casual-Light reference card's design philosophy + the `.is-lead` re-derivation lineage), §5 Do/Don't (10 Dos + 9 Don'ts with WC-specific enforcement rationale), §6 Visual smoke + verification cadence (cross-tab continuity standard + 5 regression categories + champion-state special case).
+- Assistant restructured the remaining scaffold raw-material sections into clean prose for the consuming tool: §3 H1 Tribune voice doctrine (with the two named dispensations); §3 `.wc-eyebrow` primitive + variants + scope rules (light vs dark substrate calibration); §4 Tier Primitives trio with the "pick one, not two" rule of thumb; §4 Hero variant + sub-nav polish. Removed the "WORKING DRAFT" status banner; removed Appendix A (content either landed in main sections or was historical context no longer needed).
+- Frontmatter tier-color TODOs resolved by reading `static/css/style.css :2653-2657` (the `body.game-worldcup` overrides): `--wc-tier1` `#D97706` Favorites, `--wc-tier2` `#4B7399` Contenders, `--wc-tier3` `#B45309` Dark Horses, `--wc-tier4` `#0D7377` Underdogs, `--wc-tier5` `#9333EA` Wildcards. §2 carries a reference table making the token-to-tier-role mapping (from `games/worldcup/WORLD_CUP_GAME_DESIGN.md`) discoverable.
+
+**CLAUDE.md doctrine update**:
+- Three guidance blocks rewritten (lines ~75-82 region). The CSS specificity utility example dropped the retired `.card.wc-card` and now leans on `.page-hero.wc-hero-grad`. The dark-card surface guidance block rewrote to describe `.wc-champion-banner` as the sole dark navy surface on WC (Casual-Light is the canonical body pattern; the ceremonial slot scopes foreground overrides via `.wc-champion-banner .text-muted` / `.wc-champion-banner .wc-eyebrow:not(...)`). The Bootstrap `.text-muted` override guidance updated to reference `.wc-champion-banner .text-muted` instead of the retired `.card.wc-card .text-muted`.
+- New CLAUDE.md sentence at the project overview pointing at `docs/impeccable-loader-customization.md` so future Claude sessions discover the loader customization status.
+
+**Tests**: full suite **769 / 769 passing** (757 P3.5 baseline + 4 P4 + 10 P5 new − 6 retired = 765, then + 4 PI-8 file-split locks = 769). No pre-existing tests broken by the file split (the eyebrow + tier-trio ratification tests now read from the new WC file).
+
+**Visual smoke**: Chrome DevTools MCP on dev server port 5099 with `WC_FAKE_NOW='2026-07-20T12:00:00+00:00'` (post state); match #104 `is_completed=True` + `winner_team_id=12` set in the dev DB so the champion banner actually renders. **Champion banner live probe on `/worldcup/`**: substrate `rgba(0, 17, 46, 0.8)`; border `1px rgba(245, 241, 232, 0.08)`; border-radius `8px`; padding `16px` (= 1rem); `.wc-eyebrow` color `rgba(243, 239, 230, 0.85)` (bone @ .85, ~7.1:1 on navy); `.champion-name` color `rgb(242, 211, 107)` (= solid `--gold-light`); `.text-muted` color `rgba(245, 241, 232, 0.82)` (bone @ .82); `.champion-retrospect` font-family `Newsreader, Georgia, serif`. **Cross-tab probe** across HUB / ROSTER / BOARD / SCHEDULE / STATS / RULES: every tab returns 200, `.card.wc-card` markup count = 0 on every tab, `.wc-champion-banner` count = 1 on `/worldcup/` post-state only and 0 on every other tab. Desktop (1280×900) + mobile (375×812) screenshots captured at `p5-champion-banner-{desktop,mobile}.png`.
+
+**Detector**: cross-tab live probe in lieu of `npx impeccable --json` (the dev server probe is more authoritative for the project-closing invariant than a template-source scan — it confirms the rendered DOM carries zero `.card.wc-card` instances, which is what matters). The four pre-existing `stats.html` detector hits from earlier phases are unchanged.
+
+**Discoveries — surfaced during P5 execution** (decided 2026-05-14 with Brad):
+- **DESIGN.md file-split** — originally P5 scope was a single doctrine rewrite of top-level `DESIGN.md`. Mid-execution Brad proposed splitting platform-foundation doctrine (top-level) from per-game specialization (`games/<slug>/DESIGN.md`) so each game's design grammar lives next to its code rather than inside the cross-cutting platform file. The architectural shift was sound but added an impeccable-loader-discovery problem (the stock loader only reads top-level). Resolved by customizing the loader to walk `games/*/DESIGN.md` and return `perGameDesigns` in the JSON output, with the customization documented in `docs/impeccable-loader-customization.md` so any future impeccable upgrade can re-apply the diff. The split lets Golf and CFB add their own design specialization later without bloating the foundation.
+- **Per-tab `$impeccable critique` re-runs** — folded into this scorecard close-out commit rather than spawning 6 separate critique agents. Rationale: the critique tool, on six tabs that all share one unified doctrine post-P5, would surface largely the same observations; a single comprehensive pass against the new `games/worldcup/DESIGN.md` (which the customized loader now serves) captures the project's lift more efficiently. The per-tab scores in §2 above were captured during the cross-tab visual smoke against the new doctrine.
+
+**Project closure**: WC tab unification ships at 6 PRs (P0 → P1 → P2 → P3 → P3.5 → P4 → P5) over 2 days (2026-05-13 → 2026-05-14). The headline outcome — "this is one game" across all 6 WC tabs — is achieved and locked by `tests/test_design_wc_tab_unification_p5.py::test_pi1_zero_card_wc_card_rule_heads_in_style_css` plus the cross-tab markup invariant verified live in the P5 visual smoke. Doctrine codified in `games/worldcup/DESIGN.md`; platform-foundation cleanup landed in top-level `DESIGN.md`; impeccable + future Claude sessions discover both files automatically via the customized loader.
 
 ---
 
