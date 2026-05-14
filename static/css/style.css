@@ -2686,6 +2686,18 @@ body.game-worldcup {
   color: rgba(243, 239, 230, .85);
 }
 
+/* WC tab unification P1 — light-substrate eyebrow lift for `.wc-stat-card`.
+   The base `.wc-eyebrow` color (`--bone-mute`, designed for dark substrates)
+   lands sub-AA on the white `--bg-card`. Paint `--text-secondary` (~6.9:1
+   on bone, AA) so the eyebrows in the migrated hub cards stay legible.
+   `:not()` keeps the explicit red/gold tonal variants intact for callers
+   that want colored eyebrow accents. Parallels the dark-substrate lifts at
+   :2685 (hero) and :7134 (dark card); together they cover all three WC
+   substrates without disturbing the base token. */
+.wc-stat-card .wc-eyebrow:not(.wc-eyebrow-red):not(.wc-eyebrow-gold) {
+  color: var(--text-secondary);
+}
+
 /* Display numeral utility — Teko, tabular figures */
 .wc-numeral {
   font-family: 'Teko', sans-serif;
@@ -2855,16 +2867,10 @@ body.game-worldcup {
   padding: 0;
 }
 
-/* Deadline / time-critical variant. The hub-pre state previously rendered
-   four identical .wc-card surfaces with no visual hierarchy — deadline,
-   roster, leaderboard, and quicklinks all carried the same weight. The
-   gold top-rule promotes the time-critical row without resorting to a
-   loud colored fill. 2px lands above the 1px side borders so the top
-   edge reads as deliberate, not as a hairline accident. Not a side-stripe
-   (P0 S0.2 ban — that's left/right borders ≥ 2px). */
-.card.wc-card-deadline {
-  border-top: 2px solid var(--gold-light);
-}
+/* WC tab unification P1 — the `.card.wc-card-deadline` gold-top-on-dark
+   variant was rederived as `.wc-stat-card.is-lead` (red-top on light) when
+   the hub migrated off `.card.wc-card`. The time-critical hierarchy lift
+   survives the substrate flip; the modifier class no longer needs to exist. */
 
 /* picks.html team card descendants */
 .wc-team-card .team-flag { margin-right: .4rem; }
@@ -3407,12 +3413,18 @@ body.game-worldcup {
   background: rgba(191,10,48,.14) !important;
   font-weight: 600;
 }
+/* WC tab unification P1 — light-substrate anchor flipped gold→navy. On the
+   new white Stats-pattern cards the gold-dark anchor sat against a 14% red
+   tint and lost the USA red+white+blue coherence the new doctrine wants.
+   Navy (`var(--game-primary)` #002868) on red-tint-on-white reads ~10:1; the
+   red hover keeps the link affordance. Dark-substrate carve-out below stays
+   for BOARD/ROSTER until P2/P3 migrate those tabs off `.card.wc-card`. */
 .table-worldcup .row-current-user > td a {
-  color: var(--gold-dark);
+  color: var(--game-primary);
 }
 .table-worldcup .row-current-user > td a:hover,
 .table-worldcup .row-current-user > td a:focus-visible {
-  color: var(--gold);
+  color: var(--wc-red);
 }
 .card.wc-card .table-worldcup .row-current-user > td a {
   color: var(--gold-light);
@@ -4218,17 +4230,25 @@ body.game-worldcup {
   background: var(--game-accent);
 }
 
-/* On the dark navy WC hero the base chip (navy text on 8% navy bg at :4150)
-   collapsed to ~1.5:1 — invisible. Flip to a gold variant on this substrate
-   only so PRE-TOURNAMENT / Group Stage / Knockout actually read. Specificity
-   (0,0,3,0) beats the base (0,0,1,0). Dot keeps its gold-on-active pulse. */
+/* WC tab unification P1 — flip the hero phase chip from gold to red+white per
+   the new accent doctrine (gold demoted to quaternary, reserved for champion
+   banners / podium glow / a11y focus rings only). The dark navy hero keeps
+   the chip; only the tonal vocabulary changes. White text on red-14% bg
+   reads ~9:1 against the navy substrate beneath; the red dot keeps the
+   "active" semantic. Specificity (0,0,3,0) beats the base (0,0,1,0). */
 .page-hero.wc-hero-grad .phase-indicator {
-  background: rgba(242, 211, 107, .14);
-  color: var(--gold-light);
-  border: 1px solid rgba(242, 211, 107, .35);
+  background: rgba(191, 10, 48, .14);
+  color: #fff;
+  border: 1px solid rgba(191, 10, 48, .35);
 }
 .page-hero.wc-hero-grad .phase-indicator .phase-dot {
-  background: var(--gold-light);
+  background: var(--wc-red);
+}
+/* Scope the red pulse to the hero specifically — non-hero `.phase-indicator`
+   contexts (if any future tab introduces them) keep their default navy/gold
+   behavior; this rule pairs with the gold→red flip above. */
+.page-hero.wc-hero-grad .phase-indicator.active .phase-dot {
+  animation: pulseRed .8s ease infinite;
 }
 
 /* World Cup pick CTA banner */
@@ -4832,6 +4852,11 @@ body.game-worldcup {
 @keyframes pulseGold {
   0%, 100% { box-shadow: 0 0 0 0 rgba(212,168,32,.3); }
   50%      { box-shadow: 0 0 0 8px rgba(212,168,32,0); }
+}
+
+@keyframes pulseRed {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(191,10,48,.30); }
+  50%      { box-shadow: 0 0 0 8px rgba(191,10,48,0); }
 }
 
 /* ── 4. Base & Typography ───────────────────────────────── */
@@ -5522,17 +5547,24 @@ main { flex: 1; }
   transform: translateY(-2px);
 }
 
-/* On dark .card.wc-card surfaces the navy --game-primary fill collapsed into
-   the navy card (rgba(0,17,46,.8) at :2834 vs #002868 at :2648 — ~12% Δ in
-   lightness). Lift to --game-accent so the CTA actually reads as a button.
-   Scope is dark-card only; the bone-substrate .btn-game stays navy. */
-.card.wc-card .btn-game {
-  background: var(--game-accent);
-  border-color: var(--game-accent);
+/* WC tab unification P1 — global red repaint for every WC `.btn-game` so the
+   CTA reads consistently across the new light Stats-pattern cards, the dark
+   navy hero, the ceremonial champion banner, and any remaining `.card.wc-card`
+   surfaces (BOARD/ROSTER until P2/P3). Supersedes the prior dark-card scoped
+   lift to `--game-accent` — that rule was only needed because the navy
+   `--game-primary` collapsed into the navy card; the new red survives every
+   WC substrate without scoping. White text holds AA on `--wc-red` (#BF0A30,
+   ~5.45:1) and AA-large on `--wc-red-dark` (#9C0826, ~6.94:1). */
+body.game-worldcup .btn-game {
+  background: var(--wc-red);
+  border-color: var(--wc-red);
+  color: #fff;
 }
-.card.wc-card .btn-game:hover {
-  background: var(--game-accent-light);
-  border-color: var(--game-accent-light);
+body.game-worldcup .btn-game:hover,
+body.game-worldcup .btn-game:focus-visible {
+  background: var(--wc-red-dark);
+  border-color: var(--wc-red-dark);
+  color: #fff;
 }
 
 /* ── 10. Form Controls ──────────────────────────────────── */
@@ -7063,7 +7095,15 @@ body.game-worldcup .form-text {
    Newsreader derivation line. Replaces the prior two-display-4 50/50
    split that triggered the hero-metric-adjacency ban (the same reflex
    S2.3.1 broke on team_detail). Scoped to .post-finish-card so the
-   selectors live next to their only call site in _home_post.html. */
+   selectors live next to their only call site in _home_post.html.
+
+   WC tab unification P1 follow-up — the original `--bone` / bone-alpha
+   colors were designed for the prior `.card.wc-card` (dark navy)
+   substrate. After P1 migrated the wrapper to `.wc-stat-card` (white),
+   bone-on-white collapses to ~1.1:1 (unreadable). Lift to the
+   light-substrate text tokens: `--text-primary` (#1C1730, ~13.9:1 on
+   bone) for the dominant rank + derivation prose, `--text-secondary`
+   (#5A5470, ~6.9:1 on bone, AA) for the "of N" subordinate label. */
 .post-finish-card .post-finish-rank-cluster {
   display: flex;
   align-items: baseline;
@@ -7075,7 +7115,7 @@ body.game-worldcup .form-text {
   font-weight: 700;
   font-size: 3.6rem;
   line-height: 1;
-  color: var(--bone);
+  color: var(--text-primary);
   letter-spacing: 0.02em;
 }
 @media (min-width: 768px) {
@@ -7087,13 +7127,13 @@ body.game-worldcup .form-text {
   font-size: 1rem;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: rgba(245, 241, 232, 0.7);
+  color: var(--text-secondary);
 }
 .post-finish-card .post-finish-derivation {
   font-family: var(--font-news);
   font-style: italic;
   font-size: 1rem;
-  color: rgba(245, 241, 232, 0.88);
+  color: var(--text-primary);
   margin: 0.5rem 0 0;
   line-height: 1.4;
 }
