@@ -204,13 +204,20 @@ def test_lead_cards_carry_eyebrow_primitive():
     assert 'class="wc-eyebrow">The cross-section<' in TPL
 
 
-def test_is_lead_css_uses_gold_rule_top_no_border():
-    """The lead variant strips the body border and leads with a gold-
+def test_is_lead_css_uses_red_rule_top_no_border():
+    """The lead variant strips the body border and leads with a red-
     rule top — the editorial-register signature that distinguishes it
-    from `.wc-stat-card`'s default 1px ring."""
+    from `.wc-stat-card`'s default 1px ring.
+
+    WC Tab Unification Phase 0 — flipped from gold to `var(--wc-red)`
+    to codify the new accent rank order (red → white → blue → gold
+    quaternary) across the WC tab system. The lead-card mark is the
+    canonical "dominant editorial register" signal across every tab;
+    anchoring it on red sets the doctrine downstream phases inherit.
+    """
     lead_block = CSS.split('.wc-stat-card.is-lead {')[1].split('}')[0]
     assert 'border: 0' in lead_block
-    assert '2px solid var(--gold)' in lead_block
+    assert '2px solid var(--wc-red)' in lead_block
 
 
 # ---------------------------------------------------------------------------

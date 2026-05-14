@@ -2863,14 +2863,21 @@ body.game-worldcup {
   min-width: 44px;
   padding: .55rem .65rem;
   margin: -.55rem -.1rem;
-  background: rgba(245, 241, 232, .06);
+  /* WC Tab Unification Phase 0 — pill sat on a white .wc-team-card body
+     with bone-on-bone (`--bone-mute` text @ .55 alpha on a `rgba(245,241,232,.06)`
+     bone-tinted fill over `--bg-card` white) — ~1.05:1, illegible. The pill
+     is a navigation affordance (links to `/worldcup/groups#group-<letter>`)
+     so it reads as navy in the red→white→blue→gold doctrine: navy-tinted
+     fill + `--text-secondary` text (S2.4.1 PI-1 documented label color,
+     ~7.15:1 on white). Hover activates with red, the WC primary accent. */
+  background: rgba(0, 40, 104, .06);
   border-radius: 6px;
-  color: var(--bone-mute);
+  color: var(--text-secondary);
   text-decoration: none;
 }
 .wc-team-card .team-group-pill:hover {
-  color: var(--wc-white);
-  background: rgba(245, 241, 232, .12);
+  color: var(--wc-red);
+  background: rgba(191, 10, 48, .10);
 }
 .wc-team-card .team-group-pill:focus-visible {
   outline: 2px solid var(--gold-light);
@@ -4424,11 +4431,21 @@ body.game-worldcup {
 }
 
 /* S2.4.1 PI-3: Lead-card variant — one card per tab earns the dominant
-   editorial register. Gold-rule top, no body border, larger pad. Breaks
-   the 15-card-identical silhouette flagged by the critique. */
+   editorial register. Red-rule top, no body border, larger pad. Breaks
+   the 15-card-identical silhouette flagged by the critique.
+
+   WC Tab Unification Phase 0 — rule flipped from `var(--gold)` to
+   `var(--wc-red)` to codify the new accent rank order
+   (red → white → blue → gold quaternary). The lead-card is the canonical
+   "this is the dominant editorial register" mark across the WC body;
+   anchoring it on red sets the doctrine downstream phases inherit.
+   Gold is reserved for a11y focus rings, champion banners, and podium
+   glow (DESIGN.md update deferred to a follow-up so Brad can draft the
+   doctrine in his own voice). Test lock updated in lockstep:
+   `tests/test_design_p2_s2_4_1.py::test_is_lead_css_uses_red_rule_top_no_border`. */
 .wc-stat-card.is-lead {
   border: 0;
-  border-top: 2px solid var(--gold);
+  border-top: 2px solid var(--wc-red);
   border-radius: 0 0 var(--radius-lg) var(--radius-lg);
   box-shadow: var(--shadow-sm);
   padding: 1.5rem 1.5rem 1.75rem;
