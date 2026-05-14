@@ -3384,20 +3384,34 @@ body.game-worldcup {
    (P0 S0.2: side-stripe replaced by tint + leading rank numeral).
    Tint lifted from .06 → .14: the original alpha was sub-perceptible on
    both Bootstrap-white tbody and the dark .card.wc-card region, so "you"
-   wasn't reading. The inner anchor is also scoped here — the default
+   wasn't reading. The inner anchor is also scoped — the default
    Bootstrap link color resolves to CCC house purple on dark navy, which
-   read as a third color conflict on the user's own row. Gold-light keeps
-   the row consistent with the gold accent used elsewhere on WC dark
-   surfaces (phase chip on hero, multiplier glyphs). */
+   read as a third color conflict on the user's own row.
+
+   Two-substrate anchor split:
+   - On dark `.card.wc-card`, paint `--gold-light` (#F2D36B) — reads ~9:1
+     on the navy + red-tint composite. Hover/focus lifts to `--gold-hi`.
+   - On bone (no `.card.wc-card` wrap, e.g., a future light-substrate use
+     of `.table-worldcup`), paint `--gold-dark` (#8A6A1A, ~5.7:1 on bone,
+     AA). `--gold-light` on bone collapses to ~1.4:1 (unreadable);
+     `--gold-hi` is even worse — `--gold-dark` is the only gold token
+     with AA contrast on the bone canvas. */
 .table-worldcup .row-current-user > td {
   background: rgba(191,10,48,.14) !important;
   font-weight: 600;
 }
 .table-worldcup .row-current-user > td a {
-  color: var(--gold-light);
+  color: var(--gold-dark);
 }
 .table-worldcup .row-current-user > td a:hover,
 .table-worldcup .row-current-user > td a:focus-visible {
+  color: var(--gold);
+}
+.card.wc-card .table-worldcup .row-current-user > td a {
+  color: var(--gold-light);
+}
+.card.wc-card .table-worldcup .row-current-user > td a:hover,
+.card.wc-card .table-worldcup .row-current-user > td a:focus-visible {
   color: var(--gold-hi);
 }
 
