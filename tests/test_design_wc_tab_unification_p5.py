@@ -98,6 +98,10 @@ def test_pi2_wc_champion_banner_substrate_rule_exists():
         f'Banner substrate must paint the navy `.8 alpha` background that '
         f'the retired `.card.wc-card` provided; block={block!r}.'
     )
+    assert 'border: 1px solid rgba(245, 241, 232, .08)' in block, (
+        f'Banner substrate must carry the bone-alpha hairline border '
+        f'(matches the recipe documented in the docstring); block={block!r}.'
+    )
     assert 'border-radius: 8px' in block, (
         f'8px radius expected; block={block!r}.'
     )

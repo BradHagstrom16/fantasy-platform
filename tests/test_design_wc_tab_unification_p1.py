@@ -131,13 +131,22 @@ def test_hub_templates_have_no_card_wc_card():
     a dedicated `.wc-champion-banner` primitive so the `.card.wc-card`
     substrate could retire fully. The hub now reads zero `.card.wc-card`
     across every state partial."""
-    pattern = re.compile(r'class="[^"]*\bcard\s+wc-card\b[^"]*"')
+    # Parse class attributes properly (using `re.DOTALL` so multi-line
+    # attributes are caught) and check that BOTH `card` and `wc-card` tokens
+    # appear inside the same attribute, regardless of order. Avoids the prior
+    # single-line + adjacent-and-ordered pattern that would miss
+    # `class="wc-card card"` or wrapped attributes.
+    class_attr_pattern = re.compile(r'class="([^"]*)"', re.DOTALL)
     occurrences = []
     for tpl in HUB_TEMPLATES:
         text = tpl.read_text()
-        for line_num, line in enumerate(text.splitlines(), start=1):
-            if pattern.search(line):
-                occurrences.append((tpl.name, line_num, line.strip()))
+        for attr_match in class_attr_pattern.finditer(text):
+            tokens = attr_match.group(1).split()
+            if 'card' in tokens and 'wc-card' in tokens:
+                line_num = text[:attr_match.start()].count('\n') + 1
+                occurrences.append(
+                    (tpl.name, line_num, attr_match.group(0))
+                )
 
     assert occurrences == [], (
         f'Expected zero `.card.wc-card` usage across hub templates post-P5; '

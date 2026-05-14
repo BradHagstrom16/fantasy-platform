@@ -30,8 +30,8 @@ One paragraph added to the "Context gathering" gate explaining when `perGameDesi
 When `~/.claude/skills/impeccable/` is updated (e.g., via `update-plugins` or a fresh marketplace install), the upstream files will overwrite the customizations. Re-apply with:
 
 ```bash
-# Verify the customization is intact (returns non-empty perGameDesigns array)
-cd /Users/bhagstrom/fantasy-platform
+# Verify the customization is intact (returns non-empty perGameDesigns array).
+# Run from the repo root (the loader uses cwd to discover games/<slug>/DESIGN.md).
 node ~/.claude/skills/impeccable/scripts/load-context.mjs | python3 -c \
   "import json,sys; d=json.load(sys.stdin); print('perGameDesigns count:', len(d.get('perGameDesigns', [])))"
 ```

@@ -146,7 +146,15 @@ def test_pi2_table_worldcup_multiplier_chip_was_retired_in_p5():
     chip retint below survives and stays locked)."""
     css = CSS.read_text()
     selector = '.card.wc-card:not(.player-picks-desktop) .table-worldcup .wc-multiplier-chip'
-    assert selector not in css, (
+    # Anchored regex (start-of-line + re.MULTILINE, P3 CR R3-R4 idiom) so
+    # whitespace variants between selector tokens cannot smuggle the rule
+    # back past a literal substring check.
+    pattern = re.compile(
+        r'^\s*\.card\.wc-card:not\(\.player-picks-desktop\)\s+'
+        r'\.table-worldcup\s+\.wc-multiplier-chip\s*\{',
+        re.MULTILINE,
+    )
+    assert pattern.search(css) is None, (
         f'`{selector}` rule must not re-appear — the parent `.card.wc-card` '
         'substrate retired in WC tab unification P5 (no remaining DOM '
         'consumer for the carve-out).'
