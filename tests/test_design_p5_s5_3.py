@@ -80,128 +80,19 @@ def _champion_branches(src: str) -> tuple[str, str]:
 
 
 # ---------------------------------------------------------------------------
-# PI-1 locks: .card.wc-card:not(.player-picks-desktop) .table .wc-numeral
+# PI-1 + PI-2 locks retired in WC tab unification P5
 # ---------------------------------------------------------------------------
-
-def test_pi1_in_cell_wc_numeral_restores_platform_ink():
-    """Selector-scoped rule retints in-cell .wc-numeral to --text-primary.
-
-    Locks the existence + exact selector shape. A future "tidy this up"
-    pass that broadens the selector to ``.card.wc-card .table .wc-numeral``
-    (no :not) would silently break the .player-picks-desktop bleed-through
-    case where bone-on-navy is correct.
-    """
-    css = STYLE_CSS.read_text()
-    match = re.search(
-        r'\.card\.wc-card:not\(\.player-picks-desktop\)\s+\.table\s+\.wc-numeral\s*\{([^}]+)\}',
-        css,
-    )
-    assert match is not None, (
-        'Expected `.card.wc-card:not(.player-picks-desktop) .table .wc-numeral` '
-        'rule in style.css (S5.3 PI-1).'
-    )
-    block = match.group(1)
-    # Negative-lookbehind so the assertion can't false-pass against a future
-    # `background-color: …` or `border-color: …` edit using the same token.
-    assert re.search(r'(?<!-)color:\s*var\(--text-primary\)', block), (
-        f'Rule must paint --text-primary so default body color reads on '
-        f'the white-masked td; block={block!r}.'
-    )
-
-
-def test_pi1_parent_bone_override_still_exists():
-    """The canonical ``.card.wc-card .wc-numeral`` bone override is preserved.
-
-    The S4.2.2 PI-5 bone override (style.css :2850) is still required for
-    .wc-numeral spans in .card-header and direct .card-body content on the
-    navy substrate (e.g., the tiebreaker numeral, the "Total: 125.0 pts"
-    desktop header). The S5.3 fix only adds a more-specific child rule;
-    deleting the parent would break those non-table call sites.
-    """
-    css = STYLE_CSS.read_text()
-    match = re.search(
-        r'\.card\.wc-card\s+\.wc-numeral\s*\{([^}]+)\}',
-        css,
-    )
-    assert match is not None
-    block = match.group(1)
-    assert re.search(r'(?<!-)color:\s*var\(--text-on-dark\)', block), (
-        f'The canonical bone override on non-table .wc-numeral spans '
-        f'must persist; block={block!r}.'
-    )
-
-
-def test_pi1_in_cell_rule_lives_after_parent_in_cascade():
-    """The :not()-scoped rule appears AFTER the parent in source order.
-
-    Specificity (0,0,4,0) wins over (0,0,2,0) regardless of order, so this
-    is documentation of intent more than enforcement. But if a future
-    refactor reorders blocks and accidentally moves the parent rule below
-    the child, the parent's lower specificity still loses cleanly — locking
-    the existing source order against silent rearrangement.
-    """
-    css = STYLE_CSS.read_text()
-    parent_idx = css.find('.card.wc-card .wc-numeral {')
-    child_idx = css.find(
-        '.card.wc-card:not(.player-picks-desktop) .table .wc-numeral {'
-    )
-    assert parent_idx != -1 and child_idx != -1, (
-        'Both .card.wc-card .wc-numeral rules must exist in style.css.'
-    )
-    assert child_idx > parent_idx, (
-        'The PI-1 child rule should appear after the parent rule in source '
-        'order so the cascade lock and intent comment read together.'
-    )
-
-
-# ---------------------------------------------------------------------------
-# PI-2 locks: .card.wc-card .btn-outline-secondary quicklink lift
-# ---------------------------------------------------------------------------
-
-def test_pi2_quicklink_rest_state_lifts_to_bone_on_navy():
-    """``.card.wc-card .btn-outline-secondary`` lifts to bone at rest.
-
-    Bootstrap's default --bs-secondary-color (#8a849b) reads 3.04:1 on
-    the .card.wc-card navy substrate. The lift to var(--text-on-dark)
-    (full bone) reads ~13:1, well past AA.
-    """
-    css = STYLE_CSS.read_text()
-    match = re.search(
-        r'\.card\.wc-card\s+\.btn-outline-secondary\s*\{([^}]+)\}',
-        css,
-    )
-    assert match is not None, (
-        'Expected `.card.wc-card .btn-outline-secondary` rule (S5.3 PI-2).'
-    )
-    block = match.group(1)
-    assert re.search(r'(?<!-)color:\s*var\(--text-on-dark\)', block), (
-        f'Rest-state color must lift to --text-on-dark; block={block!r}.'
-    )
-    assert 'border-color: rgba(245, 241, 232, .35)' in block, (
-        f'Border lift to bone-alpha .35 missing; block={block!r}.'
-    )
-
-
-def test_pi2_quicklink_hover_focus_invert_to_ink_on_bone():
-    """Hover + focus-visible invert to ink-on-bone (Bootstrap-parallel).
-
-    Mirrors Bootstrap's btn-outline-secondary hover inversion (white on
-    gray-600) but in CCC tokens: --text-primary on --bone. Both pseudo-
-    classes share the same block so keyboard focus reads identically.
-    """
-    css = STYLE_CSS.read_text()
-    match = re.search(
-        r'\.card\.wc-card\s+\.btn-outline-secondary:hover,\s*\n\s*'
-        r'\.card\.wc-card\s+\.btn-outline-secondary:focus-visible\s*\{([^}]+)\}',
-        css,
-    )
-    assert match is not None, (
-        'Hover + focus-visible combined block missing.'
-    )
-    block = match.group(1)
-    assert re.search(r'(?<!-)color:\s*var\(--text-primary\)', block)
-    assert 'background-color: var(--bone)' in block
-    assert 'border-color: var(--bone)' in block
+# The S5.3 PI-1 (`.card.wc-card .wc-numeral` family) and PI-2
+# (`.card.wc-card .btn-outline-secondary` family) rules both retired in P5
+# along with the entire `.card.wc-card` substrate. Their bone-on-navy
+# overrides are no longer needed because no WC tab body sits on a dark
+# substrate anymore — every consumer now reads Bootstrap default ink on
+# the Casual-Light card. Broad retirement is locked in
+# `tests/test_design_wc_tab_unification_p5.py::test_pi1_zero_card_wc_card_rule_heads`.
+# The PI-2 home_shell quicklink template assertion below stays — the
+# `.btn-outline-secondary` class still ships in the markup, it just reads
+# against the platform `--bs-secondary-color` redirect now (S6.1.1 PI-2)
+# instead of a scoped lift.
 
 
 def test_pi2_home_shell_quicklinks_still_use_btn_outline_secondary():

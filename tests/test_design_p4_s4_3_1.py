@@ -128,29 +128,37 @@ def test_pi1_direct_child_selector_was_retired_in_p3_5():
 
 # ---------- PI-2: light-substrate multiplier chip + tier-mobile-card lifts ----------
 
-def test_pi2_table_worldcup_multiplier_chip_inked_on_light():
-    """Rules-page tables: chip lifts to ink on a council-purple tint.
+def test_pi2_table_worldcup_multiplier_chip_was_retired_in_p5():
+    """Rules-page chip retint rule retired with the `.card.wc-card` substrate.
 
-    PR #15 CR R2 — scoped to `.card.wc-card:not(.player-picks-desktop)
-    .table-worldcup` so the `.player-picks-desktop` dark-navy surface
-    (picks readonly + player_detail) keeps the default bone-on-bone-alpha
-    chip rule and stays visible on its transparent-td substrate."""
+    P4 S4.3.1 PI-2 originally scoped the chip retint to
+    `.card.wc-card:not(.player-picks-desktop) .table-worldcup` so the
+    `.player-picks-desktop` dark surface kept its bone default. WC tab
+    unification P3 then migrated picks.html (the `.player-picks-desktop`
+    consumer) off `.card.wc-card`, leaving this rule functionally orphan
+    — the negation guarded a class compound that no longer existed.
+    P5 retired the rule when the broader `.card.wc-card` substrate went
+    away. The chip's light-substrate use cases (rules.html tables) now
+    read the default `.wc-multiplier-chip` rule directly — no retint
+    needed because the parent table substrate is plain white.
+
+    Locked here as a negative regression assertion (the .tier-mobile-card
+    chip retint below survives and stays locked)."""
     css = CSS.read_text()
-    selector = '.card.wc-card:not(.player-picks-desktop) .table-worldcup .wc-multiplier-chip {'
-    assert selector in css, f'expected scoped selector {selector!r} in style.css'
-    # The unscoped form must NOT exist — that's the bug R2 caught.
-    assert '\n.table-worldcup .wc-multiplier-chip {' not in css, \
-        'unscoped .table-worldcup .wc-multiplier-chip retint would re-introduce the dark-on-dark leak'
-    block_start = css.index(selector)
-    block_end = css.index('}', block_start)
-    block = css[block_start:block_end]
-    # Anchor on `color` property + `background:` property so a future
-    # `background-color: var(--text-primary)` or `border-color: rgba(58,
-    # 29, 114, ...)` can't false-pass (PR #15 CR R5-H).
-    assert re.search(r'(?<!-)color:\s*var\(--text-primary\)', block), \
-        '.table-worldcup .wc-multiplier-chip must set color: var(--text-primary)'
-    assert re.search(r'background:\s*rgba\(58,\s*29,\s*114,\s*\.07\)', block), \
-        "Council-purple tint must drive the background"
+    selector = '.card.wc-card:not(.player-picks-desktop) .table-worldcup .wc-multiplier-chip'
+    # Anchored regex (start-of-line + re.MULTILINE, P3 CR R3-R4 idiom) so
+    # whitespace variants between selector tokens cannot smuggle the rule
+    # back past a literal substring check.
+    pattern = re.compile(
+        r'^\s*\.card\.wc-card:not\(\.player-picks-desktop\)\s+'
+        r'\.table-worldcup\s+\.wc-multiplier-chip\s*\{',
+        re.MULTILINE,
+    )
+    assert pattern.search(css) is None, (
+        f'`{selector}` rule must not re-appear — the parent `.card.wc-card` '
+        'substrate retired in WC tab unification P5 (no remaining DOM '
+        'consumer for the carve-out).'
+    )
 
 
 def test_pi2_tier_mobile_card_multiplier_chip_inked_on_light():

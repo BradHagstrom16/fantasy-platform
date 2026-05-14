@@ -214,29 +214,28 @@ def test_pi2_stats_progress_segments_render_with_listitem_aria_label():
 # ---------------------------------------------------------------------------
 
 def test_pi3_design_md_documents_tier_primitive_vocabulary():
-    """DESIGN.md §5 documents the three-way tier primitive split."""
-    design = DESIGN_MD.read_text()
-    # Section header lock so a future markdown refactor that removes the
-    # subsection trips the test (DESIGN.md §5 has an established subsection
-    # rhythm — Buttons, Cards, Form Controls, Navigation, Auth Surface
-    # Composition, Tables, Eyebrow and Label Primitives, Live Indicators,
-    # Page Hero; Tier Primitives lands inside that rhythm).
-    assert '### Tier Primitives' in design, (
-        'DESIGN.md §5 must carry a "### Tier Primitives" subsection '
-        '(S6.1.2 PI-3, Group G).'
-    )
+    """The WC-scoped DESIGN.md documents the three-way tier primitive split.
+
+    WC tab unification P5 moved per-game primitives (including the tier trio)
+    out of the platform-foundation `DESIGN.md` and into the game's own
+    `games/worldcup/DESIGN.md` so the foundation file stays lean and per-game
+    doctrine lives where future maintainers expect it.
+    """
+    wc_design = (REPO_ROOT / 'games' / 'worldcup' / 'DESIGN.md').read_text()
     # Each of the three primitives must be named explicitly so the
     # vocabulary doesn't drift back to the pre-S4.5 "is this a tier-badge or
     # a multiplier-chip" ambiguity.
-    assert '`.wc-tier-dot`' in design, (
-        'DESIGN.md must name `.wc-tier-dot` as the visual-mark primitive.'
+    assert '`.wc-tier-dot`' in wc_design, (
+        'games/worldcup/DESIGN.md must name `.wc-tier-dot` as the '
+        'visual-mark primitive.'
     )
-    assert '`.tier-badge`' in design, (
-        'DESIGN.md must name `.tier-badge` as the numeric-text-companion primitive.'
+    assert '`.tier-badge`' in wc_design, (
+        'games/worldcup/DESIGN.md must name `.tier-badge` as the '
+        'numeric-text-companion primitive.'
     )
-    assert '`.wc-multiplier-chip`' in design, (
-        'DESIGN.md must name `.wc-multiplier-chip` as the multiplier-indicator '
-        'primitive.'
+    assert '`.wc-multiplier-chip`' in wc_design, (
+        'games/worldcup/DESIGN.md must name `.wc-multiplier-chip` as the '
+        'multiplier-indicator primitive.'
     )
 
 
