@@ -2698,6 +2698,21 @@ body.game-worldcup {
   color: var(--text-secondary);
 }
 
+/* WC tab unification P2 — extend the light-substrate eyebrow lift to
+   `.player-picks-desktop`. After P2, player_detail.html's picks table sits
+   on plain `.card` (not `.wc-stat-card`), so the rule above doesn't reach
+   the tier-name eyebrows or the accordion "Score events" header. This
+   sibling rule covers them with the same `--text-secondary` color.
+
+   ROSTER overlap: picks.html still wraps `.player-picks-desktop` in
+   `.card.wc-card.wc-card-flush` until P3. There, the more-specific
+   `.card.wc-card .wc-eyebrow:not(...)` rule at :7194 wins on specificity
+   (5 classes vs 4 here) and paints the dark-substrate bone variant, so
+   adding this light lift does NOT need a `.card.wc-card`-scoped carve-out. */
+.player-picks-desktop .wc-eyebrow:not(.wc-eyebrow-red):not(.wc-eyebrow-gold) {
+  color: var(--text-secondary);
+}
+
 /* Display numeral utility — Teko, tabular figures */
 .wc-numeral {
   font-family: 'Teko', sans-serif;
@@ -2762,6 +2777,10 @@ body.game-worldcup {
    + bone-alpha border read on navy. For light-surface usage (the edit
    form's .tier-card-heading on a white .tier-card body), a scoped
    override below re-tints to ink-on-purple. */
+/* Multiplier chip — used inside `.player-picks-desktop` (both player_detail
+   and picks.html). Same substrate split as the table cells above: light base
+   for player_detail post-P2, `.card.wc-card`-scoped carve-out for ROSTER
+   until P3. */
 .wc-multiplier-chip {
   display: inline-block;
   font-family: 'Teko', sans-serif;
@@ -2769,11 +2788,16 @@ body.game-worldcup {
   font-size: .82rem;
   letter-spacing: .03em;
   padding: .15rem .45rem;
-  background: rgba(245, 241, 232, .08);
-  border: 1px solid rgba(245, 241, 232, .14);
+  background: rgba(0, 0, 0, .04);
+  border: 1px solid var(--border);
   border-radius: 4px;
-  color: var(--text-on-dark);
+  color: var(--text-primary);
   white-space: nowrap;
+}
+.card.wc-card .wc-multiplier-chip {
+  background: rgba(245, 241, 232, .08);
+  border-color: rgba(245, 241, 232, .14);
+  color: var(--text-on-dark);
 }
 
 /* P4 S4.2.2 PI-5 — dark-substrate contrast lock on `.card.wc-card`.
@@ -2945,30 +2969,51 @@ body.game-worldcup {
   border-radius: var(--radius);
 }
 
-/* === P2 S2.5.1 PI-1 — player_detail / picks contrast lock on .card.wc-card.
-   The wrapping <div class="card wc-card wc-card-flush"> puts the desktop
-   picks table on the dark navy surface (rgba(0,17,46,.8)). The previous
-   block here assumed a LIGHT card (forcing dark text on multiplier chip,
-   eyebrow, pick-event-stage, dashed border) — which rendered the entire
-   table invisible on the actual dark substrate. Per CLAUDE.md "`.card.wc-card`
-   is a dark navy surface", lift every cell on this scope to light tokens. */
+/* === player_detail / picks table contrast lock.
+   The `.player-picks-desktop` table-wrapper appears on TWO substrates:
+   - player_detail.html (post-P2): plain `.card` (white) — dark text on white.
+   - picks.html ROSTER read-only (until P3): `.card.wc-card.wc-card-flush`
+     (dark navy) — bone text on navy.
+   Base rule paints the LIGHT substrate; the `.card.wc-card.player-picks-desktop`
+   carve-out preserves the dark variant until P3 migrates ROSTER. Mirrors P1's
+   `.table-worldcup .row-current-user > td a` split (style.css :3422 + :3429). */
 .player-picks-desktop .table-worldcup > tbody > tr > td {
-  color: var(--text-on-dark);
-  border-color: rgba(245, 241, 232, .08);
+  color: var(--text-primary);
+  border-color: var(--border);
   background-color: transparent;
 }
 .player-picks-desktop .table-worldcup > tbody > tr:hover > td {
-  background-color: rgba(245, 241, 232, .04);
+  background-color: rgba(0, 0, 0, .025);
 }
 .player-picks-desktop .table-worldcup > tfoot > tr > td {
-  color: var(--text-on-dark);
-  border-color: rgba(245, 241, 232, .14);
+  color: var(--text-primary);
+  border-color: var(--border);
   background-color: transparent;
 }
 .player-picks-desktop .team-link {
-  color: var(--text-on-dark);
+  color: var(--text-primary);
 }
 .player-picks-desktop .team-link:hover {
+  color: var(--wc-red);
+  border-bottom-color: var(--wc-red);
+}
+
+/* ROSTER read-only carve-out — dark navy substrate until P3 migrates picks.html. */
+.card.wc-card.player-picks-desktop .table-worldcup > tbody > tr > td {
+  color: var(--text-on-dark);
+  border-color: rgba(245, 241, 232, .08);
+}
+.card.wc-card.player-picks-desktop .table-worldcup > tbody > tr:hover > td {
+  background-color: rgba(245, 241, 232, .04);
+}
+.card.wc-card.player-picks-desktop .table-worldcup > tfoot > tr > td {
+  color: var(--text-on-dark);
+  border-color: rgba(245, 241, 232, .14);
+}
+.card.wc-card.player-picks-desktop .team-link {
+  color: var(--text-on-dark);
+}
+.card.wc-card.player-picks-desktop .team-link:hover {
   color: var(--gold-light);
   border-bottom-color: var(--gold-light);
 }
@@ -2986,7 +3031,8 @@ body.game-worldcup {
 }
 
 /* picks.html / player_detail.html — three-column event-item grid (drill-down).
-   Lives inside .pick-accordion which inherits .card.wc-card (dark navy). */
+   Same substrate split as `.player-picks-desktop` above: light base for
+   player_detail post-P2, `.card.wc-card`-scoped carve-out for ROSTER until P3. */
 .pick-events-inner {
   padding: .75rem 1rem .25rem;
 }
@@ -2996,15 +3042,22 @@ body.game-worldcup {
   gap: .75rem;
   align-items: baseline;
   padding: .25rem 0;
-  border-bottom: 1px dashed rgba(245, 241, 232, .12);
+  border-bottom: 1px dashed var(--border);
   animation: wc-event-fade-in 200ms ease-out both;
   animation-delay: calc(var(--event-i, 0) * 40ms);
-  color: var(--text-on-dark);
+  color: var(--text-primary);
 }
 .pick-events-list .pick-event-item:last-child { border-bottom: none; }
-.pick-event-stage { color: var(--bone-mute); }
+.pick-event-stage { color: var(--text-secondary); }
 .pick-event-desc { font-size: .9rem; }
 .pick-event-pts { font-size: 1rem; }
+
+/* ROSTER read-only carve-out — dark navy substrate until P3 migrates picks.html. */
+.card.wc-card .pick-events-list .pick-event-item {
+  border-bottom-color: rgba(245, 241, 232, .12);
+  color: var(--text-on-dark);
+}
+.card.wc-card .pick-event-stage { color: var(--bone-mute); }
 
 /* P2 S2.5.1 PI-2 — player_detail hero re-shape.
    Mirrors the team_detail .team-hero-line pattern locked in S2.3.1: one
@@ -3920,21 +3973,32 @@ body.game-worldcup {
   }
 }
 
+/* Accordion footer + empty state — same substrate split as `.pick-events-*`
+   above: light base for player_detail post-P2, `.card.wc-card`-scoped
+   carve-out for ROSTER's read-only picks table until P3. */
 .score-events-total {
   padding: .5rem 1rem .75rem;
-  border-top: 1px dotted rgba(245, 241, 232, .14);
-  color: var(--bone-mute);
+  border-top: 1px dotted var(--border);
+  color: var(--text-secondary);
   font-size: .8rem;
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
-.score-events-total strong { color: var(--text-on-dark); }
+.score-events-total strong { color: var(--text-primary); }
 .score-events-empty {
   padding: .75rem 1rem;
   font-size: .85rem;
-  color: var(--bone-mute);
+  color: var(--text-secondary);
   font-style: italic;
 }
+
+/* ROSTER read-only carve-out — dark navy substrate until P3 migrates picks.html. */
+.card.wc-card .score-events-total {
+  border-top-color: rgba(245, 241, 232, .14);
+  color: var(--bone-mute);
+}
+.card.wc-card .score-events-total strong { color: var(--text-on-dark); }
+.card.wc-card .score-events-empty { color: var(--bone-mute); }
 @keyframes wc-event-fade-in {
   from { opacity: 0; transform: translateY(2px); }
   to   { opacity: 1; transform: translateY(0); }
@@ -4631,13 +4695,17 @@ body.game-worldcup {
   letter-spacing: .03em;
 }
 
-/* Multi-class: wins specificity over the bare .card.wc-card border rule.
-   See CLAUDE.md "CSS specificity for utility classes".
-   P0 S0.2: full border replaces the prior 3px left-stripe per the impeccable
+/* P0 S0.2: full border replaces the prior 3px left-stripe per the impeccable
    absolute ban. The accent border + existing card surface still flag "this is
-   you" without the alert frequency of a side-stripe. */
-.card.wc-card.leaderboard-card-current {
-  border: 1px solid var(--game-accent) !important;
+   you" without the alert frequency of a side-stripe.
+
+   WC Tab Unification P2: dropped the `.wc-card` half of the compound when
+   leaderboard.html's mobile rows migrated to plain `.card` (white). Border
+   color flipped from gold (`--game-accent`) to red (`--wc-red`) per the new
+   accent doctrine — red is the primary "this is you" emphasis on light WC
+   substrates. */
+.card.leaderboard-card-current {
+  border: 1px solid var(--wc-red) !important;
 }
 
 /* P1 S1.1 — Your Position tribune sidebar
@@ -4730,16 +4798,25 @@ body.game-worldcup {
   .your-standing-tribune-caption { font-size: 1rem; }
 }
 
-/* P6 S6.1.3 Group J PI-1: gold-divider thread between Your Position tribune
-   and the standings cards. DESIGN.md §6 Do — major-section separator pattern.
+/* P6 S6.1.3 Group J PI-1: divider thread between Your Position tribune and
+   the standings cards. DESIGN.md §6 Do — major-section separator pattern.
    Targets desktop card + mobile cards wrapper as adjacent siblings. The
    `!important` is required to win against Bootstrap's `.border-0` utility
-   class (which the desktop card carries to strip the wc-card's resting
-   border); without it the gold rule paints only on mobile. Established
-   codebase pattern for fighting Bootstrap utility specificity. */
-.your-standing-tribune + .card.wc-card,
-.your-standing-tribune + .card.wc-card + .d-md-none {
-  border-top: 2px solid var(--gold) !important;
+   class carried by the desktop card; without it the rule paints only on
+   mobile. Established codebase pattern for fighting Bootstrap utility
+   specificity.
+
+   WC Tab Unification P2: selector flipped from `.your-standing-tribune +
+   .card.wc-card` (matched the dark wrapper) to `.your-standing-tribune +
+   .card` (matches plain Bootstrap card after BOARD's migration off
+   `.card.wc-card`). The tribune is leaderboard-only, so the broadened
+   `+ .card` selector is safe. Color flipped gold→red per the new accent
+   doctrine (red as primary on light WC substrates; gold demoted to
+   quaternary). Test lock updated in lockstep:
+   `tests/test_design_p6_s6_1_3.py::test_pi1_gold_divider_rule_threads_tribune_to_standings`. */
+.your-standing-tribune + .card,
+.your-standing-tribune + .card + .d-md-none {
+  border-top: 2px solid var(--wc-red) !important;
 }
 
 /* P1 S1.1 — Move column rank-delta indicators
@@ -4751,63 +4828,15 @@ body.game-worldcup {
 .rank-delta-even { font-weight: 500; }
 .rank-delta-pending { font-weight: 500; }
 
-/* Lift the dark-surface variants for parity with the prior trend lift —
-   live tokens read against the navy .card.wc-card backdrop. */
-.card.wc-card.leaderboard-card .rank-delta-up,
-.card.wc-card .leaderboard-table .row-current-user > td .rank-delta-up {
-  color: var(--live-green);
-}
-.card.wc-card.leaderboard-card .rank-delta-down,
-.card.wc-card .leaderboard-table .row-current-user > td .rank-delta-down {
-  color: var(--live-red);
-}
-
-/* The Even / Pending states inherit `.text-muted` (#8A849B) which fades
-   into the navy .card.wc-card backdrop. Lift to a bone tone scoped to
-   exactly the Move-column surfaces so we don't broadcast bone text to
-   the white-bg <td> rows on desktop (CLAUDE.md "scoped to .card.wc-card
-   .<surface>" rule). */
-.card.wc-card.leaderboard-card .leaderboard-move-mobile .rank-delta-even,
-.card.wc-card.leaderboard-card .leaderboard-move-mobile .rank-delta-pending,
-.card.wc-card .leaderboard-table .row-current-user > td .rank-delta-even,
-.card.wc-card .leaderboard-table .row-current-user > td .rank-delta-pending {
-  color: rgba(245, 241, 232, .82) !important;
-}
-
-/* Plan 3 follow-up: legibility fixes for the dark .card.wc-card surface.
-   Bootstrap's .table tbody td paints opaque white over the navy so plain
-   data rows are fine — the actually-low-contrast surfaces are:
-     1. <thead th> (no td bg, sits directly on navy)
-     2. .row-current-user > td (translucent gold tint, navy bleeds through)
-     3. .leaderboard-card mobile cards (no inner table to mask the navy)
-   Keeping the dark "premium dossier" look; only fixing readability. */
-.card.wc-card .leaderboard-table thead th {
-  color: rgba(245, 241, 232, .82);
-}
-.card.wc-card .leaderboard-table .row-current-user > td {
-  background: rgba(0, 26, 77, .85) !important;
-  color: var(--wc-white);
-}
-.card.wc-card .leaderboard-table .row-current-user > td a {
-  color: var(--wc-white);
-}
-.card.wc-card .leaderboard-table .row-current-user > td .text-muted {
-  color: rgba(245, 241, 232, .55) !important;
-}
-
-/* Compound selector .card.wc-card.leaderboard-card (not descendant) —
-   in leaderboard.html all three classes sit on the same <div>, so
-   `.card.wc-card .leaderboard-card` (with a space) would not match.
-   Scoping to the compound prevents bleed if .leaderboard-card is ever
-   reused on a non-wc-card surface and aligns with CLAUDE.md's
-   "scoped to .card.wc-card .<surface>" rule. */
-.card.wc-card.leaderboard-card,
-.card.wc-card.leaderboard-card a {
-  color: var(--wc-white);
-}
-.card.wc-card.leaderboard-card .text-muted {
-  color: rgba(245, 241, 232, .55) !important;
-}
+/* WC Tab Unification P2: BOARD-only dark-substrate carve-outs removed in
+   lockstep with leaderboard.html migrating off `.card.wc-card`. The lifts
+   here scoped `.card.wc-card.leaderboard-card` (mobile rows) and
+   `.card.wc-card .leaderboard-table` (desktop table); both inner classes
+   are BOARD-only, so they orphaned at zero consumers after the template
+   flip. Base `.rank-delta-up { color: var(--success); }` etc. render
+   correctly on the new white substrate without overrides. Parallels P1's
+   removal of `.card.wc-card .btn-game` when CTAs went global red. Locked
+   removed by `tests/test_design_wc_tab_unification_p2.py`. */
 
 /* P0 S0.3: whole-card-as-link on the mobile leaderboard rows. The card
    element itself is now <a>, so default link styling (blue + underline)
