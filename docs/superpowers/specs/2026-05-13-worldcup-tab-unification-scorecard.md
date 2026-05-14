@@ -15,7 +15,7 @@
 |---|---|---|---|---|
 | P0 | Quick wins + scorecard codification | [#22](https://github.com/BradHagstrom16/fantasy-platform/pull/22) | Open (awaiting review) | — |
 | P1 | HUB body migration | [#23](https://github.com/BradHagstrom16/fantasy-platform/pull/23) | Open (awaiting review) | — |
-| P2 | BOARD body migration | — | Pending | — |
+| P2 | BOARD body migration | [#24](https://github.com/BradHagstrom16/fantasy-platform/pull/24) | Merged | 2026-05-14 |
 | P3 | ROSTER read-only migration | — | Pending | — |
 | P4 | SCHEDULE light polish | — | Pending | — |
 | P5 | Cleanup: retire `.card.wc-card` + update DESIGN.md/CLAUDE.md | — | Pending | — |
@@ -89,11 +89,24 @@ Carried over from the plan (and the in-session question-tool answers).
 
 ### P2 — BOARD body migration
 
-**Branch (planned)**: `worldcup/tab-unification-phase-2`.
-**Targets**:
-- Migrate `.table-worldcup` wrapper out of `.card.wc-card`. Navy thead stays.
-- `.your-standing-tribune + .card.wc-card` gold-divider (S6.1.3 PI-1) flips to red — `test_design_p6_s6_1_3.py:113` in lockstep.
-- `.row-current-user` re-tune for light substrate (14% red tint stays, anchor flips to `var(--game-primary)`).
+**Branch**: `worldcup/tab-unification-phase-2`.
+**Shipped**:
+- BOARD templates (`leaderboard.html` x2 wrappers + `player_detail.html` x2 wrappers) migrated off `.card.wc-card` onto plain Bootstrap `.card` (white). Navy hero unchanged.
+- `.your-standing-tribune + .card.wc-card` gold-divider → `.your-standing-tribune + .card` red-divider (selector broadened — tribune is leaderboard-only — and color flipped per the new accent doctrine). Test lock `test_design_p6_s6_1_3.py` flipped in lockstep (function renamed to `test_pi1_red_divider_rule_threads_tribune_to_standings`).
+- `.card.wc-card.leaderboard-card-current` (gold border on navy) → `.card.leaderboard-card-current` (red border on white).
+- `.row-current-user` already on the right light-substrate anchor (`var(--game-primary)` from P1); no further re-tune needed.
+- **Substrate split (new pattern; not in original plan sketch)**: P2 introduced 5 light-base + `.card.wc-card`-scoped dark carve-out pairs to preserve ROSTER's still-dark picks table until P3: `.player-picks-desktop .table-worldcup > tbody > tr > td` + `.team-link`, `.pick-events-list .pick-event-item` + `.pick-event-stage`, `.score-events-total` + `.score-events-empty`, `.wc-multiplier-chip`, plus a new `.player-picks-desktop .wc-eyebrow:not(...)` light lift parallel to P1's `.wc-stat-card` lift. The plan only named the `.table-worldcup` cells; the others surfaced during visual smoke when accordion drill-down + tier eyebrows + multiplier chips read as bone-on-white. Pattern mirrors P1's `.table-worldcup .row-current-user > td a` split (style.css :3422 + :3429).
+- **BOARD-only dark-card rules removed in lockstep** (parallels P1's `.card.wc-card .btn-game` removal): `.card.wc-card .leaderboard-table thead th`, `.card.wc-card .leaderboard-table .row-current-user > td` (and anchor + .text-muted variants), `.card.wc-card.leaderboard-card,` + `.card.wc-card.leaderboard-card .text-muted`, mobile/desktop rank-delta lifts on `.card.wc-card.leaderboard-card` and `.card.wc-card .leaderboard-table`.
+
+**Tests**:
+- New: `tests/test_design_wc_tab_unification_p2.py` — 8 regression locks (BOARD templates zero `.card.wc-card`; `.your-standing-tribune + .card` red-divider; `.card.leaderboard-card-current` red border; `.player-picks-desktop` light base + dark carve-out; `.pick-events-list` light base + dark carve-out; forbidden BOARD-only dark-card rule families).
+- Rewritten in lockstep: `tests/test_design_p6_s6_1_3.py::test_pi1_red_divider_rule_threads_tribune_to_standings` (renamed from `..._gold_divider_...`); `tests/test_design_p1_leaderboard.py::test_move_column_muted_states_inherit_bootstrap_text_muted_redirect` (renamed from `..._lift_off_dark_surface`, now locks both absence-of-dark-lift AND the Bootstrap `.text-muted` `:root` token redirect at style.css :7183); `tests/test_design_p2_s2_5_1.py::test_score_events_total_and_empty_paint_per_substrate` and `tests/test_design_p4_s4_2_2.py::test_f2_multiplier_chip_substrate_split_does_not_use_wc_white` (both lock light base + dark carve-out).
+- Full suite: **747 / 747 passing** (same as P1 baseline + 8 new P2 locks; three pre-existing tests rewritten in place).
+- CR follow-ups (two iterations, both on `tests/test_design_wc_tab_unification_p2.py`): (1) property-scoped color regex on `.player-picks-desktop`/`.pick-events-list` substrate-split assertions (mirrors PR #15 CR R7-D pattern); (2) order-independent class regex on the BOARD-template scan (lookaheads instead of `\bcard\s+wc-card\b`), full-text `finditer` to catch multi-line class attributes, and `[,{]` terminator on the forbidden `.card.wc-card.leaderboard-card` rule patterns.
+
+**Visual smoke**: Confirmed via Playwright on dev across every per-state partial (per `feedback_state_shell_smoke_coverage.md`). Pre-deadline (`WC_FAKE_NOW='2026-06-01T12:00:00+00:00'`): BOARD desktop + mobile show white-card standings with red-divider + red current-user border; player_detail sealed-fallback reads on white. Post-deadline (`'2026-07-05T12:00:00+00:00'`): tiebreaker column visible, picks table dark-on-white, accordion drill-down dark-on-light dashed border, multiplier chips legible. **Negative smoke**: `/worldcup/picks` post-deadline as the picks owner still renders dark navy end-to-end (bone text, bone-tinted chips, bone dashed accordion border) — the substrate carve-outs work as designed.
+
+**Detector**: `npx impeccable --json games/worldcup/templates/worldcup/` — zero P2-introduced findings on BOARD templates. 4 pre-existing hits on `stats.html` are unchanged.
 
 ### P3 — ROSTER read-only migration
 
