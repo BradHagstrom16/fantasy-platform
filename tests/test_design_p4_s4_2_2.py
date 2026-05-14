@@ -290,26 +290,13 @@ def test_f2_multiplier_chip_paints_light_substrate_only():
 #
 # Layer C critique caught two contrast P1s: (a) F2 above made the chip
 # bone-on-white inside .tier-card-heading (white tier-card body) at
-# ~1.04:1 — an in-iteration regression; (b) `.wc-numeral` inherits
-# Bootstrap body color (~rgb 33, 37, 41) on the navy `.card.wc-card`
-# substrate making the readonly card-header Total + tiebreaker numeral
-# near-black on near-black (latent pre-existing bug, surfaced by the
-# critique against the PI-2-extracted numeral classes). Both close in
-# one PI: two scoped CSS rules, no template change.
-
-
-def test_pia1_wc_numeral_scoped_to_bone_on_dark_card_wc_card():
-    """`.card.wc-card .wc-numeral` must explicitly read `var(--text-on-dark)`.
-    PR #15 CR R7-D — anchor on `color` property so `background-color` or
-    `border-color` can't false-pass."""
-    css = CSS.read_text()
-    # Find the scoped block. Use a marker comment string so refactors are loud.
-    idx = css.find('.card.wc-card .wc-numeral {')
-    assert idx >= 0, "Scoped .card.wc-card .wc-numeral rule must exist"
-    block_end = css.find('}', idx)
-    block = css[idx:block_end]
-    assert re.search(r'(?<!-)color:\s*var\(--text-on-dark\)', block), \
-        '.card.wc-card .wc-numeral must set color: var(--text-on-dark)'
+# ~1.04:1 — an in-iteration regression; (b) `.wc-numeral` inherited
+# Bootstrap body color on the navy `.card.wc-card` substrate, making the
+# readonly card-header Total + tiebreaker numeral near-black on near-
+# black. Originally closed by two scoped CSS rules; the dark-substrate
+# half (`.card.wc-card .wc-numeral`) retired in WC tab unification P5
+# along with the entire `.card.wc-card` substrate. The light-substrate
+# half (`.tier-card-heading .wc-multiplier-chip`) below stays.
 
 
 def test_pia1_multiplier_chip_re_tinted_on_tier_card_heading():

@@ -45,18 +45,22 @@ DESIGN_MD = REPO_ROOT / 'DESIGN.md'
 def test_pi1_dark_card_eyebrow_lift_rule_exists():
     """The S6.1.1 contrast-lift rule exists with the exact scope.
 
-    Locks the `:not(.wc-eyebrow-red):not(.wc-eyebrow-gold)` carve-out so
-    a future "tidy" pass that drops the variant exclusion can't silently
-    flatten the red/gold semantic to bone on every dark-card surface.
+    Re-scoped from `.card.wc-card .wc-eyebrow:not(...)` to
+    `.wc-champion-banner .wc-eyebrow:not(...)` in WC tab unification P5
+    (the dark `.card.wc-card` substrate retired; the champion banner is
+    now its own dedicated primitive). Locks the
+    `:not(.wc-eyebrow-red):not(.wc-eyebrow-gold)` carve-out so a future
+    "tidy" pass that drops the variant exclusion can't silently flatten
+    the red/gold semantic to bone on the champion banner.
     """
     css = STYLE_CSS.read_text()
     match = re.search(
-        r'\.card\.wc-card\s+\.wc-eyebrow:not\(\.wc-eyebrow-red\):not\(\.wc-eyebrow-gold\)\s*\{([^}]+)\}',
+        r'\.wc-champion-banner\s+\.wc-eyebrow:not\(\.wc-eyebrow-red\):not\(\.wc-eyebrow-gold\)\s*\{([^}]+)\}',
         css,
     )
     assert match is not None, (
-        'Expected `.card.wc-card .wc-eyebrow:not(.wc-eyebrow-red):not(.wc-eyebrow-gold)` '
-        'rule in style.css (S6.1.1 PI-1).'
+        'Expected `.wc-champion-banner .wc-eyebrow:not(.wc-eyebrow-red):not(.wc-eyebrow-gold)` '
+        'rule in style.css (S6.1.1 PI-1, re-scoped in P5).'
     )
     block = match.group(1)
     # Bone @ .85 alpha = rgba(243, 239, 230, .85). Pin to `color:` so a
@@ -141,14 +145,16 @@ def test_pi1_design_md_ratifies_two_primitive_shape():
     assert '`.wc-eyebrow-gold`' in design, (
         'DESIGN.md must document the `.wc-eyebrow-gold` variant.'
     )
-    # The bone-mute default + dark-card lift must appear in the doc so future
-    # work understands the scope rule belongs to the primitive, not to one surface.
+    # The bone-mute default must appear in the doc so future work
+    # understands the scope rule belongs to the primitive, not to one surface.
     assert 'bone-mute' in design, (
         'DESIGN.md must mention the `bone-mute` default color.'
     )
-    assert '.card.wc-card' in design, (
-        'DESIGN.md must mention the `.card.wc-card` scope lift.'
-    )
+    # WC tab unification P5 retired the `.card.wc-card` substrate; the
+    # surviving dark-substrate eyebrow consumer is `.wc-champion-banner`.
+    # The DESIGN.md doctrine rewrite landing later in P5 (Brad-drafted)
+    # ratifies that primitive — locked by
+    # `tests/test_design_wc_tab_unification_p5.py` instead of here.
 
 
 # ---------------------------------------------------------------------------
@@ -184,17 +190,22 @@ def test_pi2_dark_surface_overrides_still_win():
     long-standing `!important` rules that win the cascade regardless of
     the variable redefine. Both must stay in place; deleting either
     would re-surface the same bug class on the navy hub.
+
+    WC tab unification P5 re-scope: the dark-card `.text-muted` rule
+    moved from `.card.wc-card .text-muted` to `.wc-champion-banner
+    .text-muted` when the `.card.wc-card` substrate retired.
     """
     css = STYLE_CSS.read_text()
     # Pin to the actual `color:` !important declaration (not just an rgba+!important
     # pair sitting on different properties). `[^}]*?` lets earlier declarations
     # appear before color; `(?<!-)` excludes `background-color` / `border-color`.
     assert re.search(
-        r'\.card\.wc-card\s+\.text-muted\s*\{[^}]*?(?<!-)color:\s*rgba\(245,\s*241,\s*232,\s*\.82\)\s*!important',
+        r'\.wc-champion-banner\s+\.text-muted\s*\{[^}]*?(?<!-)color:\s*rgba\(245,\s*241,\s*232,\s*\.82\)\s*!important',
         css,
     ), (
-        'Expected the pre-existing `.card.wc-card .text-muted` `!important` '
-        'lift to bone @ .82 in style.css (originally landed in Plan 3).'
+        'Expected the `.wc-champion-banner .text-muted` `!important` '
+        'lift to bone @ .82 in style.css (re-scoped from `.card.wc-card '
+        '.text-muted` in WC tab unification P5).'
     )
     assert re.search(
         r'\.page-hero\.wc-hero-grad\s+\.hero-subhead\.text-muted\s*\{[^}]*?(?<!-)color:\s*rgba\(245,\s*241,\s*232,\s*\.82\)\s*!important',
@@ -285,10 +296,14 @@ def test_pi3_recap_rank_uses_solid_gold_light():
 
 
 def test_pi3_champion_name_dark_hero_uses_solid_gold_light():
-    """`.card.wc-card.wc-hero-grad .champion-name` paints solid `--gold-light`."""
+    """`.wc-champion-banner .champion-name` paints solid `--gold-light`.
+
+    Re-scoped from `.card.wc-card.wc-hero-grad .champion-name` in WC tab
+    unification P5 (the dark `.card.wc-card` substrate retired).
+    """
     css = STYLE_CSS.read_text()
     match = re.search(
-        r'\.card\.wc-card\.wc-hero-grad\s+\.champion-name\s*\{([^}]+)\}',
+        r'\.wc-champion-banner\s+\.champion-name\s*\{([^}]+)\}',
         css,
     )
     assert match is not None

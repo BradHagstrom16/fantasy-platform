@@ -122,11 +122,15 @@ def test_old_dark_card_btn_game_override_removed():
 # PI-2: hub partials migrated off `.card.wc-card` except champion banner.
 # ---------------------------------------------------------------------------
 
-def test_hub_templates_have_no_card_wc_card_except_champion_banner():
-    """Lock the migration end-state: 12 of 13 hub `.card.wc-card` containers
-    moved to `.wc-stat-card`; the post-state champion banner keeps the dark
-    ceremonial wrapper (`.card.wc-card.wc-hero-grad`) as a deliberate
-    exception, scheduled for the P5 cleanup pass."""
+def test_hub_templates_have_no_card_wc_card():
+    """Hub templates carry zero `.card.wc-card` markup post-P5.
+
+    P1 migrated 12 of 13 hub `.card.wc-card` containers to `.wc-stat-card`,
+    leaving the post-state champion banner as a deliberate exception. WC
+    tab unification P5 closed that exception by re-homing the banner onto
+    a dedicated `.wc-champion-banner` primitive so the `.card.wc-card`
+    substrate could retire fully. The hub now reads zero `.card.wc-card`
+    across every state partial."""
     pattern = re.compile(r'class="[^"]*\bcard\s+wc-card\b[^"]*"')
     occurrences = []
     for tpl in HUB_TEMPLATES:
@@ -135,21 +139,9 @@ def test_hub_templates_have_no_card_wc_card_except_champion_banner():
             if pattern.search(line):
                 occurrences.append((tpl.name, line_num, line.strip()))
 
-    assert len(occurrences) == 1, (
-        f'Expected exactly 1 `.card.wc-card` usage across hub templates '
-        f'(the post-state champion banner); found {len(occurrences)}: '
-        f'{occurrences!r}.'
-    )
-
-    name, line_num, line = occurrences[0]
-    assert name == '_home_post.html', (
-        f'The lone remaining `.card.wc-card` should live in _home_post.html '
-        f'(champion banner); found in {name} at line {line_num}: {line!r}.'
-    )
-    assert 'wc-hero-grad' in line, (
-        f'The champion banner exception must combine `wc-card` with '
-        f'`wc-hero-grad` (dark gradient) to read as the ceremonial Final '
-        f'Decree surface, not a stray dark card; found: {line!r}.'
+    assert occurrences == [], (
+        f'Expected zero `.card.wc-card` usage across hub templates post-P5; '
+        f'found {len(occurrences)}: {occurrences!r}.'
     )
 
 

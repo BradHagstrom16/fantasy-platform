@@ -169,12 +169,18 @@ def test_pi2_champion_retrospect_line_in_template():
 
 
 def test_pi2_champion_retrospect_css_present():
-    """Scoped CSS for .champion-retrospect ships with the template."""
+    """Scoped CSS for .champion-retrospect ships with the template.
+
+    Re-scoped from `.card.wc-card.wc-hero-grad .champion-retrospect` to
+    `.wc-champion-banner .champion-retrospect` in WC tab unification P5
+    (the dark `.card.wc-card` substrate retired; the champion banner is
+    now its own dedicated primitive).
+    """
     css = STYLE_CSS.read_text()
-    assert '.card.wc-card.wc-hero-grad .champion-retrospect' in css
+    assert '.wc-champion-banner .champion-retrospect' in css
     # Newsreader italic is the Tribune editorial register per DESIGN.md §3.
     match = re.search(
-        r'\.card\.wc-card\.wc-hero-grad\s+\.champion-retrospect\s*\{([^}]+)\}',
+        r'\.wc-champion-banner\s+\.champion-retrospect\s*\{([^}]+)\}',
         css,
     )
     assert match is not None
