@@ -5,7 +5,7 @@ original P2 audit grid:
 
 - `team_detail.html:84` — single fixture-list wrapper (strip `wc-card`,
   keep `wc-card-flush`).
-- `rules.html` × 7 wrappers at lines 29, 41, 114, 161, 192, 244, 255 (strip
+- `rules.html` x 7 wrappers at lines 29, 41, 114, 161, 192, 244, 255 (strip
   `wc-card`).
 
 With both templates off `.card.wc-card`, the only remaining DOM consumer is

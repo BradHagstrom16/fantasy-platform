@@ -68,7 +68,7 @@ RULES = REPO / 'games' / 'worldcup' / 'templates' / 'worldcup' / 'rules.html'
 # The S4.3.1 PI-1 direct-prose lift retired in P3.5 when rules.html migrated
 # off `.card.wc-card`. With rules.html on plain Bootstrap `.card` (white
 # substrate, dark default text), there is no surface stacking prose on the
-# navy(.8α) substrate that needed the bone lift. The only remaining
+# navy(.8 alpha) substrate that needed the bone lift. The only remaining
 # `.card.wc-card` consumer is the _home_post.html champion banner, whose
 # direct-child `<p class="champion-retrospect">` carries its own scoped
 # color rule at style.css:7068 (higher specificity, unaffected by the lift's
