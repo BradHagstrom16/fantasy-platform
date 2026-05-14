@@ -13,7 +13,7 @@
 
 | Phase | Description | PR | Status | Closed |
 |---|---|---|---|---|
-| P0 | Quick wins + scorecard codification | TBD | In progress | — |
+| P0 | Quick wins + scorecard codification | [#22](https://github.com/BradHagstrom16/fantasy-platform/pull/22) | Open (awaiting review) | — |
 | P1 | HUB body migration | — | Pending | — |
 | P2 | BOARD body migration | — | Pending | — |
 | P3 | ROSTER read-only migration | — | Pending | — |
