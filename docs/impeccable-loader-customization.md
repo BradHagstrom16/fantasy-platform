@@ -1,6 +1,6 @@
 # Impeccable loader customization — per-game DESIGN.md discovery
 
-The impeccable skill loader at `~/.claude/skills/impeccable/scripts/load-context.mjs` is customized on this machine to discover **per-game DESIGN.md files** in addition to the top-level `DESIGN.md`. This document records what was changed, why, and how to re-apply the customization if a future impeccable skill upgrade overwrites it.
+The impeccable skill loader at `~/.claude/skills/impeccable/scripts/load-context.mjs` is customized locally to discover **per-game DESIGN.md files** in addition to the top-level `DESIGN.md`. This document records what was changed, why, and how to re-apply the customization if a future impeccable skill upgrade overwrites it.
 
 ## Why the customization exists
 

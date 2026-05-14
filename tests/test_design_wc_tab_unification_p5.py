@@ -44,11 +44,16 @@ TEMPLATE = TEMPLATE_PATH.read_text()
 # ---------------------------------------------------------------------------
 # PI-1: zero `.card.wc-card` rule heads in style.css.
 # ---------------------------------------------------------------------------
-# Broad project-closing lock. Walks every line in style.css; any rule head
-# starting with `.card.wc-card` (NOT `.card.wc-card-flush`, which is the
-# preserved zero-padding utility) means the substrate primitive re-appeared.
-# The negative lookahead `(?![-\\w])` after `wc-card` distinguishes the bare
-# `.card.wc-card` family from the `.card.wc-card-flush` independent utility.
+# Broad project-closing lock. Walks every selector head in style.css; any
+# head containing `.card.wc-card` anywhere (NOT `.card.wc-card-flush`,
+# which is the preserved zero-padding utility) means the substrate
+# primitive re-appeared. The leading `[^{\n]*` catches prefixed-selector
+# re-introductions like `body.game-worldcup .card.wc-card { ... }` that a
+# strict start-anchored regex would miss; the negative lookahead
+# `(?![-\\w])` after `wc-card` distinguishes the bare `.card.wc-card`
+# family from the `.card.wc-card-flush` independent utility. CSS comments
+# are stripped first so prose mentions of `.card.wc-card` inside `/* ... */`
+# blocks (P5 retirement notes elsewhere in the file) don't false-positive.
 
 def test_pi1_zero_card_wc_card_rule_heads_in_style_css():
     """`static/css/style.css` carries zero `.card.wc-card`-scoped rule heads.
@@ -58,9 +63,10 @@ def test_pi1_zero_card_wc_card_rule_heads_in_style_css():
     used standalone by `team_detail.html` (no longer compounded with
     `.wc-card`).
     """
+    css_no_comments = re.sub(r'/\*.*?\*/', '', CSS, flags=re.DOTALL)
     rule_heads = re.findall(
-        r'^\.card\.wc-card(?![-\w])[^{]*\{',
-        CSS,
+        r'^[^{\n]*\.card\.wc-card(?![-\w])[^{\n]*\{',
+        css_no_comments,
         re.MULTILINE,
     )
     assert rule_heads == [], (
