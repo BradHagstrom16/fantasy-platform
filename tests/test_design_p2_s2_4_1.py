@@ -217,7 +217,7 @@ def test_is_lead_css_uses_red_rule_top_no_border():
     """
     lead_block = CSS.split('.wc-stat-card.is-lead {')[1].split('}')[0]
     assert 'border: 0' in lead_block
-    assert '2px solid var(--wc-red)' in lead_block
+    assert 'border-top: 2px solid var(--wc-red)' in lead_block
 
 
 # ---------------------------------------------------------------------------

@@ -81,9 +81,9 @@ Light body on bone page
   - Body copy            — --text-primary (near-black) + --wc-navy for headings + --wc-red for emphasis
   ↓
 Accent vocabulary (order matters — first three lead, last one whispers)
-  1. White → card substrate (bone page substrate stays the platform default)
-  2. Red   → primary CTAs (global `.btn-game` on WC), `.is-lead` rule, hero eyebrows,
+  1. Red   → primary CTAs (global `.btn-game` on WC), `.is-lead` rule, hero eyebrows,
              current-user row tint, ceremonial emphasis on light cards
+  2. White → card substrate (bone page substrate stays the platform default)
   3. Navy  → dark hero substrate + table thead bar + heading text on light cards
              + the inactive `.btn-outline-secondary`-style restful state
   4. Gold  → quaternary only. Reserved for: focus rings (a11y lock, --gold-light),
@@ -137,7 +137,7 @@ Accent vocabulary (order matters — first three lead, last one whispers)
 2. **`.btn-game` red**: **global on WC**. `body.game-worldcup .btn-game` repaints red so every WC button reads red regardless of substrate.
 3. **Leaderboard `<thead>`**: **stays navy, white body**. Strongest USA pattern.
 4. **Migration order**: P0 → HUB → BOARD → ROSTER → SCHEDULE → cleanup. Each phase ships as its own PR.
-5. **Accent rank-order**: red → white → blue → gold. Gold is **quaternary** — reserved for focus rings (a11y lock), champion banners, podium glow only.
+5. **Accent rank-order**: red → white → navy → gold. Gold is **quaternary** — reserved for focus rings (a11y lock), champion banners, podium glow only.
 
 ---
 
