@@ -2675,6 +2675,17 @@ body.game-worldcup {
 .wc-eyebrow-red { color: var(--wc-red); }
 .wc-eyebrow-gold { color: var(--gold-light); }
 
+/* Hero eyebrow contrast lift — parallels the S6.1.1 PI-1 `.card.wc-card`
+   rule at :7105 but for the navy hero gradient. Base `--bone-mute` (.55
+   alpha) lands sub-AA on `#0A1A50 → #00102E` — "TRIBUTE WINDOW OPEN" reads
+   as a watermark in the pre-state hub. Bone @ .85 matches PI-1's value
+   for cross-surface consistency on the eyebrow primitive. `:not()` keeps
+   the explicit red/gold tonal variants intact. The `.card.wc-card` half
+   of this fix lives at :7105 already — don't duplicate. */
+.page-hero.wc-hero-grad .wc-eyebrow:not(.wc-eyebrow-red):not(.wc-eyebrow-gold) {
+  color: rgba(243, 239, 230, .85);
+}
+
 /* Display numeral utility — Teko, tabular figures */
 .wc-numeral {
   font-family: 'Teko', sans-serif;
@@ -2842,6 +2853,17 @@ body.game-worldcup {
 }
 .card.wc-card-flush {
   padding: 0;
+}
+
+/* Deadline / time-critical variant. The hub-pre state previously rendered
+   four identical .wc-card surfaces with no visual hierarchy — deadline,
+   roster, leaderboard, and quicklinks all carried the same weight. The
+   gold top-rule promotes the time-critical row without resorting to a
+   loud colored fill. 2px lands above the 1px side borders so the top
+   edge reads as deliberate, not as a hairline accident. Not a side-stripe
+   (P0 S0.2 ban — that's left/right borders ≥ 2px). */
+.card.wc-card-deadline {
+  border-top: 2px solid var(--gold-light);
 }
 
 /* picks.html team card descendants */
@@ -3359,10 +3381,38 @@ body.game-worldcup {
 .table-worldcup > tbody > tr:hover { background: rgba(0,40,104,.04); }
 
 /* Current user row highlight — bg tint carries the "you" cue
-   (P0 S0.2: side-stripe replaced by tint + leading rank numeral). */
+   (P0 S0.2: side-stripe replaced by tint + leading rank numeral).
+   Tint lifted from .06 → .14: the original alpha was sub-perceptible on
+   both Bootstrap-white tbody and the dark .card.wc-card region, so "you"
+   wasn't reading. The inner anchor is also scoped — the default
+   Bootstrap link color resolves to CCC house purple on dark navy, which
+   read as a third color conflict on the user's own row.
+
+   Two-substrate anchor split:
+   - On dark `.card.wc-card`, paint `--gold-light` (#F2D36B) — reads ~9:1
+     on the navy + red-tint composite. Hover/focus lifts to `--gold-hi`.
+   - On bone (no `.card.wc-card` wrap, e.g., a future light-substrate use
+     of `.table-worldcup`), paint `--gold-dark` (#8A6A1A, ~5.7:1 on bone,
+     AA). `--gold-light` on bone collapses to ~1.4:1 (unreadable);
+     `--gold-hi` is even worse — `--gold-dark` is the only gold token
+     with AA contrast on the bone canvas. */
 .table-worldcup .row-current-user > td {
-  background: rgba(191,10,48,.06) !important;
+  background: rgba(191,10,48,.14) !important;
   font-weight: 600;
+}
+.table-worldcup .row-current-user > td a {
+  color: var(--gold-dark);
+}
+.table-worldcup .row-current-user > td a:hover,
+.table-worldcup .row-current-user > td a:focus-visible {
+  color: var(--gold);
+}
+.card.wc-card .table-worldcup .row-current-user > td a {
+  color: var(--gold-light);
+}
+.card.wc-card .table-worldcup .row-current-user > td a:hover,
+.card.wc-card .table-worldcup .row-current-user > td a:focus-visible {
+  color: var(--gold-hi);
 }
 
 /* Tier badges — colored pill per tier */
@@ -4159,6 +4209,19 @@ body.game-worldcup {
 .phase-indicator.active .phase-dot {
   animation: pulseGold .8s ease infinite;
   background: var(--game-accent);
+}
+
+/* On the dark navy WC hero the base chip (navy text on 8% navy bg at :4150)
+   collapsed to ~1.5:1 — invisible. Flip to a gold variant on this substrate
+   only so PRE-TOURNAMENT / Group Stage / Knockout actually read. Specificity
+   (0,0,3,0) beats the base (0,0,1,0). Dot keeps its gold-on-active pulse. */
+.page-hero.wc-hero-grad .phase-indicator {
+  background: rgba(242, 211, 107, .14);
+  color: var(--gold-light);
+  border: 1px solid rgba(242, 211, 107, .35);
+}
+.page-hero.wc-hero-grad .phase-indicator .phase-dot {
+  background: var(--gold-light);
 }
 
 /* World Cup pick CTA banner */
@@ -5440,6 +5503,19 @@ main { flex: 1; }
   border-color: var(--game-primary-light);
   color: var(--text-on-dark);
   transform: translateY(-2px);
+}
+
+/* On dark .card.wc-card surfaces the navy --game-primary fill collapsed into
+   the navy card (rgba(0,17,46,.8) at :2834 vs #002868 at :2648 — ~12% Δ in
+   lightness). Lift to --game-accent so the CTA actually reads as a button.
+   Scope is dark-card only; the bone-substrate .btn-game stays navy. */
+.card.wc-card .btn-game {
+  background: var(--game-accent);
+  border-color: var(--game-accent);
+}
+.card.wc-card .btn-game:hover {
+  background: var(--game-accent-light);
+  border-color: var(--game-accent-light);
 }
 
 /* ── 10. Form Controls ──────────────────────────────────── */
