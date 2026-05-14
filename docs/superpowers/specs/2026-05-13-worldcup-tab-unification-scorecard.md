@@ -19,7 +19,7 @@
 | P3 | ROSTER read-only migration | [#25](https://github.com/BradHagstrom16/fantasy-platform/pull/25) | Merged | 2026-05-14 |
 | P3.5 | Audit-miss cleanup: `team_detail.html` + `rules.html` migration | [#26](https://github.com/BradHagstrom16/fantasy-platform/pull/26) | Merged | 2026-05-14 |
 | P4 | SCHEDULE light polish | [#27](https://github.com/BradHagstrom16/fantasy-platform/pull/27) | Merged | 2026-05-14 |
-| P5 | Cleanup: retire `.card.wc-card` + split DESIGN.md (top-level + games/worldcup) + CLAUDE.md doctrine update + impeccable loader customization | [#28](https://github.com/BradHagstrom16/fantasy-platform/pull/28) | Open (awaiting review) | — |
+| P5 | Cleanup: retire `.card.wc-card` + split DESIGN.md (top-level + games/worldcup) + CLAUDE.md doctrine update + impeccable loader customization | [#28](https://github.com/BradHagstrom16/fantasy-platform/pull/28) | Merged | 2026-05-14 |
 
 Predecessor PR (precondition, not part of this project): **#21** — `worldcup/hub-color-rebalance-r1` (hub pre-state polish landed under the *old* dark-card paradigm; its gold pieces will be re-derived to red in P1).
 
