@@ -50,6 +50,7 @@ Routed forward to S2.5.2 per §0.4:
 - PI-6 (Roster-sealed empty state shape — needs un-priv probe)
 - PI-7 (above-fold density / wrapper reduction)
 """
+import re
 from pathlib import Path
 
 ROOT = Path(__file__).parent.parent
@@ -95,7 +96,6 @@ def test_pick_table_tbody_td_carries_explicit_color_per_substrate_doctrine():
     `background-color:` / `border-color:` that share the same `var(--text-
     primary)` value). Mirrors test_design_wc_tab_unification_p2.py PI-4.
     """
-    import re
     match = re.search(
         r'(?<!\.card\.wc-card)\.player-picks-desktop \.table-worldcup > tbody > tr > td\s*\{([^}]+)\}',
         CSS,
@@ -148,7 +148,6 @@ def test_pick_event_stage_carries_explicit_color_per_substrate_doctrine():
     property (`(?<![-\\w])color:` rejects hyphenated names). Same pattern
     as test_design_wc_tab_unification_p2.py PI-6's light-base assertion.
     """
-    import re
     match = re.search(
         r'(?<!\.card\.wc-card )\.pick-event-stage\s*\{([^}]+)\}',
         CSS,
@@ -221,15 +220,20 @@ def test_score_events_total_and_empty_paint_light_substrate_only():
     )
 
     # (b) DARK carve-out retired in P3 — assert it does NOT re-appear.
-    assert '.card.wc-card .score-events-total' not in CSS, (
-        '`.card.wc-card .score-events-total` carve-out was retired in P3 '
-        '(its sole consumer, picks.html ROSTER, migrated off `.card.wc-card`). '
-        'A regression here means the cleanup was undone.'
-    )
-    assert '.card.wc-card .score-events-empty' not in CSS, (
-        '`.card.wc-card .score-events-empty` carve-out was retired in P3. '
-        'A regression here means the cleanup was undone.'
-    )
+    # Per PR #25 CR R3: regex-anchored with `[,{]` terminator so a future
+    # prefix-match like `.card.wc-card .score-events-totalizer` or a
+    # CSS comment mentioning the selector by name can't false-trip. Mirrors
+    # the P2 PI-7 + P3 PI-3 forbidden-list idiom.
+    forbidden = [
+        r'\.card\.wc-card\s+\.score-events-total[,{]',
+        r'\.card\.wc-card\s+\.score-events-empty[,{]',
+    ]
+    for pattern in forbidden:
+        assert re.search(pattern, CSS) is None, (
+            f'Forbidden `{pattern}` dark carve-out re-appeared in style.css. '
+            f'P3 retired this in lockstep with picks.html migration (its sole '
+            f'DOM consumer); a regression here means the cleanup was undone.'
+        )
 
 
 # ---------------------------------------------------------------------------
