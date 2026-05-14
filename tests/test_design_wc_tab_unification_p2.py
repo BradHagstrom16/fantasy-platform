@@ -56,7 +56,10 @@ def test_board_templates_have_no_card_wc_card():
     pattern but without exceptions — neither BOARD template carries a
     ceremonial dark wrapper (the champion banner exception lives on HUB).
     """
-    pattern = re.compile(r'class="[^"]*\bcard\s+wc-card\b[^"]*"')
+    # Order-independent: lookaheads require both `card` and `wc-card` tokens
+    # somewhere in the class list, regardless of which comes first or what
+    # other classes (`border-0`, `animate-in`, …) interleave between them.
+    pattern = re.compile(r'class="(?=[^"]*\bcard\b)(?=[^"]*\bwc-card\b)[^"]*"')
     occurrences = []
     for tpl in BOARD_TEMPLATES:
         text = tpl.read_text()
@@ -154,14 +157,17 @@ def test_player_picks_desktop_base_paints_light_substrate():
         'base rule (the light-substrate path for player_detail.html post-P2).'
     )
     block = match.group(1)
-    assert 'color: var(--text-primary)' in block, (
+    # Property-scoped regex (negative lookbehind on `[-\w]`) so a future
+    # `background-color: var(--text-primary)` or `border-color: var(--text-on-dark)`
+    # can't silently flip either branch. Mirrors PR #15 CR R7-D pattern.
+    assert re.search(r'(?<![-\w])color:\s*var\(--text-primary\)', block), (
         f'`.player-picks-desktop` base must paint `color: var(--text-primary)` '
         f'on the new light substrate; block={block!r}.'
     )
-    assert 'var(--text-on-dark)' not in block, (
-        f'`.player-picks-desktop` base must not paint `var(--text-on-dark)` '
-        f'anymore — that token is for the ROSTER `.card.wc-card` carve-out '
-        f'(P3 retires it); block={block!r}.'
+    assert not re.search(r'(?<![-\w])color:\s*var\(--text-on-dark\)', block), (
+        f'`.player-picks-desktop` base must not paint '
+        f'`color: var(--text-on-dark)` anymore — that token is for the ROSTER '
+        f'`.card.wc-card` carve-out (P3 retires it); block={block!r}.'
     )
 
 
@@ -184,7 +190,8 @@ def test_player_picks_desktop_dark_carve_out_preserved_for_roster():
         'styling until P3 migrates picks.html.'
     )
     block = match.group(1)
-    assert 'color: var(--text-on-dark)' in block, (
+    # Property-scoped — see PR #15 CR R7-D pattern.
+    assert re.search(r'(?<![-\w])color:\s*var\(--text-on-dark\)', block), (
         f'ROSTER carve-out must paint `color: var(--text-on-dark)`; '
         f'block={block!r}.'
     )
@@ -206,7 +213,8 @@ def test_pick_events_item_base_paints_light_substrate():
         'Expected a `.pick-events-list .pick-event-item` base rule.'
     )
     block = match.group(1)
-    assert 'color: var(--text-primary)' in block, (
+    # Property-scoped — see PR #15 CR R7-D pattern.
+    assert re.search(r'(?<![-\w])color:\s*var\(--text-primary\)', block), (
         f'Accordion item base must paint `color: var(--text-primary)` on '
         f'light substrate; block={block!r}.'
     )
@@ -229,7 +237,8 @@ def test_pick_events_item_dark_carve_out_preserved_for_roster():
         'ROSTER carve-out.'
     )
     block = match.group(1)
-    assert 'color: var(--text-on-dark)' in block, (
+    # Property-scoped — see PR #15 CR R7-D pattern.
+    assert re.search(r'(?<![-\w])color:\s*var\(--text-on-dark\)', block), (
         f'ROSTER accordion carve-out must paint `color: var(--text-on-dark)`; '
         f'block={block!r}.'
     )
