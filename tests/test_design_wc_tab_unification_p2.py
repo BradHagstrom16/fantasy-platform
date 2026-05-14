@@ -61,11 +61,17 @@ def test_board_templates_have_no_card_wc_card():
     # other classes (`border-0`, `animate-in`, …) interleave between them.
     pattern = re.compile(r'class="(?=[^"]*\bcard\b)(?=[^"]*\bwc-card\b)[^"]*"')
     occurrences = []
+    # Scan the full template text (not splitlines+per-line search) so a
+    # multi-line class attribute — `class="card\n  wc-card border-0"` from a
+    # formatter that wrapped a long attribute — is still caught. `[^"]*` in
+    # the pattern already matches newlines (negated char classes include
+    # `\n`); the per-line scan was the bottleneck. Line numbers are derived
+    # from `match.start()` for the reported `occurrences` entry.
     for tpl in BOARD_TEMPLATES:
         text = tpl.read_text()
-        for line_num, line in enumerate(text.splitlines(), start=1):
-            if pattern.search(line):
-                occurrences.append((tpl.name, line_num, line.strip()))
+        for m in pattern.finditer(text):
+            line_num = text.count('\n', 0, m.start()) + 1
+            occurrences.append((tpl.name, line_num, m.group(0)))
 
     assert occurrences == [], (
         f'Expected zero `.card.wc-card` usages across BOARD templates '
@@ -274,9 +280,13 @@ def test_board_only_dark_card_rule_families_removed():
         # Desktop leaderboard-table thead + row-current-user lifts.
         r'\.card\.wc-card \.leaderboard-table thead th\s*\{',
         r'\.card\.wc-card \.leaderboard-table \.row-current-user > td\s*\{',
-        # Mobile leaderboard-card text overrides.
-        r'\.card\.wc-card\.leaderboard-card\s*,',
-        r'\.card\.wc-card\.leaderboard-card \.text-muted\s*\{',
+        # Mobile leaderboard-card text overrides. Each pattern accepts `[,{]`
+        # as the terminator so a future regression catches both the legacy
+        # selector-list form (`.card.wc-card.leaderboard-card,\n.card.wc-
+        # card.leaderboard-card a { ... }`) AND a hypothetical standalone
+        # block (`.card.wc-card.leaderboard-card { ... }`).
+        r'\.card\.wc-card\.leaderboard-card\s*[,{]',
+        r'\.card\.wc-card\.leaderboard-card \.text-muted\s*[,{]',
     ]
     for pattern in forbidden_rules:
         assert re.search(pattern, CSS) is None, (
