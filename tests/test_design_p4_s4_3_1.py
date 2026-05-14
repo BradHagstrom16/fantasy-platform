@@ -105,12 +105,24 @@ def test_pi1_direct_child_selector_was_retired_in_p3_5():
     nested light surface inside the champion banner's `.card-body`, so the
     forbidden-form lock survives the retirement."""
     css = CSS.read_text()
-    bad_form = '.card.wc-card .card-body p {'
-    assert bad_form not in css, (
-        f"Descendant-selector form `{bad_form}` would over-broadcast onto "
-        f"any nested light substrate inside the remaining .card.wc-card "
-        f"consumer (the champion banner). The direct-child rule retired in "
-        f"P3.5; the descendant form must not appear as a replacement."
+    # Anchored regex (start-of-line + re.MULTILINE, P3 CR R3-R4 idiom) so
+    # whitespace variants (`  `, `\t`), grouped-selector terminators (`,`
+    # instead of `{`), and brace-without-space (`p{`) are all caught.
+    # `\s+` (not `\s*>\s*`) requires at least one whitespace between
+    # tokens — that's the descendant combinator we're forbidding here;
+    # the retired direct-child form `> .card-body >` cannot match because
+    # `>` isn't whitespace, so this regex stays distinct from the PI-5
+    # rule it replaces in P3.5.
+    bad_form_pattern = re.compile(
+        r'^\.card\.wc-card\s+\.card-body\s+p\s*[,{]',
+        re.MULTILINE,
+    )
+    assert bad_form_pattern.search(css) is None, (
+        "Descendant-selector form `.card.wc-card .card-body p` would "
+        "over-broadcast onto any nested light substrate inside the "
+        "remaining .card.wc-card consumer (the champion banner). The "
+        "direct-child rule retired in P3.5; the descendant form must "
+        "not appear as a replacement."
     )
 
 
