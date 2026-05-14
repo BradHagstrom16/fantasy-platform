@@ -44,7 +44,7 @@
   {% if ranked_enrollments %}
 
   {# Desktop table #}
-  <div class="card wc-card border-0 d-none d-md-block animate-in mt-4">
+  <div class="card border-0 d-none d-md-block animate-in mt-4">
     <div class="card-body p-0">
       <div class="table-responsive">
         <table class="table table-worldcup leaderboard-table mb-0">
@@ -111,7 +111,7 @@
     {% set e = item.enrollment %}
     {% set is_me = current_user.is_authenticated and e.user_id == current_user.id %}
     {% set row_href = url_for('worldcup.picks') if is_me else url_for('worldcup.player_detail', enrollment_id=e.id) %}
-    <a href="{{ row_href }}" class="card wc-card border-0 mb-2 leaderboard-card leaderboard-card-link{% if is_me %} leaderboard-card-current{% endif %} animate-in">
+    <a href="{{ row_href }}" class="card border-0 mb-2 leaderboard-card leaderboard-card-link{% if is_me %} leaderboard-card-current{% endif %} animate-in">
       <div class="card-body p-3 d-flex align-items-center justify-content-between">
         <div class="d-flex align-items-center gap-3">
           <span class="fw-bold text-muted wc-numeral leaderboard-rank">{{ item.rank }}</span>

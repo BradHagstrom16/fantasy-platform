@@ -86,39 +86,56 @@ def test_pi1_move_column_has_tooltip():
     )
 
 
-def test_pi1_gold_divider_rule_threads_tribune_to_standings():
-    """A gold-divider rule sits between Your Position tribune and standings.
+def test_pi1_red_divider_rule_threads_tribune_to_standings():
+    """A red-divider rule sits between Your Position tribune and standings.
 
-    Lock the canonical adjacent-sibling selector pattern in `style.css`
-    so a future cleanup can't accidentally split the tribune block away
-    from the standings table without re-establishing the visual thread.
-    Targets both the desktop card and the mobile cards wrapper.
+    Lock the canonical adjacent-sibling selector pattern in `style.css` so
+    a future cleanup can't accidentally split the tribune block away from
+    the standings table without re-establishing the visual thread. Targets
+    both the desktop card and the mobile cards wrapper.
+
+    WC Tab Unification P2 flip: selector dropped `.wc-card` from the
+    compound when leaderboard.html migrated off `.card.wc-card`. The
+    tribune is leaderboard-only, so the broadened `+ .card` adjacent-
+    sibling selector still scopes correctly. Color flipped gold→red per
+    the new accent doctrine (red as primary on light WC substrates; gold
+    demoted to quaternary). DESIGN.md §6 Do major-section separator
+    pattern unchanged.
     """
     css = STYLE_CSS.read_text()
     # Adjacent-sibling rule must name both desktop and mobile receivers.
-    assert '.your-standing-tribune + .card.wc-card' in css, (
-        'Gold-divider rule must target `.your-standing-tribune + .card.wc-card` '
-        '(desktop standings card; S6.1.3 PI-1, Group J).'
+    assert '.your-standing-tribune + .card,' in css, (
+        'Red-divider rule must target `.your-standing-tribune + .card` '
+        '(desktop standings card; S6.1.3 PI-1, Group J — P2 flipped).'
     )
-    assert '.your-standing-tribune + .card.wc-card + .d-md-none' in css, (
-        'Gold-divider rule must also target the mobile cards wrapper via '
-        '`.your-standing-tribune + .card.wc-card + .d-md-none` so mobile '
-        'gets the same thread.'
+    assert '.your-standing-tribune + .card + .d-md-none' in css, (
+        'Red-divider rule must also target the mobile cards wrapper via '
+        '`.your-standing-tribune + .card + .d-md-none` so mobile gets the '
+        'same thread.'
     )
-    # And the rule must actually carry `border-top: 2px solid var(--gold)
+    # Regression lock: the pre-P2 `.your-standing-tribune + .card.wc-card`
+    # form must not re-appear in a live CSS rule. (`.card.wc-card` may still
+    # show up in unrelated rules — this assertion is specific to the
+    # adjacent-sibling tribune divider.)
+    assert '.your-standing-tribune + .card.wc-card' not in css, (
+        'Pre-P2 selector `.your-standing-tribune + .card.wc-card` must not '
+        're-appear — P2 flipped to `.your-standing-tribune + .card` in '
+        'lockstep with the BOARD migration.'
+    )
+    # And the rule must actually carry `border-top: 2px solid var(--wc-red)
     # !important` (the DESIGN.md §6 Do major-section separator pattern). The
     # `!important` is required to defeat Bootstrap's `.border-0` utility,
     # which the desktop standings card carries; a non-important declaration
     # would paint only on mobile.
     assert re.search(
-        r'\.your-standing-tribune \+ \.card\.wc-card,\s*'
-        r'\.your-standing-tribune \+ \.card\.wc-card \+ \.d-md-none\s*\{'
-        r'\s*border-top:\s*2px solid var\(--gold\)\s*!important\s*;',
+        r'\.your-standing-tribune \+ \.card,\s*'
+        r'\.your-standing-tribune \+ \.card \+ \.d-md-none\s*\{'
+        r'\s*border-top:\s*2px solid var\(--wc-red\)\s*!important\s*;',
         css,
     ), (
-        'Gold-divider rule must carry '
-        '`border-top: 2px solid var(--gold) !important;` per DESIGN.md §6 Do '
-        'canonical pattern; the !important defeats Bootstrap `.border-0`.'
+        'Red-divider rule must carry '
+        '`border-top: 2px solid var(--wc-red) !important;` per DESIGN.md §6 '
+        'Do canonical pattern; the !important defeats Bootstrap `.border-0`.'
     )
 
 

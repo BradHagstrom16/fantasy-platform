@@ -243,20 +243,56 @@ def test_f1_selected_after_uses_svg_mask():
 
 # ---------- F2: --wc-white token hygiene ----------
 
-def test_f2_multiplier_chip_uses_text_on_dark_not_wc_white():
-    """`.wc-multiplier-chip` color is `var(--text-on-dark)`, not the
-    undefined `var(--wc-white)`. PR #15 CR R7-D — anchor on the `color`
-    property via negative-lookbehind regex so a future
-    `background-color: var(--text-on-dark)` or
-    `border-color: var(--wc-white)` can't silently flip either assertion."""
+def test_f2_multiplier_chip_substrate_split_does_not_use_wc_white():
+    """`.wc-multiplier-chip` paints per-substrate, and never the undefined
+    `var(--wc-white)`. PR #15 CR R7-D originally locked
+    `color: var(--text-on-dark)` on the base when the chip ALWAYS sat on
+    `.card.wc-card`. WC Tab Unification P2 split that into a light base
+    (`color: var(--text-primary)` for player_detail.html post-P2) and a
+    `.card.wc-card .wc-multiplier-chip` carve-out preserving
+    `color: var(--text-on-dark)` (for picks.html ROSTER until P3). The
+    original CR intent — never reference the undefined `var(--wc-white)` —
+    survives the split unchanged.
+
+    Anchored on the `color` property via negative-lookbehind regex so a
+    future `background-color: var(--wc-white)` or `border-color: var(--wc-
+    white)` can't silently slip through. Both substrate rules are checked
+    so a regression on either branch is caught.
+    """
     css = CSS.read_text()
+
+    # (1) Base rule paints the light substrate.
     start = css.find('.wc-multiplier-chip {')
     block_end = css.find('}', start)
-    block = css[start:block_end]
-    assert re.search(r'(?<!-)color:\s*var\(--text-on-dark\)', block), \
-        '.wc-multiplier-chip must set color: var(--text-on-dark)'
-    assert not re.search(r'(?<!-)color:\s*var\(--wc-white\)', block), \
-        '.wc-multiplier-chip must not reference the undefined var(--wc-white) token'
+    base_block = css[start:block_end]
+    assert re.search(r'(?<!-)color:\s*var\(--text-primary\)', base_block), (
+        '.wc-multiplier-chip base must paint `color: var(--text-primary)` '
+        'on light substrate (P2 flip).'
+    )
+
+    # (2) `.card.wc-card .wc-multiplier-chip` carve-out preserves the dark
+    #     variant for ROSTER's read-only picks table until P3.
+    carve_start = css.find('.card.wc-card .wc-multiplier-chip {')
+    assert carve_start >= 0, (
+        '`.card.wc-card .wc-multiplier-chip` carve-out must exist to keep '
+        "ROSTER's read-only picks table on dark navy until P3."
+    )
+    carve_end = css.find('}', carve_start)
+    carve_block = css[carve_start:carve_end]
+    assert re.search(r'(?<!-)color:\s*var\(--text-on-dark\)', carve_block), (
+        '`.card.wc-card .wc-multiplier-chip` carve-out must paint '
+        '`color: var(--text-on-dark)`.'
+    )
+
+    # (3) Original CR intent: neither rule references the undefined token.
+    assert not re.search(r'(?<!-)color:\s*var\(--wc-white\)', base_block), (
+        '.wc-multiplier-chip base must not reference the undefined '
+        'var(--wc-white) token (PR #15 CR R7-D).'
+    )
+    assert not re.search(r'(?<!-)color:\s*var\(--wc-white\)', carve_block), (
+        '`.card.wc-card .wc-multiplier-chip` carve-out must not reference '
+        'the undefined var(--wc-white) token.'
+    )
 
 
 # ---------- PI-A1: contrast scope lock (folded in-iteration per §1.7) ----------

@@ -114,12 +114,53 @@ def test_pick_accordion_toggle_uses_light_token():
     assert '.pick-accordion-toggle.open {\n  transform: rotate(90deg);\n  color: var(--gold-light);\n}' in CSS
 
 
-def test_score_events_total_and_empty_lifted_to_light_tokens():
-    """The drill-down total line and the empty state both used
-    `color: var(--text-muted, #6c757d)`; lift to bone-mute on the dark
-    substrate so the totals and the "No scoring events yet." copy render."""
-    assert '.score-events-total {\n  padding: .5rem 1rem .75rem;\n  border-top: 1px dotted rgba(245, 241, 232, .14);\n  color: var(--bone-mute);' in CSS
-    assert '.score-events-empty {\n  padding: .75rem 1rem;\n  font-size: .85rem;\n  color: var(--bone-mute);' in CSS
+def test_score_events_total_and_empty_paint_per_substrate():
+    """The drill-down total line and the empty state both used Bootstrap's
+    `var(--text-muted, #6c757d)` originally — invisible on either WC body
+    substrate. S2.5.1 lifted them to `var(--bone-mute)` on the
+    `.card.wc-card` dark navy. WC Tab Unification P2 then split the rules
+    so the base paints the new LIGHT substrate (`var(--text-secondary)` /
+    `var(--text-primary)` on white, for player_detail.html post-P2) and a
+    `.card.wc-card .score-events-*` carve-out preserves the dark variant
+    (`var(--bone-mute)`) for picks.html ROSTER until P3 migrates it.
+
+    Lock both halves: (a) the light base reads on white,
+    (b) the dark carve-out reads on navy. Each is brittle to a regression
+    that would re-flatten the rules onto one substrate.
+    """
+    # (a) LIGHT base — player_detail post-P2 sits on plain `.card` (white).
+    assert (
+        '.score-events-total {\n  padding: .5rem 1rem .75rem;\n'
+        '  border-top: 1px dotted var(--border);\n'
+        '  color: var(--text-secondary);'
+    ) in CSS, (
+        '.score-events-total base must paint `color: var(--text-secondary)` '
+        'with a `var(--border)` dotted top — the light-substrate variant '
+        'for player_detail.html post-P2.'
+    )
+    assert (
+        '.score-events-empty {\n  padding: .75rem 1rem;\n'
+        '  font-size: .85rem;\n  color: var(--text-secondary);'
+    ) in CSS, (
+        '.score-events-empty base must paint `color: var(--text-secondary)` '
+        '— the light-substrate variant for player_detail.html post-P2.'
+    )
+
+    # (b) DARK carve-out — picks.html ROSTER read-only stays on navy until P3.
+    assert (
+        '.card.wc-card .score-events-total {\n'
+        '  border-top-color: rgba(245, 241, 232, .14);\n'
+        '  color: var(--bone-mute);\n}'
+    ) in CSS, (
+        '`.card.wc-card .score-events-total` carve-out must preserve the '
+        'bone-mute color + bone dotted border for ROSTER until P3.'
+    )
+    assert (
+        '.card.wc-card .score-events-empty { color: var(--bone-mute); }'
+    ) in CSS, (
+        '`.card.wc-card .score-events-empty` carve-out must preserve '
+        'bone-mute for ROSTER until P3.'
+    )
 
 
 # ---------------------------------------------------------------------------

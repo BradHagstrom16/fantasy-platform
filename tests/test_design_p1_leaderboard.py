@@ -122,25 +122,53 @@ def test_voice_microcopy_replaces_legacy_strings():
     assert 'The ledger awaits its first name.' in src
 
 
-def test_move_column_muted_states_lift_off_dark_surface():
-    """Even / Pending inherit `.text-muted` (#8A849B) which fades into the
-    `.card.wc-card` navy. The reshape ships a scoped lift to a bone tone
-    so those high-frequency states stay legible on dark surfaces. Lock it.
+def test_move_column_muted_states_inherit_bootstrap_text_muted_redirect():
+    """WC Tab Unification P2 retired the dark-substrate `.card.wc-card`-scoped
+    bone lifts on Move-column Even/Pending — leaderboard.html migrated off
+    `.card.wc-card` so the prior consumers are gone. Those states now inherit
+    Bootstrap's `.text-muted` directly on the new light substrate, which the
+    `:root { --bs-secondary-color: var(--text-secondary) }` redirect at
+    style.css :7183 lifts from sub-AA gray to a ~6.9:1 token (S6.1.1 PI-2).
+
+    Lock both halves of the new contract:
+    (1) the pre-P2 dark lifts cannot return,
+    (2) the Bootstrap-token redirect that paints the legible fallback survives.
+
+    Companion: `tests/test_design_wc_tab_unification_p2.py::
+    test_board_only_dark_card_rule_families_removed` is the forward-locking
+    counterpart enforcing (1) across the broader BOARD rule family.
     """
     css = CSS.read_text()
-    pattern = (
+    # (1) Pre-P2 dark lifts must not return.
+    mobile_pattern = (
         r'\.card\.wc-card\.leaderboard-card\s+\.leaderboard-move-mobile\s+'
         r'\.rank-delta-(even|pending)'
     )
-    assert re.search(pattern, css), \
-        'Mobile-card Even/Pending must be lifted to bone on .card.wc-card'
-    # Current-user desktop row also overrides td bg to solid navy — same lift.
+    assert not re.search(mobile_pattern, css), (
+        'Pre-P2 mobile dark-lift on `.rank-delta-(even|pending)` must not '
+        're-appear — the consumer (`.leaderboard-card` on `.card.wc-card`) '
+        'is gone after P2.'
+    )
     desktop_pattern = (
         r'\.card\.wc-card\s+\.leaderboard-table\s+\.row-current-user\s+>\s+'
         r'td\s+\.rank-delta-(even|pending)'
     )
-    assert re.search(desktop_pattern, css), \
-        'Current-user row Even/Pending must be lifted to bone on .card.wc-card'
+    assert not re.search(desktop_pattern, css), (
+        'Pre-P2 desktop dark-lift on `.rank-delta-(even|pending)` must not '
+        're-appear — `.leaderboard-table` inside `.card.wc-card` no longer '
+        'exists after P2.'
+    )
+    # (2) The Bootstrap `.text-muted` token redirect that paints the new
+    # legible fallback must survive.
+    assert re.search(
+        r'--bs-secondary-color:\s*var\(--text-secondary\)',
+        css,
+    ), (
+        'Bootstrap `.text-muted` must redirect to `var(--text-secondary)` '
+        'via the `:root` override at style.css :7183 (S6.1.1 PI-2) — this is '
+        'the AA-clearing fallback that the old dark-card-scoped lifts made '
+        'redundant.'
+    )
 
 
 def test_mobile_placeholder_no_longer_uses_em_dash_glyph():
