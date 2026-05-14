@@ -119,12 +119,29 @@ Accent vocabulary (order matters — first three lead, last one whispers)
 **Phase 3 — ROSTER read-only (post-deadline desktop table)**
 - The ROSTER edit form is already `.tier-card` white. Only the post-deadline read-only view wraps in `.card.wc-card`. Migrate that wrapper out.
 - Pattern is the same as Phase 2's leaderboard migration; benefits from the conventions locked there.
+- P3 exploration found three wrappers (not one — the pre-deadline edit-form sidebar tiebreak card was also on `.card.wc-card`), plus two unmigrated surfaces outside any named phase: `team_detail.html:84` fixture wrapper and `rules.html` × 7 wrappers (the original §2 audit rated RULES "white throughout" but that was a misread — the inner tables are white-masked, the substrate is navy). Folded into Phase 3.5 to keep blast radius bounded.
+
+**Phase 3.5 — Audit-miss cleanup (`team_detail.html` + `rules.html` migration)**
+- Two surfaces that didn't appear in the original phase grid but turn out to need the same Casual-Light flip. Each migrates off `.card.wc-card` onto plain Bootstrap `.card` (white), same pattern as P2/P3:
+  - `team_detail.html:84` — single `.card.wc-card.wc-card-flush` wrapper around the fixture-list. Substrate-only flip (no shared carve-outs to retire — fixture rows use scoped classes that already paint dark-on-white).
+  - `rules.html` × 7 wrappers (lines 29, 41, 114, 161, 192, 244, 255). Inner tables already white-masked via `.card.wc-card .table` so the visual delta is just the outer substrate.
+- Two CSS lifts orphan in lockstep — each retires only after a grep confirms zero remaining DOM consumer (the `_home_post.html` champion banner is the only other `.card.wc-card` user; check whether it consumes either rule):
+  - `.card.wc-card .table { --bs-table-bg: var(--bg-card); }` (`style.css:6794`) — white-masks Bootstrap tables inside dark cards.
+  - `.card.wc-card > .card-body > p|ul|ol|h2-h6 { color: var(--text-on-dark); }` (`:6821-6831`, S4.3.1 PI-1) — lifts direct prose to bone.
+- Pattern locks in `tests/test_design_wc_tab_unification_p3_5.py` mirroring P3's shape (PI-1 + PI-2: each template has zero `.card.wc-card`; additional PIs as needed for any retired-orphan rules).
 
 **Phase 4 — SCHEDULE (light polish only)**
 - SCHEDULE is already light-ish (3.5/5). Audit its match-row patterns against the locked Stats reference and align typography + spacing. No substrate change needed.
 
 **Phase 5 — Cleanup + DESIGN.md/CLAUDE.md update**
-- Once nothing uses `.card.wc-card` for content, retire the rule and its pattern-lock tests.
+- After P3.5 the only `.card.wc-card` consumer left is the deliberate `_home_post.html` champion banner. P5 either retires that too (migrating the wrapper class to a dedicated `.wc-champion-banner` primitive) or scopes `.card.wc-card` to that single surface as the final dark-gold ceremonial slot.
+- Retire the orphan rules the prior phases preserved for cross-tab consumers:
+  - `.card.wc-card.player-picks-desktop .table-worldcup > tbody > tr > td .text-muted` cluster-buster (P3-orphaned, harmless until the parent rule retires).
+  - `.card.wc-card .wc-eyebrow:not(.wc-eyebrow-red):not(.wc-eyebrow-gold)` (cross-tab dark-substrate eyebrow lift, S6.1.1 PI-1).
+  - `.card.wc-card .table-worldcup .row-current-user > td a` (P1-preserved cross-tab carve-out).
+  - `.card.wc-card .wc-numeral` (`:2810`), `.card.wc-card .btn-outline-secondary` (`:2839`) — verify each against the champion banner before retiring.
+  - Two `:not(.player-picks-desktop)` selectors at `style.css:2824` + `:6852` simplify (the negation is redundant after P3 since `.player-picks-desktop` is no longer wrapped in `.card.wc-card`).
+- Retire associated pattern-lock tests (`test_design_p6_s6_1_1.py::test_pi1_dark_card_eyebrow_lift_rule_exists` and siblings).
 - Update CLAUDE.md's "dark `.card.wc-card` surface" notes — replace with the new Casual-Light pattern documentation.
 - Update DESIGN.md to retire the Tribune-Dark primitive and codify the Casual-Light pattern with the accent rank doctrine. Brad drafts this section per his load-bearing-doc preference; the assistant restructures for the consuming tool.
 - Run `$impeccable critique` on each of the 6 tabs to verify the score improvement.
@@ -136,7 +153,7 @@ Accent vocabulary (order matters — first three lead, last one whispers)
 1. **Pivot direction**: yes — move WC's body from "Tribune-Dark" to "Casual-Light." Dark navy hero stays as the WC signature.
 2. **`.btn-game` red**: **global on WC**. `body.game-worldcup .btn-game` repaints red so every WC button reads red regardless of substrate.
 3. **Leaderboard `<thead>`**: **stays navy, white body**. Strongest USA pattern.
-4. **Migration order**: P0 → HUB → BOARD → ROSTER → SCHEDULE → cleanup. Each phase ships as its own PR.
+4. **Migration order**: P0 → HUB → BOARD → ROSTER → audit-miss cleanup (`team_detail` + `rules`) → SCHEDULE → final cleanup. Each phase ships as its own PR. P3.5 was added mid-project after P3 exploration surfaced two unmigrated surfaces that didn't appear in the original audit grid.
 5. **Accent rank-order**: red → white → navy → gold. Gold is **quaternary** — reserved for focus rings (a11y lock), champion banners, podium glow only.
 
 ---
@@ -150,7 +167,8 @@ Accent vocabulary (order matters — first three lead, last one whispers)
 - WC templates:
   - `games/worldcup/templates/worldcup/home_shell.html` + `_home_pre.html` / `_home_live.html` / `_home_post.html` / `_home_out.html` (Phase 1)
   - `games/worldcup/templates/worldcup/leaderboard.html` + `player_detail.html` (Phase 2)
-  - `games/worldcup/templates/worldcup/picks.html` (Phase 3 — read-only only)
+  - `games/worldcup/templates/worldcup/picks.html` (Phase 3 — all three wrappers, not "read-only only" as the original sketch said)
+  - `games/worldcup/templates/worldcup/team_detail.html` + `rules.html` (Phase 3.5 — audit-miss cleanup)
   - `games/worldcup/templates/worldcup/schedule.html` (Phase 4)
 - Pattern-lock tests:
   - `tests/test_design_p2_s2_4_1.py::test_is_lead_css_uses_red_rule_top_no_border` — updated in Phase 0 (gold→red flip)
