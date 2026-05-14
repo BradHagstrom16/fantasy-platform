@@ -16,8 +16,8 @@
 | P0 | Quick wins + scorecard codification | [#22](https://github.com/BradHagstrom16/fantasy-platform/pull/22) | Open (awaiting review) | — |
 | P1 | HUB body migration | [#23](https://github.com/BradHagstrom16/fantasy-platform/pull/23) | Open (awaiting review) | — |
 | P2 | BOARD body migration | [#24](https://github.com/BradHagstrom16/fantasy-platform/pull/24) | Merged | 2026-05-14 |
-| P3 | ROSTER read-only migration | [#25](https://github.com/BradHagstrom16/fantasy-platform/pull/25) | Open (awaiting review) | — |
-| P3.5 | Audit-miss cleanup: `team_detail.html` + `rules.html` migration | — | Pending | — |
+| P3 | ROSTER read-only migration | [#25](https://github.com/BradHagstrom16/fantasy-platform/pull/25) | Merged | 2026-05-14 |
+| P3.5 | Audit-miss cleanup: `team_detail.html` + `rules.html` migration | [#26](https://github.com/BradHagstrom16/fantasy-platform/pull/26) | Open (awaiting review) | — |
 | P4 | SCHEDULE light polish | — | Pending | — |
 | P5 | Cleanup: retire `.card.wc-card` + update DESIGN.md/CLAUDE.md | — | Pending | — |
 
@@ -52,7 +52,7 @@ Carried over from the plan (and the in-session question-tool answers).
 1. **Pivot direction**: yes — move WC's body from "Tribune-Dark" to "Casual-Light." Dark navy hero stays as the WC signature.
 2. **`.btn-game` red**: **global on WC**. `body.game-worldcup .btn-game` repaints red so every WC button reads red regardless of substrate.
 3. **Leaderboard `<thead>`**: **stays navy, white body**. Strongest USA pattern.
-4. **Migration order**: P0 → HUB → BOARD → ROSTER → SCHEDULE → cleanup. Each phase ships as its own PR.
+4. **Migration order**: P0 → HUB → BOARD → ROSTER → audit-miss cleanup (`team_detail` + `rules`) → SCHEDULE → final cleanup. Each phase ships as its own PR. P3.5 was added mid-project after P3 exploration surfaced two unmigrated surfaces that didn't appear in the original audit grid.
 5. **Accent rank-order**: red → white → blue → gold. Gold is **quaternary** — reserved for focus rings (a11y lock, `--gold-light`), champion banners, podium glow only.
 
 ---
@@ -146,14 +146,29 @@ Carried over from the plan (and the in-session question-tool answers).
 
 ### P3.5 — Audit-miss cleanup (`team_detail.html` + `rules.html` migration)
 
-**Branch (planned)**: `worldcup/tab-unification-phase-3-5` off main after PR #25 merges.
-**Targets**:
-- `team_detail.html:84` — single `.card.wc-card.wc-card-flush` wrapper around the fixture-list. Strip `wc-card`, keep `wc-card-flush`.
-- `rules.html` × 7 wrappers — same flip on each.
-- Orphan-candidate CSS rules — retire only after a grep confirms zero remaining DOM consumer (the `_home_post.html` champion banner is the only other `.card.wc-card` user; verify it doesn't consume each rule before retiring):
-  - `.card.wc-card .table { --bs-table-bg: var(--bg-card); }` (`style.css:6794`) — white-table-mask for tables inside dark cards. After RULES migrates, the only consumer is the champion banner; if it has no `<table>` inside (likely — it's a ceremonial banner), retire.
-  - `.card.wc-card > .card-body > p|ul|ol|h2-h6 { color: var(--text-on-dark); }` (S4.3.1 PI-1 at `:6821-6831`) — direct-prose bone lift. Same orphan analysis.
-- Pattern locks in `tests/test_design_wc_tab_unification_p3_5.py` mirroring P3's shape (PI-1 + PI-2: each template has zero `.card.wc-card`; additional PIs for any retired orphans).
+**Branch**: `worldcup/tab-unification-phase-3-5`.
+**Shipped**:
+- `team_detail.html:84` migrated off `.card.wc-card`: `<div class="card border-0 wc-card wc-card-flush">` → `<div class="card border-0 wc-card-flush">` (strip `wc-card`, keep `wc-card-flush` zero-padding utility).
+- `rules.html` × 7 wrappers (lines 29, 41, 114, 161, 192, 244, 255) migrated: `<div class="card border-0 mb-4 animate-in [stagger-N] wc-card">` → `<div class="card border-0 mb-4 animate-in [stagger-N]">`. None had `wc-card-flush`, so the strip is the only change.
+- **Both CSS orphan rule clusters retired in lockstep** (every DOM consumer migrated off the dark substrate; champion banner verified contains no `<table>` and no direct-child `<ul>/<ol>/<h2..h6>`):
+  - `.card.wc-card .table { --bs-table-bg: var(--bg-card); }` (style.css :6794, P2 S2.6 PI-1) — the Bootstrap white-td mask.
+  - `.card.wc-card .table > tbody > tr > td .text-muted` exclusion (style.css :6804) — chained on the rule above; orphan since P3 retired `_pick_row.html` as a `.card.wc-card` consumer.
+  - `.card.wc-card > .card-body > p|ul|ol|li|h2|h3|h4|h5|h6 { color: var(--text-on-dark); }` (style.css :6821-6831, S4.3.1 PI-1) — direct-prose bone lift. The champion banner's only matching direct-child `<p class="champion-retrospect">` carries its own scoped color rule at style.css :7068 (specificity 0,0,3,0 vs 0,0,2,1 for the retired cluster), so retirement has zero visual impact on the surviving consumer.
+- Surrounding block-level explanatory comments (the S2.6 PI-1 invariant block and the S4.3.1 PI-1 reasoning block) retired with the rules per CLAUDE.md's "delete completely" guidance.
+- **Preserved until P5**: the `.card.wc-card .text-muted` lift at `:6770` and the `.card.wc-card:not(.player-picks-desktop) .table-worldcup .wc-multiplier-chip` PI-2 rule at `:6852` (the latter now functionally orphan post-P3.5, but routed to P5 per the prior discoveries decision — simplifying `:not(.player-picks-desktop)` in isolation creates a vestigial diff P5 has to revisit). The lift at `:6770` still has the champion banner's `<div class="text-muted">` ("Champion not yet declared...") as a consumer when the post-state final has no winner yet.
+
+**Tests**:
+- New: `tests/test_design_wc_tab_unification_p3_5.py` — 5 regression locks (PI-1 team_detail.html zero `.card.wc-card`; PI-2 rules.html zero `.card.wc-card`; PI-3 `.card.wc-card .table` mask absent with start-of-line `^...` anchor + `re.MULTILINE` per P3 CR R3-R4; PI-4 `.card.wc-card .table > tbody > tr > td .text-muted` exclusion absent, same anchor style; PI-5 `.card.wc-card > .card-body > p|ul|ol|li|h2..h6` 10-selector cluster absent, looping over every selector head individually so a partial restore is also caught).
+- Rewritten in lockstep — function names inverted to `_was_retired_in_p3_5` (mirrors P3's `..._was_retired_in_p3` precedent):
+  - `tests/test_design_p2_s2_6.py::test_card_wc_card_table_pi1_rule_was_retired_in_p3_5` (was `..._locks_bs_table_bg_to_bg_card`).
+  - `tests/test_design_p2_s2_6.py::test_card_wc_card_table_pi1_surgical_exclusion_was_retired_in_p3_5` (was `..._still_present`).
+  - `tests/test_design_p4_s4_3_1.py::test_pi1_card_wc_card_card_body_prose_rule_was_retired_in_p3_5` (was `..._lifted_to_bone`).
+  - `tests/test_design_p4_s4_3_1.py::test_pi1_direct_child_selector_was_retired_in_p3_5` (was `..._excludes_nested_light_substrate`; the forbidden-descendant-form assertion survives the rename since the descendant-broadcast risk still applies to the surviving champion-banner consumer).
+- Full suite: **757 / 757 passing** (752 P3 baseline + 5 new P3.5 locks; four pre-existing tests rewritten in place, no net delete).
+
+**Visual smoke**: Confirmed via Playwright on dev — per `feedback_state_shell_smoke_coverage.md`. Pre-deadline (`WC_FAKE_NOW='2026-06-01T12:00:00+00:00'`): `/worldcup/rules` shows 7 white-on-bone cards, DevTools probe `getComputedStyle(firstWrapper).backgroundColor === 'rgb(255, 255, 255)'` (was `rgba(0, 17, 46, 0.8)` pre-P3.5 per §2 audit-miss note), `document.querySelectorAll('.card.wc-card').length === 0`. `/worldcup/team/1` (Spain) wrapper class confirmed `card border-0 wc-card-flush` (no `wc-card`), white substrate. Post-deadline (`WC_FAKE_NOW='2026-07-05T12:00:00+00:00'`): same `/worldcup/team/1` migration confirmed; "You own this nation" ownership ribbon shows count + percent (D11 unmask), "Who Picked This" surfaces. **Cross-tab probe** at `/worldcup/` (post-state): `document.querySelectorAll('.card.wc-card').length === 1` — the single remaining consumer is the `_home_post.html` champion banner at `rgba(0, 17, 46, 0.8)` (preserved deliberately per the accent doctrine).
+
+**Detector**: skipped per the per-phase cadence (P1/P2/P3 also skipped; routed to P5 if any new findings surface).
 
 ### P4 — SCHEDULE light polish
 

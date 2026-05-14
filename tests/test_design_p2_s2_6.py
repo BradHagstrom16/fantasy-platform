@@ -63,36 +63,49 @@ CSS = (ROOT / 'static' / 'css' / 'style.css').read_text()
 
 
 # ---------------------------------------------------------------------------
-# PI-1: Lock the Bootstrap-on-.card.wc-card .table white-td invariant
+# PI-1: Lockstep-inverted in P3.5 — the .card.wc-card .table mask cluster
+# retired when rules.html + team_detail.html migrated off the dark substrate.
+# After P3.5 the only .card.wc-card consumer is the _home_post.html champion
+# banner, which contains no Bootstrap table — so the white-td invariant has
+# zero DOM consumer and the rule is fully orphaned. The lockstep rewrite
+# (function rename to `..._was_retired_in_p3_5`) mirrors P3's precedent
+# `tests/test_design_wc_tab_unification_p2.py::test_pick_events_item_dark_carve_out_was_retired_in_p3`.
 # ---------------------------------------------------------------------------
 
-def test_card_wc_card_table_pi1_locks_bs_table_bg_to_bg_card():
-    """`.card.wc-card .table { --bs-table-bg: var(--bg-card); }` makes the
-    white-td masking a CCC-owned design decision rather than an implicit
-    Bootstrap default. The `.text-muted` surgical exclusion at ~:5485
-    depends on this invariant; the lock guards future `.card.wc-card .table`
-    surfaces from re-surfacing the S2.5.1 dark-on-dark bug."""
+def test_card_wc_card_table_pi1_rule_was_retired_in_p3_5():
+    """The `.card.wc-card .table { --bs-table-bg: var(--bg-card); }` cluster
+    invariant lock retired in P3.5. Anchored regex (start-of-line +
+    `re.MULTILINE`, P3 CR R3-R4 idiom) so a substring match inside another
+    rule can't false-pass."""
     pattern = re.compile(
-        r'\.card\.wc-card\s+\.table\s*\{[^}]*--bs-table-bg:\s*var\(--bg-card\)',
-        re.DOTALL,
+        r'^\.card\.wc-card\s+\.table\s*\{',
+        re.MULTILINE,
     )
-    assert pattern.search(CSS), (
-        "S2.6 PI-1 defensive default `.card.wc-card .table { --bs-table-bg: "
-        "var(--bg-card); }` missing from style.css. Removing it re-introduces "
-        "the latent risk that any new .card.wc-card-wrapped Bootstrap table "
-        "renders dark-on-dark, undoing the S2.5.1 cluster invariant."
+    assert pattern.search(CSS) is None, (
+        "S2.6 PI-1 `.card.wc-card .table { --bs-table-bg: var(--bg-card); }` "
+        "must stay retired post-P3.5 — the rule's only DOM consumer was the "
+        "rules.html / team_detail.html / picks.html wrappers, all migrated "
+        "off .card.wc-card. Re-introducing it would orphan into the champion "
+        "banner (which has no <table>) and re-attach a dependency the next "
+        "wrapper migration would have to break again."
     )
 
 
-def test_card_wc_card_table_pi1_surgical_exclusion_still_present():
-    """The .text-muted surgical exclusion at the cluster-3 block must stay
-    intact — the PI-1 invariant lock is the foundation it depends on, not a
-    replacement for it. Removing the exclusion would re-introduce the
-    bone-on-white invisibility for the _pick_row.html "Grp X" caption."""
-    assert re.search(
-        r'\.card\.wc-card\s+\.table\s*>\s*tbody\s*>\s*tr\s*>\s*td\s*\.text-muted',
-        CSS,
-    ), "PI-1 invariant lock removed the surgical exclusion it was protecting."
+def test_card_wc_card_table_pi1_surgical_exclusion_was_retired_in_p3_5():
+    """The `.card.wc-card .table > tbody > tr > td .text-muted` exclusion
+    (the cluster-3 buster that paired with the PI-1 lock above) retired in
+    lockstep — it had no functional consumer once the lock above retired
+    (no `.card.wc-card .table` to apply the lock means no light-substrate td
+    to need the exclusion). Anchored regex per the P3 CR R3-R4 idiom."""
+    pattern = re.compile(
+        r'^\.card\.wc-card\s+\.table\s*>\s*tbody\s*>\s*tr\s*>\s*td\s*\.text-muted',
+        re.MULTILINE,
+    )
+    assert pattern.search(CSS) is None, (
+        "S2.6 PI-1 surgical exclusion re-appeared post-P3.5. The orphan "
+        "retirement is chained on the PI-1 rule's retirement — restoring it "
+        "without restoring the rule above leaves a vestigial selector."
+    )
 
 
 # ---------------------------------------------------------------------------
