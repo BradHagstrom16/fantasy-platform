@@ -137,7 +137,7 @@ def test_leaderboard_card_current_carries_red_border_on_plain_card():
         '!important; }`.'
     )
     assert not re.search(
-        r'\.card\.wc-card\.leaderboard-card-current\s*\{',
+        r'\.card\.wc-card\.leaderboard-card-current\s*[,{]',
         CSS,
     ), (
         'Pre-P2 `.card.wc-card.leaderboard-card-current` rule must be '
@@ -196,11 +196,11 @@ def test_player_picks_desktop_dark_carve_out_was_retired_in_p3():
     "preserve cross-tab carve-outs until P5" note).
     """
     forbidden = [
-        r'\.card\.wc-card\.player-picks-desktop \.table-worldcup > tbody > tr > td\s*\{',
-        r'\.card\.wc-card\.player-picks-desktop \.table-worldcup > tbody > tr:hover > td\s*\{',
-        r'\.card\.wc-card\.player-picks-desktop \.table-worldcup > tfoot > tr > td\s*\{',
-        r'\.card\.wc-card\.player-picks-desktop \.team-link\s*\{',
-        r'\.card\.wc-card\.player-picks-desktop \.team-link:hover\s*\{',
+        r'\.card\.wc-card\.player-picks-desktop \.table-worldcup > tbody > tr > td\s*[,{]',
+        r'\.card\.wc-card\.player-picks-desktop \.table-worldcup > tbody > tr:hover > td\s*[,{]',
+        r'\.card\.wc-card\.player-picks-desktop \.table-worldcup > tfoot > tr > td\s*[,{]',
+        r'\.card\.wc-card\.player-picks-desktop \.team-link\s*[,{]',
+        r'\.card\.wc-card\.player-picks-desktop \.team-link:hover\s*[,{]',
     ]
     for pattern in forbidden:
         assert re.search(pattern, CSS) is None, (
@@ -246,8 +246,8 @@ def test_pick_events_item_dark_carve_out_was_retired_in_p3():
     "removed in lockstep" pattern.
     """
     forbidden = [
-        r'\.card\.wc-card \.pick-events-list \.pick-event-item\s*\{',
-        r'\.card\.wc-card \.pick-event-stage\s*\{',
+        r'\.card\.wc-card \.pick-events-list \.pick-event-item\s*[,{]',
+        r'\.card\.wc-card \.pick-event-stage\s*[,{]',
     ]
     for pattern in forbidden:
         assert re.search(pattern, CSS) is None, (
@@ -279,8 +279,8 @@ def test_board_only_dark_card_rule_families_removed():
         r'\.card\.wc-card \.leaderboard-table \.row-current-user > td \.rank-delta-up\s*[,{]',
         r'\.card\.wc-card \.leaderboard-table \.row-current-user > td \.rank-delta-down\s*[,{]',
         # Desktop leaderboard-table thead + row-current-user lifts.
-        r'\.card\.wc-card \.leaderboard-table thead th\s*\{',
-        r'\.card\.wc-card \.leaderboard-table \.row-current-user > td\s*\{',
+        r'\.card\.wc-card \.leaderboard-table thead th\s*[,{]',
+        r'\.card\.wc-card \.leaderboard-table \.row-current-user > td\s*[,{]',
         # Mobile leaderboard-card text overrides. Each pattern accepts `[,{]`
         # as the terminator so a future regression catches both the legacy
         # selector-list form (`.card.wc-card.leaderboard-card,\n.card.wc-

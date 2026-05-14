@@ -1,5 +1,16 @@
 """P2 S2.5.1 regression locks — first iteration of the player_detail surface.
 
+PR #25 CR R1: the two `..._carries_explicit_color_per_substrate_doctrine` tests
+(`test_pick_table_tbody_td_*` + `test_pick_event_stage_*`) originally used pure
+substring `in CSS` assertions to check the light-substrate base rules. A
+prefixed re-introduction (e.g., `.card.wc-card.player-picks-desktop ...` or
+`.card.wc-card .pick-event-stage ...`) would also contain the substring,
+giving a false-positive pass. Both rewrote to use the block-scoped-regex +
+`(?<!-)color:` property-anchor pattern from PR #15 CR R7-D (already used by
+test_design_wc_tab_unification_p2.py PI-4 and the new P3 PI-4). Same fix on
+both occurrences.
+
+
 Layer A (per plan §1.3) source-pattern locks for the Priority Issues landed
 in S2.5.1. Each test pins a structural decision the impeccable critique
 surfaced as P0/P1 and that S2.5.1 closed.
@@ -77,16 +88,32 @@ def test_pick_table_tbody_td_carries_explicit_color_per_substrate_doctrine():
 
     The `--bs-table-bg` mask defused via `background-color: transparent`
     on the cells is part of the same lift — preserved through every phase.
+
+    Per PR #25 CR R1: regex-anchored both selector (negative lookbehind
+    rejects `.card.wc-card.player-picks-desktop ...` prefixed re-introductions)
+    and property (`(?<![-\\w])color:` rejects hyphenated names like
+    `background-color:` / `border-color:` that share the same `var(--text-
+    primary)` value). Mirrors test_design_wc_tab_unification_p2.py PI-4.
     """
-    assert (
-        '.player-picks-desktop .table-worldcup > tbody > tr > td {\n'
-        '  color: var(--text-primary);'
-    ) in CSS, (
-        'Post-P3 base must paint `color: var(--text-primary)` on the cell — '
-        'the light-substrate variant inherited from P2 with the carve-out '
-        'retired.'
+    import re
+    match = re.search(
+        r'(?<!\.card\.wc-card)\.player-picks-desktop \.table-worldcup > tbody > tr > td\s*\{([^}]+)\}',
+        CSS,
     )
-    assert 'background-color: transparent' in CSS
+    assert match is not None, (
+        'Expected a base `.player-picks-desktop .table-worldcup > tbody > tr '
+        '> td` rule (the light-substrate path inherited from P2 with the '
+        'carve-out retired in P3).'
+    )
+    block = match.group(1)
+    assert re.search(r'(?<![-\w])color:\s*var\(--text-primary\)', block), (
+        f'Post-P3 base must paint `color: var(--text-primary)` on the cell; '
+        f'block={block!r}.'
+    )
+    assert 'background-color: transparent' in block, (
+        f'`--bs-table-bg` mask defuse must remain on the same cell rule; '
+        f'block={block!r}.'
+    )
 
 
 def test_pick_table_no_longer_forces_dark_text_on_multiplier_chip():
@@ -115,10 +142,24 @@ def test_pick_event_stage_carries_explicit_color_per_substrate_doctrine():
     The S2.5.1 invariant — "the date column carries an explicit color, not
     inherited `currentColor`" — survives all three flips. Lock the value
     evolves with the substrate doctrine (currently `var(--text-secondary)`).
+
+    Per PR #25 CR R1: regex-anchored both selector (negative lookbehind on
+    `.card.wc-card ` rejects descendant-prefix re-introductions) and
+    property (`(?<![-\\w])color:` rejects hyphenated names). Same pattern
+    as test_design_wc_tab_unification_p2.py PI-6's light-base assertion.
     """
-    assert '.pick-event-stage { color: var(--text-secondary); }' in CSS, (
-        'Post-P3 must paint `color: var(--text-secondary)` — the light-'
-        'substrate variant inherited from P2 with the carve-out retired.'
+    import re
+    match = re.search(
+        r'(?<!\.card\.wc-card )\.pick-event-stage\s*\{([^}]+)\}',
+        CSS,
+    )
+    assert match is not None, (
+        'Expected a base `.pick-event-stage` rule (the light-substrate '
+        'path inherited from P2 with the carve-out retired in P3).'
+    )
+    block = match.group(1)
+    assert re.search(r'(?<![-\w])color:\s*var\(--text-secondary\)', block), (
+        f'Post-P3 must paint `color: var(--text-secondary)`; block={block!r}.'
     )
 
 

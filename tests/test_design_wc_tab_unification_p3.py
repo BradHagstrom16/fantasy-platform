@@ -76,8 +76,8 @@ def test_pick_events_dark_carve_outs_absent():
     inside light `.player-picks-desktop` cards.
     """
     forbidden = [
-        r'\.card\.wc-card \.pick-events-list \.pick-event-item\s*\{',
-        r'\.card\.wc-card \.pick-event-stage\s*\{',
+        r'\.card\.wc-card \.pick-events-list \.pick-event-item\s*[,{]',
+        r'\.card\.wc-card \.pick-event-stage\s*[,{]',
     ]
     for pattern in forbidden:
         assert re.search(pattern, CSS) is None, (
@@ -97,8 +97,8 @@ def test_score_events_dark_carve_outs_absent():
     """
     forbidden = [
         r'\.card\.wc-card \.score-events-total\s*[,{]',
-        r'\.card\.wc-card \.score-events-total strong\s*\{',
-        r'\.card\.wc-card \.score-events-empty\s*\{',
+        r'\.card\.wc-card \.score-events-total strong\s*[,{]',
+        r'\.card\.wc-card \.score-events-empty\s*[,{]',
     ]
     for pattern in forbidden:
         assert re.search(pattern, CSS) is None, (
@@ -160,11 +160,11 @@ def test_player_picks_desktop_dark_compound_family_absent():
     as a vestigial orphan awaiting P5's full `.card.wc-card` retirement.
     """
     forbidden = [
-        r'\.card\.wc-card\.player-picks-desktop \.table-worldcup > tbody > tr > td\s*\{',
-        r'\.card\.wc-card\.player-picks-desktop \.table-worldcup > tbody > tr:hover > td\s*\{',
-        r'\.card\.wc-card\.player-picks-desktop \.table-worldcup > tfoot > tr > td\s*\{',
-        r'\.card\.wc-card\.player-picks-desktop \.team-link\s*\{',
-        r'\.card\.wc-card\.player-picks-desktop \.team-link:hover\s*\{',
+        r'\.card\.wc-card\.player-picks-desktop \.table-worldcup > tbody > tr > td\s*[,{]',
+        r'\.card\.wc-card\.player-picks-desktop \.table-worldcup > tbody > tr:hover > td\s*[,{]',
+        r'\.card\.wc-card\.player-picks-desktop \.table-worldcup > tfoot > tr > td\s*[,{]',
+        r'\.card\.wc-card\.player-picks-desktop \.team-link\s*[,{]',
+        r'\.card\.wc-card\.player-picks-desktop \.team-link:hover\s*[,{]',
     ]
     for pattern in forbidden:
         assert re.search(pattern, CSS) is None, (
