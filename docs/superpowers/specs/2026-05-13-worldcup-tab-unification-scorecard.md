@@ -16,7 +16,8 @@
 | P0 | Quick wins + scorecard codification | [#22](https://github.com/BradHagstrom16/fantasy-platform/pull/22) | Open (awaiting review) | — |
 | P1 | HUB body migration | [#23](https://github.com/BradHagstrom16/fantasy-platform/pull/23) | Open (awaiting review) | — |
 | P2 | BOARD body migration | [#24](https://github.com/BradHagstrom16/fantasy-platform/pull/24) | Merged | 2026-05-14 |
-| P3 | ROSTER read-only migration | — | Pending | — |
+| P3 | ROSTER read-only migration | [#25](https://github.com/BradHagstrom16/fantasy-platform/pull/25) | Open (awaiting review) | — |
+| P3.5 | Audit-miss cleanup: `team_detail.html` + `rules.html` migration | — | Pending | — |
 | P4 | SCHEDULE light polish | — | Pending | — |
 | P5 | Cleanup: retire `.card.wc-card` + update DESIGN.md/CLAUDE.md | — | Pending | — |
 
@@ -35,7 +36,10 @@ Captured pre-P0 from the impeccable critique that opened this project.
 | BOARD | — | — | — | TBD before P2 |
 | SCHEDULE | — | — | — | TBD before P4 |
 | STATS | — | — | 0 | Already at target |
-| RULES | — | — | 0 | Already at target |
+| RULES | — | — | 0 | Already at target — **AUDIT MISS** (see note below) |
+| team_detail | — | — | — | Discovered during P3 (not in original grid) |
+
+**RULES audit miss** (recorded 2026-05-14, after P3): the original "white throughout (5/5)" rating was a misread. The page's 7 content cards (`rules.html:29, 41, 114, 161, 192, 244, 255`) wrap in `.card.wc-card` (dark navy substrate at `rgba(0, 17, 46, .8)`); only the inner tables read white because `.card.wc-card .table { --bs-table-bg: var(--bg-card) }` (style.css:6794) masks Bootstrap. The eye lands on the white tables and misses the dark substrate underneath the prose sections. P3.5 captures the correction — `rules.html` migrates to plain `.card` alongside `team_detail.html`. Visual confirmation 2026-05-14: dark substrate live-probed via DevTools (`background-color: rgba(0, 17, 46, 0.8)`) on the "How It Works" card outer wrapper.
 
 Per-tab final scores recorded as phases close.
 
@@ -110,9 +114,46 @@ Carried over from the plan (and the in-session question-tool answers).
 
 ### P3 — ROSTER read-only migration
 
-**Branch (planned)**: `worldcup/tab-unification-phase-3`.
+**Branch**: `worldcup/tab-unification-phase-3`.
+**Shipped**:
+- `picks.html` three `.card.wc-card.wc-card-flush` wrappers migrated off the dark substrate: desktop pick-row table (`:34`), post-deadline tiebreak display (`:101`), and pre-deadline edit-form sidebar tiebreak input (`:208`). All three drop the `wc-card` token and keep `wc-card-flush` (the zero-padding utility modifier, preserved cross-tab until P5). Plan exploration found the third wrapper was inside the pre-deadline edit form sidebar (not "post-deadline read-only only" as the original plan sketch described).
+- **Substrate split collapsed back to a single light base** (the doctrinal end state P2 set up). Four `.card.wc-card`-scoped dark carve-out blocks retired in lockstep with the template migration — their only DOM consumer (picks.html ROSTER) disappeared:
+  - `.card.wc-card .wc-multiplier-chip` (3 properties).
+  - `.card.wc-card.player-picks-desktop` family — 5 rules (`.table-worldcup > tbody > tr > td` + `tr:hover > td` + `tfoot > tr > td` + `.team-link` + `.team-link:hover`).
+  - `.card.wc-card .pick-events-list .pick-event-item` + `.card.wc-card .pick-event-stage` (accordion drill-down).
+  - `.card.wc-card .score-events-total` + `.card.wc-card .score-events-total strong` + `.card.wc-card .score-events-empty` (accordion footer + empty state).
+- **Preserved until P5 per the handoff guidance**: `.card.wc-card.player-picks-desktop .table-worldcup > tbody > tr > td .text-muted` cluster-buster (`:3028-3031`) — orphaned by P3 but harmless (selector never matches without the compound class wrapper); P5 retires it as part of the full `.card.wc-card` retirement so the cluster-3 lift at `:7167`, this counter-lift, and the surrounding doctrine all close as one unit.
+- **Explanatory CSS comments updated** at `:2701`, `:2780`, `:2972`, `:3033`, `:3976` — substrate-split language rewritten to reflect the post-P3 single-light-base reality.
+
+**Tests**:
+- New: `tests/test_design_wc_tab_unification_p3.py` — 5 regression locks (PI-1 picks.html zero `.card.wc-card`; PI-2 `.pick-events-*` carve-outs absent; PI-3 `.score-events-*` carve-outs absent; PI-4 `.wc-multiplier-chip` carve-out absent + light base color anchored on `color` property per PR #15 CR R7-D; PI-5 `.card.wc-card.player-picks-desktop` compound family absent — five forbidden-rule patterns in P2 PI-7 style with `[,{]` terminator).
+- Rewritten in lockstep — function names flipped to reflect inverted invariant (mirrors P2's `test_pi1_red_divider_rule_threads_tribune_to_standings` lockstep-rewrite precedent):
+  - `tests/test_design_wc_tab_unification_p2.py::test_player_picks_desktop_dark_carve_out_was_retired_in_p3` (was `..._preserved_for_roster`).
+  - `tests/test_design_wc_tab_unification_p2.py::test_pick_events_item_dark_carve_out_was_retired_in_p3` (was `..._preserved_for_roster`).
+  - `tests/test_design_p2_s2_5_1.py::test_score_events_total_and_empty_paint_light_substrate_only` (was `..._paint_per_substrate`).
+  - `tests/test_design_p4_s4_2_2.py::test_f2_multiplier_chip_paints_light_substrate_only` (was `..._substrate_split_does_not_use_wc_white`).
+- Rewritten to assert the post-P3 light-substrate invariant (had been passing by accidental substring match on P2's dark carve-out): `tests/test_design_p2_s2_5_1.py::test_pick_table_tbody_td_carries_explicit_color_per_substrate_doctrine` (was `..._lifted_to_text_on_dark`); `..._pick_event_stage_carries_explicit_color_per_substrate_doctrine` (was `..._uses_bone_mute_on_dark_panel`). Both keep the original S2.5.1 invariant — "the cells carry an explicit color, not inherited `currentColor`" — but parameterize the value with the current substrate doctrine.
+- Full suite: **752 / 752 passing** (747 P2 baseline + 5 new P3 locks; six tests rewritten in place, no net delete).
+
+**Visual smoke**: Confirmed via Playwright on dev across every per-state partial (per `feedback_state_shell_smoke_coverage.md`). **Pre-deadline edit form** (`WC_FAKE_NOW='2026-06-01T12:00:00+00:00'`, `?edit=1`): five tier cards on white; sidebar pick-summary + USA Goals tiebreak card both on the same light substrate (the migrated `:208` wrapper). **Post-deadline read-only desktop** (`WC_FAKE_NOW='2026-07-05T12:00:00+00:00'`): pick-row table on white, navy thead bar, multiplier chips dark-on-light, all 9 rows with accordion drill-down expanded showing one populated drill-down (USA "Champion +50" — green points, dark-on-light score-events-total `Total base 0.0 × 2.5 = 0.0 multiplied`) + 8 empty states (`.score-events-empty` italic gray-on-white). **Cross-tab eye-test**: HUB (post-state with preserved champion banner) → ROSTER → BOARD all read as one Casual-Light game. **Negative smoke**: `/worldcup/leaderboard` post-deadline current-user row carries the P2 red border on white + red tribune divider — no regression.
+
+**Detector** (skipped — not invoked in P1/P2 either; not a blocker per the verification cadence, can be added in P5 if any new findings surface).
+
+**Discoveries — surfaced during P3, routed to follow-up phases** (decided 2026-05-14 with Brad):
+- ✅ Routed to **P3.5**: `team_detail.html:84` carries an unmigrated `<div class="card border-0 wc-card wc-card-flush">` wrapper around the fixture-list. Not in any phase's named scope (BOARD = leaderboard + player_detail only). Substrate-only flip; fixture rows use scoped classes that already paint dark-on-white.
+- ✅ Routed to **P3.5**: `rules.html` has 7 `.card.wc-card` wrappers (lines 29, 41, 114, 161, 192, 244, 255). Visual confirmation 2026-05-14 (DevTools probe + screenshot) showed `background-color: rgba(0, 17, 46, 0.8)` on the outer wrapper — the §2 "white throughout (5/5)" rating was a misread. §2 corrected in this revision.
+- ✅ Routed to **P5**: Two `:not(.player-picks-desktop)` selectors in `style.css` (`:2824`, `:6852`) have a now-redundant negation — pure CSS cleanup with no template work, simplifying in isolation creates a vestigial diff P5 has to revisit anyway. Stays with the full `.card.wc-card` retirement.
+
+### P3.5 — Audit-miss cleanup (`team_detail.html` + `rules.html` migration)
+
+**Branch (planned)**: `worldcup/tab-unification-phase-3-5` off main after PR #25 merges.
 **Targets**:
-- The post-deadline desktop read-only view in `picks.html` migrates out of `.card.wc-card`. Pick form edit mode is already `.tier-card` white — keep.
+- `team_detail.html:84` — single `.card.wc-card.wc-card-flush` wrapper around the fixture-list. Strip `wc-card`, keep `wc-card-flush`.
+- `rules.html` × 7 wrappers — same flip on each.
+- Orphan-candidate CSS rules — retire only after a grep confirms zero remaining DOM consumer (the `_home_post.html` champion banner is the only other `.card.wc-card` user; verify it doesn't consume each rule before retiring):
+  - `.card.wc-card .table { --bs-table-bg: var(--bg-card); }` (`style.css:6794`) — white-table-mask for tables inside dark cards. After RULES migrates, the only consumer is the champion banner; if it has no `<table>` inside (likely — it's a ceremonial banner), retire.
+  - `.card.wc-card > .card-body > p|ul|ol|h2-h6 { color: var(--text-on-dark); }` (S4.3.1 PI-1 at `:6821-6831`) — direct-prose bone lift. Same orphan analysis.
+- Pattern locks in `tests/test_design_wc_tab_unification_p3_5.py` mirroring P3's shape (PI-1 + PI-2: each template has zero `.card.wc-card`; additional PIs for any retired orphans).
 
 ### P4 — SCHEDULE light polish
 
@@ -124,7 +165,14 @@ Carried over from the plan (and the in-session question-tool answers).
 
 **Branch (planned)**: `worldcup/tab-unification-phase-5`.
 **Targets**:
-- Retire `.card.wc-card` (zero use expected by P5). Retire `test_design_p6_s6_1_1.py::test_pi1_dark_card_eyebrow_lift_rule_exists`.
+- After P3.5 the only `.card.wc-card` consumer left is the deliberate `_home_post.html` champion banner. P5 either retires that too (migrating to a dedicated `.wc-champion-banner` primitive) or scopes `.card.wc-card` to that single surface as the final dark-gold ceremonial slot.
+- Retire orphan rules preserved across prior phases:
+  - `.card.wc-card.player-picks-desktop .table-worldcup > tbody > tr > td .text-muted` cluster-buster (P3-orphaned, harmless until parent rule retires).
+  - `.card.wc-card .wc-eyebrow:not(.wc-eyebrow-red):not(.wc-eyebrow-gold)` (cross-tab dark-substrate eyebrow lift, S6.1.1 PI-1).
+  - `.card.wc-card .table-worldcup .row-current-user > td a` (P1-preserved cross-tab carve-out).
+  - `.card.wc-card .wc-numeral` (`:2810`), `.card.wc-card .btn-outline-secondary` (`:2839`) — verify each against champion banner before retiring.
+  - Two `:not(.player-picks-desktop)` selectors at `style.css:2824` + `:6852` simplify (negation redundant after P3, deferred from P3.5 per discoveries-routing decision above).
+- Retire associated pattern-lock tests (`test_design_p6_s6_1_1.py::test_pi1_dark_card_eyebrow_lift_rule_exists` and siblings).
 - Update CLAUDE.md's "dark `.card.wc-card` surface" guidance — replace with Casual-Light pattern documentation.
 - Update DESIGN.md: Brad drafts the Casual-Light pattern + accent rank doctrine. Assistant restructures for consumption per the load-bearing-doc preference.
 - Per-tab `$impeccable critique` re-runs. Score deltas recorded in §2 of this scorecard.

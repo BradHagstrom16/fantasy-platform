@@ -1,5 +1,16 @@
 """P2 S2.5.1 regression locks — first iteration of the player_detail surface.
 
+PR #25 CR R1: the two `..._carries_explicit_color_per_substrate_doctrine` tests
+(`test_pick_table_tbody_td_*` + `test_pick_event_stage_*`) originally used pure
+substring `in CSS` assertions to check the light-substrate base rules. A
+prefixed re-introduction (e.g., `.card.wc-card.player-picks-desktop ...` or
+`.card.wc-card .pick-event-stage ...`) would also contain the substring,
+giving a false-positive pass. Both rewrote to use the block-scoped-regex +
+`(?<!-)color:` property-anchor pattern from PR #15 CR R7-D (already used by
+test_design_wc_tab_unification_p2.py PI-4 and the new P3 PI-4). Same fix on
+both occurrences.
+
+
 Layer A (per plan §1.3) source-pattern locks for the Priority Issues landed
 in S2.5.1. Each test pins a structural decision the impeccable critique
 surfaced as P0/P1 and that S2.5.1 closed.
@@ -39,6 +50,7 @@ Routed forward to S2.5.2 per §0.4:
 - PI-6 (Roster-sealed empty state shape — needs un-priv probe)
 - PI-7 (above-fold density / wrapper reduction)
 """
+import re
 from pathlib import Path
 
 ROOT = Path(__file__).parent.parent
@@ -59,17 +71,52 @@ CSS = CSS_PATH.read_text()
 # PI-1: contrast lock on .card.wc-card dark substrate
 # ---------------------------------------------------------------------------
 
-def test_pick_table_tbody_td_lifted_to_text_on_dark():
-    """The desktop pick table sits inside `.card.wc-card` (rgba(0,17,46,.8)).
-    Bootstrap's default `<td>` color rgb(33,37,41) renders invisible on that
-    substrate. Lift to var(--text-on-dark) scoped to .player-picks-desktop."""
-    assert (
-        '.player-picks-desktop .table-worldcup > tbody > tr > td {\n'
-        '  color: var(--text-on-dark);'
-    ) in CSS, "Expected tbody td color lift scoped to .player-picks-desktop"
-    # Also defuse Bootstrap's --bs-table-bg white-cell forcing on the dark
-    # substrate by explicitly clearing the cell background.
-    assert 'background-color: transparent' in CSS
+def test_pick_table_tbody_td_carries_explicit_color_per_substrate_doctrine():
+    """The desktop pick table sits inside `.card.wc-card` (rgba(0,17,46,.8))
+    on the original S2.5.1 doctrine — Bootstrap's default `<td>` color
+    rgb(33,37,41) renders invisible on that substrate.
+
+    S2.5.1 lifted the cells to `var(--text-on-dark)` (bone on navy). WC Tab
+    Unification P2 then split the rule into a light base
+    (`var(--text-primary)` for player_detail.html post-P2) + a
+    `.card.wc-card.player-picks-desktop` dark carve-out (preserving bone
+    on navy for picks.html ROSTER). P3 retired the carve-out when
+    picks.html migrated, leaving only the light base. The S2.5.1
+    invariant — "the cells carry an explicit color, not inherited
+    `currentColor`" — survives all three flips. Lock the property is
+    present on the base rule; the exact value evolves with the substrate
+    doctrine (currently `var(--text-primary)`).
+
+    The `--bs-table-bg` mask defused via `background-color: transparent`
+    on the cells is part of the same lift — preserved through every phase.
+
+    Per PR #25 CR R1 + R4: regex-anchored both selector and property:
+    `^...` with `re.MULTILINE` requires the selector to start at the
+    beginning of a CSS line, rejecting *all* prefixed re-introductions
+    (not just `.card.wc-card.player-picks-desktop` but any prefix like
+    `.foo .player-picks-desktop ...`); `(?<![-\\w])color:` rejects
+    hyphenated property names like `background-color:` / `border-color:`
+    that share the same `var(--text-primary)` value.
+    """
+    match = re.search(
+        r'^\.player-picks-desktop \.table-worldcup > tbody > tr > td\s*\{([^}]+)\}',
+        CSS,
+        re.MULTILINE,
+    )
+    assert match is not None, (
+        'Expected a base `.player-picks-desktop .table-worldcup > tbody > tr '
+        '> td` rule (the light-substrate path inherited from P2 with the '
+        'carve-out retired in P3).'
+    )
+    block = match.group(1)
+    assert re.search(r'(?<![-\w])color:\s*var\(--text-primary\)', block), (
+        f'Post-P3 base must paint `color: var(--text-primary)` on the cell; '
+        f'block={block!r}.'
+    )
+    assert 'background-color: transparent' in block, (
+        f'`--bs-table-bg` mask defuse must remain on the same cell rule; '
+        f'block={block!r}.'
+    )
 
 
 def test_pick_table_no_longer_forces_dark_text_on_multiplier_chip():
@@ -85,10 +132,39 @@ def test_pick_table_no_longer_forces_dark_text_on_multiplier_chip():
     )
 
 
-def test_pick_event_stage_uses_bone_mute_on_dark_panel():
-    """`.pick-event-stage` lives inside `.pick-accordion` which inherits the
-    dark navy substrate. Lift to bone-mute so the meta line reads."""
-    assert '.pick-event-stage { color: var(--bone-mute); }' in CSS
+def test_pick_event_stage_carries_explicit_color_per_substrate_doctrine():
+    """`.pick-event-stage` (the date column on the accordion drill-down)
+    needed an explicit color on S2.5.1's dark substrate (Bootstrap's
+    default `text-muted` was invisible on navy). S2.5.1 lifted to
+    `var(--bone-mute)`; WC Tab Unification P2 split the rule into a light
+    base (`var(--text-secondary)` for player_detail.html) + a
+    `.card.wc-card .pick-event-stage` dark carve-out (preserving bone-mute
+    for picks.html ROSTER). P3 retired the carve-out when picks.html
+    migrated, leaving the light base.
+
+    The S2.5.1 invariant — "the date column carries an explicit color, not
+    inherited `currentColor`" — survives all three flips. Lock the value
+    evolves with the substrate doctrine (currently `var(--text-secondary)`).
+
+    Per PR #25 CR R1 + R4: regex-anchored both selector and property:
+    `^...` with `re.MULTILINE` requires the selector to start at the
+    beginning of a CSS line, rejecting *all* prefixed re-introductions
+    (not just `.card.wc-card .pick-event-stage` but any prefix);
+    `(?<![-\\w])color:` rejects hyphenated property names.
+    """
+    match = re.search(
+        r'^\.pick-event-stage\s*\{([^}]+)\}',
+        CSS,
+        re.MULTILINE,
+    )
+    assert match is not None, (
+        'Expected a base `.pick-event-stage` rule (the light-substrate '
+        'path inherited from P2 with the carve-out retired in P3).'
+    )
+    block = match.group(1)
+    assert re.search(r'(?<![-\w])color:\s*var\(--text-secondary\)', block), (
+        f'Post-P3 must paint `color: var(--text-secondary)`; block={block!r}.'
+    )
 
 
 def test_pick_accordion_panel_tinted_for_dark_substrate():
@@ -114,53 +190,87 @@ def test_pick_accordion_toggle_uses_light_token():
     assert '.pick-accordion-toggle.open {\n  transform: rotate(90deg);\n  color: var(--gold-light);\n}' in CSS
 
 
-def test_score_events_total_and_empty_paint_per_substrate():
+def test_score_events_total_and_empty_paint_light_substrate_only():
     """The drill-down total line and the empty state both used Bootstrap's
     `var(--text-muted, #6c757d)` originally — invisible on either WC body
     substrate. S2.5.1 lifted them to `var(--bone-mute)` on the
     `.card.wc-card` dark navy. WC Tab Unification P2 then split the rules
     so the base paints the new LIGHT substrate (`var(--text-secondary)` /
     `var(--text-primary)` on white, for player_detail.html post-P2) and a
-    `.card.wc-card .score-events-*` carve-out preserves the dark variant
-    (`var(--bone-mute)`) for picks.html ROSTER until P3 migrates it.
+    `.card.wc-card .score-events-*` carve-out preserved the dark variant
+    (`var(--bone-mute)`) for picks.html ROSTER read-only.
 
-    Lock both halves: (a) the light base reads on white,
-    (b) the dark carve-out reads on navy. Each is brittle to a regression
-    that would re-flatten the rules onto one substrate.
+    P3 then migrated picks.html off `.card.wc-card`, retiring the dark
+    carve-out in lockstep. The accordion footer + empty state now live on
+    a single light substrate across both consumers (picks.html ROSTER +
+    player_detail.html BOARD). Lock the light base survives AND assert the
+    dark carve-out is gone (mirrors P2 PI-7's forbidden-rule lockout style).
     """
-    # (a) LIGHT base — player_detail post-P2 sits on plain `.card` (white).
-    assert (
-        '.score-events-total {\n  padding: .5rem 1rem .75rem;\n'
-        '  border-top: 1px dotted var(--border);\n'
-        '  color: var(--text-secondary);'
-    ) in CSS, (
-        '.score-events-total base must paint `color: var(--text-secondary)` '
-        'with a `var(--border)` dotted top — the light-substrate variant '
-        'for player_detail.html post-P2.'
+    # (a) LIGHT base — both player_detail + picks.html now sit on plain `.card`.
+    # Per PR #25 CR R4: anchored block-extraction (`^...` + re.MULTILINE)
+    # rejects prefixed re-introductions like `.foo .score-events-total {`
+    # that would have matched the prior substring `in CSS` check; the
+    # property check uses the `(?<![-\w])color:` anchor (PR #15 CR R7-D
+    # pattern) so a future `background-color:` / `border-color:` with the
+    # same value can't false-pass.
+    match = re.search(
+        r'^\.score-events-total\s*\{([^}]+)\}',
+        CSS,
+        re.MULTILINE,
     )
-    assert (
-        '.score-events-empty {\n  padding: .75rem 1rem;\n'
-        '  font-size: .85rem;\n  color: var(--text-secondary);'
-    ) in CSS, (
-        '.score-events-empty base must paint `color: var(--text-secondary)` '
-        '— the light-substrate variant for player_detail.html post-P2.'
+    assert match is not None, (
+        'Expected a bare `.score-events-total` light-base rule.'
+    )
+    total_block = match.group(1)
+    assert 'padding: .5rem 1rem .75rem' in total_block, (
+        f'.score-events-total padding must remain; block={total_block!r}.'
+    )
+    assert 'border-top: 1px dotted var(--border)' in total_block, (
+        f'.score-events-total must keep `border-top: 1px dotted var(--border)`; '
+        f'block={total_block!r}.'
+    )
+    assert re.search(r'(?<![-\w])color:\s*var\(--text-secondary\)', total_block), (
+        f'.score-events-total base must paint `color: var(--text-secondary)`; '
+        f'block={total_block!r}.'
     )
 
-    # (b) DARK carve-out — picks.html ROSTER read-only stays on navy until P3.
-    assert (
-        '.card.wc-card .score-events-total {\n'
-        '  border-top-color: rgba(245, 241, 232, .14);\n'
-        '  color: var(--bone-mute);\n}'
-    ) in CSS, (
-        '`.card.wc-card .score-events-total` carve-out must preserve the '
-        'bone-mute color + bone dotted border for ROSTER until P3.'
+    match = re.search(
+        r'^\.score-events-empty\s*\{([^}]+)\}',
+        CSS,
+        re.MULTILINE,
     )
-    assert (
-        '.card.wc-card .score-events-empty { color: var(--bone-mute); }'
-    ) in CSS, (
-        '`.card.wc-card .score-events-empty` carve-out must preserve '
-        'bone-mute for ROSTER until P3.'
+    assert match is not None, (
+        'Expected a bare `.score-events-empty` light-base rule.'
     )
+    empty_block = match.group(1)
+    assert 'padding: .75rem 1rem' in empty_block, (
+        f'.score-events-empty padding must remain; block={empty_block!r}.'
+    )
+    assert 'font-size: .85rem' in empty_block, (
+        f'.score-events-empty font-size must remain; block={empty_block!r}.'
+    )
+    assert re.search(r'(?<![-\w])color:\s*var\(--text-secondary\)', empty_block), (
+        f'.score-events-empty base must paint `color: var(--text-secondary)`; '
+        f'block={empty_block!r}.'
+    )
+
+    # (b) DARK carve-out retired in P3 — assert it does NOT re-appear.
+    # Per PR #25 CR R3 + R4: `\s*[,{]` terminator allows optional whitespace
+    # before either a comma (selector-list reintroduction) or an opening
+    # brace (canonical block-start formatting with whitespace, the dominant
+    # CSS convention). The prior R3 `[,{]` form required the terminator
+    # immediately after the selector and missed the standalone block form
+    # `.card.wc-card .score-events-total {` (false-negative on regression).
+    forbidden = [
+        r'\.card\.wc-card\s+\.score-events-total\s*[,{]',
+        r'\.card\.wc-card\s+\.score-events-empty\s*[,{]',
+    ]
+    for pattern in forbidden:
+        assert re.search(pattern, CSS) is None, (
+            f'Forbidden `{pattern}` dark carve-out re-appeared in style.css. '
+            f'P3 retired this in lockstep with picks.html migration (its sole '
+            f'DOM consumer); a regression here means the cleanup was undone.'
+        )
 
 
 # ---------------------------------------------------------------------------
