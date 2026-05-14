@@ -63,38 +63,55 @@ JOIN = REPO / 'games' / 'worldcup' / 'templates' / 'worldcup' / 'join.html'
 RULES = REPO / 'games' / 'worldcup' / 'templates' / 'worldcup' / 'rules.html'
 
 
-# ---------- PI-1: .card.wc-card .card-body prose color lift ----------
+# ---------- PI-1: lockstep-inverted in P3.5 ----------
+#
+# The S4.3.1 PI-1 direct-prose lift retired in P3.5 when rules.html migrated
+# off `.card.wc-card`. With rules.html on plain Bootstrap `.card` (white
+# substrate, dark default text), there is no surface stacking prose on the
+# navy(.8α) substrate that needed the bone lift. The only remaining
+# `.card.wc-card` consumer is the _home_post.html champion banner, whose
+# direct-child `<p class="champion-retrospect">` carries its own scoped
+# color rule at style.css:7068 (higher specificity, unaffected by the lift's
+# retirement). Lockstep rewrite follows P3's `..._was_retired_in_p3`
+# precedent (e.g. `tests/test_design_wc_tab_unification_p2.py
+# ::test_pick_events_item_dark_carve_out_was_retired_in_p3`).
 
-def test_pi1_card_wc_card_card_body_prose_lifted_to_bone():
-    """The S4.3.1 direct-child rule lifts p/ul/ol/li/h2..h6 to --text-on-dark."""
+def test_pi1_card_wc_card_card_body_prose_rule_was_retired_in_p3_5():
+    """The `.card.wc-card > .card-body > p|ul|ol|li|h2..h6` 10-selector
+    cluster retired in P3.5. Anchored absence-check (start-of-line +
+    `re.MULTILINE`, P3 CR R3-R4 idiom) on a representative selector head
+    so a substring inside another rule can't false-pass."""
     css = CSS.read_text()
-    assert '.card.wc-card > .card-body > p,' in css
-    assert '.card.wc-card > .card-body > ul,' in css
-    assert '.card.wc-card > .card-body > h2,' in css
-    assert '.card.wc-card > .card-body > h5,' in css
-    # Must use --text-on-dark (bone), not raw color literal. Property-
-    # anchored regex (PR #15 CR R5-H, R3-E pattern) so a future
-    # `background-color: var(--text-on-dark)` can't false-pass.
-    block_start = css.index('.card.wc-card > .card-body > p,')
-    block_end = css.index('}', block_start)
-    block = css[block_start:block_end]
-    assert re.search(r'(?<!-)color:\s*var\(--text-on-dark\)', block), \
-        "Prose color must lift to --text-on-dark (bone) — not a raw value"
+    representative = re.compile(
+        r'^\.card\.wc-card\s*>\s*\.card-body\s*>\s*p,',
+        re.MULTILINE,
+    )
+    assert representative.search(css) is None, (
+        "S4.3.1 PI-1 `.card.wc-card > .card-body > p, ...` cluster must "
+        "stay retired post-P3.5 — rules.html (its sole rich-prose consumer) "
+        "migrated off .card.wc-card, and the champion banner's <p> carries "
+        "its own scoped color rule (style.css :7068). Restoring this cluster "
+        "would orphan onto a single rule already covered by a more specific "
+        "scoped lift."
+    )
 
 
-def test_pi1_direct_child_selector_excludes_nested_light_substrate():
-    """The `>` direct-child selector is load-bearing — leaking into nested
-    light-substrate descendants (tier-mobile-card lavender, table cells
-    white-masked) would re-introduce bone-on-light contrast bugs."""
+def test_pi1_direct_child_selector_was_retired_in_p3_5():
+    """The `>` direct-child form's load-bearing-ness (descendant form would
+    leak into nested light-substrate `.tier-mobile-card` etc.) was the
+    historical reason this rule used `>` instead of plain descendant. With
+    the rule retired, the descendant-form invariant has no carrier — but
+    re-introducing the descendant form would still over-broadcast onto any
+    nested light surface inside the champion banner's `.card-body`, so the
+    forbidden-form lock survives the retirement."""
     css = CSS.read_text()
-    # The bad form would be `.card.wc-card .card-body p` (descendant). The
-    # good form is `.card.wc-card > .card-body > p` (two `>` separators).
-    assert '.card.wc-card > .card-body > p,' in css
-    # And the descendant form must NOT appear as a sibling rule overriding the
-    # direct-child lift back to a non-bone color.
     bad_form = '.card.wc-card .card-body p {'
-    assert bad_form not in css, \
-        f"Descendant-selector form `{bad_form}` would over-broadcast the lift"
+    assert bad_form not in css, (
+        f"Descendant-selector form `{bad_form}` would over-broadcast onto "
+        f"any nested light substrate inside the remaining .card.wc-card "
+        f"consumer (the champion banner). The direct-child rule retired in "
+        f"P3.5; the descendant form must not appear as a replacement."
+    )
 
 
 # ---------- PI-2: light-substrate multiplier chip + tier-mobile-card lifts ----------

@@ -6771,66 +6771,6 @@ hr { border-color: var(--border); opacity: 1; }
   color: rgba(245, 241, 232, .82) !important;
 }
 
-/* P2 S2.6 PI-1 — Cluster-wide invariant lock for .card.wc-card .table.
-   The .text-muted surgical exclusion below relies on Bootstrap masking the
-   navy parent with a white td background. Bootstrap 5.3 supplies that via
-   `--bs-table-bg: var(--bs-body-bg)` (default #fff), but the assumption is
-   implicit — a future Bootstrap upgrade, a stray `--bs-body-bg` retune, or
-   a new .card.wc-card-wrapped table could silently break it and re-surface
-   the dark-on-dark bug that S2.5.1 PI-1 caught on .player-picks-desktop.
-
-   Lock the white-td invariant explicitly via a CCC-owned token assignment.
-   Bootstrap's own .table rule then consumes --bs-table-bg on every cell,
-   masking the navy with --bg-card. The masking becomes our design decision,
-   not Bootstrap's default.
-
-   Surfaces that want the dark navy bleed-through (e.g., .player-picks-desktop
-   on player_detail.html / picks.html) opt out by setting
-     background-color: transparent
-   on their own scoped > tbody > tr > td rule AND scope a counter-rule that
-   lifts .text-muted to a dark-surface-safe token (--bone-mute). See the
-   .card.wc-card.player-picks-desktop overrides at :2385-2416 above for the
-   canonical opt-out pattern. */
-.card.wc-card .table {
-  --bs-table-bg: var(--bg-card);
-}
-
-/* Surgical exclusion: restore Bootstrap default for any .text-muted
-   that lives inside a Bootstrap table cell. The --bs-table-bg lock above
-   guarantees the cell renders on a light substrate, so the dark token is
-   readable. Concrete affected case: _pick_row.html:16 "Grp X" caption
-   inside the picks accordion <td>. Mirrors the don't-broadcast logic
-   from the Plan 3 follow-up block. */
-.card.wc-card .table > tbody > tr > td .text-muted,
-.card.wc-card .table > tbody > tr > td.text-muted {
-  color: var(--bs-secondary-color) !important;
-}
-
-/* --- P4 S4.3.1 — Rules + Join legibility, voice, headings --- */
-
-/* PI-1: Lift `.card.wc-card .card-body` direct-prose to bone. The
-   leaderboard / picks / player-picks tables on .card.wc-card mask the
-   navy parent via the --bs-table-bg lock above, so default-color prose
-   inside cells stays ink-on-white. But rules.html stacks six wc-card
-   panels whose card-body holds raw <p>/<ul>/<h5>/etc. directly on the
-   navy(.8α) substrate — Bootstrap's default rgb(33,37,41) computes ~1.4:1.
-   Direct-child selectors (`>`) avoid leaking into nested light-substrate
-   descendants like .tier-mobile-card (bg-muted lavender, ink-on-light).
-   The .card.wc-card .text-muted lift at :6369 already handles muted
-   variants; this rule covers the default body / heading color. */
-.card.wc-card > .card-body > p,
-.card.wc-card > .card-body > ul,
-.card.wc-card > .card-body > ol,
-.card.wc-card > .card-body > ul > li,
-.card.wc-card > .card-body > ol > li,
-.card.wc-card > .card-body > h2,
-.card.wc-card > .card-body > h3,
-.card.wc-card > .card-body > h4,
-.card.wc-card > .card-body > h5,
-.card.wc-card > .card-body > h6 {
-  color: var(--text-on-dark);
-}
-
 /* PI-2: `.wc-multiplier-chip` light-substrate scopes. Default chip rule
    at :2799 paints bone-on-bone-alpha for its canonical dark-card home.
    On rules.html the chip lives inside white <td> cells of .table-worldcup
