@@ -90,15 +90,18 @@ def test_pick_table_tbody_td_carries_explicit_color_per_substrate_doctrine():
     The `--bs-table-bg` mask defused via `background-color: transparent`
     on the cells is part of the same lift — preserved through every phase.
 
-    Per PR #25 CR R1: regex-anchored both selector (negative lookbehind
-    rejects `.card.wc-card.player-picks-desktop ...` prefixed re-introductions)
-    and property (`(?<![-\\w])color:` rejects hyphenated names like
-    `background-color:` / `border-color:` that share the same `var(--text-
-    primary)` value). Mirrors test_design_wc_tab_unification_p2.py PI-4.
+    Per PR #25 CR R1 + R4: regex-anchored both selector and property:
+    `^...` with `re.MULTILINE` requires the selector to start at the
+    beginning of a CSS line, rejecting *all* prefixed re-introductions
+    (not just `.card.wc-card.player-picks-desktop` but any prefix like
+    `.foo .player-picks-desktop ...`); `(?<![-\\w])color:` rejects
+    hyphenated property names like `background-color:` / `border-color:`
+    that share the same `var(--text-primary)` value.
     """
     match = re.search(
-        r'(?<!\.card\.wc-card)\.player-picks-desktop \.table-worldcup > tbody > tr > td\s*\{([^}]+)\}',
+        r'^\.player-picks-desktop \.table-worldcup > tbody > tr > td\s*\{([^}]+)\}',
         CSS,
+        re.MULTILINE,
     )
     assert match is not None, (
         'Expected a base `.player-picks-desktop .table-worldcup > tbody > tr '
@@ -143,14 +146,16 @@ def test_pick_event_stage_carries_explicit_color_per_substrate_doctrine():
     inherited `currentColor`" — survives all three flips. Lock the value
     evolves with the substrate doctrine (currently `var(--text-secondary)`).
 
-    Per PR #25 CR R1: regex-anchored both selector (negative lookbehind on
-    `.card.wc-card ` rejects descendant-prefix re-introductions) and
-    property (`(?<![-\\w])color:` rejects hyphenated names). Same pattern
-    as test_design_wc_tab_unification_p2.py PI-6's light-base assertion.
+    Per PR #25 CR R1 + R4: regex-anchored both selector and property:
+    `^...` with `re.MULTILINE` requires the selector to start at the
+    beginning of a CSS line, rejecting *all* prefixed re-introductions
+    (not just `.card.wc-card .pick-event-stage` but any prefix);
+    `(?<![-\\w])color:` rejects hyphenated property names.
     """
     match = re.search(
-        r'(?<!\.card\.wc-card )\.pick-event-stage\s*\{([^}]+)\}',
+        r'^\.pick-event-stage\s*\{([^}]+)\}',
         CSS,
+        re.MULTILINE,
     )
     assert match is not None, (
         'Expected a base `.pick-event-stage` rule (the light-substrate '
@@ -202,31 +207,63 @@ def test_score_events_total_and_empty_paint_light_substrate_only():
     dark carve-out is gone (mirrors P2 PI-7's forbidden-rule lockout style).
     """
     # (a) LIGHT base — both player_detail + picks.html now sit on plain `.card`.
-    assert (
-        '.score-events-total {\n  padding: .5rem 1rem .75rem;\n'
-        '  border-top: 1px dotted var(--border);\n'
-        '  color: var(--text-secondary);'
-    ) in CSS, (
-        '.score-events-total base must paint `color: var(--text-secondary)` '
-        'with a `var(--border)` dotted top — the light-substrate variant '
-        'consumed by both player_detail.html (P2) and picks.html (P3).'
+    # Per PR #25 CR R4: anchored block-extraction (`^...` + re.MULTILINE)
+    # rejects prefixed re-introductions like `.foo .score-events-total {`
+    # that would have matched the prior substring `in CSS` check; the
+    # property check uses the `(?<![-\w])color:` anchor (PR #15 CR R7-D
+    # pattern) so a future `background-color:` / `border-color:` with the
+    # same value can't false-pass.
+    match = re.search(
+        r'^\.score-events-total\s*\{([^}]+)\}',
+        CSS,
+        re.MULTILINE,
     )
-    assert (
-        '.score-events-empty {\n  padding: .75rem 1rem;\n'
-        '  font-size: .85rem;\n  color: var(--text-secondary);'
-    ) in CSS, (
-        '.score-events-empty base must paint `color: var(--text-secondary)` '
-        '— the light-substrate variant consumed by both consumers post-P3.'
+    assert match is not None, (
+        'Expected a bare `.score-events-total` light-base rule.'
+    )
+    total_block = match.group(1)
+    assert 'padding: .5rem 1rem .75rem' in total_block, (
+        f'.score-events-total padding must remain; block={total_block!r}.'
+    )
+    assert 'border-top: 1px dotted var(--border)' in total_block, (
+        f'.score-events-total must keep `border-top: 1px dotted var(--border)`; '
+        f'block={total_block!r}.'
+    )
+    assert re.search(r'(?<![-\w])color:\s*var\(--text-secondary\)', total_block), (
+        f'.score-events-total base must paint `color: var(--text-secondary)`; '
+        f'block={total_block!r}.'
+    )
+
+    match = re.search(
+        r'^\.score-events-empty\s*\{([^}]+)\}',
+        CSS,
+        re.MULTILINE,
+    )
+    assert match is not None, (
+        'Expected a bare `.score-events-empty` light-base rule.'
+    )
+    empty_block = match.group(1)
+    assert 'padding: .75rem 1rem' in empty_block, (
+        f'.score-events-empty padding must remain; block={empty_block!r}.'
+    )
+    assert 'font-size: .85rem' in empty_block, (
+        f'.score-events-empty font-size must remain; block={empty_block!r}.'
+    )
+    assert re.search(r'(?<![-\w])color:\s*var\(--text-secondary\)', empty_block), (
+        f'.score-events-empty base must paint `color: var(--text-secondary)`; '
+        f'block={empty_block!r}.'
     )
 
     # (b) DARK carve-out retired in P3 — assert it does NOT re-appear.
-    # Per PR #25 CR R3: regex-anchored with `[,{]` terminator so a future
-    # prefix-match like `.card.wc-card .score-events-totalizer` or a
-    # CSS comment mentioning the selector by name can't false-trip. Mirrors
-    # the P2 PI-7 + P3 PI-3 forbidden-list idiom.
+    # Per PR #25 CR R3 + R4: `\s*[,{]` terminator allows optional whitespace
+    # before either a comma (selector-list reintroduction) or an opening
+    # brace (canonical block-start formatting with whitespace, the dominant
+    # CSS convention). The prior R3 `[,{]` form required the terminator
+    # immediately after the selector and missed the standalone block form
+    # `.card.wc-card .score-events-total {` (false-negative on regression).
     forbidden = [
-        r'\.card\.wc-card\s+\.score-events-total[,{]',
-        r'\.card\.wc-card\s+\.score-events-empty[,{]',
+        r'\.card\.wc-card\s+\.score-events-total\s*[,{]',
+        r'\.card\.wc-card\s+\.score-events-empty\s*[,{]',
     ]
     for pattern in forbidden:
         assert re.search(pattern, CSS) is None, (
