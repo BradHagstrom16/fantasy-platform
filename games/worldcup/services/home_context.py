@@ -211,10 +211,13 @@ def _context_pre(user: Any) -> dict:
         WorldCupMatch.query
         .filter(WorldCupMatch.kickoff_utc.isnot(None))
         .filter(WorldCupMatch.is_completed == False)  # noqa: E712
-        .order_by(WorldCupMatch.kickoff_utc.asc())
+        .order_by(WorldCupMatch.kickoff_utc.asc(), WorldCupMatch.match_number.asc())
         .limit(3)
         .all()
     )
+
+    _now = now_utc()
+    clamped_days = max(0, (TOURNAMENT_DEADLINE_UTC - _now).days)
 
     return {
         'state': 'pre',
@@ -224,9 +227,12 @@ def _context_pre(user: Any) -> dict:
         'display_name': enrollment.get_display_name(),
         # deadline_utc + now_utc power the live countdown ticker on the
         # lead card. deadline_ct stays for the "Picks lock at ..." prose
-        # derivation that needs a CT-local display.
+        # derivation that needs a CT-local display. clamped_days is the
+        # SSR fallback for the masthead numeral (precomputed so the
+        # template avoids an inline `>` that trips HTMLHint).
         'deadline_utc': TOURNAMENT_DEADLINE_UTC,
-        'now_utc': now_utc(),
+        'now_utc': _now,
+        'clamped_days': clamped_days,
         'deadline_ct': TOURNAMENT_DEADLINE_UTC.astimezone(WORLDCUP_TZ),
         'picks_submitted': enrollment.picks_submitted,
         'user_picks': user_picks,

@@ -18,7 +18,7 @@
   </div>
   <div class="wc-stats-masthead">
     <div class="wc-countdown-numeral-wrap">
-      <span class="wc-stats-masthead-numeral" data-cd-days>{{ '%02d'|format(((deadline_utc - now_utc).days) if (deadline_utc - now_utc).days > 0 else 0) }}</span>
+      <span class="wc-stats-masthead-numeral" data-cd-days>{{ '%02d'|format(clamped_days) }}</span>
       <span class="wc-countdown-unit">Days</span>
     </div>
     <p class="wc-stats-masthead-derivation mb-0" role="timer"
