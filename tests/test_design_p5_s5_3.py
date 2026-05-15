@@ -95,18 +95,30 @@ def _champion_branches(src: str) -> tuple[str, str]:
 # instead of a scoped lift.
 
 
-def test_pi2_home_shell_quicklinks_still_use_btn_outline_secondary():
-    """The home_shell.html quicklink trio still carries the targeted class.
+def test_pi2_home_shell_around_the_pool_footer_retired():
+    """The home_shell.html "Around the Pool" quicklink footer is gone.
 
-    The CSS lift only takes effect when the markup keeps
-    btn-outline-secondary. Lock against a future template refactor that
-    swaps to a different button variant and silently re-fails the contrast.
+    Hub coherence pass 2026-05 retired the Schedule / Groups / Rules
+    outline-button footer — the game sub-nav at the top of every WC tab
+    already routes to those destinations, and the footer duplicated them
+    below scroll on a long pre-state where users had most likely already
+    used the sub-nav. Aesthetic-and-minimalist under WC §6: every element
+    earns its pixel. This test locks the retirement so a future "let's
+    add a footer" reflex re-trips the contract.
+
+    The `--bs-secondary-color` redirect at style.css :7183 still ships
+    (it's load-bearing for any other consumer of `.text-muted` /
+    `.btn-outline-secondary` on bone). What changed is just the call
+    site count in home_shell.html.
     """
     src = HOME_SHELL.read_text()
-    count = src.count('btn-outline-secondary')
-    assert count >= 3, (
-        f'Expected at least 3 .btn-outline-secondary anchors in '
-        f'home_shell.html (Schedule / Groups / Rules); found {count}.'
+    assert 'Around the Pool' not in src, (
+        '"Around the Pool" footer was retired — restoring it duplicates '
+        'the game sub-nav and re-introduces an unused below-scroll row.'
+    )
+    assert 'btn-outline-secondary' not in src, (
+        f'No outline-secondary footer buttons should ship in '
+        f'home_shell.html post-coherence-pass; found at least one.'
     )
 
 

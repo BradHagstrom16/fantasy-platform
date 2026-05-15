@@ -114,9 +114,14 @@ def test_voice_microcopy_replaces_legacy_strings():
     # Title + h1
     assert '<h1 class="mb-1">The Standings</h1>' in src
     assert 'The Standings · 2026 World Cup Pool' in src
-    # State-aware eyebrow
+    # State-aware eyebrow. Hub coherence pass (2026-05): pre-deadline copy
+    # rewrote from the archaic "Tribute Window Open" to plain-spoken
+    # "Picks Open" so the Casual-default reader doesn't pay a metaphor-
+    # unpack cost above the fold; the Tribune voice still lives in H1
+    # and the CTA register. Cross-tab parity: voice.HUB_COPY['pre'] and
+    # voice.HUB_COPY['out']['unenrolled_pre'] mirror this string.
     assert "Tonight's Ledger" in src
-    assert 'Tribute Window Open' in src
+    assert 'Picks Open' in src
     # Empty state copy — old SaaS line is gone
     assert 'No players enrolled yet' not in src
     assert 'The ledger awaits its first name.' in src

@@ -7,44 +7,45 @@
      - top_5_preview, recent_matches, trend, stage_label, enrollment
 #}
 
-{# Your Standing block — hero stats #}
-<div class="wc-stat-card mb-4 animate-in">
-  <div class="row align-items-center g-3">
-    <div class="col-md-6">
-      <div class="wc-eyebrow mb-1">Your Standing</div>
-      <div class="d-flex align-items-baseline gap-2">
-        <span class="wc-numeral display-4">{{ your_standing.rank }}</span>
-        <span class="text-muted">of {{ your_standing.of_n }}</span>
-      </div>
-      <div class="text-muted small mt-1">
-        {% if your_standing.lead_delta_up is not none %}
-          {{ "%.1f"|format(your_standing.lead_delta_up) }} pts from the lead
-        {% endif %}
-        {% if your_standing.lead_delta_up is not none and your_standing.lead_delta_down is not none %}
-          ·
-        {% endif %}
-        {% if your_standing.lead_delta_down is not none %}
-          {{ "%.1f"|format(your_standing.lead_delta_down) }} ahead of next
-        {% endif %}
-      </div>
-    </div>
-    <div class="col-md-6 text-md-end">
-      <div class="wc-eyebrow mb-1">Points</div>
-      <div class="wc-numeral display-4">{{ "%.1f"|format(your_standing.total) }}</div>
-      {% if trend.show_column and trend.delta is not none %}
-        <div class="small {% if trend.delta > 0 %}text-success{% elif trend.delta < 0 %}text-danger{% else %}text-muted{% endif %}">
-          {% if trend.delta > 0 %}+{% endif %}{{ "%.1f"|format(trend.delta) }} since last snapshot
-        </div>
-      {% endif %}
-    </div>
+{# Your Standing — Tribune-masthead collapse. One dominant Teko rank
+   numeral + Newsreader derivation prose carrying points + lead delta +
+   gap delta + (when gated) trend. Replaces the prior 50/50 twin-stat
+   (`display-4` rank | `display-4` points) which was the hero-metric
+   template the post-state already retired in S5.1.1 PI-1. Shares the
+   hub `.wc-standing-card` primitive with _home_post.html so the user
+   sees one masthead shape across live + post. Hub coherence pass
+   2026-05. #}
+<div class="wc-stat-card mb-4 animate-in wc-standing-card">
+  <div class="wc-eyebrow mb-1">Your Standing</div>
+  <div class="wc-standing-rank-cluster">
+    <span class="wc-standing-rank">{{ your_standing.rank }}</span>
+    <span class="wc-standing-of">of {{ your_standing.of_n }}</span>
   </div>
+  <p class="wc-standing-derivation">
+    {{ "%.1f"|format(your_standing.total) }} points
+    {%- if your_standing.lead_delta_up is not none %}
+      · {{ "%.1f"|format(your_standing.lead_delta_up) }} back of the lead
+    {%- endif %}
+    {%- if your_standing.lead_delta_down is not none %}
+      · {{ "%.1f"|format(your_standing.lead_delta_down) }} clear of next
+    {%- endif %}
+    {%- if trend.show_column and trend.delta is not none and trend.delta != 0 %}
+      · <span class="wc-standing-trend {% if trend.delta > 0 %}is-up{% elif trend.delta < 0 %}is-down{% endif %}">{% if trend.delta > 0 %}+{% endif %}{{ "%.1f"|format(trend.delta) }} since last snapshot</span>
+    {%- endif %}.
+  </p>
 </div>
 
-{# Roster preview with live scores #}
+{# Your Roster with live scores. Hub coherence pass 2026-05: tier column
+   matches _home_post.html's `dot + tier_name` vocabulary so the live and
+   post tables read with one shared tier indicator (the pre-state tier-
+   card grid uses its own row-grouped layout — both forms remain valid,
+   the table form just stops disagreeing with itself between live and
+   post). Eyebrow lifted to .wc-eyebrow-gold to match the pre-state's
+   "Your Roster" ceremonial marker. #}
 {% if user_picks %}
 <div class="wc-stat-card mb-4 animate-in">
   <div class="wc-card-head">
-    <span><span class="wc-eyebrow"><i class="bi bi-people-fill me-2"></i>Roster</span></span>
+    <span class="wc-eyebrow wc-eyebrow-gold"><i class="bi bi-people-fill me-2"></i>Your Roster</span>
     <a href="{{ url_for('worldcup.picks') }}" class="btn btn-sm btn-game">View Full Picks</a>
   </div>
   <div class="table-responsive">
@@ -61,7 +62,7 @@
         <tbody>
           {% for pick in user_picks %}
           <tr>
-            <td><span class="wc-tier-dot wc-tier-dot-{{ pick.team.tier }}"></span> T{{ pick.team.tier }}</td>
+            <td><span class="wc-tier-dot wc-tier-dot-{{ pick.team.tier }}"></span> {{ tier_names[pick.team.tier] }}</td>
             <td>
               <a href="{{ url_for('worldcup.team_detail', team_id=pick.team_id) }}" class="text-decoration-none">
                 {{ pick.team.flag_emoji }} {{ pick.team.display_name }}
@@ -104,7 +105,7 @@
 {% if top_5_preview %}
 <div class="wc-stat-card mb-4 animate-in">
   <div class="wc-card-head">
-    <span><span class="wc-eyebrow"><i class="bi bi-trophy me-2"></i>Leaderboard</span></span>
+    <span class="wc-eyebrow"><i class="bi bi-trophy me-2"></i>Leaderboard</span>
     <a href="{{ url_for('worldcup.leaderboard') }}" class="btn btn-sm btn-game">View All</a>
   </div>
   <table class="table table-worldcup mb-0">

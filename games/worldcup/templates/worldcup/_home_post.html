@@ -47,20 +47,19 @@
 </div>
 {% endif %}
 
-{# S5.1.1 PI-1 — collapse the prior two-display-4 50/50 split (rank +
-   final-points adjacency) into one dominant rank numeral with the final
-   total + climb prose as Newsreader derivation. Calibrated against
-   S2.3.1's hero-metric-adjacency escape pattern (DESIGN.md §6 + plan
-   §1.5b "hero-metric-template ban applies to adjacency"): one dominant
-   numeral, one supporting eyebrow, one prose derivation. The post-state
-   is the user's Tribune finale, not a SaaS stat strip. #}
-<div class="wc-stat-card mb-4 animate-in post-finish-card">
+{# Tribune-masthead collapse — one dominant rank numeral + Newsreader
+   derivation. The hub-shared `.wc-standing-card` primitive (style.css
+   §"Hub-shared standing-card primitive") is the canonical "Your Standing /
+   Your Finish" shape across live + post — replaces the prior post-only
+   primitive plus the live state's twin-stat `display-4` adjacency.
+   Hub coherence pass 2026-05. #}
+<div class="wc-stat-card mb-4 animate-in wc-standing-card">
   <div class="wc-eyebrow mb-1">Your Finish</div>
-  <div class="post-finish-rank-cluster">
-    <span class="post-finish-rank">{{ your_final_rank }}</span>
-    <span class="post-finish-of">of {{ total_count }}</span>
+  <div class="wc-standing-rank-cluster">
+    <span class="wc-standing-rank">{{ your_final_rank }}</span>
+    <span class="wc-standing-of">of {{ total_count }}</span>
   </div>
-  <p class="post-finish-derivation">
+  <p class="wc-standing-derivation">
     {{ "%.1f"|format(enrollment.total_score) }} final points
     {%- if your_climbed_n is not none and your_climbed_n != 0 -%}
       {% if your_climbed_n > 0 %}
@@ -112,11 +111,13 @@
 </div>
 {% endif %}
 
-{# Roster recap #}
+{# Final Roster recap. Hub coherence pass 2026-05: eyebrow lifted to
+   .wc-eyebrow-gold for "your ceremonial commitment" cross-state parity
+   with pre + live. #}
 {% if your_roster_recap %}
 <div class="wc-stat-card mb-4 animate-in">
   <div class="wc-card-head">
-    <span class="wc-eyebrow"><i class="bi bi-people-fill me-2"></i>Final Roster</span>
+    <span class="wc-eyebrow wc-eyebrow-gold"><i class="bi bi-people-fill me-2"></i>Final Roster</span>
   </div>
   <div class="table-responsive">
     <table class="table table-worldcup mb-0">

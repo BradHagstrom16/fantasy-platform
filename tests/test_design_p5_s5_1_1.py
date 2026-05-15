@@ -67,49 +67,57 @@ def test_pi1_your_finish_card_drops_paired_display4_numerals():
     # collapse removes both the right-column eyebrow and its numeral.
     assert 'Final Points' not in src, (
         'Final Points display-4 column should be gone — points are now '
-        'rendered as supporting prose in .post-finish-derivation.'
+        'rendered as supporting prose in .wc-standing-derivation.'
     )
     # Only one .wc-numeral.display-4 is allowed to remain on this surface
-    # (none, post-collapse — we use .post-finish-rank now). Lock that the
+    # (none, post-collapse — we use .wc-standing-rank now). Lock that the
     # paired structure is not re-introduced.
     paired = re.findall(r'wc-numeral\s+display-4', src)
     assert len(paired) == 0, (
-        f'Expected zero .wc-numeral.display-4 (collapsed to .post-finish-rank); '
+        f'Expected zero .wc-numeral.display-4 (collapsed to .wc-standing-rank); '
         f'found {len(paired)}.'
     )
 
 
-def test_pi1_your_finish_card_uses_post_finish_primitive():
-    """The collapsed hero uses the new .post-finish-* scoped class set."""
+def test_pi1_your_finish_card_uses_wc_standing_primitive():
+    """The collapsed hero uses the hub-shared .wc-standing-* class set.
+
+    Hub coherence pass 2026-05 generalized the post-only `.post-finish-*`
+    primitive into a hub-shared `.wc-standing-*` family used by both live
+    ("Your Standing") and post ("Your Finish"). Lock the new names here.
+    """
     src = TEMPLATE.read_text()
-    assert 'post-finish-card' in src
-    assert 'post-finish-rank-cluster' in src
-    assert 'post-finish-rank' in src
-    assert 'post-finish-of' in src
-    assert 'post-finish-derivation' in src
+    assert 'wc-standing-card' in src
+    assert 'wc-standing-rank-cluster' in src
+    assert 'wc-standing-rank' in src
+    assert 'wc-standing-of' in src
+    assert 'wc-standing-derivation' in src
+    # The retired post-only primitive is gone.
+    assert 'post-finish-card' not in src
+    assert 'post-finish-rank' not in src
 
 
-def test_pi1_post_finish_css_primitives_present():
-    """CSS for the new primitive set is committed to style.css.
+def test_pi1_wc_standing_css_primitives_present():
+    """CSS for the hub-shared primitive set is committed to style.css.
 
     Lock the scoped selectors + the dominant numeral sizing so a future
     edit can't silently regress to a small rank + big points elsewhere.
     """
     css = STYLE_CSS.read_text()
-    assert '.post-finish-card .post-finish-rank' in css
-    assert '.post-finish-card .post-finish-derivation' in css
+    assert '.wc-standing-card .wc-standing-rank' in css
+    assert '.wc-standing-card .wc-standing-derivation' in css
     # Dominant numeral lives between 3-5rem at base; the team_detail S2.3.1
-    # masthead anchors at 2.6rem, this is the season finale so it sits
+    # masthead anchors at 2.6rem, the season finale + live standing sit
     # slightly above that. Lock a floor of 3rem to prevent regression to
     # the prior display-4 (3.5rem at the bigger Bootstrap breakpoint)
     # paired pattern.
     match = re.search(
-        r'\.post-finish-card\s+\.post-finish-rank\s*\{[^}]*font-size:\s*([\d.]+)rem',
+        r'\.wc-standing-card\s+\.wc-standing-rank\s*\{[^}]*font-size:\s*([\d.]+)rem',
         css,
     )
-    assert match is not None, '.post-finish-rank must declare font-size in rem'
+    assert match is not None, '.wc-standing-rank must declare font-size in rem'
     assert float(match.group(1)) >= 3.0, (
-        f'.post-finish-rank font-size should be >= 3rem (Tribune masthead); '
+        f'.wc-standing-rank font-size should be >= 3rem (Tribune masthead); '
         f'found {match.group(1)}rem.'
     )
 
@@ -277,8 +285,8 @@ def test_home_post_renders_expected_tribune_voice(app):
     body = resp.data.decode('utf-8')
 
     # PI-1: collapsed Your Finish hero — new primitives present, paired display-4 absent.
-    assert 'post-finish-rank' in body
-    assert 'post-finish-derivation' in body
+    assert 'wc-standing-rank' in body
+    assert 'wc-standing-derivation' in body
     # No second wc-numeral display-4 (Final Points column has been removed).
     assert body.count('wc-numeral display-4') == 0
     assert 'Final Points' not in body

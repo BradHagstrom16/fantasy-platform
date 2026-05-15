@@ -253,6 +253,45 @@ def test_context_pre_total_enrolled_count(app):
     assert ctx['total_enrolled'] == 5  # 4 + the outsider
 
 
+def test_context_pre_is_sealed_near_false_when_unsubmitted(app):
+    """Delight beat (Hub coherence pass 2026-05): is_sealed_near gates on
+    submitted=True AND <24h to deadline. Unsubmitted users must NOT see
+    the calmer lead-card variant even inside the 24h window — they still
+    need to act."""
+    user = make_user()
+    make_enrollment(user, picks_submitted=False)
+    db.session.commit()
+    fake_near = (TOURNAMENT_DEADLINE_UTC - timedelta(hours=6)).isoformat()
+    with patch.dict(os.environ, {'ENVIRONMENT': 'testing', 'WC_FAKE_NOW': fake_near}):
+        ctx = _context_pre(user=user)
+    assert ctx['is_sealed_near'] is False
+
+
+def test_context_pre_is_sealed_near_false_when_submitted_but_far(app):
+    """Submitted users outside the 24h window keep the loud
+    `.is-lead` lead-card; the calmer variant only fires near the
+    deadline."""
+    user = make_user()
+    make_enrollment(user, picks_submitted=True)
+    db.session.commit()
+    fake_far = (TOURNAMENT_DEADLINE_UTC - timedelta(days=2)).isoformat()
+    with patch.dict(os.environ, {'ENVIRONMENT': 'testing', 'WC_FAKE_NOW': fake_far}):
+        ctx = _context_pre(user=user)
+    assert ctx['is_sealed_near'] is False
+
+
+def test_context_pre_is_sealed_near_true_when_submitted_and_near(app):
+    """Submitted + <24h to deadline: lead-card softens. This is the
+    only state combination that triggers the calmer variant."""
+    user = make_user()
+    make_enrollment(user, picks_submitted=True)
+    db.session.commit()
+    fake_near = (TOURNAMENT_DEADLINE_UTC - timedelta(hours=6)).isoformat()
+    with patch.dict(os.environ, {'ENVIRONMENT': 'testing', 'WC_FAKE_NOW': fake_near}):
+        ctx = _context_pre(user=user)
+    assert ctx['is_sealed_near'] is True
+
+
 # =====================================================================
 # Task 8: dispatcher routing to _context_live + builder tests
 # =====================================================================

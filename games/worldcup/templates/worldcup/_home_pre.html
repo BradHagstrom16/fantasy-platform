@@ -10,11 +10,21 @@
 
    The .is-lead red-rule top + .wc-card-head eyebrow are the canonical
    WC lead pattern (games/worldcup/DESIGN.md §4). Mirrors .wc-stats-masthead
-   on the Stats tab so the two surfaces read as one tournament desk. #}
-<div class="wc-stat-card is-lead wc-countdown mb-4 animate-in stagger-1"
+   on the Stats tab so the two surfaces read as one tournament desk.
+
+   Delight beat (Hub coherence pass 2026-05): when `is_sealed_near` is
+   set (submitted user, < 24h to deadline) the card sheds `.is-lead`
+   and demotes the CTA to outlined — the user's roster is on file, the
+   page communicates "you're safe" rather than "act now." A small
+   Newsreader reassurance line replaces the urgency cue. #}
+<div class="wc-stat-card {% if not is_sealed_near %}is-lead{% else %}is-sealed-near{% endif %} wc-countdown mb-4 animate-in stagger-1"
      data-deadline-utc="{{ deadline_utc.strftime('%Y-%m-%dT%H:%M:%SZ') }}">
   <div class="wc-card-head">
-    <span class="wc-eyebrow wc-eyebrow-red">Picks Lock In</span>
+    {% if is_sealed_near %}
+      <span class="wc-eyebrow"><i class="bi bi-shield-check me-2"></i>Roster on File</span>
+    {% else %}
+      <span class="wc-eyebrow wc-eyebrow-red">Picks Lock In</span>
+    {% endif %}
   </div>
   <div class="wc-stats-masthead">
     <div class="wc-countdown-numeral-wrap">
@@ -22,7 +32,7 @@
       <span class="wc-countdown-unit">Days</span>
     </div>
     <p class="wc-stats-masthead-derivation mb-0" role="timer"
-       aria-label="Time remaining until tribute window closes" aria-live="off">
+       aria-label="Time remaining until picks deadline" aria-live="off">
       <span class="wc-countdown-tick"><span data-cd-hours>00</span><span class="u">h</span></span>
       <span class="wc-countdown-sep" aria-hidden="true">·</span>
       <span class="wc-countdown-tick"><span data-cd-mins>00</span><span class="u">m</span></span>
@@ -32,10 +42,19 @@
       Picks lock at <strong>{{ deadline_ct.strftime('%-I:%M %p CT on %b %-d') }}</strong>.
     </p>
   </div>
+  {% if is_sealed_near %}
+    <p class="wc-countdown-reassurance mb-0 mt-2">
+      Your roster is on file. Edit only if a result has changed your mind.
+    </p>
+  {% endif %}
   <div class="d-flex justify-content-end mt-3">
     {% if branch == 'unsubmitted' %}
       <a href="{{ url_for('worldcup.picks') }}" class="btn btn-game btn-lg">
         <i class="bi bi-pencil-square me-2"></i>Seal the Oath
+      </a>
+    {% elif is_sealed_near %}
+      <a href="{{ url_for('worldcup.picks', edit=1) }}" class="btn btn-outline-secondary px-4">
+        <i class="bi bi-pencil-square me-1"></i>Amend if Needed
       </a>
     {% else %}
       <a href="{{ url_for('worldcup.picks', edit=1) }}" class="btn btn-game px-4">
@@ -45,18 +64,36 @@
   </div>
 </div>
 
-{# Roster preview — only when picks submitted. The tier name caption above
-   anchors the T1-T5 labels for recall (heuristic #6). The .roster-team-mult
-   chip is tier-tinted (style.css :6461) so the multiplier chip reads in the
-   same tier color as the surrounding card border — visual cohesion within
-   the row. #}
+{# Roster preview — only when picks submitted. The tier-prefixed legend
+   below positionally pairs each name with its T1-T5 badge in the rows
+   that follow (heuristic #6: recognition over recall). The legend itself
+   carries aria-label="Tier legend" so screen readers don't read it as a
+   flat decorative caption. The .roster-team-mult chip is tier-tinted
+   (style.css :6461) so the multiplier chip reads in the same tier color
+   as the surrounding card border — visual cohesion within the row. #}
+{# Roster preview — only when picks submitted. The tier-prefixed legend
+   below positionally pairs each name with its T1-T5 badge in the rows
+   that follow (heuristic #6: recognition over recall). The legend itself
+   carries aria-label="Tier legend" so screen readers don't read it as a
+   flat decorative caption. The card's eyebrow uses `.wc-eyebrow-gold`
+   to signal "this is yours" ceremonial weight (WC §2 gold quaternary —
+   the sealed roster is one of the named ceremonial moments). The
+   .roster-team-mult chip is tier-tinted (style.css :6713) so the
+   multiplier chip reads in the same tier color as the surrounding card
+   border — visual cohesion within the row. Hub coherence pass 2026-05:
+   each roster-team-card is now an anchor to team_detail (parity with
+   the live + post linked rosters). #}
 {% if branch == 'submitted' and user_picks %}
 <div class="wc-stat-card mb-4 animate-in stagger-2">
   <div class="wc-card-head">
-    <span class="wc-eyebrow"><i class="bi bi-people-fill me-2"></i>Roster</span>
+    <span class="wc-eyebrow wc-eyebrow-gold"><i class="bi bi-people-fill me-2"></i>Your Roster</span>
   </div>
-  <p class="wc-tier-legend text-muted small mb-2">
-    Favorites <span aria-hidden="true">·</span> Contenders <span aria-hidden="true">·</span> Dark Horses <span aria-hidden="true">·</span> Underdogs <span aria-hidden="true">·</span> Wildcards
+  <p class="wc-tier-legend text-muted small mb-2" aria-label="Tier legend">
+    <strong>T1</strong> Favorites <span aria-hidden="true">·</span>
+    <strong>T2</strong> Contenders <span aria-hidden="true">·</span>
+    <strong>T3</strong> Dark Horses <span aria-hidden="true">·</span>
+    <strong>T4</strong> Underdogs <span aria-hidden="true">·</span>
+    <strong>T5</strong> Wildcards
   </p>
   {% set picks_by_tier = {} %}
     {% for pick in user_picks %}
@@ -72,12 +109,12 @@
       <div class="roster-tier-label tier-badge tier-badge-{{ tier_num }}">T{{ tier_num }}</div>
       <div class="roster-tier-teams">
         {% for pick in picks_by_tier[tier_num] %}
-        <div class="roster-team-card">
+        <a href="{{ url_for('worldcup.team_detail', team_id=pick.team_id) }}" class="roster-team-card">
           <span class="roster-team-flag">{{ pick.team.flag_emoji }}</span>
           <span class="roster-team-name">{{ pick.team.display_name }}</span>
           <span class="roster-team-abbr">{{ pick.team.fifa_code }}</span>
           <span class="roster-team-mult">×{{ pick.team.multiplier | int if pick.team.multiplier == (pick.team.multiplier | int) else pick.team.multiplier }}</span>
-        </div>
+        </a>
         {% endfor %}
       </div>
     </div>
@@ -87,18 +124,26 @@
 </div>
 {% endif %}
 
-{# Opening Fixtures — replaces the pre-kickoff zeroed-leaderboard filler.
-   Pre-kickoff there is no pool to be on top of; the page closes with content
-   the state actually has signal about. Source: services.home_context._context_pre
-   pulls the next 3 non-completed, kickoff-scheduled matches. Flips back to
-   a leaderboard preview once state transitions to 'live'. #}
+{# Opening Fixtures — informational strip below the loud Roster. Hub
+   coherence pass 2026-05 demoted this from a full .wc-stat-card to the
+   .wc-fixtures-strip silhouette so the post-lead hierarchy reads as
+   crescendo (lead-card → roster → fixtures) rather than three near-
+   identical stat-card rectangles. Source: services.home_context
+   ._context_pre pulls the next 3 non-completed, kickoff-scheduled
+   matches. Flips back to a leaderboard preview once state transitions
+   to 'live'. #}
 {% if next_3_matches %}
-<div class="wc-stat-card mb-4 animate-in stagger-3">
-  <div class="wc-card-head">
-    <span><span class="wc-eyebrow"><i class="bi bi-flag-fill me-2"></i>Opening Fixtures</span></span>
-    <a href="{{ url_for('worldcup.schedule') }}" class="btn btn-sm btn-game">Full Schedule</a>
+<section class="wc-fixtures-strip mb-4 animate-in stagger-3"
+         aria-labelledby="wc-fixtures-strip-h">
+  <div class="wc-fixtures-strip-head">
+    <span class="wc-eyebrow wc-eyebrow-muted" id="wc-fixtures-strip-h">
+      <i class="bi bi-flag-fill me-2"></i>Opening Fixtures
+    </span>
+    <a href="{{ url_for('worldcup.schedule') }}" class="wc-fixtures-strip-link">
+      Full Schedule <span aria-hidden="true">→</span>
+    </a>
   </div>
-  <ul class="wc-fixture-list">
+  <ul class="wc-fixture-list wc-fixture-list-compact">
     {% for match in next_3_matches %}
     <li class="wc-fixture-row">
       <div class="wc-fixture-teams">
@@ -119,5 +164,5 @@
     </li>
     {% endfor %}
   </ul>
-</div>
+</section>
 {% endif %}
