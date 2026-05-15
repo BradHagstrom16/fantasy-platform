@@ -1210,36 +1210,91 @@ body.game-golf {
   color: var(--gold-light);
   margin-bottom: 0.45rem;
 }
-.home-shell .ballot-spine-row {
-  display: flex;
-  flex-wrap: wrap;
+/* Clarify P2 (Critique 2026-05-15) — per-tier grouped list. The prior
+   single-row spine ("2 Favorites · 1 Contender · 2 Dark Horses · ...")
+   only counted; the sealed user couldn't tell which of the 9 flags
+   above sat in which tier without leaving the page. The grouped list
+   pairs each tier label with the actual country names and the tier
+   multiplier chip — matching the WC hub PRE's roster table affordance
+   so the lounge stops being the weaker surface for the same data. */
+.home-shell .ballot-spine-tiers {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 0.55rem;
+}
+.home-shell .ballot-spine-tier-row {
+  display: grid;
+  grid-template-columns: 1.75rem auto auto 1fr 2.2rem;
   align-items: baseline;
-  gap: 0.25rem 0.45rem;
+  column-gap: 0.55rem;
+  padding: 0.35rem 0;
+  border-top: 1px solid rgba(243,239,230,.06);
+}
+.home-shell .ballot-spine-tier-row:first-child {
+  border-top: 0;
+  padding-top: 0.15rem;
+}
+.home-shell .ballot-spine-tier-tag {
   font-family: var(--font-teko);
+  font-weight: 700;
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-align: center;
+  padding: 0.05rem 0.35rem;
+  border-radius: 4px;
+  background: rgba(243,239,230,.08);
   color: var(--bone);
-  margin-bottom: 0.5rem;
 }
-.home-shell .ballot-spine-tier {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 0.3rem;
+.home-shell .ballot-spine-tier-tag--t1 { background: rgba(217,119,6,.22); color: #FFD8A8; }
+.home-shell .ballot-spine-tier-tag--t2 { background: rgba(75,115,153,.28); color: #C3D8EE; }
+.home-shell .ballot-spine-tier-tag--t3 { background: rgba(180,83,9,.22); color: #FFC689; }
+.home-shell .ballot-spine-tier-tag--t4 { background: rgba(13,115,119,.28); color: #9CE7E4; }
+.home-shell .ballot-spine-tier-tag--t5 { background: rgba(147,51,234,.25); color: #DFC2FF; }
+.home-shell .ballot-spine-tier-name {
+  font-family: var(--font-teko);
+  font-weight: 500;
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--bone-mute);
+  white-space: nowrap;
 }
-.home-shell .ballot-spine-count {
+.home-shell .ballot-spine-tier-count {
+  font-family: var(--font-teko);
+  font-weight: 500;
+  font-size: 0.78rem;
+  color: var(--bone-mute);
+  opacity: 0.7;
+}
+.home-shell .ballot-spine-tier-picks {
+  font-family: var(--font-news);
+  font-size: 0.88rem;
+  color: var(--bone);
+  line-height: 1.35;
+}
+.home-shell .ballot-spine-tier-mult {
+  font-family: var(--font-teko);
   font-weight: 700;
   font-size: 0.95rem;
-  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
   color: var(--bone);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
 }
-.home-shell .ballot-spine-name {
-  font-weight: 500;
-  color: var(--bone-mute);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  font-size: 0.72rem;
-}
-.home-shell .ballot-spine-sep {
-  color: rgba(242,211,107,.35);
-  font-weight: 400;
+@media (max-width: 480px) {
+  .home-shell .ballot-spine-tier-row {
+    grid-template-columns: 1.75rem 1fr 2.2rem;
+    row-gap: 0.05rem;
+  }
+  .home-shell .ballot-spine-tier-name,
+  .home-shell .ballot-spine-tier-count {
+    grid-column: 2 / 3;
+  }
+  .home-shell .ballot-spine-tier-picks {
+    grid-column: 2 / 4;
+    margin-top: 0.1rem;
+  }
 }
 .home-shell .ballot-spine-avg {
   font-family: var(--font-news);
@@ -1666,6 +1721,36 @@ body.game-golf {
   color: var(--bone-mute);
 }
 
+/* Polish (Critique 2026-05-15) — live-dot on the active game tile
+   during live state. Visual differentiation from the coming-soon
+   tiles so the running tournament reads as the one a user can act
+   on. Subtle pulse mirrors the platform's broader live-indicator
+   register (no glow stacks, no neon — just a 6px red dot with a
+   soft 1.6s breathing cycle). */
+.home-shell .cg--live .p {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  width: auto;
+  margin: 0.25rem auto 0;
+}
+.home-shell .cg-live-dot {
+  display: inline-block;
+  width: 0.42rem;
+  height: 0.42rem;
+  border-radius: 50%;
+  background: var(--live-red, #E63946);
+  box-shadow: 0 0 0 2px rgba(230,57,70,.18);
+  animation: cg-live-pulse 1.6s ease-in-out infinite;
+}
+@keyframes cg-live-pulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 2px rgba(230,57,70,.18); }
+  50%      { opacity: 0.65; box-shadow: 0 0 0 4px rgba(230,57,70,.10); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .home-shell .cg-live-dot { animation: none; }
+}
+
 /* --- Commish's Note (long-form narrative) --- */
 .home-shell .commish-note {
   margin: 1.5rem 0;
@@ -1899,6 +1984,32 @@ body.game-golf {
 .home-shell .ledger-delta--up   { color: #64DBA0; }
 .home-shell .ledger-delta--down { color: #FF8089; }
 .home-shell .ledger-delta--flat { color: var(--bone-mute); }
+
+/* Bolder P1 (Critique 2026-05-15) — Top-earner editorial callout. The
+   lounge-canonical-richness signature beyond the WC hub parity embed.
+   Sits as a secondary ledger line under the main ledger-line, with a
+   subtle dashed gold rule above to separate the two registers (the
+   main line is competitive context; this one is roster spotlight). */
+.home-shell .ledger-line--secondary {
+  margin-top: 0.55rem;
+  padding-top: 0.55rem;
+  border-top: 1px dashed rgba(201,162,39,.18);
+  font-size: 0.95rem;
+}
+.home-shell .ledger-eyebrow-inline {
+  font-family: var(--font-teko);
+  font-style: normal;
+  font-weight: 500;
+  font-size: 0.78rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--gold-light);
+  opacity: 0.85;
+  margin-right: 0.55rem;
+}
+.home-shell .ledger-top-earner {
+  font-style: italic;
+}
 
 /* --- Live-state: leaderboard preview (rolls) --- */
 .home-shell .rolls {
@@ -3588,6 +3699,14 @@ body.game-worldcup {
 }
 .table-worldcup > tbody > tr:hover { background: rgba(0,40,104,.04); }
 
+/* Polish (Critique 2026-05-15) — keep multi-word tier names on one
+   line in WC tables so "Dark Horses" doesn't wrap under its tier dot
+   on mobile (the prior wrap visibly fragmented the Champion row in
+   the Final Roster recap at 375px). The table is wrapped in
+   `.table-responsive` so any resulting width overflow scrolls
+   horizontally rather than ghosting the layout. */
+.table-worldcup > tbody > tr > td:first-child { white-space: nowrap; }
+
 /* Current user row highlight — bg tint carries the "you" cue
    (P0 S0.2: side-stripe replaced by tint + leading rank numeral).
    Anchor color flipped gold→navy in WC tab unification P1: navy
@@ -4782,6 +4901,93 @@ body.game-worldcup {
   padding-top: .25rem;
 }
 
+/* WC out-state season cadence rail — Layout P1 (Critique 2026-05-15).
+   Third compositional beat below the rules teaser. Unwrapped on bone
+   substrate (no card wrapper) so the silhouette breaks from the two
+   cards above it. Desktop: 4-col grid; mobile: 2-col then 1-col. Each
+   act is Teko name + Teko dates + small Newsreader meta + italic
+   Tribune line. */
+.wc-season-rail {
+  margin: 1.75rem 0 2rem;
+  padding-top: 1.25rem;
+  border-top: 2px solid var(--gold);
+}
+.wc-season-rail-head {
+  margin-bottom: 1rem;
+}
+.wc-season-acts {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  column-gap: 1.25rem;
+  row-gap: 1.5rem;
+}
+.wc-season-act {
+  position: relative;
+  padding-left: 0.95rem;
+}
+.wc-season-act + .wc-season-act::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.15rem;
+  bottom: 0.15rem;
+  width: 1px;
+  /* CR #34: `--border-default` is undefined in tokens.css; only `--border`
+     and `--border-light` exist. The prior reference resolved to initial,
+     rendering the season-rail divider invisible. */
+  background: var(--border);
+}
+.wc-season-act-name {
+  font-family: 'Teko', sans-serif;
+  font-weight: 600;
+  font-size: 1.25rem;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--wc-navy);
+  line-height: 1.05;
+  margin-bottom: 0.3rem;
+}
+.wc-season-act-dates {
+  font-family: 'Teko', sans-serif;
+  font-weight: 500;
+  font-size: 1rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--wc-red);
+  line-height: 1.1;
+  margin-bottom: 0.15rem;
+}
+.wc-season-act-count {
+  font-family: 'Newsreader', serif;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.4rem;
+}
+.wc-season-act-tag {
+  font-family: 'Newsreader', serif;
+  font-style: italic;
+  font-size: 0.92rem;
+  line-height: 1.4;
+  color: var(--text-primary);
+}
+@media (max-width: 900px) {
+  .wc-season-acts { grid-template-columns: repeat(2, 1fr); row-gap: 1.25rem; }
+  /* Reset the vertical divider on the new first-of-row at 2-col breakpoint */
+  .wc-season-act:nth-child(odd)::before { display: none; }
+}
+@media (max-width: 480px) {
+  .wc-season-acts { grid-template-columns: 1fr; }
+  .wc-season-act { padding-left: 0; }
+  .wc-season-act + .wc-season-act {
+    padding-top: 0.95rem;
+    border-top: 1px solid var(--border-light);
+  }
+  .wc-season-act + .wc-season-act::before { display: none; }
+}
+
 /* Scoring list */
 .wc-lb-row {
   display: grid;
@@ -5313,7 +5519,13 @@ main { flex: 1; }
 }
 .subnav-pill.active {
   color: #fff;
-  background: rgba(var(--subnav-accent-rgb), .18);
+  /* Polish (Critique 2026-05-15) — active pill fill bumped from .18
+     to .32 so the running-tab cue carries across the navy substrate
+     at a glance. The prior .18 wash + 1px accent border read as a
+     thin ring on dark navy; .32 gives the pill body actual presence
+     without crossing into garish (the accent border still terminates
+     the silhouette cleanly). */
+  background: rgba(var(--subnav-accent-rgb), .32);
   border-color: var(--subnav-accent);
 }
 /* P3 S3.4 — keyboard focus ring on sub-nav pills, matching the canonical

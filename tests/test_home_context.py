@@ -283,6 +283,135 @@ def test_context_post_enrolled_with_climb_and_roster_recap(app):
         assert champion_recaps[0]['pick'].team_id == bra.id
 
 
+def test_context_live_sparkline_flat_line_render(app, client):
+    """Lounge dossier sparkline + WC hub parity embed both render a
+    centered dashed line (not a full-height area block) when every
+    snapshot carries the same rank.
+
+    Locks the Critique 2026-05-15 P0-3 fix: when min_v == max_v the
+    prior path/area math collapsed every point to y=pad, so the area
+    fill closed from y=pad down to y=height — producing a near-full-
+    height rectangle that read as a solid block on whichever substrate
+    (navy bar on dark lounge, pink band on bone hub). The most-engaged
+    user (a stable leader at #1) got the least informative chart.
+    """
+    from datetime import date, timedelta
+    from games.worldcup.models import WorldCupRankSnapshot
+    with app.app_context(), patch.dict(os.environ, {
+        'ENVIRONMENT': 'testing',
+        'WC_FAKE_NOW': '2026-06-15T00:00:00Z',
+    }):
+        user = _make_user()
+        enr = _make_enrollment(user, picks_submitted=True, total_score=150.0)
+        # Seed 8 days of identical rank-1 snapshots — the canonical
+        # "stable leader" pattern that produced the degenerate render.
+        today = date(2026, 6, 14)
+        for delta in range(8):
+            db.session.add(WorldCupRankSnapshot(
+                enrollment_id=enr.id,
+                captured_date=today - timedelta(days=delta),
+                rank=1, total_score=150.0,
+            ))
+        db.session.commit()
+
+        # Log in and fetch the lounge home page.
+        with client.session_transaction() as sess:
+            sess['_user_id'] = str(user.id)
+            sess['_fresh'] = True
+        lounge = client.get('/')
+        assert lounge.status_code == 200
+        lounge_html = lounge.data.decode()
+        # Flat-line branch indicators
+        assert 'stroke-dasharray="4 4"' in lounge_html, (
+            'Lounge dossier sparkline must render the dashed centered '
+            'line on flat-rank data (P0-3 regression lock).'
+        )
+        # The path/area fill from the non-flat branch must NOT appear —
+        # the rgba(242,211,107,0.16) area fill is the visual symptom of
+        # the bug, and the (M…L…L…Z) area path is its scaffolding.
+        assert 'fill="rgba(242,211,107,0.16)"' not in lounge_html, (
+            'Flat-rank sparkline must drop the area fill (P0-3): the '
+            'fill produces the near-full-height solid block.'
+        )
+
+        # WC hub parity embed: same fix on the bone-substrate red version.
+        hub = client.get('/worldcup/')
+        assert hub.status_code == 200
+        hub_html = hub.data.decode()
+        assert 'stroke-dasharray="4 4"' in hub_html, (
+            'WC hub parity embed must mirror the flat-line treatment.'
+        )
+        assert 'fill="rgba(191,10,48,0.10)"' not in hub_html, (
+            'WC hub flat-rank sparkline must drop the red area fill.'
+        )
+
+
+def test_context_live_dense_rank_for_tied_scores(app):
+    """Lounge live dossier + leaderboard preview both use dense rank.
+
+    Locks the Critique 2026-05-15 P0-1 fix: the prior `enumerate(...)+1`
+    rendered competition rank, which diverged from the WC hub's dense
+    rank for any tied-score pair. CLAUDE.md "Dense rank everywhere"
+    invariant — tied scores share a rank, the next distinct score
+    advances by 1 (no gap).
+
+    Seeds three enrollments where the top two tie at 150 pts: dense
+    rank → 1, 1, 2 (not the prior 1, 2, 3).
+    """
+    from core.main.home_context import build_home_context
+    with app.app_context(), patch.dict(os.environ, {
+        'ENVIRONMENT': 'testing',
+        'WC_FAKE_NOW': '2026-06-15T00:00:00Z',
+    }):
+        u_first = _make_user(username='first', email='first@test.com')
+        u_tied = _make_user(username='tied', email='tied@test.com')
+        u_third = _make_user(username='third', email='third@test.com')
+        _make_enrollment(u_first, picks_submitted=True, total_score=150.0)
+        _make_enrollment(u_tied, picks_submitted=True, total_score=150.0)
+        _make_enrollment(u_third, picks_submitted=True, total_score=50.0)
+
+        # Viewer is the tied user — their dossier rank should equal the
+        # first user's rank (both share rank 1 under dense rank).
+        ctx = build_home_context(u_tied, 'live')
+        assert ctx['dossier']['rank'] == 1, (
+            'Tied-leader pair must share rank 1 under dense rank '
+            '(prior competition rank rendered the second tied row as #2).'
+        )
+
+        # Top-3-plus-you must also render dense rank.
+        ranks = [row['rank'] for row in ctx['top_3_plus_you']]
+        assert ranks == [1, 1, 2], (
+            f'top_3_plus_you must use dense rank, got {ranks}. '
+            'Tied scores share a rank; the next distinct score is rank+1.'
+        )
+
+        # Viewer at rank 1 + leader at rank 1 → lead_delta_up is None
+        # (you ARE the leader, no points back of the lead).
+        assert ctx['dossier']['lead_delta_up'] is None
+
+
+def test_context_live_lead_delta_for_chaser(app):
+    """Bolder P1: lounge dossier surfaces lead_delta_up/down (parity port
+    from the WC hub embed; lounge previously omitted it).
+    """
+    from core.main.home_context import build_home_context
+    with app.app_context(), patch.dict(os.environ, {
+        'ENVIRONMENT': 'testing',
+        'WC_FAKE_NOW': '2026-06-15T00:00:00Z',
+    }):
+        u_lead = _make_user(username='leader', email='leader@test.com')
+        u_you = _make_user(username='you', email='you@test.com')
+        u_chaser = _make_user(username='chaser', email='chaser@test.com')
+        _make_enrollment(u_lead, picks_submitted=True, total_score=200.0)
+        _make_enrollment(u_you, picks_submitted=True, total_score=125.0)
+        _make_enrollment(u_chaser, picks_submitted=True, total_score=50.0)
+
+        ctx = build_home_context(u_you, 'live')
+        assert ctx['dossier']['rank'] == 2
+        assert ctx['dossier']['lead_delta_up'] == 75.0  # 200 - 125
+        assert ctx['dossier']['lead_delta_down'] == 75.0  # 125 - 50
+
+
 def test_context_live_roster_match_away_side(app):
     """Live state with user's pick on the away side of a recent result.
 

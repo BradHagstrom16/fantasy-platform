@@ -44,6 +44,12 @@
     {% set pad = 3 %}
     {% set max_v = data|max %}
     {% set min_v = data|min %}
+    {# Flat-line guard (Critique 2026-05-15 P0-3) — parity with the
+       lounge `_dossier_card.html` fix. When all snapshots carry the
+       same rank, the prior area-fill close-back to y=height produced a
+       near-full-height rectangle (read as a pink bar on bone). Render
+       a centered dashed line + endpoint dots instead. #}
+    {% set is_flat = (max_v == min_v) %}
     {% set range_v = (max_v - min_v) if (max_v - min_v) > 0 else 1 %}
     {% set step_x = (width - pad*2) / (data|length - 1) %}
     <svg width="100%" height="{{ height }}" viewBox="0 0 {{ width }} {{ height }}" preserveAspectRatio="none" aria-hidden="true">
@@ -52,37 +58,49 @@
             y1="{{ pad + t * (height - pad*2) }}" y2="{{ pad + t * (height - pad*2) }}"
             stroke="rgba(191,10,48,0.10)" stroke-dasharray="2 4"/>
       {% endfor %}
-      {% set path = [] %}
-      {% set area = [] %}
-      {% for v in data %}
-        {% set i = loop.index0 %}
-        {% set x = pad + i * step_x %}
-        {% set y = pad + ((v - min_v) / range_v) * (height - pad*2) %}
-        {% if i == 0 %}
-          {% set _ = path.append('M' ~ x ~ ',' ~ y) %}
-          {% set _ = area.append('M' ~ x ~ ',' ~ y) %}
-        {% else %}
-          {% set _ = path.append('L' ~ x ~ ',' ~ y) %}
-          {% set _ = area.append('L' ~ x ~ ',' ~ y) %}
-        {% endif %}
-        {% if loop.last %}
-          {% set _ = area.append('L' ~ x ~ ',' ~ height) %}
-          {% set _ = area.append('L' ~ pad ~ ',' ~ height) %}
-          {% set _ = area.append('Z') %}
-        {% endif %}
-      {% endfor %}
-      <path d="{{ area|join(' ') }}" fill="rgba(191,10,48,0.10)"/>
-      <path d="{{ path|join(' ') }}" fill="none" stroke="#BF0A30" stroke-width="1.8"
-            stroke-linecap="round" stroke-linejoin="round"/>
-      {% for v in data %}
-        {% set i = loop.index0 %}
-        {% set x = pad + i * step_x %}
-        {% set y = pad + ((v - min_v) / range_v) * (height - pad*2) %}
-        <circle cx="{{ x }}" cy="{{ y }}"
-                r="{{ 3 if loop.last else 1.4 }}"
-                fill="{{ '#9C0826' if loop.last else '#BF0A30' }}"
-                {% if loop.last %}stroke="#BF0A30" stroke-width="1"{% endif %}/>
-      {% endfor %}
+      {% if is_flat %}
+        {% set fy = height / 2 %}
+        {% set x0 = pad %}
+        {% set x1 = width - pad %}
+        <line x1="{{ x0 }}" x2="{{ x1 }}" y1="{{ fy }}" y2="{{ fy }}"
+              stroke="#BF0A30" stroke-width="1.8" stroke-linecap="round"
+              stroke-dasharray="4 4" opacity="0.55"/>
+        <circle cx="{{ x0 }}" cy="{{ fy }}" r="1.4" fill="#BF0A30"/>
+        <circle cx="{{ x1 }}" cy="{{ fy }}" r="3" fill="#9C0826"
+                stroke="#BF0A30" stroke-width="1"/>
+      {% else %}
+        {% set path = [] %}
+        {% set area = [] %}
+        {% for v in data %}
+          {% set i = loop.index0 %}
+          {% set x = pad + i * step_x %}
+          {% set y = pad + ((v - min_v) / range_v) * (height - pad*2) %}
+          {% if i == 0 %}
+            {% set _ = path.append('M' ~ x ~ ',' ~ y) %}
+            {% set _ = area.append('M' ~ x ~ ',' ~ y) %}
+          {% else %}
+            {% set _ = path.append('L' ~ x ~ ',' ~ y) %}
+            {% set _ = area.append('L' ~ x ~ ',' ~ y) %}
+          {% endif %}
+          {% if loop.last %}
+            {% set _ = area.append('L' ~ x ~ ',' ~ height) %}
+            {% set _ = area.append('L' ~ pad ~ ',' ~ height) %}
+            {% set _ = area.append('Z') %}
+          {% endif %}
+        {% endfor %}
+        <path d="{{ area|join(' ') }}" fill="rgba(191,10,48,0.10)"/>
+        <path d="{{ path|join(' ') }}" fill="none" stroke="#BF0A30" stroke-width="1.8"
+              stroke-linecap="round" stroke-linejoin="round"/>
+        {% for v in data %}
+          {% set i = loop.index0 %}
+          {% set x = pad + i * step_x %}
+          {% set y = pad + ((v - min_v) / range_v) * (height - pad*2) %}
+          <circle cx="{{ x }}" cy="{{ y }}"
+                  r="{{ 3 if loop.last else 1.4 }}"
+                  fill="{{ '#9C0826' if loop.last else '#BF0A30' }}"
+                  {% if loop.last %}stroke="#BF0A30" stroke-width="1"{% endif %}/>
+        {% endfor %}
+      {% endif %}
     </svg>
   </div>
   {% else %}
