@@ -320,8 +320,13 @@ def test_pi2_ballot_flags_are_accessible_team_detail_links():
         "`aria-label` so AT users hear the team name + destination, "
         "not nine bare flag emoji."
     )
-    assert all("url_for('worldcup.team_detail'" in BALLOT for _ in [None]), (
-        "PI-2: `.ballot-flag` anchors must route to "
+    # PR #30 CR — the prior form `all(... in BALLOT for _ in [None])` iterated
+    # exactly once and reduced to a single substring check against the whole
+    # file. If only one of nine flag anchors carried the route, the lock
+    # would silently pass. Iterate over the captured opening tags so every
+    # `.ballot-flag` anchor is verified individually.
+    assert all("url_for('worldcup.team_detail'" in a for a in flag_anchors), (
+        "PI-2: every `.ballot-flag` anchor must route to "
         "`url_for('worldcup.team_detail', team_id=...)`."
     )
 

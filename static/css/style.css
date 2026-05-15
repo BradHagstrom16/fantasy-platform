@@ -1153,13 +1153,23 @@ body.game-golf {
   color: inherit;
   transition: transform 0.15s ease, border-color 0.15s ease, background-color 0.15s ease;
 }
-.home-shell .ballot-flag:hover,
+/* PR #30 CR — `:hover` fires on tap and stays latched on touch devices
+   until the next tap-elsewhere, leaving the lift + gold tint stuck on the
+   last-tapped flag. Gate the hover block on `@media (hover: hover)` so
+   touch browsers skip it entirely. `:focus-visible` stays unscoped so
+   keyboard users on any device get the same affordance the mouse user
+   sees (lift + tint + outline ring). */
+@media (hover: hover) {
+  .home-shell .ballot-flag:hover {
+    transform: translateY(-1px);
+    border-color: rgba(201,162,39,.5);
+    background: rgba(201,162,39,.10);
+  }
+}
 .home-shell .ballot-flag:focus-visible {
   transform: translateY(-1px);
   border-color: rgba(201,162,39,.5);
   background: rgba(201,162,39,.10);
-}
-.home-shell .ballot-flag:focus-visible {
   outline: 2px solid var(--gold-light);
   outline-offset: 2px;
 }

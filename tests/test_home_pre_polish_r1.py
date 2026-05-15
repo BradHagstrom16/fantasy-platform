@@ -178,8 +178,25 @@ def test_fixture_ladder_has_no_pick_due_badge():
     """S6.1.5 PI-5 — migrated from `_fixture_card.html` to the inline
     fixture ladder. The `◯ PICK DUE` badge was misleading then and would
     still be misleading now — there is one global tournament deadline,
-    not a per-match deadline."""
-    assert 'PICK DUE' not in HOME_PRE, (
+    not a per-match deadline.
+
+    PR #30 CR — the check is scoped to the `<ol class="fixture-ladder">`
+    block so a future "PICK DUE" string elsewhere in `_home_pre.html`
+    (e.g., a hypothetical pick-CTA section) doesn't false-positive the
+    lock. The invariant is "no per-match PICK DUE badge in the FIXTURE
+    LADDER", not "no PICK DUE anywhere in the file."
+    """
+    m = re.search(
+        r'<ol\s+class="fixture-ladder"[^>]*>.*?</ol>',
+        HOME_PRE,
+        re.DOTALL,
+    )
+    assert m, (
+        'fixture ladder block not found in `_home_pre.html`; the rail '
+        'should still render `<ol class="fixture-ladder">...</ol>`.'
+    )
+    fixture_ladder_html = m.group(0)
+    assert 'PICK DUE' not in fixture_ladder_html, (
         'PICK DUE badge is back in the fixture ladder. Picks are due once, '
         'at the tournament deadline, not per match.'
     )
