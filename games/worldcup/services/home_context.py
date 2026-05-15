@@ -26,7 +26,7 @@ from games.worldcup.services.ranking import compute_rank_neighbors
 from games.worldcup.services.scoring import points_for_pick_on_match
 from games.worldcup.services.stage import stage_label
 from games.worldcup.services.state import (
-    FINAL_MATCH_NUMBER, WorldCupHubState, worldcup_state,
+    FINAL_MATCH_NUMBER, WorldCupHubState, now_utc, worldcup_state,
 )
 from games.worldcup.services.trends import (
     compute_trend_by_enrollment, show_trend_column,
@@ -199,11 +199,25 @@ def _context_pre(user: Any) -> dict:
             .all()
         )
 
-    top_3_preview = _top_n_preview(3)
-
     total_enrolled = WorldCupEnrollment.query.filter_by(
         season_year=SEASON_YEAR,
     ).count()
+
+    # Opening fixtures — replaces the pre-kickoff zeroed leaderboard with
+    # content the pre-state actually has signal about. Limit to 3 so the
+    # card fits the hub's editorial proportions; uses kickoff_utc to skip
+    # knockout shells (kickoff_utc null until advancement).
+    next_3_matches = (
+        WorldCupMatch.query
+        .filter(WorldCupMatch.kickoff_utc.isnot(None))
+        .filter(WorldCupMatch.is_completed == False)  # noqa: E712
+        .order_by(WorldCupMatch.kickoff_utc.asc(), WorldCupMatch.match_number.asc())
+        .limit(3)
+        .all()
+    )
+
+    _now = now_utc()
+    clamped_days = max(0, (TOURNAMENT_DEADLINE_UTC - _now).days)
 
     return {
         'state': 'pre',
@@ -211,10 +225,18 @@ def _context_pre(user: Any) -> dict:
         'copy': hub_copy('pre', branch),
         'enrollment': enrollment,
         'display_name': enrollment.get_display_name(),
+        # deadline_utc + now_utc power the live countdown ticker on the
+        # lead card. deadline_ct stays for the "Picks lock at ..." prose
+        # derivation that needs a CT-local display. clamped_days is the
+        # SSR fallback for the masthead numeral (precomputed so the
+        # template avoids an inline `>` that trips HTMLHint).
+        'deadline_utc': TOURNAMENT_DEADLINE_UTC,
+        'now_utc': _now,
+        'clamped_days': clamped_days,
         'deadline_ct': TOURNAMENT_DEADLINE_UTC.astimezone(WORLDCUP_TZ),
         'picks_submitted': enrollment.picks_submitted,
         'user_picks': user_picks,
-        'top_3_preview': top_3_preview,
+        'next_3_matches': next_3_matches,
         'total_enrolled': total_enrolled,
         'tournament_phase': _derive_tournament_phase(),
     }

@@ -189,9 +189,16 @@ def test_context_pre_user_picks_ordered_by_tier_then_team_name(app):
         )
 
 
-def test_context_pre_top_3_preview_renders_even_with_zero_scores(app):
+def test_context_pre_drops_top_3_preview_in_favor_of_opening_fixtures(app):
+    """Hub pre-state recomp (post-critique remediation): the zeroed
+    pre-kickoff Top-of-Pool preview was filler — every row tied at 0.0,
+    default avatars, sortless. Replaced by next_3_matches (Opening
+    Fixtures). The pre-state context must no longer carry top_3_preview
+    (so the template can't accidentally regress to rendering it) and
+    must expose next_3_matches keyed in the dict (even if empty when
+    the seed has no kickoff-scheduled matches yet).
+    """
     seed = seed_full_tournament(num_enrollments=5)
-    # Reset scores to 0 — pre-kickoff state
     for e in seed['enrollments']:
         e.total_score = 0.0
     db.session.commit()
@@ -199,8 +206,20 @@ def test_context_pre_top_3_preview_renders_even_with_zero_scores(app):
     fake_pre = (TOURNAMENT_DEADLINE_UTC - timedelta(days=1)).isoformat()
     with patch.dict(os.environ, {'ENVIRONMENT': 'testing', 'WC_FAKE_NOW': fake_pre}):
         ctx = _context_pre(user=user)
-    assert len(ctx['top_3_preview']) == 3
-    assert all(e.total_score == 0.0 for e in ctx['top_3_preview'])
+    assert 'top_3_preview' not in ctx, (
+        'Pre-state context must not carry top_3_preview after the '
+        'Opening-Fixtures swap (regression risk on the home_shell partial).'
+    )
+    assert 'next_3_matches' in ctx, (
+        'Pre-state context must expose next_3_matches for the Opening '
+        'Fixtures card; the key must be present even when the list is '
+        'empty so the template can render the {% if %} guard.'
+    )
+    # Countdown SSR fallback — the lead card's static Teko numeral needs
+    # both values to compute "days remaining" on first paint before
+    # countdown.js attaches.
+    assert ctx['deadline_utc'] == TOURNAMENT_DEADLINE_UTC
+    assert ctx['now_utc'] is not None
 
 
 def test_context_pre_includes_voice_copy_per_branch(app):
@@ -210,8 +229,17 @@ def test_context_pre_includes_voice_copy_per_branch(app):
     fake_pre = (TOURNAMENT_DEADLINE_UTC - timedelta(days=1)).isoformat()
     with patch.dict(os.environ, {'ENVIRONMENT': 'testing', 'WC_FAKE_NOW': fake_pre}):
         ctx = _context_pre(user=user)
-    # Unsubmitted copy should mention "Make your picks"
-    assert 'picks' in ctx['copy']['headline'].lower()
+    # Post-critique hero collapse (services/voice.py): unsubmitted pre-state
+    # headline is the Tribune-voice line "The Pool locks at first whistle."
+    # — non-empty, no em-dash, no functional restatement of the lead-card CTA.
+    headline = ctx['copy']['headline']
+    assert headline, 'Pre-state copy headline must not be empty.'
+    assert '—' not in headline and '--' not in headline, (
+        f'Hero copy must not contain em-dashes (impeccable absolute ban): {headline!r}'
+    )
+    # The two-beat hero drops the subhead in pre-state — empty string is
+    # the contract so the template's `{% if copy.subhead %}` guard short-circuits.
+    assert ctx['copy']['subhead'] == ''
 
 
 def test_context_pre_total_enrolled_count(app):

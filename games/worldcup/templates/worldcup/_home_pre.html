@@ -2,13 +2,37 @@
    branch: 'submitted' | 'unsubmitted' (drives CTA + roster visibility).
    copy / state already in scope from the shell. #}
 
-<div class="wc-stat-card is-lead mb-4 animate-in">
-  <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
-    <div>
-      <p class="mb-1 text-muted">
-        Deadline: <strong>{{ deadline_ct.strftime('%b %-d, %Y at %-I:%M %p CT') }}</strong>
-      </p>
+{# Lead card — Tribune masthead composition (Stats-page parity).
+   One dominant Teko numeral (countdown days) + Newsreader derivation
+   (hours · mins · secs + lock detail) + CTA. data-deadline-utc binds
+   the shared countdown.js ticker; the static days value is the SSR
+   fallback for the first paint before JS attaches.
+
+   The .is-lead red-rule top + .wc-card-head eyebrow are the canonical
+   WC lead pattern (games/worldcup/DESIGN.md §4). Mirrors .wc-stats-masthead
+   on the Stats tab so the two surfaces read as one tournament desk. #}
+<div class="wc-stat-card is-lead wc-countdown mb-4 animate-in stagger-1"
+     data-deadline-utc="{{ deadline_utc.strftime('%Y-%m-%dT%H:%M:%SZ') }}">
+  <div class="wc-card-head">
+    <span class="wc-eyebrow wc-eyebrow-red">Picks Lock In</span>
+  </div>
+  <div class="wc-stats-masthead">
+    <div class="wc-countdown-numeral-wrap">
+      <span class="wc-stats-masthead-numeral" data-cd-days>{{ '%02d'|format(clamped_days) }}</span>
+      <span class="wc-countdown-unit">Days</span>
     </div>
+    <p class="wc-stats-masthead-derivation mb-0" role="timer"
+       aria-label="Time remaining until tribute window closes" aria-live="off">
+      <span class="wc-countdown-tick"><span data-cd-hours>00</span><span class="u">h</span></span>
+      <span class="wc-countdown-sep" aria-hidden="true">·</span>
+      <span class="wc-countdown-tick"><span data-cd-mins>00</span><span class="u">m</span></span>
+      <span class="wc-countdown-sep" aria-hidden="true">·</span>
+      <span class="wc-countdown-tick"><span data-cd-secs>00</span><span class="u">s</span></span>
+      <br>
+      Picks lock at <strong>{{ deadline_ct.strftime('%-I:%M %p CT on %b %-d') }}</strong>.
+    </p>
+  </div>
+  <div class="d-flex justify-content-end mt-3">
     {% if branch == 'unsubmitted' %}
       <a href="{{ url_for('worldcup.picks') }}" class="btn btn-game btn-lg">
         <i class="bi bi-pencil-square me-2"></i>Seal the Oath
@@ -21,12 +45,19 @@
   </div>
 </div>
 
-{# Roster preview — only when picks submitted #}
+{# Roster preview — only when picks submitted. The tier name caption above
+   anchors the T1-T5 labels for recall (heuristic #6). The .roster-team-mult
+   chip is tier-tinted (style.css :6461) so the multiplier chip reads in the
+   same tier color as the surrounding card border — visual cohesion within
+   the row. #}
 {% if branch == 'submitted' and user_picks %}
-<div class="wc-stat-card mb-4 animate-in">
+<div class="wc-stat-card mb-4 animate-in stagger-2">
   <div class="wc-card-head">
     <span class="wc-eyebrow"><i class="bi bi-people-fill me-2"></i>Roster</span>
   </div>
+  <p class="wc-tier-legend text-muted small mb-2">
+    Favorites <span aria-hidden="true">·</span> Contenders <span aria-hidden="true">·</span> Dark Horses <span aria-hidden="true">·</span> Underdogs <span aria-hidden="true">·</span> Wildcards
+  </p>
   {% set picks_by_tier = {} %}
     {% for pick in user_picks %}
       {% if pick.team.tier not in picks_by_tier %}
@@ -45,7 +76,7 @@
           <span class="roster-team-flag">{{ pick.team.flag_emoji }}</span>
           <span class="roster-team-name">{{ pick.team.display_name }}</span>
           <span class="roster-team-abbr">{{ pick.team.fifa_code }}</span>
-          <span class="wc-multiplier-chip">×{{ pick.team.multiplier | int if pick.team.multiplier == (pick.team.multiplier | int) else pick.team.multiplier }}</span>
+          <span class="roster-team-mult">×{{ pick.team.multiplier | int if pick.team.multiplier == (pick.team.multiplier | int) else pick.team.multiplier }}</span>
         </div>
         {% endfor %}
       </div>
@@ -56,44 +87,37 @@
 </div>
 {% endif %}
 
-{# Top-3 preview (zeros until kickoff) #}
-{% if top_3_preview %}
-<div class="wc-stat-card mb-4 animate-in">
+{# Opening Fixtures — replaces the pre-kickoff zeroed-leaderboard filler.
+   Pre-kickoff there is no pool to be on top of; the page closes with content
+   the state actually has signal about. Source: services.home_context._context_pre
+   pulls the next 3 non-completed, kickoff-scheduled matches. Flips back to
+   a leaderboard preview once state transitions to 'live'. #}
+{% if next_3_matches %}
+<div class="wc-stat-card mb-4 animate-in stagger-3">
   <div class="wc-card-head">
-    <span><span class="wc-eyebrow"><i class="bi bi-trophy me-2"></i>Top of the Pool</span></span>
-    <a href="{{ url_for('worldcup.leaderboard') }}" class="btn btn-sm btn-game">View All</a>
+    <span><span class="wc-eyebrow"><i class="bi bi-flag-fill me-2"></i>Opening Fixtures</span></span>
+    <a href="{{ url_for('worldcup.schedule') }}" class="btn btn-sm btn-game">Full Schedule</a>
   </div>
-  <table class="table table-worldcup mb-0">
-      <caption class="visually-hidden">Top of the pool preview, ranked by current points.</caption>
-      <thead>
-        <tr>
-          <th scope="col" style="width:50px">#</th>
-          <th scope="col">Player</th>
-          <th scope="col" class="text-end">Points</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% set ns = namespace(rank=0, prev_score=None) %}
-        {% for e in top_3_preview %}
-        {% if e.total_score != ns.prev_score %}
-          {% set ns.rank = ns.rank + 1 %}
-        {% endif %}
-        <tr {% if e.user_id == enrollment.user_id %}class="row-current-user"{% endif %}>
-          <td><span class="wc-numeral">{{ ns.rank }}</span></td>
-          <td>
-            <span class="me-1">{{ e.user.get_avatar() }}</span>
-            <a href="{{ url_for('worldcup.player_detail', enrollment_id=e.id) }}" class="text-decoration-none fw-medium">
-              {{ e.get_display_name() }}
-            </a>
-          </td>
-          <td class="text-end"><span class="wc-numeral">{{ "%.1f"|format(e.total_score) }}</span></td>
-        </tr>
-        {% set ns.prev_score = e.total_score %}
-        {% endfor %}
-      </tbody>
-    </table>
-  {% if total_enrolled > 0 and (top_3_preview | sum(attribute='total_score') == 0.0) %}
-  <p class="text-muted small mb-0 mt-2">Awaiting kickoff.</p>
-  {% endif %}
+  <ul class="wc-fixture-list">
+    {% for match in next_3_matches %}
+    <li class="wc-fixture-row">
+      <div class="wc-fixture-teams">
+        <span class="wc-fixture-side">
+          <span class="wc-fixture-flag">{{ match.home_team.flag_emoji if match.home_team else '🏴' }}</span>
+          <span class="wc-fixture-name">{{ match.home_team.display_name if match.home_team else 'TBD' }}</span>
+        </span>
+        <span class="wc-fixture-vs" aria-hidden="true">vs</span>
+        <span class="wc-fixture-side">
+          <span class="wc-fixture-flag">{{ match.away_team.flag_emoji if match.away_team else '🏴' }}</span>
+          <span class="wc-fixture-name">{{ match.away_team.display_name if match.away_team else 'TBD' }}</span>
+        </span>
+      </div>
+      <div class="wc-fixture-meta">
+        {% if match.group_letter %}<span class="wc-fixture-group">Group {{ match.group_letter }}</span>{% endif %}
+        <span class="wc-fixture-when wc-numeral">{{ format_ct(match.kickoff_utc).strftime('%a %b %-d · %-I:%M %p CT') }}</span>
+      </div>
+    </li>
+    {% endfor %}
+  </ul>
 </div>
 {% endif %}

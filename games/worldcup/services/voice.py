@@ -25,12 +25,12 @@ HUB_COPY = {
         },
         'unenrolled_pre': {
             'eyebrow': 'Tribute Window',
-            'headline': 'Join the pool — the deadline is approaching.',
+            'headline': 'Join the pool. The deadline is approaching.',
             'subhead': 'Pick 9 teams across 5 tiers. The Commish keeps score.',
         },
         'unenrolled_live': {
             'eyebrow': 'Tournament Underway',
-            'headline': 'Registration is closed — but you can follow the action.',
+            'headline': 'Registration is closed. Watch the action.',
             'subhead': 'See the leaderboard, browse rosters, follow recent results.',
         },
         'unenrolled_post': {
@@ -40,15 +40,18 @@ HUB_COPY = {
         },
     },
     'pre': {
+        # Hero collapse (S-Hub-PreCritique): drop the subhead to two-beat
+        # hero per impeccable copy law. Headline carries the Tribune voice;
+        # the lead card carries the action and the live countdown.
         'unsubmitted': {
             'eyebrow': 'Tribute Window Open',
-            'headline': 'Make your picks before the deadline.',
-            'subhead': 'Pick 9 teams across 5 tiers. The Commish keeps score.',
+            'headline': 'The Pool locks at first whistle.',
+            'subhead': '',
         },
         'submitted': {
             'eyebrow': 'Sealed. Still Amendable.',
             'headline': 'Your Oath is on file.',
-            'subhead': 'You can amend until the deadline.',
+            'subhead': '',
         },
     },
     'live': {
