@@ -183,9 +183,10 @@
     <a href="{{ url_for('worldcup.picks') }}" class="btn btn-sm btn-game">View Full Picks</a>
   </div>
   {# Critique r2 follow-up (2026-05-15) — `.wc-live-roster` class
-     marker so the Multiplier column can hide at <480px (the column
-     duplicates info already baked into the Points value, and the
-     5-cell row got cramped at narrow widths). Multiplier still
+     marker so the Multiplier column can hide at phone widths
+     (≤575.98px, Bootstrap `sm` breakpoint). The column duplicates
+     info already baked into the multiplied Points value, and the
+     full row got cramped at narrow widths. Multiplier still
      renders on tablet+desktop where the column carries useful
      per-pick context. #}
   <div class="table-responsive">
