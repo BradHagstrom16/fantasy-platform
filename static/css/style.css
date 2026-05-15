@@ -7395,6 +7395,15 @@ body.game-worldcup .form-text {
   color: var(--text-secondary);
   text-decoration: none;
   transition: color .15s ease;
+  /* 44×44 mobile touch-target floor (PRODUCT.md "Hard requirements").
+     The strip-head's `align-items: baseline` keeps the link's text
+     baseline aligned with the eyebrow next to it; `inline-flex` +
+     `min-height: 44px` extends the hit area without shifting the
+     visible typography. */
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 .25rem;
 }
 .wc-fixtures-strip-link:hover,
 .wc-fixtures-strip-link:focus-visible {
