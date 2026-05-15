@@ -6,8 +6,11 @@ content/layout changes that need locking against future drift:
   P0 #2: countdown card lost its hardcoded "Review & Edit My Roster" CTA
          block + the "Days to the Whistle" subtitle + the "ticking" trail.
   P0 #3: fixture cards lost the misleading "◯ PICK DUE" status badge.
+         (S6.1.5 PI-5 — the fixture cards themselves were later retired in
+         favor of the editorial fixture ladder in `_home_pre.html`.)
   P0 #5: pre-state Commish note replaced with user-supplied verbatim copy
-         (first-person voice, retains British "favours" spelling).
+         (first-person voice). S6.1.5 — Americanized "favours" → "favors"
+         per user request; the rest of the verbatim copy stays locked.
   P0 #6: dossier CTA labels reworded to functional voice:
          - Unenrolled  → "Join the World Cup Pool"
          - Enrolled, no picks → "Make Your Picks"
@@ -41,7 +44,10 @@ COMMISH = (TEMPLATES / '_commish_note.html').read_text()
 JOIN_CTA = (TEMPLATES / '_join_cta_card.html').read_text()
 SUBMIT_CTA = (TEMPLATES / '_submit_picks_cta.html').read_text()
 BALLOT = (TEMPLATES / '_ballot_card.html').read_text()
-FIXTURE = (TEMPLATES / '_fixture_card.html').read_text()
+# S6.1.5 PI-5 — `_fixture_card.html` retired; rail now renders the editorial
+# fixture ladder inline in `_home_pre.html`. The two fixture-card-specific
+# locks below have been migrated to the new surface.
+HOME_PRE = (TEMPLATES / '_home_pre.html').read_text()
 BASE_HTML = (REPO_ROOT / 'templates' / 'base.html').read_text()
 
 
@@ -151,9 +157,13 @@ def test_countdown_derivation_is_timer_role_with_silenced_live_region():
         'P1 #8: aria-live must be "off" so SRs do not announce the '
         'per-second tick (1Hz announcements would be noise).'
     )
+    # S6.1.5 PI-1 — aria-label tightened from "Time remaining until World Cup
+    # tribute window closes" to "Time remaining until kickoff" so the
+    # announcement matches the new sealed-user copy register ("The Council
+    # Convenes In" / "Kickoff In"). The intent — describe what the timer
+    # counts down TO, not the visible unit symbols — is preserved.
     assert (
-        'aria-label="Time remaining until World Cup tribute window closes"'
-        in COUNTDOWN
+        'aria-label="Time remaining until kickoff"' in COUNTDOWN
     ), (
         'P1 #8: aria-label should describe what the timer counts down TO, '
         'not restate the visible unit symbols.'
@@ -164,29 +174,29 @@ def test_countdown_derivation_is_timer_role_with_silenced_live_region():
 # P0 #3 — fixture cards no longer carry the misleading PICK DUE badge
 # ---------------------------------------------------------------------------
 
-def test_fixture_card_has_no_pick_due_badge():
-    """The `◯ PICK DUE` badge rendered on every upcoming-match card was
-    misleading — there is one global tournament deadline, not a per-match
-    deadline. P0 #3 deleted the badge while keeping the venue/city note."""
-    assert 'PICK DUE' not in FIXTURE, (
-        'PICK DUE badge is back on the fixture card. Picks are due once, '
-        'at the tournament deadline — not per match.'
+def test_fixture_ladder_has_no_pick_due_badge():
+    """S6.1.5 PI-5 — migrated from `_fixture_card.html` to the inline
+    fixture ladder. The `◯ PICK DUE` badge was misleading then and would
+    still be misleading now — there is one global tournament deadline,
+    not a per-match deadline."""
+    assert 'PICK DUE' not in HOME_PRE, (
+        'PICK DUE badge is back in the fixture ladder. Picks are due once, '
+        'at the tournament deadline, not per match.'
     )
 
 
-def test_fixture_card_kickoff_uses_ct_filter_not_utc_strftime():
-    """Kickoff times should render in Central Time via the `|ct` filter,
-    not as `strftime('%H:%M UTC')`. Locks the migration away from raw
-    UTC display strings."""
-    assert "'%H:%M UTC'" not in FIXTURE and "%H:%M UTC" not in FIXTURE, (
-        'Fixture card reverted to a UTC strftime. Use the `|ct` Jinja '
+def test_fixture_ladder_kickoff_uses_ct_filter_not_utc_strftime():
+    """S6.1.5 PI-5 — migrated from `_fixture_card.html` to the inline
+    fixture ladder. Kickoff times still render in Central Time via the
+    `|ct` filter, not raw UTC."""
+    assert "'%H:%M UTC'" not in HOME_PRE and "%H:%M UTC" not in HOME_PRE, (
+        'Fixture ladder reverted to a UTC strftime. Use the `|ct` Jinja '
         'filter (registered in app.py); the helper lives at utils/time.py.'
     )
-    # Word-boundary so the default-arg form `{{ x|ct }}` (no parentheses)
-    # is also accepted — both `|ct(...)` and `|ct ` / `|ct}}` are valid
-    # invocations of the filter registered in app.py.
-    assert re.search(r'\|ct\b', FIXTURE), (
-        'Fixture card is no longer piping kickoff through the `ct` filter. '
+    # Search the ladder block specifically (the kickoff render is the only
+    # use of `|ct` in `_home_pre.html`).
+    assert re.search(r'\|ct\b', HOME_PRE), (
+        'Fixture ladder no longer pipes kickoff through the `ct` filter. '
         'The platform display TZ is America/Chicago — see utils/time.py.'
     )
 
@@ -196,30 +206,31 @@ def test_fixture_card_kickoff_uses_ct_filter_not_utc_strftime():
 # ---------------------------------------------------------------------------
 
 def test_commish_note_pre_state_copy_verbatim():
-    """The pre-state branch is now a first-person voice (`I hope you enjoy
-    the site`) supplied by the platform owner, intentionally distinct from
-    the elevated Commish tone in the live + post branches. The British
-    spelling "favours" is intentional — do not Americanize."""
-    # Collapse runs of whitespace so phrases that wrap across lines in the
-    # template (with indentation) still match. The user-facing render
-    # collapses whitespace the same way.
+    """The pre-state branch is still the first-person voice
+    (`I hope you enjoy the site`) supplied by the platform owner, distinct
+    from the elevated Commish tone in the live + post branches.
+
+    S6.1.5 — "favours" → "favors" per the user's explicit US-spelling
+    request. The rest of the verbatim copy stays locked; only this token
+    crossed the Atlantic."""
     normalized = re.sub(r'\s+', ' ', COMMISH)
     expected_phrases = [
         'Welcome to the Club, I hope you enjoy the site.',
         'Pass along any feedback that you have.',
         'World Cup tribute window is open until June 11th.',
         'Pick your nine nations wisely, take your seat, and watch the action unfold.',
-        'Fortune favours the bold.',
+        'Fortune favors the bold.',
     ]
     for phrase in expected_phrases:
         assert phrase in normalized, (
             f'Pre-state Commish note is missing: {phrase!r}. The verbatim '
             f'copy is owner-supplied; do not paraphrase or "polish".'
         )
-    # Hard lock on the British spelling.
-    assert 'favors' not in COMMISH, (
-        '"favours" was Americanized to "favors". The user explicitly '
-        'requested the British spelling — keep it.'
+    # Hard lock on the US spelling — the prior UK form was retired in
+    # S6.1.5 per explicit user request.
+    assert 'favours' not in COMMISH, (
+        '"favours" is back. The S6.1.5 critique pass Americanized the '
+        'pre-state Commish copy to "favors" per user request.'
     )
 
 
@@ -398,8 +409,8 @@ def test_unenrolled_pre_state_home_renders_correct_cta_and_copy(app, client):
         'Unenrolled pre-state home is missing the Join CTA button label.'
     )
 
-    # Commish copy is the user-supplied verbatim.
-    assert 'Fortune favours the bold.' in body, (
+    # Commish copy is the user-supplied verbatim (US-spelling per S6.1.5).
+    assert 'Fortune favors the bold.' in body, (
         'Pre-state Commish note is not rendering the user-supplied copy.'
     )
 

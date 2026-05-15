@@ -1,24 +1,39 @@
-{# Pre-deadline countdown card — Spec B section 6 + D8 #}
-<div class="decree" data-deadline-utc="{{ deadline_utc.strftime('%Y-%m-%dT%H:%M:%SZ') }}">
+{# Pre-deadline countdown card — Spec B section 6 + D8.
+
+   S6.1.5 PI-1 — copy branches on enrollment.picks_submitted.
+   Sealed users (tribute already paid) see Council-convenes voice; unsealed
+   users keep the tribute-due framing + lock warning. Same partial renders
+   in all three pre-state variants (join CTA, seal CTA, sealed ballot), so the
+   branch lives here, not in _home_pre.html. #}
+{% set _sealed = is_enrolled and enrollment and enrollment.picks_submitted %}
+{% set _clamped_days = (((deadline_utc - now_utc).days)|default(0)) %}
+{% if _clamped_days < 0 %}{% set _clamped_days = 0 %}{% endif %}
+<div class="decree" data-deadline-utc="{{ deadline_utc.strftime('%Y-%m-%dT%H:%M:%SZ') }}"
+     data-server-now-utc="{{ now_utc.strftime('%Y-%m-%dT%H:%M:%SZ') }}">
   <div class="decree-seal">
     <div class="s">By Decree of the Commish <span class="num">No 001</span></div>
     <div class="s decree-seal-year">2026 WC</div>
   </div>
 
   <div class="decree-body">
-    <h2>Tribute Due In</h2>
+    <h2>{% if _sealed %}The Council Convenes In{% else %}Tribute Due In{% endif %}</h2>
     {# S4.1.1 PI-2 — collapse the former 4-cell hero-metric strip to one
        dominant Days numeral + a Newsreader derivation line for the live
-       hours/min/sec tick. The S2.3.1 calibration ("hero-metric ban applies
-       to adjacency, not just presence") locks the pattern: one big numeral,
-       one chip, one prose derivation. data-cd-* attributes preserved so
-       static/js/countdown.js keeps ticking. #}
-    <div class="decree-hero">
-      <div class="decree-hero-num" data-cd-days>{{ '%02d'|format(((deadline_utc - now_utc).days)|default(0)) }}</div>
-      <div class="decree-hero-unit">Days</div>
+       hours/min/sec tick. data-cd-* attributes preserved so
+       static/js/countdown.js keeps ticking.
+
+       S6.1.5 PI-1 — aria-label on .decree-hero gives a screen-reader user the
+       same single-beat gut-check the sighted user gets ("10 days until
+       kickoff") instead of hearing "10 … Days" as two adjacent divs.
+       countdown.js updates this attribute alongside the data-cd-days text so
+       the announcement tracks the live tick. #}
+    <div class="decree-hero" role="text"
+         aria-label="{{ _clamped_days }} day{{ '' if _clamped_days == 1 else 's' }} until kickoff">
+      <div class="decree-hero-num" data-cd-days aria-hidden="true">{{ '%02d'|format(_clamped_days) }}</div>
+      <div class="decree-hero-unit" aria-hidden="true">Days</div>
     </div>
     <div class="decree-derivation" role="timer"
-         aria-label="Time remaining until World Cup tribute window closes"
+         aria-label="Time remaining until kickoff"
          aria-live="off">
       <span class="decree-tick"><span data-cd-hours>00</span><span class="u">h</span></span>
       <span class="decree-tick-sep" aria-hidden="true">·</span>
@@ -26,6 +41,6 @@
       <span class="decree-tick-sep" aria-hidden="true">·</span>
       <span class="decree-tick"><span data-cd-secs>00</span><span class="u">s</span></span>
     </div>
-    <p class="decree-foot">Once group stage begins, all picks lock.</p>
+    <p class="decree-foot">{% if _sealed %}Group stage opens then. The ledger follows.{% else %}Once group stage begins, all picks lock.{% endif %}</p>
   </div>
 </div>

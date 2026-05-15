@@ -9,7 +9,9 @@ Test surface map:
 - The dossier 3-up hero-metric grid is gone (impeccable absolute ban).
 - The Tribune ledger composition is in its place.
 - `_recent_results.html` differentiates roster vs non-roster matches.
-- `_fixture_card.html` no longer uses the banned `match.stage|title`.
+- The fixture ladder in `_home_pre.html` does not use the banned
+  `match.stage|title` filter. (Was: `_fixture_card.html`, retired in
+  S6.1.5 PI-5 when the rail collapsed to an editorial typographic ladder.)
 - The Commish byline no longer ships the en-dash that read as a SaaS-blog tell.
 """
 from pathlib import Path
@@ -19,7 +21,7 @@ ROOT = Path(__file__).parent.parent
 CSS = (ROOT / 'static' / 'css' / 'style.css').read_text()
 DOSSIER = (ROOT / 'core' / 'main' / 'templates' / 'main' / '_dossier_card.html').read_text()
 RECENT = (ROOT / 'core' / 'main' / 'templates' / 'main' / '_recent_results.html').read_text()
-FIXTURE = (ROOT / 'core' / 'main' / 'templates' / 'main' / '_fixture_card.html').read_text()
+HOME_PRE = (ROOT / 'core' / 'main' / 'templates' / 'main' / '_home_pre.html').read_text()
 COMMISH = (ROOT / 'core' / 'main' / 'templates' / 'main' / '_commish_note.html').read_text()
 
 
@@ -132,15 +134,17 @@ def test_dossier_uses_in_the_club_not_competitors():
 # Bonus harden: banned `match.stage|title` (DESIGN.md §6 Don't #10)
 # ---------------------------------------------------------------------------
 
-def test_fixture_card_does_not_use_banned_title_filter():
+def test_home_pre_fixture_ladder_does_not_use_banned_title_filter():
     """`{{ match.stage|title }}` mangles ALL-CAPS knockout codes ('SF' → 'Sf')
     and underscored values ('third_place' → 'Third_Place'). CLAUDE.md gotcha
-    + DESIGN.md §6 Don't #10. Use the stage_label SSoT instead."""
-    # Strip Jinja comments — this file documents the ban in a comment for
-    # future maintainers, and that mention shouldn't trip the lock.
-    src_no_comments = re.sub(r'\{#.*?#\}', '', FIXTURE, flags=re.S)
+    + DESIGN.md §6 Don't #10. Use the stage_label SSoT instead.
+
+    S6.1.5 PI-5 — when the rail collapsed from 3 match-cards to the editorial
+    fixture ladder, the stage rendering moved from `_fixture_card.html` into
+    `_home_pre.html` directly. The ban check moved with it."""
+    src_no_comments = re.sub(r'\{#.*?#\}', '', HOME_PRE, flags=re.S)
     assert 'match.stage|title' not in src_no_comments, (
-        'fixture_card.html re-introduced banned `match.stage|title`; use '
+        '_home_pre.html re-introduced banned `match.stage|title`; use '
         'stage_label(match.stage) — the SSoT documented in CLAUDE.md.'
     )
     assert 'stage_label(match.stage)' in src_no_comments

@@ -1,31 +1,68 @@
 {# Sealed roster card — pre-state, enrolled, picks_submitted=True.
 
    S4.1.2 PI-2 — whole-area-link semantic split. Pre-S4.1.2 the card was
-   wrapped in `<a href="...?edit=1">`, which (a) concatenated the flag
-   ribbon + foot copy into one screen-reader link and (b) routed every
-   flag tap to "edit pick" rather than the team-detail surface a sighted
-   user would expect. The new shape is a `<section>` with an explicit
-   inline `Edit roster ›` action sitting next to the foot prose. The
-   flags are a non-interactive ribbon (decorative emoji + tooltip
-   `title=`); they don't pretend to be tap-routes to team detail until
-   that surface exists. Hover lift moves from the card to the explicit
-   action. #}
+   wrapped in `<a href="...?edit=1">`, which concatenated the flag ribbon +
+   foot copy into one screen-reader link and routed every flag tap to "edit
+   pick" rather than the team-detail surface a sighted user would expect.
+
+   S6.1.5 PI-2 — flags become 44×44 anchors to /worldcup/team/<id>. Pre-S6.1.5
+   they were `aria-hidden` decorative spans with a `title=` tooltip
+   (desktop-mouse only), so on mobile a thumb landed on a flag and got silence.
+   The 44×44 floor matches PRODUCT.md "Touch targets ≥ 44 × 44 px"; the ribbon
+   now reads to screen readers as a list of nine team-detail links.
+
+   S6.1.5 PI-3 — roster-spine caption beneath the ribbon. Surfaces tier
+   composition + avg multiplier so the WC scoring identity is one glance away
+   on the home, closing the progressive-disclosure gap PR-29 left behind.
+   Casual-default (clean Tribune row), analyst-respected (counts + multiplier
+   are right there).
+
+   S6.1.5 PI-4 — `.ballot-locked` green-dot chip retired. The H2 "Sealed &
+   delivered" + green-tinted substrate + flag ribbon already triangulate
+   sealed; the redundant live-green dot was reclaiming a token reserved for
+   actual live-game indicators (DESIGN.md "Live and State" — `--live-red /
+   --live-green / --live-orange` for live scoring + status only). A small gold
+   seal mark (Tribune ceremonial register) carries the locked-in beat without
+   the semantic blur. #}
 <section class="ballot-card" aria-labelledby="ballot-status">
   <div class="ballot-head">
     <div>
       <div class="ballot-label">Your roster</div>
       <div class="ballot-status" id="ballot-status">Sealed &amp; delivered</div>
     </div>
-    <div class="ballot-locked">
-      <span class="dot"></span>
-      Locked in
+    <div class="ballot-seal" aria-hidden="true">
+      <span class="ballot-seal-glyph">◈</span>
+      <span class="ballot-seal-text">Locked</span>
     </div>
   </div>
-  <div class="ballot-flags" aria-label="Your nine selected nations">
+  <ul class="ballot-flags" aria-label="Your nine selected nations">
     {% for pick in picks %}
-    <span class="ballot-flag" title="{{ pick.team.display_name }}" aria-hidden="true">{{ pick.team.flag_emoji }}</span>
+    <li>
+      <a class="ballot-flag" href="{{ url_for('worldcup.team_detail', team_id=pick.team.id) }}"
+         aria-label="{{ pick.team.display_name }}, view team detail">
+        <span class="ballot-flag-emoji" aria-hidden="true">{{ pick.team.flag_emoji }}</span>
+        <span class="ballot-flag-code">{{ pick.team.fifa_code }}</span>
+      </a>
+    </li>
     {% endfor %}
+  </ul>
+  {% if roster_spine %}
+  <div class="ballot-spine" role="group" aria-label="Roster composition">
+    <div class="ballot-spine-eyebrow">◇ Roster Spine</div>
+    <div class="ballot-spine-row">
+      {% for t in roster_spine.tier_breakdown %}
+      <span class="ballot-spine-tier ballot-spine-tier--t{{ t.tier }}">
+        <span class="ballot-spine-count">{{ t.count }}</span>
+        <span class="ballot-spine-name">{{ t.name }}</span>
+      </span>
+      {% if not loop.last %}<span class="ballot-spine-sep" aria-hidden="true">·</span>{% endif %}
+      {% endfor %}
+    </div>
+    <div class="ballot-spine-avg">
+      Avg multiplier <strong class="ballot-spine-mult">&times;{{ '%.1f'|format(roster_spine.avg_multiplier) }}</strong>{% if roster_spine.wildcard_count >= 2 %} <span class="ballot-spine-flex">&middot; The Commish notices.</span>{% endif %}
+    </div>
   </div>
+  {% endif %}
   <div class="ballot-foot">
     <p class="ballot-foot-prose">Nine nations bend the knee to you.</p>
     <a class="ballot-edit-action" href="{{ url_for('worldcup.picks') }}?edit=1">

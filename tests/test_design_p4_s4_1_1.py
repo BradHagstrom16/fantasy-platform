@@ -291,8 +291,16 @@ def test_pi2_countdown_renders_hero_block():
         "PI-2: `.decree-hero-num` element missing — the iteration's central "
         "fix was collapsing 4 numerals to one dominant numeral."
     )
+    # S6.1.5 PI-1 — the .decree-hero-num element gained `aria-hidden="true"`
+    # alongside `data-cd-days` (the parent .decree-hero now carries the
+    # accessible name as a `role="text"` aria-label). The previous strict
+    # regex required `data-cd-days` to immediately follow `class=` with only
+    # whitespace; the order-agnostic form below preserves the intent (the
+    # attribute appears on the .decree-hero-num element) without coupling to
+    # attribute ordering.
     pattern = re.compile(
-        r'class="decree-hero-num"\s+data-cd-days[>=]'
+        r'<div\b[^>]*\bclass="[^"]*\bdecree-hero-num\b[^"]*"[^>]*\bdata-cd-days\b'
+        r'|<div\b[^>]*\bdata-cd-days\b[^>]*\bclass="[^"]*\bdecree-hero-num\b'
     )
     assert pattern.search(COUNTDOWN), (
         "PI-2: `.decree-hero-num` must carry `data-cd-days` so "

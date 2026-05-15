@@ -81,6 +81,49 @@ def _context_out() -> dict:
     }
 
 
+_TIER_SINGULAR = {
+    'Favorites': 'Favorite',
+    'Contenders': 'Contender',
+    'Dark Horses': 'Dark Horse',
+    'Underdogs': 'Underdog',
+    'Wildcards': 'Wildcard',
+}
+
+
+def _build_roster_spine(picks: list) -> dict:
+    """Tier composition + average multiplier for the sealed ballot card.
+
+    Surfaces the WC scoring identity (tiers + multipliers) on the home for
+    sealed users, closing the progressive-disclosure gap flagged by the
+    post-PR-29 critique. Casual-default, analyst-respected: tier counts
+    are scannable in one beat; the avg multiplier rewards the curious.
+    """
+    from collections import Counter
+    tier_counts = Counter(p.team.tier for p in picks)
+    tier_breakdown = []
+    for tier_num in (1, 2, 3, 4, 5):
+        count = tier_counts.get(tier_num, 0)
+        if count <= 0:
+            continue
+        tier_info = TIERS[tier_num]
+        plural_name = tier_info['name']
+        name = plural_name if count != 1 else _TIER_SINGULAR.get(plural_name, plural_name)
+        tier_breakdown.append({
+            'tier': tier_num,
+            'count': count,
+            'name': name,
+            'multiplier': tier_info['multiplier'],
+        })
+    total_mult = sum(p.team.multiplier for p in picks)
+    avg_multiplier = total_mult / len(picks) if picks else 0.0
+    wildcard_count = tier_counts.get(5, 0)
+    return {
+        'tier_breakdown': tier_breakdown,
+        'avg_multiplier': avg_multiplier,
+        'wildcard_count': wildcard_count,
+    }
+
+
 def _context_pre(user, enrollment) -> dict:
     """Pre-deadline state: countdown card, optional ballot, opening matches."""
     is_enrolled = enrollment is not None
@@ -90,6 +133,8 @@ def _context_pre(user, enrollment) -> dict:
     )
 
     picks = []
+    roster_spine = None
+    roster_team_ids = set()
     if is_enrolled and enrollment.picks_submitted:
         picks = (
             WorldCupPick.query
@@ -98,6 +143,8 @@ def _context_pre(user, enrollment) -> dict:
             .order_by(WorldCupTeam.tier, WorldCupTeam.display_name)
             .all()
         )
+        roster_spine = _build_roster_spine(picks)
+        roster_team_ids = {p.team_id for p in picks}
 
     next_3_matches = (
         WorldCupMatch.query
@@ -145,6 +192,8 @@ def _context_pre(user, enrollment) -> dict:
         ).count(),
         'next_3_matches': next_3_matches,
         'court_line': court_line,
+        'roster_spine': roster_spine,
+        'roster_team_ids': roster_team_ids,
         'joined_games': joined_games(user),
         'coming_soon_games': coming_soon_games(),
         # Expose stage_label so partials (e.g., _fixture_card.html) can render

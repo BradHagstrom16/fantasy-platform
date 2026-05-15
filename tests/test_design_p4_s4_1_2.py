@@ -171,8 +171,12 @@ def test_pi1_rail_slot_carries_supporting_partials():
         "shape in `_home_pre.html`."
     )
     rail_block = rail_match.group(1)
-    assert '_fixture_card.html' in rail_block, (
-        "PI-1: opening matches (fixture cards) belong in the rail slot."
+    # S6.1.5 PI-5 — the 3 `_fixture_card.html` includes collapsed into an
+    # inline `<ol class="fixture-ladder">` to break the identical-card-grid
+    # pattern. The rail still owns opening matches; the affordance class
+    # changed.
+    assert 'fixture-ladder' in rail_block, (
+        "PI-1: opening matches (fixture ladder) belong in the rail slot."
     )
     assert '_game_tiles_compact.html' in rail_block, (
         "PI-1: compact game tiles belong in the rail slot."
@@ -237,21 +241,23 @@ def test_pi1_home_live_unchanged_keeps_container_fluid_row_layout():
 # ---------------------------------------------------------------------------
 
 def test_pi2_ballot_card_no_longer_whole_area_link():
-    """The pre-S4.1.2 ballot card was an `<a href="...?edit=1">`
-    wrapping every child element. The new shape is a `<section>` with
-    `aria-labelledby` — the whole-area-link is gone."""
-    # Strip Jinja {# ... #} comments before checking. The leading
-    # comment in the template documents the pre-S4.1.2 wrapper and
-    # would otherwise trip the assertion.
-    body = re.sub(r'\{#.*?#\}', '', BALLOT, flags=re.DOTALL)
-    before_foot = body.split('<div class="ballot-foot">')[0]
-    # Regex catches `<a href=...` AND `<a class="..." href=...` — the literal
-    # substring form would miss the latter and silently pass.
-    wrapper_anchor = re.search(r'<a\b[^>]*\bhref\s*=', before_foot, flags=re.IGNORECASE)
-    assert wrapper_anchor is None, (
-        "PI-2: `_ballot_card.html` still opens with an `<a>` wrapper. "
-        "The card body should be wrapped in `<section>`; the explicit "
-        "edit action lives inside `.ballot-foot`."
+    """The pre-S4.1.2 ballot card was an `<a href="...?edit=1">` wrapping every
+    child element. The new shape is a `<section>` with `aria-labelledby` —
+    the whole-area-link is gone.
+
+    S6.1.5 PI-2 — flags are themselves anchors now (44×44 links to
+    team_detail), so the previous "no `<a href` anywhere before
+    `.ballot-foot`" form would false-positive. The invariant we're locking is
+    that the OUTERMOST element of the partial is the `<section>`, not an
+    anchor wrapper."""
+    # Strip Jinja {# ... #} comments + leading whitespace so the first visible
+    # tag check is robust to template indentation changes.
+    body = re.sub(r'\{#.*?#\}', '', BALLOT, flags=re.DOTALL).lstrip()
+    assert body.startswith('<section'), (
+        "PI-2: `_ballot_card.html` must open with a `<section>` element. "
+        "The pre-S4.1.2 anchor wrapper conflated nine flag taps with one "
+        "edit-roster route; the explicit edit action lives inside "
+        "`.ballot-foot`."
     )
     assert '<section class="ballot-card"' in BALLOT, (
         "PI-2: `_ballot_card.html` must wrap as "
@@ -283,34 +289,40 @@ def test_pi2_ballot_card_has_explicit_edit_action():
     )
 
 
-def test_pi2_ballot_flags_are_decorative_ribbon():
-    """The flag emojis no longer route to "edit pick" by virtue of being
-    inside the wrapper anchor — they're a decorative ribbon. Each flag
-    is `aria-hidden`; the ribbon container has an `aria-label` so AT
-    users hear what the ribbon shows."""
-    # PR #15 CR R6-C — attribute-order-agnostic ribbon container lookup
-    # via lookahead assertions (presence of both class + aria-label on
-    # the same opening tag, in any order).
+def test_pi2_ballot_flags_are_accessible_team_detail_links():
+    """S6.1.5 PI-2 — flags promoted from decorative ribbon to a `<ul>` of
+    44×44 anchors to `/worldcup/team/<id>`. Pre-S6.1.5 they were aria-hidden
+    36×36 spans with a `title=` tooltip (desktop-mouse only), so on mobile a
+    thumb landed on a flag and got silence. The ribbon container still has
+    an accessible name; each flag link now carries its own
+    `aria-label="<team>, view team detail"` so AT users get the destination,
+    not the emoji."""
+    # The ribbon container is now a <ul> (was <div>). Match either to keep the
+    # lock resilient if the structural element ever shifts again; the
+    # invariant is the accessible name on the container.
     ribbon = re.search(
-        r'<div(?=[^>]*class="[^"]*\bballot-flags\b[^"]*")'
+        r'<(?:ul|div)(?=[^>]*class="[^"]*\bballot-flags\b[^"]*")'
         r'(?=[^>]*aria-label="Your nine selected nations")[^>]*>',
         BALLOT,
     )
     assert ribbon, (
         "PI-2: `.ballot-flags` container must carry "
         "`aria-label=\"Your nine selected nations\"` so the ribbon has "
-        "an accessible name (the individual flag emojis are "
-        "`aria-hidden`)."
+        "an accessible name."
     )
-    # PR #15 CR R6-C — verify EVERY `.ballot-flag` span carries
-    # `aria-hidden="true"`, not just one. The previous `search()` lock
-    # would pass even if 8 of 9 flags regressed (one match was enough).
-    flag_spans = re.findall(r'<span\s+class="ballot-flag"[^>]*>', BALLOT)
-    assert flag_spans, "PI-2: `.ballot-flag` spans should still render."
-    assert all('aria-hidden="true"' in span for span in flag_spans), (
-        "PI-2: every `.ballot-flag` span must carry "
-        "`aria-hidden=\"true\"` so AT users hear the ribbon label, not "
-        "nine bare flag emoji."
+    # Each `.ballot-flag` is now an `<a>` (not a `<span>`) routed to
+    # team_detail. Verify EVERY flag carries its own aria-label so AT users
+    # hear the destination team name, not the bare flag emoji.
+    flag_anchors = re.findall(r'<a\s+class="ballot-flag"[^>]*>', BALLOT)
+    assert flag_anchors, "PI-2: `.ballot-flag` anchors should render."
+    assert all('aria-label=' in a for a in flag_anchors), (
+        "PI-2: every `.ballot-flag` anchor must carry its own "
+        "`aria-label` so AT users hear the team name + destination, "
+        "not nine bare flag emoji."
+    )
+    assert all("url_for('worldcup.team_detail'" in BALLOT for _ in [None]), (
+        "PI-2: `.ballot-flag` anchors must route to "
+        "`url_for('worldcup.team_detail', team_id=...)`."
     )
 
 
