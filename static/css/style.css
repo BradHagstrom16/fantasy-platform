@@ -2546,6 +2546,20 @@ body.game-golf {
   .home-shell .out-featured:hover .out-featured-icon {
     transform: none;
   }
+  /* PR #30 CR — same opt-out for the .ballot-flag link. The base rule
+     transitions transform/border-color/background-color on tap/focus, and
+     both `:hover` (inside @media (hover: hover)) and `:focus-visible`
+     declare a `translateY(-1px)` lift. Under reduced motion, kill the
+     transition + cancel the lift on both pseudo-states. Color feedback
+     (border-color / background) still applies — that's contrast, not
+     motion. */
+  .home-shell .ballot-flag {
+    transition: none;
+  }
+  .home-shell .ballot-flag:hover,
+  .home-shell .ballot-flag:focus-visible {
+    transform: none;
+  }
 }
 
 /* --- Polish: print-friendly fallback (just in case) --- */

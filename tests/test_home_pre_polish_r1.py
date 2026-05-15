@@ -205,14 +205,30 @@ def test_fixture_ladder_has_no_pick_due_badge():
 def test_fixture_ladder_kickoff_uses_ct_filter_not_utc_strftime():
     """S6.1.5 PI-5 — migrated from `_fixture_card.html` to the inline
     fixture ladder. Kickoff times still render in Central Time via the
-    `|ct` filter, not raw UTC."""
+    `|ct` filter, not raw UTC.
+
+    PR #30 CR — the positive `|ct` check is scoped to the fixture-ladder
+    block. The global form would mask a regression if `|ct` survived
+    elsewhere in `_home_pre.html` (e.g., a future ballot or commish-note
+    section adopted the filter) while the ladder itself reverted to raw
+    UTC. The invariant is "the LADDER pipes through `|ct`", not "the
+    filter appears somewhere in the file."
+    """
     assert "'%H:%M UTC'" not in HOME_PRE and "%H:%M UTC" not in HOME_PRE, (
         'Fixture ladder reverted to a UTC strftime. Use the `|ct` Jinja '
         'filter (registered in app.py); the helper lives at utils/time.py.'
     )
-    # Search the ladder block specifically (the kickoff render is the only
-    # use of `|ct` in `_home_pre.html`).
-    assert re.search(r'\|ct\b', HOME_PRE), (
+    m = re.search(
+        r'<ol\s+class="fixture-ladder"[^>]*>.*?</ol>',
+        HOME_PRE,
+        re.DOTALL,
+    )
+    assert m, (
+        'fixture ladder block not found in `_home_pre.html`; the rail '
+        'should still render `<ol class="fixture-ladder">...</ol>`.'
+    )
+    fixture_ladder_html = m.group(0)
+    assert re.search(r'\|ct\b', fixture_ladder_html), (
         'Fixture ladder no longer pipes kickoff through the `ct` filter. '
         'The platform display TZ is America/Chicago — see utils/time.py.'
     )
