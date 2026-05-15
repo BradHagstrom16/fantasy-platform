@@ -31,22 +31,28 @@
 {% endif %}
 
 <div class="wc-stat-card mb-4 animate-in text-center">
+  {# Critique r2 follow-up (2026-05-15) — button hierarchy. The prior
+     paired `btn-lg` primary + outline-secondary had equal visual
+     weight, forcing the user to choose between two equally-affordant
+     CTAs and diluting conversion intent. "See How It Works" is a
+     reference link, not a primary action — demoted to a small text
+     link below the primary CTA so the red primary wins the eye. #}
   {% if cta_state == 'guest' %}
-      <div class="d-flex justify-content-center gap-2 flex-wrap">
-        <a href="{{ url_for('auth.register') }}" class="btn btn-game btn-lg px-5">
-          <i class="bi bi-globe2 me-2"></i>Sign Up to Join
-        </a>
-        <a href="{{ url_for('worldcup.rules') }}" class="btn btn-outline-secondary btn-lg px-4">
-          <i class="bi bi-info-circle me-2"></i>See How It Works
+      <a href="{{ url_for('auth.register') }}" class="btn btn-game btn-lg px-5">
+        <i class="bi bi-globe2 me-2"></i>Sign Up to Join
+      </a>
+      <div class="wc-cta-secondary mt-2">
+        <a href="{{ url_for('worldcup.rules') }}" class="wc-cta-secondary-link">
+          <i class="bi bi-info-circle me-1"></i>See how it works
         </a>
       </div>
     {% elif cta_state == 'unenrolled_pre' %}
-      <div class="d-flex justify-content-center gap-2 flex-wrap">
-        <a href="{{ url_for('worldcup.join') }}" class="btn btn-game btn-lg px-5">
-          <i class="bi bi-globe2 me-2"></i>Join Now
-        </a>
-        <a href="{{ url_for('worldcup.rules') }}" class="btn btn-outline-secondary btn-lg px-4">
-          <i class="bi bi-info-circle me-2"></i>See How It Works
+      <a href="{{ url_for('worldcup.join') }}" class="btn btn-game btn-lg px-5">
+        <i class="bi bi-globe2 me-2"></i>Join Now
+      </a>
+      <div class="wc-cta-secondary mt-2">
+        <a href="{{ url_for('worldcup.rules') }}" class="wc-cta-secondary-link">
+          <i class="bi bi-info-circle me-1"></i>See how it works
         </a>
       </div>
       <div class="mt-3 text-muted small">
@@ -95,44 +101,17 @@
   <p class="wc-rules-kicker">The Wildcards are where pools are won.</p>
 </div>
 
-{# Layout P1 (Critique 2026-05-15) — third compositional beat: tournament
-   cadence rail. WC OUT desktop previously ended at the rules teaser with
-   ~500px of empty bone before the footer, reading as truncated. The 2026
-   FIFA WC season has a natural editorial structure (groups → R16 →
-   QF/SF → final) that pairs with the rules teaser's "five tiers" lead:
-   the user now knows both the scoring system AND the tournament rhythm
-   before they decide to join. Silhouette is deliberately unwrapped (not
-   another .wc-stat-card) to avoid the identical-card-grid sameness with
-   the two cards above. #}
-<section class="wc-season-rail animate-in stagger-2" aria-labelledby="wc-season-rail-title">
-  <div class="wc-season-rail-head">
-    <span class="wc-eyebrow wc-eyebrow-red">The Season in Four Acts</span>
-    <h2 id="wc-season-rail-title" class="visually-hidden">2026 World Cup Calendar</h2>
-  </div>
-  <ol class="wc-season-acts">
-    <li class="wc-season-act">
-      <div class="wc-season-act-name">Group Stage</div>
-      <div class="wc-season-act-dates">Jun 11 &ndash; Jun 28</div>
-      <div class="wc-season-act-count">72 matches</div>
-      <div class="wc-season-act-tag">The chamber convenes.</div>
-    </li>
-    <li class="wc-season-act">
-      <div class="wc-season-act-name">Round of 16</div>
-      <div class="wc-season-act-dates">Jul 4 &ndash; Jul 7</div>
-      <div class="wc-season-act-count">8 matches</div>
-      <div class="wc-season-act-tag">Half the room leaves.</div>
-    </li>
-    <li class="wc-season-act">
-      <div class="wc-season-act-name">Quarters &amp; Semis</div>
-      <div class="wc-season-act-dates">Jul 9 &ndash; Jul 15</div>
-      <div class="wc-season-act-count">6 matches</div>
-      <div class="wc-season-act-tag">Knock or be knocked.</div>
-    </li>
-    <li class="wc-season-act">
-      <div class="wc-season-act-name">The Final</div>
-      <div class="wc-season-act-dates">Jul 19</div>
-      <div class="wc-season-act-count">MetLife Stadium</div>
-      <div class="wc-season-act-tag">A nation gets crowned.</div>
-    </li>
-  </ol>
-</section>
+{# Layout follow-up (Critique r2 2026-05-15) — the 4-col phase rail from
+   PR #34 solved the desktop whitespace problem but over-corrected: a
+   4-beat informational rail diluted the page's activation purpose and
+   landed "MetLife Stadium" as the last semantically loaded phrase
+   before the footer (one of four kicker lines also tripped a
+   forced-parallelism slop tell). Collapsed to a single editorial
+   Tribune line: gives the calendar weight in one breath, lets the
+   rules teaser's "Wildcards" kicker stay as the activation close, and
+   keeps the desktop bone substrate from feeling truncated. #}
+<p class="wc-out-season-line animate-in stagger-2">
+  From the chamber&rsquo;s convene on <strong>Jun&nbsp;11</strong>
+  to a champion crowned at MetLife on <strong>Jul&nbsp;19</strong>,
+  the Club takes notes for forty days.
+</p>

@@ -169,14 +169,16 @@
        column note, not a stat tile (avoiding the hero-metric template
        slop trap). Only renders when at least one pick has scored. #}
     {% if dossier.top_earner %}
+    {# Critique r2 follow-up — copy refined from "carrying X pts of
+       your nine" (anthropomorphized the team as workhorse) to the
+       cleaner journalistic "leading your nine at X pts." #}
     <p class="ledger-line ledger-line--secondary">
       <span class="ledger-eyebrow-inline">Top earner</span>
       <span class="ledger-top-earner">
         {{ dossier.top_earner.team_flag }}
         <strong class="lk lk--gold">{{ dossier.top_earner.team_code }}</strong>
-        carrying
-        <strong class="lk">{{ '%.1f'|format(dossier.top_earner.points) }} pts</strong>
-        of your nine.
+        leading your nine at
+        <strong class="lk">{{ '%.1f'|format(dossier.top_earner.points) }} pts</strong>.
       </span>
     </p>
     {% endif %}

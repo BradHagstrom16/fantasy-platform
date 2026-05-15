@@ -1246,11 +1246,17 @@ body.game-golf {
   background: rgba(243,239,230,.08);
   color: var(--bone);
 }
-.home-shell .ballot-spine-tier-tag--t1 { background: rgba(217,119,6,.22); color: #FFD8A8; }
-.home-shell .ballot-spine-tier-tag--t2 { background: rgba(75,115,153,.28); color: #C3D8EE; }
-.home-shell .ballot-spine-tier-tag--t3 { background: rgba(180,83,9,.22); color: #FFC689; }
-.home-shell .ballot-spine-tier-tag--t4 { background: rgba(13,115,119,.28); color: #9CE7E4; }
-.home-shell .ballot-spine-tier-tag--t5 { background: rgba(147,51,234,.25); color: #DFC2FF; }
+/* Critique r2 follow-up (2026-05-15) — tier tag background alpha
+   bumped (was .22-.28, now .42-.5) so the per-tier colors scan
+   confidently on the dark substrate. The prior wash read as muted
+   chrome that competed with the surrounding bone-mute text; the
+   bumped fills carry the tier identity at a glance without becoming
+   garish. Text colors hold (already AA on the bumped backgrounds). */
+.home-shell .ballot-spine-tier-tag--t1 { background: rgba(217,119,6,.42); color: #FFE3B8; }
+.home-shell .ballot-spine-tier-tag--t2 { background: rgba(75,115,153,.50); color: #D5E6F4; }
+.home-shell .ballot-spine-tier-tag--t3 { background: rgba(180,83,9,.42); color: #FFD49B; }
+.home-shell .ballot-spine-tier-tag--t4 { background: rgba(13,115,119,.48); color: #B5EEEC; }
+.home-shell .ballot-spine-tier-tag--t5 { background: rgba(147,51,234,.45); color: #ECD8FF; }
 .home-shell .ballot-spine-tier-name {
   font-family: var(--font-teko);
   font-weight: 500;
@@ -3707,6 +3713,17 @@ body.game-worldcup {
    horizontally rather than ghosting the layout. */
 .table-worldcup > tbody > tr > td:first-child { white-space: nowrap; }
 
+/* Critique r2 follow-up (2026-05-15) — hide the Multiplier column
+   on the live-state roster table at phone widths (≤575.98px,
+   Bootstrap `sm` convention). The chip duplicates info already
+   baked into the multiplied Points value; at narrow widths the
+   4-cell row felt cramped while the column added no marginal
+   scanning value (most rows duplicate ×1.0 / ×1.0 / ×2.5 etc).
+   Drillable depth lives at /worldcup/team/<id>. */
+@media (max-width: 575.98px) {
+  .wc-live-roster .wc-roster-mult-col { display: none; }
+}
+
 /* Current user row highlight — bg tint carries the "you" cue
    (P0 S0.2: side-stripe replaced by tint + leading rank numeral).
    Anchor color flipped gold→navy in WC tab unification P1: navy
@@ -4901,91 +4918,67 @@ body.game-worldcup {
   padding-top: .25rem;
 }
 
-/* WC out-state season cadence rail — Layout P1 (Critique 2026-05-15).
-   Third compositional beat below the rules teaser. Unwrapped on bone
-   substrate (no card wrapper) so the silhouette breaks from the two
-   cards above it. Desktop: 4-col grid; mobile: 2-col then 1-col. Each
-   act is Teko name + Teko dates + small Newsreader meta + italic
-   Tribune line. */
-.wc-season-rail {
-  margin: 1.75rem 0 2rem;
-  padding-top: 1.25rem;
-  border-top: 2px solid var(--gold);
+/* WC OUT secondary CTA link — Critique r2 follow-up (2026-05-15).
+   "See how it works" demoted from a btn-lg outline to a small text
+   link so the primary "Sign Up to Join" / "Join Now" CTA wins the
+   eye without competition. Carries the editorial register without
+   the button affordance — the user understands it's a reference. */
+.wc-cta-secondary {
+  text-align: center;
 }
-.wc-season-rail-head {
-  margin-bottom: 1rem;
-}
-.wc-season-acts {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  column-gap: 1.25rem;
-  row-gap: 1.5rem;
-}
-.wc-season-act {
-  position: relative;
-  padding-left: 0.95rem;
-}
-.wc-season-act + .wc-season-act::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 0.15rem;
-  bottom: 0.15rem;
-  width: 1px;
-  /* CR #34: `--border-default` is undefined in tokens.css; only `--border`
-     and `--border-light` exist. The prior reference resolved to initial,
-     rendering the season-rail divider invisible. */
-  background: var(--border);
-}
-.wc-season-act-name {
-  font-family: 'Teko', sans-serif;
-  font-weight: 600;
-  font-size: 1.25rem;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-  color: var(--wc-navy);
-  line-height: 1.05;
-  margin-bottom: 0.3rem;
-}
-.wc-season-act-dates {
+.wc-cta-secondary-link {
   font-family: 'Teko', sans-serif;
   font-weight: 500;
-  font-size: 1rem;
-  letter-spacing: 0.04em;
+  font-size: 0.9rem;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--wc-red);
-  line-height: 1.1;
-  margin-bottom: 0.15rem;
-}
-.wc-season-act-count {
-  font-family: 'Newsreader', serif;
-  font-size: 0.85rem;
   color: var(--text-secondary);
-  margin-bottom: 0.4rem;
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  padding-bottom: 1px;
+  transition: color var(--transition), border-color var(--transition);
 }
-.wc-season-act-tag {
+.wc-cta-secondary-link:hover,
+.wc-cta-secondary-link:focus-visible {
+  color: var(--wc-red);
+  border-bottom-color: var(--wc-red);
+}
+.wc-cta-secondary-link:focus-visible {
+  outline: 2px solid var(--gold-light);
+  outline-offset: 4px;
+  border-radius: 2px;
+}
+
+/* WC out-state season cadence line — Critique r2 follow-up
+   (2026-05-15). Replaces the prior 4-col `.wc-season-rail` primitive
+   which over-corrected the desktop whitespace problem (page closed on
+   "MetLife Stadium" venue line instead of the rules teaser's
+   editorial close; 4 kicker lines tripped a forced-parallelism slop
+   tell). Single Newsreader-italic Tribune line carries the calendar
+   weight in one breath. Gold rule above keeps the editorial section
+   break that the prior rail's border-top provided. */
+.wc-out-season-line {
+  margin: 1.5rem 0 2rem;
+  padding-top: 1.1rem;
+  border-top: 2px solid var(--gold);
   font-family: 'Newsreader', serif;
   font-style: italic;
-  font-size: 0.92rem;
-  line-height: 1.4;
+  font-size: 1.05rem;
+  line-height: 1.55;
   color: var(--text-primary);
+  text-align: center;
+  max-width: 60ch;
+  margin-left: auto;
+  margin-right: auto;
 }
-@media (max-width: 900px) {
-  .wc-season-acts { grid-template-columns: repeat(2, 1fr); row-gap: 1.25rem; }
-  /* Reset the vertical divider on the new first-of-row at 2-col breakpoint */
-  .wc-season-act:nth-child(odd)::before { display: none; }
-}
-@media (max-width: 480px) {
-  .wc-season-acts { grid-template-columns: 1fr; }
-  .wc-season-act { padding-left: 0; }
-  .wc-season-act + .wc-season-act {
-    padding-top: 0.95rem;
-    border-top: 1px solid var(--border-light);
-  }
-  .wc-season-act + .wc-season-act::before { display: none; }
+.wc-out-season-line strong {
+  font-family: 'Teko', sans-serif;
+  font-style: normal;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  font-size: 1.15rem;
+  color: var(--wc-red);
+  font-variant-numeric: tabular-nums;
 }
 
 /* Scoring list */
@@ -7471,6 +7464,16 @@ body.game-worldcup .form-text {
   letter-spacing: 0.02em;
   font-feature-settings: 'tnum';
 }
+/* Critique r2 follow-up — `#` rank prefix subordinate to the numeral,
+   mirrors the lounge `.rank-hash` register (smaller + accent-colored)
+   so cross-surface coherence holds for the same standing datum. */
+.wc-standing-card .wc-standing-rank-hash {
+  font-size: 0.6em;
+  color: var(--wc-red);
+  font-weight: 500;
+  margin-right: 0.05em;
+  vertical-align: 0.15em;
+}
 @media (min-width: 768px) {
   .wc-standing-card .wc-standing-rank { font-size: 4.4rem; }
 }
@@ -7552,6 +7555,30 @@ body.game-worldcup .form-text {
 .wc-standing-card .wc-ledger-delta--up { color: var(--success); font-weight: 600; }
 .wc-standing-card .wc-ledger-delta--down { color: var(--danger); font-weight: 600; }
 .wc-standing-card .wc-ledger-delta--flat { color: var(--text-secondary); }
+
+/* Critique r2 follow-up (2026-05-15) — "Top earner" editorial callout
+   on the hub standing card, parity with the lounge dossier's secondary
+   ledger line. Dashed red rule separates the main competitive-context
+   prose above from this roster-spotlight beat below. Same two-register
+   split the lounge uses (`.ledger-line--secondary`). */
+.wc-standing-card .wc-ledger-line--secondary {
+  margin-top: 0.55rem;
+  padding-top: 0.55rem;
+  border-top: 1px dashed rgba(191,10,48,.22);
+  font-size: 0.95rem;
+}
+.wc-standing-card .wc-ledger-eyebrow-inline {
+  font-family: 'Teko', sans-serif;
+  font-weight: 500;
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  margin-right: 0.55rem;
+}
+.wc-standing-card .wc-ledger-top-earner {
+  font-style: italic;
+}
 
 /* Recent Results strip — sibling primitive to `.wc-fixtures-strip`,
    demotes the live-state's past-results card from a full `.wc-stat-card`

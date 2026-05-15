@@ -394,11 +394,34 @@ def _context_live(user: Any) -> dict:
             )
     alive_count = sum(1 for p in user_picks if not p.team.is_eliminated)
 
+    # Critique r2 follow-up (2026-05-15) — port the lounge dossier's
+    # "Top earner" editorial callout to the WC hub standing card.
+    # Brad's direction: bring the hub up to the lounge's canonical
+    # design standard. The lounge stays the broader Tribune surface,
+    # but the singular "who's carrying your nine" beat works on both;
+    # without it the hub's standing card felt one step thinner than
+    # the bookmark surface that's supposed to be the lighter of the
+    # two. None when no pick has scored yet (early-tournament window).
+    top_earner = None
+    if user_picks:
+        best = max(
+            user_picks,
+            key=lambda p: float(p.multiplied_points or 0),
+        )
+        if best.multiplied_points and best.multiplied_points > 0:
+            top_earner = {
+                'team_code': best.team.fifa_code,
+                'team_flag': best.team.flag_emoji,
+                'team_name': best.team.display_name,
+                'points': float(best.multiplied_points),
+            }
+
     dossier = {
         'sparkline_data': sparkline_data,
         'alive_count': alive_count,
         'week_delta_rank': week_delta_rank,
         'week_delta_points': week_delta_points,
+        'top_earner': top_earner,
     }
 
     return {
