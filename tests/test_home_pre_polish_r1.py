@@ -225,9 +225,18 @@ def test_fixture_ladder_kickoff_uses_ct_filter_not_utc_strftime():
         'should still render `<ol class="fixture-ladder">...</ol>`.'
     )
     fixture_ladder_html = m.group(0)
-    assert "'%H:%M UTC'" not in fixture_ladder_html and "%H:%M UTC" not in fixture_ladder_html, (
-        'Fixture ladder reverted to a UTC strftime. Use the `|ct` Jinja '
-        'filter (registered in app.py); the helper lives at utils/time.py.'
+    # PR #30 CR — split per Ruff PT018: bundled `A and B` asserts yield
+    # imprecise failure messages. Two separate asserts make the regressing
+    # form (quoted strftime literal vs raw format string) explicit.
+    assert "'%H:%M UTC'" not in fixture_ladder_html, (
+        "Fixture ladder reverted to a quoted UTC strftime literal "
+        "(`'%H:%M UTC'`). Use the `|ct` Jinja filter (registered in "
+        "app.py); the helper lives at utils/time.py."
+    )
+    assert "%H:%M UTC" not in fixture_ladder_html, (
+        "Fixture ladder reverted to a raw UTC strftime format "
+        "(`%H:%M UTC`). Use the `|ct` Jinja filter (registered in "
+        "app.py); the helper lives at utils/time.py."
     )
     assert re.search(r'\|ct\b', fixture_ladder_html), (
         'Fixture ladder no longer pipes kickoff through the `ct` filter. '
