@@ -5395,11 +5395,15 @@ main { flex: 1; }
 
 .btn-outline-secondary {
   border-color: var(--border);
-  color: var(--text-muted);
+  /* Lifted from `--text-muted` (#8A849B, ~3.5:1 on bone, sub-AA for normal
+     text) to `--text-secondary` (~6.9:1) so .btn-sm outline-secondary at
+     0.875rem clears AA. Mirrors the global `--bs-secondary-color` redirect
+     for `.text-muted` (style.css :6960). */
+  color: var(--text-secondary);
 }
 .btn-outline-secondary:hover {
   background: var(--bg-muted);
-  border-color: var(--text-muted);
+  border-color: var(--text-secondary);
   color: var(--text-primary);
 }
 
@@ -6971,4 +6975,156 @@ body.game-worldcup .form-text {
    leaderboard champion-row marker). Edits land inline at each rule
    site (style.css:2227, :6707, :6991); this block exists only to host
    the rationale. Closes S5.2.1 cross-phase. */
+
+/* ============================================================
+   Hub pre-state recomp (post-critique remediation)
+   - Lead card adopts the canonical .wc-stats-masthead composition
+     with a live countdown (countdown.js binds to [data-deadline-utc]).
+   - Top-of-Pool zeroed leaderboard replaced by Opening Fixtures
+     (next_3_matches from services.home_context).
+   - .wc-tier-legend captions the T1-T5 roster preview for recall.
+   - .wc-eyebrow-muted variant for bone-substrate footer eyebrows.
+   See games/worldcup/templates/worldcup/_home_pre.html.
+   ============================================================ */
+
+/* "Days" unit label sitting alongside the Teko countdown numeral inside
+   .wc-stats-masthead. Baseline-aligns with the big numeral via the grid's
+   `align-items: end`. Quiet uppercase Teko to harmonize with the eyebrow. */
+.wc-countdown-numeral-wrap {
+  display: flex;
+  align-items: baseline;
+  gap: .55rem;
+  line-height: 1;
+}
+.wc-countdown-unit {
+  font-family: 'Teko', sans-serif;
+  font-size: 1.1rem;
+  font-weight: 500;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+/* Derivation tick row (hours · mins · secs) inside the masthead's
+   Newsreader derivation paragraph. Each tick is Teko tnum so the
+   live update doesn't shift the prose layout; the `.u` letter sits
+   smaller and muted so the numeral reads first. */
+.wc-stats-masthead-derivation .wc-countdown-tick {
+  font-family: 'Teko', sans-serif;
+  font-weight: 600;
+  font-feature-settings: 'tnum';
+  letter-spacing: .03em;
+}
+.wc-stats-masthead-derivation .wc-countdown-tick .u {
+  font-size: .85em;
+  color: var(--text-secondary);
+  margin-left: .08em;
+}
+.wc-stats-masthead-derivation .wc-countdown-sep {
+  color: var(--text-secondary);
+  margin: 0 .35em;
+}
+
+/* Tier legend — anchors the T1-T5 badges in the roster preview to their
+   game-design tier names ("Favorites · Contenders · Dark Horses · ...")
+   so casual users don't have to leave the page for the rules tab.
+   Italic Newsreader for editorial register; sits between the .wc-card-head
+   and the .roster-tiers grid. */
+.wc-tier-legend {
+  font-family: 'Newsreader', Georgia, serif;
+  font-style: italic;
+  font-size: .9rem;
+  line-height: 1.5;
+  margin-top: -.35rem;
+}
+
+/* Eyebrow modifier for bone-page-substrate use (outside `.wc-stat-card`,
+   outside the navy hero, outside the champion banner). The base
+   `.wc-eyebrow` color is `--bone-mute` — designed for dark substrates —
+   which lands sub-AA on the cream page. The card-scoped lift at
+   style.css:2697 doesn't reach the "Around the Pool" footer eyebrow
+   because that eyebrow sits in the page container, not in a card. */
+.wc-eyebrow-muted {
+  color: var(--text-secondary);
+}
+
+/* Opening Fixtures card — three pre-kickoff matches: flag pair, group
+   pill, kickoff datetime. Replaces the zeroed Top-of-Pool preview that
+   communicated "Awaiting kickoff" to no productive end. */
+.wc-fixture-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.wc-fixture-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: .75rem 0;
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+.wc-fixture-row:last-child { border-bottom: 0; }
+.wc-fixture-teams {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  min-width: 0;
+  flex: 1 1 14rem;
+}
+.wc-fixture-side {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  min-width: 0;
+}
+.wc-fixture-flag { font-size: 1.35rem; line-height: 1; }
+.wc-fixture-name {
+  font-weight: 500;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.wc-fixture-vs {
+  font-family: 'Teko', sans-serif;
+  font-size: .85rem;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+.wc-fixture-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: .65rem;
+  font-size: .85rem;
+  color: var(--text-secondary);
+}
+.wc-fixture-group {
+  font-family: 'Teko', sans-serif;
+  font-size: .8rem;
+  font-weight: 600;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  padding: .12em .55em;
+  border-radius: .25rem;
+  background: color-mix(in srgb, var(--wc-navy) 8%, transparent);
+  color: var(--wc-navy);
+}
+.wc-fixture-when {
+  font-feature-settings: 'tnum';
+  font-size: .95rem;
+  color: var(--text-primary);
+}
+
+@media (max-width: 575px) {
+  .wc-fixture-row { gap: .5rem; padding: .65rem 0; }
+  .wc-fixture-teams { flex-basis: 100%; }
+  .wc-fixture-name { font-size: .9rem; }
+  .wc-fixture-meta { flex-basis: 100%; justify-content: flex-start; }
+  .wc-countdown-numeral-wrap { gap: .4rem; }
+  .wc-stats-masthead-derivation .wc-countdown-sep { margin: 0 .25em; }
+}
 

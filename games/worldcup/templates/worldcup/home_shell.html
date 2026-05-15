@@ -1,25 +1,33 @@
 {% extends "base.html" %}
-{% block title %}World Cup Fantasy Pool{% endblock %}
+{% block title %}The Tribune | World Cup Fantasy Pool{% endblock %}
 
 {% block content %}
 <div class="page-hero wc-hero-grad">
   <div class="hero-glow"></div>
   <div class="container">
+    {# Tribune-voice masthead. The Hub is the entry point of the WC tab
+       cluster; per games/worldcup/DESIGN.md §3, the H1 carries voice, not
+       function. State + action live in the eyebrow + lead card below. #}
     <div class="d-flex align-items-center gap-3 flex-wrap">
-      <h1 class="mb-0">World Cup Fantasy Pool</h1>
-      <span class="phase-indicator {% if tournament_phase in ('group_stage', 'knockout') %}active{% endif %}">
-        <span class="phase-dot"></span>
-        {% if tournament_phase == 'pre_tournament' %}Pre-Tournament
-        {% elif tournament_phase == 'group_stage' %}Group Stage
-        {% elif tournament_phase == 'knockout' %}Knockout Round
-        {% else %}Completed{% endif %}
-      </span>
-    </div>
-    <p class="lead mb-0">
-      {% if copy and copy.eyebrow %}
-        <span class="wc-eyebrow">{{ copy.eyebrow }}</span>
+      <h1 class="mb-0">The Tribune</h1>
+      {# Phase indicator carries useful info during live & post tournament
+         states (Group Stage / Knockout / Completed). Pre-tournament, it
+         would just restate the eyebrow ("Tribute Window Open") — drop it
+         to avoid the redundant-copy hero stack. #}
+      {% if tournament_phase != 'pre_tournament' %}
+        <span class="phase-indicator {% if tournament_phase in ('group_stage', 'knockout') %}active{% endif %}">
+          <span class="phase-dot"></span>
+          {% if tournament_phase == 'group_stage' %}Group Stage
+          {% elif tournament_phase == 'knockout' %}Knockout Round
+          {% else %}Completed{% endif %}
+        </span>
       {% endif %}
-    </p>
+    </div>
+    {% if copy and copy.eyebrow %}
+      <div class="mt-2">
+        <span class="wc-eyebrow">{{ copy.eyebrow }}</span>
+      </div>
+    {% endif %}
     {% if copy and copy.headline %}
       <h2 class="hero-headline mb-0">{{ copy.headline }}</h2>
     {% endif %}
@@ -47,11 +55,9 @@
   {# Quick-links footer — absorbs Schedule / Groups / Rules nav demotions per spec D5.
      Rendered as a borderless utility row so the hub reads as three weights:
      red-topped deadline (action) → canonical .wc-stat-card content (status)
-     → quiet outlined-button row (escape hatches). Eyebrow gets the
-     bone-substrate color treatment used in stats.html — the default
-     --bone-mute lands sub-AA on the cream page surface. #}
+     → quiet outlined-button row (escape hatches). #}
   <div class="mt-4">
-    <div class="wc-eyebrow mb-2" style="color: var(--text-secondary);">Around the Pool</div>
+    <div class="wc-eyebrow wc-eyebrow-muted mb-2">Around the Pool</div>
     <div class="d-flex flex-wrap gap-2">
       <a href="{{ url_for('worldcup.schedule') }}" class="btn btn-sm btn-outline-secondary">
         <i class="bi bi-calendar3 me-1"></i>Schedule
@@ -65,4 +71,12 @@
     </div>
   </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+  {# Countdown ticker only matters pre-deadline. countdown.js binds to any
+     element carrying [data-deadline-utc] (the lead card in _home_pre.html). #}
+  {% if state == 'pre' %}
+    <script src="{{ url_for('static', filename='js/countdown.js') }}?v={{ asset_version }}" defer></script>
+  {% endif %}
 {% endblock %}

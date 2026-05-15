@@ -1,10 +1,16 @@
-// Countdown ticker — drives the .decree countdown card on the pre-state home.
-// Reads data-deadline-utc on the .decree element; ticks every second; reloads
-// the page when the deadline is reached so the next request sees state='live'.
+// Countdown ticker — drives any element carrying [data-deadline-utc].
+// Originally bound to the platform home's .decree card; generalized so the
+// WC hub lead card (.wc-stat-card.is-lead with data-deadline-utc) shares
+// the same ticker. Both pages render exactly one countdown element per
+// page, so querySelector (first match) is fine. Ticks every second;
+// reloads the page when the deadline is reached so the next request sees
+// state='live'.
 (function () {
-  var el = document.querySelector('.decree[data-deadline-utc]');
+  var el = document.querySelector('[data-deadline-utc]');
   if (!el) {
-    console.warn('[countdown] no .decree[data-deadline-utc] element on page');
+    // No countdown on this page. Quiet exit — the WC hub loads this script
+    // unconditionally in pre-state via home_shell.html, and a future state
+    // partial may legitimately omit the element.
     return;
   }
 
@@ -29,7 +35,7 @@
   var mEl = el.querySelector('[data-cd-mins]');
   var sEl = el.querySelector('[data-cd-secs]');
   if (!dEl || !hEl || !mEl || !sEl) {
-    console.warn('[countdown] missing one or more [data-cd-*] children inside .decree');
+    console.warn('[countdown] missing one or more [data-cd-*] children inside [data-deadline-utc]');
     return;
   }
 
