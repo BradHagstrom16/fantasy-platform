@@ -21,6 +21,12 @@
     <span class="wc-standing-rank">{{ your_standing.rank }}</span>
     <span class="wc-standing-of">of {{ your_standing.of_n }}</span>
   </div>
+  {# Hub coherence polish 2026-05: trend moved to its own line. With all
+     three secondary clauses present (mid-pack rank + trend gated on),
+     the prior single-line `points · back · clear · trend` chain piled
+     up four ·-separated clauses and reads as wire-service density. The
+     trend is a different beat — a "P.S. snapshot delta" — and earns
+     its own line break. #}
   <p class="wc-standing-derivation">
     {{ "%.1f"|format(your_standing.total) }} points
     {%- if your_standing.lead_delta_up is not none %}
@@ -28,10 +34,11 @@
     {%- endif %}
     {%- if your_standing.lead_delta_down is not none %}
       · {{ "%.1f"|format(your_standing.lead_delta_down) }} clear of next
-    {%- endif %}
-    {%- if trend.show_column and trend.delta is not none and trend.delta != 0 %}
-      · <span class="wc-standing-trend {% if trend.delta > 0 %}is-up{% elif trend.delta < 0 %}is-down{% endif %}">{% if trend.delta > 0 %}+{% endif %}{{ "%.1f"|format(trend.delta) }} since last snapshot</span>
     {%- endif %}.
+    {%- if trend.show_column and trend.delta is not none and trend.delta != 0 %}
+      <br>
+      <span class="wc-standing-trend {% if trend.delta > 0 %}is-up{% elif trend.delta < 0 %}is-down{% endif %}">{% if trend.delta > 0 %}+{% endif %}{{ "%.1f"|format(trend.delta) }} since last snapshot.</span>
+    {%- endif %}
   </p>
 </div>
 
