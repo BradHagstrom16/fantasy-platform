@@ -28,7 +28,14 @@
         <span class="wc-eyebrow">{{ copy.eyebrow }}</span>
       </div>
     {% endif %}
-    {% if copy and copy.headline %}
+    {# $impeccable critique 2026-05-15: drop the H2 hero-headline on the
+       out state. Three text levels above the H1 (eyebrow + H2 + p) on a
+       marketing surface where the H2 almost restated the value prop;
+       eyebrow + H1 + subhead alone read cleaner and let the CTA land
+       sooner. Other states keep their headline — pre/live/post each
+       earn the third line because their state-specific dossier headlines
+       carry distinct signal. #}
+    {% if copy and copy.headline and state != 'out' %}
       <h2 class="hero-headline mb-0">{{ copy.headline }}</h2>
     {% endif %}
     {% if copy and copy.subhead %}

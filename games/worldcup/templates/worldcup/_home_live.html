@@ -7,39 +7,119 @@
      - top_5_preview, recent_matches, trend, stage_label, enrollment
 #}
 
-{# Your Standing — Tribune-masthead collapse. One dominant Teko rank
-   numeral + Newsreader derivation prose carrying points + lead delta +
-   gap delta + (when gated) trend. Replaces the prior 50/50 twin-stat
-   (`display-4` rank | `display-4` points) which was the hero-metric
-   template the post-state already retired in S5.1.1 PI-1. Shares the
-   hub `.wc-standing-card` primitive with _home_post.html so the user
-   sees one masthead shape across live + post. Hub coherence pass
-   2026-05. #}
-<div class="wc-stat-card mb-4 animate-in wc-standing-card">
-  <div class="wc-eyebrow mb-1">Your Standing</div>
+{# Your Standing — compressed dossier (parity port from platform `/`
+   _dossier_card.html per Brad's lounge/room (b)-parity decision after
+   $impeccable critique 2026-05-15). The lounge stays the canonical rich
+   surface while WC is the live game; this WC-hub variant gives a
+   halftime-bookmark user the same sparkline + alive_count + week-delta
+   beats they get on `/`. WC-substrate adaptations: red top rule via
+   `.is-lead` (priority signal, mirrors the pre-state countdown lead);
+   red sparkline path on bone (vs gold on dark on the lounge); ledger
+   prose retains the WC-specific lead/clear competitive beats the
+   lounge dossier doesn't surface. Cross-state primitive `.wc-standing-
+   card` shared with _home_post.html so the user sees one masthead
+   shape across live + post. #}
+<div class="wc-stat-card is-lead mb-4 animate-in wc-standing-card">
+  <div class="wc-card-head">
+    <span class="wc-eyebrow">Your Standing</span>
+  </div>
   <div class="wc-standing-rank-cluster">
     <span class="wc-standing-rank">{{ your_standing.rank }}</span>
     <span class="wc-standing-of">of {{ your_standing.of_n }}</span>
   </div>
-  {# Hub coherence polish 2026-05: trend moved to its own line. With all
-     three secondary clauses present (mid-pack rank + trend gated on),
-     the prior single-line `points · back · clear · trend` chain piled
-     up four ·-separated clauses and reads as wire-service density. The
-     trend is a different beat — a "P.S. snapshot delta" — and earns
-     its own line break. #}
-  <p class="wc-standing-derivation">
-    {{ "%.1f"|format(your_standing.total) }} points
-    {%- if your_standing.lead_delta_up is not none %}
-      · {{ "%.1f"|format(your_standing.lead_delta_up) }} back of the lead
-    {%- endif %}
-    {%- if your_standing.lead_delta_down is not none %}
-      · {{ "%.1f"|format(your_standing.lead_delta_down) }} clear of next
-    {%- endif %}.
-    {%- if trend.show_column and trend.delta is not none and trend.delta != 0 %}
-      <br>
-      <span class="wc-standing-trend {% if trend.delta > 0 %}is-up{% elif trend.delta < 0 %}is-down{% endif %}">{% if trend.delta > 0 %}+{% endif %}{{ "%.1f"|format(trend.delta) }} since last snapshot.</span>
-    {%- endif %}
-  </p>
+
+  {# Sparkline — server-rendered SVG. Bone-substrate adaptation: red
+     path (--wc-red) on white card replaces the lounge's gold-on-dark
+     treatment. Gated on ≥2 snapshots so the path has at least one
+     segment; otherwise the empty-state copy holds the slot. #}
+  {% if dossier.sparkline_data and dossier.sparkline_data|length >= 2 %}
+  <div class="wc-dossier-sparkline">
+    <div class="wc-sparkline-cap">
+      <span>Rank · last {{ dossier.sparkline_data|length }} days</span>
+      <span>{{ dossier.sparkline_data[0] }} &rarr; {{ dossier.sparkline_data[-1] }}</span>
+    </div>
+    {% set data = dossier.sparkline_data %}
+    {% set width = 318 %}
+    {% set height = 48 %}
+    {% set pad = 3 %}
+    {% set max_v = data|max %}
+    {% set min_v = data|min %}
+    {% set range_v = (max_v - min_v) if (max_v - min_v) > 0 else 1 %}
+    {% set step_x = (width - pad*2) / (data|length - 1) %}
+    <svg width="100%" height="{{ height }}" viewBox="0 0 {{ width }} {{ height }}" preserveAspectRatio="none" aria-hidden="true">
+      {% for t in [0, 0.5, 1] %}
+      <line x1="{{ pad }}" x2="{{ width - pad }}"
+            y1="{{ pad + t * (height - pad*2) }}" y2="{{ pad + t * (height - pad*2) }}"
+            stroke="rgba(191,10,48,0.10)" stroke-dasharray="2 4"/>
+      {% endfor %}
+      {% set path = [] %}
+      {% set area = [] %}
+      {% for v in data %}
+        {% set i = loop.index0 %}
+        {% set x = pad + i * step_x %}
+        {% set y = pad + ((v - min_v) / range_v) * (height - pad*2) %}
+        {% if i == 0 %}
+          {% set _ = path.append('M' ~ x ~ ',' ~ y) %}
+          {% set _ = area.append('M' ~ x ~ ',' ~ y) %}
+        {% else %}
+          {% set _ = path.append('L' ~ x ~ ',' ~ y) %}
+          {% set _ = area.append('L' ~ x ~ ',' ~ y) %}
+        {% endif %}
+        {% if loop.last %}
+          {% set _ = area.append('L' ~ x ~ ',' ~ height) %}
+          {% set _ = area.append('L' ~ pad ~ ',' ~ height) %}
+          {% set _ = area.append('Z') %}
+        {% endif %}
+      {% endfor %}
+      <path d="{{ area|join(' ') }}" fill="rgba(191,10,48,0.10)"/>
+      <path d="{{ path|join(' ') }}" fill="none" stroke="#BF0A30" stroke-width="1.8"
+            stroke-linecap="round" stroke-linejoin="round"/>
+      {% for v in data %}
+        {% set i = loop.index0 %}
+        {% set x = pad + i * step_x %}
+        {% set y = pad + ((v - min_v) / range_v) * (height - pad*2) %}
+        <circle cx="{{ x }}" cy="{{ y }}"
+                r="{{ 3 if loop.last else 1.4 }}"
+                fill="{{ '#9C0826' if loop.last else '#BF0A30' }}"
+                {% if loop.last %}stroke="#BF0A30" stroke-width="1"{% endif %}/>
+      {% endfor %}
+    </svg>
+  </div>
+  {% else %}
+  <div class="wc-dossier-sparkline-empty">
+    Tracking starts tonight. Trends arrive after the first daily snapshot.
+  </div>
+  {% endif %}
+
+  {# The Ledger — Newsreader prose combining points · alive · lead/clear ·
+     week trend. Retains the WC-specific competitive context (lead_delta_
+     up/down) the lounge dossier doesn't surface; adds the lounge's
+     alive_count + week_delta_points the prior derivation didn't have. #}
+  <div class="wc-dossier-ledger">
+    <div class="wc-ledger-eyebrow">The Ledger</div>
+    <p class="wc-ledger-line mb-0">
+      <strong class="wc-lk">{{ "%.1f"|format(your_standing.total) }} points</strong>
+      across
+      <strong class="wc-lk{% if dossier.alive_count == 9 %} wc-lk--gold{% elif dossier.alive_count <= 4 %} wc-lk--red{% endif %}">{{ dossier.alive_count }} of 9</strong>
+      nations still earning.
+      {%- if your_standing.lead_delta_up is not none or your_standing.lead_delta_down is not none %}
+        <br>
+        {%- if your_standing.lead_delta_up is not none %}{{ "%.1f"|format(your_standing.lead_delta_up) }} back of the lead{% if your_standing.lead_delta_down is not none %}, {% else %}.{% endif %}{% endif -%}
+        {%- if your_standing.lead_delta_down is not none %}{{ "%.1f"|format(your_standing.lead_delta_down) }} clear of next.{% endif -%}
+      {%- endif %}
+      {%- if dossier.week_delta_points is not none %}
+        <br>
+        <span class="wc-ledger-delta wc-ledger-delta--{% if dossier.week_delta_points > 0 %}up{% elif dossier.week_delta_points < 0 %}down{% else %}flat{% endif %}">
+          {% if dossier.week_delta_points > 0 %}Up {{ '%.0f'|format(dossier.week_delta_points) }}{% elif dossier.week_delta_points < 0 %}Down {{ '%.0f'|format(dossier.week_delta_points|abs) }}{% else %}Even{% endif %} over the last 7 days.
+        </span>
+      {%- elif trend.show_column and trend.delta is not none and trend.delta != 0 %}
+        <br>
+        <span class="wc-ledger-delta wc-ledger-delta--{% if trend.delta > 0 %}up{% elif trend.delta < 0 %}down{% endif %}">
+          {% if trend.delta > 0 %}+{% endif %}{{ "%.1f"|format(trend.delta) }} since last snapshot.
+        </span>
+      {%- endif %}
+    </p>
+  </div>
 </div>
 
 {# Your Roster with live scores. Hub coherence pass 2026-05: tier column
@@ -85,27 +165,58 @@
 </div>
 {% endif %}
 
-{# Recent results with per-pick points-earned #}
+{# Recent Results — demoted from a full .wc-stat-card to the
+   .wc-results-strip silhouette (sibling primitive to .wc-fixtures-strip
+   used by the pre-state for Opening Fixtures). Hub coherence pass
+   2026-05-15 (post-critique): without this demote the live state stacks
+   four sibling stat-cards (standing/roster/results/leaderboard) with
+   identical chrome — exactly the trap the pre-state escaped via PRs
+   #29-32. Promoting the standing card to .is-lead + demoting Results
+   to a list strip re-establishes the lead → roster → strip → preview
+   crescendo. #}
 {% if recent_matches %}
-<div class="wc-stat-card mb-4 animate-in">
-  <div class="wc-card-head">
-    <span class="wc-eyebrow"><i class="bi bi-clock-history me-2"></i>Recent Results</span>
+<section class="wc-results-strip mb-4 animate-in stagger-2"
+         aria-labelledby="wc-results-strip-h">
+  <div class="wc-fixtures-strip-head">
+    <span class="wc-eyebrow wc-eyebrow-muted" id="wc-results-strip-h">
+      <i class="bi bi-clock-history me-2"></i>Recent Results
+    </span>
+    <a href="{{ url_for('worldcup.schedule') }}" class="wc-fixtures-strip-link">
+      Full Schedule <span aria-hidden="true">&rarr;</span>
+    </a>
   </div>
-  <div class="d-flex flex-column gap-2">
+  <ul class="wc-result-list">
     {% for entry in recent_matches %}
     {% set m = entry.match %}
-    <div class="match-result-card {% if entry.points_earned is not none %}is-roster-match{% endif %}">
-      <span class="wc-eyebrow">{{ entry.stage_label }}</span>
-      <span class="match-team home">{% if m.home_team %}{{ m.home_team.flag_emoji }} {{ m.home_team.display_name }}{% else %}TBD{% endif %}</span>
-      <span class="match-score wc-numeral">{{ m.home_score }}-{{ m.away_score }}</span>
-      <span class="match-team away">{% if m.away_team %}{{ m.away_team.flag_emoji }} {{ m.away_team.display_name }}{% else %}TBD{% endif %}</span>
-      {% if entry.points_earned is not none %}
-        <span class="text-success small">+{{ "%.1f"|format(entry.points_earned) }} pts</span>
-      {% endif %}
-    </div>
+    <li class="wc-result-row {% if entry.points_earned is not none %}is-roster-match{% endif %}">
+      <div class="wc-result-teams">
+        <span class="wc-fixture-side">
+          <span class="wc-fixture-flag">{% if m.home_team %}{{ m.home_team.flag_emoji }}{% else %}🏴{% endif %}</span>
+          <span class="wc-fixture-name">{% if m.home_team %}{{ m.home_team.display_name }}{% else %}TBD{% endif %}</span>
+        </span>
+        <span class="wc-result-score wc-numeral" aria-label="Score">{{ m.home_score }}&ndash;{{ m.away_score }}</span>
+        <span class="wc-fixture-side">
+          <span class="wc-fixture-flag">{% if m.away_team %}{{ m.away_team.flag_emoji }}{% else %}🏴{% endif %}</span>
+          <span class="wc-fixture-name">{% if m.away_team %}{{ m.away_team.display_name }}{% else %}TBD{% endif %}</span>
+        </span>
+      </div>
+      <div class="wc-result-meta">
+        <span class="wc-fixture-group">{{ entry.stage_label }}</span>
+        {# Chip gated on > 0 so a 0-point roster match (team played, earned
+           nothing) doesn't render a misleading "+0.0 pts" label — the `+`
+           prefix implies gain, and per PRODUCT.md every word must earn its
+           place. The `.is-roster-match` row tint still signals "your team
+           played" when the chip is hidden. CR #33 follow-up. #}
+        {% if entry.points_earned is not none and entry.points_earned > 0 %}
+        <span class="wc-result-pts" aria-label="{{ '%.1f'|format(entry.points_earned) }} points scored by your roster">
+          +{{ "%.1f"|format(entry.points_earned) }} pts
+        </span>
+        {% endif %}
+      </div>
+    </li>
     {% endfor %}
-  </div>
-</div>
+  </ul>
+</section>
 {% endif %}
 
 {# Top-5 preview #}

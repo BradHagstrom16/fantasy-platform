@@ -69,30 +69,28 @@
   {% endif %}
 </div>
 
-{# Stats row — entry fee + format constants. Stays on every state's surface #}
-<div class="row g-3 animate-in stagger-1">
-  <div class="col-6 col-md-3">
-    <div class="stat-block">
-      <div class="stat-value wc-numeral">{{ total_enrolled }}</div>
-      <div class="stat-label">Players</div>
-    </div>
+{# Editorial rules teaser — replaces the retired 4-up `.stat-block`
+   hero-metric strip ([P0] from $impeccable critique 2026-05-15;
+   impeccable absolute-ban + DESIGN.md §6 Don't #8). The multiplier
+   system IS the interesting fact about WC scoring — surfacing it as
+   editorial activation beat turns the same canvas into a conversion
+   moment ("the Wildcards are where pools are won") instead of a CMS
+   widget. Always rendered across all cta_state branches (guest +
+   unenrolled). #}
+<div class="wc-stat-card mb-4 animate-in stagger-1">
+  <div class="wc-card-head">
+    <span class="wc-eyebrow">How Scoring Works</span>
   </div>
-  <div class="col-6 col-md-3">
-    <div class="stat-block">
-      <div class="stat-value wc-numeral">48</div>
-      <div class="stat-label">Teams</div>
-    </div>
-  </div>
-  <div class="col-6 col-md-3">
-    <div class="stat-block">
-      <div class="stat-value wc-numeral">9</div>
-      <div class="stat-label">Picks Each</div>
-    </div>
-  </div>
-  <div class="col-6 col-md-3">
-    <div class="stat-block">
-      <div class="stat-value wc-numeral">${{ entry_fee }}</div>
-      <div class="stat-label">Entry Fee</div>
-    </div>
-  </div>
+  <p class="wc-rules-lead">Five tiers. Nine picks. Bigger risk, bigger reward.</p>
+  <ol class="wc-rules-teaser">
+    {% for tier in tier_summary %}
+    <li class="wc-rules-row">
+      <span class="wc-tier-dot wc-tier-dot-{{ tier.num }}"></span>
+      <span class="wc-rules-name">{{ tier.name }}</span>
+      <span class="wc-rules-picks">{{ tier.picks }} pick{{ 's' if tier.picks != 1 }}</span>
+      <span class="wc-rules-mult wc-numeral">&times;{{ tier.multiplier_display }}</span>
+    </li>
+    {% endfor %}
+  </ol>
+  <p class="wc-rules-kicker">The Wildcards are where pools are won.</p>
 </div>

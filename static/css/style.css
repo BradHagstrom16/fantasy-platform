@@ -515,7 +515,11 @@ body.game-golf {
 .home-shell .out-prop-text .s {
   font-family: var(--font-news);
   font-size: 0.9rem;
-  color: var(--bone-mute);
+  /* Lifted from `--bone-mute` (rgba(243,239,230,.55), ~3.8:1 on
+     purple-950, sub-AA at body size) to bone @ .78 (~6:1, AA-pass).
+     `--bone-mute` is calibrated for decorative captions; out-prop body
+     copy needs AA. $impeccable critique 2026-05-15 follow-up. */
+  color: rgba(243, 239, 230, 0.78);
   margin-top: 0.25rem;
   line-height: 1.4;
 }
@@ -3680,7 +3684,7 @@ body.game-worldcup {
   font-family: 'Teko', sans-serif;
   font-weight: 500;
   font-size: .95rem;
-  color: var(--text-muted);
+  color: var(--text-secondary);
   letter-spacing: .03em;
 }
 .tier-counter.complete {
@@ -3776,7 +3780,7 @@ body.game-worldcup {
 }
 .wc-team-card .team-meta {
   font-size: .75rem;
-  color: var(--text-muted);
+  color: var(--text-secondary);
   display: flex;
   align-items: center;
   gap: .5rem;
@@ -3860,14 +3864,14 @@ body.game-worldcup {
   flex-shrink: 0;
 }
 .match-result-card .match-score.pending {
-  color: var(--text-muted);
+  color: var(--text-secondary);
   background: rgba(0,0,0,.03);
   font-size: 1rem;
   font-weight: 500;
 }
 .match-result-card .match-detail {
   font-size: .75rem;
-  color: var(--text-muted);
+  color: var(--text-secondary);
   text-align: center;
   flex-shrink: 0;
 }
@@ -4488,7 +4492,7 @@ body.game-worldcup {
   padding: .55rem .75rem;
 }
 .wc-stats-pills .subnav-pill {
-  color: var(--text-muted);
+  color: var(--text-secondary);
   background: transparent;
   border: 1px solid transparent;
   cursor: pointer;
@@ -4721,6 +4725,63 @@ body.game-worldcup {
   margin-bottom: .35rem;
 }
 
+/* WC out-state editorial rules teaser — replaces the retired 4-up
+   `.stat-block` hero-metric strip ([P0] $impeccable critique 2026-05-15;
+   impeccable absolute-bans + DESIGN.md §6 Don't #8). Bone substrate,
+   Newsreader prose lead, Teko multiplier numerals, hairline rule between
+   rows so the list reads as editorial typesetting rather than a stat
+   grid. Tribune kicker closes the beat. */
+.wc-rules-lead {
+  font-family: 'Newsreader', serif;
+  font-size: 1.05rem;
+  line-height: 1.5;
+  color: var(--text-primary);
+  margin: 0 0 1rem;
+}
+.wc-rules-teaser {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1rem;
+}
+.wc-rules-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  align-items: baseline;
+  column-gap: .9rem;
+  padding: .55rem 0;
+  border-top: 1px solid var(--border-light);
+}
+.wc-rules-row:first-child { border-top: 0; padding-top: .25rem; }
+.wc-rules-row > .wc-tier-dot { align-self: center; }
+.wc-rules-name {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.wc-rules-picks {
+  color: var(--text-secondary);
+  font-size: .9rem;
+  white-space: nowrap;
+}
+.wc-rules-mult {
+  font-family: 'Teko', sans-serif;
+  font-weight: 700;
+  font-size: 1.75rem;
+  color: var(--game-primary);
+  letter-spacing: -.01em;
+  line-height: 1;
+  min-width: 2.5rem;
+  text-align: right;
+}
+.wc-rules-kicker {
+  font-family: 'Newsreader', serif;
+  font-style: italic;
+  font-size: .95rem;
+  color: var(--text-secondary);
+  text-align: center;
+  margin: 0;
+  padding-top: .25rem;
+}
+
 /* Scoring list */
 .wc-lb-row {
   display: grid;
@@ -4793,7 +4854,7 @@ body.game-worldcup {
   font-size: .85rem;
   letter-spacing: .06em;
   text-transform: uppercase;
-  color: var(--text-muted);
+  color: var(--text-secondary);
 }
 
 .leaderboard-rank {
@@ -4870,7 +4931,7 @@ body.game-worldcup {
   font-weight: 500;
   letter-spacing: .14em;
   text-transform: uppercase;
-  color: var(--text-muted);
+  color: var(--text-secondary);
   margin-top: .35rem;
 }
 
@@ -5582,7 +5643,7 @@ main { flex: 1; }
   font-weight: 500;
   letter-spacing: .1em;
   text-transform: uppercase;
-  color: var(--text-muted);
+  color: var(--text-secondary);
   margin-top: .4rem;
 }
 
@@ -5718,7 +5779,7 @@ body.game-worldcup .btn-game:focus-visible {
   font-size: .9rem;
   letter-spacing: .06em;
   text-transform: uppercase;
-  color: var(--text-muted);
+  color: var(--text-secondary);
   margin-bottom: .3rem;
 }
 
@@ -5741,12 +5802,12 @@ body.game-worldcup .btn-game:focus-visible {
 
 .form-control:disabled {
   background: var(--bg-muted);
-  color: var(--text-muted);
+  color: var(--text-secondary);
 }
 
 .form-text {
   font-size: .82rem;
-  color: var(--text-muted);
+  color: var(--text-secondary);
 }
 
 /* ── 11. Tables ─────────────────────────────────────────── */
@@ -5758,7 +5819,7 @@ body.game-worldcup .btn-game:focus-visible {
   font-size: .88rem;
   letter-spacing: .07em;
   text-transform: uppercase;
-  color: var(--text-muted);
+  color: var(--text-secondary);
   border-bottom: 2px solid var(--border);
   background: var(--bg-muted);
   padding: .85rem .75rem;
@@ -6035,7 +6096,7 @@ body.game-worldcup .btn-game:focus-visible {
 }
 
 .auth-subtitle {
-  color: var(--text-muted);
+  color: var(--text-secondary);
   font-size: .9rem;
   margin-bottom: 1.75rem;
 }
@@ -7224,6 +7285,134 @@ body.game-worldcup .form-text {
    snapshot" already carry the signal. */
 .wc-standing-card .wc-standing-trend.is-up { color: var(--success); }
 .wc-standing-card .wc-standing-trend.is-down { color: var(--danger); }
+
+/* Compressed dossier — embedded in `.wc-standing-card.is-lead` on the
+   WC hub live state ($impeccable critique 2026-05-15 follow-up). Parity
+   port from the platform `/` `_dossier_card.html`. Bone-substrate
+   adaptations: WC red path on white instead of gold on dark; Newsreader
+   ledger prose on `--text-primary`; hairline gold-dim baseline rules. */
+.wc-standing-card .wc-dossier-sparkline {
+  margin-top: 1.1rem;
+}
+.wc-standing-card .wc-sparkline-cap {
+  display: flex;
+  justify-content: space-between;
+  font-family: 'Teko', sans-serif;
+  font-size: .75rem;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  margin-bottom: .4rem;
+}
+.wc-standing-card .wc-dossier-sparkline-empty {
+  font-family: var(--font-news);
+  font-style: italic;
+  font-size: .9rem;
+  color: var(--text-secondary);
+  margin-top: 1.1rem;
+  padding: .65rem 0;
+  border-top: 1px solid var(--border-light);
+  border-bottom: 1px solid var(--border-light);
+}
+.wc-standing-card .wc-dossier-ledger {
+  margin-top: 1.1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-light);
+}
+.wc-standing-card .wc-ledger-eyebrow {
+  font-family: 'Teko', sans-serif;
+  font-size: .72rem;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  margin-bottom: .35rem;
+}
+.wc-standing-card .wc-ledger-line {
+  font-family: var(--font-news);
+  font-size: 1rem;
+  line-height: 1.55;
+  color: var(--text-primary);
+  max-width: 65ch;
+}
+.wc-standing-card .wc-lk { font-weight: 700; color: var(--text-primary); }
+.wc-standing-card .wc-lk--gold { color: var(--gold-dark); }
+.wc-standing-card .wc-lk--red { color: var(--game-primary); }
+.wc-standing-card .wc-ledger-delta--up { color: var(--success); font-weight: 600; }
+.wc-standing-card .wc-ledger-delta--down { color: var(--danger); font-weight: 600; }
+.wc-standing-card .wc-ledger-delta--flat { color: var(--text-secondary); }
+
+/* Recent Results strip — sibling primitive to `.wc-fixtures-strip`,
+   demotes the live-state's past-results card from a full `.wc-stat-card`
+   to an inline editorial strip. Mirrors PR #29-32's pre-state silhouette
+   discipline so the live state reads as crescendo (lead → roster → strip
+   → preview) instead of four sibling tabular cards. Reuses the
+   `.wc-fixtures-strip-head` + `.wc-fixture-side`/`-flag`/`-name`
+   primitives for visual continuity. */
+.wc-results-strip {
+  border-top: 1px solid var(--border);
+  padding-top: 1rem;
+  margin-top: 1.5rem;
+}
+.wc-result-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.wc-result-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: .65rem 0;
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+.wc-result-row:last-child { border-bottom: 0; }
+.wc-result-row.is-roster-match {
+  background: color-mix(in srgb, var(--wc-red) 5%, transparent);
+  border-radius: var(--radius);
+  padding-left: .65rem;
+  padding-right: .65rem;
+}
+.wc-result-teams {
+  display: flex;
+  align-items: center;
+  gap: .55rem;
+  min-width: 0;
+  flex: 1 1 16rem;
+}
+.wc-result-score {
+  font-family: 'Teko', sans-serif;
+  font-weight: 700;
+  font-size: 1.2rem;
+  letter-spacing: .04em;
+  color: var(--text-primary);
+  padding: 0 .35rem;
+  flex-shrink: 0;
+  font-feature-settings: 'tnum';
+}
+.wc-result-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: .55rem;
+  font-size: .85rem;
+  color: var(--text-secondary);
+}
+.wc-result-pts {
+  font-family: 'Teko', sans-serif;
+  font-size: .85rem;
+  font-weight: 600;
+  letter-spacing: .04em;
+  color: var(--success);
+  padding: .12em .55em;
+  border-radius: .25rem;
+  background: color-mix(in srgb, var(--success) 12%, transparent);
+}
+@media (max-width: 575px) {
+  .wc-result-row { gap: .5rem; padding: .55rem 0; }
+  .wc-result-teams { flex-basis: 100%; }
+  .wc-result-meta { flex-basis: 100%; justify-content: space-between; }
+}
 
 /* S5.1.2 PI-1 — 44×44 mobile tap-target floor on _home_post.html table
    anchors (Final Podium player links + Final Roster team links). Pre-fix
