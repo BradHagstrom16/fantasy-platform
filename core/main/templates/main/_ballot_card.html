@@ -66,7 +66,7 @@
         <span class="ballot-spine-tier-picks">
           {% for p in t.picks %}{{ p.team.display_name }}{% if not loop.last %} &middot; {% endif %}{% endfor %}
         </span>
-        <span class="ballot-spine-tier-mult wc-numeral">&times;{% if t.multiplier == t.multiplier|int %}{{ t.multiplier|int }}{% else %}{{ t.multiplier }}{% endif %}</span>
+        <span class="ballot-spine-tier-mult wc-numeral">&times;{% if t.multiplier == t.multiplier|int %}{{ t.multiplier|int }}{% else %}{{ '%.1f'|format(t.multiplier) }}{% endif %}</span>
       </li>
       {% endfor %}
     </ul>

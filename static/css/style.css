@@ -4935,7 +4935,10 @@ body.game-worldcup {
   top: 0.15rem;
   bottom: 0.15rem;
   width: 1px;
-  background: var(--border-default);
+  /* CR #34: `--border-default` is undefined in tokens.css; only `--border`
+     and `--border-light` exist. The prior reference resolved to initial,
+     rendering the season-rail divider invisible. */
+  background: var(--border);
 }
 .wc-season-act-name {
   font-family: 'Teko', sans-serif;

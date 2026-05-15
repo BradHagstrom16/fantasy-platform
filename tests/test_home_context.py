@@ -359,7 +359,10 @@ def test_context_live_dense_rank_for_tied_scores(app):
     rank → 1, 1, 2 (not the prior 1, 2, 3).
     """
     from core.main.home_context import build_home_context
-    with app.app_context(), patch.dict(os.environ, {'WC_FAKE_NOW': '2026-06-15T00:00:00Z'}):
+    with app.app_context(), patch.dict(os.environ, {
+        'ENVIRONMENT': 'testing',
+        'WC_FAKE_NOW': '2026-06-15T00:00:00Z',
+    }):
         u_first = _make_user(username='first', email='first@test.com')
         u_tied = _make_user(username='tied', email='tied@test.com')
         u_third = _make_user(username='third', email='third@test.com')
@@ -392,7 +395,10 @@ def test_context_live_lead_delta_for_chaser(app):
     from the WC hub embed; lounge previously omitted it).
     """
     from core.main.home_context import build_home_context
-    with app.app_context(), patch.dict(os.environ, {'WC_FAKE_NOW': '2026-06-15T00:00:00Z'}):
+    with app.app_context(), patch.dict(os.environ, {
+        'ENVIRONMENT': 'testing',
+        'WC_FAKE_NOW': '2026-06-15T00:00:00Z',
+    }):
         u_lead = _make_user(username='leader', email='leader@test.com')
         u_you = _make_user(username='you', email='you@test.com')
         u_chaser = _make_user(username='chaser', email='chaser@test.com')
