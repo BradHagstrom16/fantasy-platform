@@ -207,17 +207,14 @@ def test_fixture_ladder_kickoff_uses_ct_filter_not_utc_strftime():
     fixture ladder. Kickoff times still render in Central Time via the
     `|ct` filter, not raw UTC.
 
-    PR #30 CR — the positive `|ct` check is scoped to the fixture-ladder
-    block. The global form would mask a regression if `|ct` survived
-    elsewhere in `_home_pre.html` (e.g., a future ballot or commish-note
-    section adopted the filter) while the ladder itself reverted to raw
-    UTC. The invariant is "the LADDER pipes through `|ct`", not "the
-    filter appears somewhere in the file."
+    PR #30 CR — both the negative (no raw-UTC strftime) and positive
+    (uses `|ct`) checks are scoped to the fixture-ladder block extracted
+    from HOME_PRE. The global form would mask a regression in either
+    direction: a `%H:%M UTC` string could appear in some other section
+    while the ladder stays clean, or `|ct` could survive elsewhere while
+    the ladder itself reverted. The invariant is "the LADDER renders
+    kickoff via `|ct`, not raw UTC."
     """
-    assert "'%H:%M UTC'" not in HOME_PRE and "%H:%M UTC" not in HOME_PRE, (
-        'Fixture ladder reverted to a UTC strftime. Use the `|ct` Jinja '
-        'filter (registered in app.py); the helper lives at utils/time.py.'
-    )
     m = re.search(
         r'<ol\s+class="fixture-ladder"[^>]*>.*?</ol>',
         HOME_PRE,
@@ -228,6 +225,10 @@ def test_fixture_ladder_kickoff_uses_ct_filter_not_utc_strftime():
         'should still render `<ol class="fixture-ladder">...</ol>`.'
     )
     fixture_ladder_html = m.group(0)
+    assert "'%H:%M UTC'" not in fixture_ladder_html and "%H:%M UTC" not in fixture_ladder_html, (
+        'Fixture ladder reverted to a UTC strftime. Use the `|ct` Jinja '
+        'filter (registered in app.py); the helper lives at utils/time.py.'
+    )
     assert re.search(r'\|ct\b', fixture_ladder_html), (
         'Fixture ladder no longer pipes kickoff through the `ct` filter. '
         'The platform display TZ is America/Chicago — see utils/time.py.'
