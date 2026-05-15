@@ -45,6 +45,15 @@
     {% set pad = 3 %}
     {% set max_v = data|max %}
     {% set min_v = data|min %}
+    {# Flat-line guard (Critique 2026-05-15 P0-3): when every snapshot
+       carries the same rank (e.g., a stable leader at #1 across 8 days),
+       min_v == max_v and the prior path/area math collapses every point
+       to y=pad — so the area fill closes from y=pad down to y=height,
+       producing a near-full-height rectangle that reads as a solid
+       block. The most-engaged user (a stable leader) got the *least*
+       informative render. Render a centered dashed line + endpoint dots
+       instead; drop the area fill entirely. #}
+    {% set is_flat = (max_v == min_v) %}
     {% set range_v = (max_v - min_v) if (max_v - min_v) > 0 else 1 %}
     {% set step_x = (width - pad*2) / (data|length - 1) %}
     <svg width="100%" height="{{ height }}" viewBox="0 0 {{ width }} {{ height }}" preserveAspectRatio="none">
@@ -57,39 +66,56 @@
             y1="{{ pad + t * (height - pad*2) }}" y2="{{ pad + t * (height - pad*2) }}"
             stroke="rgba(242,211,107,0.1)" stroke-dasharray="2 4"/>
       {% endfor %}
-      {# Path — invert y so smaller rank = higher visual #}
-      {% set path = [] %}
-      {% set area = [] %}
-      {% for v in data %}
-        {% set i = loop.index0 %}
-        {% set x = pad + i * step_x %}
-        {% set y = pad + ((v - min_v) / range_v) * (height - pad*2) %}
-        {% if i == 0 %}
-          {% set _ = path.append('M' ~ x ~ ',' ~ y) %}
-          {% set _ = area.append('M' ~ x ~ ',' ~ y) %}
-        {% else %}
-          {% set _ = path.append('L' ~ x ~ ',' ~ y) %}
-          {% set _ = area.append('L' ~ x ~ ',' ~ y) %}
-        {% endif %}
-        {% if loop.last %}
-          {% set _ = area.append('L' ~ x ~ ',' ~ height) %}
-          {% set _ = area.append('L' ~ pad ~ ',' ~ height) %}
-          {% set _ = area.append('Z') %}
-        {% endif %}
-      {% endfor %}
-      <path d="{{ area|join(' ') }}" fill="rgba(242,211,107,0.16)"/>
-      <path d="{{ path|join(' ') }}" fill="none" stroke="#F2D36B" stroke-width="1.8"
-            stroke-linecap="round" stroke-linejoin="round"/>
-      {# Dots — last point is bigger and brighter #}
-      {% for v in data %}
-        {% set i = loop.index0 %}
-        {% set x = pad + i * step_x %}
-        {% set y = pad + ((v - min_v) / range_v) * (height - pad*2) %}
-        <circle cx="{{ x }}" cy="{{ y }}"
-                r="{{ 3 if loop.last else 1.4 }}"
-                fill="{{ '#FFF1B8' if loop.last else '#F2D36B' }}"
-                {% if loop.last %}stroke="#F2D36B" stroke-width="1"{% endif %}/>
-      {% endfor %}
+      {% if is_flat %}
+        {# Degenerate-data branch: centered dashed line, endpoint dots,
+           no area fill. The Ledger prose below + the rank-mvmt block
+           above already say "Holding rank over 7 days" when applicable;
+           the chart doesn't need to redundantly assert a movement signal
+           that doesn't exist. #}
+        {% set fy = height / 2 %}
+        {% set x0 = pad %}
+        {% set x1 = width - pad %}
+        <line x1="{{ x0 }}" x2="{{ x1 }}" y1="{{ fy }}" y2="{{ fy }}"
+              stroke="#F2D36B" stroke-width="1.8" stroke-linecap="round"
+              stroke-dasharray="4 4" opacity="0.55"/>
+        <circle cx="{{ x0 }}" cy="{{ fy }}" r="1.4" fill="#F2D36B"/>
+        <circle cx="{{ x1 }}" cy="{{ fy }}" r="3" fill="#FFF1B8"
+                stroke="#F2D36B" stroke-width="1"/>
+      {% else %}
+        {# Path — invert y so smaller rank = higher visual #}
+        {% set path = [] %}
+        {% set area = [] %}
+        {% for v in data %}
+          {% set i = loop.index0 %}
+          {% set x = pad + i * step_x %}
+          {% set y = pad + ((v - min_v) / range_v) * (height - pad*2) %}
+          {% if i == 0 %}
+            {% set _ = path.append('M' ~ x ~ ',' ~ y) %}
+            {% set _ = area.append('M' ~ x ~ ',' ~ y) %}
+          {% else %}
+            {% set _ = path.append('L' ~ x ~ ',' ~ y) %}
+            {% set _ = area.append('L' ~ x ~ ',' ~ y) %}
+          {% endif %}
+          {% if loop.last %}
+            {% set _ = area.append('L' ~ x ~ ',' ~ height) %}
+            {% set _ = area.append('L' ~ pad ~ ',' ~ height) %}
+            {% set _ = area.append('Z') %}
+          {% endif %}
+        {% endfor %}
+        <path d="{{ area|join(' ') }}" fill="rgba(242,211,107,0.16)"/>
+        <path d="{{ path|join(' ') }}" fill="none" stroke="#F2D36B" stroke-width="1.8"
+              stroke-linecap="round" stroke-linejoin="round"/>
+        {# Dots — last point is bigger and brighter #}
+        {% for v in data %}
+          {% set i = loop.index0 %}
+          {% set x = pad + i * step_x %}
+          {% set y = pad + ((v - min_v) / range_v) * (height - pad*2) %}
+          <circle cx="{{ x }}" cy="{{ y }}"
+                  r="{{ 3 if loop.last else 1.4 }}"
+                  fill="{{ '#FFF1B8' if loop.last else '#F2D36B' }}"
+                  {% if loop.last %}stroke="#F2D36B" stroke-width="1"{% endif %}/>
+        {% endfor %}
+      {% endif %}
     </svg>
   </div>
   {% else %}
@@ -110,16 +136,49 @@
   <div class="dossier-ledger">
     <div class="ledger-eyebrow">The Ledger</div>
     <p class="ledger-line">
-      <strong class="lk">{{ '%.0f'|format(dossier.total_score) }} points</strong>
+      {# Formatter parity (Critique 2026-05-15 P0-2): WC hub embed
+         renders %.1f for points. Lounge previously used %.0f,
+         producing a different total than the bookmark surface for
+         the same enrollment. #}
+      <strong class="lk">{{ '%.1f'|format(dossier.total_score) }} points</strong>
       across
       <strong class="lk{% if dossier.alive_count == 9 %} lk--gold{% elif dossier.alive_count <= 4 %} lk--red{% endif %}">{{ dossier.alive_count }} of 9</strong>
       nations still earning.
+      {# Bolder P1 — lead/clear pole. Previously only on the WC hub
+         compressed embed, leaving the lounge "canonical" surface
+         leaner than the bookmark fallback. Lead-delta is the most
+         competitively-useful number on the page. #}
+      {%- if dossier.lead_delta_up is not none or dossier.lead_delta_down is not none %}
+      <br>
+        {%- if dossier.lead_delta_up is not none %}{{ '%.1f'|format(dossier.lead_delta_up) }} back of the lead{% if dossier.lead_delta_down is not none %}, {% else %}.{% endif %}{% endif -%}
+        {%- if dossier.lead_delta_down is not none %}{{ '%.1f'|format(dossier.lead_delta_down) }} clear of next.{% endif -%}
+      {%- endif %}
       {% if dossier.week_delta_points is not none %}
+      <br>
       <span class="ledger-delta{% if dossier.week_delta_points > 0 %} ledger-delta--up{% elif dossier.week_delta_points < 0 %} ledger-delta--down{% else %} ledger-delta--flat{% endif %}">
         {% if dossier.week_delta_points > 0 %}Up {{ '%.0f'|format(dossier.week_delta_points) }}{% elif dossier.week_delta_points < 0 %}Down {{ '%.0f'|format(dossier.week_delta_points|abs) }}{% else %}Even{% endif %}
         over the last 7 days.
       </span>
       {% endif %}
     </p>
+
+    {# Bolder P1 — "Top earner" editorial callout. The lounge-canonical
+       richness signature beyond the WC hub parity embed: an editorial
+       Tribune line ("Top earner: 🇺🇸 USA — 7.5 pts") naming the single
+       pick carrying the most weight in the user's nine. Reads as a
+       column note, not a stat tile (avoiding the hero-metric template
+       slop trap). Only renders when at least one pick has scored. #}
+    {% if dossier.top_earner %}
+    <p class="ledger-line ledger-line--secondary">
+      <span class="ledger-eyebrow-inline">Top earner</span>
+      <span class="ledger-top-earner">
+        {{ dossier.top_earner.team_flag }}
+        <strong class="lk lk--gold">{{ dossier.top_earner.team_code }}</strong>
+        carrying
+        <strong class="lk">{{ '%.1f'|format(dossier.top_earner.points) }} pts</strong>
+        of your nine.
+      </span>
+    </p>
+    {% endif %}
   </div>
 </div>

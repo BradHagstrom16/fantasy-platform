@@ -15,10 +15,19 @@
     {% elif state == 'post' %}
       {% set wc_label = 'COMPLETED' %}
     {% endif %}
-    <a class="cg cg--active" href="{{ url_for('worldcup.index') }}">
+    {# Polish (Critique 2026-05-15) — `cg--live` modifier paints a small
+       red live-dot pulse on the active game tile during live state, so
+       the running tournament reads as visually distinct from the
+       coming-soon tiles to its right (which previously carried near-
+       identical chrome). The dot uses `--live-red` per DESIGN.md "Live
+       Indicators" — reserved for actual live-game indicators. #}
+    <a class="cg cg--active{% if state == 'live' %} cg--live{% endif %}" href="{{ url_for('worldcup.index') }}">
       <div class="g">⚽</div>
       <div class="n">World Cup</div>
-      <div class="p">{{ wc_label }}</div>
+      <div class="p">
+        {% if state == 'live' %}<span class="cg-live-dot" aria-hidden="true"></span>{% endif %}
+        {{ wc_label }}
+      </div>
     </a>
 
     {# CFB and Golf — pulled from coming_soon_games registry.

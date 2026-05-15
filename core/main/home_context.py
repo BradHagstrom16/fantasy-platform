@@ -16,6 +16,7 @@ from games.worldcup.models import (
     WorldCupEnrollment, WorldCupPick, WorldCupTeam, WorldCupMatch,
     WorldCupRankSnapshot,
 )
+from games.worldcup.services.ranking import compute_rank_neighbors
 from games.worldcup.services.stage import stage_label as _stage_label
 from games.worldcup.services.state import WorldCupState, now_utc
 from games.worldcup.services.scoring import points_for_pick_on_match
@@ -97,9 +98,19 @@ def _build_roster_spine(picks: list) -> dict:
     sealed users, closing the progressive-disclosure gap flagged by the
     post-PR-29 critique. Casual-default, analyst-respected: tier counts
     are scannable in one beat; the avg multiplier rewards the curious.
+
+    Clarify P2 (Critique 2026-05-15) — `tier_breakdown` rows now carry
+    a `picks` list per tier so the ballot card spine can render the
+    actual country names under each tier label. Previously the spine
+    only counted ("2 Favorites · 1 Contender · ..."), forcing the
+    sealed user to recall *which* of their nine sat in which tier
+    from a row of flag emojis above.
     """
     from collections import Counter
     tier_counts = Counter(p.team.tier for p in picks)
+    picks_by_tier: dict[int, list] = {}
+    for p in picks:
+        picks_by_tier.setdefault(p.team.tier, []).append(p)
     tier_breakdown = []
     for tier_num in (1, 2, 3, 4, 5):
         count = tier_counts.get(tier_num, 0)
@@ -113,6 +124,7 @@ def _build_roster_spine(picks: list) -> dict:
             'count': count,
             'name': name,
             'multiplier': tier_info['multiplier'],
+            'picks': picks_by_tier.get(tier_num, []),
         })
     total_mult = sum(p.team.multiplier for p in picks)
     avg_multiplier = total_mult / len(picks) if picks else 0.0
@@ -157,7 +169,7 @@ def _context_pre(user, enrollment) -> dict:
 
     deadline_ct = TOURNAMENT_DEADLINE_UTC.astimezone(WORLDCUP_TZ)
 
-    # court_line: "Thursday ◆ Tribute window open ◆ 2 days to kickoff"
+    # court_line: "Thursday · Tribute window open · 2 days to kickoff"
     now = now_utc()
     now_local = now.astimezone(WORLDCUP_TZ)
     weekday = now_local.strftime('%A')
@@ -177,7 +189,12 @@ def _context_pre(user, enrollment) -> dict:
         proximity = f'{minutes} minute{"s" if minutes != 1 else ""} to kickoff'
     else:
         proximity = 'kickoff imminent'
-    court_line = f'{weekday} ◆ Tribute window open ◆ {proximity}'
+    # Polish (Critique 2026-05-15) — separator unified to middle dot.
+    # `◆` (filled diamond) was a third symbol alongside DESIGN.md's
+    # reserved `◈` (ceremonial) + `◇` (informational) eyebrow glyphs;
+    # it served only as a separator here. `·` is the canonical CCC
+    # text separator and avoids inventing a third diamond register.
+    court_line = f'{weekday} · Tribute window open · {proximity}'
 
     return {
         'enrollment': enrollment,
@@ -256,10 +273,13 @@ def _context_live(user, enrollment) -> dict:
 
     dossier = None
     if is_enrolled:
-        user_rank = next(
-            (i + 1 for i, e in enumerate(all_enrollments) if e.id == enrollment.id),
-            None,
-        )
+        # Dense rank + lead deltas via the canonical helper. CLAUDE.md
+        # mandates dense rank everywhere ("tied scores share a rank, the
+        # next distinct score is rank + 1") — the prior positional
+        # `enumerate(...)+1` rendered competition rank, which diverged
+        # from the WC hub's leaderboard for any tied-score pair.
+        neighbors = compute_rank_neighbors(enrollment.id)
+        user_rank = neighbors['rank']
 
         # Week-delta + sparkline from snapshot history
         week_delta_rank = None
@@ -279,8 +299,29 @@ def _context_live(user, enrollment) -> dict:
             # (e.g., "you're climbing" computed from a 2-day window).
             if len(recent_snapshots) >= 7:
                 oldest = recent_snapshots[0]
-                week_delta_rank = (user_rank or 0) - oldest.rank
+                week_delta_rank = user_rank - oldest.rank
                 week_delta_points = float(enrollment.total_score) - float(oldest.total_score)
+
+        # Bolder P1 — "Top earner from your nine" extra ledger line,
+        # the lounge-canonical-richness signature beyond what the WC hub
+        # parity embed renders. Reads as an editorial Tribune callout
+        # ("Top earner: 🇺🇸 USA — 7.5 pts") not a stat tile. None when
+        # no pick has scored yet (pre-first-result live window); the
+        # template guards on truthy.
+        user_picks_with_points = picks_by_enr.get(enrollment.id, [])
+        top_earner = None
+        if user_picks_with_points:
+            best = max(
+                user_picks_with_points,
+                key=lambda p: float(p.multiplied_points or 0),
+            )
+            if best.multiplied_points and best.multiplied_points > 0:
+                top_earner = {
+                    'team_code': best.team.fifa_code,
+                    'team_flag': best.team.flag_emoji,
+                    'team_name': best.team.display_name,
+                    'points': float(best.multiplied_points),
+                }
 
         dossier = {
             'rank': user_rank,
@@ -290,16 +331,31 @@ def _context_live(user, enrollment) -> dict:
             'week_delta_rank': week_delta_rank,
             'week_delta_points': week_delta_points,
             'sparkline_data': sparkline_data,
+            # Bolder P1 — lead-delta line that the WC hub embed already
+            # surfaces. Bringing it to the canonical (lounge) surface
+            # honors the lounge/room architecture: the lounge should
+            # be the richer of the two, not the leaner.
+            'lead_delta_up': neighbors['lead_delta_up'],
+            'lead_delta_down': neighbors['lead_delta_down'],
+            'top_earner': top_earner,
         }
 
-    # Top 3 + you row (if user is enrolled and outside top 3)
+    # Top 3 + you row (if user is enrolled and outside top 3).
+    # Dense rank — tied scores share a rank, next distinct score
+    # advances by 1 (no gap). Matches WC hub leaderboard idiom
+    # (CLAUDE.md "Dense rank everywhere").
     top_3_plus_you = []
-    for i, enr in enumerate(top_3, start=1):
+    _dense_rank = 0
+    _prev_score = None
+    for enr in top_3:
+        if enr.total_score != _prev_score:
+            _dense_rank += 1
+        _prev_score = enr.total_score
         top_3_plus_you.append({
-            'rank': i,
+            'rank': _dense_rank,
             'enrollment': enr,
             'is_you': is_enrolled and enr.id == enrollment.id,
-            'tagline': _tagline_for(i, None, _alive_count(enr.id), is_you=False),
+            'tagline': _tagline_for(_dense_rank, None, _alive_count(enr.id), is_you=False),
         })
     if is_enrolled and dossier and dossier['rank'] and dossier['rank'] > 3:
         top_3_plus_you.append({
@@ -361,7 +417,9 @@ def _context_live(user, enrollment) -> dict:
             trend = "you're slipping"
     else:
         trend = "the Council is in session"
-    court_line = f'{weekday} ◆ {stage_label} ◆ {trend}'
+    # Polish (Critique 2026-05-15) — separator unified to middle dot.
+    # See _context_pre for the rationale.
+    court_line = f'{weekday} · {stage_label} · {trend}'
 
     display_name = (
         enrollment.get_display_name() if is_enrolled

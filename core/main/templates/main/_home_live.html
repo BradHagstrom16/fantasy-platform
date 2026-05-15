@@ -54,7 +54,10 @@
             <div class="roll-tagline">{{ row.tagline }}</div>
             {% endif %}
           </div>
-          <div class="roll-pts">{{ '%.0f'|format(row.enrollment.total_score) }}<span class="u">PTS</span></div>
+          {# Formatter parity (Critique 2026-05-15 P0-2): WC hub renders
+             %.1f for total_score; lounge previously used %.0f, producing
+             rounded values that diverged from the hub's. #}
+          <div class="roll-pts">{{ '%.1f'|format(row.enrollment.total_score) }}<span class="u">PTS</span></div>
         </div>
         {% endfor %}
       </div>

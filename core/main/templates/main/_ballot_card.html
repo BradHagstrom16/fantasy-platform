@@ -47,17 +47,29 @@
     {% endfor %}
   </ul>
   {% if roster_spine %}
-  <div class="ballot-spine" role="group" aria-label="Roster composition">
+  {# Clarify P2 (Critique 2026-05-15) — per-tier grouping with country
+     names. Previously this block only showed counts ("2 Favorites · 1
+     Contender · 2 Dark Horses ..."), forcing the user to recall which
+     of the 9 flags above sat in which tier. The grouped list ties the
+     flag ribbon to the tier system directly: each tier row pairs the
+     count + name with the actual country names ("T1 Favorites (2) —
+     Germany · Portugal"). Match the WC hub PRE's roster card pattern
+     so the lounge stops being the weaker surface for the same data. #}
+  <div class="ballot-spine ballot-spine--grouped" role="group" aria-label="Roster composition by tier">
     <div class="ballot-spine-eyebrow">◇ Roster Spine</div>
-    <div class="ballot-spine-row">
+    <ul class="ballot-spine-tiers">
       {% for t in roster_spine.tier_breakdown %}
-      <span class="ballot-spine-tier ballot-spine-tier--t{{ t.tier }}">
-        <span class="ballot-spine-count">{{ t.count }}</span>
-        <span class="ballot-spine-name">{{ t.name }}</span>
-      </span>
-      {% if not loop.last %}<span class="ballot-spine-sep" aria-hidden="true">·</span>{% endif %}
+      <li class="ballot-spine-tier-row ballot-spine-tier-row--t{{ t.tier }}">
+        <span class="ballot-spine-tier-tag ballot-spine-tier-tag--t{{ t.tier }}">T{{ t.tier }}</span>
+        <span class="ballot-spine-tier-name">{{ t.name }}</span>
+        <span class="ballot-spine-tier-count">({{ t.count }})</span>
+        <span class="ballot-spine-tier-picks">
+          {% for p in t.picks %}{{ p.team.display_name }}{% if not loop.last %} &middot; {% endif %}{% endfor %}
+        </span>
+        <span class="ballot-spine-tier-mult wc-numeral">&times;{% if t.multiplier == t.multiplier|int %}{{ t.multiplier|int }}{% else %}{{ t.multiplier }}{% endif %}</span>
+      </li>
       {% endfor %}
-    </div>
+    </ul>
     <div class="ballot-spine-avg">
       Avg multiplier <strong class="ballot-spine-mult">&times;{{ '%.1f'|format(roster_spine.avg_multiplier) }}</strong>{% if roster_spine.wildcard_count >= 2 %} <span class="ballot-spine-flex">&middot; The Commish notices.</span>{% endif %}
     </div>

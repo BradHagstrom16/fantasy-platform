@@ -46,14 +46,21 @@
              0.0 for non-scoring cases. The `is not none` guard is defensive
              so any future regression of that invariant fails into NO POINTS
              rather than a Jinja comparison error. #}
+          {# Formatter parity (Critique 2026-05-15 P0-2): the WC hub's
+             .wc-results-strip renders +%.1f pts. The lounge previously
+             used %.0f, so the same USA 3-1 PAR roster match read as
+             "+8 PTS" on / and "+7.5 pts" on /worldcup/ — same data,
+             two answers. Standardize on %.1f. The "1 PT" singular guard
+             drops because a fractional like 1.5 isn't grammatically
+             singular anyway; PTS reads correctly for any %.1f value. #}
           {% if item.points_earned is not none and item.points_earned > 0 %}
             {% if item.is_draw %}
               <div class="match-foot-status match-foot-status--draw">
-                DRAW &middot; +{{ '%.0f'|format(item.points_earned) }} {% if item.points_earned == 1 %}PT{% else %}PTS{% endif %}
+                DRAW &middot; +{{ '%.1f'|format(item.points_earned) }} PTS
               </div>
             {% else %}
               <div class="match-foot-status match-foot-status--win">
-                +{{ '%.0f'|format(item.points_earned) }} {% if item.points_earned == 1 %}PT{% else %}PTS{% endif %}
+                +{{ '%.1f'|format(item.points_earned) }} PTS
               </div>
             {% endif %}
           {% else %}
