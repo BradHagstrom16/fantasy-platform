@@ -7,10 +7,14 @@
        "Final Decree" carries the Council voice (mirroring "By Decree of the
        Commish No 001" on the pre-state decree stamp) without restating the
        fact the gold name already states. PRODUCT.md Copy Discipline: every
-       word earns its place; no restated headings. #}
-    <div class="champion-eyebrow">◈ Final Decree ◈</div>
+       word earns its place; no restated headings.
 
+       $impeccable critique 2026-05-15: eyebrow now branches on champion
+       presence — "Final Decree" reads as a contradiction when the body
+       below says "Champion Pending"; the fallback branch lifts to
+       "Awaiting Decree" so the eyebrow honestly carries the state. #}
     {% if champion_team %}
+    <div class="champion-eyebrow">◈ Final Decree ◈</div>
     <div class="champion-flag">{{ champion_team.flag_emoji }}</div>
     <div class="champion-name">{{ champion_team.display_name }}</div>
     <div class="champion-rule" aria-hidden="true"></div>
@@ -33,6 +37,7 @@
        carried by the greet line above and the Commish Note below. #}
     <div class="champion-retrospect">The Club records the night.</div>
     {% else %}
+    <div class="champion-eyebrow">◇ Awaiting Decree</div>
     <div class="champion-flag">🏆</div>
     <div class="champion-name">Champion Pending</div>
     <div class="champion-rule" aria-hidden="true"></div>

@@ -166,6 +166,26 @@ def _context_out(user: Any) -> dict:
     if cta_state in ('unenrolled_live', 'unenrolled_post'):
         top_3_preview = _top_n_preview(3)
 
+    # Editorial rules teaser — replaces the prior 4-up `.stat-block` hero-
+    # metric strip (impeccable absolute-ban + DESIGN.md §6 Don't #8). The
+    # multiplier system IS the interesting fact about WC scoring; surfacing
+    # it as an editorial row-list converts the canvas into an activation
+    # beat rather than a CMS widget. multiplier_display trims trailing .0
+    # so whole numbers render as "1" / "4" / "7" and halves stay "1.5" /
+    # "2.5". Numbered for accessibility (the five tiers are ordered by
+    # risk/multiplier).
+    tier_summary = [
+        {
+            'num': num,
+            'name': info['name'],
+            'picks': info['picks'],
+            'multiplier_display': (
+                f'{info["multiplier"]:.1f}'.rstrip('0').rstrip('.')
+            ),
+        }
+        for num, info in TIERS.items()
+    ]
+
     return {
         'state': 'out',
         'cta_state': cta_state,
@@ -177,6 +197,7 @@ def _context_out(user: Any) -> dict:
         'is_authenticated': is_authenticated,
         'display_name': display_name,
         'top_3_preview': top_3_preview,
+        'tier_summary': tier_summary,
     }
 
 
@@ -345,6 +366,41 @@ def _context_live(user: Any) -> dict:
     # in-card legend. Mirrors _home_post.html's pattern.
     tier_names = {n: TIERS[n]['name'] for n in TIERS}
 
+    # Compressed dossier payload — parity port from platform `/`
+    # _context_live (core/main/home_context.py) so a user hitting the WC
+    # hub during a live tournament gets the same sparkline + alive_count
+    # + week-delta beats they would on /. The lounge stays the canonical
+    # rich surface (Brad's lounge/room rule); this is the parity layer
+    # for users who bookmark `/worldcup/` for halftime checks. The
+    # week-delta is gated on ≥7 snapshots — early-deploy days would
+    # overstate any 2-day trend.
+    recent_snapshots = list(reversed(
+        WorldCupRankSnapshot.query
+        .filter_by(enrollment_id=enrollment.id)
+        .order_by(WorldCupRankSnapshot.captured_date.desc())
+        .limit(7)
+        .all()
+    ))
+    sparkline_data: list[int] = []
+    week_delta_rank: int | None = None
+    week_delta_points: float | None = None
+    if recent_snapshots:
+        sparkline_data = [s.rank for s in recent_snapshots]
+        if len(recent_snapshots) >= 7:
+            oldest = recent_snapshots[0]
+            week_delta_rank = neighbors['rank'] - oldest.rank
+            week_delta_points = (
+                float(enrollment.total_score) - float(oldest.total_score)
+            )
+    alive_count = sum(1 for p in user_picks if not p.team.is_eliminated)
+
+    dossier = {
+        'sparkline_data': sparkline_data,
+        'alive_count': alive_count,
+        'week_delta_rank': week_delta_rank,
+        'week_delta_points': week_delta_points,
+    }
+
     return {
         'state': 'live',
         'branch': branch,
@@ -358,6 +414,7 @@ def _context_live(user: Any) -> dict:
         'recent_matches': recent_matches,
         'stage_label': stage_label,
         'trend': {'show_column': show_trend, 'delta': delta},
+        'dossier': dossier,
         'tournament_phase': _derive_tournament_phase(),
     }
 

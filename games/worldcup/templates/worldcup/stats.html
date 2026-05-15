@@ -322,7 +322,7 @@ function renderProgressBar() {
     // the aria-label.
     if (cur) style += `background:rgba(212,168,32,.2);color:var(--platform-accent);border:2px solid var(--platform-accent);font-weight:700;`;
     else if (done) style += p.doneStyle;
-    else style += `background:var(--bg-muted);color:var(--text-muted);`;
+    else style += `background:var(--bg-muted);color:var(--text-secondary);`;
     return `<div role="listitem" aria-label="${p.label}, ${status}" style="${style}">${p.label}${glyph}</div>`;
   }).join('');
 }
