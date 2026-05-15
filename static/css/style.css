@@ -902,6 +902,14 @@ body.game-golf {
 @media (min-width: 768px) {
   .home-shell .greet-title { font-size: 3.2rem; }
 }
+/* S6.1.5 PI-6 — at lg the home-pre-grid widens to the 7fr/5fr layout, so the
+   masthead column expands to ~670px. The 3.2rem H1 left ~120px of dead air
+   each side and visually under-filled the canvas. Bumping to 4rem at lg+
+   restores Tribune masthead mass without overflowing (Teko condensed keeps
+   "THE COUNCIL AWAITS" on one line at column width). */
+@media (min-width: 1180px) {
+  .home-shell .greet-title { font-size: 4rem; }
+}
 .home-shell .greet-court {
   font-family: var(--font-news);
   font-style: italic;
@@ -1085,40 +1093,168 @@ body.game-golf {
   color: var(--bone);
   margin-top: 0.2rem;
 }
-.home-shell .ballot-locked {
+/* S6.1.5 PI-4 — `.ballot-locked` green-dot chip retired; replaced by the
+   Tribune ceremonial `.ballot-seal` (gold ◈ glyph + small Teko caption).
+   The redundant live-green dot was reclaiming a token reserved for actual
+   live-game indicators. The seal recipe reads as ceremonial-closed without
+   the semantic blur. */
+.home-shell .ballot-seal {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.55rem;
+  border: 1px solid rgba(201,162,39,.32);
+  border-radius: 999px;
+  background: rgba(201,162,39,.06);
+}
+.home-shell .ballot-seal-glyph {
+  font-size: 0.9rem;
+  color: var(--gold-light);
+  line-height: 1;
+}
+.home-shell .ballot-seal-text {
   font-family: var(--font-teko);
   font-weight: 600;
   font-size: 0.7rem;
   letter-spacing: 0.2em;
   text-transform: uppercase;
-  color: var(--live-green);
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
+  color: var(--gold-light);
 }
-.home-shell .ballot-locked .dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--live-green);
-}
+/* S6.1.5 PI-2 — flag ribbon is now a <ul> of 44×44 anchors to team-detail.
+   Pre-S6.1.5 these were aria-hidden 36×36 decorative spans (tap-bait that
+   returned silence on mobile). The 44px floor + visible focus ring match
+   PRODUCT.md mobile-first requirements. */
 .home-shell .ballot-flags {
   display: flex;
   flex-wrap: wrap;
   gap: 0.4rem;
   margin: 0.75rem 0;
+  padding: 0;
+  list-style: none;
+}
+.home-shell .ballot-flags > li {
+  list-style: none;
+  margin: 0;
+  padding: 0;
 }
 .home-shell .ballot-flag {
   display: inline-flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
-  font-size: 1.6rem;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0.2rem 0.35rem;
   line-height: 1;
   background: rgba(10,6,18,.5);
   border: 1px solid rgba(201,162,39,.22);
   border-radius: 8px;
+  text-decoration: none;
+  color: inherit;
+  transition: transform 0.15s ease, border-color 0.15s ease, background-color 0.15s ease;
+}
+/* PR #30 CR — `:hover` fires on tap and stays latched on touch devices
+   until the next tap-elsewhere, leaving the lift + gold tint stuck on the
+   last-tapped flag. Gate the hover block on `@media (hover: hover)` so
+   touch browsers skip it entirely. `:focus-visible` stays unscoped so
+   keyboard users on any device get the same affordance the mouse user
+   sees (lift + tint + outline ring). */
+@media (hover: hover) {
+  .home-shell .ballot-flag:hover {
+    transform: translateY(-1px);
+    border-color: rgba(201,162,39,.5);
+    background: rgba(201,162,39,.10);
+  }
+}
+.home-shell .ballot-flag:focus-visible {
+  transform: translateY(-1px);
+  border-color: rgba(201,162,39,.5);
+  background: rgba(201,162,39,.10);
+  outline: 2px solid var(--gold-light);
+  outline-offset: 2px;
+}
+.home-shell .ballot-flag-emoji {
+  font-size: 1.4rem;
+  line-height: 1;
+}
+.home-shell .ballot-flag-code {
+  margin-top: 0.15rem;
+  font-family: var(--font-teko);
+  font-weight: 600;
+  font-size: 0.6rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--bone-mute);
+}
+/* S6.1.5 PI-3 — Roster Spine caption. One-glance tier composition + average
+   multiplier surfaces the WC scoring identity on the home for sealed users.
+   Casual-default + analyst-respected (PRODUCT.md): tier counts scan in one
+   beat, multiplier value rewards the curious without owning hierarchy. */
+.home-shell .ballot-spine {
+  margin: 0.85rem 0 0.25rem;
+  padding: 0.85rem 0.85rem 0.75rem;
+  background: rgba(10,6,18,.35);
+  border: 1px solid rgba(243,239,230,.08);
+  border-radius: 8px;
+}
+.home-shell .ballot-spine-eyebrow {
+  font-family: var(--font-teko);
+  font-weight: 500;
+  font-size: 0.7rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--gold-light);
+  margin-bottom: 0.45rem;
+}
+.home-shell .ballot-spine-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 0.45rem;
+  font-family: var(--font-teko);
+  color: var(--bone);
+  margin-bottom: 0.5rem;
+}
+.home-shell .ballot-spine-tier {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.3rem;
+}
+.home-shell .ballot-spine-count {
+  font-weight: 700;
+  font-size: 0.95rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--bone);
+}
+.home-shell .ballot-spine-name {
+  font-weight: 500;
+  color: var(--bone-mute);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.72rem;
+}
+.home-shell .ballot-spine-sep {
+  color: rgba(242,211,107,.35);
+  font-weight: 400;
+}
+.home-shell .ballot-spine-avg {
+  font-family: var(--font-news);
+  font-style: italic;
+  font-size: 0.88rem;
+  line-height: 1.4;
+  color: var(--bone-mute);
+}
+.home-shell .ballot-spine-mult {
+  font-family: var(--font-teko);
+  font-style: normal;
+  font-weight: 700;
+  font-size: 1rem;
+  letter-spacing: 0.02em;
+  color: var(--bone);
+  font-variant-numeric: tabular-nums;
+}
+.home-shell .ballot-spine-flex {
+  color: var(--bone-mute);
 }
 .home-shell .ballot-foot {
   display: flex;
@@ -1370,6 +1506,104 @@ body.game-golf {
   letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--gold-light);
+}
+
+/* --- Fixture ladder (pre-state rail) — S6.1.5 PI-5.
+   Editorial typographic ladder replacing the 3 identical `.match-card`s
+   that drifted toward DESIGN.md §6 Don't #7. Each row is a single flat line
+   (HOME · vs · AWAY · kickoff) with venue underneath, separated by hairline
+   gold rules. The `.fix-team--mine` highlight wins over the row's tonal
+   background when the user's roster intersects the fixture; the "YOUR PICK"
+   chip in the meta line carries the same signal at scan distance. */
+.home-shell .fixture-ladder {
+  list-style: none;
+  padding: 0;
+  margin: 0.25rem 0 1rem;
+}
+.home-shell .fixture-ladder-row {
+  padding: 0.75rem 0;
+  border-bottom: 1px solid rgba(201,162,39,.18);
+}
+.home-shell .fixture-ladder-row:first-child {
+  border-top: 1px solid rgba(201,162,39,.18);
+}
+.home-shell .fix-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+}
+.home-shell .fix-stage {
+  font-family: var(--font-teko);
+  font-weight: 500;
+  font-size: 0.7rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--bone-mute);
+}
+.home-shell .fix-mine {
+  font-family: var(--font-teko);
+  font-weight: 700;
+  font-size: 0.65rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--gold-light);
+  background: rgba(201,162,39,.10);
+  border: 1px solid rgba(201,162,39,.32);
+  border-radius: 4px;
+  padding: 0.1rem 0.4rem;
+}
+.home-shell .fix-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem 0.6rem;
+  font-family: var(--font-teko);
+}
+.home-shell .fix-team {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--bone);
+  font-size: 1rem;
+}
+.home-shell .fix-team--mine .fix-code {
+  color: var(--gold-light);
+}
+.home-shell .fix-flag {
+  font-size: 1.25rem;
+  line-height: 1;
+}
+.home-shell .fix-code {
+  font-variant-numeric: tabular-nums;
+}
+.home-shell .fix-vs {
+  font-family: var(--font-news);
+  font-style: italic;
+  font-size: 0.85rem;
+  color: var(--bone-mute);
+}
+.home-shell .fix-kickoff {
+  margin-left: auto;
+  font-family: var(--font-teko);
+  font-weight: 500;
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gold-light);
+  font-variant-numeric: tabular-nums;
+}
+.home-shell .fix-venue {
+  margin-top: 0.25rem;
+  font-family: var(--font-news);
+  font-style: italic;
+  font-size: 0.82rem;
+  color: var(--bone-mute);
+  line-height: 1.4;
 }
 
 /* --- Compact game tiles strip (pre/live/post) --- */
@@ -2310,6 +2544,20 @@ body.game-golf {
     transition: none;
   }
   .home-shell .out-featured:hover .out-featured-icon {
+    transform: none;
+  }
+  /* PR #30 CR — same opt-out for the .ballot-flag link. The base rule
+     transitions transform/border-color/background-color on tap/focus, and
+     both `:hover` (inside @media (hover: hover)) and `:focus-visible`
+     declare a `translateY(-1px)` lift. Under reduced motion, kill the
+     transition + cancel the lift on both pseudo-states. Color feedback
+     (border-color / background) still applies — that's contrast, not
+     motion. */
+  .home-shell .ballot-flag {
+    transition: none;
+  }
+  .home-shell .ballot-flag:hover,
+  .home-shell .ballot-flag:focus-visible {
     transform: none;
   }
 }

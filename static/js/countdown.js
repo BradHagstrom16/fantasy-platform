@@ -5,6 +5,14 @@
 // page, so querySelector (first match) is fine. Ticks every second;
 // reloads the page when the deadline is reached so the next request sees
 // state='live'.
+//
+// S6.1.5 PI-1 — server-time anchor. When [data-server-now-utc] is present,
+// compute the drift between the client clock at page-load and the server's
+// authoritative "now" and use (Date.now() - drift) for deadline math. This
+// prevents a misset local clock from overriding the Decree of the Commish:
+// without the anchor, the server-rendered Days numeral lasted ~1s before
+// being trampled by Date.now()-based JS math. The anchor preserves the
+// authoritative server value across the live tick.
 (function () {
   var el = document.querySelector('[data-deadline-utc]');
   if (!el) {
@@ -30,6 +38,24 @@
     return;
   }
 
+  // Drift = (client wall clock at load) - (server "now" at render). All
+  // subsequent ticks use Date.now() - drift as the authoritative "now". The
+  // drift is computed once at page load and held constant; we don't try to
+  // resync (the page reloads on deadline anyway, and small client-clock
+  // tick-rate variance over <1 hour is below the resolution we display).
+  var drift = 0;
+  var serverNowStr = el.getAttribute('data-server-now-utc');
+  if (serverNowStr) {
+    if (!/(Z|[+-]\d{2}:?\d{2})$/.test(serverNowStr)) {
+      console.warn('[countdown] data-server-now-utc lacks timezone marker:', serverNowStr);
+    } else {
+      var serverNow = new Date(serverNowStr).getTime();
+      if (!isNaN(serverNow)) {
+        drift = Date.now() - serverNow;
+      }
+    }
+  }
+
   var dEl = el.querySelector('[data-cd-days]');
   var hEl = el.querySelector('[data-cd-hours]');
   var mEl = el.querySelector('[data-cd-mins]');
@@ -38,6 +64,11 @@
     console.warn('[countdown] missing one or more [data-cd-*] children inside [data-deadline-utc]');
     return;
   }
+  // The .decree-hero aria-label needs to track the live Days value so a
+  // screen-reader user reading the countdown after the first tick still
+  // hears the right number. Find the labelled wrapper (may be absent on
+  // surfaces that haven't adopted the S6.1.5 PI-1 aria pattern yet).
+  var heroEl = dEl.closest('[aria-label]');
 
   function pad(n) { return n < 10 ? '0' + n : '' + n; }
 
@@ -45,7 +76,7 @@
   var reloading = false;
 
   function tick() {
-    var now = Date.now();
+    var now = Date.now() - drift;
     var diff = deadline - now;
     if (diff <= 0) {
       if (reloading) return;
@@ -54,6 +85,7 @@
       hEl.textContent = '00';
       mEl.textContent = '00';
       sEl.textContent = '00';
+      if (heroEl) heroEl.setAttribute('aria-label', '0 days until kickoff');
       if (timerId) clearInterval(timerId);
       // Wait one tick so the user sees zero, then reload for state transition
       setTimeout(function () { window.location.reload(); }, 1500);
@@ -67,6 +99,12 @@
     hEl.textContent = pad(hours);
     mEl.textContent = pad(mins);
     sEl.textContent = pad(secs);
+    if (heroEl) {
+      heroEl.setAttribute(
+        'aria-label',
+        days + (days === 1 ? ' day' : ' days') + ' until kickoff'
+      );
+    }
   }
 
   tick();
