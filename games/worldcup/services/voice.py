@@ -24,7 +24,7 @@ HUB_COPY = {
             'subhead': 'Sign up to swear the Oath before the deadline.',
         },
         'unenrolled_pre': {
-            'eyebrow': 'Tribute Window',
+            'eyebrow': 'Picks Open',
             'headline': 'Join the pool. The deadline is approaching.',
             'subhead': 'Pick 9 teams across 5 tiers. The Commish keeps score.',
         },
@@ -43,13 +43,18 @@ HUB_COPY = {
         # Hero collapse (S-Hub-PreCritique): drop the subhead to two-beat
         # hero per impeccable copy law. Headline carries the Tribune voice;
         # the lead card carries the action and the live countdown.
+        # Plain-spoken middle (Hub coherence pass): eyebrow drops the
+        # archaic "Tribute Window" framing so Casual-default readers don't
+        # pay a metaphor-unpack cost above the fold; the Tribune voice
+        # still lives in H1 ("The Tribune") and the CTAs ("Seal/Amend the
+        # Oath"). Cross-tab parity: leaderboard.html mirrors this string.
         'unsubmitted': {
-            'eyebrow': 'Tribute Window Open',
+            'eyebrow': 'Picks Open',
             'headline': 'The Pool locks at first whistle.',
             'subhead': '',
         },
         'submitted': {
-            'eyebrow': 'Sealed. Still Amendable.',
+            'eyebrow': 'Sealed. Still Editable.',
             'headline': 'Your Oath is on file.',
             'subhead': '',
         },

@@ -219,6 +219,26 @@ def _context_pre(user: Any) -> dict:
     _now = now_utc()
     clamped_days = max(0, (TOURNAMENT_DEADLINE_UTC - _now).days)
 
+    # Delight beat (Hub coherence pass 2026-05): when a submitted user
+    # comes back inside the final 24h window, the lead-card softens. The
+    # red-rule urgency (`.is-lead`) and the primary `.btn-game` CTA both
+    # demote — the user's roster is already on file, the page should
+    # communicate "you're safe" rather than "act now." Unsubmitted users
+    # in the same window still get the loud presentation. The 24h
+    # threshold is matched to the typical "I should double-check before
+    # kickoff" return-visit pattern.
+    #
+    # The `0 <= hours_to_deadline < 24` range guards a tiny race window:
+    # worldcup_state() and now_utc() inside _context_pre call now_utc()
+    # at slightly different moments, so a deadline that crossed between
+    # the two calls could leave _context_pre with negative hours. The
+    # explicit lower bound keeps the calm variant gated to the upcoming-
+    # deadline window only.
+    hours_to_deadline = (TOURNAMENT_DEADLINE_UTC - _now).total_seconds() / 3600
+    is_sealed_near = (
+        branch == 'submitted' and 0 <= hours_to_deadline < 24
+    )
+
     return {
         'state': 'pre',
         'branch': branch,
@@ -239,6 +259,7 @@ def _context_pre(user: Any) -> dict:
         'next_3_matches': next_3_matches,
         'total_enrolled': total_enrolled,
         'tournament_phase': _derive_tournament_phase(),
+        'is_sealed_near': is_sealed_near,
     }
 
 
@@ -318,6 +339,12 @@ def _context_live(user: Any) -> dict:
         delta_map = compute_trend_by_enrollment([enrollment.id])
         delta = delta_map.get(enrollment.id)
 
+    # Tier names dict for the live roster table — parity with the post
+    # state's per-pick `tier_name` field. The table renders `dot + tier_name`
+    # (e.g., "🟧 Favorites") so users can decode the tier color without an
+    # in-card legend. Mirrors _home_post.html's pattern.
+    tier_names = {n: TIERS[n]['name'] for n in TIERS}
+
     return {
         'state': 'live',
         'branch': branch,
@@ -326,6 +353,7 @@ def _context_live(user: Any) -> dict:
         'display_name': enrollment.get_display_name(),
         'your_standing': your_standing,
         'user_picks': user_picks,
+        'tier_names': tier_names,
         'top_5_preview': top_5,
         'recent_matches': recent_matches,
         'stage_label': stage_label,

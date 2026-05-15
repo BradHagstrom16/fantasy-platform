@@ -12,7 +12,7 @@
       <h1 class="mb-0">The Tribune</h1>
       {# Phase indicator carries useful info during live & post tournament
          states (Group Stage / Knockout / Completed). Pre-tournament, it
-         would just restate the eyebrow ("Tribute Window Open") — drop it
+         would just restate the eyebrow ("Picks Open") so drop it
          to avoid the redundant-copy hero stack. #}
       {% if tournament_phase != 'pre_tournament' %}
         <span class="phase-indicator {% if tournament_phase in ('group_stage', 'knockout') %}active{% endif %}">
@@ -52,24 +52,14 @@
     {% include 'worldcup/_home_post.html' %}
   {% endif %}
 
-  {# Quick-links footer — absorbs Schedule / Groups / Rules nav demotions per spec D5.
-     Rendered as a borderless utility row so the hub reads as three weights:
-     red-topped deadline (action) → canonical .wc-stat-card content (status)
-     → quiet outlined-button row (escape hatches). #}
-  <div class="mt-4">
-    <div class="wc-eyebrow wc-eyebrow-muted mb-2">Around the Pool</div>
-    <div class="d-flex flex-wrap gap-2">
-      <a href="{{ url_for('worldcup.schedule') }}" class="btn btn-sm btn-outline-secondary">
-        <i class="bi bi-calendar3 me-1"></i>Schedule
-      </a>
-      <a href="{{ url_for('worldcup.groups') }}" class="btn btn-sm btn-outline-secondary">
-        <i class="bi bi-grid-3x3 me-1"></i>Groups
-      </a>
-      <a href="{{ url_for('worldcup.rules') }}" class="btn btn-sm btn-outline-secondary">
-        <i class="bi bi-book me-1"></i>Rules &amp; Scoring
-      </a>
-    </div>
-  </div>
+  {# Hub coherence pass 2026-05 retired the prior outline-button quick-
+     links footer (Schedule / Groups / Rules). The game sub-nav at the
+     top of every WC tab already routes there; the footer duplicated
+     those links below scroll on a long pre-state where the user had
+     most likely already used the sub-nav. Aesthetic-and-minimalist
+     under WC §6: every element earns its pixel. The Rules link survives
+     as the "See How It Works" CTA in the unenrolled out-state where a
+     first-timer hasn't met the sub-nav yet. #}
 </div>
 {% endblock %}
 
