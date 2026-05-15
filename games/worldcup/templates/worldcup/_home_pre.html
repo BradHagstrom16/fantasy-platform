@@ -21,7 +21,12 @@
      data-deadline-utc="{{ deadline_utc.strftime('%Y-%m-%dT%H:%M:%SZ') }}">
   <div class="wc-card-head">
     {% if is_sealed_near %}
-      <span class="wc-eyebrow"><i class="bi bi-shield-check me-2"></i>Roster on File</span>
+      {# Hub coherence polish 2026-05: dropped the `bi-shield-check` icon
+         from the sealed-near eyebrow. Shield-check belongs to a security-
+         app register (banking / antivirus) that's tonally mismatched with
+         the Tribune editorial voice; the text alone reads cleanly and
+         matches the icon-less `Picks Lock In` alternate. #}
+      <span class="wc-eyebrow">Roster on File</span>
     {% else %}
       <span class="wc-eyebrow wc-eyebrow-red">Picks Lock In</span>
     {% endif %}
@@ -88,12 +93,16 @@
   <div class="wc-card-head">
     <span class="wc-eyebrow wc-eyebrow-gold"><i class="bi bi-people-fill me-2"></i>Your Roster</span>
   </div>
+  {# Hub coherence polish 2026-05: each `T# Name` pair is wrapped in a
+     `.wc-tier-legend-pair` so the inline whitespace wrap on a 375px
+     viewport can't orphan a `T#` prefix onto the previous line, away
+     from its name. The pair span keeps the typography atomic. #}
   <p class="wc-tier-legend text-muted small mb-2" aria-label="Tier legend">
-    <strong>T1</strong> Favorites <span aria-hidden="true">·</span>
-    <strong>T2</strong> Contenders <span aria-hidden="true">·</span>
-    <strong>T3</strong> Dark Horses <span aria-hidden="true">·</span>
-    <strong>T4</strong> Underdogs <span aria-hidden="true">·</span>
-    <strong>T5</strong> Wildcards
+    <span class="wc-tier-legend-pair"><strong>T1</strong> Favorites</span> <span aria-hidden="true">·</span>
+    <span class="wc-tier-legend-pair"><strong>T2</strong> Contenders</span> <span aria-hidden="true">·</span>
+    <span class="wc-tier-legend-pair"><strong>T3</strong> Dark Horses</span> <span aria-hidden="true">·</span>
+    <span class="wc-tier-legend-pair"><strong>T4</strong> Underdogs</span> <span aria-hidden="true">·</span>
+    <span class="wc-tier-legend-pair"><strong>T5</strong> Wildcards</span>
   </p>
   {% set picks_by_tier = {} %}
     {% for pick in user_picks %}
