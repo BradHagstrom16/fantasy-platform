@@ -6712,16 +6712,21 @@ hr { border-color: var(--border); opacity: 1; }
    team_detail (parity with live + post linked rosters). Preserve the
    card silhouette as the affordance and lift gently on hover. Focus ring
    uses the canonical CCC `--gold-light` 2px outline so keyboard users
-   see the same target as mouse users. */
+   see the same target as mouse users. Hover lift gated on
+   `@media (hover: hover)` to match the platform pattern at style.css
+   :1162 / :2507 / :6835 — touch devices would otherwise latch the
+   lifted state after a tap. */
 a.roster-team-card {
   color: inherit;
   text-decoration: none;
   transition: transform .15s ease, border-color .15s ease, box-shadow .15s ease;
 }
-a.roster-team-card:hover {
-  transform: translateY(-1px);
-  border-color: color-mix(in srgb, var(--tier-color) 60%, rgba(0, 0, 0, .12));
-  box-shadow: var(--shadow-sm);
+@media (hover: hover) {
+  a.roster-team-card:hover {
+    transform: translateY(-1px);
+    border-color: color-mix(in srgb, var(--tier-color) 60%, rgba(0, 0, 0, .12));
+    box-shadow: var(--shadow-sm);
+  }
 }
 a.roster-team-card:focus-visible {
   outline: 2px solid var(--gold-light);

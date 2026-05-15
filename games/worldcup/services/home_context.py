@@ -227,8 +227,17 @@ def _context_pre(user: Any) -> dict:
     # in the same window still get the loud presentation. The 24h
     # threshold is matched to the typical "I should double-check before
     # kickoff" return-visit pattern.
+    #
+    # The `0 <= hours_to_deadline < 24` range guards a tiny race window:
+    # worldcup_state() and now_utc() inside _context_pre call now_utc()
+    # at slightly different moments, so a deadline that crossed between
+    # the two calls could leave _context_pre with negative hours. The
+    # explicit lower bound keeps the calm variant gated to the upcoming-
+    # deadline window only.
     hours_to_deadline = (TOURNAMENT_DEADLINE_UTC - _now).total_seconds() / 3600
-    is_sealed_near = branch == 'submitted' and hours_to_deadline < 24
+    is_sealed_near = (
+        branch == 'submitted' and 0 <= hours_to_deadline < 24
+    )
 
     return {
         'state': 'pre',

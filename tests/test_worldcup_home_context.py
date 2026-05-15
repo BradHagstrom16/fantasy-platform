@@ -292,6 +292,21 @@ def test_context_pre_is_sealed_near_true_when_submitted_and_near(app):
     assert ctx['is_sealed_near'] is True
 
 
+def test_context_pre_is_sealed_near_false_at_exact_24h_boundary(app):
+    """The threshold is strict-less-than 24h. Exactly 24h to deadline
+    must NOT trigger the calmer variant — lock the off-by-one so a
+    future hours_to_deadline <= 24 regression fails this test rather
+    than silently shifting the boundary by one hour.
+    """
+    user = make_user()
+    make_enrollment(user, picks_submitted=True)
+    db.session.commit()
+    fake_24h = (TOURNAMENT_DEADLINE_UTC - timedelta(hours=24)).isoformat()
+    with patch.dict(os.environ, {'ENVIRONMENT': 'testing', 'WC_FAKE_NOW': fake_24h}):
+        ctx = _context_pre(user=user)
+    assert ctx['is_sealed_near'] is False
+
+
 # =====================================================================
 # Task 8: dispatcher routing to _context_live + builder tests
 # =====================================================================

@@ -117,8 +117,8 @@ def test_pi2_home_shell_around_the_pool_footer_retired():
         'the game sub-nav and re-introduces an unused below-scroll row.'
     )
     assert 'btn-outline-secondary' not in src, (
-        f'No outline-secondary footer buttons should ship in '
-        f'home_shell.html post-coherence-pass; found at least one.'
+        'No outline-secondary footer buttons should ship in '
+        'home_shell.html post-coherence-pass; found at least one.'
     )
 
 
