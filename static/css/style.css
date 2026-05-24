@@ -4127,54 +4127,289 @@ body.game-worldcup .tier-card-5 .tier-card-header { background: linear-gradient(
 .tier-card { scroll-margin-top: 8rem; }
 
 /* Match result card — schedule/results display */
-.match-result-card {
+/* ── Schedule: editorial fixture list ──────────────────────────────────
+   P0 (impeccable critique 2026-05-24): the prior layout wrapped every one
+   of 100+ matches in its own full-width .card with content collapsed to a
+   center island, leaving wide dead bands left and right. The matchday is
+   now the card; matches are dense hairline-separated rows that pack into
+   two columns at md+, so screen width carries fixtures rather than empty
+   space. The day panel is intentionally non-interactive (no hover lift):
+   it is a container, not an affordance. */
+.schedule-day {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: .85rem 1.1rem 1rem;
+  margin-bottom: 1rem;
+  /* clear the navbar + game sub-nav + the sticky .schedule-nav rail */
+  scroll-margin-top: 180px;
+}
+/* Namespaced `sched-fixture-*` to avoid colliding with team_detail's
+   pre-existing `.fixture-*` 4-column fixture grid (style.css :3512), which is
+   a different layout on a different substrate. */
+.sched-fixture-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 1fr;
+  column-gap: 2.5rem;
+}
+@media (min-width: 768px) {
+  .sched-fixture-list { grid-template-columns: 1fr 1fr; }
+}
+.sched-fixture-row {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  column-gap: .85rem;
+  padding: .5rem .35rem;
+  border-bottom: 1px solid var(--border-light);
+}
+.sched-fixture-row:last-child { border-bottom: 0; }
+.sched-fixture-side {
+  display: flex;
+  align-items: center;
+  gap: .45rem;
+  min-width: 0;
+  font-family: 'Teko', sans-serif;
+  font-weight: 600;
+  font-size: 1.08rem;
+  letter-spacing: .01em;
+  color: var(--text-primary);
+}
+.sched-fixture-side.home { justify-content: flex-end; }
+.sched-fixture-side.away { justify-content: flex-start; }
+.sched-fixture-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sched-fixture-flag { flex-shrink: 0; font-size: 1.2rem; line-height: 1; }
+.sched-fixture-tbd { color: var(--text-secondary); font-weight: 500; }
+.sched-fixture-core {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 68px;
+}
+.sched-fixture-score {
+  font-family: 'Teko', sans-serif;
+  font-weight: 700;
+  font-size: 1.35rem;
+  color: var(--game-primary);
+  line-height: 1;
+  letter-spacing: .02em;
+}
+.sched-fixture-score .sched-fixture-dash { margin: 0 .12em; color: var(--text-secondary); }
+.sched-fixture-kick {
+  font-family: 'Teko', sans-serif;
+  font-weight: 500;
+  font-size: 1.02rem;
+  color: var(--text-secondary);
+  line-height: 1;
+}
+/* Roster highlight: the viewer's own picks. Tint + a weighted, red-painted
+   team name (color paired with weight + a visually-hidden "(your pick)"
+   string, never color alone). */
+.sched-fixture-row.is-mine {
+  background: rgba(191, 10, 48, .05);
+  border-radius: var(--radius);
+}
+.sched-fixture-name.is-mine-team { color: var(--wc-red); font-weight: 700; }
+
+/* ── Schedule: knockout bracket ────────────────────────────────────────
+   P1 (impeccable critique 2026-05-24): replaces ~32 full-width "TBD" knockout
+   cards with a left-to-right tree of compact cells. Desktop is a flex row of
+   round columns (later rounds vertically centered against the taller earlier
+   rounds, giving the classic narrowing bracket silhouette); below 992px the
+   rounds stack into full-width sections with a responsive cell grid. The cell
+   is the white card unit in both layouts; the columns/sections are transparent
+   scaffolding. Editorial, not broadcast: hairlines + Teko, no glow or chrome. */
+.wc-bracket {
+  display: flex;
+  gap: 1rem;
+  align-items: stretch;
+  overflow-x: auto;
+  padding-bottom: .5rem;
+}
+.wc-bracket-round {
+  flex: 1 0 0;
+  min-width: 156px;
+  display: flex;
+  flex-direction: column;
+}
+.wc-bracket-head {
+  font-family: 'Teko', sans-serif;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  font-size: 1rem;
+  color: var(--text-secondary);
+  margin: 0 0 .55rem;
+  padding-bottom: .35rem;
+  border-bottom: 2px solid var(--game-primary);
+}
+.wc-bracket-head .schedule-stage-count {
+  font-size: .82em;
+  margin-left: .15rem;
+}
+.wc-bracket-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  gap: .55rem;
+}
+.wc-ko-cell {
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: .875rem 1rem;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: .75rem;
-  transition: box-shadow var(--transition);
-}
-.match-result-card:hover {
   box-shadow: var(--shadow-sm);
+  padding: .35rem .5rem .3rem;
 }
-.match-result-card .match-team {
+.wc-ko-cell.is-mine {
+  border-color: rgba(191, 10, 48, .4);
+  background: rgba(191, 10, 48, .04);
+}
+.wc-ko-team {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: .4rem;
+  padding: .18rem 0;
   font-family: 'Teko', sans-serif;
   font-weight: 600;
-  font-size: 1.05rem;
-  letter-spacing: .02em;
-  flex: 1;
+  font-size: 1.02rem;
+  letter-spacing: .01em;
+  /* undecided / losing side sits muted; the winner lifts to ink + weight */
+  color: var(--text-secondary);
+}
+.wc-ko-team + .wc-ko-team { border-top: 1px solid var(--border-light); }
+.wc-ko-cell.is-decided .wc-ko-team.is-winner { color: var(--text-primary); font-weight: 700; }
+.wc-ko-flag { font-size: 1.05rem; line-height: 1; }
+.wc-ko-name {
   min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-.match-result-card .match-team.home { text-align: right; }
-.match-result-card .match-team.away { text-align: left; }
-.match-result-card .match-score {
-  font-family: 'Teko', sans-serif;
+.wc-ko-name.is-mine-team { color: var(--wc-red); }
+.wc-ko-tbd { color: var(--text-secondary); font-weight: 500; }
+.wc-ko-score {
   font-weight: 700;
-  font-size: 1.3rem;
   color: var(--game-primary);
-  background: rgba(0,40,104,.06);
-  padding: .2em .6em;
-  border-radius: var(--radius);
-  min-width: 60px;
-  text-align: center;
-  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+  min-width: 1ch;
+  text-align: right;
 }
-.match-result-card .match-score.pending {
-  color: var(--text-secondary);
-  background: rgba(0,0,0,.03);
-  font-size: 1rem;
+.wc-ko-foot {
+  display: flex;
+  justify-content: center;
+  min-height: 1rem;
+  margin-top: .15rem;
+}
+.wc-ko-when {
+  font-family: 'Teko', sans-serif;
+  font-size: .72rem;
   font-weight: 500;
-}
-.match-result-card .match-detail {
-  font-size: .75rem;
+  letter-spacing: .07em;
+  text-transform: uppercase;
   color: var(--text-secondary);
-  text-align: center;
-  flex-shrink: 0;
 }
+.wc-bracket-thirdplace {
+  max-width: 320px;
+  margin-top: 1.25rem;
+}
+.wc-bracket-thirdplace .wc-bracket-head { border-bottom-color: var(--gold); }
+
+/* Stack rounds into full-width sections on tablet/mobile. */
+@media (max-width: 991px) {
+  .wc-bracket {
+    flex-direction: column;
+    gap: 1.5rem;
+    overflow-x: visible;
+  }
+  .wc-bracket-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: .6rem;
+    justify-content: stretch;
+  }
+}
+@media (max-width: 480px) {
+  .wc-bracket-col { grid-template-columns: 1fr; }
+}
+
+/* ── Schedule: sticky in-page wayfinding rail (P2) ──────────────────────
+   Mirrors the .wc-stats-pills sticky offset idiom (top:93px below the
+   sub-nav, shifting to 83px when the navbar compacts) with the
+   .wc-rules-index pill styling. Persists section jumps on a 100+ match page. */
+.schedule-nav {
+  position: sticky;
+  /* Clears the navbar + WC game sub-nav (bottom sits ~111px on this page; the
+     navbar does not compact here, so a single offset holds in both the rested
+     and scrolled states). A small gap is preferable to overlapping the pills. */
+  top: 113px;
+  z-index: 900;
+  display: flex;
+  flex-wrap: wrap;
+  gap: .4rem;
+  margin: 0 0 1.25rem;
+  padding: .45rem .6rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  transition: top var(--transition);
+}
+.game-subnav.subnav-shifted ~ main .schedule-nav { top: 113px; }
+.schedule-nav-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: .2rem .9rem;
+  font-family: 'Teko', sans-serif;
+  font-weight: 600;
+  font-size: 1rem;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  text-decoration: none;
+  color: var(--text-secondary);
+  background: var(--bg-muted);
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  transition: background-color .15s ease, border-color .15s ease, color .15s ease, transform .15s ease;
+}
+.schedule-nav-pill:hover {
+  color: var(--text-primary);
+  background: var(--bg-muted);
+  border-color: var(--game-primary);
+  transform: translateY(-1px);
+}
+.schedule-nav-pill:focus-visible {
+  outline: 2px solid var(--gold-light);
+  outline-offset: 2px;
+}
+.schedule-nav-pill.is-today {
+  color: var(--wc-red);
+  border-color: rgba(191, 10, 48, .4);
+}
+.schedule-nav-pill.is-today:hover {
+  color: #fff;
+  background: var(--wc-red);
+  border-color: var(--wc-red);
+}
+@media (prefers-reduced-motion: reduce) {
+  .schedule-nav-pill { transition: none; }
+  .schedule-nav-pill:hover { transform: none; }
+}
+/* Anchor targets clear the navbar + sub-nav + sticky wayfinding rail. */
+#group-stage,
+#bracket { scroll-margin-top: 180px; }
 
 /* S2.2.1 — Schedule day header (matchday section) and per-card group tag.
    Replaces the inline-styled H4 group divider that fired up to 48 times across
@@ -4190,7 +4425,9 @@ body.game-worldcup .tier-card-5 .tier-card-header { background: linear-gradient(
   /* --text-secondary clears AA on the bone canvas (~5.5:1); the prior
      --text-muted regressed to ~3:1, below the 4.5:1 normal-text floor. */
   color: var(--text-secondary);
-  margin: 1.25rem 0 .5rem;
+  margin: 0 0 .55rem;
+  padding-bottom: .45rem;
+  border-bottom: 1px solid var(--border-light);
   display: flex;
   align-items: baseline;
   gap: .6rem;
@@ -4219,27 +4456,21 @@ body.game-worldcup .tier-card-5 .tier-card-header { background: linear-gradient(
   position: relative;
   top: -.05em;
 }
-.schedule-day-block {
-  /* day-scoped wrapper so each matchday's matches share a compact rhythm */
-}
-.schedule-day-block:first-of-type .schedule-day-header {
-  margin-top: .5rem;
-}
-
-/* Group letter badge inside .match-result-card. Position absolute so it
-   doesn't disturb the existing 3-column flex layout (home / score / away). */
-.match-result-card { position: relative; }
-.match-result-card .match-group-tag {
-  position: absolute;
-  top: .35rem;
-  right: .55rem;
+/* Group letter, inline at the trailing edge of the away side. P0 redesign
+   (2026-05-24): the prior treatment was a faint absolute-positioned glyph in
+   the card's top-right corner, far from the teams it labeled and easy to
+   miss. Inline keeps group context legible next to the fixture without a
+   separate column. aria-label carries the full "Group X" for assistive tech. */
+.match-group-tag {
+  flex-shrink: 0;
+  margin-left: .15rem;
   font-family: 'Teko', sans-serif;
-  font-size: .68rem;
+  font-size: .72rem;
   font-weight: 600;
-  letter-spacing: .12em;
+  letter-spacing: .1em;
   text-transform: uppercase;
   color: var(--text-secondary);
-  pointer-events: none;
+  opacity: .75;
   user-select: none;
 }
 
@@ -4309,31 +4540,33 @@ body.game-worldcup .tier-card-5 .tier-card-header { background: linear-gradient(
   line-height: 1;
 }
 
-/* Match attribution chip — "ARG +3 base" etc. */
+/* Match attribution caption — "MEX +1 · RSA +1". P3 (impeccable critique
+   2026-05-24): demoted from a bordered pill orphaned below the card to a
+   center-anchored caption spanning the full fixture-row width, so the eye
+   reads match -> result -> points as one unit. Reports, doesn't compete. */
 .match-points-chip {
+  grid-column: 1 / -1;
+  justify-self: center;
   display: inline-flex;
   align-items: center;
-  gap: .35em;
-  padding: .15rem .55rem;
-  background: rgba(0, 40, 104, .08);
-  border: 1px solid rgba(191, 10, 48, .3);
-  color: var(--game-primary, #002868);
+  gap: .3em;
+  margin-top: .2rem;
+  color: var(--text-secondary);
   font-family: 'Teko', sans-serif;
-  font-size: .85rem;
+  font-size: .74rem;
   font-weight: 500;
-  letter-spacing: .04em;
+  letter-spacing: .05em;
   text-transform: uppercase;
-  border-radius: 2px;
-  margin-top: .4rem;
   white-space: nowrap;
 }
 .match-points-chip .chip-pts {
   font-weight: 600;
+  color: var(--wc-red);
   font-variant-numeric: tabular-nums;
 }
 .match-points-chip .chip-sep {
   opacity: .5;
-  margin: 0 .2em;
+  margin: 0 .15em;
 }
 
 /* Pick drill-down accordion.
@@ -4746,14 +4979,6 @@ body.game-worldcup .tier-card-5 .tier-card-header { background: linear-gradient(
   .wc-team-card {
     min-height: 64px;
     padding: .6rem .75rem;
-  }
-  .match-result-card {
-    flex-wrap: wrap;
-    gap: .4rem;
-    padding: .65rem .75rem;
-  }
-  .match-result-card .match-team {
-    font-size: .95rem;
   }
 }
 
@@ -7113,26 +7338,14 @@ hr { border-color: var(--border); opacity: 1; }
   }
 }
 
-/* --- 18j. WC Schedule — match cards on very narrow screens --- */
-@media (max-width: 400px) {
-  .match-result-card {
-    flex-direction: column;
-    text-align: center;
-    gap: .3rem;
-    padding: .75rem;
-  }
-  .match-result-card .match-team {
-    text-align: center !important;
-  }
-  .match-result-card .match-team.home {
-    order: 1;
-  }
-  .match-result-card .match-score {
-    order: 2;
-  }
-  .match-result-card .match-team.away {
-    order: 3;
-  }
+/* --- 18j. WC Schedule — fixture rows on narrow screens --- */
+@media (max-width: 480px) {
+  .schedule-day { padding: .75rem .8rem .85rem; }
+  /* Long country names get the room to wrap rather than truncate to an
+     ellipsis on a phone; the row grows a line instead of hiding the name. */
+  .sched-fixture-side { font-size: 1rem; line-height: 1.08; }
+  .sched-fixture-name { white-space: normal; overflow: visible; text-overflow: clip; }
+  .sched-fixture-core { min-width: 60px; }
 }
 
 /* --- 18k. WC Rules — scroll indicator for wide tables --- */
@@ -7671,25 +7884,6 @@ body.game-worldcup .form-text {
      AA-large at Teko 700 / 22.4px (≥18.66px bold floor). The gold
      semantic survives the retire; the gradient does not. */
   color: var(--gold-dark);
-}
-
-/* .match-result-card.is-roster-match — Subtle "your team played" accent
-   on the live-state Recent Results card. Applies on top of
-   .match-result-card (defined at :2651, white card with var(--bg-card)
-   bg). Compound selector (0,0,2,0) wins over the bare card rule
-   (0,0,1,0).
-
-   Soft gold-to-white gradient lets the row read as flagged at a glance
-   but stays scannable when 3-5 of 7 matches involve the user's picks
-   during group-stage worst case (per brainstorm decision 3 — Subtle was
-   chosen over Prominent specifically to handle this density). */
-/* P0 S0.2: full gold-tinted border replaces the 3px left-stripe per the
-   impeccable absolute ban. The leading gold-tinted gradient already flags
-   "your team played"; the bordered card pulls the cue together at low
-   alert frequency. */
-.match-result-card.is-roster-match {
-  border-color: rgba(242, 211, 107, .55);
-  background: linear-gradient(90deg, rgba(242, 211, 107, .10) 0%, var(--bg-card) 35%);
 }
 
 /* --- P5 S5.1.1 — Post-state Tribune finale moments (PI-1 + PI-2) --- */

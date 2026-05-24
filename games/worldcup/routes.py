@@ -611,6 +611,25 @@ def schedule():
         m.id: compute_match_attribution(m) for m in matches if m.is_completed
     }
 
+    # Roster highlight: the set of team ids the viewer has picked, so the
+    # schedule can flag "your team plays here" rows. Public route, so this is
+    # empty for anonymous viewers and for authenticated-but-unenrolled users.
+    my_team_ids: set[int] = set()
+    if current_user.is_authenticated:
+        enrollment = db.session.execute(
+            select(WorldCupEnrollment).filter_by(
+                user_id=current_user.id, season_year=SEASON_YEAR
+            )
+        ).scalar_one_or_none()
+        if enrollment:
+            my_team_ids = set(
+                db.session.execute(
+                    select(WorldCupPick.team_id).filter_by(
+                        enrollment_id=enrollment.id
+                    )
+                ).scalars().all()
+            )
+
     # S2.2.1 — group stage rendered by matchday (Central-Time date), not by
     # group letter. Match rows are sorted by match_number which interleaves the
     # 12 groups chronologically; the previous group_letter divider therefore
@@ -663,6 +682,7 @@ def schedule():
         third_place=third_place,
         final=final,
         attribution_by_match=attribution_by_match,
+        my_team_ids=my_team_ids,
     )
 
 
