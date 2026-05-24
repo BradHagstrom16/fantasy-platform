@@ -3850,11 +3850,11 @@ body.game-worldcup {
    are WC tertiaries); the bottom border + tier dot still anchor the header.
    A header background wash, not a side stripe (the >1px colored side-stripe
    ban targets card edges, not full-width header fills). */
-.tier-card-1 .tier-card-header { background: linear-gradient(135deg, rgba(217, 119, 6, .09) 0%, rgba(217, 119, 6, .02) 100%); }
-.tier-card-2 .tier-card-header { background: linear-gradient(135deg, rgba(75, 115, 153, .10) 0%, rgba(75, 115, 153, .02) 100%); }
-.tier-card-3 .tier-card-header { background: linear-gradient(135deg, rgba(180, 83, 9, .09) 0%, rgba(180, 83, 9, .02) 100%); }
-.tier-card-4 .tier-card-header { background: linear-gradient(135deg, rgba(13, 115, 119, .10) 0%, rgba(13, 115, 119, .02) 100%); }
-.tier-card-5 .tier-card-header { background: linear-gradient(135deg, rgba(147, 51, 234, .09) 0%, rgba(147, 51, 234, .02) 100%); }
+body.game-worldcup .tier-card-1 .tier-card-header { background: linear-gradient(135deg, rgba(217, 119, 6, .09) 0%, rgba(217, 119, 6, .02) 100%); }
+body.game-worldcup .tier-card-2 .tier-card-header { background: linear-gradient(135deg, rgba(75, 115, 153, .10) 0%, rgba(75, 115, 153, .02) 100%); }
+body.game-worldcup .tier-card-3 .tier-card-header { background: linear-gradient(135deg, rgba(180, 83, 9, .09) 0%, rgba(180, 83, 9, .02) 100%); }
+body.game-worldcup .tier-card-4 .tier-card-header { background: linear-gradient(135deg, rgba(13, 115, 119, .10) 0%, rgba(13, 115, 119, .02) 100%); }
+body.game-worldcup .tier-card-5 .tier-card-header { background: linear-gradient(135deg, rgba(147, 51, 234, .09) 0%, rgba(147, 51, 234, .02) 100%); }
 
 /* Team pick card — individual team in pick form */
 .wc-team-card {
@@ -4098,7 +4098,7 @@ body.game-worldcup {
   align-items: center;
   gap: .35rem;
   flex: 0 0 auto;
-  min-height: 40px;
+  min-height: 44px;
   padding: .3rem .7rem;
   border: 1px solid var(--border);
   border-radius: 1rem;

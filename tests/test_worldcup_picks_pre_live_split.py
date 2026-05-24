@@ -206,5 +206,13 @@ def test_tier_jump_count_avoids_raw_text_muted_on_white(css_src):
     import re
     block = re.search(r'\.tier-jump-count\s*\{([^}]*)\}', css_src)
     assert block is not None
-    assert 'var(--text-muted)' not in block.group(1)
-    assert 'var(--text-secondary)' in block.group(1)
+    body = block.group(1)
+    # Target the `color` property specifically; the negative lookbehind rejects
+    # `background-color:` / `border-color:` so a non-text use of the token can't
+    # pass (or fail) the assertion by accident.
+    assert re.search(r'(?<!-)color:\s*var\(--text-secondary\)', body), (
+        'tier-jump-count must paint its text color with --text-secondary'
+    )
+    assert re.search(r'(?<!-)color:\s*var\(--text-muted\)', body) is None, (
+        'tier-jump-count must not use --text-muted as its text color on white'
+    )
