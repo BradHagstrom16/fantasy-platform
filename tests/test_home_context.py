@@ -257,7 +257,7 @@ def test_context_post_enrolled_with_climb_and_roster_recap(app):
         db.session.add(final)
         # Two enrollments so the user has someone to climb past
         u1 = _make_user(username='other', email='other@test.com')
-        e1 = _make_enrollment(u1, picks_submitted=True, total_score=50.0)
+        _make_enrollment(u1, picks_submitted=True, total_score=50.0)
         u2 = _make_user()
         e2 = _make_enrollment(u2, picks_submitted=True, total_score=200.0)
         # User picks BRA (champion) + ARG (runner-up)
@@ -601,6 +601,32 @@ def test_context_live_week_delta_requires_seven_snapshots(app):
         assert len(ctx['dossier']['sparkline_data']) == 6
         # But week-delta is suppressed until we have 7
         assert ctx['dossier']['week_delta_rank'] is None
+        assert ctx['dossier']['week_delta_points'] is None
+
+
+def test_context_live_week_delta_points_suppressed_when_baseline_zero(app):
+    """Lounge ledger: a zero 7-day-ago baseline makes the points-delta equal
+    the current total (reads as a glitch). Suppress the points-delta while
+    keeping the rank-delta. $impeccable critique 2026-05-24."""
+    from core.main.home_context import build_home_context
+    from games.worldcup.models import WorldCupRankSnapshot
+    from datetime import date, timedelta
+    with app.app_context(), patch.dict(os.environ, {'WC_FAKE_NOW': '2026-06-20T00:00:00Z'}):
+        user = _make_user()
+        enr = _make_enrollment(user, picks_submitted=True, total_score=100.0)
+        today = date(2026, 6, 20)
+        for i in range(7):
+            db.session.add(WorldCupRankSnapshot(
+                enrollment_id=enr.id,
+                captured_date=today - timedelta(days=i),
+                rank=5 if i == 6 else 1,
+                total_score=0.0 if i == 6 else 100.0,
+            ))
+        db.session.commit()
+        ctx = build_home_context(user, 'live')
+        # Rank-delta still computed — a baseline rank is always meaningful.
+        assert ctx['dossier']['week_delta_rank'] == 1 - 5
+        # Points-delta suppressed because the baseline scored 0.
         assert ctx['dossier']['week_delta_points'] is None
 
 

@@ -77,8 +77,12 @@
       </li>
       {% endfor %}
     </ul>
+    {# "still in" (not eliminated) and "on the board" (have scored) are stated
+       as two separate counts so the survival number doesn't contradict the
+       zero-point rows above it ($impeccable critique 2026-05-24 r2). #}
     <p class="wc-leverage-summary mb-0">
-      <strong class="wc-lk{% if leverage_summary.alive_low %} wc-lk--alert{% endif %}">{{ leverage_summary.alive_count }} of 9</strong> nations still alive.
+      <strong class="wc-lk{% if leverage_summary.alive_low %} wc-lk--alert{% endif %}">{{ leverage_summary.alive_count }} of 9</strong> still in,
+      <strong class="wc-lk">{{ leverage_summary.scored_count }}</strong> on the board.
       {%- if leverage_summary.dormant_upside_codes %}
         Your ×{{ leverage_summary.dormant_upside_mult }} upside ({{ leverage_summary.dormant_upside_codes|join(', ') }}) hasn't fired yet.
       {%- endif %}
@@ -123,7 +127,10 @@
         </span>
       </div>
       <div class="wc-result-meta">
-        <span class="wc-fixture-group">{{ entry.stage_label }}</span>
+        {# Group rows read "Group A" (distinct per match) instead of a column
+           of identical "Group Stage" chips ($impeccable critique 2026-05-24
+           r2); knockout rows keep the stage label. #}
+        <span class="wc-fixture-group">{% if m.stage == 'group' and m.group_letter %}Group {{ m.group_letter }}{% else %}{{ entry.stage_label }}{% endif %}</span>
         {# Chip gated on > 0 so a 0-point roster match (team played, earned
            nothing) doesn't render a misleading "+0.0 pts" label — the `+`
            prefix implies gain, and per PRODUCT.md every word must earn its

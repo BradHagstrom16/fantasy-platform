@@ -48,6 +48,15 @@ _BEST_FINISH_LABELS: dict[str, str] = {
     'champion': 'Champion',
 }
 
+# Leverage Board bar floor — a pick that has banked any points keeps a
+# visible minimum sliver even when one carrier dominates the roster, so the
+# bar comparison doesn't collapse to "the leader, and nothing else"
+# ($impeccable critique 2026-05-24 P2: USA=100% dwarfed SCO/GER into
+# invisible 2-9% slivers). Dormant picks (0 points) stay at 0 — the empty
+# track is the "hasn't fired yet" signal and must read as distinct from a
+# tiny-but-scoring bar.
+LEVERAGE_BAR_MIN_SHARE = 0.06
+
 
 def _top_n_preview(n: int) -> list[WorldCupEnrollment]:
     """Season-scoped leaderboard slice — top-N by total_score DESC, tiebreak by id ASC.
@@ -381,7 +390,13 @@ def _context_live(user: Any) -> dict:
     # = no trend clause (no snapshots, or a flat week).
     week_delta_direction: str | None = None
     week_delta_points_abs: float | None = None
-    if oldest_snapshot is not None:
+    # Only a meaningful 7-day swing if the baseline reflects real prior
+    # accumulation. A zero baseline (7 days ago nothing was scored, e.g. an
+    # early-tournament or fresh-deploy window) makes the delta equal the
+    # current total — redundant with the points total already on the line and
+    # reads as a glitch ($impeccable critique 2026-05-24). Gate the points-
+    # delta on a non-zero baseline, the same spirit as the >=7-snapshot gate.
+    if oldest_snapshot is not None and float(oldest_snapshot.total_score) > 0:
         week_delta_points = (
             float(enrollment.total_score) - float(oldest_snapshot.total_score)
         )
@@ -424,6 +439,12 @@ def _context_live(user: Any) -> dict:
         reverse=True,
     ):
         pts = float(p.multiplied_points or 0)
+        raw_share = (pts / max_pts) if max_pts > 0 else 0.0
+        # Floor nonzero carriers to a visible minimum (see LEVERAGE_BAR_MIN_SHARE);
+        # dormant picks stay at exactly 0 so the empty track keeps signalling
+        # "no points yet". The bar is decorative (aria-hidden) and the points
+        # value is the text equivalent, so a visual floor doesn't misreport data.
+        share = max(raw_share, LEVERAGE_BAR_MIN_SHARE) if pts > 0 else 0.0
         leverage.append({
             'code': p.team.fifa_code,
             'flag': p.team.flag_emoji,
@@ -432,7 +453,7 @@ def _context_live(user: Any) -> dict:
             'tier': p.team.tier,
             'mult_display': f'{float(p.team.multiplier):g}',
             'points': pts,
-            'share': (pts / max_pts) if max_pts > 0 else 0.0,
+            'share': share,
             'status': (
                 'out' if p.team.is_eliminated
                 else ('scoring' if pts > 0 else 'dormant')
@@ -449,8 +470,14 @@ def _context_live(user: Any) -> dict:
         [lv for lv in dormant if lv['tier'] == upside_tier]
         if upside_tier >= 4 else []
     )
+    # scored_count = picks that have banked points. Surfaced alongside
+    # alive_count so the summary can distinguish "still in" (not eliminated)
+    # from "on the board" (has scored) — without it, "9 of 9 alive" next to
+    # six 0.0 rows read as a contradiction ($impeccable critique 2026-05-24 r2).
+    scored_count = sum(1 for lv in leverage if lv['points'] > 0)
     leverage_summary = {
         'alive_count': alive_count,
+        'scored_count': scored_count,
         # alive_low precomputed (template can't do `<= 4` without a raw `<`
         # that trips HTMLHint). Drives the --wc-red survival alert.
         'alive_low': alive_count <= 4,

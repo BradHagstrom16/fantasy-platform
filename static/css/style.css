@@ -3176,7 +3176,9 @@ body.game-worldcup {
   font-size: .82rem;
   letter-spacing: .03em;
   padding: .15rem .45rem;
-  background: rgba(0, 0, 0, .04);
+  /* Purple-tinted neutral, not pure-black alpha (DESIGN.md Tinted-Neutral
+     rule — every gray-feeling fill casts toward the brand purple). */
+  background: rgba(58, 29, 114, .05);
   border: 1px solid var(--border);
   border-radius: 4px;
   color: var(--text-primary);
@@ -7504,12 +7506,18 @@ body.game-worldcup .form-text {
   line-height: 1.5;
   max-width: 60ch;
 }
-/* Live trend clause tint inside the derivation prose. Paired with text
-   for color-state-not-color-alone (CLAUDE.md "Avoid color-only state
-   communication"); the +/- sign and the prose-context-clause "since last
-   snapshot" already carry the signal. */
-.wc-standing-card .wc-standing-trend.is-up { color: var(--success); }
-.wc-standing-card .wc-standing-trend.is-down { color: var(--danger); }
+/* Live trend clause tint. An up swing reads in --wc-navy (structural, inside
+   the WC accent rank); a down swing recedes to muted --text-secondary. Red is
+   deliberately NOT used: on this card red is the urgency/alert accent
+   (.wc-lk--alert, <=4 alive), so painting a positive swing red would invert
+   the semantic and collide with that alert. It would also disagree with the
+   lounge, which renders up-momentum in its dark-substrate live-green; green is
+   off the WC body palette, so navy carries the positive beat here instead
+   ($impeccable critique 2026-05-24 r2 — fixes the red-for-good-news inversion
+   the first colorize pass introduced). Color is reinforcement only: the
+   "up"/"down" word carries direction (CLAUDE.md "avoid color-only state"). */
+.wc-standing-card .wc-standing-trend.is-up { color: var(--wc-navy); }
+.wc-standing-card .wc-standing-trend.is-down { color: var(--text-secondary); }
 
 /* Standing points line — the compact Newsreader datum under the rank
    numeral (points · lead/clear delta · 7-day trend word). Replaces the
@@ -7562,14 +7570,20 @@ body.game-worldcup .form-text {
   display: flex;
   align-items: center;
   gap: .6rem;
-  padding: .32rem 0;
+  padding: .1rem 0;
 }
+/* The team code/flag is a real link to /worldcup/team/<id>; the hit area
+   meets the 44px mobile touch floor (PRODUCT.md) via min-height on the
+   inline-flex link rather than row padding, so the bar/points stay vertically
+   centred next to a comfortably tappable target ($impeccable critique
+   2026-05-24 P3). Row padding trims to compensate for the taller link. */
 .wc-standing-card .wc-leverage-team {
   display: inline-flex;
   align-items: center;
   gap: .35rem;
   flex-shrink: 0;
   min-width: 4.2rem;
+  min-height: 44px;
   text-decoration: none;
   color: var(--text-primary);
   font-family: var(--font-teko);
@@ -7617,9 +7631,19 @@ body.game-worldcup .form-text {
   color: var(--text-secondary);
   text-decoration: line-through;
 }
+/* Dormant: alive but not yet scoring. Dim the code + points to
+   --text-secondary so the eye lands on carriers first, but keep the
+   multiplier chip at full strength — the chip's upside is exactly why a
+   dormant pick still earns a row ($impeccable critique 2026-05-24 P2). The
+   empty bar track already signals "hasn't fired yet". --text-secondary holds
+   AA on the white card. */
+.wc-standing-card .wc-leverage-row.is-dormant .wc-leverage-code,
+.wc-standing-card .wc-leverage-row.is-dormant .wc-leverage-pts {
+  color: var(--text-secondary);
+}
 .wc-standing-card .wc-leverage-summary {
   font-family: var(--font-news);
-  font-size: .95rem;
+  font-size: 1rem;
   line-height: 1.5;
   color: var(--text-secondary);
   margin-top: .7rem;

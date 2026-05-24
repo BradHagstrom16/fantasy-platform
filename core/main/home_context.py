@@ -61,12 +61,16 @@ def _tagline_for(rank: int, week_delta_rank: Optional[int],
         if week_delta_rank < 10:
             return f"Slipped {week_delta_rank} spots. The Commish notices."
         return f"Down {week_delta_rank} · the Commish averts his eyes."
+    # Rank 2 and 3 carried the SAME tagline ("Still warm. Still winning." on
+    # both when all 9 were alive), so a top-3 preview stacked the identical
+    # line twice — an identical-repeat slop tell against a voice-led brand
+    # ($impeccable critique 2026-05-24 r2). Give each podium step its own line.
     if rank == 1:
         return "Paid tribute. Paid off."
-    if rank in (2, 3) and alive_count == 9:
-        return "Still warm. Still winning."
-    if rank in (2, 3):
-        return "Played the favorites."
+    if rank == 2:
+        return "Still warm. Still winning." if alive_count == 9 else "Played the favorites."
+    if rank == 3:
+        return "Breathing down the lead." if alive_count == 9 else "Hanging in the chase."
     return None
 
 
@@ -300,7 +304,13 @@ def _context_live(user, enrollment) -> dict:
             if len(recent_snapshots) >= 7:
                 oldest = recent_snapshots[0]
                 week_delta_rank = user_rank - oldest.rank
-                week_delta_points = float(enrollment.total_score) - float(oldest.total_score)
+                # Suppress the points-delta when the 7-day-ago baseline scored
+                # 0: the delta would equal the current total (redundant with
+                # the points total already shown, and reads as a glitch —
+                # $impeccable critique 2026-05-24). The rank-delta stays; a
+                # baseline rank is always meaningful.
+                if float(oldest.total_score) > 0:
+                    week_delta_points = float(enrollment.total_score) - float(oldest.total_score)
 
         # Bolder P1 — "Top earner from your nine" extra ledger line,
         # the lounge-canonical-richness signature beyond what the WC hub
