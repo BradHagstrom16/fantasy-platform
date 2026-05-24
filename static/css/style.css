@@ -7588,7 +7588,7 @@ body.game-worldcup .form-text {
   height: 8px;
   min-width: 2rem;
   border-radius: 4px;
-  background: var(--surface-muted);
+  background: var(--bg-muted);
   overflow: hidden;
 }
 .wc-standing-card .wc-leverage-bar-fill {

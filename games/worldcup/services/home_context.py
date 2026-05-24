@@ -360,13 +360,13 @@ def _context_live(user: Any) -> dict:
         delta_map = compute_trend_by_enrollment([enrollment.id])
         delta = delta_map.get(enrollment.id)
 
-    # Week-over-week points delta — gated on ≥7 daily snapshots so an
+    # Week-over-week points delta — gated on >=7 daily snapshots so an
     # early-deploy 2-day trend doesn't overstate. Feeds the standing
     # points-line trend clause. (The rank-trend sparkline the parity
     # dossier carried moved fully to the lounge `/` per the $impeccable
     # critique 2026-05-24 "differentiate the hub" direction — the hub now
     # leads with the Leverage Board below, not a rank chart.) `.offset(6)`
-    # fetches the 7th-most-recent snapshot directly; null when <7 exist.
+    # fetches the 7th-most-recent snapshot directly; null when fewer exist.
     oldest_snapshot = (
         WorldCupRankSnapshot.query
         .filter_by(enrollment_id=enrollment.id)
@@ -375,10 +375,19 @@ def _context_live(user: Any) -> dict:
         .first()
     )
     week_delta_points: float | None = None
+    # Direction + magnitude precomputed here (not in the template) so the
+    # Jinja avoids inline `>` comparisons that trip HTMLHint — the same
+    # precompute pattern _context_pre uses for clamped_days. None direction
+    # = no trend clause (no snapshots, or a flat week).
+    week_delta_direction: str | None = None
+    week_delta_points_abs: float | None = None
     if oldest_snapshot is not None:
         week_delta_points = (
             float(enrollment.total_score) - float(oldest_snapshot.total_score)
         )
+        if week_delta_points:
+            week_delta_direction = 'up' if week_delta_points > 0 else 'down'
+            week_delta_points_abs = abs(week_delta_points)
 
     alive_count = sum(1 for p in user_picks if not p.team.is_eliminated)
 
@@ -392,15 +401,26 @@ def _context_live(user: Any) -> dict:
     # board replaces BOTH the parity dossier and the separate 9-row roster
     # table the live state used to stack — so the lead card is the single
     # focal point (resolves the $impeccable critique 2026-05-24 P1 hierarchy
-    # finding: the table out-shouted the lead). Sort puts the carriers
-    # first, then the highest-multiplier dormant picks (the upside).
+    # finding: the table out-shouted the lead).
+    #
+    # Ordering: carriers (any realized points) sit above dormant picks; within
+    # the carriers, biggest contribution on top so the bars descend ("where
+    # your points live"); the multiplier is only a tiebreak, which surfaces
+    # the highest-multiplier dormant picks (the upside) at the top of the
+    # dormant tail. The carrier flag is the explicit primary key so the
+    # contract reads off the code; multiplier is deliberately NOT ranked
+    # above points among carriers (that would break the descending-bar read).
     max_pts = max(
         (float(p.multiplied_points or 0) for p in user_picks), default=0.0,
     )
     leverage = []
     for p in sorted(
         user_picks,
-        key=lambda pk: (float(pk.multiplied_points or 0), float(pk.team.multiplier)),
+        key=lambda pk: (
+            float(pk.multiplied_points or 0) > 0,   # carriers above dormant
+            float(pk.multiplied_points or 0),        # biggest contribution on top
+            float(pk.team.multiplier),               # tiebreak: higher upside first
+        ),
         reverse=True,
     ):
         pts = float(p.multiplied_points or 0)
@@ -420,9 +440,9 @@ def _context_live(user: Any) -> dict:
         })
 
     # Dormant upside — alive, not-yet-scoring picks at the highest dormant
-    # tier (tiers 4/5 = ×4 and ×7). Surfaced in the summary as the "where
-    # upside still sleeps" beat. Only tiers ≥ 4 read as "upside"; a dormant
-    # ×1 favorite isn't a leverage story worth a callout.
+    # tier (tiers 4/5 = x4 and x7). Surfaced in the summary as the "where
+    # upside still sleeps" beat. Only tiers >= 4 read as "upside"; a dormant
+    # x1 favorite isn't a leverage story worth a callout.
     dormant = [lv for lv in leverage if lv['status'] == 'dormant']
     upside_tier = max((lv['tier'] for lv in dormant), default=0)
     dormant_upside = (
@@ -431,6 +451,9 @@ def _context_live(user: Any) -> dict:
     )
     leverage_summary = {
         'alive_count': alive_count,
+        # alive_low precomputed (template can't do `<= 4` without a raw `<`
+        # that trips HTMLHint). Drives the --wc-red survival alert.
+        'alive_low': alive_count <= 4,
         'dormant_upside_codes': [lv['code'] for lv in dormant_upside],
         'dormant_upside_mult': (
             dormant_upside[0]['mult_display'] if dormant_upside else None
@@ -440,6 +463,8 @@ def _context_live(user: Any) -> dict:
     dossier = {
         'alive_count': alive_count,
         'week_delta_points': week_delta_points,
+        'week_delta_direction': week_delta_direction,
+        'week_delta_points_abs': week_delta_points_abs,
     }
 
     return {

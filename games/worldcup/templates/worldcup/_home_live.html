@@ -40,9 +40,9 @@
     <strong class="wc-numeral">{{ "%.1f"|format(your_standing.total) }}</strong> pts
     {%- if your_standing.lead_delta_up is not none %} · {{ "%.1f"|format(your_standing.lead_delta_up) }} back of the lead{% endif -%}
     {%- if your_standing.lead_delta_down is not none %} · {{ "%.1f"|format(your_standing.lead_delta_down) }} clear of next{% endif -%}
-    {%- if dossier.week_delta_points is not none and dossier.week_delta_points != 0 %}
-    <span class="wc-standing-trend is-{% if dossier.week_delta_points > 0 %}up{% else %}down{% endif %}">
-      · {% if dossier.week_delta_points > 0 %}up {{ '%.0f'|format(dossier.week_delta_points) }}{% else %}down {{ '%.0f'|format(dossier.week_delta_points|abs) }}{% endif %} over 7 days
+    {%- if dossier.week_delta_direction %}
+    <span class="wc-standing-trend is-{{ dossier.week_delta_direction }}">
+      · {{ dossier.week_delta_direction }} {{ '%.0f'|format(dossier.week_delta_points_abs) }} over 7 days
     </span>
     {%- endif %}
   </p>
@@ -78,7 +78,7 @@
       {% endfor %}
     </ul>
     <p class="wc-leverage-summary mb-0">
-      <strong class="wc-lk{% if leverage_summary.alive_count <= 4 %} wc-lk--alert{% endif %}">{{ leverage_summary.alive_count }} of 9</strong> nations still alive.
+      <strong class="wc-lk{% if leverage_summary.alive_low %} wc-lk--alert{% endif %}">{{ leverage_summary.alive_count }} of 9</strong> nations still alive.
       {%- if leverage_summary.dormant_upside_codes %}
         Your ×{{ leverage_summary.dormant_upside_mult }} upside ({{ leverage_summary.dormant_upside_codes|join(', ') }}) hasn't fired yet.
       {%- endif %}

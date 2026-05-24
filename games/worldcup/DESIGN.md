@@ -302,7 +302,7 @@ In the **live** state the card is the **Leverage Board** ($impeccable critique 2
 Composition:
 
 - A compact header: the rank cluster + a single `.wc-standing-pts-line` (points · lead/clear delta · 7-day trend word). One line, not a multi-line ledger.
-- `.wc-leverage` list: one `.wc-leverage-row` per pick — team link + `.wc-multiplier-chip` + a `.wc-leverage-bar` whose `--wc-red` fill is the pick's share of the roster's top earner + the realized points (or an "Out" label for eliminated picks). Rows sort carriers-first, then by descending multiplier so the highest-leverage dormant picks surface near the top.
+- `.wc-leverage` list: one `.wc-leverage-row` per pick — team link + `.wc-multiplier-chip` + a `.wc-leverage-bar` whose `--wc-red` fill is the pick's share of the roster's top earner + the realized points (or an "Out" label for eliminated picks). Rows sort carriers (any realized points) above dormant picks; within the carriers, biggest contribution on top so the bars descend ("where your points live"); the multiplier is only a tiebreak, which surfaces the highest-upside dormant picks at the top of the dormant tail. The multiplier is deliberately not ranked above points among carriers (that would break the descending-bar read).
 - `.wc-leverage-summary`: a Newsreader line stating survival (`alive_count`, turning `--wc-red` via `.wc-lk--alert` when ≤ 4 alive) and naming the highest-multiplier dormant "upside" (e.g., "Your ×7 upside (IRN, PAN) hasn't fired yet").
 
 Doctrine:
