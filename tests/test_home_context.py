@@ -257,7 +257,7 @@ def test_context_post_enrolled_with_climb_and_roster_recap(app):
         db.session.add(final)
         # Two enrollments so the user has someone to climb past
         u1 = _make_user(username='other', email='other@test.com')
-        e1 = _make_enrollment(u1, picks_submitted=True, total_score=50.0)
+        _make_enrollment(u1, picks_submitted=True, total_score=50.0)
         u2 = _make_user()
         e2 = _make_enrollment(u2, picks_submitted=True, total_score=200.0)
         # User picks BRA (champion) + ARG (runner-up)

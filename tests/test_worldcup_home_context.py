@@ -13,7 +13,7 @@ import pytest
 from app import create_app
 from extensions import db
 from games.worldcup.constants import (
-    SEASON_YEAR, ENTRY_FEE, TOURNAMENT_DEADLINE_UTC,
+    ENTRY_FEE, TOURNAMENT_DEADLINE_UTC,
 )
 from games.worldcup.services.home_context import (
     build_worldcup_home_context, _context_out, _context_pre, _context_live,
