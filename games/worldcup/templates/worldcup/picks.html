@@ -25,7 +25,12 @@
 {% if deadline_passed or (not show_edit_form and has_picks) %}
   {# ==============================================================
      READ-ONLY VIEW -- Post-deadline OR pre-deadline submitted picks
+     show_scoring gates the scoring ledger (Points column, total, drill-down
+     accordion, alive/out status) on deadline_passed: before kickoff there is
+     nothing to score, so the pre-deadline read reframes as a sealed roster
+     and leans on the multiplier as the stakes signal.
      ============================================================== #}
+  {% set show_scoring = deadline_passed %}
   <div class="row justify-content-center">
     <div class="col-lg-8">
 
@@ -37,20 +42,29 @@
             <span class="wc-eyebrow">The Ballot</span>
             <h2 class="pick-card-head mb-0 mt-1"><i class="bi bi-check2-square me-2" aria-hidden="true"></i>Your 9 Picks</h2>
           </div>
-          <span class="fw-bold wc-numeral wc-numeral--lg">
-            Total: {{ "%.1f"|format(enrollment.total_score) }} pts
-          </span>
+          {% if show_scoring %}
+          <div class="text-end">
+            <span class="fw-bold wc-numeral wc-numeral--lg d-block">Total: {{ "%.1f"|format(enrollment.total_score) }} pts</span>
+            <span class="wc-pick-alive {% if alive_count <= 4 %}wc-pick-alive--low{% endif %}">{{ alive_count }} of 9 alive</span>
+          </div>
+          {% else %}
+          <span class="wc-pick-sealed">9 Sealed</span>
+          {% endif %}
         </div>
         <div class="card-body p-0">
           <div class="table-responsive">
             <table class="table table-worldcup mb-0">
+              {% if show_scoring %}
               <caption class="visually-hidden">Your nine picks with tier, multiplier, and total points. Expand a row to see base points and per-match scoring.</caption>
+              {% else %}
+              <caption class="visually-hidden">Your nine sealed picks with tier and points multiplier.</caption>
+              {% endif %}
               <thead>
                 <tr>
                   <th scope="col">Team</th>
                   <th scope="col">Tier</th>
                   <th scope="col" class="text-center">Multiplier</th>
-                  <th scope="col" class="text-end">Points</th>
+                  {% if show_scoring %}<th scope="col" class="text-end">Points</th>{% endif %}
                 </tr>
               </thead>
               <tbody>
@@ -74,9 +88,14 @@
               <i class="bi bi-check2-square me-2" aria-hidden="true"></i>Your 9 Picks
             </h2>
           </div>
-          <span class="fw-bold wc-numeral wc-numeral--md">
-            {{ "%.1f"|format(enrollment.total_score) }} pts
-          </span>
+          {% if show_scoring %}
+          <div class="text-end">
+            <span class="fw-bold wc-numeral wc-numeral--md d-block">{{ "%.1f"|format(enrollment.total_score) }} pts</span>
+            <span class="wc-pick-alive {% if alive_count <= 4 %}wc-pick-alive--low{% endif %}">{{ alive_count }} of 9 alive</span>
+          </div>
+          {% else %}
+          <span class="wc-pick-sealed">9 Sealed</span>
+          {% endif %}
         </div>
         <div class="d-flex flex-column gap-2">
           {% for pick in existing_picks %}
@@ -86,11 +105,19 @@
                 <span class="wc-tier-dot wc-tier-dot-{{ pick.tier }}" aria-hidden="true"></span>
                 <span class="wc-eyebrow">{{ tiers[pick.tier].name }}</span>
               </div>
-              <div class="pick-team">{{ pick.team.flag_emoji }} {{ pick.team.display_name }} <small>Grp {{ pick.team.group_letter }}</small></div>
+              <div class="pick-team{% if show_scoring and pick.team.is_eliminated %} pick-team-out{% endif %}">{{ pick.team.flag_emoji }} {{ pick.team.display_name }} <small>Grp {{ pick.team.group_letter }}</small></div>
             </div>
             <div class="pick-points">
-              <span class="wc-numeral wc-numeral--lg">{{ "%.1f"|format(pick.multiplied_points) }}</span>
-              <small>&times;{{ pick.team.multiplier }}</small>
+              {% if show_scoring %}
+                <span class="wc-numeral wc-numeral--lg">{{ "%.1f"|format(pick.multiplied_points) }}</span>
+                {% if pick.team.is_eliminated %}
+                <small class="wc-pick-status-out">Out</small>
+                {% else %}
+                <small>&times;{{ "%g"|format(pick.team.multiplier) }}</small>
+                {% endif %}
+              {% else %}
+                <span class="wc-numeral wc-numeral--lg">&times;{{ "%g"|format(pick.team.multiplier) }}</span>
+              {% endif %}
             </div>
           </a>
           {% endfor %}
@@ -137,20 +164,33 @@
   <form method="POST" id="pickForm">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
 
+    {# Tier-jump rail — sticky on the long 5-tier form. Doubles as at-a-glance
+       progress (live count + complete state per tier) and a jump affordance so
+       the form isn't a blind scroll. #}
+    <nav class="tier-jump" aria-label="Jump to tier">
+      {% for tier_num in range(1, 6) %}
+      <a href="#tier-{{ tier_num }}" class="tier-jump-chip" id="jump-{{ tier_num }}">
+        <span class="wc-tier-dot wc-tier-dot-{{ tier_num }}" aria-hidden="true"></span>
+        <span class="tier-jump-label">T{{ tier_num }}</span>
+        <span class="tier-jump-count" id="jump-count-{{ tier_num }}">0/{{ tiers[tier_num]['picks'] }}</span>
+      </a>
+      {% endfor %}
+    </nav>
+
     <div class="row">
       <div class="col-lg-8">
 
         {% for tier_num in range(1, 6) %}
         {% set tier = tiers[tier_num] %}
         {% set tier_teams = teams_by_tier.get(tier_num, []) %}
-        <div class="tier-card animate-in stagger-{{ tier_num }}">
+        <div class="tier-card tier-card-{{ tier_num }} animate-in stagger-{{ tier_num }}" id="tier-{{ tier_num }}">
           <div class="tier-card-header">
             <div>
-              <span class="wc-eyebrow wc-eyebrow-red">Tier {{ tier_num }} · {{ tier['name'] }}</span>
+              <span class="wc-eyebrow wc-eyebrow-red">Tier {{ tier_num }}</span>
               <h2 class="tier-card-heading">
                 <span class="wc-tier-dot wc-tier-dot-{{ tier_num }}" aria-hidden="true"></span>
                 {{ tier['name'] }}
-                <span class="wc-multiplier-chip">&times;{{ tier['multiplier'] }}</span>
+                <span class="wc-multiplier-chip">&times;{{ "%g"|format(tier['multiplier']) }}</span>
               </h2>
             </div>
             <span class="tier-counter wc-numeral" id="counter-{{ tier_num }}" aria-live="polite" aria-atomic="true">
@@ -195,10 +235,13 @@
         <div class="position-sticky" style="top:1rem;">
 
           <div class="pick-summary animate-in stagger-2" id="pickSummary">
-            <span class="wc-eyebrow">Your selections</span>
+            <div class="pick-summary-head">
+              <span class="wc-eyebrow">Your selections</span>
+              <button type="button" class="pick-summary-clear" id="clearAll" hidden>Clear all</button>
+            </div>
             <h2 class="pick-summary-heading"><i class="bi bi-list-check me-2" aria-hidden="true"></i>Pick Summary</h2>
             <ul class="pick-summary-list" id="summaryList">
-              <li class="text-muted" id="summaryEmpty">Select your 9 teams...</li>
+              <li class="text-muted" id="summaryEmpty">Choose your nine nations.</li>
             </ul>
             <div class="mt-3 text-end fw-bold wc-numeral wc-numeral--sm" id="summaryCount">
               0/9 picks
@@ -254,6 +297,13 @@
   const TIER_REQUIREMENTS = {{ tiers|tojson }};
   const TOTAL_REQUIRED = 9;
 
+  // Unsaved-edit guard: any pick/tiebreak change marks the form dirty; the
+  // beforeunload warning fires only if the user leaves without sealing. The
+  // submit handler clears the flag so sealing never trips the warning.
+  let dirty = false;
+  let submitting = false;
+  window.markDirty = function() { dirty = true; };
+
   function getTierSelections() {
     const selections = {};
     for (let t = 1; t <= 5; t++) {
@@ -281,7 +331,9 @@
     card.classList.toggle('selected');
     cb.checked = !isSelected;
     card.setAttribute('aria-checked', String(!isSelected));
+    markDirty();
     updateCounters();
+    updateTierLocks();
     updateSummary();
     updateSubmitState();
   };
@@ -289,10 +341,31 @@
   function updateCounters() {
     const sel = getTierSelections();
     for (let t = 1; t <= 5; t++) {
-      const counter = document.getElementById('counter-' + t);
       const req = TIER_REQUIREMENTS[t].picks;
+      const counter = document.getElementById('counter-' + t);
       counter.textContent = sel[t] + '/' + req + ' selected';
       counter.classList.toggle('complete', sel[t] === req);
+      // Mirror the count onto the tier-jump rail chip.
+      const jumpCount = document.getElementById('jump-count-' + t);
+      const jumpChip = document.getElementById('jump-' + t);
+      if (jumpCount) jumpCount.textContent = sel[t] + '/' + req;
+      if (jumpChip) jumpChip.classList.toggle('complete', sel[t] === req);
+    }
+  }
+
+  // Once a tier hits its pick count, dim its remaining unselected cards so the
+  // limit is visible BEFORE a user clicks a card that would be rejected. The
+  // toggle handler already blocks the over-pick; this makes the block legible
+  // instead of a silent counter flash. Deselecting a pick re-opens the tier.
+  function updateTierLocks() {
+    const sel = getTierSelections();
+    for (let t = 1; t <= 5; t++) {
+      const full = sel[t] >= TIER_REQUIREMENTS[t].picks;
+      document.querySelectorAll(`.wc-team-card[data-tier="${t}"]`).forEach(card => {
+        const lock = full && !card.classList.contains('selected');
+        card.classList.toggle('tier-locked', lock);
+        card.setAttribute('aria-disabled', lock ? 'true' : 'false');
+      });
     }
   }
 
@@ -305,7 +378,7 @@
     list.innerHTML = '';
 
     if (selected.length === 0) {
-      list.innerHTML = '<li class="text-muted" id="summaryEmpty">Select your 9 teams...</li>';
+      list.innerHTML = '<li class="text-muted" id="summaryEmpty">Choose your nine nations.</li>';
     } else {
       selected.forEach(card => {
         const li = document.createElement('li');
@@ -320,6 +393,9 @@
     }
 
     count.textContent = selected.length + '/' + TOTAL_REQUIRED + ' picks';
+
+    const clearBtn = document.getElementById('clearAll');
+    if (clearBtn) clearBtn.hidden = selected.length === 0;
   }
 
   window.updateSubmitState = function() {
@@ -344,7 +420,48 @@
     if (mobileCount) mobileCount.textContent = totalPicks;
   };
 
+  // Clear all — bulk deselect (faster than unpicking 9 cards one by one).
+  const clearBtn = document.getElementById('clearAll');
+  if (clearBtn) {
+    clearBtn.addEventListener('click', function() {
+      document.querySelectorAll('.wc-team-card.selected').forEach(card => {
+        card.classList.remove('selected');
+        const cb = card.querySelector('.team-checkbox');
+        if (cb) cb.checked = false;
+        card.setAttribute('aria-checked', 'false');
+      });
+      markDirty();
+      updateCounters();
+      updateTierLocks();
+      updateSummary();
+      updateSubmitState();
+    });
+  }
+
+  // Tier-jump rail — scroll to a tier (smooth unless reduced-motion).
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  document.querySelectorAll('.tier-jump-chip').forEach(chip => {
+    chip.addEventListener('click', function(e) {
+      const target = document.querySelector(chip.getAttribute('href'));
+      if (!target) return;
+      e.preventDefault();
+      target.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
+    });
+  });
+
+  // Tiebreak input is also a pick change worth guarding.
+  const goalsInput = document.getElementById('usa_goals_guess');
+  if (goalsInput) goalsInput.addEventListener('input', markDirty);
+
+  // Sealing the oath is the intended exit; don't warn on it.
+  const form = document.getElementById('pickForm');
+  if (form) form.addEventListener('submit', function() { submitting = true; });
+  window.addEventListener('beforeunload', function(e) {
+    if (dirty && !submitting) { e.preventDefault(); e.returnValue = ''; }
+  });
+
   updateCounters();
+  updateTierLocks();
   updateSummary();
   updateSubmitState();
 })();

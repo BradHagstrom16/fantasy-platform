@@ -3844,6 +3844,17 @@ body.game-worldcup {
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   gap: .75rem;
 }
+/* Per-tier header tint — washes each tier-card header with its own tier hue at
+   low alpha so five stacked cards read as five distinct tiers at a glance
+   rather than one repeated card. Scoped under body.game-worldcup (tier colors
+   are WC tertiaries); the bottom border + tier dot still anchor the header.
+   A header background wash, not a side stripe (the >1px colored side-stripe
+   ban targets card edges, not full-width header fills). */
+.tier-card-1 .tier-card-header { background: linear-gradient(135deg, rgba(217, 119, 6, .09) 0%, rgba(217, 119, 6, .02) 100%); }
+.tier-card-2 .tier-card-header { background: linear-gradient(135deg, rgba(75, 115, 153, .10) 0%, rgba(75, 115, 153, .02) 100%); }
+.tier-card-3 .tier-card-header { background: linear-gradient(135deg, rgba(180, 83, 9, .09) 0%, rgba(180, 83, 9, .02) 100%); }
+.tier-card-4 .tier-card-header { background: linear-gradient(135deg, rgba(13, 115, 119, .10) 0%, rgba(13, 115, 119, .02) 100%); }
+.tier-card-5 .tier-card-header { background: linear-gradient(135deg, rgba(147, 51, 234, .09) 0%, rgba(147, 51, 234, .02) 100%); }
 
 /* Team pick card — individual team in pick form */
 .wc-team-card {
@@ -3888,6 +3899,60 @@ body.game-worldcup {
 .pick-card-head--mobile {
   font-size: 1.1rem;
 }
+
+/* Read-only roster header signals.
+   - .wc-pick-sealed: pre-deadline confirmation stamp (quiet authority; the
+     roster is locked, nothing to score yet).
+   - .wc-pick-alive: live/post survival count, mirrors the hub Leverage Board
+     summary. --low lifts to WC red as a survival alert (<= 4 alive), the
+     same spirit as .wc-lk--alert on the hub. */
+.wc-pick-sealed,
+.wc-pick-alive {
+  font-family: 'Teko', sans-serif;
+  font-weight: 500;
+  font-size: .9rem;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+.wc-pick-alive--low {
+  color: var(--wc-red);
+  font-weight: 600;
+}
+
+/* Eliminated-pick treatment on the live/post ledger. State reads through
+   structure + label (struck name + "Out" text), never color alone — banked
+   points stay legible because the pick scored before exiting. */
+.wc-pick-status-out {
+  font-family: 'Teko', sans-serif;
+  font-weight: 600;
+  font-size: .72rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--danger);
+}
+.pick-team-cell .wc-pick-status-out {
+  margin-left: .5rem;
+  padding: .05em .5em;
+  border-radius: 1rem;
+  background: rgba(192, 57, 43, .1);
+}
+/* Mobile readonly card: the "Out" label sits in .pick-points as a <small>,
+   which the base `.player-pick-card .pick-points small` paints secondary.
+   Lift it back to danger so the mobile "Out" matches the desktop chip. */
+.player-pick-card .pick-points small.wc-pick-status-out {
+  color: var(--danger);
+}
+.pick-row-out .team-link {
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+  color: var(--text-secondary);
+}
+.pick-team-out {
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+  color: var(--text-secondary);
+}
 .wc-team-card.selected {
   border-color: var(--game-primary);
   /* P4 S4.2.1 PI-4 — selected affordance reads as CCC purple, not WC navy.
@@ -3917,6 +3982,14 @@ body.game-worldcup {
 .wc-team-card.disabled {
   opacity: .4;
   pointer-events: none;
+}
+/* Tier-full lock — applied by picks.html JS to a tier's unselected cards once
+   it hits its pick count. Dims + blocks interaction so the limit is visible
+   before a click (recognition over recall); deselecting re-opens the tier. */
+.wc-team-card.tier-locked {
+  opacity: .42;
+  pointer-events: none;
+  cursor: not-allowed;
 }
 .wc-team-card .team-name {
   font-family: 'Teko', sans-serif;
@@ -3973,6 +4046,85 @@ body.game-worldcup {
   font-size: .9rem;
 }
 .pick-summary-list li:last-child { border-bottom: none; }
+
+/* Pick-summary header row — eyebrow + clear-all bulk-deselect action. */
+.pick-summary-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .5rem;
+}
+.pick-summary-clear {
+  border: none;
+  background: none;
+  padding: 0;
+  font-family: 'Teko', sans-serif;
+  font-weight: 500;
+  font-size: .85rem;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.pick-summary-clear:hover,
+.pick-summary-clear:focus-visible { color: var(--wc-red); }
+.pick-summary-clear:focus-visible {
+  outline: 2px solid var(--gold-light);
+  outline-offset: 2px;
+  border-radius: var(--radius);
+}
+
+/* Tier-jump rail — sticky at-a-glance progress + jump nav for the long pick
+   form. Each chip mirrors a tier's live count and flips to a complete state
+   when filled. Horizontally scrollable on narrow viewports. */
+.tier-jump {
+  /* Static, not sticky: the platform navbar + game sub-nav already pin ~118px
+     of chrome; a third sticky bar would crowd the viewport (worse on mobile)
+     and fight the sub-nav's variable height. The rail gives a jump + progress
+     overview from the top; progress-while-scrolling is carried by the sticky
+     pick-summary (desktop) and the sticky count bar (mobile). */
+  display: flex;
+  gap: .4rem;
+  padding: .25rem 0 .85rem;
+  margin-bottom: .5rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.tier-jump::-webkit-scrollbar { display: none; }
+.tier-jump-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  flex: 0 0 auto;
+  min-height: 40px;
+  padding: .3rem .7rem;
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  background: var(--bg-card);
+  font-family: 'Teko', sans-serif;
+  font-weight: 500;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  text-decoration: none;
+  transition: border-color var(--transition), color var(--transition);
+}
+.tier-jump-chip .wc-tier-dot { width: .6rem; height: .6rem; }
+.tier-jump-label { font-size: .95rem; }
+.tier-jump-count { font-size: .8rem; color: var(--text-secondary); }
+.tier-jump-chip:hover { border-color: var(--game-primary-light); color: var(--text-primary); }
+.tier-jump-chip:focus-visible {
+  outline: 2px solid var(--gold-light);
+  outline-offset: 2px;
+}
+.tier-jump-chip.complete { border-color: var(--success); color: var(--text-primary); }
+.tier-jump-chip.complete .tier-jump-count { color: var(--success); }
+
+/* Offset the tier anchors so a jump lands the tier header below the sticky
+   navbar + game sub-nav (~118px) instead of behind them. */
+.tier-card { scroll-margin-top: 8rem; }
 
 /* Match result card — schedule/results display */
 .match-result-card {

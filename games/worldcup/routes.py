@@ -207,6 +207,10 @@ def picks():
     existing_picks = WorldCupPick.query.filter_by(enrollment_id=enrollment.id).all()
     selected_team_ids = {p.team_id for p in existing_picks}
     events_by_pick = {p.id: compute_team_score_events(p.team) for p in existing_picks}
+    # Mirrors the hub Leverage Board's alive signal (services/home_context) so
+    # the ROSTER and HUB tabs agree on "X of 9 alive": a pick is alive unless
+    # its team is eliminated.
+    alive_count = sum(1 for p in existing_picks if not p.team.is_eliminated)
 
     # Determine display mode for GET requests
     edit_mode = request.args.get('edit') == '1'
@@ -276,6 +280,7 @@ def picks():
                 usa_goals_guess=request.form.get('usa_goals_guess', ''),
                 show_edit_form=True,
                 has_picks=has_picks,
+                alive_count=alive_count,
             )
 
         # Save picks
@@ -309,6 +314,7 @@ def picks():
         usa_goals_guess=enrollment.usa_goals_guess,
         show_edit_form=show_edit_form,
         has_picks=has_picks,
+        alive_count=alive_count,
     )
 
 
