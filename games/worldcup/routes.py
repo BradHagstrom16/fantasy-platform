@@ -9,7 +9,7 @@ from collections import Counter, defaultdict, OrderedDict
 
 from flask import render_template, redirect, url_for, flash, request, jsonify
 from flask_login import login_required, current_user
-from sqlalchemy import func, or_
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import joinedload
 
 from extensions import db
@@ -435,9 +435,9 @@ def leaderboard():
     champion_team = None
     if tournament_state == 'post' and ranked:
         pool_champion = ranked[0]['enrollment'].get_display_name()
-        final_match = WorldCupMatch.query.filter_by(
-            match_number=FINAL_MATCH_NUMBER
-        ).first()
+        final_match = db.session.scalar(
+            select(WorldCupMatch).filter_by(match_number=FINAL_MATCH_NUMBER)
+        )
         if final_match and final_match.winner_team_id:
             champion_team = final_match.winner_team
 
