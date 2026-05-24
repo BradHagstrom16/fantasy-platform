@@ -1,29 +1,40 @@
-{# Shared pick-row partial. Expects: pick, events (list[ScoreEvent]), tiers (dict).
+{# Shared pick-row partial. Expects: pick, tiers (dict), show_scoring (bool).
+   When show_scoring is true: events (list[ScoreEvent]) drives the drill-down
+   accordion + the Points cell + alive/out status. Pre-deadline (show_scoring
+   false) the row is a sealed-roster line: no points, no accordion (nothing to
+   score yet), the multiplier carries the stakes.
    DOM hooks consumed by _pick_accordion_script.html: .pick-accordion-toggle,
    data-accordion-target, aria-controls, id="{row_id}-body", .pick-accordion. #}
 {% set row_id = 'pick-row-' ~ pick.id %}
-<tr>
+{% set is_out = show_scoring and pick.team.is_eliminated %}
+<tr{% if is_out %} class="pick-row-out"{% endif %}>
   <td class="fw-medium pick-team-cell">
+    {% if show_scoring %}
     <button type="button" class="pick-accordion-toggle"
             aria-controls="{{ row_id }}-body" aria-expanded="false"
             data-accordion-target="{{ row_id }}">
       <i class="bi bi-chevron-right" aria-hidden="true"></i>
       <span class="visually-hidden">Toggle scoring details</span>
     </button>
+    {% endif %}
     <span class="me-2 fs-5" aria-hidden="true">{{ pick.team.flag_emoji }}</span>
     <a href="{{ url_for('worldcup.team_detail', team_id=pick.team_id) }}"
        class="fw-medium team-link">{{ pick.team.display_name }}</a>
     <small class="text-muted ms-1">Grp {{ pick.team.group_letter }}</small>
+    {% if is_out %}<span class="wc-pick-status wc-pick-status-out">Out</span>{% endif %}
   </td>
   <td>
     <span class="wc-tier-dot wc-tier-dot-{{ pick.tier }}" aria-hidden="true"></span>
     <span class="wc-eyebrow">{{ tiers[pick.tier].name }}</span>
   </td>
   <td class="text-center">
-    <span class="wc-multiplier-chip">&times;{{ pick.team.multiplier }}</span>
+    <span class="wc-multiplier-chip">&times;{{ "%g"|format(pick.team.multiplier) }}</span>
   </td>
+  {% if show_scoring %}
   <td class="text-end wc-numeral fw-bold">{{ "%.1f"|format(pick.multiplied_points) }}</td>
+  {% endif %}
 </tr>
+{% if show_scoring %}
 <tr class="pick-accordion-row">
   <td colspan="4" class="p-0">
     <div class="pick-accordion" id="{{ row_id }}-body">
@@ -46,7 +57,7 @@
           </ul>
         </div>
         <div class="score-events-total">
-          Total base <strong class="wc-numeral">{{ "%.1f"|format(pick.base_points) }}</strong> &times; {{ pick.team.multiplier }} =
+          Total base <strong class="wc-numeral">{{ "%.1f"|format(pick.base_points) }}</strong> &times; {{ "%g"|format(pick.team.multiplier) }} =
           <strong class="wc-numeral">{{ "%.1f"|format(pick.multiplied_points) }}</strong> multiplied
         </div>
         {% else %}
@@ -56,3 +67,4 @@
     </div>
   </td>
 </tr>
+{% endif %}
