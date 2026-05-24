@@ -46,7 +46,7 @@ def _block(selector_regex: str):
     sees a property reintroduced by a later override rule. None if absent."""
     bodies = [
         m.group(1)
-        for m in re.finditer(rf'^{selector_regex}\s*\{{([^}}]*)\}}', CSS, re.MULTILINE)
+        for m in re.finditer(rf'^\s*{selector_regex}\s*\{{([^}}]*)\}}', CSS, re.MULTILINE)
     ]
     return '\n'.join(bodies) if bodies else None
 
