@@ -22,7 +22,7 @@ from games.worldcup.services.home_context import (
 from games.worldcup.services.scoring import points_for_pick_on_match
 from games.worldcup.models import WorldCupMatch
 from tests._worldcup_fixtures import (
-    make_enrollment, make_match, make_user, seed_full_tournament,
+    make_enrollment, make_match, make_snapshot, make_user, seed_full_tournament,
 )
 
 
@@ -471,6 +471,77 @@ def test_context_live_trend_open_when_seven_days(app):
     assert ctx['trend']['show_column'] is True
     # delta = current 100 - latest snapshot (day 0) score
     assert ctx['trend']['delta'] is not None
+
+
+def test_context_live_leverage_bar_min_fill_for_nonzero_carriers(app):
+    """A pick that banked any points keeps a visible bar even when one carrier
+    dominates the roster; dormant picks stay at exactly 0. $impeccable critique
+    2026-05-24 P2: USA=100% dwarfed the minor carriers into invisible slivers."""
+    from games.worldcup.services.home_context import LEVERAGE_BAR_MIN_SHARE
+    seed = seed_full_tournament(num_enrollments=2)
+    user = seed['users'][0]
+    enr = seed['enrollments'][0]
+    picks = seed['picks_by_enr'][enr.id]
+    # One dominant carrier, one tiny carrier (raw share 0.02 -> floored), rest dormant.
+    picks[0].multiplied_points = 100.0
+    picks[1].multiplied_points = 2.0
+    for p in picks[2:]:
+        p.multiplied_points = 0.0
+    db.session.commit()
+    fake_live = (TOURNAMENT_DEADLINE_UTC + timedelta(days=2)).isoformat()
+    with patch.dict(os.environ, {'ENVIRONMENT': 'testing', 'WC_FAKE_NOW': fake_live}):
+        ctx = _context_live(user=user)
+    by_pts = {round(r['points'], 1): r for r in ctx['leverage']}
+    assert by_pts[100.0]['share'] == pytest.approx(1.0)
+    # Tiny carrier floored up to the minimum, not its raw 0.02.
+    assert by_pts[2.0]['share'] == pytest.approx(LEVERAGE_BAR_MIN_SHARE)
+    # Dormant picks stay empty — the floor must not lift a zero-point bar.
+    dormant = [r for r in ctx['leverage'] if r['status'] == 'dormant']
+    assert dormant and all(r['share'] == 0.0 for r in dormant)
+    # scored_count counts only the picks that banked points (the two carriers),
+    # so the summary can read "N on the board" distinct from alive_count.
+    assert ctx['leverage_summary']['scored_count'] == 2
+
+
+def test_context_live_week_delta_suppressed_when_baseline_zero(app):
+    """When the 7-day-ago snapshot scored 0, the points-delta equals the
+    current total and reads as a glitch — suppress it. $impeccable critique
+    2026-05-24."""
+    seed = seed_full_tournament(num_enrollments=2)
+    user = seed['users'][0]
+    enr = seed['enrollments'][0]  # total_score 100
+    for d in range(7):
+        make_snapshot(
+            enr, days_back=d,
+            total_score=(0.0 if d == 6 else float(enr.total_score)),
+            rank=1,
+        )
+    db.session.commit()
+    fake_live = (TOURNAMENT_DEADLINE_UTC + timedelta(days=2)).isoformat()
+    with patch.dict(os.environ, {'ENVIRONMENT': 'testing', 'WC_FAKE_NOW': fake_live}):
+        ctx = _context_live(user=user)
+    assert ctx['dossier']['week_delta_points'] is None
+    assert ctx['dossier']['week_delta_direction'] is None
+
+
+def test_context_live_week_delta_shows_when_baseline_nonzero(app):
+    """Positive control: a real (non-zero) 7-day-ago baseline still surfaces
+    the points-delta clause."""
+    seed = seed_full_tournament(num_enrollments=2)
+    user = seed['users'][0]
+    enr = seed['enrollments'][0]  # total_score 100
+    for d in range(7):
+        make_snapshot(
+            enr, days_back=d,
+            total_score=(40.0 if d == 6 else float(enr.total_score)),
+            rank=1,
+        )
+    db.session.commit()
+    fake_live = (TOURNAMENT_DEADLINE_UTC + timedelta(days=2)).isoformat()
+    with patch.dict(os.environ, {'ENVIRONMENT': 'testing', 'WC_FAKE_NOW': fake_live}):
+        ctx = _context_live(user=user)
+    assert ctx['dossier']['week_delta_points'] == pytest.approx(60.0)
+    assert ctx['dossier']['week_delta_direction'] == 'up'
 
 
 def test_context_live_stage_label_callable_in_context(app):

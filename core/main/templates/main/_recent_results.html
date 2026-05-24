@@ -15,8 +15,12 @@
       {% set match = item.match %}
       <div class="match-card match-card--final match-card--roster">
         <div class="match-head">
+          {# Group matches read "Group A" (the distinguishing locator) rather
+             than the repeated "Group Stage" prefix that stacked identically
+             down the column ($impeccable critique 2026-05-24 r2). Knockout
+             rows keep the stage label, which is itself the meaningful info. #}
           <div class="grp">
-            {{ item.stage_label }}{% if match.stage == 'group' and match.group_letter %} · Group {{ match.group_letter }}{% endif %}
+            {% if match.stage == 'group' and match.group_letter %}Group {{ match.group_letter }}{% else %}{{ item.stage_label }}{% endif %}
           </div>
           <span class="live-pill live-pill--final">Final</span>
         </div>
@@ -84,7 +88,7 @@
       {% for item in ns.neutral %}
         {% set match = item.match %}
         <li class="results-also-row">
-          <span class="ra-stage">{{ item.stage_label }}{% if match.stage == 'group' and match.group_letter %} · {{ match.group_letter }}{% endif %}</span>
+          <span class="ra-stage">{% if match.stage == 'group' and match.group_letter %}Group {{ match.group_letter }}{% else %}{{ item.stage_label }}{% endif %}</span>
           <span class="ra-line">
             <span class="ra-team">{{ match.home_team.fifa_code if match.home_team else 'TBD' }}</span>
             <span class="ra-score">{{ match.home_score if match.home_score is not none else '·' }}</span>
