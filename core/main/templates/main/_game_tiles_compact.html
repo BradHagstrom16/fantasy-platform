@@ -15,19 +15,21 @@
     {% elif state == 'post' %}
       {% set wc_label = 'COMPLETED' %}
     {% endif %}
-    {# Polish (Critique 2026-05-15) — `cg--live` modifier paints a small
-       red live-dot pulse on the active game tile during live state, so
-       the running tournament reads as visually distinct from the
-       coming-soon tiles to its right (which previously carried near-
-       identical chrome). The dot uses `--live-red` per DESIGN.md "Live
-       Indicators" — reserved for actual live-game indicators. #}
-    <a class="cg cg--active{% if state == 'live' %} cg--live{% endif %}" href="{{ url_for('worldcup.index') }}">
+    {# Critique r2 follow-up (2026-05-15) — live-dot pulse removed.
+       PR #34 added it to differentiate the active tile from the
+       coming-soon tiles, but on lounge live the user is already
+       viewing this game's live data in the dossier above; a pulsing
+       red dot below it creates a false-alarm cue that competes with
+       the actual live data. The active tile is already differentiated
+       by `.cg--active` chrome + the dynamic state label vs the
+       coming-soon tiles' static registry-driven launch labels. The
+       dot was over-decoration. If/when multiple games run live and
+       this partial renders on a non-WC lounge surface, the dot can
+       come back gated on "this game is not the one we are viewing." #}
+    <a class="cg cg--active" href="{{ url_for('worldcup.index') }}">
       <div class="g">⚽</div>
       <div class="n">World Cup</div>
-      <div class="p">
-        {% if state == 'live' %}<span class="cg-live-dot" aria-hidden="true"></span>{% endif %}
-        {{ wc_label }}
-      </div>
+      <div class="p">{{ wc_label }}</div>
     </a>
 
     {# CFB and Golf — pulled from coming_soon_games registry.

@@ -61,8 +61,13 @@
   <div class="wc-card-head">
     <span class="wc-eyebrow">Your Finish</span>
   </div>
+  {# Critique r2 follow-up — `#` rank prefix mirrors the live state
+     and lounge post-state for cross-state coherence on the standing
+     numeral. #}
   <div class="wc-standing-rank-cluster">
-    <span class="wc-standing-rank">{{ your_final_rank }}</span>
+    <span class="wc-standing-rank">
+      <span class="wc-standing-rank-hash" aria-hidden="true">#</span>{{ your_final_rank }}
+    </span>
     <span class="wc-standing-of">of {{ total_count }}</span>
   </div>
   <p class="wc-standing-derivation">
