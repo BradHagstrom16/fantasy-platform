@@ -1943,6 +1943,16 @@ body.game-golf {
   color: var(--bone-mute);
   text-align: center;
 }
+/* Flat-data caption — worded steadiness note under the dashed sparkline
+   ($impeccable critique 2026-05-24 P2). Brighter than the cap so it reads
+   as deliberate copy, not chrome. */
+.home-shell .sparkline-flat-note {
+  margin: 0.45rem 0 0;
+  font-family: var(--font-news);
+  font-style: italic;
+  font-size: 0.85rem;
+  color: rgba(243,239,230,.72);
+}
 
 /* The Ledger — Tribune-style editorial summary inside the dossier.
    Replaces the prior 3-up hero-metric grid (impeccable absolute ban; DESIGN.md
@@ -7501,84 +7511,124 @@ body.game-worldcup .form-text {
 .wc-standing-card .wc-standing-trend.is-up { color: var(--success); }
 .wc-standing-card .wc-standing-trend.is-down { color: var(--danger); }
 
-/* Compressed dossier — embedded in `.wc-standing-card.is-lead` on the
-   WC hub live state ($impeccable critique 2026-05-15 follow-up). Parity
-   port from the platform `/` `_dossier_card.html`. Bone-substrate
-   adaptations: WC red path on white instead of gold on dark; Newsreader
-   ledger prose on `--text-primary`; hairline gold-dim baseline rules. */
-.wc-standing-card .wc-dossier-sparkline {
-  margin-top: 1.1rem;
-}
-.wc-standing-card .wc-sparkline-cap {
-  display: flex;
-  justify-content: space-between;
-  font-family: 'Teko', sans-serif;
-  font-size: .75rem;
-  letter-spacing: .12em;
-  text-transform: uppercase;
-  color: var(--text-secondary);
-  margin-bottom: .4rem;
-}
-.wc-standing-card .wc-dossier-sparkline-empty {
+/* Standing points line — the compact Newsreader datum under the rank
+   numeral (points · lead/clear delta · 7-day trend word). Replaces the
+   prior parity-dossier ledger prose: the hub no longer mirrors the
+   lounge's multi-line ledger; it states the standing in one line and
+   spends the card body on the Leverage Board below. */
+.wc-standing-card .wc-standing-pts-line {
   font-family: var(--font-news);
-  font-style: italic;
-  font-size: .9rem;
+  font-size: 1rem;
+  line-height: 1.55;
   color: var(--text-secondary);
-  margin-top: 1.1rem;
-  padding: .65rem 0;
-  border-top: 1px solid var(--border-light);
-  border-bottom: 1px solid var(--border-light);
+  margin-top: 0.4rem;
+  max-width: 60ch;
 }
-.wc-standing-card .wc-dossier-ledger {
+.wc-standing-card .wc-standing-pts-line .wc-numeral {
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
+/* Leverage Board — the WC hub's differentiated standing hero ($impeccable
+   2026-05-24, "differentiate the hub"). Each pick is one row: team +
+   multiplier chip + a realized-points bar (its share of the roster's top
+   earner) + points / Out status. The bar fill is `--wc-red` — the WC
+   primary interactive accent, the correct semantic role for "where the
+   points are" (this is also the fix for the prior `wc-lk--red` slip that
+   resolved to navy). The board leans into the multiplier system (WC
+   custom-game identity) where the lounge `/` leans into rank trend, and it
+   replaces the separate 9-row roster table the live state used to stack,
+   so the lead card is the single focal point (critique P1 hierarchy). */
+.wc-standing-card .wc-leverage {
   margin-top: 1.1rem;
   padding-top: 1rem;
   border-top: 1px solid var(--border-light);
 }
-.wc-standing-card .wc-ledger-eyebrow {
-  font-family: 'Teko', sans-serif;
+.wc-standing-card .wc-leverage-eyebrow {
+  display: block;
+  font-family: var(--font-teko);
   font-size: .72rem;
   letter-spacing: .14em;
   text-transform: uppercase;
   color: var(--text-secondary);
-  margin-bottom: .35rem;
+  margin-bottom: .55rem;
 }
-.wc-standing-card .wc-ledger-line {
-  font-family: var(--font-news);
-  font-size: 1rem;
-  line-height: 1.55;
+.wc-standing-card .wc-leverage-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.wc-standing-card .wc-leverage-row {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  padding: .32rem 0;
+}
+.wc-standing-card .wc-leverage-team {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  flex-shrink: 0;
+  min-width: 4.2rem;
+  text-decoration: none;
   color: var(--text-primary);
+  font-family: var(--font-teko);
+  font-weight: 500;
+  letter-spacing: .03em;
+}
+.wc-standing-card .wc-leverage-team:hover .wc-leverage-code,
+.wc-standing-card .wc-leverage-team:focus-visible .wc-leverage-code {
+  color: var(--wc-red);
+}
+.wc-standing-card .wc-leverage-flag { font-size: 1.05rem; line-height: 1; }
+.wc-standing-card .wc-leverage-code { font-size: 1.05rem; }
+.wc-standing-card .wc-leverage-row .wc-multiplier-chip { flex-shrink: 0; }
+.wc-standing-card .wc-leverage-bar {
+  flex: 1 1 auto;
+  height: 8px;
+  min-width: 2rem;
+  border-radius: 4px;
+  background: var(--bg-muted);
+  overflow: hidden;
+}
+.wc-standing-card .wc-leverage-bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: 4px;
+  background: var(--wc-red);
+}
+.wc-standing-card .wc-leverage-pts {
+  flex-shrink: 0;
+  min-width: 3.4rem;
+  text-align: right;
+  font-weight: 700;
+  color: var(--text-primary);
+  font-feature-settings: 'tnum';
+}
+/* Out: eliminated. Dim the flag + bar so dead weight recedes, and strike
+   the code — the struck code (a structural cue, not color-only) plus the
+   visually-hidden "(eliminated)" marker carry the state. The points value
+   still renders (an eliminated pick may have banked points). Code stays at
+   --text-secondary (AA on white); no row-wide opacity that would drop text
+   below contrast. */
+.wc-standing-card .wc-leverage-row.is-out .wc-leverage-flag,
+.wc-standing-card .wc-leverage-row.is-out .wc-leverage-bar { opacity: .4; }
+.wc-standing-card .wc-leverage-row.is-out .wc-leverage-code {
+  color: var(--text-secondary);
+  text-decoration: line-through;
+}
+.wc-standing-card .wc-leverage-summary {
+  font-family: var(--font-news);
+  font-size: .95rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  margin-top: .7rem;
+  padding-top: .6rem;
+  border-top: 1px dashed rgba(191,10,48,.22);
   max-width: 65ch;
 }
 .wc-standing-card .wc-lk { font-weight: 700; color: var(--text-primary); }
-.wc-standing-card .wc-lk--gold { color: var(--gold-dark); }
-.wc-standing-card .wc-lk--red { color: var(--game-primary); }
-.wc-standing-card .wc-ledger-delta--up { color: var(--success); font-weight: 600; }
-.wc-standing-card .wc-ledger-delta--down { color: var(--danger); font-weight: 600; }
-.wc-standing-card .wc-ledger-delta--flat { color: var(--text-secondary); }
-
-/* Critique r2 follow-up (2026-05-15) — "Top earner" editorial callout
-   on the hub standing card, parity with the lounge dossier's secondary
-   ledger line. Dashed red rule separates the main competitive-context
-   prose above from this roster-spotlight beat below. Same two-register
-   split the lounge uses (`.ledger-line--secondary`). */
-.wc-standing-card .wc-ledger-line--secondary {
-  margin-top: 0.55rem;
-  padding-top: 0.55rem;
-  border-top: 1px dashed rgba(191,10,48,.22);
-  font-size: 0.95rem;
-}
-.wc-standing-card .wc-ledger-eyebrow-inline {
-  font-family: 'Teko', sans-serif;
-  font-weight: 500;
-  font-size: 0.72rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--text-secondary);
-  margin-right: 0.55rem;
-}
-.wc-standing-card .wc-ledger-top-earner {
-  font-style: italic;
-}
+.wc-standing-card .wc-lk--alert { color: var(--wc-red); }
 
 /* Recent Results strip — sibling primitive to `.wc-fixtures-strip`,
    demotes the live-state's past-results card from a full `.wc-stat-card`
@@ -7634,6 +7684,9 @@ body.game-worldcup .form-text {
   display: inline-flex;
   align-items: center;
   gap: .55rem;
+  flex-shrink: 0;
+  flex-wrap: nowrap;
+  white-space: nowrap;
   font-size: .85rem;
   color: var(--text-secondary);
 }
@@ -7642,6 +7695,7 @@ body.game-worldcup .form-text {
   font-size: .85rem;
   font-weight: 600;
   letter-spacing: .04em;
+  white-space: nowrap;
   color: var(--success);
   padding: .12em .55em;
   border-radius: .25rem;

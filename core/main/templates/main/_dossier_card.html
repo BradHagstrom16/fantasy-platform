@@ -56,7 +56,11 @@
     {% set is_flat = (max_v == min_v) %}
     {% set range_v = (max_v - min_v) if (max_v - min_v) > 0 else 1 %}
     {% set step_x = (width - pad*2) / (data|length - 1) %}
-    <svg width="100%" height="{{ height }}" viewBox="0 0 {{ width }} {{ height }}" preserveAspectRatio="none">
+    {# Chart is decorative: the cap text (`Rank · last N days`, `first → last`),
+       the rank-movement block above, and the Ledger prose below all carry the
+       same data in text, so an unlabeled graphic would only add screen-reader
+       noise. aria-hidden keeps the trend a sighted-only flourish. #}
+    <svg width="100%" height="{{ height }}" viewBox="0 0 {{ width }} {{ height }}" preserveAspectRatio="none" aria-hidden="true">
       {# Flat tinted area fill — the metal-gold gradient is reserved for primary
          CTAs (Trophy Rule, DESIGN.md §6). A solid low-opacity gold reads as a
          press-room ledger underline, not as a trophy. #}
@@ -117,6 +121,15 @@
         {% endfor %}
       {% endif %}
     </svg>
+    {# Flat-data caption ($impeccable critique 2026-05-24 P2): on a stable
+       rank the dashed line alone reads as a broken/loading chart. A worded
+       line makes the steadiness intentional. Suppressed when the ≥7-day
+       "Holding rank over 7 days" movement block already states it above, so
+       the two don't echo; this fills the 2-6 snapshot window where that
+       block is gated off. #}
+    {% if is_flat and dossier.week_delta_rank is none %}
+    <p class="sparkline-flat-note">Holding #{{ dossier.rank }}, steady so far.</p>
+    {% endif %}
   </div>
   {% else %}
   <div class="dossier-sparkline-empty">

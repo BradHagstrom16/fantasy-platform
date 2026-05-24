@@ -293,6 +293,25 @@ Future WC statistical surfaces should avoid introducing:
 
 The goal is not minimalism for its own sake. The goal is disciplined presentation where the information carries the excitement and the interface provides structure, hierarchy, and tournament atmosphere without overwhelming the content.
 
+### `.wc-standing-card` — the live/post standing hero (Leverage Board)
+
+`.wc-standing-card` is the live + post lead card (the `.wc-stat-card.is-lead` red-rule treatment) that opens the hub HUB tab body under the navy hero. It shares one rank-cluster register across both states (`.wc-standing-rank` Teko numeral + `.wc-standing-rank-hash` red `#` prefix + `.wc-standing-of`) so the live "Your Standing" and the post "Your Finish" read as one masthead shape.
+
+In the **live** state the card is the **Leverage Board** ($impeccable critique 2026-05-24, "differentiate the hub"). This is a deliberate divergence from the platform lounge (`/`): the lounge owns the rank-trend dossier (sparkline + ledger) as the canonical rich surface; the hub does **not** mirror it. The hub instead leans into the multiplier system, which is the World Cup's custom-game identity (PRODUCT.md "custom games earn custom layers"). The board answers "where do my points come from, and where does my upside still sleep?" rather than "how has my rank moved?".
+
+Composition:
+
+- A compact header: the rank cluster + a single `.wc-standing-pts-line` (points · lead/clear delta · 7-day trend word). One line, not a multi-line ledger.
+- `.wc-leverage` list: one `.wc-leverage-row` per pick — team link + `.wc-multiplier-chip` + a `.wc-leverage-bar` whose `--wc-red` fill is the pick's share of the roster's top earner + the realized points (or an "Out" label for eliminated picks). Rows sort carriers (any realized points) above dormant picks; within the carriers, biggest contribution on top so the bars descend ("where your points live"); the multiplier is only a tiebreak, which surfaces the highest-upside dormant picks at the top of the dormant tail. The multiplier is deliberately not ranked above points among carriers (that would break the descending-bar read).
+- `.wc-leverage-summary`: a Newsreader line stating survival (`alive_count`, turning `--wc-red` via `.wc-lk--alert` when ≤ 4 alive) and naming the highest-multiplier dormant "upside" (e.g., "Your ×7 upside (IRN, PAN) hasn't fired yet").
+
+Doctrine:
+
+- The bar fill is `--wc-red`. Red is the WC primary interactive/competitive accent (§2 Accent Rank); "where the points are" is exactly that semantic role. Do not paint the bar navy or gold. (The retired parity embed had a `.wc-lk--red` class that resolved to `--game-primary` = navy — a class name that lied about its value; the Leverage Board removed it.)
+- State is communicated by structure + label, never color alone: `.is-out` rows strike the team code and add an "Out" text label; `.is-dormant` rows show an empty bar track; `.is-scoring` rows show a filled bar plus the points value.
+- The board **replaces** the separate read-only roster table the live state previously stacked beneath the standing card. The lead card is the single focal point; the full per-pick table lives one tap away on the ROSTER tab (`View Full Picks`). Don't re-add a sibling roster table to the live HUB.
+- The card carries **no** rank sparkline. The rank chart is the lounge's signature; keeping it off the hub is what makes the two surfaces feel like distinct rooms rather than duplicates.
+
 ### Tier Primitives
 
 WC surfaces carry three distinct tier primitives, one per semantic role. Each plays a non-overlapping job; the three should never collapse into a single class.

@@ -284,16 +284,21 @@ def test_context_post_enrolled_with_climb_and_roster_recap(app):
 
 
 def test_context_live_sparkline_flat_line_render(app, client):
-    """Lounge dossier sparkline + WC hub parity embed both render a
-    centered dashed line (not a full-height area block) when every
-    snapshot carries the same rank.
+    """Lounge dossier sparkline renders a centered dashed line (not a
+    full-height area block) when every snapshot carries the same rank.
 
     Locks the Critique 2026-05-15 P0-3 fix: when min_v == max_v the
     prior path/area math collapsed every point to y=pad, so the area
     fill closed from y=pad down to y=height — producing a near-full-
-    height rectangle that read as a solid block on whichever substrate
-    (navy bar on dark lounge, pink band on bone hub). The most-engaged
-    user (a stable leader at #1) got the least informative chart.
+    height rectangle that read as a solid block on the dark lounge.
+    The most-engaged user (a stable leader at #1) got the least
+    informative chart.
+
+    The WC hub no longer carries a parity sparkline: the 2026-05-24
+    "differentiate the hub" redesign replaced the parity dossier embed
+    with the Leverage Board (the hub leans on the multiplier system, the
+    lounge keeps the rank chart). This test now asserts the hub chart is
+    gone while the standing card still renders.
     """
     from datetime import date, timedelta
     from games.worldcup.models import WorldCupRankSnapshot
@@ -334,15 +339,18 @@ def test_context_live_sparkline_flat_line_render(app, client):
             'fill produces the near-full-height solid block.'
         )
 
-        # WC hub parity embed: same fix on the bone-substrate red version.
+        # WC hub: the parity sparkline retired in the 2026-05-24 Leverage
+        # Board differentiation. Assert the rank chart is gone and the
+        # standing card still renders.
         hub = client.get('/worldcup/')
         assert hub.status_code == 200
         hub_html = hub.data.decode()
-        assert 'stroke-dasharray="4 4"' in hub_html, (
-            'WC hub parity embed must mirror the flat-line treatment.'
+        assert 'wc-standing-card' in hub_html, (
+            'WC hub live state must still render the standing card.'
         )
-        assert 'fill="rgba(191,10,48,0.10)"' not in hub_html, (
-            'WC hub flat-rank sparkline must drop the red area fill.'
+        assert 'stroke-dasharray="4 4"' not in hub_html, (
+            'WC hub no longer renders the parity rank sparkline after the '
+            '2026-05-24 Leverage Board differentiation.'
         )
 
 
