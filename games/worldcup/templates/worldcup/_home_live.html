@@ -7,217 +7,85 @@
      - top_5_preview, recent_matches, trend, stage_label, enrollment
 #}
 
-{# Your Standing — compressed dossier (parity port from platform `/`
-   _dossier_card.html per Brad's lounge/room (b)-parity decision after
-   $impeccable critique 2026-05-15). The lounge stays the canonical rich
-   surface while WC is the live game; this WC-hub variant gives a
-   halftime-bookmark user the same sparkline + alive_count + week-delta
-   beats they get on `/`. WC-substrate adaptations: red top rule via
-   `.is-lead` (priority signal, mirrors the pre-state countdown lead);
-   red sparkline path on bone (vs gold on dark on the lounge); ledger
-   prose retains the WC-specific lead/clear competitive beats the
-   lounge dossier doesn't surface. Cross-state primitive `.wc-standing-
-   card` shared with _home_post.html so the user sees one masthead
-   shape across live + post. #}
+{# Your Standing — the Leverage Board ($impeccable critique 2026-05-24,
+   "differentiate the hub" direction). The platform lounge `/` owns the
+   rank-trend dossier as the canonical surface; the WC hub deliberately
+   does NOT mirror it. Instead the hub leans into the multiplier system —
+   the WC custom-game identity (PRODUCT.md "custom games earn custom
+   layers") — leading with "where your points live": each pick as a
+   realized-points bar keyed to its tier multiplier, plus a survival +
+   dormant-upside summary. This single card replaces both the prior
+   parity dossier and the separate 9-row roster table the live state used
+   to stack (which out-shouted the lead — critique P1 hierarchy). The
+   `.wc-standing-card` primitive (rank cluster) stays shared with
+   _home_post.html so live + post read with one masthead shape. #}
 <div class="wc-stat-card is-lead mb-4 animate-in wc-standing-card">
   <div class="wc-card-head">
     <span class="wc-eyebrow">Your Standing</span>
+    <a href="{{ url_for('worldcup.picks') }}" class="btn btn-sm btn-game">View Full Picks</a>
   </div>
-  {# Critique r2 follow-up (2026-05-15) — `#` rank prefix aligned with
-     the lounge dossier's `#N of M` editorial ornamentation. The hub
-     previously rendered a bare numeral, which read leaner than the
-     lounge for the same datum and broke cross-surface coherence for
-     a bookmark user. The hash carries the "ledger line" register
-     the lounge uses (lounge: `span.rank-hash` at 2.2rem
-     gold on dark; hub: red on bone, subordinate to the rank). #}
+  {# Rank cluster — one dominant Teko numeral with the `#` hash prefix in
+     WC red. Shared register with _home_post.html's "Your Finish". #}
   <div class="wc-standing-rank-cluster">
     <span class="wc-standing-rank">
       <span class="wc-standing-rank-hash" aria-hidden="true">#</span>{{ your_standing.rank }}
     </span>
     <span class="wc-standing-of">of {{ your_standing.of_n }}</span>
   </div>
+  {# Points + lead/clear delta + 7-day trend word — one compact Newsreader
+     line. Carries the WC-specific competitive beats (back-of-lead / clear-
+     of-next) in a single sentence; the card's body is spent on the
+     Leverage Board below, not a multi-line ledger. #}
+  <p class="wc-standing-pts-line mb-0">
+    <strong class="wc-numeral">{{ "%.1f"|format(your_standing.total) }}</strong> pts
+    {%- if your_standing.lead_delta_up is not none %} · {{ "%.1f"|format(your_standing.lead_delta_up) }} back of the lead{% endif -%}
+    {%- if your_standing.lead_delta_down is not none %} · {{ "%.1f"|format(your_standing.lead_delta_down) }} clear of next{% endif -%}
+    {%- if dossier.week_delta_points is not none and dossier.week_delta_points != 0 %}
+    <span class="wc-standing-trend is-{% if dossier.week_delta_points > 0 %}up{% else %}down{% endif %}">
+      · {% if dossier.week_delta_points > 0 %}up {{ '%.0f'|format(dossier.week_delta_points) }}{% else %}down {{ '%.0f'|format(dossier.week_delta_points|abs) }}{% endif %} over 7 days
+    </span>
+    {%- endif %}
+  </p>
 
-  {# Sparkline — server-rendered SVG. Bone-substrate adaptation: red
-     path (--wc-red) on white card replaces the lounge's gold-on-dark
-     treatment. Gated on ≥2 snapshots so the path has at least one
-     segment; otherwise the empty-state copy holds the slot. #}
-  {% if dossier.sparkline_data and dossier.sparkline_data|length >= 2 %}
-  <div class="wc-dossier-sparkline">
-    <div class="wc-sparkline-cap">
-      <span>Rank · last {{ dossier.sparkline_data|length }} days</span>
-      <span>{{ dossier.sparkline_data[0] }} &rarr; {{ dossier.sparkline_data[-1] }}</span>
-    </div>
-    {% set data = dossier.sparkline_data %}
-    {% set width = 318 %}
-    {% set height = 48 %}
-    {% set pad = 3 %}
-    {% set max_v = data|max %}
-    {% set min_v = data|min %}
-    {# Flat-line guard (Critique 2026-05-15 P0-3) — parity with the
-       lounge `_dossier_card.html` fix. When all snapshots carry the
-       same rank, the prior area-fill close-back to y=height produced a
-       near-full-height rectangle (read as a pink bar on bone). Render
-       a centered dashed line + endpoint dots instead. #}
-    {% set is_flat = (max_v == min_v) %}
-    {% set range_v = (max_v - min_v) if (max_v - min_v) > 0 else 1 %}
-    {% set step_x = (width - pad*2) / (data|length - 1) %}
-    <svg width="100%" height="{{ height }}" viewBox="0 0 {{ width }} {{ height }}" preserveAspectRatio="none" aria-hidden="true">
-      {% for t in [0, 0.5, 1] %}
-      <line x1="{{ pad }}" x2="{{ width - pad }}"
-            y1="{{ pad + t * (height - pad*2) }}" y2="{{ pad + t * (height - pad*2) }}"
-            stroke="rgba(191,10,48,0.10)" stroke-dasharray="2 4"/>
+  {# Leverage Board — each pick as a realized-points bar keyed to its tier
+     multiplier. Bars paint --wc-red (the WC primary interactive accent;
+     the correct semantic role for "where the points are", replacing the
+     prior navy-rendered `wc-lk--red` slip). Sort: carriers first, then the
+     highest-multiplier dormant picks (the live upside). Bar is decorative
+     (aria-hidden); the points value / "Out" label is the text equivalent
+     so the standing reads without color. #}
+  {% if leverage %}
+  <div class="wc-leverage">
+    <span class="wc-leverage-eyebrow">Where your points live</span>
+    <ul class="wc-leverage-list">
+      {% for row in leverage %}
+      <li class="wc-leverage-row is-{{ row.status }}">
+        <a class="wc-leverage-team" href="{{ url_for('worldcup.team_detail', team_id=row.team_id) }}">
+          <span class="wc-leverage-flag" aria-hidden="true">{{ row.flag }}</span>
+          <span class="wc-leverage-code">{{ row.code }}</span>
+        </a>
+        <span class="wc-multiplier-chip">×{{ row.mult_display }}</span>
+        <span class="wc-leverage-bar" aria-hidden="true">
+          <span class="wc-leverage-bar-fill" style="width: {{ (row.share * 100)|round(1) }}%"></span>
+        </span>
+        {# Points show for every row, including eliminated picks — a team
+           knocked out of the group stage may still have banked points, and
+           the board is "where your points live", not "who's left". Out state
+           reads via the struck code + dim (structural, not color-only) plus
+           the screen-reader marker. #}
+        <span class="wc-leverage-pts wc-numeral">{{ "%.1f"|format(row.points) }}{% if row.status == 'out' %}<span class="visually-hidden"> (eliminated)</span>{% endif %}</span>
+      </li>
       {% endfor %}
-      {% if is_flat %}
-        {% set fy = height / 2 %}
-        {% set x0 = pad %}
-        {% set x1 = width - pad %}
-        <line x1="{{ x0 }}" x2="{{ x1 }}" y1="{{ fy }}" y2="{{ fy }}"
-              stroke="#BF0A30" stroke-width="1.8" stroke-linecap="round"
-              stroke-dasharray="4 4" opacity="0.55"/>
-        <circle cx="{{ x0 }}" cy="{{ fy }}" r="1.4" fill="#BF0A30"/>
-        <circle cx="{{ x1 }}" cy="{{ fy }}" r="3" fill="#9C0826"
-                stroke="#BF0A30" stroke-width="1"/>
-      {% else %}
-        {% set path = [] %}
-        {% set area = [] %}
-        {% for v in data %}
-          {% set i = loop.index0 %}
-          {% set x = pad + i * step_x %}
-          {% set y = pad + ((v - min_v) / range_v) * (height - pad*2) %}
-          {% if i == 0 %}
-            {% set _ = path.append('M' ~ x ~ ',' ~ y) %}
-            {% set _ = area.append('M' ~ x ~ ',' ~ y) %}
-          {% else %}
-            {% set _ = path.append('L' ~ x ~ ',' ~ y) %}
-            {% set _ = area.append('L' ~ x ~ ',' ~ y) %}
-          {% endif %}
-          {% if loop.last %}
-            {% set _ = area.append('L' ~ x ~ ',' ~ height) %}
-            {% set _ = area.append('L' ~ pad ~ ',' ~ height) %}
-            {% set _ = area.append('Z') %}
-          {% endif %}
-        {% endfor %}
-        <path d="{{ area|join(' ') }}" fill="rgba(191,10,48,0.10)"/>
-        <path d="{{ path|join(' ') }}" fill="none" stroke="#BF0A30" stroke-width="1.8"
-              stroke-linecap="round" stroke-linejoin="round"/>
-        {% for v in data %}
-          {% set i = loop.index0 %}
-          {% set x = pad + i * step_x %}
-          {% set y = pad + ((v - min_v) / range_v) * (height - pad*2) %}
-          <circle cx="{{ x }}" cy="{{ y }}"
-                  r="{{ 3 if loop.last else 1.4 }}"
-                  fill="{{ '#9C0826' if loop.last else '#BF0A30' }}"
-                  {% if loop.last %}stroke="#BF0A30" stroke-width="1"{% endif %}/>
-        {% endfor %}
-      {% endif %}
-    </svg>
-  </div>
-  {% else %}
-  <div class="wc-dossier-sparkline-empty">
-    Tracking starts tonight. Trends arrive after the first daily snapshot.
+    </ul>
+    <p class="wc-leverage-summary mb-0">
+      <strong class="wc-lk{% if leverage_summary.alive_count <= 4 %} wc-lk--alert{% endif %}">{{ leverage_summary.alive_count }} of 9</strong> nations still alive.
+      {%- if leverage_summary.dormant_upside_codes %}
+        Your ×{{ leverage_summary.dormant_upside_mult }} upside ({{ leverage_summary.dormant_upside_codes|join(', ') }}) hasn't fired yet.
+      {%- endif %}
+    </p>
   </div>
   {% endif %}
-
-  {# The Ledger — Newsreader prose combining points · alive · lead/clear ·
-     week trend. Retains the WC-specific competitive context (lead_delta_
-     up/down) the lounge dossier doesn't surface; adds the lounge's
-     alive_count + week_delta_points the prior derivation didn't have. #}
-  <div class="wc-dossier-ledger">
-    <div class="wc-ledger-eyebrow">The Ledger</div>
-    <p class="wc-ledger-line mb-0">
-      <strong class="wc-lk">{{ "%.1f"|format(your_standing.total) }} points</strong>
-      across
-      <strong class="wc-lk{% if dossier.alive_count == 9 %} wc-lk--gold{% elif dossier.alive_count <= 4 %} wc-lk--red{% endif %}">{{ dossier.alive_count }} of 9</strong>
-      nations still earning.
-      {%- if your_standing.lead_delta_up is not none or your_standing.lead_delta_down is not none %}
-        <br>
-        {%- if your_standing.lead_delta_up is not none %}{{ "%.1f"|format(your_standing.lead_delta_up) }} back of the lead{% if your_standing.lead_delta_down is not none %}, {% else %}.{% endif %}{% endif -%}
-        {%- if your_standing.lead_delta_down is not none %}{{ "%.1f"|format(your_standing.lead_delta_down) }} clear of next.{% endif -%}
-      {%- endif %}
-      {%- if dossier.week_delta_points is not none %}
-        <br>
-        <span class="wc-ledger-delta wc-ledger-delta--{% if dossier.week_delta_points > 0 %}up{% elif dossier.week_delta_points < 0 %}down{% else %}flat{% endif %}">
-          {% if dossier.week_delta_points > 0 %}Up {{ '%.0f'|format(dossier.week_delta_points) }}{% elif dossier.week_delta_points < 0 %}Down {{ '%.0f'|format(dossier.week_delta_points|abs) }}{% else %}Even{% endif %} over the last 7 days.
-        </span>
-      {%- elif trend.show_column and trend.delta is not none and trend.delta != 0 %}
-        <br>
-        <span class="wc-ledger-delta wc-ledger-delta--{% if trend.delta > 0 %}up{% elif trend.delta < 0 %}down{% endif %}">
-          {% if trend.delta > 0 %}+{% endif %}{{ "%.1f"|format(trend.delta) }} since last snapshot.
-        </span>
-      {%- endif %}
-    </p>
-
-    {# Critique r2 follow-up (2026-05-15) — "Top earner" editorial
-       callout ported from the lounge dossier. Closes the lounge↔hub
-       canonical-richness asymmetry the critique flagged: the lounge
-       had this beat, the hub didn't. The wc-* substrate adaptation
-       paints the team-code in WC red on bone (the lounge's gold-on-
-       dark inverts). Dashed red rule separates the competitive-
-       context lines above from the roster-spotlight beat below;
-       same register split as the lounge `.ledger-line--secondary`. #}
-    {% if dossier.top_earner %}
-    <p class="wc-ledger-line wc-ledger-line--secondary mb-0">
-      <span class="wc-ledger-eyebrow-inline">Top earner</span>
-      <span class="wc-ledger-top-earner">
-        {{ dossier.top_earner.team_flag }}
-        <strong class="wc-lk wc-lk--red">{{ dossier.top_earner.team_code }}</strong>
-        leading your nine at
-        <strong class="wc-lk">{{ '%.1f'|format(dossier.top_earner.points) }} pts</strong>.
-      </span>
-    </p>
-    {% endif %}
-  </div>
 </div>
-
-{# Your Roster with live scores. Hub coherence pass 2026-05: tier column
-   matches _home_post.html's `dot + tier_name` vocabulary so the live and
-   post tables read with one shared tier indicator (the pre-state tier-
-   card grid uses its own row-grouped layout — both forms remain valid,
-   the table form just stops disagreeing with itself between live and
-   post). Eyebrow lifted to .wc-eyebrow-gold to match the pre-state's
-   "Your Roster" ceremonial marker. #}
-{% if user_picks %}
-<div class="wc-stat-card mb-4 animate-in">
-  <div class="wc-card-head">
-    <span class="wc-eyebrow wc-eyebrow-gold"><i class="bi bi-people-fill me-2"></i>Your Roster</span>
-    <a href="{{ url_for('worldcup.picks') }}" class="btn btn-sm btn-game">View Full Picks</a>
-  </div>
-  {# Critique r2 follow-up (2026-05-15) — `.wc-live-roster` class
-     marker so the Multiplier column can hide at phone widths
-     (≤575.98px, Bootstrap `sm` breakpoint). The column duplicates
-     info already baked into the multiplied Points value, and the
-     full row got cramped at narrow widths. Multiplier still
-     renders on tablet+desktop where the column carries useful
-     per-pick context. #}
-  <div class="table-responsive">
-    <table class="table table-worldcup wc-live-roster mb-0">
-        <caption class="visually-hidden">Your live roster: tier, team, multiplier, and current points.</caption>
-        <thead>
-          <tr>
-            <th scope="col">Tier</th>
-            <th scope="col">Team</th>
-            <th scope="col" class="text-end wc-roster-mult-col">Multiplier</th>
-            <th scope="col" class="text-end">Points</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for pick in user_picks %}
-          <tr>
-            <td><span class="wc-tier-dot wc-tier-dot-{{ pick.team.tier }}"></span> {{ tier_names[pick.team.tier] }}</td>
-            <td>
-              <a href="{{ url_for('worldcup.team_detail', team_id=pick.team_id) }}" class="text-decoration-none">
-                {{ pick.team.flag_emoji }} {{ pick.team.display_name }}
-              </a>
-            </td>
-            <td class="text-end wc-roster-mult-col"><span class="wc-multiplier-chip">×{{ pick.team.multiplier }}</span></td>
-            <td class="text-end"><span class="wc-numeral">{{ "%.1f"|format(pick.multiplied_points) }}</span></td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-</div>
-{% endif %}
 
 {# Recent Results — demoted from a full .wc-stat-card to the
    .wc-results-strip silhouette (sibling primitive to .wc-fixtures-strip

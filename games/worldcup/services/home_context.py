@@ -360,68 +360,86 @@ def _context_live(user: Any) -> dict:
         delta_map = compute_trend_by_enrollment([enrollment.id])
         delta = delta_map.get(enrollment.id)
 
-    # Tier names dict for the live roster table — parity with the post
-    # state's per-pick `tier_name` field. The table renders `dot + tier_name`
-    # (e.g., "🟧 Favorites") so users can decode the tier color without an
-    # in-card legend. Mirrors _home_post.html's pattern.
-    tier_names = {n: TIERS[n]['name'] for n in TIERS}
-
-    # Compressed dossier payload — parity port from platform `/`
-    # _context_live (core/main/home_context.py) so a user hitting the WC
-    # hub during a live tournament gets the same sparkline + alive_count
-    # + week-delta beats they would on /. The lounge stays the canonical
-    # rich surface (Brad's lounge/room rule); this is the parity layer
-    # for users who bookmark `/worldcup/` for halftime checks. The
-    # week-delta is gated on ≥7 snapshots — early-deploy days would
-    # overstate any 2-day trend.
-    recent_snapshots = list(reversed(
+    # Week-over-week points delta — gated on ≥7 daily snapshots so an
+    # early-deploy 2-day trend doesn't overstate. Feeds the standing
+    # points-line trend clause. (The rank-trend sparkline the parity
+    # dossier carried moved fully to the lounge `/` per the $impeccable
+    # critique 2026-05-24 "differentiate the hub" direction — the hub now
+    # leads with the Leverage Board below, not a rank chart.) `.offset(6)`
+    # fetches the 7th-most-recent snapshot directly; null when <7 exist.
+    oldest_snapshot = (
         WorldCupRankSnapshot.query
         .filter_by(enrollment_id=enrollment.id)
         .order_by(WorldCupRankSnapshot.captured_date.desc())
-        .limit(7)
-        .all()
-    ))
-    sparkline_data: list[int] = []
-    week_delta_rank: int | None = None
+        .offset(6)
+        .first()
+    )
     week_delta_points: float | None = None
-    if recent_snapshots:
-        sparkline_data = [s.rank for s in recent_snapshots]
-        if len(recent_snapshots) >= 7:
-            oldest = recent_snapshots[0]
-            week_delta_rank = neighbors['rank'] - oldest.rank
-            week_delta_points = (
-                float(enrollment.total_score) - float(oldest.total_score)
-            )
+    if oldest_snapshot is not None:
+        week_delta_points = (
+            float(enrollment.total_score) - float(oldest_snapshot.total_score)
+        )
+
     alive_count = sum(1 for p in user_picks if not p.team.is_eliminated)
 
-    # Critique r2 follow-up (2026-05-15) — port the lounge dossier's
-    # "Top earner" editorial callout to the WC hub standing card.
-    # Brad's direction: bring the hub up to the lounge's canonical
-    # design standard. The lounge stays the broader Tribune surface,
-    # but the singular "who's carrying your nine" beat works on both;
-    # without it the hub's standing card felt one step thinner than
-    # the bookmark surface that's supposed to be the lighter of the
-    # two. None when no pick has scored yet (early-tournament window).
-    top_earner = None
-    if user_picks:
-        best = max(
-            user_picks,
-            key=lambda p: float(p.multiplied_points or 0),
-        )
-        if best.multiplied_points and best.multiplied_points > 0:
-            top_earner = {
-                'team_code': best.team.fifa_code,
-                'team_flag': best.team.flag_emoji,
-                'team_name': best.team.display_name,
-                'points': float(best.multiplied_points),
-            }
+    # Leverage Board — the WC hub's differentiated standing hero. The lounge
+    # `/` keeps the rank-trend dossier as the canonical surface; the hub
+    # leans into the multiplier system (the WC custom-game identity per
+    # PRODUCT.md "custom games earn custom layers"). Each pick is one
+    # leverage row: tier multiplier + a realized-points bar (its share of
+    # the roster's top earner) + alive/dormant/out status, so "where your
+    # points live" and "where upside still sleeps" read at a glance. The
+    # board replaces BOTH the parity dossier and the separate 9-row roster
+    # table the live state used to stack — so the lead card is the single
+    # focal point (resolves the $impeccable critique 2026-05-24 P1 hierarchy
+    # finding: the table out-shouted the lead). Sort puts the carriers
+    # first, then the highest-multiplier dormant picks (the upside).
+    max_pts = max(
+        (float(p.multiplied_points or 0) for p in user_picks), default=0.0,
+    )
+    leverage = []
+    for p in sorted(
+        user_picks,
+        key=lambda pk: (float(pk.multiplied_points or 0), float(pk.team.multiplier)),
+        reverse=True,
+    ):
+        pts = float(p.multiplied_points or 0)
+        leverage.append({
+            'code': p.team.fifa_code,
+            'flag': p.team.flag_emoji,
+            'name': p.team.display_name,
+            'team_id': p.team_id,
+            'tier': p.team.tier,
+            'mult_display': f'{float(p.team.multiplier):g}',
+            'points': pts,
+            'share': (pts / max_pts) if max_pts > 0 else 0.0,
+            'status': (
+                'out' if p.team.is_eliminated
+                else ('scoring' if pts > 0 else 'dormant')
+            ),
+        })
+
+    # Dormant upside — alive, not-yet-scoring picks at the highest dormant
+    # tier (tiers 4/5 = ×4 and ×7). Surfaced in the summary as the "where
+    # upside still sleeps" beat. Only tiers ≥ 4 read as "upside"; a dormant
+    # ×1 favorite isn't a leverage story worth a callout.
+    dormant = [lv for lv in leverage if lv['status'] == 'dormant']
+    upside_tier = max((lv['tier'] for lv in dormant), default=0)
+    dormant_upside = (
+        [lv for lv in dormant if lv['tier'] == upside_tier]
+        if upside_tier >= 4 else []
+    )
+    leverage_summary = {
+        'alive_count': alive_count,
+        'dormant_upside_codes': [lv['code'] for lv in dormant_upside],
+        'dormant_upside_mult': (
+            dormant_upside[0]['mult_display'] if dormant_upside else None
+        ),
+    }
 
     dossier = {
-        'sparkline_data': sparkline_data,
         'alive_count': alive_count,
-        'week_delta_rank': week_delta_rank,
         'week_delta_points': week_delta_points,
-        'top_earner': top_earner,
     }
 
     return {
@@ -432,7 +450,8 @@ def _context_live(user: Any) -> dict:
         'display_name': enrollment.get_display_name(),
         'your_standing': your_standing,
         'user_picks': user_picks,
-        'tier_names': tier_names,
+        'leverage': leverage,
+        'leverage_summary': leverage_summary,
         'top_5_preview': top_5,
         'recent_matches': recent_matches,
         'stage_label': stage_label,
