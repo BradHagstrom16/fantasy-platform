@@ -5,18 +5,18 @@ All route handlers for the World Cup Fantasy Pool game.
 Mounted at /worldcup/ via blueprint url_prefix.
 """
 from functools import wraps
-from collections import defaultdict, OrderedDict
+from collections import Counter, defaultdict, OrderedDict
 
 from flask import render_template, redirect, url_for, flash, request, jsonify
 from flask_login import login_required, current_user
-from sqlalchemy import func, or_
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import joinedload
 
 from extensions import db
 from models import User
 from games.worldcup import worldcup_bp
 from games.common import game_must_be_open
-from games.worldcup.services.state import now_utc
+from games.worldcup.services.state import now_utc, worldcup_state, FINAL_MATCH_NUMBER
 from games.worldcup.models import WorldCupEnrollment, WorldCupTeam, WorldCupMatch, WorldCupPick
 from games.worldcup.constants import (
     SEASON_YEAR, ENTRY_FEE, TOURNAMENT_DEADLINE_UTC,
@@ -419,8 +419,27 @@ def leaderboard():
         ranked.append({'rank': current_rank, 'enrollment': e})
         prev_score = e.total_score
 
+    # Mark shared ranks so the board can say "tied" out loud — dense rank
+    # otherwise surfaces three players as "1" with no explanation.
+    rank_counts = Counter(item['rank'] for item in ranked)
+    for item in ranked:
+        item['tied'] = rank_counts[item['rank']] > 1
+
     deadline_passed = now_utc() >= TOURNAMENT_DEADLINE_UTC
+    tournament_state = worldcup_state()  # 'pre' | 'live' | 'post'
     total_players = len(enrollments)
+
+    # Post-tournament: the top row (tiebreaker-resolved order) is the pool
+    # champion; the Final's winner names the crowned country (contextual line).
+    pool_champion = None
+    champion_team = None
+    if tournament_state == 'post' and ranked:
+        pool_champion = ranked[0]['enrollment'].get_display_name()
+        final_match = db.session.scalar(
+            select(WorldCupMatch).filter_by(match_number=FINAL_MATCH_NUMBER)
+        )
+        if final_match and final_match.winner_team_id:
+            champion_team = final_match.winner_team
 
     your_standing = _compute_your_standing(enrollments, total_players)
     enrollment_ids = [e.id for e in enrollments]
@@ -434,6 +453,9 @@ def leaderboard():
         ranked_enrollments=ranked,
         total_players=total_players,
         deadline_passed=deadline_passed,
+        tournament_state=tournament_state,
+        pool_champion=pool_champion,
+        champion_team=champion_team,
         your_standing=your_standing,
         rank_delta_by_enrollment=rank_delta_by_enrollment,
         trend_by_enrollment=trend_by_enrollment,

@@ -5284,7 +5284,11 @@ body.game-worldcup .tier-card-5 .tier-card-header { background: linear-gradient(
   font-size: 3.5rem;
   font-weight: 600;
   line-height: 1;
-  color: var(--platform-primary);
+  /* WC red is the single "this is you" emphasis accent on light WC
+     substrates (DESIGN.md §2 accent rank). Unifies with the red row tint
+     and the red mobile-card border; the prior council-purple read as
+     platform chrome leaking into the WC room. */
+  color: var(--wc-red);
   font-feature-settings: 'tnum';
 }
 
@@ -5390,6 +5394,116 @@ body.game-worldcup .tier-card-5 .tier-card-header { background: linear-gradient(
 .leaderboard-card-link:focus-visible {
   outline: 2px solid var(--gold);
   outline-offset: 2px;
+}
+
+/* Impeccable 2026-05-24 — desktop standings hierarchy + state ceremony.
+   Points is the story on a "Standings" page, so it becomes the row's focal
+   numeral; rank demotes to a quiet ordinal. Mobile already carried this
+   contrast (.leaderboard-score 1.4rem > .leaderboard-rank 1.3rem); this
+   block brings the desktop table up to the same hierarchy. */
+.leaderboard-pts .wc-numeral {
+  font-size: 1.6rem;
+  letter-spacing: .02em;
+  color: var(--text-primary);
+}
+.leaderboard-rank-cell { white-space: nowrap; }
+.leaderboard-rank-ord {
+  font-size: 1.05rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+.leaderboard-avatar { margin-right: .4rem; }
+
+/* "tied" says the dense-rank shared-rank story out loud (three players at
+   "1" otherwise read as ambiguous). Editorial micro-label, not an alert. */
+.leaderboard-tied {
+  font-family: 'Teko', sans-serif;
+  font-size: .68rem;
+  font-weight: 500;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  margin-left: .4rem;
+  vertical-align: middle;
+}
+
+/* Inline points-delta beside the Move arrow. Replaces the hover-only
+   title= tooltip (invisible on touch + keyboard) and disambiguates the
+   "slipped a rank but gained points" case the old red-arrow tooltip made
+   look contradictory. */
+.leaderboard-move-pts {
+  font-family: 'Teko', sans-serif;
+  font-size: .72rem;
+  font-weight: 500;
+  letter-spacing: .03em;
+  color: var(--text-secondary);
+  margin-left: .4rem;
+  white-space: nowrap;
+}
+.leaderboard-move-mobile .leaderboard-move-pts { margin-left: .3rem; }
+
+/* Leader emphasis — red is the WC competitive/active accent (§2 accent
+   rank). Every rank-1 row (co-leaders included) gets the hot-points lift
+   while the tournament is live. */
+.leaderboard-table tr.is-leader .leaderboard-pts .wc-numeral,
+.card.leaderboard-card.is-leader .leaderboard-score {
+  color: var(--wc-red);
+}
+
+/* Champion ceremony (post only) — the tiebreaker-resolved top row. Gold is
+   the WC quaternary ceremonial accent reserved for culmination/victory
+   (§2 Gold-Quaternary Rule); gold-dark clears AA on the white substrate. */
+.leaderboard-table tr.is-champion > td { background: rgba(201, 162, 39, .09); }
+.leaderboard-table tr.is-champion .leaderboard-pts .wc-numeral,
+.card.leaderboard-card.is-champion .leaderboard-score {
+  color: var(--gold-dark);
+}
+.card.leaderboard-card.is-champion {
+  border-color: var(--gold-dark) !important;
+}
+.leaderboard-champion-tag {
+  display: inline-block;
+  font-family: 'Teko', sans-serif;
+  font-size: .7rem;
+  font-weight: 600;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--gold-dark);
+  background: rgba(201, 162, 39, .15);
+  border-radius: .3rem;
+  padding: .05rem .45rem;
+  margin-right: .5rem;
+  vertical-align: middle;
+}
+
+/* Live signal in the hero eyebrow — color + label, never color alone
+   (DESIGN.md Live Indicators). --live-red reads on the navy hero where
+   --wc-red would not clear contrast. */
+.leaderboard-live-eyebrow { display: inline-flex; align-items: center; }
+.leaderboard-live-dot {
+  width: .5rem;
+  height: .5rem;
+  border-radius: 50%;
+  background: var(--live-red);
+  margin-right: .45rem;
+  animation: leaderboardLivePulse 1.8s ease-in-out infinite;
+}
+.leaderboard-hero-champion { color: var(--gold-light); font-weight: 600; }
+
+.leaderboard-card-nameline { flex-wrap: wrap; }
+.leaderboard-tb-mobile { margin-top: .1rem; }
+
+@keyframes leaderboardLivePulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: .35; }
+}
+
+/* Respect prefers-reduced-motion across the board — the .animate-in
+   entrance and the live pulse were unguarded. */
+@media (prefers-reduced-motion: reduce) {
+  .animate-in,
+  .animate-in-scale,
+  .leaderboard-live-dot { animation: none; }
 }
 
 /* ── 3. Keyframe Animations ─────────────────────────────── */
