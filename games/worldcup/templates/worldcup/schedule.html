@@ -10,7 +10,7 @@
     <p class="lead mb-0">All 104 matches · 2026 FIFA World Cup</p>
     <small class="d-block mt-1 opacity-75 schedule-tz-stamp">All kickoff times shown in Central Time</small>
     {# P2 S2.6 PI-4: above-the-fold jump-to-today affordance. The id="today"
-       anchor on .schedule-day-block landed in S2.2.1; nothing in the hero
+       anchor on .schedule-day landed in S2.2.1; nothing in the hero
        surfaced it. Mid-tournament the today block sits 6-11 matchdays into
        the page, so live-state surfacing required a scroll. Render only
        when a today matchday actually exists (pre/post tournament: hide). #}
@@ -26,88 +26,158 @@
 
 <div class="container pb-5">
 
-  {% macro render_chip(match) %}
-    {% set attr = attribution_by_match.get(match.id) %}
-    {% if attr %}
-      <div class="match-points-chip" title="Base points scored toward each team's tier value. Multiplier applies on the team detail page.">
-        {% if attr.type == 'group_draw' %}
-          <span>{{ attr.events[0][1] }} <span class="chip-pts">+{{ "%g"|format(attr.events[0][2]) }}</span></span>
-          <span class="chip-sep">·</span>
-          <span>{{ attr.events[1][1] }} <span class="chip-pts">+{{ "%g"|format(attr.events[1][2]) }}</span> base</span>
-        {% elif attr.type == 'knockout' %}
-          <span>{{ attr.events[0][1] }} <span class="chip-pts">+{{ "%g"|format(attr.events[0][2]) }}</span> base ({{ attr.stage }})</span>
-        {% else %}
-          <span>{{ attr.events[0][1] }} <span class="chip-pts">+{{ "%g"|format(attr.events[0][2]) }}</span> base</span>
-        {% endif %}
-      </div>
-    {% endif %}
+  {# P2 (impeccable critique 2026-05-24): sticky in-page wayfinding. The page
+     runs 100+ matches; once you scroll past the Group Stage H2 you lose all
+     section context. This rail persists below the sub-nav so Group / Knockout
+     / Today are reachable from anywhere. The hero jump-to-today chip stays as
+     the above-the-fold welcome; this is its persistent companion. #}
+  {% set today_days = (matchdays_group or [])|selectattr('is_today')|list %}
+  {% set has_knockout = r32_matches or r16_matches or qf_matches or sf_matches or final %}
+  {% if matchdays_group or has_knockout %}
+  <nav class="schedule-nav" aria-label="Jump to section">
+    {% if today_days %}<a href="#today" class="schedule-nav-pill is-today">Today</a>{% endif %}
+    {% if matchdays_group %}<a href="#group-stage" class="schedule-nav-pill">Group Stage</a>{% endif %}
+    {% if has_knockout %}<a href="#bracket" class="schedule-nav-pill">Knockout</a>{% endif %}
+  </nav>
+  {% endif %}
+
+  {# Points caption beneath a completed fixture: base points scored toward
+     each team's tier value. Center-anchored to the scoreline so the eye
+     reads match -> result -> points as one unit. #}
+  {% macro fixture_points(attr) %}
+    <span class="match-points-chip" title="Base points scored toward each team's tier value. Multiplier applies on the team detail page.">
+      {% if attr.type == 'group_draw' %}
+        {{ attr.events[0][1] }} <span class="chip-pts">+{{ "%g"|format(attr.events[0][2]) }}</span>
+        <span class="chip-sep">·</span>
+        {{ attr.events[1][1] }} <span class="chip-pts">+{{ "%g"|format(attr.events[1][2]) }}</span>
+      {% elif attr.type == 'knockout' %}
+        {{ attr.events[0][1] }} <span class="chip-pts">+{{ "%g"|format(attr.events[0][2]) }}</span> ({{ attr.stage }})
+      {% else %}
+        {{ attr.events[0][1] }} <span class="chip-pts">+{{ "%g"|format(attr.events[0][2]) }}</span>
+      {% endif %}
+    </span>
   {% endmacro %}
 
-  {% macro render_match(m) %}
-    <div class="match-result-card">
-      {% if m.group_letter %}<span class="match-group-tag" aria-label="Group {{ m.group_letter }}">{{ m.group_letter }}</span>{% endif %}
-      <span class="match-team home">{% if m.home_team %}{{ m.home_team.flag_emoji }} {{ m.home_team.display_name }}{% else %}TBD{% endif %}</span>
-      {% if m.is_completed %}
-        <span class="match-score wc-numeral">{{ m.home_score }}–{{ m.away_score }}</span>
-      {% elif m.kickoff_utc %}
-        <span class="match-score pending wc-numeral">{{ format_ct(m.kickoff_utc).strftime('%-I:%M %p') }}</span>
-      {% else %}
-        <span class="match-score pending wc-numeral">TBD</span>
-      {% endif %}
-      <span class="match-team away">{% if m.away_team %}{{ m.away_team.flag_emoji }} {{ m.away_team.display_name }}{% else %}TBD{% endif %}</span>
-    </div>
+  {# A single match as a dense fixture row: home (right) · score/time · away
+     (left), with the points caption wrapping full-width beneath. Owned-team
+     fixtures (the viewer's picks) carry a subtle tint + a marked team name. #}
+  {% macro fixture_row(m) %}
+    {% set attr = attribution_by_match.get(m.id) %}
+    {% set home_mine = m.home_team and m.home_team.id in my_team_ids %}
+    {% set away_mine = m.away_team and m.away_team.id in my_team_ids %}
+    <li class="sched-fixture-row{% if home_mine or away_mine %} is-mine{% endif %}">
+      <span class="sched-fixture-side home">
+        {% if m.home_team %}
+          <span class="sched-fixture-name{% if home_mine %} is-mine-team{% endif %}">{{ m.home_team.display_name }}{% if home_mine %}<span class="visually-hidden"> (your pick)</span>{% endif %}</span>
+          <span class="sched-fixture-flag" aria-hidden="true">{{ m.home_team.flag_emoji }}</span>
+        {% else %}
+          <span class="sched-fixture-name sched-fixture-tbd">TBD</span>
+        {% endif %}
+      </span>
+      <span class="sched-fixture-core">
+        {% if m.is_completed %}
+          <span class="sched-fixture-score wc-numeral">{{ m.home_score }}<span class="sched-fixture-dash">–</span>{{ m.away_score }}</span>
+        {% elif m.kickoff_utc %}
+          <span class="sched-fixture-kick wc-numeral">{{ format_ct(m.kickoff_utc).strftime('%-I:%M %p') }}</span>
+        {% else %}
+          <span class="sched-fixture-kick sched-fixture-tbd">TBD</span>
+        {% endif %}
+      </span>
+      <span class="sched-fixture-side away">
+        {% if m.away_team %}
+          <span class="sched-fixture-flag" aria-hidden="true">{{ m.away_team.flag_emoji }}</span>
+          <span class="sched-fixture-name{% if away_mine %} is-mine-team{% endif %}">{{ m.away_team.display_name }}{% if away_mine %}<span class="visually-hidden"> (your pick)</span>{% endif %}</span>
+        {% else %}
+          <span class="sched-fixture-name sched-fixture-tbd">TBD</span>
+        {% endif %}
+        {% if m.group_letter %}<span class="match-group-tag" aria-label="Group {{ m.group_letter }}">{{ m.group_letter }}</span>{% endif %}
+      </span>
+      {% if attr %}{{ fixture_points(attr) }}{% endif %}
+    </li>
   {% endmacro %}
 
   {# ── Group Stage (matchday-grouped) ── #}
   {% if matchdays_group %}
-  <h2 class="section-heading mb-2 animate-in">
+  <h2 class="section-heading mb-2 animate-in" id="group-stage">
     <i class="bi bi-grid-3x3 me-2"></i>Group Stage
     <small class="ms-2 schedule-stage-count">{{ matchdays_group|length }} match days</small>
   </h2>
   <p class="schedule-legend">Numbers under completed matches show <strong>base points</strong> toward each team's tier value. Multipliers apply on the team detail page.</p>
 
   {% for day in matchdays_group %}
-    <section class="schedule-day-block mb-3"{% if day.is_today %} id="today"{% endif %}>
+    <section class="schedule-day"{% if day.is_today %} id="today"{% endif %}>
       <h3 class="schedule-day-header{% if day.is_today %} is-today{% endif %}">
         {% if day.day_iso %}<time class="schedule-day-date" datetime="{{ day.day_iso }}">{{ day.date_label }}</time>{% else %}<span class="schedule-day-date">{{ day.date_label }}</span>{% endif %}
         {% if day.is_today %}<span class="schedule-today-badge">Today</span>{% endif %}
       </h3>
-      <div class="d-flex flex-column gap-2">
-        {% for m in day.matches %}
-        <div>
-          {{ render_match(m) }}
-          {{ render_chip(m) }}
-        </div>
-        {% endfor %}
-      </div>
+      <ul class="sched-fixture-list">
+        {% for m in day.matches %}{{ fixture_row(m) }}{% endfor %}
+      </ul>
     </section>
   {% endfor %}
   {% endif %}
 
-  {# ── Knockout Rounds ── #}
-  {% macro render_stage(matches, title, icon) %}
-  {% if matches %}
-  <h2 class="section-heading mt-5 mb-3 animate-in">
-    <i class="bi bi-{{ icon }} me-2"></i>{{ title }}
-    <small class="ms-2 schedule-stage-count">{{ matches|length }} match{{ 'es' if matches|length != 1 }}</small>
-  </h2>
-  <div class="d-flex flex-column gap-2">
-    {% for m in matches %}
-    <div>
-      {{ render_match(m) }}
-      {{ render_chip(m) }}
+  {# ── Knockout Bracket ──
+     P1 (impeccable critique 2026-05-24): the prior knockout rendered as one
+     full-width card per match — pre-tournament that was ~32 near-empty
+     "TBD" slabs. The bracket presents the rounds as a left-to-right tree of
+     compact cells that fill in as teams advance: anticipatory pre-tournament,
+     a record post-tournament. Rounds become stacked sections on mobile. #}
+  {% macro ko_cell(m) %}
+    {% set attr = attribution_by_match.get(m.id) %}
+    {% set home_mine = m.home_team and m.home_team.id in my_team_ids %}
+    {% set away_mine = m.away_team and m.away_team.id in my_team_ids %}
+    {% set home_win = m.is_completed and m.home_team and m.winner_team_id == m.home_team.id %}
+    {% set away_win = m.is_completed and m.away_team and m.winner_team_id == m.away_team.id %}
+    <div class="wc-ko-cell{% if m.is_completed %} is-decided{% endif %}{% if home_mine or away_mine %} is-mine{% endif %}">
+      <div class="wc-ko-team{% if home_win %} is-winner{% endif %}">
+        {% if m.home_team %}
+          <span class="wc-ko-flag" aria-hidden="true">{{ m.home_team.flag_emoji }}</span>
+          <span class="wc-ko-name{% if home_mine %} is-mine-team{% endif %}">{{ m.home_team.display_name }}{% if home_mine %}<span class="visually-hidden"> (your pick)</span>{% endif %}</span>
+        {% else %}<span class="wc-ko-name wc-ko-tbd">TBD</span>{% endif %}
+        <span class="wc-ko-score wc-numeral">{% if m.is_completed %}{{ m.home_score }}{% endif %}</span>
+      </div>
+      <div class="wc-ko-team{% if away_win %} is-winner{% endif %}">
+        {% if m.away_team %}
+          <span class="wc-ko-flag" aria-hidden="true">{{ m.away_team.flag_emoji }}</span>
+          <span class="wc-ko-name{% if away_mine %} is-mine-team{% endif %}">{{ m.away_team.display_name }}{% if away_mine %}<span class="visually-hidden"> (your pick)</span>{% endif %}</span>
+        {% else %}<span class="wc-ko-name wc-ko-tbd">TBD</span>{% endif %}
+        <span class="wc-ko-score wc-numeral">{% if m.is_completed %}{{ m.away_score }}{% endif %}</span>
+      </div>
+      <div class="wc-ko-foot">
+        {% if m.is_completed and attr %}{{ fixture_points(attr) }}
+        {% elif m.kickoff_utc %}<span class="wc-ko-when">{{ format_ct(m.kickoff_utc).strftime('%b %-d') }}</span>{% endif %}
+      </div>
     </div>
-    {% endfor %}
-  </div>
-  {% endif %}
   {% endmacro %}
 
-  {{ render_stage(r32_matches, 'Round of 32', 'trophy') }}
-  {{ render_stage(r16_matches, 'Round of 16', 'trophy') }}
-  {{ render_stage(qf_matches, 'Quarterfinals', 'trophy-fill') }}
-  {{ render_stage(sf_matches, 'Semifinals', 'trophy-fill') }}
-  {{ render_stage(third_place, 'Third Place Match', 'award') }}
-  {{ render_stage(final, 'Final', 'star-fill') }}
+  {% macro bracket_round(matches, title) %}
+    <div class="wc-bracket-round">
+      <h3 class="wc-bracket-head">{{ title }}{% if matches %} <span class="schedule-stage-count">{{ matches|length }}</span>{% endif %}</h3>
+      <div class="wc-bracket-col">
+        {% for m in matches %}{{ ko_cell(m) }}{% endfor %}
+      </div>
+    </div>
+  {% endmacro %}
+
+  {% if r32_matches or r16_matches or qf_matches or sf_matches or final %}
+  <h2 class="section-heading mt-5 mb-3 animate-in" id="bracket">
+    <i class="bi bi-diagram-3 me-2"></i>Knockout Bracket
+  </h2>
+  <div class="wc-bracket">
+    {{ bracket_round(r32_matches, 'Round of 32') }}
+    {{ bracket_round(r16_matches, 'Round of 16') }}
+    {{ bracket_round(qf_matches, 'Quarterfinals') }}
+    {{ bracket_round(sf_matches, 'Semifinals') }}
+    {{ bracket_round(final, 'Final') }}
+  </div>
+  {% if third_place %}
+  <div class="wc-bracket-thirdplace">
+    <h3 class="wc-bracket-head">Third Place</h3>
+    {{ ko_cell(third_place[0]) }}
+  </div>
+  {% endif %}
+  {% endif %}
 
 </div>
 {% endblock %}
