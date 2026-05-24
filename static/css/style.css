@@ -4177,7 +4177,7 @@ body.game-worldcup .tier-card-5 .tier-card-header { background: linear-gradient(
   font-weight: 600;
   font-size: 1.08rem;
   letter-spacing: .01em;
-  color: var(--text-ink);
+  color: var(--text-primary);
 }
 .sched-fixture-side.home { justify-content: flex-end; }
 .sched-fixture-side.away { justify-content: flex-start; }
@@ -4288,7 +4288,7 @@ body.game-worldcup .tier-card-5 .tier-card-header { background: linear-gradient(
   color: var(--text-secondary);
 }
 .wc-ko-team + .wc-ko-team { border-top: 1px solid var(--border-light); }
-.wc-ko-cell.is-decided .wc-ko-team.is-winner { color: var(--text-ink); font-weight: 700; }
+.wc-ko-cell.is-decided .wc-ko-team.is-winner { color: var(--text-primary); font-weight: 700; }
 .wc-ko-flag { font-size: 1.05rem; line-height: 1; }
 .wc-ko-name {
   min-width: 0;
@@ -4379,13 +4379,13 @@ body.game-worldcup .tier-card-5 .tier-card-header { background: linear-gradient(
   text-transform: uppercase;
   text-decoration: none;
   color: var(--text-secondary);
-  background: var(--surface-muted, rgba(58, 29, 114, .06));
+  background: var(--bg-muted);
   border: 1px solid var(--border);
   border-radius: 22px;
   transition: background-color .15s ease, border-color .15s ease, color .15s ease, transform .15s ease;
 }
 .schedule-nav-pill:hover {
-  color: var(--text-ink);
+  color: var(--text-primary);
   background: var(--bg-muted);
   border-color: var(--game-primary);
   transform: translateY(-1px);

@@ -616,14 +616,19 @@ def schedule():
     # empty for anonymous viewers and for authenticated-but-unenrolled users.
     my_team_ids: set[int] = set()
     if current_user.is_authenticated:
-        enrollment = WorldCupEnrollment.query.filter_by(
-            user_id=current_user.id, season_year=SEASON_YEAR
-        ).first()
+        enrollment = db.session.execute(
+            select(WorldCupEnrollment).filter_by(
+                user_id=current_user.id, season_year=SEASON_YEAR
+            )
+        ).scalar_one_or_none()
         if enrollment:
-            my_team_ids = {
-                p.team_id for p in
-                WorldCupPick.query.filter_by(enrollment_id=enrollment.id).all()
-            }
+            my_team_ids = set(
+                db.session.execute(
+                    select(WorldCupPick.team_id).filter_by(
+                        enrollment_id=enrollment.id
+                    )
+                ).scalars().all()
+            )
 
     # S2.2.1 — group stage rendered by matchday (Central-Time date), not by
     # group letter. Match rows are sorted by match_number which interleaves the

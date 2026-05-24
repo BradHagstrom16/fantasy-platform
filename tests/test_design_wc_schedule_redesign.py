@@ -40,10 +40,15 @@ CSS = (ROOT / 'static' / 'css' / 'style.css').read_text()
 
 
 def _block(selector_regex: str):
-    """Return the declaration body of the first rule whose selector matches,
-    anchored at start-of-line. None if the rule is absent."""
-    m = re.compile(rf'^{selector_regex}\s*\{{([^}}]*)\}}', re.MULTILINE).search(CSS)
-    return m.group(1) if m else None
+    """Return the concatenated declaration bodies of EVERY rule whose selector
+    matches, anchored at start-of-line. Concatenating (rather than returning
+    only the first match) means a 'must not include property' assertion still
+    sees a property reintroduced by a later override rule. None if absent."""
+    bodies = [
+        m.group(1)
+        for m in re.finditer(rf'^{selector_regex}\s*\{{([^}}]*)\}}', CSS, re.MULTILINE)
+    ]
+    return '\n'.join(bodies) if bodies else None
 
 
 # ===========================================================================
@@ -55,10 +60,13 @@ def test_per_match_card_retired_from_css():
     collapsed to center) is fully retired. Its presence is the P0 dead-space
     regression; the matchday `.schedule-day` panel + `.sched-fixture-row` rows replace
     it. Anchored at start-of-line so any `.match-result-card...` rule trips."""
-    assert re.search(r'^\.match-result-card', CSS, re.MULTILINE) is None, (
-        "`.match-result-card` reappeared in style.css. The schedule redesign "
-        "retired the one-card-per-match layout (P0 dead-space fix); matches are "
-        "now `.sched-fixture-row` rows inside a `.schedule-day` panel."
+    # Match the selector at line start OR after a comma, so a grouped selector
+    # like `.foo, .match-result-card { ... }` also trips the lock.
+    assert re.search(r'(^|,)\s*\.match-result-card\b', CSS, re.MULTILINE) is None, (
+        "`.match-result-card` reappeared in style.css (alone or in a grouped "
+        "selector). The schedule redesign retired the one-card-per-match layout "
+        "(P0 dead-space fix); matches are now `.sched-fixture-row` rows inside a "
+        "`.schedule-day` panel."
     )
 
 
@@ -186,8 +194,13 @@ def test_roster_highlight_is_not_colour_alone():
         "`.sched-fixture-name.is-mine-team` styling missing."
     )
     block = _block(r'\.sched-fixture-name\.is-mine-team')
-    assert block and 'var(--wc-red)' in block, (
-        "Owned-team name must paint `--wc-red` (WC primary/current-user accent)."
+    # Require the `color` property specifically (negative lookbehind rejects
+    # `background-color:` / `border-color:`), so the lock can't false-pass on a
+    # tint that happens to use --wc-red elsewhere.
+    assert block and re.search(r'(?<!-)color:\s*var\(--wc-red\)', block), (
+        "Owned-team name must set `color: var(--wc-red)` directly (WC "
+        "primary/current-user accent), not merely reference it on another "
+        "property."
     )
     assert SCHEDULE.count('(your pick)') >= 2, (
         "The visually-hidden '(your pick)' marker must accompany the colour cue "
