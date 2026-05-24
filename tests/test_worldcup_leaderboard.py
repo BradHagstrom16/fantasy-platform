@@ -321,3 +321,130 @@ def test_leaderboard_route_still_returns_200_with_no_data(client, app):
     assert resp.status_code == 200
     assert b'The ledger awaits its first name.' in resp.data
     assert b'Lock your roster.' in resp.data
+
+
+# ── Impeccable 2026-05-24: state hero, points hierarchy, tied, inline delta ──
+
+def test_hero_pre_state_reads_picks_open(client, app):
+    """Pre-deadline (default): 'Picks Open' eyebrow; no live dot, no gold Final."""
+    with app.app_context():
+        u = _seed_user('alice')
+        _seed_enrollment(u.id, score=0.0)
+        db.session.commit()
+        resp = client.get('/worldcup/leaderboard')
+    assert resp.status_code == 200
+    assert b'Picks Open' in resp.data
+    assert b'leaderboard-live-dot' not in resp.data
+    assert b'wc-eyebrow-gold' not in resp.data
+    assert b'leaderboard-champion-tag' not in resp.data
+
+
+def test_hero_live_state_shows_live_dot(client, app, monkeypatch):
+    """Live state: paired live dot + 'Live' label (color is never the sole carrier)."""
+    monkeypatch.setattr('games.worldcup.routes.worldcup_state', lambda: 'live')
+    with app.app_context():
+        u = _seed_user('alice')
+        _seed_enrollment(u.id, score=12.0)
+        db.session.commit()
+        resp = client.get('/worldcup/leaderboard')
+    assert resp.status_code == 200
+    assert b'leaderboard-live-dot' in resp.data
+    assert b'Live \xc2\xb7 Tonight' in resp.data  # "Live · Tonight's Ledger" (· is U+00B7)
+    assert b'Picks Open' not in resp.data
+    assert b'leaderboard-champion-tag' not in resp.data
+
+
+def test_hero_post_state_crowns_pool_champion(client, app, monkeypatch):
+    """Post state: gold 'Final' eyebrow + 'takes the crown'; champion tag on the
+    tiebreaker-resolved top row ONLY (one row -> desktop + mobile = 2 marks)."""
+    monkeypatch.setattr('games.worldcup.routes.worldcup_state', lambda: 'post')
+    with app.app_context():
+        winner = _seed_user('winner')
+        runner = _seed_user('runner')
+        _seed_enrollment(winner.id, score=200.0)
+        _seed_enrollment(runner.id, score=120.0)
+        db.session.commit()
+        resp = client.get('/worldcup/leaderboard')
+    assert resp.status_code == 200
+    body = resp.data.decode()
+    assert 'wc-eyebrow-gold' in body
+    assert 'Final' in body
+    assert 'takes the crown' in body
+    # Exactly one crowned row, rendered in both desktop + mobile layouts.
+    assert body.count('leaderboard-champion-tag') == 2
+
+
+def test_desktop_points_carry_hierarchy_classes(client, app):
+    """Points become the focal numeral; rank demotes to a quiet ordinal."""
+    with app.app_context():
+        u = _seed_user('alice')
+        _seed_enrollment(u.id, score=42.0)
+        db.session.commit()
+        resp = client.get('/worldcup/leaderboard')
+    assert resp.status_code == 200
+    assert b'leaderboard-pts' in resp.data
+    assert b'leaderboard-rank-ord' in resp.data
+
+
+def test_tied_label_renders_for_shared_dense_rank(client, app, monkeypatch):
+    """Dense-rank ties say 'tied' out loud so three '#1' rows aren't ambiguous.
+
+    Gated to non-pre states: pre-deadline everyone sits at 0 and the label
+    would fire on every row, so it only carries signal once play starts.
+    """
+    monkeypatch.setattr('games.worldcup.routes.worldcup_state', lambda: 'live')
+    with app.app_context():
+        a, b = _seed_user('a'), _seed_user('b')
+        _seed_enrollment(a.id, score=50.0)
+        _seed_enrollment(b.id, score=50.0)  # tie at rank 1
+        db.session.commit()
+        resp = client.get('/worldcup/leaderboard')
+    assert resp.status_code == 200
+    assert b'leaderboard-tied' in resp.data
+
+
+def test_no_tied_label_when_all_scores_distinct(client, app, monkeypatch):
+    """No tie -> no 'tied' label (avoid crying wolf)."""
+    monkeypatch.setattr('games.worldcup.routes.worldcup_state', lambda: 'live')
+    with app.app_context():
+        a, b = _seed_user('a'), _seed_user('b')
+        _seed_enrollment(a.id, score=50.0)
+        _seed_enrollment(b.id, score=30.0)
+        db.session.commit()
+        resp = client.get('/worldcup/leaderboard')
+    assert resp.status_code == 200
+    assert b'leaderboard-tied' not in resp.data
+
+
+def test_tied_label_suppressed_pre_deadline(client, app):
+    """Pre-deadline (everyone at 0, all tied at rank 1) hides the label so it
+    doesn't fire on every row."""
+    with app.app_context():
+        a, b = _seed_user('a'), _seed_user('b')
+        _seed_enrollment(a.id, score=0.0)
+        _seed_enrollment(b.id, score=0.0)
+        db.session.commit()
+        resp = client.get('/worldcup/leaderboard')
+    assert resp.status_code == 200
+    assert b'leaderboard-tied' not in resp.data
+
+
+def test_points_delta_surfaces_inline_not_hover_only(client, app):
+    """Points-delta renders inline (.leaderboard-move-pts), reachable on touch +
+    keyboard, replacing the prior hover-only title= tooltip."""
+    with app.app_context():
+        u = _seed_user('alice')
+        e = _seed_enrollment(u.id, score=50.0)
+        today = _wc_today()
+        for i in range(8):  # open the >=7-day trend gate
+            _seed_snapshot(
+                enrollment_id=e.id,
+                captured_date=today - timedelta(days=i + 1),
+                rank=1,
+                total_score=10.0 + (7 - i) * 5.0,
+            )
+        db.session.commit()
+        resp = client.get('/worldcup/leaderboard')
+    assert resp.status_code == 200
+    assert b'leaderboard-move-pts' in resp.data
+    assert b'title="Points:' not in resp.data  # no hover-only delta anymore

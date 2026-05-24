@@ -2,16 +2,31 @@
 {% block title %}The Standings · 2026 World Cup Pool{% endblock %}
 
 {% block content %}
-{# ── Hero ── #}
+{# ── Hero ── eyebrow branches on tournament phase so a live night, a
+   finished tournament, and an open pre-deadline board never read alike. #}
 <div class="page-hero wc-hero-grad">
   <div class="hero-glow"></div>
   <div class="container">
-    <span class="wc-eyebrow">{% if deadline_passed %}Tonight's Ledger{% else %}Picks Open{% endif %}</span>
+    {% if tournament_state == 'post' %}
+    <span class="wc-eyebrow wc-eyebrow-gold">Final</span>
+    {% elif tournament_state == 'live' %}
+    <span class="wc-eyebrow leaderboard-live-eyebrow">
+      <span class="leaderboard-live-dot" aria-hidden="true"></span>Live · Tonight's Ledger
+    </span>
+    {% else %}
+    <span class="wc-eyebrow">Picks Open</span>
+    {% endif %}
     <h1 class="mb-1">The Standings</h1>
+    {% if tournament_state == 'post' and pool_champion %}
+    <p class="lead mb-0 text-muted-on-dark">
+      <strong class="leaderboard-hero-champion">{{ pool_champion }}</strong> takes the crown{% if champion_team %} · {{ champion_team.display_name }} world champions{% endif %}
+    </p>
+    {% else %}
     <p class="lead mb-0 text-muted-on-dark">
       <span class="wc-numeral">{{ total_players }}</span>
       player{{ 's' if total_players != 1 }}, 2026 FIFA World Cup
     </p>
+    {% endif %}
   </div>
 </div>
 
@@ -63,11 +78,21 @@
           <tbody>
             {% for item in ranked_enrollments %}
             {% set e = item.enrollment %}
-            <tr {% if current_user.is_authenticated and e.user_id == current_user.id %}class="row-current-user"{% endif %}>
-              <td class="fw-bold wc-numeral">{{ item.rank }}</td>
+            {% set is_me = current_user.is_authenticated and e.user_id == current_user.id %}
+            {% set is_champion = tournament_state == 'post' and loop.first %}
+            {# Leader red = competitive emphasis: only once play has started and
+               the leader actually has points (pre-deadline everyone sits at 0). #}
+            {% set is_leader = item.rank == 1 and tournament_state != 'pre' and e.total_score > 0 %}
+            {% set show_tied = item.tied and tournament_state != 'pre' %}
+            <tr class="{% if is_me %}row-current-user {% endif %}{% if is_leader %}is-leader {% endif %}{% if is_champion %}is-champion{% endif %}">
+              <td class="leaderboard-rank-cell">
+                <span class="wc-numeral leaderboard-rank-ord">{{ item.rank }}</span>
+                {% if show_tied %}<span class="leaderboard-tied" title="Tied on points">tied</span>{% endif %}
+              </td>
               <td>
-                <span class="me-1">{{ e.user.get_avatar() }}</span>
-                {% if current_user.is_authenticated and e.user_id == current_user.id %}
+                {% if is_champion %}<span class="leaderboard-champion-tag">Champion</span>{% endif %}
+                <span class="leaderboard-avatar">{{ e.user.get_avatar() }}</span>
+                {% if is_me %}
                 <a href="{{ url_for('worldcup.picks') }}" class="text-decoration-none fw-medium">
                   {{ e.get_display_name() }}
                 </a>
@@ -77,19 +102,19 @@
                 </a>
                 {% endif %}
               </td>
-              <td class="text-end fw-bold wc-numeral">{{ "%.1f"|format(e.total_score) }}</td>
+              <td class="text-end leaderboard-pts"><span class="wc-numeral">{{ "%.1f"|format(e.total_score) }}</span></td>
               {% set rd = rank_delta_by_enrollment.get(e.id) %}
               {% set pd = trend_by_enrollment.get(e.id) %}
-              {% set pd_title %}{% if pd is not none %}Points: {% if pd > 0 %}+{% endif %}{{ "%.1f"|format(pd) }}{% endif %}{% endset %}
+              {% set pts_delta %}{% if pd is not none and pd != 0 %}<span class="leaderboard-move-pts">{% if pd > 0 %}+{% endif %}{{ "%.1f"|format(pd) }} pts</span>{% endif %}{% endset %}
               <td class="text-end leaderboard-move">
                 {% if rd is none %}
                 <span class="rank-delta-pending text-muted" aria-label="Awaiting first matchday">Pending</span>
                 {% elif rd > 0 %}
-                <span class="rank-delta-up wc-numeral" aria-label="Up {{ rd }}"{% if pd is not none %} title="{{ pd_title }}"{% endif %}>&uarr;{{ rd }}</span>
+                <span class="rank-delta-up wc-numeral" aria-label="Up {{ rd }}">&uarr;{{ rd }}</span>{{ pts_delta }}
                 {% elif rd < 0 %}
-                <span class="rank-delta-down wc-numeral" aria-label="Down {{ -rd }}"{% if pd is not none %} title="{{ pd_title }}"{% endif %}>&darr;{{ -rd }}</span>
+                <span class="rank-delta-down wc-numeral" aria-label="Down {{ -rd }}, {% if pd is not none %}{{ '%.1f'|format(pd) }} points{% endif %}">&darr;{{ -rd }}</span>{{ pts_delta }}
                 {% else %}
-                <span class="rank-delta-even text-muted" aria-label="Even"{% if pd is not none %} title="{{ pd_title }}"{% endif %}>Even</span>
+                <span class="rank-delta-even text-muted" aria-label="Even">Even</span>{{ pts_delta }}
                 {% endif %}
               </td>
               {% if deadline_passed %}
@@ -110,30 +135,37 @@
     {% for item in ranked_enrollments %}
     {% set e = item.enrollment %}
     {% set is_me = current_user.is_authenticated and e.user_id == current_user.id %}
+    {% set is_champion = tournament_state == 'post' and loop.first %}
+    {% set is_leader = item.rank == 1 and tournament_state != 'pre' and e.total_score > 0 %}
+    {% set show_tied = item.tied and tournament_state != 'pre' %}
     {% set row_href = url_for('worldcup.picks') if is_me else url_for('worldcup.player_detail', enrollment_id=e.id) %}
-    <a href="{{ row_href }}" class="card border-0 mb-2 leaderboard-card leaderboard-card-link{% if is_me %} leaderboard-card-current{% endif %} animate-in">
+    <a href="{{ row_href }}" class="card border-0 mb-2 leaderboard-card leaderboard-card-link{% if is_me %} leaderboard-card-current{% endif %}{% if is_leader %} is-leader{% endif %}{% if is_champion %} is-champion{% endif %} animate-in">
       <div class="card-body p-3 d-flex align-items-center justify-content-between">
         <div class="d-flex align-items-center gap-3">
           <span class="fw-bold text-muted wc-numeral leaderboard-rank">{{ item.rank }}</span>
           <div>
-            <span class="me-1">{{ e.user.get_avatar() }}</span>
-            <span class="fw-medium d-block leaderboard-card-name">{{ e.get_display_name() }}</span>
+            {% if is_champion %}<span class="leaderboard-champion-tag">Champion</span>{% endif %}
+            <div class="d-flex align-items-center gap-1 leaderboard-card-nameline">
+              <span class="leaderboard-avatar">{{ e.user.get_avatar() }}</span>
+              <span class="fw-medium leaderboard-card-name">{{ e.get_display_name() }}</span>
+              {% if show_tied %}<span class="leaderboard-tied" title="Tied on points">tied</span>{% endif %}
+            </div>
             {% set rd = rank_delta_by_enrollment.get(e.id) %}
             {% set pd = trend_by_enrollment.get(e.id) %}
-            {% set pd_title %}{% if pd is not none %}Points: {% if pd > 0 %}+{% endif %}{{ "%.1f"|format(pd) }}{% endif %}{% endset %}
+            {% set pts_delta %}{% if pd is not none and pd != 0 and rd is not none %}<span class="leaderboard-move-pts">{% if pd > 0 %}+{% endif %}{{ "%.1f"|format(pd) }} pts</span>{% endif %}{% endset %}
             <small class="leaderboard-move-mobile">
               {% if rd is none %}
               <span class="rank-delta-pending text-muted">Move: Pending</span>
               {% elif rd > 0 %}
-              <span class="rank-delta-up"{% if pd is not none %} title="{{ pd_title }}"{% endif %}>Move: <span class="wc-numeral">&uarr;{{ rd }}</span></span>
+              <span class="rank-delta-up">Move: <span class="wc-numeral">&uarr;{{ rd }}</span></span>{{ pts_delta }}
               {% elif rd < 0 %}
-              <span class="rank-delta-down"{% if pd is not none %} title="{{ pd_title }}"{% endif %}>Move: <span class="wc-numeral">&darr;{{ -rd }}</span></span>
+              <span class="rank-delta-down">Move: <span class="wc-numeral">&darr;{{ -rd }}</span></span>{{ pts_delta }}
               {% else %}
-              <span class="rank-delta-even text-muted"{% if pd is not none %} title="{{ pd_title }}"{% endif %}>Move: Even</span>
+              <span class="rank-delta-even text-muted">Move: Even</span>{{ pts_delta }}
               {% endif %}
             </small>
             {% if deadline_passed and e.usa_goals_guess is not none %}
-            <small class="text-muted ms-2">TB: {{ e.usa_goals_guess }}</small>
+            <small class="text-muted d-block leaderboard-tb-mobile">Tiebreaker: {{ e.usa_goals_guess }}</small>
             {% endif %}
           </div>
         </div>
