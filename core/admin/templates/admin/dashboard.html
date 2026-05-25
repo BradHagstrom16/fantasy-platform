@@ -1,111 +1,47 @@
 {% extends "base.html" %}
 
-{% block title %}Admin Dashboard — Corrupt Commish Club{% endblock %}
+{% block title %}Admin Dashboard · Corrupt Commish Club{% endblock %}
 
 {% block content %}
-<div class="page-hero">
-    <div class="hero-glow"></div>
+<header class="admin-masthead">
     <div class="container">
         <span class="admin-eyebrow">The Commish&rsquo;s Desk</span>
-        <h1 class="admin-page-title"><i class="bi bi-gear-fill me-2"></i>Dashboard</h1>
-        <p class="lead mb-0">Platform management &amp; overview</p>
+        <h1 class="admin-page-title">Dashboard</h1>
+        <p class="admin-masthead-sub">
+            {{ total_users }} member{{ 's' if total_users != 1 }} ·
+            {{ active_games }} active league{{ 's' if active_games != 1 }} ·
+            {{ paid_users }} paid
+        </p>
     </div>
-</div>
+</header>
 
-<div class="container">
-    <!-- Stats Row -->
-    <div class="row g-4 mb-5">
-        <div class="col-6 col-md-3 animate-in stagger-1">
-            <div class="stat-block">
-                <div class="stat-value">{{ total_users }}</div>
-                <div class="stat-label">Total Users</div>
-            </div>
-        </div>
-        <div class="col-6 col-md-3 animate-in stagger-2">
-            <div class="stat-block">
-                <div class="stat-value">{{ active_games }}</div>
-                <div class="stat-label">Active Games</div>
-            </div>
-        </div>
-        <div class="col-6 col-md-3 animate-in stagger-3">
-            <div class="stat-block">
-                <div class="stat-value">{{ paid_users }}</div>
-                <div class="stat-label">Paid Users</div>
-            </div>
-        </div>
-        <div class="col-6 col-md-3 animate-in stagger-4">
-            <div class="stat-block">
-                <div class="stat-value">{{ games|length }}</div>
-                <div class="stat-label">Total Games</div>
-            </div>
-        </div>
+<div class="container pb-5">
+    <div class="admin-actions-row">
+        <a href="{{ url_for('admin.enrollments') }}" class="admin-action admin-action--primary animate-in stagger-1">
+            <i class="bi bi-person-plus-fill"></i>
+            <span class="admin-action-label">Enroll a Member</span>
+            <span class="admin-action-sub">Add someone to a live league</span>
+        </a>
+        <a href="{{ url_for('admin.users') }}" class="admin-action animate-in stagger-2">
+            <i class="bi bi-people-fill"></i>
+            <span class="admin-action-label">Manage Members</span>
+            <span class="admin-action-sub">Accounts, admin access, passwords</span>
+        </a>
     </div>
 
-    <!-- Management -->
-    <div class="mb-3">
-        <h2 class="section-heading">Management</h2>
-        <hr class="gold-rule" style="margin:0 0 1.5rem;">
-    </div>
-
-    <div class="row g-4 mb-5">
-        <div class="col-md-4 animate-in stagger-1">
-            <div class="card h-100">
-                <div class="card-body p-4">
-                    <div style="font-size:1.8rem;margin-bottom:.5rem;">👥</div>
-                    <h5 class="card-title mb-1">Users</h5>
-                    <p class="text-muted small mb-3">Manage accounts, toggle admin access, reset passwords.</p>
-                    <a href="{{ url_for('admin.users') }}" class="btn btn-primary btn-sm">
-                        Manage Users
-                    </a>
-                </div>
-            </div>
+    <h2 class="section-heading">The Leagues</h2>
+    <hr class="gold-rule gold-rule--left">
+    <div class="admin-league-list">
+        {% for game in games %}
+        <div class="admin-league-row animate-in stagger-{{ loop.index }}">
+            <span class="admin-league-game">{{ game.emoji }} {{ game.name }}</span>
+            <span class="admin-league-meta">{{ game.enrolled }} enrolled · {{ game.paid }} paid</span>
+            <span class="admin-league-actions">
+                <a href="{{ game.admin_url }}" class="btn btn-outline-primary btn-sm">Admin</a>
+                <a href="{{ game.payments_url }}" class="btn btn-outline-secondary btn-sm">Payments</a>
+            </span>
         </div>
-        <div class="col-md-4 animate-in stagger-2">
-            <div class="card h-100">
-                <div class="card-body p-4">
-                    <div style="font-size:1.8rem;margin-bottom:.5rem;">🎮</div>
-                    <h5 class="card-title mb-1">Game Admin Panels</h5>
-                    <p class="text-muted small mb-3">Jump to any game's admin dashboard.</p>
-                    <div class="d-flex flex-column gap-2">
-                        {% for game in games %}
-                        <a href="{{ game.admin_url }}" class="btn btn-outline-primary btn-sm text-start">
-                            {{ game.emoji }} {{ game.name }}
-                            <span class="badge bg-secondary ms-1">{{ game.enrolled }} enrolled</span>
-                        </a>
-                        {% endfor %}
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-4 animate-in stagger-3">
-            <div class="card h-100">
-                <div class="card-body p-4">
-                    <div style="font-size:1.8rem;margin-bottom:.5rem;">💰</div>
-                    <h5 class="card-title mb-1">Payments</h5>
-                    <p class="text-muted small mb-3">{{ paid_users }} paid across all games.</p>
-                    <div class="d-flex flex-column gap-2">
-                        {% for game in games %}
-                        <a href="{{ game.payments_url }}" class="btn btn-outline-primary btn-sm text-start">
-                            {{ game.emoji }} {{ game.name }}
-                            <span class="badge bg-success ms-1">{{ game.paid }} paid</span>
-                        </a>
-                        {% endfor %}
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-4 animate-in stagger-4">
-            <div class="card h-100">
-                <div class="card-body p-4">
-                    <div style="font-size:1.8rem;margin-bottom:.5rem;">🎫</div>
-                    <h5 class="card-title mb-1">Enrollments</h5>
-                    <p class="text-muted small mb-3">Add a user to a live league.</p>
-                    <a href="{{ url_for('admin.enrollments') }}" class="btn btn-primary btn-sm">
-                        Manage Enrollments
-                    </a>
-                </div>
-            </div>
-        </div>
+        {% endfor %}
     </div>
 </div>
 {% endblock %}
