@@ -7899,6 +7899,149 @@ a.roster-team-card:focus-visible {
   background: rgba(58, 29, 114, .05) !important;
 }
 
+/* === WC RULES — voice callout, optional matrix, line-length (impeccable critique 2026-05-25) === */
+
+/* Line-length: hold Newsreader body on the rules cards to the 65-75ch
+   editorial band (DESIGN.md Line-Length Rule). Tables are exempt; only the
+   card's own prose paragraphs and lists are capped. */
+.wc-rules-body .card-body > p,
+.wc-rules-body .card-body > ul {
+  max-width: 64ch;
+}
+
+/* Peak callout: the multiplier drama in one line. Gold here is the WC
+   quaternary ceremonial accent (champion / 350 = culmination); emphasis is
+   carried by Teko weight + size, never a hero-metric block. Full border +
+   gold top rule, no side-stripe. */
+.wc-rules-callout {
+  margin: 0 0 1.5rem;
+  padding: 1.25rem 1.35rem 1.15rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-top: 2px solid var(--gold);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+.wc-rules-callout p {
+  margin: 0;
+  max-width: 60ch;
+  font-family: var(--font-news);
+  font-size: 1.12rem;
+  line-height: 1.5;
+  color: var(--text-primary);
+}
+.wc-rules-callout .wc-rules-callout-num {
+  font-family: 'Teko', sans-serif;
+  font-weight: 700;
+  font-size: 1.7rem;
+  line-height: 1;
+  letter-spacing: .01em;
+  color: var(--gold-dark);
+  vertical-align: -.06em;
+}
+
+/* Optional-depth disclosure for the points matrix: casual readers skip it,
+   analysts expand. Summary is the WC red interactive accent; chevron rotates
+   on open. */
+.wc-rules-details { margin-top: .25rem; }
+.wc-rules-summary {
+  display: inline-flex;
+  align-items: center;
+  gap: .45rem;
+  min-height: 44px;
+  padding: .35rem .1rem;
+  cursor: pointer;
+  font-family: 'Teko', sans-serif;
+  font-weight: 500;
+  font-size: 1.02rem;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: var(--wc-red, #BF0A30);
+  list-style: none;
+}
+.wc-rules-summary::-webkit-details-marker { display: none; }
+.wc-rules-summary:focus-visible {
+  outline: 2px solid var(--gold-light);
+  outline-offset: 2px;
+  border-radius: var(--radius);
+}
+.wc-rules-summary-chev {
+  font-size: .85rem;
+  transition: transform .15s ease;
+}
+.wc-rules-details[open] .wc-rules-summary-chev { transform: rotate(90deg); }
+.wc-rules-details-body { margin-top: .75rem; }
+@media (prefers-reduced-motion: reduce) {
+  .wc-rules-summary-chev { transition: none; }
+}
+
+/* Matrix grouping: per-match / advancement / knockout sub-labels so the
+   confusable rows (winning a match vs winning the group) read as distinct
+   families. Spanning row, not a side-stripe. */
+.wc-points-matrix .wc-matrix-group-row th {
+  background: var(--bg-muted);
+  color: var(--text-secondary);
+  font-family: 'Teko', sans-serif;
+  font-weight: 500;
+  font-size: .82rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  text-align: left;
+  padding: .55rem .75rem .3rem;
+  border-bottom: 1px solid var(--border);
+}
+.wc-matrix-mult {
+  font-size: .78rem;
+  opacity: .82;
+  white-space: nowrap;
+}
+
+/* Sign-off: a competitive Tribune close so the page ends on a brand beat
+   rather than trailing off into edge-case housekeeping. Quiet divider,
+   italic Newsreader line, then the WC-red game CTA. */
+.wc-rules-signoff {
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border);
+  text-align: center;
+}
+.wc-rules-signoff p {
+  margin: 0 auto 1rem;
+  max-width: 48ch;
+  font-family: var(--font-news);
+  font-style: italic;
+  font-size: 1.1rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+/* Mobile lookup: pin the achievement label so it stays in view while the
+   tier columns scroll right (recognition over recall at 375px). Group-label
+   rows are excluded so their spanning sub-head scrolls with the table. */
+.wc-points-matrix thead th:first-child,
+.wc-points-matrix tbody tr:not(.wc-matrix-group-row) td:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+}
+.wc-points-matrix tbody tr:not(.wc-matrix-group-row) td:first-child {
+  background: var(--bg-card) !important;
+}
+.wc-points-matrix tbody tr.wc-champion-row td:first-child {
+  background: #F1EEF7 !important; /* purple .05 over white, flattened opaque for sticky occlusion */
+}
+.wc-points-matrix thead th:first-child {
+  z-index: 3;
+  background: var(--game-primary-dark);
+}
+/* Pinned-edge shadow: a soft purple-tinted lift on the sticky label column
+   so the tier columns reading "under" it at the scroll boundary is legible
+   as an intentional pin, not an occlusion glitch. */
+.wc-points-matrix thead th:first-child,
+.wc-points-matrix tbody tr:not(.wc-matrix-group-row) td:first-child {
+  box-shadow: 4px 0 6px -3px rgba(58, 29, 114, .22);
+}
+
 /* PI-5: Lift `.form-label` + `.form-text` off `--text-muted` (#8A849B,
    ~3.6:1 on white card) to `--text-secondary` (#5A5470, ~7.4:1) inside
    the World Cup game scope. Mirrors the S3.2.1 PI-2 pattern that lifted
