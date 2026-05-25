@@ -5423,6 +5423,103 @@ body.game-worldcup .tier-card-5 .tier-card-header { background: linear-gradient(
   margin-bottom: .15rem;
 }
 .wc-imp-row:hover { background: var(--bg-muted); }
+.wc-imp-empty {
+  font-family: 'Newsreader', Georgia, serif;
+  font-size: .95rem;
+  color: var(--text-secondary);
+  padding: .35rem .6rem .15rem;
+  margin: 0;
+}
+
+/* S-stats-redesign: editorial replacements for the retired Chart.js widgets. */
+
+/* Board — Group vs. Knockout split strip (replaces the Points Breakdown donut).
+   Navy = group structure, red = knockout competition (WC accent rank). */
+.wc-points-split {
+  display: flex;
+  height: 30px;
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--bg-muted);
+  margin: .25rem 0 .15rem;
+}
+.wc-points-split-seg {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Teko', sans-serif;
+  font-size: .82rem;
+  font-weight: 600;
+  letter-spacing: .04em;
+  color: #fff;
+  min-width: 0;
+  transition: width .55s cubic-bezier(.4,0,.2,1);
+}
+.wc-points-split-g { background: var(--game-primary); }
+.wc-points-split-k { background: var(--game-accent); }
+.wc-points-split-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  font-family: 'Teko', sans-serif;
+  font-size: .82rem;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+.wc-points-key {
+  display: inline-block;
+  width: 9px; height: 9px;
+  border-radius: 2px;
+  margin-right: .4rem;
+  vertical-align: baseline;
+}
+.wc-points-key-g { background: var(--game-primary); }
+.wc-points-key-k { background: var(--game-accent); }
+
+/* By Tier — Newsreader verdict line under the ledger (distills the retired
+   avg-bar + total-donut). */
+.wc-stats-ledger-note {
+  font-family: 'Newsreader', Georgia, serif;
+  font-size: 1rem;
+  line-height: 1.55;
+  color: var(--text-secondary);
+  max-width: 64ch;
+  margin: -.5rem 0 1.5rem;
+}
+.wc-stats-ledger-note:empty { display: none; }
+
+/* By Tier — Pick Distribution disclosure (native <details> as a lead card). */
+.wc-disclosure > .wc-disclosure-summary {
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+}
+.wc-disclosure > .wc-disclosure-summary::-webkit-details-marker { display: none; }
+.wc-disclosure-hint {
+  font-family: 'Teko', sans-serif;
+  font-size: .82rem;
+  font-weight: 500;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--wc-red);
+  flex-shrink: 0;
+}
+.wc-disclosure-hint::before {
+  content: '\25B8';  /* ▸ right-pointing triangle (collapsed) */
+  display: inline-block;
+  margin-right: .4rem;
+  transition: transform .2s ease;
+}
+.wc-disclosure[open] .wc-disclosure-hint::before {
+  transform: rotate(90deg);  /* ▾ points down when expanded */
+}
+.wc-disclosure-hint::after { content: 'Show'; }
+.wc-disclosure[open] .wc-disclosure-hint::after { content: 'Hide'; }
 
 @media (max-width: 767px) {
   .wc-stats-pills { top: 86px; }
