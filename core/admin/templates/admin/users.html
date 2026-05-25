@@ -1,17 +1,17 @@
 {% extends "base.html" %}
 
-{% block title %}User Management — Corrupt Commish Club{% endblock %}
+{% block title %}User Management · Corrupt Commish Club{% endblock %}
 
 {% block content %}
-<div class="page-hero">
+<header class="admin-masthead">
     <div class="container">
         <span class="admin-eyebrow">The Commish&rsquo;s Desk</span>
-        <h1 class="admin-page-title"><i class="bi bi-people-fill me-2"></i>the Club</h1>
-        <p class="lead mb-0">{{ users|length }} registered user{{ 's' if users|length != 1 }}</p>
+        <h1 class="admin-page-title">the Club</h1>
+        <p class="admin-masthead-sub">{{ users|length }} registered member{{ 's' if users|length != 1 }}</p>
     </div>
-</div>
+</header>
 
-<div class="container">
+<div class="container pb-5">
     <div class="card shadow-sm">
         <div class="card-header d-flex align-items-center justify-content-between py-3">
             <span><i class="bi bi-table me-2"></i>All Users</span>
@@ -41,7 +41,7 @@
                         <td>
                             <span class="fw-semibold">{{ user.username }}</span>
                         </td>
-                        <td class="text-muted">{{ user.display_name or '—' }}</td>
+                        <td class="text-muted">{{ user.display_name or '·' }}</td>
                         <td class="text-muted small">{{ user.email }}</td>
                         <td>
                             {% if user.is_admin %}

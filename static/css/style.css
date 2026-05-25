@@ -282,6 +282,127 @@ body.auth-page .alert-success {
   margin-bottom: 1.5rem;
 }
 
+/* === CCC ADMIN MASTHEAD (bone-canvas pressroom header) ===
+   Admin pages open on the bone page substrate, not the dark .page-hero.
+   The purple .admin-page-title + gold .admin-eyebrow were calibrated for
+   bone (purple-700 on bone clears AA at ~9:1); the dark hero made the H1
+   purple-on-purple. This is the masthead they were built for. */
+.admin-masthead {
+  padding: 2.5rem 0 1.25rem;
+  margin-bottom: 2rem;
+  border-bottom: 2px solid var(--gold);
+}
+.admin-masthead .admin-page-title {
+  margin-bottom: .4rem;
+}
+.admin-masthead-sub {
+  font-family: 'Newsreader', Georgia, serif;
+  font-size: 1.05rem;
+  color: var(--text-secondary);
+  margin-bottom: 0;
+}
+
+/* === CCC ADMIN DASHBOARD === */
+.admin-actions-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  margin-bottom: 2.75rem;
+}
+.admin-action {
+  display: block;
+  padding: 1.3rem 1.45rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  text-decoration: none;
+  transition: transform .25s cubic-bezier(.34,1.56,.64,1), box-shadow .25s;
+}
+.admin-action:hover,
+.admin-action:focus-visible {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-md);
+}
+.admin-action i {
+  display: block;
+  font-size: 1.55rem;
+  line-height: 1;
+  margin-bottom: .55rem;
+  color: var(--gold-dark);
+}
+.admin-action-label {
+  display: block;
+  font-family: 'Teko', sans-serif;
+  font-size: 1.45rem;
+  font-weight: 600;
+  line-height: 1.05;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--text-primary);
+}
+.admin-action-sub {
+  display: block;
+  margin-top: .15rem;
+  font-family: 'Newsreader', Georgia, serif;
+  font-size: .92rem;
+  color: var(--text-secondary);
+}
+.admin-action--primary {
+  background: var(--platform-primary);
+  border-color: var(--platform-primary);
+}
+.admin-action--primary i { color: var(--gold-light); }
+.admin-action--primary .admin-action-label { color: var(--text-on-dark); }
+.admin-action--primary .admin-action-sub { color: rgba(243, 239, 230, .74); }
+
+.admin-league-list {
+  display: flex;
+  flex-direction: column;
+  gap: .75rem;
+}
+.admin-league-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .35rem 1rem;
+  padding: 1rem 1.25rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+.admin-league-game {
+  flex: 1 1 12rem;
+  font-family: 'Teko', sans-serif;
+  font-size: 1.35rem;
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: .03em;
+  text-transform: uppercase;
+  color: var(--text-primary);
+}
+.admin-league-meta {
+  font-family: 'Newsreader', Georgia, serif;
+  font-size: .9rem;
+  color: var(--text-secondary);
+}
+.admin-league-actions {
+  display: flex;
+  gap: .5rem;
+  margin-left: auto;
+}
+
+/* Left-aligned variant of the gold-rule pill (under section headings),
+   replacing per-template inline margin overrides. */
+.gold-rule.gold-rule--left {
+  margin: 0 0 1.5rem;
+}
+
+@media (min-width: 768px) {
+  .admin-actions-row { grid-template-columns: 1fr 1fr; }
+}
+
 /* ── 2. Game-Specific Overrides ──────────────────────────── */
 
 /* Golf overrides */
