@@ -22,7 +22,7 @@ from games.worldcup.constants import (
     SEASON_YEAR, ENTRY_FEE, TOURNAMENT_DEADLINE_UTC,
     TIER_PICK_COUNTS, TOTAL_PICKS, WORLDCUP_TZ,
     KNOCKOUT_POINTS, ADVANCE_GROUP_WINNER, ADVANCE_RUNNER_UP, ADVANCE_BEST_THIRD,
-    ADVANCEMENT_METHODS,
+    ADVANCEMENT_METHODS, GROUP_WIN, GROUP_DRAW, GROUP_LOSS,
 )
 from games.worldcup.services.scoring import (
     process_match_result,
@@ -710,9 +710,40 @@ def groups():
 @worldcup_bp.route('/rules')
 def rules():
     """How it works / scoring rules."""
-    from games.worldcup.world_cup_countries import TIERS
+    from games.worldcup.world_cup_countries import TIERS, teams_by_tier
+
+    # Single source of truth: every points value below is read from
+    # constants.py, so the reference page can never drift from the engine.
+    scoring_matrix = [
+        ("Per match", [
+            ("Win a match", GROUP_WIN),
+            ("Draw a match", GROUP_DRAW),
+        ]),
+        ("Group advancement", [
+            ("Group winner", ADVANCE_GROUP_WINNER),
+            ("Runner-up", ADVANCE_RUNNER_UP),
+            ("Best 3rd", ADVANCE_BEST_THIRD),
+        ]),
+        ("Knockouts", [
+            ("Win Round of 32", KNOCKOUT_POINTS['R32']),
+            ("Win Round of 16", KNOCKOUT_POINTS['R16']),
+            ("Win Quarterfinal", KNOCKOUT_POINTS['QF']),
+            ("Win Semifinal", KNOCKOUT_POINTS['SF']),
+            ("Win 3rd-place match", KNOCKOUT_POINTS['third_place']),
+            ("Runner-up (lost final)", KNOCKOUT_POINTS['runner_up']),
+            ("Champion", KNOCKOUT_POINTS['champion']),
+        ]),
+    ]
+    tier_multipliers = [TIERS[n]['multiplier'] for n in range(1, 6)]
+
     return render_template('worldcup/rules.html',
         tiers=TIERS,
+        tier_teams=teams_by_tier(),
+        tier_multipliers=tier_multipliers,
+        scoring_matrix=scoring_matrix,
+        group_win=GROUP_WIN,
+        group_draw=GROUP_DRAW,
+        group_loss=GROUP_LOSS,
         knockout_points=KNOCKOUT_POINTS,
         advance_group_winner=ADVANCE_GROUP_WINNER,
         advance_runner_up=ADVANCE_RUNNER_UP,

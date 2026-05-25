@@ -594,6 +594,15 @@ TIERS = {
 TOTAL_PICKS = sum(t["picks"] for t in TIERS.values())  # 9
 
 
+def teams_by_tier():
+    """Map each tier number to its member team display names, drawn from the
+    canonical TEAMS data so rules/reference surfaces never hardcode rosters."""
+    grouped = {tier_num: [] for tier_num in TIERS}
+    for team in TEAMS.values():
+        grouped[team["tier"]].append(team["display_name"])
+    return grouped
+
+
 # =============================================================================
 # GROUP ASSIGNMENTS — 2026 FIFA World Cup Draw (Dec 5, 2025)
 # =============================================================================
