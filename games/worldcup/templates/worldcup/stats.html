@@ -84,7 +84,7 @@ if (window.matchMedia('(prefers-color-scheme: dark)').matches)
         <div class="wc-stat-card is-lead">
           <div class="wc-card-head">
             <span><span class="wc-eyebrow">The lead</span>Top Scorers</span>
-            <span style="display:flex;gap:.6rem;align-items:center;font-family:'Teko',sans-serif;font-size:.72rem;color:var(--text-secondary);">
+            <span style="display:flex;gap:.6rem;align-items:center;font-family:'Teko',sans-serif;font-size:.75rem;color:var(--text-secondary);">
               <span style="display:flex;align-items:center;gap:.3rem;"><span style="width:10px;height:10px;border-radius:2px;background:var(--game-primary);display:inline-block;" aria-hidden="true"></span>Group</span>
               <span style="display:flex;align-items:center;gap:.3rem;"><span style="width:10px;height:10px;border-radius:2px;background:var(--game-accent);display:inline-block;" aria-hidden="true"></span>Knockout</span>
             </span>
@@ -94,9 +94,9 @@ if (window.matchMedia('(prefers-color-scheme: dark)').matches)
       </div>
       <div class="col-xl-4">
         <div class="wc-stat-card">
-          <div class="wc-card-head"><span>Points Breakdown</span></div>
-          <div style="position:relative;height:260px;"><canvas id="ch-accum"></canvas></div>
-          <div class="mt-3" id="accum-summary" style="font-family:'Teko',sans-serif;font-size:.8rem;color:var(--text-secondary);letter-spacing:.04em;text-transform:uppercase;"></div>
+          <div class="wc-card-head"><span>Points Breakdown</span><span style="font-family:'Teko',sans-serif;font-size:.75rem;color:var(--text-secondary);">Group vs. Knockout</span></div>
+          <div id="points-split" class="wc-points-split" role="img" aria-label="Share of points awarded in group stage versus knockout rounds"></div>
+          <div class="mt-3" id="accum-summary" style="font-family:'Teko',sans-serif;font-size:.82rem;color:var(--text-secondary);letter-spacing:.04em;text-transform:uppercase;"></div>
         </div>
       </div>
     </div>
@@ -112,7 +112,7 @@ if (window.matchMedia('(prefers-color-scheme: dark)').matches)
         <div class="wc-stat-card">
           <div class="wc-card-head">
             <span>Most Popular Picks</span>
-            <span style="font-family:'Teko',sans-serif;font-size:.72rem;color:var(--text-secondary);">% of players</span>
+            <span style="font-family:'Teko',sans-serif;font-size:.75rem;color:var(--text-secondary);">% of players</span>
           </div>
           <div id="bars-popular"></div>
         </div>
@@ -121,7 +121,7 @@ if (window.matchMedia('(prefers-color-scheme: dark)').matches)
         <div class="wc-stat-card">
           <div class="wc-card-head">
             <span>Least Popular Picks</span>
-            <span style="font-family:'Teko',sans-serif;font-size:.72rem;color:var(--text-secondary);">Hidden gems?</span>
+            <span style="font-family:'Teko',sans-serif;font-size:.75rem;color:var(--text-secondary);">Hidden gems?</span>
           </div>
           <div id="bars-unpopular"></div>
         </div>
@@ -133,7 +133,7 @@ if (window.matchMedia('(prefers-color-scheme: dark)').matches)
         <div class="wc-stat-card is-lead">
           <div class="wc-card-head">
             <span><span class="wc-eyebrow">The map</span>Popularity vs. Score (bubble = # of players)</span>
-            <span style="display:flex;gap:.75rem;font-family:'Teko',sans-serif;font-size:.7rem;letter-spacing:.04em;text-transform:uppercase;color:var(--text-secondary);">
+            <span style="display:flex;gap:.75rem;font-family:'Teko',sans-serif;font-size:.75rem;letter-spacing:.04em;text-transform:uppercase;color:var(--text-secondary);">
               <span>High pick % + high score = <strong style="color:#125F36;">carrying</strong></span>
               <span>Low pick % + high score = <strong style="color:var(--platform-accent);">gem</strong></span>
             </span>
@@ -168,31 +168,29 @@ if (window.matchMedia('(prefers-color-scheme: dark)').matches)
       <div class="wc-stats-ledger-row" id="tier-ledger-row" role="list"></div>
     </div>
 
-    <div class="row g-4 mb-4">
-      <div class="col-lg-7">
-        <div class="wc-stat-card">
-          <div class="wc-card-head"><span>Avg Multiplied Score by Tier</span></div>
-          <div style="position:relative;height:260px;"><canvas id="ch-tier-bar"></canvas></div>
-        </div>
-      </div>
-      <div class="col-lg-5">
-        <div class="wc-stat-card">
-          <div class="wc-card-head"><span>Total Points by Tier</span></div>
-          <div style="position:relative;height:260px;"><canvas id="ch-tier-donut"></canvas></div>
-        </div>
-      </div>
-    </div>
+    {# S-stats-redesign: the bar + donut charts retired. The ledger carries
+       per-tier average at a glance; this Newsreader verdict answers "did the
+       ladder pay off?" in editorial prose (best-return tier + highest-volume
+       tier), distilling what the two charts showed. #}
+    <p id="tier-verdict" class="wc-stats-ledger-note"></p>
 
-    <div class="wc-stat-card is-lead mb-4">
-      <div class="wc-card-head"><span><span class="wc-eyebrow">The cross-section</span>Pick Distribution by Tier</span></div>
-      <div class="row g-4">
+    {# Pick distribution is the analyst's deep cut; collapse it behind a native
+       <details> disclosure so the casual reader isn't met with ~48 rows.
+       Keeps .wc-stat-card.is-lead + the "The cross-section" eyebrow (the lead
+       card of this tab when expanded). #}
+    <details class="wc-stat-card is-lead mb-4 wc-disclosure">
+      <summary class="wc-card-head wc-disclosure-summary">
+        <span><span class="wc-eyebrow">The cross-section</span>Pick Distribution by Tier</span>
+        <span class="wc-disclosure-hint" aria-hidden="true"></span>
+      </summary>
+      <div class="row g-4 mt-1">
         <div class="col-md-6"><div id="bars-t1"></div></div>
         <div class="col-md-6"><div id="bars-t2"></div></div>
         <div class="col-12"><div id="bars-t3"></div></div>
         <div class="col-md-6"><div id="bars-t4"></div></div>
         <div class="col-md-6"><div id="bars-t5"></div></div>
       </div>
-    </div>
+    </details>
 
     <h3 style="font-family:'Teko',sans-serif;font-size:1.3rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-primary);margin:1.25rem 0 1rem;">Tier Pairs</h3>
     <div class="row g-4">
@@ -218,8 +216,11 @@ const KPIS = {{ kpis | tojson }};
 
 // ── TOKEN-DRIVEN PALETTE ──────────────────────────────────────
 // All chart hex literals removed — read CSS custom properties at init
-// so the chart palette tracks the WC token system.
-const _css = getComputedStyle(document.documentElement);
+// so the chart palette tracks the WC token system. Read from <body>, not
+// <html>: the --wc-tier1..5 tokens are scoped under body.game-worldcup, so
+// they don't cascade up to documentElement (:root tokens like --wc-navy
+// still resolve here because body inherits them).
+const _css = getComputedStyle(document.body);
 const _tok = (name) => _css.getPropertyValue(name).trim();
 
 const TC = {
@@ -231,6 +232,7 @@ const TC = {
 };
 const WC_NAVY = _tok('--wc-navy');
 const WC_RED = _tok('--wc-red');
+const WC_GOLD = _tok('--gold-light') || '#F2D36B';  // "your pick" ring on the scatter
 // S2.4.1 PI-1: Chart axis labels use --text-secondary; --text-muted on bone
 // canvas (~3.7:1) is sub-AA at chart-tick font sizes (11-12px).
 const TICK_COLOR = _tok('--text-secondary') || '#5A5470';
@@ -262,7 +264,7 @@ const STAR_HL = '<span aria-hidden="true" style="color:var(--platform-accent)">�
 function pbarHtml(c, maxPct) {
   const hl = MY_PICKS.includes(c.name);
   const pct = Math.round(c.pick_pct);
-  const fill = Math.max(2, (pct / maxPct) * 100);
+  const fill = Math.min(100, Math.max(2, (pct / maxPct) * 100));
   return `<div class="wc-pick-bar${hl ? ' my-pick' : ''}">
     <div class="wc-pick-bar-label">
       <span>${c.flag_emoji} ${c.name} ${hl ? STAR_HL + ' ' : ''}${tb(c.tier)}</span>
@@ -284,7 +286,7 @@ function renderProgressBar() {
     {id:'R32',     label:'R32',         flex:1, doneStyle:`background:var(--game-primary-light);color:#fff;`},
     {id:'R16',     label:'R16',         flex:1, doneStyle:`background:var(--game-accent);color:#fff;`},
     {id:'QF',      label:'QF',          flex:1, doneStyle:`background:#B45309;color:#fff;`},
-    {id:'SF',      label:'SF',          flex:1, doneStyle:`background:rgba(212,168,32,.9);color:#fff;`},
+    {id:'SF',      label:'SF',          flex:1, doneStyle:`background:rgba(212,168,32,.9);color:var(--platform-primary-dark);`},
     {id:'final',   label:'Final',       flex:1, doneStyle:`background:var(--platform-accent);color:var(--platform-primary-dark);font-weight:800;`},
   ];
   const phaseOrder = ['pre_tournament','group_stage','knockout','completed'];
@@ -320,7 +322,7 @@ function renderProgressBar() {
     // Same precedence as `status` / `glyph` above — `cur` wins over `done`
     // at the overlap points (group@idx=1, R32@idx=2) so the visual matches
     // the aria-label.
-    if (cur) style += `background:rgba(212,168,32,.2);color:var(--platform-accent);border:2px solid var(--platform-accent);font-weight:700;`;
+    if (cur) style += `background:rgba(212,168,32,.2);color:var(--platform-primary-dark);border:2px solid var(--platform-accent);font-weight:700;`;
     else if (done) style += p.doneStyle;
     else style += `background:var(--bg-muted);color:var(--text-secondary);`;
     return `<div role="listitem" aria-label="${p.label}, ${status}" style="${style}">${p.label}${glyph}</div>`;
@@ -368,7 +370,7 @@ function renderScoring() {
           <div class="wc-sbar-g" style="width:${gf}%;"></div>
           <div class="wc-sbar-k" style="width:${kf}%;"></div>
         </div>
-        <div style="font-family:'Teko',sans-serif;font-size:.7rem;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.04em;margin-top:.1rem;">
+        <div style="font-family:'Teko',sans-serif;font-size:.75rem;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.04em;margin-top:.1rem;">
           Grp: ${c.group_score.toFixed(1)} · KO: ${c.ko_score.toFixed(1)}
         </div>
       </div>
@@ -394,6 +396,25 @@ function renderTierLedger() {
       <span class="wc-stats-ledger-cell-value">${avg}</span>
     </div>`;
   }).join('');
+
+  // Editorial verdict line — distills the retired avg-bar + total-donut into
+  // one Newsreader sentence: which tier returned the most per side, and (if
+  // different) which hauled the most total on sheer volume.
+  const verdict = document.getElementById('tier-verdict');
+  if (!verdict) return;
+  const rows = [1,2,3,4,5].map(t => ({ t, ...(TIER_STATS[t] || { avg_score: 0, total_score: 0 }) }));
+  const scored = rows.filter(r => r.total_score > 0);
+  if (!scored.length) {
+    verdict.textContent = 'No tier has returned points yet. The ladder is set; the matches will settle it.';
+    return;
+  }
+  const bestAvg = scored.reduce((a, b) => (b.avg_score > a.avg_score ? b : a));
+  const bestTot = scored.reduce((a, b) => (b.total_score > a.total_score ? b : a));
+  let s = `The ×${TM[bestAvg.t]} ${TN[bestAvg.t]} lead the ladder on return, averaging ${bestAvg.avg_score.toFixed(1)} points a side.`;
+  if (bestTot.t !== bestAvg.t) {
+    s += ` Tier ${bestTot.t} hauled the most total (${bestTot.total_score.toFixed(0)}) on sheer volume.`;
+  }
+  verdict.textContent = s;
 }
 
 // ── FIELD: IMPACT LISTS ───────────────────────────────────────
@@ -405,27 +426,29 @@ function renderImpact() {
     .map(c => ({...c, impact: c.pick_count * c.total_score}))
     .sort((a,b) => b.impact - a.impact);
 
-  document.getElementById('help-list').innerHTML = byImpact.slice(0, 5).map(c => `
+  const helpRows = byImpact.slice(0, 5);
+  document.getElementById('help-list').innerHTML = helpRows.length ? helpRows.map(c => `
     <div class="wc-imp-row">
       <div><span style="font-family:'Teko',sans-serif;font-weight:600;">${c.flag_emoji} ${c.name}</span> ${tbl(c.tier)}</div>
       <div style="text-align:right;">
         <div class="wc-combo-count">${Math.round(c.pick_pct)}% · ${c.total_score.toFixed(1)}pts</div>
-        <div style="font-family:'Teko',sans-serif;font-size:.72rem;color:var(--text-secondary);">Impact: ${c.impact.toFixed(0)}</div>
+        <div style="font-family:'Teko',sans-serif;font-size:.75rem;color:var(--text-secondary);">Picks × points: ${c.impact.toFixed(0)}</div>
       </div>
-    </div>`).join('');
+    </div>`).join('') : `<p class="wc-imp-empty">No nation is carrying the field yet. Points begin at the first whistle.</p>`;
 
   const byDisappoint = COUNTRY_STATS
     .filter(c => c.pick_count >= 4)
     .map(c => ({...c, ratio: c.total_score / c.pick_count}))
     .sort((a,b) => a.ratio - b.ratio);
 
-  document.getElementById('hurt-list').innerHTML = byDisappoint.slice(0, 5).map(c => `
+  const hurtRows = byDisappoint.slice(0, 5);
+  document.getElementById('hurt-list').innerHTML = hurtRows.length ? hurtRows.map(c => `
     <div class="wc-imp-row">
       <div><span style="font-family:'Teko',sans-serif;font-weight:600;">${c.flag_emoji} ${c.name}</span> ${tbl(c.tier)}</div>
       <div style="text-align:right;">
         <div class="wc-combo-count" style="color:var(--game-accent);">${Math.round(c.pick_pct)}% · ${c.total_score.toFixed(1)}pts</div>
       </div>
-    </div>`).join('');
+    </div>`).join('') : `<p class="wc-imp-empty">No widely backed pick has dragged a roster down, yet.</p>`;
 }
 
 // ── BY TIER: COMBOS ───────────────────────────────────────────
@@ -447,8 +470,8 @@ function renderCombos() {
           ${hl ? '<span aria-hidden="true" style="color:var(--platform-accent);font-family:\'Teko\',sans-serif;font-size:.8rem;">★ Your picks</span><span class="visually-hidden">your picks</span>' : ''}
         </div>
         <div style="text-align:right;">
-          <div class="wc-combo-count">${combo.count} players</div>
-          <div style="font-family:'Teko',sans-serif;font-size:.7rem;color:var(--text-secondary);">${combo.pct.toFixed(0)}% of field</div>
+          <div class="wc-combo-count">${combo.count} player${combo.count !== 1 ? 's' : ''}</div>
+          <div style="font-family:'Teko',sans-serif;font-size:.75rem;color:var(--text-secondary);">${combo.pct.toFixed(0)}% of field</div>
         </div>
       </div>
       <div style="height:3px;background:var(--bg-muted);border-radius:2px;overflow:hidden;margin:0 .6rem .4rem;">
@@ -466,109 +489,50 @@ function renderCombos() {
 const chartsInitialized = new Set();
 let charts = {};
 
-function initScoringCharts() {
+// ── BOARD: POINTS SPLIT (editorial, replaces the retired donut) ───────
+// A single navy/red two-segment strip + the group/KO/total ledger lines.
+// Navy = group, red = knockout (the WC accent rank: navy structure, red
+// competition). No Chart.js — the scatter is the page's one signature chart.
+function renderPointsSplit() {
   const totalGroup = COUNTRY_STATS.reduce((s,c) => s + c.group_score, 0);
   const totalKO = COUNTRY_STATS.reduce((s,c) => s + c.ko_score, 0);
-  const totalAwarded = totalGroup + totalKO;
+  const total = totalGroup + totalKO;
+  const gPct = total > 0 ? (totalGroup / total * 100) : 0;
+  const kPct = total > 0 ? (totalKO / total * 100) : 0;
 
-  charts.accum = new Chart(document.getElementById('ch-accum'), {
-    type: 'doughnut',
-    data: {
-      labels: ['Group Stage', 'Knockout Rounds'],
-      datasets: [{
-        data: [totalGroup, totalKO],
-        backgroundColor: [WC_NAVY, WC_RED],
-        borderWidth: 0,
-        hoverOffset: 4,
-      }],
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      cutout: '70%',
-      plugins: {
-        legend: {position:'bottom',labels:{font:{size:12},color:TICK_COLOR,padding:14,boxWidth:12}},
-        tooltip: {callbacks:{label:ctx=>` ${ctx.label}: ${ctx.parsed.toFixed(1)} pts`}},
-      },
-    },
-  });
+  const split = document.getElementById('points-split');
+  split.innerHTML = total > 0
+    ? `<div class="wc-points-split-seg wc-points-split-g" style="width:${gPct}%;">${gPct >= 12 ? Math.round(gPct) + '%' : ''}</div>` +
+      `<div class="wc-points-split-seg wc-points-split-k" style="width:${kPct}%;">${kPct >= 12 ? Math.round(kPct) + '%' : ''}</div>`
+    : `<div class="wc-points-split-empty">Awaiting the first whistle</div>`;
 
   document.getElementById('accum-summary').innerHTML = `
-    <div class="d-flex justify-content-between mb-1"><span>Group Stage</span><strong style="color:var(--game-primary);">${totalGroup.toFixed(1)} pts</strong></div>
-    <div class="d-flex justify-content-between mb-1"><span>Knockout Rounds</span><strong style="color:var(--game-accent);">${totalKO.toFixed(1)} pts</strong></div>
+    <div class="d-flex justify-content-between mb-1"><span><span class="wc-points-key wc-points-key-g" aria-hidden="true"></span>Group Stage</span><strong style="color:var(--game-primary);">${totalGroup.toFixed(1)} pts</strong></div>
+    <div class="d-flex justify-content-between mb-1"><span><span class="wc-points-key wc-points-key-k" aria-hidden="true"></span>Knockout Rounds</span><strong style="color:var(--game-accent);">${totalKO.toFixed(1)} pts</strong></div>
     <div class="d-flex justify-content-between pt-2" style="border-top:1px solid var(--border);">
-      <span>Total Awarded</span><strong style="color:var(--text-primary);">${totalAwarded.toFixed(1)} pts</strong>
+      <span>Total Awarded</span><strong style="color:var(--text-primary);">${total.toFixed(1)} pts</strong>
     </div>`;
 }
 
-function initTierCharts() {
-  const tierAvgs = [1,2,3,4,5].map(t => {
-    const ts = TIER_STATS[t];
-    return ts ? ts.avg_score : 0;
-  });
-  charts.tierBar = new Chart(document.getElementById('ch-tier-bar'), {
-    type: 'bar',
-    data: {
-      labels: ['T1 ×1','T2 ×1.5','T3 ×2.5','T4 ×4','T5 ×7'],
-      datasets: [{
-        label: 'Avg Score',
-        data: tierAvgs,
-        backgroundColor: [TC[1],TC[2],TC[3],TC[4],TC[5]],
-        borderRadius: 5,
-        borderWidth: 0,
-      }],
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: {display:false},
-        tooltip: {callbacks:{label:ctx=>` ${ctx.parsed.y.toFixed(1)} avg pts`}},
-      },
-      scales: {
-        x: {grid:{display:false},ticks:{font:{size:12},color:TICK_COLOR}},
-        y: {grid:{color:GRID_COLOR},ticks:{font:{size:11},color:TICK_COLOR}},
-      },
-    },
-  });
-
-  const tierTotals = [1,2,3,4,5].map(t => TIER_STATS[t]?.total_score || 0);
-  charts.tierDonut = new Chart(document.getElementById('ch-tier-donut'), {
-    type: 'doughnut',
-    data: {
-      labels: ['T1 Favorites','T2 Contenders','T3 Dark Horses','T4 Underdogs','T5 Wildcards'],
-      datasets: [{
-        data: tierTotals,
-        backgroundColor: [TC[1],TC[2],TC[3],TC[4],TC[5]],
-        borderWidth: 0,
-        hoverOffset: 5,
-      }],
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      cutout: '62%',
-      plugins: {
-        legend: {position:'bottom',labels:{font:{size:11},padding:10,boxWidth:11,color:TICK_COLOR}},
-        tooltip: {callbacks:{label:ctx=>` ${ctx.label}: ${ctx.parsed.toFixed(1)} pts`}},
-      },
-    },
-  });
-}
-
 function initImpactCharts() {
-  const datasets = [1,2,3,4,5].map(t => ({
-    label: `Tier ${t}`,
-    data: COUNTRY_STATS.filter(c => c.tier === t && c.pick_count > 0).map(c => ({
-      x: c.pick_pct,
-      y: c.total_score,
-      r: Math.max(5, Math.sqrt(c.pick_count) * 3.2),
-      name: c.name,
-    })),
-    backgroundColor: TC[t] + 'BB',  // BB = ~73% alpha; tier colors via TC token lookup
-    borderColor: TC[t],
-    borderWidth: 1.5,
-  }));
+  // Per-point gold ring marks the viewer's own picks (parity with the ★ in
+  // the lists/bars), so the one signature chart still tells a personal story.
+  const datasets = [1,2,3,4,5].map(t => {
+    const pts = COUNTRY_STATS.filter(c => c.tier === t && c.pick_count > 0);
+    return {
+      label: `Tier ${t}`,
+      data: pts.map(c => ({
+        x: c.pick_pct,
+        y: c.total_score,
+        r: Math.max(5, Math.sqrt(c.pick_count) * 3.2),
+        name: c.name,
+        mine: MY_PICKS.includes(c.name),
+      })),
+      backgroundColor: TC[t] + 'BB',  // BB = ~73% alpha; tier colors via TC token lookup
+      borderColor: pts.map(c => MY_PICKS.includes(c.name) ? WC_GOLD : TC[t]),
+      borderWidth: pts.map(c => MY_PICKS.includes(c.name) ? 3 : 1.5),
+    };
+  });
 
   charts.scatter = new Chart(document.getElementById('ch-scatter'), {
     type: 'bubble',
@@ -578,7 +542,7 @@ function initImpactCharts() {
       maintainAspectRatio: false,
       plugins: {
         legend: {position:'right',labels:{font:{size:12},padding:12,boxWidth:11,color:TICK_COLOR}},
-        tooltip: {callbacks:{label:ctx=>` ${ctx.raw.name}: ${ctx.raw.x.toFixed(0)}% picked · ${ctx.raw.y.toFixed(1)} pts`}},
+        tooltip: {callbacks:{label:ctx=>` ${ctx.raw.name}: ${ctx.raw.x.toFixed(0)}% picked · ${ctx.raw.y.toFixed(1)} pts${ctx.raw.mine ? ' · your pick' : ''}`}},
       },
       scales: {
         x: {
@@ -607,18 +571,19 @@ function switchTab(id) {
   document.querySelectorAll('.wc-stats-tab-btn').forEach((btn, i) => {
     btn.classList.toggle('active', TAB_IDS[i] === id);
   });
+  // The scatter (The Field) is the only Chart.js chart left; init it lazily
+  // on first reveal. Board + By Tier are pure DOM (rendered at load).
   setTimeout(() => {
-    if (id === 'board' && !chartsInitialized.has('board')) {
-      chartsInitialized.add('board'); initScoringCharts();
-    }
-    if (id === 'tiers' && !chartsInitialized.has('tiers')) {
-      chartsInitialized.add('tiers'); initTierCharts();
-    }
     if (id === 'field' && !chartsInitialized.has('field')) {
       chartsInitialized.add('field'); initImpactCharts();
     }
   }, 40);
-  window.scrollTo({top: 0, behavior: 'instant'});
+  // Only realign to the tab bar when it has scrolled out of view — don't yank
+  // a returning reader who's already parked near the pills.
+  const pills = document.querySelector('.wc-stats-pills');
+  if (pills && pills.getBoundingClientRect().top < 0) {
+    pills.scrollIntoView({behavior: 'instant', block: 'start'});
+  }
   try { localStorage.setItem('wc_stats_tab_v2', id); } catch(e) {}
 }
 
@@ -629,12 +594,7 @@ renderScoring();
 renderTierLedger();
 renderImpact();
 renderCombos();
-
-// Board is the default tab — kick its chart init now so the donut renders without a switch.
-if (!chartsInitialized.has('board')) {
-  chartsInitialized.add('board');
-  initScoringCharts();
-}
+renderPointsSplit();
 
 try {
   // wc_stats_tab_v2 invalidates stale 'overview'/'selection'/etc. values from
