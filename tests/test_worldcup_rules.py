@@ -27,6 +27,7 @@ RULES_TPL = ROOT / 'games' / 'worldcup' / 'templates' / 'worldcup' / 'rules.html
 
 @pytest.fixture
 def app():
+    """Testing app context backed by a fresh in-memory schema."""
     app = create_app('testing')
     with app.app_context():
         db.create_all()
@@ -37,17 +38,20 @@ def app():
 
 @pytest.fixture
 def client(app):
+    """Flask test client bound to the testing app."""
     return app.test_client()
 
 
 @pytest.fixture(scope='module')
 def rules_source() -> str:
+    """Raw rules.html template source for static-content assertions."""
     return RULES_TPL.read_text()
 
 
 # ---------- teams_by_tier derives from canonical data ----------
 
 def test_teams_by_tier_covers_every_team_once():
+    """Every team appears exactly once across the tier grouping."""
     grouped = teams_by_tier()
     flat = [name for names in grouped.values() for name in names]
     assert len(flat) == len(TEAMS)
@@ -55,6 +59,7 @@ def test_teams_by_tier_covers_every_team_once():
 
 
 def test_teams_by_tier_membership_matches_team_records():
+    """Each tier's members match the tier recorded on the team data."""
     grouped = teams_by_tier()
     for tier_num in TIERS:
         expected = {t['display_name'] for t in TEAMS.values() if t['tier'] == tier_num}

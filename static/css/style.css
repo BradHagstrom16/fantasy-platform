@@ -8017,29 +8017,30 @@ a.roster-team-card:focus-visible {
 
 /* Mobile lookup: pin the achievement label so it stays in view while the
    tier columns scroll right (recognition over recall at 375px). Group-label
-   rows are excluded so their spanning sub-head scrolls with the table. */
-.wc-points-matrix thead th:first-child,
-.wc-points-matrix tbody tr:not(.wc-matrix-group-row) td:first-child {
-  position: sticky;
-  left: 0;
-  z-index: 2;
-}
-.wc-points-matrix tbody tr:not(.wc-matrix-group-row) td:first-child {
-  background: var(--bg-card) !important;
-}
-.wc-points-matrix tbody tr.wc-champion-row td:first-child {
-  background: #F1EEF7 !important; /* purple .05 over white, flattened opaque for sticky occlusion */
-}
-.wc-points-matrix thead th:first-child {
-  z-index: 3;
-  background: var(--game-primary-dark);
-}
-/* Pinned-edge shadow: a soft purple-tinted lift on the sticky label column
-   so the tier columns reading "under" it at the scroll boundary is legible
-   as an intentional pin, not an occlusion glitch. */
-.wc-points-matrix thead th:first-child,
-.wc-points-matrix tbody tr:not(.wc-matrix-group-row) td:first-child {
-  box-shadow: 4px 0 6px -3px rgba(58, 29, 114, .22);
+   rows are excluded so their spanning sub-head scrolls with the table.
+   Scoped below the md breakpoint: at >=768px the 6-column matrix fits its
+   card with no horizontal scroll, so sticky is inert and the pinned-edge
+   shadow would otherwise paint an unwanted vertical line on desktop. */
+@media (max-width: 767.98px) {
+  .wc-points-matrix thead th:first-child,
+  .wc-points-matrix tbody tr:not(.wc-matrix-group-row) td:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 2;
+    /* Soft purple-tinted lift so columns reading "under" the pinned label at
+       the scroll boundary look intentional, not like an occlusion glitch. */
+    box-shadow: 4px 0 6px -3px rgba(58, 29, 114, .22);
+  }
+  .wc-points-matrix tbody tr:not(.wc-matrix-group-row) td:first-child {
+    background: var(--bg-card) !important;
+  }
+  .wc-points-matrix tbody tr.wc-champion-row td:first-child {
+    background: var(--sticky-cell-bg) !important;
+  }
+  .wc-points-matrix thead th:first-child {
+    z-index: 3;
+    background: var(--game-primary-dark);
+  }
 }
 
 /* PI-5: Lift `.form-label` + `.form-text` off `--text-muted` (#8A849B,

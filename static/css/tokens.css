@@ -42,6 +42,10 @@
   --live-red:      #E63946;
   --live-green:    #64DBA0;
 
+  /* Opaque flatten of the champion-row tint (purple .05 over white) so a
+     sticky table cell can occlude content scrolling beneath it. */
+  --sticky-cell-bg: #F1EEF7;
+
   --font-teko: 'Teko', sans-serif;
   --font-news: 'Newsreader', Georgia, serif;
 
