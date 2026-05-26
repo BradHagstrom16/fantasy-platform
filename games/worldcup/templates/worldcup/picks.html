@@ -6,7 +6,7 @@
   <div class="hero-glow"></div>
   <div class="container">
     <span class="wc-eyebrow wc-eyebrow-red">Roster · 9 nations</span>
-    <h1>{% if deadline_passed %}The Oath is sealed{% elif show_edit_form and has_picks %}Amend the Oath{% elif show_edit_form %}Submit Your Picks{% else %}Sealed. Still amendable.{% endif %}</h1>
+    <h1>{% if deadline_passed %}The Oath is sealed{% elif show_edit_form and has_picks %}Amend the Oath{% elif show_edit_form %}Cast Your Nine{% else %}Sealed. Still amendable.{% endif %}</h1>
     <p class="lead mb-0">
       {% if deadline_passed %}
         Picks are locked. The tournament is underway.
@@ -116,7 +116,7 @@
                 <small>&times;{{ "%g"|format(pick.team.multiplier) }}</small>
                 {% endif %}
               {% else %}
-                <span class="wc-numeral wc-numeral--lg">&times;{{ "%g"|format(pick.team.multiplier) }}</span>
+                <span class="wc-numeral wc-numeral--lg wc-mult-mag wc-mult-mag-{{ pick.tier }}">&times;{{ "%g"|format(pick.team.multiplier) }}</span>
               {% endif %}
             </div>
           </a>
@@ -418,6 +418,27 @@
     btn.disabled = !canSubmit;
     if (mobileBtn) mobileBtn.disabled = !canSubmit;
     if (mobileCount) mobileCount.textContent = totalPicks;
+
+    // State-aware CTA label: a disabled "Seal the Oath" left users guessing
+    // what was still owed (the dominant pre-completion state). Name the gap —
+    // picks first, then the tiebreak — and only show the check + seal copy
+    // once the roster is actually sealable.
+    const remaining = TOTAL_REQUIRED - totalPicks;
+    let label, mobileLabel;
+    if (remaining > 0) {
+      label = 'Pick ' + remaining + ' more';
+      mobileLabel = 'Pick ' + remaining;
+    } else if (!goalsOk) {
+      label = 'Set the tiebreak';
+      mobileLabel = 'Tiebreak';
+    } else {
+      label = 'Seal the Oath';
+      mobileLabel = 'Seal';
+    }
+    const seal = '<i class="bi bi-check-lg me-2" aria-hidden="true"></i>';
+    const sealM = '<i class="bi bi-check-lg me-1" aria-hidden="true"></i>';
+    btn.innerHTML = (canSubmit ? seal : '') + label;
+    if (mobileBtn) mobileBtn.innerHTML = (canSubmit ? sealM : '') + mobileLabel;
   };
 
   // Clear all — bulk deselect (faster than unpicking 9 cards one by one).

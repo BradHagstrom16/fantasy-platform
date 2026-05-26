@@ -49,7 +49,7 @@
                 {% if event.occurred_on %}{{ event.occurred_on.strftime('%b %-d') }}{% endif %}
               </span>
               <span class="pick-event-desc">{{ event.label }}</span>
-              <span class="pick-event-pts wc-numeral {% if event.base_points >= 0 %}text-success{% else %}text-danger{% endif %}">
+              <span class="pick-event-pts wc-numeral {% if event.base_points >= 0 %}pick-event-pts--pos{% else %}pick-event-pts--neg{% endif %}">
                 {{ "+%g"|format(event.base_points) if event.base_points >= 0 else "%g"|format(event.base_points) }}
               </span>
             </li>
