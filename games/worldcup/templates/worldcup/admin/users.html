@@ -73,11 +73,12 @@
 
 {# Password-reset modals (kept outside the table for valid markup) #}
 {% for enrollment in enrollments %}
-<div class="modal fade" id="resetModal{{ enrollment.user_id }}" tabindex="-1" aria-hidden="true">
+<div class="modal fade" id="resetModal{{ enrollment.user_id }}" tabindex="-1"
+     aria-labelledby="resetModalLabel{{ enrollment.user_id }}" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h2 class="modal-title">Reset password &middot; {{ enrollment.user.username }}</h2>
+                <h2 class="modal-title" id="resetModalLabel{{ enrollment.user_id }}">Reset password &middot; {{ enrollment.user.username }}</h2>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <form method="POST" action="{{ url_for('worldcup.admin_reset_password', user_id=enrollment.user_id) }}">

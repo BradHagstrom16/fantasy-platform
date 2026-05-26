@@ -57,6 +57,18 @@ from games.worldcup.services.state import worldcup_hub_state
 from games.worldcup.services.home_context import build_worldcup_home_context
 
 
+# Round-robin: each group of 4 teams plays 6 matches.
+GROUP_MATCH_COUNT = 6
+
+
+def _group_is_complete(group_matches):
+    """True when the full group round-robin is present and every match is final."""
+    return (
+        len(group_matches) == GROUP_MATCH_COUNT
+        and all(m.is_completed for m in group_matches)
+    )
+
+
 # ============================================================================
 # Decorators
 # ============================================================================
@@ -820,7 +832,7 @@ def admin_dashboard():
     groups_needing_advancement = []
     for letter in 'ABCDEFGHIJKL':
         group_matches = WorldCupMatch.query.filter_by(stage='group', group_letter=letter).all()
-        all_complete = all(m.is_completed for m in group_matches) and len(group_matches) == 6
+        all_complete = _group_is_complete(group_matches)
         if all_complete:
             group_teams = WorldCupTeam.query.filter_by(group_letter=letter).all()
             any_unset = any(t.advancement_method is None and not t.is_eliminated for t in group_teams)
@@ -986,7 +998,7 @@ def admin_advancement():
             WorldCupTeam.group_wins.desc(),
         ).all()
 
-        all_complete = all(m.is_completed for m in group_matches) and len(group_matches) == 6
+        all_complete = _group_is_complete(group_matches)
         advancement_confirmed = all(
             t.advancement_method is not None or t.is_eliminated
             for t in group_teams

@@ -78,13 +78,13 @@
 
                 <div class="row g-3 align-items-end">
                     <div class="col-5">
-                        <label class="form-label">{{ match.home_team.display_name }} Score</label>
-                        <input type="number" class="form-control form-control-lg text-center" name="home_score" min="0" required>
+                        <label class="form-label" for="home_score">{{ match.home_team.display_name }} Score</label>
+                        <input type="number" class="form-control form-control-lg text-center" id="home_score" name="home_score" min="0" required>
                     </div>
                     <div class="col-2 text-center"><span class="adm-vs">&ndash;</span></div>
                     <div class="col-5">
-                        <label class="form-label">{{ match.away_team.display_name }} Score</label>
-                        <input type="number" class="form-control form-control-lg text-center" name="away_score" min="0" required>
+                        <label class="form-label" for="away_score">{{ match.away_team.display_name }} Score</label>
+                        <input type="number" class="form-control form-control-lg text-center" id="away_score" name="away_score" min="0" required>
                     </div>
                 </div>
 

@@ -87,6 +87,10 @@ document.querySelectorAll('.payment-toggle').forEach(function(toggle) {
         var isPaid = this.checked;
         var toggleEl = this;
 
+        // Serialize per-toggle: lock while the request is in flight so a rapid
+        // re-toggle can't fire a second POST and apply an out-of-order response.
+        toggleEl.disabled = true;
+
         fetch('{{ url_for("worldcup.admin_update_payment", user_id=0) }}'.replace('/0', '/' + userId), {
             method: 'POST',
             headers: {
@@ -110,6 +114,9 @@ document.querySelectorAll('.payment-toggle').forEach(function(toggle) {
         .catch(function() {
             alert('Error updating payment status');
             toggleEl.checked = !isPaid;
+        })
+        .finally(function() {
+            toggleEl.disabled = false;
         });
     });
 });

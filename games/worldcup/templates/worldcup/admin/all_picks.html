@@ -44,7 +44,7 @@
                     {% set rank = loop.index %}
                     <tr>
                         <td>{{ rank }}</td>
-                        <td><span class="adm-name" style="font-size:1.05rem">{{ enrollment.get_display_name() }}</span></td>
+                        <td><span class="leaderboard-avatar" aria-hidden="true">{{ enrollment.user.get_avatar() }}</span><span class="adm-name" style="font-size:1.05rem">{{ enrollment.get_display_name() }}</span></td>
                         <td class="text-center">
                             {% if enrollment.picks_submitted %}
                                 <span class="adm-tag adm-tag--yes">Yes</span>
