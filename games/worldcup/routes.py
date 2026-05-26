@@ -124,6 +124,7 @@ def inject_worldcup_globals():
         'tournament_phase': _derive_tournament_phase(),
         'worldcup_enrollment': worldcup_enrollment,
         'format_ct': _format_ct,
+        'stage_label': stage_label,
     }
 
 
@@ -819,7 +820,7 @@ def admin_dashboard():
     groups_needing_advancement = []
     for letter in 'ABCDEFGHIJKL':
         group_matches = WorldCupMatch.query.filter_by(stage='group', group_letter=letter).all()
-        all_complete = all(m.is_completed for m in group_matches) and len(group_matches) == 3
+        all_complete = all(m.is_completed for m in group_matches) and len(group_matches) == 6
         if all_complete:
             group_teams = WorldCupTeam.query.filter_by(group_letter=letter).all()
             any_unset = any(t.advancement_method is None and not t.is_eliminated for t in group_teams)
@@ -985,7 +986,7 @@ def admin_advancement():
             WorldCupTeam.group_wins.desc(),
         ).all()
 
-        all_complete = all(m.is_completed for m in group_matches) and len(group_matches) == 3
+        all_complete = all(m.is_completed for m in group_matches) and len(group_matches) == 6
         advancement_confirmed = all(
             t.advancement_method is not None or t.is_eliminated
             for t in group_teams

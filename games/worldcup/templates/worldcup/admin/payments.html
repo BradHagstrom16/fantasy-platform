@@ -1,78 +1,69 @@
 {% extends "base.html" %}
-{% block title %}Payment Management — World Cup Admin{% endblock %}
+{% block title %}Payments · World Cup Admin{% endblock %}
 
 {% block content %}
-<div class="container mt-4">
-    <nav aria-label="breadcrumb">
-        <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="{{ url_for('worldcup.admin_dashboard') }}">Admin</a></li>
-            <li class="breadcrumb-item active">Payments</li>
-        </ol>
-    </nav>
+<header class="admin-masthead">
+    <div class="container">
+        <a href="{{ url_for('worldcup.admin_dashboard') }}" class="adm-back">&larr; Tournament Control</a>
+        <span class="admin-eyebrow">World Cup &middot; The Commish&rsquo;s Desk</span>
+        <h1 class="admin-page-title">Payments</h1>
+        <p class="admin-masthead-sub">
+            {{ paid_count }} of {{ total_enrolled }} have settled the tab &middot; {{ unpaid_count }} still owe.
+        </p>
+    </div>
+</header>
 
-    <h2>Payment Management</h2>
-
-    <div class="row">
-        <div class="col-md-8">
-            <div class="alert alert-info">
-                <strong>Pool Status:</strong>
-                {{ paid_count }} of {{ total_enrolled }} enrolled users have paid
-                ({{ unpaid_count }} still owe)
-            </div>
+<div class="container pb-5">
+    <div class="adm-summary mb-4" style="grid-template-columns:repeat(3,1fr)">
+        <div class="adm-summary-item">
+            <span class="adm-summary-val">${{ total_collected }}</span>
+            <span class="adm-summary-label">Collected (${{ entry_fee }} entry)</span>
         </div>
-        <div class="col-md-4">
-            <div class="card text-center">
-                <div class="card-body">
-                    <h5 class="card-title">Total Collected</h5>
-                    <h2 class="text-success">${{ total_collected }}</h2>
-                    <small class="text-muted">Based on ${{ entry_fee }} entry fee</small>
-                </div>
-            </div>
+        <div class="adm-summary-item">
+            <span class="adm-summary-val">{{ paid_count }}</span>
+            <span class="adm-summary-label">Paid</span>
+        </div>
+        <div class="adm-summary-item {% if unpaid_count > 0 %}is-alert{% endif %}">
+            <span class="adm-summary-val">{{ unpaid_count }}</span>
+            <span class="adm-summary-label">Still owe</span>
         </div>
     </div>
 
-    <div class="card mt-3">
-        <div class="card-header"><h4 class="mb-0">User Payment Status</h4></div>
+    <div class="card">
         <div class="card-body p-0">
             <div class="table-responsive">
-            <table class="table mb-0">
+            <table class="table mb-0 align-middle">
                 <thead>
                     <tr>
-                        <th>Username</th>
-                        <th>Email</th>
-                        <th>Picks</th>
-                        <th>Payment Status</th>
-                        <th>Quick Update</th>
+                        <th>Member</th>
+                        <th>Status</th>
+                        <th class="text-end">Mark Paid</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for enrollment in enrollments %}
-                    <tr class="{% if not enrollment.has_paid %}table-warning{% endif %}">
+                    <tr>
                         <td>
-                            <strong>{{ enrollment.get_display_name() }}</strong>
-                            {% if enrollment.is_admin %}
-                                <span class="badge bg-primary">Admin</span>
-                            {% endif %}
-                        </td>
-                        <td>{{ enrollment.user.email }}</td>
-                        <td>
-                            {% if enrollment.picks_submitted %}
-                                <span class="badge bg-success">Yes</span>
-                            {% else %}
-                                <span class="badge bg-warning text-dark">No</span>
-                            {% endif %}
+                            <span class="adm-name">{{ enrollment.get_display_name() }}</span>
+                            {% if enrollment.is_admin %}<span class="adm-tag adm-tag--muted">Admin</span>{% endif %}
+                            <span class="adm-sub">{{ enrollment.user.email }}</span>
                         </td>
                         <td>
-                            {% if enrollment.has_paid %}
-                                <span class="badge bg-success">PAID</span>
-                            {% else %}
-                                <span class="badge bg-warning text-dark">UNPAID</span>
-                            {% endif %}
+                            <span class="adm-tags">
+                                {% if enrollment.picks_submitted %}
+                                    <span class="adm-tag adm-tag--yes">Sealed</span>
+                                {% else %}
+                                    <span class="adm-tag adm-tag--no">No picks</span>
+                                {% endif %}
+                                <span class="adm-tag js-pay-status {% if enrollment.has_paid %}adm-tag--win{% else %}adm-tag--out{% endif %}">
+                                    {% if enrollment.has_paid %}Paid{% else %}Unpaid{% endif %}
+                                </span>
+                            </span>
                         </td>
-                        <td>
-                            <div class="form-check form-switch">
-                                <input class="form-check-input payment-toggle"
-                                       type="checkbox"
+                        <td class="text-end">
+                            <div class="form-check form-switch d-inline-block">
+                                <input class="form-check-input payment-toggle" type="checkbox" role="switch"
+                                       aria-label="Mark {{ enrollment.get_display_name() }} paid"
                                        data-user-id="{{ enrollment.user_id }}"
                                        data-username="{{ enrollment.get_display_name() }}"
                                        {% if enrollment.has_paid %}checked{% endif %}>
@@ -84,10 +75,6 @@
             </table>
             </div>
         </div>
-    </div>
-
-    <div class="mt-3">
-        <a href="{{ url_for('worldcup.admin_dashboard') }}" class="btn btn-secondary">&larr; Back to Dashboard</a>
     </div>
 </div>
 {% endblock %}
@@ -111,17 +98,10 @@ document.querySelectorAll('.payment-toggle').forEach(function(toggle) {
         .then(function(response) { return response.json(); })
         .then(function(data) {
             if (data.success) {
-                var row = toggleEl.closest('tr');
-                var badge = row.querySelector('td:nth-child(4) .badge');
-                if (isPaid) {
-                    row.classList.remove('table-warning');
-                    badge.className = 'badge bg-success';
-                    badge.textContent = 'PAID';
-                } else {
-                    row.classList.add('table-warning');
-                    badge.className = 'badge bg-warning text-dark';
-                    badge.textContent = 'UNPAID';
-                }
+                var badge = toggleEl.closest('tr').querySelector('.js-pay-status');
+                badge.classList.toggle('adm-tag--win', isPaid);
+                badge.classList.toggle('adm-tag--out', !isPaid);
+                badge.textContent = isPaid ? 'Paid' : 'Unpaid';
             } else {
                 alert('Failed to update payment status');
                 toggleEl.checked = !isPaid;

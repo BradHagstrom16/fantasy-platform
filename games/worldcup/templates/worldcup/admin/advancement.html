@@ -1,35 +1,53 @@
 {% extends "base.html" %}
-{% block title %}Group Advancement — World Cup Admin{% endblock %}
+{% block title %}Group Advancement · World Cup Admin{% endblock %}
+
+{% macro team_status(team) -%}
+  {% if team.advancement_method == 'group_winner' %}
+    <span class="adm-tag adm-tag--win">Winner</span>
+  {% elif team.advancement_method == 'runner_up' %}
+    <span class="adm-tag adm-tag--up">Runner-up</span>
+  {% elif team.advancement_method == 'best_third' %}
+    <span class="adm-tag adm-tag--third">Best 3rd</span>
+  {% elif team.is_eliminated %}
+    <span class="adm-tag adm-tag--out">Eliminated</span>
+  {% else %}
+    <span class="text-muted">&mdash;</span>
+  {% endif %}
+{%- endmacro %}
 
 {% block content %}
-<div class="container mt-4">
-    <nav aria-label="breadcrumb">
-        <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="{{ url_for('worldcup.admin_dashboard') }}">Admin</a></li>
-            <li class="breadcrumb-item active">Group Advancement</li>
-        </ol>
-    </nav>
+<header class="admin-masthead">
+    <div class="container">
+        <a href="{{ url_for('worldcup.admin_dashboard') }}" class="adm-back">&larr; Tournament Control</a>
+        <span class="admin-eyebrow">World Cup &middot; The Commish&rsquo;s Desk</span>
+        <h1 class="admin-page-title">Group Advancement</h1>
+        <p class="admin-masthead-sub">
+            Confirm who advances once all 6 group matches are played. Re-open a group anytime to adjust the best 3rd-place call.
+        </p>
+    </div>
+</header>
 
-    <h2>Group Advancement</h2>
-    <p class="text-muted">Confirm which teams advance from each group after all 3 group matches are complete. You can re-visit groups to update best 3rd-place status.</p>
-
+<div class="container pb-5">
     <div class="row">
         {% for group in groups_status %}
+        {% set needs_action = group.all_complete and not group.advancement_confirmed %}
         <div class="col-lg-6 mb-4">
-            <div class="card {% if group.all_complete and not group.advancement_confirmed %}border-warning{% endif %}">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">Group {{ group.letter }}</h5>
-                    {% if not group.all_complete %}
-                        <span class="badge bg-secondary">Matches Incomplete</span>
-                    {% elif group.advancement_confirmed %}
-                        <span class="badge bg-success">Confirmed</span>
-                    {% else %}
-                        <span class="badge bg-warning text-dark">Needs Advancement</span>
-                    {% endif %}
+            <div class="card h-100 {% if needs_action %}adm-ready{% endif %}">
+                <div class="card-header">
+                    <div class="adm-card-head">
+                        <h3>Group {{ group.letter }}</h3>
+                        {% if not group.all_complete %}
+                            <span class="adm-tag adm-tag--muted">Matches Incomplete</span>
+                        {% elif group.advancement_confirmed %}
+                            <span class="adm-tag adm-tag--win">Confirmed</span>
+                        {% else %}
+                            <span class="adm-tag adm-tag--no">Needs Advancement</span>
+                        {% endif %}
+                    </div>
                 </div>
                 <div class="card-body">
-                    {# Group standings table #}
-                    <table class="table table-sm mb-3">
+                    <div class="table-responsive">
+                    <table class="table mb-3">
                         <thead>
                             <tr>
                                 <th>Team</th>
@@ -44,41 +62,29 @@
                             {% for team in group.teams %}
                             <tr>
                                 <td>
-                                    <strong>{{ team.display_name }}</strong>
-                                    <small class="text-muted">{{ team.fifa_code }}</small>
+                                    <span class="adm-name" style="font-size:1.05rem">{{ team.display_name }}</span>
+                                    <span class="adm-tag adm-tag--code">{{ team.fifa_code }}</span>
                                 </td>
                                 <td class="text-center">{{ team.group_wins }}</td>
                                 <td class="text-center">{{ team.group_draws }}</td>
                                 <td class="text-center">{{ team.group_losses }}</td>
                                 <td class="text-center"><strong>{{ team.group_wins * 3 + team.group_draws }}</strong></td>
-                                <td>
-                                    {% if team.advancement_method == 'group_winner' %}
-                                        <span class="badge bg-success">Winner</span>
-                                    {% elif team.advancement_method == 'runner_up' %}
-                                        <span class="badge bg-primary">Runner-up</span>
-                                    {% elif team.advancement_method == 'best_third' %}
-                                        <span class="badge bg-info">Best 3rd</span>
-                                    {% elif team.is_eliminated %}
-                                        <span class="badge bg-danger">Eliminated</span>
-                                    {% else %}
-                                        <span class="text-muted">—</span>
-                                    {% endif %}
-                                </td>
+                                <td>{{ team_status(team) }}</td>
                             </tr>
                             {% endfor %}
                         </tbody>
                     </table>
+                    </div>
 
                     {% if group.all_complete %}
-                    {# Show advancement form — both for unconfirmed and for re-editing confirmed groups #}
                     <form method="POST" action="{{ url_for('worldcup.admin_advancement') }}"
                           id="advancement-form-{{ group.letter }}"
                           onsubmit="return confirm('Confirm advancement for Group {{ group.letter }}? This will update scores.');">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <input type="hidden" name="group_letter" value="{{ group.letter }}">
 
-                        <div class="mb-2">
-                            <label class="form-label fw-bold">Group Winner</label>
+                        <div class="mb-3">
+                            <label class="form-label">Group Winner</label>
                             {% for team in group.teams %}
                             <div class="form-check">
                                 <input class="form-check-input advancement-radio" type="radio"
@@ -93,8 +99,8 @@
                             {% endfor %}
                         </div>
 
-                        <div class="mb-2">
-                            <label class="form-label fw-bold">Runner-Up</label>
+                        <div class="mb-3">
+                            <label class="form-label">Runner-Up</label>
                             {% for team in group.teams %}
                             <div class="form-check">
                                 <input class="form-check-input advancement-radio" type="radio"
@@ -110,7 +116,7 @@
                         </div>
 
                         <div class="mb-3">
-                            <label class="form-label fw-bold">Best 3rd Place <small class="text-muted">(optional)</small></label>
+                            <label class="form-label">Best 3rd Place <span class="text-muted text-lowercase">(optional)</span></label>
                             <div class="form-check">
                                 <input class="form-check-input" type="radio"
                                        name="best_third" value=""
@@ -134,7 +140,7 @@
                             {% endfor %}
                         </div>
 
-                        <button type="submit" class="btn btn-success btn-sm">
+                        <button type="submit" class="btn btn-game btn-sm">
                             {% if group.advancement_confirmed %}Update{% else %}Confirm{% endif %} Advancement
                         </button>
                     </form>

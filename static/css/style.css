@@ -403,6 +403,207 @@ body.auth-page .alert-success {
   .admin-actions-row { grid-template-columns: 1fr 1fr; }
 }
 
+/* === WORLD CUP ADMIN ===
+   Tournament back-office. Extends the platform .admin-* masthead/action system
+   above onto the bone substrate so every admin surface (platform + per game)
+   reads as one Commish's desk. Status uses CCC semantic tokens + WC red/navy;
+   color is always paired with a label or glyph, never carried alone. */
+
+/* Masthead back-link (replaces the raw Bootstrap breadcrumb) */
+.adm-back {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  font-family: var(--font-teko);
+  font-size: .9rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  text-decoration: none;
+}
+.adm-back:hover,
+.adm-back:focus-visible { color: var(--purple-700); }
+
+/* A four-up pool-stats strip: editorial, not the big-number hero-metric template */
+.adm-summary {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: .85rem;
+  margin: 0 0 2.5rem;
+}
+.adm-summary-item {
+  padding: .85rem 1.1rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+.adm-summary-val {
+  font-family: var(--font-teko);
+  font-size: 1.7rem;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--purple-700);
+}
+.adm-summary-label {
+  display: block;
+  margin-top: .2rem;
+  font-family: 'Newsreader', Georgia, serif;
+  font-size: .86rem;
+  color: var(--text-secondary);
+}
+.adm-summary-item.is-alert .adm-summary-val { color: var(--wc-red); }
+@media (min-width: 768px) {
+  .adm-summary { grid-template-columns: repeat(4, 1fr); }
+}
+
+/* Section disclosure: long lists fold into native <details> (no JS, accessible) */
+.adm-fold { margin-bottom: 2rem; }
+.adm-fold > summary {
+  list-style: none;
+  cursor: pointer;
+  display: flex;
+  align-items: baseline;
+  gap: .6rem;
+  padding-bottom: .5rem;
+  border-bottom: 2px solid var(--gold);
+  font-family: var(--font-teko);
+  font-size: 1.5rem;
+  font-weight: 600;
+  letter-spacing: .03em;
+  text-transform: uppercase;
+  color: var(--text-primary);
+}
+.adm-fold > summary::-webkit-details-marker { display: none; }
+.adm-fold > summary::after {
+  content: '\203A';            /* › rotates to indicate open/closed */
+  margin-left: auto;
+  font-size: 1.4rem;
+  color: var(--gold-dark);
+  transition: transform .2s ease;
+}
+.adm-fold[open] > summary::after { transform: rotate(90deg); }
+.adm-fold-count {
+  font-family: 'Newsreader', Georgia, serif;
+  font-size: .9rem;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--text-secondary);
+}
+.adm-fold > .adm-fold-body { padding-top: 1.1rem; }
+
+/* Status tag: tinted pill + optional leading glyph. One base, semantic modifiers. */
+.adm-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: .3em;
+  font-family: var(--font-teko);
+  font-size: .82rem;
+  font-weight: 500;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  padding: .18em .62em;
+  border-radius: .3rem;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+.adm-tag--win   { background: rgba(26,122,69,.12);  color: var(--success);   border-color: rgba(26,122,69,.34); }
+.adm-tag--up    { background: rgba(0,40,104,.10);   color: var(--wc-navy);   border-color: rgba(0,40,104,.30); }
+.adm-tag--third { background: rgba(201,162,39,.16); color: var(--gold-dark); border-color: rgba(201,162,39,.42); }
+.adm-tag--out   { background: rgba(192,57,43,.10);  color: var(--danger);    border-color: rgba(192,57,43,.32); }
+.adm-tag--yes   { background: rgba(26,122,69,.12);  color: var(--success);   border-color: rgba(26,122,69,.34); }
+.adm-tag--no    { background: rgba(191,10,48,.10);  color: var(--wc-red);    border-color: rgba(191,10,48,.30); }
+.adm-tag--muted { background: rgba(58,29,114,.06);  color: var(--text-secondary); border-color: rgba(58,29,114,.20); }
+.adm-tag--stage { background: rgba(0,40,104,.08);   color: var(--wc-navy);   border-color: rgba(0,40,104,.22); }
+.adm-tag--code  { background: rgba(0,40,104,.06);   color: var(--text-secondary); border-color: rgba(0,40,104,.18); font-weight: 600; }
+
+/* Member cell: Teko name over Newsreader email/handle */
+.adm-name {
+  font-family: var(--font-teko);
+  font-size: 1.2rem;
+  font-weight: 600;
+  line-height: 1.05;
+  letter-spacing: .02em;
+  color: var(--text-primary);
+}
+.adm-sub {
+  display: block;
+  font-family: 'Newsreader', Georgia, serif;
+  font-size: .85rem;
+  color: var(--text-secondary);
+}
+.adm-tags { display: inline-flex; flex-wrap: wrap; gap: .35rem; }
+
+/* Score-entry: big editorial team line on the match-result form */
+.adm-vs {
+  font-family: var(--font-teko);
+  font-size: 1.3rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  letter-spacing: .08em;
+}
+.adm-team-name {
+  font-family: var(--font-teko);
+  font-size: 1.9rem;
+  font-weight: 600;
+  line-height: 1.05;
+  color: var(--text-primary);
+}
+
+/* Pending "up next" cards lead the dashboard; the full slate folds below */
+.adm-next-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: .75rem;
+  margin-bottom: 1.25rem;
+}
+@media (min-width: 600px) { .adm-next-grid { grid-template-columns: 1fr 1fr; } }
+.adm-next {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+  padding: .9rem 1.05rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-left: none;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+.adm-next-teams { font-family: var(--font-teko); font-size: 1.2rem; font-weight: 600; letter-spacing: .02em; color: var(--text-primary); }
+.adm-next-meta  { font-family: 'Newsreader', Georgia, serif; font-size: .82rem; color: var(--text-secondary); }
+
+/* Action-needed card: red top-rule (the sanctioned lead treatment, never a side-stripe) */
+.card.adm-ready { border-top: 3px solid var(--wc-red); }
+.adm-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+  flex-wrap: wrap;
+}
+.adm-card-head h3 {
+  margin: 0;
+  font-family: var(--font-teko);
+  font-size: 1.4rem;
+  font-weight: 600;
+  letter-spacing: .03em;
+  text-transform: uppercase;
+  color: var(--text-primary);
+}
+
+/* Paid toggle: green "on" reads as settled, replacing Bootstrap's primary-blue */
+.payment-toggle { width: 2.6em; height: 1.4em; cursor: pointer; }
+.payment-toggle:checked {
+  background-color: var(--success);
+  border-color: var(--success);
+}
+.payment-toggle:focus {
+  border-color: var(--success);
+  box-shadow: 0 0 0 .2rem rgba(26,122,69,.2);
+}
+
 /* ── 2. Game-Specific Overrides ──────────────────────────── */
 
 /* Golf overrides */

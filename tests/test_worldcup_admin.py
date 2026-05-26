@@ -164,6 +164,82 @@ def test_admin_dashboard_shows_edit_teams_for_assigned_knockout(client, app):
     assert b'Edit Teams' in resp.data
 
 
+# ── Group advancement readiness (6-match group) ─────────────────────────
+
+def _seed_full_group(app, complete_count=6):
+    """Seed group A's full 4-team round-robin (6 matches); complete the first N."""
+    with app.app_context():
+        teams = [
+            WorldCupTeam(
+                fifa_code=code, name=code, display_name=code,
+                tier=3, multiplier=2.5, confederation='TEST', group_letter='A',
+            )
+            for code in ('AAA', 'BBB', 'CCC', 'DDD')
+        ]
+        db.session.add_all(teams)
+        db.session.flush()
+        a, b, c, d = teams
+        # 4-team round-robin = 6 fixtures.
+        pairings = [(a, b), (c, d), (a, c), (b, d), (a, d), (b, c)]
+        matches = [
+            WorldCupMatch(
+                match_number=n, stage='group', group_letter='A',
+                home_team_id=h.id, away_team_id=aw.id,
+            )
+            for n, (h, aw) in enumerate(pairings, start=1)
+        ]
+        db.session.add_all(matches)
+        db.session.commit()
+
+        from games.worldcup.services.scoring import process_match_result
+        for m in matches[:complete_count]:
+            home = db.session.get(WorldCupMatch, m.id)
+            process_match_result(
+                match_id=home.id, home_score=1, away_score=0,
+                winner_fifa_code=db.session.get(WorldCupTeam, home.home_team_id).fifa_code,
+            )
+
+
+def test_advancement_form_renders_when_all_six_group_matches_complete(client, app):
+    """Regression: groups have 6 matches; the all_complete gate must use 6, not 3.
+
+    With ==3 the confirm form was unreachable and finished groups read
+    'Matches Incomplete' forever (advancement could never be confirmed in UI).
+    """
+    admin_id = _make_admin_user(app)
+    _seed_full_group(app, complete_count=6)
+
+    with client.session_transaction() as sess:
+        sess['_user_id'] = str(admin_id)
+        sess['_fresh'] = True
+
+    adv = client.get('/worldcup/admin/advancement')
+    assert adv.status_code == 200
+    # The confirm form is reachable. Use the interpolated form id as the marker:
+    # the inline <script> contains the bare 'name="group_winner"' selector string
+    # even when no form renders, so that substring is not a reliable signal.
+    assert b'id="advancement-form-A"' in adv.data
+
+    dash = client.get('/worldcup/admin/')
+    assert dash.status_code == 200
+    assert b'Groups Needing Advancement' in dash.data
+
+
+def test_advancement_incomplete_when_group_partially_played(client, app):
+    """Half-played group (3 of 6) must still read as incomplete: the form stays gated."""
+    admin_id = _make_admin_user(app)
+    _seed_full_group(app, complete_count=3)
+
+    with client.session_transaction() as sess:
+        sess['_user_id'] = str(admin_id)
+        sess['_fresh'] = True
+
+    adv = client.get('/worldcup/admin/advancement')
+    assert adv.status_code == 200
+    assert b'Matches Incomplete' in adv.data
+    assert b'id="advancement-form-A"' not in adv.data
+
+
 # ── Clear knockout team assignment ──────────────────────────────────────
 
 def _seed_knockout_match_with_teams(app, completed=False):
