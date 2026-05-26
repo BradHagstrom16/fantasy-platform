@@ -1,84 +1,81 @@
 {% extends "base.html" %}
-{% block title %}All Picks — World Cup Admin{% endblock %}
+{% block title %}All Picks · World Cup Admin{% endblock %}
 
 {% block content %}
-<div class="container-fluid mt-4">
-    <nav aria-label="breadcrumb">
-        <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="{{ url_for('worldcup.admin_dashboard') }}">Admin</a></li>
-            <li class="breadcrumb-item active">All Picks</li>
-        </ol>
-    </nav>
-
-    <h2>All Players' Picks</h2>
-    <p class="text-muted">{{ enrollments|length }} enrolled players. Picks organized by tier.</p>
-
-    <div class="table-responsive">
-    <table class="table table-sm table-bordered">
-        <thead class="table-dark">
-            <tr>
-                <th rowspan="2" class="align-middle">Rank</th>
-                <th rowspan="2" class="align-middle">Player</th>
-                <th rowspan="2" class="align-middle text-center">Picks?</th>
-                {% for tier_num, tier_info in tiers.items() %}
-                <th colspan="{{ tier_info.picks }}" class="text-center">
-                    T{{ tier_num }}: {{ tier_info.name }} (&times;{{ tier_info.multiplier }})
-                </th>
-                {% endfor %}
-                <th rowspan="2" class="align-middle text-center">Score</th>
-                <th rowspan="2" class="align-middle text-center">Tiebreaker</th>
-            </tr>
-            <tr>
-                {% for tier_num, tier_info in tiers.items() %}
-                    {% for i in range(tier_info.picks) %}
-                    <th class="text-center">{{ i + 1 }}</th>
-                    {% endfor %}
-                {% endfor %}
-            </tr>
-        </thead>
-        <tbody>
-            {% for enrollment in enrollments %}
-            {% set rank = loop.index %}
-            <tr>
-                <td>{{ rank }}</td>
-                <td>
-                    <strong>{{ enrollment.get_display_name() }}</strong>
-                </td>
-                <td class="text-center">
-                    {% if enrollment.picks_submitted %}
-                        <span class="badge bg-success">Yes</span>
-                    {% else %}
-                        <span class="badge bg-warning text-dark">No</span>
-                    {% endif %}
-                </td>
-                {% for tier_num in tiers %}
-                    {% set tier_picks = picks_by_enrollment.get(enrollment.id, {}).get(tier_num, []) %}
-                    {% for i in range(tiers[tier_num].picks) %}
-                    <td class="text-center">
-                        {% if i < tier_picks|length %}
-                            {% set pick = tier_picks[i] %}
-                            <span title="{{ pick.team.display_name }} — {{ pick.multiplied_points }} pts">
-                                {{ pick.team.fifa_code }}
-                            </span>
-                            {% if pick.multiplied_points %}
-                                <br><small class="text-success">{{ pick.multiplied_points|round(1) }}</small>
-                            {% endif %}
-                        {% else %}
-                            <span class="text-muted">—</span>
-                        {% endif %}
-                    </td>
-                    {% endfor %}
-                {% endfor %}
-                <td class="text-center"><strong>{{ enrollment.total_score|round(1) }}</strong></td>
-                <td class="text-center">{{ enrollment.usa_goals_guess if enrollment.usa_goals_guess is not none else '—' }}</td>
-            </tr>
-            {% else %}
-            <tr><td colspan="100" class="text-center text-muted">No enrollments yet.</td></tr>
-            {% endfor %}
-        </tbody>
-    </table>
+<header class="admin-masthead">
+    <div class="container-fluid">
+        <a href="{{ url_for('worldcup.admin_dashboard') }}" class="adm-back">&larr; Tournament Control</a>
+        <span class="admin-eyebrow">World Cup &middot; The Commish&rsquo;s Desk</span>
+        <h1 class="admin-page-title">All Picks</h1>
+        <p class="admin-masthead-sub">
+            {{ enrollments|length }} rosters, organised by tier. Scroll sideways for the full grid.
+        </p>
     </div>
+</header>
 
-    <a href="{{ url_for('worldcup.admin_dashboard') }}" class="btn btn-secondary">&larr; Back to Dashboard</a>
+<div class="container-fluid pb-5">
+    <div class="card">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+            <table class="table mb-0 align-middle" style="white-space:nowrap">
+                <thead>
+                    <tr>
+                        <th rowspan="2" class="align-middle">Rank</th>
+                        <th rowspan="2" class="align-middle">Player</th>
+                        <th rowspan="2" class="align-middle text-center">Picks</th>
+                        {% for tier_num, tier_info in tiers.items() %}
+                        <th colspan="{{ tier_info.picks }}" class="text-center">
+                            T{{ tier_num }}: {{ tier_info.name }} (&times;{{ tier_info.multiplier }})
+                        </th>
+                        {% endfor %}
+                        <th rowspan="2" class="align-middle text-center">Score</th>
+                        <th rowspan="2" class="align-middle text-center">Tiebreak</th>
+                    </tr>
+                    <tr>
+                        {% for tier_num, tier_info in tiers.items() %}
+                            {% for i in range(tier_info.picks) %}
+                            <th class="text-center">{{ i + 1 }}</th>
+                            {% endfor %}
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for enrollment in enrollments %}
+                    {% set rank = loop.index %}
+                    <tr>
+                        <td>{{ rank }}</td>
+                        <td><span class="leaderboard-avatar" aria-hidden="true">{{ enrollment.user.get_avatar() }}</span><span class="adm-name" style="font-size:1.05rem">{{ enrollment.get_display_name() }}</span></td>
+                        <td class="text-center">
+                            {% if enrollment.picks_submitted %}
+                                <span class="adm-tag adm-tag--yes">Yes</span>
+                            {% else %}
+                                <span class="adm-tag adm-tag--no">No</span>
+                            {% endif %}
+                        </td>
+                        {% for tier_num in tiers %}
+                            {% set tier_picks = picks_by_enrollment.get(enrollment.id, {}).get(tier_num, []) %}
+                            {% for i in range(tiers[tier_num].picks) %}
+                            <td class="text-center">
+                                {% if i < tier_picks|length %}
+                                    {% set pick = tier_picks[i] %}
+                                    <span title="{{ pick.team.display_name }} — {{ pick.multiplied_points }} pts">{{ pick.team.fifa_code }}</span>
+                                    {% if pick.multiplied_points %}<br><small class="text-success">{{ pick.multiplied_points|round(1) }}</small>{% endif %}
+                                {% else %}
+                                    <span class="text-muted">&mdash;</span>
+                                {% endif %}
+                            </td>
+                            {% endfor %}
+                        {% endfor %}
+                        <td class="text-center"><strong>{{ enrollment.total_score|round(1) }}</strong></td>
+                        <td class="text-center">{{ enrollment.usa_goals_guess if enrollment.usa_goals_guess is not none else '—' }}</td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="100" class="text-center text-muted">No enrollments yet.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            </div>
+        </div>
+    </div>
 </div>
 {% endblock %}

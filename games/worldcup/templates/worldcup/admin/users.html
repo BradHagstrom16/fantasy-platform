@@ -1,119 +1,123 @@
 {% extends "base.html" %}
-{% block title %}User Management — World Cup Admin{% endblock %}
+{% block title %}Members · World Cup Admin{% endblock %}
 
 {% block content %}
-<div class="container mt-4">
-    <nav aria-label="breadcrumb">
-        <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="{{ url_for('worldcup.admin_dashboard') }}">Admin</a></li>
-            <li class="breadcrumb-item active">Users</li>
-        </ol>
-    </nav>
-
-    <h2>World Cup User Management</h2>
-
-    <div class="alert alert-info">
-        <strong>Note:</strong> Passwords are encrypted and cannot be viewed. You can only reset them to a new value.
+<header class="admin-masthead">
+    <div class="container">
+        <a href="{{ url_for('worldcup.admin_dashboard') }}" class="adm-back">&larr; Tournament Control</a>
+        <span class="admin-eyebrow">World Cup &middot; The Commish&rsquo;s Desk</span>
+        <h1 class="admin-page-title">Members</h1>
+        <p class="admin-masthead-sub">
+            {{ enrollments|length }} enrolled. Passwords are encrypted: you can reset them, never read them.
+        </p>
     </div>
+</header>
 
+<div class="container pb-5">
     <div class="card">
-        <div class="card-header">
-            <h4 class="mb-0">Enrolled Users ({{ enrollments|length }})</h4>
-        </div>
         <div class="card-body p-0">
             <div class="table-responsive">
-            <table class="table mb-0">
+            <table class="table mb-0 align-middle">
                 <thead>
                     <tr>
-                        <th>Username</th>
-                        <th>Email</th>
-                        <th>Picks</th>
-                        <th>Score</th>
-                        <th>Paid</th>
-                        <th>WC Admin</th>
-                        <th>Actions</th>
+                        <th>Member</th>
+                        <th>Status</th>
+                        <th>Access</th>
+                        <th class="text-end">Reset</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for enrollment in enrollments %}
                     <tr>
                         <td>
-                            <strong>{{ enrollment.get_display_name() }}</strong>
-                            {% if enrollment.user.username != enrollment.get_display_name() %}
-                                <small class="text-muted">({{ enrollment.user.username }})</small>
-                            {% endif %}
+                            <span class="adm-name">{{ enrollment.get_display_name() }}</span>
+                            <span class="adm-sub">{{ enrollment.user.email }}</span>
+                            <span class="adm-sub">{{ enrollment.total_score|round(1) }} pts{% if enrollment.user.username != enrollment.get_display_name() %} &middot; @{{ enrollment.user.username }}{% endif %}</span>
                         </td>
-                        <td>{{ enrollment.user.email }}</td>
                         <td>
-                            {% if enrollment.picks_submitted %}
-                                <span class="badge bg-success">Submitted</span>
-                            {% else %}
-                                <span class="badge bg-warning text-dark">Pending</span>
-                            {% endif %}
-                        </td>
-                        <td>{{ enrollment.total_score|round(1) }}</td>
-                        <td>
-                            {% if enrollment.has_paid %}
-                                <span class="badge bg-success">Paid</span>
-                            {% else %}
-                                <span class="badge bg-warning text-dark">Unpaid</span>
-                            {% endif %}
+                            <span class="adm-tags">
+                                {% if enrollment.picks_submitted %}
+                                    <span class="adm-tag adm-tag--yes">Sealed</span>
+                                {% else %}
+                                    <span class="adm-tag adm-tag--no">No picks</span>
+                                {% endif %}
+                                {% if enrollment.has_paid %}
+                                    <span class="adm-tag adm-tag--win">Paid</span>
+                                {% else %}
+                                    <span class="adm-tag adm-tag--out">Unpaid</span>
+                                {% endif %}
+                            </span>
                         </td>
                         <td>
                             <form method="POST" action="{{ url_for('worldcup.admin_toggle_admin', user_id=enrollment.user_id) }}" class="d-inline">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                                <button type="submit" class="btn btn-sm {% if enrollment.is_admin %}btn-warning{% else %}btn-outline-secondary{% endif %}">
-                                    {% if enrollment.is_admin %}Admin{% else %}User{% endif %}
+                                <button type="submit" class="btn btn-sm {% if enrollment.is_admin %}btn-game{% else %}btn-outline-secondary{% endif %}">
+                                    {% if enrollment.is_admin %}WC Admin{% else %}Make Admin{% endif %}
                                 </button>
                             </form>
                         </td>
-                        <td>
-                            <button type="button" class="btn btn-sm btn-warning"
-                                    data-bs-toggle="modal"
-                                    data-bs-target="#resetModal{{ enrollment.user_id }}">
-                                Reset Password
+                        <td class="text-end">
+                            <button type="button" class="btn btn-sm btn-outline-primary"
+                                    data-bs-toggle="modal" data-bs-target="#resetModal{{ enrollment.user_id }}">
+                                Reset
                             </button>
                         </td>
                     </tr>
-
-                    {# Password Reset Modal #}
-                    <div class="modal fade" id="resetModal{{ enrollment.user_id }}" tabindex="-1">
-                        <div class="modal-dialog">
-                            <div class="modal-content">
-                                <div class="modal-header">
-                                    <h5 class="modal-title">Reset Password for {{ enrollment.user.username }}</h5>
-                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                                </div>
-                                <form method="POST" action="{{ url_for('worldcup.admin_reset_password', user_id=enrollment.user_id) }}">
-                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                                    <div class="modal-body">
-                                        <div class="alert alert-warning">
-                                            Resetting password for <strong>{{ enrollment.user.username }}</strong>
-                                        </div>
-                                        <div class="mb-3">
-                                            <label class="form-label">New Password</label>
-                                            <input type="text" class="form-control" name="new_password"
-                                                   value="worldcup{{ enrollment.user_id }}" required>
-                                            <small class="form-text text-muted">Default: worldcup{{ enrollment.user_id }}</small>
-                                        </div>
-                                    </div>
-                                    <div class="modal-footer">
-                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                                        <button type="submit" class="btn btn-warning">Reset Password</button>
-                                    </div>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
                     {% endfor %}
                 </tbody>
             </table>
             </div>
         </div>
     </div>
+</div>
 
-    <div class="mt-3">
-        <a href="{{ url_for('worldcup.admin_dashboard') }}" class="btn btn-secondary">&larr; Back to Dashboard</a>
+{# Password-reset modals (kept outside the table for valid markup) #}
+{% for enrollment in enrollments %}
+<div class="modal fade" id="resetModal{{ enrollment.user_id }}" tabindex="-1"
+     aria-labelledby="resetModalLabel{{ enrollment.user_id }}" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="resetModalLabel{{ enrollment.user_id }}">Reset password &middot; {{ enrollment.user.username }}</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST" action="{{ url_for('worldcup.admin_reset_password', user_id=enrollment.user_id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <div class="modal-body">
+                    <label class="form-label" for="pw{{ enrollment.user_id }}">New password</label>
+                    <div class="input-group">
+                        <input type="text" class="form-control pw-field" id="pw{{ enrollment.user_id }}"
+                               name="new_password" required autocomplete="off">
+                        <button type="button" class="btn btn-outline-secondary pw-generate">Generate</button>
+                    </div>
+                    <small class="adm-sub mt-2 d-block">
+                        Generates a one-time password to share with the member. They can change it after logging in.
+                    </small>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-game">Reset Password</button>
+                </div>
+            </form>
+        </div>
     </div>
 </div>
+{% endfor %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Fill the adjacent password field with a random one-time password.
+document.querySelectorAll('.pw-generate').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+        var field = btn.closest('.input-group').querySelector('.pw-field');
+        var chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
+        var bytes = new Uint32Array(12);
+        crypto.getRandomValues(bytes);
+        field.value = Array.from(bytes, function(b) { return chars[b % chars.length]; }).join('');
+        field.focus();
+        field.select();
+    });
+});
+</script>
 {% endblock %}
