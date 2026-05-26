@@ -49,6 +49,7 @@ def login():
 
 @auth_bp.route('/register', methods=['GET', 'POST'])
 def register():
+    """Create a new platform account (with optional validated phone)."""
     if current_user.is_authenticated:
         return redirect(url_for('main.index'))
 
@@ -219,6 +220,7 @@ AVATAR_CATEGORIES = {
 @auth_bp.route('/profile', methods=['GET', 'POST'])
 @login_required
 def profile():
+    """View and update the current user's profile (name, email, avatar, phone)."""
     if request.method == 'POST':
         display_name = request.form.get('display_name', '').strip() or None
         email = request.form.get('email', '').strip().lower()

@@ -28,8 +28,8 @@ def normalize_us_phone(raw):
     if len(digits) != 10:
         return None, _INVALID_MSG
 
-    # NANP area codes never start with 0 or 1.
-    if digits[0] in "01":
+    # NANP: neither the area code nor the exchange code starts with 0 or 1.
+    if digits[0] in "01" or digits[3] in "01":
         return None, _INVALID_MSG
 
     return f"({digits[0:3]}) {digits[3:6]}-{digits[6:10]}", None
