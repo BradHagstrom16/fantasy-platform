@@ -3651,6 +3651,13 @@ body.game-worldcup {
 .pick-event-stage { color: var(--text-secondary); }
 .pick-event-desc { font-size: .9rem; }
 .pick-event-pts { font-size: 1rem; }
+/* impeccable critique 2026-05-25 — the drill-down's +/- event points rode
+   Bootstrap `.text-success`/`.text-danger` (#198754 / #dc3545), both of which
+   land sub-AA on the near-white accordion substrate (~4.0 / ~3.9:1). Route
+   them through the CCC tokens instead: --success #1A7A45 (~5.4:1) and
+   --danger #C0392B (~5.4:1) clear AA without an !important war. */
+.pick-event-pts--pos { color: var(--success); }
+.pick-event-pts--neg { color: var(--danger); }
 
 /* P2 S2.5.1 PI-2 — player_detail hero re-shape.
    Mirrors the team_detail .team-hero-line pattern locked in S2.3.1: one
@@ -4447,6 +4454,41 @@ body.game-worldcup .tier-card-5 .tier-card-header { background: linear-gradient(
 /* Offset the tier anchors so a jump lands the tier header below the sticky
    navbar + game sub-nav (~118px) instead of behind them. */
 .tier-card { scroll-margin-top: 8rem; }
+
+/* impeccable critique 2026-05-25 — disabled "Seal" CTA state.
+   The pick-form submit is disabled until all 9 picks + the tiebreak land,
+   which is the screen's default state while a user fills it. Bootstrap's
+   default `.btn:disabled { opacity:.65 }` left the WC-red CTA reading as a
+   live, clickable button. Repaint disabled to the muted neutral so "not yet
+   sealable" is unmistakable, and keep `pointer-events:auto` + `not-allowed`
+   so the cursor signals the block (the state-aware label names the gap).
+   ID specificity (1,1,0) clears `body.game-worldcup .btn-game` (0,2,1)
+   without !important. */
+#submitBtn:disabled,
+#mobileSubmitBtn:disabled {
+  background: var(--bg-muted);
+  border-color: var(--border);
+  color: var(--text-secondary);
+  opacity: 1;
+  transform: none;
+  box-shadow: none;
+  pointer-events: auto;
+  cursor: not-allowed;
+}
+
+/* impeccable critique 2026-05-25 — sealed-read multiplier magnitude.
+   Pre-deadline the multiplier is the stakes signal, but a x1 favorite and a
+   x7 wildcard rendered at identical weight, so a roster's upside didn't read
+   at a glance. Ramp the numeral by tier (typographic only, no new color, so
+   WC accent discipline holds) on the mobile sealed card where the multiplier
+   is the card's hero value. Placed after `.wc-numeral--lg` (:3443) so the
+   equal-specificity size override wins on source order. */
+.pick-points .wc-mult-mag { line-height: 1; }
+.pick-points .wc-mult-mag-1 { font-size: 1.15rem; opacity: .82; }
+.pick-points .wc-mult-mag-2 { font-size: 1.35rem; opacity: .9; }
+.pick-points .wc-mult-mag-3 { font-size: 1.6rem; }
+.pick-points .wc-mult-mag-4 { font-size: 1.85rem; }
+.pick-points .wc-mult-mag-5 { font-size: 2.1rem; }
 
 /* Match result card — schedule/results display */
 /* ── Schedule: editorial fixture list ──────────────────────────────────
