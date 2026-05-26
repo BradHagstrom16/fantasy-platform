@@ -17,6 +17,7 @@ from models.user import User
 from core.auth import auth_bp
 from core.auth.tokens import generate_reset_token, verify_reset_token
 from utils.email import send_platform_email
+from utils.phone import normalize_us_phone
 
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
@@ -48,6 +49,7 @@ def login():
 
 @auth_bp.route('/register', methods=['GET', 'POST'])
 def register():
+    """Create a new platform account (with optional validated phone)."""
     if current_user.is_authenticated:
         return redirect(url_for('main.index'))
 
@@ -57,6 +59,7 @@ def register():
         display_name = request.form.get('display_name', '').strip() or None
         password = request.form.get('password', '')
         confirm_password = request.form.get('confirm_password', '')
+        phone, phone_error = normalize_us_phone(request.form.get('phone', ''))
 
         # Validation
         errors = []
@@ -68,6 +71,8 @@ def register():
             errors.append('Password must be at least 6 characters.')
         if password != confirm_password:
             errors.append('Passwords do not match.')
+        if phone_error:
+            errors.append(phone_error)
 
         if User.query.filter(func.lower(User.username) == username.casefold()).first():
             errors.append('That username is already taken.')
@@ -79,7 +84,8 @@ def register():
                 flash(err, 'error')
             return render_template('auth/register.html')
 
-        user = User(username=username, email=email, display_name=display_name)
+        user = User(username=username, email=email, display_name=display_name,
+                    phone=phone)
         user.set_password(password)
         db.session.add(user)
         db.session.commit()
@@ -196,8 +202,9 @@ AVATAR_CATEGORIES = {
         "🦝", "🐸", "🦉", "🐊", "🦌", "🐆", "🦏",
     ],
     "Characters & Vibes": [
-        "🤠", "👑", "💀", "🥷", "🧙", "🤖", "👻", "🎭",
+        "🤠", "🃏", "💀", "🥷", "🧙", "🤖", "👻", "🎭",
         "🧐", "🧛", "🧟", "🤡", "🎪", "🦸", "🧝",
+        "🎩", "🦹", "🧞",
     ],
     "Food & Drink": [
         "🌮", "🍕", "🍺", "🎂", "🍔", "🫑", "🍣", "🍩",
@@ -213,6 +220,7 @@ AVATAR_CATEGORIES = {
 @auth_bp.route('/profile', methods=['GET', 'POST'])
 @login_required
 def profile():
+    """View and update the current user's profile (name, email, avatar, phone)."""
     if request.method == 'POST':
         display_name = request.form.get('display_name', '').strip() or None
         email = request.form.get('email', '').strip().lower()
@@ -221,6 +229,12 @@ def profile():
         all_avatars = [e for choices in AVATAR_CATEGORIES.values() for e in choices]
         if avatar_emoji and avatar_emoji not in all_avatars:
             avatar_emoji = None
+
+        phone, phone_error = normalize_us_phone(request.form.get('phone', ''))
+        if phone_error:
+            flash(phone_error, 'error')
+            return render_template('auth/profile.html',
+                                   avatar_categories=AVATAR_CATEGORIES)
 
         if email != current_user.email:
             if User.query.filter(func.lower(User.email) == email.casefold()).first():
@@ -231,6 +245,7 @@ def profile():
 
         current_user.display_name = display_name
         current_user.avatar_emoji = avatar_emoji or None
+        current_user.phone = phone
         db.session.commit()
         flash('Profile updated.', 'success')
 
