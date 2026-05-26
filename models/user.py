@@ -22,6 +22,7 @@ class User(UserMixin, db.Model):
     password_hash = db.Column(db.String(256), nullable=False)
     display_name = db.Column(db.String(100), nullable=True)
     avatar_emoji = db.Column(db.String(4), nullable=True)
+    phone = db.Column(db.String(20), nullable=True)
 
     # Platform role
     is_admin = db.Column(db.Boolean, default=False)
@@ -46,9 +47,22 @@ class User(UserMixin, db.Model):
         """Return display name, falling back to username."""
         return self.display_name or self.username
 
+    # Crown is reserved for platform admins.
+    ADMIN_AVATAR = '\U0001F451'  # crown
+    DEFAULT_AVATAR = '\u26bd'    # soccer ball
+
     def get_avatar(self) -> str:
-        """Return the user's avatar emoji, or a sensible default."""
-        return self.avatar_emoji or '\u26bd'
+        """Return the user's avatar emoji, or a sensible default.
+
+        The crown is reserved for platform admins: admins always render it,
+        and a non-admin can never display it (enforced here so every
+        get_avatar() call site inherits the rule).
+        """
+        if self.is_admin:
+            return self.ADMIN_AVATAR
+        if self.avatar_emoji == self.ADMIN_AVATAR:
+            return self.DEFAULT_AVATAR
+        return self.avatar_emoji or self.DEFAULT_AVATAR
 
     def __repr__(self):
         return f'<User {self.username}>'

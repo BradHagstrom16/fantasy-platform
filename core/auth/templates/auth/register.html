@@ -68,6 +68,16 @@
                                value="{{ request.form.get('email', '') }}">
                     </div>
 
+                    <div class="mb-3">
+                        <label for="phone" class="form-label">
+                            Phone <span class="form-label-meta">(optional)</span>
+                        </label>
+                        <input type="tel" class="form-control" id="phone" name="phone"
+                               placeholder="(555) 123-4567" inputmode="tel" autocomplete="tel"
+                               maxlength="20" value="{{ request.form.get('phone', '') }}">
+                        <div class="form-text">US/Canada number. We'll only use it for league updates.</div>
+                    </div>
+
                     <div class="row g-3 mb-4">
                         <div class="col-6">
                             <label for="password" class="form-label">Password <span class="text-danger">*</span></label>

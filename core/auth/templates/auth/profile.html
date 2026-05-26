@@ -45,6 +45,15 @@
                            maxlength="100">
                 </div>
 
+                {% if current_user.is_admin %}
+                <div class="mb-3">
+                    <label class="form-label">Avatar</label>
+                    <div class="avatar-admin-note">
+                        <span class="avatar-admin-crown" aria-hidden="true">{{ current_user.get_avatar() }}</span>
+                        As Commish, your avatar is the crown, reserved for admins.
+                    </div>
+                </div>
+                {% else %}
                 <div class="mb-3">
                     <label class="form-label">Avatar</label>
                     <div class="form-text mb-2">Pick an emoji that represents you in the standings.</div>
@@ -92,12 +101,23 @@
                         {% endfor %}
                     </div>
                 </div>
+                {% endif %}
 
-                <div class="mb-4">
+                <div class="mb-3">
                     <label for="email" class="form-label">Email</label>
                     <input type="email" class="form-control" id="email" name="email"
                            value="{{ current_user.email }}"
                            autocomplete="email" required>
+                </div>
+
+                <div class="mb-4">
+                    <label for="phone" class="form-label">
+                        Phone <span class="form-label-meta">(optional)</span>
+                    </label>
+                    <input type="tel" class="form-control" id="phone" name="phone"
+                           placeholder="(555) 123-4567" inputmode="tel" autocomplete="tel"
+                           maxlength="20" value="{{ current_user.phone or '' }}">
+                    <div class="form-text">US/Canada number, used only for league updates.</div>
                 </div>
 
                 <div class="d-grid mb-3">
@@ -172,6 +192,21 @@
     background-color: rgba(201, 162, 39, 0.1);
     box-shadow: 0 0 0 2px rgba(201, 162, 39, 0.4);
 }
+.avatar-admin-note {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.75rem 1rem;
+    border: 1px solid rgba(201, 162, 39, 0.35);
+    border-radius: 8px;
+    background: rgba(201, 162, 39, 0.08);
+    font-size: 0.9rem;
+    color: var(--text-secondary, #5A5470);
+}
+.avatar-admin-crown {
+    font-size: 1.6rem;
+    line-height: 1;
+}
 </style>
 
 <script>
@@ -179,6 +214,8 @@ document.addEventListener('DOMContentLoaded', function() {
     var tabContent = document.getElementById('avatarTabContent');
     var input = document.getElementById('avatarInput');
     var preview = document.getElementById('avatarPreview');
+
+    if (!tabContent) return;  // admin: picker hidden (crown is reserved)
 
     tabContent.addEventListener('click', function(e) {
         var btn = e.target.closest('.avatar-pick-btn');
