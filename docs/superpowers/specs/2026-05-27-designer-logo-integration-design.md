@@ -71,8 +71,8 @@ SVGs copied from the delivery get a light cleanup (strip Illustrator comments / 
 ## Email seal wiring
 
 - Gmail strips SVG → email uses the **raster** `seal-email.png`.
-- Referenced by **absolute URL**: `<img src="{{ site_url }}/static/img/logo/seal-email.png" width="64" height="64" alt="Corrupt Commish Club">` in the purple header band of `reset_password_html.j2`, above the wordmark.
-- **Plumb `site_url` into the email render context** — today only `reset_url` is passed; `SITE_URL` comes from config/env. Any future HTML email adopts the same header pattern.
+- Referenced by **absolute URL** via `{{ seal_url }}`: `<img src="{{ seal_url }}" width="64" height="64" alt="Corrupt Commish Club">` in the purple header band of `reset_password_html.j2`, above the wordmark.
+- **Pass `seal_url` into the email render context** alongside `reset_url` — generated with `url_for('static', filename='img/logo/seal-email.png', _external=True)`, the same `_external=True` mechanism `reset_url` already uses, so no separate `SITE_URL` plumbing is needed. Any future HTML email adopts the same header pattern.
 - Images skip the `?v=` cache-bust param (per CLAUDE.md convention — rename to bust).
 
 ## Verification

@@ -16,6 +16,7 @@ PURPLE = (58, 29, 114, 255)  # --purple-700 #3A1D72
 
 
 def build_favicon_ico():
+    """Write a multi-size favicon.ico (16/32/48) from the variant-03 head."""
     head = Image.open(SRC / "icon-1500.png").convert("RGBA")
     base = head.resize((256, 256), Image.LANCZOS)
     base.save(IMG / "favicon.ico", format="ICO",
@@ -24,6 +25,7 @@ def build_favicon_ico():
 
 
 def build_apple_touch():
+    """Write apple-touch-icon-180.png: the head composited on a solid purple square."""
     head = Image.open(SRC / "icon-1500.png").convert("RGBA")
     r = 150 / max(head.size)
     h = head.resize((round(head.width * r), round(head.height * r)), Image.LANCZOS)
@@ -34,6 +36,7 @@ def build_apple_touch():
 
 
 def build_seal_email():
+    """Write seal-email.png: the roundel seal downscaled to ~160px (transparent)."""
     seal = Image.open(SRC / "seal-1500.png").convert("RGBA")
     r = 160 / max(seal.size)
     seal.resize((round(seal.width * r), round(seal.height * r)),
