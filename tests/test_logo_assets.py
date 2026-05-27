@@ -44,3 +44,24 @@ def test_seal_email_png_exists_and_transparent():
     assert 120 <= max(im.size) <= 200
     # corner transparent (sits on the purple email band)
     assert im.getpixel((0, 0))[3] == 0
+
+
+from app import create_app
+from extensions import db
+
+
+@pytest.fixture()
+def client():
+    app = create_app("testing")
+    with app.app_context():
+        db.create_all()
+        yield app.test_client()
+        db.session.remove()
+        db.drop_all()
+
+
+def test_footer_renders_seal(client):
+    # /login is anonymous and extends base.html (footer always renders)
+    resp = client.get("/login")
+    assert resp.status_code == 200
+    assert b"img/logo/seal-color.svg" in resp.data
