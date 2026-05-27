@@ -168,3 +168,88 @@ def test_countdown_js_carries_asset_version_in_template_source():
         "`?v={{ asset_version }}` cache-bust annotation. A stale cached "
         "countdown breaks the live deadline tick silently."
     )
+
+
+# ---------------------------------------------------------------------------
+# Rendered HTML: `?v=<token>` on brand-image (logo / favicon / seal) URLs.
+#
+# PR #48 swapped the logo files in place (same filenames, new bytes). The
+# brand `<img>`/`<link>` tags carried no `?v=` cache-bust — they relied on a
+# "rename the file if ever swapped" convention that the swap didn't follow.
+# nginx's 30-day `immutable` directive + Cloudflare's edge then served the OLD
+# logo for up to 30 days post-deploy: the new designer mark was on the origin
+# (verified by hash) but never reached browsers. Fix: brand images now follow
+# the same `?v={{ asset_version }}` policy as CSS/JS, so every deploy's new SHA
+# mints a fresh URL that busts the edge automatically. These locks assert it.
+# ---------------------------------------------------------------------------
+
+
+BRAND_IMAGE_PATHS = [
+    'img/logo/favicon.svg',         # favicon <link> + navbar brand <img>
+    'img/favicon.ico',              # legacy favicon fallback
+    'img/apple-touch-icon-180.png', # iOS home-screen tile
+    'img/logo/seal-color.svg',      # footer roundel seal
+    'img/logo/icon.svg',            # large brand mark on auth pages (login/register/etc.)
+]
+
+
+@pytest.mark.parametrize('path', BRAND_IMAGE_PATHS)
+def test_rendered_base_brand_images_are_versioned(app, path):
+    """Every brand-image URL in base.html (favicons, navbar mark, footer seal)
+    must render with a non-empty `?v=<token>` cache-bust. `/login` is anonymous
+    and extends base.html, so its <head> favicons, navbar brand, and footer seal
+    all render. Without the cache-bust, a swapped logo (same filename) is frozen
+    behind Cloudflare's 30-day immutable edge cache (PR #48 fallout)."""
+    import re
+    with app.test_client() as c:
+        body = c.get('/login').data.decode('utf-8')
+
+    static_path = f'/static/{path}'
+    bare = body.count(static_path)
+    assert bare >= 1, f'{static_path} not found in rendered base.html'
+    versioned = re.findall(re.escape(static_path) + r'\?v=([^"&]+)', body)
+    assert len(versioned) == bare, (
+        f'{static_path} appears {bare}x but only {len(versioned)} carry `?v=`. '
+        f'Every brand-image URL must be cache-busted or a swapped logo is frozen '
+        f'behind the 30-day immutable cache (PR #48 fallout).'
+    )
+    for token in versioned:
+        assert token and token != '{{', (
+            f'{static_path} rendered with empty/raw `?v=` — asset_version '
+            f'not injected into this surface.'
+        )
+
+
+def test_reset_email_seal_is_versioned(app):
+    """The password-reset email's seal must also carry `?v=<token>` so a swapped
+    `seal-email.png` reaches newly-sent emails through Cloudflare's immutable
+    edge. `asset_version` is in scope because context processors run on the
+    `render_template` call inside the request-bound forgot-password route."""
+    import re
+    from unittest import mock
+
+    from extensions import db
+    from models.user import User
+
+    with app.app_context():
+        u = User(username='av_seal_user', email='av_seal@test.com')
+        u.set_password('pw')
+        db.session.add(u)
+        db.session.commit()
+
+    with app.test_client() as c, \
+         mock.patch('core.auth.routes.send_platform_email') as send:
+        c.post('/forgot-password',
+               data={'email': 'av_seal@test.com', 'csrf_token': 'x'})
+
+    assert send.called, 'send_platform_email was not called'
+    html = send.call_args.args[3]  # signature: send(to, subject, plain, html)
+    m = re.search(r'/static/img/logo/seal-email\.png\?v=([^"&]+)', html)
+    assert m, (
+        'reset-email seal missing `?v=` cache-bust — a swapped seal-email.png '
+        'would be frozen behind the immutable edge for new emails too.'
+    )
+    assert m.group(1) and m.group(1) != '{{', (
+        'reset-email seal rendered with empty/raw `?v=` — asset_version not '
+        'injected into the email render context.'
+    )

@@ -21,10 +21,14 @@
     <!-- Bootstrap Icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
 
-    <!-- Favicons (content-stable; SVG mark is primary, .ico is the legacy fallback. Rename the file to cache-bust if ever swapped.) -->
-    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='img/logo/favicon.svg') }}">
-    <link rel="icon" href="{{ url_for('static', filename='img/favicon.ico') }}" sizes="any">
-    <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/apple-touch-icon-180.png') }}">
+    <!-- Favicons (SVG mark is primary, .ico is the legacy fallback). Brand
+         images carry `?v={{ asset_version }}` like CSS/JS: PR #48 swapped these
+         files in place and the unversioned URLs stayed frozen behind nginx's
+         30-day `immutable` cache + Cloudflare's edge. The git-SHA token mints a
+         fresh URL every deploy, so a swapped logo busts the edge automatically. -->
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='img/logo/favicon.svg') }}?v={{ asset_version }}">
+    <link rel="icon" href="{{ url_for('static', filename='img/favicon.ico') }}?v={{ asset_version }}" sizes="any">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/apple-touch-icon-180.png') }}?v={{ asset_version }}">
     <meta name="theme-color" content="#3A1D72">
 
     <!-- Platform CSS — cache-busted per deploy via `?v={{ asset_version }}` -->
@@ -37,7 +41,7 @@
     <nav class="navbar navbar-expand-lg navbar-dark">
         <div class="container">
             <a class="navbar-brand" href="{{ url_for('main.index') }}">
-                <img src="{{ url_for('static', filename='img/logo/favicon.svg') }}" class="brand-mark" alt="">
+                <img src="{{ url_for('static', filename='img/logo/favicon.svg') }}?v={{ asset_version }}" class="brand-mark" alt="">
                 <span class="d-none d-md-inline">Corrupt Commish Club</span>
                 <span class="d-md-none">CCC</span>
             </a>
@@ -199,7 +203,7 @@
     <footer class="ccc-footer">
         <div class="ccc-footer-voice">
             <div class="container">
-                <img src="{{ url_for('static', filename='img/logo/seal-color.svg') }}" class="ccc-footer-seal" alt="Corrupt Commish Club" width="72" height="72">
+                <img src="{{ url_for('static', filename='img/logo/seal-color.svg') }}?v={{ asset_version }}" class="ccc-footer-seal" alt="Corrupt Commish Club" width="72" height="72">
                 An exclusive members&rsquo; club. The Commish keeps the ledger. The Club keeps the code. The losers keep the tab.
             </div>
         </div>
