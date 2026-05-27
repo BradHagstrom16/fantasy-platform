@@ -65,3 +65,28 @@ def test_footer_renders_seal(client):
     resp = client.get("/login")
     assert resp.status_code == 200
     assert b"img/logo/seal-color.svg" in resp.data
+
+
+from unittest import mock
+
+from models.user import User
+
+
+def test_forgot_password_email_includes_seal(client):
+    # create a registered user via the app bound to this client
+    app = client.application
+    with app.app_context():
+        u = User(username="seal_user", email="seal_user@test.com")
+        u.set_password("pw")
+        db.session.add(u)
+        db.session.commit()
+
+    with mock.patch("core.auth.routes.send_platform_email") as send:
+        client.post("/forgot-password",
+                    data={"email": "seal_user@test.com", "csrf_token": "x"})
+
+    assert send.called, "send_platform_email was not called"
+    # signature: send_platform_email(to, subject, plain, html)
+    html = send.call_args.args[3]
+    assert "/static/img/logo/seal-email.png" in html
+    assert 'alt="Corrupt Commish Club"' in html
