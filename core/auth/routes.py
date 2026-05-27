@@ -121,10 +121,11 @@ def forgot_password():
         if user:
             token = generate_reset_token(user.email)
             reset_url = url_for('auth.reset_password', token=token, _external=True)
+            seal_url = url_for('static', filename='img/logo/seal-email.png', _external=True)
             plain = render_template('email/reset_password_plain.txt',
                                     reset_url=reset_url, user=user)
             html = render_template('email/reset_password_html.j2',
-                                   reset_url=reset_url, user=user)
+                                   reset_url=reset_url, seal_url=seal_url, user=user)
             send_platform_email(
                 user.email,
                 "Reset your password — Corrupt Commish Club",
