@@ -3,6 +3,12 @@
 
   {# Hero #}
   <div class="out-hero">
+    {# Full-color King Viking Badger bust — the club's face, leading the
+       masthead for the logged-out viewer. Decorative (alt=""): the eyebrow
+       + title carry the accessible name, matching the auth-panel bust. #}
+    <img class="out-mark animate-in"
+         src="{{ url_for('static', filename='img/logo/mascot-bust.svg') }}?v={{ asset_version }}"
+         alt="" width="200" height="200">
     <div class="out-eyebrow">◈ Fantasy for crooked kings &amp; queens ◈</div>
     <h1 class="out-title">
       <span class="out-title-a">The Fix</span>
