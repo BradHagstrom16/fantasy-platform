@@ -770,6 +770,17 @@ body.game-golf {
   text-align: center;
   padding: 2rem 0 2.5rem;
 }
+/* The mascot bust leads the masthead. Bold centerpiece sizing: 150px on the
+   375px floor, growing to 200px on the wide canvas. The gold edge already
+   separates the bust from the purple radial substrate; an ink-purple drop
+   (Press-Room Shadow Rule — never neutral gray) grounds it. */
+.home-shell .out-mark {
+  display: block;
+  width: clamp(150px, 34vw, 200px);
+  height: auto;
+  margin: 0 auto 1.25rem;
+  filter: drop-shadow(0 6px 18px rgba(10, 6, 18, 0.45));
+}
 .home-shell .out-eyebrow {
   font-family: var(--font-teko);
   font-weight: 500;
