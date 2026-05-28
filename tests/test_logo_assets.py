@@ -80,6 +80,21 @@ def test_seal_email_png_exists_and_transparent():
     assert im.getpixel((0, 0))[3] == 0
 
 
+AUTH_PANEL_TEMPLATES = ["login.html", "register.html", "forgot_password.html", "reset_password.html"]
+AUTH_TPL_DIR = pathlib.Path("core/auth/templates/auth")
+
+
+def test_auth_brand_panel_uses_shared_bust_partial():
+    """All four auth panels include the shared brand-logo partial, the partial
+    leads with the full bust, and no panel still hard-codes the old head."""
+    partial = (AUTH_TPL_DIR / "_brand_logo.html").read_text()
+    assert "mascot-bust.svg" in partial, "brand-logo partial must use the bust"
+    for name in AUTH_PANEL_TEMPLATES:
+        src = (AUTH_TPL_DIR / name).read_text()
+        assert "_brand_logo.html" in src, f"{name} does not include the shared partial"
+        assert "brand-mark--lg" not in src, f"{name} still hard-codes the old head mark"
+
+
 from app import create_app
 from extensions import db
 
@@ -101,6 +116,13 @@ def test_footer_renders_seal(client):
     resp = client.get("/login")
     assert resp.status_code == 200
     assert b"img/logo/seal-color.svg" in resp.data
+
+
+def test_login_page_renders_bust(client):
+    """The rendered login desktop panel carries the bust image."""
+    resp = client.get("/login")
+    assert resp.status_code == 200
+    assert b"img/logo/mascot-bust.svg" in resp.data
 
 
 from unittest import mock

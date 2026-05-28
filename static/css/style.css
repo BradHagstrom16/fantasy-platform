@@ -7189,6 +7189,8 @@ body.game-worldcup .btn-game:focus-visible {
   margin-bottom: 3rem;
 }
 
+.auth-panel-brand .brand-bust { width: 150px; height: auto; display: block; }
+
 .auth-panel-brand .brand-headline {
   font-family: 'Teko', sans-serif;
   font-size: 2.6rem;

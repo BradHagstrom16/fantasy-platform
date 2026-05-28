@@ -189,7 +189,7 @@ BRAND_IMAGE_PATHS = [
     'img/favicon.ico',              # legacy favicon fallback
     'img/apple-touch-icon-180.png', # iOS home-screen tile
     'img/logo/seal-color.svg',      # footer roundel seal
-    'img/logo/icon.svg',            # large brand mark on auth pages (login/register/etc.)
+    'img/logo/mascot-bust.svg',     # auth brand panel hero (login/register/forgot/reset)
     'img/logo/wordmark-bone.svg',   # navbar designed wordmark (md+)
 ]
 

@@ -8,10 +8,7 @@
     <!-- Brand panel (visible at md+) -->
     <div class="auth-panel-brand">
         <div class="brand-content">
-            <div class="brand-logo">
-                <img src="{{ url_for('static', filename='img/logo/icon.svg') }}?v={{ asset_version }}" class="brand-mark brand-mark--lg" alt="">
-                <span>Corrupt Commish Club</span>
-            </div>
+            {% include "auth/_brand_logo.html" %}
             <h2 class="brand-headline">
                 Corrupt Commish<br>
                 <span class="text-gold">Club.</span>
