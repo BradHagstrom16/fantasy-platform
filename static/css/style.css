@@ -63,6 +63,7 @@
 /* Brand mark sizing — used in nav, auth heroes, email headers */
 .brand-mark { width: 28px; height: 28px; vertical-align: -.35em; margin-right: .5rem; }
 .brand-mark--lg { width: 56px; height: 56px; }
+.navbar.navbar-dark .brand-wordmark { height: 17px; width: auto; display: inline-block; vertical-align: middle; }
 
 /* === CCC NAVBAR === */
 .navbar.navbar-dark {
@@ -7187,6 +7188,8 @@ body.game-worldcup .btn-game:focus-visible {
   color: var(--platform-accent);
   margin-bottom: 3rem;
 }
+
+.auth-panel-brand .brand-bust { width: 150px; height: auto; display: block; }
 
 .auth-panel-brand .brand-headline {
   font-family: 'Teko', sans-serif;

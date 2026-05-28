@@ -20,6 +20,36 @@ def test_logo_svg_exists_and_is_vector(name):
     assert "<svg" in head, f"{name} is not an SVG"
 
 
+WORDMARK_SVGS = ["wordmark-bone.svg", "wordmark-gold.svg", "wordmark-purple.svg"]
+
+
+@pytest.mark.parametrize("name", WORDMARK_SVGS)
+def test_designed_wordmark_exists_and_is_clean_vector(name):
+    """The designer's standalone wordmark (2026-05-28 delivery) is imported as
+    clean vector — no embedded raster, real <svg> markup."""
+    p = LOGO / name
+    assert p.exists(), f"{name} missing from static/img/logo/"
+    text = p.read_text(errors="ignore")
+    assert "<svg" in text[:600], f"{name} is not an SVG"
+    assert "data:image" not in text, f"{name} contains an embedded raster"
+
+
+RETIRED_SVGS = [
+    "lockup-horizontal-dark.svg", "lockup-horizontal-light.svg",
+    "lockup-stacked-dark.svg", "lockup-stacked-light.svg",
+    "wordmark-dark.svg", "wordmark-light.svg",
+]
+
+
+@pytest.mark.parametrize("name", RETIRED_SVGS)
+def test_retired_handauthored_logos_are_gone(name):
+    """The hand-authored lockup-*/wordmark-* SVGs (PR #47) were never wired in
+    and are superseded by the designer delivery. They must not linger."""
+    assert not (LOGO / name).exists(), (
+        f"{name} should have been deleted (superseded, unreferenced)"
+    )
+
+
 from PIL import Image
 
 IMG = pathlib.Path("static/img")
@@ -50,6 +80,21 @@ def test_seal_email_png_exists_and_transparent():
     assert im.getpixel((0, 0))[3] == 0
 
 
+AUTH_PANEL_TEMPLATES = ["login.html", "register.html", "forgot_password.html", "reset_password.html"]
+AUTH_TPL_DIR = pathlib.Path("core/auth/templates/auth")
+
+
+def test_auth_brand_panel_uses_shared_bust_partial():
+    """All four auth panels include the shared brand-logo partial, the partial
+    leads with the full bust, and no panel still hard-codes the old head."""
+    partial = (AUTH_TPL_DIR / "_brand_logo.html").read_text()
+    assert "mascot-bust.svg" in partial, "brand-logo partial must use the bust"
+    for name in AUTH_PANEL_TEMPLATES:
+        src = (AUTH_TPL_DIR / name).read_text()
+        assert "_brand_logo.html" in src, f"{name} does not include the shared partial"
+        assert "brand-mark--lg" not in src, f"{name} still hard-codes the old head mark"
+
+
 from app import create_app
 from extensions import db
 
@@ -71,6 +116,13 @@ def test_footer_renders_seal(client):
     resp = client.get("/login")
     assert resp.status_code == 200
     assert b"img/logo/seal-color.svg" in resp.data
+
+
+def test_login_page_renders_bust(client):
+    """The rendered login desktop panel carries the bust image."""
+    resp = client.get("/login")
+    assert resp.status_code == 200
+    assert b"img/logo/mascot-bust.svg" in resp.data
 
 
 from unittest import mock
