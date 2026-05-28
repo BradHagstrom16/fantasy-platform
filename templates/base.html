@@ -40,10 +40,9 @@
     <!-- Navigation -->
     <nav class="navbar navbar-expand-lg navbar-dark">
         <div class="container">
-            <a class="navbar-brand" href="{{ url_for('main.index') }}">
+            <a class="navbar-brand" href="{{ url_for('main.index') }}" aria-label="Corrupt Commish Club">
                 <img src="{{ url_for('static', filename='img/logo/favicon.svg') }}?v={{ asset_version }}" class="brand-mark" alt="">
-                <span class="d-none d-md-inline">Corrupt Commish Club</span>
-                <span class="d-md-none">CCC</span>
+                <img src="{{ url_for('static', filename='img/logo/wordmark-bone.svg') }}?v={{ asset_version }}" class="brand-wordmark d-none d-md-inline" alt="">
             </a>
 
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"

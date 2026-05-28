@@ -190,6 +190,7 @@ BRAND_IMAGE_PATHS = [
     'img/apple-touch-icon-180.png', # iOS home-screen tile
     'img/logo/seal-color.svg',      # footer roundel seal
     'img/logo/icon.svg',            # large brand mark on auth pages (login/register/etc.)
+    'img/logo/wordmark-bone.svg',   # navbar designed wordmark (md+)
 ]
 
 
@@ -252,4 +253,17 @@ def test_reset_email_seal_is_versioned(app):
     assert m.group(1) and m.group(1) != '{{', (
         'reset-email seal rendered with empty/raw `?v=` — asset_version not '
         'injected into the email render context.'
+    )
+
+
+def test_navbar_brand_has_wordmark_and_accessible_name(app):
+    """Navbar brand swaps the Teko CSS text for the designed bone wordmark image,
+    and the brand link keeps a stable accessible name at every viewport via
+    aria-label (both images are decorative alt='')."""
+    with app.test_client() as c:
+        body = c.get('/login').data.decode('utf-8')
+    assert 'img/logo/wordmark-bone.svg' in body, "navbar wordmark image missing"
+    assert 'aria-label="Corrupt Commish Club"' in body, (
+        "navbar brand link lost its accessible name — the wordmark is hidden "
+        "below md, so the <a> needs aria-label or mobile users get no brand name"
     )
