@@ -20,6 +20,20 @@ def test_logo_svg_exists_and_is_vector(name):
     assert "<svg" in head, f"{name} is not an SVG"
 
 
+WORDMARK_SVGS = ["wordmark-bone.svg", "wordmark-gold.svg", "wordmark-purple.svg"]
+
+
+@pytest.mark.parametrize("name", WORDMARK_SVGS)
+def test_designed_wordmark_exists_and_is_clean_vector(name):
+    """The designer's standalone wordmark (2026-05-28 delivery) is imported as
+    clean vector — no embedded raster, real <svg> markup."""
+    p = LOGO / name
+    assert p.exists(), f"{name} missing from static/img/logo/"
+    text = p.read_text(errors="ignore")
+    assert "<svg" in text[:600], f"{name} is not an SVG"
+    assert "data:image" not in text, f"{name} contains an embedded raster"
+
+
 from PIL import Image
 
 IMG = pathlib.Path("static/img")
