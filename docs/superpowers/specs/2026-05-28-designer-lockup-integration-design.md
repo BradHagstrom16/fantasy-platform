@@ -102,7 +102,7 @@ CSS: add `.navbar.navbar-dark .brand-wordmark { height: ~17px; width: auto; }` a
 
 Replace the `.brand-logo` head + adjacent text with the full bust; keep `.brand-headline` + `.brand-sub` + `.brand-games`. Add a `.brand-bust` style (centered, ~150px). The panel is `display:none` below `md`, so this is a desktop-only enhancement — mobile auth cards are unaffected.
 
-**DRY improvement (in scope):** the `.auth-panel-brand` block is currently duplicated verbatim across all four templates. Since the bust change must be applied identically to each, extract the panel into a shared partial (`core/auth/templates/auth/_brand_panel.html`) and `{% include %}` it from the four templates. This collapses four edits to one and removes a standing drift risk. If the four copies turn out to have already diverged, reconcile to the login.html version (the canonical one) as part of the extraction.
+**DRY improvement (in scope):** the four panels share their `.brand-logo` fragment **verbatim** (head image + "Corrupt Commish Club" text span) but carry **page-specific** `.brand-headline` / `.brand-sub` / `.brand-games` copy (login/register/forgot/reset each differ — by design). So only the shared `.brand-logo` fragment — exactly the part we're changing from head→bust — is extracted into a partial (`core/auth/templates/auth/_brand_logo.html`) and `{% include %}`d from all four. The page-specific headline/sub/games stay inline in each template, untouched. This collapses the head→bust change to one edit and removes the brand-mark drift risk without disturbing per-page copy. In the new fragment the small "Corrupt Commish Club" text span is dropped — the bust + the page headline carry the name.
 
 ### Footer / Email
 
