@@ -34,6 +34,22 @@ def test_designed_wordmark_exists_and_is_clean_vector(name):
     assert "data:image" not in text, f"{name} contains an embedded raster"
 
 
+RETIRED_SVGS = [
+    "lockup-horizontal-dark.svg", "lockup-horizontal-light.svg",
+    "lockup-stacked-dark.svg", "lockup-stacked-light.svg",
+    "wordmark-dark.svg", "wordmark-light.svg",
+]
+
+
+@pytest.mark.parametrize("name", RETIRED_SVGS)
+def test_retired_handauthored_logos_are_gone(name):
+    """The hand-authored lockup-*/wordmark-* SVGs (PR #47) were never wired in
+    and are superseded by the designer delivery. They must not linger."""
+    assert not (LOGO / name).exists(), (
+        f"{name} should have been deleted (superseded, unreferenced)"
+    )
+
+
 from PIL import Image
 
 IMG = pathlib.Path("static/img")
