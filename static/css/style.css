@@ -1795,6 +1795,38 @@ body.game-golf {
   text-transform: uppercase;
   color: var(--gold-light);
 }
+/* Leading-CTA button affordance. The seal/join cards lead the pre-state
+   column above the decree, so their action reads as a clear button rather than
+   a faint inline cue — this is the page's primary click target. Flat gold
+   (not the metal-gold trophy gradient the logged-out `.join-cta` owns) keeps it
+   "slightly more prominent" and visually distinguishes the actionable card from
+   the identically-recipe'd decree below it. The whole card stays the link; the
+   pill is the affordance the eye lands on. Filling on card hover/focus is
+   color feedback, not motion — safe under reduced-motion. */
+.home-shell .cta-card--seal .cta-card-action,
+.home-shell .cta-card--join .cta-card-action {
+  margin-top: 0.25rem;
+  padding: 0.6rem 1.15rem;
+  min-height: 44px;
+  border: 1.5px solid var(--gold-light);
+  border-radius: var(--radius);
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+.home-shell .cta-card--seal:hover .cta-card-action,
+.home-shell .cta-card--join:hover .cta-card-action,
+.home-shell .cta-card--seal:focus-visible .cta-card-action,
+.home-shell .cta-card--join:focus-visible .cta-card-action {
+  background: var(--gold-light);
+  border-color: var(--gold-light);
+  color: var(--purple-950);
+}
+/* Keyboard focus ring on the card anchor (the canonical CCC 2px gold-light
+   ring) — the `.cta-card` link previously fell back to the default browser
+   outline. */
+.home-shell .cta-card:focus-visible {
+  outline: 2px solid var(--gold-light);
+  outline-offset: 3px;
+}
 /* Ceremonial register: time-sensitive CTAs (seal a roster, join the
    pool). Same recipe as `.decree`. */
 .home-shell .cta-card--seal,

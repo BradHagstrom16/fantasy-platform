@@ -28,15 +28,24 @@
       <div class="greet-court">{{ court_line }}</div>
     </div>
 
-    {# Countdown #}
-    {% include 'main/_countdown_card.html' %}
-
-    {# Dossier slot — three variants #}
+    {# Action-first ordering. The pending action leads the column, above the
+       decree, so the click target is the first thing the eye lands on (the
+       6rem countdown numeral would otherwise out-shout it). The two actionable
+       variants — join (unenrolled) and seal (enrolled, no picks) — render here;
+       the decree's deadline pressure reinforces the ask immediately below. #}
     {% if not is_enrolled %}
       {% include 'main/_join_cta_card.html' %}
     {% elif not enrollment.picks_submitted %}
       {% include 'main/_submit_picks_cta.html' %}
-    {% else %}
+    {% endif %}
+
+    {# Countdown #}
+    {% include 'main/_countdown_card.html' %}
+
+    {# Sealed-roster record. Once picks are locked there is no pending action,
+       so the ballot sits below the decree — the countdown's "Council Convenes"
+       anticipation leads, and the locked roster reads as the record beneath. #}
+    {% if is_enrolled and enrollment.picks_submitted %}
       {% include 'main/_ballot_card.html' %}
     {% endif %}
 
