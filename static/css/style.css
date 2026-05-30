@@ -93,13 +93,43 @@
 }
 .navbar.navbar-dark .nav-link {
   font-family: var(--font-teko);
+  /* One size for every dark-navbar nav-link (game switcher, admin link, user
+     menu) so the bar reads as a single consistent nav. Overrides the 1.05rem in
+     the lower `.navbar .nav-link` block (higher specificity, no !important). The
+     brand wordmark stays primary via the divider below + its full-bone color,
+     not by shrinking the switcher (which left it muddily smaller than the
+     right-hand links). The switcher label is the registry `short_name`
+     ("World Cup"), not the full `display_name`, so it reads as a switcher
+     rather than a competing lockup. */
+  font-size: 1rem;
   text-transform: uppercase;
   letter-spacing: .08em;
   color: var(--bone-mute);
   position: relative;
   padding: .5rem .85rem;
 }
+/* Desktop hairline framing the brand lockup off the game-switcher zone. Faint
+   bone (structural chrome rule, 1px — clear of the >1px side-stripe ban; bone
+   not gold, since the Trophy Rule reserves gold). Self-hides when logged-out:
+   the `me-auto` ul is empty, so :first-child matches nothing. Desktop-only so
+   the collapsed mobile menu (vertical stack, handled by the max-width:991px
+   block below) gets no vertical rule. */
+@media (min-width: 992px) {
+  .navbar.navbar-dark .navbar-nav.me-auto > .nav-item:first-child {
+    margin-left: .5rem;
+    padding-left: 1rem;
+    border-left: 1px solid rgba(243, 239, 230, .14);
+  }
+}
 .navbar.navbar-dark .nav-link:hover { color: var(--gold-light); }
+/* Brand link carries the canonical CCC keyboard focus ring like every other
+   nav target (the `.nav-link:focus-visible` rule below covers links but not
+   `.navbar-brand`, the most-tapped "home" target). */
+.navbar .navbar-brand:focus-visible {
+  outline: 2px solid var(--gold-light);
+  outline-offset: 2px;
+  border-radius: var(--radius);
+}
 .navbar.navbar-dark .nav-link.active {
   color: var(--gold);
 }
@@ -6378,13 +6408,33 @@ main { flex: 1; }
   transition: background var(--transition), color var(--transition), padding-left var(--transition);
 }
 
-.navbar .dropdown-item:hover {
+/* Keyboard focus must match the mouse-hover gold treatment. Without `:focus`
+   here, Bootstrap's default `.dropdown-item:focus` paints its light-gray bg
+   (#f8f9fa) under our white-72% item text — white-on-white, ~1:1 — so the
+   keyboard user can't see the focused item. `:focus-visible` adds the canonical
+   gold-light ring (inset so it isn't clipped by the menu edge). */
+.navbar .dropdown-item:hover,
+.navbar .dropdown-item:focus {
   background: rgba(212,168,32,.1);
   color: var(--platform-accent);
   padding-left: 1.5rem;
 }
+.navbar .dropdown-item:focus-visible {
+  outline: 2px solid var(--gold-light);
+  outline-offset: -2px;
+}
 
 .navbar .dropdown-divider { border-color: rgba(255,255,255,.1); }
+
+/* The user-menu toggle is a `.nav-link`, so it inherits the gold underline
+   `::after` above. Bootstrap's caret is also drawn on `::after`, and the two
+   collide into a ~10px gold nub under the username at rest. Drop the caret
+   borders so the toggle collapses to the same clean hover-underline as its
+   sibling links (the avatar + name already signal the menu). */
+.navbar .dropdown-toggle::after {
+  border: 0;
+  margin: 0;
+}
 
 .navbar-toggler {
   border-color: rgba(212,168,32,.35);

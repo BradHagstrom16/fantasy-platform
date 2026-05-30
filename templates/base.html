@@ -55,7 +55,7 @@
                     {% for game in nav_games %}
                     <li class="nav-item">
                         <a class="nav-link {% if request.blueprint == game.slug %}active{% endif %}"
-                           href="{{ url_for(game.blueprint_index) }}">{{ game.display_name }}</a>
+                           href="{{ url_for(game.blueprint_index) }}">{{ game.short_name or game.display_name }}</a>
                     </li>
                     {% endfor %}
                 </ul>
