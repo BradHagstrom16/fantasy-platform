@@ -12,9 +12,13 @@ four originally-missing entries will fail here even though the production
 code "compiles" fine.
 """
 from app import create_app
+from pathlib import Path
+
 from extensions import db
 from games.worldcup.models import WorldCupTeam
 from games.worldcup.world_cup_countries import TEAMS
+
+_FLAGS_DIR = Path(__file__).parent.parent / 'static' / 'flags'
 
 
 # Canonical FIFA → ISO-2 for the 48 teams in TEAMS. Hand-verified from
@@ -84,6 +88,54 @@ def test_every_team_resolves_to_correct_flag_emoji():
         finally:
             db.session.remove()
             db.drop_all()
+
+
+def test_every_team_resolves_to_correct_iso_code():
+    """`iso_code` (the key for self-hosted flag SVGs) must be the canonical
+    ISO-2, lowercased, for all 48 teams. This is the SSoT `flag_emoji` now
+    derives from, so a wrong iso_code breaks both the SVG flag and the emoji."""
+    app = create_app('testing')
+    with app.app_context():
+        db.create_all()
+        try:
+            failures = []
+            for fifa_code, expected_iso in _CANONICAL_FIFA_TO_ISO_2026.items():
+                team = WorldCupTeam(
+                    fifa_code=fifa_code,
+                    name=TEAMS[fifa_code]['name'],
+                    display_name=TEAMS[fifa_code]['display_name'],
+                    tier=TEAMS[fifa_code]['tier'],
+                    multiplier=TEAMS[fifa_code]['multiplier'],
+                    confederation=TEAMS[fifa_code]['confederation'],
+                    group_letter=TEAMS[fifa_code]['group'],
+                )
+                if team.iso_code != expected_iso.lower():
+                    failures.append(
+                        f'{fifa_code}: expected iso_code {expected_iso.lower()!r}, got {team.iso_code!r}'
+                    )
+            assert not failures, 'Wrong iso_code:\n' + '\n'.join(failures)
+        finally:
+            db.session.remove()
+            db.drop_all()
+
+
+def test_every_team_iso_has_svg_asset():
+    """Every team's iso_code must have a vendored `static/flags/<iso>.svg`.
+    Renders via templates/_flag.html as <img>; a missing file would 404 a flag
+    in production. Adding a future qualifier without its SVG fails here at PR
+    time rather than shipping a broken flag. Also locks the `_tbd` placeholder
+    that knockout-bracket shells (no team yet) render."""
+    assert (_FLAGS_DIR / '_tbd.svg').is_file(), (
+        'Missing static/flags/_tbd.svg placeholder for TBD knockout shells.'
+    )
+    missing = sorted({
+        iso for iso in _CANONICAL_FIFA_TO_ISO_2026.values()
+        if not (_FLAGS_DIR / f'{iso.lower()}.svg').is_file()
+    })
+    assert not missing, (
+        f'Missing flag SVGs in static/flags/ for ISO codes: {missing}. '
+        'Vendor the 4x3 SVG from the flag-icons set (see static/flags/ATTRIBUTION.md).'
+    )
 
 
 def test_originally_broken_codes_explicit():

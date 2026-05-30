@@ -1,3 +1,4 @@
+{% from '_flag.html' import flag with context %}
 {# Post-tournament state — final has been marked complete.
    Available context:
      - champion_team (or None), champion_summary (string, may be empty)
@@ -32,7 +33,7 @@
     {% if champion_team %}
       <div class="wc-eyebrow mb-1">Final Decree</div>
       <div class="display-4 mb-1">
-        <span class="champion-flag">{{ champion_team.flag_emoji }}</span>
+        <span class="champion-flag">{{ flag(champion_team.iso_code) }}</span>
         <span class="champion-name">{{ champion_team.display_name }}</span>
       </div>
       {% if champion_summary %}
@@ -150,7 +151,7 @@
             </td>
             <td>
               <a href="{{ url_for('worldcup.team_detail', team_id=r.pick.team_id) }}" class="post-table-link text-decoration-none">
-                {{ r.pick.team.flag_emoji }} {{ r.pick.team.display_name }}
+                {{ flag(r.pick.team.iso_code) }} {{ r.pick.team.display_name }}
               </a>
             </td>
             <td>

@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from '_flag.html' import flag with context %}
 {% block title %}{{ enrollment.get_display_name() }} · World Cup Fantasy Pool{% endblock %}
 
 {% block content %}
@@ -94,7 +95,7 @@
                 <span class="pick-team d-block mt-1">
                   <a href="{{ url_for('worldcup.team_detail', team_id=pick.team_id) }}"
                      class="team-link">
-                    <span aria-hidden="true">{{ pick.team.flag_emoji }}</span> {{ pick.team.display_name }}
+                    {{ flag(pick.team.iso_code) }} {{ pick.team.display_name }}
                   </a>
                   <small class="text-muted">Grp {{ pick.team.group_letter }}</small>
                 </span>

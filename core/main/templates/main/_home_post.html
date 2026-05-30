@@ -1,3 +1,4 @@
+{% from '_flag.html' import flag with context %}
 {# Post-tournament home — Spec B section 8 #}
 <div class="home-col">
 
@@ -82,7 +83,7 @@
       <div class="roster-recap-rows">
         {% for row in your_roster_recap %}
         <div class="roster-recap-row{% if row.is_champion %} roster-recap-row--champion{% endif %}">
-          <div class="rr-flag">{{ row.pick.team.flag_emoji }}</div>
+          <div class="rr-flag">{{ flag(row.pick.team.iso_code) }}</div>
           <div class="rr-code">{{ row.pick.team.fifa_code }}</div>
           <div class="rr-tier">{{ row.tier_name }}</div>
           <div class="rr-finish">{{ row.best_finish }}</div>

@@ -93,6 +93,7 @@ No linter configured. No pyright either — verify code with pytest.
 - **Game CSS sections:** Each game has its own section in `style.css` (e.g., `/* === CFB SURVIVOR POOL === */`) with game-specific component classes
 - **Game sub-nav:** Each game needs a `.subnav-<game>` class in the `/* === GAME SUB-NAV === */` section of `style.css` setting `background`, `--subnav-accent` (hex), and `--subnav-accent-rgb` (comma-separated R,G,B) — the shared pill `.active` rule consumes these variables
 - **Game palettes:** Golf: Augusta green `#006747` + gold `#b8993e`; CFB: crimson `#C5050C` + midnight `#0f0f1a`; World Cup: navy `#001A4D` + red `#BF0A30` (matches `--wc-navy` / `--wc-red` in tokens.css)
+- **Country flags are self-hosted SVG, never emoji:** render via `{% from '_flag.html' import flag with context %}` + `{{ flag(team.iso_code) }}`. `WorldCupTeam.iso_code` (lowercase ISO-2) is the SSoT key into `static/flags/<iso>.svg` (vendored flag-icons 4×3 + `_tbd.svg` placeholder for empty KO shells); `flag_emoji` is a **legacy fallback only**. Reason: Windows's Segoe UI Emoji ships no country-flag glyphs, so Unicode regional-indicator flags render as bare "GB"/"MX" letters there (Mac/iOS/Android render them fine). The `.ccc-flag` primitive is `height:1em`, so the wrapping element's `font-size` drives flag size; hairline is ink-tinted on light substrates, bone-tinted on dark (`.page-hero` / `.wc-champion-banner` / `.champion-banner` / `.home-shell`). JS-built rows mirror the macro with a `flagImg(iso)` helper + `FLAG_BASE`/`ASSET_V` template constants. Locked by `tests/test_worldcup_flag_emoji.py` (iso_code map + SVG-file existence).
 
 ### Platform integration
 
@@ -109,6 +110,7 @@ No linter configured. No pyright either — verify code with pytest.
 - **ORM:** SQLAlchemy 2.0 style — `db.session.get(Model, id)`, `db.get_or_404()`
 - **ORM safety:** Never mutate ORM attributes for display — use transient attributes
 - **Jinja2 sorting:** Never use `sort(attribute='method_name')` — Jinja2 retrieves the bound method, not its return value. Sort in the route instead.
+- **Jinja macros that read context-processor vars must be imported `with context`:** e.g. `_flag.html`'s `flag()` uses `asset_version` (injected in `core/context.py`), so callers do `{% from '_flag.html' import flag with context %}` — a plain `import` leaves `asset_version` undefined inside the macro (silent, no error). `url_for` is a Jinja global and works either way. Corollary: template-source assertion tests checking the "first rendered element" must strip `{% ... %}` tags, not just `{# #}` comments, or a top-of-file import trips them.
 - **Template restyling:** When restyling templates with JavaScript, audit all `querySelector`/`querySelectorAll`/`getElementById` calls first. Add CSS classes alongside JS-critical ones — never rename or remove them.
 - **Schema changes:** Flask-Migrate (Alembic) only — never raw SQL
 - **CSRF:** All POST forms include CSRF token; AJAX includes `X-CSRFToken` header

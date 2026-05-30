@@ -1,3 +1,4 @@
+{% from '_flag.html' import flag with context %}
 {# Live state — deadline passed, tournament in progress.
    Available context:
      - your_standing: {rank, total, of_n, lead_delta_up, lead_delta_down}
@@ -61,7 +62,7 @@
       {% for row in leverage %}
       <li class="wc-leverage-row is-{{ row.status }}">
         <a class="wc-leverage-team" href="{{ url_for('worldcup.team_detail', team_id=row.team_id) }}">
-          <span class="wc-leverage-flag" aria-hidden="true">{{ row.flag }}</span>
+          <span class="wc-leverage-flag" aria-hidden="true">{{ flag(row.iso) }}</span>
           <span class="wc-leverage-code">{{ row.code }}</span>
         </a>
         <span class="wc-multiplier-chip">×{{ row.mult_display }}</span>
@@ -117,12 +118,12 @@
     <li class="wc-result-row {% if entry.points_earned is not none %}is-roster-match{% endif %}">
       <div class="wc-result-teams">
         <span class="wc-fixture-side">
-          <span class="wc-fixture-flag">{% if m.home_team %}{{ m.home_team.flag_emoji }}{% else %}🏴{% endif %}</span>
+          <span class="wc-fixture-flag">{{ flag(m.home_team.iso_code if m.home_team else none) }}</span>
           <span class="wc-fixture-name">{% if m.home_team %}{{ m.home_team.display_name }}{% else %}TBD{% endif %}</span>
         </span>
         <span class="wc-result-score wc-numeral" aria-label="Score">{{ m.home_score }}&ndash;{{ m.away_score }}</span>
         <span class="wc-fixture-side">
-          <span class="wc-fixture-flag">{% if m.away_team %}{{ m.away_team.flag_emoji }}{% else %}🏴{% endif %}</span>
+          <span class="wc-fixture-flag">{{ flag(m.away_team.iso_code if m.away_team else none) }}</span>
           <span class="wc-fixture-name">{% if m.away_team %}{{ m.away_team.display_name }}{% else %}TBD{% endif %}</span>
         </span>
       </div>

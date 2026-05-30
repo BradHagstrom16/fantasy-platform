@@ -328,7 +328,7 @@ def _context_live(user, enrollment) -> dict:
             if best.multiplied_points and best.multiplied_points > 0:
                 top_earner = {
                     'team_code': best.team.fifa_code,
-                    'team_flag': best.team.flag_emoji,
+                    'team_iso': best.team.iso_code,
                     'team_name': best.team.display_name,
                     'points': float(best.multiplied_points),
                 }

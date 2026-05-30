@@ -1,3 +1,4 @@
+{% from '_flag.html' import flag with context %}
 {# Pre-deadline state — picks open, deadline not yet passed.
    branch: 'submitted' | 'unsubmitted' (drives CTA + roster visibility).
    copy / state already in scope from the shell. #}
@@ -123,7 +124,7 @@
       <div class="roster-tier-teams">
         {% for pick in picks_by_tier[tier_num] %}
         <a href="{{ url_for('worldcup.team_detail', team_id=pick.team_id) }}" class="roster-team-card">
-          <span class="roster-team-flag">{{ pick.team.flag_emoji }}</span>
+          <span class="roster-team-flag">{{ flag(pick.team.iso_code) }}</span>
           <span class="roster-team-name">{{ pick.team.display_name }}</span>
           <span class="roster-team-abbr">{{ pick.team.fifa_code }}</span>
           <span class="roster-team-mult">×{{ pick.team.multiplier | int if pick.team.multiplier == (pick.team.multiplier | int) else pick.team.multiplier }}</span>
@@ -161,12 +162,12 @@
     <li class="wc-fixture-row">
       <div class="wc-fixture-teams">
         <span class="wc-fixture-side">
-          <span class="wc-fixture-flag">{{ match.home_team.flag_emoji if match.home_team else '🏴' }}</span>
+          <span class="wc-fixture-flag">{{ flag(match.home_team.iso_code if match.home_team else none) }}</span>
           <span class="wc-fixture-name">{{ match.home_team.display_name if match.home_team else 'TBD' }}</span>
         </span>
         <span class="wc-fixture-vs" aria-hidden="true">vs</span>
         <span class="wc-fixture-side">
-          <span class="wc-fixture-flag">{{ match.away_team.flag_emoji if match.away_team else '🏴' }}</span>
+          <span class="wc-fixture-flag">{{ flag(match.away_team.iso_code if match.away_team else none) }}</span>
           <span class="wc-fixture-name">{{ match.away_team.display_name if match.away_team else 'TBD' }}</span>
         </span>
       </div>

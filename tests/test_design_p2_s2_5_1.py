@@ -375,13 +375,16 @@ def test_mobile_pick_card_eyebrow_uses_aa_token_on_white_card():
 # ---------------------------------------------------------------------------
 
 def test_decorative_glyphs_get_aria_hidden():
-    """Flag emoji + tier dot are decorative chrome; screen readers should
-    skip them. The team name carries the semantic identity."""
-    # Pick row: flag glyph + tier dot are aria-hidden.
-    assert '<span class="me-2 fs-5" aria-hidden="true">{{ pick.team.flag_emoji }}</span>' in ROW
+    """Flag + tier dot are decorative chrome; screen readers should skip them.
+    The team name carries the semantic identity. Flags are now self-hosted SVGs
+    via the `flag()` macro (templates/_flag.html), which renders an `alt=""`
+    image — decorative by definition — so SR skips it whether or not the
+    wrapper also carries aria-hidden."""
+    # Pick row: flag (aria-hidden wrapper) + tier dot are decorative.
+    assert '<span class="me-2 fs-5" aria-hidden="true">{{ flag(pick.team.iso_code) }}</span>' in ROW
     assert 'wc-tier-dot wc-tier-dot-{{ pick.tier }}" aria-hidden="true"' in ROW
-    # Mobile pick card: flag glyph + tier dot are aria-hidden.
-    assert '<span aria-hidden="true">{{ pick.team.flag_emoji }}</span>' in TPL
+    # Player detail pick card: flag macro (alt="") + aria-hidden tier dot.
+    assert '{{ flag(pick.team.iso_code) }}' in TPL
     assert 'wc-tier-dot wc-tier-dot-{{ pick.tier }}" aria-hidden="true"' in TPL
 
 

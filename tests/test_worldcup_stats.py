@@ -98,7 +98,7 @@ def test_get_country_stats_dict_shape(session):
     c = stats[0]
 
     assert 'name' in c
-    assert 'flag_emoji' in c
+    assert 'iso_code' in c
     assert 'tier' in c
     assert 'multiplier' in c
     assert 'pick_count' in c
@@ -115,13 +115,13 @@ def test_get_tier_stats(session):
     country_stats = [
         {'tier': 1, 'total_score': 10.0, 'group_score': 5.0, 'ko_score': 5.0,
          'name': 'Spain', 'pick_count': 2, 'pick_pct': 50.0, 'multiplier': 1.0,
-         'flag_emoji': '🇪🇸', 'is_active': True},
+         'iso_code': 'es', 'is_active': True},
         {'tier': 1, 'total_score': 20.0, 'group_score': 10.0, 'ko_score': 10.0,
          'name': 'France', 'pick_count': 1, 'pick_pct': 25.0, 'multiplier': 1.0,
-         'flag_emoji': '🇫🇷', 'is_active': False},
+         'iso_code': 'fr', 'is_active': False},
         {'tier': 3, 'total_score': 30.0, 'group_score': 15.0, 'ko_score': 15.0,
          'name': 'USA', 'pick_count': 3, 'pick_pct': 75.0, 'multiplier': 2.5,
-         'flag_emoji': '🇺🇸', 'is_active': True},
+         'iso_code': 'us', 'is_active': True},
     ]
 
     tier_stats = get_tier_stats(country_stats)
@@ -140,10 +140,10 @@ def test_get_overview_kpis(session):
     country_stats = [
         {'tier': 1, 'total_score': 10.0, 'group_score': 5.0, 'ko_score': 5.0,
          'name': 'Spain', 'pick_count': 2, 'pick_pct': 50.0, 'multiplier': 1.0,
-         'flag_emoji': '🇪🇸', 'is_active': False},
+         'iso_code': 'es', 'is_active': False},
         {'tier': 3, 'total_score': 50.0, 'group_score': 20.0, 'ko_score': 30.0,
          'name': 'USA', 'pick_count': 3, 'pick_pct': 75.0, 'multiplier': 2.5,
-         'flag_emoji': '🇺🇸', 'is_active': True},
+         'iso_code': 'us', 'is_active': True},
     ]
 
     kpis = get_overview_kpis(country_stats, total_players=4)

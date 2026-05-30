@@ -1,3 +1,4 @@
+{% from '_flag.html' import flag with context %}
 {# Sealed roster card — pre-state, enrolled, picks_submitted=True.
 
    S4.1.2 PI-2 — whole-area-link semantic split. Pre-S4.1.2 the card was
@@ -40,7 +41,7 @@
     <li>
       <a class="ballot-flag" href="{{ url_for('worldcup.team_detail', team_id=pick.team.id) }}"
          aria-label="{{ pick.team.display_name }}, view team detail">
-        <span class="ballot-flag-emoji" aria-hidden="true">{{ pick.team.flag_emoji }}</span>
+        <span class="ballot-flag-emoji" aria-hidden="true">{{ flag(pick.team.iso_code) }}</span>
         <span class="ballot-flag-code">{{ pick.team.fifa_code }}</span>
       </a>
     </li>

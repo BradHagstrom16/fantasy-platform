@@ -1,0 +1,20 @@
+{# Country-flag image primitive.
+
+   Renders a self-hosted SVG (static/flags/<iso>.svg) instead of a Unicode
+   regional-indicator flag emoji. Emoji flags render as bare "GB"/"MX" letters
+   on Windows (Segoe UI Emoji ships no country-flag glyphs); the SVG renders
+   identically on every OS.
+
+   `iso` is WorldCupTeam.iso_code (lowercase ISO 3166-1 alpha-2). A falsy iso
+   (knockout shells with no team assigned yet) renders the neutral `_tbd`
+   placeholder. Flags are decorative — a FIFA code or country name always sits
+   adjacent — so alt="" keeps screen-reader output clean.
+
+   Sized via CSS (.ccc-flag is height:1em) so each wrapper's existing
+   font-size keeps driving the flag size.
+
+   IMPORT WITH CONTEXT so `asset_version` (a context-processor variable) reaches
+   the macro:  {% from '_flag.html' import flag with context %} #}
+{%- macro flag(iso, classes='') -%}
+<img class="ccc-flag{% if classes %} {{ classes }}{% endif %}" src="{{ url_for('static', filename='flags/' ~ (iso or '_tbd')) }}.svg?v={{ asset_version }}" alt="" loading="lazy" decoding="async">
+{%- endmacro -%}

@@ -250,9 +250,12 @@ def test_pi2_ballot_card_no_longer_whole_area_link():
     `.ballot-foot`" form would false-positive. The invariant we're locking is
     that the OUTERMOST element of the partial is the `<section>`, not an
     anchor wrapper."""
-    # Strip Jinja {# ... #} comments + leading whitespace so the first visible
-    # tag check is robust to template indentation changes.
-    body = re.sub(r'\{#.*?#\}', '', BALLOT, flags=re.DOTALL).lstrip()
+    # Strip Jinja {# ... #} comments AND {% ... %} statement tags (e.g. the
+    # top-of-file `{% from '_flag.html' import flag %}` import, which renders to
+    # nothing) + leading whitespace, so the first *rendered* element check is
+    # robust to template indentation and no-output Jinja tags.
+    body = re.sub(r'\{#.*?#\}', '', BALLOT, flags=re.DOTALL)
+    body = re.sub(r'\{%.*?%\}', '', body, flags=re.DOTALL).lstrip()
     assert body.startswith('<section'), (
         "PI-2: `_ballot_card.html` must open with a `<section>` element. "
         "The pre-S4.1.2 anchor wrapper conflated nine flag taps with one "

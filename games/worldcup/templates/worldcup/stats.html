@@ -213,6 +213,10 @@ const COUNTRY_STATS = {{ country_stats | tojson }};
 const TIER_STATS = {{ tier_stats | tojson }};
 const COMBOS = {{ combos | tojson }};
 const KPIS = {{ kpis | tojson }};
+// Self-hosted flag SVGs (see templates/_flag.html) keyed by ISO-2, cache-busted
+// per deploy. Country flags as emoji render as bare "GB"/"MX" letters on Windows.
+const FLAG_BASE = "{{ url_for('static', filename='flags/') }}";
+const ASSET_V = "{{ asset_version }}";
 
 // ── TOKEN-DRIVEN PALETTE ──────────────────────────────────────
 // All chart hex literals removed — read CSS custom properties at init
@@ -256,6 +260,8 @@ const TAB_IDS = ['board','field','tiers'];
 // Dead Weight, Combos) — recognition over recall per Nielsen #6.
 function tb(t){ return `<span class="wc-tb wc-tb-${t}" aria-label="Tier ${t} · ${TN[t]}">T${t}</span>`; }
 function tbl(t){ return `<span class="wc-tb wc-tb-${t}">T${t} · ${TN[t]}</span>`; }
+// Country-flag <img>, built client-side to mirror the server _flag.html macro.
+function flagImg(iso){ return iso ? `<img class="ccc-flag" src="${FLAG_BASE}${iso}.svg?v=${ASSET_V}" alt="">` : ''; }
 
 // S2.4.1 PI-3 + a11y: gold star marks "your pick" — visible to sighted users,
 // announced by SR via the .visually-hidden text. The glyph itself is decoration.
@@ -267,7 +273,7 @@ function pbarHtml(c, maxPct) {
   const fill = Math.min(100, Math.max(2, (pct / maxPct) * 100));
   return `<div class="wc-pick-bar${hl ? ' my-pick' : ''}">
     <div class="wc-pick-bar-label">
-      <span>${c.flag_emoji} ${c.name} ${hl ? STAR_HL + ' ' : ''}${tb(c.tier)}</span>
+      <span>${flagImg(c.iso_code)} ${c.name} ${hl ? STAR_HL + ' ' : ''}${tb(c.tier)}</span>
       <span style="font-family:'Teko',sans-serif;font-weight:700;color:${TC[c.tier]};">${pct}%</span>
     </div>
     <div class="wc-pick-bar-track"><div class="wc-pick-bar-fill" style="width:${fill}%;background:${TC[c.tier]};"></div></div>
@@ -364,7 +370,7 @@ function renderScoring() {
       <div class="wc-lb-rank">${i+1}</div>
       <div>
         <div style="font-family:'Teko',sans-serif;font-weight:600;font-size:.95rem;color:var(--text-primary);">
-          ${c.flag_emoji} ${c.name}${hl ? ' ' + STAR_HL : ''} ${tbl(c.tier)}${c.is_active ? '<span class="wc-still-in ms-1">Active</span>' : ''}
+          ${flagImg(c.iso_code)} ${c.name}${hl ? ' ' + STAR_HL : ''} ${tbl(c.tier)}${c.is_active ? '<span class="wc-still-in ms-1">Active</span>' : ''}
         </div>
         <div class="wc-sbar" style="margin-top:.2rem;">
           <div class="wc-sbar-g" style="width:${gf}%;"></div>
@@ -429,7 +435,7 @@ function renderImpact() {
   const helpRows = byImpact.slice(0, 5);
   document.getElementById('help-list').innerHTML = helpRows.length ? helpRows.map(c => `
     <div class="wc-imp-row">
-      <div><span style="font-family:'Teko',sans-serif;font-weight:600;">${c.flag_emoji} ${c.name}</span> ${tbl(c.tier)}</div>
+      <div><span style="font-family:'Teko',sans-serif;font-weight:600;">${flagImg(c.iso_code)} ${c.name}</span> ${tbl(c.tier)}</div>
       <div style="text-align:right;">
         <div class="wc-combo-count">${Math.round(c.pick_pct)}% · ${c.total_score.toFixed(1)}pts</div>
         <div style="font-family:'Teko',sans-serif;font-size:.75rem;color:var(--text-secondary);">Picks × points: ${c.impact.toFixed(0)}</div>
@@ -444,7 +450,7 @@ function renderImpact() {
   const hurtRows = byDisappoint.slice(0, 5);
   document.getElementById('hurt-list').innerHTML = hurtRows.length ? hurtRows.map(c => `
     <div class="wc-imp-row">
-      <div><span style="font-family:'Teko',sans-serif;font-weight:600;">${c.flag_emoji} ${c.name}</span> ${tbl(c.tier)}</div>
+      <div><span style="font-family:'Teko',sans-serif;font-weight:600;">${flagImg(c.iso_code)} ${c.name}</span> ${tbl(c.tier)}</div>
       <div style="text-align:right;">
         <div class="wc-combo-count" style="color:var(--game-accent);">${Math.round(c.pick_pct)}% · ${c.total_score.toFixed(1)}pts</div>
       </div>

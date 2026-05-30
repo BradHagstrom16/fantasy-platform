@@ -1,3 +1,4 @@
+{% from '_flag.html' import flag with context %}
 {# Post-state champion banner — Spec B section 8b #}
 <div class="champion-banner">
   <div class="champion-glow-bg"></div>
@@ -15,7 +16,7 @@
        "Awaiting Decree" so the eyebrow honestly carries the state. #}
     {% if champion_team %}
     <div class="champion-eyebrow">◈ Final Decree ◈</div>
-    <div class="champion-flag">{{ champion_team.flag_emoji }}</div>
+    <div class="champion-flag">{{ flag(champion_team.iso_code) }}</div>
     <div class="champion-name">{{ champion_team.display_name }}</div>
     <div class="champion-rule" aria-hidden="true"></div>
     {% if champion_summary %}
