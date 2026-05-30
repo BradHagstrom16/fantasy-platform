@@ -56,7 +56,7 @@ def send_platform_email(
         msg.attach(MIMEText(html_body, 'html'))
 
     try:
-        with smtplib.SMTP(smtp_server, smtp_port) as server:
+        with smtplib.SMTP(smtp_server, smtp_port, timeout=10) as server:
             server.starttls()
             server.login(email_address, email_password)
             server.send_message(msg)
