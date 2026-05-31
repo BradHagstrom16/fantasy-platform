@@ -787,6 +787,59 @@ body.game-golf {
   }
 }
 
+/* Column-foot brand lockup (pre-state masthead). The decree's `margin-block:
+   auto` (above) centers it in col-A and leaves balancing whitespace beneath;
+   this horizontal lockup fills that whitespace as a sign-off without competing
+   with the gold decree CTA. Wide-desktop only — it appears at the 1180px
+   breakpoint where the masthead column gains room (parity with the greet-title
+   bump below); below that the column is single-flow and a wide head+wordmark
+   lockup would be redundant near the navbar. The SVG viewBox is cropped to the
+   artwork, so height:auto renders tight (≈1.81:1). */
+.home-shell .home-pre-lockup {
+  display: none;
+  width: 340px;
+  max-width: 70%;
+  height: auto;
+  margin-inline: auto;
+}
+@media (min-width: 1180px) {
+  .home-shell .home-pre-lockup {
+    display: block;
+    margin-top: clamp(2rem, 4vw, 3.5rem);
+  }
+  /* Decree + trailing lockup balance as one centered unit: the decree pins to
+     the top of the freed space, the lockup to the bottom, so the decree stays
+     the dominant focal block and the lockup reads as the column foot. This
+     supersedes the lone `.decree:last-child { margin-block:auto }` rule, which
+     only matches when the lockup is absent (e.g. the sealed state renders a
+     ballot card between them, or below 1180px where the lockup is hidden). */
+  .home-shell .home-pre-col--main > .decree:nth-last-child(2) {
+    margin-top: auto;
+    margin-bottom: 0;
+  }
+  .home-shell .home-pre-col--main > .home-pre-lockup:last-child {
+    margin-bottom: auto;
+  }
+  /* Sealed state: the lockup signs off the rail instead of the masthead column
+     (the ballot makes the masthead the long one). Flex the rail so the lockup
+     bottom-pins, ending level with the long column rather than leaving the rail
+     short. `gap:0` keeps the rail's existing padding/margin rhythm — children
+     here space themselves via their own padding, so flexing must not introduce
+     a gap. */
+  .home-shell .home-pre-col--rail {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+  .home-shell .home-pre-col--rail > .home-pre-lockup:last-child {
+    margin-top: auto;
+    /* Lift by the ballot card's own bottom margin (1.5rem) so the lockup's base
+       lands level with the ballot card's lower edge in the masthead column,
+       rather than the column box bottom which sits 1.5rem lower. */
+    margin-bottom: 1.5rem;
+  }
+}
+
 /* Section heads — shared across all home states */
 .home-shell .sec-head {
   display: flex;
