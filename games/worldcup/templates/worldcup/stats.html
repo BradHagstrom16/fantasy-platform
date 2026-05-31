@@ -3,6 +3,87 @@
 
 {% block head %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<style>
+  /* ── Overdrive: living-scatter interactions (stats surface only) ──
+     Entrance choreography is WAAPI-driven in the script block; these are the
+     interaction-layer primitives (editorial callout + cross-highlight) that
+     can't live on the canvas. All stay inside WC editorial doctrine: navy
+     structure, red competition, bone substrate, no broadcast chrome. */
+
+  /* Editorial callout that replaces Chart.js's default scatter tooltip. */
+  #wc-scatter-callout {
+    position: absolute; z-index: 20; pointer-events: none;
+    min-width: 168px; max-width: 230px;
+    background: var(--wc-navy); color: var(--text-on-dark);
+    border: 1px solid rgba(243, 239, 230, .14);
+    border-top: 3px solid var(--wc-red);
+    border-radius: .5rem; padding: .6rem .7rem .65rem;
+    box-shadow: 0 8px 30px rgba(0, 17, 46, .38);
+    opacity: 0; transform: translateY(4px);
+    transition: opacity .14s ease, transform .14s ease;
+    font-family: 'Newsreader', Georgia, serif;
+  }
+  #wc-scatter-callout.is-on { opacity: 1; transform: translateY(0); }
+  @media (prefers-reduced-motion: reduce) {
+    #wc-scatter-callout { transition: opacity .12s linear; transform: none; }
+    #wc-scatter-callout.is-on { transform: none; }
+    .wc-pick-bar, .wc-imp-row { transition: none; }
+  }
+  .wc-callout-team {
+    display: flex; align-items: center; gap: .4rem;
+    font-family: 'Teko', sans-serif; font-weight: 600; font-size: 1.15rem;
+    line-height: 1.05; text-transform: uppercase; letter-spacing: .02em;
+  }
+  .wc-callout-team .ccc-flag { height: 1.05em; }
+  .wc-callout-tier {
+    font-family: 'Teko', sans-serif; font-size: .72rem; letter-spacing: .1em;
+    text-transform: uppercase; opacity: .8; margin-top: .15rem;
+  }
+  .wc-callout-stats {
+    display: flex; gap: .9rem; margin-top: .45rem;
+    padding-top: .45rem; border-top: 1px solid rgba(243, 239, 230, .14);
+  }
+  .wc-callout-stat-label {
+    font-family: 'Teko', sans-serif; font-size: .62rem; letter-spacing: .1em;
+    text-transform: uppercase; opacity: .7;
+  }
+  .wc-callout-stat-val {
+    font-family: 'Teko', sans-serif; font-weight: 700; font-size: 1.05rem;
+    line-height: 1;
+  }
+  .wc-callout-mine {
+    margin-top: .45rem; font-family: 'Teko', sans-serif; font-size: .72rem;
+    letter-spacing: .08em; text-transform: uppercase; color: var(--gold-light);
+  }
+
+  /* Click a scatter bubble: cross-highlight the same nation in the Field
+     tab's popularity bars + impact lists. Structure-and-color, never color
+     alone (the left rule + lift read without the tint). */
+  .wc-pick-bar, .wc-imp-row { transition: background .16s ease, box-shadow .16s ease; }
+  .wc-pick-bar.is-cross-hl, .wc-imp-row.is-cross-hl {
+    background: rgba(191, 10, 48, .07);
+    box-shadow: inset 3px 0 0 var(--wc-red);
+    border-radius: .35rem;
+  }
+  .wc-xhl-banner {
+    display: none; align-items: center; gap: .5rem; flex-wrap: wrap;
+    margin: 0 0 1rem; padding: .5rem .75rem;
+    background: rgba(191, 10, 48, .06);
+    border: 1px solid rgba(191, 10, 48, .2);
+    border-radius: .5rem;
+    font-family: 'Newsreader', Georgia, serif; font-size: .9rem;
+    color: var(--text-secondary);
+  }
+  .wc-xhl-banner.is-on { display: flex; }
+  .wc-xhl-banner strong { font-family: 'Teko', sans-serif; color: var(--text-primary); }
+  .wc-xhl-clear {
+    margin-left: auto; border: 1px solid var(--border); background: var(--bg-card);
+    color: var(--text-secondary); border-radius: .4rem; padding: .15rem .55rem;
+    font-family: 'Teko', sans-serif; font-size: .78rem; letter-spacing: .06em;
+    text-transform: uppercase; cursor: pointer;
+  }
+  .wc-xhl-clear:hover { color: var(--text-primary); border-color: var(--wc-red); }
+</style>
 {% endblock %}
 
 {% block content %}
@@ -26,11 +107,13 @@ if (window.matchMedia('(prefers-color-scheme: dark)').matches)
     </div>
     <h1 class="mb-1" style="font-size:2.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;">The Field Office</h1>
     <p class="mb-0" style="color:rgba(255,255,255,.7);font-size:1rem;">
-      {{ kpis.total_players }} oath{{ 's' if kpis.total_players != 1 }} sealed · {{ kpis.active_countries }} nation{{ 's' if kpis.active_countries != 1 }} standing
+      {% if stats_visible %}{{ kpis.total_players }} oath{{ 's' if kpis.total_players != 1 }} sealed · {{ kpis.active_countries }} nation{{ 's' if kpis.active_countries != 1 }} standing
+      {% else %}The field's picks, payoff, and tier dossier: sealed until kickoff{% endif %}
     </p>
   </div>
 </div>
 
+{% if stats_visible %}
 <!-- ── Tab Bar ── -->
 <div class="wc-stats-pills">
   <div class="container p-0">
@@ -54,7 +137,7 @@ if (window.matchMedia('(prefers-color-scheme: dark)').matches)
        hero-metric-adjacency lesson — distinct data does not redeem 3+ equal-weight
        numerals adjacent. #}
     <div class="wc-stats-masthead">
-      <div class="wc-stats-masthead-numeral">{{ kpis.total_pts_awarded | round(0) | int }}</div>
+      <div class="wc-stats-masthead-numeral" id="masthead-total" data-total="{{ kpis.total_pts_awarded | round(0) | int }}">{{ kpis.total_pts_awarded | round(0) | int }}</div>
       <div>
         <div class="wc-eyebrow" style="color:var(--text-secondary);margin-bottom:.3rem;">Points awarded · Group + Knockout</div>
         <p class="wc-stats-masthead-derivation">
@@ -106,6 +189,11 @@ if (window.matchMedia('(prefers-color-scheme: dark)').matches)
   <div id="tab-field" class="wc-stats-panel pt-4 pb-5">
     <h2 style="font-family:'Teko',sans-serif;font-size:1.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-primary);margin-bottom:.2rem;">Who the field trusted</h2>
     <p style="color:var(--text-secondary);font-size:.95rem;margin-bottom:1.5rem;">Popularity vs. payoff: find the carries, the gems, and the dead weight.</p>
+
+    <div class="wc-xhl-banner" id="wc-xhl-banner" role="status" aria-live="polite">
+      <span>Tracking <strong id="wc-xhl-name"></strong> across the field.</span>
+      <button type="button" class="wc-xhl-clear" id="wc-xhl-clear">Clear</button>
+    </div>
 
     <div class="row g-4 mb-4">
       <div class="col-lg-6">
@@ -203,9 +291,28 @@ if (window.matchMedia('(prefers-color-scheme: dark)').matches)
 
 </div><!-- /container -->
 </main>
+{% else %}
+<!-- ── Locked: stats sealed until kickoff ── -->
+<main>
+<div class="container pb-5">
+  <div class="card border-0 animate-in player-picks-sealed">
+    <div class="card-body text-center py-5">
+      <i class="bi bi-lock-fill" style="font-size:2.5rem; color:var(--wc-red); opacity:.7;"></i>
+      <span class="wc-eyebrow d-block mt-3">Field office sealed</span>
+      <h5 class="mt-1 mb-2">Stats are hidden</h5>
+      <p class="text-muted mb-0">
+        The field's picks, payoff, and tier dossier unlock when the tournament begins.<br>
+        <span class="small">Deadline: {{ deadline_ct.strftime('%b %-d, %Y at %-I:%M %p CT') }}</span>
+      </p>
+    </div>
+  </div>
+</div>
+</main>
+{% endif %}
 {% endblock %}
 
 {% block scripts %}
+{% if stats_visible %}
 <script>
 // ── DATA BRIDGE ───────────────────────────────────────────────
 const MY_PICKS = {{ my_picks | tojson }};
@@ -271,7 +378,7 @@ function pbarHtml(c, maxPct) {
   const hl = MY_PICKS.includes(c.name);
   const pct = Math.round(c.pick_pct);
   const fill = Math.min(100, Math.max(2, (pct / maxPct) * 100));
-  return `<div class="wc-pick-bar${hl ? ' my-pick' : ''}">
+  return `<div class="wc-pick-bar${hl ? ' my-pick' : ''}" data-team="${c.name}">
     <div class="wc-pick-bar-label">
       <span>${flagImg(c.iso_code)} ${c.name} ${hl ? STAR_HL + ' ' : ''}${tb(c.tier)}</span>
       <span style="font-family:'Teko',sans-serif;font-weight:700;color:${TC[c.tier]};">${pct}%</span>
@@ -282,6 +389,99 @@ function pbarHtml(c, maxPct) {
 
 function tierHeader(t) {
   return `<div style="font-family:'Teko',sans-serif;font-weight:700;font-size:.9rem;letter-spacing:.06em;text-transform:uppercase;color:${TC[t]};margin-bottom:.65rem;">${tbl(t)} <span style="color:var(--text-secondary);font-weight:500;">×${TM[t]} multiplier</span></div>`;
+}
+
+// ── OVERDRIVE: ENTRANCE CHOREOGRAPHY ──────────────────────────
+// "The desk comes off the press." When a tab first reveals, its data resolves
+// into place: bars draw from zero, the masthead total counts up, the progress
+// strip + points split wipe in. All WAAPI / rAF on transform / opacity /
+// clip-path (composited). Exponential ease-out only — the CCC motion doctrine
+// bans bounce/elastic, so no spring overshoot anywhere (DESIGN.md §4 + §6).
+// Reduced-motion renders every final value instantly (the DOM already carries
+// the final state; choreography only overrides the entrance).
+const REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const EASE = 'cubic-bezier(0.22, 1, 0.36, 1)';  // ease-out-quint
+const choreographed = new Set();
+
+// Draw bar fills from zero via scaleX (origin left). fill:'backwards' holds
+// scaleX(0) through the stagger delay, then settles to the natural width — no
+// flash because render + animate run in the same synchronous task.
+function drawBars(scopeEl, sel, { stagger = 34, dur = 600, max = 22 } = {}) {
+  if (REDUCED || !scopeEl) return;
+  const fills = [...scopeEl.querySelectorAll(sel)];
+  fills.forEach((el, i) => {
+    el.style.transformOrigin = 'left center';
+    el.animate(
+      [{ transform: 'scaleX(0)' }, { transform: 'scaleX(1)' }],
+      { duration: dur, delay: Math.min(i, max) * stagger, easing: EASE, fill: 'backwards' },
+    );
+  });
+}
+
+// Left-to-right reveal that doesn't distort inner text (used on the progress
+// strip + the points split, both of which carry centered labels).
+function wipeIn(el, { dur = 760, delay = 0 } = {}) {
+  if (REDUCED || !el) return;
+  el.animate(
+    [{ clipPath: 'inset(0 100% 0 0)' }, { clipPath: 'inset(0 0 0 0)' }],
+    { duration: dur, delay, easing: EASE, fill: 'backwards' },
+  );
+}
+
+// Count a numeral up to its final value (easeOutQuart), preserving decimals.
+function countUp(el, to, { dur = 900, decimals = 0 } = {}) {
+  if (!el) return;
+  const fmt = (v) => v.toLocaleString('en-US', {
+    minimumFractionDigits: decimals, maximumFractionDigits: decimals,
+  });
+  if (REDUCED) { el.textContent = fmt(to); return; }
+  const t0 = performance.now();
+  (function tick(now) {
+    const p = Math.min(1, (now - t0) / dur);
+    el.textContent = fmt(to * (1 - Math.pow(1 - p, 4)));
+    if (p < 1) requestAnimationFrame(tick);
+    else el.textContent = fmt(to);
+  })(performance.now());
+}
+
+// Stagger a soft rise on a set of elements (ledger cells, etc.).
+function riseIn(scopeEl, sel, { stagger = 50, dur = 420 } = {}) {
+  if (REDUCED || !scopeEl) return;
+  [...scopeEl.querySelectorAll(sel)].forEach((el, i) => {
+    el.animate(
+      [{ opacity: 0, transform: 'translateY(6px)' }, { opacity: 1, transform: 'none' }],
+      { duration: dur, delay: i * stagger, easing: EASE, fill: 'backwards' },
+    );
+  });
+}
+
+function playBoard() {
+  const total = parseFloat(document.getElementById('masthead-total')?.dataset.total || '0');
+  countUp(document.getElementById('masthead-total'), total, { dur: 950 });
+  wipeIn(document.getElementById('progress-bar-wrap'), { dur: 820, delay: 120 });
+  drawBars(document.getElementById('scoring-list'), '.wc-sbar-g, .wc-sbar-k', { dur: 640 });
+  wipeIn(document.getElementById('points-split'), { dur: 700, delay: 180 });
+}
+
+function playField() {
+  drawBars(document.getElementById('bars-popular'), '.wc-pick-bar-fill');
+  drawBars(document.getElementById('bars-unpopular'), '.wc-pick-bar-fill');
+  riseIn(document.getElementById('help-list'), '.wc-imp-row', { stagger: 60 });
+  riseIn(document.getElementById('hurt-list'), '.wc-imp-row', { stagger: 60 });
+}
+
+function playTiers() {
+  riseIn(document.getElementById('tier-ledger-row'), '.wc-stats-ledger-cell', { stagger: 70 });
+  [1,3,4,5].forEach(t => drawBars(document.getElementById(`combos-t${t}`), 'div[style*="height:100%"]', { dur: 560 }));
+}
+
+// Fire a tab's entrance once. Board plays on load; field/tiers on first reveal.
+function choreograph(id) {
+  if (choreographed.has(id)) return;
+  choreographed.add(id);
+  if (id === 'board') playBoard();
+  else if (id === 'field') playField();
+  else if (id === 'tiers') playTiers();
 }
 
 // ── BOARD: PROGRESS BAR ───────────────────────────────────────
@@ -434,7 +634,7 @@ function renderImpact() {
 
   const helpRows = byImpact.slice(0, 5);
   document.getElementById('help-list').innerHTML = helpRows.length ? helpRows.map(c => `
-    <div class="wc-imp-row">
+    <div class="wc-imp-row" data-team="${c.name}">
       <div><span style="font-family:'Teko',sans-serif;font-weight:600;">${flagImg(c.iso_code)} ${c.name}</span> ${tbl(c.tier)}</div>
       <div style="text-align:right;">
         <div class="wc-combo-count">${Math.round(c.pick_pct)}% · ${c.total_score.toFixed(1)}pts</div>
@@ -449,7 +649,7 @@ function renderImpact() {
 
   const hurtRows = byDisappoint.slice(0, 5);
   document.getElementById('hurt-list').innerHTML = hurtRows.length ? hurtRows.map(c => `
-    <div class="wc-imp-row">
+    <div class="wc-imp-row" data-team="${c.name}">
       <div><span style="font-family:'Teko',sans-serif;font-weight:600;">${flagImg(c.iso_code)} ${c.name}</span> ${tbl(c.tier)}</div>
       <div style="text-align:right;">
         <div class="wc-combo-count" style="color:var(--game-accent);">${Math.round(c.pick_pct)}% · ${c.total_score.toFixed(1)}pts</div>
@@ -520,6 +720,146 @@ function renderPointsSplit() {
     </div>`;
 }
 
+// ── THE LIVING SCATTER ────────────────────────────────────────
+// The page's one signature 2-D insight, pushed into a tool you explore:
+// bubbles grow + rise from the baseline on reveal (ease-out, no overshoot);
+// a faint quadrant overlay (Gems / Carries / Dead weight / Chalk) names the
+// regions; hover lifts an editorial callout with crosshair lines to both
+// axes; clicking a bubble cross-highlights that nation in the Field tab's
+// popularity bars + impact lists.
+const TN_SHORT = TN;  // tier names for the callout
+
+function _median(arr) {
+  if (!arr.length) return 0;
+  const s = [...arr].sort((a, b) => a - b);
+  const m = Math.floor(s.length / 2);
+  return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+}
+
+// Quadrant overlay: median split lines + four corner labels. Opacity ramps
+// via chart.$wcQuad after the bubbles settle so the regions arrive second.
+const wcQuadrants = {
+  id: 'wcQuadrants',
+  beforeDatasetsDraw(chart) {
+    const a = chart.$wcQuad ?? 0;
+    if (a <= 0) return;
+    const { ctx, chartArea: ca, scales } = chart;
+    const pts = chart.data.datasets.flatMap(d => d.data);
+    if (!pts.length) return;
+    const mx = scales.x.getPixelForValue(_median(pts.map(p => p.x)));
+    const my = scales.y.getPixelForValue(_median(pts.map(p => p.y)));
+    ctx.save();
+    ctx.globalAlpha = a;
+    ctx.strokeStyle = 'rgba(0,40,104,.16)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath();
+    ctx.moveTo(mx, ca.top); ctx.lineTo(mx, ca.bottom);
+    ctx.moveTo(ca.left, my); ctx.lineTo(ca.right, my);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.globalAlpha = a * 0.85;
+    ctx.fillStyle = TICK_COLOR;
+    ctx.font = `600 12px ${CHART_FONT}, sans-serif`;
+    const pad = 8;
+    ctx.textBaseline = 'top';
+    ctx.textAlign = 'left';  ctx.fillText('GEMS', ca.left + pad, ca.top + pad);
+    ctx.textAlign = 'right'; ctx.fillText('CARRIES', ca.right - pad, ca.top + pad);
+    ctx.textBaseline = 'bottom';
+    ctx.textAlign = 'left';  ctx.fillText('DEAD WEIGHT', ca.left + pad, ca.bottom - pad);
+    ctx.textAlign = 'right'; ctx.fillText('CHALK', ca.right - pad, ca.bottom - pad);
+    ctx.restore();
+  },
+};
+
+// Crosshair: dashed lines from the hovered (or selected) bubble to each axis,
+// in the bubble's tier color. A selected bubble also gets a ring.
+const wcCrosshair = {
+  id: 'wcCrosshair',
+  afterDatasetsDraw(chart) {
+    const { ctx, chartArea: ca, scales } = chart;
+    const draw = (px, py, color, ring) => {
+      ctx.save();
+      ctx.strokeStyle = color; ctx.lineWidth = 1; ctx.setLineDash([3, 3]);
+      ctx.globalAlpha = 0.6;
+      ctx.beginPath();
+      ctx.moveTo(px, py); ctx.lineTo(px, ca.bottom);
+      ctx.moveTo(px, py); ctx.lineTo(ca.left, py);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      if (ring) {
+        ctx.globalAlpha = 1; ctx.lineWidth = 2.5;
+        ctx.strokeStyle = WC_GOLD;
+        ctx.beginPath(); ctx.arc(px, py, ring + 4, 0, Math.PI * 2); ctx.stroke();
+      }
+      ctx.restore();
+    };
+    const active = chart.getActiveElements();
+    if (active.length) {
+      const { datasetIndex, index } = active[0];
+      const el = chart.getDatasetMeta(datasetIndex).data[index];
+      const tier = datasetIndex + 1;
+      draw(el.x, el.y, TC[tier] || WC_NAVY, false);
+    }
+    if (chart.$wcSelected) {
+      chart.data.datasets.forEach((d, di) => d.data.forEach((p, i) => {
+        if (p.name === chart.$wcSelected) {
+          const el = chart.getDatasetMeta(di).data[i];
+          draw(el.x, el.y, WC_RED, el.options.radius || 6);
+        }
+      }));
+    }
+  },
+};
+
+// Editorial callout (replaces Chart.js's default tooltip look).
+function scatterCallout(context) {
+  const { chart, tooltip } = context;
+  let box = document.getElementById('wc-scatter-callout');
+  if (!box) {
+    box = document.createElement('div');
+    box.id = 'wc-scatter-callout';
+    chart.canvas.parentNode.appendChild(box);
+  }
+  if (tooltip.opacity === 0) { box.classList.remove('is-on'); return; }
+  const dp = tooltip.dataPoints?.[0];
+  if (!dp) return;
+  const raw = dp.raw;
+  const c = COUNTRY_STATS.find(x => x.name === raw.name) || {};
+  box.innerHTML =
+    `<div class="wc-callout-team">${flagImg(c.iso_code)}<span>${raw.name}</span></div>` +
+    `<div class="wc-callout-tier">T${c.tier} · ${TN_SHORT[c.tier]} · ×${TM[c.tier]}</div>` +
+    `<div class="wc-callout-stats">` +
+      `<div><div class="wc-callout-stat-label">Picked by</div><div class="wc-callout-stat-val">${Math.round(raw.x)}%</div></div>` +
+      `<div><div class="wc-callout-stat-label">Points</div><div class="wc-callout-stat-val">${raw.y.toFixed(1)}</div></div>` +
+    `</div>` +
+    (raw.mine ? `<div class="wc-callout-mine">★ Your pick</div>` : '');
+  // Clamp horizontally so the callout never clips the card edge.
+  const w = box.offsetWidth || 200;
+  let left = tooltip.caretX + 14;
+  if (left + w > chart.width) left = tooltip.caretX - w - 14;
+  box.style.left = Math.max(4, left) + 'px';
+  box.style.top = Math.max(4, tooltip.caretY - 10) + 'px';
+  box.classList.add('is-on');
+}
+
+function setCrossHighlight(name) {
+  const scatter = charts.scatter;
+  const banner = document.getElementById('wc-xhl-banner');
+  document.querySelectorAll('.is-cross-hl').forEach(el => el.classList.remove('is-cross-hl'));
+  if (!name) {
+    if (scatter) { scatter.$wcSelected = null; scatter.draw(); }
+    banner?.classList.remove('is-on');
+    return;
+  }
+  document.querySelectorAll(`[data-team="${CSS.escape(name)}"]`)
+    .forEach(el => el.classList.add('is-cross-hl'));
+  if (scatter) { scatter.$wcSelected = name; scatter.draw(); }
+  const nameEl = document.getElementById('wc-xhl-name');
+  if (nameEl) nameEl.textContent = name;
+  banner?.classList.add('is-on');
+}
+
 function initImpactCharts() {
   // Per-point gold ring marks the viewer's own picks (parity with the ★ in
   // the lists/bars), so the one signature chart still tells a personal story.
@@ -537,18 +877,40 @@ function initImpactCharts() {
       backgroundColor: TC[t] + 'BB',  // BB = ~73% alpha; tier colors via TC token lookup
       borderColor: pts.map(c => MY_PICKS.includes(c.name) ? WC_GOLD : TC[t]),
       borderWidth: pts.map(c => MY_PICKS.includes(c.name) ? 3 : 1.5),
+      hoverBorderWidth: pts.map(c => MY_PICKS.includes(c.name) ? 4 : 2.5),
     };
   });
 
   charts.scatter = new Chart(document.getElementById('ch-scatter'), {
     type: 'bubble',
     data: {datasets},
+    plugins: [wcQuadrants, wcCrosshair],
     options: {
       responsive: true,
       maintainAspectRatio: false,
+      // Bubbles grow from 0 and rise from the baseline, settling with an
+      // exponential ease-out (no overshoot — CCC bans bounce/elastic).
+      animation: REDUCED ? false : { duration: 720, easing: 'easeOutQuart' },
+      animations: REDUCED ? {} : {
+        r: { from: 0, duration: 620, easing: 'easeOutQuart',
+             delay: (ctx) => ctx.type === 'data' ? ctx.dataIndex * 22 : 0 },
+        y: { from: (ctx) => ctx.chart.scales.y?.getPixelForValue(0) ?? 0,
+             duration: 720, easing: 'easeOutQuart' },
+      },
+      interaction: { mode: 'point', intersect: true },
+      onHover: (e, els) => { e.native.target.style.cursor = els.length ? 'pointer' : 'default'; },
+      onClick: (e, els) => {
+        if (els.length) {
+          const { datasetIndex, index } = els[0];
+          const name = charts.scatter.data.datasets[datasetIndex].data[index].name;
+          setCrossHighlight(name === charts.scatter.$wcSelected ? null : name);
+        } else {
+          setCrossHighlight(null);
+        }
+      },
       plugins: {
         legend: {position:'right',labels:{font:{size:12},padding:12,boxWidth:11,color:TICK_COLOR}},
-        tooltip: {callbacks:{label:ctx=>` ${ctx.raw.name}: ${ctx.raw.x.toFixed(0)}% picked · ${ctx.raw.y.toFixed(1)} pts${ctx.raw.mine ? ' · your pick' : ''}`}},
+        tooltip: { enabled: false, external: scatterCallout },
       },
       scales: {
         x: {
@@ -566,6 +928,20 @@ function initImpactCharts() {
       },
     },
   });
+
+  // Fade the quadrant overlay in after the bubbles have settled.
+  const sc = charts.scatter;
+  if (REDUCED) { sc.$wcQuad = 1; sc.draw(); }
+  else {
+    const t0 = performance.now();
+    const QDELAY = 620, QDUR = 520;
+    (function ramp(now) {
+      const p = Math.min(1, Math.max(0, (now - t0 - QDELAY) / QDUR));
+      sc.$wcQuad = 1 - Math.pow(1 - p, 3);
+      sc.draw();
+      if (p < 1) requestAnimationFrame(ramp);
+    })(performance.now());
+  }
 }
 
 // ── TABS ──────────────────────────────────────────────────────
@@ -584,6 +960,9 @@ function switchTab(id) {
       chartsInitialized.add('field'); initImpactCharts();
     }
   }, 40);
+  // Entrance choreography plays the first time a tab is revealed (the panel
+  // is now visible, so WAAPI/clip-path reveals actually fire).
+  choreograph(id);
   // Only realign to the tab bar when it has scrolled out of view — don't yank
   // a returning reader who's already parked near the pills.
   const pills = document.querySelector('.wc-stats-pills');
@@ -602,11 +981,33 @@ renderImpact();
 renderCombos();
 renderPointsSplit();
 
+// Cross-highlight: the Field-tab "Clear" chip drops the active nation.
+document.getElementById('wc-xhl-clear')?.addEventListener('click', () => setCrossHighlight(null));
+
+// Pick Distribution lives in a collapsed <details>; draw its bars the first
+// time it opens (animating hidden bars would be wasted).
+(function () {
+  const det = document.querySelector('.wc-disclosure');
+  if (!det) return;
+  det.addEventListener('toggle', function onOpen() {
+    if (!det.open) return;
+    det.removeEventListener('toggle', onOpen);
+    [1,2,3,4,5].forEach(t => drawBars(document.getElementById(`bars-t${t}`), '.wc-pick-bar-fill', { dur: 540 }));
+  });
+})();
+
+let _initialTab = 'board';
 try {
   // wc_stats_tab_v2 invalidates stale 'overview'/'selection'/etc. values from
   // the pre-restructure key. Existing TAB_IDS.includes guard handles missing/stale.
   const saved = localStorage.getItem('wc_stats_tab_v2');
-  if (saved && TAB_IDS.includes(saved) && saved !== 'board') switchTab(saved);
+  if (saved && TAB_IDS.includes(saved)) _initialTab = saved;
 } catch(e) {}
+
+// Play the entrance for whichever tab actually lands visible (switchTab fires
+// choreograph on reveal; the default board tab needs an explicit kick).
+if (_initialTab !== 'board') switchTab(_initialTab);
+else choreograph('board');
 </script>
+{% endif %}
 {% endblock %}

@@ -1,3 +1,6 @@
+import os
+from unittest.mock import patch
+
 import pytest
 from app import create_app
 from extensions import db
@@ -213,23 +216,66 @@ def client(app):
     return app.test_client()
 
 
-def test_stats_route_public(client, session):
-    """Stats page is public — no login required."""
-    # Need at least one team for country_stats to work
+def _make_admin(session, username='wcadmin'):
+    u = User(username=username, email=f'{username}@test.com',
+             password_hash='x', is_admin=True)
+    session.add(u)
+    session.flush()
+    return u
+
+
+# Picks lock at 2026-06-11 19:00 UTC; tests run pre-deadline in real time.
+_AFTER_KICKOFF = {'WC_FAKE_NOW': '2026-06-15T12:00:00+00:00', 'ENVIRONMENT': 'testing'}
+
+
+def test_stats_locked_pre_deadline_anonymous(client, session):
+    """Pre-kickoff, a non-admin gets the sealed locked state, not the data."""
     _make_team(session, 'BRA', 'Brazil', tier=1, multiplier=1.0)
     session.commit()
 
     resp = client.get('/worldcup/stats')
     assert resp.status_code == 200
+    # Hero still renders...
     assert b'The Field Office' in resp.data
+    # ...but the data surface (pills + JS bridge) is gated off.
+    assert b'wc-stats-pills' not in resp.data
+    assert b'MY_PICKS' not in resp.data
+    # Sealed-state copy is present.
+    assert b'Field office sealed' in resp.data
+
+
+def test_stats_visible_post_deadline(client, session):
+    """Once kickoff passes, the full stats surface is public."""
+    _make_team(session, 'BRA', 'Brazil', tier=1, multiplier=1.0)
+    session.commit()
+
+    with patch.dict(os.environ, _AFTER_KICKOFF):
+        resp = client.get('/worldcup/stats')
+    assert resp.status_code == 200
+    assert b'wc-stats-pills' in resp.data
+
+
+def test_stats_visible_admin_pre_deadline(client, session):
+    """Platform admins preview the stats surface before kickoff."""
+    _make_team(session, 'BRA', 'Brazil', tier=1, multiplier=1.0)
+    admin = _make_admin(session)
+    session.commit()
+
+    with client.session_transaction() as sess:
+        sess['_user_id'] = str(admin.id)
+        sess['_fresh'] = True
+
+    resp = client.get('/worldcup/stats')  # real time = pre-deadline
+    assert resp.status_code == 200
     assert b'wc-stats-pills' in resp.data
 
 
 def test_stats_route_my_picks_unauthenticated(client, session):
-    """Unauthenticated users get MY_PICKS = [] — no error."""
+    """Post-deadline, unauthenticated users get MY_PICKS = [] — no error."""
     _make_team(session, 'BRA', 'Brazil', tier=1, multiplier=1.0)
     session.commit()
 
-    resp = client.get('/worldcup/stats')
+    with patch.dict(os.environ, _AFTER_KICKOFF):
+        resp = client.get('/worldcup/stats')
     assert resp.status_code == 200
     assert b'MY_PICKS = []' in resp.data

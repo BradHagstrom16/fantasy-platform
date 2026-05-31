@@ -42,7 +42,9 @@ Pattern matches CLAUDE.md "CSS specificity for utility classes" — new
 rules of equal specificity, parallel to S2.3.1's surface-scoped class
 migration pattern.
 """
+import os
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
@@ -314,7 +316,11 @@ def test_stats_route_renders_new_structure(app):
     is-lead. Catches any Jinja-side break that the source-grep tests
     miss (e.g., a context-processor rename)."""
     client = app.test_client()
-    resp = client.get('/worldcup/stats')
+    # Stats is gated until kickoff (admins-only preview); render the unlocked
+    # state so the structural assertions exercise the real data surface.
+    with patch.dict(os.environ, {'WC_FAKE_NOW': '2026-06-15T12:00:00+00:00',
+                                 'ENVIRONMENT': 'testing'}):
+        resp = client.get('/worldcup/stats')
     assert resp.status_code == 200
     body = resp.data.decode('utf-8')
     assert 'wc-stats-masthead' in body

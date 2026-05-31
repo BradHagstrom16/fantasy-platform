@@ -766,7 +766,26 @@ def rules():
 
 @worldcup_bp.route('/stats')
 def stats():
-    """Stats Hub — public, no login required."""
+    """Stats Hub — admins preview anytime; everyone else unlocks at kickoff.
+
+    The page aggregates the whole field's picks/scores, so revealing it
+    pre-deadline would leak the field's collective roster (same privacy
+    concern as leaderboard/<id> and spec D11). Mirror that gate: only
+    platform admins see the data before the pick deadline passes.
+    """
+    deadline_passed = now_utc() >= TOURNAMENT_DEADLINE_UTC
+    is_admin = current_user.is_authenticated and current_user.is_admin
+    stats_visible = deadline_passed or is_admin
+    deadline_ct = TOURNAMENT_DEADLINE_UTC.astimezone(WORLDCUP_TZ)
+
+    if not stats_visible:
+        return render_template(
+            'worldcup/stats.html',
+            stats_visible=False,
+            deadline_ct=deadline_ct,
+            current_phase=_derive_tournament_phase(),
+        )
+
     country_stats, total_players = get_country_stats(SEASON_YEAR)
     tier_stats = get_tier_stats(country_stats)
     kpis = get_overview_kpis(country_stats, total_players)
@@ -788,6 +807,7 @@ def stats():
 
     return render_template(
         'worldcup/stats.html',
+        stats_visible=True,
         country_stats=country_stats,
         tier_stats=tier_stats,
         kpis=kpis,
