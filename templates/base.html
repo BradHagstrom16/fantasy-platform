@@ -126,6 +126,8 @@
                    href="{{ url_for('worldcup.leaderboard') }}">Board</a>
                 <a class="subnav-pill {% if request.endpoint == 'worldcup.schedule' %}active{% endif %}"
                    href="{{ url_for('worldcup.schedule') }}">Schedule</a>
+                <a class="subnav-pill {% if request.endpoint == 'worldcup.groups' %}active{% endif %}"
+                   href="{{ url_for('worldcup.groups') }}">Groups</a>
                 <a class="subnav-pill {% if request.endpoint == 'worldcup.stats' %}active{% endif %}"
                    href="{{ url_for('worldcup.stats') }}">Stats</a>
                 <a class="subnav-pill {% if request.endpoint == 'worldcup.rules' %}active{% endif %}"
@@ -240,15 +242,28 @@
     </script>
 
     <script>
-    // Auto-scroll sub-nav to show active pill on mobile
+    // Sub-nav: center the active pill on load, and show a right-edge fade
+    // only while pills are scrolled off the right (discoverability cue).
     (function() {
-      var activePill = document.querySelector('.subnav-pills .subnav-pill.active');
-      if (activePill) {
-        var container = activePill.closest('.subnav-pills');
-        if (container && container.scrollWidth > container.clientWidth) {
-          activePill.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'instant' });
-        }
+      var subnav = document.querySelector('.game-subnav');
+      var scroller = document.querySelector('.subnav-pills');
+      if (!subnav || !scroller) return;
+
+      // Reveal the fade only when there's hidden content to the right
+      // (not when the strip fits exactly, and not when scrolled to the end).
+      function updateFade() {
+        var hiddenRight = scroller.scrollWidth - scroller.clientWidth - scroller.scrollLeft;
+        subnav.classList.toggle('is-overflow-right', hiddenRight > 1);
       }
+
+      // Center the active pill first, then sync the fade to the new position.
+      var activePill = scroller.querySelector('.subnav-pill.active');
+      if (activePill && scroller.scrollWidth > scroller.clientWidth) {
+        activePill.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'instant' });
+      }
+      updateFade();
+      scroller.addEventListener('scroll', updateFade, { passive: true });
+      window.addEventListener('resize', updateFade, { passive: true });
     })();
     </script>
 

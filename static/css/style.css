@@ -6552,7 +6552,36 @@ main { flex: 1; }
   display: flex;
   align-items: center;
   gap: .5rem;
+  position: relative;  /* anchor for the right-edge overflow fade (below) */
 }
+
+/* Right-edge fade — makes the horizontal pill overflow discoverable on
+   narrow viewports (the `.subnav-pills` scroller hides its scrollbar and
+   clips exactly at a pill edge, so without this nothing signals "more →").
+   Anchored to the non-scrolling `.container` so it stays put while pills
+   scroll under it; absolutely-positioned so it doesn't become a flex item.
+   Tinted to each game's own sub-nav substrate so it reads as the strip
+   running off the edge, not a gray smudge. pointer-events:none keeps the
+   rightmost pill tappable.
+   Opacity-gated on the `.is-overflow-right` class (toggled by the sub-nav
+   script in base.html): hidden unless there are pills scrolled off the
+   right, so it never dims the last pill when the strip fits exactly or is
+   scrolled to its end. */
+.game-subnav .container::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 2.25rem;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity .15s ease;
+}
+.game-subnav.is-overflow-right .container::after { opacity: 1; }
+.subnav-worldcup .container::after { background: linear-gradient(to right, rgba(0,18,46,0), #00122e); }
+.subnav-golf     .container::after { background: linear-gradient(to right, rgba(0,26,13,0), #001a0d); }
+.subnav-cfb      .container::after { background: linear-gradient(to right, rgba(10,8,15,0), #0a080f); }
 
 /* Per-game palettes */
 .subnav-worldcup { background: #00122e; --subnav-accent: #BF0A30; --subnav-accent-rgb: 191,10,48; }
