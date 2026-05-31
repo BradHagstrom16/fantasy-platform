@@ -5,5 +5,5 @@
 // macro. `base` is the static flags-dir URL, `version` the asset_version
 // cache-bust; both are Jinja-injected per page.
 function cccFlagImg(base, version, iso) {
-  return '<img class="ccc-flag" src="' + base + (iso || '_tbd') + '.svg?v=' + version + '" alt="">';
+  return '<img class="ccc-flag" src="' + base + (iso || '_tbd') + '.svg?v=' + version + '" alt="" loading="lazy" decoding="async">';
 }
