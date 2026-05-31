@@ -208,7 +208,9 @@ def process_match_cmd(match_number, home_score, away_score, winner_code,
 @worldcup_cli.command('simulate-group-stage')
 @click.option('--dry-run', is_flag=True, default=False,
               help='Print the planned result for every match without writing.')
-def simulate_group_stage_cmd(dry_run: bool):
+@click.option('--yes', '-y', is_flag=True, default=False,
+              help='Skip the confirmation prompt (for scripted runs).')
+def simulate_group_stage_cmd(dry_run: bool, yes: bool):
     """Fill in all 72 group-stage results with deterministic, tie-free standings.
 
     Testing aid for the production launch script: plays out the entire group
@@ -216,6 +218,9 @@ def simulate_group_stage_cmd(dry_run: bool):
     Only touches stage='group' matches; knockout shells are never modified, and
     already-completed matches are skipped (re-runs are safe). Advancement
     confirmation stays a manual step — this command stops after group results.
+
+    Destructive: writes results to incomplete group matches and recalculates
+    every enrollment score. Prompts for confirmation unless --dry-run or --yes.
 
     Within each group the four teams are ranked 1-4 by (multiplier ASC,
     fifa_code ASC) — lower multiplier = favorite, so favorites finish higher
@@ -246,6 +251,17 @@ def simulate_group_stage_cmd(dry_run: bool):
         .order_by(WorldCupMatch.match_number)
         .all()
     )
+
+    # Gate the destructive write path behind a confirmation (skipped for
+    # --dry-run, which writes nothing, and --yes, for scripted runs).
+    if not dry_run and not yes:
+        pending = sum(1 for m in matches if not m.is_completed)
+        if pending:
+            click.confirm(
+                f'This will write results to {pending} incomplete group '
+                f'match(es) and recalculate every enrollment score. Continue?',
+                abort=True,
+            )
 
     processed = 0
     skipped = 0

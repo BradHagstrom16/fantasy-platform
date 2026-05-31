@@ -41,7 +41,7 @@ def test_simulate_completes_all_group_matches(app):
         runner = app.test_cli_runner()
         _seed(runner)
 
-        result = runner.invoke(worldcup_cli, ['simulate-group-stage'])
+        result = runner.invoke(worldcup_cli, ['simulate-group-stage', '--yes'])
         assert result.exit_code == 0, result.output
 
         group = WorldCupMatch.query.filter_by(stage='group').all()
@@ -59,7 +59,7 @@ def test_simulate_clean_standings_per_group(app):
     with app.app_context():
         runner = app.test_cli_runner()
         _seed(runner)
-        assert runner.invoke(worldcup_cli, ['simulate-group-stage']).exit_code == 0
+        assert runner.invoke(worldcup_cli, ['simulate-group-stage', '--yes']).exit_code == 0
 
         letters = {
             t.group_letter for t in WorldCupTeam.query
@@ -79,7 +79,7 @@ def test_simulate_one_draw_per_group(app):
     with app.app_context():
         runner = app.test_cli_runner()
         _seed(runner)
-        assert runner.invoke(worldcup_cli, ['simulate-group-stage']).exit_code == 0
+        assert runner.invoke(worldcup_cli, ['simulate-group-stage', '--yes']).exit_code == 0
 
         draws = WorldCupMatch.query.filter_by(stage='group', is_draw=True).all()
         assert len(draws) == 12
@@ -109,9 +109,33 @@ def test_simulate_rerun_is_safe(app):
     with app.app_context():
         runner = app.test_cli_runner()
         _seed(runner)
-        assert runner.invoke(worldcup_cli, ['simulate-group-stage']).exit_code == 0
+        assert runner.invoke(worldcup_cli, ['simulate-group-stage', '--yes']).exit_code == 0
 
-        result = runner.invoke(worldcup_cli, ['simulate-group-stage'])
+        result = runner.invoke(worldcup_cli, ['simulate-group-stage', '--yes'])
         assert result.exit_code == 0, result.output
         assert '72 skipped' in result.output
+        assert WorldCupMatch.query.filter_by(stage='group', is_completed=True).count() == 72
+
+
+def test_simulate_aborts_without_confirmation(app):
+    """Non-dry-run without --yes: declining the prompt writes nothing."""
+    from games.worldcup.models import WorldCupMatch
+    with app.app_context():
+        runner = app.test_cli_runner()
+        _seed(runner)
+
+        result = runner.invoke(worldcup_cli, ['simulate-group-stage'], input='n\n')
+        assert result.exit_code != 0  # click.confirm(abort=True) raises Abort
+        assert WorldCupMatch.query.filter_by(stage='group', is_completed=True).count() == 0
+
+
+def test_simulate_proceeds_on_confirmation(app):
+    """Non-dry-run without --yes: accepting the prompt fills all 72 matches."""
+    from games.worldcup.models import WorldCupMatch
+    with app.app_context():
+        runner = app.test_cli_runner()
+        _seed(runner)
+
+        result = runner.invoke(worldcup_cli, ['simulate-group-stage'], input='y\n')
+        assert result.exit_code == 0, result.output
         assert WorldCupMatch.query.filter_by(stage='group', is_completed=True).count() == 72
