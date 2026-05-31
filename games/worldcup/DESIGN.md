@@ -316,8 +316,8 @@ Doctrine:
 
 WC surfaces carry three distinct tier primitives, one per semantic role. Each plays a non-overlapping job; the three should never collapse into a single class.
 
-- **`.wc-tier-dot` — the visual mark.** A compact circular dot tinted per tier (`--wc-tier1`..`--wc-tier5`) used inline next to a country name. Read at a glance; never carries text. Used on `team_detail`, `player_detail`, `stats`, `picks`, and `rules`.
-- **`.tier-badge` — the numeric text companion.** A small pill rendering the literal tier number (`"T1"` / `"T2"` / ...) when the dot alone would leave a sighted reader guessing. Used on `rules.html` (×5, paired with `.wc-tier-dot` in the tier-table cell) and `_home_pre.html` (`roster-tier-label` on the ballot dossier). Not for use on team / player detail — the dot alone carries enough signal there.
+- **`.wc-tier-dot` — the visual mark.** A compact circular dot tinted per tier (`--wc-tier1`..`--wc-tier5`) used inline next to a country name. Read at a glance; never carries text. Used on `team_detail`, `player_detail`, `stats`, and `picks`.
+- **`.tier-badge` — the numeric text companion.** A small pill rendering the literal tier number (`"T1"` / `"T2"` / ...) when the dot alone would leave a sighted reader guessing. Used on `rules.html` (the tier table and points-matrix header, standing alone as the sole tier indicator) and `_home_pre.html` (`roster-tier-label` on the ballot dossier). Not for use on team / player detail — the dot alone carries enough signal there. The badge is itself tier-colored with the number inside, so it never needs a `.wc-tier-dot` beside it (the prior rules-page pairing was redundant; per the rule of thumb below, pick one).
 - **`.wc-multiplier-chip` — the multiplier indicator.** A chip rendering the tier's points multiplier (`×N`). Used on `picks.html` desktop readonly table and the tier-card heading. Never paired with `.tier-badge` on the same row; the chip's `"×N"` reading and the badge's `"T#"` reading would collide.
 
 Rule of thumb: dot for the mark, badge for the number, chip for the multiplier. New tier-adjacent UI picks one, not two.

@@ -3546,6 +3546,15 @@ body.game-worldcup {
   color: var(--text-secondary);
 }
 
+/* Rules page sits on white .card bodies (the bone substrate), so the default
+   bone-mute eyebrow (calibrated for navy) reads as pale yellow-on-white and
+   fails AA. Lift to --text-secondary (~6.9:1), same light-surface treatment as
+   .wc-stat-card / .player-picks-* above (DESIGN.md §3). The :not() guard leaves
+   the red Tiers/Knockouts eyebrows on this page untouched. */
+.wc-rules-body .wc-eyebrow:not(.wc-eyebrow-red):not(.wc-eyebrow-gold) {
+  color: var(--text-secondary);
+}
+
 /* Display numeral utility — Teko, tabular figures */
 .wc-numeral {
   font-family: 'Teko', sans-serif;
@@ -7988,31 +7997,6 @@ hr { border-color: var(--border); opacity: 1; }
   .sched-fixture-core { min-width: 60px; }
 }
 
-/* --- 18k. WC Rules — scroll indicator for wide tables --- */
-.table-scroll-wrapper {
-  position: relative;
-  overflow: hidden;
-}
-.table-scroll-wrapper .table-responsive {
-  position: relative;
-}
-.table-scroll-wrapper::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  width: 24px;
-  background: linear-gradient(90deg, transparent, rgba(0,0,0,.06));
-  pointer-events: none;
-  z-index: 1;
-  opacity: 1;
-  transition: opacity .2s;
-}
-.table-scroll-wrapper.scrolled-end::after {
-  opacity: 0;
-}
-
 /* --- 18o. WC Rules — mobile tier cards --- */
 .tier-mobile-card {
   background: var(--bg-muted);
@@ -8450,37 +8434,6 @@ a.roster-team-card:focus-visible {
 .wc-rules-body .card-body > p,
 .wc-rules-body .card-body > ul {
   max-width: 64ch;
-}
-
-/* Peak callout: the multiplier drama in one line. Gold here is the WC
-   quaternary ceremonial accent (champion / 350 = culmination); emphasis is
-   carried by Teko weight + size, never a hero-metric block. Full border +
-   gold top rule, no side-stripe. */
-.wc-rules-callout {
-  margin: 0 0 1.5rem;
-  padding: 1.25rem 1.35rem 1.15rem;
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-top: 2px solid var(--gold);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
-}
-.wc-rules-callout p {
-  margin: 0;
-  max-width: 60ch;
-  font-family: var(--font-news);
-  font-size: 1.12rem;
-  line-height: 1.5;
-  color: var(--text-primary);
-}
-.wc-rules-callout .wc-rules-callout-num {
-  font-family: 'Teko', sans-serif;
-  font-weight: 700;
-  font-size: 1.7rem;
-  line-height: 1;
-  letter-spacing: .01em;
-  color: var(--gold-dark);
-  vertical-align: -.06em;
 }
 
 /* Optional-depth disclosure for the points matrix: casual readers skip it,
