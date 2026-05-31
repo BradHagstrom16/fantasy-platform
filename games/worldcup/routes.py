@@ -10,7 +10,7 @@ from collections import Counter, defaultdict, OrderedDict
 from flask import render_template, redirect, url_for, flash, request, jsonify
 from flask_login import login_required, current_user
 from sqlalchemy import func, or_, select
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload, contains_eager
 
 from extensions import db
 from models import User
@@ -462,6 +462,33 @@ def leaderboard():
         if show_trend_column() else {}
     )
 
+    # Inline rosters (D11 privacy): only surface picks once the deadline has
+    # passed — pre-deadline rosters stay sealed, matching player_detail's
+    # picks_visible gate. One query, contains_eager populates pick.team from
+    # the join so the template's 9-flags-per-row stays N+1-free.
+    roster_by_enrollment: dict[int, list] = {}
+    your_team_ids: set[int] = set()
+    if deadline_passed and enrollment_ids:
+        pick_rows = (
+            WorldCupPick.query
+            .join(WorldCupPick.team)
+            .options(contains_eager(WorldCupPick.team))
+            .filter(WorldCupPick.enrollment_id.in_(enrollment_ids))
+            .order_by(WorldCupTeam.tier.asc(), WorldCupTeam.display_name.asc())
+            .all()
+        )
+        grouped = defaultdict(list)
+        for p in pick_rows:
+            grouped[p.enrollment_id].append(p)
+        roster_by_enrollment = dict(grouped)
+
+        # The viewer's own picks drive the "shared with you" highlight on other
+        # players' rows (their own row never rings — every flag would match).
+        if current_user.is_authenticated:
+            mine = next((e for e in enrollments if e.user_id == current_user.id), None)
+            if mine:
+                your_team_ids = {p.team_id for p in roster_by_enrollment.get(mine.id, [])}
+
     return render_template('worldcup/leaderboard.html',
         ranked_enrollments=ranked,
         total_players=total_players,
@@ -472,6 +499,8 @@ def leaderboard():
         your_standing=your_standing,
         rank_delta_by_enrollment=rank_delta_by_enrollment,
         trend_by_enrollment=trend_by_enrollment,
+        roster_by_enrollment=roster_by_enrollment,
+        your_team_ids=your_team_ids,
     )
 
 

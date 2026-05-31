@@ -6431,6 +6431,56 @@ body.game-worldcup .tier-card-5 .tier-card-header { background: linear-gradient(
 }
 .leaderboard-avatar { margin-right: .4rem; }
 
+/* Inline roster rail — flags-only preview of each player's nine nations so the
+   board answers "who picked who" without a click into player_detail. Only
+   rendered post-deadline (D11 privacy gate lives in the route). Flags read at
+   1.15rem via .ccc-flag's height:1em. Full country name surfaces on hover/focus
+   through the title attribute (same native-tooltip idiom as .leaderboard-tied).
+   WC accent doctrine: red carries the competitive "shared with you" signal. */
+.leaderboard-roster {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .3rem;
+  margin-top: .4rem;
+}
+.lb-flag {
+  display: inline-flex;
+  font-size: 1.15rem;
+  border-radius: 3px;
+  cursor: default;
+  transition: transform .15s ease-out, box-shadow .15s ease-out;
+}
+.lb-flag:hover,
+.lb-flag:focus-visible {
+  transform: translateY(-2px);
+  box-shadow: 0 3px 8px rgba(28, 23, 48, .22);
+}
+.lb-flag:focus-visible {
+  outline: 2px solid var(--wc-red);
+  outline-offset: 2px;
+}
+/* Knocked-out nations dim to a grayscale ghost — the at-a-glance "riding a dead
+   horse" read. Uses team.is_eliminated, the same signal as the hub Leverage
+   Board's is-out status. */
+.lb-flag.is-out {
+  filter: grayscale(1);
+  opacity: .4;
+}
+/* "Also yours" — a red ring on the wrapper (not the flag img, so .ccc-flag's
+   inset hairline stays intact). Only set on other players' rows. */
+.lb-flag.is-shared {
+  box-shadow: 0 0 0 2px var(--wc-red);
+}
+.lb-flag.is-shared:hover,
+.lb-flag.is-shared:focus-visible {
+  box-shadow: 0 0 0 2px var(--wc-red), 0 3px 8px rgba(28, 23, 48, .22);
+}
+@media (prefers-reduced-motion: reduce) {
+  .lb-flag { transition: none; }
+  .lb-flag:hover,
+  .lb-flag:focus-visible { transform: none; }
+}
+
 /* "tied" says the dense-rank shared-rank story out loud (three players at
    "1" otherwise read as ambiguous). Editorial micro-label, not an alert. */
 .leaderboard-tied {
