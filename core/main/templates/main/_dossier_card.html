@@ -1,3 +1,4 @@
+{% from '_flag.html' import flag with context %}
 {# Live-state dossier card — Spec B section 7c #}
 <div class="dossier">
   {# ◇ informational register (CLAUDE.md eyebrow-glyph reservation): a routine
@@ -191,7 +192,7 @@
     <p class="ledger-line ledger-line--secondary">
       <span class="ledger-eyebrow-inline">Top earner</span>
       <span class="ledger-top-earner">
-        {{ dossier.top_earner.team_flag }}
+        {{ flag(dossier.top_earner.team_iso) }}
         <strong class="lk lk--gold">{{ dossier.top_earner.team_code }}</strong>
         leading your nine at
         <strong class="lk">{{ '%.1f'|format(dossier.top_earner.points) }} pts</strong>.

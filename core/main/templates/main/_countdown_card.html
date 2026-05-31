@@ -8,7 +8,28 @@
 {% set _sealed = is_enrolled and enrollment and enrollment.picks_submitted %}
 {% set _clamped_days = (((deadline_utc - now_utc).days)|default(0)) %}
 {% if _clamped_days < 0 %}{% set _clamped_days = 0 %}{% endif %}
-<div class="decree" data-deadline-utc="{{ deadline_utc.strftime('%Y-%m-%dT%H:%M:%SZ') }}"
+{# State-aware decree CTA. The decree is the single pre-state action surface
+   (the separate join/seal dossier cards were consolidated in here), so its
+   destination tracks the three authenticated pre-state branches:
+     unenrolled        -> join the pool
+     enrolled, no picks -> make picks
+     sealed             -> enter the WC hub
+   Anonymous users never reach this partial (the home route serves state=out),
+   so the three branches are exhaustive. #}
+{% if not is_enrolled %}
+  {% set _cta_href = url_for('worldcup.join') %}
+  {% set _cta_label = 'Join the World Cup pool' %}
+  {% set _cta_sub = 'Pay tribute, pick nine nations, take your seat at the council.' %}
+{% elif not _sealed %}
+  {% set _cta_href = url_for('worldcup.picks') %}
+  {% set _cta_label = 'Make your picks' %}
+  {% set _cta_sub = "You're in. Lock your nine nations before kickoff." %}
+{% else %}
+  {% set _cta_href = url_for('worldcup.index') %}
+  {% set _cta_label = 'Enter the World Cup' %}
+  {% set _cta_sub = 'Your roster is sealed. Take your seat and watch it unfold.' %}
+{% endif %}
+<div class="decree animate-in-scale" data-deadline-utc="{{ deadline_utc.strftime('%Y-%m-%dT%H:%M:%SZ') }}"
      data-server-now-utc="{{ now_utc.strftime('%Y-%m-%dT%H:%M:%SZ') }}">
   <div class="decree-seal">
     <div class="s">By Decree of the Commish <span class="num">No 001</span></div>
@@ -42,5 +63,11 @@
       <span class="decree-tick"><span data-cd-secs>00</span><span class="u">s</span></span>
     </div>
     <p class="decree-foot">{% if _sealed %}Group stage opens then. The ledger follows.{% else %}Once group stage begins, all picks lock.{% endif %}</p>
+    {# The decree's seal: pressing it affixes the decree (see .decree-cta:active
+       in style.css). The label leads; the sub-line carries the Commish voice. #}
+    <a class="decree-cta" href="{{ _cta_href }}">
+      <span class="decree-cta-label">{{ _cta_label }}<i class="bi bi-arrow-right" aria-hidden="true"></i></span>
+      <span class="decree-cta-sub">{{ _cta_sub }}</span>
+    </a>
   </div>
 </div>

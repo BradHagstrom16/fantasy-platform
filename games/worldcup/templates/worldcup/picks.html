@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from '_flag.html' import flag with context %}
 {% block title %}My Picks · World Cup Fantasy Pool{% endblock %}
 
 {% block content %}
@@ -105,7 +106,7 @@
                 <span class="wc-tier-dot wc-tier-dot-{{ pick.tier }}" aria-hidden="true"></span>
                 <span class="wc-eyebrow">{{ tiers[pick.tier].name }}</span>
               </div>
-              <div class="pick-team{% if show_scoring and pick.team.is_eliminated %} pick-team-out{% endif %}">{{ pick.team.flag_emoji }} {{ pick.team.display_name }} <small>Grp {{ pick.team.group_letter }}</small></div>
+              <div class="pick-team{% if show_scoring and pick.team.is_eliminated %} pick-team-out{% endif %}">{{ flag(pick.team.iso_code) }} {{ pick.team.display_name }} <small>Grp {{ pick.team.group_letter }}</small></div>
             </div>
             <div class="pick-points">
               {% if show_scoring %}
@@ -202,7 +203,7 @@
             <div class="wc-team-card {% if team.id in selected_team_ids %}selected{% endif %}"
                  data-team-id="{{ team.id }}"
                  data-tier="{{ tier_num }}"
-                 data-flag="{{ team.flag_emoji }}"
+                 data-iso="{{ team.iso_code }}"
                  data-group="{{ team.group_letter }}"
                  role="checkbox"
                  tabindex="0"
@@ -214,7 +215,7 @@
                      class="team-checkbox visually-hidden"
                      aria-hidden="true" tabindex="-1"
                      {% if team.id in selected_team_ids %}checked{% endif %}>
-              <span class="team-flag fs-4" aria-hidden="true">{{ team.flag_emoji }}</span>
+              <span class="team-flag fs-4" aria-hidden="true">{{ flag(team.iso_code) }}</span>
               <span class="team-name">{{ team.display_name }}</span>
               <span class="team-meta">
                 <a href="{{ url_for('worldcup.groups') }}#group-{{ team.group_letter }}"
@@ -292,10 +293,16 @@
 
 {% block scripts %}
 {% if show_edit_form %}
+<script src="{{ url_for('static', filename='js/flag.js') }}?v={{ asset_version }}"></script>
 <script>
 (function() {
   const TIER_REQUIREMENTS = {{ tiers|tojson }};
   const TOTAL_REQUIRED = 9;
+  // Self-hosted flag SVGs (see templates/_flag.html) keyed by ISO-2 (card
+  // data-iso), cache-busted per deploy. Emoji flags show as "GB"/"MX" on Windows.
+  const FLAG_BASE = "{{ url_for('static', filename='flags/') }}";
+  const ASSET_V = "{{ asset_version }}";
+  function flagImg(iso){ return cccFlagImg(FLAG_BASE, ASSET_V, iso); }
 
   // Unsaved-edit guard: any pick/tiebreak change marks the form dirty; the
   // beforeunload warning fires only if the user leaves without sealing. The
@@ -383,10 +390,10 @@
       selected.forEach(card => {
         const li = document.createElement('li');
         const name = card.querySelector('.team-name').textContent.trim();
-        const flag = card.dataset.flag || '';
+        const flagHtml = flagImg(card.dataset.iso || '');
         const group = card.dataset.group || '';
         const tier = card.dataset.tier;
-        const display = flag ? flag + ' ' + name : name;
+        const display = flagHtml ? flagHtml + ' ' + name : name;
         li.innerHTML = '<span>' + display + ' <small class="text-muted">Grp ' + group + '</small></span><span class="tier-badge tier-badge-' + tier + '">' + TIER_REQUIREMENTS[tier].name + '</span>';
         list.appendChild(li);
       });

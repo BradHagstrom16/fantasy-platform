@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from '_flag.html' import flag with context %}
 {% block title %}{{ team.display_name }} ({{ team.fifa_code }}) · World Cup Fantasy Pool{% endblock %}
 
 {% block content %}
@@ -10,7 +11,7 @@
       <span class="wc-tier-dot wc-tier-dot-{{ team.tier }}" aria-hidden="true"></span>{{ team.tier }}
     </span>
     <h1 class="d-flex align-items-center gap-3">
-      <span class="team-hero-flag">{{ team.flag_emoji }}</span>
+      <span class="team-hero-flag">{{ flag(team.iso_code) }}</span>
       {{ team.display_name }}
     </h1>
     {# Hero stat line: one dominant Scored numeral with the multiplier chip
@@ -109,7 +110,7 @@
                   <div class="fixture-opponent">
                     <span class="fixture-vs me-1">{% if is_team_home %}vs{% else %}@{% endif %}</span>
                     {% if opponent %}
-                      <span class="fixture-flag">{{ opponent.flag_emoji }}</span>
+                      <span class="fixture-flag">{{ flag(opponent.iso_code) }}</span>
                       <span class="fixture-code">{{ opponent.fifa_code }}</span>
                     {% else %}
                       <span class="fixture-tbd">TBD</span>

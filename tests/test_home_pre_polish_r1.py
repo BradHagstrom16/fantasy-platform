@@ -41,8 +41,9 @@ TOKENS_CSS = REPO_ROOT / 'static' / 'css' / 'tokens.css'
 
 COUNTDOWN = (TEMPLATES / '_countdown_card.html').read_text()
 COMMISH = (TEMPLATES / '_commish_note.html').read_text()
-JOIN_CTA = (TEMPLATES / '_join_cta_card.html').read_text()
-SUBMIT_CTA = (TEMPLATES / '_submit_picks_cta.html').read_text()
+# The standalone join/seal CTA partials were consolidated into the decree
+# (the decree now carries the single state-aware CTA), so those files no
+# longer exist; their label locks moved onto COUNTDOWN below.
 BALLOT = (TEMPLATES / '_ballot_card.html').read_text()
 # S6.1.5 PI-5 — `_fixture_card.html` retired; rail now renders the editorial
 # fixture ladder inline in `_home_pre.html`. The two fixture-card-specific
@@ -92,23 +93,39 @@ def _login_as_unenrolled(app, client, username='newcomer'):
 # P0 #2 — countdown card no longer carries its CTA / subtitle / "ticking"
 # ---------------------------------------------------------------------------
 
-def test_countdown_card_has_no_cta_block():
-    """The countdown card had a hardcoded `Review & Edit My Roster` CTA
-    that overrode the dossier slot below. P0 #2 removed it. The dossier
-    slot now owns the single CTA surface; resurrecting the countdown CTA
-    means the user sees two stacked CTAs again."""
-    assert 'decree-actions' not in COUNTDOWN, (
-        'decree-actions wrapper is back — the countdown CTA was deleted '
-        'in favor of the dossier slot. Re-adding it duplicates the CTA.'
+def test_decree_carries_the_single_state_aware_cta():
+    """Consolidation (supersedes P0 #2): the decree is now the SINGLE
+    pre-state CTA surface. It carries one `.decree-cta` whose destination
+    branches on enrollment state, and the standalone join/seal dossier
+    cards are gone — so there is exactly one CTA, in the decree, never two
+    stacked. The original P0 #2 intent ("one CTA, no duplicates") is
+    preserved; only its location moved from the dossier slot into the box."""
+    assert 'decree-cta' in COUNTDOWN, (
+        'The decree lost its embedded `.decree-cta`. The decree is the '
+        'single pre-state action surface now (the separate join/seal cards '
+        'were retired); without it the box has no call to action.'
     )
-    assert 'decree-cta' not in COUNTDOWN, (
-        'decree-cta button is back. The dossier slot (`_join_cta_card.html` '
-        '/ `_submit_picks_cta.html` / `_ballot_card.html`) owns the CTA now.'
+    # State-aware destinations, all three branches present.
+    for endpoint in ("worldcup.join", "worldcup.picks", "worldcup.index"):
+        assert endpoint in COUNTDOWN, (
+            f"decree CTA must route to {endpoint} for its state branch."
+        )
+    # No stacked second CTA: the standalone dossier cards must not be
+    # re-introduced above the decree.
+    assert '_join_cta_card.html' not in HOME_PRE, (
+        'The join CTA card is back above the decree. The CTA was '
+        'consolidated into the decree; two stacked CTAs is the regression '
+        'this lock guards against.'
     )
+    assert '_submit_picks_cta.html' not in HOME_PRE, (
+        'The seal CTA card is back above the decree. The CTA was '
+        'consolidated into the decree.'
+    )
+    # The hardcoded ballot-edit phrase still must not leak into the decree
+    # (the ballot card owns "Review & Edit My Roster", not the countdown).
     assert 'Review &amp; Edit My Roster' not in COUNTDOWN, (
-        'The hardcoded "Review & Edit My Roster" CTA was removed. If you '
-        'need a roster-edit link here, branch it on enrollment state — but '
-        'the design intent is to keep one CTA, in the dossier slot.'
+        'The "Review & Edit My Roster" phrase belongs to the ballot card, '
+        'not the decree. The sealed-state decree CTA is "Enter the World Cup".'
     )
 
 
@@ -288,19 +305,26 @@ def test_commish_note_post_branch_unchanged_by_pre_state_edit():
 # P0 #6 — dossier CTA labels match the user's functional spec
 # ---------------------------------------------------------------------------
 
-def test_join_cta_label_is_join_the_world_cup_pool():
-    assert 'Join the World Cup Pool' in JOIN_CTA, (
-        'The unenrolled CTA was reworded to "Join the World Cup Pool".'
+def test_decree_join_branch_label():
+    assert 'Join the World Cup pool' in COUNTDOWN, (
+        'The unenrolled decree CTA label should read "Join the World Cup pool".'
     )
 
 
-def test_submit_picks_cta_label_is_make_your_picks():
-    assert 'Make Your Picks' in SUBMIT_CTA, (
-        'The enrolled-no-picks CTA was reworded to "Make Your Picks".'
+def test_decree_picks_branch_label():
+    assert 'Make your picks' in COUNTDOWN, (
+        'The enrolled-no-picks decree CTA label should read "Make your picks".'
     )
-    assert 'Seal the Oath' not in SUBMIT_CTA, (
-        'Old Commish-voice button label is back. The polish pass made '
-        'this CTA functional, not ceremonial.'
+    assert 'Seal the Oath' not in COUNTDOWN, (
+        'Old Commish-voice button label is back. The decree CTA is functional '
+        '(verb + object), not ceremonial.'
+    )
+
+
+def test_decree_sealed_branch_label():
+    assert 'Enter the World Cup' in COUNTDOWN, (
+        'The sealed-state decree CTA should read "Enter the World Cup" and '
+        'route to the WC hub.'
     )
 
 
@@ -447,9 +471,9 @@ def test_unenrolled_pre_state_home_renders_correct_cta_and_copy(app, client):
     assert resp.status_code == 200
     body = resp.data.decode()
 
-    # Dossier shows Join CTA for unenrolled.
-    assert 'Join the World Cup Pool' in body, (
-        'Unenrolled pre-state home is missing the Join CTA button label.'
+    # The decree shows the Join CTA for unenrolled.
+    assert 'Join the World Cup pool' in body, (
+        'Unenrolled pre-state home is missing the decree Join CTA label.'
     )
 
     # Commish copy is the user-supplied verbatim (US-spelling per S6.1.5).

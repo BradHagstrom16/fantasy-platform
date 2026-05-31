@@ -37,7 +37,7 @@ def get_country_stats(season_year: int) -> tuple[list[dict], int]:
 
         result.append({
             'name': team.display_name,
-            'flag_emoji': team.flag_emoji,
+            'iso_code': team.iso_code,
             'tier': team.tier,
             'multiplier': team.multiplier,
             'pick_count': pick_count,

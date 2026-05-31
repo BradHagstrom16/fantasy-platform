@@ -447,7 +447,7 @@ def _context_live(user: Any) -> dict:
         share = max(raw_share, LEVERAGE_BAR_MIN_SHARE) if pts > 0 else 0.0
         leverage.append({
             'code': p.team.fifa_code,
-            'flag': p.team.flag_emoji,
+            'iso': p.team.iso_code,
             'name': p.team.display_name,
             'team_id': p.team_id,
             'tier': p.team.tier,

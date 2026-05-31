@@ -85,11 +85,21 @@ class WorldCupTeam(db.Model):
     }
 
     @property
-    def flag_emoji(self) -> str:
-        """Derive Unicode flag emoji from the FIFA code."""
+    def iso_code(self) -> str:
+        """ISO 3166-1 alpha-2 (lowercase) for self-hosted flag-SVG lookup.
+
+        Single source of truth for FIFA -> ISO resolution: reuses the
+        `_FIFA_TO_ISO` map with a `code[:2]` fallback, lowercased to match the
+        `static/flags/<iso>.svg` filenames. `flag_emoji` derives from this too
+        so the SVG flag and the legacy emoji always name the same country.
+        """
         code = self.fifa_code or ''
-        iso = self._FIFA_TO_ISO.get(code, code[:2])
-        return ''.join(chr(0x1F1E6 + ord(c) - ord('A')) for c in iso)
+        return self._FIFA_TO_ISO.get(code, code[:2]).lower()
+
+    @property
+    def flag_emoji(self) -> str:
+        """Derive Unicode flag emoji from the FIFA code (legacy fallback)."""
+        return ''.join(chr(0x1F1E6 + ord(c) - ord('A')) for c in self.iso_code.upper())
 
     def __repr__(self):
         return f'<WorldCupTeam {self.fifa_code} ({self.display_name})>'

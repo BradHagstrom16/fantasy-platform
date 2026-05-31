@@ -1,3 +1,4 @@
+{% from '_flag.html' import flag with context %}
 {# Shared pick-row partial. Expects: pick, tiers (dict), show_scoring (bool).
    When show_scoring is true: events (list[ScoreEvent]) drives the drill-down
    accordion + the Points cell + alive/out status. Pre-deadline (show_scoring
@@ -17,7 +18,7 @@
       <span class="visually-hidden">Toggle scoring details</span>
     </button>
     {% endif %}
-    <span class="me-2 fs-5" aria-hidden="true">{{ pick.team.flag_emoji }}</span>
+    <span class="me-2 fs-5" aria-hidden="true">{{ flag(pick.team.iso_code) }}</span>
     <a href="{{ url_for('worldcup.team_detail', team_id=pick.team_id) }}"
        class="fw-medium team-link">{{ pick.team.display_name }}</a>
     <small class="text-muted ms-1">Grp {{ pick.team.group_letter }}</small>

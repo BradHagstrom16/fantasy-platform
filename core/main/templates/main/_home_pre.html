@@ -1,3 +1,4 @@
+{% from '_flag.html' import flag with context %}
 {# Pre-deadline home — Spec B section 6.
 
    S4.1.2 PI-1 — pre-state desktop 2-col reshape. The pre-S4.1.2 single
@@ -28,15 +29,16 @@
       <div class="greet-court">{{ court_line }}</div>
     </div>
 
-    {# Countdown #}
+    {# Countdown + action, consolidated. The decree is the single pre-state
+       CTA surface: it carries a state-aware button (join / make picks / enter
+       the hub) inside the box, so there is no separate action card above it.
+       The deadline pressure and the ask now live in one ceremonial unit. #}
     {% include 'main/_countdown_card.html' %}
 
-    {# Dossier slot — three variants #}
-    {% if not is_enrolled %}
-      {% include 'main/_join_cta_card.html' %}
-    {% elif not enrollment.picks_submitted %}
-      {% include 'main/_submit_picks_cta.html' %}
-    {% else %}
+    {# Sealed-roster record. Once picks are locked there is no pending action,
+       so the ballot sits below the decree — the countdown's "Council Convenes"
+       anticipation leads, and the locked roster reads as the record beneath. #}
+    {% if is_enrolled and enrollment.picks_submitted %}
       {% include 'main/_ballot_card.html' %}
     {% endif %}
 
@@ -67,13 +69,13 @@
         </div>
         <div class="fix-line">
           <span class="fix-team{% if _home_mine %} fix-team--mine{% endif %}">
-            <span class="fix-flag" aria-hidden="true">{{ match.home_team.flag_emoji if match.home_team else '🏳️' }}</span>
+            <span class="fix-flag" aria-hidden="true">{{ flag(match.home_team.iso_code if match.home_team else none) }}</span>
             <span class="fix-code">{{ match.home_team.fifa_code if match.home_team else 'TBD' }}</span>
           </span>
           <span class="fix-vs" aria-hidden="true">vs</span>
           <span class="fix-team{% if _away_mine %} fix-team--mine{% endif %}">
             <span class="fix-code">{{ match.away_team.fifa_code if match.away_team else 'TBD' }}</span>
-            <span class="fix-flag" aria-hidden="true">{{ match.away_team.flag_emoji if match.away_team else '🏳️' }}</span>
+            <span class="fix-flag" aria-hidden="true">{{ flag(match.away_team.iso_code if match.away_team else none) }}</span>
           </span>
           {% if match.kickoff_utc %}
           <span class="fix-kickoff">{{ match.kickoff_utc|ct('%a %d %b · %-I:%M %p CT') }}</span>

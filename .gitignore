@@ -38,6 +38,10 @@ logs/
 # Claude local overrides only — project config in .claude/ is committed
 .claude/settings.local.json
 .claude/scheduled_tasks.lock
+# impeccable is a GLOBAL skill (~/.agents/skills, symlinked into ~/.claude);
+# `npx impeccable skills update` run from a repo root drops a stray copy here.
+# add-game is the only intended tracked project skill.
+.claude/skills/impeccable/
 
 # DO NOT ignore migrations/ — these must be committed
 

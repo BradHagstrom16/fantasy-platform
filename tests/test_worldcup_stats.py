@@ -1,3 +1,6 @@
+import os
+from unittest.mock import patch
+
 import pytest
 from app import create_app
 from extensions import db
@@ -98,7 +101,7 @@ def test_get_country_stats_dict_shape(session):
     c = stats[0]
 
     assert 'name' in c
-    assert 'flag_emoji' in c
+    assert 'iso_code' in c
     assert 'tier' in c
     assert 'multiplier' in c
     assert 'pick_count' in c
@@ -115,13 +118,13 @@ def test_get_tier_stats(session):
     country_stats = [
         {'tier': 1, 'total_score': 10.0, 'group_score': 5.0, 'ko_score': 5.0,
          'name': 'Spain', 'pick_count': 2, 'pick_pct': 50.0, 'multiplier': 1.0,
-         'flag_emoji': '🇪🇸', 'is_active': True},
+         'iso_code': 'es', 'is_active': True},
         {'tier': 1, 'total_score': 20.0, 'group_score': 10.0, 'ko_score': 10.0,
          'name': 'France', 'pick_count': 1, 'pick_pct': 25.0, 'multiplier': 1.0,
-         'flag_emoji': '🇫🇷', 'is_active': False},
+         'iso_code': 'fr', 'is_active': False},
         {'tier': 3, 'total_score': 30.0, 'group_score': 15.0, 'ko_score': 15.0,
          'name': 'USA', 'pick_count': 3, 'pick_pct': 75.0, 'multiplier': 2.5,
-         'flag_emoji': '🇺🇸', 'is_active': True},
+         'iso_code': 'us', 'is_active': True},
     ]
 
     tier_stats = get_tier_stats(country_stats)
@@ -140,10 +143,10 @@ def test_get_overview_kpis(session):
     country_stats = [
         {'tier': 1, 'total_score': 10.0, 'group_score': 5.0, 'ko_score': 5.0,
          'name': 'Spain', 'pick_count': 2, 'pick_pct': 50.0, 'multiplier': 1.0,
-         'flag_emoji': '🇪🇸', 'is_active': False},
+         'iso_code': 'es', 'is_active': False},
         {'tier': 3, 'total_score': 50.0, 'group_score': 20.0, 'ko_score': 30.0,
          'name': 'USA', 'pick_count': 3, 'pick_pct': 75.0, 'multiplier': 2.5,
-         'flag_emoji': '🇺🇸', 'is_active': True},
+         'iso_code': 'us', 'is_active': True},
     ]
 
     kpis = get_overview_kpis(country_stats, total_players=4)
@@ -213,23 +216,66 @@ def client(app):
     return app.test_client()
 
 
-def test_stats_route_public(client, session):
-    """Stats page is public — no login required."""
-    # Need at least one team for country_stats to work
+def _make_admin(session, username='wcadmin'):
+    u = User(username=username, email=f'{username}@test.com',
+             password_hash='x', is_admin=True)
+    session.add(u)
+    session.flush()
+    return u
+
+
+# Picks lock at 2026-06-11 19:00 UTC; tests run pre-deadline in real time.
+_AFTER_KICKOFF = {'WC_FAKE_NOW': '2026-06-15T12:00:00+00:00', 'ENVIRONMENT': 'testing'}
+
+
+def test_stats_locked_pre_deadline_anonymous(client, session):
+    """Pre-kickoff, a non-admin gets the sealed locked state, not the data."""
     _make_team(session, 'BRA', 'Brazil', tier=1, multiplier=1.0)
     session.commit()
 
     resp = client.get('/worldcup/stats')
     assert resp.status_code == 200
+    # Hero still renders...
     assert b'The Field Office' in resp.data
+    # ...but the data surface (pills + JS bridge) is gated off.
+    assert b'wc-stats-pills' not in resp.data
+    assert b'MY_PICKS' not in resp.data
+    # Sealed-state copy is present.
+    assert b'Field office sealed' in resp.data
+
+
+def test_stats_visible_post_deadline(client, session):
+    """Once kickoff passes, the full stats surface is public."""
+    _make_team(session, 'BRA', 'Brazil', tier=1, multiplier=1.0)
+    session.commit()
+
+    with patch.dict(os.environ, _AFTER_KICKOFF):
+        resp = client.get('/worldcup/stats')
+    assert resp.status_code == 200
+    assert b'wc-stats-pills' in resp.data
+
+
+def test_stats_visible_admin_pre_deadline(client, session):
+    """Platform admins preview the stats surface before kickoff."""
+    _make_team(session, 'BRA', 'Brazil', tier=1, multiplier=1.0)
+    admin = _make_admin(session)
+    session.commit()
+
+    with client.session_transaction() as sess:
+        sess['_user_id'] = str(admin.id)
+        sess['_fresh'] = True
+
+    resp = client.get('/worldcup/stats')  # real time = pre-deadline
+    assert resp.status_code == 200
     assert b'wc-stats-pills' in resp.data
 
 
 def test_stats_route_my_picks_unauthenticated(client, session):
-    """Unauthenticated users get MY_PICKS = [] — no error."""
+    """Post-deadline, unauthenticated users get MY_PICKS = [] — no error."""
     _make_team(session, 'BRA', 'Brazil', tier=1, multiplier=1.0)
     session.commit()
 
-    resp = client.get('/worldcup/stats')
+    with patch.dict(os.environ, _AFTER_KICKOFF):
+        resp = client.get('/worldcup/stats')
     assert resp.status_code == 200
     assert b'MY_PICKS = []' in resp.data

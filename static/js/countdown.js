@@ -72,6 +72,22 @@
 
   function pad(n) { return n < 10 ? '0' + n : '' + n; }
 
+  // Live "alive" pulse: when a digit changes, give it a quick low-amplitude
+  // settle so the countdown reads as ticking, not static. Transform/opacity
+  // only (composited); skipped entirely under reduced-motion and on engines
+  // without the Web Animations API. Fires only on an actual value change, so
+  // an unchanged digit (e.g. days holding steady) never animates.
+  var REDUCED = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  function setDigit(node, value) {
+    if (node.textContent === value) return;
+    node.textContent = value;
+    if (REDUCED || !node.animate) return;
+    node.animate(
+      [{ opacity: 0.5, transform: 'translateY(-2px)' }, { opacity: 1, transform: 'translateY(0)' }],
+      { duration: 280, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' }
+    );
+  }
+
   var timerId = null;
   var reloading = false;
 
@@ -95,10 +111,10 @@
     var hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
     var mins = Math.floor((diff / (1000 * 60)) % 60);
     var secs = Math.floor((diff / 1000) % 60);
-    dEl.textContent = pad(days);
-    hEl.textContent = pad(hours);
-    mEl.textContent = pad(mins);
-    sEl.textContent = pad(secs);
+    setDigit(dEl, pad(days));
+    setDigit(hEl, pad(hours));
+    setDigit(mEl, pad(mins));
+    setDigit(sEl, pad(secs));
     if (heroEl) {
       heroEl.setAttribute(
         'aria-label',

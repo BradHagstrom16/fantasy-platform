@@ -65,7 +65,6 @@ HOME_OUT = (ROOT / 'core' / 'main' / 'templates' / 'main' / '_home_out.html').re
 HOME_PRE = (ROOT / 'core' / 'main' / 'templates' / 'main' / '_home_pre.html').read_text()
 HOME_LIVE = (ROOT / 'core' / 'main' / 'templates' / 'main' / '_home_live.html').read_text()
 BALLOT = (ROOT / 'core' / 'main' / 'templates' / 'main' / '_ballot_card.html').read_text()
-SUBMIT_PICKS = (ROOT / 'core' / 'main' / 'templates' / 'main' / '_submit_picks_cta.html').read_text()
 DESIGN_MD = (ROOT / 'DESIGN.md').read_text()
 
 
@@ -133,7 +132,9 @@ def test_pi1_home_pre_grid_has_two_semantic_slots():
 def test_pi1_main_slot_carries_countdown_and_dossier():
     """The main slot must precede the rail slot in source order (so the
     mobile single-column stack reads masthead → countdown → dossier →
-    rail) AND must include the countdown + dossier-variant includes."""
+    rail) AND must include the countdown + ballot. The standalone join/seal
+    CTA cards were consolidated into the decree, so the countdown card now
+    carries the pre-state CTA itself."""
     main_match = re.search(
         r'home-pre-col--main(.*?)home-pre-col--rail',
         HOME_PRE,
@@ -149,12 +150,6 @@ def test_pi1_main_slot_carries_countdown_and_dossier():
     )
     assert '_ballot_card.html' in main_block, (
         "PI-1: ballot dossier variant belongs inside main slot."
-    )
-    assert '_submit_picks_cta.html' in main_block, (
-        "PI-1: submit-picks dossier variant belongs inside main slot."
-    )
-    assert '_join_cta_card.html' in main_block, (
-        "PI-1: join-CTA dossier variant belongs inside main slot."
     )
 
 
@@ -250,9 +245,12 @@ def test_pi2_ballot_card_no_longer_whole_area_link():
     `.ballot-foot`" form would false-positive. The invariant we're locking is
     that the OUTERMOST element of the partial is the `<section>`, not an
     anchor wrapper."""
-    # Strip Jinja {# ... #} comments + leading whitespace so the first visible
-    # tag check is robust to template indentation changes.
-    body = re.sub(r'\{#.*?#\}', '', BALLOT, flags=re.DOTALL).lstrip()
+    # Strip Jinja {# ... #} comments AND {% ... %} statement tags (e.g. the
+    # top-of-file `{% from '_flag.html' import flag %}` import, which renders to
+    # nothing) + leading whitespace, so the first *rendered* element check is
+    # robust to template indentation and no-output Jinja tags.
+    body = re.sub(r'\{#.*?#\}', '', BALLOT, flags=re.DOTALL)
+    body = re.sub(r'\{%.*?%\}', '', body, flags=re.DOTALL).lstrip()
     assert body.startswith('<section'), (
         "PI-2: `_ballot_card.html` must open with a `<section>` element. "
         "The pre-S4.1.2 anchor wrapper conflated nine flag taps with one "
