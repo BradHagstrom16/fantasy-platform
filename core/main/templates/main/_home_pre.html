@@ -29,18 +29,10 @@
       <div class="greet-court">{{ court_line }}</div>
     </div>
 
-    {# Action-first ordering. The pending action leads the column, above the
-       decree, so the click target is the first thing the eye lands on (the
-       6rem countdown numeral would otherwise out-shout it). The two actionable
-       variants — join (unenrolled) and seal (enrolled, no picks) — render here;
-       the decree's deadline pressure reinforces the ask immediately below. #}
-    {% if not is_enrolled %}
-      {% include 'main/_join_cta_card.html' %}
-    {% elif not enrollment.picks_submitted %}
-      {% include 'main/_submit_picks_cta.html' %}
-    {% endif %}
-
-    {# Countdown #}
+    {# Countdown + action, consolidated. The decree is the single pre-state
+       CTA surface: it carries a state-aware button (join / make picks / enter
+       the hub) inside the box, so there is no separate action card above it.
+       The deadline pressure and the ask now live in one ceremonial unit. #}
     {% include 'main/_countdown_card.html' %}
 
     {# Sealed-roster record. Once picks are locked there is no pending action,

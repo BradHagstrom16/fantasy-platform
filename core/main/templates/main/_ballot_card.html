@@ -71,9 +71,6 @@
       </li>
       {% endfor %}
     </ul>
-    <div class="ballot-spine-avg">
-      Avg multiplier <strong class="ballot-spine-mult">&times;{{ '%.1f'|format(roster_spine.avg_multiplier) }}</strong>{% if roster_spine.wildcard_count >= 2 %} <span class="ballot-spine-flex">&middot; The Commish notices.</span>{% endif %}
-    </div>
   </div>
   {% endif %}
   <div class="ballot-foot">

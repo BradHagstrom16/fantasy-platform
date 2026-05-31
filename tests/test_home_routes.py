@@ -112,7 +112,7 @@ def test_home_renders_pre_unenrolled(app, client):
         assert resp.status_code == 200
         body = resp.data.decode()
         assert 'home-shell--pre' in body
-        assert 'Join the World Cup pool' in body  # _join_cta_card.html title
+        assert 'Join the World Cup pool' in body  # decree CTA, unenrolled branch
         assert 'data-deadline-utc=' in body  # countdown markup
 
 
@@ -127,7 +127,7 @@ def test_home_renders_pre_enrolled_no_picks(app, client):
         assert resp.status_code == 200
         body = resp.data.decode()
         assert 'home-shell--pre' in body
-        assert 'Seal Your Roster' in body  # _submit_picks_cta.html title
+        assert 'Make your picks' in body  # decree CTA, enrolled-no-picks branch
 
 
 def test_home_renders_pre_enrolled_sealed(app, client):
@@ -144,6 +144,8 @@ def test_home_renders_pre_enrolled_sealed(app, client):
         body = resp.data.decode()
         assert 'home-shell--pre' in body
         assert 'data-deadline-utc=' in body
+        # Sealed decree CTA routes to the WC hub.
+        assert 'Enter the World Cup' in body
         # Ballot card renders the picked team's display_name in the flag's title attr
         assert 'United States' in body
 

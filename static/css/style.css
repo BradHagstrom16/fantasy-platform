@@ -756,7 +756,23 @@ body.game-golf {
     max-width: 1180px;
     grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
     gap: 2rem;
-    align-items: start;
+    /* Stretch both columns to the row height so the lighter masthead column
+       can vertically balance against the supporting rail. The greet keeps
+       the shared top baseline (rail .sec-head:first-child below); only a
+       trailing decree re-centers into the freed space (see below). */
+    align-items: stretch;
+  }
+  /* When the decree is the LAST masthead block (unenrolled / no-picks states,
+     where the join/seal action consolidated into the decree itself), center
+     it in the space the retired CTA card used to occupy so the column reads
+     balanced instead of bottom-voided. In the sealed state the ballot card is
+     the last block, so the decree stays in normal flow under the greet. */
+  .home-shell .home-pre-col--main {
+    display: flex;
+    flex-direction: column;
+  }
+  .home-shell .home-pre-col--main > .decree:last-child {
+    margin-block: auto;
   }
 }
 .home-shell .home-pre-col {
@@ -1456,6 +1472,83 @@ body.game-golf {
   margin: 1rem 0 0;
 }
 
+/* Decree CTA — the single state-aware pre-state action, embedded in the
+   decree (join / make picks / enter the hub). Loud Trophy register: the
+   metal-gold gradient is reserved for primary CTAs (DESIGN.md §5 Trophy
+   Rule), and chamber-purple text on the lifted `#A88420` terminal stop
+   clears AA. The :active state is the delight beat — it reads as stamping
+   the Commish's wax seal onto the decree. */
+.home-shell .decree-cta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  margin: 1.5rem auto 0.25rem;
+  max-width: 22rem;
+  padding: 0.7rem 1.25rem 0.8rem;
+  background: var(--metal-gold-flat);
+  border-radius: var(--radius);
+  text-decoration: none;
+  box-shadow: 0 2px 10px rgba(20, 8, 40, 0.28);
+  transition: transform 0.18s cubic-bezier(0.22, 1, 0.36, 1),
+              box-shadow 0.18s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.home-shell .decree-cta-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-family: var(--font-teko);
+  font-weight: 600;
+  font-size: 1.05rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--purple-900);
+}
+
+.home-shell .decree-cta-label i {
+  font-size: 0.9em;
+  transition: transform 0.18s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.home-shell .decree-cta-sub {
+  font-family: var(--font-news);
+  font-size: 0.82rem;
+  line-height: 1.35;
+  color: var(--purple-800);
+  text-align: center;
+}
+
+.home-shell .decree-cta:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-gold);
+}
+
+.home-shell .decree-cta:hover .decree-cta-label i {
+  transform: translateX(3px);
+}
+
+/* The seal stamp: settle down into the decree with a pressed-in gold ring. */
+.home-shell .decree-cta:active {
+  transform: translateY(1px) scale(0.985);
+  box-shadow: inset 0 0 0 2px rgba(138, 106, 26, 0.6),
+              0 1px 3px rgba(20, 8, 40, 0.3);
+  transition-duration: 0.1s;
+}
+
+.home-shell .decree-cta:focus-visible {
+  outline: 2px solid var(--gold-light);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-shell .decree-cta,
+  .home-shell .decree-cta-label i { transition: none; }
+  .home-shell .decree-cta:hover { transform: none; }
+  .home-shell .decree-cta:hover .decree-cta-label i { transform: none; }
+  .home-shell .decree-cta:active { transform: none; }
+}
+
 /* --- Pre-state: sealed ballot card ---
    S4.1.2 PI-2 — semantic split. The card is no longer a single `<a>`
    wrapper; hover lift moves to `.ballot-edit-action` below. The
@@ -1699,25 +1792,6 @@ body.game-golf {
     grid-column: 2 / 4;
     margin-top: 0.1rem;
   }
-}
-.home-shell .ballot-spine-avg {
-  font-family: var(--font-news);
-  font-style: italic;
-  font-size: 0.88rem;
-  line-height: 1.4;
-  color: var(--bone-mute);
-}
-.home-shell .ballot-spine-mult {
-  font-family: var(--font-teko);
-  font-style: normal;
-  font-weight: 700;
-  font-size: 1rem;
-  letter-spacing: 0.02em;
-  color: var(--bone);
-  font-variant-numeric: tabular-nums;
-}
-.home-shell .ballot-spine-flex {
-  color: var(--bone-mute);
 }
 .home-shell .ballot-foot {
   display: flex;
