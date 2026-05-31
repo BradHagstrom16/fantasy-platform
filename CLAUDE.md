@@ -56,6 +56,7 @@ FLASK_APP=app.py venv/bin/flask worldcup init            # Seed teams + matches 
 FLASK_APP=app.py venv/bin/flask worldcup recalc          # Recalculate all scores (idempotent)
 FLASK_APP=app.py venv/bin/flask worldcup status          # Print tournament state summary
 FLASK_APP=app.py venv/bin/flask worldcup process-match   # Enter match result (dev/testing)
+FLASK_APP=app.py venv/bin/flask worldcup simulate-group-stage  # Bulk-fill all 72 group results, deterministic 9/4/3/1 standings (--dry-run to preview); testing aid for advancement
 FLASK_APP=app.py venv/bin/flask worldcup snapshot-ranks  # Capture daily rank+score snapshot (cron; --backfill N for historical seed)
 
 # Tests
