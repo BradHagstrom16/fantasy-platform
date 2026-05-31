@@ -58,7 +58,7 @@ FLASK_APP=app.py venv/bin/flask worldcup status          # Print tournament stat
 FLASK_APP=app.py venv/bin/flask worldcup process-match   # Enter match result (dev/testing)
 FLASK_APP=app.py venv/bin/flask worldcup snapshot-ranks  # Capture daily rank+score snapshot (cron; --backfill N for historical seed)
 
-# Tests (this project verifies via pytest only — pyright is not part of the workflow)
+# Tests
 ENVIRONMENT=testing venv/bin/python -m pytest tests/      # Run all tests (env var enables WC_FAKE_NOW seam in state-detection tests)
 venv/bin/python -m pytest tests/test_worldcup_scoring.py  # Scoring engine tests
 venv/bin/python -m pytest tests/test_worldcup_admin.py    # Admin + public route tests
@@ -66,6 +66,8 @@ venv/bin/python -m pytest tests/test_worldcup_stats.py    # Stats Hub service + 
 venv/bin/python -m pytest tests/test_worldcup_leaderboard.py  # Leaderboard route + Your Standing + Trend gate
 venv/bin/python -m pytest tests/test_worldcup_stage.py    # Stage-label SSoT (services/stage.py)
 venv/bin/python -m pytest tests/test_worldcup_trends.py   # Trend helpers (services/trends.py)
+# Single test by name (the gotchas below cite ::test_... regression locks)
+ENVIRONMENT=testing venv/bin/python -m pytest tests/test_worldcup_scoring.py::test_points_for_pick_on_match_parity_with_compute_team_score_events -q
 ```
 
 No linter configured. No pyright either — verify code with pytest.
@@ -210,15 +212,7 @@ fantasy-platform/
 
 ## Database Migrations
 
-Always use Flask-Migrate. Never raw SQL.
-
-```bash
-# After editing models:
-FLASK_APP=app.py venv/bin/flask db migrate -m "descriptive message"
-# Review the generated file in migrations/versions/
-FLASK_APP=app.py venv/bin/flask db upgrade
-# Commit the migration file with the model changes
-```
+Flask-Migrate only, never raw SQL (commands in the Commands block above). Workflow after editing models: `db migrate -m "..."` → **review the generated file in `migrations/versions/`** → `db upgrade` → commit the migration file *with* the model changes.
 
 ---
 
