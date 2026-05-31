@@ -3530,6 +3530,19 @@ body.game-worldcup {
   color: var(--text-secondary);
 }
 
+/* Light-substrate eyebrow lift for the flush card + mobile picks block.
+   The read-only tiebreak card (.card.wc-card-flush) and the mobile "Your 9
+   Picks" header (.player-picks-mobile) consume the bare .wc-eyebrow on white;
+   without a lift the base --bone-mute (dark-substrate token) renders as a
+   faint watermark ("The Tiebreak" was near-invisible). Same --text-secondary
+   treatment as .wc-stat-card / .player-picks-desktop (DESIGN.md §3 light-surface
+   eyebrow rule). .wc-card-flush is a light-substrate-only utility (DESIGN.md §4),
+   so the lift is correct on every flush-card consumer. */
+.card.wc-card-flush .wc-eyebrow:not(.wc-eyebrow-red):not(.wc-eyebrow-gold),
+.player-picks-mobile .wc-eyebrow:not(.wc-eyebrow-red):not(.wc-eyebrow-gold) {
+  color: var(--text-secondary);
+}
+
 /* Display numeral utility — Teko, tabular figures */
 .wc-numeral {
   font-family: 'Teko', sans-serif;
@@ -6011,7 +6024,11 @@ body.game-worldcup .tier-card-5 .tier-card-header { background: linear-gradient(
   font-size: .85rem;
   letter-spacing: .06em;
   text-transform: uppercase;
-  color: var(--text-secondary);
+  /* Bone on the WC navy header band. This rule wins the color cascade over
+     `.table-worldcup > thead > tr > th` (which sets the navy background +
+     --text-on-dark) on specificity, so it must re-assert the on-dark color or
+     the `#` / PLAYER headers fall back to --text-secondary (dark-on-navy). */
+  color: var(--text-on-dark);
 }
 
 .leaderboard-rank {
