@@ -200,4 +200,13 @@
     </p>
     {% endif %}
   </div>
+
+  {# Hub entry — the live dossier's single action. The lounge keeps the
+     rank/ledger as the focal status read; this gold seal is the one way
+     into the WC room (roster + live ledger), matching the pre-state
+     decree's "Enter the World Cup" destination (worldcup.index). #}
+  <a class="dossier-cta" href="{{ url_for('worldcup.index') }}">
+    <span class="dossier-cta-label">Enter the World Cup<i class="bi bi-arrow-right" aria-hidden="true"></i></span>
+    <span class="dossier-cta-sub">Your roster and the live ledger.</span>
+  </a>
 </div>

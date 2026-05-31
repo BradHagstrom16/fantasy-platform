@@ -2584,6 +2584,73 @@ body.game-golf {
   font-style: italic;
 }
 
+/* Hub-entry seal — the live dossier's single action. Mirrors the pre-state
+   `.decree-cta` metal-gold recipe so the gold seal reads identically, but
+   purpose-named for the live surface (the decree's "affix the decree" active
+   semantics are decree-specific). Trophy Rule: metal-gold is reserved for the
+   primary CTA, and entering the WC room is exactly that for a live enrollee. */
+.home-shell .dossier-cta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  margin-top: 1.25rem;
+  max-width: 24rem;
+  padding: 0.7rem 1.25rem 0.8rem;
+  background: var(--metal-gold-flat);
+  border-radius: var(--radius);
+  text-decoration: none;
+  box-shadow: 0 2px 10px rgba(20, 8, 40, 0.28);
+  transition: transform 0.18s cubic-bezier(0.22, 1, 0.36, 1),
+              box-shadow 0.18s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.home-shell .dossier-cta-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-family: var(--font-teko);
+  font-weight: 600;
+  font-size: 1.05rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--purple-900);
+}
+.home-shell .dossier-cta-label i {
+  font-size: 0.9em;
+  transition: transform 0.18s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.home-shell .dossier-cta-sub {
+  font-family: var(--font-news);
+  font-size: 0.82rem;
+  line-height: 1.35;
+  color: var(--purple-800);
+  text-align: center;
+}
+.home-shell .dossier-cta:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-gold);
+}
+.home-shell .dossier-cta:hover .dossier-cta-label i {
+  transform: translateX(3px);
+}
+.home-shell .dossier-cta:active {
+  transform: translateY(1px) scale(0.985);
+  box-shadow: inset 0 0 0 2px rgba(138, 106, 26, 0.6),
+              0 1px 3px rgba(20, 8, 40, 0.3);
+  transition-duration: 0.1s;
+}
+.home-shell .dossier-cta:focus-visible {
+  outline: 2px solid var(--gold-light);
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .home-shell .dossier-cta,
+  .home-shell .dossier-cta-label i { transition: none; }
+  .home-shell .dossier-cta:hover { transform: none; }
+  .home-shell .dossier-cta:hover .dossier-cta-label i { transform: none; }
+  .home-shell .dossier-cta:active { transform: none; }
+}
+
 /* --- Live-state: leaderboard preview (rolls) --- */
 .home-shell .rolls {
   margin: 0;
