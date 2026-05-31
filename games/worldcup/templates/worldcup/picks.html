@@ -293,6 +293,7 @@
 
 {% block scripts %}
 {% if show_edit_form %}
+<script src="{{ url_for('static', filename='js/flag.js') }}?v={{ asset_version }}"></script>
 <script>
 (function() {
   const TIER_REQUIREMENTS = {{ tiers|tojson }};
@@ -301,7 +302,7 @@
   // data-iso), cache-busted per deploy. Emoji flags show as "GB"/"MX" on Windows.
   const FLAG_BASE = "{{ url_for('static', filename='flags/') }}";
   const ASSET_V = "{{ asset_version }}";
-  function flagImg(iso){ return iso ? '<img class="ccc-flag" src="' + FLAG_BASE + iso + '.svg?v=' + ASSET_V + '" alt="">' : ''; }
+  function flagImg(iso){ return cccFlagImg(FLAG_BASE, ASSET_V, iso); }
 
   // Unsaved-edit guard: any pick/tiebreak change marks the form dirty; the
   // beforeunload warning fires only if the user leaves without sealing. The

@@ -103,7 +103,7 @@ if (window.matchMedia('(prefers-color-scheme: dark)').matches)
         {% elif current_phase == 'group_stage' %}Group Stage
         {% else %}Pre-Tournament{% endif %}
       </span>
-      <small style="font-family:'Teko',sans-serif;font-size:.78rem;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.55);">Public dossier</small>
+      <small style="font-family:'Teko',sans-serif;font-size:.78rem;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.55);">{% if stats_visible %}Public dossier{% else %}Sealed dossier{% endif %}</small>
     </div>
     <h1 class="mb-1" style="font-size:2.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;">The Field Office</h1>
     <p class="mb-0" style="color:rgba(255,255,255,.7);font-size:1rem;">
@@ -313,6 +313,7 @@ if (window.matchMedia('(prefers-color-scheme: dark)').matches)
 
 {% block scripts %}
 {% if stats_visible %}
+<script src="{{ url_for('static', filename='js/flag.js') }}?v={{ asset_version }}"></script>
 <script>
 // ── DATA BRIDGE ───────────────────────────────────────────────
 const MY_PICKS = {{ my_picks | tojson }};
@@ -368,7 +369,7 @@ const TAB_IDS = ['board','field','tiers'];
 function tb(t){ return `<span class="wc-tb wc-tb-${t}" aria-label="Tier ${t} · ${TN[t]}">T${t}</span>`; }
 function tbl(t){ return `<span class="wc-tb wc-tb-${t}">T${t} · ${TN[t]}</span>`; }
 // Country-flag <img>, built client-side to mirror the server _flag.html macro.
-function flagImg(iso){ return iso ? `<img class="ccc-flag" src="${FLAG_BASE}${iso}.svg?v=${ASSET_V}" alt="">` : ''; }
+function flagImg(iso){ return cccFlagImg(FLAG_BASE, ASSET_V, iso); }
 
 // S2.4.1 PI-3 + a11y: gold star marks "your pick" — visible to sighted users,
 // announced by SR via the .visually-hidden text. The glyph itself is decoration.

@@ -16,5 +16,5 @@
    IMPORT WITH CONTEXT so `asset_version` (a context-processor variable) reaches
    the macro:  {% from '_flag.html' import flag with context %} #}
 {%- macro flag(iso, classes='') -%}
-<img class="ccc-flag{% if classes %} {{ classes }}{% endif %}" src="{{ url_for('static', filename='flags/' ~ (iso or '_tbd')) }}.svg?v={{ asset_version }}" alt="" loading="lazy" decoding="async">
+<img class="ccc-flag{% if classes %} {{ classes }}{% endif %}" src="{{ url_for('static', filename='flags/' ~ (iso or '_tbd') ~ '.svg') }}?v={{ asset_version }}" alt="" loading="lazy" decoding="async">
 {%- endmacro -%}
