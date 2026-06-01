@@ -6521,6 +6521,12 @@ body.game-worldcup .tier-card-5 .tier-card-header { background: linear-gradient(
     transform: translateY(-2px);
     box-shadow: 0 3px 8px rgba(28, 23, 48, .22);
   }
+  /* Shared-flag hover keeps the red ring AND adds the lift shadow (more
+     specific than .lb-flag:hover, so it must restate the ring). Gated here
+     so a tap on touch doesn't latch it. */
+  .lb-flag.is-shared:hover {
+    box-shadow: 0 0 0 2px var(--wc-red), 0 3px 8px rgba(28, 23, 48, .22);
+  }
 }
 .lb-flag:focus-visible {
   transform: translateY(-2px);
@@ -6540,7 +6546,6 @@ body.game-worldcup .tier-card-5 .tier-card-header { background: linear-gradient(
 .lb-flag.is-shared {
   box-shadow: 0 0 0 2px var(--wc-red);
 }
-.lb-flag.is-shared:hover,
 .lb-flag.is-shared:focus-visible {
   box-shadow: 0 0 0 2px var(--wc-red), 0 3px 8px rgba(28, 23, 48, .22);
 }
