@@ -24,7 +24,7 @@ from games.worldcup.models import (
 from games.worldcup.world_cup_countries import TIERS
 from games.worldcup.services.ranking import compute_rank_neighbors
 from games.worldcup.services.scoring import points_for_pick_on_match
-from games.worldcup.services.stage import stage_label
+from games.worldcup.services.stage import stage_label, best_finish_label
 from games.worldcup.services.state import (
     FINAL_MATCH_NUMBER, WorldCupHubState, now_utc, worldcup_state,
 )
@@ -33,20 +33,9 @@ from games.worldcup.services.trends import (
 )
 from games.worldcup.services.voice import hub_copy, rank_tier
 
-# Display labels for `WorldCupTeam.best_finish` values (canonical keys per
-# scoring.STAGE_ORDER). Plumbed through the post-state roster recap so the
-# Best Finish column reads as proper UI copy ("Champion", "Round of 16")
-# instead of raw codes ("champion", "R16").
-_BEST_FINISH_LABELS: dict[str, str] = {
-    'group': 'Group',
-    'R32': 'Round of 32',
-    'R16': 'Round of 16',
-    'QF': 'Quarterfinals',
-    'SF': 'Semifinals',
-    '3rd': '3rd Place',
-    'runner_up': 'Runner-up',
-    'champion': 'Champion',
-}
+# best_finish display labels now live in services/stage.best_finish_label (the
+# SSoT, shared with the lounge builder so the two post-state recaps can't
+# diverge — audit finding B1). Plumbed through the post-state roster recap.
 
 # Leverage Board bar floor — a pick that has banked any points keeps a
 # visible minimum sliver even when one carrier dominates the roster, so the
@@ -610,14 +599,10 @@ def _context_post(user: Any) -> dict:
     )
     your_roster_recap = []
     for pick in picks:
-        # Fall back to the raw code (not 'Group') if scoring.py grows a new
-        # finish value not yet in _BEST_FINISH_LABELS — surfacing the unknown
-        # code beats silently mislabeling a deep run as a group-stage exit.
-        finish_code = pick.team.best_finish or 'group'
         your_roster_recap.append({
             'pick': pick,
             'tier_name': TIERS[pick.team.tier]['name'],
-            'best_finish': _BEST_FINISH_LABELS.get(finish_code, finish_code),
+            'best_finish': best_finish_label(pick.team.best_finish),
             'points': pick.multiplied_points,
             'is_champion': (
                 champion_team is not None

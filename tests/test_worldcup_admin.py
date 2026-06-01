@@ -75,6 +75,41 @@ def test_leaderboard_shows_tiebreaker_post_deadline(client, app):
     assert b'>7<' in resp.data
 
 
+# ── set-knockout team dropdown excludes eliminated teams (F3) ────────────
+
+def test_set_knockout_dropdown_excludes_eliminated_teams(client, app):
+    """F3: a team eliminated in the group stage cannot legally play a knockout
+    match, so it must not be assignable on the set-knockout page. Advanced teams
+    remain selectable."""
+    admin_id = _make_admin_user(app)
+    with app.app_context():
+        adv = WorldCupTeam(
+            fifa_code='ESP', name='Spain', display_name='Spain',
+            tier=1, multiplier=1.0, confederation='UEFA', group_letter='A',
+            is_eliminated=False, advancement_method='group_winner',
+        )
+        gone = WorldCupTeam(
+            fifa_code='SCO', name='Scotland', display_name='Scotland',
+            tier=4, multiplier=4.0, confederation='UEFA', group_letter='A',
+            is_eliminated=True, best_finish='group',
+        )
+        db.session.add_all([adv, gone])
+        db.session.flush()
+        match = WorldCupMatch(match_number=73, stage='R32', is_completed=False)
+        db.session.add(match)
+        db.session.commit()
+        mid = match.id
+    with client.session_transaction() as sess:
+        sess['_user_id'] = str(admin_id)
+        sess['_fresh'] = True
+    resp = client.get(f'/worldcup/admin/set-knockout/{mid}')
+    assert resp.status_code == 200
+    body = resp.data.decode()
+    assert 'Spain' in body              # advanced team selectable
+    assert 'Scotland' not in body       # eliminated team excluded
+    assert '[ELIMINATED]' not in body   # no eliminated marker remains
+
+
 # ── Admin dashboard completed-matches list ──────────────────────────────
 
 def _make_admin_user(app):

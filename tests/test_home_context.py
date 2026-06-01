@@ -283,6 +283,50 @@ def test_context_post_enrolled_with_climb_and_roster_recap(app):
         assert champion_recaps[0]['pick'].team_id == bra.id
 
 
+def test_context_post_roster_recap_renders_best_finish_labels(app):
+    """B1 + F1: the lounge roster recap must show display labels, not raw codes,
+    and must distinguish an advanced-but-R32-eliminated team (empty best_finish
+    -> 'Round of 32') from a group-stage exit ('group' -> 'Group Stage')."""
+    from core.main.home_context import build_home_context
+    from games.worldcup.models import WorldCupTeam, WorldCupMatch, WorldCupPick
+    with app.app_context():
+        # champion, won-R16, group-eliminated, advanced-lost-R32 (empty)
+        specs = [
+            ('CHA', 'champion', 'group_winner', False),
+            ('RSX', 'R16', 'group_winner', False),
+            ('GRP', 'group', None, True),
+            ('R32', '', 'group_winner', False),  # advanced, lost R32 -> empty
+        ]
+        teams = {}
+        for i, (code, finish, adv, elim) in enumerate(specs):
+            t = WorldCupTeam(
+                fifa_code=code, name=code, display_name=code,
+                tier=5, multiplier=7.0, confederation='TEST', group_letter='A',
+                best_finish=finish, advancement_method=adv, is_eliminated=elim,
+            )
+            db.session.add(t)
+            teams[code] = t
+        db.session.flush()
+        db.session.add(WorldCupMatch(
+            match_number=104, stage='final',
+            home_team_id=teams['CHA'].id, away_team_id=teams['RSX'].id,
+            home_score=1, away_score=0, winner_team_id=teams['CHA'].id,
+            is_completed=True,
+        ))
+        user = _make_user()
+        enr = _make_enrollment(user, picks_submitted=True, total_score=100.0)
+        for code in ('CHA', 'RSX', 'GRP', 'R32'):
+            db.session.add(WorldCupPick(enrollment_id=enr.id, team_id=teams[code].id, tier=5))
+        db.session.commit()
+
+        ctx = build_home_context(user, 'post')
+        labels = {r['pick'].team.fifa_code: r['best_finish'] for r in ctx['your_roster_recap']}
+        assert labels['CHA'] == 'Champion'
+        assert labels['RSX'] == 'Round of 16'
+        assert labels['GRP'] == 'Group Stage'
+        assert labels['R32'] == 'Round of 32'   # F1: NOT 'Group'
+
+
 def test_context_live_sparkline_flat_line_render(app, client):
     """Lounge dossier sparkline renders a centered dashed line (not a
     full-height area block) when every snapshot carries the same rank.

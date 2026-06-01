@@ -147,6 +147,37 @@
         {% endif %}
       </section>
 
+      {# ── Milestones & Bonuses ────────────────────────────────────────── #}
+      {# Advancement + podium points are non-match scoring events the match log
+         can't show (no fixture to attach to). Surfaced here so the totals
+         reconcile to the hero's "Scored" stat and the Champion's +50 is
+         visible (audit F2). Reuses the fixture-row grid for consistency. #}
+      {% if bonus_events %}
+      <section class="mb-4">
+        <span class="wc-eyebrow">Milestones &amp; bonuses</span>
+        <h3 class="mb-3">Beyond the matches</h3>
+        <div class="card border-0 wc-card-flush">
+          <div class="card-body p-0">
+            <ul class="list-unstyled m-0 fixture-list">
+              {% for b in bonus_events %}
+              {% set bonus_pts = b.points|round(1) %}
+              <li class="fixture-row">
+                <div class="fixture-stage">
+                  <span class="wc-eyebrow">{{ b.label }}</span>
+                </div>
+                <div class="fixture-opponent" aria-hidden="true"></div>
+                <div class="fixture-result" aria-hidden="true"></div>
+                <div class="fixture-pts wc-numeral {% if bonus_pts > 0 %}text-success{% endif %}">
+                  {{ "+%.1f"|format(bonus_pts) }}
+                </div>
+              </li>
+              {% endfor %}
+            </ul>
+          </div>
+        </div>
+      </section>
+      {% endif %}
+
       {# ── Path to the Crown ──────────────────────────────────────────── #}
       <section class="mb-4">
         <span class="wc-eyebrow {% if path.eliminated %}wc-eyebrow-red{% endif %}">

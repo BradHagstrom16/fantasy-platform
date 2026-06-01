@@ -63,6 +63,7 @@ _migration_source/
 verify-*/
 verify-*.png
 post-state-*.png
+audit-*.png
 fantasy-platform-and-world-cup-design/
 .remember/
 
@@ -71,3 +72,4 @@ fantasy-platform-and-world-cup-design/
 
 # Designer logo delivery — under review, not yet integrated
 CCC-final/
+_dbdump/

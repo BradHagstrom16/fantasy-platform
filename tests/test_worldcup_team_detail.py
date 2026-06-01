@@ -59,6 +59,27 @@ def _seed_owner_with_pick(app, team_id, username='owner'):
         return u.id
 
 
+def test_team_detail_surfaces_podium_and_advancement_bonuses(client, app):
+    """F2: the +50 champion podium bonus and the advancement milestone are
+    non-match scoring events (match_id=None) that the match log skips. They
+    must be itemized somewhere on the page (with multiplier applied), or the
+    single largest scoring event in the game is invisible and the Final reads
+    a misleading '+0.0'."""
+    with app.app_context():
+        t = WorldCupTeam(
+            fifa_code='AUS', name='Australia', display_name='Australia',
+            tier=5, multiplier=7.0, confederation='AFC', group_letter='D',
+            best_finish='champion', advancement_method='group_winner',
+        )
+        db.session.add(t)
+        db.session.commit()
+        tid = t.id
+    body = client.get(f'/worldcup/team/{tid}').data.decode()
+    assert 'Group winner' in body   # advancement milestone label, surfaced
+    assert '28.0' in body           # advancement: 4 base × 7 multiplier
+    assert '350.0' in body          # champion podium: 50 base × 7 multiplier
+
+
 def test_team_detail_returns_200_for_valid_team(client, app):
     team_id = _seed_team(app)
     resp = client.get(f'/worldcup/team/{team_id}')

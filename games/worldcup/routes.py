@@ -581,6 +581,17 @@ def team_detail(team_id):
         if ev.match_id is not None:
             points_by_match[ev.match_id] = points_by_match.get(ev.match_id, 0.0) + ev.base_points
 
+    # Non-match scoring events (advancement milestone + podium bonus) carry
+    # match_id=None, so the per-match log above skips them. Surface them as their
+    # own line items — otherwise the champion's +50 (the single largest event in
+    # the game) is invisible and the Final reads a misleading "+0.0" (audit F2).
+    # Multiply at display time to match the hero's "Scored" unit, like the match
+    # log does (compute_team_score_events keeps base as the SSoT).
+    bonus_events = [
+        {'label': ev.label, 'points': ev.base_points * team.multiplier}
+        for ev in score_events if ev.match_id is None
+    ]
+
     # Pre-format kickoff dates in CT for the template — kickoff_utc is naive UTC
     # in the DB, so build a (match.id → CT-aware datetime) map here rather than
     # smuggling tzinfo logic into Jinja.
@@ -630,6 +641,7 @@ def team_detail(team_id):
         team=team,
         matches=matches,
         points_by_match=points_by_match,
+        bonus_events=bonus_events,
         match_dates_ct=match_dates_ct,
         ownership=ownership,
         user_owns=user_owns,
@@ -1163,8 +1175,13 @@ def admin_set_knockout(match_id):
             flash(f'Match #{match.match_number}: teams set to {home_code} vs {away_code}.', 'success')
             return redirect(url_for('worldcup.admin_dashboard'))
 
+    # Only teams that survived the group stage can play a knockout match.
+    # Exclude group-stage-eliminated teams so they're not assignable to a
+    # bracket shell (audit F3). is_eliminated is nullable, so treat NULL
+    # (pre-advancement) as not-eliminated.
     available_teams = (
         WorldCupTeam.query
+        .filter(WorldCupTeam.is_eliminated.isnot(True))
         .order_by(WorldCupTeam.display_name)
         .all()
     )
