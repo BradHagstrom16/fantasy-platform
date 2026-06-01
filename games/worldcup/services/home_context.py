@@ -24,6 +24,7 @@ from games.worldcup.models import (
 from games.worldcup.world_cup_countries import TIERS
 from games.worldcup.services.ranking import compute_rank_neighbors
 from games.worldcup.services.scoring import points_for_pick_on_match
+from games.worldcup.services.elimination import eliminated_team_ids
 from games.worldcup.services.stage import stage_label, best_finish_label
 from games.worldcup.services.state import (
     FINAL_MATCH_NUMBER, WorldCupHubState, now_utc, worldcup_state,
@@ -393,7 +394,10 @@ def _context_live(user: Any) -> dict:
             week_delta_direction = 'up' if week_delta_points > 0 else 'down'
             week_delta_points_abs = abs(week_delta_points)
 
-    alive_count = sum(1 for p in user_picks if not p.team.is_eliminated)
+    # Tournament-wide "out" (group exit OR knockout loss); is_eliminated alone
+    # is group-stage-only and would read every KO loser as still alive.
+    eliminated_ids = eliminated_team_ids()
+    alive_count = sum(1 for p in user_picks if p.team_id not in eliminated_ids)
 
     # Leverage Board — the WC hub's differentiated standing hero. The lounge
     # `/` keeps the rank-trend dossier as the canonical surface; the hub
@@ -444,7 +448,7 @@ def _context_live(user: Any) -> dict:
             'points': pts,
             'share': share,
             'status': (
-                'out' if p.team.is_eliminated
+                'out' if p.team_id in eliminated_ids
                 else ('scoring' if pts > 0 else 'dormant')
             ),
         })
