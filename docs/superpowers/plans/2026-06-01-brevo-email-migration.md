@@ -204,27 +204,21 @@ app email for a sports pool).
 In the Brevo dashboard: **Senders, Domains & Dedicated IPs** → **Domains** tab → **Add a
 domain** → enter `cccfantasy.com` → choose "I want to use it to send emails / authenticate".
 
-- [ ] **Step 3: Capture the records Brevo displays**
-
-Brevo will show a set of DNS records to add. Typically:
-- a **Brevo code** TXT record on the root (e.g. host `@`, value `brevo-code:xxxxxxxxxxxx`),
-- a **DKIM** record (a TXT record at host `brevo1._domainkey` / `brevo2._domainkey` **or** a
-  single `mail._domainkey` TXT with a long `k=rsa; p=...` value — Brevo's exact host/format
-  varies by account),
-- an **SPF** include (`include:spf.brevo.com`),
-- optionally a **DMARC** TXT at `_dmarc`.
-
-Copy each record's **Type, Host/Name, and exact Value** verbatim (use Brevo's copy buttons).
-**Paste them back to the agent before editing Cloudflare** — the agent will confirm host
-naming and, critically, how to merge SPF with Cloudflare Email Routing's SPF (Task 4) so you
-publish exactly one SPF record. Leave the Brevo verification screen open.
+- [ ] **Step 3: Capture the records Brevo displays** — choose **"Authenticate the domain
+  yourself"** (manual), NOT the automatic option (auto-setup would bypass our control of the
+  zone and could publish a conflicting SPF). Brevo's actual records for this account
+  (2026-06-01) were: a **Brevo code** TXT (`@`), two **DKIM CNAMEs**
+  (`brevo1._domainkey` → `b1.cccfantasy-com.dkim.brevo.com`, `brevo2._domainkey` →
+  `b2.cccfantasy-com.dkim.brevo.com`), and a **DMARC** TXT (`_dmarc`). **No SPF record** is
+  requested in this CNAME-DKIM flow. Exact values are tabulated in Task 4.
 
 ---
 
 ## Task 3: Enable Cloudflare Email Routing for replies (Brad)
 
-**No repo changes.** Do this **before** adding Brevo's SPF so Cloudflare creates the base SPF
-record, then Task 4 merges Brevo into it (deterministic single SPF record).
+**No repo changes.** Brevo's flow adds no SPF record (see Task 4), so Cloudflare Email
+Routing's SPF is the only `v=spf1` record on the zone — nothing to merge. Order vs. Task 4
+does not matter.
 
 - [ ] **Step 1: Enable Email Routing**
 
@@ -247,58 +241,46 @@ shows **Verified** in **Email Routing → Destination addresses**.
 
 - [ ] **Step 4: Confirm the SPF record Cloudflare created**
 
-In **DNS → Records**, find the `TXT` record beginning `v=spf1`. Note its exact current value
-(should be `v=spf1 include:_spf.mx.cloudflare.net ~all`). **Paste it to the agent** — Task 4
-edits this same record rather than adding a second SPF.
+In **DNS → Records**, find the `TXT` record beginning `v=spf1` (should be
+`v=spf1 include:_spf.mx.cloudflare.net ~all`). Leave it as-is — it is the only SPF record and
+Brevo does not need an include here. Just confirm there is exactly **one** `v=spf1` record.
 
 ---
 
 ## Task 4: Add Brevo DNS records in Cloudflare + verify (Brad)
 
-**No repo changes.** Uses the values captured in Task 2 and the existing SPF from Task 3.
-**Do not save the SPF edit until the agent confirms the merged value.**
+**No repo changes.** Brevo's actual records for this account (CNAME-based DKIM flow — captured
+2026-06-01). **Brevo requested NO SPF record** in this flow (DKIM alignment to `cccfantasy.com`
+satisfies DMARC), so there is no SPF merge and no double-SPF risk. Order vs. Task 3 (Email
+Routing) does not matter — these four records are independent of the routing SPF. Add all four
+in Cloudflare → **DNS → Records → Add record**:
 
-- [ ] **Step 1: Add the Brevo code TXT**
+| # | Type | Name (Cloudflare auto-appends the zone) | Content / Target | Proxy |
+|---|------|-----------------------------------------|------------------|-------|
+| 1 | TXT | `@` | `brevo-code:b2c095c94e265b3a3e8f7bbc4e356171` | n/a |
+| 2 | CNAME | `brevo1._domainkey` | `b1.cccfantasy-com.dkim.brevo.com` | **DNS only (grey)** |
+| 3 | CNAME | `brevo2._domainkey` | `b2.cccfantasy-com.dkim.brevo.com` | **DNS only (grey)** |
+| 4 | TXT | `_dmarc` | `v=DMARC1; p=none; rua=mailto:rua@dmarc.brevo.com` | n/a |
 
-DNS → Records → **Add record**: Type `TXT`, Name `@` (root), Content = Brevo's
-`brevo-code:...` value. Proxy status is N/A for TXT. Save.
+- [ ] **Step 1: Add the Brevo code TXT** (row 1). Name `@`, Content the `brevo-code:...` value.
 
-- [ ] **Step 2: Add the DKIM record(s)**
+- [ ] **Step 2: Add both DKIM CNAMEs** (rows 2 & 3).
 
-Add exactly what Brevo showed (host + value verbatim) — one or two TXT/`_domainkey` records.
-For a long `k=rsa; p=...` value, paste the **entire** string; do not insert line breaks.
-Cloudflare accepts the full value in one Content field. Save each.
+  **CRITICAL Cloudflare gotcha:** Cloudflare defaults new CNAMEs to **Proxied (orange cloud)**.
+  DKIM CNAMEs MUST be **DNS only (grey cloud)** — click the proxy toggle so it shows grey. A
+  proxied DKIM CNAME hides Brevo's real target behind Cloudflare's proxy and DKIM verification
+  fails silently. Name field: just `brevo1._domainkey` (NOT the full FQDN — Cloudflare appends
+  `.cccfantasy.com`).
 
-- [ ] **Step 3: Merge SPF (single record — critical)**
+- [ ] **Step 3: Add the DMARC TXT** (row 4). Name `_dmarc`, Content the `v=DMARC1; ...` value.
+  This is the only DMARC record on the zone (Cloudflare Email Routing does not add one).
 
-Edit the **existing** SPF TXT record from Task 3 (do **not** add a second `v=spf1` record).
-Insert Brevo's include before the closing `~all`. Target value:
+- [ ] **Step 4: Verify in Brevo**
 
-```
-v=spf1 include:spf.brevo.com include:_spf.mx.cloudflare.net ~all
-```
-
-**Before saving, paste your intended final SPF value to the agent for confirmation** (order
-of includes does not matter; having exactly one `v=spf1` record does). Save.
-
-- [ ] **Step 4: Add DMARC (if Brevo provided one, else this baseline)**
-
-If Brevo gave a DMARC value, use it. Otherwise add: Type `TXT`, Name `_dmarc`, Content:
-
-```
-v=DMARC1; p=none; rua=mailto:commish@cccfantasy.com
-```
-
-(`p=none` = monitor only; safe starting policy. Reports route to the now-receivable
-`commish@` address.) Save.
-
-- [ ] **Step 5: Verify in Brevo**
-
-Back in the Brevo domain screen, click **Verify / Authenticate**. DNS can take a few minutes
-to propagate (Cloudflare is usually fast). All of SPF, DKIM, and the Brevo code should turn
-green. If DKIM stays unverified after ~15 min, re-check the host name matches Brevo's exactly
-(a common slip is Cloudflare auto-appending the zone — `brevo1._domainkey` not
-`brevo1._domainkey.cccfantasy.com.cccfantasy.com`). Report status to the agent.
+Back on the Brevo domain screen, click **Authenticate this email domain**. DNS usually
+propagates in minutes on Cloudflare (Brevo's UI says up to 48h worst case). The Brevo code +
+both DKIM records should turn green. If DKIM stays unverified after ~15 min, the usual cause is
+a **proxied** (orange) DKIM CNAME — flip it to DNS only. Report status to the agent.
 
 ---
 
