@@ -13,7 +13,7 @@ Usage:
 """
 import os
 import sys
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import click
 from flask import current_app
@@ -58,7 +58,7 @@ def sync_run_cmd(mode):
     """Unified automation entrypoint for scheduled tasks."""
     api, sync = _make_api_and_sync()
     sync_mode = current_app.config.get('SYNC_MODE', 'standard').lower()
-    year = current_app.config.get('SEASON_YEAR', datetime.now().year)
+    year = current_app.config.get('SEASON_YEAR', datetime.now(timezone.utc).year)
     exit_code = 0
 
     free_tier_blocked = set()  # withdrawal sync now permitted on free tier
