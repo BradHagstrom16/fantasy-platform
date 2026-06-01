@@ -58,10 +58,9 @@ def test_signup_shows_worldcup_flash_pre_deadline(app, client):
     with mock.patch.dict(os.environ, {'ENVIRONMENT': 'testing',
                                       'WC_FAKE_NOW': '2026-01-01T00:00:00+00:00'}):
         resp = _register(client, 'flashuser')
-    # The auto-join flash nudges the user to make picks (exact copy finalized
-    # by impeccable in Phase 5; assert on the distinctive "make your picks"
-    # phrase, which the home page does not otherwise contain). If impeccable
-    # changes the wording, update this assertion alongside it.
+    # The auto-join flash nudges the user to make picks. Assert on the
+    # distinctive "make your picks" phrase, which the home page does not
+    # otherwise contain (so this is load-bearing for the flash, not the page).
     assert 'make your picks' in resp.get_data(as_text=True).lower()
 
 

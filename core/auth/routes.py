@@ -97,12 +97,11 @@ def register():
 
         # Sanctioned signup-time auto-join: while the World Cup pick window is
         # open (pre-deadline), every new account wants in. This is distinct
-        # from the banned pick/admin auto-enroll path — it is an intentional
+        # from the banned pick/admin auto-enroll path: it is an intentional
         # signup behavior, and it self-disables once the tournament starts.
-        # PLACEHOLDER COPY — impeccable finalizes the flash wording (Phase 5).
         if worldcup_state() == 'pre':
             worldcup_enrollment.admin_enroll(user.id)
-            flash("You're in the World Cup pool — make your picks!", 'success')
+            flash("You're in the World Cup pool. Make your picks before they lock.", 'success')
 
         return redirect(url_for('main.index'))
 
