@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from '_flag.html' import flag with context %}
 {% block title %}The Standings · 2026 World Cup Pool{% endblock %}
 
 {% block content %}
@@ -101,6 +102,24 @@
                   {{ e.get_display_name() }}
                 </a>
                 {% endif %}
+                {# Roster rail — flags only; full country name on hover/focus.
+                   Gated on deadline (roster_by_enrollment is empty pre-lock per
+                   D11 privacy). Sits outside the name link so each flag is its
+                   own focus stop. #}
+                {% set roster = roster_by_enrollment.get(e.id) %}
+                {% if roster %}
+                <div class="leaderboard-roster" role="group" aria-label="Roster, {{ roster|length }} nations">
+                  {% for pick in roster %}
+                  {% set shared = (not is_me) and pick.team_id in your_team_ids %}
+                  <span class="lb-flag{% if pick.team.is_eliminated %} is-out{% endif %}{% if shared %} is-shared{% endif %}"
+                        tabindex="0"
+                        title="{{ pick.team.display_name }} · &times;{{ pick.team.multiplier }}{% if pick.team.is_eliminated %} · out{% endif %}{% if shared %} · also yours{% endif %}"
+                        aria-label="{{ pick.team.display_name }}, &times;{{ pick.team.multiplier }} multiplier{% if pick.team.is_eliminated %}, eliminated{% endif %}{% if shared %}, also in your roster{% endif %}">
+                    {{ flag(pick.team.iso_code) }}
+                  </span>
+                  {% endfor %}
+                </div>
+                {% endif %}
               </td>
               <td class="text-end leaderboard-pts"><span class="wc-numeral">{{ "%.1f"|format(e.total_score) }}</span></td>
               {% set rd = rank_delta_by_enrollment.get(e.id) %}
@@ -150,6 +169,19 @@
               <span class="fw-medium leaderboard-card-name">{{ e.get_display_name() }}</span>
               {% if show_tied %}<span class="leaderboard-tied" title="Tied on points">tied</span>{% endif %}
             </div>
+            {# Roster rail — decorative glance on mobile. No tooltips/tab stops
+               (it lives inside the whole-card link, P0 S0.3); tapping the card
+               opens the detail page with the full named roster. aria-hidden so
+               the link's accessible name stays the player, not 9 countries. #}
+            {% set roster = roster_by_enrollment.get(e.id) %}
+            {% if roster %}
+            <div class="leaderboard-roster" aria-hidden="true">
+              {% for pick in roster %}
+              {% set shared = (not is_me) and pick.team_id in your_team_ids %}
+              <span class="lb-flag{% if pick.team.is_eliminated %} is-out{% endif %}{% if shared %} is-shared{% endif %}">{{ flag(pick.team.iso_code) }}</span>
+              {% endfor %}
+            </div>
+            {% endif %}
             {% set rd = rank_delta_by_enrollment.get(e.id) %}
             {% set pd = trend_by_enrollment.get(e.id) %}
             {% set pts_delta %}{% if pd is not none and pd != 0 and rd is not none %}<span class="leaderboard-move-pts">{% if pd > 0 %}+{% endif %}{{ "%.1f"|format(pd) }} pts</span>{% endif %}{% endset %}

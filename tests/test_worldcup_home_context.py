@@ -22,7 +22,8 @@ from games.worldcup.services.home_context import (
 from games.worldcup.services.scoring import points_for_pick_on_match
 from games.worldcup.models import WorldCupMatch
 from tests._worldcup_fixtures import (
-    make_enrollment, make_match, make_snapshot, make_user, seed_full_tournament,
+    make_enrollment, make_match, make_pick, make_snapshot, make_team, make_user,
+    seed_full_tournament,
 )
 
 
@@ -667,6 +668,36 @@ def test_context_post_roster_recap_marks_champion_pick(app):
         ctx = _context_post(user=user)
     champ_entries = [r for r in ctx['your_roster_recap'] if r['is_champion']]
     assert len(champ_entries) == 1
+
+
+def test_context_post_roster_recap_best_finish_labels(app):
+    """B1 + F1 (WC room): recap shows display labels, and an advanced team that
+    lost the R32 (empty best_finish) reads 'Round of 32', NOT 'Group Stage'."""
+    user = make_user(email='champ@test')
+    enr = make_enrollment(user, picks_submitted=True, total_score=100.0)
+    specs = [('CHA', 'champion'), ('RSX', 'R16'), ('GRP', 'group'), ('R3X', '')]
+    teams = {}
+    for code, finish in specs:
+        t = make_team(code, tier=5, multiplier=7.0)
+        t.best_finish = finish
+        t.advancement_method = None if finish == 'group' else 'group_winner'
+        t.is_eliminated = (finish == 'group')
+        teams[code] = t
+        make_pick(enr, t)
+    make_match(
+        match_number=104, stage='final',
+        home_team=teams['CHA'], away_team=teams['RSX'],
+        is_completed=True, home_score=1, away_score=0, winner_team=teams['CHA'],
+    )
+    db.session.commit()
+    fake_post = (TOURNAMENT_DEADLINE_UTC + timedelta(days=40)).isoformat()
+    with patch.dict(os.environ, {'ENVIRONMENT': 'testing', 'WC_FAKE_NOW': fake_post}):
+        ctx = _context_post(user=user)
+    labels = {r['pick'].team.fifa_code: r['best_finish'] for r in ctx['your_roster_recap']}
+    assert labels == {
+        'CHA': 'Champion', 'RSX': 'Round of 16',
+        'GRP': 'Group Stage', 'R3X': 'Round of 32',
+    }
 
 
 def test_context_post_handles_missing_final_gracefully(app):

@@ -10,7 +10,7 @@ from collections import Counter, defaultdict, OrderedDict
 from flask import render_template, redirect, url_for, flash, request, jsonify
 from flask_login import login_required, current_user
 from sqlalchemy import func, or_, select
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload, contains_eager
 
 from extensions import db
 from models import User
@@ -462,6 +462,33 @@ def leaderboard():
         if show_trend_column() else {}
     )
 
+    # Inline rosters (D11 privacy): only surface picks once the deadline has
+    # passed — pre-deadline rosters stay sealed, matching player_detail's
+    # picks_visible gate. One query, contains_eager populates pick.team from
+    # the join so the template's 9-flags-per-row stays N+1-free.
+    roster_by_enrollment: dict[int, list] = {}
+    your_team_ids: set[int] = set()
+    if deadline_passed and enrollment_ids:
+        pick_rows = (
+            WorldCupPick.query
+            .join(WorldCupPick.team)
+            .options(contains_eager(WorldCupPick.team))
+            .filter(WorldCupPick.enrollment_id.in_(enrollment_ids))
+            .order_by(WorldCupTeam.tier.asc(), WorldCupTeam.display_name.asc())
+            .all()
+        )
+        grouped = defaultdict(list)
+        for p in pick_rows:
+            grouped[p.enrollment_id].append(p)
+        roster_by_enrollment = dict(grouped)
+
+        # The viewer's own picks drive the "shared with you" highlight on other
+        # players' rows (their own row never rings — every flag would match).
+        if current_user.is_authenticated:
+            mine = next((e for e in enrollments if e.user_id == current_user.id), None)
+            if mine:
+                your_team_ids = {p.team_id for p in roster_by_enrollment.get(mine.id, [])}
+
     return render_template('worldcup/leaderboard.html',
         ranked_enrollments=ranked,
         total_players=total_players,
@@ -472,6 +499,8 @@ def leaderboard():
         your_standing=your_standing,
         rank_delta_by_enrollment=rank_delta_by_enrollment,
         trend_by_enrollment=trend_by_enrollment,
+        roster_by_enrollment=roster_by_enrollment,
+        your_team_ids=your_team_ids,
     )
 
 
@@ -552,6 +581,17 @@ def team_detail(team_id):
         if ev.match_id is not None:
             points_by_match[ev.match_id] = points_by_match.get(ev.match_id, 0.0) + ev.base_points
 
+    # Non-match scoring events (advancement milestone + podium bonus) carry
+    # match_id=None, so the per-match log above skips them. Surface them as their
+    # own line items — otherwise the champion's +50 (the single largest event in
+    # the game) is invisible and the Final reads a misleading "+0.0" (audit F2).
+    # Multiply at display time to match the hero's "Scored" unit, like the match
+    # log does (compute_team_score_events keeps base as the SSoT).
+    bonus_events = [
+        {'label': ev.label, 'points': ev.base_points * team.multiplier}
+        for ev in score_events if ev.match_id is None
+    ]
+
     # Pre-format kickoff dates in CT for the template — kickoff_utc is naive UTC
     # in the DB, so build a (match.id → CT-aware datetime) map here rather than
     # smuggling tzinfo logic into Jinja.
@@ -601,6 +641,7 @@ def team_detail(team_id):
         team=team,
         matches=matches,
         points_by_match=points_by_match,
+        bonus_events=bonus_events,
         match_dates_ct=match_dates_ct,
         ownership=ownership,
         user_owns=user_owns,
@@ -1134,8 +1175,13 @@ def admin_set_knockout(match_id):
             flash(f'Match #{match.match_number}: teams set to {home_code} vs {away_code}.', 'success')
             return redirect(url_for('worldcup.admin_dashboard'))
 
+    # Only teams that survived the group stage can play a knockout match.
+    # Exclude group-stage-eliminated teams so they're not assignable to a
+    # bracket shell (audit F3). is_eliminated is nullable, so treat NULL
+    # (pre-advancement) as not-eliminated.
     available_teams = (
         WorldCupTeam.query
+        .filter(WorldCupTeam.is_eliminated.isnot(True))
         .order_by(WorldCupTeam.display_name)
         .all()
     )

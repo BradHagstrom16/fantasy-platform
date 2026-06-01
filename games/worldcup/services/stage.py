@@ -31,3 +31,36 @@ def stage_label(stage: str) -> str:
         'third_place': 'Third-Place Match',
         'final': 'The Final',
     }.get(stage, 'Group Stage')
+
+
+# WorldCupTeam.best_finish display labels. This is a DIFFERENT value space from
+# WorldCupMatch.stage above: it drops 'final'/'third_place' and adds the podium
+# codes '3rd' / 'runner_up' / 'champion' (set from best_finish, not match stage).
+# An empty/None best_finish means the team advanced from its group but won no
+# knockout match — i.e. it reached the Round of 32 and lost there, which is
+# DISTINCT from 'group' (eliminated in the group stage). Both used to collapse
+# to "Group", mislabeling a group winner that lost in the R32 as a group-stage
+# exit (audit finding F1).
+_BEST_FINISH_LABELS: dict[str, str] = {
+    'group': 'Group Stage',
+    'R32': 'Round of 32',
+    'R16': 'Round of 16',
+    'QF': 'Quarterfinals',
+    'SF': 'Semifinals',
+    '3rd': '3rd Place',
+    'runner_up': 'Runner-up',
+    'champion': 'Champion',
+}
+
+
+def best_finish_label(code: str | None) -> str:
+    """Map WorldCupTeam.best_finish to a display label (the SSoT for it).
+
+    Empty/None -> 'Round of 32' (advanced, lost in the R32). Unknown codes fall
+    back to the raw code — never silently 'Group' — so a future scoring code
+    surfaces as the bug it is rather than masquerading as a group-stage exit
+    (CLAUDE.md best_finish rule).
+    """
+    if not code:
+        return 'Round of 32'
+    return _BEST_FINISH_LABELS.get(code, code)

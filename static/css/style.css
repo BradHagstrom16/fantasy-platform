@@ -787,6 +787,59 @@ body.game-golf {
   }
 }
 
+/* Column-foot brand lockup (pre-state masthead). The decree's `margin-block:
+   auto` (above) centers it in col-A and leaves balancing whitespace beneath;
+   this horizontal lockup fills that whitespace as a sign-off without competing
+   with the gold decree CTA. Wide-desktop only — it appears at the 1180px
+   breakpoint where the masthead column gains room (parity with the greet-title
+   bump below); below that the column is single-flow and a wide head+wordmark
+   lockup would be redundant near the navbar. The SVG viewBox is cropped to the
+   artwork, so height:auto renders tight (≈1.81:1). */
+.home-shell .home-pre-lockup {
+  display: none;
+  width: 340px;
+  max-width: 70%;
+  height: auto;
+  margin-inline: auto;
+}
+@media (min-width: 1180px) {
+  .home-shell .home-pre-lockup {
+    display: block;
+    margin-top: clamp(2rem, 4vw, 3.5rem);
+  }
+  /* Decree + trailing lockup balance as one centered unit: the decree pins to
+     the top of the freed space, the lockup to the bottom, so the decree stays
+     the dominant focal block and the lockup reads as the column foot. This
+     supersedes the lone `.decree:last-child { margin-block:auto }` rule, which
+     only matches when the lockup is absent (e.g. the sealed state renders a
+     ballot card between them, or below 1180px where the lockup is hidden). */
+  .home-shell .home-pre-col--main > .decree:nth-last-child(2) {
+    margin-top: auto;
+    margin-bottom: 0;
+  }
+  .home-shell .home-pre-col--main > .home-pre-lockup:last-child {
+    margin-bottom: auto;
+  }
+  /* Sealed state: the lockup signs off the rail instead of the masthead column
+     (the ballot makes the masthead the long one). Flex the rail so the lockup
+     bottom-pins, ending level with the long column rather than leaving the rail
+     short. `gap:0` keeps the rail's existing padding/margin rhythm — children
+     here space themselves via their own padding, so flexing must not introduce
+     a gap. */
+  .home-shell .home-pre-col--rail {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+  .home-shell .home-pre-col--rail > .home-pre-lockup:last-child {
+    margin-top: auto;
+    /* Lift by the ballot card's own bottom margin (1.5rem) so the lockup's base
+       lands level with the ballot card's lower edge in the masthead column,
+       rather than the column box bottom which sits 1.5rem lower. */
+    margin-bottom: 1.5rem;
+  }
+}
+
 /* Section heads — shared across all home states */
 .home-shell .sec-head {
   display: flex;
@@ -2531,6 +2584,73 @@ body.game-golf {
   font-style: italic;
 }
 
+/* Hub-entry seal — the live dossier's single action. Mirrors the pre-state
+   `.decree-cta` metal-gold recipe so the gold seal reads identically, but
+   purpose-named for the live surface (the decree's "affix the decree" active
+   semantics are decree-specific). Trophy Rule: metal-gold is reserved for the
+   primary CTA, and entering the WC room is exactly that for a live enrollee. */
+.home-shell .dossier-cta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  margin-top: 1.25rem;
+  max-width: 24rem;
+  padding: 0.7rem 1.25rem 0.8rem;
+  background: var(--metal-gold-flat);
+  border-radius: var(--radius);
+  text-decoration: none;
+  box-shadow: 0 2px 10px rgba(20, 8, 40, 0.28);
+  transition: transform 0.18s cubic-bezier(0.22, 1, 0.36, 1),
+              box-shadow 0.18s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.home-shell .dossier-cta-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-family: var(--font-teko);
+  font-weight: 600;
+  font-size: 1.05rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--purple-900);
+}
+.home-shell .dossier-cta-label i {
+  font-size: 0.9em;
+  transition: transform 0.18s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.home-shell .dossier-cta-sub {
+  font-family: var(--font-news);
+  font-size: 0.82rem;
+  line-height: 1.35;
+  color: var(--purple-800);
+  text-align: center;
+}
+.home-shell .dossier-cta:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-gold);
+}
+.home-shell .dossier-cta:hover .dossier-cta-label i {
+  transform: translateX(3px);
+}
+.home-shell .dossier-cta:active {
+  transform: translateY(1px) scale(0.985);
+  box-shadow: inset 0 0 0 2px rgba(138, 106, 26, 0.6),
+              0 1px 3px rgba(20, 8, 40, 0.3);
+  transition-duration: 0.1s;
+}
+.home-shell .dossier-cta:focus-visible {
+  outline: 2px solid var(--gold-light);
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .home-shell .dossier-cta,
+  .home-shell .dossier-cta-label i { transition: none; }
+  .home-shell .dossier-cta:hover { transform: none; }
+  .home-shell .dossier-cta:hover .dossier-cta-label i { transform: none; }
+  .home-shell .dossier-cta:active { transform: none; }
+}
+
 /* --- Live-state: leaderboard preview (rolls) --- */
 .home-shell .rolls {
   margin: 0;
@@ -3714,11 +3834,12 @@ body.game-worldcup {
   white-space: nowrap;
 }
 
-/* P4 S4.2.2 PI-5 — multiplier chip surface override for light-substrate.
-   F2 lifted .wc-multiplier-chip default to bone for its canonical dark
-   home. Inside .tier-card-heading the chip sits on a white .tier-card
-   body where bone reads ~1.04:1 (invisible). Re-tint to platform-text
-   ink so the multiplier reads on white.
+/* P4 S4.2.2 PI-5 — multiplier chip surface tint inside .tier-card-heading.
+   The chip is now a light-substrate-only primitive (its single dark-substrate
+   consumer, the team_detail navy hero, was removed 2026-06-01 when the dark-
+   ink chip rendered invisible on navy — see team_detail.html). The base
+   `color: var(--text-primary)` is therefore the correct universal default and
+   this override only deepens the bg/border tint for the white .tier-card body.
 
    PR #15 CR R6-G — original commit used `var(--text-ink)`, an undefined
    token (only `--ink` is declared in tokens.css; this file's platform
@@ -3737,45 +3858,49 @@ body.game-worldcup {
   padding: 0;
 }
 
-/* picks.html team card descendants */
-.wc-team-card .team-flag { margin-right: .4rem; }
-/* P4 S4.2.1 PI-3 — 44×44 tap-target floor (PRODUCT.md mobile-first).
-   The pill is a secondary affordance inside the .wc-team-card primitive;
-   inline-flex + min-height/min-width keeps the visual footprint compact
-   while making the touch target meet the floor. Negative margin clears
-   the pill's own padding without re-flowing the team-meta row. */
+/* picks.html team card descendants — media-object layout (flag tile pinned
+   left, name + group stacked tight in the right text column). Card grid is
+   defined on .wc-team-card itself; these rules place the children. */
+.wc-team-card .team-flag {
+  grid-area: flag;
+  /* The flag tile anchors the card and carries the country color. Flag height
+     is driven by font-size here (`.ccc-flag` is height:1em); overflow+radius
+     clip the 4:3 SVG into a crisp rounded tile. */
+  font-size: 1.9rem;
+  line-height: 0;
+  border-radius: 5px;
+  overflow: hidden;
+  box-shadow: 0 0 0 1px var(--border-light), var(--shadow-sm);
+}
+/* Group link demoted from the boxed navy pill to a quiet inline subtitle
+   under the name (no background fill). It is still a navigation affordance
+   (links to `/worldcup/groups#group-<letter>`), so the 44×44 tap-target floor
+   (PRODUCT.md mobile-first) is preserved on the element itself; the negative
+   margins absorb the box so the bottom row stays visually tight and the label
+   left-aligns with the name above it. Resting --text-secondary (~7.15:1 on
+   white); hover activates with red, the WC primary accent. */
 .wc-team-card .team-group-pill {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  font-family: 'Teko', sans-serif;
-  font-size: .68rem;
-  text-transform: uppercase;
-  letter-spacing: .06em;
+  align-self: flex-start;
   min-height: 44px;
   min-width: 44px;
-  padding: .55rem .65rem;
-  margin: -.55rem -.1rem;
-  /* WC Tab Unification Phase 0 — pill sat on a white .wc-team-card body
-     with bone-on-bone (`--bone-mute` text @ .55 alpha on a `rgba(245,241,232,.06)`
-     bone-tinted fill over `--bg-card` white) — ~1.05:1, illegible. The pill
-     is a navigation affordance (links to `/worldcup/groups#group-<letter>`)
-     so it reads as navy in the red→white→blue→gold doctrine: navy-tinted
-     fill + `--text-secondary` text (S2.4.1 PI-1 documented label color,
-     ~7.15:1 on white). Hover activates with red, the WC primary accent. */
-  background: rgba(0, 40, 104, .06);
-  border-radius: 6px;
+  padding: .55rem .5rem;
+  margin: -.6rem -.5rem;
+  font-family: 'Teko', sans-serif;
+  font-size: .8rem;
+  text-transform: uppercase;
+  letter-spacing: .04em;
   color: var(--text-secondary);
   text-decoration: none;
 }
 .wc-team-card .team-group-pill:hover {
   color: var(--wc-red);
-  background: rgba(191, 10, 48, .10);
 }
 .wc-team-card .team-group-pill:focus-visible {
   outline: 2px solid var(--gold-light);
   outline-offset: 2px;
-  border-radius: 6px;
+  border-radius: 4px;
 }
 
 /* P4 S4.2.1 PI-3 — picks hero "View Scoring Rules" link 44×44 floor.
@@ -3942,10 +4067,6 @@ body.game-worldcup {
   line-height: 1;
   color: var(--wc-white);
   font-weight: 700;
-}
-.team-hero-mult {
-  align-self: center;
-  font-size: 1.05rem;
 }
 .team-hero-derivation {
   font-family: 'Newsreader', Georgia, serif;
@@ -4146,6 +4267,15 @@ body.game-worldcup {
    1280px and wraps gracefully under 375px.
    S2.3.1 PI-2: <ol> + <li> for proper sequence semantics; explicit list
    reset because the parent .container's Bootstrap reset doesn't reach. */
+/* The section's own eyebrow sits on the bone body. Plain .wc-eyebrow is
+   --bone-mute (~1:1, invisible) and .wc-eyebrow-gold is washed --gold-light
+   (~1.3:1). Lift on the light substrate: text-secondary for the plain/alive
+   label, cream-safe gold-dark for the champion label. .wc-eyebrow-red already
+   reads on bone (re-asserted here so the plain rule doesn't override it). */
+.team-path > .wc-eyebrow { color: var(--text-secondary); }
+.team-path > .wc-eyebrow-red { color: var(--wc-red); }
+.team-path > .wc-eyebrow-gold { color: var(--gold-dark); }
+
 .path-segments {
   display: flex;
   gap: .4rem;
@@ -4155,6 +4285,10 @@ body.game-worldcup {
   margin-bottom: 0;
   counter-reset: path-step;
 }
+/* Casual-Light substrate (migrated 2026-06-01). The path row was authored
+   for the retired dark `.card.wc-card`; on the bone body its navy fill +
+   bone text rendered ~1:1 (labels invisible) and washed gold checks ~1.4:1.
+   Now: white box, ink-readable labels, cream-safe gold for cleared stages. */
 .path-segment {
   flex: 1 1 0;
   min-width: 56px;
@@ -4163,12 +4297,17 @@ body.game-worldcup {
   align-items: center;
   gap: .25rem;
   padding: .5rem .25rem;
-  border: 1px solid rgba(245, 241, 232, .08);
+  border: 1px solid var(--border);
   border-radius: 4px;
-  background: rgba(0, 17, 46, .5);
-  color: var(--bone-mute);
+  background: var(--bg-card);
+  color: var(--text-secondary);
   transition: border-color var(--transition);
 }
+/* Stage label (GROUP/R32/…/FINAL) carried the navy-calibrated --bone-mute
+   default → invisible bone-on-bone. Inherit the segment's own color so each
+   state's label reads (text-secondary default, text-primary on won/current/
+   champion below). */
+.path-segment .wc-eyebrow { color: inherit; }
 /* Icon wrapper sits beneath the stage eyebrow at a consistent line-height
    so the row stays vertically aligned across status mixes. */
 .path-segment-icon {
@@ -4179,28 +4318,43 @@ body.game-worldcup {
   line-height: 1;
   height: 1.05rem;
 }
-.path-segment-future .path-segment-icon { color: rgba(245, 241, 232, .35); }
-.path-segment-won {
-  color: var(--wc-white);
-  border-color: rgba(242, 211, 107, .35);
-  background: rgba(242, 211, 107, .08);
+.path-segment-future {
+  background: var(--bg-muted);
+  border-color: var(--border-light);
 }
-.path-segment-won .path-segment-icon { color: var(--gold-light); }
+.path-segment-future .path-segment-icon { color: var(--text-secondary); }
+.path-segment-won {
+  color: var(--text-primary);
+  border-color: rgba(138, 106, 26, .35);
+  background: rgba(201, 162, 39, .10);
+}
+.path-segment-won .path-segment-icon { color: var(--gold-dark); }
 .path-segment-current {
-  color: var(--wc-white);
+  color: var(--text-primary);
   border-color: var(--wc-red);
-  background: rgba(191, 10, 48, .12);
+  background: rgba(191, 10, 48, .08);
 }
 .path-segment-current .path-segment-icon {
   color: var(--wc-red);
   animation: path-current-pulse 2.4s ease-in-out infinite;
 }
 .path-segment-eliminated {
-  color: var(--bone-mute);
+  color: var(--text-secondary);
   border-color: var(--wc-red);
-  background: rgba(191, 10, 48, .06);
+  background: rgba(191, 10, 48, .05);
 }
 .path-segment-eliminated .path-segment-icon { color: var(--wc-red); }
+/* Champion's Final segment — ceremonial gold lift (the only gold emphasis on
+   this light surface; reserved for actually winning it all). */
+.path-segment-champion {
+  color: var(--text-primary);
+  border-color: var(--gold-dark);
+  background: rgba(201, 162, 39, .16);
+}
+.path-segment-champion .path-segment-icon {
+  color: var(--gold-dark);
+  font-size: 1.15rem;
+}
 
 @keyframes path-current-pulse {
   0%, 100% { opacity: 1; }
@@ -4397,12 +4551,20 @@ body.game-worldcup .tier-card-5 .tier-card-header { background: linear-gradient(
   border: 2px solid var(--border-light);
   border-radius: var(--radius);
   background: var(--bg-card);
-  padding: .75rem .875rem;
+  padding: .7rem .8rem;
   cursor: pointer;
   transition: border-color var(--transition), box-shadow var(--transition), background var(--transition);
-  display: flex;
-  flex-direction: column;
-  gap: .25rem;
+  /* Media object: flag tile spans both rows on the left; name + group stack
+     tight in the right text column. Replaces the prior vertical flex stack
+     that left a band of dead whitespace down the right of every card. */
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-areas:
+    "flag name"
+    "flag group";
+  align-items: center;
+  column-gap: .7rem;
+  row-gap: .05rem;
   min-height: 72px;
   position: relative;
   user-select: none;
@@ -4527,20 +4689,28 @@ body.game-worldcup .tier-card-5 .tier-card-header { background: linear-gradient(
   pointer-events: none;
   cursor: not-allowed;
 }
+/* Right text column of the media object — name over the quiet group link. */
+.wc-team-card .team-text {
+  grid-area: name / name / group / group;
+  display: flex;
+  flex-direction: column;
+  gap: .05rem;
+  min-width: 0; /* lets long names ellipsis instead of overflowing the card */
+}
 .wc-team-card .team-name {
   font-family: 'Teko', sans-serif;
   font-weight: 600;
-  font-size: 1.1rem;
+  font-size: 1.05rem;
   letter-spacing: .02em;
-  line-height: 1.2;
+  line-height: 1.15;
   color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-.wc-team-card .team-meta {
-  font-size: .75rem;
-  color: var(--text-secondary);
-  display: flex;
-  align-items: center;
-  gap: .5rem;
+/* Keep the selected-state checkmark (top-right) clear of long names. */
+.wc-team-card.selected .team-name {
+  padding-right: 1.1rem;
 }
 
 /* Pick summary — pre-submit review panel.
@@ -5549,7 +5719,20 @@ body.game-worldcup .tier-card-5 .tier-card-header { background: linear-gradient(
   }
   .wc-team-card {
     min-height: 64px;
-    padding: .6rem .75rem;
+    padding: .6rem .7rem;
+    column-gap: .55rem;
+  }
+  .wc-team-card .team-flag {
+    font-size: 1.7rem;
+  }
+  /* Narrow 2-col mobile: the flag tile shares the card width, so let long
+     names wrap to two lines instead of ellipsis-truncating ("New Zealand"). */
+  .wc-team-card .team-name {
+    white-space: normal;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    line-height: 1.05;
   }
 }
 
@@ -6310,6 +6493,67 @@ body.game-worldcup .tier-card-5 .tier-card-header { background: linear-gradient(
   color: var(--text-secondary);
 }
 .leaderboard-avatar { margin-right: .4rem; }
+
+/* Inline roster rail — flags-only preview of each player's nine nations so the
+   board answers "who picked who" without a click into player_detail. Only
+   rendered post-deadline (D11 privacy gate lives in the route). Flags read at
+   1.15rem via .ccc-flag's height:1em. Full country name surfaces on hover/focus
+   through the title attribute (same native-tooltip idiom as .leaderboard-tied).
+   WC accent doctrine: red carries the competitive "shared with you" signal. */
+.leaderboard-roster {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .3rem;
+  margin-top: .4rem;
+}
+.lb-flag {
+  display: inline-flex;
+  font-size: 1.15rem;
+  border-radius: 3px;
+  cursor: default;
+  transition: transform .15s ease-out, box-shadow .15s ease-out;
+}
+/* Hover lift is gated to hover-capable pointers so a tap on a touch device
+   doesn't latch the raised transform/shadow. Keyboard focus keeps the lift
+   (and the outline) globally so the focus ring is never lost. */
+@media (hover: hover) {
+  .lb-flag:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 3px 8px rgba(28, 23, 48, .22);
+  }
+  /* Shared-flag hover keeps the red ring AND adds the lift shadow (more
+     specific than .lb-flag:hover, so it must restate the ring). Gated here
+     so a tap on touch doesn't latch it. */
+  .lb-flag.is-shared:hover {
+    box-shadow: 0 0 0 2px var(--wc-red), 0 3px 8px rgba(28, 23, 48, .22);
+  }
+}
+.lb-flag:focus-visible {
+  transform: translateY(-2px);
+  box-shadow: 0 3px 8px rgba(28, 23, 48, .22);
+  outline: 2px solid var(--wc-red);
+  outline-offset: 2px;
+}
+/* Knocked-out nations dim to a grayscale ghost — the at-a-glance "riding a dead
+   horse" read. Uses team.is_eliminated, the same signal as the hub Leverage
+   Board's is-out status. */
+.lb-flag.is-out {
+  filter: grayscale(1);
+  opacity: .4;
+}
+/* "Also yours" — a red ring on the wrapper (not the flag img, so .ccc-flag's
+   inset hairline stays intact). Only set on other players' rows. */
+.lb-flag.is-shared {
+  box-shadow: 0 0 0 2px var(--wc-red);
+}
+.lb-flag.is-shared:focus-visible {
+  box-shadow: 0 0 0 2px var(--wc-red), 0 3px 8px rgba(28, 23, 48, .22);
+}
+@media (prefers-reduced-motion: reduce) {
+  .lb-flag { transition: none; }
+  .lb-flag:hover,
+  .lb-flag:focus-visible { transform: none; }
+}
 
 /* "tied" says the dense-rank shared-rank story out loud (three players at
    "1" otherwise read as ambiguous). Editorial micro-label, not an alert. */

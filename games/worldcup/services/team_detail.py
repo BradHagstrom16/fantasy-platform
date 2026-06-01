@@ -54,6 +54,7 @@ class PathSegment(TypedDict):
 class PathToCrown(TypedDict):
     segments: list[PathSegment]
     eliminated: bool
+    champion: bool              # cleared all 6 segments, not eliminated
     eliminated_at_label: Optional[str]
     projected_ceiling: float    # multiplied points if team wins out from here
 
@@ -123,6 +124,7 @@ def compute_path_to_crown(team: WorldCupTeam) -> PathToCrown:
     """
     cleared, eliminated_at = _path_status(team)
     eliminated = eliminated_at is not None
+    champion = not eliminated and cleared == len(_SEGMENT_LABELS)
 
     segments: list[PathSegment] = []
     for i, label in enumerate(_SEGMENT_LABELS):
@@ -168,6 +170,7 @@ def compute_path_to_crown(team: WorldCupTeam) -> PathToCrown:
     return PathToCrown(
         segments=segments,
         eliminated=eliminated,
+        champion=champion,
         eliminated_at_label=eliminated_at_label,
         projected_ceiling=projected_ceiling,
     )

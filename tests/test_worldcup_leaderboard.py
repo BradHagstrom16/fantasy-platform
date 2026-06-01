@@ -22,7 +22,7 @@ from extensions import db
 from models.user import User
 from games.worldcup.constants import SEASON_YEAR, WORLDCUP_TZ
 from games.worldcup.models import (
-    WorldCupEnrollment, WorldCupRankSnapshot,
+    WorldCupEnrollment, WorldCupRankSnapshot, WorldCupTeam, WorldCupPick,
 )
 from games.worldcup.services.state import now_utc
 
@@ -87,6 +87,26 @@ def _seed_snapshot(enrollment_id, captured_date, rank, total_score):
     db.session.add(s)
     db.session.flush()
     return s
+
+
+def _seed_team(fifa_code, tier=1, multiplier=1.0, is_eliminated=False):
+    t = WorldCupTeam(
+        fifa_code=fifa_code, name=fifa_code, display_name=fifa_code,
+        tier=tier, multiplier=multiplier, confederation='UEFA',
+        group_letter='A', is_eliminated=is_eliminated,
+    )
+    db.session.add(t)
+    db.session.flush()
+    return t
+
+
+def _seed_pick(enrollment_id, team):
+    p = WorldCupPick(
+        enrollment_id=enrollment_id, team_id=team.id, tier=team.tier,
+    )
+    db.session.add(p)
+    db.session.flush()
+    return p
 
 
 def _login(client, user_id):
@@ -448,3 +468,82 @@ def test_points_delta_surfaces_inline_not_hover_only(client, app):
     assert resp.status_code == 200
     assert b'leaderboard-move-pts' in resp.data
     assert b'title="Points:' not in resp.data  # no hover-only delta anymore
+
+
+# ── inline roster rail (D11 privacy + post-deadline reveal) ───────────
+
+def test_roster_flags_hidden_pre_deadline(client, app, monkeypatch):
+    """D11 privacy: before the deadline the board exposes no roster markup —
+    picks stay sealed, matching player_detail's picks_visible gate."""
+    monkeypatch.setattr(
+        'games.worldcup.routes.TOURNAMENT_DEADLINE_UTC', FUTURE_DEADLINE
+    )
+    with app.app_context():
+        u = _seed_user('alice')
+        e = _seed_enrollment(u.id, score=0.0)
+        _seed_pick(e.id, _seed_team('USA'))
+        db.session.commit()
+        resp = client.get('/worldcup/leaderboard')
+    assert resp.status_code == 200
+    assert b'leaderboard-roster' not in resp.data
+    assert b'lb-flag' not in resp.data
+
+
+def test_roster_flags_render_post_deadline(client, app, monkeypatch):
+    """Post-deadline the roster rail surfaces each pick as a flag SVG so the
+    board answers 'who picked who' without a click-through."""
+    monkeypatch.setattr(
+        'games.worldcup.routes.TOURNAMENT_DEADLINE_UTC', PAST_DEADLINE
+    )
+    with app.app_context():
+        u = _seed_user('alice')
+        e = _seed_enrollment(u.id, score=10.0)
+        _seed_pick(e.id, _seed_team('USA'))
+        db.session.commit()
+        resp = client.get('/worldcup/leaderboard')
+    body = resp.data.decode()
+    assert resp.status_code == 200
+    assert 'leaderboard-roster' in body
+    assert 'lb-flag' in body
+    assert '/flags/us.svg' in body  # USA -> iso 'us' self-hosted SVG, not emoji
+
+
+def test_roster_flag_dims_eliminated_nation(client, app, monkeypatch):
+    """Knocked-out picks carry .is-out so the board dims dead horses at a glance."""
+    monkeypatch.setattr(
+        'games.worldcup.routes.TOURNAMENT_DEADLINE_UTC', PAST_DEADLINE
+    )
+    with app.app_context():
+        u = _seed_user('alice')
+        e = _seed_enrollment(u.id, score=10.0)
+        _seed_pick(e.id, _seed_team('USA', is_eliminated=True))
+        db.session.commit()
+        resp = client.get('/worldcup/leaderboard')
+    assert resp.status_code == 200
+    assert b'lb-flag is-out' in resp.data
+
+
+def test_roster_flag_rings_shared_pick_on_other_rows(client, app, monkeypatch):
+    """A pick the viewer also holds gets .is-shared on OTHER players' rows; the
+    viewer's own row never rings (every flag would match)."""
+    monkeypatch.setattr(
+        'games.worldcup.routes.TOURNAMENT_DEADLINE_UTC', PAST_DEADLINE
+    )
+    with app.app_context():
+        me = _seed_user('me')
+        rival = _seed_user('rival')
+        my_e = _seed_enrollment(me.id, score=10.0)
+        rival_e = _seed_enrollment(rival.id, score=20.0)
+        usa = _seed_team('USA')
+        bra = _seed_team('BRA', tier=2)
+        _seed_pick(my_e.id, usa)          # shared
+        _seed_pick(rival_e.id, usa)       # shared -> should ring on rival row
+        _seed_pick(rival_e.id, bra)       # rival-only -> no ring
+        db.session.commit()
+        _login(client, me.id)
+        resp = client.get('/worldcup/leaderboard')
+    body = resp.data.decode()
+    assert resp.status_code == 200
+    # Rival's shared USA pick rings; the rail is duplicated desktop + mobile so
+    # the class appears at least twice (and never zero).
+    assert 'lb-flag is-shared' in body

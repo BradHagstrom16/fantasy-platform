@@ -18,6 +18,7 @@ from games.worldcup.models import (
 )
 from games.worldcup.services.ranking import compute_rank_neighbors
 from games.worldcup.services.stage import stage_label as _stage_label
+from games.worldcup.services.stage import best_finish_label
 from games.worldcup.services.state import WorldCupState, now_utc
 from games.worldcup.services.scoring import points_for_pick_on_match
 from games.worldcup.world_cup_countries import TIERS
@@ -529,7 +530,7 @@ def _context_post(user, enrollment) -> dict:
             your_roster_recap.append({
                 'pick': pick,
                 'tier_name': TIERS[pick.tier]['name'],
-                'best_finish': pick.team.best_finish or 'Group',
+                'best_finish': best_finish_label(pick.team.best_finish),
                 'points': pick.multiplied_points,
                 'is_champion': champion_team and pick.team_id == champion_team.id,
             })

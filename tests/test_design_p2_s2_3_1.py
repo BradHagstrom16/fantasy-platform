@@ -114,7 +114,8 @@ def test_every_path_segment_status_carries_an_icon():
     eliminated → x, future → empty circle. PRODUCT.md a11y rule pairs
     state color with icons."""
     for marker in (
-        "{% if seg.status == 'won' %}<i class=\"bi bi-check-lg\"></i>",
+        "{% if is_crown %}<i class=\"bi bi-trophy-fill\"></i>",
+        "{% elif seg.status == 'won' %}<i class=\"bi bi-check-lg\"></i>",
         "{% elif seg.status == 'eliminated' %}<i class=\"bi bi-x-lg\"></i>",
         "{% elif seg.status == 'current' %}<i class=\"bi bi-record-circle-fill\"></i>",
         "{% else %}<i class=\"bi bi-circle\"></i>",
@@ -249,3 +250,91 @@ def test_ribbon_blurb_no_longer_uses_bootstrap_text_muted_on_dark_surface():
     that tints toward `--bone-mute`."""
     assert 'class="ownership-ribbon-blurb mt-1"' in TPL
     assert '.ownership-ribbon .ownership-ribbon-blurb' in CSS
+
+
+# ---------------------------------------------------------------------------
+# Bugfix 2026-06-01: the Path-to-the-Crown row was authored for the retired
+# dark `.card.wc-card` and never migrated in the P5 Casual-Light unification.
+# On the bone body its labels rendered bone-on-bone (~1:1) and its won-checks
+# washed gold-on-bone (~1.4:1). Migrate the row to the light substrate.
+# ---------------------------------------------------------------------------
+
+def _css_rule_block(selector):
+    """Return the declaration block ({...}) for the first rule whose selector
+    list begins exactly with `selector` followed by ` {` (avoids matching a
+    descendant/compound selector that merely contains it)."""
+    import re
+    m = re.search(
+        r'(?<![-\w.])' + re.escape(selector) + r'\s*\{([^}]*)\}', CSS,
+    )
+    return m.group(1) if m else None
+
+
+def test_path_segment_base_not_on_dark_navy_substrate():
+    """`.path-segment` must not fill with the dark navy `rgba(0, 17, 46, …)`
+    designed for the retired `.card.wc-card`; on the bone body that fill is
+    near-invisible and its bone text reads ~1:1. It sits on a light surface."""
+    block = _css_rule_block('.path-segment')
+    assert block is not None, '.path-segment rule block not found'
+    assert 'rgba(0, 17, 46' not in block, (
+        '.path-segment still uses the dark-navy fill — migrate to the '
+        'Casual-Light substrate so labels and checks read on the bone body'
+    )
+
+
+def test_path_segment_label_eyebrow_lifted_off_bone_mute():
+    """The per-segment stage label (`.path-segment .wc-eyebrow`) carried the
+    navy-calibrated `--bone-mute` default → invisible bone-on-bone. A scoped
+    rule must lift it so GROUP/R32/…/FINAL read on the light substrate."""
+    import re
+    block = _css_rule_block('.path-segment .wc-eyebrow')
+    assert block is not None, (
+        'missing scoped color lift for the segment stage label on light substrate'
+    )
+    # Must explicitly take the segment's lifted color (inherit) rather than
+    # falling back to the navy-calibrated `--bone-mute` default; assert the
+    # concrete declaration, not just selector presence.
+    assert re.search(r'(?<!-)color:\s*inherit', block), (
+        'segment label must inherit the lifted segment color, not the '
+        'navy --bone-mute default'
+    )
+
+
+def test_path_segment_won_icon_uses_cream_safe_gold():
+    """The won-check must move off `--gold-light` (#F2D36B, ~1.4:1 on bone)
+    to the cream-safe `--gold-dark` (~4.6:1) so a cleared stage reads."""
+    block = _css_rule_block('.path-segment-won .path-segment-icon')
+    assert block is not None
+    assert 'var(--gold-dark)' in block
+    assert 'var(--gold-light)' not in block
+
+
+def test_path_segment_champion_class_styled():
+    """The champion's Final segment gets a ceremonial `.path-segment-champion`
+    treatment (gold trophy) so winning it all looks distinct from a plain
+    cleared stage."""
+    assert '.path-segment-champion' in CSS
+    # The trophy icon must carry the cream-safe gold (matching the won-check),
+    # not merely exist as a selector — assert the concrete token.
+    icon_block = _css_rule_block('.path-segment-champion .path-segment-icon')
+    assert icon_block is not None, (
+        'missing .path-segment-champion .path-segment-icon rule'
+    )
+    assert 'var(--gold-dark)' in icon_block
+
+
+def test_path_section_eyebrow_legible_on_light_substrate():
+    """The section's OWN eyebrow ('Path to the Crown' / 'Ran the table') sits
+    on the bone body, but plain `.wc-eyebrow` is `--bone-mute` (~1:1,
+    invisible) and `.wc-eyebrow-gold` is washed `--gold-light` (~1.3:1). The
+    section carries a `.team-path` hook and a scoped lift: `--text-secondary`
+    for the plain/alive label, cream-safe `--gold-dark` for the champion
+    label. (`.wc-eyebrow-red` already reads on bone, kept as-is.)"""
+    import re
+    assert 'class="team-path mb-4"' in TPL, 'section needs a .team-path hook for the lift'
+    assert '.team-path > .wc-eyebrow' in CSS
+    gold = re.search(r'\.team-path > \.wc-eyebrow-gold\s*\{([^}]*)\}', CSS)
+    assert gold and 'var(--gold-dark)' in gold.group(1), (
+        'champion section eyebrow must use cream-safe --gold-dark on bone, '
+        'not the washed --gold-light'
+    )

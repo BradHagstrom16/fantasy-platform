@@ -14,6 +14,17 @@
    registry section respectively) and are unaffected. #}
 <div class="home-pre-grid">
 
+  {# Brand lockup, captured once and placed by state. With no sealed ballot
+     (unenrolled / no-picks) the masthead column is the short one, so the lockup
+     signs off its foot. When the ballot is present the masthead column runs
+     long, so the lockup moves to the rail instead and the two columns balance.
+     Wide-desktop only (≥1180px) via CSS; the footer keeps the roundel seal —
+     this is the horizontal lockup, a different register. #}
+  {% set _has_ballot = is_enrolled and enrollment.picks_submitted %}
+  {% set lockup_mark %}<img class="home-pre-lockup"
+       src="{{ url_for('static', filename='img/logo/lockup-horizontal.svg') }}?v={{ asset_version }}"
+       alt="Corrupt Commish Club" width="340" height="188">{% endset %}
+
   <div class="home-pre-col home-pre-col--main">
 
     {# Greet block #}
@@ -37,9 +48,14 @@
 
     {# Sealed-roster record. Once picks are locked there is no pending action,
        so the ballot sits below the decree — the countdown's "Council Convenes"
-       anticipation leads, and the locked roster reads as the record beneath. #}
-    {% if is_enrolled and enrollment.picks_submitted %}
+       anticipation leads, and the locked roster reads as the record beneath.
+       With no ballot the lockup signs off this column's foot instead; when the
+       ballot IS here the lockup moves to the rail (so this column doesn't run
+       longer than the rail). #}
+    {% if _has_ballot %}
       {% include 'main/_ballot_card.html' %}
+    {% else %}
+      {{ lockup_mark }}
     {% endif %}
 
   </div>{# /.home-pre-col--main #}
@@ -95,6 +111,11 @@
     {# Optional narrative partials — silently absent if empty #}
     {% include 'main/_commish_note.html' ignore missing %}
     {% include 'main/_dispatches.html' ignore missing %}
+
+    {# Sealed state only: the masthead column carries the ballot and runs long,
+       so the lockup signs off the rail's foot (bottom-pinned via CSS) and the
+       two columns end together. #}
+    {% if _has_ballot %}{{ lockup_mark }}{% endif %}
 
   </div>{# /.home-pre-col--rail #}
 
