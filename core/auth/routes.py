@@ -18,6 +18,8 @@ from core.auth import auth_bp
 from core.auth.tokens import generate_reset_token, verify_reset_token
 from utils.email import send_platform_email
 from utils.phone import normalize_us_phone
+from games.worldcup.services.state import worldcup_state
+from games.worldcup.services import enrollment as worldcup_enrollment
 
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
@@ -92,6 +94,16 @@ def register():
 
         login_user(user, remember=True)
         flash('Account created! Welcome to the platform.', 'success')
+
+        # Sanctioned signup-time auto-join: while the World Cup pick window is
+        # open (pre-deadline), every new account wants in. This is distinct
+        # from the banned pick/admin auto-enroll path — it is an intentional
+        # signup behavior, and it self-disables once the tournament starts.
+        # PLACEHOLDER COPY — impeccable finalizes the flash wording (Phase 5).
+        if worldcup_state() == 'pre':
+            worldcup_enrollment.admin_enroll(user.id)
+            flash("You're in the World Cup pool — make your picks!", 'success')
+
         return redirect(url_for('main.index'))
 
     return render_template('auth/register.html')
