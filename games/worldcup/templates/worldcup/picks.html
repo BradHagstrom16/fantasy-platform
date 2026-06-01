@@ -106,12 +106,12 @@
                 <span class="wc-tier-dot wc-tier-dot-{{ pick.tier }}" aria-hidden="true"></span>
                 <span class="wc-eyebrow">{{ tiers[pick.tier].name }}</span>
               </div>
-              <div class="pick-team{% if show_scoring and pick.team.is_eliminated %} pick-team-out{% endif %}">{{ flag(pick.team.iso_code) }} {{ pick.team.display_name }} <small>Grp {{ pick.team.group_letter }}</small></div>
+              <div class="pick-team{% if show_scoring and pick.team_id in eliminated_ids %} pick-team-out{% endif %}">{{ flag(pick.team.iso_code) }} {{ pick.team.display_name }} <small>Grp {{ pick.team.group_letter }}</small></div>
             </div>
             <div class="pick-points">
               {% if show_scoring %}
                 <span class="wc-numeral wc-numeral--lg">{{ "%.1f"|format(pick.multiplied_points) }}</span>
-                {% if pick.team.is_eliminated %}
+                {% if pick.team_id in eliminated_ids %}
                 <small class="wc-pick-status-out">Out</small>
                 {% else %}
                 <small>&times;{{ "%g"|format(pick.team.multiplier) }}</small>
