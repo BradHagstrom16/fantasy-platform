@@ -40,6 +40,10 @@ def send_platform_email(
     """
     email_address = current_app.config.get('EMAIL_ADDRESS', '')
     email_password = current_app.config.get('EMAIL_PASSWORD', '')
+    # From-address decouples from the SMTP auth user: Brevo authenticates as the account
+    # login but sends from the branded domain sender. Falls back to the auth address so
+    # dev/test behavior is unchanged when MAIL_FROM_ADDRESS is absent.
+    from_address = current_app.config.get('MAIL_FROM_ADDRESS') or email_address
     smtp_server = current_app.config.get('SMTP_SERVER', 'smtp.gmail.com')
     smtp_port = int(current_app.config.get('SMTP_PORT', 587))
 
@@ -48,7 +52,7 @@ def send_platform_email(
         return False
 
     msg = MIMEMultipart('alternative')
-    msg['From'] = f'{PLATFORM_FROM_NAME} <{email_address}>'
+    msg['From'] = f'{PLATFORM_FROM_NAME} <{from_address}>'
     msg['To'] = to_addr
     msg['Subject'] = subject
     msg.attach(MIMEText(plain_body, 'plain'))
