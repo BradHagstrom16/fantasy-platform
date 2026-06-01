@@ -463,41 +463,41 @@ Log in as `testplayer1`, navigate to `/`:
 
 ### 10A: Assign teams to one R32 match
 
-- [ ] `/worldcup/admin/set-knockout/<R32_match_id>` loads
-- [ ] "Edit Teams" button on knockout-stage rows of "Matches Needing Scores" (per archived-script `06781e4`)
-- [ ] Assign two teams to the R32 match → save → page shows the assignment
-- [ ] "Clear Team Assignment" button is now visible (per archived-script `359c278`)
+- [x] `/worldcup/admin/set-knockout/<R32_match_id>` loads
+- [x] "Edit Teams" button on knockout-stage rows of "Matches Needing Scores" (per archived-script `06781e4`)
+- [x] Assign two teams to the R32 match → save → page shows the assignment
+- [x] "Clear Team Assignment" button is now visible (per archived-script `359c278`)
 
 ### 10B: Enter R32 result + verify guard
 
-- [ ] `/worldcup/admin/match/<R32_match_id>` — enter a result (e.g., 2–1)
-- [ ] Submit → success
-- [ ] Return to `/worldcup/admin/set-knockout/<R32_match_id>` — "Clear Team Assignment" is now **locked** with a hint to clear the result first
-- [ ] Click admin Recalc → leaderboard updates with knockout points (uses `points_for_pick_on_match` per CLAUDE.md — already-multiplied)
+- [x] `/worldcup/admin/match/<R32_match_id>` — enter a result (e.g., 2–1)
+- [x] Submit → success
+- [x] Return to `/worldcup/admin/set-knockout/<R32_match_id>` — "Clear Team Assignment" is now **locked** with a hint to clear the result first
+- [x] Click admin Recalc → leaderboard updates with knockout points (uses `points_for_pick_on_match` per CLAUDE.md — already-multiplied)
 
 ### 10C: Drive the bracket to a champion (~5 more matches)
 
 Enter results for one path through the bracket:
 
-- [ ] One R16 match (assign teams via set-knockout, enter result, recalc)
-- [ ] One QF match (same)
-- [ ] One SF match (same)
-- [ ] The Final (same)
-- [ ] The Third-Place Match (same)
+- [x] One R16 match (assign teams via set-knockout, enter result, recalc)
+- [x] One QF match (same)
+- [x] One SF match (same)
+- [x] The Final (same)
+- [x] The Third-Place Match (same)
 
 Verify after each:
 
-- [ ] Leaderboard math is internally consistent (totals only ever increase with each new match)
-- [ ] Stage labels render correctly via `stage_label()` (e.g., "Semifinals", "Third-Place Match", **NOT** "Sf" / "Third_Place" — `|title` filter must NOT be in use per CLAUDE.md)
+- [x] Leaderboard math is internally consistent (totals only ever increase with each new match)
+- [x] Stage labels render correctly via `stage_label()` (e.g., "Semifinals", "Third-Place Match", **NOT** "Sf" / "Third_Place" — `|title` filter must NOT be in use per CLAUDE.md)
 
 ### 10D: Post-deadline ownership reveal on team_detail 🔴
 
 Pick any team that testplayer1 picked. Log out (or stay logged in — D11 says hidden pre-deadline for everyone, but reveal post-deadline is for everyone too):
 
-- [ ] `/worldcup/team/<team_id>` (logged out)
-- [ ] Ownership count is now **visible** (e.g., "1 player picked this team" or "2 players picked this team")
-- [ ] Percent is shown
-- [ ] Picker names list shows `testplayer1` (and testplayer2 if they also picked it)
+- [x] `/worldcup/team/<team_id>` (logged out)
+- [x] Ownership count is now **visible** (e.g., "1 player picked this team" or "2 players picked this team")
+- [x] Percent is shown
+- [x] Picker names list shows `testplayer1` (and testplayer2 if they also picked it)
 
 **Notes:**
 
@@ -509,18 +509,18 @@ Pick any team that testplayer1 picked. Log out (or stay logged in — D11 says h
 
 Log in as `testplayer1`, navigate to `/`:
 
-- [ ] Home page renders `_home_post` partial (NOT `_home_live`) — greet `.greet-title` reads "The 2026 World Cup"
-- [ ] Full-bleed champion banner (`_champion_banner.html`) renders with the `◈ Final Decree ◈` eyebrow, the `.champion-flag` emoji, and the `.champion-name`. ⚠️ If it instead reads "◇ Awaiting Decree / 🏆 / Champion Pending", the final match has no winner set — re-enter the Final result so `winner_team_id` is populated (the admin score form auto-derives the winner from the score)
-- [ ] Final podium (top 3) renders above the recap with dense-rank positions
-- [ ] Roster recap (`.roster-recap`) lists all 9 of testplayer1's picks
-- [ ] If testplayer1 picked the champion, that row has the `.roster-recap-row--champion` highlight
-- [ ] `team.best_finish` labels render literally — "Champion", "Round of 16", "Group Stage" — **NOT** raw codes like `'champion'` or `'r16'` (per CLAUDE.md `_BEST_FINISH_LABELS`)
+- [x] Home page renders `_home_post` partial (NOT `_home_live`) — greet `.greet-title` reads "The 2026 World Cup"
+- [x] Full-bleed champion banner (`_champion_banner.html`) renders with the `◈ Final Decree ◈` eyebrow, the `.champion-flag` emoji, and the `.champion-name`. ⚠️ If it instead reads "◇ Awaiting Decree / 🏆 / Champion Pending", the final match has no winner set — re-enter the Final result so `winner_team_id` is populated (the admin score form auto-derives the winner from the score)
+- [x] Final podium (top 3) renders above the recap with dense-rank positions
+- [x] Roster recap (`.roster-recap`) lists all 9 of testplayer1's picks
+- [x] If testplayer1 picked the champion, that row has the `.roster-recap-row--champion` highlight
+- [x] `team.best_finish` labels render literally — "Champion", "Round of 16", "Group Stage" — **NOT** raw codes like `'champion'` or `'r16'` (per CLAUDE.md `_BEST_FINISH_LABELS`)
 
 Public surfaces:
 
-- [ ] `/worldcup/leaderboard` — final ranks render with dense rank
-- [ ] `/worldcup/stats` — phase chip flips to "Completed"
-- [ ] `/worldcup/` (WC room post-state) renders its own ceremonial `.wc-champion-banner` surface ⚪
+- [x] `/worldcup/leaderboard` — final ranks render with dense rank
+- [x] `/worldcup/stats` — phase chip flips to "Completed"
+- [x] `/worldcup/` (WC room post-state) renders its own ceremonial `.wc-champion-banner` surface ⚪
 
 **Notes:**
 
@@ -537,8 +537,6 @@ ssh deploy@<your-droplet-ip>
 ls -la /var/log/fantasy/
 tail -n 20 /var/log/fantasy/worldcup-recalc.log
 tail -n 20 /var/log/fantasy/worldcup-snapshot.log
-tail -n 20 /var/log/fantasy/golf-live.log
-tail -n 20 /var/log/fantasy/cfb-scores.log
 ```
 
 - [ ] All log files exist (created by cron jobs already running) — if any are empty, cron may have never fired for that job
@@ -601,15 +599,15 @@ cd /home/deploy/fantasy-platform
 sudo nano games/worldcup/constants.py
 ```
 
-- [ ] Find the modified `TOURNAMENT_DEADLINE_UTC` line (set in §8 to yesterday)
-- [ ] Restore it to: `TOURNAMENT_DEADLINE_UTC = datetime(2026, 6, 11, 19, 0, 0, tzinfo=ZoneInfo("UTC"))`
-- [ ] Save (`Ctrl+X`, `Y`, Enter)
+- [x] Find the modified `TOURNAMENT_DEADLINE_UTC` line (set in §8 to yesterday)
+- [x] Restore it to: `TOURNAMENT_DEADLINE_UTC = datetime(2026, 6, 11, 19, 0, 0, tzinfo=ZoneInfo("UTC"))`
+- [x] Save (`Ctrl+X`, `Y`, Enter)
 
 ```bash
 sudo systemctl restart fantasy-platform
 ```
 
-- [ ] Service restarts cleanly
+- [x] Service restarts cleanly
 
 ### 14B: Verify-on-prod guard before any destructive command
 
@@ -619,8 +617,8 @@ Inside the SSH session:
 cat .env | grep DATABASE_URL
 ```
 
-- [ ] **Connection string contains `db.ondigitalocean.com`** — this confirms you're about to wipe the production Postgres, not a local SQLite
-- [ ] If the URL does NOT match, **STOP** — investigate before running any `db downgrade`
+- [x] **Connection string contains `db.ondigitalocean.com`** — this confirms you're about to wipe the production Postgres, not a local SQLite
+- [x] If the URL does NOT match, **STOP** — investigate before running any `db downgrade`
 
 ### 14C: Wipe + reseed
 
@@ -631,11 +629,11 @@ ENVIRONMENT=production FLASK_APP=app.py venv/bin/flask worldcup init
 ENVIRONMENT=production FLASK_APP=app.py venv/bin/flask create-admin
 ```
 
-- [ ] `db downgrade base` — drops all tables; outputs Alembic "Running downgrade" lines
-- [ ] `db upgrade` — re-applies all migrations; outputs Alembic "Running upgrade" lines
-- [ ] `worldcup init` — seeds 48 teams + 104 match shells
-- [ ] `create-admin` — prompts for username, email, password — use **your real admin credentials** (this is the production launch admin user)
-- [ ] `flask worldcup status` — prints **48 teams, 104 matches, 0 completed, 0 enrolled**
+- [x] `db downgrade base` — drops all tables; outputs Alembic "Running downgrade" lines
+- [x] `db upgrade` — re-applies all migrations; outputs Alembic "Running upgrade" lines
+- [x] `worldcup init` — seeds 48 teams + 104 match shells
+- [x] `create-admin` — prompts for username, email, password — use **your real admin credentials** (this is the production launch admin user)
+- [x] `flask worldcup status` — prints **48 teams, 104 matches, 0 completed, 0 enrolled**
 
 **Notes:**
 
@@ -661,38 +659,38 @@ print(TOURNAMENT_DEADLINE_UTC)
 exit()
 ```
 
-- [ ] Printed value: `2026-06-11 19:00:00+00:00` — **NOT** any other date
+- [x] Printed value: `2026-06-11 19:00:00+00:00` — **NOT** any other date
 
 ### 15B: Admin user state
 
 In a browser, log in as the freshly-created admin:
 
-- [ ] `/worldcup/admin/users` shows **only the admin** — no `testplayer1`, no `testplayer2`, no third throwaway user
-- [ ] `/worldcup/admin/` dashboard: 0 enrolled players, 0 completed matches
+- [x] `/worldcup/admin/users` shows **only the admin** — no `testplayer1`, no `testplayer2`, no third throwaway user
+- [x] `/worldcup/admin/` dashboard: 0 enrolled players, 0 completed matches
 
 ### 15C: First-touch flow (mirror what every real player does)
 
 Still as admin (or register a fresh real user):
 
-- [ ] `/worldcup/picks` loads with the **empty pick form** (no pre-selected picks)
-- [ ] All 5 tier sections render with their full team rosters
-- [ ] Submit button is disabled until 9 valid picks chosen
-- [ ] (Don't actually submit picks unless you want them locked-in for the real cup)
+- [x] `/worldcup/picks` loads with the **empty pick form** (no pre-selected picks)
+- [x] All 5 tier sections render with their full team rosters
+- [x] Submit button is disabled until 9 valid picks chosen
+- [x] (Don't actually submit picks unless you want them locked-in for the real cup)
 
 ### 15D: Public surfaces are production-ready
 
 Logged out:
 
-- [ ] `/` renders `_home_out` partial with brand mark + login/register CTAs
-- [ ] `/worldcup/leaderboard` is empty (or shows only the admin if they enrolled)
-- [ ] `/worldcup/stats` phase chip back to "Pre-Tournament"
-- [ ] `/worldcup/schedule` shows all 104 matches with CT timestamps, none completed
+- [x] `/` renders `_home_out` partial with brand mark + login/register CTAs
+- [x] `/worldcup/leaderboard` is empty (or shows only the admin if they enrolled)
+- [x] `/worldcup/stats` phase chip back to "Pre-Tournament"
+- [x] `/worldcup/schedule` shows all 104 matches with CT timestamps, none completed
 
 ### 15E: Announcement gate
 
-- [ ] All 🔴 sections (0, 1, 2, 3, 5, 7, 8, 9, 10, 11, 12, 14, 15) are 100% ✅
-- [ ] All ⚪ sections noted, blockers triaged or post-launch tickets filed
-- [ ] **Only now** announce launch to real players
+- [x] All 🔴 sections (0, 1, 2, 3, 5, 7, 8, 9, 10, 11, 12, 14, 15) are 100% ✅
+- [x] All ⚪ sections noted, blockers triaged or post-launch tickets filed
+- [x] **Only now** announce launch to real players
 
 **Notes:**
 

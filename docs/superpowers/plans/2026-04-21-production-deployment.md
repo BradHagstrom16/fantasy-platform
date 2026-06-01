@@ -1196,11 +1196,11 @@ Expected: the seven job entries are listed.
 
 ### Task 26: Set up UptimeRobot
 
-- [ ] **Step 1: Create a free UptimeRobot account**
+- [x] **Step 1: Create a free UptimeRobot account**
 
 Go to https://uptimerobot.com and sign up (free tier: 50 monitors, 5-minute checks).
 
-- [ ] **Step 2: Add a monitor**
+- [x] **Step 2: Add a monitor**
 
 1. Click **Add New Monitor**
 2. Monitor type: **HTTP(s)**
@@ -1209,7 +1209,7 @@ Go to https://uptimerobot.com and sign up (free tier: 50 monitors, 5-minute chec
 5. Monitoring interval: **5 minutes**
 6. Click **Create Monitor**
 
-- [ ] **Step 3: Configure alert contacts**
+- [x] **Step 3: Configure alert contacts**
 
 In UptimeRobot → **My Settings → Alert Contacts**:
 1. Add your email address (`bhagstrom0@gmail.com`)
@@ -1217,7 +1217,7 @@ In UptimeRobot → **My Settings → Alert Contacts**:
 
 You'll now receive an email any time the site goes down and when it comes back up.
 
-- [ ] **Step 4: Set up DigitalOcean resource alerts**
+- [x] **Step 4: Set up DigitalOcean resource alerts**
 
 In the DigitalOcean dashboard → **Monitoring → Alerts**:
 1. Click **Create Alert Policy**
