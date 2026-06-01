@@ -3,7 +3,7 @@
 
 **Date authored:** 2026-05-06
 **Tester:** Brad
-**Target URL:** `https://<your-live-domain>`
+**Target URL:** `https://cccfantasy.com/`
 **Estimated time:** ~3.5 hours including tournament simulation + DB reset
 **Prerequisites:** Deployment plan Tasks 11–25 complete (Postgres provisioned, domain registered, server set up, app deployed, cron jobs loaded)
 
@@ -40,13 +40,13 @@ cd /home/deploy/fantasy-platform && ENVIRONMENT=production FLASK_APP=app.py venv
 curl -I https://<your-live-domain>
 ```
 
-- [ ] `nginx` shows `active (running)`
-- [ ] `fantasy-platform` shows `active (running)`
-- [ ] `journalctl` shows no recent Python tracebacks
-- [ ] Disk usage on `/` is below 80% (matches DO alert threshold)
-- [ ] Memory is below 85% (matches DO alert threshold)
-- [ ] `flask worldcup status` prints: 48 teams, 104 matches, 0 completed, 0 enrolled (or your admin enrollment if you joined yourself during prior tasks)
-- [ ] `curl -I` returns `HTTP/2 200` and a `server: cloudflare` header
+- [x] `nginx` shows `active (running)`
+- [x] `fantasy-platform` shows `active (running)`
+- [x] `journalctl` shows no recent Python tracebacks
+- [x] Disk usage on `/` is below 80% (matches DO alert threshold)
+- [x] Memory is below 85% (matches DO alert threshold)
+- [x] `flask worldcup status` prints: 48 teams, 104 matches, 0 completed, 0 enrolled (or your admin enrollment if you joined yourself during prior tasks)
+- [x] `curl -I` returns `HTTP/2 200` and a `server: cloudflare` header
 
 **Notes:**
 
@@ -58,14 +58,14 @@ curl -I https://<your-live-domain>
 
 Open a fresh **incognito** window. Navigate to `https://<your-live-domain>`.
 
-- [ ] Browser shows a green padlock (HTTPS, no certificate warnings)
-- [ ] Visiting `http://<your-live-domain>` (plain HTTP) 301-redirects to `https://`
-- [ ] Page renders the CCC brand mark in the navbar (gold accent, voice label)
-- [ ] Footer renders with voice strip + utility strip
-- [ ] No mixed-content warnings in the browser console
-- [ ] Open DevTools → Network → reload the page → `/static/css/style.css` returns `200` with `Cache-Control: public, immutable, max-age=...` (Nginx serving directly)
-- [ ] Open DevTools → Network → `/static/css/tokens.css` returns `200` (loaded **before** style.css per CLAUDE.md)
-- [ ] No `404`s on any static asset
+- [x] Browser shows a green padlock (HTTPS, no certificate warnings)
+- [x] Visiting `http://<your-live-domain>` (plain HTTP) 301-redirects to `https://`
+- [x] Page renders the CCC brand mark in the navbar (gold accent, voice label)
+- [x] Footer renders with voice strip + utility strip
+- [x] No mixed-content warnings in the browser console
+- [x] Open DevTools → Network → reload the page → `/static/css/style.css` returns `200` with `Cache-Control: public, immutable, max-age=...` (Nginx serving directly)
+- [x] Open DevTools → Network → `/static/css/tokens.css` returns `200` (loaded **before** style.css per CLAUDE.md)
+- [x] No `404`s on any static asset
 
 **Notes:**
 
@@ -81,59 +81,66 @@ Open a fresh **incognito** window. Navigate to `https://<your-live-domain>`.
 
 In the incognito window:
 
-- [ ] `/register` renders the auth-page pattern (CCC palette, brand mark, gold accents)
-- [ ] Register `testplayer1` with email `bhagstrom0+test1@gmail.com`, strong password
-- [ ] Submit → redirects to home, logged in, username in navbar
-- [ ] Log out
-- [ ] Register `testplayer2` with email `bhagstrom0+test2@gmail.com`, strong password
-- [ ] Submit → redirects to home, logged in
-- [ ] Log out
+- [x] `/register` renders the auth-page pattern (CCC palette, brand mark, gold accents)
+- [x] Register `testplayer1` with email `bhagstrom0+test1@gmail.com`, strong password
+- [x] Submit → redirects to home, logged in, username in navbar
+- [x] Log out
+- [x] Register `testplayer2` with email `bhagstrom0+test2@gmail.com`, strong password
+- [x] Submit → redirects to home, logged in
+- [x] Log out
 
 ### 2B: Validation
 
-- [ ] Try registering `testplayer1` again → inline error, not 500; form repopulates
-- [ ] Try registering with mismatched passwords → inline error
-- [ ] Try empty form → required-field errors, not 500
+- [x] Try registering `testplayer1` again → inline error, not 500; form repopulates
+- [x] Try registering with mismatched passwords → inline error
+- [x] Try empty form → required-field errors, not 500
 
 ### 2C: Login flow + `?next=` redirect
 
-- [ ] Visit `/worldcup/picks` while logged out → redirected to `/login?next=/worldcup/picks`
-- [ ] Log in as `testplayer1` → redirects back to `/worldcup/picks` (the `next` param survives the GET → POST round-trip — locked in commit `02599f3` per archived script)
+- [x] Visit `/worldcup/picks` while logged out → redirected to `/login?next=/worldcup/picks`
+- [x] Log in as `testplayer1` → redirects back to `/worldcup/picks` (the `next` param survives the GET → POST round-trip — locked in commit `02599f3` per archived script)
 
 ### 2D: Login validation
 
-- [ ] Wrong password → "Invalid credentials" (or equivalent), not 500
-- [ ] Non-existent username → identical message (no user enumeration)
+- [x] Wrong password → "Invalid credentials" (or equivalent), not 500
+- [x] Non-existent username → identical message (no user enumeration)
 
 ### 2E: Profile + avatar picker
 
 Logged in as `testplayer1`:
 
-- [ ] `/profile` renders auth-page pattern; shows username + email
-- [ ] Avatar picker visible; pick an emoji other than ⚽ (default); save → confirmation
-- [ ] Pick a different one to confirm it's persistent
+- [x] `/profile` renders auth-page pattern; shows username + email
+- [x] Avatar picker visible; pick an emoji other than ⚽ (default); save → confirmation
+- [x] Pick a different one to confirm it's persistent
 
 ### 2F: Change password
 
-- [ ] `/change-password` renders auth-page pattern
-- [ ] Wrong current password → inline error, not 500
-- [ ] Successful change → confirmation; log out, log back in with new password
-- [ ] Change back to original (optional, for cleanliness)
+- [x] `/change-password` renders auth-page pattern
+- [x] Wrong current password → inline error, not 500
+- [x] Successful change → confirmation; log out, log back in with new password
+- [x] Change back to original (optional, for cleanliness)
 
 ### 2G: Forgot/reset password — real email send
 
-- [ ] Log out
-- [ ] `/forgot-password` → enter `bhagstrom0+test1@gmail.com` → submit
-- [ ] Flash message is intentionally ambiguous (anti-enumeration: "If that email is in our system, a reset link has been sent")
-- [ ] **Real email arrives** in your Gmail within 2 minutes, from-name **"Corrupt Commish Club"**, with a reset link
-- [ ] Click the link → reset form renders the auth-page pattern → set new password → submit → success
-- [ ] Log in with new password → works
+> **Prerequisite — SMTP unblock:** DigitalOcean blocks outbound port 587 by default. A support ticket has been submitted. Before running this section, confirm the block is lifted:
+> ```bash
+> nc -w 5 smtp.gmail.com 587 && echo "SMTP reachable" || echo "still blocked"
+> ```
+> If still blocked, skip §2G and §12C for now and return to them once DO approves. They are pre-launch 🔴 blockers — do not check §15E's announcement gate until both pass.
+
+- [x] SMTP reachable confirmed (nc test above returns "SMTP reachable")
+- [x] Log out
+- [x] `/forgot-password` → enter `bhagstrom0+test1@gmail.com` → submit
+- [x] Flash message is intentionally ambiguous (anti-enumeration: "If that email is in our system, a reset link has been sent")
+- [x] **Real email arrives** in your Gmail within 2 minutes, from-name **"Corrupt Commish Club"**, with a reset link
+- [x] Click the link → reset form renders the auth-page pattern → set new password → submit → success
+- [x] Log in with new password → works
 
 ### 2H: Anti-enumeration on a non-existent email
 
-- [ ] `/forgot-password` → enter `nope-not-real@example.com` → submit
-- [ ] Identical flash message as 2G (no leak that the address doesn't exist)
-- [ ] No email arrives at any inbox
+- [x] `/forgot-password` → enter `nope-not-real@example.com` → submit
+- [x] Identical flash message as 2G (no leak that the address doesn't exist)
+- [x] No email arrives at any inbox
 
 **Notes:**
 
@@ -147,51 +154,51 @@ Logged in as `testplayer1`:
 
 ### 3A: Join
 
-- [ ] `/worldcup/join` loads (`game_must_be_open` decorator allows it)
-- [ ] Page renders with page-hero, how-it-works card, btn-game submit (Spec C Plan 1 pattern)
-- [ ] Submit enrollment → redirects to `/worldcup/picks`
-- [ ] Sub-nav now shows the WC pill set with red accent (`subnav-worldcup` per CLAUDE.md)
+- [x] `/worldcup/join` loads (`game_must_be_open` decorator allows it)
+- [x] Page renders with page-hero, how-it-works card, btn-game submit (Spec C Plan 1 pattern)
+- [x] Submit enrollment → redirects to `/worldcup/picks`
+- [x] Sub-nav now shows the WC pill set with red accent (`subnav-worldcup` per CLAUDE.md)
 
 ### 3B: Submit picks (testplayer1)
 
-- [ ] `/worldcup/picks` renders the new picks foundation: 5 tier sections (Favorites, Contenders, Dark Horses, Underdogs, Wildcards)
-- [ ] Each tier shows correct pick-count requirement (T1: 2, T2: 1, T3: 2, T4: 2, T5: 2 = 9 total)
-- [ ] USA goals tiebreaker field visible
-- [ ] Validation guards work (cannot submit without 9 picks; submit button disabled or rejects)
-- [ ] Select 2 T1, 1 T2, 2 T3, 2 T4, 2 T5; tiebreaker `4`; submit → success
-- [ ] After submit, page shows read-only summary with "Edit My Picks" button (per archived script `02599f3` lock-in)
+- [x] `/worldcup/picks` renders the new picks foundation: 5 tier sections (Favorites, Contenders, Dark Horses, Underdogs, Wildcards)
+- [x] Each tier shows correct pick-count requirement (T1: 2, T2: 1, T3: 2, T4: 2, T5: 2 = 9 total)
+- [x] USA goals tiebreaker field visible
+- [x] Validation guards work (cannot submit without 9 picks; submit button disabled or rejects)
+- [x] Select 2 T1, 1 T2, 2 T3, 2 T4, 2 T5; tiebreaker `4`; submit → success
+- [x] After submit, page shows read-only summary with "Edit My Picks" button (per archived script `02599f3` lock-in)
 
 ### 3C: Edit picks (still pre-deadline)
 
-- [ ] Click Edit; existing picks are pre-selected (not blank)
-- [ ] Change 2–3 picks; submit → confirms saved
-- [ ] Reload `/worldcup/picks` → new picks visible
+- [x] Click Edit; existing picks are pre-selected (not blank)
+- [x] Change 2–3 picks; submit → confirms saved
+- [x] Reload `/worldcup/picks` → new picks visible
 
 ### 3D: Enroll testplayer2 + submit different picks
 
-- [ ] Log out, log in as `testplayer2`
-- [ ] Enroll via `/worldcup/join`
-- [ ] Submit a **different** set of 9 picks (overlap with testplayer1 in some tiers, divergent in others) — this matters for §10 ownership-reveal verification
-- [ ] Tiebreaker `2` (different from testplayer1)
+- [x] Log out, log in as `testplayer2`
+- [x] Enroll via `/worldcup/join`
+- [x] Submit a **different** set of 9 picks (overlap with testplayer1 in some tiers, divergent in others) — this matters for §10 ownership-reveal verification
+- [x] Tiebreaker `2` (different from testplayer1)
 
 ### 3E: Leaderboard pre-deadline (logged-out, public per ADR-026)
 
-- [ ] Log out completely
-- [ ] `/worldcup/leaderboard` loads — **no redirect to login**
-- [ ] Both `testplayer1` and `testplayer2` rows appear
-- [ ] Both rows show score 0.0 (no matches played); rank shows dense rank
-- [ ] **Rivals' picks are NOT shown anywhere on the leaderboard pre-deadline** (privacy enforced server-side)
-- [ ] Each row has the player's avatar emoji rendered before the display name
-- [ ] Tiebreaker column is **hidden** pre-deadline (per archived-script `c5e4149` / `49821a3`)
-- [ ] **Trend column is NOT visible** (gated at ≥7 snapshots; we have 0 right now)
-- [ ] Click a player row → `/worldcup/leaderboard/<id>` (player_detail) loads
+- [x] Log out completely
+- [x] `/worldcup/leaderboard` loads — **no redirect to login**
+- [x] Both `testplayer1` and `testplayer2` rows appear
+- [x] Both rows show score 0.0 (no matches played); rank shows dense rank
+- [x] **Rivals' picks are NOT shown anywhere on the leaderboard pre-deadline** (privacy enforced server-side)
+- [x] Each row has the player's avatar emoji rendered before the display name
+- [x] Tiebreaker column is **hidden** pre-deadline (per archived-script `c5e4149` / `49821a3`)
+- [x] **Trend column is NOT visible** (gated at ≥7 snapshots; we have 0 right now)
+- [x] Click a player row → `/worldcup/leaderboard/<id>` (player_detail) loads
 
 ### 3F: Player detail pre-deadline
 
-- [ ] `/worldcup/leaderboard/<testplayer2_id>` (logged out)
-- [ ] Page renders the Plan 2 player_detail reskin (page-hero, player chip with avatar)
-- [ ] **testplayer2's individual picks are NOT shown** (only aggregate score, no roster reveal)
-- [ ] Per-pick accordion drill-down is empty / hidden pre-deadline
+- [x] `/worldcup/leaderboard/<testplayer2_id>` (logged out)
+- [x] Page renders the Plan 2 player_detail reskin (page-hero, player chip with avatar)
+- [x] **testplayer2's individual picks are NOT shown** (only aggregate score, no roster reveal)
+- [x] Per-pick accordion drill-down is empty / hidden pre-deadline
 
 ### 3G: Team detail pre-deadline — **D11 ownership privacy invariant** 🔴
 
@@ -199,25 +206,25 @@ This is the most important privacy invariant in the codebase right now. Per CLAU
 
 Pick any team that testplayer1 picked (e.g., a Tier 1 team). Note the team_id from the picks page or from the schedule.
 
-- [ ] `/worldcup/team/<team_id>` loads (logged out)
-- [ ] Page renders Plan 2 team_detail (hero, fixtures, ownership ribbon section)
-- [ ] **Ownership count is hidden** — no "X players picked this team" display
-- [ ] **Picker names are NOT shown**
-- [ ] **Percent is NOT shown**
+- [x] `/worldcup/team/<team_id>` loads (logged out)
+- [x] Page renders Plan 2 team_detail (hero, fixtures, ownership ribbon section)
+- [x] **Ownership count is hidden** — no "X players picked this team" display
+- [x] **Picker names are NOT shown**
+- [x] **Percent is NOT shown**
 
 Now log in as `testplayer1` (the team's own picker):
 
-- [ ] `/worldcup/team/<team_id>` while logged in as picker
-- [ ] **Ownership count is STILL hidden** even from the team's own picker (this is the D11 invariant — do NOT "fix" the absent-count branch)
-- [ ] No leak of "you and N others picked this team"
+- [x] `/worldcup/team/<team_id>` while logged in as picker
+- [x] **Ownership count is STILL hidden** even from the team's own picker (this is the D11 invariant — do NOT "fix" the absent-count branch)
+- [x] No leak of "you and N others picked this team"
 
 ### 3H: Content pages
 
 Logged in as `testplayer1`:
 
-- [ ] `/worldcup/schedule` — renders matches in CT timestamps, has "All kickoff times shown in Central Time" caption (per archived-script `566128b`)
-- [ ] `/worldcup/groups` — 12 group tables (A–L), all 0 points / 0 played
-- [ ] `/worldcup/rules` — scoring matrix renders without redundant "Base" column
+- [x] `/worldcup/schedule` — renders matches in CT timestamps, has "All kickoff times shown in Central Time" caption (per archived-script `566128b`)
+- [x] `/worldcup/groups` — 12 group tables (A–L), all 0 points / 0 played
+- [x] `/worldcup/rules` — scoring matrix renders without redundant "Base" column
 
 **Notes:**
 
@@ -227,10 +234,10 @@ Logged in as `testplayer1`:
 
 > Verifies Spec C Plan 3's public stats hub. Pre-tournament data is sparse but the page must render cleanly.
 
-- [ ] `/worldcup/stats` loads (publicly accessible, logged out is fine)
-- [ ] Phase chip reads "Pre-Tournament" (per CLAUDE.md `current_phase` derivation, **not** mangled by `|title`)
-- [ ] Country / tier KPIs render with empty / zero-baseline data
-- [ ] Tier combos table renders (may be sparse with only 2 enrolled players)
+- [x] `/worldcup/stats` loads (publicly accessible, logged out is fine)
+- [x] Phase chip reads "Pre-Tournament" (per CLAUDE.md `current_phase` derivation, **not** mangled by `|title`)
+- [x] Country / tier KPIs render with empty / zero-baseline data
+- [x] Tier combos table renders (may be sparse with only 2 enrolled players)
 
 **Notes:**
 
@@ -244,22 +251,23 @@ Logged in as `testplayer1`:
 
 Incognito window:
 
-- [ ] `/` renders the `_home_out` partial (CCC bone-paper hero, login + register CTAs, no enrolled-player content)
-- [ ] Hero typography uses `.hero-headline` / `.hero-subhead` (Plan 5 visual polish — distinct subordinate weights)
+- [x] `/` renders the `_home_out` partial: the King Viking Badger mascot bust (`.out-mark`) leads the hero, with the `◈ Fantasy for crooked kings & queens ◈` eyebrow, the two-line `.out-title` ("The Fix / Is In."), and the `.out-sub` tagline — no enrolled-player content
+- [x] "Join the Club" CTA + "Sign in" link render; the headline (`.out-title`) clearly dominates the subordinate tagline (`.out-sub`)
+- [x] Below the hero, the "Pools in Session" registry section lists World Cup as the featured pool
 
 ### 5B: Logged-in pre-deadline, **not enrolled in WC** — join CTA
 
-- [ ] Register a third throwaway user **without** enrolling in WC (or use testplayer1 after un-enrolling — just need a logged-in non-enrolled state)
-- [ ] `/` shows the join-the-cup treatment (not the enrolled `_home_pre` content)
+- [x] Register a third throwaway user **without** enrolling in WC (or use testplayer1 after un-enrolling — just need a logged-in non-enrolled state)
+- [x] `/` shows the join-the-cup treatment (not the enrolled `_home_pre` content)
 
 ### 5C: Logged-in pre-deadline, **enrolled** — `_home_pre` partial
 
 Logged in as `testplayer1` (already enrolled):
 
-- [ ] `/` renders `_home_pre` partial
-- [ ] Picks summary card renders with all 9 picks listed
-- [ ] "Tracking starts {date}" copy present (sparkline/dossier section is honest about empty pre-tournament data)
-- [ ] Recent-results section either absent or empty (correct pre-tournament)
+- [x] `/` renders `_home_pre` partial (greet "The Council Awaits" + countdown card)
+- [x] Sealed ballot card (`.ballot-card`, "Sealed & delivered" / ◈ Locked) renders all 9 picks as a flag ribbon, plus the tier-grouped Roster Spine (T1–T5 with country names + multipliers)
+- [x] Countdown card counts down to the June 11 deadline — the honest pre-tournament state (no live sparkline/dossier yet; that's live-state only)
+- [x] "Opening Matches" fixture ladder lists upcoming matches, marking any "YOUR PICK" rows; no "Recent Results" section (that surface is live-state only)
 
 **Notes:**
 
@@ -269,11 +277,11 @@ Logged in as `testplayer1` (already enrolled):
 
 > Quick smoke check that Spec A's brand foundation didn't break Golf or CFB blueprints, and the game switcher in the navbar wires up correctly.
 
-- [ ] Navbar game switcher dropdown shows: Golf Pick 'Em, CFB Survivor, World Cup Fantasy
-- [ ] `/golf/` loads — no 500; sub-nav swaps to Golf theme (Augusta green / gold accents)
-- [ ] `/cfb/` loads — no 500; sub-nav swaps to CFB theme (crimson / midnight)
-- [ ] `body.game-golf` / `body.game-cfb` CSS class injected (inspect via DevTools)
-- [ ] Switching back to `/worldcup/` restores the WC theme
+- [x] Navbar game switcher dropdown shows: Golf Pick 'Em, CFB Survivor, World Cup Fantasy
+- [x] `/golf/` loads — no 500; sub-nav swaps to Golf theme (Augusta green / gold accents)
+- [x] `/cfb/` loads — no 500; sub-nav swaps to CFB theme (crimson / midnight)
+- [x] `body.game-golf` / `body.game-cfb` CSS class injected (inspect via DevTools)
+- [x] Switching back to `/worldcup/` restores the WC theme
 
 **Notes:**
 
@@ -287,18 +295,18 @@ Logged in as `testplayer1` (already enrolled):
 
 Log in as your platform admin account (the user created via `flask create-admin`):
 
-- [ ] `/worldcup/admin/` — admin dashboard loads
-- [ ] `/golf/admin` — golf admin loads (even without golf enrollment, because platform admin overrides)
-- [ ] `/cfb/admin` — same
+- [x] `/worldcup/admin/` — admin dashboard loads
+- [x] `/golf/admin` — golf admin loads (even without golf enrollment, because platform admin overrides)
+- [x] `/cfb/admin` — same
 
 ### 7B: Non-admin blocked
 
 Log in as `testplayer1`:
 
-- [ ] `/worldcup/admin/` → flash error + redirect (NOT a 500, NOT a silent allow)
-- [ ] `/worldcup/admin/match/1` → blocked
-- [ ] `/golf/admin` → blocked
-- [ ] `/cfb/admin` → blocked
+- [x] `/worldcup/admin/` → flash error + redirect (NOT a 500, NOT a silent allow)
+- [x] `/worldcup/admin/match/1` → blocked
+- [x] `/golf/admin` → blocked
+- [x] `/cfb/admin` → blocked
 
 **Notes:**
 
@@ -318,23 +326,23 @@ cd /home/deploy/fantasy-platform
 sudo nano games/worldcup/constants.py
 ```
 
-- [ ] Find the line: `TOURNAMENT_DEADLINE_UTC = datetime(2026, 6, 11, 19, 0, 0, tzinfo=ZoneInfo("UTC"))`
-- [ ] Change it to: `TOURNAMENT_DEADLINE_UTC = datetime(2026, 5, 1, 0, 0, 0, tzinfo=ZoneInfo("UTC"))` (or any clearly-past date)
-- [ ] Save (`Ctrl+X`, `Y`, Enter)
+- [x] Find the line: `TOURNAMENT_DEADLINE_UTC = datetime(2026, 6, 11, 19, 0, 0, tzinfo=ZoneInfo("UTC"))`
+- [x] Change it to: `TOURNAMENT_DEADLINE_UTC = datetime(2026, 5, 1, 0, 0, 0, tzinfo=ZoneInfo("UTC"))` (or any clearly-past date)
+- [x] Save (`Ctrl+X`, `Y`, Enter)
 
 ```bash
 sudo systemctl restart fantasy-platform
 sudo systemctl status fantasy-platform --no-pager | head -10
 ```
 
-- [ ] Service is `active (running)` after restart
+- [x] Service is `active (running)` after restart
 
 ### 8B: Verify the deadline took effect
 
 In a browser logged in as `testplayer1`:
 
-- [ ] `/worldcup/picks` is now **read-only** (no edit form, no submit button)
-- [ ] A flash / banner indicates picks are locked / deadline has passed
+- [x] `/worldcup/picks` is now **read-only** (no edit form, no submit button)
+- [x] A flash / banner indicates picks are locked / deadline has passed
 
 Try to bypass via direct POST:
 
@@ -352,8 +360,8 @@ curl -X POST https://<your-live-domain>/worldcup/picks \
 
 Log in as `testplayer1`:
 
-- [ ] `/worldcup/leaderboard/<testplayer2_id>` (player_detail) — testplayer2's picks ARE now visible (deadline_passed gate flipped)
-- [ ] Per-pick accordion drill-down works on player_detail
+- [x] `/worldcup/leaderboard/<testplayer2_id>` (player_detail) — testplayer2's picks ARE now visible (deadline_passed gate flipped)
+- [x] Per-pick accordion drill-down works on player_detail
 
 **Notes:**
 
@@ -361,7 +369,7 @@ Log in as `testplayer1`:
 
 ## Section 9: Live state — group stage simulation 🔴
 
-> Drives `worldcup_state()` to `'live'` by entering 4 group-stage match results that exercise every multiplier path. Verifies the `_home_live` partial renders the dossier sparkline (after a manual snapshot backfill) and the recent-results card highlights `.is-roster-match` on testplayer1's picked teams.
+> Drives `worldcup_state()` to `'live'` by entering 4 group-stage match results that exercise every multiplier path. Verifies the `_home_live` partial renders the dossier sparkline (after a manual snapshot backfill) and that recent results promote testplayer1's picked teams to full `.match-card--roster` cards.
 
 > **Score-math expected values** (verified from `games/worldcup/world_cup_countries.py` TIERS dict and `games/worldcup/constants.py`):
 > - Group win = **3** base × tier multiplier
@@ -376,8 +384,8 @@ cd /home/deploy/fantasy-platform
 ENVIRONMENT=production FLASK_APP=app.py venv/bin/flask worldcup snapshot-ranks --backfill 7
 ```
 
-- [ ] Command prints "Backfilled 7 days" (or equivalent); no errors
-- [ ] (Note: all 7 backfilled days will share the current rank/score since we have no historical data — real differentiation accumulates only after live cron runs)
+- [x] Command prints "Backfilled 7 days" (or equivalent); no errors
+- [x] (Note: all 7 backfilled days will share the current rank/score since we have no historical data — real differentiation accumulates only after live cron runs)
 
 ### 9B: Enter 4 group-stage results via admin
 
@@ -394,40 +402,56 @@ If testplayer1 picked the winning/drawn team in all four matches, their total af
 
 For each match:
 
-- [ ] Navigate to `/worldcup/admin/match/<match_id>`
-- [ ] Enter the score
-- [ ] Page auto-derives winner from score with aria-live confirmation (per archived-script `bf3ea6d`/`25cd5af`)
-- [ ] Submit → success
+- [x] Navigate to `/worldcup/admin/match/<match_id>`
+- [x] Enter the score
+- [x] Page auto-derives winner from score with aria-live confirmation (per archived-script `bf3ea6d`/`25cd5af`)
+- [x] Submit → success
 
 After all 4:
 
-- [ ] Click admin Recalc button (POST to `/worldcup/admin/recalc`) — instant; verifies the route works
-- [ ] testplayer1's leaderboard total = sum of expected impacts for whichever subset they picked
-- [ ] testplayer2's leaderboard total reflects whichever subset of those 4 matches involved their picks
-- [ ] Schedule page shows per-team attribution chips on completed matches (e.g., `MEX +3 base` per archived-script `b5a7b07`/`90833ca`)
+- [x] Click admin Recalc button (POST to `/worldcup/admin/recalc`) — instant; verifies the route works
+- [x] testplayer1's leaderboard total = sum of expected impacts for whichever subset they picked
+- [x] testplayer2's leaderboard total reflects whichever subset of those 4 matches involved their picks
+- [x] Schedule page shows per-team attribution chips on completed matches (e.g., `MEX +3 base` per archived-script `b5a7b07`/`90833ca`)
 
 ### 9C: Group advancement form
 
 Pick one group where you've entered enough results to call advancement:
 
-- [ ] `/worldcup/admin/advancement` loads
-- [ ] Submit advancement for that group (winner, runner-up, possibly best-3rd)
-- [ ] Confirm submission persists (re-load page, values pre-filled)
+- [x] `/worldcup/admin/advancement` loads
+- [x] Submit advancement for that group (winner, runner-up, possibly best-3rd)
+- [x] Confirm submission persists (re-load page, values pre-filled)
+
+> **Tip — test advancement across all 12 groups without clicking through every match:**
+> SSH to the droplet and run `flask worldcup simulate-group-stage` (add `--dry-run` first
+> to preview). It fills all 72 group results with deterministic, tie-free standings
+> (clean 9/4/3/1 per group, one draw each) so every group shows `all_complete` on the
+> advancement page. Only touches `stage='group'` matches; re-runs skip completed matches.
+> It stops *before* advancement confirmation, so the `/admin/advancement` flow above stays
+> the manual step under test. Note: completing all 72 group matches moves the live-state
+> home page past the "partial results" view checked in 9A/9B/9D — run those UI checks
+> first, or reset the DB to baseline afterward.
 
 ### 9D: `_home_live` partial renders correctly
-
 Log in as `testplayer1`, navigate to `/`:
 
-- [ ] Home page now renders `_home_live` partial (NOT `_home_pre`)
-- [ ] Dossier card visible with sparkline (will be flat — backfill produced 7 identical days, real movement only after future cron runs)
-- [ ] Week-delta is shown (gated at ≥7 snapshots — backfill made this pass)
-- [ ] Recent-results card lists the 4 entered matches
-- [ ] Matches involving testplayer1's picks have the `.is-roster-match` highlight (subtle border/tint per Plan 5)
+- [x] Home page now renders `_home_live` partial (NOT `_home_pre`) — greet reads "Your Dossier"
+- [x] Dossier card (`.dossier`) visible with the rank line + sparkline. The sparkline renders as a centered **dashed** line (the `is_flat` branch — backfill produced identical days so min == max; real movement only accrues after future cron runs)
+- [x] Rank-movement / week-delta line is shown ("Holding rank over 7 days" — gated at ≥7 snapshots; `--backfill 7` writes 8 rows, so the gate passes)
+- [x] Recent Results section lists the entered matches
+- [x] Matches involving testplayer1's picks render as full `.match-card--roster` cards with a "YOUR ROSTER · <team>" footer + a `+X.X PTS` chip; non-roster results collapse into the "Around the Tournament" strip
 
 ### 9E: Stats Hub during live state
 
-- [ ] `/worldcup/stats` — phase chip reads "Group Stage" or similar (NOT "Pre-Tournament")
-- [ ] Country / tier KPIs reflect the 4 entered matches
+- [x] `/worldcup/stats` — phase chip reads "Group Stage" or similar (NOT "Pre-Tournament")
+- [x] Country / tier KPIs reflect the 4 entered matches
+
+### 9F: WC room hub live state ⚪
+
+> The WC room hub at `/worldcup/` carries its own **differentiated** live surface — the Leverage Board — that the lounge (`/`) intentionally does not mirror. Not exercised anywhere else in this script.
+
+- [x] `/worldcup/` (logged in as testplayer1) leads with the Leverage Board inside `.wc-standing-card.is-lead`: one row per pick with a multiplier chip + a red realized-points bar, carriers (scoring picks) sorted on top
+- [x] A survival/upside summary line renders (e.g., "N of 9 still alive" + the highest-multiplier dormant "upside") below the board
 
 **Notes:**
 
@@ -485,17 +509,18 @@ Pick any team that testplayer1 picked. Log out (or stay logged in — D11 says h
 
 Log in as `testplayer1`, navigate to `/`:
 
-- [ ] Home page renders `_home_post` partial (NOT `_home_live`)
-- [ ] Champion banner card renders (`.card.wc-card.wc-hero-grad`) with the champion's name + `.champion-flag` emoji
-- [ ] Hero typography (`.hero-headline` / `.hero-subhead`) renders with high contrast (Plan 5 dark-surface override applied)
-- [ ] Final roster recap lists all 9 of testplayer1's picks
-- [ ] If testplayer1 picked the champion, that row has the `.row-champion-pick` highlight (translucent overlay per Plan 5 lock)
+- [ ] Home page renders `_home_post` partial (NOT `_home_live`) — greet `.greet-title` reads "The 2026 World Cup"
+- [ ] Full-bleed champion banner (`_champion_banner.html`) renders with the `◈ Final Decree ◈` eyebrow, the `.champion-flag` emoji, and the `.champion-name`. ⚠️ If it instead reads "◇ Awaiting Decree / 🏆 / Champion Pending", the final match has no winner set — re-enter the Final result so `winner_team_id` is populated (the admin score form auto-derives the winner from the score)
+- [ ] Final podium (top 3) renders above the recap with dense-rank positions
+- [ ] Roster recap (`.roster-recap`) lists all 9 of testplayer1's picks
+- [ ] If testplayer1 picked the champion, that row has the `.roster-recap-row--champion` highlight
 - [ ] `team.best_finish` labels render literally — "Champion", "Round of 16", "Group Stage" — **NOT** raw codes like `'champion'` or `'r16'` (per CLAUDE.md `_BEST_FINISH_LABELS`)
 
 Public surfaces:
 
 - [ ] `/worldcup/leaderboard` — final ranks render with dense rank
 - [ ] `/worldcup/stats` — phase chip flips to "Completed"
+- [ ] `/worldcup/` (WC room post-state) renders its own ceremonial `.wc-champion-banner` surface ⚪
 
 **Notes:**
 
@@ -556,7 +581,7 @@ On your iPhone or Android (connect to the live URL via Cloudflare):
 - [ ] `/worldcup/stats` — KPI cards stack, charts/tables not cut off
 - [ ] `/worldcup/schedule` — match list readable, CT timestamps visible
 - [ ] Sub-nav scrolls horizontally with the scroll indicator (per archived-script Group C2)
-- [ ] Hero typography legibility on dark surfaces (Plan 5 contrast lock — `.text-success` / `.text-danger` and `.text-muted` overrides on `.card.wc-card`)
+- [ ] Hero typography legibility on the remaining dark surfaces — the navy `.page-hero.wc-hero-grad` tab heroes and the post-state champion banner (`.text-muted` + status-color overrides apply per CLAUDE.md; the old `.card.wc-card` body substrate was retired in WC Tab Unification, so every tab *body* is now light-on-bone)
 
 **Notes:**
 
@@ -717,5 +742,36 @@ sudo systemctl stop fantasy-platform nginx
 UptimeRobot will fire within 5 minutes. Re-start with `sudo systemctl start nginx fantasy-platform` after the issue is resolved.
 
 ---
+
+---
+
+## When DigitalOcean approves the SMTP unblock
+
+**Background:** Outbound SMTP (port 587) was blocked by DO's default network policy, causing the forgot-password workflow to spin then 500. A support ticket was opened 2026-05-30. Once approved, complete these steps before resuming the test script.
+
+**1. Confirm the port is open (SSH into the server):**
+```bash
+nc -w 5 smtp.gmail.com 587 && echo "SMTP reachable" || echo "still blocked"
+```
+
+**2. Deploy the timeout fix** (already committed on `platform/prod-test-script-fixes-2026-05-29` — will land when that PR is merged and `./deploy.sh` runs):
+```bash
+# After the PR merges and deploy.sh runs, verify the change is live:
+grep "timeout=10" /home/deploy/fantasy-platform/utils/email.py
+```
+
+**3. Run §2G (forgot/reset password) live:**
+```bash
+# Watch logs in one terminal while triggering forgot-password in the browser:
+sudo journalctl -u fantasy-platform -f
+# Should see: "Email sent to bhagstrom0+test1@gmail.com: Reset your password..."
+# NOT: "Error handling request POST /forgot-password"
+```
+- [ ] §2G checklist items all pass (email arrives, reset link works, login with new password works)
+
+**4. Run §12C (second email smoke) the same way:**
+- [ ] §12C checklist items all pass
+
+**5. Return to §15E announcement gate** — both §2G and §12C must be ✅ before flipping to launched.
 
 *End of script.*

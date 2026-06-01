@@ -3,7 +3,7 @@
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 >
 > **Phase 1 (Tasks 1–9)** is for Claude Code — run after `/clear`.
-> **Phases 2–6 (Tasks 10–27)** are manual steps for Brad. Exact commands are provided for every step.
+> **Phases 2–6 (Tasks 10–26)** are manual steps for Brad. Exact commands are provided for every step.
 
 **Goal:** Deploy the fantasy-platform Flask app to a live production environment on DigitalOcean with Managed PostgreSQL, Nginx, Gunicorn, and Cloudflare SSL.
 
@@ -13,17 +13,31 @@
 
 ---
 
-## Resume status as of 2026-05-06
+## Current status as of 2026-05-29
 
-Brad paused this plan after completing Phase 2 Task 10. Resume status:
+The platform is **live at https://cccfantasy.com** — server stood up, app deployed, DNS + Cloudflare TLS active and serving. What remains is the launch test and monitoring.
 
-- **Specs A, B, and C Plans 1–5 all merged.** `main` at `890bf66` (or later); 264/264 tests; pyright clean.
+**Recommended order** (this is the plan's own sequence — the launch test slots *between* Task 25 and Task 26, per CLAUDE.md "run after Task 25 (cron), before Task 26 (UptimeRobot)"):
+
+1. **Task 25 (cron) — done.** `crontab -l` confirmed (2026-05-29): WC recalc (`*/10`) + snapshot (`5 5`) active; Golf + CFB jobs intentionally commented out (Golf on a separate PythonAnywhere box; CFB out of season until Sept 2026). ⚠️ Because of that, launch-test §12A will find **only** `worldcup-recalc.log` + `worldcup-snapshot.log` — `golf-live.log` / `cfb-scores.log` won't exist, and that's expected, not a failure.
+2. **Run the Production Launch Test Script** (`docs/production-launch-test-script.md`, Phase 5.5) end-to-end. Brad is currently mid-script (checked through §2B). Finish §2C → §15 — the full World Cup simulation, then the DB reset to a clean launch baseline.
+3. **Then Task 26 (monitoring)** — UptimeRobot + DigitalOcean resource alerts go in **last**, *after* the simulation, so test-induced systemd restarts don't trip false outage alerts during the run.
+
+**Already done — don't redo:**
+
+- **Phase 1 (Tasks 1–9, Claude Code):** config hardening, ProxyFix, `deploy.sh`, `deploy/nginx.conf`, `deploy/fantasy-platform.service` — all committed and in production use.
+- **Phase 2 (Tasks 10–12):** Droplet, DO Managed Postgres (v18, NYC3), domain (`cccfantasy.com`).
+- **Phase 3 (Tasks 13–20):** deploy user, firewall + fail2ban, Python 3.13, repo clone + venv, `.env`, nginx config, systemd unit, `db upgrade` + `create-admin`.
+- **Phase 4 (Tasks 21–22):** Cloudflare DNS + Origin Certificate (Full strict).
+- **Phase 5 (Tasks 23–25):** app started; first smoke test passed (Section 0 + §1 of the launch test confirm nginx/Gunicorn up, HTTPS, static assets, 48 teams / 104 matches seeded); **Task 25 cron loaded** (WC recalc + snapshot active; Golf/CFB jobs intentionally disabled — Golf runs on a separate PythonAnywhere instance, CFB is out of season until Sept 2026).
+
+> All step checkboxes through Task 25 are marked `[x]`. Only **Task 26 (monitoring)** remains unchecked — it runs last, after the launch test.
+
+**Notes that still apply:**
+
 - **Sports-data API integration deferred to post-launch.** Manual admin match entry powers tournament scoring at launch — adequate for the small private cup audience.
-- **Snapshot-ranks cron** is already woven into Task 25 below — no further infra changes from any of the three specs.
-- **Resume at Task 11** and continue through Task 27.
-- **Then immediately** run the new `docs/production-launch-test-script.md` against the live URL before announcing launch (see Phase 5.5 callout below Task 25).
-
-**Snapshot timing tradeoff to know about:** the snapshot infra collects rank-history daily once the production cron is live. If this plan resumes only shortly before WC kickoff (June 11), the live-state sparkline on the home page will start with an empty/flat line and accumulate real data from the first cron run forward. The dossier copy handles this honestly ("tracking starts {date}") so the launch-day experience is acceptable either way — but earlier production resume = richer sparkline at launch.
+- **`main` is at `0f6f2c0`** with the full pytest suite passing (~900 tests; this project verifies via pytest only — there is no pyright step).
+- **Snapshot timing tradeoff:** the snapshot infra collects rank-history daily once the production cron is live. Resuming this close to WC kickoff (June 11) means the live-state home-page sparkline starts flat and accumulates real data from the first cron run forward. The dossier copy handles this honestly ("Tracking starts tonight…"), and Task 25's `--backfill` note seeds enough rows that the trend gate passes on day one — so the launch-day experience is acceptable.
 
 ---
 
@@ -50,7 +64,7 @@ Postgres `LIKE` is case-sensitive; SQLite `LIKE` is not. Any query using `.like(
 **Files:**
 - Search: `games/`, `core/`, `models/`
 
-- [ ] **Step 1: Search for `.like(` calls**
+- [x] **Step 1: Search for `.like(` calls**
 
 ```bash
 grep -rn "\.like(" games/ core/ models/ --include="*.py"
@@ -58,11 +72,11 @@ grep -rn "\.like(" games/ core/ models/ --include="*.py"
 
 Expected output: list of files and line numbers. If none found, record "No .like() calls found" and skip to Task 2.
 
-- [ ] **Step 2: For each result, check intent**
+- [x] **Step 2: For each result, check intent**
 
 For each match, read the surrounding context. Ask: should this match regardless of case? If yes, replace `.like(` with `.ilike(`. If it is intentionally case-sensitive (e.g., matching exact slugs), leave it.
 
-- [ ] **Step 3: Search for raw LIKE in any string queries**
+- [x] **Step 3: Search for raw LIKE in any string queries**
 
 ```bash
 grep -rn "LIKE\|like " games/ core/ models/ --include="*.py" | grep -v "\.like\|\.ilike\|# "
@@ -70,7 +84,7 @@ grep -rn "LIKE\|like " games/ core/ models/ --include="*.py" | grep -v "\.like\|
 
 Review any hits for the same case-sensitivity issue.
 
-- [ ] **Step 4: Commit if any changes were made**
+- [x] **Step 4: Commit if any changes were made**
 
 ```bash
 git add -p
@@ -86,7 +100,7 @@ If no changes were needed, skip the commit.
 **Files:**
 - Modify: `config.py:56-58`
 
-- [ ] **Step 1: Open config.py and locate ProductionConfig**
+- [x] **Step 1: Open config.py and locate ProductionConfig**
 
 It is at line 56:
 ```python
@@ -94,7 +108,7 @@ class ProductionConfig(Config):
     DEBUG = False
 ```
 
-- [ ] **Step 2: Add session cookie security flags + DO Managed Postgres connection hygiene**
+- [x] **Step 2: Add session cookie security flags + DO Managed Postgres connection hygiene**
 
 Replace the existing `ProductionConfig` block with:
 
@@ -109,7 +123,7 @@ class ProductionConfig(Config):
     SQLALCHEMY_ENGINE_OPTIONS = {'pool_pre_ping': True, 'pool_recycle': 280}
 ```
 
-- [ ] **Step 3: Verify the change looks correct**
+- [x] **Step 3: Verify the change looks correct**
 
 ```bash
 grep -A 8 "class ProductionConfig" config.py
@@ -126,7 +140,7 @@ class ProductionConfig(Config):
     SQLALCHEMY_ENGINE_OPTIONS = {'pool_pre_ping': True, 'pool_recycle': 280}
 ```
 
-- [ ] **Step 4: Run the test suite to verify nothing is broken**
+- [x] **Step 4: Run the test suite to verify nothing is broken**
 
 ```bash
 venv/bin/python -m pytest tests/ -q
@@ -141,7 +155,7 @@ Expected: all tests pass — current baseline is 264 on `main`. Verify pytest's 
 **Files:**
 - Modify: `requirements.txt`
 
-- [ ] **Step 1: Add the two production dependencies**
+- [x] **Step 1: Add the two production dependencies**
 
 Append to `requirements.txt`:
 
@@ -150,7 +164,7 @@ gunicorn==23.0.0
 psycopg2-binary==2.9.10
 ```
 
-- [ ] **Step 2: Install locally to verify the versions resolve**
+- [x] **Step 2: Install locally to verify the versions resolve**
 
 ```bash
 venv/bin/pip install gunicorn==23.0.0 psycopg2-binary==2.9.10
@@ -158,7 +172,7 @@ venv/bin/pip install gunicorn==23.0.0 psycopg2-binary==2.9.10
 
 Expected: both install without error.
 
-- [ ] **Step 3: Verify the file**
+- [x] **Step 3: Verify the file**
 
 ```bash
 cat requirements.txt
@@ -173,7 +187,7 @@ Expected: file ends with the two new lines.
 **Files:**
 - Modify: `.env.example`
 
-- [ ] **Step 1: Replace the entire file contents**
+- [x] **Step 1: Replace the entire file contents**
 
 ```
 # Flask
@@ -214,7 +228,7 @@ CFB_ENTRY_FEE=25
 CFB_SEASON_YEAR=2026
 ```
 
-- [ ] **Step 2: Verify the file**
+- [x] **Step 2: Verify the file**
 
 ```bash
 cat .env.example
@@ -231,7 +245,7 @@ ProxyFix tells Flask to trust the `X-Forwarded-Proto: https` header that Cloudfl
 **Files:**
 - Modify: `app.py:7` (import block) and `app.py:111` (before `return app`)
 
-- [ ] **Step 1: Add the import**
+- [x] **Step 1: Add the import**
 
 In `app.py`, add `ProxyFix` to the import block (alongside the existing `werkzeug` / `flask` imports):
 
@@ -241,7 +255,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 
 Expected after this edit: `ProxyFix` is imported from `werkzeug.middleware.proxy_fix` somewhere in the top-of-file import block, and the rest of the existing imports remain untouched. (Don't worry about exact line ordering — the file may have grown additional imports since this plan was authored.)
 
-- [ ] **Step 2: Apply ProxyFix before the return statement**
+- [x] **Step 2: Apply ProxyFix before the return statement**
 
 In `create_app()`, add two lines directly before `return app` (currently at line 112):
 
@@ -252,7 +266,7 @@ In `create_app()`, add two lines directly before `return app` (currently at line
     return app
 ```
 
-- [ ] **Step 3: Run the test suite to verify nothing is broken**
+- [x] **Step 3: Run the test suite to verify nothing is broken**
 
 ```bash
 venv/bin/python -m pytest tests/ -q
@@ -267,7 +281,7 @@ Expected: all tests pass — current baseline is 264 on `main`. Verify pytest's 
 **Files:**
 - Create: `deploy.sh` (project root)
 
-- [ ] **Step 1: Create the file**
+- [x] **Step 1: Create the file**
 
 ```bash
 #!/bin/bash
@@ -292,13 +306,13 @@ sudo systemctl restart fantasy-platform
 echo "==> Done. App is live."
 ```
 
-- [ ] **Step 2: Make it executable**
+- [x] **Step 2: Make it executable**
 
 ```bash
 chmod +x deploy.sh
 ```
 
-- [ ] **Step 3: Verify**
+- [x] **Step 3: Verify**
 
 ```bash
 head -5 deploy.sh && ls -l deploy.sh
@@ -313,7 +327,7 @@ Expected: file starts with `#!/bin/bash` and has `-rwxr-xr-x` permissions.
 **Files:**
 - Create: `deploy/nginx.conf`
 
-- [ ] **Step 1: Create the deploy directory and nginx config**
+- [x] **Step 1: Create the deploy directory and nginx config**
 
 ```bash
 mkdir -p deploy
@@ -359,7 +373,7 @@ server {
 }
 ```
 
-- [ ] **Step 2: Verify the file exists**
+- [x] **Step 2: Verify the file exists**
 
 ```bash
 cat deploy/nginx.conf
@@ -372,7 +386,7 @@ cat deploy/nginx.conf
 **Files:**
 - Create: `deploy/fantasy-platform.service`
 
-- [ ] **Step 1: Create the systemd unit file**
+- [x] **Step 1: Create the systemd unit file**
 
 File contents for `deploy/fantasy-platform.service`:
 
@@ -404,7 +418,7 @@ RestartSec=5
 WantedBy=multi-user.target
 ```
 
-- [ ] **Step 2: Verify the file exists**
+- [x] **Step 2: Verify the file exists**
 
 ```bash
 cat deploy/fantasy-platform.service
@@ -414,13 +428,13 @@ cat deploy/fantasy-platform.service
 
 ### Task 9: Commit all Phase 1 changes
 
-- [ ] **Step 1: Stage all changes**
+- [x] **Step 1: Stage all changes**
 
 ```bash
 git add config.py requirements.txt .env.example app.py deploy.sh deploy/nginx.conf deploy/fantasy-platform.service
 ```
 
-- [ ] **Step 2: Verify what's staged**
+- [x] **Step 2: Verify what's staged**
 
 ```bash
 git diff --cached --stat
@@ -428,7 +442,7 @@ git diff --cached --stat
 
 Expected: 7 files changed.
 
-- [ ] **Step 3: Run the full test suite one final time**
+- [x] **Step 3: Run the full test suite one final time**
 
 ```bash
 venv/bin/python -m pytest tests/ -q
@@ -436,7 +450,7 @@ venv/bin/python -m pytest tests/ -q
 
 Expected: all tests pass — current baseline is 264 on `main`. Verify pytest's reported count matches the count on `main` at deploy time.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git commit -m "feat(deploy): add production deployment config and hardening
@@ -448,7 +462,7 @@ git commit -m "feat(deploy): add production deployment config and hardening
 - Update .env.example with production DATABASE_URL and SITE_URL"
 ```
 
-- [ ] **Step 5: Push to GitHub**
+- [x] **Step 5: Push to GitHub**
 
 ```bash
 git push origin main
@@ -736,7 +750,7 @@ When prompted "Automatically download and install stable updates?", select **Yes
 
 ### Task 16: Clone the repo and set up the Python environment
 
-- [ ] **Step 1: Clone the repository**
+- [x] **Step 1: Clone the repository**
 
 ```bash
 cd /home/deploy
@@ -744,13 +758,13 @@ git clone https://github.com/BradHagstrom16/fantasy-platform.git
 cd fantasy-platform
 ```
 
-- [ ] **Step 2: Create a Python 3.13 virtual environment**
+- [x] **Step 2: Create a Python 3.13 virtual environment**
 
 ```bash
 python3.13 -m venv venv
 ```
 
-- [ ] **Step 3: Install Python dependencies**
+- [x] **Step 3: Install Python dependencies**
 
 ```bash
 venv/bin/pip install --upgrade pip
@@ -759,7 +773,7 @@ venv/bin/pip install -r requirements.txt
 
 This takes 1–2 minutes. Expected: no errors.
 
-- [ ] **Step 4: Verify Gunicorn installed**
+- [x] **Step 4: Verify Gunicorn installed**
 
 ```bash
 venv/bin/gunicorn --version
@@ -771,7 +785,7 @@ Expected output: `gunicorn (version 23.0.0)`
 
 ### Task 17: Create the production .env file
 
-- [ ] **Step 1: Generate a SECRET_KEY**
+- [x] **Step 1: Generate a SECRET_KEY**
 
 ```bash
 python3.13 -c "import secrets; print(secrets.token_hex(32))"
@@ -779,7 +793,7 @@ python3.13 -c "import secrets; print(secrets.token_hex(32))"
 
 Copy the output — it's your `SECRET_KEY`.
 
-- [ ] **Step 2: Create the .env file**
+- [x] **Step 2: Create the .env file**
 
 ```bash
 nano /home/deploy/fantasy-platform/.env
@@ -806,7 +820,7 @@ PLATFORM_TIMEZONE=America/Chicago
 
 > **Note:** Replace `<your-actual-domain>` (Task 12) in `SITE_URL` before saving — password-reset emails and any other outbound links will embed this value, so it must be your live domain (e.g., `https://commissionersclub.com`).
 
-- [ ] **Step 3: Lock down the file permissions**
+- [x] **Step 3: Lock down the file permissions**
 
 ```bash
 chmod 600 /home/deploy/fantasy-platform/.env
@@ -814,7 +828,7 @@ chmod 600 /home/deploy/fantasy-platform/.env
 
 This ensures only the `deploy` user can read it.
 
-- [ ] **Step 4: Verify the file is locked**
+- [x] **Step 4: Verify the file is locked**
 
 ```bash
 ls -la /home/deploy/fantasy-platform/.env
@@ -826,7 +840,7 @@ Expected: `-rw-------` (only owner can read/write).
 
 ### Task 18: Install and enable the Nginx config
 
-- [ ] **Step 1: Open the Nginx config from the repo**
+- [x] **Step 1: Open the Nginx config from the repo**
 
 ```bash
 cat /home/deploy/fantasy-platform/deploy/nginx.conf
@@ -834,7 +848,7 @@ cat /home/deploy/fantasy-platform/deploy/nginx.conf
 
 You'll see `cccfantasy.com` as a placeholder. You need to replace it with your actual domain.
 
-- [ ] **Step 2: Copy it to the Nginx sites directory with your domain substituted**
+- [x] **Step 2: Copy it to the Nginx sites directory with your domain substituted**
 
 Replace `commissionersclub.com` in the sed command below with **your actual domain** from Task 12:
 
@@ -851,19 +865,19 @@ After the copy, confirm there are no residual `cccfantasy.com` strings:
 grep -n "yourdomain\.com" /etc/nginx/sites-available/fantasy-platform || echo "OK — no placeholders remain"
 ```
 
-- [ ] **Step 3: Enable the site**
+- [x] **Step 3: Enable the site**
 
 ```bash
 sudo ln -s /etc/nginx/sites-available/fantasy-platform /etc/nginx/sites-enabled/
 ```
 
-- [ ] **Step 4: Remove the default Nginx site**
+- [x] **Step 4: Remove the default Nginx site**
 
 ```bash
 sudo rm /etc/nginx/sites-enabled/default
 ```
 
-- [ ] **Step 5: Test the Nginx config**
+- [x] **Step 5: Test the Nginx config**
 
 ```bash
 sudo nginx -t
@@ -881,20 +895,20 @@ nginx: configuration file /etc/nginx/nginx.conf test is successful
 
 ### Task 19: Install and enable the systemd service
 
-- [ ] **Step 1: Copy the service file to systemd**
+- [x] **Step 1: Copy the service file to systemd**
 
 ```bash
 sudo cp /home/deploy/fantasy-platform/deploy/fantasy-platform.service \
     /etc/systemd/system/fantasy-platform.service
 ```
 
-- [ ] **Step 2: Reload systemd so it sees the new file**
+- [x] **Step 2: Reload systemd so it sees the new file**
 
 ```bash
 sudo systemctl daemon-reload
 ```
 
-- [ ] **Step 3: Enable the service to start on boot**
+- [x] **Step 3: Enable the service to start on boot**
 
 ```bash
 sudo systemctl enable fantasy-platform
@@ -906,14 +920,14 @@ Expected output: `Created symlink /etc/systemd/system/multi-user.target.wants/fa
 
 ### Task 20: Run database migration and create admin user
 
-- [ ] **Step 1: Create the log directory for cron jobs**
+- [x] **Step 1: Create the log directory for cron jobs**
 
 ```bash
 sudo mkdir -p /var/log/fantasy
 sudo chown deploy:deploy /var/log/fantasy
 ```
 
-- [ ] **Step 2: Run the database migration**
+- [x] **Step 2: Run the database migration**
 
 ```bash
 cd /home/deploy/fantasy-platform
@@ -924,7 +938,7 @@ Expected: Alembic applies all migrations. No errors.
 
 > **Why the `ENVIRONMENT=production` prefix?** `migrations/env.py` reads the database URL from whichever config class `create_app()` loads. Explicitly setting `ENVIRONMENT=production` guarantees migrations run against the Postgres `DATABASE_URL` from `.env` and never against a stray dev SQLite. The deploy.sh script and systemd unit use the same belt-and-suspenders approach.
 
-- [ ] **Step 3: Create your admin user**
+- [x] **Step 3: Create your admin user**
 
 ```bash
 ENVIRONMENT=production FLASK_APP=app.py venv/bin/flask create-admin
@@ -932,7 +946,7 @@ ENVIRONMENT=production FLASK_APP=app.py venv/bin/flask create-admin
 
 You'll be prompted for username, email, and password. This is your platform admin account.
 
-- [ ] **Step 4: Verify migrations created the expected tables**
+- [x] **Step 4: Verify migrations created the expected tables**
 
 ```bash
 ENVIRONMENT=production FLASK_APP=app.py venv/bin/flask shell
@@ -958,18 +972,18 @@ exit()
 
 ### Task 21: Set up Cloudflare DNS
 
-- [ ] **Step 1: Create a Cloudflare account**
+- [x] **Step 1: Create a Cloudflare account**
 
 Go to https://cloudflare.com and sign up (free).
 
-- [ ] **Step 2: Add your domain to Cloudflare**
+- [x] **Step 2: Add your domain to Cloudflare**
 
 1. In the Cloudflare dashboard, click **Add a Site**
 2. Enter your domain name (e.g., `commissionersclub.com`)
 3. Choose the **Free** plan
 4. Cloudflare will scan your existing DNS records — click **Continue**
 
-- [ ] **Step 3: Add an A record pointing to your Droplet**
+- [x] **Step 3: Add an A record pointing to your Droplet**
 
 In the Cloudflare DNS editor:
 1. Click **Add record**
@@ -982,7 +996,7 @@ In the Cloudflare DNS editor:
 Repeat for a `www` record:
 1. Add record → Type: **A** → Name: `www` → IPv4: same Droplet IP → Proxied ON → Save
 
-- [ ] **Step 4: Update your domain's nameservers**
+- [x] **Step 4: Update your domain's nameservers**
 
 Cloudflare will show you two nameservers like:
 ```
@@ -1000,7 +1014,7 @@ DNS propagation takes 5–30 minutes.
 
 This is a free SSL certificate that Cloudflare generates for you. It's valid for 15 years and tells Nginx to encrypt traffic between Cloudflare and your server.
 
-- [ ] **Step 1: Generate the certificate**
+- [x] **Step 1: Generate the certificate**
 
 In Cloudflare dashboard:
 1. Go to **SSL/TLS → Origin Server**
@@ -1010,7 +1024,7 @@ In Cloudflare dashboard:
 
 Two text boxes appear: **Origin Certificate** and **Private Key**. **Do not close this page** until you've saved both.
 
-- [ ] **Step 2: Copy the certificate to the server**
+- [x] **Step 2: Copy the certificate to the server**
 
 On the server, create the directory and file:
 
@@ -1023,7 +1037,7 @@ In nano: paste the entire **Origin Certificate** text (starts with `-----BEGIN C
 
 Save: `Ctrl+X` → `Y` → `Enter`
 
-- [ ] **Step 3: Copy the private key to the server**
+- [x] **Step 3: Copy the private key to the server**
 
 ```bash
 sudo nano /etc/ssl/cloudflare/key.pem
@@ -1033,14 +1047,14 @@ Paste the entire **Private Key** text (starts with `-----BEGIN PRIVATE KEY-----`
 
 Save: `Ctrl+X` → `Y` → `Enter`
 
-- [ ] **Step 4: Lock down the private key**
+- [x] **Step 4: Lock down the private key**
 
 ```bash
 sudo chmod 600 /etc/ssl/cloudflare/key.pem
 sudo chmod 644 /etc/ssl/cloudflare/cert.pem
 ```
 
-- [ ] **Step 5: Set Cloudflare SSL mode to Full (strict)**
+- [x] **Step 5: Set Cloudflare SSL mode to Full (strict)**
 
 In Cloudflare dashboard → **SSL/TLS → Overview** → set encryption mode to **Full (strict)**.
 
@@ -1052,13 +1066,13 @@ In Cloudflare dashboard → **SSL/TLS → Overview** → set encryption mode to 
 
 ### Task 23: Start the app
 
-- [ ] **Step 1: Start the Gunicorn service**
+- [x] **Step 1: Start the Gunicorn service**
 
 ```bash
 sudo systemctl start fantasy-platform
 ```
 
-- [ ] **Step 2: Check the service is running**
+- [x] **Step 2: Check the service is running**
 
 ```bash
 sudo systemctl status fantasy-platform
@@ -1066,7 +1080,7 @@ sudo systemctl status fantasy-platform
 
 Expected: the output includes `Active: active (running)`. If you see `failed`, run `journalctl -u fantasy-platform -n 50` to see the error log.
 
-- [ ] **Step 3: Verify the socket file was created**
+- [x] **Step 3: Verify the socket file was created**
 
 ```bash
 ls -la /run/fantasy-platform/gunicorn.sock
@@ -1074,7 +1088,7 @@ ls -la /run/fantasy-platform/gunicorn.sock
 
 Expected: the socket file exists with permissions `srw-rw----` (or similar — just needs to exist).
 
-- [ ] **Step 4: Start (or restart) Nginx**
+- [x] **Step 4: Start (or restart) Nginx**
 
 ```bash
 sudo systemctl restart nginx
@@ -1089,23 +1103,23 @@ Expected: `Active: active (running)`.
 
 Wait 10 minutes for DNS to propagate after Task 21 before running these tests.
 
-- [ ] **Step 1: Test via browser**
+- [x] **Step 1: Test via browser**
 
 Open a browser and go to `https://cccfantasy.com`. You should see the Commissioner's Club homepage with a padlock icon in the browser bar (HTTPS).
 
-- [ ] **Step 2: Test login**
+- [x] **Step 2: Test login**
 
 Log in with the admin account you created in Task 20. You should reach the dashboard.
 
-- [ ] **Step 3: Test the admin panel**
+- [x] **Step 3: Test the admin panel**
 
 Navigate to `/admin`. Verify you can see the platform admin interface.
 
-- [ ] **Step 4: Test a static asset loads**
+- [x] **Step 4: Test a static asset loads**
 
 Open DevTools (F12) → Network tab. Reload the page. Confirm that `/static/css/style.css` returns a 200 status. Nginx is serving it directly — if it works, the static file path is correct.
 
-- [ ] **Step 5: Test HTTP → HTTPS redirect**
+- [x] **Step 5: Test HTTP → HTTPS redirect**
 
 In your browser, go to `http://cccfantasy.com` (plain HTTP). It should redirect to `https://cccfantasy.com`.
 
@@ -1113,7 +1127,7 @@ In your browser, go to `http://cccfantasy.com` (plain HTTP). It should redirect 
 
 ### Task 25: Set up cron jobs
 
-- [ ] **Step 1: Open the cron editor**
+- [x] **Step 1: Open the cron editor**
 
 ```bash
 crontab -e
@@ -1121,7 +1135,7 @@ crontab -e
 
 The first time you run this it may ask which editor to use — type `1` and press Enter to select `nano`.
 
-- [ ] **Step 2: Paste the cron schedule at the bottom of the file**
+- [x] **Step 2: Paste the cron schedule at the bottom of the file**
 
 ```cron
 # Fantasy Platform sync jobs — all times are UTC
@@ -1160,7 +1174,7 @@ The first time you run this it may ask which editor to use — type `1` and pres
 
 Save: `Ctrl+X` → `Y` → `Enter`
 
-- [ ] **Step 3: Verify cron is loaded**
+- [x] **Step 3: Verify cron is loaded**
 
 ```bash
 crontab -l
