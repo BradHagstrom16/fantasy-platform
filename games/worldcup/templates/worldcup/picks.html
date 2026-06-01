@@ -215,9 +215,9 @@
                      class="team-checkbox visually-hidden"
                      aria-hidden="true" tabindex="-1"
                      {% if team.id in selected_team_ids %}checked{% endif %}>
-              <span class="team-flag fs-4" aria-hidden="true">{{ flag(team.iso_code) }}</span>
-              <span class="team-name">{{ team.display_name }}</span>
-              <span class="team-meta">
+              <span class="team-flag" aria-hidden="true">{{ flag(team.iso_code) }}</span>
+              <span class="team-text">
+                <span class="team-name">{{ team.display_name }}</span>
                 <a href="{{ url_for('worldcup.groups') }}#group-{{ team.group_letter }}"
                    class="team-group-pill"
                    onclick="event.stopPropagation();"
