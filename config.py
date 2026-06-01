@@ -27,6 +27,11 @@ class Config:
     # Email
     EMAIL_ADDRESS = os.environ.get('EMAIL_ADDRESS', '')
     EMAIL_PASSWORD = os.environ.get('EMAIL_PASSWORD', '')
+    # Visible From-address, decoupled from the SMTP auth user (EMAIL_ADDRESS). Empty
+    # default → utils/email.send_platform_email falls back to EMAIL_ADDRESS. Required so
+    # production sends from the DKIM-authenticated commish@cccfantasy.com rather than the
+    # SMTP-login address, which Gmail drops as unauthenticated.
+    MAIL_FROM_ADDRESS = os.environ.get('MAIL_FROM_ADDRESS', '')
     SMTP_SERVER = os.environ.get('SMTP_SERVER', 'smtp.gmail.com')
     SMTP_PORT = int(os.environ.get('SMTP_PORT', '587'))
     SITE_URL = os.environ.get('SITE_URL', 'http://localhost:5000')

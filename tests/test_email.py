@@ -1,8 +1,26 @@
 """Tests for utils/email.send_platform_email From-header handling."""
+import importlib
+import os
 from unittest import mock
 
 from app import create_app
 from utils.email import PLATFORM_FROM_NAME, send_platform_email
+
+
+def test_config_plumbs_mail_from_address_from_env():
+    """config.Config reads MAIL_FROM_ADDRESS from the environment.
+
+    Regression lock: without this, production sends from the SMTP-login address
+    (ad3460001@smtp-brevo.com) instead of commish@cccfantasy.com, and Gmail drops
+    the unauthenticated message. The .env had the key; config.py wasn't reading it.
+    """
+    import config
+    with mock.patch.dict(os.environ, {'MAIL_FROM_ADDRESS': 'commish@cccfantasy.com'}):
+        importlib.reload(config)
+        try:
+            assert config.Config.MAIL_FROM_ADDRESS == 'commish@cccfantasy.com'
+        finally:
+            importlib.reload(config)  # restore module under the ambient environment
 
 
 def _send_and_capture(config_overrides):
