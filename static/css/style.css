@@ -3834,11 +3834,12 @@ body.game-worldcup {
   white-space: nowrap;
 }
 
-/* P4 S4.2.2 PI-5 — multiplier chip surface override for light-substrate.
-   F2 lifted .wc-multiplier-chip default to bone for its canonical dark
-   home. Inside .tier-card-heading the chip sits on a white .tier-card
-   body where bone reads ~1.04:1 (invisible). Re-tint to platform-text
-   ink so the multiplier reads on white.
+/* P4 S4.2.2 PI-5 — multiplier chip surface tint inside .tier-card-heading.
+   The chip is now a light-substrate-only primitive (its single dark-substrate
+   consumer, the team_detail navy hero, was removed 2026-06-01 when the dark-
+   ink chip rendered invisible on navy — see team_detail.html). The base
+   `color: var(--text-primary)` is therefore the correct universal default and
+   this override only deepens the bg/border tint for the white .tier-card body.
 
    PR #15 CR R6-G — original commit used `var(--text-ink)`, an undefined
    token (only `--ink` is declared in tokens.css; this file's platform
@@ -4063,10 +4064,6 @@ body.game-worldcup {
   color: var(--wc-white);
   font-weight: 700;
 }
-.team-hero-mult {
-  align-self: center;
-  font-size: 1.05rem;
-}
 .team-hero-derivation {
   font-family: 'Newsreader', Georgia, serif;
   font-size: .92rem;
@@ -4266,6 +4263,15 @@ body.game-worldcup {
    1280px and wraps gracefully under 375px.
    S2.3.1 PI-2: <ol> + <li> for proper sequence semantics; explicit list
    reset because the parent .container's Bootstrap reset doesn't reach. */
+/* The section's own eyebrow sits on the bone body. Plain .wc-eyebrow is
+   --bone-mute (~1:1, invisible) and .wc-eyebrow-gold is washed --gold-light
+   (~1.3:1). Lift on the light substrate: text-secondary for the plain/alive
+   label, cream-safe gold-dark for the champion label. .wc-eyebrow-red already
+   reads on bone (re-asserted here so the plain rule doesn't override it). */
+.team-path > .wc-eyebrow { color: var(--text-secondary); }
+.team-path > .wc-eyebrow-red { color: var(--wc-red); }
+.team-path > .wc-eyebrow-gold { color: var(--gold-dark); }
+
 .path-segments {
   display: flex;
   gap: .4rem;
@@ -4275,6 +4281,10 @@ body.game-worldcup {
   margin-bottom: 0;
   counter-reset: path-step;
 }
+/* Casual-Light substrate (migrated 2026-06-01). The path row was authored
+   for the retired dark `.card.wc-card`; on the bone body its navy fill +
+   bone text rendered ~1:1 (labels invisible) and washed gold checks ~1.4:1.
+   Now: white box, ink-readable labels, cream-safe gold for cleared stages. */
 .path-segment {
   flex: 1 1 0;
   min-width: 56px;
@@ -4283,12 +4293,17 @@ body.game-worldcup {
   align-items: center;
   gap: .25rem;
   padding: .5rem .25rem;
-  border: 1px solid rgba(245, 241, 232, .08);
+  border: 1px solid var(--border);
   border-radius: 4px;
-  background: rgba(0, 17, 46, .5);
-  color: var(--bone-mute);
+  background: var(--bg-card);
+  color: var(--text-secondary);
   transition: border-color var(--transition);
 }
+/* Stage label (GROUP/R32/…/FINAL) carried the navy-calibrated --bone-mute
+   default → invisible bone-on-bone. Inherit the segment's own color so each
+   state's label reads (text-secondary default, text-primary on won/current/
+   champion below). */
+.path-segment .wc-eyebrow { color: inherit; }
 /* Icon wrapper sits beneath the stage eyebrow at a consistent line-height
    so the row stays vertically aligned across status mixes. */
 .path-segment-icon {
@@ -4299,28 +4314,43 @@ body.game-worldcup {
   line-height: 1;
   height: 1.05rem;
 }
-.path-segment-future .path-segment-icon { color: rgba(245, 241, 232, .35); }
-.path-segment-won {
-  color: var(--wc-white);
-  border-color: rgba(242, 211, 107, .35);
-  background: rgba(242, 211, 107, .08);
+.path-segment-future {
+  background: var(--bg-muted);
+  border-color: var(--border-light);
 }
-.path-segment-won .path-segment-icon { color: var(--gold-light); }
+.path-segment-future .path-segment-icon { color: var(--text-muted); }
+.path-segment-won {
+  color: var(--text-primary);
+  border-color: rgba(138, 106, 26, .35);
+  background: rgba(201, 162, 39, .10);
+}
+.path-segment-won .path-segment-icon { color: var(--gold-dark); }
 .path-segment-current {
-  color: var(--wc-white);
+  color: var(--text-primary);
   border-color: var(--wc-red);
-  background: rgba(191, 10, 48, .12);
+  background: rgba(191, 10, 48, .08);
 }
 .path-segment-current .path-segment-icon {
   color: var(--wc-red);
   animation: path-current-pulse 2.4s ease-in-out infinite;
 }
 .path-segment-eliminated {
-  color: var(--bone-mute);
+  color: var(--text-secondary);
   border-color: var(--wc-red);
-  background: rgba(191, 10, 48, .06);
+  background: rgba(191, 10, 48, .05);
 }
 .path-segment-eliminated .path-segment-icon { color: var(--wc-red); }
+/* Champion's Final segment — ceremonial gold lift (the only gold emphasis on
+   this light surface; reserved for actually winning it all). */
+.path-segment-champion {
+  color: var(--text-primary);
+  border-color: var(--gold-dark);
+  background: rgba(201, 162, 39, .16);
+}
+.path-segment-champion .path-segment-icon {
+  color: var(--gold-dark);
+  font-size: 1.15rem;
+}
 
 @keyframes path-current-pulse {
   0%, 100% { opacity: 1; }

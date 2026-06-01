@@ -300,3 +300,111 @@ def test_team_detail_fixture_pts_apply_multiplier(client, app):
         'fixture-pts cell expected to render multiplied points (+21.0) for '
         'a tier-5 group win, not raw base points'
     )
+
+
+def test_team_detail_hero_has_no_invisible_multiplier_chip(client, app):
+    """The hero must not render a .wc-multiplier-chip. The chip's canonical
+    color resolved to dark ink (var(--text-primary)) on the navy hero
+    substrate (~1.01:1 contrast — invisible; the WC P0 reported 2026-06-01).
+    The multiplier now reads only through the Newsreader derivation line,
+    which has its own light-on-navy color. Lock the chip out of this hero so
+    a future edit can't reintroduce the unreadable box."""
+    with app.app_context():
+        team = WorldCupTeam(
+            fifa_code='NED', name='NED', display_name='NED',
+            tier=5, multiplier=7.0, confederation='UEFA',
+            group_letter='B',
+        )
+        db.session.add(team)
+        db.session.commit()
+        team_id = team.id
+
+    resp = client.get(f'/worldcup/team/{team_id}')
+    assert resp.status_code == 200
+    assert b'wc-multiplier-chip' not in resp.data, (
+        'team_detail hero must not render the multiplier chip (dark-ink chip '
+        'on the navy hero is invisible); the derivation line carries the value'
+    )
+
+
+def test_team_detail_hero_multiplier_uses_g_format(client, app):
+    """Hero derivation renders an integer multiplier without a trailing .0
+    (house format via "%g"; raw {{ team.multiplier }} renders '7.0'). A 1.5
+    tier still keeps its decimal under %g."""
+    with app.app_context():
+        team = WorldCupTeam(
+            fifa_code='ARG', name='ARG', display_name='ARG',
+            tier=5, multiplier=7.0, confederation='CONMEBOL',
+            group_letter='C',
+        )
+        db.session.add(team)
+        db.session.commit()
+        team_id = team.id
+
+    resp = client.get(f'/worldcup/team/{team_id}')
+    assert resp.status_code == 200
+    pattern = (
+        rb'Multiplier\s*<strong class="wc-numeral">7</strong>'
+    )
+    assert re.search(pattern, resp.data), (
+        'hero derivation multiplier expected to render "7" (via %g), not "7.0"'
+    )
+
+
+def _seed_champion(app, fifa='AUS', multiplier=7.0, base=108.0, multiplied=756.0):
+    with app.app_context():
+        t = WorldCupTeam(
+            fifa_code=fifa, name=fifa, display_name=fifa,
+            tier=5, multiplier=multiplier, confederation='AFC',
+            group_letter='D', base_points=base, multiplied_points=multiplied,
+            best_finish='champion', advancement_method='group_winner',
+        )
+        db.session.add(t)
+        db.session.commit()
+        return t.id
+
+
+def test_team_detail_champion_path_uses_crowned_heading_not_projected(client, app):
+    """Path-to-the-Crown terminal state: a champion has already won out, so
+    the live 'Projected ceiling' framing is counterfactual. The heading reads
+    past-tense 'Champion ·' instead."""
+    team_id = _seed_champion(app)
+    body = client.get(f'/worldcup/team/{team_id}').data.decode()
+    assert 'Champion ·' in body
+    assert 'Projected ceiling' not in body
+
+
+def test_team_detail_champion_path_drops_wins_out_fineprint(client, app):
+    """'If AUS wins out from here…' is counterfactual once AUS is champion —
+    there is no 'from here'. The champion register drops it."""
+    team_id = _seed_champion(app)
+    body = client.get(f'/worldcup/team/{team_id}').data.decode()
+    assert 'wins out from here' not in body
+
+
+def test_team_detail_champion_final_segment_renders_trophy(client, app):
+    """The Final segment of a champion's path gets a ceremonial trophy mark,
+    breaking the six-identical-checkmarks monotony of a completed run."""
+    team_id = _seed_champion(app)
+    body = client.get(f'/worldcup/team/{team_id}').data.decode()
+    assert 'bi-trophy-fill' in body
+    assert 'path-segment-champion' in body
+
+
+def test_team_detail_alive_team_keeps_projected_ceiling(client, app):
+    """A team still alive (not champion, not eliminated) keeps the projecting
+    register — the live framing is correct mid-tournament."""
+    with app.app_context():
+        t = WorldCupTeam(
+            fifa_code='BRA', name='BRA', display_name='BRA',
+            tier=2, multiplier=1.5, confederation='CONMEBOL',
+            group_letter='E', base_points=12.0, multiplied_points=18.0,
+            best_finish=None, advancement_method='group_winner',
+        )
+        db.session.add(t)
+        db.session.commit()
+        team_id = t.id
+    body = client.get(f'/worldcup/team/{team_id}').data.decode()
+    assert 'Projected ceiling' in body
+    assert 'wins out from here' in body
+    assert 'Champion ·' not in body

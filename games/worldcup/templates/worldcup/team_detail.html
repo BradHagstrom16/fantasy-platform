@@ -14,18 +14,20 @@
       <span class="team-hero-flag">{{ flag(team.iso_code) }}</span>
       {{ team.display_name }}
     </h1>
-    {# Hero stat line: one dominant Scored numeral with the multiplier chip
-       inline; the Base × Multiplier derivation reads as supporting microcopy.
-       The duplicate Tier tile moved up onto the eyebrow line. #}
+    {# Hero stat line: one dominant Scored numeral; the Base × Multiplier
+       derivation reads as supporting microcopy and is the sole carrier of the
+       multiplier value. The `.wc-multiplier-chip` is a light-substrate
+       primitive (dark-ink default) — it rendered invisible on this navy hero,
+       so it was removed rather than re-tinted; the derivation already names
+       the multiplier (no redundant chip). The Tier tile lives on the eyebrow. #}
     <div class="team-hero-line">
       <div class="team-hero-score">
         <span class="wc-meta-label">Tournament points</span>
         <strong class="wc-numeral team-hero-score-value">{{ "%.1f"|format(team.multiplied_points) }}</strong>
       </div>
-      <span class="wc-multiplier-chip team-hero-mult">×{{ team.multiplier }}</span>
       <p class="team-hero-derivation mb-0">
         Base <strong class="wc-numeral">{{ "%.1f"|format(team.base_points) }}</strong>
-        × Multiplier <strong class="wc-numeral">{{ team.multiplier }}</strong>
+        × Multiplier <strong class="wc-numeral">{{ "%g"|format(team.multiplier) }}</strong>
       </p>
     </div>
   </div>
@@ -179,37 +181,56 @@
       {% endif %}
 
       {# ── Path to the Crown ──────────────────────────────────────────── #}
-      <section class="mb-4">
-        <span class="wc-eyebrow {% if path.eliminated %}wc-eyebrow-red{% endif %}">
-          {% if path.eliminated %}Out of the running{% else %}Path to the Crown{% endif %}
+      {# Three terminal registers: eliminated (out), champion (ran the table),
+         alive (still projecting). The champion branch drops the live
+         "projected / wins out from here" framing — a crowned team has already
+         won out, so that copy is counterfactual. #}
+      <section class="team-path mb-4">
+        <span class="wc-eyebrow
+          {%- if path.eliminated %} wc-eyebrow-red
+          {%- elif path.champion %} wc-eyebrow-gold{% endif %}">
+          {% if path.eliminated %}Out of the running
+          {% elif path.champion %}Ran the table
+          {% else %}Path to the Crown{% endif %}
         </span>
         <h3 class="mb-3">
           {% if path.eliminated %}
             Eliminated · {{ path.eliminated_at_label }}
+          {% elif path.champion %}
+            Champion · <span class="wc-numeral">{{ "%.1f"|format(path.projected_ceiling) }}</span>
           {% else %}
             Projected ceiling: <span class="wc-numeral">{{ "%.1f"|format(path.projected_ceiling) }}</span>
           {% endif %}
         </h3>
         {# PI-2 (S2.3.1): every segment carries an icon so status no longer
            reads as color-only (PRODUCT.md a11y rule). Icons pair with the
-           red/gold/bone tint already on .path-segment-{status}. #}
+           red/gold/ink tint on .path-segment-{status}. The champion's Final
+           segment gets a ceremonial trophy so winning it all reads distinct
+           from a plain cleared stage (breaks the six-checkmarks monotony). #}
         <ol class="path-segments" aria-label="Path through the tournament">
           {% for seg in path.segments %}
-          <li class="path-segment path-segment-{{ seg.status }}"
+          {% set is_crown = loop.last and path.champion %}
+          <li class="path-segment path-segment-{{ seg.status }}{% if is_crown %} path-segment-champion{% endif %}"
               aria-current="{% if seg.status == 'current' %}step{% else %}false{% endif %}">
             <span class="wc-eyebrow">{{ seg.stage }}</span>
             <span class="path-segment-icon" aria-hidden="true">
-              {% if seg.status == 'won' %}<i class="bi bi-check-lg"></i>
+              {% if is_crown %}<i class="bi bi-trophy-fill"></i>
+              {% elif seg.status == 'won' %}<i class="bi bi-check-lg"></i>
               {% elif seg.status == 'eliminated' %}<i class="bi bi-x-lg"></i>
               {% elif seg.status == 'current' %}<i class="bi bi-record-circle-fill"></i>
               {% else %}<i class="bi bi-circle"></i>
               {% endif %}
             </span>
-            <span class="visually-hidden">{{ seg.status }}</span>
+            <span class="visually-hidden">{% if is_crown %}champion{% else %}{{ seg.status }}{% endif %}</span>
           </li>
           {% endfor %}
         </ol>
-        {% if not path.eliminated %}
+        {% if path.champion %}
+        <p class="team-path-fineprint small mt-2 mb-0">
+          <strong>{{ team.fifa_code }}</strong> won all six rounds. This is the team's
+          full contribution to a roster.
+        </p>
+        {% elif not path.eliminated %}
         <p class="team-path-fineprint small mt-2 mb-0">
           If <strong>{{ team.fifa_code }}</strong> wins out from here, this is the team's
           maximum possible contribution to a roster.

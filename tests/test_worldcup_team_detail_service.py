@@ -234,6 +234,34 @@ def test_path_to_crown_champion(app):
         ]
 
 
+def test_path_to_crown_champion_sets_champion_flag(app):
+    """A champion (cleared all 6 segments, not eliminated) carries
+    champion=True so the template can swap the live 'projected ceiling /
+    wins out from here' framing for a past-tense crowned register."""
+    with app.app_context():
+        team = _seed_team(adv='group_winner', finish='champion')
+        result = compute_path_to_crown(team)
+        assert result['champion'] is True
+
+
+def test_path_to_crown_alive_team_is_not_champion(app):
+    """A team still alive mid-tournament (cleared the group, more to play)
+    is not a champion — the projecting register still applies."""
+    with app.app_context():
+        team = _seed_team(adv='group_winner', finish=None)
+        result = compute_path_to_crown(team)
+        assert result['eliminated'] is False
+        assert result['champion'] is False
+
+
+def test_path_to_crown_eliminated_team_is_not_champion(app):
+    """A runner-up lost the Final — eliminated, never champion."""
+    with app.app_context():
+        team = _seed_team(adv='group_winner', finish='runner_up')
+        result = compute_path_to_crown(team)
+        assert result['champion'] is False
+
+
 def test_path_to_crown_sf_state_with_no_terminal_match(app):
     """bf='SF' before any third_place/final completes -> treated as alive at depth=5."""
     with app.app_context():
