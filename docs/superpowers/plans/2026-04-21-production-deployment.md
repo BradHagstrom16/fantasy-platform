@@ -1139,21 +1139,26 @@ The first time you run this it may ask which editor to use — type `1` and pres
 
 ```cron
 # Fantasy Platform sync jobs — all times are UTC
+#
+# NOTE: Golf and CFB jobs are intentionally DISABLED for the World Cup launch
+# (see status §1 / Task 25): Golf runs on a separate PythonAnywhere box and
+# CFB is out of season until Sept 2026. Their lines are left here commented so
+# they're ready to uncomment when those games go live — paste them as-is.
 
 # Golf — live leaderboard (every 5 min, 11:00–23:59 UTC = 6am–6:59pm CDT)
-*/5 11-23 * * * cd /home/deploy/fantasy-platform && ENVIRONMENT=production FLASK_APP=app.py venv/bin/flask golf sync-run --mode live >> /var/log/fantasy/golf-live.log 2>&1
+# */5 11-23 * * * cd /home/deploy/fantasy-platform && ENVIRONMENT=production FLASK_APP=app.py venv/bin/flask golf sync-run --mode live >> /var/log/fantasy/golf-live.log 2>&1
 
 # Golf — live leaderboard continued (every 5 min, 00:00–03:00 UTC = 7pm–10pm CDT)
-*/5 0-3 * * * cd /home/deploy/fantasy-platform && ENVIRONMENT=production FLASK_APP=app.py venv/bin/flask golf sync-run --mode live >> /var/log/fantasy/golf-live.log 2>&1
+# */5 0-3 * * * cd /home/deploy/fantasy-platform && ENVIRONMENT=production FLASK_APP=app.py venv/bin/flask golf sync-run --mode live >> /var/log/fantasy/golf-live.log 2>&1
 
 # Golf — finalize results (daily at 05:00 UTC = midnight CDT)
-0 5 * * * cd /home/deploy/fantasy-platform && ENVIRONMENT=production FLASK_APP=app.py venv/bin/flask golf sync-run --mode results >> /var/log/fantasy/golf-results.log 2>&1
+# 0 5 * * * cd /home/deploy/fantasy-platform && ENVIRONMENT=production FLASK_APP=app.py venv/bin/flask golf sync-run --mode results >> /var/log/fantasy/golf-results.log 2>&1
 
 # CFB — fetch scores + auto-process (every 15 min)
-*/15 * * * * cd /home/deploy/fantasy-platform && ENVIRONMENT=production FLASK_APP=app.py venv/bin/flask cfb sync --mode scores >> /var/log/fantasy/cfb-scores.log 2>&1
+# */15 * * * * cd /home/deploy/fantasy-platform && ENVIRONMENT=production FLASK_APP=app.py venv/bin/flask cfb sync --mode scores >> /var/log/fantasy/cfb-scores.log 2>&1
 
 # CFB — email reminders (Fri + Sat at 15:00 UTC = 10am CDT)
-0 15 * * 5,6 cd /home/deploy/fantasy-platform && ENVIRONMENT=production FLASK_APP=app.py venv/bin/flask cfb sync --mode remind >> /var/log/fantasy/cfb-remind.log 2>&1
+# 0 15 * * 5,6 cd /home/deploy/fantasy-platform && ENVIRONMENT=production FLASK_APP=app.py venv/bin/flask cfb sync --mode remind >> /var/log/fantasy/cfb-remind.log 2>&1
 
 # World Cup — recalculate scores (every 10 min during tournament)
 */10 * * * * cd /home/deploy/fantasy-platform && ENVIRONMENT=production FLASK_APP=app.py venv/bin/flask worldcup recalc >> /var/log/fantasy/worldcup-recalc.log 2>&1

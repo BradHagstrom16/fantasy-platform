@@ -539,9 +539,9 @@ tail -n 20 /var/log/fantasy/worldcup-recalc.log
 tail -n 20 /var/log/fantasy/worldcup-snapshot.log
 ```
 
-- [ ] All log files exist (created by cron jobs already running) — if any are empty, cron may have never fired for that job
+- [ ] Both active WC logs exist — `worldcup-recalc.log` + `worldcup-snapshot.log`. **Golf/CFB cron jobs are intentionally disabled** (Golf runs on a separate PythonAnywhere box; CFB is out of season until Sept 2026 — see deployment plan Task 25), so `golf-*.log` / `cfb-*.log` legitimately won't exist. If either WC log is missing or empty, that cron may have never fired.
 - [ ] Recent timestamps in `worldcup-recalc.log` (cron runs every 10 min)
-- [ ] No Python tracebacks in any log
+- [ ] No Python tracebacks in the active WC logs (`worldcup-recalc.log` / `worldcup-snapshot.log`)
 
 ### 12B: Verify the cron actually fires (~12-min passive wait)
 
@@ -752,10 +752,13 @@ UptimeRobot will fire within 5 minutes. Re-start with `sudo systemctl start ngin
 nc -w 5 smtp.gmail.com 587 && echo "SMTP reachable" || echo "still blocked"
 ```
 
-**2. Deploy the timeout fix** (already committed on `platform/prod-test-script-fixes-2026-05-29` — will land when that PR is merged and `./deploy.sh` runs):
+**2. Deploy the timeout fix** (merged to `main` in PR #52, merge commit `30141db`; the fix itself is commit `f617d55`). After `./deploy.sh` runs on the server, verify the change is live:
 ```bash
-# After the PR merges and deploy.sh runs, verify the change is live:
-grep "timeout=10" /home/deploy/fantasy-platform/utils/email.py
+# Robust check — confirm a socket timeout is set on the SMTP call without
+# depending on the exact numeric value or whitespace:
+grep -nE "smtplib\.SMTP\(.*timeout *= *[0-9]+" /home/deploy/fantasy-platform/utils/email.py
+# Belt-and-suspenders — confirm the fix commit is actually in the deployed tree:
+git -C /home/deploy/fantasy-platform log --oneline | grep f617d55
 ```
 
 **3. Run §2G (forgot/reset password) live:**

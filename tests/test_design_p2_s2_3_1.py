@@ -286,8 +286,17 @@ def test_path_segment_label_eyebrow_lifted_off_bone_mute():
     """The per-segment stage label (`.path-segment .wc-eyebrow`) carried the
     navy-calibrated `--bone-mute` default → invisible bone-on-bone. A scoped
     rule must lift it so GROUP/R32/…/FINAL read on the light substrate."""
-    assert '.path-segment .wc-eyebrow' in CSS, (
+    import re
+    block = _css_rule_block('.path-segment .wc-eyebrow')
+    assert block is not None, (
         'missing scoped color lift for the segment stage label on light substrate'
+    )
+    # Must explicitly take the segment's lifted color (inherit) rather than
+    # falling back to the navy-calibrated `--bone-mute` default; assert the
+    # concrete declaration, not just selector presence.
+    assert re.search(r'(?<!-)color:\s*inherit', block), (
+        'segment label must inherit the lifted segment color, not the '
+        'navy --bone-mute default'
     )
 
 
@@ -305,6 +314,13 @@ def test_path_segment_champion_class_styled():
     treatment (gold trophy) so winning it all looks distinct from a plain
     cleared stage."""
     assert '.path-segment-champion' in CSS
+    # The trophy icon must carry the cream-safe gold (matching the won-check),
+    # not merely exist as a selector — assert the concrete token.
+    icon_block = _css_rule_block('.path-segment-champion .path-segment-icon')
+    assert icon_block is not None, (
+        'missing .path-segment-champion .path-segment-icon rule'
+    )
+    assert 'var(--gold-dark)' in icon_block
 
 
 def test_path_section_eyebrow_legible_on_light_substrate():
