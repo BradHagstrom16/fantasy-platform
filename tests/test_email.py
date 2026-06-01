@@ -15,12 +15,14 @@ def test_config_plumbs_mail_from_address_from_env():
     the unauthenticated message. The .env had the key; config.py wasn't reading it.
     """
     import config
-    with mock.patch.dict(os.environ, {'MAIL_FROM_ADDRESS': 'commish@cccfantasy.com'}):
-        importlib.reload(config)
-        try:
+    try:
+        with mock.patch.dict(os.environ, {'MAIL_FROM_ADDRESS': 'commish@cccfantasy.com'}):
+            importlib.reload(config)
             assert config.Config.MAIL_FROM_ADDRESS == 'commish@cccfantasy.com'
-        finally:
-            importlib.reload(config)  # restore module under the ambient environment
+    finally:
+        # Restore AFTER the patch context exits, so the reload reads the ambient env
+        # and the patched value doesn't leak into config.Config for later tests.
+        importlib.reload(config)
 
 
 def _send_and_capture(config_overrides):
