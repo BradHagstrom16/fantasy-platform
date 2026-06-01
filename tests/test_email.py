@@ -18,6 +18,7 @@ def _send_and_capture(config_overrides):
 
 
 def test_from_header_uses_mail_from_address_when_set():
+    """When MAIL_FROM_ADDRESS is set, it drives the From header (not the SMTP login)."""
     ok, msg = _send_and_capture({
         'EMAIL_ADDRESS': 'brevo-login@example.com',
         'EMAIL_PASSWORD': 'smtp-key',
@@ -28,6 +29,7 @@ def test_from_header_uses_mail_from_address_when_set():
 
 
 def test_from_header_falls_back_to_email_address_when_unset():
+    """With MAIL_FROM_ADDRESS unset, the From header falls back to EMAIL_ADDRESS."""
     ok, msg = _send_and_capture({
         'EMAIL_ADDRESS': 'fallback@example.com',
         'EMAIL_PASSWORD': 'pw',
@@ -38,6 +40,7 @@ def test_from_header_falls_back_to_email_address_when_unset():
 
 
 def test_send_returns_false_when_credentials_missing():
+    """Missing SMTP credentials short-circuit to False without building a message."""
     ok, msg = _send_and_capture({
         'EMAIL_ADDRESS': '',
         'EMAIL_PASSWORD': '',
