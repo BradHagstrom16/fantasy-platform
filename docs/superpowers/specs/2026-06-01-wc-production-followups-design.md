@@ -35,8 +35,11 @@ removable afterward. YAGNI over a registry flag with a single current consumer.
   dev/testing.
 - **Enroll:** call `games.worldcup.services.enrollment.admin_enroll(user.id)`
   (idempotent — returns the existing row if present).
-- **Notify:** add a second success flash after the account-created flash:
-  `"You're in the World Cup pool — make your picks!"`.
+- **Notify:** add a second success flash after the account-created flash. Exact
+  wording is UX copy and is set during the `/impeccable` invocation (it knows the
+  CCC voice register); the auto-join implementation lands with a clearly-marked
+  placeholder string that impeccable finalizes. Intent: confirm the WC enrollment
+  and nudge the user toward making picks.
 - **Comment:** a short code comment stating this is a sanctioned signup-time
   auto-join, distinct from the banned pick/admin auto-enroll path.
 
