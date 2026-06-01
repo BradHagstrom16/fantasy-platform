@@ -111,10 +111,11 @@
                 <div class="leaderboard-roster" role="group" aria-label="Roster, {{ roster|length }} nations">
                   {% for pick in roster %}
                   {% set shared = (not is_me) and pick.team_id in your_team_ids %}
-                  <span class="lb-flag{% if pick.team.is_eliminated %} is-out{% endif %}{% if shared %} is-shared{% endif %}"
+                  {% set is_out = pick.team_id in eliminated_ids %}
+                  <span class="lb-flag{% if is_out %} is-out{% endif %}{% if shared %} is-shared{% endif %}"
                         tabindex="0"
-                        title="{{ pick.team.display_name }} · &times;{{ pick.team.multiplier }}{% if pick.team.is_eliminated %} · out{% endif %}{% if shared %} · also yours{% endif %}"
-                        aria-label="{{ pick.team.display_name }}, &times;{{ pick.team.multiplier }} multiplier{% if pick.team.is_eliminated %}, eliminated{% endif %}{% if shared %}, also in your roster{% endif %}">
+                        title="{{ pick.team.display_name }} · &times;{{ pick.team.multiplier }}{% if is_out %} · out{% endif %}{% if shared %} · also yours{% endif %}"
+                        aria-label="{{ pick.team.display_name }}, &times;{{ pick.team.multiplier }} multiplier{% if is_out %}, eliminated{% endif %}{% if shared %}, also in your roster{% endif %}">
                     {{ flag(pick.team.iso_code) }}
                   </span>
                   {% endfor %}
@@ -178,7 +179,8 @@
             <div class="leaderboard-roster" aria-hidden="true">
               {% for pick in roster %}
               {% set shared = (not is_me) and pick.team_id in your_team_ids %}
-              <span class="lb-flag{% if pick.team.is_eliminated %} is-out{% endif %}{% if shared %} is-shared{% endif %}">{{ flag(pick.team.iso_code) }}</span>
+              {% set is_out = pick.team_id in eliminated_ids %}
+              <span class="lb-flag{% if is_out %} is-out{% endif %}{% if shared %} is-shared{% endif %}">{{ flag(pick.team.iso_code) }}</span>
               {% endfor %}
             </div>
             {% endif %}

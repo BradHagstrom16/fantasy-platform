@@ -32,6 +32,7 @@ from games.worldcup.services.scoring import (
     compute_match_attribution,
     compute_team_score_events,
 )
+from games.worldcup.services.elimination import eliminated_team_ids
 # Platform tz helper. Re-exported as `format_ct` in the WC blueprint context
 # processor (see below) so existing WC templates (`{{ format_ct(dt).strftime(...) }}`)
 # keep working with the same datetime-returning contract. Platform templates
@@ -489,6 +490,11 @@ def leaderboard():
             if mine:
                 your_team_ids = {p.team_id for p in roster_by_enrollment.get(mine.id, [])}
 
+    # Tournament-wide "out" (group exit OR knockout loss) — is_eliminated alone
+    # is group-stage-only and under-reports KO losers. Computed once; the
+    # template does set-membership only (no ORM mutation).
+    eliminated_ids = eliminated_team_ids()
+
     return render_template('worldcup/leaderboard.html',
         ranked_enrollments=ranked,
         total_players=total_players,
@@ -501,6 +507,7 @@ def leaderboard():
         trend_by_enrollment=trend_by_enrollment,
         roster_by_enrollment=roster_by_enrollment,
         your_team_ids=your_team_ids,
+        eliminated_ids=eliminated_ids,
     )
 
 
