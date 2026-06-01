@@ -69,6 +69,10 @@
                   <span class="advancement-badge runner-up">2nd</span>
                 {% elif team.advancement_method == 'best_third' %}
                   <span class="advancement-badge best-third">3rd</span>
+                {# Group-scoped on purpose: this is the GROUP standings table, so
+                   is_eliminated (group-stage exit) is the correct semantic here.
+                   Do NOT swap for eliminated_team_ids() — that's tournament-wide
+                   "out" and would mislabel KO-stage teams in a group context. #}
                 {% elif team.is_eliminated %}
                   <span class="advancement-badge eliminated">Out</span>
                 {% endif %}
