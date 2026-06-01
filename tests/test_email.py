@@ -10,11 +10,10 @@ def _send_and_capture(config_overrides):
     app = create_app('testing')
     app.config.update(config_overrides)
     captured = {}
-    with app.app_context():
-        with mock.patch('utils.email.smtplib.SMTP') as MockSMTP:
-            server = MockSMTP.return_value.__enter__.return_value
-            server.send_message.side_effect = lambda msg: captured.update(msg=msg)
-            ok = send_platform_email('player@example.com', 'Subject', 'plain body')
+    with app.app_context(), mock.patch('utils.email.smtplib.SMTP') as MockSMTP:
+        server = MockSMTP.return_value.__enter__.return_value
+        server.send_message.side_effect = lambda msg: captured.update(msg=msg)
+        ok = send_platform_email('player@example.com', 'Subject', 'plain body')
     return ok, captured.get('msg')
 
 
