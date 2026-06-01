@@ -205,6 +205,152 @@ def process_match_cmd(match_number, home_score, away_score, winner_code,
         click.echo(f"  {at.display_name}: {at.base_points:.1f} base / {at.multiplied_points:.1f} multiplied")
 
 
+@worldcup_cli.command('simulate-group-stage')
+@click.option('--dry-run', is_flag=True, default=False,
+              help='Print the planned result for every match without writing.')
+@click.option('--yes', '-y', is_flag=True, default=False,
+              help='Skip the confirmation prompt (for scripted runs).')
+def simulate_group_stage_cmd(dry_run: bool, yes: bool):
+    """Fill in all 72 group-stage results with deterministic, tie-free standings.
+
+    Testing aid for the production launch script: plays out the entire group
+    stage in one run so team advancement can be exercised at /admin/advancement.
+    Only touches stage='group' matches; knockout shells are never modified, and
+    already-completed matches are skipped (re-runs are safe). Advancement
+    confirmation stays a manual step — this command stops after group results.
+
+    Destructive: writes results to incomplete group matches and recalculates
+    every enrollment score. Prompts for confirmation unless --dry-run or --yes.
+
+    Within each group the four teams are ranked 1-4 by (multiplier ASC,
+    fifa_code ASC) — lower multiplier = favorite, so favorites finish higher
+    (realistic when eyeballing results). Results are fixed by rank pair so every
+    group ends with a clean 9/4/3/1 spread (rank 2 vs rank 4 is a draw to
+    exercise draw scoring).
+    """
+    from games.worldcup.services.scoring import process_match_result
+
+    # Intra-group rank: 1 = favorite (lowest multiplier). Sort once, then bucket.
+    teams = (
+        WorldCupTeam.query
+        .filter(WorldCupTeam.group_letter.isnot(None))
+        .all()
+    )
+    rank_by_team_id: dict[int, int] = {}
+    for letter in sorted({t.group_letter for t in teams}):
+        group = sorted(
+            (t for t in teams if t.group_letter == letter),
+            key=lambda t: (t.multiplier, t.fifa_code),
+        )
+        for rank, team in enumerate(group, start=1):
+            rank_by_team_id[team.id] = rank
+
+    matches = (
+        WorldCupMatch.query
+        .filter_by(stage='group')
+        .order_by(WorldCupMatch.match_number)
+        .all()
+    )
+
+    # Gate the destructive write path behind a confirmation (skipped for
+    # --dry-run, which writes nothing, and --yes, for scripted runs).
+    if not dry_run and not yes:
+        pending = sum(1 for m in matches if not m.is_completed)
+        if pending:
+            click.confirm(
+                f'This will write results to {pending} incomplete group '
+                f'match(es) and recalculate every enrollment score. Continue?',
+                abort=True,
+            )
+
+    processed = 0
+    skipped = 0
+    drawn = 0
+    for match in matches:
+        if match.is_completed:
+            skipped += 1
+            continue
+
+        home_rank = rank_by_team_id.get(match.home_team_id)
+        away_rank = rank_by_team_id.get(match.away_team_id)
+        if home_rank is None or away_rank is None:
+            click.echo(f'  ! Match #{match.match_number}: unranked team(s); skipped.')
+            skipped += 1
+            continue
+
+        # rank 2 vs rank 4 is the designated draw; otherwise the higher rank
+        # (lower number) wins 2-0.
+        is_draw = {home_rank, away_rank} == {2, 4}
+        if is_draw:
+            home_score, away_score, winner_code = 1, 1, None
+            drawn += 1
+        elif home_rank < away_rank:
+            home_score, away_score = 2, 0
+            winner_code = match.home_team.fifa_code
+        else:
+            home_score, away_score = 0, 2
+            winner_code = match.away_team.fifa_code
+
+        home_name = match.home_team.display_name if match.home_team else '?'
+        away_name = match.away_team.display_name if match.away_team else '?'
+        line = (f'#{match.match_number:>2} [{match.group_letter}] '
+                f'{home_name} {home_score}-{away_score} {away_name}'
+                + (' (draw)' if is_draw else ''))
+
+        if dry_run:
+            click.echo(f'  would set {line}')
+            processed += 1
+            continue
+
+        result = process_match_result(
+            match_id=match.id,
+            home_score=home_score,
+            away_score=away_score,
+            winner_fifa_code=winner_code,
+            is_draw=is_draw,
+        )
+        if 'error' in result:
+            click.echo(f"  ! Match #{match.match_number}: {result['error']}")
+            skipped += 1
+            continue
+        click.echo(f'  set {line}')
+        processed += 1
+
+    verb = 'would process' if dry_run else 'processed'
+    click.echo(
+        f'\nGroup stage: {verb} {processed} matches '
+        f'({drawn} draws), {skipped} skipped.'
+    )
+
+    if dry_run:
+        return
+
+    # Standings preview — who advances when the admin confirms each group.
+    click.echo('\nGroup standings (1st / 2nd advance; 3rd = best-third candidate):')
+    for letter in 'ABCDEFGHIJKL':
+        standings = (
+            WorldCupTeam.query
+            .filter_by(group_letter=letter)
+            .order_by(
+                (WorldCupTeam.group_wins * 3 + WorldCupTeam.group_draws).desc(),
+                WorldCupTeam.group_wins.desc(),
+                WorldCupTeam.fifa_code.asc(),
+            )
+            .all()
+        )
+        if not standings:
+            continue
+        line = '  '.join(
+            f'{i}.{t.fifa_code}({t.group_wins * 3 + t.group_draws})'
+            for i, t in enumerate(standings, start=1)
+        )
+        click.echo(f'  {letter}: {line}')
+
+    click.echo(
+        '\nNext: confirm advancement per group at /worldcup/admin/advancement.'
+    )
+
+
 @worldcup_cli.command('snapshot-ranks')
 @click.option('--backfill', type=int, default=0,
               help='Also backfill N past days using current rank/score (writes N+1 rows per enrollment: today + N prior)')

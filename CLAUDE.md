@@ -56,6 +56,7 @@ FLASK_APP=app.py venv/bin/flask worldcup init            # Seed teams + matches 
 FLASK_APP=app.py venv/bin/flask worldcup recalc          # Recalculate all scores (idempotent)
 FLASK_APP=app.py venv/bin/flask worldcup status          # Print tournament state summary
 FLASK_APP=app.py venv/bin/flask worldcup process-match   # Enter match result (dev/testing)
+FLASK_APP=app.py venv/bin/flask worldcup simulate-group-stage  # Bulk-fill all 72 group results, deterministic 9/4/3/1 standings (--dry-run to preview); testing aid for advancement
 FLASK_APP=app.py venv/bin/flask worldcup snapshot-ranks  # Capture daily rank+score snapshot (cron; --backfill N for historical seed)
 
 # Tests
@@ -99,7 +100,7 @@ No linter configured. No pyright either — verify code with pytest.
 
 ### Platform integration
 
-- **Emails:** All outbound email routes through `utils/email.py` → `send_platform_email()`. From-name: "Corrupt Commish Club". Game-specific content assembly stays in `games/<game>/services/reminders.py`. HTML emails: table layout + inline styles for Gmail compatibility.
+- **Emails:** All outbound email routes through `utils/email.py` → `send_platform_email()`; From-name "Corrupt Commish Club". Game-specific content assembly stays in `games/<game>/services/reminders.py`. HTML emails: table layout + inline styles for Gmail. **Prod sends via Brevo SMTP relay** (`smtp-relay.brevo.com:2525` — DO permanently blocks 25/465/587); `EMAIL_ADDRESS`/`EMAIL_PASSWORD` are the Brevo SMTP login+key, and the visible From is decoupled via `MAIL_FROM_ADDRESS` = `commish@cccfantasy.com` (the DKIM-authenticated domain sender — **Gmail silently drops mail sent from the bare SMTP-login address**, so the From must be the domain sender). Replies to `commish@` forward to the owner inbox via Cloudflare Email Routing. **Config-plumbing gotcha:** any env var read via `current_app.config.get()` needs a matching `os.environ.get()` line in `config.py`'s base `Config` class or it's silently `None` (this caused the `MAIL_FROM_ADDRESS` prod bug; a smoke test that sets `app.config` by hand bypasses `config.py` and won't catch it).
 - **Avatars:** All game standings must display `user.get_avatar()` inline before the player display name. `User.avatar_emoji` is nullable String(4); default is ⚽. Required integration point for every game blueprint. **The crown emoji is reserved for platform admins:** `get_avatar()` returns it for any `is_admin` user (ignoring their stored `avatar_emoji`) and substitutes ⚽ for any non-admin who has it stored — so the reservation is enforced at every call site, not just the picker. It is excluded from `AVATAR_CATEGORIES` (`core/auth/routes.py`), and `profile.html` replaces the picker with a note for admins. The crown is stored as the `'\U0001F451'` escape (`User.ADMIN_AVATAR` in `models/user.py`), never a literal char — literal non-BMP emoji in `.py` source can be written as invalid surrogate pairs and break import.
 - **Phone (optional contact):** `User.phone` is nullable String(20), collected at signup and editable on `/profile`. Every phone input MUST validate + normalize through `utils/phone.normalize_us_phone(raw) -> (normalized, error)` (US/Canada NANP only — area + exchange codes start 2-9 — stored as `(212) 555-0123`). Blank returns `(None, None)` (the field is optional); a non-blank invalid value is rejected. Reuse this helper for any new phone surface — don't re-validate inline.
 
@@ -266,7 +267,7 @@ ssh deploy@<droplet-ip>                  # server
 ```
 
 First-time setup: `docs/superpowers/plans/2026-04-21-production-deployment.md`.
-Pre-launch verification: `docs/production-launch-test-script.md` — full World Cup simulation on production (out → pre → live → post via SSH-edited deadline + admin match entry) then DB reset to a clean launch baseline. Run after Task 25 (cron) and before Task 26 (UptimeRobot).
+Production re-verification: `docs/production-launch-test-script.md` — full World Cup simulation on production (out → pre → live → post via SSH-edited deadline + admin match entry) then DB reset to a clean baseline.
 
 ---
 
@@ -284,8 +285,9 @@ SITE_URL=...             # Used in password-reset and reminder email links (http
 PLATFORM_TIMEZONE=...    # Default: America/Chicago
 ODDS_API_KEY=...         # The Odds API (CFB scores/spreads)
 SLASHGOLF_API_KEY=...    # SlashGolf API (Golf leaderboards)
-EMAIL_ADDRESS=...        # Platform "from" address (send_platform_email)
-EMAIL_PASSWORD=...       # SMTP app password
-SMTP_SERVER=...          # Default: smtp.gmail.com
-SMTP_PORT=...            # Default: 587
+EMAIL_ADDRESS=...        # SMTP auth login (prod: Brevo SMTP login, e.g. ad34xxxxx@smtp-brevo.com)
+EMAIL_PASSWORD=...       # SMTP key/password (prod: Brevo SMTP key)
+MAIL_FROM_ADDRESS=...    # Visible From; prod: commish@cccfantasy.com. Falls back to EMAIL_ADDRESS if unset
+SMTP_SERVER=...          # Dev default smtp.gmail.com; prod smtp-relay.brevo.com
+SMTP_PORT=...            # Dev default 587; prod 2525 (DO blocks 587)
 ```
