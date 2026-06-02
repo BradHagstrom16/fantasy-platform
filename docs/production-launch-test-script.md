@@ -630,16 +630,17 @@ cat .env | grep DATABASE_URL
 > belt-and-suspenders and instantly logs out every stale session.)
 
 ```bash
-# Rotate the signing key FIRST (invalidates all existing session + remember cookies):
+# Rotate the signing key and restart FIRST, so the running workers load the new
+# key and reject every stale cookie *before* the wipe recycles any user ids:
 python3 -c "import secrets; print(secrets.token_hex(32))"   # copy the output
 nano .env                                                    # replace SECRET_KEY=<new value>
+sudo systemctl restart fantasy-platform                      # workers now reject all old cookies
 
 # Then wipe + reseed:
 ENVIRONMENT=production FLASK_APP=app.py venv/bin/flask db downgrade base
 ENVIRONMENT=production FLASK_APP=app.py venv/bin/flask db upgrade
 ENVIRONMENT=production FLASK_APP=app.py venv/bin/flask worldcup init
 ENVIRONMENT=production FLASK_APP=app.py venv/bin/flask create-admin
-sudo systemctl restart fantasy-platform                      # load the new SECRET_KEY
 ```
 
 - [x] `db downgrade base` — drops all tables; outputs Alembic "Running downgrade" lines

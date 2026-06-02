@@ -8,6 +8,7 @@ import os
 
 import click
 from flask import Flask, render_template
+from sqlalchemy import select
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 from config import config
@@ -38,7 +39,9 @@ def create_app(config_name=None):
     # and returns None (logged out) rather than cross-authenticating.
     @login_manager.user_loader
     def load_user(user_id):
-        return User.query.filter_by(auth_id=user_id).first()
+        return db.session.execute(
+            select(User).filter_by(auth_id=user_id)
+        ).scalar_one_or_none()
 
     # Register blueprints
     from core.auth import auth_bp
