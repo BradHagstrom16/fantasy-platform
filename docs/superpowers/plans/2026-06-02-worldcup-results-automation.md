@@ -1153,7 +1153,7 @@ git commit -m "feat(worldcup): flask worldcup sync CLI"
 
 The testable substance is a JSON endpoint returning the proposal; the template gets a "Load from API" button + a small fetch script that fills the existing form fields. No new write path — submitting still calls the existing `apply_group_advancement()`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `tests/test_worldcup_admin_sync.py`:
 
@@ -1212,12 +1212,12 @@ def test_advancement_proposal_endpoint_returns_json(client, app):
     assert resp.get_json()['groups'][0]['group_winner'] == 'MEX'
 ```
 
-- [ ] **Step 2: Run to verify it fails**
+- [x] **Step 2: Run to verify it fails**
 
 Run: `ENVIRONMENT=testing venv/bin/python -m pytest tests/test_worldcup_admin_sync.py -q`
 Expected: FAIL — endpoint 404.
 
-- [ ] **Step 3: Add the import + route**
+- [x] **Step 3: Add the import + route**
 
 In `games/worldcup/routes.py`, extend the scoring-service import block (the one importing `process_match_result, apply_group_advancement, set_knockout_teams` near line 28) is in `services.scoring`; add a separate import for the sync helper near the other service imports:
 
@@ -1246,12 +1246,12 @@ def admin_advancement_proposal():
 
 > Confirm `jsonify` is imported in `routes.py` (it is used elsewhere; if not, add it to the `from flask import ...` line).
 
-- [ ] **Step 4: Run to verify it passes**
+- [x] **Step 4: Run to verify it passes**
 
 Run: `ENVIRONMENT=testing venv/bin/python -m pytest tests/test_worldcup_admin_sync.py -q`
 Expected: PASS.
 
-- [ ] **Step 5: Wire the button into the template**
+- [x] **Step 5: Wire the button into the template**
 
 In `games/worldcup/templates/worldcup/admin/advancement.html`, add a "Load from API" control and a script that fetches the endpoint and fills each group's `group_winner` / `runner_up` / `best_third` selects by FIFA code. Insert near the top of the groups section:
 
@@ -1285,7 +1285,7 @@ document.getElementById('wc-load-api')?.addEventListener('click', async (e) => {
 
 > The executor must verify each group's `<form>` carries `data-group="{{ letter }}"` and that the selects' `value`s are FIFA codes; add `data-group` to the form tag and `value="{{ team.fifa_code }}"` to the option tags if missing (these are the JS-critical hooks — add classes/attributes, never remove existing ones, per CLAUDE.md).
 
-- [ ] **Step 6: Manual smoke + commit**
+- [x] **Step 6: Manual smoke + commit**
 
 Smoke (local Postgres, group stage simulated): `flask worldcup simulate-group-stage -y` then load `/worldcup/admin/advancement`, click "Load from API" (mock or live), confirm selects populate.
 
