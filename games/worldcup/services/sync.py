@@ -19,6 +19,7 @@ from flask import current_app
 from extensions import db
 from games.worldcup.models import WorldCupTeam, WorldCupMatch
 from games.worldcup.services.scoring import process_match_result
+from utils.email import send_platform_email
 
 logger = logging.getLogger(__name__)
 
@@ -276,3 +277,50 @@ def fetch_advancement_proposal() -> dict:
         })
 
     return {'groups': sorted(groups, key=lambda x: x['letter']), 'ko_pairings': ko_pairings}
+
+
+def group_stage_complete_and_unconfirmed() -> bool:
+    """True when all group matches are done but ≥1 group's advancement is unset."""
+    total = WorldCupMatch.query.filter_by(stage='group').count()
+    done = WorldCupMatch.query.filter_by(stage='group', is_completed=True).count()
+    if total == 0 or done < total:
+        return False
+    unconfirmed = (
+        WorldCupTeam.query
+        .filter(WorldCupTeam.advancement_method.is_(None))
+        .filter(WorldCupTeam.is_eliminated.isnot(True))
+        .count()
+    )
+    return unconfirmed > 0
+
+
+def ko_round_complete_and_next_empty() -> bool:
+    """True when a knockout round is fully played but the next round's shells are empty."""
+    order = ['R32', 'R16', 'QF', 'SF']
+    nxt = {'R32': 'R16', 'R16': 'QF', 'QF': 'SF', 'SF': 'final'}
+    for stage in order:
+        total = WorldCupMatch.query.filter_by(stage=stage).count()
+        if total == 0:
+            continue
+        done = WorldCupMatch.query.filter_by(stage=stage, is_completed=True).count()
+        if done < total:
+            continue
+        next_stage = nxt[stage]
+        empty = (
+            WorldCupMatch.query
+            .filter_by(stage=next_stage)
+            .filter((WorldCupMatch.home_team_id.is_(None)) | (WorldCupMatch.away_team_id.is_(None)))
+            .count()
+        )
+        if empty > 0:
+            return True
+    return False
+
+
+def _send_admin_email(subject: str, body: str) -> bool:
+    """Send a plain-text admin notification to the platform email address."""
+    to_addr = current_app.config.get('EMAIL_ADDRESS', '')
+    if not to_addr:
+        logger.warning('EMAIL_ADDRESS not configured; skipping admin email.')
+        return False
+    return send_platform_email(to_addr, f'[World Cup] {subject}', body)

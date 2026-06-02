@@ -242,3 +242,40 @@ def test_fetch_advancement_proposal(app):
         assert groups['A']['best_third'] == 'KOR'
         # CZE did not advance.
         assert groups['A']['third_advances'] is True
+
+
+def test_group_stage_detection(app):
+    from games.worldcup.services import sync
+    with app.app_context():
+        a = _team('MEX', 'Mexico', 'A'); b = _team('RSA', 'South Africa', 'A')
+        db.session.flush()
+        # One completed group match, no advancement set yet.
+        db.session.add(WorldCupMatch(match_number=1, stage='group', group_letter='A',
+                                     home_team_id=a.id, away_team_id=b.id,
+                                     is_completed=True))
+        db.session.commit()
+        assert sync.group_stage_complete_and_unconfirmed() is True
+        # Confirm advancement -> no longer flagged.
+        a.advancement_method = 'group_winner'
+        b.advancement_method = 'runner_up'
+        db.session.commit()
+        assert sync.group_stage_complete_and_unconfirmed() is False
+
+
+def test_group_stage_detection_false_when_incomplete(app):
+    from games.worldcup.services import sync
+    with app.app_context():
+        db.session.add(WorldCupMatch(match_number=1, stage='group', group_letter='A',
+                                     is_completed=False))
+        db.session.commit()
+        assert sync.group_stage_complete_and_unconfirmed() is False
+
+
+def test_send_admin_email_uses_platform_helper(app):
+    from games.worldcup.services import sync
+    with app.app_context():
+        app.config['EMAIL_ADDRESS'] = 'commish@test.com'
+        with patch.object(sync, 'send_platform_email', return_value=True) as send:
+            sync._send_admin_email('Subject', 'Body')
+        assert send.call_args.args[0] == 'commish@test.com'
+        assert '[World Cup]' in send.call_args.args[1]

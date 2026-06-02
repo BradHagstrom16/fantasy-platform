@@ -783,7 +783,7 @@ git commit -m "feat(worldcup): fetch_advancement_proposal (read-only)"
 - Modify: `games/worldcup/services/sync.py`
 - Test: `tests/test_worldcup_sync.py`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add to `tests/test_worldcup_sync.py`:
 
@@ -825,12 +825,12 @@ def test_send_admin_email_uses_platform_helper(app):
         assert '[World Cup]' in send.call_args.args[1]
 ```
 
-- [ ] **Step 2: Run to verify it fails**
+- [x] **Step 2: Run to verify it fails**
 
 Run: `ENVIRONMENT=testing venv/bin/python -m pytest tests/test_worldcup_sync.py -k "detection or admin_email" -q`
 Expected: FAIL — attributes missing.
 
-- [ ] **Step 3: Implement detection + email**
+- [x] **Step 3: Implement detection + email**
 
 Add the import at the top of `games/worldcup/services/sync.py` (with the other imports):
 
@@ -888,12 +888,12 @@ def _send_admin_email(subject: str, body: str) -> bool:
     return send_platform_email(to_addr, f'[World Cup] {subject}', body)
 ```
 
-- [ ] **Step 4: Run to verify it passes**
+- [x] **Step 4: Run to verify it passes**
 
 Run: `ENVIRONMENT=testing venv/bin/python -m pytest tests/test_worldcup_sync.py -k "detection or admin_email" -q`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add games/worldcup/services/sync.py tests/test_worldcup_sync.py
