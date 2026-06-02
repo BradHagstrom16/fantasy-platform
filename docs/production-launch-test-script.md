@@ -790,3 +790,62 @@ sudo journalctl -u fantasy-platform -f
 **5. Return to §15E announcement gate** — both §2G and §12C must be ✅ before flipping to launched.
 
 *End of script.*
+
+---
+
+## World Cup Sync Automation (football-data.org)
+
+Automates final-match scores (auto-applied) and stages group-advancement /
+knockout-bracket proposals for one-click admin confirmation. Data source:
+football-data.org free tier (header `X-Auth-Token`, 10 req/min, no daily cap).
+Spec: `docs/superpowers/specs/2026-06-02-worldcup-results-automation-design.md`.
+
+### Pre-tournament checklist (run before 2026-06-11 kickoff)
+
+1. **Add the API key** to the server `.env`:
+   ```
+   FOOTBALL_DATA_API_KEY=<your-football-data.org-key>
+   ```
+2. **Apply the migration** (adds `api_fixture_id` / `api_team_id`):
+   ```bash
+   cd /home/deploy/fantasy-platform
+   ENVIRONMENT=production FLASK_APP=app.py venv/bin/flask db upgrade
+   ```
+3. **Link fixtures + teams and EYEBALL the report** (verify-then-trust):
+   ```bash
+   ENVIRONMENT=production FLASK_APP=app.py venv/bin/flask worldcup sync --mode link
+   ```
+   Expect `Fixtures linked: 104 (API has 104)` and `Teams linked: 48`, with **no**
+   `UNMATCHED FIXTURES` and **no** `UNMAPPED TEAMS`. If a team is unmapped, add its
+   `tla -> fifa_code` to `TEAM_TLA_OVERRIDES` in
+   `games/worldcup/services/sync.py`, redeploy, and re-run `--mode link`
+   (idempotent). If a knockout fixture is unmatched, compare our
+   `games/worldcup/match_schedule.py` kickoff times to the API `utcDate`s
+   (KO shells match on `(stage, kickoff)`, the one mapping that can't fall back
+   to team identity).
+4. **Install + enable the timers**:
+   ```bash
+   sudo cp /home/deploy/fantasy-platform/deploy/worldcup-*.service /etc/systemd/system/
+   sudo cp /home/deploy/fantasy-platform/deploy/worldcup-*.timer   /etc/systemd/system/
+   sudo systemctl daemon-reload
+   sudo systemctl enable --now worldcup-sync.timer worldcup-advancement.timer worldcup-digest.timer
+   ```
+5. **Verify**:
+   ```bash
+   systemctl list-timers 'worldcup-*'
+   ENVIRONMENT=production FLASK_APP=app.py venv/bin/flask worldcup sync --mode status
+   journalctl -u worldcup-sync --since today
+   ```
+
+### Operating notes
+
+- **Score correction after we applied a result:** `process_match_result` refuses
+  an already-completed match, so a post-finalization API correction is manual:
+  edit the match in `/worldcup/admin`, then run
+  `ENVIRONMENT=production FLASK_APP=app.py venv/bin/flask worldcup recalc`.
+- **Advancement / bracket:** when the group stage (or a knockout round) completes,
+  the hourly advancement check emails the admin once. Open
+  `/worldcup/admin/advancement`, click **Load from API**, review the standings,
+  and submit to confirm. Knockout shells are scored only after their teams are set.
+- **Logs:** `journalctl -u worldcup-sync` / `-u worldcup-advancement` /
+  `-u worldcup-digest`.

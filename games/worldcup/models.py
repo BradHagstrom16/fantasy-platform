@@ -70,6 +70,8 @@ class WorldCupTeam(db.Model):
     best_finish = db.Column(db.String(20), nullable=True)
     base_points = db.Column(db.Float, default=0.0)
     multiplied_points = db.Column(db.Float, default=0.0)
+    # football-data.org team id, set by `flask worldcup sync --mode link`.
+    api_team_id = db.Column(db.Integer, nullable=True)
 
     # FIFA codes whose first two letters do NOT match ISO 3166-1 alpha-2.
     # Missing entries fall through to `code[:2]` and render the wrong country's
@@ -129,6 +131,8 @@ class WorldCupMatch(db.Model):
     venue = db.Column(db.String(100), nullable=True)
     city = db.Column(db.String(50), nullable=True)
     is_completed = db.Column(db.Boolean, default=False)
+    # football-data.org match id, set by `flask worldcup sync --mode link`.
+    api_fixture_id = db.Column(db.Integer, nullable=True, index=True)
 
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc),

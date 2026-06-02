@@ -1,0 +1,10 @@
+# Runs the World Cup score sync every 30 minutes.
+[Unit]
+Description=Run World Cup score sync every 30 minutes
+
+[Timer]
+OnCalendar=*:0/30
+Persistent=true
+
+[Install]
+WantedBy=timers.target

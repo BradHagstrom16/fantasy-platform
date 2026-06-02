@@ -1,0 +1,10 @@
+# Runs the World Cup advancement check hourly (at :05).
+[Unit]
+Description=Run World Cup advancement check hourly
+
+[Timer]
+OnCalendar=*:05
+Persistent=true
+
+[Install]
+WantedBy=timers.target

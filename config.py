@@ -50,6 +50,9 @@ class Config:
     CFB_ENTRY_FEE = int(os.environ.get('CFB_ENTRY_FEE', '25'))
     CFB_SEASON_YEAR = int(os.environ.get('CFB_SEASON_YEAR', '2026'))
 
+    # World Cup Fantasy Pool — football-data.org sync
+    FOOTBALL_DATA_API_KEY = os.environ.get('FOOTBALL_DATA_API_KEY', '')
+
     # CSRF
     WTF_CSRF_ENABLED = True
 

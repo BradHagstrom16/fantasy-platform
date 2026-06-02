@@ -28,6 +28,13 @@
 </header>
 
 <div class="container pb-5">
+    <div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
+        <button type="button" class="btn btn-game" id="wc-load-api"
+                data-proposal-url="{{ url_for('worldcup.admin_advancement_proposal') }}">
+            Load from API
+        </button>
+        <span class="text-muted">Loaded from football-data.org — review the standings before confirming.</span>
+    </div>
     <div class="row">
         {% for group in groups_status %}
         {% set needs_action = group.all_complete and not group.advancement_confirmed %}
@@ -198,6 +205,42 @@ document.querySelectorAll('.advancement-radio').forEach(function(radio) {
             }
         }
     });
+});
+
+// "Load from API": pre-fill each group's winner / runner-up / best-third radios
+// from the football-data.org proposal. The admin reviews, then submits the
+// existing per-group form (no new write path).
+document.getElementById('wc-load-api')?.addEventListener('click', async function () {
+    const url = this.dataset.proposalUrl;
+    this.disabled = true;
+    try {
+        const resp = await fetch(url, {headers: {'X-Requested-With': 'fetch'}});
+        const data = await resp.json();
+        if (!resp.ok) { alert(data.error || 'Could not load proposal from API.'); return; }
+        const check = function (form, name, val) {
+            if (!val) return;
+            const el = form.querySelector('input[name="' + name + '"][value="' + val + '"]');
+            if (el) { el.checked = true; el.dispatchEvent(new Event('change', {bubbles: true})); }
+        };
+        (data.groups || []).forEach(function (g) {
+            const form = document.getElementById('advancement-form-' + g.letter);
+            if (!form) return;
+            check(form, 'group_winner', g.group_winner);
+            check(form, 'runner_up', g.runner_up);
+            if (g.best_third) {
+                check(form, 'best_third', g.best_third);
+            } else {
+                // No best third advanced — select the explicit "None" radio so a
+                // stale prior selection doesn't linger.
+                const none = document.getElementById('third_' + g.letter + '_none');
+                if (none) { none.checked = true; none.dispatchEvent(new Event('change', {bubbles: true})); }
+            }
+        });
+    } catch (e) {
+        alert('Could not load proposal from API.');
+    } finally {
+        this.disabled = false;
+    }
 });
 </script>
 {% endblock %}

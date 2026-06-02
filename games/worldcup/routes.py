@@ -33,6 +33,7 @@ from games.worldcup.services.scoring import (
     compute_team_score_events,
 )
 from games.worldcup.services.elimination import eliminated_team_ids
+from games.worldcup.services.sync import fetch_advancement_proposal
 # Platform tz helper. Re-exported as `format_ct` in the WC blueprint context
 # processor (see below) so existing WC templates (`{{ format_ct(dt).strftime(...) }}`)
 # keep working with the same datetime-returning contract. Platform templates
@@ -1093,6 +1094,22 @@ def admin_advancement():
         groups_status=groups_status,
         advancement_methods=ADVANCEMENT_METHODS,
     )
+
+
+@worldcup_bp.route('/admin/advancement/proposal')
+@worldcup_admin_required
+def admin_advancement_proposal():
+    """Return the football-data.org advancement/bracket proposal as JSON.
+
+    Read-only. Powers the 'Load from API' pre-fill on the advancement +
+    set-knockout admin pages. Confirming still goes through the existing
+    apply_group_advancement() / set_knockout_teams() write paths.
+    """
+    from games.worldcup.services.sync import SyncError
+    try:
+        return jsonify(fetch_advancement_proposal())
+    except SyncError as exc:
+        return jsonify({'error': str(exc)}), 502
 
 
 @worldcup_bp.route('/admin/recalc', methods=['POST'])
