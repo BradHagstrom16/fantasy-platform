@@ -7,7 +7,7 @@
    DOM hooks consumed by _pick_accordion_script.html: .pick-accordion-toggle,
    data-accordion-target, aria-controls, id="{row_id}-body", .pick-accordion. #}
 {% set row_id = 'pick-row-' ~ pick.id %}
-{% set is_out = show_scoring and pick.team.is_eliminated %}
+{% set is_out = show_scoring and pick.team_id in eliminated_ids %}
 <tr{% if is_out %} class="pick-row-out"{% endif %}>
   <td class="fw-medium pick-team-cell">
     {% if show_scoring %}

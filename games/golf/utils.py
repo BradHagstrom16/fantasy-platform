@@ -5,13 +5,12 @@ Shared helpers for formatting, parsing, and calculations.
 """
 import logging
 from typing import Optional, List
-
-import pytz
+from zoneinfo import ZoneInfo
 
 logger = logging.getLogger(__name__)
 
 # League timezone (Central Time)
-GOLF_LEAGUE_TZ = pytz.timezone('America/Chicago')
+GOLF_LEAGUE_TZ = ZoneInfo('America/Chicago')
 
 
 def get_current_time():

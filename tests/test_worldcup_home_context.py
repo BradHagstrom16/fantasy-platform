@@ -736,3 +736,27 @@ def test_context_post_top_3_final(app):
         ctx = _context_post(user=user)
     assert len(ctx['top_3_final']) == 3
     assert ctx['total_count'] == 5
+
+
+def test_context_live_leverage_marks_knockout_loser_out(app):
+    """Live hub: a pick that lost a completed knockout match reads status='out'
+    on the Leverage Board and is excluded from alive_count, even though
+    is_eliminated is group-stage-only (stays False for KO losers)."""
+    user = make_user()
+    e = make_enrollment(user, picks_submitted=True)
+    winner = make_team('BRA')
+    loser = make_team('ARG', tier=2)
+    make_pick(e, loser)
+    make_match(73, home_team=winner, away_team=loser, stage='R32',
+               is_completed=True, winner_team=winner)
+    db.session.commit()
+    loser_id = loser.id
+
+    fake_live = (TOURNAMENT_DEADLINE_UTC + timedelta(days=2)).isoformat()
+    with patch.dict(os.environ, {'ENVIRONMENT': 'testing', 'WC_FAKE_NOW': fake_live}):
+        ctx = _context_live(user)
+
+    row = next(r for r in ctx['leverage'] if r['team_id'] == loser_id)
+    assert row['status'] == 'out'
+    assert ctx['dossier']['alive_count'] == 0
+    assert loser.is_eliminated is False

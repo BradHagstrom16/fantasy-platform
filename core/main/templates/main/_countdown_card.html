@@ -63,11 +63,12 @@
       <span class="decree-tick"><span data-cd-secs>00</span><span class="u">s</span></span>
     </div>
     <p class="decree-foot">{% if _sealed %}Group stage opens then. The ledger follows.{% else %}Once group stage begins, all picks lock.{% endif %}</p>
-    {# The decree's seal: pressing it affixes the decree (see .decree-cta:active
-       in style.css). The label leads; the sub-line carries the Commish voice. #}
-    <a class="decree-cta" href="{{ _cta_href }}">
-      <span class="decree-cta-label">{{ _cta_label }}<i class="bi bi-arrow-right" aria-hidden="true"></i></span>
-      <span class="decree-cta-sub">{{ _cta_sub }}</span>
+    {# The decree's seal: pressing it affixes the decree (see .cta-seal:active
+       in style.css). Shares the `.cta-seal` recipe; `.decree-cta` carries the
+       pre-state layout delta. The label leads; the sub-line carries voice. #}
+    <a class="cta-seal decree-cta" href="{{ _cta_href }}">
+      <span class="cta-seal-label">{{ _cta_label }}<i class="bi bi-arrow-right" aria-hidden="true"></i></span>
+      <span class="cta-seal-sub">{{ _cta_sub }}</span>
     </a>
   </div>
 </div>

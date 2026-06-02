@@ -67,8 +67,10 @@ def test_pick_row_points_cell_and_accordion_gated(pick_row_src):
     assert '{% if show_scoring %}' in pick_row_src
     # The accordion row (colspan=4) must be inside a show_scoring guard.
     assert 'pick-accordion-row' in pick_row_src
-    # Eliminated rows mark out only when scoring is live.
-    assert 'is_out = show_scoring and pick.team.is_eliminated' in pick_row_src
+    # Eliminated rows mark out only when scoring is live. "Out" is now derived
+    # tournament-wide (group exit OR knockout loss) via eliminated_ids, not the
+    # group-stage-only is_eliminated flag.
+    assert 'is_out = show_scoring and pick.team_id in eliminated_ids' in pick_row_src
 
 
 def test_sealed_stamp_present_pre_deadline(picks_src):
@@ -81,9 +83,10 @@ def test_sealed_stamp_present_pre_deadline(picks_src):
 # --- Live/post survival status -----------------------------------------------
 
 def test_alive_count_passed_from_route(routes_src):
-    """Route computes alive_count from is_eliminated (hub-parity) and passes it
-    on both render paths."""
-    assert 'alive_count = sum(1 for p in existing_picks if not p.team.is_eliminated)' in routes_src
+    """Route computes alive_count from derived elimination (hub-parity) and
+    passes it on both render paths. 'Out' is tournament-wide (group exit OR
+    knockout loss) via eliminated_team_ids(), not the group-only is_eliminated."""
+    assert 'alive_count = sum(1 for p in existing_picks if p.team_id not in eliminated_ids)' in routes_src
     assert routes_src.count('alive_count=alive_count') == 2
 
 
@@ -216,3 +219,60 @@ def test_tier_jump_count_avoids_raw_text_muted_on_white(css_src):
     assert re.search(r'(?<!-)color:\s*var\(--text-muted\)', body) is None, (
         'tier-jump-count must not use --text-muted as its text color on white'
     )
+
+
+# --- Behavioral: derived KO elimination wired through the picks render --------
+
+@pytest.fixture()
+def app():
+    from app import create_app
+    from extensions import db
+    app = create_app('testing')
+    with app.app_context():
+        db.create_all()
+        yield app
+        db.session.remove()
+        db.drop_all()
+
+
+@pytest.fixture()
+def client(app):
+    return app.test_client()
+
+
+def test_picks_page_marks_knockout_loser_out(app, client, monkeypatch):
+    """End-to-end: a pick that lost a completed knockout match renders the
+    'Out' status on the live picks ledger, even though is_eliminated stays
+    False. Confirms eliminated_ids is actually plumbed through the render."""
+    from extensions import db
+    from games.worldcup.models import WorldCupMatch
+    from tests._worldcup_fixtures import (
+        make_user, make_enrollment, make_team, make_pick,
+    )
+
+    # Past the deadline so the scoring ledger (show_scoring) renders.
+    monkeypatch.setattr(
+        'games.worldcup.routes.TOURNAMENT_DEADLINE_UTC',
+        __import__('datetime').datetime(2000, 1, 1,
+                                        tzinfo=__import__('datetime').timezone.utc),
+    )
+    with app.app_context():
+        user = make_user(email='pk@test')
+        e = make_enrollment(user, picks_submitted=True)
+        winner = make_team('BRA')
+        loser = make_team('ARG', tier=2)   # is_eliminated defaults False
+        make_pick(e, loser)
+        db.session.add(WorldCupMatch(
+            match_number=73, stage='R32',
+            home_team_id=winner.id, away_team_id=loser.id,
+            winner_team_id=winner.id, is_completed=True,
+        ))
+        db.session.commit()
+        assert loser.is_eliminated is False
+        with client.session_transaction() as sess:
+            sess['_user_id'] = str(user.id)
+            sess['_fresh'] = True
+        resp = client.get('/worldcup/picks')
+    assert resp.status_code == 200
+    body = resp.data.decode()
+    assert 'wc-pick-status-out' in body  # the "Out" status chip rendered

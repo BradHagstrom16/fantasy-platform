@@ -23,6 +23,7 @@ from models.user import User
 from games.worldcup.constants import SEASON_YEAR, WORLDCUP_TZ
 from games.worldcup.models import (
     WorldCupEnrollment, WorldCupRankSnapshot, WorldCupTeam, WorldCupPick,
+    WorldCupMatch,
 )
 from games.worldcup.services.state import now_utc
 
@@ -521,6 +522,33 @@ def test_roster_flag_dims_eliminated_nation(client, app, monkeypatch):
         resp = client.get('/worldcup/leaderboard')
     assert resp.status_code == 200
     assert b'lb-flag is-out' in resp.data
+
+
+def test_roster_flag_marks_knockout_loser_out(client, app, monkeypatch):
+    """A pick that lost a completed knockout match reads is-out on the rail even
+    though is_eliminated stays False (group-stage-only flag). Derived via
+    eliminated_team_ids()."""
+    monkeypatch.setattr(
+        'games.worldcup.routes.TOURNAMENT_DEADLINE_UTC', PAST_DEADLINE
+    )
+    with app.app_context():
+        u = _seed_user('alice')
+        e = _seed_enrollment(u.id, score=10.0)
+        winner = _seed_team('BRA')
+        loser = _seed_team('ARG', tier=2)   # is_eliminated defaults False
+        _seed_pick(e.id, loser)
+        db.session.add(WorldCupMatch(
+            match_number=73, stage='R32',
+            home_team_id=winner.id, away_team_id=loser.id,
+            winner_team_id=winner.id, is_completed=True,
+        ))
+        db.session.commit()
+        assert loser.is_eliminated is False  # group flag never set for KO losers
+        resp = client.get('/worldcup/leaderboard')
+    body = resp.data.decode()
+    assert resp.status_code == 200
+    assert 'lb-flag is-out' in body
+    assert '· out' in body
 
 
 def test_roster_flag_rings_shared_pick_on_other_rows(client, app, monkeypatch):

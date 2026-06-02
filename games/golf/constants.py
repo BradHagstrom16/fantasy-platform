@@ -4,9 +4,7 @@ Golf Pick 'Em — Constants
 League-specific constants for tournament filtering, purse estimates,
 and season configuration.
 """
-from datetime import datetime
-
-import pytz
+from datetime import datetime, timezone
 
 # Tournaments to EXCLUDE from the league
 # (opposite-field events, playoffs finale, special events)
@@ -20,7 +18,7 @@ EXCLUDED_TOURNAMENTS = {
 }
 
 # Ignore any API events starting on or after this date
-SEASON_CUTOFF_DATE = datetime(2026, 8, 24, tzinfo=pytz.UTC)
+SEASON_CUTOFF_DATE = datetime(2026, 8, 24, tzinfo=timezone.utc)
 
 # 2026 PGA Tour purse amounts (in dollars)
 # Names must match exactly what API returns or what's in database

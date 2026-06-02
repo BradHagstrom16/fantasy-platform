@@ -16,7 +16,6 @@ Core Concepts:
 import logging
 from datetime import datetime, timezone
 
-import pytz
 from sqlalchemy.dialects.sqlite import insert
 
 from extensions import db
@@ -175,7 +174,7 @@ class GolfTournament(db.Model):
         now = datetime.now(GOLF_LEAGUE_TZ)
         deadline = self.pick_deadline
         if deadline.tzinfo is None:
-            deadline = GOLF_LEAGUE_TZ.localize(deadline)
+            deadline = deadline.replace(tzinfo=GOLF_LEAGUE_TZ)
         return now > deadline
 
     def get_field_count(self):
@@ -199,8 +198,8 @@ class GolfTournament(db.Model):
             return self.status
 
         deadline = self.pick_deadline or self.start_date
-        deadline_localized = deadline if deadline.tzinfo else GOLF_LEAGUE_TZ.localize(deadline)
-        end_localized = self.end_date if self.end_date.tzinfo else GOLF_LEAGUE_TZ.localize(self.end_date)
+        deadline_localized = deadline if deadline.tzinfo else deadline.replace(tzinfo=GOLF_LEAGUE_TZ)
+        end_localized = self.end_date if self.end_date.tzinfo else self.end_date.replace(tzinfo=GOLF_LEAGUE_TZ)
 
         if now >= end_localized:
             if self.status != 'active':
@@ -218,7 +217,7 @@ class GolfTournament(db.Model):
             return "TBD"
         deadline = self.pick_deadline
         if deadline.tzinfo is None:
-            deadline = GOLF_LEAGUE_TZ.localize(deadline)
+            deadline = deadline.replace(tzinfo=GOLF_LEAGUE_TZ)
         else:
             deadline = deadline.astimezone(GOLF_LEAGUE_TZ)
         return deadline.strftime('%a %b %d, %I:%M %p CT')

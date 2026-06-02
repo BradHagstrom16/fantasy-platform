@@ -24,10 +24,10 @@ import logging
 import os
 import random
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, List, Tuple
+from zoneinfo import ZoneInfo
 
-import pytz
 import requests
 
 from extensions import db
@@ -183,11 +183,11 @@ class TournamentSync:
         return self.sync_mode == "free"
 
     @staticmethod
-    def _get_event_timezone(leaderboard_data: Dict) -> pytz.timezone:
+    def _get_event_timezone(leaderboard_data: Dict) -> ZoneInfo:
         tz_name = leaderboard_data.get("timeZone") or leaderboard_data.get("timezone") or leaderboard_data.get("tz")
         if tz_name:
             try:
-                return pytz.timezone(tz_name)
+                return ZoneInfo(tz_name)
             except Exception:
                 logger.warning("Unknown timezone '%s', falling back to league TZ", tz_name)
         return GOLF_LEAGUE_TZ
@@ -221,13 +221,13 @@ class TournamentSync:
 
             # Convert milliseconds to seconds and create timezone-aware datetime
             ts_sec = ts_ms / 1000
-            return datetime.fromtimestamp(ts_sec, tz=pytz.UTC)
+            return datetime.fromtimestamp(ts_sec, tz=timezone.utc)
         except Exception as e:
             logger.warning("Unable to parse tee time timestamp '%s': %s", tee_time_ts, e)
             return None
 
     @staticmethod
-    def _parse_tee_time(tee_time_str: Optional[str], tournament_date: datetime, event_tz: pytz.timezone) -> Optional[datetime]:
+    def _parse_tee_time(tee_time_str: Optional[str], tournament_date: datetime, event_tz: ZoneInfo) -> Optional[datetime]:
         """
         Parse tee time from string (fallback method - requires timezone context).
 
@@ -241,12 +241,12 @@ class TournamentSync:
             if "T" in tee_time_str:
                 dt = datetime.fromisoformat(tee_time_str.replace("Z", "+00:00"))
                 if dt.tzinfo is None:
-                    dt = event_tz.localize(dt)
+                    dt = dt.replace(tzinfo=event_tz)
                 return dt
 
             tee_time_parsed = datetime.strptime(tee_time_str, "%I:%M%p")
             tee_datetime = datetime.combine(tournament_date.date(), tee_time_parsed.time())
-            return event_tz.localize(tee_datetime)
+            return tee_datetime.replace(tzinfo=event_tz)
         except Exception:
             logger.warning("Unable to parse tee time '%s'", tee_time_str)
             return None
@@ -274,8 +274,8 @@ class TournamentSync:
     def _derive_status(self, tournament: GolfTournament, leaderboard_data: Optional[Dict] = None) -> str:
         status_hint = (leaderboard_data or {}).get("status", "").lower()
         now = datetime.now(GOLF_LEAGUE_TZ)
-        start = tournament.start_date if tournament.start_date.tzinfo else GOLF_LEAGUE_TZ.localize(tournament.start_date)
-        end = tournament.end_date if tournament.end_date.tzinfo else GOLF_LEAGUE_TZ.localize(tournament.end_date)
+        start = tournament.start_date if tournament.start_date.tzinfo else tournament.start_date.replace(tzinfo=GOLF_LEAGUE_TZ)
+        end = tournament.end_date if tournament.end_date.tzinfo else tournament.end_date.replace(tzinfo=GOLF_LEAGUE_TZ)
 
         if "complete" in status_hint or "official" in status_hint:
             tournament.status = "complete"
@@ -296,7 +296,7 @@ class TournamentSync:
         """Set a deterministic pick deadline when tee times aren't available."""
         start_localized = tournament.start_date
         if start_localized.tzinfo is None:
-            start_localized = GOLF_LEAGUE_TZ.localize(start_localized)
+            start_localized = start_localized.replace(tzinfo=GOLF_LEAGUE_TZ)
 
         fixed_deadline = start_localized.replace(
             hour=self.fallback_deadline_hour,
@@ -366,7 +366,7 @@ class TournamentSync:
                         start_ts = int(date_inner) / 1000
                 else:
                     start_ts = int(start_val) / 1000
-                start_date = datetime.fromtimestamp(start_ts, tz=pytz.UTC)
+                start_date = datetime.fromtimestamp(start_ts, tz=timezone.utc)
                 if start_date >= SEASON_CUTOFF_DATE:
                     continue
             except (KeyError, ValueError, TypeError):

@@ -32,6 +32,7 @@ from games.worldcup.services.scoring import (
     compute_match_attribution,
     compute_team_score_events,
 )
+from games.worldcup.services.elimination import eliminated_team_ids
 # Platform tz helper. Re-exported as `format_ct` in the WC blueprint context
 # processor (see below) so existing WC templates (`{{ format_ct(dt).strftime(...) }}`)
 # keep working with the same datetime-returning contract. Platform templates
@@ -222,8 +223,10 @@ def picks():
     events_by_pick = {p.id: compute_team_score_events(p.team) for p in existing_picks}
     # Mirrors the hub Leverage Board's alive signal (services/home_context) so
     # the ROSTER and HUB tabs agree on "X of 9 alive": a pick is alive unless
-    # its team is eliminated.
-    alive_count = sum(1 for p in existing_picks if not p.team.is_eliminated)
+    # its team is out of the tournament (group exit OR knockout loss). Derived
+    # via eliminated_team_ids() — is_eliminated alone is group-stage-only.
+    eliminated_ids = eliminated_team_ids()
+    alive_count = sum(1 for p in existing_picks if p.team_id not in eliminated_ids)
 
     # Determine display mode for GET requests
     edit_mode = request.args.get('edit') == '1'
@@ -294,6 +297,7 @@ def picks():
                 show_edit_form=True,
                 has_picks=has_picks,
                 alive_count=alive_count,
+                eliminated_ids=eliminated_ids,
             )
 
         # Save picks
@@ -328,6 +332,7 @@ def picks():
         show_edit_form=show_edit_form,
         has_picks=has_picks,
         alive_count=alive_count,
+        eliminated_ids=eliminated_ids,
     )
 
 
@@ -489,6 +494,11 @@ def leaderboard():
             if mine:
                 your_team_ids = {p.team_id for p in roster_by_enrollment.get(mine.id, [])}
 
+    # Tournament-wide "out" (group exit OR knockout loss) — is_eliminated alone
+    # is group-stage-only and under-reports KO losers. Computed once; the
+    # template does set-membership only (no ORM mutation).
+    eliminated_ids = eliminated_team_ids()
+
     return render_template('worldcup/leaderboard.html',
         ranked_enrollments=ranked,
         total_players=total_players,
@@ -501,6 +511,7 @@ def leaderboard():
         trend_by_enrollment=trend_by_enrollment,
         roster_by_enrollment=roster_by_enrollment,
         your_team_ids=your_team_ids,
+        eliminated_ids=eliminated_ids,
     )
 
 
@@ -541,6 +552,10 @@ def player_detail(enrollment_id):
     # Rank + lead deltas for hero stat block. Always computed (cheap query).
     neighbors = compute_rank_neighbors(enrollment.id)
 
+    # Tournament-wide "out" for the pick rows (group exit OR knockout loss);
+    # is_eliminated alone is group-stage-only. Consumed by _pick_row.html.
+    eliminated_ids = eliminated_team_ids()
+
     return render_template('worldcup/player_detail.html',
         enrollment=enrollment,
         picks=picks,
@@ -550,6 +565,7 @@ def player_detail(enrollment_id):
         deadline_passed=deadline_passed,
         deadline_ct=deadline_ct,
         neighbors=neighbors,
+        eliminated_ids=eliminated_ids,
     )
 
 

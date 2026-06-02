@@ -225,7 +225,7 @@ def send_picks_open_email(tournament_id_or_obj) -> int:
     # Get deadline for display
     deadline = tournament.pick_deadline
     if deadline and deadline.tzinfo is None:
-        deadline = GOLF_LEAGUE_TZ.localize(deadline)
+        deadline = deadline.replace(tzinfo=GOLF_LEAGUE_TZ)
 
     deadline_str = deadline.strftime('%A, %B %d at %I:%M %p CT') if deadline else "TBD"
 
@@ -447,7 +447,7 @@ def send_admin_field_alert(tournament_id_or_obj, field_count: int) -> bool:
     # Get deadline for display
     deadline = tournament.pick_deadline
     if deadline and deadline.tzinfo is None:
-        deadline = GOLF_LEAGUE_TZ.localize(deadline)
+        deadline = deadline.replace(tzinfo=GOLF_LEAGUE_TZ)
 
     deadline_str = deadline.strftime('%A, %B %d at %I:%M %p CT') if deadline else "TBD"
 
@@ -820,7 +820,7 @@ def get_upcoming_tournament_for_reminders():
     # Make deadline timezone-aware if needed
     deadline = tournament.pick_deadline
     if deadline.tzinfo is None:
-        deadline = GOLF_LEAGUE_TZ.localize(deadline)
+        deadline = deadline.replace(tzinfo=GOLF_LEAGUE_TZ)
 
     # Check if deadline is in the future and within our reminder window
     if deadline <= now:
