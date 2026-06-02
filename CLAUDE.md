@@ -122,6 +122,7 @@ No linter configured. No pyright either — verify code with pytest.
 ### Auth, admin, enrollment
 
 - **Admin scoping:** Two-tier game admin — platform admin (`User.is_admin`) always has access to every game's admin routes. Game-specific admin (`<Game>Enrollment.is_admin`) allows delegating admin to enrolled non-platform-admins. All `<game>_admin_required` decorators must check platform admin first, enrollment admin second.
+- **Session identity is `User.auth_id`, NOT the integer PK:** `User.get_id()` returns the random, never-reused `auth_id` token (`models/user.py`), and the Flask-Login `user_loader` (`app.py`) resolves by `auth_id`. This is a **security invariant** — do NOT revert `get_id()`/`user_loader` to the integer `id`. Reason (2026-06-01 prod incident): the §14 launch wipe (`db downgrade base` → `db upgrade`) restarts the `users` id sequence, so post-wipe signups recycle old PKs; a pre-wipe remember-me cookie (still validly signed — `SECRET_KEY` unchanged) then loaded a *different* person, logging one user into another's account. A random `auth_id` makes recycled ids harmless: a stale cookie matches no `auth_id` → logged out, never cross-authenticated. Locked by `tests/test_auth_session_identity.py`. Corollary: any destructive DB reset must also rotate `SECRET_KEY` (defense in depth; see `docs/production-launch-test-script.md` §14C).
 - **Password reset tokens:** `core/auth/tokens.py` uses `itsdangerous.URLSafeTimedSerializer` with 1-hour expiry. Forgot-password route uses anti-enumeration pattern (identical flash message regardless of email existence).
 - **Game registry:** `games/registry.py` is the single source of truth — every game has one `GameRegistryEntry` (slug, status, is_featured, blueprint_index/join endpoints, `get_enrollment` + `admin_enroll` callables). Helpers `joined_games`/`available_games`/`coming_soon_games`/`featured_games`/`get_entry` drive homepage, navbar, and admin add-user page. Flip `status` from `'coming_soon'` to `'open'` at launch.
 - **Enrollment is explicit:** users reach a game's interior routes only via `/<game>/join` (guarded by `@game_must_be_open(slug)` in `games/common.py`). Interior pick routes carry `@enrollment_required(slug)`, which redirects unenrolled users to `/<game>/join?next=<current>`. **Never** create `<Game>Enrollment` rows from pick or admin paths — platform admins enroll users via `/admin/enrollments`.
@@ -240,12 +241,17 @@ Auth routes have **no URL prefix** — login is at `/login`, not `/auth/login`. 
 Auth-gated admin routes use this pattern (see `tests/test_worldcup_admin.py`):
 
 ```python
-admin_id = _make_admin_user(app)  # creates User with is_admin=True
+admin_auth_id = _make_admin_user(app)  # creates is_admin=True; returns User.auth_id
 with client.session_transaction() as sess:
-    sess['_user_id'] = str(admin_id)
+    sess['_user_id'] = admin_auth_id   # session identity is auth_id, NOT str(user.id)
     sess['_fresh'] = True
 resp = client.post('/worldcup/admin/...', data={...})
 ```
+
+**`sess['_user_id']` must be the user's `auth_id` (= `user.get_id()`), never `str(user.id)`** — the
+Flask-Login session/remember identity is the random `auth_id` token, not the integer PK (see Auth
+conventions above). A test that seeds `str(user.id)` will silently fail to authenticate (302 to
+login). When only an int id is in scope, convert via `db.session.get(User, uid).auth_id`.
 
 Testing config sets `WTF_CSRF_ENABLED=False`, so form data may include a placeholder `csrf_token`.
 

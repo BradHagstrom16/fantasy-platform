@@ -270,7 +270,7 @@ def test_picks_page_marks_knockout_loser_out(app, client, monkeypatch):
         db.session.commit()
         assert loser.is_eliminated is False
         with client.session_transaction() as sess:
-            sess['_user_id'] = str(user.id)
+            sess['_user_id'] = user.get_id()
             sess['_fresh'] = True
         resp = client.get('/worldcup/picks')
     assert resp.status_code == 200

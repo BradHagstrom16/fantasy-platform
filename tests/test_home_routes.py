@@ -88,8 +88,10 @@ def _make_match(match_number, stage, home_team, away_team, completed=False,
 
 
 def _login(client, user_id):
+    from models.user import User
+    auth_id = db.session.get(User, user_id).auth_id
     with client.session_transaction() as sess:
-        sess['_user_id'] = str(user_id)
+        sess['_user_id'] = auth_id
         sess['_fresh'] = True
 
 

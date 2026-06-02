@@ -156,8 +156,10 @@ def test_team_detail_user_owns_ribbon(client, app):
     """Authenticated user with a pick on this team sees red 'You Own This Nation' ribbon."""
     team_id = _seed_team(app)
     user_id = _seed_owner_with_pick(app, team_id, username='alice')
+    with app.app_context():
+        auth_id = db.session.get(User, user_id).auth_id
     with client.session_transaction() as sess:
-        sess['_user_id'] = str(user_id)
+        sess['_user_id'] = auth_id
         sess['_fresh'] = True
     with patch('games.worldcup.routes.TOURNAMENT_DEADLINE_UTC', PAST_DEADLINE):
         resp = client.get(f'/worldcup/team/{team_id}')
@@ -170,8 +172,10 @@ def test_team_detail_user_owns_ribbon_pre_deadline(client, app):
     (no privacy concern — it's their own pick)."""
     team_id = _seed_team(app)
     user_id = _seed_owner_with_pick(app, team_id, username='alice')
+    with app.app_context():
+        auth_id = db.session.get(User, user_id).auth_id
     with client.session_transaction() as sess:
-        sess['_user_id'] = str(user_id)
+        sess['_user_id'] = auth_id
         sess['_fresh'] = True
     with patch('games.worldcup.routes.TOURNAMENT_DEADLINE_UTC', FUTURE_DEADLINE):
         resp = client.get(f'/worldcup/team/{team_id}')

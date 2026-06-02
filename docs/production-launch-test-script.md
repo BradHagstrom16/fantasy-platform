@@ -622,7 +622,21 @@ cat .env | grep DATABASE_URL
 
 ### 14C: Wipe + reseed
 
+> 🔒 **Rotate `SECRET_KEY` as part of every destructive wipe.** `db downgrade base` → `db upgrade`
+> restarts the `users` id sequence, so post-wipe signups reuse old integer PKs. Any session/remember
+> cookie issued before the wipe is still validly signed under the old `SECRET_KEY`; rotating the key
+> invalidates every such cookie so a returning pre-wipe visitor can't be auto-logged into whoever now
+> holds the recycled id. (`User.auth_id` already makes this structurally safe, but rotating the key is
+> belt-and-suspenders and instantly logs out every stale session.)
+
 ```bash
+# Rotate the signing key and restart FIRST, so the running workers load the new
+# key and reject every stale cookie *before* the wipe recycles any user ids:
+python3 -c "import secrets; print(secrets.token_hex(32))"   # copy the output
+nano .env                                                    # replace SECRET_KEY=<new value>
+sudo systemctl restart fantasy-platform                      # workers now reject all old cookies
+
+# Then wipe + reseed:
 ENVIRONMENT=production FLASK_APP=app.py venv/bin/flask db downgrade base
 ENVIRONMENT=production FLASK_APP=app.py venv/bin/flask db upgrade
 ENVIRONMENT=production FLASK_APP=app.py venv/bin/flask worldcup init

@@ -277,7 +277,7 @@ def test_home_post_renders_expected_tribune_voice(app):
     fake_post = (TOURNAMENT_DEADLINE_UTC + timedelta(days=40)).isoformat()
     client = app.test_client()
     with client.session_transaction() as sess:
-        sess['_user_id'] = str(user.id)
+        sess['_user_id'] = user.get_id()
         sess['_fresh'] = True
     with patch.dict(os.environ, {'ENVIRONMENT': 'testing', 'WC_FAKE_NOW': fake_post}):
         resp = client.get('/worldcup/')
