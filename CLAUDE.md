@@ -58,6 +58,7 @@ FLASK_APP=app.py venv/bin/flask worldcup status          # Print tournament stat
 FLASK_APP=app.py venv/bin/flask worldcup process-match   # Enter match result (dev/testing)
 FLASK_APP=app.py venv/bin/flask worldcup simulate-group-stage  # Bulk-fill all 72 group results, deterministic 9/4/3/1 standings (--dry-run to preview); testing aid for advancement
 FLASK_APP=app.py venv/bin/flask worldcup snapshot-ranks  # Capture daily rank+score snapshot (cron; --backfill N for historical seed)
+FLASK_APP=app.py venv/bin/flask worldcup sync --mode link|scores|advancement|digest|status  # football-data.org results sync (link maps fixtures→shells; scores auto-applies finals)
 
 # Tests
 ENVIRONMENT=testing venv/bin/python -m pytest tests/      # Run all tests (env var enables WC_FAKE_NOW seam in state-detection tests)
@@ -130,6 +131,8 @@ No linter configured. No pyright either — verify code with pytest.
 - **Admin destructive actions:** Destructive admin POST handlers (e.g., `admin_match_result`, `admin_set_knockout`) branch on `request.form.get('action')` — `action=clear` is a distinct, guarded path that short-circuits before the main mutation. Keep this pattern for new admin routes that both mutate and reset.
 
 ### World Cup scoring & ranking
+
+- **Results automation:** `games/worldcup/services/sync.py` (`flask worldcup sync`, football-data.org free tier, 30-min systemd timer) auto-applies completed-match results through `process_match_result` — match data stays SSoT. Group advancement + KO bracket are **admin-confirmed** via the "Load from API" pre-fill on `/worldcup/admin/advancement`, never auto-written. Don't add a parallel results-entry or scoring path. Spec: `docs/superpowers/specs/2026-06-02-worldcup-results-automation-design.md`.
 
 - **Scoring attribution:** `games/worldcup/services/scoring.compute_team_score_events` (per-team), `compute_match_attribution` (per-match), and `points_for_pick_on_match` (per-pick-per-match) are the single source of truth for scoring breakdowns. Stored `total_score` must equal the sum of those ScoreEvents. Any new UI that surfaces scoring detail must derive from these helpers, not recompute. The per-pick helper guards participation (`pick.team_id in (home, away)`) and routes knockout points via `_apply_knockout_points()` so it stays in lockstep with the per-team helper — a parity invariant test in `tests/test_worldcup_scoring.py` locks this.
 - **Team "out of tournament" = `games/worldcup/services/elimination.eliminated_team_ids()`** (group exit OR completed-knockout loss; one N+1-free set, mirrors `team_detail._path_status()`). `WorldCupTeam.is_eliminated` is **group-stage-only** — correct only in group-scoped surfaces (e.g. `groups.html`); every "is this pick still alive" read-site (leaderboard rail, Leverage Board, `alive_count`, pick rows) routes through the helper. Locked by `tests/test_worldcup_elimination.py`.
@@ -292,6 +295,7 @@ DATABASE_URL=sqlite:///instance/fantasy_platform.db
 SITE_URL=...             # Used in password-reset and reminder email links (https://<domain> in prod)
 PLATFORM_TIMEZONE=...    # Default: America/Chicago
 ODDS_API_KEY=...         # The Odds API (CFB scores/spreads)
+FOOTBALL_DATA_API_KEY=...  # football-data.org (World Cup results sync; free tier covers WC 2026 — API-Football free does NOT)
 SLASHGOLF_API_KEY=...    # SlashGolf API (Golf leaderboards)
 EMAIL_ADDRESS=...        # SMTP auth login (prod: Brevo SMTP login, e.g. ad34xxxxx@smtp-brevo.com)
 EMAIL_PASSWORD=...       # SMTP key/password (prod: Brevo SMTP key)
