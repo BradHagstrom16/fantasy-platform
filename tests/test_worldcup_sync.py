@@ -1,4 +1,6 @@
 """Tests for the World Cup football-data.org sync service."""
+from datetime import datetime
+
 import pytest
 from unittest.mock import patch
 
@@ -60,3 +62,59 @@ def test_api_get_returns_json_on_200(app):
         assert out == {'matches': []}
         # Auth header is sent
         assert g.call_args.kwargs['headers']['X-Auth-Token'] == 'k'
+
+
+def _seed_group_pair(app):
+    """Two teams + their group match shell, kickoff matching the API sample."""
+    with app.app_context():
+        mex = _team('MEX', 'Mexico', 'A')
+        rsa = _team('RSA', 'South Africa', 'A')
+        db.session.flush()
+        m = WorldCupMatch(match_number=1, stage='group', group_letter='A',
+                          home_team_id=mex.id, away_team_id=rsa.id,
+                          kickoff_utc=datetime(2026, 6, 11, 19, 0, 0))
+        db.session.add(m)
+        db.session.commit()
+        return m.id
+
+
+_API_MATCHES_FIXTURE = {'matches': [{
+    'id': 537001, 'utcDate': '2026-06-11T19:00:00Z', 'status': 'TIMED',
+    'stage': 'GROUP_STAGE', 'group': 'Group A',
+    'homeTeam': {'id': 769, 'name': 'Mexico', 'tla': 'MEX'},
+    'awayTeam': {'id': 805, 'name': 'South Africa', 'tla': 'RSA'},
+    'score': {'winner': None, 'duration': 'REGULAR',
+              'fullTime': {'home': None, 'away': None}},
+}]}
+
+
+def test_link_fixtures_maps_ids(app):
+    from games.worldcup.services import sync
+    mid = _seed_group_pair(app)
+    with app.app_context():
+        with patch.object(sync, '_api_get', return_value=_API_MATCHES_FIXTURE):
+            report = sync.link_fixtures()
+        m = db.session.get(WorldCupMatch, mid)
+        assert m.api_fixture_id == 537001
+        assert db.session.get(WorldCupTeam, m.home_team_id).api_team_id == 769
+        assert db.session.get(WorldCupTeam, m.away_team_id).api_team_id == 805
+        assert report['fixtures_linked'] == 1
+        assert report['unmatched_fixtures'] == []
+
+
+def test_link_fixtures_reports_unmatched(app):
+    from games.worldcup.services import sync
+    _seed_group_pair(app)
+    bad = {'matches': [{
+        'id': 999, 'utcDate': '2026-06-11T19:00:00Z', 'status': 'TIMED',
+        'stage': 'GROUP_STAGE', 'group': 'Group Z',
+        'homeTeam': {'id': 1, 'name': 'Narnia', 'tla': 'NAR'},
+        'awayTeam': {'id': 2, 'name': 'Oz', 'tla': 'OZX'},
+        'score': {'winner': None, 'duration': 'REGULAR',
+                  'fullTime': {'home': None, 'away': None}},
+    }]}
+    with app.app_context():
+        with patch.object(sync, '_api_get', return_value=bad):
+            report = sync.link_fixtures()
+        assert report['fixtures_linked'] == 0
+        assert len(report['unmatched_fixtures']) == 1

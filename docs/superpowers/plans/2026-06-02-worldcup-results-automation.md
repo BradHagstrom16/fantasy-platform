@@ -295,7 +295,7 @@ git commit -m "feat(worldcup): football-data.org config + api client"
 - Modify: `games/worldcup/services/sync.py`
 - Test: `tests/test_worldcup_sync.py`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add to `tests/test_worldcup_sync.py`:
 
@@ -359,12 +359,12 @@ def test_link_fixtures_reports_unmatched(app):
         assert len(report['unmatched_fixtures']) == 1
 ```
 
-- [ ] **Step 2: Run to verify it fails**
+- [x] **Step 2: Run to verify it fails**
 
 Run: `ENVIRONMENT=testing venv/bin/python -m pytest tests/test_worldcup_sync.py -k link_fixtures -q`
 Expected: FAIL — `AttributeError: module ... has no attribute 'link_fixtures'`.
 
-- [ ] **Step 3: Implement `link_fixtures`**
+- [x] **Step 3: Implement `link_fixtures`**
 
 Append to `games/worldcup/services/sync.py`:
 
@@ -459,12 +459,12 @@ def link_fixtures() -> dict:
     }
 ```
 
-- [ ] **Step 4: Run to verify it passes**
+- [x] **Step 4: Run to verify it passes**
 
 Run: `ENVIRONMENT=testing venv/bin/python -m pytest tests/test_worldcup_sync.py -k link_fixtures -q`
 Expected: PASS (both).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add games/worldcup/services/sync.py tests/test_worldcup_sync.py

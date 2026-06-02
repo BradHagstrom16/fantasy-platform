@@ -74,3 +74,93 @@ def _fifa_for_tla(tla: str | None) -> str | None:
     if not tla:
         return None
     return TEAM_TLA_OVERRIDES.get(tla, tla)
+
+
+def _to_naive_utc(dt):
+    """Normalize a datetime to naive-UTC (minute precision) for kickoff comparison."""
+    if dt is None:
+        return None
+    if dt.tzinfo is not None:
+        from datetime import timezone
+        dt = dt.astimezone(timezone.utc).replace(tzinfo=None)
+    return dt.replace(microsecond=0, second=0)
+
+
+def _parse_api_kickoff(utc_date: str):
+    """'2026-06-11T19:00:00Z' -> naive-UTC datetime (minute precision)."""
+    from datetime import datetime
+    dt = datetime.fromisoformat(utc_date.replace('Z', '+00:00'))
+    return _to_naive_utc(dt)
+
+
+def link_fixtures() -> dict:
+    """Idempotently link our 104 shells + 48 teams to football-data.org ids.
+
+    Verify-then-trust: never guesses silently. Returns a report listing what was
+    linked and every fixture/team that could NOT be matched, for manual review.
+    Re-runnable (skips rows already linked).
+    """
+    data = _api_get(f'competitions/{COMPETITION_CODE}/matches')
+    api_matches = data.get('matches', [])
+
+    teams_by_fifa = {t.fifa_code: t for t in WorldCupTeam.query.all()}
+    our_matches = WorldCupMatch.query.all()
+
+    # Index our group shells by the unordered team-id pair; KO shells by (stage, kickoff).
+    group_by_pair: dict[frozenset, WorldCupMatch] = {}
+    ko_by_stage_kick: dict[tuple, WorldCupMatch] = {}
+    for m in our_matches:
+        if m.stage == 'group' and m.home_team_id and m.away_team_id:
+            group_by_pair[frozenset((m.home_team_id, m.away_team_id))] = m
+        elif m.stage != 'group':
+            ko_by_stage_kick[(m.stage, _to_naive_utc(m.kickoff_utc))] = m
+
+    fixtures_linked = 0
+    teams_linked = 0
+    unmatched_fixtures = []
+    unmapped_teams = []
+
+    for f in api_matches:
+        our_stage = STAGE_MAP.get(f.get('stage'))
+        if our_stage is None:
+            unmatched_fixtures.append({'id': f.get('id'), 'reason': f"unknown stage {f.get('stage')}"})
+            continue
+
+        # Map teams (group stage has them; KO may be null pre-resolution).
+        for side in ('homeTeam', 'awayTeam'):
+            api_team = f.get(side) or {}
+            fifa = _fifa_for_tla(api_team.get('tla'))
+            team = teams_by_fifa.get(fifa) if fifa else None
+            if team and api_team.get('id') and team.api_team_id != api_team['id']:
+                team.api_team_id = api_team['id']
+                teams_linked += 1
+            elif api_team.get('tla') and not team:
+                unmapped_teams.append({'tla': api_team.get('tla'), 'name': api_team.get('name')})
+
+        # Find our shell.
+        shell = None
+        if our_stage == 'group':
+            home = teams_by_fifa.get(_fifa_for_tla((f.get('homeTeam') or {}).get('tla')))
+            away = teams_by_fifa.get(_fifa_for_tla((f.get('awayTeam') or {}).get('tla')))
+            if home and away:
+                shell = group_by_pair.get(frozenset((home.id, away.id)))
+        else:
+            shell = ko_by_stage_kick.get((our_stage, _parse_api_kickoff(f['utcDate'])))
+
+        if not shell:
+            unmatched_fixtures.append({'id': f.get('id'), 'stage': f.get('stage'),
+                                       'utcDate': f.get('utcDate')})
+            continue
+
+        if shell.api_fixture_id != f['id']:
+            shell.api_fixture_id = f['id']
+            fixtures_linked += 1
+
+    db.session.commit()
+    return {
+        'fixtures_linked': fixtures_linked,
+        'teams_linked': teams_linked,
+        'unmatched_fixtures': unmatched_fixtures,
+        'unmapped_teams': unmapped_teams,
+        'api_fixture_count': len(api_matches),
+    }
