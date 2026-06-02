@@ -1,4 +1,4 @@
-# Runs the World Cup daily results digest once a day (22:30 server time).
+# Runs the World Cup daily results digest once a day (22:30 America/Chicago, pinned below).
 [Unit]
 Description=Send World Cup daily results digest
 

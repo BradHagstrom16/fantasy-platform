@@ -159,13 +159,15 @@ A small `_send_admin_email(subject, body)` mirroring CFB's helper (to
 
 ---
 
-## 3. CLI — `flask worldcup sync --mode {link|scores|advancement|status}`
+## 3. CLI — `flask worldcup sync --mode {link|scores|advancement|digest|status}`
 
 In `games/worldcup/cli.py`, mirroring `flask cfb sync --mode ...`:
 - `link` → `link_fixtures()` (one-time, prints mapping report).
-- `scores` → `sync_scores()` (the timer's main job).
-- `advancement` → run detection helpers + send the advancement-ready email if
-  triggered (never writes).
+- `scores` → `run_scores()` (wraps `sync_scores()`; the 30-min timer's main job).
+- `advancement` → `run_advancement_check()` — run detection helpers + send the
+  advancement-ready email if triggered (never writes).
+- `digest` → `run_digest()` — email the day's finalized results (used by the
+  daily `worldcup-digest.service`/`.timer`; never writes match state).
 - `status` → print link coverage (matches/teams linked), last-sync info,
   completed-match count, API reachability.
 
