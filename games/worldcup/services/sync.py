@@ -12,6 +12,7 @@ Endpoints used (one request each):
 Auth: header X-Auth-Token. Free tier: 10 req/min, no daily cap.
 """
 import logging
+import os
 
 import requests
 from flask import current_app
@@ -324,3 +325,78 @@ def _send_admin_email(subject: str, body: str) -> bool:
         logger.warning('EMAIL_ADDRESS not configured; skipping admin email.')
         return False
     return send_platform_email(to_addr, f'[World Cup] {subject}', body)
+
+
+def _notify_once(signature: str) -> bool:
+    """Return True the first time we see `signature`; suppress repeats.
+
+    Schema-free de-dup via a marker file in the instance dir. A new pending-state
+    signature (e.g. group stage done, then a KO round done) re-arms the notice.
+    """
+    marker = os.path.join(current_app.instance_path, '.wc_sync_notify')
+    try:
+        with open(marker) as fh:
+            last = fh.read().strip()
+    except OSError:
+        last = ''
+    if last == signature:
+        return False
+    os.makedirs(current_app.instance_path, exist_ok=True)
+    with open(marker, 'w') as fh:
+        fh.write(signature)
+    return True
+
+
+def run_scores() -> dict:
+    """Timer entry point (every 30 min): apply finals; email only on error."""
+    try:
+        result = sync_scores()
+    except SyncError as exc:
+        _send_admin_email('Score sync failed', f'football-data.org sync error:\n{exc}')
+        return {'status': 'error', 'details': str(exc)}
+    if result['applied_count']:
+        logger.info('worldcup sync applied %s result(s)', result['applied_count'])
+    return {'status': 'ok', **result}
+
+
+def run_advancement_check() -> dict:
+    """Timer entry point (hourly): notify (once per episode) when admin action is due."""
+    group_due = group_stage_complete_and_unconfirmed()
+    ko_due = ko_round_complete_and_next_empty()
+    if not (group_due or ko_due):
+        return {'status': 'idle'}
+    signature = f'group={group_due};ko={ko_due}'
+    if not _notify_once(signature):
+        return {'status': 'already_notified'}
+    lines = []
+    if group_due:
+        lines.append('Group stage is complete — confirm advancement at '
+                     '/worldcup/admin/advancement (use "Load from API").')
+    if ko_due:
+        lines.append('A knockout round is complete — set the next round\'s teams at '
+                     'the admin bracket pages (use "Load from API").')
+    _send_admin_email('Advancement ready to confirm', '\n'.join(lines))
+    return {'status': 'notified', 'group_due': group_due, 'ko_due': ko_due}
+
+
+def run_digest() -> dict:
+    """Daily entry point: email a summary of matches finalized today (CT)."""
+    from datetime import timezone
+    from games.worldcup.services.state import now_utc
+    from games.worldcup.constants import WORLDCUP_TZ
+    today = now_utc().astimezone(WORLDCUP_TZ).date()
+
+    completed = WorldCupMatch.query.filter_by(is_completed=True).all()
+    todays = [
+        m for m in completed
+        if m.updated_at and m.updated_at.replace(tzinfo=timezone.utc).astimezone(WORLDCUP_TZ).date() == today
+    ]
+    if not todays:
+        return {'status': 'no_results'}
+    lines = [f"Results finalized {today:%b %d}:"]
+    for m in sorted(todays, key=lambda x: x.match_number):
+        hn = m.home_team.display_name if m.home_team else '?'
+        an = m.away_team.display_name if m.away_team else '?'
+        lines.append(f'  #{m.match_number} [{m.stage}] {hn} {m.home_score}-{m.away_score} {an}')
+    _send_admin_email('Daily results digest', '\n'.join(lines))
+    return {'status': 'sent', 'count': len(todays)}

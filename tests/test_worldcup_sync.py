@@ -279,3 +279,27 @@ def test_send_admin_email_uses_platform_helper(app):
             sync._send_admin_email('Subject', 'Body')
         assert send.call_args.args[0] == 'commish@test.com'
         assert '[World Cup]' in send.call_args.args[1]
+
+
+def test_run_scores_emails_on_error(app):
+    from games.worldcup.services import sync
+    with app.app_context():
+        app.config['EMAIL_ADDRESS'] = 'commish@test.com'
+        with patch.object(sync, 'sync_scores', side_effect=sync.SyncError('down')), \
+             patch.object(sync, '_send_admin_email', return_value=True) as send:
+            out = sync.run_scores()
+        assert out['status'] == 'error'
+        assert send.called
+
+
+def test_run_advancement_check_notifies_once_per_episode(app, tmp_path):
+    from games.worldcup.services import sync
+    with app.app_context():
+        app.config['EMAIL_ADDRESS'] = 'commish@test.com'
+        app.instance_path = str(tmp_path)
+        with patch.object(sync, 'group_stage_complete_and_unconfirmed', return_value=True), \
+             patch.object(sync, 'ko_round_complete_and_next_empty', return_value=False), \
+             patch.object(sync, '_send_admin_email', return_value=True) as send:
+            sync.run_advancement_check()   # fires
+            sync.run_advancement_check()   # same episode -> suppressed
+        assert send.call_count == 1

@@ -910,7 +910,7 @@ git commit -m "feat(worldcup): advancement detection + admin email helper"
 
 These wrap the primitives with notifications + a schema-free per-episode notify guard (a marker file in the instance dir, so repeated 30-min runs don't spam).
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add to `tests/test_worldcup_sync.py`:
 
@@ -939,12 +939,12 @@ def test_run_advancement_check_notifies_once_per_episode(app, tmp_path):
         assert send.call_count == 1
 ```
 
-- [ ] **Step 2: Run to verify it fails**
+- [x] **Step 2: Run to verify it fails**
 
 Run: `ENVIRONMENT=testing venv/bin/python -m pytest tests/test_worldcup_sync.py -k "run_scores or advancement_check" -q`
 Expected: FAIL — attributes missing.
 
-- [ ] **Step 3: Implement orchestrators**
+- [x] **Step 3: Implement orchestrators**
 
 Append to `games/worldcup/services/sync.py`:
 
@@ -1027,17 +1027,17 @@ def run_digest() -> dict:
     return {'status': 'sent', 'count': len(todays)}
 ```
 
-- [ ] **Step 4: Run to verify it passes**
+- [x] **Step 4: Run to verify it passes**
 
 Run: `ENVIRONMENT=testing venv/bin/python -m pytest tests/test_worldcup_sync.py -k "run_scores or advancement_check" -q`
 Expected: PASS.
 
-- [ ] **Step 5: Run the whole sync suite**
+- [x] **Step 5: Run the whole sync suite**
 
 Run: `ENVIRONMENT=testing venv/bin/python -m pytest tests/test_worldcup_sync.py -q`
 Expected: PASS (all).
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add games/worldcup/services/sync.py tests/test_worldcup_sync.py
