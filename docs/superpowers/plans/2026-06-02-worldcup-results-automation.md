@@ -53,7 +53,7 @@
 - Create: `migrations/versions/<rev>_worldcup_api_ids.py` (generated)
 - Test: `tests/test_worldcup_sync.py` (new)
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `tests/test_worldcup_sync.py`:
 
@@ -97,12 +97,12 @@ def test_match_and_team_have_api_id_columns(app):
         assert WorldCupMatch.query.filter_by(match_number=1).first().api_fixture_id == 537001
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `ENVIRONMENT=testing venv/bin/python -m pytest tests/test_worldcup_sync.py::test_match_and_team_have_api_id_columns -q`
 Expected: FAIL — `TypeError: 'api_team_id' is an invalid keyword argument` (column doesn't exist).
 
-- [ ] **Step 3: Add the columns**
+- [x] **Step 3: Add the columns**
 
 In `games/worldcup/models.py`, in `WorldCupTeam` after `multiplied_points` (line ~72):
 
@@ -118,18 +118,18 @@ In `WorldCupMatch` after `is_completed` (line ~131):
     api_fixture_id = db.Column(db.Integer, nullable=True, index=True)
 ```
 
-- [ ] **Step 4: Generate + review the migration**
+- [x] **Step 4: Generate + review the migration**
 
 Run: `ENVIRONMENT=development FLASK_APP=app.py venv/bin/flask db migrate -m "worldcup api id columns"`
 Then **open the generated file in `migrations/versions/`** and confirm it only `add_column`s `worldcup_team.api_team_id` and `worldcup_match.api_fixture_id` (plus the index) — no unrelated drops. Per CLAUDE.md, review before upgrade.
 
-- [ ] **Step 5: Apply + test**
+- [x] **Step 5: Apply + test**
 
 Run: `ENVIRONMENT=development FLASK_APP=app.py venv/bin/flask db upgrade`
 Then: `ENVIRONMENT=testing venv/bin/python -m pytest tests/test_worldcup_sync.py::test_match_and_team_have_api_id_columns -q`
 Expected: PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add games/worldcup/models.py migrations/versions/ tests/test_worldcup_sync.py
@@ -145,7 +145,7 @@ git commit -m "feat(worldcup): add football-data.org api id columns"
 - Create: `games/worldcup/services/sync.py`
 - Test: `tests/test_worldcup_sync.py`
 
-- [ ] **Step 1: Add the config line**
+- [x] **Step 1: Add the config line**
 
 In `config.py` base `Config`, next to `ODDS_API_KEY` (line ~49):
 
@@ -155,7 +155,7 @@ In `config.py` base `Config`, next to `ODDS_API_KEY` (line ~49):
 
 > Per CLAUDE.md config-plumbing rule: a `current_app.config.get('FOOTBALL_DATA_API_KEY')` read is silently `None` without this line.
 
-- [ ] **Step 2: Write the failing test**
+- [x] **Step 2: Write the failing test**
 
 Add to `tests/test_worldcup_sync.py`:
 
@@ -185,12 +185,12 @@ def test_api_get_returns_json_on_200(app):
         assert g.call_args.kwargs['headers']['X-Auth-Token'] == 'k'
 ```
 
-- [ ] **Step 3: Run to verify it fails**
+- [x] **Step 3: Run to verify it fails**
 
 Run: `ENVIRONMENT=testing venv/bin/python -m pytest tests/test_worldcup_sync.py -k api_get -q`
 Expected: FAIL — `ModuleNotFoundError: games.worldcup.services.sync`.
 
-- [ ] **Step 4: Create the service skeleton + client**
+- [x] **Step 4: Create the service skeleton + client**
 
 Create `games/worldcup/services/sync.py`:
 
@@ -275,12 +275,12 @@ def _fifa_for_tla(tla: str | None) -> str | None:
     return TEAM_TLA_OVERRIDES.get(tla, tla)
 ```
 
-- [ ] **Step 5: Run to verify it passes**
+- [x] **Step 5: Run to verify it passes**
 
 Run: `ENVIRONMENT=testing venv/bin/python -m pytest tests/test_worldcup_sync.py -k api_get -q`
 Expected: PASS (both).
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add config.py games/worldcup/services/sync.py tests/test_worldcup_sync.py

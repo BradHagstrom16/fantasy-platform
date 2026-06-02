@@ -35,3 +35,28 @@ def test_match_and_team_have_api_id_columns(app):
         db.session.commit()
         assert db.session.get(WorldCupTeam, t.id).api_team_id == 769
         assert WorldCupMatch.query.filter_by(match_number=1).first().api_fixture_id == 537001
+
+
+def test_api_get_raises_without_key(app):
+    from games.worldcup.services.sync import _api_get, SyncError
+    with app.app_context():
+        app.config['FOOTBALL_DATA_API_KEY'] = ''
+        with pytest.raises(SyncError):
+            _api_get('competitions/WC/matches')
+
+
+def test_api_get_returns_json_on_200(app):
+    from games.worldcup.services import sync
+    with app.app_context():
+        app.config['FOOTBALL_DATA_API_KEY'] = 'k'
+
+        class _Resp:
+            status_code = 200
+            headers = {'X-Requests-Available-Minute': '9'}
+            def json(self): return {'matches': []}
+
+        with patch.object(sync.requests, 'get', return_value=_Resp()) as g:
+            out = sync._api_get('competitions/WC/matches')
+        assert out == {'matches': []}
+        # Auth header is sent
+        assert g.call_args.kwargs['headers']['X-Auth-Token'] == 'k'
