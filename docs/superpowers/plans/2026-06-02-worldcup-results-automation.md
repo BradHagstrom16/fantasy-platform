@@ -1403,17 +1403,17 @@ git commit -m "feat(worldcup): systemd sync timers + runbook"
 
 ### Task 11: Full-suite verification
 
-- [ ] **Step 1: Run the entire suite**
+- [x] **Step 1: Run the entire suite**
 
 Run: `ENVIRONMENT=testing venv/bin/python -m pytest tests/ -q`
 Expected: all green (~987 prior + new sync/admin-sync tests).
 
-- [ ] **Step 2: Confirm no scoring regressions**
+- [x] **Step 2: Confirm no scoring regressions**
 
 Run: `ENVIRONMENT=testing venv/bin/python -m pytest tests/test_worldcup_scoring.py tests/test_worldcup_elimination.py -q`
 Expected: PASS — the scoring engine is untouched; this confirms the new feed path didn't disturb it.
 
-- [ ] **Step 3: Final commit (if any cleanup)**
+- [x] **Step 3: Final commit (if any cleanup)**
 
 ```bash
 git add -A
