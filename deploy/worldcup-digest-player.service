@@ -1,0 +1,23 @@
+# World Cup player daily digest — email each enrolled player whose picks
+# scored the previous CT calendar day. Fired once daily at 5am CT by
+# worldcup-digest-player.timer. The "yesterday" window is computed in
+# WORLDCUP_TZ inside the command, so content is correct regardless of
+# the server's system clock.
+
+[Unit]
+Description=World Cup player daily digest emails
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=deploy
+Group=deploy
+WorkingDirectory=/home/deploy/fantasy-platform
+EnvironmentFile=/home/deploy/fantasy-platform/.env
+Environment=ENVIRONMENT=production
+Environment=FLASK_APP=app.py
+NoNewPrivileges=true
+PrivateTmp=true
+TimeoutStartSec=5m
+ExecStart=/home/deploy/fantasy-platform/venv/bin/flask worldcup send-digest

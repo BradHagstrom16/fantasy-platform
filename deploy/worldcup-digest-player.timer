@@ -1,0 +1,14 @@
+# Runs the WC player daily digest once a day at 05:00 America/Chicago.
+[Unit]
+Description=Send World Cup player daily digest emails
+
+[Timer]
+# Timezone is specified INLINE in OnCalendar (systemd v240+); there is no
+# separate TimeZone= directive for timer units. 5am CT covers all matches
+# from the previous CT calendar day with no edge cases — including 9pm CT
+# kickoffs that finish after midnight UTC.
+OnCalendar=*-*-* 05:00:00 America/Chicago
+Persistent=true
+
+[Install]
+WantedBy=timers.target
