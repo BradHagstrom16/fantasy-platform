@@ -1,12 +1,12 @@
-# Runs the World Cup daily results digest once a day (22:30 America/Chicago, pinned below).
+# Runs the World Cup daily results digest once a day at 22:30 America/Chicago.
 [Unit]
 Description=Send World Cup daily results digest
 
 [Timer]
-OnCalendar=*-*-* 22:30:00
-# Pin to CT so the firing time matches run_digest's WORLDCUP_TZ "today" window
-# regardless of the server clock.
-TimeZone=America/Chicago
+# Timezone is specified INLINE in OnCalendar (systemd v240+); there is no
+# separate TimeZone= directive for timer units. Pinning to CT keeps the firing
+# aligned with run_digest's WORLDCUP_TZ "today" window regardless of server clock.
+OnCalendar=*-*-* 22:30:00 America/Chicago
 Persistent=true
 
 [Install]
