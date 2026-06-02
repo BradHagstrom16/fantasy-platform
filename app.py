@@ -7,7 +7,8 @@ import logging
 import os
 
 import click
-from flask import Flask, render_template
+from flask import Flask, render_template, request
+from flask_login import current_user
 from sqlalchemy import select
 from werkzeug.middleware.proxy_fix import ProxyFix
 
@@ -87,6 +88,19 @@ def create_app(config_name=None):
     # for the legacy context-processor callable that re-exports it.
     from utils.time import format_ct as _format_ct
     app.jinja_env.filters['ct'] = _format_ct
+
+    # Defense in depth: an authenticated response is per-user and must never be
+    # written to a shared cache. Flask sets Vary: Cookie but a "Cache Everything"
+    # edge rule (e.g. Cloudflare) ignores Vary and could serve one logged-in
+    # user's rendered page to another. `no-store` forbids any cache from keeping
+    # it. Scoped to authenticated requests so public/anonymous pages stay
+    # CDN-cacheable; static is served by nginx in prod and skipped here so dev
+    # asset caching is unaffected.
+    @app.after_request
+    def set_private_cache_on_authenticated(response):
+        if current_user.is_authenticated and request.endpoint != 'static':
+            response.headers['Cache-Control'] = 'private, no-store'
+        return response
 
     # Error handlers
     @app.errorhandler(404)
