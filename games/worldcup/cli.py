@@ -28,6 +28,8 @@ from games.worldcup.models import (
 
 worldcup_cli = AppGroup('worldcup', help="World Cup Fantasy Pool management commands.")
 
+SYNC_MODES = ('link', 'scores', 'advancement', 'digest', 'status')
+
 
 @worldcup_cli.command('seed-teams')
 def seed_teams_cmd():
@@ -397,6 +399,45 @@ def snapshot_ranks(backfill: int):
 
         db.session.commit()
         click.echo(f'Snapshot for {target_date} — {rows_added} new rows')
+
+
+@worldcup_cli.command('sync')
+@click.option('--mode', required=True, type=click.Choice(SYNC_MODES),
+              help='Sync mode to run.')
+def sync_cmd(mode):
+    """football-data.org automation — run by mode (see deploy/ timers)."""
+    from games.worldcup.services import sync as wc_sync
+
+    if mode == 'link':
+        report = wc_sync.link_fixtures()
+        click.echo(f"Fixtures linked: {report['fixtures_linked']} "
+                   f"(API has {report['api_fixture_count']})")
+        click.echo(f"Teams linked:    {report['teams_linked']}")
+        if report['unmatched_fixtures']:
+            click.echo(f"\n! UNMATCHED FIXTURES ({len(report['unmatched_fixtures'])}) — review:")
+            for u in report['unmatched_fixtures']:
+                click.echo(f"   {u}")
+        if report['unmapped_teams']:
+            click.echo(f"\n! UNMAPPED TEAMS ({len(report['unmapped_teams'])}) — add to TEAM_TLA_OVERRIDES:")
+            for u in report['unmapped_teams']:
+                click.echo(f"   {u}")
+    elif mode == 'scores':
+        result = wc_sync.run_scores()
+        click.echo(f"[scores] {result.get('status')}: applied "
+                   f"{result.get('applied_count', 0)}, "
+                   f"skipped-unassigned {result.get('skipped_unassigned', 0)}")
+    elif mode == 'advancement':
+        result = wc_sync.run_advancement_check()
+        click.echo(f"[advancement] {result.get('status')}")
+    elif mode == 'digest':
+        result = wc_sync.run_digest()
+        click.echo(f"[digest] {result.get('status')} ({result.get('count', 0)} results)")
+    elif mode == 'status':
+        linked = WorldCupMatch.query.filter(WorldCupMatch.api_fixture_id.isnot(None)).count()
+        total = WorldCupMatch.query.count()
+        completed = WorldCupMatch.query.filter_by(is_completed=True).count()
+        click.echo(f"Linked fixtures: {linked}/{total}")
+        click.echo(f"Completed:       {completed}/{total}")
 
 
 def register_worldcup_cli(app):

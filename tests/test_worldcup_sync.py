@@ -303,3 +303,21 @@ def test_run_advancement_check_notifies_once_per_episode(app, tmp_path):
             sync.run_advancement_check()   # fires
             sync.run_advancement_check()   # same episode -> suppressed
         assert send.call_count == 1
+
+
+def test_cli_sync_link_invokes_service(app):
+    from games.worldcup.services import sync
+    runner = app.test_cli_runner()
+    with patch.object(sync, 'link_fixtures',
+                      return_value={'fixtures_linked': 104, 'teams_linked': 48,
+                                    'unmatched_fixtures': [], 'unmapped_teams': [],
+                                    'api_fixture_count': 104}) as link:
+        result = runner.invoke(args=['worldcup', 'sync', '--mode', 'link'])
+    assert link.called
+    assert '104' in result.output
+
+
+def test_cli_sync_rejects_bad_mode(app):
+    runner = app.test_cli_runner()
+    result = runner.invoke(args=['worldcup', 'sync', '--mode', 'bogus'])
+    assert result.exit_code != 0

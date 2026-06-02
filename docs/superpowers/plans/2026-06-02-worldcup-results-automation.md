@@ -1052,7 +1052,7 @@ git commit -m "feat(worldcup): sync orchestrators with notifications"
 - Modify: `games/worldcup/cli.py`
 - Test: `tests/test_worldcup_sync.py`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add to `tests/test_worldcup_sync.py`:
 
@@ -1075,12 +1075,12 @@ def test_cli_sync_rejects_bad_mode(app):
     assert result.exit_code != 0
 ```
 
-- [ ] **Step 2: Run to verify it fails**
+- [x] **Step 2: Run to verify it fails**
 
 Run: `ENVIRONMENT=testing venv/bin/python -m pytest tests/test_worldcup_sync.py -k cli_sync -q`
 Expected: FAIL — no `sync` command.
 
-- [ ] **Step 3: Add the CLI command**
+- [x] **Step 3: Add the CLI command**
 
 In `games/worldcup/cli.py`, add after the imports:
 
@@ -1130,12 +1130,12 @@ def sync_cmd(mode):
         click.echo(f"Completed:       {completed}/{total}")
 ```
 
-- [ ] **Step 4: Run to verify it passes**
+- [x] **Step 4: Run to verify it passes**
 
 Run: `ENVIRONMENT=testing venv/bin/python -m pytest tests/test_worldcup_sync.py -k cli_sync -q`
 Expected: PASS (both).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add games/worldcup/cli.py tests/test_worldcup_sync.py
