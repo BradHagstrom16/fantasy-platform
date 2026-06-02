@@ -227,7 +227,14 @@ document.getElementById('wc-load-api')?.addEventListener('click', async function
             if (!form) return;
             check(form, 'group_winner', g.group_winner);
             check(form, 'runner_up', g.runner_up);
-            check(form, 'best_third', g.best_third);
+            if (g.best_third) {
+                check(form, 'best_third', g.best_third);
+            } else {
+                // No best third advanced — select the explicit "None" radio so a
+                // stale prior selection doesn't linger.
+                const none = document.getElementById('third_' + g.letter + '_none');
+                if (none) { none.checked = true; none.dispatchEvent(new Event('change', {bubbles: true})); }
+            }
         });
     } catch (e) {
         alert('Could not load proposal from API.');

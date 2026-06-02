@@ -1435,4 +1435,3 @@ git commit -m "test(worldcup): full-suite green with sync automation"
 - **Orientation assumption (knockout):** `sync_scores` resolves the winner by `tla` (orientation-independent) but assigns `home_score`/`away_score` as the API reports them. Because the admin confirms the bracket *from the API proposal* (same orientation), our shell's home/away matches the API — keep that invariant when wiring the set-knockout pre-fill.
 - **`kickoff_utc` matching:** KO shells are matched by `(stage, kickoff minute-precision UTC)`. If `link --mode` reports KO fixtures unmatched, compare our `match_schedule.py` kickoff times to the API `utcDate`s and reconcile before the tournament — this is the one mapping that can't fall back to team identity (KO teams are TBD).
 - **TDD discipline:** every task is test-first. Do not batch-write implementation ahead of its test.
-```

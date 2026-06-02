@@ -125,6 +125,8 @@ def link_fixtures() -> dict:
     teams_linked = 0
     unmatched_fixtures = []
     unmapped_teams = []
+    team_conflicts = []
+    fixture_conflicts = []
 
     for f in api_matches:
         our_stage = STAGE_MAP.get(f.get('stage'))
@@ -133,13 +135,20 @@ def link_fixtures() -> dict:
             continue
 
         # Map teams (group stage has them; KO may be null pre-resolution).
+        # Fill only an empty column; a non-null id that differs is a conflict to
+        # review, never a silent overwrite.
         for side in ('homeTeam', 'awayTeam'):
             api_team = f.get(side) or {}
             fifa = _fifa_for_tla(api_team.get('tla'))
             team = teams_by_fifa.get(fifa) if fifa else None
-            if team and api_team.get('id') and team.api_team_id != api_team['id']:
-                team.api_team_id = api_team['id']
-                teams_linked += 1
+            if team and api_team.get('id'):
+                if team.api_team_id is None:
+                    team.api_team_id = api_team['id']
+                    teams_linked += 1
+                elif team.api_team_id != api_team['id']:
+                    team_conflicts.append({'fifa': team.fifa_code,
+                                           'stored': team.api_team_id,
+                                           'incoming': api_team['id']})
             elif api_team.get('tla') and not team:
                 unmapped_teams.append({'tla': api_team.get('tla'), 'name': api_team.get('name')})
 
@@ -158,9 +167,13 @@ def link_fixtures() -> dict:
                                        'utcDate': f.get('utcDate')})
             continue
 
-        if shell.api_fixture_id != f['id']:
+        if shell.api_fixture_id is None:
             shell.api_fixture_id = f['id']
             fixtures_linked += 1
+        elif shell.api_fixture_id != f['id']:
+            fixture_conflicts.append({'match_number': shell.match_number,
+                                      'stored': shell.api_fixture_id,
+                                      'incoming': f['id']})
 
     db.session.commit()
     return {
@@ -168,6 +181,8 @@ def link_fixtures() -> dict:
         'teams_linked': teams_linked,
         'unmatched_fixtures': unmatched_fixtures,
         'unmapped_teams': unmapped_teams,
+        'team_conflicts': team_conflicts,
+        'fixture_conflicts': fixture_conflicts,
         'api_fixture_count': len(api_matches),
     }
 
@@ -186,6 +201,7 @@ def sync_scores() -> dict:
     }
 
     applied = []
+    failed = []
     skipped_unassigned = 0
     for f in data.get('matches', []):
         if f.get('status') not in FINISHED_STATUSES:
@@ -216,13 +232,17 @@ def sync_scores() -> dict:
                 extra_time=duration in ('EXTRA_TIME', 'PENALTY_SHOOTOUT'),
                 penalties=duration == 'PENALTY_SHOOTOUT',
             )
-        if 'error' not in res:
+        if 'error' in res:
+            failed.append({'match_number': shell.match_number, 'match_id': shell.id,
+                           'error': res['error']})
+        else:
             applied.append({'match_number': shell.match_number, 'result': res.get('result')})
 
     return {
         'applied_count': len(applied),
         'applied': applied,
         'skipped_unassigned': skipped_unassigned,
+        'failed': failed,
     }
 
 
@@ -299,10 +319,16 @@ def group_stage_complete_and_unconfirmed() -> bool:
     return unconfirmed > 0
 
 
-def ko_round_complete_and_next_empty() -> bool:
-    """True when a knockout round is fully played but the next round's shells are empty."""
+def ko_round_pending() -> str | None:
+    """Return the completed knockout round whose downstream shells are still empty.
+
+    Returns the source-stage code (e.g. 'R32', 'SF') of a round that is fully
+    played but whose next round isn't populated yet, else None. SF is special:
+    its losers play the third-place match, so BOTH 'final' and 'third_place'
+    must be filled before SF counts as resolved.
+    """
     order = ['R32', 'R16', 'QF', 'SF']
-    nxt = {'R32': 'R16', 'R16': 'QF', 'QF': 'SF', 'SF': 'final'}
+    nxt = {'R32': 'R16', 'R16': 'QF', 'QF': 'SF'}
     for stage in order:
         total = WorldCupMatch.query.filter_by(stage=stage).count()
         if total == 0:
@@ -310,16 +336,17 @@ def ko_round_complete_and_next_empty() -> bool:
         done = WorldCupMatch.query.filter_by(stage=stage, is_completed=True).count()
         if done < total:
             continue
-        next_stage = nxt[stage]
-        empty = (
-            WorldCupMatch.query
-            .filter_by(stage=next_stage)
-            .filter((WorldCupMatch.home_team_id.is_(None)) | (WorldCupMatch.away_team_id.is_(None)))
-            .count()
-        )
-        if empty > 0:
-            return True
-    return False
+        downstream = ['final', 'third_place'] if stage == 'SF' else [nxt[stage]]
+        for ds in downstream:
+            empty = (
+                WorldCupMatch.query
+                .filter_by(stage=ds)
+                .filter((WorldCupMatch.home_team_id.is_(None)) | (WorldCupMatch.away_team_id.is_(None)))
+                .count()
+            )
+            if empty > 0:
+                return stage
+    return None
 
 
 def _send_admin_email(subject: str, body: str) -> bool:
@@ -360,27 +387,39 @@ def run_scores() -> dict:
         return {'status': 'error', 'details': str(exc)}
     if result['applied_count']:
         logger.info('worldcup sync applied %s result(s)', result['applied_count'])
+    if result['failed']:
+        body = '\n'.join(f"#{f['match_number']}: {f['error']}" for f in result['failed'])
+        _send_admin_email('Score sync: some results failed to apply', body)
+        return {'status': 'error', **result}
     return {'status': 'ok', **result}
 
 
 def run_advancement_check() -> dict:
     """Timer entry point (hourly): notify (once per episode) when admin action is due."""
     group_due = group_stage_complete_and_unconfirmed()
-    ko_due = ko_round_complete_and_next_empty()
-    if not (group_due or ko_due):
+    ko_stage = ko_round_pending()
+    if not (group_due or ko_stage):
         return {'status': 'idle'}
-    signature = f'group={group_due};ko={ko_due}'
+    # Signature uniquely identifies this pending episode so each distinct round
+    # (group, R32, R16, …) gets its own one-time notification rather than being
+    # collapsed into a single 'knockout pending' state.
+    parts = []
+    if group_due:
+        parts.append('group')
+    if ko_stage:
+        parts.append(f'ko:{ko_stage}')
+    signature = ';'.join(parts)
     if not _notify_once(signature):
         return {'status': 'already_notified'}
     lines = []
     if group_due:
         lines.append('Group stage is complete — confirm advancement at '
                      '/worldcup/admin/advancement (use "Load from API").')
-    if ko_due:
-        lines.append('A knockout round is complete — set the next round\'s teams at '
+    if ko_stage:
+        lines.append(f'The {ko_stage} round is complete — set the next round\'s teams at '
                      'the admin bracket pages (use "Load from API").')
     _send_admin_email('Advancement ready to confirm', '\n'.join(lines))
-    return {'status': 'notified', 'group_due': group_due, 'ko_due': ko_due}
+    return {'status': 'notified', 'group_due': group_due, 'ko_stage': ko_stage}
 
 
 def run_digest() -> dict:

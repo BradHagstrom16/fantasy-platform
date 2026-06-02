@@ -298,11 +298,67 @@ def test_run_advancement_check_notifies_once_per_episode(app, tmp_path):
         app.config['EMAIL_ADDRESS'] = 'commish@test.com'
         app.instance_path = str(tmp_path)
         with patch.object(sync, 'group_stage_complete_and_unconfirmed', return_value=True), \
-             patch.object(sync, 'ko_round_complete_and_next_empty', return_value=False), \
+             patch.object(sync, 'ko_round_pending', return_value=None), \
              patch.object(sync, '_send_admin_email', return_value=True) as send:
             sync.run_advancement_check()   # fires
             sync.run_advancement_check()   # same episode -> suppressed
         assert send.call_count == 1
+
+
+def test_run_advancement_check_distinct_ko_rounds_each_notify(app, tmp_path):
+    from games.worldcup.services import sync
+    with app.app_context():
+        app.config['EMAIL_ADDRESS'] = 'commish@test.com'
+        app.instance_path = str(tmp_path)
+        with patch.object(sync, 'group_stage_complete_and_unconfirmed', return_value=False), \
+             patch.object(sync, '_send_admin_email', return_value=True) as send:
+            # R32 pending, then R16 pending — distinct signatures must each fire.
+            with patch.object(sync, 'ko_round_pending', return_value='R32'):
+                sync.run_advancement_check()
+                sync.run_advancement_check()   # same episode -> suppressed
+            with patch.object(sync, 'ko_round_pending', return_value='R16'):
+                sync.run_advancement_check()   # new episode -> fires
+        assert send.call_count == 2
+
+
+def test_ko_round_pending_sf_checks_both_final_and_third_place(app):
+    from games.worldcup.services import sync
+    with app.app_context():
+        a = _team('ESP', 'Spain', 'B'); b = _team('BRA', 'Brazil', 'C')
+        db.session.flush()
+        db.session.add(WorldCupMatch(match_number=101, stage='SF', is_completed=True,
+                                     home_team_id=a.id, away_team_id=b.id))
+        db.session.add(WorldCupMatch(match_number=102, stage='SF', is_completed=True,
+                                     home_team_id=a.id, away_team_id=b.id))
+        # final filled, but third_place is an empty shell -> still pending on SF.
+        db.session.add(WorldCupMatch(match_number=104, stage='final',
+                                     home_team_id=a.id, away_team_id=b.id))
+        db.session.add(WorldCupMatch(match_number=103, stage='third_place'))
+        db.session.commit()
+        assert sync.ko_round_pending() == 'SF'
+        tp = WorldCupMatch.query.filter_by(stage='third_place').first()
+        tp.home_team_id = a.id; tp.away_team_id = b.id
+        db.session.commit()
+        assert sync.ko_round_pending() is None
+
+
+def test_link_fixtures_records_conflict_without_overwrite(app):
+    from games.worldcup.services import sync
+    with app.app_context():
+        mex = _team('MEX', 'Mexico', 'A'); rsa = _team('RSA', 'South Africa', 'A')
+        db.session.flush()
+        m = WorldCupMatch(match_number=1, stage='group', group_letter='A',
+                          home_team_id=mex.id, away_team_id=rsa.id,
+                          api_fixture_id=111111,  # already linked to a DIFFERENT id
+                          kickoff_utc=datetime(2026, 6, 11, 19, 0, 0))
+        db.session.add(m); db.session.commit()
+        mid = m.id
+        with patch.object(sync, '_api_get', return_value=_API_MATCHES_FIXTURE):
+            report = sync.link_fixtures()
+        # Incoming 537001 differs from stored 111111 -> recorded, not overwritten.
+        assert db.session.get(WorldCupMatch, mid).api_fixture_id == 111111
+        assert any(c['match_number'] == 1 for c in report['fixture_conflicts'])
+        assert report['fixtures_linked'] == 0
 
 
 def test_cli_sync_link_invokes_service(app):

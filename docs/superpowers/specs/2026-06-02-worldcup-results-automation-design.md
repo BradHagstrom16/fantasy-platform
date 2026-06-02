@@ -200,16 +200,20 @@ render time. Keeps the high-risk surface running through already-hardened code.
 
 ## 5. Scheduler — systemd timer (deploy artifacts)
 
-Two new files in `deploy/`, matching `deploy/fantasy-platform.service`:
-- `deploy/worldcup-sync.service` — oneshot unit running
-  `ENVIRONMENT=production FLASK_APP=app.py <venv>/flask worldcup sync --mode scores`
-  in the project dir as the `deploy` user (loads `.env`).
-- `deploy/worldcup-sync.timer` — `OnCalendar=*:0/30` (every 30 min), `Persistent=true`.
+**Six new files in `deploy/`** — three `service`+`timer` pairs, each mirroring the
+existing `deploy/fantasy-platform.service` pattern (`User=deploy`, `EnvironmentFile`,
+`Environment=ENVIRONMENT=production`, hardening), so operators enable three units:
+- `deploy/worldcup-sync.{service,timer}` — `--mode scores`, `OnCalendar=*:0/30`
+  (every 30 min). The oneshot loads `.env` via `EnvironmentFile` and runs as the
+  `deploy` user; `TimeoutStartSec=5m` bounds a stuck run under the timer interval.
+- `deploy/worldcup-advancement.{service,timer}` — `--mode advancement`, hourly
+  (`OnCalendar=*:05`), detection/notify only (never writes).
+- `deploy/worldcup-digest.{service,timer}` — `--mode digest`, daily at 22:30 with
+  `TimeZone=America/Chicago` so the firing matches `run_digest`'s CT "today" window.
 
-A second timer (or a second `OnCalendar` unit) runs `--mode advancement` hourly
-for detection/notify. Setup is documented as exact copy/enable commands
-(`systemctl enable --now`) in the runbook (Brad is new to VPS ops — no assumed
-knowledge). Logs via `journalctl -u worldcup-sync`.
+Setup is documented as exact copy/enable commands (`systemctl enable --now`) in
+the runbook (Brad is new to VPS ops — no assumed knowledge). Logs via
+`journalctl -u worldcup-sync` (and the `-advancement` / `-digest` units).
 
 ### API budget (stays well under the free tier)
 football-data.org free tier (registered): **10 requests/minute, no daily cap**

@@ -20,4 +20,6 @@ Environment=ENVIRONMENT=production
 Environment=FLASK_APP=app.py
 NoNewPrivileges=true
 PrivateTmp=true
+# Bound the run well under the 30-min timer so a stuck sync can't pile up.
+TimeoutStartSec=5m
 ExecStart=/home/deploy/fantasy-platform/venv/bin/flask worldcup sync --mode scores

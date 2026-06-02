@@ -18,4 +18,5 @@ Environment=ENVIRONMENT=production
 Environment=FLASK_APP=app.py
 NoNewPrivileges=true
 PrivateTmp=true
+TimeoutStartSec=5m
 ExecStart=/home/deploy/fantasy-platform/venv/bin/flask worldcup sync --mode digest

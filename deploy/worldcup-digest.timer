@@ -4,6 +4,9 @@ Description=Send World Cup daily results digest
 
 [Timer]
 OnCalendar=*-*-* 22:30:00
+# Pin to CT so the firing time matches run_digest's WORLDCUP_TZ "today" window
+# regardless of the server clock.
+TimeZone=America/Chicago
 Persistent=true
 
 [Install]

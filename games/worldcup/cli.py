@@ -421,17 +421,32 @@ def sync_cmd(mode):
             click.echo(f"\n! UNMAPPED TEAMS ({len(report['unmapped_teams'])}) — add to TEAM_TLA_OVERRIDES:")
             for u in report['unmapped_teams']:
                 click.echo(f"   {u}")
+        if report.get('team_conflicts'):
+            click.echo(f"\n! TEAM ID CONFLICTS ({len(report['team_conflicts'])}) — review (not overwritten):")
+            for c in report['team_conflicts']:
+                click.echo(f"   {c}")
+        if report.get('fixture_conflicts'):
+            click.echo(f"\n! FIXTURE ID CONFLICTS ({len(report['fixture_conflicts'])}) — review (not overwritten):")
+            for c in report['fixture_conflicts']:
+                click.echo(f"   {c}")
     elif mode == 'scores':
         result = wc_sync.run_scores()
         click.echo(f"[scores] {result.get('status')}: applied "
                    f"{result.get('applied_count', 0)}, "
-                   f"skipped-unassigned {result.get('skipped_unassigned', 0)}")
+                   f"skipped-unassigned {result.get('skipped_unassigned', 0)}, "
+                   f"failed {len(result.get('failed', []))}")
+        if result.get('status') == 'error':
+            raise click.ClickException(result.get('details') or 'score sync reported failures')
     elif mode == 'advancement':
         result = wc_sync.run_advancement_check()
         click.echo(f"[advancement] {result.get('status')}")
+        if result.get('status') == 'error':
+            raise click.ClickException(result.get('details') or 'advancement check failed')
     elif mode == 'digest':
         result = wc_sync.run_digest()
         click.echo(f"[digest] {result.get('status')} ({result.get('count', 0)} results)")
+        if result.get('status') == 'error':
+            raise click.ClickException(result.get('details') or 'digest failed')
     elif mode == 'status':
         linked = WorldCupMatch.query.filter(WorldCupMatch.api_fixture_id.isnot(None)).count()
         total = WorldCupMatch.query.count()
