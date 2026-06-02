@@ -1306,7 +1306,7 @@ git commit -m "feat(worldcup): admin Load-from-API advancement pre-fill"
 
 No automated test (deploy artifacts). The verification is the pre-tournament checklist.
 
-- [ ] **Step 1: Create the scores unit + timer**
+- [x] **Step 1: Create the scores unit + timer**
 
 `deploy/worldcup-sync.service`:
 
@@ -1338,7 +1338,7 @@ Persistent=true
 WantedBy=timers.target
 ```
 
-- [ ] **Step 2: Create the advancement-check unit + timer**
+- [x] **Step 2: Create the advancement-check unit + timer**
 
 `deploy/worldcup-advancement.service` (same as above but `--mode advancement` and `Description=World Cup advancement check`).
 
@@ -1356,7 +1356,7 @@ Persistent=true
 WantedBy=timers.target
 ```
 
-- [ ] **Step 3: Create the daily digest unit + timer**
+- [x] **Step 3: Create the daily digest unit + timer**
 
 `deploy/worldcup-digest.service` (same shape, `--mode digest`, `Description=World Cup daily digest`).
 
@@ -1374,7 +1374,7 @@ Persistent=true
 WantedBy=timers.target
 ```
 
-- [ ] **Step 4: Append the runbook**
+- [x] **Step 4: Append the runbook**
 
 Add a "World Cup Sync Automation" section to `docs/production-launch-test-script.md` with the exact, no-assumed-knowledge install commands:
 
@@ -1392,7 +1392,7 @@ journalctl -u worldcup-sync --since today
 
 Document the **pre-tournament checklist** (from the spec §9): add `FOOTBALL_DATA_API_KEY` to server `.env`; `flask db upgrade`; `flask worldcup sync --mode link` and eyeball the report (expect 104 fixtures, 48 teams, zero unmatched — add any `tla` mismatch to `TEAM_TLA_OVERRIDES` and re-run); enable timers; `flask worldcup sync --mode status`. And the **score-correction** note: to fix a result already applied, edit the match in admin and run `flask worldcup recalc`.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add deploy/worldcup-*.service deploy/worldcup-*.timer docs/production-launch-test-script.md

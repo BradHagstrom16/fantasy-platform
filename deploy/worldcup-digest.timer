@@ -1,0 +1,10 @@
+# Runs the World Cup daily results digest once a day (22:30 server time).
+[Unit]
+Description=Send World Cup daily results digest
+
+[Timer]
+OnCalendar=*-*-* 22:30:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target
