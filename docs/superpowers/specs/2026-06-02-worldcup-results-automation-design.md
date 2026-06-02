@@ -210,8 +210,10 @@ existing `deploy/fantasy-platform.service` pattern (`User=deploy`, `EnvironmentF
   `deploy` user; `TimeoutStartSec=5m` bounds a stuck run under the timer interval.
 - `deploy/worldcup-advancement.{service,timer}` — `--mode advancement`, hourly
   (`OnCalendar=*:05`), detection/notify only (never writes).
-- `deploy/worldcup-digest.{service,timer}` — `--mode digest`, daily at 22:30 with
-  `TimeZone=America/Chicago` so the firing matches `run_digest`'s CT "today" window.
+- `deploy/worldcup-digest.{service,timer}` — `--mode digest`, daily at
+  `OnCalendar=*-*-* 22:30:00 America/Chicago` (timezone inline — systemd has no
+  `TimeZone=` directive for timers) so the firing matches `run_digest`'s CT
+  "today" window.
 
 Setup is documented as exact copy/enable commands (`systemctl enable --now`) in
 the runbook (Brad is new to VPS ops — no assumed knowledge). Logs via
