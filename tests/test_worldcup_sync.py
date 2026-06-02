@@ -118,3 +118,88 @@ def test_link_fixtures_reports_unmatched(app):
             report = sync.link_fixtures()
         assert report['fixtures_linked'] == 0
         assert len(report['unmatched_fixtures']) == 1
+
+
+def _seed_linked_group_match(app, status_winner, home, away):
+    """Seed a linked group match and return (match_id, api payload)."""
+    with app.app_context():
+        a = _team('MEX', 'Mexico', 'A'); b = _team('RSA', 'South Africa', 'A')
+        db.session.flush()
+        m = WorldCupMatch(match_number=1, stage='group', group_letter='A',
+                          home_team_id=a.id, away_team_id=b.id,
+                          api_fixture_id=537001,
+                          kickoff_utc=datetime(2026, 6, 11, 19, 0, 0))
+        db.session.add(m); db.session.commit()
+        payload = {'matches': [{
+            'id': 537001, 'status': 'FINISHED', 'stage': 'GROUP_STAGE',
+            'homeTeam': {'tla': 'MEX'}, 'awayTeam': {'tla': 'RSA'},
+            'score': {'winner': status_winner, 'duration': 'REGULAR',
+                      'fullTime': {'home': home, 'away': away}},
+        }]}
+        return m.id, payload
+
+
+def test_sync_scores_applies_group_win(app):
+    from games.worldcup.services import sync
+    mid, payload = _seed_linked_group_match(app, 'HOME_TEAM', 2, 0)
+    with app.app_context():
+        with patch.object(sync, '_api_get', return_value=payload):
+            report = sync.sync_scores()
+        m = db.session.get(WorldCupMatch, mid)
+        assert m.is_completed and m.home_score == 2 and m.away_score == 0
+        assert m.winner_team_id == m.home_team_id
+        assert report['applied_count'] == 1
+
+
+def test_sync_scores_skips_unfinished_and_completed(app):
+    from games.worldcup.services import sync
+    mid, payload = _seed_linked_group_match(app, 'HOME_TEAM', 2, 0)
+    with app.app_context():
+        payload['matches'][0]['status'] = 'IN_PLAY'
+        with patch.object(sync, '_api_get', return_value=payload):
+            report = sync.sync_scores()
+        assert report['applied_count'] == 0
+        assert db.session.get(WorldCupMatch, mid).is_completed is False
+
+
+def test_sync_scores_knockout_extra_time_penalties(app):
+    from games.worldcup.services import sync
+    with app.app_context():
+        a = _team('ESP', 'Spain', 'B'); b = _team('BRA', 'Brazil', 'C')
+        db.session.flush()
+        m = WorldCupMatch(match_number=90, stage='R16',
+                          home_team_id=a.id, away_team_id=b.id,
+                          api_fixture_id=537090,
+                          kickoff_utc=datetime(2026, 7, 4, 19, 0, 0))
+        db.session.add(m); db.session.commit()
+        mid = m.id
+        payload = {'matches': [{
+            'id': 537090, 'status': 'FINISHED', 'stage': 'LAST_16',
+            'homeTeam': {'tla': 'ESP'}, 'awayTeam': {'tla': 'BRA'},
+            'score': {'winner': 'AWAY_TEAM', 'duration': 'PENALTY_SHOOTOUT',
+                      'fullTime': {'home': 1, 'away': 1},
+                      'penalties': {'home': 3, 'away': 4}},
+        }]}
+        with patch.object(sync, '_api_get', return_value=payload):
+            sync.sync_scores()
+        m = db.session.get(WorldCupMatch, mid)
+        assert m.is_completed and m.winner_team_id == b.id
+        assert m.extra_time is True and m.penalties is True
+
+
+def test_sync_scores_skips_knockout_with_unset_teams(app):
+    from games.worldcup.services import sync
+    with app.app_context():
+        m = WorldCupMatch(match_number=90, stage='R16', api_fixture_id=537090,
+                          kickoff_utc=datetime(2026, 7, 4, 19, 0, 0))
+        db.session.add(m); db.session.commit()
+        payload = {'matches': [{
+            'id': 537090, 'status': 'FINISHED', 'stage': 'LAST_16',
+            'homeTeam': {'tla': 'ESP'}, 'awayTeam': {'tla': 'BRA'},
+            'score': {'winner': 'AWAY_TEAM', 'duration': 'REGULAR',
+                      'fullTime': {'home': 0, 'away': 1}},
+        }]}
+        with patch.object(sync, '_api_get', return_value=payload):
+            report = sync.sync_scores()
+        assert report['applied_count'] == 0
+        assert report['skipped_unassigned'] == 1

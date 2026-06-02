@@ -164,3 +164,57 @@ def link_fixtures() -> dict:
         'unmapped_teams': unmapped_teams,
         'api_fixture_count': len(api_matches),
     }
+
+
+def sync_scores() -> dict:
+    """Apply every newly-FINISHED fixture to its linked shell. Idempotent.
+
+    Low-risk tier: runs automatically. Group draws/wins and knockout
+    ET/penalties flow through the existing process_match_result(), which
+    recalculates all scores. Already-completed shells are skipped.
+    """
+    data = _api_get(f'competitions/{COMPETITION_CODE}/matches')
+    by_fixture = {
+        m.api_fixture_id: m
+        for m in WorldCupMatch.query.filter(WorldCupMatch.api_fixture_id.isnot(None)).all()
+    }
+
+    applied = []
+    skipped_unassigned = 0
+    for f in data.get('matches', []):
+        if f.get('status') not in FINISHED_STATUSES:
+            continue
+        shell = by_fixture.get(f.get('id'))
+        if not shell or shell.is_completed:
+            continue
+
+        ft = (f.get('score') or {}).get('fullTime') or {}
+        home, away = ft.get('home'), ft.get('away')
+        if home is None or away is None:
+            continue
+
+        if shell.stage == 'group':
+            is_draw = (f['score'].get('winner') == 'DRAW')
+            res = process_match_result(shell.id, home, away, None, is_draw=is_draw)
+        else:
+            # Knockout requires assigned teams (bracket confirmed by admin first).
+            if not shell.home_team_id or not shell.away_team_id:
+                skipped_unassigned += 1
+                continue
+            duration = f['score'].get('duration', 'REGULAR')
+            winner_side = f['score'].get('winner')
+            api_winner = f.get('homeTeam') if winner_side == 'HOME_TEAM' else f.get('awayTeam')
+            winner_fifa = _fifa_for_tla((api_winner or {}).get('tla'))
+            res = process_match_result(
+                shell.id, home, away, winner_fifa,
+                extra_time=duration in ('EXTRA_TIME', 'PENALTY_SHOOTOUT'),
+                penalties=duration == 'PENALTY_SHOOTOUT',
+            )
+        if 'error' not in res:
+            applied.append({'match_number': shell.match_number, 'result': res.get('result')})
+
+    return {
+        'applied_count': len(applied),
+        'applied': applied,
+        'skipped_unassigned': skipped_unassigned,
+    }

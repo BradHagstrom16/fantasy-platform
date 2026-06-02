@@ -479,7 +479,7 @@ git commit -m "feat(worldcup): link_fixtures maps shells/teams to api ids"
 - Modify: `games/worldcup/services/sync.py`
 - Test: `tests/test_worldcup_sync.py`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add to `tests/test_worldcup_sync.py`:
 
@@ -569,12 +569,12 @@ def test_sync_scores_skips_knockout_with_unset_teams(app):
         assert report['skipped_unassigned'] == 1
 ```
 
-- [ ] **Step 2: Run to verify it fails**
+- [x] **Step 2: Run to verify it fails**
 
 Run: `ENVIRONMENT=testing venv/bin/python -m pytest tests/test_worldcup_sync.py -k sync_scores -q`
 Expected: FAIL — `AttributeError: 'sync_scores'`.
 
-- [ ] **Step 3: Implement `sync_scores`**
+- [x] **Step 3: Implement `sync_scores`**
 
 Append to `games/worldcup/services/sync.py`:
 
@@ -633,12 +633,12 @@ def sync_scores() -> dict:
     }
 ```
 
-- [ ] **Step 4: Run to verify it passes**
+- [x] **Step 4: Run to verify it passes**
 
 Run: `ENVIRONMENT=testing venv/bin/python -m pytest tests/test_worldcup_sync.py -k sync_scores -q`
 Expected: PASS (all four).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add games/worldcup/services/sync.py tests/test_worldcup_sync.py
