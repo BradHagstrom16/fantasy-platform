@@ -1572,13 +1572,19 @@ body.game-golf {
   text-align: center;
 }
 
-.home-shell .cta-seal:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-gold);
-}
+/* Gate the lift + gold-glint hover on hover-capable pointers so it doesn't
+   tap-latch "stuck" on touch devices (same pattern as the ballot-flag hover
+   above). `:active` (tap feedback) and `:focus-visible` (keyboard) stay
+   unscoped so touch + keyboard users keep their affordances. */
+@media (hover: hover) {
+  .home-shell .cta-seal:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-gold);
+  }
 
-.home-shell .cta-seal:hover .cta-seal-label i {
-  transform: translateX(3px);
+  .home-shell .cta-seal:hover .cta-seal-label i {
+    transform: translateX(3px);
+  }
 }
 
 /* The seal stamp: settle down with a pressed-in gold ring. */

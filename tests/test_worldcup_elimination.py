@@ -104,6 +104,29 @@ def test_incomplete_ko_match_does_not_eliminate(app):
         assert eliminated_team_ids() == set()
 
 
+def test_semifinal_loser_is_alive_until_third_place(app):
+    """An SF loser still plays the third-place match, so they are NOT out until
+    that match completes — matching _path_status (returns alive 5,None) and
+    scoring.py (keeps SF losers best_finish='SF', not eliminated)."""
+    with app.app_context():
+        sf_winner = _team('SFW', 'pp', best_finish='SF', advancement_method='winner')
+        sf_loser = _team('SFL', 'qq', best_finish='SF', advancement_method='winner')
+        _match(101, 'SF', sf_winner, sf_loser, winner=sf_winner)
+        # No third_place match yet → the SF loser is still alive.
+        assert sf_loser.id not in eliminated_team_ids()
+
+
+def test_third_place_match_marks_both_participants_out(app):
+    """Once the third-place match completes, BOTH the 3rd and 4th finishers are
+    out of the tournament (the SF loss alone did not eliminate them)."""
+    with app.app_context():
+        third = _team('Third', 'rr', best_finish='3rd', advancement_method='winner')
+        fourth = _team('Fourth', 'ss', best_finish='SF', advancement_method='winner')
+        _match(103, 'third_place', third, fourth, winner=third)
+        ids = eliminated_team_ids()
+        assert third.id in ids and fourth.id in ids
+
+
 def test_parity_with_path_status(app):
     """eliminated_team_ids() agrees with _path_status: a team is in the set iff
     _path_status returns a non-None eliminated_at_index."""
@@ -112,9 +135,13 @@ def test_parity_with_path_status(app):
         runner = _team('Runner', 'mm', best_finish='runner_up', advancement_method='winner')
         group = _team('Group', 'nn', is_eliminated=True, best_finish='group')
         sf_winner_alive = _team('SFW', 'oo', best_finish='SF', advancement_method='winner')
-        # champ beat runner in the final
+        # SF loser whose third-place match has NOT been played yet — _path_status
+        # treats them as alive (5, None); the helper must agree (no early-out).
+        sf_loser = _team('SFL', 'tt', best_finish='SF', advancement_method='winner')
+        # champ beat runner in the final; sf_winner_alive beat sf_loser in a SF
         _match(104, 'final', champ, runner, winner=champ)
+        _match(102, 'SF', sf_winner_alive, sf_loser, winner=sf_winner_alive)
         ids = eliminated_team_ids()
-        for t in (champ, runner, group, sf_winner_alive):
+        for t in (champ, runner, group, sf_winner_alive, sf_loser):
             _, elim_at = _path_status(t)
             assert (t.id in ids) == (elim_at is not None), t.display_name
