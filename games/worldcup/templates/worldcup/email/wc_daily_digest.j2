@@ -125,7 +125,7 @@
               <tr>
                 <!-- Flag -->
                 <td width="28" valign="middle" style="padding-right:10px;">
-                  <img src="{{ site_url }}/static/flags/{{ r.team.iso_code }}.svg?v={{ asset_version }}"
+                  <img src="{{ site_url }}/static/flags/{{ r.team.iso_code or '_tbd' }}.svg?v={{ asset_version }}"
                        width="24" height="18" alt="{{ r.team.fifa_code }}"
                        style="display:block; border-radius:2px; border:1px solid rgba(0,0,0,.06);">
                 </td>

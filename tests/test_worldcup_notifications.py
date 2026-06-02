@@ -62,8 +62,12 @@ def _make_match(session, home, away, match_number=1, home_score=2,
                 away_score=0, is_draw=False, updated_yesterday=True):
     """Create a completed match. updated_at defaults to yesterday UTC."""
     from games.worldcup.constants import WORLDCUP_TZ
-    now_ct = datetime.now(WORLDCUP_TZ)
+    from games.worldcup.services.state import now_utc
+    now_ct = now_utc().astimezone(WORLDCUP_TZ)
     yesterday_utc = (now_ct - timedelta(days=1)).replace(
+        hour=20, minute=0, second=0, microsecond=0,
+    ).astimezone(timezone.utc).replace(tzinfo=None)
+    two_days_ago_utc = (now_ct - timedelta(days=2)).replace(
         hour=20, minute=0, second=0, microsecond=0,
     ).astimezone(timezone.utc).replace(tzinfo=None)
     m = WorldCupMatch(
@@ -80,8 +84,7 @@ def _make_match(session, home, away, match_number=1, home_score=2,
             home.id if (not is_draw and home_score > away_score) else
             away.id if (not is_draw and away_score > home_score) else None
         ),
-        updated_at=yesterday_utc if updated_yesterday else
-            datetime.now(timezone.utc).replace(tzinfo=None),
+        updated_at=yesterday_utc if updated_yesterday else two_days_ago_utc,
     )
     session.add(m)
     session.flush()
@@ -160,7 +163,8 @@ def test_sends_email_when_pick_won(app):
     """Sends one email when a pick scored from a group win."""
     from games.worldcup.services.notifications import send_daily_digests
     from games.worldcup.constants import WORLDCUP_TZ
-    yesterday = (datetime.now(WORLDCUP_TZ) - timedelta(days=1)).date()
+    from games.worldcup.services.state import now_utc
+    yesterday = (now_utc().astimezone(WORLDCUP_TZ) - timedelta(days=1)).date()
     date_str = yesterday.strftime('%B %-d')
 
     with app.app_context():
@@ -198,7 +202,7 @@ def test_sends_email_when_pick_drew(app):
         away = _make_team(db.session, 'POL', tier=4, multiplier=4.0, group='B')
         _make_match(db.session, home, away, home_score=1, away_score=1,
                     is_draw=True)
-        _make_pick(db.session, e, home)  # ARG drew — 1 * 4.0 = 4 pts
+        _make_pick(db.session, e, home, tier=4)  # ARG drew — 1 * 4.0 = 4 pts
         db.session.commit()
 
         with mock.patch(
@@ -210,7 +214,7 @@ def test_sends_email_when_pick_drew(app):
     assert result['sent'] == 1
     mock_send.assert_called_once()
     _, _, plain, html = mock_send.call_args[0]
-    assert '4' in html
+    assert '+4' in html
     assert 'Draw' in html
 
 
