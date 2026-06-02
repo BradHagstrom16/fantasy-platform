@@ -42,8 +42,12 @@ STAGE_MAP = {
 FINISHED_STATUSES = {'FINISHED'}
 
 # football-data.org 3-letter team code (tla) -> our fifa_code, ONLY where they
-# differ. Most align (MEX==MEX). Fill in during the `link` verification run.
-TEAM_TLA_OVERRIDES: dict[str, str] = {}
+# differ. Most align (MEX==MEX). Verified against the live WC 2026 feed on
+# 2026-06-02 (flask worldcup sync --mode link): only Uruguay diverges
+# (football-data.org 'URY' vs our FIFA 'URU').
+TEAM_TLA_OVERRIDES: dict[str, str] = {
+    'URY': 'URU',  # Uruguay
+}
 
 
 class SyncError(Exception):
