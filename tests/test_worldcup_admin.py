@@ -113,13 +113,14 @@ def test_set_knockout_dropdown_excludes_eliminated_teams(client, app):
 # ── Admin dashboard completed-matches list ──────────────────────────────
 
 def _make_admin_user(app):
-    """Create a platform admin user and return their id."""
+    """Create a platform admin user and return their Flask-Login session identity
+    (User.auth_id) — that's what `sess['_user_id']` must carry, not the integer PK."""
     with app.app_context():
         user = User(username='wcadmin', email='wcadmin@test.com', is_admin=True)
         user.set_password('pass')
         db.session.add(user)
         db.session.commit()
-        return user.id
+        return user.auth_id
 
 
 def _seed_two_completed_group_matches(app):

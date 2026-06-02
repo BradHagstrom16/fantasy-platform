@@ -379,7 +379,9 @@ def app():
         db.session.add(WorldCupPick(enrollment_id=enr.id, team_id=esp.id, tier=1))
         db.session.commit()
 
-        app.config['_picker_id'] = user.id
+        # Store the Flask-Login session identity (auth_id), not the integer PK —
+        # that's what `sess['_user_id']` must carry.
+        app.config['_picker_id'] = user.get_id()
         yield app
         db.drop_all()
 

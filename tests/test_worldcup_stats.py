@@ -262,7 +262,7 @@ def test_stats_visible_admin_pre_deadline(client, session):
     session.commit()
 
     with client.session_transaction() as sess:
-        sess['_user_id'] = str(admin.id)
+        sess['_user_id'] = admin.get_id()
         sess['_fresh'] = True
 
     resp = client.get('/worldcup/stats')  # real time = pre-deadline

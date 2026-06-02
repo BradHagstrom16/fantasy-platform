@@ -442,7 +442,7 @@ def test_rendered_join_page_carries_section_h2_and_join_rules_link():
         client = app.test_client()
         # Log the user in via session cookie shortcut.
         with client.session_transaction() as sess:
-            sess['_user_id'] = str(u.id)
+            sess['_user_id'] = u.get_id()
             sess['_fresh'] = True
         resp = client.get('/worldcup/join')
         assert resp.status_code == 200

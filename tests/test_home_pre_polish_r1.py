@@ -83,8 +83,9 @@ def _login_as_unenrolled(app, client, username='newcomer'):
         db.session.add(u)
         db.session.commit()
         uid = u.id
+        auth_id = u.auth_id
     with client.session_transaction() as sess:
-        sess['_user_id'] = str(uid)
+        sess['_user_id'] = auth_id
         sess['_fresh'] = True
     return uid
 

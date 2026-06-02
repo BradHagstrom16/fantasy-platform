@@ -32,10 +32,13 @@ def create_app(config_name=None):
     # Import models so Alembic sees them
     from models import User  # noqa: F401
 
-    # User loader for Flask-Login
+    # User loader for Flask-Login. `user_id` is the cookie identity, which is
+    # User.auth_id (a random token), NOT the integer PK — see User.get_id().
+    # A stale/forged cookie carrying a recycled integer id matches no auth_id
+    # and returns None (logged out) rather than cross-authenticating.
     @login_manager.user_loader
     def load_user(user_id):
-        return db.session.get(User, int(user_id))
+        return User.query.filter_by(auth_id=user_id).first()
 
     # Register blueprints
     from core.auth import auth_bp

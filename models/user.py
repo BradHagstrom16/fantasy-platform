@@ -4,6 +4,7 @@ Fantasy Sports Platform - User Model
 Shared user model for all games. Game-specific player data
 lives in game-specific models linked by user_id foreign key.
 """
+import uuid
 from datetime import datetime, timezone
 
 from flask_login import UserMixin
@@ -17,6 +18,12 @@ class User(UserMixin, db.Model):
     __tablename__ = 'users'
 
     id = db.Column(db.Integer, primary_key=True)
+    # Session/remember-cookie identity (Flask-Login get_id()). Random and never
+    # reused, so a destructive DB reset that restarts the integer `id` sequence
+    # can never make a pre-wipe cookie authenticate as a *different* user who
+    # later inherits the recycled id. See get_id() below.
+    auth_id = db.Column(db.String(32), unique=True, nullable=False, index=True,
+                        default=lambda: uuid.uuid4().hex)
     username = db.Column(db.String(80), unique=True, nullable=False, index=True)
     email = db.Column(db.String(120), unique=True, nullable=False, index=True)
     password_hash = db.Column(db.String(256), nullable=False)
@@ -34,6 +41,15 @@ class User(UserMixin, db.Model):
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc),
                            onupdate=lambda: datetime.now(timezone.utc))
+
+    def get_id(self):
+        """Identity stored in the session/remember cookie (overrides UserMixin).
+
+        Returns the random `auth_id` rather than the integer PK so a recycled
+        `id` (after a DB wipe) can never let a stale, validly-signed cookie load
+        a different user.
+        """
+        return self.auth_id
 
     def set_password(self, password):
         """Hash and store password."""
