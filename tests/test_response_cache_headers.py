@@ -51,7 +51,8 @@ def test_authenticated_response_is_no_store(client, app):
     _login(client, user)
     resp = client.get('/profile')  # @login_required → always authenticated 200
     assert resp.status_code == 200
-    assert 'no-store' in resp.headers.get('Cache-Control', '')
+    # Lock the full contract: both directives must be present, not just no-store.
+    assert resp.headers.get('Cache-Control') == 'private, no-store'
 
 
 def test_anonymous_public_response_is_not_no_store(client):
