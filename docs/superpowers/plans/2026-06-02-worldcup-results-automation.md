@@ -653,7 +653,7 @@ git commit -m "feat(worldcup): sync_scores auto-applies finals"
 - Modify: `games/worldcup/services/sync.py`
 - Test: `tests/test_worldcup_sync.py`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add to `tests/test_worldcup_sync.py`:
 
@@ -697,12 +697,12 @@ def test_fetch_advancement_proposal(app):
         assert groups['A']['third_advances'] is True
 ```
 
-- [ ] **Step 2: Run to verify it fails**
+- [x] **Step 2: Run to verify it fails**
 
 Run: `ENVIRONMENT=testing venv/bin/python -m pytest tests/test_worldcup_sync.py -k advancement_proposal -q`
 Expected: FAIL — `AttributeError: 'fetch_advancement_proposal'`.
 
-- [ ] **Step 3: Implement `fetch_advancement_proposal`**
+- [x] **Step 3: Implement `fetch_advancement_proposal`**
 
 Append to `games/worldcup/services/sync.py`:
 
@@ -763,12 +763,12 @@ def fetch_advancement_proposal() -> dict:
     return {'groups': sorted(groups, key=lambda x: x['letter']), 'ko_pairings': ko_pairings}
 ```
 
-- [ ] **Step 4: Run to verify it passes**
+- [x] **Step 4: Run to verify it passes**
 
 Run: `ENVIRONMENT=testing venv/bin/python -m pytest tests/test_worldcup_sync.py -k advancement_proposal -q`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add games/worldcup/services/sync.py tests/test_worldcup_sync.py

@@ -218,3 +218,61 @@ def sync_scores() -> dict:
         'applied': applied,
         'skipped_unassigned': skipped_unassigned,
     }
+
+
+def fetch_advancement_proposal() -> dict:
+    """Read-only proposal for the admin advancement/bracket forms (no DB writes).
+
+    Reads group standings (positions 1/2 -> winner/runner-up) and the resolved
+    LAST_32 matchups (to flag which 3rd-place teams actually advanced as best
+    thirds, and to pre-fill knockout shell team assignments). The admin reviews
+    and confirms; we do not write any scoring state here.
+    """
+    standings = _api_get(f'competitions/{COMPETITION_CODE}/standings').get('standings', [])
+    matches = _api_get(f'competitions/{COMPETITION_CODE}/matches').get('matches', [])
+
+    # tlas appearing in resolved LAST_32 = teams that advanced (incl. best thirds).
+    advancing_tlas = set()
+    ko_pairings = []
+    for m in matches:
+        if STAGE_MAP.get(m.get('stage')) != 'R32':
+            continue
+        home, away = (m.get('homeTeam') or {}), (m.get('awayTeam') or {})
+        if home.get('tla'):
+            advancing_tlas.add(home['tla'])
+        if away.get('tla'):
+            advancing_tlas.add(away['tla'])
+        if home.get('tla') and away.get('tla'):
+            ko_pairings.append({
+                'api_fixture_id': m['id'],
+                'home_fifa': _fifa_for_tla(home['tla']),
+                'away_fifa': _fifa_for_tla(away['tla']),
+            })
+
+    groups = []
+    for g in standings:
+        if g.get('type') != 'TOTAL':
+            continue
+        letter = g.get('group', '').replace('Group', '').strip()
+        rows = sorted(g.get('table', []), key=lambda r: r['position'])
+
+        def fifa(i):
+            return _fifa_for_tla(rows[i]['team']['tla']) if len(rows) > i else None
+
+        third_tla = rows[2]['team']['tla'] if len(rows) > 2 else None
+        third_advances = bool(third_tla and third_tla in advancing_tlas)
+        groups.append({
+            'letter': letter,
+            'group_winner': fifa(0),
+            'runner_up': fifa(1),
+            'best_third': fifa(2) if third_advances else None,
+            'third_advances': third_advances,
+            'table': [
+                {'position': r['position'], 'fifa': _fifa_for_tla(r['team']['tla']),
+                 'name': r['team'].get('name'), 'points': r.get('points'),
+                 'gd': r.get('goalDifference'), 'gf': r.get('goalsFor')}
+                for r in rows
+            ],
+        })
+
+    return {'groups': sorted(groups, key=lambda x: x['letter']), 'ko_pairings': ko_pairings}

@@ -203,3 +203,42 @@ def test_sync_scores_skips_knockout_with_unset_teams(app):
             report = sync.sync_scores()
         assert report['applied_count'] == 0
         assert report['skipped_unassigned'] == 1
+
+
+_STANDINGS_FIXTURE = {'standings': [{
+    'stage': 'GROUP_STAGE', 'type': 'TOTAL', 'group': 'Group A',
+    'table': [
+        {'position': 1, 'team': {'tla': 'MEX', 'name': 'Mexico'}, 'points': 9,
+         'goalDifference': 5, 'goalsFor': 6, 'playedGames': 3},
+        {'position': 2, 'team': {'tla': 'RSA', 'name': 'South Africa'}, 'points': 4,
+         'goalDifference': 0, 'goalsFor': 3, 'playedGames': 3},
+        {'position': 3, 'team': {'tla': 'KOR', 'name': 'South Korea'}, 'points': 3,
+         'goalDifference': -1, 'goalsFor': 2, 'playedGames': 3},
+        {'position': 4, 'team': {'tla': 'CZE', 'name': 'Czechia'}, 'points': 1,
+         'goalDifference': -4, 'goalsFor': 1, 'playedGames': 3},
+    ],
+}]}
+
+_KO_MATCHES_FIXTURE = {'matches': [{
+    'id': 537073, 'utcDate': '2026-06-28T19:00:00Z', 'status': 'TIMED',
+    'stage': 'LAST_32', 'group': None,
+    'homeTeam': {'tla': 'MEX', 'name': 'Mexico'},
+    'awayTeam': {'tla': 'KOR', 'name': 'South Korea'},
+    'score': {'winner': None, 'duration': 'REGULAR', 'fullTime': {'home': None, 'away': None}},
+}]}
+
+
+def test_fetch_advancement_proposal(app):
+    from games.worldcup.services import sync
+    with app.app_context():
+        def fake_get(path, params=None):
+            return _STANDINGS_FIXTURE if 'standings' in path else _KO_MATCHES_FIXTURE
+        with patch.object(sync, '_api_get', side_effect=fake_get):
+            proposal = sync.fetch_advancement_proposal()
+        groups = {g['letter']: g for g in proposal['groups']}
+        assert groups['A']['group_winner'] == 'MEX'
+        assert groups['A']['runner_up'] == 'RSA'
+        # KOR appears in resolved LAST_32 -> flagged as the advancing best third.
+        assert groups['A']['best_third'] == 'KOR'
+        # CZE did not advance.
+        assert groups['A']['third_advances'] is True
