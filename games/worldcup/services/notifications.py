@@ -7,6 +7,9 @@ CT calendar day.
 
 One email per player, max. Skips players with no scoring picks that day.
 Points are fully multiplied (per points_for_pick_on_match contract).
+
+Also: the picks confirmation receipt (send_picks_confirmation), fired by
+the /worldcup/picks POST success path on every save.
 """
 import logging
 import os
@@ -19,8 +22,13 @@ from sqlalchemy import func
 
 from extensions import db
 from utils.email import send_platform_email
-from games.worldcup.constants import SEASON_YEAR, WORLDCUP_TZ
-from games.worldcup.models import WorldCupEnrollment, WorldCupMatch, WorldCupPick
+from games.worldcup.constants import (
+    SEASON_YEAR, TOURNAMENT_DEADLINE_UTC, WORLDCUP_TZ,
+)
+from games.worldcup.models import (
+    WorldCupEnrollment, WorldCupMatch, WorldCupPick, WorldCupTeam,
+)
+from games.worldcup.world_cup_countries import TIERS
 from games.worldcup.services.ranking import compute_rank_delta
 from games.worldcup.services.scoring import points_for_pick_on_match
 from games.worldcup.services.stage import stage_label
@@ -276,3 +284,120 @@ def send_daily_digests() -> dict:
         'errors': errors,
         'date': str(yesterday),
     }
+
+
+# ---------------------------------------------------------------------------
+# Picks confirmation receipt
+# ---------------------------------------------------------------------------
+
+def _plain_confirmation(
+    enrollment: WorldCupEnrollment,
+    tier_groups: list[dict],
+    deadline_str: str,
+    site_url: str,
+    is_update: bool,
+) -> str:
+    """Plain-text fallback for the picks confirmation (mirrors the HTML body)."""
+    lines = [
+        'Your updated World Cup picks' if is_update else 'Your World Cup picks are in',
+        '=' * 40,
+        '',
+        f'Hi {enrollment.get_display_name()},',
+        '',
+        'Your roster:',
+        '-' * 36,
+    ]
+    for group in tier_groups:
+        lines.append(f'{group["name"]} ({group["multiplier_str"]})')
+        for team in group['teams']:
+            lines.append(f'  {team.display_name}  (Group {team.group_letter})')
+    lines += [
+        '',
+        f'USA goals tiebreaker: {enrollment.usa_goals_guess}',
+        '',
+        f'You can edit your picks until {deadline_str}.',
+        f'View your picks: {site_url}/worldcup/picks',
+        '',
+        'Corrupt Commish Club -- cccfantasy.com',
+    ]
+    return '\n'.join(lines)
+
+
+def send_picks_confirmation(
+    enrollment: WorldCupEnrollment, is_update: bool = False,
+) -> bool:
+    """Send a roster receipt after a successful picks submission.
+
+    Fires on every save (picks stay editable pre-deadline); ``is_update``
+    flips the subject so inbox history reads correctly and no stale email
+    masquerades as the entry of record.
+
+    Never raises — a render or SMTP failure must not break the submission
+    that triggered it. Returns True only when the send succeeded.
+    """
+    try:
+        if not enrollment.user or not enrollment.user.email:
+            logger.warning(
+                'Picks confirmation skipped — enrollment %s has no email',
+                enrollment.id,
+            )
+            return False
+
+        # Same ordering as the picks-page roster: tier, then display name.
+        picks = (
+            WorldCupPick.query
+            .join(WorldCupTeam, WorldCupPick.team_id == WorldCupTeam.id)
+            .filter(WorldCupPick.enrollment_id == enrollment.id)
+            .order_by(WorldCupTeam.tier, WorldCupTeam.display_name)
+            .all()
+        )
+        if not picks:
+            logger.warning(
+                'Picks confirmation skipped — enrollment %s has no picks',
+                enrollment.id,
+            )
+            return False
+
+        tier_groups = []
+        for tier_num in sorted(TIERS):
+            tier_teams = [p.team for p in picks if p.team.tier == tier_num]
+            if not tier_teams:
+                continue
+            tier_groups.append({
+                'tier': tier_num,
+                'name': TIERS[tier_num]['name'],
+                'multiplier_str': _fmt_multiplier(TIERS[tier_num]['multiplier']),
+                'teams': tier_teams,
+            })
+
+        deadline_ct = TOURNAMENT_DEADLINE_UTC.astimezone(WORLDCUP_TZ)
+        deadline_str = deadline_ct.strftime('%A, %B %-d at %-I:%M %p CT')
+
+        site_url = current_app.config.get('SITE_URL', 'https://cccfantasy.com').rstrip('/')
+        logo_url = f'{site_url}/static/img/logo/ccc-logo-stacked.svg'
+
+        html_body = render_template(
+            'worldcup/email/wc_picks_confirmation.j2',
+            enrollment=enrollment,
+            tier_groups=tier_groups,
+            is_update=is_update,
+            deadline_str=deadline_str,
+            site_url=site_url,
+            logo_url=logo_url,
+            asset_version=_asset_version(),
+        )
+        plain_body = _plain_confirmation(
+            enrollment, tier_groups, deadline_str, site_url, is_update,
+        )
+        subject = (
+            'Your updated World Cup picks' if is_update
+            else 'Your World Cup picks are in'
+        )
+        return send_platform_email(
+            enrollment.user.email, subject, plain_body, html_body,
+        )
+    except Exception:
+        logger.exception(
+            'Picks confirmation failed for enrollment %s', enrollment.id,
+        )
+        return False

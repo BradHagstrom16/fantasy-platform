@@ -33,6 +33,7 @@ from games.worldcup.services.scoring import (
     compute_team_score_events,
 )
 from games.worldcup.services.elimination import eliminated_team_ids
+from games.worldcup.services.notifications import send_picks_confirmation
 from games.worldcup.services.sync import fetch_advancement_proposal
 # Platform tz helper. Re-exported as `format_ct` in the WC blueprint context
 # processor (see below) so existing WC templates (`{{ format_ct(dt).strftime(...) }}`)
@@ -302,6 +303,7 @@ def picks():
             )
 
         # Save picks
+        was_update = enrollment.picks_submitted  # pre-mutation: drives email subject
         WorldCupPick.query.filter_by(enrollment_id=enrollment.id).delete()
 
         for tid in selected_ids:
@@ -316,6 +318,10 @@ def picks():
         enrollment.picks_submitted = True
         enrollment.usa_goals_guess = usa_goals
         db.session.commit()
+
+        # Roster receipt — fire-and-forget; send_picks_confirmation never
+        # raises and a failed send must not affect the submission.
+        send_picks_confirmation(enrollment, is_update=was_update)
 
         flash('Your picks have been submitted! You can edit them anytime before the tournament starts.', 'success')
         return redirect(url_for('worldcup.index'))
