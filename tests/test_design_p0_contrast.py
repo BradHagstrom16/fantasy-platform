@@ -35,7 +35,16 @@ def _rule_body(css: str, selector: str) -> str | None:
 
 
 def _has_valid_trophy_text_color(body: str) -> bool:
-    return any(token in body for token in _VALID_TROPHY_TEXT_COLORS)
+    """True when the body's `color:` declaration itself is chamber-purple.
+
+    Anchored to the color: declaration (the (?<!-) lookbehind excludes the
+    -color property family) so a purple border/shadow can't satisfy the lock
+    while the actual text color regresses to bone/white.
+    """
+    return any(
+        re.search(rf'(?<!-)color\s*:\s*{re.escape(token)}', body)
+        for token in _VALID_TROPHY_TEXT_COLORS
+    )
 
 
 def test_navbar_trophy_cta_text_color_rest():
