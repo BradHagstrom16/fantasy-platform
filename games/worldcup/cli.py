@@ -455,6 +455,28 @@ def sync_cmd(mode):
         click.echo(f"Completed:       {completed}/{total}")
 
 
+@worldcup_cli.command('send-digest')
+def send_digest_cmd():
+    """Send daily match-result digest emails to players whose picks scored yesterday (CT).
+
+    Intended to run at 5am CT via the wc-digest-player.timer systemd unit.
+    Covers all matches completed on the previous CT calendar day.
+    Skips players with no scoring picks on that date.
+    """
+    from games.worldcup.services.notifications import send_daily_digests
+
+    result = send_daily_digests()
+    click.echo(
+        f"[send-digest] {result['status']}  date={result['date']}  "
+        f"sent={result.get('sent', 0)}  "
+        f"skipped-no-match={result.get('skipped_no_match', 0)}  "
+        f"skipped-no-score={result.get('skipped_no_score', 0)}  "
+        f"errors={result.get('errors', 0)}"
+    )
+    if result.get('errors'):
+        raise click.ClickException('One or more digest sends failed — check logs.')
+
+
 def register_worldcup_cli(app):
     """Register World Cup CLI commands with the Flask app."""
     app.cli.add_command(worldcup_cli)
