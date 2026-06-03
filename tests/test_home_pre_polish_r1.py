@@ -371,6 +371,68 @@ def test_home_shell_min_height_uses_chrome_tokens():
 
 
 # ---------------------------------------------------------------------------
+# Roster Spine mobile stacking — every grid cell explicitly placed
+# ---------------------------------------------------------------------------
+
+def _extract_media_blocks(css: str, query: str) -> list[str]:
+    """Return the brace-matched bodies of every media block opened by
+    `query`. Regex alone can't capture a media block (nested braces), so
+    walk the braces."""
+    blocks = []
+    i = 0
+    while True:
+        i = css.find(query, i)
+        if i == -1:
+            break
+        j = css.find('{', i)
+        depth, k = 1, j + 1
+        while depth and k < len(css):
+            if css[k] == '{':
+                depth += 1
+            elif css[k] == '}':
+                depth -= 1
+            k += 1
+        blocks.append(css[j + 1:k - 1])
+        i = k
+    return blocks
+
+
+def test_ballot_spine_mobile_grid_places_every_cell_explicitly():
+    """The ≤480px ballot-spine block must place all five tier-row children
+    with explicit grid-row + grid-column. The pre-fix block pinned -name and
+    -count to the same column track (two items locked to one track can't
+    share a row, so the count dropped to its own line) and left -mult to
+    grid auto-placement, which wrapped it to a 4th row inside the 1.75rem
+    tag column as an orphaned "×1". Each tier burned 4 visual rows; the
+    redesigned stack is 2 (header beat, then countries indented to the
+    spine)."""
+    css = STYLE_CSS.read_text()
+    blocks = [
+        b for b in _extract_media_blocks(css, '@media (max-width: 480px)')
+        if '.ballot-spine-tier-row' in b
+    ]
+    assert len(blocks) == 1, (
+        'Expected exactly one max-width:480px block styling '
+        '.ballot-spine-tier-row, found %d' % len(blocks)
+    )
+    block = blocks[0]
+    for child in ('tag', 'name', 'count', 'mult', 'picks'):
+        m = re.search(
+            r'\.ballot-spine-tier-%s\s*\{([^}]*)\}' % child, block)
+        assert m, (
+            f'.ballot-spine-tier-{child} has no rule in the 480px '
+            'ballot-spine block; an unplaced child falls to grid '
+            'auto-placement and orphans onto its own row.'
+        )
+        decls = m.group(1)
+        assert 'grid-row:' in decls and 'grid-column:' in decls, (
+            f'.ballot-spine-tier-{child} must carry explicit grid-row and '
+            'grid-column in the mobile block (auto-placement is the bug '
+            'this lock guards against).'
+        )
+
+
+# ---------------------------------------------------------------------------
 # Flash-messages container only renders when there is a message (P0 #4)
 # ---------------------------------------------------------------------------
 
