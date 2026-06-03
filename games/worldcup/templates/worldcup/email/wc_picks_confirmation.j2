@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="light">
+<meta name="supported-color-schemes" content="light">
+<title>Your World Cup picks</title>
+</head>
+<body style="margin:0; padding:0; background:#F3EFE6; font-family:'Newsreader', Georgia, 'Times New Roman', serif; color:#1C1730; -webkit-text-size-adjust:100%; -ms-text-size-adjust:100%;">
+
+{# Tier-categorical palette — mirrors --wc-tier1..5 in style.css #}
+{% set tier_colors = {1: '#D97706', 2: '#4B7399', 3: '#B45309', 4: '#0D7377', 5: '#9333EA'} %}
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+       style="background:#F3EFE6; min-width:320px;">
+  <tr>
+    <td align="center" style="padding:28px 16px 32px;">
+
+      <!-- Card shell -->
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+             style="max-width:560px; background:#FFFFFF; border-radius:8px; overflow:hidden;
+                    box-shadow:0 4px 20px rgba(58,29,114,.12);">
+
+        <!-- ══ HEADER BAND ══ -->
+        <tr>
+          <td style="background:#2A1150; padding:26px 32px 20px; text-align:center;">
+            <!--[if !mso]><!-->
+            <img src="{{ logo_url }}?v={{ asset_version }}"
+                 width="140" height="140"
+                 alt="Corrupt Commish Club"
+                 style="display:block; margin:0 auto; border:0; max-width:140px;">
+            <!--<![endif]-->
+            <!--[if mso]>
+            <div style="font-family:Arial,sans-serif; font-size:22px; font-weight:bold;
+                        letter-spacing:.06em; color:#C9A227; text-transform:uppercase;">
+              CORRUPT COMMISH CLUB
+            </div>
+            <![endif]-->
+            <div style="font-family:'Teko', Arial, sans-serif; font-size:12px; font-weight:500;
+                        letter-spacing:.14em; color:rgba(243,239,230,.85); text-transform:uppercase;
+                        margin-top:4px;">
+              World Cup Fantasy Pool
+            </div>
+          </td>
+        </tr>
+
+        <!-- ══ RECEIPT HERO ══ -->
+        <tr>
+          <td style="background:#F3EFE6; padding:22px 28px 18px;">
+            <div style="font-family:'Newsreader', Georgia, serif; font-size:14px;
+                        color:#5A5470; margin-bottom:8px; line-height:1.4;">
+              Hi {{ enrollment.get_display_name() }},
+            </div>
+
+            <div style="font-family:'Teko', Arial, sans-serif; font-size:34px; font-weight:600;
+                        color:#3A1D72; line-height:1.05; letter-spacing:.02em;">
+              {% if is_update %}Your picks are updated{% else %}Your picks are in{% endif %}
+            </div>
+
+            <div style="font-family:'Newsreader', Georgia, serif; font-size:14px;
+                        color:#5A5470; margin-top:8px; line-height:1.45;">
+              The roster below is what&rsquo;s saved for your entry.
+            </div>
+          </td>
+        </tr>
+
+        <!-- ══ NAVY RULE ══ -->
+        <tr>
+          <td style="padding:0 28px; background:#FFFFFF;">
+            <div style="height:2px; background:#002868; border-radius:1px;"></div>
+          </td>
+        </tr>
+
+        <!-- ══ ROSTER ══ -->
+        <tr>
+          <td style="background:#FFFFFF; padding:18px 28px 0;">
+            <div style="font-family:'Teko', Arial, sans-serif; font-size:11px; font-weight:500;
+                        letter-spacing:.1em; text-transform:uppercase; color:#8A849B;
+                        margin-bottom:14px;">
+              Your roster
+            </div>
+
+            {% for group in tier_groups %}
+            <!-- Tier header -->
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+                   style="margin-bottom:8px;{{ ' margin-top:16px;' if not loop.first else '' }}">
+              <tr>
+                <td width="14" valign="middle">
+                  <span style="display:inline-block; width:8px; height:8px; border-radius:4px;
+                               background:{{ tier_colors[group.tier] }};"></span>
+                </td>
+                <td valign="middle">
+                  <span style="font-family:'Teko', Arial, sans-serif; font-size:13px; font-weight:600;
+                               letter-spacing:.08em; text-transform:uppercase; color:#5A5470;">
+                    {{ group.name }}
+                  </span>
+                  <span style="font-family:'Teko', Arial, sans-serif; font-size:12px; font-weight:500;
+                               letter-spacing:.04em; color:#8A849B; padding-left:4px;">
+                    {{ group.multiplier_str }}
+                  </span>
+                </td>
+              </tr>
+            </table>
+
+            {% for team in group.teams %}
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+                   style="margin-bottom:{{ '8px' if not loop.last else '0' }};">
+              <tr>
+                <!-- Flag -->
+                <td width="42" valign="middle" style="padding-right:10px; padding-left:14px;">
+                  <img src="{{ site_url }}/static/flags/{{ team.iso_code or '_tbd' }}.svg?v={{ asset_version }}"
+                       width="24" height="18" alt="{{ team.fifa_code }}"
+                       style="display:block; border-radius:2px; border:1px solid rgba(0,0,0,.06);">
+                </td>
+
+                <!-- Team name -->
+                <td valign="middle">
+                  <span style="font-family:'Teko', Arial, sans-serif; font-size:17px; font-weight:600;
+                               color:#1C1730; letter-spacing:.02em; line-height:1.15;">
+                    {{ team.display_name }}
+                  </span>
+                </td>
+
+                <!-- Group -->
+                <td align="right" valign="middle" style="padding-left:12px; white-space:nowrap;">
+                  <span style="font-family:'Newsreader', Georgia, serif; font-size:12px;
+                               color:#5A5470;">
+                    Group {{ team.group_letter }}
+                  </span>
+                </td>
+              </tr>
+            </table>
+            {% endfor %}
+            {% endfor %}
+          </td>
+        </tr>
+
+        <!-- ══ TIEBREAKER ══ -->
+        <tr>
+          <td style="background:#FFFFFF; padding:16px 28px 0;">
+            <div style="height:1px; background:#F0ECE4; margin-bottom:14px;"></div>
+            <div style="font-family:'Newsreader', Georgia, serif; font-size:13px;
+                        color:#5A5470; line-height:1.45;">
+              USA goals tiebreaker:
+              <strong style="font-family:'Teko', Arial, sans-serif; font-size:16px;
+                             font-weight:600; color:#002868; letter-spacing:.02em;">{{ enrollment.usa_goals_guess }}</strong>
+            </div>
+          </td>
+        </tr>
+
+        <!-- ══ EDIT WINDOW + CTA ══ -->
+        <tr>
+          <td style="background:#FFFFFF; padding:14px 28px 28px; text-align:center;">
+            <div style="font-family:'Newsreader', Georgia, serif; font-size:13px;
+                        color:#5A5470; line-height:1.5; text-align:left; margin-bottom:18px;">
+              You can edit your picks until <strong style="color:#1C1730;">{{ deadline_str }}</strong>.
+              After that, your roster locks for the tournament.
+            </div>
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0"
+                   style="margin:0 auto;">
+              <tr>
+                <td align="center"
+                    style="background:linear-gradient(135deg,#F2D36B 0%,#C9A227 45%,#8A6A1A 100%);
+                           border-radius:6px;">
+                  <a href="{{ site_url }}/worldcup/picks"
+                     style="display:inline-block; padding:12px 28px;
+                            font-family:'Teko', Arial, sans-serif; font-size:15px; font-weight:600;
+                            letter-spacing:.08em; text-transform:uppercase;
+                            color:#1C0A3A; text-decoration:none;">
+                    View Your Picks &#8594;
+                  </a>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <!-- ══ FOOTER BAND ══ -->
+        <tr>
+          <td style="background:#1C0A3A; padding:14px 28px; text-align:center;">
+            <span style="font-family:'Teko', Arial, sans-serif; font-size:11px;
+                         letter-spacing:.12em; color:rgba(243,239,230,.4); text-transform:uppercase;">
+              Corrupt Commish Club &nbsp;&middot;&nbsp; cccfantasy.com
+            </span>
+          </td>
+        </tr>
+
+      </table>
+
+    </td>
+  </tr>
+</table>
+
+</body>
+</html>
