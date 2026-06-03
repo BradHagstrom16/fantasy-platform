@@ -389,6 +389,11 @@ def _extract_media_blocks(css: str, query: str) -> list[str]:
         if i == -1:
             break
         j = css.find('{', i)
+        if j == -1:
+            raise ValueError(
+                f'No opening brace after {query!r} at index {i}; '
+                'style.css is malformed or truncated.'
+            )
         depth, k = 1, j + 1
         while depth and k < len(css):
             if css[k] == '{':
@@ -396,6 +401,11 @@ def _extract_media_blocks(css: str, query: str) -> list[str]:
             elif css[k] == '}':
                 depth -= 1
             k += 1
+        if depth:
+            raise ValueError(
+                f'Unbalanced braces in media block opened at index {j}; '
+                'style.css is malformed or truncated.'
+            )
         blocks.append(css[j + 1:k - 1])
         i = k
     return blocks
