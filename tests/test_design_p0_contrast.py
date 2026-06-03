@@ -113,6 +113,8 @@ def test_pick_summary_eyebrow_light_substrate_lift():
     # Body of the rule containing the selector: the first {...} block after it
     # (selectors cannot contain braces; rule bodies in this sheet are flat).
     body = css[css.index('{', idx) + 1 : css.index('}', idx)]
-    assert 'var(--text-secondary)' in body, (
+    # Match the `color:` declaration specifically; the (?<!-) lookbehind keeps
+    # -color variants (background-color, border-color, ...) from satisfying it.
+    assert re.search(r'(?<!-)color\s*:\s*var\(--text-secondary\)', body), (
         f'.pick-summary eyebrow lift must use var(--text-secondary); body was: {body!r}'
     )
