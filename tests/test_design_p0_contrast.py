@@ -13,6 +13,9 @@ half of the fix; pair them with the rendered probe in browser DevTools.
 
 Hover is pinned alongside rest so a future hover-flip can't quietly
 re-introduce the white-on-gold bug (~1.5:1 against the lightest stop).
+
+The file has since grown a second family of source-pattern contrast locks
+(the pick-summary eyebrow lift); see the dated section comments below.
 """
 import re
 from pathlib import Path
@@ -83,26 +86,33 @@ def test_auth_trophy_cta_text_color_rest_and_hover():
 
 
 # --- Pick-summary eyebrow lift (2026-06-03) -------------------------------
-# Separate source-pattern lock, same file because it reuses _rule_body. The
+# Separate source-pattern lock in the shared contrast-lock file. The
 # "Your selections" eyebrow in picks.html sits inside .pick-summary (white
 # --bg-card panel); the base .wc-eyebrow color is --bone-mute, a
 # dark-substrate token that renders near-invisible on white. The fix joins
 # .pick-summary to the grouped light-substrate lift (DESIGN.md §3 scoped-lift
 # pattern, same as .wc-card-flush / .player-picks-mobile / -sealed).
+# Deliberately NOT via _rule_body: that helper line-anchors selector-then-{,
+# so it only matches the terminal selector of a grouped rule and would fail
+# spuriously if the group were ever reordered. The position-independent
+# substring + brace-scan below survives reordering (precedent:
+# test_design_p2_s2_3_1.py's `.team-path > .wc-eyebrow` lock).
 
 def test_pick_summary_eyebrow_light_substrate_lift():
     """`.pick-summary .wc-eyebrow:not(...)` must declare --text-secondary so
     the "Your selections" label stays AA-legible on the white summary panel.
     Guards against the lift selector being dropped from the grouped rule."""
     css = CSS_PATH.read_text()
-    body = _rule_body(
-        css, '.pick-summary .wc-eyebrow:not(.wc-eyebrow-red):not(.wc-eyebrow-gold)'
-    )
-    assert body is not None, (
-        '.pick-summary eyebrow lift rule not found — the bare .wc-eyebrow '
+    selector = '.pick-summary .wc-eyebrow:not(.wc-eyebrow-red):not(.wc-eyebrow-gold)'
+    idx = css.find(selector)
+    assert idx != -1, (
+        '.pick-summary eyebrow lift selector not found — the bare .wc-eyebrow '
         '(--bone-mute, dark-substrate token) is near-invisible on the white '
         '.pick-summary panel without it'
     )
+    # Body of the rule containing the selector: the first {...} block after it
+    # (selectors cannot contain braces; rule bodies in this sheet are flat).
+    body = css[css.index('{', idx) + 1 : css.index('}', idx)]
     assert 'var(--text-secondary)' in body, (
         f'.pick-summary eyebrow lift must use var(--text-secondary); body was: {body!r}'
     )
