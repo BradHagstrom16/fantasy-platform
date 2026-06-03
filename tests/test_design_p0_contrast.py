@@ -80,3 +80,29 @@ def test_auth_trophy_cta_text_color_rest_and_hover():
     assert _has_valid_trophy_text_color(hover), (
         f'Auth trophy CTA hover must keep chamber-purple text; body was: {hover!r}'
     )
+
+
+# --- Pick-summary eyebrow lift (2026-06-03) -------------------------------
+# Separate source-pattern lock, same file because it reuses _rule_body. The
+# "Your selections" eyebrow in picks.html sits inside .pick-summary (white
+# --bg-card panel); the base .wc-eyebrow color is --bone-mute, a
+# dark-substrate token that renders near-invisible on white. The fix joins
+# .pick-summary to the grouped light-substrate lift (DESIGN.md §3 scoped-lift
+# pattern, same as .wc-card-flush / .player-picks-mobile / -sealed).
+
+def test_pick_summary_eyebrow_light_substrate_lift():
+    """`.pick-summary .wc-eyebrow:not(...)` must declare --text-secondary so
+    the "Your selections" label stays AA-legible on the white summary panel.
+    Guards against the lift selector being dropped from the grouped rule."""
+    css = CSS_PATH.read_text()
+    body = _rule_body(
+        css, '.pick-summary .wc-eyebrow:not(.wc-eyebrow-red):not(.wc-eyebrow-gold)'
+    )
+    assert body is not None, (
+        '.pick-summary eyebrow lift rule not found — the bare .wc-eyebrow '
+        '(--bone-mute, dark-substrate token) is near-invisible on the white '
+        '.pick-summary panel without it'
+    )
+    assert 'var(--text-secondary)' in body, (
+        f'.pick-summary eyebrow lift must use var(--text-secondary); body was: {body!r}'
+    )
