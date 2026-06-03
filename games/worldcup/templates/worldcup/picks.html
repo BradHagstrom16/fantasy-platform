@@ -327,7 +327,7 @@
       </ul>
     </div>
     <div class="wc-intro-footer">
-      <button type="button" class="btn btn-game btn-lg" id="wcIntroDismiss" autofocus>
+      <button type="button" class="btn btn-game btn-lg" id="wcIntroDismiss">
         <i class="bi bi-check-lg me-2" aria-hidden="true"></i>Start Picking
       </button>
       <a href="{{ url_for('worldcup.rules') }}" class="wc-intro-rules-link">Read the full rules →</a>
@@ -560,8 +560,12 @@
 
   // Defer one frame so the browser has painted the initial state before
   // adding the visible class — required for the CSS transition to fire.
+  // Focus the CTA here (not via autofocus) so it only receives focus when
+  // the overlay is actually visible, not on page load.
   requestAnimationFrame(function() {
     overlay.classList.add('wc-intro--visible');
+    var dismissBtn = document.getElementById('wcIntroDismiss');
+    if (dismissBtn) dismissBtn.focus();
   });
 
   function dismiss() {

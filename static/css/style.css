@@ -5715,9 +5715,14 @@ body.game-worldcup .tier-card-5 .tier-card-header { background: linear-gradient(
     -webkit-box-orient: vertical;
     line-height: 1.05;
   }
-  /* Suppress group-pill navigation on touch: no hover affordance on mobile,
-     so the 44×44 tap floor silently intercepted card-selection taps. The text
-     stays visible as metadata; desktop retains the link affordance. */
+}
+
+/* Suppress group-pill navigation at all widths where d-lg-none shows the
+   single "View Group Standings" fallback link (i.e., below Bootstrap's lg
+   breakpoint at 992px). The 767px block above handled only part of this
+   range; tablets (768–991px) saw the fallback link but still had
+   interactive per-card pill links. */
+@media (max-width: 991px) {
   .wc-team-card .team-group-pill {
     pointer-events: none;
     cursor: default;
@@ -6887,7 +6892,8 @@ main { flex: 1; }
 }
 
 .wc-intro-header {
-  background: var(--wc-navy);
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border);
   padding: 1.25rem 1.5rem;
   display: flex;
   align-items: center;
@@ -6895,7 +6901,7 @@ main { flex: 1; }
 }
 .wc-intro-header-icon {
   font-size: 1.5rem;
-  color: var(--gold-light);
+  color: var(--wc-navy);
   line-height: 1;
   flex-shrink: 0;
 }
@@ -6905,7 +6911,7 @@ main { flex: 1; }
   font-size: 1.4rem;
   letter-spacing: .03em;
   text-transform: uppercase;
-  color: #fff;
+  color: var(--wc-navy);
   margin: 0;
   line-height: 1.2;
 }
@@ -6914,7 +6920,7 @@ main { flex: 1; }
   font-size: .72rem;
   letter-spacing: .08em;
   text-transform: uppercase;
-  color: rgba(243, 239, 230, .65);
+  color: var(--wc-red);
   display: block;
   margin-bottom: .15rem;
 }
