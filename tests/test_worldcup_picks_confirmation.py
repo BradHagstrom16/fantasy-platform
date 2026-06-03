@@ -19,6 +19,7 @@ from games.worldcup.constants import TOURNAMENT_DEADLINE_UTC, WORLDCUP_TZ
 
 @pytest.fixture()
 def app():
+    """Testing app with a fresh in-memory schema per test."""
     app = create_app('testing')
     with app.app_context():
         db.create_all()
@@ -29,6 +30,7 @@ def app():
 
 @pytest.fixture()
 def client(app):
+    """Flask test client bound to the testing app."""
     return app.test_client()
 
 
@@ -57,6 +59,7 @@ _ROSTER_SPEC = [
 
 
 def _seed_teams():
+    """Create the 9 _ROSTER_SPEC teams; returns them in spec order."""
     from tests._worldcup_fixtures import make_team
     return [
         make_team(code, tier=tier, multiplier=mult, group_letter=group)
@@ -66,6 +69,7 @@ def _seed_teams():
 
 def _seed_enrollment(email='picker@example.com', picks_submitted=False,
                      usa_goals_guess=7, with_picks=False, teams=None):
+    """Create a user + enrollment, optionally with picks on the given teams."""
     from tests._worldcup_fixtures import make_user, make_enrollment, make_pick
     user = make_user(email=email, display_name='Picker')
     enrollment = make_enrollment(
@@ -78,6 +82,7 @@ def _seed_enrollment(email='picker@example.com', picks_submitted=False,
 
 
 def _picks_form(teams, usa_goals='7'):
+    """Build the tier_N multi-select POST form for the given teams."""
     form = defaultdict(list)
     for team in teams:
         form[f'tier_{team.tier}'].append(str(team.id))
@@ -87,6 +92,7 @@ def _picks_form(teams, usa_goals='7'):
 
 
 def _login(client, user):
+    """Authenticate the test client session as the given user."""
     with client.session_transaction() as sess:
         sess['_user_id'] = user.get_id()  # auth_id, never str(user.id)
         sess['_fresh'] = True

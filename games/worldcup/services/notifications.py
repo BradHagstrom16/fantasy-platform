@@ -297,6 +297,7 @@ def _plain_confirmation(
     site_url: str,
     is_update: bool,
 ) -> str:
+    """Plain-text fallback for the picks confirmation (mirrors the HTML body)."""
     lines = [
         'Your updated World Cup picks' if is_update else 'Your World Cup picks are in',
         '=' * 40,
