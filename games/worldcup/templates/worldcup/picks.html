@@ -178,6 +178,13 @@
       {% endfor %}
     </nav>
 
+    {# Mobile-only shortcut to groups (per-card pill links are disabled on touch) #}
+    <div class="d-lg-none text-end mb-3">
+      <a href="{{ url_for('worldcup.groups') }}" class="wc-picks-groups-link">
+        <i class="bi bi-globe2 me-1" aria-hidden="true"></i>View Group Standings
+      </a>
+    </div>
+
     <div class="row">
       <div class="col-lg-8">
 
@@ -289,6 +296,46 @@
 {% endif %}
 
 </div>
+
+{% if not deadline_passed and not has_picks %}
+{# First-time picks intro overlay. JS checks localStorage('wc_intro_seen') and
+   suppresses on return visits — the HTML is rendered but immediately removed if
+   the key is set, so there's no flash or layout shift for returning users. #}
+<div class="wc-intro-overlay" id="wcIntroOverlay" role="dialog" aria-modal="true" aria-labelledby="wcIntroTitle">
+  <div class="wc-intro-modal" id="wcIntroModal">
+    <div class="wc-intro-header">
+      <span class="wc-intro-header-icon" aria-hidden="true"><i class="bi bi-globe2"></i></span>
+      <div>
+        <span class="wc-intro-eyebrow">2026 World Cup Fantasy Pool</span>
+        <h2 class="wc-intro-title" id="wcIntroTitle">How This Works</h2>
+      </div>
+    </div>
+    <div class="wc-intro-body">
+      <ul class="wc-intro-bullets">
+        <li class="wc-intro-bullet">
+          <span class="wc-intro-bullet-icon" aria-hidden="true"><i class="bi bi-flag"></i></span>
+          <span class="wc-intro-bullet-text"><strong>Pick 9 national teams</strong> across five tiers before the tournament kicks off.</span>
+        </li>
+        <li class="wc-intro-bullet">
+          <span class="wc-intro-bullet-icon" aria-hidden="true"><i class="bi bi-layers"></i></span>
+          <span class="wc-intro-bullet-text"><strong>Lower tiers carry bigger multipliers:</strong> a Wildcard upset scores far more than a Favorites win.</span>
+        </li>
+        <li class="wc-intro-bullet">
+          <span class="wc-intro-bullet-icon" aria-hidden="true"><i class="bi bi-trophy"></i></span>
+          <span class="wc-intro-bullet-text"><strong>Points stack</strong> as your teams win matches and advance through the bracket.</span>
+        </li>
+      </ul>
+    </div>
+    <div class="wc-intro-footer">
+      <button type="button" class="btn btn-game btn-lg" id="wcIntroDismiss">
+        <i class="bi bi-check-lg me-2" aria-hidden="true"></i>Start Picking
+      </button>
+      <a href="{{ url_for('worldcup.rules') }}" class="wc-intro-rules-link">Read the full rules →</a>
+    </div>
+  </div>
+</div>
+{% endif %}
+
 {% endblock %}
 
 {% block scripts %}
@@ -497,5 +544,46 @@
 {% endif %}
 {% if deadline_passed or (not show_edit_form and has_picks) %}
 {% include 'worldcup/_pick_accordion_script.html' %}
+{% endif %}
+{% if not deadline_passed and not has_picks %}
+<script>
+(function() {
+  if (localStorage.getItem('wc_intro_seen')) {
+    // Already seen — remove the overlay immediately (no transition) so it
+    // never flashes or takes up layout space on return visits.
+    var el = document.getElementById('wcIntroOverlay');
+    if (el) el.remove();
+    return;
+  }
+  var overlay = document.getElementById('wcIntroOverlay');
+  if (!overlay) return;
+
+  // Defer one frame so the browser has painted the initial state before
+  // adding the visible class — required for the CSS transition to fire.
+  // Focus the CTA here (not via autofocus) so it only receives focus when
+  // the overlay is actually visible, not on page load.
+  requestAnimationFrame(function() {
+    overlay.classList.add('wc-intro--visible');
+    var dismissBtn = document.getElementById('wcIntroDismiss');
+    if (dismissBtn) dismissBtn.focus();
+  });
+
+  function dismiss() {
+    overlay.classList.remove('wc-intro--visible');
+    localStorage.setItem('wc_intro_seen', '1');
+    // Remove after exit transition completes to free memory.
+    overlay.addEventListener('transitionend', function() { overlay.remove(); }, { once: true });
+  }
+
+  document.getElementById('wcIntroDismiss').addEventListener('click', dismiss);
+  // Backdrop tap dismisses (click on overlay itself, not the modal card).
+  overlay.addEventListener('click', function(e) {
+    if (e.target === overlay) dismiss();
+  });
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') dismiss();
+  });
+})();
+</script>
 {% endif %}
 {% endblock %}

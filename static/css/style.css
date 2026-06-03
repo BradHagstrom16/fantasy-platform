@@ -3889,6 +3889,33 @@ body.game-worldcup {
   border-radius: var(--radius);
 }
 
+/* Mobile-only "View Group Standings" link below the tier-jump rail.
+   Newsreader italic register matches the hero's "View Scoring Rules" link;
+   hover activates with WC red (the primary interactive accent). Shown only
+   on mobile via d-lg-none — desktop uses per-card group pill links instead. */
+.wc-picks-groups-link {
+  display: inline-flex;
+  align-items: center;
+  font-family: 'Newsreader', Georgia, serif;
+  font-style: italic;
+  font-size: .875rem;
+  color: var(--text-secondary);
+  text-decoration: none;
+  min-height: 44px;
+  padding: .5rem 0;
+  transition: color var(--transition);
+}
+.wc-picks-groups-link:hover,
+.wc-picks-groups-link:focus {
+  color: var(--wc-red);
+  text-decoration: none;
+}
+.wc-picks-groups-link:focus-visible {
+  outline: 2px solid var(--gold-light);
+  outline-offset: 2px;
+  border-radius: var(--radius);
+}
+
 /* === player_detail / picks table contrast lock.
    After WC tab unification P3, `.player-picks-desktop` lives only on light
    substrates (plain `.card` on both player_detail.html and picks.html); the
@@ -5690,6 +5717,18 @@ body.game-worldcup .tier-card-5 .tier-card-header { background: linear-gradient(
   }
 }
 
+/* Suppress group-pill navigation at all widths where d-lg-none shows the
+   single "View Group Standings" fallback link (i.e., below Bootstrap's lg
+   breakpoint at 992px). The 767px block above handled only part of this
+   range; tablets (768–991px) saw the fallback link but still had
+   interactive per-card pill links. */
+@media (max-width: 991px) {
+  .wc-team-card .team-group-pill {
+    pointer-events: none;
+    cursor: default;
+  }
+}
+
 /* Admin: auto-winner pulse on match_result form */
 @keyframes wc-auto-pulse {
   0%   { background-color: transparent; }
@@ -6807,6 +6846,172 @@ main { flex: 1; }
 .navbar-toggler:hover { border-color: var(--platform-accent); }
 .navbar-toggler-icon {
   background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba(212,168,32,0.85)' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
+}
+
+/* === WC PICKS INTRO MODAL === */
+/* One-time onboarding overlay for first-time pickers (no picks yet, pre-deadline).
+   Suppressed on return visits via localStorage. Desktop: centered dialog that
+   slides up from below. Mobile: bottom sheet that rises from the viewport edge.
+   All motion skipped under prefers-reduced-motion (crossfade only). */
+
+:root {
+  --ease-out-quint: cubic-bezier(.22, 1, .36, 1);
+}
+
+.wc-intro-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1060;
+  background: rgba(10, 6, 18, .72);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 280ms ease-out;
+}
+.wc-intro-overlay.wc-intro--visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.wc-intro-modal {
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  width: calc(100% - 2rem);
+  max-width: 460px;
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+  opacity: 0;
+  transform: translateY(36px);
+  transition: opacity 320ms var(--ease-out-quint), transform 320ms var(--ease-out-quint);
+}
+.wc-intro--visible .wc-intro-modal {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.wc-intro-header {
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border);
+  padding: 1.25rem 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+}
+.wc-intro-header-icon {
+  font-size: 1.5rem;
+  color: var(--wc-navy);
+  line-height: 1;
+  flex-shrink: 0;
+}
+.wc-intro-title {
+  font-family: 'Teko', sans-serif;
+  font-weight: 600;
+  font-size: 1.4rem;
+  letter-spacing: .03em;
+  text-transform: uppercase;
+  color: var(--wc-navy);
+  margin: 0;
+  line-height: 1.2;
+}
+.wc-intro-eyebrow {
+  font-family: 'Teko', sans-serif;
+  font-size: .72rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--wc-red);
+  display: block;
+  margin-bottom: .15rem;
+}
+
+.wc-intro-body {
+  padding: 1.5rem;
+}
+.wc-intro-bullets {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: .9rem;
+}
+.wc-intro-bullet {
+  display: flex;
+  align-items: flex-start;
+  gap: .75rem;
+}
+.wc-intro-bullet-icon {
+  color: var(--wc-red);
+  font-size: 1.1rem;
+  line-height: 1.4;
+  flex-shrink: 0;
+}
+.wc-intro-bullet-text {
+  font-family: 'Newsreader', Georgia, serif;
+  font-size: .95rem;
+  color: var(--text-primary);
+  line-height: 1.5;
+}
+.wc-intro-bullet-text strong {
+  color: var(--text-primary);
+}
+
+.wc-intro-footer {
+  padding: 0 1.5rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: .75rem;
+  align-items: stretch;
+}
+.wc-intro-rules-link {
+  font-family: 'Newsreader', Georgia, serif;
+  font-style: italic;
+  font-size: .875rem;
+  color: var(--text-secondary);
+  text-align: center;
+  text-decoration: none;
+  padding: .35rem 0;
+  transition: color var(--transition);
+}
+.wc-intro-rules-link:hover,
+.wc-intro-rules-link:focus {
+  color: var(--wc-red);
+}
+.wc-intro-rules-link:focus-visible {
+  outline: 2px solid var(--gold-light);
+  outline-offset: 2px;
+  border-radius: var(--radius);
+}
+
+/* Mobile: bottom sheet rises from viewport edge */
+@media (max-width: 767px) {
+  .wc-intro-overlay {
+    align-items: flex-end;
+  }
+  .wc-intro-modal {
+    width: 100%;
+    max-width: 100%;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    transform: translateY(100%);
+  }
+  .wc-intro--visible .wc-intro-modal {
+    transform: translateY(0);
+  }
+  .wc-intro-header {
+    border-radius: 0;
+  }
+}
+
+/* Reduced motion: skip transform, crossfade only */
+@media (prefers-reduced-motion: reduce) {
+  .wc-intro-modal {
+    transform: none !important;
+    transition: opacity 200ms ease-out;
+  }
+  .wc-intro-overlay {
+    transition: opacity 150ms ease-out;
+  }
 }
 
 /* === GAME SUB-NAV === */
