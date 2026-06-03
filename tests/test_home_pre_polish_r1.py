@@ -371,6 +371,100 @@ def test_home_shell_min_height_uses_chrome_tokens():
 
 
 # ---------------------------------------------------------------------------
+# Roster Spine mobile stacking — every grid cell explicitly placed
+# ---------------------------------------------------------------------------
+
+def _extract_media_blocks(css: str, query: str) -> list[str]:
+    """Return the brace-matched bodies of every media block opened by
+    `query`. Regex alone can't capture a media block (nested braces), so
+    walk the braces. CSS comments are stripped first: style.css comments
+    legitimately carry stray braces (e.g. the "{n}" and "{LETTER}" cron/
+    regex examples), and a brace inside a comment would corrupt the depth
+    count."""
+    css = re.sub(r'/\*.*?\*/', '', css, flags=re.S)
+    blocks = []
+    i = 0
+    while True:
+        i = css.find(query, i)
+        if i == -1:
+            break
+        j = css.find('{', i)
+        if j == -1:
+            raise ValueError(
+                f'No opening brace after {query!r} at index {i}; '
+                'style.css is malformed or truncated.'
+            )
+        depth, k = 1, j + 1
+        while depth and k < len(css):
+            if css[k] == '{':
+                depth += 1
+            elif css[k] == '}':
+                depth -= 1
+            k += 1
+        if depth:
+            raise ValueError(
+                f'Unbalanced braces in media block opened at index {j}; '
+                'style.css is malformed or truncated.'
+            )
+        blocks.append(css[j + 1:k - 1])
+        i = k
+    return blocks
+
+
+def test_ballot_spine_mobile_grid_places_every_cell_explicitly():
+    """The ≤480px ballot-spine block must place all five tier-row children
+    on the two-row mobile grid with explicit, value-locked grid-row +
+    grid-column. The pre-fix block pinned -name and -count to the same
+    column track (two items locked to one track can't share a row, so the
+    count dropped to its own line) and left -mult to grid auto-placement,
+    which wrapped it to a 4th row inside the 1.75rem tag column as an
+    orphaned "×1". Each tier burned 4 visual rows; the redesigned stack is
+    2 (header beat tag | name | count | ×mult, then countries indented to
+    the spine on row 2). Values are asserted, not just property presence:
+    the realistic regression is a wrong-value edit (picks back on row 1,
+    two children sharing a column, a collapsed track list), and each of
+    those must fail here."""
+    css = STYLE_CSS.read_text()
+    blocks = [
+        b for b in _extract_media_blocks(css, '@media (max-width: 480px)')
+        if '.ballot-spine-tier-row' in b
+    ]
+    assert len(blocks) == 1, (
+        'Expected exactly one max-width:480px block styling '
+        '.ballot-spine-tier-row, found %d' % len(blocks)
+    )
+    block = blocks[0]
+    row = re.search(r'\.ballot-spine-tier-row\s*\{([^}]*)\}', block)
+    assert row and 'grid-template-columns: 1.75rem auto 1fr 2.2rem' in row.group(1), (
+        'The mobile ballot-spine row must keep the 4-track grid '
+        '(tag | name | count | mult); collapsing the track list re-breaks '
+        'the header row.'
+    )
+    expected = {
+        'tag': ('grid-row: 1', 'grid-column: 1'),
+        'name': ('grid-row: 1', 'grid-column: 2'),
+        'count': ('grid-row: 1', 'grid-column: 3'),
+        'mult': ('grid-row: 1', 'grid-column: 4'),
+        'picks': ('grid-row: 2', 'grid-column: 2 / -1'),
+    }
+    for child, (grow, gcol) in expected.items():
+        m = re.search(
+            r'\.ballot-spine-tier-%s\s*\{([^}]*)\}' % child, block)
+        assert m, (
+            f'.ballot-spine-tier-{child} has no rule in the 480px '
+            'ballot-spine block; an unplaced child falls to grid '
+            'auto-placement and orphans onto its own row.'
+        )
+        decls = m.group(1)
+        assert grow in decls and gcol in decls, (
+            f'.ballot-spine-tier-{child} must declare "{grow}; {gcol}" in '
+            'the mobile block (header children on distinct row-1 columns, '
+            'picks indented on row 2; wrong values re-create the orphaned '
+            'stacking this lock guards against).'
+        )
+
+
+# ---------------------------------------------------------------------------
 # Flash-messages container only renders when there is a message (P0 #4)
 # ---------------------------------------------------------------------------
 

@@ -1844,19 +1844,23 @@ body.game-golf {
   font-variant-numeric: tabular-nums;
   text-align: right;
 }
+/* Mobile two-row tier stack: header beat (tag · name · count ····· ×mult)
+   on row 1, country names indented to the spine on row 2. Every cell is
+   explicitly placed — the prior block pinned -name and -count to the same
+   column track (forcing the count onto its own row) and left -mult to grid
+   auto-placement, which wrapped it to a 4th row inside the 1.75rem tag
+   column as an orphaned "×1". Locked by test_home_pre_polish_r1.py::
+   test_ballot_spine_mobile_grid_places_every_cell_explicitly. */
 @media (max-width: 480px) {
   .home-shell .ballot-spine-tier-row {
-    grid-template-columns: 1.75rem 1fr 2.2rem;
-    row-gap: 0.05rem;
+    grid-template-columns: 1.75rem auto 1fr 2.2rem;
+    row-gap: 0.15rem;
   }
-  .home-shell .ballot-spine-tier-name,
-  .home-shell .ballot-spine-tier-count {
-    grid-column: 2 / 3;
-  }
-  .home-shell .ballot-spine-tier-picks {
-    grid-column: 2 / 4;
-    margin-top: 0.1rem;
-  }
+  .home-shell .ballot-spine-tier-tag   { grid-row: 1; grid-column: 1; }
+  .home-shell .ballot-spine-tier-name  { grid-row: 1; grid-column: 2; }
+  .home-shell .ballot-spine-tier-count { grid-row: 1; grid-column: 3; }
+  .home-shell .ballot-spine-tier-mult  { grid-row: 1; grid-column: 4; }
+  .home-shell .ballot-spine-tier-picks { grid-row: 2; grid-column: 2 / -1; }
 }
 .home-shell .ballot-foot {
   display: flex;
