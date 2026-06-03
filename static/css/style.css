@@ -3679,18 +3679,21 @@ body.game-worldcup {
 }
 
 /* Light-substrate eyebrow lift for the flush card + mobile picks block +
-   sealed-state card. The read-only tiebreak card (.card.wc-card-flush), the
-   mobile "Your 9 Picks" header (.player-picks-mobile), and the player_detail
-   pre-deadline "Roster sealed" card (.player-picks-sealed — a plain white
-   .card) consume the bare .wc-eyebrow on white; without a lift the base
-   --bone-mute (dark-substrate token) renders as a faint watermark ("The
-   Tiebreak" / "Roster sealed" were near-invisible). Same --text-secondary
-   treatment as .wc-stat-card / .player-picks-desktop (DESIGN.md §3 light-surface
-   eyebrow rule). .wc-card-flush is a light-substrate-only utility (DESIGN.md §4),
-   so the lift is correct on every flush-card consumer. */
+   sealed-state card + pick summary. The read-only tiebreak card
+   (.card.wc-card-flush), the mobile "Your 9 Picks" header
+   (.player-picks-mobile), the player_detail pre-deadline "Roster sealed" card
+   (.player-picks-sealed — a plain white .card), and the pick-form summary
+   panel (.pick-summary — white --bg-card sidebar) consume the bare .wc-eyebrow
+   on white; without a lift the base --bone-mute (dark-substrate token) renders
+   as a faint watermark ("The Tiebreak" / "Roster sealed" / "Your selections"
+   were near-invisible). Same --text-secondary treatment as .wc-stat-card /
+   .player-picks-desktop (DESIGN.md §3 light-surface eyebrow rule).
+   .wc-card-flush is a light-substrate-only utility (DESIGN.md §4), so the
+   lift is correct on every flush-card consumer. */
 .card.wc-card-flush .wc-eyebrow:not(.wc-eyebrow-red):not(.wc-eyebrow-gold),
 .player-picks-mobile .wc-eyebrow:not(.wc-eyebrow-red):not(.wc-eyebrow-gold),
-.player-picks-sealed .wc-eyebrow:not(.wc-eyebrow-red):not(.wc-eyebrow-gold) {
+.player-picks-sealed .wc-eyebrow:not(.wc-eyebrow-red):not(.wc-eyebrow-gold),
+.pick-summary .wc-eyebrow:not(.wc-eyebrow-red):not(.wc-eyebrow-gold) {
   color: var(--text-secondary);
 }
 
