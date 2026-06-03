@@ -1849,7 +1849,8 @@ body.game-golf {
    explicitly placed — the prior block pinned -name and -count to the same
    column track (forcing the count onto its own row) and left -mult to grid
    auto-placement, which wrapped it to a 4th row inside the 1.75rem tag
-   column as an orphaned "×1". Locked by test_home_pre_polish_r1. */
+   column as an orphaned "×1". Locked by test_home_pre_polish_r1.py::
+   test_ballot_spine_mobile_grid_places_every_cell_explicitly. */
 @media (max-width: 480px) {
   .home-shell .ballot-spine-tier-row {
     grid-template-columns: 1.75rem auto 1fr 2.2rem;

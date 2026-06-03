@@ -377,7 +377,11 @@ def test_home_shell_min_height_uses_chrome_tokens():
 def _extract_media_blocks(css: str, query: str) -> list[str]:
     """Return the brace-matched bodies of every media block opened by
     `query`. Regex alone can't capture a media block (nested braces), so
-    walk the braces."""
+    walk the braces. CSS comments are stripped first: style.css comments
+    legitimately carry stray braces (e.g. the "{n}" and "{LETTER}" cron/
+    regex examples), and a brace inside a comment would corrupt the depth
+    count."""
+    css = re.sub(r'/\*.*?\*/', '', css, flags=re.S)
     blocks = []
     i = 0
     while True:
@@ -399,13 +403,17 @@ def _extract_media_blocks(css: str, query: str) -> list[str]:
 
 def test_ballot_spine_mobile_grid_places_every_cell_explicitly():
     """The ≤480px ballot-spine block must place all five tier-row children
-    with explicit grid-row + grid-column. The pre-fix block pinned -name and
-    -count to the same column track (two items locked to one track can't
-    share a row, so the count dropped to its own line) and left -mult to
-    grid auto-placement, which wrapped it to a 4th row inside the 1.75rem
-    tag column as an orphaned "×1". Each tier burned 4 visual rows; the
-    redesigned stack is 2 (header beat, then countries indented to the
-    spine)."""
+    on the two-row mobile grid with explicit, value-locked grid-row +
+    grid-column. The pre-fix block pinned -name and -count to the same
+    column track (two items locked to one track can't share a row, so the
+    count dropped to its own line) and left -mult to grid auto-placement,
+    which wrapped it to a 4th row inside the 1.75rem tag column as an
+    orphaned "×1". Each tier burned 4 visual rows; the redesigned stack is
+    2 (header beat tag | name | count | ×mult, then countries indented to
+    the spine on row 2). Values are asserted, not just property presence:
+    the realistic regression is a wrong-value edit (picks back on row 1,
+    two children sharing a column, a collapsed track list), and each of
+    those must fail here."""
     css = STYLE_CSS.read_text()
     blocks = [
         b for b in _extract_media_blocks(css, '@media (max-width: 480px)')
@@ -416,7 +424,20 @@ def test_ballot_spine_mobile_grid_places_every_cell_explicitly():
         '.ballot-spine-tier-row, found %d' % len(blocks)
     )
     block = blocks[0]
-    for child in ('tag', 'name', 'count', 'mult', 'picks'):
+    row = re.search(r'\.ballot-spine-tier-row\s*\{([^}]*)\}', block)
+    assert row and 'grid-template-columns: 1.75rem auto 1fr 2.2rem' in row.group(1), (
+        'The mobile ballot-spine row must keep the 4-track grid '
+        '(tag | name | count | mult); collapsing the track list re-breaks '
+        'the header row.'
+    )
+    expected = {
+        'tag': ('grid-row: 1', 'grid-column: 1'),
+        'name': ('grid-row: 1', 'grid-column: 2'),
+        'count': ('grid-row: 1', 'grid-column: 3'),
+        'mult': ('grid-row: 1', 'grid-column: 4'),
+        'picks': ('grid-row: 2', 'grid-column: 2 / -1'),
+    }
+    for child, (grow, gcol) in expected.items():
         m = re.search(
             r'\.ballot-spine-tier-%s\s*\{([^}]*)\}' % child, block)
         assert m, (
@@ -425,10 +446,11 @@ def test_ballot_spine_mobile_grid_places_every_cell_explicitly():
             'auto-placement and orphans onto its own row.'
         )
         decls = m.group(1)
-        assert 'grid-row:' in decls and 'grid-column:' in decls, (
-            f'.ballot-spine-tier-{child} must carry explicit grid-row and '
-            'grid-column in the mobile block (auto-placement is the bug '
-            'this lock guards against).'
+        assert grow in decls and gcol in decls, (
+            f'.ballot-spine-tier-{child} must declare "{grow}; {gcol}" in '
+            'the mobile block (header children on distinct row-1 columns, '
+            'picks indented on row 2; wrong values re-create the orphaned '
+            'stacking this lock guards against).'
         )
 
 
