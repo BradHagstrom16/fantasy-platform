@@ -150,6 +150,24 @@
   }
 }
 .navbar.navbar-dark .nav-link:hover { color: var(--gold-light); }
+/* Solo-game quick link — a member enrolled in exactly one game gets the
+   switcher hoisted out of the hamburger into the bar itself (`d-lg-none` in
+   base.html; the expanded desktop nav already shows the switcher). It's a
+   bare `.nav-link` outside `.navbar-nav`, so the dark-navbar voice and gold
+   `.active` treatment above cascade onto it for free; this block only adds
+   the touch-target floor. */
+.navbar .navbar-solo-game {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px; /* WCAG 2.5.5 touch floor, matches .navbar-toggler */
+}
+/* Ultra-narrow fallback (≤350px — Fold cover screens and the like): the full
+   lockup + solo-game link + toggler can't all fit, so the wordmark yields and
+   the head mark carries the brand (the `.navbar-brand` aria-label keeps the
+   accessible name). */
+@media (max-width: 350px) {
+  .navbar.navbar-dark .brand-wordmark { display: none; }
+}
 /* Brand link carries the canonical CCC keyboard focus ring like every other
    nav target (the `.nav-link:focus-visible` rule below covers links but not
    `.navbar-brand`, the most-tapped "home" target). */
