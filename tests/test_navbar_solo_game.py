@@ -16,6 +16,7 @@ from tests._worldcup_fixtures import make_user, make_enrollment
 
 @pytest.fixture
 def app():
+    """Testing app with a fresh in-memory schema per test."""
     app = create_app('testing')
     with app.app_context():
         db.create_all()
@@ -26,17 +27,22 @@ def app():
 
 @pytest.fixture
 def client(app):
+    """Flask test client bound to the per-test app."""
     return app.test_client()
 
 
 def _login(client, user):
-    # Session identity is auth_id, NOT str(user.id) — see CLAUDE.md invariant.
+    """Seed the session with the user's identity.
+
+    Session identity is auth_id, NOT str(user.id) — see CLAUDE.md invariant.
+    """
     with client.session_transaction() as sess:
         sess['_user_id'] = user.auth_id
         sess['_fresh'] = True
 
 
 def _enrolled_user(email='solo@test'):
+    """Create a user joined to exactly one game (World Cup) — the hoist case."""
     u = make_user(email=email, display_name='Solo')
     make_enrollment(u, picks_submitted=True)
     db.session.commit()
@@ -65,6 +71,7 @@ def test_solo_game_collapse_copy_hidden_below_lg(app, client):
 
 
 def test_anonymous_gets_no_solo_game_link(app, client):
+    """Anonymous ⇒ joined_games() is [] ⇒ no hoist (count != 1)."""
     html = client.get('/').get_data(as_text=True)
     assert 'navbar-solo-game' not in html
 
