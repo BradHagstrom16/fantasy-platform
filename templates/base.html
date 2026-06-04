@@ -42,8 +42,19 @@
         <div class="container">
             <a class="navbar-brand" href="{{ url_for('main.index') }}" aria-label="Corrupt Commish Club">
                 <img src="{{ url_for('static', filename='img/logo/favicon.svg') }}?v={{ asset_version }}" class="brand-mark" alt="">
-                <img src="{{ url_for('static', filename='img/logo/wordmark-bone.svg') }}?v={{ asset_version }}" class="brand-wordmark d-none d-md-inline" alt="">
+                {# Full lockup at every width (head + bone wordmark). CSS
+                   re-hides the wordmark ≤350px where lockup + solo-game link
+                   + toggler can't all fit. #}
+                <img src="{{ url_for('static', filename='img/logo/wordmark-bone.svg') }}?v={{ asset_version }}" class="brand-wordmark" alt="">
             </a>
+
+            {# Solo-game hoist: a member enrolled in exactly one game gets that
+               game's link in the bar itself instead of inside the hamburger
+               (below lg only — the expanded desktop nav already shows it). #}
+            {% if nav_games|length == 1 %}
+            <a class="nav-link navbar-solo-game d-lg-none ms-auto me-2 {% if request.blueprint == nav_games[0].slug %}active{% endif %}"
+               href="{{ url_for(nav_games[0].blueprint_index) }}">{{ nav_games[0].short_name or nav_games[0].display_name }}</a>
+            {% endif %}
 
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
                     aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
@@ -53,7 +64,10 @@
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav me-auto">
                     {% for game in nav_games %}
-                    <li class="nav-item">
+                    {# When the solo-game link is hoisted into the bar, hide the
+                       hamburger copy below lg so the link appears exactly once
+                       per breakpoint. #}
+                    <li class="nav-item{% if nav_games|length == 1 %} d-none d-lg-block{% endif %}">
                         <a class="nav-link {% if request.blueprint == game.slug %}active{% endif %}"
                            href="{{ url_for(game.blueprint_index) }}">{{ game.short_name or game.display_name }}</a>
                     </li>

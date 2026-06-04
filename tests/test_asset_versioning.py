@@ -190,7 +190,7 @@ BRAND_IMAGE_PATHS = [
     'img/apple-touch-icon-180.png', # iOS home-screen tile
     'img/logo/seal-color.svg',      # footer roundel seal
     'img/logo/mascot-bust.svg',     # auth brand panel hero (login/register/forgot/reset)
-    'img/logo/wordmark-bone.svg',   # navbar designed wordmark (md+)
+    'img/logo/wordmark-bone.svg',   # navbar designed wordmark (all widths; CSS hides ≤350px)
 ]
 
 
@@ -265,5 +265,6 @@ def test_navbar_brand_has_wordmark_and_accessible_name(app):
     assert 'img/logo/wordmark-bone.svg' in body, "navbar wordmark image missing"
     assert 'aria-label="Corrupt Commish Club"' in body, (
         "navbar brand link lost its accessible name — the wordmark is hidden "
-        "below md, so the <a> needs aria-label or mobile users get no brand name"
+        "at ≤350px widths, so the <a> needs aria-label or ultra-narrow-screen "
+        "users get no brand name"
     )
