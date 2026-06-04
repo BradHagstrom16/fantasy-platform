@@ -76,6 +76,18 @@ def test_anonymous_gets_no_solo_game_link(app, client):
     assert 'navbar-solo-game' not in html
 
 
+def test_logged_in_zero_enrollments_gets_no_solo_game_link(app, client):
+    """Authenticated-but-joined-nothing ⇒ no hoist. Distinct path from
+    anonymous: joined_games() runs the per-game enrollment queries and
+    filters to [] instead of short-circuiting on is_authenticated, so a
+    guard regression like `length <= 1` is caught here, not above."""
+    u = make_user(email='nogames@test', display_name='NoGames')
+    db.session.commit()
+    _login(client, u)
+    html = client.get('/').get_data(as_text=True)
+    assert 'navbar-solo-game' not in html
+
+
 def test_two_enrollments_fall_back_to_dropdown(app, client):
     """2+ joined games ⇒ no hoist; both collapse items render unhidden."""
     u = _enrolled_user()

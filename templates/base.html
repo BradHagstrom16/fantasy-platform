@@ -42,9 +42,9 @@
         <div class="container">
             <a class="navbar-brand" href="{{ url_for('main.index') }}" aria-label="Corrupt Commish Club">
                 <img src="{{ url_for('static', filename='img/logo/favicon.svg') }}?v={{ asset_version }}" class="brand-mark" alt="">
-                {# Full lockup at every width (head + bone wordmark — the
-                   CCC-final-13 composition). CSS re-hides the wordmark ≤350px
-                   where lockup + solo-game link + toggler can't all fit. #}
+                {# Full lockup at every width (head + bone wordmark). CSS
+                   re-hides the wordmark ≤350px where lockup + solo-game link
+                   + toggler can't all fit. #}
                 <img src="{{ url_for('static', filename='img/logo/wordmark-bone.svg') }}?v={{ asset_version }}" class="brand-wordmark" alt="">
             </a>
 
