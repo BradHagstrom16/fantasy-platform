@@ -22,6 +22,26 @@ from games.worldcup.services.state import worldcup_state
 from games.worldcup.services import enrollment as worldcup_enrollment
 
 
+def _is_safe_next(target):
+    """True only for a strictly-local, rooted relative path — an open-redirect guard.
+
+    Blocks absolute URLs, scheme-bearing targets (e.g. ``javascript:``),
+    protocol-relative ``//host``, and the backslash variants browsers normalize
+    to ``//host`` (``/\\host``). Used by login() and register() before honoring a
+    `next` redirect, so a crafted `next` can't bounce a user off-site.
+    """
+    if not target:
+        return False
+    parsed = urlparse(target)
+    return (
+        not parsed.scheme
+        and not parsed.netloc
+        and target.startswith('/')
+        and not target.startswith('//')
+        and '\\' not in target
+    )
+
+
 @auth_bp.route('/login', methods=['GET', 'POST'])
 @limiter.limit("10 per minute")
 def login():
@@ -40,7 +60,7 @@ def login():
             login_user(user, remember=True)
             flash('Logged in successfully!', 'success')
             next_page = request.form.get('next') or request.args.get('next')
-            if next_page and urlparse(next_page).netloc == '':
+            if _is_safe_next(next_page):
                 return redirect(next_page)
             return redirect(url_for('main.index'))
         else:
@@ -103,6 +123,13 @@ def register():
             worldcup_enrollment.admin_enroll(user.id)
             flash("You're in the World Cup pool. Make your picks before they lock.", 'success')
 
+        # Honor a safe relative `next` (the logged-out "Join the Club" CTA passes
+        # ?next=/worldcup/join), mirroring login()'s redirect contract. The
+        # _is_safe_next guard rejects absolute / scheme / protocol-relative /
+        # backslash targets; fall back to the home page otherwise.
+        next_page = request.form.get('next') or request.args.get('next')
+        if _is_safe_next(next_page):
+            return redirect(next_page)
         return redirect(url_for('main.index'))
 
     return render_template('auth/register.html')

@@ -39,6 +39,11 @@
 
                 <form method="POST" action="{{ url_for('auth.register') }}">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    {# Carry a `next` target (e.g. the logged-out "Join the Club"
+                       CTA's ?next=/worldcup/join) through the POST so register()
+                       can honor it. `request.values` keeps it across a
+                       validation-error re-render, not just the initial GET. #}
+                    <input type="hidden" name="next" value="{{ request.values.get('next', '') }}">
 
                     <div class="mb-3">
                         <label for="username" class="form-label">Username <span class="text-danger">*</span></label>
