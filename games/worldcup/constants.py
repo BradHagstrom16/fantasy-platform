@@ -13,6 +13,12 @@ from zoneinfo import ZoneInfo
 SEASON_YEAR = 2026
 ENTRY_FEE = 25
 
+# Member-facing payment rails surfaced by the "Settle the Tab" nudge
+# (games/worldcup/services/payment.py). The has_paid flag stays admin-confirmed
+# via /worldcup/admin/payments; these are just where a member sends the buy-in.
+VENMO_URL = 'https://venmo.com/u/Bradley-Hagstrom'
+ZELLE_PHONE = '(630) 408-3424'
+
 # Display timezone (most players are in Chicago)
 WORLDCUP_TZ = ZoneInfo("America/Chicago")
 

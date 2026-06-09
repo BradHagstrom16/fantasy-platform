@@ -23,6 +23,17 @@ Iteration map:
   template; at <992 it collapses to single column. The featured card
   preserves the logged-out auth-flow link (`auth.register?next=blueprint_join`).
 
+  Distill 2026-06-08 (`$impeccable distill`): the featured `.out-featured`
+  card was folded UP into the `.join` conversion card. The pre-merge page
+  carried two co-equal gold CTAs ("Join the Club" + "Sign Up to Play") that
+  both routed to `auth.register` and told the World Cup story twice, leaving a
+  first-time visitor unsure which to click. The merged `.join` card is now the
+  single primary CTA (registry-driven identity + `next=blueprint_join`
+  routing); the `.out-registry` section keeps its `<h2 id="out-registry-head">`
+  + `aria-labelledby` but carries only the coming-soon rail (a quiet,
+  button-less breadth signal). The `.out-featured*` locks below were retired
+  with the card and replaced by `.join`-scoped equivalents.
+
 - PI-2 (`$impeccable distill` — countdown hero-metric adjacency collapse):
   the `_countdown_card.html` 4-cell `Days · Hours · Min · Sec` strip read
   as four equal-weight numerals in a row (each 2.8rem / 3.6rem at md+
@@ -154,17 +165,22 @@ def test_pi1_home_out_carries_section_h2_heading():
     )
 
 
-def test_pi1_home_out_renders_featured_card_with_auth_register_next():
-    """The featured pool card must preserve the logged-out auth flow: the
-    link routes through `auth.register` with `next=blueprint_join` so a
-    new user lands on the join page after sign-up. Reshaping the
-    composition must not break the conversion path."""
+def test_pi1_home_out_merged_join_card_routes_through_auth_register_next():
+    """Distill 2026-06-08: the featured pool folded into the `.join` conversion
+    card. Its single gold CTA must still route through `auth.register` with
+    `next=blueprint_join` so a new user lands on the join page after sign-up,
+    and the card must be driven by the registry `available_games` loop so the
+    pool identity + join route generalize when a second game opens."""
+    assert '{% for game in available_games %}' in HOME_OUT, (
+        "PI-1 (distill): the conversion card must loop over `available_games` "
+        "so the open pool's identity + join route come from the registry."
+    )
     pattern = re.compile(
-        r'class="out-featured"\s+href="\{\{\s*url_for\(\'auth\.register\','
+        r'class="join-cta"\s+href="\{\{\s*url_for\(\'auth\.register\','
         r'\s*next=url_for\(game\.blueprint_join\)\)\s*\}\}"'
     )
     assert pattern.search(HOME_OUT), (
-        "PI-1: `.out-featured` link must route through "
+        "PI-1 (distill): the `.join-cta` must route through "
         "`auth.register?next=blueprint_join` to preserve the logged-out "
         "conversion path. Direct `blueprint_index` would bounce the user "
         "back to login."
@@ -191,6 +207,38 @@ def test_pi1_home_out_renders_coming_soon_rail_with_aria_label():
     assert 'out-coming-strip' in HOME_OUT, (
         "PI-1: `.out-coming-strip` markup missing — the rail must render "
         "horizontal strips, not stacked cards."
+    )
+
+
+def test_pi1_home_out_single_primary_cta():
+    """Distill 2026-06-08 core lock: the logged-out page must carry exactly one
+    gold primary CTA. The pre-merge page had two (`.join-cta` "Join the Club"
+    inside `.join` + `.out-featured-cta` "Sign Up to Play" inside the featured
+    card), both routing to `auth.register`, which left a first-time visitor
+    unsure which to click. The featured card + its CTA must not return."""
+    assert HOME_OUT.count('class="join-cta"') == 1, (
+        "Distill: `_home_out.html` must render exactly one `.join-cta` — the "
+        "single primary conversion CTA."
+    )
+    assert 'class="out-featured"' not in HOME_OUT, (
+        "Distill: the `.out-featured` featured card (the retired second gold "
+        "CTA) must not return to `_home_out.html`."
+    )
+    assert 'Sign Up to Play' not in HOME_OUT, (
+        "Distill: the second CTA label 'Sign Up to Play' must not return — the "
+        "single conversion CTA is 'Join the Club'."
+    )
+
+
+def test_pi1_home_out_join_title_is_h2_pool_name():
+    """The merged conversion card's pool name is its `<h2 class="join-title">`
+    (the old "Join the competition." word-stamp retired). This gives AT users a
+    navigable heading for the page's primary content and keeps the H1 → H2
+    outline clean without the featured card's old H3."""
+    assert re.search(r'<h2[^>]*class="join-title"', HOME_OUT), (
+        "Distill: `.join-title` must be an `<h2>` carrying the pool name so "
+        "the conversion card has a navigable heading and the outline stays "
+        "H1 → H2 (no skipped level)."
     )
 
 
@@ -230,30 +278,33 @@ def test_pi1_css_defines_out_registry_grid_centered_single_column():
     )
 
 
-def test_pi1_css_defines_out_featured_purple_gradient_atmosphere():
-    """The featured card uses the CCC purple + gold radial + linear stack
-    (S3.3.1 PI-B locked the gradient recipe for `.game-card--featured`;
-    `.out-featured-inner` uses the same recipe scoped to the home-shell)."""
-    inner = _css_block('.home-shell .out-featured-inner')
-    assert 'var(--purple-950)' in inner and 'var(--purple-800)' in inner, (
-        "PI-1: `.out-featured-inner` must layer the CCC purple gradient "
-        "(`var(--purple-950)` → `var(--purple-800)` → `var(--purple-950)`)."
+def test_pi1_css_defines_join_card_purple_gradient_atmosphere():
+    """Distill 2026-06-08: the merged conversion card keeps the CCC purple
+    gradient + the canonical 30%-gold informational border. It earns focus as
+    the page's single gold CTA, not via a louder edge — the retired featured
+    card's 50% gold border must not migrate over. (Replaces the
+    `.out-featured-inner` atmosphere lock.)"""
+    block = _css_block('.home-shell .join')
+    assert 'var(--purple-800)' in block and 'var(--purple-900)' in block, (
+        "Distill: `.join` must layer the CCC purple gradient "
+        "(`var(--purple-800)` → `var(--purple-900)`)."
     )
-    assert 'rgba(201,162,39,.10)' in inner or 'rgba(201,162,39,.06)' in inner, (
-        "PI-1: `.out-featured-inner` must carry the Commish-Gold radial "
-        "atmosphere or halftone-dot pattern — flat purple would dull the "
-        "ceremonial register."
+    assert 'rgba(201,162,39,.3)' in block, (
+        "Distill: `.join` must keep the 30%-gold informational border; the "
+        "retired featured card's louder 50% edge must not migrate onto the "
+        "now-focal conversion card."
     )
 
 
-def test_pi1_css_defines_focus_visible_on_featured_card():
-    """The whole-card anchor needs a keyboard focus ring (canonical
-    CCC 2px gold-light outline) so tabbing users see the same hit target
-    as mouse users."""
-    block = _css_block('.home-shell .out-featured:focus-visible')
+def test_pi1_css_defines_focus_visible_on_join_cta():
+    """The page's single primary CTA needs a keyboard focus ring (canonical
+    CCC 2px gold-light outline) so tabbing users see the same affordance as
+    mouse users. Replaces the lock the retired `.out-featured:focus-visible`
+    carried."""
+    block = _css_block('.home-shell .join-cta:focus-visible')
     assert 'outline: 2px solid var(--gold-light)' in block, (
-        "PI-1: `.out-featured:focus-visible` missing the 2px gold-light "
-        "outline — keyboard users lose the affordance the mouse hover gives."
+        "Distill: `.join-cta:focus-visible` missing the 2px gold-light "
+        "outline — keyboard users lose the affordance mouse hover gives."
     )
 
 
@@ -419,11 +470,14 @@ def test_f1_join_alt_link_carries_focus_visible_ring():
 # Rendered-HTML assertions — full-page integration with the Flask test client.
 # ---------------------------------------------------------------------------
 
-def test_rendered_out_state_heading_outline_is_h1_h2_h3():
-    """Logged-out home page (state='out') must render a clean H1 → H2 → H3
-    outline. The previous H1 → H3 jump was an axe heading-order moderate
-    violation. The H2 'Pools in Session' is the section parent for the
-    featured card's H3."""
+def test_rendered_out_state_heading_outline_is_h1_then_h2_no_skips():
+    """Logged-out home page (state='out') must render a clean H1 → H2 outline
+    with no skipped levels. The original H1 → H3 jump was an axe heading-order
+    violation. Distill 2026-06-08: the featured card's H3 retired with the
+    merge — the conversion card's pool name is now an H2 (`.join-title`) and the
+    breadth section keeps its H2 (`out-registry-head`), so the outline is
+    H1 → H2 → H2 with no gap. Neither the old skip nor the featured H3 may
+    return."""
     from app import create_app
     from extensions import db
     app = create_app('testing')
@@ -432,23 +486,29 @@ def test_rendered_out_state_heading_outline_is_h1_h2_h3():
         with app.test_client() as c:
             resp = c.get('/')
             body = resp.data.decode('utf-8')
-    # Order matters: page H1 must come before section H2, which must come
-    # before the featured card's H3.
     h1_pos = body.find('<h1')
-    h2_pos = body.find('id="out-registry-head"')
-    h3_pos = body.find('out-featured-title')
+    join_h2_pos = body.find('<h2 class="join-title"')
+    section_h2_pos = body.find('id="out-registry-head"')
     assert h1_pos > -1, "Rendered home is missing `<h1>`."
-    assert h2_pos > -1, (
-        "Rendered home is missing `<h2 id=\"out-registry-head\">` between "
-        "page H1 and the featured card H3. Heading-order regression."
+    assert join_h2_pos > -1, (
+        "Rendered home is missing the `<h2 class=\"join-title\">` conversion "
+        "card heading — the pool name must be an H2, not a styled div."
     )
-    assert h3_pos > -1, (
-        "Rendered home is missing the `.out-featured-title` H3 — the "
-        "featured pool card is the registry's primary content."
+    assert section_h2_pos > -1, (
+        "Rendered home is missing `<h2 id=\"out-registry-head\">` — the "
+        "breadth section heading that keeps the region named for AT."
     )
-    assert h1_pos < h2_pos < h3_pos, (
+    # Page H1 precedes both H2s; no level is skipped (no H3 before an H2).
+    assert h1_pos < join_h2_pos < section_h2_pos, (
         "Heading outline order regressed: H1 at "
-        f"{h1_pos}, H2 at {h2_pos}, H3 at {h3_pos}. Must be H1 < H2 < H3."
+        f"{h1_pos}, join H2 at {join_h2_pos}, section H2 at {section_h2_pos}. "
+        "Must be H1 < join-card H2 < breadth-section H2."
+    )
+    # The retired featured card's H3 (the old H1→H3 skip) must not come back.
+    assert 'out-featured-title' not in body, (
+        "Rendered home re-introduced `out-featured-title` — the featured card "
+        "H3 the distill merge retired. A stray H3 above the section H2 reopens "
+        "the heading-order gap."
     )
 
 
@@ -471,9 +531,15 @@ def test_rendered_out_state_no_longer_carries_col_md_4_registry_grid():
         "containers — the identical-card-grid pattern is back. Use "
         "`.out-registry-grid` instead."
     )
-    # Positive lock: the new section + featured + rail markers must be present.
-    for marker in ('out-registry', 'out-featured', 'out-coming-rail'):
+    # Positive lock: the merged conversion CTA + breadth section + rail must
+    # all render.
+    for marker in ('join-cta', 'out-registry', 'out-coming-rail'):
         assert marker in body, (
-            f"Rendered home is missing `{marker}` class — the PI-1 reshape "
-            f"didn't make it to the response body."
+            f"Rendered home is missing `{marker}` — the distill merge didn't "
+            f"make it to the response body."
         )
+    # The second gold CTA must not return — exactly one primary CTA on the page.
+    assert 'out-featured' not in body, (
+        "Rendered home re-introduced `out-featured` — the second gold CTA the "
+        "distill merge removed. The page must carry exactly one primary CTA."
+    )

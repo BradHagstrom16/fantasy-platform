@@ -1049,6 +1049,17 @@ body.game-golf {
   font-weight: 600;
   font-size: 1rem;
 }
+/* Pool mark inside the merged conversion card (the open game's emoji). Static
+   drop-shadow, no hover transform — it sits inside an anchor-less card, so no
+   reduced-motion opt-out is needed. Carried over from the retired
+   `.out-featured-icon` at a smaller size. */
+.home-shell .join-icon {
+  display: block;
+  font-size: 2.4rem;
+  line-height: 1;
+  margin: 0.25rem 0 0.6rem;
+  filter: drop-shadow(0 4px 12px rgba(28,10,58,.45));
+}
 .home-shell .join-title {
   font-family: var(--font-teko);
   font-weight: 700;
@@ -1064,7 +1075,21 @@ body.game-golf {
   color: var(--bone-mute);
   line-height: 1.5;
   max-width: 380px;
+  margin: 0 auto 0.65rem;
+}
+/* Deadline / openness line — quieter than the rules sub, normal-case (a
+   full-sentence uppercase line would trip the no-all-caps-body rule). The only
+   WC-specific copy in the registry-driven card. */
+.home-shell .join-deadline {
+  font-family: var(--font-news);
+  font-size: 0.85rem;
+  line-height: 1.45;
+  color: var(--bone-mute);
+  max-width: 380px;
   margin: 0 auto 1.5rem;
+  /* Keep "June 11." off its own line at desktop (pretty avoids last-line
+     orphans). */
+  text-wrap: pretty;
 }
 .home-shell .join-cta {
   display: inline-flex;
@@ -1086,6 +1111,13 @@ body.game-golf {
   transform: translateY(-2px);
   box-shadow: 0 8px 24px rgba(201,162,39,.25);
   color: var(--purple-950) !important;
+}
+/* Focus ring on the page's single primary CTA (replaces the keyboard
+   affordance the retired `.out-featured:focus-visible` carried). Offset so the
+   gold-light ring lands in the dark-purple card gap, not on the gold button. */
+.home-shell .join-cta:focus-visible {
+  outline: 2px solid var(--gold-light);
+  outline-offset: 3px;
 }
 .home-shell .join-alt {
   margin-top: 1rem;
@@ -1113,12 +1145,12 @@ body.game-golf {
   border-radius: 4px;
 }
 
-/* --- Logged-out: registry section (featured pool + coming-soon rail) ---
-   Replaces the 3-up identical-card grid that lived in _home_out.html before
-   S4.1.1. The featured card is a hero-sized panel; the coming-soon rail is
-   a stack of horizontal strips. Different silhouettes break the
-   identical-card-grid pattern (DESIGN.md §6 Don't #7). Lives outside .home-col
-   so it can span the full container at desktop. */
+/* --- Logged-out: registry section (coming-soon rail) ---
+   Distill 2026-06-08: the featured pool folded up into the `.join` conversion
+   card, so this section now carries only the coming-soon rail — a quiet breadth
+   signal that the club hosts more than the one open pool, wearing no gold CTA
+   so the join card stays the page's single primary action. Lives outside
+   .home-col so it can span the full container at desktop. */
 .home-shell .out-registry {
   margin: 2.5rem 0 1rem;
 }
@@ -1157,13 +1189,10 @@ body.game-golf {
 }
 @media (min-width: 992px) {
   .home-shell .out-registry-grid {
-    /* design/home-out-polish: stacked-centered replaces the S4.1.1 7fr+5fr
-       split. First-impression critique flagged the featured card as
-       "crammed into a corner" at desktop because the 7fr column floated
-       left with no balancing centering moment. The featured card now
-       sits centered above the coming-soon rail; the identical-card-grid
-       silhouette stays broken because the featured card and the rail
-       strips are still structurally different shapes. */
+    /* Single centered column capped at 720px so the coming-soon rail sits in
+       the visual middle of the container rather than stretching edge-to-edge.
+       (Pre-distill this grid also centered a featured card above the rail; the
+       7fr+5fr split it replaced must not return — see the test lock.) */
     grid-template-columns: 1fr;
     max-width: 720px;
     margin: 0 auto;
@@ -1171,124 +1200,10 @@ body.game-golf {
   }
 }
 
-/* Featured pool card (replaces the .game-card--featured wrapper for the
-   home-shell context; the standalone .game-card--featured variant in this
-   file is retained but unwired). */
-.home-shell .out-featured {
-  display: block;
-  text-decoration: none;
-  color: inherit;
-  border-radius: 14px;
-  overflow: hidden;
-  /* PR #15 CR R9 — `var(--transition)` is `.2s cubic-bezier(.4,0,.2,1)`
-     (duration + easing). The previous `box-shadow 0.2s var(--transition)`
-     form expanded to `box-shadow 0.2s 0.2s cubic-bezier(...)` — the
-     second time becomes a 200ms DELAY in CSS transition shorthand, so
-     the shadow lagged behind the transform on hover. Drop the hardcoded
-     duration so box-shadow inherits the token's duration cleanly. */
-  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1),
-              box-shadow var(--transition);
-}
-.home-shell .out-featured-inner {
-  position: relative;
-  padding: 2.25rem 1.5rem 2.5rem;
-  /* design/home-out-polish: dropped the two interior radial highlights
-     (gold + purple ellipses) that fought the halftone dot pattern; the
-     featured card now leans on the linear gradient + dot texture + a
-     stronger gold edge so the silhouette lifts off the home-shell
-     purple atmosphere instead of dissolving into it. */
-  background:
-    linear-gradient(145deg, var(--purple-950) 0%, var(--purple-800) 50%, var(--purple-950) 100%);
-  border: 1.5px solid rgba(201,162,39,.5);
-  border-radius: 14px;
-  text-align: center;
-}
-.home-shell .out-featured-inner::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background-image: radial-gradient(circle, rgba(201,162,39,.06) 1px, transparent 1px);
-  background-size: 24px 24px;
-  pointer-events: none;
-  border-radius: 14px;
-}
-.home-shell .out-featured-eyebrow {
-  position: relative;
-  display: inline-block;
-  font-family: var(--font-teko);
-  font-weight: 500;
-  font-size: 0.75rem;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  color: var(--gold-light);
-  margin-bottom: 0.75rem;
-}
-.home-shell .out-featured-icon {
-  position: relative;
-  display: block;
-  font-size: 3rem;
-  line-height: 1;
-  margin: 0.25rem 0 0.75rem;
-  filter: drop-shadow(0 4px 12px rgba(28,10,58,.45));
-  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-.home-shell .out-featured:hover .out-featured-icon {
-  transform: scale(1.08) rotate(-3deg);
-}
-@media (prefers-reduced-motion: reduce) {
-  .home-shell .out-featured-icon,
-  .home-shell .out-featured:hover .out-featured-icon {
-    transition: none;
-    transform: none;
-  }
-}
-.home-shell .out-featured-title {
-  position: relative;
-  font-family: var(--font-teko);
-  font-weight: 700;
-  font-size: clamp(1.6rem, 4vw, 2.4rem);
-  line-height: 1.05;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--bone);
-  margin: 0 0 0.5rem;
-}
-.home-shell .out-featured-desc {
-  position: relative;
-  font-family: var(--font-news);
-  font-size: 0.98rem;
-  line-height: 1.55;
-  color: rgba(243,239,230,.82);
-  margin: 0 auto 1.5rem;
-  max-width: 44ch;
-}
-.home-shell .out-featured-cta {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.85rem 2rem;
-  background: var(--metal-gold);
-  color: var(--purple-950);
-  font-family: var(--font-teko);
-  font-weight: 600;
-  font-size: 1rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  border-radius: 8px;
-  box-shadow: var(--shadow-gold);
-  min-height: 44px;
-}
-.home-shell .out-featured:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 8px 32px rgba(58,29,114,.35);
-  color: inherit;
-}
-.home-shell .out-featured:focus-visible {
-  outline: 2px solid var(--gold-light);
-  outline-offset: 4px;
-  border-radius: 14px;
-}
+/* Featured-pool card retired 2026-06-08 — the logged-out featured pool was
+   folded into the `.join` conversion card (single gold CTA). All `.out-featured*`
+   rules were removed with it; the `.out-registry` section below now carries only
+   the coming-soon rail. */
 
 /* Coming-soon rail — horizontal strips */
 .home-shell .out-coming-rail {
@@ -3241,15 +3156,9 @@ body.game-golf {
   .home-shell .cg--active:hover,
   .home-shell .join-cta:hover,
   .home-shell .roster-recap-cta:hover,
-  .home-shell .ballot-edit-action:hover,
-  .home-shell .out-featured:hover {
+  .home-shell .ballot-edit-action:hover {
     transform: none;
     box-shadow: none;
-  }
-  /* PR #15 CR R6-A — also suppress the featured-card icon scale/rotate
-     so the hover state doesn't stick on touch devices after a tap. */
-  .home-shell .out-featured:hover .out-featured-icon {
-    transform: none;
   }
   /* Hover-underline on the compact tile won't dismiss on tap — suppress it on touch */
   .home-shell .cg--active:hover .n {
@@ -3264,17 +3173,7 @@ body.game-golf {
   .home-shell .cta-card:hover,
   .home-shell .cg--active:hover,
   .home-shell .join-cta:hover,
-  .home-shell .roster-recap-cta:hover,
-  .home-shell .out-featured:hover {
-    transform: none;
-  }
-  /* PR #15 CR R6-A — kill the featured-card icon transition + the
-     scale/rotate hover transform under reduced motion. */
-  .home-shell .out-featured,
-  .home-shell .out-featured-icon {
-    transition: none;
-  }
-  .home-shell .out-featured:hover .out-featured-icon {
+  .home-shell .roster-recap-cta:hover {
     transform: none;
   }
   /* PR #30 CR — same opt-out for the .ballot-flag link. The base rule
@@ -6020,6 +5919,87 @@ body.game-worldcup .tier-card-5 .tier-card-header { background: linear-gradient(
   font-size: .68rem;
   letter-spacing: .14em;
   margin-bottom: .35rem;
+}
+
+/* "Settle the Tab" — member payment nudge (games/worldcup/_settle_tab.html).
+   A `.wc-stat-card` with a gold top-rule (money = CCC gold; parallels the
+   `.is-lead` red top-rule). Gold, not red: this is a friendly "you owe the
+   buy-in" ask, not an alarm. Shows only to enrolled, picks-submitted, unpaid
+   members pre/live. */
+.wc-settle {
+  border-top: 3px solid var(--gold);
+}
+.wc-settle .wc-card-head {
+  margin-bottom: .55rem;
+}
+.wc-settle-lead {
+  font-family: 'Newsreader', serif;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 .35rem;
+}
+.wc-settle-body {
+  font-family: 'Newsreader', serif;
+  font-size: .95rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  margin: 0 0 1.1rem;
+  max-width: 60ch;
+  text-wrap: pretty;
+}
+.wc-settle-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .75rem 1.1rem;
+}
+.wc-settle-zelle {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .4rem .55rem;
+  font-family: 'Newsreader', serif;
+  font-size: .95rem;
+  color: var(--text-secondary);
+}
+.wc-settle-zelle-num {
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: .01em;
+}
+.wc-settle-copy {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  min-height: 44px;
+  padding: .4rem .7rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm, 8px);
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: 'Teko', sans-serif;
+  font-size: .85rem;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  line-height: 1;
+  cursor: pointer;
+  transition: background .15s ease, border-color .15s ease, color .15s ease;
+}
+.wc-settle-copy:hover {
+  border-color: var(--gold-dark);
+  color: var(--gold-dark);
+}
+.wc-settle-copy:focus-visible {
+  outline: 2px solid var(--gold-dark);
+  outline-offset: 2px;
+}
+.wc-settle-copy.is-copied {
+  border-color: var(--wc-navy);
+  color: var(--wc-navy);
+}
+@media (prefers-reduced-motion: reduce) {
+  .wc-settle-copy { transition: none; }
 }
 
 /* WC out-state editorial rules teaser — replaces the retired 4-up

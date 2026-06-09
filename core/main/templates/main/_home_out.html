@@ -45,7 +45,15 @@
     </div>
   </div>
 
-  {# Join CTA #}
+  {# Conversion unit — the featured open pool, folded into the join card so the
+     logged-out viewer gets ONE gold CTA, not two competing ones. Identity
+     (name / emoji / description / join route) is registry-driven so it
+     generalizes the moment a second game opens; the deadline line is the only
+     WC-specific copy and re-generalizes with the lounge at CFB launch.
+     Distill 2026-06-08: replaced the separate `.join` card + the `.out-featured`
+     "Pools in Session" card — both routed to auth.register and told the World
+     Cup story twice, leaving a first-time visitor unsure which to click. #}
+  {% for game in available_games %}
   <div class="join">
     <div class="join-head">
       <div class="seal">◇ Open Court &middot; 2026 WC</div>
@@ -55,13 +63,17 @@
       </div>
       {% endif %}
     </div>
-    <div class="join-title">Join the <span class="home-metal-text">competition</span>.</div>
-    <p class="join-sub">
-      World Cup 2026 Pre-kickoff: anyone can join the game. Once games
-      start on June 11, your ballot of countries locks for the entirety
-      of the tournament.
-    </p>
-    <a class="join-cta" href="{{ url_for('auth.register') }}">
+    <span class="join-icon" aria-hidden="true">{{ game.emoji }}</span>
+    {# Pool name is the card's H2 (the old "Join the competition." word-stamp
+       retired — say it once; the verb now lives on the CTA). Gives AT users a
+       navigable heading for the page's primary content and keeps the H1 → H2
+       outline clean. #}
+    <h2 class="join-title">{{ game.display_name }}</h2>
+    <p class="join-sub">{{ game.description }}</p>
+    <p class="join-deadline">Anyone can join now; ballots lock when games kick off June 11.</p>
+    {# Route through auth.register with `next=blueprint_join` so a new user
+       lands on the join page after sign-up rather than the generic home. #}
+    <a class="join-cta" href="{{ url_for('auth.register', next=url_for(game.blueprint_join)) }}">
       Join the Club
       <i class="bi bi-arrow-right" aria-hidden="true"></i>
     </a>
@@ -69,52 +81,27 @@
       Already sworn in? <a href="{{ url_for('auth.login') }}">Sign in</a>
     </div>
   </div>
+  {% endfor %}
 
 </div>{# /.home-col #}
 
-{# Registry-driven pools section. Breaks out of .home-col for full container.
-   Composition: one featured pool + a stacked rail of coming-soon strips, so
-   the silhouettes vary (DESIGN.md §6 Don't #7, PRODUCT.md "Generic SaaS
-   Dashboards" anti-reference). #}
+{# Breadth signal — the club hosts more than the one open pool. After the
+   distill merge this section carries ONLY the coming-soon rail (the featured
+   pool moved up into the conversion card); it deliberately wears no gold CTA so
+   the join card stays the page's single primary action. The `<h2
+   id="out-registry-head">` keeps the H1 → H2 outline and names the region for
+   assistive tech; the rail's own head was dropped (the section H2 labels it
+   now). Guarded on coming_soon_games so an empty docket leaves no orphan header. #}
+{% if coming_soon_games %}
 <section class="out-registry" aria-labelledby="out-registry-head">
   <div class="container">
     <header class="out-registry-head">
       <span class="out-registry-eyebrow">◇ The Court This Year</span>
-      {# Quieter P2 (Critique 2026-05-15) — section title de-stamped.
-         The OUT page previously carried gold word-stamps on the masthead
-         + the join card + this section header (3 gold spans competing
-         with the actual gold CTA below). The section's own gold
-         ceremonial moment is the eyebrow above ("◇ The Court This
-         Year"); the title itself reads cleanly in bone. #}
-      <h2 id="out-registry-head" class="out-registry-title">Pools in Session</h2>
+      <h2 id="out-registry-head" class="out-registry-title">Up Next on the Docket</h2>
     </header>
 
     <div class="out-registry-grid">
-      {# Featured pool — the open game (typically World Cup). The logged-out
-         viewer hasn't registered, so the link routes through auth.register
-         with `next=blueprint_join` so they land on the join page after sign-up. #}
-      {% for game in available_games %}
-      <a class="out-featured"
-         href="{{ url_for('auth.register', next=url_for(game.blueprint_join)) }}"
-         aria-label="Sign up to play {{ game.display_name }}">
-        <div class="out-featured-inner">
-          <span class="out-featured-eyebrow">The Featured Pool</span>
-          <span class="out-featured-icon" aria-hidden="true">{{ game.emoji }}</span>
-          <h3 class="out-featured-title">{{ game.display_name }}</h3>
-          <p class="out-featured-desc">{{ game.description }}</p>
-          <span class="out-featured-cta">
-            Sign Up to Play
-            <i class="bi bi-arrow-right" aria-hidden="true"></i>
-          </span>
-        </div>
-      </a>
-      {% endfor %}
-
-      {# Coming-soon rail — horizontal strips, distinct silhouette from the
-         featured card. Each strip names the game + its opening label. #}
-      {% if coming_soon_games %}
       <aside class="out-coming-rail" aria-label="Pools coming soon">
-        <div class="out-coming-rail-head">Up Next on the Docket</div>
         {% for game in coming_soon_games %}
         <div class="out-coming-strip">
           <span class="out-coming-strip-icon" aria-hidden="true">{{ game.emoji }}</span>
@@ -125,7 +112,7 @@
         </div>
         {% endfor %}
       </aside>
-      {% endif %}
     </div>
   </div>
 </section>
+{% endif %}

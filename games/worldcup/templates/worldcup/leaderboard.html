@@ -57,6 +57,11 @@
   </aside>
   {% endif %}
 
+  {# Settle the Tab — payment nudge for an enrolled, picks-submitted, unpaid
+     member (gated by `payment_nudge` from the WC context processor). Above the
+     standings table, below the personal "Your Position" summary. #}
+  {% if payment_nudge %}{% include 'worldcup/_settle_tab.html' %}{% endif %}
+
   {% if ranked_enrollments %}
 
   {# Desktop table #}

@@ -1,0 +1,64 @@
+{# "Settle the Tab" — member-facing payment nudge.
+
+   Renders only when `payment_nudge` is truthy. The gate
+   (games/worldcup/services/payment.payment_nudge_for, injected by the WC
+   blueprint context processor) shows it to an enrolled member who has
+   submitted picks but not paid, while the tournament is pre-kickoff or live,
+   and never to a platform admin. It answers the recurring "who/how do we pay?"
+   with Brad's Venmo + Zelle.
+
+   Payment stays admin-confirmed: there is deliberately NO member-facing
+   "I paid" / self-mark control here — the Commish flips has_paid from
+   /worldcup/admin/payments once the money lands.
+
+   `.wc-eyebrow-gold` reads as `--gold-dark` on the white card (the
+   `.wc-stat-card .wc-eyebrow-gold` light-substrate lift, ~7:1). WC-room body
+   eyebrows carry no glyph. #}
+<div class="wc-stat-card wc-settle mb-4 animate-in">
+  <div class="wc-card-head">
+    <span class="wc-eyebrow wc-eyebrow-gold">Settle the Tab</span>
+  </div>
+  <p class="wc-settle-lead">You&rsquo;re in. Now square up.</p>
+  <p class="wc-settle-body">
+    The Commish collects ${{ payment_nudge.entry_fee }} to make your spot
+    official. Drop your name in the memo so he knows who paid.
+  </p>
+  <div class="wc-settle-actions">
+    <a class="btn btn-game wc-settle-venmo" href="{{ payment_nudge.venmo_url }}"
+       target="_blank" rel="noopener">
+      Pay on Venmo <span aria-hidden="true">&rarr;</span>
+    </a>
+    <div class="wc-settle-zelle">
+      <span class="wc-settle-zelle-label">or Zelle</span>
+      <span class="wc-settle-zelle-num">{{ payment_nudge.zelle_phone }}</span>
+      <button type="button" class="wc-settle-copy" data-copy="{{ payment_nudge.zelle_phone }}"
+              aria-label="Copy Zelle number">
+        <i class="bi bi-clipboard" aria-hidden="true"></i><span class="wc-settle-copy-text">Copy</span>
+      </button>
+    </div>
+  </div>
+</div>
+<script>
+/* Copy-to-clipboard for the Zelle number. Progressive enhancement — the number
+   is plain selectable text without JS. Idempotent + delegated so a future
+   double-include (or a page that already bound it) can't double-fire. */
+(function () {
+  if (window.__wcSettleCopyBound) return;
+  window.__wcSettleCopyBound = true;
+  document.addEventListener('click', function (e) {
+    var btn = e.target.closest('.wc-settle-copy');
+    if (!btn) return;
+    var num = btn.getAttribute('data-copy') || '';
+    var label = btn.querySelector('.wc-settle-copy-text');
+    if (!(navigator.clipboard && navigator.clipboard.writeText)) return;
+    navigator.clipboard.writeText(num).then(function () {
+      btn.classList.add('is-copied');
+      if (label) label.textContent = 'Copied';
+      setTimeout(function () {
+        btn.classList.remove('is-copied');
+        if (label) label.textContent = 'Copy';
+      }, 1600);
+    }).catch(function () { /* clipboard blocked; number is still selectable */ });
+  });
+})();
+</script>
