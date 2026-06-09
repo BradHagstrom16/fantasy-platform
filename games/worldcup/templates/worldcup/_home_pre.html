@@ -138,6 +138,11 @@
 </div>
 {% endif %}
 
+{# Settle the Tab — payment nudge for an enrolled, picks-submitted, unpaid
+   member (gated by `payment_nudge` from the WC context processor). Sits after
+   the locked roster: "your nine are in, now square up". #}
+{% if payment_nudge %}{% include 'worldcup/_settle_tab.html' %}{% endif %}
+
 {# Opening Fixtures — informational strip below the loud Roster. Hub
    coherence pass 2026-05 demoted this from a full .wc-stat-card to the
    .wc-fixtures-strip silhouette so the post-lead hierarchy reads as

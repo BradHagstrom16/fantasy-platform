@@ -92,6 +92,11 @@
   {% endif %}
 </div>
 
+{# Settle the Tab — payment nudge for an enrolled, picks-submitted, unpaid
+   member (gated by `payment_nudge` from the WC context processor). Sits after
+   the standing lead card, before the results strip. #}
+{% if payment_nudge %}{% include 'worldcup/_settle_tab.html' %}{% endif %}
+
 {# Recent Results — demoted from a full .wc-stat-card to the
    .wc-results-strip silhouette (sibling primitive to .wc-fixtures-strip
    used by the pre-state for Opening Fixtures). Hub coherence pass

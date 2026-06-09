@@ -58,6 +58,7 @@ from games.worldcup.services.trends import (
 )
 from games.worldcup.services.state import worldcup_hub_state
 from games.worldcup.services.home_context import build_worldcup_home_context
+from games.worldcup.services.payment import payment_nudge_for
 
 
 # Round-robin: each group of 4 teams plays 6 matches.
@@ -132,12 +133,23 @@ def inject_worldcup_globals():
             user_id=current_user.id, season_year=SEASON_YEAR
         ).first()
 
+    # Compute the phase once; reused for both the public phase indicator and
+    # the payment-nudge gate (no extra query — `worldcup_enrollment` is already
+    # in hand). `payment_nudge` is available to every WC template but only
+    # *renders* where `_settle_tab.html` is included (hub pre/live, picks,
+    # leaderboard), so admin/stats/rules/schedule pages stay clean.
+    tournament_phase = _derive_tournament_phase()
+
     return {
         'body_class': 'game-worldcup',
         'season_year': SEASON_YEAR,
         'entry_fee': ENTRY_FEE,
-        'tournament_phase': _derive_tournament_phase(),
+        'tournament_phase': tournament_phase,
         'worldcup_enrollment': worldcup_enrollment,
+        'payment_nudge': payment_nudge_for(
+            worldcup_enrollment, tournament_phase,
+            getattr(current_user, 'is_admin', False),
+        ),
         'format_ct': _format_ct,
         'stage_label': stage_label,
     }

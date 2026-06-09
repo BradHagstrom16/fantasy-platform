@@ -23,6 +23,11 @@
 
 <div class="container pb-5">
 
+{# Settle the Tab — payment nudge for an enrolled, picks-submitted, unpaid
+   member (gated by `payment_nudge` from the WC context processor). Top of the
+   picks body so an unpaid member who returns to amend their roster sees it. #}
+{% if payment_nudge %}{% include 'worldcup/_settle_tab.html' %}{% endif %}
+
 {% if deadline_passed or (not show_edit_form and has_picks) %}
   {# ==============================================================
      READ-ONLY VIEW -- Post-deadline OR pre-deadline submitted picks

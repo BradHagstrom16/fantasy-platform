@@ -5921,6 +5921,87 @@ body.game-worldcup .tier-card-5 .tier-card-header { background: linear-gradient(
   margin-bottom: .35rem;
 }
 
+/* "Settle the Tab" — member payment nudge (games/worldcup/_settle_tab.html).
+   A `.wc-stat-card` with a gold top-rule (money = CCC gold; parallels the
+   `.is-lead` red top-rule). Gold, not red: this is a friendly "you owe the
+   buy-in" ask, not an alarm. Shows only to enrolled, picks-submitted, unpaid
+   members pre/live. */
+.wc-settle {
+  border-top: 3px solid var(--gold);
+}
+.wc-settle .wc-card-head {
+  margin-bottom: .55rem;
+}
+.wc-settle-lead {
+  font-family: 'Newsreader', serif;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 .35rem;
+}
+.wc-settle-body {
+  font-family: 'Newsreader', serif;
+  font-size: .95rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  margin: 0 0 1.1rem;
+  max-width: 60ch;
+  text-wrap: pretty;
+}
+.wc-settle-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .75rem 1.1rem;
+}
+.wc-settle-zelle {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .4rem .55rem;
+  font-family: 'Newsreader', serif;
+  font-size: .95rem;
+  color: var(--text-secondary);
+}
+.wc-settle-zelle-num {
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: .01em;
+}
+.wc-settle-copy {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  min-height: 44px;
+  padding: .4rem .7rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm, 8px);
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: 'Teko', sans-serif;
+  font-size: .85rem;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  line-height: 1;
+  cursor: pointer;
+  transition: background .15s ease, border-color .15s ease, color .15s ease;
+}
+.wc-settle-copy:hover {
+  border-color: var(--gold-dark);
+  color: var(--gold-dark);
+}
+.wc-settle-copy:focus-visible {
+  outline: 2px solid var(--gold-dark);
+  outline-offset: 2px;
+}
+.wc-settle-copy.is-copied {
+  border-color: var(--wc-navy);
+  color: var(--wc-navy);
+}
+@media (prefers-reduced-motion: reduce) {
+  .wc-settle-copy { transition: none; }
+}
+
 /* WC out-state editorial rules teaser — replaces the retired 4-up
    `.stat-block` hero-metric strip ([P0] $impeccable critique 2026-05-15;
    impeccable absolute-bans + DESIGN.md §6 Don't #8). Bone substrate,
