@@ -29,6 +29,7 @@
                         <th>Username</th>
                         <th>Display Name</th>
                         <th>Email</th>
+                        <th>Phone</th>
                         <th>Role</th>
                         <th>Joined</th>
                         <th class="text-end">Actions</th>
@@ -43,6 +44,13 @@
                         </td>
                         <td class="text-muted">{{ user.display_name or '·' }}</td>
                         <td class="text-muted small">{{ user.email }}</td>
+                        <td class="text-muted small">
+                            {% if user.phone %}
+                                <a href="tel:{{ user.phone }}" class="text-muted">{{ user.phone }}</a>
+                            {% else %}
+                                —
+                            {% endif %}
+                        </td>
                         <td>
                             {% if user.is_admin %}
                                 <span class="admin-badge"><i class="bi bi-shield-fill me-1"></i>Admin</span>
