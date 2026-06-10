@@ -92,14 +92,6 @@ def make_aware(dt, tz=None):
     return dt
 
 
-def to_utc(dt):
-    """Convert any datetime to UTC."""
-    if dt is None:
-        return None
-    dt_aware = make_aware(dt)
-    return dt_aware.astimezone(timezone.utc)
-
-
 def to_pool_time(dt):
     """Convert any datetime to pool timezone."""
     if dt is None:
@@ -196,16 +188,6 @@ def is_week_playoff(week):
     return week.week_number >= 16
 
 
-def format_week_for_title(week):
-    """Format week name for page titles and headers."""
-    if not week:
-        return "Unknown Week"
-    display = get_week_display_name(week)
-    if display.startswith("Week "):
-        return display
-    return display
-
-
 def get_playoff_teams():
     """Return the list of teams in the CFP field.
 
@@ -253,13 +235,6 @@ def get_cfp_eliminated_teams():
     return eliminated
 
 
-def get_cfp_active_teams():
-    """Return playoff teams that are still in contention (not eliminated)."""
-    all_playoff = set(get_playoff_teams())
-    eliminated = get_cfp_eliminated_teams()
-    return list(all_playoff - eliminated)
-
-
 def get_cfp_teams_in_week(week):
     """Return the team names that have a game scheduled in a specific playoff week."""
     if not week:
@@ -283,59 +258,6 @@ def get_cfp_teams_in_week(week):
     return teams_playing
 
 
-def get_cfp_teams_on_bye(week):
-    """Return active playoff teams that don't have a game this week (on bye)."""
-    if not week:
-        return []
-    active = set(get_cfp_active_teams())
-    playing = get_cfp_teams_in_week(week)
-    return list(active - playing)
-
-
-def get_cfp_available_teams_for_user(user_id, week):
-    """Return playoff teams available for a specific user to pick in a week.
-
-    A team is available if it is: in the CFP field, not eliminated,
-    has a game this week, and hasn't been picked by this user in a
-    previous CFP week.
-    """
-    if not week:
-        return []
-
-    from extensions import db
-    from games.cfb.models import CfbTeam, CfbPick, CfbWeek as CfbWeekModel
-
-    playoff_team_names = set(get_playoff_teams())
-    eliminated_names = get_cfp_eliminated_teams()
-    teams_playing_names = get_cfp_teams_in_week(week)
-
-    used_in_cfp = (
-        db.session.query(CfbPick.team_id)
-        .join(CfbWeekModel)
-        .filter(
-            CfbPick.user_id == user_id,
-            CfbWeekModel.is_playoff_week == True,
-            CfbPick.week_id != week.id,
-        )
-        .all()
-    )
-    used_team_ids = {t[0] for t in used_in_cfp}
-
-    available = []
-    for team in CfbTeam.query.all():
-        if team.name not in playoff_team_names:
-            continue
-        if team.name in eliminated_names:
-            continue
-        if team.name not in teams_playing_names:
-            continue
-        if team.id in used_team_ids:
-            continue
-        available.append(team)
-
-    return available
-
-
 def get_display_helpers():
     """Return a dict of display helper functions for use as template context.
 
@@ -345,5 +267,4 @@ def get_display_helpers():
         'get_week_display_name': get_week_display_name,
         'get_week_short_label': get_week_short_label,
         'is_week_playoff': is_week_playoff,
-        'format_week_for_title': format_week_for_title,
     }

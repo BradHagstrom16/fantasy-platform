@@ -11,7 +11,7 @@ from functools import wraps
 
 from flask import (
     render_template, redirect, url_for, flash, request,
-    jsonify, current_app, g,
+    jsonify, current_app,
 )
 from flask_login import login_required, current_user
 from sqlalchemy import func
@@ -24,9 +24,8 @@ from games.cfb.utils import (
     get_current_time, get_utc_time, make_aware, deadline_has_passed,
     to_pool_time, format_deadline, parse_form_datetime, safe_is_after,
     get_week_display_name, get_week_short_label, is_week_playoff,
-    get_playoff_teams, get_cfp_eliminated_teams, get_cfp_active_teams,
-    get_cfp_teams_on_bye, get_cfp_teams_in_week,
-    get_cfp_available_teams_for_user, get_display_helpers,
+    get_playoff_teams, get_cfp_eliminated_teams, get_cfp_teams_in_week,
+    get_display_helpers,
 )
 from games.cfb.constants import FBS_MASTER_TEAMS, TEAM_CONFERENCES
 from games.cfb.services.game_logic import (
@@ -101,16 +100,12 @@ def inject_cfb_globals():
 
 @cfb_bp.before_request
 def cfb_before_request():
-    """Load active week into g for template access."""
-    if request.endpoint and 'static' in request.endpoint:
-        return
+    """CFB before-request hook. Pass-through for now.
 
-    try:
-        active_week = CfbWeek.query.filter_by(is_active=True).first()
-        if active_week:
-            g.cfb_active_week = active_week
-    except Exception:
-        pass
+    Formerly stashed the active week on ``g`` for templates, but nothing
+    ever read it (audit §7/§9); removed the dead query + bare-except.
+    """
+    pass
 
 
 # ============================================================================
