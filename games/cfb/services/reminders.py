@@ -17,6 +17,7 @@ import logging
 from datetime import timedelta
 
 from flask import current_app
+from sqlalchemy.orm import joinedload
 
 from utils.email import send_platform_email
 
@@ -145,9 +146,12 @@ def _cfb_html_week_card(week_name: str, deadline_str: str,
 
 def get_users_without_picks(week_id, season_year):
     """Return (enrollment, user) tuples for active enrollments missing picks this week."""
-    active_enrollments = CfbEnrollment.query.filter_by(
-        is_eliminated=False, season_year=season_year
-    ).all()
+    active_enrollments = (
+        CfbEnrollment.query
+        .filter_by(is_eliminated=False, season_year=season_year)
+        .options(joinedload(CfbEnrollment.user))  # avoid a User get per row
+        .all()
+    )
 
     picked_user_ids = {
         p.user_id for p in CfbPick.query.filter_by(week_id=week_id).all()
@@ -156,7 +160,7 @@ def get_users_without_picks(week_id, season_year):
     results = []
     for enrollment in active_enrollments:
         if enrollment.user_id not in picked_user_ids:
-            user = db.session.get(User, enrollment.user_id)
+            user = enrollment.user
             if user:
                 results.append((enrollment, user))
 
@@ -473,10 +477,16 @@ def send_weekly_recap_email(week_id: int) -> int:
         e for e in all_enrollments
         if not e.is_eliminated or e.user_id in eliminated_this_week_ids
     ]
+    # Load every recipient's User in one query (was a get per recipient).
+    users_by_id = {
+        u.id: u for u in User.query.filter(
+            User.id.in_([e.user_id for e in recipients])
+        ).all()
+    } if recipients else {}
     success_count = 0
 
     for enrollment in recipients:
-        user = db.session.get(User, enrollment.user_id)
+        user = users_by_id.get(enrollment.user_id)
         if not user or not user.email:
             continue
 

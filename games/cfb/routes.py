@@ -11,10 +11,11 @@ from functools import wraps
 
 from flask import (
     render_template, redirect, url_for, flash, request,
-    jsonify, current_app, g,
+    jsonify, current_app,
 )
 from flask_login import login_required, current_user
 from sqlalchemy import func
+from sqlalchemy.orm import joinedload, contains_eager
 
 from extensions import db
 from models import User
@@ -24,9 +25,8 @@ from games.cfb.utils import (
     get_current_time, get_utc_time, make_aware, deadline_has_passed,
     to_pool_time, format_deadline, parse_form_datetime, safe_is_after,
     get_week_display_name, get_week_short_label, is_week_playoff,
-    get_playoff_teams, get_cfp_eliminated_teams, get_cfp_active_teams,
-    get_cfp_teams_on_bye, get_cfp_teams_in_week,
-    get_cfp_available_teams_for_user, get_display_helpers,
+    get_playoff_teams, get_cfp_eliminated_teams, get_cfp_teams_in_week,
+    get_display_helpers,
 )
 from games.cfb.constants import FBS_MASTER_TEAMS, TEAM_CONFERENCES
 from games.cfb.services.game_logic import (
@@ -101,16 +101,12 @@ def inject_cfb_globals():
 
 @cfb_bp.before_request
 def cfb_before_request():
-    """Load active week into g for template access."""
-    if request.endpoint and 'static' in request.endpoint:
-        return
+    """CFB before-request hook. Pass-through for now.
 
-    try:
-        active_week = CfbWeek.query.filter_by(is_active=True).first()
-        if active_week:
-            g.cfb_active_week = active_week
-    except Exception:
-        pass
+    Formerly stashed the active week on ``g`` for templates, but nothing
+    ever read it (audit §7/§9); removed the dead query + bare-except.
+    """
+    pass
 
 
 # ============================================================================
@@ -150,7 +146,11 @@ def index():
         show_picks = deadline_has_passed(deadline)
 
         if show_picks:
-            all_picks = CfbPick.query.filter_by(week_id=current_week.id).all()
+            all_picks = (
+                CfbPick.query.filter_by(week_id=current_week.id)
+                .options(joinedload(CfbPick.team))
+                .all()
+            )
             for pick in all_picks:
                 game = games_by_team.get(pick.team_id)
                 if game:
@@ -163,6 +163,7 @@ def index():
     enrollments = (
         CfbEnrollment.query
         .filter_by(season_year=season_year, is_eliminated=False)
+        .options(joinedload(CfbEnrollment.user))
         .order_by(
             CfbEnrollment.lives_remaining.desc(),
             CfbEnrollment.cumulative_spread.asc(),
@@ -173,6 +174,7 @@ def index():
     eliminated_enrollments = sorted(
         CfbEnrollment.query
         .filter_by(season_year=season_year, is_eliminated=True)
+        .options(joinedload(CfbEnrollment.user))
         .all(),
         key=lambda e: e.get_display_name().lower(),
     )
@@ -187,6 +189,7 @@ def index():
         champion_picks = (
             CfbPick.query.filter_by(user_id=champion.user_id)
             .join(CfbWeek)
+            .options(contains_eager(CfbPick.week), joinedload(CfbPick.team))
             .order_by(CfbWeek.week_number)
             .all()
         )
@@ -288,6 +291,7 @@ def weekly_results(week_number=None):
     picks = (
         CfbPick.query.filter_by(week_id=week.id)
         .join(User)
+        .options(contains_eager(CfbPick.user), joinedload(CfbPick.team))
         .order_by(func.lower(User.username))
         .all()
     )
@@ -322,6 +326,7 @@ def weekly_results(week_number=None):
         CfbEnrollment.query
         .filter_by(season_year=season_year)
         .join(User)
+        .options(contains_eager(CfbEnrollment.user))
         .order_by(func.lower(User.username))
         .all()
     )
@@ -492,6 +497,10 @@ def make_pick(week_number):
 
     # GET: build eligible teams
     games = CfbGame.query.filter_by(week_id=week.id).all()
+    # Sort here (not in Jinja): a NULL game_time from an import parse failure
+    # makes `|sort(attribute='game_time')` raise and 500 the whole page.
+    # None-safe key sends time-less games to the end (audit §9 HIGH).
+    games.sort(key=lambda g: g.game_time or datetime.max)
     for game in games:
         game._aware_time = make_aware(game.game_time)
 
@@ -557,9 +566,21 @@ def my_picks():
     user_picks = (
         CfbPick.query.filter_by(user_id=current_user.id)
         .join(CfbWeek)
+        .options(contains_eager(CfbPick.week))
         .order_by(CfbWeek.week_number)
         .all()
     )
+
+    # Batch the per-pick game lookup into one query (was N+1 via
+    # get_game_for_team per pick) — mirrors the champion-dossier pattern.
+    pick_week_ids = {p.week_id for p in user_picks}
+    games_by_week_team = {}
+    if pick_week_ids:
+        for game in CfbGame.query.filter(CfbGame.week_id.in_(pick_week_ids)).all():
+            if game.home_team_id:
+                games_by_week_team[(game.week_id, game.home_team_id)] = game
+            if game.away_team_id:
+                games_by_week_team[(game.week_id, game.away_team_id)] = game
 
     for pick in user_picks:
         pick.week_display = {
@@ -570,7 +591,7 @@ def my_picks():
             ),
         }
 
-        game = get_game_for_team(pick.week_id, pick.team_id)
+        game = games_by_week_team.get((pick.week_id, pick.team_id))
         if game:
             pick.spread_data = {'team_spread': game.get_spread_for_team(pick.team_id)}
         else:
@@ -846,6 +867,18 @@ def admin_delete_game(week_id, game_id):
     if game.week_id != week_id:
         flash('Game does not belong to this week.', 'error')
         return redirect(url_for('cfb.admin_manage_games', week_id=week_id))
+    # Refuse if a player already picked one of this game's teams this week —
+    # deleting strands that pick ungradeable and shrinks cumulative spreads
+    # on the next recalc (audit §9).
+    team_ids = [t for t in (game.home_team_id, game.away_team_id) if t is not None]
+    if team_ids and CfbPick.query.filter_by(week_id=game.week_id).filter(
+        CfbPick.team_id.in_(team_ids)
+    ).first():
+        flash(
+            'Cannot delete this game — a player has already picked one of its '
+            'teams this week.', 'error'
+        )
+        return redirect(url_for('cfb.admin_manage_games', week_id=week_id))
     db.session.delete(game)
     db.session.commit()
     flash('Game deleted.', 'success')
@@ -1115,7 +1148,9 @@ def admin_manage_teams():
     """Add/remove teams from the pool using the FBS master list."""
     existing_teams = {t.name: t for t in CfbTeam.query.all()}
 
-    # Teams with picks can't be removed
+    # A team can't be removed if it's still referenced anywhere — by a pick
+    # (would strand it) or by a scheduled game (a bare delete FK-500s on
+    # Postgres, audit §9). Both collapse into one "locked" set.
     picked_team_ids = {
         row[0]
         for row in db.session.query(CfbPick.team_id)
@@ -1123,7 +1158,16 @@ def admin_manage_teams():
         .distinct()
         .all()
     }
-    teams_with_picks = {name for name, team in existing_teams.items() if team.id in picked_team_ids}
+    gamed_team_ids = set()
+    for home_id, away_id in db.session.query(
+        CfbGame.home_team_id, CfbGame.away_team_id
+    ).all():
+        gamed_team_ids.update(t for t in (home_id, away_id) if t is not None)
+    referenced_team_ids = picked_team_ids | gamed_team_ids
+    teams_with_picks = {
+        name for name, team in existing_teams.items()
+        if team.id in referenced_team_ids
+    }
 
     if request.method == 'POST':
         selected_names = set(request.form.getlist('teams'))

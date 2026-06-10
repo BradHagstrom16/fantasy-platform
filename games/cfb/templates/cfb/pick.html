@@ -49,7 +49,7 @@
             <h4 class="section-heading mt-4 mb-3">Select Your Team</h4>
             <p class="text-muted small">Tap a team to select it. Unavailable teams are shown grayed out.</p>
 
-            {% for game in games|sort(attribute='game_time') %}
+            {% for game in games %}{# pre-sorted None-safe in the route #}
                 {% set home_team = game.home_team %}
                 {% set away_team = game.away_team %}
                 {% set home_eligible = home_team and home_team in eligible_teams %}
@@ -159,7 +159,7 @@
             {% else %}
             <div class="alert alert-danger mt-3">
                 No eligible teams available. You may have used all available teams
-                or all remaining teams are favored by more than 16.5 points.
+                or all remaining teams are favored by 16.5 or more points.
             </div>
             {% endif %}
         </form>

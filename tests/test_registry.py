@@ -221,3 +221,12 @@ def test_golf_entry_registered_in_GAMES(app):
     from games.registry import GAMES
     slugs = {e.slug for e in GAMES}
     assert 'golf' in slugs
+
+
+def test_cfb_description_reflects_outright_win_mechanic():
+    """CFB picks are outright wins, never against the spread — the lounge
+    copy must not contradict the #1 domain rule (audit §1 HIGH)."""
+    from games.registry import get_entry
+    desc = get_entry('cfb').description.lower()
+    assert 'against the spread' not in desc
+    assert 'outright' in desc

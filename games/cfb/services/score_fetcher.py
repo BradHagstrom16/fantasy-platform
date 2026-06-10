@@ -18,11 +18,6 @@ from games.cfb.utils import deadline_has_passed, make_aware
 
 logger = logging.getLogger(__name__)
 
-# Reverse map: short display name -> set of API names that map to it
-_SHORT_TO_API_NAMES = {}
-for _api_name, _short in TEAM_NAME_MAP.items():
-    _SHORT_TO_API_NAMES.setdefault(_short, set()).add(_api_name)
-
 
 class ScoreFetcher:
     """Fetches scores from The Odds API and matches them to CfbGame records."""
