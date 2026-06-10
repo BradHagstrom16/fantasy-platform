@@ -1,0 +1,13 @@
+# Runs CFB week setup Monday mornings (CT) — games for the upcoming
+# Thu-Wed week are in the Odds API well before then.
+[Unit]
+Description=Run CFB Survivor week setup Monday 06:00 CT
+
+[Timer]
+# Timezone is specified INLINE in OnCalendar (systemd v240+); there is no
+# separate TimeZone= directive for timer units.
+OnCalendar=Mon *-*-* 06:00:00 America/Chicago
+Persistent=true
+
+[Install]
+WantedBy=timers.target

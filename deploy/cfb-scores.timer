@@ -1,0 +1,16 @@
+# Runs CFB score sync Sun + Mon 08:00 CT (regular season), and daily
+# Dec 15 – Jan 25 08:00 CT (bowls/CFP — keeps every game inside the scores
+# API's 3-day lookback window; the CFP final is a Monday night).
+# Overlapping dates collapse to a single firing.
+[Unit]
+Description=Run CFB Survivor score sync (Sun/Mon; daily mid-Dec through Jan 25)
+
+[Timer]
+# Timezone is INLINE in OnCalendar — no TimeZone= directive exists.
+OnCalendar=Sun,Mon *-*-* 08:00:00 America/Chicago
+OnCalendar=*-12-15..31 08:00:00 America/Chicago
+OnCalendar=*-01-01..25 08:00:00 America/Chicago
+Persistent=true
+
+[Install]
+WantedBy=timers.target

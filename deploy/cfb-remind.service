@@ -1,0 +1,21 @@
+# CFB Survivor pick reminders — emails users who haven't picked.
+# Fired Fri + Sat 10:00 CT by cfb-remind.timer, landing exactly on the
+# T-25h (Friday) and T-1h (Saturday) windows for the Sat 11:00 deadline.
+
+[Unit]
+Description=CFB Survivor pick reminders (T-25h / T-1h)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=deploy
+Group=deploy
+WorkingDirectory=/home/deploy/fantasy-platform
+EnvironmentFile=/home/deploy/fantasy-platform/.env
+Environment=ENVIRONMENT=production
+Environment=FLASK_APP=app.py
+NoNewPrivileges=true
+PrivateTmp=true
+TimeoutStartSec=5m
+ExecStart=/home/deploy/fantasy-platform/venv/bin/flask cfb sync --mode remind

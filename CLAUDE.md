@@ -43,7 +43,7 @@ FLASK_APP=app.py venv/bin/flask golf sync-run --mode results    # Finalize resul
 
 # CFB CLI
 FLASK_APP=app.py venv/bin/flask cfb sync --mode setup       # Create next week, import games, activate
-FLASK_APP=app.py venv/bin/flask cfb sync --mode spreads     # Lock spreads with latest odds
+FLASK_APP=app.py venv/bin/flask cfb sync --mode spreads     # Lock spreads at first fetch (Tue); later runs fill gaps only (DQ-6)
 FLASK_APP=app.py venv/bin/flask cfb sync --mode scores      # Fetch scores, auto-process completed weeks
 FLASK_APP=app.py venv/bin/flask cfb sync --mode autopick    # Process auto-picks for past-deadline weeks
 FLASK_APP=app.py venv/bin/flask cfb sync --mode remind      # Send email reminders (Fri/Sat only)
@@ -297,6 +297,7 @@ SLASHGOLF_API_KEY=...    # SlashGolf API (Golf leaderboards)
 EMAIL_ADDRESS=...        # SMTP auth login (prod: Brevo SMTP login, e.g. ad34xxxxx@smtp-brevo.com)
 EMAIL_PASSWORD=...       # SMTP key/password (prod: Brevo SMTP key)
 MAIL_FROM_ADDRESS=...    # Visible From; prod: commish@cccfantasy.com. Falls back to EMAIL_ADDRESS if unset
+ADMIN_EMAIL=...          # Game-admin alert inbox (score-sync/setup alerts). MUST be a real mailbox in prod — EMAIL_ADDRESS there is the Brevo SMTP login, not an inbox. Falls back to EMAIL_ADDRESS if unset (fine in dev)
 SMTP_SERVER=...          # Dev default smtp.gmail.com; prod smtp-relay.brevo.com
 SMTP_PORT=...            # Dev default 587; prod 2525 (DO blocks 587)
 ```

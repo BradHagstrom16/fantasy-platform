@@ -1,0 +1,24 @@
+# CFB Survivor score sync — fetch finals, grade picks, process weeks.
+# Fired by cfb-scores.timer: Sun + Mon mornings in the regular season, plus
+# DAILY Dec 15 – Jan 25 — bowls and CFP games fall on any weekday, and the
+# scores API only looks back daysFrom=3, so weekly cadence would permanently
+# miss late games (audit §5.1: the Monday-night CFP final). Weeks stuck
+# incomplete >2 days past deadline escalate in the admin email.
+
+[Unit]
+Description=CFB Survivor score sync (grade picks, process weeks)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=deploy
+Group=deploy
+WorkingDirectory=/home/deploy/fantasy-platform
+EnvironmentFile=/home/deploy/fantasy-platform/.env
+Environment=ENVIRONMENT=production
+Environment=FLASK_APP=app.py
+NoNewPrivileges=true
+PrivateTmp=true
+TimeoutStartSec=5m
+ExecStart=/home/deploy/fantasy-platform/venv/bin/flask cfb sync --mode scores

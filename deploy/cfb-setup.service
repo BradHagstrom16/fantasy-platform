@@ -1,0 +1,33 @@
+# CFB Survivor weekly setup — create next week, import games, activate.
+# Fired Mondays by cfb-setup.timer. Retries orphaned 0-game weeks automatically.
+#
+# Install (all 5 CFB pairs at once):
+#   sudo cp /home/deploy/fantasy-platform/deploy/cfb-*.service /etc/systemd/system/
+#   sudo cp /home/deploy/fantasy-platform/deploy/cfb-*.timer   /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now cfb-setup.timer cfb-spreads.timer \
+#       cfb-autopick.timer cfb-scores.timer cfb-remind.timer
+#
+# !! Do NOT enable before launch prep: SEASON_SCHEDULE['week_1_start'] in
+#    games/cfb/constants.py must be updated to the 2026 season first, or
+#    every computed week date/deadline is a year off (audit §9).
+# Verify a timer's schedule before enabling:
+#   systemd-analyze calendar "Mon *-*-* 06:00:00 America/Chicago"
+
+[Unit]
+Description=CFB Survivor weekly setup (create week, import games)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=deploy
+Group=deploy
+WorkingDirectory=/home/deploy/fantasy-platform
+EnvironmentFile=/home/deploy/fantasy-platform/.env
+Environment=ENVIRONMENT=production
+Environment=FLASK_APP=app.py
+NoNewPrivileges=true
+PrivateTmp=true
+TimeoutStartSec=5m
+ExecStart=/home/deploy/fantasy-platform/venv/bin/flask cfb sync --mode setup

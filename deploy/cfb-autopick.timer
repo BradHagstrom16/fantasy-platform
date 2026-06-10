@@ -1,0 +1,14 @@
+# Runs CFB autopick right after the Saturday 11:00 CT pick deadline, with a
+# 30-minute retry. Both firings must beat the early kickoffs (audit §4) —
+# do not move these later.
+[Unit]
+Description=Run CFB Survivor autopick Sat 11:05 + 11:35 CT
+
+[Timer]
+# Timezone is INLINE in OnCalendar — no TimeZone= directive exists.
+OnCalendar=Sat *-*-* 11:05:00 America/Chicago
+OnCalendar=Sat *-*-* 11:35:00 America/Chicago
+Persistent=true
+
+[Install]
+WantedBy=timers.target
