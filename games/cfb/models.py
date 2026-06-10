@@ -5,6 +5,17 @@ Models for enrollment, teams, weeks, games, and picks.
 
 All tables use the ``cfb_`` prefix to avoid collision with other games.
 Game-specific user data lives in CfbEnrollment, NOT on the shared User model.
+
+Datetime column contract (all columns are stored naive; pick the right
+converter per column — see games/cfb/utils.py):
+
+- ``CfbWeek.start_date``, ``CfbWeek.deadline``, ``CfbGame.game_time``
+  hold naive **pool-timezone wall clock** (admin-entered / schedule
+  times). Read with ``make_aware()`` (assumes pool tz).
+- ``created_at`` audit columns and ``CfbGame.spread_locked_at`` hold
+  naive **UTC**. Read with ``to_pool_time()`` (assumes UTC). Using
+  ``make_aware()`` on these shifts them +5/6h — the recap-autopick
+  mislabel bug (audit §7, locked by tests/test_cfb_reminders.py).
 """
 from datetime import datetime, timezone
 
@@ -150,6 +161,53 @@ class CfbGame(db.Model):
 
     def __repr__(self):
         return f'<CfbGame {self.get_away_team_display()} @ {self.get_home_team_display()}>'
+
+
+class CfbWeekOutcome(db.Model):
+    """Per-user outcome snapshot, written when a week completes.
+
+    One row per season enrollment, written by process_week_results in the
+    run that completes the week (after revival resolution), inside the
+    same transaction that sets ``CfbWeek.is_complete``. SSoT for
+    historical lives display (weekly_results) and recap-email recipient /
+    elimination logic — per-week lives must never be recomputed from pick
+    history, which cannot see no-pick penalties (DQ-2) or revivals (DQ-1).
+    """
+    __tablename__ = 'cfb_week_outcome'
+
+    id = db.Column(db.Integer, primary_key=True)
+    week_id = db.Column(db.Integer, db.ForeignKey('cfb_week.id'),
+                        nullable=False, index=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'),
+                        nullable=False, index=True)
+    # State at end of week (post-revival)
+    lives_remaining = db.Column(db.Integer, nullable=False)
+    is_eliminated = db.Column(db.Boolean, nullable=False, default=False)
+    # What this week did to the player
+    lost_life = db.Column(db.Boolean, nullable=False, default=False)
+    no_pick = db.Column(db.Boolean, nullable=False, default=False)
+    revived = db.Column(db.Boolean, nullable=False, default=False)
+
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+
+    week = db.relationship('CfbWeek', backref='outcomes')
+    user = db.relationship('User')
+
+    __table_args__ = (
+        db.UniqueConstraint('week_id', 'user_id', name='unique_cfb_week_outcome'),
+    )
+
+    @property
+    def eliminated_this_week(self):
+        """True when this week's loss was the elimination.
+
+        Prior-week eliminations carry is_eliminated without lost_life;
+        revived players carry lost_life without is_eliminated.
+        """
+        return self.is_eliminated and self.lost_life
+
+    def __repr__(self):
+        return f'<CfbWeekOutcome week={self.week_id} user={self.user_id}>'
 
 
 class CfbPick(db.Model):

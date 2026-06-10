@@ -5,7 +5,7 @@ All route handlers for the CFB Survivor Pool game.
 Mounted at /cfb/ via blueprint url_prefix.
 """
 import logging
-from collections import Counter, defaultdict
+from collections import Counter
 from datetime import datetime, timezone
 from functools import wraps
 
@@ -31,7 +31,7 @@ from games.cfb.utils import (
 from games.cfb.constants import FBS_MASTER_TEAMS, TEAM_CONFERENCES
 from games.cfb.services.game_logic import (
     get_used_team_ids, get_game_for_team, process_week_results,
-    process_autopicks, calculate_cumulative_spread,
+    process_autopicks, calculate_cumulative_spread, get_week_user_statuses,
 )
 from games.cfb.services.score_fetcher import ScoreFetcher
 from games.common import game_must_be_open, enrollment_required
@@ -328,51 +328,39 @@ def weekly_results(week_number=None):
     users_who_picked = {pick.user_id for pick in picks}
     enrollments_no_pick = [e for e in all_enrollments if e.user_id not in users_who_picked]
 
+    # Avatar + display-name conformance: the table renders the
+    # enrollment display name, never User.username (transient attr).
+    enrollment_by_user = {e.user_id: e for e in all_enrollments}
+    for pick in picks:
+        enrollment = enrollment_by_user.get(pick.user_id)
+        pick.display_name = (
+            enrollment.get_display_name() if enrollment
+            else pick.user.username
+        )
+
     correct_picks_list = [p for p in picks if p.is_correct is True]
     incorrect_picks_list = [p for p in picks if p.is_correct is False]
     pending_picks_list = [p for p in picks if p.is_correct is None]
 
-    # Bulk-load all picks up to the current week for life tracking
-    all_past_picks = (
-        CfbPick.query.join(CfbWeek)
-        .filter(CfbWeek.week_number <= week.week_number)
-        .order_by(CfbWeek.week_number)
-        .all()
-    )
-    picks_by_user = defaultdict(list)
-    for p in all_past_picks:
-        picks_by_user[p.user_id].append(p)
-
-    user_statuses = {}
-    for enrollment in all_enrollments:
-        lives = 2
-        eliminated_week = None
-        for past_pick in picks_by_user.get(enrollment.user_id, []):
-            if past_pick.is_correct is False:
-                lives -= 1
-                if lives <= 0:
-                    eliminated_week = past_pick.week.week_number
-                    lives = 0
-                    break
-        user_statuses[enrollment.user_id] = {
-            'lives': lives,
-            'is_eliminated': lives == 0,
-            'eliminated_week': eliminated_week,
-        }
+    # Per-week lives from CfbWeekOutcome snapshots (enrollment-state
+    # fallback for in-progress weeks) — never recomputed from pick
+    # history, which cannot see no-pick penalties or revivals (§8.19).
+    user_statuses = get_week_user_statuses(week, all_enrollments, picks)
+    default_status = {'lives': 2, 'is_eliminated': False}
 
     for pick in picks:
-        status = user_statuses.get(pick.user_id, {'lives': 2, 'is_eliminated': False})
+        status = user_statuses.get(pick.user_id, default_status)
         pick.lives_after = status['lives']
         pick.was_eliminated = status['is_eliminated']
 
     for enrollment in enrollments_no_pick:
-        status = user_statuses.get(enrollment.user_id, {'lives': 2, 'is_eliminated': False})
+        status = user_statuses.get(enrollment.user_id, default_status)
         enrollment.lives_after = status['lives']
         enrollment.was_eliminated = status['is_eliminated']
 
     eliminated_this_week = [
         e for e in all_enrollments
-        if user_statuses.get(e.user_id, {}).get('eliminated_week') == week.week_number
+        if user_statuses.get(e.user_id, {}).get('eliminated_this_week')
     ]
 
     current_user_pick = None
@@ -1069,27 +1057,6 @@ def admin_toggle_admin(user_id):
     db.session.commit()
     action = 'granted' if enrollment.is_admin else 'revoked'
     flash(f'CFB admin {action} for {enrollment.get_display_name()}.', 'success')
-    return redirect(url_for('cfb.admin_users'))
-
-
-@cfb_bp.route('/admin/users/<int:user_id>/reset-password', methods=['POST'])
-@cfb_admin_required
-def admin_reset_password(user_id):
-    """Reset a user's password (scoped to CFB-enrolled users only)."""
-    season_year = current_app.config.get('CFB_SEASON_YEAR', 2026)
-    enrollment = CfbEnrollment.query.filter_by(
-        user_id=user_id, season_year=season_year
-    ).first_or_404()
-    user = enrollment.user
-    new_password = request.form.get('new_password')
-
-    if new_password:
-        user.set_password(new_password)
-        db.session.commit()
-        flash(f'Password reset for {user.username}.', 'success')
-    else:
-        flash('No password provided.', 'error')
-
     return redirect(url_for('cfb.admin_users'))
 
 

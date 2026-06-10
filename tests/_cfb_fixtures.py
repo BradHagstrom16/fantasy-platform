@@ -90,9 +90,16 @@ def make_game(week, home, away, *, spread=None, winner=None, no_contest=False):
     return g
 
 
-def make_pick(user, week, team):
-    """Create a CfbPick for the user/week/team triple."""
-    p = CfbPick(user_id=user.id, week_id=week.id, team_id=team.id)
+def make_pick(user, week, team, *, created_at=None, is_correct=None):
+    """Create a CfbPick for the user/week/team triple.
+
+    ``created_at`` is naive UTC per the column contract; None keeps the
+    model default (real now).
+    """
+    p = CfbPick(user_id=user.id, week_id=week.id, team_id=team.id,
+                is_correct=is_correct)
+    if created_at is not None:
+        p.created_at = created_at
     db.session.add(p)
     db.session.flush()
     return p

@@ -89,7 +89,7 @@
         <h4>Eliminated This Week</h4>
         <div class="d-flex flex-wrap gap-2">
             {% for e in eliminated_this_week %}
-                <span class="badge badge-lost-life fs-6 p-2">{{ e.get_display_name() }}</span>
+                <span class="badge badge-lost-life fs-6 p-2"><span class="me-1">{{ e.user.get_avatar() }}</span>{{ e.get_display_name() }}</span>
             {% endfor %}
         </div>
     </div>
@@ -119,7 +119,7 @@
                         {% for pick in picks %}
                         <tr class="{% if current_user.is_authenticated and pick.user_id == current_user.id %}row-current-user{% endif %}">
                             <td>
-                                {{ pick.user.username }}
+                                <span class="me-1">{{ pick.user.get_avatar() }}</span>{{ pick.display_name }}
                                 {% if pick.is_autopick %}
                                     <span class="badge bg-warning text-dark badge-xs">AUTO</span>
                                 {% endif %}
@@ -176,7 +176,7 @@
 
                         {% for enrollment in enrollments_no_pick %}
                         <tr class="table-warning">
-                            <td>{{ enrollment.get_display_name() }}</td>
+                            <td><span class="me-1">{{ enrollment.user.get_avatar() }}</span>{{ enrollment.get_display_name() }}</td>
                             <td colspan="3" class="text-muted fst-italic">No pick submitted</td>
                             <td><span class="badge bg-warning text-dark">--</span></td>
                             <td>

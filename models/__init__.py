@@ -24,6 +24,7 @@ from games.cfb.models import (
     CfbWeek,
     CfbGame,
     CfbPick,
+    CfbWeekOutcome,
 )
 
 # World Cup Fantasy Pool models
@@ -49,6 +50,7 @@ __all__ = [
     'CfbWeek',
     'CfbGame',
     'CfbPick',
+    'CfbWeekOutcome',
     'WorldCupEnrollment',
     'WorldCupTeam',
     'WorldCupMatch',

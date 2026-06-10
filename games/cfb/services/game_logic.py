@@ -11,7 +11,9 @@ from flask import current_app
 
 from extensions import db
 from models import User
-from games.cfb.models import CfbEnrollment, CfbTeam, CfbWeek, CfbGame, CfbPick
+from games.cfb.models import (
+    CfbEnrollment, CfbTeam, CfbWeek, CfbGame, CfbPick, CfbWeekOutcome,
+)
 from games.cfb.utils import (
     get_current_time, get_utc_time, make_aware, deadline_has_passed,
     is_week_playoff, get_cfp_eliminated_teams,
@@ -180,10 +182,12 @@ def process_week_results(week_id, season_year=None):
         if all_settled:
             # DQ-2: active players with no pick lose a life
             no_pick_eliminated = 0
+            no_pick_user_ids = set()
             for enrollment in season_enrollments:
                 if enrollment.is_eliminated or enrollment.user_id in pick_by_user:
                     continue
                 enrollment.lives_remaining -= 1
+                no_pick_user_ids.add(enrollment.user_id)
                 result["no_pick_penalties"] += 1
                 if enrollment.lives_remaining <= 0:
                     enrollment.lives_remaining = 0
@@ -200,6 +204,7 @@ def process_week_results(week_id, season_year=None):
             active_remaining = [
                 e for e in season_enrollments if not e.is_eliminated
             ]
+            revived_user_ids = set()
             if not active_remaining:
                 wiped_pickers = []
                 for enrollment in season_enrollments:
@@ -213,6 +218,7 @@ def process_week_results(week_id, season_year=None):
                     for enrollment in wiped_pickers:
                         enrollment.lives_remaining = 1
                         enrollment.is_eliminated = False
+                        revived_user_ids.add(enrollment.user_id)
                     result["revived"] = len(wiped_pickers)
                     logger.info(
                         "REVIVAL RULE ACTIVATED: Week %s — whole-pool wipe, "
@@ -228,6 +234,26 @@ def process_week_results(week_id, season_year=None):
                         week.week_number,
                     )
 
+            # Snapshot every season enrollment's end-of-week state
+            # (post-revival) — SSoT for historical lives display and
+            # recap elimination detection. Delete-then-write keeps the
+            # snapshot idempotent against any future re-completion path.
+            CfbWeekOutcome.query.filter_by(week_id=week_id).delete()
+            for enrollment in season_enrollments:
+                pick = pick_by_user.get(enrollment.user_id)
+                db.session.add(CfbWeekOutcome(
+                    week_id=week_id,
+                    user_id=enrollment.user_id,
+                    lives_remaining=enrollment.lives_remaining,
+                    is_eliminated=enrollment.is_eliminated,
+                    lost_life=(
+                        (pick is not None and pick.is_correct is False)
+                        or enrollment.user_id in no_pick_user_ids
+                    ),
+                    no_pick=enrollment.user_id in no_pick_user_ids,
+                    revived=enrollment.user_id in revived_user_ids,
+                ))
+
         db.session.commit()
         return result
 
@@ -235,6 +261,46 @@ def process_week_results(week_id, season_year=None):
         db.session.rollback()
         logger.exception("process_week_results failed for week %s", week_id)
         return {"success": False, "error": "Database error during result processing"}
+
+
+def get_week_user_statuses(week, enrollments, picks):
+    """Per-user end-of-week status for a week's results display.
+
+    Completed weeks read CfbWeekOutcome snapshots — exact, including
+    DQ-2 no-pick penalties and DQ-1 revivals, which pick history cannot
+    see (audit §2/§8.19). Weeks without snapshot rows (still in
+    progress) fall back to current enrollment state, which
+    process_week_results keeps live-accurate while grading; there a
+    graded losing pick attributes a mid-week elimination to this week.
+
+    Returns {user_id: {'lives', 'is_eliminated', 'eliminated_this_week'}}.
+    """
+    outcome_by_user = {
+        o.user_id: o
+        for o in CfbWeekOutcome.query.filter_by(week_id=week.id).all()
+    }
+    pick_by_user = {p.user_id: p for p in picks}
+
+    statuses = {}
+    for enrollment in enrollments:
+        outcome = outcome_by_user.get(enrollment.user_id)
+        if outcome is not None:
+            statuses[enrollment.user_id] = {
+                'lives': outcome.lives_remaining,
+                'is_eliminated': outcome.is_eliminated,
+                'eliminated_this_week': outcome.eliminated_this_week,
+            }
+        else:
+            pick = pick_by_user.get(enrollment.user_id)
+            statuses[enrollment.user_id] = {
+                'lives': enrollment.lives_remaining,
+                'is_eliminated': enrollment.is_eliminated,
+                'eliminated_this_week': bool(
+                    enrollment.is_eliminated
+                    and pick is not None and pick.is_correct is False
+                ),
+            }
+    return statuses
 
 
 # ---------------------------------------------------------------------------

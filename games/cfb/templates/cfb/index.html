@@ -10,7 +10,7 @@
 
 <div class="championship-hero animate-in">
     <span class="trophy-icon">🏆</span>
-    <span class="champion-name">{{ enrollments[0].get_display_name() }}</span>
+    <span class="champion-name"><span class="me-2">{{ enrollments[0].user.get_avatar() }}</span>{{ enrollments[0].get_display_name() }}</span>
     <span class="champion-subtitle">CFB Survivor Pool Champion</span>
     <p>Outlasting {{ eliminated_enrollments|length }} competitors through {{ weeks_played }} weeks of college football.</p>
     <span class="prize-badge">Winner: ${{ prize_pool }}</span>
@@ -104,7 +104,7 @@
                     <div class="row g-2">
                         {% for e in eliminated_enrollments %}
                         <div class="col-6 col-md-3">
-                            <span class="badge badge-eliminated w-100 p-2">{{ e.get_display_name() }}</span>
+                            <span class="badge badge-eliminated w-100 p-2"><span class="me-1">{{ e.user.get_avatar() }}</span>{{ e.get_display_name() }}</span>
                         </div>
                         {% endfor %}
                     </div>
@@ -266,7 +266,7 @@
             <div class="row g-2 mt-2 animate-in stagger-5">
                 {% for enrollment in eliminated_enrollments %}
                 <div class="col-6 col-md-4">
-                    <span class="badge badge-eliminated w-100 p-2">{{ enrollment.get_display_name() }}</span>
+                    <span class="badge badge-eliminated w-100 p-2"><span class="me-1">{{ enrollment.user.get_avatar() }}</span>{{ enrollment.get_display_name() }}</span>
                 </div>
                 {% endfor %}
             </div>

@@ -14,7 +14,9 @@ from unittest.mock import Mock, patch
 from app import create_app
 from extensions import db
 from models.user import User
-from games.cfb.models import CfbEnrollment, CfbTeam, CfbWeek, CfbGame, CfbPick
+from games.cfb.models import (
+    CfbEnrollment, CfbTeam, CfbWeek, CfbGame, CfbPick, CfbWeekOutcome,
+)
 from games.cfb.services.game_logic import (
     process_week_results, calculate_cumulative_spread, get_used_team_ids,
 )
@@ -749,3 +751,128 @@ def test_auto_process_week_failure_does_not_strand_week_complete(app):
 
     assert result['status'] == 'error'
     assert week.is_complete is False
+
+
+# ── CfbWeekOutcome snapshot (§8.19 SSoT for per-week lives display) ───────
+
+def test_completing_run_writes_outcome_rows_for_every_enrollment(app):
+    """The run that completes a week snapshots every season enrollment —
+    winner, life-loser, and prior-week eliminations alike."""
+    week, home, away, _ = _seed_basic_week()  # away team won
+    winner = make_user('winner')
+    make_enrollment(winner)
+    loser = make_user('loser')
+    make_enrollment(loser)
+    prior_out = make_user('priorout')
+    make_enrollment(prior_out, lives=0, eliminated=True)
+    make_pick(winner, week, away)
+    make_pick(loser, week, home)
+    db.session.commit()
+
+    process_week_results(week.id)
+
+    outcomes = {
+        o.user_id: o
+        for o in CfbWeekOutcome.query.filter_by(week_id=week.id).all()
+    }
+    assert len(outcomes) == 3
+    w = outcomes[winner.id]
+    assert (w.lives_remaining, w.lost_life, w.is_eliminated) == (2, False, False)
+    l = outcomes[loser.id]
+    assert (l.lives_remaining, l.lost_life, l.is_eliminated) == (1, True, False)
+    p = outcomes[prior_out.id]
+    assert (p.lives_remaining, p.is_eliminated, p.lost_life, p.no_pick) == (
+        0, True, False, False)
+    assert p.eliminated_this_week is False
+
+
+def test_no_pick_penalty_recorded_in_outcome(app):
+    """A DQ-2 no-pick life loss is flagged no_pick + lost_life."""
+    week, home, away, _ = _seed_basic_week()
+    picker = make_user('picker')
+    make_enrollment(picker)
+    nopick = make_user('nopick')
+    make_enrollment(nopick)
+    make_pick(picker, week, away)
+    db.session.commit()
+
+    process_week_results(week.id)
+
+    o = CfbWeekOutcome.query.filter_by(
+        week_id=week.id, user_id=nopick.id).first()
+    assert o is not None
+    assert o.no_pick is True
+    assert o.lost_life is True
+    assert o.lives_remaining == 1
+    assert o.eliminated_this_week is False
+
+
+def test_no_pick_elimination_flagged_eliminated_this_week(app):
+    """A no-pick loss at 1 life is an elimination attributable to this
+    week — the recap and weekly_results depend on this derivation."""
+    week, home, away, _ = _seed_basic_week()
+    picker = make_user('picker')
+    make_enrollment(picker)
+    nopick = make_user('nopick')
+    make_enrollment(nopick, lives=1)
+    make_pick(picker, week, away)
+    db.session.commit()
+
+    process_week_results(week.id)
+
+    o = CfbWeekOutcome.query.filter_by(
+        week_id=week.id, user_id=nopick.id).first()
+    assert o.eliminated_this_week is True
+    assert o.no_pick is True
+    assert o.lives_remaining == 0
+
+
+def test_revival_recorded_in_outcome_snapshot(app):
+    """Outcome rows capture post-revival state: revived players show
+    revived=True, 1 life, not eliminated."""
+    week, home, away, _ = _seed_basic_week()  # away won; both pick home
+    for name in ('p1', 'p2'):
+        u = make_user(name)
+        make_enrollment(u, lives=1)
+        make_pick(u, week, home)
+    db.session.commit()
+
+    process_week_results(week.id)
+
+    outcomes = CfbWeekOutcome.query.filter_by(week_id=week.id).all()
+    assert len(outcomes) == 2
+    for o in outcomes:
+        assert o.revived is True
+        assert o.lives_remaining == 1
+        assert o.is_eliminated is False
+        assert o.lost_life is True
+        assert o.eliminated_this_week is False
+
+
+def test_outcomes_not_written_until_week_completes(app):
+    """Partial runs (undecided games) write no snapshot rows."""
+    week = make_week(1)
+    home, away = make_team('H'), make_team('A')
+    make_game(week, home, away, spread=-3.0, winner=None)
+    u = make_user('p1')
+    make_enrollment(u)
+    make_pick(u, week, home)
+    db.session.commit()
+
+    process_week_results(week.id)
+
+    assert CfbWeekOutcome.query.filter_by(week_id=week.id).count() == 0
+
+
+def test_outcomes_not_duplicated_on_rerun(app):
+    """Re-running a completed week leaves exactly one row per enrollment."""
+    week, home, away, _ = _seed_basic_week()
+    u = make_user('p1')
+    make_enrollment(u)
+    make_pick(u, week, away)
+    db.session.commit()
+
+    process_week_results(week.id)
+    process_week_results(week.id)
+
+    assert CfbWeekOutcome.query.filter_by(week_id=week.id).count() == 1
