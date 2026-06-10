@@ -492,6 +492,10 @@ def make_pick(week_number):
 
     # GET: build eligible teams
     games = CfbGame.query.filter_by(week_id=week.id).all()
+    # Sort here (not in Jinja): a NULL game_time from an import parse failure
+    # makes `|sort(attribute='game_time')` raise and 500 the whole page.
+    # None-safe key sends time-less games to the end (audit §9 HIGH).
+    games.sort(key=lambda g: g.game_time or datetime.max)
     for game in games:
         game._aware_time = make_aware(game.game_time)
 

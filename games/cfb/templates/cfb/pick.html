@@ -49,7 +49,7 @@
             <h4 class="section-heading mt-4 mb-3">Select Your Team</h4>
             <p class="text-muted small">Tap a team to select it. Unavailable teams are shown grayed out.</p>
 
-            {% for game in games|sort(attribute='game_time') %}
+            {% for game in games %}{# pre-sorted None-safe in the route #}
                 {% set home_team = game.home_team %}
                 {% set away_team = game.away_team %}
                 {% set home_eligible = home_team and home_team in eligible_teams %}

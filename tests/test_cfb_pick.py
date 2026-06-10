@@ -353,6 +353,25 @@ def test_pick_updated_in_place_not_duplicated(app, client):
     assert len(picks) == 1 and picks[0].team_id == away.id
 
 
+def test_pick_page_survives_null_game_time(app, client):
+    """A game with a NULL game_time (import parse failure) must not 500 the
+    pick page — the game_time sort has to be None-safe (audit §9 HIGH)."""
+    week = make_week(1, deadline=FUTURE_DEADLINE)
+    h1, a1 = make_team('H1'), make_team('A1')
+    h2, a2 = make_team('H2'), make_team('A2')
+    make_game(week, h1, a1, spread=-7.0)         # game_time = deadline (set)
+    g2 = make_game(week, h2, a2, spread=-3.0)
+    g2.game_time = None                           # parse failure left it NULL
+    user = make_user('p1')
+    make_enrollment(user)
+    db.session.commit()
+    _login(client, user)
+
+    resp = client.get('/cfb/pick/1')
+
+    assert resp.status_code == 200
+
+
 def test_created_at_refreshes_on_update(app, client):
     """An update stamps a fresh created_at (the recap deadline clock resets)."""
     week = make_week(1, deadline=FUTURE_DEADLINE)

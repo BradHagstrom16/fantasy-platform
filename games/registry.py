@@ -61,7 +61,7 @@ GAMES: list[GameRegistryEntry] = [
         slug='cfb',
         display_name='CFB Survivor Pool',
         description=(
-            'Weekly college football picks against the spread. Two lives. '
+            'Weekly college football picks to win outright. Two lives. '
             'Last survivor wins.'
         ),
         emoji='🏈',
