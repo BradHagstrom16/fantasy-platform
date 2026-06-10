@@ -22,9 +22,12 @@ from utils.email import send_platform_email
 
 from extensions import db
 from models import User
-from games.cfb.models import CfbEnrollment, CfbWeek, CfbPick, CfbGame
+from games.cfb.models import (
+    CfbEnrollment, CfbWeek, CfbPick, CfbGame, CfbWeekOutcome,
+)
 from games.cfb.utils import (
-    get_current_time, make_aware, get_week_display_name, is_week_playoff,
+    get_current_time, make_aware, to_pool_time, get_week_display_name,
+    is_week_playoff,
 )
 
 logger = logging.getLogger(__name__)
@@ -417,18 +420,41 @@ def send_weekly_recap_email(week_id: int) -> int:
     correct_count = sum(1 for p in all_picks if p.is_correct is True)
     incorrect_count = sum(1 for p in all_picks if p.is_correct is False)
 
-    # ---- Identify eliminations this week ----
-    # Users eliminated this week: had an incorrect pick AND now have 0 lives
+    # ---- Identify eliminations this week (keyed by user_id) ----
+    # CfbWeekOutcome snapshots are the SSoT — they see no-pick
+    # eliminations (DQ-2), which pick rows cannot. Display names are
+    # not unique, so identity comparisons must never use them (audit §2).
     all_enrollments = CfbEnrollment.query.filter_by(season_year=season_year).all()
     enrollment_by_user = {e.user_id: e for e in all_enrollments}
     active_count = sum(1 for e in all_enrollments if not e.is_eliminated)
 
-    eliminated_this_week = []
-    for pick in all_picks:
-        if pick.is_correct is False:
-            enrollment = enrollment_by_user.get(pick.user_id)
-            if enrollment and enrollment.is_eliminated:
-                eliminated_this_week.append(enrollment.get_display_name())
+    outcome_by_user = {
+        o.user_id: o
+        for o in CfbWeekOutcome.query.filter_by(week_id=week_id).all()
+    }
+    if outcome_by_user:
+        eliminated_this_week_ids = {
+            uid for uid, o in outcome_by_user.items() if o.eliminated_this_week
+        }
+    else:
+        # Week completed without snapshots (pre-snapshot data) — fall
+        # back to pick-based detection; no-pick eliminations are
+        # undetectable here, so log it rather than guess.
+        logger.warning(
+            "No CfbWeekOutcome rows for week %s — recap falling back to "
+            "pick-based elimination detection", week_id,
+        )
+        eliminated_this_week_ids = {
+            p.user_id for p in all_picks
+            if p.is_correct is False
+            and (e := enrollment_by_user.get(p.user_id)) is not None
+            and e.is_eliminated
+        }
+
+    eliminated_this_week = sorted(
+        enrollment_by_user[uid].get_display_name()
+        for uid in eliminated_this_week_ids if uid in enrollment_by_user
+    )
 
     # ---- Calculate rankings (non-eliminated, sorted by lives desc then spread asc) ----
     ranked = sorted(
@@ -439,10 +465,17 @@ def send_weekly_recap_email(week_id: int) -> int:
     for i, enrollment in enumerate(ranked):
         rank_by_user[enrollment.user_id] = i + 1
 
-    # ---- Send personalized recap to each enrolled user ----
+    # ---- Send personalized recap (DQ-5 recipients) ----
+    # Active players plus this week's eliminations only — a player
+    # eliminated in a prior week already got their notice and gets
+    # nothing further.
+    recipients = [
+        e for e in all_enrollments
+        if not e.is_eliminated or e.user_id in eliminated_this_week_ids
+    ]
     success_count = 0
 
-    for enrollment in all_enrollments:
+    for enrollment in recipients:
         user = db.session.get(User, enrollment.user_id)
         if not user or not user.email:
             continue
@@ -450,10 +483,12 @@ def send_weekly_recap_email(week_id: int) -> int:
         display_name = enrollment.get_display_name()
         pick = pick_by_user.get(enrollment.user_id)
 
-        # Detect autopick (created after deadline)
+        # Detect autopick (created after deadline). created_at is naive
+        # UTC — convert via to_pool_time, never make_aware (which would
+        # read it as pool wall clock and shift it +5/6h past the deadline).
         is_autopick = False
         if pick and pick.created_at:
-            pick_time = make_aware(pick.created_at)
+            pick_time = to_pool_time(pick.created_at)
             if pick_time > deadline:
                 is_autopick = True
 
@@ -478,7 +513,9 @@ def send_weekly_recap_email(week_id: int) -> int:
         lives = enrollment.lives_remaining
         cumulative_spread = enrollment.cumulative_spread
         rank = rank_by_user.get(enrollment.user_id)
-        was_eliminated_this_week = display_name in eliminated_this_week
+        was_eliminated_this_week = enrollment.user_id in eliminated_this_week_ids
+        outcome_row = outcome_by_user.get(enrollment.user_id)
+        no_pick_lost_life = bool(outcome_row and outcome_row.no_pick)
 
         # Subject line
         if was_eliminated_this_week:
@@ -495,6 +532,7 @@ def send_weekly_recap_email(week_id: int) -> int:
             correct_count, incorrect_count, len(all_picks),
             eliminated_this_week, was_eliminated_this_week,
             is_playoff, site_url, week.week_number,
+            no_pick_lost_life=no_pick_lost_life,
         )
         html = _build_recap_html(
             display_name, week_name, team_name, outcome, spread,
@@ -502,12 +540,13 @@ def send_weekly_recap_email(week_id: int) -> int:
             correct_count, incorrect_count, len(all_picks),
             eliminated_this_week, was_eliminated_this_week,
             is_playoff, site_url, week.week_number, season_year,
+            no_pick_lost_life=no_pick_lost_life,
         )
 
         if send_platform_email(user.email, subject, plain, html):
             success_count += 1
 
-    print(f"\nResults Recap Summary: {success_count}/{len(all_enrollments)} emails sent")
+    print(f"\nResults Recap Summary: {success_count}/{len(recipients)} emails sent")
     return success_count
 
 
@@ -515,7 +554,8 @@ def _build_recap_plain_text(display_name, week_name, team_name, outcome, spread,
                             is_autopick, lives, cumulative_spread, rank,
                             active_count, correct_count, incorrect_count,
                             total_picks, eliminated_names, was_eliminated,
-                            is_playoff, site_url, week_number):
+                            is_playoff, site_url, week_number, *,
+                            no_pick_lost_life=False):
     """Build plain-text fallback for the weekly recap email."""
     lines = [f"Hi {display_name},\n"]
     lines.append(f"Here's your {week_name} recap.\n")
@@ -527,6 +567,9 @@ def _build_recap_plain_text(display_name, week_name, team_name, outcome, spread,
         if spread is not None:
             lines.append(f"Spread: {spread:+.1f}")
         lines.append(f"Result: {outcome}")
+    elif no_pick_lost_life:
+        # DQ-2: missing the deadline costs a life
+        lines.append("Your Pick: No pick — life lost")
     else:
         lines.append("Your Pick: No pick submitted")
 
@@ -570,7 +613,8 @@ def _build_recap_html(display_name, week_name, team_name, outcome, spread,
                       is_autopick, lives, cumulative_spread, rank,
                       active_count, correct_count, incorrect_count,
                       total_picks, eliminated_names, was_eliminated,
-                      is_playoff, site_url, week_number, season_year):
+                      is_playoff, site_url, week_number, season_year, *,
+                      no_pick_lost_life=False):
     """Build the HTML body for the weekly recap email."""
     c = CFB_EMAIL
 
@@ -605,6 +649,15 @@ def _build_recap_html(display_name, week_name, team_name, outcome, spread,
 </td>
 <td>{spread_text}</td>
 </tr></table>
+</td></tr>
+</table>'''
+    elif no_pick_lost_life:
+        # DQ-2: missing the deadline costs a life — styled as a loss
+        pick_card = f'''<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #fef2f2; border-left: 4px solid {c['lost_life']}; margin-bottom: 24px;">
+<tr><td style="padding: 20px 24px;">
+<p style="margin: 0 0 4px 0; font-size: 11px; font-weight: 600; color: {c['text_muted']}; text-transform: uppercase; letter-spacing: 0.05em;">Your Pick</p>
+<p style="margin: 0 0 6px 0; font-family: {c['font_heading']}; font-size: 18px; color: {c['text_primary']};">No pick &mdash; life lost</p>
+<p style="margin: 0; font-size: 13px; color: {c['text_secondary']};">No pick was submitted before the deadline, so a life was lost.</p>
 </td></tr>
 </table>'''
     else:

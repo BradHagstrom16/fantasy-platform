@@ -8,10 +8,14 @@ these will be candidates for refactoring into shared platform utils.
 
 Display helpers handle week name formatting and CFP team tracking.
 """
+import logging
+import os
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 
 from flask import current_app
+
+logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -24,13 +28,53 @@ def _get_pool_tz():
     return ZoneInfo(tz_name)
 
 
+def _fake_now_utc():
+    """Return the CFB_FAKE_NOW override as an aware-UTC datetime, or None.
+
+    Non-production test seam mirroring the WC contract
+    (games/worldcup/services/state.now_utc): active only when
+    ENVIRONMENT is development/testing; a naive ISO string is treated
+    as UTC; malformed values are logged and ignored. Production never
+    reads CFB_FAKE_NOW.
+    """
+    if os.environ.get('ENVIRONMENT') not in ('development', 'testing'):
+        return None
+    fake = os.environ.get('CFB_FAKE_NOW')
+    if not fake:
+        return None
+    try:
+        dt = datetime.fromisoformat(fake.replace('Z', '+00:00'))
+    except ValueError:
+        logger.warning(
+            'CFB_FAKE_NOW is not a valid ISO 8601 datetime: %r — '
+            'falling back to real time', fake,
+        )
+        return None
+    # Normalize aware values to UTC tzinfo — get_utc_time() feeds
+    # naive-UTC columns, where a foreign offset would corrupt the
+    # stored wall clock.
+    if dt.tzinfo:
+        return dt.astimezone(timezone.utc)
+    return dt.replace(tzinfo=timezone.utc)
+
+
 def get_current_time():
-    """Get current time in the pool's timezone (aware)."""
+    """Get current time in the pool's timezone (aware).
+
+    Canonical "now" reader for CFB application code — honors the
+    CFB_FAKE_NOW seam in dev/testing.
+    """
+    fake = _fake_now_utc()
+    if fake is not None:
+        return fake.astimezone(_get_pool_tz())
     return datetime.now(_get_pool_tz())
 
 
 def get_utc_time():
-    """Get current UTC time (aware)."""
+    """Get current UTC time (aware). Honors the CFB_FAKE_NOW seam."""
+    fake = _fake_now_utc()
+    if fake is not None:
+        return fake
     return datetime.now(timezone.utc)
 
 
