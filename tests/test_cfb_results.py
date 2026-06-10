@@ -9,7 +9,7 @@ processing guards (mark-results / apply-scores) and the
 auto_process_week is_complete ordering.
 """
 import pytest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from app import create_app
 from extensions import db
@@ -26,6 +26,7 @@ from tests._cfb_fixtures import (
 
 @pytest.fixture()
 def app():
+    """App fixture: testing config + in-memory schema per test."""
     app = create_app('testing')
     with app.app_context():
         db.create_all()
@@ -36,6 +37,7 @@ def app():
 
 @pytest.fixture()
 def client(app):
+    """Flask test client bound to the app fixture."""
     return app.test_client()
 
 
@@ -62,6 +64,7 @@ def _login_admin(app, client):
 # ── §8.1 — outright-win grading ──────────────────────────────────────────
 
 def test_grading_is_outright_win_not_against_spread(app):
+    """Grading uses the outright result only — the spread plays no role."""
     week = make_week(1)
     home = make_team('Home U')
     away = make_team('Away St')
@@ -86,6 +89,7 @@ def test_grading_is_outright_win_not_against_spread(app):
 
 
 def test_away_picker_correct_when_home_loses(app):
+    """An away-team picker grades correct when home_team_won is False."""
     week, home, away, _ = _seed_basic_week()
     user = make_user('p1')
     enrollment = make_enrollment(user)
@@ -102,6 +106,7 @@ def test_away_picker_correct_when_home_loses(app):
 # ── §8.2 — lives decrement and elimination ───────────────────────────────
 
 def test_two_lives_wrong_pick_loses_one_life_not_eliminated(app):
+    """A wrong pick at 2 lives costs one life without elimination."""
     week, home, away, _ = _seed_basic_week()
     user = make_user('p1')
     enrollment = make_enrollment(user, lives=2)
@@ -137,6 +142,7 @@ def test_one_life_wrong_pick_eliminated_and_not_revived(app):
 # ── §8.3 — idempotency (Top-5 #1/#2) ─────────────────────────────────────
 
 def test_process_week_results_is_idempotent_across_reruns(app):
+    """Re-running a completed week is a no-op (Top-5 #1 lock)."""
     week, home, away, _ = _seed_basic_week()
     user = make_user('p1')
     enrollment = make_enrollment(user, lives=2)
@@ -154,6 +160,7 @@ def test_process_week_results_is_idempotent_across_reruns(app):
 
 
 def test_partial_processing_grades_each_pick_exactly_once(app):
+    """Picks graded in a partial run are never re-graded when the week completes."""
     week = make_week(1)
     t1, t2 = make_team('T1'), make_team('T2')
     t3, t4 = make_team('T3'), make_team('T4')
@@ -183,6 +190,7 @@ def test_partial_processing_grades_each_pick_exactly_once(app):
 
 
 def test_pick_on_undecided_game_is_untouched(app):
+    """An undecided game leaves the pick ungraded and lives unchanged."""
     week = make_week(1)
     home, away = make_team('T1'), make_team('T2')
     make_game(week, home, away)  # undecided
@@ -218,6 +226,7 @@ def test_week_with_no_games_is_never_completed(app):
 # ── §8.4 — revival per DQ-1 ──────────────────────────────────────────────
 
 def test_revival_fires_on_whole_pool_wipe(app):
+    """A whole-pool wipe of pickers revives every wiped picker (DQ-1)."""
     week, home, away, _ = _seed_basic_week()
     u1 = make_user('p1')
     e1 = make_enrollment(u1, lives=1)
@@ -364,6 +373,7 @@ def test_revival_deferred_until_all_games_settled(app):
 # ── §8.5 — no-pick penalty per DQ-2 ──────────────────────────────────────
 
 def test_active_no_pick_player_loses_life_when_week_completes(app):
+    """An active player with no pick loses a life at completion (DQ-2)."""
     week, home, away, _ = _seed_basic_week()
     sleeper = make_user('sleeper')
     e_sleeper = make_enrollment(sleeper, lives=2)
@@ -380,6 +390,7 @@ def test_active_no_pick_player_loses_life_when_week_completes(app):
 
 
 def test_no_pick_at_one_life_is_eliminated_not_revived(app):
+    """A no-pick at 1 life eliminates; a surviving picker blocks revival."""
     week, home, away, _ = _seed_basic_week()
     sleeper = make_user('sleeper')
     e_sleeper = make_enrollment(sleeper, lives=1)
@@ -397,6 +408,7 @@ def test_no_pick_at_one_life_is_eliminated_not_revived(app):
 
 
 def test_already_eliminated_players_are_not_penalized(app):
+    """Players eliminated in earlier weeks take no further no-pick penalty."""
     week, home, away, _ = _seed_basic_week()
     ghost = make_user('ghost')
     e_ghost = make_enrollment(ghost, lives=0, eliminated=True)
@@ -413,6 +425,7 @@ def test_already_eliminated_players_are_not_penalized(app):
 
 
 def test_no_pick_penalty_deferred_until_completion_and_applied_once(app):
+    """The no-pick penalty waits for completion and never reapplies."""
     week = make_week(1)
     t1, t2 = make_team('T1'), make_team('T2')
     game = make_game(week, t1, t2)  # undecided
@@ -438,6 +451,7 @@ def test_no_pick_penalty_deferred_until_completion_and_applied_once(app):
 # ── §8.6 — No Contest per DQ-4 ───────────────────────────────────────────
 
 def test_no_contest_pick_is_push_with_no_life_loss(app):
+    """A No Contest pick pushes: ungraded, no life loss, week still completes."""
     week = make_week(1)
     home, away = make_team('T1'), make_team('T2')
     make_game(week, home, away, no_contest=True)
@@ -495,6 +509,7 @@ def test_no_contest_team_remains_used(app):
 
 
 def test_no_contest_game_excluded_from_cumulative_spread(app):
+    """No Contest games contribute nothing to the cumulative-spread tiebreaker."""
     week1 = make_week(1)
     week2 = make_week(2)
     t1, t2 = make_team('T1'), make_team('T2')
@@ -515,6 +530,7 @@ def test_no_contest_game_excluded_from_cumulative_spread(app):
 # ── §8.7 — cumulative spread recalculation ───────────────────────────────
 
 def test_cumulative_spread_recalculated_not_accumulated(app):
+    """Processing replaces the stored cumulative spread, never adds to it."""
     week, home, away, _ = _seed_basic_week()
     user = make_user('p1')
     enrollment = make_enrollment(user)
@@ -530,6 +546,7 @@ def test_cumulative_spread_recalculated_not_accumulated(app):
 # ── Admin route guards (Top-5 #2 + DQ-4 surfaces) ────────────────────────
 
 def test_mark_results_completes_week_and_blocks_reruns(app, client):
+    """mark-results completes the week via the engine and rejects resubmits."""
     week = make_week(1)
     home, away = make_team('T1'), make_team('T2')
     game = make_game(week, home, away)
@@ -555,6 +572,7 @@ def test_mark_results_completes_week_and_blocks_reruns(app, client):
 
 
 def test_apply_scores_double_post_decrements_once(app, client):
+    """A double-POST of apply-scores decrements lives exactly once."""
     week = make_week(1)
     home, away = make_team('T1'), make_team('T2')
     game = make_game(week, home, away)
@@ -578,6 +596,7 @@ def test_apply_scores_double_post_decrements_once(app, client):
 
 
 def test_mark_results_accepts_no_contest(app, client):
+    """mark-results persists a No Contest ruling with push semantics."""
     week = make_week(1)
     home, away = make_team('T1'), make_team('T2')
     game = make_game(week, home, away)
@@ -599,6 +618,7 @@ def test_mark_results_accepts_no_contest(app, client):
 
 
 def test_apply_scores_accepts_no_contest(app, client):
+    """apply-scores persists a No Contest ruling with push semantics."""
     week = make_week(1)
     home, away = make_team('T1'), make_team('T2')
     game = make_game(week, home, away)
@@ -619,6 +639,7 @@ def test_apply_scores_accepts_no_contest(app, client):
 
 
 def test_admin_surfaces_offer_no_contest_option(app, client):
+    """Mark-results offers a No Contest radio for every game."""
     week = make_week(1)
     home, away = make_team('T1'), make_team('T2')
     make_game(week, home, away)
@@ -628,14 +649,39 @@ def test_admin_surfaces_offer_no_contest_option(app, client):
     resp = client.get(f'/cfb/admin/week/{week.id}/mark-results')
     assert b'no_contest' in resp.data
 
-    # review_scores renders only behind a live API fetch — check source.
-    with open('games/cfb/templates/cfb/admin/review_scores.html') as f:
-        assert 'no_contest' in f.read()
+
+def test_review_scores_preselects_persisted_no_contest(app, client):
+    """A stored No Contest ruling stays selected on review-scores — a blind
+    resubmit must not overturn it with a score-derived winner default."""
+    week = make_week(1)
+    home, away = make_team('T1'), make_team('T2')
+    make_game(week, home, away, no_contest=True)
+    db.session.commit()
+    _login_admin(app, client)
+
+    api_event = {
+        'id': 'evt9', 'home_team': 'T1', 'away_team': 'T2',
+        'completed': True,
+        'scores': [{'name': 'T1', 'score': '10'},
+                   {'name': 'T2', 'score': '20'}],
+    }
+    fake_resp = Mock(status_code=200, headers={})
+    fake_resp.json.return_value = [api_event]
+
+    with patch('games.cfb.services.score_fetcher.requests.get',
+               return_value=fake_resp):
+        resp = client.get(f'/cfb/admin/week/{week.id}/fetch-scores')
+
+    html = resp.data.decode()
+    assert 'value="no_contest" selected' in html
+    # The score-derived default (away won 20-10) must be suppressed
+    assert 'value="away" selected' not in html
 
 
 # ── auto_process_week is_complete ordering (engine owns the flag) ────────
 
 def _fake_fetch(game):
+    """Canned fetch_scores_for_week payload: one completed 10-20 game."""
     return {
         'matched_completed': [{
             'game_id': game.id,
@@ -651,6 +697,7 @@ def _fake_fetch(game):
 
 
 def test_auto_process_week_completes_via_engine(app):
+    """auto_process_week completes a settled week through the engine."""
     week = make_week(1)
     home, away = make_team('T1'), make_team('T2')
     game = make_game(week, home, away)
@@ -666,6 +713,24 @@ def test_auto_process_week_completes_via_engine(app):
     assert result['status'] == 'completed'
     assert week.is_complete is True
     assert enrollment.lives_remaining == 1
+
+
+def test_auto_process_week_partial_when_engine_declines_completion(app):
+    """Engine success without completion (raced worker / 0-game edge) must
+    report 'partial', never 'completed'."""
+    week = make_week(1)
+    home, away = make_team('T1'), make_team('T2')
+    game = make_game(week, home, away)
+    db.session.commit()
+
+    with patch.object(ScoreFetcher, 'fetch_scores_for_week',
+                      return_value=_fake_fetch(game)), \
+         patch('games.cfb.services.score_fetcher.process_week_results',
+               return_value={'success': True, 'completed': False}):
+        result = ScoreFetcher().auto_process_week(week.id)
+
+    assert result['status'] == 'partial'
+    assert week.is_complete is False
 
 
 def test_auto_process_week_failure_does_not_strand_week_complete(app):

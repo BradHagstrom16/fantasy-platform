@@ -43,9 +43,9 @@
                             <td>
                                 <select name="winner_{{ match.game_id }}" class="form-select form-select-sm" style="width: 140px;">
                                     <option value="">--</option>
-                                    <option value="home" {% if match.home_score is not none and match.away_score is not none and match.home_score > match.away_score %}selected{% endif %}>Home</option>
-                                    <option value="away" {% if match.home_score is not none and match.away_score is not none and match.away_score > match.home_score %}selected{% endif %}>Away</option>
-                                    <option value="no_contest">No Contest</option>
+                                    <option value="home" {% if not match.is_no_contest and match.home_score is not none and match.away_score is not none and match.home_score > match.away_score %}selected{% endif %}>Home</option>
+                                    <option value="away" {% if not match.is_no_contest and match.home_score is not none and match.away_score is not none and match.away_score > match.home_score %}selected{% endif %}>Away</option>
+                                    <option value="no_contest" {% if match.is_no_contest %}selected{% endif %}>No Contest</option>
                                 </select>
                             </td>
                         </tr>
@@ -88,7 +88,7 @@
                                     <option value="">--</option>
                                     <option value="home">Home</option>
                                     <option value="away">Away</option>
-                                    <option value="no_contest">No Contest</option>
+                                    <option value="no_contest" {% if match.is_no_contest %}selected{% endif %}>No Contest</option>
                                 </select>
                             </td>
                         </tr>

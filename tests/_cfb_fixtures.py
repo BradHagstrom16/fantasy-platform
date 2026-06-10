@@ -23,6 +23,7 @@ PAST_DEADLINE = datetime(2026, 1, 3, 11, 0)
 
 
 def make_user(name, *, is_admin=False):
+    """Create a User with a hashed password (and optional platform admin)."""
     u = User(
         username=name,
         email=f'{name}@test.com',
@@ -36,6 +37,7 @@ def make_user(name, *, is_admin=False):
 
 def make_enrollment(user, *, lives=2, eliminated=False, season=SEASON,
                     display_name=None):
+    """Create a CfbEnrollment with the given lives/elimination state."""
     e = CfbEnrollment(
         user_id=user.id,
         season_year=season,
@@ -49,6 +51,7 @@ def make_enrollment(user, *, lives=2, eliminated=False, season=SEASON,
 
 
 def make_team(name):
+    """Create a CfbTeam by name."""
     t = CfbTeam(name=name)
     db.session.add(t)
     db.session.flush()
@@ -57,6 +60,7 @@ def make_team(name):
 
 def make_week(number=1, *, deadline=None, is_playoff=False, is_active=False,
               is_complete=False):
+    """Create a CfbWeek with a past deadline by default."""
     w = CfbWeek(
         week_number=number,
         start_date=(deadline or PAST_DEADLINE) - timedelta(days=2),
@@ -87,6 +91,7 @@ def make_game(week, home, away, *, spread=None, winner=None, no_contest=False):
 
 
 def make_pick(user, week, team):
+    """Create a CfbPick for the user/week/team triple."""
     p = CfbPick(user_id=user.id, week_id=week.id, team_id=team.id)
     db.session.add(p)
     db.session.flush()

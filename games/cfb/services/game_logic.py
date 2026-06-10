@@ -118,6 +118,15 @@ def process_week_results(week_id, season_year=None):
         season_year = _get_season_year()
 
     try:
+        # Serialize concurrent runs (scores cron racing an admin submit):
+        # row-lock the week, then re-check is_complete under the lock so a
+        # second worker blocks and short-circuits instead of double-grading.
+        # SQLite ignores FOR UPDATE (harmless in tests); Postgres enforces it.
+        db.session.refresh(week, with_for_update=True)
+        if week.is_complete:
+            db.session.rollback()  # read-only so far — release the row lock
+            return {**result, "already_complete": True}
+
         picks = CfbPick.query.filter_by(week_id=week_id).all()
         pick_by_user = {p.user_id: p for p in picks}
 

@@ -148,6 +148,9 @@ class ScoreFetcher:
                 'away_score': away_score,
                 'match_method': match_method,
                 'api_event_id': event_id,
+                # Persisted ruling — review_scores must preselect it so a
+                # resubmit can't silently overturn a No Contest (DQ-4).
+                'is_no_contest': bool(game.is_no_contest),
             }
 
             if completed:
@@ -283,10 +286,19 @@ class ScoreFetcher:
         # so a failed run leaves the week retryable (never set the flag here).
         result = process_week_results(week_id)
 
-        if result.get("success"):
+        if result.get("success") and result.get("completed"):
             return {
                 'status': 'completed',
                 'details': f'Week {week.week_number} fully processed. {apply_results["updated_count"]} games scored.',
+                'fetch_results': fetch_results,
+                'apply_results': apply_results,
+            }
+        elif result.get("success"):
+            # Engine declined to complete the week (e.g. raced by another
+            # worker, or a 0-game week) — report partial, never 'completed'.
+            return {
+                'status': 'partial',
+                'details': f'Week {week.week_number} processed but not completed — check for unsettled games.',
                 'fetch_results': fetch_results,
                 'apply_results': apply_results,
             }
