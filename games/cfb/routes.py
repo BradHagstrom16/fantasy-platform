@@ -850,6 +850,18 @@ def admin_delete_game(week_id, game_id):
     if game.week_id != week_id:
         flash('Game does not belong to this week.', 'error')
         return redirect(url_for('cfb.admin_manage_games', week_id=week_id))
+    # Refuse if a player already picked one of this game's teams this week —
+    # deleting strands that pick ungradeable and shrinks cumulative spreads
+    # on the next recalc (audit §9).
+    team_ids = [t for t in (game.home_team_id, game.away_team_id) if t is not None]
+    if team_ids and CfbPick.query.filter_by(week_id=game.week_id).filter(
+        CfbPick.team_id.in_(team_ids)
+    ).first():
+        flash(
+            'Cannot delete this game — a player has already picked one of its '
+            'teams this week.', 'error'
+        )
+        return redirect(url_for('cfb.admin_manage_games', week_id=week_id))
     db.session.delete(game)
     db.session.commit()
     flash('Game deleted.', 'success')
@@ -1119,7 +1131,9 @@ def admin_manage_teams():
     """Add/remove teams from the pool using the FBS master list."""
     existing_teams = {t.name: t for t in CfbTeam.query.all()}
 
-    # Teams with picks can't be removed
+    # A team can't be removed if it's still referenced anywhere — by a pick
+    # (would strand it) or by a scheduled game (a bare delete FK-500s on
+    # Postgres, audit §9). Both collapse into one "locked" set.
     picked_team_ids = {
         row[0]
         for row in db.session.query(CfbPick.team_id)
@@ -1127,7 +1141,16 @@ def admin_manage_teams():
         .distinct()
         .all()
     }
-    teams_with_picks = {name for name, team in existing_teams.items() if team.id in picked_team_ids}
+    gamed_team_ids = set()
+    for home_id, away_id in db.session.query(
+        CfbGame.home_team_id, CfbGame.away_team_id
+    ).all():
+        gamed_team_ids.update(t for t in (home_id, away_id) if t is not None)
+    referenced_team_ids = picked_team_ids | gamed_team_ids
+    teams_with_picks = {
+        name for name, team in existing_teams.items()
+        if team.id in referenced_team_ids
+    }
 
     if request.method == 'POST':
         selected_names = set(request.form.getlist('teams'))
