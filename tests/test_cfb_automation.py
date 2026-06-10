@@ -593,3 +593,18 @@ def test_week_short_labels_match_season_schedule_round_names(app):
         week = make_week(number)
         week.round_name = info['name']
         assert get_week_short_label(week) == expected[number], info['name']
+
+
+def test_week_1_start_is_a_thursday_in_the_current_season(app):
+    """week_1_start anchors every computed week date + Saturday-11am deadline
+    in _calculate_week_dates. A stale prior-season value makes the entire
+    schedule a year off (audit §9 HIGH), so lock both invariants: it must
+    fall in the configured CFB season year and on a Thursday."""
+    from datetime import datetime
+    from games.cfb.constants import SEASON_SCHEDULE
+
+    season_year = app.config['CFB_SEASON_YEAR']
+    anchor = datetime.strptime(SEASON_SCHEDULE['week_1_start'], '%Y-%m-%d')
+
+    assert anchor.year == season_year      # not a leftover prior-season date
+    assert anchor.weekday() == 3           # Thursday (the cadence assumption)

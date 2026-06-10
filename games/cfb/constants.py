@@ -21,8 +21,8 @@ API_BASE_URL = 'https://api.the-odds-api.com/v4/sports/americanfootball_ncaaf'
 # Season schedule configuration
 # Update these values before each season
 SEASON_SCHEDULE = {
-    # Date of the Thursday of Week 1
-    'week_1_start': '2025-08-28',
+    # Date of the Thursday of Week 1 (Thursday before Labor Day, Mon Sep 7 2026)
+    'week_1_start': '2026-09-03',
 
     # Default deadline: Saturday at 11:00 AM Central
     'default_deadline_day': 'Saturday',
