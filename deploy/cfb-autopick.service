@@ -21,5 +21,9 @@ Environment=ENVIRONMENT=production
 Environment=FLASK_APP=app.py
 NoNewPrivileges=true
 PrivateTmp=true
+# Type=oneshot means a timer firing while this unit is still active is a
+# no-op — a run that outlived 30 minutes would swallow the 11:35 retry.
+# The 5-minute timeout guarantees the 11:05 run has finished (or been
+# killed) long before the retry window opens.
 TimeoutStartSec=5m
 ExecStart=/home/deploy/fantasy-platform/venv/bin/flask cfb sync --mode autopick
