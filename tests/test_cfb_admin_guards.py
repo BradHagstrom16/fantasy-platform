@@ -65,6 +65,7 @@ def test_delete_game_refused_when_a_team_was_picked(app, client):
     )
 
     assert resp.status_code == 302
+    assert f'/cfb/admin/week/{week_id}/games' in resp.headers['Location']
     assert db.session.get(CfbGame, game_id) is not None  # not deleted
 
 
@@ -83,6 +84,7 @@ def test_delete_game_allowed_when_no_picks(app, client):
     )
 
     assert resp.status_code == 302
+    assert f'/cfb/admin/week/{week_id}/games' in resp.headers['Location']
     assert db.session.get(CfbGame, game_id) is None  # deleted
 
 
@@ -105,6 +107,7 @@ def test_manage_teams_keeps_team_referenced_by_a_game(app, client):
     )
 
     assert resp.status_code == 302
+    assert '/cfb/admin/manage-teams' in resp.headers['Location']
     assert CfbTeam.query.filter_by(name='Alabama').first() is not None
     assert CfbTeam.query.filter_by(name='Auburn').first() is not None
 
@@ -121,4 +124,5 @@ def test_manage_teams_still_removes_unreferenced_team(app, client):
     )
 
     assert resp.status_code == 302
+    assert '/cfb/admin/manage-teams' in resp.headers['Location']
     assert CfbTeam.query.filter_by(name='Akron').first() is None  # removed
