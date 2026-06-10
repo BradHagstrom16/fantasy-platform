@@ -460,15 +460,51 @@ def process_autopicks(week_id, season_year=None):
 
 
 def check_and_process_autopicks():
-    """Check all active weeks and process autopicks if past deadline."""
+    """Check all active weeks and process autopicks if past deadline.
+
+    Aggregates per-week failures (active players left pickless because no
+    eligible team was available) and emails the admin — a silent no-pick
+    becomes a DQ-2 life loss at processing, so it needs a human in the loop
+    (audit §4). The CLI path previously dropped these.
+    """
     weeks = CfbWeek.query.filter_by(is_complete=False).all()
     results = []
+    failures = []  # (week_number, username, reason)
     for week in weeks:
         deadline = make_aware(week.deadline)
         if deadline_has_passed(deadline):
             result = process_autopicks(week.id)
-            if result["processed"] and result["autopicks"] > 0:
+            if not result.get("processed"):
+                continue
+            if result.get("autopicks"):
                 results.append(
                     f"Week {week.week_number}: {result['autopicks']} auto-picks made"
                 )
+            for failure in result.get("failures", []):
+                failures.append(
+                    (week.week_number, failure.get("user"), failure.get("reason"))
+                )
+
+    if failures:
+        _alert_autopick_failures(failures)
     return results
+
+
+def _alert_autopick_failures(failures):
+    """Email the admin a roster of players autopick couldn't place."""
+    # Lazy import: automation -> score_fetcher -> game_logic, so importing
+    # automation at module scope would close the cycle.
+    from games.cfb.services.automation import _send_admin_email
+
+    lines = [
+        f"Week {week_number}: {username} — {reason}"
+        for week_number, username, reason in failures
+    ]
+    body = (
+        "Auto-pick could not place a pick for the following active "
+        "player(s). Each loses a life at week processing unless an admin "
+        "intervenes:\n\n" + "\n".join(lines)
+    )
+    _send_admin_email(
+        f"{len(failures)} auto-pick failure(s) need attention", body
+    )

@@ -20,7 +20,9 @@ import pytest
 from app import create_app
 from extensions import db
 from games.cfb.models import CfbPick
-from games.cfb.services.game_logic import process_autopicks
+from games.cfb.services.game_logic import (
+    process_autopicks, check_and_process_autopicks,
+)
 from tests._cfb_fixtures import (
     make_user, make_enrollment, make_team, make_week, make_game, make_pick,
 )
@@ -221,3 +223,38 @@ def test_autopick_excludes_cfp_eliminated_in_playoff_weeks(app):
     pick = _pick_for(user, week)
     assert pick.team_id == alive_h.id          # eligible favorite taken
     assert pick.team_id != elim_h.id           # eliminated team never picked
+
+
+# ── CLI sweep emails the admin about pickless players (audit §4) ──────────
+
+def test_check_and_process_autopicks_emails_admin_on_failure(app):
+    """A player left pickless (no eligible team) gets surfaced to the admin —
+    that silent no-pick becomes a DQ-2 life loss at processing."""
+    week = make_week(1)
+    home, away = make_team('EvenH'), make_team('EvenA')
+    _future_game(week, home, away, spread=0.0)  # pick'em → no eligible team
+    user = make_user('p1')
+    make_enrollment(user)
+    db.session.commit()
+
+    with patch('games.cfb.services.automation._send_admin_email') as mock_email:
+        check_and_process_autopicks()
+
+    assert mock_email.called
+    body = mock_email.call_args[0][1]
+    assert 'p1' in body
+
+
+def test_check_and_process_autopicks_no_email_when_all_succeed(app):
+    """No failures → no admin email (don't cry wolf on clean sweeps)."""
+    week = make_week(1)
+    home, away = make_team('Fav7'), make_team('Dog7')
+    _future_game(week, home, away, spread=-7.0)
+    user = make_user('p1')
+    make_enrollment(user)
+    db.session.commit()
+
+    with patch('games.cfb.services.automation._send_admin_email') as mock_email:
+        check_and_process_autopicks()
+
+    assert not mock_email.called

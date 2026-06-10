@@ -353,6 +353,23 @@ def test_pick_updated_in_place_not_duplicated(app, client):
     assert len(picks) == 1 and picks[0].team_id == away.id
 
 
+def test_no_eligible_alert_uses_accurate_cap_copy(app, client):
+    """The empty-state alert says 'favored by 16.5 or more' — exactly 16.5 is
+    already ineligible, so the old 'more than 16.5' was wrong (audit §1 LOW)."""
+    week = make_week(1, deadline=FUTURE_DEADLINE)
+    home, away = make_team('NoSpreadH'), make_team('NoSpreadA')
+    make_game(week, home, away, spread=None)  # no spread → nobody eligible
+    user = make_user('p1')
+    make_enrollment(user)
+    db.session.commit()
+    _login(client, user)
+
+    text = client.get('/cfb/pick/1').get_data(as_text=True)
+
+    assert '16.5 or more' in text
+    assert 'more than 16.5' not in text
+
+
 def test_pick_page_survives_null_game_time(app, client):
     """A game with a NULL game_time (import parse failure) must not 500 the
     pick page — the game_time sort has to be None-safe (audit §9 HIGH)."""
