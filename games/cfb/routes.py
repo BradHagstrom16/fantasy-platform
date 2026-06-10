@@ -15,6 +15,7 @@ from flask import (
 )
 from flask_login import login_required, current_user
 from sqlalchemy import func
+from sqlalchemy.orm import joinedload, contains_eager
 
 from extensions import db
 from models import User
@@ -145,7 +146,11 @@ def index():
         show_picks = deadline_has_passed(deadline)
 
         if show_picks:
-            all_picks = CfbPick.query.filter_by(week_id=current_week.id).all()
+            all_picks = (
+                CfbPick.query.filter_by(week_id=current_week.id)
+                .options(joinedload(CfbPick.team))
+                .all()
+            )
             for pick in all_picks:
                 game = games_by_team.get(pick.team_id)
                 if game:
@@ -158,6 +163,7 @@ def index():
     enrollments = (
         CfbEnrollment.query
         .filter_by(season_year=season_year, is_eliminated=False)
+        .options(joinedload(CfbEnrollment.user))
         .order_by(
             CfbEnrollment.lives_remaining.desc(),
             CfbEnrollment.cumulative_spread.asc(),
@@ -168,6 +174,7 @@ def index():
     eliminated_enrollments = sorted(
         CfbEnrollment.query
         .filter_by(season_year=season_year, is_eliminated=True)
+        .options(joinedload(CfbEnrollment.user))
         .all(),
         key=lambda e: e.get_display_name().lower(),
     )
@@ -182,6 +189,7 @@ def index():
         champion_picks = (
             CfbPick.query.filter_by(user_id=champion.user_id)
             .join(CfbWeek)
+            .options(contains_eager(CfbPick.week), joinedload(CfbPick.team))
             .order_by(CfbWeek.week_number)
             .all()
         )
@@ -283,6 +291,7 @@ def weekly_results(week_number=None):
     picks = (
         CfbPick.query.filter_by(week_id=week.id)
         .join(User)
+        .options(contains_eager(CfbPick.user), joinedload(CfbPick.team))
         .order_by(func.lower(User.username))
         .all()
     )
@@ -317,6 +326,7 @@ def weekly_results(week_number=None):
         CfbEnrollment.query
         .filter_by(season_year=season_year)
         .join(User)
+        .options(contains_eager(CfbEnrollment.user))
         .order_by(func.lower(User.username))
         .all()
     )
@@ -556,9 +566,21 @@ def my_picks():
     user_picks = (
         CfbPick.query.filter_by(user_id=current_user.id)
         .join(CfbWeek)
+        .options(contains_eager(CfbPick.week))
         .order_by(CfbWeek.week_number)
         .all()
     )
+
+    # Batch the per-pick game lookup into one query (was N+1 via
+    # get_game_for_team per pick) — mirrors the champion-dossier pattern.
+    pick_week_ids = {p.week_id for p in user_picks}
+    games_by_week_team = {}
+    if pick_week_ids:
+        for game in CfbGame.query.filter(CfbGame.week_id.in_(pick_week_ids)).all():
+            if game.home_team_id:
+                games_by_week_team[(game.week_id, game.home_team_id)] = game
+            if game.away_team_id:
+                games_by_week_team[(game.week_id, game.away_team_id)] = game
 
     for pick in user_picks:
         pick.week_display = {
@@ -569,7 +591,7 @@ def my_picks():
             ),
         }
 
-        game = get_game_for_team(pick.week_id, pick.team_id)
+        game = games_by_week_team.get((pick.week_id, pick.team_id))
         if game:
             pick.spread_data = {'team_spread': game.get_spread_for_team(pick.team_id)}
         else:
