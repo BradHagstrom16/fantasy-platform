@@ -17,14 +17,19 @@ from utils.email import send_platform_email
 from extensions import db
 from games.cfb.models import CfbTeam, CfbWeek, CfbGame, CfbEnrollment, CfbPick
 from games.cfb.constants import (
-    API_BASE_URL, TEAM_NAME_MAP, SEASON_SCHEDULE,
+    API_BASE_URL, TEAM_NAME_MAP, SHORT_TO_API, SEASON_SCHEDULE,
 )
 from games.cfb.services.score_fetcher import ScoreFetcher
-from games.cfb.utils import deadline_has_passed, make_aware
+from games.cfb.utils import deadline_has_passed, get_current_time, make_aware
 
 logger = logging.getLogger(__name__)
 
 CHICAGO_TZ = ZoneInfo('America/Chicago')
+
+# A week still incomplete this long past its deadline has fallen out of the
+# scores API's daysFrom=3 window (or needs a manual ruling) — escalate it
+# in the admin summary instead of re-reporting 'partial' forever (§5.1).
+STUCK_WEEK_ALERT_DAYS = 2
 
 
 # ---------------------------------------------------------------------------
@@ -32,13 +37,19 @@ CHICAGO_TZ = ZoneInfo('America/Chicago')
 # ---------------------------------------------------------------------------
 
 def _send_admin_email(subject: str, body: str) -> bool:
-    """Send a plain-text admin notification to the platform email address."""
-    email_address = current_app.config.get('EMAIL_ADDRESS', '')
-    if not email_address:
-        logger.warning("EMAIL_ADDRESS not configured; skipping admin email.")
+    """Send a plain-text admin notification to a real admin inbox.
+
+    Prefers ADMIN_EMAIL; falls back to EMAIL_ADDRESS for dev setups where
+    that is a real account (in prod it's the Brevo SMTP login, not an inbox).
+    """
+    recipient = (current_app.config.get('ADMIN_EMAIL', '')
+                 or current_app.config.get('EMAIL_ADDRESS', ''))
+    if not recipient:
+        logger.warning("Neither ADMIN_EMAIL nor EMAIL_ADDRESS configured; "
+                       "skipping admin email.")
         return False
     return send_platform_email(
-        email_address,
+        recipient,
         f'[CFB Survivor] {subject}',
         body,
     )
@@ -65,6 +76,52 @@ def _calculate_week_dates(week_number):
     deadline_aware = deadline.replace(tzinfo=CHICAGO_TZ)
 
     return start_aware, deadline_aware
+
+
+def _lowest_orphan_week():
+    """Lowest-numbered incomplete week with 0 games — a prior setup run's
+    failed import that must be retried before advancing (audit §5.2)."""
+    weeks = (CfbWeek.query.filter_by(is_complete=False)
+             .order_by(CfbWeek.week_number).all())
+    for week in weeks:
+        if CfbGame.query.filter_by(week_id=week.id).count() == 0:
+            return week
+    return None
+
+
+def _unresolvable_team_names():
+    """CfbTeam names that no Odds API name maps to (master-list drift).
+
+    A team whose name is absent from SHORT_TO_API can never be matched to
+    an API event, so its games are silently never imported or scored.
+    """
+    return sorted(
+        t.name for t in CfbTeam.query.all() if t.name not in SHORT_TO_API
+    )
+
+
+def _extract_home_spread(event):
+    """Pick the home-team spread from an /odds event's bookmakers.
+
+    Prefers DraftKings, else the first bookmaker that actually carries a
+    spreads market with a usable home point (§5.5 — selection used to happen
+    before market inspection, dropping spreads other bookmakers carried).
+    A missing 'point' is skipped, never coerced to 0.0.
+    Returns (point, bookmaker_key) or (None, None).
+    """
+    bookmakers = event.get('bookmakers', [])
+    ordered = sorted(bookmakers, key=lambda bm: bm.get('key') != 'draftkings')
+    for bm in ordered:
+        for market in bm.get('markets', []):
+            if market.get('key') != 'spreads':
+                continue
+            for outcome in market.get('outcomes', []):
+                if outcome.get('name') == event.get('home_team'):
+                    point = outcome.get('point')
+                    if point is None:
+                        continue
+                    return float(point), bm.get('key')
+    return None, None
 
 
 def _get_special_week_info(week_number):
@@ -115,6 +172,7 @@ def _import_games_for_week(week, start_date, end_date):
     teams_by_name = {t.name: t for t in CfbTeam.query.all()}
 
     imported = 0
+    skipped_untracked = []
     for event in events:
         api_home = event.get('home_team', '')
         api_away = event.get('away_team', '')
@@ -131,6 +189,7 @@ def _import_games_for_week(week, start_date, end_date):
 
         # Skip if neither team is tracked
         if not home_team and not away_team:
+            skipped_untracked.append(f'{away_short} @ {home_short}')
             continue
 
         # Skip duplicates
@@ -162,6 +221,12 @@ def _import_games_for_week(week, start_date, end_date):
         db.session.add(game)
         imported += 1
 
+    if skipped_untracked:
+        # Visibility for §5.4 silent drops: a tracked team falling through
+        # TEAM_NAME_MAP shows up here as an "untracked" skip.
+        logger.info("Skipped %d event(s) with no tracked team: %s",
+                    len(skipped_untracked), '; '.join(skipped_untracked))
+
     if imported:
         db.session.commit()
 
@@ -173,73 +238,88 @@ def _import_games_for_week(week, start_date, end_date):
 # ---------------------------------------------------------------------------
 
 def run_setup():
-    """Create the next week, import games, and activate it.
+    """Create (or retry) the next week, import games, and activate it.
 
-    Idempotent: skips if the next week already exists and has games.
+    The lowest-numbered incomplete week with 0 games — a prior run whose
+    import failed — is retried before advancing to a new week number, so a
+    transient API failure can't permanently orphan a week (audit §5.2).
     Returns a status dict.
     """
-    # Determine next week number
-    last_week = CfbWeek.query.order_by(CfbWeek.week_number.desc()).first()
-    next_week_num = (last_week.week_number + 1) if last_week else 1
+    week = _lowest_orphan_week()
+    if week:
+        next_week_num = week.week_number
+        # Stored as naive pool-tz wall clock; make_aware also tolerates the
+        # aware round-trip SQLite gives back for automation-created weeks.
+        start_date = make_aware(week.start_date)
+        logger.info("Retrying game import for orphaned Week %d", next_week_num)
+    else:
+        last_week = CfbWeek.query.order_by(CfbWeek.week_number.desc()).first()
+        next_week_num = (last_week.week_number + 1) if last_week else 1
 
-    max_weeks = SEASON_SCHEDULE['regular_season_weeks']
-    special_weeks = SEASON_SCHEDULE.get('special_weeks', {})
-    max_week = max(max_weeks, max(special_weeks.keys()) if special_weeks else max_weeks)
+        max_weeks = SEASON_SCHEDULE['regular_season_weeks']
+        special_weeks = SEASON_SCHEDULE.get('special_weeks', {})
+        max_week = max(max_weeks, max(special_weeks.keys()) if special_weeks else max_weeks)
 
-    if next_week_num > max_week:
-        return {'status': 'skipped', 'details': f'Season complete (max week {max_week})'}
+        if next_week_num > max_week:
+            return {'status': 'skipped', 'details': f'Season complete (max week {max_week})'}
 
-    # Check if week already exists
-    existing = CfbWeek.query.filter_by(week_number=next_week_num).first()
-    if existing:
-        game_count = CfbGame.query.filter_by(week_id=existing.id).count()
-        if game_count > 0:
-            return {
-                'status': 'skipped',
-                'details': f'Week {next_week_num} already exists with {game_count} games',
-            }
-
-    # Calculate dates
-    start_date, deadline = _calculate_week_dates(next_week_num)
-    special = _get_special_week_info(next_week_num)
-    is_playoff = special['is_playoff'] if special else False
-    round_name = special['round_name'] if special else None
-
-    # Create week if it doesn't exist
-    if not existing:
-        existing = CfbWeek(
+        start_date, deadline = _calculate_week_dates(next_week_num)
+        special = _get_special_week_info(next_week_num)
+        week = CfbWeek(
             week_number=next_week_num,
             start_date=start_date,
             deadline=deadline,
             is_active=False,
-            is_playoff_week=is_playoff,
-            round_name=round_name,
+            is_playoff_week=special['is_playoff'] if special else False,
+            round_name=special['round_name'] if special else None,
         )
-        db.session.add(existing)
+        db.session.add(week)
         db.session.commit()
         logger.info("Created Week %d", next_week_num)
 
-    # Import games from API
-    end_date = start_date + timedelta(days=4)
-    imported = _import_games_for_week(existing, start_date, end_date)
+    display_name = week.round_name or f'Week {next_week_num}'
 
-    display_name = round_name or f'Week {next_week_num}'
+    # Surface master-list drift before importing: a CfbTeam name absent
+    # from SHORT_TO_API can never match an API event (§5.4).
+    unresolvable = _unresolvable_team_names()
+    if unresolvable:
+        logger.error("CfbTeam name(s) resolve to no Odds API name: %s",
+                     ', '.join(unresolvable))
+        _send_admin_email(
+            'Team name coverage problem',
+            'These CfbTeam names match no Odds API team name, so their games '
+            'can never be imported or scored:\n\n  '
+            + '\n  '.join(unresolvable)
+            + '\n\nFix the names on Manage Teams or update FBS_MASTER_TEAMS.',
+        )
 
-    # Recount in case some were already there
-    game_count = CfbGame.query.filter_by(week_id=existing.id).count()
+    # Import games across the full Thu→Wed week; minus 1s so the boundary
+    # instant can't import into two weeks (event dedupe is week-scoped).
+    end_date = start_date + timedelta(days=7) - timedelta(seconds=1)
+    _import_games_for_week(week, start_date, end_date)
+
+    game_count = CfbGame.query.filter_by(week_id=week.id).count()
 
     if game_count == 0:
         logger.error("Week %d created but has 0 games - NOT activating", next_week_num)
+        _send_admin_email(
+            f'Week setup failed — {display_name} has no games',
+            f'{display_name} exists but no games were imported, so it was '
+            'NOT activated. The next setup run retries this week '
+            'automatically; to recover sooner, re-run '
+            '`flask cfb sync --mode setup` or add games via Manage Games.',
+        )
         return {
             'status': 'error',
             'details': f'{display_name} created but no games were imported. Week NOT activated.',
             'week_number': next_week_num,
             'game_count': 0,
+            'unresolvable_teams': unresolvable,
         }
 
     # Activate the week (deactivate others)
     CfbWeek.query.update({'is_active': False})
-    existing.is_active = True
+    week.is_active = True
     db.session.commit()
 
     return {
@@ -247,6 +327,7 @@ def run_setup():
         'details': f'{display_name} created with {game_count} games and activated',
         'week_number': next_week_num,
         'game_count': game_count,
+        'unresolvable_teams': unresolvable,
     }
 
 
@@ -336,40 +417,47 @@ def run_spread_update():
         if not event:
             continue
 
-        # Extract spread
-        bookmakers = event.get('bookmakers', [])
-        draftkings = None
-        fallback = None
-        for bm in bookmakers:
-            if bm.get('key') == 'draftkings':
-                draftkings = bm
-                break
-            elif not fallback:
-                fallback = bm
-
-        selected = draftkings or fallback
-        if not selected:
+        new_spread, bm_key = _extract_home_spread(event)
+        if new_spread is None:
+            logger.warning(
+                "No usable spreads market for %s @ %s",
+                game.get_away_team_display(), game.get_home_team_display())
             continue
-
-        for market in selected.get('markets', []):
-            if market.get('key') == 'spreads':
-                for outcome in market.get('outcomes', []):
-                    if outcome.get('name') == event.get('home_team'):
-                        new_spread = float(outcome.get('point', 0))
-                        game.home_team_spread = new_spread
-                        game.spread_locked_at = now
-                        updated += 1
-                        break
-                break
+        if bm_key != 'draftkings':
+            logger.info(
+                "Using fallback bookmaker '%s' for %s @ %s", bm_key,
+                game.get_away_team_display(), game.get_home_team_display())
+        game.home_team_spread = new_spread
+        game.spread_locked_at = now
+        updated += 1
 
     db.session.commit()
 
+    # Surface games still without a spread — both teams are unpickable
+    # until one arrives, which was previously silent (§5.5/§1).
+    games_without_spread = [
+        f'{g.get_away_team_display()} @ {g.get_home_team_display()}'
+        for g in games if g.home_team_spread is None
+    ]
+    if games_without_spread:
+        listing = '\n  '.join(games_without_spread)
+        logger.warning("Games without spreads after update: %s",
+                       '; '.join(games_without_spread))
+        _send_admin_email(
+            f'Games without spreads — Week {week.week_number}',
+            'These games still have no spread, so BOTH teams are unpickable '
+            'until one arrives (the next spread run fills gaps, or enter one '
+            'via Manage Games):\n\n  ' + listing,
+        )
+
     return {
         'status': 'updated',
-        'details': f'{updated} spreads updated, {locked} already locked',
+        'details': (f'{updated} spreads updated, {locked} already locked, '
+                    f'{len(games_without_spread)} without spreads'),
         'api_credits_remaining': credits_remaining,
         'updated': updated,
         'locked': locked,
+        'games_without_spread': games_without_spread,
     }
 
 
@@ -380,6 +468,7 @@ def run_scores():
     """
     weeks = CfbWeek.query.filter_by(is_complete=False).all()
     results = []
+    stuck_weeks = []
 
     for week in weeks:
         deadline = make_aware(week.deadline)
@@ -388,10 +477,15 @@ def run_scores():
 
         fetcher = ScoreFetcher()
         result = fetcher.auto_process_week(week.id)
-        results.append({
+        entry = {
             'week_number': week.week_number,
             **result,
-        })
+        }
+        overdue = get_current_time() - deadline > timedelta(days=STUCK_WEEK_ALERT_DAYS)
+        if result.get('status') not in ('completed', 'already_complete') and overdue:
+            entry['stuck'] = True
+            stuck_weeks.append(week.week_number)
+        results.append(entry)
 
         # Send weekly recap email (once per week)
         week = db.session.get(CfbWeek, week.id)
@@ -414,13 +508,23 @@ def run_scores():
         lines = []
         for r in results:
             lines.append(f"Week {r['week_number']}: {r['status']} - {r['details']}")
+            if r.get('stuck'):
+                lines.append(
+                    f"  STUCK: more than {STUCK_WEEK_ALERT_DAYS} days past "
+                    "deadline without completing — the scores API window "
+                    "(daysFrom=3) may have passed. Mark results or enter "
+                    "scores via the admin pages."
+                )
         summary = '\n'.join(lines)
 
     # Send admin email with summary
     if results:
+        subject = 'Score Sync Results'
+        if stuck_weeks:
+            subject += f' — {len(stuck_weeks)} week(s) STUCK'
         try:
             _send_admin_email(
-                'Score Sync Results',
+                subject,
                 f'Score sync completed at {datetime.now(CHICAGO_TZ).strftime("%Y-%m-%d %I:%M %p CT")}\n\n{summary}',
             )
         except Exception as e:

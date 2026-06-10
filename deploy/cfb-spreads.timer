@@ -1,0 +1,12 @@
+# Runs CFB spread updates Tuesday (initial lock) and Friday (gap fill) at
+# 06:00 CT. Spreads lock on first fetch by design (DQ-6).
+[Unit]
+Description=Run CFB Survivor spread update Tue/Fri 06:00 CT
+
+[Timer]
+# Timezone is INLINE in OnCalendar — no TimeZone= directive exists.
+OnCalendar=Tue,Fri *-*-* 06:00:00 America/Chicago
+Persistent=true
+
+[Install]
+WantedBy=timers.target

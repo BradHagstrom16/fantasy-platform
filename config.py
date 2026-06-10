@@ -32,6 +32,12 @@ class Config:
     # production sends from the DKIM-authenticated commish@cccfantasy.com rather than the
     # SMTP-login address, which Gmail drops as unauthenticated.
     MAIL_FROM_ADDRESS = os.environ.get('MAIL_FROM_ADDRESS', '')
+    # Where game-admin alert emails (score-sync results, setup failures) are
+    # delivered. In prod EMAIL_ADDRESS is the Brevo SMTP *login*, not an inbox,
+    # so alerts must not default to it there — set ADMIN_EMAIL to a real
+    # mailbox. Empty default → senders fall back to EMAIL_ADDRESS (fine in dev,
+    # where EMAIL_ADDRESS is a real account).
+    ADMIN_EMAIL = os.environ.get('ADMIN_EMAIL', '')
     SMTP_SERVER = os.environ.get('SMTP_SERVER', 'smtp.gmail.com')
     SMTP_PORT = int(os.environ.get('SMTP_PORT', '587'))
     SITE_URL = os.environ.get('SITE_URL', 'http://localhost:5000')

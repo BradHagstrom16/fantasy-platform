@@ -128,12 +128,15 @@ def get_week_short_label(week):
     if not week:
         return "?"
     if hasattr(week, 'round_name') and week.round_name:
+        # Keys must match the round names automation writes — i.e. the
+        # SEASON_SCHEDULE['special_weeks'] names (locked by
+        # tests/test_cfb_automation.py).
         label_map = {
             "Conference Championship Week": "CCW",
-            "CFP Round 1": "R1",
+            "CFP First Round": "R1",
             "CFP Quarterfinals": "QF",
             "CFP Semifinals": "SF",
-            "CFP Championship": "F",
+            "CFP National Championship": "F",
         }
         return label_map.get(week.round_name, f"W{week.week_number}")
     return f"W{week.week_number}"

@@ -6,7 +6,7 @@ Mounted at /cfb/ via blueprint url_prefix.
 """
 import logging
 from collections import Counter, defaultdict
-from datetime import datetime
+from datetime import datetime, timezone
 from functools import wraps
 
 from flask import (
@@ -834,6 +834,9 @@ def admin_manage_games(week_id):
             away_team_id=away_team_id,
             home_team_spread=home_spread,
             game_time=game_time,
+            # DQ-6: manual entries lock immediately so the spread cron
+            # can't overwrite the admin's number.
+            spread_locked_at=datetime.now(timezone.utc),
         )
         db.session.add(game)
         db.session.commit()

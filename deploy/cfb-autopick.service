@@ -1,0 +1,25 @@
+# CFB Survivor autopick — assign picks to users who missed the deadline.
+# Fired Sat 11:05 + 11:35 CT by cfb-autopick.timer. MUST run minutes after
+# the 11:00 deadline: candidates are only games that haven't kicked off, and
+# Saturday kickoffs start ~11:00 — a delayed run finds nothing to pick and
+# every pickless user takes the DQ-2 no-pick life loss (audit §4).
+# The 11:35 firing is the retry if the 11:05 run failed (it is a no-op when
+# the first run succeeded — users with picks are skipped).
+
+[Unit]
+Description=CFB Survivor autopick (post-deadline safety net)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=deploy
+Group=deploy
+WorkingDirectory=/home/deploy/fantasy-platform
+EnvironmentFile=/home/deploy/fantasy-platform/.env
+Environment=ENVIRONMENT=production
+Environment=FLASK_APP=app.py
+NoNewPrivileges=true
+PrivateTmp=true
+TimeoutStartSec=5m
+ExecStart=/home/deploy/fantasy-platform/venv/bin/flask cfb sync --mode autopick
