@@ -54,6 +54,20 @@ def test_naive_fake_now_treated_as_utc(app):
         assert get_utc_time() == FAKE_UTC
 
 
+def test_aware_non_utc_fake_now_normalized_to_utc(app):
+    """An offset-bearing ISO value converts to UTC tzinfo, same instant.
+
+    get_utc_time() feeds naive-UTC created_at columns; Postgres
+    truncates the offset on a naive column, so a non-UTC tzinfo here
+    would store a wall clock hours off the contract.
+    """
+    with patch.dict(os.environ, {'ENVIRONMENT': 'testing',
+                                 'CFB_FAKE_NOW': '2026-09-05T11:00:00-05:00'}):
+        now = get_utc_time()
+    assert now == FAKE_UTC
+    assert now.tzinfo == timezone.utc
+
+
 def test_malformed_fake_now_falls_back_to_real_time(app):
     """A malformed value is ignored — real time, no exception."""
     with patch.dict(os.environ, {'ENVIRONMENT': 'testing',

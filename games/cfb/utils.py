@@ -50,7 +50,12 @@ def _fake_now_utc():
             'falling back to real time', fake,
         )
         return None
-    return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+    # Normalize aware values to UTC tzinfo — get_utc_time() feeds
+    # naive-UTC columns, where a foreign offset would corrupt the
+    # stored wall clock.
+    if dt.tzinfo:
+        return dt.astimezone(timezone.utc)
+    return dt.replace(tzinfo=timezone.utc)
 
 
 def get_current_time():
