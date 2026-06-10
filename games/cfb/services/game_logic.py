@@ -68,7 +68,8 @@ def calculate_cumulative_spread(enrollment):
 
     for pick in picks:
         game = get_game_for_team(pick.week_id, pick.team_id)
-        if game and game.home_team_spread is not None:
+        # No Contest games are a push — their spread is excluded (DQ-4).
+        if game and not game.is_no_contest and game.home_team_spread is not None:
             spread = game.get_spread_for_team(pick.team_id)
             if spread is not None:
                 total += spread
@@ -81,92 +82,145 @@ def calculate_cumulative_spread(enrollment):
 # ---------------------------------------------------------------------------
 
 def process_week_results(week_id, season_year=None):
-    """Process pick results and update enrollment lives. Includes revival rule.
+    """Grade picks and settle lives for a week. Safe to re-run.
 
-    Returns dict with 'success' bool and details.
+    Idempotency contract (audit Top-5 #1/#2):
+      - per-pick effects fire only when ``is_correct`` transitions from None;
+      - week-level effects (no-pick penalties, revival, ``is_complete``)
+        fire only in the run that completes the week, and this function is
+        the sole owner of ``CfbWeek.is_complete`` on the processing path;
+      - an already-complete week short-circuits to a no-op.
+
+    Week-level rules (DQ-1/DQ-2/DQ-4): once every game is settled
+    (decided or No Contest), active players with no pick lose a life;
+    No Contest picks push (no grade, no life loss, player survived);
+    revival fires only on a whole-pool wipe (zero active players left
+    AND >1 eliminated this week) and revives only those who picked —
+    a wipe with nobody eligible to revive is surfaced via pool_empty.
+
+    Returns dict: success, already_complete, processed (picks graded this
+    run), completed, no_pick_penalties, revived, pool_empty.
     """
     week = db.session.get(CfbWeek, week_id)
     if not week:
         logger.error("process_week_results: Week %s not found", week_id)
         return {"success": False, "error": f"Week {week_id} not found"}
 
+    result = {
+        "success": True, "already_complete": False, "processed": 0,
+        "completed": False, "no_pick_penalties": 0, "revived": 0,
+        "pool_empty": False,
+    }
+    if week.is_complete:
+        return {**result, "already_complete": True}
+
     if season_year is None:
         season_year = _get_season_year()
 
     try:
         picks = CfbPick.query.filter_by(week_id=week_id).all()
+        pick_by_user = {p.user_id: p for p in picks}
 
-        # Pre-load enrollments for all users with picks
-        user_ids = {p.user_id for p in picks}
-        enrollments = CfbEnrollment.query.filter(
-            CfbEnrollment.user_id.in_(user_ids),
-            CfbEnrollment.season_year == season_year,
-        ).all() if user_ids else []
-        enrollment_by_user = {e.user_id: e for e in enrollments}
-
-        # Track active enrollments who had 1 life at START of week (revival rule)
-        active_enrollments = CfbEnrollment.query.filter_by(
-            is_eliminated=False, season_year=season_year
+        season_enrollments = CfbEnrollment.query.filter_by(
+            season_year=season_year
         ).all()
-        users_with_one_life_before = [
-            e.user_id for e in active_enrollments if e.lives_remaining == 1
-        ]
+        enrollment_by_user = {e.user_id: e for e in season_enrollments}
 
-        # Bulk-load decided games into a team-keyed lookup
-        decided_games = CfbGame.query.filter(
-            CfbGame.week_id == week_id,
-            CfbGame.home_team_won != None,  # noqa: E711
-        ).all()
+        # Team-keyed lookup of gradeable games (decided, not No Contest)
+        games = CfbGame.query.filter_by(week_id=week_id).all()
         games_by_team = {}
-        for game in decided_games:
-            if game.home_team_id:
-                games_by_team[game.home_team_id] = game
-            if game.away_team_id:
-                games_by_team[game.away_team_id] = game
+        for game in games:
+            if game.home_team_won is not None and not game.is_no_contest:
+                if game.home_team_id:
+                    games_by_team[game.home_team_id] = game
+                if game.away_team_id:
+                    games_by_team[game.away_team_id] = game
 
+        graded = 0
         for pick in picks:
+            if pick.is_correct is not None:
+                continue  # graded on a previous run — never re-grade
             game = games_by_team.get(pick.team_id)
+            if not game:
+                continue  # undecided (pending) or No Contest (permanent push)
 
-            if game:
-                pick.is_correct = (
-                    game.home_team_won if pick.team_id == game.home_team_id
-                    else not game.home_team_won
-                )
+            pick.is_correct = (
+                game.home_team_won if pick.team_id == game.home_team_id
+                else not game.home_team_won
+            )
+            graded += 1
 
-                if not pick.is_correct:
-                    enrollment = enrollment_by_user.get(pick.user_id)
-                    if enrollment:
-                        enrollment.lives_remaining -= 1
-                        if enrollment.lives_remaining <= 0:
-                            enrollment.is_eliminated = True
-                            enrollment.lives_remaining = 0
+            if not pick.is_correct:
+                enrollment = enrollment_by_user.get(pick.user_id)
+                if enrollment and not enrollment.is_eliminated:
+                    enrollment.lives_remaining -= 1
+                    if enrollment.lives_remaining <= 0:
+                        enrollment.lives_remaining = 0
+                        enrollment.is_eliminated = True
+        result["processed"] = graded
 
-            enrollment = enrollment_by_user.get(pick.user_id)
+        for user_id in pick_by_user:
+            enrollment = enrollment_by_user.get(user_id)
             if enrollment:
                 calculate_cumulative_spread(enrollment)
 
+        # Week-level effects only in the run that completes the week.
+        # A 0-game week (orphaned import) must never complete — it would
+        # no-pick-penalize the entire pool.
+        all_settled = bool(games) and all(g.is_settled for g in games)
+        if all_settled:
+            # DQ-2: active players with no pick lose a life
+            no_pick_eliminated = 0
+            for enrollment in season_enrollments:
+                if enrollment.is_eliminated or enrollment.user_id in pick_by_user:
+                    continue
+                enrollment.lives_remaining -= 1
+                result["no_pick_penalties"] += 1
+                if enrollment.lives_remaining <= 0:
+                    enrollment.lives_remaining = 0
+                    enrollment.is_eliminated = True
+                    no_pick_eliminated += 1
+
+            week.is_complete = True
+            result["completed"] = True
+
+            # DQ-1 revival: whole-pool wipe only. Eliminated-this-week
+            # pickers are derived from this week's pick rows so the set
+            # survives partial runs (an enrollment eliminated in an earlier
+            # week cannot have a pick in this one).
+            active_remaining = [
+                e for e in season_enrollments if not e.is_eliminated
+            ]
+            if not active_remaining:
+                wiped_pickers = []
+                for enrollment in season_enrollments:
+                    pick = pick_by_user.get(enrollment.user_id)
+                    if (enrollment.is_eliminated and pick is not None
+                            and pick.is_correct is False):
+                        wiped_pickers.append(enrollment)
+
+                eliminated_this_week = len(wiped_pickers) + no_pick_eliminated
+                if eliminated_this_week > 1 and wiped_pickers:
+                    for enrollment in wiped_pickers:
+                        enrollment.lives_remaining = 1
+                        enrollment.is_eliminated = False
+                    result["revived"] = len(wiped_pickers)
+                    logger.info(
+                        "REVIVAL RULE ACTIVATED: Week %s — whole-pool wipe, "
+                        "%d players revived",
+                        week.week_number, result["revived"],
+                    )
+                else:
+                    result["pool_empty"] = True
+                    logger.warning(
+                        "Week %s completed with zero active players and no "
+                        "revival-eligible picks — pool is empty; admin "
+                        "review required",
+                        week.week_number,
+                    )
+
         db.session.commit()
-
-        # Revival rule: if ALL users who had 1 life before this week lost, revive them
-        revived = 0
-        if users_with_one_life_before:
-            one_lifers = CfbEnrollment.query.filter(
-                CfbEnrollment.user_id.in_(users_with_one_life_before),
-                CfbEnrollment.season_year == season_year,
-            ).all()
-            if all(e.lives_remaining == 0 for e in one_lifers):
-                for enrollment in one_lifers:
-                    enrollment.lives_remaining = 1
-                    enrollment.is_eliminated = False
-                db.session.commit()
-                revived = len(one_lifers)
-                logger.info(
-                    "REVIVAL RULE ACTIVATED: Week %s - %d users revived",
-                    week.week_number,
-                    revived,
-                )
-
-        return {"success": True, "processed": len(picks), "revived": revived}
+        return result
 
     except Exception:
         db.session.rollback()

@@ -183,8 +183,9 @@ class ScoreFetcher:
                 skipped += 1
                 continue
 
-            # Skip games already marked with a winner
-            if game.home_team_won is not None:
+            # Skip games already marked with a winner or ruled No Contest
+            # (an API score must not overturn an admin's No Contest ruling)
+            if game.home_team_won is not None or game.is_no_contest:
                 skipped += 1
                 continue
 
@@ -256,9 +257,9 @@ class ScoreFetcher:
 
         apply_results = self.apply_scores_to_games(week_id, completed)
 
-        # Step 3: Check if all games are decided
+        # Step 3: Check if all games are settled (decided or No Contest)
         games = CfbGame.query.filter_by(week_id=week_id).all()
-        all_decided = all(g.home_team_won is not None for g in games)
+        all_settled = all(g.is_settled for g in games)
         ties = apply_results.get('tie_games', [])
 
         if ties:
@@ -269,8 +270,8 @@ class ScoreFetcher:
                 'apply_results': apply_results,
             }
 
-        if not all_decided:
-            pending_count = sum(1 for g in games if g.home_team_won is None)
+        if not all_settled:
+            pending_count = sum(1 for g in games if not g.is_settled)
             return {
                 'status': 'partial',
                 'details': f'{apply_results["updated_count"]} games updated, {pending_count} still pending',
@@ -278,9 +279,8 @@ class ScoreFetcher:
                 'apply_results': apply_results,
             }
 
-        # All games decided - process results
-        week.is_complete = True
-        db.session.commit()
+        # All games settled — process results. The engine owns is_complete,
+        # so a failed run leaves the week retryable (never set the flag here).
         result = process_week_results(week_id)
 
         if result.get("success"):

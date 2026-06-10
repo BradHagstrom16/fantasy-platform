@@ -114,6 +114,8 @@ class CfbGame(db.Model):
     home_team_spread = db.Column(db.Float)
     game_time = db.Column(db.DateTime)
     home_team_won = db.Column(db.Boolean, default=None)
+    # No Contest = canceled/postponed-out-of-week; picks on it push (DQ-4).
+    is_no_contest = db.Column(db.Boolean, nullable=True, default=False)
     api_event_id = db.Column(db.String(64), nullable=True, index=True)
     home_score = db.Column(db.Integer, nullable=True)
     away_score = db.Column(db.Integer, nullable=True)
@@ -130,6 +132,13 @@ class CfbGame(db.Model):
     def get_away_team_display(self):
         """Return display name for the away team."""
         return self.away_team.name if self.away_team else (self.away_team_name or 'TBD')
+
+    @property
+    def is_settled(self):
+        """True when the game can no longer affect grading — a winner is
+        decided or the game was ruled No Contest. Week-completion checks
+        must use this, never ``home_team_won is not None`` alone (DQ-4)."""
+        return self.home_team_won is not None or bool(self.is_no_contest)
 
     def get_spread_for_team(self, team_id):
         """Return spread from team's perspective (negative = favored)."""

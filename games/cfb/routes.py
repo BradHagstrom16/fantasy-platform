@@ -861,23 +861,53 @@ def admin_delete_game(week_id, game_id):
     return redirect(url_for('cfb.admin_manage_games', week_id=week_id))
 
 
+def _flash_processing_outcomes(result):
+    """Surface week-level processing outcomes (DQ-1/DQ-2) to the admin."""
+    if result.get('no_pick_penalties'):
+        flash(
+            f'{result["no_pick_penalties"]} active player(s) had no pick '
+            'and lost a life.', 'info'
+        )
+    if result.get('revived'):
+        flash(
+            f'Revival rule activated — whole-pool wipe: {result["revived"]} '
+            'player(s) revived with 1 life.', 'info'
+        )
+    if result.get('pool_empty'):
+        flash(
+            'The pool has no active players remaining and nobody was '
+            'eligible for revival — review final standings.', 'warning'
+        )
+
+
 @cfb_bp.route('/admin/week/<int:week_id>/mark-results', methods=['GET', 'POST'])
 @cfb_admin_required
 def admin_mark_results(week_id):
-    """Mark game winners for a week."""
+    """Mark game winners (or No Contest) for a week."""
     week = db.get_or_404(CfbWeek, week_id)
     games = CfbGame.query.filter_by(week_id=week_id).all()
 
     if request.method == 'POST':
+        if week.is_complete:
+            flash(
+                f'Week {week.week_number} is already complete — results are '
+                'locked and lives were not re-processed.', 'warning'
+            )
+            return redirect(url_for('cfb.admin_dashboard'))
+
         missing = []
         for game in games:
             result = request.form.get(f'game_{game.id}')
-            if not result:
+            if result == 'no_contest':
+                game.is_no_contest = True
+                game.home_team_won = None
+            elif result in ('home', 'away'):
+                game.is_no_contest = False
+                game.home_team_won = (result == 'home')
+            else:
                 home = game.get_home_team_display()
                 away = game.get_away_team_display()
                 missing.append(f'{away} @ {home}')
-            else:
-                game.home_team_won = (result == 'home')
 
         if missing:
             flash(f'Missing results for: {", ".join(missing)}', 'error')
@@ -888,6 +918,7 @@ def admin_mark_results(week_id):
         result = process_week_results(week_id)
         if result.get("success"):
             flash(f'Results for Week {week.week_number} have been recorded!', 'success')
+            _flash_processing_outcomes(result)
         else:
             flash(f'Results saved but processing failed: {result.get("error")}', 'error')
         return redirect(url_for('cfb.admin_dashboard'))
@@ -918,8 +949,15 @@ def admin_fetch_scores(week_id):
 @cfb_bp.route('/admin/week/<int:week_id>/apply-scores', methods=['POST'])
 @cfb_admin_required
 def admin_apply_scores(week_id):
-    """Apply admin-reviewed scores and process results if all games decided."""
+    """Apply admin-reviewed scores and process results if all games settled."""
     week = db.get_or_404(CfbWeek, week_id)
+    if week.is_complete:
+        flash(
+            f'Week {week.week_number} is already complete — scores are '
+            'locked and lives were not re-processed.', 'warning'
+        )
+        return redirect(url_for('cfb.admin_dashboard'))
+
     games = CfbGame.query.filter_by(week_id=week_id).all()
 
     updated = 0
@@ -944,9 +982,15 @@ def admin_apply_scores(week_id):
 
         if winner == 'home':
             game.home_team_won = True
+            game.is_no_contest = False
             updated += 1
         elif winner == 'away':
             game.home_team_won = False
+            game.is_no_contest = False
+            updated += 1
+        elif winner == 'no_contest':
+            game.is_no_contest = True
+            game.home_team_won = None
             updated += 1
 
     if parse_errors:
@@ -956,17 +1000,17 @@ def admin_apply_scores(week_id):
 
     db.session.commit()
 
-    all_decided = all(g.home_team_won is not None for g in games)
-    if all_decided:
-        week.is_complete = True
-        db.session.commit()
+    # The engine owns is_complete — never set the flag here (Top-5 #1/#2).
+    all_settled = all(g.is_settled for g in games)
+    if all_settled:
         result = process_week_results(week_id)
         if result.get("success"):
             flash(f'All {updated} game scores confirmed and results processed!', 'success')
+            _flash_processing_outcomes(result)
         else:
             flash(f'Scores saved but result processing failed: {result.get("error")}', 'error')
     else:
-        pending = sum(1 for g in games if g.home_team_won is None)
+        pending = sum(1 for g in games if not g.is_settled)
         flash(f'{updated} game scores confirmed. {pending} games still pending.', 'warning')
 
     return redirect(url_for('cfb.admin_dashboard'))
