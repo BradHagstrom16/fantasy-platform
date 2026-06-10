@@ -1271,26 +1271,6 @@ def admin_toggle_admin(user_id):
     return redirect(url_for('worldcup.admin_users'))
 
 
-@worldcup_bp.route('/admin/users/<int:user_id>/reset-password', methods=['POST'])
-@worldcup_admin_required
-def admin_reset_password(user_id):
-    """Reset password for an enrolled user (scoped to WC enrollments)."""
-    enrollment = WorldCupEnrollment.query.filter_by(
-        user_id=user_id, season_year=SEASON_YEAR,
-    ).first_or_404()
-    user = enrollment.user
-    new_password = request.form.get('new_password')
-
-    if new_password:
-        user.set_password(new_password)
-        db.session.commit()
-        flash(f'Password reset for {user.username}.', 'success')
-    else:
-        flash('No password provided.', 'error')
-
-    return redirect(url_for('worldcup.admin_users'))
-
-
 @worldcup_bp.route('/admin/payments')
 @worldcup_admin_required
 def admin_payments():

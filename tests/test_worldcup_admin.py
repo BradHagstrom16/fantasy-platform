@@ -349,3 +349,67 @@ def test_clear_knockout_blocked_when_match_completed(client, app):
         assert match.home_team_id is not None
         assert match.away_team_id is not None
         assert match.is_completed is True
+
+
+# ── admin password-reset route is deleted (privilege-escalation removal) ──
+# Mirrors the CFB Top-5 #4 lock (tests/test_cfb_conformance.py): a delegated
+# WC enrollment admin (WorldCupEnrollment.is_admin, not a platform admin)
+# could reset an enrolled platform admin's password — a privilege-escalation
+# path. The route is gone; self-service forgot-password is the replacement.
+
+def _make_enrolled_user(app, username='victim', password='pw'):
+    """Create a WC-enrolled user with a known password; return their User.id."""
+    with app.app_context():
+        user = User(username=username, email=f'{username}@test.com')
+        user.set_password(password)
+        db.session.add(user)
+        db.session.flush()
+        enrollment = WorldCupEnrollment(
+            user_id=user.id,
+            season_year=2026,
+            picks_submitted=False,
+        )
+        db.session.add(enrollment)
+        db.session.commit()
+        return user.id
+
+
+def test_admin_reset_password_endpoint_does_not_exist(app):
+    """The privilege-escalation route is gone from the URL map entirely."""
+    assert 'worldcup.admin_reset_password' not in app.view_functions
+
+
+def test_admin_reset_password_post_404s_even_for_platform_admin(app, client):
+    """POSTing the old URL is a 404 for everyone, platform admins included."""
+    admin_id = _make_admin_user(app)
+    target_id = _make_enrolled_user(app, username='victim', password='pw')
+
+    with client.session_transaction() as sess:
+        sess['_user_id'] = str(admin_id)
+        sess['_fresh'] = True
+
+    resp = client.post(
+        f'/worldcup/admin/users/{target_id}/reset-password',
+        data={'new_password': 'hijacked', 'csrf_token': 'x'},
+    )
+
+    assert resp.status_code == 404
+    with app.app_context():
+        target = db.session.get(User, target_id)
+        assert target.check_password('pw')  # password untouched
+
+
+def test_admin_users_page_has_no_reset_password_form(app, client):
+    """The admin users page no longer renders the reset-password modal."""
+    admin_id = _make_admin_user(app)
+    _make_enrolled_user(app, username='player1', password='pw')
+
+    with client.session_transaction() as sess:
+        sess['_user_id'] = str(admin_id)
+        sess['_fresh'] = True
+
+    resp = client.get('/worldcup/admin/users')
+
+    assert resp.status_code == 200
+    assert b'reset-password' not in resp.data
+    assert b'Reset Password' not in resp.data
