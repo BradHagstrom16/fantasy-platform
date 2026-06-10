@@ -178,6 +178,11 @@ ready-made query; the click-through path is below it if you prefer to see each s
 2. In the Power Query window: **Home** → **Advanced Editor**.
 3. Delete whatever is there and paste this, replacing `PASTE_YOUR_TOKEN_HERE`:
 
+> ⚠️ **Security note — read before you paste your token.** The token goes into the
+> query in **plain text**, so anyone who opens the workbook can read it. Register your
+> own free token rather than borrowing someone else's, and delete it from the query
+> when you're done sharing the file.
+
 ```text
 let
     Source = Json.Document(
