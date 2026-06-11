@@ -14,6 +14,7 @@ from games.worldcup.constants import SEASON_YEAR
 
 @pytest.fixture()
 def app():
+    """Fresh testing app with an empty in-memory schema per test."""
     app = create_app('testing')
     with app.app_context():
         db.create_all()
@@ -24,10 +25,12 @@ def app():
 
 @pytest.fixture()
 def client(app):
+    """Test client bound to the per-test app."""
     return app.test_client()
 
 
 def _make_user(app, username='u1', is_admin=False):
+    """Create a committed user inside an app context; returns the id."""
     with app.app_context():
         u = User(username=username, email=f'{username}@test.com', is_admin=is_admin)
         u.set_password('pw')
@@ -37,6 +40,7 @@ def _make_user(app, username='u1', is_admin=False):
 
 
 def _login(client, user_id):
+    """Seed the session with the user's auth_id (never str(id))."""
     auth_id = db.session.get(User, user_id).auth_id
     with client.session_transaction() as sess:
         sess['_user_id'] = auth_id
@@ -44,6 +48,7 @@ def _login(client, user_id):
 
 
 def _enroll_wc(user_id, picks_submitted=True, season=SEASON_YEAR):
+    """Enroll a user in the World Cup pool (picks submitted by default)."""
     e = WorldCupEnrollment(
         user_id=user_id, season_year=season, picks_submitted=picks_submitted,
     )
@@ -53,6 +58,7 @@ def _enroll_wc(user_id, picks_submitted=True, season=SEASON_YEAR):
 
 
 def _enroll_cfb(user_id, eliminated=False, season=2026):
+    """Enroll a user in CFB Survivor for the given season."""
     e = CfbEnrollment(
         user_id=user_id, season_year=season, is_eliminated=eliminated,
     )
@@ -62,6 +68,7 @@ def _enroll_cfb(user_id, eliminated=False, season=2026):
 
 
 def _enroll_golf(user_id, season=2026):
+    """Enroll a user in Golf Pick 'Em for the given season."""
     e = GolfEnrollment(user_id=user_id, season_year=season)
     db.session.add(e)
     db.session.commit()
@@ -70,6 +77,7 @@ def _enroll_golf(user_id, season=2026):
 
 def _compose(action='preview', audience='worldcup', recipient_filter='all',
              subject='Big news', body_text='Hello everyone.'):
+    """Build announce-form POST data with sensible defaults."""
     return {
         'action': action,
         'audience': audience,
@@ -85,12 +93,14 @@ def _compose(action='preview', audience='worldcup', recipient_filter='all',
 # ---------------------------------------------------------------------------
 
 def test_announce_redirects_anonymous(client):
+    """Anonymous GET bounces to the login page."""
     resp = client.get('/admin/announce', follow_redirects=False)
     assert resp.status_code == 302
     assert '/login' in resp.location
 
 
 def test_announce_redirects_non_admin(app, client):
+    """Authenticated non-admins are redirected home, matching @admin_required."""
     uid = _make_user(app, 'regular')
     _login(client, uid)
     resp = client.get('/admin/announce', follow_redirects=False)
@@ -103,6 +113,7 @@ def test_announce_redirects_non_admin(app, client):
 # ---------------------------------------------------------------------------
 
 def test_announce_get_renders_form(app, client):
+    """Admin GET renders all four audiences plus the compose fields."""
     aid = _make_user(app, 'admin', is_admin=True)
     _login(client, aid)
     resp = client.get('/admin/announce')
@@ -116,6 +127,7 @@ def test_announce_get_renders_form(app, client):
 
 
 def test_announce_get_has_no_send_buttons(app, client):
+    """Fresh load offers Preview only; send/test appear post-preview."""
     aid = _make_user(app, 'admin', is_admin=True)
     _login(client, aid)
     data = client.get('/admin/announce').data.decode()
@@ -128,6 +140,7 @@ def test_announce_get_has_no_send_buttons(app, client):
 # ---------------------------------------------------------------------------
 
 def test_resolve_worldcup_active_filters_picks_submitted(app):
+    """WC active filter keeps only picks_submitted enrollments."""
     with app.app_context():
         from core.admin.announce import resolve_recipients
         u1 = _make_user_inline('locked')
@@ -145,6 +158,7 @@ def test_resolve_worldcup_active_filters_picks_submitted(app):
 
 
 def test_resolve_cfb_active_excludes_eliminated_and_other_seasons(app):
+    """CFB active drops eliminated players; season scoping is unconditional."""
     with app.app_context():
         from core.admin.announce import resolve_recipients
         alive = _make_user_inline('alive')
@@ -164,6 +178,7 @@ def test_resolve_cfb_active_excludes_eliminated_and_other_seasons(app):
 
 
 def test_resolve_golf_active_equals_all(app):
+    """Golf has no inactive concept: active == enrolled, empty table is fine."""
     with app.app_context():
         from core.admin.announce import resolve_recipients
         assert resolve_recipients('golf', active_only=True) == []
@@ -177,6 +192,7 @@ def test_resolve_golf_active_equals_all(app):
 
 
 def test_resolve_all_dedupes_by_email_case_insensitive(app):
+    """The 'all' audience unions games and dedupes by lowercased email."""
     with app.app_context():
         from core.admin.announce import resolve_recipients
         both = _make_user_inline('both')
@@ -197,6 +213,7 @@ def test_resolve_all_dedupes_by_email_case_insensitive(app):
 
 
 def test_resolve_skips_falsy_email(app):
+    """Enrollments whose user has no email are skipped, never sent to."""
     with app.app_context():
         from core.admin.announce import resolve_recipients
         u = _make_user_inline('ghost')
@@ -207,6 +224,7 @@ def test_resolve_skips_falsy_email(app):
 
 
 def _make_user_inline(username, is_admin=False):
+    """Create a committed user from inside an existing app context."""
     u = User(username=username, email=f'{username}@test.com', is_admin=is_admin)
     u.set_password('pw')
     db.session.add(u)
@@ -220,6 +238,7 @@ def _make_user_inline(username, is_admin=False):
 # ---------------------------------------------------------------------------
 
 def test_render_announcement_escapes_admin_html(app):
+    """Body HTML is escaped in the .j2 render (no autoescape there); plain text stays raw."""
     with app.test_request_context():
         from core.admin.announce import render_announcement
         plain, html = render_announcement(
@@ -232,6 +251,7 @@ def test_render_announcement_escapes_admin_html(app):
 
 
 def test_render_announcement_paragraphs_and_br(app):
+    """Blank lines split paragraphs; single newlines become <br>."""
     with app.test_request_context():
         from core.admin.announce import render_announcement
         _, html = render_announcement(
@@ -248,6 +268,7 @@ def test_render_announcement_paragraphs_and_br(app):
 
 @patch('core.admin.announce.send_platform_email', return_value=True)
 def test_preview_shows_count_and_send_buttons(mock_send, app, client):
+    """Preview reports the count, repopulates fields, reveals send/test, sends nothing."""
     aid = _make_user(app, 'admin', is_admin=True)
     with app.app_context():
         for name in ('p1', 'p2', 'p3'):
@@ -269,6 +290,7 @@ def test_preview_shows_count_and_send_buttons(mock_send, app, client):
 
 @patch('core.admin.announce.send_platform_email', return_value=True)
 def test_preview_rejects_blank_subject_or_body(mock_send, app, client):
+    """Blank subject or body blocks the preview state; nothing sends."""
     aid = _make_user(app, 'admin', is_admin=True)
     _login(client, aid)
 
@@ -282,6 +304,7 @@ def test_preview_rejects_blank_subject_or_body(mock_send, app, client):
 
 @patch('core.admin.announce.send_platform_email', return_value=True)
 def test_preview_rejects_invalid_audience_or_filter(mock_send, app, client):
+    """Unknown audience or filter values never reach the preview state."""
     aid = _make_user(app, 'admin', is_admin=True)
     _login(client, aid)
 
@@ -294,6 +317,7 @@ def test_preview_rejects_invalid_audience_or_filter(mock_send, app, client):
 
 @patch('core.admin.announce.send_platform_email', return_value=True)
 def test_preview_zero_recipients_hides_send_button(mock_send, app, client):
+    """Zero matches keeps the send button hidden but still offers a test send."""
     aid = _make_user(app, 'admin', is_admin=True)
     _login(client, aid)
     resp = client.post('/admin/announce', data=_compose())
@@ -310,6 +334,7 @@ def test_preview_zero_recipients_hides_send_button(mock_send, app, client):
 
 @patch('core.admin.announce.send_platform_email', return_value=True)
 def test_action_test_sends_one_email_to_admin_only(mock_send, app, client):
+    """A test send goes only to the composing admin with a '[TEST] ' subject prefix."""
     aid = _make_user(app, 'admin', is_admin=True)
     with app.app_context():
         for name in ('m1', 'm2', 'm3', 'm4', 'm5'):
@@ -335,6 +360,7 @@ def test_action_test_sends_one_email_to_admin_only(mock_send, app, client):
 
 @patch('core.admin.announce.send_platform_email', return_value=True)
 def test_action_send_loops_all_recipients_prg(mock_send, app, client):
+    """Mass send hits every recipient once, then redirects (PRG) with a count flash."""
     aid = _make_user(app, 'admin', is_admin=True)
     with app.app_context():
         for name in ('s1', 's2', 's3'):
@@ -356,6 +382,7 @@ def test_action_send_loops_all_recipients_prg(mock_send, app, client):
 
 @patch('core.admin.announce.send_platform_email')
 def test_action_send_counts_failures(mock_send, app, client):
+    """Per-recipient failures are counted and reported, not swallowed."""
     mock_send.side_effect = [True, False, True]
     aid = _make_user(app, 'admin', is_admin=True)
     with app.app_context():
@@ -373,6 +400,7 @@ def test_action_send_counts_failures(mock_send, app, client):
 
 @patch('core.admin.announce.send_platform_email', return_value=True)
 def test_action_send_validation_failure_sends_nothing(mock_send, app, client):
+    """A send with invalid fields re-renders the form and sends zero emails."""
     aid = _make_user(app, 'admin', is_admin=True)
     with app.app_context():
         u = _make_user_inline('v1')
@@ -387,6 +415,7 @@ def test_action_send_validation_failure_sends_nothing(mock_send, app, client):
 
 @patch('core.admin.announce.send_platform_email', return_value=True)
 def test_action_send_zero_recipients_warns_without_sending(mock_send, app, client):
+    """A send with no matching recipients warns and sends nothing."""
     aid = _make_user(app, 'admin', is_admin=True)
     _login(client, aid)
     resp = client.post('/admin/announce', data=_compose(action='send'))
@@ -396,6 +425,7 @@ def test_action_send_zero_recipients_warns_without_sending(mock_send, app, clien
 
 @patch('core.admin.announce.send_platform_email', return_value=True)
 def test_action_send_dedupes_all_audience(mock_send, app, client):
+    """The 'all' audience sends once per distinct mailbox, even for dual enrollees."""
     aid = _make_user(app, 'admin', is_admin=True)
     with app.app_context():
         u = _make_user_inline('dual')
@@ -413,6 +443,7 @@ def test_action_send_dedupes_all_audience(mock_send, app, client):
 # ---------------------------------------------------------------------------
 
 def test_dashboard_shows_announce_card(app, client):
+    """The admin dashboard links to /admin/announce via the megaphone card."""
     aid = _make_user(app, 'admin', is_admin=True)
     _login(client, aid)
     resp = client.get('/admin/')

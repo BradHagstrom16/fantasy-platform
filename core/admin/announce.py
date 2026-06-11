@@ -11,8 +11,10 @@ from typing import NamedTuple
 from flask import render_template, redirect, url_for, flash, request, current_app
 from flask_login import current_user
 from markupsafe import escape
+from sqlalchemy import select
 from sqlalchemy.orm import joinedload
 
+from extensions import db
 from core.admin import admin_bp
 from core.admin.routes import admin_required
 from games.registry import GAMES
@@ -31,50 +33,60 @@ _VALID_FILTERS = ('all', 'active')
 
 
 class Recipient(NamedTuple):
+    """One resolved announcement recipient: email address + display name."""
     email: str
     name: str
 
 
 def _wc_recipients(active_only):
-    query = (
-        WorldCupEnrollment.query
+    """World Cup recipients for the current season; active = picks submitted."""
+    stmt = (
+        select(WorldCupEnrollment)
         .filter_by(season_year=WC_SEASON_YEAR)
         .options(joinedload(WorldCupEnrollment.user))
     )
     if active_only:
-        query = query.filter_by(picks_submitted=True)
+        stmt = stmt.filter_by(picks_submitted=True)
+    enrollments = db.session.execute(stmt).scalars().all()
     return [
         Recipient(e.user.email, e.get_display_name())
-        for e in query.all() if e.user and e.user.email
+        for e in enrollments if e.user and e.user.email
     ]
 
 
 def _cfb_recipients(active_only):
+    """CFB Survivor recipients for the current season; active = not eliminated."""
     season = current_app.config.get('CFB_SEASON_YEAR', 2026)
-    query = (
-        CfbEnrollment.query
+    stmt = (
+        select(CfbEnrollment)
         .filter_by(season_year=season)
         .options(joinedload(CfbEnrollment.user))
     )
     if active_only:
-        query = query.filter_by(is_eliminated=False)
+        stmt = stmt.filter_by(is_eliminated=False)
+    enrollments = db.session.execute(stmt).scalars().all()
     return [
         Recipient(e.user.email, e.get_display_name())
-        for e in query.all() if e.user and e.user.email
+        for e in enrollments if e.user and e.user.email
     ]
 
 
 def _golf_recipients(active_only):
-    # Golf has no elimination/withdrawal concept — active == enrolled.
+    """Golf recipients for the current season.
+
+    Golf has no elimination/withdrawal concept, so active == enrolled and
+    ``active_only`` is accepted but ignored.
+    """
     season = current_app.config.get('SEASON_YEAR', 2026)
-    query = (
-        GolfEnrollment.query
+    stmt = (
+        select(GolfEnrollment)
         .filter_by(season_year=season)
         .options(joinedload(GolfEnrollment.user))
     )
+    enrollments = db.session.execute(stmt).scalars().all()
     return [
         Recipient(e.user.email, e.user.get_display_name())
-        for e in query.all() if e.user and e.user.email
+        for e in enrollments if e.user and e.user.email
     ]
 
 
@@ -173,6 +185,13 @@ def _safe_send(to_addr, subject, plain, html):
 @admin_bp.route('/announce', methods=['GET', 'POST'])
 @admin_required
 def announce():
+    """Compose, preview, test-send, and mass-send an announcement email.
+
+    POST branches on ``action``: ``preview`` re-renders with the resolved
+    recipient count + rendered email; ``test`` sends only to the composing
+    admin; ``send`` mass-sends and redirects (PRG). Validation failures
+    re-render the form with the submitted values intact.
+    """
     audiences = [(entry.slug, entry.display_name) for entry in GAMES]
     audiences.append(('all', 'All Games'))
     form_data = {
