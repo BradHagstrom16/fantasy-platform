@@ -502,6 +502,11 @@ body.auth-page .alert-success {
 .announce-roster {
   font-size: .95rem;
   color: var(--text-secondary);
+  max-width: 72ch;
+}
+
+.announce-empty {
+  max-width: 72ch;
 }
 
 .announce-preview-frame {
