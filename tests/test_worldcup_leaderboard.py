@@ -348,8 +348,12 @@ def test_leaderboard_route_still_returns_200_with_no_data(client, app):
 
 # ── Impeccable 2026-05-24: state hero, points hierarchy, tied, inline delta ──
 
-def test_hero_pre_state_reads_picks_open(client, app):
-    """Pre-deadline (default): 'Picks Open' eyebrow; no live dot, no gold Final."""
+def test_hero_pre_state_reads_picks_open(client, app, monkeypatch):
+    """Pre state: 'Picks Open' eyebrow; no live dot, no gold Final.
+
+    Pinned to 'pre' explicitly — the real 2026 deadline passed on 2026-06-11,
+    so the unpatched default state is no longer pre."""
+    monkeypatch.setattr('games.worldcup.routes.worldcup_state', lambda: 'pre')
     with app.app_context():
         u = _seed_user('alice')
         _seed_enrollment(u.id, score=0.0)
@@ -439,9 +443,11 @@ def test_no_tied_label_when_all_scores_distinct(client, app, monkeypatch):
     assert b'leaderboard-tied' not in resp.data
 
 
-def test_tied_label_suppressed_pre_deadline(client, app):
+def test_tied_label_suppressed_pre_deadline(client, app, monkeypatch):
     """Pre-deadline (everyone at 0, all tied at rank 1) hides the label so it
-    doesn't fire on every row."""
+    doesn't fire on every row. State pinned to 'pre' — the real 2026 deadline
+    has passed, so the unpatched default is no longer pre."""
+    monkeypatch.setattr('games.worldcup.routes.worldcup_state', lambda: 'pre')
     with app.app_context():
         a, b = _seed_user('a'), _seed_user('b')
         _seed_enrollment(a.id, score=0.0)

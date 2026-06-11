@@ -224,7 +224,10 @@ def _make_admin(session, username='wcadmin'):
     return u
 
 
-# Picks lock at 2026-06-11 19:00 UTC; tests run pre-deadline in real time.
+# Picks locked at 2026-06-11 19:00 UTC (now in the past), so BOTH sides of
+# the gate must fake the clock: pre-deadline tests pin a date before kickoff,
+# post-deadline tests pin one after. ENVIRONMENT=testing activates the seam.
+_BEFORE_KICKOFF = {'WC_FAKE_NOW': '2026-06-01T12:00:00+00:00', 'ENVIRONMENT': 'testing'}
 _AFTER_KICKOFF = {'WC_FAKE_NOW': '2026-06-15T12:00:00+00:00', 'ENVIRONMENT': 'testing'}
 
 
@@ -233,7 +236,8 @@ def test_stats_locked_pre_deadline_anonymous(client, session):
     _make_team(session, 'BRA', 'Brazil', tier=1, multiplier=1.0)
     session.commit()
 
-    resp = client.get('/worldcup/stats')
+    with patch.dict(os.environ, _BEFORE_KICKOFF):
+        resp = client.get('/worldcup/stats')
     assert resp.status_code == 200
     # Hero still renders...
     assert b'The Field Office' in resp.data
@@ -265,7 +269,8 @@ def test_stats_visible_admin_pre_deadline(client, session):
         sess['_user_id'] = admin.get_id()
         sess['_fresh'] = True
 
-    resp = client.get('/worldcup/stats')  # real time = pre-deadline
+    with patch.dict(os.environ, _BEFORE_KICKOFF):
+        resp = client.get('/worldcup/stats')
     assert resp.status_code == 200
     assert b'wc-stats-pills' in resp.data
 
