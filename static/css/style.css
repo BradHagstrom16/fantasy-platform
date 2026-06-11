@@ -486,6 +486,50 @@ body.auth-page .alert-success {
   .admin-actions-row { grid-template-columns: 1fr 1fr; }
 }
 
+@media (min-width: 992px) {
+  .admin-actions-row { grid-template-columns: 1fr 1fr 1fr; }
+}
+
+/* === CCC ADMIN ANNOUNCE (mass-email compose + bulletin preview) === */
+.announce-count {
+  font-family: var(--font-teko);
+  font-size: 1rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.announce-roster {
+  font-size: .95rem;
+  color: var(--text-secondary);
+}
+
+.announce-preview-frame {
+  width: 100%;
+  height: 480px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-page);
+}
+
+.announce-plain-toggle {
+  font-family: var(--font-teko);
+  font-size: .9rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.announce-plain {
+  margin: .75rem 0 0;
+  padding: 1rem;
+  background: var(--bg-muted);
+  border-radius: var(--radius);
+  font-size: .85rem;
+  white-space: pre-wrap;
+}
+
 /* === WORLD CUP ADMIN ===
    Tournament back-office. Extends the platform .admin-* masthead/action system
    above onto the bone substrate so every admin surface (platform + per game)

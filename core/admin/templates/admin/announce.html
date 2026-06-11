@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block title %}Announce · Admin{% endblock %}
+
+{% block content %}
+<header class="admin-masthead">
+  <div class="container">
+    <span class="admin-eyebrow">The Commish&rsquo;s Desk</span>
+    <h1 class="admin-page-title">Announce</h1>
+    <p class="admin-masthead-sub">One bulletin, every inbox. Preview before the presses run.</p>
+  </div>
+</header>
+
+<div class="container pb-5">
+  <div class="row justify-content-center">
+    <div class="col-lg-8 col-md-10">
+
+      <div class="card border-0 shadow-sm animate-in">
+        <div class="card-body p-4">
+          <form method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+
+            <div class="row g-3 mb-1">
+              <div class="col-md-6">
+                <label for="audience" class="form-label">Audience</label>
+                <select id="audience" name="audience" class="form-select">
+                  {% for slug, label in audiences %}
+                  <option value="{{ slug }}" {% if form_data.audience == slug %}selected{% endif %}>{{ label }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="col-md-6">
+                <label for="recipient_filter" class="form-label">Recipients</label>
+                <select id="recipient_filter" name="recipient_filter" class="form-select">
+                  <option value="all" {% if form_data.recipient_filter == 'all' %}selected{% endif %}>All enrolled</option>
+                  <option value="active" {% if form_data.recipient_filter == 'active' %}selected{% endif %}>Active only</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-text mb-3">
+              Active means picks submitted (World Cup) or still alive (CFB Survivor). Golf members are always active.
+            </div>
+
+            <div class="mb-3">
+              <label for="subject" class="form-label">Subject</label>
+              <input type="text" id="subject" name="subject" class="form-control"
+                     maxlength="200" value="{{ form_data.subject }}" required>
+            </div>
+
+            <div class="mb-4">
+              <label for="body_text" class="form-label">Message</label>
+              <textarea id="body_text" name="body_text" class="form-control" rows="10"
+                        required>{{ form_data.body_text }}</textarea>
+              <div class="form-text">Plain text. A blank line starts a new paragraph.</div>
+            </div>
+
+            {% if preview %}
+            <div class="d-flex flex-wrap gap-2">
+              <button type="submit" name="action" value="preview" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-repeat me-1"></i>Refresh Preview
+              </button>
+              <button type="submit" name="action" value="test" class="btn btn-outline-primary">
+                <i class="bi bi-envelope-check me-1"></i>Send Test to My Inbox
+              </button>
+              {% if preview.count > 0 %}
+              <button type="submit" name="action" value="send" class="btn btn-primary"
+                      onclick="return confirm('Send this announcement to {{ preview.count }} member{{ 's' if preview.count != 1 }}? This cannot be undone.');">
+                <i class="bi bi-megaphone-fill me-1"></i>Send to {{ preview.count }} Member{{ 's' if preview.count != 1 }}
+              </button>
+              {% endif %}
+            </div>
+            {% else %}
+            <button type="submit" name="action" value="preview" class="btn btn-primary btn-lg w-100">
+              <i class="bi bi-eye-fill me-1"></i>Preview
+            </button>
+            {% endif %}
+          </form>
+        </div>
+      </div>
+
+      {% if preview %}
+      <div class="card border-0 shadow-sm animate-in mt-4">
+        <div class="card-header d-flex align-items-center justify-content-between py-3">
+          <span><i class="bi bi-envelope-paper me-2"></i>The Bulletin</span>
+          <span class="announce-count">{{ preview.count }} member{{ 's' if preview.count != 1 }}</span>
+        </div>
+        <div class="card-body p-4">
+          {% if preview.count > 0 %}
+          <p class="announce-roster mb-3">
+            Reaches {{ preview.sample_names|join(', ') }}{% if preview.count > preview.sample_names|length %} and {{ preview.count - preview.sample_names|length }} more{% endif %}.
+          </p>
+          {% else %}
+          <p class="text-muted mb-3">
+            No members match that audience yet. Adjust the audience or filter, then refresh the preview.
+          </p>
+          {% endif %}
+          <iframe class="announce-preview-frame" srcdoc="{{ preview.preview_html }}"
+                  sandbox="" title="Email preview"></iframe>
+          <details class="mt-3">
+            <summary class="announce-plain-toggle">Plain-text version</summary>
+            <pre class="announce-plain">{{ preview.plain_body }}</pre>
+          </details>
+        </div>
+      </div>
+      {% endif %}
+
+    </div>
+  </div>
+</div>
+{% endblock %}
