@@ -7092,36 +7092,48 @@ main { flex: 1; }
   display: flex;
   align-items: center;
   gap: .5rem;
-  position: relative;  /* anchor for the right-edge overflow fade (below) */
 }
 
-/* Right-edge fade — makes the horizontal pill overflow discoverable on
-   narrow viewports (the `.subnav-pills` scroller hides its scrollbar and
-   clips exactly at a pill edge, so without this nothing signals "more →").
-   Anchored to the non-scrolling `.container` so it stays put while pills
-   scroll under it; absolutely-positioned so it doesn't become a flex item.
-   Tinted to each game's own sub-nav substrate so it reads as the strip
+/* Edge fades — make the horizontal pill overflow discoverable on narrow
+   viewports (the `.subnav-pills` scroller hides its scrollbar and clips
+   exactly at a pill edge, so without these nothing signals "more →" / "← more").
+   Anchored to `.subnav-scroll`, the non-scrolling wrapper around ONLY the
+   pill scroller — not `.container`, whose left edge belongs to the game
+   label at ≥576px — so each fade sits exactly on its clip edge while pills
+   scroll under it; absolutely-positioned so they don't become flex items.
+   Tinted to each game's own sub-nav substrate so they read as the strip
    running off the edge, not a gray smudge. pointer-events:none keeps the
-   rightmost pill tappable.
-   Opacity-gated on the `.is-overflow-right` class (toggled by the sub-nav
-   script in base.html): hidden unless there are pills scrolled off the
-   right, so it never dims the last pill when the strip fits exactly or is
-   scrolled to its end. */
-.game-subnav .container::after {
+   edge pills tappable.
+   Opacity-gated on the `.is-overflow-right` / `.is-overflow-left` classes
+   (toggled by the sub-nav script in base.html): hidden unless there are
+   pills scrolled off that edge, so neither fade ever dims an end pill when
+   the strip fits exactly or is scrolled to that end. */
+.subnav-scroll {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;  /* let the wrapper shrink past pill content so .subnav-pills can overflow */
+}
+.game-subnav .subnav-scroll::before,
+.game-subnav .subnav-scroll::after {
   content: '';
   position: absolute;
   top: 0;
-  right: 0;
   bottom: 0;
   width: 2.25rem;
   pointer-events: none;
   opacity: 0;
   transition: opacity .15s ease;
 }
-.game-subnav.is-overflow-right .container::after { opacity: 1; }
-.subnav-worldcup .container::after { background: linear-gradient(to right, rgba(0,18,46,0), #00122e); }
-.subnav-golf     .container::after { background: linear-gradient(to right, rgba(0,26,13,0), #001a0d); }
-.subnav-cfb      .container::after { background: linear-gradient(to right, rgba(10,8,15,0), #0a080f); }
+.game-subnav .subnav-scroll::before { left: 0; }
+.game-subnav .subnav-scroll::after  { right: 0; }
+.game-subnav.is-overflow-left  .subnav-scroll::before { opacity: 1; }
+.game-subnav.is-overflow-right .subnav-scroll::after  { opacity: 1; }
+.subnav-worldcup .subnav-scroll::before { background: linear-gradient(to left, rgba(0,18,46,0), #00122e); }
+.subnav-worldcup .subnav-scroll::after  { background: linear-gradient(to right, rgba(0,18,46,0), #00122e); }
+.subnav-golf     .subnav-scroll::before { background: linear-gradient(to left, rgba(0,26,13,0), #001a0d); }
+.subnav-golf     .subnav-scroll::after  { background: linear-gradient(to right, rgba(0,26,13,0), #001a0d); }
+.subnav-cfb      .subnav-scroll::before { background: linear-gradient(to left, rgba(10,8,15,0), #0a080f); }
+.subnav-cfb      .subnav-scroll::after  { background: linear-gradient(to right, rgba(10,8,15,0), #0a080f); }
 
 /* Per-game palettes */
 .subnav-worldcup { background: #00122e; --subnav-accent: #BF0A30; --subnav-accent-rgb: 191,10,48; }
@@ -8274,14 +8286,12 @@ hr { border-color: var(--border); opacity: 1; }
 
   .home-hero { padding: 3.5rem 0 3rem; }
 
-  /* Sub-nav: hide label text on mobile — emoji stays visible */
+  /* Sub-nav: hide label text on mobile — emoji stays visible.
+     (The old unconditional trailing mask-image scroll hint that lived here
+     is retired: it faded the last pill even when the strip couldn't scroll.
+     The JS-gated .subnav-scroll edge fades in the GAME SUB-NAV section are
+     the single scroll-hint mechanism.) */
   .subnav-label-text { display: none; }
-
-  /* Sub-nav: trailing fade to hint horizontal scroll */
-  .subnav-pills {
-    -webkit-mask-image: linear-gradient(to right, #000 85%, transparent 100%);
-    mask-image: linear-gradient(to right, #000 85%, transparent 100%);
-  }
 }
 
 @media (max-width: 576px) {
