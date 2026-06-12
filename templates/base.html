@@ -129,28 +129,30 @@
             <a class="subnav-game-label d-none d-sm-inline-flex" href="{{ url_for('worldcup.index') }}">
                 ⚽ <span class="subnav-label-text">WC 2026</span>
             </a>
-            <div class="subnav-pills">
-                <a class="subnav-pill {% if request.endpoint == 'worldcup.index' %}active{% endif %}"
-                   href="{{ url_for('worldcup.index') }}">Hub</a>
-                {% if current_user.is_authenticated %}
-                <a class="subnav-pill {% if request.endpoint == 'worldcup.picks' %}active{% endif %}"
-                   href="{{ url_for('worldcup.picks') }}">Roster</a>
-                {% endif %}
-                <a class="subnav-pill {% if request.endpoint in ['worldcup.leaderboard', 'worldcup.player_detail', 'worldcup.team_detail'] %}active{% endif %}"
-                   href="{{ url_for('worldcup.leaderboard') }}">Board</a>
-                <a class="subnav-pill {% if request.endpoint == 'worldcup.schedule' %}active{% endif %}"
-                   href="{{ url_for('worldcup.schedule') }}">Schedule</a>
-                <a class="subnav-pill {% if request.endpoint == 'worldcup.groups' %}active{% endif %}"
-                   href="{{ url_for('worldcup.groups') }}">Groups</a>
-                <a class="subnav-pill {% if request.endpoint == 'worldcup.stats' %}active{% endif %}"
-                   href="{{ url_for('worldcup.stats') }}">Stats</a>
-                <a class="subnav-pill {% if request.endpoint == 'worldcup.rules' %}active{% endif %}"
-                   href="{{ url_for('worldcup.rules') }}">Rules</a>
-                {% if worldcup_enrollment and worldcup_enrollment.is_admin %}
-                <a class="subnav-pill {% if request.endpoint and 'admin' in request.endpoint %}active{% endif %}"
-                   href="{{ url_for('worldcup.admin_dashboard') }}">
-                    <i class="bi bi-gear-fill"></i> Admin</a>
-                {% endif %}
+            <div class="subnav-scroll">
+                <div class="subnav-pills">
+                    <a class="subnav-pill {% if request.endpoint == 'worldcup.index' %}active{% endif %}"
+                       href="{{ url_for('worldcup.index') }}">Hub</a>
+                    {% if current_user.is_authenticated %}
+                    <a class="subnav-pill {% if request.endpoint == 'worldcup.picks' %}active{% endif %}"
+                       href="{{ url_for('worldcup.picks') }}">Roster</a>
+                    {% endif %}
+                    <a class="subnav-pill {% if request.endpoint in ['worldcup.leaderboard', 'worldcup.player_detail', 'worldcup.team_detail'] %}active{% endif %}"
+                       href="{{ url_for('worldcup.leaderboard') }}">Board</a>
+                    <a class="subnav-pill {% if request.endpoint == 'worldcup.schedule' %}active{% endif %}"
+                       href="{{ url_for('worldcup.schedule') }}">Schedule</a>
+                    <a class="subnav-pill {% if request.endpoint == 'worldcup.groups' %}active{% endif %}"
+                       href="{{ url_for('worldcup.groups') }}">Groups</a>
+                    <a class="subnav-pill {% if request.endpoint == 'worldcup.stats' %}active{% endif %}"
+                       href="{{ url_for('worldcup.stats') }}">Stats</a>
+                    <a class="subnav-pill {% if request.endpoint == 'worldcup.rules' %}active{% endif %}"
+                       href="{{ url_for('worldcup.rules') }}">Rules</a>
+                    {% if worldcup_enrollment and worldcup_enrollment.is_admin %}
+                    <a class="subnav-pill {% if request.endpoint and 'admin' in request.endpoint %}active{% endif %}"
+                       href="{{ url_for('worldcup.admin_dashboard') }}">
+                        <i class="bi bi-gear-fill"></i> Admin</a>
+                    {% endif %}
+                </div>
             </div>
         </div>
     </nav>
@@ -160,15 +162,17 @@
             <a class="subnav-game-label" href="{{ url_for('golf.index') }}">
                 ⛳ <span class="subnav-label-text">Golf 2026</span>
             </a>
-            <div class="subnav-pills">
-                <a class="subnav-pill {% if request.endpoint == 'golf.index' %}active{% endif %}"
-                   href="{{ url_for('golf.index') }}">Standings</a>
-                <a class="subnav-pill {% if request.endpoint == 'golf.schedule' %}active{% endif %}"
-                   href="{{ url_for('golf.schedule') }}">Schedule</a>
-                {% if current_user.is_authenticated %}
-                <a class="subnav-pill {% if request.endpoint == 'golf.my_picks' %}active{% endif %}"
-                   href="{{ url_for('golf.my_picks') }}">My Picks</a>
-                {% endif %}
+            <div class="subnav-scroll">
+                <div class="subnav-pills">
+                    <a class="subnav-pill {% if request.endpoint == 'golf.index' %}active{% endif %}"
+                       href="{{ url_for('golf.index') }}">Standings</a>
+                    <a class="subnav-pill {% if request.endpoint == 'golf.schedule' %}active{% endif %}"
+                       href="{{ url_for('golf.schedule') }}">Schedule</a>
+                    {% if current_user.is_authenticated %}
+                    <a class="subnav-pill {% if request.endpoint == 'golf.my_picks' %}active{% endif %}"
+                       href="{{ url_for('golf.my_picks') }}">My Picks</a>
+                    {% endif %}
+                </div>
             </div>
         </div>
     </nav>
@@ -178,15 +182,17 @@
             <a class="subnav-game-label" href="{{ url_for('cfb.index') }}">
                 🏈 <span class="subnav-label-text">CFB 2025</span>
             </a>
-            <div class="subnav-pills">
-                <a class="subnav-pill {% if request.endpoint == 'cfb.index' %}active{% endif %}"
-                   href="{{ url_for('cfb.index') }}">Standings</a>
-                <a class="subnav-pill {% if request.endpoint == 'cfb.weekly_results' %}active{% endif %}"
-                   href="{{ url_for('cfb.weekly_results') }}">Results</a>
-                {% if current_user.is_authenticated %}
-                <a class="subnav-pill {% if request.endpoint == 'cfb.my_picks' %}active{% endif %}"
-                   href="{{ url_for('cfb.my_picks') }}">My Picks</a>
-                {% endif %}
+            <div class="subnav-scroll">
+                <div class="subnav-pills">
+                    <a class="subnav-pill {% if request.endpoint == 'cfb.index' %}active{% endif %}"
+                       href="{{ url_for('cfb.index') }}">Standings</a>
+                    <a class="subnav-pill {% if request.endpoint == 'cfb.weekly_results' %}active{% endif %}"
+                       href="{{ url_for('cfb.weekly_results') }}">Results</a>
+                    {% if current_user.is_authenticated %}
+                    <a class="subnav-pill {% if request.endpoint == 'cfb.my_picks' %}active{% endif %}"
+                       href="{{ url_for('cfb.my_picks') }}">My Picks</a>
+                    {% endif %}
+                </div>
             </div>
         </div>
     </nav>
@@ -256,18 +262,19 @@
     </script>
 
     <script>
-    // Sub-nav: center the active pill on load, and show a right-edge fade
-    // only while pills are scrolled off the right (discoverability cue).
+    // Sub-nav: center the active pill on load, and show an edge fade only
+    // on a side with pills scrolled off it (discoverability cue).
     (function() {
       var subnav = document.querySelector('.game-subnav');
       var scroller = document.querySelector('.subnav-pills');
       if (!subnav || !scroller) return;
 
-      // Reveal the fade only when there's hidden content to the right
-      // (not when the strip fits exactly, and not when scrolled to the end).
+      // Reveal each fade only when there's hidden content on that side
+      // (never when the strip fits exactly or is scrolled to that end).
       function updateFade() {
         var hiddenRight = scroller.scrollWidth - scroller.clientWidth - scroller.scrollLeft;
         subnav.classList.toggle('is-overflow-right', hiddenRight > 1);
+        subnav.classList.toggle('is-overflow-left', scroller.scrollLeft > 1);
       }
 
       // Center the active pill first, then sync the fade to the new position.
