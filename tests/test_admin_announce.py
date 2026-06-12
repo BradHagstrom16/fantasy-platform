@@ -279,7 +279,7 @@ def test_preview_shows_count_and_send_buttons(mock_send, app, client):
     resp = client.post('/admin/announce', data=_compose())
     assert resp.status_code == 200
     data = resp.data.decode()
-    assert '3' in data
+    assert 'class="announce-count">3 members</span>' in data
     assert 'value="send"' in data
     assert 'value="test"' in data
     assert '<iframe' in data and 'srcdoc=' in data
@@ -351,7 +351,7 @@ def test_action_test_sends_one_email_to_admin_only(mock_send, app, client):
     # Still in preview state with the real recipient count.
     data = resp.data.decode()
     assert 'value="send"' in data
-    assert '5' in data
+    assert 'class="announce-count">5 members</span>' in data
 
 
 # ---------------------------------------------------------------------------
@@ -420,6 +420,7 @@ def test_action_send_zero_recipients_warns_without_sending(mock_send, app, clien
     _login(client, aid)
     resp = client.post('/admin/announce', data=_compose(action='send'))
     assert resp.status_code == 200
+    assert 'No recipients matched that audience.' in resp.data.decode()
     mock_send.assert_not_called()
 
 
