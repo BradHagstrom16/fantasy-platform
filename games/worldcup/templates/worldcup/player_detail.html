@@ -48,19 +48,29 @@
       </div>
 
       {% if picks_visible %}
+        {# show_scoring gates the scoring ledger (Points column, total, drill-down
+           accordion, alive/out status) on deadline_passed, matching picks.html:
+           pre-deadline only the owner/admin can see this roster and nothing has
+           scored yet, so it reads as a sealed roster with the multiplier as the
+           stakes signal — not a ledger of zeros. #}
+        {% set show_scoring = deadline_passed %}
         {% if picks %}
         {# Desktop table with drill-down accordion #}
         <div class="card border-0 animate-in player-picks-desktop">
           <div class="card-body p-0">
             <div class="table-responsive">
               <table class="table table-worldcup mb-0">
+                {% if show_scoring %}
                 <caption class="visually-hidden">Player picks: team, tier, multiplier, and total points. Expand a row to see base points and per-match scoring.</caption>
+                {% else %}
+                <caption class="visually-hidden">Player picks: team, tier, and points multiplier. Scoring begins when the tournament kicks off.</caption>
+                {% endif %}
                 <thead>
                   <tr>
                     <th scope="col">Team</th>
                     <th scope="col">Tier</th>
                     <th scope="col" class="text-center">Multiplier</th>
-                    <th scope="col" class="text-end">Points</th>
+                    {% if show_scoring %}<th scope="col" class="text-end">Points</th>{% endif %}
                   </tr>
                 </thead>
                 <tbody>
@@ -72,12 +82,14 @@
                     {% set ns.total_mult = ns.total_mult + pick.multiplied_points %}
                   {% endfor %}
                 </tbody>
+                {% if show_scoring %}
                 <tfoot>
                   <tr style="border-top:2px solid var(--border);">
                     <td colspan="3" class="fw-bold">Total</td>
                     <td class="text-end fw-bold wc-numeral">{{ "%.1f"|format(ns.total_mult) }}</td>
                   </tr>
                 </tfoot>
+                {% endif %}
               </table>
             </div>
           </div>
@@ -101,17 +113,27 @@
                 </span>
               </div>
               <div class="pick-points wc-numeral">
-                {{ "%.1f"|format(pick.multiplied_points) }}
-                <small>&times;{{ pick.team.multiplier }}</small>
+                {% if show_scoring %}
+                  {{ "%.1f"|format(pick.multiplied_points) }}
+                  {% if pick.team_id in eliminated_ids %}
+                  <small class="wc-pick-status-out">Out</small>
+                  {% else %}
+                  <small>&times;{{ "%g"|format(pick.team.multiplier) }}</small>
+                  {% endif %}
+                {% else %}
+                  <span class="wc-mult-mag wc-mult-mag-{{ pick.tier }}">&times;{{ "%g"|format(pick.team.multiplier) }}</span>
+                {% endif %}
               </div>
             </div>
             {% set ns2.total = ns2.total + pick.multiplied_points %}
             {% endfor %}
           </div>
+          {% if show_scoring %}
           <div class="d-flex justify-content-between align-items-center px-1 fw-bold wc-numeral" style="font-size:1.15rem;">
             <span>Total</span>
             <span>{{ "%.1f"|format(ns2.total) }} pts</span>
           </div>
+          {% endif %}
         </div>
         {% else %}
         <div class="text-center py-5 text-muted">
