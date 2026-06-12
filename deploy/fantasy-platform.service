@@ -16,8 +16,11 @@ Environment=ENVIRONMENT=production
 RuntimeDirectory=fantasy-platform
 NoNewPrivileges=true
 PrivateTmp=true
+# --timeout 120: admin announce sends email synchronously, one SMTP
+# connection per recipient; the 30s default would SIGKILL a worker mid-loop.
 ExecStart=/home/deploy/fantasy-platform/venv/bin/gunicorn \
     --workers 3 \
+    --timeout 120 \
     --bind unix:/run/fantasy-platform/gunicorn.sock \
     --umask 007 \
     wsgi:application

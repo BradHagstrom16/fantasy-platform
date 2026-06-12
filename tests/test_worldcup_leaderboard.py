@@ -13,9 +13,11 @@ Trend semantics (per spec §8 + plan ambiguity-A2):
   trend = enrollment.total_score - latest_snapshot.total_score for that enrollment
   None if no snapshot exists for that enrollment
 """
+import os
 import re
 import pytest
 from datetime import date, datetime, timezone, timedelta
+from unittest.mock import patch
 
 from app import create_app
 from extensions import db
@@ -42,6 +44,12 @@ def _wc_today() -> date:
 
 PAST_DEADLINE = datetime(2000, 1, 1, tzinfo=timezone.utc)
 FUTURE_DEADLINE = datetime(2099, 1, 1, tzinfo=timezone.utc)
+
+# The real TOURNAMENT_DEADLINE_UTC (2026-06-11 19:00 UTC) has passed, so
+# pre-deadline behavior needs a faked clock. The env seam pins now_utc()
+# itself, keeping worldcup_state() AND deadline_passed coherent (matching
+# test_worldcup_stats.py's _BEFORE_KICKOFF idiom).
+_BEFORE_KICKOFF = {'WC_FAKE_NOW': '2026-06-01T12:00:00+00:00', 'ENVIRONMENT': 'testing'}
 
 
 @pytest.fixture
@@ -349,12 +357,16 @@ def test_leaderboard_route_still_returns_200_with_no_data(client, app):
 # ── Impeccable 2026-05-24: state hero, points hierarchy, tied, inline delta ──
 
 def test_hero_pre_state_reads_picks_open(client, app):
-    """Pre-deadline (default): 'Picks Open' eyebrow; no live dot, no gold Final."""
+    """Pre state: 'Picks Open' eyebrow; no live dot, no gold Final.
+
+    Clock faked pre-deadline via the WC_FAKE_NOW seam — the real 2026
+    deadline passed on 2026-06-11, so the unfaked state is no longer pre."""
     with app.app_context():
         u = _seed_user('alice')
         _seed_enrollment(u.id, score=0.0)
         db.session.commit()
-        resp = client.get('/worldcup/leaderboard')
+        with patch.dict(os.environ, _BEFORE_KICKOFF):
+            resp = client.get('/worldcup/leaderboard')
     assert resp.status_code == 200
     assert b'Picks Open' in resp.data
     assert b'leaderboard-live-dot' not in resp.data
@@ -441,13 +453,15 @@ def test_no_tied_label_when_all_scores_distinct(client, app, monkeypatch):
 
 def test_tied_label_suppressed_pre_deadline(client, app):
     """Pre-deadline (everyone at 0, all tied at rank 1) hides the label so it
-    doesn't fire on every row."""
+    doesn't fire on every row. Clock faked pre-deadline via WC_FAKE_NOW —
+    the real 2026 deadline has passed, so the unfaked state is no longer pre."""
     with app.app_context():
         a, b = _seed_user('a'), _seed_user('b')
         _seed_enrollment(a.id, score=0.0)
         _seed_enrollment(b.id, score=0.0)
         db.session.commit()
-        resp = client.get('/worldcup/leaderboard')
+        with patch.dict(os.environ, _BEFORE_KICKOFF):
+            resp = client.get('/worldcup/leaderboard')
     assert resp.status_code == 200
     assert b'leaderboard-tied' not in resp.data
 
