@@ -591,3 +591,54 @@ def test_roster_flag_rings_shared_pick_on_other_rows(client, app, monkeypatch):
     # Rival's shared USA pick rings; the rail is duplicated desktop + mobile so
     # the class appears at least twice (and never zero).
     assert 'lb-flag is-shared' in body
+
+
+# ── player detail (/worldcup/leaderboard/<id>) scoring ledger ────────
+
+
+def test_player_detail_points_column_renders_post_deadline(client, app, monkeypatch):
+    """Post-deadline the player detail table shows each pick's points and the
+    score-events drill-down. Regression lock: _pick_row.html gates these on
+    show_scoring (PR #38), and player_detail.html must set it — undefined is
+    falsy in Jinja, which blanked the whole Points column."""
+    monkeypatch.setattr(
+        'games.worldcup.routes.TOURNAMENT_DEADLINE_UTC', PAST_DEADLINE
+    )
+    with app.app_context():
+        u = _seed_user('alice')
+        e = _seed_enrollment(u.id, score=19.5)
+        t = _seed_team('URU', tier=3, multiplier=2.5)
+        p = _seed_pick(e.id, t)
+        p.base_points = 7.8
+        p.multiplied_points = 19.5
+        db.session.commit()
+        resp = client.get(f'/worldcup/leaderboard/{e.id}')
+    body = resp.data.decode()
+    assert resp.status_code == 200
+    # Per-row Points cell (class order distinguishes it from the tfoot total).
+    assert '<td class="text-end wc-numeral fw-bold">19.5</td>' in body
+    # Rendered toggle button (the always-included accordion script also
+    # contains the bare selector string, so match the class attribute).
+    assert 'class="pick-accordion-toggle"' in body
+
+
+def test_player_detail_sealed_pre_deadline_owner(client, app, monkeypatch):
+    """Pre-deadline the owner sees a sealed roster — multiplier as the stakes
+    signal, no Points column, no drill-down — matching the picks-page
+    show_scoring doctrine (nothing has scored yet, so no ledger of zeros)."""
+    monkeypatch.setattr(
+        'games.worldcup.routes.TOURNAMENT_DEADLINE_UTC', FUTURE_DEADLINE
+    )
+    with app.app_context():
+        u = _seed_user('alice')
+        e = _seed_enrollment(u.id, score=0.0)
+        t = _seed_team('URU', tier=3, multiplier=2.5)
+        _seed_pick(e.id, t)
+        db.session.commit()
+        _login(client, u.id)
+        resp = client.get(f'/worldcup/leaderboard/{e.id}')
+    body = resp.data.decode()
+    assert resp.status_code == 200
+    assert 'wc-multiplier-chip' in body                # roster + stakes visible to owner
+    assert 'class="pick-accordion-toggle"' not in body  # nothing to drill into yet
+    assert '>Points</th>' not in body                   # no Points header over sealed rows
