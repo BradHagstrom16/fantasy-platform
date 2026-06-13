@@ -187,7 +187,7 @@ def test_rosters_dense_rank(client, session):
     team = _make_team(session, 'ARG', 'Argentina')
     users = [_make_user(session, f'p{i}') for i in range(3)]
     scores = [10.0, 10.0, 5.0]
-    for u, s in zip(users, scores):
+    for u, s in zip(users, scores, strict=True):
         e = _make_enrollment(session, u.id, total_score=s)
         _make_pick(session, e.id, team.id, tier=1)
     session.commit()
@@ -237,7 +237,7 @@ def test_rosters_empty_pool(client, session):
 def test_rosters_own_card_links_to_picks_page(client, session):
     """The viewer's own card routes to /worldcup/picks (leaderboard parity);
     everyone else's routes to their player detail."""
-    alice, bob, _ = _field_with_bosnia(session)
+    alice, _, _ = _field_with_bosnia(session)
     _login(client, alice)
 
     with patch.dict(os.environ, _AFTER_KICKOFF):
