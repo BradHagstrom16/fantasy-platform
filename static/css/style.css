@@ -9772,3 +9772,188 @@ body.game-worldcup .form-text {
   .wc-stats-masthead-derivation .wc-countdown-sep { margin: 0 .25em; }
 }
 
+
+/* ============================================================
+   WC ALL PICKS — The Open Ballots (/worldcup/rosters)
+   Every roster, full country names, one page. Casual-Light: white
+   ballot cards on bone, navy structure, red competitive accents.
+   All content renders in the DOM (no accordions) so find-on-page
+   works; the find box is the mobile companion to Ctrl-F.
+   ============================================================ */
+
+/* Find box — bare on the bone substrate (the cards below carry the
+   white surfaces; boxing the input in a card would nest chrome). */
+.wc-ballots-find {
+  max-width: 520px;
+}
+.wc-ballots-find-row {
+  display: flex;
+  gap: .5rem;
+}
+.wc-ballots-find-row .form-control {
+  flex: 1 1 auto;
+}
+.wc-ballots-find-clear {
+  min-height: 44px;
+  flex-shrink: 0;
+}
+/* Result count / no-match line. min-height reserves the line so the grid
+   below doesn't jump when the first status message lands (aria-live). */
+.wc-ballots-find-status {
+  font-family: 'Newsreader', Georgia, serif;
+  font-style: italic;
+  font-size: .92rem;
+  color: var(--text-secondary);
+  min-height: 1.5em;
+  margin-top: .4rem;
+}
+
+/* Ballot card grid. auto-fill (not auto-fit) so a filtered-down field
+   keeps card-width columns instead of one survivor stretching full-bleed. */
+.wc-ballots-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr));
+  gap: 1rem;
+  align-items: start;
+}
+
+/* Borderless like the leaderboard's card surfaces, but owned here (no
+   .border-0 utility) so the is-me variant can re-introduce a border
+   without an !important war. */
+.wc-ballots-card {
+  padding: 1rem 1.1rem .6rem;
+  border: 0;
+}
+/* Current-user cue — same red-tint vocabulary as the board's
+   .row-current-user (red = competitive emphasis per the WC accent rank). */
+.wc-ballots-card.is-me {
+  background: rgba(191, 10, 48, .04);
+  border: 1px solid rgba(191, 10, 48, .3);
+}
+
+/* Card masthead: rank · player · points on one baseline. */
+.wc-ballots-head {
+  display: flex;
+  align-items: baseline;
+  gap: .6rem;
+  padding-bottom: .5rem;
+  border-bottom: 2px solid var(--border);
+}
+.wc-ballots-rank {
+  font-size: 1.05rem;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+.wc-ballots-name {
+  font-size: 1.35rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.wc-ballots-name a {
+  color: var(--game-primary);
+  text-decoration: none;
+}
+.wc-ballots-name a:hover,
+.wc-ballots-name a:focus-visible {
+  color: var(--wc-red);
+  text-decoration: underline;
+}
+.wc-ballots-pts {
+  margin-left: auto;
+  flex-shrink: 0;
+  font-family: 'Teko', sans-serif;
+  font-size: .82rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+.wc-ballots-pts .wc-numeral {
+  font-size: 1.15rem;
+  color: var(--text-primary);
+}
+
+/* Nation rows. The team link flexes to fill the row and carries the 44px
+   touch floor (inline-flex + min-height, not line-height — long names wrap). */
+.wc-ballots-row {
+  display: flex;
+  align-items: center;
+  gap: .55rem;
+  padding: .1rem .35rem;
+  border-bottom: 1px solid var(--border-light);
+}
+.wc-ballots-row:last-child {
+  border-bottom: 0;
+}
+.wc-ballots-team {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  font-family: 'Newsreader', Georgia, serif;
+  font-size: .95rem;
+  color: var(--text-primary);
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+.wc-ballots-team:hover,
+.wc-ballots-team:focus-visible {
+  color: var(--wc-red);
+  text-decoration: underline;
+}
+/* Eliminated pick — struck name + "Out" text label (structure + label,
+   never color alone). Banked points stay visible. */
+.wc-ballots-row.is-out .wc-ballots-team {
+  color: var(--text-secondary);
+  text-decoration: line-through;
+}
+.wc-ballots-row.is-out .wc-ballots-team:hover,
+.wc-ballots-row.is-out .wc-ballots-team:focus-visible {
+  color: var(--wc-red);
+  text-decoration: line-through underline;
+}
+.wc-ballots-out {
+  font-family: 'Teko', sans-serif;
+  font-size: .68rem;
+  font-weight: 500;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: .02rem .3rem;
+  flex-shrink: 0;
+}
+.wc-ballots-rowpts {
+  font-size: 1rem;
+  min-width: 3.2ch;
+  text-align: right;
+  flex-shrink: 0;
+}
+.wc-ballots-rowpts.is-zero {
+  color: var(--text-secondary);
+}
+
+/* Find hit — red tint + a weight lift on the matched name. The weight shift
+   is the non-color signal (P0 S0.2 bans the leading-edge stripe the Stats
+   cross-highlight uses, so this surface signals with type, not a rule). */
+.wc-ballots-row.is-find-hit {
+  background: rgba(191, 10, 48, .07);
+  border-radius: .35rem;
+}
+.wc-ballots-row.is-find-hit .wc-ballots-team {
+  font-weight: 600;
+}
+
+.wc-ballots-none {
+  font-family: 'Newsreader', Georgia, serif;
+  font-style: italic;
+  color: var(--text-secondary);
+  padding: .9rem 0;
+}
+
+@media (max-width: 575px) {
+  .wc-ballots-card { padding: .85rem .85rem .5rem; }
+  .wc-ballots-name { font-size: 1.25rem; }
+}

@@ -216,6 +216,16 @@
     {% endfor %}
   </div>
 
+  {# Cross-link to the all-rosters page — the flags-only rail above answers
+     "who picked who" at a glance; The Open Ballots spells every nation out
+     (find-on-page friendly). Post-deadline only: the target is sealed before
+     the lock, so the invitation would dead-end. #}
+  {% if deadline_passed %}
+  <p class="text-center mt-3 mb-0 animate-in">
+    <a href="{{ url_for('worldcup.rosters') }}" class="post-table-link">Every roster, written out, on one page &rarr;</a>
+  </p>
+  {% endif %}
+
   {% else %}
   <div class="text-center py-5 text-muted animate-in">
     <i class="bi bi-trophy" style="font-size:3rem; opacity:.3;"></i>

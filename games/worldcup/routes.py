@@ -893,6 +893,85 @@ def stats():
     )
 
 
+@worldcup_bp.route('/rosters')
+def rosters():
+    """Every roster in the pool, country names written out — the find-on-page surface.
+
+    Exists so a member can land on one page and search "who picked Bosnia"
+    by full country name; the leaderboard's roster rail is flags-only and the
+    admin grid renders FIFA codes. Everything renders in the DOM (no
+    accordions) so browser find-in-page works.
+
+    Privacy mirrors stats(): the page aggregates the whole field's picks, so
+    it stays sealed for everyone until the deadline passes (spec D11
+    corollary — roster data hidden from all viewers pre-lock, not just
+    non-owners); platform admins preview anytime.
+    """
+    deadline_passed = now_utc() >= TOURNAMENT_DEADLINE_UTC
+    is_admin = current_user.is_authenticated and current_user.is_admin
+    rosters_visible = deadline_passed or is_admin
+    deadline_ct = TOURNAMENT_DEADLINE_UTC.astimezone(WORLDCUP_TZ)
+
+    if not rosters_visible:
+        return render_template(
+            'worldcup/rosters.html',
+            rosters_visible=False,
+            deadline_ct=deadline_ct,
+            current_phase=_derive_tournament_phase(),
+        )
+
+    enrollments = (
+        WorldCupEnrollment.query
+        .filter_by(season_year=SEASON_YEAR)
+        .order_by(
+            WorldCupEnrollment.total_score.desc(),
+            WorldCupEnrollment.usa_goals_guess.asc(),
+        )
+        .all()
+    )
+
+    # Dense rank — same idiom as leaderboard() so a player's rank here
+    # agrees with the board and with compute_rank_neighbors().
+    ranked = []
+    current_rank = 0
+    prev_score = None
+    for e in enrollments:
+        if e.total_score != prev_score:
+            current_rank += 1
+        ranked.append({'rank': current_rank, 'enrollment': e})
+        prev_score = e.total_score
+
+    # One query for the whole field's picks; contains_eager populates
+    # pick.team from the join so the 9-rows-per-player template stays
+    # N+1-free (the admin all-picks grid's per-enrollment loop is the
+    # anti-pattern here).
+    enrollment_ids = [e.id for e in enrollments]
+    picks_by_enrollment: dict[int, list] = {}
+    if enrollment_ids:
+        pick_rows = (
+            WorldCupPick.query
+            .join(WorldCupPick.team)
+            .options(contains_eager(WorldCupPick.team))
+            .filter(WorldCupPick.enrollment_id.in_(enrollment_ids))
+            .order_by(WorldCupTeam.tier.asc(), WorldCupTeam.display_name.asc())
+            .all()
+        )
+        grouped = defaultdict(list)
+        for p in pick_rows:
+            grouped[p.enrollment_id].append(p)
+        picks_by_enrollment = dict(grouped)
+
+    return render_template(
+        'worldcup/rosters.html',
+        rosters_visible=True,
+        ranked_enrollments=ranked,
+        total_players=len(enrollments),
+        picks_by_enrollment=picks_by_enrollment,
+        eliminated_ids=eliminated_team_ids(),
+        current_phase=_derive_tournament_phase(),
+    )
+
+
 # ============================================================================
 # Admin Routes
 # ============================================================================

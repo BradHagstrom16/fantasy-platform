@@ -1,0 +1,175 @@
+{% extends "base.html" %}
+{% from '_flag.html' import flag with context %}
+{% block title %}The Open Ballots · 2026 World Cup Pool{% endblock %}
+
+{% block content %}
+{# ── Hero ── mirrors the Field Office masthead shape: phase chip + record
+   status + Tribune H1. The page is the find-on-page surface: every roster,
+   full country names, all rendered in the DOM (no accordions) so browser
+   find and the filter box below both work. #}
+<div class="page-hero wc-hero-grad">
+  <div class="container">
+    <div class="d-flex align-items-center gap-3 mb-2 flex-wrap">
+      <span class="phase-chip">
+        <span class="phase-dot"></span>
+        {% if current_phase == 'completed' %}Tournament Complete
+        {% elif current_phase == 'knockout' %}Knockout Stage
+        {% elif current_phase == 'group_stage' %}Group Stage
+        {% else %}Pre-Tournament{% endif %}
+      </span>
+      <small style="font-family:'Teko',sans-serif;font-size:.78rem;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.55);">{% if rosters_visible %}Public record{% else %}Sealed record{% endif %}</small>
+    </div>
+    <h1 class="mb-1" style="font-size:2.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;">The Open Ballots</h1>
+    <p class="mb-0" style="color:rgba(255,255,255,.7);font-size:1rem;">
+      {% if rosters_visible %}{{ total_players }} roster{{ 's' if total_players != 1 }} on the record · every nation written out
+      {% else %}Every roster in the pool, written out: sealed until kickoff{% endif %}
+    </p>
+  </div>
+</div>
+
+{% if rosters_visible %}
+<main>
+<div class="container pb-5">
+
+  {# ── Find box ── the mobile answer to Ctrl-F. Filters the cards below;
+     with an empty query everything stays rendered, so browser find-on-page
+     is never impaired. #}
+  <div class="wc-ballots-find animate-in mt-4" role="search">
+    <label class="form-label" for="ballotsFind">Find a nation or player</label>
+    <div class="wc-ballots-find-row">
+      <input type="search" class="form-control" id="ballotsFind"
+             placeholder="Country, FIFA code, or player name"
+             autocomplete="off" spellcheck="false">
+      <button type="button" class="btn btn-outline-secondary wc-ballots-find-clear" id="ballotsFindClear" hidden>Clear</button>
+    </div>
+    <p class="wc-ballots-find-status mb-0" id="ballotsFindStatus" role="status" aria-live="polite"></p>
+  </div>
+
+  {% if ranked_enrollments %}
+  <div class="wc-ballots-grid mt-3" id="ballotsGrid">
+    {% for item in ranked_enrollments %}
+    {% set e = item.enrollment %}
+    {% set is_me = current_user.is_authenticated and e.user_id == current_user.id %}
+    {% set picks = picks_by_enrollment.get(e.id, []) %}
+    <article class="card wc-ballots-card animate-in{% if is_me %} is-me{% endif %}"
+             data-player="{{ e.get_display_name() }}">
+      <header class="wc-ballots-head">
+        <span class="wc-numeral wc-ballots-rank" title="Rank {{ item.rank }} of {{ total_players }}">#{{ item.rank }}</span>
+        <h2 class="wc-ballots-name mb-0">
+          <span class="leaderboard-avatar" aria-hidden="true">{{ e.user.get_avatar() }}</span>
+          {% if is_me %}
+          <a href="{{ url_for('worldcup.picks') }}">{{ e.get_display_name() }}</a>
+          {% else %}
+          <a href="{{ url_for('worldcup.player_detail', enrollment_id=e.id) }}">{{ e.get_display_name() }}</a>
+          {% endif %}
+        </h2>
+        <span class="wc-ballots-pts"><span class="wc-numeral">{{ "%.1f"|format(e.total_score) }}</span> pts</span>
+      </header>
+      {% if picks %}
+      <ul class="wc-ballots-list list-unstyled mb-0">
+        {% for pick in picks %}
+        {% set is_out = pick.team_id in eliminated_ids %}
+        <li class="wc-ballots-row{% if is_out %} is-out{% endif %}"
+            data-team="{{ pick.team.display_name }} {{ pick.team.fifa_code }}">
+          {{ flag(pick.team.iso_code) }}
+          <a class="wc-ballots-team" href="{{ url_for('worldcup.team_detail', team_id=pick.team_id) }}">{{ pick.team.display_name }}</a>
+          {% if is_out %}<span class="wc-ballots-out">Out</span>{% endif %}
+          <span class="wc-multiplier-chip">&times;{{ "%g"|format(pick.team.multiplier) }}</span>
+          <span class="wc-numeral wc-ballots-rowpts{% if not pick.multiplied_points %} is-zero{% endif %}">{{ "%.1f"|format(pick.multiplied_points or 0) }}</span>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p class="wc-ballots-none mb-0">No ballot filed.</p>
+      {% endif %}
+    </article>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="text-center py-5 text-muted animate-in">
+    <i class="bi bi-inbox" style="font-size:3rem; opacity:.3;"></i>
+    <p class="mt-3 mb-0">The ballot box is empty.
+      <a href="{{ url_for('worldcup.join') }}">Lock your roster.</a>
+    </p>
+  </div>
+  {% endif %}
+
+</div>
+</main>
+{% else %}
+{# ── Sealed: rosters hidden until kickoff (mirrors the Field Office seal) ── #}
+<main>
+<div class="container pb-5">
+  <div class="card border-0 animate-in player-picks-sealed">
+    <div class="card-body text-center py-5">
+      <i class="bi bi-lock-fill" style="font-size:2.5rem; color:var(--wc-red); opacity:.7;"></i>
+      <span class="wc-eyebrow d-block mt-3">Ballots sealed</span>
+      <h5 class="mt-1 mb-2">Rosters are hidden</h5>
+      <p class="text-muted mb-0">
+        Every roster in the pool, written out nation by nation, unlocks when the tournament begins.<br>
+        <span class="small">Deadline: {{ deadline_ct.strftime('%b %-d, %Y at %-I:%M %p CT') }}</span>
+      </p>
+    </div>
+  </div>
+</div>
+</main>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% if rosters_visible %}
+<script>
+// Find-as-you-type over the ballot cards. A card stays visible when the
+// query matches the player's name or any of their nations (full name or
+// FIFA code); matching nation rows get a highlight. Case- and
+// diacritic-insensitive ("cote" finds Côte d'Ivoire). Empty query shows
+// everything, so native find-on-page is unaffected.
+(function () {
+  var input = document.getElementById('ballotsFind');
+  var grid = document.getElementById('ballotsGrid');
+  if (!input || !grid) return;
+  var clearBtn = document.getElementById('ballotsFindClear');
+  var status = document.getElementById('ballotsFindStatus');
+  var cards = Array.prototype.slice.call(grid.querySelectorAll('.wc-ballots-card'));
+
+  function norm(s) {
+    return (s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  }
+
+  function apply() {
+    var q = norm(input.value.trim());
+    clearBtn.hidden = !q;
+    var shown = 0;
+    cards.forEach(function (card) {
+      var playerHit = q && norm(card.dataset.player).indexOf(q) !== -1;
+      var rowHit = false;
+      card.querySelectorAll('.wc-ballots-row').forEach(function (row) {
+        var hit = !!q && norm(row.dataset.team).indexOf(q) !== -1;
+        row.classList.toggle('is-find-hit', hit);
+        if (hit) rowHit = true;
+      });
+      var show = !q || playerHit || rowHit;
+      // .d-none (not [hidden]) — Bootstrap's .card display rule outranks the
+      // UA hidden style, so the attribute alone would not hide the card.
+      card.classList.toggle('d-none', !show);
+      if (show) shown++;
+    });
+    if (!q) {
+      status.textContent = '';
+    } else if (shown) {
+      status.textContent = shown + ' of ' + cards.length + ' rosters match';
+    } else {
+      status.textContent = 'No takers. Nobody in the club holds that one.';
+    }
+  }
+
+  input.addEventListener('input', apply);
+  clearBtn.addEventListener('click', function () {
+    input.value = '';
+    apply();
+    input.focus();
+  });
+})();
+</script>
+{% endif %}
+{% endblock %}

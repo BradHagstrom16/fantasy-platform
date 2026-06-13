@@ -139,6 +139,8 @@
                     {% endif %}
                     <a class="subnav-pill {% if request.endpoint in ['worldcup.leaderboard', 'worldcup.player_detail', 'worldcup.team_detail'] %}active{% endif %}"
                        href="{{ url_for('worldcup.leaderboard') }}">Board</a>
+                    <a class="subnav-pill {% if request.endpoint == 'worldcup.rosters' %}active{% endif %}"
+                       href="{{ url_for('worldcup.rosters') }}">All Picks</a>
                     <a class="subnav-pill {% if request.endpoint == 'worldcup.schedule' %}active{% endif %}"
                        href="{{ url_for('worldcup.schedule') }}">Schedule</a>
                     <a class="subnav-pill {% if request.endpoint == 'worldcup.groups' %}active{% endif %}"
