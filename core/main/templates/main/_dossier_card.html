@@ -201,12 +201,45 @@
     {% endif %}
   </div>
 
+  {# Your Nine Nations — the live roster ledger. Flags + country + points the
+     player can read without leaving the lounge (the prior dossier only named
+     the single top earner). Built from the lounge's own dark register
+     (.roster-recap-* sibling), NOT the WC hub's Leverage Board: no share bars
+     here, so the lounge stays distinct from the room (DESIGN.md lounge != hub).
+     The crowned leader == dossier.top_earner (one SSoT). #}
+  {% if dossier.roster %}
+  <div class="live-roster animate-in">
+    <div class="live-roster-head">
+      <span class="live-roster-eyebrow">Your Nine Nations</span>
+      <span class="live-roster-cap">live points</span>
+    </div>
+    <ul class="live-roster-rows">
+      {% for r in dossier.roster %}
+      <li class="live-roster-item stagger-{{ (loop.index0 % 6) + 1 }}">
+        <a class="live-roster-row live-roster-row--{{ r.status }}{% if r.is_leader %} live-roster-row--leader{% endif %}"
+           href="{{ url_for('worldcup.team_detail', team_id=r.team_id) }}">
+          <span class="lr-flag" aria-hidden="true">{{ flag(r.iso) }}</span>
+          <span class="lr-code">{{ r.code }}</span>
+          <span class="lr-name">{{ r.name }}</span>
+          {% if r.status == 'out' %}
+          <span class="lr-out">Out</span>
+          {% else %}
+          <span class="lr-mult">&times;{{ r.mult_display }}</span>
+          {% endif %}
+          <span class="lr-pts">{{ '%.1f'|format(r.points) }}{% if r.status == 'out' %}<span class="visually-hidden"> (eliminated)</span>{% endif %}</span>
+        </a>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+
   {# Hub entry — the live dossier's single action. The lounge keeps the
      rank/ledger as the focal status read; this gold seal is the one way
-     into the WC room (roster + live ledger), matching the pre-state
+     into the WC room (per-match scoring breakdowns), matching the pre-state
      decree's "Enter the World Cup" destination (worldcup.index). #}
   <a class="cta-seal dossier-cta" href="{{ url_for('worldcup.index') }}">
     <span class="cta-seal-label">Enter the World Cup<i class="bi bi-arrow-right" aria-hidden="true"></i></span>
-    <span class="cta-seal-sub">Your roster and the live ledger.</span>
+    <span class="cta-seal-sub">The full ledger, match by match.</span>
   </a>
 </div>

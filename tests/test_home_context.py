@@ -187,6 +187,97 @@ def test_context_live_enrolled_basic(app):
         # CR10: prove WC_FAKE_NOW flowed through to court_line weekday.
         # 2026-06-15T00:00:00Z = 2026-06-14 19:00 CDT (UTC-5) → Sunday.
         assert 'Sunday' in ctx['court_line']
+        # No picks seeded → empty roster ledger.
+        assert ctx['dossier']['roster'] == []
+
+
+def test_context_live_roster_ledger_status_leader_and_sort(app):
+    """Live dossier.roster lists every pick with flag/code/name/points and a
+    status; the top scorer is crowned + sorted first; an eliminated pick is
+    'out' (even with points) and sinks to the tail; alive_count agrees with the
+    roster's non-out count (eliminated_team_ids, NOT group-only is_eliminated).
+    """
+    from core.main.home_context import build_home_context
+    from games.worldcup.models import WorldCupTeam, WorldCupPick
+    with app.app_context(), patch.dict(os.environ, {'WC_FAKE_NOW': '2026-06-15T00:00:00Z'}):
+        ldr = WorldCupTeam(
+            fifa_code='LDR', name='Leadland', display_name='Leadland',
+            tier=2, multiplier=2.0, confederation='TEST', group_letter='A',
+        )
+        drm = WorldCupTeam(
+            fifa_code='DRM', name='Dormantia', display_name='Dormantia',
+            tier=5, multiplier=7.0, confederation='TEST', group_letter='B',
+        )
+        # Group-eliminated → in eliminated_team_ids() despite carrying points.
+        out = WorldCupTeam(
+            fifa_code='OUT', name='Outland', display_name='Outland',
+            tier=4, multiplier=4.0, confederation='TEST', group_letter='C',
+            is_eliminated=True,
+        )
+        db.session.add_all([ldr, drm, out])
+        db.session.commit()
+        user = _make_user()
+        enr = _make_enrollment(user, picks_submitted=True, total_score=47.5)
+        db.session.add_all([
+            WorldCupPick(enrollment_id=enr.id, team_id=ldr.id, tier=2, multiplied_points=42.5),
+            WorldCupPick(enrollment_id=enr.id, team_id=drm.id, tier=5, multiplied_points=0.0),
+            WorldCupPick(enrollment_id=enr.id, team_id=out.id, tier=4, multiplied_points=5.0),
+        ])
+        db.session.commit()
+
+        ctx = build_home_context(user, 'live')
+        roster = ctx['dossier']['roster']
+        assert len(roster) == 3
+        # Sort: scoring → dormant → out; leader first.
+        assert [r['code'] for r in roster] == ['LDR', 'DRM', 'OUT']
+        by_code = {r['code']: r for r in roster}
+        assert by_code['LDR']['status'] == 'scoring'
+        assert by_code['LDR']['is_leader'] is True
+        assert by_code['LDR']['iso'] == ldr.iso_code
+        assert by_code['LDR']['name'] == 'Leadland'
+        assert by_code['LDR']['points'] == 42.5
+        assert by_code['DRM']['status'] == 'dormant'
+        assert by_code['DRM']['is_leader'] is False
+        # Eliminated wins over a non-zero score: status 'out', points retained.
+        assert by_code['OUT']['status'] == 'out'
+        assert by_code['OUT']['is_leader'] is False
+        assert by_code['OUT']['points'] == 5.0
+        # alive_count counts non-out picks (2), via eliminated_team_ids — the
+        # crowned leader is the same pick as top_earner.
+        assert ctx['dossier']['alive_count'] == 2
+        assert ctx['dossier']['top_earner']['team_code'] == 'LDR'
+
+
+def test_context_live_roster_no_leader_when_nothing_scored(app):
+    """When no pick has scored yet, no row is crowned (is_leader all False)
+    and top_earner is None — the gold hero row never appears speculatively."""
+    from core.main.home_context import build_home_context
+    from games.worldcup.models import WorldCupTeam, WorldCupPick
+    with app.app_context(), patch.dict(os.environ, {'WC_FAKE_NOW': '2026-06-15T00:00:00Z'}):
+        a = WorldCupTeam(
+            fifa_code='AAA', name='Aaa', display_name='Aaa',
+            tier=1, multiplier=1.0, confederation='TEST', group_letter='A',
+        )
+        b = WorldCupTeam(
+            fifa_code='BBB', name='Bbb', display_name='Bbb',
+            tier=5, multiplier=7.0, confederation='TEST', group_letter='B',
+        )
+        db.session.add_all([a, b])
+        db.session.commit()
+        user = _make_user()
+        enr = _make_enrollment(user, picks_submitted=True, total_score=0.0)
+        db.session.add_all([
+            WorldCupPick(enrollment_id=enr.id, team_id=a.id, tier=1, multiplied_points=0.0),
+            WorldCupPick(enrollment_id=enr.id, team_id=b.id, tier=5, multiplied_points=0.0),
+        ])
+        db.session.commit()
+
+        ctx = build_home_context(user, 'live')
+        roster = ctx['dossier']['roster']
+        assert len(roster) == 2
+        assert all(r['is_leader'] is False for r in roster)
+        assert all(r['status'] == 'dormant' for r in roster)
+        assert ctx['dossier']['top_earner'] is None
 
 
 def test_context_post_with_champion(app):
@@ -396,6 +487,55 @@ def test_context_live_sparkline_flat_line_render(app, client):
             'WC hub no longer renders the parity rank sparkline after the '
             '2026-05-24 Leverage Board differentiation.'
         )
+
+
+def test_live_home_renders_roster_ledger(app, client):
+    """The live lounge home renders the 'Your Nine Nations' roster panel for an
+    enrolled user: the .live-roster container, each pick's flag + code + points,
+    the gold leader row, and the 'Out' label for an eliminated pick. Locks the
+    home-page-roster-visibility requirement. No leverage bars (lounge != hub).
+    """
+    from games.worldcup.models import WorldCupTeam, WorldCupPick
+    with app.app_context(), patch.dict(os.environ, {
+        'ENVIRONMENT': 'testing',
+        'WC_FAKE_NOW': '2026-06-15T00:00:00Z',
+    }):
+        ldr = WorldCupTeam(
+            fifa_code='LDR', name='Leadland', display_name='Leadland',
+            tier=2, multiplier=2.0, confederation='TEST', group_letter='A',
+        )
+        out = WorldCupTeam(
+            fifa_code='OUT', name='Outland', display_name='Outland',
+            tier=4, multiplier=4.0, confederation='TEST', group_letter='C',
+            is_eliminated=True,
+        )
+        db.session.add_all([ldr, out])
+        db.session.commit()
+        user = _make_user()
+        enr = _make_enrollment(user, picks_submitted=True, total_score=42.5)
+        db.session.add_all([
+            WorldCupPick(enrollment_id=enr.id, team_id=ldr.id, tier=2, multiplied_points=42.5),
+            WorldCupPick(enrollment_id=enr.id, team_id=out.id, tier=4, multiplied_points=0.0),
+        ])
+        db.session.commit()
+
+        with client.session_transaction() as sess:
+            sess['_user_id'] = user.get_id()
+            sess['_fresh'] = True
+        resp = client.get('/')
+        assert resp.status_code == 200
+        html = resp.data.decode()
+        assert 'live-roster' in html
+        assert 'Your Nine Nations' in html
+        # Both picks render with code + points.
+        assert 'LDR' in html and 'OUT' in html
+        assert '42.5' in html
+        # Leader crowned + eliminated marked.
+        assert 'live-roster-row--leader' in html
+        assert 'live-roster-row--out' in html
+        assert '>Out<' in html
+        # Differentiation: the lounge roster carries NO Leverage Board bars.
+        assert 'wc-leverage-bar' not in html
 
 
 def test_context_live_dense_rank_for_tied_scores(app):
