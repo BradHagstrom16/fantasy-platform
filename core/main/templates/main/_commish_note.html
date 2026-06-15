@@ -2,9 +2,10 @@
 
    The body now comes from `commish_paragraphs`, built per home-page state by
    `core/main/home_context.build_home_context` from the `CommishNote` model
-   (models/content.py), editable at `/admin/commish-note`. A missing/blank
-   stored row falls back to `COMMISH_NOTE_DEFAULTS`; the post-state
-   `{champion}` placeholder is already substituted upstream.
+   (models/content.py), editable at `/admin/commish-note`. A missing row
+   falls back to `COMMISH_NOTE_DEFAULTS`; a stored-but-blank row intentionally
+   suppresses this state's note. The post-state `{champion}` placeholder is
+   already substituted upstream.
 
    An empty `commish_paragraphs` (admin cleared this state's note, or the
    note is rendered in a state with no band) suppresses the whole block.

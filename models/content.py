@@ -6,11 +6,15 @@ home-page "From the Commish" note, which previously lived as hardcoded
 prose in `core/main/templates/main/_commish_note.html`.
 
 The note is keyed by home-page state (`pre` / `live` / `post`) so the
-Commish can speak to the tournament moment. A missing or blank row falls
-back to ``COMMISH_NOTE_DEFAULTS`` (the original hardcoded prose), so the
-home page renders identical copy until an admin edits it.
+Commish can speak to the tournament moment. A *missing* row falls back to
+``COMMISH_NOTE_DEFAULTS`` (the original hardcoded prose), so the home page
+renders identical copy until an admin edits it. A *stored* row is
+authoritative — including a blank one, which an admin saves to intentionally
+suppress that state's note.
 """
 from datetime import datetime, timezone
+
+from sqlalchemy import select
 
 from extensions import db
 
@@ -62,16 +66,17 @@ class CommishNote(db.Model):
 
 
 def commish_note_body(state: str) -> str:
-    """Return the raw note body for ``state`` (DB row, else the default).
+    """Return the raw note body for ``state``.
 
-    Empty/whitespace bodies fall back to the default so a stored-but-blank
-    row doesn't silently suppress the note (admins suppress intentionally by
-    saving a blank body — see ``commish_note_paragraphs``).
+    A stored row is authoritative, even when blank — that's how an admin
+    intentionally suppresses the note for a state (a blank body yields no
+    paragraphs in ``commish_note_paragraphs``). Only a *missing* row falls
+    back to ``COMMISH_NOTE_DEFAULTS``.
     """
-    row = CommishNote.query.filter_by(state=state).first()
+    row = db.session.execute(
+        select(CommishNote).filter_by(state=state)
+    ).scalars().first()
     if row is not None:
-        # A row that exists is authoritative, even when blank — that's how an
-        # admin suppresses the note for a state.
         return row.body or ''
     return COMMISH_NOTE_DEFAULTS.get(state, '')
 

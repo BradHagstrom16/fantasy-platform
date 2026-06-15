@@ -9,6 +9,7 @@ new paragraphs (rendered by models.content.commish_note_paragraphs).
 import logging
 
 from flask import render_template, redirect, url_for, flash, request
+from sqlalchemy import select
 
 from extensions import db
 from core.admin import admin_bp
@@ -62,7 +63,9 @@ def commish_note():
             )
 
         for state in COMMISH_NOTE_STATES:
-            row = CommishNote.query.filter_by(state=state).first()
+            row = db.session.execute(
+                select(CommishNote).filter_by(state=state)
+            ).scalars().first()
             if row is None:
                 row = CommishNote(state=state)
                 db.session.add(row)

@@ -159,7 +159,9 @@ def test_pi2_pre_state_keeps_tribute_window_copy(app):
 def test_pi2_live_state_speaks_tournament_in_motion(app):
     """Live-state body never leaks the pre-state tribute-window copy."""
     out = _render_note('live')
-    assert 'Tribute window' not in out, (
+    # Case-insensitive: the pre copy uses lowercase "tribute window", so a
+    # capital-T check would miss the actual leak.
+    assert 'tribute window' not in out.lower(), (
         'Live state must not leak pre-state tribute-window copy.'
     )
     # Loose anchor so the prose can be tuned without breaking the test.
@@ -169,7 +171,8 @@ def test_pi2_live_state_speaks_tournament_in_motion(app):
 def test_pi2_post_state_speaks_retrospectively(app):
     """Post-state body says "ledger is closed" and never anticipates."""
     out = _render_note('post')
-    assert 'Tribute window' not in out, (
+    # Case-insensitive (pre copy is lowercase "tribute window").
+    assert 'tribute window' not in out.lower(), (
         'Post state must not leak pre-state tribute-window copy.'
     )
     assert 'ledger is closed' in out, (

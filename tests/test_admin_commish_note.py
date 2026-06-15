@@ -4,7 +4,10 @@ Covers the `CommishNote` model helpers (default fallback + paragraph
 rendering + champion substitution) and the platform-admin edit route
 (auth gate, pre-fill, save/upsert, blank-suppresses).
 """
+from urllib.parse import urlparse
+
 import pytest
+from flask import url_for
 
 from app import create_app
 from extensions import db
@@ -136,7 +139,13 @@ def test_route_blocks_non_admin(app, client):
     uid = _make_user(app, username='plain', is_admin=False)
     _login(client, uid)
     resp = client.get('/admin/commish-note')
-    assert resp.status_code == 302  # redirected to main.index, not rendered
+    assert resp.status_code == 302  # redirected, not rendered
+    # An authed non-admin is bounced to main.index, NOT /login (the anonymous
+    # branch). Lock the destination so a wrong redirect can't pass as "blocked".
+    with app.test_request_context():
+        index_path = urlparse(url_for('main.index')).path
+    assert urlparse(resp.headers['Location']).path == index_path
+    assert '/login' not in resp.headers['Location']
 
 
 def test_admin_get_prefills_textareas_with_defaults(app, client):
