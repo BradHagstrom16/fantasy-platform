@@ -9,12 +9,15 @@ Three Priority Issues, each backed by a source-pattern regression test:
   for type"). Replaced with solid ``var(--gold-light)``, mirroring the
   ``.home-metal-text`` precedent at style.css:461.
 
-- PI-2: ``$impeccable clarify`` — ``_commish_note.html`` body branches on
-  ``state`` (pre / live / post). The pre-state body ("Tribute window opens
-  until June 11") was rendering in live and post too, leaving the Commish
-  anticipating a deadline weeks after the trophy was lifted. The post body
-  reads retrospective Tribune voice; live reads tournament-in-motion. The
-  byline ("The Commish") stays in every branch.
+- PI-2: ``$impeccable clarify`` — per-state Commish note copy. The pre-state
+  body ("Tribute window opens until June 11") used to render in live and post
+  too, leaving the Commish anticipating a deadline weeks after the trophy was
+  lifted. The note is now admin-editable: per-state copy lives in
+  ``models.content.COMMISH_NOTE_DEFAULTS`` (the fallback when no DB row is set)
+  and renders through ``commish_note_paragraphs(state, champion_team)`` into
+  the template's ``commish_paragraphs``. The PI-2 intent is preserved and
+  re-locked below: distinct per-state voice, no pre-copy bleed into live/post,
+  champion interpolation, byline in every state.
 
 - PI-3: ``$impeccable clarify`` — champion eyebrow text rewrite.
   ``◈ 2026 FIFA World Cup Champions ◈`` restated both the H1 above
@@ -38,6 +41,7 @@ import pytest
 from app import create_app
 from extensions import db
 from flask import render_template
+from models.content import commish_note_paragraphs
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -121,66 +125,54 @@ def test_pi1_champion_name_keeps_teko_700_responsive_scale():
 
 
 # ---------------------------------------------------------------------------
-# PI-2 locks: _commish_note.html branches on state
+# PI-2 locks: per-state Commish note copy + rendering (admin-editable model)
 # ---------------------------------------------------------------------------
 
-def test_pi2_commish_note_branches_on_state():
-    """The partial Jinja-branches on ``state == 'live'`` / ``'post'``.
+def _render_note(state, champion_team=None):
+    """Render _commish_note.html through the live helper contract — the same
+    path build_home_context uses (helper -> `commish_paragraphs`)."""
+    return render_template(
+        'main/_commish_note.html',
+        commish_paragraphs=commish_note_paragraphs(state, champion_team),
+    )
 
-    Locks the architectural choice of a single file with a state branch
-    inside, rather than three separate per-state files. The byline stays
-    outside the branch.
-    """
+
+def test_pi2_byline_renders_once_outside_any_branch():
+    """The byline renders exactly once in the template, not duplicated per
+    paragraph or per state."""
     src = COMMISH_NOTE.read_text()
-    assert "state == 'live'" in src, (
-        'Live-state branch missing from _commish_note.html.'
-    )
-    assert "state == 'post'" in src, (
-        'Post-state branch missing from _commish_note.html.'
-    )
-    # Byline is outside the branch (one occurrence, after the {% endif %}).
     byline_count = src.count('class="commish-note-byline"')
     assert byline_count == 1, (
-        f'Byline must render once across all three states; '
-        f'found {byline_count} occurrences (likely duplicated into branches).'
+        f'Byline must render once; found {byline_count} occurrences.'
     )
 
 
 def test_pi2_pre_state_keeps_tribute_window_copy(app):
-    """Pre-state body still anchors on the tribute-window phrase.
-
-    The PI fixed live/post bleed-through. A later home pre-state polish pass
-    rewrote the prose to user-supplied first-person copy (lowercase "tribute
-    window"); the semantic anchor — the words "tribute window" + the welcome
-    line — survives. Locking against a future pass that "tidies" the pre
-    branch into something that loses both anchors.
-    """
-    out = render_template('main/_commish_note.html',
-                          state='pre',
-                          champion_team=None)
+    """Pre-state default copy anchors on the welcome line + tribute window.
+    Locks against a future pass that "tidies" the pre default and loses both
+    anchors."""
+    out = _render_note('pre')
     assert 'tribute window' in out.lower()
     assert 'Welcome to the Club' in out
 
 
 def test_pi2_live_state_speaks_tournament_in_motion(app):
-    """Live-state body never says "Tribute window" (pre-state copy)."""
-    out = render_template('main/_commish_note.html',
-                          state='live',
-                          champion_team=None)
-    assert 'Tribute window' not in out, (
+    """Live-state body never leaks the pre-state tribute-window copy."""
+    out = _render_note('live')
+    # Case-insensitive: the pre copy uses lowercase "tribute window", so a
+    # capital-T check would miss the actual leak.
+    assert 'tribute window' not in out.lower(), (
         'Live state must not leak pre-state tribute-window copy.'
     )
-    # Some token that anchors live voice — keep loose so the prose can be
-    # tuned without breaking the test.
+    # Loose anchor so the prose can be tuned without breaking the test.
     assert 'tournament' in out.lower() or 'Picks are sealed' in out
 
 
 def test_pi2_post_state_speaks_retrospectively(app):
     """Post-state body says "ledger is closed" and never anticipates."""
-    out = render_template('main/_commish_note.html',
-                          state='post',
-                          champion_team=None)
-    assert 'Tribute window' not in out, (
+    out = _render_note('post')
+    # Case-insensitive (pre copy is lowercase "tribute window").
+    assert 'tribute window' not in out.lower(), (
         'Post state must not leak pre-state tribute-window copy.'
     )
     assert 'ledger is closed' in out, (
@@ -193,30 +185,24 @@ def test_pi2_post_state_interpolates_champion_when_available(app):
     class StubTeam:
         display_name = 'United States'
 
-    out = render_template('main/_commish_note.html',
-                          state='post',
-                          champion_team=StubTeam())
+    out = _render_note('post', StubTeam())
     assert 'United States' in out
     assert 'lifted the trophy' in out
 
 
 def test_pi2_post_state_falls_back_when_champion_missing(app):
-    """If ``champion_team`` is None the post body still reads cleanly."""
-    out = render_template('main/_commish_note.html',
-                          state='post',
-                          champion_team=None)
+    """If ``champion_team`` is None the post body still reads cleanly and the
+    ``{champion}`` placeholder is substituted, never leaked."""
+    out = _render_note('post', None)
     assert 'United States' not in out  # no stale leftover from prior render
     assert 'lifted' in out  # fallback prose still acknowledges the result
-    # Make sure we didn't print the literal Jinja variable.
-    assert 'champion_team' not in out
+    assert '{champion}' not in out  # placeholder substituted, not printed raw
 
 
 def test_pi2_byline_renders_in_every_state(app):
     """``The Commish`` byline persists across pre / live / post."""
     for state in ('pre', 'live', 'post'):
-        out = render_template('main/_commish_note.html',
-                              state=state,
-                              champion_team=None)
+        out = _render_note(state)
         assert 'class="commish-note-byline"' in out, (
             f'Byline missing in state={state!r}.'
         )

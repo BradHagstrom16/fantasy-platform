@@ -6,6 +6,9 @@ When adding a new game, import its models here too.
 """
 from models.user import User
 
+# Platform editorial content (admin-editable copy)
+from models.content import CommishNote
+
 # Golf Pick 'Em models
 from games.golf.models import (
     GolfEnrollment,
@@ -38,6 +41,7 @@ from games.worldcup.models import (
 
 __all__ = [
     'User',
+    'CommishNote',
     'GolfEnrollment',
     'GolfPlayer',
     'GolfTournament',

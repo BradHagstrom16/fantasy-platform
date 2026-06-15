@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Commish Note · Admin{% endblock %}
+
+{% block content %}
+<header class="admin-masthead">
+  <div class="container">
+    <span class="admin-eyebrow">The Commish&rsquo;s Desk</span>
+    <h1 class="admin-page-title">The Commish&rsquo;s Note</h1>
+    <p class="admin-masthead-sub">The note on the home page, in your words. One per tournament moment.</p>
+  </div>
+</header>
+
+<div class="container pb-5">
+  <div class="row justify-content-center">
+    <div class="col-lg-8 col-md-10">
+
+      <div class="card border-0 shadow-sm animate-in">
+        <div class="card-body p-4">
+          <form method="POST" class="commish-note-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+
+            {% for state in states %}
+            <div class="mb-4">
+              <label for="body_{{ state }}" class="form-label">{{ state_labels[state] }}</label>
+              <textarea id="body_{{ state }}" name="body_{{ state }}" class="form-control" rows="5"
+                        maxlength="4000">{{ bodies[state] }}</textarea>
+              <div class="form-text">
+                Plain text. A blank line starts a new paragraph. Leave empty to hide the note in this state.
+                {% if state == 'post' %}Use <code>{champion}</code> for the winning country&rsquo;s name.{% endif %}
+              </div>
+            </div>
+            {% endfor %}
+
+            <button type="submit" class="btn btn-primary btn-lg w-100">
+              <i class="bi bi-pen-fill me-1"></i>Save Note
+            </button>
+          </form>
+        </div>
+      </div>
+
+      <p class="form-text mt-3">
+        Shown under &ldquo;From the Commish&rdquo; on the home page. The state that displays
+        tracks the World Cup: tribute window (pre), tournament running (live), trophy lifted (post).
+      </p>
+
+    </div>
+  </div>
+</div>
+{% endblock %}
