@@ -15,9 +15,9 @@ Iteration map:
   to a 640-floored single column below md, then becomes a 7fr/5fr grid
   at md+ with two semantic slots (`.home-pre-col--main` for masthead +
   countdown + dossier, `.home-pre-col--rail` for opening matches +
-  tiles + commish + dispatches). `.home-live` and `.home-shell--out`
-  are unaffected (they use `.container-fluid > .row` and a separate
-  single `.home-col` + registry composition).
+  tiles + commish + dispatches). The live + out states were unaffected by
+  S4.1.2 (the live state later grew its own parallel `.home-live-grid`;
+  the out state keeps its single-column hero + registry composition).
 
 - PI-2 (`$impeccable adapt` — `.ballot-card` semantic split): the
   pre-S4.1.2 ballot card was wrapped in `<a href="...?edit=1">`, which
@@ -214,20 +214,22 @@ def test_pi1_grid_css_defines_mobile_single_column_and_md_split():
     )
 
 
-def test_pi1_home_live_unchanged_keeps_container_fluid_row_layout():
-    """The shared `.home-shell` parent risks live-state regression
-    (S4.1.1 routed concern). `_home_live.html` must still use its own
-    `.container-fluid.home-live` + `.row` composition — it shouldn't
-    pick up `.home-pre-grid` either."""
-    assert 'home-pre-grid' not in HOME_LIVE, (
-        "PI-1: `_home_live.html` must NOT use `.home-pre-grid`. The "
-        "live state has its own `.container-fluid > .row` composition "
-        "with order-* mobile reading control; importing the pre-state "
-        "grid would re-flow the live dossier."
+def test_pi1_home_live_uses_its_own_grid_not_the_pre_state_grid():
+    """The live state has its own two-column composition (`.home-live-grid`,
+    added when the dossier grew the nine-nation roster) and must NOT borrow
+    the pre-state `.home-pre-grid` — the two grids carry different children
+    (live: leaderboard + Recent Results in the rail) and evolve separately."""
+    # Strip Jinja comments — the precedent reference (`.home-pre-grid`) lives
+    # in a template comment and shouldn't trip the class-usage lock (CLAUDE.md
+    # template-source-test gotcha).
+    live_no_comments = re.sub(r'\{#.*?#\}', '', HOME_LIVE, flags=re.S)
+    assert 'home-pre-grid' not in live_no_comments, (
+        "PI-1: `_home_live.html` must NOT use `.home-pre-grid`; the live "
+        "state owns its own `.home-live-grid` composition."
     )
-    assert 'container-fluid home-live' in HOME_LIVE, (
-        "PI-1: `_home_live.html` lost its `.container-fluid.home-live` "
-        "wrapper. The live-state layout must be preserved."
+    assert 'home-live-grid' in live_no_comments, (
+        "PI-1: `_home_live.html` lost its `.home-live-grid` wrapper. The "
+        "live-state two-column layout must be preserved."
     )
 
 
