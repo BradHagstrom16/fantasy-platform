@@ -21,6 +21,7 @@ from games.worldcup.services.stage import stage_label as _stage_label
 from games.worldcup.services.stage import best_finish_label
 from games.worldcup.services.state import WorldCupState, now_utc
 from games.worldcup.services.scoring import points_for_pick_on_match
+from games.worldcup.services.elimination import eliminated_team_ids
 from games.worldcup.world_cup_countries import TIERS
 from games.registry import (
     available_games, coming_soon_games, joined_games,
@@ -250,8 +251,8 @@ def _context_live(user, enrollment) -> dict:
 
     picks_by_enr: dict[int, list] = {}
     if relevant_ids:
-        # joinedload(WorldCupPick.team) so _alive_count below can read
-        # p.team.is_eliminated without firing one query per pick.
+        # joinedload(WorldCupPick.team) so the roster/leverage builders below
+        # can read team display fields without firing one query per pick.
         rows = (
             WorldCupPick.query
             .filter(WorldCupPick.enrollment_id.in_(relevant_ids))
@@ -261,8 +262,16 @@ def _context_live(user, enrollment) -> dict:
         for p in rows:
             picks_by_enr.setdefault(p.enrollment_id, []).append(p)
 
+    # Tournament-wide "out" set (group exit OR completed-knockout loss). This is
+    # the canonical alive/out read-site per CLAUDE.md — NOT team.is_eliminated,
+    # which is group-stage-only and would keep a KO loser counted as "alive."
+    eliminated_ids = eliminated_team_ids(SEASON_YEAR)
+
     def _alive_count(eid: int) -> int:
-        return sum(1 for p in picks_by_enr.get(eid, []) if not p.team.is_eliminated)
+        return sum(
+            1 for p in picks_by_enr.get(eid, [])
+            if p.team_id not in eliminated_ids
+        )
 
     user_team_ids: set[int] = set()
     user_picks_by_team_id: dict[int, WorldCupPick] = {}
@@ -316,18 +325,54 @@ def _context_live(user, enrollment) -> dict:
         # template guards on truthy.
         user_picks_with_points = picks_by_enr.get(enrollment.id, [])
         top_earner = None
+        leader_team_id = None
         if user_picks_with_points:
             best = max(
                 user_picks_with_points,
                 key=lambda p: float(p.multiplied_points or 0),
             )
             if best.multiplied_points and best.multiplied_points > 0:
+                leader_team_id = best.team_id
                 top_earner = {
                     'team_code': best.team.fifa_code,
                     'team_iso': best.team.iso_code,
                     'team_name': best.team.display_name,
                     'points': float(best.multiplied_points),
                 }
+
+        # Full nine-nation roster ledger for the live home panel — flag, code,
+        # name, multiplier, points-so-far, alive/out status. The crowned leader
+        # is the same pick as top_earner (one SSoT for "who leads your nine").
+        # Deliberately NO per-pick share bars: the lounge keeps the rank
+        # sparkline as its signature and leaves the Leverage Board to the WC
+        # hub (lounge != hub, games/worldcup/DESIGN.md).
+        _STATUS_ORDER = {'scoring': 0, 'dormant': 1, 'out': 2}
+        roster = []
+        for p in user_picks_with_points:
+            pts = float(p.multiplied_points or 0)
+            if p.team_id in eliminated_ids:
+                status = 'out'
+            elif pts > 0:
+                status = 'scoring'
+            else:
+                status = 'dormant'
+            roster.append({
+                'team_id': p.team_id,
+                'iso': p.team.iso_code,
+                'code': p.team.fifa_code,
+                'name': p.team.display_name,
+                'tier': p.team.tier,
+                'mult_display': f'{float(p.team.multiplier):g}',
+                'multiplier': float(p.team.multiplier),
+                'points': pts,
+                'status': status,
+                'is_leader': p.team_id == leader_team_id,
+            })
+        # Carriers first (most points on top), then dormant by upside (higher
+        # multiplier), then the eliminated tail. Leader lands first.
+        roster.sort(key=lambda r: (
+            _STATUS_ORDER[r['status']], -r['points'], -r['multiplier'],
+        ))
 
         dossier = {
             'rank': user_rank,
@@ -344,6 +389,7 @@ def _context_live(user, enrollment) -> dict:
             'lead_delta_up': neighbors['lead_delta_up'],
             'lead_delta_down': neighbors['lead_delta_down'],
             'top_earner': top_earner,
+            'roster': roster,
         }
 
     # Top 3 + you row (if user is enrolled and outside top 3).
