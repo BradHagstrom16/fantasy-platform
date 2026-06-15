@@ -528,7 +528,8 @@ def test_live_home_renders_roster_ledger(app, client):
         assert 'live-roster' in html
         assert 'Your Nine Nations' in html
         # Both picks render with code + points.
-        assert 'LDR' in html and 'OUT' in html
+        assert 'LDR' in html
+        assert 'OUT' in html
         assert '42.5' in html
         # Leader crowned + eliminated marked.
         assert 'live-roster-row--leader' in html
