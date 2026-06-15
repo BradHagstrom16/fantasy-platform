@@ -32,6 +32,7 @@ import pytest
 from app import create_app
 from extensions import db
 from models.user import User
+from models.content import COMMISH_NOTE_DEFAULTS
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -40,7 +41,8 @@ STYLE_CSS = REPO_ROOT / 'static' / 'css' / 'style.css'
 TOKENS_CSS = REPO_ROOT / 'static' / 'css' / 'tokens.css'
 
 COUNTDOWN = (TEMPLATES / '_countdown_card.html').read_text()
-COMMISH = (TEMPLATES / '_commish_note.html').read_text()
+# The "From the Commish" note copy moved from this template's Jinja branches
+# to the admin-editable COMMISH_NOTE_DEFAULTS fallback (models/content.py).
 # The standalone join/seal CTA partials were consolidated into the decree
 # (the decree now carries the single state-aware CTA), so those files no
 # longer exist; their label locks moved onto COUNTDOWN below.
@@ -267,14 +269,18 @@ def test_fixture_ladder_kickoff_uses_ct_filter_not_utc_strftime():
 # ---------------------------------------------------------------------------
 
 def test_commish_note_pre_state_copy_verbatim():
-    """The pre-state branch is still the first-person voice
+    """The pre-state default is still the first-person voice
     (`I hope you enjoy the site`) supplied by the platform owner, distinct
-    from the elevated Commish tone in the live + post branches.
+    from the elevated Commish tone in the live + post defaults.
+
+    The copy moved from a `_commish_note.html` Jinja branch to the
+    admin-editable `COMMISH_NOTE_DEFAULTS['pre']` fallback (models/content.py);
+    the verbatim anchor is locked there now.
 
     S6.1.5 — "favours" → "favors" per the user's explicit US-spelling
     request. The rest of the verbatim copy stays locked; only this token
     crossed the Atlantic."""
-    normalized = re.sub(r'\s+', ' ', COMMISH)
+    pre = re.sub(r'\s+', ' ', COMMISH_NOTE_DEFAULTS['pre'])
     expected_phrases = [
         'Welcome to the Club, I hope you enjoy the site.',
         'Pass along any feedback that you have.',
@@ -283,23 +289,23 @@ def test_commish_note_pre_state_copy_verbatim():
         'Fortune favors the bold.',
     ]
     for phrase in expected_phrases:
-        assert phrase in normalized, (
-            f'Pre-state Commish note is missing: {phrase!r}. The verbatim '
+        assert phrase in pre, (
+            f'Pre-state Commish default is missing: {phrase!r}. The verbatim '
             f'copy is owner-supplied; do not paraphrase or "polish".'
         )
     # Hard lock on the US spelling — the prior UK form was retired in
     # S6.1.5 per explicit user request.
-    assert 'favours' not in COMMISH, (
+    assert 'favours' not in COMMISH_NOTE_DEFAULTS['pre'], (
         '"favours" is back. The S6.1.5 critique pass Americanized the '
         'pre-state Commish copy to "favors" per user request.'
     )
 
 
 def test_commish_note_post_branch_unchanged_by_pre_state_edit():
-    """Sanity check: the live + post branches retain the elevated Commish
-    voice. The polish pass only touched the pre-state branch."""
-    assert "The 2026 ledger is closed." in COMMISH
-    assert "Picks are sealed." in COMMISH
+    """Sanity check: the live + post defaults retain the elevated Commish
+    voice. The polish pass only touched the pre-state copy."""
+    assert "The 2026 ledger is closed." in COMMISH_NOTE_DEFAULTS['post']
+    assert "Picks are sealed." in COMMISH_NOTE_DEFAULTS['live']
 
 
 # ---------------------------------------------------------------------------

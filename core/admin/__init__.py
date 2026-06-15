@@ -5,3 +5,4 @@ admin_bp = Blueprint('admin', __name__, url_prefix='/admin', template_folder='te
 from core.admin import routes  # noqa: E402, F401
 from core.admin import enrollments  # noqa: E402, F401
 from core.admin import announce  # noqa: E402, F401
+from core.admin import commish_note  # noqa: E402, F401

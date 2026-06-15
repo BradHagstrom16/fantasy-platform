@@ -26,6 +26,7 @@ from games.worldcup.world_cup_countries import TIERS
 from games.registry import (
     available_games, coming_soon_games, joined_games,
 )
+from models.content import commish_note_paragraphs
 
 
 def build_home_context(user: Any, state: Optional[WorldCupState]) -> dict:
@@ -40,10 +41,17 @@ def build_home_context(user: Any, state: Optional[WorldCupState]) -> dict:
         user_id=user.id, season_year=SEASON_YEAR
     ).first()
     if state == 'pre':
-        return _context_pre(user, enrollment)
-    if state == 'live':
-        return _context_live(user, enrollment)
-    return _context_post(user, enrollment)
+        ctx = _context_pre(user, enrollment)
+    elif state == 'live':
+        ctx = _context_live(user, enrollment)
+    else:
+        ctx = _context_post(user, enrollment)
+    # Admin-editable "From the Commish" note for the narrative band. The post
+    # body may interpolate {champion}, so pass the champion through when set.
+    ctx['commish_paragraphs'] = commish_note_paragraphs(
+        state, ctx.get('champion_team')
+    )
+    return ctx
 
 
 def _tagline_for(rank: int, week_delta_rank: Optional[int],
