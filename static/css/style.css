@@ -807,10 +807,9 @@ body.game-golf {
    (parity with `.home-col` so the mobile reading order is unchanged), then
    becomes a 7fr/5fr grid at md+. Col-A carries time-sensitive masthead
    surfaces (greet + countdown + dossier); col-B carries the supporting
-   rail (opening matches + game tiles + commish + dispatches). The grid is
-   pre-state-only — `.home-live` keeps its `.container-fluid > .row`
-   layout, and `.home-shell--out` keeps its single-column hero + full-width
-   registry composition (PI-1 of S4.1.1). */
+   rail (opening matches + game tiles + commish + dispatches). The live state
+   uses a parallel `.home-live-grid` (see below); `.home-shell--out` keeps its
+   single-column hero + full-width registry composition (PI-1 of S4.1.1). */
 .home-shell .home-pre-grid {
   max-width: 640px;
   margin: 0 auto;
@@ -2764,25 +2763,42 @@ body.game-golf {
   border-radius: 8px;
 }
 
-/* --- Live state: container sizing --- */
-.home-shell .home-live {
+/* --- Live state: two-column grid (mirrors .home-pre-grid) ---
+   Masthead column (greet + dossier) beside a supporting rail (leaderboard +
+   Recent Results); narrative + game tiles span full width beneath the pair.
+   Collapses to a 640-floored single column below lg, preserving source order
+   (dossier → leaderboard → results → narrative → tiles). `gap:0` keeps the
+   children's own padding/margin rhythm — the rail's `.sec-head` top padding
+   already separates the leaderboard from Recent Results. */
+.home-shell .home-live-grid {
   max-width: 1280px;
   margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0;
 }
 @media (max-width: 991px) {
   /* Mobile: each column gets a max-width like the other states */
-  .home-shell .home-live-left,
-  .home-shell .home-live-right {
+  .home-shell .home-live-col,
+  .home-shell .home-live-narrative,
+  .home-shell .home-live-tiles {
     max-width: 640px;
-    margin: 0 auto;
+    margin-inline: auto;
   }
 }
 @media (min-width: 992px) {
-  /* Desktop: tighter padding between columns */
-  .home-shell .home-live-left { padding-right: 1.5rem; }
-  .home-shell .home-live-right { padding-left: 1.5rem; }
+  .home-shell .home-live-grid {
+    grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+    column-gap: 2rem;
+    align-items: start;
+  }
+  /* Narrative + tiles drop to their own full-width rows under the pair. */
+  .home-shell .home-live-narrative,
+  .home-shell .home-live-tiles {
+    grid-column: 1 / -1;
+  }
   /* Greet stays text-aligned-left on desktop instead of centered */
-  .home-shell .home-live .greet { text-align: left; }
+  .home-shell .home-live-grid .greet { text-align: left; }
 }
 
 /* --- Post-state: champion banner (full-bleed) --- */

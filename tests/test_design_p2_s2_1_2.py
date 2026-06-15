@@ -9,10 +9,15 @@ Iteration map:
 - PI-2 (`$impeccable clarify` + CSS): dossier-stamp moves out of absolute
   positioning (was overlapping rank-meta on narrow viewports) and drops the
   spy-register "Classified" framing for "Council Filings" — Tribune voice.
-- PI-3 (`$impeccable layout`): Recent Results moves out of the left rail
-  into a full-width row below the dossier/leaderboard pair, eliminating
-  the ~700px right-rail void below the Commish note. Mobile reading order
-  is preserved by Bootstrap `order-*` utility classes on the four blocks.
+- PI-3 (`$impeccable layout`): SUPERSEDED. S2.1.2 pushed Recent Results
+  full-width below the dossier/leaderboard pair to stop the *right* rail
+  starving under a 4-line Commish note. PR #79 added the nine-nation roster
+  to the dossier, so the *left* column now runs long and the right rail
+  starved instead. The live state moved to a `.home-live-grid` (parallel to
+  `.home-pre-grid`) whose right rail carries the leaderboard THEN Recent
+  Results, rebalancing the columns. The Commish note still stays OUT of the
+  rail (S2.1.2's actual lesson). Mobile collapses to source order
+  (dossier → leaderboard → results → narrative → tiles).
 - PI-4 (`$impeccable clarify`): the "Also Today" eyebrow over neutral
   results promised a temporal anchor the rows never delivered; renamed to
   "Around the Tournament" so the editorial register stays honest.
@@ -88,49 +93,60 @@ def test_dossier_stamp_no_longer_position_absolute():
 # PI-3: right-rail layout balance.
 # ---------------------------------------------------------------------------
 
-def test_home_live_recent_results_lives_outside_left_rail():
-    """Recent Results was inside `.home-live-left` and pushed the left column
-    ~600px taller than the right rail, leaving a void under the Commish note.
-    S2.1.2 lifts it into its own full-width block (`.home-live-results`)."""
-    assert 'home-live-results' in HOME_LIVE, (
-        '.home-live-results wrapper missing; Recent Results must sit in its '
-        'own full-width row to balance the dossier/leaderboard side-by-side.'
+def test_home_live_recent_results_lives_in_the_rail():
+    """Post-PR-79 the dossier (now carrying the nine-nation roster) runs long,
+    so Recent Results moves INTO the supporting rail beneath the leaderboard
+    to fill the right-hand void. It must sit in `.home-live-col--rail`, never
+    in the masthead/dossier column."""
+    rail_section = _section_between(HOME_LIVE, 'home-live-col--rail', '')
+    assert rail_section, '.home-live-col--rail wrapper missing.'
+    assert 'main/_recent_results.html' in rail_section, (
+        '_recent_results.html must sit in .home-live-col--rail (beneath the '
+        'leaderboard) so the rail balances the tall dossier.'
     )
-    # The Recent Results sec-head + include must NOT be inside .home-live-left
-    left_section = _section_between(
-        HOME_LIVE, 'home-live-left', 'col-lg-7'
-    )
-    if left_section:
-        assert 'main/_recent_results.html' not in left_section, (
-            "_recent_results.html still inside .home-live-left; it should now "
-            "sit in .home-live-results below the dossier/leaderboard row."
+    main_section = _section_between(HOME_LIVE, 'home-live-col--main', '')
+    if main_section:
+        assert 'main/_recent_results.html' not in main_section, (
+            "_recent_results.html leaked into .home-live-col--main; Recent "
+            "Results belongs in the rail, not the masthead column."
         )
 
 
-def test_home_live_commish_lives_outside_right_rail():
-    """Commish note was inside `.home-live-right` and starved the right rail
-    by ending after 4 lines while the left rail kept producing cards. S2.1.2
-    moves it to a full-width `.home-live-narrative` block below results."""
+def test_home_live_commish_lives_outside_the_rail():
+    """The Commish note is long-form Newsreader editorial and must stay in the
+    full-width `.home-live-narrative` band, never the thin rail (S2.1.2's
+    rail-starvation lesson + the 65-75ch line-length register)."""
     assert 'home-live-narrative' in HOME_LIVE
-    right_section = _section_between(
-        HOME_LIVE, 'home-live-right', 'col-lg-5'
-    )
-    if right_section:
-        assert "_commish_note.html" not in right_section, (
-            '_commish_note.html still inside .home-live-right; right rail '
-            'starvation regression.'
+    rail_section = _section_between(HOME_LIVE, 'home-live-col--rail', '')
+    if rail_section:
+        assert '_commish_note.html' not in rail_section, (
+            '_commish_note.html leaked into the rail; it must stay in the '
+            'full-width .home-live-narrative band.'
         )
 
 
-def test_home_live_mobile_order_preserves_dossier_results_leaderboard():
-    """Bootstrap `order-*` utilities pin the mobile reading order to
-    dossier (0) -> results (2) -> leaderboard (3) -> narrative (4). On lg+,
-    order-lg-0 collapses everything back to source order so the desktop
-    grid renders left+right side-by-side, then full-width rows below."""
-    assert 'home-live-left order-lg-0' in HOME_LIVE
-    assert 'home-live-right order-3 order-lg-0' in HOME_LIVE
-    assert 'home-live-results order-2 order-lg-0' in HOME_LIVE
-    assert 'home-live-narrative order-4 order-lg-0' in HOME_LIVE
+def test_home_live_uses_grid_and_collapses_to_source_order():
+    """The live state uses `.home-live-grid` (parallel to `.home-pre-grid`),
+    not the retired Bootstrap `.row` + `order-*` utilities. Mobile reading
+    order is the DOM source order: dossier (main) → leaderboard → results
+    (rail) → narrative → tiles, so no `order-*` reordering is needed."""
+    assert 'home-live-grid' in HOME_LIVE
+    assert 'home-live-col--main' in HOME_LIVE
+    assert 'home-live-col--rail' in HOME_LIVE
+    assert 'home-live-tiles' in HOME_LIVE
+    # The retired Bootstrap order-utility scaffolding must be gone.
+    assert 'order-lg-0' not in HOME_LIVE, (
+        'order-lg-* utilities should be gone; the grid collapses to source '
+        'order on mobile without them.'
+    )
+    # Source order: main column precedes the rail, which precedes narrative.
+    main_at = HOME_LIVE.index('home-live-col--main')
+    rail_at = HOME_LIVE.index('home-live-col--rail')
+    narrative_at = HOME_LIVE.index('home-live-narrative')
+    assert main_at < rail_at < narrative_at, (
+        'DOM order must be main → rail → narrative so the mobile single-column '
+        'reading order is dossier → leaderboard/results → commish.'
+    )
 
 
 # ---------------------------------------------------------------------------

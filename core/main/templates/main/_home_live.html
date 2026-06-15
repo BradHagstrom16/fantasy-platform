@@ -1,94 +1,99 @@
 {# Live-tournament home — Spec B section 7.
 
-   Layout (S2.1.2): the side-by-side "above the fold" pairs the user's
-   dossier (left) with the standings rolls (right). Recent Results, Commish
-   note, and game tiles flow full-width below — the right rail used to
-   starve under a 4-line Commish note while the left kept producing
-   results cards. Mobile reading order is preserved by `order-*` so the
-   small-screen sequence is dossier → results → leaderboard → commish. #}
-<div class="container-fluid home-live">
-  <div class="row">
+   Layout: a two-column grid (`.home-live-grid`, mirrors the pre-state
+   `.home-pre-grid`). The masthead column (left) carries the greet + the
+   user's dossier; the supporting rail (right) carries the standings rolls
+   then Recent Results. Commish note + dispatches sit in a full-width band
+   below the pair, with the compact game tiles last.
 
-    {# Mobile: each block stacks (single column). Desktop: 60/40 split. #}
-    <div class="col-12 col-lg-7 home-live-left order-lg-0">
+   This supersedes the S2.1.2 layout, which pushed Recent Results full-width
+   below a dossier/leaderboard pair to stop the right rail starving under a
+   4-line Commish note. PR #79 added the nine-nation roster to the dossier,
+   so the *left* column now runs long and the right rail starved instead —
+   feeding it the substantial Recent Results section rebalances the two
+   columns. The Commish note stays OUT of the rail (S2.1.2's lesson holds).
 
-      {# Greet — full width on mobile, left col on desktop #}
-      <div class="greet">
-        <p class="greet-line">
-          Council is in session,
-          <span class="v">{{ display_name }}</span>
-        </p>
-        <h1 class="greet-title">
-          Your <span class="home-metal-text">Dossier</span>
-        </h1>
-        <div class="greet-court">{{ court_line }}</div>
-      </div>
+   Mobile (<lg): the grid collapses to a single column in source order —
+   dossier → leaderboard → recent results → narrative → tiles. #}
+<div class="home-live-grid">
 
-      {# Dossier slot — enrolled or view-CTA #}
-      {% if not is_enrolled %}
-        {% include 'main/_view_cta_card.html' %}
-      {% else %}
-        {% include 'main/_dossier_card.html' %}
-      {% endif %}
+  {# Masthead column — greet + the user's dossier (or view-CTA). #}
+  <div class="home-live-col home-live-col--main">
 
-    </div>{# /.col-lg-7 #}
+    <div class="greet">
+      <p class="greet-line">
+        Council is in session,
+        <span class="v">{{ display_name }}</span>
+      </p>
+      <h1 class="greet-title">
+        Your <span class="home-metal-text">Dossier</span>
+      </h1>
+      <div class="greet-court">{{ court_line }}</div>
+    </div>
 
-    <div class="col-12 col-lg-5 home-live-right order-3 order-lg-0">
+    {# Dossier slot — enrolled or view-CTA #}
+    {% if not is_enrolled %}
+      {% include 'main/_view_cta_card.html' %}
+    {% else %}
+      {% include 'main/_dossier_card.html' %}
+    {% endif %}
 
-      {# Leaderboard preview — full width mobile, right col desktop #}
-      <div class="sec-head">
-        <div class="t">Leaderboard</div>
-        <a class="more" href="{{ url_for('worldcup.leaderboard') }}">Full ledger &rsaquo;</a>
-      </div>
-      <div class="rolls">
-        {% for row in top_3_plus_you %}
-        {% if row.separator_above %}<div class="roll-dots">&middot; &middot; &middot;</div>{% endif %}
-        <div class="roll-row{% if row.is_you %} roll-row--you{% endif %}">
-          <div class="roll-rank{% if row.rank == 1 %} roll-rank--gold{% endif %}">{{ row.rank }}</div>
-          <div class="roll-meta">
-            <div class="roll-name">
-              {{ row.enrollment.user.get_avatar() }} {{ row.enrollment.get_display_name() }}
-              {% if row.is_you %}<span class="roll-you-chip">YOU</span>{% endif %}
-            </div>
-            {% if row.tagline %}
-            <div class="roll-tagline">{{ row.tagline }}</div>
-            {% endif %}
+  </div>{# /.home-live-col--main #}
+
+  {# Supporting rail — leaderboard preview, then Recent Results stacked
+     beneath it. On the wide canvas this fills the space alongside the tall
+     dossier; on mobile it follows the dossier in source order. #}
+  <div class="home-live-col home-live-col--rail">
+
+    <div class="sec-head">
+      <div class="t">Leaderboard</div>
+      <a class="more" href="{{ url_for('worldcup.leaderboard') }}">Full ledger &rsaquo;</a>
+    </div>
+    <div class="rolls">
+      {% for row in top_3_plus_you %}
+      {% if row.separator_above %}<div class="roll-dots">&middot; &middot; &middot;</div>{% endif %}
+      <div class="roll-row{% if row.is_you %} roll-row--you{% endif %}">
+        <div class="roll-rank{% if row.rank == 1 %} roll-rank--gold{% endif %}">{{ row.rank }}</div>
+        <div class="roll-meta">
+          <div class="roll-name">
+            {{ row.enrollment.user.get_avatar() }} {{ row.enrollment.get_display_name() }}
+            {% if row.is_you %}<span class="roll-you-chip">YOU</span>{% endif %}
           </div>
-          {# Formatter parity (Critique 2026-05-15 P0-2): WC hub renders
-             %.1f for total_score; lounge previously used %.0f, producing
-             rounded values that diverged from the hub's. #}
-          <div class="roll-pts">{{ '%.1f'|format(row.enrollment.total_score) }}<span class="u">PTS</span></div>
+          {% if row.tagline %}
+          <div class="roll-tagline">{{ row.tagline }}</div>
+          {% endif %}
         </div>
-        {% endfor %}
+        {# Formatter parity (Critique 2026-05-15 P0-2): WC hub renders
+           %.1f for total_score; lounge previously used %.0f, producing
+           rounded values that diverged from the hub's. #}
+        <div class="roll-pts">{{ '%.1f'|format(row.enrollment.total_score) }}<span class="u">PTS</span></div>
       </div>
-
-    </div>{# /.col-lg-5 #}
-
-    {# Recent Results — full width below the dossier/leaderboard pair on
-       desktop; on mobile, sits between the dossier and the leaderboard
-       (order-2 puts it ahead of the right-col leaderboard's order-3). #}
-    <div class="col-12 home-live-results order-2 order-lg-0">
-      <div class="sec-head">
-        <div class="t">Recent Results</div>
-        <a class="more" href="{{ url_for('worldcup.schedule') }}">All fixtures &rsaquo;</a>
-      </div>
-      {% include 'main/_recent_results.html' %}
+      {% endfor %}
     </div>
 
-    {# Narrative partials — full width below results on desktop;
-       on mobile they stay last in the stack (after leaderboard). #}
-    <div class="col-12 home-live-narrative order-4 order-lg-0">
-      {% include 'main/_commish_note.html' ignore missing %}
-      {% include 'main/_dispatches.html' ignore missing %}
+    {# Recent Results — last 5 completed matches, in the rail beneath the
+       leaderboard. Roster-intersection matches render as full Tribune
+       match-cards; the rest collapse into one compact strip (see the
+       partial). #}
+    <div class="sec-head">
+      <div class="t">Recent Results</div>
+      <a class="more" href="{{ url_for('worldcup.schedule') }}">All fixtures &rsaquo;</a>
     </div>
+    {% include 'main/_recent_results.html' %}
 
-  </div>{# /.row #}
+  </div>{# /.home-live-col--rail #}
 
-  {# Compact game tiles strip — full width below everything #}
-  <div class="row">
-    <div class="col-12">
-      {% include 'main/_game_tiles_compact.html' %}
-    </div>
+  {# Narrative — full-width band below the masthead/rail pair. The Commish
+     note is long-form Newsreader editorial; it stays full width (never the
+     thin rail) so the 65-75ch line-length register holds. #}
+  <div class="home-live-narrative">
+    {% include 'main/_commish_note.html' ignore missing %}
+    {% include 'main/_dispatches.html' ignore missing %}
   </div>
 
-</div>
+  {# Compact game tiles strip — full width, last. #}
+  <div class="home-live-tiles">
+    {% include 'main/_game_tiles_compact.html' %}
+  </div>
+
+</div>{# /.home-live-grid #}
