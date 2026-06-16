@@ -64,6 +64,80 @@ def test_api_get_returns_json_on_200(app):
         assert g.call_args.kwargs['headers']['X-Auth-Token'] == 'k'
 
 
+def test_api_get_retries_transient_network_error_then_succeeds(app):
+    """A single transient network blip (the 'Address unavailable' family) is
+    absorbed by retry, not surfaced as a SyncError / admin alert."""
+    import requests
+    from games.worldcup.services import sync
+
+    class _OK:
+        status_code = 200
+        headers = {}
+        def json(self): return {'matches': ['ok']}
+
+    with app.app_context():
+        app.config['FOOTBALL_DATA_API_KEY'] = 'k'
+        side = [requests.exceptions.ConnectionError('Address unavailable'), _OK()]
+        with patch.object(sync.time, 'sleep'), \
+             patch.object(sync.requests, 'get', side_effect=side) as g:
+            out = sync._api_get('competitions/WC/matches')
+        assert out == {'matches': ['ok']}
+        assert g.call_count == 2  # failed once, retried, succeeded
+
+
+def test_api_get_raises_only_after_exhausting_retries(app):
+    """A *sustained* outage still raises SyncError (→ admin email) once retries run out."""
+    import requests
+    from games.worldcup.services import sync
+    from games.worldcup.services.sync import SyncError
+
+    with app.app_context():
+        app.config['FOOTBALL_DATA_API_KEY'] = 'k'
+        boom = requests.exceptions.ConnectionError('Address unavailable')
+        with patch.object(sync.time, 'sleep'), \
+             patch.object(sync.requests, 'get', side_effect=boom) as g:
+            with pytest.raises(SyncError):
+                sync._api_get('competitions/WC/matches')
+        assert sync.API_MAX_RETRIES > 1
+        assert g.call_count == sync.API_MAX_RETRIES  # every attempt was made
+
+
+def test_api_get_retries_5xx_then_succeeds(app):
+    """Transient 5xx is retried (server-side blip), unlike a permanent 4xx."""
+    from games.worldcup.services import sync
+
+    class _Resp:
+        def __init__(self, code): self.status_code = code; self.headers = {}
+        def json(self): return {'matches': []}
+
+    with app.app_context():
+        app.config['FOOTBALL_DATA_API_KEY'] = 'k'
+        with patch.object(sync.time, 'sleep'), \
+             patch.object(sync.requests, 'get', side_effect=[_Resp(503), _Resp(200)]) as g:
+            out = sync._api_get('competitions/WC/matches')
+        assert out == {'matches': []}
+        assert g.call_count == 2
+
+
+def test_api_get_does_not_retry_4xx(app):
+    """A permanent client error (e.g. bad key → 403) fails fast — no wasted retries."""
+    from games.worldcup.services import sync
+    from games.worldcup.services.sync import SyncError
+
+    class _Resp:
+        status_code = 403
+        headers = {}
+        def json(self): return {}
+
+    with app.app_context():
+        app.config['FOOTBALL_DATA_API_KEY'] = 'k'
+        with patch.object(sync.time, 'sleep'), \
+             patch.object(sync.requests, 'get', return_value=_Resp()) as g:
+            with pytest.raises(SyncError):
+                sync._api_get('competitions/WC/matches')
+        assert g.call_count == 1  # no retry on 4xx
+
+
 def _seed_group_pair(app):
     """Two teams + their group match shell, kickoff matching the API sample."""
     with app.app_context():
