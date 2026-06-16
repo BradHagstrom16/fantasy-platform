@@ -13,6 +13,8 @@ Auth: header X-Auth-Token. Free tier: 10 req/min, no daily cap.
 """
 import logging
 import os
+import random
+import time
 
 import requests
 from flask import current_app
@@ -26,6 +28,16 @@ logger = logging.getLogger(__name__)
 
 API_BASE_URL = 'https://api.football-data.org/v4'
 COMPETITION_CODE = 'WC'
+
+# Transient-failure resilience for the once-per-30-min timer (mirrors the Golf
+# sync's _make_request, games/golf/services/sync.py). A single network blip on
+# the droplet (DNS hiccup / ephemeral-port "address unavailable") or a 5xx
+# should be absorbed by retry rather than skipping the run and emailing an
+# alert — the failure self-heals within seconds. Only a *sustained* outage
+# (all attempts exhausted) raises SyncError. 4 attempts with capped exponential
+# backoff worst-cases well under the unit's TimeoutStartSec=5m.
+API_MAX_RETRIES = 4
+_RETRYABLE_STATUS = frozenset({429, 500, 502, 503, 504})
 
 # football-data.org stage string -> our WorldCupMatch.stage code.
 STAGE_MAP = {
@@ -54,25 +66,49 @@ class SyncError(Exception):
     """Raised when the football-data.org API is unreachable or misconfigured."""
 
 
-def _api_get(path: str, params: dict | None = None) -> dict:
-    """GET a football-data.org endpoint, returning parsed JSON. Raises SyncError."""
+def _api_get(path: str, params: dict | None = None,
+             retries: int = API_MAX_RETRIES) -> dict:
+    """GET a football-data.org endpoint, returning parsed JSON.
+
+    Retries transient failures (network errors, 429, 5xx) with capped
+    exponential backoff + jitter so a momentary blip on the droplet doesn't
+    skip the run and alarm the admin. A permanent client error (4xx other than
+    429, e.g. a bad key → 403) fails fast. Raises SyncError only when retries
+    are exhausted or the error is non-retryable.
+    """
     api_key = current_app.config.get('FOOTBALL_DATA_API_KEY', '')
     if not api_key:
         raise SyncError('FOOTBALL_DATA_API_KEY is not configured')
     url = f'{API_BASE_URL}/{path}'
-    try:
-        resp = requests.get(
-            url, headers={'X-Auth-Token': api_key}, params=params, timeout=30,
-        )
-    except Exception as exc:  # network error
-        raise SyncError(f'request to {path} failed: {exc}') from exc
-    if resp.status_code != 200:
-        raise SyncError(f'{path} returned HTTP {resp.status_code}')
-    # Defensive rate-limit logging (free tier = 10/min); back off if near zero.
-    remaining = resp.headers.get('X-Requests-Available-Minute')
-    if remaining is not None and remaining.isdigit() and int(remaining) <= 1:
-        logger.warning('football-data.org minute budget nearly exhausted (%s left)', remaining)
-    return resp.json()
+    backoff = 1.5
+    last_error = None
+    for attempt in range(1, retries + 1):
+        try:
+            resp = requests.get(
+                url, headers={'X-Auth-Token': api_key}, params=params, timeout=30,
+            )
+        except requests.RequestException as exc:  # transient network error: retry
+            last_error = f'request to {path} failed: {exc}'
+            logger.warning('football-data.org %s network error (attempt %s/%s): %s',
+                           path, attempt, retries, exc)
+        else:
+            if resp.status_code == 200:
+                # Defensive rate-limit logging (free tier = 10/min); back off if near zero.
+                remaining = resp.headers.get('X-Requests-Available-Minute')
+                if remaining is not None and remaining.isdigit() and int(remaining) <= 1:
+                    logger.warning('football-data.org minute budget nearly exhausted (%s left)', remaining)
+                return resp.json()
+            if resp.status_code not in _RETRYABLE_STATUS:
+                # Permanent client error — retrying won't help; surface immediately.
+                raise SyncError(f'{path} returned HTTP {resp.status_code}')
+            last_error = f'{path} returned HTTP {resp.status_code}'
+            logger.warning('football-data.org %s returned HTTP %s (attempt %s/%s)',
+                           path, resp.status_code, attempt, retries)
+        if attempt < retries:
+            sleep_for = min(60, backoff * (2 ** (attempt - 1)))
+            sleep_for *= (1 + random.uniform(-0.25, 0.25))
+            time.sleep(max(0.5, sleep_for))
+    raise SyncError(last_error or f'request to {path} failed after {retries} attempts')
 
 
 def _fifa_for_tla(tla: str | None) -> str | None:
