@@ -670,7 +670,7 @@ def test_review_scores_preselects_persisted_no_contest(app, client):
     fake_resp = Mock(status_code=200, headers={})
     fake_resp.json.return_value = [api_event]
 
-    with patch('games.cfb.services.score_fetcher.requests.get',
+    with patch('games.cfb.services.odds_api.requests.get',
                return_value=fake_resp):
         resp = client.get(f'/cfb/admin/week/{week.id}/fetch-scores')
 

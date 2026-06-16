@@ -8,8 +8,9 @@ fallback/NULL-spread surfacing, the DQ-6 manual-spread lock, the
 stuck-week alert in run_scores, ScoreFetcher matching, and the
 week short-label map.
 
-All Odds-API traffic is mocked at the requests boundary
-(games.cfb.services.automation.requests / ...score_fetcher.requests).
+All Odds-API traffic now flows through one client (games.cfb.services.odds_api),
+so it is mocked at that single boundary (games.cfb.services.odds_api.requests.get)
+regardless of which caller (automation or score_fetcher) issued the request.
 """
 import pytest
 from unittest.mock import Mock, patch
@@ -117,7 +118,7 @@ def _prep_setup(app, *teams):
 
 
 @patch('games.cfb.services.automation.send_platform_email', return_value=True)
-@patch('games.cfb.services.automation.requests.get')
+@patch('games.cfb.services.odds_api.requests.get')
 def test_run_setup_retries_lowest_orphan_week_before_advancing(
         mock_get, mock_send, app):
     """A 0-game week from a failed import is retried, not orphaned forever
@@ -138,7 +139,7 @@ def test_run_setup_retries_lowest_orphan_week_before_advancing(
 
 
 @patch('games.cfb.services.automation.send_platform_email', return_value=True)
-@patch('games.cfb.services.automation.requests.get')
+@patch('games.cfb.services.odds_api.requests.get')
 def test_run_setup_failed_orphan_retry_does_not_advance(
         mock_get, mock_send, app):
     """When the retry import also fails, the orphan stays the next target —
@@ -157,7 +158,7 @@ def test_run_setup_failed_orphan_retry_does_not_advance(
 
 
 @patch('games.cfb.services.automation.send_platform_email', return_value=True)
-@patch('games.cfb.services.automation.requests.get')
+@patch('games.cfb.services.odds_api.requests.get')
 def test_run_setup_zero_game_week_alerts_admin_and_never_activates(
         mock_get, mock_send, app):
     """§8.14: a 0-game week is never activated; the failure now also emails
@@ -178,7 +179,7 @@ def test_run_setup_zero_game_week_alerts_admin_and_never_activates(
 
 
 @patch('games.cfb.services.automation.send_platform_email', return_value=True)
-@patch('games.cfb.services.automation.requests.get')
+@patch('games.cfb.services.odds_api.requests.get')
 def test_run_setup_import_window_covers_thursday_through_wednesday(
         mock_get, mock_send, app):
     """§5.3: the import window must span the full Thu→Wed week (7 days),
@@ -200,7 +201,7 @@ def test_run_setup_import_window_covers_thursday_through_wednesday(
 
 
 @patch('games.cfb.services.automation.send_platform_email', return_value=True)
-@patch('games.cfb.services.automation.requests.get')
+@patch('games.cfb.services.odds_api.requests.get')
 def test_import_logs_skipped_untracked_events(mock_get, mock_send, app, caplog):
     """§5.4: events where neither team resolves are skipped WITH a log line
     (they were silently dropped)."""
@@ -221,7 +222,7 @@ def test_import_logs_skipped_untracked_events(mock_get, mock_send, app, caplog):
 
 
 @patch('games.cfb.services.automation.send_platform_email', return_value=True)
-@patch('games.cfb.services.automation.requests.get')
+@patch('games.cfb.services.odds_api.requests.get')
 def test_run_setup_alerts_on_unresolvable_team_names(mock_get, mock_send, app):
     """§5.4: a CfbTeam whose name no API event can resolve to (master-list
     drift / rename) is reported to the admin at sync time instead of going
@@ -238,7 +239,7 @@ def test_run_setup_alerts_on_unresolvable_team_names(mock_get, mock_send, app):
 
 
 @patch('games.cfb.services.automation.send_platform_email', return_value=True)
-@patch('games.cfb.services.automation.requests.get')
+@patch('games.cfb.services.odds_api.requests.get')
 def test_run_setup_applies_special_week_names_and_flags(
         mock_get, mock_send, app):
     """§8.14: special weeks get SEASON_SCHEDULE round names + playoff flags
@@ -301,7 +302,7 @@ def _seed_active_week_game(app, *, locked_at=None, spread=None):
 
 
 @patch('games.cfb.services.automation.send_platform_email', return_value=True)
-@patch('games.cfb.services.automation.requests.get')
+@patch('games.cfb.services.odds_api.requests.get')
 def test_spread_update_prefers_draftkings(mock_get, mock_send, app):
     """DraftKings wins over an earlier-listed bookmaker."""
     from games.cfb.services.automation import run_spread_update
@@ -318,7 +319,7 @@ def test_spread_update_prefers_draftkings(mock_get, mock_send, app):
 
 
 @patch('games.cfb.services.automation.send_platform_email', return_value=True)
-@patch('games.cfb.services.automation.requests.get')
+@patch('games.cfb.services.odds_api.requests.get')
 def test_spread_update_falls_back_to_bookmaker_with_spreads_market(
         mock_get, mock_send, app, caplog):
     """§5.5: when the first bookmaker has no spreads market, one that does
@@ -341,7 +342,7 @@ def test_spread_update_falls_back_to_bookmaker_with_spreads_market(
 
 
 @patch('games.cfb.services.automation.send_platform_email', return_value=True)
-@patch('games.cfb.services.automation.requests.get')
+@patch('games.cfb.services.odds_api.requests.get')
 def test_spread_update_skips_locked_games(mock_get, mock_send, app):
     """A locked spread is never overwritten by the cron (DQ-6 inverse)."""
     from datetime import datetime, timezone
@@ -359,7 +360,7 @@ def test_spread_update_skips_locked_games(mock_get, mock_send, app):
 
 
 @patch('games.cfb.services.automation.send_platform_email', return_value=True)
-@patch('games.cfb.services.automation.requests.get')
+@patch('games.cfb.services.odds_api.requests.get')
 def test_spread_update_reports_and_alerts_null_spread_games(
         mock_get, mock_send, app):
     """§5.5: a game left with no spread (no bookmaker carries one) is
@@ -381,7 +382,7 @@ def test_spread_update_reports_and_alerts_null_spread_games(
 
 
 @patch('games.cfb.services.automation.send_platform_email', return_value=True)
-@patch('games.cfb.services.automation.requests.get')
+@patch('games.cfb.services.odds_api.requests.get')
 def test_spread_update_missing_point_is_not_locked_as_zero(
         mock_get, mock_send, app):
     """§5: an outcome without a 'point' must not become a locked 0.0
@@ -505,7 +506,7 @@ def _seed_score_week(app, *, event_id='ev1'):
     return week, game
 
 
-@patch('games.cfb.services.score_fetcher.requests.get')
+@patch('games.cfb.services.odds_api.requests.get')
 def test_fetch_scores_matches_by_event_id(mock_get, app):
     """Primary match path: api_event_id, week-scoped."""
     from games.cfb.services.score_fetcher import ScoreFetcher
@@ -522,7 +523,7 @@ def test_fetch_scores_matches_by_event_id(mock_get, app):
     assert match['home_score'] == 28
 
 
-@patch('games.cfb.services.score_fetcher.requests.get')
+@patch('games.cfb.services.odds_api.requests.get')
 def test_fetch_scores_team_name_fallback_backfills_event_id(mock_get, app):
     """Fallback match path: API full names → short names; applying the
     result saves the event id for future runs."""
