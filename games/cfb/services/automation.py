@@ -9,7 +9,6 @@ import logging
 from datetime import datetime, timedelta, timezone
 
 from zoneinfo import ZoneInfo
-import requests
 from flask import current_app
 
 from utils.email import send_platform_email
@@ -19,6 +18,7 @@ from games.cfb.models import CfbTeam, CfbWeek, CfbGame, CfbEnrollment, CfbPick
 from games.cfb.constants import (
     API_BASE_URL, TEAM_NAME_MAP, SHORT_TO_API, SEASON_SCHEDULE,
 )
+from games.cfb.services.odds_api import odds_api_get
 from games.cfb.services.score_fetcher import ScoreFetcher
 from games.cfb.utils import deadline_has_passed, get_current_time, make_aware
 
@@ -159,7 +159,7 @@ def _import_games_for_week(week, start_date, end_date):
 
     try:
         url = f"{API_BASE_URL}/events"
-        response = requests.get(url, params=params, timeout=30)
+        response = odds_api_get(url, params=params)
         if response.status_code != 200:
             logger.error("Events API returned status %d", response.status_code)
             return 0
@@ -379,7 +379,7 @@ def run_spread_update():
 
     try:
         url = f"{API_BASE_URL}/odds"
-        response = requests.get(url, params=params, timeout=30)
+        response = odds_api_get(url, params=params)
         if response.status_code != 200:
             return {'status': 'error', 'details': f'API returned status {response.status_code}'}
         api_events = response.json()

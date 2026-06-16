@@ -7,13 +7,13 @@ and auto-processes completed weeks.
 
 import logging
 
-import requests
 from flask import current_app
 
 from extensions import db
 from games.cfb.models import CfbWeek, CfbGame, CfbTeam
 from games.cfb.constants import API_BASE_URL, TEAM_NAME_MAP
 from games.cfb.services.game_logic import process_week_results
+from games.cfb.services.odds_api import odds_api_get
 from games.cfb.utils import deadline_has_passed, make_aware
 
 logger = logging.getLogger(__name__)
@@ -55,7 +55,7 @@ class ScoreFetcher:
         }
 
         try:
-            response = requests.get(self.scores_url, params=params, timeout=30)
+            response = odds_api_get(self.scores_url, params=params)
             if response.status_code != 200:
                 return {'error': f'API returned status {response.status_code}'}
             api_events = response.json()
