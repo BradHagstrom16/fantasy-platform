@@ -171,12 +171,13 @@
         </tr>
       </thead>
       <tbody>
-        {# Dense rank — tied scores share a rank (1, 2, 2, 3 not 1, 2, 2, 4).
-           CLAUDE.md: dense rank everywhere across WC ranking surfaces. #}
+        {# Competition rank — tied scores share a rank, the next distinct score
+           gaps by the size of the tie (1, 1, 3 not 1, 1, 2).
+           CLAUDE.md: competition rank everywhere across WC ranking surfaces. #}
         {% set ns = namespace(rank=0, prev_score=None) %}
         {% for e in top_5_preview %}
           {% if e.total_score != ns.prev_score %}
-            {% set ns.rank = ns.rank + 1 %}
+            {% set ns.rank = loop.index %}
           {% endif %}
           <tr {% if e.user_id == enrollment.user_id %}class="row-current-user"{% endif %}>
             <td><span class="wc-numeral">{{ ns.rank }}</span></td>

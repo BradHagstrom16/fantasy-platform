@@ -566,17 +566,18 @@ def _context_post(user: Any) -> dict:
     top_3_final = all_enrollments[:3]
     total_count = len(all_enrollments)
 
-    # Dense rank — tied scores share a rank (CLAUDE.md "dense rank everywhere":
+    # Competition rank — tied scores share a rank, the next distinct score
+    # gaps by the size of the tie (CLAUDE.md "competition rank everywhere":
     # parity with routes.leaderboard() / compute_rank_neighbors).
     your_final_rank = None
-    dense_rank = 0
+    comp_rank = 0
     prev_score = None
-    for e in all_enrollments:
+    for i, e in enumerate(all_enrollments):
         if e.total_score != prev_score:
-            dense_rank += 1
+            comp_rank = i + 1
             prev_score = e.total_score
         if e.id == enrollment.id:
-            your_final_rank = dense_rank
+            your_final_rank = comp_rank
             break
 
     # Climbed-N — first snapshot vs final rank (positive = climbed, since a

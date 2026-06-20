@@ -290,11 +290,11 @@ def _context_live(user, enrollment) -> dict:
 
     dossier = None
     if is_enrolled:
-        # Dense rank + lead deltas via the canonical helper. CLAUDE.md
-        # mandates dense rank everywhere ("tied scores share a rank, the
-        # next distinct score is rank + 1") — the prior positional
-        # `enumerate(...)+1` rendered competition rank, which diverged
-        # from the WC hub's leaderboard for any tied-score pair.
+        # Competition rank + lead deltas via the canonical helper. CLAUDE.md
+        # mandates competition rank everywhere ("tied scores share a rank, the
+        # next distinct score gaps by the size of the tie") — derived once in
+        # compute_rank_neighbors() so the lounge stays in lockstep with the WC
+        # hub leaderboard for any tied-score pair.
         neighbors = compute_rank_neighbors(enrollment.id)
         user_rank = neighbors['rank']
 
@@ -401,21 +401,21 @@ def _context_live(user, enrollment) -> dict:
         }
 
     # Top 3 + you row (if user is enrolled and outside top 3).
-    # Dense rank — tied scores share a rank, next distinct score
-    # advances by 1 (no gap). Matches WC hub leaderboard idiom
-    # (CLAUDE.md "Dense rank everywhere").
+    # Competition rank — tied scores share a rank, the next distinct score
+    # gaps by the size of the tie (1, 1, 3). Matches WC hub leaderboard idiom
+    # (CLAUDE.md "Competition rank everywhere").
     top_3_plus_you = []
-    _dense_rank = 0
+    _comp_rank = 0
     _prev_score = None
-    for enr in top_3:
+    for i, enr in enumerate(top_3):
         if enr.total_score != _prev_score:
-            _dense_rank += 1
+            _comp_rank = i + 1
         _prev_score = enr.total_score
         top_3_plus_you.append({
-            'rank': _dense_rank,
+            'rank': _comp_rank,
             'enrollment': enr,
             'is_you': is_enrolled and enr.id == enrollment.id,
-            'tagline': _tagline_for(_dense_rank, None, _alive_count(enr.id), is_you=False),
+            'tagline': _tagline_for(_comp_rank, None, _alive_count(enr.id), is_you=False),
         })
     if is_enrolled and dossier and dossier['rank'] and dossier['rank'] > 3:
         top_3_plus_you.append({
