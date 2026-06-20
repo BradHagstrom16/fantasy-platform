@@ -79,12 +79,14 @@ def test_compute_rank_neighbors_for_last(app):
 
 def test_compute_rank_neighbors_handles_ties(app):
     with app.app_context():
-        # Two enrollments tied at 40 — both rank 2 (dense rank).
-        ids = _seed_enrollments([50.0, 40.0, 40.0])
-        r1 = compute_rank_neighbors(ids[1])
-        r2 = compute_rank_neighbors(ids[2])
-        assert r1['rank'] == 2
-        assert r2['rank'] == 2
+        # Competition rank: [50, 40, 40, 30] -> ranks 1, 2, 2, 4. The two
+        # tied at 40 share rank 2; the next distinct score (30) gaps to 4,
+        # NOT dense-rank 3. Locks the competition-rank invariant.
+        ids = _seed_enrollments([50.0, 40.0, 40.0, 30.0])
+        assert compute_rank_neighbors(ids[0])['rank'] == 1
+        assert compute_rank_neighbors(ids[1])['rank'] == 2
+        assert compute_rank_neighbors(ids[2])['rank'] == 2
+        assert compute_rank_neighbors(ids[3])['rank'] == 4
 
 
 def test_compute_rank_neighbors_unknown_id_raises(app):

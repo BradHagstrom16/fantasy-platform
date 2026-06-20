@@ -382,8 +382,17 @@ def snapshot_ranks(backfill: int):
             .all()
         )
 
+        # Competition rank — tied scores share a rank, the next distinct
+        # score gaps by the size of the tie (parity with the displayed
+        # leaderboard / compute_rank_neighbors). Enrollments are ordered by
+        # total_score DESC, so the first index carrying a score is its rank.
         rows_added = 0
-        for rank, enr in enumerate(enrollments, start=1):
+        current_rank = 0
+        prev_score = None
+        for i, enr in enumerate(enrollments):
+            if enr.total_score != prev_score:
+                current_rank = i + 1
+            prev_score = enr.total_score
             existing = WorldCupRankSnapshot.query.filter_by(
                 enrollment_id=enr.id, captured_date=target_date
             ).first()
@@ -392,7 +401,7 @@ def snapshot_ranks(backfill: int):
             db.session.add(WorldCupRankSnapshot(
                 enrollment_id=enr.id,
                 captured_date=target_date,
-                rank=rank,
+                rank=current_rank,
                 total_score=enr.total_score,
             ))
             rows_added += 1

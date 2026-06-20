@@ -421,8 +421,8 @@ def test_desktop_points_carry_hierarchy_classes(client, app):
     assert b'leaderboard-rank-ord' in resp.data
 
 
-def test_tied_label_renders_for_shared_dense_rank(client, app, monkeypatch):
-    """Dense-rank ties say 'tied' out loud so three '#1' rows aren't ambiguous.
+def test_tied_label_renders_for_shared_rank(client, app, monkeypatch):
+    """Shared-rank ties say 'tied' out loud so three '#1' rows aren't ambiguous.
 
     Gated to non-pre states: pre-deadline everyone sits at 0 and the label
     would fire on every row, so it only carries signal once play starts.

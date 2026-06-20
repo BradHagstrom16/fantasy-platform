@@ -7,7 +7,7 @@ Bosnia") across every roster at once. Locks:
   (including enrolled members), admin preview allowed.
 - Full ``display_name`` strings render in the DOM post-deadline (the Ctrl-F
   contract — no FIFA-code-only grids, no collapsed accordions).
-- Dense rank parity with the leaderboard idiom.
+- Competition rank parity with the leaderboard idiom.
 - Eliminated picks carry a text "Out" label (never color alone).
 - Avatar precedes the display name (platform standings integration point).
 """
@@ -182,8 +182,9 @@ def test_rosters_avatar_precedes_name(client, session):
     assert card.group(1).index('leaderboard-avatar') < card.group(1).index('alice')
 
 
-def test_rosters_dense_rank(client, session):
-    """Tied scores share a rank; the next distinct score is rank+1 (no gap)."""
+def test_rosters_competition_rank(client, session):
+    """Tied scores share a rank; the next distinct score gaps by the tie size
+    (competition rank 1, 1, 3 — not dense 1, 1, 2)."""
     team = _make_team(session, 'ARG', 'Argentina')
     users = [_make_user(session, f'p{i}') for i in range(3)]
     scores = [10.0, 10.0, 5.0]
@@ -196,8 +197,8 @@ def test_rosters_dense_rank(client, session):
         resp = client.get('/worldcup/rosters')
     html = resp.data.decode()
     assert html.count('title="Rank 1 of 3"') == 2
-    assert 'title="Rank 2 of 3"' in html
-    assert 'title="Rank 3 of 3"' not in html
+    assert 'title="Rank 3 of 3"' in html
+    assert 'title="Rank 2 of 3"' not in html
 
 
 def test_rosters_eliminated_pick_carries_out_label(client, session):

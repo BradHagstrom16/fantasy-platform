@@ -6768,7 +6768,7 @@ body.game-worldcup .tier-card-5 .tier-card-header { background: linear-gradient(
   .lb-flag:focus-visible { transform: none; }
 }
 
-/* "tied" says the dense-rank shared-rank story out loud (three players at
+/* "tied" says the shared-rank story out loud (three players at
    "1" otherwise read as ambiguous). Editorial micro-label, not an alert. */
 .leaderboard-tied {
   font-family: 'Teko', sans-serif;

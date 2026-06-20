@@ -539,17 +539,16 @@ def test_live_home_renders_roster_ledger(app, client):
         assert 'wc-leverage-bar' not in html
 
 
-def test_context_live_dense_rank_for_tied_scores(app):
-    """Lounge live dossier + leaderboard preview both use dense rank.
+def test_context_live_competition_rank_for_tied_scores(app):
+    """Lounge live dossier + leaderboard preview both use competition rank.
 
-    Locks the Critique 2026-05-15 P0-1 fix: the prior `enumerate(...)+1`
-    rendered competition rank, which diverged from the WC hub's dense
-    rank for any tied-score pair. CLAUDE.md "Dense rank everywhere"
-    invariant — tied scores share a rank, the next distinct score
-    advances by 1 (no gap).
+    CLAUDE.md "Competition rank everywhere" invariant — tied scores share a
+    rank, the next distinct score gaps by the size of the tie (1, 1, 3 — not
+    dense 1, 1, 2). Must stay in lockstep with the WC hub leaderboard and
+    compute_rank_neighbors().
 
-    Seeds three enrollments where the top two tie at 150 pts: dense
-    rank → 1, 1, 2 (not the prior 1, 2, 3).
+    Seeds three enrollments where the top two tie at 150 pts: competition
+    rank → 1, 1, 3.
     """
     from core.main.home_context import build_home_context
     with app.app_context(), patch.dict(os.environ, {
@@ -564,18 +563,18 @@ def test_context_live_dense_rank_for_tied_scores(app):
         _make_enrollment(u_third, picks_submitted=True, total_score=50.0)
 
         # Viewer is the tied user — their dossier rank should equal the
-        # first user's rank (both share rank 1 under dense rank).
+        # first user's rank (both share rank 1).
         ctx = build_home_context(u_tied, 'live')
         assert ctx['dossier']['rank'] == 1, (
-            'Tied-leader pair must share rank 1 under dense rank '
-            '(prior competition rank rendered the second tied row as #2).'
+            'Tied-leader pair must share rank 1.'
         )
 
-        # Top-3-plus-you must also render dense rank.
+        # Top-3-plus-you must render competition rank (1, 1, 3).
         ranks = [row['rank'] for row in ctx['top_3_plus_you']]
-        assert ranks == [1, 1, 2], (
-            f'top_3_plus_you must use dense rank, got {ranks}. '
-            'Tied scores share a rank; the next distinct score is rank+1.'
+        assert ranks == [1, 1, 3], (
+            f'top_3_plus_you must use competition rank, got {ranks}. '
+            'Tied scores share a rank; the next distinct score gaps by the '
+            'size of the tie.'
         )
 
         # Viewer at rank 1 + leader at rank 1 → lead_delta_up is None

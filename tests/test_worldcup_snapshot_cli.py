@@ -103,7 +103,11 @@ def test_snapshot_negative_backfill_rejected(app):
 
 
 def test_snapshot_tie_ordering_deterministic(app):
-    """3 tied-score enrollments produce identical (eid, rank) ordering across runs."""
+    """3 tied-score enrollments produce identical (eid, rank) ordering across runs.
+
+    Under competition rank, tied scores share a rank, so all three land at
+    rank 1 (parity with the displayed leaderboard / compute_rank_neighbors).
+    """
     from games.worldcup.models import WorldCupRankSnapshot
     with app.app_context():
         e1 = _make_enrollment(total_score=10.0, username='alice')
@@ -129,5 +133,5 @@ def test_snapshot_tie_ordering_deterministic(app):
         )
 
         assert first == second
-        # And the ordering is by id ascending (since all scores tied)
-        assert first == sorted([(e1.id, 1), (e2.id, 2), (e3.id, 3)])
+        # All scores tied → competition rank gives every row rank 1.
+        assert first == sorted([(e1.id, 1), (e2.id, 1), (e3.id, 1)])

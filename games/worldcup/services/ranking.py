@@ -6,7 +6,8 @@ Pure read-only ranking computations shared across surfaces:
 - leaderboard.html "Your Standing" block (Plan 3)
 - worldcup home _live state dossier (Plan 4, optional reuse)
 
-Ranks are dense — tied scores share a rank. The sort order matches
+Ranks are competition rank — tied scores share a rank, the next distinct
+score gaps by the size of the tie (1, 1, 3). The sort order matches
 games/worldcup/routes.leaderboard():
     total_score DESC, usa_goals_guess ASC.
 """
@@ -33,7 +34,8 @@ def compute_rank_neighbors(enrollment_id: int) -> RankNeighbors:
     """Return rank + points + lead deltas for one enrollment in the SEASON_YEAR pool.
 
     Sort matches the public leaderboard (total_score DESC, usa_goals_guess ASC).
-    Ranks are dense: tied total_scores share the same rank.
+    Ranks are competition rank: tied total_scores share a rank, the next
+    distinct score gaps by the size of the tie.
 
     Raises ValueError if enrollment_id is not found in the SEASON_YEAR pool.
     """
@@ -58,9 +60,12 @@ def compute_rank_neighbors(enrollment_id: int) -> RankNeighbors:
 
     target = enrollments[target_idx]
 
-    # Dense rank: count distinct scores strictly greater than target's, plus 1.
-    rank = 1 + len(
-        {e.total_score for e in enrollments if e.total_score > target.total_score}
+    # Competition rank: count enrollments scoring strictly higher, plus 1.
+    # Tied scores share a rank; the next distinct score gaps by the size of
+    # the tie (1, 1, 3, 4 — not dense 1, 1, 2, 3). CLAUDE.md "Competition
+    # rank everywhere": this must match routes.leaderboard().
+    rank = 1 + sum(
+        1 for e in enrollments if e.total_score > target.total_score
     )
 
     leader_points = enrollments[0].total_score

@@ -69,8 +69,13 @@ def _result_for_pick(pick: WorldCupPick, match: WorldCupMatch) -> str:
     return 'lost'
 
 
-def _dense_rank(enrollment: WorldCupEnrollment) -> tuple[int, int]:
-    """(rank, total_players) using dense rank for the active season."""
+def _competition_rank(enrollment: WorldCupEnrollment) -> tuple[int, int]:
+    """(rank, total_players) using competition rank for the active season.
+
+    rank = 1 + count of enrollments scoring strictly higher, so tied scores
+    share a rank and the next distinct score gaps by the size of the tie
+    (1, 1, 3) — parity with compute_rank_neighbors() / routes.leaderboard().
+    """
     higher = (
         db.session.query(func.count(WorldCupEnrollment.id))
         .filter(
@@ -244,7 +249,7 @@ def send_daily_digests() -> dict:
 
         total_yesterday = sum(r['points_earned'] for r in match_results)
         total_yesterday_str = _fmt_pts(total_yesterday)
-        rank, _ = _dense_rank(enrollment)
+        rank, _ = _competition_rank(enrollment)
         rank_delta = compute_rank_delta(enrollment, window_days=1)
 
         try:

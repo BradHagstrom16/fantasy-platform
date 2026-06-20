@@ -444,20 +444,21 @@ def leaderboard():
         .all()
     )
 
-    # Dense rank: tied scores share a rank and the next distinct score is
-    # rank+1 (no gap). Matches compute_rank_neighbors() so a player's rank
-    # on the board agrees with /worldcup/leaderboard/<id> hero rank.
+    # Competition rank: tied scores share a rank, the next distinct score
+    # gaps by the size of the tie (1, 1, 3 — not dense 1, 1, 2). Matches
+    # compute_rank_neighbors() so a player's rank on the board agrees with
+    # /worldcup/leaderboard/<id> hero rank.
     ranked = []
     current_rank = 0
     prev_score = None
-    for e in enrollments:
+    for i, e in enumerate(enrollments):
         if e.total_score != prev_score:
-            current_rank += 1
+            current_rank = i + 1
         ranked.append({'rank': current_rank, 'enrollment': e})
         prev_score = e.total_score
 
-    # Mark shared ranks so the board can say "tied" out loud — dense rank
-    # otherwise surfaces three players as "1" with no explanation.
+    # Mark shared ranks so the board can say "tied" out loud — competition
+    # rank otherwise surfaces three players as "1" with no explanation.
     rank_counts = Counter(item['rank'] for item in ranked)
     for item in ranked:
         item['tied'] = rank_counts[item['rank']] > 1
@@ -930,14 +931,14 @@ def rosters():
         .all()
     )
 
-    # Dense rank — same idiom as leaderboard() so a player's rank here
+    # Competition rank — same idiom as leaderboard() so a player's rank here
     # agrees with the board and with compute_rank_neighbors().
     ranked = []
     current_rank = 0
     prev_score = None
-    for e in enrollments:
+    for i, e in enumerate(enrollments):
         if e.total_score != prev_score:
-            current_rank += 1
+            current_rank = i + 1
         ranked.append({'rank': current_rank, 'enrollment': e})
         prev_score = e.total_score
 
