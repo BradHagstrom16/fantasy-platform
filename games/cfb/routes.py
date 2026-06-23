@@ -179,6 +179,16 @@ def index():
         key=lambda e: e.get_display_name().lower(),
     )
 
+    # Current user's standing position among active survivors (the sorted
+    # `enrollments` order is the displayed rank; surfaced in the weekly-call
+    # status row). None when the viewer is anonymous or eliminated.
+    current_user_rank = None
+    if current_user.is_authenticated:
+        for idx, e in enumerate(enrollments, start=1):
+            if e.user_id == current_user.id:
+                current_user_rank = idx
+                break
+
     # Championship detection
     champion_picks = []
     champion_correct = 0
@@ -219,6 +229,7 @@ def index():
         user_pick_spread=user_pick_spread,
         enrollments=enrollments,
         eliminated_enrollments=eliminated_enrollments,
+        current_user_rank=current_user_rank,
         week_picks=week_picks,
         show_picks=show_picks,
         champion_picks=champion_picks,

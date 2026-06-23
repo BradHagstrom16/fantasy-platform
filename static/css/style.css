@@ -3700,13 +3700,12 @@ body.game-cfb .alert-warning { background: rgba(243,239,230,.05); border-color: 
 
 .table-cfb > tbody > tr:hover { background: rgba(197,5,12,.04); }
 
-/* Current user row highlight (CFB-specific tint) */
+/* Current user row highlight — crimson tint only (the sanctioned current-user
+   emphasis, games/cfb/DESIGN.md S2). No side-stripe (the platform absolute ban);
+   the row carries a structural .cfb-you-tag so identity does not rest on the
+   tint alone. */
 .table-cfb .row-current-user > td {
-  background: rgba(197,5,12,.06) !important;
-  border-left: 3px solid var(--game-primary);
-}
-.table-cfb .row-current-user > td:not(:first-child) {
-  border-left: none;
+  background: rgba(197,5,12,.12) !important;
 }
 
 /* Lives indicator — filled/hollow dots */
@@ -3751,7 +3750,11 @@ body.game-cfb .alert-warning { background: rgba(243,239,230,.05); border-color: 
   pointer-events: none;
 }
 
-/* Spread badge — inline chip */
+/* Spread badge — the quiet signature mechanic (games/cfb/DESIGN.md S4). The
+   spread is editorial DATA, not identity/interaction, so the default chip is
+   neutral midnight + hairline (NOT crimson-tinted -- crimson stays concentrated
+   at the hero anchor + the weekly decision, the Crimson-Pressure + Quiet-Spread
+   Rules). Only the survivor-state variants shift color. */
 .spread-badge {
   display: inline-block;
   font-family: 'Teko', sans-serif;
@@ -3760,17 +3763,24 @@ body.game-cfb .alert-warning { background: rgba(243,239,230,.05); border-color: 
   letter-spacing: .03em;
   padding: .2em .55em;
   border-radius: .25rem;
-  background: rgba(197,5,12,.08);
-  color: var(--text-secondary);
+  /* the darker surface (not raised) keeps the chip quiet AND lifts the
+     survivor-state variants: lost-red clears AA on surface (4.55:1) where it
+     was borderline on raised. The hairline defines the chip on the card. */
+  background: var(--cfb-surface);
+  border: 1px solid var(--cfb-hairline);
+  color: var(--cfb-bone-muted);
   vertical-align: middle;
 }
 .spread-badge.favorable { color: var(--cfb-survived); }
 .spread-badge.unfavorable { color: var(--cfb-lost-life); }
 
-/* Outcome badges */
+/* Outcome / result badges — high-contrast survivor-state chips (no literal #fff,
+   the no-#fff rule). Survived/lost sit dark-on-state (the bright state colors
+   need dark ink to clear AA -- white-on-survived-green fails); eliminated ash
+   carries warm-white. */
 .badge-survived {
   background: var(--cfb-survived);
-  color: #fff;
+  color: var(--cfb-canvas);
   font-family: 'Teko', sans-serif;
   font-weight: 600;
   letter-spacing: .05em;
@@ -3778,7 +3788,7 @@ body.game-cfb .alert-warning { background: rgba(243,239,230,.05); border-color: 
 }
 .badge-lost-life {
   background: var(--cfb-lost-life);
-  color: #fff;
+  color: var(--cfb-canvas);
   font-family: 'Teko', sans-serif;
   font-weight: 600;
   letter-spacing: .05em;
@@ -3786,7 +3796,7 @@ body.game-cfb .alert-warning { background: rgba(243,239,230,.05); border-color: 
 }
 .badge-eliminated {
   background: var(--cfb-eliminated);
-  color: #fff;
+  color: var(--cfb-white);
   font-family: 'Teko', sans-serif;
   font-weight: 500;
   letter-spacing: .04em;
@@ -3834,11 +3844,15 @@ body.game-cfb .alert-warning { background: rgba(243,239,230,.05); border-color: 
   background-size: 24px 24px;
   pointer-events: none;
 }
-.championship-hero .trophy-icon {
-  font-size: 4rem;
+/* Ceremony by reduction (games/cfb/DESIGN.md S4): the lights stay on, the room
+   goes quiet, one survivor remains. A restrained crimson eyebrow ("ONE REMAINS")
+   replaces the trophy-overload emoji -- conclusive, not triumphant, no gold. */
+.championship-hero .cfb-eyebrow {
   display: block;
   margin-bottom: 1rem;
-  animation: fadeInScale .6s ease both;
+  color: rgba(243,239,230,.85);
+  position: relative;
+  animation: fadeInUp .5s ease both;
 }
 .championship-hero .champion-name {
   font-family: 'Teko', sans-serif;
@@ -3846,7 +3860,7 @@ body.game-cfb .alert-warning { background: rgba(243,239,230,.05); border-color: 
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: .04em;
-  color: #fff;
+  color: var(--cfb-white);
   margin-bottom: .5rem;
   animation: fadeInUp .5s .15s ease both;
   position: relative;
@@ -3854,14 +3868,14 @@ body.game-cfb .alert-warning { background: rgba(243,239,230,.05); border-color: 
 .championship-hero .champion-subtitle {
   font-family: 'Newsreader', Georgia, serif;
   font-size: 1.15rem;
-  color: rgba(255,255,255,.6);
+  color: rgba(243,239,230,.66);
   animation: fadeInUp .5s .25s ease both;
   position: relative;
 }
 .championship-hero .prize-badge {
   display: inline-block;
   background: var(--game-primary);
-  color: #fff;
+  color: var(--cfb-white);
   font-family: 'Teko', sans-serif;
   font-size: 1.3rem;
   font-weight: 700;
@@ -3880,10 +3894,131 @@ body.game-cfb .alert-warning { background: rgba(243,239,230,.05); border-color: 
   box-shadow: var(--shadow-sm);
 }
 
-/* CFB pick CTA banner */
+/* CFB pick CTA banner — the weekly call (games/cfb/DESIGN.md S4 .cfb-pick-cta):
+   the strongest routine CTA in the room. Sits on a raised midnight (elevation =
+   the lead surface) under a crimson top rule. */
 .cfb-pick-cta {
   border-top: 3px solid var(--game-primary);
-  background: linear-gradient(135deg, rgba(197,5,12,.04) 0%, var(--bg-card) 100%);
+  background: linear-gradient(135deg, rgba(197,5,12,.05) 0%, var(--cfb-raised) 100%);
+}
+
+/* ============================================================
+   A2 — Hub / standings per-screen polish (impeccable critique 2026-06-23)
+   The .cfb-eyebrow primitive + hero survivor-count + weekly-call status row.
+   Builds survivor hierarchy through type / space / contrast on the A2.0 dark
+   substrate, crimson concentrated at the hero identity anchor + the weekly
+   decision (games/cfb/DESIGN.md S3 typography, S4 components).
+   ============================================================ */
+
+/* Contextual-label primitive (the analog to .wc-eyebrow): small uppercase Teko
+   metadata above a headline -- week, deadline, survivor count, status. Default
+   is a bone value calibrated for midnight; the one variant carries active /
+   competitive signal. CFB adds NO gold eyebrow variant (the Crimson-Ceremony
+   Rule). */
+.cfb-eyebrow {
+  display: inline-block;
+  font-family: 'Teko', sans-serif;
+  font-size: .8rem;
+  font-weight: 500;
+  letter-spacing: .15em;
+  text-transform: uppercase;
+  color: var(--cfb-bone-muted);
+}
+/* Active-signal variant. Crimson-bright clears AA only at large/bold sizes on
+   midnight (the crimson-as-text rule, games/cfb/DESIGN.md S2) -- reserve it for
+   sizeable active labels (a current-leader callout, a deadline banner), never a
+   small routine eyebrow, where bone-muted carries the metadata instead. */
+.cfb-eyebrow-crimson { color: var(--cfb-crimson-bright); }
+
+/* Hero: the platform .page-hero gradient is the single sanctioned crimson
+   identity anchor. Give it survivor substance so the crimson reads as backdrop,
+   not wallpaper -- eyebrow context, a Survivor-voice H1, and the survivor count
+   (the "who is left standing?" answer) in heavy Teko numerals. The eyebrow lifts
+   to bone @ .85 to clear the gradient (parallels the WC hero-eyebrow lift). */
+.cfb-hero .cfb-eyebrow { display: block; margin-bottom: .7rem; color: rgba(243,239,230,.85); }
+.cfb-hero-field {
+  margin: 1.1rem 0 0;
+  font-family: 'Newsreader', Georgia, serif;
+  font-size: 1.05rem;
+  /* bone @ .92 matches the A2.0 .page-hero .lead worst-corner lift: the last
+     word ("cut") sits at gradient ~92% (near full crimson) on narrow mobile,
+     where .82 lands 4.3:1 (sub-AA) and .92 clears it (5.2:1). */
+  color: rgba(243,239,230,.92);
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: .35rem .85rem;
+}
+.cfb-hero-field .cfb-count {
+  font-family: 'Teko', sans-serif;
+  font-weight: 600;
+  font-size: 2.4rem;
+  line-height: .85;
+  color: var(--cfb-white);
+  margin-right: .05rem;
+}
+.cfb-hero-field .cfb-count-cut { color: rgba(243,239,230,.68); }
+.cfb-hero-field-sep { color: rgba(243,239,230,.38); }
+
+/* Weekly call status row: leads with the player's survivor status (am I alive --
+   lives, rank, cumulative spread) before the decision (what's my pick). Numbers
+   carry the tension (games/cfb/DESIGN.md S3). */
+.cfb-status-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .3rem 1.6rem;
+  margin: .85rem 0 1.1rem;
+  padding-bottom: 1.1rem;
+  border-bottom: 1px solid var(--cfb-hairline);
+}
+.cfb-status-item { display: inline-flex; align-items: baseline; gap: .45rem; }
+.cfb-status-item .lives-indicator { align-self: center; }
+.cfb-status-num {
+  font-family: 'Teko', sans-serif;
+  font-weight: 600;
+  font-size: 1.6rem;
+  line-height: 1;
+  color: var(--cfb-white);
+}
+.cfb-status-num .cfb-status-total { font-size: 1rem; color: var(--cfb-bone-muted); }
+.cfb-status-label {
+  font-family: 'Teko', sans-serif;
+  font-size: .82rem;
+  font-weight: 500;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  color: var(--cfb-bone-muted);
+}
+.cfb-deadline {
+  margin-bottom: 1rem;
+  font-family: 'Newsreader', Georgia, serif;
+  color: var(--cfb-bone-muted);
+}
+.cfb-deadline strong { color: var(--cfb-bone); font-weight: 600; }
+.cfb-eliminated-note {
+  margin-bottom: 0;
+  font-family: 'Newsreader', Georgia, serif;
+  color: var(--cfb-bone-muted);
+}
+
+/* Current-user identification that does not lean on the crimson tint alone
+   (survivor identity by structure + label, games/cfb/DESIGN.md S5). A crimson
+   FILL with bone text -- the sanctioned current-user crimson, and bone-on-crimson
+   clears AA where crimson-as-small-text would not. */
+.cfb-you-tag {
+  display: inline-block;
+  margin-left: .5rem;
+  padding: .04em .45em;
+  font-family: 'Teko', sans-serif;
+  font-size: .72rem;
+  font-weight: 600;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--cfb-bone);
+  background: var(--cfb-crimson);
+  border-radius: .2rem;
+  vertical-align: middle;
 }
 
 /* World Cup overrides */

@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Standings — CFB Survivor{% endblock %}
+{% block title %}Standings · CFB Survivor Pool{% endblock %}
 
 {% block content %}
 
@@ -9,7 +9,7 @@
    ═══════════════════════════════════════════════════════════════ #}
 
 <div class="championship-hero animate-in">
-    <span class="trophy-icon">🏆</span>
+    <span class="cfb-eyebrow">One Remains</span>
     <span class="champion-name"><span class="me-2">{{ enrollments[0].user.get_avatar() }}</span>{{ enrollments[0].get_display_name() }}</span>
     <span class="champion-subtitle">CFB Survivor Pool Champion</span>
     <p>Outlasting {{ eliminated_enrollments|length }} competitors through {{ weeks_played }} weeks of college football.</p>
@@ -135,11 +135,14 @@
    REGULAR SEASON STANDINGS
    ═══════════════════════════════════════════════════════════════ #}
 
-<div class="page-hero">
+<div class="page-hero cfb-hero">
     <div class="hero-glow"></div>
     <div class="container">
-        <h1>CFB Survivor Pool</h1>
-        <p class="lead">Standings</p>
+        <span class="cfb-eyebrow">Under the Lights</span>
+        <h1>The Survivors</h1>
+        <p class="cfb-hero-field">
+            <span class="cfb-count">{{ enrollments|length }}</span> still standing{% if eliminated_enrollments %}<span class="cfb-hero-field-sep" aria-hidden="true">&middot;</span><span class="cfb-count cfb-count-cut">{{ eliminated_enrollments|length }}</span> cut{% endif %}
+        </p>
     </div>
 </div>
 
@@ -150,9 +153,9 @@
             {# Login / Register CTA #}
             {% if not current_user.is_authenticated %}
             <div class="text-center mb-4 animate-in">
-                <a href="{{ url_for('auth.login') }}" class="btn btn-game btn-lg me-2">Login</a>
-                <a href="{{ url_for('auth.register') }}" class="btn btn-warning btn-lg">Register</a>
-                <p class="mt-2 text-muted">Login or register to make your picks.</p>
+                <a href="{{ url_for('auth.login') }}" class="btn btn-game btn-lg me-2">Log In</a>
+                <a href="{{ url_for('auth.register') }}" class="btn btn-outline-light btn-lg">Register</a>
+                <p class="mt-3 text-muted">Log in or register to hold your two lives.</p>
             </div>
             {% endif %}
 
@@ -165,30 +168,50 @@
                 </div>
                 {% endif %}
 
-                {# Current Week Status Card #}
+                {# Weekly call: your status, then your decision #}
                 <div class="card cfb-pick-cta mb-4 animate-in stagger-2">
                     <div class="card-body">
-                        <h5>{{ get_week_display_name(current_week) }}</h5>
-                        <p class="text-muted mb-2">Deadline: {{ format_deadline(current_week.deadline) }}</p>
+                        <span class="cfb-eyebrow">{{ get_week_display_name(current_week) }}</span>
+                        <p class="cfb-deadline">Picks lock <strong>{{ format_deadline(current_week.deadline) }}</strong></p>
 
                         {% if current_user.is_authenticated and cfb_enrollment %}
                             {% if cfb_enrollment.is_eliminated %}
-                                <div class="alert alert-danger mb-0">
-                                    <strong>You have been eliminated from the pool.</strong>
-                                </div>
-                            {% elif user_pick %}
-                                <div class="d-flex align-items-center gap-2 flex-wrap">
-                                    <span class="text-muted small text-uppercase">Your Pick:</span>
-                                    <strong class="fs-5">{{ user_pick.team.name }}</strong>
-                                    {% if user_pick_spread is not none %}
-                                        <span class="spread-badge">{{ "%+.1f"|format(user_pick_spread) }}</span>
-                                    {% endif %}
-                                    <a href="{{ url_for('cfb.make_pick', week_number=current_week.week_number) }}"
-                                       class="btn btn-warning btn-sm">Change Pick</a>
-                                </div>
+                                <p class="cfb-eliminated-note">Your season ended. The pool plays on.</p>
                             {% else %}
-                                <a href="{{ url_for('cfb.make_pick', week_number=current_week.week_number) }}"
-                                   class="btn btn-game">Make Your Pick</a>
+                                <div class="cfb-status-row">
+                                    <span class="cfb-status-item">
+                                        <span class="lives-indicator">
+                                            {% for i in range(cfb_enrollment.lives_remaining) %}<span class="life"></span>{% endfor %}
+                                            {% for i in range(2 - cfb_enrollment.lives_remaining) %}<span class="life lost"></span>{% endfor %}
+                                        </span>
+                                        <span class="cfb-status-label">{{ cfb_enrollment.lives_remaining }} {{ 'life' if cfb_enrollment.lives_remaining == 1 else 'lives' }}</span>
+                                    </span>
+                                    {% if current_user_rank %}
+                                    <span class="cfb-status-item">
+                                        <span class="cfb-status-num">{{ current_user_rank }}<span class="cfb-status-total">/{{ enrollments|length }}</span></span>
+                                        <span class="cfb-status-label">Rank</span>
+                                    </span>
+                                    {% endif %}
+                                    <span class="cfb-status-item">
+                                        <span class="cfb-status-num">{{ "%.1f"|format(cfb_enrollment.cumulative_spread) }}</span>
+                                        <span class="cfb-status-label">Spread</span>
+                                    </span>
+                                </div>
+
+                                {% if user_pick %}
+                                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                                        <span class="cfb-status-label">Your pick</span>
+                                        <strong class="fs-5">{{ user_pick.team.name }}</strong>
+                                        {% if user_pick_spread is not none %}
+                                            <span class="spread-badge">{{ "%+.1f"|format(user_pick_spread) }}</span>
+                                        {% endif %}
+                                        <a href="{{ url_for('cfb.make_pick', week_number=current_week.week_number) }}"
+                                           class="btn btn-outline-light btn-sm ms-1">Change Pick</a>
+                                    </div>
+                                {% else %}
+                                    <a href="{{ url_for('cfb.make_pick', week_number=current_week.week_number) }}"
+                                       class="btn btn-game">Make Your Pick</a>
+                                {% endif %}
                             {% endif %}
                         {% endif %}
                     </div>
@@ -218,7 +241,7 @@
                             {% for enrollment in enrollments %}
                             <tr class="{% if current_user.is_authenticated and enrollment.user_id == current_user.id %}row-current-user{% endif %}">
                                 <td>{{ loop.index }}</td>
-                                <td><span class="me-1">{{ enrollment.user.get_avatar() }}</span><strong>{{ enrollment.get_display_name() }}</strong></td>
+                                <td><span class="me-1">{{ enrollment.user.get_avatar() }}</span><strong>{{ enrollment.get_display_name() }}</strong>{% if current_user.is_authenticated and enrollment.user_id == current_user.id %}<span class="cfb-you-tag">You</span>{% endif %}</td>
                                 <td>
                                     <span class="lives-indicator">
                                         {% for i in range(enrollment.lives_remaining) %}
@@ -256,7 +279,7 @@
                 <h6 class="mb-2"><i class="bi bi-info-circle me-1"></i>Tiebreaker Rules</h6>
                 <ol class="mb-0 small">
                     <li><strong>Lives Remaining:</strong> Two lives is better than one</li>
-                    <li><strong>Cumulative Spread:</strong> Lower is better &mdash; picking favorites adds points, underdogs subtract</li>
+                    <li><strong>Cumulative Spread:</strong> Lower is better. Picking favorites adds points, underdogs subtract.</li>
                 </ol>
             </div>
 
