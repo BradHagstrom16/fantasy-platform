@@ -1,13 +1,16 @@
 {% extends "base.html" %}
-{% block title %}{{ get_week_display_name(week) }} Results — CFB Survivor{% endblock %}
+{% set is_cut_week = eliminated_this_week|length > 0 %}
+{% block title %}{% if is_cut_week %}The Cut{% else %}Saturday's Verdict{% endif %} &middot; {{ get_week_display_name(week) }} &middot; CFB Survivor{% endblock %}
 
 {% block content %}
-{# Page Hero #}
-<div class="page-hero">
+{# Page Hero - the Survivor verdict. Voice register (games/cfb/DESIGN.md S3):
+   "Saturday's Verdict" on a scored week, "The Cut" when the field thins. #}
+<div class="page-hero cfb-hero">
   <div class="hero-glow"></div>
   <div class="container">
-    <h1>{{ get_week_display_name(week) }} Results</h1>
-    <p class="lead">CFB Survivor Pool</p>
+    <span class="cfb-eyebrow">{{ get_week_display_name(week) }} &middot; Survival Desk</span>
+    <h1>{% if is_cut_week %}The Cut{% else %}Saturday's Verdict{% endif %}</h1>
+    <p class="lead">{% if is_cut_week %}The slate is settled and the field is thinner. Who survived, and who was cut.{% else %}The slate is settled. Who survived the week, and who spent a life.{% endif %}</p>
   </div>
 </div>
 
@@ -23,178 +26,175 @@
         {% endfor %}
     </div>
 
-    {# Your Pick Highlight #}
-    {% if current_user.is_authenticated and current_user_pick %}
-    <div class="card mb-3 {% if current_user_pick.is_correct == True %}border-success{% elif current_user_pick.is_correct == False %}border-danger{% endif %}">
-        <div class="card-body d-flex align-items-center justify-content-between flex-wrap gap-2">
-            <div>
-                <small class="text-muted text-uppercase">Your Pick</small>
-                <div class="fs-5 fw-bold">{{ current_user_pick.team.name }}</div>
-                {% if current_user_pick.team_id in game_results %}
-                    {% set my_game = game_results[current_user_pick.team_id] %}
-                    <span class="text-muted">
-                        {% if my_game.was_home %}vs {{ my_game.opponent }}{% else %}@ {{ my_game.opponent }}{% endif %}
-                    </span>
-                    {% if my_game.home_score is not none and my_game.away_score is not none %}
-                        <span class="badge bg-secondary ms-1">
-                            {% if my_game.was_home %}{{ my_game.home_score }}&ndash;{{ my_game.away_score }}{% else %}{{ my_game.away_score }}&ndash;{{ my_game.home_score }}{% endif %}
-                        </span>
-                    {% endif %}
-                {% endif %}
-            </div>
-            <div>
-                {% if current_user_pick.is_correct == True %}
-                    <span class="badge badge-survived fs-5 p-2">SURVIVED</span>
-                {% elif current_user_pick.is_correct == False %}
-                    <span class="badge badge-lost-life fs-5 p-2">LOST A LIFE</span>
+    {# Your Verdict - the personal "am I alive?" lead, elevated above the field.
+       Renders for a submitted pick AND for a no-pick enrollment (whose survivor
+       state still answers "am I alive?"); a missed slate is a setback (is-lost). #}
+    {% set my_entry = current_user_pick or current_user_nopick %}
+    {% if current_user.is_authenticated and my_entry %}
+    {% set my_game = game_results.get(current_user_pick.team_id) if current_user_pick else none %}
+    <div class="cfb-verdict animate-in {% if current_user_pick and current_user_pick.is_correct == True %}is-survived{% elif current_user_pick and current_user_pick.is_correct == None %}is-pending{% else %}is-lost{% endif %}">
+        <div class="cfb-verdict-main">
+            <span class="cfb-eyebrow">Your Verdict</span>
+            <div class="cfb-verdict-team">
+                {% if current_user_pick %}
+                <span class="cfb-team-name">{{ current_user_pick.team.name }}</span>
                 {% else %}
-                    <span class="badge bg-warning fs-5 p-2">PENDING</span>
+                <span class="cfb-team-name cfb-verdict-nopick">No pick submitted</span>
                 {% endif %}
             </div>
+            {% if my_game %}
+            <div class="cfb-verdict-matchup">
+                {% if my_game.was_home %}vs {{ my_game.opponent }}{% else %}@ {{ my_game.opponent }}{% endif %}
+                {% if my_game.home_score is not none and my_game.away_score is not none %}
+                    <span class="cfb-verdict-score">{% if my_game.was_home %}{{ my_game.home_score }}&ndash;{{ my_game.away_score }}{% else %}{{ my_game.away_score }}&ndash;{{ my_game.home_score }}{% endif %}</span>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+        <div class="cfb-verdict-outcome">
+            {% if current_user_pick and current_user_pick.is_correct == True %}
+                <span class="badge badge-survived cfb-verdict-chip">SURVIVED</span>
+            {% elif current_user_pick and current_user_pick.is_correct == False %}
+                <span class="badge badge-lost-life cfb-verdict-chip">LOST A LIFE</span>
+            {% elif current_user_pick %}
+                <span class="badge badge-pending cfb-verdict-chip">PENDING</span>
+            {% else %}
+                <span class="badge badge-lost-life cfb-verdict-chip">NO PICK</span>
+            {% endif %}
+            <span class="cfb-verdict-lives">
+                <span class="lives-indicator">
+                    {% for i in range(my_entry.lives_after) %}<span class="life"></span>{% endfor %}
+                    {% for i in range(2 - my_entry.lives_after) %}<span class="life lost"></span>{% endfor %}
+                </span>
+                <span class="cfb-verdict-lives-label">{% if my_entry.was_eliminated %}Eliminated{% elif my_entry.lives_after == 1 %}1 life left{% else %}{{ my_entry.lives_after }} lives left{% endif %}</span>
+            </span>
         </div>
     </div>
     {% endif %}
 
-    {# Week Summary Stats #}
-    <div class="row g-3 mb-4">
-        <div class="col-6 col-md-3">
-            <div class="stat-block animate-in stagger-1">
-                <div class="stat-value">{{ picks|length }}</div>
-                <div class="stat-label">Total Picks</div>
-            </div>
+    {# Week verdict summary - one editorial line, not a four-up dashboard. The
+       field-alive count (still standing) answers "who is left" (DESIGN.md S1). #}
+    {% set ns = namespace(alive=0) %}
+    {% for p in picks %}{% if not p.was_eliminated %}{% set ns.alive = ns.alive + 1 %}{% endif %}{% endfor %}
+    {% for e in enrollments_no_pick %}{% if not e.was_eliminated %}{% set ns.alive = ns.alive + 1 %}{% endif %}{% endfor %}
+    <div class="cfb-week-summary animate-in">
+        <div class="cfb-summary-stat">
+            <span class="cfb-summary-num is-survived">{{ correct_picks|length }}</span>
+            <span class="cfb-summary-label">Survived</span>
         </div>
-        <div class="col-6 col-md-3">
-            <div class="stat-block animate-in stagger-2">
-                <div class="stat-value" style="color: var(--cfb-survived);">{{ correct_picks|length }}</div>
-                <div class="stat-label">Correct</div>
-            </div>
+        <span class="cfb-summary-sep" aria-hidden="true"></span>
+        <div class="cfb-summary-stat">
+            <span class="cfb-summary-num is-lost">{{ incorrect_picks|length }}</span>
+            <span class="cfb-summary-label">Lost a life</span>
         </div>
-        <div class="col-6 col-md-3">
-            <div class="stat-block animate-in stagger-3">
-                <div class="stat-value" style="color: var(--cfb-lost-life);">{{ incorrect_picks|length }}</div>
-                <div class="stat-label">Incorrect</div>
-            </div>
+        {% if pending_picks|length %}
+        <span class="cfb-summary-sep" aria-hidden="true"></span>
+        <div class="cfb-summary-stat">
+            <span class="cfb-summary-num is-pending">{{ pending_picks|length }}</span>
+            <span class="cfb-summary-label">Pending</span>
         </div>
-        <div class="col-6 col-md-3">
-            <div class="stat-block animate-in stagger-4">
-                <div class="stat-value">{{ pending_picks|length }}</div>
-                <div class="stat-label">Pending</div>
-            </div>
+        {% endif %}
+        <span class="cfb-summary-sep" aria-hidden="true"></span>
+        <div class="cfb-summary-stat is-field">
+            <span class="cfb-summary-num">{{ ns.alive }}</span>
+            <span class="cfb-summary-label">Still standing</span>
         </div>
     </div>
 
-    {# Eliminations #}
+    {# The Cut - eliminations, cold and final. Full-container treatment (full
+       border + restrained lost-red tint + leading icon + structural OUT cue);
+       NO side-stripe (the platform absolute ban; DESIGN.md S4). #}
     {% if eliminated_this_week %}
     <div class="elimination-alert animate-in">
-        <h4>Eliminated This Week</h4>
-        <div class="d-flex flex-wrap gap-2">
+        <h4 class="cfb-cut-title"><i class="bi bi-x-circle-fill" aria-hidden="true"></i> Eliminated This Week</h4>
+        <div class="cfb-cut-list">
             {% for e in eliminated_this_week %}
-                <span class="badge badge-lost-life fs-6 p-2"><span class="me-1">{{ e.user.get_avatar() }}</span>{{ e.get_display_name() }}</span>
+                <span class="cfb-cut-player">
+                    <span class="cfb-cut-avatar">{{ e.user.get_avatar() }}</span>
+                    <span class="cfb-cut-name">{{ e.get_display_name() }}</span>
+                    <span class="badge badge-eliminated badge-xs">OUT</span>
+                </span>
             {% endfor %}
         </div>
     </div>
     {% endif %}
 
-    {# All Picks Table #}
+    {# The Field - every call this week. Five columns (Player / Pick / Result /
+       Lives / Status) so survivor-state stays on-screen at mobile width. #}
     <div class="results-scoreboard">
         <div class="card">
             <div class="card-header">
-                <h4 class="mb-0">All Picks &mdash; {{ get_week_display_name(week) }}</h4>
+                <div class="cfb-field-head">
+                    <h4 class="mb-0">The Field</h4>
+                    <span class="cfb-field-week">{{ get_week_display_name(week) }}</span>
+                </div>
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
-                <table class="table table-cfb mb-0">
+                <table class="table table-cfb cfb-field-table mb-0">
                     <thead>
                         <tr>
                             <th>Player</th>
-                            <th>Team Picked</th>
-                            <th>Opponent</th>
-                            <th>Score</th>
-                            <th>Result</th>
-                            <th>Lives</th>
-                            <th>Status</th>
+                            <th>Pick</th>
+                            <th class="cfb-col-center">Result</th>
+                            <th class="cfb-col-center">Lives</th>
+                            <th class="cfb-col-center">Status</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for pick in picks %}
+                        {% set game = game_results.get(pick.team_id) %}
                         <tr class="{% if current_user.is_authenticated and pick.user_id == current_user.id %}row-current-user{% endif %}">
-                            <td>
-                                <span class="me-1">{{ pick.user.get_avatar() }}</span>{{ pick.display_name }}
-                                {% if pick.is_autopick %}
-                                    <span class="badge bg-warning text-dark badge-xs">AUTO</span>
-                                {% endif %}
+                            <td class="cfb-cell-player">
+                                <span class="cfb-avatar">{{ pick.user.get_avatar() }}</span>{{ pick.display_name }}
+                                {% if current_user.is_authenticated and pick.user_id == current_user.id %}<span class="cfb-you-tag">You</span>{% endif %}
+                                {% if pick.is_autopick %}<span class="cfb-auto-tag">Auto</span>{% endif %}
                             </td>
-                            <td><strong>{{ pick.team.name }}</strong></td>
-                            <td>
-                                {% if pick.team_id in game_results %}
-                                    {% set game = game_results[pick.team_id] %}
+                            <td class="cfb-cell-pick">
+                                <span class="cfb-team-name">{{ pick.team.name }}</span>
+                                {% if game %}
+                                <span class="cfb-pick-meta">
                                     {% if game.was_home %}vs {{ game.opponent }}{% else %}@ {{ game.opponent }}{% endif %}
-                                {% else %}
-                                    <span class="text-muted">--</span>
-                                {% endif %}
-                            </td>
-                            <td>
-                                {% if pick.team_id in game_results %}
-                                    {% set game = game_results[pick.team_id] %}
                                     {% if game.home_score is not none and game.away_score is not none %}
-                                        {% if game.was_home %}{{ game.home_score }}&ndash;{{ game.away_score }}{% else %}{{ game.away_score }}&ndash;{{ game.home_score }}{% endif %}
-                                    {% else %}
-                                        <span class="text-muted">&mdash;</span>
+                                        <span class="cfb-pick-score">{% if game.was_home %}{{ game.home_score }}&ndash;{{ game.away_score }}{% else %}{{ game.away_score }}&ndash;{{ game.home_score }}{% endif %}</span>
                                     {% endif %}
-                                {% else %}
-                                    <span class="text-muted">&mdash;</span>
+                                </span>
                                 {% endif %}
                             </td>
-                            <td>
+                            <td class="cfb-col-center">
                                 {% if pick.is_correct == True %}
                                     <span class="badge badge-survived">W</span>
                                 {% elif pick.is_correct == False %}
                                     <span class="badge badge-lost-life">L</span>
                                 {% else %}
-                                    <span class="badge bg-secondary">--</span>
+                                    <span class="badge badge-pending">TBD</span>
                                 {% endif %}
                             </td>
-                            <td>
+                            <td class="cfb-col-center">
                                 <span class="lives-indicator">
-                                    {% for i in range(pick.lives_after) %}
-                                        <span class="life"></span>
-                                    {% endfor %}
-                                    {% for i in range(2 - pick.lives_after) %}
-                                        <span class="life lost"></span>
-                                    {% endfor %}
+                                    {% for i in range(pick.lives_after) %}<span class="life"></span>{% endfor %}
+                                    {% for i in range(2 - pick.lives_after) %}<span class="life lost"></span>{% endfor %}
                                 </span>
                             </td>
-                            <td>
-                                {% if pick.was_eliminated %}
-                                    <span class="badge badge-eliminated">OUT</span>
-                                {% else %}
-                                    <span class="badge badge-survived">IN</span>
-                                {% endif %}
+                            <td class="cfb-col-center">
+                                {% if pick.was_eliminated %}<span class="badge badge-eliminated">OUT</span>{% else %}<span class="badge badge-survived">IN</span>{% endif %}
                             </td>
                         </tr>
                         {% endfor %}
 
                         {% for enrollment in enrollments_no_pick %}
-                        <tr class="table-warning">
-                            <td><span class="me-1">{{ enrollment.user.get_avatar() }}</span>{{ enrollment.get_display_name() }}</td>
-                            <td colspan="3" class="text-muted fst-italic">No pick submitted</td>
-                            <td><span class="badge bg-warning text-dark">--</span></td>
-                            <td>
+                        <tr class="cfb-row-nopick">
+                            <td class="cfb-cell-player"><span class="cfb-avatar">{{ enrollment.user.get_avatar() }}</span>{{ enrollment.get_display_name() }}</td>
+                            <td class="cfb-cell-pick"><span class="cfb-nopick-note">No pick submitted</span></td>
+                            <td class="cfb-col-center"><span class="cfb-result-none" aria-label="No result">&middot;</span></td>
+                            <td class="cfb-col-center">
                                 <span class="lives-indicator">
-                                    {% for i in range(enrollment.lives_after) %}
-                                        <span class="life"></span>
-                                    {% endfor %}
-                                    {% for i in range(2 - enrollment.lives_after) %}
-                                        <span class="life lost"></span>
-                                    {% endfor %}
+                                    {% for i in range(enrollment.lives_after) %}<span class="life"></span>{% endfor %}
+                                    {% for i in range(2 - enrollment.lives_after) %}<span class="life lost"></span>{% endfor %}
                                 </span>
                             </td>
-                            <td>
-                                {% if enrollment.was_eliminated %}
-                                    <span class="badge badge-eliminated">OUT</span>
-                                {% else %}
-                                    <span class="badge badge-survived">IN</span>
-                                {% endif %}
+                            <td class="cfb-col-center">
+                                {% if enrollment.was_eliminated %}<span class="badge badge-eliminated">OUT</span>{% else %}<span class="badge badge-survived">IN</span>{% endif %}
                             </td>
                         </tr>
                         {% endfor %}
@@ -205,21 +205,24 @@
         </div>
     </div>
 
-    {# Pick Distribution #}
-    <div class="card mt-3">
-        <div class="card-header"><h5 class="mb-0">Pick Distribution</h5></div>
-        <div class="card-body">
-            <div class="row g-2">
-                {% for team, count in pick_counts.most_common() %}
-                <div class="col-6 col-md-3">
-                    <div class="d-flex justify-content-between align-items-center bg-light rounded p-2">
-                        <span class="small">{{ team }}</span>
-                        <span class="badge bg-primary">{{ count }}</span>
-                    </div>
-                </div>
-                {% endfor %}
+    {# Pick Distribution - quiet analytical depth (progressive disclosure), the
+       field's calls. Counts are neutral bone, never crimson (crimson is identity,
+       not data; DESIGN.md S2 Crimson-Is-Identity Rule). #}
+    {% if pick_counts %}
+    <div class="cfb-distribution">
+        <div class="cfb-field-head">
+            <h5 class="mb-0">Pick Distribution</h5>
+            <span class="cfb-field-week">Who the field backed</span>
+        </div>
+        <div class="cfb-dist-list">
+            {% for team, count in pick_counts.most_common() %}
+            <div class="cfb-dist-item">
+                <span class="cfb-dist-team">{{ team }}</span>
+                <span class="cfb-dist-count">{{ count }}</span>
             </div>
+            {% endfor %}
         </div>
     </div>
+    {% endif %}
 </div>
 {% endblock %}

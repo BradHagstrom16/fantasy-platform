@@ -380,10 +380,19 @@ def weekly_results(week_number=None):
     ]
 
     current_user_pick = None
+    current_user_nopick = None
     if current_user.is_authenticated:
         current_user_pick = next(
             (p for p in picks if p.user_id == current_user.id), None
         )
+        # A no-pick enrollment still carries the player's survivor state
+        # (lives_after / was_eliminated) -- surface it so the "Your Verdict"
+        # lead answers "am I alive?" even when the user missed the slate.
+        if current_user_pick is None:
+            current_user_nopick = next(
+                (e for e in enrollments_no_pick if e.user_id == current_user.id),
+                None,
+            )
 
     pick_counts = Counter(pick.team.name for pick in picks)
 
@@ -399,6 +408,7 @@ def weekly_results(week_number=None):
         enrollments_no_pick=enrollments_no_pick,
         eliminated_this_week=eliminated_this_week,
         current_user_pick=current_user_pick,
+        current_user_nopick=current_user_nopick,
         pick_counts=pick_counts,
     )
 
