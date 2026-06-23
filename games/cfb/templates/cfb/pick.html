@@ -1,42 +1,39 @@
 {% extends "base.html" %}
-{% block title %}{{ get_week_display_name(week) }} — Make Your Pick{% endblock %}
+{% block title %}Your Card · {{ get_week_display_name(week) }}{% endblock %}
 
 {% block content %}
-<div class="page-hero">
+<div class="page-hero cfb-hero">
   <div class="hero-glow"></div>
   <div class="container">
-    <h1>{{ get_week_display_name(week) }}</h1>
-    <p class="lead">Make Your Pick</p>
+    <span class="cfb-eyebrow">{{ get_week_display_name(week) }} &middot; The Slate</span>
+    <h1>Your Card</h1>
+    <p class="lead">One pick to survive the week. Win it outright or spend a life.</p>
   </div>
 </div>
 
 <div class="container mt-4">
-<div class="row">
-    <div class="col-lg-8">
+<div class="row justify-content-center">
+    <div class="col-lg-9 col-xl-8">
 
-        <div class="alert alert-warning animate-in">
-            <i class="bi bi-clock-fill me-1"></i>
-            <strong>Deadline:</strong> <strong>{{ format_deadline(week.deadline) }}</strong>
-        </div>
+        <p class="cfb-deadline">
+            <i class="bi bi-clock-fill" aria-hidden="true"></i>
+            <span class="cfb-eyebrow">Picks Lock</span>
+            <strong>{{ format_deadline(week.deadline) }}</strong>
+        </p>
 
         {% if existing_pick %}
-        <div class="card mb-3 border-success animate-in">
-            <div class="card-body d-flex align-items-center justify-content-between flex-wrap gap-2">
-                <div>
-                    <small class="text-muted text-uppercase">Current Pick</small>
-                    <div class="fs-5 fw-bold">{{ existing_pick.team.name }}</div>
-                    {% if existing_pick.team_id in team_spreads %}
-                    <span class="spread-badge {% if team_spreads[existing_pick.team_id] < 0 %}favorable{% elif team_spreads[existing_pick.team_id] > 0 %}unfavorable{% endif %}">
-                        {{ "%+.1f"|format(team_spreads[existing_pick.team_id]) }}
-                    </span>
-                    {% endif %}
-                </div>
-                {% if pick_locked %}
-                    <span class="badge bg-danger p-2">LOCKED &mdash; GAME STARTED</span>
-                {% else %}
-                    <span class="text-muted small">You can change your pick below.</span>
+        <div class="cfb-holding {% if pick_locked %}is-locked{% endif %}">
+            <span class="cfb-eyebrow">{% if pick_locked %}Locked In{% else %}Your Standing Pick{% endif %}</span>
+            <div class="cfb-holding-team">
+                <span class="cfb-team-name">{{ existing_pick.team.name }}</span>
+                {% if existing_pick.team_id in team_spreads %}
+                <span class="spread-badge">{{ "%+.1f"|format(team_spreads[existing_pick.team_id]) }}</span>
                 {% endif %}
             </div>
+            <p class="cfb-holding-note">
+                {% if pick_locked %}This game has kicked off. Your call is final for the week.
+                {% else %}Change it below any time before picks lock.{% endif %}
+            </p>
         </div>
         {% endif %}
 
@@ -46,8 +43,10 @@
             <input type="hidden" name="team_id" id="selectedTeamId" value="{% if existing_pick %}{{ existing_pick.team_id }}{% endif %}"/>
 
             {% if eligible_teams %}
-            <h4 class="section-heading mt-4 mb-3">Select Your Team</h4>
-            <p class="text-muted small">Tap a team to select it. Unavailable teams are shown grayed out.</p>
+            <div class="cfb-slate-head">
+                <span class="cfb-eyebrow">The Board</span>
+                <span class="cfb-slate-count">{{ eligible_teams|length }} still open</span>
+            </div>
 
             {% for game in games %}{# pre-sorted None-safe in the route #}
                 {% set home_team = game.home_team %}
@@ -57,137 +56,101 @@
                 {% set home_used = home_team and home_team.id in used_team_ids %}
                 {% set away_used = away_team and away_team.id in used_team_ids %}
                 {% set game_started = game._aware_time and game._aware_time < current_time %}
+                {% set home_spread = team_spreads.get(home_team.id) if home_team else none %}
+                {% set away_spread = team_spreads.get(away_team.id) if away_team else none %}
                 {% set has_eligible = home_eligible or away_eligible %}
                 {% set has_relevant = has_eligible or home_used or away_used %}
 
                 {% if has_relevant or has_eligible %}
-                <div class="card mb-2 team-pick-card {% if game_started %}opacity-50 ineligible{% endif %} {% if existing_pick and ((home_team and existing_pick.team_id == home_team.id) or (away_team and existing_pick.team_id == away_team.id)) %}border-primary{% endif %} animate-in" data-game-card>
-                    <div class="card-header py-1 bg-light">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <strong class="small">
-                                {{ game.get_away_team_display() }} <span class="text-muted">@</span> {{ game.get_home_team_display() }}
+                <div class="card mb-2 team-pick-card {% if game_started %}ineligible{% endif %} {% if existing_pick and ((home_team and existing_pick.team_id == home_team.id) or (away_team and existing_pick.team_id == away_team.id)) %}border-primary{% endif %}" data-game-card>
+                    <div class="card-header py-2">
+                        <div class="d-flex justify-content-between align-items-center gap-2">
+                            <strong class="cfb-matchup">
+                                {{ game.get_away_team_display() }} <span class="cfb-at">@</span> {{ game.get_home_team_display() }}
                             </strong>
-                            <span class="small text-muted">
+                            <span class="cfb-kickoff">
                                 {% if game._aware_time %}{{ game._aware_time.strftime('%a %m/%d %I:%M %p') }}{% else %}TBD{% endif %}
-                                {% if game_started %}
-                                    <span class="badge bg-danger ms-1 badge-xs">STARTED</span>
-                                {% endif %}
+                                {% if game_started %}<span class="cfb-out-reason ms-1">Started</span>{% endif %}
                             </span>
                         </div>
-                        <small class="text-muted">
-                            Spread:
-                            {% if game.home_team_spread is not none %}
-                                {% if game.home_team_spread < 0 %}
-                                    {{ game.get_home_team_display() }} {{ game.home_team_spread }}
-                                {% else %}
-                                    {{ game.get_away_team_display() }} -{{ game.home_team_spread }}
-                                {% endif %}
-                            {% else %}
-                                TBD
-                            {% endif %}
-                        </small>
                     </div>
                     <div class="card-body py-2">
                         {# Away team option #}
                         {% if away_team %}
-                        <div class="d-flex justify-content-between align-items-center p-2 rounded mb-1 team-option {% if away_eligible %}{% if existing_pick and existing_pick.team_id == away_team.id %}bg-primary text-white selected{% else %}bg-light{% endif %}{% else %}opacity-50{% endif %}"
-                             {% if away_eligible %}role="button" data-team-id="{{ away_team.id }}" data-team-name="{{ away_team.name }}" data-team-spread="{{ team_spreads.get(away_team.id, 0) }}"{% endif %}>
-                            <div>
-                                <span class="fw-bold">{{ away_team.name }}</span>
-                                {% if not away_eligible %}
-                                    <span class="badge bg-secondary ms-1 badge-xs">
-                                        {% if away_used %}Used{% elif game_started %}Started{% else %}Unavailable{% endif %}
-                                    </span>
-                                {% endif %}
+                            {% if away_eligible %}
+                            <div class="d-flex justify-content-between align-items-center p-2 rounded mb-1 team-option {% if existing_pick and existing_pick.team_id == away_team.id %}bg-primary text-white selected{% else %}bg-light{% endif %}"
+                                 role="button" tabindex="0" aria-pressed="{% if existing_pick and existing_pick.team_id == away_team.id %}true{% else %}false{% endif %}"
+                                 data-team-id="{{ away_team.id }}" data-team-name="{{ away_team.name }}" data-team-spread="{{ team_spreads.get(away_team.id, 0) }}">
+                                <span class="cfb-team-id"><span class="cfb-team-name">{{ away_team.name }}</span></span>
+                                {% if away_spread is not none %}<span class="spread-badge">{{ "%+.1f"|format(away_spread) }}</span>{% endif %}
                             </div>
-                            {% if away_team.id in team_spreads %}
-                            <span class="spread-badge {% if team_spreads[away_team.id] < 0 %}favorable{% elif team_spreads[away_team.id] > 0 %}unfavorable{% endif %}">
-                                {{ "%+.1f"|format(team_spreads[away_team.id]) }}
-                            </span>
+                            {% else %}
+                            <div class="d-flex justify-content-between align-items-center p-2 rounded mb-1 team-option team-option-out">
+                                <span class="cfb-team-id">
+                                    <span class="cfb-team-name">{{ away_team.name }}</span>
+                                    <span class="cfb-out-reason">{% if away_used %}Used{% elif game_started %}Started{% elif away_spread is not none and away_spread <= -16.5 %}16.5+ Fav{% elif away_spread is none %}No Line{% else %}Out{% endif %}</span>
+                                </span>
+                                {% if away_spread is not none %}<span class="spread-badge">{{ "%+.1f"|format(away_spread) }}</span>{% endif %}
+                            </div>
                             {% endif %}
-                        </div>
                         {% endif %}
 
                         {# Home team option #}
                         {% if home_team %}
-                        <div class="d-flex justify-content-between align-items-center p-2 rounded team-option {% if home_eligible %}{% if existing_pick and existing_pick.team_id == home_team.id %}bg-primary text-white selected{% else %}bg-light{% endif %}{% else %}opacity-50{% endif %}"
-                             {% if home_eligible %}role="button" data-team-id="{{ home_team.id }}" data-team-name="{{ home_team.name }}" data-team-spread="{{ team_spreads.get(home_team.id, 0) }}"{% endif %}>
-                            <div>
-                                <span class="fw-bold">{{ home_team.name }}</span>
-                                <span class="text-muted small ms-1">(home)</span>
-                                {% if not home_eligible %}
-                                    <span class="badge bg-secondary ms-1 badge-xs">
-                                        {% if home_used %}Used{% elif game_started %}Started{% else %}Unavailable{% endif %}
-                                    </span>
-                                {% endif %}
+                            {% if home_eligible %}
+                            <div class="d-flex justify-content-between align-items-center p-2 rounded team-option {% if existing_pick and existing_pick.team_id == home_team.id %}bg-primary text-white selected{% else %}bg-light{% endif %}"
+                                 role="button" tabindex="0" aria-pressed="{% if existing_pick and existing_pick.team_id == home_team.id %}true{% else %}false{% endif %}"
+                                 data-team-id="{{ home_team.id }}" data-team-name="{{ home_team.name }}" data-team-spread="{{ team_spreads.get(home_team.id, 0) }}">
+                                <span class="cfb-team-id"><span class="cfb-team-name">{{ home_team.name }}</span> <span class="cfb-home-tag">Home</span></span>
+                                {% if home_spread is not none %}<span class="spread-badge">{{ "%+.1f"|format(home_spread) }}</span>{% endif %}
                             </div>
-                            {% if home_team.id in team_spreads %}
-                            <span class="spread-badge {% if team_spreads[home_team.id] < 0 %}favorable{% elif team_spreads[home_team.id] > 0 %}unfavorable{% endif %}">
-                                {{ "%+.1f"|format(team_spreads[home_team.id]) }}
-                            </span>
+                            {% else %}
+                            <div class="d-flex justify-content-between align-items-center p-2 rounded team-option team-option-out">
+                                <span class="cfb-team-id">
+                                    <span class="cfb-team-name">{{ home_team.name }}</span> <span class="cfb-home-tag">Home</span>
+                                    <span class="cfb-out-reason">{% if home_used %}Used{% elif game_started %}Started{% elif home_spread is not none and home_spread <= -16.5 %}16.5+ Fav{% elif home_spread is none %}No Line{% else %}Out{% endif %}</span>
+                                </span>
+                                {% if home_spread is not none %}<span class="spread-badge">{{ "%+.1f"|format(home_spread) }}</span>{% endif %}
+                            </div>
                             {% endif %}
-                        </div>
                         {% endif %}
                     </div>
                 </div>
                 {% endif %}
             {% endfor %}
 
-            {# Confirmation bar #}
-            <div class="card mt-3 border-primary cfb-pick-cta" id="pickConfirmBar" style="{% if not existing_pick %}display: none;{% endif %}">
-                <div class="card-body d-flex justify-content-between align-items-center flex-wrap gap-2">
-                    <div>
-                        <small class="text-muted text-uppercase">Your pick:</small>
-                        <strong class="ms-1" id="confirmTeamName">{% if existing_pick %}{{ existing_pick.team.name }}{% endif %}</strong>
-                        <span class="badge bg-secondary ms-1" id="confirmTeamSpread">
-                            {% if existing_pick and existing_pick.team_id in team_spreads %}
-                                {{ "%+.1f"|format(team_spreads[existing_pick.team_id]) }}
-                            {% endif %}
-                        </span>
+            {# Confirmation bar: the weekly call #}
+            <div class="card mt-3 cfb-pick-cta" id="pickConfirmBar" style="{% if not existing_pick %}display: none;{% endif %}">
+                <div class="card-body d-flex justify-content-between align-items-center flex-wrap gap-3">
+                    <div class="cfb-confirm-pick">
+                        <span class="cfb-eyebrow">Your Call</span>
+                        <div class="cfb-confirm-line">
+                            <strong class="cfb-team-name" id="confirmTeamName">{% if existing_pick %}{{ existing_pick.team.name }}{% endif %}</strong>
+                            <span class="spread-badge" id="confirmTeamSpread">
+                                {% if existing_pick and existing_pick.team_id in team_spreads %}{{ "%+.1f"|format(team_spreads[existing_pick.team_id]) }}{% endif %}
+                            </span>
+                        </div>
                     </div>
                     <div class="d-flex gap-2">
                         {% if existing_pick %}
                             <button type="submit" class="btn btn-game">Update Pick</button>
                         {% else %}
-                            <button type="submit" class="btn btn-game" id="submitBtn">Submit Pick</button>
+                            <button type="submit" class="btn btn-game" id="submitBtn">Lock It In</button>
                         {% endif %}
-                        <a href="{{ url_for('cfb.index') }}" class="btn btn-secondary">Cancel</a>
+                        <a href="{{ url_for('cfb.index') }}" class="btn btn-outline-light">Cancel</a>
                     </div>
                 </div>
             </div>
 
             {% else %}
-            <div class="alert alert-danger mt-3">
-                No eligible teams available. You may have used all available teams
-                or all remaining teams are favored by 16.5 or more points.
+            <div class="alert alert-warning mt-3 cfb-empty-slate">
+                <span class="cfb-eyebrow">No Open Teams</span>
+                <p class="mb-0">You have used every team still available this week, or all remaining teams are favored by 16.5 or more points. Sit tight, the season continues.</p>
             </div>
             {% endif %}
         </form>
         {% endif %}
-    </div>
 
-    <div class="col-lg-4">
-        <div class="card animate-in">
-            <div class="card-header">
-                <h5 class="mb-0 section-heading">Available Teams ({{ eligible_teams|length }})</h5>
-            </div>
-            <div class="card-body">
-                {% if eligible_teams %}
-                {% for team in eligible_teams|sort(attribute='name') %}
-                <div class="d-flex justify-content-between align-items-center bg-light rounded p-2 mb-1 {% if existing_pick and existing_pick.team_id == team.id %}border border-primary{% endif %}">
-                    <span class="small">{{ team.name }}</span>
-                    {% if team.id in team_spreads %}
-                    <span class="spread-badge {% if team_spreads[team.id] < 0 %}favorable{% elif team_spreads[team.id] > 0 %}unfavorable{% endif %}">
-                        {{ "%+.1f"|format(team_spreads[team.id]) }}
-                    </span>
-                    {% endif %}
-                </div>
-                {% endfor %}
-                {% else %}
-                <p class="text-muted">No eligible teams remaining.</p>
-                {% endif %}
-            </div>
-        </div>
     </div>
 </div>
 </div>
@@ -203,39 +166,53 @@ document.addEventListener('DOMContentLoaded', function() {
     var confirmSpread = document.getElementById('confirmTeamSpread');
     var form = document.getElementById('pickForm');
 
+    function selectOption(option) {
+        var teamId = option.getAttribute('data-team-id');
+        var teamName = option.getAttribute('data-team-name');
+        var teamSpread = parseFloat(option.getAttribute('data-team-spread'));
+
+        // Deselect all
+        document.querySelectorAll('.team-option.selected').forEach(function(el) {
+            el.classList.remove('selected', 'bg-primary', 'text-white');
+            el.classList.add('bg-light');
+            el.setAttribute('aria-pressed', 'false');
+        });
+        document.querySelectorAll('[data-game-card].border-primary').forEach(function(el) {
+            el.classList.remove('border-primary');
+        });
+
+        // Select this one
+        option.classList.add('selected', 'bg-primary', 'text-white');
+        option.classList.remove('bg-light');
+        option.setAttribute('aria-pressed', 'true');
+        option.closest('[data-game-card]').classList.add('border-primary');
+
+        hiddenInput.value = teamId;
+        confirmName.textContent = teamName;
+        var spreadStr = (teamSpread >= 0 ? '+' : '') + teamSpread.toFixed(1);
+        confirmSpread.textContent = spreadStr;
+        confirmBar.style.display = '';
+    }
+
     teamOptions.forEach(function(option) {
-        option.addEventListener('click', function() {
-            var teamId = this.getAttribute('data-team-id');
-            var teamName = this.getAttribute('data-team-name');
-            var teamSpread = parseFloat(this.getAttribute('data-team-spread'));
-
-            // Deselect all
-            document.querySelectorAll('.team-option.selected').forEach(function(el) {
-                el.classList.remove('selected', 'bg-primary', 'text-white');
-                el.classList.add('bg-light');
-            });
-            document.querySelectorAll('[data-game-card].border-primary').forEach(function(el) {
-                el.classList.remove('border-primary');
-            });
-
-            // Select this one
-            this.classList.add('selected', 'bg-primary', 'text-white');
-            this.classList.remove('bg-light');
-            this.closest('[data-game-card]').classList.add('border-primary');
-
-            hiddenInput.value = teamId;
-            confirmName.textContent = teamName;
-            var spreadStr = (teamSpread >= 0 ? '+' : '') + teamSpread.toFixed(1);
-            confirmSpread.textContent = spreadStr;
-            confirmBar.style.display = '';
+        option.addEventListener('click', function() { selectOption(option); });
+        // Keyboard parity: the options are role="button" + tabindex=0, so Enter /
+        // Space must commit the same selection a click does (a11y, DESIGN.md S6).
+        option.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') {
+                e.preventDefault();
+                selectOption(option);
+            }
         });
     });
 
     if (form) {
         form.addEventListener('submit', function(e) {
+            // The submit button only renders inside the confirm bar (shown after a
+            // selection or when a pick already exists), so a missing selection is a
+            // dead path; guard it silently rather than with a native alert().
             if (!hiddenInput.value) {
                 e.preventDefault();
-                alert('Please select a team first.');
             }
         });
     }
