@@ -3811,20 +3811,19 @@ body.game-cfb .alert-warning { background: rgba(243,239,230,.05); border-color: 
   padding: .2em .45em;
 }
 
-/* Elimination alert — headline treatment */
+/* The Cut — eliminations rendered cold and final (games/cfb/DESIGN.md S4
+   .elimination-alert + the Cold-Elimination Rule). MIGRATED off the side-stripe
+   (the old border-left: 4px solid, which violated the platform absolute ban) to
+   a FULL-container treatment: a full lost-red border over a restrained lost-red
+   tint, lost-red kept as accent (not field), title bone-white with a leading
+   lost-red icon -- final and accepted, never an emergency-red shout. The cut
+   players + the .cfb-cut-* sub-elements style in the A4 block below. */
 .elimination-alert {
-  background: linear-gradient(135deg, rgba(239,68,68,.06) 0%, rgba(239,68,68,.02) 100%);
-  border: 1px solid rgba(239,68,68,.2);
-  border-left: 4px solid var(--cfb-lost-life);
+  background: rgba(230,57,70,.07);
+  border: 1px solid rgba(230,57,70,.42);
   border-radius: var(--radius-lg);
-  padding: 1.5rem;
+  padding: 1.4rem 1.5rem;
   margin-bottom: 1.5rem;
-}
-.elimination-alert h3,
-.elimination-alert h4,
-.elimination-alert h5 {
-  color: var(--cfb-lost-life);
-  margin-bottom: .75rem;
 }
 
 /* Championship hero — winner reveal */
@@ -4196,6 +4195,205 @@ body.game-cfb .team-pick-card.ineligible .cfb-matchup { color: var(--cfb-bone-mu
   body.game-cfb .team-option { transition: none; }
   body.game-cfb .team-option.selected { transform: none; }
 }
+
+/* ============================================================
+   A4 — Weekly results / "Saturday's Verdict" (impeccable critique 2026-06-23,
+   26/40). The weekly consequence surface: who survived, who lost a life, who was
+   cut. Cold, final, accepted -- not an alarm, not a celebration. Reuses the
+   A2/A3 primitives (.cfb-eyebrow, .cfb-team-name, .cfb-you-tag, .lives-indicator,
+   the survivor-state badges); adds the personal verdict lead, the editorial
+   verdict summary line (replacing the four-up stat grid), the cold .elimination-
+   alert sub-elements, the survivor-first field ledger, and the quiet
+   distribution. (games/cfb/DESIGN.md S4 components, S6 emotional restraint.)
+   ============================================================ */
+
+/* Pending survivor-state chip -- the unresolved verdict. HOLLOW (outline) so it
+   reads distinct from the FILLED survived/lost chips by structure, not hue alone
+   (DESIGN.md S5 survivor-state-by-structure). Bone-muted text clears AA where the
+   pending bone (#9A8F88) would be borderline as small text. */
+.badge-pending {
+  background: transparent;
+  border: 1px solid var(--cfb-pending);
+  color: var(--cfb-bone-muted);
+  font-family: 'Teko', sans-serif;
+  font-weight: 500;
+  letter-spacing: .05em;
+  padding: .3em .7em;
+}
+
+/* Your Verdict -- the personal "am I alive?" lead, raised above the field with an
+   outcome-colored TOP rule (never a side-stripe). The chip + lives carry the
+   meaning structurally; the rule only reinforces. */
+.cfb-verdict {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem 1.5rem;
+  margin-bottom: 1.5rem;
+  padding: 1.25rem 1.4rem;
+  background: var(--cfb-raised);
+  border: 1px solid var(--cfb-hairline-strong);
+  border-top: 2px solid var(--cfb-bone-subtle);
+  border-radius: var(--radius-lg);
+}
+.cfb-verdict.is-survived { border-top-color: var(--cfb-survived); }
+.cfb-verdict.is-lost     { border-top-color: var(--cfb-lost-life); }
+.cfb-verdict.is-pending  { border-top-color: var(--cfb-pending); }
+.cfb-verdict .cfb-eyebrow { display: block; margin-bottom: .4rem; }
+.cfb-verdict-team .cfb-team-name { font-size: 1.7rem; color: var(--cfb-white); }
+.cfb-verdict-matchup {
+  margin-top: .25rem;
+  font-family: 'Newsreader', Georgia, serif;
+  font-size: .95rem;
+  color: var(--cfb-bone-muted);
+}
+.cfb-verdict-score {
+  font-family: 'Teko', sans-serif;
+  letter-spacing: .04em;
+  color: var(--cfb-bone);
+  margin-left: .35rem;
+}
+.cfb-verdict-outcome { display: flex; flex-direction: column; align-items: flex-end; gap: .55rem; }
+.cfb-verdict-chip { font-size: 1rem; padding: .4em 1em; }
+.cfb-verdict-lives { display: inline-flex; align-items: center; gap: .5rem; }
+.cfb-verdict-lives-label {
+  font-family: 'Teko', sans-serif;
+  font-size: .92rem;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--cfb-bone-muted);
+}
+
+/* Week verdict summary -- ONE editorial line (not a four-up stat grid; the
+   hero-metric / identical-card-grid template is a platform absolute ban). Numbers
+   take Teko weight; survived/lost carry survivor-state color WITH a label
+   (structure + label, not hue alone); "still standing" answers "who is left" in
+   warm white -- the lead. */
+.cfb-week-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .6rem 1.6rem;
+  margin-bottom: 1.5rem;
+  padding: 1.1rem 1.4rem;
+  background: var(--cfb-surface);
+  border: 1px solid var(--cfb-hairline);
+  border-radius: var(--radius-lg);
+}
+.cfb-summary-stat { display: inline-flex; align-items: baseline; gap: .5rem; }
+.cfb-summary-num {
+  font-family: 'Teko', sans-serif;
+  font-weight: 600;
+  font-size: 2.1rem;
+  line-height: 1;
+  color: var(--cfb-bone);
+}
+.cfb-summary-num.is-survived { color: var(--cfb-survived); }
+.cfb-summary-num.is-lost     { color: var(--cfb-lost-life); }
+.cfb-summary-num.is-pending  { color: var(--cfb-bone-muted); }
+.cfb-summary-stat.is-field .cfb-summary-num { color: var(--cfb-white); }
+.cfb-summary-label {
+  font-family: 'Teko', sans-serif;
+  font-size: .85rem;
+  font-weight: 500;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--cfb-bone-muted);
+}
+.cfb-summary-sep { width: 1px; align-self: stretch; min-height: 1.6rem; background: var(--cfb-hairline-strong); }
+
+/* The Cut sub-elements (the .elimination-alert container is migrated above). */
+.cfb-cut-title {
+  display: flex;
+  align-items: center;
+  gap: .55rem;
+  margin-bottom: 1rem;
+  font-family: 'Teko', sans-serif;
+  font-weight: 600;
+  letter-spacing: .02em;
+  color: var(--cfb-white);
+}
+.cfb-cut-title .bi { color: var(--cfb-lost-life); }
+.cfb-cut-list { display: flex; flex-wrap: wrap; gap: .55rem; }
+.cfb-cut-player {
+  display: inline-flex;
+  align-items: center;
+  gap: .45rem;
+  padding: .3rem .4rem .3rem .7rem;
+  background: var(--cfb-surface);
+  border: 1px solid var(--cfb-hairline-strong);
+  border-radius: 999px;
+  font-family: 'Teko', sans-serif;
+  font-size: 1.05rem;
+  letter-spacing: .01em;
+  color: var(--cfb-bone);
+}
+
+/* The Field -- the weekly ledger head + survivor-first table (Player / Pick /
+   Result / Lives / Status), folding the old Opponent + Score columns into the
+   Pick cell so survivor-state never scrolls off at mobile width. */
+.cfb-field-head { display: flex; align-items: baseline; justify-content: space-between; gap: .5rem; }
+.cfb-field-head h4, .cfb-field-head h5 { font-family: 'Teko', sans-serif; letter-spacing: .02em; color: var(--cfb-bone); }
+.cfb-field-week {
+  font-family: 'Teko', sans-serif;
+  font-size: .82rem;
+  font-weight: 500;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--cfb-bone-muted);
+}
+.cfb-field-table .cfb-col-center { text-align: center; }
+.cfb-field-table th.cfb-col-center,
+.cfb-field-table td.cfb-col-center { width: 1%; white-space: nowrap; }
+.cfb-avatar { margin-right: .4rem; }
+.cfb-cell-pick .cfb-team-name { font-size: 1.05rem; }
+.cfb-pick-meta {
+  display: block;
+  margin-top: .1rem;
+  font-family: 'Newsreader', Georgia, serif;
+  font-size: .82rem;
+  color: var(--cfb-bone-muted);
+}
+.cfb-pick-score { font-family: 'Teko', sans-serif; letter-spacing: .03em; color: var(--cfb-bone); margin-left: .25rem; }
+/* Auto-pick marker -- a quiet neutral tag, never the off-palette Bootstrap yellow
+   (DESIGN.md S2: survivor-state stays green/red/ash/pending). */
+.cfb-auto-tag {
+  display: inline-block;
+  margin-left: .4rem;
+  padding: .04em .4em;
+  font-family: 'Teko', sans-serif;
+  font-size: .66rem;
+  font-weight: 500;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--cfb-bone-subtle);
+  border: 1px solid var(--cfb-hairline-strong);
+  border-radius: .2rem;
+  vertical-align: middle;
+}
+.cfb-row-nopick .cfb-nopick-note { font-family: 'Newsreader', Georgia, serif; font-style: italic; color: var(--cfb-bone-subtle); }
+.cfb-result-none { color: var(--cfb-bone-subtle); }
+
+/* Pick Distribution -- quiet analytical depth (progressive disclosure). The count
+   is neutral bone, never crimson (crimson is identity, not data). */
+.cfb-distribution { margin-top: 1.5rem; }
+.cfb-dist-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: .25rem .5rem;
+  margin-top: .9rem;
+}
+.cfb-dist-item {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: .5rem;
+  padding: .45rem .2rem;
+  border-bottom: 1px solid var(--cfb-hairline);
+}
+.cfb-dist-team { font-family: 'Newsreader', Georgia, serif; color: var(--cfb-bone); }
+.cfb-dist-count { font-family: 'Teko', sans-serif; font-weight: 600; font-size: 1.1rem; color: var(--cfb-bone-muted); }
 
 /* World Cup overrides */
 body.game-worldcup {
