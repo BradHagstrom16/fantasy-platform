@@ -47,7 +47,7 @@ def test_selected_pick_is_lit_not_a_flat_fill():
     # The JS toggles Bootstrap .bg-primary (a solid crimson !important fill); the
     # selected rule must override it with a crimson-LIT rgba midnight, never a
     # solid crimson paint.
-    assert re.search(r"background:\s*rgba\(197,\s*5,\s*12", block) and "!important" in block, \
+    assert re.search(r"(?<![-\w])background:\s*rgba\(197,\s*5,\s*12", block) and "!important" in block, \
         "selected option must override the flat .bg-primary fill with a crimson-lit rgba midnight"
     assert "var(--game-primary)" not in block and "var(--bs-primary)" not in block, \
         "selected option must NOT repaint a solid crimson fill (the flat-fill regression)"
@@ -79,14 +79,14 @@ def test_ineligible_option_recedes_to_canvas_not_opacity():
     block = _rule(r"^body\.game-cfb \.team-option\.team-option-out")
     assert not re.search(r"(?<![-\w])opacity\s*:", block), \
         "an ineligible option must not collapse opacity (cold, not a broken ghost)"
-    assert re.search(r"background:\s*var\(\s*--cfb-canvas", block), \
+    assert re.search(r"(?<![-\w])background:\s*var\(\s*--cfb-canvas", block), \
         "an ineligible option must recede a step deeper (canvas), cold and procedural"
 
 
 def test_out_reason_chip_is_a_readable_cold_label():
     block = _rule(r"^\.cfb-out-reason")
     assert "Teko" in block and "uppercase" in block, ".cfb-out-reason must be uppercase Teko"
-    assert re.search(r"color:\s*var\(\s*--cfb-bone-subtle", block), \
+    assert re.search(r"(?<![-\w])color:\s*var\(\s*--cfb-bone-subtle", block), \
         (".cfb-out-reason must use reduced-contrast bone-subtle text (still readable "
          "at >=4.5:1, never a faded ghost)")
 
@@ -100,7 +100,9 @@ def test_pick_explains_the_spread_cap_reason():
 # -- Quiet spread: neutral rule-data, not green/red on every team (S4) ------
 
 def test_pick_spread_stays_quiet_neutral():
-    assert "favorable" not in TPL and "unfavorable" not in TPL, \
+    # Scope to the .spread-badge class so the lock targets the survivor-state
+    # modifier on the spread chip (the actual regression), not the words anywhere.
+    assert not re.search(r'spread-badge[^"]*(?:favorable|unfavorable)', TPL), \
         ("the pick screen spread must stay quiet neutral rule-data; painting every "
          "team survived-green / lost-red is scanning drama + survivor-state collision")
 
@@ -149,12 +151,16 @@ def test_pick_preserves_js_hooks():
 def test_pick_hero_carries_survivor_voice():
     assert "<h1>Your Card</h1>" in TPL, \
         "the pick H1 must carry the Survivor register ('Your Card'), not a flat label"
-    assert "Make Your Pick" not in TPL, \
+    # Scope to element text (>...<) so a Jinja/HTML comment can't false-fail this;
+    # the old flat copy lived in the .lead <p>, so an <h1>-only scope would miss it.
+    assert not re.search(r'>\s*Make Your Pick\s*<', TPL), \
         "the flat functional 'Make Your Pick' lead is a S3 voice regression"
 
 
 def test_pick_is_a_single_focused_column():
-    assert "Available Teams" not in TPL, \
+    # Scope to element text (the old rail heading was ">Available Teams ({{ N }})<")
+    # so a comment can't false-fail and the count suffix can't dodge the lock.
+    assert not re.search(r'>\s*Available Teams', TPL), \
         ("the redundant Available Teams roster rail must be gone -- the decision is a "
          "single focused column, not a dashboard/roster-builder split")
 
