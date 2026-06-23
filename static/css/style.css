@@ -3528,18 +3528,168 @@ body.game-golf .ts-dropdown .option.active {
 }
 
 /* CFB overrides */
+/* ============================================================
+   CFB Survivor -- dark-first room (A2.0 dark-substrate foundation)
+   The room goes dark by REBASING the platform's existing structural
+   tokens to a warm crimson-black midnight ramp under body.game-cfb,
+   NOT by inventing a parallel --game-surface set the components don't
+   read (games/cfb/DESIGN.md S2 "Token strategy"). Warm-tinted toward
+   crimson so the room reads as its own night and never as the WC room's
+   cool navy. Scoped to body.game-cfb ONLY -- never a global dark mode
+   (top-level DESIGN.md S6 dark-room carve-out). All midnight surfaces
+   contrast-verified: bone ~16:1, bone-muted >=4.5:1, bone-subtle
+   >=4.5:1 across the whole ramp (incl. --cfb-lifted).
+   ============================================================ */
 body.game-cfb {
-  --game-primary:            #C5050C;
-  --game-primary-dark:       #0f0f1a;
-  --game-primary-light:      #e8282f;
-  --game-accent:             #FFFFFF;
-  --game-accent-light:       #e8e8e8;
-  --cfb-survived:            #22c55e;
-  --cfb-lost-life:           #ef4444;
-  --cfb-eliminated:          #6b7280;
+  /* -- Environmental midnight ramp (elevation = step UP the ramp + bone hairline) -- */
+  --cfb-canvas:              #0E0A0C;   /* page backdrop, deepest */
+  --cfb-surface:             #150F12;   /* standard cards, tables, structural surfaces */
+  --cfb-raised:              #1E1518;   /* elevated / active / .is-lead surface */
+  --cfb-lifted:              #281D20;   /* highest non-ceremonial elevation (sticky bars, overlays) */
+  --cfb-hairline:            rgba(243,239,230,.08);  /* the dark-mode edge a shadow can't draw */
+  --cfb-hairline-strong:     rgba(243,239,230,.14);  /* hover / lead-surface edge */
+
+  /* -- Editorial reading layer (bone/white as TEXT + contrast, never a body surface) -- */
+  --cfb-bone:                var(--bone);  /* #F3EFE6 primary body text on midnight (~16:1) */
+  --cfb-white:               #FBF7F0;      /* headlines + critical numbers (strongest contrast) */
+  --cfb-bone-muted:          #B4AAA4;      /* secondary copy (>=4.5:1 across the ramp) */
+  --cfb-bone-subtle:         #938980;      /* tertiary metadata (>=4.5:1 incl. --cfb-lifted) */
+
+  /* -- Competitive identity (crimson -- pressure inside the dark, not atmosphere) -- */
+  --cfb-crimson:             #C5050C;
+  --cfb-crimson-bright:      #E8282F;      /* hover + the only crimson allowed as large/bold text on midnight */
+
+  /* -- Survivor-state (consequence, never identity; aligned to platform live tokens) -- */
+  --cfb-survived:            var(--live-green);  /* #64DBA0 alive / survived */
+  --cfb-lost-life:           var(--live-red);    /* #E63946 one life spent (distinct from identity crimson) */
+  --cfb-eliminated:          #6E625F;            /* out of the pool -- warm ash (never neutral gray) */
+  --cfb-pending:             #9A8F88;            /* unresolved -- muted warm bone */
+
+  /* -- Game override slots -- */
+  --game-primary:            var(--cfb-crimson);
+  --game-primary-dark:       #1A0B0D;        /* warm midnight: the .page-hero gradient start (bone ~16.7:1) */
+  --game-primary-light:      var(--cfb-crimson-bright);
+  --game-accent:             var(--cfb-bone);     /* was #FFFFFF (top-level DESIGN.md #fff ban) */
+  --game-accent-light:       var(--cfb-white);
+
+  /* -- Rebase platform structural tokens to the midnight ramp (the room goes dark) -- */
+  --bg-page:                 var(--cfb-canvas);
+  --bg-card:                 var(--cfb-surface);
+  --bg-muted:                var(--cfb-raised);
+  --text-primary:            var(--cfb-bone);
+  --text-secondary:          var(--cfb-bone-muted);
+  --text-muted:              var(--cfb-bone-subtle);   /* calibrated for dark; never a bone-substrate read */
+  --border:                  var(--cfb-hairline);
+  --border-light:            var(--cfb-hairline-strong);
+  /* Bootstrap base variables. .card sets `color: var(--bs-body-color)` and
+     reboot/utilities read --bs-border-color (both light defaults), so rebasing
+     our own --text-primary/--border alone leaves card-body text near-invisible
+     and hairlines light on midnight. Rebase the Bootstrap tokens too. The
+     --bs-secondary-color redirect drives the .text-muted class (the :root
+     redirect resolves --text-secondary against :root, so a scoped rebase alone
+     won't reach it). */
+  --bs-body-bg:              var(--cfb-surface);   /* default Bootstrap surface (accordion, list-group, dropdown, modal) reads this -- keeps un-styled Bootstrap components from punching white holes in the dark room */
+  --bs-body-color:           var(--cfb-bone);
+  /* Bootstrap's primary is blue (#0d6efd); the CFB room's identity accent is
+     crimson. Rebase it so every .bg-primary / .text-bg-primary / .badge surface
+     (the selected team-pick-card row, the count + distribution badges) reads
+     crimson, not off-palette blue. */
+  --bs-primary:              var(--cfb-crimson);
+  --bs-primary-rgb:          197, 5, 12;
+  --bs-emphasis-color:       var(--cfb-white);
+  --bs-secondary-color:      var(--cfb-bone-muted);
+  --bs-border-color:         var(--cfb-hairline);
+
+  /* -- Elevation-by-midnight: the platform shadow scale is purple-tinted and
+     near-invisible on midnight; neutralize to a warm near-black so depth still
+     reads while the hairline border carries the edge (games/cfb/DESIGN.md S2
+     "Elevation on dark"). -- */
+  --shadow-sm:               0 1px 3px rgba(8,3,4,.5);
+  --shadow-md:               0 6px 20px rgba(8,3,4,.6);
+  --shadow-lg:               0 12px 40px rgba(8,3,4,.65);
 }
 
 /* === CFB SURVIVOR POOL === */
+
+/* -- Dark-substrate foundation: dark forms of the platform primitives CFB
+   consumes (.page-hero, .card, .alert, Bootstrap surface utilities). Per-screen
+   component polish (.team-pick-card, .lives-indicator, .elimination-alert, the
+   .championship-hero ceremony) lands in A2; this block only makes the room dark
+   and correct. -- */
+
+/* page-hero: the platform default 135deg --game-primary-dark -> --game-primary
+   gradient already resolves to the midnight->crimson "under the lights" band
+   (games/cfb/DESIGN.md S4 hero), so no .cfb-hero-grad. Recolor every gold detail
+   to crimson so NO gold reaches the CFB body (the Crimson-Ceremony Rule). */
+body.game-cfb .page-hero::before {
+  /* halftone dot overlay: gold -> crimson */
+  background-image: radial-gradient(circle, rgba(197,5,12,.10) 1px, transparent 1px);
+}
+body.game-cfb .page-hero::after {
+  /* bottom accent line: gold -> crimson */
+  background: linear-gradient(90deg, transparent 0%, var(--cfb-crimson) 30%, var(--cfb-crimson-bright) 50%, var(--cfb-crimson) 70%, transparent 100%);
+}
+body.game-cfb .page-hero .hero-glow {
+  /* ambient corner glow: gold -> crimson */
+  background: radial-gradient(circle, rgba(197,5,12,.16) 0%, transparent 65%);
+}
+body.game-cfb .page-hero .lead {
+  /* the default rgba(255,255,255,.65) subhead drops to ~3.15:1 over the crimson
+     end of the gradient; lift to bone @ .92 -> 4.67:1 worst-corner, ~14:1 over
+     the midnight bulk (games/cfb/DESIGN.md S6 hero worst-corner). */
+  color: rgba(243,239,230,.92);
+}
+
+/* .card elevation-by-lightness: hover lifts INTO the light (surface -> raised +
+   a brighter hairline), the dark-room substitute for a drop shadow. */
+body.game-cfb .card:hover {
+  background: var(--cfb-raised);
+  border-color: var(--cfb-hairline-strong);
+}
+
+/* .card.border-* state variants re-derived for midnight. border-primary used the
+   platform PURPLE (--platform-primary) -- wrong in the crimson room; route it to
+   crimson identity (this is the selected-pick / weekly-CTA affordance). The
+   survivor-state borders replace the platform's pale light tints. */
+body.game-cfb .card.border-primary { border-color: var(--game-primary);    background-color: rgba(197,5,12,.06); }
+body.game-cfb .card.border-success { border-color: var(--cfb-survived);    background-color: rgba(100,219,160,.06); }
+body.game-cfb .card.border-danger  { border-color: var(--cfb-lost-life);   background-color: rgba(230,57,70,.07); }
+body.game-cfb .card.border-warning { border-color: var(--cfb-bone-subtle); background-color: rgba(243,239,230,.05); }
+
+/* Bootstrap .bg-light punches a light hole in the dark room (the dashboard-island
+   failure games/cfb/DESIGN.md S2 warns against); neutralize to a raised midnight.
+   Bootstrap sets it !important, so this dark-substrate override matches (CLAUDE.md
+   sanctions scoped !important on dark substrates). */
+body.game-cfb .bg-light { background-color: var(--cfb-raised) !important; }
+
+/* .table dark form. Bootstrap cells default to --bs-table-bg (= --bs-body-bg =
+   #fff) with --bs-table-color = --bs-emphasis-color (near-black) -- a white
+   table island on midnight. Make cells transparent so the dark card shows
+   through, with bone text and hairline rules. .table-cfb thead (midnight + the
+   crimson rule) and the crimson current-user tint already sit on top. */
+body.game-cfb .table {
+  --bs-table-bg: transparent;
+  --bs-table-color: var(--cfb-bone);
+  --bs-table-border-color: var(--cfb-hairline);
+}
+/* Contextual row variants (.table-success on a won week, .table-danger on a
+   lost week) ship Bootstrap's pale tints -- light islands on midnight. Re-derive
+   as faint survivor-state tints with bone text. A2's per-screen results polish
+   may move result coding from row tints to the result chips; this only keeps the
+   baseline dark. */
+body.game-cfb .table-success { --bs-table-bg: rgba(100,219,160,.10); --bs-table-color: var(--cfb-bone); }
+body.game-cfb .table-danger  { --bs-table-bg: rgba(230,57,70,.12);   --bs-table-color: var(--cfb-bone); }
+body.game-cfb .table-warning { --bs-table-bg: rgba(243,239,230,.06);  --bs-table-color: var(--cfb-bone); }
+
+/* Alerts: dark forms. The platform .alert-* use pale tinted backgrounds (light
+   islands on midnight) + a purple box-shadow. Drop the shadow; sit each on a
+   faint state tint with a state-colored border and high-contrast text (bone, or
+   survived-green which has the contrast headroom). */
+body.game-cfb .alert { box-shadow: none; }
+body.game-cfb .alert-success { background: rgba(100,219,160,.10); border-color: rgba(100,219,160,.5); color: var(--cfb-survived); }
+body.game-cfb .alert-danger  { background: rgba(230,57,70,.12);   border-color: var(--cfb-lost-life);       color: var(--cfb-bone); }
+body.game-cfb .alert-info    { background: var(--cfb-raised);     border-color: var(--cfb-hairline-strong); color: var(--cfb-bone); }
+body.game-cfb .alert-warning { background: rgba(243,239,230,.05); border-color: var(--cfb-bone-subtle);     color: var(--cfb-bone); }
 
 /* CFB table — midnight header, crimson accent */
 .table-cfb > thead > tr > th {
