@@ -26,13 +26,22 @@
         {% endfor %}
     </div>
 
-    {# Your Verdict - the personal "am I alive?" lead, elevated above the field #}
-    {% if current_user.is_authenticated and current_user_pick %}
-    {% set my_game = game_results.get(current_user_pick.team_id) %}
-    <div class="cfb-verdict animate-in {% if current_user_pick.is_correct == True %}is-survived{% elif current_user_pick.is_correct == False %}is-lost{% else %}is-pending{% endif %}">
+    {# Your Verdict - the personal "am I alive?" lead, elevated above the field.
+       Renders for a submitted pick AND for a no-pick enrollment (whose survivor
+       state still answers "am I alive?"); a missed slate is a setback (is-lost). #}
+    {% set my_entry = current_user_pick or current_user_nopick %}
+    {% if current_user.is_authenticated and my_entry %}
+    {% set my_game = game_results.get(current_user_pick.team_id) if current_user_pick else none %}
+    <div class="cfb-verdict animate-in {% if current_user_pick and current_user_pick.is_correct == True %}is-survived{% elif current_user_pick and current_user_pick.is_correct == None %}is-pending{% else %}is-lost{% endif %}">
         <div class="cfb-verdict-main">
             <span class="cfb-eyebrow">Your Verdict</span>
-            <div class="cfb-verdict-team"><span class="cfb-team-name">{{ current_user_pick.team.name }}</span></div>
+            <div class="cfb-verdict-team">
+                {% if current_user_pick %}
+                <span class="cfb-team-name">{{ current_user_pick.team.name }}</span>
+                {% else %}
+                <span class="cfb-team-name cfb-verdict-nopick">No pick submitted</span>
+                {% endif %}
+            </div>
             {% if my_game %}
             <div class="cfb-verdict-matchup">
                 {% if my_game.was_home %}vs {{ my_game.opponent }}{% else %}@ {{ my_game.opponent }}{% endif %}
@@ -43,19 +52,21 @@
             {% endif %}
         </div>
         <div class="cfb-verdict-outcome">
-            {% if current_user_pick.is_correct == True %}
+            {% if current_user_pick and current_user_pick.is_correct == True %}
                 <span class="badge badge-survived cfb-verdict-chip">SURVIVED</span>
-            {% elif current_user_pick.is_correct == False %}
+            {% elif current_user_pick and current_user_pick.is_correct == False %}
                 <span class="badge badge-lost-life cfb-verdict-chip">LOST A LIFE</span>
-            {% else %}
+            {% elif current_user_pick %}
                 <span class="badge badge-pending cfb-verdict-chip">PENDING</span>
+            {% else %}
+                <span class="badge badge-lost-life cfb-verdict-chip">NO PICK</span>
             {% endif %}
             <span class="cfb-verdict-lives">
                 <span class="lives-indicator">
-                    {% for i in range(current_user_pick.lives_after) %}<span class="life"></span>{% endfor %}
-                    {% for i in range(2 - current_user_pick.lives_after) %}<span class="life lost"></span>{% endfor %}
+                    {% for i in range(my_entry.lives_after) %}<span class="life"></span>{% endfor %}
+                    {% for i in range(2 - my_entry.lives_after) %}<span class="life lost"></span>{% endfor %}
                 </span>
-                <span class="cfb-verdict-lives-label">{% if current_user_pick.was_eliminated %}Eliminated{% elif current_user_pick.lives_after == 1 %}1 life left{% else %}{{ current_user_pick.lives_after }} lives left{% endif %}</span>
+                <span class="cfb-verdict-lives-label">{% if my_entry.was_eliminated %}Eliminated{% elif my_entry.lives_after == 1 %}1 life left{% else %}{{ my_entry.lives_after }} lives left{% endif %}</span>
             </span>
         </div>
     </div>

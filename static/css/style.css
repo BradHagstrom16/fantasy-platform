@@ -4242,6 +4242,8 @@ body.game-cfb .team-pick-card.ineligible .cfb-matchup { color: var(--cfb-bone-mu
 .cfb-verdict.is-pending  { border-top-color: var(--cfb-pending); }
 .cfb-verdict .cfb-eyebrow { display: block; margin-bottom: .4rem; }
 .cfb-verdict-team .cfb-team-name { font-size: 1.7rem; color: var(--cfb-white); }
+/* No-pick verdict: the team slot reads as a muted status, not a team name. */
+.cfb-verdict-team .cfb-team-name.cfb-verdict-nopick { color: var(--cfb-bone-muted); font-weight: 500; }
 .cfb-verdict-matchup {
   margin-top: .25rem;
   font-family: 'Newsreader', Georgia, serif;

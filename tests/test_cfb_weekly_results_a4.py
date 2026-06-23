@@ -129,9 +129,21 @@ def test_field_ledger_folds_columns_for_mobile():
     assert "<th>Opponent</th>" not in TPL and "<th>Score</th>" not in TPL, \
         "the standalone Opponent / Score columns are folded away (mobile survivor-state readability, S6)"
     assert "cfb-pick-meta" in TPL, "the matchup sub-line (.cfb-pick-meta) rides inside the Pick cell"
-    block = _rule(r"^\.cfb-field-table th\.cfb-col-center,\n\.cfb-field-table td\.cfb-col-center")
+    # Whitespace-tolerant between the two grouped selectors (formatting-proof).
+    block = _rule(r"^\.cfb-field-table th\.cfb-col-center,\s*\.cfb-field-table td\.cfb-col-center")
     assert "width: 1%" in block and "nowrap" in block, \
         "the survivor-state columns stay compact so five columns fit inside mobile width"
+
+
+def test_verdict_renders_for_no_pick_user():
+    # The "am I alive?" lead (DESIGN.md S1) must still surface for an
+    # authenticated user who MISSED the slate -- their no-pick enrollment carries
+    # lives_after / was_eliminated. Pre-fix the block was gated on a submitted
+    # pick alone and vanished for that real weekly path.
+    assert "current_user_nopick" in TPL, \
+        "the verdict must consider the no-pick enrollment, not only a submitted pick"
+    assert "my_entry" in TPL and ">NO PICK<" in TPL, \
+        "the no-pick verdict must render a labeled NO PICK outcome alongside the player's lives"
 
 
 # -- No em-dash / double-hyphen copy (S3) -----------------------------------
