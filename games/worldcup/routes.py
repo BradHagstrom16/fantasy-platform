@@ -1037,6 +1037,9 @@ def admin_dashboard():
     total_paid = WorldCupEnrollment.query.filter_by(season_year=SEASON_YEAR, has_paid=True).count()
     picks_submitted = WorldCupEnrollment.query.filter_by(season_year=SEASON_YEAR, picks_submitted=True).count()
 
+    # Knockout rounds ready to bulk-populate from the API.
+    populatable_stages = populatable_bracket_stages()
+
     return render_template('worldcup/admin/dashboard.html',
         total_matches=total_matches,
         completed_count=completed_count,
@@ -1044,6 +1047,7 @@ def admin_dashboard():
         pending_matches=pending_matches,
         groups_needing_advancement=groups_needing_advancement,
         knockout_unassigned=knockout_unassigned,
+        populatable_stages=populatable_stages,
         total_enrolled=total_enrolled,
         total_paid=total_paid,
         picks_submitted=picks_submitted,

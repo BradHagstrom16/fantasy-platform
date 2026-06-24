@@ -97,3 +97,19 @@ def test_admin_bracket_post_skips_completed_shell(client, app):
     with app.app_context():
         s = db.session.get(WorldCupMatch, shell_id)
         assert s.home_team_id is None  # completed shell left untouched
+
+
+def test_dashboard_shows_populate_cta_when_stage_ready(client, app):
+    auth_id = _make_admin(app)
+    with app.app_context():
+        db.session.add(WorldCupMatch(match_number=1, stage='group', group_letter='A',
+                                     is_completed=True))
+        db.session.add(WorldCupTeam(fifa_code='BRA', name='Brazil', display_name='Brazil',
+                                    tier=1, multiplier=1.0, confederation='X', group_letter='A',
+                                    advancement_method='group_winner'))
+        db.session.add(WorldCupMatch(match_number=73, stage='R32'))
+        db.session.commit()
+    _login(client, auth_id)
+    resp = client.get('/worldcup/admin/')
+    assert resp.status_code == 200
+    assert b'/worldcup/admin/bracket/R32' in resp.data
