@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="light">
+<meta name="supported-color-schemes" content="light">
+<title>The group stage is a wrap &mdash; World Cup Fantasy Pool</title>
+</head>
+<body style="margin:0; padding:0; background:#F3EFE6; font-family:'Newsreader', Georgia, 'Times New Roman', serif; color:#1C1730; -webkit-text-size-adjust:100%; -ms-text-size-adjust:100%;">
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+       style="background:#F3EFE6; min-width:320px;">
+  <tr>
+    <td align="center" style="padding:28px 16px 32px;">
+
+      <!-- Card shell -->
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+             style="max-width:560px; background:#FFFFFF; border-radius:8px; overflow:hidden;
+                    box-shadow:0 4px 20px rgba(58,29,114,.12);">
+
+        <!-- ══ HEADER BAND ══ -->
+        <tr>
+          <td style="background:#2A1150; padding:26px 32px 20px; text-align:center;">
+            <!--[if !mso]><!-->
+            <img src="{{ logo_url }}?v={{ asset_version }}"
+                 width="140" height="140"
+                 alt="Corrupt Commish Club"
+                 style="display:block; margin:0 auto; border:0; max-width:140px;">
+            <!--<![endif]-->
+            <!--[if mso]>
+            <div style="font-family:Arial,sans-serif; font-size:22px; font-weight:bold;
+                        letter-spacing:.06em; color:#C9A227; text-transform:uppercase;">
+              CORRUPT COMMISH CLUB
+            </div>
+            <![endif]-->
+            <div style="font-family:'Teko', Arial, sans-serif; font-size:12px; font-weight:500;
+                        letter-spacing:.14em; color:rgba(243,239,230,.85); text-transform:uppercase;
+                        margin-top:4px;">
+              World Cup Fantasy Pool
+            </div>
+          </td>
+        </tr>
+
+        <!-- ══ HEADLINE ══ -->
+        <tr>
+          <td style="background:#FFFFFF; padding:24px 28px 4px;">
+            <h1 style="margin:0 0 8px; font-family:'Newsreader', Georgia, serif; font-size:22px;
+                       font-weight:600; color:#001A4D; line-height:1.2;">
+              The group stage is a wrap
+            </h1>
+            <p style="margin:0; font-size:15px; color:#5A5470; line-height:1.45;">
+              Hi {{ enrollment.get_display_name() }} &mdash; here's how your roster came through the
+              groups, and where you stand heading into the Round of 32.
+            </p>
+          </td>
+        </tr>
+
+        <!-- ══ ADVANCEMENT POINTS HERO ══ -->
+        <tr>
+          <td style="background:#FFFFFF; padding:16px 28px 4px;">
+            <div style="font-family:'Teko', Arial, sans-serif; font-size:11px; font-weight:500;
+                        letter-spacing:.1em; text-transform:uppercase; color:#5A5470; margin-bottom:4px;">
+              Group advancement points earned
+            </div>
+            <div style="font-family:'Teko', Arial, sans-serif; font-size:42px; font-weight:600;
+                        color:#BF0A30; line-height:1; letter-spacing:.02em;">
+              +{{ total_adv_str }}
+            </div>
+          </td>
+        </tr>
+
+        <!-- ══ NAVY RULE ══ -->
+        <tr>
+          <td style="padding:16px 28px 0;">
+            <div style="height:2px; background:#002868; border-radius:1px;"></div>
+          </td>
+        </tr>
+
+        <!-- ══ TEAMS THAT ADVANCED ══ -->
+        <tr>
+          <td style="background:#FFFFFF; padding:18px 28px 0;">
+            <div style="font-family:'Teko', Arial, sans-serif; font-size:11px; font-weight:500;
+                        letter-spacing:.1em; text-transform:uppercase; color:#8A849B; margin-bottom:12px;">
+              Your teams that advanced
+            </div>
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+              {% for r in advanced %}
+              <tr>
+                <td valign="middle" style="padding:8px 0; border-bottom:1px solid #F0ECE4;">
+                  <div style="font-family:'Teko', Arial, sans-serif; font-size:17px; font-weight:600;
+                              color:#001A4D; letter-spacing:.02em; line-height:1.15;">
+                    {{ r.team.display_name }}&nbsp;<span style="font-size:12px; font-weight:500;
+                        color:#8A849B; letter-spacing:.04em;">{{ fmt_mult(r.multiplier) }}</span>
+                  </div>
+                  <div style="font-family:'Newsreader', Georgia, serif; font-size:12px;
+                              color:#5A5470; margin-top:2px; line-height:1.3;">
+                    {{ r.method_label }}&nbsp;&middot;&nbsp;+{{ r.base }} base
+                  </div>
+                </td>
+                <td align="right" valign="middle"
+                    style="padding:8px 0; border-bottom:1px solid #F0ECE4; white-space:nowrap;">
+                  <span style="font-family:'Teko', Arial, sans-serif; font-size:19px; font-weight:600;
+                               color:#BF0A30; letter-spacing:.02em;">
+                    +{{ fmt_pts(r.points) }}&nbsp;pts
+                  </span>
+                </td>
+              </tr>
+              {% endfor %}
+            </table>
+          </td>
+        </tr>
+
+        {% if eliminated %}
+        <!-- ══ OUT AFTER THE GROUPS ══ -->
+        <tr>
+          <td style="background:#FFFFFF; padding:18px 28px 0;">
+            <div style="font-family:'Teko', Arial, sans-serif; font-size:11px; font-weight:500;
+                        letter-spacing:.1em; text-transform:uppercase; color:#8A849B; margin-bottom:6px;">
+              Out after the groups
+            </div>
+            <p style="margin:0; font-size:14px; color:#5A5470; line-height:1.4;">
+              {% for r in eliminated %}{{ r.team.display_name }}{% if not loop.last %}&nbsp;&middot;&nbsp;{% endif %}{% endfor %}
+            </p>
+          </td>
+        </tr>
+        {% endif %}
+
+        <!-- ══ EXPLAINER ══ -->
+        <tr>
+          <td style="background:#FFFFFF; padding:18px 28px 0;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+                   style="background:#F6F5F8; border-radius:8px;">
+              <tr>
+                <td style="padding:14px 16px;">
+                  <div style="font-family:'Teko', Arial, sans-serif; font-size:14px; font-weight:600;
+                              color:#001A4D; letter-spacing:.02em; margin-bottom:4px;">
+                    How group points worked
+                  </div>
+                  <p style="margin:0; font-size:14px; color:#5A5470; line-height:1.45;">
+                    Group winner +4 &middot; Runner-up +3 &middot; Best 3rd +1 &mdash; each multiplied by your
+                    tier multiplier.
+                  </p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <!-- ══ STANDING ENTERING R32 ══ -->
+        <tr>
+          <td style="background:#FFFFFF; padding:20px 28px 0;">
+            <div style="font-family:'Teko', Arial, sans-serif; font-size:11px; font-weight:500;
+                        letter-spacing:.1em; text-transform:uppercase; color:#5A5470; margin-bottom:4px;">
+              Entering the Round of 32
+            </div>
+            <div style="font-family:'Teko', Arial, sans-serif; font-size:24px; font-weight:600;
+                        color:#001A4D; letter-spacing:.02em; line-height:1.1;">
+              {{ total_score_str }} pts&nbsp;<span style="font-size:16px; font-weight:500; color:#5A5470;">&middot;&nbsp;#{{ rank }} of {{ total_enrolled }}</span>
+            </div>
+          </td>
+        </tr>
+
+        <!-- ══ WHAT'S AT STAKE NEXT ══ -->
+        <tr>
+          <td style="background:#FFFFFF; padding:18px 28px 0;">
+            <div style="font-family:'Teko', Arial, sans-serif; font-size:11px; font-weight:500;
+                        letter-spacing:.1em; text-transform:uppercase; color:#8A849B; margin-bottom:10px;">
+              What's at stake next (&times; your multiplier)
+            </div>
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+              {% for label, base in ko_ladder %}
+              <tr>
+                <td style="padding:4px 0; font-family:'Newsreader', Georgia, serif;
+                           font-size:14px; color:#001A4D;">{{ label }}</td>
+                <td align="right" style="padding:4px 0; font-family:'Teko', Arial, sans-serif;
+                           font-size:14px; font-weight:600; color:#5A5470; letter-spacing:.02em;">
+                  +{{ base }} base
+                </td>
+              </tr>
+              {% endfor %}
+            </table>
+            <p style="margin:12px 0 0; font-size:13px; color:#5A5470; line-height:1.4;">
+              Your surviving high-multiplier picks carry the biggest upside from here.
+            </p>
+          </td>
+        </tr>
+
+        <!-- ══ CTA ══ -->
+        <tr>
+          <td style="background:#FFFFFF; padding:20px 28px 28px; text-align:center;">
+            <div style="height:1px; background:#F0ECE4; margin-bottom:20px;"></div>
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;">
+              <tr>
+                <td align="center" style="background:#BF0A30; border-radius:6px;">
+                  <a href="{{ site_url }}/worldcup/leaderboard"
+                     style="display:inline-block; padding:12px 28px;
+                            font-family:'Teko', Arial, sans-serif; font-size:15px; font-weight:600;
+                            letter-spacing:.08em; text-transform:uppercase;
+                            color:#FFFFFF; text-decoration:none;">
+                    View the standings &#8594;
+                  </a>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <!-- ══ FOOTER BAND ══ -->
+        <tr>
+          <td style="background:#1C0A3A; padding:14px 28px; text-align:center;">
+            <span style="font-family:'Teko', Arial, sans-serif; font-size:11px;
+                         letter-spacing:.12em; color:rgba(243,239,230,.4); text-transform:uppercase;">
+              Corrupt Commish Club &nbsp;&middot;&nbsp; cccfantasy.com
+            </span>
+          </td>
+        </tr>
+
+      </table>
+
+    </td>
+  </tr>
+</table>
+
+</body>
+</html>
