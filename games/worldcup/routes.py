@@ -33,10 +33,13 @@ from games.worldcup.services.scoring import (
     compute_team_score_events,
 )
 from games.worldcup.services.elimination import eliminated_team_ids
-from games.worldcup.services.notifications import send_picks_confirmation
+from games.worldcup.services.notifications import (
+    send_picks_confirmation, send_group_stage_recap, group_recap_last_sent,
+)
 from games.worldcup.services.sync import (
     fetch_advancement_proposal, fetch_bracket_proposal,
-    populatable_bracket_stages, KO_STAGES, SyncError,
+    populatable_bracket_stages, all_group_advancement_confirmed,
+    KO_STAGES, SyncError,
 )
 # Platform tz helper. Re-exported as `format_ct` in the WC blueprint context
 # processor (see below) so existing WC templates (`{{ format_ct(dt).strftime(...) }}`)
@@ -1040,6 +1043,10 @@ def admin_dashboard():
     # Knockout rounds ready to bulk-populate from the API.
     populatable_stages = populatable_bracket_stages()
 
+    # Group-stage recap email: offered once every group's advancement is confirmed.
+    recap_ready = all_group_advancement_confirmed()
+    recap_last_sent = group_recap_last_sent()
+
     return render_template('worldcup/admin/dashboard.html',
         total_matches=total_matches,
         completed_count=completed_count,
@@ -1048,6 +1055,8 @@ def admin_dashboard():
         groups_needing_advancement=groups_needing_advancement,
         knockout_unassigned=knockout_unassigned,
         populatable_stages=populatable_stages,
+        recap_ready=recap_ready,
+        recap_last_sent=recap_last_sent,
         total_enrolled=total_enrolled,
         total_paid=total_paid,
         picks_submitted=picks_submitted,
@@ -1227,6 +1236,24 @@ def admin_recalc():
         f'{result["picks_updated"]} picks, {result["enrollments_updated"]} enrollments.',
         'success',
     )
+    return redirect(url_for('worldcup.admin_dashboard'))
+
+
+@worldcup_bp.route('/admin/send-group-recap', methods=['POST'])
+@worldcup_admin_required
+def admin_send_group_recap():
+    """Send the personalized group-stage recap email to all players (guarded)."""
+    result = send_group_stage_recap()
+    if result['status'] == 'blocked':
+        flash('Group advancement is not fully confirmed yet — confirm all 12 groups first.', 'error')
+    elif result['status'] == 'sent':
+        flash(f"Group recap sent to {result['sent']} player(s) "
+              f"({result.get('errors', 0)} error(s)).", 'success')
+    elif result.get('errors'):
+        flash(f"Group recap failed for all recipients ({result['errors']} error(s)). "
+              "Check logs.", 'error')
+    else:
+        flash('No recap emails were sent (no eligible players).', 'warning')
     return redirect(url_for('worldcup.admin_dashboard'))
 
 

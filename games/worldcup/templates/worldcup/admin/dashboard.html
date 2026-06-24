@@ -199,6 +199,20 @@
     </div>
     {% endif %}
 
+    {# Group-stage recap email — offered once every group's advancement is confirmed #}
+    {% if recap_ready %}
+    <h2 class="section-heading">Group-Stage Recap Email</h2>
+    <p class="adm-sub mb-2">Every group is confirmed — send each player their personalized group-stage recap.</p>
+    <form method="POST" action="{{ url_for('worldcup.admin_send_group_recap') }}" class="mb-4"
+          onsubmit="return confirm('Send the group-stage recap to every player now?');">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="btn btn-game btn-sm">
+            {% if recap_last_sent %}Resend group recap{% else %}Send group recap{% endif %}
+        </button>
+        {% if recap_last_sent %}<span class="adm-sub ms-2">Last sent {{ recap_last_sent }}</span>{% endif %}
+    </form>
+    {% endif %}
+
     {# Knockout shells awaiting teams, folded (bulk early-tournament work) #}
     {% if knockout_unassigned %}
     <details class="adm-fold">
