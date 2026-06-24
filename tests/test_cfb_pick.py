@@ -420,9 +420,10 @@ def test_created_at_refreshes_on_update(app, client):
 # failure mode and aren't testable here; see the PR notes.)
 
 
-def test_pick_unique_constraint_present(app):
+def test_pick_unique_constraint_present():
     """Lock the (user_id, week_id) unique constraint so the race protection
-    can't be silently dropped from the model."""
+    can't be silently dropped from the model. (Pure model introspection — no
+    app context needed.)"""
     names = {c.name for c in CfbPick.__table_args__}
     assert 'unique_cfb_user_week_pick' in names
 
@@ -440,6 +441,27 @@ def test_double_submit_integrity_error_recovers_gracefully(app, client):
 
     err = IntegrityError('INSERT', {}, Exception('UNIQUE constraint failed'))
     with patch.object(db.session, 'commit', side_effect=err):
+        resp = _post_pick(client, 1, home.id)
+
+    assert resp.status_code == 302
+    assert resp.headers['Location'] in ('/cfb/', 'http://localhost/cfb/')
+
+
+def test_autoflush_integrity_error_recovers_gracefully(app, client):
+    """The racing duplicate can also surface during autoflush — the SELECT in
+    calculate_cumulative_spread flushes the pending INSERT before commit() is
+    reached. That earlier path must recover identically (redirect, no 500), so
+    the guard has to wrap the recalculation too, not just the commit."""
+    week = make_week(1, deadline=FUTURE_DEADLINE)
+    home, away = make_team('Home'), make_team('Away')
+    make_game(week, home, away, spread=-7.0)
+    user = make_user('p1')
+    make_enrollment(user)
+    db.session.commit()
+    _login(client, user)
+
+    err = IntegrityError('INSERT', {}, Exception('UNIQUE constraint failed'))
+    with patch('games.cfb.routes.calculate_cumulative_spread', side_effect=err):
         resp = _post_pick(client, 1, home.id)
 
     assert resp.status_code == 302

@@ -512,8 +512,12 @@ def make_pick(week_number):
                 db.session.add(new_pick)
                 success_msg = 'Pick submitted successfully!'
 
-            calculate_cumulative_spread(enrollment)
             try:
+                # calculate_cumulative_spread issues a SELECT, so autoflush
+                # writes the pending new_pick INSERT here — a racing duplicate
+                # trips the constraint before commit() is reached. Keep both
+                # inside the guard.
+                calculate_cumulative_spread(enrollment)
                 db.session.commit()
             except IntegrityError:
                 # Concurrent double-submit: a parallel request already recorded
