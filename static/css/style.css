@@ -4762,7 +4762,7 @@ body.game-cfb .admin-action--primary i { color: var(--cfb-white); }
    midnight (the gray Bootstrap .btn-secondary reads as a dead slab on dark). The
    scope below also re-derives the Bootstrap neutral/outline variants so any button
    not explicitly converted still lands on the room's palette, never gray-on-dark. */
-.btn-game-ghost,
+body.game-cfb .btn-game-ghost,
 body.game-cfb .btn-secondary,
 body.game-cfb .btn-outline-secondary,
 body.game-cfb .btn-outline-light,
@@ -4771,8 +4771,8 @@ body.game-cfb .btn-outline-primary {
   border: 1px solid var(--cfb-hairline-strong);
   color: var(--cfb-bone);
 }
-.btn-game-ghost:hover,
-.btn-game-ghost:focus-visible,
+body.game-cfb .btn-game-ghost:hover,
+body.game-cfb .btn-game-ghost:focus-visible,
 body.game-cfb .btn-secondary:hover,
 body.game-cfb .btn-secondary:focus-visible,
 body.game-cfb .btn-outline-secondary:hover,

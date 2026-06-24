@@ -247,6 +247,8 @@ def test_payment_toggle_js_keeps_csrf_header():
     assert "X-CSRFToken" in tpl, "the payment toggle fetch must send the X-CSRFToken header"
     assert "payment-toggle" in tpl, "the payment toggle JS hook (.payment-toggle) must be preserved"
     assert "cfb-admin-chip" in tpl, "the payment status badge is the neutral .cfb-admin-chip"
-    # The JS selector + className assignments must target the renamed chip, not the
-    # old Bootstrap .badge (else the toggle silently fails to update the label).
-    assert ".cfb-admin-chip" in tpl, "the payment JS must query the .cfb-admin-chip (not the removed .badge)"
+    # The JS targets an explicit cell hook (.cfb-pay-status), not a brittle
+    # td:nth-child position, so a future column change can't silently null the
+    # badge -- and it scopes past the .cfb-admin-chip Admin tag in the name cell.
+    assert "cfb-pay-status" in tpl, "the payment status cell must carry an explicit .cfb-pay-status JS hook"
+    assert "nth-child" not in tpl, "the payment JS must not rely on a brittle td:nth-child selector"
