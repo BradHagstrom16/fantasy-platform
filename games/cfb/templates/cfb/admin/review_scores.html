@@ -1,10 +1,16 @@
 {% extends "base.html" %}
-{% block title %}Review Scores — {{ get_week_display_name(week) }}{% endblock %}
+{% block title %}Review the Scores · {{ get_week_display_name(week) }}{% endblock %}
 
 {% block content %}
-<div class="container mt-4">
-    <h2>Review Fetched Scores &mdash; {{ get_week_display_name(week) }}</h2>
+<header class="cfb-admin-masthead">
+    <div class="container">
+        <span class="cfb-eyebrow">The Commissioner&rsquo;s Desk &middot; {{ get_week_display_name(week) }}</span>
+        <h1 class="cfb-admin-title">Review the Scores</h1>
+        <p class="cfb-admin-sub">Confirm the fetched scores before they post to the standings.</p>
+    </div>
+</header>
 
+<div class="container pb-5">
     {% if results.api_credits_remaining is not none %}
     <div class="alert alert-info">
         <strong>API Credits Remaining:</strong> {{ results.api_credits_remaining }}
@@ -16,7 +22,7 @@
 
         {% if results.matched_completed %}
         <div class="card mb-3">
-            <div class="card-header bg-success text-white"><h4 class="mb-0">Completed Games ({{ results.matched_completed|length }})</h4></div>
+            <div class="card-header"><h4 class="mb-0">Completed Games ({{ results.matched_completed|length }})</h4></div>
             <div class="card-body p-0">
                 <div class="table-responsive">
                 <table class="table mb-0">
@@ -42,7 +48,7 @@
                             </td>
                             <td>
                                 <select name="winner_{{ match.game_id }}" class="form-select form-select-sm" style="width: 140px;">
-                                    <option value="">--</option>
+                                    <option value="">Select</option>
                                     <option value="home" {% if not match.is_no_contest and match.home_score is not none and match.away_score is not none and match.home_score > match.away_score %}selected{% endif %}>Home</option>
                                     <option value="away" {% if not match.is_no_contest and match.home_score is not none and match.away_score is not none and match.away_score > match.home_score %}selected{% endif %}>Away</option>
                                     <option value="no_contest" {% if match.is_no_contest %}selected{% endif %}>No Contest</option>
@@ -59,7 +65,7 @@
 
         {% if results.matched_in_progress %}
         <div class="card mb-3">
-            <div class="card-header bg-warning text-dark"><h4 class="mb-0">In Progress ({{ results.matched_in_progress|length }})</h4></div>
+            <div class="card-header"><h4 class="mb-0">In Progress ({{ results.matched_in_progress|length }})</h4></div>
             <div class="card-body p-0">
                 <div class="table-responsive">
                 <table class="table mb-0">
@@ -85,7 +91,7 @@
                             </td>
                             <td>
                                 <select name="winner_{{ match.game_id }}" class="form-select form-select-sm" style="width: 140px;">
-                                    <option value="">--</option>
+                                    <option value="">Select</option>
                                     <option value="home">Home</option>
                                     <option value="away">Away</option>
                                     <option value="no_contest" {% if match.is_no_contest %}selected{% endif %}>No Contest</option>
@@ -102,11 +108,11 @@
 
         {% if results.unmatched %}
         <div class="card mb-3">
-            <div class="card-header bg-secondary text-white"><h4 class="mb-0">Unmatched API Events ({{ results.unmatched|length }})</h4></div>
+            <div class="card-header"><h4 class="mb-0">Unmatched API Events ({{ results.unmatched|length }})</h4></div>
             <div class="card-body">
                 <ul class="mb-0">
                     {% for event in results.unmatched %}
-                    <li>{{ event.home_team }} vs {{ event.away_team }} — {{ event.status|default('Unknown') }}</li>
+                    <li>{{ event.home_team }} vs {{ event.away_team }}: {{ event.status|default('Unknown') }}</li>
                     {% endfor %}
                 </ul>
             </div>
@@ -117,11 +123,11 @@
             <strong>Review carefully!</strong> Confirming scores may trigger result processing if all games are decided.
         </div>
 
-        <button type="submit" class="btn btn-primary btn-lg"
+        <button type="submit" class="btn btn-game btn-lg"
                 onclick="return confirm('Apply these scores? This may trigger result processing.')">
             Apply Scores
         </button>
-        <a href="{{ url_for('cfb.admin_dashboard') }}" class="btn btn-secondary btn-lg ms-2">Cancel</a>
+        <a href="{{ url_for('cfb.admin_dashboard') }}" class="btn btn-game-ghost btn-lg ms-2">Cancel</a>
     </form>
 </div>
 {% endblock %}

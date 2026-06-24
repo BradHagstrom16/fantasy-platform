@@ -1,12 +1,20 @@
 {% extends "base.html" %}
-{% block title %}Create Week — CFB Admin{% endblock %}
+{% block title %}Create a Week · CFB Survivor Admin{% endblock %}
 
 {% block content %}
-<div class="container mt-4">
+<header class="cfb-admin-masthead">
+    <div class="container">
+        <span class="cfb-eyebrow">CFB Survivor &middot; The Commissioner&rsquo;s Desk</span>
+        <h1 class="cfb-admin-title">Create a Week</h1>
+        <p class="cfb-admin-sub">Open the next slate for picks.</p>
+    </div>
+</header>
+
+<div class="container pb-5">
 <div class="row justify-content-center">
     <div class="col-md-6">
         <div class="card">
-            <div class="card-header"><h3 class="mb-0">Create New Week</h3></div>
+            <div class="card-header"><h3 class="mb-0">New Week</h3></div>
             <div class="card-body">
                 <form method="POST">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
@@ -25,7 +33,7 @@
                                 <label class="form-check-label" for="is_playoff_week">
                                     <strong>This is a playoff week</strong>
                                 </label>
-                                <small class="form-text d-block text-muted">Check this for CFP weeks (16+) &mdash; allows team reuse</small>
+                                <small class="form-text d-block text-muted">Check this for CFP weeks (16+): allows team reuse</small>
                             </div>
                             <div class="mb-3">
                                 <label for="round_name" class="form-label">Custom Display Name</label>
@@ -50,8 +58,8 @@
                         <small class="form-text text-muted">Usually Thursday or Saturday morning</small>
                     </div>
 
-                    <button type="submit" class="btn btn-success">Create Week</button>
-                    <a href="{{ url_for('cfb.admin_dashboard') }}" class="btn btn-secondary">Cancel</a>
+                    <button type="submit" class="btn btn-game">Create Week</button>
+                    <a href="{{ url_for('cfb.admin_dashboard') }}" class="btn btn-game-ghost">Cancel</a>
                 </form>
             </div>
         </div>

@@ -1,10 +1,16 @@
 {% extends "base.html" %}
-{% block title %}Mark Results — {{ get_week_display_name(week) }}{% endblock %}
+{% block title %}Mark the Results · {{ get_week_display_name(week) }}{% endblock %}
 
 {% block content %}
-<div class="container mt-4">
-    <h2>Mark Results &mdash; {{ get_week_display_name(week) }}</h2>
+<header class="cfb-admin-masthead">
+    <div class="container">
+        <span class="cfb-eyebrow">The Commissioner&rsquo;s Desk &middot; {{ get_week_display_name(week) }}</span>
+        <h1 class="cfb-admin-title">Mark the Results</h1>
+        <p class="cfb-admin-sub">Pick the winner of each game to settle {{ get_week_display_name(week) }}.</p>
+    </div>
+</header>
 
+<div class="container pb-5">
     <div class="card">
         <div class="card-header"><h4 class="mb-0">Select Winners</h4></div>
         <div class="card-body">
@@ -56,7 +62,7 @@
                                            id="no_contest_{{ game.id }}"
                                            {% if game.is_no_contest %}checked{% endif %}>
                                     <label class="form-check-label" for="no_contest_{{ game.id }}">
-                                        No Contest <small class="text-muted">(canceled — picks push)</small>
+                                        No Contest <small class="text-muted">(canceled, picks push)</small>
                                     </label>
                                 </div>
                             </div>
@@ -70,11 +76,11 @@
                     and deduct lives from users who picked losing teams. This action cannot be undone.
                 </div>
 
-                <button type="submit" class="btn btn-warning"
+                <button type="submit" class="btn btn-game"
                         onclick="return confirm('Are you sure? This will process all picks and update lives.')">
                     Submit Results &amp; Process Picks
                 </button>
-                <a href="{{ url_for('cfb.admin_dashboard') }}" class="btn btn-secondary">Cancel</a>
+                <a href="{{ url_for('cfb.admin_dashboard') }}" class="btn btn-game-ghost">Cancel</a>
             </form>
         </div>
     </div>

@@ -4702,6 +4702,220 @@ body.game-cfb .accordion-button:not(.collapsed) { box-shadow: inset 0 -2px 0 var
   color: var(--cfb-bone-subtle);
 }
 
+/* ============================================================
+   A3-admin -- Admin cluster: the Commissioner's Desk (impeccable
+   critique 2026-06-24, 27/40). The 8 games/cfb/templates/cfb/admin/*
+   surfaces were raw Bootstrap on the A2.0 dark foundation: no masthead,
+   off-palette Bootstrap semantics, and form/list controls the A2.0 + A5
+   passes never darkened (the recurring A2 white/blue-hole trap). This
+   block stands up the dark-admin register: a midnight masthead, dark
+   forms for the admin-heavy Bootstrap controls, a neutral admin status
+   chip, and a quiet secondary button, all on the warm-midnight ramp.
+   NO gold (the Crimson-Ceremony Rule): the platform .admin-masthead gold
+   rule + gold eyebrow + purple H1 are calibrated for bone, so on the
+   midnight canvas they would drift gold + render purple-on-purple. Here
+   the rule goes crimson, the eyebrow bone-muted, the H1 bone-white.
+   ============================================================ */
+
+/* The Commissioner's Desk masthead -- the dark parallel to the platform
+   .admin-masthead. Admin keeps a functional H1 (the platform dispensation for
+   utility surfaces, top-level DESIGN.md S3); the Commissioner register rides the
+   .cfb-eyebrow + sub-line. A single thin CRIMSON rule replaces the platform gold
+   divider -- the room's identity line, kept to one stroke so crimson stays
+   pressure, not wallpaper (the Crimson-Pressure Rule). */
+.cfb-admin-masthead {
+  padding: 2.5rem 0 1.25rem;
+  margin-bottom: 2rem;
+  border-bottom: 2px solid var(--game-primary);
+}
+.cfb-admin-masthead .cfb-eyebrow { display: block; margin-bottom: .45rem; }
+.cfb-admin-title {
+  font-family: 'Teko', sans-serif;
+  font-size: 2.25rem;
+  font-weight: 600;
+  line-height: 1.04;
+  letter-spacing: .03em;
+  text-transform: uppercase;
+  color: var(--cfb-white);
+  margin-bottom: .35rem;
+}
+.cfb-admin-sub {
+  margin-bottom: 0;
+  font-family: 'Newsreader', Georgia, serif;
+  font-size: 1.05rem;
+  color: var(--cfb-bone-muted);
+}
+.cfb-admin-sub strong { color: var(--cfb-bone); font-weight: 600; }
+
+/* Admin action cards (dashboard Quick Actions): reuse the platform .admin-action /
+   .admin-actions-row primitive, scoping its gold icon + purple primary fill to
+   crimson so the dark room never drifts gold/purple. Crimson stays on ONE filled
+   primary (the Crimson-Pressure Rule); the rest read as quiet midnight cards. */
+body.game-cfb .admin-action i { color: var(--cfb-crimson-bright); }
+body.game-cfb .admin-action--primary {
+  background: var(--game-primary);
+  border-color: var(--game-primary);
+}
+body.game-cfb .admin-action--primary i { color: var(--cfb-white); }
+
+/* Quiet secondary admin button -- the neutral cancel / back / nav affordance on
+   midnight (the gray Bootstrap .btn-secondary reads as a dead slab on dark). The
+   scope below also re-derives the Bootstrap neutral/outline variants so any button
+   not explicitly converted still lands on the room's palette, never gray-on-dark. */
+.btn-game-ghost,
+body.game-cfb .btn-secondary,
+body.game-cfb .btn-outline-secondary,
+body.game-cfb .btn-outline-light,
+body.game-cfb .btn-outline-primary {
+  background: transparent;
+  border: 1px solid var(--cfb-hairline-strong);
+  color: var(--cfb-bone);
+}
+.btn-game-ghost:hover,
+.btn-game-ghost:focus-visible,
+body.game-cfb .btn-secondary:hover,
+body.game-cfb .btn-secondary:focus-visible,
+body.game-cfb .btn-outline-secondary:hover,
+body.game-cfb .btn-outline-secondary:focus-visible,
+body.game-cfb .btn-outline-light:hover,
+body.game-cfb .btn-outline-light:focus-visible,
+body.game-cfb .btn-outline-primary:hover,
+body.game-cfb .btn-outline-primary:focus-visible {
+  background: var(--cfb-raised);
+  border-color: var(--cfb-bone-subtle);
+  color: var(--cfb-bone);
+}
+/* Destructive admin action -- a restrained lost-red OUTLINE, never a filled red
+   shout (the Cold-Elimination register: the interface records, it does not alarm).
+   lost-red as text clears AA on --cfb-surface (4.55:1), where Delete buttons sit. */
+body.game-cfb .btn-danger {
+  background: transparent;
+  border-color: var(--cfb-lost-life);
+  color: var(--cfb-lost-life);
+}
+body.game-cfb .btn-danger:hover,
+body.game-cfb .btn-danger:focus-visible {
+  background: rgba(230,57,70,.14);
+  border-color: var(--cfb-lost-life);
+  color: var(--cfb-bone);
+}
+
+/* Dark forms for the admin-heavy Bootstrap controls A2.0 / A5 never reached. Each
+   inherits a dark FILL from the rebased --bs-body-bg, but ships light/blue
+   component chrome (the form-select chevron SVG, the form-switch track, the
+   form-check box, list-group hover/active) that punches a hole on midnight. The
+   platform .form-control:focus paints a GOLD ring (gold drift on CFB); re-derive
+   every focus to a crimson identity ring. Inputs sit a step DEEPER than their card
+   (canvas, not surface) so the field reads as an inset well. */
+body.game-cfb .form-control,
+body.game-cfb .form-select {
+  background-color: var(--cfb-canvas);
+  border-color: var(--cfb-hairline-strong);
+  color: var(--cfb-bone);
+}
+body.game-cfb .form-control::placeholder { color: var(--cfb-bone-subtle); }
+body.game-cfb .form-control:focus,
+body.game-cfb .form-select:focus {
+  background-color: var(--cfb-canvas);
+  border-color: var(--game-primary);
+  box-shadow: 0 0 0 .2rem rgba(197,5,12,.25);
+  color: var(--cfb-bone);
+}
+/* form-select chevron: the Bootstrap default is a near-black SVG data-URI (invisible
+   on midnight); recolor to bone-muted. Re-state repeat/position/size alongside the
+   image so the chevron never tiles across the control. <option> popups are
+   OS-painted, but set the colors browsers DO honor on the open list. */
+body.game-cfb .form-select {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23B4AAA4' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right .75rem center;
+  background-size: 16px 12px;
+}
+body.game-cfb .form-select option { background-color: var(--cfb-surface); color: var(--cfb-bone); }
+/* Native datetime / number picker indicators ship a dark glyph -- invisible on the
+   midnight input. Lift them to a bone tint so the calendar/spinner stays findable. */
+body.game-cfb .form-control::-webkit-calendar-picker-indicator {
+  filter: invert(0.85);
+}
+
+/* Checkboxes / radios / switch: transparent-on-hairline at rest (lifted so the
+   control is findable on midnight), crimson-filled when checked (--bs-primary is
+   already crimson). The switch thumb is a baked SVG -- recolor bone at rest, white
+   when on. */
+body.game-cfb .form-check-input {
+  background-color: var(--cfb-canvas);
+  border-color: var(--cfb-hairline-strong);
+}
+body.game-cfb .form-check-input:checked {
+  background-color: var(--game-primary);
+  border-color: var(--game-primary);
+}
+body.game-cfb .form-check-input:focus {
+  border-color: var(--game-primary);
+  box-shadow: 0 0 0 .2rem rgba(197,5,12,.25);
+}
+body.game-cfb .form-switch .form-check-input {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='%23B4AAA4'/%3e%3c/svg%3e");
+}
+body.game-cfb .form-switch .form-check-input:checked {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='%23FBF7F0'/%3e%3c/svg%3e");
+}
+
+/* List group (dashboard auto-pick): transparent rows on the card surface + hairline
+   rules, hover lifts a half-step up the ramp. */
+body.game-cfb .list-group {
+  --bs-list-group-bg: transparent;
+  --bs-list-group-color: var(--cfb-bone);
+  --bs-list-group-border-color: var(--cfb-hairline);
+  --bs-list-group-action-color: var(--cfb-bone);
+  --bs-list-group-action-hover-bg: var(--cfb-raised);
+  --bs-list-group-action-hover-color: var(--cfb-bone);
+}
+
+/* Neutral admin status chip -- the off-palette Bootstrap .bg-* badge zoo (foreign
+   amber bg-warning, blue bg-info, gray bg-secondary) drained to ONE quiet midnight
+   chip the admin surface speaks. Survivor outcomes still use the .badge-survived /
+   -lost-life / -eliminated / -pending vocabulary; .cfb-admin-chip carries
+   OPERATIONAL status (week state, payment, locks) that is NOT survivor state. */
+.cfb-admin-chip {
+  display: inline-block;
+  font-family: 'Teko', sans-serif;
+  font-weight: 500;
+  font-size: .78rem;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  padding: .2em .65em;
+  border-radius: .25rem;
+  background: var(--cfb-raised);
+  border: 1px solid var(--cfb-hairline-strong);
+  color: var(--cfb-bone-muted);
+  vertical-align: middle;
+}
+/* The live operational state (the active week) -- a quiet crimson identity tag,
+   bone text on a crimson tint (the room's "this is the live layer"). */
+.cfb-admin-chip.is-active {
+  background: rgba(197,5,12,.16);
+  border-color: var(--game-primary);
+  color: var(--cfb-bone);
+}
+/* Needs the commish's attention (unpaid, awaiting activation) -- warm bone-subtle,
+   never the foreign Bootstrap amber. */
+.cfb-admin-chip.is-attention {
+  background: rgba(243,239,230,.05);
+  border-color: var(--cfb-bone-subtle);
+  color: var(--cfb-bone);
+}
+
+/* The collected-fees total -- a bone-white Teko numeral (numbers carry the tension,
+   games/cfb/DESIGN.md S3); never the Bootstrap survivor-green text-success (green is
+   survivor state, not money). */
+.cfb-ledger-total {
+  font-family: 'Teko', sans-serif;
+  font-weight: 600;
+  letter-spacing: .02em;
+  color: var(--cfb-white);
+}
+
 /* World Cup overrides */
 body.game-worldcup {
   --game-primary:            #002868;
