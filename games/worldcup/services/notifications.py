@@ -24,6 +24,7 @@ from extensions import db
 from utils.email import send_platform_email
 from games.worldcup.constants import (
     SEASON_YEAR, TOURNAMENT_DEADLINE_UTC, WORLDCUP_TZ,
+    ADVANCE_GROUP_WINNER, ADVANCE_RUNNER_UP, ADVANCE_BEST_THIRD, KNOCKOUT_POINTS,
 )
 from games.worldcup.models import (
     WorldCupEnrollment, WorldCupMatch, WorldCupPick, WorldCupTeam,
@@ -33,6 +34,7 @@ from games.worldcup.services.ranking import compute_rank_delta
 from games.worldcup.services.scoring import points_for_pick_on_match
 from games.worldcup.services.stage import stage_label
 from games.worldcup.services.state import now_utc
+from games.worldcup.services.sync import all_group_advancement_confirmed
 
 logger = logging.getLogger(__name__)
 
@@ -110,6 +112,32 @@ def _asset_version() -> str:
         return sha or 'dev'
     except Exception:
         return 'dev'
+
+
+# ---------------------------------------------------------------------------
+# Group-stage recap marker (idempotency / "last sent" display)
+# ---------------------------------------------------------------------------
+
+def _group_recap_marker_path() -> str:
+    return os.path.join(current_app.instance_path, '.wc_group_recap_sent')
+
+
+def group_recap_last_sent() -> str | None:
+    """Return the ISO date string of the last recap send, or None."""
+    try:
+        with open(_group_recap_marker_path()) as fh:
+            return fh.read().strip() or None
+    except OSError:
+        return None
+
+
+def _mark_group_recap_sent() -> None:
+    try:
+        os.makedirs(current_app.instance_path, exist_ok=True)
+        with open(_group_recap_marker_path(), 'w') as fh:
+            fh.write(now_utc().astimezone(WORLDCUP_TZ).strftime('%Y-%m-%d'))
+    except OSError:
+        logger.warning('Could not write group-recap marker.')
 
 
 # ---------------------------------------------------------------------------
@@ -289,6 +317,112 @@ def send_daily_digests() -> dict:
         'errors': errors,
         'date': str(yesterday),
     }
+
+
+# ---------------------------------------------------------------------------
+# Group-stage recap (admin-triggered at bracket lock)
+# ---------------------------------------------------------------------------
+
+_ADV_LABEL = {'group_winner': 'Group winner', 'runner_up': 'Runner-up', 'best_third': 'Best 3rd place'}
+_ADV_BASE = {'group_winner': ADVANCE_GROUP_WINNER, 'runner_up': ADVANCE_RUNNER_UP, 'best_third': ADVANCE_BEST_THIRD}
+
+# Multiplied knockout ladder for the "what's at stake" section.
+_KO_LADDER = [('Round of 32', 'R32'), ('Round of 16', 'R16'), ('Quarterfinal', 'QF'),
+              ('Semifinal', 'SF'), ('Final / 3rd place', 'runner_up'), ('Champion', 'champion')]
+
+
+def _recap_rows(enrollment):
+    """(advanced_rows, eliminated_rows, total_adv_pts) for one enrollment.
+
+    advanced_rows: dicts with team, method_label, base, multiplier, points (multiplied).
+    eliminated_rows: dicts with team.
+    """
+    advanced, eliminated, total = [], [], 0.0
+    for pick in sorted(enrollment.picks, key=lambda p: (p.team.tier, p.team.display_name)):
+        t = pick.team
+        if t.advancement_method:
+            base = _ADV_BASE.get(t.advancement_method, 0)
+            pts = base * t.multiplier
+            total += pts
+            advanced.append({'team': t, 'method_label': _ADV_LABEL.get(t.advancement_method, t.advancement_method),
+                             'base': base, 'multiplier': t.multiplier, 'points': pts})
+        elif t.is_eliminated:
+            eliminated.append({'team': t})
+    return advanced, eliminated, total
+
+
+def send_group_stage_recap() -> dict:
+    """Email each player a personalized group-stage recap. Admin-triggered.
+
+    Guarded: refuses unless every group's advancement is confirmed. Mirrors
+    send_daily_digests structure; one email per enrolled, picks-submitted player
+    with an address.
+    """
+    if not all_group_advancement_confirmed():
+        return {'status': 'blocked', 'reason': 'group advancement not fully confirmed'}
+
+    site_url = current_app.config.get('SITE_URL', 'https://cccfantasy.com').rstrip('/')
+    logo_url = f'{site_url}/static/img/logo/ccc-logo-stacked.svg'
+    av = _asset_version()
+    ko_ladder = [(label, KNOCKOUT_POINTS[key]) for label, key in _KO_LADDER]
+
+    enrollments = (
+        WorldCupEnrollment.query
+        .filter_by(season_year=SEASON_YEAR, picks_submitted=True)
+        .all()
+    )
+    total_enrolled = len(enrollments)
+    sent = skipped_no_email = errors = 0
+
+    for enrollment in enrollments:
+        if not enrollment.user or not enrollment.user.email:
+            skipped_no_email += 1
+            continue
+        advanced, eliminated, total_adv = _recap_rows(enrollment)
+        rank, _ = _competition_rank(enrollment)
+        try:
+            html_body = render_template(
+                'worldcup/email/wc_group_recap.j2',
+                enrollment=enrollment, advanced=advanced, eliminated=eliminated,
+                total_adv_str=_fmt_pts(total_adv), total_score_str=_fmt_pts(float(enrollment.total_score)),
+                rank=rank, total_enrolled=total_enrolled, ko_ladder=ko_ladder,
+                site_url=site_url, logo_url=logo_url, asset_version=av,
+                fmt_mult=_fmt_multiplier, fmt_pts=_fmt_pts,
+            )
+            plain_body = _plain_group_recap(enrollment, advanced, eliminated,
+                                            _fmt_pts(total_adv), rank, total_enrolled, site_url)
+            subject = 'World Cup: the group stage is a wrap'
+            if send_platform_email(enrollment.user.email, subject, plain_body, html_body):
+                sent += 1
+            else:
+                errors += 1
+        except Exception:
+            logger.exception('Group recap failed for enrollment %s', enrollment.id)
+            errors += 1
+
+    _mark_group_recap_sent()
+    return {'status': 'sent' if sent else 'no_sends',
+            'sent': sent, 'skipped_no_email': skipped_no_email, 'errors': errors}
+
+
+def _plain_group_recap(enrollment, advanced, eliminated, total_adv_str, rank, total_enrolled, site_url):
+    name = enrollment.get_display_name()
+    lines = ['The group stage is a wrap', '=' * 40, '', f'Hi {name},', '',
+             f'Group advancement points earned: +{total_adv_str}', '',
+             'Your teams that advanced:', '-' * 36]
+    for r in advanced:
+        lines.append(f"  {r['team'].display_name} ({_fmt_multiplier(r['multiplier'])})"
+                     f"  {r['method_label']}  +{_fmt_pts(r['points'])} pts")
+    if eliminated:
+        lines += ['', 'Out after the group stage:']
+        for r in eliminated:
+            lines.append(f"  {r['team'].display_name}")
+    lines += ['', 'How group points worked: Group winner +4, Runner-up +3, Best 3rd +1 '
+              '(x your tier multiplier).', '',
+              f'Standing entering the Round of 32: #{rank} of {total_enrolled}', '',
+              f'Full standings: {site_url}/worldcup/leaderboard', '',
+              'Corrupt Commish Club -- cccfantasy.com']
+    return '\n'.join(lines)
 
 
 # ---------------------------------------------------------------------------
