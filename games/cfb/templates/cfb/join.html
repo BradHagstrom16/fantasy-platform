@@ -1,43 +1,70 @@
 {% extends "base.html" %}
-{% block title %}Join — CFB Survivor Pool{% endblock %}
+{% block title %}Take Your Two Lives · CFB Survivor Pool{% endblock %}
 
 {% block content %}
-<div class="page-hero">
+<div class="page-hero cfb-hero">
   <div class="hero-glow"></div>
   <div class="container">
-    <h1>Join the CFB Survivor Pool</h1>
-    <p class="lead mb-0">{{ cfb_season_year }} College Football Season &mdash; ${{ cfb_entry_fee }} entry</p>
+    <span class="cfb-eyebrow">CFB Survivor Pool · {{ cfb_season_year }} Season</span>
+    <h1>Take Your Two Lives</h1>
+    <p class="lead mb-0">One pick a week, one team to win outright. Hold your two lives, survive and advance, and outlast the field until one player is left standing.</p>
   </div>
 </div>
 
 <div class="container pb-5">
   <div class="row justify-content-center">
-    <div class="col-lg-6 col-md-8">
+    <div class="col-lg-7 col-md-9">
 
-      <div class="card border-0 shadow-sm animate-in">
-        <div class="card-body p-4">
-          <h3 class="mb-3" style="font-family:'Teko',sans-serif; text-transform:uppercase; letter-spacing:.04em;">How It Works</h3>
-          <ul class="mb-4">
-            <li>Each week, pick <strong>one FBS team</strong> to win outright</li>
-            <li>You have <strong>two lives</strong> — survive a wrong pick once</li>
-            <li>Teams can only be used once per regular season</li>
-            <li>Tiebreaker: lowest cumulative spread across all your picks</li>
-          </ul>
+      <div class="card border-0 animate-in">
+        <div class="card-body p-4 p-md-5">
 
-          <form method="POST">
+          {# The stake, dramatized: the two lives you are about to put on the line. #}
+          <div class="cfb-join-stake">
+            <span class="cfb-eyebrow">What you're holding</span>
+            <div class="cfb-join-stake-row">
+              <span class="lives-indicator cfb-join-lives" aria-hidden="true">
+                <span class="life"></span><span class="life"></span>
+              </span>
+              <p class="cfb-join-stake-copy">
+                <span class="cfb-join-stake-lead">Two lives.</span>
+                Survive one wrong pick. A second ends your season.
+              </p>
+            </div>
+          </div>
+
+          {# The house rules of survival: term + plain-language explainer, no fine-print bullets. #}
+          <dl class="cfb-join-rules">
+            <div class="cfb-join-rule">
+              <dt>Every week</dt>
+              <dd>Pick one FBS team to win its game outright. No spread to cover, just survive the slate.</dd>
+            </div>
+            <div class="cfb-join-rule">
+              <dt>Once only</dt>
+              <dd>Each team is yours for a single week across the regular season. Spend them like the season is long, because it is.</dd>
+            </div>
+            <div class="cfb-join-rule">
+              <dt>The tiebreaker</dt>
+              <dd>When survivors are level, the lowest cumulative spread across your picks stands ahead.</dd>
+            </div>
+          </dl>
+
+          <form method="POST" class="cfb-join-form">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
 
+            <p class="cfb-join-entry">{{ cfb_season_year }} season. <strong>${{ cfb_entry_fee }}</strong> to enter the pool.</p>
+
             <div class="mb-3">
-              <label for="display_name" class="form-label">Display Name <small class="text-muted">(optional)</small></label>
+              <label for="display_name" class="form-label">Display Name <span class="cfb-join-optional">(optional)</span></label>
               <input type="text" class="form-control" id="display_name" name="display_name"
                      placeholder="{{ current_user.username }}" maxlength="80">
-              <div class="form-text">Leave blank to use your username.</div>
+              <div class="form-text">Leave blank to stand under your username.</div>
             </div>
 
             <button type="submit" class="btn btn-game btn-lg w-100">
-              <i class="bi bi-flag-fill me-2"></i>Join the Pool
+              <i class="bi bi-flag-fill me-2" aria-hidden="true"></i>Enter the Pool
             </button>
           </form>
+
         </div>
       </div>
 

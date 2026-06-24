@@ -4607,6 +4607,101 @@ body.game-cfb .accordion-button:not(.collapsed) { box-shadow: inset 0 -2px 0 var
   color: var(--cfb-bone-subtle);
 }
 
+/* ============================================================
+   A6 -- Join / "Take Your Two Lives" (impeccable critique 2026-06-24, 27/40).
+   The enrollment threshold and the marketing/onboarding register, elevated on
+   the midnight room. Sells the survivor pool to a non-member by dramatizing the
+   stake (the two lives, via the .lives-indicator primitive) and reframing the
+   rules as editorial house-rules, not fine-print bullets. Crimson stays at the
+   hero band + the .btn-game commit (the Crimson-Pressure Rule); the stake reads
+   in survivor-green, the rules in bone; NO gold (the Crimson-Ceremony Rule).
+   Reuses .cfb-eyebrow + .lives-indicator + the platform .page-hero / .card /
+   .btn-game (games/cfb/DESIGN.md S3 Survivor voice, S4 components, S6).
+   ============================================================ */
+
+/* The card is the platform dark .card (--cfb-surface + hairline); only its
+   internal rhythm is tuned. Generous padding (p-md-5 in the template) is the
+   ceremony-by-reduction; explicit gaps below carry the hero -> stake -> rules ->
+   commit crescendo. */
+.cfb-join-rules { margin: 1.5rem 0 0; }
+.cfb-join-form  { margin-top: 1.75rem; }
+
+/* The stake block: the two lives, dramatized. The .lives-indicator pips carry
+   the survivor signal (green = held); the lead carries the consequence in copy
+   so meaning never rests on hue alone (the structure + label discipline). A
+   hairline divider sets it apart from the rules below. */
+.cfb-join-stake { padding-bottom: 1.5rem; border-bottom: 1px solid var(--cfb-hairline); }
+.cfb-join-stake .cfb-eyebrow { display: block; margin-bottom: .85rem; }
+.cfb-join-stake-row { display: flex; align-items: flex-start; gap: 1rem; }
+/* Half-step up the pips so "what you're holding" reads before the prose. */
+.cfb-join-lives { flex-shrink: 0; margin-top: .15rem; }
+.cfb-join-lives .life { width: 18px; height: 18px; }
+.cfb-join-stake-copy {
+  margin: 0;
+  font-family: 'Newsreader', Georgia, serif;
+  font-size: 1.08rem;
+  line-height: 1.5;
+  color: var(--cfb-bone);
+  max-width: 46ch;
+}
+.cfb-join-stake-lead {
+  font-family: 'Teko', sans-serif;
+  font-weight: 600;
+  font-size: 1.35rem;
+  letter-spacing: .01em;
+  color: var(--cfb-white);
+  margin-right: .3rem;
+}
+
+/* House rules: a definition list (term + explainer), the editorial replacement
+   for the undesigned <ul>. Teko term in warm white, Newsreader explainer in
+   bone-muted; hairline rules between rows. NOT numbered (01/02/03 markers are a
+   platform ban) -- the terms carry the structure. */
+.cfb-join-rule { padding: .95rem 0; border-top: 1px solid var(--cfb-hairline); }
+.cfb-join-rule:first-child { border-top: 0; padding-top: 0; }
+.cfb-join-rule:last-child { padding-bottom: 0; }
+.cfb-join-rule dt {
+  font-family: 'Teko', sans-serif;
+  font-weight: 600;
+  font-size: 1.05rem;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--cfb-white);
+  margin-bottom: .15rem;
+}
+.cfb-join-rule dd {
+  margin: 0;
+  font-family: 'Newsreader', Georgia, serif;
+  font-size: .96rem;
+  line-height: 1.55;
+  color: var(--cfb-bone-muted);
+  max-width: 62ch;
+}
+
+/* Entry meta -- the season + fee as quiet editorial data, NOT an em-dash clause.
+   The fee takes Teko white weight (numbers carry the tension, DESIGN.md S3). */
+.cfb-join-entry {
+  margin: 0 0 1.25rem;
+  font-family: 'Newsreader', Georgia, serif;
+  font-size: .96rem;
+  color: var(--cfb-bone-muted);
+}
+.cfb-join-entry strong {
+  font-family: 'Teko', sans-serif;
+  font-weight: 600;
+  font-size: 1.2rem;
+  letter-spacing: .02em;
+  color: var(--cfb-white);
+}
+
+/* Optional-field marker -- quiet tertiary metadata beside the Teko form label. */
+.cfb-join-optional {
+  font-family: 'Teko', sans-serif;
+  font-weight: 500;
+  letter-spacing: .06em;
+  color: var(--cfb-bone-subtle);
+}
+
 /* World Cup overrides */
 body.game-worldcup {
   --game-primary:            #002868;
