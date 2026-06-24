@@ -71,7 +71,7 @@
   `{'target_stage': str, 'proposals': list[dict], 'unresolved': list[dict], 'error': str | None}`
   where each proposal is `{'match_number', 'shell_id', 'home_fifa', 'away_fifa', 'home_name', 'away_name', 'current_home', 'current_away', 'already_set', 'is_completed'}`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add to `tests/test_worldcup_sync.py` (reuse the file's existing `app` fixture and `_API_MATCHES_FIXTURE` style — define a small inline KO fixture):
 
@@ -123,12 +123,12 @@ def test_fetch_bracket_proposal_rejects_non_ko_stage(app):
         assert out['proposals'] == []
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `ENVIRONMENT=testing venv/bin/python -m pytest tests/test_worldcup_sync.py::test_fetch_bracket_proposal_maps_resolved_and_flags_unresolved tests/test_worldcup_sync.py::test_fetch_bracket_proposal_rejects_non_ko_stage -q`
 Expected: FAIL (`AttributeError: module ... has no attribute 'fetch_bracket_proposal'`).
 
-- [ ] **Step 3: Implement `fetch_bracket_proposal`**
+- [x] **Step 3: Implement `fetch_bracket_proposal`**
 
 Add to `games/worldcup/services/sync.py` (after `fetch_advancement_proposal`):
 
@@ -198,12 +198,12 @@ def fetch_bracket_proposal(target_stage: str) -> dict:
     }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `ENVIRONMENT=testing venv/bin/python -m pytest tests/test_worldcup_sync.py -k fetch_bracket_proposal -q`
 Expected: PASS (2 tests).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add games/worldcup/services/sync.py tests/test_worldcup_sync.py
@@ -224,7 +224,7 @@ git commit -m "feat(worldcup): fetch_bracket_proposal for bulk KO populate"
   - `all_group_advancement_confirmed() -> bool` — group stage complete AND every non-eliminated team has an `advancement_method`.
   - `populatable_bracket_stages() -> list[str]` — KO stages whose shells are empty and whose feeder round is resolved (e.g. `['R32']`, or `['final', 'third_place']`).
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add to `tests/test_worldcup_sync.py`:
 
@@ -270,12 +270,12 @@ def test_populatable_bracket_stages_offers_r32_after_advancement(app):
         assert 'R32' in sync.populatable_bracket_stages()
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `ENVIRONMENT=testing venv/bin/python -m pytest tests/test_worldcup_sync.py -k "all_group_advancement_confirmed or populatable_bracket" -q`
 Expected: FAIL (`AttributeError`).
 
-- [ ] **Step 3: Implement both helpers**
+- [x] **Step 3: Implement both helpers**
 
 Add to `games/worldcup/services/sync.py` (near `group_stage_complete_and_unconfirmed`):
 
@@ -318,12 +318,12 @@ def populatable_bracket_stages() -> list[str]:
     return stages
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `ENVIRONMENT=testing venv/bin/python -m pytest tests/test_worldcup_sync.py -k "all_group_advancement_confirmed or populatable_bracket" -q`
 Expected: PASS (2 tests).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add games/worldcup/services/sync.py tests/test_worldcup_sync.py
@@ -342,7 +342,7 @@ git commit -m "feat(worldcup): advancement-confirmed + populatable-stages helper
 - Consumes: `fetch_bracket_proposal`, `populatable_bracket_stages` (Tasks 1–2), `set_knockout_teams` (already imported in routes), `worldcup_admin_required`, `SyncError`.
 - Produces: route `worldcup.admin_bracket` at `/admin/bracket/<target_stage>` (GET renders review; POST assigns).
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `tests/test_worldcup_bracket.py`:
 
@@ -448,12 +448,12 @@ def test_admin_bracket_post_skips_completed_shell(client, app):
         assert s.home_team_id is None  # completed shell left untouched
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `ENVIRONMENT=testing venv/bin/python -m pytest tests/test_worldcup_bracket.py -q`
 Expected: FAIL (404 on the route; route not defined).
 
-- [ ] **Step 3: Implement the route**
+- [x] **Step 3: Implement the route**
 
 In `games/worldcup/routes.py`, add the import near the existing sync import (top of file has `from games.worldcup.services.sync import fetch_advancement_proposal`):
 
@@ -508,12 +508,12 @@ def admin_bracket(target_stage):
         proposal=proposal, target_stage=target_stage)
 ```
 
-- [ ] **Step 4: Run test to verify it fails on template, then continue**
+- [x] **Step 4: Run test to verify it fails on template, then continue**
 
 Run: `ENVIRONMENT=testing venv/bin/python -m pytest tests/test_worldcup_bracket.py -q`
 Expected: the POST/skip/auth tests PASS; `test_admin_bracket_get_renders_proposal` FAILS with `TemplateNotFound: worldcup/admin/bracket.html`. Proceed to Task 4 (the GET test passes once the template exists).
 
-- [ ] **Step 5: Commit (route only)**
+- [x] **Step 5: Commit (route only)**
 
 ```bash
 git add games/worldcup/routes.py tests/test_worldcup_bracket.py
@@ -531,7 +531,7 @@ git commit -m "feat(worldcup): admin bracket review-then-confirm route"
 **Interfaces:**
 - Consumes: `proposal` dict + `target_stage` (Task 3); `stage_label()` (global via context processor); `csrf_token()`.
 
-- [ ] **Step 1: Create the template**
+- [x] **Step 1: Create the template**
 
 Mirror the existing `admin/set_knockout.html` masthead/card structure. Create `games/worldcup/templates/worldcup/admin/bracket.html`:
 
@@ -603,12 +603,12 @@ Mirror the existing `admin/set_knockout.html` masthead/card structure. Create `g
 
 Note: the manual-assign link uses `match_number` as a convenience; if `admin_set_knockout` needs the DB id, drop the link rather than mislink — match_number ≠ id. Verify against the route signature (`admin_set_knockout` takes `match_id`); if they differ in your data, render the unresolved rows without the manual link.
 
-- [ ] **Step 2: Run the GET test to verify it passes**
+- [x] **Step 2: Run the GET test to verify it passes**
 
 Run: `ENVIRONMENT=testing venv/bin/python -m pytest tests/test_worldcup_bracket.py -q`
 Expected: PASS (all 4 tests).
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add games/worldcup/templates/worldcup/admin/bracket.html
@@ -628,7 +628,7 @@ git commit -m "feat(worldcup): bracket review template"
 - Consumes: `populatable_bracket_stages` (Task 2).
 - Produces: `populatable_stages` in the dashboard context; a CTA block in the template.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add to `tests/test_worldcup_bracket.py`:
 
@@ -649,12 +649,12 @@ def test_dashboard_shows_populate_cta_when_stage_ready(client, app):
     assert b'/worldcup/admin/bracket/R32' in resp.data
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `ENVIRONMENT=testing venv/bin/python -m pytest tests/test_worldcup_bracket.py::test_dashboard_shows_populate_cta_when_stage_ready -q`
 Expected: FAIL (link not present).
 
-- [ ] **Step 3: Add context var to the route**
+- [x] **Step 3: Add context var to the route**
 
 In `games/worldcup/routes.py::admin_dashboard`, before the `return render_template(...)`, add:
 
@@ -668,7 +668,7 @@ and add to the `render_template('worldcup/admin/dashboard.html', ...)` kwargs:
         populatable_stages=populatable_stages,
 ```
 
-- [ ] **Step 4: Add the CTA to the template**
+- [x] **Step 4: Add the CTA to the template**
 
 In `games/worldcup/templates/worldcup/admin/dashboard.html`, immediately before the `{% if knockout_unassigned %}` block (around line 190), insert:
 
@@ -686,12 +686,12 @@ In `games/worldcup/templates/worldcup/admin/dashboard.html`, immediately before 
     {% endif %}
 ```
 
-- [ ] **Step 5: Run test to verify it passes**
+- [x] **Step 5: Run test to verify it passes**
 
 Run: `ENVIRONMENT=testing venv/bin/python -m pytest tests/test_worldcup_bracket.py -q`
 Expected: PASS (all 5 tests).
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add games/worldcup/routes.py games/worldcup/templates/worldcup/admin/dashboard.html tests/test_worldcup_bracket.py
@@ -706,19 +706,19 @@ git commit -m "feat(worldcup): dashboard populate-bracket CTA"
 
 **Goal:** Prove the advancement → bulk-populate → KO-scoring loop end-to-end, then leave the DB in a LIVE state (mirrors prod).
 
-- [ ] **Step 1: Snapshot current state** so you can restore. Run: `ENVIRONMENT=development FLASK_APP=app.py venv/bin/flask worldcup status` and note the phase.
+- [x] **Step 1: Snapshot current state** so you can restore. Run: `ENVIRONMENT=development FLASK_APP=app.py venv/bin/flask worldcup status` and note the phase.
 
-- [ ] **Step 2: Drive group stage to done.** If not already, `ENVIRONMENT=development FLASK_APP=app.py venv/bin/flask worldcup simulate-group-stage` then confirm advancement for all 12 groups at `/worldcup/admin/advancement` (use "Load from API" against the live feed, or set manually). Verify `flask worldcup status` shows group stage complete.
+- [x] **Step 2: Drive group stage to done.** If not already, `ENVIRONMENT=development FLASK_APP=app.py venv/bin/flask worldcup simulate-group-stage` then confirm advancement for all 12 groups at `/worldcup/admin/advancement` (use "Load from API" against the live feed, or set manually). Verify `flask worldcup status` shows group stage complete.
 
-- [ ] **Step 3: Populate R32.** Visit `/worldcup/admin/` — confirm the "Populate Round of 32 from API" CTA appears, click it, review, confirm. Verify all R32 shells now have teams (no `knockout_unassigned` R32 rows).
+- [x] **Step 3: Populate R32.** Visit `/worldcup/admin/` — confirm the "Populate Round of 32 from API" CTA appears, click it, review, confirm. Verify all R32 shells now have teams (no `knockout_unassigned` R32 rows).
 
-- [ ] **Step 4: Simulate R32 results + verify scoring.** Enter results for the R32 matches (`flask worldcup process-match ...` or the admin result page), then confirm scores recalc and KO points apply (R32 = 8 × multiplier). Spot-check a team's `team_detail` page.
+- [x] **Step 4: Simulate R32 results + verify scoring.** Enter results for the R32 matches (`flask worldcup process-match ...` or the admin result page), then confirm scores recalc and KO points apply (R32 = 8 × multiplier). Spot-check a team's `team_detail` page.
 
-- [ ] **Step 5: Repeat for R16 → QF → SF → final/third_place** to confirm the CTA chains correctly round to round.
+- [x] **Step 5: Repeat for R16 → QF → SF → final/third_place** to confirm the CTA chains correctly round to round.
 
-- [ ] **Step 6: Restore to LIVE.** Walk the DB back to a live, mid-tournament state mirroring prod (group stage in progress / early knockouts) so local matches production. Per [[project_ccc_local_db_completed_state]]: clearing the final match → 'knockout'/live; clearing KO+final → 'group_stage'. Confirm `flask worldcup status` reflects a live phase. **Do not leave it completed.**
+- [x] **Step 6: Restore to LIVE.** Walk the DB back to a live, mid-tournament state mirroring prod (group stage in progress / early knockouts) so local matches production. Per [[project_ccc_local_db_completed_state]]: clearing the final match → 'knockout'/live; clearing KO+final → 'group_stage'. Confirm `flask worldcup status` reflects a live phase. **Do not leave it completed.**
 
-- [ ] **Step 7: Full suite green.** Run: `ENVIRONMENT=testing venv/bin/python -m pytest tests/test_worldcup_sync.py tests/test_worldcup_bracket.py -q`. Expected: all PASS.
+- [x] **Step 7: Full suite green.** Run: `ENVIRONMENT=testing venv/bin/python -m pytest tests/test_worldcup_sync.py tests/test_worldcup_bracket.py -q`. Expected: all PASS.
 
 **This is the end of Phase 1 — open the PR for Feature 2, carry it through CodeRabbit to merge before continuing.**
 
