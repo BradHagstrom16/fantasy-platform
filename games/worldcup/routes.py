@@ -36,7 +36,7 @@ from games.worldcup.services.elimination import eliminated_team_ids
 from games.worldcup.services.notifications import send_picks_confirmation
 from games.worldcup.services.sync import (
     fetch_advancement_proposal, fetch_bracket_proposal,
-    populatable_bracket_stages, SyncError,
+    populatable_bracket_stages, KO_STAGES, SyncError,
 )
 # Platform tz helper. Re-exported as `format_ct` in the WC blueprint context
 # processor (see below) so existing WC templates (`{{ format_ct(dt).strftime(...) }}`)
@@ -1334,7 +1334,6 @@ def admin_set_knockout(match_id):
 @worldcup_admin_required
 def admin_bracket(target_stage):
     """Bulk-populate one knockout round's shells from the API (review-then-confirm)."""
-    KO_STAGES = ('R32', 'R16', 'QF', 'SF', 'final', 'third_place')
     if target_stage not in KO_STAGES:
         flash('Not a knockout stage.', 'error')
         return redirect(url_for('worldcup.admin_dashboard'))
@@ -1346,7 +1345,13 @@ def admin_bracket(target_stage):
         assigned = skipped = failed = 0
         for sid, home, away in zip(shell_ids, home_fifas, away_fifas):
             shell = db.session.get(WorldCupMatch, int(sid)) if sid.isdigit() else None
-            if not shell or shell.is_completed:
+            # Guard the client-supplied hidden fields: only assign an empty shell
+            # of THIS knockout stage to two distinct teams. (set_knockout_teams
+            # itself only checks existence — these mirror the single-shell route.)
+            if not shell or shell.is_completed or shell.stage != target_stage:
+                skipped += 1
+                continue
+            if not home or not away or home == away:
                 skipped += 1
                 continue
             res = set_knockout_teams(shell.id, home, away)

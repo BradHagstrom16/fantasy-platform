@@ -99,6 +99,46 @@ def test_admin_bracket_post_skips_completed_shell(client, app):
         assert s.home_team_id is None  # completed shell left untouched
 
 
+def test_admin_bracket_post_skips_self_pairing(client, app):
+    auth_id = _make_admin(app)
+    with app.app_context():
+        db.session.add(WorldCupTeam(fifa_code='BRA', name='Brazil', display_name='Brazil',
+                                    tier=1, multiplier=1.0, confederation='X', group_letter='A'))
+        shell = WorldCupMatch(match_number=73, stage='R32')
+        db.session.add(shell)
+        db.session.commit()
+        shell_id = shell.id
+    _login(client, auth_id)
+    client.post('/worldcup/admin/bracket/R32', data={
+        'csrf_token': 'x',
+        'shell_id': str(shell_id), 'home_fifa': 'BRA', 'away_fifa': 'BRA',
+    })
+    with app.app_context():
+        s = db.session.get(WorldCupMatch, shell_id)
+        assert s.home_team_id is None and s.away_team_id is None  # self-pairing rejected
+
+
+def test_admin_bracket_post_rejects_wrong_stage_shell(client, app):
+    """A tampered shell_id pointing at a non-target-stage shell is skipped."""
+    auth_id = _make_admin(app)
+    with app.app_context():
+        for code, name in [('BRA', 'Brazil'), ('KSA', 'Saudi Arabia')]:
+            db.session.add(WorldCupTeam(fifa_code=code, name=name, display_name=name,
+                                        tier=1, multiplier=1.0, confederation='X', group_letter='A'))
+        group_shell = WorldCupMatch(match_number=1, stage='group', group_letter='A')
+        db.session.add(group_shell)
+        db.session.commit()
+        group_id = group_shell.id
+    _login(client, auth_id)
+    client.post('/worldcup/admin/bracket/R32', data={
+        'csrf_token': 'x',
+        'shell_id': str(group_id), 'home_fifa': 'BRA', 'away_fifa': 'KSA',
+    })
+    with app.app_context():
+        s = db.session.get(WorldCupMatch, group_id)
+        assert s.home_team_id is None  # group shell not mutated by the R32 bulk path
+
+
 def test_dashboard_shows_populate_cta_when_stage_ready(client, app):
     auth_id = _make_admin(app)
     with app.app_context():

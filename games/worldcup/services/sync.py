@@ -367,7 +367,9 @@ def fetch_bracket_proposal(target_stage: str) -> dict:
     for f in data.get('matches', []):
         if STAGE_MAP.get(f.get('stage')) != target_stage:
             continue
-        shell = by_fixture.get(f.get('id')) or by_kick.get(_parse_api_kickoff(f['utcDate']))
+        shell = by_fixture.get(f.get('id'))
+        if shell is None and f.get('utcDate'):
+            shell = by_kick.get(_parse_api_kickoff(f['utcDate']))
         if not shell:
             continue
         matched_ids.add(shell.id)
