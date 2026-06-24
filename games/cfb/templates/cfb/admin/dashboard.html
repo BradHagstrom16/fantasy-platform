@@ -1,12 +1,42 @@
 {% extends "base.html" %}
-{% block title %}CFB Admin Dashboard{% endblock %}
+{% block title %}Pool Control · CFB Survivor Admin{% endblock %}
 
 {% block content %}
-<div class="container mt-4">
-    <h1>CFB Admin Dashboard</h1>
-    <div class="alert alert-info">
-        <strong>Pool Status:</strong>
-        {{ active_users }} active players out of {{ total_users }} total
+<header class="cfb-admin-masthead">
+    <div class="container">
+        <span class="cfb-eyebrow">CFB Survivor &middot; The Commissioner&rsquo;s Desk</span>
+        <h1 class="cfb-admin-title">Pool Control</h1>
+        <p class="cfb-admin-sub"><strong>{{ active_users }}</strong> still standing of <strong>{{ total_users }}</strong> enrolled</p>
+    </div>
+</header>
+
+<div class="container pb-5">
+    <div class="admin-actions-row mb-4">
+        <a href="{{ url_for('cfb.admin_create_week') }}" class="admin-action admin-action--primary">
+            <i class="bi bi-calendar-plus"></i>
+            <span class="admin-action-label">Create New Week</span>
+            <span class="admin-action-sub">Open the next slate for picks</span>
+        </a>
+        <a href="{{ url_for('cfb.admin_manage_teams') }}" class="admin-action">
+            <i class="bi bi-shield-check"></i>
+            <span class="admin-action-label">Manage Teams</span>
+            <span class="admin-action-sub">Set which FBS teams are in the pool</span>
+        </a>
+        <a href="{{ url_for('cfb.admin_users') }}" class="admin-action">
+            <i class="bi bi-people"></i>
+            <span class="admin-action-label">Manage Users</span>
+            <span class="admin-action-sub">Lives, status, and admin access</span>
+        </a>
+        <a href="{{ url_for('cfb.admin_payments') }}" class="admin-action">
+            <i class="bi bi-cash-stack"></i>
+            <span class="admin-action-label">Track Payments</span>
+            <span class="admin-action-sub">Who has paid the entry fee</span>
+        </a>
+        <a href="{{ url_for('cfb.index') }}" class="admin-action">
+            <i class="bi bi-bar-chart-line"></i>
+            <span class="admin-action-label">View Standings</span>
+            <span class="admin-action-sub">See who is still standing</span>
+        </a>
     </div>
 
     <div class="row">
@@ -14,7 +44,7 @@
             <div class="card mb-3">
                 <div class="card-header"><h4 class="mb-0">Season Weeks</h4></div>
                 <div class="card-body">
-                    <a href="{{ url_for('cfb.admin_create_week') }}" class="btn btn-success mb-3">+ Create New Week</a>
+                    <a href="{{ url_for('cfb.admin_create_week') }}" class="btn btn-game mb-3">+ Create New Week</a>
 
                     <div class="table-responsive">
                     <table class="table">
@@ -35,30 +65,30 @@
                                 <td>{{ format_deadline(week.deadline) }}</td>
                                 <td>
                                     {% if week.is_active %}
-                                        <span class="badge bg-success">Active</span>
+                                        <span class="cfb-admin-chip is-active">Active</span>
                                     {% elif week.is_complete %}
-                                        <span class="badge bg-secondary">Complete</span>
+                                        <span class="cfb-admin-chip">Complete</span>
                                     {% else %}
-                                        <span class="badge bg-warning text-dark">Inactive</span>
+                                        <span class="cfb-admin-chip is-attention">Inactive</span>
                                     {% endif %}
                                 </td>
                                 <td>
-                                    <div class="btn-group btn-group-sm">
+                                    <div class="d-flex flex-wrap gap-1">
                                         <a href="{{ url_for('cfb.admin_manage_games', week_id=week.id) }}"
-                                           class="btn btn-primary btn-sm">Games</a>
+                                           class="btn btn-game-ghost btn-sm text-nowrap">Games</a>
 
                                         {% if not week.is_active and not week.is_complete %}
                                             <form method="POST" action="{{ url_for('cfb.admin_activate_week', week_id=week.id) }}" class="d-inline">
                                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                                                <button type="submit" class="btn btn-success btn-sm">Activate</button>
+                                                <button type="submit" class="btn btn-game btn-sm text-nowrap">Activate</button>
                                             </form>
                                         {% endif %}
 
                                         {% if week.is_active and not week.is_complete %}
                                             <a href="{{ url_for('cfb.admin_fetch_scores', week_id=week.id) }}"
-                                               class="btn btn-info btn-sm">Fetch Scores</a>
+                                               class="btn btn-game-ghost btn-sm text-nowrap">Fetch Scores</a>
                                             <a href="{{ url_for('cfb.admin_mark_results', week_id=week.id) }}"
-                                               class="btn btn-warning btn-sm">Results</a>
+                                               class="btn btn-game-ghost btn-sm text-nowrap">Results</a>
                                         {% endif %}
                                     </div>
                                 </td>
@@ -90,10 +120,10 @@
                                 {% if not week.is_complete %}
                                     <form method="POST" action="{{ url_for('cfb.admin_process_autopicks', week_id=week.id) }}" class="d-inline">
                                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                                        <button type="submit" class="btn btn-sm btn-warning">Process Auto-picks</button>
+                                        <button type="submit" class="btn btn-sm btn-game-ghost">Process Auto-picks</button>
                                     </form>
                                 {% else %}
-                                    <span class="badge bg-secondary">Complete</span>
+                                    <span class="cfb-admin-chip">Complete</span>
                                 {% endif %}
                             </div>
                             {% endif %}
@@ -104,19 +134,6 @@
         </div>
 
         <div class="col-lg-4">
-            <div class="card mb-3">
-                <div class="card-header"><h4 class="mb-0">Quick Actions</h4></div>
-                <div class="card-body">
-                    <div class="d-grid gap-2">
-                        <a href="{{ url_for('cfb.admin_create_week') }}" class="btn btn-primary">Create New Week</a>
-                        <a href="{{ url_for('cfb.admin_manage_teams') }}" class="btn btn-secondary">Manage Teams</a>
-                        <a href="{{ url_for('cfb.index') }}" class="btn btn-secondary">View Standings</a>
-                        <a href="{{ url_for('cfb.admin_users') }}" class="btn btn-secondary">Manage Users</a>
-                        <a href="{{ url_for('cfb.admin_payments') }}" class="btn btn-secondary">Track Payments</a>
-                    </div>
-                </div>
-            </div>
-
             <div class="card">
                 <div class="card-header"><h4 class="mb-0">How to Run Your Pool</h4></div>
                 <div class="card-body">

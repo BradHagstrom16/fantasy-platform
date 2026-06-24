@@ -1,23 +1,25 @@
 {% extends "base.html" %}
-{% block title %}Payment Management — CFB Admin{% endblock %}
+{% block title %}The Ledger · CFB Survivor Admin{% endblock %}
 
 {% block content %}
-<div class="container mt-4">
-    <h2>Payment Management</h2>
+<header class="cfb-admin-masthead">
+    <div class="container">
+        <span class="cfb-eyebrow">CFB Survivor &middot; The Commissioner&rsquo;s Desk</span>
+        <h1 class="cfb-admin-title">The Ledger</h1>
+        <p class="cfb-admin-sub"><strong>{{ paid_count }}</strong> of <strong>{{ total_users }}</strong> paid. {{ unpaid_count }} still owe.</p>
+    </div>
+</header>
 
+<div class="container pb-5">
     <div class="row">
         <div class="col-md-8">
-            <div class="alert alert-info">
-                <strong>Pool Status:</strong>
-                {{ paid_count }} of {{ total_users }} enrolled users have paid
-                ({{ unpaid_count }} still owe)
-            </div>
+            <p class="text-muted">Toggle a player&rsquo;s payment as the entry fee comes in.</p>
         </div>
         <div class="col-md-4">
             <div class="card text-center">
                 <div class="card-body">
                     <h5 class="card-title">Total Collected</h5>
-                    <h2 class="text-success">${{ total_collected }}</h2>
+                    <h2 class="cfb-ledger-total">${{ total_collected }}</h2>
                     <small class="text-muted">Based on ${{ entry_fee }} entry fee</small>
                 </div>
             </div>
@@ -25,7 +27,7 @@
     </div>
 
     <div class="card mt-3">
-        <div class="card-header"><h4 class="mb-0">User Payment Status</h4></div>
+        <div class="card-header"><h4 class="mb-0">Player Payment Status</h4></div>
         <div class="card-body p-0">
             <div class="table-responsive">
             <table class="table mb-0">
@@ -44,23 +46,21 @@
                         <td>
                             <strong>{{ enrollment.get_display_name() }}</strong>
                             {% if enrollment.is_admin %}
-                                <span class="badge bg-primary">Admin</span>
+                                <span class="cfb-admin-chip">Admin</span>
                             {% endif %}
                         </td>
                         <td>{{ enrollment.user.email }}</td>
                         <td>
-                            {% for i in range(enrollment.lives_remaining) %}
-                                <span class="text-success">&#9679;</span>
-                            {% endfor %}
-                            {% for i in range(2 - enrollment.lives_remaining) %}
-                                <span class="text-danger">&#9679;</span>
-                            {% endfor %}
+                            <span class="lives-indicator">
+                                {% for i in range(enrollment.lives_remaining) %}<span class="life"></span>{% endfor %}
+                                {% for i in range(2 - enrollment.lives_remaining) %}<span class="life lost"></span>{% endfor %}
+                            </span>
                         </td>
-                        <td>
+                        <td class="cfb-pay-status">
                             {% if enrollment.has_paid %}
-                                <span class="badge bg-success">PAID</span>
+                                <span class="cfb-admin-chip">PAID</span>
                             {% else %}
-                                <span class="badge bg-warning text-dark">UNPAID</span>
+                                <span class="cfb-admin-chip is-attention">UNPAID</span>
                             {% endif %}
                         </td>
                         <td>
@@ -81,7 +81,7 @@
     </div>
 
     <div class="mt-3">
-        <a href="{{ url_for('cfb.admin_dashboard') }}" class="btn btn-secondary">&larr; Back to Dashboard</a>
+        <a href="{{ url_for('cfb.admin_dashboard') }}" class="btn btn-game-ghost">&larr; Back to Dashboard</a>
     </div>
 </div>
 {% endblock %}
@@ -107,14 +107,14 @@ document.querySelectorAll('.payment-toggle').forEach(function(toggle) {
         .then(function(data) {
             if (data.success) {
                 var row = toggleEl.closest('tr');
-                var badge = row.querySelector('td:nth-child(4) .badge');
+                var badge = row.querySelector('.cfb-pay-status .cfb-admin-chip');
                 if (isPaid) {
                     row.classList.remove('table-warning');
-                    badge.className = 'badge bg-success';
+                    badge.className = 'cfb-admin-chip';
                     badge.textContent = 'PAID';
                 } else {
                     row.classList.add('table-warning');
-                    badge.className = 'badge bg-warning text-dark';
+                    badge.className = 'cfb-admin-chip is-attention';
                     badge.textContent = 'UNPAID';
                 }
             } else {

@@ -1,10 +1,16 @@
 {% extends "base.html" %}
-{% block title %}Manage Games — {{ get_week_display_name(week) }}{% endblock %}
+{% block title %}Manage the Slate · {{ get_week_display_name(week) }}{% endblock %}
 
 {% block content %}
-<div class="container mt-4">
-    <h2>Manage Games &mdash; {{ get_week_display_name(week) }}</h2>
+<header class="cfb-admin-masthead">
+    <div class="container">
+        <span class="cfb-eyebrow">The Commissioner&rsquo;s Desk &middot; {{ get_week_display_name(week) }}</span>
+        <h1 class="cfb-admin-title">Manage the Slate</h1>
+        <p class="cfb-admin-sub"><strong>{{ games|length }}</strong> game{{ 's' if games|length != 1 else '' }} set. Add or remove this week&rsquo;s matchups.</p>
+    </div>
+</header>
 
+<div class="container pb-5">
     <div class="row">
         <div class="col-lg-7">
             <div class="card">
@@ -97,13 +103,13 @@
                             <input type="datetime-local" class="form-control" name="game_time" required>
                         </div>
 
-                        <button type="submit" class="btn btn-primary">Add Game</button>
+                        <button type="submit" class="btn btn-game">Add Game</button>
                     </form>
                 </div>
             </div>
 
             <div class="mt-3">
-                <a href="{{ url_for('cfb.admin_dashboard') }}" class="btn btn-secondary">&larr; Back to Dashboard</a>
+                <a href="{{ url_for('cfb.admin_dashboard') }}" class="btn btn-game-ghost">&larr; Back to Dashboard</a>
             </div>
         </div>
     </div>
