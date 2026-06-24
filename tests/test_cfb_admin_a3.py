@@ -251,4 +251,10 @@ def test_payment_toggle_js_keeps_csrf_header():
     # td:nth-child position, so a future column change can't silently null the
     # badge -- and it scopes past the .cfb-admin-chip Admin tag in the name cell.
     assert "cfb-pay-status" in tpl, "the payment status cell must carry an explicit .cfb-pay-status JS hook"
-    assert "nth-child" not in tpl, "the payment JS must not rely on a brittle td:nth-child selector"
+    # Scope the nth-child ban to the toggle <script> block: a future zebra-stripe
+    # CSS rule (tr:nth-child(odd)) elsewhere in the template is legitimate; only
+    # the JS badge selector must stay off the brittle positional selector.
+    script = re.search(r"<script>(.*?)</script>", tpl, re.S)
+    assert script, "payments.html must carry the toggle <script> block"
+    assert "nth-child" not in script.group(1), \
+        "the payment toggle JS must not rely on a brittle td:nth-child selector"
