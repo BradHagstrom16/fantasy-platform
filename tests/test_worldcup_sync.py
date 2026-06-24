@@ -451,3 +451,51 @@ def test_cli_sync_rejects_bad_mode(app):
     runner = app.test_cli_runner()
     result = runner.invoke(args=['worldcup', 'sync', '--mode', 'bogus'])
     assert result.exit_code != 0
+
+
+# ---------------------------------------------------------------------------
+# Bulk bracket populate — fetch_bracket_proposal
+# ---------------------------------------------------------------------------
+
+def _ko_matches_payload():
+    """Two LAST_32 fixtures, one fully resolved, one half-resolved."""
+    return {'matches': [
+        {'id': 9001, 'stage': 'LAST_32', 'utcDate': '2026-06-28T19:00:00Z',
+         'homeTeam': {'tla': 'BRA', 'name': 'Brazil'},
+         'awayTeam': {'tla': 'KSA', 'name': 'Saudi Arabia'}},
+        {'id': 9002, 'stage': 'LAST_32', 'utcDate': '2026-06-28T23:00:00Z',
+         'homeTeam': {'tla': 'ARG', 'name': 'Argentina'},
+         'awayTeam': {'tla': None, 'name': None}},
+    ]}
+
+
+def test_fetch_bracket_proposal_maps_resolved_and_flags_unresolved(app):
+    from games.worldcup.services import sync
+    with app.app_context():
+        for code, name, grp in [('BRA', 'Brazil', 'A'), ('KSA', 'Saudi Arabia', 'A'),
+                                ('ARG', 'Argentina', 'B')]:
+            db.session.add(WorldCupTeam(fifa_code=code, name=name, display_name=name,
+                                        tier=1, multiplier=1.0, confederation='X',
+                                        group_letter=grp))
+        db.session.add(WorldCupMatch(match_number=73, stage='R32', api_fixture_id=9001))
+        db.session.add(WorldCupMatch(match_number=74, stage='R32', api_fixture_id=9002))
+        db.session.commit()
+
+        with patch.object(sync, '_api_get', return_value=_ko_matches_payload()):
+            out = sync.fetch_bracket_proposal('R32')
+
+        assert out['error'] is None
+        assert len(out['proposals']) == 1
+        p = out['proposals'][0]
+        assert (p['match_number'], p['home_fifa'], p['away_fifa']) == (73, 'BRA', 'KSA')
+        assert p['already_set'] is False
+        # Match 74 has an unresolved away team -> reported, not proposed.
+        assert any(u['match_number'] == 74 for u in out['unresolved'])
+
+
+def test_fetch_bracket_proposal_rejects_non_ko_stage(app):
+    from games.worldcup.services import sync
+    with app.app_context():
+        out = sync.fetch_bracket_proposal('group')
+        assert out['error'] is not None
+        assert out['proposals'] == []
