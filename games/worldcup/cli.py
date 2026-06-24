@@ -486,6 +486,27 @@ def send_digest_cmd():
         raise click.ClickException('One or more digest sends failed — check logs.')
 
 
+@worldcup_cli.command('send-group-recap')
+def send_group_recap_cmd():
+    """Send the personalized group-stage recap email to all players.
+
+    Admin-triggered analogue of the dashboard button. Refuses unless every
+    group's advancement is confirmed.
+    """
+    from games.worldcup.services.notifications import send_group_stage_recap
+
+    result = send_group_stage_recap()
+    click.echo(
+        f"[send-group-recap] {result['status']}  "
+        f"sent={result.get('sent', 0)}  "
+        f"skipped-no-email={result.get('skipped_no_email', 0)}  "
+        f"errors={result.get('errors', 0)}"
+        + (f"  reason={result['reason']}" if result.get('reason') else '')
+    )
+    if result.get('errors'):
+        raise click.ClickException('One or more recap sends failed — check logs.')
+
+
 def register_worldcup_cli(app):
     """Register World Cup CLI commands with the Flask app."""
     app.cli.add_command(worldcup_cli)

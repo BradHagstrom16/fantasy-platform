@@ -82,3 +82,12 @@ def test_send_group_recap_route_invokes_service(app):
         resp = client.post('/worldcup/admin/send-group-recap', data={'csrf_token': 'x'})
     assert resp.status_code == 302
     svc.assert_called_once()
+
+
+def test_cli_send_group_recap(app):
+    runner = app.test_cli_runner()
+    with patch('games.worldcup.services.notifications.send_group_stage_recap',
+               return_value={'status': 'sent', 'sent': 2, 'skipped_no_email': 0, 'errors': 0}):
+        res = runner.invoke(args=['worldcup', 'send-group-recap'])
+    assert res.exit_code == 0
+    assert 'sent' in res.output
