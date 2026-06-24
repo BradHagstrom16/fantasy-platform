@@ -609,3 +609,184 @@ def test_week_1_start_is_a_thursday_in_the_current_season(app):
 
     assert anchor.year == season_year      # not a leftover prior-season date
     assert anchor.weekday() == 3           # Thursday (the cadence assumption)
+
+
+# ── §5 — Odds API error states (test hardening) ──────────────────────────
+#
+# The unified client (odds_api_get) already retries transient blips and raises
+# OddsApiError only on a *sustained* outage (tests/test_cfb_odds_api.py). These
+# lock the CALL SITES: a 200 with unparseable JSON, a sustained outage
+# (OddsApiError), a malformed event/score entry, and an empty payload must all
+# degrade gracefully — return 0 / error / partial and alert — never 500 a run.
+# (Spread-market gaps — no spreads market, missing 'point' — are already locked
+# by test_spread_update_reports_and_alerts_null_spread_games and
+# test_spread_update_missing_point_is_not_locked_as_zero.)
+
+
+def _api_json_raises(status_code=200):
+    """A 200 (or given status) whose .json() raises — the API handed back a
+    body that isn't valid JSON. Mirrors requests' ValueError on bad JSON."""
+    resp = Mock()
+    resp.status_code = status_code
+    resp.json.side_effect = ValueError('No JSON object could be decoded')
+    resp.headers = {}
+    return resp
+
+
+@patch('games.cfb.services.automation.send_platform_email', return_value=True)
+@patch('games.cfb.services.odds_api.requests.get')
+def test_run_setup_survives_malformed_events_json(mock_get, mock_send, app):
+    """A 200 with unparseable events JSON imports 0 games — the week is created
+    but never activated, and the admin is alerted (not a 500)."""
+    from games.cfb.services.automation import run_setup
+    _prep_setup(app)
+    mock_get.return_value = _api_json_raises()
+
+    result = run_setup()
+
+    assert result['status'] == 'error'
+    week = CfbWeek.query.filter_by(week_number=1).first()
+    assert week is not None and week.is_active is False
+    assert mock_send.called
+
+
+@patch('games.cfb.services.automation.send_platform_email', return_value=True)
+@patch('games.cfb.services.odds_api.requests.get')
+def test_spread_update_returns_error_on_malformed_json(mock_get, mock_send, app):
+    """Unparseable odds JSON → error status; no spread is written or locked."""
+    from games.cfb.services.automation import run_spread_update
+    week, game = _seed_active_week_game(app)
+    mock_get.return_value = _api_json_raises()
+
+    result = run_spread_update()
+
+    assert result['status'] == 'error'
+    assert game.home_team_spread is None
+    assert game.spread_locked_at is None
+
+
+@patch('games.cfb.services.odds_api.requests.get')
+def test_fetch_scores_returns_error_on_malformed_json(mock_get, app):
+    """Unparseable scores JSON → an error dict the pipeline can branch on,
+    never an unhandled exception."""
+    from games.cfb.services.score_fetcher import ScoreFetcher
+    week, game = _seed_score_week(app)
+    mock_get.return_value = _api_json_raises()
+
+    fetched = ScoreFetcher().fetch_scores_for_week(week.id)
+
+    assert fetched.get('error')
+    assert 'matched_completed' not in fetched   # error short-circuits the parse
+
+
+@patch('games.cfb.services.automation.send_platform_email', return_value=True)
+@patch('games.cfb.services.automation.odds_api_get')
+def test_run_setup_zero_games_when_odds_api_down(mock_api, mock_send, app):
+    """A sustained outage (OddsApiError after the client exhausts retries) is
+    caught at the import call site: 0 games, week not activated, admin alerted."""
+    from games.cfb.services.odds_api import OddsApiError
+    from games.cfb.services.automation import run_setup
+    _prep_setup(app)
+    mock_api.side_effect = OddsApiError('Odds API unreachable')
+
+    result = run_setup()
+
+    assert result['status'] == 'error'
+    assert CfbWeek.query.filter_by(week_number=1).first().is_active is False
+    assert mock_send.called
+
+
+@patch('games.cfb.services.automation.send_platform_email', return_value=True)
+@patch('games.cfb.services.automation.odds_api_get')
+def test_spread_update_error_when_odds_api_down(mock_api, mock_send, app):
+    """A sustained outage during a spread run is reported as error, leaving
+    every spread unlocked for the next run to fill."""
+    from games.cfb.services.odds_api import OddsApiError
+    from games.cfb.services.automation import run_spread_update
+    week, game = _seed_active_week_game(app)
+    mock_api.side_effect = OddsApiError('Odds API unreachable')
+
+    result = run_spread_update()
+
+    assert result['status'] == 'error'
+    assert game.spread_locked_at is None
+
+
+@patch('games.cfb.services.score_fetcher.odds_api_get')
+def test_fetch_scores_error_when_odds_api_down(mock_api, app):
+    """A sustained outage during a scores run returns an error dict — the week
+    stays incomplete and retryable, never falsely processed."""
+    from games.cfb.services.odds_api import OddsApiError
+    from games.cfb.services.score_fetcher import ScoreFetcher
+    week, game = _seed_score_week(app)
+    mock_api.side_effect = OddsApiError('Odds API unreachable')
+
+    fetched = ScoreFetcher().fetch_scores_for_week(week.id)
+
+    assert fetched.get('error')
+
+
+@patch('games.cfb.services.automation.send_platform_email', return_value=True)
+@patch('games.cfb.services.odds_api.requests.get')
+def test_import_skips_event_missing_required_fields(mock_get, mock_send, app):
+    """An event with no home/away/commence fields is skipped; a valid event in
+    the same payload still imports — one bad row can't sink the batch."""
+    from games.cfb.services.automation import run_setup
+    _prep_setup(app)
+    mock_get.return_value = _api_response([
+        _setup_event(),          # valid Alabama/Georgia event
+        {'id': 'ev2'},           # no home_team / away_team / commence_time
+    ])
+
+    result = run_setup()
+
+    assert result['game_count'] == 1   # malformed event skipped, valid imported
+
+
+@patch('games.cfb.services.odds_api.requests.get')
+def test_fetch_scores_tolerates_non_numeric_score(mock_get, app):
+    """A non-numeric score string coerces to None (apply skips it) rather than
+    raising — a garbled score never crashes the fetch."""
+    from games.cfb.services.score_fetcher import ScoreFetcher
+    week, game = _seed_score_week(app)
+    event = _score_event()
+    event['scores'][0]['score'] = 'TBD'   # home score arrives non-numeric
+    mock_get.return_value = _api_response([event])
+
+    fetched = ScoreFetcher().fetch_scores_for_week(week.id)
+
+    assert fetched['error'] is None
+    match = fetched['matched_completed'][0]
+    assert match['home_score'] is None    # non-numeric → None, not an exception
+    assert match['away_score'] == 10
+
+
+@patch('games.cfb.services.odds_api.requests.get')
+def test_fetch_scores_tolerates_score_entry_missing_name(mock_get, app):
+    """A score entry missing its 'name' matches no team and is ignored; the
+    other team's score still parses."""
+    from games.cfb.services.score_fetcher import ScoreFetcher
+    week, game = _seed_score_week(app)
+    event = _score_event()
+    del event['scores'][0]['name']        # entry can't match home or away
+    mock_get.return_value = _api_response([event])
+
+    fetched = ScoreFetcher().fetch_scores_for_week(week.id)
+
+    assert fetched['error'] is None
+    match = fetched['matched_completed'][0]
+    assert match['home_score'] is None
+    assert match['away_score'] == 10
+
+
+@patch('games.cfb.services.odds_api.requests.get')
+def test_auto_process_week_partial_on_empty_scores(mock_get, app):
+    """An empty scores payload yields no completed games → 'partial', so the
+    week stays open and retryable instead of being marked complete."""
+    from games.cfb.services.score_fetcher import ScoreFetcher
+    week, game = _seed_score_week(app)
+    mock_get.return_value = _api_response([])
+
+    result = ScoreFetcher().auto_process_week(week.id)
+
+    assert result['status'] == 'partial'
