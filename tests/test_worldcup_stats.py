@@ -349,3 +349,21 @@ def test_stats_route_passes_ideal_lineup_when_results_exist(app):
         resp = client.get('/worldcup/stats')
     assert resp.status_code == 200
     assert captured['out'] is not None  # Brazil has 3 pts -> ideal exists
+
+
+def test_stats_page_renders_ideal_lineup_card(app):
+    client = app.test_client()
+    with app.app_context():
+        admin = User(username='boss2', email='b2@test.com', is_admin=True); admin.set_password('x')
+        db.session.add(admin)
+        db.session.add(WorldCupTeam(fifa_code='BRA', name='Brazil', display_name='Brazil',
+                                    tier=1, multiplier=1.0, confederation='X', group_letter='A',
+                                    base_points=3.0, multiplied_points=3.0))
+        db.session.commit()
+        auth_id = admin.auth_id
+    with client.session_transaction() as sess:
+        sess['_user_id'] = auth_id
+        sess['_fresh'] = True
+    resp = client.get('/worldcup/stats')
+    assert resp.status_code == 200
+    assert b'Ideal Lineup' in resp.data

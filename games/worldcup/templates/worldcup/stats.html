@@ -87,6 +87,7 @@
 {% endblock %}
 
 {% block content %}
+{% from '_flag.html' import flag with context %}
 <script>
 if (window.matchMedia('(prefers-color-scheme: dark)').matches)
   document.body.classList.add('theme-dark');
@@ -148,6 +149,47 @@ if (window.matchMedia('(prefers-color-scheme: dark)').matches)
         </p>
       </div>
     </div>
+
+    {% if ideal_lineup %}
+    {# Ideal Lineup — the highest-scoring buildable roster (top earner in each
+       of the nine tier slots). The "ceiling" insight: the total is the focal
+       figure; the nine teams group by tier so the multiplier ladder reads at a
+       glance. Renders only when results exist (the service returns None at
+       0 pts), so it stays hidden pre-kickoff. #}
+    <section class="wc-stat-card wc-ideal mt-1" aria-labelledby="wc-ideal-title">
+      <div class="wc-card-head wc-ideal-head">
+        <span>
+          <span class="wc-eyebrow wc-eyebrow-red">The ceiling</span>
+          <span id="wc-ideal-title">The Ideal Lineup</span>
+        </span>
+        <span class="wc-ideal-total-wrap">
+          <span class="wc-ideal-total">{{ "%.1f"|format(ideal_lineup.total_score) }}</span>
+          <span class="wc-ideal-total-unit">pts &middot; best possible</span>
+        </span>
+      </div>
+      <p class="wc-ideal-lead">
+        The single highest-scoring roster anyone could hold &mdash; the top earner in each of the nine tier slots.
+        <span class="wc-ideal-lead-q">How close is yours?</span>
+      </p>
+      <div class="wc-ideal-grid">
+        {% for tier, group in ideal_lineup.teams | groupby('tier') %}
+        <div class="wc-ideal-tier">
+          <div class="wc-ideal-tier-head">
+            <span class="wc-tier-dot wc-tier-dot-{{ tier }}" aria-hidden="true"></span>
+            <span>{{ group[0].tier_name }}</span>
+            <span class="wc-multiplier-chip">&times;{{ "%g"|format(group[0].multiplier) }}</span>
+          </div>
+          {% for t in group %}
+          <div class="wc-ideal-row">
+            <span class="wc-ideal-team">{{ flag(t.iso_code) }} {{ t.name }}</span>
+            <span class="wc-ideal-pts">{{ "%.1f"|format(t.total_score) }}</span>
+          </div>
+          {% endfor %}
+        </div>
+        {% endfor %}
+      </div>
+    </section>
+    {% endif %}
 
     <!-- Tournament Progress Bar -->
     <div class="wc-stat-card mt-1">
