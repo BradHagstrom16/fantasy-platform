@@ -253,8 +253,13 @@ def test_payment_toggle_js_keeps_csrf_header():
     assert "cfb-pay-status" in tpl, "the payment status cell must carry an explicit .cfb-pay-status JS hook"
     # Scope the nth-child ban to the toggle <script> block: a future zebra-stripe
     # CSS rule (tr:nth-child(odd)) elsewhere in the template is legitimate; only
-    # the JS badge selector must stay off the brittle positional selector.
-    script = re.search(r"<script>(.*?)</script>", tpl, re.S)
-    assert script, "payments.html must carry the toggle <script> block"
-    assert "nth-child" not in script.group(1), \
-        "the payment toggle JS must not rely on a brittle td:nth-child selector"
+    # the JS badge selector must stay off the brittle positional selector. Select
+    # the block by its .payment-toggle content, not by position, so a future
+    # analytics/feature-detection script added ahead of it can't be mistaken for
+    # the toggle block.
+    toggle_scripts = [s for s in re.findall(r"<script[^>]*>(.*?)</script>", tpl, re.S)
+                      if "payment-toggle" in s]
+    assert toggle_scripts, "payments.html must carry the toggle <script> block"
+    for script in toggle_scripts:
+        assert "nth-child" not in script, \
+            "the payment toggle JS must not rely on a brittle td:nth-child selector"
