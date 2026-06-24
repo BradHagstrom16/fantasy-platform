@@ -34,7 +34,10 @@ from games.worldcup.services.scoring import (
 )
 from games.worldcup.services.elimination import eliminated_team_ids
 from games.worldcup.services.notifications import send_picks_confirmation
-from games.worldcup.services.sync import fetch_advancement_proposal
+from games.worldcup.services.sync import (
+    fetch_advancement_proposal, fetch_bracket_proposal,
+    populatable_bracket_stages, SyncError,
+)
 # Platform tz helper. Re-exported as `format_ct` in the WC blueprint context
 # processor (see below) so existing WC templates (`{{ format_ct(dt).strftime(...) }}`)
 # keep working with the same datetime-returning contract. Platform templates
@@ -1321,6 +1324,45 @@ def admin_set_knockout(match_id):
         match=match,
         available_teams=available_teams,
     )
+
+
+@worldcup_bp.route('/admin/bracket/<target_stage>', methods=['GET', 'POST'])
+@worldcup_admin_required
+def admin_bracket(target_stage):
+    """Bulk-populate one knockout round's shells from the API (review-then-confirm)."""
+    KO_STAGES = ('R32', 'R16', 'QF', 'SF', 'final', 'third_place')
+    if target_stage not in KO_STAGES:
+        flash('Not a knockout stage.', 'error')
+        return redirect(url_for('worldcup.admin_dashboard'))
+
+    if request.method == 'POST':
+        shell_ids = request.form.getlist('shell_id')
+        home_fifas = request.form.getlist('home_fifa')
+        away_fifas = request.form.getlist('away_fifa')
+        assigned = skipped = failed = 0
+        for sid, home, away in zip(shell_ids, home_fifas, away_fifas):
+            shell = db.session.get(WorldCupMatch, int(sid)) if sid.isdigit() else None
+            if not shell or shell.is_completed:
+                skipped += 1
+                continue
+            res = set_knockout_teams(shell.id, home, away)
+            if 'error' in res:
+                failed += 1
+            else:
+                assigned += 1
+        flash(
+            f'{target_stage}: {assigned} assigned, {skipped} skipped, {failed} failed.',
+            'warning' if failed else 'success',
+        )
+        return redirect(url_for('worldcup.admin_dashboard'))
+
+    try:
+        proposal = fetch_bracket_proposal(target_stage)
+    except SyncError as exc:
+        flash(f'Could not load bracket from API: {exc}', 'error')
+        return redirect(url_for('worldcup.admin_dashboard'))
+    return render_template('worldcup/admin/bracket.html',
+        proposal=proposal, target_stage=target_stage)
 
 
 @worldcup_bp.route('/admin/users')
