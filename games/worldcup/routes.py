@@ -51,6 +51,7 @@ from games.worldcup.services.stats import (
     get_tier_stats,
     get_overview_kpis,
     get_tier_combos,
+    get_ideal_lineup,
 )
 from games.worldcup.services.ranking import (
     compute_rank_delta, compute_rank_deltas_bulk, compute_rank_neighbors,
@@ -873,6 +874,7 @@ def stats():
     tier_stats = get_tier_stats(country_stats)
     kpis = get_overview_kpis(country_stats, total_players)
     combos = get_tier_combos(SEASON_YEAR)
+    ideal_lineup = get_ideal_lineup(country_stats)
 
     my_picks: list[str] = []
     if current_user.is_authenticated:
@@ -895,6 +897,7 @@ def stats():
         tier_stats=tier_stats,
         kpis=kpis,
         combos=combos,
+        ideal_lineup=ideal_lineup,
         my_picks=my_picks,
         current_phase=_derive_tournament_phase(),
     )

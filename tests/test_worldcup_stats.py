@@ -284,3 +284,86 @@ def test_stats_route_my_picks_unauthenticated(client, session):
         resp = client.get('/worldcup/stats')
     assert resp.status_code == 200
     assert b'MY_PICKS = []' in resp.data
+
+
+# --- Ideal Lineup (get_ideal_lineup service) ----------------------------------
+
+
+def test_get_ideal_lineup_picks_top_n_per_tier():
+    from games.worldcup.services.stats import get_ideal_lineup
+    cs = [
+        {'name': 'A1', 'iso_code': 'a1', 'tier': 1, 'multiplier': 1.0, 'total_score': 10.0},
+        {'name': 'A2', 'iso_code': 'a2', 'tier': 1, 'multiplier': 1.0, 'total_score': 8.0},
+        {'name': 'A3', 'iso_code': 'a3', 'tier': 1, 'multiplier': 1.0, 'total_score': 3.0},
+        {'name': 'B1', 'iso_code': 'b1', 'tier': 2, 'multiplier': 1.5, 'total_score': 12.0},
+        {'name': 'B2', 'iso_code': 'b2', 'tier': 2, 'multiplier': 1.5, 'total_score': 6.0},
+    ]
+    out = get_ideal_lineup(cs)
+    # Tier 1 picks 2 (A1+A2), Tier 2 picks 1 (B1). Total = 10+8+12 = 30.
+    names = [t['name'] for t in out['teams']]
+    assert names == ['A1', 'A2', 'B1']
+    assert out['total_score'] == 30.0
+
+
+def test_get_ideal_lineup_none_when_no_points():
+    from games.worldcup.services.stats import get_ideal_lineup
+    cs = [{'name': 'A1', 'iso_code': 'a1', 'tier': 1, 'multiplier': 1.0, 'total_score': 0.0}]
+    assert get_ideal_lineup(cs) is None
+
+
+def test_get_ideal_lineup_tiebreak_is_deterministic():
+    from games.worldcup.services.stats import get_ideal_lineup
+    cs = [
+        {'name': 'Zeta', 'iso_code': 'z', 'tier': 1, 'multiplier': 1.0, 'total_score': 5.0},
+        {'name': 'Alpha', 'iso_code': 'a', 'tier': 1, 'multiplier': 1.0, 'total_score': 5.0},
+        {'name': 'Mid', 'iso_code': 'm', 'tier': 1, 'multiplier': 1.0, 'total_score': 5.0},
+    ]
+    out = get_ideal_lineup(cs)
+    # Tier 1 picks 2; ties broken by name -> Alpha, Mid.
+    assert [t['name'] for t in out['teams']] == ['Alpha', 'Mid']
+    assert out['total_score'] == 10.0
+
+
+def test_stats_route_passes_ideal_lineup_when_results_exist(app):
+    """Admin sees stats anytime; ideal_lineup present once a team has points."""
+    from games.worldcup.services import stats as stats_mod
+    client = app.test_client()
+    with app.app_context():
+        admin = User(username='boss', email='b@test.com', is_admin=True); admin.set_password('x')
+        db.session.add(admin)
+        t = WorldCupTeam(fifa_code='BRA', name='Brazil', display_name='Brazil',
+                         tier=1, multiplier=1.0, confederation='X', group_letter='A',
+                         base_points=3.0, multiplied_points=3.0)
+        db.session.add(t)
+        db.session.commit()
+        auth_id = admin.auth_id
+    with client.session_transaction() as sess:
+        sess['_user_id'] = auth_id
+        sess['_fresh'] = True
+    captured = {}
+    real = stats_mod.get_ideal_lineup
+    def spy(cs):
+        captured['out'] = real(cs)
+        return captured['out']
+    with patch('games.worldcup.routes.get_ideal_lineup', side_effect=spy):
+        resp = client.get('/worldcup/stats')
+    assert resp.status_code == 200
+    assert captured['out'] is not None  # Brazil has 3 pts -> ideal exists
+
+
+def test_stats_page_renders_ideal_lineup_card(app):
+    client = app.test_client()
+    with app.app_context():
+        admin = User(username='boss2', email='b2@test.com', is_admin=True); admin.set_password('x')
+        db.session.add(admin)
+        db.session.add(WorldCupTeam(fifa_code='BRA', name='Brazil', display_name='Brazil',
+                                    tier=1, multiplier=1.0, confederation='X', group_letter='A',
+                                    base_points=3.0, multiplied_points=3.0))
+        db.session.commit()
+        auth_id = admin.auth_id
+    with client.session_transaction() as sess:
+        sess['_user_id'] = auth_id
+        sess['_fresh'] = True
+    resp = client.get('/worldcup/stats')
+    assert resp.status_code == 200
+    assert b'Ideal Lineup' in resp.data

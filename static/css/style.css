@@ -7229,6 +7229,64 @@ body.game-worldcup .tier-card-5 .tier-card-header { background: linear-gradient(
   .wc-stats-masthead-derivation { font-size: 1rem; }
 }
 
+/* Ideal Lineup — the "ceiling" roster on the Stats Hub Board tab: the single
+   highest-scoring buildable roster (top earner in each of the nine tier slots).
+   Casual-Light editorial card — white .wc-stat-card substrate, navy focal
+   total, one red eyebrow, tier-colored dots; gold stays reserved. The total is
+   the focal figure but sits at card scale, not masthead scale, so it doesn't
+   stack a second hero numeral under .wc-stats-masthead (the S2.3.1
+   hero-metric-adjacency lesson). */
+.wc-ideal-head { align-items: flex-start; gap: 1rem; }
+.wc-ideal-head .wc-eyebrow { display: block; margin-bottom: .3rem; }
+.wc-ideal-total-wrap {
+  display: flex; flex-direction: column; align-items: flex-end;
+  text-align: right; flex-shrink: 0;
+}
+.wc-ideal-total {
+  font-family: 'Teko', sans-serif; font-weight: 700; font-size: 2rem;
+  line-height: .9; color: var(--wc-navy); font-feature-settings: 'tnum';
+}
+.wc-ideal-total-unit {
+  font-family: 'Teko', sans-serif; font-size: .7rem; font-weight: 500;
+  letter-spacing: .08em; text-transform: uppercase;
+  color: var(--text-secondary); margin-top: .3rem;
+}
+.wc-ideal-lead {
+  font-family: 'Newsreader', Georgia, serif; font-size: 1rem; line-height: 1.5;
+  color: var(--text-primary); margin: 0 0 1.4rem; max-width: 62ch;
+}
+.wc-ideal-lead-q { color: var(--text-secondary); font-style: italic; }
+.wc-ideal-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1.25rem 1.75rem;
+}
+.wc-ideal-tier { display: flex; flex-direction: column; }
+.wc-ideal-tier-head {
+  display: flex; align-items: center; gap: .4rem;
+  font-family: 'Teko', sans-serif; font-weight: 600; font-size: .95rem;
+  letter-spacing: .05em; text-transform: uppercase; color: var(--text-primary);
+  padding-bottom: .5rem; margin-bottom: .15rem;
+  border-bottom: 1px solid var(--border);
+}
+.wc-ideal-tier-head .wc-multiplier-chip { margin-left: auto; }
+.wc-ideal-row {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: .75rem; padding: .45rem 0;
+}
+.wc-ideal-row + .wc-ideal-row { border-top: 1px solid var(--border); }
+.wc-ideal-team {
+  display: flex; align-items: center; gap: .5rem; min-width: 0;
+  font-family: 'Newsreader', Georgia, serif; font-size: 1rem;
+  color: var(--text-primary);
+}
+.wc-ideal-team .ccc-flag { height: 1.15em; border-radius: 2px; flex-shrink: 0; }
+.wc-ideal-pts {
+  font-family: 'Teko', sans-serif; font-weight: 700; font-size: 1.2rem;
+  line-height: 1; color: var(--text-primary);
+  font-feature-settings: 'tnum'; flex-shrink: 0;
+}
+
 /* S2.4.1 PI-2: By-Tier ledger strip — replaces the prior 5-tile .wc-kpi-block
    band on Tiers tab. Horizontal ledger with gold-rule top + per-cell border
    reads as editorial summary, not as KPI dashboard. */
