@@ -90,6 +90,38 @@ def get_overview_kpis(country_stats: list[dict], total_players: int) -> dict:
     }
 
 
+def get_ideal_lineup(country_stats: list[dict]) -> dict | None:
+    """Highest-scoring possible roster: top-N multiplied_points teams per tier.
+
+    Pure — consumes the country_stats the stats route already builds. Returns
+    None when the ideal total is 0 (pre-results) so the card stays hidden until
+    points exist. Provably optimal: slots are tier-partitioned and the
+    multiplier is constant within a tier, so greedy top-N per tier = global
+    optimum. Ties for the final slot are broken by name; the total is exact.
+    """
+    from games.worldcup.world_cup_countries import TIERS
+
+    by_tier: dict[int, list[dict]] = {}
+    for c in country_stats:
+        by_tier.setdefault(c['tier'], []).append(c)
+
+    teams: list[dict] = []
+    total = 0.0
+    for tier in sorted(TIERS):
+        ranked = sorted(by_tier.get(tier, []), key=lambda c: (-c['total_score'], c['name']))
+        for c in ranked[:TIERS[tier]['picks']]:
+            teams.append({
+                'name': c['name'], 'iso_code': c['iso_code'], 'tier': tier,
+                'tier_name': TIERS[tier]['name'], 'multiplier': c['multiplier'],
+                'total_score': c['total_score'],
+            })
+            total += c['total_score']
+
+    if total <= 0:
+        return None
+    return {'teams': teams, 'total_score': total}
+
+
 def get_tier_combos(season_year: int) -> dict[int, list[dict]]:
     """Return top-5 team pairs per tier for tiers 1, 3, 4, 5.
 
