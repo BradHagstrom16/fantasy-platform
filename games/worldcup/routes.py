@@ -1249,6 +1249,9 @@ def admin_send_group_recap():
     elif result['status'] == 'sent':
         flash(f"Group recap sent to {result['sent']} player(s) "
               f"({result.get('errors', 0)} error(s)).", 'success')
+    elif result.get('errors'):
+        flash(f"Group recap failed for all recipients ({result['errors']} error(s)). "
+              "Check logs.", 'error')
     else:
         flash('No recap emails were sent (no eligible players).', 'warning')
     return redirect(url_for('worldcup.admin_dashboard'))

@@ -62,6 +62,38 @@ def test_recap_sends_with_advancement_breakdown(app):
         assert 'Brazil' in html and 'Saudi Arabia' in html
 
 
+def test_recap_all_sends_fail_reports_no_sends_and_skips_marker(app):
+    import os
+    from games.worldcup.services.notifications import (
+        send_group_stage_recap, group_recap_last_sent, _group_recap_marker_path,
+    )
+    with app.app_context():
+        # Clear any marker a prior test left behind so we assert THIS run's behavior.
+        try:
+            os.remove(_group_recap_marker_path())
+        except OSError:
+            pass
+        db.session.add(WorldCupMatch(match_number=1, stage='group', group_letter='A',
+                                     is_completed=True))
+        winner = _team('BRA', 'Brazil', 1, 1.0, 'A', advancement_method='group_winner')
+        u = User(username='al', email='al@test.com'); u.set_password('x')
+        db.session.add(u); db.session.flush()
+        e = WorldCupEnrollment(user_id=u.id, season_year=2026, picks_submitted=True)
+        db.session.add(e); db.session.flush()
+        db.session.add(WorldCupPick(enrollment_id=e.id, team_id=winner.id, tier=winner.tier))
+        db.session.commit()
+
+        # Every delivery fails -> zero sends, but the player IS eligible.
+        with patch('games.worldcup.services.notifications.send_platform_email',
+                   return_value=False):
+            out = send_group_stage_recap()
+        assert out['status'] == 'no_sends'
+        assert out['sent'] == 0
+        assert out['errors'] == 1
+        # Marker must NOT be written when nothing actually went out.
+        assert group_recap_last_sent() is None
+
+
 def test_send_group_recap_route_admin_only(app):
     client = app.test_client()
     resp = client.post('/worldcup/admin/send-group-recap', data={'csrf_token': 'x'})

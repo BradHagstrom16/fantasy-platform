@@ -390,7 +390,8 @@ def send_group_stage_recap() -> dict:
                 fmt_mult=_fmt_multiplier, fmt_pts=_fmt_pts,
             )
             plain_body = _plain_group_recap(enrollment, advanced, eliminated,
-                                            _fmt_pts(total_adv), rank, total_enrolled, site_url)
+                                            _fmt_pts(total_adv), rank, total_enrolled,
+                                            ko_ladder, site_url)
             subject = 'World Cup: the group stage is a wrap'
             if send_platform_email(enrollment.user.email, subject, plain_body, html_body):
                 sent += 1
@@ -400,12 +401,17 @@ def send_group_stage_recap() -> dict:
             logger.exception('Group recap failed for enrollment %s', enrollment.id)
             errors += 1
 
-    _mark_group_recap_sent()
+    # Only stamp "last sent" when at least one email actually went out, so a
+    # run where every delivery fails (or everyone is skipped) doesn't paint a
+    # false "Last sent …" state on the dashboard.
+    if sent:
+        _mark_group_recap_sent()
     return {'status': 'sent' if sent else 'no_sends',
             'sent': sent, 'skipped_no_email': skipped_no_email, 'errors': errors}
 
 
-def _plain_group_recap(enrollment, advanced, eliminated, total_adv_str, rank, total_enrolled, site_url):
+def _plain_group_recap(enrollment, advanced, eliminated, total_adv_str, rank,
+                       total_enrolled, ko_ladder, site_url):
     name = enrollment.get_display_name()
     lines = ['The group stage is a wrap', '=' * 40, '', f'Hi {name},', '',
              f'Group advancement points earned: +{total_adv_str}', '',
@@ -420,6 +426,10 @@ def _plain_group_recap(enrollment, advanced, eliminated, total_adv_str, rank, to
     lines += ['', 'How group points worked: Group winner +4, Runner-up +3, Best 3rd +1 '
               '(x your tier multiplier).', '',
               f'Standing entering the Round of 32: #{rank} of {total_enrolled}', '',
+              "What's at stake next (x your multiplier):"]
+    for label, base in ko_ladder:
+        lines.append(f'  {label}: +{base} base')
+    lines += ['', 'Your surviving high-multiplier picks carry the biggest upside from here.', '',
               f'Full standings: {site_url}/worldcup/leaderboard', '',
               'Corrupt Commish Club -- cccfantasy.com']
     return '\n'.join(lines)
