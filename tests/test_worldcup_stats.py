@@ -322,3 +322,30 @@ def test_get_ideal_lineup_tiebreak_is_deterministic():
     # Tier 1 picks 2; ties broken by name -> Alpha, Mid.
     assert [t['name'] for t in out['teams']] == ['Alpha', 'Mid']
     assert out['total_score'] == 10.0
+
+
+def test_stats_route_passes_ideal_lineup_when_results_exist(app):
+    """Admin sees stats anytime; ideal_lineup present once a team has points."""
+    from games.worldcup.services import stats as stats_mod
+    client = app.test_client()
+    with app.app_context():
+        admin = User(username='boss', email='b@test.com', is_admin=True); admin.set_password('x')
+        db.session.add(admin)
+        t = WorldCupTeam(fifa_code='BRA', name='Brazil', display_name='Brazil',
+                         tier=1, multiplier=1.0, confederation='X', group_letter='A',
+                         base_points=3.0, multiplied_points=3.0)
+        db.session.add(t)
+        db.session.commit()
+        auth_id = admin.auth_id
+    with client.session_transaction() as sess:
+        sess['_user_id'] = auth_id
+        sess['_fresh'] = True
+    captured = {}
+    real = stats_mod.get_ideal_lineup
+    def spy(cs):
+        captured['out'] = real(cs)
+        return captured['out']
+    with patch('games.worldcup.routes.get_ideal_lineup', side_effect=spy):
+        resp = client.get('/worldcup/stats')
+    assert resp.status_code == 200
+    assert captured['out'] is not None  # Brazil has 3 pts -> ideal exists
