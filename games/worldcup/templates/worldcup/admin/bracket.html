@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}Populate {{ stage_label(target_stage) }} · World Cup Admin{% endblock %}
+
+{% block content %}
+<header class="admin-masthead">
+    <div class="container">
+        <a href="{{ url_for('worldcup.admin_dashboard') }}" class="adm-back">&larr; Tournament Control</a>
+        <span class="admin-eyebrow">World Cup &middot; Bracket</span>
+        <h1 class="admin-page-title">Populate {{ stage_label(target_stage) }}</h1>
+        <p class="admin-masthead-sub">Proposed from football-data.org. Review, then confirm to assign every shell at once.</p>
+    </div>
+</header>
+
+<div class="container pb-5">
+    <div class="card" style="max-width:840px">
+        <div class="card-body">
+            {% if proposal.proposals %}
+            <form method="POST" action="{{ url_for('worldcup.admin_bracket', target_stage=target_stage) }}"
+                  onsubmit="return confirm('Assign all {{ proposal.proposals|length }} {{ stage_label(target_stage) }} shells?');">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <table class="table">
+                    <thead><tr><th>Match</th><th>Proposed</th><th>Currently</th></tr></thead>
+                    <tbody>
+                    {% for p in proposal.proposals %}
+                    <tr {% if p.is_completed %}class="adm-tag--muted"{% endif %}>
+                        <td>#{{ p.match_number }}</td>
+                        <td>
+                            <input type="hidden" name="shell_id" value="{{ p.shell_id }}">
+                            <input type="hidden" name="home_fifa" value="{{ p.home_fifa }}">
+                            <input type="hidden" name="away_fifa" value="{{ p.away_fifa }}">
+                            <strong>{{ p.home_fifa }}</strong> v <strong>{{ p.away_fifa }}</strong>
+                            <span class="adm-sub d-block">{{ p.home_name }} v {{ p.away_name }}</span>
+                        </td>
+                        <td>
+                            {% if p.current_home or p.current_away %}{{ p.current_home or 'TBD' }} v {{ p.current_away or 'TBD' }}
+                            {% else %}<span class="adm-sub">empty</span>{% endif %}
+                            {% if p.is_completed %} &middot; <span class="adm-tag adm-tag--muted">result locked</span>{% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+                <button type="submit" class="btn btn-game">Confirm &amp; Assign</button>
+                <a href="{{ url_for('worldcup.admin_dashboard') }}" class="btn btn-outline-secondary ms-2">Cancel</a>
+            </form>
+            {% else %}
+            <p class="adm-sub">No resolvable pairings for {{ stage_label(target_stage) }} yet.</p>
+            {% endif %}
+
+            {% if proposal.unresolved %}
+            <hr class="my-4">
+            <p class="admin-masthead-sub mb-2">Not yet resolved by the API ({{ proposal.unresolved|length }}):</p>
+            <ul class="adm-sub">
+                {% for u in proposal.unresolved %}
+                <li>#{{ u.match_number }} — {{ u.reason }}</li>
+                {% endfor %}
+            </ul>
+            <p class="adm-sub mb-0">Assign these manually from the
+                <a href="{{ url_for('worldcup.admin_dashboard') }}">dashboard</a> once the feeder results are in.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

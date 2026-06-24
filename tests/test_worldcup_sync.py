@@ -451,3 +451,123 @@ def test_cli_sync_rejects_bad_mode(app):
     runner = app.test_cli_runner()
     result = runner.invoke(args=['worldcup', 'sync', '--mode', 'bogus'])
     assert result.exit_code != 0
+
+
+# ---------------------------------------------------------------------------
+# Bulk bracket populate — fetch_bracket_proposal
+# ---------------------------------------------------------------------------
+
+def _ko_matches_payload():
+    """Two LAST_32 fixtures, one fully resolved, one half-resolved."""
+    return {'matches': [
+        {'id': 9001, 'stage': 'LAST_32', 'utcDate': '2026-06-28T19:00:00Z',
+         'homeTeam': {'tla': 'BRA', 'name': 'Brazil'},
+         'awayTeam': {'tla': 'KSA', 'name': 'Saudi Arabia'}},
+        {'id': 9002, 'stage': 'LAST_32', 'utcDate': '2026-06-28T23:00:00Z',
+         'homeTeam': {'tla': 'ARG', 'name': 'Argentina'},
+         'awayTeam': {'tla': None, 'name': None}},
+    ]}
+
+
+def test_fetch_bracket_proposal_maps_resolved_and_flags_unresolved(app):
+    from games.worldcup.services import sync
+    with app.app_context():
+        for code, name, grp in [('BRA', 'Brazil', 'A'), ('KSA', 'Saudi Arabia', 'A'),
+                                ('ARG', 'Argentina', 'B')]:
+            db.session.add(WorldCupTeam(fifa_code=code, name=name, display_name=name,
+                                        tier=1, multiplier=1.0, confederation='X',
+                                        group_letter=grp))
+        db.session.add(WorldCupMatch(match_number=73, stage='R32', api_fixture_id=9001))
+        db.session.add(WorldCupMatch(match_number=74, stage='R32', api_fixture_id=9002))
+        db.session.commit()
+
+        with patch.object(sync, '_api_get', return_value=_ko_matches_payload()):
+            out = sync.fetch_bracket_proposal('R32')
+
+        assert out['error'] is None
+        assert len(out['proposals']) == 1
+        p = out['proposals'][0]
+        assert (p['match_number'], p['home_fifa'], p['away_fifa']) == (73, 'BRA', 'KSA')
+        assert p['already_set'] is False
+        # Match 74 has an unresolved away team -> reported, not proposed.
+        assert any(u['match_number'] == 74 for u in out['unresolved'])
+
+
+def test_fetch_bracket_proposal_rejects_non_ko_stage(app):
+    from games.worldcup.services import sync
+    with app.app_context():
+        out = sync.fetch_bracket_proposal('group')
+        assert out['error'] is not None
+        assert out['proposals'] == []
+
+
+def test_fetch_bracket_proposal_matches_by_kickoff_when_unlinked(app):
+    """A shell with no api_fixture_id still matches via (stage, kickoff)."""
+    from datetime import datetime
+    from games.worldcup.services import sync
+    with app.app_context():
+        for code, name in [('BRA', 'Brazil'), ('KSA', 'Saudi Arabia')]:
+            db.session.add(WorldCupTeam(fifa_code=code, name=name, display_name=name,
+                                        tier=1, multiplier=1.0, confederation='X', group_letter='A'))
+        # No api_fixture_id; kickoff matches the API fixture's utcDate.
+        db.session.add(WorldCupMatch(match_number=73, stage='R32',
+                                     kickoff_utc=datetime(2026, 6, 28, 19, 0, 0)))
+        db.session.commit()
+
+        payload = {'matches': [
+            {'id': 9001, 'stage': 'LAST_32', 'utcDate': '2026-06-28T19:00:00Z',
+             'homeTeam': {'tla': 'BRA', 'name': 'Brazil'},
+             'awayTeam': {'tla': 'KSA', 'name': 'Saudi Arabia'}},
+        ]}
+        with patch.object(sync, '_api_get', return_value=payload):
+            out = sync.fetch_bracket_proposal('R32')
+
+        assert out['error'] is None
+        assert len(out['proposals']) == 1
+        assert out['proposals'][0]['match_number'] == 73
+
+
+def test_fetch_bracket_proposal_propagates_sync_error(app):
+    """A football-data.org outage surfaces as SyncError (the route flashes it)."""
+    from games.worldcup.services import sync
+    with app.app_context():
+        db.session.add(WorldCupMatch(match_number=73, stage='R32'))
+        db.session.commit()
+        with patch.object(sync, '_api_get', side_effect=sync.SyncError('boom')):
+            with pytest.raises(sync.SyncError):
+                sync.fetch_bracket_proposal('R32')
+
+
+def test_all_group_advancement_confirmed(app):
+    from games.worldcup.services import sync
+    with app.app_context():
+        db.session.add(WorldCupMatch(match_number=1, stage='group', group_letter='A',
+                                     is_completed=True))
+        db.session.add(WorldCupTeam(fifa_code='BRA', name='Brazil', display_name='Brazil',
+                                    tier=1, multiplier=1.0, confederation='X', group_letter='A',
+                                    advancement_method='group_winner'))
+        db.session.add(WorldCupTeam(fifa_code='KSA', name='Saudi Arabia', display_name='Saudi Arabia',
+                                    tier=5, multiplier=7.0, confederation='X', group_letter='A',
+                                    is_eliminated=True))
+        db.session.commit()
+        assert sync.all_group_advancement_confirmed() is True
+
+        # Add an unconfirmed team (no method, not eliminated) -> not confirmed.
+        db.session.add(WorldCupTeam(fifa_code='ARG', name='Argentina', display_name='Argentina',
+                                    tier=1, multiplier=1.0, confederation='X', group_letter='A'))
+        db.session.commit()
+        assert sync.all_group_advancement_confirmed() is False
+
+
+def test_populatable_bracket_stages_offers_r32_after_advancement(app):
+    from games.worldcup.services import sync
+    with app.app_context():
+        db.session.add(WorldCupMatch(match_number=1, stage='group', group_letter='A',
+                                     is_completed=True))
+        db.session.add(WorldCupTeam(fifa_code='BRA', name='Brazil', display_name='Brazil',
+                                    tier=1, multiplier=1.0, confederation='X', group_letter='A',
+                                    advancement_method='group_winner'))
+        # An empty R32 shell.
+        db.session.add(WorldCupMatch(match_number=73, stage='R32'))
+        db.session.commit()
+        assert 'R32' in sync.populatable_bracket_stages()

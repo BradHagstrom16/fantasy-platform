@@ -186,6 +186,19 @@
     </details>
     {% endif %}
 
+    {# Time-sensitive: a feeder round resolved — pull this round's pairings from the API #}
+    {% if populatable_stages %}
+    <h2 class="section-heading">Populate the Bracket</h2>
+    <p class="adm-sub mb-2">The feeder round is resolved — pull this round's pairings from the API and confirm.</p>
+    <div class="adm-action-row mb-4">
+        {% for stage in populatable_stages %}
+        <a href="{{ url_for('worldcup.admin_bracket', target_stage=stage) }}" class="btn btn-game btn-sm">
+            Populate {{ stage_label(stage) }} from API
+        </a>
+        {% endfor %}
+    </div>
+    {% endif %}
+
     {# Knockout shells awaiting teams, folded (bulk early-tournament work) #}
     {% if knockout_unassigned %}
     <details class="adm-fold">

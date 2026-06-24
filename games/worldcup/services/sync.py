@@ -340,6 +340,73 @@ def fetch_advancement_proposal() -> dict:
     return {'groups': sorted(groups, key=lambda x: x['letter']), 'ko_pairings': ko_pairings}
 
 
+KO_STAGES = ('R32', 'R16', 'QF', 'SF', 'final', 'third_place')
+
+
+def fetch_bracket_proposal(target_stage: str) -> dict:
+    """Read-only proposed team assignments for every shell of target_stage.
+
+    Reads the /matches feed, filters to target_stage, maps each API fixture to
+    our shell (by api_fixture_id, else by (stage, kickoff)), and proposes
+    home/away from the API's resolved teams. Never writes. Shells the API has
+    not yet resolved (or that no fixture matched) are reported in 'unresolved'
+    for admin review, never guessed.
+    """
+    if target_stage not in KO_STAGES:
+        return {'target_stage': target_stage, 'proposals': [], 'unresolved': [],
+                'error': f'Not a knockout stage: {target_stage}'}
+
+    data = _api_get(f'competitions/{COMPETITION_CODE}/matches')
+    shells = WorldCupMatch.query.filter_by(stage=target_stage).all()
+    by_fixture = {m.api_fixture_id: m for m in shells if m.api_fixture_id}
+    by_kick = {_to_naive_utc(m.kickoff_utc): m for m in shells if m.kickoff_utc}
+
+    proposals = []
+    unresolved = []
+    matched_ids = set()
+    for f in data.get('matches', []):
+        if STAGE_MAP.get(f.get('stage')) != target_stage:
+            continue
+        shell = by_fixture.get(f.get('id'))
+        if shell is None and f.get('utcDate'):
+            shell = by_kick.get(_parse_api_kickoff(f['utcDate']))
+        if not shell:
+            continue
+        matched_ids.add(shell.id)
+        home = _fifa_for_tla((f.get('homeTeam') or {}).get('tla'))
+        away = _fifa_for_tla((f.get('awayTeam') or {}).get('tla'))
+        if not home or not away:
+            unresolved.append({'match_number': shell.match_number,
+                               'reason': 'API has not resolved both teams yet'})
+            continue
+        teams = {t.fifa_code: t for t in WorldCupTeam.query.filter(
+            WorldCupTeam.fifa_code.in_([home, away])).all()}
+        proposals.append({
+            'match_number': shell.match_number,
+            'shell_id': shell.id,
+            'home_fifa': home,
+            'away_fifa': away,
+            'home_name': teams[home].display_name if home in teams else home,
+            'away_name': teams[away].display_name if away in teams else away,
+            'current_home': shell.home_team.fifa_code if shell.home_team else None,
+            'current_away': shell.away_team.fifa_code if shell.away_team else None,
+            'already_set': bool(shell.home_team_id and shell.away_team_id),
+            'is_completed': bool(shell.is_completed),
+        })
+
+    for shell in shells:
+        if shell.id not in matched_ids:
+            unresolved.append({'match_number': shell.match_number,
+                               'reason': 'no API fixture matched this shell'})
+
+    return {
+        'target_stage': target_stage,
+        'proposals': sorted(proposals, key=lambda p: p['match_number']),
+        'unresolved': sorted(unresolved, key=lambda u: u['match_number']),
+        'error': None,
+    }
+
+
 def group_stage_complete_and_unconfirmed() -> bool:
     """True when all group matches are done but ≥1 group's advancement is unset."""
     total = WorldCupMatch.query.filter_by(stage='group').count()
@@ -353,6 +420,45 @@ def group_stage_complete_and_unconfirmed() -> bool:
         .count()
     )
     return unconfirmed > 0
+
+
+def all_group_advancement_confirmed() -> bool:
+    """True when group stage is complete AND every group's advancement is set."""
+    total = WorldCupMatch.query.filter_by(stage='group').count()
+    done = WorldCupMatch.query.filter_by(stage='group', is_completed=True).count()
+    if total == 0 or done < total:
+        return False
+    unconfirmed = (
+        WorldCupTeam.query
+        .filter(WorldCupTeam.advancement_method.is_(None))
+        .filter(WorldCupTeam.is_eliminated.isnot(True))
+        .count()
+    )
+    return unconfirmed == 0
+
+
+def populatable_bracket_stages() -> list[str]:
+    """KO stages whose shells are empty and whose feeder round is resolved."""
+    def has_empty(stage: str) -> bool:
+        return (
+            WorldCupMatch.query.filter_by(stage=stage)
+            .filter(db.or_(WorldCupMatch.home_team_id.is_(None),
+                           WorldCupMatch.away_team_id.is_(None)))
+            .count() > 0
+        )
+
+    stages: list[str] = []
+    if all_group_advancement_confirmed() and has_empty('R32'):
+        stages.append('R32')
+
+    src = ko_round_pending()  # source stage complete, downstream empty
+    if src:
+        downstream = (['final', 'third_place'] if src == 'SF'
+                      else [{'R32': 'R16', 'R16': 'QF', 'QF': 'SF'}[src]])
+        for ds in downstream:
+            if has_empty(ds) and ds not in stages:
+                stages.append(ds)
+    return stages
 
 
 def ko_round_pending() -> str | None:
