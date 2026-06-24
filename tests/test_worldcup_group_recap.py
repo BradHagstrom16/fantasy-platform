@@ -60,3 +60,25 @@ def test_recap_sends_with_advancement_breakdown(app):
         # Email body mentions advancement points: winner +4, best-third 1*7=7.
         html = send.call_args[0][3]
         assert 'Brazil' in html and 'Saudi Arabia' in html
+
+
+def test_send_group_recap_route_admin_only(app):
+    client = app.test_client()
+    resp = client.post('/worldcup/admin/send-group-recap', data={'csrf_token': 'x'})
+    assert resp.status_code in (302, 401, 403)
+
+
+def test_send_group_recap_route_invokes_service(app):
+    client = app.test_client()
+    with app.app_context():
+        u = User(username='boss', email='boss@test.com', is_admin=True); u.set_password('x')
+        db.session.add(u); db.session.commit()
+        auth_id = u.auth_id
+    with client.session_transaction() as sess:
+        sess['_user_id'] = auth_id
+        sess['_fresh'] = True
+    with patch('games.worldcup.routes.send_group_stage_recap',
+               return_value={'status': 'sent', 'sent': 3, 'skipped_no_email': 0, 'errors': 0}) as svc:
+        resp = client.post('/worldcup/admin/send-group-recap', data={'csrf_token': 'x'})
+    assert resp.status_code == 302
+    svc.assert_called_once()
