@@ -173,8 +173,10 @@ fixture the API feed):
 6. Verify scoring parity at each step (stored totals = sum of ScoreEvents).
 
 Capture the recipe in the spec/plan and (where useful) `.remember` for the live
-run. Note the local DB currently sits in a completed-tournament state
-(`ccc_local`), so rehearsal needs a reset to a group-stage-done / KO-empty state.
+run. The local DB (`ccc_local`) is freely manipulable; set it to a group-stage-
+done / KO-empty state for the rehearsal, then **restore it to a LIVE state
+afterward** so it mirrors the current production DB (Brad's standing preference —
+prod is mid-tournament with knockouts imminent).
 
 ### 2.3 — Tests
 - `fetch_bracket_proposal`: correct API→shell mapping; unresolved fixtures
@@ -255,6 +257,12 @@ its own session, per project practice; UI work loads impeccable):
 2. **Feature 3 — group-stage recap email** (fires at the same bracket-lock
    moment).
 3. **Feature 1 — ideal lineup card** (independent, low-risk).
+4. **CLAUDE.md pass** — once all three land, run the
+   `claude-md-management:claude-md-improver` skill to fold the new conventions
+   into `CLAUDE.md` (the bulk-bracket "Load from API" admin route + admin-confirmed
+   review-then-write extension, the `send-group-recap` admin/CLI trigger + guard +
+   marker, and the `get_ideal_lineup` Stats-Hub service/card). Keep pattern locks
+   accurate; don't duplicate what tests already enforce.
 
 `writing-plans` will phase these into the implementation plan.
 
