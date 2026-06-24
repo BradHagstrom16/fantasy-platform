@@ -736,7 +736,7 @@ git commit -m "feat(worldcup): dashboard populate-bracket CTA"
 - Consumes: `all_group_advancement_confirmed` (Task 2), `_competition_rank`, `_fmt_pts`, `_fmt_multiplier`, `_asset_version` (existing in notifications), `send_platform_email`, `ADVANCE_GROUP_WINNER/RUNNER_UP/BEST_THIRD` (constants), `KNOCKOUT_POINTS` (constants), `TIERS`.
 - Produces: `send_group_stage_recap() -> dict` with keys `status` (`'sent' | 'blocked' | 'no_sends'`), `sent`, `skipped_no_email`, `errors`, plus `reason` when blocked.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `tests/test_worldcup_group_recap.py`:
 
@@ -805,12 +805,12 @@ def test_recap_sends_with_advancement_breakdown(app):
         assert 'Brazil' in html and 'Saudi Arabia' in html
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `ENVIRONMENT=testing venv/bin/python -m pytest tests/test_worldcup_group_recap.py -q`
 Expected: FAIL (`ImportError: cannot import name 'send_group_stage_recap'`).
 
-- [ ] **Step 3: Implement the service**
+- [x] **Step 3: Implement the service**
 
 Add to `games/worldcup/services/notifications.py`. First extend the imports at the top:
 
@@ -954,12 +954,12 @@ def _mark_group_recap_sent() -> None:
         logger.warning('Could not write group-recap marker.')
 ```
 
-- [ ] **Step 4: Run test (expect template error next)**
+- [x] **Step 4: Run test (expect template error next)**
 
 Run: `ENVIRONMENT=testing venv/bin/python -m pytest tests/test_worldcup_group_recap.py -q`
 Expected: `test_recap_blocked_when_advancement_unconfirmed` PASSES; `test_recap_sends_with_advancement_breakdown` FAILS with `TemplateNotFound: worldcup/email/wc_group_recap.j2`. Proceed to Task 8.
 
-- [ ] **Step 5: Commit (service only)**
+- [x] **Step 5: Commit (service only)**
 
 ```bash
 git add games/worldcup/services/notifications.py tests/test_worldcup_group_recap.py
@@ -977,9 +977,9 @@ git commit -m "feat(worldcup): group-stage recap service + guard + marker"
 **Interfaces:**
 - Consumes: `enrollment, advanced, eliminated, total_adv_str, total_score_str, rank, total_enrolled, ko_ladder, site_url, logo_url, asset_version, fmt_mult, fmt_pts` (Task 7).
 
-- [ ] **Step 1: Read the existing digest template** `games/worldcup/templates/worldcup/email/wc_daily_digest.j2` to copy its outer table shell, header (logo via `logo_url`), and footer (table layout + inline styles). Reuse that chrome verbatim; only the body section differs.
+- [x] **Step 1: Read the existing digest template** `games/worldcup/templates/worldcup/email/wc_daily_digest.j2` to copy its outer table shell, header (logo via `logo_url`), and footer (table layout + inline styles). Reuse that chrome verbatim; only the body section differs.
 
-- [ ] **Step 2: Create the template** with the digest's header/footer chrome and this body:
+- [x] **Step 2: Create the template** with the digest's header/footer chrome and this body:
 
 ```jinja
 {# Group-stage recap. Reuses the wc_daily_digest.j2 table shell + header/footer. #}
@@ -1058,12 +1058,12 @@ git commit -m "feat(worldcup): group-stage recap service + guard + marker"
 </td></tr>
 ```
 
-- [ ] **Step 3: Run test to verify it passes**
+- [x] **Step 3: Run test to verify it passes**
 
 Run: `ENVIRONMENT=testing venv/bin/python -m pytest tests/test_worldcup_group_recap.py -q`
 Expected: PASS (both tests).
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add games/worldcup/templates/worldcup/email/wc_group_recap.j2
@@ -1083,7 +1083,7 @@ git commit -m "feat(worldcup): group-recap email template"
 - Consumes: `send_group_stage_recap`, `group_recap_last_sent`, `all_group_advancement_confirmed`.
 - Produces: route `worldcup.admin_send_group_recap` (POST) at `/admin/send-group-recap`; `recap_last_sent` + `recap_ready` in dashboard context.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add to `tests/test_worldcup_group_recap.py` (reuse `client`/`_make_admin`/`_login` pattern from `tests/test_worldcup_bracket.py` — copy those fixtures in):
 
@@ -1110,12 +1110,12 @@ def test_send_group_recap_route_invokes_service(app):
     svc.assert_called_once()
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `ENVIRONMENT=testing venv/bin/python -m pytest tests/test_worldcup_group_recap.py -k send_group_recap_route -q`
 Expected: FAIL (404).
 
-- [ ] **Step 3: Implement the route**
+- [x] **Step 3: Implement the route**
 
 In `games/worldcup/routes.py`, add to the notifications import (find the existing `from games.worldcup.services.notifications import ...`, or add one):
 
@@ -1143,7 +1143,7 @@ def admin_send_group_recap():
     return redirect(url_for('worldcup.admin_dashboard'))
 ```
 
-- [ ] **Step 4: Add the button to the dashboard**
+- [x] **Step 4: Add the button to the dashboard**
 
 In `games/worldcup/routes.py::admin_dashboard`, add context:
 
@@ -1170,12 +1170,12 @@ In `dashboard.html`, after the "Populate the Bracket" block, add:
     {% endif %}
 ```
 
-- [ ] **Step 5: Run test to verify it passes**
+- [x] **Step 5: Run test to verify it passes**
 
 Run: `ENVIRONMENT=testing venv/bin/python -m pytest tests/test_worldcup_group_recap.py -q`
 Expected: PASS (all recap tests).
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add games/worldcup/routes.py games/worldcup/templates/worldcup/admin/dashboard.html tests/test_worldcup_group_recap.py
@@ -1194,7 +1194,7 @@ git commit -m "feat(worldcup): admin send-group-recap route + dashboard button"
 - Consumes: `send_group_stage_recap`.
 - Produces: `flask worldcup send-group-recap`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add to `tests/test_worldcup_group_recap.py`:
 
@@ -1208,12 +1208,12 @@ def test_cli_send_group_recap(app):
     assert 'sent' in res.output
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `ENVIRONMENT=testing venv/bin/python -m pytest tests/test_worldcup_group_recap.py::test_cli_send_group_recap -q`
 Expected: FAIL (no such command).
 
-- [ ] **Step 3: Implement the command**
+- [x] **Step 3: Implement the command**
 
 Add to `games/worldcup/cli.py` (before `register_worldcup_cli`):
 
@@ -1239,12 +1239,12 @@ def send_group_recap_cmd():
         raise click.ClickException('One or more recap sends failed — check logs.')
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `ENVIRONMENT=testing venv/bin/python -m pytest tests/test_worldcup_group_recap.py -q`
 Expected: PASS (all tests).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add games/worldcup/cli.py tests/test_worldcup_group_recap.py
