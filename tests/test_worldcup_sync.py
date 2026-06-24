@@ -501,6 +501,43 @@ def test_fetch_bracket_proposal_rejects_non_ko_stage(app):
         assert out['proposals'] == []
 
 
+def test_fetch_bracket_proposal_matches_by_kickoff_when_unlinked(app):
+    """A shell with no api_fixture_id still matches via (stage, kickoff)."""
+    from datetime import datetime
+    from games.worldcup.services import sync
+    with app.app_context():
+        for code, name in [('BRA', 'Brazil'), ('KSA', 'Saudi Arabia')]:
+            db.session.add(WorldCupTeam(fifa_code=code, name=name, display_name=name,
+                                        tier=1, multiplier=1.0, confederation='X', group_letter='A'))
+        # No api_fixture_id; kickoff matches the API fixture's utcDate.
+        db.session.add(WorldCupMatch(match_number=73, stage='R32',
+                                     kickoff_utc=datetime(2026, 6, 28, 19, 0, 0)))
+        db.session.commit()
+
+        payload = {'matches': [
+            {'id': 9001, 'stage': 'LAST_32', 'utcDate': '2026-06-28T19:00:00Z',
+             'homeTeam': {'tla': 'BRA', 'name': 'Brazil'},
+             'awayTeam': {'tla': 'KSA', 'name': 'Saudi Arabia'}},
+        ]}
+        with patch.object(sync, '_api_get', return_value=payload):
+            out = sync.fetch_bracket_proposal('R32')
+
+        assert out['error'] is None
+        assert len(out['proposals']) == 1
+        assert out['proposals'][0]['match_number'] == 73
+
+
+def test_fetch_bracket_proposal_propagates_sync_error(app):
+    """A football-data.org outage surfaces as SyncError (the route flashes it)."""
+    from games.worldcup.services import sync
+    with app.app_context():
+        db.session.add(WorldCupMatch(match_number=73, stage='R32'))
+        db.session.commit()
+        with patch.object(sync, '_api_get', side_effect=sync.SyncError('boom')):
+            with pytest.raises(sync.SyncError):
+                sync.fetch_bracket_proposal('R32')
+
+
 def test_all_group_advancement_confirmed(app):
     from games.worldcup.services import sync
     with app.app_context():

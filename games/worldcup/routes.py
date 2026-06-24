@@ -1342,6 +1342,11 @@ def admin_bracket(target_stage):
         shell_ids = request.form.getlist('shell_id')
         home_fifas = request.form.getlist('home_fifa')
         away_fifas = request.form.getlist('away_fifa')
+        # Reject a malformed submission outright rather than let zip() silently
+        # truncate to the shortest list and drop reviewed rows.
+        if not (len(shell_ids) == len(home_fifas) == len(away_fifas)):
+            flash('Malformed bracket submission — reload the review page and try again.', 'error')
+            return redirect(url_for('worldcup.admin_bracket', target_stage=target_stage))
         assigned = skipped = failed = 0
         for sid, home, away in zip(shell_ids, home_fifas, away_fifas):
             shell = db.session.get(WorldCupMatch, int(sid)) if sid.isdigit() else None

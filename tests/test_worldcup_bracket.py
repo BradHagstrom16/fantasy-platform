@@ -139,6 +139,29 @@ def test_admin_bracket_post_rejects_wrong_stage_shell(client, app):
         assert s.home_team_id is None  # group shell not mutated by the R32 bulk path
 
 
+def test_admin_bracket_post_rejects_mismatched_lists(client, app):
+    """Mismatched form lists are rejected outright (no silent zip truncation)."""
+    auth_id = _make_admin(app)
+    with app.app_context():
+        for code, name in [('BRA', 'Brazil'), ('KSA', 'Saudi Arabia')]:
+            db.session.add(WorldCupTeam(fifa_code=code, name=name, display_name=name,
+                                        tier=1, multiplier=1.0, confederation='X', group_letter='A'))
+        s1 = WorldCupMatch(match_number=73, stage='R32')
+        s2 = WorldCupMatch(match_number=74, stage='R32')
+        db.session.add_all([s1, s2])
+        db.session.commit()
+        s1_id, s2_id = s1.id, s2.id
+    _login(client, auth_id)
+    # Two shell_ids but only one home/away pair -> malformed.
+    client.post('/worldcup/admin/bracket/R32', data={
+        'csrf_token': 'x',
+        'shell_id': [str(s1_id), str(s2_id)], 'home_fifa': 'BRA', 'away_fifa': 'KSA',
+    })
+    with app.app_context():
+        assert db.session.get(WorldCupMatch, s1_id).home_team_id is None
+        assert db.session.get(WorldCupMatch, s2_id).home_team_id is None
+
+
 def test_dashboard_shows_populate_cta_when_stage_ready(client, app):
     auth_id = _make_admin(app)
     with app.app_context():
