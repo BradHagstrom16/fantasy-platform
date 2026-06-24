@@ -15,6 +15,7 @@ from flask import (
 )
 from flask_login import login_required, current_user
 from sqlalchemy import func
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import joinedload, contains_eager
 
 from extensions import db
@@ -500,7 +501,7 @@ def make_pick(week_number):
             if existing_pick:
                 existing_pick.team_id = team_id
                 existing_pick.created_at = utc_now
-                flash('Pick updated successfully!', 'success')
+                success_msg = 'Pick updated successfully!'
             else:
                 new_pick = CfbPick(
                     user_id=current_user.id,
@@ -509,11 +510,23 @@ def make_pick(week_number):
                     created_at=utc_now,
                 )
                 db.session.add(new_pick)
-                flash('Pick submitted successfully!', 'success')
+                success_msg = 'Pick submitted successfully!'
 
             calculate_cumulative_spread(enrollment)
-            db.session.commit()
+            try:
+                db.session.commit()
+            except IntegrityError:
+                # Concurrent double-submit: a parallel request already recorded
+                # a pick for this (user, week) and the unique_cfb_user_week_pick
+                # constraint rejected this duplicate INSERT. Roll back and treat
+                # the existing row as authoritative rather than 500ing the race.
+                db.session.rollback()
+                flash('Your pick for this week was already recorded.', 'info')
+                return redirect(url_for('cfb.index'))
 
+            # Flash only after a clean commit so a failed write can't leave a
+            # stale "success" message queued in the session.
+            flash(success_msg, 'success')
             return redirect(url_for('cfb.index'))
 
     # GET: build eligible teams

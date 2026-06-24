@@ -14,12 +14,14 @@ CfbGame game_time hold naive pool-tz wall clock; a far-future deadline keeps
 a week pickable, a past game_time marks an individual game started.
 """
 import dataclasses
+import os
 from contextlib import contextmanager
 from datetime import datetime
 from unittest.mock import patch
 
 import pytest
 from flask import template_rendered
+from sqlalchemy.exc import IntegrityError
 
 from app import create_app
 from extensions import db
@@ -405,3 +407,65 @@ def test_created_at_refreshes_on_update(app, client):
 
     pick = CfbPick.query.filter_by(user_id=user.id, week_id=week.id).first()
     assert pick.created_at > stale
+
+
+# ── concurrent-pick race — unique-constraint protection ───────────────────
+#
+# One pick per (user, week) is enforced by the unique_cfb_user_week_pick
+# constraint. A concurrent double-submit (both requests read "no pick", both
+# INSERT) makes the loser's commit raise IntegrityError. True concurrency
+# isn't observable under single-threaded in-memory SQLite, so we inject the
+# IntegrityError the race would raise and assert graceful recovery — never a
+# 500. (Cumulative-spread and is_eliminated-toggle races have no 500-class
+# failure mode and aren't testable here; see the PR notes.)
+
+
+def test_pick_unique_constraint_present(app):
+    """Lock the (user_id, week_id) unique constraint so the race protection
+    can't be silently dropped from the model."""
+    names = {c.name for c in CfbPick.__table_args__}
+    assert 'unique_cfb_user_week_pick' in names
+
+
+def test_double_submit_integrity_error_recovers_gracefully(app, client):
+    """When the unique constraint rejects a racing duplicate INSERT at commit,
+    the route rolls back and redirects gracefully instead of 500ing."""
+    week = make_week(1, deadline=FUTURE_DEADLINE)
+    home, away = make_team('Home'), make_team('Away')
+    make_game(week, home, away, spread=-7.0)
+    user = make_user('p1')
+    make_enrollment(user)
+    db.session.commit()
+    _login(client, user)
+
+    err = IntegrityError('INSERT', {}, Exception('UNIQUE constraint failed'))
+    with patch.object(db.session, 'commit', side_effect=err):
+        resp = _post_pick(client, 1, home.id)
+
+    assert resp.status_code == 302
+    assert resp.headers['Location'] in ('/cfb/', 'http://localhost/cfb/')
+
+
+def test_pick_rejected_when_deadline_slips_past(app, client):
+    """Deadline-slip race: the deadline lapses between the GET and the POST.
+    With now (CFB_FAKE_NOW) a minute past the week deadline, the POST is
+    rejected and no pick is stored — the started-game lock alone isn't relied
+    on for the week-level cutoff."""
+    deadline = datetime(2026, 9, 5, 11, 0)            # naive pool-tz wall clock
+    week = make_week(1, deadline=deadline)
+    home, away = make_team('Home'), make_team('Away')
+    make_game(week, home, away, spread=-7.0)
+    user = make_user('p1')
+    make_enrollment(user)
+    db.session.commit()
+    _login(client, user)
+
+    # ENVIRONMENT must ride in the same patch.dict or the CFB seam stays off.
+    with patch.dict(os.environ, {'ENVIRONMENT': 'testing',
+                                 'CFB_FAKE_NOW': '2026-09-05T16:01:00+00:00'}):
+        # 11:01 America/Chicago (CDT, UTC-5) == 16:01 UTC — one minute past.
+        resp = _post_pick(client, 1, home.id)
+
+    assert resp.status_code == 302
+    assert resp.headers['Location'] in ('/cfb/', 'http://localhost/cfb/')
+    assert CfbPick.query.filter_by(user_id=user.id, week_id=week.id).first() is None
