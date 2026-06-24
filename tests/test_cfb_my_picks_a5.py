@@ -63,8 +63,8 @@ def test_no_four_up_stat_grid():
 # -- Survivor voice on the H1 (S3) ------------------------------------------
 
 def test_my_picks_h1_carries_survivor_voice():
-    assert ">Your Card<" in TPL, \
-        "the my_picks H1 must carry the Survivor register ('Your Card'), not a route label"
+    assert re.search(r"<h1[^>]*>\s*Your Card\s*</h1>", TPL), \
+        "the my_picks H1 element must carry the Survivor register ('Your Card'), not a route label"
     # The pre-A5 H1 was `<h1>My Picks & Strategy</h1>` with a "Track your season journey" lead.
     assert "My Picks & Strategy" not in TPL_BODY, \
         "the flat 'My Picks & Strategy' route-label H1 is a S3 voice regression"
@@ -169,3 +169,7 @@ def test_lives_surfaced_in_the_lead_not_buried():
 def test_my_picks_has_no_em_dash_or_double_hyphen_copy():
     assert "&mdash;" not in TPL_BODY, "the &mdash; copy debt must be gone (S3)"
     assert EM_DASH not in TPL_BODY, "no literal em-dash may appear in CFB my_picks copy (S3)"
+    # The double-hyphen half of the contract: no visible-text '--' anywhere (broader
+    # than the pending-placeholder check, which only catches '--' as a tag's sole content).
+    assert re.search(r">\s*[^<]*--[^<]*<", TPL_BODY) is None, \
+        "no visible double-hyphen copy ('--') may appear in CFB my_picks copy (S3 no-double-hyphen)"
