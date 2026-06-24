@@ -420,6 +420,45 @@ def group_stage_complete_and_unconfirmed() -> bool:
     return unconfirmed > 0
 
 
+def all_group_advancement_confirmed() -> bool:
+    """True when group stage is complete AND every group's advancement is set."""
+    total = WorldCupMatch.query.filter_by(stage='group').count()
+    done = WorldCupMatch.query.filter_by(stage='group', is_completed=True).count()
+    if total == 0 or done < total:
+        return False
+    unconfirmed = (
+        WorldCupTeam.query
+        .filter(WorldCupTeam.advancement_method.is_(None))
+        .filter(WorldCupTeam.is_eliminated.isnot(True))
+        .count()
+    )
+    return unconfirmed == 0
+
+
+def populatable_bracket_stages() -> list[str]:
+    """KO stages whose shells are empty and whose feeder round is resolved."""
+    def has_empty(stage: str) -> bool:
+        return (
+            WorldCupMatch.query.filter_by(stage=stage)
+            .filter(db.or_(WorldCupMatch.home_team_id.is_(None),
+                           WorldCupMatch.away_team_id.is_(None)))
+            .count() > 0
+        )
+
+    stages: list[str] = []
+    if all_group_advancement_confirmed() and has_empty('R32'):
+        stages.append('R32')
+
+    src = ko_round_pending()  # source stage complete, downstream empty
+    if src:
+        downstream = (['final', 'third_place'] if src == 'SF'
+                      else [{'R32': 'R16', 'R16': 'QF', 'QF': 'SF'}[src]])
+        for ds in downstream:
+            if has_empty(ds) and ds not in stages:
+                stages.append(ds)
+    return stages
+
+
 def ko_round_pending() -> str | None:
     """Return the completed knockout round whose downstream shells are still empty.
 
