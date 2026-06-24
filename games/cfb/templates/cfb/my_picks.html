@@ -1,72 +1,96 @@
 {% extends "base.html" %}
-{% block title %}My Picks & Strategy — CFB Survivor{% endblock %}
+{% block title %}Your Card &middot; {% if current_week_display %}{{ current_week_display.display_name }} &middot; {% endif %}CFB Survivor{% endblock %}
 
 {% block content %}
-<div class="page-hero">
+{# Page Hero - the season ledger. Survivor voice (games/cfb/DESIGN.md S3):
+   "Your Card" is the player's own card so far; the week rides the eyebrow. #}
+<div class="page-hero cfb-hero">
     <div class="hero-glow"></div>
     <div class="container">
-        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
-            <div>
-                <h1>My Picks & Strategy</h1>
-                <p class="lead">Track your season journey</p>
-            </div>
-            {% if current_week_display %}
-            <div>
-                {% if current_week_display.badge_type == 'playoff' %}
-                    <span class="badge bg-danger fs-6 p-2">{{ current_week_display.progress_text }}</span>
-                {% else %}
-                    <span class="badge bg-light text-dark fs-6 p-2">{{ current_week_display.progress_text }}</span>
-                {% endif %}
-            </div>
-            {% endif %}
-        </div>
+        <span class="cfb-eyebrow">{% if current_week_display %}{{ current_week_display.display_name }} &middot; {% endif %}Your Season</span>
+        <h1>Your Card</h1>
+        <p class="lead">Every team you've spent, every life on the line, and the slate still open to you.</p>
     </div>
 </div>
 
 <div class="container mt-4">
     {% if in_cfp %}
-    <div class="alert alert-danger mb-3">
-        <h5 class="mb-1">College Football Playoff Phase</h5>
-        <p class="mb-0">All teams reset. Once used in the CFP, they cannot be picked again in later rounds.</p>
+    <div class="alert alert-info mb-3">
+        <h5 class="mb-1">The Playoff Phase</h5>
+        <p class="mb-0">All teams reset for the Playoff. Once a team is used in the CFP, it cannot be picked again in a later round.</p>
     </div>
     {% endif %}
 
-    {# Statistics #}
-    <div class="row g-3 mb-4">
-        <div class="col-6 col-md-3">
-            <div class="stat-block animate-in stagger-1">
-                <div class="stat-value">{{ total_picks }}</div>
-                <div class="stat-label">Total Picks</div>
-            </div>
+    {# Season standing lead - the "am I alive?" answer, raised above the ledger
+       with an outcome-colored top rule (never a side-stripe). Replaces both the
+       banned four-up stat grid and the buried lives micro-card. #}
+    {% if enrollment %}
+    {% set lives = enrollment.lives_remaining %}
+    <div class="cfb-season-lead animate-in {% if enrollment.is_eliminated %}is-lost{% elif lives == 1 %}is-pending{% else %}is-survived{% endif %}">
+        <div class="cfb-season-lead-main">
+            <span class="cfb-eyebrow">Your Standing</span>
+            <div class="cfb-season-headline cfb-team-name">{% if enrollment.is_eliminated %}Eliminated{% elif lives == 1 %}Final Life{% else %}Still Standing{% endif %}</div>
+            <p class="cfb-season-derivation">
+                {% if enrollment.is_eliminated %}Your season is over. The card below is the record of how it ran.
+                {% elif total_picks == 0 %}Two lives in hand and the full board ahead. Your first call is still to come.
+                {% else %}{{ total_picks }} {{ 'call' if total_picks == 1 else 'calls' }} in, {{ available_teams|length }} teams still open to you on the board.{% endif %}
+            </p>
         </div>
-        <div class="col-6 col-md-3">
-            <div class="stat-block animate-in stagger-2">
-                <div class="stat-value" style="color: var(--cfb-survived);">{{ correct_picks }}</div>
-                <div class="stat-label">Correct</div>
-            </div>
-        </div>
-        <div class="col-6 col-md-3">
-            <div class="stat-block animate-in stagger-3">
-                <div class="stat-value" style="color: var(--cfb-lost-life);">{{ incorrect_picks }}</div>
-                <div class="stat-label">Incorrect</div>
-            </div>
-        </div>
-        <div class="col-6 col-md-3">
-            <div class="stat-block animate-in stagger-4">
-                <div class="stat-value">{% if enrollment %}{{ "%.1f"|format(enrollment.cumulative_spread) }}{% else %}0.0{% endif %}</div>
-                <div class="stat-label">Spread</div>
-            </div>
+        <div class="cfb-season-lead-aside">
+            <span class="lives-indicator">
+                {% for i in range(lives) %}<span class="life"></span>{% endfor %}
+                {% for i in range(2 - lives) %}<span class="life lost"></span>{% endfor %}
+            </span>
+            <span class="cfb-season-lives-label">{% if enrollment.is_eliminated %}Eliminated{% elif lives == 1 %}1 life left{% else %}{{ lives }} lives left{% endif %}</span>
         </div>
     </div>
 
+    {# Season record - one editorial line, not a stat grid (the four-up
+       hero-metric template is a platform absolute ban). Numbers carry Teko
+       weight; survived/lost carry survivor-state color WITH a label. #}
+    {% if total_picks > 0 %}
+    <div class="cfb-week-summary animate-in">
+        <div class="cfb-summary-stat">
+            <span class="cfb-summary-num is-survived">{{ correct_picks }}</span>
+            <span class="cfb-summary-label">Survived</span>
+        </div>
+        <span class="cfb-summary-sep" aria-hidden="true"></span>
+        <div class="cfb-summary-stat">
+            <span class="cfb-summary-num is-lost">{{ incorrect_picks }}</span>
+            <span class="cfb-summary-label">Lost a life</span>
+        </div>
+        {% if pending_picks %}
+        <span class="cfb-summary-sep" aria-hidden="true"></span>
+        <div class="cfb-summary-stat">
+            <span class="cfb-summary-num is-pending">{{ pending_picks }}</span>
+            <span class="cfb-summary-label">Pending</span>
+        </div>
+        {% endif %}
+        <span class="cfb-summary-sep" aria-hidden="true"></span>
+        <div class="cfb-summary-stat is-field">
+            <span class="cfb-summary-num">{{ "%+.1f"|format(enrollment.cumulative_spread) }}</span>
+            <span class="cfb-summary-label">Cumulative spread</span>
+        </div>
+    </div>
+    {% endif %}
+    {% endif %}
+
     <div class="row">
-        {# Pick History Column #}
+        {# The ledger - the pick-by-pick record (what I've done) #}
         <div class="col-lg-7">
             <div class="card mb-3">
-                <div class="card-header"><h4 class="mb-0">Pick History</h4></div>
+                <div class="card-header">
+                    <div class="cfb-field-head">
+                        <h4 class="mb-0">The Slate So Far</h4>
+                        <span class="cfb-field-week">{{ total_picks }} {{ 'call' if total_picks == 1 else 'calls' }}</span>
+                    </div>
+                </div>
                 <div class="card-body">
                     {% if user_picks %}
-                        <h5 class="mb-3">Regular Season & Conference Championships</h5>
+                        {# Split on the canonical badge_type discriminator (route sets
+                           'playoff' via is_week_playoff()), not a raw week-number boundary. #}
+                        {% set reg_picks = user_picks|rejectattr('week_display.badge_type', 'equalto', 'playoff')|list %}
+                        {% if reg_picks %}
                         <div class="table-responsive">
                         <table class="table table-sm table-cfb mb-4">
                             <thead>
@@ -79,22 +103,19 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                {% for pick in user_picks %}
-                                    {% if pick.week.week_number <= 15 %}
-                                    <tr class="{% if pick.is_correct == True %}table-success{% elif pick.is_correct == False %}table-danger{% endif %}">
+                                {% for pick in reg_picks %}
+                                    <tr>
                                         <td>
                                             <strong>{{ pick.week_display.display_name if pick.week_display else 'Week ' + pick.week.week_number|string }}</strong>
-                                            {% if pick.week.is_active %}
-                                                <span class="badge bg-primary badge-xs">NOW</span>
-                                            {% endif %}
+                                            {% if pick.week.is_active %}<span class="cfb-now-tag">This Week</span>{% endif %}
                                         </td>
-                                        <td>{{ pick.team.name }}</td>
+                                        <td><span class="cfb-team-name">{{ pick.team.name }}</span></td>
                                         <td><small class="text-muted">{{ pick.team.get_conference() }}</small></td>
                                         <td>
                                             {% if pick.spread_data %}
                                                 {{ "%+.1f"|format(pick.spread_data.team_spread) }}
                                             {% else %}
-                                                <span class="text-muted">-</span>
+                                                <span class="cfb-result-none" aria-label="No line">&middot;</span>
                                             {% endif %}
                                         </td>
                                         <td>
@@ -103,20 +124,23 @@
                                             {% elif pick.is_correct == False %}
                                                 <span class="badge badge-lost-life">L</span>
                                             {% else %}
-                                                <span class="badge bg-secondary">--</span>
+                                                <span class="badge badge-pending">TBD</span>
                                             {% endif %}
                                         </td>
                                     </tr>
-                                    {% endif %}
                                 {% endfor %}
                             </tbody>
                         </table>
                         </div>
+                        {% endif %}
 
                         {# CFP Section #}
-                        {% set playoff_picks = user_picks|selectattr('week.week_number', 'ge', 16)|list %}
+                        {% set playoff_picks = user_picks|selectattr('week_display.badge_type', 'equalto', 'playoff')|list %}
                         {% if playoff_picks %}
-                        <h5 class="mb-3 text-danger">College Football Playoff</h5>
+                        <div class="cfb-field-head mb-2">
+                            <h5 class="mb-0">The Playoff</h5>
+                            <span class="cfb-field-week">{{ playoff_picks|length }} {{ 'round' if playoff_picks|length == 1 else 'rounds' }}</span>
+                        </div>
                         <div class="table-responsive">
                         <table class="table table-sm table-cfb">
                             <thead>
@@ -129,19 +153,17 @@
                             </thead>
                             <tbody>
                                 {% for pick in playoff_picks %}
-                                <tr class="{% if pick.is_correct == True %}table-success{% elif pick.is_correct == False %}table-danger{% endif %}">
+                                <tr>
                                     <td>
                                         <strong>{{ pick.week_display.display_name if pick.week_display else 'Week ' + pick.week.week_number|string }}</strong>
-                                        {% if pick.week.is_active %}
-                                            <span class="badge bg-danger badge-xs">NOW</span>
-                                        {% endif %}
+                                        {% if pick.week.is_active %}<span class="cfb-now-tag">This Week</span>{% endif %}
                                     </td>
-                                    <td>{{ pick.team.name }}</td>
+                                    <td><span class="cfb-team-name">{{ pick.team.name }}</span></td>
                                     <td>
                                         {% if pick.spread_data %}
                                             {{ "%+.1f"|format(pick.spread_data.team_spread) }}
                                         {% else %}
-                                            <span class="text-muted">-</span>
+                                            <span class="cfb-result-none" aria-label="No line">&middot;</span>
                                         {% endif %}
                                     </td>
                                     <td>
@@ -150,7 +172,7 @@
                                         {% elif pick.is_correct == False %}
                                             <span class="badge badge-lost-life">L</span>
                                         {% else %}
-                                            <span class="badge bg-secondary">--</span>
+                                            <span class="badge badge-pending">TBD</span>
                                         {% endif %}
                                     </td>
                                 </tr>
@@ -160,112 +182,85 @@
                         </div>
                         {% endif %}
 
-                        <div class="d-flex justify-content-between align-items-center bg-light rounded p-3 mt-3">
-                            <strong>Total Cumulative Spread</strong>
-                            <span class="badge bg-primary fs-6">{% if enrollment %}{{ "%.1f"|format(enrollment.cumulative_spread) }}{% else %}0.0{% endif %}</span>
-                        </div>
-
-                        <div class="alert alert-info mt-3">
-                            <small>
-                                <strong>How spread points work:</strong><br>
-                                Picking favorites (negative spread) adds points. Picking underdogs (positive spread) subtracts. Lower total = better tiebreaker.
-                            </small>
+                        <div class="cfb-spread-note">
+                            <strong>How the spread works.</strong>
+                            Picking a favorite (a negative spread) adds points; picking an underdog (a positive spread) subtracts.
+                            Your cumulative spread is the second tiebreaker after lives, so a lower total is better.
                         </div>
                     {% else %}
-                        <p class="text-muted">No picks made yet.</p>
-                    {% endif %}
-                </div>
-            </div>
-
-            {# Strategy Tips #}
-            <div class="card mb-3">
-                <div class="card-body">
-                    <h5 class="section-heading">Strategy Tips</h5>
-                    <ul>
-                        <li><strong>{{ available_teams|length }}</strong> teams available for {{ phase_description|default('future weeks') }}</li>
-                        <li>Cumulative spread ({% if enrollment %}{{ "%.1f"|format(enrollment.cumulative_spread) }}{% else %}0.0{% endif %}) is the 2nd tiebreaker after lives</li>
-                        {% if not in_cfp %}
-                        <li>You currently have coverage in <strong>{{ conferences_with_teams }}/{{ total_conferences }}</strong> conferences</li>
-                        {% endif %}
-                        {% if in_cfp %}
-                        <li><strong>CFP:</strong> All teams reset. Each team usable once during playoffs.</li>
-                        {% if cfp_teams_on_bye %}
-                        <li><strong>{{ cfp_teams_on_bye|length }}</strong> team(s) on bye this round</li>
-                        {% endif %}
-                        {% else %}
-                        <li>Available teams reset when CFP begins</li>
-                        {% endif %}
-                    </ul>
-                </div>
-            </div>
-
-            {# Lives Status #}
-            <div class="card">
-                <div class="card-body">
-                    <h5>Lives Remaining</h5>
-                    {% if enrollment %}
-                    <div class="d-flex align-items-center gap-3">
-                        <span class="lives-indicator">
-                            {% for i in range(enrollment.lives_remaining) %}
-                                <span class="life"></span>
-                            {% endfor %}
-                            {% for i in range(2 - enrollment.lives_remaining) %}
-                                <span class="life lost"></span>
-                            {% endfor %}
-                        </span>
-                        <span class="text-muted ms-2">{{ enrollment.lives_remaining }} of 2 lives remaining</span>
-                    </div>
-                    {% if enrollment.is_eliminated %}
-                        <div class="alert alert-danger mt-2 mb-0">You have been eliminated from the pool.</div>
-                    {% endif %}
-                    {% else %}
-                    <p class="text-muted">Not enrolled in this season.</p>
+                        <p class="text-muted mb-0">No calls on the card yet. Your first pick opens the season.</p>
                     {% endif %}
                 </div>
             </div>
         </div>
 
-        {# Available Teams Column #}
+        {# What's left to me - teams spent + the open board #}
         <div class="col-lg-5">
+            {# Teams Spent #}
             <div class="card mb-3">
                 <div class="card-header">
-                    <h4 class="mb-0">{{ available_teams|length }} Teams Available</h4>
+                    <div class="cfb-field-head">
+                        <h5 class="mb-0">Teams Spent{% if in_cfp %} (CFP){% endif %}</h5>
+                        <span class="cfb-field-week">{{ used_teams|length }} used</span>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if used_teams %}
+                    <div class="cfb-used-grid">
+                        {% for item in used_teams|sort(attribute='week') %}
+                        <span class="cfb-used-team">
+                            {{ item.team.name }}
+                            <span class="cfb-used-week">{{ item.week_display|default('W' + item.week|string) }}</span>
+                            {% if item.is_correct == True %}
+                                <span class="badge badge-survived badge-xs">W</span>
+                            {% elif item.is_correct == False %}
+                                <span class="badge badge-lost-life badge-xs">L</span>
+                            {% endif %}
+                        </span>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p class="text-muted mb-0">No teams spent yet{% if in_cfp %} in the CFP{% endif %}.</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            {# The Board - what's still open to you #}
+            <div class="card">
+                <div class="card-header">
+                    <div class="cfb-field-head">
+                        <h5 class="mb-0">The Board</h5>
+                        <span class="cfb-field-week">{{ available_teams|length }} open</span>
+                    </div>
+                    {% if not in_cfp %}<p class="cfb-board-note">Your full board resets when the Playoff begins.</p>{% endif %}
                 </div>
                 <div class="card-body">
                     {% if in_cfp %}
                         {% if available_teams %}
-                            <h6 class="text-success mb-2">Available This Round ({{ available_teams|length }})</h6>
-                            <div class="row g-2 mb-3">
+                            <span class="cfb-eyebrow d-block mb-2">Open This Round ({{ available_teams|length }})</span>
+                            <div class="cfb-team-pool mb-3">
                                 {% for team in available_teams|sort(attribute='name') %}
-                                <div class="col-12">
-                                    <span class="badge bg-success w-100 p-2">{{ team.name }}</span>
-                                </div>
+                                <span class="cfb-team-chip">{{ team.name }}</span>
                                 {% endfor %}
                             </div>
                         {% else %}
-                            <div class="alert alert-warning mb-3">
-                                <strong>No teams available this round.</strong>
-                            </div>
+                            <p class="text-muted">No teams open this round.</p>
                         {% endif %}
 
                         {% if cfp_teams_on_bye %}
-                            <h6 class="text-info mb-2">On Bye ({{ cfp_teams_on_bye|length }})</h6>
-                            <div class="row g-2 mb-3">
+                            <span class="cfb-eyebrow d-block mb-2">On Bye ({{ cfp_teams_on_bye|length }})</span>
+                            <div class="cfb-team-pool mb-3">
                                 {% for team in cfp_teams_on_bye|sort(attribute='name') %}
-                                <div class="col-12">
-                                    <span class="badge bg-info w-100 p-2">{{ team.name }} <small>(bye)</small></span>
-                                </div>
+                                <span class="cfb-team-chip">{{ team.name }} <span class="cfb-team-chip-note">bye</span></span>
                                 {% endfor %}
                             </div>
                         {% endif %}
 
                         {% if cfp_eliminated_teams %}
-                            <h6 class="text-danger mb-2">Eliminated ({{ cfp_eliminated_teams|length }})</h6>
-                            <div class="row g-2">
+                            <span class="cfb-eyebrow d-block mb-2">Out ({{ cfp_eliminated_teams|length }})</span>
+                            <div class="cfb-team-pool">
                                 {% for team in cfp_eliminated_teams|sort(attribute='name') %}
-                                <div class="col-12">
-                                    <span class="badge bg-secondary w-100 p-2 text-decoration-line-through opacity-50">{{ team.name }}</span>
-                                </div>
+                                <span class="cfb-team-chip is-out">{{ team.name }}</span>
                                 {% endfor %}
                             </div>
                         {% endif %}
@@ -278,93 +273,47 @@
                                             <button class="accordion-button collapsed" type="button"
                                                     data-bs-toggle="collapse" data-bs-target="#confCollapse{{ loop.index }}">
                                                 <strong>{{ conf_name }}</strong>
-                                                <span class="ms-auto me-2 badge bg-primary">{{ teams|length }}</span>
+                                                <span class="ms-auto me-2 cfb-conf-count">{{ teams|length }}</span>
                                             </button>
                                         </h2>
                                         <div id="confCollapse{{ loop.index }}" class="accordion-collapse collapse"
                                              data-bs-parent="#conferenceAccordion">
                                             <div class="accordion-body">
-                                                {% for team in teams|sort(attribute='name') %}
-                                                <span class="badge bg-success p-2 m-1">{{ team.name }}</span>
-                                                {% endfor %}
+                                                <div class="cfb-team-pool">
+                                                    {% for team in teams|sort(attribute='name') %}
+                                                    <span class="cfb-team-chip">{{ team.name }}</span>
+                                                    {% endfor %}
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
                                 {% endfor %}
                             </div>
                         {% else %}
-                            <div class="alert alert-warning">
-                                <strong>No teams remaining</strong> for {{ phase_description|default('this phase') }}.
+                            <p class="text-muted mb-0">No teams remaining for {{ phase_description|default('this phase') }}.</p>
+                        {% endif %}
+
+                        {# Title teams in hand - conference-championship coverage,
+                           de-traffic-lighted (green only as the positive "held"
+                           signal; thin/spent recede to bone, no off-palette amber). #}
+                        {% if conference_status %}
+                        <div class="cfb-coverage">
+                            <div class="cfb-field-head">
+                                <h6 class="mb-0">Title Teams In Hand</h6>
+                                <span class="cfb-field-week">{{ conferences_with_teams }}/{{ total_conferences }} covered</span>
                             </div>
-                        {% endif %}
-                    {% endif %}
-                </div>
-            </div>
-
-            {# Conference Coverage (regular season only) #}
-            {% if not in_cfp and conference_status %}
-            <div class="card mb-3">
-                <div class="card-body">
-                    <h5 class="mb-3">Conference Championship Coverage</h5>
-                    <div class="mb-2">
-                        <strong>Status: {{ conferences_with_teams }}/{{ total_conferences }}</strong>
-                        {% if conferences_with_teams >= 8 %}
-                            <span class="badge bg-success ms-2">Excellent</span>
-                        {% elif conferences_with_teams >= 5 %}
-                            <span class="badge bg-warning ms-2">Good</span>
-                        {% else %}
-                            <span class="badge bg-danger ms-2">Limited</span>
-                        {% endif %}
-                    </div>
-                    <div class="row g-1 mt-3">
-                        {% for conf_name in conference_status %}
-                        <div class="col-6 small">
-                            {% if conference_status[conf_name]['count'] > 1 %}
-                                <span class="text-success">&#10003;</span>
-                            {% elif conference_status[conf_name]['count'] == 1 %}
-                                <span class="text-warning">&#9888;</span>
-                            {% else %}
-                                <span class="text-danger">&#10007;</span>
-                            {% endif %}
-                            {{ conf_name }}
-                            {% if conference_status[conf_name]['count'] == 1 %}
-                                <small class="text-warning">(1 left)</small>
-                            {% elif conference_status[conf_name]['count'] == 0 %}
-                                <small class="text-danger">(none)</small>
-                            {% endif %}
-                        </div>
-                        {% endfor %}
-                    </div>
-                </div>
-            </div>
-            {% endif %}
-
-            {# Used Teams #}
-            <div class="card">
-                <div class="card-header">
-                    <h4 class="mb-0">Teams Used {% if in_cfp %}(CFP){% endif %} ({{ used_teams|length }})</h4>
-                </div>
-                <div class="card-body">
-                    {% if used_teams %}
-                    <div class="row g-2">
-                        {% for item in used_teams|sort(attribute='week') %}
-                        <div class="col-12 col-md-6">
-                            <div class="d-flex justify-content-between align-items-center bg-light rounded p-2">
-                                <span class="small">
-                                    {{ item.team.name }}
-                                    <small class="text-muted">({{ item.week_display|default('W' + item.week|string) }})</small>
+                            <div class="cfb-coverage-grid">
+                                {% for conf_name in conference_status %}
+                                {% set cnt = conference_status[conf_name]['count'] %}
+                                <span class="cfb-coverage-item {% if cnt > 1 %}is-held{% elif cnt == 1 %}is-thin{% else %}is-spent{% endif %}">
+                                    <span class="cfb-coverage-mark" aria-hidden="true">{% if cnt >= 1 %}&#10003;{% else %}&#10007;{% endif %}</span>
+                                    {{ conf_name }}
+                                    {% if cnt == 1 %}<span class="cfb-coverage-note">1 left</span>{% elif cnt == 0 %}<span class="cfb-coverage-note">none</span>{% endif %}
                                 </span>
-                                {% if item.is_correct == True %}
-                                    <span class="badge badge-survived badge-xs">W</span>
-                                {% elif item.is_correct == False %}
-                                    <span class="badge badge-lost-life badge-xs">L</span>
-                                {% endif %}
+                                {% endfor %}
                             </div>
                         </div>
-                        {% endfor %}
-                    </div>
-                    {% else %}
-                    <p class="text-muted">No teams used yet{% if in_cfp %} in the CFP{% endif %}.</p>
+                        {% endif %}
                     {% endif %}
                 </div>
             </div>

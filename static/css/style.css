@@ -4336,7 +4336,7 @@ body.game-cfb .team-pick-card.ineligible .cfb-matchup { color: var(--cfb-bone-mu
    Result / Lives / Status), folding the old Opponent + Score columns into the
    Pick cell so survivor-state never scrolls off at mobile width. */
 .cfb-field-head { display: flex; align-items: baseline; justify-content: space-between; gap: .5rem; }
-.cfb-field-head h4, .cfb-field-head h5 { font-family: 'Teko', sans-serif; letter-spacing: .02em; color: var(--cfb-bone); }
+.cfb-field-head h4, .cfb-field-head h5, .cfb-field-head h6 { font-family: 'Teko', sans-serif; letter-spacing: .02em; color: var(--cfb-bone); }
 .cfb-field-week {
   font-family: 'Teko', sans-serif;
   font-size: .82rem;
@@ -4396,6 +4396,216 @@ body.game-cfb .team-pick-card.ineligible .cfb-matchup { color: var(--cfb-bone-mu
 }
 .cfb-dist-team { font-family: 'Newsreader', Georgia, serif; color: var(--cfb-bone); }
 .cfb-dist-count { font-family: 'Teko', sans-serif; font-weight: 600; font-size: 1.1rem; color: var(--cfb-bone-muted); }
+
+/* ============================================================
+   A5 — My Picks / "Your Card" (impeccable critique 2026-06-23, 25/40).
+   The player's own season ledger: am-I-alive + what-I've-spent + what's-
+   left. Replaces the four-up hero-metric stat grid (a platform absolute
+   ban) with ONE composed survivor-status lead + the A4 .cfb-week-summary
+   record line; dark-tunes the Bootstrap conference accordion (the named
+   A2 debt) off its white/blue active island; drains crimson-as-data,
+   survivor-green-as-decoration, and off-palette amber from the team pool
+   + coverage. Reuses .cfb-eyebrow, .cfb-week-summary, .cfb-field-head,
+   .badge-pending, .lives-indicator, the survivor-state badges.
+   (games/cfb/DESIGN.md S2 accent rank + Crimson-Is-Identity, S4, S6.)
+   ============================================================ */
+
+/* Season standing lead -- the "am I alive?" answer at the top (DESIGN.md S1),
+   borrowing the .cfb-verdict visual language: a raised midnight surface + an
+   outcome-colored TOP rule (never a side-stripe). The lives + status label
+   carry the state by structure; the rule only reinforces. Replaces both the
+   banned four-up stat grid AND the buried "Lives Remaining" micro-card. */
+.cfb-season-lead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem 2rem;
+  margin-bottom: 1.5rem;
+  padding: 1.4rem 1.5rem;
+  background: var(--cfb-raised);
+  border: 1px solid var(--cfb-hairline-strong);
+  border-top: 2px solid var(--cfb-bone-subtle);
+  border-radius: var(--radius-lg);
+}
+.cfb-season-lead.is-survived { border-top-color: var(--cfb-survived); }
+.cfb-season-lead.is-pending  { border-top-color: var(--cfb-pending); }
+.cfb-season-lead.is-lost     { border-top-color: var(--cfb-lost-life); }
+.cfb-season-lead-main { flex: 1 1 17rem; min-width: 0; }
+.cfb-season-lead-main .cfb-eyebrow { display: block; margin-bottom: .4rem; }
+.cfb-season-headline { font-size: 1.9rem; line-height: 1; color: var(--cfb-white); }
+.cfb-season-derivation {
+  margin: .5rem 0 0;
+  font-family: 'Newsreader', Georgia, serif;
+  font-size: .96rem;
+  line-height: 1.5;
+  color: var(--cfb-bone-muted);
+  max-width: 60ch;
+}
+/* The lives pip row is the survivor signal -- give it a half-step of scale in
+   the lead so "am I alive" reads before the prose. */
+.cfb-season-lead-aside { display: flex; align-items: center; gap: .6rem; flex-shrink: 0; }
+.cfb-season-lead-aside .lives-indicator .life { width: 18px; height: 18px; }
+.cfb-season-lives-label {
+  font-family: 'Teko', sans-serif;
+  font-size: 1rem;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--cfb-bone-muted);
+}
+
+/* Conference accordion -- dark-tuned off the Bootstrap white/blue active island
+   (the named A2 debt). EVERY JS hook is preserved (#conferenceAccordion,
+   data-bs-toggle/-target/-parent, the #confCollapse* ids); only color + the
+   active rule change. Bootstrap 5.3's --bs-accordion-active-bg/-color/-icon
+   resolve to a pale-blue subtle + dark-blue emphasis + a blue chevron that
+   A2.0's --bs-primary rebase does NOT reach; override them directly. Active =
+   a raised midnight + a crimson BOTTOM rule (never a side-stripe) + a crimson
+   chevron; rest = surface + bone + a bone chevron (the default dark chevron is
+   invisible on midnight). */
+body.game-cfb .accordion {
+  --bs-accordion-color: var(--cfb-bone);
+  --bs-accordion-bg: transparent;
+  --bs-accordion-border-color: var(--cfb-hairline);
+  --bs-accordion-btn-color: var(--cfb-bone);
+  --bs-accordion-btn-bg: var(--cfb-surface);
+  --bs-accordion-active-color: var(--cfb-white);
+  --bs-accordion-active-bg: var(--cfb-raised);
+  --bs-accordion-btn-focus-border-color: var(--cfb-crimson);
+  --bs-accordion-btn-focus-box-shadow: 0 0 0 .2rem rgba(197,5,12,.35);
+  --bs-accordion-btn-icon: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23B4AAA4'%3e%3cpath fill-rule='evenodd' d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3e%3c/svg%3e");
+  --bs-accordion-btn-active-icon: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23E8282F'%3e%3cpath fill-rule='evenodd' d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3e%3c/svg%3e");
+}
+body.game-cfb .accordion-item { background: transparent; border-color: var(--cfb-hairline); }
+body.game-cfb .accordion-button:hover { background: var(--cfb-lifted); }
+/* Expanded header: a crimson bottom rule marks the active container (Bootstrap's
+   default is an inset 1px border-color shadow -- override to the 2px crimson). */
+body.game-cfb .accordion-button:not(.collapsed) { box-shadow: inset 0 -2px 0 var(--game-primary); }
+/* Quiet neutral conference count -- bone Teko, never the crimson bg-primary chip
+   (crimson is identity, not data; the Crimson-Is-Identity Rule). */
+.cfb-conf-count {
+  font-family: 'Teko', sans-serif;
+  font-weight: 600;
+  font-size: 1.05rem;
+  letter-spacing: .02em;
+  color: var(--cfb-bone-muted);
+}
+
+/* Team chips (the pickable pool) -- neutral hairline chips, NOT survivor-green
+   (green means survived/alive, never "a team you could pick"; accent collision).
+   A spent/eliminated chip recedes to ash. */
+.cfb-team-pool { display: flex; flex-wrap: wrap; gap: .4rem; }
+.cfb-team-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: .3rem;
+  padding: .3rem .6rem;
+  font-family: 'Teko', sans-serif;
+  font-size: .98rem;
+  letter-spacing: .01em;
+  color: var(--cfb-bone);
+  background: var(--cfb-raised);
+  border: 1px solid var(--cfb-hairline-strong);
+  border-radius: .3rem;
+}
+.cfb-team-chip.is-out {
+  color: var(--cfb-bone-subtle);
+  background: var(--cfb-surface);
+  text-decoration: line-through;
+}
+.cfb-team-chip .cfb-team-chip-note {
+  font-size: .76rem;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--cfb-bone-subtle);
+}
+
+/* Title teams in hand -- the conference-championship coverage, de-traffic-lighted.
+   Green ONLY as the positive "held" signal; thin/spent recede to bone (no amber,
+   which is off the CFB survivor-state palette). Structure + the "1 left" / "none"
+   label carry the distinction, never hue alone (DESIGN.md S5). */
+.cfb-coverage { margin-top: 1.5rem; }
+.cfb-coverage-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: .25rem .9rem;
+  margin-top: .9rem;
+}
+.cfb-coverage-item {
+  display: flex;
+  align-items: baseline;
+  gap: .4rem;
+  padding: .2rem 0;
+  font-family: 'Newsreader', Georgia, serif;
+  font-size: .92rem;
+  color: var(--cfb-bone);
+}
+.cfb-coverage-mark { font-family: 'Teko', sans-serif; flex-shrink: 0; }
+.cfb-coverage-item.is-held .cfb-coverage-mark { color: var(--cfb-survived); }
+.cfb-coverage-item.is-thin,
+.cfb-coverage-item.is-thin .cfb-coverage-mark { color: var(--cfb-bone-muted); }
+.cfb-coverage-item.is-spent,
+.cfb-coverage-item.is-spent .cfb-coverage-mark { color: var(--cfb-bone-subtle); }
+.cfb-coverage-note { font-size: .78rem; opacity: .9; }
+
+/* Teams spent -- what you've already used (the no-reuse ledger). Neutral chips
+   carrying the survivor-state W/L result, never a bg-light island. */
+.cfb-used-grid { display: flex; flex-wrap: wrap; gap: .5rem; }
+.cfb-used-team {
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  padding: .35rem .5rem .35rem .7rem;
+  background: var(--cfb-surface);
+  border: 1px solid var(--cfb-hairline-strong);
+  border-radius: .35rem;
+  font-family: 'Teko', sans-serif;
+  font-size: 1.02rem;
+  letter-spacing: .01em;
+  color: var(--cfb-bone);
+}
+.cfb-used-team .cfb-used-week { font-size: .78rem; color: var(--cfb-bone-muted); }
+
+/* Active-week marker in the pick ledger -- a quiet neutral tag, never the
+   off-palette Bootstrap bg-primary/bg-danger badge. */
+.cfb-now-tag {
+  display: inline-block;
+  margin-left: .4rem;
+  padding: .04em .45em;
+  font-family: 'Teko', sans-serif;
+  font-size: .66rem;
+  font-weight: 500;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--cfb-bone);
+  border: 1px solid var(--cfb-hairline-strong);
+  border-radius: .2rem;
+  vertical-align: middle;
+}
+
+/* Spread-rule note -- the cumulative-spread tiebreaker explained as quiet
+   editorial rule-data (the Quiet-Spread Rule), not a boxed Bootstrap alert. */
+.cfb-spread-note {
+  margin-top: 1.25rem;
+  padding: .9rem 1.1rem;
+  background: var(--cfb-surface);
+  border: 1px solid var(--cfb-hairline);
+  border-radius: var(--radius-lg);
+  font-family: 'Newsreader', Georgia, serif;
+  font-size: .9rem;
+  line-height: 1.55;
+  color: var(--cfb-bone-muted);
+}
+.cfb-spread-note strong { color: var(--cfb-bone); font-weight: 600; }
+
+/* Board note -- the "available teams reset at the CFP" rule, a quiet line under
+   the board head. */
+.cfb-board-note {
+  margin: .2rem 0 0;
+  font-family: 'Newsreader', Georgia, serif;
+  font-size: .85rem;
+  color: var(--cfb-bone-subtle);
+}
 
 /* World Cup overrides */
 body.game-worldcup {
