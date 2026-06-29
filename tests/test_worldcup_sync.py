@@ -493,6 +493,30 @@ def test_fetch_bracket_proposal_maps_resolved_and_flags_unresolved(app):
         assert any(u['match_number'] == 74 for u in out['unresolved'])
 
 
+def test_fetch_bracket_proposal_exposes_per_side_resolution(app):
+    """`sides` surfaces each fixture's independently-resolved home/away (None for a
+    side the API has not resolved yet) — the half-resolved ARG-vs-TBD case feeds the
+    per-side bracket auto-fill cross-check."""
+    from games.worldcup.services import sync
+    with app.app_context():
+        for code, name, grp in [('BRA', 'Brazil', 'A'), ('KSA', 'Saudi Arabia', 'A'),
+                                ('ARG', 'Argentina', 'B')]:
+            db.session.add(WorldCupTeam(fifa_code=code, name=name, display_name=name,
+                                        tier=1, multiplier=1.0, confederation='X',
+                                        group_letter=grp))
+        s73 = WorldCupMatch(match_number=73, stage='R32', api_fixture_id=9001)
+        s74 = WorldCupMatch(match_number=74, stage='R32', api_fixture_id=9002)
+        db.session.add_all([s73, s74])
+        db.session.commit()
+        s73_id, s74_id = s73.id, s74.id
+
+        with patch.object(sync, '_api_get', return_value=_ko_matches_payload()):
+            out = sync.fetch_bracket_proposal('R32')
+
+        assert out['sides'][s73_id] == {'home': 'BRA', 'away': 'KSA'}
+        assert out['sides'][s74_id] == {'home': 'ARG', 'away': None}
+
+
 def test_fetch_bracket_proposal_rejects_non_ko_stage(app):
     from games.worldcup.services import sync
     with app.app_context():

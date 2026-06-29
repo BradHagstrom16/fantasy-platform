@@ -392,6 +392,34 @@ def set_knockout_teams(
     }
 
 
+def set_knockout_team_side(match_id: int, side: str, fifa_code: str) -> dict:
+    """Assign ONE side of a knockout shell as its feeder resolves (incremental).
+
+    Writes `home_team_id` or `away_team_id` only when that side is currently empty
+    — the empty-side guardrail makes the write idempotent and never clobbers a
+    manual override or the opposite side. The sibling `set_knockout_teams` still
+    owns the both-sides admin path.
+    """
+    if side not in ('home', 'away'):
+        return {'error': f'Invalid side: {side}'}
+    match = db.session.get(WorldCupMatch, match_id)
+    if not match:
+        return {'error': f'Match {match_id} not found'}
+
+    col = f'{side}_team_id'
+    if getattr(match, col) is not None:
+        # Already set (manual or a prior pass) — leave it; report a no-op.
+        return {'match_number': match.match_number, 'side': side, 'skipped': True}
+
+    team = WorldCupTeam.query.filter_by(fifa_code=fifa_code).first()
+    if not team:
+        return {'error': f'Team not found: {fifa_code}'}
+
+    setattr(match, col, team.id)
+    db.session.commit()
+    return {'match_number': match.match_number, 'side': side, 'team': team.display_name}
+
+
 def compute_team_score_events(team: WorldCupTeam) -> list[ScoreEvent]:
     """Replay this team's scoring sources against current match/team state.
 

@@ -363,6 +363,7 @@ def fetch_bracket_proposal(target_stage: str) -> dict:
 
     proposals = []
     unresolved = []
+    sides_by_shell = {}  # shell_id -> {'home': fifa|None, 'away': fifa|None}
     matched_ids = set()
     for f in data.get('matches', []):
         if STAGE_MAP.get(f.get('stage')) != target_stage:
@@ -375,6 +376,9 @@ def fetch_bracket_proposal(target_stage: str) -> dict:
         matched_ids.add(shell.id)
         home = _fifa_for_tla((f.get('homeTeam') or {}).get('tla'))
         away = _fifa_for_tla((f.get('awayTeam') or {}).get('tla'))
+        # Record each side independently — a side the API hasn't resolved is None.
+        # The per-side bracket auto-fill cross-checks against this map.
+        sides_by_shell[shell.id] = {'home': home or None, 'away': away or None}
         if not home or not away:
             unresolved.append({'match_number': shell.match_number,
                                'reason': 'API has not resolved both teams yet'})
@@ -403,6 +407,7 @@ def fetch_bracket_proposal(target_stage: str) -> dict:
         'target_stage': target_stage,
         'proposals': sorted(proposals, key=lambda p: p['match_number']),
         'unresolved': sorted(unresolved, key=lambda u: u['match_number']),
+        'sides': sides_by_shell,
         'error': None,
     }
 

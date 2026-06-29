@@ -4,6 +4,18 @@
 **Status:** Design approved, pending implementation plan
 **Scope:** World Cup Fantasy Pool (`games/worldcup/`)
 
+> **Addendum (2026-06-29): shipped as PER-SIDE incremental fill.** The original
+> design here filled a whole shell (both teams) once its feeder *round* fully
+> completed. In live use that left R16 blank until all 16 R32 matches finished,
+> while the official/API bracket slots each winner the instant its match ends. The
+> shipped version fills each shell **side** the moment its feeder match completes
+> (`derive_sides` replaces `derive_pairings`; `set_knockout_team_side` writes one
+> side; `fetch_bracket_proposal` exposes per-side `sides`; the cross-check is
+> membership-based so home/away orientation is never a false conflict). It is
+> self-gated via `derive_sides` — NOT `populatable_bracket_stages`, whose
+> whole-round gate still drives the admin bulk-populate UI + advancement reminder.
+> See CLAUDE.md "Results automation" for the authoritative current behavior.
+
 ---
 
 ## Problem

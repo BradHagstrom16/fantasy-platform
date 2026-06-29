@@ -461,8 +461,10 @@ def sync_cmd(mode):
         result = wc_bracket.run_bracket_autofill()
         click.echo(f"[bracket] {result.get('status')}")
         for s in result.get('stages', []):
-            click.echo(f"   {s['stage']}: {s['decision']} "
-                       f"(filled {len(s.get('filled', []))})")
+            click.echo(f"   {s['stage']}: filled {len(s.get('filled', []))} "
+                       f"(unconfirmed {s.get('unconfirmed', 0)}, "
+                       f"conflicts {len(s.get('conflicts', []))}, "
+                       f"failed {len(s.get('failed', []))})")
     elif mode == 'status':
         linked = WorldCupMatch.query.filter(WorldCupMatch.api_fixture_id.isnot(None)).count()
         total = WorldCupMatch.query.count()

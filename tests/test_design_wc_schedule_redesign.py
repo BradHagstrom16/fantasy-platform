@@ -407,6 +407,23 @@ def test_render_winner_emphasis_on_completed_knockout(app):
     )
 
 
+def test_render_half_filled_knockout_shell_shows_team_and_tbd(app):
+    """Per-side auto-fill can leave a KO shell with one side set and the other TBD
+    (Canada advanced; opponent undecided). The bracket cell must render the known
+    team plus a TBD slot, without error — the new one-side-set combination."""
+    from extensions import db
+    from games.worldcup.models import WorldCupTeam, WorldCupMatch
+    with app.app_context():
+        esp = WorldCupTeam.query.filter_by(fifa_code='ESP').first()
+        db.session.add(WorldCupMatch(match_number=90, stage='R16',
+                                     home_team_id=esp.id, is_completed=False))
+        db.session.commit()
+    html = app.test_client().get('/worldcup/schedule').data.decode()
+    assert 'Round of 16' in html
+    assert 'wc-ko-tbd' in html   # the undecided away side renders TBD
+    assert 'Spain' in html        # the resolved home side renders the team
+
+
 def test_roster_highlight_hidden_for_anonymous_viewer(app):
     """Anonymous viewers have no picks, so no fixture is flagged. Guards the
     privacy/correctness of the highlight (it is viewer-scoped, not global)."""

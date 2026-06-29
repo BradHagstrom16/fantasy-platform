@@ -9,9 +9,9 @@ import logging
 
 from extensions import db
 from games.worldcup.models import WorldCupMatch, WorldCupTeam
-from games.worldcup.services.scoring import set_knockout_teams
+from games.worldcup.services.scoring import set_knockout_team_side
 from games.worldcup.services.sync import (
-    fetch_bracket_proposal, populatable_bracket_stages,
+    fetch_bracket_proposal,
     _send_admin_email, _notify_once, SyncError, _fifa_for_tla, _api_get,
     COMPETITION_CODE,
 )
@@ -117,134 +117,173 @@ def _resolve_feeder(kind: str, feeder_no: int) -> str | None:
     return _winner_fifa(feeder_no) if kind == 'winner' else _loser_fifa(feeder_no)
 
 
-def derive_pairings(stage: str) -> dict | None:
-    """{shell_id: (home_fifa, away_fifa)} for every EMPTY shell of `stage`.
+def derive_sides(stage: str) -> dict:
+    """{shell_id: {'home': fifa, 'away': fifa}} for the EMPTY sides of `stage`
+    whose feeder match is complete — fill each side the moment its feeder resolves.
 
-    Returns None if the stage is not fully ready: any feeder match is not yet
-    completed / has no winner, or a derived team cannot be resolved. Empty dict
-    means the stage has no empty shells (already filled).
+    A side already set (manual override or a prior pass) is omitted (never
+    overwritten); a feeder not yet completed is omitted (the side stays TBD). No
+    whole-stage gating: a shell with one resolved feeder yields just that side.
+    Returns {} when nothing is fillable.
     """
-    # Fully-empty shells only (both sides unset). A partially-set shell can only
-    # come from a manual admin edit; the "empty shells only" guardrail means we
-    # never overwrite it.
-    empty_shells = (
-        WorldCupMatch.query.filter_by(stage=stage)
-        .filter(WorldCupMatch.home_team_id.is_(None),
-                WorldCupMatch.away_team_id.is_(None))
-        .all()
-    )
     out: dict = {}
-    for shell in empty_shells:
+    for shell in WorldCupMatch.query.filter_by(stage=stage).all():
         feeders = BRACKET_TOPOLOGY.get(shell.match_number)
         if not feeders:
             logger.warning('No topology entry for shell #%s', shell.match_number)
-            return None
+            continue
         (hk, hn), (ak, an) = feeders
-        home = _resolve_feeder(hk, hn)
-        away = _resolve_feeder(ak, an)
-        if not home or not away or home == away:
-            return None  # stage not ready (feeder unplayed or unresolved)
-        out[shell.id] = (home, away)
+        sides: dict = {}
+        if shell.home_team_id is None:
+            home = _resolve_feeder(hk, hn)
+            if home:
+                sides['home'] = home
+        if shell.away_team_id is None:
+            away = _resolve_feeder(ak, an)
+            if away:
+                sides['away'] = away
+        if not sides:
+            continue
+        # Topology-bug guard: never place a team that already sits on the other
+        # side, and never derive the same team for both sides of one shell.
+        occupied = {
+            t.fifa_code for t in (
+                db.session.get(WorldCupTeam, shell.home_team_id) if shell.home_team_id else None,
+                db.session.get(WorldCupTeam, shell.away_team_id) if shell.away_team_id else None,
+            ) if t
+        }
+        if sides.get('home') and sides.get('home') == sides.get('away'):
+            logger.warning('topology bug: same team both sides of shell #%s', shell.match_number)
+            continue
+        for side in ('home', 'away'):
+            if sides.get(side) in occupied:
+                logger.warning('topology bug: %s already on shell #%s; skipping %s',
+                               sides[side], shell.match_number, side)
+                sides.pop(side)
+        if sides:
+            out[shell.id] = sides
     return out
 
 
 def reconcile(stage: str) -> dict:
-    """Combine self-derived pairings (B) with the API proposal (A)."""
-    pairings = derive_pairings(stage)
-    if not pairings:  # None (not ready) or {} (nothing empty)
-        return {'stage': stage, 'decision': 'NOT_READY'}
+    """Cross-check each self-derived side (B) against the API's resolved side (A).
+
+    Returns {'stage', 'applies': [(shell_id, side, fifa, confirmed)], 'conflicts':
+    [(shell_id, side, ours, api_pair)]}. The cross-check is by MEMBERSHIP, not
+    orientation: a derived team is confirmed if the API has it on either side of
+    that fixture; it conflicts only when the API has FULLY resolved the fixture to
+    a pairing that excludes our team; otherwise it's an unconfirmed apply (write
+    from our results, flagged).
+    """
+    derived = derive_sides(stage)
+    if not derived:
+        return {'stage': stage, 'applies': [], 'conflicts': []}
 
     try:
         proposal = fetch_bracket_proposal(stage)
+        api_sides = None if proposal.get('error') else (proposal.get('sides') or {})
     except SyncError:
-        return {'stage': stage, 'decision': 'APPLY_UNCONFIRMED', 'pairings': pairings}
+        api_sides = None  # API unreachable -> everything unconfirmed (never wrong)
 
-    if proposal.get('error'):
-        return {'stage': stage, 'decision': 'APPLY_UNCONFIRMED', 'pairings': pairings}
-
-    api_by_shell = {
-        p['shell_id']: frozenset({p.get('home_fifa'), p.get('away_fifa')})
-        for p in proposal.get('proposals', [])
-        if p.get('home_fifa') and p.get('away_fifa')
-    }
-
+    applies = []
     conflicts = []
-    for shell_id, (home, away) in pairings.items():
-        api_pair = api_by_shell.get(shell_id)
-        if api_pair is None:
-            # API hasn't resolved this shell we can derive -> unavailable, not wrong.
-            return {'stage': stage, 'decision': 'APPLY_UNCONFIRMED', 'pairings': pairings}
-        if api_pair != frozenset({home, away}):
-            conflicts.append({'shell_id': shell_id, 'ours': [home, away],
-                              'api': sorted(api_pair)})
+    for shell_id, sides in derived.items():
+        if api_sides is None:
+            api_for_shell = None
+        else:
+            api_for_shell = api_sides.get(shell_id, {})
+        known = {v for v in (api_for_shell or {}).values() if v}
+        api_complete = bool(api_for_shell) and len(known) == 2
+        for side, fifa in sides.items():
+            if fifa in known:
+                applies.append((shell_id, side, fifa, True))      # API confirms membership
+            elif api_complete:
+                conflicts.append((shell_id, side, fifa, sorted(known)))  # API pairing excludes us
+            else:
+                applies.append((shell_id, side, fifa, False))     # API can't confirm yet
+    return {'stage': stage, 'applies': applies, 'conflicts': conflicts}
 
-    if conflicts:
-        return {'stage': stage, 'decision': 'CONFLICT', 'conflicts': conflicts}
-    return {'stage': stage, 'decision': 'APPLY', 'pairings': pairings}
 
-
-def _shell_label(shell_id: int, home: str, away: str) -> str:
+def _side_label(shell_id: int, side: str, fifa: str) -> str:
     m = db.session.get(WorldCupMatch, shell_id)
     num = m.match_number if m else '?'
-    return f'#{num}: {home} vs {away}'
+    return f'#{num} {side}: {fifa}'
 
 
 def run_bracket_autofill() -> dict:
-    """Fill empty downstream KO shells whose feeder round is resolved.
+    """Fill empty downstream KO shell SIDES whose feeder match has completed.
 
-    Folded into run_scores() (30-min timer). Writes only on APPLY /
-    APPLY_UNCONFIRMED; CONFLICT writes nothing and emails once (de-duped).
-    R32 is excluded — the group->R32 transition stays admin-confirmed.
+    Folded into run_scores() (30-min timer). Writes each confirmed/unconfirmed
+    side via set_knockout_team_side (empty-side-only); a side the API resolves
+    differently is BLOCKED and emailed once (de-duped). Confirmed fills are silent
+    (logged + surfaced by the daily digest); only action-needed events email.
+
+    Self-gated per-side via derive_sides — a stage is processed the moment any one
+    of its shells has a resolved feeder, NOT only once the whole feeder round is
+    complete (the gate populatable_bracket_stages still applies to the admin
+    bulk-populate UI). R32 is excluded — the group->R32 transition stays
+    admin-confirmed.
     """
-    stages = [s for s in populatable_bracket_stages() if s in DOWNSTREAM_STAGES]
+    stages = [s for s in DOWNSTREAM_STAGES if derive_sides(s)]
     if not stages:
         return {'status': 'idle', 'stages': []}
 
     acted = []
     for stage in stages:
         d = reconcile(stage)
-        decision = d['decision']
-        if decision == 'NOT_READY':
+        applies, conflicts = d['applies'], d['conflicts']
+        if not applies and not conflicts:
             continue
 
-        if decision == 'CONFLICT':
-            if _notify_once(f'bracket-conflict:{stage}'):
-                lines = [f"  {c['ours']} (ours) vs {sorted(c['api'])} (API)"
-                         for c in d['conflicts']]
+        filled, failed, unconfirmed = [], [], []
+        for shell_id, side, fifa, confirmed in applies:
+            res = set_knockout_team_side(shell_id, side, fifa)
+            if 'error' in res:
+                logger.warning('autofill write failed shell=%s %s: %s',
+                               shell_id, side, res['error'])
+                failed.append({'shell_id': shell_id, 'side': side, 'error': res['error']})
+            elif res.get('skipped'):
+                continue  # already set (idempotent no-op)
+            else:
+                label = _side_label(shell_id, side, fifa)
+                filled.append(label)
+                if not confirmed:
+                    unconfirmed.append(label)
+
+        if conflicts:
+            sig = 'bracket-conflict:' + stage + ':' + ','.join(
+                sorted(f'{s}:{side}' for s, side, *_ in conflicts))
+            if _notify_once(sig):
+                lines = [f"  #{db.session.get(WorldCupMatch, s).match_number} {side}: "
+                         f"{fifa} (ours) — API pairing {api}"
+                         for s, side, fifa, api in conflicts]
                 _send_admin_email(
                     f'Bracket auto-fill BLOCKED ({stage}): API disagrees',
-                    'Our results and the API disagree on these shells — '
-                    'no teams written. Confirm manually at '
+                    'Our results and the API disagree on these sides — nothing '
+                    'written for them. Confirm manually at '
                     f'/worldcup/admin/bracket/{stage}.\n' + '\n'.join(lines))
-            acted.append({'stage': stage, 'decision': decision, 'filled': []})
-            continue
 
-        # APPLY or APPLY_UNCONFIRMED -> write empty shells.
-        filled = []
-        failed = []
-        for shell_id, (home, away) in d['pairings'].items():
-            res = set_knockout_teams(shell_id, home, away)
-            if 'error' in res:
-                logger.warning('autofill write failed shell=%s: %s', shell_id, res['error'])
-                failed.append({'shell_id': shell_id, 'error': res['error']})
-            else:
-                filled.append(_shell_label(shell_id, home, away))
         if failed:
-            # A persistent write failure would leave the shell empty with no
-            # alert — the silent-stall mode this feature exists to remove.
+            # A persistent write failure would leave the side empty with no alert —
+            # the silent-stall mode this feature exists to remove.
             _send_admin_email(
                 f'Bracket auto-fill write FAILED ({stage})',
-                'These shells could not be written — confirm manually at '
+                'These sides could not be written — confirm manually at '
                 f'/worldcup/admin/bracket/{stage}:\n'
-                + '\n'.join(f"  shell {f['shell_id']}: {f['error']}" for f in failed))
-        if filled:
-            unconfirmed = decision == 'APPLY_UNCONFIRMED'
-            subject = (f'Bracket auto-filled ({stage})'
-                       + (' — NO API confirmation, please spot-check' if unconfirmed else ''))
-            note = ('\n\nThe API was unavailable, so this was written from our own '
-                    'results without a second-opinion cross-check.' if unconfirmed else '')
-            _send_admin_email(subject,
-                              f'Auto-filled {stage} shells:\n  ' + '\n  '.join(filled) + note)
-        acted.append({'stage': stage, 'decision': decision, 'filled': filled, 'failed': failed})
+                + '\n'.join(f"  shell {f['shell_id']} {f['side']}: {f['error']}"
+                            for f in failed))
+
+        if unconfirmed:
+            sig = 'bracket-unconfirmed:' + stage + ':' + ','.join(sorted(unconfirmed))
+            if _notify_once(sig):
+                _send_admin_email(
+                    f'Bracket auto-filled ({stage}) — NO API confirmation, please spot-check',
+                    'These sides were written from our own results without an API '
+                    'second-opinion (the API had not resolved them yet):\n  '
+                    + '\n  '.join(unconfirmed))
+
+        acted.append({'stage': stage, 'filled': filled, 'unconfirmed': len(unconfirmed),
+                      'conflicts': [_side_label(s, side, fifa) for s, side, fifa, _ in conflicts],
+                      'failed': failed})
 
     return {'status': 'acted' if acted else 'idle', 'stages': acted}
