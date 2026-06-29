@@ -171,3 +171,60 @@ def reconcile(stage: str) -> dict:
     if conflicts:
         return {'stage': stage, 'decision': 'CONFLICT', 'conflicts': conflicts}
     return {'stage': stage, 'decision': 'APPLY', 'pairings': pairings}
+
+
+def _shell_label(shell_id: int, home: str, away: str) -> str:
+    m = db.session.get(WorldCupMatch, shell_id)
+    num = m.match_number if m else '?'
+    return f'#{num}: {home} vs {away}'
+
+
+def run_bracket_autofill() -> dict:
+    """Fill empty downstream KO shells whose feeder round is resolved.
+
+    Folded into run_scores() (30-min timer). Writes only on APPLY /
+    APPLY_UNCONFIRMED; CONFLICT writes nothing and emails once (de-duped).
+    R32 is excluded — the group->R32 transition stays admin-confirmed.
+    """
+    stages = [s for s in populatable_bracket_stages() if s in DOWNSTREAM_STAGES]
+    if not stages:
+        return {'status': 'idle', 'stages': []}
+
+    acted = []
+    for stage in stages:
+        d = reconcile(stage)
+        decision = d['decision']
+        if decision == 'NOT_READY':
+            continue
+
+        if decision == 'CONFLICT':
+            if _notify_once(f'bracket-conflict:{stage}'):
+                lines = [f"  {c['ours']} (ours) vs {sorted(c['api'])} (API)"
+                         for c in d['conflicts']]
+                _send_admin_email(
+                    f'Bracket auto-fill BLOCKED ({stage}): API disagrees',
+                    'Our results and the API disagree on these shells — '
+                    'no teams written. Confirm manually at '
+                    f'/worldcup/admin/bracket/{stage}.\n' + '\n'.join(lines))
+            acted.append({'stage': stage, 'decision': decision, 'filled': []})
+            continue
+
+        # APPLY or APPLY_UNCONFIRMED -> write empty shells.
+        filled = []
+        for shell_id, (home, away) in d['pairings'].items():
+            res = set_knockout_teams(shell_id, home, away)
+            if 'error' in res:
+                logger.warning('autofill write failed shell=%s: %s', shell_id, res['error'])
+            else:
+                filled.append(_shell_label(shell_id, home, away))
+        if filled:
+            unconfirmed = decision == 'APPLY_UNCONFIRMED'
+            subject = (f'Bracket auto-filled ({stage})'
+                       + (' — NO API confirmation, please spot-check' if unconfirmed else ''))
+            note = ('\n\nThe API was unavailable, so this was written from our own '
+                    'results without a second-opinion cross-check.' if unconfirmed else '')
+            _send_admin_email(subject,
+                              f'Auto-filled {stage} shells:\n  ' + '\n  '.join(filled) + note)
+        acted.append({'stage': stage, 'decision': decision, 'filled': filled})
+
+    return {'status': 'acted' if acted else 'idle', 'stages': acted}

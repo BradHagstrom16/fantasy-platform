@@ -186,3 +186,55 @@ def test_reconcile_not_ready_when_feeders_incomplete(app):
         db.session.commit()
         d = bracket.reconcile('R16')
         assert d['decision'] == 'NOT_READY'
+
+
+def test_autofill_apply_writes_shells_and_emails(app):
+    from games.worldcup.services import bracket
+    with app.app_context():
+        sid = _seed_r16_ready()
+        with patch.object(bracket, 'populatable_bracket_stages', return_value=['R16']), \
+             patch.object(bracket, 'fetch_bracket_proposal',
+                          return_value=_api_proposal(sid, 'BRA', 'MEX')), \
+             patch.object(bracket, '_send_admin_email', return_value=True) as email:
+            out = bracket.run_bracket_autofill()
+        assert out['status'] == 'acted'
+        s = db.session.get(WorldCupMatch, sid)
+        assert s.home_team.fifa_code == 'BRA' and s.away_team.fifa_code == 'MEX'
+        assert email.called  # receipt sent
+
+
+def test_autofill_conflict_writes_nothing_and_dedupes_email(app):
+    from games.worldcup.services import bracket
+    with app.app_context():
+        sid = _seed_r16_ready()
+        with patch.object(bracket, 'populatable_bracket_stages', return_value=['R16']), \
+             patch.object(bracket, 'fetch_bracket_proposal',
+                          return_value=_api_proposal(sid, 'BRA', 'KOR')), \
+             patch.object(bracket, '_send_admin_email', return_value=True) as email, \
+             patch.object(bracket, '_notify_once', side_effect=[True, False]):
+            bracket.run_bracket_autofill()  # first: notifies
+            bracket.run_bracket_autofill()  # second: deduped
+        s = db.session.get(WorldCupMatch, sid)
+        assert s.home_team_id is None and s.away_team_id is None  # never written
+        assert email.call_count == 1  # _notify_once gated the 2nd send
+
+
+def test_autofill_never_touches_r32(app):
+    from games.worldcup.services import bracket
+    with app.app_context():
+        with patch.object(bracket, 'populatable_bracket_stages',
+                          return_value=['R32', 'R16']), \
+             patch.object(bracket, 'reconcile',
+                          return_value={'stage': 'x', 'decision': 'NOT_READY'}) as rec:
+            bracket.run_bracket_autofill()
+        # reconcile is called for R16 only, never R32
+        called_stages = [c.args[0] for c in rec.call_args_list]
+        assert 'R32' not in called_stages and 'R16' in called_stages
+
+
+def test_autofill_idle_when_nothing_populatable(app):
+    from games.worldcup.services import bracket
+    with app.app_context():
+        with patch.object(bracket, 'populatable_bracket_stages', return_value=[]):
+            out = bracket.run_bracket_autofill()
+        assert out['status'] == 'idle'
