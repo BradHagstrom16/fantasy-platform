@@ -521,19 +521,31 @@ def _notify_once(signature: str) -> bool:
 
 
 def run_scores() -> dict:
-    """Timer entry point (every 30 min): apply finals; email only on error."""
+    """Timer entry point (every 30 min): apply finals + auto-fill downstream
+    KO shells; email only on error / on bracket events."""
     try:
         result = sync_scores()
     except SyncError as exc:
         _send_admin_email('Score sync failed', f'football-data.org sync error:\n{exc}')
         return {'status': 'error', 'details': str(exc)}
+
+    # Auto-fill any downstream KO round whose feeder round just completed.
+    # Local import avoids a circular import (bracket imports from sync).
+    from games.worldcup.services.bracket import run_bracket_autofill
+    try:
+        bracket_summary = run_bracket_autofill()
+    except SyncError as exc:
+        # API outage during the bracket pass is non-fatal to score sync.
+        logger.warning('bracket auto-fill skipped (API error): %s', exc)
+        bracket_summary = {'status': 'error', 'details': str(exc)}
+
     if result['applied_count']:
         logger.info('worldcup sync applied %s result(s)', result['applied_count'])
     if result['failed']:
         body = '\n'.join(f"#{f['match_number']}: {f['error']}" for f in result['failed'])
         _send_admin_email('Score sync: some results failed to apply', body)
-        return {'status': 'error', **result}
-    return {'status': 'ok', **result}
+        return {'status': 'error', 'bracket': bracket_summary, **result}
+    return {'status': 'ok', 'bracket': bracket_summary, **result}
 
 
 def run_advancement_check() -> dict:
