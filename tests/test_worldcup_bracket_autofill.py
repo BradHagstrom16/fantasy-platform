@@ -283,37 +283,49 @@ def test_cli_bracket_mode_dispatches(app):
     assert 'R16: APPLY' in result.output
 
 
-def test_infer_topology_uses_prior_round_feeder_not_latest_appearance(app):
-    """A team that wins rounds AFTER a shell must still map to its prior-round
-    feeder (regression for the winner_of/loser_of latest-appearance overwrite).
+def test_infer_topology_uses_most_recent_prior_appearance(app):
+    """infer_topology_from_api must map each feeder to a team's MOST RECENT prior
+    appearance — win or loss — never its latest appearance overall, and never a
+    QF win in place of the SF loss that feeds third place.
 
-    BRA wins #74, #89, #97, #101. For the QF shell #97, the home feeder must be
-    BRA's prior R16 win (#89) — the buggy 'latest appearance' logic returned its
-    later SF win (#101 > 97), an impossible feeder.
+    Bracket: BRA & ESP & POR & NGA reach the semis.
+      - #97 (QF) home is BRA, who also wins #101 (SF, after 97); its feeder must
+        be the prior R16 win #89, not the later SF win (latest-appearance bug).
+      - #103 (third) = SF losers ESP (lost #101, won QF #98) and POR (lost #102,
+        won QF #99); feeders must be ('loser', 101)/('loser', 102), NOT the
+        wins-first result ('winner', 98)/('winner', 99).
     """
     from games.worldcup.services import bracket
+    H = 'HOME_TEAM'
+
+    def m(fid, home, away, winner=H):
+        return {'id': fid, 'score': {'winner': winner},
+                'homeTeam': {'tla': home}, 'awayTeam': {'tla': away}}
+
     api = {'matches': [
-        {'id': 1074, 'stage': 'LAST_32', 'score': {'winner': 'HOME_TEAM'},
-         'homeTeam': {'tla': 'BRA'}, 'awayTeam': {'tla': 'KOR'}},   # #74: BRA win
-        {'id': 1089, 'stage': 'LAST_16', 'score': {'winner': 'HOME_TEAM'},
-         'homeTeam': {'tla': 'BRA'}, 'awayTeam': {'tla': 'ARG'}},   # #89: BRA win
-        {'id': 1090, 'stage': 'LAST_16', 'score': {'winner': 'HOME_TEAM'},
-         'homeTeam': {'tla': 'GER'}, 'awayTeam': {'tla': 'FRA'}},   # #90: GER win
-        {'id': 1097, 'stage': 'QUARTER_FINALS', 'score': {'winner': 'HOME_TEAM'},
-         'homeTeam': {'tla': 'BRA'}, 'awayTeam': {'tla': 'GER'}},   # #97: BRA vs GER
-        {'id': 1101, 'stage': 'SEMI_FINALS', 'score': {'winner': 'HOME_TEAM'},
-         'homeTeam': {'tla': 'BRA'}, 'awayTeam': {'tla': 'ESP'}},   # #101: BRA win (after 97)
+        {**m(1089, 'BRA', 'ARG'), 'stage': 'LAST_16'},            # #89 BRA win
+        {**m(1090, 'GER', 'FRA'), 'stage': 'LAST_16'},            # #90 GER win
+        {**m(1097, 'BRA', 'GER'), 'stage': 'QUARTER_FINALS'},     # #97 BRA win
+        {**m(1098, 'ESP', 'ITA'), 'stage': 'QUARTER_FINALS'},     # #98 ESP win
+        {**m(1099, 'POR', 'NED'), 'stage': 'QUARTER_FINALS'},     # #99 POR win
+        {**m(1100, 'NGA', 'USA'), 'stage': 'QUARTER_FINALS'},     # #100 NGA win
+        {**m(1101, 'BRA', 'ESP'), 'stage': 'SEMI_FINALS'},        # #101 BRA win, ESP loss
+        {**m(1102, 'NGA', 'POR'), 'stage': 'SEMI_FINALS'},        # #102 NGA win, POR loss
+        {**m(1103, 'ESP', 'POR', winner=None), 'stage': 'THIRD_PLACE'},  # #103 SF losers, unplayed
     ]}
+    rows = [(1089, 89, 'R16'), (1090, 90, 'R16'), (1097, 97, 'QF'), (1098, 98, 'QF'),
+            (1099, 99, 'QF'), (1100, 100, 'QF'), (1101, 101, 'SF'), (1102, 102, 'SF'),
+            (1103, 103, 'third_place')]
     with app.app_context():
-        for fid, num, stage in [(1074, 74, 'R32'), (1089, 89, 'R16'), (1090, 90, 'R16'),
-                                (1097, 97, 'QF'), (1101, 101, 'SF')]:
+        for fid, num, stage in rows:
             db.session.add(WorldCupMatch(match_number=num, stage=stage, api_fixture_id=fid))
         db.session.commit()
         with patch.object(bracket, '_api_get', return_value=api), \
              patch.object(bracket, '_fifa_for_tla', side_effect=lambda tla: tla):
             topo = bracket.infer_topology_from_api()
         assert topo[97] == (('winner', 89), ('winner', 90))
-        assert ('winner', 101) not in topo[97]  # never a later round
+        assert ('winner', 101) not in topo[97]            # never a later round
+        assert topo[103] == (('loser', 101), ('loser', 102))  # SF losses, not QF wins
 
 
 def _agreeing_proposal(stage):

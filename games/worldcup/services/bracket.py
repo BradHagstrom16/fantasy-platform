@@ -71,26 +71,26 @@ def infer_topology_from_api() -> dict:
             w, l = (home, away) if winner_side == 'HOME_TEAM' else (away, home)
             by_num[shell.match_number] = (w, l)
 
+    def feeder(fifa: str, prior: dict) -> tuple[str, int] | None:
+        # A team's feeder is its MOST RECENT prior appearance — win OR loss.
+        # Checking wins first would mis-map a semifinal loser (who also won
+        # earlier rounds) to a QF win instead of the SF loss that feeds the
+        # third-place shell. Most-recent (max match number < num) is correct
+        # for both winner feeders and the loser feeders of third place.
+        appearances: list[tuple[str, int]] = []
+        for match_no, (winner_fifa, loser_fifa) in prior.items():
+            if winner_fifa == fifa:
+                appearances.append(('winner', match_no))
+            elif loser_fifa == fifa:
+                appearances.append(('loser', match_no))
+        return max(appearances, key=lambda item: item[1], default=None)
+
     topo = {}
     for num, (home, away) in api_by_num.items():
         if num < 89:
             continue
-        # Only earlier matches can feed this shell. A team that keeps advancing
-        # is the winner of several matches, so resolve its feeder as the most
-        # recent PRIOR win (max match number < num) — never its latest
-        # appearance overall, which could point at this shell or a later round.
         prior = {n: pair for n, pair in by_num.items() if n < num}
-
-        def feeder(fifa):
-            wins = [n for n, (w, _) in prior.items() if w == fifa]
-            if wins:
-                return ('winner', max(wins))
-            losses = [n for n, (_, l) in prior.items() if l == fifa]
-            if losses:
-                return ('loser', max(losses))
-            return None
-
-        fh, fa = feeder(home), feeder(away)
+        fh, fa = feeder(home, prior), feeder(away, prior)
         if fh and fa:
             topo[num] = (fh, fa)
     return dict(sorted(topo.items()))
