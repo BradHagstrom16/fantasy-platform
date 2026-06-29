@@ -136,3 +136,38 @@ def derive_pairings(stage: str) -> dict | None:
             return None  # stage not ready (feeder unplayed or unresolved)
         out[shell.id] = (home, away)
     return out
+
+
+def reconcile(stage: str) -> dict:
+    """Combine self-derived pairings (B) with the API proposal (A)."""
+    pairings = derive_pairings(stage)
+    if not pairings:  # None (not ready) or {} (nothing empty)
+        return {'stage': stage, 'decision': 'NOT_READY'}
+
+    try:
+        proposal = fetch_bracket_proposal(stage)
+    except SyncError:
+        return {'stage': stage, 'decision': 'APPLY_UNCONFIRMED', 'pairings': pairings}
+
+    if proposal.get('error'):
+        return {'stage': stage, 'decision': 'APPLY_UNCONFIRMED', 'pairings': pairings}
+
+    api_by_shell = {
+        p['shell_id']: frozenset({p.get('home_fifa'), p.get('away_fifa')})
+        for p in proposal.get('proposals', [])
+        if p.get('home_fifa') and p.get('away_fifa')
+    }
+
+    conflicts = []
+    for shell_id, (home, away) in pairings.items():
+        api_pair = api_by_shell.get(shell_id)
+        if api_pair is None:
+            # API hasn't resolved this shell we can derive -> unavailable, not wrong.
+            return {'stage': stage, 'decision': 'APPLY_UNCONFIRMED', 'pairings': pairings}
+        if api_pair != frozenset({home, away}):
+            conflicts.append({'shell_id': shell_id, 'ours': [home, away],
+                              'api': sorted(api_pair)})
+
+    if conflicts:
+        return {'stage': stage, 'decision': 'CONFLICT', 'conflicts': conflicts}
+    return {'stage': stage, 'decision': 'APPLY', 'pairings': pairings}

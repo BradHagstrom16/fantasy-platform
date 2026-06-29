@@ -124,3 +124,65 @@ def test_derive_pairings_skips_already_filled_shell(app):
         db.session.add(filled)
         db.session.commit()
         assert derive_pairings('R16') == {}
+
+
+def _api_proposal(shell_id, home, away):
+    return {'target_stage': 'R16', 'error': None, 'unresolved': [],
+            'proposals': [{'match_number': 89, 'shell_id': shell_id,
+                           'home_fifa': home, 'away_fifa': away,
+                           'already_set': False, 'is_completed': False}]}
+
+
+def _seed_r16_ready():
+    """Two completed R32 feeders + one empty R16 shell; returns shell_id."""
+    bra, kor = _team('BRA', 'Brazil'), _team('KOR', 'Korea')
+    ned, mex = _team('NED', 'Netherlands'), _team('MEX', 'Mexico')
+    db.session.flush()
+    _completed_ko(73, 'R32', bra, kor, bra)
+    _completed_ko(74, 'R32', ned, mex, mex)
+    shell = WorldCupMatch(match_number=89, stage='R16')
+    db.session.add(shell)
+    db.session.commit()
+    return shell.id
+
+
+def test_reconcile_apply_when_api_agrees(app):
+    from games.worldcup.services import bracket
+    with app.app_context():
+        sid = _seed_r16_ready()
+        with patch.object(bracket, 'fetch_bracket_proposal',
+                          return_value=_api_proposal(sid, 'MEX', 'BRA')):  # reversed order ok
+            d = bracket.reconcile('R16')
+        assert d['decision'] == 'APPLY'
+        assert d['pairings'] == {sid: ('BRA', 'MEX')}
+
+
+def test_reconcile_conflict_when_api_disagrees(app):
+    from games.worldcup.services import bracket
+    with app.app_context():
+        sid = _seed_r16_ready()
+        with patch.object(bracket, 'fetch_bracket_proposal',
+                          return_value=_api_proposal(sid, 'BRA', 'KOR')):  # wrong team
+            d = bracket.reconcile('R16')
+        assert d['decision'] == 'CONFLICT'
+        assert d['conflicts'] and d['conflicts'][0]['shell_id'] == sid
+
+
+def test_reconcile_apply_unconfirmed_when_api_unavailable(app):
+    from games.worldcup.services import bracket
+    with app.app_context():
+        sid = _seed_r16_ready()
+        with patch.object(bracket, 'fetch_bracket_proposal',
+                          side_effect=bracket.SyncError('down')):
+            d = bracket.reconcile('R16')
+        assert d['decision'] == 'APPLY_UNCONFIRMED'
+        assert d['pairings'] == {sid: ('BRA', 'MEX')}
+
+
+def test_reconcile_not_ready_when_feeders_incomplete(app):
+    from games.worldcup.services import bracket
+    with app.app_context():
+        db.session.add(WorldCupMatch(match_number=89, stage='R16'))  # no feeders
+        db.session.commit()
+        d = bracket.reconcile('R16')
+        assert d['decision'] == 'NOT_READY'
