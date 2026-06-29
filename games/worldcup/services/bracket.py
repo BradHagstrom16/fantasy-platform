@@ -71,18 +71,23 @@ def infer_topology_from_api() -> dict:
             w, l = (home, away) if winner_side == 'HOME_TEAM' else (away, home)
             by_num[shell.match_number] = (w, l)
 
-    winner_of = {fifa: n for n, (fifa, _) in by_num.items()}
-    loser_of = {fifa: n for n, (_, fifa) in by_num.items()}
     topo = {}
     for num, (home, away) in api_by_num.items():
         if num < 89:
             continue
+        # Only earlier matches can feed this shell. A team that keeps advancing
+        # is the winner of several matches, so resolve its feeder as the most
+        # recent PRIOR win (max match number < num) — never its latest
+        # appearance overall, which could point at this shell or a later round.
+        prior = {n: pair for n, pair in by_num.items() if n < num}
 
         def feeder(fifa):
-            if fifa in winner_of:
-                return ('winner', winner_of[fifa])
-            if fifa in loser_of:
-                return ('loser', loser_of[fifa])
+            wins = [n for n, (w, _) in prior.items() if w == fifa]
+            if wins:
+                return ('winner', max(wins))
+            losses = [n for n, (_, l) in prior.items() if l == fifa]
+            if losses:
+                return ('loser', max(losses))
             return None
 
         fh, fa = feeder(home), feeder(away)
@@ -119,10 +124,13 @@ def derive_pairings(stage: str) -> dict | None:
     completed / has no winner, or a derived team cannot be resolved. Empty dict
     means the stage has no empty shells (already filled).
     """
+    # Fully-empty shells only (both sides unset). A partially-set shell can only
+    # come from a manual admin edit; the "empty shells only" guardrail means we
+    # never overwrite it.
     empty_shells = (
         WorldCupMatch.query.filter_by(stage=stage)
-        .filter(db.or_(WorldCupMatch.home_team_id.is_(None),
-                       WorldCupMatch.away_team_id.is_(None)))
+        .filter(WorldCupMatch.home_team_id.is_(None),
+                WorldCupMatch.away_team_id.is_(None))
         .all()
     )
     out: dict = {}
@@ -213,12 +221,22 @@ def run_bracket_autofill() -> dict:
 
         # APPLY or APPLY_UNCONFIRMED -> write empty shells.
         filled = []
+        failed = []
         for shell_id, (home, away) in d['pairings'].items():
             res = set_knockout_teams(shell_id, home, away)
             if 'error' in res:
                 logger.warning('autofill write failed shell=%s: %s', shell_id, res['error'])
+                failed.append({'shell_id': shell_id, 'error': res['error']})
             else:
                 filled.append(_shell_label(shell_id, home, away))
+        if failed:
+            # A persistent write failure would leave the shell empty with no
+            # alert — the silent-stall mode this feature exists to remove.
+            _send_admin_email(
+                f'Bracket auto-fill write FAILED ({stage})',
+                'These shells could not be written — confirm manually at '
+                f'/worldcup/admin/bracket/{stage}:\n'
+                + '\n'.join(f"  shell {f['shell_id']}: {f['error']}" for f in failed))
         if filled:
             unconfirmed = decision == 'APPLY_UNCONFIRMED'
             subject = (f'Bracket auto-filled ({stage})'
@@ -227,6 +245,6 @@ def run_bracket_autofill() -> dict:
                     'results without a second-opinion cross-check.' if unconfirmed else '')
             _send_admin_email(subject,
                               f'Auto-filled {stage} shells:\n  ' + '\n  '.join(filled) + note)
-        acted.append({'stage': stage, 'decision': decision, 'filled': filled})
+        acted.append({'stage': stage, 'decision': decision, 'filled': filled, 'failed': failed})
 
     return {'status': 'acted' if acted else 'idle', 'stages': acted}

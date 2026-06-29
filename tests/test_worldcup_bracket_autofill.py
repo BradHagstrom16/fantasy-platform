@@ -41,10 +41,10 @@ def test_topology_is_structurally_consistent():
     r32_winner_uses = [f for f in feeder_uses if f[0] == 'winner' and 73 <= f[1] <= 88]
     assert sorted(n for _, n in r32_winner_uses) == list(range(73, 89))
 
-    # No (kind, feeder) pair is used twice except the deliberate SF reuse
-    # (101 & 102 each feed both final-as-winner and third-as-loser).
-    winner_feeders = [n for k, n in feeder_uses if k == 'winner']
-    assert len(winner_feeders) == len(set(winner_feeders))
+    # No (kind, feeder) pair is used twice. The SF feeders (101/102) appear
+    # under both kinds — ('winner', 101) feeds the final, ('loser', 101) feeds
+    # third place — but those are distinct tuples, so the full set stays unique.
+    assert len(feeder_uses) == len(set(feeder_uses))
 
 
 def _team(fifa, name, group='A', tier=1, mult=1.0):
@@ -255,9 +255,65 @@ def test_run_scores_invokes_bracket_autofill(app):
         assert out['bracket'] == {'status': 'idle', 'stages': []}
 
 
+def test_run_scores_keeps_success_when_bracket_autofill_errors(app):
+    from games.worldcup.services import sync
+    with app.app_context():
+        with patch.object(sync, 'sync_scores',
+                          return_value={'applied_count': 0, 'failed': [],
+                                        'skipped_unassigned': 0, 'applied': []}), \
+             patch('games.worldcup.services.bracket.run_bracket_autofill',
+                   side_effect=sync.SyncError('down')):
+            out = sync.run_scores()
+        # Score sync still succeeds; the bracket-pass outage is captured, not fatal.
+        assert out['status'] == 'ok'
+        assert out['bracket'] == {'status': 'error', 'details': 'down'}
+
+
 def test_cli_bracket_mode_dispatches(app):
-    from games.worldcup.cli import SYNC_MODES
+    from games.worldcup.cli import SYNC_MODES, worldcup_cli
     assert 'bracket' in SYNC_MODES
+    with patch('games.worldcup.services.bracket.run_bracket_autofill',
+               return_value={'status': 'acted',
+                             'stages': [{'stage': 'R16', 'decision': 'APPLY',
+                                         'filled': ['#89: BRA vs MEX'], 'failed': []}]}) as af:
+        result = app.test_cli_runner().invoke(worldcup_cli, ['sync', '--mode', 'bracket'])
+    assert result.exit_code == 0
+    assert af.called
+    assert '[bracket] acted' in result.output
+    assert 'R16: APPLY' in result.output
+
+
+def test_infer_topology_uses_prior_round_feeder_not_latest_appearance(app):
+    """A team that wins rounds AFTER a shell must still map to its prior-round
+    feeder (regression for the winner_of/loser_of latest-appearance overwrite).
+
+    BRA wins #74, #89, #97, #101. For the QF shell #97, the home feeder must be
+    BRA's prior R16 win (#89) — the buggy 'latest appearance' logic returned its
+    later SF win (#101 > 97), an impossible feeder.
+    """
+    from games.worldcup.services import bracket
+    api = {'matches': [
+        {'id': 1074, 'stage': 'LAST_32', 'score': {'winner': 'HOME_TEAM'},
+         'homeTeam': {'tla': 'BRA'}, 'awayTeam': {'tla': 'KOR'}},   # #74: BRA win
+        {'id': 1089, 'stage': 'LAST_16', 'score': {'winner': 'HOME_TEAM'},
+         'homeTeam': {'tla': 'BRA'}, 'awayTeam': {'tla': 'ARG'}},   # #89: BRA win
+        {'id': 1090, 'stage': 'LAST_16', 'score': {'winner': 'HOME_TEAM'},
+         'homeTeam': {'tla': 'GER'}, 'awayTeam': {'tla': 'FRA'}},   # #90: GER win
+        {'id': 1097, 'stage': 'QUARTER_FINALS', 'score': {'winner': 'HOME_TEAM'},
+         'homeTeam': {'tla': 'BRA'}, 'awayTeam': {'tla': 'GER'}},   # #97: BRA vs GER
+        {'id': 1101, 'stage': 'SEMI_FINALS', 'score': {'winner': 'HOME_TEAM'},
+         'homeTeam': {'tla': 'BRA'}, 'awayTeam': {'tla': 'ESP'}},   # #101: BRA win (after 97)
+    ]}
+    with app.app_context():
+        for fid, num, stage in [(1074, 74, 'R32'), (1089, 89, 'R16'), (1090, 90, 'R16'),
+                                (1097, 97, 'QF'), (1101, 101, 'SF')]:
+            db.session.add(WorldCupMatch(match_number=num, stage=stage, api_fixture_id=fid))
+        db.session.commit()
+        with patch.object(bracket, '_api_get', return_value=api), \
+             patch.object(bracket, '_fifa_for_tla', side_effect=lambda tla: tla):
+            topo = bracket.infer_topology_from_api()
+        assert topo[97] == (('winner', 89), ('winner', 90))
+        assert ('winner', 101) not in topo[97]  # never a later round
 
 
 def _agreeing_proposal(stage):
