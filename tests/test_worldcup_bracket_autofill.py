@@ -256,3 +256,82 @@ def test_run_scores_invokes_bracket_autofill(app):
 def test_cli_bracket_mode_dispatches(app):
     from games.worldcup.cli import SYNC_MODES
     assert 'bracket' in SYNC_MODES
+
+
+def _agreeing_proposal(stage):
+    """Build an API proposal that mirrors derive_pairings (always agrees)."""
+    from games.worldcup.services.bracket import derive_pairings
+    pairings = derive_pairings(stage) or {}
+    return {'target_stage': stage, 'error': None, 'unresolved': [],
+            'proposals': [{'match_number': db.session.get(WorldCupMatch, sid).match_number,
+                           'shell_id': sid, 'home_fifa': h, 'away_fifa': a,
+                           'already_set': False, 'is_completed': False}
+                          for sid, (h, a) in pairings.items()]}
+
+
+def test_full_bracket_auto_advances_r32_to_final(app):
+    from games.worldcup.services import bracket
+    with app.app_context():
+        # 32 teams T01..T32.
+        teams = []
+        for i in range(1, 33):
+            teams.append(_team(f'T{i:02d}', f'Team{i}', group='A'))
+        db.session.flush()
+
+        # R32 #73-88: pair teams (0,1),(2,3),... home wins each (lower index).
+        for idx, num in enumerate(range(73, 89)):
+            h, a = teams[idx * 2], teams[idx * 2 + 1]
+            _completed_ko(num, 'R32', h, a, h)
+
+        # Empty shells for R16/QF/SF/third/final.
+        for num in range(89, 97):
+            db.session.add(WorldCupMatch(match_number=num, stage='R16'))
+        for num in range(97, 101):
+            db.session.add(WorldCupMatch(match_number=num, stage='QF'))
+        for num in (101, 102):
+            db.session.add(WorldCupMatch(match_number=num, stage='SF'))
+        db.session.add(WorldCupMatch(match_number=103, stage='third_place'))
+        db.session.add(WorldCupMatch(match_number=104, stage='final'))
+        db.session.commit()
+
+        def complete_round(stage):
+            """Mark every filled shell of `stage` completed; home team wins."""
+            for m in WorldCupMatch.query.filter_by(stage=stage).all():
+                if m.home_team_id and m.away_team_id and not m.is_completed:
+                    m.winner_team_id = m.home_team_id
+                    m.home_score, m.away_score, m.is_completed = 1, 0, True
+            db.session.commit()
+
+        # Patch populatable_bracket_stages + API to track our own DB state.
+        def fake_populatable():
+            stages = []
+            for st in bracket.DOWNSTREAM_STAGES:
+                empty = (WorldCupMatch.query.filter_by(stage=st)
+                         .filter(db.or_(WorldCupMatch.home_team_id.is_(None),
+                                        WorldCupMatch.away_team_id.is_(None))).count())
+                if empty:
+                    stages.append(st)
+            return stages
+
+        with patch.object(bracket, '_send_admin_email', return_value=True), \
+             patch.object(bracket, 'populatable_bracket_stages', side_effect=fake_populatable), \
+             patch.object(bracket, 'fetch_bracket_proposal',
+                          side_effect=lambda st: _agreeing_proposal(st)):
+            # R16 fills from R32 results.
+            bracket.run_bracket_autofill()
+            assert WorldCupMatch.query.filter_by(match_number=89).first().home_team_id is not None
+            complete_round('R16')
+            # QF fills, then SF, then final+third.
+            bracket.run_bracket_autofill(); complete_round('QF')
+            bracket.run_bracket_autofill(); complete_round('SF')
+            bracket.run_bracket_autofill()  # fills final (104) + third place (103)
+
+        final = WorldCupMatch.query.filter_by(match_number=104).first()
+        third = WorldCupMatch.query.filter_by(match_number=103).first()
+        assert final.home_team_id is not None and final.away_team_id is not None
+        assert third.home_team_id is not None and third.away_team_id is not None
+        # Final = SF winners (home sides); third = SF losers (away sides).
+        sf1 = WorldCupMatch.query.filter_by(match_number=101).first()
+        sf2 = WorldCupMatch.query.filter_by(match_number=102).first()
+        assert {final.home_team_id, final.away_team_id} == {sf1.winner_team_id, sf2.winner_team_id}
+        assert {third.home_team_id, third.away_team_id} == {sf1.away_team_id, sf2.away_team_id}
