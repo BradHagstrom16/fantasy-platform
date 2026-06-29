@@ -13,6 +13,9 @@ from dataclasses import dataclass
 from datetime import date
 from typing import Literal
 
+from sqlalchemy import update
+from sqlalchemy.exc import SQLAlchemyError
+
 from extensions import db
 from games.worldcup.models import (
     WorldCupEnrollment, WorldCupTeam, WorldCupMatch, WorldCupPick,
@@ -390,6 +393,47 @@ def set_knockout_teams(
         'home': home.display_name,
         'away': away.display_name,
     }
+
+
+def set_knockout_team_side(match_id: int, side: str, fifa_code: str) -> dict:
+    """Assign ONE side of a knockout shell as its feeder resolves (incremental).
+
+    Writes `home_team_id` or `away_team_id` only when that side is currently empty
+    — the empty-side guardrail makes the write idempotent and never clobbers a
+    manual override or the opposite side. The sibling `set_knockout_teams` still
+    owns the both-sides admin path.
+    """
+    if side not in ('home', 'away'):
+        return {'error': f'Invalid side: {side}'}
+    match = db.session.get(WorldCupMatch, match_id)
+    if not match:
+        return {'error': f'Match {match_id} not found'}
+
+    team = WorldCupTeam.query.filter_by(fifa_code=fifa_code).first()
+    if not team:
+        return {'error': f'Team not found: {fifa_code}'}
+
+    match_number, team_name = match.match_number, team.display_name
+    col = getattr(WorldCupMatch, f'{side}_team_id')
+    # Atomic compare-and-set: the IS NULL guard lives in the WHERE clause so a
+    # concurrent admin edit (separate process) can't be clobbered by a racy
+    # read-then-write — rowcount 0 means the side was already taken.
+    try:
+        result = db.session.execute(
+            update(WorldCupMatch)
+            .where(WorldCupMatch.id == match_id, col.is_(None))
+            .values({f'{side}_team_id': team.id})
+        )
+        if result.rowcount == 0:
+            db.session.rollback()
+            return {'match_number': match_number, 'side': side, 'skipped': True}
+        db.session.commit()
+    except SQLAlchemyError as exc:
+        # Surface as a structured failure so run_bracket_autofill classifies it
+        # and emails, rather than the commit aborting the whole timer pass.
+        db.session.rollback()
+        return {'error': f'Failed to set {side} for match {match_id}: {exc}'}
+    return {'match_number': match_number, 'side': side, 'team': team_name}
 
 
 def compute_team_score_events(team: WorldCupTeam) -> list[ScoreEvent]:

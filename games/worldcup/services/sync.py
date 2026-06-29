@@ -363,6 +363,7 @@ def fetch_bracket_proposal(target_stage: str) -> dict:
 
     proposals = []
     unresolved = []
+    sides_by_shell = {}  # shell_id -> {'home': fifa|None, 'away': fifa|None}
     matched_ids = set()
     for f in data.get('matches', []):
         if STAGE_MAP.get(f.get('stage')) != target_stage:
@@ -375,6 +376,9 @@ def fetch_bracket_proposal(target_stage: str) -> dict:
         matched_ids.add(shell.id)
         home = _fifa_for_tla((f.get('homeTeam') or {}).get('tla'))
         away = _fifa_for_tla((f.get('awayTeam') or {}).get('tla'))
+        # Record each side independently — a side the API hasn't resolved is None.
+        # The per-side bracket auto-fill cross-checks against this map.
+        sides_by_shell[shell.id] = {'home': home or None, 'away': away or None}
         if not home or not away:
             unresolved.append({'match_number': shell.match_number,
                                'reason': 'API has not resolved both teams yet'})
@@ -403,6 +407,7 @@ def fetch_bracket_proposal(target_stage: str) -> dict:
         'target_stage': target_stage,
         'proposals': sorted(proposals, key=lambda p: p['match_number']),
         'unresolved': sorted(unresolved, key=lambda u: u['match_number']),
+        'sides': sides_by_shell,
         'error': None,
     }
 
@@ -500,13 +505,16 @@ def _send_admin_email(subject: str, body: str) -> bool:
     return send_platform_email(to_addr, f'[World Cup] {subject}', body)
 
 
-def _notify_once(signature: str) -> bool:
+def _notify_once(signature: str, marker_name: str = '.wc_sync_notify') -> bool:
     """Return True the first time we see `signature`; suppress repeats.
 
     Schema-free de-dup via a marker file in the instance dir. A new pending-state
     signature (e.g. group stage done, then a KO round done) re-arms the notice.
+    Each notification CATEGORY passes its own `marker_name` so independent streams
+    (advancement vs. bracket conflicts vs. unconfirmed fills) don't overwrite one
+    another's single-slot marker.
     """
-    marker = os.path.join(current_app.instance_path, '.wc_sync_notify')
+    marker = os.path.join(current_app.instance_path, marker_name)
     try:
         with open(marker) as fh:
             last = fh.read().strip()
