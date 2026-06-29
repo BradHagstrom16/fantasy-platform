@@ -21,20 +21,22 @@ logger = logging.getLogger(__name__)
 DOWNSTREAM_STAGES = ('R16', 'QF', 'SF', 'final', 'third_place')
 
 # Downstream match_number -> (home_feeder, away_feeder); feeder = (kind, match_no).
-# SEQUENTIAL DEFAULT — replace 89-100 feeders with the official FIFA 2026 values
-# (verify via infer_topology_from_api). 101-104 are fixed/correct.
+# Official FIFA 2026 bracket (fixed, no redraws). R16/QF/SF transcribed from the
+# Wikipedia knockout-stage bracket template + corroborated by news bracket sources;
+# it is a genuine cross-bracket, NOT a sequential pairing. Confirm once the real
+# rounds resolve with: `infer_topology_from_api()` (see docs plan Task 7 Step 2).
 BRACKET_TOPOLOGY: dict[int, tuple[tuple[str, int], tuple[str, int]]] = {
-    89: (('winner', 73), ('winner', 74)),
-    90: (('winner', 75), ('winner', 76)),
-    91: (('winner', 77), ('winner', 78)),
+    89: (('winner', 74), ('winner', 77)),
+    90: (('winner', 73), ('winner', 75)),
+    91: (('winner', 76), ('winner', 78)),
     92: (('winner', 79), ('winner', 80)),
-    93: (('winner', 81), ('winner', 82)),
-    94: (('winner', 83), ('winner', 84)),
-    95: (('winner', 85), ('winner', 86)),
-    96: (('winner', 87), ('winner', 88)),
+    93: (('winner', 83), ('winner', 84)),
+    94: (('winner', 81), ('winner', 82)),
+    95: (('winner', 86), ('winner', 88)),
+    96: (('winner', 85), ('winner', 87)),
     97: (('winner', 89), ('winner', 90)),
-    98: (('winner', 91), ('winner', 92)),
-    99: (('winner', 93), ('winner', 94)),
+    98: (('winner', 93), ('winner', 94)),
+    99: (('winner', 91), ('winner', 92)),
     100: (('winner', 95), ('winner', 96)),
     101: (('winner', 97), ('winner', 98)),
     102: (('winner', 99), ('winner', 100)),
