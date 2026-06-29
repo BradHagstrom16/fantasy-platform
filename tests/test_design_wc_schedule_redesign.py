@@ -419,9 +419,15 @@ def test_render_half_filled_knockout_shell_shows_team_and_tbd(app):
                                      home_team_id=esp.id, is_completed=False))
         db.session.commit()
     html = app.test_client().get('/worldcup/schedule').data.decode()
-    assert 'Round of 16' in html
-    assert 'wc-ko-tbd' in html   # the undecided away side renders TBD
-    assert 'Spain' in html        # the resolved home side renders the team
+    # Scope assertions to the Round-of-16 column only — ESP also renders in the
+    # group row (#1) and the completed R32 cell (#89), so a bare `'Spain' in html`
+    # would pass even if the half-filled cell silently dropped the known team.
+    import re
+    section = re.search(r'Round of 16(.*?)Quarterfinals', html, re.S)
+    assert section, "Round of 16 column not rendered"
+    r16 = section.group(1)
+    assert 'wc-ko-tbd' in r16   # the undecided away side renders TBD in the R16 cell
+    assert 'Spain' in r16        # the resolved home side renders the team in the R16 cell
 
 
 def test_roster_highlight_hidden_for_anonymous_viewer(app):

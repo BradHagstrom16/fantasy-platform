@@ -505,13 +505,16 @@ def _send_admin_email(subject: str, body: str) -> bool:
     return send_platform_email(to_addr, f'[World Cup] {subject}', body)
 
 
-def _notify_once(signature: str) -> bool:
+def _notify_once(signature: str, marker_name: str = '.wc_sync_notify') -> bool:
     """Return True the first time we see `signature`; suppress repeats.
 
     Schema-free de-dup via a marker file in the instance dir. A new pending-state
     signature (e.g. group stage done, then a KO round done) re-arms the notice.
+    Each notification CATEGORY passes its own `marker_name` so independent streams
+    (advancement vs. bracket conflicts vs. unconfirmed fills) don't overwrite one
+    another's single-slot marker.
     """
-    marker = os.path.join(current_app.instance_path, '.wc_sync_notify')
+    marker = os.path.join(current_app.instance_path, marker_name)
     try:
         with open(marker) as fh:
             last = fh.read().strip()

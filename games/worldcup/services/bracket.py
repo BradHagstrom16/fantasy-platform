@@ -229,6 +229,14 @@ def run_bracket_autofill() -> dict:
         return {'status': 'idle', 'stages': []}
 
     acted = []
+    # Accumulate notifications across ALL stages, then send one batched email per
+    # category. _notify_once' marker holds a single signature, so a per-stage call
+    # would let one stage's signature overwrite another's (final + third_place both
+    # conflicting -> re-sent every run). One signature per category, on its own
+    # marker file, is the de-dup that actually holds.
+    all_conflicts = []    # (stage, shell_id, side, fifa, api_pair)
+    all_failed = []       # (stage, shell_id, side, error)
+    all_unconfirmed = []  # (stage, label)
     for stage in stages:
         d = reconcile(stage)
         applies, conflicts = d['applies'], d['conflicts']
@@ -250,40 +258,47 @@ def run_bracket_autofill() -> dict:
                 if not confirmed:
                     unconfirmed.append(label)
 
-        if conflicts:
-            sig = 'bracket-conflict:' + stage + ':' + ','.join(
-                sorted(f'{s}:{side}' for s, side, *_ in conflicts))
-            if _notify_once(sig):
-                lines = [f"  #{db.session.get(WorldCupMatch, s).match_number} {side}: "
-                         f"{fifa} (ours) — API pairing {api}"
-                         for s, side, fifa, api in conflicts]
-                _send_admin_email(
-                    f'Bracket auto-fill BLOCKED ({stage}): API disagrees',
-                    'Our results and the API disagree on these sides — nothing '
-                    'written for them. Confirm manually at '
-                    f'/worldcup/admin/bracket/{stage}.\n' + '\n'.join(lines))
-
-        if failed:
-            # A persistent write failure would leave the side empty with no alert —
-            # the silent-stall mode this feature exists to remove.
-            _send_admin_email(
-                f'Bracket auto-fill write FAILED ({stage})',
-                'These sides could not be written — confirm manually at '
-                f'/worldcup/admin/bracket/{stage}:\n'
-                + '\n'.join(f"  shell {f['shell_id']} {f['side']}: {f['error']}"
-                            for f in failed))
-
-        if unconfirmed:
-            sig = 'bracket-unconfirmed:' + stage + ':' + ','.join(sorted(unconfirmed))
-            if _notify_once(sig):
-                _send_admin_email(
-                    f'Bracket auto-filled ({stage}) — NO API confirmation, please spot-check',
-                    'These sides were written from our own results without an API '
-                    'second-opinion (the API had not resolved them yet):\n  '
-                    + '\n  '.join(unconfirmed))
-
+        all_conflicts += [(stage, s, side, fifa, api) for s, side, fifa, api in conflicts]
+        all_failed += [(stage, f['shell_id'], f['side'], f['error']) for f in failed]
+        all_unconfirmed += [(stage, lbl) for lbl in unconfirmed]
         acted.append({'stage': stage, 'filled': filled, 'unconfirmed': len(unconfirmed),
                       'conflicts': [_side_label(s, side, fifa) for s, side, fifa, _ in conflicts],
                       'failed': failed})
+
+    if all_conflicts:
+        # Signature carries fifa + api so a CHANGED conflict re-arms the notice.
+        sig = 'bracket-conflict:' + '|'.join(sorted(
+            f'{st}:{s}:{side}:{fifa}:{",".join(api)}'
+            for st, s, side, fifa, api in all_conflicts))
+        if _notify_once(sig, '.wc_bracket_conflict_notify'):
+            lines = [f"  {st} #{db.session.get(WorldCupMatch, s).match_number} {side}: "
+                     f"{fifa} (ours) — API pairing {api}"
+                     for st, s, side, fifa, api in all_conflicts]
+            hit = ', '.join(sorted({st for st, *_ in all_conflicts}))
+            _send_admin_email(
+                'Bracket auto-fill BLOCKED: API disagrees',
+                'Our results and the API disagree on these sides — nothing written '
+                f'for them. Confirm manually at /worldcup/admin/bracket/<stage> ({hit}).\n'
+                + '\n'.join(lines))
+
+    if all_failed:
+        # A persistent write failure would leave the side empty with no alert —
+        # the silent-stall mode this feature exists to remove (always loud).
+        _send_admin_email(
+            'Bracket auto-fill write FAILED',
+            'These sides could not be written — confirm manually at '
+            '/worldcup/admin/bracket/<stage>:\n'
+            + '\n'.join(f"  {st} shell {s} {side}: {err}"
+                        for st, s, side, err in all_failed))
+
+    if all_unconfirmed:
+        sig = 'bracket-unconfirmed:' + '|'.join(sorted(
+            f'{st}:{lbl}' for st, lbl in all_unconfirmed))
+        if _notify_once(sig, '.wc_bracket_unconfirmed_notify'):
+            _send_admin_email(
+                'Bracket auto-filled — NO API confirmation, please spot-check',
+                'These sides were written from our own results without an API '
+                'second-opinion (the API had not resolved them yet):\n'
+                + '\n'.join(f"  {st} {lbl}" for st, lbl in all_unconfirmed))
 
     return {'status': 'acted' if acted else 'idle', 'stages': acted}
