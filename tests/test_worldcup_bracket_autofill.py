@@ -45,3 +45,82 @@ def test_topology_is_structurally_consistent():
     # (101 & 102 each feed both final-as-winner and third-as-loser).
     winner_feeders = [n for k, n in feeder_uses if k == 'winner']
     assert len(winner_feeders) == len(set(winner_feeders))
+
+
+def _team(fifa, name, group='A', tier=1, mult=1.0):
+    t = WorldCupTeam(fifa_code=fifa, name=name, display_name=name, tier=tier,
+                     multiplier=mult, confederation='UEFA', group_letter=group)
+    db.session.add(t)
+    return t
+
+
+def _completed_ko(match_number, stage, home, away, winner):
+    """Create a completed KO match with a winner; return the shell."""
+    m = WorldCupMatch(match_number=match_number, stage=stage,
+                      home_team_id=home.id, away_team_id=away.id,
+                      winner_team_id=winner.id, is_completed=True,
+                      home_score=1, away_score=0)
+    db.session.add(m)
+    return m
+
+
+def test_derive_pairings_r16_happy_path(app):
+    from games.worldcup.services.bracket import derive_pairings
+    with app.app_context():
+        bra, kor = _team('BRA', 'Brazil'), _team('KOR', 'Korea')
+        ned, mex = _team('NED', 'Netherlands'), _team('MEX', 'Mexico')
+        db.session.flush()
+        _completed_ko(73, 'R32', bra, kor, bra)   # winner BRA
+        _completed_ko(74, 'R32', ned, mex, mex)   # winner MEX
+        shell = WorldCupMatch(match_number=89, stage='R16')  # empty
+        db.session.add(shell)
+        db.session.commit()
+        out = derive_pairings('R16')
+        assert out == {shell.id: ('BRA', 'MEX')}
+
+
+def test_derive_pairings_not_ready_when_feeder_incomplete(app):
+    from games.worldcup.services.bracket import derive_pairings
+    with app.app_context():
+        bra, kor = _team('BRA', 'Brazil'), _team('KOR', 'Korea')
+        ned, mex = _team('NED', 'Netherlands'), _team('MEX', 'Mexico')
+        db.session.flush()
+        _completed_ko(73, 'R32', bra, kor, bra)
+        # match 74 NOT completed (no winner)
+        m74 = WorldCupMatch(match_number=74, stage='R32',
+                            home_team_id=ned.id, away_team_id=mex.id, is_completed=False)
+        db.session.add(m74)
+        db.session.add(WorldCupMatch(match_number=89, stage='R16'))
+        db.session.commit()
+        assert derive_pairings('R16') is None
+
+
+def test_derive_pairings_third_place_uses_sf_losers(app):
+    from games.worldcup.services.bracket import derive_pairings
+    with app.app_context():
+        a, b = _team('ARG', 'Argentina'), _team('FRA', 'France')
+        c, d = _team('ESP', 'Spain'), _team('GER', 'Germany')
+        db.session.flush()
+        _completed_ko(101, 'SF', a, b, a)   # loser FRA
+        _completed_ko(102, 'SF', c, d, d)   # loser ESP
+        shell = WorldCupMatch(match_number=103, stage='third_place')
+        db.session.add(shell)
+        db.session.commit()
+        out = derive_pairings('third_place')
+        assert out == {shell.id: ('FRA', 'ESP')}
+
+
+def test_derive_pairings_skips_already_filled_shell(app):
+    from games.worldcup.services.bracket import derive_pairings
+    with app.app_context():
+        bra, kor = _team('BRA', 'Brazil'), _team('KOR', 'Korea')
+        ned, mex = _team('NED', 'Netherlands'), _team('MEX', 'Mexico')
+        db.session.flush()
+        _completed_ko(73, 'R32', bra, kor, bra)
+        _completed_ko(74, 'R32', ned, mex, mex)
+        # shell 89 already filled -> not in output
+        filled = WorldCupMatch(match_number=89, stage='R16',
+                               home_team_id=bra.id, away_team_id=mex.id)
+        db.session.add(filled)
+        db.session.commit()
+        assert derive_pairings('R16') == {}

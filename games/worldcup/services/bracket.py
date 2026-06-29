@@ -87,3 +87,52 @@ def infer_topology_from_api() -> dict:
         if fh and fa:
             topo[num] = (fh, fa)
     return dict(sorted(topo.items()))
+
+
+def _winner_fifa(match_number: int) -> str | None:
+    m = WorldCupMatch.query.filter_by(match_number=match_number).first()
+    if not m or not m.is_completed or not m.winner_team_id:
+        return None
+    w = db.session.get(WorldCupTeam, m.winner_team_id)
+    return w.fifa_code if w else None
+
+
+def _loser_fifa(match_number: int) -> str | None:
+    m = WorldCupMatch.query.filter_by(match_number=match_number).first()
+    if not m or not m.is_completed or not m.winner_team_id:
+        return None
+    loser_id = m.home_team_id if m.winner_team_id == m.away_team_id else m.away_team_id
+    l = db.session.get(WorldCupTeam, loser_id) if loser_id else None
+    return l.fifa_code if l else None
+
+
+def _resolve_feeder(kind: str, feeder_no: int) -> str | None:
+    return _winner_fifa(feeder_no) if kind == 'winner' else _loser_fifa(feeder_no)
+
+
+def derive_pairings(stage: str) -> dict | None:
+    """{shell_id: (home_fifa, away_fifa)} for every EMPTY shell of `stage`.
+
+    Returns None if the stage is not fully ready: any feeder match is not yet
+    completed / has no winner, or a derived team cannot be resolved. Empty dict
+    means the stage has no empty shells (already filled).
+    """
+    empty_shells = (
+        WorldCupMatch.query.filter_by(stage=stage)
+        .filter(db.or_(WorldCupMatch.home_team_id.is_(None),
+                       WorldCupMatch.away_team_id.is_(None)))
+        .all()
+    )
+    out: dict = {}
+    for shell in empty_shells:
+        feeders = BRACKET_TOPOLOGY.get(shell.match_number)
+        if not feeders:
+            logger.warning('No topology entry for shell #%s', shell.match_number)
+            return None
+        (hk, hn), (ak, an) = feeders
+        home = _resolve_feeder(hk, hn)
+        away = _resolve_feeder(ak, an)
+        if not home or not away or home == away:
+            return None  # stage not ready (feeder unplayed or unresolved)
+        out[shell.id] = (home, away)
+    return out
