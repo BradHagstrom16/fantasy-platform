@@ -28,7 +28,7 @@ from games.worldcup.models import (
 
 worldcup_cli = AppGroup('worldcup', help="World Cup Fantasy Pool management commands.")
 
-SYNC_MODES = ('link', 'scores', 'advancement', 'digest', 'status')
+SYNC_MODES = ('link', 'scores', 'advancement', 'digest', 'status', 'bracket')
 
 
 @worldcup_cli.command('seed-teams')
@@ -456,6 +456,13 @@ def sync_cmd(mode):
         click.echo(f"[digest] {result.get('status')} ({result.get('count', 0)} results)")
         if result.get('status') == 'error':
             raise click.ClickException(result.get('details') or 'digest failed')
+    elif mode == 'bracket':
+        from games.worldcup.services import bracket as wc_bracket
+        result = wc_bracket.run_bracket_autofill()
+        click.echo(f"[bracket] {result.get('status')}")
+        for s in result.get('stages', []):
+            click.echo(f"   {s['stage']}: {s['decision']} "
+                       f"(filled {len(s.get('filled', []))})")
     elif mode == 'status':
         linked = WorldCupMatch.query.filter(WorldCupMatch.api_fixture_id.isnot(None)).count()
         total = WorldCupMatch.query.count()

@@ -238,3 +238,21 @@ def test_autofill_idle_when_nothing_populatable(app):
         with patch.object(bracket, 'populatable_bracket_stages', return_value=[]):
             out = bracket.run_bracket_autofill()
         assert out['status'] == 'idle'
+
+
+def test_run_scores_invokes_bracket_autofill(app):
+    from games.worldcup.services import sync
+    with app.app_context():
+        with patch.object(sync, 'sync_scores',
+                          return_value={'applied_count': 0, 'failed': [],
+                                        'skipped_unassigned': 0, 'applied': []}), \
+             patch('games.worldcup.services.bracket.run_bracket_autofill',
+                   return_value={'status': 'idle', 'stages': []}) as af:
+            out = sync.run_scores()
+        assert af.called
+        assert out['bracket'] == {'status': 'idle', 'stages': []}
+
+
+def test_cli_bracket_mode_dispatches(app):
+    from games.worldcup.cli import SYNC_MODES
+    assert 'bracket' in SYNC_MODES
