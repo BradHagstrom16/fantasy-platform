@@ -274,20 +274,23 @@ def run_bracket_autofill() -> dict:
             lines = [f"  {st} #{db.session.get(WorldCupMatch, s).match_number} {side}: "
                      f"{fifa} (ours) — API pairing {api}"
                      for st, s, side, fifa, api in all_conflicts]
-            hit = ', '.join(sorted({st for st, *_ in all_conflicts}))
+            urls = ', '.join(f'/worldcup/admin/bracket/{st}'
+                             for st in sorted({st for st, *_ in all_conflicts}))
             _send_admin_email(
                 'Bracket auto-fill BLOCKED: API disagrees',
                 'Our results and the API disagree on these sides — nothing written '
-                f'for them. Confirm manually at /worldcup/admin/bracket/<stage> ({hit}).\n'
+                f'for them. Confirm manually at: {urls}\n'
                 + '\n'.join(lines))
 
     if all_failed:
         # A persistent write failure would leave the side empty with no alert —
         # the silent-stall mode this feature exists to remove (always loud).
+        urls = ', '.join(f'/worldcup/admin/bracket/{st}'
+                         for st in sorted({st for st, *_ in all_failed}))
         _send_admin_email(
             'Bracket auto-fill write FAILED',
             'These sides could not be written — confirm manually at '
-            '/worldcup/admin/bracket/<stage>:\n'
+            f'{urls}:\n'
             + '\n'.join(f"  {st} shell {s} {side}: {err}"
                         for st, s, side, err in all_failed))
 
