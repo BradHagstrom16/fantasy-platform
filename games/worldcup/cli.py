@@ -15,6 +15,7 @@ from datetime import datetime, timedelta
 
 import click
 from flask.cli import AppGroup
+from sqlalchemy import or_
 
 from extensions import db
 from games.worldcup.constants import SEASON_YEAR, WORLDCUP_TZ
@@ -514,6 +515,70 @@ def send_group_recap_cmd():
     )
     if result.get('errors'):
         raise click.ClickException('One or more recap sends failed — check logs.')
+
+
+@worldcup_cli.command('repair-pk-scores')
+def repair_pk_scores():
+    """Correct already-completed PK match scores (ET score + pen tally).
+
+    sync_scores() skips completed shells; this command re-fetches those
+    matches from the API and writes the ET score to home_score/away_score
+    and the penalty tally to home_pen/away_pen. Idempotent — skips matches
+    where both pen tallies are already set.
+    """
+    from games.worldcup.services.sync import _api_get, FINISHED_STATUSES
+
+    data = _api_get('competitions/WC/matches')
+
+    # Target completed PK matches still missing EITHER pen tally — a row with
+    # one side populated but not the other is half-repaired and must still be
+    # backfilled so both sides of the tally converge.
+    candidates = {
+        m.api_fixture_id: m
+        for m in WorldCupMatch.query.filter(
+            WorldCupMatch.api_fixture_id.isnot(None),
+            WorldCupMatch.is_completed.is_(True),
+            WorldCupMatch.penalties.is_(True),
+            or_(WorldCupMatch.home_pen.is_(None),
+                WorldCupMatch.away_pen.is_(None)),
+        ).all()
+    }
+
+    if not candidates:
+        click.echo('No PK matches need repair.')
+        return
+
+    fixed, failed = [], []
+    for f in data.get('matches', []):
+        if f.get('status') not in FINISHED_STATUSES:
+            continue
+        shell = candidates.get(f.get('id'))
+        if not shell:
+            continue
+
+        score = f.get('score') or {}
+        if score.get('duration') != 'PENALTY_SHOOTOUT':
+            continue
+
+        et = score.get('extraTime') or {}
+        pen = score.get('penalties') or {}
+        et_home, et_away = et.get('home'), et.get('away')
+        pen_home, pen_away = pen.get('home'), pen.get('away')
+
+        if None in (et_home, et_away, pen_home, pen_away):
+            failed.append(shell.match_number)
+            continue
+
+        shell.home_score = et_home
+        shell.away_score = et_away
+        shell.home_pen = pen_home
+        shell.away_pen = pen_away
+        fixed.append(shell.match_number)
+
+    db.session.commit()
+    click.echo(f'Fixed {len(fixed)} PK match(es): match numbers {fixed}')
+    if failed:
+        click.echo(f'WARNING — API missing ET/pen data for: {failed}')
 
 
 def register_worldcup_cli(app):

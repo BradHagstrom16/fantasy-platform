@@ -56,7 +56,7 @@
         <div class="roll-rank{% if row.rank == 1 %} roll-rank--gold{% endif %}">{{ row.rank }}</div>
         <div class="roll-meta">
           <div class="roll-name">
-            {{ row.enrollment.user.get_avatar() }} {{ row.enrollment.get_display_name() }}
+            {{ row.enrollment.user.get_avatar() }}<a href="{{ url_for('worldcup.player_detail', enrollment_id=row.enrollment.id) }}" class="roll-name-link">{{ row.enrollment.get_display_name() }}</a>
             {% if row.is_you %}<span class="roll-you-chip">YOU</span>{% endif %}
           </div>
           {% if row.tagline %}

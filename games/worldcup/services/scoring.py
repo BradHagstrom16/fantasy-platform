@@ -280,6 +280,8 @@ def process_match_result(
     is_draw: bool = False,
     extra_time: bool = False,
     penalties: bool = False,
+    home_pen: int | None = None,
+    away_pen: int | None = None,
 ) -> dict:
     """Enter a match result. Primary entry point for scoring during the tournament.
 
@@ -302,6 +304,8 @@ def process_match_result(
     match.is_draw = is_draw
     match.extra_time = extra_time
     match.penalties = penalties
+    match.home_pen = home_pen
+    match.away_pen = away_pen
     match.is_completed = True
 
     # Determine winner

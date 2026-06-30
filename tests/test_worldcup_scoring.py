@@ -352,6 +352,44 @@ class TestKnockoutScoring:
             db.session.refresh(t1)
             assert t1.base_points == 8.0  # same as normal win
 
+    def test_pk_match_stores_pen_columns(self, app):
+        with app.app_context():
+            from games.worldcup.services.scoring import process_match_result
+
+            t1 = _make_team(db.session, 'PKA', 'PK Alpha', 4, 4.0)
+            t2 = _make_team(db.session, 'PKB', 'PK Beta', 5, 7.0)
+            match = _make_match(db.session, 201, 'R32', t1, t2)
+            db.session.commit()
+
+            # Away side (PKB) wins the shootout 4-3, so the declared winner must
+            # be PKB to match the tally.
+            process_match_result(
+                match.id, 1, 1, 'PKB',
+                extra_time=True, penalties=True,
+                home_pen=3, away_pen=4,
+            )
+
+            db.session.refresh(match)
+            assert match.home_score == 1
+            assert match.away_score == 1
+            assert match.home_pen == 3
+            assert match.away_pen == 4
+
+    def test_non_pk_match_pen_columns_null(self, app):
+        with app.app_context():
+            from games.worldcup.services.scoring import process_match_result
+
+            t1 = _make_team(db.session, 'REG1', 'Reg One', 4, 4.0)
+            t2 = _make_team(db.session, 'REG2', 'Reg Two', 5, 7.0)
+            match = _make_match(db.session, 202, 'R32', t1, t2)
+            db.session.commit()
+
+            process_match_result(match.id, 2, 0, 'REG1')
+
+            db.session.refresh(match)
+            assert match.home_pen is None
+            assert match.away_pen is None
+
 
 # ============================================================
 # Podium Bonuses

@@ -247,11 +247,15 @@ def test_sync_scores_knockout_extra_time_penalties(app):
                           kickoff_utc=datetime(2026, 7, 4, 19, 0, 0))
         db.session.add(m); db.session.commit()
         mid = m.id
+        # Realistic football-data.org PK payload: fullTime bundles the PK goals
+        # into the total (1-1 ET + 3-4 PKs => 4-5), so sync must read extraTime
+        # for the stored score and penalties for the tally.
         payload = {'matches': [{
             'id': 537090, 'status': 'FINISHED', 'stage': 'LAST_16',
             'homeTeam': {'tla': 'ESP'}, 'awayTeam': {'tla': 'BRA'},
             'score': {'winner': 'AWAY_TEAM', 'duration': 'PENALTY_SHOOTOUT',
-                      'fullTime': {'home': 1, 'away': 1},
+                      'fullTime': {'home': 4, 'away': 5},
+                      'extraTime': {'home': 1, 'away': 1},
                       'penalties': {'home': 3, 'away': 4}},
         }]}
         with patch.object(sync, '_api_get', return_value=payload):
@@ -259,6 +263,36 @@ def test_sync_scores_knockout_extra_time_penalties(app):
         m = db.session.get(WorldCupMatch, mid)
         assert m.is_completed and m.winner_team_id == b.id
         assert m.extra_time is True and m.penalties is True
+        # Stored score is the ET score (not the inflated fullTime), with the
+        # penalty shootout captured separately.
+        assert m.home_score == 1 and m.away_score == 1
+        assert m.home_pen == 3 and m.away_pen == 4
+
+
+def test_sync_scores_skips_pk_without_extra_time(app):
+    """A PENALTY_SHOOTOUT payload missing the extraTime/penalties breakdown is
+    reported as failed, not written from the bundled fullTime total."""
+    from games.worldcup.services import sync
+    with app.app_context():
+        a = _team('ESP', 'Spain', 'B'); b = _team('BRA', 'Brazil', 'C')
+        db.session.flush()
+        m = WorldCupMatch(match_number=91, stage='R16',
+                          home_team_id=a.id, away_team_id=b.id,
+                          api_fixture_id=537091,
+                          kickoff_utc=datetime(2026, 7, 4, 19, 0, 0))
+        db.session.add(m); db.session.commit()
+        mid = m.id
+        payload = {'matches': [{
+            'id': 537091, 'status': 'FINISHED', 'stage': 'LAST_16',
+            'homeTeam': {'tla': 'ESP'}, 'awayTeam': {'tla': 'BRA'},
+            'score': {'winner': 'AWAY_TEAM', 'duration': 'PENALTY_SHOOTOUT',
+                      'fullTime': {'home': 4, 'away': 5}},
+        }]}
+        with patch.object(sync, '_api_get', return_value=payload):
+            report = sync.sync_scores()
+        m = db.session.get(WorldCupMatch, mid)
+        assert not m.is_completed
+        assert any(fr['match_number'] == 91 for fr in report['failed'])
 
 
 def test_sync_scores_skips_knockout_with_unset_teams(app):
