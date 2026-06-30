@@ -451,3 +451,26 @@ def test_admin_dashboard_shows_pk_format(client, app):
     assert '1 (4)' in body
     assert '5&ndash;6' not in body
     assert '5–6' not in body
+
+
+def test_player_detail_route_accessible_to_admin(client, app):
+    """player_detail at /worldcup/leaderboard/<id> returns 200 for an admin."""
+    admin_id = _make_admin_user(app)
+    with app.app_context():
+        from models.user import User
+        user = User.query.filter_by(is_admin=True).first()
+        enrollment = WorldCupEnrollment(
+            user_id=user.id,
+            season_year=2026,
+            picks_submitted=False,
+        )
+        db.session.add(enrollment)
+        db.session.commit()
+        eid = enrollment.id
+
+    with client.session_transaction() as sess:
+        sess['_user_id'] = str(admin_id)
+        sess['_fresh'] = True
+
+    resp = client.get(f'/worldcup/leaderboard/{eid}')
+    assert resp.status_code == 200
