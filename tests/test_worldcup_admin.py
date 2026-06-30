@@ -437,7 +437,7 @@ def test_admin_dashboard_shows_pk_format(client, app):
             home_score=1, away_score=1,
             home_pen=3, away_pen=4,
             is_completed=True, penalties=True, extra_time=True,
-            winner_team_id=t1.id,
+            winner_team_id=t2.id,  # away side won the shootout 4-3
         )
         db.session.add(m)
         db.session.commit()
