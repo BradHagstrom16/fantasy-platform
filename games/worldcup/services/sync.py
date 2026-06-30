@@ -263,10 +263,25 @@ def sync_scores() -> dict:
             winner_side = f['score'].get('winner')
             api_winner = f.get('homeTeam') if winner_side == 'HOME_TEAM' else f.get('awayTeam')
             winner_fifa = _fifa_for_tla((api_winner or {}).get('tla'))
+
+            home_pen, away_pen = None, None
+            if duration == 'PENALTY_SHOOTOUT':
+                # Use extraTime score (pre-PK) for home_score/away_score.
+                # fullTime from the API bundles PK goals into the total.
+                et = (f.get('score') or {}).get('extraTime') or {}
+                pen = (f.get('score') or {}).get('penalties') or {}
+                et_home, et_away = et.get('home'), et.get('away')
+                if et_home is not None and et_away is not None:
+                    home, away = et_home, et_away
+                home_pen = pen.get('home')
+                away_pen = pen.get('away')
+
             res = process_match_result(
                 shell.id, home, away, winner_fifa,
                 extra_time=duration in ('EXTRA_TIME', 'PENALTY_SHOOTOUT'),
                 penalties=duration == 'PENALTY_SHOOTOUT',
+                home_pen=home_pen,
+                away_pen=away_pen,
             )
         if 'error' in res:
             failed.append({'match_number': shell.match_number, 'match_id': shell.id,
