@@ -29,7 +29,7 @@
           <div class="m-side">
             <div class="m-flag">{{ flag(match.home_team.iso_code if match.home_team else none) }}</div>
             <div class="m-name">{{ match.home_team.fifa_code if match.home_team else 'TBD' }}</div>
-            <div class="m-score">{{ match.home_score if match.home_score is not none else '·' }}{% if match.penalties and match.home_pen is not none %} ({{ match.home_pen }}){% endif %}</div>
+            <div class="m-score">{{ match.home_score if match.home_score is not none else '·' }}{% if match.penalties and match.home_pen is not none and match.away_pen is not none %} ({{ match.home_pen }}){% endif %}</div>
           </div>
           <div class="m-center">
             <div class="ft">FT</div>
@@ -37,7 +37,7 @@
           <div class="m-side">
             <div class="m-flag">{{ flag(match.away_team.iso_code if match.away_team else none) }}</div>
             <div class="m-name">{{ match.away_team.fifa_code if match.away_team else 'TBD' }}</div>
-            <div class="m-score">{{ match.away_score if match.away_score is not none else '·' }}{% if match.penalties and match.away_pen is not none %} ({{ match.away_pen }}){% endif %}</div>
+            <div class="m-score">{{ match.away_score if match.away_score is not none else '·' }}{% if match.penalties and match.home_pen is not none and match.away_pen is not none %} ({{ match.away_pen }}){% endif %}</div>
           </div>
         </div>
         <div class="match-foot">
@@ -92,9 +92,9 @@
           <span class="ra-stage">{% if match.stage == 'group' and match.group_letter %}Group {{ match.group_letter }}{% else %}{{ item.stage_label }}{% endif %}</span>
           <span class="ra-line">
             <span class="ra-team">{{ match.home_team.fifa_code if match.home_team else 'TBD' }}</span>
-            <span class="ra-score">{{ match.home_score if match.home_score is not none else '·' }}{% if match.penalties and match.home_pen is not none %} ({{ match.home_pen }}){% endif %}</span>
-            <span class="ra-sep">vs</span>
-            <span class="ra-score">{{ match.away_score if match.away_score is not none else '·' }}{% if match.penalties and match.away_pen is not none %} ({{ match.away_pen }}){% endif %}</span>
+            <span class="ra-score">{{ match.home_score if match.home_score is not none else '·' }}{% if match.penalties and match.home_pen is not none and match.away_pen is not none %} ({{ match.home_pen }}){% endif %}</span>
+            <span class="ra-sep">&ndash;</span>
+            <span class="ra-score">{{ match.away_score if match.away_score is not none else '·' }}{% if match.penalties and match.home_pen is not none and match.away_pen is not none %} ({{ match.away_pen }}){% endif %}</span>
             <span class="ra-team">{{ match.away_team.fifa_code if match.away_team else 'TBD' }}</span>
           </span>
         </li>

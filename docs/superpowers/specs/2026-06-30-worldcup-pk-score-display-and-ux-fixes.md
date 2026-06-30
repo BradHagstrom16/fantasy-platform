@@ -58,18 +58,18 @@ Stores `match.home_pen = home_pen` and `match.away_pen = away_pen`. No other sco
 
 New command: `flask worldcup repair-pk-scores`
 
-`sync_scores()` skips already-completed shells. This command re-fetches from the API and corrects any completed PK match whose `home_pen` is still `NULL`:
+`sync_scores()` skips already-completed shells. This command re-fetches from the API and corrects any completed PK match still missing **either** pen tally (`home_pen` or `away_pen` is `NULL`):
 - Sets `home_score`/`away_score` to the ET score
 - Sets `home_pen`/`away_pen` to the penalty tally
 
-Idempotent: skips completed PK matches that already have `home_pen` populated.
+Idempotent: skips completed PK matches that already have **both** pen tallies populated. Matching on either-side-NULL lets a half-repaired row converge.
 
 ### Display
 
 In both `core/main/templates/main/_recent_results.html` (lounge) and `games/worldcup/templates/worldcup/_home_live.html` (WC hub results strip):
 
-- When `match.penalties` is True and `match.home_pen is not none`: render `{{ match.home_score }} ({{ match.home_pen }}) – {{ match.away_score }} ({{ match.away_pen }})`
-- When `match.penalties` is False: render as today (`{{ match.home_score }} – {{ match.away_score }}`)
+- When `match.penalties` is True and **both** `match.home_pen` and `match.away_pen` are not none: render `{{ match.home_score }} ({{ match.home_pen }}) – {{ match.away_score }} ({{ match.away_pen }})`. Requiring both tallies keeps the render atomic — a half-populated row (one side None) falls back to the plain score rather than emitting a lopsided `1 (3) – 1`.
+- When `match.penalties` is False (or a tally is missing): render as today (`{{ match.home_score }} – {{ match.away_score }}`)
 
 Any other template displaying `match.home_score`/`match.away_score` for completed matches should apply the same conditional (audit: schedule, admin match list).
 

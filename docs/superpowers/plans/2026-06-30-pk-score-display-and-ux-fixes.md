@@ -64,18 +64,23 @@ Expected: `Running upgrade ... -> <hash>, add home_pen away_pen to worldcup_matc
 
 - [ ] **Step 4: Smoke test — columns exist**
 
+Inspect the **actual** `worldcup_match` table through the engine (via
+`inspect(db.engine).get_columns(...)`), not the ORM metadata — the latter
+reflects the Python model and would pass even if the table itself was never
+altered.
+
 ```bash
 ENVIRONMENT=testing venv/bin/python -c "
+from sqlalchemy import inspect
 from app import create_app
 from extensions import db
 app = create_app('testing')
 with app.app_context():
     db.create_all()
-    from games.worldcup.models import WorldCupMatch
-    cols = [c.name for c in WorldCupMatch.__table__.columns]
-    assert 'home_pen' in cols, f'home_pen missing; cols={cols}'
-    assert 'away_pen' in cols, f'away_pen missing; cols={cols}'
-    print('OK — home_pen and away_pen present')
+    cols = [c['name'] for c in inspect(db.engine).get_columns('worldcup_match')]
+    assert 'home_pen' in cols, f'home_pen missing from table; cols={cols}'
+    assert 'away_pen' in cols, f'away_pen missing from table; cols={cols}'
+    print('OK — home_pen and away_pen present on worldcup_match')
 "
 ```
 
@@ -290,20 +295,23 @@ def repair_pk_scores():
     sync_scores() skips completed shells; this command re-fetches those
     matches from the API and writes the ET score to home_score/away_score
     and the penalty tally to home_pen/away_pen. Idempotent — skips matches
-    where home_pen is already set.
+    where both pen tallies are already set.
     """
     from games.worldcup.services.sync import _api_get, FINISHED_STATUSES
 
     data = _api_get('competitions/WC/matches')
 
-    # Only target completed PK matches still missing their pen tally.
+    # Target completed PK matches still missing EITHER pen tally — a row with
+    # one side populated but not the other is half-repaired and must still be
+    # backfilled so both sides of the tally converge.
     candidates = {
         m.api_fixture_id: m
         for m in WorldCupMatch.query.filter(
             WorldCupMatch.api_fixture_id.isnot(None),
             WorldCupMatch.is_completed.is_(True),
             WorldCupMatch.penalties.is_(True),
-            WorldCupMatch.home_pen.is_(None),
+            or_(WorldCupMatch.home_pen.is_(None),
+                WorldCupMatch.away_pen.is_(None)),
         ).all()
     }
 

@@ -15,6 +15,7 @@ from datetime import datetime, timedelta
 
 import click
 from flask.cli import AppGroup
+from sqlalchemy import or_
 
 from extensions import db
 from games.worldcup.constants import SEASON_YEAR, WORLDCUP_TZ
@@ -523,20 +524,23 @@ def repair_pk_scores():
     sync_scores() skips completed shells; this command re-fetches those
     matches from the API and writes the ET score to home_score/away_score
     and the penalty tally to home_pen/away_pen. Idempotent — skips matches
-    where home_pen is already set.
+    where both pen tallies are already set.
     """
     from games.worldcup.services.sync import _api_get, FINISHED_STATUSES
 
     data = _api_get('competitions/WC/matches')
 
-    # Only target completed PK matches still missing their pen tally.
+    # Target completed PK matches still missing EITHER pen tally — a row with
+    # one side populated but not the other is half-repaired and must still be
+    # backfilled so both sides of the tally converge.
     candidates = {
         m.api_fixture_id: m
         for m in WorldCupMatch.query.filter(
             WorldCupMatch.api_fixture_id.isnot(None),
             WorldCupMatch.is_completed.is_(True),
             WorldCupMatch.penalties.is_(True),
-            WorldCupMatch.home_pen.is_(None),
+            or_(WorldCupMatch.home_pen.is_(None),
+                WorldCupMatch.away_pen.is_(None)),
         ).all()
     }
 

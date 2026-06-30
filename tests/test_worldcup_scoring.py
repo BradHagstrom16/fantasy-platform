@@ -361,8 +361,10 @@ class TestKnockoutScoring:
             match = _make_match(db.session, 201, 'R32', t1, t2)
             db.session.commit()
 
+            # Away side (PKB) wins the shootout 4-3, so the declared winner must
+            # be PKB to match the tally.
             process_match_result(
-                match.id, 1, 1, 'PKA',
+                match.id, 1, 1, 'PKB',
                 extra_time=True, penalties=True,
                 home_pen=3, away_pen=4,
             )

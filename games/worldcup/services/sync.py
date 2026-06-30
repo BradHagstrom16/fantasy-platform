@@ -267,14 +267,22 @@ def sync_scores() -> dict:
             home_pen, away_pen = None, None
             if duration == 'PENALTY_SHOOTOUT':
                 # Use extraTime score (pre-PK) for home_score/away_score.
-                # fullTime from the API bundles PK goals into the total.
+                # fullTime from the API bundles PK goals into the total, so
+                # without the extraTime + penalties breakdown we can't tell the
+                # regulation/ET score from the inflated total — skip rather than
+                # persist the bundled fullTime (mirrors repair_pk_scores in cli.py).
                 et = (f.get('score') or {}).get('extraTime') or {}
                 pen = (f.get('score') or {}).get('penalties') or {}
                 et_home, et_away = et.get('home'), et.get('away')
-                if et_home is not None and et_away is not None:
-                    home, away = et_home, et_away
-                home_pen = pen.get('home')
-                away_pen = pen.get('away')
+                pen_home, pen_away = pen.get('home'), pen.get('away')
+                if None in (et_home, et_away, pen_home, pen_away):
+                    failed.append({
+                        'match_number': shell.match_number, 'match_id': shell.id,
+                        'error': 'PENALTY_SHOOTOUT missing extraTime/penalties breakdown',
+                    })
+                    continue
+                home, away = et_home, et_away
+                home_pen, away_pen = pen_home, pen_away
 
             res = process_match_result(
                 shell.id, home, away, winner_fifa,

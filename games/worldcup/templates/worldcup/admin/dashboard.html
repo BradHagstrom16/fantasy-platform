@@ -172,7 +172,7 @@
                         <td>{{ stage_tag(match) }}</td>
                         <td>
                             {{ match.home_team.display_name if match.home_team else '?' }}
-                            <strong>{{ match.home_score }}{% if match.penalties and match.home_pen is not none %} ({{ match.home_pen }}){% endif %}&ndash;{{ match.away_score }}{% if match.penalties and match.away_pen is not none %} ({{ match.away_pen }}){% endif %}</strong>
+                            <strong>{{ match.home_score }}{% if match.penalties and match.home_pen is not none and match.away_pen is not none %} ({{ match.home_pen }}){% endif %}&ndash;{{ match.away_score }}{% if match.penalties and match.home_pen is not none and match.away_pen is not none %} ({{ match.away_pen }}){% endif %}</strong>
                             {{ match.away_team.display_name if match.away_team else '?' }}
                             {% if match.is_draw %}<span class="adm-tag adm-tag--muted">Draw</span>{% endif %}
                         </td>

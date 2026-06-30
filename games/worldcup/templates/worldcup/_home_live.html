@@ -126,7 +126,7 @@
           <span class="wc-fixture-flag">{{ flag(m.home_team.iso_code if m.home_team else none) }}</span>
           <span class="wc-fixture-name">{% if m.home_team %}{{ m.home_team.display_name }}{% else %}TBD{% endif %}</span>
         </span>
-        <span class="wc-result-score wc-numeral" aria-label="Score">{{ m.home_score }}{% if m.penalties and m.home_pen is not none %} ({{ m.home_pen }}){% endif %}&ndash;{{ m.away_score }}{% if m.penalties and m.away_pen is not none %} ({{ m.away_pen }}){% endif %}</span>
+        <span class="wc-result-score wc-numeral" aria-label="Score">{{ m.home_score }}{% if m.penalties and m.home_pen is not none and m.away_pen is not none %} ({{ m.home_pen }}){% endif %}&ndash;{{ m.away_score }}{% if m.penalties and m.home_pen is not none and m.away_pen is not none %} ({{ m.away_pen }}){% endif %}</span>
         <span class="wc-fixture-side">
           <span class="wc-fixture-flag">{{ flag(m.away_team.iso_code if m.away_team else none) }}</span>
           <span class="wc-fixture-name">{% if m.away_team %}{{ m.away_team.display_name }}{% else %}TBD{% endif %}</span>

@@ -2755,10 +2755,9 @@ body.game-golf {
   font-size: 1rem;
 }
 .home-shell .ra-sep {
-  font-size: 0.65rem;
-  letter-spacing: 0.16em;
+  font-size: 1rem;
+  font-weight: 700;
   color: var(--bone-mute);
-  text-transform: uppercase;
 }
 .home-shell .match-empty {
   padding: 2rem 1rem;

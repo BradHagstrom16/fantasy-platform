@@ -9,7 +9,9 @@ from datetime import datetime, timezone
 from app import create_app
 from extensions import db
 from models.user import User
-from games.worldcup.models import WorldCupEnrollment, WorldCupTeam, WorldCupMatch
+from games.worldcup.models import (
+    WorldCupEnrollment, WorldCupTeam, WorldCupMatch, WorldCupPick,
+)
 
 
 PAST_DEADLINE = datetime(2000, 1, 1, tzinfo=timezone.utc)
@@ -447,24 +449,44 @@ def test_admin_dashboard_shows_pk_format(client, app):
     resp = client.get('/worldcup/admin/')
     assert resp.status_code == 200
     body = resp.data.decode()
-    assert '1 (3)' in body
-    assert '1 (4)' in body
-    assert '5&ndash;6' not in body
-    assert '5–6' not in body
+    # Assert the exact rendered score block for the seeded match #901 (1-1 ET,
+    # 3-4 PKs). The exact <strong> content proves the FIFA format renders AND
+    # that no inflated/bundled total (e.g. "5–6") leaks into that block, without
+    # a broad whole-body negative that could collide with unrelated content.
+    assert '<strong>1 (3)&ndash;1 (4)</strong>' in body
 
 
-def test_player_detail_route_accessible_to_admin(client, app):
-    """player_detail at /worldcup/leaderboard/<id> returns 200 for an admin."""
+def test_player_detail_admin_sees_other_players_sealed_picks(client, app):
+    """Pre-deadline, the admin branch reveals ANOTHER player's sealed picks.
+
+    The enrollment belongs to a separate non-admin user, so is_owner is False,
+    and the deadline is patched into the future so deadline_passed is False —
+    leaving is_admin as the only path that can make picks_visible True. Asserting
+    the pick's team is rendered (and the "Picks are hidden" seal is absent) proves
+    the admin-only branch, not the owner or post-deadline paths.
+    """
     admin_id = _make_admin_user(app)
     with app.app_context():
-        from models.user import User
-        user = User.query.filter_by(is_admin=True).first()
+        player = User(username='pk_player', email='pk_player@test.com')
+        player.set_password('pw')
+        db.session.add(player)
+        db.session.flush()
         enrollment = WorldCupEnrollment(
-            user_id=user.id,
+            user_id=player.id,
             season_year=2026,
-            picks_submitted=False,
+            picks_submitted=True,
         )
         db.session.add(enrollment)
+        db.session.flush()
+        team = WorldCupTeam(
+            fifa_code='ARG', name='Argentina', display_name='Argentina',
+            tier=1, multiplier=1.0, confederation='CONMEBOL', group_letter='A',
+        )
+        db.session.add(team)
+        db.session.flush()
+        db.session.add(WorldCupPick(
+            enrollment_id=enrollment.id, team_id=team.id, tier=team.tier,
+        ))
         db.session.commit()
         eid = enrollment.id
 
@@ -472,5 +494,10 @@ def test_player_detail_route_accessible_to_admin(client, app):
         sess['_user_id'] = str(admin_id)
         sess['_fresh'] = True
 
-    resp = client.get(f'/worldcup/leaderboard/{eid}')
+    with patch('games.worldcup.routes.TOURNAMENT_DEADLINE_UTC', FUTURE_DEADLINE):
+        resp = client.get(f'/worldcup/leaderboard/{eid}')
+
     assert resp.status_code == 200
+    body = resp.data.decode()
+    assert 'Argentina' in body            # admin sees the other player's pick
+    assert 'Picks are hidden' not in body  # sealed state did not apply to admin
