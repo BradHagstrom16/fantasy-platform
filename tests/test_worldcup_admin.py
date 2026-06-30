@@ -413,3 +413,41 @@ def test_admin_users_page_has_no_reset_password_form(app, client):
     assert resp.status_code == 200
     assert b'reset-password' not in resp.data
     assert b'Reset Password' not in resp.data
+
+
+def test_admin_dashboard_shows_pk_format(client, app):
+    """Completed PK match renders as '1 (3)' not inflated totals."""
+    admin_id = _make_admin_user(app)
+    with app.app_context():
+        t1 = WorldCupTeam(
+            fifa_code='TSA', name='Team SA', display_name='Team SA',
+            tier=4, multiplier=4.0, confederation='T', group_letter='A',
+        )
+        t2 = WorldCupTeam(
+            fifa_code='TSB', name='Team SB', display_name='Team SB',
+            tier=5, multiplier=7.0, confederation='T', group_letter='A',
+        )
+        db.session.add_all([t1, t2])
+        db.session.flush()
+        m = WorldCupMatch(
+            match_number=901, stage='R32',
+            home_team_id=t1.id, away_team_id=t2.id,
+            home_score=1, away_score=1,
+            home_pen=3, away_pen=4,
+            is_completed=True, penalties=True, extra_time=True,
+            winner_team_id=t1.id,
+        )
+        db.session.add(m)
+        db.session.commit()
+
+    with client.session_transaction() as sess:
+        sess['_user_id'] = str(admin_id)
+        sess['_fresh'] = True
+
+    resp = client.get('/worldcup/admin/')
+    assert resp.status_code == 200
+    body = resp.data.decode()
+    assert '1 (3)' in body
+    assert '1 (4)' in body
+    assert '5&ndash;6' not in body
+    assert '5–6' not in body
