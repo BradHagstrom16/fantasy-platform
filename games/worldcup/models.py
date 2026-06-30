@@ -123,6 +123,8 @@ class WorldCupMatch(db.Model):
     away_team_id = db.Column(db.Integer, db.ForeignKey('worldcup_team.id'), nullable=True)
     home_score = db.Column(db.Integer, nullable=True)
     away_score = db.Column(db.Integer, nullable=True)
+    home_pen = db.Column(db.Integer, nullable=True)
+    away_pen = db.Column(db.Integer, nullable=True)
     winner_team_id = db.Column(db.Integer, db.ForeignKey('worldcup_team.id'), nullable=True)
     is_draw = db.Column(db.Boolean, default=False)
     extra_time = db.Column(db.Boolean, default=False)
