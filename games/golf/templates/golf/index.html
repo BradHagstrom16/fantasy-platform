@@ -44,7 +44,7 @@
                         <h5 class="mb-0">{{ active_tournament.name }}</h5>
                     </div>
                     <small class="text-muted">
-                        Purse: ${{ '{:,.0f}'.format(active_tournament.purse or 0) }}
+                        Purse: {% if active_tournament.effective_purse %}${{ '{:,.0f}'.format(active_tournament.effective_purse) }}{% if active_tournament.purse_is_estimate %} <span class="text-muted small">(est.)</span>{% endif %}{% else %}TBD{% endif %}
                         {% if active_tournament.is_major %}<span class="badge badge-major ms-1">MAJOR</span>{% endif %}
                         {% if active_tournament.is_team_event %}<span class="badge bg-info text-dark ms-1" style="font-size:.65rem;">TEAM</span>{% endif %}
                     </small>
@@ -156,7 +156,7 @@
                                     {% set active_id = pick.display_active_player_id %}
                                     {% set result = active_results.get(active_id) %}
                                     {% if result and result.final_position %}
-                                        {% set proj = calculate_projected_earnings(result.final_position, active_tournament.purse or 0, all_positions) %}
+                                        {% set proj = calculate_projected_earnings(result.final_position, active_tournament.effective_purse or 0, all_positions, active_tournament.is_major) %}
                                         {% if proj > 0 %}
                                             <span class="text-success fw-semibold">${{ '{:,.0f}'.format(proj) }}</span>
                                         {% else %}
@@ -221,7 +221,7 @@
                                 {{ t.name }}
                                 {% if t.is_major %}<span class="badge badge-major">MAJOR</span>{% endif %}
                             </td>
-                            <td class="text-end d-none d-sm-table-cell">${{ '{:,.0f}'.format(t.purse or 0) }}</td>
+                            <td class="text-end d-none d-sm-table-cell">{% if t.effective_purse %}${{ '{:,.0f}'.format(t.effective_purse) }}{% else %}TBD{% endif %}</td>
                             <td class="text-center">
                                 {% if t.results_finalized %}
                                     <span class="badge bg-success">Final</span>

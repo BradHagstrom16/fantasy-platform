@@ -86,13 +86,13 @@
                     <dl class="mb-0">
                         <dt style="font-size:.8rem;" class="text-muted text-uppercase">Purse</dt>
                         <dd class="fw-bold">
-                            {% if tournament.purse %}
-                            ${{ '{:,.0f}'.format(tournament.purse) }}
+                            {% if tournament.effective_purse %}
+                            ${{ '{:,.0f}'.format(tournament.effective_purse) }}{% if tournament.purse_is_estimate %} <span class="text-muted small">(est.)</span>{% endif %}
                             {% else %}
                             TBD
                             {% endif %}
                             {% if tournament.is_major %}<span class="badge bg-warning text-dark ms-1">MAJOR 1.5x</span>{% endif %}
-                            {% if tournament.is_team_event %}<span class="badge bg-info text-dark ms-1">TEAM &divide;2</span>{% endif %}
+                            {% if tournament.is_team_event %}<span class="badge bg-info text-dark ms-1">TEAM</span>{% endif %}
                         </dd>
                         <dt style="font-size:.8rem;" class="text-muted text-uppercase">Deadline</dt>
                         <dd class="fw-bold" id="deadline-display">{{ tournament.get_deadline_display() }}</dd>

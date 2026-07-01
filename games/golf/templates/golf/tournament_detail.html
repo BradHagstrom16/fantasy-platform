@@ -35,7 +35,7 @@
         <div class="col-6 col-md-3">
             <div class="stat-block animate-in stagger-1">
                 <div class="stat-value" style="font-size:1.6rem;">
-                    {% if tournament.purse %}${{ '{:,.0f}'.format(tournament.purse) }}{% else %}TBD{% endif %}
+                    {% if tournament.effective_purse %}${{ '{:,.0f}'.format(tournament.effective_purse) }}{% if tournament.purse_is_estimate %} <span class="text-muted" style="font-size:.6rem;">(est.)</span>{% endif %}{% else %}TBD{% endif %}
                 </div>
                 <div class="stat-label">Purse</div>
             </div>
@@ -166,7 +166,7 @@
                                         ${{ '{:,.0f}'.format(pick.points_earned) }}
                                     </strong>
                                 {% elif result and result.final_position %}
-                                    {% set proj = calculate_projected_earnings(result.final_position, tournament.purse or 0, all_positions) %}
+                                    {% set proj = calculate_projected_earnings(result.final_position, tournament.effective_purse or 0, all_positions, tournament.is_major) %}
                                     <span class="text-muted">${{ '{:,.0f}'.format(proj) }}</span>
                                 {% else %}
                                     <span class="text-muted">—</span>

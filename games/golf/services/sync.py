@@ -25,7 +25,7 @@ import os
 import random
 import time
 from datetime import datetime, timedelta, timezone
-from typing import Optional, Dict, List, Tuple
+from typing import Any, Iterator, Optional, Dict, List, Tuple
 from zoneinfo import ZoneInfo
 
 import requests
@@ -40,8 +40,19 @@ from games.golf.models import (
     GolfEnrollment,
     GolfSeasonPlayerUsage,
 )
-from games.golf.utils import GOLF_LEAGUE_TZ, parse_score_to_par, calculate_projected_earnings
-from games.golf.constants import EXCLUDED_TOURNAMENTS, SEASON_CUTOFF_DATE, MIN_FIELD_SIZE
+from games.golf.utils import (
+    GOLF_LEAGUE_TZ,
+    parse_score_to_par,
+    calculate_projected_earnings,
+    normalize_position,
+)
+from games.golf.constants import (
+    EXCLUDED_TOURNAMENTS,
+    SEASON_CUTOFF_DATE,
+    MIN_FIELD_SIZE,
+    DEFAULT_PURSE,
+    TOURNAMENTS_2026,
+)
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -194,12 +205,25 @@ class TournamentSync:
         return GOLF_LEAGUE_TZ
 
     @staticmethod
-    def _parse_tee_time_timestamp(tee_time_ts: Optional[Dict]) -> Optional[datetime]:
+    def _iso_to_utc(iso_str: str) -> datetime:
+        """Parse an ISO 8601 string to a UTC-aware datetime (naive treated as UTC)."""
+        dt = datetime.fromisoformat(iso_str.replace("Z", "+00:00"))
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt
+
+    @staticmethod
+    def _parse_tee_time_timestamp(tee_time_ts) -> Optional[datetime]:
         """
         Parse teeTimeTimestamp from API (preferred method - timezone-safe).
 
-        The API provides timestamps in MongoDB format: {"$date": {"$numberLong": "1768497660000"}}
-        These are Unix timestamps in milliseconds, representing the exact moment in time.
+        Handles the formats the endpoint has used across its Mongo→ISO migration:
+        1. Canonical EJSON: {"$date": {"$numberLong": "1768497660000"}}
+        2. Relaxed EJSON:   {"$date": "2026-04-09T13:19:00Z"}  (ISO string in $date)
+        3. ISO 8601 string: "2026-04-09T13:19:00"  (naive treated as UTC)
+        4. Raw integer:     milliseconds since epoch
+
+        Also used for schedule `date.start`, which arrives in the same shapes.
         """
         if not tee_time_ts:
             return None
@@ -211,21 +235,62 @@ class TournamentSync:
                     date_val = tee_time_ts['$date']
                     if isinstance(date_val, dict) and '$numberLong' in date_val:
                         ts_ms = int(date_val['$numberLong'])
+                    elif isinstance(date_val, str):
+                        # Relaxed EJSON: $date carries an ISO string, not epoch-ms.
+                        return TournamentSync._iso_to_utc(date_val)
                     else:
                         ts_ms = int(date_val)
                 elif '$numberLong' in tee_time_ts:
                     ts_ms = int(tee_time_ts['$numberLong'])
                 else:
                     return None
-            else:
-                ts_ms = int(tee_time_ts)
+                ts_sec = ts_ms / 1000
+                return datetime.fromtimestamp(ts_sec, tz=timezone.utc)
 
-            # Convert milliseconds to seconds and create timezone-aware datetime
+            # Handle ISO 8601 string (current API format)
+            if isinstance(tee_time_ts, str) and "T" in tee_time_ts:
+                return TournamentSync._iso_to_utc(tee_time_ts)
+
+            # Handle raw millisecond integer
+            ts_ms = int(tee_time_ts)
             ts_sec = ts_ms / 1000
             return datetime.fromtimestamp(ts_sec, tz=timezone.utc)
         except Exception as e:
             logger.warning("Unable to parse tee time timestamp '%s': %s", tee_time_ts, e)
             return None
+
+    @staticmethod
+    def _iter_player_rows(leaderboard_rows: Optional[List[Dict[str, Any]]]) -> Iterator[Dict[str, Any]]:
+        """
+        Yield one per-player dict for each pickable player.
+
+        Normal PGA events: each row already has `playerId` — passed through
+        unchanged. Team events (Zurich Classic): each row represents a team with
+        a nested `players` list. We merge the team-level fields (position /
+        status / rounds / total / teeTime* / earnings) into each nested player's
+        identity so every downstream loop can treat every yielded row as a
+        single-player row. Each teammate inherits the team's earnings — full
+        team payout per ADR-033.
+        """
+        for row in leaderboard_rows or []:
+            if row.get("playerId"):
+                yield row
+                continue
+
+            members = row.get("players") or []
+            if not members:
+                continue
+
+            for member in members:
+                pid = member.get("playerId")
+                if not pid:
+                    continue
+                merged = {k: v for k, v in row.items() if k != "players"}
+                merged["playerId"] = pid
+                merged["firstName"] = member.get("firstName", "")
+                merged["lastName"] = member.get("lastName", "")
+                merged["isAmateur"] = member.get("isAmateur", False)
+                yield merged
 
     @staticmethod
     def _parse_tee_time(tee_time_str: Optional[str], tournament_date: datetime, event_tz: ZoneInfo) -> Optional[datetime]:
@@ -256,7 +321,7 @@ class TournamentSync:
         event_tz = self._get_event_timezone(leaderboard_data)
         earliest = None
 
-        for player_data in leaderboard_data.get("leaderboardRows", []):
+        for player_data in self._iter_player_rows(leaderboard_data.get("leaderboardRows", [])):
             # Prefer timestamp (timezone-safe) over string (ambiguous)
             tee_time = self._parse_tee_time_timestamp(player_data.get("teeTimeTimestamp"))
             if not tee_time:
@@ -355,29 +420,31 @@ class TournamentSync:
             if name in EXCLUDED_TOURNAMENTS:
                 continue
 
-            # Skip events that start on or after the season cutoff date
-            try:
-                start_val = event["date"]["start"]
-                # EJSON: {"$date": {"$numberLong": "..."}} — plain JSON: int (ms)
-                if isinstance(start_val, dict) and "$date" in start_val:
-                    date_inner = start_val["$date"]
-                    if isinstance(date_inner, dict) and "$numberLong" in date_inner:
-                        start_ts = int(date_inner["$numberLong"]) / 1000
-                    else:
-                        start_ts = int(date_inner) / 1000
-                else:
-                    start_ts = int(start_val) / 1000
-                start_date = datetime.fromtimestamp(start_ts, tz=timezone.utc)
-                if start_date >= SEASON_CUTOFF_DATE:
-                    continue
-            except (KeyError, ValueError, TypeError):
+            # Skip events that start on or after the season cutoff date.
+            # date.start arrives as epoch-ms, EJSON, or ISO 8601 — the shared
+            # timestamp parser handles all three (the endpoint migrated to ISO).
+            start_date = self._parse_tee_time_timestamp(event.get("date", {}).get("start"))
+            if start_date is None or start_date >= SEASON_CUTOFF_DATE:
                 continue
 
-            # Only update existing tournaments — never create new ones
+            # Only update existing tournaments — never create new ones. Match on
+            # the real API id first; fall back to (name, season) to reconcile a
+            # seeded row whose api_tourn_id is still the `YYYY_NN` placeholder,
+            # linking it to the real SlashGolf id so field/live/results syncs and
+            # purse backfill (which key on api_tourn_id) work. Only placeholder
+            # rows are relinked — a real id is never overwritten — and events
+            # whose API name differs from our locked name simply aren't matched
+            # (they stay a manual launch-time mapping, never a wrong write).
             existing = GolfTournament.query.filter_by(
                 api_tourn_id=event["tournId"],
                 season_year=year
             ).first()
+
+            if not existing:
+                seeded = GolfTournament.query.filter_by(name=name, season_year=year).first()
+                if seeded and (seeded.api_tourn_id or "").startswith(f"{year}_"):
+                    seeded.api_tourn_id = event["tournId"]
+                    existing = seeded
 
             if not existing:
                 # Tournament not in our league — skip it
@@ -420,7 +487,7 @@ class TournamentSync:
         event_tz = self._get_event_timezone(data)
 
         try:
-            for player_data in data["leaderboardRows"]:
+            for player_data in self._iter_player_rows(data["leaderboardRows"]):
                 if player_data.get("isAmateur", False):
                     continue
 
@@ -547,6 +614,38 @@ class TournamentSync:
 
         return new_players_synced, first_tee_time
 
+    def _backfill_purse_from_schedule(self, tournament: GolfTournament) -> Optional[int]:
+        """Write the official purse from the schedule endpoint when it was never
+        captured. Majors announce their purse week-of, and the leaderboard/
+        earnings endpoints carry no purse field — so a completed major can
+        otherwise stay stuck showing the season estimate. Returns the purse
+        written, or None."""
+        data = self.api.get_schedule(str(tournament.season_year))
+        if not data or "schedule" not in data:
+            logger.warning("Purse backfill: schedule fetch failed for %s", tournament.name)
+            return None
+
+        for event in data["schedule"]:
+            if str(event.get("tournId")) == str(tournament.api_tourn_id):
+                # Backfill is cosmetic — a malformed purse must never abort the
+                # authoritative results finalization that calls this.
+                try:
+                    purse = self._parse_api_number(event.get("purse", 0))
+                except (ValueError, TypeError) as exc:
+                    logger.warning(
+                        "Purse backfill: unparseable purse %r for %s: %s",
+                        event.get("purse"), tournament.name, exc,
+                    )
+                    return None
+                if purse > 0:
+                    tournament.purse = purse
+                    logger.info("Backfilled official purse $%s for %s", f"{purse:,}", tournament.name)
+                    return purse
+                return None
+
+        logger.warning("Purse backfill: tournId %s not found in schedule", tournament.api_tourn_id)
+        return None
+
     def sync_tournament_results(self, tournament: GolfTournament) -> int:
         """
         Sync tournament results and ACTUAL earnings after completion.
@@ -584,16 +683,23 @@ class TournamentSync:
             logger.error("Failed to fetch earnings for %s", tournament.name)
             return 0
 
-        # Build lookup from leaderboard for status/rounds/score info
+        # Safety net: if the API returned team-shaped rows (nested "players"),
+        # flag is_team_event so the TEAM badge shows even if schedule sync
+        # missed/stale-set it. Scoring is unaffected (full payout, ADR-033).
+        raw_rows = leaderboard_data.get("leaderboardRows", [])
+        if not tournament.is_team_event and any(r.get("players") for r in raw_rows):
+            tournament.is_team_event = True
+
+        # Build lookup from leaderboard for status/rounds/score info. Flatten
+        # team rows so each teammate resolves to the team's leaderboard entry.
         leaderboard_lookup = {}
-        if "leaderboardRows" in leaderboard_data:
-            for p in leaderboard_data["leaderboardRows"]:
-                leaderboard_lookup[p["playerId"]] = p
+        for p in self._iter_player_rows(raw_rows):
+            leaderboard_lookup[p["playerId"]] = p
 
         results_synced = 0
 
         try:
-            for player_data in earnings_data["leaderboard"]:
+            for player_data in self._iter_player_rows(earnings_data["leaderboard"]):
                 player_id = player_data["playerId"]
 
                 player = GolfPlayer.query.filter_by(api_player_id=player_id).first()
@@ -621,12 +727,18 @@ class TournamentSync:
 
                 result.status = status
                 result.rounds_completed = rounds_completed
-                result.final_position = lb_info.get("position", "")
+                result.final_position = normalize_position(lb_info.get("position"))
 
                 # Parse score to par from leaderboard "total" field
                 result.score_to_par = parse_score_to_par(lb_info.get("total"))
 
                 results_synced += 1
+
+            # Capture the official purse if it was never set (e.g. a major whose
+            # purse was announced after the last schedule sync) so the finalized
+            # tournament shows the real purse instead of the season estimate.
+            if not tournament.purse or tournament.purse <= 0:
+                self._backfill_purse_from_schedule(tournament)
 
             tournament.status = "complete"
             tournament.results_finalized = True
@@ -745,7 +857,7 @@ class TournamentSync:
         withdrawals = []
 
         try:
-            for player_data in data["leaderboardRows"]:
+            for player_data in self._iter_player_rows(data["leaderboardRows"]):
                 if player_data.get("status") != "wd":
                     continue
 
@@ -770,7 +882,7 @@ class TournamentSync:
 
                 result.status = "wd"
                 result.rounds_completed = rounds_completed
-                result.final_position = player_data.get("position", "")
+                result.final_position = normalize_position(player_data.get("position"))
                 result.score_to_par = parse_score_to_par(player_data.get("total"))
 
                 withdrawals.append({
@@ -809,13 +921,25 @@ class TournamentSync:
         updated = 0
         leaderboard_rows = data.get("leaderboardRows", [])
 
-        # Collect all positions for tie calculation
+        # Safety net: flag team events from row shape if schedule sync missed it.
+        if not tournament.is_team_event and any(r.get("players") for r in leaderboard_rows):
+            tournament.is_team_event = True
+
+        # Collect positions for tie calculation from RAW rows — on team events
+        # each team is one payout slot, so we must not double-count teammates.
         all_positions = [p.get("position", "") for p in leaderboard_rows]
+
+        # Use the effective purse (API purse, else season estimate) so an active
+        # major projects sensibly before its purse is announced/synced.
+        purse = tournament.effective_purse or DEFAULT_PURSE
+        if tournament.purse_is_estimate:
+            logger.info("Using purse estimate $%s for %s (API purse not yet available)",
+                        f"{purse:,}", tournament.name)
 
         try:
             self._derive_status(tournament, data)
 
-            for player_data in leaderboard_rows:
+            for player_data in self._iter_player_rows(leaderboard_rows):
                 player = GolfPlayer.query.filter_by(api_player_id=player_data.get("playerId")).first()
                 if not player:
                     continue
@@ -834,7 +958,12 @@ class TournamentSync:
 
                 result.status = player_data.get("status", result.status or "active")
                 result.rounds_completed = len(player_data.get("rounds", []))
-                result.final_position = player_data.get("position", result.final_position)
+                # Keep the last-known position if this row omits one; never store None.
+                result.final_position = (
+                    normalize_position(player_data.get("position"))
+                    or result.final_position
+                    or ""
+                )
 
                 # Parse score to par from "total" field
                 result.score_to_par = parse_score_to_par(player_data.get("total"))
@@ -843,8 +972,9 @@ class TournamentSync:
                 position = player_data.get("position", "")
                 projected_earnings = calculate_projected_earnings(
                     position_str=position,
-                    purse=tournament.purse,
-                    all_positions=all_positions
+                    purse=purse,
+                    all_positions=all_positions,
+                    is_major=tournament.is_major,
                 )
                 result.earnings = projected_earnings
 
@@ -941,3 +1071,73 @@ def get_tournaments_pending_finalization() -> List[GolfTournament]:
         GolfTournament.status == "complete",
         GolfTournament.results_finalized == False
     ).order_by(GolfTournament.end_date.desc()).all()
+
+
+def seed_schedule(year: int = 2026) -> Tuple[int, int]:
+    """Seed (or refresh) the locked season schedule from ``TOURNAMENTS_2026``.
+
+    Idempotent upsert keyed on (name, season_year) — mirrors the standalone
+    ``import_tournaments.py`` and additionally sets ``is_major`` so the x1.5
+    multiplier and major penalty apply from the moment the season is seeded.
+    ``sync_schedule()`` only *updates* existing tournaments, so a fresh season
+    needs this to create rows first.
+
+    Purse is intentionally left at 0: ``effective_purse`` surfaces the
+    ``PURSE_ESTIMATES`` figure for display/projection until the API provides the
+    official number (``sync_schedule`` for non-majors, ``_backfill_purse_from_schedule``
+    for majors — both keyed on ``purse == 0``). Persisting the estimate into the
+    column would make it indistinguishable from a real purse and permanently
+    suppress that backfill. A real API purse is therefore never touched here.
+
+    Rows are created with a ``YYYY_NN`` placeholder ``api_tourn_id``; the first
+    ``sync_schedule`` run links each to its real SlashGolf id by name.
+
+    Returns:
+        (created, updated) counts.
+
+    Raises:
+        ValueError: for any year other than 2026 — ``TOURNAMENTS_2026`` carries
+        2026 dates, so seeding it under a different ``season_year`` would persist
+        the wrong schedule. A future season needs its own ``TOURNAMENTS_<year>``.
+    """
+    if year != 2026:
+        raise ValueError(
+            f"seed_schedule only knows the 2026 locked schedule (got year={year}); "
+            "add a TOURNAMENTS_<year> list before seeding another season."
+        )
+
+    created = 0
+    updated = 0
+
+    for week_num, (date_str, name, is_team, is_major) in enumerate(TOURNAMENTS_2026, start=1):
+        start_date = datetime.strptime(date_str, "%m/%d/%Y")
+        end_date = start_date + timedelta(days=3)  # Thu–Sun
+
+        existing = GolfTournament.query.filter_by(name=name, season_year=year).first()
+        if existing:
+            existing.start_date = start_date
+            existing.end_date = end_date
+            existing.is_team_event = is_team
+            existing.is_major = is_major
+            existing.week_number = week_num
+            # `purse` is deliberately left untouched — see the docstring: 0 keeps
+            # the estimate/backfill path alive; a real API purse is preserved.
+            updated += 1
+        else:
+            db.session.add(GolfTournament(
+                api_tourn_id=f"{year}_{week_num:02d}",  # placeholder; linked by name at first schedule sync
+                name=name,
+                season_year=year,
+                start_date=start_date,
+                end_date=end_date,
+                purse=0,  # displayed via effective_purse (PURSE_ESTIMATES) until API sync
+                is_team_event=is_team,
+                is_major=is_major,
+                week_number=week_num,
+                status="upcoming",
+            ))
+            created += 1
+
+    db.session.commit()
+    logger.info("Seeded golf schedule for %s: %s created, %s updated", year, created, updated)
+    return created, updated

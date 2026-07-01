@@ -6,6 +6,8 @@ All commands are namespaced under the 'golf' AppGroup to avoid
 collision with other game commands.
 
 Usage:
+    flask golf seed-schedule
+    flask golf force-schedule-sync
     flask golf sync-run --mode field
     flask golf sync-run --mode results
     flask golf check-wd
@@ -25,6 +27,7 @@ from games.golf.utils import GOLF_LEAGUE_TZ
 from games.golf.services.sync import (
     SlashGolfAPI,
     TournamentSync,
+    seed_schedule,
     get_upcoming_tournament,
     get_upcoming_tournaments_window,
     get_active_tournaments,
@@ -190,6 +193,43 @@ def sync_run_cmd(mode):
         exit_code = 1
 
     sys.exit(exit_code)
+
+
+@golf_cli.command('seed-schedule')
+def seed_schedule_cmd():
+    """Seed the locked season schedule (no API call).
+
+    Creates the 32 league tournaments for the configured season so a fresh
+    platform season isn't empty (sync_schedule only *updates* existing rows).
+    Idempotent — safe to re-run; a real API purse already written is preserved.
+
+    Seeded rows carry a placeholder api_tourn_id (``YYYY_NN``) and purse 0
+    (displayed via effective_purse until the API provides the official number).
+    Run ``flask golf force-schedule-sync`` next: it links each seeded row to its
+    real SlashGolf tourn id by name. Any event whose API name differs from our
+    locked name won't auto-link and needs a one-off manual id fix.
+    """
+    year = current_app.config.get('SEASON_YEAR', 2026)
+    try:
+        created, updated = seed_schedule(year)
+    except ValueError as exc:
+        click.echo(f"Error: {exc}")
+        sys.exit(1)
+    click.echo(f"Seeded golf schedule for {year}: {created} created, {updated} updated")
+
+
+@golf_cli.command('force-schedule-sync')
+def force_schedule_sync_cmd():
+    """Run sync_schedule() now, bypassing the Monday-only gate in sync-run.
+
+    Use to pick up a purse/format announced mid-week (e.g. a major purse going
+    live during tournament week), and to link seeded placeholder rows to their
+    real SlashGolf tourn ids by name after ``seed-schedule``.
+    """
+    _, sync = _make_api_and_sync()
+    year = current_app.config.get('SEASON_YEAR', 2026)
+    updated = sync.sync_schedule(year)
+    click.echo(f"Force schedule sync complete ({updated} tournaments updated)")
 
 
 @golf_cli.command('sync-schedule')

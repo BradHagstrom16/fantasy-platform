@@ -17,6 +17,7 @@ import logging
 from datetime import datetime, timezone
 
 from extensions import db
+from games.golf.constants import PURSE_ESTIMATES
 from games.golf.utils import format_score_to_par, GOLF_LEAGUE_TZ
 
 logger = logging.getLogger(__name__)
@@ -219,6 +220,29 @@ class GolfTournament(db.Model):
         else:
             deadline = deadline.astimezone(GOLF_LEAGUE_TZ)
         return deadline.strftime('%a %b %d, %I:%M %p CT')
+
+    @property
+    def _has_api_purse(self):
+        """True when a real (positive) purse is stored, not just an estimate."""
+        return bool(self.purse and self.purse > 0)
+
+    @property
+    def effective_purse(self):
+        """Actual purse if the API set one, else the season estimate, else None.
+
+        Majors announce their purse week-of and the leaderboard/earnings
+        endpoints carry no purse field, so a live/pre-finalization major would
+        otherwise project $0. The estimate keeps projections and displays sane
+        until `_backfill_purse_from_schedule()` writes the official number.
+        """
+        if self._has_api_purse:
+            return self.purse
+        return PURSE_ESTIMATES.get(self.name)
+
+    @property
+    def purse_is_estimate(self):
+        """True when effective_purse came from PURSE_ESTIMATES (not the API)."""
+        return not self._has_api_purse and self.name in PURSE_ESTIMATES
 
     def __repr__(self):
         return f'<GolfTournament {self.name} ({self.season_year})>'
@@ -620,7 +644,13 @@ class GolfPick(db.Model):
         return self.primary_player_id
 
     def get_current_earnings(self):
-        """Get current earnings for display during active tournaments."""
+        """Get current earnings for display during active tournaments.
+
+        The live projection stored in ``result.earnings`` by
+        ``sync_live_leaderboard`` already carries the major x1.5 multiplier
+        (and the full team payout, ADR-033), so return it as-is — applying the
+        multiplier here again would double-count it for majors.
+        """
         if self.points_earned is not None:
             return self.points_earned
 
@@ -630,11 +660,7 @@ class GolfPick(db.Model):
         ).first()
 
         if result and result.earnings:
-            earnings = result.earnings
-            # Team events (Zurich) pay the FULL team payout — no halving (ADR-033).
-            if self.tournament.is_major:
-                earnings = int(earnings * 1.5)
-            return earnings
+            return result.earnings
 
         return 0
 

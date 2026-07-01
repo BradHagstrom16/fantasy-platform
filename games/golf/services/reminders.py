@@ -957,7 +957,7 @@ def run_reminder_check():
     # Extract tournament data we need for emails (primitives, not ORM references)
     tournament_name = tournament.name
     tournament_id = tournament.id
-    tournament_purse = tournament.purse
+    tournament_purse = tournament.effective_purse or 0
     tournament_season_year = tournament.season_year
 
     # Send reminders - extract user data while still in context
