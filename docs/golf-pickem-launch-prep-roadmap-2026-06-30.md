@@ -138,25 +138,25 @@ others' totals), backup-activation display.
 Files: `games/golf/services/sync.py`, `games/golf/constants.py`, `games/golf/utils.py`,
 `games/golf/cli.py`.
 
-- [ ] **Team-row flattening [CRITICAL].** Port `_iter_player_rows()`
+- [x] **Team-row flattening [CRITICAL].** Port `_iter_player_rows()`
       (`Golf_Pick_Em/sync_api.py:434-463`); route the field, live, withdrawals, and results loops +
       the `leaderboard_lookup` build (`sync.py:588-590,595,734,804`, etc.) through it. Team rows
       inherit team-level fields (incl. `earnings`) per member — consistent with full-payout ruling.
-- [ ] **ISO timestamp parsing.** Port the 3-format `_parse_tee_time_timestamp`
+- [x] **ISO timestamp parsing.** Port the 3-format `_parse_tee_time_timestamp`
       (`Golf_Pick_Em/sync_api.py:366-407`: Mongo EJSON, ISO 8601, epoch-ms) for the `teeTimeTimestamp`
       field, and route schedule `date.start` through it (SlashGolf migrated to ISO — currently
       silently skips events).
-- [ ] **Major purse estimates + effective purse.** Replace the `None` major values in
+- [x] **Major purse estimates + effective purse.** Replace the `None` major values in
       `constants.py` `PURSE_ESTIMATES` with the real numbers from `Golf_Pick_Em/models.py:44-78`
       (Masters 22.5M, PGA 19M, U.S. Open 21.5M, The Open 17M, + `DEFAULT_PURSE`). Add `effective_purse`
       / `purse_is_estimate` properties on `GolfTournament` and `_backfill_purse_from_schedule()` called
       in results finalization when `not tournament.purse`.
-- [ ] **Major multiplier on live projections.** Add `is_major=False` to
+- [x] **Major multiplier on live projections.** Add `is_major=False` to
       `utils.calculate_projected_earnings()` (`utils.py:105`), apply `×1.5` after base calc, and pass
       `tournament.is_major` from the live sync + any route/template projection call sites.
-- [ ] **Position normalization.** Port `normalize_position()` (`Golf_Pick_Em/sync_api.py:138-166`);
+- [x] **Position normalization.** Port `normalize_position()` (`Golf_Pick_Em/sync_api.py:138-166`);
       apply at every `final_position` write (results `sync.py:623`, withdrawals, live).
-- [ ] **Schedule seeding.** Add `flask golf seed-schedule` (locked 2026 list + real major purses,
+- [x] **Schedule seeding.** Add `flask golf seed-schedule` (locked 2026 list + real major purses,
       idempotent upsert on name+season) mirroring `Golf_Pick_Em/import_tournaments.py`, plus
       `flask golf force-schedule-sync` (bypasses the Monday gate). Current `sync_schedule()` is
       update-only, so a fresh season has zero tournaments.
@@ -305,7 +305,16 @@ Files: `games/golf/models.py`, `games/golf/services/sync.py`, `games/golf/routes
 - **2026-06-30** — **PR 1 (scoring & resolution correctness) merged (#103).** Zurich full payout;
   fixed a latent Postgres crash in `resolve_pick` (sqlite-dialect insert → every resolve threw and was
   silently swallowed → zero scoring on prod); transactional per-pick savepoint reprocessing; live
-  early-WD backup activation. +12 scoring tests; suite 1479; CodeRabbit APPROVED. **Next: PR 2 (sync/API ingestion).**
+  early-WD backup activation. +12 scoring tests; suite 1479; CodeRabbit APPROVED.
+- **2026-07-01** — **PR 2 (sync & API ingestion correctness) merged (#104).** `_iter_player_rows`
+  team-row flattening across field/live/withdrawals/results (Zurich picks were skipped everywhere);
+  3-format ISO `_parse_tee_time_timestamp` (+relaxed-EJSON `$date`) routed through schedule `date.start`;
+  real major purses + `effective_purse`/`purse_is_estimate` + `_backfill_purse_from_schedule`;
+  `is_major` ×1.5 on live projections (and fixed a self-caught double-apply in `get_current_earnings`);
+  `normalize_position` at every `final_position` write; `flask golf seed-schedule` (purse-0 rows,
+  placeholder `api_tourn_id` linked by name at first `sync_schedule`) + `force-schedule-sync`.
+  +43 tests (test_golf_sync.py); suite 1479→1522; verified on `ccc_local` Postgres; CodeRabbit APPROVED
+  (2 review rounds). **Next: PR 3 (major missed-cut/DQ penalty system).**
 
 ## Key reference sources
 
