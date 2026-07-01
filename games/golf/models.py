@@ -646,7 +646,7 @@ class GolfPick(db.Model):
 
         return True
 
-    def _early_wd(self, result):
+    def _early_wd(self, result) -> bool:
         """Did this player withdraw before completing Round 2?
 
         'not started' counts as a withdrawal once the tournament is complete, but

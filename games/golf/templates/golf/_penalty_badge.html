@@ -5,7 +5,7 @@
 {% macro penalty_badge(pick, extra_class='', label='', wrap=false) -%}
   {%- if pick.show_penalty_badge -%}
     {%- if wrap %}<div>{% endif -%}
-    <span class="badge-penalty{% if extra_class %} {{ extra_class }}{% endif %}" title="Missed major cut — ${{ penalty_per_incident }} to the pot">&minus;${{ penalty_per_incident }}{{ label }}</span>
+    <span class="badge-penalty{% if extra_class %} {{ extra_class }}{% endif %}" title="Missed major cut or DQ — ${{ penalty_per_incident }} to the pot">&minus;${{ penalty_per_incident }}{{ label }}</span>
     {%- if wrap %}</div>{% endif -%}
   {%- endif -%}
 {%- endmacro %}

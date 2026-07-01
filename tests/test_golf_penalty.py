@@ -668,8 +668,8 @@ def test_admin_payments_page_shows_penalty_pot(app, client, monkeypatch):
     assert resp.status_code == 200
     body = resp.get_data(as_text=True)
     assert 'Penalty' in body
-    # Pot = 2 flagged picks x $15 = $30
-    assert '30' in body
+    # Pot = 2 flagged picks x $15 = $30 (anchored on the formatted dollar amount)
+    assert '$30' in body
 
 
 # ============================================================================
