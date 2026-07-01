@@ -241,6 +241,19 @@ def test_resolve_pick_both_wd_before_r2_no_penalty(app):
     assert pick.penalty_triggered is False
 
 
+def test_resolve_pick_failure_resets_penalty_triggered(app):
+    """A failed resolution (missing result) must clear a stale live penalty flag."""
+    u = _make_user()
+    _make_enrollment(u)
+    t = _make_tournament(is_major=True)
+    primary, backup = _players()
+    # No result rows for either player → the missing-primary early return fires.
+    pick = _make_pick(u, t, primary, backup, penalty_triggered=True)
+
+    assert pick.resolve_pick() is False
+    assert pick.penalty_triggered is False
+
+
 def test_resolve_pick_re_derives_penalty_false_on_reresolve(app):
     """No separate clear: a corrected result flips penalty_triggered back to False."""
     u = _make_user()
@@ -524,6 +537,22 @@ def test_admin_update_payment_rejects_non_integer_penalty(app, client, monkeypat
     resp = client.post(f'/golf/admin/update-payment/{member.id}',
                        json={'penalty_paid': 'abc'})
     assert resp.status_code == 400
+
+
+def test_admin_update_payment_rejects_fractional_penalty(app, client, monkeypatch):
+    """A JSON float must be rejected, not silently truncated to an int."""
+    _set_status(monkeypatch, 'golf', 'open')
+    admin = _make_user('gadmin', is_admin=True)
+    member = _make_user('member')
+    _make_enrollment(member)
+    _login(client, admin)
+
+    resp = client.post(f'/golf/admin/update-payment/{member.id}',
+                       json={'penalty_paid': 12.75})
+    assert resp.status_code == 400
+    with app.app_context():
+        e = GolfEnrollment.query.filter_by(user_id=member.id, season_year=SEASON).first()
+        assert e.penalty_paid == 0  # unchanged, NOT truncated to 12
 
 
 def test_admin_update_payment_penalty_only_preserves_has_paid(app, client, monkeypatch):

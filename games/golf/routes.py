@@ -662,11 +662,22 @@ def admin_update_payment(user_id):
 
     data = request.get_json() or {}
 
-    # Penalty-paid update (ADR-034) — clamp to a non-negative integer. Handled
-    # independently of has_paid so a penalty-only save never resets the entry fee.
+    def _parse_non_negative_int(value):
+        """Whole non-negative dollars only; reject floats/non-numeric — no silent
+        truncation of a JSON float like 12.75 into 12. Negatives clamp to 0."""
+        if isinstance(value, bool):
+            raise ValueError
+        if isinstance(value, int):
+            return max(0, value)
+        if isinstance(value, str):
+            return max(0, int(value.strip()))  # int() rejects '12.5'/'abc'
+        raise ValueError
+
+    # Penalty-paid update (ADR-034) — handled independently of has_paid so a
+    # penalty-only save never resets the entry fee.
     if 'penalty_paid' in data:
         try:
-            enrollment.penalty_paid = max(0, int(data['penalty_paid']))
+            enrollment.penalty_paid = _parse_non_negative_int(data['penalty_paid'])
         except (TypeError, ValueError):
             return jsonify({
                 'success': False,

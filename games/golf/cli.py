@@ -332,7 +332,7 @@ def refresh_live_penalties_cmd():
     a fresh DB drop. The live-leaderboard sync already refreshes penalties for
     active majors on its own cadence; this is the manual equivalent (ADR-034).
     """
-    from games.golf.models import GolfPick
+    from games.golf.services.sync import refresh_tournament_penalties
     year = current_app.config.get('SEASON_YEAR', 2026)
     tournaments = (
         GolfTournament.query
@@ -340,12 +340,7 @@ def refresh_live_penalties_cmd():
         .filter(GolfTournament.status.in_(['active', 'complete']))
         .all()
     )
-    total = 0
-    for tournament in tournaments:
-        for pick in GolfPick.query.filter_by(tournament_id=tournament.id).all():
-            pick.refresh_live_penalty()
-            if pick.penalty_triggered:
-                total += 1
+    total = sum(refresh_tournament_penalties(t) for t in tournaments)
     db.session.commit()
     click.echo(f"Refreshed penalties across {len(tournaments)} majors. {total} picks flagged.")
 

@@ -537,6 +537,11 @@ class GolfPick(db.Model):
             player_id=self.backup_player_id
         ).first()
 
+        # Clear any stale (e.g. live-refreshed) penalty flag up front: the success
+        # path re-derives it below, and every failed early-return then leaves the
+        # pick's resolution state — including this flag — fully cleared (ADR-034).
+        self.penalty_triggered = False
+
         if not primary_result:
             logger.error(
                 "Missing tournament result for primary player %s in tournament %s",

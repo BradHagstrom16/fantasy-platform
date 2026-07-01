@@ -985,8 +985,7 @@ class TournamentSync:
             # Live-refresh the major cut/DQ side pot so the admin's penalty
             # totals track the weekend before results are finalized (ADR-034).
             if tournament.is_major:
-                for pick in GolfPick.query.filter_by(tournament_id=tournament.id).all():
-                    pick.refresh_live_penalty()
+                refresh_tournament_penalties(tournament)
                 db.session.commit()
 
             logger.info(
@@ -1000,6 +999,21 @@ class TournamentSync:
             return 0
 
         return updated
+
+
+def refresh_tournament_penalties(tournament: GolfTournament) -> int:
+    """Re-derive ``GolfPick.penalty_triggered`` for one tournament's picks (ADR-034).
+
+    Returns the number of picks now flagged. The caller is responsible for the
+    commit. Shared by the live-leaderboard sync and ``flask golf
+    refresh-live-penalties`` so the refresh/count logic lives in one place.
+    """
+    flagged = 0
+    for pick in GolfPick.query.filter_by(tournament_id=tournament.id).all():
+        pick.refresh_live_penalty()
+        if pick.penalty_triggered:
+            flagged += 1
+    return flagged
 
 
 def get_upcoming_tournament(days_ahead: int = 7) -> Optional[GolfTournament]:
