@@ -102,6 +102,13 @@
                                     {% else %}
                                         <span class="badge bg-light text-dark border" style="font-size:.65rem;">PRIMARY</span>
                                     {% endif %}
+                                {% elif pick and t.status == 'active' %}
+                                    {# Live: reflect an early primary WD before results are processed #}
+                                    {% if pick.is_backup_activated() %}
+                                        <span class="badge bg-info text-dark" style="font-size:.65rem;">BACKUP</span>
+                                    {% else %}
+                                        <span class="badge bg-light text-dark border" style="font-size:.65rem;">PRIMARY</span>
+                                    {% endif %}
                                 {% elif pick %}
                                     <span class="text-muted small">TBD</span>
                                 {% else %}

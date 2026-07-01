@@ -38,6 +38,7 @@ from games.golf.models import (
     GolfTournamentResult,
     GolfPick,
     GolfEnrollment,
+    GolfSeasonPlayerUsage,
 )
 from games.golf.utils import GOLF_LEAGUE_TZ, parse_score_to_par, calculate_projected_earnings
 from games.golf.constants import EXCLUDED_TOURNAMENTS, SEASON_CUTOFF_DATE, MIN_FIELD_SIZE
@@ -659,22 +660,35 @@ class TournamentSync:
 
         for pick in picks:
             try:
-                # Clean up old resolution state (handles re-processing scenarios)
-                pick.clear_resolution(tournament.season_year)
-                resolved = pick.resolve_pick()
-                if not resolved:
-                    skipped += 1
-                    continue
+                # Per-pick SAVEPOINT: a pick that fails to resolve rolls back
+                # cleanly so no partial clear (points/usage) can persist while
+                # the final commit succeeds for the other picks.
+                with db.session.begin_nested():
+                    # Clean up season usage for primary, backup, AND old active
+                    # player (active may differ from primary/backup after an admin
+                    # override) before re-resolving.
+                    cleanup_ids = {pick.primary_player_id, pick.backup_player_id}
+                    if pick.active_player_id:
+                        cleanup_ids.add(pick.active_player_id)
+                    GolfSeasonPlayerUsage.query.filter(
+                        GolfSeasonPlayerUsage.user_id == pick.user_id,
+                        GolfSeasonPlayerUsage.season_year == tournament.season_year,
+                        GolfSeasonPlayerUsage.player_id.in_(cleanup_ids),
+                    ).delete(synchronize_session=False)
 
-                enrollment = GolfEnrollment.query.filter_by(
-                    user_id=pick.user_id,
-                    season_year=tournament.season_year
-                ).first()
-                if enrollment:
-                    enrollment.calculate_total_points()
+                    if not pick.resolve_pick():
+                        raise RuntimeError("Pick resolution incomplete")
+
+                    enrollment = GolfEnrollment.query.filter_by(
+                        user_id=pick.user_id,
+                        season_year=tournament.season_year
+                    ).first()
+                    if enrollment:
+                        enrollment.calculate_total_points()
 
                 processed += 1
-            except Exception as exc:  # noqa: BLE001 - continue to next pick
+            except Exception as exc:  # noqa: BLE001 - roll back this pick, continue
+                skipped += 1
                 logger.warning(
                     "Skipped pick %s for %s: %s",
                     pick.id,

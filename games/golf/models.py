@@ -11,12 +11,10 @@ Core Concepts:
 - Points = actual prize money earned by their active pick
 - Each golfer can only be used once per season
 - Backup activates only if primary WDs before completing Round 2
-- Majors earn 1.5x points, team events earn half (earnings // 2)
+- Majors earn 1.5x points; team events (Zurich) pay the FULL team payout (ADR-033)
 """
 import logging
 from datetime import datetime, timezone
-
-from sqlalchemy.dialects.sqlite import insert
 
 from extensions import db
 from games.golf.utils import format_score_to_par, GOLF_LEAGUE_TZ
@@ -313,6 +311,15 @@ class GolfTournamentResult(db.Model):
         """Check if player did not complete round 2 (WD or never started)."""
         return self.status in ('wd', 'not started') and self.rounds_completed < 2
 
+    def is_wd_before_round_2(self):
+        """True if the player actually WITHDREW before completing Round 2.
+
+        Use during ACTIVE tournaments, where 'not started' means "hasn't teed
+        off yet" (not a withdrawal). For completed tournaments use
+        wd_before_round_2_complete(), which also treats 'not started' as a WD.
+        """
+        return self.status == 'wd' and self.rounds_completed < 2
+
     def format_score_to_par(self):
         """Format score to par for display."""
         return format_score_to_par(self.score_to_par)
@@ -501,11 +508,8 @@ class GolfPick(db.Model):
                     self.backup_used = False
                     return False
 
-                # Handle team event (Zurich) — divide by 2
-                if self.tournament.is_team_event:
-                    earnings = earnings // 2
-
-                # Handle major multiplier — multiply by 1.5
+                # Team events (Zurich) pay the FULL team payout — no halving (ADR-033).
+                # Major multiplier — multiply by 1.5 (only remaining scoring modifier).
                 if self.tournament.is_major:
                     earnings = int(earnings * 1.5)
 
@@ -530,11 +534,8 @@ class GolfPick(db.Model):
                 self.backup_used = False
                 return False
 
-            # Handle team event (Zurich) — divide by 2
-            if self.tournament.is_team_event:
-                earnings = earnings // 2
-
-            # Handle major multiplier — multiply by 1.5
+            # Team events (Zurich) pay the FULL team payout — no halving (ADR-033).
+            # Major multiplier — multiply by 1.5 (only remaining scoring modifier).
             if self.tournament.is_major:
                 earnings = int(earnings * 1.5)
 
@@ -542,35 +543,70 @@ class GolfPick(db.Model):
             self.primary_used = True
             self.backup_used = False
 
-        # Record season usage for active player
-        stmt = insert(GolfSeasonPlayerUsage).values(
+        # Record season usage for the active player. Idempotent + dialect-agnostic
+        # (an existence check works on both SQLite and Postgres, unlike the
+        # sqlite-only insert().on_conflict_do_nothing()).
+        already_used = GolfSeasonPlayerUsage.query.filter_by(
             user_id=self.user_id,
             player_id=self.active_player_id,
             season_year=self.tournament.season_year,
-        ).on_conflict_do_nothing()
-        db.session.execute(stmt)
+        ).first()
+        if not already_used:
+            db.session.add(GolfSeasonPlayerUsage(
+                user_id=self.user_id,
+                player_id=self.active_player_id,
+                season_year=self.tournament.season_year,
+            ))
 
         return True
+
+    def is_backup_activated(self):
+        """True if the backup player is (or will be) the active pick.
+
+        - Completed tournament: definitive — active_player_id == backup_player_id.
+        - Active tournament: primary withdrew before completing Round 2, so the
+          backup has taken over live (before resolve_pick() has run).
+        """
+        if self.tournament.status == 'complete' and self.active_player_id:
+            return self.active_player_id == self.backup_player_id
+
+        if self.tournament.status == 'active':
+            primary_result = GolfTournamentResult.query.filter_by(
+                tournament_id=self.tournament_id,
+                player_id=self.primary_player_id
+            ).first()
+            if primary_result and primary_result.is_wd_before_round_2():
+                return True
+
+        return False
+
+    @property
+    def display_active_player_id(self):
+        """Player id whose live result should represent this pick's 'active' player.
+
+        Prefers the resolved active player; before resolution (live), reflects an
+        early primary WD by returning the activated backup (see is_backup_activated()),
+        so the weekend UI never shows a dead primary instead of the live backup.
+        """
+        if self.active_player_id:
+            return self.active_player_id
+        if self.is_backup_activated():
+            return self.backup_player_id
+        return self.primary_player_id
 
     def get_current_earnings(self):
         """Get current earnings for display during active tournaments."""
         if self.points_earned is not None:
             return self.points_earned
 
-        if not self.active_player_id:
-            active_id = self.primary_player_id
-        else:
-            active_id = self.active_player_id
-
         result = GolfTournamentResult.query.filter_by(
             tournament_id=self.tournament_id,
-            player_id=active_id
+            player_id=self.display_active_player_id
         ).first()
 
         if result and result.earnings:
             earnings = result.earnings
-            if self.tournament.is_team_event:
-                earnings = earnings // 2
+            # Team events (Zurich) pay the FULL team payout — no halving (ADR-033).
             if self.tournament.is_major:
                 earnings = int(earnings * 1.5)
             return earnings

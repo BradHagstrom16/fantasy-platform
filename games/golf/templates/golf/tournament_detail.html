@@ -142,7 +142,7 @@
                             </td>
                             {% endif %}
                             {% if tournament.status in ('active', 'complete') %}
-                            {% set active_id = pick.active_player_id or pick.primary_player_id %}
+                            {% set active_id = pick.display_active_player_id %}
                             {% set result = results_map.get(active_id) %}
                             <td class="text-center">
                                 {% if result and result.final_position %}
