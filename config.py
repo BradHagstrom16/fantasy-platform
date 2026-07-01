@@ -47,6 +47,12 @@ class Config:
     ENTRY_FEE = int(os.environ.get('ENTRY_FEE', '25'))
     SYNC_MODE = os.environ.get('SYNC_MODE', 'standard').lower()
     FIXED_DEADLINE_HOUR_CT = int(os.environ.get('FIXED_DEADLINE_HOUR_CT', '7'))
+    # SlashGolf (RapidAPI) key for the Golf Pick 'Em sync. Plumbed through
+    # config so app-context callers read current_app.config['SLASHGOLF_API_KEY']
+    # rather than os.environ directly — the MAIL_FROM_ADDRESS gotcha: a key read
+    # via current_app.config.get() that has no os.environ.get() line here is
+    # silently None in prod. Empty default → the CLI refuses to run a sync.
+    SLASHGOLF_API_KEY = os.environ.get('SLASHGOLF_API_KEY', '')
     SLASHGOLF_API_HOST = 'live-golf-data.p.rapidapi.com'
     STATUS_REFRESH_INTERVAL_SECONDS = int(os.environ.get('STATUS_REFRESH_INTERVAL_SECONDS', '300'))
     PICKS_VISIBLE_AFTER_DEADLINE = True

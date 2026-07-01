@@ -5,7 +5,6 @@ All route handlers for the Golf Pick 'Em game.
 Mounted at /golf/ via blueprint url_prefix.
 """
 import logging
-import os
 from datetime import datetime, timezone
 from functools import wraps
 
@@ -850,7 +849,7 @@ def admin_process_results(tournament_id):
         flash('Tournament must be complete before processing results.', 'error')
         return redirect(url_for('golf.admin_tournaments'))
 
-    api_key = os.environ.get('SLASHGOLF_API_KEY', '')
+    api_key = current_app.config.get('SLASHGOLF_API_KEY', '')
     sync_mode = current_app.config.get('SYNC_MODE', 'standard')
     api = SlashGolfAPI(api_key, sync_mode=sync_mode)
     sync = TournamentSync(api, sync_mode=sync_mode)

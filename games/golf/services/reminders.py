@@ -47,6 +47,12 @@ REMINDER_WINDOWS = [
     {'hours': 1, 'type': 'final', 'emoji': ''},
 ]
 
+# De-dup ordering for GolfTournament.last_reminder_type. Higher = closer to the
+# deadline. A run whose active tier is <= the last recorded tier is a repeat (the
+# hourly cron re-landing in the same window) and is skipped. Keys match the
+# f"{window['hours']}h" tier tags recorded after a successful send.
+REMINDER_ORDER = {'24h': 0, '12h': 1, '1h': 2}
+
 # Tolerance window (minutes) - send reminder if within this window of the target time
 TOLERANCE_MINUTES = 35
 
@@ -945,6 +951,18 @@ def run_reminder_check():
 
     print(f"\nActive reminder window: {window['hours']}-hour ({window['type']})")
 
+    # De-dup: skip if this tier (or a later/closer tier) was already sent for this
+    # tournament. Lets the reminder cron run hourly across the 24h window without
+    # re-sending — the tolerance windows overlap an hourly cadence (audit §6).
+    current_tier = f"{window['hours']}h"
+    if tournament.last_reminder_type:
+        last_order = REMINDER_ORDER.get(tournament.last_reminder_type, -1)
+        current_order = REMINDER_ORDER.get(current_tier, -1)
+        if current_order <= last_order:
+            print(f"\n{current_tier} reminder already sent "
+                  f"(last sent: {tournament.last_reminder_type}). Skipping.")
+            return
+
     # Get users who need reminders (returns ORM objects attached to this context)
     users_without_picks = get_users_without_picks(tournament.id)
 
@@ -992,6 +1010,21 @@ def run_reminder_check():
 
         if send_platform_email(user_email, subject, plain, html):
             success_count += 1
+
+    # Record the tier once ANY send succeeds (standalone parity), so a total
+    # failure leaves the tournament un-marked and the next run retries this tier.
+    # We deliberately DON'T gate on all-recipient success: a single permanently
+    # bad address would then keep the tier un-recorded forever and re-spam every
+    # good recipient on the hourly cron — the exact duplicate-storm the de-dup
+    # exists to prevent (audit §6). A transiently-failed recipient still receives
+    # the next tier (24h→12h→1h); true per-recipient delivery tracking (the fully
+    # correct fix) is a deferred enhancement, matching the recap-email trade-off.
+    if success_count > 0:
+        tournament.last_reminder_type = current_tier
+        db.session.commit()
+        print(f"Recorded {current_tier} reminder as sent")
+    else:
+        print(f"No emails sent successfully — not recording {current_tier} as sent")
 
     print()
     print("-" * 60)

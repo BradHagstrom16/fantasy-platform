@@ -25,10 +25,12 @@ import os
 import random
 import time
 from datetime import datetime, timedelta, timezone
+from logging.handlers import RotatingFileHandler
 from typing import Any, Iterator, Optional, Dict, List, Tuple
 from zoneinfo import ZoneInfo
 
 import requests
+from flask import current_app, has_app_context
 
 from extensions import db
 from games.golf.models import (
@@ -57,20 +59,42 @@ from games.golf.constants import (
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
-# Dedicated API call logger for auditing RapidAPI usage
+# Dedicated API call logger for auditing RapidAPI usage. The file handler is
+# attached LAZILY on the first API call (see _ensure_api_call_logging) rather
+# than at import time: creating the log directory at import can break app
+# startup on a read-only deploy or a path without write permission (audit §3).
 API_CALL_LOGGER = logging.getLogger("api_calls")
 API_CALL_LOGGER.setLevel(logging.INFO)
-if not API_CALL_LOGGER.handlers:
-    from logging.handlers import RotatingFileHandler
-    log_dir = os.path.join(os.path.dirname(__file__), "..", "logs")
-    os.makedirs(log_dir, exist_ok=True)
-    handler = RotatingFileHandler(
-        os.path.join(log_dir, "api_calls.log"),
-        maxBytes=500_000,  # ~500KB per file
-        backupCount=3
+_api_call_logging_configured = False
+
+
+def _ensure_api_call_logging() -> None:
+    """Attach the rotating file handler once, on first use, tolerating failure.
+
+    The log directory is configurable via ``GOLF_API_LOG_DIR`` (else the
+    package-local ``logs/``). If it can't be created/opened — e.g. a read-only
+    deploy — file logging is silently disabled rather than crashing the sync.
+    """
+    global _api_call_logging_configured
+    if _api_call_logging_configured:
+        return
+    _api_call_logging_configured = True  # set first: a failure must not retry every call
+    if API_CALL_LOGGER.handlers:
+        return
+    log_dir = os.environ.get("GOLF_API_LOG_DIR") or os.path.join(
+        os.path.dirname(__file__), "..", "logs"
     )
-    handler.setFormatter(logging.Formatter("%(asctime)s\t%(message)s"))
-    API_CALL_LOGGER.addHandler(handler)
+    try:
+        os.makedirs(log_dir, exist_ok=True)
+        handler = RotatingFileHandler(
+            os.path.join(log_dir, "api_calls.log"),
+            maxBytes=500_000,  # ~500KB per file
+            backupCount=3,
+        )
+        handler.setFormatter(logging.Formatter("%(asctime)s\t%(message)s"))
+        API_CALL_LOGGER.addHandler(handler)
+    except OSError as exc:
+        logger.warning("API call file logging disabled (could not open %s: %s)", log_dir, exc)
 
 
 class SlashGolfAPI:
@@ -100,6 +124,7 @@ class SlashGolfAPI:
 
     def _log_api_call(self, endpoint: str, params: Dict, status: int, duration: float, attempt: int) -> None:
         """Record API call details for auditing."""
+        _ensure_api_call_logging()
         self._call_counter += 1
         API_CALL_LOGGER.info(
             "count=%s\tmode=%s\tendpoint=%s\tstatus=%s\tattempt=%s\tduration=%.2fs\tparams=%s",
@@ -1065,10 +1090,30 @@ def _refresh_statuses(tournaments):
         db.session.commit()
 
 
-def get_upcoming_tournaments_window(days_ahead: int = 10) -> List[GolfTournament]:
+def _resolve_season_year(season_year: Optional[int] = None) -> int:
+    """The season the automation queries should scope to.
+
+    Explicit arg wins (tests / one-off backfills); otherwise the configured
+    SEASON_YEAR when inside an app context, else the current calendar year.
+    Season-scoping keeps a prior cup's tournaments from being re-synced or
+    re-processed once a new season's rows land in the same table (audit §3).
+    """
+    if season_year is not None:
+        return season_year
+    if has_app_context():
+        configured = current_app.config.get("SEASON_YEAR")
+        if configured:
+            return int(configured)
+    return datetime.now(GOLF_LEAGUE_TZ).year
+
+
+def get_upcoming_tournaments_window(days_ahead: int = 10,
+                                    season_year: Optional[int] = None) -> List[GolfTournament]:
+    season_year = _resolve_season_year(season_year)
     now = datetime.now(GOLF_LEAGUE_TZ)
     cutoff = now + timedelta(days=days_ahead)
     tournaments = GolfTournament.query.filter(
+        GolfTournament.season_year == season_year,
         GolfTournament.start_date <= cutoff,
         GolfTournament.end_date >= now,
         GolfTournament.status != "complete",
@@ -1077,22 +1122,27 @@ def get_upcoming_tournaments_window(days_ahead: int = 10) -> List[GolfTournament
     return tournaments
 
 
-def get_active_tournaments() -> List[GolfTournament]:
-    """Return all tournaments currently in 'active' status.
+def get_active_tournaments(season_year: Optional[int] = None) -> List[GolfTournament]:
+    """Return all tournaments currently in 'active' status for the season.
 
     Queries by status directly — the authoritative field maintained by
     update_status_from_time(). Avoids brittle end_date window math that
     breaks when end_date is stored as midnight UTC rather than end-of-day.
     """
+    season_year = _resolve_season_year(season_year)
     return GolfTournament.query.filter(
-        GolfTournament.status == "active"
+        GolfTournament.season_year == season_year,
+        GolfTournament.status == "active",
     ).order_by(GolfTournament.start_date).all()
 
 
-def get_recently_completed_tournaments(days_back: int = 2) -> List[GolfTournament]:
+def get_recently_completed_tournaments(days_back: int = 2,
+                                       season_year: Optional[int] = None) -> List[GolfTournament]:
+    season_year = _resolve_season_year(season_year)
     now = datetime.now(GOLF_LEAGUE_TZ)
     since = now - timedelta(days=days_back)
     tournaments = GolfTournament.query.filter(
+        GolfTournament.season_year == season_year,
         GolfTournament.end_date >= since,
         GolfTournament.end_date <= now + timedelta(hours=12),
     ).order_by(GolfTournament.end_date.desc()).all()
@@ -1100,9 +1150,11 @@ def get_recently_completed_tournaments(days_back: int = 2) -> List[GolfTournamen
     return tournaments
 
 
-def get_tournaments_pending_finalization() -> List[GolfTournament]:
+def get_tournaments_pending_finalization(season_year: Optional[int] = None) -> List[GolfTournament]:
     """Get tournaments that are complete but haven't had earnings finalized from API."""
+    season_year = _resolve_season_year(season_year)
     return GolfTournament.query.filter(
+        GolfTournament.season_year == season_year,
         GolfTournament.status == "complete",
         GolfTournament.results_finalized == False
     ).order_by(GolfTournament.end_date.desc()).all()
