@@ -67,9 +67,12 @@ fantasy-platform/
 
 | Game | Status |
 |---|---|
-| Golf Pick 'Em | ✅ Live |
-| CFB Survivor Pool | ✅ Live |
 | World Cup Fantasy Pool | ✅ Live |
+| CFB Survivor Pool | 🔜 Coming soon |
+| Golf Pick 'Em | 🔜 Coming soon |
+
+Statuses mirror `games/registry.py` (the SSoT). Flip a game's `status` there
+from `coming_soon` to `open` at launch, and update this table to match.
 
 ## Adding a New Game
 
