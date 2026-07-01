@@ -225,28 +225,34 @@ season-scoping, config-key lock.
 Files: `games/golf/routes.py`, `games/golf/services/reminders.py`,
 `games/golf/templates/golf/{tournament_detail,admin/override_pick}.html`, `README.md`.
 
-- [ ] **Golf-scoped standings.** Remove the append-all-platform-users block (`routes.py:181-193`);
+- [x] **Golf-scoped standings.** Remove the append-all-platform-users block (`routes.py:181-193`);
       show only current-season `GolfEnrollment` rows.
-- [ ] **Enrollment-scoped mail.** Replace `User.query.all()` (`reminders.py:240,581,848`) with
+- [x] **Enrollment-scoped mail.** Replace `User.query.all()` (`reminders.py:240,581,848`) with
       `GolfEnrollment.query.filter_by(season_year=SEASON_YEAR, ...)` — mirror
       `games/worldcup/services/notifications.py`.
-- [ ] **Avatars.** Render `user.get_avatar()` before the display name on `tournament_detail.html`
+- [x] **Avatars.** Render `user.get_avatar()` before the display name on `tournament_detail.html`
       (:116-117) and any other standings table missing it (mirror `worldcup/leaderboard.html`).
-- [ ] **Admin override hardening [HIGH].** Server-side validate override POST against field membership
+      (index.html already had it; admin tables are not player standings.)
+- [x] **Admin override hardening [HIGH].** Server-side validate override POST against field membership
       + season usage (excluding the pick's own players) (`routes.py:652`); remove the selected pick's
       players from the GET `used_player_ids` (`routes.py:733`); `db.session.rollback()` on existing-
       pick validation failure (`routes.py:425`).
-- [ ] **Admin branding + email safety.** Replace hardcoded `ADMIN_EMAIL="bhagstrom0@gmail.com"` /
+- [x] **Admin branding + email safety.** Replace hardcoded `ADMIN_EMAIL="bhagstrom0@gmail.com"` /
       `ADMIN_NAME="Sun Day Regrets"` (`reminders.py:57-58`) with `current_app.config.get('ADMIN_EMAIL')`
       + CCC branding; `markupsafe.escape` dynamic values interpolated into email HTML
       (`reminders.py:285,707,761-762,778`).
-- [ ] **Complete-vs-finalized gating.** Gate `tournament_detail.html` final/earnings mode on
+- [x] **Complete-vs-finalized gating.** Gate `tournament_detail.html` final/earnings mode on
       `results_finalized` (:104), not `status=='complete'`.
-- [ ] **README status.** Fix `README.md:68-72` (Golf/CFB shown "Live" but registry says
+- [x] **README status.** Fix `README.md:68-72` (Golf/CFB shown "Live" but registry says
       `coming_soon`) to match `games/registry.py`.
 
 Tests: `test_admin_override_rejects_used_or_non_field_player`,
 `test_admin_override_requires_confirm_for_complete`, standings/email scoping.
+**Confirm-gate decision:** the standalone's confirm-before-reresolve preview is a
+new interaction surface (out of scope for this conformance PR), deferred to a later
+hardening/UI slice; `test_admin_override_complete_tournament_reresolves_immediately`
+reconciles the roadmap's named `test_admin_override_requires_confirm_for_complete`
+by locking the current one-step re-resolve.
 
 ---
 
@@ -344,6 +350,24 @@ Files: `games/golf/models.py`, `games/golf/services/sync.py`, `games/golf/routes
   uses it). **Timers authored but NOT enabled — enabling + `systemd-analyze calendar` validation is
   Phase L.** `AGENTS.md` (untracked local Codex mirror) updated locally, intentionally not committed.
   **Next: PR 5 (routes, standings & email conformance).**
+- **2026-07-01** — **PR 5 (routes, standings & email conformance) merged (#107).** Golf-scoped
+  standings (ADR-036 — dropped the append-all-platform-users block); enrollment-scoped mail across
+  `send_picks_open_email` / `send_results_recap_email` / `get_users_without_picks(tournament_id,
+  season_year)` (replaced `User.query.all()`, mirrors worldcup notifications + CFB); `get_avatar()`
+  before the display name on `tournament_detail` standings; admin-override hardening (server-side
+  validate field membership + season usage excl. the pick's own players, **validate-before-mutate**,
+  rollback on failure, GET used-list excludes own players; `make_pick` existing-pick path also rolls
+  back); admin branding + `markupsafe.escape` on every dynamic name in HTML email bodies
+  (`_admin_alert_recipient` mirrors CFB `_send_admin_email`); `results_finalized` gating on
+  `tournament_detail` (earnings column + Best Pick card); README statuses match the registry.
+  **Confirm-before-reresolve gate deliberately DEFERRED** (new preview-screen surface, out of PR-5
+  scope) — `test_admin_override_complete_tournament_reresolves_immediately` reconciles the roadmap's
+  named confirm test by locking the one-step re-resolve. +18 tests (test_golf_conformance.py); suite
+  1575→1593; enrollment scoping + override validation verified on `ccc_local` Postgres (rolled back).
+  CodeRabbit (ASSERTIVE): 6 findings → accepted 5 (override season/status guard, resolve-fail
+  rollback, no-email reminder skip, Best-Pick gating, symmetric backup-player test) + **pushed back on
+  the prod-only ADMIN_EMAIL-fallback removal** (CFB parity + documented deploy convention — CR withdrew
+  it and recorded a learning). **Next: PR 6 (cleanups & test backfill).**
 
 ## Key reference sources
 
