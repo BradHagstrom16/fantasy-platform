@@ -173,18 +173,18 @@ Faithful port of the standalone's $15/incident side pot. Files: `games/golf/mode
 `games/golf/services/{sync,reminders}.py`, `games/golf/cli.py`, `games/golf/routes.py`,
 `games/golf/templates/golf/{index,my_picks,tournament_detail,admin/payments}.html`, migration.
 
-- [ ] **Model.** Add `GolfPick.penalty_triggered` (Boolean) + `GolfEnrollment.penalty_paid` (Integer),
+- [x] **Model.** Add `GolfPick.penalty_triggered` (Boolean) + `GolfEnrollment.penalty_paid` (Integer),
       `PENALTY_PER_INCIDENT = 15`, and `penalty_owed(season)` / `penalty_outstanding(season)` derived
       methods (owed = flagged picks × $15; outstanding = max(0, owed − paid)). Sources:
       `Golf_Pick_Em/models.py:38,99,140-154,437`. Migration.
-- [ ] **Flag at finalization.** In `resolve_pick()`, set `penalty_triggered` = major AND active
+- [x] **Flag at finalization.** In `resolve_pick()`, set `penalty_triggered` = major AND active
       result status ∈ {cut, dq} (`Golf_Pick_Em/models.py:584-592`). Re-derived (True/False) every
       resolution — no separate clear.
-- [ ] **Live refresh.** Port `refresh_live_penalty()` (`Golf_Pick_Em/models.py:657-674`); call it in
+- [x] **Live refresh.** Port `refresh_live_penalty()` (`Golf_Pick_Em/models.py:657-674`); call it in
       the live-leaderboard sync when `tournament.is_major`; add `flask golf refresh-live-penalties`.
-- [ ] **Admin payments.** Extend `admin/payments.html` + its AJAX endpoint with owed / paid /
+- [x] **Admin payments.** Extend `admin/payments.html` + its AJAX endpoint with owed / paid /
       outstanding per user and pot totals (`Golf_Pick_Em/app.py:955-1016`).
-- [ ] **Standings + badges.** Add the penalty pot to the entry-total math on `index.html` and penalty
+- [x] **Standings + badges.** Add the penalty pot to the entry-total math on `index.html` and penalty
       badges on `index`/`my_picks`/`tournament_detail` (gated `is_major and results_finalized`).
       (Recap email omits penalties, matching the standalone.)
 
@@ -314,7 +314,18 @@ Files: `games/golf/models.py`, `games/golf/services/sync.py`, `games/golf/routes
   `normalize_position` at every `final_position` write; `flask golf seed-schedule` (purse-0 rows,
   placeholder `api_tourn_id` linked by name at first `sync_schedule`) + `force-schedule-sync`.
   +43 tests (test_golf_sync.py); suite 1479→1522; verified on `ccc_local` Postgres; CodeRabbit APPROVED
-  (2 review rounds). **Next: PR 3 (major missed-cut/DQ penalty system).**
+  (2 review rounds).
+- **2026-07-01** — **PR 3 (major missed-cut/DQ penalty side pot, ADR-034) merged (#105).** Faithful
+  port of the $15/incident side pot: `GolfPick.penalty_triggered` + `GolfEnrollment.penalty_paid`,
+  `penalty_owed`/`penalty_outstanding` (season-scoped), `resolve_pick()` flagging (re-derived every
+  resolution; cleared on failed/skipped resolution), `refresh_live_penalty()` (handles active AND
+  complete-but-unresolved majors via the widened `is_backup_activated`), live-sync refresh (isolated
+  try/except so it can't mask the leaderboard sync) + `flask golf refresh-live-penalties`, admin
+  payments owed/paid/outstanding + pot totals (AJAX rejects fractional penalty), prize-pool footer +
+  penalty badges (shared `_penalty_badge.html` macro, gated live-OR-finalized major via
+  `show_penalty_badge`). Migration `683bff36f66e` (server_default backfill; round-tripped + resolve
+  smoke on `ccc_local` Postgres). +41 tests (test_golf_penalty.py); suite 1522→1563; visual smoke of
+  all four surfaces; CodeRabbit APPROVED (3 review rounds). **Next: PR 4 (ops hardening & automation).**
 
 ## Key reference sources
 
