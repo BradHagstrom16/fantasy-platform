@@ -133,7 +133,7 @@
                             <td class="text-center d-none d-sm-table-cell col-divider">
                                 {% set pick = active_picks.get(uid) %}
                                 {% if pick %}
-                                    {% set active_id = pick.active_player_id or pick.primary_player_id %}
+                                    {% set active_id = pick.display_active_player_id %}
                                     {% set result = active_results.get(active_id) %}
                                     {% if result %}
                                         {% if result.final_position %}
@@ -153,7 +153,7 @@
                             </td>
                             <td class="text-end d-none d-md-table-cell">
                                 {% if pick %}
-                                    {% set active_id = pick.active_player_id or pick.primary_player_id %}
+                                    {% set active_id = pick.display_active_player_id %}
                                     {% set result = active_results.get(active_id) %}
                                     {% if result and result.final_position %}
                                         {% set proj = calculate_projected_earnings(result.final_position, active_tournament.purse or 0, all_positions) %}

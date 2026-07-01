@@ -1,6 +1,6 @@
 # Architecture Decision Log — Fantasy Sports Platform
 
-**Last Updated:** 2026-05-06
+**Last Updated:** 2026-06-30
 **Status:** Historical record of architecture decisions. For current operational conventions, gotchas, and patterns, see [CLAUDE.md](CLAUDE.md). For deployment architecture, see `docs/superpowers/plans/2026-04-21-production-deployment.md` and the `project_production_deployment.md` memory.
 
 ---
@@ -41,6 +41,10 @@
 | ADR-030 | Email sending consolidation | Per-game SMTP helpers, Shared utility | **Shared `utils/email.py` platform helper** | Fulfills ADR-016. Single `send_platform_email()` replaces three game-specific SMTP helpers. From-name initially "The Commissioner's Club", later changed to "Corrupt Commish Club" with the CCC brand redesign. | 2026-04-12 | Yes |
 | ADR-031 | Production hosting (supersedes ADR-005) | PythonAnywhere, DigitalOcean Droplet, Railway, Render | **DigitalOcean Droplet + Managed Postgres + Cloudflare** | Need full control over Nginx + systemd for the unix-socket Gunicorn pattern; predictable monthly cost ($12 droplet + $15 Postgres); private VPC between droplet and DB; Cloudflare proxy + Origin Certificate gives 15-year TLS. Phase 1 (code + config) shipped 2026-04-21; phases 2–6 (provision, wire, cron, monitoring) are the manual go-live path. | 2026-04-21 | Yes |
 | ADR-032 | Brand identity | Keep "The Commissioner's Club", Rename | **Rename to "Corrupt Commish Club" (CCC)** — full platform rename including domain/positioning | Pre-launch, so flexibility exists. CCC replaces "Commissioner's Club" everywhere user-facing, email from-name, eventual domain. Repo name stays `fantasy-platform`. Implemented across Spec A (brand foundation, tokens.css + style.css 2-layer system), Spec B (platform home), Spec C (World Cup reskin, 5 plans). | 2026-04-27 | Yes |
+| ADR-033 | Golf Zurich team-event scoring | Full team payout to both partners, Halve (÷2) per partner | **Full team payout** | Matches the standalone's actual live code + tournament UI ("both partners earn the full team payout") and how SlashGolf `/earnings` returns team-level earnings. The platform port's ÷2 was an incorrect divergence surviving only in stale README/import comments. | 2026-06-30 | Yes |
+| ADR-034 | Golf major missed-cut/DQ penalty | Port as-is, Modify, Skip for launch | **Port as-is** ($15/incident side pot) | Faithful parity with the proven standalone: flat $15 when the active pick misses the cut or is DQ'd at a major, live-refreshed during play, tracked as a side pot on admin payments + standings + badges. A rule the standalone's players already play under. | 2026-06-30 | Yes |
+| ADR-035 | Golf pre-launch hardening scope | Full roadmap to launch, Must-fix only, First slice then replan | **Full roadmap** (phased PRs) | ~7 months runway to Jan 2027; mirror the CFB pre-launch precedent — one scoped PR per area (correctness → ops → conformance → cleanup → UI → launch), CodeRabbit each, TDD. Roadmap: `docs/golf-pickem-launch-prep-roadmap-2026-06-30.md`. | 2026-06-30 | Yes |
+| ADR-036 | Golf standings audience | Golf enrollments only, All-platform board | **Golf enrollments only** | Every other game scopes standings to its enrollment; listing all platform users (with 0 pts) pollutes the board with WC/CFB-only accounts. Consistent with the season-scoped-query platform convention. | 2026-06-30 | Yes |
 
 ---
 
