@@ -99,28 +99,28 @@ realism check). Best launch de-risker available, stronger than synthetic tests a
 Files: `games/golf/models.py`, `games/golf/services/sync.py` (`process_tournament_picks`),
 `games/golf/templates/golf/{index,tournament_detail,my_picks}.html`.
 
-- [ ] **Record the 4 rulings in `ARCHITECTURE_DECISION_LOG.md`** (Zurich full payout, penalty port,
+- [x] **Record the 4 rulings in `ARCHITECTURE_DECISION_LOG.md`** (Zurich full payout, penalty port,
       full-roadmap scope, golf-scoped standings).
-- [ ] **Zurich → full payout.** Delete the three `if self.tournament.is_team_event: earnings = earnings // 2`
+- [x] **Zurich → full payout.** Delete the three `if self.tournament.is_team_event: earnings = earnings // 2`
       blocks (`models.py:504-506`, `533-535`, `get_current_earnings` `572-573`). Update the module
       docstring (`models.py:14`, "team events earn half") and the two stale standalone-parity comments.
       Leave the WD branches ("do NOT modify") untouched — only the halving is removed.
-- [ ] **Document + test multiplier precedence.** With halving gone, only the major ×1.5 remains
+- [x] **Document + test multiplier precedence.** With halving gone, only the major ×1.5 remains
       (`int(earnings * 1.5)`). Add a comment stating the precedence and a test locking major math even
       though no 2026 event is both major and team.
-- [ ] **Transactional reprocessing.** Rewrite `process_tournament_picks` (`sync.py:641-708`) to mirror
+- [x] **Transactional reprocessing.** Rewrite `process_tournament_picks` (`sync.py:641-708`) to mirror
       the standalone `process_tournament_results()` (`Golf_Pick_Em/app.py:1208-1245`): per-pick
       `with db.session.begin_nested():` savepoint, delete usage for **{primary, backup, old-active}**
       inside the savepoint (subsumes the too-narrow `clear_resolution`, models.py:406-429), call
       `resolve_pick()` + `enrollment.calculate_total_points()` inside it, `raise` on unresolved to roll
       back that pick only, single outer `commit()`. Fixes the current "no rollback anywhere → partial
       clears persist + stale enrollment totals" defect.
-- [ ] **Postgres-safe usage insert.** Replace `from sqlalchemy.dialects.sqlite import insert` +
+- [x] **Postgres-safe usage insert.** Replace `from sqlalchemy.dialects.sqlite import insert` +
       `.on_conflict_do_nothing()` (`models.py:19`, `546-551`) with a Postgres-safe upsert
       (`dialects.postgresql.insert`) or an ORM existence-check. **Verify first** by running
       `resolve_pick` against `ccc_local` (Postgres). Grep `games/golf/` for other `dialects.sqlite`
       imports and fix any.
-- [ ] **Live early-WD backup activation.** Port `is_backup_activated()` + `is_wd_before_round_2()`
+- [x] **Live early-WD backup activation.** Port `is_backup_activated()` + `is_wd_before_round_2()`
       (`Golf_Pick_Em/models.py:632-655`, `384-393`); route `get_current_earnings()` and the active-
       player display in `index.html` (:136,:156), `tournament_detail.html` (:145), `my_picks.html`
       through it so a pre-R2 primary WD shows the activated backup live, not the dead primary.
@@ -301,7 +301,11 @@ Files: `games/golf/models.py`, `games/golf/services/sync.py`, `games/golf/routes
 
 ## Progress log
 
-- **2026-06-30** — Roadmap + audit committed; ADR-033..036 recorded. PR 1 in progress.
+- **2026-06-30** — Roadmap + audit committed; ADR-033..036 recorded.
+- **2026-06-30** — **PR 1 (scoring & resolution correctness) merged (#103).** Zurich full payout;
+  fixed a latent Postgres crash in `resolve_pick` (sqlite-dialect insert → every resolve threw and was
+  silently swallowed → zero scoring on prod); transactional per-pick savepoint reprocessing; live
+  early-WD backup activation. +12 scoring tests; suite 1479; CodeRabbit APPROVED. **Next: PR 2 (sync/API ingestion).**
 
 ## Key reference sources
 
