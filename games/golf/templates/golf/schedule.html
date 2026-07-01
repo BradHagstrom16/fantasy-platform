@@ -80,8 +80,8 @@
                                 <small>{{ t.get_deadline_display() }}</small>
                             </td>
                             <td class="text-end d-none d-md-table-cell">
-                                {% if t.purse %}
-                                ${{ '{:,.0f}'.format(t.purse) }}
+                                {% if t.effective_purse %}
+                                ${{ '{:,.0f}'.format(t.effective_purse) }}
                                 {% else %}
                                 <span class="text-muted">TBD</span>
                                 {% endif %}

@@ -35,7 +35,7 @@
         <div class="col-6 col-md-3">
             <div class="stat-block animate-in stagger-1">
                 <div class="stat-value" style="font-size:1.6rem;">
-                    {% if tournament.purse %}${{ '{:,.0f}'.format(tournament.purse) }}{% else %}TBD{% endif %}
+                    {% if tournament.effective_purse %}${{ '{:,.0f}'.format(tournament.effective_purse) }}{% else %}TBD{% endif %}
                 </div>
                 <div class="stat-label">Purse</div>
             </div>

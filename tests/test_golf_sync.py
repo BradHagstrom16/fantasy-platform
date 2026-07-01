@@ -465,7 +465,81 @@ def test_seed_schedule_creates_locked_events(app):
     zurich = GolfTournament.query.filter_by(
         season_year=SEASON, name='Zurich Classic of New Orleans').first()
     assert zurich.is_team_event is True
-    assert all(t.purse and t.purse > 0 for t in tourneys)
+    # Purse is left at 0 (not persisted) so the estimate/backfill path stays live;
+    # effective_purse surfaces the figure for every seeded event.
+    assert all(t.purse == 0 for t in tourneys)
+    assert all(t.effective_purse and t.effective_purse > 0 for t in tourneys)
+    masters = next(t for t in tourneys if t.name == 'Masters Tournament')
+    assert masters.effective_purse == 22_500_000
+    assert masters.purse_is_estimate is True
+
+
+def test_seed_schedule_leaves_backfill_reachable_for_seeded_major(app):
+    """A seeded major keeps purse=0, so results finalization still backfills the
+    official purse (the guard is `not tournament.purse`)."""
+    seed_schedule(SEASON)
+    masters = GolfTournament.query.filter_by(
+        season_year=SEASON, name='Masters Tournament').first()
+    masters.api_tourn_id = '014'  # simulate the real id already linked
+    masters.status = 'active'
+    db.session.commit()
+    _make_player('MAJ', 'Major', 'Winner')
+    api = _FakeAPI(
+        leaderboard={"status": "Official", "leaderboardRows": [
+            {"playerId": "MAJ", "position": "1", "total": "-15",
+             "status": "complete", "rounds": [1, 2, 3, 4]},
+        ]},
+        earnings={"leaderboard": [
+            {"playerId": "MAJ", "position": "1", "earnings": {"$numberInt": "4050000"}},
+        ]},
+        schedule={"schedule": [
+            {"tournId": "014", "name": "Masters Tournament",
+             "date": {"start": "2026-04-09T00:00:00Z"},
+             "purse": {"$numberInt": "22500000"}},
+        ]},
+    )
+    TournamentSync(api).sync_tournament_results(masters)
+    db.session.refresh(masters)
+    assert masters.purse == 22_500_000  # backfill fired despite the season estimate
+
+
+def test_sync_schedule_reconciles_seeded_placeholder(app):
+    """sync_schedule links a seeded placeholder row to its real API id by name."""
+    seed_schedule(SEASON)
+    masters = GolfTournament.query.filter_by(
+        season_year=SEASON, name='Masters Tournament').first()
+    assert masters.api_tourn_id == f'{SEASON}_13'  # placeholder (week 13)
+    api = _FakeAPI(schedule={"schedule": [
+        {"tournId": "014", "name": "Masters Tournament",
+         "date": {"start": "2026-04-09T00:00:00Z"},
+         "purse": {"$numberInt": "22500000"}, "format": "stroke"},
+    ]})
+
+    updated = TournamentSync(api).sync_schedule(SEASON)
+
+    assert updated == 1
+    db.session.refresh(masters)
+    assert masters.api_tourn_id == '014'  # real SlashGolf id now linked
+    assert masters.purse == 22_500_000
+
+
+def test_sync_schedule_does_not_relink_real_id(app):
+    """A row already carrying a real api_tourn_id is never relinked by name."""
+    t = _make_tournament(name='Sony Open in Hawaii', api_tourn_id='016',
+                         purse=0, status='upcoming')
+    api = _FakeAPI(schedule={"schedule": [
+        {"tournId": "016", "name": "Sony Open in Hawaii",
+         "date": {"start": "2026-01-15T00:00:00Z"},
+         "purse": {"$numberInt": "9100000"}},
+    ]})
+
+    TournamentSync(api).sync_schedule(SEASON)
+
+    db.session.refresh(t)
+    assert t.api_tourn_id == '016'
+    assert t.purse == 9_100_000
+    assert GolfTournament.query.filter_by(
+        season_year=SEASON, name='Sony Open in Hawaii').count() == 1
 
 
 def test_seed_schedule_is_idempotent(app):

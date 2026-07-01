@@ -200,8 +200,14 @@ def seed_schedule_cmd():
     """Seed the locked season schedule (no API call).
 
     Creates the 32 league tournaments for the configured season so a fresh
-    platform season isn't empty. Idempotent — safe to re-run; a real API purse
-    already written is preserved. Run this before the API schedule sync.
+    platform season isn't empty (sync_schedule only *updates* existing rows).
+    Idempotent — safe to re-run; a real API purse already written is preserved.
+
+    Seeded rows carry a placeholder api_tourn_id (``YYYY_NN``) and purse 0
+    (displayed via effective_purse until the API provides the official number).
+    Run ``flask golf force-schedule-sync`` next: it links each seeded row to its
+    real SlashGolf tourn id by name. Any event whose API name differs from our
+    locked name won't auto-link and needs a one-off manual id fix.
     """
     year = current_app.config.get('SEASON_YEAR', 2026)
     created, updated = seed_schedule(year)
@@ -213,7 +219,8 @@ def force_schedule_sync_cmd():
     """Run sync_schedule() now, bypassing the Monday-only gate in sync-run.
 
     Use to pick up a purse/format announced mid-week (e.g. a major purse going
-    live during tournament week).
+    live during tournament week), and to link seeded placeholder rows to their
+    real SlashGolf tourn ids by name after ``seed-schedule``.
     """
     _, sync = _make_api_and_sync()
     year = current_app.config.get('SEASON_YEAR', 2026)

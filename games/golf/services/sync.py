@@ -50,7 +50,6 @@ from games.golf.constants import (
     EXCLUDED_TOURNAMENTS,
     SEASON_CUTOFF_DATE,
     MIN_FIELD_SIZE,
-    PURSE_ESTIMATES,
     DEFAULT_PURSE,
     TOURNAMENTS_2026,
 )
@@ -419,11 +418,24 @@ class TournamentSync:
             if start_date is None or start_date >= SEASON_CUTOFF_DATE:
                 continue
 
-            # Only update existing tournaments — never create new ones
+            # Only update existing tournaments — never create new ones. Match on
+            # the real API id first; fall back to (name, season) to reconcile a
+            # seeded row whose api_tourn_id is still the `YYYY_NN` placeholder,
+            # linking it to the real SlashGolf id so field/live/results syncs and
+            # purse backfill (which key on api_tourn_id) work. Only placeholder
+            # rows are relinked — a real id is never overwritten — and events
+            # whose API name differs from our locked name simply aren't matched
+            # (they stay a manual launch-time mapping, never a wrong write).
             existing = GolfTournament.query.filter_by(
                 api_tourn_id=event["tournId"],
                 season_year=year
             ).first()
+
+            if not existing:
+                seeded = GolfTournament.query.filter_by(name=name, season_year=year).first()
+                if seeded and (seeded.api_tourn_id or "").startswith(f"{year}_"):
+                    seeded.api_tourn_id = event["tournId"]
+                    existing = seeded
 
             if not existing:
                 # Tournament not in our league — skip it
@@ -1061,8 +1073,15 @@ def seed_schedule(year: int = 2026) -> Tuple[int, int]:
     ``sync_schedule()`` only *updates* existing tournaments, so a fresh season
     needs this to create rows first.
 
-    A real API purse already written to a tournament is preserved (never
-    clobbered with the season estimate); only unset/zero purses are filled.
+    Purse is intentionally left at 0: ``effective_purse`` surfaces the
+    ``PURSE_ESTIMATES`` figure for display/projection until the API provides the
+    official number (``sync_schedule`` for non-majors, ``_backfill_purse_from_schedule``
+    for majors — both keyed on ``purse == 0``). Persisting the estimate into the
+    column would make it indistinguishable from a real purse and permanently
+    suppress that backfill. A real API purse is therefore never touched here.
+
+    Rows are created with a ``YYYY_NN`` placeholder ``api_tourn_id``; the first
+    ``sync_schedule`` run links each to its real SlashGolf id by name.
 
     Returns:
         (created, updated) counts.
@@ -1073,7 +1092,6 @@ def seed_schedule(year: int = 2026) -> Tuple[int, int]:
     for week_num, (date_str, name, is_team, is_major) in enumerate(TOURNAMENTS_2026, start=1):
         start_date = datetime.strptime(date_str, "%m/%d/%Y")
         end_date = start_date + timedelta(days=3)  # Thu–Sun
-        estimate = PURSE_ESTIMATES.get(name) or DEFAULT_PURSE
 
         existing = GolfTournament.query.filter_by(name=name, season_year=year).first()
         if existing:
@@ -1082,18 +1100,17 @@ def seed_schedule(year: int = 2026) -> Tuple[int, int]:
             existing.is_team_event = is_team
             existing.is_major = is_major
             existing.week_number = week_num
-            # Don't overwrite a real API purse; only fill in an unset estimate.
-            if not existing.purse or existing.purse <= 0:
-                existing.purse = estimate
+            # `purse` is deliberately left untouched — see the docstring: 0 keeps
+            # the estimate/backfill path alive; a real API purse is preserved.
             updated += 1
         else:
             db.session.add(GolfTournament(
-                api_tourn_id=f"{year}_{week_num:02d}",  # placeholder until API sync
+                api_tourn_id=f"{year}_{week_num:02d}",  # placeholder; linked by name at first schedule sync
                 name=name,
                 season_year=year,
                 start_date=start_date,
                 end_date=end_date,
-                purse=estimate,
+                purse=0,  # displayed via effective_purse (PURSE_ESTIMATES) until API sync
                 is_team_event=is_team,
                 is_major=is_major,
                 week_number=week_num,

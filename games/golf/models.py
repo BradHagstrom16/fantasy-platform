@@ -639,7 +639,13 @@ class GolfPick(db.Model):
         return self.primary_player_id
 
     def get_current_earnings(self):
-        """Get current earnings for display during active tournaments."""
+        """Get current earnings for display during active tournaments.
+
+        The live projection stored in ``result.earnings`` by
+        ``sync_live_leaderboard`` already carries the major x1.5 multiplier
+        (and the full team payout, ADR-033), so return it as-is — applying the
+        multiplier here again would double-count it for majors.
+        """
         if self.points_earned is not None:
             return self.points_earned
 
@@ -649,11 +655,7 @@ class GolfPick(db.Model):
         ).first()
 
         if result and result.earnings:
-            earnings = result.earnings
-            # Team events (Zurich) pay the FULL team payout — no halving (ADR-033).
-            if self.tournament.is_major:
-                earnings = int(earnings * 1.5)
-            return earnings
+            return result.earnings
 
         return 0
 

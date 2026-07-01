@@ -286,6 +286,25 @@ def test_get_current_earnings_reflects_activated_backup_live(app):
     assert pick.get_current_earnings() == 40_000  # backup's, not the dead primary's 0
 
 
+def test_get_current_earnings_major_applies_multiplier_once(app):
+    """Active major: the x1.5 must be applied exactly once.
+
+    sync_live_leaderboard() stores the already-multiplied projection in
+    result.earnings (locked by test_golf_sync.test_live_projection_applies_major_multiplier),
+    so get_current_earnings() must return it as-is — not multiply a second time.
+    """
+    user = _make_user()
+    t = _make_tournament(name='Masters Tournament', is_major=True, status='active')
+    p1 = _make_player('P1', 'Primary', 'One')
+    p2 = _make_player('P2', 'Backup', 'Two')
+    # result.earnings already carries the major multiplier, as the live sync writes it.
+    _make_result(t, p1, status='active', rounds_completed=2, earnings=3_000_000)
+    _make_result(t, p2, status='active', rounds_completed=2, earnings=0)
+    pick = _make_pick(user, t, p1, p2)
+
+    assert pick.get_current_earnings() == 3_000_000  # not 4_500_000 (double-applied)
+
+
 # --- transactional reprocessing --------------------------------------------
 
 def test_reprocess_removes_stale_primary_backup_usage(app):
