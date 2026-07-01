@@ -1,0 +1,312 @@
+# Golf Pick 'Em — Pre-Launch Hardening Roadmap
+
+## Context
+
+Golf Pick 'Em (`games/golf/`, registry `status='coming_soon'`, `launch_label='2027'`) is a port of the
+standalone reference app at `/Users/bhagstrom/Golf_Pick_Em`. A read-only pre-launch audit
+(`docs/golf-pickem-platform-code-audit-2026-06-30.md`) found ~40 findings — 13 must-fix — where the
+platform port silently diverged from the battle-tested standalone or violated platform conventions.
+Left unfixed, Golf would launch with wrong Zurich scoring, no cut/DQ penalty pot, Zurich picks skipped
+entirely at sync, projections underreported at majors, standings/emails polluting non-Golf users,
+duplicate reminders, no production automation, and near-zero test coverage.
+
+Three exploration agents verified every finding against live code, mapped exact standalone port
+sources (file/line), and confirmed the CFB pre-launch precedent (one scoped PR per area, CodeRabbit on
+each). Brad ruled on the open questions (recorded as ADR-033..036):
+
+- **Zurich team-event scoring → FULL payout** (both partners get the full team payout). Matches the
+  standalone's actual live code + UI; removes the platform's incorrect ÷2. Only stale docs said ÷2.
+- **Major missed-cut/DQ penalty → PORT AS-IS** ($15/incident side pot, live-refreshed, admin-tracked).
+- **Scope → FULL ROADMAP to launch**, executed as scoped PRs across sessions; first PRs = correctness.
+- **Standings → Golf-enrollment-scoped** (stop listing every platform user).
+
+**Outcome:** Golf reaches functional parity with the proven standalone, conforms to platform
+conventions (avatars, enrollment-scoped mail, config-plumbed keys, season-scoping, CCC branding),
+gains production automation + real test coverage, and is UI-elevated to the DESIGN.md bar before the
+registry status flips to `'open'`.
+
+## Execution model
+
+- Each PR below is one session, carried through its full CodeRabbit approval cycle to merge
+  (per `feedback_cr_approval_sessions`); UI PRs also load `/impeccable`.
+- Branch off `main` as `golf/launch-prep-*` topic branches. TDD: write the named tests first
+  (`superpowers:test-driven-development`), then implement.
+- Record Brad's four rulings as entries in `ARCHITECTURE_DECISION_LOG.md` (the platform's binding-
+  decision log) as the first commit of PR 1.
+- No `tests/conftest.py` exists — every test file defines its own `app`/`client` fixtures
+  (copy the shape from `tests/test_golf_auto_enroll_removed.py`). Flip status in tests via
+  `set_status(monkeypatch, 'golf', 'open')` from `tests/_registry_helpers.py`. Admin auth seeds
+  `sess['_user_id'] = user.auth_id` (never `str(user.id)`).
+- All new columns via Flask-Migrate (`flask db migrate` → **review the generated file** → `db upgrade`),
+  committed with the model change.
+
+---
+
+## Execution strategy (multi-session)
+
+**Timeline.** It is Jun 2026; Golf launches **Jan 2027** — ~7 months of runway. No schedule pressure;
+optimize for correctness and clean handoffs, not speed. The failure mode to avoid is batching too much
+into one session and losing review quality — **one PR per session, clear between each.**
+
+**Now vs. later.** PRs 1-6 (backend correctness, ops, conformance) can all be done **now**, in any
+near-term window, independent of World Cup being live and CFB launching: Golf stays behind the
+`coming_soon` gate (interior routes unreachable), and the code is isolated (own blueprint, `golf_`
+tables, own tests) with only additive/benign shared-file touches. They land on `main` invisibly to
+users. **Phase U (design elevation) + Phase L (launch ops) are deferred** to near the Jan 2027 launch.
+Each PR must keep the full shared suite (WC + CFB) green — the only cross-game discipline.
+
+**Step 0 (do first, one small commit to `main`):** relocate this roadmap into the repo at
+`docs/golf-pickem-launch-prep-roadmap-2026-06-30.md` so it is version-controlled and survives clears;
+its `- [ ]` checkboxes become the resume signal. Record the 4 rulings in `ARCHITECTURE_DECISION_LOG.md`
+in the same commit.
+
+**Durable state each new session reads to resume** (nothing relies on prior session context):
+- the repo roadmap (checkboxes = progress) + `docs/golf-pickem-platform-code-audit-2026-06-30.md`
+- `ARCHITECTURE_DECISION_LOG.md` (the rulings) + the golf memory files
+
+**Sequencing:**
+- **PR 1 → 2 → 3 strictly sequential** — shared scoring/sync core (`models.py`, `resolve_pick`,
+  `sync.py`); each merges to `main` before the next starts → no cross-PR conflicts.
+- PR 4/5/6 are mutually independent (low collision); still run one-per-session for simplicity.
+- Phase U = one session per screen cluster (mirror CFB's A1-A6 + admin desk).
+- PR 3 (penalty) is self-contained and the best split candidate if a session runs long
+  (3a backend: model/flagging/live-refresh/CLI/migration + tests; 3b UI: admin payments/standings/badges).
+
+**Per-session ritual:**
+1. Read the repo roadmap + audit + `ARCHITECTURE_DECISION_LOG.md` + golf memory.
+2. `git checkout main && git pull`; branch `golf/launch-prep-<area>`.
+3. TDD — write the named tests first, implement, full suite green (~1467 + new).
+4. Carry through the full CodeRabbit cycle to merge (`--merge --delete-branch`).
+5. Flip the checkbox in the repo roadmap; add a one-line memory note; clear.
+
+**Live parity oracle (strong recommendation, not time-gated).** The standalone holds known-good
+results for the full 2026 PGA season. After PR 1-3 merge, run the platform sync over those 2026
+tournaments and diff its scoring/penalty against the standalone's stored outputs — a real-data answer
+key available anytime (validating live during the remaining 2026 events through ~Aug is a bonus
+realism check). Best launch de-risker available, stronger than synthetic tests alone.
+
+**Suggested calendar (loose, ~1-2 PRs/week with slack — ~10-14 sessions total):**
+- **Jun-Jul:** PR 1-3 (correctness) + shadow-validate against live 2026 tournaments.
+- **Jul-Aug:** PR 4-6 (ops, conformance, cleanup).
+- **Sep-Nov:** Phase U (UI elevation).
+- **Dec:** production rehearsal (mirror `docs/production-launch-test-script.md`) on a sandbox season.
+- **Jan 2027:** flip `registry` status → `'open'`, seed the 2027 schedule, enable `golf-*` timers.
+
+---
+
+## PR 1 — Scoring & resolution correctness  *(FIRST — highest-risk data integrity)*
+
+Files: `games/golf/models.py`, `games/golf/services/sync.py` (`process_tournament_picks`),
+`games/golf/templates/golf/{index,tournament_detail,my_picks}.html`.
+
+- [ ] **Record the 4 rulings in `ARCHITECTURE_DECISION_LOG.md`** (Zurich full payout, penalty port,
+      full-roadmap scope, golf-scoped standings).
+- [ ] **Zurich → full payout.** Delete the three `if self.tournament.is_team_event: earnings = earnings // 2`
+      blocks (`models.py:504-506`, `533-535`, `get_current_earnings` `572-573`). Update the module
+      docstring (`models.py:14`, "team events earn half") and the two stale standalone-parity comments.
+      Leave the WD branches ("do NOT modify") untouched — only the halving is removed.
+- [ ] **Document + test multiplier precedence.** With halving gone, only the major ×1.5 remains
+      (`int(earnings * 1.5)`). Add a comment stating the precedence and a test locking major math even
+      though no 2026 event is both major and team.
+- [ ] **Transactional reprocessing.** Rewrite `process_tournament_picks` (`sync.py:641-708`) to mirror
+      the standalone `process_tournament_results()` (`Golf_Pick_Em/app.py:1208-1245`): per-pick
+      `with db.session.begin_nested():` savepoint, delete usage for **{primary, backup, old-active}**
+      inside the savepoint (subsumes the too-narrow `clear_resolution`, models.py:406-429), call
+      `resolve_pick()` + `enrollment.calculate_total_points()` inside it, `raise` on unresolved to roll
+      back that pick only, single outer `commit()`. Fixes the current "no rollback anywhere → partial
+      clears persist + stale enrollment totals" defect.
+- [ ] **Postgres-safe usage insert.** Replace `from sqlalchemy.dialects.sqlite import insert` +
+      `.on_conflict_do_nothing()` (`models.py:19`, `546-551`) with a Postgres-safe upsert
+      (`dialects.postgresql.insert`) or an ORM existence-check. **Verify first** by running
+      `resolve_pick` against `ccc_local` (Postgres). Grep `games/golf/` for other `dialects.sqlite`
+      imports and fix any.
+- [ ] **Live early-WD backup activation.** Port `is_backup_activated()` + `is_wd_before_round_2()`
+      (`Golf_Pick_Em/models.py:632-655`, `384-393`); route `get_current_earnings()` and the active-
+      player display in `index.html` (:136,:156), `tournament_detail.html` (:145), `my_picks.html`
+      through it so a pre-R2 primary WD shows the activated backup live, not the dead primary.
+
+Tests (`tests/test_golf_scoring.py`): `test_resolve_pick_primary_finishes`,
+`test_resolve_pick_primary_wd_before_r2_backup_finishes`, `test_resolve_pick_primary_wd_after_r2`,
+`test_resolve_pick_both_wd_before_r2`, `test_calculate_total_points_team_event_rule` (full payout),
+`test_clear_resolution_removes_old_usage`, reprocess failure-isolation (one bad pick doesn't corrupt
+others' totals), backup-activation display.
+
+---
+
+## PR 2 — Sync & API ingestion correctness  *(CRITICAL — Zurich picks currently skipped)*
+
+Files: `games/golf/services/sync.py`, `games/golf/constants.py`, `games/golf/utils.py`,
+`games/golf/cli.py`.
+
+- [ ] **Team-row flattening [CRITICAL].** Port `_iter_player_rows()`
+      (`Golf_Pick_Em/sync_api.py:434-463`); route the field, live, withdrawals, and results loops +
+      the `leaderboard_lookup` build (`sync.py:588-590,595,734,804`, etc.) through it. Team rows
+      inherit team-level fields (incl. `earnings`) per member — consistent with full-payout ruling.
+- [ ] **ISO timestamp parsing.** Port the 3-format `_parse_tee_time_timestamp`
+      (`Golf_Pick_Em/sync_api.py:366-407`: Mongo EJSON, ISO 8601, epoch-ms) for the `teeTimeTimestamp`
+      field, and route schedule `date.start` through it (SlashGolf migrated to ISO — currently
+      silently skips events).
+- [ ] **Major purse estimates + effective purse.** Replace the `None` major values in
+      `constants.py` `PURSE_ESTIMATES` with the real numbers from `Golf_Pick_Em/models.py:44-78`
+      (Masters 22.5M, PGA 19M, U.S. Open 21.5M, The Open 17M, + `DEFAULT_PURSE`). Add `effective_purse`
+      / `purse_is_estimate` properties on `GolfTournament` and `_backfill_purse_from_schedule()` called
+      in results finalization when `not tournament.purse`.
+- [ ] **Major multiplier on live projections.** Add `is_major=False` to
+      `utils.calculate_projected_earnings()` (`utils.py:105`), apply `×1.5` after base calc, and pass
+      `tournament.is_major` from the live sync + any route/template projection call sites.
+- [ ] **Position normalization.** Port `normalize_position()` (`Golf_Pick_Em/sync_api.py:138-166`);
+      apply at every `final_position` write (results `sync.py:623`, withdrawals, live).
+- [ ] **Schedule seeding.** Add `flask golf seed-schedule` (locked 2026 list + real major purses,
+      idempotent upsert on name+season) mirroring `Golf_Pick_Em/import_tournaments.py`, plus
+      `flask golf force-schedule-sync` (bypasses the Monday gate). Current `sync_schedule()` is
+      update-only, so a fresh season has zero tournaments.
+
+Tests (`tests/test_golf_sync.py`): `test_sync_field_flattens_team_rows`,
+`test_sync_results_flattens_team_rows`, `test_sync_schedule_parses_iso_date_start`,
+`test_live_projection_applies_major_multiplier`, position-normalization, seed-creates-events.
+
+---
+
+## PR 3 — Major missed-cut/DQ penalty system  *(audit #1 must-fix)*
+
+Faithful port of the standalone's $15/incident side pot. Files: `games/golf/models.py`,
+`games/golf/services/{sync,reminders}.py`, `games/golf/cli.py`, `games/golf/routes.py`,
+`games/golf/templates/golf/{index,my_picks,tournament_detail,admin/payments}.html`, migration.
+
+- [ ] **Model.** Add `GolfPick.penalty_triggered` (Boolean) + `GolfEnrollment.penalty_paid` (Integer),
+      `PENALTY_PER_INCIDENT = 15`, and `penalty_owed(season)` / `penalty_outstanding(season)` derived
+      methods (owed = flagged picks × $15; outstanding = max(0, owed − paid)). Sources:
+      `Golf_Pick_Em/models.py:38,99,140-154,437`. Migration.
+- [ ] **Flag at finalization.** In `resolve_pick()`, set `penalty_triggered` = major AND active
+      result status ∈ {cut, dq} (`Golf_Pick_Em/models.py:584-592`). Re-derived (True/False) every
+      resolution — no separate clear.
+- [ ] **Live refresh.** Port `refresh_live_penalty()` (`Golf_Pick_Em/models.py:657-674`); call it in
+      the live-leaderboard sync when `tournament.is_major`; add `flask golf refresh-live-penalties`.
+- [ ] **Admin payments.** Extend `admin/payments.html` + its AJAX endpoint with owed / paid /
+      outstanding per user and pot totals (`Golf_Pick_Em/app.py:955-1016`).
+- [ ] **Standings + badges.** Add the penalty pot to the entry-total math on `index.html` and penalty
+      badges on `index`/`my_picks`/`tournament_detail` (gated `is_major and results_finalized`).
+      (Recap email omits penalties, matching the standalone.)
+
+Tests: `test_resolve_pick_major_cut_penalty` (+ live-refresh flip, owed/outstanding math).
+
+---
+
+## PR 4 — Ops hardening & automation  *(mirrors CFB ops-hardening PR #71)*
+
+Files: `config.py`, `games/golf/cli.py`, `games/golf/services/{reminders,sync}.py`, `deploy/`,
+`tests/test_golf_automation.py`, `AGENTS.md`, `CLAUDE.md`.
+
+- [ ] **Config-plumb the API key.** Add `SLASHGOLF_API_KEY = os.environ.get('SLASHGOLF_API_KEY', '')`
+      to `config.py` `Config` (next to the unused `SLASHGOLF_API_HOST`, ~line 50); read via
+      `current_app.config` in `cli.py:41` + `routes.py:780`. Add a test locking the key in `Config`
+      (the `MAIL_FROM_ADDRESS` config-plumbing gotcha).
+- [ ] **Season-scope automation queries.** Add `season_year` filters to `get_active_tournaments`,
+      `get_recently_completed_tournaments`, `get_tournaments_pending_finalization`,
+      `get_upcoming_tournaments_window` (`sync.py:889-929`).
+- [ ] **Reminder de-dup.** Add `GolfTournament.last_reminder_type` (migration) + the `REMINDER_ORDER`
+      skip-current-or-later-tier check, recording tier only after a successful send
+      (`Golf_Pick_Em/models.py:216`, `send_reminders.py:1076-1128`).
+- [ ] **Systemd units.** Author `deploy/golf-{schedule,field,live,results,remind}.{timer,service}`
+      mirroring the `cfb-*`/`worldcup-*` structure: `Type=oneshot`, `User=deploy`,
+      `EnvironmentFile=.env`, `Environment=ENVIRONMENT=production`, inline-TZ `OnCalendar` (no
+      `TimeZone=` directive), `Persistent=true`. Cadence per the audit §7 table.
+- [ ] **CLI safety + docs.** Add `remind` to `sync-run --mode` (or document `flask golf remind`);
+      gate/dev-only the unsafe `--mode all`; make the `os.makedirs` log-dir init lazy (not at import);
+      document the golf command block in `AGENTS.md` + `CLAUDE.md`.
+
+Tests: `test_reminder_dedup_skips_sent_tier`, `test_get_used_player_ids_current_season_only`,
+season-scoping, config-key lock.
+
+---
+
+## PR 5 — Routes, standings & email conformance  *(mirrors CFB §7 conformance)*
+
+Files: `games/golf/routes.py`, `games/golf/services/reminders.py`,
+`games/golf/templates/golf/{tournament_detail,admin/override_pick}.html`, `README.md`.
+
+- [ ] **Golf-scoped standings.** Remove the append-all-platform-users block (`routes.py:181-193`);
+      show only current-season `GolfEnrollment` rows.
+- [ ] **Enrollment-scoped mail.** Replace `User.query.all()` (`reminders.py:240,581,848`) with
+      `GolfEnrollment.query.filter_by(season_year=SEASON_YEAR, ...)` — mirror
+      `games/worldcup/services/notifications.py`.
+- [ ] **Avatars.** Render `user.get_avatar()` before the display name on `tournament_detail.html`
+      (:116-117) and any other standings table missing it (mirror `worldcup/leaderboard.html`).
+- [ ] **Admin override hardening [HIGH].** Server-side validate override POST against field membership
+      + season usage (excluding the pick's own players) (`routes.py:652`); remove the selected pick's
+      players from the GET `used_player_ids` (`routes.py:733`); `db.session.rollback()` on existing-
+      pick validation failure (`routes.py:425`).
+- [ ] **Admin branding + email safety.** Replace hardcoded `ADMIN_EMAIL="bhagstrom0@gmail.com"` /
+      `ADMIN_NAME="Sun Day Regrets"` (`reminders.py:57-58`) with `current_app.config.get('ADMIN_EMAIL')`
+      + CCC branding; `markupsafe.escape` dynamic values interpolated into email HTML
+      (`reminders.py:285,707,761-762,778`).
+- [ ] **Complete-vs-finalized gating.** Gate `tournament_detail.html` final/earnings mode on
+      `results_finalized` (:104), not `status=='complete'`.
+- [ ] **README status.** Fix `README.md:68-72` (Golf/CFB shown "Live" but registry says
+      `coming_soon`) to match `games/registry.py`.
+
+Tests: `test_admin_override_rejects_used_or_non_field_player`,
+`test_admin_override_requires_confirm_for_complete`, standings/email scoping.
+
+---
+
+## PR 6 — Cleanups & test backfill  *(mirrors CFB §9)*
+
+Files: `games/golf/models.py`, `games/golf/services/sync.py`, `games/golf/routes.py`.
+
+- [ ] Remove dead code: `GolfTournamentField.is_alternate` (migration), unused `get_tournament()` /
+      `_update_pick_deadline_from_leaderboard()` / `get_just_completed_tournament()`, redundant
+      `send_admin_field_alert` import (`sync.py:519`).
+- [ ] Add `joinedload`/route DTOs for the standings + tournament-detail N+1s (`routes.py:163,305`).
+- [ ] Short-circuit `sync_tournament_results()` when already `results_finalized` (unless forced).
+- [ ] Backfill any remaining tests from the audit's recommended suite
+      (`test_update_status_from_time_never_auto_completes`, availability-rejection tests, etc.).
+
+---
+
+## Phase U — UI elevation to the DESIGN.md bar  *(mirrors CFB `cfb/launch-prep` sessions; multi-session)*
+
+- [ ] Author `games/golf/DESIGN.md` (does not exist yet — only WC + CFB do): Golf palette
+      (Augusta green `#006747` + gold `#b8993e`), accent-rank, register, named primitives. Read
+      top-level `DESIGN.md` + this file together (the per-game hard rule).
+- [ ] Per-screen `impeccable` polish (index/standings, make-pick, tournament detail, my-picks, join,
+      admin cluster) + CCC email palette (retire the standalone green/gold email chrome).
+
+## Phase L — Launch
+
+- [ ] Flip `games/registry.py` golf `status` `'coming_soon'` → `'open'` (+ `launch_label`). For
+      pre-launch local testing use `git update-index --skip-worktree games/registry.py` (never commit
+      the flip); tests use `set_status`.
+- [ ] Set `SLASHGOLF_API_KEY` in prod `.env`; `flask golf seed-schedule` for the season on prod;
+      enable + start the `golf-*` timers on the droplet (`systemd-analyze calendar` to validate strings).
+- [ ] Production verification pass (mirror `docs/production-launch-test-script.md`): seed → picks →
+      live sync → results → penalty → standings.
+
+---
+
+## Verification
+
+- **Per PR:** `ENVIRONMENT=testing venv/bin/python -m pytest tests/test_golf_*.py -q` (new modules
+  must pass); full suite green before merge. No linter/pyright — pytest is the gate.
+- **Scoring (PR 1-3):** run the dev server against `ccc_local` (Postgres, per
+  `feedback_local_postgres_not_sqlite`); create a team-event + a major tournament with hand-seeded
+  results and confirm full-payout Zurich, backup activation, and a triggered penalty render correctly.
+  Confirm the Postgres usage-insert path via a real `resolve_pick` (not SQLite).
+- **Sync (PR 2):** exercise `flask golf sync-run --mode {schedule,field,live,results}` in dev; verify a
+  Zurich team row creates per-player field/result rows and an ISO `date.start` updates (doesn't skip).
+- **Ops (PR 4):** `systemd-analyze calendar '<OnCalendar>'` on the droplet for each timer; dry-run the
+  reminder dedup by advancing `CFB_FAKE_NOW`-style time / re-invoking `flask golf remind`.
+- **UI (Phase U):** browser smoke each golf screen (chrome-devtools `emulate "375x812x2,mobile,touch"`
+  for true mobile width) after `set_status`/skip-worktree flip to `'open'`.
+
+## Progress log
+
+- **2026-06-30** — Roadmap + audit committed; ADR-033..036 recorded. PR 1 in progress.
+
+## Key reference sources
+
+- Audit: `docs/golf-pickem-platform-code-audit-2026-06-30.md`
+- Standalone port sources: `/Users/bhagstrom/Golf_Pick_Em/{models.py, sync_api.py, app.py, send_reminders.py, import_tournaments.py, force_schedule_sync.py, stats.py}`
+- Platform exemplars to mirror: `games/worldcup/services/notifications.py` (enrollment-scoped mail),
+  `games/worldcup/templates/worldcup/leaderboard.html` (avatars), `deploy/cfb-*.{timer,service}`,
+  `config.py` (`ODDS_API_KEY`/`FOOTBALL_DATA_API_KEY` pattern), `tests/test_cfb_automation.py`.
