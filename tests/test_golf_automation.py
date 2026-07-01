@@ -38,6 +38,10 @@ SEASON = 2026
 @pytest.fixture()
 def app():
     app = create_app('testing')
+    # Pin the season the code resolves from config so these tests don't couple to
+    # the SEASON_YEAR default rolling forward — the season-scoping under test reads
+    # current_app.config['SEASON_YEAR'], and SEASON below must match it.
+    app.config['SEASON_YEAR'] = SEASON
     with app.app_context():
         db.create_all()
         yield app
@@ -125,10 +129,14 @@ def _make_reminder_tournament(hours_to_deadline=24, name='Reminder Open',
 # ── Config-plumbing lock (audit §5, MAIL_FROM_ADDRESS gotcha) ────────────────
 
 def test_slashgolf_api_key_config_key_is_plumbed(app):
-    """SLASHGOLF_API_KEY must have an os.environ.get() line in config.py's base
-    Config — current_app.config.get() of an unplumbed key is silently None in
-    prod (the MAIL_FROM_ADDRESS gotcha)."""
-    assert 'SLASHGOLF_API_KEY' in app.config
+    """SLASHGOLF_API_KEY must be defined on config.py's base Config (with an
+    os.environ.get() line) — current_app.config.get() of an unplumbed key is
+    silently None in prod (the MAIL_FROM_ADDRESS gotcha). Asserting on the base
+    Config class (not just app.config) proves it's env-plumbed there rather than
+    injected by the app factory or the testing config."""
+    from config import Config
+    assert 'SLASHGOLF_API_KEY' in vars(Config)   # defined on the base Config itself
+    assert 'SLASHGOLF_API_KEY' in app.config      # and reaches the resolved app config
 
 
 # ── Season-scoped automation queries (audit §3 MEDIUM) ───────────────────────

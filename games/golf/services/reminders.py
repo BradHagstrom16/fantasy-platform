@@ -1011,8 +1011,14 @@ def run_reminder_check():
         if send_platform_email(user_email, subject, plain, html):
             success_count += 1
 
-    # Record the tier ONLY after a successful send, so a total failure leaves the
-    # tournament un-marked and the next run retries this same tier.
+    # Record the tier once ANY send succeeds (standalone parity), so a total
+    # failure leaves the tournament un-marked and the next run retries this tier.
+    # We deliberately DON'T gate on all-recipient success: a single permanently
+    # bad address would then keep the tier un-recorded forever and re-spam every
+    # good recipient on the hourly cron — the exact duplicate-storm the de-dup
+    # exists to prevent (audit §6). A transiently-failed recipient still receives
+    # the next tier (24h→12h→1h); true per-recipient delivery tracking (the fully
+    # correct fix) is a deferred enhancement, matching the recap-email trade-off.
     if success_count > 0:
         tournament.last_reminder_type = current_tier
         db.session.commit()

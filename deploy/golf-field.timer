@@ -9,7 +9,12 @@ Description=Run Golf Pick 'Em field sync (Tue/Wed AM+PM CT)
 # Timezone is INLINE in OnCalendar — no TimeZone= directive exists for timers.
 OnCalendar=Tue,Wed *-*-* 08:00:00 America/Chicago
 OnCalendar=Tue,Wed *-*-* 18:00:00 America/Chicago
-Persistent=true
+# Persistent=false (deliberately unlike the other golf timers): a missed field
+# pass must NOT be replayed on a later-in-week boot. The field sync isn't
+# weekday-gated in standard mode, so a stale replay could fire "Picks Are Open"
+# AFTER the deadline. The four Tue/Wed passes already provide redundancy; catch
+# up a genuinely missed window with a manual `flask golf sync-run --mode field`.
+Persistent=false
 
 [Install]
 WantedBy=timers.target
