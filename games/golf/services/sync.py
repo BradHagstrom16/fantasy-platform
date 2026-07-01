@@ -981,6 +981,14 @@ class TournamentSync:
                 updated += 1
 
             db.session.commit()
+
+            # Live-refresh the major cut/DQ side pot so the admin's penalty
+            # totals track the weekend before results are finalized (ADR-034).
+            if tournament.is_major:
+                for pick in GolfPick.query.filter_by(tournament_id=tournament.id).all():
+                    pick.refresh_live_penalty()
+                db.session.commit()
+
             logger.info(
                 "Updated live leaderboard for %s (%s entries, projected earnings calculated)",
                 tournament.name,

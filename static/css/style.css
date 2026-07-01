@@ -3476,6 +3476,35 @@ body.game-golf {
   border: 1px solid rgba(184,153,62,.3);
 }
 
+/* Major missed-cut/DQ penalty badge — restrained danger tint (ADR-034).
+   Signals a $15 debit to the side pot; darker-red ink clears AA on the tint. */
+.badge-penalty {
+  display: inline-block;
+  background: rgba(192,57,43,.10);
+  color: #A5281B;
+  font-weight: 700;
+  font-size: .65rem;
+  padding: .25em .55em;
+  border: 1px solid rgba(192,57,43,.28);
+  border-radius: .35rem;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+/* Prize-pool footer (standings card) — entry fees + major penalty pot */
+.golf-pool-label {
+  font-family: 'Teko', sans-serif;
+  font-size: .95rem;
+  font-weight: 600;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--game-primary);
+}
+.golf-pool-figures {
+  font-size: .9rem;
+  color: var(--text-primary);
+}
+
 /* Pick CTA banner */
 .golf-pick-cta {
   border-top: 3px solid var(--game-primary);
@@ -8954,6 +8983,13 @@ main { flex: 1; }
   text-transform: uppercase;
   color: var(--text-secondary);
   margin-top: .4rem;
+}
+
+/* Optional secondary line under a stat value (e.g. "$X collected"). */
+.stat-block .stat-sub {
+  font-size: .72rem;
+  color: var(--text-secondary);
+  margin-top: .25rem;
 }
 
 /* Auth card */

@@ -118,6 +118,9 @@
                                 {% if pick.admin_override %}
                                 <span class="badge bg-warning text-dark" style="font-size:.55rem;">OVERRIDE</span>
                                 {% endif %}
+                                {% if pick.show_penalty_badge %}
+                                <span class="badge-penalty" title="Missed major cut — ${{ penalty_per_incident }} to the pot">&minus;${{ penalty_per_incident }}</span>
+                                {% endif %}
                             </td>
                             <td>
                                 {% if picks_visible %}

@@ -135,6 +135,9 @@
                                 {% else %}
                                     <span class="text-muted">—</span>
                                 {% endif %}
+                                {% if pick and pick.show_penalty_badge %}
+                                    <div><span class="badge-penalty mt-1" title="Missed major cut — ${{ penalty_per_incident }} to the pot">&minus;${{ penalty_per_incident }} penalty</span></div>
+                                {% endif %}
                             </td>
                         </tr>
                         {% endfor %}
