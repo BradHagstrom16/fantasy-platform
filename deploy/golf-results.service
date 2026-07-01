@@ -1,0 +1,22 @@
+# Golf Pick 'Em results sync — finalize actual earnings from the API, resolve
+# picks (WD/backup rules, major x1.5, cut/DQ penalty), update season totals, and
+# send the results recap. Fired Sun night + Mon by golf-results.timer. A run
+# before the API reports Complete/Official is a no-op that retries next firing.
+
+[Unit]
+Description=Golf Pick 'Em results sync (finalize earnings, resolve picks, recap)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=deploy
+Group=deploy
+WorkingDirectory=/home/deploy/fantasy-platform
+EnvironmentFile=/home/deploy/fantasy-platform/.env
+Environment=ENVIRONMENT=production
+Environment=FLASK_APP=app.py
+NoNewPrivileges=true
+PrivateTmp=true
+TimeoutStartSec=5m
+ExecStart=/home/deploy/fantasy-platform/venv/bin/flask golf sync-run --mode results

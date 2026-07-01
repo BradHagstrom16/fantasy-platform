@@ -1,0 +1,15 @@
+# Runs the Golf Pick 'Em field sync Tue + Wed at 08:00 and 18:00 CT — the four
+# pre-tournament passes (Tue AM/PM, Wed AM/PM) that build the field, set the
+# pick deadline from tee times, fire the "Picks Are Open" email at >=50 players,
+# and (Wed evening) alert the admin if the field never filled.
+[Unit]
+Description=Run Golf Pick 'Em field sync (Tue/Wed AM+PM CT)
+
+[Timer]
+# Timezone is INLINE in OnCalendar — no TimeZone= directive exists for timers.
+OnCalendar=Tue,Wed *-*-* 08:00:00 America/Chicago
+OnCalendar=Tue,Wed *-*-* 18:00:00 America/Chicago
+Persistent=true
+
+[Install]
+WantedBy=timers.target

@@ -41,7 +41,7 @@ golf_cli = AppGroup('golf', help="Golf Pick 'Em management commands.")
 
 def _make_api_and_sync():
     """Build SlashGolfAPI + TournamentSync from current app config."""
-    api_key = os.environ.get('SLASHGOLF_API_KEY')
+    api_key = current_app.config.get('SLASHGOLF_API_KEY')
     if not api_key:
         click.echo("Error: SLASHGOLF_API_KEY not set")
         sys.exit(1)
@@ -55,10 +55,29 @@ def _make_api_and_sync():
 @golf_cli.command('sync-run')
 @click.option('--mode', type=click.Choice([
     'schedule', 'field', 'live', 'live-with-wd',
-    'withdrawals', 'results', 'earnings', 'all'
+    'withdrawals', 'results', 'earnings', 'remind', 'all'
 ]), required=True)
 def sync_run_cmd(mode):
     """Unified automation entrypoint for scheduled tasks."""
+    # Reminders never touch the API — short-circuit before building the client
+    # so 'remind' works with no SLASHGOLF_API_KEY set (it's the golf-remind timer
+    # entrypoint; the standalone `flask golf remind` stays as an alias).
+    if mode == 'remind':
+        from games.golf.services.reminders import run_reminder_check
+        run_reminder_check()
+        return
+
+    # '--mode all' chains schedule/field/live/withdrawals/results/earnings with
+    # only partial weekday gates — a broad recurring job that over-calls the API
+    # and can fire emails at unintended times. It stays a dev/manual convenience;
+    # production schedules the individual modes via the golf-* systemd timers.
+    if mode == 'all' and os.environ.get('ENVIRONMENT', '').lower() == 'production':
+        click.echo(
+            "'--mode all' is disabled in production — schedule the individual "
+            "modes via the golf-* systemd timers instead."
+        )
+        sys.exit(1)
+
     api, sync = _make_api_and_sync()
     sync_mode = current_app.config.get('SYNC_MODE', 'standard').lower()
     year = current_app.config.get('SEASON_YEAR', datetime.now(timezone.utc).year)

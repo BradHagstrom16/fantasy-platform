@@ -1,0 +1,23 @@
+# Golf Pick 'Em live leaderboard sync — projected earnings + live major penalty
+# refresh for active tournaments. Fired every 30 min Thu–Sun (play hours) by
+# golf-live.timer. Bounded well under the 30-min cadence so a slow run can't
+# pile up.
+
+[Unit]
+Description=Golf Pick 'Em live leaderboard sync (projected earnings)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=deploy
+Group=deploy
+WorkingDirectory=/home/deploy/fantasy-platform
+EnvironmentFile=/home/deploy/fantasy-platform/.env
+Environment=ENVIRONMENT=production
+Environment=FLASK_APP=app.py
+NoNewPrivileges=true
+PrivateTmp=true
+# Bound the run well under the 30-min timer so a stuck sync can't pile up.
+TimeoutStartSec=5m
+ExecStart=/home/deploy/fantasy-platform/venv/bin/flask golf sync-run --mode live

@@ -1,0 +1,16 @@
+# Runs the Golf Pick 'Em deadline reminders hourly, on the hour, CT. Reminders
+# fire in the 24h / 12h / 1h windows before the Thursday pick deadline; the
+# hourly cadence with the ±35-min tolerance guarantees a firing lands in each
+# window. Hourly is SAFE here (unlike CFB) because GolfTournament.last_reminder_type
+# de-dups: a run whose active tier was already sent is skipped, so no double-send.
+# Off-window firings are cheap no-ops (no tournament in the reminder window).
+[Unit]
+Description=Run Golf Pick 'Em deadline reminders (hourly, de-duped)
+
+[Timer]
+# Timezone is INLINE in OnCalendar — no TimeZone= directive exists for timers.
+OnCalendar=*-*-* *:00:00 America/Chicago
+Persistent=true
+
+[Install]
+WantedBy=timers.target

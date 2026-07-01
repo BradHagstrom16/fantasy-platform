@@ -1,0 +1,17 @@
+# Runs the Golf Pick 'Em live leaderboard sync every 30 min Thu–Sun, 06:00–23:30
+# CT — the tournament play window. Updates positions + projected earnings and
+# (majors) live-refreshes the cut/DQ penalty side pot. Off-week and overnight
+# firings are cheap: get_active_tournaments() returns nothing, so no API call is
+# made. Hours are bounded to conserve API calls during an active tournament,
+# when the leaderboard would otherwise be re-fetched all night for no change.
+[Unit]
+Description=Run Golf Pick 'Em live leaderboard sync (Thu–Sun, every 30 min, play hours)
+
+[Timer]
+# Timezone is INLINE in OnCalendar — no TimeZone= directive exists for timers.
+# Validate on the droplet: systemd-analyze calendar 'Thu..Sun *-*-* 06..23:0/30:00 America/Chicago'
+OnCalendar=Thu..Sun *-*-* 06..23:0/30:00 America/Chicago
+Persistent=true
+
+[Install]
+WantedBy=timers.target

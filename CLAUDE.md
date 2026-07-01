@@ -35,11 +35,16 @@ FLASK_APP=app.py venv/bin/flask db upgrade          # Apply migrations
 FLASK_APP=app.py venv/bin/flask db migrate -m "..."  # Generate new migration
 FLASK_APP=app.py venv/bin/flask create-admin        # Create platform admin user
 
-# Golf CLI
-FLASK_APP=app.py venv/bin/flask golf sync-run --mode schedule   # Import season schedule
-FLASK_APP=app.py venv/bin/flask golf sync-run --mode field      # Sync tournament field
-FLASK_APP=app.py venv/bin/flask golf sync-run --mode live       # Update live leaderboard
-FLASK_APP=app.py venv/bin/flask golf sync-run --mode results    # Finalize results + process picks
+# Golf CLI (prod runs these via the deploy/golf-*.timer systemd units)
+FLASK_APP=app.py venv/bin/flask golf seed-schedule              # Seed the locked season schedule (one-off; sync_schedule only *updates*)
+FLASK_APP=app.py venv/bin/flask golf force-schedule-sync        # Run sync_schedule now, bypassing the Monday gate (link seeded rows / refresh purse)
+FLASK_APP=app.py venv/bin/flask golf sync-run --mode schedule   # Link seeded rows to real ids + refresh purses (Monday-gated internally)
+FLASK_APP=app.py venv/bin/flask golf sync-run --mode field      # Sync tournament field + tee times (Tue/Wed) + picks-open email
+FLASK_APP=app.py venv/bin/flask golf sync-run --mode live       # Update live leaderboard/projections (+ live major penalty refresh)
+FLASK_APP=app.py venv/bin/flask golf sync-run --mode results    # Finalize results + process picks (Sun night/Mon)
+FLASK_APP=app.py venv/bin/flask golf sync-run --mode remind     # Send deadline reminders (hourly; API-key-free, de-duped via last_reminder_type) — same as `flask golf remind`
+FLASK_APP=app.py venv/bin/flask golf refresh-live-penalties     # Manually re-derive major cut/DQ penalty flags (ADR-034)
+# --mode all chains every mode (dev/manual only — refuses to run when ENVIRONMENT=production)
 
 # CFB CLI
 FLASK_APP=app.py venv/bin/flask cfb sync --mode setup       # Create next week, import games, activate
