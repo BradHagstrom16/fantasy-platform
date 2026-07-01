@@ -194,10 +194,6 @@ class SlashGolfAPI:
         """Get full season schedule."""
         return self._make_request("schedule", {"year": year})
 
-    def get_tournament(self, tourn_id: str, year: str) -> Optional[Dict]:
-        """Get tournament details including field."""
-        return self._make_request("tournament", {"tournId": tourn_id, "year": year})
-
     def get_leaderboard(self, tourn_id: str, year: str) -> Optional[Dict]:
         """Get leaderboard with tee times, status, rounds."""
         return self._make_request("leaderboard", {"tournId": tourn_id, "year": year})
@@ -341,26 +337,6 @@ class TournamentSync:
         except Exception:
             logger.warning("Unable to parse tee time '%s'", tee_time_str)
             return None
-
-    def _update_pick_deadline_from_leaderboard(self, tournament: GolfTournament, leaderboard_data: Dict) -> Optional[datetime]:
-        event_tz = self._get_event_timezone(leaderboard_data)
-        earliest = None
-
-        for player_data in self._iter_player_rows(leaderboard_data.get("leaderboardRows", [])):
-            # Prefer timestamp (timezone-safe) over string (ambiguous)
-            tee_time = self._parse_tee_time_timestamp(player_data.get("teeTimeTimestamp"))
-            if not tee_time:
-                # Fallback to string parsing if timestamp not available
-                tee_time = (
-                    self._parse_tee_time(player_data.get("teeTime"), tournament.start_date, event_tz)
-                    or self._parse_tee_time(player_data.get("teeTimeLocal"), tournament.start_date, event_tz)
-                )
-            if tee_time and (earliest is None or tee_time < earliest):
-                earliest = tee_time
-
-        if earliest:
-            tournament.pick_deadline = earliest
-        return earliest
 
     def _derive_status(self, tournament: GolfTournament, leaderboard_data: Optional[Dict] = None) -> str:
         status_hint = (leaderboard_data or {}).get("status", "").lower()
@@ -609,7 +585,7 @@ class TournamentSync:
         # Check if field is sufficient and we haven't sent the "picks open" email yet
         if field_count >= MIN_FIELD_SIZE and not tournament.picks_open_notified:
             try:
-                from games.golf.services.reminders import send_picks_open_email, send_admin_field_alert
+                from games.golf.services.reminders import send_picks_open_email
                 # Pass tournament_id instead of tournament object to avoid session issues
                 emails_sent = send_picks_open_email(tournament_id)
                 if emails_sent > 0:
@@ -671,7 +647,7 @@ class TournamentSync:
         logger.warning("Purse backfill: tournId %s not found in schedule", tournament.api_tourn_id)
         return None
 
-    def sync_tournament_results(self, tournament: GolfTournament) -> int:
+    def sync_tournament_results(self, tournament: GolfTournament, force: bool = False) -> int:
         """
         Sync tournament results and ACTUAL earnings after completion.
         Call this Monday after tournament ends.
@@ -681,10 +657,22 @@ class TournamentSync:
 
         Args:
             tournament: GolfTournament object to sync
+            force: Re-run even if the tournament is already finalized (manual
+                correction path). By default an already-finalized tournament is
+                skipped to avoid a needless API round-trip + reprocessing.
 
         Returns:
-            Number of results synced (0 if not ready or failed)
+            Number of results synced (0 if not ready, failed, or already finalized)
         """
+        # Already finalized: skip the API round-trip and reprocessing unless a
+        # forced re-run is explicitly requested (audit §4).
+        if tournament.results_finalized and not force:
+            logger.info(
+                "Tournament %s already finalized; skipping results sync (pass force=True to re-run)",
+                tournament.name,
+            )
+            return 0
+
         # First check if tournament is actually complete via API
         leaderboard_data = self.api.get_leaderboard(tournament.api_tourn_id, str(tournament.season_year))
 
@@ -1064,18 +1052,6 @@ def get_upcoming_tournament(days_ahead: int = 7) -> Optional[GolfTournament]:
         GolfTournament.start_date <= cutoff,
         GolfTournament.start_date >= now
     ).order_by(GolfTournament.start_date).first()
-
-
-def get_just_completed_tournament() -> Optional[GolfTournament]:
-    """Get tournament that just completed (ended within last 24 hours)."""
-    now = datetime.now(GOLF_LEAGUE_TZ)
-    yesterday = now - timedelta(days=1)
-
-    return GolfTournament.query.filter(
-        GolfTournament.status == "active",
-        GolfTournament.end_date <= now,
-        GolfTournament.end_date >= yesterday
-    ).first()
 
 
 def _refresh_statuses(tournaments):
