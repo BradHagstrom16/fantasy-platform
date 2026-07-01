@@ -879,7 +879,7 @@ def get_users_without_picks(tournament_id, season_year):
     enrollments = GolfEnrollment.query.filter_by(season_year=season_year).all()
     return [
         e.user for e in enrollments
-        if e.user and e.user_id not in picked_user_ids
+        if e.user and e.user.email and e.user_id not in picked_user_ids
     ]
 
 

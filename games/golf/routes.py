@@ -718,6 +718,15 @@ def admin_override_pick():
                 flash('Tournament or user not found.', 'error')
                 return redirect(url_for('golf.admin_override_pick'))
 
+            # Re-scope the POSTed tournament to the same season + statuses the
+            # selectable list is built from — a crafted tournament_id must not
+            # write a pick for another season while validating against this
+            # season's enrollment/usage.
+            if (selected_tournament.season_year != season_year
+                    or selected_tournament.status not in ('upcoming', 'active', 'complete')):
+                flash('Tournament is not eligible for admin overrides.', 'error')
+                return redirect(url_for('golf.admin_override_pick'))
+
             existing_pick = GolfPick.query.filter_by(
                 user_id=user_id, tournament_id=tournament_id
             ).first()
@@ -790,11 +799,22 @@ def admin_override_pick():
                 db.session.add(pick)
 
             # Re-resolve for completed tournaments (enrollment guaranteed above).
+            # A failed resolve leaves cleared resolution + stale totals — roll the
+            # whole override back rather than persist that inconsistent state.
             if selected_tournament.status == 'complete':
                 db.session.flush()
-                resolved = pick.resolve_pick()
-                if resolved:
-                    enrollment.calculate_total_points()
+                if not pick.resolve_pick():
+                    db.session.rollback()
+                    flash(
+                        'Override could not be resolved — result data is missing '
+                        'for the selected players.',
+                        'error',
+                    )
+                    return redirect(url_for(
+                        'golf.admin_override_pick',
+                        tournament_id=tournament_id, user_id=user_id,
+                    ))
+                enrollment.calculate_total_points()
 
             db.session.commit()
 

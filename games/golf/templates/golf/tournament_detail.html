@@ -55,8 +55,11 @@
         </div>
         <div class="col-6 col-md-3">
             <div class="stat-block animate-in stagger-4">
+                {# Best Pick only once results are FINALIZED — same gate as the
+                   row-level earnings cell, so a complete-but-unfinalized event
+                   can't leak final earnings here (audit §4). #}
                 {% set max_pts = namespace(val=0) %}
-                {% for p in picks if p.points_earned is not none and p.points_earned > max_pts.val %}
+                {% for p in picks if tournament.results_finalized and p.points_earned is not none and p.points_earned > max_pts.val %}
                     {% set max_pts.val = p.points_earned %}
                 {% endfor %}
                 <div class="stat-value" style="font-size:1.6rem;">

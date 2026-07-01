@@ -425,6 +425,20 @@ def test_admin_override_rejects_used_or_non_field_player(app, client, monkeypatc
         assert GolfPick.query.filter_by(
             user_id=member.id, tournament_id=tournament.id).first() is None
 
+    # The BACKUP is validated the same way — non-field backup → rejected.
+    resp = _override_post(client, tournament, member, in_field_a, off_field)
+    assert 'not in the tournament field' in resp.get_data(as_text=True)
+    with app.app_context():
+        assert GolfPick.query.filter_by(
+            user_id=member.id, tournament_id=tournament.id).first() is None
+
+    # Already-used backup → rejected.
+    resp = _override_post(client, tournament, member, in_field_a, used)
+    assert 'already been used' in resp.get_data(as_text=True)
+    with app.app_context():
+        assert GolfPick.query.filter_by(
+            user_id=member.id, tournament_id=tournament.id).first() is None
+
 
 def test_admin_override_rejection_does_not_mutate_existing_pick(app, client, monkeypatch):
     """A rejected override leaves an existing valid pick untouched (validate-before-mutate)."""
@@ -489,6 +503,48 @@ def test_admin_override_rejects_unenrolled_user(app, client, monkeypatch):
     with app.app_context():
         assert GolfEnrollment.query.filter_by(user_id=stranger.id).first() is None
         assert GolfPick.query.filter_by(user_id=stranger.id).first() is None
+
+
+def test_admin_override_rejects_cross_season_tournament(app, client, monkeypatch):
+    """A tournament from another season can't be overridden via a crafted POST."""
+    _set_status(monkeypatch, 'golf', 'open')
+    admin = _make_user('gadmin', is_admin=True)
+    member = _make_user('member')
+    _make_enrollment(member)  # current season only
+    old = _make_tournament(name='Last Year Open', status='complete',
+                           season_year=SEASON - 1)
+    a = _make_player('A', 'Alpha', 'One')
+    b = _make_player('B', 'Bravo', 'Two')
+    _add_to_field(old, a)
+    _add_to_field(old, b)
+    _login(client, admin)
+
+    resp = _override_post(client, old, member, a, b)
+    assert 'not eligible for admin overrides' in resp.get_data(as_text=True)
+    with app.app_context():
+        assert GolfPick.query.filter_by(
+            user_id=member.id, tournament_id=old.id).first() is None
+
+
+def test_admin_override_complete_resolution_failure_rolls_back(app, client, monkeypatch):
+    """A complete-tournament override that can't resolve persists nothing."""
+    _set_status(monkeypatch, 'golf', 'open')
+    admin = _make_user('gadmin', is_admin=True)
+    member = _make_user('member')
+    _make_enrollment(member)
+    tournament = _make_tournament(status='complete', results_finalized=True)
+    a = _make_player('A', 'Alpha', 'One')
+    b = _make_player('B', 'Bravo', 'Two')
+    _add_to_field(tournament, a)
+    _add_to_field(tournament, b)
+    # No GolfTournamentResult rows → resolve_pick() returns False.
+    _login(client, admin)
+
+    resp = _override_post(client, tournament, member, a, b)
+    assert 'could not be resolved' in resp.get_data(as_text=True)
+    with app.app_context():
+        assert GolfPick.query.filter_by(
+            user_id=member.id, tournament_id=tournament.id).first() is None
 
 
 def test_admin_override_excludes_own_pick_players_from_used_ids(app, client, monkeypatch):
