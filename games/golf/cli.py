@@ -6,6 +6,8 @@ All commands are namespaced under the 'golf' AppGroup to avoid
 collision with other game commands.
 
 Usage:
+    flask golf seed-schedule
+    flask golf force-schedule-sync
     flask golf sync-run --mode field
     flask golf sync-run --mode results
     flask golf check-wd
@@ -25,6 +27,7 @@ from games.golf.utils import GOLF_LEAGUE_TZ
 from games.golf.services.sync import (
     SlashGolfAPI,
     TournamentSync,
+    seed_schedule,
     get_upcoming_tournament,
     get_upcoming_tournaments_window,
     get_active_tournaments,
@@ -190,6 +193,32 @@ def sync_run_cmd(mode):
         exit_code = 1
 
     sys.exit(exit_code)
+
+
+@golf_cli.command('seed-schedule')
+def seed_schedule_cmd():
+    """Seed the locked season schedule (no API call).
+
+    Creates the 32 league tournaments for the configured season so a fresh
+    platform season isn't empty. Idempotent — safe to re-run; a real API purse
+    already written is preserved. Run this before the API schedule sync.
+    """
+    year = current_app.config.get('SEASON_YEAR', 2026)
+    created, updated = seed_schedule(year)
+    click.echo(f"Seeded golf schedule for {year}: {created} created, {updated} updated")
+
+
+@golf_cli.command('force-schedule-sync')
+def force_schedule_sync_cmd():
+    """Run sync_schedule() now, bypassing the Monday-only gate in sync-run.
+
+    Use to pick up a purse/format announced mid-week (e.g. a major purse going
+    live during tournament week).
+    """
+    _, sync = _make_api_and_sync()
+    year = current_app.config.get('SEASON_YEAR', 2026)
+    updated = sync.sync_schedule(year)
+    click.echo(f"Force schedule sync complete ({updated} tournaments updated)")
 
 
 @golf_cli.command('sync-schedule')

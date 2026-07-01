@@ -83,6 +83,37 @@ def parse_score_to_par(total_str) -> Optional[int]:
         return None
 
 
+def normalize_position(raw) -> str:
+    """
+    Normalize the API 'position' field to a clean string — never None.
+
+    The SlashGolf leaderboard/earnings rows spell "no finishing position"
+    several ways (absent key, null, "") and the format drifts (positions can
+    arrive as MongoDB-style number objects). Centralizing the coercion here
+    keeps one invariant for every GolfTournamentResult write site:
+    final_position is always a string ("" when there is no position), never
+    None — so display code can rely on that instead of guarding None at each
+    call site.
+
+    Returns:
+        Cleaned position string (e.g. "1", "T5", "CUT"), or "" when absent.
+    """
+    if raw is None:
+        return ""
+
+    # MongoDB-style number format (e.g. {"$numberInt": "5"})
+    if isinstance(raw, dict):
+        for key in ("$numberInt", "$numberLong"):
+            if key in raw:
+                return str(raw[key]).strip()
+        return ""
+
+    if isinstance(raw, (int, float)):
+        return str(int(raw))
+
+    return str(raw).strip()
+
+
 # PGA Tour Standard Payout Percentages (positions 1-65)
 # Source: PGA Tour payout structure for full-field events
 PAYOUT_PERCENTAGES = {
@@ -102,7 +133,8 @@ PAYOUT_PERCENTAGES = {
 }
 
 
-def calculate_projected_earnings(position_str: str, purse: int, all_positions: List[str]) -> int:
+def calculate_projected_earnings(position_str: str, purse: int, all_positions: List[str],
+                                 is_major: bool = False) -> int:
     """
     Calculate projected earnings for a player based on current position.
 
@@ -113,6 +145,8 @@ def calculate_projected_earnings(position_str: str, purse: int, all_positions: L
         position_str: Position from API (e.g., "1", "T2", "T10", "CUT")
         purse: Tournament purse in dollars
         all_positions: List of all position strings from leaderboard
+        is_major: Apply the major x1.5 multiplier to the base payout so live
+            projections match final scoring (resolve_pick's major bonus).
 
     Returns:
         Projected earnings in dollars (integer)
@@ -149,4 +183,7 @@ def calculate_projected_earnings(position_str: str, purse: int, all_positions: L
 
     player_percentage = total_percentage / tie_count if tie_count > 0 else 0
 
-    return int(purse * player_percentage)
+    earnings = int(purse * player_percentage)
+    if is_major:
+        earnings = int(earnings * 1.5)
+    return earnings

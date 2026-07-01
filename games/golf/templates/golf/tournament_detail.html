@@ -166,7 +166,7 @@
                                         ${{ '{:,.0f}'.format(pick.points_earned) }}
                                     </strong>
                                 {% elif result and result.final_position %}
-                                    {% set proj = calculate_projected_earnings(result.final_position, tournament.purse or 0, all_positions) %}
+                                    {% set proj = calculate_projected_earnings(result.final_position, tournament.effective_purse or 0, all_positions, tournament.is_major) %}
                                     <span class="text-muted">${{ '{:,.0f}'.format(proj) }}</span>
                                 {% else %}
                                     <span class="text-muted">—</span>

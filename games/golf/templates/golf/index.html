@@ -156,7 +156,7 @@
                                     {% set active_id = pick.display_active_player_id %}
                                     {% set result = active_results.get(active_id) %}
                                     {% if result and result.final_position %}
-                                        {% set proj = calculate_projected_earnings(result.final_position, active_tournament.purse or 0, all_positions) %}
+                                        {% set proj = calculate_projected_earnings(result.final_position, active_tournament.effective_purse or 0, all_positions, active_tournament.is_major) %}
                                         {% if proj > 0 %}
                                             <span class="text-success fw-semibold">${{ '{:,.0f}'.format(proj) }}</span>
                                         {% else %}

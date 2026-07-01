@@ -17,6 +17,7 @@ import logging
 from datetime import datetime, timezone
 
 from extensions import db
+from games.golf.constants import PURSE_ESTIMATES
 from games.golf.utils import format_score_to_par, GOLF_LEAGUE_TZ
 
 logger = logging.getLogger(__name__)
@@ -219,6 +220,24 @@ class GolfTournament(db.Model):
         else:
             deadline = deadline.astimezone(GOLF_LEAGUE_TZ)
         return deadline.strftime('%a %b %d, %I:%M %p CT')
+
+    @property
+    def effective_purse(self):
+        """Actual purse if the API set one, else the season estimate, else None.
+
+        Majors announce their purse week-of and the leaderboard/earnings
+        endpoints carry no purse field, so a live/pre-finalization major would
+        otherwise project $0. The estimate keeps projections and displays sane
+        until `_backfill_purse_from_schedule()` writes the official number.
+        """
+        if self.purse and self.purse > 0:
+            return self.purse
+        return PURSE_ESTIMATES.get(self.name)
+
+    @property
+    def purse_is_estimate(self):
+        """True when effective_purse came from PURSE_ESTIMATES (not the API)."""
+        return (not self.purse or self.purse <= 0) and self.name in PURSE_ESTIMATES
 
     def __repr__(self):
         return f'<GolfTournament {self.name} ({self.season_year})>'
