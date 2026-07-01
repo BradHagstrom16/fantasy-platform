@@ -14,6 +14,7 @@ from flask import (
 )
 from flask_login import login_required, current_user
 from sqlalchemy import func, and_
+from sqlalchemy.orm import joinedload
 
 from extensions import db
 from models.user import User
@@ -161,9 +162,12 @@ def index():
     """Golf Pick 'Em standings page."""
     season_year = current_app.config['SEASON_YEAR']
 
-    # Get all enrolled users for this season, ordered by total_points
+    # Get all enrolled users for this season, ordered by total_points.
+    # Eager-load .user so building the standings rows doesn't fire a query
+    # per enrollee (N+1, audit §5).
     enrollments = (
         GolfEnrollment.query
+        .options(joinedload(GolfEnrollment.user))
         .filter_by(season_year=season_year)
         .order_by(GolfEnrollment.total_points.desc())
         .all()
@@ -307,9 +311,18 @@ def tournament_detail(tournament_id):
     tournament = db.get_or_404(GolfTournament, tournament_id)
     season_year = current_app.config['SEASON_YEAR']
 
-    # Get all picks for this tournament
+    # Get all picks for this tournament. Eager-load the user + player
+    # relationships the standings table renders (sort key, avatar, primary /
+    # backup / active names) so each pick row doesn't fire its own queries
+    # (N+1, audit §5).
     picks = (
         GolfPick.query
+        .options(
+            joinedload(GolfPick.user),
+            joinedload(GolfPick.primary_player),
+            joinedload(GolfPick.backup_player),
+            joinedload(GolfPick.active_player),
+        )
         .filter_by(tournament_id=tournament_id)
         .all()
     )

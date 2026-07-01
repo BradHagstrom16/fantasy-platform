@@ -298,8 +298,6 @@ class GolfTournamentField(db.Model):
     tournament_id = db.Column(db.Integer, db.ForeignKey('golf_tournament.id'), nullable=False, index=True)
     player_id = db.Column(db.Integer, db.ForeignKey('golf_player.id'), nullable=False, index=True)
 
-    is_alternate = db.Column(db.Boolean, default=False)
-
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
