@@ -279,7 +279,7 @@ class GolfSeasonPlayerUsage(db.Model):
         return f'<GolfSeasonPlayerUsage User:{self.user_id} Player:{self.player_id} Year:{self.season_year}>'
 
 
-def _record_season_usage(user_id, player_id, season_year):
+def _record_season_usage(user_id, player_id, season_year) -> None:
     """Idempotent, race-safe season-usage insert across SQLite and Postgres.
 
     Uses the active dialect's ``INSERT ... ON CONFLICT DO NOTHING`` so that

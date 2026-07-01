@@ -268,6 +268,9 @@ def test_resolve_pick_usage_insert_idempotent(app):
     db.session.commit()
 
     assert _usage_player_ids(user) == {p1.id}
+    # Count the raw rows too — a set assertion alone would hide a duplicate.
+    assert GolfSeasonPlayerUsage.query.filter_by(
+        user_id=user.id, player_id=p1.id, season_year=SEASON).count() == 1
 
 
 def test_get_current_earnings_reflects_activated_backup_live(app):
