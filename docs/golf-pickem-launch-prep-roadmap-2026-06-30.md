@@ -260,12 +260,12 @@ by locking the current one-step re-resolve.
 
 Files: `games/golf/models.py`, `games/golf/services/sync.py`, `games/golf/routes.py`.
 
-- [ ] Remove dead code: `GolfTournamentField.is_alternate` (migration), unused `get_tournament()` /
+- [x] Remove dead code: `GolfTournamentField.is_alternate` (migration), unused `get_tournament()` /
       `_update_pick_deadline_from_leaderboard()` / `get_just_completed_tournament()`, redundant
       `send_admin_field_alert` import (`sync.py:519`).
-- [ ] Add `joinedload`/route DTOs for the standings + tournament-detail N+1s (`routes.py:163,305`).
-- [ ] Short-circuit `sync_tournament_results()` when already `results_finalized` (unless forced).
-- [ ] Backfill any remaining tests from the audit's recommended suite
+- [x] Add `joinedload`/route DTOs for the standings + tournament-detail N+1s (`routes.py:163,305`).
+- [x] Short-circuit `sync_tournament_results()` when already `results_finalized` (unless forced).
+- [x] Backfill any remaining tests from the audit's recommended suite
       (`test_update_status_from_time_never_auto_completes`, availability-rejection tests, etc.).
 
 ---
@@ -368,6 +368,31 @@ Files: `games/golf/models.py`, `games/golf/services/sync.py`, `games/golf/routes
   rollback, no-email reminder skip, Best-Pick gating, symmetric backup-player test) + **pushed back on
   the prod-only ADMIN_EMAIL-fallback removal** (CFB parity + documented deploy convention — CR withdrew
   it and recorded a learning). **Next: PR 6 (cleanups & test backfill).**
+- **2026-07-01** — **PR 6 (cleanups & test backfill) merged (#108).** Final backend-hardening
+  slice (mirrors CFB §9); no player-facing change. Dead code (audit §9): dropped the unused
+  `GolfTournamentField.is_alternate` column (migration `1816342926ce`; round-tripped
+  upgrade→downgrade→upgrade on `ccc_local` Postgres, `migration-reviewer` SAFE — downgrade
+  restores the original nullable Boolean); deleted callerless sync helpers
+  `SlashGolfAPI.get_tournament()`, `TournamentSync._update_pick_deadline_from_leaderboard()`,
+  `get_just_completed_tournament()`; dropped the redundant `send_admin_field_alert` import in the
+  picks-open branch (the used import lives in the Wednesday-evening field-alert branch). N+1
+  (audit §5): `joinedload(GolfEnrollment.user)` on `index()` standings +
+  `joinedload(user/primary_player/backup_player/active_player)` on `tournament_detail()` picks
+  (options on the existing `.query`, not a `select()` rewrite — per the ORM-migration policy).
+  Results sync (audit §4): `sync_tournament_results(tournament, force=False)` short-circuits an
+  already-finalized tournament (no API round-trip / reprocessing) unless `force=True` — all CLI
+  callers already pull from `results_finalized == False`-filtered queries, so it's a defensive
+  guard for direct calls. +10 tests (`tests/test_golf_cleanup.py`): recommended-suite backfill
+  (`update_status_from_time` never auto-completes, `validate_availability` rejects used /
+  non-field players, `calculate_total_points` carries the major ×1.5), N+1 query-count
+  **invariance** locks for both routes, results short-circuit + force locks, `is_alternate`
+  absence lock. Suite 1593→1603; migration + N+1 counting verified on `ccc_local` Postgres.
+  CodeRabbit (CHANGES_REQUESTED): 3 actionable, all Minor test-tightening (fresh-instance
+  past-end assertion, exact `errors ==` asserts vs `any(...)`, full `api.calls` map on the
+  short-circuit) → all applied, re-review clean (all threads `review_comment_addressed`).
+  **Golf PRs 1-6 complete — the backend is hardened to standalone parity + platform conventions.
+  Next: Phase U (UI elevation — author `games/golf/DESIGN.md` first), deferred to near the
+  Jan 2027 launch.**
 
 ## Key reference sources
 
