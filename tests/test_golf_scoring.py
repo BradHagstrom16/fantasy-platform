@@ -237,6 +237,39 @@ def test_is_backup_activated_true_when_primary_wd_early_live(app):
     assert pick.is_backup_activated() is True
 
 
+def test_is_backup_activated_false_when_both_wd_early_live(app):
+    """Both players WD before R2 during live play: the primary stays active (0),
+    the backup is NOT activated — mirrors resolve_pick's 'both WD before R2' rule."""
+    user = _make_user()
+    t = _make_tournament(name='Live Open', status='active')
+    p1 = _make_player('P1', 'Primary', 'One')
+    p2 = _make_player('P2', 'Backup', 'Two')
+    _make_result(t, p1, status='wd', rounds_completed=1, earnings=0)
+    _make_result(t, p2, status='wd', rounds_completed=0, earnings=0)
+    pick = _make_pick(user, t, p1, p2)
+
+    assert pick.is_backup_activated() is False
+    assert pick.display_active_player_id == p1.id
+
+
+def test_resolve_pick_usage_insert_idempotent(app):
+    """Re-resolving the same pick must not create a duplicate season-usage row."""
+    user = _make_user()
+    t = _make_tournament()
+    p1 = _make_player('P1', 'Primary', 'One')
+    p2 = _make_player('P2', 'Backup', 'Two')
+    _make_result(t, p1, status='complete', rounds_completed=4, earnings=100_000)
+    _make_result(t, p2, status='complete', rounds_completed=4, earnings=50_000)
+    pick = _make_pick(user, t, p1, p2)
+
+    assert pick.resolve_pick() is True
+    db.session.commit()
+    assert pick.resolve_pick() is True  # second pass is a no-op for usage
+    db.session.commit()
+
+    assert _usage_player_ids(user) == {p1.id}
+
+
 def test_get_current_earnings_reflects_activated_backup_live(app):
     """During an active tournament, a pre-R2 primary WD surfaces the backup's earnings."""
     user = _make_user()

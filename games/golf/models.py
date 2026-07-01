@@ -279,6 +279,26 @@ class GolfSeasonPlayerUsage(db.Model):
         return f'<GolfSeasonPlayerUsage User:{self.user_id} Player:{self.player_id} Year:{self.season_year}>'
 
 
+def _record_season_usage(user_id, player_id, season_year):
+    """Idempotent, race-safe season-usage insert across SQLite and Postgres.
+
+    Uses the active dialect's ``INSERT ... ON CONFLICT DO NOTHING`` so that
+    reprocessing a pick — or concurrent scoring (a cron run racing an admin
+    override) — can't raise a unique-constraint IntegrityError. A plain
+    SELECT-then-add would be race-prone, and a hard-coded dialect insert is not
+    portable (the sqlite construct raises when compiled against Postgres).
+    """
+    if db.session.get_bind().dialect.name == 'postgresql':
+        from sqlalchemy.dialects.postgresql import insert as _dialect_insert
+    else:
+        from sqlalchemy.dialects.sqlite import insert as _dialect_insert
+    db.session.execute(
+        _dialect_insert(GolfSeasonPlayerUsage)
+        .values(user_id=user_id, player_id=player_id, season_year=season_year)
+        .on_conflict_do_nothing()
+    )
+
+
 # ============================================================================
 # GolfTournamentResult — Player results after tournament completion
 # ============================================================================
@@ -543,20 +563,11 @@ class GolfPick(db.Model):
             self.primary_used = True
             self.backup_used = False
 
-        # Record season usage for the active player. Idempotent + dialect-agnostic
-        # (an existence check works on both SQLite and Postgres, unlike the
-        # sqlite-only insert().on_conflict_do_nothing()).
-        already_used = GolfSeasonPlayerUsage.query.filter_by(
-            user_id=self.user_id,
-            player_id=self.active_player_id,
-            season_year=self.tournament.season_year,
-        ).first()
-        if not already_used:
-            db.session.add(GolfSeasonPlayerUsage(
-                user_id=self.user_id,
-                player_id=self.active_player_id,
-                season_year=self.tournament.season_year,
-            ))
+        # Record season usage for the active player — idempotent AND race-safe via
+        # a dialect-aware INSERT ... ON CONFLICT DO NOTHING (see _record_season_usage).
+        _record_season_usage(
+            self.user_id, self.active_player_id, self.tournament.season_year,
+        )
 
         return True
 
@@ -564,12 +575,14 @@ class GolfPick(db.Model):
         """True if the backup player is (or will be) the active pick.
 
         - Completed tournament: definitive — active_player_id == backup_player_id.
-        - Active tournament: primary withdrew before completing Round 2, so the
-          backup has taken over live (before resolve_pick() has run).
+        - Active tournament: the primary withdrew before completing Round 2 AND the
+          backup did not also WD before R2. The "both WD before R2" rule keeps the
+          primary active (for 0 points), so the backup is not activated — this
+          mirrors resolve_pick's Case 1.
 
-        The live primary-result lookup is memoized on the instance (a transient,
-        non-mapped attribute) so repeated reads within one render — e.g. standings
-        rows evaluating display_active_player_id more than once — don't re-query.
+        The live result lookups are memoized on the instance (transient, non-mapped
+        attributes) so repeated reads within one render — e.g. standings rows
+        evaluating display_active_player_id more than once — don't re-query.
         """
         if self.tournament.status == 'complete' and self.active_player_id:
             return self.active_player_id == self.backup_player_id
@@ -582,7 +595,13 @@ class GolfPick(db.Model):
                 ).first()
             primary_result = self._primary_result_cache
             if primary_result and primary_result.is_wd_before_round_2():
-                return True
+                if not hasattr(self, '_backup_result_cache'):
+                    self._backup_result_cache = GolfTournamentResult.query.filter_by(
+                        tournament_id=self.tournament_id,
+                        player_id=self.backup_player_id
+                    ).first()
+                backup_result = self._backup_result_cache
+                return not (backup_result and backup_result.is_wd_before_round_2())
 
         return False
 
