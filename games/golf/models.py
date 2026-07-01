@@ -566,15 +566,21 @@ class GolfPick(db.Model):
         - Completed tournament: definitive — active_player_id == backup_player_id.
         - Active tournament: primary withdrew before completing Round 2, so the
           backup has taken over live (before resolve_pick() has run).
+
+        The live primary-result lookup is memoized on the instance (a transient,
+        non-mapped attribute) so repeated reads within one render — e.g. standings
+        rows evaluating display_active_player_id more than once — don't re-query.
         """
         if self.tournament.status == 'complete' and self.active_player_id:
             return self.active_player_id == self.backup_player_id
 
         if self.tournament.status == 'active':
-            primary_result = GolfTournamentResult.query.filter_by(
-                tournament_id=self.tournament_id,
-                player_id=self.primary_player_id
-            ).first()
+            if not hasattr(self, '_primary_result_cache'):
+                self._primary_result_cache = GolfTournamentResult.query.filter_by(
+                    tournament_id=self.tournament_id,
+                    player_id=self.primary_player_id
+                ).first()
+            primary_result = self._primary_result_cache
             if primary_result and primary_result.is_wd_before_round_2():
                 return True
 
