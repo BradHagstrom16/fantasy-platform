@@ -214,9 +214,15 @@ def test_update_status_from_time_never_auto_completes(app):
     # Past the deadline, tournament under way: active.
     assert t.update_status_from_time(now + timedelta(days=3)) == 'active'
 
-    # Past the END date: STILL active — never auto-completed.
-    assert t.update_status_from_time(now + timedelta(days=6)) == 'active'
-    assert t.status != 'complete'
+    # Past the END date, from a FRESH upcoming tournament: STILL active — never
+    # auto-completed. Using a fresh instance proves the past-end branch itself,
+    # not merely that an already-active status is left unchanged.
+    t2 = _make_tournament(name='Clock Open 2', status='upcoming')
+    t2.pick_deadline = now + timedelta(days=2)
+    t2.start_date = now + timedelta(days=2)
+    t2.end_date = now + timedelta(days=5)
+    assert t2.update_status_from_time(now + timedelta(days=6)) == 'active'
+    assert t2.status != 'complete'
 
 
 def test_update_status_from_time_leaves_complete_untouched(app):
@@ -243,8 +249,8 @@ def test_validate_availability_rejects_used_player(app):
                     primary_player_id=primary.id, backup_player_id=backup.id)
     errors = pick.validate_availability(SEASON)
 
-    assert any('already been used' in e for e in errors)
-    assert not any('not in the tournament field' in e for e in errors)
+    # Exact match: only the used-player error, nothing else (both are in-field).
+    assert errors == ['Primary player has already been used this season.']
 
 
 def test_validate_availability_rejects_non_field_player(app):
@@ -259,8 +265,8 @@ def test_validate_availability_rejects_non_field_player(app):
                     primary_player_id=in_field.id, backup_player_id=off_field.id)
     errors = pick.validate_availability(SEASON)
 
-    assert any('Backup player is not in the tournament field' in e for e in errors)
-    assert not any('already been used' in e for e in errors)
+    # Exact match: only the non-field backup error (neither player is used).
+    assert errors == ['Backup player is not in the tournament field.']
 
 
 # ============================================================================
@@ -381,8 +387,8 @@ def test_sync_results_short_circuits_when_finalized(app):
     n = sync.sync_tournament_results(t)
 
     assert n == 0
-    assert api.calls['leaderboard'] == 0  # no re-fetch
-    assert api.calls['earnings'] == 0
+    # No API round-trip at all — every endpoint counter stays at zero.
+    assert api.calls == {'leaderboard': 0, 'earnings': 0, 'schedule': 0}
 
 
 def test_sync_results_force_reprocesses_finalized(app):
