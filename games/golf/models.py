@@ -646,14 +646,30 @@ class GolfPick(db.Model):
 
         return True
 
+    def _early_wd(self, result):
+        """Did this player withdraw before completing Round 2?
+
+        'not started' counts as a withdrawal once the tournament is complete, but
+        while live it just means "hasn't teed off yet" — so the check tracks
+        resolve_pick's status-appropriate early-WD rule.
+        """
+        if result is None:
+            return False
+        if self.tournament.status == 'complete':
+            return result.wd_before_round_2_complete()
+        return result.is_wd_before_round_2()
+
     def is_backup_activated(self):
         """True if the backup player is (or will be) the active pick.
 
-        - Completed tournament: definitive — active_player_id == backup_player_id.
-        - Active tournament: the primary withdrew before completing Round 2 AND the
-          backup did not also WD before R2. The "both WD before R2" rule keeps the
-          primary active (for 0 points), so the backup is not activated — this
-          mirrors resolve_pick's Case 1.
+        - Finalized (complete + active_player_id set): definitive —
+          active_player_id == backup_player_id.
+        - Live (active) OR complete-but-unresolved (active_player_id still unset,
+          e.g. a manual refresh between the final whistle and results processing):
+          the primary withdrew before completing Round 2 AND the backup did not
+          also WD before R2. The "both WD before R2" rule keeps the primary active
+          (for 0 points), so the backup is not activated — mirrors resolve_pick's
+          Case 1 in both states.
 
         The live result lookups are memoized on the instance (transient, non-mapped
         attributes) so repeated reads within one render — e.g. standings rows
@@ -662,21 +678,19 @@ class GolfPick(db.Model):
         if self.tournament.status == 'complete' and self.active_player_id:
             return self.active_player_id == self.backup_player_id
 
-        if self.tournament.status == 'active':
+        if self.tournament.status in ('active', 'complete'):
             if not hasattr(self, '_primary_result_cache'):
                 self._primary_result_cache = GolfTournamentResult.query.filter_by(
                     tournament_id=self.tournament_id,
                     player_id=self.primary_player_id
                 ).first()
-            primary_result = self._primary_result_cache
-            if primary_result and primary_result.is_wd_before_round_2():
+            if self._early_wd(self._primary_result_cache):
                 if not hasattr(self, '_backup_result_cache'):
                     self._backup_result_cache = GolfTournamentResult.query.filter_by(
                         tournament_id=self.tournament_id,
                         player_id=self.backup_player_id
                     ).first()
-                backup_result = self._backup_result_cache
-                return not (backup_result and backup_result.is_wd_before_round_2())
+                return not self._early_wd(self._backup_result_cache)
 
         return False
 
@@ -718,10 +732,11 @@ class GolfPick(db.Model):
     def refresh_live_penalty(self):
         """Set ``penalty_triggered`` from the CURRENT live result status (ADR-034).
 
-        Safe to call on an active major before ``resolve_pick()`` has run. Uses
-        ``display_active_player_id`` (which honors an early primary WD → backup)
-        so the live penalty follows whoever is actually the active pick. Non-major
-        tournaments never carry a penalty.
+        Safe to call on an active major before ``resolve_pick()`` has run, and on a
+        complete-but-unresolved major (the CLI backfill window). Uses
+        ``display_active_player_id`` (which honors an early primary WD → backup in
+        both states) so the live penalty follows whoever is actually the active
+        pick. Non-major tournaments never carry a penalty.
         """
         if not self.tournament.is_major:
             self.penalty_triggered = False

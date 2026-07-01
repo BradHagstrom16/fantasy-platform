@@ -801,6 +801,10 @@ class TournamentSync:
                 processed += 1
             except Exception as exc:  # noqa: BLE001 - roll back this pick, continue
                 skipped += 1
+                # The savepoint rolled back resolve_pick()'s own reset, so clear
+                # any stale (live-refreshed) penalty flag here — outside the
+                # savepoint — so an unresolved pick can't linger in the pot.
+                pick.penalty_triggered = False
                 logger.warning(
                     "Skipped pick %s for %s: %s",
                     pick.id,
@@ -981,13 +985,6 @@ class TournamentSync:
                 updated += 1
 
             db.session.commit()
-
-            # Live-refresh the major cut/DQ side pot so the admin's penalty
-            # totals track the weekend before results are finalized (ADR-034).
-            if tournament.is_major:
-                refresh_tournament_penalties(tournament)
-                db.session.commit()
-
             logger.info(
                 "Updated live leaderboard for %s (%s entries, projected earnings calculated)",
                 tournament.name,
@@ -997,6 +994,22 @@ class TournamentSync:
             db.session.rollback()
             logger.exception("Failed updating live leaderboard for %s", tournament.name)
             return 0
+
+        # Live-refresh the major cut/DQ side pot so the admin's penalty totals
+        # track the weekend before results are finalized (ADR-034). Isolated from
+        # the leaderboard sync's try/except: the leaderboard is already committed
+        # above, so a penalty-refresh failure must not roll it back or make this
+        # method report failure (return 0) for an already-successful sync.
+        if tournament.is_major:
+            try:
+                refresh_tournament_penalties(tournament)
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
+                logger.exception(
+                    "Failed refreshing live penalties for %s (leaderboard already committed)",
+                    tournament.name,
+                )
 
         return updated
 

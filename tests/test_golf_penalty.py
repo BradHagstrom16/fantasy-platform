@@ -339,6 +339,35 @@ def test_refresh_live_penalty_uses_activated_backup(app):
     assert pick.penalty_triggered is True
 
 
+def test_is_backup_activated_complete_unresolved_early_primary_wd(app):
+    """A complete-but-unresolved major (active_player_id unset) still activates the
+    backup when the primary withdrew early — the CLI refresh window."""
+    u = _make_user()
+    _make_enrollment(u)
+    t = _make_tournament(is_major=True, status='complete', results_finalized=False)
+    primary, backup = _players()
+    _make_result(t, primary, status='wd', rounds_completed=1, earnings=0, final_position='WD')
+    _make_result(t, backup, status='complete', rounds_completed=4, earnings=400_000)
+    pick = _make_pick(u, t, primary, backup)  # active_player_id unset
+
+    assert pick.is_backup_activated() is True
+
+
+def test_refresh_live_penalty_complete_unresolved_uses_backup(app):
+    """CLI refresh on a complete-but-unresolved major must read the activated
+    backup's cut, not the withdrawn primary — no side-pot skew."""
+    u = _make_user()
+    _make_enrollment(u)
+    t = _make_tournament(is_major=True, status='complete', results_finalized=False)
+    primary, backup = _players()
+    _make_result(t, primary, status='wd', rounds_completed=1, earnings=0, final_position='WD')
+    _make_result(t, backup, status='cut', rounds_completed=2, earnings=0, final_position='CUT')
+    pick = _make_pick(u, t, primary, backup)
+
+    pick.refresh_live_penalty()
+    assert pick.penalty_triggered is True
+
+
 # ============================================================================
 # penalty_owed / penalty_outstanding
 # ============================================================================
@@ -468,6 +497,56 @@ def test_process_tournament_picks_flags_penalty(app):
     db.session.expire_all()
     refreshed = db.session.get(GolfPick, pick.id)
     assert refreshed.penalty_triggered is True
+
+
+def test_sync_live_leaderboard_penalty_refresh_failure_does_not_mask_sync(app, monkeypatch):
+    """A penalty-refresh failure must not roll back or fail the leaderboard sync
+    that already committed (ADR-034 isolation)."""
+    from games.golf.services import sync as sync_mod
+
+    t = _make_tournament(name='Masters Tournament', is_major=True, status='active')
+    p = _make_player('MX', 'Major', 'Player')
+
+    class _FakeAPI:
+        def get_leaderboard(self, tourn_id, year):
+            return {"status": "In Progress", "leaderboardRows": [
+                {"playerId": "MX", "position": "1", "total": "-10",
+                 "status": "active", "rounds": [1, 2]},
+            ]}
+
+    def _boom(tournament):
+        raise RuntimeError("penalty refresh blew up")
+
+    monkeypatch.setattr(sync_mod, 'refresh_tournament_penalties', _boom)
+
+    sync = sync_mod.TournamentSync(_FakeAPI())
+    updated = sync.sync_live_leaderboard(t)
+
+    # Sync reports success and the leaderboard result persisted despite the
+    # penalty-refresh blowing up.
+    assert updated == 1
+    r = GolfTournamentResult.query.filter_by(tournament_id=t.id, player_id=p.id).first()
+    assert r is not None and r.earnings > 0
+
+
+def test_process_tournament_picks_clears_stale_penalty_on_skipped_pick(app):
+    """A pick that fails to resolve (missing result) is rolled back by its
+    savepoint; its stale live penalty flag must still be cleared before commit so
+    the admin pot doesn't count an unresolved pick."""
+    u = _make_user()
+    _make_enrollment(u)
+    t = _make_tournament(is_major=True, status='complete')
+    t.recap_email_sent = True
+    db.session.commit()
+    primary, backup = _players()
+    # No result rows → resolve_pick returns False → this pick is skipped.
+    pick = _make_pick(u, t, primary, backup, penalty_triggered=True)
+
+    sync = TournamentSync(SlashGolfAPI('key'))
+    sync.process_tournament_picks(t)
+
+    db.session.expire_all()
+    assert db.session.get(GolfPick, pick.id).penalty_triggered is False
 
 
 # ============================================================================
