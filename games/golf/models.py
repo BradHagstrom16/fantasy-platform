@@ -222,6 +222,11 @@ class GolfTournament(db.Model):
         return deadline.strftime('%a %b %d, %I:%M %p CT')
 
     @property
+    def _has_api_purse(self):
+        """True when a real (positive) purse is stored, not just an estimate."""
+        return bool(self.purse and self.purse > 0)
+
+    @property
     def effective_purse(self):
         """Actual purse if the API set one, else the season estimate, else None.
 
@@ -230,14 +235,14 @@ class GolfTournament(db.Model):
         otherwise project $0. The estimate keeps projections and displays sane
         until `_backfill_purse_from_schedule()` writes the official number.
         """
-        if self.purse and self.purse > 0:
+        if self._has_api_purse:
             return self.purse
         return PURSE_ESTIMATES.get(self.name)
 
     @property
     def purse_is_estimate(self):
         """True when effective_purse came from PURSE_ESTIMATES (not the API)."""
-        return (not self.purse or self.purse <= 0) and self.name in PURSE_ESTIMATES
+        return not self._has_api_purse and self.name in PURSE_ESTIMATES
 
     def __repr__(self):
         return f'<GolfTournament {self.name} ({self.season_year})>'

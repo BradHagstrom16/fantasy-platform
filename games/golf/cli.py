@@ -210,7 +210,11 @@ def seed_schedule_cmd():
     locked name won't auto-link and needs a one-off manual id fix.
     """
     year = current_app.config.get('SEASON_YEAR', 2026)
-    created, updated = seed_schedule(year)
+    try:
+        created, updated = seed_schedule(year)
+    except ValueError as exc:
+        click.echo(f"Error: {exc}")
+        sys.exit(1)
     click.echo(f"Seeded golf schedule for {year}: {created} created, {updated} updated")
 
 

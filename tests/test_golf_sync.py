@@ -135,6 +135,12 @@ def test_parse_tee_time_timestamp_mongo_ejson():
     assert dt.tzinfo is not None
 
 
+def test_parse_tee_time_timestamp_relaxed_ejson_date_string():
+    # Relaxed EJSON: $date carries an ISO 8601 string rather than epoch-ms.
+    dt = TournamentSync._parse_tee_time_timestamp({"$date": "2026-04-09T13:19:00Z"})
+    assert dt == datetime(2026, 4, 9, 13, 19, 0, tzinfo=timezone.utc)
+
+
 def test_parse_tee_time_timestamp_iso_naive_treated_as_utc():
     dt = TournamentSync._parse_tee_time_timestamp("2026-04-09T13:19:00")
     assert dt == datetime(2026, 4, 9, 13, 19, 0, tzinfo=timezone.utc)
@@ -540,6 +546,12 @@ def test_sync_schedule_does_not_relink_real_id(app):
     assert t.purse == 9_100_000
     assert GolfTournament.query.filter_by(
         season_year=SEASON, name='Sony Open in Hawaii').count() == 1
+
+
+def test_seed_schedule_rejects_wrong_year(app):
+    with pytest.raises(ValueError):
+        seed_schedule(2027)
+    assert GolfTournament.query.filter_by(season_year=2027).count() == 0
 
 
 def test_seed_schedule_is_idempotent(app):

@@ -205,14 +205,23 @@ class TournamentSync:
         return GOLF_LEAGUE_TZ
 
     @staticmethod
+    def _iso_to_utc(iso_str: str) -> datetime:
+        """Parse an ISO 8601 string to a UTC-aware datetime (naive treated as UTC)."""
+        dt = datetime.fromisoformat(iso_str.replace("Z", "+00:00"))
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt
+
+    @staticmethod
     def _parse_tee_time_timestamp(tee_time_ts) -> Optional[datetime]:
         """
         Parse teeTimeTimestamp from API (preferred method - timezone-safe).
 
-        Handles three formats — the endpoint migrated from Mongo/epoch to ISO:
-        1. MongoDB dict: {"$date": {"$numberLong": "1768497660000"}}
-        2. ISO 8601 string: "2026-04-09T13:19:00" (naive treated as UTC)
-        3. Raw integer: milliseconds since epoch
+        Handles the formats the endpoint has used across its Mongo→ISO migration:
+        1. Canonical EJSON: {"$date": {"$numberLong": "1768497660000"}}
+        2. Relaxed EJSON:   {"$date": "2026-04-09T13:19:00Z"}  (ISO string in $date)
+        3. ISO 8601 string: "2026-04-09T13:19:00"  (naive treated as UTC)
+        4. Raw integer:     milliseconds since epoch
 
         Also used for schedule `date.start`, which arrives in the same shapes.
         """
@@ -226,6 +235,9 @@ class TournamentSync:
                     date_val = tee_time_ts['$date']
                     if isinstance(date_val, dict) and '$numberLong' in date_val:
                         ts_ms = int(date_val['$numberLong'])
+                    elif isinstance(date_val, str):
+                        # Relaxed EJSON: $date carries an ISO string, not epoch-ms.
+                        return TournamentSync._iso_to_utc(date_val)
                     else:
                         ts_ms = int(date_val)
                 elif '$numberLong' in tee_time_ts:
@@ -237,10 +249,7 @@ class TournamentSync:
 
             # Handle ISO 8601 string (current API format)
             if isinstance(tee_time_ts, str) and "T" in tee_time_ts:
-                dt = datetime.fromisoformat(tee_time_ts.replace("Z", "+00:00"))
-                if dt.tzinfo is None:
-                    dt = dt.replace(tzinfo=timezone.utc)
-                return dt
+                return TournamentSync._iso_to_utc(tee_time_ts)
 
             # Handle raw millisecond integer
             ts_ms = int(tee_time_ts)
@@ -1085,7 +1094,18 @@ def seed_schedule(year: int = 2026) -> Tuple[int, int]:
 
     Returns:
         (created, updated) counts.
+
+    Raises:
+        ValueError: for any year other than 2026 — ``TOURNAMENTS_2026`` carries
+        2026 dates, so seeding it under a different ``season_year`` would persist
+        the wrong schedule. A future season needs its own ``TOURNAMENTS_<year>``.
     """
+    if year != 2026:
+        raise ValueError(
+            f"seed_schedule only knows the 2026 locked schedule (got year={year}); "
+            "add a TOURNAMENTS_<year> list before seeding another season."
+        )
+
     created = 0
     updated = 0
 

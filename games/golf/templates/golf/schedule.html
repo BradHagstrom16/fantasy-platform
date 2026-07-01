@@ -81,7 +81,7 @@
                             </td>
                             <td class="text-end d-none d-md-table-cell">
                                 {% if t.effective_purse %}
-                                ${{ '{:,.0f}'.format(t.effective_purse) }}
+                                ${{ '{:,.0f}'.format(t.effective_purse) }}{% if t.purse_is_estimate %} <span class="text-muted small">(est.)</span>{% endif %}
                                 {% else %}
                                 <span class="text-muted">TBD</span>
                                 {% endif %}
