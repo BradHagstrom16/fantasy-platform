@@ -22,6 +22,10 @@ from games.golf.utils import format_score_to_par, GOLF_LEAGUE_TZ
 
 logger = logging.getLogger(__name__)
 
+# Flat side-pot penalty assessed when a user's active pick at a MAJOR finishes
+# cut or DQ ($15/incident, ADR-034). Ported as-is from the standalone.
+PENALTY_PER_INCIDENT = 15
+
 
 # ============================================================================
 # GolfEnrollment — Tracks who's playing golf + their game-specific data
@@ -44,6 +48,10 @@ class GolfEnrollment(db.Model):
 
     # Payment tracking
     has_paid = db.Column(db.Boolean, default=False)
+
+    # Major missed-cut/DQ side pot: dollars the admin has recorded as paid
+    # toward this enrollment's penalty tab (ADR-034).
+    penalty_paid = db.Column(db.Integer, default=0, nullable=False)
 
     # Game admin delegation (non-platform-admins can run the game)
     is_admin = db.Column(db.Boolean, default=False, nullable=False)
@@ -82,6 +90,29 @@ class GolfEnrollment(db.Model):
             season_year=self.season_year
         ).all()
         return [usage.player_id for usage in usages]
+
+    def penalty_owed(self, season_year=None):
+        """Total $ owed from major cut/DQ penalty-triggered picks (ADR-034).
+
+        Defaults to this enrollment's own season. Counts flagged picks joined
+        through GolfTournament so the count stays season-scoped (GolfPick has no
+        season column of its own).
+        """
+        from sqlalchemy import func as sqla_func
+
+        season = season_year if season_year is not None else self.season_year
+        count = db.session.query(sqla_func.count(GolfPick.id)).join(
+            GolfTournament, GolfPick.tournament_id == GolfTournament.id
+        ).filter(
+            GolfPick.user_id == self.user_id,
+            GolfPick.penalty_triggered.is_(True),
+            GolfTournament.season_year == season,
+        ).scalar() or 0
+        return count * PENALTY_PER_INCIDENT
+
+    def penalty_outstanding(self, season_year=None):
+        """Penalty owed minus already-paid, clamped at zero."""
+        return max(0, self.penalty_owed(season_year) - (self.penalty_paid or 0))
 
     def __repr__(self):
         return f'<GolfEnrollment User:{self.user_id} Year:{self.season_year}>'
@@ -409,6 +440,10 @@ class GolfPick(db.Model):
     primary_used = db.Column(db.Boolean, default=False)
     backup_used = db.Column(db.Boolean, default=False)
 
+    # $15 side-pot penalty owed when the active pick at a MAJOR finishes cut/dq
+    # (ADR-034). Re-derived True/False on every resolution — no separate clear.
+    penalty_triggered = db.Column(db.Boolean, default=False, nullable=False)
+
     # Admin override tracking
     admin_override = db.Column(db.Boolean, default=False)
     admin_override_note = db.Column(db.String(200), nullable=True)
@@ -502,6 +537,11 @@ class GolfPick(db.Model):
             player_id=self.backup_player_id
         ).first()
 
+        # Clear any stale (e.g. live-refreshed) penalty flag up front: the success
+        # path re-derives it below, and every failed early-return then leaves the
+        # pick's resolution state — including this flag — fully cleared (ADR-034).
+        self.penalty_triggered = False
+
         if not primary_result:
             logger.error(
                 "Missing tournament result for primary player %s in tournament %s",
@@ -587,6 +627,17 @@ class GolfPick(db.Model):
             self.primary_used = True
             self.backup_used = False
 
+        # $15 penalty when the active pick at a MAJOR finishes cut/dq (ADR-034).
+        # Re-derived True/False every resolution — no separate clear path needed.
+        active_result = (
+            primary_result if self.active_player_id == self.primary_player_id else backup_result
+        )
+        self.penalty_triggered = bool(
+            self.tournament.is_major
+            and active_result is not None
+            and active_result.status in ('cut', 'dq')
+        )
+
         # Record season usage for the active player — idempotent AND race-safe via
         # a dialect-aware INSERT ... ON CONFLICT DO NOTHING (see _record_season_usage).
         _record_season_usage(
@@ -595,14 +646,30 @@ class GolfPick(db.Model):
 
         return True
 
+    def _early_wd(self, result) -> bool:
+        """Did this player withdraw before completing Round 2?
+
+        'not started' counts as a withdrawal once the tournament is complete, but
+        while live it just means "hasn't teed off yet" — so the check tracks
+        resolve_pick's status-appropriate early-WD rule.
+        """
+        if result is None:
+            return False
+        if self.tournament.status == 'complete':
+            return result.wd_before_round_2_complete()
+        return result.is_wd_before_round_2()
+
     def is_backup_activated(self):
         """True if the backup player is (or will be) the active pick.
 
-        - Completed tournament: definitive — active_player_id == backup_player_id.
-        - Active tournament: the primary withdrew before completing Round 2 AND the
-          backup did not also WD before R2. The "both WD before R2" rule keeps the
-          primary active (for 0 points), so the backup is not activated — this
-          mirrors resolve_pick's Case 1.
+        - Finalized (complete + active_player_id set): definitive —
+          active_player_id == backup_player_id.
+        - Live (active) OR complete-but-unresolved (active_player_id still unset,
+          e.g. a manual refresh between the final whistle and results processing):
+          the primary withdrew before completing Round 2 AND the backup did not
+          also WD before R2. The "both WD before R2" rule keeps the primary active
+          (for 0 points), so the backup is not activated — mirrors resolve_pick's
+          Case 1 in both states.
 
         The live result lookups are memoized on the instance (transient, non-mapped
         attributes) so repeated reads within one render — e.g. standings rows
@@ -611,21 +678,19 @@ class GolfPick(db.Model):
         if self.tournament.status == 'complete' and self.active_player_id:
             return self.active_player_id == self.backup_player_id
 
-        if self.tournament.status == 'active':
+        if self.tournament.status in ('active', 'complete'):
             if not hasattr(self, '_primary_result_cache'):
                 self._primary_result_cache = GolfTournamentResult.query.filter_by(
                     tournament_id=self.tournament_id,
                     player_id=self.primary_player_id
                 ).first()
-            primary_result = self._primary_result_cache
-            if primary_result and primary_result.is_wd_before_round_2():
+            if self._early_wd(self._primary_result_cache):
                 if not hasattr(self, '_backup_result_cache'):
                     self._backup_result_cache = GolfTournamentResult.query.filter_by(
                         tournament_id=self.tournament_id,
                         player_id=self.backup_player_id
                     ).first()
-                backup_result = self._backup_result_cache
-                return not (backup_result and backup_result.is_wd_before_round_2())
+                return not self._early_wd(self._backup_result_cache)
 
         return False
 
@@ -663,6 +728,44 @@ class GolfPick(db.Model):
             return result.earnings
 
         return 0
+
+    def refresh_live_penalty(self):
+        """Set ``penalty_triggered`` from the CURRENT live result status (ADR-034).
+
+        Safe to call on an active major before ``resolve_pick()`` has run, and on a
+        complete-but-unresolved major (the CLI backfill window). Uses
+        ``display_active_player_id`` (which honors an early primary WD → backup in
+        both states) so the live penalty follows whoever is actually the active
+        pick. Non-major tournaments never carry a penalty.
+        """
+        if not self.tournament.is_major:
+            self.penalty_triggered = False
+            return
+
+        active_result = GolfTournamentResult.query.filter_by(
+            tournament_id=self.tournament_id,
+            player_id=self.display_active_player_id,
+        ).first()
+        self.penalty_triggered = bool(
+            active_result is not None and active_result.status in ('cut', 'dq')
+        )
+
+    @property
+    def show_penalty_badge(self):
+        """True when this pick's $15 major penalty should render in player UI.
+
+        Shows on LIVE majors (``refresh_live_penalty`` keeps it current) and on
+        FINALIZED majors (``resolve_pick`` sets it definitively), but not in the
+        'complete-but-not-yet-finalized' limbo where results aren't official yet.
+        The admin payments pot counts ``penalty_triggered`` directly and is not
+        gated by this property.
+        """
+        t = self.tournament
+        return bool(
+            self.penalty_triggered
+            and t.is_major
+            and (t.status == 'active' or t.results_finalized)
+        )
 
     def __repr__(self):
         return f'<GolfPick User:{self.user_id} Tournament:{self.tournament_id}>'

@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from 'golf/_penalty_badge.html' import penalty_badge with context %}
 
 {% block title %}Golf Pick 'Em — My Picks{% endblock %}
 
@@ -135,6 +136,7 @@
                                 {% else %}
                                     <span class="text-muted">—</span>
                                 {% endif %}
+                                {% if pick %}{{ penalty_badge(pick, extra_class='mt-1', label=' penalty', wrap=true) }}{% endif %}
                             </td>
                         </tr>
                         {% endfor %}

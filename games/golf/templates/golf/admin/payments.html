@@ -15,22 +15,31 @@
 
     <!-- Payment Stats -->
     <div class="row g-3 mb-4">
-        <div class="col-4">
+        <div class="col-6 col-md-3">
             <div class="stat-block animate-in stagger-1">
                 <div class="stat-value text-success">{{ total_paid }}</div>
                 <div class="stat-label">Paid</div>
             </div>
         </div>
-        <div class="col-4">
+        <div class="col-6 col-md-3">
             <div class="stat-block animate-in stagger-2">
                 <div class="stat-value {% if total_unpaid > 0 %}text-danger{% endif %}">{{ total_unpaid }}</div>
                 <div class="stat-label">Unpaid</div>
             </div>
         </div>
-        <div class="col-4">
+        <div class="col-6 col-md-3">
             <div class="stat-block animate-in stagger-3">
                 <div class="stat-value" style="font-size:1.8rem;">${{ '{:,.0f}'.format(total_collected) }}</div>
                 <div class="stat-label">Collected</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="stat-block animate-in stagger-4">
+                <div class="stat-value" style="font-size:1.8rem;">${{ '{:,.0f}'.format(total_penalty_pot) }}</div>
+                <div class="stat-label">Penalty Pot</div>
+                {% if total_penalty_pot > 0 %}
+                <div class="stat-sub">${{ '{:,.0f}'.format(total_penalty_collected) }} collected</div>
+                {% endif %}
             </div>
         </div>
     </div>
@@ -43,19 +52,23 @@
         <div class="card-body p-0">
             {% if enrollments %}
             <div class="table-responsive">
-                <table class="table table-hover mb-0 align-middle">
+                <table class="table table-golf table-hover mb-0 align-middle">
                     <thead>
                         <tr>
                             <th>Player</th>
                             <th class="d-none d-sm-table-cell">Email</th>
                             <th class="text-center">Status</th>
                             <th class="text-center">Toggle</th>
+                            <th class="text-end col-divider">Penalty</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for e in enrollments|sort(attribute='user.username') %}
+                        {% set ps = penalty_summary[e.user_id] %}
                         <tr>
-                            <td class="fw-semibold">{{ e.user.get_display_name() }}</td>
+                            <td class="fw-semibold">
+                                <span class="me-1">{{ e.user.get_avatar() }}</span>{{ e.user.get_display_name() }}
+                            </td>
                             <td class="d-none d-sm-table-cell">
                                 <small class="text-muted">{{ e.user.email }}</small>
                             </td>
@@ -69,9 +82,35 @@
                             <td class="text-center">
                                 <div class="form-check form-switch d-flex justify-content-center mb-0">
                                     <input class="form-check-input payment-toggle" type="checkbox"
+                                           aria-label="Mark {{ e.user.get_display_name() }} entry fee paid"
                                            data-user-id="{{ e.user_id }}"
                                            {% if e.has_paid %}checked{% endif %}>
                                 </div>
+                            </td>
+                            <td class="text-end col-divider">
+                                {% if ps.owed > 0 %}
+                                    <div class="small mb-1">
+                                        Owed <strong>${{ ps.owed }}</strong>
+                                        {% if ps.outstanding > 0 %}
+                                            <span class="badge-penalty ms-1">${{ ps.outstanding }} out</span>
+                                        {% else %}
+                                            <span class="text-success fw-semibold ms-1">Settled</span>
+                                        {% endif %}
+                                    </div>
+                                    <div class="penalty-group d-inline-flex align-items-center gap-1">
+                                        <span class="input-group-text py-0 px-2" style="font-size:.8rem;">$</span>
+                                        <input type="number" min="0" step="1"
+                                               class="form-control form-control-sm penalty-input"
+                                               style="width:78px;"
+                                               aria-label="Penalty paid by {{ e.user.get_display_name() }}"
+                                               data-user-id="{{ e.user_id }}"
+                                               value="{{ ps.paid }}">
+                                        <button type="button" class="btn btn-outline-secondary btn-sm penalty-save"
+                                                data-user-id="{{ e.user_id }}">Save</button>
+                                    </div>
+                                {% else %}
+                                    <span class="text-muted small">None</span>
+                                {% endif %}
                             </td>
                         </tr>
                         {% endfor %}
@@ -97,34 +136,59 @@
 {% block scripts %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+
+    function postPayment(userId, body) {
+        return fetch(`{{ url_for('golf.admin_update_payment', user_id=0) }}`.replace('0', userId), {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken,
+            },
+            body: JSON.stringify(body),
+        }).then(r => r.json());
+    }
+
+    // Entry-fee toggle — flip the status badge in place, no reload.
     document.querySelectorAll('.payment-toggle').forEach(function(toggle) {
         toggle.addEventListener('change', function() {
             const userId = this.dataset.userId;
             const hasPaid = this.checked;
-            const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
-            const row = this.closest('tr');
-            const badge = row.querySelector('.badge');
+            const badge = this.closest('tr').querySelector('.badge');
+            postPayment(userId, {has_paid: hasPaid})
+                .then(data => {
+                    if (data.success) {
+                        badge.className = 'badge ' + (data.has_paid ? 'bg-success' : 'bg-danger');
+                        badge.textContent = data.has_paid ? 'Paid' : 'Unpaid';
+                    } else {
+                        toggle.checked = !hasPaid;
+                    }
+                })
+                .catch(() => { toggle.checked = !hasPaid; });
+        });
+    });
 
-            fetch(`{{ url_for('golf.admin_update_payment', user_id=0) }}`.replace('0', userId), {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': csrfToken,
-                },
-                body: JSON.stringify({has_paid: hasPaid}),
-            })
-            .then(r => r.json())
-            .then(data => {
-                if (data.success) {
-                    badge.className = 'badge ' + (data.has_paid ? 'bg-success' : 'bg-danger');
-                    badge.textContent = data.has_paid ? 'Paid' : 'Unpaid';
-                } else {
-                    toggle.checked = !hasPaid;
-                }
-            })
-            .catch(() => {
-                toggle.checked = !hasPaid;
-            });
+    // Penalty paid — reload on success so owed/outstanding + pot totals recompute.
+    document.querySelectorAll('.penalty-save').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            const group = this.closest('.penalty-group');
+            const input = group ? group.querySelector('.penalty-input') : null;
+            // Number() (not parseInt) so a fractional entry like 12.75 is
+            // rejected rather than silently truncated to 12.
+            const value = input ? Number(input.value) : NaN;
+            if (!Number.isInteger(value) || value < 0) {
+                alert('Penalty paid must be a non-negative whole number.');
+                return;
+            }
+            postPayment(this.dataset.userId, {penalty_paid: value})
+                .then(data => {
+                    if (data.success) {
+                        window.location.reload();
+                    } else {
+                        alert(data.error || 'Could not update the penalty. Please try again.');
+                    }
+                })
+                .catch(() => { alert('Could not update the penalty. Please try again.'); });
         });
     });
 });

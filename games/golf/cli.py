@@ -324,6 +324,27 @@ def check_wd_cmd():
         click.echo("No withdrawals")
 
 
+@golf_cli.command('refresh-live-penalties')
+def refresh_live_penalties_cmd():
+    """Re-evaluate GolfPick.penalty_triggered for active/complete majors.
+
+    Useful for local testing before the live sync has run, or to backfill after
+    a fresh DB drop. The live-leaderboard sync already refreshes penalties for
+    active majors on its own cadence; this is the manual equivalent (ADR-034).
+    """
+    from games.golf.services.sync import refresh_tournament_penalties
+    year = current_app.config.get('SEASON_YEAR', 2026)
+    tournaments = (
+        GolfTournament.query
+        .filter_by(is_major=True, season_year=year)
+        .filter(GolfTournament.status.in_(['active', 'complete']))
+        .all()
+    )
+    total = sum(refresh_tournament_penalties(t) for t in tournaments)
+    db.session.commit()
+    click.echo(f"Refreshed penalties across {len(tournaments)} majors. {total} picks flagged.")
+
+
 @golf_cli.command('remind')
 def remind_cmd():
     """Run reminder check for upcoming tournaments."""

@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from 'golf/_penalty_badge.html' import penalty_badge with context %}
 
 {% block title %}Golf Pick 'Em — Standings{% endblock %}
 
@@ -144,6 +145,7 @@
                                                 {{ format_score_to_par(result.score_to_par) }}
                                             </small>
                                         {% endif %}
+                                        {{ penalty_badge(pick, extra_class='ms-1') }}
                                     {% else %}
                                         <span class="text-muted">—</span>
                                     {% endif %}
@@ -193,6 +195,20 @@
             </div>
             {% endif %}
         </div>
+        {% if entry_total > 0 or total_penalty_pot > 0 %}
+        <div class="card-footer d-flex flex-wrap justify-content-between align-items-baseline gap-2">
+            <span class="golf-pool-label">Prize Pool</span>
+            <span class="golf-pool-figures">
+                <span class="text-muted">Entry fees</span> ${{ '{:,.0f}'.format(entry_total) }}
+                {% if total_penalty_pot > 0 %}
+                    <span class="text-muted mx-1">+</span>
+                    <span class="text-muted">penalties</span> ${{ '{:,.0f}'.format(total_penalty_pot) }}
+                {% endif %}
+                <span class="text-muted mx-1">=</span>
+                <strong>${{ '{:,.0f}'.format(entry_total + total_penalty_pot) }}</strong>
+            </span>
+        </div>
+        {% endif %}
     </div>
 
     {% if completed_tournaments %}

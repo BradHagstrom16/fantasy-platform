@@ -20,6 +20,7 @@ from extensions import db
 from models.user import User
 from games.golf import golf_bp
 from games.golf.models import (
+    PENALTY_PER_INCIDENT,
     GolfEnrollment, GolfPlayer, GolfTournament,
     GolfTournamentField, GolfTournamentResult,
     GolfPick, GolfSeasonPlayerUsage,
@@ -71,6 +72,7 @@ def inject_golf_globals():
         'golf_current_time': get_current_time(),
         'season_year': current_app.config['SEASON_YEAR'],
         'entry_fee': current_app.config['ENTRY_FEE'],
+        'penalty_per_incident': PENALTY_PER_INCIDENT,
         'format_score_to_par': format_score_to_par,
     }
 
@@ -234,6 +236,20 @@ def index():
             tournament_id=next_tournament.id
         ).first() is not None
 
+    # Prize pool: entry fees (season-scoped enrollments) + the major cut/DQ
+    # side pot (ADR-034). Pot = flagged picks x $15 across the active season.
+    entry_total = len(enrollments) * current_app.config['ENTRY_FEE']
+    penalty_pick_count = (
+        db.session.query(func.count(GolfPick.id))
+        .join(GolfTournament, GolfPick.tournament_id == GolfTournament.id)
+        .filter(
+            GolfPick.penalty_triggered.is_(True),
+            GolfTournament.season_year == season_year,
+        )
+        .scalar()
+    ) or 0
+    total_penalty_pot = penalty_pick_count * PENALTY_PER_INCIDENT
+
     return render_template('golf/index.html',
         users=users,
         all_tournaments=all_tournaments,
@@ -245,6 +261,8 @@ def index():
         active_results=active_results,
         all_positions=all_positions,
         user_has_picked_next=user_has_picked_next,
+        entry_total=entry_total,
+        total_penalty_pot=total_penalty_pot,
         calculate_projected_earnings=calculate_projected_earnings,
     )
 
@@ -592,11 +610,39 @@ def admin_payments():
     total_unpaid = sum(1 for e in enrollments if not e.has_paid)
     total_collected = total_paid * current_app.config['ENTRY_FEE']
 
+    # Major cut/DQ side pot (ADR-034): one grouped query for flagged-pick counts,
+    # then owed/paid/outstanding per enrollment + pot totals.
+    penalty_counts = dict(
+        db.session.query(GolfPick.user_id, func.count(GolfPick.id))
+        .join(GolfTournament, GolfPick.tournament_id == GolfTournament.id)
+        .filter(
+            GolfPick.penalty_triggered.is_(True),
+            GolfTournament.season_year == season_year,
+        )
+        .group_by(GolfPick.user_id)
+        .all()
+    )
+    penalty_summary = {}
+    for e in enrollments:
+        owed = penalty_counts.get(e.user_id, 0) * PENALTY_PER_INCIDENT
+        paid = e.penalty_paid or 0
+        penalty_summary[e.user_id] = {
+            'owed': owed,
+            'paid': paid,
+            'outstanding': max(0, owed - paid),
+        }
+    total_penalty_pot = sum(s['owed'] for s in penalty_summary.values())
+    total_penalty_collected = sum(s['paid'] for s in penalty_summary.values())
+
     return render_template('golf/admin/payments.html',
         enrollments=enrollments,
         total_paid=total_paid,
         total_unpaid=total_unpaid,
         total_collected=total_collected,
+        penalty_summary=penalty_summary,
+        total_penalty_pot=total_penalty_pot,
+        total_penalty_collected=total_penalty_collected,
+        penalty_per_incident=PENALTY_PER_INCIDENT,
     )
 
 
@@ -614,10 +660,37 @@ def admin_update_payment(user_id):
             'error': 'User is not enrolled in Golf Pick \'Em.',
         }), 400
 
-    data = request.get_json()
-    enrollment.has_paid = data.get('has_paid', False)
+    data = request.get_json() or {}
+
+    def _parse_non_negative_int(value):
+        """Whole non-negative dollars only; reject floats/non-numeric — no silent
+        truncation of a JSON float like 12.75 into 12. Negatives clamp to 0."""
+        if isinstance(value, bool):
+            raise ValueError
+        if isinstance(value, int):
+            return max(0, value)
+        if isinstance(value, str):
+            return max(0, int(value.strip()))  # int() rejects '12.5'/'abc'
+        raise ValueError
+
+    # Penalty-paid update (ADR-034) — handled independently of has_paid so a
+    # penalty-only save never resets the entry fee.
+    if 'penalty_paid' in data:
+        try:
+            enrollment.penalty_paid = _parse_non_negative_int(data['penalty_paid'])
+        except (TypeError, ValueError):
+            return jsonify({
+                'success': False,
+                'error': 'penalty_paid must be a non-negative integer',
+            }), 400
+    if 'has_paid' in data:
+        enrollment.has_paid = bool(data['has_paid'])
     db.session.commit()
-    return jsonify({'success': True, 'has_paid': enrollment.has_paid})
+    return jsonify({
+        'success': True,
+        'has_paid': enrollment.has_paid,
+        'penalty_paid': enrollment.penalty_paid,
+    })
 
 
 @golf_bp.route('/admin/override-pick', methods=['GET', 'POST'])

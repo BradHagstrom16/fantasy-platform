@@ -801,6 +801,10 @@ class TournamentSync:
                 processed += 1
             except Exception as exc:  # noqa: BLE001 - roll back this pick, continue
                 skipped += 1
+                # The savepoint rolled back resolve_pick()'s own reset, so clear
+                # any stale (live-refreshed) penalty flag here — outside the
+                # savepoint — so an unresolved pick can't linger in the pot.
+                pick.penalty_triggered = False
                 logger.warning(
                     "Skipped pick %s for %s: %s",
                     pick.id,
@@ -991,7 +995,38 @@ class TournamentSync:
             logger.exception("Failed updating live leaderboard for %s", tournament.name)
             return 0
 
+        # Live-refresh the major cut/DQ side pot so the admin's penalty totals
+        # track the weekend before results are finalized (ADR-034). Isolated from
+        # the leaderboard sync's try/except: the leaderboard is already committed
+        # above, so a penalty-refresh failure must not roll it back or make this
+        # method report failure (return 0) for an already-successful sync.
+        if tournament.is_major:
+            try:
+                refresh_tournament_penalties(tournament)
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
+                logger.exception(
+                    "Failed refreshing live penalties for %s (leaderboard already committed)",
+                    tournament.name,
+                )
+
         return updated
+
+
+def refresh_tournament_penalties(tournament: GolfTournament) -> int:
+    """Re-derive ``GolfPick.penalty_triggered`` for one tournament's picks (ADR-034).
+
+    Returns the number of picks now flagged. The caller is responsible for the
+    commit. Shared by the live-leaderboard sync and ``flask golf
+    refresh-live-penalties`` so the refresh/count logic lives in one place.
+    """
+    flagged = 0
+    for pick in GolfPick.query.filter_by(tournament_id=tournament.id).all():
+        pick.refresh_live_penalty()
+        if pick.penalty_triggered:
+            flagged += 1
+    return flagged
 
 
 def get_upcoming_tournament(days_ahead: int = 7) -> Optional[GolfTournament]:
