@@ -1,0 +1,11 @@
+{# Major missed-cut/DQ penalty badge (ADR-034). Reads `penalty_per_incident`
+   from the golf context processor, so callers must import `with context`:
+   {% from 'golf/_penalty_badge.html' import penalty_badge with context %}
+   Guarded on pick.show_penalty_badge (live OR finalized major, flag set). #}
+{% macro penalty_badge(pick, extra_class='', label='', wrap=false) -%}
+  {%- if pick.show_penalty_badge -%}
+    {%- if wrap %}<div>{% endif -%}
+    <span class="badge-penalty{% if extra_class %} {{ extra_class }}{% endif %}" title="Missed major cut — ${{ penalty_per_incident }} to the pot">&minus;${{ penalty_per_incident }}{{ label }}</span>
+    {%- if wrap %}</div>{% endif -%}
+  {%- endif -%}
+{%- endmacro %}

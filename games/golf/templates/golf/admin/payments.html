@@ -173,8 +173,10 @@ document.addEventListener('DOMContentLoaded', function() {
         btn.addEventListener('click', function() {
             const group = this.closest('.penalty-group');
             const input = group ? group.querySelector('.penalty-input') : null;
-            const value = input ? parseInt(input.value, 10) : NaN;
-            if (isNaN(value) || value < 0) {
+            // Number() (not parseInt) so a fractional entry like 12.75 is
+            // rejected rather than silently truncated to 12.
+            const value = input ? Number(input.value) : NaN;
+            if (!Number.isInteger(value) || value < 0) {
                 alert('Penalty paid must be a non-negative whole number.');
                 return;
             }
