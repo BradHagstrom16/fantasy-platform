@@ -197,21 +197,21 @@ Tests: `test_resolve_pick_major_cut_penalty` (+ live-refresh flip, owed/outstand
 Files: `config.py`, `games/golf/cli.py`, `games/golf/services/{reminders,sync}.py`, `deploy/`,
 `tests/test_golf_automation.py`, `AGENTS.md`, `CLAUDE.md`.
 
-- [ ] **Config-plumb the API key.** Add `SLASHGOLF_API_KEY = os.environ.get('SLASHGOLF_API_KEY', '')`
+- [x] **Config-plumb the API key.** Add `SLASHGOLF_API_KEY = os.environ.get('SLASHGOLF_API_KEY', '')`
       to `config.py` `Config` (next to the unused `SLASHGOLF_API_HOST`, ~line 50); read via
       `current_app.config` in `cli.py:41` + `routes.py:780`. Add a test locking the key in `Config`
       (the `MAIL_FROM_ADDRESS` config-plumbing gotcha).
-- [ ] **Season-scope automation queries.** Add `season_year` filters to `get_active_tournaments`,
+- [x] **Season-scope automation queries.** Add `season_year` filters to `get_active_tournaments`,
       `get_recently_completed_tournaments`, `get_tournaments_pending_finalization`,
       `get_upcoming_tournaments_window` (`sync.py:889-929`).
-- [ ] **Reminder de-dup.** Add `GolfTournament.last_reminder_type` (migration) + the `REMINDER_ORDER`
+- [x] **Reminder de-dup.** Add `GolfTournament.last_reminder_type` (migration) + the `REMINDER_ORDER`
       skip-current-or-later-tier check, recording tier only after a successful send
       (`Golf_Pick_Em/models.py:216`, `send_reminders.py:1076-1128`).
-- [ ] **Systemd units.** Author `deploy/golf-{schedule,field,live,results,remind}.{timer,service}`
+- [x] **Systemd units.** Author `deploy/golf-{schedule,field,live,results,remind}.{timer,service}`
       mirroring the `cfb-*`/`worldcup-*` structure: `Type=oneshot`, `User=deploy`,
       `EnvironmentFile=.env`, `Environment=ENVIRONMENT=production`, inline-TZ `OnCalendar` (no
       `TimeZone=` directive), `Persistent=true`. Cadence per the audit §7 table.
-- [ ] **CLI safety + docs.** Add `remind` to `sync-run --mode` (or document `flask golf remind`);
+- [x] **CLI safety + docs.** Add `remind` to `sync-run --mode` (or document `flask golf remind`);
       gate/dev-only the unsafe `--mode all`; make the `os.makedirs` log-dir init lazy (not at import);
       document the golf command block in `AGENTS.md` + `CLAUDE.md`.
 
@@ -326,6 +326,24 @@ Files: `games/golf/models.py`, `games/golf/services/sync.py`, `games/golf/routes
   `show_penalty_badge`). Migration `683bff36f66e` (server_default backfill; round-tripped + resolve
   smoke on `ccc_local` Postgres). +41 tests (test_golf_penalty.py); suite 1522→1563; visual smoke of
   all four surfaces; CodeRabbit APPROVED (3 review rounds). **Next: PR 4 (ops hardening & automation).**
+- **2026-07-01** — **PR 4 (ops hardening & automation) merged (#106).** Config-plumbed
+  `SLASHGOLF_API_KEY` (cli.py + routes.py read via `current_app.config`; base-`Config` env line);
+  season-scoped the four automation queries via a shared `_resolve_season_year` helper; reminder
+  de-dup (`GolfTournament.last_reminder_type` + `REMINDER_ORDER` skip-current-or-later, recorded only
+  after a successful send — ported from the standalone; migration `1dbde6204bc2`, nullable String(10),
+  round-tripped on `ccc_local` Postgres); 10 systemd units
+  `deploy/golf-{schedule,field,live,results,remind}.{timer,service}` (inline-TZ `OnCalendar`, cadence
+  per audit §7; **field timer is `Persistent=false`** so a downtime replay can't fire "Picks Are Open"
+  post-deadline — deliberately unlike the other golf timers); CLI safety (`remind` mode short-circuits
+  before the API client → API-key-free; `--mode all` disabled when `ENVIRONMENT=production`; lazy +
+  fault-tolerant API-call file logging via `GOLF_API_LOG_DIR`); refreshed the CLAUDE.md Golf CLI block.
+  +12 tests (test_golf_automation.py); suite 1563→1575; season-scoping verified on `ccc_local` Postgres.
+  CodeRabbit APPROVED (1 fix round: field-timer replay + test season-pin + config-key lock tightened;
+  it **withdrew** the partial-delivery de-dup concern after the standalone-parity trade-off rationale,
+  and the `OnFailure=` nitpick was declined for platform consistency — no existing cfb-*/worldcup-* unit
+  uses it). **Timers authored but NOT enabled — enabling + `systemd-analyze calendar` validation is
+  Phase L.** `AGENTS.md` (untracked local Codex mirror) updated locally, intentionally not committed.
+  **Next: PR 5 (routes, standings & email conformance).**
 
 ## Key reference sources
 
