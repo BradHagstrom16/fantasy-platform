@@ -24,6 +24,7 @@ import logging
 from datetime import datetime, timedelta
 
 from flask import current_app
+from markupsafe import escape
 
 from utils.email import send_platform_email
 
@@ -36,7 +37,6 @@ from games.golf.models import (
     GolfTournamentResult,
 )
 from games.golf.utils import GOLF_LEAGUE_TZ, format_score_to_par
-from models.user import User
 
 logger = logging.getLogger(__name__)
 
@@ -59,9 +59,20 @@ TOLERANCE_MINUTES = 35
 # Minimum field size required for notifications
 MIN_FIELD_SIZE = 50
 
-# Admin contact for alerts
-ADMIN_EMAIL = "bhagstrom0@gmail.com"
-ADMIN_NAME = "Sun Day Regrets"
+# CCC-branded salutation for admin alert emails (replaces the standalone
+# "Sun Day Regrets" league name).
+ADMIN_ALERT_NAME = "Commish"
+
+
+def _admin_alert_recipient() -> str:
+    """Resolve the admin-alert inbox: ADMIN_EMAIL, else EMAIL_ADDRESS (dev).
+
+    Mirrors CFB's automation._send_admin_email. In prod EMAIL_ADDRESS is the
+    Brevo SMTP login (not an inbox), so ADMIN_EMAIL must be a real mailbox
+    there; the fallback keeps dev working where EMAIL_ADDRESS is a real account.
+    """
+    config = current_app.config
+    return config.get('ADMIN_EMAIL', '') or config.get('EMAIL_ADDRESS', '')
 
 # ============================================================================
 # Inline style constants — Gmail-safe, no <style> blocks
@@ -153,7 +164,7 @@ def _html_tournament_card(tournament_name: str, purse: int, deadline_str: str,
     return f'''<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-left: 4px solid {accent}; background-color: {bg}; margin-bottom: 24px;">
 <tr><td style="padding: 20px 24px;">
 <p style="margin: 0 0 4px 0; font-size: 11px; font-weight: 600; color: {_TEXT_MUTED}; text-transform: uppercase; letter-spacing: 0.05em;">This Week</p>
-<p style="margin: 0 0 14px 0; font-family: {_FONT_DISPLAY}; font-size: 20px; font-weight: 700; color: {_TEXT_PRIMARY};">{tournament_name}</p>
+<p style="margin: 0 0 14px 0; font-family: {_FONT_DISPLAY}; font-size: 20px; font-weight: 700; color: {_TEXT_PRIMARY};">{escape(tournament_name)}</p>
 <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
 <td style="padding-right: 32px;">
 <p style="margin: 0; font-size: 11px; color: {_TEXT_MUTED}; text-transform: uppercase; letter-spacing: 0.03em;">Purse</p>
@@ -242,21 +253,20 @@ def send_picks_open_email(tournament_id_or_obj) -> int:
     tournament_name = tournament.name
     purse = tournament.purse or 0
 
-    # Query users directly within this context
-    users = User.query.all()
+    # Enrollment-scoped (audit §6): mail only current-season golf enrollees, never
+    # every platform user (World Cup / CFB-only accounts must not get golf mail).
+    enrollments = GolfEnrollment.query.filter_by(season_year=season_year).all()
     success_count = 0
 
-    for user in users:
+    for enrollment in enrollments:
+        user = enrollment.user
+        if not user or not user.email:
+            continue
         display_name = user.get_display_name()
         user_email = user.email
 
-        # Get golf-specific stats from enrollment
-        enrollment = GolfEnrollment.query.filter_by(
-            user_id=user.id,
-            season_year=season_year
-        ).first()
-        total_points = enrollment.total_points if enrollment else 0
-        golfers_used = len(enrollment.get_used_player_ids()) if enrollment else 0
+        total_points = enrollment.total_points or 0
+        golfers_used = len(enrollment.get_used_player_ids())
 
         # Plain text
         plain = f"""Hi {display_name},
@@ -288,7 +298,7 @@ Golf Pick 'Em {season_year}
 
         # HTML
         content = f'''<h2 style="margin: 0 0 6px 0; font-family: {_FONT_DISPLAY}; font-size: 24px; color: {_TEXT_PRIMARY};">Picks Are Open</h2>
-<p style="margin: 0 0 24px 0; font-size: 15px; color: {_TEXT_SECONDARY};">Hi {display_name}, the field is set. Time to make your pick.</p>
+<p style="margin: 0 0 24px 0; font-size: 15px; color: {_TEXT_SECONDARY};">Hi {escape(display_name)}, the field is set. Time to make your pick.</p>
 
 {_html_tournament_card(tournament_name, purse, deadline_str)}
 {_html_button(pick_url, "Make Your Pick")}
@@ -300,7 +310,7 @@ Golf Pick 'Em {season_year}
         if send_platform_email(user_email, subject, plain, html):
             success_count += 1
 
-    print(f"\nPicks Open Summary: {success_count}/{len(users)} emails sent")
+    print(f"\nPicks Open Summary: {success_count}/{len(enrollments)} emails sent")
     return success_count
 
 
@@ -401,7 +411,7 @@ Golf Pick 'Em {tournament_season_year}
 </table>
 
 <h2 style="margin: 0 0 6px 0; font-family: {_FONT_DISPLAY}; font-size: 22px; color: {_TEXT_PRIMARY};">Don&#8217;t Miss Out</h2>
-<p style="margin: 0 0 24px 0; font-size: 15px; color: {_TEXT_SECONDARY};">Hi {user_display_name}, you haven&#8217;t made your pick yet.</p>
+<p style="margin: 0 0 24px 0; font-size: 15px; color: {_TEXT_SECONDARY};">Hi {escape(user_display_name)}, you haven&#8217;t made your pick yet.</p>
 
 {_html_tournament_card(tournament_name, tournament_purse, deadline_str, accent_color=accent_color)}
 {_html_button(pick_url, "Make Your Pick Now", bg_color=accent_color if window['type'] == 'final' else None)}'''
@@ -457,9 +467,14 @@ def send_admin_field_alert(tournament_id_or_obj, field_count: int) -> bool:
 
     deadline_str = deadline.strftime('%A, %B %d at %I:%M %p CT') if deadline else "TBD"
 
+    recipient = _admin_alert_recipient()
+    if not recipient:
+        print("  Cannot send: No admin recipient configured (ADMIN_EMAIL/EMAIL_ADDRESS)")
+        return False
+
     subject = f"ADMIN ALERT: Field sync issue for {tournament.name}"
 
-    body = f"""Hi {ADMIN_NAME},
+    body = f"""Hi {ADMIN_ALERT_NAME},
 
 This is an automated alert from Golf Pick 'Em.
 
@@ -487,10 +502,10 @@ Admin Dashboard: {site_url}/admin
 This alert will only be sent once per tournament.
 
 ---
-Golf Pick 'Em Automated Alert System
+Corrupt Commish Club · Golf Pick 'Em Automated Alert System
 """
 
-    return send_platform_email(ADMIN_EMAIL, subject, body)
+    return send_platform_email(recipient, subject, body)
 
 
 # =============================================================================
@@ -583,13 +598,17 @@ def send_results_recap_email(tournament_id: int) -> int:
         prev_points = enrollment.total_points
         prev_rank = rank
 
-    # ---- Send personalized recap to each user ----
-    users = User.query.all()
+    # ---- Send personalized recap to each enrolled member (audit §6) ----
+    # Enrollment-scoped: reuse the season enrollments built for standings so a
+    # non-golf platform account never receives a golf recap.
     success_count = 0
 
     subject = f"Results: {tournament_name}"
 
-    for user in users:
+    for enrollment in enrollments:
+        user = enrollment.user
+        if not user or not user.email:
+            continue
         display_name = user.get_display_name()
         user_email = user.email
 
@@ -642,7 +661,7 @@ def send_results_recap_email(tournament_id: int) -> int:
         if send_platform_email(user_email, subject, plain, html):
             success_count += 1
 
-    print(f"\nResults Recap Summary: {success_count}/{len(users)} emails sent")
+    print(f"\nResults Recap Summary: {success_count}/{len(enrollments)} emails sent")
     return success_count
 
 
@@ -710,7 +729,7 @@ def _build_recap_html(display_name, tournament_name, golfer_name, position,
         pick_card = f'''<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: {_CREAM}; border-left: 4px solid {_GREEN_700}; margin-bottom: 24px;">
 <tr><td style="padding: 20px 24px;">
 <p style="margin: 0 0 4px 0; font-size: 11px; font-weight: 600; color: {_TEXT_MUTED}; text-transform: uppercase; letter-spacing: 0.05em;">Your Pick</p>
-<p style="margin: 0 0 12px 0; font-family: {_FONT_DISPLAY}; font-size: 20px; font-weight: 700; color: {_TEXT_PRIMARY};">{golfer_name}{backup_badge}</p>
+<p style="margin: 0 0 12px 0; font-family: {_FONT_DISPLAY}; font-size: 20px; font-weight: 700; color: {_TEXT_PRIMARY};">{escape(golfer_name)}{backup_badge}</p>
 <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
 <td style="padding-right: 32px;">
 <p style="margin: 0; font-size: 11px; color: {_TEXT_MUTED}; text-transform: uppercase; letter-spacing: 0.03em;">Finish</p>
@@ -764,8 +783,8 @@ def _build_recap_html(display_name, tournament_name, golfer_name, position,
 
         top3_rows += f'''<tr>
 <td style="padding: 10px 12px; border-bottom: 1px solid rgba(0,67,46,0.06); background-color: {row_bg}; {bold} font-size: 14px; color: {_TEXT_PRIMARY}; text-align: center; width: 36px;">{i + 1}</td>
-<td style="padding: 10px 12px; border-bottom: 1px solid rgba(0,67,46,0.06); background-color: {row_bg}; {bold} font-size: 14px; color: {_TEXT_PRIMARY};">{entry['user_name']}{self_marker}</td>
-<td style="padding: 10px 12px; border-bottom: 1px solid rgba(0,67,46,0.06); background-color: {row_bg}; font-size: 14px; color: {_TEXT_SECONDARY};">{entry['golfer_name']}{score_part}</td>
+<td style="padding: 10px 12px; border-bottom: 1px solid rgba(0,67,46,0.06); background-color: {row_bg}; {bold} font-size: 14px; color: {_TEXT_PRIMARY};">{escape(entry['user_name'])}{self_marker}</td>
+<td style="padding: 10px 12px; border-bottom: 1px solid rgba(0,67,46,0.06); background-color: {row_bg}; font-size: 14px; color: {_TEXT_SECONDARY};">{escape(entry['golfer_name'])}{score_part}</td>
 <td style="padding: 10px 12px; border-bottom: 1px solid rgba(0,67,46,0.06); background-color: {row_bg}; {bold} font-size: 14px; color: {_GREEN_700}; text-align: right;">${entry['earnings']:,}</td>
 </tr>'''
 
@@ -781,8 +800,8 @@ def _build_recap_html(display_name, tournament_name, golfer_name, position,
 </table>'''
 
     # --- Assemble ---
-    content = f'''<h2 style="margin: 0 0 6px 0; font-family: {_FONT_DISPLAY}; font-size: 24px; color: {_TEXT_PRIMARY};">{tournament_name}</h2>
-<p style="margin: 0 0 24px 0; font-size: 15px; color: {_TEXT_SECONDARY};">Here&#8217;s how your week went, {display_name}.</p>
+    content = f'''<h2 style="margin: 0 0 6px 0; font-family: {_FONT_DISPLAY}; font-size: 24px; color: {_TEXT_PRIMARY};">{escape(tournament_name)}</h2>
+<p style="margin: 0 0 24px 0; font-size: 15px; color: {_TEXT_SECONDARY};">Here&#8217;s how your week went, {escape(display_name)}.</p>
 
 {pick_card}
 {standing_card}
@@ -844,18 +863,24 @@ def get_upcoming_tournament_for_reminders():
     return tournament, deadline
 
 
-def get_users_without_picks(tournament_id):
+def get_users_without_picks(tournament_id, season_year):
     """
-    Get users who haven't made a pick for this tournament.
+    Enrolled users (current season) who haven't picked for this tournament.
+
+    Scoped to GolfEnrollment (audit §6) so non-golf platform accounts never
+    receive golf reminder mail; mirrors CFB get_users_without_picks(week, season).
 
     Returns:
         List of User objects (still attached to session)
     """
-    all_users = User.query.all()
     picked_user_ids = {
         p.user_id for p in GolfPick.query.filter_by(tournament_id=tournament_id)
     }
-    return [u for u in all_users if u.id not in picked_user_ids]
+    enrollments = GolfEnrollment.query.filter_by(season_year=season_year).all()
+    return [
+        e.user for e in enrollments
+        if e.user and e.user_id not in picked_user_ids
+    ]
 
 
 def should_send_reminder(deadline, window_hours):
@@ -964,7 +989,7 @@ def run_reminder_check():
             return
 
     # Get users who need reminders (returns ORM objects attached to this context)
-    users_without_picks = get_users_without_picks(tournament.id)
+    users_without_picks = get_users_without_picks(tournament.id, tournament.season_year)
 
     if not users_without_picks:
         print(f"\nAll users have made their picks for {tournament.name}!")

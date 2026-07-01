@@ -169,7 +169,9 @@ def index():
         .all()
     )
 
-    # Build user list with enrollment data
+    # Standings are golf-enrollment-scoped (ADR-036): only current-season golf
+    # enrollees appear. The board is NOT padded with every platform user —
+    # that polluted it with World Cup / CFB-only accounts sitting at 0 points.
     users = []
     for enrollment in enrollments:
         users.append({
@@ -177,20 +179,6 @@ def index():
             'enrollment': enrollment,
             'total_points': enrollment.total_points,
             'has_paid': enrollment.has_paid,
-        })
-
-    # Include users who are NOT enrolled (they'll show with 0 points)
-    enrolled_user_ids = {e.user_id for e in enrollments}
-    if enrolled_user_ids:
-        unenrolled = User.query.filter(~User.id.in_(enrolled_user_ids)).all()
-    else:
-        unenrolled = User.query.all()
-    for user in unenrolled:
-        users.append({
-            'user': user,
-            'enrollment': None,
-            'total_points': 0,
-            'has_paid': False,
         })
 
     # Tournament data
@@ -458,8 +446,9 @@ def make_pick(tournament_id):
             if errors:
                 for error in errors:
                     flash(error, 'error')
-                if not existing_pick:
-                    db.session.expunge(pick)
+                # Discard the invalid insert/mutation so it can't autoflush and
+                # the re-rendered form shows persisted (valid) state (audit §2).
+                db.session.rollback()
             else:
                 db.session.commit()
                 primary_player = db.session.get(GolfPlayer, primary_id)
@@ -725,66 +714,98 @@ def admin_override_pick():
             selected_tournament = db.session.get(GolfTournament, tournament_id)
             selected_user = db.session.get(User, user_id)
 
-            if primary_id == backup_id:
-                flash('Primary and backup players must be different.', 'error')
-            elif selected_tournament and selected_user:
-                existing_pick = GolfPick.query.filter_by(
-                    user_id=user_id, tournament_id=tournament_id
-                ).first()
-
-                if existing_pick:
-                    # Clear old resolution for completed tournaments
-                    if selected_tournament.status == 'complete':
-                        existing_pick.clear_resolution(season_year)
-                    existing_pick.primary_player_id = primary_id
-                    existing_pick.backup_player_id = backup_id
-                    existing_pick.admin_override = True
-                    existing_pick.admin_override_note = override_note or 'Admin override'
-                    existing_pick.updated_at = datetime.now(timezone.utc)
-                    pick = existing_pick
-                else:
-                    pick = GolfPick(
-                        user_id=user_id,
-                        tournament_id=tournament_id,
-                        primary_player_id=primary_id,
-                        backup_player_id=backup_id,
-                        admin_override=True,
-                        admin_override_note=override_note or 'Admin override',
-                    )
-                    db.session.add(pick)
-
-                # Enrollment must exist — admins add users to a league via
-                # Platform Admin → Enrollments before overriding picks.
-                enrollment = GolfEnrollment.query.filter_by(
-                    user_id=user_id, season_year=season_year
-                ).first()
-                if not enrollment:
-                    flash(
-                        'User must be enrolled in Golf Pick \'Em before an '
-                        'admin override can be applied. Add them via '
-                        'Admin → Enrollments first.',
-                        'error',
-                    )
-                    db.session.rollback()
-                    return redirect(url_for('golf.admin_override_pick'))
-
-                # Re-resolve for completed tournaments
-                if selected_tournament.status == 'complete':
-                    db.session.flush()
-                    resolved = pick.resolve_pick()
-                    if resolved and enrollment:
-                        enrollment.calculate_total_points()
-
-                db.session.commit()
-
-                primary_player = db.session.get(GolfPlayer, primary_id)
-                backup_player = db.session.get(GolfPlayer, backup_id)
-                flash(
-                    f'Override saved for {selected_user.username}: '
-                    f'{primary_player.full_name()} / {backup_player.full_name()}',
-                    'success'
-                )
+            if not (selected_tournament and selected_user):
+                flash('Tournament or user not found.', 'error')
                 return redirect(url_for('golf.admin_override_pick'))
+
+            existing_pick = GolfPick.query.filter_by(
+                user_id=user_id, tournament_id=tournament_id
+            ).first()
+            enrollment = GolfEnrollment.query.filter_by(
+                user_id=user_id, season_year=season_year
+            ).first()
+
+            # Server-side eligibility validation (audit §2 HIGH): never trust the
+            # disabled-option UI. Check field membership + season usage BEFORE
+            # mutating anything, excluding the pick's own current players
+            # (re-selecting them is legal). A failure mutates nothing.
+            field_player_ids = {
+                entry.player_id for entry in
+                GolfTournamentField.query.filter_by(tournament_id=tournament_id)
+            }
+            used_player_ids = set(enrollment.get_used_player_ids()) if enrollment else set()
+            if existing_pick:
+                used_player_ids.discard(existing_pick.primary_player_id)
+                used_player_ids.discard(existing_pick.backup_player_id)
+
+            errors = []
+            if primary_id == backup_id:
+                errors.append('Primary and backup players must be different.')
+            if primary_id not in field_player_ids:
+                errors.append('Primary player is not in the tournament field.')
+            if backup_id not in field_player_ids:
+                errors.append('Backup player is not in the tournament field.')
+            if primary_id in used_player_ids:
+                errors.append('Primary player has already been used this season.')
+            if backup_id in used_player_ids:
+                errors.append('Backup player has already been used this season.')
+            if not enrollment:
+                # Never create enrollment rows from admin paths — admins add
+                # users via Platform Admin → Enrollments first.
+                errors.append(
+                    "User must be enrolled in Golf Pick 'Em before an admin "
+                    'override can be applied. Add them via Admin → Enrollments first.'
+                )
+
+            if errors:
+                for error in errors:
+                    flash(error, 'error')
+                # Discard any autoflush-pending state; re-render the form clean.
+                db.session.rollback()
+                return redirect(url_for(
+                    'golf.admin_override_pick',
+                    tournament_id=tournament_id, user_id=user_id,
+                ))
+
+            # Validated — safe to mutate.
+            if existing_pick:
+                # Clear old resolution for completed tournaments
+                if selected_tournament.status == 'complete':
+                    existing_pick.clear_resolution(season_year)
+                existing_pick.primary_player_id = primary_id
+                existing_pick.backup_player_id = backup_id
+                existing_pick.admin_override = True
+                existing_pick.admin_override_note = override_note or 'Admin override'
+                existing_pick.updated_at = datetime.now(timezone.utc)
+                pick = existing_pick
+            else:
+                pick = GolfPick(
+                    user_id=user_id,
+                    tournament_id=tournament_id,
+                    primary_player_id=primary_id,
+                    backup_player_id=backup_id,
+                    admin_override=True,
+                    admin_override_note=override_note or 'Admin override',
+                )
+                db.session.add(pick)
+
+            # Re-resolve for completed tournaments (enrollment guaranteed above).
+            if selected_tournament.status == 'complete':
+                db.session.flush()
+                resolved = pick.resolve_pick()
+                if resolved:
+                    enrollment.calculate_total_points()
+
+            db.session.commit()
+
+            primary_player = db.session.get(GolfPlayer, primary_id)
+            backup_player = db.session.get(GolfPlayer, backup_id)
+            flash(
+                f'Override saved for {selected_user.username}: '
+                f'{primary_player.full_name()} / {backup_player.full_name()}',
+                'success'
+            )
+            return redirect(url_for('golf.admin_override_pick'))
 
     # For GET or when loading form data
     tournament_id = request.args.get('tournament_id', type=int)
@@ -814,6 +835,14 @@ def admin_override_pick():
                 existing_pick = GolfPick.query.filter_by(
                     user_id=user_id, tournament_id=tournament_id
                 ).first()
+                # The pick's own players aren't "used" for its own edit — drop
+                # them so the form doesn't render them disabled (audit §2).
+                if existing_pick:
+                    used_player_ids = [
+                        pid for pid in used_player_ids
+                        if pid not in (existing_pick.primary_player_id,
+                                       existing_pick.backup_player_id)
+                    ]
 
     # Recent overrides
     recent_overrides = (

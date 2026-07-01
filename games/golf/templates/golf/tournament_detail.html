@@ -106,7 +106,9 @@
                             <th class="text-center">Position</th>
                             <th class="text-center d-none d-sm-table-cell">Score</th>
                             <th class="text-end">
-                                {% if tournament.status == 'complete' %}Earnings{% else %}Projected{% endif %}
+                                {# Final earnings only once results are FINALIZED — a complete-but-
+                                   unfinalized tournament still shows projected (audit §4). #}
+                                {% if tournament.results_finalized %}Earnings{% else %}Projected{% endif %}
                             </th>
                             {% endif %}
                         </tr>
@@ -115,7 +117,7 @@
                         {% for pick in picks|sort(attribute='user.username') %}
                         <tr class="{% if current_user.is_authenticated and pick.user_id == current_user.id %}row-current-user{% endif %}">
                             <td>
-                                <span class="fw-semibold">{{ pick.user.get_display_name() }}</span>
+                                <span class="me-1">{{ pick.user.get_avatar() }}</span><span class="fw-semibold">{{ pick.user.get_display_name() }}</span>
                                 {% if pick.admin_override %}
                                 <span class="badge bg-warning text-dark" style="font-size:.55rem;">OVERRIDE</span>
                                 {% endif %}
@@ -163,7 +165,7 @@
                                 {% endif %}
                             </td>
                             <td class="text-end">
-                                {% if tournament.status == 'complete' and pick.points_earned is not none %}
+                                {% if tournament.results_finalized and pick.points_earned is not none %}
                                     <strong {% if pick.points_earned > 0 %}class="text-success"{% endif %}>
                                         ${{ '{:,.0f}'.format(pick.points_earned) }}
                                     </strong>
