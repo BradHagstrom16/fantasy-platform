@@ -236,52 +236,148 @@ def test_sync_scores_skips_unfinished_and_completed(app):
         assert db.session.get(WorldCupMatch, mid).is_completed is False
 
 
-def test_sync_scores_knockout_extra_time_penalties(app):
-    from games.worldcup.services import sync
+def _seed_linked_ko_match(app, match_number=90, fixture_id=537090):
+    """Seed two teams + a linked R16 shell; returns (match_id, home_id, away_id)."""
     with app.app_context():
         a = _team('ESP', 'Spain', 'B'); b = _team('BRA', 'Brazil', 'C')
         db.session.flush()
-        m = WorldCupMatch(match_number=90, stage='R16',
+        m = WorldCupMatch(match_number=match_number, stage='R16',
                           home_team_id=a.id, away_team_id=b.id,
-                          api_fixture_id=537090,
+                          api_fixture_id=fixture_id,
                           kickoff_utc=datetime(2026, 7, 4, 19, 0, 0))
         db.session.add(m); db.session.commit()
-        mid = m.id
-        # Realistic football-data.org PK payload: fullTime bundles the PK goals
-        # into the total (1-1 ET + 3-4 PKs => 4-5), so sync must read extraTime
-        # for the stored score and penalties for the tally.
+        return m.id, a.id, b.id
+
+
+def _pk_payload(fixture_id=537090, winner='AWAY_TEAM', regular=(1, 1),
+                extra=(0, 0), pens=(3, 4), full_time=None):
+    """Realistic football-data.org PENALTY_SHOOTOUT payload.
+
+    regularTime is the score after 90'; extraTime is goals scored DURING the
+    ET period only; fullTime bundles the shootout goals into the total
+    (reg + et + pens), as observed live on 2026-07-07.
+    """
+    if full_time is None:
+        full_time = (regular[0] + extra[0] + pens[0], regular[1] + extra[1] + pens[1])
+    return {'matches': [{
+        'id': fixture_id, 'status': 'FINISHED', 'stage': 'LAST_16',
+        'homeTeam': {'tla': 'ESP'}, 'awayTeam': {'tla': 'BRA'},
+        'score': {'winner': winner, 'duration': 'PENALTY_SHOOTOUT',
+                  'fullTime': {'home': full_time[0], 'away': full_time[1]},
+                  'regularTime': {'home': regular[0], 'away': regular[1]},
+                  'extraTime': {'home': extra[0], 'away': extra[1]},
+                  'penalties': {'home': pens[0], 'away': pens[1]}},
+    }]}
+
+
+def test_sync_scores_knockout_extra_time_penalties(app):
+    """Settled PK payload: stored score is regularTime + extraTime (the real
+    120' score — extraTime holds only the goals scored DURING the ET period),
+    never the bundled fullTime; the shootout tally lands in home_pen/away_pen."""
+    from games.worldcup.services import sync
+    mid, home_id, away_id = _seed_linked_ko_match(app)
+    with app.app_context():
+        # 2-2 after 90, 1-1 in the ET period (3-3 at 120'), 3-4 pens => fullTime 6-7.
+        payload = _pk_payload(winner='AWAY_TEAM', regular=(2, 2), extra=(1, 1), pens=(3, 4))
+        with patch.object(sync, '_api_get', return_value=payload):
+            report = sync.sync_scores()
+        m = db.session.get(WorldCupMatch, mid)
+        assert m.is_completed and m.winner_team_id == away_id
+        assert m.extra_time is True and m.penalties is True
+        assert m.home_score == 3 and m.away_score == 3
+        assert m.home_pen == 3 and m.away_pen == 4
+        assert report['applied_count'] == 1
+
+
+def test_sync_scores_ko_null_winner_never_defaults_to_away(app):
+    """2026-07-07 SUI-COL incident lock: the API published status=FINISHED with
+    winner=null and a level penalties breakdown (its PK data had not settled).
+    Sync must skip the fixture as unsettled — the old `homeTeam if HOME_TEAM
+    else awayTeam` ternary silently awarded the away team (Colombia)."""
+    from games.worldcup.services import sync
+    mid, home_id, away_id = _seed_linked_ko_match(app, fixture_id=537382)
+    with app.app_context():
+        # Verbatim shape of the live 537382 payload: winner null, pens 3-3,
+        # fullTime 4-3 (the only field implying the home side actually won).
+        payload = _pk_payload(fixture_id=537382, winner=None, regular=(0, 0),
+                              extra=(0, 0), pens=(3, 3), full_time=(4, 3))
+        with patch.object(sync, '_api_get', return_value=payload):
+            report = sync.sync_scores()
+        m = db.session.get(WorldCupMatch, mid)
+        assert not m.is_completed
+        assert m.winner_team_id is None
+        assert report['applied_count'] == 0
+        assert any(s['match_number'] == 90 for s in report['skipped_unsettled'])
+        assert not report['failed']  # unsettled is a retry state, not a failure
+
+
+def test_sync_scores_ko_regular_null_winner_unsettled(app):
+    """A non-PK knockout fixture FINISHED with winner=null is equally unsettled
+    — never resolved from the score or defaulted to a side."""
+    from games.worldcup.services import sync
+    mid, _, _ = _seed_linked_ko_match(app)
+    with app.app_context():
         payload = {'matches': [{
             'id': 537090, 'status': 'FINISHED', 'stage': 'LAST_16',
             'homeTeam': {'tla': 'ESP'}, 'awayTeam': {'tla': 'BRA'},
-            'score': {'winner': 'AWAY_TEAM', 'duration': 'PENALTY_SHOOTOUT',
-                      'fullTime': {'home': 4, 'away': 5},
-                      'extraTime': {'home': 1, 'away': 1},
-                      'penalties': {'home': 3, 'away': 4}},
+            'score': {'winner': None, 'duration': 'REGULAR',
+                      'fullTime': {'home': 1, 'away': 4}},
         }]}
         with patch.object(sync, '_api_get', return_value=payload):
-            sync.sync_scores()
-        m = db.session.get(WorldCupMatch, mid)
-        assert m.is_completed and m.winner_team_id == b.id
-        assert m.extra_time is True and m.penalties is True
-        # Stored score is the ET score (not the inflated fullTime), with the
-        # penalty shootout captured separately.
-        assert m.home_score == 1 and m.away_score == 1
-        assert m.home_pen == 3 and m.away_pen == 4
+            report = sync.sync_scores()
+        assert not db.session.get(WorldCupMatch, mid).is_completed
+        assert any(s['match_number'] == 90 for s in report['skipped_unsettled'])
+
+
+def test_sync_scores_pk_level_pens_unsettled(app):
+    """2026-07-03 AUS-EGY incident lock: at FINISHED-time the API briefly
+    reported a level shootout (4-4; later settled to 2-4). A shootout cannot
+    end level — treat as unsettled and retry, never persist the snapshot."""
+    from games.worldcup.services import sync
+    mid, _, _ = _seed_linked_ko_match(app)
+    with app.app_context():
+        payload = _pk_payload(winner='AWAY_TEAM', regular=(1, 1), extra=(0, 0),
+                              pens=(4, 4), full_time=(3, 5))
+        with patch.object(sync, '_api_get', return_value=payload):
+            report = sync.sync_scores()
+        assert not db.session.get(WorldCupMatch, mid).is_completed
+        assert any(s['match_number'] == 90 for s in report['skipped_unsettled'])
+
+
+def test_sync_scores_pk_pens_contradicting_winner_unsettled(app):
+    """The declared winner side must agree with the penalties breakdown."""
+    from games.worldcup.services import sync
+    mid, _, _ = _seed_linked_ko_match(app)
+    with app.app_context():
+        payload = _pk_payload(winner='HOME_TEAM', regular=(1, 1), extra=(0, 0),
+                              pens=(2, 4))
+        with patch.object(sync, '_api_get', return_value=payload):
+            report = sync.sync_scores()
+        assert not db.session.get(WorldCupMatch, mid).is_completed
+        assert any(s['match_number'] == 90 for s in report['skipped_unsettled'])
+
+
+def test_sync_scores_pk_fulltime_inconsistent_unsettled(app):
+    """fullTime must equal regularTime + extraTime + penalties componentwise —
+    a mismatch means the API snapshot is still settling."""
+    from games.worldcup.services import sync
+    mid, _, _ = _seed_linked_ko_match(app)
+    with app.app_context():
+        payload = _pk_payload(winner='AWAY_TEAM', regular=(1, 1), extra=(0, 0),
+                              pens=(2, 4), full_time=(3, 4))  # away should be 5
+        with patch.object(sync, '_api_get', return_value=payload):
+            report = sync.sync_scores()
+        assert not db.session.get(WorldCupMatch, mid).is_completed
+        assert any(s['match_number'] == 90 for s in report['skipped_unsettled'])
 
 
 def test_sync_scores_skips_pk_without_extra_time(app):
-    """A PENALTY_SHOOTOUT payload missing the extraTime/penalties breakdown is
-    reported as failed, not written from the bundled fullTime total."""
+    """A PENALTY_SHOOTOUT payload missing the regularTime/extraTime/penalties
+    breakdown is unsettled (the breakdown appears once the API settles) — never
+    written from the bundled fullTime total."""
     from games.worldcup.services import sync
+    mid, _, _ = _seed_linked_ko_match(app, match_number=91, fixture_id=537091)
     with app.app_context():
-        a = _team('ESP', 'Spain', 'B'); b = _team('BRA', 'Brazil', 'C')
-        db.session.flush()
-        m = WorldCupMatch(match_number=91, stage='R16',
-                          home_team_id=a.id, away_team_id=b.id,
-                          api_fixture_id=537091,
-                          kickoff_utc=datetime(2026, 7, 4, 19, 0, 0))
-        db.session.add(m); db.session.commit()
-        mid = m.id
         payload = {'matches': [{
             'id': 537091, 'status': 'FINISHED', 'stage': 'LAST_16',
             'homeTeam': {'tla': 'ESP'}, 'awayTeam': {'tla': 'BRA'},
@@ -292,7 +388,49 @@ def test_sync_scores_skips_pk_without_extra_time(app):
             report = sync.sync_scores()
         m = db.session.get(WorldCupMatch, mid)
         assert not m.is_completed
-        assert any(fr['match_number'] == 91 for fr in report['failed'])
+        assert any(s['match_number'] == 91 for s in report['skipped_unsettled'])
+
+
+def test_sync_scores_ko_unmapped_winner_tla_fails_not_silent(app):
+    """A resolved winner whose TLA can't map to a FIFA code is a mapping error:
+    reported in failed (admin alert), and the match must NOT be completed
+    winnerless (a winnerless completed KO match scores zero for everyone)."""
+    from games.worldcup.services import sync
+    mid, _, _ = _seed_linked_ko_match(app)
+    with app.app_context():
+        payload = {'matches': [{
+            'id': 537090, 'status': 'FINISHED', 'stage': 'LAST_16',
+            'homeTeam': {'tla': 'ESP'}, 'awayTeam': {'tla': 'ZZZ'},
+            'score': {'winner': 'AWAY_TEAM', 'duration': 'REGULAR',
+                      'fullTime': {'home': 0, 'away': 1}},
+        }]}
+        with patch.object(sync, '_api_get', return_value=payload):
+            report = sync.sync_scores()
+        m = db.session.get(WorldCupMatch, mid)
+        assert not m.is_completed
+        assert m.winner_team_id is None
+        assert any(fr['match_number'] == 90 for fr in report['failed'])
+
+
+def test_run_scores_notifies_unsettled_once_per_episode(app, tmp_path):
+    """Unsettled fixtures alert the admin once per distinct pending set (marker
+    de-dupe), not every 30-minute timer tick — and do not flip status to error."""
+    from games.worldcup.services import sync
+    with app.app_context():
+        app.config['EMAIL_ADDRESS'] = 'commish@test.com'
+        app.instance_path = str(tmp_path)
+        result = {'applied_count': 0, 'applied': [], 'skipped_unassigned': 0,
+                  'failed': [],
+                  'skipped_unsettled': [{'match_number': 96, 'match_id': 1,
+                                         'reason': 'winner not settled'}]}
+        with patch.object(sync, 'sync_scores', return_value=result), \
+             patch('games.worldcup.services.bracket.run_bracket_autofill',
+                   return_value={'status': 'idle'}), \
+             patch.object(sync, '_send_admin_email', return_value=True) as send:
+            out1 = sync.run_scores()
+            out2 = sync.run_scores()   # same pending set -> suppressed
+        assert out1['status'] == 'ok' and out2['status'] == 'ok'
+        assert send.call_count == 1
 
 
 def test_sync_scores_skips_knockout_with_unset_teams(app):
@@ -615,6 +753,89 @@ def test_all_group_advancement_confirmed(app):
                                     tier=1, multiplier=1.0, confederation='X', group_letter='A'))
         db.session.commit()
         assert sync.all_group_advancement_confirmed() is False
+
+
+# ---------------------------------------------------------------------------
+# repair-pk-scores — backfills completed PK rows from settled API data
+# ---------------------------------------------------------------------------
+
+def _seed_completed_pk_match(app, home_pen, away_pen, winner_side='away'):
+    """Completed PK row carrying the 2026-07-03/07 corruption shape:
+    0-0 stored score (extraTime-only bug) + a possibly-level pen tally."""
+    with app.app_context():
+        a = _team('AUS', 'Australia', 'D', tier=5, mult=7.0)
+        b = _team('EGY', 'Egypt', 'D', tier=4, mult=4.0)
+        db.session.flush()
+        m = WorldCupMatch(match_number=88, stage='R32',
+                          home_team_id=a.id, away_team_id=b.id,
+                          api_fixture_id=537428, is_completed=True,
+                          home_score=0, away_score=0,
+                          home_pen=home_pen, away_pen=away_pen,
+                          extra_time=True, penalties=True,
+                          winner_team_id=(b.id if winner_side == 'away' else a.id),
+                          kickoff_utc=datetime(2026, 7, 3, 19, 0, 0))
+        db.session.add(m); db.session.commit()
+        return m.id
+
+
+def _settled_pk_api(pens=(2, 4), winner='AWAY_TEAM'):
+    return {'matches': [{
+        'id': 537428, 'status': 'FINISHED', 'stage': 'LAST_32',
+        'homeTeam': {'tla': 'AUS'}, 'awayTeam': {'tla': 'EGY'},
+        'score': {'winner': winner, 'duration': 'PENALTY_SHOOTOUT',
+                  'fullTime': {'home': 1 + pens[0], 'away': 1 + pens[1]},
+                  'regularTime': {'home': 1, 'away': 1},
+                  'extraTime': {'home': 0, 'away': 0},
+                  'penalties': {'home': pens[0], 'away': pens[1]}},
+    }]}
+
+
+def test_repair_pk_scores_fixes_level_pens_row(app):
+    """A completed row whose stored pen tally is level (an unsettled snapshot —
+    impossible for a real shootout) is a repair candidate: score becomes
+    regularTime + extraTime and the pens re-read from the settled API."""
+    from games.worldcup.services import sync
+    mid = _seed_completed_pk_match(app, home_pen=4, away_pen=4)
+    with app.app_context():
+        with patch.object(sync, '_api_get', return_value=_settled_pk_api()):
+            result = app.test_cli_runner().invoke(
+                args=['worldcup', 'repair-pk-scores'])
+        assert result.exit_code == 0
+        m = db.session.get(WorldCupMatch, mid)
+        assert m.home_score == 1 and m.away_score == 1
+        assert m.home_pen == 2 and m.away_pen == 4
+        assert m.winner_team_id == m.away_team_id  # winner never touched
+
+
+def test_repair_pk_scores_skips_api_contradicting_stored_winner(app):
+    """If the settled API says the OTHER side won the shootout, the row needs a
+    human decision (winner rewrites cascade into the bracket) — repair must
+    leave it untouched and warn."""
+    from games.worldcup.services import sync
+    mid = _seed_completed_pk_match(app, home_pen=4, away_pen=4, winner_side='away')
+    with app.app_context():
+        with patch.object(sync, '_api_get',
+                          return_value=_settled_pk_api(pens=(4, 2), winner='HOME_TEAM')):
+            result = app.test_cli_runner().invoke(
+                args=['worldcup', 'repair-pk-scores'])
+        m = db.session.get(WorldCupMatch, mid)
+        assert m.home_score == 0 and m.away_score == 0  # untouched
+        assert m.home_pen == 4 and m.away_pen == 4
+        assert 'WARNING' in result.output
+
+
+def test_repair_pk_scores_skips_unsettled_api(app):
+    """API still unsettled (level pens / null winner) -> row left for a later run."""
+    from games.worldcup.services import sync
+    mid = _seed_completed_pk_match(app, home_pen=None, away_pen=None)
+    with app.app_context():
+        with patch.object(sync, '_api_get',
+                          return_value=_settled_pk_api(pens=(3, 3), winner=None)):
+            result = app.test_cli_runner().invoke(
+                args=['worldcup', 'repair-pk-scores'])
+        m = db.session.get(WorldCupMatch, mid)
+        assert m.home_score == 0 and m.away_score == 0
+        assert m.home_pen is None and m.away_pen is None
 
 
 def test_populatable_bracket_stages_offers_r32_after_advancement(app):

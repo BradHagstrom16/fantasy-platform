@@ -223,12 +223,58 @@ def link_fixtures() -> dict:
     }
 
 
+def _settled_pk_breakdown(score: dict, winner_side: str) -> tuple[dict | None, str | None]:
+    """Validate that a PENALTY_SHOOTOUT score object has fully settled.
+
+    The API publishes status=FINISHED before its shootout data settles
+    (observed live 2026-07-03/07: level `penalties` snapshots like 4-4/3-3,
+    winner=null, fullTime mid-update). A settled payload carries the full
+    regularTime/extraTime/penalties breakdown, a decisive shootout that agrees
+    with the declared winner, and a fullTime equal to reg + ET + pens
+    componentwise (fullTime bundles the shootout goals into the total).
+
+    Returns (breakdown, None) when settled — breakdown carries the real 120'
+    score (reg + ET; extraTime holds only the goals scored DURING the ET
+    period) plus the shootout tally — or (None, reason) when the fixture must
+    be retried on a later sync.
+    """
+    reg = score.get('regularTime') or {}
+    et = score.get('extraTime') or {}
+    pen = score.get('penalties') or {}
+    ft = score.get('fullTime') or {}
+    parts = [reg.get('home'), reg.get('away'), et.get('home'), et.get('away'),
+             pen.get('home'), pen.get('away'), ft.get('home'), ft.get('away')]
+    if None in parts:
+        return None, 'PK breakdown incomplete (regularTime/extraTime/penalties pending)'
+    if pen['home'] == pen['away']:
+        return None, f"level shootout tally {pen['home']}-{pen['away']} (still settling)"
+    pens_side = 'HOME_TEAM' if pen['home'] > pen['away'] else 'AWAY_TEAM'
+    if pens_side != winner_side:
+        return None, (f"declared winner {winner_side} contradicts shootout "
+                      f"{pen['home']}-{pen['away']}")
+    if (ft['home'] != reg['home'] + et['home'] + pen['home']
+            or ft['away'] != reg['away'] + et['away'] + pen['away']):
+        return None, 'fullTime does not reconcile with reg+ET+pens (still settling)'
+    return {
+        'home_score': reg['home'] + et['home'],
+        'away_score': reg['away'] + et['away'],
+        'home_pen': pen['home'],
+        'away_pen': pen['away'],
+    }, None
+
+
 def sync_scores() -> dict:
     """Apply every newly-FINISHED fixture to its linked shell. Idempotent.
 
     Low-risk tier: runs automatically. Group draws/wins and knockout
     ET/penalties flow through the existing process_match_result(), which
     recalculates all scores. Already-completed shells are skipped.
+
+    Knockout fixtures whose result data hasn't settled (winner=null, level or
+    contradictory shootout tallies) land in `skipped_unsettled` and stay
+    incomplete — the 30-minute timer retries until the API settles. Only
+    genuine errors (TLA mapping gaps, process_match_result rejections) land in
+    `failed`, which run_scores() escalates by admin email every run.
     """
     data = _api_get(f'competitions/{COMPETITION_CODE}/matches')
     by_fixture = {
@@ -238,6 +284,7 @@ def sync_scores() -> dict:
 
     applied = []
     failed = []
+    skipped_unsettled = []
     skipped_unassigned = 0
     for f in data.get('matches', []):
         if f.get('status') not in FINISHED_STATUSES:
@@ -261,28 +308,47 @@ def sync_scores() -> dict:
                 continue
             duration = f['score'].get('duration', 'REGULAR')
             winner_side = f['score'].get('winner')
-            api_winner = f.get('homeTeam') if winner_side == 'HOME_TEAM' else f.get('awayTeam')
+            # Anything other than an explicit side is unsettled data — never
+            # default a winner or derive one from the score. (2026-07-07
+            # incident: winner=null on a FINISHED PK fixture fell through an
+            # `if HOME_TEAM else away` ternary and awarded the away team.)
+            if winner_side == 'HOME_TEAM':
+                api_winner = f.get('homeTeam')
+            elif winner_side == 'AWAY_TEAM':
+                api_winner = f.get('awayTeam')
+            else:
+                skipped_unsettled.append({
+                    'match_number': shell.match_number, 'match_id': shell.id,
+                    'reason': f'winner not settled (winner={winner_side!r})',
+                })
+                continue
             winner_fifa = _fifa_for_tla((api_winner or {}).get('tla'))
+            winner_team = (WorldCupTeam.query.filter_by(fifa_code=winner_fifa).first()
+                           if winner_fifa else None)
+            if not winner_team or winner_team.id not in (shell.home_team_id,
+                                                         shell.away_team_id):
+                # A resolved winner that doesn't map onto either side of our
+                # shell is a real error: left alone, process_match_result
+                # would complete the match winnerless and silently score it
+                # zero for everyone.
+                failed.append({
+                    'match_number': shell.match_number, 'match_id': shell.id,
+                    'error': (f"API winner TLA {(api_winner or {}).get('tla')!r} "
+                              'does not resolve to either side of the shell'),
+                })
+                continue
 
             home_pen, away_pen = None, None
             if duration == 'PENALTY_SHOOTOUT':
-                # Use extraTime score (pre-PK) for home_score/away_score.
-                # fullTime from the API bundles PK goals into the total, so
-                # without the extraTime + penalties breakdown we can't tell the
-                # regulation/ET score from the inflated total — skip rather than
-                # persist the bundled fullTime (mirrors repair_pk_scores in cli.py).
-                et = (f.get('score') or {}).get('extraTime') or {}
-                pen = (f.get('score') or {}).get('penalties') or {}
-                et_home, et_away = et.get('home'), et.get('away')
-                pen_home, pen_away = pen.get('home'), pen.get('away')
-                if None in (et_home, et_away, pen_home, pen_away):
-                    failed.append({
+                breakdown, reason = _settled_pk_breakdown(f['score'], winner_side)
+                if breakdown is None:
+                    skipped_unsettled.append({
                         'match_number': shell.match_number, 'match_id': shell.id,
-                        'error': 'PENALTY_SHOOTOUT missing extraTime/penalties breakdown',
+                        'reason': reason,
                     })
                     continue
-                home, away = et_home, et_away
-                home_pen, away_pen = pen_home, pen_away
+                home, away = breakdown['home_score'], breakdown['away_score']
+                home_pen, away_pen = breakdown['home_pen'], breakdown['away_pen']
 
             res = process_match_result(
                 shell.id, home, away, winner_fifa,
@@ -301,6 +367,7 @@ def sync_scores() -> dict:
         'applied_count': len(applied),
         'applied': applied,
         'skipped_unassigned': skipped_unassigned,
+        'skipped_unsettled': skipped_unsettled,
         'failed': failed,
     }
 
@@ -572,6 +639,22 @@ def run_scores() -> dict:
 
     if result['applied_count']:
         logger.info('worldcup sync applied %s result(s)', result['applied_count'])
+    if result.get('skipped_unsettled'):
+        # Retry state, not an error: alert once per distinct pending set (the
+        # timer fires every 30 min — without the marker this would email each
+        # tick until the API settles).
+        nums = sorted(s['match_number'] for s in result['skipped_unsettled'])
+        signature = 'unsettled:' + ','.join(str(n) for n in nums)
+        if _notify_once(signature, '.wc_score_unsettled_notify'):
+            body = (
+                'football-data.org reports these fixtures FINISHED but their '
+                'result data has not settled (null winner / level or '
+                'contradictory shootout tallies). The 30-minute sync will keep '
+                'retrying; manual admin entry remains the override.\n\n'
+                + '\n'.join(f"#{s['match_number']}: {s['reason']}"
+                            for s in result['skipped_unsettled'])
+            )
+            _send_admin_email('Score sync: results pending API settle', body)
     if result['failed']:
         body = '\n'.join(f"#{f['match_number']}: {f['error']}" for f in result['failed'])
         _send_admin_email('Score sync: some results failed to apply', body)

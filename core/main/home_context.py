@@ -442,16 +442,25 @@ def _context_live(user, enrollment) -> dict:
     for match in recent_results:
         roster_match = None
         points_earned: Optional[float] = None
-        if match.home_team_id in user_team_ids:
-            roster_match = {'team_id': match.home_team_id, 'side': 'home'}
-            points_earned = points_for_pick_on_match(
-                user_picks_by_team_id[match.home_team_id], match
-            )
-        elif match.away_team_id in user_team_ids:
-            roster_match = {'team_id': match.away_team_id, 'side': 'away'}
-            points_earned = points_for_pick_on_match(
-                user_picks_by_team_id[match.away_team_id], match
-            )
+        # BOTH sides can be on the roster (USA-BEL R16, 2026-07-07): score
+        # every matched pick and label the side that earned the points, so the
+        # home side never shadows the away side's win.
+        matched = [
+            (tid, side)
+            for tid, side in ((match.home_team_id, 'home'),
+                              (match.away_team_id, 'away'))
+            if tid in user_team_ids
+        ]
+        if matched:
+            scored = [
+                (tid, side, points_for_pick_on_match(user_picks_by_team_id[tid], match))
+                for tid, side in matched
+            ]
+            points_earned = sum(pts for _, _, pts in scored)
+            # max() is stable — a tie (both scoreless, or a shared group draw)
+            # keeps the home-side label, matching the prior single-side shape.
+            top_tid, top_side, _ = max(scored, key=lambda row: row[2])
+            roster_match = {'team_id': top_tid, 'side': top_side}
         your_pick_results.append({
             'match': match,
             'roster_match': roster_match,
