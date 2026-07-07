@@ -531,10 +531,10 @@ def repair_pk_scores():
     human decision, so it is reported and skipped.
     """
     from games.worldcup.services.sync import (
-        _api_get, _settled_pk_breakdown, FINISHED_STATUSES,
+        _api_get, _settled_pk_breakdown, COMPETITION_CODE, FINISHED_STATUSES,
     )
 
-    data = _api_get('competitions/WC/matches')
+    data = _api_get(f'competitions/{COMPETITION_CODE}/matches')
 
     candidates = {
         m.api_fixture_id: m

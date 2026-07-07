@@ -657,7 +657,10 @@ def test_context_live_roster_match_both_sides_shows_winning_pick(app):
     from core.main.home_context import build_home_context
     from games.worldcup.constants import KNOCKOUT_POINTS
     from games.worldcup.models import WorldCupTeam, WorldCupMatch, WorldCupPick
-    with app.app_context(), patch.dict(os.environ, {'WC_FAKE_NOW': '2026-07-07T00:00:00Z'}):
+    with app.app_context(), patch.dict(os.environ, {
+        'ENVIRONMENT': 'testing',
+        'WC_FAKE_NOW': '2026-07-07T00:00:00Z',
+    }):
         usa = WorldCupTeam(
             fifa_code='USA', name='United States', display_name='United States',
             tier=1, multiplier=1.0, confederation='CONCACAF', group_letter='A',
