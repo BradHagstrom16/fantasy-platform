@@ -649,6 +649,49 @@ def test_context_live_roster_match_away_side(app):
         assert results[0]['is_draw'] is False
 
 
+def test_context_live_roster_match_both_sides_shows_winning_pick(app):
+    """2026-07-07 USA-BEL incident lock: when BOTH teams in a result are on the
+    user's roster, the home side must not shadow the away side. The row must
+    carry the winning pick's points (Belgium's R16 win), not the losing home
+    pick's 0.0 — and label the side that actually scored."""
+    from core.main.home_context import build_home_context
+    from games.worldcup.constants import KNOCKOUT_POINTS
+    from games.worldcup.models import WorldCupTeam, WorldCupMatch, WorldCupPick
+    with app.app_context(), patch.dict(os.environ, {'WC_FAKE_NOW': '2026-07-07T00:00:00Z'}):
+        usa = WorldCupTeam(
+            fifa_code='USA', name='United States', display_name='United States',
+            tier=1, multiplier=1.0, confederation='CONCACAF', group_letter='A',
+        )
+        bel = WorldCupTeam(
+            fifa_code='BEL', name='Belgium', display_name='Belgium',
+            tier=1, multiplier=1.0, confederation='UEFA', group_letter='B',
+        )
+        db.session.add_all([usa, bel])
+        db.session.commit()
+        match = WorldCupMatch(
+            match_number=94, stage='R16',
+            home_team_id=usa.id, away_team_id=bel.id,
+            home_score=1, away_score=4, is_completed=True,
+            winner_team_id=bel.id,
+        )
+        db.session.add(match)
+        user = _make_user()
+        enr = _make_enrollment(user, picks_submitted=True)
+        db.session.add(WorldCupPick(enrollment_id=enr.id, team_id=usa.id, tier=1))
+        db.session.add(WorldCupPick(enrollment_id=enr.id, team_id=bel.id, tier=1))
+        db.session.commit()
+
+        ctx = build_home_context(user, 'live')
+        results = ctx['your_pick_results']
+        assert len(results) == 1
+        item = results[0]
+        assert item['roster_match'] is not None
+        # Belgium won and is the pick that earned points — it carries the label.
+        assert item['roster_match']['side'] == 'away'
+        assert item['roster_match']['team_id'] == bel.id
+        assert item['points_earned'] == float(KNOCKOUT_POINTS['R16'])
+
+
 def test_context_post_champion_summary_away_winner_on_penalties(app):
     """Post state with away-team winner on penalties.
 

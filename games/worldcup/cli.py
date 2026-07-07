@@ -15,7 +15,6 @@ from datetime import datetime, timedelta
 
 import click
 from flask.cli import AppGroup
-from sqlalchemy import or_
 
 from extensions import db
 from games.worldcup.constants import SEASON_YEAR, WORLDCUP_TZ
@@ -444,6 +443,7 @@ def sync_cmd(mode):
         click.echo(f"[scores] {result.get('status')}: applied "
                    f"{result.get('applied_count', 0)}, "
                    f"skipped-unassigned {result.get('skipped_unassigned', 0)}, "
+                   f"unsettled {len(result.get('skipped_unsettled', []))}, "
                    f"failed {len(result.get('failed', []))}")
         if result.get('status') == 'error':
             raise click.ClickException(result.get('details') or 'score sync reported failures')
@@ -519,28 +519,29 @@ def send_group_recap_cmd():
 
 @worldcup_cli.command('repair-pk-scores')
 def repair_pk_scores():
-    """Correct already-completed PK match scores (ET score + pen tally).
+    """Correct already-completed PK match scores (120' score + pen tally).
 
     sync_scores() skips completed shells; this command re-fetches those
-    matches from the API and writes the ET score to home_score/away_score
-    and the penalty tally to home_pen/away_pen. Idempotent — skips matches
-    where both pen tallies are already set.
+    matches from the API and writes the settled 120' score (regularTime +
+    extraTime) to home_score/away_score and the shootout tally to
+    home_pen/away_pen. Covers every completed PK row and is idempotent — a
+    settled row re-derives to identical values, an unsettled API payload
+    (level tally, null winner) is skipped for a later run. Never rewrites
+    winner_team_id: a winner conflict cascades into the bracket and needs a
+    human decision, so it is reported and skipped.
     """
-    from games.worldcup.services.sync import _api_get, FINISHED_STATUSES
+    from games.worldcup.services.sync import (
+        _api_get, _settled_pk_breakdown, FINISHED_STATUSES,
+    )
 
     data = _api_get('competitions/WC/matches')
 
-    # Target completed PK matches still missing EITHER pen tally — a row with
-    # one side populated but not the other is half-repaired and must still be
-    # backfilled so both sides of the tally converge.
     candidates = {
         m.api_fixture_id: m
         for m in WorldCupMatch.query.filter(
             WorldCupMatch.api_fixture_id.isnot(None),
             WorldCupMatch.is_completed.is_(True),
             WorldCupMatch.penalties.is_(True),
-            or_(WorldCupMatch.home_pen.is_(None),
-                WorldCupMatch.away_pen.is_(None)),
         ).all()
     }
 
@@ -548,7 +549,7 @@ def repair_pk_scores():
         click.echo('No PK matches need repair.')
         return
 
-    fixed, failed = [], []
+    fixed, unsettled, conflicted = [], [], []
     for f in data.get('matches', []):
         if f.get('status') not in FINISHED_STATUSES:
             continue
@@ -560,25 +561,38 @@ def repair_pk_scores():
         if score.get('duration') != 'PENALTY_SHOOTOUT':
             continue
 
-        et = score.get('extraTime') or {}
-        pen = score.get('penalties') or {}
-        et_home, et_away = et.get('home'), et.get('away')
-        pen_home, pen_away = pen.get('home'), pen.get('away')
-
-        if None in (et_home, et_away, pen_home, pen_away):
-            failed.append(shell.match_number)
+        winner_side = score.get('winner')
+        if winner_side not in ('HOME_TEAM', 'AWAY_TEAM'):
+            unsettled.append(shell.match_number)
+            continue
+        breakdown, _reason = _settled_pk_breakdown(score, winner_side)
+        if breakdown is None:
+            unsettled.append(shell.match_number)
             continue
 
-        shell.home_score = et_home
-        shell.away_score = et_away
-        shell.home_pen = pen_home
-        shell.away_pen = pen_away
+        if shell.winner_team_id == shell.home_team_id:
+            stored_side = 'HOME_TEAM'
+        elif shell.winner_team_id == shell.away_team_id:
+            stored_side = 'AWAY_TEAM'
+        else:
+            stored_side = None
+        if winner_side != stored_side:
+            conflicted.append(shell.match_number)
+            continue
+
+        shell.home_score = breakdown['home_score']
+        shell.away_score = breakdown['away_score']
+        shell.home_pen = breakdown['home_pen']
+        shell.away_pen = breakdown['away_pen']
         fixed.append(shell.match_number)
 
     db.session.commit()
     click.echo(f'Fixed {len(fixed)} PK match(es): match numbers {fixed}')
-    if failed:
-        click.echo(f'WARNING — API missing ET/pen data for: {failed}')
+    if unsettled:
+        click.echo(f'WARNING — API missing/unsettled ET/pen data for: {unsettled}')
+    if conflicted:
+        click.echo(f'WARNING — API winner contradicts stored winner for: {conflicted}'
+                   ' — review manually (winner rewrites cascade into the bracket).')
 
 
 def register_worldcup_cli(app):
