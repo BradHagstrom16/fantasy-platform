@@ -6,6 +6,7 @@ All tables use the ``worldcup_`` prefix.
 Game-specific user data lives in WorldCupEnrollment, NOT on the shared User model.
 """
 from datetime import UTC, datetime
+from typing import ClassVar
 
 from extensions import db
 
@@ -77,7 +78,7 @@ class WorldCupTeam(db.Model):
     # Missing entries fall through to `code[:2]` and render the wrong country's
     # flag. tests/test_worldcup_flag_emoji.py locks all 48 codes against a
     # canonical map so a regression is caught at PR time, not in production.
-    _FIFA_TO_ISO: dict[str, str] = {
+    _FIFA_TO_ISO: ClassVar[dict[str, str]] = {
         'ENG': 'GB', 'SCO': 'GB', 'GER': 'DE', 'NED': 'NL', 'POR': 'PT',
         'SUI': 'CH', 'CRO': 'HR', 'URU': 'UY', 'PAR': 'PY', 'SEN': 'SN',
         'BIH': 'BA', 'ALG': 'DZ', 'KOR': 'KR', 'KSA': 'SA', 'RSA': 'ZA',

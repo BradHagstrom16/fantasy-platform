@@ -216,7 +216,7 @@ def get_cfp_eliminated_teams():
     playoff_games = (
         db.session.query(CfbGame)
         .join(CfbWeek)
-        .filter(CfbWeek.is_playoff_week == True, CfbGame.home_team_won != None)
+        .filter(CfbWeek.is_playoff_week.is_(True), CfbGame.home_team_won.is_not(None))
         .all()
     )
 

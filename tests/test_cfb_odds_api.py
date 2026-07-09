@@ -6,6 +6,7 @@ firing a false admin alert. All traffic is mocked at the requests boundary
 (games.cfb.services.odds_api.requests.get); time.sleep is patched out so the
 backoff loop doesn't actually wait.
 """
+from typing import ClassVar
 from unittest.mock import patch
 
 import pytest
@@ -15,7 +16,7 @@ import requests
 def _resp(code, payload=None):
     class _R:
         status_code = code
-        headers = {'x-requests-remaining': '42'}
+        headers: ClassVar[dict] = {'x-requests-remaining': '42'}
         def json(self): return payload if payload is not None else []
     return _R()
 

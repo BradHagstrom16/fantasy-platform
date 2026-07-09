@@ -138,7 +138,7 @@ class SlashGolfAPI:
             params,
         )
 
-    def _make_request(self, endpoint: str, params: dict = None, retries: int = 5) -> dict | None:
+    def _make_request(self, endpoint: str, params: dict | None = None, retries: int = 5) -> dict | None:
         """Make API request with exponential backoff, jitter, and structured logging."""
         url = f"{self.BASE_URL}/{endpoint}"
 
@@ -385,7 +385,7 @@ class TournamentSync:
                 return int(float(value['$numberDouble']))
         return int(value) if value else 0
 
-    def sync_schedule(self, year: int, tournament_names: list[str] = None) -> int:
+    def sync_schedule(self, year: int, tournament_names: list[str] | None = None) -> int:
         """
         Update season schedule from API.
 
@@ -1131,7 +1131,7 @@ def get_tournaments_pending_finalization(season_year: int | None = None) -> list
     return GolfTournament.query.filter(
         GolfTournament.season_year == season_year,
         GolfTournament.status == "complete",
-        GolfTournament.results_finalized == False
+        GolfTournament.results_finalized.is_(False)
     ).order_by(GolfTournament.end_date.desc()).all()
 
 

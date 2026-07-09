@@ -1,5 +1,6 @@
 """Tests for the World Cup football-data.org sync service."""
 from datetime import datetime
+from typing import ClassVar
 from unittest.mock import patch
 
 import pytest
@@ -54,7 +55,7 @@ def test_api_get_returns_json_on_200(app):
 
         class _Resp:
             status_code = 200
-            headers = {'X-Requests-Available-Minute': '9'}
+            headers: ClassVar[dict] = {'X-Requests-Available-Minute': '9'}
             def json(self): return {'matches': []}
 
         with patch.object(sync.requests, 'get', return_value=_Resp()) as g:
@@ -73,7 +74,7 @@ def test_api_get_retries_transient_network_error_then_succeeds(app):
 
     class _OK:
         status_code = 200
-        headers = {}
+        headers: ClassVar[dict] = {}
         def json(self): return {'matches': ['ok']}
 
     with app.app_context():
@@ -134,7 +135,7 @@ def test_api_get_does_not_retry_4xx(app):
 
     class _Resp:
         status_code = 403
-        headers = {}
+        headers: ClassVar[dict] = {}
         def json(self): return {}
 
     with app.app_context():

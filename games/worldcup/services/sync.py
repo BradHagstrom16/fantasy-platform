@@ -408,7 +408,7 @@ def fetch_advancement_proposal() -> dict:
         letter = g.get('group', '').replace('Group', '').strip()
         rows = sorted(g.get('table', []), key=lambda r: r['position'])
 
-        def fifa(i):
+        def fifa(i, rows=rows):
             return _fifa_for_tla(rows[i]['team']['tla']) if len(rows) > i else None
 
         third_tla = rows[2]['team']['tla'] if len(rows) > 2 else None

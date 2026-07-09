@@ -1,7 +1,13 @@
 """Regression locks for the designer logo asset set (2026-05-27)."""
 import pathlib
+from unittest import mock
 
 import pytest
+from PIL import Image
+
+from app import create_app
+from extensions import db
+from models.user import User
 
 LOGO = pathlib.Path("static/img/logo")
 
@@ -50,8 +56,6 @@ def test_retired_handauthored_logos_are_gone(name):
     )
 
 
-from PIL import Image
-
 IMG = pathlib.Path("static/img")
 
 
@@ -95,10 +99,6 @@ def test_auth_brand_panel_uses_shared_bust_partial():
         assert "brand-mark--lg" not in src, f"{name} still hard-codes the old head mark"
 
 
-from app import create_app
-from extensions import db
-
-
 @pytest.fixture()
 def client():
     """Testing app with a fresh in-memory schema, yielding a bound test client."""
@@ -123,11 +123,6 @@ def test_login_page_renders_bust(client):
     resp = client.get("/login")
     assert resp.status_code == 200
     assert b"img/logo/mascot-bust.svg" in resp.data
-
-
-from unittest import mock
-
-from models.user import User
 
 
 def test_forgot_password_email_includes_seal(client):

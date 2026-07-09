@@ -13,6 +13,10 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any, Literal
 
+from games.cfb.services import enrollment as _cfb_enrollment
+from games.golf.services import enrollment as _golf_enrollment
+from games.worldcup.services import enrollment as _worldcup_enrollment
+
 GameStatus = Literal['coming_soon', 'open', 'closed', 'completed']
 
 
@@ -33,10 +37,6 @@ class GameRegistryEntry:
     short_name: str = ''
     launch_label: str = ''
 
-
-from games.cfb.services import enrollment as _cfb_enrollment
-from games.golf.services import enrollment as _golf_enrollment
-from games.worldcup.services import enrollment as _worldcup_enrollment
 
 # Populated in Tasks 3, 5, 8. Intentionally empty at file-creation time so
 # helpers remain testable against mock lists via monkeypatch.

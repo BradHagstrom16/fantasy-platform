@@ -181,7 +181,7 @@ def sync_run_cmd(mode):
             stale_active = GolfTournament.query.filter(
                 GolfTournament.status == "active",
                 GolfTournament.end_date < datetime.now(GOLF_LEAGUE_TZ) - timedelta(hours=12),
-                GolfTournament.results_finalized == False
+                GolfTournament.results_finalized.is_(False)
             ).order_by(GolfTournament.end_date.desc()).all()
 
             if stale_active:
@@ -295,7 +295,7 @@ def sync_earnings_cmd():
     stale_active = GolfTournament.query.filter(
         GolfTournament.status == "active",
         GolfTournament.end_date < datetime.now(GOLF_LEAGUE_TZ) - timedelta(hours=12),
-        GolfTournament.results_finalized == False
+        GolfTournament.results_finalized.is_(False)
     ).order_by(GolfTournament.end_date.desc()).all()
 
     if stale_active:
