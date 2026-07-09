@@ -21,7 +21,12 @@ from games.cfb.constants import (
 from games.cfb.models import CfbEnrollment, CfbGame, CfbPick, CfbTeam, CfbWeek
 from games.cfb.services.odds_api import odds_api_get
 from games.cfb.services.score_fetcher import ScoreFetcher
-from games.cfb.utils import deadline_has_passed, get_current_time, make_aware
+from games.cfb.utils import (
+    deadline_has_passed,
+    get_current_time,
+    get_utc_time,
+    make_aware,
+)
 from utils.email import send_platform_email
 
 logger = logging.getLogger(__name__)
@@ -399,7 +404,7 @@ def run_spread_update():
 
     updated = 0
     locked = 0
-    now = datetime.now(UTC)
+    now = get_utc_time()
 
     for game in games:
         if game.spread_locked_at:
