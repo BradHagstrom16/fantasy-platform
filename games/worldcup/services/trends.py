@@ -83,7 +83,7 @@ def compute_trend_by_enrollment(enrollment_ids):
         .all()
     )
 
-    snapshot_score_by_eid = {eid: score for eid, score in rows}
+    snapshot_score_by_eid = dict(rows)
 
     enrollments_by_id = {
         e.id: e for e in WorldCupEnrollment.query

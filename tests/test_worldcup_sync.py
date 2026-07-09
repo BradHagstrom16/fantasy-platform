@@ -96,10 +96,12 @@ def test_api_get_raises_only_after_exhausting_retries(app):
     with app.app_context():
         app.config['FOOTBALL_DATA_API_KEY'] = 'k'
         boom = requests.exceptions.ConnectionError('Address unavailable')
-        with patch.object(sync.time, 'sleep'), \
-             patch.object(sync.requests, 'get', side_effect=boom) as g:
-            with pytest.raises(SyncError):
-                sync._api_get('competitions/WC/matches')
+        with (
+            patch.object(sync.time, 'sleep'),
+            patch.object(sync.requests, 'get', side_effect=boom) as g,
+            pytest.raises(SyncError),
+        ):
+            sync._api_get('competitions/WC/matches')
         assert sync.API_MAX_RETRIES > 1
         assert g.call_count == sync.API_MAX_RETRIES  # every attempt was made
 
@@ -109,8 +111,12 @@ def test_api_get_retries_5xx_then_succeeds(app):
     from games.worldcup.services import sync
 
     class _Resp:
-        def __init__(self, code): self.status_code = code; self.headers = {}
-        def json(self): return {'matches': []}
+        def __init__(self, code):
+            self.status_code = code
+            self.headers = {}
+
+        def json(self):
+            return {'matches': []}
 
     with app.app_context():
         app.config['FOOTBALL_DATA_API_KEY'] = 'k'
@@ -133,10 +139,12 @@ def test_api_get_does_not_retry_4xx(app):
 
     with app.app_context():
         app.config['FOOTBALL_DATA_API_KEY'] = 'k'
-        with patch.object(sync.time, 'sleep'), \
-             patch.object(sync.requests, 'get', return_value=_Resp()) as g:
-            with pytest.raises(SyncError):
-                sync._api_get('competitions/WC/matches')
+        with (
+            patch.object(sync.time, 'sleep'),
+            patch.object(sync.requests, 'get', return_value=_Resp()) as g,
+            pytest.raises(SyncError),
+        ):
+            sync._api_get('competitions/WC/matches')
         assert g.call_count == 1  # no retry on 4xx
 
 
@@ -199,13 +207,15 @@ def test_link_fixtures_reports_unmatched(app):
 def _seed_linked_group_match(app, status_winner, home, away):
     """Seed a linked group match and return (match_id, api payload)."""
     with app.app_context():
-        a = _team('MEX', 'Mexico', 'A'); b = _team('RSA', 'South Africa', 'A')
+        a = _team('MEX', 'Mexico', 'A')
+        b = _team('RSA', 'South Africa', 'A')
         db.session.flush()
         m = WorldCupMatch(match_number=1, stage='group', group_letter='A',
                           home_team_id=a.id, away_team_id=b.id,
                           api_fixture_id=537001,
                           kickoff_utc=datetime(2026, 6, 11, 19, 0, 0))
-        db.session.add(m); db.session.commit()
+        db.session.add(m)
+        db.session.commit()
         payload = {'matches': [{
             'id': 537001, 'status': 'FINISHED', 'stage': 'GROUP_STAGE',
             'homeTeam': {'tla': 'MEX'}, 'awayTeam': {'tla': 'RSA'},
@@ -241,13 +251,15 @@ def test_sync_scores_skips_unfinished_and_completed(app):
 def _seed_linked_ko_match(app, match_number=90, fixture_id=537090):
     """Seed two teams + a linked R16 shell; returns (match_id, home_id, away_id)."""
     with app.app_context():
-        a = _team('ESP', 'Spain', 'B'); b = _team('BRA', 'Brazil', 'C')
+        a = _team('ESP', 'Spain', 'B')
+        b = _team('BRA', 'Brazil', 'C')
         db.session.flush()
         m = WorldCupMatch(match_number=match_number, stage='R16',
                           home_team_id=a.id, away_team_id=b.id,
                           api_fixture_id=fixture_id,
                           kickoff_utc=datetime(2026, 7, 4, 19, 0, 0))
-        db.session.add(m); db.session.commit()
+        db.session.add(m)
+        db.session.commit()
         return m.id, a.id, b.id
 
 
@@ -440,7 +452,8 @@ def test_sync_scores_skips_knockout_with_unset_teams(app):
     with app.app_context():
         m = WorldCupMatch(match_number=90, stage='R16', api_fixture_id=537090,
                           kickoff_utc=datetime(2026, 7, 4, 19, 0, 0))
-        db.session.add(m); db.session.commit()
+        db.session.add(m)
+        db.session.commit()
         payload = {'matches': [{
             'id': 537090, 'status': 'FINISHED', 'stage': 'LAST_16',
             'homeTeam': {'tla': 'ESP'}, 'awayTeam': {'tla': 'BRA'},
@@ -495,7 +508,8 @@ def test_fetch_advancement_proposal(app):
 def test_group_stage_detection(app):
     from games.worldcup.services import sync
     with app.app_context():
-        a = _team('MEX', 'Mexico', 'A'); b = _team('RSA', 'South Africa', 'A')
+        a = _team('MEX', 'Mexico', 'A')
+        b = _team('RSA', 'South Africa', 'A')
         db.session.flush()
         # One completed group match, no advancement set yet.
         db.session.add(WorldCupMatch(match_number=1, stage='group', group_letter='A',
@@ -572,7 +586,8 @@ def test_run_advancement_check_distinct_ko_rounds_each_notify(app, tmp_path):
 def test_ko_round_pending_sf_checks_both_final_and_third_place(app):
     from games.worldcup.services import sync
     with app.app_context():
-        a = _team('ESP', 'Spain', 'B'); b = _team('BRA', 'Brazil', 'C')
+        a = _team('ESP', 'Spain', 'B')
+        b = _team('BRA', 'Brazil', 'C')
         db.session.flush()
         db.session.add(WorldCupMatch(match_number=101, stage='SF', is_completed=True,
                                      home_team_id=a.id, away_team_id=b.id))
@@ -585,7 +600,8 @@ def test_ko_round_pending_sf_checks_both_final_and_third_place(app):
         db.session.commit()
         assert sync.ko_round_pending() == 'SF'
         tp = WorldCupMatch.query.filter_by(stage='third_place').first()
-        tp.home_team_id = a.id; tp.away_team_id = b.id
+        tp.home_team_id = a.id
+        tp.away_team_id = b.id
         db.session.commit()
         assert sync.ko_round_pending() is None
 
@@ -593,13 +609,15 @@ def test_ko_round_pending_sf_checks_both_final_and_third_place(app):
 def test_link_fixtures_records_conflict_without_overwrite(app):
     from games.worldcup.services import sync
     with app.app_context():
-        mex = _team('MEX', 'Mexico', 'A'); rsa = _team('RSA', 'South Africa', 'A')
+        mex = _team('MEX', 'Mexico', 'A')
+        rsa = _team('RSA', 'South Africa', 'A')
         db.session.flush()
         m = WorldCupMatch(match_number=1, stage='group', group_letter='A',
                           home_team_id=mex.id, away_team_id=rsa.id,
                           api_fixture_id=111111,  # already linked to a DIFFERENT id
                           kickoff_utc=datetime(2026, 6, 11, 19, 0, 0))
-        db.session.add(m); db.session.commit()
+        db.session.add(m)
+        db.session.commit()
         mid = m.id
         with patch.object(sync, '_api_get', return_value=_API_MATCHES_FIXTURE):
             report = sync.link_fixtures()
@@ -732,9 +750,11 @@ def test_fetch_bracket_proposal_propagates_sync_error(app):
     with app.app_context():
         db.session.add(WorldCupMatch(match_number=73, stage='R32'))
         db.session.commit()
-        with patch.object(sync, '_api_get', side_effect=sync.SyncError('boom')):
-            with pytest.raises(sync.SyncError):
-                sync.fetch_bracket_proposal('R32')
+        with (
+            patch.object(sync, '_api_get', side_effect=sync.SyncError('boom')),
+            pytest.raises(sync.SyncError),
+        ):
+            sync.fetch_bracket_proposal('R32')
 
 
 def test_all_group_advancement_confirmed(app):
@@ -777,7 +797,8 @@ def _seed_completed_pk_match(app, home_pen, away_pen, winner_side='away'):
                           extra_time=True, penalties=True,
                           winner_team_id=(b.id if winner_side == 'away' else a.id),
                           kickoff_utc=datetime(2026, 7, 3, 19, 0, 0))
-        db.session.add(m); db.session.commit()
+        db.session.add(m)
+        db.session.commit()
         return m.id
 
 
@@ -834,7 +855,7 @@ def test_repair_pk_scores_skips_unsettled_api(app):
     with app.app_context():
         with patch.object(sync, '_api_get',
                           return_value=_settled_pk_api(pens=(3, 3), winner=None)):
-            result = app.test_cli_runner().invoke(
+            app.test_cli_runner().invoke(
                 args=['worldcup', 'repair-pk-scores'])
         m = db.session.get(WorldCupMatch, mid)
         assert m.home_score == 0 and m.away_score == 0

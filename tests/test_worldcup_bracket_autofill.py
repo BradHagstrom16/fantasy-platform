@@ -530,8 +530,10 @@ def test_full_bracket_auto_advances_r32_to_final(app):
             bracket.run_bracket_autofill()
             assert WorldCupMatch.query.filter_by(match_number=89).first().home_team_id is not None
             complete_round('R16')
-            bracket.run_bracket_autofill(); complete_round('QF')
-            bracket.run_bracket_autofill(); complete_round('SF')
+            bracket.run_bracket_autofill()
+            complete_round('QF')
+            bracket.run_bracket_autofill()
+            complete_round('SF')
             bracket.run_bracket_autofill()  # fills final (104) + third place (103)
 
         final = WorldCupMatch.query.filter_by(match_number=104).first()

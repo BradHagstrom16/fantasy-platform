@@ -171,7 +171,7 @@ def seed_full_tournament(num_enrollments=5, num_picks_each=9,
         tier_offsets = [0, 5, 10, 21, 32]   # start indices into `teams` per tier
         tier_pick_counts = [1, 1, 2, 2, 3]
         picks = []
-        for tier_idx, (offset, count) in enumerate(zip(tier_offsets, tier_pick_counts)):
+        for tier_idx, (offset, count) in enumerate(zip(tier_offsets, tier_pick_counts, strict=False)):
             for k in range(count):
                 team = teams[offset + (i * count + k) % {0: 5, 1: 5, 2: 11, 3: 11, 4: 16}[tier_idx]]
                 picks.append(make_pick(e, team))

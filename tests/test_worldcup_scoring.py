@@ -800,7 +800,7 @@ class TestGroupAdvancement:
             assert t3.advancement_method == 'best_third'
             assert t4.is_eliminated is True
             assert t4.best_finish == 'group'
-            assert 'GA4' in [t for t in result['eliminated']]
+            assert 'GA4' in result['eliminated']
 
 
 # ============================================================
@@ -822,7 +822,7 @@ class TestSetKnockoutTeams:
             db.session.add(match)
             db.session.commit()
 
-            result = set_knockout_teams(match.id, 'SK1', 'SK2')
+            set_knockout_teams(match.id, 'SK1', 'SK2')
 
             db.session.refresh(match)
             assert match.home_team_id == t1.id
@@ -942,9 +942,9 @@ class TestComputeTeamScoreEventsAdvancement:
             )
 
             esp = _make_team(db.session, 'ESP', 'Spain', 1, 1.0, 'A')
-            uru = _make_team(db.session, 'URU', 'Uruguay', 2, 1.5, 'A')
-            ksa = _make_team(db.session, 'KSA', 'Saudi Arabia', 5, 7.0, 'A')
-            jpn = _make_team(db.session, 'JPN', 'Japan', 4, 4.0, 'A')
+            _make_team(db.session, 'URU', 'Uruguay', 2, 1.5, 'A')
+            _make_team(db.session, 'KSA', 'Saudi Arabia', 5, 7.0, 'A')
+            _make_team(db.session, 'JPN', 'Japan', 4, 4.0, 'A')
             db.session.commit()
 
             apply_group_advancement('A', {

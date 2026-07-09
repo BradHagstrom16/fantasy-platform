@@ -393,7 +393,7 @@ def test_context_post_roster_recap_renders_best_finish_labels(app):
             ('R32', '', 'group_winner', False),  # advanced, lost R32 -> empty
         ]
         teams = {}
-        for i, (code, finish, adv, elim) in enumerate(specs):
+        for code, finish, adv, elim in specs:
             t = WorldCupTeam(
                 fifa_code=code, name=code, display_name=code,
                 tier=5, multiplier=7.0, confederation='TEST', group_letter='A',

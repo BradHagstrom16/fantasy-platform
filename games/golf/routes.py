@@ -152,7 +152,7 @@ def get_cumulative_scores(user_ids, season_year):
         .all()
     )
 
-    score_map = {user_id: total for user_id, total in rows}
+    score_map = dict(rows)
     cumulative = {}
     for uid in user_ids:
         total = score_map.get(uid, 0) or 0
@@ -319,7 +319,6 @@ def schedule():
 def tournament_detail(tournament_id):
     """Tournament detail/results page."""
     tournament = db.get_or_404(GolfTournament, tournament_id)
-    season_year = current_app.config['SEASON_YEAR']
 
     # Get all picks for this tournament. Eager-load the user + player
     # relationships the standings table renders (sort key, avatar, primary /

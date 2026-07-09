@@ -39,10 +39,12 @@ def test_odds_api_get_raises_only_after_exhausting_retries():
     from games.cfb.services.odds_api import OddsApiError
 
     boom = requests.exceptions.ConnectionError('Address unavailable')
-    with patch.object(odds_api.time, 'sleep'), \
-         patch.object(odds_api.requests, 'get', side_effect=boom) as g:
-        with pytest.raises(OddsApiError):
-            odds_api.odds_api_get('https://api.example/scores')
+    with (
+        patch.object(odds_api.time, 'sleep'),
+        patch.object(odds_api.requests, 'get', side_effect=boom) as g,
+        pytest.raises(OddsApiError),
+    ):
+        odds_api.odds_api_get('https://api.example/scores')
     assert odds_api.ODDS_API_MAX_RETRIES > 1
     assert g.call_count == odds_api.ODDS_API_MAX_RETRIES  # every attempt made
 

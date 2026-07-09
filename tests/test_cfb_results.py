@@ -179,7 +179,7 @@ def test_partial_processing_grades_each_pick_exactly_once(app):
     u1 = make_user('p1')
     e1 = make_enrollment(u1, lives=2)
     u2 = make_user('p2')
-    e2 = make_enrollment(u2, lives=2)
+    make_enrollment(u2, lives=2)
     make_pick(u1, week, t1)
     p2 = make_pick(u2, week, t3)
     db.session.commit()
@@ -786,8 +786,8 @@ def test_completing_run_writes_outcome_rows_for_every_enrollment(app):
     assert len(outcomes) == 3
     w = outcomes[winner.id]
     assert (w.lives_remaining, w.lost_life, w.is_eliminated) == (2, False, False)
-    l = outcomes[loser.id]
-    assert (l.lives_remaining, l.lost_life, l.is_eliminated) == (1, True, False)
+    lo = outcomes[loser.id]
+    assert (lo.lives_remaining, lo.lost_life, lo.is_eliminated) == (1, True, False)
     p = outcomes[prior_out.id]
     assert (p.lives_remaining, p.is_eliminated, p.lost_life, p.no_pick) == (
         0, True, False, False)

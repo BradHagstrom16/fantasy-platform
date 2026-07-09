@@ -321,8 +321,8 @@ def test_reprocess_removes_stale_primary_backup_usage(app):
     _make_result(t, p1, status='complete', rounds_completed=4, earnings=100_000)
     _make_result(t, p2, status='complete', rounds_completed=4, earnings=50_000)
     # Pick already resolved to the primary, but a STALE backup-usage row lingers.
-    pick = _make_pick(user, t, p1, p2, active_player_id=p1.id, points_earned=100_000,
-                      primary_used=True)
+    _make_pick(user, t, p1, p2, active_player_id=p1.id, points_earned=100_000,
+               primary_used=True)
     _add_usage(user, p1)
     _add_usage(user, p2)  # stale — backup should not be "used" when primary counts
     _add_usage(other, p3)  # unrelated, must survive

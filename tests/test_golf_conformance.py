@@ -189,7 +189,7 @@ def test_index_standings_scoped_to_golf_enrollments(app, client):
     enrolled = _make_user('enrolled_golfer', display_name='EnrolledGolfer')
     _make_enrollment(enrolled)
     # A user in another game only — never enrolled in golf.
-    non_golf = _make_user('worldcup_only', display_name='WorldCupOnly')
+    _make_user('worldcup_only', display_name='WorldCupOnly')
 
     resp = client.get('/golf/')
     assert resp.status_code == 200

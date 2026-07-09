@@ -250,7 +250,7 @@ def test_post_rejected_after_deadline(app, client):
 
 def test_get_after_deadline_redirects_to_index(app, client):
     """GET on a locked week redirects rather than rendering the picker."""
-    week = make_week(1)  # past deadline
+    make_week(1)  # past deadline
     user = make_user('p1')
     make_enrollment(user)
     db.session.commit()

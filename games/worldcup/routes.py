@@ -1407,7 +1407,7 @@ def admin_bracket(target_stage):
             flash('Malformed bracket submission — reload the review page and try again.', 'error')
             return redirect(url_for('worldcup.admin_bracket', target_stage=target_stage))
         assigned = skipped = failed = 0
-        for sid, home, away in zip(shell_ids, home_fifas, away_fifas):
+        for sid, home, away in zip(shell_ids, home_fifas, away_fifas, strict=False):
             shell = db.session.get(WorldCupMatch, int(sid)) if sid.isdigit() else None
             # Guard the client-supplied hidden fields: only assign an empty shell
             # of THIS knockout stage to two distinct teams. (set_knockout_teams

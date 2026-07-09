@@ -466,9 +466,8 @@ def make_pick(week_number):
     pick_locked = False
     if existing_pick:
         existing_game = get_game_for_team(week.id, existing_pick.team_id)
-        if existing_game and existing_game.game_time:
-            if safe_is_after(current_time, existing_game.game_time):
-                pick_locked = True
+        if existing_game and existing_game.game_time and safe_is_after(current_time, existing_game.game_time):
+            pick_locked = True
 
     cfp_eliminated_names = set()
     if is_week_playoff(week):
@@ -491,10 +490,9 @@ def make_pick(week_number):
 
             new_team_game = get_game_for_team(week.id, team_id)
 
-            if new_team_game and new_team_game.game_time:
-                if safe_is_after(current_time, new_team_game.game_time):
-                    flash('Cannot pick this team - their game has already started.', 'error')
-                    return redirect(url_for('cfb.make_pick', week_number=week_number))
+            if new_team_game and new_team_game.game_time and safe_is_after(current_time, new_team_game.game_time):
+                flash('Cannot pick this team - their game has already started.', 'error')
+                return redirect(url_for('cfb.make_pick', week_number=week_number))
 
             if is_week_playoff(week) and team.name in cfp_eliminated_names:
                 flash('Cannot pick this team - they have been eliminated from the playoffs.', 'error')
@@ -1234,7 +1232,7 @@ def admin_manage_teams():
 
         # Add new teams
         added = 0
-        for short_name, api_name, api_id, conference, is_incoming in FBS_MASTER_TEAMS:
+        for short_name, _api_name, _api_id, conference, _is_incoming in FBS_MASTER_TEAMS:
             if short_name in selected_names and short_name not in existing_teams:
                 new_team = CfbTeam(name=short_name, conference=conference)
                 db.session.add(new_team)
@@ -1253,7 +1251,7 @@ def admin_manage_teams():
 
     # GET: group teams by conference
     teams_by_conference = {}
-    for short_name, api_name, api_id, conference, is_incoming in FBS_MASTER_TEAMS:
+    for short_name, _api_name, _api_id, conference, is_incoming in FBS_MASTER_TEAMS:
         if conference not in teams_by_conference:
             teams_by_conference[conference] = []
         teams_by_conference[conference].append({

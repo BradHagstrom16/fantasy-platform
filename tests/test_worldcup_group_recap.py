@@ -1,4 +1,5 @@
 """Group-stage recap email."""
+import contextlib
 from unittest.mock import patch
 
 import pytest
@@ -48,10 +49,13 @@ def test_recap_sends_with_advancement_breakdown(app):
         winner = _team('BRA', 'Brazil', 1, 1.0, 'A', advancement_method='group_winner')
         wild = _team('KSA', 'Saudi Arabia', 5, 7.0, 'A', advancement_method='best_third')
         out_team = _team('SRB', 'Serbia', 4, 4.0, 'A', is_eliminated=True)
-        u = User(username='al', email='al@test.com'); u.set_password('x')
-        db.session.add(u); db.session.flush()
+        u = User(username='al', email='al@test.com')
+        u.set_password('x')
+        db.session.add(u)
+        db.session.flush()
         e = WorldCupEnrollment(user_id=u.id, season_year=2026, picks_submitted=True)
-        db.session.add(e); db.session.flush()
+        db.session.add(e)
+        db.session.flush()
         for t in (winner, wild, out_team):
             db.session.add(WorldCupPick(enrollment_id=e.id, team_id=t.id, tier=t.tier))
         db.session.commit()
@@ -76,17 +80,18 @@ def test_recap_all_sends_fail_reports_no_sends_and_skips_marker(app):
     )
     with app.app_context():
         # Clear any marker a prior test left behind so we assert THIS run's behavior.
-        try:
+        with contextlib.suppress(OSError):
             os.remove(_group_recap_marker_path())
-        except OSError:
-            pass
         db.session.add(WorldCupMatch(match_number=1, stage='group', group_letter='A',
                                      is_completed=True))
         winner = _team('BRA', 'Brazil', 1, 1.0, 'A', advancement_method='group_winner')
-        u = User(username='al', email='al@test.com'); u.set_password('x')
-        db.session.add(u); db.session.flush()
+        u = User(username='al', email='al@test.com')
+        u.set_password('x')
+        db.session.add(u)
+        db.session.flush()
         e = WorldCupEnrollment(user_id=u.id, season_year=2026, picks_submitted=True)
-        db.session.add(e); db.session.flush()
+        db.session.add(e)
+        db.session.flush()
         db.session.add(WorldCupPick(enrollment_id=e.id, team_id=winner.id, tier=winner.tier))
         db.session.commit()
 
@@ -110,8 +115,10 @@ def test_send_group_recap_route_admin_only(app):
 def test_send_group_recap_route_invokes_service(app):
     client = app.test_client()
     with app.app_context():
-        u = User(username='boss', email='boss@test.com', is_admin=True); u.set_password('x')
-        db.session.add(u); db.session.commit()
+        u = User(username='boss', email='boss@test.com', is_admin=True)
+        u.set_password('x')
+        db.session.add(u)
+        db.session.commit()
         auth_id = u.auth_id
     with client.session_transaction() as sess:
         sess['_user_id'] = auth_id
