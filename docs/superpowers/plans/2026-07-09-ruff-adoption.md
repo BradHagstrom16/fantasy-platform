@@ -30,13 +30,13 @@
 **Interfaces:**
 - Produces: branch `platform/ruff-adoption`; `.ruff_cache/` ignored so later `ruff check .` runs don't pollute `git status`.
 
-- [ ] **Step 1: Create branch**
+- [x] **Step 1: Create branch**
 
 ```bash
 cd /Users/bhagstrom/fantasy-platform && git checkout -b platform/ruff-adoption
 ```
 
-- [ ] **Step 2: Append `.ruff_cache/` to `.gitignore`**
+- [x] **Step 2: Append `.ruff_cache/` to `.gitignore`**
 
 Append to the end of `.gitignore` (after the existing uncommitted Codex block, which stays as-is):
 
@@ -45,7 +45,7 @@ Append to the end of `.gitignore` (after the existing uncommitted Codex block, w
 .ruff_cache/
 ```
 
-- [ ] **Step 3: Commit (includes the pre-existing Codex block)**
+- [x] **Step 3: Commit (includes the pre-existing Codex block)**
 
 ```bash
 git add .gitignore
@@ -70,7 +70,7 @@ Expected: `git status` shows a clean tree.
 **Interfaces:**
 - Produces: `venv/bin/ruff` (0.15.21) runnable; `ruff.toml` consumed by every later task, the CI workflow, and the hook.
 
-- [ ] **Step 1: Create `ruff.toml`** (exact content):
+- [x] **Step 1: Create `ruff.toml`** (exact content):
 
 ```toml
 target-version = "py313"
@@ -97,14 +97,14 @@ select = [
 known-first-party = ["app", "config", "extensions", "models", "utils", "core", "games", "tests"]
 ```
 
-- [ ] **Step 2: Create `requirements-dev.txt`** (exact content):
+- [x] **Step 2: Create `requirements-dev.txt`** (exact content):
 
 ```
 -r requirements.txt
 ruff==0.15.21
 ```
 
-- [ ] **Step 3: Install into the venv**
+- [x] **Step 3: Install into the venv**
 
 ```bash
 venv/bin/pip install -r requirements-dev.txt && venv/bin/ruff --version
@@ -112,7 +112,7 @@ venv/bin/pip install -r requirements-dev.txt && venv/bin/ruff --version
 
 Expected: `ruff 0.15.21`.
 
-- [ ] **Step 4: Verify baseline finding counts (the "failing test" for this PR)**
+- [x] **Step 4: Verify baseline finding counts (the "failing test" for this PR)**
 
 ```bash
 venv/bin/ruff check . --statistics | tail -3
@@ -120,7 +120,7 @@ venv/bin/ruff check . --statistics | tail -3
 
 Expected: `Found 499 errors.` and `411 fixable with the --fix option`. (Small drift is fine only if `main` moved since 2026-07-09; investigate any large delta before proceeding.)
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add ruff.toml requirements-dev.txt
@@ -142,7 +142,7 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 - Consumes: `ruff.toml` + pinned version from Task 2.
 - Produces: CI gate on PRs/main; in-session lint feedback on `*.py` edits.
 
-- [ ] **Step 1: Create `.github/workflows/lint.yml`** (exact content):
+- [x] **Step 1: Create `.github/workflows/lint.yml`** (exact content):
 
 ```yaml
 name: Lint
@@ -163,7 +163,7 @@ jobs:
           args: "check"
 ```
 
-- [ ] **Step 2: Add the hook to `.claude/settings.json`**
+- [x] **Step 2: Add the hook to `.claude/settings.json`**
 
 Append this object to the existing `PostToolUse` array (after the smoke-test entry — do not modify the existing entries):
 
@@ -181,7 +181,7 @@ Append this object to the existing `PostToolUse` array (after the smoke-test ent
 
 Design notes baked in: check-only (never `--fix` — a hook rewriting files causes editor state mismatches); `--no-cache` so hook runs never create `.ruff_cache/`; exit 2 returns findings to Claude as blocking feedback; `force-exclude` in ruff.toml keeps `migrations/` files silent even when passed explicitly.
 
-- [ ] **Step 3: Verify settings.json is still valid JSON**
+- [x] **Step 3: Verify settings.json is still valid JSON**
 
 ```bash
 jq . .claude/settings.json > /dev/null && echo JSON-OK
@@ -189,7 +189,7 @@ jq . .claude/settings.json > /dev/null && echo JSON-OK
 
 Expected: `JSON-OK`.
 
-- [ ] **Step 4: Test the hook by manual simulation**
+- [x] **Step 4: Test the hook by manual simulation**
 
 (Hook config is snapshotted at session start, so live firing begins next session — simulate now:)
 
@@ -206,7 +206,7 @@ CLAUDE_TOOL_INPUT='{"file_path": "/Users/bhagstrom/fantasy-platform/CLAUDE.md"}'
 
 Expected: no output, `exit=0`. Clean up: `rm /tmp/ruff_hook_test.py`.
 
-- [ ] **Step 5: Update CLAUDE.md**
+- [x] **Step 5: Update CLAUDE.md**
 
 (a) Replace line 82 — `No linter configured. No pyright either — verify code with pytest.` — with:
 
@@ -220,7 +220,7 @@ Expected: no output, `exit=0`. Clean up: `rm /tmp/ruff_hook_test.py`.
 - **Timestamps:** `datetime.now(UTC)` (`from datetime import UTC`; Ruff UP017 enforces over `timezone.utc`) — never `utcnow()`
 ```
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add .github/workflows/lint.yml .claude/settings.json CLAUDE.md
@@ -240,7 +240,7 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 - Consumes: `ruff.toml` from Task 2.
 - Produces: repo with only the ~88 manual findings remaining, listed for Tasks 5–6.
 
-- [ ] **Step 1: Run the safe auto-fix twice** (second run catches fixes unlocked by the first, e.g. an import made unused by a `UP` rewrite):
+- [x] **Step 1: Run the safe auto-fix twice** (second run catches fixes unlocked by the first, e.g. an import made unused by a `UP` rewrite):
 
 ```bash
 venv/bin/ruff check . --fix > /dev/null; venv/bin/ruff check . --fix --statistics
@@ -248,7 +248,7 @@ venv/bin/ruff check . --fix > /dev/null; venv/bin/ruff check . --fix --statistic
 
 Expected: ~88 findings remain, none marked `[*]`.
 
-- [ ] **Step 2: Spot-check the diff by category** (not line-by-line — one representative example per fixed rule):
+- [x] **Step 2: Spot-check the diff by category** (not line-by-line — one representative example per fixed rule):
 
 ```bash
 git diff --stat | tail -3
@@ -258,7 +258,7 @@ git diff -- models/user.py                      # I001 import sort respects firs
 
 Verify: `datetime.now(UTC)` rewrites carry the `UTC` import; import blocks group stdlib / third-party / first-party correctly (`games`, `core`, etc. in the first-party block — if not, `known-first-party` is wrong; stop and fix `ruff.toml`).
 
-- [ ] **Step 3: Full suite gate**
+- [x] **Step 3: Full suite gate**
 
 ```bash
 ENVIRONMENT=testing venv/bin/python -m pytest tests/ -q 2>&1 | tail -2
@@ -266,7 +266,7 @@ ENVIRONMENT=testing venv/bin/python -m pytest tests/ -q 2>&1 | tail -2
 
 Expected: `1614 passed`. Any failure: `git checkout -- <file>` the offending fix, re-run, and move that finding to Task 6's judgment list.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add -A
@@ -298,15 +298,15 @@ Rules in scope — mechanical even though Ruff won't auto-fix them:
 - **E741 (3):** rename ambiguous `l`/`I`/`O` variables to a descriptive name; scope-local rename only.
 - **C416 (3), SIM102 (4), SIM105 (1), SIM108 (2), SIM117 (5), UP031 (2), UP035 remainder:** apply the rule's suggested rewrite; each is a local, semantics-preserving transform. For SIM117, merge nested `with` statements into one parenthesized `with` (common in test `patch` stacks).
 
-- [ ] **Step 1: Enumerate the worklist**
+- [x] **Step 1: Enumerate the worklist**
 
 ```bash
 venv/bin/ruff check . --select E702,F841,F401,B007,B905,E741,C416,SIM102,SIM105,SIM108,SIM117,UP031,UP035 --output-format concise
 ```
 
-- [ ] **Step 2: Fix every listed finding per the rules above**
+- [x] **Step 2: Fix every listed finding per the rules above**
 
-- [ ] **Step 3: Verify only judgment rules remain**
+- [x] **Step 3: Verify only judgment rules remain**
 
 ```bash
 venv/bin/ruff check . --statistics
@@ -314,7 +314,7 @@ venv/bin/ruff check . --statistics
 
 Expected remaining: only `E402` (8), `E711` (1), `E712` (4), `B023` (2), `RUF012` (6), `RUF013` (2) — ~23 findings.
 
-- [ ] **Step 4: Full suite gate**
+- [x] **Step 4: Full suite gate**
 
 ```bash
 ENVIRONMENT=testing venv/bin/python -m pytest tests/ -q 2>&1 | tail -2
@@ -322,7 +322,7 @@ ENVIRONMENT=testing venv/bin/python -m pytest tests/ -q 2>&1 | tail -2
 
 Expected: `1614 passed`.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add -A
@@ -344,7 +344,7 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 
 Each fix, with the exact transform:
 
-- [ ] **Step 1: E712/E711 → SQLAlchemy `.is_()` idiom (5 sites)**
+- [x] **Step 1: E712/E711 → SQLAlchemy `.is_()` idiom (5 sites)**
 
 `games/cfb/utils.py:219`:
 ```python
@@ -362,7 +362,7 @@ GolfTournament.results_finalized == False
 GolfTournament.results_finalized.is_(False)
 ```
 
-- [ ] **Step 2: B023 — loop-closure in `games/worldcup/services/sync.py:412`**
+- [x] **Step 2: B023 — loop-closure in `games/worldcup/services/sync.py:412`**
 
 ```python
 # before (closes over loop-scoped `rows`)
@@ -376,7 +376,7 @@ def fifa(i, rows=rows):
 
 First CONFIRM `fifa` is only called inside the same iteration (read the enclosing loop body); if it escapes the iteration, this is a live bug — fix the capture and add a regression test before proceeding.
 
-- [ ] **Step 3: E402 (8 sites)**
+- [x] **Step 3: E402 (8 sites)**
 
 `games/registry.py:36-38`: imports below module-level code. If moving them to the top creates a circular import (likely — registry imports game services), keep in place with a reason:
 ```python
@@ -384,7 +384,7 @@ from games.worldcup.services.enrollment import get_enrollment as wc_get_enrollme
 ```
 `tests/test_logo_assets.py` (5 sites): section-style test file with interleaved imports. Move imports to the top if the file still reads clearly; otherwise same `# noqa: E402 — <reason>` treatment. Never a bare `noqa`.
 
-- [ ] **Step 4: RUF012 (6) — `ClassVar` annotations**
+- [x] **Step 4: RUF012 (6) — `ClassVar` annotations**
 
 `config.py:83`:
 ```python
@@ -397,7 +397,7 @@ from typing import ClassVar
 ```
 Same pattern for `games/worldcup/models.py:80` and the three test stub classes (`tests/test_cfb_odds_api.py:18`, `tests/test_worldcup_sync.py:57,75,129`). CAUTION at `games/worldcup/models.py:80`: if the attribute is a SQLAlchemy model-class attribute, verify the annotation doesn't interact with declarative mapping — if it's a mapped construct, `RUF012` is a false positive there; use a targeted `# noqa: RUF012 — declarative mapping attribute` instead.
 
-- [ ] **Step 5: RUF013 (2) — explicit Optional in `games/golf/services/sync.py:140,389`**
+- [x] **Step 5: RUF013 (2) — explicit Optional in `games/golf/services/sync.py:140,389`**
 
 ```python
 # before
@@ -406,7 +406,7 @@ def f(arg: str = None):
 def f(arg: str | None = None):
 ```
 
-- [ ] **Step 6: Zero-findings check**
+- [x] **Step 6: Zero-findings check**
 
 ```bash
 venv/bin/ruff check .
@@ -414,7 +414,7 @@ venv/bin/ruff check .
 
 Expected: `All checks passed!`
 
-- [ ] **Step 7: Full suite gate** (golf/cfb suites cover the `.is_()` query sites)
+- [x] **Step 7: Full suite gate** (golf/cfb suites cover the `.is_()` query sites)
 
 ```bash
 ENVIRONMENT=testing venv/bin/python -m pytest tests/ -q 2>&1 | tail -2
@@ -422,7 +422,7 @@ ENVIRONMENT=testing venv/bin/python -m pytest tests/ -q 2>&1 | tail -2
 
 Expected: `1614 passed`.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add -A
@@ -441,7 +441,7 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 - Consumes: 6 commits from Tasks 1–6 on `platform/ruff-adoption`.
 - Produces: merged PR; live CI + hook enforcement on `main`.
 
-- [ ] **Step 1: Push and open the PR**
+- [x] **Step 1: Push and open the PR**
 
 ```bash
 git push -u origin platform/ruff-adoption
@@ -463,7 +463,7 @@ EOF
 )"
 ```
 
-- [ ] **Step 2: Verify the Actions lint job runs green on this PR** (this proves the CI wiring before merge)
+- [x] **Step 2: Verify the Actions lint job runs green on this PR** (this proves the CI wiring before merge)
 
 ```bash
 gh pr checks --watch
@@ -471,15 +471,15 @@ gh pr checks --watch
 
 Expected: `Lint / ruff` → pass.
 
-- [ ] **Step 3: CodeRabbit cycle** — load `superpowers:receiving-code-review`; address comments with technical rigor (CR may flag the `noqa`s — the justifications are in the comments; CR's Ruff runs the same `ruff.toml`, so no tool disagreement). Re-request review after every fix push; merge only when CR's LATEST review is APPROVED with 0 actionable comments.
+- [x] **Step 3: CodeRabbit cycle** — load `superpowers:receiving-code-review`; address comments with technical rigor (CR may flag the `noqa`s — the justifications are in the comments; CR's Ruff runs the same `ruff.toml`, so no tool disagreement). Re-request review after every fix push; merge only when CR's LATEST review is APPROVED with 0 actionable comments.
 
-- [ ] **Step 4: Merge (house style)**
+- [x] **Step 4: Merge (house style)**
 
 ```bash
 gh pr merge --merge --delete-branch
 ```
 
-- [ ] **Step 5: Post-merge verification on main**
+- [x] **Step 5: Post-merge verification on main**
 
 ```bash
 git checkout main && git pull
