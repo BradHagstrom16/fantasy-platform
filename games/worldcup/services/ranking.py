@@ -13,7 +13,7 @@ games/worldcup/routes.leaderboard():
 """
 from collections.abc import Iterable
 from datetime import date, timedelta
-from typing import Optional, TypedDict
+from typing import TypedDict
 
 from sqlalchemy import func
 
@@ -26,8 +26,8 @@ from games.worldcup.services.state import now_utc
 class RankNeighbors(TypedDict):
     rank: int
     points: float
-    lead_delta_up: Optional[float]   # points behind rank 1; None if leader
-    lead_delta_down: Optional[float]  # points ahead of next-ranked; None if last
+    lead_delta_up: float | None   # points behind rank 1; None if leader
+    lead_delta_down: float | None  # points ahead of next-ranked; None if last
 
 
 def compute_rank_neighbors(enrollment_id: int) -> RankNeighbors:
@@ -69,7 +69,7 @@ def compute_rank_neighbors(enrollment_id: int) -> RankNeighbors:
     )
 
     leader_points = enrollments[0].total_score
-    lead_delta_up: Optional[float] = (
+    lead_delta_up: float | None = (
         None if rank == 1 else round(leader_points - target.total_score, 2)
     )
 
@@ -78,7 +78,7 @@ def compute_rank_neighbors(enrollment_id: int) -> RankNeighbors:
         (e for e in enrollments[target_idx + 1:] if e.total_score < target.total_score),
         None,
     )
-    lead_delta_down: Optional[float] = (
+    lead_delta_down: float | None = (
         None if next_lower is None
         else round(target.total_score - next_lower.total_score, 2)
     )
@@ -93,7 +93,7 @@ def compute_rank_neighbors(enrollment_id: int) -> RankNeighbors:
 
 def compute_rank_delta(
     enrollment: WorldCupEnrollment, window_days: int = 1
-) -> Optional[int]:
+) -> int | None:
     """Signed change in rank over ``window_days`` for one enrollment.
 
     Positive = rank improved (smaller rank number is better). Negative = rank
@@ -129,7 +129,7 @@ def compute_rank_delta(
 
 def compute_rank_deltas_bulk(
     enrollment_ids: Iterable[int], window_days: int = 1
-) -> dict[int, Optional[int]]:
+) -> dict[int, int | None]:
     """Bulk variant of compute_rank_delta — one round-trip for all enrollments.
 
     Returns dict[enrollment_id, signed_rank_delta | None]. Mirrors the per-call
@@ -155,7 +155,7 @@ def compute_rank_deltas_bulk(
     today_rank_by_eid = _latest_rank_by_enrollment(eids, captured_on_or_before=None)
     prior_rank_by_eid = _latest_rank_by_enrollment(eids, captured_on_or_before=cutoff)
 
-    deltas: dict[int, Optional[int]] = {}
+    deltas: dict[int, int | None] = {}
     for eid in eids:
         t = today_rank_by_eid.get(eid)
         p = prior_rank_by_eid.get(eid)
@@ -164,7 +164,7 @@ def compute_rank_deltas_bulk(
 
 
 def _latest_rank_by_enrollment(
-    enrollment_ids: list[int], captured_on_or_before: Optional[date]
+    enrollment_ids: list[int], captured_on_or_before: date | None
 ) -> dict[int, int]:
     """Resolve the latest snapshot rank per enrollment in one round-trip.
 

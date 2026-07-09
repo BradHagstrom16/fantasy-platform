@@ -26,7 +26,6 @@ import pytest
 
 from core.context import _compute_asset_version
 
-
 # ---------------------------------------------------------------------------
 # _compute_asset_version: resolution-order locks.
 # ---------------------------------------------------------------------------

@@ -1,16 +1,19 @@
 """Tests for games/worldcup/services/notifications.send_daily_digests."""
-from datetime import datetime, timezone, timedelta
+from datetime import UTC, timedelta
 from unittest import mock
 
 import pytest
 
 from app import create_app
 from extensions import db
-from models.user import User
-from games.worldcup.models import (
-    WorldCupEnrollment, WorldCupTeam, WorldCupMatch, WorldCupPick,
-)
 from games.worldcup.constants import SEASON_YEAR
+from games.worldcup.models import (
+    WorldCupEnrollment,
+    WorldCupMatch,
+    WorldCupPick,
+    WorldCupTeam,
+)
+from models.user import User
 
 
 @pytest.fixture()
@@ -66,10 +69,10 @@ def _make_match(session, home, away, match_number=1, home_score=2,
     now_ct = now_utc().astimezone(WORLDCUP_TZ)
     yesterday_utc = (now_ct - timedelta(days=1)).replace(
         hour=20, minute=0, second=0, microsecond=0,
-    ).astimezone(timezone.utc).replace(tzinfo=None)
+    ).astimezone(UTC).replace(tzinfo=None)
     two_days_ago_utc = (now_ct - timedelta(days=2)).replace(
         hour=20, minute=0, second=0, microsecond=0,
-    ).astimezone(timezone.utc).replace(tzinfo=None)
+    ).astimezone(UTC).replace(tzinfo=None)
     m = WorldCupMatch(
         match_number=match_number,
         stage='group',
@@ -161,8 +164,8 @@ def test_skips_player_whose_pick_lost(app):
 
 def test_sends_email_when_pick_won(app):
     """Sends one email when a pick scored from a group win."""
-    from games.worldcup.services.notifications import send_daily_digests
     from games.worldcup.constants import WORLDCUP_TZ
+    from games.worldcup.services.notifications import send_daily_digests
     from games.worldcup.services.state import now_utc
     yesterday = (now_utc().astimezone(WORLDCUP_TZ) - timedelta(days=1)).date()
     date_str = yesterday.strftime('%B %-d')

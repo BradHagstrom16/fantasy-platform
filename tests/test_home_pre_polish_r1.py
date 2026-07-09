@@ -31,9 +31,8 @@ import pytest
 
 from app import create_app
 from extensions import db
-from models.user import User
 from models.content import COMMISH_NOTE_DEFAULTS
-
+from models.user import User
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 TEMPLATES = REPO_ROOT / 'core' / 'main' / 'templates' / 'main'

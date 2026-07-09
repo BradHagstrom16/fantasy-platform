@@ -15,8 +15,11 @@ from markupsafe import escape
 from app import create_app
 from extensions import db
 from games.worldcup.constants import (
-    GROUP_WIN, GROUP_DRAW,
-    ADVANCE_GROUP_WINNER, ADVANCE_RUNNER_UP, ADVANCE_BEST_THIRD,
+    ADVANCE_BEST_THIRD,
+    ADVANCE_GROUP_WINNER,
+    ADVANCE_RUNNER_UP,
+    GROUP_DRAW,
+    GROUP_WIN,
     KNOCKOUT_POINTS,
 )
 from games.worldcup.world_cup_countries import TEAMS, TIERS, teams_by_tier

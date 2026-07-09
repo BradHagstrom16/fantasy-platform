@@ -90,8 +90,8 @@ Routed forward per §0.4 (locked in §9 rollup):
   wired by any caller. Kept dormant; PI-B made the dormant variant
   brand-compliant so it's safe to wire when S4.1 reshapes `_home_out.html`.
 """
-from pathlib import Path
 import re
+from pathlib import Path
 
 ROOT = Path(__file__).parent.parent
 CSS = (ROOT / 'static' / 'css' / 'style.css').read_text()

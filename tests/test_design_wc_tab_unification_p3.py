@@ -22,9 +22,8 @@ These tests pin the migration so it can't silently drift back:
   cluster-3 `.text-muted` counter-rule on the same compound is NOT in
   scope — it's preserved as an orphan awaiting P5 per the strategy doc.
 """
-from pathlib import Path
 import re
-
+from pathlib import Path
 
 ROOT = Path(__file__).parent.parent
 CSS_PATH = ROOT / 'static' / 'css' / 'style.css'

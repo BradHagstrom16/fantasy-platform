@@ -20,16 +20,14 @@ New-behaviour locks (RED before the PR 6 implementation lands):
 
 Golf tests run against in-memory SQLite via ``create_app('testing')``.
 """
-import pytest
 from contextlib import contextmanager
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
+import pytest
 from sqlalchemy import event
-from sqlalchemy.orm import joinedload
 
 from app import create_app
 from extensions import db
-from models.user import User
 from games.golf.models import (
     GolfEnrollment,
     GolfPick,
@@ -40,6 +38,7 @@ from games.golf.models import (
     GolfTournamentResult,
 )
 from games.golf.services.sync import TournamentSync
+from models.user import User
 
 SEASON = 2026
 
@@ -84,7 +83,7 @@ def _make_tournament(name='Test Open', api_tourn_id=None, is_major=False,
                      is_team_event=False, status='complete',
                      results_finalized=False, purse=10_000_000, season_year=SEASON,
                      start_offset_days=4, end_offset_days=1, deadline_offset_days=4):
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     t = GolfTournament(
         api_tourn_id=api_tourn_id or f'T-{name}',
         name=name,
@@ -203,7 +202,7 @@ def test_update_status_from_time_never_auto_completes(app):
     date is in the past must still read 'active', not 'complete'.
     """
     t = _make_tournament(name='Clock Open', status='upcoming')
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     # Before the deadline: stays upcoming.
     t.pick_deadline = now + timedelta(days=2)
@@ -228,7 +227,7 @@ def test_update_status_from_time_never_auto_completes(app):
 def test_update_status_from_time_leaves_complete_untouched(app):
     """An already-complete tournament is never walked back to active/upcoming."""
     t = _make_tournament(name='Done Open', status='complete')
-    assert t.update_status_from_time(datetime.now(timezone.utc)) == 'complete'
+    assert t.update_status_from_time(datetime.now(UTC)) == 'complete'
 
 
 # ============================================================================

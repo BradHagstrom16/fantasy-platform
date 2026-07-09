@@ -27,9 +27,9 @@ Regex idioms inherit the WC DESIGN.md section 6 / P3 hardening:
 - Property scans use `(?<![-\\w])` negative lookbehind.
 - Rule blocks are extracted with `\\{([^}]*)\\}` and asserted on.
 """
-from datetime import datetime, timezone
-from pathlib import Path
 import re
+from datetime import UTC, datetime
+from pathlib import Path
 
 import pytest
 
@@ -332,7 +332,10 @@ def app():
     from app import create_app
     from extensions import db
     from games.worldcup.models import (
-        WorldCupTeam, WorldCupMatch, WorldCupEnrollment, WorldCupPick,
+        WorldCupEnrollment,
+        WorldCupMatch,
+        WorldCupPick,
+        WorldCupTeam,
     )
     from models import User
 
@@ -356,14 +359,14 @@ def app():
         grp = WorldCupMatch(
             match_number=1, stage='group', group_letter='A',
             home_team_id=esp.id, away_team_id=fra.id,
-            kickoff_utc=datetime(2026, 6, 11, 19, 0, tzinfo=timezone.utc),
+            kickoff_utc=datetime(2026, 6, 11, 19, 0, tzinfo=UTC),
             is_completed=False,
         )
         ko = WorldCupMatch(
             match_number=89, stage='R32',
             home_team_id=esp.id, away_team_id=fra.id,
             home_score=2, away_score=1, winner_team_id=esp.id, is_draw=False,
-            kickoff_utc=datetime(2026, 6, 28, 19, 0, tzinfo=timezone.utc),
+            kickoff_utc=datetime(2026, 6, 28, 19, 0, tzinfo=UTC),
             is_completed=True,
         )
         db.session.add_all([grp, ko])
@@ -412,7 +415,7 @@ def test_render_half_filled_knockout_shell_shows_team_and_tbd(app):
     (Canada advanced; opponent undecided). The bracket cell must render the known
     team plus a TBD slot, without error — the new one-side-set combination."""
     from extensions import db
-    from games.worldcup.models import WorldCupTeam, WorldCupMatch
+    from games.worldcup.models import WorldCupMatch, WorldCupTeam
     with app.app_context():
         esp = WorldCupTeam.query.filter_by(fifa_code='ESP').first()
         db.session.add(WorldCupMatch(match_number=90, stage='R16',

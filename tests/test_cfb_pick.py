@@ -23,12 +23,17 @@ import pytest
 from flask import template_rendered
 from sqlalchemy.exc import IntegrityError
 
+import games.registry as registry
 from app import create_app
 from extensions import db
-import games.registry as registry
 from games.cfb.models import CfbPick
 from tests._cfb_fixtures import (
-    make_user, make_enrollment, make_team, make_week, make_game, make_pick,
+    make_enrollment,
+    make_game,
+    make_pick,
+    make_team,
+    make_user,
+    make_week,
 )
 
 # Naive pool-tz wall clock. FUTURE keeps a week pickable; STARTED is a

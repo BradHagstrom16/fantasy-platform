@@ -5,16 +5,17 @@ unenrolled-for-current-season users always see the marketing surface,
 regardless of where the tournament is.
 """
 import os
-import pytest
-from datetime import datetime, timezone, timedelta
+from datetime import timedelta
 from unittest.mock import patch
+
+import pytest
 
 from app import create_app
 from extensions import db
-from models.user import User
 from games.worldcup.constants import SEASON_YEAR, TOURNAMENT_DEADLINE_UTC
 from games.worldcup.models import WorldCupEnrollment, WorldCupMatch
 from games.worldcup.services.state import worldcup_hub_state
+from models.user import User
 
 
 @pytest.fixture()

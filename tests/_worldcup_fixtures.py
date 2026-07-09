@@ -6,16 +6,19 @@ underscore signals "test helper, not a pytest discovery file."
 These are plain functions, not pytest fixtures (each test file
 owns its own ``app`` fixture; helpers seed data inside it).
 """
-from datetime import datetime, timezone, timedelta
+from datetime import UTC, datetime, timedelta
 
 from extensions import db
-from models.user import User
 from games.worldcup.constants import SEASON_YEAR, WORLDCUP_TZ
 from games.worldcup.models import (
-    WorldCupEnrollment, WorldCupPick, WorldCupTeam, WorldCupMatch,
+    WorldCupEnrollment,
+    WorldCupMatch,
+    WorldCupPick,
     WorldCupRankSnapshot,
+    WorldCupTeam,
 )
 from games.worldcup.services.state import now_utc
+from models.user import User
 
 
 def make_user(email='u@test', display_name='U'):
@@ -89,7 +92,7 @@ def make_match(match_number, home_team=None, away_team=None,
         stage=stage,
         home_team_id=home_team.id if home_team else None,
         away_team_id=away_team.id if away_team else None,
-        kickoff_utc=kickoff or datetime(2026, 6, 12, 12, 0, tzinfo=timezone.utc),
+        kickoff_utc=kickoff or datetime(2026, 6, 12, 12, 0, tzinfo=UTC),
         is_completed=is_completed,
         home_score=home_score,
         away_score=away_score,

@@ -6,7 +6,7 @@ controls behavior for every route using these decorators.
 """
 from functools import wraps
 
-from flask import redirect, url_for, flash, request, abort
+from flask import abort, flash, redirect, request, url_for
 from flask_login import current_user, login_required
 
 # games.registry is imported lazily inside each decorator wrapper body to break

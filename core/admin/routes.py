@@ -5,16 +5,15 @@ Platform-level admin: user management, overview.
 """
 from functools import wraps
 
-from flask import render_template, redirect, url_for, flash, request
-from flask_login import login_required, current_user
-from sqlalchemy import func
+from flask import flash, redirect, render_template, url_for
+from flask_login import current_user
 
-from extensions import db
-from models.user import User
-from games.golf.models import GolfEnrollment
-from games.cfb.models import CfbEnrollment
-from games.worldcup.models import WorldCupEnrollment
 from core.admin import admin_bp
+from extensions import db
+from games.cfb.models import CfbEnrollment
+from games.golf.models import GolfEnrollment
+from games.worldcup.models import WorldCupEnrollment
+from models.user import User
 
 
 def admin_required(f):

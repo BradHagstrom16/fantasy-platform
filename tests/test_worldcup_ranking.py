@@ -5,7 +5,6 @@ import pytest
 
 from app import create_app
 from extensions import db
-from models.user import User
 from games.worldcup.constants import SEASON_YEAR, WORLDCUP_TZ
 from games.worldcup.models import WorldCupEnrollment, WorldCupRankSnapshot
 from games.worldcup.services.ranking import (
@@ -14,6 +13,7 @@ from games.worldcup.services.ranking import (
     compute_rank_neighbors,
 )
 from games.worldcup.services.state import now_utc
+from models.user import User
 
 
 @pytest.fixture()
@@ -90,9 +90,8 @@ def test_compute_rank_neighbors_handles_ties(app):
 
 
 def test_compute_rank_neighbors_unknown_id_raises(app):
-    with app.app_context():
-        with pytest.raises(ValueError):
-            compute_rank_neighbors(99999)
+    with app.app_context(), pytest.raises(ValueError):
+        compute_rank_neighbors(99999)
 
 
 # ---------------------------------------------------------------------------

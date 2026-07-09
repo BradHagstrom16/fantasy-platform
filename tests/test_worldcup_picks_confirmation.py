@@ -7,7 +7,7 @@ Mock target is the service module's send_platform_email read-site, per the
 established pattern in tests/test_worldcup_notifications.py.
 """
 from collections import defaultdict
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest import mock
 
 import pytest
@@ -43,7 +43,7 @@ def pre_deadline(monkeypatch):
     """
     monkeypatch.setattr(
         'games.worldcup.routes.TOURNAMENT_DEADLINE_UTC',
-        datetime(2099, 1, 1, tzinfo=timezone.utc),
+        datetime(2099, 1, 1, tzinfo=UTC),
     )
 
 
@@ -70,7 +70,7 @@ def _seed_teams():
 def _seed_enrollment(email='picker@example.com', picks_submitted=False,
                      usa_goals_guess=7, with_picks=False, teams=None):
     """Create a user + enrollment, optionally with picks on the given teams."""
-    from tests._worldcup_fixtures import make_user, make_enrollment, make_pick
+    from tests._worldcup_fixtures import make_enrollment, make_pick, make_user
     user = make_user(email=email, display_name='Picker')
     enrollment = make_enrollment(
         user, picks_submitted=picks_submitted, usa_goals_guess=usa_goals_guess,

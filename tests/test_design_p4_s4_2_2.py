@@ -114,7 +114,6 @@ def test_pi2_no_inline_font_size_on_wc_numeral_in_picks():
     src = PICKS.read_text()
     # The decorative bi-x-circle empty-state icon retains an inline font-size — that's
     # out of routed scope (not a numeral). Every numeral must be modifier-driven.
-    import re
     offenders = []
     for line_no, line in enumerate(src.splitlines(), start=1):
         if 'wc-numeral' in line and 'style="font-size' in line:

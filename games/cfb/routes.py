@@ -6,36 +6,55 @@ Mounted at /cfb/ via blueprint url_prefix.
 """
 import logging
 from collections import Counter
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from functools import wraps
 
 from flask import (
-    render_template, redirect, url_for, flash, request,
-    jsonify, current_app,
+    current_app,
+    flash,
+    jsonify,
+    redirect,
+    render_template,
+    request,
+    url_for,
 )
-from flask_login import login_required, current_user
+from flask_login import current_user, login_required
 from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import joinedload, contains_eager
+from sqlalchemy.orm import contains_eager, joinedload
 
 from extensions import db
-from models import User
 from games.cfb import cfb_bp
-from games.cfb.models import CfbEnrollment, CfbTeam, CfbWeek, CfbGame, CfbPick
-from games.cfb.utils import (
-    get_current_time, get_utc_time, make_aware, deadline_has_passed,
-    to_pool_time, format_deadline, parse_form_datetime, safe_is_after,
-    get_week_display_name, get_week_short_label, is_week_playoff,
-    get_playoff_teams, get_cfp_eliminated_teams, get_cfp_teams_in_week,
-    get_display_helpers,
-)
 from games.cfb.constants import FBS_MASTER_TEAMS, TEAM_CONFERENCES
+from games.cfb.models import CfbEnrollment, CfbGame, CfbPick, CfbTeam, CfbWeek
 from games.cfb.services.game_logic import (
-    get_used_team_ids, get_game_for_team, process_week_results,
-    process_autopicks, calculate_cumulative_spread, get_week_user_statuses,
+    calculate_cumulative_spread,
+    get_game_for_team,
+    get_used_team_ids,
+    get_week_user_statuses,
+    process_autopicks,
+    process_week_results,
 )
 from games.cfb.services.score_fetcher import ScoreFetcher
-from games.common import game_must_be_open, enrollment_required
+from games.cfb.utils import (
+    deadline_has_passed,
+    format_deadline,
+    get_cfp_eliminated_teams,
+    get_cfp_teams_in_week,
+    get_current_time,
+    get_display_helpers,
+    get_playoff_teams,
+    get_utc_time,
+    get_week_display_name,
+    get_week_short_label,
+    is_week_playoff,
+    make_aware,
+    parse_form_datetime,
+    safe_is_after,
+    to_pool_time,
+)
+from games.common import enrollment_required, game_must_be_open
+from models import User
 
 logger = logging.getLogger(__name__)
 
@@ -883,7 +902,7 @@ def admin_manage_games(week_id):
             game_time=game_time,
             # DQ-6: manual entries lock immediately so the spread cron
             # can't overwrite the admin's number.
-            spread_locked_at=datetime.now(timezone.utc),
+            spread_locked_at=datetime.now(UTC),
         )
         db.session.add(game)
         db.session.commit()

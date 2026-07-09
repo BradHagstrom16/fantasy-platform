@@ -15,8 +15,9 @@ Locks the standalone-parity fixes ported into ``games/golf/services/sync.py``,
 
 Golf tests run against in-memory SQLite via ``create_app('testing')``.
 """
+from datetime import UTC, datetime, timedelta
+
 import pytest
-from datetime import datetime, timedelta, timezone
 
 from app import create_app
 from extensions import db
@@ -26,8 +27,8 @@ from games.golf.models import (
     GolfTournamentField,
     GolfTournamentResult,
 )
-from games.golf.services.sync import SlashGolfAPI, TournamentSync, seed_schedule
-from games.golf.utils import normalize_position, calculate_projected_earnings
+from games.golf.services.sync import TournamentSync, seed_schedule
+from games.golf.utils import calculate_projected_earnings, normalize_position
 
 SEASON = 2026
 
@@ -46,7 +47,7 @@ def app():
 
 def _make_tournament(name='Test Open', api_tourn_id=None, is_major=False,
                      is_team_event=False, status='upcoming', purse=10_000_000):
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     t = GolfTournament(
         api_tourn_id=api_tourn_id or f'T-{name}',
         name=name,
@@ -138,17 +139,17 @@ def test_parse_tee_time_timestamp_mongo_ejson():
 def test_parse_tee_time_timestamp_relaxed_ejson_date_string():
     # Relaxed EJSON: $date carries an ISO 8601 string rather than epoch-ms.
     dt = TournamentSync._parse_tee_time_timestamp({"$date": "2026-04-09T13:19:00Z"})
-    assert dt == datetime(2026, 4, 9, 13, 19, 0, tzinfo=timezone.utc)
+    assert dt == datetime(2026, 4, 9, 13, 19, 0, tzinfo=UTC)
 
 
 def test_parse_tee_time_timestamp_iso_naive_treated_as_utc():
     dt = TournamentSync._parse_tee_time_timestamp("2026-04-09T13:19:00")
-    assert dt == datetime(2026, 4, 9, 13, 19, 0, tzinfo=timezone.utc)
+    assert dt == datetime(2026, 4, 9, 13, 19, 0, tzinfo=UTC)
 
 
 def test_parse_tee_time_timestamp_iso_with_z():
     dt = TournamentSync._parse_tee_time_timestamp("2026-04-09T13:19:00Z")
-    assert dt == datetime(2026, 4, 9, 13, 19, 0, tzinfo=timezone.utc)
+    assert dt == datetime(2026, 4, 9, 13, 19, 0, tzinfo=UTC)
 
 
 def test_parse_tee_time_timestamp_epoch_ms_int():

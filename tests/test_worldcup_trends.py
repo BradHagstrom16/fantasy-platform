@@ -7,17 +7,19 @@ and the new home_context._context_live builder:
 - compute_trend_by_enrollment(ids) — per-enrollment delta vs latest
   captured_date snapshot; None when no snapshot exists
 """
-import pytest
 from datetime import date, timedelta
+
+import pytest
 
 from app import create_app
 from extensions import db
-from models.user import User
 from games.worldcup.constants import SEASON_YEAR
 from games.worldcup.models import WorldCupEnrollment, WorldCupRankSnapshot
 from games.worldcup.services.trends import (
-    show_trend_column, compute_trend_by_enrollment,
+    compute_trend_by_enrollment,
+    show_trend_column,
 )
+from models.user import User
 
 
 @pytest.fixture()

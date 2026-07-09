@@ -8,21 +8,29 @@ semantics, and cumulative-spread recalculation — plus the admin-route
 processing guards (mark-results / apply-scores) and the
 auto_process_week is_complete ordering.
 """
-import pytest
 from unittest.mock import Mock, patch
+
+import pytest
 
 from app import create_app
 from extensions import db
-from models.user import User
 from games.cfb.models import (
-    CfbEnrollment, CfbTeam, CfbWeek, CfbGame, CfbPick, CfbWeekOutcome,
+    CfbEnrollment,
+    CfbWeekOutcome,
 )
 from games.cfb.services.game_logic import (
-    process_week_results, calculate_cumulative_spread, get_used_team_ids,
+    calculate_cumulative_spread,
+    get_used_team_ids,
+    process_week_results,
 )
 from games.cfb.services.score_fetcher import ScoreFetcher
 from tests._cfb_fixtures import (
-    make_user, make_enrollment, make_team, make_week, make_game, make_pick,
+    make_enrollment,
+    make_game,
+    make_pick,
+    make_team,
+    make_user,
+    make_week,
 )
 
 

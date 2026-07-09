@@ -12,14 +12,17 @@ All Odds-API traffic now flows through one client (games.cfb.services.odds_api),
 so it is mocked at that single boundary (games.cfb.services.odds_api.requests.get)
 regardless of which caller (automation or score_fetcher) issued the request.
 """
-import pytest
 from unittest.mock import Mock, patch
+
+import pytest
 
 from app import create_app
 from extensions import db
-from games.cfb.models import CfbEnrollment, CfbTeam, CfbWeek, CfbGame, CfbPick
+from games.cfb.models import CfbGame, CfbWeek
 from tests._cfb_fixtures import (
-    make_user, make_enrollment, make_team, make_week, make_game, make_pick,
+    make_game,
+    make_team,
+    make_week,
 )
 
 
@@ -186,6 +189,7 @@ def test_run_setup_import_window_covers_thursday_through_wednesday(
     not cut off Monday 00:00 — Labor-Day Monday and Tue/Wed MACtion games
     were silently missed at +4 days."""
     from datetime import datetime, timedelta
+
     from games.cfb.services.automation import run_setup
     _prep_setup(app)
     mock_get.return_value = _api_response([_setup_event()])
@@ -206,6 +210,7 @@ def test_import_logs_skipped_untracked_events(mock_get, mock_send, app, caplog):
     """§5.4: events where neither team resolves are skipped WITH a log line
     (they were silently dropped)."""
     import logging
+
     from games.cfb.services.automation import run_setup
     _prep_setup(app)
     mock_get.return_value = _api_response([
@@ -326,6 +331,7 @@ def test_spread_update_falls_back_to_bookmaker_with_spreads_market(
     carry spreads must be used (selection used to happen before market
     inspection) — and the fallback is logged."""
     import logging
+
     from games.cfb.services.automation import run_spread_update
     week, game = _seed_active_week_game(app)
     mock_get.return_value = _api_response([
@@ -345,7 +351,8 @@ def test_spread_update_falls_back_to_bookmaker_with_spreads_market(
 @patch('games.cfb.services.odds_api.requests.get')
 def test_spread_update_skips_locked_games(mock_get, mock_send, app):
     """A locked spread is never overwritten by the cron (DQ-6 inverse)."""
-    from datetime import datetime, timezone
+    from datetime import datetime
+
     from games.cfb.services.automation import run_spread_update
     week, game = _seed_active_week_game(
         app, locked_at=datetime(2026, 8, 30, 12, 0), spread=-2.5)
@@ -458,6 +465,7 @@ def test_run_scores_fresh_partial_is_not_flagged_stuck(
     state) gets the plain summary, no STUCK escalation."""
     from datetime import datetime, timedelta
     from zoneinfo import ZoneInfo
+
     from games.cfb.services.automation import run_scores
     app.config['ADMIN_EMAIL'] = 'commish@cccfantasy.com'
     recent = (datetime.now(ZoneInfo('America/Chicago')).replace(tzinfo=None)
@@ -602,6 +610,7 @@ def test_week_1_start_is_a_thursday_in_the_current_season(app):
     schedule a year off (audit §9 HIGH), so lock both invariants: it must
     fall in the configured CFB season year and on a Thursday."""
     from datetime import datetime
+
     from games.cfb.constants import SEASON_SCHEDULE
 
     season_year = app.config['CFB_SEASON_YEAR']
@@ -684,8 +693,8 @@ def test_fetch_scores_returns_error_on_malformed_json(mock_get, app):
 def test_run_setup_zero_games_when_odds_api_down(mock_api, mock_send, app):
     """A sustained outage (OddsApiError after the client exhausts retries) is
     caught at the import call site: 0 games, week not activated, admin alerted."""
-    from games.cfb.services.odds_api import OddsApiError
     from games.cfb.services.automation import run_setup
+    from games.cfb.services.odds_api import OddsApiError
     _prep_setup(app)
     mock_api.side_effect = OddsApiError('Odds API unreachable')
 
@@ -701,8 +710,8 @@ def test_run_setup_zero_games_when_odds_api_down(mock_api, mock_send, app):
 def test_spread_update_error_when_odds_api_down(mock_api, mock_send, app):
     """A sustained outage during a spread run is reported as error, leaving
     every spread unlocked for the next run to fill."""
-    from games.cfb.services.odds_api import OddsApiError
     from games.cfb.services.automation import run_spread_update
+    from games.cfb.services.odds_api import OddsApiError
     week, game = _seed_active_week_game(app)
     mock_api.side_effect = OddsApiError('Odds API unreachable')
 

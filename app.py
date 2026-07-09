@@ -3,7 +3,6 @@ Fantasy Sports Platform - Application Factory
 ===============================================
 Creates and configures the Flask application.
 """
-import logging
 import os
 
 import click
@@ -13,7 +12,7 @@ from sqlalchemy import select
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 from config import config
-from extensions import db, migrate, login_manager, csrf, limiter
+from extensions import csrf, db, limiter, login_manager, migrate
 
 
 def create_app(config_name=None):
@@ -45,9 +44,9 @@ def create_app(config_name=None):
         ).scalar_one_or_none()
 
     # Register blueprints
+    from core.admin import admin_bp
     from core.auth import auth_bp
     from core.main import main_bp
-    from core.admin import admin_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(main_bp)
@@ -122,6 +121,7 @@ def create_app(config_name=None):
     def create_admin():
         """Create an admin user interactively."""
         import getpass
+
         from sqlalchemy import func
 
         username = input('Admin username: ').strip()

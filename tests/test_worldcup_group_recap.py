@@ -2,10 +2,14 @@
 from unittest.mock import patch
 
 import pytest
+
 from app import create_app
 from extensions import db
 from games.worldcup.models import (
-    WorldCupEnrollment, WorldCupTeam, WorldCupMatch, WorldCupPick,
+    WorldCupEnrollment,
+    WorldCupMatch,
+    WorldCupPick,
+    WorldCupTeam,
 )
 from models.user import User
 
@@ -64,8 +68,11 @@ def test_recap_sends_with_advancement_breakdown(app):
 
 def test_recap_all_sends_fail_reports_no_sends_and_skips_marker(app):
     import os
+
     from games.worldcup.services.notifications import (
-        send_group_stage_recap, group_recap_last_sent, _group_recap_marker_path,
+        _group_recap_marker_path,
+        group_recap_last_sent,
+        send_group_stage_recap,
     )
     with app.app_context():
         # Clear any marker a prior test left behind so we assert THIS run's behavior.

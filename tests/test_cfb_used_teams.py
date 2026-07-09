@@ -18,10 +18,16 @@ import pytest
 from app import create_app
 from extensions import db
 from games.cfb.services.game_logic import (
-    get_used_team_ids, calculate_cumulative_spread,
+    calculate_cumulative_spread,
+    get_used_team_ids,
 )
 from tests._cfb_fixtures import (
-    make_user, make_enrollment, make_team, make_week, make_game, make_pick,
+    make_enrollment,
+    make_game,
+    make_pick,
+    make_team,
+    make_user,
+    make_week,
 )
 
 

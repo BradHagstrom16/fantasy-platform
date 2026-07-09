@@ -15,12 +15,13 @@ import logging
 import os
 import random
 import time
+from datetime import UTC
 
 import requests
 from flask import current_app
 
 from extensions import db
-from games.worldcup.models import WorldCupTeam, WorldCupMatch
+from games.worldcup.models import WorldCupMatch, WorldCupTeam
 from games.worldcup.services.scoring import process_match_result
 from utils.email import send_platform_email
 
@@ -123,8 +124,7 @@ def _to_naive_utc(dt):
     if dt is None:
         return None
     if dt.tzinfo is not None:
-        from datetime import timezone
-        dt = dt.astimezone(timezone.utc).replace(tzinfo=None)
+        dt = dt.astimezone(UTC).replace(tzinfo=None)
     return dt.replace(microsecond=0, second=0)
 
 
@@ -692,15 +692,15 @@ def run_advancement_check() -> dict:
 
 def run_digest() -> dict:
     """Daily entry point: email a summary of matches finalized today (CT)."""
-    from datetime import timezone
-    from games.worldcup.services.state import now_utc
+
     from games.worldcup.constants import WORLDCUP_TZ
+    from games.worldcup.services.state import now_utc
     today = now_utc().astimezone(WORLDCUP_TZ).date()
 
     completed = WorldCupMatch.query.filter_by(is_completed=True).all()
     todays = [
         m for m in completed
-        if m.updated_at and m.updated_at.replace(tzinfo=timezone.utc).astimezone(WORLDCUP_TZ).date() == today
+        if m.updated_at and m.updated_at.replace(tzinfo=UTC).astimezone(WORLDCUP_TZ).date() == today
     ]
     if not todays:
         return {'status': 'no_results'}

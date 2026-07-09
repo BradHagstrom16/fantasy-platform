@@ -36,7 +36,6 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DESIGN_MD = REPO_ROOT / 'DESIGN.md'
 SCHEDULE_HTML = REPO_ROOT / 'games' / 'worldcup' / 'templates' / 'worldcup' / 'schedule.html'

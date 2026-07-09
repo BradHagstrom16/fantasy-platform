@@ -8,7 +8,7 @@ eliminated-this-week detection, DQ-5 recipient gating, the DQ-2
 windows (driven through the CFB_FAKE_NOW seam).
 """
 import os
-from datetime import datetime, timezone
+from datetime import datetime
 from unittest.mock import patch
 from zoneinfo import ZoneInfo
 
@@ -18,11 +18,17 @@ from app import create_app
 from extensions import db
 from games.cfb.services.game_logic import process_week_results
 from games.cfb.services.reminders import (
-    send_weekly_recap_email, get_active_reminder_window,
+    get_active_reminder_window,
     get_users_without_picks,
+    send_weekly_recap_email,
 )
 from tests._cfb_fixtures import (
-    make_user, make_enrollment, make_team, make_week, make_game, make_pick,
+    make_enrollment,
+    make_game,
+    make_pick,
+    make_team,
+    make_user,
+    make_week,
 )
 
 

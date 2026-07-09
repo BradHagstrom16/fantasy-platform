@@ -26,8 +26,6 @@ from datetime import datetime, timedelta
 from flask import current_app
 from markupsafe import escape
 
-from utils.email import send_platform_email
-
 from extensions import db
 from games.golf.models import (
     GolfEnrollment,
@@ -37,6 +35,7 @@ from games.golf.models import (
     GolfTournamentResult,
 )
 from games.golf.utils import GOLF_LEAGUE_TZ, format_score_to_par
+from utils.email import send_platform_email
 
 logger = logging.getLogger(__name__)
 
@@ -219,7 +218,7 @@ def send_picks_open_email(tournament_id_or_obj) -> int:
     else:
         tournament_id = tournament_id_or_obj.id
 
-    print(f"\nSending 'Picks Are Open' notifications...")
+    print("\nSending 'Picks Are Open' notifications...")
 
     config = current_app.config
     email_address = config.get('EMAIL_ADDRESS', '')
@@ -441,7 +440,7 @@ def send_admin_field_alert(tournament_id_or_obj, field_count: int) -> bool:
     else:
         tournament_id = tournament_id_or_obj.id
 
-    print(f"\nSending admin alert...")
+    print("\nSending admin alert...")
 
     config = current_app.config
     email_address = config.get('EMAIL_ADDRESS', '')
@@ -523,7 +522,7 @@ def send_results_recap_email(tournament_id: int) -> int:
     Returns:
         Number of emails successfully sent
     """
-    print(f"\nSending Results Recap emails...")
+    print("\nSending Results Recap emails...")
 
     config = current_app.config
     site_url = config.get('SITE_URL', 'http://localhost:5000')
@@ -720,7 +719,7 @@ def _build_recap_html(display_name, tournament_name, golfer_name, position,
     if golfer_name:
         backup_badge = ""
         if backup_activated:
-            backup_badge = f' <span style="display: inline-block; background-color: rgba(37,99,235,0.1); color: #2563eb; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 4px; vertical-align: middle;">BACKUP</span>'
+            backup_badge = ' <span style="display: inline-block; background-color: rgba(37,99,235,0.1); color: #2563eb; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 4px; vertical-align: middle;">BACKUP</span>'
 
         earnings_color = _GREEN_700 if earnings > 0 else _DANGER
 
@@ -940,7 +939,7 @@ def run_reminder_check():
 
     print()
     print("=" * 60)
-    print(f"Golf Pick 'Em Reminder Check")
+    print("Golf Pick 'Em Reminder Check")
     print(f"Time: {now.strftime('%A, %B %d, %Y at %I:%M %p %Z')}")
     print("=" * 60)
 
@@ -970,8 +969,8 @@ def run_reminder_check():
     window = get_active_reminder_window(deadline)
 
     if not window:
-        print(f"\nNot within any reminder window")
-        print(f"   Next windows: 24h, 12h, 1h before deadline")
+        print("\nNot within any reminder window")
+        print("   Next windows: 24h, 12h, 1h before deadline")
         return
 
     print(f"\nActive reminder window: {window['hours']}-hour ({window['type']})")

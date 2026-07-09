@@ -19,7 +19,6 @@ from games.worldcup.constants import SEASON_YEAR
 from games.worldcup.models import WorldCupEnrollment
 from models.user import User
 
-
 PATHS_WITH_TABLES = [
     '/worldcup/leaderboard',
     '/worldcup/schedule',

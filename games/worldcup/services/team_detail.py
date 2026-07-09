@@ -16,26 +16,29 @@ The 'advanced_*' shape used by an earlier draft of this plan does NOT exist
 in the data model. KO elimination is derived from the WorldCupMatch table
 because team.is_eliminated is only set during group-stage processing.
 """
-from typing import Optional, TypedDict
+from typing import TypedDict
 
 from sqlalchemy import or_
 
 from extensions import db
-from games.worldcup.models import (
-    WorldCupEnrollment, WorldCupMatch, WorldCupPick, WorldCupTeam,
-)
 from games.worldcup.constants import (
+    ADVANCE_GROUP_WINNER,
+    KNOCKOUT_POINTS,
     SEASON_YEAR,
-    ADVANCE_GROUP_WINNER, KNOCKOUT_POINTS,
 )
-
+from games.worldcup.models import (
+    WorldCupEnrollment,
+    WorldCupMatch,
+    WorldCupPick,
+    WorldCupTeam,
+)
 
 _SEGMENT_LABELS = ['Group', 'R32', 'R16', 'QF', 'SF', 'Final']
 _SEGMENT_DISPLAY = ['Group Stage', 'Round of 32', 'Round of 16',
                     'Quarterfinals', 'Semifinals', 'Final']
 # WorldCupMatch.stage value the team plays at each segment-index ahead.
 # Index 0 is multi-match group play and is handled via best_finish='group'.
-_NEXT_MATCH_STAGE: list[Optional[str]] = [
+_NEXT_MATCH_STAGE: list[str | None] = [
     None, 'R32', 'R16', 'QF', 'SF', 'final',
 ]
 
@@ -43,7 +46,7 @@ _NEXT_MATCH_STAGE: list[Optional[str]] = [
 class TeamOwnership(TypedDict):
     count: int
     percent: float
-    picker_names: Optional[list[str]]
+    picker_names: list[str] | None
 
 
 class PathSegment(TypedDict):
@@ -55,7 +58,7 @@ class PathToCrown(TypedDict):
     segments: list[PathSegment]
     eliminated: bool
     champion: bool              # cleared all 6 segments, not eliminated
-    eliminated_at_label: Optional[str]
+    eliminated_at_label: str | None
     projected_ceiling: float    # multiplied points if team wins out from here
 
 
@@ -176,7 +179,7 @@ def compute_path_to_crown(team: WorldCupTeam) -> PathToCrown:
     )
 
 
-def _path_status(team: WorldCupTeam) -> tuple[int, Optional[int]]:
+def _path_status(team: WorldCupTeam) -> tuple[int, int | None]:
     """Return (cleared_depth, eliminated_at_index).
 
     cleared_depth: how many of the 6 segments the team has won (0..6).

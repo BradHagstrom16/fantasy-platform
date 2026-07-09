@@ -19,17 +19,23 @@ from datetime import timedelta
 from flask import current_app
 from sqlalchemy.orm import joinedload
 
-from utils.email import send_platform_email
-
 from extensions import db
-from models import User
 from games.cfb.models import (
-    CfbEnrollment, CfbWeek, CfbPick, CfbGame, CfbWeekOutcome,
+    CfbEnrollment,
+    CfbGame,
+    CfbPick,
+    CfbWeek,
+    CfbWeekOutcome,
 )
 from games.cfb.utils import (
-    get_current_time, make_aware, to_pool_time, get_week_display_name,
+    get_current_time,
+    get_week_display_name,
     is_week_playoff,
+    make_aware,
+    to_pool_time,
 )
+from models import User
+from utils.email import send_platform_email
 
 logger = logging.getLogger(__name__)
 
@@ -236,7 +242,7 @@ def _build_reminder_html(display_name, week_name, deadline_str, time_remaining,
     for _ in range(lives_remaining):
         lives_dots += f'<span style="display: inline-block; width: 12px; height: 12px; border-radius: 50%; background: {c["survived"]}; margin-right: 4px;"></span>'
     for _ in range(2 - lives_remaining):
-        lives_dots += f'<span style="display: inline-block; width: 12px; height: 12px; border-radius: 50%; border: 2px solid #d1d5db; margin-right: 4px;"></span>'
+        lives_dots += '<span style="display: inline-block; width: 12px; height: 12px; border-radius: 50%; border: 2px solid #d1d5db; margin-right: 4px;"></span>'
 
     content = f'''<!-- Urgency banner -->
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: {urgency_bg}; border-left: 4px solid {accent}; margin-bottom: 24px;">
@@ -391,7 +397,7 @@ def send_weekly_recap_email(week_id: int) -> int:
     Returns:
         Number of emails successfully sent
     """
-    print(f"\nSending Weekly Results Recap emails...")
+    print("\nSending Weekly Results Recap emails...")
 
     config = current_app.config
     site_url = config.get('SITE_URL', 'http://localhost:5000')
@@ -587,7 +593,7 @@ def _build_recap_plain_text(display_name, week_name, team_name, outcome, spread,
 
     # Status
     if was_eliminated:
-        lines.append(f"You've been eliminated from the pool.")
+        lines.append("You've been eliminated from the pool.")
         lines.append(f"Final spread: {cumulative_spread:.1f}")
     else:
         life_visual = ("*" * lives) + ("o" * (2 - lives))
@@ -599,14 +605,14 @@ def _build_recap_plain_text(display_name, week_name, team_name, outcome, spread,
     lines.append("")
 
     # Week summary
-    lines.append(f"Week Summary:")
+    lines.append("Week Summary:")
     lines.append(f"- {total_picks} picks submitted")
     lines.append(f"- {correct_count} correct, {incorrect_count} incorrect")
 
     if eliminated_names:
         lines.append(f"\nEliminated this week: {', '.join(eliminated_names)}")
     else:
-        lines.append(f"\nNo eliminations this week — everyone survived!")
+        lines.append("\nNo eliminations this week — everyone survived!")
 
     lines.append(f"\n{active_count} players remaining in the pool.")
 
@@ -642,7 +648,7 @@ def _build_recap_html(display_name, week_name, team_name, outcome, spread,
 
         autopick_badge = ""
         if is_autopick:
-            autopick_badge = f' <span style="display: inline-block; background-color: rgba(217,119,6,0.1); color: #d97706; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 4px; vertical-align: middle;">AUTOPICK</span>'
+            autopick_badge = ' <span style="display: inline-block; background-color: rgba(217,119,6,0.1); color: #d97706; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 4px; vertical-align: middle;">AUTOPICK</span>'
 
         spread_text = ""
         if spread is not None:
@@ -683,7 +689,7 @@ def _build_recap_html(display_name, week_name, team_name, outcome, spread,
     for _ in range(lives):
         lives_dots += f'<span style="display: inline-block; width: 14px; height: 14px; border-radius: 50%; background: {c["survived"]}; margin-right: 4px;"></span>'
     for _ in range(2 - lives):
-        lives_dots += f'<span style="display: inline-block; width: 14px; height: 14px; border-radius: 50%; border: 2px solid #d1d5db; margin-right: 4px;"></span>'
+        lives_dots += '<span style="display: inline-block; width: 14px; height: 14px; border-radius: 50%; border: 2px solid #d1d5db; margin-right: 4px;"></span>'
 
     rank_display = f"{rank} of {active_count}" if rank else "&mdash;"
 

@@ -5,11 +5,11 @@ import pytest
 
 from app import create_app
 from extensions import db
-from models.user import User
-from games.worldcup.models import WorldCupEnrollment
 from games.cfb.models import CfbEnrollment
 from games.golf.models import GolfEnrollment
 from games.worldcup.constants import SEASON_YEAR
+from games.worldcup.models import WorldCupEnrollment
+from models.user import User
 
 
 @pytest.fixture()

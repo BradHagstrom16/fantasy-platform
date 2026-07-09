@@ -21,9 +21,9 @@ def app():
 
 def _make_enrollment(total_score=0.0, username='u'):
     """Create a User + WorldCupEnrollment for the current SEASON_YEAR."""
-    from models.user import User
-    from games.worldcup.models import WorldCupEnrollment
     from games.worldcup.constants import SEASON_YEAR
+    from games.worldcup.models import WorldCupEnrollment
+    from models.user import User
     user = User(username=username, email=f'{username}@test.com')
     user.set_password('test1234')
     db.session.add(user)
@@ -40,6 +40,7 @@ def _make_enrollment(total_score=0.0, username='u'):
 def _today_local():
     """Today's date in WORLDCUP_TZ — matches what the CLI uses."""
     from datetime import datetime
+
     from games.worldcup.constants import WORLDCUP_TZ
     return datetime.now(WORLDCUP_TZ).date()
 

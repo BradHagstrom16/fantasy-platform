@@ -53,8 +53,8 @@ Routed forward to receiving sessions per §0.4:
   object, not a wireframe"); the generic impeccable "pick one" heuristic
   is overridden by the committed policy.
 """
-from pathlib import Path
 import re
+from pathlib import Path
 
 ROOT = Path(__file__).parent.parent
 SCHEDULE = (ROOT / 'games' / 'worldcup' / 'templates' / 'worldcup' / 'schedule.html').read_text()

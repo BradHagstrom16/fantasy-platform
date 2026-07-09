@@ -15,19 +15,23 @@ Trend semantics (per spec §8 + plan ambiguity-A2):
 """
 import os
 import re
-import pytest
-from datetime import date, datetime, timezone, timedelta
+from datetime import UTC, date, datetime, timedelta
 from unittest.mock import patch
+
+import pytest
 
 from app import create_app
 from extensions import db
-from models.user import User
 from games.worldcup.constants import SEASON_YEAR, WORLDCUP_TZ
 from games.worldcup.models import (
-    WorldCupEnrollment, WorldCupRankSnapshot, WorldCupTeam, WorldCupPick,
+    WorldCupEnrollment,
     WorldCupMatch,
+    WorldCupPick,
+    WorldCupRankSnapshot,
+    WorldCupTeam,
 )
 from games.worldcup.services.state import now_utc
+from models.user import User
 
 
 def _wc_today() -> date:
@@ -42,8 +46,8 @@ def _wc_today() -> date:
     return now_utc().astimezone(WORLDCUP_TZ).date()
 
 
-PAST_DEADLINE = datetime(2000, 1, 1, tzinfo=timezone.utc)
-FUTURE_DEADLINE = datetime(2099, 1, 1, tzinfo=timezone.utc)
+PAST_DEADLINE = datetime(2000, 1, 1, tzinfo=UTC)
+FUTURE_DEADLINE = datetime(2099, 1, 1, tzinfo=UTC)
 
 # The real TOURNAMENT_DEADLINE_UTC (2026-06-11 19:00 UTC) has passed, so
 # pre-deadline behavior needs a faked clock. The env seam pins now_utc()

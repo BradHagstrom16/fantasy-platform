@@ -2,9 +2,10 @@
 from unittest.mock import patch
 
 import pytest
+
 from app import create_app
 from extensions import db
-from games.worldcup.models import WorldCupTeam, WorldCupMatch
+from games.worldcup.models import WorldCupMatch, WorldCupTeam
 from models.user import User
 
 

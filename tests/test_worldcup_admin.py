@@ -2,20 +2,23 @@
 Tests for World Cup public + admin routes that depend on deadline or
 state guards. Complements tests/test_worldcup_scoring.py (engine tests).
 """
-import pytest
+from datetime import UTC, datetime
 from unittest.mock import patch
-from datetime import datetime, timezone
+
+import pytest
 
 from app import create_app
 from extensions import db
-from models.user import User
 from games.worldcup.models import (
-    WorldCupEnrollment, WorldCupTeam, WorldCupMatch, WorldCupPick,
+    WorldCupEnrollment,
+    WorldCupMatch,
+    WorldCupPick,
+    WorldCupTeam,
 )
+from models.user import User
 
-
-PAST_DEADLINE = datetime(2000, 1, 1, tzinfo=timezone.utc)
-FUTURE_DEADLINE = datetime(2099, 1, 1, tzinfo=timezone.utc)
+PAST_DEADLINE = datetime(2000, 1, 1, tzinfo=UTC)
+FUTURE_DEADLINE = datetime(2099, 1, 1, tzinfo=UTC)
 
 
 @pytest.fixture()

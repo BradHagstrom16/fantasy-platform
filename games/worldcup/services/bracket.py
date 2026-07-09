@@ -11,9 +11,13 @@ from extensions import db
 from games.worldcup.models import WorldCupMatch, WorldCupTeam
 from games.worldcup.services.scoring import set_knockout_team_side
 from games.worldcup.services.sync import (
-    fetch_bracket_proposal,
-    _send_admin_email, _notify_once, SyncError, _fifa_for_tla, _api_get,
     COMPETITION_CODE,
+    SyncError,
+    _api_get,
+    _fifa_for_tla,
+    _notify_once,
+    _send_admin_email,
+    fetch_bracket_proposal,
 )
 
 logger = logging.getLogger(__name__)

@@ -1,12 +1,12 @@
 """Tests for the World Cup football-data.org sync service."""
 from datetime import datetime
+from unittest.mock import patch
 
 import pytest
-from unittest.mock import patch
 
 from app import create_app
 from extensions import db
-from games.worldcup.models import WorldCupTeam, WorldCupMatch
+from games.worldcup.models import WorldCupMatch, WorldCupTeam
 
 
 @pytest.fixture()
@@ -40,7 +40,7 @@ def test_match_and_team_have_api_id_columns(app):
 
 
 def test_api_get_raises_without_key(app):
-    from games.worldcup.services.sync import _api_get, SyncError
+    from games.worldcup.services.sync import SyncError, _api_get
     with app.app_context():
         app.config['FOOTBALL_DATA_API_KEY'] = ''
         with pytest.raises(SyncError):
@@ -68,6 +68,7 @@ def test_api_get_retries_transient_network_error_then_succeeds(app):
     """A single transient network blip (the 'Address unavailable' family) is
     absorbed by retry, not surfaced as a SyncError / admin alert."""
     import requests
+
     from games.worldcup.services import sync
 
     class _OK:
@@ -88,6 +89,7 @@ def test_api_get_retries_transient_network_error_then_succeeds(app):
 def test_api_get_raises_only_after_exhausting_retries(app):
     """A *sustained* outage still raises SyncError (→ admin email) once retries run out."""
     import requests
+
     from games.worldcup.services import sync
     from games.worldcup.services.sync import SyncError
 
@@ -700,6 +702,7 @@ def test_fetch_bracket_proposal_rejects_non_ko_stage(app):
 def test_fetch_bracket_proposal_matches_by_kickoff_when_unlinked(app):
     """A shell with no api_fixture_id still matches via (stage, kickoff)."""
     from datetime import datetime
+
     from games.worldcup.services import sync
     with app.app_context():
         for code, name in [('BRA', 'Brazil'), ('KSA', 'Saudi Arabia')]:

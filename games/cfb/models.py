@@ -17,7 +17,7 @@ converter per column — see games/cfb/utils.py):
   ``make_aware()`` on these shifts them +5/6h — the recap-autopick
   mislabel bug (audit §7, locked by tests/test_cfb_reminders.py).
 """
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from extensions import db
 from games.cfb.constants import TEAM_CONFERENCES
@@ -41,7 +41,7 @@ class CfbEnrollment(db.Model):
     cumulative_spread = db.Column(db.Float, default=0.0)
     display_name = db.Column(db.String(80), nullable=True)
 
-    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(UTC))
 
     user = db.relationship('User', backref='cfb_enrollments')
 
@@ -188,7 +188,7 @@ class CfbWeekOutcome(db.Model):
     no_pick = db.Column(db.Boolean, nullable=False, default=False)
     revived = db.Column(db.Boolean, nullable=False, default=False)
 
-    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(UTC))
 
     week = db.relationship('CfbWeek', backref='outcomes')
     user = db.relationship('User')
@@ -223,7 +223,7 @@ class CfbPick(db.Model):
     week_id = db.Column(db.Integer, db.ForeignKey('cfb_week.id'), nullable=False, index=True)
     team_id = db.Column(db.Integer, db.ForeignKey('cfb_team.id'), nullable=False)
     is_correct = db.Column(db.Boolean, default=None)
-    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(UTC))
 
     user = db.relationship('User', backref='cfb_picks')
     week = db.relationship('CfbWeek', backref='picks')

@@ -34,9 +34,8 @@ These tests pin the migration so it can't silently drift back:
   `.card.wc-card.leaderboard-card .rank-delta-*`). Parallels P1's removal
   of `.card.wc-card .btn-game` when CTAs went global red.
 """
-from pathlib import Path
 import re
-
+from pathlib import Path
 
 ROOT = Path(__file__).parent.parent
 CSS_PATH = ROOT / 'static' / 'css' / 'style.css'

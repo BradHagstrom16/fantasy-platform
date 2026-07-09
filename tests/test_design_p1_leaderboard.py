@@ -8,7 +8,6 @@ exercises the rendered HTML through the Flask test client.
 import re
 from pathlib import Path
 
-
 REPO_ROOT = Path(__file__).parent.parent
 TEMPLATE = REPO_ROOT / 'games' / 'worldcup' / 'templates' / 'worldcup' / 'leaderboard.html'
 CSS = REPO_ROOT / 'static' / 'css' / 'style.css'

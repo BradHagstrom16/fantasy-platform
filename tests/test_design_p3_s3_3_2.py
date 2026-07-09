@@ -54,8 +54,8 @@ Iteration map:
 The combined heuristic lift (Heuristic 7: 2→3, Heuristic 10: 2→3) clears
 the §1.5b gate (b) baseline+6 floor (24 → ≥26) that S3.3.1 fell short of.
 """
-from pathlib import Path
 import re
+from pathlib import Path
 
 ROOT = Path(__file__).parent.parent
 CSS = (ROOT / 'static' / 'css' / 'style.css').read_text()

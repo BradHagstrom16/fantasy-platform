@@ -1,5 +1,4 @@
 """Golf Pick 'Em enrollment service — registry integration point."""
-from typing import Optional
 
 from flask import current_app
 
@@ -11,7 +10,7 @@ def _season_year() -> int:
     return current_app.config['SEASON_YEAR']
 
 
-def get_enrollment(user_id: int) -> Optional[GolfEnrollment]:
+def get_enrollment(user_id: int) -> GolfEnrollment | None:
     """Return the user's current-season Golf enrollment, or None."""
     return GolfEnrollment.query.filter_by(
         user_id=user_id, season_year=_season_year()

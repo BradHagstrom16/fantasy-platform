@@ -10,7 +10,7 @@ also sets ENVIRONMENT in the same dict — the seam only activates in
 dev/testing and the outside-process env var doesn't propagate.
 """
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import patch
 
 import pytest
@@ -28,7 +28,7 @@ def app():
 
 
 FAKE_ISO = '2026-09-05T16:00:00+00:00'
-FAKE_UTC = datetime(2026, 9, 5, 16, 0, tzinfo=timezone.utc)
+FAKE_UTC = datetime(2026, 9, 5, 16, 0, tzinfo=UTC)
 
 
 def test_get_utc_time_honors_cfb_fake_now(app):
@@ -65,7 +65,7 @@ def test_aware_non_utc_fake_now_normalized_to_utc(app):
                                  'CFB_FAKE_NOW': '2026-09-05T11:00:00-05:00'}):
         now = get_utc_time()
     assert now == FAKE_UTC
-    assert now.tzinfo == timezone.utc
+    assert now.tzinfo == UTC
 
 
 def test_malformed_fake_now_falls_back_to_real_time(app):
@@ -73,7 +73,7 @@ def test_malformed_fake_now_falls_back_to_real_time(app):
     with patch.dict(os.environ, {'ENVIRONMENT': 'testing',
                                  'CFB_FAKE_NOW': 'not-a-datetime'}):
         now = get_utc_time()
-    assert abs((datetime.now(timezone.utc) - now).total_seconds()) < 5
+    assert abs((datetime.now(UTC) - now).total_seconds()) < 5
 
 
 def test_production_never_reads_fake_now(app):
@@ -81,4 +81,4 @@ def test_production_never_reads_fake_now(app):
     with patch.dict(os.environ, {'ENVIRONMENT': 'production',
                                  'CFB_FAKE_NOW': FAKE_ISO}):
         now = get_utc_time()
-    assert abs((datetime.now(timezone.utc) - now).total_seconds()) < 5
+    assert abs((datetime.now(UTC) - now).total_seconds()) < 5

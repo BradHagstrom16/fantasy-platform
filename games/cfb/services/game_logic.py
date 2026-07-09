@@ -10,14 +10,22 @@ import logging
 from flask import current_app
 
 from extensions import db
-from models import User
 from games.cfb.models import (
-    CfbEnrollment, CfbTeam, CfbWeek, CfbGame, CfbPick, CfbWeekOutcome,
+    CfbEnrollment,
+    CfbGame,
+    CfbPick,
+    CfbWeek,
+    CfbWeekOutcome,
 )
 from games.cfb.utils import (
-    get_current_time, get_utc_time, make_aware, deadline_has_passed,
-    is_week_playoff, get_cfp_eliminated_teams,
+    deadline_has_passed,
+    get_cfp_eliminated_teams,
+    get_current_time,
+    get_utc_time,
+    is_week_playoff,
+    make_aware,
 )
+from models import User
 
 logger = logging.getLogger(__name__)
 

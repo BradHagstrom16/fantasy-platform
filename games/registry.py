@@ -9,8 +9,9 @@ Consumed by:
 - core/admin/enrollments.py (admin add-user form)
 - games/common.py (decorators)
 """
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable, Literal, Optional, Any
+from typing import Any, Literal
 
 GameStatus = Literal['coming_soon', 'open', 'closed', 'completed']
 
@@ -25,7 +26,7 @@ class GameRegistryEntry:
     is_featured: bool
     blueprint_index: str
     blueprint_join: str
-    get_enrollment: Callable[[int], Optional[Any]]
+    get_enrollment: Callable[[int], Any | None]
     admin_enroll: Callable[[int], Any]
     # Display metadata for compact tile / coming-soon variants. Defaults keep
     # the partial slug-agnostic when an entry omits them.
@@ -33,9 +34,9 @@ class GameRegistryEntry:
     launch_label: str = ''
 
 
-from games.worldcup.services import enrollment as _worldcup_enrollment
 from games.cfb.services import enrollment as _cfb_enrollment
 from games.golf.services import enrollment as _golf_enrollment
+from games.worldcup.services import enrollment as _worldcup_enrollment
 
 # Populated in Tasks 3, 5, 8. Intentionally empty at file-creation time so
 # helpers remain testable against mock lists via monkeypatch.
@@ -106,7 +107,7 @@ def _is_authenticated(user) -> bool:
     return bool(getattr(user, 'is_authenticated', False))
 
 
-def games_for_user(user) -> list[tuple[GameRegistryEntry, Optional[Any]]]:
+def games_for_user(user) -> list[tuple[GameRegistryEntry, Any | None]]:
     """Return every game paired with this user's current-season enrollment (or None)."""
     if not _is_authenticated(user):
         return [(entry, None) for entry in GAMES]

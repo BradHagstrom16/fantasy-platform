@@ -64,8 +64,8 @@ per-surface convergence gate. Layer B (Playwright MCP) handles the
 cross-cluster regression check on touched + adjacent chrome surfaces.
 """
 
-from pathlib import Path
 import re
+from pathlib import Path
 
 ROOT = Path(__file__).parent.parent
 CSS = (ROOT / 'static' / 'css' / 'style.css').read_text()

@@ -4,6 +4,10 @@ Fantasy Sports Platform - Models
 Import all models here so Alembic can discover them.
 When adding a new game, import its models here too.
 """
+# Import order is load-bearing: models.user must bind User before the
+# game-model imports below, because game modules circularly do
+# `from models import User` against this half-initialized package.
+# isort: skip_file
 from models.user import User
 
 # Platform editorial content (admin-editable copy)

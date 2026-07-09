@@ -4,7 +4,6 @@ Golf Pick 'Em — Utility Functions
 Shared helpers for formatting, parsing, and calculations.
 """
 import logging
-from typing import Optional, List
 from zoneinfo import ZoneInfo
 
 logger = logging.getLogger(__name__)
@@ -19,7 +18,7 @@ def get_current_time():
     return datetime.now(GOLF_LEAGUE_TZ)
 
 
-def format_score_to_par(score) -> Optional[str]:
+def format_score_to_par(score) -> str | None:
     """
     Format integer score to par for display.
 
@@ -36,7 +35,7 @@ def format_score_to_par(score) -> Optional[str]:
     return f"+{score}" if score > 0 else str(score)
 
 
-def parse_score_to_par(total_str) -> Optional[int]:
+def parse_score_to_par(total_str) -> int | None:
     """
     Parse the 'total' field from SlashGolf API into an integer score to par.
 
@@ -133,7 +132,7 @@ PAYOUT_PERCENTAGES = {
 }
 
 
-def calculate_projected_earnings(position_str: str, purse: int, all_positions: List[str],
+def calculate_projected_earnings(position_str: str, purse: int, all_positions: list[str],
                                  is_major: bool = False) -> int:
     """
     Calculate projected earnings for a player based on current position.

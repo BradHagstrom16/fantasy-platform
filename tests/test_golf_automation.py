@@ -15,14 +15,13 @@ Locks the ops fixes ported/added in PR 4:
 
 Golf tests run against in-memory SQLite via ``create_app('testing')``.
 """
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from unittest.mock import patch
 
 import pytest
 
 from app import create_app
 from extensions import db
-from models.user import User
 from games.golf.models import (
     GolfEnrollment,
     GolfPlayer,
@@ -31,6 +30,7 @@ from games.golf.models import (
 )
 from games.golf.services.reminders import run_reminder_check
 from games.golf.utils import GOLF_LEAGUE_TZ
+from models.user import User
 
 SEASON = 2026
 
@@ -81,7 +81,7 @@ def _make_player(api_id, first='F', last='L'):
 def _make_tournament(name='Test Open', status='upcoming', season_year=SEASON,
                      results_finalized=False, start_date=None, end_date=None,
                      pick_deadline=None):
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     t = GolfTournament(
         api_tourn_id=f'T-{name}-{season_year}',
         name=name,
@@ -153,7 +153,7 @@ def test_get_active_tournaments_scoped_to_current_season(app):
 
 def test_get_recently_completed_tournaments_scoped_to_current_season(app):
     from games.golf.services.sync import get_recently_completed_tournaments
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     recent_end = now - timedelta(hours=1)  # inside the 2-day window for BOTH
     _make_tournament(name='This Yr', status='complete', season_year=SEASON,
                      end_date=recent_end)
@@ -180,7 +180,7 @@ def test_get_tournaments_pending_finalization_scoped_to_current_season(app):
 
 def test_get_upcoming_tournaments_window_scoped_to_current_season(app):
     from games.golf.services.sync import get_upcoming_tournaments_window
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     soon_start = now + timedelta(days=2)   # inside the 10-day window, stays upcoming
     soon_end = now + timedelta(days=5)
     _make_tournament(name='This Yr', status='upcoming', season_year=SEASON,

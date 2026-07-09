@@ -24,36 +24,37 @@ import logging
 import os
 import random
 import time
-from datetime import datetime, timedelta, timezone
+from collections.abc import Iterator
+from datetime import UTC, datetime, timedelta
 from logging.handlers import RotatingFileHandler
-from typing import Any, Iterator, Optional, Dict, List, Tuple
+from typing import Any
 from zoneinfo import ZoneInfo
 
 import requests
 from flask import current_app, has_app_context
 
 from extensions import db
+from games.golf.constants import (
+    DEFAULT_PURSE,
+    EXCLUDED_TOURNAMENTS,
+    MIN_FIELD_SIZE,
+    SEASON_CUTOFF_DATE,
+    TOURNAMENTS_2026,
+)
 from games.golf.models import (
-    GolfTournament,
+    GolfEnrollment,
+    GolfPick,
     GolfPlayer,
+    GolfSeasonPlayerUsage,
+    GolfTournament,
     GolfTournamentField,
     GolfTournamentResult,
-    GolfPick,
-    GolfEnrollment,
-    GolfSeasonPlayerUsage,
 )
 from games.golf.utils import (
     GOLF_LEAGUE_TZ,
-    parse_score_to_par,
     calculate_projected_earnings,
     normalize_position,
-)
-from games.golf.constants import (
-    EXCLUDED_TOURNAMENTS,
-    SEASON_CUTOFF_DATE,
-    MIN_FIELD_SIZE,
-    DEFAULT_PURSE,
-    TOURNAMENTS_2026,
+    parse_score_to_par,
 )
 
 logger = logging.getLogger(__name__)
@@ -122,7 +123,7 @@ class SlashGolfAPI:
         self.sync_mode = (sync_mode or "standard").lower()
         self._call_counter = 0
 
-    def _log_api_call(self, endpoint: str, params: Dict, status: int, duration: float, attempt: int) -> None:
+    def _log_api_call(self, endpoint: str, params: dict, status: int, duration: float, attempt: int) -> None:
         """Record API call details for auditing."""
         _ensure_api_call_logging()
         self._call_counter += 1
@@ -137,7 +138,7 @@ class SlashGolfAPI:
             params,
         )
 
-    def _make_request(self, endpoint: str, params: Dict = None, retries: int = 5) -> Optional[Dict]:
+    def _make_request(self, endpoint: str, params: dict = None, retries: int = 5) -> dict | None:
         """Make API request with exponential backoff, jitter, and structured logging."""
         url = f"{self.BASE_URL}/{endpoint}"
 
@@ -171,7 +172,7 @@ class SlashGolfAPI:
                 if not is_retryable:
                     break
 
-            except requests.RequestException as exc:
+            except requests.RequestException:
                 logger.exception(
                     "Request failed for %s params=%s (attempt %s/%s)",
                     endpoint,
@@ -190,15 +191,15 @@ class SlashGolfAPI:
         logger.error("Exhausted retries for endpoint %s params=%s", endpoint, params)
         return None
 
-    def get_schedule(self, year: str) -> Optional[Dict]:
+    def get_schedule(self, year: str) -> dict | None:
         """Get full season schedule."""
         return self._make_request("schedule", {"year": year})
 
-    def get_leaderboard(self, tourn_id: str, year: str) -> Optional[Dict]:
+    def get_leaderboard(self, tourn_id: str, year: str) -> dict | None:
         """Get leaderboard with tee times, status, rounds."""
         return self._make_request("leaderboard", {"tournId": tourn_id, "year": year})
 
-    def get_earnings(self, tourn_id: str, year: str) -> Optional[Dict]:
+    def get_earnings(self, tourn_id: str, year: str) -> dict | None:
         """Get earnings/prize money for completed tournament."""
         return self._make_request("earnings", {"tournId": tourn_id, "year": year})
 
@@ -216,7 +217,7 @@ class TournamentSync:
         return self.sync_mode == "free"
 
     @staticmethod
-    def _get_event_timezone(leaderboard_data: Dict) -> ZoneInfo:
+    def _get_event_timezone(leaderboard_data: dict) -> ZoneInfo:
         tz_name = leaderboard_data.get("timeZone") or leaderboard_data.get("timezone") or leaderboard_data.get("tz")
         if tz_name:
             try:
@@ -230,11 +231,11 @@ class TournamentSync:
         """Parse an ISO 8601 string to a UTC-aware datetime (naive treated as UTC)."""
         dt = datetime.fromisoformat(iso_str.replace("Z", "+00:00"))
         if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=timezone.utc)
+            dt = dt.replace(tzinfo=UTC)
         return dt
 
     @staticmethod
-    def _parse_tee_time_timestamp(tee_time_ts) -> Optional[datetime]:
+    def _parse_tee_time_timestamp(tee_time_ts) -> datetime | None:
         """
         Parse teeTimeTimestamp from API (preferred method - timezone-safe).
 
@@ -266,7 +267,7 @@ class TournamentSync:
                 else:
                     return None
                 ts_sec = ts_ms / 1000
-                return datetime.fromtimestamp(ts_sec, tz=timezone.utc)
+                return datetime.fromtimestamp(ts_sec, tz=UTC)
 
             # Handle ISO 8601 string (current API format)
             if isinstance(tee_time_ts, str) and "T" in tee_time_ts:
@@ -275,13 +276,13 @@ class TournamentSync:
             # Handle raw millisecond integer
             ts_ms = int(tee_time_ts)
             ts_sec = ts_ms / 1000
-            return datetime.fromtimestamp(ts_sec, tz=timezone.utc)
+            return datetime.fromtimestamp(ts_sec, tz=UTC)
         except Exception as e:
             logger.warning("Unable to parse tee time timestamp '%s': %s", tee_time_ts, e)
             return None
 
     @staticmethod
-    def _iter_player_rows(leaderboard_rows: Optional[List[Dict[str, Any]]]) -> Iterator[Dict[str, Any]]:
+    def _iter_player_rows(leaderboard_rows: list[dict[str, Any]] | None) -> Iterator[dict[str, Any]]:
         """
         Yield one per-player dict for each pickable player.
 
@@ -314,7 +315,7 @@ class TournamentSync:
                 yield merged
 
     @staticmethod
-    def _parse_tee_time(tee_time_str: Optional[str], tournament_date: datetime, event_tz: ZoneInfo) -> Optional[datetime]:
+    def _parse_tee_time(tee_time_str: str | None, tournament_date: datetime, event_tz: ZoneInfo) -> datetime | None:
         """
         Parse tee time from string (fallback method - requires timezone context).
 
@@ -338,7 +339,7 @@ class TournamentSync:
             logger.warning("Unable to parse tee time '%s'", tee_time_str)
             return None
 
-    def _derive_status(self, tournament: GolfTournament, leaderboard_data: Optional[Dict] = None) -> str:
+    def _derive_status(self, tournament: GolfTournament, leaderboard_data: dict | None = None) -> str:
         status_hint = (leaderboard_data or {}).get("status", "").lower()
         now = datetime.now(GOLF_LEAGUE_TZ)
         start = tournament.start_date if tournament.start_date.tzinfo else tournament.start_date.replace(tzinfo=GOLF_LEAGUE_TZ)
@@ -351,9 +352,7 @@ class TournamentSync:
             # Keep as 'active' until sync_tournament_results() verifies completion.
             if tournament.status != 'active':
                 tournament.status = 'active'
-        elif "progress" in status_hint or "live" in status_hint:
-            tournament.status = "active"
-        elif now >= start:
+        elif "progress" in status_hint or "live" in status_hint or now >= start:
             tournament.status = "active"
         else:
             tournament.status = "upcoming"
@@ -386,7 +385,7 @@ class TournamentSync:
                 return int(float(value['$numberDouble']))
         return int(value) if value else 0
 
-    def sync_schedule(self, year: int, tournament_names: List[str] = None) -> int:
+    def sync_schedule(self, year: int, tournament_names: list[str] = None) -> int:
         """
         Update season schedule from API.
 
@@ -463,7 +462,7 @@ class TournamentSync:
         print(f"Updated {updated} tournaments for {year}")
         return updated
 
-    def sync_tournament_field(self, tournament: GolfTournament, is_wednesday_evening: bool = False) -> Tuple[int, Optional[datetime]]:
+    def sync_tournament_field(self, tournament: GolfTournament, is_wednesday_evening: bool = False) -> tuple[int, datetime | None]:
         """
         Sync tournament field and get first tee time.
         Call this Tuesday/Wednesday before the tournament.
@@ -615,7 +614,7 @@ class TournamentSync:
 
         return new_players_synced, first_tee_time
 
-    def _backfill_purse_from_schedule(self, tournament: GolfTournament) -> Optional[int]:
+    def _backfill_purse_from_schedule(self, tournament: GolfTournament) -> int | None:
         """Write the official purse from the schedule endpoint when it was never
         captured. Majors announce their purse week-of, and the leaderboard/
         earnings endpoints carry no purse field — so a completed major can
@@ -850,7 +849,7 @@ class TournamentSync:
 
         return processed
 
-    def check_withdrawals(self, tournament: GolfTournament, force: bool = False) -> List[Dict]:
+    def check_withdrawals(self, tournament: GolfTournament, force: bool = False) -> list[dict]:
         """
         Check for withdrawals during a tournament.
         Useful for monitoring mid-tournament.
@@ -1042,7 +1041,7 @@ def refresh_tournament_penalties(tournament: GolfTournament) -> int:
     return flagged
 
 
-def get_upcoming_tournament(days_ahead: int = 7) -> Optional[GolfTournament]:
+def get_upcoming_tournament(days_ahead: int = 7) -> GolfTournament | None:
     """Get the next upcoming tournament within specified days."""
     now = datetime.now(GOLF_LEAGUE_TZ)
     cutoff = now + timedelta(days=days_ahead)
@@ -1066,7 +1065,7 @@ def _refresh_statuses(tournaments):
         db.session.commit()
 
 
-def _resolve_season_year(season_year: Optional[int] = None) -> int:
+def _resolve_season_year(season_year: int | None = None) -> int:
     """The season the automation queries should scope to.
 
     Explicit arg wins (tests / one-off backfills); otherwise the configured
@@ -1084,7 +1083,7 @@ def _resolve_season_year(season_year: Optional[int] = None) -> int:
 
 
 def get_upcoming_tournaments_window(days_ahead: int = 10,
-                                    season_year: Optional[int] = None) -> List[GolfTournament]:
+                                    season_year: int | None = None) -> list[GolfTournament]:
     season_year = _resolve_season_year(season_year)
     now = datetime.now(GOLF_LEAGUE_TZ)
     cutoff = now + timedelta(days=days_ahead)
@@ -1098,7 +1097,7 @@ def get_upcoming_tournaments_window(days_ahead: int = 10,
     return tournaments
 
 
-def get_active_tournaments(season_year: Optional[int] = None) -> List[GolfTournament]:
+def get_active_tournaments(season_year: int | None = None) -> list[GolfTournament]:
     """Return all tournaments currently in 'active' status for the season.
 
     Queries by status directly — the authoritative field maintained by
@@ -1113,7 +1112,7 @@ def get_active_tournaments(season_year: Optional[int] = None) -> List[GolfTourna
 
 
 def get_recently_completed_tournaments(days_back: int = 2,
-                                       season_year: Optional[int] = None) -> List[GolfTournament]:
+                                       season_year: int | None = None) -> list[GolfTournament]:
     season_year = _resolve_season_year(season_year)
     now = datetime.now(GOLF_LEAGUE_TZ)
     since = now - timedelta(days=days_back)
@@ -1126,7 +1125,7 @@ def get_recently_completed_tournaments(days_back: int = 2,
     return tournaments
 
 
-def get_tournaments_pending_finalization(season_year: Optional[int] = None) -> List[GolfTournament]:
+def get_tournaments_pending_finalization(season_year: int | None = None) -> list[GolfTournament]:
     """Get tournaments that are complete but haven't had earnings finalized from API."""
     season_year = _resolve_season_year(season_year)
     return GolfTournament.query.filter(
@@ -1136,7 +1135,7 @@ def get_tournaments_pending_finalization(season_year: Optional[int] = None) -> L
     ).order_by(GolfTournament.end_date.desc()).all()
 
 
-def seed_schedule(year: int = 2026) -> Tuple[int, int]:
+def seed_schedule(year: int = 2026) -> tuple[int, int]:
     """Seed (or refresh) the locked season schedule from ``TOURNAMENTS_2026``.
 
     Idempotent upsert keyed on (name, season_year) — mirrors the standalone

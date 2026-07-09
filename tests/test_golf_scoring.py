@@ -10,21 +10,22 @@ Locks:
 
 Golf tests run against in-memory SQLite via ``create_app('testing')``.
 """
+from datetime import UTC, datetime, timedelta
+
 import pytest
-from datetime import datetime, timedelta, timezone
 
 from app import create_app
 from extensions import db
-from models.user import User
 from games.golf.models import (
     GolfEnrollment,
     GolfPick,
     GolfPlayer,
+    GolfSeasonPlayerUsage,
     GolfTournament,
     GolfTournamentResult,
-    GolfSeasonPlayerUsage,
 )
 from games.golf.services.sync import SlashGolfAPI, TournamentSync
+from models.user import User
 
 SEASON = 2026
 
@@ -57,7 +58,7 @@ def _make_enrollment(user):
 
 
 def _make_tournament(name='Test Open', is_major=False, is_team_event=False, status='complete'):
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     t = GolfTournament(
         api_tourn_id=f'T-{name}',
         name=name,

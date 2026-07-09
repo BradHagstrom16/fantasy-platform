@@ -18,13 +18,13 @@ from flask.cli import AppGroup
 
 from extensions import db
 from games.worldcup.constants import SEASON_YEAR, WORLDCUP_TZ
-from games.worldcup.services.state import now_utc
 from games.worldcup.models import (
-    WorldCupTeam,
-    WorldCupMatch,
     WorldCupEnrollment,
+    WorldCupMatch,
     WorldCupRankSnapshot,
+    WorldCupTeam,
 )
+from games.worldcup.services.state import now_utc
 
 worldcup_cli = AppGroup('worldcup', help="World Cup Fantasy Pool management commands.")
 
@@ -117,7 +117,7 @@ def recalc_cmd():
     """Recalculate all scores from match results (idempotent)."""
     from games.worldcup.services.scoring import recalculate_all_scores
     result = recalculate_all_scores()
-    click.echo(f"Recalculation complete:")
+    click.echo("Recalculation complete:")
     click.echo(f"  Teams updated:       {result['teams_updated']}")
     click.echo(f"  Picks updated:       {result['picks_updated']}")
     click.echo(f"  Enrollments updated: {result['enrollments_updated']}")
@@ -130,7 +130,7 @@ def recalc_cmd():
         .all()
     )
     if top:
-        click.echo(f"\nTop 5:")
+        click.echo("\nTop 5:")
         for i, e in enumerate(top, 1):
             click.echo(f"  {i}. {e.get_display_name()} — {e.total_score:.1f} pts")
 
@@ -143,7 +143,7 @@ def status_cmd():
     completed_matches = WorldCupMatch.query.filter_by(is_completed=True).count()
     enrolled_players = WorldCupEnrollment.query.filter_by(season_year=SEASON_YEAR).count()
 
-    click.echo(f'\n=== World Cup Fantasy Pool — Status ===')
+    click.echo('\n=== World Cup Fantasy Pool — Status ===')
     click.echo(f'Teams:             {total_teams}')
     click.echo(f'Matches:           {total_matches} ({completed_matches} completed)')
     click.echo(f'Enrolled players:  {enrolled_players}')
@@ -156,7 +156,7 @@ def status_cmd():
             .limit(5)
             .all()
         )
-        click.echo(f'\nTop 5:')
+        click.echo('\nTop 5:')
         for i, e in enumerate(top_players, 1):
             click.echo(f'  {i}. {e.get_display_name()} — {e.total_score:.1f} pts')
     click.echo('')
@@ -531,7 +531,10 @@ def repair_pk_scores():
     human decision, so it is reported and skipped.
     """
     from games.worldcup.services.sync import (
-        _api_get, _settled_pk_breakdown, COMPETITION_CODE, FINISHED_STATUSES,
+        COMPETITION_CODE,
+        FINISHED_STATUSES,
+        _api_get,
+        _settled_pk_breakdown,
     )
 
     data = _api_get(f'competitions/{COMPETITION_CODE}/matches')

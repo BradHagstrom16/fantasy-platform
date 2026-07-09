@@ -1,11 +1,11 @@
 """Admin 'Load from API' proposal endpoint."""
-import pytest
 from unittest.mock import patch
+
+import pytest
 
 from app import create_app
 from extensions import db
 from models.user import User
-from games.worldcup.models import WorldCupTeam
 
 
 @pytest.fixture()

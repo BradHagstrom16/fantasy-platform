@@ -33,9 +33,12 @@ def main() -> int:
 
     app = create_app()
     with app.app_context():
-        from games.cfb.models import CfbEnrollment, CfbPick, CfbGame, CfbWeek
+        from games.cfb.models import CfbEnrollment, CfbGame, CfbPick, CfbWeek
         from games.golf.models import (
-            GolfEnrollment, GolfPick, GolfSeasonPlayerUsage, GolfTournament,
+            GolfEnrollment,
+            GolfPick,
+            GolfSeasonPlayerUsage,
+            GolfTournament,
         )
 
         golf_season = app.config.get('SEASON_YEAR', 2026)
@@ -75,13 +78,13 @@ def main() -> int:
         golf_usage_count = GolfSeasonPlayerUsage.query.count()
         golf_enr_count = GolfEnrollment.query.count()
 
-        print(f'Planning to delete:')
+        print('Planning to delete:')
         print(f'  CfbPick rows:               {cfb_pick_count}')
         print(f'  CfbEnrollment rows:         {cfb_enr_count}')
         print(f'  GolfPick rows:              {golf_pick_count}')
         print(f'  GolfSeasonPlayerUsage rows: {golf_usage_count}')
         print(f'  GolfEnrollment rows:        {golf_enr_count}')
-        print(f'  (WorldCupEnrollment, Users untouched.)')
+        print('  (WorldCupEnrollment, Users untouched.)')
 
         if not args.confirm:
             print('\nDry run — pass --confirm to apply.')
