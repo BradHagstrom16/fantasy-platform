@@ -14,11 +14,11 @@ Core Concepts:
 - Majors earn 1.5x points; team events (Zurich) pay the FULL team payout (ADR-033)
 """
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from extensions import db
 from games.golf.constants import PURSE_ESTIMATES
-from games.golf.utils import format_score_to_par, GOLF_LEAGUE_TZ
+from games.golf.utils import GOLF_LEAGUE_TZ, format_score_to_par
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +57,7 @@ class GolfEnrollment(db.Model):
     is_admin = db.Column(db.Boolean, default=False, nullable=False)
 
     # Timestamps
-    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(UTC))
 
     # Relationships
     user = db.relationship('User', backref=db.backref('golf_enrollments', lazy='dynamic'))
@@ -133,9 +133,9 @@ class GolfPlayer(db.Model):
     is_amateur = db.Column(db.Boolean, default=False)
 
     # Timestamps
-    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
-    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc),
-                           onupdate=lambda: datetime.now(timezone.utc))
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(UTC))
+    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(UTC),
+                           onupdate=lambda: datetime.now(UTC))
 
     # Relationships
     tournament_results = db.relationship('GolfTournamentResult', backref='player', lazy='dynamic')
@@ -188,9 +188,9 @@ class GolfTournament(db.Model):
     week_number = db.Column(db.Integer, nullable=True)
 
     # Timestamps
-    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
-    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc),
-                           onupdate=lambda: datetime.now(timezone.utc))
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(UTC))
+    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(UTC),
+                           onupdate=lambda: datetime.now(UTC))
 
     # Relationships
     picks = db.relationship('GolfPick', backref='tournament', lazy='dynamic')
@@ -298,7 +298,7 @@ class GolfTournamentField(db.Model):
     tournament_id = db.Column(db.Integer, db.ForeignKey('golf_tournament.id'), nullable=False, index=True)
     player_id = db.Column(db.Integer, db.ForeignKey('golf_player.id'), nullable=False, index=True)
 
-    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(UTC))
 
     # Relationships
     player = db.relationship('GolfPlayer', backref='field_entries')
@@ -323,7 +323,7 @@ class GolfSeasonPlayerUsage(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
     player_id = db.Column(db.Integer, db.ForeignKey('golf_player.id'), nullable=False, index=True)
     season_year = db.Column(db.Integer, nullable=False)
-    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(UTC))
 
     __table_args__ = (
         db.UniqueConstraint('user_id', 'player_id', 'season_year', name='unique_golf_player_usage'),
@@ -376,9 +376,9 @@ class GolfTournamentResult(db.Model):
     score_to_par = db.Column(db.Integer, nullable=True)
 
     # Timestamps
-    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
-    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc),
-                           onupdate=lambda: datetime.now(timezone.utc))
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(UTC))
+    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(UTC),
+                           onupdate=lambda: datetime.now(UTC))
 
     __table_args__ = (
         db.UniqueConstraint('tournament_id', 'player_id', name='unique_golf_player_tournament_result'),
@@ -451,9 +451,9 @@ class GolfPick(db.Model):
     admin_override_note = db.Column(db.String(200), nullable=True)
 
     # Timestamps
-    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
-    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc),
-                           onupdate=lambda: datetime.now(timezone.utc))
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(UTC))
+    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(UTC),
+                           onupdate=lambda: datetime.now(UTC))
 
     # Relationships
     user = db.relationship('User', backref=db.backref('golf_picks', lazy='dynamic'))

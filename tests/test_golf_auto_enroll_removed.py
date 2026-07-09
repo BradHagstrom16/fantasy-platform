@@ -1,11 +1,12 @@
 """Regression tests: golf pick routes must NOT silently auto-enroll users."""
+from datetime import UTC, datetime, timedelta
+
 import pytest
-from datetime import datetime, timedelta, timezone
 
 from app import create_app
 from extensions import db
-from models.user import User
 from games.golf.models import GolfEnrollment, GolfPick, GolfPlayer, GolfTournament
+from models.user import User
 from tests._registry_helpers import set_status as _set_status
 
 
@@ -44,7 +45,7 @@ def _login(client, user_id):
 def _seed_open_tournament(app):
     """Seed a GolfTournament with fields matching the actual model."""
     with app.app_context():
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         t = GolfTournament(
             api_tourn_id='TEST-1',
             name='Test Open',

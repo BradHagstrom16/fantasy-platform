@@ -15,9 +15,14 @@ import pytest
 
 from app import create_app
 from extensions import db
-from games.cfb.models import CfbTeam, CfbGame
+from games.cfb.models import CfbGame, CfbTeam
 from tests._cfb_fixtures import (
-    make_user, make_enrollment, make_team, make_week, make_game, make_pick,
+    make_enrollment,
+    make_game,
+    make_pick,
+    make_team,
+    make_user,
+    make_week,
 )
 
 

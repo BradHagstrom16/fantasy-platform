@@ -20,6 +20,15 @@
             "command": "if echo \"$CLAUDE_TOOL_INPUT\" | grep -qE '(routes|models|app)\\.py'; then cd \"$(git rev-parse --show-toplevel)\" && FLASK_APP=app.py ENVIRONMENT=testing venv/bin/python -c \"from app import create_app; app = create_app('testing'); print('Smoke test OK')\" 2>&1 | tail -5; fi"
           }
         ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "fp=$(echo \"$CLAUDE_TOOL_INPUT\" | jq -r '.file_path // empty'); root=$(git rev-parse --show-toplevel 2>/dev/null); if [ -n \"$root\" ] && [ -n \"$fp\" ]; then case \"$fp\" in \"$root\"/*.py) out=$(\"$root/venv/bin/ruff\" check --no-cache \"$fp\" 2>&1) || { echo \"$out\" 1>&2; exit 2; } ;; esac; fi"
+          }
+        ]
       }
     ]
   }

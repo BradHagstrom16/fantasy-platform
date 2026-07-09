@@ -1,6 +1,6 @@
 """Route-level rendering tests for the four home states (Spec B follow-up B1)."""
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import patch
 
 import pytest
@@ -36,8 +36,8 @@ def _make_user(username='alice', email='alice@example.com'):
 
 
 def _make_enrollment(user, picks_submitted=False, total_score=0.0):
-    from games.worldcup.models import WorldCupEnrollment
     from games.worldcup.constants import SEASON_YEAR
+    from games.worldcup.models import WorldCupEnrollment
     enr = WorldCupEnrollment(
         user_id=user.id,
         season_year=SEASON_YEAR,
@@ -80,7 +80,7 @@ def _make_match(match_number, stage, home_team, away_team, completed=False,
         away_team_id=away_team.id,
         is_completed=completed,
         winner_team_id=winner_team_id,
-        kickoff_utc=kickoff_utc or datetime(2026, 6, 14, 19, 0, tzinfo=timezone.utc),
+        kickoff_utc=kickoff_utc or datetime(2026, 6, 14, 19, 0, tzinfo=UTC),
     )
     db.session.add(match)
     db.session.commit()
@@ -198,7 +198,7 @@ def test_home_renders_post_with_champion(app, client):
             home_team_id=bra.id, away_team_id=arg.id,
             home_score=3, away_score=2, extra_time=True,
             winner_team_id=bra.id, is_completed=True,
-            kickoff_utc=datetime(2026, 7, 19, 19, 0, tzinfo=timezone.utc),
+            kickoff_utc=datetime(2026, 7, 19, 19, 0, tzinfo=UTC),
         )
         db.session.add(final)
         db.session.commit()

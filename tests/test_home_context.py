@@ -1,6 +1,6 @@
 """Unit tests for home-page state detection and context assembly (Spec B)."""
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import patch
 
 import pytest
@@ -66,8 +66,8 @@ def _make_user(username='alice', email='alice@example.com'):
 
 def _make_enrollment(user, picks_submitted=False, total_score=0.0):
     """Create + persist a WorldCupEnrollment for the current SEASON_YEAR."""
-    from games.worldcup.models import WorldCupEnrollment
     from games.worldcup.constants import SEASON_YEAR
+    from games.worldcup.models import WorldCupEnrollment
     enr = WorldCupEnrollment(
         user_id=user.id,
         season_year=SEASON_YEAR,
@@ -124,7 +124,7 @@ def test_context_pre_unenrolled(app):
         assert ctx['display_name'] == 'alice'
         assert 'court_line' in ctx
         assert 'deadline_utc' in ctx
-        assert ctx['now_utc'] == datetime(2026, 5, 1, tzinfo=timezone.utc)
+        assert ctx['now_utc'] == datetime(2026, 5, 1, tzinfo=UTC)
 
 
 def test_context_pre_enrolled_no_picks(app):
@@ -141,7 +141,7 @@ def test_context_pre_enrolled_no_picks(app):
 def test_context_pre_enrolled_sealed(app):
     """Enrolled + picks_submitted=True → picks list populated."""
     from core.main.home_context import build_home_context
-    from games.worldcup.models import WorldCupTeam, WorldCupPick
+    from games.worldcup.models import WorldCupPick, WorldCupTeam
     with app.app_context(), patch.dict(os.environ, {'WC_FAKE_NOW': '2026-05-01T00:00:00Z'}):
         user = _make_user()
         enr = _make_enrollment(user, picks_submitted=True)
@@ -198,7 +198,7 @@ def test_context_live_roster_ledger_status_leader_and_sort(app):
     roster's non-out count (eliminated_team_ids, NOT group-only is_eliminated).
     """
     from core.main.home_context import build_home_context
-    from games.worldcup.models import WorldCupTeam, WorldCupPick
+    from games.worldcup.models import WorldCupPick, WorldCupTeam
     with app.app_context(), patch.dict(os.environ, {'WC_FAKE_NOW': '2026-06-15T00:00:00Z'}):
         ldr = WorldCupTeam(
             fifa_code='LDR', name='Leadland', display_name='Leadland',
@@ -252,7 +252,7 @@ def test_context_live_roster_no_leader_when_nothing_scored(app):
     """When no pick has scored yet, no row is crowned (is_leader all False)
     and top_earner is None — the gold hero row never appears speculatively."""
     from core.main.home_context import build_home_context
-    from games.worldcup.models import WorldCupTeam, WorldCupPick
+    from games.worldcup.models import WorldCupPick, WorldCupTeam
     with app.app_context(), patch.dict(os.environ, {'WC_FAKE_NOW': '2026-06-15T00:00:00Z'}):
         a = WorldCupTeam(
             fifa_code='AAA', name='Aaa', display_name='Aaa',
@@ -283,7 +283,7 @@ def test_context_live_roster_no_leader_when_nothing_scored(app):
 def test_context_post_with_champion(app):
     """Post state with match #104 completed → champion_team populated."""
     from core.main.home_context import build_home_context
-    from games.worldcup.models import WorldCupTeam, WorldCupMatch
+    from games.worldcup.models import WorldCupMatch, WorldCupTeam
     with app.app_context():
         # Seed the champion + final match
         bra = WorldCupTeam(
@@ -321,11 +321,15 @@ def test_context_post_enrolled_with_climb_and_roster_recap(app):
     _context_post — your_climbed_n sign convention, tier_name lookup,
     best_finish fallback, and is_champion flag against the right pick.
     """
+    from datetime import date, timedelta
+
     from core.main.home_context import build_home_context
     from games.worldcup.models import (
-        WorldCupTeam, WorldCupMatch, WorldCupPick, WorldCupRankSnapshot,
+        WorldCupMatch,
+        WorldCupPick,
+        WorldCupRankSnapshot,
+        WorldCupTeam,
     )
-    from datetime import date, timedelta
     with app.app_context():
         bra = WorldCupTeam(
             fifa_code='BRA', name='Brazil', display_name='Brazil',
@@ -379,7 +383,7 @@ def test_context_post_roster_recap_renders_best_finish_labels(app):
     and must distinguish an advanced-but-R32-eliminated team (empty best_finish
     -> 'Round of 32') from a group-stage exit ('group' -> 'Group Stage')."""
     from core.main.home_context import build_home_context
-    from games.worldcup.models import WorldCupTeam, WorldCupMatch, WorldCupPick
+    from games.worldcup.models import WorldCupMatch, WorldCupPick, WorldCupTeam
     with app.app_context():
         # champion, won-R16, group-eliminated, advanced-lost-R32 (empty)
         specs = [
@@ -389,7 +393,7 @@ def test_context_post_roster_recap_renders_best_finish_labels(app):
             ('R32', '', 'group_winner', False),  # advanced, lost R32 -> empty
         ]
         teams = {}
-        for i, (code, finish, adv, elim) in enumerate(specs):
+        for code, finish, adv, elim in specs:
             t = WorldCupTeam(
                 fifa_code=code, name=code, display_name=code,
                 tier=5, multiplier=7.0, confederation='TEST', group_letter='A',
@@ -436,6 +440,7 @@ def test_context_live_sparkline_flat_line_render(app, client):
     gone while the standing card still renders.
     """
     from datetime import date, timedelta
+
     from games.worldcup.models import WorldCupRankSnapshot
     with app.app_context(), patch.dict(os.environ, {
         'ENVIRONMENT': 'testing',
@@ -495,7 +500,7 @@ def test_live_home_renders_roster_ledger(app, client):
     the gold leader row, and the 'Out' label for an eliminated pick. Locks the
     home-page-roster-visibility requirement. No leverage bars (lounge != hub).
     """
-    from games.worldcup.models import WorldCupTeam, WorldCupPick
+    from games.worldcup.models import WorldCupPick, WorldCupTeam
     with app.app_context(), patch.dict(os.environ, {
         'ENVIRONMENT': 'testing',
         'WC_FAKE_NOW': '2026-06-15T00:00:00Z',
@@ -613,7 +618,7 @@ def test_context_live_roster_match_away_side(app):
     + points-earned chip for half of viewers.
     """
     from core.main.home_context import build_home_context
-    from games.worldcup.models import WorldCupTeam, WorldCupMatch, WorldCupPick
+    from games.worldcup.models import WorldCupMatch, WorldCupPick, WorldCupTeam
     with app.app_context(), patch.dict(os.environ, {'WC_FAKE_NOW': '2026-06-15T00:00:00Z'}):
         home_team = WorldCupTeam(
             fifa_code='ESP', name='Spain', display_name='Spain',
@@ -656,7 +661,7 @@ def test_context_live_roster_match_both_sides_shows_winning_pick(app):
     pick's 0.0 — and label the side that actually scored."""
     from core.main.home_context import build_home_context
     from games.worldcup.constants import KNOCKOUT_POINTS
-    from games.worldcup.models import WorldCupTeam, WorldCupMatch, WorldCupPick
+    from games.worldcup.models import WorldCupMatch, WorldCupPick, WorldCupTeam
     with app.app_context(), patch.dict(os.environ, {
         'ENVIRONMENT': 'testing',
         'WC_FAKE_NOW': '2026-07-07T00:00:00Z',
@@ -702,7 +707,7 @@ def test_context_post_champion_summary_away_winner_on_penalties(app):
     alignment, and (b) ' on penalties' suffix is appended.
     """
     from core.main.home_context import build_home_context
-    from games.worldcup.models import WorldCupTeam, WorldCupMatch
+    from games.worldcup.models import WorldCupMatch, WorldCupTeam
     with app.app_context():
         bra = WorldCupTeam(
             fifa_code='BRA', name='Brazil', display_name='Brazil',
@@ -728,7 +733,7 @@ def test_context_post_champion_summary_away_winner_on_penalties(app):
         ctx = build_home_context(user, 'post')
         assert ctx['champion_team'].fifa_code == 'ARG'
         # Winner score (2) listed first; loser is Brazil
-        assert 'Defeated Brazil 2–1 on penalties' == ctx['champion_summary']
+        assert ctx['champion_summary'] == 'Defeated Brazil 2–1 on penalties'
 
 
 def test_context_post_malformed_final_no_corrupted_summary(app):
@@ -739,7 +744,7 @@ def test_context_post_malformed_final_no_corrupted_summary(app):
     error), (b) scores left null on a row marked complete.
     """
     from core.main.home_context import build_home_context
-    from games.worldcup.models import WorldCupTeam, WorldCupMatch
+    from games.worldcup.models import WorldCupMatch, WorldCupTeam
     with app.app_context():
         bra = WorldCupTeam(
             fifa_code='BRA', name='Brazil', display_name='Brazil',
@@ -776,7 +781,7 @@ def test_context_post_malformed_final_no_corrupted_summary(app):
 def test_context_post_malformed_final_null_scores_no_summary(app):
     """Post state with Final marked complete but scores=None → no summary."""
     from core.main.home_context import build_home_context
-    from games.worldcup.models import WorldCupTeam, WorldCupMatch
+    from games.worldcup.models import WorldCupMatch, WorldCupTeam
     with app.app_context():
         bra = WorldCupTeam(
             fifa_code='BRA', name='Brazil', display_name='Brazil',
@@ -810,9 +815,10 @@ def test_context_live_week_delta_requires_seven_snapshots(app):
     movement) but suppress the trend tagline that overstates a 2-day
     swing as a "weekly" trend.
     """
+    from datetime import date, timedelta
+
     from core.main.home_context import build_home_context
     from games.worldcup.models import WorldCupRankSnapshot
-    from datetime import date, timedelta
     with app.app_context(), patch.dict(os.environ, {'WC_FAKE_NOW': '2026-06-20T00:00:00Z'}):
         user = _make_user()
         enr = _make_enrollment(user, picks_submitted=True, total_score=100.0)
@@ -838,9 +844,10 @@ def test_context_live_week_delta_points_suppressed_when_baseline_zero(app):
     """Lounge ledger: a zero 7-day-ago baseline makes the points-delta equal
     the current total (reads as a glitch). Suppress the points-delta while
     keeping the rank-delta. $impeccable critique 2026-05-24."""
+    from datetime import date, timedelta
+
     from core.main.home_context import build_home_context
     from games.worldcup.models import WorldCupRankSnapshot
-    from datetime import date, timedelta
     with app.app_context(), patch.dict(os.environ, {'WC_FAKE_NOW': '2026-06-20T00:00:00Z'}):
         user = _make_user()
         enr = _make_enrollment(user, picks_submitted=True, total_score=100.0)
@@ -862,9 +869,10 @@ def test_context_live_week_delta_points_suppressed_when_baseline_zero(app):
 
 def test_context_pre_next_3_matches_excludes_completed(app):
     """Pre-state next_3_matches must exclude already-completed matches."""
-    from core.main.home_context import build_home_context
-    from games.worldcup.models import WorldCupTeam, WorldCupMatch
     from datetime import datetime as dt
+
+    from core.main.home_context import build_home_context
+    from games.worldcup.models import WorldCupMatch, WorldCupTeam
     with app.app_context(), patch.dict(os.environ, {'WC_FAKE_NOW': '2026-05-01T00:00:00Z'}):
         a = WorldCupTeam(fifa_code='AAA', name='A', display_name='A', tier=1, multiplier=1.0, confederation='T', group_letter='A')
         b = WorldCupTeam(fifa_code='BBB', name='B', display_name='B', tier=1, multiplier=1.0, confederation='T', group_letter='A')
@@ -872,11 +880,11 @@ def test_context_pre_next_3_matches_excludes_completed(app):
         db.session.commit()
         # 1 completed (earliest kickoff) + 4 future incomplete
         kickoffs = [
-            (1, dt(2026, 6, 11, 19, tzinfo=timezone.utc), True),
-            (2, dt(2026, 6, 12, 19, tzinfo=timezone.utc), False),
-            (3, dt(2026, 6, 13, 19, tzinfo=timezone.utc), False),
-            (4, dt(2026, 6, 14, 19, tzinfo=timezone.utc), False),
-            (5, dt(2026, 6, 15, 19, tzinfo=timezone.utc), False),
+            (1, dt(2026, 6, 11, 19, tzinfo=UTC), True),
+            (2, dt(2026, 6, 12, 19, tzinfo=UTC), False),
+            (3, dt(2026, 6, 13, 19, tzinfo=UTC), False),
+            (4, dt(2026, 6, 14, 19, tzinfo=UTC), False),
+            (5, dt(2026, 6, 15, 19, tzinfo=UTC), False),
         ]
         for num, ko, completed in kickoffs:
             db.session.add(WorldCupMatch(
@@ -901,7 +909,7 @@ def test_context_live_pick_results_carry_display_ready_stage_label(app):
     'SF' → 'Sf', 'QF' → 'Qf', 'third_place' → 'Third_Place').
     """
     from core.main.home_context import build_home_context
-    from games.worldcup.models import WorldCupTeam, WorldCupMatch, WorldCupPick
+    from games.worldcup.models import WorldCupMatch, WorldCupPick, WorldCupTeam
     with app.app_context(), patch.dict(os.environ, {'WC_FAKE_NOW': '2026-07-15T00:00:00Z'}):
         nor = WorldCupTeam(
             fifa_code='NOR', name='Norway', display_name='Norway',

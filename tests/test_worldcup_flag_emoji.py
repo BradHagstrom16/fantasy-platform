@@ -11,9 +11,9 @@ production mapping) so a future regression that re-removes one of the
 four originally-missing entries will fail here even though the production
 code "compiles" fine.
 """
-from app import create_app
 from pathlib import Path
 
+from app import create_app
 from extensions import db
 from games.worldcup.models import WorldCupTeam
 from games.worldcup.world_cup_countries import TEAMS

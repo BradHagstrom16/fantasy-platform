@@ -40,8 +40,6 @@ import pytest
 
 from app import create_app
 from extensions import db
-from flask import render_template
-
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 STYLE_CSS = REPO_ROOT / 'static' / 'css' / 'style.css'

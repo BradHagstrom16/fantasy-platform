@@ -6,20 +6,20 @@ Login, register, logout, change password, profile, forgot/reset password.
 All routes are platform-level — no game model involvement.
 """
 import re
-
-from flask import render_template, redirect, url_for, flash, request
-from flask_login import login_user, logout_user, login_required, current_user
-from sqlalchemy import func
 from urllib.parse import urlparse
 
-from extensions import db, limiter
-from models.user import User
+from flask import flash, redirect, render_template, request, url_for
+from flask_login import current_user, login_required, login_user, logout_user
+from sqlalchemy import func
+
 from core.auth import auth_bp
 from core.auth.tokens import generate_reset_token, verify_reset_token
+from extensions import db, limiter
+from games.worldcup.services import enrollment as worldcup_enrollment
+from games.worldcup.services.state import worldcup_state
+from models.user import User
 from utils.email import send_platform_email
 from utils.phone import normalize_us_phone
-from games.worldcup.services.state import worldcup_state
-from games.worldcup.services import enrollment as worldcup_enrollment
 
 
 def _is_safe_next(target):

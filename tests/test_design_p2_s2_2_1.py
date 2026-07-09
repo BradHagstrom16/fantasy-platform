@@ -24,6 +24,7 @@ Iteration map:
   template in favor of real Unicode glyphs.
 """
 import re
+from datetime import UTC
 from pathlib import Path
 
 import pytest
@@ -221,10 +222,11 @@ def test_schedule_template_uses_real_unicode_glyphs():
 
 @pytest.fixture
 def app():
+    from datetime import datetime
+
     from app import create_app
     from extensions import db
     from games.worldcup.models import WorldCupMatch
-    from datetime import datetime, timezone
 
     app = create_app('testing')
     with app.app_context():
@@ -233,17 +235,17 @@ def app():
         # knockout match. Enough to exercise the matchday-grouping path.
         m1 = WorldCupMatch(
             match_number=1, stage='group', group_letter='A',
-            kickoff_utc=datetime(2026, 6, 11, 19, 0, tzinfo=timezone.utc),
+            kickoff_utc=datetime(2026, 6, 11, 19, 0, tzinfo=UTC),
             is_completed=False,
         )
         m2 = WorldCupMatch(
             match_number=2, stage='group', group_letter='B',
-            kickoff_utc=datetime(2026, 6, 12, 19, 0, tzinfo=timezone.utc),
+            kickoff_utc=datetime(2026, 6, 12, 19, 0, tzinfo=UTC),
             is_completed=False,
         )
         m3 = WorldCupMatch(
             match_number=89, stage='R32',
-            kickoff_utc=datetime(2026, 6, 28, 19, 0, tzinfo=timezone.utc),
+            kickoff_utc=datetime(2026, 6, 28, 19, 0, tzinfo=UTC),
             is_completed=False,
         )
         db.session.add_all([m1, m2, m3])
@@ -279,13 +281,14 @@ def test_schedule_route_today_badge_only_when_today_matchday_exists(app, monkeyp
     via `from games.worldcup.services.state import now_utc`, so the
     route's `today_ct_date = _format_ct(now_utc()).date()` resolves
     against this monkeypatch."""
-    from datetime import datetime, timezone
+    from datetime import datetime
+
     import games.worldcup.routes as wc_routes
 
     monkeypatch.setattr(
         wc_routes,
         'now_utc',
-        lambda: datetime(2026, 5, 1, 12, 0, tzinfo=timezone.utc),
+        lambda: datetime(2026, 5, 1, 12, 0, tzinfo=UTC),
     )
 
     client = app.test_client()

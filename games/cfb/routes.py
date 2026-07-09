@@ -6,36 +6,55 @@ Mounted at /cfb/ via blueprint url_prefix.
 """
 import logging
 from collections import Counter
-from datetime import datetime, timezone
+from datetime import datetime
 from functools import wraps
 
 from flask import (
-    render_template, redirect, url_for, flash, request,
-    jsonify, current_app,
+    current_app,
+    flash,
+    jsonify,
+    redirect,
+    render_template,
+    request,
+    url_for,
 )
-from flask_login import login_required, current_user
+from flask_login import current_user, login_required
 from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import joinedload, contains_eager
+from sqlalchemy.orm import contains_eager, joinedload
 
 from extensions import db
-from models import User
 from games.cfb import cfb_bp
-from games.cfb.models import CfbEnrollment, CfbTeam, CfbWeek, CfbGame, CfbPick
-from games.cfb.utils import (
-    get_current_time, get_utc_time, make_aware, deadline_has_passed,
-    to_pool_time, format_deadline, parse_form_datetime, safe_is_after,
-    get_week_display_name, get_week_short_label, is_week_playoff,
-    get_playoff_teams, get_cfp_eliminated_teams, get_cfp_teams_in_week,
-    get_display_helpers,
-)
 from games.cfb.constants import FBS_MASTER_TEAMS, TEAM_CONFERENCES
+from games.cfb.models import CfbEnrollment, CfbGame, CfbPick, CfbTeam, CfbWeek
 from games.cfb.services.game_logic import (
-    get_used_team_ids, get_game_for_team, process_week_results,
-    process_autopicks, calculate_cumulative_spread, get_week_user_statuses,
+    calculate_cumulative_spread,
+    get_game_for_team,
+    get_used_team_ids,
+    get_week_user_statuses,
+    process_autopicks,
+    process_week_results,
 )
 from games.cfb.services.score_fetcher import ScoreFetcher
-from games.common import game_must_be_open, enrollment_required
+from games.cfb.utils import (
+    deadline_has_passed,
+    format_deadline,
+    get_cfp_eliminated_teams,
+    get_cfp_teams_in_week,
+    get_current_time,
+    get_display_helpers,
+    get_playoff_teams,
+    get_utc_time,
+    get_week_display_name,
+    get_week_short_label,
+    is_week_playoff,
+    make_aware,
+    parse_form_datetime,
+    safe_is_after,
+    to_pool_time,
+)
+from games.common import enrollment_required, game_must_be_open
+from models import User
 
 logger = logging.getLogger(__name__)
 
@@ -447,9 +466,8 @@ def make_pick(week_number):
     pick_locked = False
     if existing_pick:
         existing_game = get_game_for_team(week.id, existing_pick.team_id)
-        if existing_game and existing_game.game_time:
-            if safe_is_after(current_time, existing_game.game_time):
-                pick_locked = True
+        if existing_game and existing_game.game_time and safe_is_after(current_time, existing_game.game_time):
+            pick_locked = True
 
     cfp_eliminated_names = set()
     if is_week_playoff(week):
@@ -472,10 +490,9 @@ def make_pick(week_number):
 
             new_team_game = get_game_for_team(week.id, team_id)
 
-            if new_team_game and new_team_game.game_time:
-                if safe_is_after(current_time, new_team_game.game_time):
-                    flash('Cannot pick this team - their game has already started.', 'error')
-                    return redirect(url_for('cfb.make_pick', week_number=week_number))
+            if new_team_game and new_team_game.game_time and safe_is_after(current_time, new_team_game.game_time):
+                flash('Cannot pick this team - their game has already started.', 'error')
+                return redirect(url_for('cfb.make_pick', week_number=week_number))
 
             if is_week_playoff(week) and team.name in cfp_eliminated_names:
                 flash('Cannot pick this team - they have been eliminated from the playoffs.', 'error')
@@ -883,7 +900,7 @@ def admin_manage_games(week_id):
             game_time=game_time,
             # DQ-6: manual entries lock immediately so the spread cron
             # can't overwrite the admin's number.
-            spread_locked_at=datetime.now(timezone.utc),
+            spread_locked_at=get_utc_time(),
         )
         db.session.add(game)
         db.session.commit()
@@ -1215,7 +1232,7 @@ def admin_manage_teams():
 
         # Add new teams
         added = 0
-        for short_name, api_name, api_id, conference, is_incoming in FBS_MASTER_TEAMS:
+        for short_name, _api_name, _api_id, conference, _is_incoming in FBS_MASTER_TEAMS:
             if short_name in selected_names and short_name not in existing_teams:
                 new_team = CfbTeam(name=short_name, conference=conference)
                 db.session.add(new_team)
@@ -1234,7 +1251,7 @@ def admin_manage_teams():
 
     # GET: group teams by conference
     teams_by_conference = {}
-    for short_name, api_name, api_id, conference, is_incoming in FBS_MASTER_TEAMS:
+    for short_name, _api_name, _api_id, conference, is_incoming in FBS_MASTER_TEAMS:
         if conference not in teams_by_conference:
             teams_by_conference[conference] = []
         teams_by_conference[conference].append({

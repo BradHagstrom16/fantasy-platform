@@ -21,10 +21,16 @@ from app import create_app
 from extensions import db
 from games.cfb.models import CfbPick
 from games.cfb.services.game_logic import (
-    process_autopicks, check_and_process_autopicks,
+    check_and_process_autopicks,
+    process_autopicks,
 )
 from tests._cfb_fixtures import (
-    make_user, make_enrollment, make_team, make_week, make_game, make_pick,
+    make_enrollment,
+    make_game,
+    make_pick,
+    make_team,
+    make_user,
+    make_week,
 )
 
 # Naive pool-tz wall clock. A future game_time keeps a game pickable; a past

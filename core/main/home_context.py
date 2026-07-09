@@ -4,32 +4,39 @@ Public entry point: ``build_home_context(user, state)`` dispatches to
 one of four private builders based on state, returning a dict the
 template consumes via ``**ctx``.
 """
-from typing import Optional, Any
+from typing import Any
 
 from flask_login import AnonymousUserMixin
 from sqlalchemy.orm import joinedload
 
+from games.registry import (
+    available_games,
+    coming_soon_games,
+    joined_games,
+)
 from games.worldcup.constants import (
-    SEASON_YEAR, TOURNAMENT_DEADLINE_UTC, WORLDCUP_TZ,
+    SEASON_YEAR,
+    TOURNAMENT_DEADLINE_UTC,
+    WORLDCUP_TZ,
 )
 from games.worldcup.models import (
-    WorldCupEnrollment, WorldCupPick, WorldCupTeam, WorldCupMatch,
+    WorldCupEnrollment,
+    WorldCupMatch,
+    WorldCupPick,
     WorldCupRankSnapshot,
+    WorldCupTeam,
 )
-from games.worldcup.services.ranking import compute_rank_neighbors
-from games.worldcup.services.stage import stage_label as _stage_label
-from games.worldcup.services.stage import best_finish_label
-from games.worldcup.services.state import WorldCupState, now_utc
-from games.worldcup.services.scoring import points_for_pick_on_match
 from games.worldcup.services.elimination import eliminated_team_ids
+from games.worldcup.services.ranking import compute_rank_neighbors
+from games.worldcup.services.scoring import points_for_pick_on_match
+from games.worldcup.services.stage import best_finish_label
+from games.worldcup.services.stage import stage_label as _stage_label
+from games.worldcup.services.state import WorldCupState, now_utc
 from games.worldcup.world_cup_countries import TIERS
-from games.registry import (
-    available_games, coming_soon_games, joined_games,
-)
 from models.content import commish_note_paragraphs
 
 
-def build_home_context(user: Any, state: Optional[WorldCupState]) -> dict:
+def build_home_context(user: Any, state: WorldCupState | None) -> dict:
     """Assemble the render context for the home page in the given state.
 
     state=None for unauthenticated users (logged-out marketing surface).
@@ -54,8 +61,8 @@ def build_home_context(user: Any, state: Optional[WorldCupState]) -> dict:
     return ctx
 
 
-def _tagline_for(rank: int, week_delta_rank: Optional[int],
-                 alive_count: int, is_you: bool = False) -> Optional[str]:
+def _tagline_for(rank: int, week_delta_rank: int | None,
+                 alive_count: int, is_you: bool = False) -> str | None:
     """Return a contextual one-liner for a leaderboard row, or None.
 
     Finite string set per Spec B D11 — server-derived from data, not LLM-style
@@ -441,7 +448,7 @@ def _context_live(user, enrollment) -> dict:
     your_pick_results = []
     for match in recent_results:
         roster_match = None
-        points_earned: Optional[float] = None
+        points_earned: float | None = None
         # BOTH sides can be on the roster (USA-BEL R16, 2026-07-07): score
         # every matched pick and label the side that earned the points, so the
         # home side never shadows the away side's win.

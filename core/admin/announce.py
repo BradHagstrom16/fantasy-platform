@@ -8,20 +8,20 @@ import logging
 import re
 from typing import NamedTuple
 
-from flask import render_template, redirect, url_for, flash, request, current_app
+from flask import current_app, flash, redirect, render_template, request, url_for
 from flask_login import current_user
 from markupsafe import escape
 from sqlalchemy import select
 from sqlalchemy.orm import joinedload
 
-from extensions import db
 from core.admin import admin_bp
 from core.admin.routes import admin_required
+from extensions import db
+from games.cfb.models import CfbEnrollment
+from games.golf.models import GolfEnrollment
 from games.registry import GAMES
 from games.worldcup.constants import SEASON_YEAR as WC_SEASON_YEAR
 from games.worldcup.models import WorldCupEnrollment
-from games.cfb.models import CfbEnrollment
-from games.golf.models import GolfEnrollment
 from utils.email import send_platform_email
 
 logger = logging.getLogger(__name__)

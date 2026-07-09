@@ -17,8 +17,8 @@ import click
 from flask.cli import AppGroup
 
 from extensions import db
-from games.cfb.models import CfbTeam
 from games.cfb.constants import DEV_SEED_TEAMS, TEAM_CONFERENCES
+from games.cfb.models import CfbTeam
 
 cfb_cli = AppGroup('cfb', help="CFB Survivor Pool management commands.")
 

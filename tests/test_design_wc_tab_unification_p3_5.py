@@ -38,9 +38,8 @@ Regex idioms inherit P3's hardening:
 - CSS absence-checks use `^...` anchoring with `re.MULTILINE` (P3 CR R3-R4
   precedent) so substring matches inside larger rules can't false-pass.
 """
-from pathlib import Path
 import re
-
+from pathlib import Path
 
 ROOT = Path(__file__).parent.parent
 CSS_PATH = ROOT / 'static' / 'css' / 'style.css'

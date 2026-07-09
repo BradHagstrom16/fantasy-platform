@@ -23,12 +23,17 @@ import pytest
 from flask import template_rendered
 from sqlalchemy.exc import IntegrityError
 
+import games.registry as registry
 from app import create_app
 from extensions import db
-import games.registry as registry
 from games.cfb.models import CfbPick
 from tests._cfb_fixtures import (
-    make_user, make_enrollment, make_team, make_week, make_game, make_pick,
+    make_enrollment,
+    make_game,
+    make_pick,
+    make_team,
+    make_user,
+    make_week,
 )
 
 # Naive pool-tz wall clock. FUTURE keeps a week pickable; STARTED is a
@@ -245,7 +250,7 @@ def test_post_rejected_after_deadline(app, client):
 
 def test_get_after_deadline_redirects_to_index(app, client):
     """GET on a locked week redirects rather than rendering the picker."""
-    week = make_week(1)  # past deadline
+    make_week(1)  # past deadline
     user = make_user('p1')
     make_enrollment(user)
     db.session.commit()

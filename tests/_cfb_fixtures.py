@@ -13,8 +13,8 @@ pool-timezone wall clock; ``created_at`` columns hold naive UTC.
 from datetime import datetime, timedelta
 
 from extensions import db
+from games.cfb.models import CfbEnrollment, CfbGame, CfbPick, CfbTeam, CfbWeek
 from models.user import User
-from games.cfb.models import CfbEnrollment, CfbTeam, CfbWeek, CfbGame, CfbPick
 
 SEASON = 2026
 

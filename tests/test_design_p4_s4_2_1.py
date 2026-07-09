@@ -66,8 +66,8 @@ Iteration map:
   Lifted to `--text-secondary` (#5A5470, ~6.9:1) matching the S2.5.1
   PI-5 lock on `.wc-eyebrow` on the same surface.
 """
-from pathlib import Path
 import re
+from pathlib import Path
 
 ROOT = Path(__file__).parent.parent
 CSS = (ROOT / 'static' / 'css' / 'style.css').read_text()

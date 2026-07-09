@@ -10,8 +10,8 @@ import logging
 from flask import current_app
 
 from extensions import db
-from games.cfb.models import CfbWeek, CfbGame, CfbTeam
 from games.cfb.constants import API_BASE_URL, TEAM_NAME_MAP
+from games.cfb.models import CfbGame, CfbWeek
 from games.cfb.services.game_logic import process_week_results
 from games.cfb.services.odds_api import odds_api_get
 from games.cfb.utils import deadline_has_passed, make_aware

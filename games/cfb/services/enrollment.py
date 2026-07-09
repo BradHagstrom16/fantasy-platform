@@ -1,5 +1,4 @@
 """CFB Survivor enrollment service — registry integration point."""
-from typing import Optional
 
 from flask import current_app
 
@@ -11,7 +10,7 @@ def _season_year() -> int:
     return current_app.config.get('CFB_SEASON_YEAR', 2026)
 
 
-def get_enrollment(user_id: int) -> Optional[CfbEnrollment]:
+def get_enrollment(user_id: int) -> CfbEnrollment | None:
     """Return the user's current-season CFB enrollment, or None."""
     return CfbEnrollment.query.filter_by(
         user_id=user_id, season_year=_season_year()

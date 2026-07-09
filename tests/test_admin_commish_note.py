@@ -11,11 +11,13 @@ from flask import url_for
 
 from app import create_app
 from extensions import db
-from models.user import User
 from models.content import (
-    CommishNote, COMMISH_NOTE_DEFAULTS,
-    commish_note_body, commish_note_paragraphs,
+    COMMISH_NOTE_DEFAULTS,
+    CommishNote,
+    commish_note_body,
+    commish_note_paragraphs,
 )
+from models.user import User
 
 
 @pytest.fixture()

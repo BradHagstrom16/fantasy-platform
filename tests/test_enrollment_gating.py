@@ -1,11 +1,11 @@
 """Tests for games.common decorators."""
 import pytest
-from flask import Flask, Blueprint
+from flask import Blueprint
 
 from app import create_app
 from extensions import db
-from models.user import User
 from games.registry import GameRegistryEntry
+from models.user import User
 
 
 @pytest.fixture()

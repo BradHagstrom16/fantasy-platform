@@ -15,24 +15,34 @@ from typing import Any
 
 from extensions import db
 from games.worldcup.constants import (
-    SEASON_YEAR, ENTRY_FEE, TOURNAMENT_DEADLINE_UTC, WORLDCUP_TZ,
+    ENTRY_FEE,
+    SEASON_YEAR,
+    TOURNAMENT_DEADLINE_UTC,
+    WORLDCUP_TZ,
 )
 from games.worldcup.models import (
-    WorldCupEnrollment, WorldCupMatch, WorldCupPick, WorldCupRankSnapshot,
+    WorldCupEnrollment,
+    WorldCupMatch,
+    WorldCupPick,
+    WorldCupRankSnapshot,
     WorldCupTeam,
 )
-from games.worldcup.world_cup_countries import TIERS
+from games.worldcup.services.elimination import eliminated_team_ids
 from games.worldcup.services.ranking import compute_rank_neighbors
 from games.worldcup.services.scoring import points_for_pick_on_match
-from games.worldcup.services.elimination import eliminated_team_ids
-from games.worldcup.services.stage import stage_label, best_finish_label
+from games.worldcup.services.stage import best_finish_label, stage_label
 from games.worldcup.services.state import (
-    FINAL_MATCH_NUMBER, WorldCupHubState, now_utc, worldcup_state,
+    FINAL_MATCH_NUMBER,
+    WorldCupHubState,
+    now_utc,
+    worldcup_state,
 )
 from games.worldcup.services.trends import (
-    compute_trend_by_enrollment, show_trend_column,
+    compute_trend_by_enrollment,
+    show_trend_column,
 )
 from games.worldcup.services.voice import hub_copy, rank_tier
+from games.worldcup.world_cup_countries import TIERS
 
 # best_finish display labels now live in services/stage.best_finish_label (the
 # SSoT, shared with the lounge builder so the two post-state recaps can't

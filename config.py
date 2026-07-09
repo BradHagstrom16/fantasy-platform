@@ -5,6 +5,8 @@ Environment-based configuration classes.
 """
 import os
 from datetime import timedelta
+from typing import ClassVar
+
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -80,7 +82,7 @@ class ProductionConfig(Config):
     SESSION_COOKIE_SAMESITE = 'Lax'
     # Managed Postgres closes idle connections; long-lived Gunicorn workers
     # must re-check before use and recycle before the provider's idle timeout.
-    SQLALCHEMY_ENGINE_OPTIONS = {
+    SQLALCHEMY_ENGINE_OPTIONS: ClassVar[dict] = {
         'pool_pre_ping': True,
         'pool_recycle': 280,
     }

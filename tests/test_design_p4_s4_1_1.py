@@ -94,8 +94,8 @@ Routed forward per §0.4 (locked in §9 rollup of the plan):
   affects every authenticated state's home + game pages. P3; routed to
   S6.1 cross-phase polish.
 """
-from pathlib import Path
 import re
+from pathlib import Path
 
 ROOT = Path(__file__).parent.parent
 CSS = (ROOT / 'static' / 'css' / 'style.css').read_text()

@@ -32,7 +32,6 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
 STYLE_CSS = REPO_ROOT / 'static' / 'css' / 'style.css'
 DESIGN_MD = REPO_ROOT / 'DESIGN.md'

@@ -1,0 +1,22 @@
+target-version = "py313"
+# Hook and CI pass explicit file paths; force-exclude keeps `extend-exclude`
+# effective even for directly-named files (e.g. a migrations/ file).
+force-exclude = true
+extend-exclude = ["migrations"]
+
+[lint]
+select = [
+    "E4", "E7", "E9", "F",   # ruff defaults: pyflakes + core pycodestyle errors
+    "I",                     # import sorting
+    "B",                     # bugbear — bug-catchers
+    "UP",                    # pyupgrade — modern 3.13 idioms
+    "SIM",                   # flake8-simplify
+    "C4",                    # comprehension cleanups
+    "RUF012", "RUF013",      # mutable class defaults, implicit Optional
+]
+
+[lint.per-file-ignores]
+"**/__init__.py" = ["F401"]  # re-export pattern (models/, games/*/services/)
+
+[lint.isort]
+known-first-party = ["app", "config", "extensions", "models", "utils", "core", "games", "tests"]

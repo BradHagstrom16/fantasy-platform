@@ -1,11 +1,11 @@
 """Platform admin: add a user to a game's current-season enrollment."""
-from flask import render_template, redirect, url_for, flash, request
+from flask import flash, redirect, render_template, request, url_for
 
-from extensions import db
-from models.user import User
 from core.admin import admin_bp
 from core.admin.routes import admin_required
+from extensions import db
 from games.registry import GAMES, get_entry
+from models.user import User
 
 
 @admin_bp.route('/enrollments', methods=['GET', 'POST'])

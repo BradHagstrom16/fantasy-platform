@@ -4,69 +4,98 @@ World Cup Fantasy Pool — Routes
 All route handlers for the World Cup Fantasy Pool game.
 Mounted at /worldcup/ via blueprint url_prefix.
 """
+from collections import Counter, OrderedDict, defaultdict
 from functools import wraps
-from collections import Counter, defaultdict, OrderedDict
 
-from flask import render_template, redirect, url_for, flash, request, jsonify
-from flask_login import login_required, current_user
+from flask import flash, jsonify, redirect, render_template, request, url_for
+from flask_login import current_user, login_required
 from sqlalchemy import func, or_, select
-from sqlalchemy.orm import joinedload, contains_eager
+from sqlalchemy.orm import contains_eager, joinedload
 
 from extensions import db
-from models import User
-from games.worldcup import worldcup_bp
 from games.common import game_must_be_open
-from games.worldcup.services.state import now_utc, worldcup_state, FINAL_MATCH_NUMBER
-from games.worldcup.models import WorldCupEnrollment, WorldCupTeam, WorldCupMatch, WorldCupPick
+from games.worldcup import worldcup_bp
 from games.worldcup.constants import (
-    SEASON_YEAR, ENTRY_FEE, TOURNAMENT_DEADLINE_UTC,
-    TIER_PICK_COUNTS, TOTAL_PICKS, WORLDCUP_TZ,
-    KNOCKOUT_POINTS, ADVANCE_GROUP_WINNER, ADVANCE_RUNNER_UP, ADVANCE_BEST_THIRD,
-    ADVANCEMENT_METHODS, GROUP_WIN, GROUP_DRAW, GROUP_LOSS,
+    ADVANCE_BEST_THIRD,
+    ADVANCE_GROUP_WINNER,
+    ADVANCE_RUNNER_UP,
+    ADVANCEMENT_METHODS,
+    ENTRY_FEE,
+    GROUP_DRAW,
+    GROUP_LOSS,
+    GROUP_WIN,
+    KNOCKOUT_POINTS,
+    SEASON_YEAR,
+    TIER_PICK_COUNTS,
+    TOTAL_PICKS,
+    TOURNAMENT_DEADLINE_UTC,
+    WORLDCUP_TZ,
 )
-from games.worldcup.services.scoring import (
-    process_match_result,
-    apply_group_advancement,
-    set_knockout_teams,
-    recalculate_all_scores,
-    compute_match_attribution,
-    compute_team_score_events,
+from games.worldcup.models import (
+    WorldCupEnrollment,
+    WorldCupMatch,
+    WorldCupPick,
+    WorldCupTeam,
 )
 from games.worldcup.services.elimination import eliminated_team_ids
+from games.worldcup.services.home_context import build_worldcup_home_context
 from games.worldcup.services.notifications import (
-    send_picks_confirmation, send_group_stage_recap, group_recap_last_sent,
+    group_recap_last_sent,
+    send_group_stage_recap,
+    send_picks_confirmation,
+)
+from games.worldcup.services.payment import payment_nudge_for
+from games.worldcup.services.ranking import (
+    compute_rank_delta,
+    compute_rank_deltas_bulk,
+    compute_rank_neighbors,
+)
+from games.worldcup.services.scoring import (
+    apply_group_advancement,
+    compute_match_attribution,
+    compute_team_score_events,
+    process_match_result,
+    recalculate_all_scores,
+    set_knockout_teams,
+)
+from games.worldcup.services.stage import stage_label
+from games.worldcup.services.state import (
+    FINAL_MATCH_NUMBER,
+    now_utc,
+    worldcup_hub_state,
+    worldcup_state,
+)
+from games.worldcup.services.stats import (
+    get_country_stats,
+    get_ideal_lineup,
+    get_overview_kpis,
+    get_tier_combos,
+    get_tier_stats,
 )
 from games.worldcup.services.sync import (
-    fetch_advancement_proposal, fetch_bracket_proposal,
-    populatable_bracket_stages, all_group_advancement_confirmed,
-    KO_STAGES, SyncError,
+    KO_STAGES,
+    SyncError,
+    all_group_advancement_confirmed,
+    fetch_advancement_proposal,
+    fetch_bracket_proposal,
+    populatable_bracket_stages,
 )
+from games.worldcup.services.team_detail import (
+    compute_path_to_crown,
+    compute_team_ownership,
+    current_user_owns_team,
+)
+from games.worldcup.services.trends import (
+    compute_trend_by_enrollment,
+    show_trend_column,
+)
+from models import User
+
 # Platform tz helper. Re-exported as `format_ct` in the WC blueprint context
 # processor (see below) so existing WC templates (`{{ format_ct(dt).strftime(...) }}`)
 # keep working with the same datetime-returning contract. Platform templates
 # use the `|ct` Jinja filter registered in `app.create_app` instead.
 from utils.time import to_ct as _format_ct
-from games.worldcup.services.stats import (
-    get_country_stats,
-    get_tier_stats,
-    get_overview_kpis,
-    get_tier_combos,
-    get_ideal_lineup,
-)
-from games.worldcup.services.ranking import (
-    compute_rank_delta, compute_rank_deltas_bulk, compute_rank_neighbors,
-)
-from games.worldcup.services.stage import stage_label
-from games.worldcup.services.team_detail import (
-    compute_team_ownership, current_user_owns_team, compute_path_to_crown,
-)
-from games.worldcup.services.trends import (
-    show_trend_column, compute_trend_by_enrollment,
-)
-from games.worldcup.services.state import worldcup_hub_state
-from games.worldcup.services.home_context import build_worldcup_home_context
-from games.worldcup.services.payment import payment_nudge_for
-
 
 # Round-robin: each group of 4 teams plays 6 matches.
 GROUP_MATCH_COUNT = 6
@@ -1378,7 +1407,7 @@ def admin_bracket(target_stage):
             flash('Malformed bracket submission — reload the review page and try again.', 'error')
             return redirect(url_for('worldcup.admin_bracket', target_stage=target_stage))
         assigned = skipped = failed = 0
-        for sid, home, away in zip(shell_ids, home_fifas, away_fifas):
+        for sid, home, away in zip(shell_ids, home_fifas, away_fifas, strict=False):
             shell = db.session.get(WorldCupMatch, int(sid)) if sid.isdigit() else None
             # Guard the client-supplied hidden fields: only assign an empty shell
             # of THIS knockout stage to two distinct teams. (set_knockout_teams

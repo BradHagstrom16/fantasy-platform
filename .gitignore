@@ -74,3 +74,11 @@ fantasy-platform-and-world-cup-design/
 # Designer logo delivery — under review, not yet integrated
 CCC-final/
 _dbdump/
+
+# Codex CLI artifacts (tried once, not used)
+.agents/
+.codex/
+AGENTS.md
+
+# Ruff linter cache
+.ruff_cache/

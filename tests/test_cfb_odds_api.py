@@ -6,6 +6,7 @@ firing a false admin alert. All traffic is mocked at the requests boundary
 (games.cfb.services.odds_api.requests.get); time.sleep is patched out so the
 backoff loop doesn't actually wait.
 """
+from typing import ClassVar
 from unittest.mock import patch
 
 import pytest
@@ -15,7 +16,7 @@ import requests
 def _resp(code, payload=None):
     class _R:
         status_code = code
-        headers = {'x-requests-remaining': '42'}
+        headers: ClassVar[dict] = {'x-requests-remaining': '42'}
         def json(self): return payload if payload is not None else []
     return _R()
 
@@ -39,10 +40,12 @@ def test_odds_api_get_raises_only_after_exhausting_retries():
     from games.cfb.services.odds_api import OddsApiError
 
     boom = requests.exceptions.ConnectionError('Address unavailable')
-    with patch.object(odds_api.time, 'sleep'), \
-         patch.object(odds_api.requests, 'get', side_effect=boom) as g:
-        with pytest.raises(OddsApiError):
-            odds_api.odds_api_get('https://api.example/scores')
+    with (
+        patch.object(odds_api.time, 'sleep'),
+        patch.object(odds_api.requests, 'get', side_effect=boom) as g,
+        pytest.raises(OddsApiError),
+    ):
+        odds_api.odds_api_get('https://api.example/scores')
     assert odds_api.ODDS_API_MAX_RETRIES > 1
     assert g.call_count == odds_api.ODDS_API_MAX_RETRIES  # every attempt made
 

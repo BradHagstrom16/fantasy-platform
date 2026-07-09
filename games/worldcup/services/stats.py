@@ -2,7 +2,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import aliased
 
 from extensions import db
-from games.worldcup.models import WorldCupEnrollment, WorldCupTeam, WorldCupPick
+from games.worldcup.models import WorldCupEnrollment, WorldCupPick, WorldCupTeam
 from games.worldcup.services.scoring import compute_team_score_events
 
 _GROUP_SOURCES = {'group_win', 'group_draw', 'advancement'}

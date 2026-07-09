@@ -25,9 +25,8 @@ These tests pin each edit. Regex idioms inherit the P3 / P3.5 hardening:
 - Forbidden-rule patterns terminate with `\\s*[,{]` so a selector listed in a
   comma group still trips the assertion.
 """
-from pathlib import Path
 import re
-
+from pathlib import Path
 
 ROOT = Path(__file__).parent.parent
 CSS_PATH = ROOT / 'static' / 'css' / 'style.css'

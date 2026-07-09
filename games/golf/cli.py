@@ -15,25 +15,25 @@ Usage:
 """
 import os
 import sys
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import click
 from flask import current_app
 from flask.cli import AppGroup
 
 from extensions import db
-from games.golf.models import GolfTournament, GolfTournamentField, GolfEnrollment
-from games.golf.utils import GOLF_LEAGUE_TZ
+from games.golf.models import GolfTournament, GolfTournamentField
 from games.golf.services.sync import (
     SlashGolfAPI,
     TournamentSync,
-    seed_schedule,
-    get_upcoming_tournament,
-    get_upcoming_tournaments_window,
     get_active_tournaments,
     get_recently_completed_tournaments,
     get_tournaments_pending_finalization,
+    get_upcoming_tournament,
+    get_upcoming_tournaments_window,
+    seed_schedule,
 )
+from games.golf.utils import GOLF_LEAGUE_TZ
 
 # Create a CLI group so commands are: flask golf sync-run, flask golf check-wd, etc.
 golf_cli = AppGroup('golf', help="Golf Pick 'Em management commands.")
@@ -80,7 +80,7 @@ def sync_run_cmd(mode):
 
     api, sync = _make_api_and_sync()
     sync_mode = current_app.config.get('SYNC_MODE', 'standard').lower()
-    year = current_app.config.get('SEASON_YEAR', datetime.now(timezone.utc).year)
+    year = current_app.config.get('SEASON_YEAR', datetime.now(UTC).year)
     exit_code = 0
 
     free_tier_blocked = set()  # withdrawal sync now permitted on free tier
@@ -181,7 +181,7 @@ def sync_run_cmd(mode):
             stale_active = GolfTournament.query.filter(
                 GolfTournament.status == "active",
                 GolfTournament.end_date < datetime.now(GOLF_LEAGUE_TZ) - timedelta(hours=12),
-                GolfTournament.results_finalized == False
+                GolfTournament.results_finalized.is_(False)
             ).order_by(GolfTournament.end_date.desc()).all()
 
             if stale_active:
@@ -204,7 +204,7 @@ def sync_run_cmd(mode):
                     sync.process_tournament_picks(tournament)
                     click.echo(f"  Finalized {results_count} results")
                 else:
-                    click.echo(f"  Not ready (API status not Complete/Official yet)")
+                    click.echo("  Not ready (API status not Complete/Official yet)")
 
     except Exception:
         import logging
@@ -295,7 +295,7 @@ def sync_earnings_cmd():
     stale_active = GolfTournament.query.filter(
         GolfTournament.status == "active",
         GolfTournament.end_date < datetime.now(GOLF_LEAGUE_TZ) - timedelta(hours=12),
-        GolfTournament.results_finalized == False
+        GolfTournament.results_finalized.is_(False)
     ).order_by(GolfTournament.end_date.desc()).all()
 
     if stale_active:
@@ -320,7 +320,7 @@ def sync_earnings_cmd():
             sync.process_tournament_picks(tournament)
             click.echo(f"  Finalized {results_count} results")
         else:
-            click.echo(f"  Not ready or failed (API may not have official results yet)")
+            click.echo("  Not ready or failed (API may not have official results yet)")
 
 
 @golf_cli.command('check-wd')

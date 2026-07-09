@@ -8,14 +8,16 @@ new paragraphs (rendered by models.content.commish_note_paragraphs).
 """
 import logging
 
-from flask import render_template, redirect, url_for, flash, request
+from flask import flash, redirect, render_template, request, url_for
 from sqlalchemy import select
 
-from extensions import db
 from core.admin import admin_bp
 from core.admin.routes import admin_required
+from extensions import db
 from models.content import (
-    CommishNote, COMMISH_NOTE_STATES, commish_note_body,
+    COMMISH_NOTE_STATES,
+    CommishNote,
+    commish_note_body,
 )
 
 logger = logging.getLogger(__name__)

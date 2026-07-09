@@ -10,7 +10,7 @@ Display helpers handle week name formatting and CFP team tracking.
 """
 import logging
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from zoneinfo import ZoneInfo
 
 from flask import current_app
@@ -54,8 +54,8 @@ def _fake_now_utc():
     # naive-UTC columns, where a foreign offset would corrupt the
     # stored wall clock.
     if dt.tzinfo:
-        return dt.astimezone(timezone.utc)
-    return dt.replace(tzinfo=timezone.utc)
+        return dt.astimezone(UTC)
+    return dt.replace(tzinfo=UTC)
 
 
 def get_current_time():
@@ -75,7 +75,7 @@ def get_utc_time():
     fake = _fake_now_utc()
     if fake is not None:
         return fake
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def make_aware(dt, tz=None):
@@ -97,7 +97,7 @@ def to_pool_time(dt):
     if dt is None:
         return None
     # If naive, assume UTC (from database)
-    dt_aware = make_aware(dt, timezone.utc)
+    dt_aware = make_aware(dt, UTC)
     return dt_aware.astimezone(_get_pool_tz())
 
 
@@ -209,14 +209,14 @@ def get_cfp_eliminated_teams():
     """
     # Lazy imports to avoid circular dependency
     from extensions import db
-    from games.cfb.models import CfbGame, CfbWeek, CfbTeam
+    from games.cfb.models import CfbGame, CfbWeek
 
     eliminated = set()
 
     playoff_games = (
         db.session.query(CfbGame)
         .join(CfbWeek)
-        .filter(CfbWeek.is_playoff_week == True, CfbGame.home_team_won != None)
+        .filter(CfbWeek.is_playoff_week.is_(True), CfbGame.home_team_won.is_not(None))
         .all()
     )
 

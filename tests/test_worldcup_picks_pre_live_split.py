@@ -247,7 +247,10 @@ def test_picks_page_marks_knockout_loser_out(app, client, monkeypatch):
     from extensions import db
     from games.worldcup.models import WorldCupMatch
     from tests._worldcup_fixtures import (
-        make_user, make_enrollment, make_team, make_pick,
+        make_enrollment,
+        make_pick,
+        make_team,
+        make_user,
     )
 
     # Past the deadline so the scoring ledger (show_scoring) renders.

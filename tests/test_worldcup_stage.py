@@ -7,7 +7,7 @@ in routes.py, a different value space per CLAUDE.md.
 """
 import pytest
 
-from games.worldcup.services.stage import stage_label, best_finish_label
+from games.worldcup.services.stage import best_finish_label, stage_label
 
 
 @pytest.mark.parametrize('code,expected', [

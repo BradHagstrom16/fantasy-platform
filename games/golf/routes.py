@@ -5,31 +5,41 @@ All route handlers for the Golf Pick 'Em game.
 Mounted at /golf/ via blueprint url_prefix.
 """
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from functools import wraps
 
 from flask import (
-    render_template, redirect, url_for, flash, request,
-    jsonify, current_app
+    current_app,
+    flash,
+    jsonify,
+    redirect,
+    render_template,
+    request,
+    url_for,
 )
-from flask_login import login_required, current_user
-from sqlalchemy import func, and_
+from flask_login import current_user, login_required
+from sqlalchemy import and_, func
 from sqlalchemy.orm import joinedload
 
 from extensions import db
-from models.user import User
+from games.common import enrollment_required, game_must_be_open
 from games.golf import golf_bp
 from games.golf.models import (
     PENALTY_PER_INCIDENT,
-    GolfEnrollment, GolfPlayer, GolfTournament,
-    GolfTournamentField, GolfTournamentResult,
-    GolfPick, GolfSeasonPlayerUsage,
+    GolfEnrollment,
+    GolfPick,
+    GolfPlayer,
+    GolfSeasonPlayerUsage,
+    GolfTournament,
+    GolfTournamentField,
+    GolfTournamentResult,
 )
 from games.golf.utils import (
-    format_score_to_par, calculate_projected_earnings,
-    get_current_time, GOLF_LEAGUE_TZ,
+    calculate_projected_earnings,
+    format_score_to_par,
+    get_current_time,
 )
-from games.common import game_must_be_open, enrollment_required
+from models.user import User
 
 logger = logging.getLogger(__name__)
 
@@ -142,7 +152,7 @@ def get_cumulative_scores(user_ids, season_year):
         .all()
     )
 
-    score_map = {user_id: total for user_id, total in rows}
+    score_map = dict(rows)
     cumulative = {}
     for uid in user_ids:
         total = score_map.get(uid, 0) or 0
@@ -309,7 +319,6 @@ def schedule():
 def tournament_detail(tournament_id):
     """Tournament detail/results page."""
     tournament = db.get_or_404(GolfTournament, tournament_id)
-    season_year = current_app.config['SEASON_YEAR']
 
     # Get all picks for this tournament. Eager-load the user + player
     # relationships the standings table renders (sort key, avatar, primary /
@@ -443,7 +452,7 @@ def make_pick(tournament_id):
             if existing_pick:
                 existing_pick.primary_player_id = primary_id
                 existing_pick.backup_player_id = backup_id
-                existing_pick.updated_at = datetime.now(timezone.utc)
+                existing_pick.updated_at = datetime.now(UTC)
                 pick = existing_pick
             else:
                 pick = GolfPick(
@@ -798,7 +807,7 @@ def admin_override_pick():
                 existing_pick.backup_player_id = backup_id
                 existing_pick.admin_override = True
                 existing_pick.admin_override_note = override_note or 'Admin override'
-                existing_pick.updated_at = datetime.now(timezone.utc)
+                existing_pick.updated_at = datetime.now(UTC)
                 pick = existing_pick
             else:
                 pick = GolfPick(
@@ -904,7 +913,7 @@ def admin_override_pick():
 @golf_admin_required
 def admin_process_results(tournament_id):
     """Manually process results for a completed tournament."""
-    from games.golf.services.sync import TournamentSync, SlashGolfAPI
+    from games.golf.services.sync import SlashGolfAPI, TournamentSync
 
     tournament = db.get_or_404(GolfTournament, tournament_id)
     if tournament.status != 'complete':

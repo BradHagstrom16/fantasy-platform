@@ -19,7 +19,7 @@ import pytest
 
 from app import create_app
 from extensions import db
-from tests._cfb_fixtures import make_user, make_enrollment
+from tests._cfb_fixtures import make_enrollment, make_user
 
 
 @pytest.fixture()

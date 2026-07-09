@@ -82,8 +82,8 @@ Routed forward to receiving sessions per §0.4 (locked in §9 rollup):
   with Bootstrap → S6.1 (visible across game surfaces too; needs a single
   site-wide pass).
 """
-from pathlib import Path
 import re
+from pathlib import Path
 
 ROOT = Path(__file__).parent.parent
 CSS = (ROOT / 'static' / 'css' / 'style.css').read_text()

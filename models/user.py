@@ -5,10 +5,10 @@ Shared user model for all games. Game-specific player data
 lives in game-specific models linked by user_id foreign key.
 """
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from flask_login import UserMixin
-from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.security import check_password_hash, generate_password_hash
 
 from extensions import db
 
@@ -38,9 +38,9 @@ class User(UserMixin, db.Model):
     has_paid = db.Column(db.Boolean, default=False)
 
     # Timestamps
-    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
-    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc),
-                           onupdate=lambda: datetime.now(timezone.utc))
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(UTC))
+    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(UTC),
+                           onupdate=lambda: datetime.now(UTC))
 
     def get_id(self):
         """Identity stored in the session/remember cookie (overrides UserMixin).

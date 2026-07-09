@@ -22,12 +22,12 @@ NOT ported here — see test_admin_override_complete_tournament_reresolves_
 immediately for the reconciliation of the roadmap's named
 test_admin_override_requires_confirm_for_complete.
 """
+from datetime import UTC, datetime, timedelta
+
 import pytest
-from datetime import datetime, timedelta, timezone
 
 from app import create_app
 from extensions import db
-from models.user import User
 from games.golf.models import (
     GolfEnrollment,
     GolfPick,
@@ -43,6 +43,7 @@ from games.golf.services.reminders import (
     send_picks_open_email,
     send_results_recap_email,
 )
+from models.user import User
 from tests._registry_helpers import set_status as _set_status
 
 SEASON = 2026
@@ -91,7 +92,7 @@ def _make_enrollment(user, season_year=SEASON):
 
 def _make_tournament(name='Test Open', is_major=False, is_team_event=False,
                      status='complete', results_finalized=False, season_year=SEASON):
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     t = GolfTournament(
         api_tourn_id=f'T-{name}',
         name=name,
@@ -188,7 +189,7 @@ def test_index_standings_scoped_to_golf_enrollments(app, client):
     enrolled = _make_user('enrolled_golfer', display_name='EnrolledGolfer')
     _make_enrollment(enrolled)
     # A user in another game only — never enrolled in golf.
-    non_golf = _make_user('worldcup_only', display_name='WorldCupOnly')
+    _make_user('worldcup_only', display_name='WorldCupOnly')
 
     resp = client.get('/golf/')
     assert resp.status_code == 200

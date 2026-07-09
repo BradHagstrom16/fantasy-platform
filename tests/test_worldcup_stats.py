@@ -2,9 +2,10 @@ import os
 from unittest.mock import patch
 
 import pytest
+
 from app import create_app
 from extensions import db
-from games.worldcup.models import WorldCupEnrollment, WorldCupTeam, WorldCupPick
+from games.worldcup.models import WorldCupEnrollment, WorldCupPick, WorldCupTeam
 from models.user import User
 
 
@@ -329,7 +330,8 @@ def test_stats_route_passes_ideal_lineup_when_results_exist(app):
     from games.worldcup.services import stats as stats_mod
     client = app.test_client()
     with app.app_context():
-        admin = User(username='boss', email='b@test.com', is_admin=True); admin.set_password('x')
+        admin = User(username='boss', email='b@test.com', is_admin=True)
+        admin.set_password('x')
         db.session.add(admin)
         t = WorldCupTeam(fifa_code='BRA', name='Brazil', display_name='Brazil',
                          tier=1, multiplier=1.0, confederation='X', group_letter='A',
@@ -354,7 +356,8 @@ def test_stats_route_passes_ideal_lineup_when_results_exist(app):
 def test_stats_page_renders_ideal_lineup_card(app):
     client = app.test_client()
     with app.app_context():
-        admin = User(username='boss2', email='b2@test.com', is_admin=True); admin.set_password('x')
+        admin = User(username='boss2', email='b2@test.com', is_admin=True)
+        admin.set_password('x')
         db.session.add(admin)
         db.session.add(WorldCupTeam(fifa_code='BRA', name='Brazil', display_name='Brazil',
                                     tier=1, multiplier=1.0, confederation='X', group_letter='A',

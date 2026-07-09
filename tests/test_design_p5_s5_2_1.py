@@ -37,12 +37,11 @@ import re
 from pathlib import Path
 
 import pytest
+from flask import render_template
 
 from app import create_app
 from extensions import db
-from flask import render_template
 from models.content import commish_note_paragraphs
-
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 CHAMPION_BANNER = REPO_ROOT / 'core' / 'main' / 'templates' / 'main' / '_champion_banner.html'

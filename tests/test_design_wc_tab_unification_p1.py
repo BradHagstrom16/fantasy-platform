@@ -27,10 +27,8 @@ These tests pin the migration so it can't silently drift back:
   hero phase chip with red, not gold (PR #21 hub-polish gold variant
   flipped to red+white per the new accent doctrine).
 """
-from pathlib import Path
 import re
-
-import pytest
+from pathlib import Path
 
 ROOT = Path(__file__).parent.parent
 CSS_PATH = ROOT / 'static' / 'css' / 'style.css'

@@ -31,9 +31,8 @@ import pytest
 
 from app import create_app
 from extensions import db
-from models.user import User
 from models.content import COMMISH_NOTE_DEFAULTS
-
+from models.user import User
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 TEMPLATES = REPO_ROOT / 'core' / 'main' / 'templates' / 'main'
@@ -437,7 +436,7 @@ def test_ballot_spine_mobile_grid_places_every_cell_explicitly():
     ]
     assert len(blocks) == 1, (
         'Expected exactly one max-width:480px block styling '
-        '.ballot-spine-tier-row, found %d' % len(blocks)
+        f'.ballot-spine-tier-row, found {len(blocks)}'
     )
     block = blocks[0]
     row = re.search(r'\.ballot-spine-tier-row\s*\{([^}]*)\}', block)
@@ -455,7 +454,7 @@ def test_ballot_spine_mobile_grid_places_every_cell_explicitly():
     }
     for child, (grow, gcol) in expected.items():
         m = re.search(
-            r'\.ballot-spine-tier-%s\s*\{([^}]*)\}' % child, block)
+            r'\.ballot-spine-tier-' + child + r'\s*\{([^}]*)\}', block)
         assert m, (
             f'.ballot-spine-tier-{child} has no rule in the 480px '
             'ballot-spine block; an unplaced child falls to grid '

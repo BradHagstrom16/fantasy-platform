@@ -14,13 +14,15 @@ import pytest
 
 from app import create_app
 from extensions import db
-from models.user import User
 from games.worldcup.constants import (
-    SEASON_YEAR, ENTRY_FEE, VENMO_URL, ZELLE_PHONE,
+    ENTRY_FEE,
+    SEASON_YEAR,
+    VENMO_URL,
+    ZELLE_PHONE,
 )
 from games.worldcup.models import WorldCupEnrollment
 from games.worldcup.services.payment import payment_nudge_for
-
+from models.user import User
 
 LIVE_PHASES = ('pre_tournament', 'group_stage', 'knockout')
 

@@ -30,15 +30,19 @@ from unittest.mock import patch
 import pytest
 from flask import template_rendered
 
+import games.registry as registry
 from app import create_app
 from extensions import db
-import games.registry as registry
 from games.cfb.constants import SEASON_SCHEDULE
 from games.cfb.models import CfbPick
 from games.cfb.services.automation import CHICAGO_TZ, _calculate_week_dates
 from games.cfb.utils import get_cfp_eliminated_teams
 from tests._cfb_fixtures import (
-    make_user, make_enrollment, make_team, make_week, make_game, make_pick,
+    make_enrollment,
+    make_game,
+    make_team,
+    make_user,
+    make_week,
 )
 
 # Naive pool-tz wall clock — a far-future deadline keeps the playoff week

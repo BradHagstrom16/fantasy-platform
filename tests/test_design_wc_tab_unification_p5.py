@@ -25,9 +25,8 @@ hardening: `^...` + `re.MULTILINE` start-of-line anchoring on CSS scans;
 property-anchored `(?<![-\\w])` lookbehinds; forbidden-list `\\s*[,{]`
 terminators so a selector listed in a comma group still trips the assertion.
 """
-from pathlib import Path
 import re
-
+from pathlib import Path
 
 ROOT = Path(__file__).parent.parent
 CSS_PATH = ROOT / 'static' / 'css' / 'style.css'

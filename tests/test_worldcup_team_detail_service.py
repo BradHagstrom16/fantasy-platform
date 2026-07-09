@@ -3,14 +3,19 @@ import pytest
 
 from app import create_app
 from extensions import db
-from models.user import User
-from games.worldcup.models import (
-    WorldCupEnrollment, WorldCupMatch, WorldCupPick, WorldCupTeam,
-)
 from games.worldcup.constants import ADVANCE_GROUP_WINNER, KNOCKOUT_POINTS
-from games.worldcup.services.team_detail import (
-    compute_team_ownership, current_user_owns_team, compute_path_to_crown,
+from games.worldcup.models import (
+    WorldCupEnrollment,
+    WorldCupMatch,
+    WorldCupPick,
+    WorldCupTeam,
 )
+from games.worldcup.services.team_detail import (
+    compute_path_to_crown,
+    compute_team_ownership,
+    current_user_owns_team,
+)
+from models.user import User
 
 
 @pytest.fixture()

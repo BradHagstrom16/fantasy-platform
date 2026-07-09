@@ -17,13 +17,20 @@ from sqlalchemy import update
 from sqlalchemy.exc import SQLAlchemyError
 
 from extensions import db
-from games.worldcup.models import (
-    WorldCupEnrollment, WorldCupTeam, WorldCupMatch, WorldCupPick,
-)
 from games.worldcup.constants import (
-    SEASON_YEAR, GROUP_WIN, GROUP_DRAW,
-    ADVANCE_GROUP_WINNER, ADVANCE_RUNNER_UP, ADVANCE_BEST_THIRD,
+    ADVANCE_BEST_THIRD,
+    ADVANCE_GROUP_WINNER,
+    ADVANCE_RUNNER_UP,
+    GROUP_DRAW,
+    GROUP_WIN,
     KNOCKOUT_POINTS,
+    SEASON_YEAR,
+)
+from games.worldcup.models import (
+    WorldCupEnrollment,
+    WorldCupMatch,
+    WorldCupPick,
+    WorldCupTeam,
 )
 from games.worldcup.world_cup_countries import TIERS
 

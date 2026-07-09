@@ -10,21 +10,22 @@ Locks:
 
 Golf tests run against in-memory SQLite via ``create_app('testing')``.
 """
+from datetime import UTC, datetime, timedelta
+
 import pytest
-from datetime import datetime, timedelta, timezone
 
 from app import create_app
 from extensions import db
-from models.user import User
 from games.golf.models import (
     GolfEnrollment,
     GolfPick,
     GolfPlayer,
+    GolfSeasonPlayerUsage,
     GolfTournament,
     GolfTournamentResult,
-    GolfSeasonPlayerUsage,
 )
 from games.golf.services.sync import SlashGolfAPI, TournamentSync
+from models.user import User
 
 SEASON = 2026
 
@@ -57,7 +58,7 @@ def _make_enrollment(user):
 
 
 def _make_tournament(name='Test Open', is_major=False, is_team_event=False, status='complete'):
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     t = GolfTournament(
         api_tourn_id=f'T-{name}',
         name=name,
@@ -320,8 +321,8 @@ def test_reprocess_removes_stale_primary_backup_usage(app):
     _make_result(t, p1, status='complete', rounds_completed=4, earnings=100_000)
     _make_result(t, p2, status='complete', rounds_completed=4, earnings=50_000)
     # Pick already resolved to the primary, but a STALE backup-usage row lingers.
-    pick = _make_pick(user, t, p1, p2, active_player_id=p1.id, points_earned=100_000,
-                      primary_used=True)
+    _make_pick(user, t, p1, p2, active_player_id=p1.id, points_earned=100_000,
+               primary_used=True)
     _add_usage(user, p1)
     _add_usage(user, p2)  # stale — backup should not be "used" when primary counts
     _add_usage(other, p3)  # unrelated, must survive

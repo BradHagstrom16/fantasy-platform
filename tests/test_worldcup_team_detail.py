@@ -1,20 +1,23 @@
 """Tests for the public /worldcup/team/<int:team_id> route."""
 import re
-import pytest
+from datetime import UTC, datetime
 from unittest.mock import patch
-from datetime import datetime, timezone
+
+import pytest
 
 from app import create_app
 from extensions import db
-from models.user import User
 from games.worldcup.constants import SEASON_YEAR
 from games.worldcup.models import (
-    WorldCupEnrollment, WorldCupTeam, WorldCupPick, WorldCupMatch,
+    WorldCupEnrollment,
+    WorldCupMatch,
+    WorldCupPick,
+    WorldCupTeam,
 )
+from models.user import User
 
-
-PAST_DEADLINE = datetime(2000, 1, 1, tzinfo=timezone.utc)
-FUTURE_DEADLINE = datetime(2099, 1, 1, tzinfo=timezone.utc)
+PAST_DEADLINE = datetime(2000, 1, 1, tzinfo=UTC)
+FUTURE_DEADLINE = datetime(2099, 1, 1, tzinfo=UTC)
 
 
 @pytest.fixture()

@@ -11,9 +11,13 @@ from extensions import db
 from games.worldcup.models import WorldCupMatch, WorldCupTeam
 from games.worldcup.services.scoring import set_knockout_team_side
 from games.worldcup.services.sync import (
-    fetch_bracket_proposal,
-    _send_admin_email, _notify_once, SyncError, _fifa_for_tla, _api_get,
     COMPETITION_CODE,
+    SyncError,
+    _api_get,
+    _fifa_for_tla,
+    _notify_once,
+    _send_admin_email,
+    fetch_bracket_proposal,
 )
 
 logger = logging.getLogger(__name__)
@@ -68,8 +72,8 @@ def infer_topology_from_api() -> dict:
             api_by_num[shell.match_number] = (home, away)
         winner_side = (f.get('score') or {}).get('winner')
         if winner_side in ('HOME_TEAM', 'AWAY_TEAM') and home and away:
-            w, l = (home, away) if winner_side == 'HOME_TEAM' else (away, home)
-            by_num[shell.match_number] = (w, l)
+            winner, loser = (home, away) if winner_side == 'HOME_TEAM' else (away, home)
+            by_num[shell.match_number] = (winner, loser)
 
     def feeder(fifa: str, prior: dict) -> tuple[str, int] | None:
         # A team's feeder is its MOST RECENT prior appearance — win OR loss.
@@ -109,8 +113,8 @@ def _loser_fifa(match_number: int) -> str | None:
     if not m or not m.is_completed or not m.winner_team_id:
         return None
     loser_id = m.home_team_id if m.winner_team_id == m.away_team_id else m.away_team_id
-    l = db.session.get(WorldCupTeam, loser_id) if loser_id else None
-    return l.fifa_code if l else None
+    loser = db.session.get(WorldCupTeam, loser_id) if loser_id else None
+    return loser.fifa_code if loser else None
 
 
 def _resolve_feeder(kind: str, feeder_no: int) -> str | None:
@@ -188,10 +192,7 @@ def reconcile(stage: str) -> dict:
     applies = []
     conflicts = []
     for shell_id, sides in derived.items():
-        if api_sides is None:
-            api_for_shell = None
-        else:
-            api_for_shell = api_sides.get(shell_id, {})
+        api_for_shell = None if api_sides is None else api_sides.get(shell_id, {})
         known = {v for v in (api_for_shell or {}).values() if v}
         api_complete = bool(api_for_shell) and len(known) == 2
         for side, fifa in sides.items():

@@ -21,7 +21,6 @@ as the platform display timezone.
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Optional
 from zoneinfo import ZoneInfo
 
 from games.worldcup.constants import WORLDCUP_TZ
@@ -29,7 +28,7 @@ from games.worldcup.constants import WORLDCUP_TZ
 _UTC = ZoneInfo('UTC')
 
 
-def to_ct(dt_utc: Optional[datetime]) -> Optional[datetime]:
+def to_ct(dt_utc: datetime | None) -> datetime | None:
     """Convert a UTC datetime to platform display TZ (America/Chicago).
 
     Naive inputs are interpreted as UTC. Returns ``None`` on ``None`` so
@@ -43,9 +42,9 @@ def to_ct(dt_utc: Optional[datetime]) -> Optional[datetime]:
 
 
 def format_ct(
-    dt_utc: Optional[datetime],
+    dt_utc: datetime | None,
     fmt: str = '%a %d %b · %-I:%M %p CT',
-) -> Optional[str]:
+) -> str | None:
     """Format a UTC datetime as a Central-Time display string.
 
     Default format reads like ``Thu 11 Jun · 7:00 PM CT``. Returns

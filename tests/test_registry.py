@@ -1,6 +1,7 @@
 """Unit tests for games.registry helper functions."""
-import pytest
 from unittest.mock import MagicMock
+
+import pytest
 
 from app import create_app
 from extensions import db

@@ -22,8 +22,8 @@ Iteration map:
   results promised a temporal anchor the rows never delivered; renamed to
   "Around the Tournament" so the editorial register stays honest.
 """
-from pathlib import Path
 import re
+from pathlib import Path
 
 ROOT = Path(__file__).parent.parent
 CSS = (ROOT / 'static' / 'css' / 'style.css').read_text()

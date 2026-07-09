@@ -6,21 +6,28 @@ and admin notifications.
 """
 
 import logging
-from datetime import datetime, timedelta, timezone
-
+from datetime import UTC, datetime, timedelta
 from zoneinfo import ZoneInfo
+
 from flask import current_app
 
-from utils.email import send_platform_email
-
 from extensions import db
-from games.cfb.models import CfbTeam, CfbWeek, CfbGame, CfbEnrollment, CfbPick
 from games.cfb.constants import (
-    API_BASE_URL, TEAM_NAME_MAP, SHORT_TO_API, SEASON_SCHEDULE,
+    API_BASE_URL,
+    SEASON_SCHEDULE,
+    SHORT_TO_API,
+    TEAM_NAME_MAP,
 )
+from games.cfb.models import CfbEnrollment, CfbGame, CfbPick, CfbTeam, CfbWeek
 from games.cfb.services.odds_api import odds_api_get
 from games.cfb.services.score_fetcher import ScoreFetcher
-from games.cfb.utils import deadline_has_passed, get_current_time, make_aware
+from games.cfb.utils import (
+    deadline_has_passed,
+    get_current_time,
+    get_utc_time,
+    make_aware,
+)
+from utils.email import send_platform_email
 
 logger = logging.getLogger(__name__)
 
@@ -148,8 +155,8 @@ def _import_games_for_week(week, start_date, end_date):
         logger.warning("ODDS_API_KEY not configured; cannot import games.")
         return 0
 
-    start_utc = start_date.astimezone(timezone.utc)
-    end_utc = end_date.astimezone(timezone.utc)
+    start_utc = start_date.astimezone(UTC)
+    end_utc = end_date.astimezone(UTC)
 
     params = {
         'apiKey': api_key,
@@ -365,8 +372,8 @@ def run_spread_update():
     if latest.tzinfo is None:
         latest = latest.replace(tzinfo=CHICAGO_TZ)
 
-    start_utc = earliest.astimezone(timezone.utc) - timedelta(hours=6)
-    end_utc = latest.astimezone(timezone.utc) + timedelta(hours=6)
+    start_utc = earliest.astimezone(UTC) - timedelta(hours=6)
+    end_utc = latest.astimezone(UTC) + timedelta(hours=6)
 
     params = {
         'apiKey': api_key,
@@ -397,7 +404,7 @@ def run_spread_update():
 
     updated = 0
     locked = 0
-    now = datetime.now(timezone.utc)
+    now = get_utc_time()
 
     for game in games:
         if game.spread_locked_at:

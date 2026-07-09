@@ -472,6 +472,7 @@ def test_rendered_rules_page_carries_six_section_h2s_and_two_h3_subheads():
     """End-to-end render check for the rules page outline. The class-
     attribute form survives the S4.5 PI-3 id additions."""
     import re
+
     from app import create_app
     from extensions import db
     app = create_app('testing')

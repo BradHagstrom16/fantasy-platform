@@ -11,11 +11,11 @@ Spec B section 4a is the canonical reference for the 3-state semantics;
 Plan 4 of Spec C extends it with 'out'.
 """
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Literal
 
 from games.worldcup.constants import SEASON_YEAR, TOURNAMENT_DEADLINE_UTC
-from games.worldcup.models import WorldCupMatch, WorldCupEnrollment
+from games.worldcup.models import WorldCupEnrollment, WorldCupMatch
 
 WorldCupState = Literal['pre', 'live', 'post']
 WorldCupHubState = Literal['out', 'pre', 'live', 'post']
@@ -44,8 +44,8 @@ def now_utc() -> datetime:
                     fake,
                 )
             else:
-                return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
-    return datetime.now(timezone.utc)
+                return dt if dt.tzinfo else dt.replace(tzinfo=UTC)
+    return datetime.now(UTC)
 
 
 def worldcup_state() -> WorldCupState:

@@ -10,14 +10,22 @@ import logging
 from flask import current_app
 
 from extensions import db
-from models import User
 from games.cfb.models import (
-    CfbEnrollment, CfbTeam, CfbWeek, CfbGame, CfbPick, CfbWeekOutcome,
+    CfbEnrollment,
+    CfbGame,
+    CfbPick,
+    CfbWeek,
+    CfbWeekOutcome,
 )
 from games.cfb.utils import (
-    get_current_time, get_utc_time, make_aware, deadline_has_passed,
-    is_week_playoff, get_cfp_eliminated_teams,
+    deadline_has_passed,
+    get_cfp_eliminated_teams,
+    get_current_time,
+    get_utc_time,
+    is_week_playoff,
+    make_aware,
 )
+from models import User
 
 logger = logging.getLogger(__name__)
 
@@ -371,11 +379,10 @@ def process_autopicks(week_id, season_year=None):
                 if is_week_playoff(week) and game.home_team.name in cfp_eliminated_names:
                     continue
                 home_favoritism = -game.home_team_spread
-                if 0 < home_favoritism <= 16:
-                    if home_favoritism > best_favoritism:
-                        best_favoritism = home_favoritism
-                        best_spread = game.home_team_spread
-                        best_team = game.home_team
+                if 0 < home_favoritism <= 16 and home_favoritism > best_favoritism:
+                    best_favoritism = home_favoritism
+                    best_spread = game.home_team_spread
+                    best_team = game.home_team
 
             # Check away team
             if (game.away_team and game.away_team_id not in used_team_ids
@@ -383,11 +390,10 @@ def process_autopicks(week_id, season_year=None):
                 if is_week_playoff(week) and game.away_team.name in cfp_eliminated_names:
                     continue
                 away_favoritism = game.home_team_spread
-                if 0 < away_favoritism <= 16:
-                    if away_favoritism > best_favoritism:
-                        best_favoritism = away_favoritism
-                        best_spread = -game.home_team_spread
-                        best_team = game.away_team
+                if 0 < away_favoritism <= 16 and away_favoritism > best_favoritism:
+                    best_favoritism = away_favoritism
+                    best_spread = -game.home_team_spread
+                    best_team = game.away_team
 
         # Fallback: pick the smallest underdog
         if not best_team:

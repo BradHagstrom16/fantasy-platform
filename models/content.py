@@ -12,7 +12,7 @@ renders identical copy until an admin edits it. A *stored* row is
 authoritative — including a blank one, which an admin saves to intentionally
 suppress that state's note.
 """
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 
@@ -57,8 +57,8 @@ class CommishNote(db.Model):
     body = db.Column(db.Text, nullable=False, default='')
     updated_at = db.Column(
         db.DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
-        onupdate=lambda: datetime.now(timezone.utc),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
     )
 
     def __repr__(self):

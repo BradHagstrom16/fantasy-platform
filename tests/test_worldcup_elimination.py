@@ -8,7 +8,7 @@ import pytest
 
 from app import create_app
 from extensions import db
-from games.worldcup.models import WorldCupTeam, WorldCupMatch
+from games.worldcup.models import WorldCupMatch, WorldCupTeam
 from games.worldcup.services.elimination import eliminated_team_ids
 from games.worldcup.services.team_detail import _path_status
 

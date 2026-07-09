@@ -14,8 +14,8 @@ Test surface map:
   S6.1.5 PI-5 when the rail collapsed to an editorial typographic ladder.)
 - The Commish byline no longer ships the en-dash that read as a SaaS-blog tell.
 """
-from pathlib import Path
 import re
+from pathlib import Path
 
 ROOT = Path(__file__).parent.parent
 CSS = (ROOT / 'static' / 'css' / 'style.css').read_text()

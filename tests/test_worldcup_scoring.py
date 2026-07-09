@@ -4,10 +4,14 @@ Covers: group match scoring, advancement milestones, knockout rounds,
 podium bonuses, pick/enrollment cascade, idempotency, and full scenarios.
 """
 import pytest
+
 from app import create_app
 from extensions import db
 from games.worldcup.models import (
-    WorldCupEnrollment, WorldCupTeam, WorldCupMatch, WorldCupPick,
+    WorldCupEnrollment,
+    WorldCupMatch,
+    WorldCupPick,
+    WorldCupTeam,
 )
 from models.user import User
 
@@ -167,7 +171,7 @@ class TestFullGroupStage:
     def test_three_matches_one_group(self, app):
         with app.app_context():
             from games.worldcup.services.scoring import (
-                process_match_result, recalculate_all_scores,
+                process_match_result,
             )
 
             # Group A: 4 teams, 6 matches (round-robin)
@@ -531,7 +535,8 @@ class TestIdempotency:
     def test_double_recalc(self, app):
         with app.app_context():
             from games.worldcup.services.scoring import (
-                process_match_result, recalculate_all_scores,
+                process_match_result,
+                recalculate_all_scores,
             )
 
             mex = _make_team(db.session, 'MEX', 'Mexico', 3, 2.5, 'A')
@@ -568,8 +573,8 @@ class TestSpainChampion:
     def test_spain_undefeated_champion(self, app):
         with app.app_context():
             from games.worldcup.services.scoring import (
-                process_match_result, apply_group_advancement,
-                recalculate_all_scores,
+                apply_group_advancement,
+                process_match_result,
             )
 
             esp = _make_team(db.session, 'ESP', 'Spain', 1, 1.0, 'A')
@@ -625,8 +630,8 @@ class TestIranCinderella:
     def test_iran_cinderella_run(self, app):
         with app.app_context():
             from games.worldcup.services.scoring import (
-                process_match_result, apply_group_advancement,
-                recalculate_all_scores,
+                apply_group_advancement,
+                process_match_result,
             )
 
             irn = _make_team(db.session, 'IRN', 'Iran', 5, 7.0, 'F')
@@ -667,8 +672,8 @@ class TestNorwayRunnerUp:
     def test_norway_runner_up_half_points(self, app):
         with app.app_context():
             from games.worldcup.services.scoring import (
-                process_match_result, apply_group_advancement,
-                recalculate_all_scores,
+                apply_group_advancement,
+                process_match_result,
             )
 
             nor = _make_team(db.session, 'NOR', 'Norway', 2, 1.5, 'C')
@@ -795,7 +800,7 @@ class TestGroupAdvancement:
             assert t3.advancement_method == 'best_third'
             assert t4.is_eliminated is True
             assert t4.best_finish == 'group'
-            assert 'GA4' in [t for t in result['eliminated']]
+            assert 'GA4' in result['eliminated']
 
 
 # ============================================================
@@ -817,7 +822,7 @@ class TestSetKnockoutTeams:
             db.session.add(match)
             db.session.commit()
 
-            result = set_knockout_teams(match.id, 'SK1', 'SK2')
+            set_knockout_teams(match.id, 'SK1', 'SK2')
 
             db.session.refresh(match)
             assert match.home_team_id == t1.id
@@ -857,7 +862,8 @@ class TestComputeTeamScoreEventsGroup:
     def test_group_win_emits_single_event(self, app):
         with app.app_context():
             from games.worldcup.services.scoring import (
-                process_match_result, compute_team_score_events,
+                compute_team_score_events,
+                process_match_result,
             )
             mex = _make_team(db.session, 'MEX', 'Mexico', 3, 2.5, 'A')
             rsa = _make_team(db.session, 'RSA', 'South Africa', 5, 7.0, 'A')
@@ -880,7 +886,8 @@ class TestComputeTeamScoreEventsGroup:
     def test_group_draw_emits_event_for_both_teams(self, app):
         with app.app_context():
             from games.worldcup.services.scoring import (
-                process_match_result, compute_team_score_events,
+                compute_team_score_events,
+                process_match_result,
             )
             bra = _make_team(db.session, 'BRA', 'Brazil', 1, 1.0, 'B')
             mar = _make_team(db.session, 'MAR', 'Morocco', 3, 2.5, 'B')
@@ -905,7 +912,8 @@ class TestComputeTeamScoreEventsGroup:
     def test_group_loss_emits_no_event(self, app):
         with app.app_context():
             from games.worldcup.services.scoring import (
-                process_match_result, compute_team_score_events,
+                compute_team_score_events,
+                process_match_result,
             )
             arg = _make_team(db.session, 'ARG', 'Argentina', 1, 1.0, 'C')
             ksa = _make_team(db.session, 'KSA', 'Saudi Arabia', 5, 7.0, 'C')
@@ -927,15 +935,16 @@ class TestComputeTeamScoreEventsAdvancement:
 
     def test_group_winner_advancement_emits_event(self, app):
         with app.app_context():
-            from games.worldcup.services.scoring import (
-                apply_group_advancement, compute_team_score_events,
-            )
             from games.worldcup.constants import ADVANCE_GROUP_WINNER
+            from games.worldcup.services.scoring import (
+                apply_group_advancement,
+                compute_team_score_events,
+            )
 
             esp = _make_team(db.session, 'ESP', 'Spain', 1, 1.0, 'A')
-            uru = _make_team(db.session, 'URU', 'Uruguay', 2, 1.5, 'A')
-            ksa = _make_team(db.session, 'KSA', 'Saudi Arabia', 5, 7.0, 'A')
-            jpn = _make_team(db.session, 'JPN', 'Japan', 4, 4.0, 'A')
+            _make_team(db.session, 'URU', 'Uruguay', 2, 1.5, 'A')
+            _make_team(db.session, 'KSA', 'Saudi Arabia', 5, 7.0, 'A')
+            _make_team(db.session, 'JPN', 'Japan', 4, 4.0, 'A')
             db.session.commit()
 
             apply_group_advancement('A', {
@@ -957,10 +966,11 @@ class TestComputeTeamScoreEventsKnockout:
 
     def test_r16_win_emits_knockout_event(self, app):
         with app.app_context():
-            from games.worldcup.services.scoring import (
-                process_match_result, compute_team_score_events,
-            )
             from games.worldcup.constants import KNOCKOUT_POINTS
+            from games.worldcup.services.scoring import (
+                compute_team_score_events,
+                process_match_result,
+            )
 
             arg = _make_team(db.session, 'ARG', 'Argentina', 1, 1.0, 'A')
             cro = _make_team(db.session, 'CRO', 'Croatia', 3, 2.5, 'B')
@@ -985,10 +995,11 @@ class TestComputeTeamScoreEventsPodium:
 
     def test_champion_emits_podium_event(self, app):
         with app.app_context():
-            from games.worldcup.services.scoring import (
-                process_match_result, compute_team_score_events,
-            )
             from games.worldcup.constants import KNOCKOUT_POINTS
+            from games.worldcup.services.scoring import (
+                compute_team_score_events,
+                process_match_result,
+            )
 
             arg = _make_team(db.session, 'ARG', 'Argentina', 1, 1.0, 'A')
             fra = _make_team(db.session, 'FRA', 'France', 1, 1.0, 'B')
@@ -1013,8 +1024,9 @@ class TestComputeTeamScoreEventsInvariant:
     def test_sum_matches_base_points_after_full_recalc(self, app):
         with app.app_context():
             from games.worldcup.services.scoring import (
-                process_match_result, apply_group_advancement,
+                apply_group_advancement,
                 compute_team_score_events,
+                process_match_result,
             )
 
             # Build a tiny simulated tournament: one group + one R32
@@ -1070,7 +1082,8 @@ class TestComputeMatchAttribution:
     def test_group_win_returns_winner_plus_three(self, app):
         with app.app_context():
             from games.worldcup.services.scoring import (
-                process_match_result, compute_match_attribution,
+                compute_match_attribution,
+                process_match_result,
             )
             mex = _make_team(db.session, 'MEX', 'Mexico', 3, 2.5, 'A')
             rsa = _make_team(db.session, 'RSA', 'South Africa', 5, 7.0, 'A')
@@ -1091,7 +1104,8 @@ class TestComputeMatchAttribution:
     def test_group_draw_returns_both_teams_plus_one(self, app):
         with app.app_context():
             from games.worldcup.services.scoring import (
-                process_match_result, compute_match_attribution,
+                compute_match_attribution,
+                process_match_result,
             )
             bra = _make_team(db.session, 'BRA', 'Brazil', 1, 1.0, 'B')
             mar = _make_team(db.session, 'MAR', 'Morocco', 3, 2.5, 'B')
@@ -1113,10 +1127,11 @@ class TestComputeMatchAttribution:
 
     def test_knockout_win_includes_stage_points(self, app):
         with app.app_context():
-            from games.worldcup.services.scoring import (
-                process_match_result, compute_match_attribution,
-            )
             from games.worldcup.constants import KNOCKOUT_POINTS
+            from games.worldcup.services.scoring import (
+                compute_match_attribution,
+                process_match_result,
+            )
 
             arg = _make_team(db.session, 'ARG', 'Argentina', 1, 1.0, 'A')
             cro = _make_team(db.session, 'CRO', 'Croatia', 3, 2.5, 'B')
@@ -1258,7 +1273,8 @@ def test_points_for_pick_on_match_parity_with_compute_team_score_events(app, ses
     not per-match.)
     """
     from games.worldcup.services.scoring import (
-        points_for_pick_on_match, compute_team_score_events,
+        compute_team_score_events,
+        points_for_pick_on_match,
     )
     with app.app_context():
         # T5 hero team plus 6 distinct opponents

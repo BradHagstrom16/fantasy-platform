@@ -56,8 +56,8 @@ Iteration map:
   + coming-soon rail are still structurally distinct) so the strip
   doesn't need within-itself differentiation.
 """
-from pathlib import Path
 import re
+from pathlib import Path
 
 ROOT = Path(__file__).parent.parent
 CSS = (ROOT / 'static' / 'css' / 'style.css').read_text()

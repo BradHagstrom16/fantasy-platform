@@ -5,7 +5,8 @@ Models for enrollment, teams, matches, and picks.
 All tables use the ``worldcup_`` prefix.
 Game-specific user data lives in WorldCupEnrollment, NOT on the shared User model.
 """
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+from typing import ClassVar
 
 from extensions import db
 
@@ -28,7 +29,7 @@ class WorldCupEnrollment(db.Model):
     total_score = db.Column(db.Float, default=0.0)
     display_name = db.Column(db.String(80), nullable=True)
 
-    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(UTC))
 
     user = db.relationship('User', backref='worldcup_enrollments')
 
@@ -77,7 +78,7 @@ class WorldCupTeam(db.Model):
     # Missing entries fall through to `code[:2]` and render the wrong country's
     # flag. tests/test_worldcup_flag_emoji.py locks all 48 codes against a
     # canonical map so a regression is caught at PR time, not in production.
-    _FIFA_TO_ISO: dict[str, str] = {
+    _FIFA_TO_ISO: ClassVar[dict[str, str]] = {
         'ENG': 'GB', 'SCO': 'GB', 'GER': 'DE', 'NED': 'NL', 'POR': 'PT',
         'SUI': 'CH', 'CRO': 'HR', 'URU': 'UY', 'PAR': 'PY', 'SEN': 'SN',
         'BIH': 'BA', 'ALG': 'DZ', 'KOR': 'KR', 'KSA': 'SA', 'RSA': 'ZA',
@@ -136,9 +137,9 @@ class WorldCupMatch(db.Model):
     # football-data.org match id, set by `flask worldcup sync --mode link`.
     api_fixture_id = db.Column(db.Integer, nullable=True, index=True)
 
-    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
-    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc),
-                           onupdate=lambda: datetime.now(timezone.utc))
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(UTC))
+    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(UTC),
+                           onupdate=lambda: datetime.now(UTC))
 
     home_team = db.relationship('WorldCupTeam', foreign_keys=[home_team_id])
     away_team = db.relationship('WorldCupTeam', foreign_keys=[away_team_id])
@@ -163,7 +164,7 @@ class WorldCupPick(db.Model):
     base_points = db.Column(db.Float, default=0.0)
     multiplied_points = db.Column(db.Float, default=0.0)
 
-    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(UTC))
 
     enrollment = db.relationship('WorldCupEnrollment', backref='picks')
     team = db.relationship('WorldCupTeam')

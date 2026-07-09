@@ -6,8 +6,8 @@ Tokens are signed with the app SECRET_KEY and expire after 1 hour.
 
 Platform-level auth — completely independent of any game.
 """
-from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadSignature
 from flask import current_app
+from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 
 TOKEN_MAX_AGE = 3600  # 1 hour
 

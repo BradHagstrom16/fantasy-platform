@@ -14,27 +14,35 @@ the /worldcup/picks POST success path on every save.
 import logging
 import os
 import subprocess
-from datetime import timedelta, timezone
+from datetime import UTC, timedelta
 from pathlib import Path
 
 from flask import current_app, render_template
 from sqlalchemy import func
 
 from extensions import db
-from utils.email import send_platform_email
 from games.worldcup.constants import (
-    SEASON_YEAR, TOURNAMENT_DEADLINE_UTC, WORLDCUP_TZ,
-    ADVANCE_GROUP_WINNER, ADVANCE_RUNNER_UP, ADVANCE_BEST_THIRD, KNOCKOUT_POINTS,
+    ADVANCE_BEST_THIRD,
+    ADVANCE_GROUP_WINNER,
+    ADVANCE_RUNNER_UP,
+    KNOCKOUT_POINTS,
+    SEASON_YEAR,
+    TOURNAMENT_DEADLINE_UTC,
+    WORLDCUP_TZ,
 )
 from games.worldcup.models import (
-    WorldCupEnrollment, WorldCupMatch, WorldCupPick, WorldCupTeam,
+    WorldCupEnrollment,
+    WorldCupMatch,
+    WorldCupPick,
+    WorldCupTeam,
 )
-from games.worldcup.world_cup_countries import TIERS
 from games.worldcup.services.ranking import compute_rank_delta
 from games.worldcup.services.scoring import points_for_pick_on_match
 from games.worldcup.services.stage import stage_label
 from games.worldcup.services.state import now_utc
 from games.worldcup.services.sync import all_group_advancement_confirmed
+from games.worldcup.world_cup_countries import TIERS
+from utils.email import send_platform_email
 
 logger = logging.getLogger(__name__)
 
@@ -210,7 +218,7 @@ def send_daily_digests() -> dict:
     yesterdays_matches = [
         m for m in all_completed
         if m.updated_at
-        and m.updated_at.replace(tzinfo=timezone.utc).astimezone(WORLDCUP_TZ).date() == yesterday
+        and m.updated_at.replace(tzinfo=UTC).astimezone(WORLDCUP_TZ).date() == yesterday
         and m.home_team_id
         and m.away_team_id
     ]

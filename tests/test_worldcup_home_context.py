@@ -13,16 +13,25 @@ import pytest
 from app import create_app
 from extensions import db
 from games.worldcup.constants import (
-    ENTRY_FEE, TOURNAMENT_DEADLINE_UTC,
+    ENTRY_FEE,
+    TOURNAMENT_DEADLINE_UTC,
 )
+from games.worldcup.models import WorldCupMatch
 from games.worldcup.services.home_context import (
-    build_worldcup_home_context, _context_out, _context_pre, _context_live,
+    _context_live,
+    _context_out,
     _context_post,
+    _context_pre,
+    build_worldcup_home_context,
 )
 from games.worldcup.services.scoring import points_for_pick_on_match
-from games.worldcup.models import WorldCupMatch
 from tests._worldcup_fixtures import (
-    make_enrollment, make_match, make_pick, make_snapshot, make_team, make_user,
+    make_enrollment,
+    make_match,
+    make_pick,
+    make_snapshot,
+    make_team,
+    make_user,
     seed_full_tournament,
 )
 
