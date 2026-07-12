@@ -181,8 +181,8 @@ def compute_hypothetical_deltas(hypothetical: dict[int, int]) -> dict[int, float
         if winner_id is None:
             continue
         home_id, away_id = resolve_match_teams(match.match_number, hypothetical, matches_by_number)
-        if winner_id not in (home_id, away_id):
-            continue  # stale/invalid pick — silently ignored
+        if not home_id or not away_id or winner_id not in (home_id, away_id):
+            continue  # match not yet fully resolved, or a stale/invalid pick — silently ignored
         loser_id = away_id if winner_id == home_id else home_id
 
         winner_team = db.session.get(WorldCupTeam, winner_id)

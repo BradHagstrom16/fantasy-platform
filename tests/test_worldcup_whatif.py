@@ -274,6 +274,12 @@ class TestCompletedFeederNotYetAutofilled:
             # real winner), not stay TBD just because 101 isn't in the list.
             assert by_number[104]['home']['team_id'] == teams['france'].id
             assert by_number[104]['home_feeder'] is None  # concretely known now
+            # Same for the third-place match's home side: Spain (SF1's real
+            # loser) resolves concretely too, not just the final's winner side.
+            assert by_number[103]['home']['team_id'] == teams['spain'].id
+            assert by_number[103]['home_feeder'] is None
+            # The third-place match's away side is still TBD (SF2 undecided).
+            assert by_number[103]['away'] is None
 
     def test_compute_deltas_resolves_final_winner_via_completed_sf(self, app):
         with app.app_context():
@@ -281,9 +287,11 @@ class TestCompletedFeederNotYetAutofilled:
             teams = self._seed_completed_sf1(db.session)
 
             # England wins SF2 (hypothetical); France (real SF1 winner) then
-            # wins the final against England.
+            # wins the final against England, and Spain (real SF1 loser)
+            # beats Argentina (hypothetical SF2 loser) for third place.
             deltas = compute_hypothetical_deltas({
                 102: teams['england'].id,
+                103: teams['spain'].id,
                 104: teams['france'].id,
             })
 
@@ -291,6 +299,21 @@ class TestCompletedFeederNotYetAutofilled:
             # (France's SF-stage points already live in its real total_score,
             # not in this delta — only 104's champion bonus is new here.)
             assert deltas[teams['england'].id] == 19.0 + 8.0  # SF + runner-up
+            assert deltas[teams['spain'].id] == 8.0  # third-place bonus
+            assert teams['argentina'].id not in deltas  # third-place loser
+
+    def test_pick_ignored_when_only_one_side_of_the_match_is_resolved(self, app):
+        with app.app_context():
+            from games.worldcup.services.whatif import compute_hypothetical_deltas
+            teams = self._seed_completed_sf1(db.session)
+
+            # Spain (SF1's real loser) is a known candidate for the
+            # third-place match, but SF2 hasn't been decided (no pick, no
+            # completion) so the OTHER side is still unresolved. Picking
+            # Spain here must not score — the match itself isn't real yet.
+            deltas = compute_hypothetical_deltas({103: teams['spain'].id})
+
+            assert deltas == {}
 
 
 class TestSimulateLeaderboard:
