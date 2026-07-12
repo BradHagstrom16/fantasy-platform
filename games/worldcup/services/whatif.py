@@ -19,6 +19,7 @@ from games.worldcup.models import (
     WorldCupTeam,
 )
 from games.worldcup.services.bracket import BRACKET_TOPOLOGY
+from games.worldcup.services.scoring import _apply_knockout_points
 from games.worldcup.services.stage import stage_label
 
 # Stages whose match winner earns a flat per-round point value (excludes
@@ -39,6 +40,21 @@ def incomplete_knockout_matches() -> list[WorldCupMatch]:
         .order_by(WorldCupMatch.match_number)
         .all()
     )
+
+
+def _all_knockout_matches_by_number() -> dict[int, WorldCupMatch]:
+    """Every non-group match, keyed by match_number — the feeder-lookup map
+    for _resolve(). Must include COMPLETED matches too: process_match_result()
+    (the admin manual-entry path) doesn't call run_bracket_autofill()
+    synchronously — only the sync cron/CLI does — so a feeder can be
+    is_completed=True with a real winner while the downstream shell's own
+    home_team_id/away_team_id are still unset. incomplete_knockout_matches()
+    alone would hide that real result from _resolve() during that window.
+    """
+    return {
+        m.match_number: m
+        for m in WorldCupMatch.query.filter(WorldCupMatch.stage != 'group').all()
+    }
 
 
 def _resolve(match_number, hypothetical, matches_by_number, cache):
@@ -102,7 +118,7 @@ def bracket_state_for_ui() -> list[dict]:
     page-load payload the client needs to render bracket-ordered, feeder-gated
     picker options without an initial AJAX round trip."""
     matches = incomplete_knockout_matches()
-    matches_by_number = {m.match_number: m for m in matches}
+    matches_by_number = _all_knockout_matches_by_number()
     team_ids = set()
     sides_by_match = {}
     for match in matches:
@@ -157,7 +173,7 @@ def compute_hypothetical_deltas(hypothetical: dict[int, int]) -> dict[int, float
     redeclared here.
     """
     matches = incomplete_knockout_matches()
-    matches_by_number = {m.match_number: m for m in matches}
+    matches_by_number = _all_knockout_matches_by_number()
     deltas: dict[int, float] = {}
 
     for match in matches:
@@ -171,8 +187,11 @@ def compute_hypothetical_deltas(hypothetical: dict[int, int]) -> dict[int, float
 
         winner_team = db.session.get(WorldCupTeam, winner_id)
         if match.stage in _ROUND_STAGES:
+            # _apply_knockout_points only reads match.stage (no completion
+            # check), so it's safe to reuse here and keeps this in lockstep
+            # with the real scoring engine's stage-point values.
             if winner_team:
-                deltas[winner_id] = deltas.get(winner_id, 0.0) + KNOCKOUT_POINTS[match.stage] * winner_team.multiplier
+                deltas[winner_id] = deltas.get(winner_id, 0.0) + _apply_knockout_points(match) * winner_team.multiplier
         elif match.stage == 'final':
             loser_team = db.session.get(WorldCupTeam, loser_id) if loser_id else None
             if winner_team:

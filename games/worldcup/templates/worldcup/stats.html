@@ -1184,6 +1184,11 @@ function renderWhatifLeaderboard(data) {
   }
 }
 
+function renderWhatifError() {
+  const wrap = document.getElementById('whatif-leaderboard');
+  if (wrap) wrap.innerHTML = `<p class="wc-whatif-tbd" style="margin:0;">Couldn't load the projected standings. Try again in a moment.</p>`;
+}
+
 let _whatifFetchToken = 0;
 function fetchWhatifLeaderboard() {
   const token = ++_whatifFetchToken;
@@ -1191,9 +1196,12 @@ function fetchWhatifLeaderboard() {
   Object.entries(whatifPicks).forEach(([mn, teamId]) => params.append('pick', `${mn}:${teamId}`));
   const qs = params.toString();
   fetch(SIMULATE_URL + (qs ? '?' + qs : ''))
-    .then(r => r.json())
+    .then(r => {
+      if (!r.ok) throw new Error('simulate request failed: ' + r.status);
+      return r.json();
+    })
     .then(data => { if (token === _whatifFetchToken) renderWhatifLeaderboard(data); })
-    .catch(() => {});
+    .catch(() => { if (token === _whatifFetchToken) renderWhatifError(); });
 }
 
 function initWhatif() {

@@ -230,6 +230,69 @@ class TestBracketStateForUi:
             assert by_number[103]['away_feeder'] == {'kind': 'loser', 'match_number': 102}
 
 
+class TestCompletedFeederNotYetAutofilled:
+    """process_match_result() (the admin manual-entry path) doesn't call
+    run_bracket_autofill() synchronously — only the sync cron/CLI does — so a
+    feeder can be is_completed=True with a real winner while the downstream
+    shell's own home_team_id/away_team_id are still unset. The resolver must
+    still read the real result during that window, not just what's already
+    baked into the incomplete matches themselves."""
+
+    def _seed_completed_sf1(self, session):
+        france = _make_team(session, 'FRA', 'France', 1, 1.0)
+        spain = _make_team(session, 'ESP', 'Spain', 1, 1.0)
+        england = _make_team(session, 'ENG', 'England', 1, 1.0)
+        argentina = _make_team(session, 'ARG', 'Argentina', 1, 1.0)
+        sf1 = WorldCupMatch(
+            match_number=101, stage='SF',
+            home_team_id=france.id, away_team_id=spain.id,
+            is_completed=True, winner_team_id=france.id,
+        )
+        session.add(sf1)
+        sf2 = _make_match(session, 102, 'SF', england, argentina)
+        third = _make_match(session, 103, 'third_place')  # not yet autofilled
+        final = _make_match(session, 104, 'final')          # not yet autofilled
+        session.commit()
+        return {
+            'france': france, 'spain': spain, 'england': england,
+            'argentina': argentina, 'sf1': sf1, 'sf2': sf2,
+            'third': third, 'final': final,
+        }
+
+    def test_bracket_state_resolves_final_side_from_completed_sf(self, app):
+        with app.app_context():
+            from games.worldcup.services.whatif import bracket_state_for_ui
+            teams = self._seed_completed_sf1(db.session)
+
+            state = bracket_state_for_ui()
+            by_number = {s['match_number']: s for s in state}
+
+            # SF1 is completed — it's a real result now, not a pick, so it's
+            # absent from the returned (still-incomplete) rows entirely.
+            assert 101 not in by_number
+            # But the Final's home side must still resolve to France (SF1's
+            # real winner), not stay TBD just because 101 isn't in the list.
+            assert by_number[104]['home']['team_id'] == teams['france'].id
+            assert by_number[104]['home_feeder'] is None  # concretely known now
+
+    def test_compute_deltas_resolves_final_winner_via_completed_sf(self, app):
+        with app.app_context():
+            from games.worldcup.services.whatif import compute_hypothetical_deltas
+            teams = self._seed_completed_sf1(db.session)
+
+            # England wins SF2 (hypothetical); France (real SF1 winner) then
+            # wins the final against England.
+            deltas = compute_hypothetical_deltas({
+                102: teams['england'].id,
+                104: teams['france'].id,
+            })
+
+            assert deltas[teams['france'].id] == 50.0  # champion bonus only
+            # (France's SF-stage points already live in its real total_score,
+            # not in this delta — only 104's champion bonus is new here.)
+            assert deltas[teams['england'].id] == 19.0 + 8.0  # SF + runner-up
+
+
 class TestSimulateLeaderboard:
     def test_only_affected_enrollments_change_score(self, app):
         with app.app_context():
