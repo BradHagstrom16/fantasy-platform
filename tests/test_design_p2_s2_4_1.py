@@ -189,11 +189,13 @@ def test_ledger_css_has_per_cell_border_and_mobile_breakpoint():
 def test_three_lead_cards_one_per_tab():
     """PI-3 marks the dominant card on each tab with `.is-lead` so the
     tab has a recognizable visual lead, breaking the 15-identical-card
-    silhouette flagged by the critique."""
+    silhouette flagged by the critique. The Paths to Glory tab (added later)
+    carries the same doctrine: its picker card is that tab's lead."""
     lead_count = TPL.count('wc-stat-card is-lead')
-    assert lead_count == 3, (
-        f"Expected exactly 3 `.wc-stat-card.is-lead` (Top Scorers / "
-        f"Popularity vs. Score / Pick Distribution); found {lead_count}"
+    assert lead_count == 4, (
+        f"Expected exactly 4 `.wc-stat-card.is-lead` (Top Scorers / "
+        f"Popularity vs. Score / Pick Distribution / Call Every Game); "
+        f"found {lead_count}"
     )
 
 
@@ -327,7 +329,7 @@ def test_stats_route_renders_new_structure(app):
     assert 'wc-stats-masthead-numeral' in body
     assert 'wc-stats-ledger' in body
     assert 'tier-ledger-row' in body
-    assert body.count('wc-stat-card is-lead') == 3
+    assert body.count('wc-stat-card is-lead') == 4
     # The load-bearing marker is the rendered class attribute itself —
     # JS-source comments inlined into the response body are permitted.
     assert 'class="wc-kpi-block"' not in body, (

@@ -122,6 +122,7 @@ if (window.matchMedia('(prefers-color-scheme: dark)').matches)
       <button type="button" class="subnav-pill wc-stats-tab-btn active" data-tab="board" onclick="switchTab('board')">The Board</button>
       <button type="button" class="subnav-pill wc-stats-tab-btn" data-tab="field" onclick="switchTab('field')">The Field</button>
       <button type="button" class="subnav-pill wc-stats-tab-btn" data-tab="tiers" onclick="switchTab('tiers')">By Tier</button>
+      <button type="button" class="subnav-pill wc-stats-tab-btn" data-tab="whatif" onclick="switchTab('whatif')">Paths to Glory</button>
     </div>
   </div>
 </div>
@@ -331,6 +332,34 @@ if (window.matchMedia('(prefers-color-scheme: dark)').matches)
     </div>
   </div>
 
+  <!-- ════ PATHS TO GLORY ════ -->
+  <div id="tab-whatif" class="wc-stats-panel pt-4 pb-5">
+    <h2 style="font-family:'Teko',sans-serif;font-size:1.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-primary);margin-bottom:.2rem;">Pick the rest of the bracket</h2>
+    <p style="color:var(--text-secondary);font-size:.95rem;margin-bottom:1.5rem;">Decide the semifinals, the third-place game, and the final, and watch the pool's standings shift with every pick.</p>
+
+    <div id="whatif-empty" class="wc-stat-card text-center" style="display:none;">
+      <p class="mb-0" style="color:var(--text-secondary);">Nothing left to simulate right now. Check back once the knockout bracket is underway.</p>
+    </div>
+
+    <div id="whatif-body">
+      <div class="wc-stat-card is-lead mb-4">
+        <div class="wc-card-head">
+          <span><span class="wc-eyebrow wc-eyebrow-red">Your bracket</span>Call Every Game</span>
+          <button type="button" id="whatif-reset" class="wc-xhl-clear">Reset</button>
+        </div>
+        <div id="whatif-picker"></div>
+      </div>
+
+      <div class="wc-stat-card">
+        <div class="wc-card-head">
+          <span><span class="wc-eyebrow">Projected</span>How the Pool Shakes Out</span>
+          <span id="whatif-subhead" style="font-family:'Teko',sans-serif;font-size:.75rem;color:var(--text-secondary);"></span>
+        </div>
+        <div id="whatif-leaderboard"></div>
+      </div>
+    </div>
+  </div>
+
 </div><!-- /container -->
 </main>
 {% else %}
@@ -363,6 +392,11 @@ const COUNTRY_STATS = {{ country_stats | tojson }};
 const TIER_STATS = {{ tier_stats | tojson }};
 const COMBOS = {{ combos | tojson }};
 const KPIS = {{ kpis | tojson }};
+// Paths to Glory — the remaining knockout bracket (zero-picks view) + the
+// read-only simulate endpoint. Point math is never computed here; every
+// score in this tab comes straight from SIMULATE_URL's JSON response.
+const BRACKET_STATE = {{ bracket_state | tojson }};
+const SIMULATE_URL = "{{ url_for('worldcup.simulate') }}";
 // Self-hosted flag SVGs (see templates/_flag.html) keyed by ISO-2, cache-busted
 // per deploy. Country flags as emoji render as bare "GB"/"MX" letters on Windows.
 const FLAG_BASE = "{{ url_for('static', filename='flags/') }}";
@@ -400,7 +434,7 @@ if (window.Chart) {
 
 const TN = {1:'Favorites',2:'Contenders',3:'Dark Horses',4:'Underdogs',5:'Wildcards'};
 const TM = {1:1,2:1.5,3:2.5,4:4,5:7};
-const TAB_IDS = ['board','field','tiers'];
+const TAB_IDS = ['board','field','tiers','whatif'];
 
 // ── HELPERS ───────────────────────────────────────────────────
 // S2.4.1 PI-4: tb() = compact code-only badge (T1, T3) for adjacent uses
@@ -518,6 +552,10 @@ function playTiers() {
   [1,3,4,5].forEach(t => drawBars(document.getElementById(`combos-t${t}`), 'div[style*="height:100%"]', { dur: 560 }));
 }
 
+function playWhatif() {
+  riseIn(document.getElementById('whatif-picker'), '.wc-whatif-row', { stagger: 50 });
+}
+
 // Fire a tab's entrance once. Board plays on load; field/tiers on first reveal.
 function choreograph(id) {
   if (choreographed.has(id)) return;
@@ -525,6 +563,7 @@ function choreograph(id) {
   if (id === 'board') playBoard();
   else if (id === 'field') playField();
   else if (id === 'tiers') playTiers();
+  else if (id === 'whatif') playWhatif();
 }
 
 // ── BOARD: PROGRESS BAR ───────────────────────────────────────
@@ -987,6 +1026,200 @@ function initImpactCharts() {
   }
 }
 
+// ── PATHS TO GLORY: WHAT-IF SIMULATOR ────────────────────────
+// Structural-only client logic (which team is currently on which side of a
+// still-undecided match) — every POINT VALUE comes from SIMULATE_URL's JSON,
+// never computed here, so the simulated numbers can never drift from the
+// real scoring engine.
+const BRACKET_BY_NUMBER = {};
+BRACKET_STATE.forEach(m => { BRACKET_BY_NUMBER[m.match_number] = m; });
+// Every team that can ever appear is already present as a known side
+// somewhere in BRACKET_STATE (a team must have won an earlier round — itself
+// a known side — to reach a later one).
+const WHATIF_TEAMS_BY_ID = {};
+BRACKET_STATE.forEach(m => {
+  [m.home, m.away].forEach(t => { if (t) WHATIF_TEAMS_BY_ID[t.team_id] = t; });
+});
+const whatifPicks = {};  // { match_number: team_id }
+
+function escHtml(s) {
+  return String(s).replace(/[&<>"']/g, (c) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+  }[c]));
+}
+
+// Resolve a still-open match's [homeTeamId, awayTeamId] against the
+// visitor's picks so far. A concretely-known side (already resolved from
+// real results) always wins; an undecided side follows its feeder pointer
+// (BRACKET_STATE's home_feeder/away_feeder), reading whichever team the
+// visitor has picked to win (or lose, for the third-place feeder) that
+// earlier match. No feeder pick yet -> still TBD (null).
+function resolveSides(matchNumber) {
+  const m = BRACKET_BY_NUMBER[matchNumber];
+  if (!m) return [null, null];
+  const sides = [];
+  [['home', 'home_feeder'], ['away', 'away_feeder']].forEach(([sideKey, feederKey]) => {
+    if (m[sideKey]) { sides.push(m[sideKey].team_id); return; }
+    const feeder = m[feederKey];
+    if (!feeder) { sides.push(null); return; }
+    const [fh, fa] = resolveSides(feeder.match_number);
+    const picked = whatifPicks[feeder.match_number];
+    if (picked == null || (picked !== fh && picked !== fa)) { sides.push(null); return; }
+    sides.push(feeder.kind === 'winner' ? picked : (picked === fh ? fa : fh));
+  });
+  return sides;
+}
+
+// A pick that no longer matches its match's current candidates (because an
+// earlier round's outcome changed) goes stale — drop it. Looped: dropping one
+// pick can stale a downstream pick in the same pass.
+function invalidateStaleWhatifPicks() {
+  let changed = true;
+  while (changed) {
+    changed = false;
+    Object.keys(whatifPicks).forEach((key) => {
+      const matchNumber = Number(key);
+      const [h, a] = resolveSides(matchNumber);
+      // Valid only if the match is FULLY resolved (both sides known) and the
+      // pick is one of them — a pick "surviving" because it still happens to
+      // equal the one known side (while the other reset to TBD) would keep
+      // scoring a match the picker itself now shows as undecided.
+      const stillValid = h && a && (whatifPicks[matchNumber] === h || whatifPicks[matchNumber] === a);
+      if (!stillValid) {
+        delete whatifPicks[matchNumber];
+        changed = true;
+      }
+    });
+  }
+}
+
+function whatifOptionHtml(matchNumber, team, pickedId) {
+  const isPicked = pickedId === team.team_id;
+  return `<button type="button" class="wc-whatif-opt${isPicked ? ' is-picked' : ''}"
+      data-match="${matchNumber}" data-team="${team.team_id}"
+      aria-pressed="${isPicked}">
+      ${flagImg(team.iso_code)} ${escHtml(team.name)}
+    </button>`;
+}
+
+function whatifRowHtml(m) {
+  const [homeId, awayId] = resolveSides(m.match_number);
+  const homeTeam = homeId ? WHATIF_TEAMS_BY_ID[homeId] : null;
+  const awayTeam = awayId ? WHATIF_TEAMS_BY_ID[awayId] : null;
+  const picked = whatifPicks[m.match_number] ?? null;
+  const options = (homeTeam && awayTeam)
+    ? [homeTeam, awayTeam].map(t => whatifOptionHtml(m.match_number, t, picked)).join('')
+    : `<span class="wc-whatif-tbd">Decide the earlier round first</span>`;
+  return `<div class="wc-whatif-row" data-match="${m.match_number}">
+    <div class="wc-whatif-stage">${escHtml(m.stage_label)}</div>
+    <div class="wc-whatif-options">${options}</div>
+  </div>`;
+}
+
+function renderWhatifPicker() {
+  const picker = document.getElementById('whatif-picker');
+  const empty = document.getElementById('whatif-empty');
+  const body = document.getElementById('whatif-body');
+  if (!BRACKET_STATE.length) {
+    empty.style.display = 'block';
+    body.style.display = 'none';
+    return;
+  }
+  picker.innerHTML = BRACKET_STATE.map(whatifRowHtml).join('');
+}
+
+function whatifRowLbHtml(r) {
+  const delta = r.delta > 0
+    ? `<div class="wc-whatif-delta">+${Number.isInteger(r.delta) ? r.delta : r.delta.toFixed(1)}</div>`
+    : '';
+  return `<div class="wc-lb-row wc-whatif-lb-row${r.is_you ? ' wc-whatif-you' : ''}" data-enrollment="${r.enrollment_id}">
+    <div class="wc-lb-rank">${r.rank}</div>
+    <div style="font-family:'Teko',sans-serif;font-weight:600;font-size:.95rem;color:var(--text-primary);">
+      ${escHtml(r.display_name)}${r.is_you ? '<span class="wc-whatif-you-tag">You</span>' : ''}
+    </div>
+    <div class="wc-whatif-score-wrap">
+      <div class="wc-lb-score">${r.score.toFixed(1)}</div>
+      ${delta}
+    </div>
+  </div>`;
+}
+
+// FLIP the leaderboard into its new order: capture each row's position before
+// the re-render, then animate the delta after — a restrained reorder, not a
+// broadcast-style shuffle (DESIGN.md motion doctrine), skipped entirely under
+// prefers-reduced-motion.
+function renderWhatifLeaderboard(data) {
+  const wrap = document.getElementById('whatif-leaderboard');
+  const rows = data.ranked || [];
+  const decided = Object.keys(whatifPicks).length;
+  const sub = document.getElementById('whatif-subhead');
+  if (sub) {
+    sub.textContent = decided
+      ? `${decided} of ${BRACKET_STATE.length} game${BRACKET_STATE.length === 1 ? '' : 's'} decided`
+      : 'Current standings';
+  }
+  if (!rows.length) {
+    wrap.innerHTML = `<p style="color:var(--text-secondary);margin:0;">No players enrolled yet.</p>`;
+    return;
+  }
+
+  const prevTops = {};
+  if (!REDUCED) {
+    wrap.querySelectorAll('[data-enrollment]').forEach((el) => {
+      prevTops[el.dataset.enrollment] = el.getBoundingClientRect().top;
+    });
+  }
+  wrap.innerHTML = rows.map(whatifRowLbHtml).join('');
+  if (!REDUCED) {
+    wrap.querySelectorAll('[data-enrollment]').forEach((el) => {
+      const prevTop = prevTops[el.dataset.enrollment];
+      if (prevTop == null) return;
+      const dy = prevTop - el.getBoundingClientRect().top;
+      if (Math.abs(dy) < 1) return;
+      el.animate(
+        [{ transform: `translateY(${dy}px)` }, { transform: 'none' }],
+        { duration: 420, easing: EASE, fill: 'both' },
+      );
+    });
+  }
+}
+
+let _whatifFetchToken = 0;
+function fetchWhatifLeaderboard() {
+  const token = ++_whatifFetchToken;
+  const params = new URLSearchParams();
+  Object.entries(whatifPicks).forEach(([mn, teamId]) => params.append('pick', `${mn}:${teamId}`));
+  const qs = params.toString();
+  fetch(SIMULATE_URL + (qs ? '?' + qs : ''))
+    .then(r => r.json())
+    .then(data => { if (token === _whatifFetchToken) renderWhatifLeaderboard(data); })
+    .catch(() => {});
+}
+
+function initWhatif() {
+  if (!BRACKET_STATE.length) { renderWhatifPicker(); return; }
+  renderWhatifPicker();
+  fetchWhatifLeaderboard();
+
+  document.getElementById('whatif-picker')?.addEventListener('click', (e) => {
+    const btn = e.target.closest('.wc-whatif-opt');
+    if (!btn) return;
+    const matchNumber = Number(btn.dataset.match);
+    const teamId = Number(btn.dataset.team);
+    if (whatifPicks[matchNumber] === teamId) delete whatifPicks[matchNumber];
+    else whatifPicks[matchNumber] = teamId;
+    invalidateStaleWhatifPicks();
+    renderWhatifPicker();
+    fetchWhatifLeaderboard();
+  });
+
+  document.getElementById('whatif-reset')?.addEventListener('click', () => {
+    Object.keys(whatifPicks).forEach(k => delete whatifPicks[k]);
+    renderWhatifPicker();
+    fetchWhatifLeaderboard();
+  });
+}
+
 // ── TABS ──────────────────────────────────────────────────────
 // `TAB_IDS` order pairs positionally with `.wc-stats-tab-btn` buttons.
 function switchTab(id) {
@@ -1023,6 +1256,7 @@ renderTierLedger();
 renderImpact();
 renderCombos();
 renderPointsSplit();
+initWhatif();
 
 // Cross-highlight: the Field-tab "Clear" chip drops the active nation.
 document.getElementById('wc-xhl-clear')?.addEventListener('click', () => setCrossHighlight(null));
