@@ -7641,6 +7641,88 @@ body.game-worldcup .tier-card-5 .tier-card-header { background: linear-gradient(
 .wc-sbar-g { background: var(--game-primary); }
 .wc-sbar-k { background: var(--game-accent); }
 
+/* Paths to Glory — What-If Simulator. Bracket picker (one row per remaining
+   knockout match) + a reshuffling leaderboard reusing .wc-lb-row. */
+.wc-whatif-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: .6rem;
+  padding: .75rem 0;
+  border-bottom: 1px solid var(--border);
+}
+.wc-whatif-row:last-child { border-bottom: none; }
+.wc-whatif-stage {
+  font-family: 'Teko', sans-serif;
+  font-weight: 600;
+  font-size: .85rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  min-width: 8rem;
+}
+.wc-whatif-options { display: flex; gap: .5rem; flex-wrap: wrap; }
+.wc-whatif-opt {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  font-family: 'Newsreader', Georgia, serif;
+  font-size: .92rem;
+  padding: .4rem .8rem;
+  min-height: 44px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: background .15s, border-color .15s, color .15s;
+}
+.wc-whatif-opt:hover { border-color: var(--wc-red); background: rgba(191,10,48,.05); }
+.wc-whatif-opt.is-picked {
+  background: var(--wc-red);
+  border-color: var(--wc-red);
+  color: #fff;
+  font-weight: 600;
+}
+.wc-whatif-opt:focus-visible { outline: 2px solid var(--gold-light); outline-offset: 2px; }
+.wc-whatif-tbd {
+  font-family: 'Newsreader', Georgia, serif;
+  font-style: italic;
+  font-size: .88rem;
+  color: var(--text-secondary);
+}
+/* Score + delta column needs more room than the stock 4rem .wc-lb-row cell. */
+.wc-whatif-lb-row { grid-template-columns: 2.2rem 1fr 5.5rem; }
+.wc-whatif-score-wrap { display: flex; flex-direction: column; align-items: flex-end; }
+.wc-whatif-score-wrap .wc-lb-score { line-height: 1.05; }
+.wc-whatif-delta {
+  display: inline-block;
+  font-family: 'Teko', sans-serif;
+  font-size: .78rem;
+  font-weight: 700;
+  color: var(--wc-red);
+  margin-top: .05rem;
+}
+/* Current-user spotlight — mirrors .table-worldcup .row-current-user's red
+   tint (DESIGN.md Red = "current-user emphasis states"), adapted from a
+   table row to this div-grid row. */
+.wc-lb-row.wc-whatif-you { background: rgba(191,10,48,.1); font-weight: 600; }
+.wc-whatif-you-tag {
+  display: inline-block;
+  font-family: 'Teko', sans-serif;
+  font-size: .65rem;
+  font-weight: 700;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  color: #fff;
+  background: var(--wc-red);
+  padding: .1em .4em;
+  border-radius: .25rem;
+  margin-left: .35rem;
+  vertical-align: middle;
+}
+
 /* Combo rows */
 .wc-combo-row {
   display: flex;

@@ -89,6 +89,7 @@ from games.worldcup.services.trends import (
     compute_trend_by_enrollment,
     show_trend_column,
 )
+from games.worldcup.services.whatif import bracket_state_for_ui, simulate_leaderboard
 from models import User
 
 # Platform tz helper. Re-exported as `format_ct` in the WC blueprint context
@@ -929,7 +930,42 @@ def stats():
         ideal_lineup=ideal_lineup,
         my_picks=my_picks,
         current_phase=_derive_tournament_phase(),
+        bracket_state=bracket_state_for_ui(),
     )
+
+
+@worldcup_bp.route('/stats/simulate')
+def simulate():
+    """What-If Simulator — read-only JSON, gated identically to stats().
+
+    Picks arrive as repeated `pick=<match_number>:<team_id>` query params.
+    Anything malformed or referencing a match/team combo that isn't
+    currently valid is silently dropped rather than a 400 — a client can
+    hold picks that go stale the moment a real result lands.
+    """
+    deadline_passed = now_utc() >= TOURNAMENT_DEADLINE_UTC
+    is_admin = current_user.is_authenticated and current_user.is_admin
+    if not (deadline_passed or is_admin):
+        return jsonify({'error': 'not available yet'}), 403
+
+    hypothetical = {}
+    for raw in request.args.getlist('pick'):
+        match_str, _, team_str = raw.partition(':')
+        if match_str.isdigit() and team_str.isdigit():
+            hypothetical[int(match_str)] = int(team_str)
+
+    result = simulate_leaderboard(hypothetical)
+
+    my_enrollment_id = None
+    if current_user.is_authenticated:
+        mine = WorldCupEnrollment.query.filter_by(
+            user_id=current_user.id, season_year=SEASON_YEAR,
+        ).first()
+        my_enrollment_id = mine.id if mine else None
+    for row in result['ranked']:
+        row['is_you'] = row['enrollment_id'] == my_enrollment_id
+
+    return jsonify(result)
 
 
 @worldcup_bp.route('/rosters')
