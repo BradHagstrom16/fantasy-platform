@@ -7409,6 +7409,10 @@ body.game-worldcup .tier-card-5 .tier-card-header { background: linear-gradient(
   letter-spacing: .14em;
   margin-bottom: .35rem;
 }
+/* .wc-eyebrow-red (1 class) loses to the rule above (3 classes) regardless of
+   source order, so any accent-colored eyebrow inside a lead card silently
+   rendered gray. Re-specify so the modifier wins again. */
+.wc-stat-card.is-lead .wc-eyebrow.wc-eyebrow-red { color: var(--wc-red); }
 
 /* "Settle the Tab" — member payment nudge (games/worldcup/_settle_tab.html).
    A `.wc-stat-card` with a gold top-rule (money = CCC gold; parallels the
@@ -7643,6 +7647,17 @@ body.game-worldcup .tier-card-5 .tier-card-header { background: linear-gradient(
 
 /* Paths to Glory — What-If Simulator. Bracket picker (one row per remaining
    knockout match) + a reshuffling leaderboard reusing .wc-lb-row. */
+/* Stacked eyebrow-over-headline for both card heads in this tab, independent
+   of .is-lead (mirrors the .wc-ideal-head precedent) so both cards read
+   consistently no matter which one carries the lead treatment. */
+.wc-whatif-head .wc-eyebrow { display: block; margin-bottom: .3rem; }
+/* Pinned copy of the viewer's own row, rendered above the full list so
+   "where am I" never requires scrolling past everyone else. */
+#whatif-your-row:not(:empty) {
+  padding-bottom: .75rem;
+  margin-bottom: .25rem;
+  border-bottom: 2px solid var(--wc-red);
+}
 .wc-whatif-row {
   display: flex;
   align-items: center;
@@ -7706,8 +7721,36 @@ body.game-worldcup .tier-card-5 .tier-card-header { background: linear-gradient(
 }
 /* Current-user spotlight — mirrors .table-worldcup .row-current-user's red
    tint (DESIGN.md Red = "current-user emphasis states"), adapted from a
-   table row to this div-grid row. */
-.wc-lb-row.wc-whatif-you { background: rgba(191,10,48,.1); font-weight: 600; }
+   table row to this div-grid row. Reuses the .is-cross-hl tint+inset-rule
+   pattern (this file, ~line 63) so the spotlight reads at a glance while
+   scrolling, not just as a faint background shift (structure + color, never
+   color alone). */
+.wc-lb-row.wc-whatif-you {
+  background: rgba(191, 10, 48, .07);
+  box-shadow: inset 3px 0 0 var(--wc-red);
+  font-weight: 600;
+}
+/* Rank movement vs. the zero-picks baseline (see whatifBaselineRanks in the
+   script below). Green/red borrows the codebase's existing positive/negative
+   token pair (style.css ~5327, .pick-event-pts--pos/--neg) rather than
+   --wc-red again, since --wc-red already means something else (points
+   gained) in the adjacent .wc-whatif-delta badge on the same row. */
+.wc-whatif-rank-move {
+  display: inline-block;
+  font-family: 'Teko', sans-serif;
+  font-size: .7rem;
+  font-weight: 700;
+  margin-left: .3rem;
+  vertical-align: middle;
+}
+.wc-whatif-rank-move.is-up { color: var(--success); }
+.wc-whatif-rank-move.is-down { color: var(--danger); }
+/* Stack rank + move indicator instead of running them inline — the shared
+   .wc-lb-rank column is only 2.2rem (grid-template-columns above), too
+   narrow for two-digit rank + two-digit delta side by side. Scoped here
+   rather than on .wc-lb-rank itself, which other leaderboard surfaces reuse. */
+.wc-whatif-lb-row .wc-lb-rank { display: flex; flex-direction: column; align-items: center; line-height: 1.15; }
+.wc-whatif-lb-row .wc-whatif-rank-move { margin-left: 0; margin-top: .05rem; }
 .wc-whatif-you-tag {
   display: inline-block;
   font-family: 'Teko', sans-serif;

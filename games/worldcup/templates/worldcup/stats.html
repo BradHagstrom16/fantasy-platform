@@ -83,6 +83,11 @@
     text-transform: uppercase; cursor: pointer;
   }
   .wc-xhl-clear:hover { color: var(--text-primary); border-color: var(--wc-red); }
+  /* #whatif-reset is a .wc-xhl-clear instance inside Paths to Glory — scoped
+     by id rather than editing the shared class (also used by the Tiers tab's
+     unrelated cross-highlight Clear button) to bring it up to the 44px
+     touch-target floor its sibling .wc-whatif-opt buttons already meet. */
+  #whatif-reset { min-height: 44px; padding: .5rem .9rem; }
 </style>
 {% endblock %}
 
@@ -342,19 +347,20 @@ if (window.matchMedia('(prefers-color-scheme: dark)').matches)
     </div>
 
     <div id="whatif-body">
-      <div class="wc-stat-card is-lead mb-4">
-        <div class="wc-card-head">
+      <div class="wc-stat-card mb-4">
+        <div class="wc-card-head wc-whatif-head">
           <span><span class="wc-eyebrow wc-eyebrow-red">Your bracket</span>Call Every Game</span>
           <button type="button" id="whatif-reset" class="wc-xhl-clear">Reset</button>
         </div>
         <div id="whatif-picker"></div>
       </div>
 
-      <div class="wc-stat-card">
-        <div class="wc-card-head">
+      <div class="wc-stat-card is-lead">
+        <div class="wc-card-head wc-whatif-head">
           <span><span class="wc-eyebrow">Projected</span>How the Pool Shakes Out</span>
           <span id="whatif-subhead" style="font-family:'Teko',sans-serif;font-size:.75rem;color:var(--text-secondary);"></span>
         </div>
+        <div id="whatif-your-row"></div>
         <div id="whatif-leaderboard"></div>
       </div>
     </div>
@@ -1041,6 +1047,7 @@ BRACKET_STATE.forEach(m => {
   [m.home, m.away].forEach(t => { if (t) WHATIF_TEAMS_BY_ID[t.team_id] = t; });
 });
 const whatifPicks = {};  // { match_number: team_id }
+let whatifBaselineRanks = null;  // { enrollment_id: rank } — captured from the first (zero-pick) fetch
 
 function escHtml(s) {
   return String(s).replace(/[&<>"']/g, (c) => ({
@@ -1128,12 +1135,19 @@ function renderWhatifPicker() {
   picker.innerHTML = BRACKET_STATE.map(whatifRowHtml).join('');
 }
 
-function whatifRowLbHtml(r) {
+// baseRank is the enrollment's rank on the *unpicked* leaderboard (captured
+// once by renderWhatifLeaderboard on first load) — diffing against it is
+// what lets a row show "you moved" without the backend tracking history.
+function whatifRowLbHtml(r, baseRank) {
   const delta = r.delta > 0
     ? `<div class="wc-whatif-delta">+${Number.isInteger(r.delta) ? r.delta : r.delta.toFixed(1)}</div>`
     : '';
+  const rankMove = (baseRank != null && baseRank !== r.rank) ? baseRank - r.rank : 0;
+  const rankIndicator = rankMove !== 0
+    ? `<span class="wc-whatif-rank-move ${rankMove > 0 ? 'is-up' : 'is-down'}">${rankMove > 0 ? '▲' : '▼'}${Math.abs(rankMove)}</span>`
+    : '';
   return `<div class="wc-lb-row wc-whatif-lb-row${r.is_you ? ' wc-whatif-you' : ''}" data-enrollment="${r.enrollment_id}">
-    <div class="wc-lb-rank">${r.rank}</div>
+    <div class="wc-lb-rank">${r.rank}${rankIndicator}</div>
     <div style="font-family:'Teko',sans-serif;font-weight:600;font-size:.95rem;color:var(--text-primary);">
       ${escHtml(r.display_name)}${r.is_you ? '<span class="wc-whatif-you-tag">You</span>' : ''}
     </div>
@@ -1150,6 +1164,7 @@ function whatifRowLbHtml(r) {
 // prefers-reduced-motion.
 function renderWhatifLeaderboard(data) {
   const wrap = document.getElementById('whatif-leaderboard');
+  const yourRowWrap = document.getElementById('whatif-your-row');
   const rows = data.ranked || [];
   const decided = Object.keys(whatifPicks).length;
   const sub = document.getElementById('whatif-subhead');
@@ -1160,7 +1175,23 @@ function renderWhatifLeaderboard(data) {
   }
   if (!rows.length) {
     wrap.innerHTML = `<p style="color:var(--text-secondary);margin:0;">No players enrolled yet.</p>`;
+    if (yourRowWrap) yourRowWrap.innerHTML = '';
     return;
+  }
+
+  // The first fetch always runs with zero picks — that's the true baseline
+  // ranking. Capture it once so every later render can show "you moved" via
+  // whatifRowLbHtml's rankMove diff, with no backend history tracking needed.
+  if (!whatifBaselineRanks) {
+    whatifBaselineRanks = {};
+    rows.forEach((r) => { whatifBaselineRanks[r.enrollment_id] = r.rank; });
+  }
+
+  if (yourRowWrap) {
+    const yourRow = rows.find((r) => r.is_you);
+    yourRowWrap.innerHTML = yourRow
+      ? whatifRowLbHtml(yourRow, whatifBaselineRanks[yourRow.enrollment_id])
+      : '';
   }
 
   const prevTops = {};
@@ -1169,7 +1200,7 @@ function renderWhatifLeaderboard(data) {
       prevTops[el.dataset.enrollment] = el.getBoundingClientRect().top;
     });
   }
-  wrap.innerHTML = rows.map(whatifRowLbHtml).join('');
+  wrap.innerHTML = rows.map((r) => whatifRowLbHtml(r, whatifBaselineRanks[r.enrollment_id])).join('');
   if (!REDUCED) {
     wrap.querySelectorAll('[data-enrollment]').forEach((el) => {
       const prevTop = prevTops[el.dataset.enrollment];
