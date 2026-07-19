@@ -1027,7 +1027,9 @@ def test_context_live_final_loser_attributes_runner_up_points(app):
 def test_context_live_both_finalists_rostered_composite_podium_label(app):
     """The final awards podium bonuses to BOTH sides, so a roster holding both
     finalists sums champion + runner-up points — the label must name every
-    contributor (champion first), not attribute the aggregate to one code."""
+    contributor, champion first BY FINISH ORDER. The runner-up here is a x7
+    wildcard whose 56 display points beat the x1 champion's 50, so a
+    points-sorted label would invert to 'Runner-up & Champion'."""
     from core.main.home_context import build_home_context
     from games.worldcup.constants import KNOCKOUT_POINTS
     from games.worldcup.models import WorldCupMatch, WorldCupPick, WorldCupTeam
@@ -1039,15 +1041,15 @@ def test_context_live_both_finalists_rostered_composite_podium_label(app):
             fifa_code='ESP', name='Spain', display_name='Spain',
             tier=1, multiplier=1.0, confederation='UEFA', group_letter='A',
         )
-        arg = WorldCupTeam(
-            fifa_code='ARG', name='Argentina', display_name='Argentina',
-            tier=2, multiplier=1.5, confederation='CONMEBOL', group_letter='B',
+        jor = WorldCupTeam(
+            fifa_code='JOR', name='Jordan', display_name='Jordan',
+            tier=5, multiplier=7.0, confederation='AFC', group_letter='B',
         )
-        db.session.add_all([esp, arg])
+        db.session.add_all([esp, jor])
         db.session.flush()
         match = WorldCupMatch(
             match_number=104, stage='final',
-            home_team_id=esp.id, away_team_id=arg.id,
+            home_team_id=esp.id, away_team_id=jor.id,
             home_score=1, away_score=0, is_completed=True,
             winner_team_id=esp.id, is_draw=False,
         )
@@ -1055,16 +1057,17 @@ def test_context_live_both_finalists_rostered_composite_podium_label(app):
         user = _make_user()
         enr = _make_enrollment(user, picks_submitted=True)
         db.session.add(WorldCupPick(enrollment_id=enr.id, team_id=esp.id, tier=1))
-        db.session.add(WorldCupPick(enrollment_id=enr.id, team_id=arg.id, tier=2))
+        db.session.add(WorldCupPick(enrollment_id=enr.id, team_id=jor.id, tier=5))
         db.session.commit()
 
         ctx = build_home_context(user, 'live')
         item = ctx['your_pick_results'][0]
         expected = (
-            KNOCKOUT_POINTS['champion'] * 1.0
-            + KNOCKOUT_POINTS['runner_up'] * 1.5
+            KNOCKOUT_POINTS['champion'] * 1.0    # 50
+            + KNOCKOUT_POINTS['runner_up'] * 7.0  # 56 — bigger than 50
         )
         assert item['points_earned'] == expected
         assert item['podium_label'] == 'Champion & Runner-up'
-        # Winner side carries the roster label (largest contributor).
-        assert item['roster_match']['team_id'] == esp.id
+        # The x7 runner-up out-earned the champion, so the roster label
+        # carries the runner-up side (largest points contributor).
+        assert item['roster_match']['team_id'] == jor.id

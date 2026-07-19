@@ -29,7 +29,10 @@ from games.worldcup.models import (
 )
 from games.worldcup.services.elimination import eliminated_team_ids
 from games.worldcup.services.ranking import compute_rank_neighbors
-from games.worldcup.services.scoring import display_points_for_pick_on_match
+from games.worldcup.services.scoring import (
+    STAGE_ORDER,
+    display_points_for_pick_on_match,
+)
 from games.worldcup.services.stage import best_finish_label, stage_label
 from games.worldcup.services.state import (
     FINAL_MATCH_NUMBER,
@@ -364,15 +367,16 @@ def _context_live(user: Any) -> dict:
             points_earned = sum(pts for pts, _ in scored)
             # Composite label when BOTH finalists are on the roster (the final
             # awards podium bonuses to both sides): points_earned is the sum,
-            # so the label must name every contributor. Ordered by points so
-            # the champion leads.
+            # so the label must name every contributor. Ordered by canonical
+            # finish (STAGE_ORDER), not display points — a x7 runner-up's 56
+            # scaled points would otherwise outrank a x1 champion's 50.
             podium_hits = sorted(
-                ((pts, code) for pts, code in scored if code is not None),
-                key=lambda hit: hit[0], reverse=True,
+                (code for _, code in scored if code is not None),
+                key=lambda code: STAGE_ORDER.get(code, -1), reverse=True,
             )
             if podium_hits:
                 podium_label = ' & '.join(
-                    best_finish_label(code) for _, code in podium_hits
+                    best_finish_label(code) for code in podium_hits
                 )
         recent_matches.append({
             'match': match,
