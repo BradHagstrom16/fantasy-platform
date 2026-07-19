@@ -58,11 +58,15 @@
 
   /* Click a scatter bubble: cross-highlight the same nation in the Field
      tab's popularity bars + impact lists. Structure-and-color, never color
-     alone (the left rule + lift read without the tint). */
+     alone (the full 1px ring + lift read without the tint). The ring is an
+     inset spread box-shadow, not a border, so the highlight causes no
+     layout shift; the earlier 3px leading stripe was the banned side-stripe
+     visual (DESIGN.md side-stripe ban, locked by
+     test_design_p0_side_stripes.py's inline-style scan). */
   .wc-pick-bar, .wc-imp-row { transition: background .16s ease, box-shadow .16s ease; }
   .wc-pick-bar.is-cross-hl, .wc-imp-row.is-cross-hl {
     background: rgba(191, 10, 48, .07);
-    box-shadow: inset 3px 0 0 var(--wc-red);
+    box-shadow: inset 0 0 0 1px rgba(191, 10, 48, .4);
     border-radius: .35rem;
   }
   .wc-xhl-banner {
@@ -1047,7 +1051,7 @@ BRACKET_STATE.forEach(m => {
   [m.home, m.away].forEach(t => { if (t) WHATIF_TEAMS_BY_ID[t.team_id] = t; });
 });
 const whatifPicks = {};  // { match_number: team_id }
-let whatifBaselineRanks = null;  // { enrollment_id: rank } — captured from the first (zero-pick) fetch
+let whatifBaselineRanks = null;  // { enrollment_id: rank } -- captured from the first (zero-pick) fetch
 
 function escHtml(s) {
   return String(s).replace(/[&<>"']/g, (c) => ({

@@ -48,6 +48,34 @@ def _is_game_scoped(selector: str) -> bool:
     return any(re.search(p, selector) for p in GAME_SCOPED_PATTERNS)
 
 
+# Shared stripe-shape matchers (CR PR #114): widths are captured numerically
+# (incl. fractional, e.g. `2.5px`) and compared against the 2px threshold in
+# code rather than baked into the digit pattern; the box-shadow declaration
+# stops at `;` OR end-of-block so a final declaration without a trailing
+# semicolon is still scanned.
+_BORDER_STRIPE_RE = re.compile(r'border-(left|right):\s*(\d+(?:\.\d+)?)px')
+_SHADOW_DECL_RE = re.compile(r'box-shadow\s*:\s*([^;}]+)')
+_INSET_STRIPE_RE = re.compile(r'\binset\s+(-?)(\d+(?:\.\d+)?)px\s+0\s+0')
+_STRIPE_MIN_PX = 2.0
+
+
+def _border_stripes(body: str):
+    """Yield (edge, width_str) for every banned border side-stripe in a rule body."""
+    for m in _BORDER_STRIPE_RE.finditer(body):
+        if float(m.group(2)) >= _STRIPE_MIN_PX:
+            yield m.group(1), m.group(2)
+
+
+def _inset_stripes(body: str):
+    """Yield (edge, decl_str) for every banned inset-shadow stripe in a rule body."""
+    for shadow_decl in _SHADOW_DECL_RE.finditer(body):
+        for m in _INSET_STRIPE_RE.finditer(shadow_decl.group(1)):
+            sign, width = m.group(1), m.group(2)
+            if float(width) >= _STRIPE_MIN_PX:
+                edge = 'right' if sign == '-' else 'left'
+                yield edge, f'inset {sign}{width}px 0 0'
+
+
 def test_no_colored_side_stripes_on_platform_components():
     """Walk style.css. Any rule with `border-left/right: Npx` (N >= 2) outside
     Golf/CFB-scoped blocks is a side-stripe ban violation. The selector match
@@ -62,8 +90,8 @@ def test_no_colored_side_stripes_on_platform_components():
         body = rule_match.group(2)
         if _is_game_scoped(selector):
             continue
-        for stripe in re.finditer(r'border-(left|right):\s*([2-9]|[1-9]\d+)px', body):
-            offenders.append((selector[:120], stripe.group(1), stripe.group(2)))
+        for edge, width in _border_stripes(body):
+            offenders.append((selector[:120], edge, width))
     assert not offenders, (
         'Side-stripe ban violations on platform/WC components: '
         f'{offenders}. Replace with full borders, leading icons/numerals, '
@@ -91,18 +119,8 @@ def test_no_inset_box_shadow_side_stripes_on_platform_components():
         body = rule_match.group(2)
         if _is_game_scoped(selector):
             continue
-        for shadow_decl in re.finditer(r'box-shadow\s*:\s*([^;]+);', body):
-            value = shadow_decl.group(1)
-            for stripe in re.finditer(
-                r'\binset\s+(-?)([2-9]|[1-9]\d+)px\s+0\s+0', value
-            ):
-                sign, width = stripe.group(1), stripe.group(2)
-                edge = 'right' if sign == '-' else 'left'
-                offenders.append((
-                    selector[:120],
-                    f'inset {sign}{width}px 0 0',
-                    edge,
-                ))
+        for edge, decl in _inset_stripes(body):
+            offenders.append((selector[:120], decl, edge))
     assert not offenders, (
         'Inset-box-shadow side-stripe violations on platform/WC components: '
         f'{offenders}. The 3px-leading-accent visual is banned regardless of '
@@ -155,3 +173,53 @@ def test_your_standing_tribune_has_no_side_stripe():
     bad = re.search(r'border-left:\s*([2-9]|[1-9]\d+)px', body)
     assert bad is None, \
         f'.your-standing-tribune still has a side-stripe: {bad.group(0)}'
+
+
+# In-scope user-facing template dirs — mirrors the copy-discipline lock
+# (test_design_p0_copy_discipline.py); admin templates stay out of scope.
+TEMPLATE_DIRS = [
+    CSS_PATH.parent.parent.parent / 'games' / 'worldcup' / 'templates' / 'worldcup',
+    CSS_PATH.parent.parent.parent / 'core' / 'main' / 'templates' / 'main',
+    CSS_PATH.parent.parent.parent / 'core' / 'auth' / 'templates' / 'auth',
+    CSS_PATH.parent.parent.parent / 'templates',
+]
+
+_STYLE_BLOCK_RE = re.compile(r'<style[^>]*>(.*?)</style>', re.DOTALL | re.IGNORECASE)
+
+
+def test_no_side_stripes_in_template_inline_styles():
+    """The side-stripe ban applies to inline `<style>` blocks in user-facing
+    templates, not just style.css. Discovered post-PR-#113: the banned
+    `.wc-lb-row.wc-whatif-you` stripe had been copied from `.is-cross-hl` in
+    stats.html's inline styles, which the style.css-only scans never saw —
+    the un-scanned template block acted as a reservoir for the pattern. Scan
+    every in-scope template's `<style>` blocks with the same two stripe
+    shapes (border-left/right >= 2px, inset box-shadow stripe) so it can't
+    be re-copied from a template again.
+    """
+    offenders = []
+    for tdir in TEMPLATE_DIRS:
+        if not tdir.exists():
+            continue
+        for path in tdir.rglob('*.html'):
+            if 'admin' in path.parts:
+                continue
+            for block in _STYLE_BLOCK_RE.finditer(path.read_text()):
+                src = _strip_comments(block.group(1))
+                for rule_match in _RULE_RE.finditer(src):
+                    selector = rule_match.group(1).strip()
+                    body = rule_match.group(2)
+                    if _is_game_scoped(selector):
+                        continue
+                    for edge, width in _border_stripes(body):
+                        offenders.append((
+                            path.name, selector[:80],
+                            f'border-{edge}: {width}px',
+                        ))
+                    for _edge, decl in _inset_stripes(body):
+                        offenders.append((path.name, selector[:80], decl))
+    assert not offenders, (
+        'Side-stripe ban violations in template inline <style> blocks: '
+        f'{offenders}. Replace with full borders (an `inset 0 0 0 1px` ring '
+        'is fine), leading icons/numerals, or background tints.'
+    )

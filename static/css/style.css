@@ -7726,13 +7726,12 @@ body.game-worldcup .tier-card-5 .tier-card-header { background: linear-gradient(
 }
 /* Current-user spotlight — mirrors .table-worldcup .row-current-user's red
    tint (DESIGN.md Red = "current-user emphasis states"), adapted from a
-   table row to this div-grid row. Reuses the .is-cross-hl tint+inset-rule
-   pattern (this file, ~line 63) so the spotlight reads at a glance while
-   scrolling, not just as a faint background shift (structure + color, never
-   color alone). */
+   table row to this div-grid row. No leading stripe (the banned side-stripe
+   visual — same rehab as .fixture-row-next): the tint plus the bold weight
+   and the red .wc-whatif-you-tag chip carry the spotlight, structure +
+   color, never color alone. */
 .wc-lb-row.wc-whatif-you {
   background: rgba(191, 10, 48, .07);
-  box-shadow: inset 3px 0 0 var(--wc-red);
   font-weight: 600;
 }
 /* Rank movement vs. the zero-picks baseline (see whatifBaselineRanks in the
