@@ -47,10 +47,10 @@
             <strong>{{ rm_team.display_name }}</strong>
           </div>
           {# Invariant: when roster_match is set, _context_live always supplies
-             points_earned as a float (>=0) — points_for_pick_on_match returns
-             0.0 for non-scoring cases. The `is not none` guard is defensive
-             so any future regression of that invariant fails into NO POINTS
-             rather than a Jinja comparison error. #}
+             points_earned as a float (>=0) — display_points_for_pick_on_match
+             returns 0.0 for non-scoring cases. The `is not none` guard is
+             defensive so any future regression of that invariant fails into
+             NO POINTS rather than a Jinja comparison error. #}
           {# Formatter parity (Critique 2026-05-15 P0-2): the WC hub's
              .wc-results-strip renders +%.1f pts. The lounge previously
              used %.0f, so the same USA 3-1 PAR roster match read as
@@ -58,7 +58,16 @@
              two answers. Standardize on %.1f. The "1 PT" singular guard
              drops because a fractional like 1.5 isn't grammatically
              singular anyway; PTS reads correctly for any %.1f value. #}
-          {% if item.points_earned is not none and item.points_earned > 0 %}
+          {# Podium branch first: champion / runner-up / 3rd-place bonuses are
+             attributed to their deciding match by the display helper, and the
+             runner-up case is a LOST match that still earns points — so it
+             must not fall through to the win/loss framing. Gold status: the
+             ceremonial register (DESIGN.md gold-quaternary rule). #}
+          {% if item.podium_label %}
+            <div class="match-foot-status match-foot-status--podium">
+              {{ item.podium_label|upper }} &middot; +{{ '%.1f'|format(item.points_earned) }} PTS
+            </div>
+          {% elif item.points_earned is not none and item.points_earned > 0 %}
             {% if item.is_draw %}
               <div class="match-foot-status match-foot-status--draw">
                 DRAW &middot; +{{ '%.1f'|format(item.points_earned) }} PTS

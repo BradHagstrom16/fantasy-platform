@@ -6,7 +6,9 @@ systemd timer for every enrolled player whose picks scored the previous
 CT calendar day.
 
 One email per player, max. Skips players with no scoring picks that day.
-Points are fully multiplied (per points_for_pick_on_match contract).
+Points are fully multiplied (per the display_points_for_pick_on_match
+contract, which also attributes podium bonuses to their deciding match so
+the championship-day digest carries the champion's +50 / runner-up's +8).
 
 Also: the picks confirmation receipt (send_picks_confirmation), fired by
 the /worldcup/picks POST success path on every save.
@@ -37,7 +39,7 @@ from games.worldcup.models import (
     WorldCupTeam,
 )
 from games.worldcup.services.ranking import compute_rank_delta
-from games.worldcup.services.scoring import points_for_pick_on_match
+from games.worldcup.services.scoring import display_points_for_pick_on_match
 from games.worldcup.services.stage import stage_label
 from games.worldcup.services.state import now_utc
 from games.worldcup.services.sync import all_group_advancement_confirmed
@@ -265,16 +267,29 @@ def send_daily_digests() -> dict:
             for pick in picks_in_play:
                 if pick.team_id not in {match.home_team_id, match.away_team_id}:
                     continue
-                pts = points_for_pick_on_match(pick, match)
+                # Display helper folds podium bonuses into their deciding
+                # match. Without it the pts<=0 filter dropped the final's
+                # champion/runner-up rows entirely — finalists' owners got
+                # NO digest on championship day (2026-07-19 incident class).
+                pts, podium_code = display_points_for_pick_on_match(pick, match)
                 if pts <= 0:
                     continue
+                podium_words = {
+                    'champion': 'champions',
+                    'runner_up': 'runners-up',
+                    '3rd': 'third place',
+                }
+                result = (
+                    podium_words[podium_code] if podium_code
+                    else _result_for_pick(pick, match)
+                )
                 match_results.append({
                     'team': pick.team,
                     'match': match,
                     'multiplier_str': _fmt_multiplier(pick.team.multiplier),
                     'match_score': _match_score_str(match),
                     'stage_label': stage_label(match.stage),
-                    'result': _result_for_pick(pick, match),
+                    'result': result,
                     'points_earned': pts,
                     'points_str': _fmt_pts(pts),
                 })

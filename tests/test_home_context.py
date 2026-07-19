@@ -940,3 +940,85 @@ def test_context_live_pick_results_carry_display_ready_stage_label(app):
         assert results[0]['stage_label'] == 'Semifinals'
         # Defensively: not the mangled fallback
         assert results[0]['stage_label'] != 'Sf'
+
+
+def test_context_live_third_place_win_attributes_podium_points(app):
+    """England bronze incident (2026-07-19): winning the third-place match
+    rendered a loss-styled 'NO POINTS' on the lounge strip because the podium
+    bonus is a non-match ScoreEvent. The strip must attribute the bonus to its
+    deciding match and carry a podium label for the template."""
+    from core.main.home_context import build_home_context
+    from games.worldcup.constants import KNOCKOUT_POINTS
+    from games.worldcup.models import WorldCupMatch, WorldCupPick, WorldCupTeam
+    with app.app_context(), patch.dict(os.environ, {
+        'ENVIRONMENT': 'testing',
+        'WC_FAKE_NOW': '2026-07-19T00:00:00Z',
+    }):
+        fra = WorldCupTeam(
+            fifa_code='FRA', name='France', display_name='France',
+            tier=1, multiplier=1.0, confederation='UEFA', group_letter='A',
+        )
+        eng = WorldCupTeam(
+            fifa_code='ENG', name='England', display_name='England',
+            tier=3, multiplier=2.5, confederation='UEFA', group_letter='B',
+        )
+        db.session.add_all([fra, eng])
+        db.session.flush()
+        match = WorldCupMatch(
+            match_number=103, stage='third_place',
+            home_team_id=fra.id, away_team_id=eng.id,
+            home_score=4, away_score=6, is_completed=True,
+            winner_team_id=eng.id, is_draw=False,
+        )
+        db.session.add(match)
+        user = _make_user()
+        enr = _make_enrollment(user, picks_submitted=True)
+        db.session.add(WorldCupPick(enrollment_id=enr.id, team_id=eng.id, tier=3))
+        db.session.commit()
+
+        ctx = build_home_context(user, 'live')
+        results = ctx['your_pick_results']
+        assert len(results) == 1
+        item = results[0]
+        assert item['roster_match']['team_id'] == eng.id
+        assert item['points_earned'] == KNOCKOUT_POINTS['third_place'] * 2.5
+        assert item['podium_label'] == '3rd Place'
+
+
+def test_context_live_final_loser_attributes_runner_up_points(app):
+    """A LOST final still earns the runner-up bonus — the only case where a
+    roster loss carries points. The strip must show them, labeled."""
+    from core.main.home_context import build_home_context
+    from games.worldcup.constants import KNOCKOUT_POINTS
+    from games.worldcup.models import WorldCupMatch, WorldCupPick, WorldCupTeam
+    with app.app_context(), patch.dict(os.environ, {
+        'ENVIRONMENT': 'testing',
+        'WC_FAKE_NOW': '2026-07-19T00:00:00Z',
+    }):
+        esp = WorldCupTeam(
+            fifa_code='ESP', name='Spain', display_name='Spain',
+            tier=1, multiplier=1.0, confederation='UEFA', group_letter='A',
+        )
+        arg = WorldCupTeam(
+            fifa_code='ARG', name='Argentina', display_name='Argentina',
+            tier=2, multiplier=1.5, confederation='CONMEBOL', group_letter='B',
+        )
+        db.session.add_all([esp, arg])
+        db.session.flush()
+        match = WorldCupMatch(
+            match_number=104, stage='final',
+            home_team_id=esp.id, away_team_id=arg.id,
+            home_score=1, away_score=0, is_completed=True,
+            winner_team_id=esp.id, is_draw=False,
+        )
+        db.session.add(match)
+        user = _make_user()
+        enr = _make_enrollment(user, picks_submitted=True)
+        db.session.add(WorldCupPick(enrollment_id=enr.id, team_id=arg.id, tier=2))
+        db.session.commit()
+
+        ctx = build_home_context(user, 'live')
+        item = ctx['your_pick_results'][0]
+        assert item['roster_match']['team_id'] == arg.id
+        assert item['points_earned'] == KNOCKOUT_POINTS['runner_up'] * 1.5
+        assert item['podium_label'] == 'Runner-up'

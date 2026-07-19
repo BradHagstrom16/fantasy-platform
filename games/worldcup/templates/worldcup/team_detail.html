@@ -181,20 +181,27 @@
       {% endif %}
 
       {# ── Path to the Crown ──────────────────────────────────────────── #}
-      {# Three terminal registers: eliminated (out), champion (ran the table),
-         alive (still projecting). The champion branch drops the live
-         "projected / wins out from here" framing — a crowned team has already
-         won out, so that copy is counterfactual. #}
+      {# Four terminal registers: podium (runner-up / 3rd — a finish, not a
+         bare elimination; gold, the ceremonial register), eliminated (out),
+         champion (ran the table), alive (still projecting). The champion
+         branch drops the live "projected / wins out from here" framing — a
+         crowned team has already won out, so that copy is counterfactual. #}
       <section class="team-path mb-4">
         <span class="wc-eyebrow
-          {%- if path.eliminated %} wc-eyebrow-red
+          {%- if path.podium %} wc-eyebrow-gold
+          {%- elif path.eliminated %} wc-eyebrow-red
           {%- elif path.champion %} wc-eyebrow-gold{% endif %}">
-          {% if path.eliminated %}Out of the running
+          {% if path.podium %}On the podium
+          {% elif path.eliminated %}Out of the running
           {% elif path.champion %}Ran the table
           {% else %}Path to the Crown{% endif %}
         </span>
         <h3 class="mb-3">
-          {% if path.eliminated %}
+          {% if path.podium == '3rd' %}
+            Third place · Won the bronze final
+          {% elif path.podium == 'runner_up' %}
+            Runners-up · Lost the Final
+          {% elif path.eliminated %}
             Eliminated · {{ path.eliminated_at_label }}
           {% elif path.champion %}
             Champion · <span class="wc-numeral">{{ "%.1f"|format(path.projected_ceiling) }}</span>

@@ -54,6 +54,7 @@ from games.worldcup.services.scoring import (
     apply_group_advancement,
     compute_match_attribution,
     compute_team_score_events,
+    podium_bonus_for_match,
     process_match_result,
     recalculate_all_scores,
     set_knockout_teams,
@@ -654,15 +655,29 @@ def team_detail(team_id):
         if ev.match_id is not None:
             points_by_match[ev.match_id] = points_by_match.get(ev.match_id, 0.0) + ev.base_points
 
-    # Non-match scoring events (advancement milestone + podium bonus) carry
-    # match_id=None, so the per-match log above skips them. Surface them as their
-    # own line items — otherwise the champion's +50 (the single largest event in
-    # the game) is invisible and the Final reads a misleading "+0.0" (audit F2).
-    # Multiply at display time to match the hero's "Scored" unit, like the match
-    # log does (compute_team_score_events keeps base as the SSoT).
+    # Display-layer podium attribution: podium bonuses are non-match ScoreEvents
+    # (match_id=None) but each is decided by exactly one match, so fold them
+    # onto that row — otherwise the champion's Final and the bronze medalist's
+    # third-place win read a misleading "+0.0" (the 2026-07-19 England
+    # incident). Still base points here; multiplied at display like the rest.
+    podium_attributed = False
+    for m in matches:
+        podium = podium_bonus_for_match(team.id, m)
+        if podium is not None:
+            points_by_match[m.id] = points_by_match.get(m.id, 0.0) + podium[1]
+            podium_attributed = True
+
+    # Remaining non-match scoring events. An attributed podium bonus moves off
+    # this list (keeping it too would double-display it and break
+    # reconciliation with the hero's "Scored" stat); when its deciding match
+    # is missing from the log, it stays a line item so the game's single
+    # largest event never goes invisible (audit F2). Multiply at display time
+    # to match the hero's unit.
     bonus_events = [
         {'label': ev.label, 'points': ev.base_points * team.multiplier}
-        for ev in score_events if ev.match_id is None
+        for ev in score_events
+        if ev.match_id is None
+        and not (podium_attributed and ev.source == 'podium')
     ]
 
     # Pre-format kickoff dates in CT for the template — kickoff_utc is naive UTC
