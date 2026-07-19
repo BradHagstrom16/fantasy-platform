@@ -471,10 +471,21 @@ def _context_live(user, enrollment) -> dict:
             points_earned = sum(pts for _, _, pts, _ in scored)
             # max() is stable — a tie (both scoreless, or a shared group draw)
             # keeps the home-side label, matching the prior single-side shape.
-            top_tid, top_side, _, top_podium = max(scored, key=lambda row: row[2])
+            top_tid, top_side, _, _ = max(scored, key=lambda row: row[2])
             roster_match = {'team_id': top_tid, 'side': top_side}
-            if top_podium is not None:
-                podium_label = best_finish_label(top_podium)
+            # Composite label when BOTH finalists are on the roster (the final
+            # awards podium bonuses to both sides): points_earned is the sum,
+            # so the label must name every contributor — "Champion" alone
+            # would misattribute the aggregate. Ordered by points so the
+            # champion leads.
+            podium_hits = sorted(
+                ((pts, code) for _, _, pts, code in scored if code is not None),
+                key=lambda hit: hit[0], reverse=True,
+            )
+            if podium_hits:
+                podium_label = ' & '.join(
+                    best_finish_label(code) for _, code in podium_hits
+                )
         your_pick_results.append({
             'match': match,
             'roster_match': roster_match,

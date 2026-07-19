@@ -362,10 +362,12 @@ def test_digest_final_day_attributes_podium_points(app):
     # Champion row: +50, labeled with the podium word (title-cased in HTML).
     assert 'Champions' in html
     assert '+50' in html
-    # Runner-up row: the LOST final still earns +8, labeled as such.
+    # Runner-up row: the LOST final still earns +8, labeled as such. The
+    # result word renders as the span text ('>Lost</span>'), so scope the
+    # negative assertion to that element shape rather than the whole email.
     assert 'Runners-Up' in html
     assert '+8' in html
-    assert 'Lost' not in html
+    assert '>Lost</span>' not in html
     # Plain text mirrors the same rows.
     assert 'Champions' in plain
     assert '+50 pts' in plain

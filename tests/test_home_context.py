@@ -1022,3 +1022,49 @@ def test_context_live_final_loser_attributes_runner_up_points(app):
         assert item['roster_match']['team_id'] == arg.id
         assert item['points_earned'] == KNOCKOUT_POINTS['runner_up'] * 1.5
         assert item['podium_label'] == 'Runner-up'
+
+
+def test_context_live_both_finalists_rostered_composite_podium_label(app):
+    """The final awards podium bonuses to BOTH sides, so a roster holding both
+    finalists sums champion + runner-up points — the label must name every
+    contributor (champion first), not attribute the aggregate to one code."""
+    from core.main.home_context import build_home_context
+    from games.worldcup.constants import KNOCKOUT_POINTS
+    from games.worldcup.models import WorldCupMatch, WorldCupPick, WorldCupTeam
+    with app.app_context(), patch.dict(os.environ, {
+        'ENVIRONMENT': 'testing',
+        'WC_FAKE_NOW': '2026-07-19T00:00:00Z',
+    }):
+        esp = WorldCupTeam(
+            fifa_code='ESP', name='Spain', display_name='Spain',
+            tier=1, multiplier=1.0, confederation='UEFA', group_letter='A',
+        )
+        arg = WorldCupTeam(
+            fifa_code='ARG', name='Argentina', display_name='Argentina',
+            tier=2, multiplier=1.5, confederation='CONMEBOL', group_letter='B',
+        )
+        db.session.add_all([esp, arg])
+        db.session.flush()
+        match = WorldCupMatch(
+            match_number=104, stage='final',
+            home_team_id=esp.id, away_team_id=arg.id,
+            home_score=1, away_score=0, is_completed=True,
+            winner_team_id=esp.id, is_draw=False,
+        )
+        db.session.add(match)
+        user = _make_user()
+        enr = _make_enrollment(user, picks_submitted=True)
+        db.session.add(WorldCupPick(enrollment_id=enr.id, team_id=esp.id, tier=1))
+        db.session.add(WorldCupPick(enrollment_id=enr.id, team_id=arg.id, tier=2))
+        db.session.commit()
+
+        ctx = build_home_context(user, 'live')
+        item = ctx['your_pick_results'][0]
+        expected = (
+            KNOCKOUT_POINTS['champion'] * 1.0
+            + KNOCKOUT_POINTS['runner_up'] * 1.5
+        )
+        assert item['points_earned'] == expected
+        assert item['podium_label'] == 'Champion & Runner-up'
+        # Winner side carries the roster label (largest contributor).
+        assert item['roster_match']['team_id'] == esp.id

@@ -362,11 +362,18 @@ def _context_live(user: Any) -> dict:
                 for p in matched_picks
             ]
             points_earned = sum(pts for pts, _ in scored)
-            podium_code = next(
-                (code for _, code in scored if code is not None), None,
+            # Composite label when BOTH finalists are on the roster (the final
+            # awards podium bonuses to both sides): points_earned is the sum,
+            # so the label must name every contributor. Ordered by points so
+            # the champion leads.
+            podium_hits = sorted(
+                ((pts, code) for pts, code in scored if code is not None),
+                key=lambda hit: hit[0], reverse=True,
             )
-            if podium_code is not None:
-                podium_label = best_finish_label(podium_code)
+            if podium_hits:
+                podium_label = ' & '.join(
+                    best_finish_label(code) for _, code in podium_hits
+                )
         recent_matches.append({
             'match': match,
             'points_earned': points_earned,

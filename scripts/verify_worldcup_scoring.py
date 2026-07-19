@@ -139,7 +139,8 @@ def run_audit() -> int:
                 f'{winner.best_finish!r} != 3rd',
             )
 
-    # 7: no winnerless completed knockout matches.
+    # 7: no winnerless completed knockout matches, and every winner is an
+    # actual participant (check 6's loser derivation assumes this).
     for m in matches:
         if m.stage == 'group' or not m.is_completed:
             continue
@@ -148,6 +149,12 @@ def run_audit() -> int:
             f'match {m.match_number} ({m.stage}): completed without a winner '
             '-- scores zero for everyone',
         )
+        if m.winner_team_id:
+            check(
+                m.winner_team_id in (m.home_team_id, m.away_team_id),
+                f'match {m.match_number} ({m.stage}): winner_team_id '
+                f'{m.winner_team_id} is not a participant',
+            )
 
     print(f'teams={len(teams)} matches={len(matches)} picks={len(picks)} '
           f'enrollments={len(enrollments)}')

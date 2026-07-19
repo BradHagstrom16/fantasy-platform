@@ -800,3 +800,36 @@ def test_context_live_recent_matches_attribute_podium_points(app):
     # Tier-1 multiplier is 1.0 — the champion bonus lands unscaled.
     assert seeded['points_earned'] == float(KNOCKOUT_POINTS['champion'])
     assert seeded['podium_label'] == 'Champion'
+
+
+def test_context_live_both_finalists_rostered_composite_podium_label(app):
+    """A roster holding both finalists sums champion + runner-up points; the
+    hub chip's label must name both contributors, champion first."""
+    from datetime import UTC, datetime
+
+    from games.worldcup.constants import KNOCKOUT_POINTS
+
+    seed = seed_full_tournament(num_enrollments=2)
+    user = seed['users'][0]
+    teams = seed['teams']
+    # teams[0] (tier 1) and teams[5] (tier 2) are both on user[0]'s roster.
+    make_match(
+        match_number=104, home_team=teams[0], away_team=teams[5],
+        stage='final', is_completed=True, home_score=1, away_score=0,
+        winner_team=teams[0],
+        kickoff=datetime(2026, 7, 19, 19, 0, tzinfo=UTC),
+    )
+    db.session.commit()
+    fake_live = (TOURNAMENT_DEADLINE_UTC + timedelta(days=2)).isoformat()
+    with patch.dict(os.environ, {'ENVIRONMENT': 'testing', 'WC_FAKE_NOW': fake_live}):
+        ctx = _context_live(user=user)
+
+    seeded = next(
+        e for e in ctx['recent_matches'] if e['match'].match_number == 104
+    )
+    expected = (
+        KNOCKOUT_POINTS['champion'] * 1.0
+        + KNOCKOUT_POINTS['runner_up'] * 1.5
+    )
+    assert seeded['points_earned'] == expected
+    assert seeded['podium_label'] == 'Champion & Runner-up'

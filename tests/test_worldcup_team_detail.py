@@ -520,10 +520,15 @@ def test_team_detail_podium_tracker_third_place(client, app):
         db.session.commit()
         team_id = t.id
     body = client.get(f'/worldcup/team/{team_id}').data.decode()
-    assert 'On the podium' in body
-    assert 'Third place · Won the bronze final' in body
-    assert 'Out of the running' not in body
-    assert 'Eliminated ·' not in body
+    # Scope to the path-tracker section so unrelated future copy elsewhere on
+    # the page can't trip the negative assertions.
+    tracker = re.search(r'<section class="team-path.*?</section>', body, re.S)
+    assert tracker, 'path-tracker section missing'
+    tracker = tracker.group(0)
+    assert 'On the podium' in tracker
+    assert 'Third place · Won the bronze final' in tracker
+    assert 'Out of the running' not in tracker
+    assert 'Eliminated ·' not in tracker
 
 
 def test_team_detail_podium_tracker_runner_up(client, app):
@@ -538,6 +543,9 @@ def test_team_detail_podium_tracker_runner_up(client, app):
         db.session.commit()
         team_id = t.id
     body = client.get(f'/worldcup/team/{team_id}').data.decode()
-    assert 'On the podium' in body
-    assert 'Runners-up · Lost the Final' in body
-    assert 'Out of the running' not in body
+    tracker = re.search(r'<section class="team-path.*?</section>', body, re.S)
+    assert tracker, 'path-tracker section missing'
+    tracker = tracker.group(0)
+    assert 'On the podium' in tracker
+    assert 'Runners-up · Lost the Final' in tracker
+    assert 'Out of the running' not in tracker
