@@ -237,6 +237,52 @@ def points_for_pick_on_match(pick: WorldCupPick, match: WorldCupMatch) -> float:
     return 0.0
 
 
+def podium_bonus_for_match(team_id: int | None, match: WorldCupMatch) -> tuple[str, float] | None:
+    """(best_finish code, base podium points) this match's outcome awards team_id.
+
+    Display-layer attribution. Podium bonuses are non-match ScoreEvents by
+    contract (match_id=None), but each one is decided by exactly one match:
+    the final (champion for its winner, runner_up for its loser) or the
+    third-place match ('3rd' for its winner). Per-match display surfaces use
+    this to attribute the bonus to its deciding match — the scoring SSoT
+    (stored totals, compute_team_score_events, points_for_pick_on_match) is
+    deliberately untouched. Returns None when the match awards team_id no
+    podium bonus.
+    """
+    if team_id is None or not match.is_completed or not match.winner_team_id:
+        return None
+    if match.stage == 'final':
+        if match.winner_team_id == team_id:
+            return ('champion', float(KNOCKOUT_POINTS['champion']))
+        if team_id in (match.home_team_id, match.away_team_id):
+            return ('runner_up', float(KNOCKOUT_POINTS['runner_up']))
+        return None
+    if match.stage == 'third_place' and match.winner_team_id == team_id:
+        return ('3rd', float(KNOCKOUT_POINTS['third_place']))
+    return None
+
+
+def display_points_for_pick_on_match(
+    pick: WorldCupPick, match: WorldCupMatch,
+) -> tuple[float, str | None]:
+    """(multiplied points incl. podium attribution, podium code or None).
+
+    Display-layer companion to points_for_pick_on_match: identical for every
+    stage except final / third_place, where the podium bonus decided by the
+    match is folded in so per-match surfaces (results strips, daily digest,
+    team match log) stop rendering a won podium match as zero — the
+    2026-07-19 England bronze "NO POINTS" incident. Note the runner-up case:
+    the beaten finalist earns points on a LOST match, which the base helper
+    can never express.
+    """
+    points = points_for_pick_on_match(pick, match)
+    podium = podium_bonus_for_match(pick.team_id, match)
+    if podium is None:
+        return points, None
+    code, base = podium
+    return points + base * TIERS[pick.tier]['multiplier'], code
+
+
 def _update_best_finish(team: WorldCupTeam, new_finish: str) -> None:
     """Update best_finish only if new_finish is deeper than current."""
     current_order = STAGE_ORDER.get(team.best_finish, -1)

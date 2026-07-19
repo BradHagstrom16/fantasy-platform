@@ -1335,3 +1335,164 @@ def test_points_for_pick_on_match_parity_with_compute_team_score_events(app, ses
         # 2 wins + 1 draw + R32 + R16 + QF = 6 + 1 + 8 + 11 + 15 = 41
         assert match_tied_base == 41.0
         assert per_match_total == match_tied_base * nor.multiplier  # 287.0
+
+
+# ---------------------------------------------------------------------------
+# Display-layer podium attribution
+# ---------------------------------------------------------------------------
+# Scoring SSoT is untouched: podium bonuses stay non-match ScoreEvents
+# (match_id=None) and points_for_pick_on_match still returns 0.0 for
+# final / third_place. These display helpers attribute each podium bonus to
+# its deciding match so per-match surfaces (results strips, daily digest,
+# team match log) stop rendering a won podium match as zero (the 2026-07-19
+# England bronze "NO POINTS" incident).
+
+class TestPodiumBonusForMatch:
+
+    def _completed(self, session, number, stage, home, away, winner):
+        match = _make_match(session, number, stage, home, away)
+        match.is_completed = True
+        match.home_score, match.away_score = (2, 1) if winner is home else (1, 2)
+        match.winner_team_id = winner.id
+        session.commit()
+        return match
+
+    def test_final_winner_gets_champion(self, app, session):
+        from games.worldcup.constants import KNOCKOUT_POINTS
+        from games.worldcup.services.scoring import podium_bonus_for_match
+        with app.app_context():
+            esp = _make_team(session, 'ESP', 'Spain', 1, 1.0)
+            arg = _make_team(session, 'ARG', 'Argentina', 1, 1.0)
+            match = self._completed(session, 104, 'final', esp, arg, esp)
+            assert podium_bonus_for_match(esp.id, match) == (
+                'champion', float(KNOCKOUT_POINTS['champion']),
+            )
+
+    def test_final_loser_gets_runner_up(self, app, session):
+        from games.worldcup.constants import KNOCKOUT_POINTS
+        from games.worldcup.services.scoring import podium_bonus_for_match
+        with app.app_context():
+            esp = _make_team(session, 'ESP', 'Spain', 1, 1.0)
+            arg = _make_team(session, 'ARG', 'Argentina', 1, 1.0)
+            match = self._completed(session, 104, 'final', esp, arg, esp)
+            assert podium_bonus_for_match(arg.id, match) == (
+                'runner_up', float(KNOCKOUT_POINTS['runner_up']),
+            )
+
+    def test_third_place_winner_gets_bronze(self, app, session):
+        from games.worldcup.constants import KNOCKOUT_POINTS
+        from games.worldcup.services.scoring import podium_bonus_for_match
+        with app.app_context():
+            fra = _make_team(session, 'FRA', 'France', 1, 1.0)
+            eng = _make_team(session, 'ENG', 'England', 1, 1.0)
+            match = self._completed(session, 103, 'third_place', fra, eng, eng)
+            assert podium_bonus_for_match(eng.id, match) == (
+                '3rd', float(KNOCKOUT_POINTS['third_place']),
+            )
+
+    def test_third_place_loser_gets_nothing(self, app, session):
+        from games.worldcup.services.scoring import podium_bonus_for_match
+        with app.app_context():
+            fra = _make_team(session, 'FRA', 'France', 1, 1.0)
+            eng = _make_team(session, 'ENG', 'England', 1, 1.0)
+            match = self._completed(session, 103, 'third_place', fra, eng, eng)
+            assert podium_bonus_for_match(fra.id, match) is None
+
+    def test_regular_knockout_stage_awards_no_podium(self, app, session):
+        from games.worldcup.services.scoring import podium_bonus_for_match
+        with app.app_context():
+            a = _make_team(session, 'AAA', 'A', 1, 1.0)
+            b = _make_team(session, 'BBB', 'B', 1, 1.0)
+            match = self._completed(session, 101, 'SF', a, b, a)
+            assert podium_bonus_for_match(a.id, match) is None
+
+    def test_incomplete_final_awards_nothing(self, app, session):
+        from games.worldcup.services.scoring import podium_bonus_for_match
+        with app.app_context():
+            esp = _make_team(session, 'ESP', 'Spain', 1, 1.0)
+            arg = _make_team(session, 'ARG', 'Argentina', 1, 1.0)
+            match = _make_match(session, 104, 'final', esp, arg)
+            session.commit()
+            assert podium_bonus_for_match(esp.id, match) is None
+
+    def test_non_participant_gets_nothing(self, app, session):
+        from games.worldcup.services.scoring import podium_bonus_for_match
+        with app.app_context():
+            esp = _make_team(session, 'ESP', 'Spain', 1, 1.0)
+            arg = _make_team(session, 'ARG', 'Argentina', 1, 1.0)
+            fra = _make_team(session, 'FRA', 'France', 1, 1.0)
+            match = self._completed(session, 104, 'final', esp, arg, esp)
+            assert podium_bonus_for_match(fra.id, match) is None
+
+
+class TestDisplayPointsForPickOnMatch:
+
+    def _pick_and_match(self, session, stage, tier, multiplier, wins):
+        """One picked team + opponent + a completed match at `stage`."""
+        team = _make_team(session, 'PCK', 'Picked', tier, multiplier)
+        opp = _make_team(session, 'OPP', 'Opponent', 1, 1.0)
+        match = _make_match(session, 99, stage, team, opp)
+        match.is_completed = True
+        match.home_score, match.away_score = (2, 1) if wins else (1, 2)
+        match.winner_team_id = team.id if wins else opp.id
+        user = _make_user(session, 'display_tester')
+        enr = _make_enrollment(session, user)
+        pick = _make_pick(session, enr, team, tier=tier)
+        session.commit()
+        return pick, match
+
+    def test_champion_pick_scores_on_the_final(self, app, session):
+        from games.worldcup.constants import KNOCKOUT_POINTS
+        from games.worldcup.services.scoring import display_points_for_pick_on_match
+        with app.app_context():
+            pick, match = self._pick_and_match(session, 'final', 1, 1.0, wins=True)
+            assert display_points_for_pick_on_match(pick, match) == (
+                float(KNOCKOUT_POINTS['champion']), 'champion',
+            )
+
+    def test_runner_up_pick_scores_on_a_lost_final(self, app, session):
+        """The one display case where a LOST match earns points: the beaten
+        finalist's runner-up bonus attributes to the final (tier 2 = x1.5)."""
+        from games.worldcup.constants import KNOCKOUT_POINTS
+        from games.worldcup.services.scoring import display_points_for_pick_on_match
+        with app.app_context():
+            pick, match = self._pick_and_match(session, 'final', 2, 1.5, wins=False)
+            assert display_points_for_pick_on_match(pick, match) == (
+                float(KNOCKOUT_POINTS['runner_up']) * 1.5, 'runner_up',
+            )
+
+    def test_bronze_pick_scores_on_the_third_place_match(self, app, session):
+        from games.worldcup.constants import KNOCKOUT_POINTS
+        from games.worldcup.services.scoring import display_points_for_pick_on_match
+        with app.app_context():
+            pick, match = self._pick_and_match(session, 'third_place', 3, 2.5, wins=True)
+            assert display_points_for_pick_on_match(pick, match) == (
+                float(KNOCKOUT_POINTS['third_place']) * 2.5, '3rd',
+            )
+
+    def test_regular_knockout_parity_with_ssot_helper(self, app, session):
+        from games.worldcup.services.scoring import (
+            display_points_for_pick_on_match,
+            points_for_pick_on_match,
+        )
+        with app.app_context():
+            pick, match = self._pick_and_match(session, 'R16', 4, 4.0, wins=True)
+            pts, code = display_points_for_pick_on_match(pick, match)
+            assert pts == points_for_pick_on_match(pick, match)
+            assert code is None
+
+    def test_group_draw_parity_with_ssot_helper(self, app, session):
+        from games.worldcup.services.scoring import (
+            display_points_for_pick_on_match,
+            points_for_pick_on_match,
+        )
+        with app.app_context():
+            pick, match = self._pick_and_match(session, 'group', 5, 7.0, wins=True)
+            match.winner_team_id = None
+            match.is_draw = True
+            match.home_score = match.away_score = 1
+            session.commit()
+            pts, code = display_points_for_pick_on_match(pick, match)
+            assert pts == points_for_pick_on_match(pick, match)
+            assert pts > 0
+            assert code is None

@@ -66,8 +66,12 @@ def test_team_detail_surfaces_podium_and_advancement_bonuses(client, app):
     """F2: the +50 champion podium bonus and the advancement milestone are
     non-match scoring events (match_id=None) that the match log skips. They
     must be itemized somewhere on the page (with multiplier applied), or the
-    single largest scoring event in the game is invisible and the Final reads
-    a misleading '+0.0'."""
+    single largest scoring event in the game is invisible.
+
+    No final match is seeded here, so this now locks the FALLBACK path: when
+    the podium bonus's deciding match is missing from the log, it must remain
+    a 'Beyond the matches' line item. (With the match present, it attributes
+    to that row instead — see test_team_detail_final_row_attributes_champion_points.)"""
     with app.app_context():
         t = WorldCupTeam(
             fifa_code='AUS', name='Australia', display_name='Australia',
@@ -415,3 +419,133 @@ def test_team_detail_alive_team_keeps_projected_ceiling(client, app):
     assert 'Projected ceiling' in body
     assert 'wins out from here' in body
     assert 'Champion ·' not in body
+
+
+def test_team_detail_final_row_attributes_champion_points(client, app):
+    """The champion's final-match row shows the +50 podium bonus (base ×
+    multiplier), not '+0.0' — and the bonus does NOT double-display in
+    'Beyond the matches' (with no advancement milestone, that whole section
+    disappears because the podium event moved onto its deciding match)."""
+    with app.app_context():
+        team = WorldCupTeam(
+            fifa_code='ESP', name='ESP', display_name='ESP',
+            tier=1, multiplier=1.0, confederation='UEFA',
+            group_letter='A', best_finish='champion', base_points=50.0,
+        )
+        opponent = WorldCupTeam(
+            fifa_code='ARG', name='ARG', display_name='ARG',
+            tier=1, multiplier=1.0, confederation='CONMEBOL',
+            group_letter='B',
+        )
+        db.session.add_all([team, opponent])
+        db.session.flush()
+        m = WorldCupMatch(
+            match_number=104, stage='final',
+            home_team_id=team.id, away_team_id=opponent.id,
+            home_score=1, away_score=0, is_completed=True,
+            winner_team_id=team.id, is_draw=False,
+        )
+        db.session.add(m)
+        db.session.commit()
+        team_id = team.id
+
+    resp = client.get(f'/worldcup/team/{team_id}')
+    assert resp.status_code == 200
+    pattern = rb'<div class="fixture-pts wc-numeral[^"]*">\s*\+50\.0\s*</div>'
+    assert re.search(pattern, resp.data), (
+        'final-row fixture-pts expected to carry the champion bonus (+50.0), '
+        'not render the podium match as zero'
+    )
+    assert b'Beyond the matches' not in resp.data, (
+        'podium bonus must not double-display as a separate bonus line item'
+    )
+
+
+def test_team_detail_bronze_row_attributes_third_place_points(client, app):
+    """Third-place winner (tier 3, x2.5): the bronze-match row shows +20.0
+    (8 base x 2.5) while 'Beyond the matches' keeps the advancement milestone
+    but drops the podium line."""
+    with app.app_context():
+        team = WorldCupTeam(
+            fifa_code='ENG', name='ENG', display_name='ENG',
+            tier=3, multiplier=2.5, confederation='UEFA',
+            group_letter='L', best_finish='3rd', base_points=12.0,
+            advancement_method='group_winner',
+        )
+        opponent = WorldCupTeam(
+            fifa_code='FRA', name='FRA', display_name='FRA',
+            tier=1, multiplier=1.0, confederation='UEFA',
+            group_letter='K',
+        )
+        db.session.add_all([team, opponent])
+        db.session.flush()
+        m = WorldCupMatch(
+            match_number=103, stage='third_place',
+            home_team_id=opponent.id, away_team_id=team.id,
+            home_score=4, away_score=6, is_completed=True,
+            winner_team_id=team.id, is_draw=False,
+        )
+        db.session.add(m)
+        db.session.commit()
+        team_id = team.id
+
+    resp = client.get(f'/worldcup/team/{team_id}')
+    assert resp.status_code == 200
+    pattern = rb'<div class="fixture-pts wc-numeral[^"]*">\s*\+20\.0\s*</div>'
+    assert re.search(pattern, resp.data), (
+        'bronze-row fixture-pts expected to carry the third-place bonus '
+        '(+20.0 = 8 base x 2.5)'
+    )
+    assert b'Beyond the matches' in resp.data
+    assert b'Group winner' in resp.data
+    # The podium ScoreEvent label ('Third place') must not render as a bonus
+    # row eyebrow — matching on the row markup, not the bare string, because
+    # the journey tracker legitimately says 'Third place' elsewhere.
+    assert b'<span class="wc-eyebrow">Third place</span>' not in resp.data, (
+        'podium bonus must not double-display as a separate bonus line item'
+    )
+
+
+def test_team_detail_podium_tracker_third_place(client, app):
+    """A bronze medalist's journey tracker reads as a podium finish, not the
+    loss-framed 'Out of the running / Eliminated · Semifinals' (the team WON
+    its last match of the tournament)."""
+    with app.app_context():
+        t = WorldCupTeam(
+            fifa_code='ENG', name='ENG', display_name='ENG',
+            tier=1, multiplier=1.0, confederation='UEFA',
+            group_letter='L', best_finish='3rd',
+        )
+        db.session.add(t)
+        db.session.commit()
+        team_id = t.id
+    body = client.get(f'/worldcup/team/{team_id}').data.decode()
+    # Scope to the path-tracker section so unrelated future copy elsewhere on
+    # the page can't trip the negative assertions.
+    tracker = re.search(r'<section class="team-path.*?</section>', body, re.S)
+    assert tracker, 'path-tracker section missing'
+    tracker = tracker.group(0)
+    assert 'On the podium' in tracker
+    assert 'Third place · Won the bronze final' in tracker
+    assert 'Out of the running' not in tracker
+    assert 'Eliminated ·' not in tracker
+
+
+def test_team_detail_podium_tracker_runner_up(client, app):
+    """The beaten finalist reads as runners-up, not a bare elimination."""
+    with app.app_context():
+        t = WorldCupTeam(
+            fifa_code='ARG', name='ARG', display_name='ARG',
+            tier=1, multiplier=1.0, confederation='CONMEBOL',
+            group_letter='B', best_finish='runner_up',
+        )
+        db.session.add(t)
+        db.session.commit()
+        team_id = t.id
+    body = client.get(f'/worldcup/team/{team_id}').data.decode()
+    tracker = re.search(r'<section class="team-path.*?</section>', body, re.S)
+    assert tracker, 'path-tracker section missing'
+    tracker = tracker.group(0)
+    assert 'On the podium' in tracker
+    assert 'Runners-up · Lost the Final' in tracker
+    assert 'Out of the running' not in tracker

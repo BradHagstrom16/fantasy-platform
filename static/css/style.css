@@ -2682,6 +2682,11 @@ body.game-golf {
 .home-shell .match-foot-status--win { color: #64DBA0; }
 .home-shell .match-foot-status--draw { color: var(--gold-light); }
 .home-shell .match-foot-status--loss { color: #FF8089; }
+/* Podium bonuses (champion / runner-up / 3rd place) attributed to their
+   deciding match — gold, the ceremonial register. Covers the runner-up case
+   where a LOST final still earns points, so neither win-green nor loss-red
+   framing fits. */
+.home-shell .match-foot-status--podium { color: var(--gold-light); }
 
 /* Roster-intersection card carries a faint gold rail so the user's match
    stands apart from the surrounding press-room ledger context. */

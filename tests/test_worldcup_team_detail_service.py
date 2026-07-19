@@ -291,3 +291,42 @@ def test_path_to_crown_fourth_place_finisher(app):
         assert [s['status'] for s in result['segments']] == [
             'won', 'won', 'won', 'won', 'eliminated', 'future',
         ]
+
+
+class TestPathPodium:
+    """path['podium'] carries the podium best_finish codes ('3rd' /
+    'runner_up') so the template can frame those finishes as podium results
+    instead of bare eliminations. Champion keeps its own flag; everyone else
+    gets None."""
+
+    def test_third_place_sets_podium(self, app):
+        with app.app_context():
+            team = _seed_team(fifa='ENG', finish='3rd')
+            result = compute_path_to_crown(team)
+            assert result['podium'] == '3rd'
+            assert result['eliminated'] is True
+
+    def test_runner_up_sets_podium(self, app):
+        with app.app_context():
+            team = _seed_team(fifa='ARG', finish='runner_up')
+            result = compute_path_to_crown(team)
+            assert result['podium'] == 'runner_up'
+            assert result['eliminated'] is True
+
+    def test_champion_has_no_podium_code(self, app):
+        with app.app_context():
+            team = _seed_team(fifa='ESP', finish='champion')
+            result = compute_path_to_crown(team)
+            assert result['podium'] is None
+            assert result['champion'] is True
+
+    def test_fourth_place_has_no_podium_code(self, app):
+        """SF loser who then lost the bronze final stays a plain elimination."""
+        with app.app_context():
+            team = _seed_team(fifa='FRA', finish='SF')
+            other = _seed_team(fifa='ENG', group='B', finish='3rd')
+            _seed_completed_match(team.id, other.id, stage='third_place',
+                                  winner_id=other.id, match_number=63)
+            result = compute_path_to_crown(team)
+            assert result['podium'] is None
+            assert result['eliminated'] is True

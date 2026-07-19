@@ -29,7 +29,10 @@ from games.worldcup.models import (
 )
 from games.worldcup.services.elimination import eliminated_team_ids
 from games.worldcup.services.ranking import compute_rank_neighbors
-from games.worldcup.services.scoring import points_for_pick_on_match
+from games.worldcup.services.scoring import (
+    STAGE_ORDER,
+    display_points_for_pick_on_match,
+)
 from games.worldcup.services.stage import best_finish_label, stage_label
 from games.worldcup.services.state import (
     FINAL_MATCH_NUMBER,
@@ -347,18 +350,38 @@ def _context_live(user: Any) -> dict:
     recent_matches = []
     for match in recent:
         points_earned = None
+        podium_label = None
         matched_picks = [
             user_picks_by_team_id[tid]
             for tid in (match.home_team_id, match.away_team_id)
             if tid in user_team_ids
         ]
         if matched_picks:
-            points_earned = sum(
-                points_for_pick_on_match(p, match) for p in matched_picks
+            # Display helper folds podium bonuses (champion / runner-up / 3rd)
+            # into their deciding match — the base helper renders a won bronze
+            # final as 0.0 (the 2026-07-19 England "NO POINTS" incident).
+            scored = [
+                display_points_for_pick_on_match(p, match)
+                for p in matched_picks
+            ]
+            points_earned = sum(pts for pts, _ in scored)
+            # Composite label when BOTH finalists are on the roster (the final
+            # awards podium bonuses to both sides): points_earned is the sum,
+            # so the label must name every contributor. Ordered by canonical
+            # finish (STAGE_ORDER), not display points — a x7 runner-up's 56
+            # scaled points would otherwise outrank a x1 champion's 50.
+            podium_hits = sorted(
+                (code for _, code in scored if code is not None),
+                key=lambda code: STAGE_ORDER.get(code, -1), reverse=True,
             )
+            if podium_hits:
+                podium_label = ' & '.join(
+                    best_finish_label(code) for code in podium_hits
+                )
         recent_matches.append({
             'match': match,
             'points_earned': points_earned,
+            'podium_label': podium_label,
             'stage_label': stage_label(match.stage),
         })
 

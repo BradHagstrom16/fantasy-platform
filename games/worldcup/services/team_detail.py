@@ -58,6 +58,7 @@ class PathToCrown(TypedDict):
     segments: list[PathSegment]
     eliminated: bool
     champion: bool              # cleared all 6 segments, not eliminated
+    podium: str | None          # 'runner_up' / '3rd' — podium finish short of champion
     eliminated_at_label: str | None
     projected_ceiling: float    # multiplied points if team wins out from here
 
@@ -128,6 +129,11 @@ def compute_path_to_crown(team: WorldCupTeam) -> PathToCrown:
     cleared, eliminated_at = _path_status(team)
     eliminated = eliminated_at is not None
     champion = not eliminated and cleared == len(_SEGMENT_LABELS)
+    # Podium finishes short of champion: the template frames these as results
+    # ("On the podium"), not bare eliminations — a bronze medalist WON its
+    # last match. Champion keeps its own flag; 4th place (bf='SF' + lost
+    # bronze final) stays a plain elimination.
+    podium = team.best_finish if team.best_finish in ('runner_up', '3rd') else None
 
     segments: list[PathSegment] = []
     for i, label in enumerate(_SEGMENT_LABELS):
@@ -174,6 +180,7 @@ def compute_path_to_crown(team: WorldCupTeam) -> PathToCrown:
         segments=segments,
         eliminated=eliminated,
         champion=champion,
+        podium=podium,
         eliminated_at_label=eliminated_at_label,
         projected_ceiling=projected_ceiling,
     )

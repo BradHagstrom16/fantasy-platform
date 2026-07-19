@@ -142,7 +142,15 @@
            prefix implies gain, and per PRODUCT.md every word must earn its
            place. The `.is-roster-match` row tint still signals "your team
            played" when the chip is hidden. CR #33 follow-up. #}
-        {% if entry.points_earned is not none and entry.points_earned > 0 %}
+        {# Podium rows carry the bonus name: the display helper attributes
+           champion / runner-up / 3rd-place bonuses to their deciding match,
+           and the runner-up case earns points on a LOST final — without the
+           label the chip would read as an inexplicable gain. #}
+        {% if entry.podium_label %}
+        <span class="wc-result-pts" aria-label="{{ entry.podium_label }} bonus: {{ '%.1f'|format(entry.points_earned) }} points scored by your roster">
+          {{ entry.podium_label }} &middot; +{{ "%.1f"|format(entry.points_earned) }} pts
+        </span>
+        {% elif entry.points_earned is not none and entry.points_earned > 0 %}
         <span class="wc-result-pts" aria-label="{{ '%.1f'|format(entry.points_earned) }} points scored by your roster">
           +{{ "%.1f"|format(entry.points_earned) }} pts
         </span>

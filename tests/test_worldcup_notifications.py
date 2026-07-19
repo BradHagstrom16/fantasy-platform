@@ -62,7 +62,8 @@ def _make_team(session, fifa_code, tier=3, multiplier=2.5, group='A'):
 
 
 def _make_match(session, home, away, match_number=1, home_score=2,
-                away_score=0, is_draw=False, updated_yesterday=True):
+                away_score=0, is_draw=False, updated_yesterday=True,
+                stage='group'):
     """Create a completed match. updated_at defaults to yesterday UTC."""
     from games.worldcup.constants import WORLDCUP_TZ
     from games.worldcup.services.state import now_utc
@@ -75,7 +76,7 @@ def _make_match(session, home, away, match_number=1, home_score=2,
     ).astimezone(UTC).replace(tzinfo=None)
     m = WorldCupMatch(
         match_number=match_number,
-        stage='group',
+        stage=stage,
         group_letter='A',
         home_team_id=home.id,
         away_team_id=away.id,
@@ -329,3 +330,45 @@ def test_only_sends_for_matches_updated_yesterday(app):
 
     assert result['status'] == 'no_results'
     mock_send.assert_not_called()
+
+
+def test_digest_final_day_attributes_podium_points(app):
+    """Championship-day digest: the champion's +50 and the beaten finalist's
+    +8 runner-up bonus are podium bonuses (non-match ScoreEvents), which the
+    pts<=0 row filter previously dropped — so owners of the two finalists got
+    NO digest at all on the biggest day of the tournament. The rows must
+    render with podium result words instead of 'won'/'lost'."""
+    from games.worldcup.services.notifications import send_daily_digests
+    with app.app_context():
+        s = db.session
+        user = _make_user(s)
+        enr = _make_enrollment(s, user)
+        esp = _make_team(s, 'ESP', tier=1, multiplier=1.0)
+        arg = _make_team(s, 'ARG', tier=1, multiplier=1.0, group='B')
+        _make_pick(s, enr, esp, tier=1)
+        _make_pick(s, enr, arg, tier=1)
+        _make_match(s, esp, arg, match_number=104, home_score=1,
+                    away_score=0, stage='final')
+        s.commit()
+
+        with mock.patch(
+            'games.worldcup.services.notifications.send_platform_email',
+            return_value=True,
+        ) as mock_send:
+            result = send_daily_digests()
+
+    assert result['sent'] == 1
+    _, _, plain, html = mock_send.call_args[0]
+    # Champion row: +50, labeled with the podium word (title-cased in HTML).
+    assert 'Champions' in html
+    assert '+50' in html
+    # Runner-up row: the LOST final still earns +8, labeled as such. The
+    # result word renders as the span text ('>Lost</span>'), so scope the
+    # negative assertion to that element shape rather than the whole email.
+    assert 'Runners-Up' in html
+    assert '+8' in html
+    assert '>Lost</span>' not in html
+    # Plain text mirrors the same rows.
+    assert 'Champions' in plain
+    assert '+50 pts' in plain
+    assert '+8 pts' in plain

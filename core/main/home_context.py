@@ -28,7 +28,10 @@ from games.worldcup.models import (
 )
 from games.worldcup.services.elimination import eliminated_team_ids
 from games.worldcup.services.ranking import compute_rank_neighbors
-from games.worldcup.services.scoring import points_for_pick_on_match
+from games.worldcup.services.scoring import (
+    STAGE_ORDER,
+    display_points_for_pick_on_match,
+)
 from games.worldcup.services.stage import best_finish_label
 from games.worldcup.services.stage import stage_label as _stage_label
 from games.worldcup.services.state import WorldCupState, now_utc
@@ -449,6 +452,7 @@ def _context_live(user, enrollment) -> dict:
     for match in recent_results:
         roster_match = None
         points_earned: float | None = None
+        podium_label: str | None = None
         # BOTH sides can be on the roster (USA-BEL R16, 2026-07-07): score
         # every matched pick and label the side that earned the points, so the
         # home side never shadows the away side's win.
@@ -459,19 +463,38 @@ def _context_live(user, enrollment) -> dict:
             if tid in user_team_ids
         ]
         if matched:
+            # Display helper folds podium bonuses (champion / runner-up / 3rd)
+            # into their deciding match — the base helper renders a won bronze
+            # final as 0.0 (the 2026-07-19 England "NO POINTS" incident).
             scored = [
-                (tid, side, points_for_pick_on_match(user_picks_by_team_id[tid], match))
+                (tid, side, *display_points_for_pick_on_match(
+                    user_picks_by_team_id[tid], match))
                 for tid, side in matched
             ]
-            points_earned = sum(pts for _, _, pts in scored)
+            points_earned = sum(pts for _, _, pts, _ in scored)
             # max() is stable — a tie (both scoreless, or a shared group draw)
             # keeps the home-side label, matching the prior single-side shape.
-            top_tid, top_side, _ = max(scored, key=lambda row: row[2])
+            top_tid, top_side, _, _ = max(scored, key=lambda row: row[2])
             roster_match = {'team_id': top_tid, 'side': top_side}
+            # Composite label when BOTH finalists are on the roster (the final
+            # awards podium bonuses to both sides): points_earned is the sum,
+            # so the label must name every contributor — "Champion" alone
+            # would misattribute the aggregate. Ordered by canonical finish
+            # (STAGE_ORDER), not display points — a x7 runner-up's 56 scaled
+            # points would otherwise outrank a x1 champion's 50.
+            podium_hits = sorted(
+                (code for _, _, _, code in scored if code is not None),
+                key=lambda code: STAGE_ORDER.get(code, -1), reverse=True,
+            )
+            if podium_hits:
+                podium_label = ' & '.join(
+                    best_finish_label(code) for code in podium_hits
+                )
         your_pick_results.append({
             'match': match,
             'roster_match': roster_match,
             'points_earned': points_earned,
+            'podium_label': podium_label,
             'is_draw': match.is_draw,
             # Display-ready label so the template doesn't fall back to
             # `match.stage|title` (which mangles 'SF' → 'Sf', 'QF' → 'Qf',
