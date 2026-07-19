@@ -155,3 +155,62 @@ def test_your_standing_tribune_has_no_side_stripe():
     bad = re.search(r'border-left:\s*([2-9]|[1-9]\d+)px', body)
     assert bad is None, \
         f'.your-standing-tribune still has a side-stripe: {bad.group(0)}'
+
+
+# In-scope user-facing template dirs — mirrors the copy-discipline lock
+# (test_design_p0_copy_discipline.py); admin templates stay out of scope.
+TEMPLATE_DIRS = [
+    CSS_PATH.parent.parent.parent / 'games' / 'worldcup' / 'templates' / 'worldcup',
+    CSS_PATH.parent.parent.parent / 'core' / 'main' / 'templates' / 'main',
+    CSS_PATH.parent.parent.parent / 'core' / 'auth' / 'templates' / 'auth',
+    CSS_PATH.parent.parent.parent / 'templates',
+]
+
+_STYLE_BLOCK_RE = re.compile(r'<style[^>]*>(.*?)</style>', re.DOTALL | re.IGNORECASE)
+
+
+def test_no_side_stripes_in_template_inline_styles():
+    """The side-stripe ban applies to inline `<style>` blocks in user-facing
+    templates, not just style.css. Discovered post-PR-#113: the banned
+    `.wc-lb-row.wc-whatif-you` stripe had been copied from `.is-cross-hl` in
+    stats.html's inline styles, which the style.css-only scans never saw —
+    the un-scanned template block acted as a reservoir for the pattern. Scan
+    every in-scope template's `<style>` blocks with the same two stripe
+    shapes (border-left/right >= 2px, inset box-shadow stripe) so it can't
+    be re-copied from a template again.
+    """
+    offenders = []
+    for tdir in TEMPLATE_DIRS:
+        if not tdir.exists():
+            continue
+        for path in tdir.rglob('*.html'):
+            if 'admin' in path.parts:
+                continue
+            for block in _STYLE_BLOCK_RE.finditer(path.read_text()):
+                src = _strip_comments(block.group(1))
+                for rule_match in _RULE_RE.finditer(src):
+                    selector = rule_match.group(1).strip()
+                    body = rule_match.group(2)
+                    if _is_game_scoped(selector):
+                        continue
+                    for stripe in re.finditer(
+                        r'border-(left|right):\s*([2-9]|[1-9]\d+)px', body,
+                    ):
+                        offenders.append((
+                            path.name, selector[:80],
+                            f'border-{stripe.group(1)}: {stripe.group(2)}px',
+                        ))
+                    for shadow_decl in re.finditer(r'box-shadow\s*:\s*([^;]+);', body):
+                        for stripe in re.finditer(
+                            r'\binset\s+(-?)([2-9]|[1-9]\d+)px\s+0\s+0',
+                            shadow_decl.group(1),
+                        ):
+                            offenders.append((
+                                path.name, selector[:80],
+                                f'inset {stripe.group(1)}{stripe.group(2)}px 0 0',
+                            ))
+    assert not offenders, (
+        'Side-stripe ban violations in template inline <style> blocks: '
+        f'{offenders}. Replace with full borders (an `inset 0 0 0 1px` ring '
+        'is fine), leading icons/numerals, or background tints.'
+    )
