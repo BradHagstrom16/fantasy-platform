@@ -35,7 +35,7 @@
   <div class="wl-field-line"><span class="n">{{ wl.active }}</span> of {{ wl.total }} remain.</div>
   {{ name_rows(wl.rows) }}
   {% else %}
-  <div class="wl-field-line">{{ wl.remain_line }}</div>
+  <div class="wl-field-line"><span class="n">{{ wl.active }}</span> remain. One survives.</div>
   {{ name_rows(wl.rows) }}
   {% if wl.reveal_note %}<div class="wl-cuts">{{ wl.reveal_note }}</div>{% endif %}
   {% endif %}
