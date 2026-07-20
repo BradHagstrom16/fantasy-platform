@@ -174,7 +174,7 @@ def _context_pre(user, enrollment) -> dict:
     next_3_matches = (
         WorldCupMatch.query
         .filter(WorldCupMatch.kickoff_utc.isnot(None))
-        .filter(WorldCupMatch.is_completed == False)  # noqa: E712
+        .filter(WorldCupMatch.is_completed.is_(False))
         .order_by(WorldCupMatch.kickoff_utc.asc())
         .limit(3)
         .all()
