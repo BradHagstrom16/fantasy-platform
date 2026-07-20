@@ -155,7 +155,7 @@ Binding preservation rules for all subsequent work:
 ## 8. Sequencing (one PR per session, full CodeRabbit cycle to merge, per standing cadence)
 
 - [x] **Phase 0 — WC ops mothball** — COMPLETE 2026-07-20 (crontab commented non-interactively; the four timers disabled by Brad; zero WC jobs scheduled).
-- [ ] **Phase 1 — C1 lounge design session(s)** (impeccable; produces a design spec in `docs/superpowers/specs/`): CFB-era lounge across all four states + WC archive tile + handoff moment + CFB lounge state model. No implementation.
+- [x] **Phase 1 — C1 lounge design session(s)** — COMPLETE 2026-07-20: `docs/superpowers/specs/2026-07-20-cfb-era-lounge-design.md` (+ visual-companion mockup) covers all four states, the live-state beats, the WC archived tile + farewell, the handoff, and the state model; Brad's four C1 rulings recorded in the spec header.
 - [ ] **Phase 2 — C2 slice 1: registry seam** — featured-game dispatch made real, `'completed'` status handled, WC still open/featured, rendering unchanged, tests updated/added.
 - [ ] **Phase 3 — C2 slice 2: WC lounge extraction** — builders + partials move behind the seam; pixel-identical render contract; existing suite as the net.
 - [ ] **Phase 4 — C2 slice 3+: CFB lounge builders + partials** (likely 2–3 PRs given four states + signature surface): dead code on prod until the flip; smoked in the sandbox with `CFB_FAKE_NOW` + a local-only registry flip.
