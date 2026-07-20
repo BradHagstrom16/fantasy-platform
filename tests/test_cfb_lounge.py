@@ -324,6 +324,30 @@ def test_context_pre_farewell_viewer_not_in_wc_pool(app):
     assert ctx['archived_tiles'][0]['label'] == '2026 · ESP Won'
 
 
+def test_archive_summary_viewer_rank_is_competition_rank(app):
+    """Tied scores share a rank (platform convention: competition rank,
+    1 + count scoring strictly higher — never positional). The viewer is
+    the id-later member of a 250.0 tie behind the 487.0 winner: 2nd of 4,
+    not the positional 3rd."""
+    from games.worldcup.models import WorldCupEnrollment
+    from games.worldcup.services.lounge import archive_summary
+    with app.app_context():
+        _seed_wc_archive(viewer_user=None)  # commish 487.0, third 100.0
+        tied = _make_user(username='wc_tie_partner')
+        db.session.add(WorldCupEnrollment(
+            user_id=tied.id, season_year=SEASON_YEAR, total_score=250.0,
+        ))
+        db.session.commit()
+        user = _make_user()
+        db.session.add(WorldCupEnrollment(
+            user_id=user.id, season_year=SEASON_YEAR, total_score=250.0,
+        ))
+        db.session.commit()
+        summary = archive_summary(user)
+    assert summary['viewer_rank'] == 2
+    assert summary['viewer_finish_label'] == '2nd of 4'
+
+
 # == build_lounge_context -- live/post are later slices ====================
 
 def test_context_live_raises_until_slice_ships(app):
@@ -426,7 +450,9 @@ def test_cfb_out_shell_copy_pass(app, client, monkeypatch):
     assert 'Open Court' in text
     assert 'Survive the season' in text
     assert 'Outlast the field' in text
-    assert 'Two lives. One pick a week.' in text
+    # One combined join-card paragraph (registry description + kickoff
+    # date), not a description followed by a repetitive deadline line.
+    assert 'Last survivor wins. Season kicks off Thursday, Sep 3.' in text
     # Golf still on the docket; the finished WC pool is a members' surface
     assert 'Golf' in text
     assert 'World Cup' not in text

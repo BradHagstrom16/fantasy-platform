@@ -604,13 +604,17 @@ def archive_summary(user) -> dict | None:
     viewer_rank = None
     viewer_points = None
     if user is not None and getattr(user, 'is_authenticated', False):
-        viewer_rank = next(
-            (i + 1 for i, e in enumerate(all_enrollments)
-             if e.user_id == user.id),
-            None,
+        viewer_enrollment = next(
+            (e for e in all_enrollments if e.user_id == user.id), None,
         )
-        if viewer_rank is not None:
-            viewer_points = float(all_enrollments[viewer_rank - 1].total_score)
+        if viewer_enrollment is not None:
+            viewer_points = float(viewer_enrollment.total_score)
+            # Competition rank (platform convention, CLAUDE.md): tied
+            # scores share a rank -- 1 + count scoring strictly higher.
+            viewer_rank = 1 + sum(
+                1 for e in all_enrollments
+                if e.total_score > viewer_enrollment.total_score
+            )
     return {
         'season_year': SEASON_YEAR,
         'champion_name': champion.display_name,
@@ -626,11 +630,14 @@ def archive_summary(user) -> dict | None:
     }
 
 
-def archived_tile(user) -> dict | None:
+def archived_tile_from_summary(summary: dict | None) -> dict | None:
     """The WC archived tile for the CFB-era compact strip (C1 spec 3.4):
     label '2026 · ESP Won · You 1st', the viewer fragment enrollment-aware.
-    None when the archive is incomplete -- the strip omits the tile."""
-    summary = archive_summary(user)
+
+    Takes a precomputed archive_summary() dict so a caller already holding
+    one (the CFB pre context, which also feeds the farewell strip from it)
+    doesn't trigger a second round of archive queries. None when the
+    archive is incomplete -- the strip omits the tile."""
     if summary is None:
         return None
     label = f"{summary['season_year']} · {summary['champion_code']} Won"
@@ -642,6 +649,13 @@ def archived_tile(user) -> dict | None:
         'endpoint': 'worldcup.index',
         'label': label,
     }
+
+
+def archived_tile(user) -> dict | None:
+    """Convenience variant of archived_tile_from_summary that fetches the
+    summary itself -- for lounge states that render the tile without the
+    farewell strip's summary already in hand."""
+    return archived_tile_from_summary(archive_summary(user))
 
 
 def _context_post(user, enrollment) -> dict:

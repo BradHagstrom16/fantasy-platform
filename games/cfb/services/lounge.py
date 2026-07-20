@@ -184,14 +184,16 @@ def _context_pre(user, enrollment) -> dict:
         'game_tile_label': (
             f"PRESEASON · {kickoff.strftime('%b %-d').upper()}"
         ),
-        'archived_tiles': _archived_tiles(user),
+        'archived_tiles': _archived_tiles(archive),
     }
 
 
-def _archived_tiles(user) -> list[dict]:
+def _archived_tiles(archive: dict | None) -> list[dict]:
     """Archived-game tiles for the compact strip (C1 3.4). The WC tile is
-    the permanent archive presence from season start onward (ruling 4)."""
-    tile = worldcup_lounge.archived_tile(user)
+    the permanent archive presence from season start onward (ruling 4);
+    built from the already-fetched summary so a pre render queries the
+    archive once for both the farewell strip and the tile."""
+    tile = worldcup_lounge.archived_tile_from_summary(archive)
     return [tile] if tile is not None else []
 
 

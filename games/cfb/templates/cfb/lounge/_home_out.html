@@ -59,9 +59,11 @@
       {% endif %}
     </div>
     <span class="join-icon" aria-hidden="true">{{ game.emoji }}</span>
+    {# One combined paragraph: the registry description already carries the
+       two-lives/last-survivor pitch, so the kickoff date joins it rather
+       than repeating the rules in a second deadline line. #}
     <h2 class="join-title">{{ game.display_name }}</h2>
-    <p class="join-sub">{{ game.description }}</p>
-    <p class="join-deadline">Two lives. One pick a week. Season kicks off Thursday, Sep 3.</p>
+    <p class="join-sub">{{ game.description }} Season kicks off Thursday, Sep 3.</p>
     {# Route through auth.register with `next=blueprint_join` so a new user
        lands on the join page after sign-up rather than the generic home. #}
     <a class="join-cta" href="{{ url_for('auth.register', next=url_for(game.blueprint_join)) }}">
