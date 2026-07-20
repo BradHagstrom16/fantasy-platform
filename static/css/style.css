@@ -755,6 +755,10 @@ body.game-golf {
 
 .home-shell {
   position: relative;
+  /* Lounge-scoped warm white (C1 3.1): the decisive sentence and the
+     biggest field numbers step above bone. Scoped here on purpose so
+     the room's --cfb-white token never crosses into the lounge. */
+  --lounge-warm-white: #FBF7F0;
   /* Heights live as tokens in tokens.css (--ccc-nav-h, --ccc-footer-h) so
      the calc resolves through one source of truth; see DESIGN.md / CLAUDE.md
      for the chrome height convention. */
@@ -2437,16 +2441,16 @@ body.game-golf {
   border-color: rgba(201,162,39,.55);
   color: var(--gold-light);
 }
-/* Warm white (#FBF7F0) per C1 §3.1 — the decisive sentence and the
-   biggest field numbers step above bone. A literal on purpose: the
-   room's --cfb-white token never crosses into the lounge (§8). */
+/* Warm white (--lounge-warm-white, C1 §3.1) — the decisive sentence
+   and the biggest field numbers step above bone. Lounge-scoped token:
+   the room's --cfb-white never crosses into the lounge (§8). */
 .home-shell .summons-line {
   font-family: var(--font-teko);
   font-weight: 600;
   font-size: 2rem;
   line-height: 1.12;
   letter-spacing: 0.02em;
-  color: #FBF7F0;
+  color: var(--lounge-warm-white);
   margin: 0.6rem 0 0.4rem;
 }
 .home-shell .summons-line--dim { color: var(--bone-dim); }
@@ -2522,7 +2526,7 @@ body.game-golf {
 }
 .home-shell .verdict-word.is-win { color: var(--live-green); }
 .home-shell .verdict-word.is-loss { color: var(--live-red); }
-.home-shell .verdict-word.is-out { color: #FBF7F0; }
+.home-shell .verdict-word.is-out { color: var(--lounge-warm-white); }
 .home-shell .verdict-word.is-push { color: var(--bone-dim); }
 .home-shell .field-impact {
   margin-top: 0.8rem;
@@ -2596,7 +2600,7 @@ body.game-golf {
   font-family: var(--font-teko);
   font-weight: 600;
   font-size: 1.5rem;
-  color: #FBF7F0;
+  color: var(--lounge-warm-white);
   font-variant-numeric: tabular-nums;
 }
 /* Attrition band: two-lives solid live-green, one-life green at 40%,
