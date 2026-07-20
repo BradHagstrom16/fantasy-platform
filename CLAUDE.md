@@ -114,7 +114,7 @@ ENVIRONMENT=testing venv/bin/python -m pytest tests/test_worldcup_scoring.py::te
 ### Auth, admin, enrollment
 
 - **Admin scoping:** Two-tier game admin — platform admin (`User.is_admin`) always has access to every game's admin routes. Game-specific admin (`<Game>Enrollment.is_admin`) allows delegating admin to enrolled non-platform-admins. All `<game>_admin_required` decorators must check platform admin first, enrollment admin second.
-- **Session identity is `User.auth_id`, NOT the integer PK:** `User.get_id()` returns the random, never-reused `auth_id` token (`models/user.py`), and the Flask-Login `user_loader` (`app.py`) resolves by `auth_id`. **Security invariant** — do NOT revert to the integer `id`. Reason (2026-06-01 prod incident): a DB wipe restarts the `users` id sequence, and a pre-wipe remember-me cookie (still validly signed) cross-authenticated a recycled PK as a different person; a random `auth_id` makes stale cookies match nothing. Locked by `tests/test_auth_session_identity.py`. Corollary: any destructive DB reset must also rotate `SECRET_KEY` (see `docs/production-launch-test-script.md` §14C).
+- **Session identity is `User.auth_id`, NOT the integer PK:** `User.get_id()` returns the random, never-reused `auth_id` token (`models/user.py`), and the Flask-Login `user_loader` (`app.py`) resolves by `auth_id`. **Security invariant** — do NOT revert to the integer `id`. Reason (2026-06-01 prod incident): a DB wipe restarts the `users` id sequence, and a pre-wipe remember-me cookie (still validly signed) cross-authenticated a recycled PK as a different person; a random `auth_id` makes stale cookies match nothing. Locked by `tests/test_auth_session_identity.py`. Corollary: any destructive DB reset must also rotate `SECRET_KEY` (see `docs/archive/production-launch-test-script.md` §14C).
 - **Authenticated responses are `Cache-Control: private, no-store`:** stamped by an `@app.after_request` hook in `app.py` when `current_user.is_authenticated` (static endpoint excepted). **Security invariant** — a shared cache that ignores `Vary: Cookie` (e.g. a Cloudflare "Cache Everything" rule) could serve one user's rendered page to another. Anonymous responses stay cacheable on purpose (CDN fronts the public surfaces) — never blanket `no-store` onto them. Locked by `tests/test_response_cache_headers.py`.
 - **Password reset tokens:** `core/auth/tokens.py` uses `itsdangerous.URLSafeTimedSerializer` with 1-hour expiry. Forgot-password route uses anti-enumeration pattern (identical flash message regardless of email existence).
 - **Game registry:** `games/registry.py` is the SSoT — one `GameRegistryEntry` per game (slug, status, is_featured, endpoints, `get_enrollment` + `admin_enroll` callables); its helpers drive homepage, navbar, and admin add-user page. Flip `status` from `'coming_soon'` to `'open'` at launch.
@@ -263,7 +263,7 @@ ssh deploy@<droplet-ip>                  # server
 ```
 
 First-time setup: `docs/superpowers/plans/2026-04-21-production-deployment.md`.
-Production re-verification: `docs/production-launch-test-script.md` (full WC simulation on prod — out → pre → live → post — then DB reset to a clean baseline).
+Production re-verification: `docs/archive/production-launch-test-script.md` (WC-era full prod simulation — out → pre → live → post — then DB reset to a clean baseline; archived with the WC sunset, kept as the template for a CFB-era equivalent).
 
 ---
 
