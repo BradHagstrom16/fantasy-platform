@@ -3442,18 +3442,11 @@ body.game-golf {
 
 .table-golf > tbody > tr:hover { background: rgba(0,103,71,.04); }
 
-/* Current user row highlight — Golf-scoped (game-specific stripe retained) */
-.table-golf .row-current-user > td {
-  background: rgba(184,153,62,.08) !important;
-  border-left: 3px solid var(--game-accent);
-}
-.table-golf .row-current-user > td:not(:first-child) {
-  border-left: none;
-}
-
-/* Platform fallback: bg tint only, no side-stripe (P0 S0.2 — impeccable
-   side-stripe ban). Game-scoped tables (.table-cfb, .table-worldcup,
-   .table-golf) provide their own override. */
+/* Current-user row: tint-only is the settled platform convention (P0 S0.2 —
+   impeccable side-stripe ban). Golf's legacy 3px border-left stripe was the
+   last holdout, removed 2026-07-20 (design-spine audit D4); Golf rows now
+   inherit this platform gold tint. Game-scoped tables may override the TINT
+   color only (.table-cfb crimson, .table-worldcup red) — never a stripe. */
 .row-current-user > td {
   background: rgba(184,153,62,.08) !important;
 }
