@@ -2280,6 +2280,22 @@ body.game-golf {
 .home-shell .cg--soon .p {
   color: var(--bone-mute);
 }
+/* Archived-game tile — the Informational recipe at tile scale (C1 §3.4):
+   a completed pool kept reachable for its members. Desaturated glyph +
+   bone-mute label so it reads as the record, not an active pool. */
+.home-shell .cg--archived {
+  background: linear-gradient(180deg,
+    var(--purple-850) 0%,
+    var(--purple-950) 100%);
+  border: 1px solid rgba(243,239,230,.08);
+}
+.home-shell .cg--archived .g {
+  filter: saturate(0.55);
+  opacity: 0.8;
+}
+.home-shell .cg--archived .p {
+  color: var(--bone-mute);
+}
 
 /* Polish (Critique 2026-05-15) — live-dot on the active game tile
    during live state. Visual differentiation from the coming-soon
@@ -2309,6 +2325,66 @@ body.game-golf {
 }
 @media (prefers-reduced-motion: reduce) {
   .home-shell .cg-live-dot { animation: none; }
+}
+
+/* --- The farewell ledger strip (CFB-era pre state, C1 §3.5) ---
+   One full-width Informational strip in the handoff composition: the
+   archived season's one-line ledger, the viewer's finish fragment, and
+   the archive route. Retired automatically when the lounge leaves 'pre'
+   (C1 ruling 4 — WC collapses to the archived tile permanently). */
+.home-shell .farewell-strip {
+  margin: 1.5rem 0;
+  padding: 1.1rem 1.4rem;
+  background: linear-gradient(180deg,
+    var(--purple-850) 0%,
+    var(--purple-950) 100%);
+  border: 1px solid rgba(243,239,230,.08);
+  border-radius: 12px;
+}
+.home-shell .farewell-eyebrow {
+  font-family: var(--font-teko);
+  font-weight: 500;
+  font-size: 0.85rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--bone-mute);
+}
+.home-shell .farewell-body {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.4rem 1.6rem;
+  margin-top: 0.45rem;
+}
+.home-shell .farewell-line {
+  font-family: var(--font-news);
+  font-size: 1.02rem;
+  color: var(--bone);
+}
+.home-shell .farewell-fin {
+  font-family: var(--font-teko);
+  font-weight: 500;
+  font-size: 0.95rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--bone-dim);
+}
+.home-shell .farewell-route {
+  font-family: var(--font-teko);
+  font-weight: 500;
+  font-size: 0.95rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gold);
+  text-decoration: none;
+}
+.home-shell .farewell-route:hover {
+  color: var(--gold-light);
+}
+.home-shell .farewell-route:focus-visible {
+  outline: 2px solid var(--gold-light);
+  outline-offset: 2px;
+  color: var(--gold-light);
 }
 
 /* --- Commish's Note (long-form narrative) --- */

@@ -1,0 +1,105 @@
+{# CFB-era logged-out home — a copy pass on the out shell (C1 §4.1):
+   structure unchanged (hero, props, registry-driven join card,
+   coming-soon rail); the copy shifts to survivor voice. Renders only
+   once CFB owns the lounge (the Phase 5 registry flip). WC appears
+   nowhere here: the archive is a members' surface, and the completed
+   status drops it from available/coming-soon automatically. #}
+<div class="home-col">
+
+  {# Hero — the club's face, unchanged across eras #}
+  <div class="out-hero">
+    <img class="out-mark animate-in"
+         src="{{ url_for('static', filename='img/logo/mascot-bust.svg') }}?v={{ asset_version }}"
+         alt="" width="200" height="200">
+    <div class="out-eyebrow">◈ Fantasy for crooked kings &amp; queens ◈</div>
+    <h1 class="out-title">
+      <span class="out-title-a">The Fix</span>
+      <span class="out-title-b">Is In.</span>
+    </h1>
+    <p class="out-sub">
+      Pay tribute. Bend the odds to your will. No honor required.
+    </p>
+  </div>
+
+  {# Value props — survivor voice (C1 §4.1); the Commish&rsquo;s Note prop
+     keeps its existing copy by ruling. #}
+  <div class="out-props">
+    <div class="out-prop">
+      <div class="out-prop-text">
+        <div class="t">Survive the season</div>
+        <div class="s">One pick a week, win outright. Lose twice and you&rsquo;re out.</div>
+      </div>
+    </div>
+    <div class="out-prop">
+      <div class="out-prop-text">
+        <div class="t">Outlast the field</div>
+        <div class="s">Watch the pool thin every Saturday. Last one standing takes it.</div>
+      </div>
+    </div>
+    <div class="out-prop">
+      <div class="out-prop-text">
+        <div class="t">Read the Commish&rsquo;s Note</div>
+        <div class="s">Weekly recaps written by yours truly. Mostly receipts with some shame.</div>
+      </div>
+    </div>
+  </div>
+
+  {# Conversion unit — the featured open pool folded into the join card so
+     the logged-out viewer gets ONE gold CTA. Identity (name / emoji /
+     description / join route) is registry-driven; the deadline line is
+     the only game-specific copy. #}
+  {% for game in available_games %}
+  <div class="join">
+    <div class="join-head">
+      <div class="seal">◇ Open Court &middot; CFB Survivor &rsquo;26</div>
+      {% if total_enrolled > 0 %}
+      <div class="count">
+        <span class="v">{{ total_enrolled }}</span> competitor{{ '' if total_enrolled == 1 else 's' }} in the club
+      </div>
+      {% endif %}
+    </div>
+    <span class="join-icon" aria-hidden="true">{{ game.emoji }}</span>
+    <h2 class="join-title">{{ game.display_name }}</h2>
+    <p class="join-sub">{{ game.description }}</p>
+    <p class="join-deadline">Two lives. One pick a week. Season kicks off Thursday, Sep 3.</p>
+    {# Route through auth.register with `next=blueprint_join` so a new user
+       lands on the join page after sign-up rather than the generic home. #}
+    <a class="join-cta" href="{{ url_for('auth.register', next=url_for(game.blueprint_join)) }}">
+      Join the Club
+      <i class="bi bi-arrow-right" aria-hidden="true"></i>
+    </a>
+    <div class="join-alt">
+      Already sworn in? <a href="{{ url_for('auth.login') }}">Sign in</a>
+    </div>
+  </div>
+  {% endfor %}
+
+</div>{# /.home-col #}
+
+{# Breadth signal — the coming-soon docket (Golf only in the CFB era;
+   the registry drives the list). No gold CTA here so the join card
+   stays the page's single primary action. #}
+{% if coming_soon_games %}
+<section class="out-registry" aria-labelledby="out-registry-head">
+  <div class="container">
+    <header class="out-registry-head">
+      <span class="out-registry-eyebrow">◇ The Court This Year</span>
+      <h2 id="out-registry-head" class="out-registry-title">Up Next on the Docket</h2>
+    </header>
+
+    <div class="out-registry-grid">
+      <aside class="out-coming-rail" aria-label="Pools coming soon">
+        {% for game in coming_soon_games %}
+        <div class="out-coming-strip">
+          <span class="out-coming-strip-icon" aria-hidden="true">{{ game.emoji }}</span>
+          <div class="out-coming-strip-text">
+            <div class="out-coming-strip-title">{{ game.display_name }}</div>
+            <div class="out-coming-strip-meta">Opens {{ game.launch_label or 'TBA' }}</div>
+          </div>
+        </div>
+        {% endfor %}
+      </aside>
+    </div>
+  </div>
+</section>
+{% endif %}

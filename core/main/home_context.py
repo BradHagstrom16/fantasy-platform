@@ -46,6 +46,11 @@ def build_home_context(user: Any, state: str | None) -> dict:
     game = lounge_game()
     if game is not None and game.lounge_context is not None:
         ctx.update(game.lounge_context(user, state))
+        if state is not None:
+            # Name the featured entry for registry-generic partials (the
+            # compact tile strip reads emoji/short_name/blueprint_index
+            # off it, slug-agnostically).
+            ctx['lounge_entry'] = game
     if state is not None:
         # Admin-editable "From the Commish" note for the narrative band. The
         # post body may interpolate {champion}, so pass the champion through

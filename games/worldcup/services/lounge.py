@@ -54,10 +54,18 @@ def build_lounge_context(user: Any, state: WorldCupState | None) -> dict:
         user_id=user.id, season_year=SEASON_YEAR
     ).first()
     if state == 'pre':
-        return _context_pre(user, enrollment)
-    if state == 'live':
-        return _context_live(user, enrollment)
-    return _context_post(user, enrollment)
+        ctx = _context_pre(user, enrollment)
+    elif state == 'live':
+        ctx = _context_live(user, enrollment)
+    else:
+        ctx = _context_post(user, enrollment)
+    # Generalized tile-strip keys (Phase 4): the per-state label the
+    # hardcoded WC tile block used to compute inside
+    # main/_game_tiles_compact.html, plus the archived-games list --
+    # empty while the WC era owns the lounge (nothing is archived yet).
+    ctx['game_tile_label'] = game_tile_label(state, ctx)
+    ctx['archived_tiles'] = []
+    return ctx
 
 
 def _tagline_for(rank: int, week_delta_rank: int | None,
@@ -526,6 +534,113 @@ def _context_live(user, enrollment) -> dict:
         'court_line': court_line,
         'stage_label': stage_label,
         'display_name': display_name,
+    }
+
+
+def game_tile_label(state: str, ctx: dict) -> str:
+    """Per-state label for the WC tile in the compact game strip.
+
+    Moved out of the hardcoded WC block in main/_game_tiles_compact.html
+    when the strip generalized (Phase 4, C1 spec section 3.4) --
+    string-for-string parity with the old in-template logic, locked by
+    tests/test_cfb_lounge.py.
+    """
+    if state == 'post':
+        return 'COMPLETED'
+    if state == 'live':
+        dossier = ctx.get('dossier')
+        if dossier and dossier.get('rank'):
+            return f"LIVE · #{dossier['rank']}"
+        return 'LIVE'
+    enrollment = ctx.get('enrollment')
+    if (
+        ctx.get('is_enrolled')
+        and enrollment is not None
+        and enrollment.picks_submitted
+    ):
+        return 'SEALED'
+    return 'ROSTER OPEN'
+
+
+def _ordinal(n: int) -> str:
+    """1 -> '1st', 2 -> '2nd', 11 -> '11th' (English ordinal suffix)."""
+    if 10 <= n % 100 <= 13:
+        suffix = 'th'
+    else:
+        suffix = {1: 'st', 2: 'nd', 3: 'rd'}.get(n % 10, 'th')
+    return f'{n}{suffix}'
+
+
+def archive_summary(user) -> dict | None:
+    """Frozen 2026 archive facts for the CFB-era lounge (C1 spec 3.4/3.5):
+    champion, pool winner, and the viewer's finish.
+
+    Read-only reuse of the _context_post query shapes -- no new WC query
+    territory. Returns None when the archive is incomplete (no decided
+    final, or empty standings) so consumers omit the surface instead of
+    rendering a broken line. The viewer fields are enrollment-aware: None
+    for anonymous viewers or players who never joined the WC pool.
+    """
+    final_match = WorldCupMatch.query.filter_by(match_number=104).first()
+    champion = (
+        final_match.winner_team
+        if final_match is not None and final_match.winner_team_id
+        else None
+    )
+    if champion is None:
+        return None
+    all_enrollments = (
+        WorldCupEnrollment.query
+        .filter_by(season_year=SEASON_YEAR)
+        .order_by(
+            WorldCupEnrollment.total_score.desc(),
+            WorldCupEnrollment.id.asc(),
+        )
+        .all()
+    )
+    if not all_enrollments:
+        return None
+    winner = all_enrollments[0]
+    viewer_rank = None
+    viewer_points = None
+    if user is not None and getattr(user, 'is_authenticated', False):
+        viewer_rank = next(
+            (i + 1 for i, e in enumerate(all_enrollments)
+             if e.user_id == user.id),
+            None,
+        )
+        if viewer_rank is not None:
+            viewer_points = float(all_enrollments[viewer_rank - 1].total_score)
+    return {
+        'season_year': SEASON_YEAR,
+        'champion_name': champion.display_name,
+        'champion_code': champion.fifa_code,
+        'winner_name': winner.get_display_name(),
+        'total_count': len(all_enrollments),
+        'viewer_rank': viewer_rank,
+        'viewer_finish_label': (
+            f'{_ordinal(viewer_rank)} of {len(all_enrollments)}'
+            if viewer_rank is not None else None
+        ),
+        'viewer_points': viewer_points,
+    }
+
+
+def archived_tile(user) -> dict | None:
+    """The WC archived tile for the CFB-era compact strip (C1 spec 3.4):
+    label '2026 · ESP Won · You 1st', the viewer fragment enrollment-aware.
+    None when the archive is incomplete -- the strip omits the tile."""
+    summary = archive_summary(user)
+    if summary is None:
+        return None
+    label = f"{summary['season_year']} · {summary['champion_code']} Won"
+    if summary['viewer_rank'] is not None:
+        label += f" · You {_ordinal(summary['viewer_rank'])}"
+    return {
+        'emoji': '⚽',
+        'name': 'World Cup',
+        'endpoint': 'worldcup.index',
+        'label': label,
     }
 
 

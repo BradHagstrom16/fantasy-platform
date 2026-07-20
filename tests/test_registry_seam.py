@@ -171,22 +171,15 @@ def test_changeover_flip_hands_lounge_to_cfb(app, monkeypatch):
     registry: WC -> completed/unfeatured, CFB -> open/featured. The seam,
     not any hardcoded slug, must hand the lounge to CFB.
 
-    CFB's real lounge_state resolver + lounge_context builder ship in C2
-    slice 3+ (plan section 8, Phase 4 precedes the Phase 5 flip); stubs
-    stand in for both here. The missing-callable cases are locked
-    separately by the lacks_resolver / lacks_context_builder tests."""
+    Since C2 slice 3 the CFB entry carries its real lounge callables, so
+    the flip alone hands it the lounge -- exactly the two-line Phase 5
+    changeover diff. The missing-callable cases are locked separately by
+    the lacks_resolver / lacks_context_builder tests."""
     from games import registry
     set_status(monkeypatch, 'worldcup', 'completed')
     set_is_featured(monkeypatch, 'worldcup', False)
     set_status(monkeypatch, 'cfb', 'open')
     set_is_featured(monkeypatch, 'cfb', True)
-    patched = [
-        replace(entry, lounge_state=lambda: 'pre',
-                lounge_context=_stub_lounge_context)
-        if entry.slug == 'cfb' else entry
-        for entry in registry.GAMES
-    ]
-    monkeypatch.setattr(registry, 'GAMES', patched)
     assert registry.lounge_game().slug == 'cfb'
 
 
@@ -317,6 +310,24 @@ def test_worldcup_entry_lounge_context_is_build_lounge_context(app):
     assert get_entry('worldcup').lounge_context is build_lounge_context
 
 
+def test_cfb_entry_lounge_state_is_cfb_lounge_state(app):
+    """The CFB entry's resolver IS the canonical cfb_lounge_state (no
+    wrapper drift) — mirrors the WC identity lock. Wiring the callables is
+    safe pre-flip: CFB stays coming_soon/unfeatured, so lounge_game()
+    never selects it until the Phase 5 changeover."""
+    from games.cfb.services.lounge import cfb_lounge_state
+    from games.registry import get_entry
+    assert get_entry('cfb').lounge_state is cfb_lounge_state
+
+
+def test_cfb_entry_lounge_context_is_build_lounge_context(app):
+    """The CFB entry's context builder IS the canonical module entry point
+    (no wrapper drift) — the slice-3 half of the CFB identity locks."""
+    from games.cfb.services.lounge import build_lounge_context
+    from games.registry import get_entry
+    assert get_entry('cfb').lounge_context is build_lounge_context
+
+
 # ── build_home_context dispatch through the seam (C2 slice 2) ─────────────
 
 def test_build_home_context_dispatches_through_featured_lounge_context(app, monkeypatch):
@@ -345,6 +356,9 @@ def test_build_home_context_dispatches_through_featured_lounge_context(app, monk
     assert ctx['joined_games'] == []
     assert ctx['coming_soon_games'] == []
     assert 'commish_paragraphs' in ctx
+    # Slice 3: the dispatcher names the featured entry so registry-generic
+    # partials (the compact tile strip) can render it slug-agnostically.
+    assert ctx['lounge_entry'].slug == 'alpha'
 
 
 def test_build_home_context_out_state_overlays_game_dict_on_registry_base(app, monkeypatch):

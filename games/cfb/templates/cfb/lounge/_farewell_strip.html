@@ -1,0 +1,15 @@
+{# The farewell ledger strip — Informational recipe, pre-state only
+   (C1 §3.5 + ruling 4: the state machine retires it at season start;
+   WC collapses to the archived tile permanently). Data is the frozen
+   WC archive via the context's `farewell` dict; an incomplete archive
+   omits the strip entirely rather than rendering a broken line. #}
+{% if farewell %}
+<div class="farewell-strip">
+  <div class="farewell-eyebrow">◇ The {{ farewell.season_year }} Ledger</div>
+  <div class="farewell-body">
+    <span class="farewell-line">{{ farewell.line }}</span>
+    {% if farewell.finish %}<span class="farewell-fin">{{ farewell.finish }}</span>{% endif %}
+    <a class="farewell-route" href="{{ url_for('worldcup.index') }}">Visit the archive &rsaquo;</a>
+  </div>
+</div>
+{% endif %}

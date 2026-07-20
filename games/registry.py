@@ -14,6 +14,7 @@ from dataclasses import dataclass
 from typing import Any, Literal
 
 from games.cfb.services import enrollment as _cfb_enrollment
+from games.cfb.services import lounge as _cfb_lounge
 from games.golf.services import enrollment as _golf_enrollment
 from games.worldcup.services import enrollment as _worldcup_enrollment
 from games.worldcup.services import lounge as _worldcup_lounge
@@ -88,6 +89,12 @@ GAMES: list[GameRegistryEntry] = [
         admin_enroll=_cfb_enrollment.admin_enroll,
         short_name='CFB',
         launch_label='Sep 3',
+        # Lounge callables wired ahead of the Phase 5 changeover (C2
+        # slice 3): safe while status stays coming_soon/unfeatured --
+        # lounge_game() requires featured+open, so the flip alone hands
+        # CFB the lounge (transition plan section 6 E).
+        lounge_state=_cfb_lounge.cfb_lounge_state,
+        lounge_context=_cfb_lounge.build_lounge_context,
     ),
     GameRegistryEntry(
         slug='golf',
