@@ -426,6 +426,35 @@ def test_context_post_tiebreak_conclusion(app):
     assert ctx['game_tile_label'] == 'CHAMPION · Casey'
 
 
+def test_context_post_tiebreak_lives_led(app):
+    """Final week complete with >1 active on DIFFERENT lives: the winner
+    wins on lives, not spread — the evidence must say so (the 1.10
+    language law). The runner-up has the BETTER spread here, proving
+    lives led the official order."""
+    from games.cfb.services.lounge import build_lounge_context
+    with app.app_context():
+        user = _make_user()
+        winner_user = _make_user(username='llwinner')
+        we = _enroll_cfb(winner_user, lives=2)
+        we.display_name = 'Casey'
+        we.cumulative_spread = 50.0
+        runner_user = _make_user(username='llrunner')
+        re_ = _enroll_cfb(runner_user, lives=1)
+        re_.display_name = 'Jordan'
+        re_.cumulative_spread = 40.0
+        _enroll_cfb(user, lives=0, eliminated=True)
+        db.session.commit()
+        _make_week(number=19, complete=True, playoff=True,
+                   deadline=datetime(2027, 1, 18, 11, 0))
+        ctx = build_lounge_context(user, 'post')
+    champ = ctx['champion']
+    assert champ['name'] == 'Casey'
+    assert champ['is_tiebreak'] is True  # still CHAMPION, never sole survivor
+    assert champ['evidence'] == (
+        "Ends the season with two lives against Jordan's one life."
+    )
+
+
 def test_cfb_post_shell_renders_sole_survivor(app, client, monkeypatch):
     _flip_to_cfb(monkeypatch)
     with app.app_context():

@@ -769,13 +769,25 @@ def _context_post(user, enrollment) -> dict:
         champion_name = champ_enrollment.get_display_name()
         is_tiebreak = active > 1
         if is_tiebreak and len(standings_active) > 1:
+            # The evidence names the ACTUAL deciding mechanism (section
+            # 1.10): spread only breaks equal-lives ties — when lives
+            # differ, the winner won on lives, and saying "cumulative
+            # spread" would misdescribe the finish.
             runner = standings_active[1]
-            evidence = (
-                'Wins on cumulative spread: '
-                f'{champ_enrollment.cumulative_spread:.1f} against '
-                f"{runner.get_display_name()}'s "
-                f'{runner.cumulative_spread:.1f}.'
-            )
+            if champ_enrollment.lives_remaining == runner.lives_remaining:
+                evidence = (
+                    'Wins on cumulative spread: '
+                    f'{champ_enrollment.cumulative_spread:.1f} against '
+                    f"{runner.get_display_name()}'s "
+                    f'{runner.cumulative_spread:.1f}.'
+                )
+            else:
+                evidence = (
+                    'Ends the season with '
+                    f'{_lives_phrase(champ_enrollment.lives_remaining)} '
+                    f"against {runner.get_display_name()}'s "
+                    f'{_lives_phrase(runner.lives_remaining)}.'
+                )
         else:
             outlasted = total - 1
             plural = 's' if outlasted != 1 else ''
