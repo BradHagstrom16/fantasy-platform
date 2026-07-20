@@ -1,0 +1,15 @@
+{# Lounge life pips — the lounge's own pip vocabulary (C1 §8: never the
+   room's .lives-indicator; same structure grammar). Held = filled
+   live-green, lost = hollow. Structure carries state before color; the
+   wrapper is role="img" with a full aria-label so pips always pair with
+   a text equivalent (§10), and the optional visible label renders the
+   same text for sighted users where the layout wants it. #}
+{% macro pips(lives, total=2, label=None) -%}
+{%- set lives_text = 'Eliminated' if lives == 0 else (lives ~ (' life' if lives == 1 else ' lives')) -%}
+<span class="lounge-lives" role="img" aria-label="{{ lives_text }}">
+  {%- for i in range(total) -%}
+  <span class="pip{% if i >= lives %} pip--lost{% endif %}" aria-hidden="true"></span>
+  {%- endfor -%}
+  {%- if label %}<span class="lbl" aria-hidden="true">{{ label }}</span>{% endif -%}
+</span>
+{%- endmacro %}

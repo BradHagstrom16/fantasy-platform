@@ -30,6 +30,7 @@ from games.cfb.models import CfbEnrollment, CfbGame, CfbPick, CfbTeam, CfbWeek
 from games.cfb.services.game_logic import (
     calculate_cumulative_spread,
     get_game_for_team,
+    get_official_standings,
     get_used_team_ids,
     get_week_user_statuses,
     process_autopicks,
@@ -179,17 +180,9 @@ def index():
                 else:
                     week_picks[pick.user_id] = pick.team.name
 
-    # Active enrollments sorted by lives DESC, spread ASC
-    enrollments = (
-        CfbEnrollment.query
-        .filter_by(season_year=season_year, is_eliminated=False)
-        .options(joinedload(CfbEnrollment.user))
-        .order_by(
-            CfbEnrollment.lives_remaining.desc(),
-            CfbEnrollment.cumulative_spread.asc(),
-        )
-        .all()
-    )
+    # Official standings order + competition ranks via the central helper
+    # (shared with the lounge -- DESIGN.md 10.5 room/lounge consistency).
+    enrollments, standings_ranks = get_official_standings(season_year)
 
     eliminated_enrollments = sorted(
         CfbEnrollment.query
@@ -199,14 +192,14 @@ def index():
         key=lambda e: e.get_display_name().lower(),
     )
 
-    # Current user's standing position among active survivors (the sorted
-    # `enrollments` order is the displayed rank; surfaced in the weekly-call
-    # status row). None when the viewer is anonymous or eliminated.
+    # Current user's standing among active survivors (competition rank --
+    # exact (lives, spread) ties share; surfaced in the weekly-call status
+    # row). None when the viewer is anonymous or eliminated.
     current_user_rank = None
     if current_user.is_authenticated:
-        for idx, e in enumerate(enrollments, start=1):
+        for e in enrollments:
             if e.user_id == current_user.id:
-                current_user_rank = idx
+                current_user_rank = standings_ranks[e.id]
                 break
 
     # Championship detection

@@ -1,0 +1,54 @@
+{# The Summons — the lounge's signature surface (C1 §3.1): one identity
+   across the four beats. OPEN/HELD wear the Ceremonial recipe;
+   LOCKED/VERDICT the Informational. Internal order per §8.9: state
+   (chip + eyebrow) → decisive sentence (or the verdict word) → lives +
+   deadline meta → one action. It never carries the slate, spreads, or
+   team choices — those are the room's.
+
+   Gold budget (§3.1): the OPEN CTA below is the lounge's second and
+   last metal-gold CTA (the first is the pre-state decree). ◈ appears
+   only on the OPEN eyebrow (and the post-state champion banner). #}
+{% from 'cfb/lounge/_pips.html' import pips %}
+{% set s = summons %}
+<div class="summons{% if s.beat in ('locked', 'verdict') %} summons--info{% endif %}">
+  <span class="state-chip{% if s.beat == 'open' %} state-chip--open{% endif %}">{{ s.chip }}</span>
+  <div class="summons-eyebrow{% if s.beat != 'open' %} summons-eyebrow--info{% endif %}">{% if s.beat == 'open' %}◈{% else %}◇{% endif %} The Summons &middot; {{ s.week_label }}</div>
+
+  {% if s.beat == 'verdict' %}
+  <div class="verdict-word {{ s.verdict_class }}">{{ s.verdict_word }}</div>
+  <p class="summons-sub">{{ s.sentence }}</p>
+  {% else %}
+  <div class="summons-line">{{ s.sentence }}</div>
+  {% if s.support %}<p class="summons-sub">{{ s.support }}</p>{% endif %}
+  {% endif %}
+
+  {% if s.autopick_note %}
+  <p class="summons-sub summons-auto">{{ s.autopick_note }}</p>
+  {% endif %}
+
+  <div class="summons-meta">
+    {{ pips(s.lives, label=('Eliminated' if s.lives == 0 else (s.lives ~ (' life' if s.lives == 1 else ' lives')))) }}
+    {% if s.beat == 'open' %}
+    <span>Locks in <span class="num">{{ s.deadline_relative }}</span> &middot; {{ s.deadline_absolute }}</span>
+    {% elif s.meta %}
+    <span>{{ s.meta }}</span>
+    {% endif %}
+  </div>
+
+  {% if s.beat == 'open' %}
+  <a class="cta-seal summons-cta" href="{{ url_for('cfb.make_pick', week_number=s.week_number) }}">
+    <span class="cta-seal-label">Choose Team<i class="bi bi-arrow-right" aria-hidden="true"></i></span>
+    <span class="cta-seal-sub">One team, win outright. Used teams stay used.</span>
+  </a>
+  <div class="commish-echo">Miss it and the Commish picks for you.</div>
+  {% elif s.beat == 'held' %}
+  <a class="cta-outline" href="{{ url_for('cfb.make_pick', week_number=s.week_number) }}">Review Pick</a>
+  {% endif %}
+
+  {% if s.beat == 'verdict' %}
+  <div class="field-impact">
+    {% if s.field_impact %}<span class="field-impact-line">{{ s.field_impact }}</span>{% endif %}
+    {% for r in s.routes %}<a class="route-link" href="{{ url_for(r.endpoint, **r.args) }}">{{ r.label }} &rsaquo;</a>{% if not loop.last %} {% endif %}{% endfor %}
+  </div>
+  {% endif %}
+</div>

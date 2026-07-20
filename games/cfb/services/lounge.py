@@ -23,11 +23,22 @@ from datetime import date
 from typing import Any, Literal
 
 from flask import current_app
+from sqlalchemy.orm import joinedload
 
 from extensions import db
 from games.cfb.constants import SEASON_SCHEDULE
-from games.cfb.models import CfbEnrollment, CfbWeek
-from games.cfb.utils import get_current_time, make_aware
+from games.cfb.models import CfbEnrollment, CfbPick, CfbWeek, CfbWeekOutcome
+from games.cfb.services.game_logic import (
+    get_game_for_team,
+    get_official_standings,
+)
+from games.cfb.utils import (
+    get_current_time,
+    get_week_display_name,
+    make_aware,
+    safe_is_after,
+    to_pool_time,
+)
 from games.worldcup.services import lounge as worldcup_lounge
 
 CfbLoungeState = Literal['pre', 'live', 'post']
@@ -36,6 +47,14 @@ CfbLoungeState = Literal['pre', 'live', 'post']
 # (week 19, CFP National Championship). Its completion with >1 active
 # player is the tiebreak-conclusion trigger for 'post'.
 FINAL_WEEK_NUMBER = max(SEASON_SCHEDULE['special_weeks'])
+
+# Who's Left phase thresholds (C1 spec 3.2 -- C2 constants, tunable):
+# names take over at <= max(FLOOR, half the field); endgame at <= MAX.
+WHOS_LEFT_NAMES_FLOOR = 10
+WHOS_LEFT_ENDGAME_MAX = 4
+
+_COUNT_WORDS = ['No', 'One', 'Two', 'Three', 'Four', 'Five',
+                'Six', 'Seven', 'Eight', 'Nine', 'Ten']
 
 
 def _season_year() -> int:
@@ -197,15 +216,529 @@ def _archived_tiles(archive: dict | None) -> list[dict]:
     return [tile] if tile is not None else []
 
 
+# -- live-state formatting helpers -----------------------------------------
+
+def _count_word(n: int, lower: bool = False) -> str:
+    word = _COUNT_WORDS[n] if 0 <= n < len(_COUNT_WORDS) else str(n)
+    return word.lower() if lower and not word.isdigit() else word
+
+
+def _join_names(names: list[str]) -> str:
+    if len(names) <= 1:
+        return names[0] if names else ''
+    return ', '.join(names[:-1]) + ' and ' + names[-1]
+
+
+def _fmt_time(dt) -> str:
+    """'Saturday, 11:00 AM CT' -- weekday + wall clock in the pool tz."""
+    return f"{dt.strftime('%A, %-I:%M %p')} CT"
+
+
+def _fmt_relative(delta) -> str:
+    """Calm one-line countdown: '2d 14h' / '3h 18m' / '42m'."""
+    total_minutes = max(0, int(delta.total_seconds() // 60))
+    days, rem = divmod(total_minutes, 1440)
+    hours, minutes = divmod(rem, 60)
+    if days > 0:
+        return f'{days}d {hours}h'
+    if hours > 0:
+        return f'{hours}h {minutes}m'
+    return f'{minutes}m'
+
+
+def _lives_phrase(n: int) -> str:
+    """'two lives' / 'one life' -- prose form for sentences."""
+    return 'one life' if n == 1 else f'{_count_word(n, lower=True)} lives'
+
+
+def _team_scores(game, team_id):
+    """(picked team's score, opponent's score) for a game."""
+    if game.home_team_id == team_id:
+        return game.home_score, game.away_score
+    return game.away_score, game.home_score
+
+
+def _opponent_name(game, team_id) -> str:
+    if game.home_team_id == team_id:
+        return game.get_away_team_display()
+    return game.get_home_team_display()
+
+
+def _is_autopick(pick, week) -> bool:
+    # Room idiom (weekly_results): created_at is a naive-UTC audit column;
+    # a pick written after the pool-tz deadline came from the autopick job.
+    return safe_is_after(to_pool_time(pick.created_at), week.deadline)
+
+
+# -- live-state assembly ----------------------------------------------------
+
 def _context_live(user, enrollment) -> dict:
-    """Live-season lounge data (the four-beat Summons) -- next Phase 4
-    slice. Raising keeps a premature changeover flip loudly broken
-    instead of quietly rendering a half-built lounge."""
-    raise NotImplementedError(
-        'CFB live lounge context ships in a later Phase 4 slice '
-        '(transition plan section 8); the changeover flip must not land '
-        'before it does.'
+    """The four-beat lounge (C1 spec 2.2/4.3): Summons (or its eliminated /
+    view variants), Who's Left, compact standings, tiles."""
+    season_year = _season_year()
+    now = get_current_time()
+    is_enrolled = enrollment is not None
+    display_name = (
+        enrollment.get_display_name() if is_enrolled
+        else user.get_display_name()
     )
+
+    # Current week W: the active week, else the latest complete week (the
+    # aftermath window, which resolves to VERDICT). The state resolver
+    # only returns 'live' when one of the two exists; a direct call
+    # without either falls back to the preseason shape rather than crash.
+    week = CfbWeek.query.filter_by(is_active=True).first()
+    if week is None:
+        week = (
+            CfbWeek.query.filter_by(is_complete=True)
+            .order_by(CfbWeek.week_number.desc())
+            .first()
+        )
+    if week is None:
+        return _context_pre(user, enrollment)
+    deadline = make_aware(week.deadline)
+    week_label = get_week_display_name(week)
+
+    all_enrollments = (
+        CfbEnrollment.query
+        .filter_by(season_year=season_year)
+        .options(joinedload(CfbEnrollment.user))
+        .all()
+    )
+    two_lives = sum(
+        1 for e in all_enrollments
+        if not e.is_eliminated and e.lives_remaining >= 2
+    )
+    one_life = sum(
+        1 for e in all_enrollments
+        if not e.is_eliminated and e.lives_remaining == 1
+    )
+    out = sum(1 for e in all_enrollments if e.is_eliminated)
+    active = two_lives + one_life
+    total = len(all_enrollments)
+
+    standings_active, ranks = get_official_standings(season_year)
+    standings_rows = _standings_rows(standings_active, ranks, user)
+
+    latest_complete = (
+        CfbWeek.query.filter_by(is_complete=True)
+        .order_by(CfbWeek.week_number.desc())
+        .first()
+    )
+    cuts_line = _cuts_line(latest_complete, all_enrollments)
+    whos_left = _whos_left(
+        week, week_label, deadline, now, standings_active, user,
+        two_lives=two_lives, one_life=one_life, out=out,
+        active=active, total=total, cuts_line=cuts_line,
+    )
+
+    summons = None
+    eliminated_module = None
+    view_module = None
+    if not is_enrolled:
+        viewer_mode = 'view'
+        view_module = {
+            'field_line': f'The pool is underway. {active} of {total} remain.',
+        }
+    else:
+        beat, pick, outcome = _resolve_beat(week, deadline, user, now)
+        elimination_week_verdict = (
+            outcome is not None and outcome.eliminated_this_week
+        )
+        if enrollment.is_eliminated and not elimination_week_verdict:
+            # Standing eliminated: every week after the cut (C1 2.3) --
+            # the elimination week itself renders as its VERDICT.
+            viewer_mode = 'eliminated'
+            eliminated_module = _eliminated_module(user)
+        else:
+            viewer_mode = 'summons'
+            summons = _summons_payload(
+                week, week_label, deadline, now, beat, pick, outcome,
+                enrollment,
+            )
+
+    remains = 'remains' if active == 1 else 'remain'
+    court_line = f"{now.strftime('%A')} · {week_label} · {active} {remains}"
+
+    if not is_enrolled:
+        game_tile_label = f'{week_label.upper()} · LIVE'
+    elif enrollment.is_eliminated:
+        game_tile_label = 'ELIMINATED'
+    else:
+        lives_unit = 'LIFE' if enrollment.lives_remaining == 1 else 'LIVES'
+        game_tile_label = (
+            f'{week_label.upper()} · {enrollment.lives_remaining} {lives_unit}'
+        )
+
+    return {
+        'enrollment': enrollment,
+        'is_enrolled': is_enrolled,
+        'display_name': display_name,
+        'viewer_mode': viewer_mode,
+        'summons': summons,
+        'eliminated_module': eliminated_module,
+        'view_module': view_module,
+        'standings_rows': standings_rows,
+        'whos_left': whos_left,
+        'court_line': court_line,
+        'week_number': week.week_number,
+        'game_tile_label': game_tile_label,
+        'archived_tiles': _archived_tiles(
+            worldcup_lounge.archive_summary(user)
+        ),
+    }
+
+
+def _resolve_beat(week, deadline, user, now):
+    """Central beat resolution (C1 2.2, DESIGN.md 10.4): one resolver,
+    never per-template. Returns (beat, pick, outcome)."""
+    outcome = CfbWeekOutcome.query.filter_by(
+        week_id=week.id, user_id=user.id
+    ).first()
+    pick = CfbPick.query.filter_by(
+        week_id=week.id, user_id=user.id
+    ).first()
+    if outcome is not None:
+        return 'verdict', pick, outcome
+    if now < deadline:
+        return ('held' if pick is not None else 'open'), pick, None
+    return 'locked', pick, None
+
+
+def _summons_payload(week, week_label, deadline, now, beat, pick, outcome,
+                     enrollment) -> dict:
+    """Per-beat Summons data (C1 3.1). Copy strings live here, centrally;
+    the template renders them verbatim."""
+    s = {
+        'beat': beat,
+        'chip': beat.upper(),
+        'week_label': week_label,
+        'week_number': week.week_number,
+        'lives': enrollment.lives_remaining,
+        'routes': [],
+    }
+    team = pick.team.name if pick is not None else None
+    game = get_game_for_team(week.id, pick.team_id) if pick is not None else None
+
+    if beat == 'open':
+        s['sentence'] = 'You have not made a pick.'
+        s['deadline_relative'] = _fmt_relative(deadline - now)
+        s['deadline_absolute'] = _fmt_time(deadline)
+        return s
+
+    if beat == 'held':
+        s['sentence'] = f'{team} is held.'
+        s['support'] = (
+            f'You may change your pick until {_fmt_time(deadline)}.'
+        )
+        return s
+
+    if beat == 'locked':
+        if pick is None:
+            s['locked_variant'] = 'autopick_pending'
+            s['sentence'] = (
+                'Deadline passed. The Commish is assigning your pick '
+                'under the missed-pick rule.'
+            )
+            return s
+        if game is not None:
+            s['sentence'] = (
+                f'{game.get_away_team_display()} at '
+                f'{game.get_home_team_display()}. Your pick is final.'
+            )
+        else:
+            s['sentence'] = f'{team}. Your pick is final.'
+        if _is_autopick(pick, week):
+            s['autopick_note'] = (
+                f'{team} was assigned under the missed-pick rule.'
+            )
+        s.update(_locked_variant(game, team, pick, now))
+        return s
+
+    s.update(_verdict_payload(week, week_label, pick, outcome, team, game))
+    return s
+
+
+def _locked_variant(game, team, pick, now) -> dict:
+    """LOCKED sub-variants (C1 2.2): one card, different meta line."""
+    if game is None:
+        return {'locked_variant': 'upcoming', 'meta': None}
+    if game.is_no_contest:
+        return {
+            'locked_variant': 'no_contest',
+            'meta': 'The game was ruled a no contest. '
+                    'The official verdict follows.',
+        }
+    if game.home_team_won is not None:
+        my, opp = _team_scores(game, pick.team_id)
+        opponent = _opponent_name(game, pick.team_id)
+        return {
+            'locked_variant': 'final',
+            'meta': f'Final: {team} {my}, {opponent} {opp}. '
+                    'The official verdict follows.',
+        }
+    if game.home_score is not None and game.away_score is not None:
+        my, opp = _team_scores(game, pick.team_id)
+        opponent = _opponent_name(game, pick.team_id)
+        if my > opp:
+            meta = f'In progress · {team} leads, {my}–{opp}.'
+        elif opp > my:
+            meta = f'In progress · {opponent} leads, {opp}–{my}.'
+        else:
+            meta = f'In progress · {my}–{opp}.'
+        return {'locked_variant': 'in_progress', 'meta': meta}
+    meta = None
+    if game.game_time is not None:
+        # Never guess a missing time (DESIGN.md 8.18): no game_time, no meta.
+        meta = f'Kickoff {_fmt_time(make_aware(game.game_time))}.'
+    return {'locked_variant': 'upcoming', 'meta': meta}
+
+
+def _verdict_payload(week, week_label, pick, outcome, team, game) -> dict:
+    """VERDICT beat (C1 3.1/2.3): the outcome word, the factual sentence,
+    and the field-impact line (the launch-scope recent-change module)."""
+    my = opp = None
+    opponent = None
+    if pick is not None and game is not None:
+        my, opp = _team_scores(game, pick.team_id)
+        opponent = _opponent_name(game, pick.team_id)
+    score_frag = f', {my}–{opp}' if my is not None and opp is not None else ''
+    eliminated = outcome.eliminated_this_week
+    loss_tail = (
+        f'No lives remain. Your season ends in {week_label}; '
+        'the pool plays on.'
+        if eliminated else
+        'You have one life remaining. Your next loss eliminates you.'
+    )
+
+    if outcome.revived:
+        word, cls = 'REVIVED', 'is-win'
+        sentence = (
+            f'Every remaining player lost in {week_label}. The pool '
+            'revives all who picked and lost. You continue with one life.'
+        )
+    elif outcome.no_pick:
+        word = 'ELIMINATED' if eliminated else 'LOST A LIFE'
+        cls = 'is-out' if eliminated else 'is-loss'
+        sentence = f'No valid pick was submitted. One life has been lost. {loss_tail}'
+    elif game is not None and game.is_no_contest:
+        word, cls = 'NO CONTEST', 'is-push'
+        sentence = (
+            f"{team}'s game was canceled. No life lost; the week counts "
+            f'as survived. {team} stays used; the spread is excluded '
+            'from your tiebreaker.'
+        )
+    elif pick is not None and pick.is_correct:
+        word, cls = 'SURVIVED', 'is-win'
+        sentence = (
+            f'{team} defeated {opponent}{score_frag}. You advance with '
+            f'{_lives_phrase(outcome.lives_remaining)}.'
+        )
+    elif pick is not None and pick.is_correct is False:
+        if eliminated:
+            word, cls = 'ELIMINATED', 'is-out'
+            sentence = f'{team} lost to {opponent}. {loss_tail}'
+        else:
+            word, cls = 'LOST A LIFE', 'is-loss'
+            sentence = f'{team} lost to {opponent}{score_frag}. {loss_tail}'
+    else:
+        # Defensive: an outcome with no gradeable pick signal. Report the
+        # recorded consequence factually rather than guessing a story.
+        if outcome.lost_life:
+            word, cls = 'LOST A LIFE', 'is-loss'
+            sentence = loss_tail
+        else:
+            word, cls = 'SURVIVED', 'is-win'
+            sentence = (
+                'The week counts as survived. You advance with '
+                f'{_lives_phrase(outcome.lives_remaining)}.'
+            )
+
+    payload = {
+        'verdict_word': word,
+        'verdict_class': cls,
+        'sentence': sentence,
+        'lives': outcome.lives_remaining,
+    }
+    if eliminated:
+        payload['routes'] = [
+            {'label': "Follow who's left", 'endpoint': 'cfb.index',
+             'args': {}},
+            {'label': 'Review my season', 'endpoint': 'cfb.my_picks',
+             'args': {}},
+        ]
+    else:
+        payload['field_impact'] = _field_impact(week, week_label)
+        payload['routes'] = [
+            {'label': 'View week results', 'endpoint': 'cfb.weekly_results',
+             'args': {'week_number': week.week_number}},
+        ]
+    return payload
+
+
+def _field_impact(week, week_label) -> str:
+    """'Three players lost a life in Week 8. Two were cut. 12 remain.'"""
+    outcomes = CfbWeekOutcome.query.filter_by(week_id=week.id).all()
+    lost = sum(1 for o in outcomes if o.lost_life)
+    cut = sum(1 for o in outcomes if o.eliminated_this_week)
+    remaining = sum(1 for o in outcomes if not o.is_eliminated)
+    parts = []
+    if lost:
+        plural = 's' if lost != 1 else ''
+        parts.append(
+            f'{_count_word(lost)} player{plural} lost a life in {week_label}.'
+        )
+    if cut:
+        verb = 'were' if cut != 1 else 'was'
+        parts.append(f'{_count_word(cut)} {verb} cut.')
+    if not parts:
+        parts.append(f'Every player survived {week_label}.')
+    remains = 'remains' if remaining == 1 else 'remain'
+    parts.append(f'{remaining} {remains}.')
+    return ' '.join(parts)
+
+
+def _eliminated_module(user) -> dict:
+    """Standing eliminated module (C1 5.2): quiet observation mode."""
+    cut_outcome = (
+        CfbWeekOutcome.query
+        .filter_by(user_id=user.id)
+        .filter(
+            CfbWeekOutcome.is_eliminated.is_(True),
+            CfbWeekOutcome.lost_life.is_(True),
+        )
+        .join(CfbWeek)
+        .order_by(CfbWeek.week_number.asc())
+        .first()
+    )
+    if cut_outcome is not None:
+        line = (
+            f'Out in {get_week_display_name(cut_outcome.week)}. '
+            'The pool plays on.'
+        )
+    else:
+        line = 'Out of the pool. The pool plays on.'
+
+    survived_picks = (
+        CfbPick.query
+        .filter_by(user_id=user.id)
+        .filter(CfbPick.is_correct.is_(True))
+        .join(CfbWeek)
+        .options(joinedload(CfbPick.team))
+        .order_by(CfbWeek.week_number.asc())
+        .all()
+    )
+    path = None
+    if survived_picks:
+        n = len(survived_picks)
+        weeks_word = _count_word(n, lower=True)
+        plural = 's' if n != 1 else ''
+        names = _join_names([p.team.name for p in survived_picks])
+        path = f'You survived {weeks_word} week{plural} on {names}.'
+    return {
+        'line': line,
+        'path': path,
+        'routes': [
+            {'label': "Follow who's left", 'endpoint': 'cfb.index',
+             'args': {}},
+            {'label': 'Review my season', 'endpoint': 'cfb.my_picks',
+             'args': {}},
+        ],
+    }
+
+
+def _whos_left(week, week_label, deadline, now, standings_active, user,
+               *, two_lives, one_life, out, active, total,
+               cuts_line) -> dict:
+    """Who's Left phase resolution (C1 3.2) -- phases from data, never
+    week numbers."""
+    wl = {
+        'two_lives': two_lives,
+        'one_life': one_life,
+        'out': out,
+        'active': active,
+        'total': total,
+        'cuts_line': cuts_line,
+    }
+    if out == 0 and one_life == 0:
+        wl['phase'] = 'A'
+        wl['two_lives_each'] = True
+        return wl
+    if active <= WHOS_LEFT_ENDGAME_MAX:
+        wl['phase'] = 'D'
+        wl['remain_line'] = f'{active} remain. One survives.'
+        wl['rows'] = _field_rows(standings_active, user)
+        if week.is_active and now < deadline:
+            wl['reveal_note'] = (
+                f'{week_label} picks lock {_fmt_time(deadline)}. '
+                'Revealed at the deadline.'
+            )
+        return wl
+    if active <= max(WHOS_LEFT_NAMES_FLOOR, total / 2):
+        wl['phase'] = 'C'
+        wl['rows'] = _field_rows(standings_active, user)
+        return wl
+    wl['phase'] = 'B'
+    return wl
+
+
+def _field_rows(standings_active, user) -> list[dict]:
+    viewer_id = getattr(user, 'id', None)
+    return [
+        {
+            'name': e.get_display_name(),
+            'avatar': e.user.get_avatar(),
+            'lives': e.lives_remaining,
+            'is_you': e.user_id == viewer_id,
+        }
+        for e in standings_active
+    ]
+
+
+def _cuts_line(latest_complete, all_enrollments) -> str | None:
+    """'Cut in Week 7: Tyler, Marissa.' from the last processed week's
+    outcomes; None when nobody was cut (the line is omitted)."""
+    if latest_complete is None:
+        return None
+    outcomes = CfbWeekOutcome.query.filter_by(
+        week_id=latest_complete.id
+    ).all()
+    cut_ids = {o.user_id for o in outcomes if o.eliminated_this_week}
+    if not cut_ids:
+        return None
+    by_user = {e.user_id: e for e in all_enrollments}
+    names = sorted(
+        by_user[uid].get_display_name() for uid in cut_ids if uid in by_user
+    )
+    if not names:
+        return None
+    label = get_week_display_name(latest_complete)
+    return f"Cut in {label}: {', '.join(names)}."
+
+
+def _standings_rows(standings_active, ranks, user) -> list[dict]:
+    """Compact standings (C1 3.3): top-3 active by official order + the
+    you-row when the viewer sits outside the top 3."""
+    viewer_id = getattr(user, 'id', None)
+
+    def row(e, separator=False):
+        lives_word = 'One life' if e.lives_remaining == 1 else 'Two lives'
+        return {
+            'rank': ranks[e.id],
+            'name': e.get_display_name(),
+            'avatar': e.user.get_avatar(),
+            'lives': e.lives_remaining,
+            'is_you': e.user_id == viewer_id,
+            'tagline': f'{lives_word} · spread {e.cumulative_spread:.1f}',
+            'separator_above': separator,
+        }
+
+    rows = [row(e) for e in standings_active[:3]]
+    for e in standings_active[3:]:
+        if e.user_id == viewer_id:
+            rows.append(row(e, separator=True))
+            break
+    return rows
 
 
 def _context_post(user, enrollment) -> dict:

@@ -8,6 +8,7 @@ cumulative spread calculation.
 import logging
 
 from flask import current_app
+from sqlalchemy.orm import joinedload
 
 from extensions import db
 from games.cfb.models import (
@@ -60,6 +61,44 @@ def get_used_team_ids(user_id, week, *, exclude_current=True):
         q = q.filter(CfbPick.week_id != week.id)
 
     return {t[0] for t in q.all()}
+
+
+# ---------------------------------------------------------------------------
+# Official standings order
+# ---------------------------------------------------------------------------
+
+def get_official_standings(season_year):
+    """Active enrollments in the official standings order, plus ranks.
+
+    Official order is lives DESC, cumulative spread ASC -- the single
+    displayed-order implementation consumed by both the room landing and
+    the lounge (DESIGN.md 10.5/10.8: official ordering implemented once,
+    centrally; room and lounge must never disagree).
+
+    Returns (ordered_enrollments, ranks) where ranks maps enrollment id
+    to competition rank: ties on the full (lives, spread) key share a
+    rank and the next distinct key gaps by the tie size (1, 1, 3) -- the
+    platform convention for tied leaderboards.
+    """
+    enrollments = (
+        CfbEnrollment.query
+        .filter_by(season_year=season_year, is_eliminated=False)
+        .options(joinedload(CfbEnrollment.user))
+        .order_by(
+            CfbEnrollment.lives_remaining.desc(),
+            CfbEnrollment.cumulative_spread.asc(),
+        )
+        .all()
+    )
+    ranks = {}
+    prev_key = None
+    prev_rank = 0
+    for position, enrollment in enumerate(enrollments, start=1):
+        key = (enrollment.lives_remaining, enrollment.cumulative_spread)
+        rank = prev_rank if key == prev_key else position
+        ranks[enrollment.id] = rank
+        prev_key, prev_rank = key, rank
+    return enrollments, ranks
 
 
 # ---------------------------------------------------------------------------

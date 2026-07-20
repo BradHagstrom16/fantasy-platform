@@ -1,0 +1,45 @@
+{# Who's Left — the social anchor (C1 §3.2): Informational recipe, rail
+   position. Phases resolve from data in the builder, never here:
+   A full field · B attrition band + counts · C names · D endgame names.
+   Banned by §8.10/§8.14: donuts, percentages without counts, trend
+   arrows, synthetic field-health scores. #}
+{% from 'cfb/lounge/_pips.html' import pips %}
+{% set wl = whos_left %}
+{% macro name_rows(rows) %}
+<ul class="wl-names">
+  {% for r in rows %}
+  <li{% if r.is_you %} class="wl-you"{% endif %}>
+    <span class="wl-name">{{ r.avatar }} {{ r.name }}{% if r.is_you %}<span class="roll-you-chip">YOU</span>{% endif %}</span>
+    {{ pips(r.lives) }}
+  </li>
+  {% endfor %}
+</ul>
+{% endmacro %}
+<div class="wl-card">
+  {% if wl.phase == 'A' %}
+  <div class="wl-field-line">The full field remains alive. <span class="n">{{ wl.total }}</span> player{{ '' if wl.total == 1 else 's' }}, two lives each.</div>
+  {% elif wl.phase == 'B' %}
+  <div class="wl-field-line"><span class="n">{{ wl.active }}</span> of {{ wl.total }} remain.</div>
+  <div class="attrition" role="img"
+       aria-label="{{ wl.two_lives }} holding two lives, {{ wl.one_life }} down to one, {{ wl.out }} out">
+    {%- if wl.two_lives %}<span class="seg2" style="flex: {{ wl.two_lives }}"></span>{% endif -%}
+    {%- if wl.one_life %}<span class="seg1" style="flex: {{ wl.one_life }}"></span>{% endif -%}
+    {%- if wl.out %}<span class="seg0" style="flex: {{ wl.out }}"></span>{% endif -%}
+  </div>
+  <div class="attrition-key">
+    <span><span class="num">{{ wl.two_lives }}</span> two lives</span>
+    <span><span class="num">{{ wl.one_life }}</span> one life</span>
+    <span><span class="num">{{ wl.out }}</span> out</span>
+  </div>
+  {% elif wl.phase == 'C' %}
+  <div class="wl-field-line"><span class="n">{{ wl.active }}</span> of {{ wl.total }} remain.</div>
+  {{ name_rows(wl.rows) }}
+  {% else %}
+  <div class="wl-field-line"><span class="n">{{ wl.active }}</span> remain. One survives.</div>
+  {{ name_rows(wl.rows) }}
+  {% if wl.reveal_note %}<div class="wl-cuts">{{ wl.reveal_note }}</div>{% endif %}
+  {% endif %}
+  {% if wl.cuts_line and wl.phase in ('B', 'C') %}
+  <div class="wl-cuts">{{ wl.cuts_line }}</div>
+  {% endif %}
+</div>
