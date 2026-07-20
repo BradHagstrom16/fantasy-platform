@@ -350,12 +350,126 @@ def test_archive_summary_viewer_rank_is_competition_rank(app):
 
 # == build_lounge_context -- live/post are later slices ====================
 
-def test_context_post_raises_until_slice_ships(app):
+# == build_lounge_context -- post (the terminal lounge, C1 section 4.4) ====
+
+def _seed_champion_season(viewer_eliminated=True):
+    """14 completed weeks; 'Jordan' the sole survivor of a 4-player pool;
+    the viewer eliminated. Returns (viewer_user, champion_enrollment)."""
+    user = _make_user()
+    _enroll_cfb(user, lives=0, eliminated=viewer_eliminated)
+    champ_user = _make_user(username='champuser')
+    ce = _enroll_cfb(champ_user, lives=2)
+    ce.display_name = 'Jordan'
+    ce.cumulative_spread = 41.5
+    db.session.commit()
+    week = None
+    for n in range(1, 15):
+        week = _make_week(number=n, complete=True,
+                          deadline=datetime(2026, 9, 5, 11, 0))
+    michigan = _make_team('Michigan')
+    _make_pick(champ_user, week, michigan, is_correct=True)
+    _seed_cfb_field([(0, True), (0, True)])
+    return user, ce
+
+
+def test_context_post_sole_survivor(app):
+    from games.cfb.services.lounge import build_lounge_context
+    with app.app_context():
+        user, _ = _seed_champion_season()
+        ctx = build_lounge_context(user, 'post')
+    champ = ctx['champion']
+    assert champ['name'] == 'Jordan'
+    assert champ['is_tiebreak'] is False
+    assert champ['evidence'] == (
+        'Outlasted 3 players across 14 weeks. Two lives intact.'
+    )
+    assert champ['detail'] == 'Final pick: Michigan, Week 14.'
+    assert ctx['court_line'] == (
+        'One remained of 4 · the Commish records the year'
+    )
+    assert ctx['game_tile_label'] == 'CHAMPION · Jordan'
+    assert ctx['final_field']['active'] == 1
+    assert ctx['final_field']['total'] == 4
+    assert len(ctx['final_field']['rows']) == 1
+    assert ctx['final_field']['rows'][0]['name'] == 'Jordan'
+
+
+def test_context_post_tiebreak_conclusion(app):
+    """Season concluded by cumulative spread: the evidence line leads with
+    the mechanism and the banner never says sole survivor (C1 4.4)."""
     from games.cfb.services.lounge import build_lounge_context
     with app.app_context():
         user = _make_user()
-        with pytest.raises(NotImplementedError):
-            build_lounge_context(user, 'post')
+        winner_user = _make_user(username='tbwinner')
+        we = _enroll_cfb(winner_user, lives=1)
+        we.display_name = 'Casey'
+        we.cumulative_spread = 41.5
+        runner_user = _make_user(username='tbrunner')
+        re_ = _enroll_cfb(runner_user, lives=1)
+        re_.display_name = 'Jordan'
+        re_.cumulative_spread = 48.0
+        _enroll_cfb(user, lives=0, eliminated=True)
+        db.session.commit()
+        _make_week(number=19, complete=True, playoff=True,
+                   deadline=datetime(2027, 1, 18, 11, 0))
+        ctx = build_lounge_context(user, 'post')
+    champ = ctx['champion']
+    assert champ['name'] == 'Casey'
+    assert champ['is_tiebreak'] is True
+    assert champ['evidence'] == (
+        "Wins on cumulative spread: 41.5 against Jordan's 48.0."
+    )
+    assert ctx['court_line'] == (
+        'Two remained of 3 · the Commish records the year'
+    )
+    assert ctx['final_field']['active'] == 2
+    assert ctx['game_tile_label'] == 'CHAMPION · Casey'
+
+
+def test_context_post_tiebreak_lives_led(app):
+    """Final week complete with >1 active on DIFFERENT lives: the winner
+    wins on lives, not spread — the evidence must say so (the 1.10
+    language law). The runner-up has the BETTER spread here, proving
+    lives led the official order."""
+    from games.cfb.services.lounge import build_lounge_context
+    with app.app_context():
+        user = _make_user()
+        winner_user = _make_user(username='llwinner')
+        we = _enroll_cfb(winner_user, lives=2)
+        we.display_name = 'Casey'
+        we.cumulative_spread = 50.0
+        runner_user = _make_user(username='llrunner')
+        re_ = _enroll_cfb(runner_user, lives=1)
+        re_.display_name = 'Jordan'
+        re_.cumulative_spread = 40.0
+        _enroll_cfb(user, lives=0, eliminated=True)
+        db.session.commit()
+        _make_week(number=19, complete=True, playoff=True,
+                   deadline=datetime(2027, 1, 18, 11, 0))
+        ctx = build_lounge_context(user, 'post')
+    champ = ctx['champion']
+    assert champ['name'] == 'Casey'
+    assert champ['is_tiebreak'] is True  # still CHAMPION, never sole survivor
+    assert champ['evidence'] == (
+        "Ends the season with two lives against Jordan's one life."
+    )
+
+
+def test_cfb_post_shell_renders_sole_survivor(app, client, monkeypatch):
+    _flip_to_cfb(monkeypatch)
+    with app.app_context():
+        user, _ = _seed_champion_season()
+        auth_id = user.auth_id
+    _login(client, auth_id)
+    resp = client.get('/')
+    assert resp.status_code == 200
+    text = resp.get_data(as_text=True)
+    assert 'home-shell--post' in text
+    assert 'The ledger closes' in text
+    assert 'Sole Survivor' in text
+    assert 'Jordan' in text
+    assert 'Full standings' in text
+    assert 'CHAMPION · Jordan' in text
 
 
 # == WC tile-label parity (tiles generalization) ===========================
