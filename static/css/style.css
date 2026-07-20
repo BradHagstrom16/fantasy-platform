@@ -2582,6 +2582,56 @@ body.game-golf {
 }
 .home-shell .roll-lives { justify-self: end; }
 
+/* --- The champion banner (post state, C1 §4.4) ---
+   Ceremonial recipe via the .summons base; ceremony by reduction:
+   negative space, one gold name, a thin gold rule, evidence. Platform
+   gold is the lounge's — the room's no-gold champion analog
+   (.championship-hero) stays midnight/crimson behind body.game-cfb. */
+.home-shell .champ-banner {
+  text-align: center;
+  padding: 2.6rem 1.5rem;
+}
+.home-shell .champ-eyebrow {
+  font-family: var(--font-teko);
+  font-weight: 500;
+  font-size: 0.85rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+.home-shell .champ-name {
+  font-family: var(--font-teko);
+  font-weight: 700;
+  font-size: clamp(3rem, 8vw, 4rem);
+  line-height: 1;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--gold-light);
+  margin: 0.6rem 0 0.2rem;
+}
+.home-shell .champ-rule {
+  width: 72px;
+  height: 2px;
+  background: var(--gold);
+  margin: 0.9rem auto;
+}
+.home-shell .champ-evidence {
+  font-family: var(--font-news);
+  font-size: 1.02rem;
+  color: var(--bone-dim);
+  max-width: 52ch;
+  margin: 0 auto;
+}
+.home-shell .champ-detail {
+  font-family: var(--font-teko);
+  font-weight: 500;
+  font-size: 0.92rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--bone-mute);
+  margin-top: 1rem;
+}
+
 /* --- Who's Left (C1 §3.2) — the social anchor, rail position --- */
 .home-shell .wl-card {
   padding: 1.4rem 1.6rem;

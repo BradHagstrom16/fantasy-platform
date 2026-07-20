@@ -1,0 +1,59 @@
+{# CFB post-state — the terminal lounge (C1 §4.4): sparse, ordinary
+   modules removed (ceremony by reduction). Greet → champion banner →
+   final field snapshot → tiles → commish note. The banner is the ◈
+   budget's second and last site (the first is the OPEN summons); the
+   room's .championship-hero stays a distinct midnight/crimson analog —
+   two different rooms celebrating one fact. The tiebreak variant swaps
+   the eyebrow and leads with the mechanism (never "sole survivor" when
+   cumulative spread decided it — §1.10). #}
+{% from 'cfb/lounge/_pips.html' import pips %}
+<div class="home-col">
+
+  {# Greet #}
+  <div class="greet">
+    <p class="greet-line">
+      The ledger closes,
+      <span class="v">{{ display_name }}</span>
+    </p>
+    <h1 class="greet-title">
+      The {{ season_year }}
+      <span class="home-metal-text">Season</span>
+    </h1>
+    <div class="greet-court">{{ court_line }}</div>
+  </div>
+
+  {# Champion banner — Ceremonial recipe via the .summons base #}
+  {% if champion %}
+  <div class="summons champ-banner">
+    <div class="champ-eyebrow">{% if champion.is_tiebreak %}◈ Champion ◈{% else %}◈ Sole Survivor ◈{% endif %}</div>
+    <div class="champ-name">{{ champion.name }}</div>
+    <div class="champ-rule" aria-hidden="true"></div>
+    <p class="champ-evidence">{{ champion.evidence }}</p>
+    {% if champion.detail %}<div class="champ-detail">{{ champion.detail }}</div>{% endif %}
+  </div>
+  {% endif %}
+
+  {# Final field — the Who's Left phase-D snapshot (C1 §4.4) #}
+  <div class="sec-head">
+    <div class="t">The Final Field</div>
+    <a class="more" href="{{ url_for('cfb.index') }}">Full standings &rsaquo;</a>
+  </div>
+  <div class="wl-card">
+    <div class="wl-field-line"><span class="n">{{ final_field.active }}</span> of {{ final_field.total }} remain{{ 's' if final_field.active == 1 else '' }}.</div>
+    <ul class="wl-names">
+      {% for r in final_field.rows %}
+      <li{% if r.is_you %} class="wl-you"{% endif %}>
+        <span class="wl-name">{{ r.avatar }} {{ r.name }}{% if r.is_you %}<span class="roll-you-chip">YOU</span>{% endif %}</span>
+        {{ pips(r.lives) }}
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+
+  {# Compact game tiles #}
+  {% include 'main/_game_tiles_compact.html' %}
+
+  {# Commissioner presence — admin-editable, absent when empty #}
+  {% include 'main/_commish_note.html' ignore missing %}
+
+</div>{# /.home-col #}

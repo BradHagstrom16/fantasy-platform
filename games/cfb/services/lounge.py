@@ -20,6 +20,7 @@ strip (spec 3.5) and the archived WC tile (spec 3.4) read frozen 2026
 archive facts through the WC lounge module's helpers.
 """
 from datetime import date
+from types import SimpleNamespace
 from typing import Any, Literal
 
 from flask import current_app
@@ -742,9 +743,99 @@ def _standings_rows(standings_active, ranks, user) -> list[dict]:
 
 
 def _context_post(user, enrollment) -> dict:
-    """Terminal lounge data (champion / tiebreak) -- final Phase 4 slice."""
-    raise NotImplementedError(
-        'CFB post lounge context ships in a later Phase 4 slice '
-        '(transition plan section 8); the changeover flip must not land '
-        'before it does.'
+    """The terminal lounge (C1 spec 4.4): sparse, ceremony by reduction.
+    Greet, the champion banner (sole survivor or the tiebreak variant --
+    the language must match the actual mechanism, section 1.10), the
+    final field snapshot, tiles."""
+    season_year = _season_year()
+    is_enrolled = enrollment is not None
+    display_name = (
+        enrollment.get_display_name() if is_enrolled
+        else user.get_display_name()
     )
+
+    total = CfbEnrollment.query.filter_by(season_year=season_year).count()
+    standings_active, ranks = get_official_standings(season_year)
+    active = len(standings_active)
+    weeks_played = CfbWeek.query.filter_by(is_complete=True).count()
+
+    # The post state carries either a sole survivor (active == 1) or a
+    # tiebreak conclusion (final playoff week complete with > 1 active);
+    # official order puts the cumulative-spread winner first.
+    champion = None
+    champion_name = None
+    champ_enrollment = standings_active[0] if standings_active else None
+    if champ_enrollment is not None:
+        champion_name = champ_enrollment.get_display_name()
+        is_tiebreak = active > 1
+        if is_tiebreak and len(standings_active) > 1:
+            runner = standings_active[1]
+            evidence = (
+                'Wins on cumulative spread: '
+                f'{champ_enrollment.cumulative_spread:.1f} against '
+                f"{runner.get_display_name()}'s "
+                f'{runner.cumulative_spread:.1f}.'
+            )
+        else:
+            outlasted = total - 1
+            plural = 's' if outlasted != 1 else ''
+            week_plural = 's' if weeks_played != 1 else ''
+            lives_intact = _lives_phrase(
+                champ_enrollment.lives_remaining
+            ).capitalize()
+            evidence = (
+                f'Outlasted {outlasted} player{plural} across '
+                f'{weeks_played} week{week_plural}. {lives_intact} intact.'
+            )
+        final_pick = (
+            CfbPick.query
+            .filter_by(user_id=champ_enrollment.user_id)
+            .join(CfbWeek)
+            .options(joinedload(CfbPick.team), joinedload(CfbPick.week))
+            .order_by(CfbWeek.week_number.desc())
+            .first()
+        )
+        detail = None
+        if final_pick is not None:
+            detail = (
+                f'Final pick: {final_pick.team.name}, '
+                f'{get_week_display_name(final_pick.week)}.'
+            )
+        champion = {
+            'name': champion_name,
+            'is_tiebreak': is_tiebreak,
+            'evidence': evidence,
+            'detail': detail,
+        }
+
+    court_line = (
+        f'{_count_word(active)} remained of {total} '
+        '· the Commish records the year'
+    )
+
+    return {
+        'enrollment': enrollment,
+        'is_enrolled': is_enrolled,
+        'display_name': display_name,
+        'season_year': season_year,
+        'champion': champion,
+        # Duck-typed shim for the core dispatcher's commish-note
+        # {champion} interpolation (models/content.py reads
+        # .display_name off whatever the featured game supplies).
+        'champion_team': (
+            SimpleNamespace(display_name=champion_name)
+            if champion_name else None
+        ),
+        'final_field': {
+            'rows': _field_rows(standings_active, user),
+            'active': active,
+            'total': total,
+        },
+        'court_line': court_line,
+        'game_tile_label': (
+            f'CHAMPION · {champion_name}' if champion_name else 'COMPLETED'
+        ),
+        'archived_tiles': _archived_tiles(
+            worldcup_lounge.archive_summary(user)
+        ),
+    }
