@@ -27,9 +27,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).parent.parent
 CSS = (ROOT / 'static' / 'css' / 'style.css').read_text()
-HOME_LIVE = (ROOT / 'core' / 'main' / 'templates' / 'main' / '_home_live.html').read_text()
-DOSSIER = (ROOT / 'core' / 'main' / 'templates' / 'main' / '_dossier_card.html').read_text()
-RECENT = (ROOT / 'core' / 'main' / 'templates' / 'main' / '_recent_results.html').read_text()
+HOME_LIVE = (ROOT / 'games' / 'worldcup' / 'templates' / 'worldcup' / 'lounge' / '_home_live.html').read_text()
+DOSSIER = (ROOT / 'games' / 'worldcup' / 'templates' / 'worldcup' / 'lounge' / '_dossier_card.html').read_text()
+RECENT = (ROOT / 'games' / 'worldcup' / 'templates' / 'worldcup' / 'lounge' / '_recent_results.html').read_text()
 
 
 # ---------------------------------------------------------------------------
@@ -100,13 +100,13 @@ def test_home_live_recent_results_lives_in_the_rail():
     in the masthead/dossier column."""
     rail_section = _section_between(HOME_LIVE, 'home-live-col--rail', '')
     assert rail_section, '.home-live-col--rail wrapper missing.'
-    assert 'main/_recent_results.html' in rail_section, (
+    assert 'worldcup/lounge/_recent_results.html' in rail_section, (
         '_recent_results.html must sit in .home-live-col--rail (beneath the '
         'leaderboard) so the rail balances the tall dossier.'
     )
     main_section = _section_between(HOME_LIVE, 'home-live-col--main', '')
     if main_section:
-        assert 'main/_recent_results.html' not in main_section, (
+        assert 'worldcup/lounge/_recent_results.html' not in main_section, (
             "_recent_results.html leaked into .home-live-col--main; Recent "
             "Results belongs in the rail, not the masthead column."
         )

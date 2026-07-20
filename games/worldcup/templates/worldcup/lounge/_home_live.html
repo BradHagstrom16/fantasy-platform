@@ -33,9 +33,9 @@
 
     {# Dossier slot — enrolled or view-CTA #}
     {% if not is_enrolled %}
-      {% include 'main/_view_cta_card.html' %}
+      {% include 'worldcup/lounge/_view_cta_card.html' %}
     {% else %}
-      {% include 'main/_dossier_card.html' %}
+      {% include 'worldcup/lounge/_dossier_card.html' %}
     {% endif %}
 
   </div>{# /.home-live-col--main #}
@@ -79,7 +79,7 @@
       <div class="t">Recent Results</div>
       <a class="more" href="{{ url_for('worldcup.schedule') }}">All fixtures &rsaquo;</a>
     </div>
-    {% include 'main/_recent_results.html' %}
+    {% include 'worldcup/lounge/_recent_results.html' %}
 
   </div>{# /.home-live-col--rail #}
 

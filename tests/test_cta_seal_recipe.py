@@ -15,8 +15,8 @@ import pytest
 
 REPO = Path(__file__).resolve().parent.parent
 STYLE = (REPO / 'static' / 'css' / 'style.css').read_text()
-COUNTDOWN = (REPO / 'core' / 'main' / 'templates' / 'main' / '_countdown_card.html').read_text()
-DOSSIER = (REPO / 'core' / 'main' / 'templates' / 'main' / '_dossier_card.html').read_text()
+COUNTDOWN = (REPO / 'games' / 'worldcup' / 'templates' / 'worldcup' / 'lounge' / '_countdown_card.html').read_text()
+DOSSIER = (REPO / 'games' / 'worldcup' / 'templates' / 'worldcup' / 'lounge' / '_dossier_card.html').read_text()
 
 
 def _block(selector_regex: str) -> str | None:

@@ -19,9 +19,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).parent.parent
 CSS = (ROOT / 'static' / 'css' / 'style.css').read_text()
-DOSSIER = (ROOT / 'core' / 'main' / 'templates' / 'main' / '_dossier_card.html').read_text()
-RECENT = (ROOT / 'core' / 'main' / 'templates' / 'main' / '_recent_results.html').read_text()
-HOME_PRE = (ROOT / 'core' / 'main' / 'templates' / 'main' / '_home_pre.html').read_text()
+DOSSIER = (ROOT / 'games' / 'worldcup' / 'templates' / 'worldcup' / 'lounge' / '_dossier_card.html').read_text()
+RECENT = (ROOT / 'games' / 'worldcup' / 'templates' / 'worldcup' / 'lounge' / '_recent_results.html').read_text()
+HOME_PRE = (ROOT / 'games' / 'worldcup' / 'templates' / 'worldcup' / 'lounge' / '_home_pre.html').read_text()
 COMMISH = (ROOT / 'core' / 'main' / 'templates' / 'main' / '_commish_note.html').read_text()
 
 

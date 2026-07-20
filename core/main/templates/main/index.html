@@ -3,16 +3,23 @@
 {% block title %}Corrupt Commish Club{% endblock %}
 
 {% block content %}
+{# The state shells come from the featured game's partial tree (lounge_tree
+   = '<slug>/lounge', set by core/main/routes.py off the registry seam).
+   No tree (the between-eras fallback) renders the shell empty. The
+   whitespace-control dashes (here and on the outer if) keep the rendered
+   bytes identical to the pre-seam single-tree dispatch. -#}
 <div class="home-shell home-shell--{{ state }}">
+{%- if lounge_tree %}
 {% if state == 'out' %}
-  {% include 'main/_home_out.html' %}
+  {% include lounge_tree ~ '/_home_out.html' %}
 {% elif state == 'pre' %}
-  {% include 'main/_home_pre.html' %}
+  {% include lounge_tree ~ '/_home_pre.html' %}
 {% elif state == 'live' %}
-  {% include 'main/_home_live.html' %}
+  {% include lounge_tree ~ '/_home_live.html' %}
 {% elif state == 'post' %}
-  {% include 'main/_home_post.html' %}
+  {% include lounge_tree ~ '/_home_post.html' %}
 {% endif %}
+{%- endif %}
 </div>
 {% endblock %}
 

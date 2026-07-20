@@ -1,15 +1,21 @@
-"""Registry seam contract (C2 slice 1, transition plan section 5).
+"""Registry seam contract (C2 slices 1 + 2, transition plan section 5).
 
 The lounge dispatches through the registry's featured-game seam instead of
-importing worldcup_state directly:
+importing worldcup modules directly:
 
 - ``GameRegistryEntry.lounge_state`` — per-game state-resolver callable.
-- ``lounge_game()`` — the single featured-open game that owns the lounge.
-- ``core.main.routes.index`` resolves state via ``lounge_game()``.
+- ``GameRegistryEntry.lounge_context`` — per-game per-state context builder
+  (slice 2: the WC builders moved to ``games/worldcup/services/lounge.py``).
+- ``lounge_game()`` — the single featured-open game that owns the lounge;
+  owning it requires BOTH callables (launch safety: flags alone never hand
+  the lounge to a game whose lounge code hasn't shipped).
+- ``core.main.routes.index`` resolves state via ``lounge_game()`` and picks
+  the per-game partial tree (``<slug>/lounge``); ``build_home_context``
+  overlays the featured game's context on the registry-generic base.
 - ``'completed'`` status behaves correctly across every registry helper
   (the changeover flips WC to 'completed'; these are the semantics locks).
 
-Rendering contract for this slice: WC stays open/featured, so the lounge
+Rendering contract for both slices: WC stays open/featured, so the lounge
 renders identically — tests/test_home_context.py remains the net.
 """
 from dataclasses import replace
@@ -39,8 +45,14 @@ def client(app):
     return app.test_client()
 
 
+def _stub_lounge_context(user, state):
+    """Minimal context builder for mock entries (ownership tests that are
+    not about the lounge_context gate itself)."""
+    return {}
+
+
 def _mock_entry(slug, status='open', is_featured=False, enrollment=None,
-                lounge_state=None):
+                lounge_state=None, lounge_context=_stub_lounge_context):
     from games.registry import GameRegistryEntry
     return GameRegistryEntry(
         slug=slug,
@@ -54,6 +66,7 @@ def _mock_entry(slug, status='open', is_featured=False, enrollment=None,
         get_enrollment=lambda uid: enrollment,
         admin_enroll=lambda uid: enrollment,
         lounge_state=lounge_state,
+        lounge_context=lounge_context,
     )
 
 
@@ -158,17 +171,18 @@ def test_changeover_flip_hands_lounge_to_cfb(app, monkeypatch):
     registry: WC -> completed/unfeatured, CFB -> open/featured. The seam,
     not any hardcoded slug, must hand the lounge to CFB.
 
-    CFB's real lounge_state resolver ships in C2 slice 3+ (plan section 8,
-    Phase 4 precedes the Phase 5 flip); a stub stands in for it here. The
-    resolver-less case is locked separately by
-    test_lounge_game_none_when_sole_featured_open_lacks_resolver."""
+    CFB's real lounge_state resolver + lounge_context builder ship in C2
+    slice 3+ (plan section 8, Phase 4 precedes the Phase 5 flip); stubs
+    stand in for both here. The missing-callable cases are locked
+    separately by the lacks_resolver / lacks_context_builder tests."""
     from games import registry
     set_status(monkeypatch, 'worldcup', 'completed')
     set_is_featured(monkeypatch, 'worldcup', False)
     set_status(monkeypatch, 'cfb', 'open')
     set_is_featured(monkeypatch, 'cfb', True)
     patched = [
-        replace(entry, lounge_state=lambda: 'pre')
+        replace(entry, lounge_state=lambda: 'pre',
+                lounge_context=_stub_lounge_context)
         if entry.slug == 'cfb' else entry
         for entry in registry.GAMES
     ]
@@ -265,3 +279,156 @@ def test_main_routes_no_direct_worldcup_state_import():
     import core.main.routes as main_routes
     src = inspect.getsource(main_routes)
     assert 'worldcup_state' not in src
+
+
+# ── lounge_context gating (C2 slice 2) ────────────────────────────────────
+
+def test_lounge_game_skips_featured_open_entry_without_context_builder(app, monkeypatch):
+    """Owning the lounge requires the context builder too: featured+open with
+    a resolver but no lounge_context is skipped for the next eligible entry."""
+    from games import registry
+    entries = [
+        _mock_entry('alpha', status='open', is_featured=True,
+                    lounge_state=lambda: 'live', lounge_context=None),
+        _mock_entry('beta', status='open', is_featured=True,
+                    lounge_state=lambda: 'live'),
+    ]
+    monkeypatch.setattr(registry, 'GAMES', entries)
+    assert registry.lounge_game().slug == 'beta'
+
+
+def test_lounge_game_none_when_sole_featured_open_lacks_context_builder(app, monkeypatch):
+    """Launch safety, slice-2 half: a resolver alone cannot hand a game the
+    lounge — without its context builder the dispatch refuses, never 500s."""
+    from games import registry
+    entries = [
+        _mock_entry('alpha', status='open', is_featured=True,
+                    lounge_state=lambda: 'live', lounge_context=None),
+    ]
+    monkeypatch.setattr(registry, 'GAMES', entries)
+    assert registry.lounge_game() is None
+
+
+def test_worldcup_entry_lounge_context_is_build_lounge_context(app):
+    """The WC entry's context builder IS the canonical moved module's entry
+    point (no wrapper drift) — mirrors the lounge_state identity lock."""
+    from games.registry import get_entry
+    from games.worldcup.services.lounge import build_lounge_context
+    assert get_entry('worldcup').lounge_context is build_lounge_context
+
+
+# ── build_home_context dispatch through the seam (C2 slice 2) ─────────────
+
+def test_build_home_context_dispatches_through_featured_lounge_context(app, monkeypatch):
+    """Authenticated states: the dispatcher calls the featured game's
+    lounge_context with (user, state) and overlays its dict on the
+    registry-generic base (joined + coming-soon + commish note)."""
+    from core.main.home_context import build_home_context
+    from games import registry
+    auth_id = _make_user(app, username='dispatchuser')
+    calls = []
+
+    def fake_context(user, state):
+        calls.append((user, state))
+        return {'sentinel': 42}
+
+    entries = [
+        _mock_entry('alpha', status='open', is_featured=True,
+                    lounge_state=lambda: 'pre', lounge_context=fake_context),
+    ]
+    monkeypatch.setattr(registry, 'GAMES', entries)
+    with app.app_context():
+        user = db.session.scalar(select(User).filter_by(auth_id=auth_id))
+        ctx = build_home_context(user, 'pre')
+    assert calls == [(user, 'pre')]
+    assert ctx['sentinel'] == 42
+    assert ctx['joined_games'] == []
+    assert ctx['coming_soon_games'] == []
+    assert 'commish_paragraphs' in ctx
+
+
+def test_build_home_context_out_state_overlays_game_dict_on_registry_base(app, monkeypatch):
+    """state=None (logged-out): base carries the registry tiles; the featured
+    game's overlay wins on shared keys (WC supplies the real total_enrolled).
+    No commish note on the out surface."""
+    from core.main.home_context import build_home_context
+    from games import registry
+    entries = [
+        _mock_entry('alpha', status='open', is_featured=True,
+                    lounge_state=lambda: 'pre',
+                    lounge_context=lambda user, state: {'total_enrolled': 7}),
+        _mock_entry('beta', status='coming_soon'),
+    ]
+    monkeypatch.setattr(registry, 'GAMES', entries)
+    with app.app_context():
+        ctx = build_home_context(None, None)
+    assert [e.slug for e in ctx['available_games']] == ['alpha']
+    assert [e.slug for e in ctx['coming_soon_games']] == ['beta']
+    assert ctx['total_enrolled'] == 7
+    assert 'commish_paragraphs' not in ctx
+
+
+def test_build_home_context_no_featured_game_returns_registry_base(app, monkeypatch):
+    """Between-eras fallback (unreachable while the flip is atomic): no
+    featured game means base context only — safe defaults, no game keys."""
+    from core.main.home_context import build_home_context
+    from games import registry
+    monkeypatch.setattr(registry, 'GAMES', [_mock_entry('beta', status='coming_soon')])
+    with app.app_context():
+        ctx = build_home_context(None, None)
+    assert ctx['available_games'] == []
+    assert [e.slug for e in ctx['coming_soon_games']] == ['beta']
+    assert ctx['total_enrolled'] == 0
+
+
+def test_home_context_module_no_direct_worldcup_import():
+    """Source lock: after the slice-2 extraction, core/main/home_context.py
+    reaches WC data only through the registry seam — never a direct import.
+    (Prose references to the moved module's path are fine; import lines
+    are what would re-couple the dispatcher.)"""
+    import inspect
+
+    import core.main.home_context as home_context
+    import_lines = [
+        line for line in inspect.getsource(home_context).splitlines()
+        if line.strip().startswith(('import ', 'from '))
+    ]
+    offenders = [line for line in import_lines if 'worldcup' in line]
+    assert not offenders, f'direct WC import(s) in core dispatcher: {offenders}'
+
+
+# ── per-game lounge partial tree (C2 slice 2) ─────────────────────────────
+
+WC_LOUNGE_PARTIALS = [
+    '_home_out.html', '_home_pre.html', '_home_live.html', '_home_post.html',
+    '_ballot_card.html', '_champion_banner.html', '_countdown_card.html',
+    '_dossier_card.html', '_recent_results.html', '_view_cta_card.html',
+]
+
+
+def test_wc_lounge_partials_moved_under_worldcup_lounge_tree():
+    """The ten WC-specific lounge partials live in the WC-owned tree
+    (games/worldcup/templates/worldcup/lounge/) and are gone from the
+    shared main/ tree. The registry-generic partials (_game_tiles_compact,
+    _commish_note, _dispatches, _game_card, index) stay shared."""
+    from pathlib import Path
+    repo = Path(__file__).resolve().parents[1]
+    lounge_dir = repo / 'games' / 'worldcup' / 'templates' / 'worldcup' / 'lounge'
+    main_dir = repo / 'core' / 'main' / 'templates' / 'main'
+    for name in WC_LOUNGE_PARTIALS:
+        assert (lounge_dir / name).exists(), f'{name} missing from WC lounge tree'
+        assert not (main_dir / name).exists(), f'{name} still in shared main/ tree'
+    for name in ('index.html', '_game_tiles_compact.html', '_commish_note.html',
+                 '_dispatches.html', '_game_card.html'):
+        assert (main_dir / name).exists(), f'shared partial {name} missing from main/'
+
+
+def test_index_dispatcher_includes_via_lounge_tree():
+    """index.html includes the state shells through the per-game lounge_tree
+    context variable — no hardcoded main/_home_* (or worldcup/) paths."""
+    from pathlib import Path
+    repo = Path(__file__).resolve().parents[1]
+    src = (repo / 'core' / 'main' / 'templates' / 'main' / 'index.html').read_text()
+    assert "lounge_tree ~ '/_home_" in src
+    assert "main/_home_" not in src
+    assert 'worldcup' not in src

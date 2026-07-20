@@ -35,7 +35,7 @@ from models.content import COMMISH_NOTE_DEFAULTS
 from models.user import User
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-TEMPLATES = REPO_ROOT / 'core' / 'main' / 'templates' / 'main'
+TEMPLATES = REPO_ROOT / 'games' / 'worldcup' / 'templates' / 'worldcup' / 'lounge'
 STYLE_CSS = REPO_ROOT / 'static' / 'css' / 'style.css'
 TOKENS_CSS = REPO_ROOT / 'static' / 'css' / 'tokens.css'
 

@@ -44,7 +44,7 @@ from extensions import db
 from models.content import commish_note_paragraphs
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-CHAMPION_BANNER = REPO_ROOT / 'core' / 'main' / 'templates' / 'main' / '_champion_banner.html'
+CHAMPION_BANNER = REPO_ROOT / 'games' / 'worldcup' / 'templates' / 'worldcup' / 'lounge' / '_champion_banner.html'
 COMMISH_NOTE = REPO_ROOT / 'core' / 'main' / 'templates' / 'main' / '_commish_note.html'
 STYLE_CSS = REPO_ROOT / 'static' / 'css' / 'style.css'
 
