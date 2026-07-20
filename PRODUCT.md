@@ -4,6 +4,10 @@
 
 product
 
+## Platform
+
+web
+
 ## Users
 
 ### Core Audience
@@ -103,7 +107,7 @@ Every screen should answer four questions:
 
 CCC (Corrupt Commish Club) is a custom fantasy-sports platform for hosting pools and game formats that mainstream platforms either don't support, support poorly, or monetize in ways incompatible with a small-group experience.
 
-Examples of what CCC hosts today:
+Examples of what CCC hosts (as of the 2026-27 era: CFB Survivor is the active flagship; the 2026 World Cup pool ran to completion and is archived; Golf launches ~2027 — `games/registry.py` is the status SSoT):
 
 - Golf Pick'em across a full PGA season
 - CFB Survivor with custom weekly spread-lock rules
@@ -309,13 +313,16 @@ CCC honors **WCAG 2.1 AA contrast** for all text and interactive controls.
 
 ### Known Surface Constraints
 
-The dark navy World Cup card surface is a documented recurring legibility risk:
+Dark substrates are where legibility regressions recur. The platform has three first-party dark-surface families:
 
-```css
-.card.wc-card { background: rgba(0, 17, 46, .8); }
-```
+- **The `body.game-cfb` midnight room** — CFB Survivor's entire body substrate is dark (the sanctioned dark room; doctrine and per-color contrast constraints in `games/cfb/DESIGN.md`).
+- **`.wc-champion-banner`** — the World Cup's single ceremonial dark surface (navy `rgba(0, 17, 46, .8)`; the retired `.card.wc-card` substrate's only surviving heir).
+- **Auth backdrops** — the Tribunal Black radial gradient behind the auth cards.
 
-Any content layered onto `.card.wc-card` must explicitly set a light foreground color, scoped to that surface (don't broadcast `tbody td { color: light }` globally; it breaks rows that Bootstrap masks with white). See CLAUDE.md, "`.card.wc-card` is a dark navy surface" for the locked pattern.
+Two locked patterns protect text on and around these surfaces:
+
+1. **Scope light-foreground overrides to the dark surface** (e.g., `.wc-champion-banner .text-muted`). Never broadcast `tbody td { color: light }` globally; it breaks rows that Bootstrap masks with white on every light surface.
+2. **On bone/white substrates, muted text routes through the `.text-muted` class**, which the `:root { --bs-secondary-color }` redirect lifts to AA contrast. Raw `color: var(--text-muted)` is calibrated for dark substrates only and must never appear on bone/white — use `--text-secondary` there. (Enforcement details in CLAUDE.md, "Design system & CSS.")
 
 ### Mobile-First Requirements
 

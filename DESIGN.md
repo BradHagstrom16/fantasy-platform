@@ -30,12 +30,13 @@ colors:
   live-red: "#E63946"
   live-green: "#64DBA0"
   live-orange: "#FF8A3C"
-  # Per-game tertiary palettes (consumed via body.game-<slug> overrides of --game-primary / --game-accent)
+  # Per-game tertiary palettes (headline colors; full ramps + doctrine live in each game's DESIGN.md)
   golf-green: "#006747"
   golf-gold: "#B8993E"
   cfb-crimson: "#C5050C"
-  cfb-midnight: "#0F0F1A"
-  wc-navy: "#002868"
+  cfb-midnight: "#0E0A0C"   # --cfb-canvas, the dark room's body substrate (full warm ramp in games/cfb/DESIGN.md)
+  wc-navy: "#001A4D"        # --wc-navy (tokens.css) — the WC brand-token navy (text/accent consumers)
+  wc-navy-slot: "#002868"   # body.game-worldcup --game-primary — the game-slot navy platform components consume; two navies by construction (frozen)
   wc-red: "#BF0A30"
 typography:
   display:
@@ -157,11 +158,20 @@ The system explicitly rejects: ESPN/Yahoo fantasy chrome (banner ads, untiered t
 
 This file is the platform foundation. Per-game design doctrine — palette specialization, game-scoped primitives, register vocabulary, copy voice — lives in each game's own `DESIGN.md` so the foundation stays lean and a game's doctrine evolves on its own cadence.
 
-- **World Cup**: `games/worldcup/DESIGN.md`. Owns the WC accent rank (red → white → navy → gold-quaternary), the Casual-Light substrate pattern, the `.wc-champion-banner` ceremonial primitive, the `.wc-stat-card` reference, the `.wc-eyebrow` variants (`-red` / `-gold`), the team-tier palette (`--wc-tier1`…`--wc-tier5`), the three tier primitives (`.wc-tier-dot` / `.tier-badge` / `.wc-multiplier-chip`), the Tribune voice for WC H1s.
-- **Golf**: `games/golf/DESIGN.md` (planned). Augusta Green + warm gold palette; tournament-rhythm primitives.
-- **CFB**: `games/cfb/DESIGN.md` (planned). Crimson + Midnight palette; Survivor-pressure primitives.
+- **World Cup**: `games/worldcup/DESIGN.md` (archived game; doc frozen). Owns the WC accent rank (red → white → navy → gold-quaternary), the Casual-Light substrate pattern, the `.wc-champion-banner` ceremonial primitive, the `.wc-stat-card` reference, the `.wc-eyebrow` variants (`-red` / `-gold`), the team-tier palette (`--wc-tier1`…`--wc-tier5`), the three tier primitives (`.wc-tier-dot` / `.tier-badge` / `.wc-multiplier-chip`), the Tribune voice for WC H1s.
+- **CFB**: `games/cfb/DESIGN.md` — the flagship's design contract. Owns the dark-first midnight room (the sanctioned §6 dark-room carve-out), the warm midnight ramp + crimson accent rank + survivor-state color layer, the OPEN/HELD/LOCKED/VERDICT state model, the Survivor voice for CFB H1s, the shipped `.cfb-*` component vocabulary (incl. `.championship-hero`, the `.cfb-verdict` family, the Commissioner's Desk admin register), the CFB-era lounge contract (C1), and CFB implementation guidance.
+- **Golf**: `games/golf/DESIGN.md` (planned; authored in the ~Jan 2027 UI phase). Augusta Green + warm gold palette; tournament-rhythm primitives.
 
-When working on a game's surfaces, treat the game-scoped file as authoritative for game-specific decisions; this top-level file remains authoritative for cross-game concerns (the palette framework, typography, elevation, motion, design laws). Tooling note: the impeccable skill loader discovers `games/*/DESIGN.md` automatically (see `docs/impeccable-loader-customization.md` for the loader's discovery contract).
+When working on a game's surfaces, treat the game-scoped file as authoritative for game-specific decisions; this top-level file remains authoritative for cross-game concerns (the palette framework, typography, elevation, motion, design laws). Tooling note: the stock impeccable loader emits only the top-level `PRODUCT.md`/`DESIGN.md` — it does **not** discover per-game files. The layering is enforced by the CLAUDE.md hard rule instead: read `games/<slug>/DESIGN.md` yourself, alongside this file, before producing design output (contract + history in `docs/per-game-design-doc-convention.md`).
+
+## 1.6. Lounge and rooms
+
+The platform's surface architecture has two registers; the distinction is by-design separation, not inconsistency:
+
+- **The lounge** — platform home (`/`). The club's own dark surface: purple radial atmosphere, gold ceremony, the Commissioner's voice. It is dominated by whichever single game is currently live, but its identity is always the club's — a game's room palette never restyles the lounge substrate. Games enter the lounge through **content, copy, and state** (counts, deadlines, verdicts, signature summaries), never through their room's substrate or accent system.
+- **The rooms** — each game's own body surfaces under `/<slug>/`, scoped by `body.game-<slug>`. A room carries specialized identity that may diverge hard from both the lounge and the other rooms (WC: Casual-Light bone body; CFB: dark-first midnight). Substrate contrast at the lounge↔room threshold is intentional — don't converge substrates (small handoff polish is fine).
+
+A surface's home follows its depth: the lounge orients and summarizes; a room completes and operates. When placing a new surface, ask "lounge or room?" first — the answer decides its substrate, its palette authority (this file vs. the game's DESIGN.md), and how much of the game's accent system it may use.
 
 ## 2. Colors: The Commissioner's Club Palette
 
@@ -194,8 +204,8 @@ The two metal-gold gradients (`--metal-gold` for vertical, `--metal-gold-flat` f
 Each game blueprint adds a palette layered over the CCC chrome via a `body.game-<slug>` class. Game palettes override `--game-primary` / `--game-primary-dark` / `--game-primary-light` / `--game-accent` / `--game-accent-light`. Platform components like `.btn-game`, `.page-hero`, and `.stat-block` consume these slots automatically; game CSS must NOT duplicate.
 
 - **Golf** (`body.game-golf`): Augusta Green (`#006747`) + warm gold (`#B8993E`). Tournament rhythm, season progression.
-- **CFB** (`body.game-cfb`): Crimson (`#C5050C`) + Midnight (`#0F0F1A`) + white accent. Survivor pressure, weekly spreads.
-- **World Cup** (`body.game-worldcup`): Navy (`#002868`) + Match Red (`#BF0A30`). Knockout urgency, multipliers. WC additionally specializes the accent rank (red primary, gold quaternary) and adds a team-tier color set — see `games/worldcup/DESIGN.md`.
+- **CFB** (`body.game-cfb`): Crimson (`#C5050C`) + a warm midnight ramp (canvas `#0E0A0C`) + bone accent. Survivor pressure, weekly spreads. CFB is the sanctioned dark-first room — it rebases the platform surface/text tokens onto its midnight ramp under `body.game-cfb`; full doctrine in `games/cfb/DESIGN.md`.
+- **World Cup** (`body.game-worldcup`): Navy + Match Red (`#BF0A30`). Knockout urgency, multipliers. WC carries **two navies by construction**: the brand token `--wc-navy` (`#001A4D`, tokens.css — text/accent consumers) and the game-slot `--game-primary` (`#002868` — what platform components consume, echoed by literal `rgba(0,40,104,…)` tints). Both are frozen with the WC surfaces; don't "correct" one into the other. WC additionally specializes the accent rank (red primary, gold quaternary) and adds a team-tier color set — see `games/worldcup/DESIGN.md`.
 
 ### Neutral
 
@@ -237,7 +247,7 @@ The bone family. The pressroom paper. Default page background, light card text o
 - **Display** (Teko 600, `2.4rem`, line-height `1.1`, letter-spacing `0.03em`): page-level h1, hero mastheads. The largest type on any page. Per-game surfaces may apply a **Tribune voice** rule to H1s that converts functional chrome labels into editorial section names; the World Cup register codifies this in `games/worldcup/DESIGN.md`. Two dispensations carry across games: (a) dynamic H1s that interpolate a noun (`{{ team.name }}` / `{{ current_user.get_display_name() }}`) read functionally because the value carries the voice; (b) the logged-in utility auth register (§5 Auth Surface Composition) keeps functional H1s because the Tribune voice carries through the eyebrow + Newsreader copy inside the card.
 - **Headline** (Teko 600, `1.9rem`, line-height `1.1`): section h2, admin page titles (`2.25rem` variant on admin pages).
 - **Title** (Teko 600, `1.5rem`, line-height `1.1`): card-header level h3, table sub-heads.
-- **Body** (Newsreader 400, `1rem`, line-height `1.65`): paragraphs, list items, default text. Cap line length at 65 to 75 characters per line. The `≥16px` body floor applies to body text and primary read-targets; explicit caption/metadata classes (`.tier-mobile-card-picks`, `.tier-teams-list`, `.player-pick-card .pick-team small`, `.player-pick-card .pick-points small`, `.wc-microcaption`) may step down to `≥0.75rem` (12px) when the primary read-target on the same row carries the dominant hierarchy — captions report, they don't lead.
+- **Body** (Newsreader 400, `1rem`, line-height `1.65`): paragraphs, list items, default text. Cap line length at 65 to 75 characters per line. The `≥16px` body floor applies to body text and primary read-targets; explicit caption/metadata classes may step down to `≥0.75rem` (12px) when the primary read-target on the same row carries the dominant hierarchy — captions report, they don't lead. (Each game's `DESIGN.md` lists its sanctioned caption classes; WC's are in `games/worldcup/DESIGN.md` §3.)
 - **Label** (Teko 500, `0.9rem`, letter-spacing `0.06em`, uppercase): form labels, tab labels, eyebrow-style metadata.
 - **Eyebrow** — the platform foundation defines one primitive; games may add their own variants:
     - **`.admin-eyebrow`** (Teko 500, `0.85rem`, letter-spacing `0.14em`, uppercase, `var(--gold)`): the bone-canvas admin masthead label. One color, one size.
@@ -263,6 +273,13 @@ The bone family. The pressroom paper. Default page background, light card text o
 - **`--shadow-md`** (`0 4px 20px rgba(58, 29, 114, 0.12)`): card hover state. Lift when an interactive surface acknowledges intent.
 - **`--shadow-lg`** (`0 8px 40px rgba(58, 29, 114, 0.17)`): auth cards, modals, the substantial substrates that carry critical flows. Used at rest, not as a hover lift.
 - **`--shadow-gold`** (`0 4px 24px rgba(201, 162, 39, 0.25)`): gold CTA hover glow. The literal trophy glint. Reserved for `.btn-warning:hover` and equivalent primary-CTA hover states.
+- **`--shadow-lift-strong`** (`0 6px 20px rgba(58, 29, 114, 0.30)`): a heavier hover lift than `--shadow-md`, for surfaces that need stronger acknowledgment.
+- **`--shadow-navbar`** (`0 2px 20px rgba(58, 29, 114, 0.35)`): sticky navbar ambient.
+- **`--shadow-dropdown`** (`0 12px 40px rgba(58, 29, 114, 0.50)`): dropdown panels — a genuine overlay layer, cast harder.
+- **`--shadow-sticky-up`** (`0 -4px 20px rgba(58, 29, 114, 0.35)`): bottom-anchored bars (upward cast).
+- **`--shadow-btn-primary-hover`** (`0 4px 14px rgba(58, 29, 114, 0.30)`): the Quiet-primary CTA hover (consumed by §5 Buttons).
+
+New elevated surfaces consume a token from this scale — never a fresh `rgba(...)` literal; an undocumented shadow literal is how the scale rots. (CFB neutralizes this scale to warm near-black inside its dark room — see `games/cfb/DESIGN.md` §6.)
 
 ### Card Hover Curve
 
@@ -284,7 +301,7 @@ CCC has three button registers: Quiet (purple primary, the default), Loud Trophy
 
 - **Shape:** `--radius` (`0.5rem`, ~8px). Modest rounding; never pill-shaped, never sharp-square.
 - **Type:** `Teko 500`, uppercase, letter-spacing `0.08em` on the navbar variant. Body text on standard `.btn-primary`.
-- **Primary (Quiet)** (`.btn-primary`): `var(--platform-primary)` (Council Purple) fill, `var(--text-on-dark)` (Pressroom Bone) text. Hover: lift `translateY(-2px)`, shadow `0 4px 14px rgba(58, 29, 114, 0.3)`, fill brightens to `var(--platform-primary-light)` (Press Purple).
+- **Primary (Quiet)** (`.btn-primary`): `var(--platform-primary)` (Council Purple) fill, `var(--text-on-dark)` (Pressroom Bone) text. Hover: lift `translateY(-2px)`, `--shadow-btn-primary-hover`, fill brightens to `var(--platform-primary-light)` (Press Purple).
 - **Trophy (Loud)** (`.btn-warning` on navbar; `body.auth-page .btn-primary`): `--metal-gold-flat` gradient fill, `var(--purple-900)` (Chamber Purple) text. Hover: `filter: brightness(1.05)` plus `--shadow-gold` glow. The ceremonial CTA. Reserved.
 - **Game-aware** (`.btn-game`): `var(--game-primary)` fill, bone text. The game-blueprint primary; per-game palettes override automatically via `body.game-<slug>`. Hover lifts `-2px`.
 - **Outline Primary** / **Outline Secondary**: `1.5px` border, transparent fill. Hover fills the border color. Use for secondary actions.
@@ -305,6 +322,8 @@ The home shell is a dark editorial surface (purple radial atmosphere), not the b
 - **Informational** (`.match-card`, `.cta-card--view`, `.commish-note-body`): `linear-gradient(180deg, var(--purple-850), var(--purple-950))` + `1px solid rgba(243, 239, 230, 0.08)` + `border-radius: 12px`. The bone-opacity-8 border reads as the standing-affordance baseline (fixtures, the view-only dossier shell, the Commish's Note long-form). It carries no deadline pressure; the recipe says "this is the record, look as long as you want." `.commish-note-body` adds the §6 Do canonical `border-top: 2px solid var(--gold)` major-section separator on top of the Informational recipe — a documented variant for editorial long-form, not a third register.
 
 The two recipes are non-overlapping by construction — a new home-shell panel picks one, not both. Two single-instance hero silhouettes layer on top of the two-tier system: `.ballot-card` (green-tinted "sealed" state on the pre-state ballot, a third narrower register) and `.dossier` (live-state standing hero — Ceremonial recipe with an extended `purple-800 → purple-950` gradient terminus for the live hero's gravitas; same `1px solid rgba(201, 162, 39, 0.3)` + 14px radius as Ceremonial). Both are locked to a single surface; do not duplicate the silhouette onto a new card.
+
+Scope note: the Ceremonial/Informational recipe pair is **platform lounge vocabulary** — any featured game's lounge modules pick one of the two registers (a CFB summons that asks something before a deadline is Ceremonial; a CFB verdict record is Informational). The current consumers (`.decree`, `.ballot-card`, `.dossier`, `.match-card`, the CTA cards) are the WC-era lounge partials; the transition plan §5 moves them into a per-game WC lounge module at the CFB changeover. The recipes stay; the consumers are era-specific.
 
 ### Form Controls
 
@@ -335,7 +354,7 @@ Both registers share `body.auth-page` (the Tribunal Black radial-gradient backdr
 - **Header** (`.table thead th`): Teko 500, `0.88rem`, uppercase, letter-spacing `0.07em`, `var(--text-muted)` text on `var(--bg-muted)` fill, `2px solid var(--border)` bottom rule.
 - **Row hover**: `var(--bg-muted)` fill on `0.15s` transition.
 - **Cell typography**: Newsreader, `0.92rem` (`.table` opt-in size).
-- **Current-user row** (`.row-current-user`): tinted highlight scoped per game (CFB uses crimson tint, WC uses gold tint). The highlight is the user's own line in the standings; it should be subtle, not loud.
+- **Current-user row** (`.row-current-user`): tint-only highlight — the platform fallback is a gold tint; game tables override the tint color only (CFB crimson, WC red — red per the WC accent rank). Never a side-stripe (the last one, Golf's, was removed 2026-07-20). The highlight is the user's own line in the standings; it should be subtle, not loud.
 
 ### Per-game primitives
 
@@ -381,7 +400,7 @@ Concrete guardrails. Each is forceful on purpose; the design director is in the 
 
 ### Don't:
 
-- **Don't** use `border-left` greater than 1px as a colored accent on cards, list items, callouts, or alerts. The current `.card.border-success` / `.card.border-danger` / `.card.border-warning` / `.card.border-primary` rules in `style.css` violate the impeccable absolute ban on side-stripe borders; they should migrate to full borders with leading icons or background tints. Don't copy the pattern into new code.
+- **Don't** use `border-left`/`border-right` greater than 1px as a colored accent on cards, list items, callouts, alerts, or table rows. The settled platform alternatives: state cards use a full `1px` border plus a 5–6% background tint (the `.card.border-success` / `-danger` / `-warning` / `-primary` rules already follow this shape), and current-user table rows use a background tint only (the last stripe, Golf's, was removed 2026-07-20). Structural gridlines (e.g., `.col-divider` between table column groups) are separators, not accents, and are exempt.
 - **Don't** apply `background-clip: text` plus a gradient background (gradient text). The metal-gold gradient is for surfaces, never for type.
 - **Don't** use `#000` or `#fff` as text or background colors. Tint every neutral toward the brand purple; chroma 0.005 to 0.01 is enough.
 - **Don't** use Inter, system-ui, or any other font. Teko and Newsreader define the system; a third font is a regression.

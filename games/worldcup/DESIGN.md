@@ -4,14 +4,15 @@ description: Per-game design doctrine for the World Cup tab cluster. Layers on t
 register: product
 extends: ../../DESIGN.md
 colors:
-  # WC-specific palette (consumed via body.game-worldcup overrides of --game-primary / --game-accent)
-  wc-navy: "#002868"
+  # WC carries two navies by construction (both frozen; don't "correct" one into the other):
+  wc-navy: "#001A4D"        # --wc-navy (tokens.css) — the brand-token navy (text/accent consumers)
+  wc-navy-slot: "#002868"   # body.game-worldcup --game-primary — the game-slot navy platform components consume (echoed by literal rgba(0,40,104,…) tints)
   wc-red: "#BF0A30"
   wc-red-dark: "#9C0826"
   # Champion banner ceremonial substrate (the only first-party dark surface on a WC body)
-  wc-champion-banner-bg: "#001A4DCC"
+  wc-champion-banner-bg: "#00112ECC"   # rgba(0, 17, 46, .8), matching style.css
   # Five-tier team-categorical palette (scoped under body.game-worldcup; see §4 Tier Primitives).
-  # Roles map to the game-design tier names in WORLD_CUP_GAME_DESIGN.md.
+  # Roles map to the game-design tier names in games/worldcup/WORLD_CUP_GAME_DESIGN.md.
   wc-tier1: "#D97706"  # Favorites  — burnt orange
   wc-tier2: "#4B7399"  # Contenders — steel blue
   wc-tier3: "#B45309"  # Dark Horses — copper
@@ -22,6 +23,8 @@ colors:
 # Design System: World Cup Fantasy Pool
 
 > Specialization of the platform design system. Top-level doctrine (palette framework, typography, elevation, motion, design laws, cross-game components) lives in the repo root `DESIGN.md`; this file owns World-Cup-specific palette, primitives, accent rank, substrate vocabulary, and copy register.
+>
+> **Archived (2026-07-19).** The 2026 tournament is complete; the game sits in a permanent post-state and WC surfaces are frozen (CLAUDE.md). This doc is archive doctrine and the regression net under the CFB-era lounge extraction — edit it only for an actual revival or the planned lounge move (transition plan §5), never for restyling.
 
 ---
 
@@ -115,7 +118,7 @@ When introducing new WC components, assign colors according to semantic role rat
 
 `--wc-tier1` through `--wc-tier5` define the WC team-tier color system. These colors are scoped utility tokens, not part of the primary palette hierarchy above. Their purpose is categorical differentiation rather than emotional branding. Each token is defined under `body.game-worldcup` (see `static/css/style.css` `--wc-tier1`..`--wc-tier5`) and maps to a game-design tier role:
 
-| Token | Hex | Tier role (from `WORLD_CUP_GAME_DESIGN.md`) |
+| Token | Hex | Tier role (from `games/worldcup/WORLD_CUP_GAME_DESIGN.md`) |
 |---|---|---|
 | `--wc-tier1` | `#D97706` | Favorites (7 teams, ×1) |
 | `--wc-tier2` | `#4B7399` | Contenders (4 teams, ×1.5) |
@@ -174,6 +177,10 @@ Two tonal variants are part of the primitive, not separate inventions:
 The bone-mute default is calibrated for the navy substrate: a scope rule lifts it to bone @ `.85` alpha there for AA contrast. Light-surface contexts override the default to `--text-secondary` or `--gold` via scoped rules at the consumer (`.wc-stat-card.is-lead`, `.your-standing-tribune`, `.player-pick-card`), preserving the primitive while adapting it to the substrate. New light-surface consumers that need the eyebrow on a white card should follow the same scoped-lift pattern rather than re-tinting the base primitive.
 
 The dark-substrate scope rule was originally `.card.wc-card .wc-eyebrow:not(.wc-eyebrow-red):not(.wc-eyebrow-gold)`. P5 re-scoped it to `.wc-champion-banner .wc-eyebrow:not(...)` when the `.card.wc-card` substrate retired; the champion banner is now the only dark-substrate consumer of the lift.
+
+### Caption-floor exceptions (platform §3 body floor)
+
+The WC classes sanctioned to step below the platform `≥16px` body floor to `≥0.75rem` (12px), where the row's primary read-target carries the dominant hierarchy: `.tier-mobile-card-picks`, `.tier-teams-list`, `.player-pick-card .pick-team small`, `.player-pick-card .pick-points small`, `.wc-microcaption`. Captions report, they don't lead — the exception never applies to a row's primary read-target.
 
 ---
 
