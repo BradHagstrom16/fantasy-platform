@@ -1,7 +1,7 @@
 # CFB Era Transition — World Cup Sunset + CFB Center of Gravity
 
 **Date:** 2026-07-20
-**Status:** ACTIVE — ratified 2026-07-20 (Brad's rulings recorded in §7). Execution tracked by the §8 checkboxes: Phases 0–2 complete; Phases 3–7 pending.
+**Status:** ACTIVE — ratified 2026-07-20 (Brad's rulings recorded in §7). Execution tracked by the §8 checkboxes: Phases 0–3 complete; Phases 4–7 pending.
 **Scope:** Planning artifact for (1) mothballing the completed 2026 World Cup game, (2) making CFB Survivor the platform's center of gravity for its ~Sep 3 launch, (3) sequencing the work. Supersedes and absorbs the Workstream C sketch in `~/.claude/plans/the-world-cup-is-reactive-manatee.md` (C1/C2), which planned the lounge transition but explicitly excluded WC shutdown.
 
 ---
@@ -157,7 +157,7 @@ Binding preservation rules for all subsequent work:
 - [x] **Phase 0 — WC ops mothball** — COMPLETE 2026-07-20 (crontab commented non-interactively; the four timers disabled by Brad; zero WC jobs scheduled).
 - [x] **Phase 1 — C1 lounge design session(s)** — COMPLETE 2026-07-20: `docs/superpowers/specs/2026-07-20-cfb-era-lounge-design.md` (+ visual-companion mockup) covers all four states, the live-state beats, the WC archived tile + farewell, the handoff, and the state model; Brad's four C1 rulings recorded in the spec header.
 - [x] **Phase 2 — C2 slice 1: registry seam** — COMPLETE 2026-07-20: `GameRegistryEntry.lounge_state` resolver + `lounge_game()` (replaces dead `featured_games()`); `core/main/routes.py` dispatches through the seam; `'completed'` semantics locked across helpers; rendering unchanged (WC still open/featured); 13 seam tests in `tests/test_registry_seam.py`.
-- [ ] **Phase 3 — C2 slice 2: WC lounge extraction** — builders + partials move behind the seam; pixel-identical render contract; existing suite as the net.
+- [x] **Phase 3 — C2 slice 2: WC lounge extraction** — COMPLETE 2026-07-20 (PR #116): builders moved to `games/worldcup/services/lounge.py`, the ten WC partials to `games/worldcup/templates/worldcup/lounge/`; `core/main/home_context.py` is the thin dispatcher (registry-generic keys + commish note); `GameRegistryEntry.lounge_context` added and `lounge_game()` requires both callables. Pixel-identical verified by byte-diff across 8 render scenarios + 4-state browser smoke; `test_home_context.py` untouched; suite 1685. `_game_tiles_compact` de-hardcode deferred to Phase 4 by in-session ruling (its per-state label logic is WC-specific; the C1 tile design drives the generalization).
 - [ ] **Phase 4 — C2 slice 3+: CFB lounge builders + partials** (likely 2–3 PRs given four states + signature surface): dead code on prod until the flip; smoked in the sandbox with `CFB_FAKE_NOW` + a local-only registry flip.
 - [ ] **Phase 5 — Changeover PR** (~Aug 17–24): the atomic double flip + test/copy/CLAUDE.md updates (§6 E).
 - [ ] **Phase 6 — CFB ops enablement + launch smoke** (launch week: §6 F runbook).
