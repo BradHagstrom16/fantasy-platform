@@ -239,14 +239,18 @@ def test_pi3_design_md_documents_tier_primitive_vocabulary():
 
 
 def test_pi3_design_md_documents_caption_tier_dispensation():
-    """DESIGN.md §3 Body bullet documents the caption-tier <16px dispensation.
+    """The caption-tier <16px dispensation stays documented across the doc split.
 
-    The dispensation note locks the S4.5 decided-no-op decision: caption
-    classes (`.tier-mobile-card-picks`, `.tier-teams-list`, etc.) are
-    *allowed* to step down to ≥12px when the primary read-target on the
-    same row carries the dominant hierarchy. Without this lock a future
-    iteration that re-runs the audit would re-flag the <16px text as a
-    floor violation.
+    The dispensation locks the S4.5 decided-no-op decision: caption classes
+    (`.tier-mobile-card-picks`, `.tier-teams-list`, etc.) are *allowed* to
+    step down to >=12px when the primary read-target on the same row carries
+    the dominant hierarchy. Without this lock a future iteration that re-runs
+    the audit would re-flag the <16px text as a floor violation.
+
+    The 2026-07-20 design-spine revisit split the documentation: the top-level
+    DESIGN.md keeps the *principle* (the 12px floor + a pointer to per-game
+    lists); the WC class list moved to games/worldcup/DESIGN.md so per-game
+    exceptions don't accrete into the platform foundation.
     """
     design = DESIGN_MD.read_text()
     # The dispensation must explicitly carry the 12px floor so a future
@@ -254,15 +258,22 @@ def test_pi3_design_md_documents_caption_tier_dispensation():
     assert '12px' in design, (
         'DESIGN.md must name the 12px floor on the caption-tier dispensation.'
     )
-    # And name at least one of the caption classes the dispensation covers
-    # so the policy is grounded in actual surfaces, not abstract advice.
+    # And the platform doc must route readers to the per-game class lists.
+    assert 'games/worldcup/DESIGN.md' in design, (
+        'DESIGN.md must point the caption-floor dispensation at the per-game '
+        'class lists (games/worldcup/DESIGN.md).'
+    )
+    # The grounding class list lives in the WC doc: at least one caption
+    # class must be named there so the policy stays tied to real surfaces.
+    wc_design = (REPO_ROOT / 'games' / 'worldcup' / 'DESIGN.md').read_text()
     assert (
-        '.tier-mobile-card-picks' in design
-        or '.tier-teams-list' in design
-        or '.wc-microcaption' in design
+        '.tier-mobile-card-picks' in wc_design
+        or '.tier-teams-list' in wc_design
+        or '.wc-microcaption' in wc_design
     ), (
-        'DESIGN.md must name at least one caption-class the <16px dispensation '
-        'covers (`.tier-mobile-card-picks`, `.tier-teams-list`, or `.wc-microcaption`).'
+        'games/worldcup/DESIGN.md must name at least one caption-class the '
+        '<16px dispensation covers (`.tier-mobile-card-picks`, '
+        '`.tier-teams-list`, or `.wc-microcaption`).'
     )
     # The note must connect the dispensation to "primary read-target on the
     # same row" so the policy isn't read as a blanket caption escape hatch.

@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CFB-Era Lounge — C1 Visual Companion</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Teko:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,300..600;1,6..72,400&display=swap" rel="stylesheet">
+<style>
+  /* ==== CCC lounge tokens (verbatim from tokens.css) ==== */
+  :root {
+    --purple-950:#140828; --purple-900:#1C0A3A; --purple-850:#230E48;
+    --purple-800:#2A1150; --purple-700:#3A1D72;
+    --gold-dark:#8A6A1A; --gold:#C9A227; --gold-light:#F2D36B; --gold-hi:#FFF1B8;
+    --bone:#F3EFE6; --bone-dim:#D8D1BE; --bone-mute:rgba(243,239,230,.55);
+    --live-red:#E63946; --live-green:#64DBA0; --live-orange:#FF8A3C;
+    --metal-gold-flat:linear-gradient(135deg,#F2D36B 0%,#C9A227 55%,#A88420 100%);
+    --radius:.5rem; --radius-lg:.875rem;
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body {
+    background:radial-gradient(ellipse at top, var(--purple-900) 0%, var(--purple-950) 60%) fixed, var(--purple-950);
+    color:var(--bone);
+    font-family:'Newsreader', Georgia, serif;
+    line-height:1.65;
+    padding:2rem 1rem 5rem;
+  }
+  .wrap { max-width:1080px; margin:0 auto; }
+  .col-narrow { max-width:640px; }
+
+  /* ==== mockup annotation chrome (not part of the design) ==== */
+  .anno {
+    margin:3.5rem 0 1.25rem; padding:.5rem .9rem;
+    background:rgba(0,0,0,.35); border:1px dashed rgba(243,239,230,.25); border-radius:6px;
+    font-family:ui-monospace, Menlo, monospace; font-size:.78rem; letter-spacing:.05em;
+    color:#9fd0ff; text-transform:uppercase;
+  }
+  .anno small { display:block; text-transform:none; letter-spacing:0; color:rgba(243,239,230,.6); font-size:.75rem; }
+
+  /* ==== lounge vocabulary (approximations of shipped classes) ==== */
+  .greet-line { font-style:italic; color:var(--bone-mute); font-size:1.05rem; }
+  .greet-line .v { color:var(--bone); font-style:normal; }
+  .greet-title { font-family:Teko,sans-serif; font-weight:600; font-size:3.2rem; line-height:1.05; letter-spacing:.03em; text-transform:uppercase; color:var(--bone); }
+  .metal { color:var(--gold-light); }
+  .greet-court { font-family:Teko,sans-serif; font-weight:500; font-size:.95rem; letter-spacing:.12em; text-transform:uppercase; color:var(--bone-mute); margin-top:.35rem; }
+
+  .sec-head { display:flex; align-items:baseline; justify-content:space-between; margin:1.8rem 0 .8rem; border-bottom:1px solid rgba(243,239,230,.12); padding-bottom:.3rem; }
+  .sec-head .t { font-family:Teko,sans-serif; font-weight:600; font-size:1.15rem; letter-spacing:.1em; text-transform:uppercase; color:var(--bone); }
+  .sec-head .more { font-family:Teko,sans-serif; font-size:.9rem; letter-spacing:.08em; text-transform:uppercase; color:var(--gold); text-decoration:none; }
+
+  /* Card recipes — DESIGN.md §5 */
+  .ceremonial {
+    background:linear-gradient(180deg, var(--purple-800), var(--purple-900));
+    border:1px solid rgba(201,162,39,.3);
+    border-radius:14px; padding:1.5rem 1.6rem;
+  }
+  .informational {
+    background:linear-gradient(180deg, var(--purple-850), var(--purple-950));
+    border:1px solid rgba(243,239,230,.08);
+    border-radius:12px; padding:1.4rem 1.6rem;
+  }
+
+  .eyebrow { font-family:Teko,sans-serif; font-weight:500; font-size:.85rem; letter-spacing:.14em; text-transform:uppercase; color:var(--gold); }
+  .eyebrow--info { color:var(--bone-mute); }
+
+  .state-chip {
+    float:right; font-family:Teko,sans-serif; font-weight:500; font-size:.78rem; letter-spacing:.12em;
+    padding:.1rem .55rem .05rem; border-radius:4px; text-transform:uppercase;
+    border:1px solid rgba(243,239,230,.25); color:var(--bone-dim);
+  }
+  .state-chip--open { border-color:rgba(201,162,39,.55); color:var(--gold-light); }
+
+  .summons-line { font-family:Teko,sans-serif; font-weight:600; font-size:2rem; line-height:1.12; letter-spacing:.02em; color:#FBF7F0; margin:.6rem 0 .4rem; }
+  .summons-sub { font-size:1rem; color:var(--bone-dim); max-width:60ch; }
+  .summons-meta { display:flex; flex-wrap:wrap; gap:.5rem 1.4rem; align-items:center; margin:.9rem 0 .2rem; font-family:Teko,sans-serif; font-weight:500; font-size:1rem; letter-spacing:.06em; text-transform:uppercase; color:var(--bone-dim); }
+  .summons-meta .num { font-variant-numeric:tabular-nums; color:var(--bone); }
+  .commish-echo { font-style:italic; font-size:.92rem; color:var(--bone-mute); margin-top:.75rem; }
+
+  .lives { display:inline-flex; gap:.35rem; align-items:center; }
+  .lives .pip { width:.7rem; height:.7rem; border-radius:50%; background:var(--live-green); display:inline-block; }
+  .lives .pip.lost { background:transparent; border:2px solid var(--bone-mute); }
+  .lives .lbl { font-family:Teko,sans-serif; font-size:.95rem; letter-spacing:.08em; color:var(--bone-dim); margin-left:.35rem; }
+
+  .cta-gold {
+    display:inline-block; margin-top:1.1rem; padding:.7rem 1.5rem; border-radius:var(--radius);
+    background:var(--metal-gold-flat); color:var(--purple-900);
+    font-family:Teko,sans-serif; font-weight:600; font-size:1.15rem; letter-spacing:.08em; text-transform:uppercase;
+    text-decoration:none; box-shadow:0 4px 24px rgba(201,162,39,.25);
+  }
+  .cta-gold .sub { display:block; font-family:Newsreader,serif; font-weight:400; font-size:.82rem; letter-spacing:0; text-transform:none; opacity:.85; }
+  .cta-outline {
+    display:inline-block; margin-top:1rem; padding:.55rem 1.3rem; border-radius:var(--radius);
+    border:1.5px solid rgba(243,239,230,.4); color:var(--bone);
+    font-family:Teko,sans-serif; font-weight:500; font-size:1.05rem; letter-spacing:.08em; text-transform:uppercase; text-decoration:none;
+  }
+  .route-link { font-family:Teko,sans-serif; font-size:.95rem; letter-spacing:.08em; text-transform:uppercase; color:var(--gold); text-decoration:none; }
+
+  .verdict-word { font-family:Teko,sans-serif; font-weight:700; font-size:2.7rem; line-height:1; letter-spacing:.03em; text-transform:uppercase; margin:.55rem 0 .35rem; }
+  .verdict-word.win { color:var(--live-green); }
+  .verdict-word.loss { color:var(--live-red); }
+  .verdict-word.out { color:#FBF7F0; }
+  .field-impact { margin-top:.8rem; padding-top:.7rem; border-top:1px solid rgba(243,239,230,.1); font-size:.95rem; color:var(--bone-dim); }
+
+  /* Who's Left */
+  .field-line { font-size:1.05rem; color:var(--bone); }
+  .field-line .n { font-family:Teko,sans-serif; font-weight:600; font-size:1.5rem; color:#FBF7F0; font-variant-numeric:tabular-nums; }
+  .attrition { display:flex; height:.65rem; border-radius:4px; overflow:hidden; margin:.8rem 0 .45rem; }
+  .attrition .seg2 { background:var(--live-green); }
+  .attrition .seg1 { background:rgba(100,219,160,.4); }
+  .attrition .seg0 { background:rgba(110,98,95,.55); }
+  .attrition-key { display:flex; gap:1.2rem; font-family:Teko,sans-serif; font-size:.88rem; letter-spacing:.08em; text-transform:uppercase; color:var(--bone-dim); }
+  .attrition-key .num { color:var(--bone); font-variant-numeric:tabular-nums; }
+  .cuts-line { margin-top:.7rem; font-size:.92rem; color:var(--bone-mute); font-style:italic; }
+  .wl-names { list-style:none; margin-top:.6rem; }
+  .wl-names li { display:flex; align-items:center; justify-content:space-between; padding:.42rem 0; border-bottom:1px solid rgba(243,239,230,.07); }
+  .wl-names li:last-child { border-bottom:0; }
+  .wl-name { font-family:Teko,sans-serif; font-weight:500; font-size:1.1rem; letter-spacing:.04em; color:var(--bone); }
+  .wl-you { background:rgba(201,162,39,.1); margin:0 -.6rem; padding:.42rem .6rem !important; border-radius:6px; border-bottom:0 !important; }
+  .you-chip { font-family:Teko,sans-serif; font-size:.7rem; letter-spacing:.12em; color:var(--gold-light); border:1px solid rgba(201,162,39,.5); border-radius:3px; padding:0 .35rem; margin-left:.5rem; vertical-align:2px; }
+
+  /* compact standings rolls */
+  .roll { display:flex; align-items:center; gap:.7rem; padding:.55rem .2rem; border-bottom:1px solid rgba(243,239,230,.07); }
+  .roll:last-child { border-bottom:0; }
+  .roll-rank { font-family:Teko,sans-serif; font-weight:600; font-size:1.3rem; width:1.4rem; text-align:center; color:var(--bone-dim); font-variant-numeric:tabular-nums; }
+  .roll-rank.gold { color:var(--gold-light); }
+  .roll-name { font-family:Teko,sans-serif; font-weight:500; font-size:1.15rem; letter-spacing:.04em; color:var(--bone); flex:1; }
+  .roll-tag { font-size:.85rem; color:var(--bone-mute); font-style:italic; display:block; margin-top:-.2rem; }
+  .roll-spd { font-family:Teko,sans-serif; font-size:.95rem; letter-spacing:.05em; color:var(--bone-dim); font-variant-numeric:tabular-nums; }
+  .roll--you { background:rgba(201,162,39,.1); border-radius:6px; margin:0 -.5rem; padding:.55rem .7rem; border-bottom:0; }
+  .roll-dots { text-align:center; color:var(--bone-mute); letter-spacing:.4em; padding:.15rem 0; }
+
+  /* game tiles */
+  .tiles { display:grid; grid-template-columns:repeat(3,1fr); gap:.8rem; }
+  .cg { border-radius:12px; padding:.9rem 1rem; text-align:center; text-decoration:none; display:block; }
+  .cg .g { font-size:1.6rem; }
+  .cg .n { font-family:Teko,sans-serif; font-weight:600; font-size:1.05rem; letter-spacing:.06em; text-transform:uppercase; color:var(--bone); }
+  .cg .p { font-family:Teko,sans-serif; font-weight:500; font-size:.8rem; letter-spacing:.1em; text-transform:uppercase; color:var(--gold); }
+  .cg--active { background:linear-gradient(180deg,var(--purple-800),var(--purple-900)); border:1px solid rgba(201,162,39,.3); }
+  .cg--archived { background:linear-gradient(180deg,var(--purple-850),var(--purple-950)); border:1px solid rgba(243,239,230,.08); }
+  .cg--archived .g { filter:saturate(.55); opacity:.8; }
+  .cg--archived .p { color:var(--bone-mute); }
+  .cg--soon { background:transparent; border:1px dashed rgba(243,239,230,.16); opacity:.75; }
+  .cg--soon .p { color:var(--bone-mute); }
+
+  /* decree (preseason) */
+  .decree-seal { display:flex; justify-content:space-between; border-bottom:1px dashed rgba(201,162,39,.4); padding-bottom:.55rem; margin-bottom:1rem; font-family:Teko,sans-serif; font-weight:500; font-size:.9rem; letter-spacing:.12em; text-transform:uppercase; color:var(--gold); }
+  .decree-h2 { font-family:Teko,sans-serif; font-weight:600; font-size:1.5rem; letter-spacing:.05em; text-transform:uppercase; color:var(--bone); text-align:center; }
+  .decree-hero { text-align:center; font-family:Teko,sans-serif; }
+  .decree-hero .num { font-weight:700; font-size:5.2rem; line-height:1; color:#FBF7F0; font-variant-numeric:tabular-nums; }
+  .decree-hero .unit { font-weight:500; font-size:1rem; letter-spacing:.25em; text-transform:uppercase; color:var(--gold-light); }
+  .decree-foot { text-align:center; font-size:.95rem; color:var(--bone-dim); margin-top:.8rem; }
+  .decree-center { text-align:center; }
+
+  /* WC farewell strip */
+  .farewell { display:flex; flex-wrap:wrap; align-items:center; gap:.4rem 1.6rem; }
+  .farewell .line { font-size:1.02rem; color:var(--bone); }
+  .farewell .fin { font-family:Teko,sans-serif; font-size:.95rem; letter-spacing:.08em; text-transform:uppercase; color:var(--bone-dim); }
+
+  /* champion (post) */
+  .champ { text-align:center; padding:2.6rem 1.5rem; }
+  .champ-name { font-family:Teko,sans-serif; font-weight:700; font-size:4rem; line-height:1; letter-spacing:.03em; text-transform:uppercase; color:var(--gold-light); margin:.6rem 0 .2rem; }
+  .champ-rule { width:72px; height:2px; background:var(--gold); margin:.9rem auto; }
+  .champ-evidence { font-size:1.02rem; color:var(--bone-dim); max-width:52ch; margin:0 auto; }
+  .champ-detail { font-family:Teko,sans-serif; font-size:.92rem; letter-spacing:.1em; text-transform:uppercase; color:var(--bone-mute); margin-top:1rem; }
+
+  /* two-col live layout demo */
+  .live-grid { display:grid; grid-template-columns:minmax(0,1.5fr) minmax(0,1fr); gap:2rem; }
+  @media (max-width:900px){ .live-grid { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="anno">C1 visual companion · CFB-era lounge · substrate = CCC purple/gold (unchanged)
+<small>Annotations in this dashed mono chrome are mockup commentary, not design. All colors are live tokens.css values. Pool fiction: 24 enrolled, Week 8, you = Brad.</small></div>
+
+<!-- ================= PRE STATE / HANDOFF ================= -->
+<div class="anno">1 · PRE state (the handoff window, ~Aug 17 to Sep 5) — preseason decree + WC farewell ledger</div>
+
+<div class="col-narrow">
+  <div class="greet-line">The club reconvenes, <span class="v">Brad</span></div>
+  <h1 class="greet-title">The Season <span class="metal">Opens</span></h1>
+  <div class="greet-court">Tuesday · 11 enrolled · first kickoff in 16 days</div>
+
+  <div class="ceremonial" style="margin-top:1.4rem">
+    <div class="decree-seal"><span>By Decree of the Commish <span style="color:var(--gold-light)">No 002</span></span><span>CFB Survivor '26</span></div>
+    <div class="decree-h2">First Pick Locks In</div>
+    <div class="decree-hero"><div class="num">16</div><div class="unit">Days</div></div>
+    <p class="decree-foot">Everyone starts with two lives. One team a week, win outright.<br>Week 1 locks Saturday, Sep 5, 11:00 AM CT.</p>
+    <div class="decree-center">
+      <a class="cta-gold" href="#">Take Your Two Lives →<span class="sub">Join the pool. Lose twice and you're out.</span></a>
+    </div>
+  </div>
+
+  <div class="informational" style="margin-top:1.2rem">
+    <div class="eyebrow eyebrow--info">◇ The 2026 Ledger</div>
+    <div class="farewell" style="margin-top:.4rem">
+      <span class="line">Spain took the Cup. The Commish took the pool.</span>
+      <span class="fin">You finished 1st of 9 · 487.0 pts</span>
+      <a class="route-link" href="#">Visit the archive ›</a>
+    </div>
+  </div>
+</div>
+
+<!-- ================= LIVE / OPEN — full two-column layout ================= -->
+<div class="anno">2 · LIVE state, OPEN beat — full desktop composition (primary column + rail). The Summons is Ceremonial and carries the page.</div>
+
+<div class="live-grid">
+  <div>
+    <div class="greet-line">The pool plays on, <span class="v">Brad</span></div>
+    <h1 class="greet-title">Still <span class="metal">Standing</span></h1>
+    <div class="greet-court">Thursday · Week 8 · 14 remain</div>
+
+    <div class="ceremonial" style="margin-top:1.4rem">
+      <span class="state-chip state-chip--open">Open</span>
+      <div class="eyebrow">◈ The Summons · Week 8</div>
+      <div class="summons-line">You have not made a pick.</div>
+      <div class="summons-meta">
+        <span class="lives"><span class="pip"></span><span class="pip"></span><span class="lbl">2 lives</span></span>
+        <span>Locks in <span class="num">2d 14h</span> · Saturday, 11:00 AM CT</span>
+      </div>
+      <a class="cta-gold" href="#">Choose Team →<span class="sub">One team, win outright. Used teams stay used.</span></a>
+      <div class="commish-echo">Miss it and the Commish picks for you.</div>
+    </div>
+
+    <div class="sec-head"><div class="t">Standings</div><a class="more" href="#">Full standings ›</a></div>
+    <div>
+      <div class="roll"><div class="roll-rank gold">1</div><div class="roll-name">🦡 Jordan<span class="roll-tag">Two lives · spread 41.5</span></div><span class="lives"><span class="pip"></span><span class="pip"></span></span></div>
+      <div class="roll"><div class="roll-rank">2</div><div class="roll-name">🎯 Christian<span class="roll-tag">Two lives · spread 48.0</span></div><span class="lives"><span class="pip"></span><span class="pip"></span></span></div>
+      <div class="roll"><div class="roll-rank">3</div><div class="roll-name">🏈 Sam<span class="roll-tag">Two lives · spread 52.5</span></div><span class="lives"><span class="pip"></span><span class="pip"></span></span></div>
+      <div class="roll-dots">· · ·</div>
+      <div class="roll roll--you"><div class="roll-rank">6</div><div class="roll-name">⚽ Brad<span class="you-chip">YOU</span><span class="roll-tag">Two lives · spread 61.0</span></div><span class="lives"><span class="pip"></span><span class="pip"></span></span></div>
+    </div>
+  </div>
+
+  <div>
+    <div class="sec-head" style="margin-top:.4rem"><div class="t">Who's Left</div><a class="more" href="#">The field ›</a></div>
+    <div class="informational">
+      <div class="field-line"><span class="n">14</span> of 24 remain.</div>
+      <div class="attrition" role="img" aria-label="9 holding two lives, 5 down to one, 10 out">
+        <span class="seg2" style="flex:9"></span><span class="seg1" style="flex:5"></span><span class="seg0" style="flex:10"></span>
+      </div>
+      <div class="attrition-key">
+        <span><span class="num">9</span> two lives</span>
+        <span><span class="num">5</span> one life</span>
+        <span><span class="num">10</span> out</span>
+      </div>
+      <div class="cuts-line">Cut in Week 7: Tyler, Marissa.</div>
+    </div>
+
+    <div class="sec-head"><div class="t">Your Games</div></div>
+    <div class="tiles" style="grid-template-columns:1fr">
+      <a class="cg cg--active" href="#"><div class="g">🏈</div><div class="n">CFB Survivor</div><div class="p">Week 8 · 2 Lives</div></a>
+      <a class="cg cg--archived" href="#"><div class="g">⚽</div><div class="n">World Cup</div><div class="p">2026 · ESP Won · You 1st</div></a>
+      <div class="cg cg--soon"><div class="g">⛳</div><div class="n">Golf</div><div class="p">2027</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= HELD ================= -->
+<div class="anno">3 · HELD beat — Ceremonial, calmer: no gold CTA, no countdown dominance</div>
+
+<div class="col-narrow">
+  <div class="ceremonial">
+    <span class="state-chip">Held</span>
+    <div class="eyebrow eyebrow--info">◇ The Summons · Week 8</div>
+    <div class="summons-line">Alabama is held.</div>
+    <p class="summons-sub">You may change your pick until Saturday, 11:00 AM CT.</p>
+    <div class="summons-meta">
+      <span class="lives"><span class="pip"></span><span class="pip"></span><span class="lbl">2 lives</span></span>
+      <span>Locks in <span class="num">1d 3h</span></span>
+    </div>
+    <a class="cta-outline" href="#">Review Pick</a>
+  </div>
+</div>
+
+<!-- ================= LOCKED ================= -->
+<div class="anno">4 · LOCKED beat — Informational: the record, no orphaned controls. Second variant = in-progress score.</div>
+
+<div class="col-narrow">
+  <div class="informational">
+    <span class="state-chip">Locked</span>
+    <div class="eyebrow eyebrow--info">◇ The Summons · Week 8</div>
+    <div class="summons-line">Alabama at Auburn. Your pick is final.</div>
+    <div class="summons-meta">
+      <span class="lives"><span class="pip"></span><span class="pip"></span><span class="lbl">2 lives</span></span>
+      <span>Kickoff Saturday, <span class="num">3:30 PM CT</span></span>
+    </div>
+  </div>
+  <div class="informational" style="margin-top:1rem">
+    <span class="state-chip">Locked</span>
+    <div class="eyebrow eyebrow--info">◇ The Summons · Week 8</div>
+    <div class="summons-line">Alabama at Auburn. Your pick is final.</div>
+    <div class="summons-meta">
+      <span>In progress · Alabama leads, <span class="num">21–17</span></span>
+    </div>
+    <div class="field-impact">Final scores settle Sunday. Verdicts follow.</div>
+  </div>
+</div>
+
+<!-- ================= VERDICT ================= -->
+<div class="anno">5 · VERDICT beat — outcome-colored verdict word (never crimson, never a top rule: that is the room's signature). WIN / LOSS / ELIMINATED.</div>
+
+<div class="col-narrow">
+  <div class="informational">
+    <div class="eyebrow eyebrow--info">◇ The Summons · Week 8</div>
+    <div class="verdict-word win">Survived</div>
+    <p class="summons-sub">Alabama defeated Auburn, 31–20. You advance with two lives.</p>
+    <div class="summons-meta">
+      <span class="lives"><span class="pip"></span><span class="pip"></span><span class="lbl">2 lives</span></span>
+    </div>
+    <div class="field-impact">Three players lost a life in Week 8. Two were cut. <strong style="color:var(--bone)">12 remain.</strong> &nbsp;<a class="route-link" href="#">View week results ›</a></div>
+  </div>
+
+  <div class="informational" style="margin-top:1rem">
+    <div class="eyebrow eyebrow--info">◇ The Summons · Week 8</div>
+    <div class="verdict-word loss">Lost a Life</div>
+    <p class="summons-sub">Alabama lost to Auburn, 17–24. You have one life remaining. Your next loss eliminates you.</p>
+    <div class="summons-meta">
+      <span class="lives"><span class="pip"></span><span class="pip lost"></span><span class="lbl">1 life</span></span>
+    </div>
+    <div class="field-impact">Three players lost a life in Week 8. Two were cut. <strong style="color:var(--bone)">12 remain.</strong> &nbsp;<a class="route-link" href="#">View week results ›</a></div>
+  </div>
+
+  <div class="informational" style="margin-top:1rem">
+    <div class="eyebrow eyebrow--info">◇ The Summons · Week 8</div>
+    <div class="verdict-word out">Eliminated</div>
+    <p class="summons-sub">Alabama lost to Auburn. No lives remain. Your season ends in Week 8; the pool plays on.</p>
+    <div class="summons-meta">
+      <span class="lives"><span class="pip lost"></span><span class="pip lost"></span><span class="lbl">Eliminated</span></span>
+    </div>
+    <div class="field-impact"><a class="route-link" href="#">Follow who's left ›</a> &nbsp; <a class="route-link" href="#">Review my season ›</a></div>
+  </div>
+</div>
+
+<!-- ================= STANDING ELIMINATED ================= -->
+<div class="anno">6 · Standing ELIMINATED module (weeks after the cut) — observation mode, quiet</div>
+
+<div class="col-narrow">
+  <div class="informational">
+    <div class="eyebrow eyebrow--info">◇ Your Season</div>
+    <div class="summons-line" style="color:var(--bone-dim)">Out in Week 8. The pool plays on.</div>
+    <p class="summons-sub">You survived seven weeks on Georgia, Texas, Penn State, USC, Ole Miss, Utah and Alabama.</p>
+    <div class="field-impact"><a class="route-link" href="#">Follow who's left ›</a> &nbsp; <a class="route-link" href="#">Review my season ›</a></div>
+  </div>
+</div>
+
+<!-- ================= WHO'S LEFT PHASES ================= -->
+<div class="anno">7 · Who's Left phase ladder — A (full field) · C (late-season names) · endgame D. Phase B is shown in comp 2 above.</div>
+
+<div class="live-grid">
+  <div>
+    <div class="sec-head"><div class="t">Who's Left</div></div>
+    <div class="informational">
+      <div class="field-line">The full field remains alive. <span class="n">24</span> players, two lives each.</div>
+    </div>
+    <div class="sec-head"><div class="t">Who's Left · late season (active ≤ 10)</div><a class="more" href="#">Full standings ›</a></div>
+    <div class="informational">
+      <div class="field-line"><span class="n">6</span> of 24 remain.</div>
+      <ul class="wl-names">
+        <li><span class="wl-name">🦡 Jordan</span><span class="lives"><span class="pip"></span><span class="pip"></span></span></li>
+        <li><span class="wl-name">🎯 Christian</span><span class="lives"><span class="pip"></span><span class="pip"></span></span></li>
+        <li class="wl-you"><span class="wl-name">⚽ Brad<span class="you-chip">YOU</span></span><span class="lives"><span class="pip"></span><span class="pip lost"></span></span></li>
+        <li><span class="wl-name">🏈 Sam</span><span class="lives"><span class="pip"></span><span class="pip lost"></span></span></li>
+        <li><span class="wl-name">🃏 Alex</span><span class="lives"><span class="pip"></span><span class="pip lost"></span></span></li>
+        <li><span class="wl-name">🎪 Casey</span><span class="lives"><span class="pip"></span><span class="pip lost"></span></span></li>
+      </ul>
+      <div class="cuts-line">Cut in Week 11: Dana.</div>
+    </div>
+  </div>
+  <div>
+    <div class="sec-head"><div class="t">Who's Left · endgame (active ≤ 4)</div></div>
+    <div class="informational">
+      <div class="field-line"><span class="n">3</span> remain. One survives.</div>
+      <ul class="wl-names">
+        <li><span class="wl-name">🦡 Jordan</span><span class="lives"><span class="pip"></span><span class="pip"></span></span></li>
+        <li class="wl-you"><span class="wl-name">⚽ Brad<span class="you-chip">YOU</span></span><span class="lives"><span class="pip"></span><span class="pip lost"></span></span></li>
+        <li><span class="wl-name">🃏 Alex</span><span class="lives"><span class="pip"></span><span class="pip lost"></span></span></li>
+      </ul>
+      <div class="cuts-line">Week 13 picks lock Saturday, 11:00 AM CT. Revealed at the deadline.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= POST ================= -->
+<div class="anno">8 · POST state — the terminal lounge. Sparse: greet + champion + evidence; ordinary modules removed. Tiebreak variant swaps the eyebrow line.</div>
+
+<div class="col-narrow">
+  <div class="greet-line">The ledger closes, <span class="v">Brad</span></div>
+  <h1 class="greet-title">The 2026 <span class="metal">Season</span></h1>
+  <div class="greet-court">One remained of 24 · the Commish records the year</div>
+
+  <div class="ceremonial champ" style="margin-top:1.4rem">
+    <div class="eyebrow">◈ Sole Survivor ◈</div>
+    <div class="champ-name">Jordan</div>
+    <div class="champ-rule"></div>
+    <p class="champ-evidence">Outlasted 23 players across 14 weeks. Two lives intact. Never picked the same conference twice in a row.</p>
+    <div class="champ-detail">Final pick: Michigan, Week 14 · The club records the season.</div>
+  </div>
+</div>
+
+</div>
+</body>
+</html>

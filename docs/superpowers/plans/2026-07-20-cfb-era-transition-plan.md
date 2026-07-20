@@ -1,0 +1,176 @@
+# CFB Era Transition — World Cup Sunset + CFB Center of Gravity
+
+**Date:** 2026-07-20
+**Status:** ACTIVE — ratified 2026-07-20 (Brad's rulings recorded in §7). Execution tracked by the §8 checkboxes: Phases 0–2 complete; Phases 3–7 pending.
+**Scope:** Planning artifact for (1) mothballing the completed 2026 World Cup game, (2) making CFB Survivor the platform's center of gravity for its ~Sep 3 launch, (3) sequencing the work. Supersedes and absorbs the Workstream C sketch in `~/.claude/plans/the-world-cup-is-reactive-manatee.md` (C1/C2), which planned the lounge transition but explicitly excluded WC shutdown.
+
+---
+
+## 1. Orientation findings (verified 2026-07-20)
+
+Facts the plan rests on. Each was read from prod, the repo, or memory this session — not assumed.
+
+**Prod live-ops (read from the droplet, read-only):**
+- Four WC systemd timers still fire post-tournament: `worldcup-sync` (every 30 min), `worldcup-advancement` (hourly), `worldcup-digest` (daily 22:30 CT), `worldcup-digest-player` (daily 05:00 CT).
+- One live crontab line: `worldcup snapshot-ranks` daily at 05:05 UTC. The `worldcup recalc` cron is already commented out, as are all CFB and Golf cron entries.
+- No CFB timers are installed/enabled. The five `deploy/cfb-*` timer pairs (setup/spreads/scores/autopick/remind, from PR #71) exist in the repo only.
+- Post-tournament behavior audit: `sync --mode scores` still polls football-data.org unconditionally (~48 calls/day, applies nothing — all 104 shells complete); if `FOOTBALL_DATA_API_KEY` were removed or expired, that poll converts into an admin alert email **every 30 minutes** (`sync.py:80` → `sync.py:627`). Advancement/digest/digest-player are DB-only no-ops with correct guards. `snapshot-ranks` appends one identical-rank row per enrollment every new calendar day — unbounded growth while archived.
+
+**Lounge coupling (file-level inventory):**
+- Home state is resolved by `worldcup_state()` in `core/main/routes.py` — clock vs `TOURNAMENT_DEADLINE_UTC`, then final match #104 completion. It is **fully decoupled from `registry.status`**: flipping registry statuses does not hand the lounge to CFB. `'post'` is a one-way latch on match #104 `is_completed` — the archive state renders forever with no expiry, which is exactly the desired mothball behavior.
+- All four `_context_*` builders in `core/main/home_context.py` and every lounge partial except three (`_commish_note.html`, `_game_card.html`, the registry loops in `_home_out.html`/`_game_tiles_compact.html`) are WC-hardwired: WC models, `SEASON_YEAR`, tier/multiplier spine, rank snapshots, match #104, "nine nations" copy. Even the logged-out `total_enrolled` count queries `WorldCupEnrollment` directly (`home_context.py:103`).
+- `featured_games()` and `_game_card.html` are **dead code** (test-only consumers). The natural featured-game seam exists in the registry but nothing real uses it.
+- `GameStatus` values `'completed'` and `'closed'` are declared but **no code path reads them**. Flipping WC to either silently drops it from `available_games()` (the logged-out join CTA block vanishes) and from admin enrollment — no dedicated UI or copy anywhere.
+- The navbar, game grids, coming-soon rails, and the CFB sub-nav in `base.html` are already registry-generic. The lounge partials are the WC-specific mass; the navbar is not a blocker.
+
+**Test coupling:** exactly one test breaks on a WC status flip — `tests/test_home_context.py::test_context_out_basic` (asserts worldcup in `available_games`). Registry helper tests use mocks. No test exercises the real WC entry through `game_must_be_open`/`enrollment_required`.
+
+**Reversibility facts (for the possible Women's World Cup):**
+- Only `WorldCupEnrollment` is season-scoped (`season_year`, unique per user+season; `SEASON_YEAR = 2026` in `games/worldcup/constants.py`). Teams, matches, picks, and rank snapshots are single-season global tables. The 2026 data **is** the archive; a revival implies a schema/data decision (§7 Q3) that does not need answering now.
+- Nothing in this plan deletes code, data, unit files, or the API key. Every mothball action is a disable, not a removal.
+
+**`fantasy-cfb-prep` worktree:** it is the `cfb/launch-prep` git worktree parked at the PR #93 merge (`7a7a62c`, June 24), 117 commits behind main, remote branch deleted. Contents beyond the stale checkout: agent-config artifacts and the gitignored CFB sandbox (seeder, `cfbprep_*` logins, smoke screenshots). The CFB registry flip to `'open'` is live there under a `skip-worktree` guard (verified intact). It is a code sandbox, not a planning directory — which is why this plan lives here on main (`docs/superpowers/plans/`), per the established spine-doc-on-main discipline.
+
+---
+
+## 2. Area A — World Cup live-ops mothball
+
+| | |
+|---|---|
+| **Current state** | Four WC timers + one cron still firing daily against a tournament that ended 2026-07-19. One (`worldcup-sync`) polls an external API for nothing and is one expired key away from 30-minute admin-email spam. One (`snapshot-ranks`) grows `worldcup_rank_snapshot` every day. |
+| **Proposed change** | Disable (not remove) all five on the droplet. Keep unit files in `deploy/`, keep `FOOTBALL_DATA_API_KEY` in `.env`, keep all sync/digest code. Zero repo changes. |
+| **Risk** | Near-zero. `systemctl disable --now` and commenting a crontab line are both one-command reversible. The only thing lost is the daily identical snapshot row, which no surface needs post-tournament (`_context_post`'s `your_climbed_n` reads the existing history). |
+| **Rationale** | Stops silent API waste and pre-empts the error-spam failure mode without tearing anything out. This is the only genuinely time-sensitive item in the plan and is independent of everything else — it can run today. |
+
+Exact commands (Brad runs these; `sudo` on the droplet needs an interactive TTY, so run them in a normal SSH session, not piped):
+
+```bash
+ssh -i ~/.ssh/id_ed25519 deploy@104.131.28.136
+
+# 1) Stop and disable the four WC timers (reversible: enable --now to revive)
+sudo systemctl disable --now worldcup-sync.timer worldcup-advancement.timer \
+    worldcup-digest.timer worldcup-digest-player.timer
+
+# 2) Confirm nothing WC is scheduled anymore
+systemctl list-timers --all | grep -i worldcup   # expect: no lines, or all "n/a"
+
+# 3) Comment out the snapshot-ranks cron line
+crontab -e
+#   → put a leading '#' on the line ending in: flask worldcup snapshot-ranks >> /var/log/fantasy/worldcup-snapshot.log 2>&1
+#   → add a note above it: "# DISABLED 2026-07-20 — WC 2026 complete; re-enable for a future WC"
+
+# 4) Verify
+crontab -l | grep snapshot   # expect the line to start with '#'
+```
+
+Optional, low value: delete the handful of redundant `worldcup_rank_snapshot` rows captured after 2026-07-20. Recommend **skip** — harmless rows, and pruning is a destructive act for zero user-visible benefit (§7 Q2; RULED skip).
+
+**Status 2026-07-20: PHASE 0 COMPLETE.** Steps 3–4 (crontab) executed non-interactively — `snapshot-ranks` line commented with a dated note, prior crontab backed up server-side at `~/crontab.bak.2026-07-20`, zero active cron jobs remain. Steps 1–2 (the four timers) run by Brad in an interactive session the same day; `systemctl list-timers --all | grep -i worldcup` returns nothing.
+
+---
+
+## 3. Area B — World Cup registry status + enrollment gating
+
+| | |
+|---|---|
+| **Current state** | WC is `status='open'`, `is_featured=True`. `/worldcup/join` still accepts enrollments into a finished tournament; WC still appears in the admin add-user dropdown and as the logged-out page's join CTA. |
+| **Proposed change** | Flip WC to `status='completed'`, `is_featured=False` **at the same moment** CFB flips to `open`/featured — one atomic changeover commit (Area E). Before that commit lands, give `'completed'` real handling: a completed/archived treatment in the registry-driven surfaces (e.g., the compact tile's existing `COMPLETED` label generalized off its hardcoded WC block) and an updated `test_context_out_basic`. |
+| **Risk** | Interim exposure: for the ~4–5 weeks until changeover, a stray visitor could still join the finished WC pool. Audience is a ~30-person friend group; the join page itself renders post-tournament state, so the confusion window is small. Flipping early instead would leave the logged-out lounge with zero open games (hero + coming-soon rail only) — defensible "between seasons" honesty, but it removes the page's only CTA with nothing replacing it. |
+| **Rationale** | One atomic flip means the out-state always has exactly one flagship CTA, tests change once, and the changeover is a single revertable commit. It also avoids doing `'completed'`-status design work twice. Flagged as §7 Q1 in case Brad prefers closing WC joins immediately. |
+
+Admin routes need no change: platform-admin access to WC admin surfaces is wanted for the archive, the advancement-reminder and bracket emails are structurally dormant, and the group-recap email is admin-triggered only.
+
+---
+
+## 4. Area C — What is preserved for a WC revival (mothball, not delete)
+
+Binding preservation rules for all subsequent work:
+
+- **No WC table is wiped, no WC row deleted.** The 2026 season data is the archive and powers the permanent `'post'` lounge/room render, the public leaderboard, and player detail pages.
+- **No WC code is deleted** — sync, bracket autofill, digests, CLI, tests all stay. The ~WC-half of the 1600+ test suite keeps running on every PR; it is the regression net under the lounge refactor (Area D).
+- **`deploy/worldcup-*` unit files stay in the repo** — they are the revival recipe. Same for `FOOTBALL_DATA_API_KEY` in prod `.env` (free tier, costs nothing).
+- **Revival-shape decision is explicitly deferred** (§7 Q3). Nothing above forecloses any of the three options (season-scope the schema / archive-and-reseed / sibling game slug for WWC).
+
+---
+
+## 5. Area D — Lounge generalization (the technical crux)
+
+| | |
+|---|---|
+| **Current state** | The lounge is WC-hardwired at every layer below the state dispatcher: state resolution (`worldcup_state()` in `core/main/routes.py`), all four context builders, ten of thirteen partials. CLAUDE.md already flags this as the work CFB launch triggers. CFB's data shape is different in kind: week-based attrition, lives, no multipliers, no single tournament deadline. |
+| **Proposed change** | Middle-path generalization (Option C below): make the registry's dormant featured-game seam load-bearing, split lounge context builders and partial trees per game behind it, and design the CFB-era lounge (including WC's archive presence and the handoff moment) with impeccable before implementation. |
+| **Risk** | The main design risk is over-abstracting for a "generic game framework" nobody needs yet; the main schedule risk is under-estimating that the four-state shape itself is WC-flavored (CFB's "live" is a weekly rhythm with pick-pending/locked/verdict substates, not a continuous tournament). C1 design must resolve the CFB lounge state model before C2 code. |
+| **Rationale** | Three approaches were weighed: |
+
+- **Option A — full featured-game framework** (per-game lounge-context providers registered in the registry, generic state-machine contract every game implements). Rejected: YAGNI. Only one game dominates the lounge at a time by doctrine ("dominated by whichever single game is currently live"), and only CFB needs this now. The abstraction cost would be paid before a second consumer exists (Golf's lounge needs are unknown until ~2027).
+- **Option B — swap-in-place** (rewrite the four builders/partials from WC to CFB directly, keep the hardwiring). Rejected: recreates today's exact debt for the next transition (Golf 2027, possible WWC), discards WC's post-state lounge render that we want to keep reachable, and contradicts CLAUDE.md's standing instruction to *generalize* off WC-specific concepts.
+- **Option C — thin seam + per-game lounge modules (recommended).** Concretely:
+  - Registry: promote the featured-game concept from dead code to the lounge's dispatch key (either make `featured_games()` load-bearing or add a `lounge_game()` helper returning the single featured-open game). Registry entries gain what the lounge needs to dispatch (state-resolver callable; later, a lounge-context callable).
+  - `core/main/routes.py`: resolve state via the featured game's resolver instead of importing `worldcup_state` directly.
+  - `core/main/home_context.py`: split into per-game lounge builders (WC's four builders move essentially as-is into a WC lounge module; CFB gets new ones). The dispatcher stays in core.
+  - Templates: per-game partial trees (the existing WC partials become the WC set, kept intact for archive/revival; CFB gets its own `_home_*` set designed in C1). Registry-generic partials (`_game_tiles_compact` minus its hardcoded WC block, coming-soon rails) stay shared.
+  - The lounge chrome remains CCC purple/gold — the dark-CFB-midnight identity belongs to the CFB *room*, not the lounge (lounge-vs-room doctrine). CFB flavor enters through content and signature surfaces (survival count, lives, weekly verdict), not substrate.
+
+**C1 (design, impeccable) decides:** the CFB lounge state model (out/pre/live/post mapping + live-state weekly substates); the CFB lounge signature surface (the analog of WC's dossier/sparkline — noting the doctrine that the lounge and the game room must stay differentiated, so the lounge signature must not duplicate the CFB room's hub surfaces); how much WC survives in the CFB-era lounge (recommend: a compact archived tile — champion + your finish — the existing `COMPLETED` tile treatment made real; §7 Q5); the WC→CFB handoff moment for the few weeks where WC is `completed` and CFB is `open`-but-preseason.
+
+**C2 (implementation) slices** are sequenced in §8. The refactor contract for the WC-extraction slice: **rendering is pixel-identical before and after** (the lounge still shows WC post-state until the changeover flip), locked by the existing `test_home_context.py` suite plus template-source locks as needed.
+
+---
+
+## 6. Area E — Registry changeover + Area F — CFB launch ops readiness
+
+**E. The changeover (one commit, launch-gated):**
+
+| | |
+|---|---|
+| **Current state** | CFB is `coming_soon`/unfeatured on main; `'open'` only in the guarded worktree. Season starts Thu Sep 3 (`week_1_start = 2026-09-03`, Brad-confirmed in the audit). |
+| **Proposed change** | One PR flipping both entries: WC → `completed` + `is_featured=False`; CFB → `open` + `is_featured=True`. Same PR updates `test_context_out_basic`, the CLAUDE.md lounge/games sections, and any changeover copy. Target: **mid-August** (~Aug 17–24), giving the friend group 2–3 weeks to join and pick before the week-1 deadline. |
+| **Risk** | Launch-day risk concentrates here by design — everything else merged earlier, gated on this flip. Revert = revert one commit. The worktree's skip-worktree guard stays untouched — the flip PR is cut from main directly (ruled 2026-07-20, §7 Q4). |
+| **Rationale** | A single atomic flip is the smallest possible launch-day diff, and every gated surface (join, lounge dispatch, admin enrollment, tiles) switches together. |
+
+**F. CFB ops enablement (runbook, no PR; execute launch week):**
+
+- [ ] Verify prod `.env`: `ODDS_API_KEY` valid (quota check), `ADMIN_EMAIL` = real mailbox (fixed 2026-07-06), Brevo SMTP vars intact.
+- [ ] Audit prod `cfb_*` tables: expect teams present, zero transactional rows (`flask cfb sync --mode status` first; then psql read-only if anything looks off). Confirm no sandbox/test data ever reached prod.
+- [ ] Install + enable the five CFB timer pairs from `deploy/` (`systemctl enable --now cfb-*.timer` after copying units, mirroring the WC timer install steps in the production deployment plan). Do **not** un-comment the legacy CFB crontab lines — timers are the canonical mechanism; delete or leave the commented cron lines as history.
+- [ ] Week-1 dry run on prod timing: `cfb sync --mode setup` (Tue-gated spreads follow), verify spreads lock on first fetch, verify reminder emails address the right cohort. Rehearse in the local sandbox first with `CFB_FAKE_NOW` anchors.
+- [ ] Deadline-semantics sanity check on week 1 specifically (Thu Sep 3 season start vs the locked Sat-11am-CT cadence): confirm the intended player experience for Thu/Fri week-1 games. The cadence is deliberately locked by `test_cfb_cfp_datemath.py` — this is a *verify the product intent* item, not a code change.
+- [ ] Post-flip smoke on prod: join → pick → standings as a non-admin, plus all four lounge states via the changeover checklist.
+
+**Known-deferred CFB items (by prior ruling, not launch-blocking):** CFP week 16–19 real dates + `get_playoff_teams()` hardcode (December, manual runbook); DQ-5 manual commish weekly email; `national_title_odds` display feature.
+
+---
+
+## 7. Open questions — RESOLVED 2026-07-20 (Brad's rulings)
+
+1. **When does WC stop accepting joins?** RULED: at the atomic changeover (~mid-Aug). The ~4–5-week window where a finished pool is technically joinable is accepted.
+2. **Prune the few post-final `worldcup_rank_snapshot` rows?** RULED: no — stop the cron (Area A) and keep the rows.
+3. **Future Women's World Cup shape** (season-scope the schema / archive-and-reseed / sibling game slug)? RULED: defer entirely; nothing in this plan forecloses any option.
+4. **The `fantasy-cfb-prep` worktree?** RULED: refresh; skip-worktree guard stays; the eventual changeover PR is cut from main, not the worktree. **Executed 2026-07-20:** `games/registry.py` had changed on main (Ruff commits), so the refresh lifted the guard, reset the file, ff-merged to `2446c6a` (= main), re-applied the CFB `'open'` flip (line 69 only), and re-set the guard. Verified: `ls-files -v` shows `S`, tree clean, WC/golf statuses untouched.
+5. **WC's presence in the CFB-era lounge?** DIRECTIONAL, not final: leaning a quieter impeccable treatment of the compact archived tile (champion + your finish). Final call remains with C1 design.
+6. **Merge strategy for C2?** RULED: **merge early, gated on the registry flip** — each C2 slice lands on main rendering identical WC output until the changeover commit throws the switch. The held-branch approach from the old Workstream C sketch is retired (its reason — WC still evolving the lounge in prod — expired with the final).
+
+---
+
+## 8. Sequencing (one PR per session, full CodeRabbit cycle to merge, per standing cadence)
+
+- [x] **Phase 0 — WC ops mothball** — COMPLETE 2026-07-20 (crontab commented non-interactively; the four timers disabled by Brad; zero WC jobs scheduled).
+- [x] **Phase 1 — C1 lounge design session(s)** — COMPLETE 2026-07-20: `docs/superpowers/specs/2026-07-20-cfb-era-lounge-design.md` (+ visual-companion mockup) covers all four states, the live-state beats, the WC archived tile + farewell, the handoff, and the state model; Brad's four C1 rulings recorded in the spec header.
+- [x] **Phase 2 — C2 slice 1: registry seam** — COMPLETE 2026-07-20: `GameRegistryEntry.lounge_state` resolver + `lounge_game()` (replaces dead `featured_games()`); `core/main/routes.py` dispatches through the seam; `'completed'` semantics locked across helpers; rendering unchanged (WC still open/featured); 13 seam tests in `tests/test_registry_seam.py`.
+- [ ] **Phase 3 — C2 slice 2: WC lounge extraction** — builders + partials move behind the seam; pixel-identical render contract; existing suite as the net.
+- [ ] **Phase 4 — C2 slice 3+: CFB lounge builders + partials** (likely 2–3 PRs given four states + signature surface): dead code on prod until the flip; smoked in the sandbox with `CFB_FAKE_NOW` + a local-only registry flip.
+- [ ] **Phase 5 — Changeover PR** (~Aug 17–24): the atomic double flip + test/copy/CLAUDE.md updates (§6 E).
+- [ ] **Phase 6 — CFB ops enablement + launch smoke** (launch week: §6 F runbook).
+- [ ] **Phase 7 — post-launch cleanups**: CLAUDE.md lounge-doctrine rewrite if any drift remains; memory updates; December CFP runbook when in season.
+
+Rough capacity: 6–8 working sessions before the flip, against a ~4–5-week runway to mid-August — comfortable, per "thorough over fast."
+
+---
+
+## 9. Explicitly out of scope / untouched
+
+- The WC **room** (`games/worldcup/` templates/routes/services): stays exactly as shipped, rendering post-state forever. No WC room work is proposed.
+- WC scoring SSoT, elimination helper, stage labels, public leaderboard, player detail, stats hub: untouched.
+- Golf: stays `coming_soon` (Jan 2027 launch; Phase U design is its own future effort). Golf timers stay disabled.
+- The lite Google-Sheet pool, `_migration_source/`, and all gitignored local artifacts: untouched.
+- Any WC data deletion, code deletion, or key removal: explicitly rejected throughout.
