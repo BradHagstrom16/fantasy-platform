@@ -65,7 +65,7 @@ crontab -l | grep snapshot   # expect the line to start with '#'
 
 Optional, low value: delete the handful of redundant `worldcup_rank_snapshot` rows captured after 2026-07-20. Recommend **skip** — harmless rows, and pruning is a destructive act for zero user-visible benefit (§7 Q2; RULED skip).
 
-**Status 2026-07-20:** steps 3–4 (crontab) executed non-interactively — `snapshot-ranks` line commented with a dated note, prior crontab backed up server-side at `~/crontab.bak.2026-07-20`, zero active cron jobs remain. Steps 1–2 (the four timers) still pending: `sudo -n` confirmed a password is required, so they need Brad in an interactive SSH session.
+**Status 2026-07-20: PHASE 0 COMPLETE.** Steps 3–4 (crontab) executed non-interactively — `snapshot-ranks` line commented with a dated note, prior crontab backed up server-side at `~/crontab.bak.2026-07-20`, zero active cron jobs remain. Steps 1–2 (the four timers) run by Brad in an interactive session the same day; `systemctl list-timers --all | grep -i worldcup` returns nothing.
 
 ---
 
@@ -154,7 +154,7 @@ Binding preservation rules for all subsequent work:
 
 ## 8. Sequencing (one PR per session, full CodeRabbit cycle to merge, per standing cadence)
 
-- [ ] **Phase 0 — WC ops mothball** (no PR). Crontab half DONE 2026-07-20; remaining: `sudo systemctl disable --now` on the four `worldcup-*` timers (Brad, interactive TTY; §2 steps 1–2). Independent of everything below.
+- [x] **Phase 0 — WC ops mothball** — COMPLETE 2026-07-20 (crontab commented non-interactively; the four timers disabled by Brad; zero WC jobs scheduled).
 - [ ] **Phase 1 — C1 lounge design session(s)** (impeccable; produces a design spec in `docs/superpowers/specs/`): CFB-era lounge across all four states + WC archive tile + handoff moment + CFB lounge state model. No implementation.
 - [ ] **Phase 2 — C2 slice 1: registry seam** — featured-game dispatch made real, `'completed'` status handled, WC still open/featured, rendering unchanged, tests updated/added.
 - [ ] **Phase 3 — C2 slice 2: WC lounge extraction** — builders + partials move behind the seam; pixel-identical render contract; existing suite as the net.
