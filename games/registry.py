@@ -16,6 +16,7 @@ from typing import Any, Literal
 from games.cfb.services import enrollment as _cfb_enrollment
 from games.golf.services import enrollment as _golf_enrollment
 from games.worldcup.services import enrollment as _worldcup_enrollment
+from games.worldcup.services import lounge as _worldcup_lounge
 from games.worldcup.services import state as _worldcup_state
 
 GameStatus = Literal['coming_soon', 'open', 'closed', 'completed']
@@ -42,6 +43,11 @@ class GameRegistryEntry:
     # Required for a game to own the lounge (see lounge_game()); None for
     # games that never dispatch the lounge in their current status.
     lounge_state: Callable[[], str] | None = None
+    # Lounge context builder (C2 slice 2): per-state data assembly for the
+    # lounge render — (user, state) -> template context dict, state=None for
+    # the logged-out surface. Like lounge_state, required for a game to own
+    # the lounge; None for games whose lounge builders haven't shipped.
+    lounge_context: Callable[[Any, str | None], dict] | None = None
 
 
 # Populated in Tasks 3, 5, 8. Intentionally empty at file-creation time so
@@ -64,6 +70,7 @@ GAMES: list[GameRegistryEntry] = [
         short_name='World Cup',
         launch_label='Jun 11',
         lounge_state=_worldcup_state.worldcup_state,
+        lounge_context=_worldcup_lounge.build_lounge_context,
     ),
     GameRegistryEntry(
         slug='cfb',
@@ -151,12 +158,18 @@ def lounge_game() -> GameRegistryEntry | None:
     time; the atomic changeover (transition plan §6 E) flips both flags in
     one commit. First match wins if that invariant is ever violated.
 
-    A `lounge_state` resolver is required to own the lounge: a game that
-    cannot resolve a lounge state cannot render one, so a featured+open
-    entry without a resolver is skipped (launch safety — the flags alone
-    never hand the lounge to a game whose lounge code hasn't shipped).
+    Both lounge callables are required to own the lounge: a game that
+    cannot resolve a state or build the per-state context cannot render
+    one, so a featured+open entry missing either is skipped (launch
+    safety — the flags alone never hand the lounge to a game whose
+    lounge code hasn't shipped).
     """
     for entry in GAMES:
-        if entry.is_featured and entry.status == 'open' and entry.lounge_state is not None:
+        if (
+            entry.is_featured
+            and entry.status == 'open'
+            and entry.lounge_state is not None
+            and entry.lounge_context is not None
+        ):
             return entry
     return None

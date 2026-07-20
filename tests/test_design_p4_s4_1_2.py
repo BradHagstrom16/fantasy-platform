@@ -61,10 +61,10 @@ from pathlib import Path
 
 ROOT = Path(__file__).parent.parent
 CSS = (ROOT / 'static' / 'css' / 'style.css').read_text()
-HOME_OUT = (ROOT / 'core' / 'main' / 'templates' / 'main' / '_home_out.html').read_text()
-HOME_PRE = (ROOT / 'core' / 'main' / 'templates' / 'main' / '_home_pre.html').read_text()
-HOME_LIVE = (ROOT / 'core' / 'main' / 'templates' / 'main' / '_home_live.html').read_text()
-BALLOT = (ROOT / 'core' / 'main' / 'templates' / 'main' / '_ballot_card.html').read_text()
+HOME_OUT = (ROOT / 'games' / 'worldcup' / 'templates' / 'worldcup' / 'lounge' / '_home_out.html').read_text()
+HOME_PRE = (ROOT / 'games' / 'worldcup' / 'templates' / 'worldcup' / 'lounge' / '_home_pre.html').read_text()
+HOME_LIVE = (ROOT / 'games' / 'worldcup' / 'templates' / 'worldcup' / 'lounge' / '_home_live.html').read_text()
+BALLOT = (ROOT / 'games' / 'worldcup' / 'templates' / 'worldcup' / 'lounge' / '_ballot_card.html').read_text()
 DESIGN_MD = (ROOT / 'DESIGN.md').read_text()
 
 

@@ -44,7 +44,7 @@
        CTA surface: it carries a state-aware button (join / make picks / enter
        the hub) inside the box, so there is no separate action card above it.
        The deadline pressure and the ask now live in one ceremonial unit. #}
-    {% include 'main/_countdown_card.html' %}
+    {% include 'worldcup/lounge/_countdown_card.html' %}
 
     {# Sealed-roster record. Once picks are locked there is no pending action,
        so the ballot sits below the decree — the countdown's "Council Convenes"
@@ -53,7 +53,7 @@
        ballot IS here the lockup moves to the rail (so this column doesn't run
        longer than the rail). #}
     {% if _has_ballot %}
-      {% include 'main/_ballot_card.html' %}
+      {% include 'worldcup/lounge/_ballot_card.html' %}
     {% else %}
       {{ lockup_mark }}
     {% endif %}

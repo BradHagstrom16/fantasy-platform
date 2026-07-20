@@ -45,7 +45,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 STYLE_CSS = REPO_ROOT / 'static' / 'css' / 'style.css'
 WC_HOME_POST = REPO_ROOT / 'games' / 'worldcup' / 'templates' / 'worldcup' / '_home_post.html'
 HOME_SHELL = REPO_ROOT / 'games' / 'worldcup' / 'templates' / 'worldcup' / 'home_shell.html'
-PLATFORM_CHAMPION_BANNER = REPO_ROOT / 'core' / 'main' / 'templates' / 'main' / '_champion_banner.html'
+PLATFORM_CHAMPION_BANNER = REPO_ROOT / 'games' / 'worldcup' / 'templates' / 'worldcup' / 'lounge' / '_champion_banner.html'
 
 
 @pytest.fixture()

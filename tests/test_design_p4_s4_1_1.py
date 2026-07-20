@@ -99,8 +99,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).parent.parent
 CSS = (ROOT / 'static' / 'css' / 'style.css').read_text()
-HOME_OUT = (ROOT / 'core' / 'main' / 'templates' / 'main' / '_home_out.html').read_text()
-COUNTDOWN = (ROOT / 'core' / 'main' / 'templates' / 'main' / '_countdown_card.html').read_text()
+HOME_OUT = (ROOT / 'games' / 'worldcup' / 'templates' / 'worldcup' / 'lounge' / '_home_out.html').read_text()
+COUNTDOWN = (ROOT / 'games' / 'worldcup' / 'templates' / 'worldcup' / 'lounge' / '_countdown_card.html').read_text()
 
 
 def _css_block(selector: str) -> str:

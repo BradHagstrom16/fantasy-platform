@@ -120,13 +120,16 @@ def test_coming_soon_games_returns_coming_soon_only(app, monkeypatch):
 
 def test_lounge_game_respects_is_featured_flag(app, monkeypatch):
     """featured_games(user) was replaced by lounge_game() when the seam went
-    load-bearing (C2 slice 1); full seam coverage lives in test_registry_seam.py."""
+    load-bearing (C2 slice 1); full seam coverage lives in test_registry_seam.py.
+    Since C2 slice 2, owning the lounge takes both callables — the stub
+    lounge_context mirrors the stub resolver."""
     from dataclasses import replace
 
     from games import registry
     entries = [
         replace(_mock_entry('alpha', status='open', is_featured=True),
-                lounge_state=lambda: 'pre'),
+                lounge_state=lambda: 'pre',
+                lounge_context=lambda user, state: {}),
         _mock_entry('beta',  status='open', is_featured=False),
         _mock_entry('gamma', status='coming_soon', is_featured=True),
     ]
