@@ -1,40 +1,38 @@
-{# Compact 3-tile game strip — used by pre/live/post #}
+{# Compact game tile strip — used by pre/live/post.
+
+   Generalized in Phase 4 (C1 §3.4): the strip is registry + context
+   driven and carries no game knowledge. The featured game's tile reads
+   identity off `lounge_entry` (set by the core dispatcher) and its
+   per-state label off `game_tile_label` (computed by the game's lounge
+   context builder — e.g. the WC 'SEALED'/'LIVE · #N'/'COMPLETED' set,
+   or CFB's 'PRESEASON · SEP 3'). Archived games (completed pools kept
+   reachable for their members) render from `archived_tiles`; the
+   coming-soon tiles stay registry-driven.
+
+   No live-dot pulse on the active tile (Critique r2 2026-05-15): the
+   user is already viewing this game's live data in the lounge above —
+   the `.cg--active` chrome + dynamic state label differentiate it. If
+   multiple games ever run live at once, a dot can return gated on
+   "this game is not the one we are viewing." #}
 <div class="court-games-wrap">
   <div class="sec-head">
     <div class="t">Your Games</div>
   </div>
   <div class="court-games">
-    {# WC tile — always present, label depends on state #}
-    {% set wc_label = 'ROSTER OPEN' %}
-    {% if state == 'pre' and is_enrolled and enrollment.picks_submitted %}
-      {% set wc_label = 'SEALED' %}
-    {% elif state == 'live' and dossier and dossier.rank %}
-      {% set wc_label = 'LIVE · #' ~ dossier.rank %}
-    {% elif state == 'live' %}
-      {% set wc_label = 'LIVE' %}
-    {% elif state == 'post' %}
-      {% set wc_label = 'COMPLETED' %}
-    {% endif %}
-    {# Critique r2 follow-up (2026-05-15) — live-dot pulse removed.
-       PR #34 added it to differentiate the active tile from the
-       coming-soon tiles, but on lounge live the user is already
-       viewing this game's live data in the dossier above; a pulsing
-       red dot below it creates a false-alarm cue that competes with
-       the actual live data. The active tile is already differentiated
-       by `.cg--active` chrome + the dynamic state label vs the
-       coming-soon tiles' static registry-driven launch labels. The
-       dot was over-decoration. If/when multiple games run live and
-       this partial renders on a non-WC lounge surface, the dot can
-       come back gated on "this game is not the one we are viewing." #}
-    <a class="cg cg--active" href="{{ url_for('worldcup.index') }}">
-      <div class="g">⚽</div>
-      <div class="n">World Cup</div>
-      <div class="p">{{ wc_label }}</div>
+    <a class="cg cg--active" href="{{ url_for(lounge_entry.blueprint_index) }}">
+      <div class="g">{{ lounge_entry.emoji }}</div>
+      <div class="n">{{ lounge_entry.short_name or lounge_entry.display_name }}</div>
+      <div class="p">{{ game_tile_label }}</div>
     </a>
 
-    {# CFB and Golf — pulled from coming_soon_games registry.
-       short_name + launch_label live on GameRegistryEntry so this partial
-       carries no slug knowledge. #}
+    {% for tile in archived_tiles %}
+    <a class="cg cg--archived" href="{{ url_for(tile.endpoint) }}">
+      <div class="g">{{ tile.emoji }}</div>
+      <div class="n">{{ tile.name }}</div>
+      <div class="p">{{ tile.label }}</div>
+    </a>
+    {% endfor %}
+
     {% for game in coming_soon_games %}
     <div class="cg cg--soon">
       <div class="g">{{ game.emoji }}</div>

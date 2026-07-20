@@ -1,0 +1,41 @@
+{# Preseason decree — the platform decree primitive generalized off the
+   WC countdown card (C1 §3.6): seal band No 002, H2, the big-days
+   numeral (the only big-numeral countdown in the CFB era), foot copy,
+   state-aware gold CTA.
+
+   Static day count on purpose: the pre state ends when week 1 is
+   activated (an admin/cron action), not at a client-computable instant,
+   so there is no live tick and no data-deadline-utc reload hook —
+   countdown.js quietly no-ops on this page.
+
+   Gold CTA budget (C1 §3.1): this is one of exactly two metal-gold CTAs
+   in the CFB-era lounge; the other is the OPEN summons. #}
+{% if not is_enrolled %}
+  {% set _cta_href = url_for('cfb.join') %}
+  {% set _cta_label = 'Take Your Two Lives' %}
+  {% set _cta_sub = "Join the pool. Lose twice and you're out." %}
+{% else %}
+  {% set _cta_href = url_for('cfb.index') %}
+  {% set _cta_label = 'Enter the Room' %}
+  {% set _cta_sub = none %}
+{% endif %}
+<div class="decree animate-in-scale">
+  <div class="decree-seal">
+    <div class="s">By Decree of the Commish <span class="num">No 002</span></div>
+    <div class="s decree-seal-year">CFB Survivor &rsquo;26</div>
+  </div>
+
+  <div class="decree-body">
+    <h2>First Pick Locks In</h2>
+    <div class="decree-hero" role="text"
+         aria-label="{{ decree_days }} day{{ '' if decree_days == 1 else 's' }} until the first pick locks">
+      <div class="decree-hero-num" aria-hidden="true">{{ '%02d'|format(decree_days) }}</div>
+      <div class="decree-hero-unit" aria-hidden="true">Days</div>
+    </div>
+    <p class="decree-foot">Everyone starts with two lives. One team a week, win outright.<br>{{ decree_deadline_line }}</p>
+    <a class="cta-seal decree-cta" href="{{ _cta_href }}">
+      <span class="cta-seal-label">{{ _cta_label }}<i class="bi bi-arrow-right" aria-hidden="true"></i></span>
+      {% if _cta_sub %}<span class="cta-seal-sub">{{ _cta_sub }}</span>{% endif %}
+    </a>
+  </div>
+</div>

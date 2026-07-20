@@ -1,0 +1,34 @@
+{# CFB pre-state — the handoff (C1 §4.2, single column):
+   greet, preseason decree, WC farewell strip, tiles, commish note.
+   Renders only once CFB owns the lounge (Phase 5 flip). No fabricated
+   standings, no empty charts; the farewell strip retires automatically
+   when the state machine leaves 'pre' (C1 ruling 4). The commish note
+   rides the preseason composition per games/cfb/DESIGN.md §8.8. #}
+<div class="home-col">
+
+  {# Greet #}
+  <div class="greet">
+    <p class="greet-line">
+      The club reconvenes,
+      <span class="v">{{ display_name }}</span>
+    </p>
+    <h1 class="greet-title">
+      The Season
+      <span class="home-metal-text">Opens</span>
+    </h1>
+    <div class="greet-court">{{ court_line }}</div>
+  </div>
+
+  {# Preseason decree — the generalized platform primitive (C1 §3.6) #}
+  {% include 'cfb/lounge/_decree.html' %}
+
+  {# The farewell ledger strip — WC archive, pre-state only (C1 §3.5) #}
+  {% include 'cfb/lounge/_farewell_strip.html' %}
+
+  {# Compact game tiles #}
+  {% include 'main/_game_tiles_compact.html' %}
+
+  {# Commissioner presence — admin-editable, absent when empty #}
+  {% include 'main/_commish_note.html' ignore missing %}
+
+</div>{# /.home-col #}
