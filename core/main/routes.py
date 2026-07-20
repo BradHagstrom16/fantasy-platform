@@ -24,10 +24,11 @@ def index():
         ctx = build_home_context(None, None)
         return render_template('main/index.html', state='out', **ctx)
     game = lounge_game()
-    if game is None or game.lounge_state is None:
+    if game is None:
         # Defensive fallback — unreachable while the changeover flip is
-        # atomic (exactly one featured-open game at all times). The out
-        # shell is the only state that renders without a featured game.
+        # atomic (exactly one featured-open game, resolver included, at all
+        # times). The out shell is the only state that renders without a
+        # featured game. lounge_game() guarantees a resolver when non-None.
         ctx = build_home_context(None, None)
         return render_template('main/index.html', state='out', **ctx)
     state = game.lounge_state()

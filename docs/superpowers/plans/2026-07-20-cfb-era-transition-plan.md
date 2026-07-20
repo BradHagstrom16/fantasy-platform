@@ -1,7 +1,7 @@
 # CFB Era Transition — World Cup Sunset + CFB Center of Gravity
 
 **Date:** 2026-07-20
-**Status:** DRAFT — awaiting Brad's review. Nothing in this plan has been executed.
+**Status:** ACTIVE — ratified 2026-07-20 (Brad's rulings recorded in §7). Execution tracked by the §8 checkboxes: Phases 0–2 complete; Phases 3–7 pending.
 **Scope:** Planning artifact for (1) mothballing the completed 2026 World Cup game, (2) making CFB Survivor the platform's center of gravity for its ~Sep 3 launch, (3) sequencing the work. Supersedes and absorbs the Workstream C sketch in `~/.claude/plans/the-world-cup-is-reactive-manatee.md` (C1/C2), which planned the lounge transition but explicitly excluded WC shutdown.
 
 ---

@@ -77,7 +77,7 @@ The WC palette is intentionally asymmetric. The colors do not carry equal visual
 
    The underlying page substrate remains the platform bone tone; WC does not introduce its own full-page body substrate.
 
-3. **Navy (`--wc-navy` `#002868`) — Structural / Identity Anchor**
+3. **Navy (the game-slot `--game-primary` `#002868`) — Structural / Identity Anchor** (distinct from the brand token `--wc-navy` `#001A4D`, which serves text/accent consumers — two navies by construction, see the palette frontmatter)
 
    Navy carries authority, structure, framing, and persistent game identity. It is intentionally concentrated into framing surfaces rather than distributed broadly across body content.
 

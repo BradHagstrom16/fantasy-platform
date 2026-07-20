@@ -107,7 +107,7 @@ Every screen should answer four questions:
 
 CCC (Corrupt Commish Club) is a custom fantasy-sports platform for hosting pools and game formats that mainstream platforms either don't support, support poorly, or monetize in ways incompatible with a small-group experience.
 
-Examples of what CCC hosts (as of the 2026-27 era: CFB Survivor is the active flagship; the 2026 World Cup pool ran to completion and is archived; Golf launches ~2027 — `games/registry.py` is the status SSoT):
+Examples of what CCC hosts (as of the 2026-27 era: CFB Survivor is the flagship, launching ~Sep 2026; the 2026 World Cup pool ran to completion and is archived as a game; Golf launches ~2027 — `games/registry.py` is the SSoT for each game's live status at any moment):
 
 - Golf Pick'em across a full PGA season
 - CFB Survivor with custom weekly spread-lock rules

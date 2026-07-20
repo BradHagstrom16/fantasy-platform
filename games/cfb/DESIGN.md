@@ -721,7 +721,7 @@ Density follows §1.9's phases: early = more summary, less player detail; midsea
 
 **Mobile** preserves the narrative order: summons/verdict → lives + deadline → primary action → who's left → compact standings → commissioner note → recent change → routes. Never opens with a decorative header, oversized navigation, or a standings table; the unresolved pick is visible without extensive scrolling. A sticky Choose Team action is acceptable only while no pick exists and the deadline is open, and it must not obstruct content or accessibility.
 
-**Desktop** uses width for hierarchy and breathing room, not a multi-column dashboard: a primary column (summons/verdict/player card, compact standings, recent change) and a secondary column (who's left, commissioner note, deadline, routes). The unresolved action stays visually dominant. A lounge is composed, not tiled.
+**Desktop** uses width for hierarchy and breathing room, not a multi-column dashboard: a primary column (summons/verdict/player card, compact standings, recent change) and a secondary column (who's left, deadline, routes); the Commissioner's Note runs full-width below the pair (C1 ruling 2026-07-20 — the platform's S2.1.2 lesson: long-form Newsreader in a thin rail breaks the 65–75ch line-length register). The unresolved action stays visually dominant. A lounge is composed, not tiled.
 
 ### 8.18 Empty, loading, error
 

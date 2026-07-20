@@ -150,8 +150,13 @@ def lounge_game() -> GameRegistryEntry | None:
     game is currently live — exactly one entry should be featured+open at a
     time; the atomic changeover (transition plan §6 E) flips both flags in
     one commit. First match wins if that invariant is ever violated.
+
+    A `lounge_state` resolver is required to own the lounge: a game that
+    cannot resolve a lounge state cannot render one, so a featured+open
+    entry without a resolver is skipped (launch safety — the flags alone
+    never hand the lounge to a game whose lounge code hasn't shipped).
     """
     for entry in GAMES:
-        if entry.is_featured and entry.status == 'open':
+        if entry.is_featured and entry.status == 'open' and entry.lounge_state is not None:
             return entry
     return None

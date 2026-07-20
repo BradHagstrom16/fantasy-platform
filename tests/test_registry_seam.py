@@ -16,6 +16,7 @@ from dataclasses import replace
 from unittest.mock import MagicMock
 
 import pytest
+from sqlalchemy import select
 
 from app import create_app
 from extensions import db
@@ -76,20 +77,26 @@ def _login(client, auth_id):
 def test_lounge_game_returns_featured_open_entry(app, monkeypatch):
     from games import registry
     entries = [
-        _mock_entry('alpha', status='open', is_featured=False),
-        _mock_entry('beta', status='open', is_featured=True),
+        _mock_entry('alpha', status='open', is_featured=False,
+                    lounge_state=lambda: 'pre'),
+        _mock_entry('beta', status='open', is_featured=True,
+                    lounge_state=lambda: 'pre'),
     ]
     monkeypatch.setattr(registry, 'GAMES', entries)
     assert registry.lounge_game().slug == 'beta'
 
 
 def test_lounge_game_excludes_featured_but_not_open(app, monkeypatch):
-    """A featured entry that is coming_soon or completed never owns the lounge."""
+    """A featured entry that is coming_soon or completed never owns the lounge,
+    resolver or not."""
     from games import registry
     entries = [
-        _mock_entry('alpha', status='coming_soon', is_featured=True),
-        _mock_entry('beta', status='completed', is_featured=True),
-        _mock_entry('gamma', status='open', is_featured=True),
+        _mock_entry('alpha', status='coming_soon', is_featured=True,
+                    lounge_state=lambda: 'pre'),
+        _mock_entry('beta', status='completed', is_featured=True,
+                    lounge_state=lambda: 'post'),
+        _mock_entry('gamma', status='open', is_featured=True,
+                    lounge_state=lambda: 'live'),
     ]
     monkeypatch.setattr(registry, 'GAMES', entries)
     assert registry.lounge_game().slug == 'gamma'
@@ -98,8 +105,34 @@ def test_lounge_game_excludes_featured_but_not_open(app, monkeypatch):
 def test_lounge_game_none_when_no_featured_open_game(app, monkeypatch):
     from games import registry
     entries = [
-        _mock_entry('alpha', status='open', is_featured=False),
-        _mock_entry('beta', status='completed', is_featured=True),
+        _mock_entry('alpha', status='open', is_featured=False,
+                    lounge_state=lambda: 'pre'),
+        _mock_entry('beta', status='completed', is_featured=True,
+                    lounge_state=lambda: 'post'),
+    ]
+    monkeypatch.setattr(registry, 'GAMES', entries)
+    assert registry.lounge_game() is None
+
+
+def test_lounge_game_skips_featured_open_entry_without_resolver(app, monkeypatch):
+    """A game that cannot render the lounge never owns it: featured+open with
+    no lounge_state resolver is skipped in favor of the next eligible entry."""
+    from games import registry
+    entries = [
+        _mock_entry('alpha', status='open', is_featured=True, lounge_state=None),
+        _mock_entry('beta', status='open', is_featured=True,
+                    lounge_state=lambda: 'live'),
+    ]
+    monkeypatch.setattr(registry, 'GAMES', entries)
+    assert registry.lounge_game().slug == 'beta'
+
+
+def test_lounge_game_none_when_sole_featured_open_lacks_resolver(app, monkeypatch):
+    """Launch safety: flipping a game featured+open before its resolver ships
+    cannot hand it the lounge — the dispatch refuses, never crashes."""
+    from games import registry
+    entries = [
+        _mock_entry('alpha', status='open', is_featured=True, lounge_state=None),
     ]
     monkeypatch.setattr(registry, 'GAMES', entries)
     assert registry.lounge_game() is None
@@ -123,12 +156,23 @@ def test_worldcup_entry_lounge_state_is_worldcup_state(app):
 def test_changeover_flip_hands_lounge_to_cfb(app, monkeypatch):
     """Simulate the atomic changeover (plan section 6 E) against the REAL
     registry: WC -> completed/unfeatured, CFB -> open/featured. The seam,
-    not any hardcoded slug, must hand the lounge to CFB."""
+    not any hardcoded slug, must hand the lounge to CFB.
+
+    CFB's real lounge_state resolver ships in C2 slice 3+ (plan section 8,
+    Phase 4 precedes the Phase 5 flip); a stub stands in for it here. The
+    resolver-less case is locked separately by
+    test_lounge_game_none_when_sole_featured_open_lacks_resolver."""
     from games import registry
     set_status(monkeypatch, 'worldcup', 'completed')
     set_is_featured(monkeypatch, 'worldcup', False)
     set_status(monkeypatch, 'cfb', 'open')
     set_is_featured(monkeypatch, 'cfb', True)
+    patched = [
+        replace(entry, lounge_state=lambda: 'pre')
+        if entry.slug == 'cfb' else entry
+        for entry in registry.GAMES
+    ]
+    monkeypatch.setattr(registry, 'GAMES', patched)
     assert registry.lounge_game().slug == 'cfb'
 
 
@@ -160,7 +204,7 @@ def test_completed_game_still_joined_for_enrolled_user(app, monkeypatch):
         _mock_entry('beta', status='completed', enrollment=None),
     ])
     with app.app_context():
-        user = User.query.filter_by(auth_id=auth_id).first()
+        user = db.session.scalar(select(User).filter_by(auth_id=auth_id))
         joined = registry.joined_games(user)
     assert [e.slug for e in joined] == ['alpha']
 
