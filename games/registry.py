@@ -16,6 +16,7 @@ from typing import Any, Literal
 from games.cfb.services import enrollment as _cfb_enrollment
 from games.golf.services import enrollment as _golf_enrollment
 from games.worldcup.services import enrollment as _worldcup_enrollment
+from games.worldcup.services import state as _worldcup_state
 
 GameStatus = Literal['coming_soon', 'open', 'closed', 'completed']
 
@@ -36,6 +37,11 @@ class GameRegistryEntry:
     # the partial slug-agnostic when an entry omits them.
     short_name: str = ''
     launch_label: str = ''
+    # Lounge state resolver (transition plan §5, C2 slice 1): returns the
+    # lounge state for an authenticated viewer ('pre' | 'live' | 'post').
+    # Required for a game to own the lounge (see lounge_game()); None for
+    # games that never dispatch the lounge in their current status.
+    lounge_state: Callable[[], str] | None = None
 
 
 # Populated in Tasks 3, 5, 8. Intentionally empty at file-creation time so
@@ -57,6 +63,7 @@ GAMES: list[GameRegistryEntry] = [
         admin_enroll=_worldcup_enrollment.admin_enroll,
         short_name='World Cup',
         launch_label='Jun 11',
+        lounge_state=_worldcup_state.worldcup_state,
     ),
     GameRegistryEntry(
         slug='cfb',
@@ -136,6 +143,15 @@ def coming_soon_games() -> list[GameRegistryEntry]:
     return [entry for entry in GAMES if entry.status == 'coming_soon']
 
 
-def featured_games(user) -> list[GameRegistryEntry]:
-    """Featured games with status='open' (coming_soon featured games are not shown)."""
-    return [entry for entry in GAMES if entry.is_featured and entry.status == 'open']
+def lounge_game() -> GameRegistryEntry | None:
+    """The single featured-open game that owns the lounge, or None.
+
+    Doctrine (DESIGN.md §1.6): the lounge is dominated by whichever single
+    game is currently live — exactly one entry should be featured+open at a
+    time; the atomic changeover (transition plan §6 E) flips both flags in
+    one commit. First match wins if that invariant is ever violated.
+    """
+    for entry in GAMES:
+        if entry.is_featured and entry.status == 'open':
+            return entry
+    return None

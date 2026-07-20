@@ -118,7 +118,9 @@ def test_coming_soon_games_returns_coming_soon_only(app, monkeypatch):
     assert [e.slug for e in registry.coming_soon_games()] == ['beta', 'gamma']
 
 
-def test_featured_games_respects_is_featured_flag(app, monkeypatch):
+def test_lounge_game_respects_is_featured_flag(app, monkeypatch):
+    """featured_games(user) was replaced by lounge_game() when the seam went
+    load-bearing (C2 slice 1); full seam coverage lives in test_registry_seam.py."""
     from games import registry
     entries = [
         _mock_entry('alpha', status='open', is_featured=True),
@@ -126,9 +128,7 @@ def test_featured_games_respects_is_featured_flag(app, monkeypatch):
         _mock_entry('gamma', status='coming_soon', is_featured=True),
     ]
     monkeypatch.setattr(registry, 'GAMES', entries)
-    anon = MagicMock(is_authenticated=False)
-    result = registry.featured_games(anon)
-    assert [e.slug for e in result] == ['alpha']  # coming_soon featured excluded
+    assert registry.lounge_game().slug == 'alpha'  # coming_soon featured excluded
 
 
 def test_games_for_user_pairs_entries_with_enrollments(app, monkeypatch):
