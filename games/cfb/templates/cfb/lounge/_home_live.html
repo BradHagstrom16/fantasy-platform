@@ -1,0 +1,81 @@
+{# CFB live-state — the four-beat lounge (C1 §4.3). Desktop: two-column
+   (.home-live-grid, the platform lounge layout): primary = greet →
+   Summons (beat-resolved, or its eliminated/view variants) → compact
+   standings (never above the Summons, §8.11); rail = Who's Left →
+   tiles. Full-width below the pair: the Commissioner's Note (ruling 3).
+   Mobile collapses in source order — Summons → standings → Who's Left →
+   tiles → note (§8.17) — so the unresolved pick is visible without
+   scrolling. No deadline echo in the rail (the Summons' deadline is one
+   viewport away); no sticky mobile CTA at launch (§8.17). #}
+{% from 'cfb/lounge/_pips.html' import pips %}
+<div class="home-live-grid">
+
+  <div class="home-live-col home-live-col--main">
+
+    <div class="greet">
+      <p class="greet-line">
+        The pool plays on,
+        <span class="v">{{ display_name }}</span>
+      </p>
+      <h1 class="greet-title">
+        Still
+        <span class="home-metal-text">Standing</span>
+      </h1>
+      <div class="greet-court">{{ court_line }}</div>
+    </div>
+
+    {# Summons slot — beat card, standing eliminated, or the view variant #}
+    {% if viewer_mode == 'view' %}
+      {% include 'cfb/lounge/_view_cta.html' %}
+    {% elif viewer_mode == 'eliminated' %}
+      {% include 'cfb/lounge/_eliminated_card.html' %}
+    {% else %}
+      {% include 'cfb/lounge/_summons.html' %}
+    {% endif %}
+
+    {# Compact standings — top-3 active + the you-row (C1 §3.3); lives
+       are the right-hand value (points are a WC concept). #}
+    {% if standings_rows %}
+    <div class="sec-head">
+      <div class="t">Standings</div>
+      <a class="more" href="{{ url_for('cfb.index') }}">Full standings &rsaquo;</a>
+    </div>
+    <div class="rolls">
+      {% for row in standings_rows %}
+      {% if row.separator_above %}<div class="roll-dots">&middot; &middot; &middot;</div>{% endif %}
+      <div class="roll-row{% if row.is_you %} roll-row--you{% endif %}">
+        <div class="roll-rank{% if row.rank == 1 %} roll-rank--gold{% endif %}">{{ row.rank }}</div>
+        <div class="roll-meta">
+          <div class="roll-name">
+            {{ row.avatar }}{{ row.name }}
+            {% if row.is_you %}<span class="roll-you-chip">YOU</span>{% endif %}
+          </div>
+          <div class="roll-tagline">{{ row.tagline }}</div>
+        </div>
+        <div class="roll-lives">{{ pips(row.lives) }}</div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+  </div>{# /.home-live-col--main #}
+
+  <div class="home-live-col home-live-col--rail">
+
+    <div class="sec-head">
+      <div class="t">Who&rsquo;s Left</div>
+      <a class="more" href="{{ url_for('cfb.index') }}">The field &rsaquo;</a>
+    </div>
+    {% include 'cfb/lounge/_whos_left.html' %}
+
+    {# Compact game tiles #}
+    {% include 'main/_game_tiles_compact.html' %}
+
+  </div>{# /.home-live-col--rail #}
+
+  {# Commissioner presence — full-width Newsreader band (ruling 3) #}
+  <div class="home-live-narrative">
+    {% include 'main/_commish_note.html' ignore missing %}
+  </div>
+
+</div>{# /.home-live-grid #}

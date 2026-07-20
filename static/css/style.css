@@ -2387,6 +2387,282 @@ body.game-golf {
   color: var(--gold-light);
 }
 
+/* --- The Summons + CFB-era live vocabulary (C1 §3.1/§3.2/§5/§7) ---
+   One card identity across the four beats: OPEN/HELD wear the
+   Ceremonial recipe, LOCKED/VERDICT the Informational (.summons--info).
+   Outcome color enters the lounge ONLY through the platform live tokens
+   (never crimson, never --cfb-* room tokens); the verdict is
+   typographic — the word carries it, never the room's top-rule
+   signature. live-red is large/bold-text-only on the purple ramp: the
+   2.7rem/700 verdict word qualifies, nothing smaller does. */
+.home-shell .summons {
+  position: relative;
+  margin: 1.5rem 0;
+  padding: 1.5rem 1.6rem;
+  background: linear-gradient(180deg,
+    var(--purple-800) 0%,
+    var(--purple-900) 100%);
+  border: 1px solid rgba(201,162,39,.3);
+  border-radius: 14px;
+}
+.home-shell .summons--info {
+  background: linear-gradient(180deg,
+    var(--purple-850) 0%,
+    var(--purple-950) 100%);
+  border: 1px solid rgba(243,239,230,.08);
+  border-radius: 12px;
+}
+.home-shell .summons-eyebrow {
+  font-family: var(--font-teko);
+  font-weight: 500;
+  font-size: 0.85rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+.home-shell .summons-eyebrow--info { color: var(--bone-mute); }
+.home-shell .state-chip {
+  float: right;
+  font-family: var(--font-teko);
+  font-weight: 500;
+  font-size: 0.78rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 0.1rem 0.55rem 0.05rem;
+  border-radius: 4px;
+  border: 1px solid rgba(243,239,230,.25);
+  color: var(--bone-dim);
+}
+.home-shell .state-chip--open {
+  border-color: rgba(201,162,39,.55);
+  color: var(--gold-light);
+}
+/* Warm white (#FBF7F0) per C1 §3.1 — the decisive sentence and the
+   biggest field numbers step above bone. A literal on purpose: the
+   room's --cfb-white token never crosses into the lounge (§8). */
+.home-shell .summons-line {
+  font-family: var(--font-teko);
+  font-weight: 600;
+  font-size: 2rem;
+  line-height: 1.12;
+  letter-spacing: 0.02em;
+  color: #FBF7F0;
+  margin: 0.6rem 0 0.4rem;
+}
+.home-shell .summons-line--dim { color: var(--bone-dim); }
+.home-shell .summons-sub {
+  font-family: var(--font-news);
+  font-size: 1rem;
+  line-height: 1.55;
+  color: var(--bone-dim);
+  max-width: 60ch;
+  margin: 0.35rem 0 0;
+}
+.home-shell .summons-auto {
+  font-style: italic;
+  color: var(--bone-mute);
+}
+.home-shell .summons-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.4rem;
+  align-items: center;
+  margin: 0.9rem 0 0.2rem;
+  font-family: var(--font-teko);
+  font-weight: 500;
+  font-size: 1rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--bone-dim);
+}
+.home-shell .summons-meta .num {
+  font-variant-numeric: tabular-nums;
+  color: var(--bone);
+}
+.home-shell .commish-echo {
+  font-family: var(--font-news);
+  font-style: italic;
+  font-size: 0.92rem;
+  color: var(--bone-mute);
+  margin-top: 0.75rem;
+}
+/* OPEN CTA shares the .cta-seal metal-gold recipe; layout delta only. */
+.home-shell .summons-cta { margin-top: 1rem; }
+.home-shell .cta-outline {
+  display: inline-block;
+  margin-top: 1rem;
+  padding: 0.55rem 1.3rem;
+  border-radius: var(--radius);
+  border: 1.5px solid rgba(243,239,230,.4);
+  color: var(--bone);
+  font-family: var(--font-teko);
+  font-weight: 500;
+  font-size: 1.05rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-decoration: none;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+.home-shell .cta-outline:hover {
+  border-color: var(--gold);
+  color: var(--gold-light);
+}
+.home-shell .cta-outline:focus-visible {
+  outline: 2px solid var(--gold-light);
+  outline-offset: 2px;
+}
+.home-shell .verdict-word {
+  font-family: var(--font-teko);
+  font-weight: 700;
+  font-size: 2.7rem;
+  line-height: 1;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  margin: 0.55rem 0 0.35rem;
+}
+.home-shell .verdict-word.is-win { color: var(--live-green); }
+.home-shell .verdict-word.is-loss { color: var(--live-red); }
+.home-shell .verdict-word.is-out { color: #FBF7F0; }
+.home-shell .verdict-word.is-push { color: var(--bone-dim); }
+.home-shell .field-impact {
+  margin-top: 0.8rem;
+  padding-top: 0.7rem;
+  border-top: 1px solid rgba(243,239,230,.1);
+  font-family: var(--font-news);
+  font-size: 0.95rem;
+  color: var(--bone-dim);
+}
+.home-shell .field-impact-line { margin-right: 1rem; }
+.home-shell .route-link {
+  font-family: var(--font-teko);
+  font-weight: 500;
+  font-size: 0.95rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gold);
+  text-decoration: none;
+  margin-right: 0.9rem;
+}
+.home-shell .route-link:hover { color: var(--gold-light); }
+.home-shell .route-link:focus-visible {
+  outline: 2px solid var(--gold-light);
+  outline-offset: 2px;
+  color: var(--gold-light);
+}
+/* Life pips — the lounge's own vocabulary (never the room's
+   .lives-indicator, C1 §8). Filled = held, hollow = lost: structure
+   carries state before color. */
+.home-shell .lounge-lives {
+  display: inline-flex;
+  gap: 0.35rem;
+  align-items: center;
+}
+.home-shell .lounge-lives .pip {
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 50%;
+  background: var(--live-green);
+}
+.home-shell .lounge-lives .pip--lost {
+  background: transparent;
+  border: 2px solid var(--bone-mute);
+}
+.home-shell .lounge-lives .lbl {
+  font-family: var(--font-teko);
+  font-weight: 500;
+  font-size: 0.95rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--bone-dim);
+  margin-left: 0.35rem;
+}
+.home-shell .roll-lives { justify-self: end; }
+
+/* --- Who's Left (C1 §3.2) — the social anchor, rail position --- */
+.home-shell .wl-card {
+  padding: 1.4rem 1.6rem;
+  background: linear-gradient(180deg,
+    var(--purple-850) 0%,
+    var(--purple-950) 100%);
+  border: 1px solid rgba(243,239,230,.08);
+  border-radius: 12px;
+}
+.home-shell .wl-field-line {
+  font-family: var(--font-news);
+  font-size: 1.05rem;
+  color: var(--bone);
+}
+.home-shell .wl-field-line .n {
+  font-family: var(--font-teko);
+  font-weight: 600;
+  font-size: 1.5rem;
+  color: #FBF7F0;
+  font-variant-numeric: tabular-nums;
+}
+/* Attrition band: two-lives solid live-green, one-life green at 40%,
+   out warm ash at 55%. Counts always sit adjacent (the key below) and
+   the band is role="img" with a full aria-label — color is never the
+   sole carrier, and ash never appears as text (C1 §7). */
+.home-shell .attrition {
+  display: flex;
+  height: 0.65rem;
+  border-radius: 4px;
+  overflow: hidden;
+  margin: 0.8rem 0 0.45rem;
+}
+.home-shell .attrition .seg2 { background: var(--live-green); }
+.home-shell .attrition .seg1 { background: rgba(100,219,160,.4); }
+.home-shell .attrition .seg0 { background: rgba(110,98,95,.55); }
+.home-shell .attrition-key {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 1.2rem;
+  font-family: var(--font-teko);
+  font-weight: 500;
+  font-size: 0.88rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--bone-dim);
+}
+.home-shell .attrition-key .num {
+  color: var(--bone);
+  font-variant-numeric: tabular-nums;
+}
+.home-shell .wl-cuts {
+  margin-top: 0.7rem;
+  font-family: var(--font-news);
+  font-style: italic;
+  font-size: 0.92rem;
+  color: var(--bone-mute);
+}
+.home-shell .wl-names {
+  list-style: none;
+  margin: 0.6rem 0 0;
+  padding: 0;
+}
+.home-shell .wl-names li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.42rem 0;
+  border-bottom: 1px solid rgba(243,239,230,.07);
+}
+.home-shell .wl-names li:last-child { border-bottom: 0; }
+.home-shell .wl-name {
+  font-family: var(--font-teko);
+  font-weight: 500;
+  font-size: 1.1rem;
+  letter-spacing: 0.04em;
+  color: var(--bone);
+}
+.home-shell .wl-names li.wl-you {
+  background: rgba(201,162,39,.1);
+  margin: 0 -0.6rem;
+  padding: 0.42rem 0.6rem;
+  border-radius: 6px;
+  border-bottom: 0;
+}
+
 /* --- Commish's Note (long-form narrative) --- */
 .home-shell .commish-note {
   margin: 1.5rem 0;

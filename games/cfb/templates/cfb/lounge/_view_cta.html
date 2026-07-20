@@ -1,0 +1,16 @@
+{# View variant (authenticated, not enrolled — C1 §2.3): the field line
+   + a join CTA while the registry says joining is open + the follow
+   route. The lounge is only dispatched while the featured game's status
+   is 'open', so gating the CTA on lounge_entry.status mirrors the
+   room's join policy (the lounge invents none). Outline CTA on purpose:
+   the metal-gold budget belongs to the OPEN summons and the decree. #}
+<div class="summons summons--info">
+  <div class="summons-eyebrow summons-eyebrow--info">◇ Open Court</div>
+  <div class="summons-line">{{ view_module.field_line }}</div>
+  {% if lounge_entry.status == 'open' %}
+  <a class="cta-outline" href="{{ url_for('cfb.join') }}">Take Your Two Lives</a>
+  {% endif %}
+  <div class="field-impact">
+    <a class="route-link" href="{{ url_for('cfb.index') }}">Follow the field &rsaquo;</a>
+  </div>
+</div>
