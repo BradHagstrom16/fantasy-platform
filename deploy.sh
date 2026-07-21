@@ -34,16 +34,28 @@ echo "==> Syncing systemd unit..."
 # ambient umask.
 unit_live=/etc/systemd/system/fantasy-platform.service
 unit_tmp="$unit_live.new.$$"
-if diff -q deploy/fantasy-platform.service "$unit_live" >/dev/null 2>&1; then
+# Content alone is not enough to call the unit correct. systemd runs this file
+# as root, so a world-writable or non-root-owned copy is a privilege-escalation
+# path — and a content-only check would report "unchanged" forever while the
+# metadata stayed wrong. Compare both. (GNU stat; this script only ever runs on
+# the Ubuntu droplet. Missing file -> empty -> falls through to install.)
+unit_meta=$(stat -c '%a %U:%G' "$unit_live" 2>/dev/null || true)
+if diff -q deploy/fantasy-platform.service "$unit_live" >/dev/null 2>&1 \
+   && [ "$unit_meta" = "644 root:root" ]; then
     echo "    unit unchanged"
-elif sudo install -m 644 -o root -g root deploy/fantasy-platform.service "$unit_tmp" \
-     && sudo mv -f "$unit_tmp" "$unit_live"; then
-    echo "    unit changed — installed"
 else
-    sudo rm -f "$unit_tmp" 2>/dev/null || true
-    echo "    !! WARNING: could not install the unit; continuing with the STALE one." >&2
-    echo "    !! Fix with: sudo install -m 644 -o root -g root \\" >&2
-    echo "    !!             deploy/fantasy-platform.service $unit_live" >&2
+    if [ -n "$unit_meta" ] && [ "$unit_meta" != "644 root:root" ]; then
+        echo "    unit metadata is '$unit_meta', expected '644 root:root' — repairing"
+    fi
+    if sudo install -m 644 -o root -g root deploy/fantasy-platform.service "$unit_tmp" \
+       && sudo mv -f "$unit_tmp" "$unit_live"; then
+        echo "    unit installed (644 root:root)"
+    else
+        sudo rm -f "$unit_tmp" 2>/dev/null || true
+        echo "    !! WARNING: could not install the unit; continuing with the STALE one." >&2
+        echo "    !! Fix with: sudo install -m 644 -o root -g root \\" >&2
+        echo "    !!             deploy/fantasy-platform.service $unit_live" >&2
+    fi
 fi
 
 # Unconditional, and deliberately NOT chained to the copy above. If cp were to
