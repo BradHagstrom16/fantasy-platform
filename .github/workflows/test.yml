@@ -5,6 +5,12 @@ on:
   push:
     branches: [main]
 
+# Cancel superseded runs: a rapid re-push shouldn't leave obsolete suites
+# burning runners alongside the current one.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
