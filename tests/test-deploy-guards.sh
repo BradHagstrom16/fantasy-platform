@@ -300,6 +300,15 @@ check "counted exactly one warning" "$(grep -c 'with 1 warning' "$SANDBOX/i.out"
 echo
 
 echo "=== J: unwritable lockfile (the root-owned-by-sudo case) ⇒ warn, not a crash ==="
+if [ "$(id -u)" = 0 ]; then
+    # root has CAP_DAC_OVERRIDE, so the 444 below would still be writable and
+    # the branch under test could never fire. Skipped rather than reported as a
+    # failure — and announced rather than dropped silently, since a quiet skip
+    # reads as "covered". deploy.sh runs as the unprivileged 'deploy' user in
+    # production, which is the case this models.
+    echo "    SKIPPED: running as root, which bypasses the 444 mode this case needs"
+    echo
+else
 reset_state
 : > "$SANDBOX/deploy.lock"
 chmod 444 "$SANDBOX/deploy.lock"
@@ -311,6 +320,7 @@ check "no raw bash redirection error" "$(grep -ci 'permission denied' "$SANDBOX/
 check "deploy still ran" "$(grep -c 'Restarting application' "$SANDBOX/j.out")" "1"
 chmod 644 "$SANDBOX/deploy.lock"
 echo
+fi
 
 echo "=== K: the pulled script lost its execute bit ⇒ re-exec still works ==="
 reset_state
