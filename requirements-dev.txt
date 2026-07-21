@@ -3,3 +3,7 @@
 # CI silently diverges from local.
 ruff==0.15.22
 pytest==9.1.1
+# tests/test_logo_assets.py imports PIL to assert the raster brand assets.
+# It was never pinned — the suite only passed because a manual install
+# happened to be present locally; a clean venv failed at collection.
+pillow==12.3.0
