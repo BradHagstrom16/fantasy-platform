@@ -98,17 +98,30 @@ until Golf migrates (~Jan 2027), which trains the operator to ignore deploy outp
 - Dry-run prediction: `9 in sync, 0 updated, 20 installed, 0 failed` — matched the real
   deploy exactly.
 
-**Recorded hazard — narrower than first written, corrected after checking the box.**
-`golf-*.timer` files now exist in `/etc` while Golf still runs on PythonAnywhere, so
-enabling them would double-run those syncs (double API spend, double writes). The obvious
-misfire is *not* reachable: `systemctl enable --now golf-*.timer` is rejected by systemd
-outright — *"Glob pattern passed to enable, but globs are not supported for this"* — and
-`systemctl`'s glob expansion elsewhere only matches units already in memory, which a
-disabled timer is not. What **is** reachable is any form where the **shell** does the
-expanding: a `for` loop over `/etc/systemd/system/golf-*.timer`, or the same glob typed
-while `cd`'d into that directory, both of which hand `systemctl` real paths. Enable CFB's
-timers by explicit name (transition plan §6F) and the question never arises. `deploy.sh`
-prints an explicit `NOT enabled` note on any first install.
+**Recorded hazard — rewritten twice, both times because the guess was wrong and the box
+was right.** `golf-*.timer` files now exist in `/etc` while Golf still runs on
+PythonAnywhere, so enabling them would double-run those syncs (double API spend, double
+writes). Three mechanisms, in the order they were understood:
+
+1. `systemctl enable --now golf-*.timer` — **not reachable.** systemd rejects it outright
+   (*"Glob pattern passed to enable, but globs are not supported for this"*), and
+   `systemctl`'s globbing elsewhere matches only units already in memory, which a disabled
+   timer is not. This was the originally-stated hazard, and it was wrong.
+2. Shell-expanded globs — **reachable.** A `for` loop over
+   `/etc/systemd/system/golf-*.timer`, or the same glob typed while `cd`'d into that
+   directory, hands `systemctl` real paths and works.
+3. **`systemctl preset-all` — reachable, and the one that actually matters.** No glob
+   typed, no game named: it would enable all ten timers at once. Found by reading
+   `systemctl list-unit-files` after the first real deploy, which reports every timer
+   `disabled` with **`PRESET enabled`**. Cause: the droplet carries exactly one preset
+   file, `/usr/lib/systemd/system-preset/90-systemd.preset`, with **no catch-all rule**, so
+   unmatched units fall through to systemd's built-in *enable* default. The ten `.service`
+   units are immune — they are `static` (no `[Install]` section), so preset cannot touch
+   them. Only the ten timers are exposed.
+
+Enable by explicit unit name (transition plan §6F) and none of this arises. `deploy.sh`
+prints an explicit `NOT enabled` note on any first install. Machine-enforcing it with a
+preset file was considered and deferred — see 4.3.
 
 **Known gap, accepted.** Orphans are not handled: a unit deleted or renamed in `deploy/`
 leaves its old copy in `/etc` untouched and unreported. Detecting "ours" would need either
@@ -262,6 +275,47 @@ does not mistake this backlog for the whole picture.
 
 ---
 
+### 4.3 Preset file to machine-enforce "installed but not enabled" 🟡 DEFERRED (deliberate)
+
+**Evidence (verified 2026-07-21, immediately after the 1.2 deploy):**
+`systemctl list-unit-files 'cfb-*' 'golf-*'` reports all ten timers `disabled` with
+**`PRESET enabled`**. The droplet carries one preset file,
+`/usr/lib/systemd/system-preset/90-systemd.preset`, with no catch-all rule, so unmatched
+units inherit systemd's built-in *enable* default. `systemctl preset-all` would therefore
+enable all ten — including the five `golf-*` timers, while Golf still runs on
+PythonAnywhere. The ten `.service` units are `static` and immune.
+
+**The fix, if it is ever wanted:** ship `deploy/10-fantasy-platform.preset` with explicit
+`disable cfb-*.timer` / `disable golf-*.timer` lines into `/etc/systemd/system-preset/`.
+Note preset files *do* accept globs, unlike `systemctl enable` — a genuine asymmetry, and
+the reason this would be three lines rather than twenty.
+
+**Why it is deferred rather than done, and why that is not an oversight:**
+
+- **The exposure is finite and self-closing; the machinery would be permanent.** The Golf
+  half evaporates when Golf migrates (~Jan 2027) — those timers *should* be enabled then.
+  The CFB half evaporates at launch (~Aug 2026). Building a permanent install path for a
+  risk with a known expiry is a poor trade.
+- **It would be a second install mechanism in `deploy.sh`.** Preset files are not units,
+  so the 1.2 loop does not carry them; this needs its own path, its own validation, its
+  own harness cases — added to the script that gates every deploy, immediately after
+  shipping the first mechanism and with less verification behind it.
+- **It creates a second source of truth for "which game is live."** The preset file and
+  the actual enable-state would both have to be flipped at CFB launch and again at the
+  Golf migration. That is one more thing to remember, which is the failure mode ADR-040
+  and ADR-041 exist to remove.
+- **The trigger is rare and manual.** `preset-all` is an image-build / first-boot command.
+  `apt` runs `systemctl preset` only for a package's own units on install, never for
+  these — they are not packaged. The only realistic path is an operator typing it while
+  following a hardening guide.
+
+**Revisit if:** the droplet is ever rebuilt from an image (preset runs at first boot), a
+third game lands in the same pre-launch limbo, or `deploy.sh` grows a non-unit install
+path for some other reason — at which point this is nearly free to add.
+
+**Do not** treat this as a licence to run `systemctl preset-all` on the droplet. Don't.
+
+
 ## Operational learnings from PR #120
 
 Recorded because both were paid for the hard way.
@@ -300,8 +354,8 @@ claims. It is what caught 1.1.
 
 | | |
 |---|---|
-| `main` | `c5e5b3b` (PR #120 merged 2026-07-21 17:57Z) |
-| Tests | **1749 passing**, ruff clean, `pip-audit` clean |
-| Production | deployed and verified — unit in sync, `--timeout 120` + `--no-control-socket` live on the running process, gunicorn 26.0.0 `sync` worker, 3 workers, site 200 |
+| `main` | `a810d1e` (PR #123 merged 2026-07-21 20:53Z; Priority 1 closed) |
+| Tests | **1749 passing**, ruff clean, `pip-audit` clean; plus `tests/test-deploy-guards.sh` at 102 (97 on the droplet) |
+| Production | deployed and verified — all 29 units in sync at `644 root:root`, the 20 newly installed ones `disabled`; `--timeout 120` + `--no-control-socket` live on the running process, gunicorn 26.0.0 `sync` worker, 3 workers, site 200 |
 | Prod ↔ repo pins | converged (`requests` 2.34.2, `SQLAlchemy` 2.0.51, `click` 8.3.3) |
 | Active era | CFB Survivor launch prep; WC archived; Golf UI phase ~Jan 2027 |
