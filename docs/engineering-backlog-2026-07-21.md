@@ -26,11 +26,22 @@ it. Re-run it. Don't quote a number you haven't reproduced.
 
 ## Priority 1 — Deploy script hardening 🔴
 
-All three surfaced during PR #120 and are the same surface. **One PR.** The CFB timer
-install (~Aug 2026, transition plan §6F) is the deadline: item 1.2 makes that install
-mechanically safe, and doing it after the timers are in is harder.
+All three surfaced during PR #120 and are the same surface. **1.1 and 1.3 shipped in
+PR #121** (merged 2026-07-21) and are verified on the droplet; **1.2 remains open.** The
+CFB timer install (~Aug 2026, transition plan §6F) is the deadline: item 1.2 makes that
+install mechanically safe, and doing it after the timers are in is harder.
 
-### 1.1 `deploy.sh` must re-exec itself after a self-update 🔴
+Regression cover for this surface now exists: `tests/test-deploy-guards.sh` (54 assertions;
+run it with `USE_REAL_FLOCK=1` on the droplet, where it is 49 — case L needs the shim).
+Whoever picks up 1.2 should extend it rather than hand-testing the unit loop.
+
+### 1.1 `deploy.sh` must re-exec itself after a self-update ✅ SHIPPED (PR #121)
+
+**Resolved 2026-07-21.** Hashes the script either side of `git pull` and re-execs when it
+changed, bounded to one restart by `DEPLOY_REEXECED`. Verified on the droplet: Brad's
+proof-line deploy re-executed and ran the pulled version in the same run, and the harness
+passes the re-exec cases against the deployed script with the real `flock(1)`. Original
+write-up kept below for context.
 
 **The bug, observed live 2026-07-21.** `deploy.sh` runs `git pull` as step 1 — which can
 replace `deploy.sh` itself — but the already-running bash process continues executing the
@@ -77,11 +88,24 @@ policy decision on units absent from `/etc`: install them, or skip-with-notice? 
 different act from keeping an installed one current. Log every skip; silent truncation
 reads as "covered everything."
 
-### 1.3 `flock` guard against concurrent deploys 🟡
+### 1.3 `flock` guard against concurrent deploys ✅ SHIPPED (PR #121)
 
 Two overlapping `./deploy.sh` runs would execute concurrent `flask db upgrade` against
 Postgres. #120 added `concurrency:` groups to both CI workflows but left the deploy
 script itself unguarded. `flock -n` on a lockfile, exiting with a clear message if held.
+
+**Resolved 2026-07-21.** `flock -n` on fd 200 against
+`/home/deploy/.fantasy-platform-deploy.lock`, taken before the pull. Verified live on the
+droplet: with the lock held, `./deploy.sh` aborted with exit 1 naming the holder's PID and
+never reached migrations. Two things worth knowing before touching this code:
+
+- The lock is acquired **once** and inherited across the 1.1 re-exec via fd 200. It must
+  not be re-acquired — `flock(2)` denies a second lock taken through a fresh `open()` in
+  the same process, so a re-acquire would deadlock the deploy against itself.
+- `flock -n` exit **1** means contention specifically; other failures use `sysexits.h`
+  codes and are treated as errors (warn, continue unlocked), so a filesystem with limited
+  `flock(2)` support cannot masquerade as a competing deploy. `/home/deploy` is `ext4` on
+  `/dev/vda1` — confirmed 2026-07-21, not assumed.
 
 ---
 
