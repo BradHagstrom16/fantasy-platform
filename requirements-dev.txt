@@ -1,2 +1,5 @@
 -r requirements.txt
-ruff==0.15.21
+# ruff is ALSO pinned in .github/workflows/lint.yml — bump both together or
+# CI silently diverges from local.
+ruff==0.15.22
+pytest==9.1.1
