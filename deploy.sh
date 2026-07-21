@@ -142,7 +142,12 @@ if [ "$script_hash_before" != "$script_hash_after" ] && [ "${DEPLOY_REEXECED:-}"
 fi
 
 echo "==> Installing/updating Python dependencies..."
-venv/bin/pip install -r requirements.txt --quiet
+# -c constraints.txt pins the transitive tree (ADR-042). Without it, pip reports an
+# already-satisfied transitive as satisfied and never moves it — which is how prod sat
+# on urllib3 2.6.3 across every deploy while 2.7.0 fixed two CVEs. Constraints make the
+# installed set deterministic and identical to local; refreshing them is a deliberate
+# act, documented in constraints.txt's own header.
+venv/bin/pip install -r requirements.txt -c constraints.txt --quiet
 
 echo "==> Applying database migrations..."
 ENVIRONMENT=production FLASK_APP=app.py venv/bin/flask db upgrade
