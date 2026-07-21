@@ -24,5 +24,10 @@ psycopg2-binary==2.9.12
 #   click         app.py + the three games' cli.py (AppGroup commands)
 #   markupsafe    core/admin/announce.py, games/golf/services/reminders.py
 itsdangerous==2.2.0
-click==8.3.1
+# 8.3.3, not the 8.3.1 both machines were running: <=8.3.2 is PYSEC-2026-2132,
+# a command injection via `click.edit()`. Not reachable here (no call site) but
+# fixed rather than annotated — the point of a pin is that it stays put.
+# Minimal fix version deliberately, not 8.4.x: the three games' CLIs run in
+# prod on systemd timers, so a click minor bump is its own vetted change.
+click==8.3.3
 MarkupSafe==3.0.3
