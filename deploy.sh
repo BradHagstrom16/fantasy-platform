@@ -262,4 +262,3 @@ if [ "$deploy_warnings" -gt 0 ]; then
 fi
 
 echo "==> Done. App is live."
-echo "==> REEXEC PROOF: this line is from the pulled version"
