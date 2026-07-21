@@ -30,8 +30,8 @@ All three surfaced during PR #120 and are the same surface. **1.1 and 1.3 shippe
 PR #121**, **1.2 in PR #123** (all merged 2026-07-21) and all are verified on the droplet.
 **Priority 1 is closed.**
 
-Regression cover for this surface: `tests/test-deploy-guards.sh` (95 assertions; run it
-with `USE_REAL_FLOCK=1` on the droplet, where it is 90 — case L needs the shim). Extend it
+Regression cover for this surface: `tests/test-deploy-guards.sh` (102 assertions; run it
+with `USE_REAL_FLOCK=1` on the droplet, where it is 97 — case L needs the shim). Extend it
 rather than hand-testing anything on this surface.
 
 ### 1.1 `deploy.sh` must re-exec itself after a self-update ✅ SHIPPED (PR #121)
