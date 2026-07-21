@@ -24,16 +24,15 @@ it. Re-run it. Don't quote a number you haven't reproduced.
 
 ---
 
-## Priority 1 — Deploy script hardening 🔴
+## Priority 1 — Deploy script hardening ✅ COMPLETE
 
 All three surfaced during PR #120 and are the same surface. **1.1 and 1.3 shipped in
-PR #121** (merged 2026-07-21) and are verified on the droplet; **1.2 remains open.** The
-CFB timer install (~Aug 2026, transition plan §6F) is the deadline: item 1.2 makes that
-install mechanically safe, and doing it after the timers are in is harder.
+PR #121**, **1.2 in PR #123** (all merged 2026-07-21) and all are verified on the droplet.
+**Priority 1 is closed.**
 
-Regression cover for this surface now exists: `tests/test-deploy-guards.sh` (54 assertions;
-run it with `USE_REAL_FLOCK=1` on the droplet, where it is 49 — case L needs the shim).
-Whoever picks up 1.2 should extend it rather than hand-testing the unit loop.
+Regression cover for this surface: `tests/test-deploy-guards.sh` (102 assertions; run it
+with `USE_REAL_FLOCK=1` on the droplet, where it is 97 — case L needs the shim). Extend it
+rather than hand-testing anything on this surface.
 
 ### 1.1 `deploy.sh` must re-exec itself after a self-update ✅ SHIPPED (PR #121)
 
@@ -65,28 +64,56 @@ so the operator sees why the output repeats.
 **Verify the fix by:** committing a trivial `echo` to `deploy.sh`, deploying once, and
 confirming the new echo appears on that *same* run.
 
-### 1.2 Generalize the unit sync to all of `deploy/` 🔴
+### 1.2 Generalize the unit sync to all of `deploy/` ✅ SHIPPED (PR #123)
 
-**Evidence (verified 2026-07-21):** `ls deploy/*.service deploy/*.timer | wc -l` → **21**
-units. #120 syncs exactly **one** (`fantasy-platform.service`). The other 20 —
-`cfb-*`, `golf-*`, `worldcup-*` service/timer pairs — remain in precisely the
-silent-drift state ADR-040 condemns.
+**Resolved 2026-07-21.** `deploy.sh` now loops every `deploy/*.service` and
+`deploy/*.timer` through a `sync_unit` function carrying #120's per-unit logic intact
+(validate the repo file → compare content *and* mode/owner → install to temp → atomic
+rename), with one `daemon-reload` after the loop. Each unit gets its own verdict, so one
+failure warns and counts without aborting the others; `deploy_warnings` still gates the
+exit code. Policy recorded as **ADR-041**.
 
-**Why it matters:** the five CFB timer pairs get installed at launch. They are the units
-most likely to drift next, and they carry the sync jobs the game depends on.
+**This item's own evidence line was wrong, and is corrected here.** It claimed **21**
+units, citing `ls deploy/*.service deploy/*.timer | wc -l`. That command returns **29** —
+1 `fantasy-platform`, 10 `cfb-*`, 10 `golf-*`, 8 `worldcup-*`. It undercounted by exactly
+the 8 `worldcup-*` files, and was wrong when written (all unit files predate the doc), not
+stale since. Third bad figure this document has produced; see *Why re-verify* above.
 
-**Blast radius — the reason this was deferred:** a naive loop would begin writing 20 files
-into `/etc/systemd/system/` on the droplet, several for services **not currently installed
-there at all** (WC timers are disabled, Golf runs on PythonAnywhere until migration).
-Writing a unit file does not enable it, so this is inert-ish — but it is a real prod-state
-change that cannot be verified locally. Do it with eyes on the box.
+**Absent-unit policy: mirror, not skip-with-notice.** The original recommendation here was
+skip-with-notice; it was **rejected** during implementation. Reasoning in ADR-041 —
+briefly: every alternative (a flag, a manifest) still requires a human at launch week to
+remember a second step, which is the same shape as the `sudo cp` that cost five weeks;
+installing is not enabling, as the eight `worldcup-*` units sitting in `/etc` `disabled`
+already demonstrate; and skip-with-notice would print "20 units skipped" on every deploy
+until Golf migrates (~Jan 2027), which trains the operator to ignore deploy output.
 
-**Approach:** loop `deploy/*.service deploy/*.timer` reusing #120's per-unit logic
-(validate → install to temp → atomic rename → verify mode/owner). Needs an explicit
-policy decision on units absent from `/etc`: install them, or skip-with-notice? Recommend
-**skip-with-notice** — installing a unit for a service the box has never run is a
-different act from keeping an installed one current. Log every skip; silent truncation
-reads as "covered everything."
+**Verified on the droplet (read-only, 2026-07-21), before deploying:**
+
+- All 29 repo units pass `systemd-analyze verify`, including every `.timer` whose
+  `.service` is not installed — `verify` adds the file's own directory to the unit search
+  path and resolves the sibling in `deploy/`. This had been an open design question; it
+  needed no design work.
+- Of the 9 units already installed, all 9 were byte-identical to the repo at `644
+  root:root`, so the change was a no-op for everything present.
+- Dry-run prediction: `9 in sync, 0 updated, 20 installed, 0 failed` — matched the real
+  deploy exactly.
+
+**Recorded hazard — narrower than first written, corrected after checking the box.**
+`golf-*.timer` files now exist in `/etc` while Golf still runs on PythonAnywhere, so
+enabling them would double-run those syncs (double API spend, double writes). The obvious
+misfire is *not* reachable: `systemctl enable --now golf-*.timer` is rejected by systemd
+outright — *"Glob pattern passed to enable, but globs are not supported for this"* — and
+`systemctl`'s glob expansion elsewhere only matches units already in memory, which a
+disabled timer is not. What **is** reachable is any form where the **shell** does the
+expanding: a `for` loop over `/etc/systemd/system/golf-*.timer`, or the same glob typed
+while `cd`'d into that directory, both of which hand `systemctl` real paths. Enable CFB's
+timers by explicit name (transition plan §6F) and the question never arises. `deploy.sh`
+prints an explicit `NOT enabled` note on any first install.
+
+**Known gap, accepted.** Orphans are not handled: a unit deleted or renamed in `deploy/`
+leaves its old copy in `/etc` untouched and unreported. Detecting "ours" would need either
+game-name knowledge in `deploy.sh` or persisted state, and auto-removing units is
+dangerous. Remove them by hand if a unit is ever retired.
 
 ### 1.3 `flock` guard against concurrent deploys ✅ SHIPPED (PR #121)
 
