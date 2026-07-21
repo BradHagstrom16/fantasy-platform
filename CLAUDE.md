@@ -67,6 +67,9 @@ FLASK_APP=app.py venv/bin/flask worldcup recalc          # Recalculate all score
 ENVIRONMENT=testing venv/bin/python -m pytest tests/      # Run all tests (env var enables the *_FAKE_NOW seams in state-detection tests)
 # Per-area suites are tests/test_<game>_*.py + tests/test_design_*.py; single test by name (gotchas below cite ::test_... locks):
 ENVIRONMENT=testing venv/bin/python -m pytest tests/test_worldcup_scoring.py::test_points_for_pick_on_match_parity_with_compute_team_score_events -q
+# deploy.sh has its own harness (bash, not pytest — invisible to collection). Run it after
+# ANY deploy.sh edit; on the droplet add USE_REAL_FLOCK=1 to exercise the real flock(1):
+bash tests/test-deploy-guards.sh
 ```
 
 **Linting: Ruff** (pinned in `requirements-dev.txt`, config in `ruff.toml` — curated ruleset; no E501, no formatter). `venv/bin/ruff check .` must exit clean; `venv/bin/ruff check --fix .` applies safe autofixes. Enforced by `.github/workflows/lint.yml` (PRs + main) and a check-only PostToolUse hook on `*.py` edits. **Ruff's version is pinned in two places — `requirements-dev.txt` and `lint.yml` — bump both together or CI silently diverges from local.** The other workflow is `.github/workflows/test.yml`, which runs the full suite (`ENVIRONMENT=testing`, in-memory SQLite, no DB service) on PRs + main; note it therefore cannot catch a Postgres-only regression. Two conventions: SQLAlchemy boolean filters use `.is_(True)`/`.is_(False)`/`.is_not(None)` — never `== True` (E712) and never the Python-idiom rewrite, which silently breaks the query; `__init__.py` re-exports are covered by a per-file-ignore (F401), not `noqa` comments. No pyright — verify behavior with pytest.
