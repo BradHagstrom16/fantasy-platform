@@ -67,7 +67,9 @@ ENVIRONMENT=testing venv/bin/python -m pytest tests/      # Run all tests (env v
 ENVIRONMENT=testing venv/bin/python -m pytest tests/test_worldcup_scoring.py::test_points_for_pick_on_match_parity_with_compute_team_score_events -q
 ```
 
-**Linting: Ruff** (pinned in `requirements-dev.txt`, config in `ruff.toml` — curated ruleset; no E501, no formatter). `venv/bin/ruff check .` must exit clean; `venv/bin/ruff check --fix .` applies safe autofixes. Enforced by `.github/workflows/lint.yml` (PRs + main) and a check-only PostToolUse hook on `*.py` edits. Two conventions: SQLAlchemy boolean filters use `.is_(True)`/`.is_(False)`/`.is_not(None)` — never `== True` (E712) and never the Python-idiom rewrite, which silently breaks the query; `__init__.py` re-exports are covered by a per-file-ignore (F401), not `noqa` comments. No pyright — verify behavior with pytest.
+**Linting: Ruff** (pinned in `requirements-dev.txt`, config in `ruff.toml` — curated ruleset; no E501, no formatter). `venv/bin/ruff check .` must exit clean; `venv/bin/ruff check --fix .` applies safe autofixes. Enforced by `.github/workflows/lint.yml` (PRs + main) and a check-only PostToolUse hook on `*.py` edits. **Ruff's version is pinned in two places — `requirements-dev.txt` and `lint.yml` — bump both together or CI silently diverges from local.** The other workflow is `.github/workflows/test.yml`, which runs the full suite (`ENVIRONMENT=testing`, in-memory SQLite, no DB service) on PRs + main; note it therefore cannot catch a Postgres-only regression. Two conventions: SQLAlchemy boolean filters use `.is_(True)`/`.is_(False)`/`.is_not(None)` — never `== True` (E712) and never the Python-idiom rewrite, which silently breaks the query; `__init__.py` re-exports are covered by a per-file-ignore (F401), not `noqa` comments. No pyright — verify behavior with pytest.
+
+**Dependencies: exact `==` pins on direct deps, never `>=` floors** (ADR-037). A floor never pulls an environment forward, so each machine freezes at whatever pip resolved on its install date — that is how local and prod silently diverged across 16 packages, prod reaching gunicorn 26.0.0 unvetted. Upgrades are deliberate: bump the pin, run the suite, smoke, deploy. **Anything imported directly by app code is a direct dep and gets a pin**, even when pip would install it anyway as a transitive (`itsdangerous`, `click`, `MarkupSafe` arrive via Flask but are imported by name). Transitives themselves stay floating on purpose — that keeps certifi/urllib3 patched without hand-maintaining a lockfile; if one ever needs holding, the mechanism is a pip **constraints file**, not a lockfile. Deliberately held back: Werkzeug 3.2 (`redirect()` 302→303), SQLAlchemy 2.1 (beta), Flask-SQLAlchemy 4 (removes `Model.query`) — see ADR-039.
 
 ---
 
@@ -102,7 +104,7 @@ ENVIRONMENT=testing venv/bin/python -m pytest tests/test_worldcup_scoring.py::te
 - **Time test seam:** every game exposes a canonical "now" reader honoring a `<GAME>_FAKE_NOW` env var when `ENVIRONMENT` is `development`/`testing` — CFB: `games/cfb/utils.get_current_time()`/`get_utc_time()` (`CFB_FAKE_NOW`, naive ISO ⇒ UTC; locked by `tests/test_cfb_time_seam.py`); WC: `games/worldcup/services/state.now_utc()` (`WC_FAKE_NOW`). Never call `datetime.now()` directly in game application paths (exception: SQLAlchemy `default=lambda: datetime.now(UTC)` audit-timestamp lambdas record real wall-clock time, not faked time). CFB datetime **columns** are stored naive with a split contract — `deadline`/`start_date`/`game_time` are pool-tz wall clock (read via `make_aware`), `created_at`/`spread_locked_at` are UTC (read via `to_pool_time`) — documented in `games/cfb/models.py`; using `make_aware` on a UTC column shifts it +5/6h (the recap-AUTOPICK mislabel bug).
 - **Mocking the time/deadline seam:** patch the "now" reader / deadline constant at the **read-site module** (the service module that owns it, e.g. `games.worldcup.services.state` — not a route module that re-imported the constant). Patches against the wrong module become silent no-ops; if a deadline test stops gating behavior after a service extraction, check the patch target before changing the assertion. Every `patch.dict(os.environ, {...})` setting a `*_FAKE_NOW` must also set `'ENVIRONMENT': 'testing'` in the same dict — the seam only activates in dev/testing, and the outside-process env var doesn't propagate when a test file runs without the `ENVIRONMENT=testing` prefix.
 - **Timezones:** `zoneinfo.ZoneInfo` — `.replace(tzinfo=tz)`, never pytz
-- **ORM:** SQLAlchemy 2.0 style — `db.session.get(Model, id)`, `db.get_or_404()` — for **new/changed code only**. Never mass-migrate the ~305 legacy `Model.query` sites (fully supported, zero deprecation warnings; `.delete()`/`.count()`/`scalar↔scalars` transforms carry uneven semantic risk). Fix only `.query` lines already in the current diff; a full migration would be its own dedicated PR.
+- **ORM:** SQLAlchemy 2.0 style — `db.session.get(Model, id)`, `db.get_or_404()` — for **new/changed code only**. Never mass-migrate the legacy `Model.query` sites (495 lines / 64 files repo-wide as of 2026-07-21 — 356 lines / 35 files of app code plus the rest in `tests/`; ADR-039 cites the same figures) (fully supported, zero deprecation warnings; `.delete()`/`.count()`/`scalar↔scalars` transforms carry uneven semantic risk). Fix only `.query` lines already in the current diff; a full migration would be its own dedicated PR.
 - **ORM safety:** Never mutate ORM attributes for display — use transient attributes
 - **Jinja2 sorting:** Never use `sort(attribute='method_name')` — Jinja2 retrieves the bound method, not its return value. Sort in the route instead.
 - **Jinja macros that read context-processor vars must be imported `with context`:** e.g. `_flag.html`'s `flag()` uses `asset_version`, so callers do `{% from '_flag.html' import flag with context %}` — a plain `import` leaves it undefined inside the macro (silent, no error; `url_for` is a global and works either way). Corollary: template-source tests checking the "first rendered element" must strip `{% ... %}` tags, not just comments, or a top-of-file import trips them.
@@ -253,7 +255,7 @@ Live architecture: DO Droplet (Ubuntu 24.04) running Nginx → Gunicorn (unix so
 Deploy files live in `deploy/`:
 - `deploy/nginx.conf` — site config (HTTPS, HTTP/2, gzip, HSTS, security headers)
 - `deploy/fantasy-platform.service` — systemd unit for Gunicorn (3 workers, `RuntimeDirectory=fantasy-platform`, socket at `/run/fantasy-platform/gunicorn.sock`)
-- `deploy.sh` — one-command deploy on the server: `git pull` → `pip install` → `flask db upgrade` → `systemctl restart`
+- `deploy.sh` — one-command deploy on the server: `git pull` → `pip install` → `flask db upgrade` → **sync `deploy/fantasy-platform.service` into `/etc/systemd/system/`** → `daemon-reload` → `systemctl restart` → verify `is-active`. The unit sync (ADR-040) means **editing `deploy/fantasy-platform.service` in the repo IS the deploy** — never `sudo cp` it by hand. It is validated with `systemd-analyze verify` before it lands, so a broken unit is refused rather than installed. The script exits **non-zero** if any non-fatal step warned or if the service fails to come up — a warning plus "App is live" is not a state it can end in.
 
 To ship an update from local:
 ```bash
@@ -261,6 +263,23 @@ git push origin main                     # local
 ssh deploy@<droplet-ip>                  # server
 ./deploy.sh                              # runs inside /home/deploy/fantasy-platform
 ```
+
+**Post-deploy verification is mandatory — `deploy.sh` exiting 0 proves the script ran, not that the config is live.** This is the lesson of ADR-040: the `--timeout 120` fix sat unshipped for five weeks while every signal said the deploy had succeeded. After every deploy, check the droplet read-only:
+
+```bash
+# 1. Active, and the restart timestamp must be RECENT (a stale one = no restart)
+systemctl status fantasy-platform --no-pager | head -20
+# 2. No boot errors/tracebacks (may need sudo; if so, run it at your own TTY)
+sudo journalctl -u fantasy-platform -n 50 --no-pager
+# 3. Unit diff — must be identical (the unit is 644, so no sudo needed)
+diff /home/deploy/fantasy-platform/deploy/fantasy-platform.service \
+     /etc/systemd/system/fantasy-platform.service && echo "unit in sync"
+# 4. The check that would have caught ADR-040: read the RUNNING process args,
+#    not any file. Expect --timeout 120, --no-control-socket, 3 workers.
+ps -o args= -C gunicorn | head -3
+```
+
+Check 4 is the load-bearing one — it reads what gunicorn is actually running rather than what some file claims. A unit can be in sync on disk while systemd still serves an older in-memory definition.
 
 First-time setup: `docs/superpowers/plans/2026-04-21-production-deployment.md`.
 Production re-verification: `docs/archive/production-launch-test-script.md` (WC-era full prod simulation — out → pre → live → post — then DB reset to a clean baseline; archived with the WC sunset, kept as the template for a CFB-era equivalent).

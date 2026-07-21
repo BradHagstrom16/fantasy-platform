@@ -1,6 +1,14 @@
 # Fantasy Sports Platform — systemd service for Gunicorn
-# Install: sudo cp /home/deploy/fantasy-platform/deploy/fantasy-platform.service /etc/systemd/system/
-# Enable:  sudo systemctl daemon-reload && sudo systemctl enable fantasy-platform
+#
+# Install: automatic. deploy.sh syncs this file to /etc/systemd/system/ on every
+#          deploy (validated, 644 root:root) and runs daemon-reload. Do NOT
+#          `sudo cp` it by hand — that skips the mode/owner enforcement and the
+#          validation gate, and a hand-copied file only drifts back on the next
+#          deploy anyway. Editing this file here IS the deploy. (Until 2026-07
+#          install was a manual cp documented in this header, which is exactly
+#          why the --timeout 120 fix sat unshipped for five weeks — see ADR-040.)
+# Enable:  one-time bootstrap on a fresh box, after the first deploy.sh run:
+#          sudo systemctl enable fantasy-platform
 # Control: sudo systemctl start|stop|restart|status fantasy-platform
 
 [Unit]
@@ -18,9 +26,15 @@ NoNewPrivileges=true
 PrivateTmp=true
 # --timeout 120: admin announce sends email synchronously, one SMTP
 # connection per recipient; the 30s default would SIGKILL a worker mid-loop.
+# --no-control-socket: gunicorn >=25.1 opens a control socket by default
+# ($XDG_RUNTIME_DIR/gunicorn.ctl, falling back to ~/.gunicorn/gunicorn.ctl —
+# the fallback is what applies here, since a system service gets no
+# XDG_RUNTIME_DIR) accepting reload/shutdown/worker commands. Nothing here
+# uses gunicornc, so don't run the extra surface.
 ExecStart=/home/deploy/fantasy-platform/venv/bin/gunicorn \
     --workers 3 \
     --timeout 120 \
+    --no-control-socket \
     --bind unix:/run/fantasy-platform/gunicorn.sock \
     --umask 007 \
     wsgi:application

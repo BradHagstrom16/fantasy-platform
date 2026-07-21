@@ -1,2 +1,12 @@
 -r requirements.txt
-ruff==0.15.21
+# ruff is ALSO pinned in .github/workflows/lint.yml — bump both together or
+# CI silently diverges from local.
+ruff==0.15.22
+# Neither pytest nor pillow was managed here before: this file was only
+# `-r requirements.txt` + ruff, so the suite ran purely on whatever had been
+# hand-installed locally. A clean venv had no pytest binary at all, and
+# tests/test_logo_assets.py (the only PIL consumer — it asserts the raster
+# brand assets) failed at collection. Both are now pinned, which is what makes
+# the CI job in .github/workflows/test.yml reproducible.
+pytest==9.1.1
+pillow==12.3.0

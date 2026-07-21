@@ -1,14 +1,33 @@
-Flask>=3.1.3
-Flask-SQLAlchemy>=3.1.1
-Flask-Login>=0.6.3
-Flask-WTF>=1.2.2
-Flask-Limiter>=4.1.1
-Flask-Migrate>=4.1.0
-SQLAlchemy>=2.0.48
-Werkzeug>=3.1.6
-python-dotenv>=1.2.2
-email-validator>=2.3.0
-pytz>=2026.1.post1
-requests>=2.32.0
-gunicorn>=23.0.0
-psycopg2-binary>=2.9.10
+# Exact pins, not >= floors. A floor never pulls an environment forward, so
+# each machine freezes at whatever pip resolved on its install date — that is
+# how local and production silently diverged across 16 packages (see ADR-037).
+# Upgrades here are deliberate: bump the pin, run the suite, smoke, deploy.
+Flask==3.1.3
+Flask-SQLAlchemy==3.1.1
+Flask-Login==0.6.3
+Flask-WTF==1.3.0
+Flask-Limiter==4.1.1
+Flask-Migrate==4.1.0
+SQLAlchemy==2.0.51
+Werkzeug==3.1.8
+python-dotenv==1.2.2
+email-validator==2.3.0
+requests==2.34.2
+gunicorn==26.0.0
+psycopg2-binary==2.9.12
+
+# Imported directly by application code, so they are direct dependencies even
+# though pip installs them anyway as Flask transitives. Undeclared, they were
+# floating at whatever version Flask's resolver happened to pick — the exact
+# drift ADR-037 exists to close, hiding one level down.
+#   itsdangerous  core/auth/tokens.py (password-reset token signing)
+#   click         app.py + the three games' cli.py (AppGroup commands)
+#   markupsafe    core/admin/announce.py, games/golf/services/reminders.py
+itsdangerous==2.2.0
+# 8.3.3, not the 8.3.1 both machines were running: <=8.3.2 is PYSEC-2026-2132,
+# a command injection via `click.edit()`. Not reachable here (no call site) but
+# fixed rather than annotated — the point of a pin is that it stays put.
+# Minimal fix version deliberately, not 8.4.x: the three games' CLIs run in
+# prod on systemd timers, so a click minor bump is its own vetted change.
+click==8.3.3
+MarkupSafe==3.0.3
