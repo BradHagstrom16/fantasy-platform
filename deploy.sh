@@ -183,12 +183,13 @@ trap 'sudo rm -f "$unit_dir"/*.new.$$ 2>/dev/null || true' EXIT INT TERM HUP
 # distinct so the caller can report real counts rather than a vague "done":
 #   0  already in sync    10  installed (was absent)
 #   1  failed             11  updated (content or metadata had drifted)
+#                         12  reinstalled, but mode/owner could not be verified
 sync_unit() {
     local name="$1"
     local repo_file="deploy/$name"
     local live="$unit_dir/$name"
     local tmp="$live.new.$$"
-    local meta="" existed=0
+    local meta="" existed=0 stat_failed=0
 
     # Content alone is not enough to call a unit correct. systemd runs these
     # files as root, so a world-writable or non-root-owned copy is a
@@ -201,16 +202,23 @@ sync_unit() {
     # still reported success.
     if [ -e "$live" ]; then
         existed=1
-        if ! meta=$(stat -c '%a %U:%G' "$live" 2>/dev/null); then
+        if meta=$(stat -c '%a %U:%G' "$live" 2>/dev/null); then
+            if [ "$meta" = "644 $unit_owner" ] && diff -q "$repo_file" "$live" >/dev/null 2>&1; then
+                return 0
+            fi
+            if [ "$meta" != "644 $unit_owner" ]; then
+                echo "    $name metadata is '$meta', expected '644 $unit_owner' — repairing"
+            fi
+        else
+            # Fall through to the install rather than bailing: reinstalling is
+            # the one action that makes mode and owner deterministic again, and
+            # refusing to would leave the unit in the unverifiable state that
+            # prompted the warning. Warn anyway, so a stat breaking for some
+            # unexpected reason cannot silently retire the ownership check while
+            # the deploy still reports success.
+            stat_failed=1
             echo "    !! WARNING: $name exists but stat failed — cannot verify mode/owner." >&2
-            echo "    !! Check by hand: stat -c '%a %U:%G' $live" >&2
-            return 1
-        fi
-        if [ "$meta" = "644 $unit_owner" ] && diff -q "$repo_file" "$live" >/dev/null 2>&1; then
-            return 0
-        fi
-        if [ "$meta" != "644 $unit_owner" ]; then
-            echo "    $name metadata is '$meta', expected '644 $unit_owner' — repairing"
+            echo "    !! Reinstalling it regardless; check by hand: stat -c '%a %U:%G' $live" >&2
         fi
     fi
 
@@ -249,6 +257,7 @@ sync_unit() {
     # reverted on the next deploy.
     if sudo install -m 644 -o "${unit_owner%%:*}" -g "${unit_owner##*:}" "$repo_file" "$tmp" \
        && sudo mv -f "$tmp" "$live"; then
+        if [ "$stat_failed" = 1 ]; then return 12; fi
         if [ "$existed" = 1 ]; then return 11; else return 10; fi
     fi
 
@@ -269,8 +278,9 @@ unit_installed=0
 unit_failed=0
 for unit_path in deploy/*.service deploy/*.timer; do
     # A glob matching nothing expands to itself; don't try to install a file
-    # literally named '*.timer'.
-    [ -e "$unit_path" ] || continue
+    # literally named '*.timer'. -f rather than -e so a directory that happens
+    # to end in .service is skipped too.
+    [ -f "$unit_path" ] || continue
     # Parameter expansion, not basename(1). Case I of the harness runs this
     # script on a PATH stripped to an explicit list of binaries, so every
     # external command added here has to be added there too.
@@ -283,6 +293,12 @@ for unit_path in deploy/*.service deploy/*.timer; do
             echo "    $unit_name installed (644 $unit_owner)" ;;
         11) unit_updated=$((unit_updated + 1))
             echo "    $unit_name updated (644 $unit_owner)" ;;
+        # Repaired, but the pre-existing state could not be read. Counted as
+        # updated *and* warned: the file is now correct, yet something about
+        # this box stopped stat working and that should not pass silently.
+        12) unit_updated=$((unit_updated + 1))
+            deploy_warnings=$((deploy_warnings + 1))
+            echo "    $unit_name reinstalled (prior mode/owner unverifiable)" ;;
         # One unit's failure must not abort the others, and must not be hidden
         # by them either: it warns on its own account, and the summary below
         # reports the count.

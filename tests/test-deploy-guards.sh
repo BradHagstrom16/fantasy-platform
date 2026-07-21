@@ -197,30 +197,40 @@ done
 exec "$cmd" "${args[@]}"
 SUDO
 
-# deploy.sh reads mode and owner with GNU `stat -c`. Once the unit directory is
-# inside the sandbox that file exists on macOS too, where BSD stat has no -c and
-# would fail — turning the "stat failed" warning branch into a false positive on
-# every local run. Translate only when the system stat is not GNU; on the
-# droplet no shim is written and the real GNU stat runs, so fidelity is kept
-# where it counts.
-if stat -c '%a' . >/dev/null 2>&1; then
-    echo "(system stat is GNU-compatible; no stat shim needed)"
-else
-    echo "(BSD stat detected; installing a GNU '-c' translation shim)"
-    cat > "$SHIMS/stat" <<'STAT'
+# deploy.sh reads mode and owner with GNU `stat -c`. Always shimmed, for two
+# reasons:
+#   * macOS BSD stat has no -c, and once the unit directory is inside the
+#     sandbox that file exists locally too — so deploy.sh's "stat failed"
+#     warning branch would fire as a false positive on every local run.
+#   * STAT_FORCE_FAIL_RE gives case U a way to exercise that branch deliberately,
+#     the same seam FLOCK_FORCE_RC provides for the lock.
+# Where GNU stat exists (the droplet) the shim delegates straight to it, so the
+# forced-failure hook is the only behavioural difference.
+if stat -c '%a' . >/dev/null 2>&1; then STAT_MODE=gnu; else STAT_MODE=bsd; fi
+echo "(system stat is $STAT_MODE-style; shimming it with a forced-failure seam)"
+# Two heredocs on purpose: the first interpolates the values resolved here (note
+# this runs before $SHIMS is on PATH, so it finds the system binary), the second
+# is quoted so the shim body is taken literally.
+cat > "$SHIMS/stat" <<STAT
 #!/bin/bash
-# Only the one format deploy.sh uses is translated. Anything else is an error
-# rather than a silently wrong answer.
-if [ "$1" = "-c" ] && [ "$2" = '%a %U:%G' ]; then
-    exec /usr/bin/stat -f '%Lp %Su:%Sg' "$3"
+STAT_MODE=$STAT_MODE
+REAL_STAT=$(command -v stat)
+STAT
+cat >> "$SHIMS/stat" <<'STAT'
+if [ -n "${STAT_FORCE_FAIL_RE:-}" ] && [[ "$*" =~ $STAT_FORCE_FAIL_RE ]]; then
+    echo "stat: forced failure (STAT_FORCE_FAIL_RE): $*" >&2
+    exit 1
 fi
-if [ "$1" = "-c" ] && [ "$2" = '%a' ]; then
-    exec /usr/bin/stat -f '%Lp' "$3"
-fi
+[ "$STAT_MODE" = gnu ] && exec "$REAL_STAT" "$@"
+# Only the formats deploy.sh and this harness use are translated. Anything else
+# is an error rather than a silently wrong answer.
+case "${2:-}" in
+    '%a %U:%G') exec "$REAL_STAT" -f '%Lp %Su:%Sg' "$3" ;;
+    '%a')       exec "$REAL_STAT" -f '%Lp' "$3" ;;
+esac
 echo "stat shim: unsupported invocation: $*" >&2
 exit 64
 STAT
-fi
 
 # flock(1) does not exist on macOS. This calls flock(2) on the same inherited
 # fd the real utility would — same syscall, same kernel semantics — so what is
@@ -622,6 +632,32 @@ check "left the units it did not touch alone" \
 # successful install.
 check "reloaded systemd exactly once for the whole loop" \
       "$(grep -c 'systemctl daemon-reload' "$SANDBOX/sudo-log")" "1"
+echo
+
+echo "=== U: mode/owner unreadable ⇒ reinstall anyway, and still warn ==="
+# Bailing out here would be the tempting read of "can't verify, don't touch" —
+# and it would be wrong twice over: it leaves the unit in exactly the
+# unverifiable state that raised the alarm, and reinstalling is the one action
+# that makes mode and owner deterministic again. The warning has to survive the
+# repair, or a stat breaking for an unexpected reason silently retires the
+# ownership check while the deploy reports success.
+reset_state
+MUTATE_PULLS=0 "$SANDBOX/deploy.sh" > "$SANDBOX/u1.out" 2>&1
+chmod 600 "$SANDBOX/etc-systemd/guard-beta.timer"
+rm -f "$SANDBOX/sudo-log"
+STAT_FORCE_FAIL_RE='guard-beta\.timer' MUTATE_PULLS=0 \
+    "$SANDBOX/deploy.sh" > "$SANDBOX/u.out" 2>&1
+check "exit code (warned ⇒ non-zero)" "$?" "1"
+check "said it could not verify mode/owner" \
+      "$(grep -c 'guard-beta.timer exists but stat failed' "$SANDBOX/u.out")" "1"
+check "said it was reinstalling regardless" \
+      "$(grep -c 'Reinstalling it regardless' "$SANDBOX/u.out")" "1"
+check "counted it as updated, not failed" \
+      "$(grep -c '4 in sync, 1 updated, 0 installed, 0 failed' "$SANDBOX/u.out")" "1"
+check "repaired the mode it could not read" \
+      "$(stat -c '%a' "$SANDBOX/etc-systemd/guard-beta.timer")" "644"
+check "counted exactly one warning" "$(grep -c 'with 1 warning' "$SANDBOX/u.out")" "1"
+check "did not claim success" "$(grep -c 'Done. App is live' "$SANDBOX/u.out")" "0"
 echo
 
 echo "=== T: across every case above, no privileged call was aimed outside the sandbox ==="
