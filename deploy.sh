@@ -24,13 +24,26 @@ ENVIRONMENT=production FLASK_APP=app.py venv/bin/flask db upgrade
 echo "==> Syncing systemd unit..."
 if diff -q deploy/fantasy-platform.service /etc/systemd/system/fantasy-platform.service >/dev/null 2>&1; then
     echo "    unit unchanged"
-elif sudo cp deploy/fantasy-platform.service /etc/systemd/system/fantasy-platform.service \
-     && sudo systemctl daemon-reload; then
-    echo "    unit changed — installed and systemd reloaded"
+elif sudo cp deploy/fantasy-platform.service /etc/systemd/system/fantasy-platform.service; then
+    echo "    unit changed — installed"
 else
     echo "    !! WARNING: could not install the unit; continuing with the STALE one." >&2
-    echo "    !! Fix with: sudo cp deploy/fantasy-platform.service /etc/systemd/system/ \\" >&2
-    echo "    !!           && sudo systemctl daemon-reload && sudo systemctl restart fantasy-platform" >&2
+    echo "    !! Fix with: sudo cp deploy/fantasy-platform.service /etc/systemd/system/" >&2
+fi
+
+# Unconditional, and deliberately NOT chained to the copy above. If cp were to
+# succeed while the reload failed, /etc would already match the repo, so every
+# later deploy would take the "unit unchanged" branch and skip the reload
+# forever — systemd would keep serving its old in-memory definition with no
+# signal that anything was wrong. Reloading on every deploy makes a transient
+# failure self-heal on the next run. sudo is required for the restart below
+# regardless, so this costs no extra credential prompt.
+if sudo systemctl daemon-reload; then
+    echo "    systemd reloaded"
+else
+    echo "    !! WARNING: daemon-reload failed — systemd is still running its" >&2
+    echo "    !! previously loaded unit definition, even if the file on disk is current." >&2
+    echo "    !! Fix with: sudo systemctl daemon-reload && sudo systemctl restart fantasy-platform" >&2
 fi
 
 echo "==> Restarting application..."
