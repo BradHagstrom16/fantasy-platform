@@ -264,6 +264,23 @@ ssh deploy@<droplet-ip>                  # server
 ./deploy.sh                              # runs inside /home/deploy/fantasy-platform
 ```
 
+**Post-deploy verification is mandatory — `deploy.sh` exiting 0 proves the script ran, not that the config is live.** This is the lesson of ADR-040: the `--timeout 120` fix sat unshipped for five weeks while every signal said the deploy had succeeded. After every deploy, check the droplet read-only:
+
+```bash
+# 1. Active, and the restart timestamp must be RECENT (a stale one = no restart)
+systemctl status fantasy-platform --no-pager | head -20
+# 2. No boot errors/tracebacks (may need sudo; if so, run it at your own TTY)
+sudo journalctl -u fantasy-platform -n 50 --no-pager
+# 3. Unit diff — must be identical (the unit is 644, so no sudo needed)
+diff /home/deploy/fantasy-platform/deploy/fantasy-platform.service \
+     /etc/systemd/system/fantasy-platform.service && echo "unit in sync"
+# 4. The check that would have caught ADR-040: read the RUNNING process args,
+#    not any file. Expect --timeout 120, --no-control-socket, 3 workers.
+ps -o args= -C gunicorn | head -3
+```
+
+Check 4 is the load-bearing one — it reads what gunicorn is actually running rather than what some file claims. A unit can be in sync on disk while systemd still serves an older in-memory definition.
+
 First-time setup: `docs/superpowers/plans/2026-04-21-production-deployment.md`.
 Production re-verification: `docs/archive/production-launch-test-script.md` (WC-era full prod simulation — out → pre → live → post — then DB reset to a clean baseline; archived with the WC sunset, kept as the template for a CFB-era equivalent).
 
