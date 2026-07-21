@@ -110,18 +110,27 @@ writes). Three mechanisms, in the order they were understood:
 2. Shell-expanded globs — **reachable.** A `for` loop over
    `/etc/systemd/system/golf-*.timer`, or the same glob typed while `cd`'d into that
    directory, hands `systemctl` real paths and works.
-3. **`systemctl preset-all` — reachable, and the one that actually matters.** No glob
-   typed, no game named: it would enable all ten timers at once. Found by reading
-   `systemctl list-unit-files` after the first real deploy, which reports every timer
-   `disabled` with **`PRESET enabled`**. Cause: the droplet carries exactly one preset
+3. **`systemctl preset-all` — reachable, and the one that actually matters.** No glob is
+   involved and no game is named: it would enable **all fourteen** timers at once. Found by
+   reading `systemctl list-unit-files` after the first real deploy, which reports every
+   timer `disabled` with **`PRESET enabled`**. Cause: the droplet carries exactly one preset
    file, `/usr/lib/systemd/system-preset/90-systemd.preset`, with **no catch-all rule**, so
-   unmatched units fall through to systemd's built-in *enable* default. The ten `.service`
-   units are immune — they are `static` (no `[Install]` section), so preset cannot touch
-   them. Only the ten timers are exposed.
+   unmatched units fall through to systemd's built-in *enable* default. The `.service`
+   units are immune — all fourteen are `static` (no `[Install]` section), so preset cannot
+   touch them. Only the timers are exposed.
 
-Enable by explicit unit name (transition plan §6F) and none of this arises. `deploy.sh`
-prints an explicit `NOT enabled` note on any first install. Machine-enforcing it with a
-preset file was considered and deferred — see 4.3.
+   **Fourteen, not ten** — the four archived `worldcup-*` timers carry
+   `WantedBy=timers.target` too, and are the worst of the set: `worldcup-digest.timer` and
+   `worldcup-digest-player.timer` mail **real players** about a tournament that concluded
+   2026-07-19, and `worldcup-sync.timer` would resume scoring against archived data. That
+   exposure is **not new** — those units were installed 2026-06-02 and mothballed
+   2026-07-20, so `preset-all` could have re-enabled them for weeks before PR #123. The
+   mirror policy did not create it; looking at the preset column is what surfaced it.
+
+Enable by explicit unit name (transition plan §6F) to avoid the glob paths — but note that
+does **not** address `preset-all`, which is independent of how anything was enabled.
+`deploy.sh` prints an explicit `NOT enabled` note on any first install. The only mechanical
+defence is a preset file — see 2.4, whose case the `worldcup-*` finding strengthened.
 
 **Known gap, accepted.** Orphans are not handled: a unit deleted or renamed in `deploy/`
 leaves its old copy in `/etc` untouched and unreported. Detecting "ours" would need either
@@ -202,6 +211,56 @@ files are next touched for another reason. **Not worth its own PR.**
 
 ---
 
+### 2.4 `preset-all` would enable all 14 timers, including the archived WC ones 🟠
+
+**Evidence (verified 2026-07-21, on the droplet after the 1.2 deploy):**
+`systemctl list-unit-files 'cfb-*' 'golf-*' 'worldcup-*'` reports **14 timers** as
+`disabled` with **`PRESET enabled`**; the 14 `.service` units are `static` and immune. The
+droplet carries one preset file, `/usr/lib/systemd/system-preset/90-systemd.preset`, with
+no catch-all rule, so unmatched units inherit systemd's built-in *enable* default.
+`systemctl preset-all` would enable all 14 at once.
+
+**Consequence, worst first:** `worldcup-digest.timer` and `worldcup-digest-player.timer`
+send **email to real players** about a tournament that concluded 2026-07-19.
+`worldcup-sync.timer` would resume scoring against archived data. The five `golf-*` timers
+would double-run syncs that PythonAnywhere still owns. The five `cfb-*` timers would start
+a season early.
+
+**Not caused by PR #123.** The four WC units were installed 2026-06-02 and mothballed
+2026-07-20 — `preset-all` could have re-enabled them for weeks beforehand. #123 added ten
+more units to an existing exposure and, by prompting a look at the preset column,
+surfaced it.
+
+**This item was first written as a deliberate deferral (as 4.3) and is promoted here,
+because the reasoning that justified deferring it was wrong.** That argument rested on the
+exposure being finite and self-closing: Golf's ends at the ~Jan 2027 migration, CFB's at
+launch. It does not hold for `worldcup-*`. WC is archived indefinitely with no migration
+date, so **that portion of the risk never expires** — and it is simultaneously the
+highest-consequence portion, being the only one that mails real people. A low annual
+probability against an indefinite horizon is a different bet from one against a
+twelve-month window.
+
+A second objection also weakens: "it creates a second source of truth needing a flip at
+each milestone." True for `cfb-*`/`golf-*`, **false for `worldcup-*`** — `disable
+worldcup-*.timer` is permanent and never needs touching. A minimal preset file covering
+only WC carries none of that cost.
+
+**Approach:** `deploy/10-fantasy-platform.preset` → `/etc/systemd/system-preset/`, with
+`disable worldcup-*.timer` at minimum. Preset files **do** accept globs, unlike `systemctl
+enable` — a real asymmetry, and why this is a few lines rather than fourteen. Whether to
+also list `cfb-*`/`golf-*` is a judgement call: it protects them until their milestones but
+adds the flip-at-milestone cost above.
+
+**The real work is not the file, it is the install path.** Preset files are not units, so
+#123's `sync_unit` loop does not carry them — this needs its own path in `deploy.sh`, its
+own validation, and its own `tests/test-deploy-guards.sh` cases. Do it as its own scoped
+PR with droplet verification, not as a bolt-on. That is the *only* reason it was not done
+in #124, which was docs-only and opened before this was understood.
+
+**Interim mitigation:** do not run `systemctl preset-all` on the droplet. Note this is
+exactly the "remember not to do the thing" posture that ADR-040 and ADR-041 exist to
+replace, which is itself the argument for building the file.
+
 ## Priority 3 — Test-suite leverage 🟡
 
 ### 3.1 No `tests/conftest.py` — highest-leverage prep work available 🟡
@@ -274,47 +333,6 @@ two-line atomic registry flip plus changeover copy. Listed here only so a cold s
 does not mistake this backlog for the whole picture.
 
 ---
-
-### 4.3 Preset file to machine-enforce "installed but not enabled" 🟡 DEFERRED (deliberate)
-
-**Evidence (verified 2026-07-21, immediately after the 1.2 deploy):**
-`systemctl list-unit-files 'cfb-*' 'golf-*'` reports all ten timers `disabled` with
-**`PRESET enabled`**. The droplet carries one preset file,
-`/usr/lib/systemd/system-preset/90-systemd.preset`, with no catch-all rule, so unmatched
-units inherit systemd's built-in *enable* default. `systemctl preset-all` would therefore
-enable all ten — including the five `golf-*` timers, while Golf still runs on
-PythonAnywhere. The ten `.service` units are `static` and immune.
-
-**The fix, if it is ever wanted:** ship `deploy/10-fantasy-platform.preset` with explicit
-`disable cfb-*.timer` / `disable golf-*.timer` lines into `/etc/systemd/system-preset/`.
-Note preset files *do* accept globs, unlike `systemctl enable` — a genuine asymmetry, and
-the reason this would be three lines rather than twenty.
-
-**Why it is deferred rather than done, and why that is not an oversight:**
-
-- **The exposure is finite and self-closing; the machinery would be permanent.** The Golf
-  half evaporates when Golf migrates (~Jan 2027) — those timers *should* be enabled then.
-  The CFB half evaporates at launch (~Aug 2026). Building a permanent install path for a
-  risk with a known expiry is a poor trade.
-- **It would be a second install mechanism in `deploy.sh`.** Preset files are not units,
-  so the 1.2 loop does not carry them; this needs its own path, its own validation, its
-  own harness cases — added to the script that gates every deploy, immediately after
-  shipping the first mechanism and with less verification behind it.
-- **It creates a second source of truth for "which game is live."** The preset file and
-  the actual enable-state would both have to be flipped at CFB launch and again at the
-  Golf migration. That is one more thing to remember, which is the failure mode ADR-040
-  and ADR-041 exist to remove.
-- **The trigger is rare and manual.** `preset-all` is an image-build / first-boot command.
-  `apt` runs `systemctl preset` only for a package's own units on install, never for
-  these — they are not packaged. The only realistic path is an operator typing it while
-  following a hardening guide.
-
-**Revisit if:** the droplet is ever rebuilt from an image (preset runs at first boot), a
-third game lands in the same pre-launch limbo, or `deploy.sh` grows a non-unit install
-path for some other reason — at which point this is nearly free to add.
-
-**Do not** treat this as a licence to run `systemctl preset-all` on the droplet. Don't.
-
 
 ## Operational learnings from PR #120
 
