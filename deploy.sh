@@ -22,13 +22,28 @@ ENVIRONMENT=production FLASK_APP=app.py venv/bin/flask db upgrade
 # would leave migrations applied but the app never restarted — a worse state
 # than deploying with a stale unit. Warn loudly and carry on instead.
 echo "==> Syncing systemd unit..."
-if diff -q deploy/fantasy-platform.service /etc/systemd/system/fantasy-platform.service >/dev/null 2>&1; then
+# Installed via write-to-temp + atomic rename rather than a direct copy over the
+# live path. A copy truncates the destination first, so an interruption or
+# ENOSPC mid-write would leave a partial unit that systemd cannot parse — and
+# this is the file that decides whether the app starts at all, so a corrupted
+# one means the service fails to come up on the next reboot. rename(2) within
+# the same directory is atomic: the live path is either the old unit or the new
+# one, never a half-written one. The .new.$$ suffix is not a unit type systemd
+# recognises, so a leftover temp is ignored rather than loaded. Mode is set
+# explicitly to match the live file (644 root:root) instead of inheriting the
+# ambient umask.
+unit_live=/etc/systemd/system/fantasy-platform.service
+unit_tmp="$unit_live.new.$$"
+if diff -q deploy/fantasy-platform.service "$unit_live" >/dev/null 2>&1; then
     echo "    unit unchanged"
-elif sudo cp deploy/fantasy-platform.service /etc/systemd/system/fantasy-platform.service; then
+elif sudo install -m 644 -o root -g root deploy/fantasy-platform.service "$unit_tmp" \
+     && sudo mv -f "$unit_tmp" "$unit_live"; then
     echo "    unit changed — installed"
 else
+    sudo rm -f "$unit_tmp" 2>/dev/null || true
     echo "    !! WARNING: could not install the unit; continuing with the STALE one." >&2
-    echo "    !! Fix with: sudo cp deploy/fantasy-platform.service /etc/systemd/system/" >&2
+    echo "    !! Fix with: sudo install -m 644 -o root -g root \\" >&2
+    echo "    !!             deploy/fantasy-platform.service $unit_live" >&2
 fi
 
 # Unconditional, and deliberately NOT chained to the copy above. If cp were to
