@@ -3,21 +3,123 @@
 # Usage: ./deploy.sh
 set -e
 
+# Resolved before the cd below, because $0 is relative when this is invoked the
+# documented way (./deploy.sh) and the cd would strand it. Used twice later: to
+# notice that `git pull` rewrote this file, and to re-exec the new copy.
+script_path="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
+
+# sha256sum is coreutils (the droplet); shasum is the fallback the local test
+# harness runs under on macOS. Both print "<hash>  <path>", and the path is
+# identical between the two calls, so whole-line comparison is fine. A file that
+# cannot be hashed at all reports a constant, which reads as "unchanged".
+hash_self() {
+    sha256sum "$script_path" 2>/dev/null \
+        || shasum -a 256 "$script_path" 2>/dev/null \
+        || echo "unhashable"
+}
+
 cd /home/deploy/fantasy-platform
 
+# Non-fatal steps below record a warning here instead of aborting. The final
+# summary reads this: a deploy that printed a warning must not also print
+# "App is live" and exit 0, or the warning is decoration.
+deploy_warnings=0
+
+# Two overlapping deploys would run concurrent `flask db upgrade` against the
+# same Postgres instance and concurrent `git pull` into the same checkout, so
+# the lock has to wrap everything below including the pull. It lives beside the
+# checkout rather than in /tmp (world-writable: any local user could pre-create
+# the path and sit on it) and rather than inside the repo (would need a
+# .gitignore entry). Nothing removes it — the lock is released when the process
+# exits and its fds close; unlinking a lockfile others may already have open is
+# how you get two holders at once.
+lockfile=/home/deploy/.fantasy-platform-deploy.lock
+
+# flock locks an open file *description* — not a path, not a process — and
+# exec(2) preserves file descriptors. So the re-exec'd instance below inherits
+# fd 200 with the lock still on it, and must NOT lock again: flock(2) is
+# explicit that a request through a second open() of the same file "may be
+# denied by a lock that the calling process has already placed via another file
+# descriptor". Re-acquiring would deadlock the deploy against itself and blame
+# its own PID. Verify the fd rather than assuming it: if it is somehow gone the
+# lock went with it, and acquiring fresh is then the correct move.
+if [ "${DEPLOY_REEXECED:-}" = 1 ] && { true >&200; } 2>/dev/null; then
+    echo "==> Holding the deploy lock inherited across the restart (PID $$)."
+elif ! command -v flock >/dev/null 2>&1; then
+    deploy_warnings=$((deploy_warnings + 1))
+    echo "!! WARNING: flock not found — running WITHOUT a concurrency lock." >&2
+    echo "!! A second ./deploy.sh could run migrations at the same time as this one." >&2
+    echo "!! Fix with: sudo apt-get install -y util-linux" >&2
+elif ! { : >>"$lockfile"; } 2>/dev/null; then
+    # Caught here rather than at the `exec` redirect below, which is fatal on
+    # error and would abort with nothing but a bash "Permission denied".
+    deploy_warnings=$((deploy_warnings + 1))
+    echo "!! WARNING: cannot open $lockfile for writing —" >&2
+    echo "!! running WITHOUT a concurrency lock. An earlier 'sudo ./deploy.sh'" >&2
+    echo "!! leaves this file owned by root, which does exactly this." >&2
+    echo "!! Fix with: sudo rm -f $lockfile" >&2
+else
+    # Append, not truncate: `>` empties the file at open — i.e. before we know
+    # whether we won the race — wiping the current holder's PID out of it.
+    exec 200>>"$lockfile"
+    if flock -n 200; then
+        # A separate open, so this replaces the file's *contents* without
+        # disturbing the lock held on fd 200. It gives whoever gets blocked
+        # next a real PID to name.
+        printf '%s\n' "$$" >"$lockfile"
+    else
+        holder="$(head -n 1 "$lockfile" 2>/dev/null || true)"
+        echo "!! DEPLOY ABORTED: another deploy already holds $lockfile" >&2
+        if [ -n "$holder" ]; then
+            echo "!! (PID $holder). Inspect it with: ps -fp $holder" >&2
+        else
+            echo "!! (holder PID unknown). Inspect with: fuser -v $lockfile" >&2
+        fi
+        echo "!! Wait for it to finish, then run ./deploy.sh again." >&2
+        exit 1
+    fi
+fi
+
 echo "==> Pulling latest code..."
+script_hash_before="$(hash_self)"
 git pull
+script_hash_after="$(hash_self)"
+
+# `git pull` can replace this very file, but bash is executing the copy it
+# already opened — so every change to deploy.sh would otherwise take effect one
+# deploy LATE. Observed live 2026-07-21: the first deploy after PR #120 pulled
+# the systemd-unit sync, did not run it, printed "Done. App is live" and exited
+# 0 with a stale unit still installed. It also defeats the warning-gating added
+# in that PR, since the *old* script has no gating.
+# DEPLOY_REEXECED bounds this to a single restart: a script that somehow hashed
+# differently on every read still cannot ping-pong forever.
+if [ "$script_hash_before" != "$script_hash_after" ] && [ "${DEPLOY_REEXECED:-}" != 1 ]; then
+    if [ -r "$script_path" ]; then
+        echo "==> deploy.sh updated mid-run; restarting with new version"
+        echo "    (everything above this line came from the previous version)"
+        export DEPLOY_REEXECED=1
+        if [ -x "$script_path" ]; then
+            exec "$script_path" "$@"
+        else
+            # The execute bit can go missing across a pull (a checkout made with
+            # core.filemode off, say). Failing here would abort the deploy after
+            # the pull but before migrations, so fall back to the interpreter the
+            # shebang names anyway rather than dying on a mode bit.
+            exec bash "$script_path" "$@"
+        fi
+    else
+        deploy_warnings=$((deploy_warnings + 1))
+        echo "!! WARNING: deploy.sh changed but is no longer readable at" >&2
+        echo "!! $script_path — continuing with the version already loaded," >&2
+        echo "!! which is NOT the one just pulled. Re-run ./deploy.sh." >&2
+    fi
+fi
 
 echo "==> Installing/updating Python dependencies..."
 venv/bin/pip install -r requirements.txt --quiet
 
 echo "==> Applying database migrations..."
 ENVIRONMENT=production FLASK_APP=app.py venv/bin/flask db upgrade
-
-# Non-fatal steps below record a warning here instead of aborting. The final
-# summary reads this: a deploy that printed a warning must not also print
-# "App is live" and exit 0, or the warning is decoration.
-deploy_warnings=0
 
 # The unit file used to be installed by a manual `sudo cp` documented only in
 # its own header, so edits to deploy/fantasy-platform.service silently never
