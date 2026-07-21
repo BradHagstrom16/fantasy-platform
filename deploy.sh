@@ -309,8 +309,9 @@ done
 echo "    $unit_ok in sync, $unit_updated updated, $unit_installed installed, $unit_failed failed"
 if [ "$unit_installed" -gt 0 ]; then
     echo "    NOTE: newly installed units are NOT enabled — writing a unit file"
-    echo "    starts nothing. Enable deliberately, one game at a time:"
-    echo "        sudo systemctl enable --now <name>.timer"
+    echo "    starts nothing. Enable deliberately, one game at a time, naming"
+    echo "    each unit in full (systemctl enable does not accept globs):"
+    echo "        sudo systemctl enable --now <name>.timer [<name>.timer ...]"
 fi
 
 # Once for the whole loop, not per unit. Unconditional, and deliberately NOT

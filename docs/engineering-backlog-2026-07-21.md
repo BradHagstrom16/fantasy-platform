@@ -98,11 +98,17 @@ until Golf migrates (~Jan 2027), which trains the operator to ignore deploy outp
 - Dry-run prediction: `9 in sync, 0 updated, 20 installed, 0 failed` — matched the real
   deploy exactly.
 
-**Recorded hazard.** With `golf-*.timer` files now present in `/etc`, a careless
-`systemctl enable --now golf-*.timer` would run Golf syncs on the droplet while
-PythonAnywhere still runs them — double API spend and double writes. It takes a deliberate
-enable, but mirroring is what makes it reachable. `deploy.sh` prints an explicit
-`NOT enabled` note on any first install.
+**Recorded hazard — narrower than first written, corrected after checking the box.**
+`golf-*.timer` files now exist in `/etc` while Golf still runs on PythonAnywhere, so
+enabling them would double-run those syncs (double API spend, double writes). The obvious
+misfire is *not* reachable: `systemctl enable --now golf-*.timer` is rejected by systemd
+outright — *"Glob pattern passed to enable, but globs are not supported for this"* — and
+`systemctl`'s glob expansion elsewhere only matches units already in memory, which a
+disabled timer is not. What **is** reachable is any form where the **shell** does the
+expanding: a `for` loop over `/etc/systemd/system/golf-*.timer`, or the same glob typed
+while `cd`'d into that directory, both of which hand `systemctl` real paths. Enable CFB's
+timers by explicit name (transition plan §6F) and the question never arises. `deploy.sh`
+prints an explicit `NOT enabled` note on any first install.
 
 **Known gap, accepted.** Orphans are not handled: a unit deleted or renamed in `deploy/`
 leaves its old copy in `/etc` untouched and unreported. Detecting "ours" would need either
