@@ -29,5 +29,5 @@ itsdangerous==2.2.0
 # fixed rather than annotated — the point of a pin is that it stays put.
 # Minimal fix version deliberately, not 8.4.x: the three games' CLIs run in
 # prod on systemd timers, so a click minor bump is its own vetted change.
-click==8.3.3
+click==8.4.2
 MarkupSafe==3.0.3

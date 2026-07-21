@@ -29,11 +29,18 @@ jobs:
           # Track the version production runs. Bump alongside the droplet.
           python-version: "3.13"
           cache: pip
-          # Both files: requirements-dev.txt is just `-r requirements.txt` plus
+          # All three files: requirements-dev.txt is just `-r requirements.txt` plus
           # tooling, so keying on it alone would not rotate the cache when the
-          # actual pins change.
-          cache-dependency-path: requirements*.txt
-      - run: pip install -r requirements-dev.txt
+          # actual pins change — and constraints.txt now carries the entire
+          # transitive tree, so omitting it would reuse a cache built against the
+          # previous one, which is the same failure in a new place.
+          cache-dependency-path: |
+            requirements*.txt
+            constraints.txt
+      # -c constraints.txt so CI resolves the same transitive tree as prod (ADR-042).
+      # Without it CI silently tests against whatever pip happens to resolve that day,
+      # which is the divergence this repo has already been bitten by once.
+      - run: pip install -r requirements-dev.txt -c constraints.txt
       # ENVIRONMENT=testing selects TestingConfig (in-memory SQLite) and is what
       # activates the *_FAKE_NOW time seams the state-detection tests rely on.
       # No database service is needed.
