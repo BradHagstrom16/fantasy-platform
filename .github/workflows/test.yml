@@ -17,6 +17,9 @@ permissions:
 jobs:
   pytest:
     runs-on: ubuntu-latest
+    # The suite runs in ~90s. The GitHub default is 360 minutes, so without
+    # this a single hung test burns six hours of runner time before failing.
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
@@ -26,11 +29,17 @@ jobs:
           # Track the version production runs. Bump alongside the droplet.
           python-version: "3.13"
           cache: pip
-          cache-dependency-path: requirements-dev.txt
+          # Both files: requirements-dev.txt is just `-r requirements.txt` plus
+          # tooling, so keying on it alone would not rotate the cache when the
+          # actual pins change.
+          cache-dependency-path: requirements*.txt
       - run: pip install -r requirements-dev.txt
       # ENVIRONMENT=testing selects TestingConfig (in-memory SQLite) and is what
       # activates the *_FAKE_NOW time seams the state-detection tests rely on.
       # No database service is needed.
-      - run: pytest tests/ -q
+      # -ra surfaces skip reasons. A few tests self-skip on the *symptom* of a
+      # regression (a route 404ing, a page 302ing), which would otherwise turn
+      # a failure into a silent skip on a green run.
+      - run: pytest tests/ -q -ra
         env:
           ENVIRONMENT: testing

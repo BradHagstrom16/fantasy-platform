@@ -15,3 +15,14 @@ email-validator==2.3.0
 requests==2.34.2
 gunicorn==26.0.0
 psycopg2-binary==2.9.12
+
+# Imported directly by application code, so they are direct dependencies even
+# though pip installs them anyway as Flask transitives. Undeclared, they were
+# floating at whatever version Flask's resolver happened to pick — the exact
+# drift ADR-037 exists to close, hiding one level down.
+#   itsdangerous  core/auth/tokens.py (password-reset token signing)
+#   click         app.py + the three games' cli.py (AppGroup commands)
+#   markupsafe    core/admin/announce.py, games/golf/services/reminders.py
+itsdangerous==2.2.0
+click==8.3.1
+MarkupSafe==3.0.3

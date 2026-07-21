@@ -55,11 +55,14 @@ class User(UserMixin, db.Model):
         """Hash and store password.
 
         ``method`` is pinned rather than inherited from Werkzeug's default,
-        which has changed across majors (pbkdf2:sha1 -> pbkdf2:sha256 ->
-        scrypt in 3.0). Pinning keeps a Werkzeug upgrade from silently
-        changing the hash format for new passwords. Existing rows are
-        unaffected either way — ``check_password_hash`` reads the algorithm
-        from each stored hash's own prefix, so older formats keep verifying.
+        which has changed over time (pbkdf2:sha1 -> pbkdf2:sha256 -> scrypt
+        in 2.3). Pinning keeps a Werkzeug upgrade from silently changing the
+        hash format for new passwords. Existing rows are unaffected either
+        way — ``check_password_hash`` reads the algorithm from each stored
+        hash's own prefix, so older formats keep verifying for as long as
+        Werkzeug still supports them. Note the failure mode if one is ever
+        dropped is a raised ``ValueError``, not a ``False`` return: the
+        ``try`` in ``check_password_hash`` covers only the prefix split.
         """
         self.password_hash = generate_password_hash(password, method='scrypt')
 
