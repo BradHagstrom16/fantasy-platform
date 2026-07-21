@@ -33,6 +33,10 @@ deploy_warnings=0
 # .gitignore entry). Nothing removes it — the lock is released when the process
 # exits and its fds close; unlinking a lockfile others may already have open is
 # how you get two holders at once.
+# The usual flock caveat — a long-lived child inheriting fd 200 would hold the
+# lock past our exit — does not bite here: every child this script spawns (git,
+# pip, flask, sudo) is short-lived, and gunicorn is started by systemd via
+# `systemctl restart`, so it is a child of PID 1 and never sees our fds.
 lockfile=/home/deploy/.fantasy-platform-deploy.lock
 
 # flock locks an open file *description* — not a path, not a process — and
@@ -62,21 +66,43 @@ else
     # Append, not truncate: `>` empties the file at open — i.e. before we know
     # whether we won the race — wiping the current holder's PID out of it.
     exec 200>>"$lockfile"
-    if flock -n 200; then
+    flock_rc=0
+    flock -n 200 || flock_rc=$?
+    # Exit 1 means contention and *only* contention: flock(1) reports a failed
+    # -n acquisition with the -E code (1 by default) and uses sysexits.h values
+    # for every other failure. Worth discriminating, because "flock failed" is
+    # not the same claim as "someone else is deploying" — on a filesystem with
+    # a limited flock(2) (NFS, CIFS) the call can always fail, and treating that
+    # as contention would abort every deploy while blaming a process that does
+    # not exist. /home/deploy is local disk on the droplet, so this is a
+    # guard against a future move, not a live problem.
+    if [ "$flock_rc" = 0 ]; then
         # A separate open, so this replaces the file's *contents* without
         # disturbing the lock held on fd 200. It gives whoever gets blocked
         # next a real PID to name.
         printf '%s\n' "$$" >"$lockfile"
-    else
+    elif [ "$flock_rc" = 1 ]; then
         holder="$(head -n 1 "$lockfile" 2>/dev/null || true)"
         echo "!! DEPLOY ABORTED: another deploy already holds $lockfile" >&2
-        if [ -n "$holder" ]; then
+        if [ -n "$holder" ] && kill -0 "$holder" 2>/dev/null; then
             echo "!! (PID $holder). Inspect it with: ps -fp $holder" >&2
+        elif [ -n "$holder" ]; then
+            # Don't send the operator chasing a PID that isn't there: the file
+            # records whoever wrote it last, which is not necessarily the
+            # process the kernel is holding the lock for.
+            echo "!! (the file names PID $holder, but no such process is" >&2
+            echo "!!  visible — find the real holder with: fuser -v $lockfile)" >&2
         else
             echo "!! (holder PID unknown). Inspect with: fuser -v $lockfile" >&2
         fi
         echo "!! Wait for it to finish, then run ./deploy.sh again." >&2
         exit 1
+    else
+        deploy_warnings=$((deploy_warnings + 1))
+        echo "!! WARNING: flock exited $flock_rc — an error, not contention." >&2
+        echo "!! A filesystem with limited flock(2) support (NFS/CIFS) does this." >&2
+        echo "!! Running WITHOUT a concurrency lock; check that $lockfile" >&2
+        echo "!! is on local disk: df -PT $lockfile" >&2
     fi
 fi
 
