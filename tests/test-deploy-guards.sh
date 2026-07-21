@@ -27,7 +27,15 @@ set -u
 HARNESS_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_SCRIPT="${1:-$(cd "$HARNESS_DIR/.." && pwd)/deploy.sh}"
 [ -r "$REPO_SCRIPT" ] || { echo "no readable deploy.sh at $REPO_SCRIPT"; exit 1; }
-SANDBOX="$(mktemp -d "${TMPDIR:-/tmp}/deploy-guard-sandbox.XXXXXX")"
+# Normalized through `cd && pwd` on purpose. macOS sets TMPDIR with a trailing
+# slash, so the raw mktemp path carries an embedded '//' — and deploy.sh's
+# re-exec resolves its own path the same way, collapsing it. The sudo shim
+# decides what it may execute by textual prefix match against $SANDBOX, so an
+# un-normalized value made every re-exec'd run (B, C, E, K) look like it was
+# writing outside the sandbox: the shim refused, install and mv became silent
+# no-ops, and nothing failed because those cases assert on the lock, not on
+# units. Case T is what surfaced it.
+SANDBOX="$(cd "$(mktemp -d "${TMPDIR:-/tmp}/deploy-guard-sandbox.XXXXXX")" && pwd)"
 SHIMS="$SANDBOX/shims"
 
 pass=0
@@ -40,10 +48,18 @@ check() { # check <description> <actual> <expected>
 }
 
 # ---------------------------------------------------------------- sandbox ---
-mkdir -p "$SHIMS" "$SANDBOX/venv/bin" "$SANDBOX/deploy"
+mkdir -p "$SHIMS" "$SANDBOX/venv/bin" "$SANDBOX/deploy" "$SANDBOX/etc-systemd"
+
+# SED 3/4 redirect the unit sync (backlog 1.2) at a sandbox directory owned by
+# whoever is running the tests. Without them the loop would aim at the real
+# /etc/systemd/system as root:root, so every local run would either refuse to
+# work or — far worse — write there.
+HARNESS_USER="$(id -un):$(id -gn)"
 
 sed -e 's|^cd /home/deploy/fantasy-platform$|cd "$(dirname "$0")"|' \
     -e 's|^lockfile=/home/deploy/.*$|lockfile="$(dirname "$0")/deploy.lock"|' \
+    -e 's|^unit_dir=/etc/systemd/system$|unit_dir="$(dirname "$0")/etc-systemd"|' \
+    -e "s|^unit_owner=root:root\$|unit_owner=$HARNESS_USER|" \
     "$REPO_SCRIPT" > "$SANDBOX/deploy.sh"
 chmod +x "$SANDBOX/deploy.sh"
 
@@ -54,15 +70,41 @@ echo
 # Fail loudly if a sed silently matched nothing — a no-op sed would leave the
 # test running against /home/deploy paths and quietly prove nothing.
 grep -q 'cd "$(dirname "$0")"' "$SANDBOX/deploy.sh" || { echo "SED 1 MISSED"; exit 1; }
-# Relaxed only for the red-baseline run against the pre-fix script, which has
-# no lockfile line to rewrite.
+# SEDs 2–4 are relaxed only for the red-baseline run against a pre-fix script,
+# which has no lockfile line and no unit_dir/unit_owner lines to rewrite.
 if ! grep -q 'lockfile="$(dirname "$0")/deploy.lock"' "$SANDBOX/deploy.sh"; then
     [ -n "${ALLOW_MISSING_LOCK_SED:-}" ] || { echo "SED 2 MISSED"; exit 1; }
     echo "(no lockfile line — running the legacy-baseline comparison)"
 fi
+if ! grep -q 'unit_dir="$(dirname "$0")/etc-systemd"' "$SANDBOX/deploy.sh"; then
+    [ -n "${ALLOW_MISSING_LOCK_SED:-}" ] || { echo "SED 3 MISSED"; exit 1; }
+    echo "(no unit_dir line — legacy baseline)"
+fi
+if ! grep -q "^unit_owner=$HARNESS_USER\$" "$SANDBOX/deploy.sh"; then
+    [ -n "${ALLOW_MISSING_LOCK_SED:-}" ] || { echo "SED 4 MISSED"; exit 1; }
+    echo "(no unit_owner line — legacy baseline)"
+fi
 
 cp "$SANDBOX/deploy.sh" "$SANDBOX/deploy.sh.pristine"
+
+# Unit fixtures. deploy.sh loops over deploy/*.service and deploy/*.timer, so
+# what lives here sets the counts every unit-sync case asserts on: five units —
+# the real one by name (cases A–M restart it) plus two service/timer pairs
+# standing in for a game's timers. The contents only need to be stable and
+# distinguishable; systemd-analyze is shimmed, so unit *validity* is not what
+# these prove. Change this set and cases N–S need their numbers rechecked.
 : > "$SANDBOX/deploy/fantasy-platform.service"
+for u in guard-alpha guard-beta; do
+    printf '[Unit]\nDescription=%s fixture\n\n[Service]\nType=oneshot\nExecStart=/bin/true\n' \
+        "$u" > "$SANDBOX/deploy/$u.service"
+    printf '[Unit]\nDescription=%s fixture timer\n\n[Timer]\nOnCalendar=daily\n\n[Install]\nWantedBy=timers.target\n' \
+        "$u" > "$SANDBOX/deploy/$u.timer"
+done
+UNIT_FIXTURE_COUNT=5
+
+# Created empty so case T can count lines unconditionally. Left to accumulate
+# for the whole run — reset_state must never clear it.
+: > "$SANDBOX/sudo-refused"
 
 # Fingerprint the live unit up front so test G can prove the harness never
 # rewrote it. On the droplet this file exists (and must stay byte-identical);
@@ -100,13 +142,85 @@ fi
 exit 0
 GIT
 
-# sudo: records the command, never executes it. Nothing in this harness may
-# touch the real /etc.
+# sudo: records every command. Executes only file operations whose paths all
+# resolve inside the sandbox; everything else is a logged no-op. Nothing in this
+# harness may touch the real /etc — case T asserts that no path was ever even
+# offered.
+#
+# The exec path exists because the unit sync (backlog 1.2) is only meaningfully
+# testable against real files: deploy.sh's own diff and stat decide in-sync vs
+# updated vs installed, and a shim that merely returned 0 would leave every one
+# of those branches unreachable — which is exactly how the sync block shipped
+# with 54 assertions around it and none on it.
 cat > "$SHIMS/sudo" <<'SUDO'
 #!/bin/bash
 echo "sudo $*" >> "$SANDBOX/sudo-log"
-exit 0
+
+# Lets a case force one privileged command to fail, the way a malformed unit
+# fails systemd-analyze or a full disk fails install(1). Matched against the
+# whole command line, so a case can target a single unit by name. Same idea as
+# FLOCK_FORCE_RC in the flock shim.
+if [ -n "${SUDO_FAIL_RE:-}" ] && [[ "$*" =~ $SUDO_FAIL_RE ]]; then
+    echo "sudo: forced failure (SUDO_FAIL_RE) for: $*" >&2
+    exit 1
+fi
+
+case "${1:-}" in
+    install|mv|rm) cmd="$1"; shift ;;
+    *) exit 0 ;;                     # systemctl, systemd-analyze, ... : no-op
+esac
+
+args=()
+while [ $# -gt 0 ]; do
+    case "$1" in
+        # The harness is not root, so ownership cannot be set. This is the one
+        # fidelity gap in the shim, and it is why deploy.sh reads $unit_owner
+        # instead of hardcoding root:root — the mode/owner comparison it does
+        # afterwards is still exercised for real, against this user.
+        -o|-g) shift 2 ;;
+        -m)    args+=("$1" "$2"); shift 2 ;;
+        -*)    args+=("$1"); shift ;;
+        *)
+            # A path argument. If even one escapes the sandbox, refuse the whole
+            # command rather than let a harness bug write to the real box, and
+            # leave a durable record for case T.
+            case "$1" in
+                "$SANDBOX"/*) args+=("$1"); shift ;;
+                /*)    echo "REFUSED absolute path outside sandbox: $1" >> "$SANDBOX/sudo-refused"; exit 0 ;;
+                *..*)  echo "REFUSED relative path containing ..: $1" >> "$SANDBOX/sudo-refused"; exit 0 ;;
+                # Relative to the cwd, which SED 1 pins inside the sandbox.
+                *)     args+=("$1"); shift ;;
+            esac
+            ;;
+    esac
+done
+exec "$cmd" "${args[@]}"
 SUDO
+
+# deploy.sh reads mode and owner with GNU `stat -c`. Once the unit directory is
+# inside the sandbox that file exists on macOS too, where BSD stat has no -c and
+# would fail — turning the "stat failed" warning branch into a false positive on
+# every local run. Translate only when the system stat is not GNU; on the
+# droplet no shim is written and the real GNU stat runs, so fidelity is kept
+# where it counts.
+if stat -c '%a' . >/dev/null 2>&1; then
+    echo "(system stat is GNU-compatible; no stat shim needed)"
+else
+    echo "(BSD stat detected; installing a GNU '-c' translation shim)"
+    cat > "$SHIMS/stat" <<'STAT'
+#!/bin/bash
+# Only the one format deploy.sh uses is translated. Anything else is an error
+# rather than a silently wrong answer.
+if [ "$1" = "-c" ] && [ "$2" = '%a %U:%G' ]; then
+    exec /usr/bin/stat -f '%Lp %Su:%Sg' "$3"
+fi
+if [ "$1" = "-c" ] && [ "$2" = '%a' ]; then
+    exec /usr/bin/stat -f '%Lp' "$3"
+fi
+echo "stat shim: unsupported invocation: $*" >&2
+exit 64
+STAT
+fi
 
 # flock(1) does not exist on macOS. This calls flock(2) on the same inherited
 # fd the real utility would — same syscall, same kernel semantics — so what is
@@ -162,6 +276,12 @@ export PATH="$SHIMS:$PATH"
 reset_state() {
     rm -f "$SANDBOX/pull-count" "$SANDBOX/sudo-log" "$SANDBOX/deploy.lock"
     cp -p "$SANDBOX/deploy.sh.pristine" "$SANDBOX/deploy.sh"
+    # Units land for real (see the sudo shim), so a case that distinguishes
+    # installed from in-sync has to start from a known-empty unit directory.
+    # sudo-refused is deliberately NOT cleared: it accumulates across the whole
+    # run so case T can assert on every case at once.
+    rm -rf "$SANDBOX/etc-systemd"
+    mkdir -p "$SANDBOX/etc-systemd"
 }
 
 # ------------------------------------------------------------------ tests ---
@@ -287,6 +407,10 @@ for s in git sudo sleep; do cp "$SHIMS/$s" "$SANDBOX/shims-noflock/"; done
 for b in dirname basename sha256sum shasum stat diff head cat cksum rm mv install kill; do
     src="$(command -v "$b" 2>/dev/null)" && ln -sf "$src" "$SANDBOX/shims-noflock/$b"
 done
+# The GNU-stat translation shim, where one was needed, has to win over the
+# symlink to the system stat the loop above just made — otherwise this case
+# alone hits BSD stat and reports a warning the other cases don't.
+if [ -e "$SHIMS/stat" ]; then cp -f "$SHIMS/stat" "$SANDBOX/shims-noflock/stat"; fi
 if PATH="$SANDBOX/shims-noflock" command -v flock >/dev/null 2>&1; then
     bad "test I setup is broken — flock is still reachable on the stripped PATH"
 fi
@@ -363,6 +487,151 @@ check "reported the conflict" "$(grep -c 'another deploy already holds' "$SANDBO
 check "flagged the PID as not visible" "$(grep -c 'no such process is' "$SANDBOX/m.out")" "1"
 check "did not offer a bogus ps command" "$(grep -c 'ps -fp 999999' "$SANDBOX/m.out")" "0"
 wait $holder_pid 2>/dev/null || true
+echo
+
+# --- unit sync (backlog 1.2 / ADR-041) --------------------------------------
+# These start at N rather than slotting in earlier on purpose: case G counts
+# `systemctl restart` calls accumulated across E and F (F deliberately skips
+# reset_state), so inserting a deploy-invoking case above it would silently
+# change that number.
+#
+# Before 1.2, deploy.sh synced exactly one unit and the other 28 in deploy/ were
+# in the silent-drift state ADR-040 condemns: editing the repo file changed
+# nothing on the box, and nothing said so. The sync block also ran in every case
+# A–M with not one assertion on it, so all of its warning branches were dead
+# code. N–S cover the loop; T is the safety net for the whole run.
+
+echo "=== N: nothing changed since the last deploy ⇒ everything reports in sync ==="
+reset_state
+MUTATE_PULLS=0 "$SANDBOX/deploy.sh" > "$SANDBOX/n1.out" 2>&1
+check "first run installed the fixtures" \
+      "$(grep -c "0 in sync, 0 updated, $UNIT_FIXTURE_COUNT installed, 0 failed" "$SANDBOX/n1.out")" "1"
+# Cleared by hand rather than via reset_state, which would also wipe the unit
+# directory this case exists to find already-populated.
+rm -f "$SANDBOX/sudo-log"
+MUTATE_PULLS=0 "$SANDBOX/deploy.sh" > "$SANDBOX/n2.out" 2>&1
+check "exit code" "$?" "0"
+check "second run found every unit in sync" \
+      "$(grep -c "$UNIT_FIXTURE_COUNT in sync, 0 updated, 0 installed, 0 failed" "$SANDBOX/n2.out")" "1"
+check "rewrote nothing" "$(grep -c 'installed (644' "$SANDBOX/n2.out")" "0"
+check "no NOT-enabled note when nothing was installed" \
+      "$(grep -c 'NOT enabled' "$SANDBOX/n2.out")" "0"
+# Validation is gated behind the change check, so a steady-state deploy must not
+# pay for 29 systemd-analyze invocations.
+check "validated nothing it wasn't about to install" \
+      "$(grep -c 'systemd-analyze verify' "$SANDBOX/sudo-log")" "0"
+echo
+
+echo "=== O: units absent from the unit dir ⇒ installed, and said to be inert ==="
+# ADR-041: absent units are installed rather than skipped, so the CFB timer
+# install at launch is not left depending on someone remembering a manual step.
+# The note matters as much as the install — installing is not enabling, and an
+# operator who thinks otherwise could double-run Golf against PythonAnywhere.
+reset_state
+MUTATE_PULLS=0 "$SANDBOX/deploy.sh" > "$SANDBOX/o.out" 2>&1
+check "exit code" "$?" "0"
+check "installed every absent unit" \
+      "$(grep -c "0 in sync, 0 updated, $UNIT_FIXTURE_COUNT installed, 0 failed" "$SANDBOX/o.out")" "1"
+check "said installed is not enabled" "$(grep -c 'NOT enabled' "$SANDBOX/o.out")" "1"
+check "the files really landed" \
+      "$(find "$SANDBOX/etc-systemd" -type f | wc -l | tr -d ' ')" "$UNIT_FIXTURE_COUNT"
+check "landed at mode 644" "$(stat -c '%a' "$SANDBOX/etc-systemd/guard-alpha.timer")" "644"
+check "landed byte-identical to the repo copy" \
+      "$(cmp -s "$SANDBOX/deploy/guard-alpha.timer" "$SANDBOX/etc-systemd/guard-alpha.timer" && echo same || echo differs)" "same"
+check "no temp file survived the run" \
+      "$(find "$SANDBOX/etc-systemd" -name '*.new.*' | wc -l | tr -d ' ')" "0"
+check "reached the end" "$(grep -c 'Done. App is live' "$SANDBOX/o.out")" "1"
+echo
+
+echo "=== P: one unit fails validation ⇒ it is skipped, the rest still install ==="
+# The whole point of a per-unit verdict. A loop that aborted on the first bad
+# unit would leave the deploy half-synced with no signal which half.
+reset_state
+SUDO_FAIL_RE='systemd-analyze verify deploy/guard-beta\.timer' MUTATE_PULLS=0 \
+    "$SANDBOX/deploy.sh" > "$SANDBOX/p.out" 2>&1
+check "exit code (warned ⇒ non-zero)" "$?" "1"
+check "named the failing unit" \
+      "$(grep -c 'deploy/guard-beta.timer failed validation' "$SANDBOX/p.out")" "1"
+check "said it stays absent, not that a stale copy was kept" \
+      "$(grep -c 'guard-beta.timer stays absent' "$SANDBOX/p.out")" "1"
+check "the other four installed anyway" \
+      "$(grep -c '0 in sync, 0 updated, 4 installed, 1 failed' "$SANDBOX/p.out")" "1"
+check "the rejected unit did not land" \
+      "$([ -e "$SANDBOX/etc-systemd/guard-beta.timer" ] && echo present || echo absent)" "absent"
+check "counted exactly one warning" "$(grep -c 'with 1 warning' "$SANDBOX/p.out")" "1"
+check "deploy still completed the real work" \
+      "$(grep -c 'Restarting application' "$SANDBOX/p.out")" "1"
+check "did not claim success" "$(grep -c 'Done. App is live' "$SANDBOX/p.out")" "0"
+echo
+
+echo "=== Q: one unit's install fails ⇒ warned per-unit, the rest still install ==="
+# Distinct from P: validation passed and the write itself failed, which is the
+# branch that has to clean up its temp file.
+reset_state
+SUDO_FAIL_RE='^install .*guard-alpha\.service' MUTATE_PULLS=0 \
+    "$SANDBOX/deploy.sh" > "$SANDBOX/q.out" 2>&1
+check "exit code (warned ⇒ non-zero)" "$?" "1"
+check "named the unit it could not install" \
+      "$(grep -c 'could not install guard-alpha.service' "$SANDBOX/q.out")" "1"
+check "offered the by-hand fix" \
+      "$(grep -c 'Fix with: sudo install -m 644' "$SANDBOX/q.out")" "1"
+check "the other four installed anyway" \
+      "$(grep -c '0 in sync, 0 updated, 4 installed, 1 failed' "$SANDBOX/q.out")" "1"
+check "counted exactly one warning" "$(grep -c 'with 1 warning' "$SANDBOX/q.out")" "1"
+check "left no temp file behind" \
+      "$(find "$SANDBOX/etc-systemd" -name '*.new.*' | wc -l | tr -d ' ')" "0"
+check "did not claim success" "$(grep -c 'Done. App is live' "$SANDBOX/q.out")" "0"
+echo
+
+echo "=== R: an installed unit's mode drifted ⇒ repaired, not reported in sync ==="
+# A content-only comparison would call this unit correct forever. systemd runs
+# these files as root, so a loosened mode is a privilege-escalation path, not a
+# cosmetic difference.
+reset_state
+MUTATE_PULLS=0 "$SANDBOX/deploy.sh" > "$SANDBOX/r1.out" 2>&1
+chmod 600 "$SANDBOX/etc-systemd/guard-alpha.service"
+rm -f "$SANDBOX/sudo-log"
+MUTATE_PULLS=0 "$SANDBOX/deploy.sh" > "$SANDBOX/r2.out" 2>&1
+check "exit code (a repair is not a warning)" "$?" "0"
+check "reported the drifted metadata" \
+      "$(grep -c "guard-alpha.service metadata is '600" "$SANDBOX/r2.out")" "1"
+check "counted it as updated, not in sync" \
+      "$(grep -c '4 in sync, 1 updated, 0 installed, 0 failed' "$SANDBOX/r2.out")" "1"
+check "mode is back to 644" \
+      "$(stat -c '%a' "$SANDBOX/etc-systemd/guard-alpha.service")" "644"
+check "still claimed success" "$(grep -c 'Done. App is live' "$SANDBOX/r2.out")" "1"
+echo
+
+echo "=== S: an installed unit was hand-edited ⇒ overwritten; one reload for the batch ==="
+# The drift ADR-040 exists to kill, in the direction nobody expects: the box
+# edited, not the repo. The repo wins.
+reset_state
+MUTATE_PULLS=0 "$SANDBOX/deploy.sh" > "$SANDBOX/s1.out" 2>&1
+echo "# hand-edited on the box" >> "$SANDBOX/etc-systemd/guard-beta.service"
+rm -f "$SANDBOX/sudo-log"
+MUTATE_PULLS=0 "$SANDBOX/deploy.sh" > "$SANDBOX/s2.out" 2>&1
+check "exit code" "$?" "0"
+check "counted exactly one unit as updated" \
+      "$(grep -c '4 in sync, 1 updated, 0 installed, 0 failed' "$SANDBOX/s2.out")" "1"
+check "the hand edit is gone" \
+      "$(grep -c 'hand-edited' "$SANDBOX/etc-systemd/guard-beta.service")" "0"
+check "left the units it did not touch alone" \
+      "$(grep -c 'updated (644' "$SANDBOX/s2.out")" "1"
+# Per unit would mean 29 reloads on the real box. Once, unconditionally, after
+# the loop — see the comment in deploy.sh for why it is not chained to a
+# successful install.
+check "reloaded systemd exactly once for the whole loop" \
+      "$(grep -c 'systemctl daemon-reload' "$SANDBOX/sudo-log")" "1"
+echo
+
+echo "=== T: across every case above, no privileged call was aimed outside the sandbox ==="
+# The standing safety net for the mirror policy. A bug in the loop, a sed that
+# stopped matching, or a fixture with an absolute path would show up here as a
+# refusal — and case G's fingerprint proves the real unit is untouched even if
+# the shim's guard were itself wrong.
+check "the sudo shim never had to refuse a path" \
+      "$(wc -l < "$SANDBOX/sudo-refused" | tr -d ' ')" "0"
+check "the real live unit is still byte-identical" "$(unit_fingerprint)" "$UNIT_BEFORE"
 echo
 
 echo "==================================================="
