@@ -49,7 +49,7 @@
           <tr>
             <td>Week {{ row.week }}{% if row.round_name %} <span class="cfb-archive-round">{{ row.round_name }}</span>{% endif %}</td>
             <td class="cfb-col-center cfb-archive-num">{{ row.alive_entering }}</td>
-            <td class="cfb-col-center cfb-archive-num">{% if row.cut %}{{ row.cut }}{% else %}<span class="cfb-result-none">&ndash;</span>{% endif %}</td>
+            <td class="cfb-col-center cfb-archive-num">{% if row.cut %}{{ row.cut }}{% else %}<span class="cfb-result-none" aria-label="None cut">&ndash;</span>{% endif %}</td>
           </tr>
           {% endfor %}
         </tbody>

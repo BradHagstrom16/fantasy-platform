@@ -139,12 +139,14 @@ class TestRoute:
 
 
 class TestDesignLocks:
+    @staticmethod
     @pytest.fixture(scope="class")
-    def css(self):
+    def css():
         return CSS_PATH.read_text(encoding="utf-8")
 
+    @staticmethod
     @pytest.fixture(scope="class")
-    def tpl(self):
+    def tpl():
         return TPL_PATH.read_text(encoding="utf-8")
 
     def test_archive_block_lives_in_cfb_section(self, css):
