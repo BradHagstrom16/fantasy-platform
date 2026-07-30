@@ -151,10 +151,17 @@ not document the timing):
 curl -sI -m 10 http://104.131.28.136/ ; echo "exit=$?"      # expect: no output, exit=28
 curl -skI -m 10 https://104.131.28.136/ ; echo "exit=$?"    # expect: no output, exit=28
 curl -sI -m 10 https://cccfantasy.com/ | head -3            # expect: HTTP/2 200, server: cloudflare
-ssh -o BatchMode=yes deploy@104.131.28.136 'echo ssh-ok'    # expect: ssh-ok
-ssh -o BatchMode=yes deploy@104.131.28.136 \
-  "ss -tn state established '( dport = :25060 )' | head -3" # expect: rows → outbound DB alive
+ssh -o BatchMode=yes -o ConnectTimeout=10 deploy@104.131.28.136 'echo ssh-ok'   # expect: ssh-ok
+ssh -o BatchMode=yes -o ConnectTimeout=10 deploy@104.131.28.136 \
+  "ss -tn state established '( dport = :25060 )' | head -3" # informational — see below
 ```
+
+The domain probe is the authoritative outbound-DB check: the homepage renders
+DB-backed content, so its `200` proves the app is opening connections to Managed
+Postgres end-to-end. The `ss` probe is corroboration only — established rows show
+connections that exist (with `pool_recycle=280` they're recent), but the listing by
+itself doesn't prove *new* connections succeed. The SSH probes carry `ConnectTimeout`
+so a missing SSH rule fails fast instead of hanging past the propagation window.
 
 Reading the probe results: **exit=28 (timeout) is the success signature** — the packet
 was *dropped* at DO's network layer. A "connection refused" instead means the packet

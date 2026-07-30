@@ -146,9 +146,14 @@ class TestFirewallRunbookRangeSync:
     """
 
     def _runbook_ranges(self):
-        m = _CF_BLOCK.search(RUNBOOK.read_text())
-        assert m, 'CF-RANGES markers missing from origin-cloak runbook'
-        return [ln.strip() for ln in m.group(1).splitlines() if ln.strip()]
+        blocks = list(_CF_BLOCK.finditer(RUNBOOK.read_text()))
+        assert len(blocks) == 1, (
+            f'expected exactly one CF-RANGES marker block in the origin-cloak '
+            f'runbook, found {len(blocks)}'
+        )
+        return [
+            ln.strip() for ln in blocks[0].group(1).splitlines() if ln.strip()
+        ]
 
     def test_runbook_block_is_unique_valid_cidrs(self):
         found = self._runbook_ranges()
