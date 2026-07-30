@@ -318,7 +318,29 @@ Cloudflare IP ranges or keying off `CF-Connecting-IP` instead. Small diff, but i
 proxy-security semantics — its own scoped PR with a test that pins the header→key
 behavior, not a bolt-on.
 
-### 2.6 Origin not cloaked — direct-to-origin traffic bypasses Cloudflare 🟡
+### 2.6 Origin not cloaked — direct-to-origin traffic bypasses Cloudflare ✅ SHIPPED (PR #130)
+
+**Resolution (2026-07-30, ADR-043):** DO Cloud Firewall `fantasy-platform-fw` attached to
+the droplet — inbound TCP 22 from anywhere (lockout guard) + 80/443 from Cloudflare's 22
+published ranges only; default allow-all outbound kept; **ufw deliberately untouched**
+(`ufw status` showing `Nginx Full ALLOW Anywhere` is expected forever — the cloud
+firewall is the narrower outer gate, and rollback relies on ufw still allowing
+everything underneath). Runbook with click-through, safety model, and the four-place
+range-refresh recipe: `docs/superpowers/plans/2026-07-30-origin-cloak-do-firewall.md`;
+the runbook's paste block is equality-locked to `CLOUDFLARE_RANGES` and (transitively)
+`deploy/nginx.conf` by `tests/test_client_ip_keying.py::TestFirewallRunbookRangeSync` —
+the live firewall is the one mirror no test can see (no DO API token, by design).
+**Verified live 2026-07-30 (all timestamps UTC):** rules enforced at 20:46:32 — bare-IP
+http flipped from `301` to timeout/exit-28 (dropped at DO's network layer, not
+refused); bare-IP https likewise; `https://cccfantasy.com` stayed `HTTP/2 200`;
+BatchMode SSH stayed alive; two established outbound connections to Managed Postgres
+:25060 confirmed post-attach. **Rollback drill executed:** detach restored bare-IP
+traffic in **~55s** (the propagation number DO doesn't publish); re-attach re-cloaked
+within seconds (20:53:59), domain 200 + SSH re-verified. Detection story for the
+accepted stale-allowlist risk: UptimeRobot red while the droplet is healthy ⇒ detach
+first, debug second.
+
+Original item as written 2026-07-30:
 
 **Spun off from 2.5 (2026-07-30).** ufw on the droplet allows `'Nginx Full'` from
 Anywhere (set up in the 2026-04-21 deployment plan, Task 14) and no DO cloud firewall
@@ -443,8 +465,8 @@ claims. It is what caught 1.1.
 
 | | |
 |---|---|
-| `main` | `a810d1e` (PR #123 merged 2026-07-21 20:53Z; Priority 1 closed) |
-| Tests | **1749 passing**, ruff clean, `pip-audit` clean; plus `tests/test-deploy-guards.sh` at 102 (97 on the droplet) |
-| Production | deployed and verified — all 29 units in sync at `644 root:root`, the 20 newly installed ones `disabled`; `--timeout 120` + `--no-control-socket` live on the running process, gunicorn 26.0.0 `sync` worker, 3 workers, site 200 |
-| Prod ↔ repo pins | converged (`requests` 2.34.2, `SQLAlchemy` 2.0.51, `click` 8.3.3) |
+| `main` | PR #130 (2026-07-30; 2.1/2.5/2.6 all shipped 2026-07-30 via #128/#129/#130) |
+| Tests | **1764 passing**, ruff clean; plus `tests/test-deploy-guards.sh` at 102 (97 on the droplet) |
+| Production | deployed and verified — 29 units in sync; rate limits on shared Redis keyed by real client IP (realip, PR #129); origin cloaked by `fantasy-platform-fw` (80/443 CF-only, rollback drill measured ~55s); site 200 |
+| Prod ↔ repo pins | converged under `constraints.txt` (ADR-042; `click` 8.4.2, `urllib3` 2.7.0, `redis` 8.1.0) |
 | Active era | CFB Survivor launch prep; WC archived; Golf UI phase ~Jan 2027 |
