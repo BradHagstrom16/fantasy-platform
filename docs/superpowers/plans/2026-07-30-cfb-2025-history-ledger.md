@@ -22,6 +22,7 @@
 - Do not touch `deploy/nginx.conf`, systemd units, or any WC surface.
 - Run commands with the project venv: `ENVIRONMENT=testing venv/bin/python -m pytest ...`, `venv/bin/ruff check .`.
 - Verified 2025 facts (assert these exactly): 26 players; champion **Fourth & Pine** (2 lives, 0 losses, spread 163.5); 25 eliminated, each with exactly 2 graded losses; second-loss week == last pick week for all; alive-entering series `26, 26, 24, 20, 18, 14, 14, 12, 10, 9, 8, 8, 7, 4, 4, 4`; week 15 round name "Conference Championship Week", week 16 "CFP Round 1" (weeks 1–14 have blank round names — exporter normalizes `''` → `null`); season dates 2025-08-28 → 2025-12-19.
+- Where those facts are enforced (clarified post-merge, PR #132): the two pick-level ones — "exactly 2 graded losses" and "second-loss week == last pick week" — are **source-only**, because the snapshot deliberately carries no pick rows. `scripts/export_2025_history.py` checks them against the legacy DB and any warning aborts the write, so a violation cannot reach the artifact; `tests/test_cfb_history.py` locks only what the snapshot can represent.
 
 ---
 
