@@ -13,6 +13,13 @@ the same DB produces an identical file, so an accidental re-run is a no-op
 diff. Deliberately untested in CI (needs ~/CF_Survivor); the committed
 snapshot is the tested artifact (tests/test_cfb_history.py).
 
+Division of labour: the snapshot omits pick rows, so "each eliminated player
+lost exactly twice" and "the second loss is their last pick week" are
+checkable ONLY here, against the legacy DB. This script owns those
+source-only invariants; tests/test_cfb_history.py locks only what the
+snapshot can actually represent. Any warning aborts the write, so a
+violation of either invariant cannot reach the committed artifact.
+
 Derivations (verified against the DB 2026-07-30, zero anomalies):
 - out_week = week of a player's SECOND incorrect pick (two lives). Fallback
   (never triggered on the real data): last recorded pick week, with a loud
@@ -66,17 +73,35 @@ def derive(conn):
             )
         ]
         if u["is_eliminated"]:
+            # The snapshot carries no pick rows, so these two invariants are
+            # only checkable here, against the legacy DB. Warnings (not a hard
+            # exit) keep the spec's warn-and-eyeball contract; because main()
+            # now refuses to write when any warning fires, a violation still
+            # cannot reach the committed snapshot.
+            last_pick_week = conn.execute(
+                "SELECT MAX(w.week_number) AS wk FROM pick p"
+                " JOIN week w ON w.id = p.week_id WHERE p.user_id = ?",
+                (u["id"],),
+            ).fetchone()["wk"]
             if len(loss_weeks) >= TOTAL_LIVES:
                 out_week = loss_weeks[TOTAL_LIVES - 1]
+                if len(loss_weeks) > TOTAL_LIVES:
+                    warnings.append(
+                        f"{name}: {len(loss_weeks)} graded losses in a"
+                        f" {TOTAL_LIVES}-life pool; out_week taken from loss"
+                        f" {TOTAL_LIVES} (week {out_week})"
+                    )
+                if out_week != last_pick_week:
+                    warnings.append(
+                        f"{name}: out_week {out_week} but the last recorded"
+                        f" pick is week {last_pick_week}"
+                    )
             else:
-                out_week = conn.execute(
-                    "SELECT MAX(w.week_number) AS wk FROM pick p"
-                    " JOIN week w ON w.id = p.week_id WHERE p.user_id = ?",
-                    (u["id"],),
-                ).fetchone()["wk"]
+                out_week = last_pick_week
+                plural = "loss" if len(loss_weeks) == 1 else "losses"
                 warnings.append(
-                    f"{name}: eliminated with {len(loss_weeks)} graded losses;"
-                    f" out_week fell back to last pick week {out_week}"
+                    f"{name}: eliminated with {len(loss_weeks)} graded"
+                    f" {plural}; out_week fell back to last pick week {out_week}"
                 )
             cuts_by_week[out_week] += 1
             standings.append({
@@ -166,12 +191,6 @@ def main():
     finally:
         conn.close()
 
-    OUT_PATH.parent.mkdir(parents=True, exist_ok=True)
-    OUT_PATH.write_text(
-        json.dumps(data, indent=2, sort_keys=True) + "\n", encoding="utf-8"
-    )
-
-    print(f"wrote {OUT_PATH}")
     print(f"entrants: {data['season']['entrants']}")
     print(f"champion: {data['champion']['name']}"
           f" ({data['champion']['final_lives']} lives)")
@@ -180,12 +199,21 @@ def main():
         label = f" [{row['round_name']}]" if row["round_name"] else ""
         print(f"  w{row['week']:>2}: {row['alive_entering']:>2} alive,"
               f" {row['cut']} cut{label}")
+    # Validate BEFORE touching OUT_PATH: a rejected derivation must never
+    # overwrite the trusted committed snapshot, or recovering the good file
+    # would mean reaching for git after a failed run.
     if warnings:
-        print("\nWARNINGS (eyeball before committing):")
+        print("\nWARNINGS (snapshot NOT written; eyeball before re-running):")
         for w in warnings:
             print(f"  - {w}")
         sys.exit(1)
-    print("\nno warnings; snapshot is commit-ready")
+
+    OUT_PATH.parent.mkdir(parents=True, exist_ok=True)
+    OUT_PATH.write_text(
+        json.dumps(data, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
+    print(f"\nwrote {OUT_PATH}")
+    print("no warnings; snapshot is commit-ready")
 
 
 if __name__ == "__main__":

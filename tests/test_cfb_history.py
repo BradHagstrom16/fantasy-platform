@@ -55,6 +55,8 @@ class TestSnapshotIntegrity:
         assert champ["out_week"] is None
         assert champ["name"] == snapshot["champion"]["name"] == "Fourth & Pine"
         assert snapshot["champion"]["final_lives"] == 2
+        spread = snapshot["champion"]["cumulative_spread"]
+        assert champ["cumulative_spread"] == spread == 163.5
 
     def test_25_eliminated_each_with_out_week(self, snapshot):
         eliminated = [r for r in snapshot["standings"] if r["outcome"] == "eliminated"]
