@@ -183,3 +183,25 @@ class TestDesignLocks:
         assert 'method="post"' not in low
         assert "cfb-pick-cta" not in low
         assert "championship-hero" not in low
+
+    def test_subnav_pill_public_last_and_wired(self):
+        base = (ROOT / "templates" / "base.html").read_text(encoding="utf-8")
+        m = re.search(r"subnav-cfb.*?</nav>", base, re.DOTALL)
+        assert m, "CFB sub-nav block missing"
+        block = m.group(0)
+        assert "url_for('cfb.history')" in block
+        assert ">2025</a>" in block
+        pill_positions = [p.start() for p in re.finditer(r'class="subnav-pill', block)]
+        history_pos = block.index("cfb.history")
+        assert pill_positions[-1] < history_pos, "2025 pill must be the LAST pill"
+        # Strip the pills' own `{% if request.endpoint ... %}active{% endif %}`
+        # conditionals so the only {% endif %} left between the My Picks href
+        # and the 2025 href is the auth guard's close -- proving the pill sits
+        # OUTSIDE the guard (public).
+        stripped = re.sub(
+            r"\{% if request\.endpoint[^%]*%\}active\{% endif %\}", "", block
+        )
+        between = stripped[
+            stripped.index("url_for('cfb.my_picks')"):stripped.index("url_for('cfb.history')")
+        ]
+        assert "{% endif %}" in between, "2025 pill must sit outside the auth guard (public)"

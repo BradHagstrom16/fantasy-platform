@@ -194,6 +194,8 @@
                     <a class="subnav-pill {% if request.endpoint == 'cfb.my_picks' %}active{% endif %}"
                        href="{{ url_for('cfb.my_picks') }}">My Picks</a>
                     {% endif %}
+                    <a class="subnav-pill {% if request.endpoint == 'cfb.history' %}active{% endif %}"
+                       href="{{ url_for('cfb.history') }}">2025</a>
                 </div>
             </div>
         </div>
