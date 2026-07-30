@@ -90,3 +90,14 @@ class TestSnapshotIntegrity:
             "is_admin", "username", "pick",
         ):
             assert forbidden not in raw, forbidden
+
+
+class TestLoader:
+    def test_returns_snapshot_keys(self):
+        from games.cfb.services.history import get_season_2025
+        data = get_season_2025()
+        assert set(data) == {"season", "champion", "standings", "attrition"}
+
+    def test_cached_per_process(self):
+        from games.cfb.services.history import get_season_2025
+        assert get_season_2025() is get_season_2025()
