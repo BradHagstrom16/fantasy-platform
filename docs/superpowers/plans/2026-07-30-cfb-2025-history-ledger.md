@@ -943,3 +943,19 @@ Merge gate per repo practice: pytest + ruff + GitGuardian on the HEAD SHA. CodeR
 - [ ] **Step 6: Merge, deploy is NOT required**
 
 The page ships with the next routine deploy; nothing here needs prod steps, timers, nginx, or env vars. After merge: `gh pr merge --merge --delete-branch` (repo practice), then flip the plan's checkboxes and update the engineering-backlog/transition docs only if Brad asks.
+
+---
+
+## Execution Blueprint (per-task skill choice — ruled by Brad 2026-07-30)
+
+Not blanket execution: each task was evaluated for **superpowers:subagent-driven-development** vs **superpowers:executing-plans** (inline). Follow this mapping; the reasons are part of the contract.
+
+| Task | Mode | Why |
+|---|---|---|
+| 1 — exporter + snapshot + locks | **Inline** (executing-plans) | Reads `~/CF_Survivor` (outside the repo — subagent Bash on additional-directory paths can auto-deny or classifier-block, a known project gotcha), and Step 5 is a human-judgment gate: eyeball the sanity report before committing the snapshot. Keep it in the main loop where Brad can see the report. |
+| 2 — cached loader | **Inline** (executing-plans) | ~10 lines, fully specified, zero design latitude. Subagent spin-up costs more than the task; batch it inline right after Task 1. |
+| 3 — route + template + CSS | **Subagent-driven** | The largest diff and the only design-bearing surface (template + `.cfb-archive-*` block). A fresh subagent executes the verbatim code without this session's accumulated context, and subagent-driven's two-stage review is worth paying exactly here — a reviewer can meaningfully catch deviation from the doctrine locks (green-not-crimson rule, no-gold, glyph/em-dash bans) before it lands. No impeccable invocation is needed (design decisions are already made and encoded in the plan; the code is verbatim). |
+| 4 — sub-nav pill | **Inline** (executing-plans) | One anchor tag + one test. Trivially mechanical. |
+| 5 — verification, smoke, detector, PR | **Inline** (executing-plans) | Needs the main session's hands: dev-server management, Chrome MCP browser smoke (mobile emulation), judgment calls on detector findings (phantom rule), and the PR-to-merge flow that repo practice keeps in the driver's seat (never wait on CodeRabbit's check; verify its comments if they post). |
+
+Sequencing: 1 → 2 → 3 → 4 → 5, strictly in order (each consumes the previous task's interface). Inline tasks run as one executing-plans pass with a checkpoint after Task 1's eyeball gate; Task 3 dispatches per subagent-driven-development, then execution returns inline for 4–5.
