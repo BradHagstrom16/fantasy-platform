@@ -175,6 +175,6 @@ Thu/Fri deadline-semantics product check.
 | Check | Result |
 |---|---|
 | `cfb-*` systemd units | All 10 installed (5 services `static`, 5 timers `disabled`). `PRESET: enabled` column is the known `preset-all` hazard — never run `systemctl preset-all`. |
-| Prod `.env` | `ODDS_API_KEY`, `ADMIN_EMAIL`, `EMAIL_ADDRESS`, `EMAIL_PASSWORD`, `MAIL_FROM_ADDRESS`, `SMTP_SERVER`, `SMTP_PORT` all SET; `ADMIN_EMAIL` ≠ `EMAIL_ADDRESS` (real mailbox). |
+| Prod `.env` | All seven vars SET: `ODDS_API_KEY` (Odds API key), `EMAIL_ADDRESS` + `EMAIL_PASSWORD` (Brevo **SMTP auth login/key** — the login is not an inbox), `MAIL_FROM_ADDRESS` (visible From, the DKIM sender), `SMTP_SERVER` + `SMTP_PORT` (Brevo relay), and `ADMIN_EMAIL` (game-admin **alert recipient** — verified distinct from the SMTP login `EMAIL_ADDRESS`, i.e. a real mailbox). |
 | CFB tables | 0 weeks / 0 games / 0 picks / 0 enrollments (no sandbox data ever reached prod). `cfb_team` = 0 — expected pre-AP-poll; §1 populates it. |
 | Odds API | Key valid (HTTP 200); quota 500 remaining / 0 used. |
