@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% block title %}The First Season &middot; CFB Survivor{% endblock %}
+
+{% block content %}
+{# The room's quietest page: pure archive register, ceremony-by-reduction
+   (spec: docs/superpowers/specs/2026-07-30-cfb-2025-history-ledger-design.md).
+   No CTAs, no countdowns, no pick affordances anywhere on this surface. #}
+<div class="page-hero cfb-hero">
+  <div class="hero-glow"></div>
+  <div class="container">
+    <span class="cfb-eyebrow">Club Archive &middot; {{ season.year }}</span>
+    <h1>The First Season</h1>
+    <div class="cfb-hero-field">
+      <span class="cfb-count">{{ season.entrants }} entered</span>
+      <span class="cfb-hero-field-sep">&middot;</span>
+      <span class="cfb-count-cut">{{ season.entrants - 1 }} cut</span>
+      <span class="cfb-hero-field-sep">&middot;</span>
+      <span class="cfb-count">1 remained</span>
+    </div>
+  </div>
+</div>
+
+<div class="container mt-4 mb-5">
+
+  {# Champion module. Deliberately not the existing render-gated sole-survivor
+     hero primitive (single-purpose to a live season in progress). Verdict-
+     family grammar: raised surface, survived-green top rule (outcome carries
+     outcome; crimson stays identity). #}
+  <div class="cfb-archive-champion">
+    <span class="cfb-eyebrow">One Remained</span>
+    <div class="cfb-archive-champion-name">{{ champion.name }}</div>
+    <p class="cfb-archive-champion-line">Survived all sixteen weeks. Both lives intact.</p>
+  </div>
+
+  {# Attrition: the season's narrative spine. Real counts, labeled, no chart. #}
+  <div class="cfb-archive-section">
+    <span class="cfb-eyebrow">The Cut, Week by Week</span>
+    <div class="table-responsive">
+      <table class="table cfb-archive-table">
+        <thead>
+          <tr>
+            <th scope="col">Week</th>
+            <th scope="col" class="cfb-col-center">Alive Entering</th>
+            <th scope="col" class="cfb-col-center">Cut</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in attrition %}
+          <tr>
+            <td>Week {{ row.week }}{% if row.round_name %} <span class="cfb-archive-round">{{ row.round_name }}</span>{% endif %}</td>
+            <td class="cfb-col-center cfb-archive-num">{{ row.alive_entering }}</td>
+            <td class="cfb-col-center cfb-archive-num">{% if row.cut %}{{ row.cut }}{% else %}<span class="cfb-result-none">&ndash;</span>{% endif %}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  {# Final standings: champion first, then longest survivors (pre-sorted in the
+     snapshot). No invented rank column: order + out-week tell the story without
+     minting false precision (doctrine 10.3). The outcome column carries the
+     state in text; the pips stay structural (fill vs hollow) with exact counts
+     for assistive tech. #}
+  <div class="cfb-archive-section">
+    <span class="cfb-eyebrow">Final Standings</span>
+    <div class="table-responsive">
+      <table class="table cfb-archive-table">
+        <thead>
+          <tr>
+            <th scope="col">Player</th>
+            <th scope="col">Outcome</th>
+            <th scope="col">Lives</th>
+            <th scope="col" class="cfb-col-center">Cumulative Spread</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in standings %}
+          <tr{% if row.outcome == 'champion' %} class="cfb-archive-row-champion"{% endif %}>
+            <td><strong>{{ row.name }}</strong></td>
+            <td>
+              {% if row.outcome == 'champion' %}
+              <span class="cfb-archive-outcome-champion">Champion</span>
+              {% else %}
+              <span class="cfb-archive-outcome">Out &middot; Week {{ row.out_week }}</span>
+              {% endif %}
+            </td>
+            <td>
+              <span class="lives-indicator">
+                {% for i in range(row.final_lives) %}<span class="life"></span>{% endfor %}
+                {% for i in range(2 - row.final_lives) %}<span class="life lost"></span>{% endfor %}
+              </span>
+              <span class="visually-hidden">{{ row.final_lives }} of 2 lives</span>
+            </td>
+            <td class="cfb-col-center cfb-archive-num">{{ '%.1f'|format(row.cumulative_spread) }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  {# Provenance: one quiet line, no link (club canon + quiet provenance ruling). #}
+  <p class="cfb-archive-provenance">Season one was played at the old clubhouse. The record moved with the club.</p>
+
+</div>
+{% endblock %}
