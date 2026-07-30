@@ -15,6 +15,11 @@ email-validator==2.3.0
 requests==2.34.2
 gunicorn==26.0.0
 psycopg2-binary==2.9.12
+# Backend client for the production rate-limit store (limits' RedisStorage,
+# via RATELIMIT_STORAGE_URI). Nothing else pulls it in, so it is pinned here
+# as a deliberate direct dep — same footing as psycopg2-binary: a driver the
+# app needs in prod but never imports by name. Zero transitive deps.
+redis==8.1.0
 
 # Imported directly by application code, so they are direct dependencies even
 # though pip installs them anyway as Flask transitives. Undeclared, they were

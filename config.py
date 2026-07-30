@@ -67,6 +67,11 @@ class Config:
     # World Cup Fantasy Pool — football-data.org sync
     FOOTBALL_DATA_API_KEY = os.environ.get('FOOTBALL_DATA_API_KEY', '')
 
+    # Rate limiting (Flask-Limiter reads this at init_app; extensions.py
+    # deliberately passes no storage_uri so this key stays authoritative).
+    # memory:// is correct for single-process dev; production overrides below.
+    RATELIMIT_STORAGE_URI = os.environ.get('RATELIMIT_STORAGE_URI', 'memory://')
+
     # CSRF
     WTF_CSRF_ENABLED = True
 
@@ -86,12 +91,25 @@ class ProductionConfig(Config):
         'pool_pre_ping': True,
         'pool_recycle': 280,
     }
+    # Rate-limit counters must be shared across the 3 Gunicorn workers.
+    # memory:// keeps per-worker buckets, so a "10 per minute" guard on
+    # /login and /forgot-password was effectively ~30/minute (engineering
+    # backlog 2.1). Defaults to the droplet's localhost Redis; a
+    # RATELIMIT_STORAGE_URI in .env overrides. If Redis is down, fall back
+    # to per-worker in-memory limiting — degraded protection, never a 500.
+    RATELIMIT_STORAGE_URI = os.environ.get(
+        'RATELIMIT_STORAGE_URI', 'redis://localhost:6379/0'
+    )
+    RATELIMIT_IN_MEMORY_FALLBACK_ENABLED = True
 
 
 class TestingConfig(Config):
     TESTING = True
     SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
     WTF_CSRF_ENABLED = False
+    # Pinned, not env-derived: the suite must never need a rate-limit service,
+    # even on a machine whose .env points production at Redis.
+    RATELIMIT_STORAGE_URI = 'memory://'
 
 
 config = {

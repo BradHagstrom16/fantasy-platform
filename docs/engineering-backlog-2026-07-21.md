@@ -160,7 +160,20 @@ never reached migrations. Two things worth knowing before touching this code:
 
 ## Priority 2 — Correctness bugs 🟠
 
-### 2.1 Flask-Limiter `memory://` with 3 workers 🟠
+### 2.1 Flask-Limiter `memory://` with 3 workers ✅ SHIPPED (PR #128)
+
+**Resolution (2026-07-30):** storage is config-driven via `RATELIMIT_STORAGE_URI`
+(`extensions.py` no longer passes a constructor `storage_uri`, which would override the
+config key). Production defaults to `redis://localhost:6379/0` with
+`RATELIMIT_IN_MEMORY_FALLBACK_ENABLED = True` (a Redis outage degrades to per-worker
+limiting, never a 500); dev stays `memory://`; TestingConfig pins `memory://` regardless
+of ambient env. `redis==8.1.0` pinned in `requirements.txt` (zero transitives — no
+`constraints.txt` change). Locks in `tests/test_rate_limit_storage.py`. Droplet needs a
+one-time `apt install redis-server` before the deploy — see the PR body for the runbook.
+Note the `limits` backend survey (2026-07-30): no Postgres storage exists in `limits`
+5.8.0, so the "reuse existing infrastructure" option below was never real.
+
+Original item as written 2026-07-21:
 
 **Evidence (verified 2026-07-21):** `extensions.py:26` → `storage_uri="memory://"`;
 `deploy/fantasy-platform.service` → `--workers 3`.
@@ -260,6 +273,28 @@ in #124, which was docs-only and opened before this was understood.
 **Interim mitigation:** do not run `systemctl preset-all` on the droplet. Note this is
 exactly the "remember not to do the thing" posture that ADR-040 and ADR-041 exist to
 replace, which is itself the argument for building the file.
+
+### 2.5 Rate-limit keys are Cloudflare edge IPs (`ProxyFix x_for=1`) 🟠
+
+**Found 2026-07-30 while shipping 2.1.** `app.py:142` wraps the app in
+`ProxyFix(x_for=1, ...)`. Behind the live chain (client → Cloudflare → nginx), nginx's
+`$proxy_add_x_forwarded_for` produces `X-Forwarded-For: <client>, <cf-edge>`, and
+`x_for=1` takes the **last** entry — so `request.remote_addr`, and therefore
+`get_remote_address()` rate-limit keys, is the **Cloudflare edge IP**, not the client.
+
+**Consequence:** rate-limit buckets are shared per CF edge IP. Pre-2.1 this was masked by
+the per-worker-triple-limit bug; with shared Redis storage the "10 per minute" `/login`
+guard becomes a single bucket for every user routed through the same edge IP. During a
+launch-week signup rush (~26 people invited at once, many in the same metro hitting the
+same PoP), legitimate 429s are plausible. It also weakens the brute-force guard in the
+other direction: an attacker's key rotates with the edge IP.
+
+**Fix sketch (decide before the ~Aug 17 signup push):** `x_for=2` trusts both hops and
+yields the real client IP — with the caveat that a direct-to-origin request (bypassing
+Cloudflare) could then spoof `X-Forwarded-For`; mitigations are restricting nginx to
+Cloudflare IP ranges or keying off `CF-Connecting-IP` instead. Small diff, but it is
+proxy-security semantics — its own scoped PR with a test that pins the header→key
+behavior, not a bolt-on.
 
 ## Priority 3 — Test-suite leverage 🟡
 

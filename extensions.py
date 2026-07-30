@@ -23,5 +23,9 @@ csrf = CSRFProtect()
 limiter = Limiter(
     key_func=get_remote_address,
     default_limits=["200 per hour"],
-    storage_uri="memory://",
+    # Storage is config-driven (RATELIMIT_STORAGE_URI, read at init_app time):
+    # memory:// in dev/tests, shared Redis in production so all Gunicorn
+    # workers count against one bucket. A storage_uri passed here would
+    # silently override the config key and resurrect the per-worker-counter
+    # bug (engineering backlog 2.1) — don't add one.
 )
