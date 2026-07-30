@@ -52,13 +52,13 @@
   - `standings`: list of `{"name": str, "outcome": "champion"|"eliminated", "out_week": int|null, "final_lives": int, "cumulative_spread": float}` — pre-sorted: champion first, then `out_week` descending, then `cumulative_spread` ascending, then lowercased name (routes/templates never sort)
   - `attrition`: list of `{"week": 1..16, "round_name": str|null, "alive_entering": int, "cut": int}` in week order
 
-- [ ] **Step 1: Create the branch**
+- [x] **Step 1: Create the branch**
 
 ```bash
 git checkout -b feat/cfb-2025-history-ledger
 ```
 
-- [ ] **Step 2: Write the failing snapshot tests**
+- [x] **Step 2: Write the failing snapshot tests**
 
 Create `tests/test_cfb_history.py`:
 
@@ -156,12 +156,12 @@ class TestSnapshotIntegrity:
             assert forbidden not in raw, forbidden
 ```
 
-- [ ] **Step 3: Run the tests to verify they fail**
+- [x] **Step 3: Run the tests to verify they fail**
 
 Run: `ENVIRONMENT=testing venv/bin/python -m pytest tests/test_cfb_history.py -q`
 Expected: ERROR in the `snapshot` fixture — `FileNotFoundError` for `games/cfb/data/season_2025.json` (all tests error out; that is the fail state).
 
-- [ ] **Step 4: Write the exporter**
+- [x] **Step 4: Write the exporter**
 
 Create `scripts/export_2025_history.py` (create the `scripts/` directory; add nothing else to it):
 
@@ -360,22 +360,22 @@ if __name__ == "__main__":
     main()
 ```
 
-- [ ] **Step 5: Run the exporter and eyeball the report**
+- [x] **Step 5: Run the exporter and eyeball the report**
 
 Run: `venv/bin/python scripts/export_2025_history.py`
 Expected: `no warnings; snapshot is commit-ready`, entrants 26, champion Fourth & Pine (2 lives), attrition series matching the Global Constraints list. If any WARNING prints, stop and investigate before committing.
 
-- [ ] **Step 6: Run the tests to verify they pass**
+- [x] **Step 6: Run the tests to verify they pass**
 
 Run: `ENVIRONMENT=testing venv/bin/python -m pytest tests/test_cfb_history.py -q`
 Expected: all TestSnapshotIntegrity tests PASS.
 
-- [ ] **Step 7: Ruff**
+- [x] **Step 7: Ruff**
 
 Run: `venv/bin/ruff check scripts/ tests/test_cfb_history.py`
 Expected: clean. Fix anything it flags (safe autofix: `venv/bin/ruff check --fix ...`).
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add scripts/export_2025_history.py games/cfb/data/season_2025.json tests/test_cfb_history.py
@@ -399,7 +399,7 @@ EOF
 - Consumes: `games/cfb/data/season_2025.json` (Task 1).
 - Produces: `games.cfb.services.history.get_season_2025() -> dict` — returns the parsed snapshot (top-level keys `season`, `champion`, `standings`, `attrition`), cached per process, treat as read-only. Task 3's route imports exactly this name.
 
-- [ ] **Step 1: Append the failing loader tests**
+- [x] **Step 1: Append the failing loader tests**
 
 Append to `tests/test_cfb_history.py`:
 
@@ -415,12 +415,12 @@ class TestLoader:
         assert get_season_2025() is get_season_2025()
 ```
 
-- [ ] **Step 2: Run to verify they fail**
+- [x] **Step 2: Run to verify they fail**
 
 Run: `ENVIRONMENT=testing venv/bin/python -m pytest tests/test_cfb_history.py::TestLoader -q`
 Expected: FAIL with `ModuleNotFoundError: No module named 'games.cfb.services.history'`.
 
-- [ ] **Step 3: Implement the loader**
+- [x] **Step 3: Implement the loader**
 
 Create `games/cfb/services/history.py`:
 
@@ -449,12 +449,12 @@ def get_season_2025():
 
 Do NOT add it to `games/cfb/services/__init__.py` re-exports — the existing `__init__` exports game-logic helpers; the route imports the module path directly.
 
-- [ ] **Step 4: Run to verify they pass**
+- [x] **Step 4: Run to verify they pass**
 
 Run: `ENVIRONMENT=testing venv/bin/python -m pytest tests/test_cfb_history.py -q`
 Expected: all PASS.
 
-- [ ] **Step 5: Ruff + commit**
+- [x] **Step 5: Ruff + commit**
 
 ```bash
 venv/bin/ruff check games/cfb/services/history.py tests/test_cfb_history.py
@@ -481,7 +481,7 @@ EOF
 - Consumes: `get_season_2025()` from Task 2.
 - Produces: endpoint `cfb.history` at `GET /cfb/history` (public — Task 4's sub-nav pill points `url_for('cfb.history')` at it); template context keys `season`, `champion`, `standings`, `attrition`; CSS classes `.cfb-archive-champion`, `.cfb-archive-champion-name`, `.cfb-archive-champion-line`, `.cfb-archive-section`, `.cfb-archive-table`, `.cfb-archive-num`, `.cfb-archive-round`, `.cfb-archive-outcome`, `.cfb-archive-outcome-champion`, `.cfb-archive-row-champion`, `.cfb-archive-provenance`.
 
-- [ ] **Step 1: Append the failing route tests and design locks**
+- [x] **Step 1: Append the failing route tests and design locks**
 
 Append to `tests/test_cfb_history.py` (note the new module-level constants go with the existing ones at the top of the file):
 
@@ -572,12 +572,12 @@ class TestDesignLocks:
         assert "championship-hero" not in low
 ```
 
-- [ ] **Step 2: Run to verify they fail**
+- [x] **Step 2: Run to verify they fail**
 
 Run: `ENVIRONMENT=testing venv/bin/python -m pytest tests/test_cfb_history.py::TestRoute tests/test_cfb_history.py::TestDesignLocks -q`
 Expected: TestRoute FAILs with 404; TestDesignLocks ERRORs on the missing `history.html` (FileNotFoundError) and FAILs the CSS scans.
 
-- [ ] **Step 3: Add the route**
+- [x] **Step 3: Add the route**
 
 In `games/cfb/routes.py`, add to the imports block (after the `games.cfb.services.score_fetcher` import at line 39):
 
@@ -605,7 +605,7 @@ def history():
     )
 ```
 
-- [ ] **Step 4: Create the template**
+- [x] **Step 4: Create the template**
 
 Create `games/cfb/templates/cfb/history.html`:
 
@@ -718,7 +718,7 @@ Create `games/cfb/templates/cfb/history.html`:
 {% endblock %}
 ```
 
-- [ ] **Step 5: Add the CSS block**
+- [x] **Step 5: Add the CSS block**
 
 In `static/css/style.css`, insert immediately after the closing brace of the `.cfb-ledger-total` rule (~line 5357) and before the `/* World Cup overrides */` comment:
 
@@ -786,12 +786,12 @@ In `static/css/style.css`, insert immediately after the closing brace of the `.c
 }
 ```
 
-- [ ] **Step 6: Run the new tests to verify they pass**
+- [x] **Step 6: Run the new tests to verify they pass**
 
 Run: `ENVIRONMENT=testing venv/bin/python -m pytest tests/test_cfb_history.py -q`
 Expected: all PASS (snapshot + loader + route + design locks).
 
-- [ ] **Step 7: Ruff + commit**
+- [x] **Step 7: Ruff + commit**
 
 ```bash
 venv/bin/ruff check .
@@ -816,7 +816,7 @@ EOF
 - Consumes: endpoint `cfb.history` (Task 3).
 - Produces: the `2025` pill, last in the CFB sub-nav, public (outside the `current_user.is_authenticated` guard).
 
-- [ ] **Step 1: Append the failing pill lock**
+- [x] **Step 1: Append the failing pill lock**
 
 Append to `tests/test_cfb_history.py` inside `TestDesignLocks`:
 
@@ -844,12 +844,12 @@ Append to `tests/test_cfb_history.py` inside `TestDesignLocks`:
         assert "{% endif %}" in between, "2025 pill must sit outside the auth guard (public)"
 ```
 
-- [ ] **Step 2: Run to verify it fails**
+- [x] **Step 2: Run to verify it fails**
 
 Run: `ENVIRONMENT=testing venv/bin/python -m pytest tests/test_cfb_history.py::TestDesignLocks::test_subnav_pill_public_last_and_wired -q`
 Expected: FAIL (`url_for('cfb.history')` not in block).
 
-- [ ] **Step 3: Add the pill**
+- [x] **Step 3: Add the pill**
 
 In `templates/base.html`, inside the CFB sub-nav `.subnav-pills` div, after the `{% endif %}` that closes the auth-guarded My Picks pill (line 196), add:
 
@@ -858,12 +858,12 @@ In `templates/base.html`, inside the CFB sub-nav `.subnav-pills` div, after the 
                        href="{{ url_for('cfb.history') }}">2025</a>
 ```
 
-- [ ] **Step 4: Run the full file to verify it passes**
+- [x] **Step 4: Run the full file to verify it passes**
 
 Run: `ENVIRONMENT=testing venv/bin/python -m pytest tests/test_cfb_history.py -q`
 Expected: all PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add templates/base.html tests/test_cfb_history.py
@@ -886,12 +886,12 @@ EOF
 - Consumes: everything above.
 - Produces: a merged PR.
 
-- [ ] **Step 1: Full suite + lint**
+- [x] **Step 1: Full suite + lint**
 
 Run: `ENVIRONMENT=testing venv/bin/python -m pytest tests/ -q` and `venv/bin/ruff check .`
 Expected: full suite green (1764+ tests), ruff clean. Any failure gets fixed before proceeding.
 
-- [ ] **Step 2: Browser smoke, desktop + mobile**
+- [x] **Step 2: Browser smoke, desktop + mobile**
 
 Start the dev server: `FLASK_APP=app.py FLASK_DEBUG=1 venv/bin/flask run --port 5099`, open `http://127.0.0.1:5099/cfb/history` (page is state-independent — no `CFB_FAKE_NOW` needed; the local `ccc_local` Postgres works as-is). Inspect logged-out (the public view). Checklist:
 
@@ -899,13 +899,13 @@ Start the dev server: `FLASK_APP=app.py FLASK_DEBUG=1 venv/bin/flask run --port 
 - Mobile at true width (Chrome tooling `emulate "375x812x2,mobile,touch"` — NOT `resize_page`, which clamps ~500px): no horizontal body scroll (tables scroll inside `.table-responsive` only), "Who you callin a convict" wraps without breaking the row, hero field fits.
 - Cross-route continuity: click Standings → Results → 2025; still one room, one game — the archive reads as the same midnight room, not a dashboard.
 
-- [ ] **Step 3: Run the impeccable mechanical detector once**
+- [x] **Step 3: Run the impeccable mechanical detector once**
 
 Run: `node ~/.agents/skills/impeccable/scripts/detect.mjs --json games/cfb/templates/cfb/history.html static/css/style.css`
 (If `node` is missing from PATH: `export NVM_DIR="$HOME/.nvm"; . "$NVM_DIR/nvm.sh"` first.)
 Fix real findings in one batch; findings with no locatable source target are phantoms — ship (standing feedback rule).
 
-- [ ] **Step 4: Commit any smoke/detector fixes**
+- [x] **Step 4: Commit any smoke/detector fixes**
 
 ```bash
 git add -A && git commit -m "$(cat <<'EOF'
@@ -917,7 +917,7 @@ EOF
 ```
 (Skip if nothing changed.)
 
-- [ ] **Step 5: Push and open the PR**
+- [x] **Step 5: Push and open the PR**
 
 ```bash
 git push -u origin feat/cfb-2025-history-ledger
@@ -940,7 +940,7 @@ EOF
 
 Merge gate per repo practice: pytest + ruff + GitGuardian on the HEAD SHA. CodeRabbit is on the free tier until ~Sep — verify/address its comments if they post, but never wait on its check.
 
-- [ ] **Step 6: Merge, deploy is NOT required**
+- [x] **Step 6: Merge, deploy is NOT required**
 
 The page ships with the next routine deploy; nothing here needs prod steps, timers, nginx, or env vars. After merge: `gh pr merge --merge --delete-branch` (repo practice), then flip the plan's checkboxes and update the engineering-backlog/transition docs only if Brad asks.
 
