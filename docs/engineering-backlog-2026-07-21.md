@@ -274,7 +274,29 @@ in #124, which was docs-only and opened before this was understood.
 exactly the "remember not to do the thing" posture that ADR-040 and ADR-041 exist to
 replace, which is itself the argument for building the file.
 
-### 2.5 Rate-limit keys are Cloudflare edge IPs (`ProxyFix x_for=1`) 🟠
+### 2.5 Rate-limit keys are Cloudflare edge IPs (`ProxyFix x_for=1`) ✅ SHIPPED (PR #129)
+
+**Resolution (2026-07-30):** fixed at the nginx layer, not in the app. The 443 server
+block in `deploy/nginx.conf` now carries `ngx_http_realip_module` directives: one
+`set_real_ip_from` per published Cloudflare range (15 v4 + 7 v6, fetched 2026-07-30)
+plus `real_ip_header CF-Connecting-IP;`. When — and only when — the TCP peer is a
+Cloudflare address, nginx rewrites `$remote_addr` from `CF-Connecting-IP` (which
+Cloudflare itself sets and overwrites; unforgeable through the proxy), so
+`$proxy_add_x_forwarded_for` appends the **real client** as the last XFF entry and
+`ProxyFix(x_for=1)` selects it. The app is untouched (`x_for` stays 1 — raising it
+would trust a client-supplied XFF entry on direct-to-origin requests, which is why the
+`x_for=2` sketch below lost: its firewall is load-bearing and fails hard on stale
+ranges, while realip fails soft in every direction — stale range → that slice degrades
+to edge-IP keying, never a block; grey-clouded DNS → peers aren't CF → correct IPs
+anyway; direct-to-origin → headers ignored, keyed by true peer IP). Locks in
+`tests/test_client_ip_keying.py` (ProxyFix hop contract + limiter wiring + nginx
+source lock mirroring the range list). **`deploy/nginx.conf` is NOT synced by
+`deploy.sh`** — install manually per the file's header comment (runbook in the PR
+body); range-refresh recipe lives in the realip comment block. nginx-sync automation
+deliberately deferred (needs its own SED anchors + sudo-shim allowances in
+`tests/test-deploy-guards.sh`). Origin cloaking spun off as 2.6.
+
+Original item as written 2026-07-30:
 
 **Found 2026-07-30 while shipping 2.1.** `app.py:142` wraps the app in
 `ProxyFix(x_for=1, ...)`. Behind the live chain (client → Cloudflare → nginx), nginx's
@@ -295,6 +317,20 @@ Cloudflare) could then spoof `X-Forwarded-For`; mitigations are restricting ngin
 Cloudflare IP ranges or keying off `CF-Connecting-IP` instead. Small diff, but it is
 proxy-security semantics — its own scoped PR with a test that pins the header→key
 behavior, not a bolt-on.
+
+### 2.6 Origin not cloaked — direct-to-origin traffic bypasses Cloudflare 🟡
+
+**Spun off from 2.5 (2026-07-30).** ufw on the droplet allows `'Nginx Full'` from
+Anywhere (set up in the 2026-04-21 deployment plan, Task 14) and no DO cloud firewall
+exists, so anyone who discovers the origin IP can hit nginx directly, bypassing
+Cloudflare's WAF/DDoS layer entirely. **Not** a rate-limit-correctness gap — 2.5's
+realip config keys direct traffic by its true peer IP (the CF headers are ignored when
+the peer isn't a Cloudflare range) — this is defense-in-depth for the origin itself.
+Mitigation: restrict 80/443 to Cloudflare's published ranges (ufw or, better, a DO
+cloud firewall — editable without touching the droplet). **Needs its own PR with a
+range-refresh story first**: unlike realip's fail-soft behavior, a stale allowlist
+here hard-blocks legitimate CF traffic, which is exactly why it lost as the 2.5 fix
+and must not ship as a casual bolt-on.
 
 ## Priority 3 — Test-suite leverage 🟡
 
