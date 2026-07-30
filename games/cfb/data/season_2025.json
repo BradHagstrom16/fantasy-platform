@@ -1,0 +1,296 @@
+{
+  "attrition": [
+    {
+      "alive_entering": 26,
+      "cut": 0,
+      "round_name": null,
+      "week": 1
+    },
+    {
+      "alive_entering": 26,
+      "cut": 2,
+      "round_name": null,
+      "week": 2
+    },
+    {
+      "alive_entering": 24,
+      "cut": 4,
+      "round_name": null,
+      "week": 3
+    },
+    {
+      "alive_entering": 20,
+      "cut": 2,
+      "round_name": null,
+      "week": 4
+    },
+    {
+      "alive_entering": 18,
+      "cut": 4,
+      "round_name": null,
+      "week": 5
+    },
+    {
+      "alive_entering": 14,
+      "cut": 0,
+      "round_name": null,
+      "week": 6
+    },
+    {
+      "alive_entering": 14,
+      "cut": 2,
+      "round_name": null,
+      "week": 7
+    },
+    {
+      "alive_entering": 12,
+      "cut": 2,
+      "round_name": null,
+      "week": 8
+    },
+    {
+      "alive_entering": 10,
+      "cut": 1,
+      "round_name": null,
+      "week": 9
+    },
+    {
+      "alive_entering": 9,
+      "cut": 1,
+      "round_name": null,
+      "week": 10
+    },
+    {
+      "alive_entering": 8,
+      "cut": 0,
+      "round_name": null,
+      "week": 11
+    },
+    {
+      "alive_entering": 8,
+      "cut": 1,
+      "round_name": null,
+      "week": 12
+    },
+    {
+      "alive_entering": 7,
+      "cut": 3,
+      "round_name": null,
+      "week": 13
+    },
+    {
+      "alive_entering": 4,
+      "cut": 0,
+      "round_name": null,
+      "week": 14
+    },
+    {
+      "alive_entering": 4,
+      "cut": 0,
+      "round_name": "Conference Championship Week",
+      "week": 15
+    },
+    {
+      "alive_entering": 4,
+      "cut": 3,
+      "round_name": "CFP Round 1",
+      "week": 16
+    }
+  ],
+  "champion": {
+    "cumulative_spread": 163.5,
+    "final_lives": 2,
+    "name": "Fourth & Pine"
+  },
+  "season": {
+    "end_date": "2025-12-19",
+    "entrants": 26,
+    "start_date": "2025-08-28",
+    "weeks": 16,
+    "year": 2025
+  },
+  "standings": [
+    {
+      "cumulative_spread": 163.5,
+      "final_lives": 2,
+      "name": "Fourth & Pine",
+      "out_week": null,
+      "outcome": "champion"
+    },
+    {
+      "cumulative_spread": 144.5,
+      "final_lives": 0,
+      "name": "CamTheRam17",
+      "out_week": 16,
+      "outcome": "eliminated"
+    },
+    {
+      "cumulative_spread": 184.0,
+      "final_lives": 0,
+      "name": "Mtiers",
+      "out_week": 16,
+      "outcome": "eliminated"
+    },
+    {
+      "cumulative_spread": 193.0,
+      "final_lives": 0,
+      "name": "B1G_Brad",
+      "out_week": 16,
+      "outcome": "eliminated"
+    },
+    {
+      "cumulative_spread": 110.5,
+      "final_lives": 0,
+      "name": "Who you callin a convict",
+      "out_week": 13,
+      "outcome": "eliminated"
+    },
+    {
+      "cumulative_spread": 125.0,
+      "final_lives": 0,
+      "name": "L_Nuts5",
+      "out_week": 13,
+      "outcome": "eliminated"
+    },
+    {
+      "cumulative_spread": 140.5,
+      "final_lives": 0,
+      "name": "Buzzin Sam",
+      "out_week": 13,
+      "outcome": "eliminated"
+    },
+    {
+      "cumulative_spread": 104.5,
+      "final_lives": 0,
+      "name": "EllyJ",
+      "out_week": 12,
+      "outcome": "eliminated"
+    },
+    {
+      "cumulative_spread": 114.0,
+      "final_lives": 0,
+      "name": "Mom",
+      "out_week": 10,
+      "outcome": "eliminated"
+    },
+    {
+      "cumulative_spread": 76.0,
+      "final_lives": 0,
+      "name": "YeoMan40",
+      "out_week": 9,
+      "outcome": "eliminated"
+    },
+    {
+      "cumulative_spread": 83.0,
+      "final_lives": 0,
+      "name": "bradhscousin",
+      "out_week": 8,
+      "outcome": "eliminated"
+    },
+    {
+      "cumulative_spread": 87.0,
+      "final_lives": 0,
+      "name": "Johnny p",
+      "out_week": 8,
+      "outcome": "eliminated"
+    },
+    {
+      "cumulative_spread": 70.0,
+      "final_lives": 0,
+      "name": "BMacsBuffs",
+      "out_week": 7,
+      "outcome": "eliminated"
+    },
+    {
+      "cumulative_spread": 73.0,
+      "final_lives": 0,
+      "name": "WubbaLubbaBuzzBuzz",
+      "out_week": 7,
+      "outcome": "eliminated"
+    },
+    {
+      "cumulative_spread": 32.0,
+      "final_lives": 0,
+      "name": "FranzFerdinand",
+      "out_week": 5,
+      "outcome": "eliminated"
+    },
+    {
+      "cumulative_spread": 40.0,
+      "final_lives": 0,
+      "name": "Tywicks",
+      "out_week": 5,
+      "outcome": "eliminated"
+    },
+    {
+      "cumulative_spread": 51.5,
+      "final_lives": 0,
+      "name": "Jghagstrom",
+      "out_week": 5,
+      "outcome": "eliminated"
+    },
+    {
+      "cumulative_spread": 52.5,
+      "final_lives": 0,
+      "name": "gracefisho",
+      "out_week": 5,
+      "outcome": "eliminated"
+    },
+    {
+      "cumulative_spread": 18.5,
+      "final_lives": 0,
+      "name": "NV",
+      "out_week": 4,
+      "outcome": "eliminated"
+    },
+    {
+      "cumulative_spread": 47.0,
+      "final_lives": 0,
+      "name": "Drobny",
+      "out_week": 4,
+      "outcome": "eliminated"
+    },
+    {
+      "cumulative_spread": 9.0,
+      "final_lives": 0,
+      "name": "P$",
+      "out_week": 3,
+      "outcome": "eliminated"
+    },
+    {
+      "cumulative_spread": 15.5,
+      "final_lives": 0,
+      "name": "charliekaufmann",
+      "out_week": 3,
+      "outcome": "eliminated"
+    },
+    {
+      "cumulative_spread": 30.5,
+      "final_lives": 0,
+      "name": "atm",
+      "out_week": 3,
+      "outcome": "eliminated"
+    },
+    {
+      "cumulative_spread": 30.5,
+      "final_lives": 0,
+      "name": "shane_sup",
+      "out_week": 3,
+      "outcome": "eliminated"
+    },
+    {
+      "cumulative_spread": 1.0,
+      "final_lives": 0,
+      "name": "bgreenblatt",
+      "out_week": 2,
+      "outcome": "eliminated"
+    },
+    {
+      "cumulative_spread": 12.0,
+      "final_lives": 0,
+      "name": "Caputa22",
+      "out_week": 2,
+      "outcome": "eliminated"
+    }
+  ]
+}
