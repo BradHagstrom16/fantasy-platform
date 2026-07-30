@@ -36,6 +36,7 @@ from games.cfb.services.game_logic import (
     process_autopicks,
     process_week_results,
 )
+from games.cfb.services.history import get_season_2025
 from games.cfb.services.score_fetcher import ScoreFetcher
 from games.cfb.utils import (
     deadline_has_passed,
@@ -423,6 +424,23 @@ def weekly_results(week_number=None):
         current_user_pick=current_user_pick,
         current_user_nopick=current_user_nopick,
         pick_counts=pick_counts,
+    )
+
+
+@cfb_bp.route('/history')
+def history():
+    """The First Season: read-only 2025 archive (public, like standings).
+
+    Spec: docs/superpowers/specs/2026-07-30-cfb-2025-history-ledger-design.md.
+    Standings arrive pre-sorted in the snapshot; nothing here sorts or writes.
+    """
+    season = get_season_2025()
+    return render_template(
+        'cfb/history.html',
+        season=season['season'],
+        champion=season['champion'],
+        standings=season['standings'],
+        attrition=season['attrition'],
     )
 
 

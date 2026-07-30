@@ -5356,6 +5356,67 @@ body.game-cfb .list-group {
   color: var(--cfb-white);
 }
 
+/* --- The First Season: 2025 archive (route cfb.history) -------------------
+   The room's quietest page (spec 2026-07-30-cfb-2025-history-ledger-design):
+   pure archive register, ceremony-by-reduction. Existing tokens only; the
+   Crimson-Ceremony Rule holds. The champion rule is survived-green because
+   outcome carries outcome (R1 ruling); crimson stays identity.
+   (Comment wording stays clear of the banned-token literals on purpose:
+   tests/test_cfb_history.py scans this whole block.) */
+.cfb-archive-champion {
+  margin-bottom: 2rem;
+  padding: 1.75rem 1.5rem;
+  background: var(--cfb-raised);
+  border: 1px solid var(--cfb-hairline-strong);
+  border-top: 2px solid var(--cfb-survived);
+  border-radius: var(--radius-lg);
+}
+.cfb-archive-champion .cfb-eyebrow { display: block; margin-bottom: .5rem; }
+.cfb-archive-champion-name {
+  font-family: 'Teko', sans-serif;
+  font-weight: 700;
+  font-size: clamp(2.2rem, 6vw, 3.2rem);
+  line-height: 1.05;
+  letter-spacing: .02em;
+  text-transform: uppercase;
+  color: var(--cfb-white);
+}
+.cfb-archive-champion-line {
+  margin: .35rem 0 0;
+  font-family: 'Newsreader', Georgia, serif;
+  font-size: 1.05rem;
+  color: var(--cfb-bone-muted);
+}
+.cfb-archive-section { margin-bottom: 2rem; }
+.cfb-archive-section > .cfb-eyebrow { display: block; margin-bottom: .6rem; }
+.cfb-archive-table { margin-bottom: 0; }
+.cfb-archive-num {
+  font-family: 'Teko', sans-serif;
+  font-variant-numeric: tabular-nums;
+  font-size: 1.05rem;
+  letter-spacing: .03em;
+  color: var(--cfb-bone);
+}
+.cfb-archive-round {
+  display: inline-block;
+  margin-left: .4rem;
+  font-size: .8rem;
+  color: var(--cfb-bone-subtle);
+}
+.cfb-archive-outcome { color: var(--cfb-bone-muted); }
+.cfb-archive-outcome-champion { color: var(--cfb-survived); font-weight: 600; }
+/* Quiet survived-green tint for the champion row (the tint-only convention;
+   rgba of --cfb-survived #64DBA0, same pattern as the crimson you-row tint). */
+.cfb-archive-row-champion > td { background: rgba(100, 219, 160, 0.06); }
+.cfb-archive-provenance {
+  margin: 2.5rem 0 0;
+  font-family: 'Newsreader', Georgia, serif;
+  font-style: italic;
+  font-size: .95rem;
+  color: var(--cfb-bone-subtle);
+  text-align: center;
+}
+
 /* World Cup overrides */
 body.game-worldcup {
   --game-primary:            #002868;
