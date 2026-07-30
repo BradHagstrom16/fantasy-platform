@@ -138,7 +138,13 @@ def create_app(config_name=None):
         db.session.commit()
         click.echo(f'Admin user "{username}" created.')
 
-    # Trust one level of proxy headers (Cloudflare → Nginx → Gunicorn)
+    # Client → Cloudflare → nginx → gunicorn. nginx's realip module
+    # (deploy/nginx.conf) rewrites $remote_addr from CF-Connecting-IP when the
+    # TCP peer is a Cloudflare range, so the LAST X-Forwarded-For entry nginx
+    # appends is the real client; x_for=1 selects it, making
+    # request.remote_addr — and the Flask-Limiter key — the real client IP.
+    # Keep x_for=1: raising it would trust a client-supplied XFF entry on
+    # direct-to-origin requests. Locked by tests/test_client_ip_keying.py.
     app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
 
     return app
