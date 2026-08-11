@@ -19,7 +19,6 @@ from games.cfb.constants import (
     TEAM_NAME_MAP,
 )
 from games.cfb.models import CfbEnrollment, CfbGame, CfbPick, CfbTeam, CfbWeek
-from games.cfb.services.odds_api import odds_api_get
 from games.cfb.services.score_fetcher import ScoreFetcher
 from games.cfb.utils import (
     deadline_has_passed,
@@ -28,6 +27,7 @@ from games.cfb.utils import (
     make_aware,
 )
 from utils.email import send_platform_email
+from utils.odds_api import odds_api_get
 
 logger = logging.getLogger(__name__)
 

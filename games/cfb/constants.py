@@ -12,11 +12,14 @@ The FBS_MASTER_TEAMS list is the master reference for:
 Update annually: Check for conference realignment, new FBS transitions.
 """
 
+from utils.odds_api import sport_base_url
+
 # The Odds API sport key for NCAAF
 SPORT_KEY = 'americanfootball_ncaaf'
 
-# Base URL for The Odds API v4 NCAAF endpoints
-API_BASE_URL = 'https://api.the-odds-api.com/v4/sports/americanfootball_ncaaf'
+# Base URL for The Odds API v4 NCAAF endpoints — CFB's sport key applied to
+# the shared client (utils/odds_api.py); the client layer hardcodes no sport.
+API_BASE_URL = sport_base_url(SPORT_KEY)
 
 # Season schedule configuration
 # Update these values before each season
