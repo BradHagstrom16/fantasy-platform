@@ -1,9 +1,13 @@
-"""Tests for the platform-admin add-user-to-league tool."""
+"""Tests for the platform-admin add-user-to-league tool.
+
+Post-2026-08-11 changeover the only 'open' game is CFB, so the happy-path
+tests run against the CFB entry; WC ('completed') locks the rejection path.
+"""
 import pytest
 
 from app import create_app
 from extensions import db
-from games.worldcup.constants import SEASON_YEAR
+from games.cfb.models import CfbEnrollment
 from games.worldcup.models import WorldCupEnrollment
 from models.user import User
 
@@ -53,16 +57,17 @@ def test_admin_enrollments_renders_for_platform_admin(app, client):
     _login(client, aid)
     resp = client.get('/admin/enrollments')
     assert resp.status_code == 200
-    assert b'2026 FIFA World Cup' in resp.data
+    assert b'CFB Survivor Pool' in resp.data
 
 
-def test_admin_enrollments_dropdown_excludes_coming_soon_games(app, client):
+def test_admin_enrollments_dropdown_lists_only_open_games(app, client):
+    """coming_soon (golf) and completed (worldcup) games never appear."""
     aid = _make_user(app, 'admin', is_admin=True)
     _login(client, aid)
     resp = client.get('/admin/enrollments')
     data = resp.data.decode()
-    assert 'value="worldcup"' in data
-    assert 'value="cfb"' not in data
+    assert 'value="cfb"' in data
+    assert 'value="worldcup"' not in data
     assert 'value="golf"' not in data
 
 
@@ -73,13 +78,13 @@ def test_admin_enrollments_post_enrolls_user(app, client):
 
     resp = client.post('/admin/enrollments', data={
         'user_id': target_id,
-        'game_slug': 'worldcup',
+        'game_slug': 'cfb',
         'csrf_token': 'x',
     }, follow_redirects=False)
     assert resp.status_code == 302
 
     with app.app_context():
-        enr = WorldCupEnrollment.query.filter_by(user_id=target_id).first()
+        enr = CfbEnrollment.query.filter_by(user_id=target_id).first()
         assert enr is not None
 
 
@@ -89,8 +94,28 @@ def test_admin_enrollments_post_is_idempotent(app, client):
     _login(client, aid)
 
     with app.app_context():
-        db.session.add(WorldCupEnrollment(user_id=target_id, season_year=SEASON_YEAR))
+        db.session.add(CfbEnrollment(user_id=target_id, season_year=2026))
         db.session.commit()
+
+    resp = client.post('/admin/enrollments', data={
+        'user_id': target_id,
+        'game_slug': 'cfb',
+        'csrf_token': 'x',
+    }, follow_redirects=True)
+    assert resp.status_code == 200
+    assert b'already enrolled' in resp.data
+
+    with app.app_context():
+        rows = CfbEnrollment.query.filter_by(user_id=target_id).count()
+        assert rows == 1
+
+
+def test_admin_enrollments_post_rejects_completed_game(app, client):
+    """Real-config lock: WC is 'completed' post-changeover — admin enroll
+    into it is refused with the not-accepting flash and writes nothing."""
+    aid = _make_user(app, 'admin', is_admin=True)
+    target_id = _make_user(app, 'target')
+    _login(client, aid)
 
     resp = client.post('/admin/enrollments', data={
         'user_id': target_id,
@@ -98,11 +123,10 @@ def test_admin_enrollments_post_is_idempotent(app, client):
         'csrf_token': 'x',
     }, follow_redirects=True)
     assert resp.status_code == 200
-    assert b'already enrolled' in resp.data
+    assert b'not accepting new enrollments' in resp.data
 
     with app.app_context():
-        rows = WorldCupEnrollment.query.filter_by(user_id=target_id).count()
-        assert rows == 1
+        assert WorldCupEnrollment.query.filter_by(user_id=target_id).count() == 0
 
 
 def test_admin_enrollments_post_rejects_unknown_game(app, client):

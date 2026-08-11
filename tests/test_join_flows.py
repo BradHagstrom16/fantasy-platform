@@ -48,7 +48,9 @@ def test_wc_join_anonymous_redirects_to_login(client):
     assert '/login' in resp.location
 
 
-def test_wc_join_logged_in_open_renders_form(app, client):
+def test_wc_join_logged_in_open_renders_form(app, client, monkeypatch):
+    """WC-era pinned (real status is 'completed' post-changeover)."""
+    _set_status(monkeypatch, 'worldcup', 'open')
     uid = _make_user(app, 'wc1')
     _login(client, uid)
     resp = client.get('/worldcup/join')
@@ -56,7 +58,9 @@ def test_wc_join_logged_in_open_renders_form(app, client):
     assert b'Join' in resp.data
 
 
-def test_wc_join_post_creates_enrollment(app, client):
+def test_wc_join_post_creates_enrollment(app, client, monkeypatch):
+    """WC-era pinned (real status is 'completed' post-changeover)."""
+    _set_status(monkeypatch, 'worldcup', 'open')
     uid = _make_user(app, 'wc2')
     _login(client, uid)
     resp = client.post('/worldcup/join',
@@ -69,7 +73,9 @@ def test_wc_join_post_creates_enrollment(app, client):
         assert enr.season_year == 2026
 
 
-def test_wc_join_duplicate_redirects_to_dashboard(app, client):
+def test_wc_join_duplicate_redirects_to_dashboard(app, client, monkeypatch):
+    """WC-era pinned (real status is 'completed' post-changeover)."""
+    _set_status(monkeypatch, 'worldcup', 'open')
     uid = _make_user(app, 'wc3')
     _login(client, uid)
     with app.app_context():
@@ -78,6 +84,22 @@ def test_wc_join_duplicate_redirects_to_dashboard(app, client):
     resp = client.get('/worldcup/join', follow_redirects=False)
     assert resp.status_code == 302
     assert '/worldcup' in resp.location
+
+
+def test_wc_join_completed_rejects_post_changeover(app, client):
+    """Real-config lock: the 2026-08-11 changeover set WC 'completed', so
+    /worldcup/join bounces to the lounge and creates nothing."""
+    uid = _make_user(app, 'wc5')
+    _login(client, uid)
+    resp = client.get('/worldcup/join', follow_redirects=False)
+    assert resp.status_code == 302
+    assert resp.location.endswith('/')
+    resp = client.post('/worldcup/join',
+                       data={'display_name': '', 'csrf_token': 'x'},
+                       follow_redirects=False)
+    assert resp.status_code == 302
+    with app.app_context():
+        assert WorldCupEnrollment.query.filter_by(user_id=uid).count() == 0
 
 
 def test_wc_join_rejected_when_status_not_open(app, client, monkeypatch):
@@ -98,9 +120,10 @@ def test_cfb_join_anonymous_redirects_to_login(client):
     assert '/login' in resp.location
 
 
-def test_cfb_join_coming_soon_rejects_logged_in(app, client):
-    """CFB is seeded 'coming_soon' in registry, so /join must reject even
-    logged-in users until status flips to 'open'."""
+def test_cfb_join_coming_soon_rejects_logged_in(app, client, monkeypatch):
+    """coming_soon /join rejects even logged-in users (era pinned — the
+    real CFB status is 'open' since the 2026-08-11 changeover)."""
+    _set_status(monkeypatch, 'cfb', 'coming_soon')
     uid = _make_user(app, 'cfb1')
     _login(client, uid)
     resp = client.get('/cfb/join', follow_redirects=False)

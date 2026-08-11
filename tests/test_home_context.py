@@ -26,6 +26,24 @@ def client(app):
     return app.test_client()
 
 
+# The 2026-08-11 changeover flipped the real registry to CFB open+featured.
+# This module exercises the archived WC lounge-context builders (the frozen-WC
+# regression net), so the WC-era registry is pinned per test. Tests listed in
+# _REAL_REGISTRY opt out and see the live post-changeover config.
+_REAL_REGISTRY = {'test_context_out_basic'}
+
+
+@pytest.fixture(autouse=True)
+def _wc_era_registry(request, monkeypatch):
+    if request.node.name in _REAL_REGISTRY:
+        return
+    from tests._registry_helpers import set_is_featured, set_status
+    set_status(monkeypatch, 'worldcup', 'open')
+    set_is_featured(monkeypatch, 'worldcup', True)
+    set_status(monkeypatch, 'cfb', 'coming_soon')
+    set_is_featured(monkeypatch, 'cfb', False)
+
+
 def _seed_final_match(completed: bool, winner_id: int | None = None):
     """Seed match #104 (the Final). Used to flip live → post.
 
@@ -109,8 +127,9 @@ def test_context_out_basic(app):
         assert 'available_games' in ctx
         assert 'coming_soon_games' in ctx
         assert ctx['total_enrolled'] == 0  # no enrollments seeded
-        # WC is the only open game in the registry currently
-        assert any(g.slug == 'worldcup' for g in ctx['available_games'])
+        # CFB is the only open game in the registry post-changeover
+        assert any(g.slug == 'cfb' for g in ctx['available_games'])
+        assert not any(g.slug == 'worldcup' for g in ctx['available_games'])
 
 
 def test_context_pre_unenrolled(app):

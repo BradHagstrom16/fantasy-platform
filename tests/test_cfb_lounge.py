@@ -1116,9 +1116,14 @@ def test_cfb_live_verdict_shell_renders(app, client, monkeypatch):
     assert 'Choose Team' not in text
 
 
-def test_wc_pre_shell_tiles_unchanged_before_flip(app, client):
-    """Pre-flip regression: the generalized tile strip still renders the
-    WC active tile + registry coming-soon tiles exactly as before."""
+def test_wc_pre_shell_tiles_unchanged_before_flip(app, client, monkeypatch):
+    """WC-era regression (era pinned post-changeover): the generalized tile
+    strip still renders the WC active tile + registry coming-soon tiles
+    exactly as it did before the 2026-08-11 flip."""
+    set_status(monkeypatch, 'worldcup', 'open')
+    set_is_featured(monkeypatch, 'worldcup', True)
+    set_status(monkeypatch, 'cfb', 'coming_soon')
+    set_is_featured(monkeypatch, 'cfb', False)
     with app.app_context():
         user = _make_user()
         auth_id = user.auth_id

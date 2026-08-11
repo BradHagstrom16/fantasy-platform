@@ -553,7 +553,7 @@ _FROZEN_PRE_DEADLINE_NOW = '2026-05-15T12:00:00+00:00'
     'WC_FAKE_NOW': _FROZEN_PRE_DEADLINE_NOW,
     'ENVIRONMENT': 'testing',
 })
-def test_unenrolled_pre_state_home_renders_correct_cta_and_copy(app, client):
+def test_unenrolled_pre_state_home_renders_correct_cta_and_copy(app, client, monkeypatch):
     """Integrated render: log in a fresh user with no enrollment, hit `/`,
     and verify (a) the dossier shows the Join CTA, (b) the Commish copy
     reads the user-supplied text, (c) the countdown card does NOT carry
@@ -565,7 +565,15 @@ def test_unenrolled_pre_state_home_renders_correct_cta_and_copy(app, client):
     relied on real time, which would have flipped the home to 'live'
     state and silently broken the assertions for the rest of time
     (caught by CR on PR #20).
+
+    WC-era pinned: the 2026-08-11 changeover features CFB in the real
+    registry; this render lock covers the archived WC pre-state lounge.
     """
+    from tests._registry_helpers import set_is_featured, set_status
+    set_status(monkeypatch, 'worldcup', 'open')
+    set_is_featured(monkeypatch, 'worldcup', True)
+    set_status(monkeypatch, 'cfb', 'coming_soon')
+    set_is_featured(monkeypatch, 'cfb', False)
     _login_as_unenrolled(app, client)
     resp = client.get('/')
     assert resp.status_code == 200

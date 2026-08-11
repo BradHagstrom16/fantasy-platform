@@ -151,12 +151,12 @@ def test_lounge_game_none_when_sole_featured_open_lacks_resolver(app, monkeypatc
     assert registry.lounge_game() is None
 
 
-def test_lounge_game_real_config_is_worldcup(app):
-    """Pre-changeover lock: WC owns the lounge until the atomic flip."""
+def test_lounge_game_real_config_is_cfb(app):
+    """Post-changeover lock (flipped 2026-08-11): CFB owns the lounge."""
     from games.registry import lounge_game
     entry = lounge_game()
     assert entry is not None
-    assert entry.slug == 'worldcup'
+    assert entry.slug == 'cfb'
 
 
 def test_worldcup_entry_lounge_state_is_worldcup_state(app):
@@ -231,7 +231,7 @@ def test_home_route_resolves_state_via_lounge_game(app, client, monkeypatch):
 
     patched = [
         replace(entry, lounge_state=fake_resolver)
-        if entry.slug == 'worldcup' else entry
+        if entry.slug == 'cfb' else entry
         for entry in registry.GAMES
     ]
     monkeypatch.setattr(registry, 'GAMES', patched)
