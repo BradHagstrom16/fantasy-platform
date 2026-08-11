@@ -216,6 +216,35 @@ def test_summary_reports_created_locked_and_skipped(app):
     assert summary['skipped_out_of_window'] == 1
 
 
+def test_malformed_200_payload_fails_that_sport_only(app):
+    """CR round 2: a 200 whose body is not an array of objects (an error
+    envelope, a stray scalar) must become a per-sport failure — never an
+    AttributeError that aborts the other sport's import."""
+    from games.docket.services.importer import import_week
+
+    app.config['ODDS_API_KEY'] = 'test-key'
+    nfl_game = _event('e-nfl', 'Green Bay Packers', 'Chicago Bears',
+                      '2026-09-07T00:20:00Z')
+    # ncaaf /events: 200 with an object body -> that sport fails, no /odds
+    # call for it; nfl proceeds normally.
+    responses = [_resp({'message': 'quota note, not a list'}),
+                 _resp([nfl_game]), _resp([])]
+    with patch('games.docket.services.importer.odds_api_get',
+               side_effect=responses):
+        summary = import_week(1)
+    assert summary['status'] == 'partial'
+    assert len(summary['errors']) == 1
+    assert 'americanfootball_ncaaf' in summary['errors'][0]
+    assert _count('e-nfl') == 1, 'the healthy sport must still import'
+
+    # Same guard for an array of non-objects.
+    responses = [_resp(['not-an-object']), _resp([]), _resp([])]
+    with patch('games.docket.services.importer.odds_api_get',
+               side_effect=responses):
+        summary = import_week(1)
+    assert 'americanfootball_ncaaf' in summary['errors'][0]
+
+
 def test_one_failed_sport_reports_partial_even_with_zero_creates(app):
     """A sport that completed keeps 'partial' status even when it created no
     new rows (a re-run) — completed work must never be reported as 'error'."""

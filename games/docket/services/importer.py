@@ -71,6 +71,26 @@ def ensure_week(week_number):
     return week
 
 
+def _decode_payload(resp, endpoint):
+    """Decode + shape-check a 200 response body.
+
+    The Odds API's list endpoints return a JSON array of objects; anything
+    else (an error envelope under HTTP 200, a stray scalar) becomes a
+    per-sport OddsApiError so one sport's bad body can never abort the
+    other sport's import mid-loop.
+    """
+    try:
+        payload = resp.json()
+    except ValueError as exc:
+        raise OddsApiError(
+            f'{endpoint} returned undecodable JSON: {exc}') from exc
+    if not isinstance(payload, list) \
+            or any(not isinstance(entry, dict) for entry in payload):
+        raise OddsApiError(f'{endpoint} returned an unexpected payload shape '
+                           f'({type(payload).__name__})')
+    return payload
+
+
 def _parse_kickoff(commence_time):
     """API commence_time (ISO, Z suffix) → naive UTC, or None if unusable."""
     if not commence_time:
@@ -208,7 +228,8 @@ def import_week(week_number):
                                 params={'apiKey': api_key, **window})
             if resp.status_code != 200:
                 raise OddsApiError(f'/events returned HTTP {resp.status_code}')
-            _sync_events(week, sport, resp.json(), summary)
+            _sync_events(week, sport, _decode_payload(resp, '/events'),
+                         summary)
 
             resp = odds_api_get(f'{base}/odds', params={
                 'apiKey': api_key,
@@ -219,7 +240,7 @@ def import_week(week_number):
             })
             if resp.status_code != 200:
                 raise OddsApiError(f'/odds returned HTTP {resp.status_code}')
-            _apply_odds(resp.json(), now_naive, summary)
+            _apply_odds(_decode_payload(resp, '/odds'), now_naive, summary)
             sports_succeeded += 1
         except (OddsApiError, ValueError) as exc:
             logger.error('Docket import failed for %s: %s', sport, exc)
