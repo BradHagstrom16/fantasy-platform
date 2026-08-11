@@ -74,12 +74,13 @@
                     </a>
                 </p>
 
-                {% if request.args.get('next', '').startswith('/cfb') %}
+                {% set next_path = request.args.get('next', '').split('?', 1)[0] %}
+                {% if next_path == '/cfb' or next_path.startswith('/cfb/') %}
                 <div class="login-callout mt-3">
                     <span>🏈</span>
                     <span>You're one step away from the <strong>CFB Survivor Pool</strong></span>
                 </div>
-                {% elif request.args.get('next', '').startswith('/worldcup') %}
+                {% elif next_path == '/worldcup' or next_path.startswith('/worldcup/') %}
                 <div class="login-callout mt-3">
                     <span>⚽</span>
                     <span>The <strong>2026 World Cup</strong> archive awaits inside.</span>
