@@ -43,6 +43,13 @@ from games.worldcup.models import (
     WorldCupRankSnapshot,
 )
 
+# The Docket (NFL + CFB pick'em) models — import spine slice; blueprint
+# wiring deliberately absent until the engine/UI workstreams land.
+from games.docket.models import (
+    DocketWeek,
+    DocketGame,
+)
+
 __all__ = [
     'User',
     'CommishNote',
@@ -64,4 +71,6 @@ __all__ = [
     'WorldCupMatch',
     'WorldCupPick',
     'WorldCupRankSnapshot',
+    'DocketWeek',
+    'DocketGame',
 ]
