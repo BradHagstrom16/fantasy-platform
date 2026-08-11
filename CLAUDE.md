@@ -78,6 +78,79 @@ bash tests/test-deploy-guards.sh
 
 ---
 
+## gstack
+
+This machine has the [gstack](https://github.com/garrytan/gstack) skill suite installed globally at `~/.claude/skills/gstack` — not part of this repo (see the teammate note below).
+
+- **Browser automation: always use `/browse`, never `mcp__claude-in-chrome__*` tools.** Applies to smoke-testing UI changes, visual QA, scraping, and any other in-repo browser automation. If a session doesn't have `/browse` available (gstack not installed on that machine), say so rather than silently falling back to `mcp__claude-in-chrome__*`.
+
+Other gstack skills available in this project:
+
+- `/office-hours` — YC Office Hours — two modes
+- `/plan-ceo-review` — CEO/founder-mode plan review
+- `/plan-eng-review` — Eng manager-mode plan review
+- `/plan-design-review` — Designer's-eye plan review, interactive like CEO/Eng review
+- `/design-consultation` — Proposes a complete design system (aesthetic, type, color, layout, motion) from product understanding
+- `/design-shotgun` — Generates multiple AI design variants, opens a comparison board, collects structured feedback
+- `/design-html` — Design finalization: production-quality HTML/CSS
+- `/review` — Pre-landing PR review
+- `/ship` — Full ship workflow: merge base branch, run tests, review diff, bump VERSION, update CHANGELOG, commit, push, PR
+- `/land-and-deploy` — Land and deploy workflow
+- `/canary` — Post-deploy canary monitoring
+- `/benchmark` — Performance regression detection via the browse daemon
+- `/browse` — Fast headless browser for QA testing and site dogfooding — see above
+- `/connect-chrome` — Launches AI-controlled Chromium with the sidebar extension baked in
+- `/qa` — Systematically QA tests a web app and fixes bugs found
+- `/qa-only` — Report-only QA testing
+- `/design-review` — Designer's-eye visual QA: inconsistency, spacing, hierarchy, AI-slop patterns, slow interactions
+- `/setup-browser-cookies` — Imports cookies from a real Chromium browser into the headless browse session
+- `/setup-deploy` — Configures deployment settings for `/land-and-deploy`
+- `/setup-gbrain` — Sets up gbrain (persistent agent memory) for this coding agent
+- `/retro` — Weekly engineering retrospective
+- `/investigate` — Systematic debugging with root-cause investigation
+- `/document-release` — Post-ship documentation update
+- `/document-generate` — Generates missing documentation from scratch for a feature, module, or project
+- `/codex` — OpenAI Codex CLI wrapper, three modes
+- `/cso` — Chief Security Officer mode
+- `/autoplan` — Auto-review pipeline: runs CEO, design, eng, and DX review skills sequentially with auto-decisions
+- `/plan-devex-review` — Interactive developer-experience plan review
+- `/devex-review` — Live developer-experience audit
+- `/careful` — Safety guardrails for destructive commands
+- `/freeze` — Restricts file edits to a specific directory for the session
+- `/guard` — Full safety mode: destructive-command warnings + directory-scoped edits
+- `/unfreeze` — Clears the boundary set by `/freeze`
+- `/gstack-upgrade` — Upgrades gstack to the latest version
+- `/learn` — Manages project learnings
+
+**Not yet added to this repo** — gstack is currently a personal global install, not committed here, so a teammate's Claude Code session won't have `/browse` or any of the above until gstack is added at the project level.
+
+## GBrain Configuration (configured by /setup-gbrain)
+- Mode: local-stdio
+- Engine: pglite
+- Config file: ~/.gbrain/config.json (mode 0600)
+- Setup date: 2026-08-09
+- MCP registered: yes (user scope)
+- Repo policy for fantasy-platform: read-write
+- Artifacts sync: artifacts-only (private repo: `github.com/BradHagstrom16/gstack-artifacts-bhagstrom`)
+- Transcript ingest: this repo, last 90 days on first run; incremental going forward
+
+## GBrain Search Guidance (configured by /sync-gbrain)
+<!-- gstack-gbrain-search-guidance:start -->
+
+GBrain is set up and synced on this machine. Prefer gbrain over Grep when the question is semantic or the exact identifier isn't known yet. Two indexed corpora via the `gbrain` CLI:
+- This repo's docs/specs (registered from `/Users/bhagstrom/fantasy-platform`, markdown-only — code files are not yet imported).
+- `~/.gstack/` curated artifacts (federated source `gstack-artifacts-bhagstrom`) + this repo's session transcripts (last 90 days, incremental going forward).
+
+Prefer gbrain when:
+- "Where is X handled?" / semantic intent, no exact string yet: `gbrain search "<terms>"` or `gbrain query "<question>"`
+- "What did we decide last time?" / past plans, retros, learnings: `gbrain search "<terms>" --source gstack-artifacts-bhagstrom`
+
+Grep is still right for known exact strings, regex, multiline patterns, file globs, and code symbol lookups (code isn't imported into gbrain yet — only markdown). Run `/sync-gbrain` to force-refresh, `/sync-gbrain --full` for full reindex.
+
+<!-- gstack-gbrain-search-guidance:end -->
+
+---
+
 ## Key Conventions
 
 ### Design system & CSS
