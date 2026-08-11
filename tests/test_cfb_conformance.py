@@ -182,9 +182,19 @@ def test_weekly_results_no_pick_row_shows_avatar(app, client):
 # ── §8.20 — route conformance smoke ───────────────────────────────────────
 
 def _open_cfb_games():
-    """Registry list with CFB flipped to 'open' (entries are frozen)."""
+    """Registry list with CFB pinned to 'open' (entries are frozen)."""
     return [
         dataclasses.replace(e, status='open') if e.slug == 'cfb' else e
+        for e in registry.GAMES
+    ]
+
+
+def _coming_soon_cfb_games():
+    """Registry list with CFB pinned back to 'coming_soon' — the real status
+    is 'open' since the 2026-08-11 changeover; the gating locks below pin the
+    pre-launch era to keep testing @game_must_be_open's coming_soon branch."""
+    return [
+        dataclasses.replace(e, status='coming_soon') if e.slug == 'cfb' else e
         for e in registry.GAMES
     ]
 
@@ -197,8 +207,9 @@ def test_interior_routes_404_for_non_admin_while_coming_soon(app, client):
     db.session.commit()
     _login(client, user)
 
-    assert client.get('/cfb/my-picks').status_code == 404
-    assert client.get('/cfb/pick/1').status_code == 404
+    with patch.object(registry, 'GAMES', _coming_soon_cfb_games()):
+        assert client.get('/cfb/my-picks').status_code == 404
+        assert client.get('/cfb/pick/1').status_code == 404
 
 
 def test_interior_routes_bypass_for_platform_admin_while_coming_soon(
@@ -208,7 +219,8 @@ def test_interior_routes_bypass_for_platform_admin_while_coming_soon(
     db.session.commit()
     _login(client, admin)
 
-    assert client.get('/cfb/my-picks').status_code != 404
+    with patch.object(registry, 'GAMES', _coming_soon_cfb_games()):
+        assert client.get('/cfb/my-picks').status_code != 404
 
 
 def test_anonymous_interior_route_redirects_to_login(app, client):
@@ -225,7 +237,8 @@ def test_join_redirects_home_while_coming_soon(app, client):
     db.session.commit()
     _login(client, user)
 
-    resp = client.get('/cfb/join')
+    with patch.object(registry, 'GAMES', _coming_soon_cfb_games()):
+        resp = client.get('/cfb/join')
 
     assert resp.status_code == 302
     assert resp.headers['Location'] in ('/', 'http://localhost/')

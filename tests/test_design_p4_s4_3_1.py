@@ -423,11 +423,16 @@ def test_pi5_game_worldcup_form_label_scoped_to_text_secondary():
 
 # ---------- Cross-PI: render-time HTML lock via Flask test client ----------
 
-def test_rendered_join_page_carries_section_h2_and_join_rules_link():
-    """End-to-end render check: the join page emits the new shape."""
+def test_rendered_join_page_carries_section_h2_and_join_rules_link(monkeypatch):
+    """End-to-end render check: the join page emits the new shape.
+
+    WC-era pinned: WC is 'completed' in the real registry post-changeover,
+    so the join page only renders with status pinned back to 'open'."""
     from app import create_app
     from extensions import db
     from models.user import User
+    from tests._registry_helpers import set_status
+    set_status(monkeypatch, 'worldcup', 'open')
     app = create_app('testing')
     with app.app_context():
         db.create_all()

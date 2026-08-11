@@ -62,8 +62,8 @@ GAMES: list[GameRegistryEntry] = [
             'win and advance through the bracket.'
         ),
         emoji='⚽',
-        status='open',
-        is_featured=True,
+        status='completed',
+        is_featured=False,
         blueprint_index='worldcup.index',
         blueprint_join='worldcup.join',
         get_enrollment=_worldcup_enrollment.get_enrollment,
@@ -81,18 +81,14 @@ GAMES: list[GameRegistryEntry] = [
             'Last survivor wins.'
         ),
         emoji='🏈',
-        status='coming_soon',
-        is_featured=False,
+        status='open',
+        is_featured=True,
         blueprint_index='cfb.index',
         blueprint_join='cfb.join',
         get_enrollment=_cfb_enrollment.get_enrollment,
         admin_enroll=_cfb_enrollment.admin_enroll,
         short_name='CFB',
         launch_label='Sep 3',
-        # Lounge callables wired ahead of the Phase 5 changeover (C2
-        # slice 3): safe while status stays coming_soon/unfeatured --
-        # lounge_game() requires featured+open, so the flip alone hands
-        # CFB the lounge (transition plan section 6 E).
         lounge_state=_cfb_lounge.cfb_lounge_state,
         lounge_context=_cfb_lounge.build_lounge_context,
     ),
