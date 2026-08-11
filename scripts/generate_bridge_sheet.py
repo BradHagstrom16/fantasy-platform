@@ -22,7 +22,10 @@ from pathlib import Path
 # sys.path, not the repo root (same gotcha as verify_worldcup_scoring.py).
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from sqlalchemy import select  # noqa: E402
+
 from app import create_app  # noqa: E402
+from extensions import db  # noqa: E402
 from games.docket.models import DocketWeek  # noqa: E402
 from games.docket.services.bridge_sheet import (  # noqa: E402
     build_sheet_rows,
@@ -51,13 +54,16 @@ def main():
 
     app = create_app()
     with app.app_context():
+        import_status = 'ok'
         if not args.skip_import:
             summary = import_week(args.week)
             print(f'import summary: {summary}', file=sys.stderr)
-            if summary.get('status') == 'error':
+            import_status = summary.get('status', 'error')
+            if import_status == 'error':
                 return 1
 
-        week = DocketWeek.query.filter_by(week_number=args.week).first()
+        week = db.session.scalar(
+            select(DocketWeek).filter_by(week_number=args.week))
         if week is None:
             print(f'error: docket week {args.week} does not exist '
                   f'(run without --skip-import to create it)', file=sys.stderr)
@@ -76,6 +82,12 @@ def main():
         print(f'{len(rows)} games on the week-{args.week} docket',
               file=sys.stderr)
         sys.stdout.write(rows_to_csv(rows))
+        if import_status != 'ok':
+            # The sheet above is still usable, but one sport's import
+            # failed — exit nonzero so ops can't miss it.
+            print(f'warning: import status was {import_status!r} — '
+                  f'the emitted sheet may be missing a sport', file=sys.stderr)
+            return 3
     return 0
 
 

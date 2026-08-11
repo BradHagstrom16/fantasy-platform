@@ -106,4 +106,23 @@ def test_set_tiebreaker_rejects_unmatched_and_ambiguous(app):
     with pytest.raises(ValueError):
         set_tiebreaker(week, 'Slippery Rock @ Nowhere State')
     with pytest.raises(ValueError):
-        set_tiebreaker(week, ' @ ')  # matches every game — ambiguous
+        set_tiebreaker(week, ' @ ')  # blank sides match every game
+    with pytest.raises(ValueError):
+        set_tiebreaker(week, 'Wisconsin @ ')  # one blank side
+
+
+def test_blank_tiebreaker_never_matches_a_one_game_week(app):
+    """CR regression: on a one-game week, blank sides would substring-match
+    that single game and silently designate it. Must raise instead."""
+    from extensions import db
+    from games.docket.services.bridge_sheet import set_tiebreaker
+
+    week = _seed(db, tiebreaker=False)
+    # Reduce the week to a single game.
+    for game in list(week.games)[1:]:
+        db.session.delete(game)
+    db.session.commit()
+    assert len(week.games) == 1
+    with pytest.raises(ValueError):
+        set_tiebreaker(week, ' @ ')
+    assert week.tiebreaker_game_id is None

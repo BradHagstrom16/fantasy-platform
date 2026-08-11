@@ -64,9 +64,24 @@ def _run(app, ncaaf_events, ncaaf_odds, nfl_events=(), nfl_odds=()):
 
 
 def _get(eid):
+    from sqlalchemy import select
+
+    from extensions import db
     from games.docket.models import DocketGame
 
-    return DocketGame.query.filter_by(api_event_id=eid).one()
+    return db.session.scalars(
+        select(DocketGame).filter_by(api_event_id=eid)).one()
+
+
+def _count(eid):
+    from sqlalchemy import func, select
+
+    from extensions import db
+    from games.docket.models import DocketGame
+
+    return db.session.scalar(
+        select(func.count()).select_from(DocketGame)
+        .where(DocketGame.api_event_id == eid))
 
 
 W1 = _event('e-wnd', 'Notre Dame Fighting Irish', 'Wisconsin Badgers',
@@ -167,8 +182,6 @@ def test_kickoff_refresh_updates_live_kickoff_without_touching_locks(app):
 
 def test_exact_end_boundary_kickoff_belongs_to_the_next_week(app):
     """Half-open window: a kickoff exactly at end_at is NOT this week's game."""
-    from games.docket.models import DocketGame
-
     boundary_kick = _event('e-boundary', 'Texas Longhorns',
                            'Ohio State Buckeyes', '2026-09-08T11:00:00Z')
     inside_kick = _event('e-inside', 'Texas Longhorns',
@@ -176,8 +189,8 @@ def test_exact_end_boundary_kickoff_belongs_to_the_next_week(app):
     # Different event ids, same teams — identity is api_event_id (D22).
     inside_kick['id'] = 'e-inside'
     _run(app, [boundary_kick, inside_kick], [])
-    assert DocketGame.query.filter_by(api_event_id='e-boundary').count() == 0
-    assert DocketGame.query.filter_by(api_event_id='e-inside').count() == 1
+    assert _count('e-boundary') == 0
+    assert _count('e-inside') == 1
 
 
 def test_import_spans_both_sports(app):
@@ -201,3 +214,26 @@ def test_summary_reports_created_locked_and_skipped(app):
     assert summary['spreads_locked'] == 1
     assert summary['totals_locked'] == 1
     assert summary['skipped_out_of_window'] == 1
+
+
+def test_one_failed_sport_reports_partial_even_with_zero_creates(app):
+    """A sport that completed keeps 'partial' status even when it created no
+    new rows (a re-run) — completed work must never be reported as 'error'."""
+    from games.docket.services.importer import import_week
+
+    app.config['ODDS_API_KEY'] = 'test-key'
+    # First run: create the game normally.
+    _run(app, [W1], [])
+
+    def _fail_nfl(url, params=None):
+        if 'americanfootball_nfl' in url:
+            from utils.odds_api import OddsApiError
+            raise OddsApiError('sustained outage')
+        return _resp([W1] if url.endswith('/events') else [])
+
+    with patch('games.docket.services.importer.odds_api_get',
+               side_effect=_fail_nfl):
+        summary = import_week(1)
+    assert summary['created'] == 0
+    assert summary['status'] == 'partial'
+    assert summary['errors'] and 'americanfootball_nfl' in summary['errors'][0]

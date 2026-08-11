@@ -14,6 +14,8 @@ import csv
 import io
 from datetime import UTC
 
+from sqlalchemy import select
+
 from extensions import db
 from games.docket.models import DocketGame
 from games.docket.services.weeks import CT
@@ -43,8 +45,9 @@ def build_sheet_rows(week):
     Unlocked markets render as empty strings — the sheet shows exactly what
     is locked, nothing provisional.
     """
-    games = (DocketGame.query.filter_by(week_id=week.id)
-             .order_by(DocketGame.kickoff, DocketGame.api_event_id).all())
+    games = db.session.scalars(
+        select(DocketGame).filter_by(week_id=week.id)
+        .order_by(DocketGame.kickoff, DocketGame.api_event_id)).all()
     rows = []
     for game in games:
         rows.append({
@@ -83,7 +86,13 @@ def set_tiebreaker(week, matchup):
     if ' @ ' not in matchup:
         raise ValueError(f"Tiebreaker must be 'Away @ Home', got {matchup!r}")
     away_q, home_q = (part.strip().lower() for part in matchup.split(' @ ', 1))
-    games = DocketGame.query.filter_by(week_id=week.id).all()
+    if not away_q or not home_q:
+        # A blank side substring-matches every name — on a one-game week
+        # that would silently designate the wrong game.
+        raise ValueError(
+            f"Tiebreaker must name both teams ('Away @ Home'), got {matchup!r}")
+    games = db.session.scalars(
+        select(DocketGame).filter_by(week_id=week.id)).all()
     matches = [g for g in games
                if away_q in g.away_team.lower() and home_q in g.home_team.lower()]
     if len(matches) != 1:

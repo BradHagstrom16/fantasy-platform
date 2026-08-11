@@ -29,22 +29,34 @@ _DEADLINE_DAY_OFFSET = 4
 _DEADLINE_HOUR = 11
 
 
+def _validate_week_number(week_number, *, allow_season_end=False):
+    """Out-of-season week numbers must never compute (and then persist)
+    plausible-looking boundaries — reject them loudly."""
+    maximum = TOTAL_WEEKS + 1 if allow_season_end else TOTAL_WEEKS
+    if not 1 <= week_number <= maximum:
+        raise ValueError(
+            f'week_number must be between 1 and {maximum}, got {week_number}')
+
+
 def boundary_utc(week_number):
     """UTC instant of the Tue 06:00 CT boundary that OPENS the given week.
 
     ``week_number`` may run to TOTAL_WEEKS + 1 (the season end instant).
     """
+    _validate_week_number(week_number, allow_season_end=True)
     local = WEEK_1_BOUNDARY_LOCAL + timedelta(weeks=week_number - 1)
     return local.replace(tzinfo=CT).astimezone(UTC)
 
 
 def week_bounds_utc(week_number):
     """(start, end) aware-UTC pair for the half-open [start, end) week."""
+    _validate_week_number(week_number)
     return boundary_utc(week_number), boundary_utc(week_number + 1)
 
 
 def deadline_utc(week_number):
     """UTC instant of the week's Sat 11:00 AM CT submission deadline."""
+    _validate_week_number(week_number)
     local = (WEEK_1_BOUNDARY_LOCAL
              + timedelta(weeks=week_number - 1, days=_DEADLINE_DAY_OFFSET))
     local = local.replace(hour=_DEADLINE_HOUR, minute=0)

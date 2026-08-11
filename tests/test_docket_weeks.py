@@ -70,3 +70,27 @@ def test_deadline_falls_inside_its_own_week():
 
     for n in (1, 9, 10, TOTAL_WEEKS):
         assert week_number_for(deadline_utc(n)) == n
+
+
+def test_out_of_season_week_numbers_are_rejected():
+    """Week 0 or 25 must raise, never compute a plausible-looking boundary
+    that ensure_week would then happily persist."""
+    import pytest
+
+    from games.docket.services.weeks import (
+        TOTAL_WEEKS,
+        boundary_utc,
+        deadline_utc,
+        week_bounds_utc,
+    )
+
+    for bad in (0, -1, TOTAL_WEEKS + 2):
+        with pytest.raises(ValueError):
+            boundary_utc(bad)
+    for bad in (0, TOTAL_WEEKS + 1):
+        with pytest.raises(ValueError):
+            week_bounds_utc(bad)
+        with pytest.raises(ValueError):
+            deadline_utc(bad)
+    # The season-end instant stays computable (week_number_for needs it).
+    assert boundary_utc(TOTAL_WEEKS + 1) is not None

@@ -26,6 +26,7 @@ import logging
 from datetime import datetime
 
 from flask import current_app
+from sqlalchemy import select
 
 from extensions import db
 from games.docket.models import DocketGame, DocketWeek
@@ -54,7 +55,8 @@ _TIME_FMT = '%Y-%m-%dT%H:%M:%SZ'
 
 def ensure_week(week_number):
     """Get or create the DocketWeek row, bounds/deadline stored naive UTC."""
-    week = DocketWeek.query.filter_by(week_number=week_number).first()
+    week = db.session.scalar(
+        select(DocketWeek).filter_by(week_number=week_number))
     if week:
         return week
     start_aware, end_aware = week_bounds_utc(week_number)
@@ -115,7 +117,8 @@ def _sync_events(week, sport, events, summary):
             continue
         in_window = week.start_at <= kickoff < week.end_at
 
-        game = DocketGame.query.filter_by(api_event_id=event_id).first()
+        game = db.session.scalar(
+            select(DocketGame).filter_by(api_event_id=event_id))
         if game is None:
             if not in_window:
                 summary['skipped_out_of_window'] += 1
@@ -148,7 +151,8 @@ def _sync_events(week, sport, events, summary):
 def _apply_odds(events, now_naive, summary):
     """Lock still-open markets per DQ-6 + D17; never touch a locked one."""
     for event in events:
-        game = DocketGame.query.filter_by(api_event_id=event.get('id')).first()
+        game = db.session.scalar(
+            select(DocketGame).filter_by(api_event_id=event.get('id')))
         if game is None:
             summary['unmatched_odds'] += 1
             continue
@@ -195,6 +199,7 @@ def import_week(week_number):
         'unmatched_odds': 0, 'errors': [],
     }
     now_naive = to_naive_utc(now_utc())
+    sports_succeeded = 0
 
     for sport in SPORTS:
         base = sport_base_url(sport)
@@ -215,11 +220,14 @@ def import_week(week_number):
             if resp.status_code != 200:
                 raise OddsApiError(f'/odds returned HTTP {resp.status_code}')
             _apply_odds(resp.json(), now_naive, summary)
+            sports_succeeded += 1
         except (OddsApiError, ValueError) as exc:
             logger.error('Docket import failed for %s: %s', sport, exc)
             summary['errors'].append(f'{sport}: {exc}')
 
     db.session.commit()
     if summary['errors']:
-        summary['status'] = 'partial' if summary['created'] else 'error'
+        # A sport that completed keeps its work regardless of the created
+        # count (a re-run that creates 0 new games still succeeded).
+        summary['status'] = 'partial' if sports_succeeded else 'error'
     return summary

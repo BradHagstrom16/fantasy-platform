@@ -20,6 +20,7 @@ stored as the API's participant names verbatim.
 from datetime import UTC, datetime
 
 from extensions import db
+from games.docket.utils import to_naive_utc
 
 
 class DocketWeek(db.Model):
@@ -46,7 +47,10 @@ class DocketWeek(db.Model):
                       use_alter=True),
         nullable=True,
     )
-    created_at = db.Column(db.DateTime, default=lambda: datetime.now(UTC))
+    # Audit timestamp: real wall clock (never the fake-now seam), stripped
+    # to naive UTC explicitly rather than trusting driver offset handling.
+    created_at = db.Column(
+        db.DateTime, default=lambda: to_naive_utc(datetime.now(UTC)))
 
     tiebreaker_game = db.relationship(
         'DocketGame', foreign_keys=[tiebreaker_game_id])
@@ -90,7 +94,10 @@ class DocketGame(db.Model):
     total_book = db.Column(db.String(40), nullable=True)
     total_locked_at = db.Column(db.DateTime, nullable=True)
 
-    created_at = db.Column(db.DateTime, default=lambda: datetime.now(UTC))
+    # Audit timestamp: real wall clock (never the fake-now seam), stripped
+    # to naive UTC explicitly rather than trusting driver offset handling.
+    created_at = db.Column(
+        db.DateTime, default=lambda: to_naive_utc(datetime.now(UTC)))
 
     week = db.relationship('DocketWeek', foreign_keys=[week_id],
                            backref='games')

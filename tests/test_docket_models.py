@@ -110,6 +110,19 @@ def test_new_game_carries_no_lines_and_no_frozen_kickoff(app):
     assert game.kickoff_at_deadline is None
 
 
+def test_audit_default_produces_naive_utc(app):
+    """The created_at default must hand the driver a NAIVE UTC value — an
+    aware value's storage in a timezone=False column would depend on driver
+    offset handling (D6: the strip is explicit, never implicit)."""
+    from games.docket.models import DocketGame, DocketWeek
+
+    for model in (DocketWeek, DocketGame):
+        default = model.__table__.c.created_at.default.arg
+        value = default(None)  # SQLAlchemy wraps the lambda to take ctx
+        assert value.tzinfo is None, (
+            f'{model.__name__}.created_at default must be naive UTC')
+
+
 def test_week_tiebreaker_designation_points_at_a_game(app):
     from extensions import db
 

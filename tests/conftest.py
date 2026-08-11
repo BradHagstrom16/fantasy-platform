@@ -13,8 +13,14 @@ from extensions import db as _db
 
 
 @pytest.fixture()
-def app():
-    """Canonical testing app: in-memory SQLite, tables created per test."""
+def app(monkeypatch):
+    """Canonical testing app: in-memory SQLite, tables created per test.
+
+    ENVIRONMENT is pinned too — code that reads os.environ directly (the
+    *_FAKE_NOW seams) must see 'testing' even when a file is run without
+    the ENVIRONMENT=testing prefix.
+    """
+    monkeypatch.setenv('ENVIRONMENT', 'testing')
     app = create_app('testing')
     with app.app_context():
         _db.create_all()
