@@ -354,6 +354,20 @@ range-refresh story first**: unlike realip's fail-soft behavior, a stale allowli
 here hard-blocks legitimate CF traffic, which is exactly why it lost as the 2.5 fix
 and must not ship as a casual bolt-on.
 
+### 2.7 CFB reminder double-send debt — no per-window sent-flag 🟡
+
+**Added 2026-08-11 (Docket eng review, outside-voice finding).** `deploy/cfb-remind.timer`
+documents its own hazard: "Never schedule this more often than once per ~70-minute window:
+there is no per-window sent-flag, so a faster cadence double-sends (audit §6)." Reminder
+correctness depends on timer cadence discipline — one `Persistent=true` catch-up firing
+after droplet downtime, or a hand-run during debugging, double-emails the pool. The fixed
+pattern already exists in-repo: Golf's remind mode is de-duped via `last_reminder_type`
+(API-key-free, idempotent). The Docket's reminders are being built on the sent-flag pattern
+from day one (eng-review ruling D24, 2026-08-11); this item is the **retrofit of CFB
+Survivor's** reminders to match. Small change (`games/cfb/services/reminders.py` + a
+no-double-send lock test), but it touches the live game — **own PR, post-launch**, not
+part of the Docket build.
+
 ## Priority 3 — Test-suite leverage 🟡
 
 ### 3.1 No `tests/conftest.py` — highest-leverage prep work available 🟡
