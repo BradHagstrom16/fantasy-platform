@@ -1,0 +1,47 @@
+{
+  "description": "OT counts (D23-eng): e-1 ended regulation 24-24 (combined 48, under 50.5, spread pushless) and finished 30-24 in OT — every market AND the tiebreaker grade the OT-inclusive final. Alice predicted the regulation combined score exactly (48.0) and still accrues 60 tenths of error.",
+  "rulings": ["D23-eng", "D20-eng"],
+  "week": {
+    "week_number": 16,
+    "deadline_at": "2026-12-19T17:00:00",
+    "tiebreaker_event_id": "e-1",
+    "games": [
+      {"api_event_id": "e-1", "sport": "americanfootball_ncaaf", "home_team": "H1", "away_team": "A1", "kickoff_at_deadline": "2026-12-19T17:00:00", "home_spread": -5.5, "total": 50.5, "home_score": 30, "away_score": 24},
+      {"api_event_id": "e-3", "sport": "americanfootball_ncaaf", "home_team": "H3", "away_team": "A3", "kickoff_at_deadline": "2026-12-19T19:30:00", "home_spread": -7.0, "total": 50.0, "home_score": 30, "away_score": 20},
+      {"api_event_id": "e-4", "sport": "americanfootball_ncaaf", "home_team": "H4", "away_team": "A4", "kickoff_at_deadline": "2026-12-19T20:30:00", "home_spread": -7.0, "total": 50.0, "home_score": 30, "away_score": 20},
+      {"api_event_id": "e-5", "sport": "americanfootball_ncaaf", "home_team": "H5", "away_team": "A5", "kickoff_at_deadline": "2026-12-19T23:00:00", "home_spread": -7.0, "total": 50.0, "home_score": 30, "away_score": 20},
+      {"api_event_id": "e-6", "sport": "americanfootball_nfl", "home_team": "H6", "away_team": "A6", "kickoff_at_deadline": "2026-12-20T18:00:00", "home_spread": -7.0, "total": 50.0, "home_score": 30, "away_score": 20},
+      {"api_event_id": "e-7", "sport": "americanfootball_nfl", "home_team": "H7", "away_team": "A7", "kickoff_at_deadline": "2026-12-20T21:25:00", "home_spread": -7.0, "total": 50.0, "home_score": 21, "away_score": 17},
+      {"api_event_id": "e-8", "sport": "americanfootball_nfl", "home_team": "H8", "away_team": "A8", "kickoff_at_deadline": "2026-12-21T01:20:00", "home_spread": -7.0, "total": 50.0, "home_score": 21, "away_score": 17}
+    ]
+  },
+  "players": [
+    {
+      "player_id": "alice",
+      "tiebreaker": 48.0,
+      "picks": [
+        {"slot": 1, "event": "e-1", "market": "total", "side": "over", "best": true},
+        {"slot": 2, "event": "e-1", "market": "spread", "side": "home"},
+        {"slot": 3, "event": "e-3", "market": "spread", "side": "home"},
+        {"slot": 4, "event": "e-4", "market": "spread", "side": "home"},
+        {"slot": 5, "event": "e-5", "market": "spread", "side": "home"},
+        {"slot": 6, "event": "e-6", "market": "spread", "side": "home"},
+        {"slot": 7, "event": "e-7", "market": "spread", "side": "home"},
+        {"slot": 8, "event": "e-8", "market": "spread", "side": "home"}
+      ]
+    }
+  ],
+  "expected": {
+    "alice": {
+      "points": 7.0,
+      "wins": 6,
+      "error_tenths": 60,
+      "used_default_prediction": false,
+      "slots": [
+        {"slot": 1, "event": "e-1", "market": "total", "side": "over", "outcome": "win", "via": "pick", "best": true, "points": 2.0},
+        {"slot": 2, "event": "e-1", "market": "spread", "side": "home", "outcome": "win", "via": "pick", "points": 1.0},
+        {"slot": 7, "event": "e-7", "market": "spread", "side": "home", "outcome": "loss", "via": "pick", "points": 0.0}
+      ]
+    }
+  }
+}
