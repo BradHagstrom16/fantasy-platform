@@ -108,7 +108,10 @@ def join():
         except IntegrityError:
             # Concurrent double-submit: the unique (user, season) constraint
             # is the backstop — the first POST won, this one is a no-op.
+            # Anything else (no row appeared) is a real failure: re-raise.
             db.session.rollback()
+            if get_enrollment(current_user.id) is None:
+                raise
         flash('Welcome to The Docket. Court is in session.', 'success')
         return redirect(url_for('docket.index'))
 
