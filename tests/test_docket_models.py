@@ -201,8 +201,11 @@ def test_pick_allows_spread_and_total_on_same_game(app):
     _mk_pick(db, user, week, game, slot=1, market='spread', side='home')
     _mk_pick(db, user, week, game, slot=2, market='total', side='over',
              line_value=51.5)
+    from sqlalchemy import func, select
+
     from games.docket.models import DocketPick
-    assert DocketPick.query.count() == 2
+    assert db.session.scalar(
+        select(func.count()).select_from(DocketPick)) == 2
 
 
 def test_pick_slot_unique_per_user_week(app):
