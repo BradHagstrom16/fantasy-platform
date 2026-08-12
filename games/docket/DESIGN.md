@@ -1,3 +1,18 @@
+---
+name: The Docket — Design Doctrine
+description: Per-game design doctrine for The Docket (NFL+CFB weekly pick'em) at cccfantasy.com. A light court-paper room layered on the platform foundation (repo root DESIGN.md). Substrate, palette, courtroom register, and the .docket-* sheet primitives.
+extends: ../../DESIGN.md
+colors:
+  # The Docket game palette (body.game-docket). Full ramp + usage in §Palette below.
+  docket-oxblood: "#6E1F2E"       # --game-primary: room identity, hero terminus, .btn-game
+  docket-chambers: "#421219"      # --game-primary-dark: hero gradient origin
+  docket-worn-spine: "#8A3B4A"    # --game-primary-light: hover lift for oxblood fills
+  docket-garnet: "#A63446"        # --game-accent: the docket stamp, subnav accent, slot badges
+  docket-faded-stamp: "#C4707E"   # --game-accent-light: tints, dark-surface accent text
+  docket-rule: "#D8CFC0"          # ruled-line hairline for ledger rules (bone family)
+  docket-subnav-black: "#180C10"  # warm oxblood-cast near-black; the .subnav-docket bar
+---
+
 # Design System: The Docket
 
 > Per-game design contract for The Docket (slug `docket`), layered on the platform foundation

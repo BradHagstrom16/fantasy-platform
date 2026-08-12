@@ -955,7 +955,7 @@ body.game-golf {
 
 /* Trophy-light flat gold for masthead emphasis. The metal-gold gradient is
    reserved for primary CTAs (Trophy Rule, DESIGN.md §6); using it on text
-   would also violate the absolute ban on gradient text (background-clip:text
+   would also violate the absolute ban on gradient text (background-clip:text impeccable-disable-line gradient-text -- prose naming the banned recipe, not using it
    + gradient bg). Solid gold-light carries weight + register without diluting
    the trophy. */
 .home-metal-text {
@@ -10922,7 +10922,7 @@ a.roster-team-card:focus-visible {
    .champion-name` at :1467 with the same tokens so Spec B and the WC
    hub render identical typography on their respective champion banners.
    Solid `--gold-light` (not gradient) per the P6 S6.1.1 PI-3 retire of
-   `background-clip: text` (impeccable absolute ban + DESIGN.md §6). */
+   `background-clip: text` (impeccable absolute ban + DESIGN.md §6). impeccable-disable-line gradient-text -- prose naming the banned recipe, not using it */
 .wc-champion-banner .champion-name {
   display: block;
   font-family: var(--font-teko);
@@ -11574,7 +11574,7 @@ body.game-worldcup .form-text {
 }
 
 /* PI-3 (Group C) — gradient-text retire on the three remaining sites.
-   Each `background: var(--metal-gold[-flat])` + `background-clip: text`
+   Each `background: var(--metal-gold[-flat])` + `background-clip: text` impeccable-disable-line gradient-text -- prose naming the banned recipe, not using it
    recipe violates the impeccable absolute ban + DESIGN.md §6 ("Don't
    apply background-clip: text plus a gradient background"). Mirrors
    S5.2.1 PI-1's `.home-shell .champion-name` retire to solid

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-05-07T00:00:00Z",
+  "generatedAt": "2026-08-12T00:00:00Z",
   "title": "Design System: Corrupt Commish Club",
   "extensions": {
     "colorMeta": {
@@ -8,37 +8,91 @@
         "role": "primary",
         "displayName": "Council Purple",
         "canonical": "#3A1D72",
-        "tonalRamp": ["#0A0612", "#140828", "#1C0A3A", "#2A1150", "#3A1D72", "#4E2A8F", "#6B3FAD", "#8E63C9"]
+        "tonalRamp": [
+          "#0A0612",
+          "#140828",
+          "#1C0A3A",
+          "#2A1150",
+          "#3A1D72",
+          "#4E2A8F",
+          "#6B3FAD",
+          "#8E63C9"
+        ]
       },
       "chamber-purple": {
         "role": "primary",
         "displayName": "Chamber Purple",
         "canonical": "#1C0A3A",
-        "tonalRamp": ["#0A0612", "#140828", "#1C0A3A", "#230E48", "#2A1150", "#3A1D72", "#4E2A8F", "#6B3FAD"]
+        "tonalRamp": [
+          "#0A0612",
+          "#140828",
+          "#1C0A3A",
+          "#230E48",
+          "#2A1150",
+          "#3A1D72",
+          "#4E2A8F",
+          "#6B3FAD"
+        ]
       },
       "tribunal-black": {
         "role": "primary",
         "displayName": "Tribunal Black",
         "canonical": "#140828",
-        "tonalRamp": ["#0A0612", "#140828", "#1C0A3A", "#230E48", "#2A1150", "#3A1D72", "#4E2A8F", "#6B3FAD"]
+        "tonalRamp": [
+          "#0A0612",
+          "#140828",
+          "#1C0A3A",
+          "#230E48",
+          "#2A1150",
+          "#3A1D72",
+          "#4E2A8F",
+          "#6B3FAD"
+        ]
       },
       "press-purple": {
         "role": "primary",
         "displayName": "Press Purple",
         "canonical": "#6B3FAD",
-        "tonalRamp": ["#1C0A3A", "#2A1150", "#3A1D72", "#4E2A8F", "#6B3FAD", "#8E63C9", "#B091DC", "#D5C2EC"]
+        "tonalRamp": [
+          "#1C0A3A",
+          "#2A1150",
+          "#3A1D72",
+          "#4E2A8F",
+          "#6B3FAD",
+          "#8E63C9",
+          "#B091DC",
+          "#D5C2EC"
+        ]
       },
       "commish-gold": {
         "role": "secondary",
         "displayName": "Commish Gold",
         "canonical": "#C9A227",
-        "tonalRamp": ["#3D2F08", "#5C4710", "#7A5F18", "#8A6A1A", "#A98620", "#C9A227", "#F2D36B", "#FFF1B8"]
+        "tonalRamp": [
+          "#3D2F08",
+          "#5C4710",
+          "#7A5F18",
+          "#8A6A1A",
+          "#A98620",
+          "#C9A227",
+          "#F2D36B",
+          "#FFF1B8"
+        ]
       },
       "trophy-light": {
         "role": "secondary",
         "displayName": "Trophy Light",
         "canonical": "#F2D36B",
-        "tonalRamp": ["#5C4710", "#7A5F18", "#8A6A1A", "#A98620", "#C9A227", "#E0B847", "#F2D36B", "#FFF1B8"]
+        "tonalRamp": [
+          "#5C4710",
+          "#7A5F18",
+          "#8A6A1A",
+          "#A98620",
+          "#C9A227",
+          "#E0B847",
+          "#F2D36B",
+          "#FFF1B8"
+        ]
       },
       "gold-dark": {
         "role": "secondary",
@@ -54,7 +108,16 @@
         "role": "neutral",
         "displayName": "Pressroom Bone",
         "canonical": "#F3EFE6",
-        "tonalRamp": ["#5A5470", "#8A849B", "#A8A0B5", "#C5BCD0", "#D8D1BE", "#E8E2D2", "#F3EFE6", "#FAF7F0"]
+        "tonalRamp": [
+          "#5A5470",
+          "#8A849B",
+          "#A8A0B5",
+          "#C5BCD0",
+          "#D8D1BE",
+          "#E8E2D2",
+          "#F3EFE6",
+          "#FAF7F0"
+        ]
       },
       "bone-dim": {
         "role": "neutral",
@@ -155,6 +218,41 @@
         "role": "tertiary",
         "displayName": "Tribune-Dark Navy",
         "canonical": "rgba(0, 17, 46, 0.8)"
+      },
+      "ink-purple": {
+        "role": "primary",
+        "displayName": "Ink Purple",
+        "canonical": "#0A0612",
+        "tonalRamp": [
+          "#0A0612",
+          "#140828",
+          "#1C0A3A",
+          "#2A1150",
+          "#3A1D72",
+          "#4E2A8F",
+          "#6B3FAD",
+          "#8E63C9"
+        ]
+      },
+      "border-light": {
+        "role": "neutral",
+        "displayName": "Border Light",
+        "canonical": "#E8E5F0"
+      },
+      "wc-navy-slot": {
+        "role": "tertiary",
+        "displayName": "Pitch Navy (game slot)",
+        "canonical": "#002868"
+      },
+      "docket-oxblood": {
+        "role": "tertiary",
+        "displayName": "Law-book Oxblood",
+        "canonical": "#6E1F2E"
+      },
+      "docket-garnet": {
+        "role": "tertiary",
+        "displayName": "Stamp Garnet",
+        "canonical": "#A63446"
       }
     },
     "typographyMeta": {
@@ -186,28 +284,48 @@
     "shadows": [
       {
         "name": "shadow-sm",
-        "value": "0 2px 8px rgba(58, 29, 114, 0.07)",
-        "purpose": "Card resting state. Subtle hover for interactive list items. Always present on cards by default."
+        "value": "0 2px 8px rgba(58,29,114,.07)",
+        "purpose": "Card rest state. The Lift-At-Rest Rule floor."
       },
       {
         "name": "shadow-md",
-        "value": "0 4px 20px rgba(58, 29, 114, 0.12)",
-        "purpose": "Card hover state. Lift when an interactive surface acknowledges intent."
+        "value": "0 4px 20px rgba(58,29,114,.12)",
+        "purpose": "Card hover lift."
       },
       {
         "name": "shadow-lg",
-        "value": "0 8px 40px rgba(58, 29, 114, 0.17)",
-        "purpose": "Auth cards, modals, the substantial substrates. Used at rest, not as hover lift."
+        "value": "0 8px 40px rgba(58,29,114,.17)",
+        "purpose": "Modal and elevated-panel depth."
       },
       {
         "name": "shadow-gold",
-        "value": "0 4px 24px rgba(201, 162, 39, 0.25)",
-        "purpose": "Gold CTA hover glow. The literal trophy glint. Reserved for primary-CTA hover."
+        "value": "0 4px 24px rgba(201,162,39,.25)",
+        "purpose": "Trophy CTA hover glow. Gold is the only non-purple shadow tint."
       },
       {
-        "name": "btn-primary-hover-shadow",
-        "value": "0 4px 14px rgba(58, 29, 114, 0.3)",
-        "purpose": "Quiet-primary button hover shadow (purple-tinted)."
+        "name": "shadow-lift-strong",
+        "value": "0 6px 20px rgba(58,29,114,.30)",
+        "purpose": "Heavier card-hover lift than shadow-md."
+      },
+      {
+        "name": "shadow-navbar",
+        "value": "0 2px 20px rgba(58,29,114,.35)",
+        "purpose": "Sticky navbar ambient cast."
+      },
+      {
+        "name": "shadow-dropdown",
+        "value": "0 12px 40px rgba(58,29,114,.50)",
+        "purpose": "Dropdown panel."
+      },
+      {
+        "name": "shadow-sticky-up",
+        "value": "0 -4px 20px rgba(58,29,114,.35)",
+        "purpose": "Bottom-anchored bar, upward cast."
+      },
+      {
+        "name": "shadow-btn-primary-hover",
+        "value": "0 4px 14px rgba(58,29,114,.30)",
+        "purpose": "Quiet-primary CTA hover (DESIGN.md Buttons)."
       }
     ],
     "motion": [
@@ -228,11 +346,26 @@
       }
     ],
     "breakpoints": [
-      { "name": "sm", "value": "576px" },
-      { "name": "md", "value": "768px" },
-      { "name": "lg", "value": "992px" },
-      { "name": "xl", "value": "1200px" },
-      { "name": "mobile-floor", "value": "375px" }
+      {
+        "name": "sm",
+        "value": "576px"
+      },
+      {
+        "name": "md",
+        "value": "768px"
+      },
+      {
+        "name": "lg",
+        "value": "992px"
+      },
+      {
+        "name": "xl",
+        "value": "1200px"
+      },
+      {
+        "name": "mobile-floor",
+        "value": "375px"
+      }
     ]
   },
   "components": [
@@ -299,6 +432,14 @@
       "description": "A small pill that signals a game is live in progress. Live Red dot with subtle pulse, paired with a Teko label. Color is never alone.",
       "html": "<span class=\"ds-live-indicator\"><span class=\"ds-live-dot\" aria-hidden=\"true\"></span><span class=\"ds-live-label\">Live</span></span>",
       "css": ".ds-live-indicator { display: inline-flex; align-items: center; gap: 0.4rem; font-family: 'Teko', sans-serif; font-weight: 500; font-size: 0.85rem; letter-spacing: 0.12em; text-transform: uppercase; color: #E63946; } .ds-live-dot { width: 0.5rem; height: 0.5rem; border-radius: 50%; background: #E63946; box-shadow: 0 0 0 0 rgba(230, 57, 70, 0.6); animation: ds-live-pulse 2s cubic-bezier(0.4, 0, 0.2, 1) infinite; } @keyframes ds-live-pulse { 0% { box-shadow: 0 0 0 0 rgba(230, 57, 70, 0.6); } 70% { box-shadow: 0 0 0 6px rgba(230, 57, 70, 0); } 100% { box-shadow: 0 0 0 0 rgba(230, 57, 70, 0); } } .ds-live-label { color: #E63946; }"
+    },
+    {
+      "name": "Docket Pick Side (held / move)",
+      "kind": "custom",
+      "refersTo": "docket-side",
+      "description": "The Docket pick sheet's side control. Held sides carry the garnet stamp (doubled inset border + tint + weight, never tint alone); the opposite side reads secondary because choosing it MOVES the pick rather than adding one.",
+      "html": "<div style=\"display:grid;gap:.4rem;max-width:340px\"><button class=\"ds-docket-side ds-is-picked\"><span class=\"ds-docket-side-team\">Kansas City Chiefs</span><span class=\"ds-docket-slot-badge\">HELD</span><span class=\"ds-docket-side-num\">-3.5</span></button><button class=\"ds-docket-side ds-is-move\"><span class=\"ds-docket-side-team\">Buffalo Bills</span><span class=\"ds-docket-side-num\">+3.5</span></button></div>",
+      "css": ".ds-docket-side { display: flex; align-items: center; justify-content: space-between; gap: .5rem; width: 100%; min-height: 44px; padding: .45rem .6rem; font-family: 'Newsreader', Georgia, serif; font-size: .92rem; color: #1C1730; text-align: left; background: #FFFFFF; border: 1px solid #D8DDE8; border-radius: 0.5rem; cursor: pointer; transition: border-color .2s cubic-bezier(.4,0,.2,1), box-shadow .2s cubic-bezier(.4,0,.2,1), background .2s cubic-bezier(.4,0,.2,1), transform .2s cubic-bezier(.4,0,.2,1); } .ds-docket-side:hover { border-color: #C4707E; transform: translateY(-1px); box-shadow: 0 2px 8px rgba(58,29,114,.07); } .ds-docket-side:focus-visible { outline: 2px solid #A63446; outline-offset: 2px; } .ds-docket-side-team { flex: 1 1 auto; min-width: 0; } .ds-docket-side-num { font-family: 'Teko', sans-serif; font-weight: 600; font-size: 1.05rem; letter-spacing: .02em; color: #5A5470; flex-shrink: 0; } .ds-docket-side.ds-is-picked { border-color: #A63446; box-shadow: inset 0 0 0 1px #A63446; background: rgba(166,52,70,.09); font-weight: 600; } .ds-docket-side.ds-is-picked .ds-docket-side-num { color: #A63446; font-weight: 700; } .ds-docket-side.ds-is-move { color: #5A5470; background: #F3EFE6; } .ds-docket-side.ds-is-move:hover { color: #1C1730; } .ds-docket-slot-badge { font-family: 'Teko', sans-serif; font-weight: 600; font-size: .72rem; letter-spacing: .05em; color: #F3EFE6; background: #A63446; border-radius: .3rem; padding: .1rem .38rem; flex-shrink: 0; }"
     }
   ],
   "narrative": {
@@ -310,52 +451,101 @@
       "Brand-tinted depth (purple shadows, gold glow), never neutral gray",
       "Quiet authority in chrome, loud moments at primary CTAs",
       "Mobile-first surfaces (375 px viewport is the design floor)",
-      "Three game palettes layered over CCC chrome via body.game-<slug> overrides",
+      "Four game palettes layered over CCC chrome via body.game-<slug> overrides",
       "Newsreader serif paragraphs, Teko condensed-sans headlines, no third font"
     ],
     "rules": [
-      { "name": "The Trophy Rule", "section": "colors", "body": "The metal-gold gradients are reserved for primary CTAs and the active navbar button. Gold gradients on cards, page backgrounds, badges, or decorative chrome dilute the trophy." },
-      { "name": "The Two-Color Rule", "section": "colors", "body": "CCC is purple plus gold on bone. Game tertiaries layer only when the surface is scoped under a body.game-<slug> class." },
-      { "name": "The No-Pure-White Rule", "section": "colors", "body": "Page background is Pressroom Bone (#F3EFE6), not white. Literal #FFFFFF is reserved for nested .card interiors." },
-      { "name": "The Tinted-Neutral Rule", "section": "colors", "body": "All text and gray-feeling utility colors carry a subtle purple cast. Never neutrally gray." },
-      { "name": "The Newsroom Rule", "section": "typography", "body": "Every heading is Teko. Every paragraph is Newsreader. The two never mix mid-sentence." },
-      { "name": "The Eyebrow Rule", "section": "typography", "body": "Section context labels use the Eyebrow primitive: Teko 500, 0.85rem, uppercase, 0.14em letter-spacing, color gold. Don't invent a kicker pattern." },
-      { "name": "The Uppercase Rule", "section": "typography", "body": "Uppercase is for Teko only (labels, eyebrows, button text, table heads, navbar links). Newsreader is never uppercased." },
-      { "name": "The Line-Length Rule", "section": "typography", "body": "Newsreader paragraphs cap at 65 to 75 ch. Wider walls of text break the editorial register." },
-      { "name": "The Press-Room Shadow Rule", "section": "elevation", "body": "All shadows tint with brand purple (or gold on CTA hover). Neutral-gray shadows are slop." },
-      { "name": "The Lift-At-Rest Rule", "section": "elevation", "body": "Cards lift slightly (--shadow-sm) at rest, harder on hover (--shadow-md). Flat-at-rest is wrong for CCC." },
-      { "name": "The Atmospheric-Layer Rule", "section": "elevation", "body": "When a surface needs more than card-level shadow, add a radial gradient atmosphere on top of, not in place of, the tinted shadow scale." }
+      {
+        "name": "The Trophy Rule",
+        "body": "The metal-gold gradients (--metal-gold / --metal-gold-flat) are reserved for primary CTAs and the active navbar button. Gold gradients on cards, page backgrounds, badges, or decorative chrome dilute the trophy. If you find yourself reaching for --metal-gold on a non-CTA surface, you want a flat gold (--gold or --gold-light) or no gold at all.",
+        "section": "colors"
+      },
+      {
+        "name": "The Two-Color Rule",
+        "body": "CCC is purple plus gold on bone. Game tertiaries (Golf green, CFB crimson, WC navy/red, Docket oxblood/garnet) layer only when the surface is scoped under a body.game-<slug> class. A platform-chrome surface that introduces a third color outside the CCC duo without that scoping is a design failure.",
+        "section": "colors"
+      },
+      {
+        "name": "The No-Pure-White Rule",
+        "body": "The page background is Pressroom Bone (#F3EFE6), not white. The literal white (#FFFFFF) is reserved for .card interiors nested on bone. The body of a CCC page should never read as a white SaaS surface.",
+        "section": "colors"
+      },
+      {
+        "name": "The Tinted-Neutral Rule",
+        "body": "All text colors and all gray-feeling utility colors carry a subtle purple cast (look at text-ink #1C1730 versus a neutral #1F1F1F). Don't introduce neutrally-gray text or neutrally-gray dividers; pull them toward the purple family.",
+        "section": "colors"
+      },
+      {
+        "name": "The Newsroom Rule",
+        "body": "Every heading is Teko. Every paragraph is Newsreader. The two fonts never mix mid-sentence. If a heading reads in serif, you've broken the masthead. If a paragraph reads in condensed sans, you've broken the editorial.",
+        "section": "typography"
+      },
+      {
+        "name": "The Eyebrow Rule",
+        "body": "When a section needs context above its headline (category, game name, status), reach for an Eyebrow primitive — .admin-eyebrow on admin pages (the platform default), or the per-game variant documented in the game's DESIGN.md (e.g., .wc-eyebrow on World Cup surfaces). Don't invent a new \"kicker\" or \"subhead\" pattern.",
+        "section": "typography"
+      },
+      {
+        "name": "The Uppercase Rule",
+        "body": "Uppercase is for Teko (labels, eyebrows, button text, table heads, navbar links). Newsreader is never uppercased. Mixing is a slop signal.",
+        "section": "typography"
+      },
+      {
+        "name": "The Line-Length Rule",
+        "body": "Newsreader paragraphs cap at 65 to 75 ch. Wider paragraphs read as a wall of text and lose the editorial register.",
+        "section": "typography"
+      },
+      {
+        "name": "The Ramp Rule",
+        "body": "The frontmatter's typography.scale enumerates the size steps the platform and its game rooms are allowed to use. Two things make the ramp larger than that list looks, and both are deliberate: - The six role sizes are steps too. Each role's own fontSize (display through eyebrow) counts as a documented step, so scale does not repeat them. Read the ramp as the roles plus the scale, never the scale alone. - Steps carry a ±0.5px tolerance. A value within half a pixel of a step resolves to that step, so 0.72rem and 0.92rem are sanctioned by 0.7rem and the label role rather than being drift. This is why the ramp lists round increments instead of every literal in style.css: enumerating the near neighbours individually would fuse the small-text band into one continuous allowed range and stop the ramp from catching anything. A size outside that tolerance is drift, not a new step, and the mechanical detector reports it as such. If a surface genuinely needs a step the ramp lacks, add it to the frontmatter deliberately rather than letting the value land loose in style.css. The same applies to rounded for corner radii.",
+        "section": "typography"
+      },
+      {
+        "name": "The Press-Room Shadow Rule",
+        "body": "All shadows tint with brand purple (or gold on CTA-hover). Neutral-gray shadows are slop and break the press-room atmosphere. Never use rgba(0, 0, 0, ...) directly; always tint toward rgba(58, 29, 114, ...) or rgba(201, 162, 39, ...).",
+        "section": "elevation"
+      },
+      {
+        "name": "The Lift-At-Rest Rule",
+        "body": "Cards lift slightly (--shadow-sm) at rest, harder on hover (--shadow-md). Flat-at-rest is the wrong elevation philosophy for CCC; the Tribune is a printed object, not a wireframe.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Atmospheric-Layer Rule",
+        "body": "When a surface needs more than a card-level shadow (auth backdrops, home shells), add a radial gradient atmosphere (e.g., radial-gradient(ellipse at top, var(--purple-900) 0%, var(--purple-950) 60%)) on top of, not in place of, the tinted shadow scale.",
+        "section": "elevation"
+      }
     ],
     "dos": [
       "Do open every primary page with a Teko-display masthead, not a navbar that flows directly into content.",
       "Do use Teko for every heading, eyebrow, button label, table head, and navbar link.",
       "Do use Newsreader for every paragraph, body text, list item, and editorial caption.",
-      "Do reserve the metal-gold gradients for primary CTAs and the active navbar button. Nothing else.",
-      "Do use the brand-tinted shadow scale on every elevated surface. Cards lift slightly at rest, harder on hover.",
+      "Do reserve the metal-gold gradients (--metal-gold / --metal-gold-flat) for primary CTAs and the active navbar button. Nothing else.",
+      "Do use the brand-tinted shadow scale (--shadow-sm/md/lg/gold) on every elevated surface. Cards lift slightly at rest, harder on hover.",
       "Do scope every non-platform color through a body.game-<slug> class. Game palettes layer on the chrome; they never replace it.",
-      "Do use Pressroom Bone (#F3EFE6) as the page background. White is for nested cards only.",
-      "Do apply gold dividers between major page sections when separation is needed, not colored side-stripes on cards.",
-      "Do put light foreground colors on .card.wc-card content, scoped to the card surface.",
-      "Do keep button and form min-height at 44 px or larger.",
+      "Do use Pressroom Bone (#F3EFE6) as the page background. White (#FFFFFF) is for nested cards only.",
+      "Do apply gold dividers (border-top: 2px solid var(--gold)) between major page sections when separation is needed, not colored side-stripes on cards.",
+      "Do scope any light-foreground overrides needed on a game's dark-substrate primitive to that surface (e.g., .wc-champion-banner .text-muted). Bootstrap defaults will read black-on-dark without it; broadcasting tbody td { color: light } globally breaks the masked-by-Bootstrap rows on every other surface.",
+      "Do keep button and form min-height at 44px or larger (mobile-first touch floor).",
       "Do cap Newsreader paragraph line length at 65 to 75 ch.",
-      "Do carry the Eyebrow primitive above section headlines that need contextual labeling."
+      "Do carry the Eyebrow primitive (Teko 500, 0.85rem, 0.14em letter-spacing, gold, uppercase) above section headlines that need contextual labeling."
     ],
     "donts": [
-      "Don't use border-left greater than 1 px as a colored accent on cards, list items, callouts, or alerts. The current .card.border-success / .card.border-danger / .card.border-warning / .card.border-primary rules are existing violations to migrate.",
-      "Don't apply background-clip text plus a gradient background. The metal-gold gradient is for surfaces, never for type.",
-      "Don't use #000 or #fff as text or background colors. Tint every neutral toward brand purple.",
-      "Don't use Inter, system-ui, or any other font. Teko and Newsreader define the system.",
-      "Don't use neutral-gray shadows. CCC shadows are purple-tinted by design.",
-      "Don't apply --metal-gold outside primary-CTA contexts. It is the trophy.",
-      "Don't introduce repeating identical card grids (icon plus heading plus text, eight in a row).",
-      "Don't apply the hero-metric template (big number, small label, supporting stats, gradient accent) without justification.",
-      "Don't add a third top-level color outside CCC purple plus gold without scoping it under a game class.",
-      "Don't use match.stage|title in Jinja templates. Use the stage_label SSoT helper.",
-      "Don't mock dark mode on light surfaces. Auth backdrops and .card.wc-card are the only dark registers.",
-      "Don't use bounce or elastic easing on motion. Card hover overshoot is the only deliberate exception.",
-      "Don't use em dashes or double hyphens in UI copy. Replace with commas, colons, semicolons, periods, or parentheses.",
-      "Don't add navbar items beyond joined-games plus auth links. Navigation overload is an ESPN/Yahoo anti-reference.",
-      "Don't introduce 'Powered by' footers, trust badges, or marketing-style hero sections aimed at strangers."
+      "Don't use border-left/border-right greater than 1px as a colored accent on cards, list items, callouts, alerts, or table rows. The settled platform alternatives: state cards use a full 1px border plus a 5–6% background tint (the .card.border-success / -danger / -warning / -primary rules already follow this shape), and current-user table rows use a background tint only (the last stripe, Golf's, was removed 2026-07-20). Structural gridlines (e.g., .col-divider between table column groups) are separators, not accents, and are exempt.",
+      "Don't apply background-clip: text plus a gradient background (gradient text). The metal-gold gradient is for surfaces, never for type.",
+      "Don't use #000 or #fff as text or background colors. Tint every neutral toward the brand purple; chroma 0.005 to 0.01 is enough.",
+      "Don't use Inter, system-ui, or any other font. Teko and Newsreader define the system; a third font is a regression.",
+      "Don't use neutral-gray shadows. CCC shadows are purple-tinted by design; replacing them with rgba(0, 0, 0, ...) breaks the press-room atmosphere.",
+      "Don't apply --metal-gold outside primary-CTA contexts. It is the trophy; decorating with it dilutes it.",
+      "Don't introduce repeating identical card grids (icon + heading + text, same size, eight in a row). PRODUCT.md flags this as an anti-reference under \"generic SaaS dashboards.\"",
+      "Don't apply the hero-metric template (big number + small label + supporting stats + gradient accent) without justification. Listed in shared design laws as an absolute ban for SaaS cliches.",
+      "Don't add a third top-level color outside CCC purple plus gold without scoping it under a game class. WC navy/red, CFB crimson, Golf green only ever appear on body.game-worldcup / body.game-cfb / body.game-golf surfaces.",
+      "Don't use match.stage|title in Jinja templates. Use the stage_label SSoT helper. (Documented gotcha in CLAUDE.md; surfaces as a typography slip.)",
+      "Don't mock dark mode on light surfaces. The auth pages (Tribunal Black backdrop) plus each game's named ceremonial dark primitive (e.g., the World Cup .wc-champion-banner) are the platform-default first-party dark surfaces; otherwise bone-on-light is the default. Carve-out: a game may establish a *dark room* as its entire body substrate when its games/<slug>/DESIGN.md documents the choice and scopes it under body.game-<slug> only (never a global dark mode) — e.g., CFB Survivor's warm-midnight room (games/cfb/DESIGN.md). What stays banned is an *undocumented* third dark register. New game-scoped dark primitives, or a documented dark room, belong in the game's DESIGN.md.",
+      "Don't use bounce or elastic easing on motion. Card hover is the only deliberately overshooting curve in the system; everywhere else, ease out with cubic-bezier(0.4, 0, 0.2, 1) or steeper exponential curves.",
+      "Don't use em dashes (—) or double hyphens (--) in UI copy, error messages, button labels, or any prose generated for CCC surfaces. Replace with commas, colons, semicolons, periods, or parentheses. (Carried from PRODUCT.md's Copy Discipline.)",
+      "Don't add a navbar item beyond the joined-games list plus auth links. PRODUCT.md flags \"navigation overload\" as an ESPN/Yahoo anti-reference.",
+      "Don't introduce a \"Powered by\" footer, trust badges, marketing-style hero aimed at strangers, or any platform signal. The site belongs to the club, not to a vendor. PRODUCT.md design principle #1."
     ]
   }
 }
