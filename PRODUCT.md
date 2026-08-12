@@ -333,7 +333,7 @@ Durable strategic locks. The visual counterparts live in `## Design Principles` 
 1. **The format is the product.** A new game gets purpose-built rules, models, deadline mechanics, and vocabulary. Never reskin an existing game's engine with the nouns swapped.
 2. **No house edge.** No ads, no upsell, no acquisition surface, no growth mechanics, no data business. There is nothing to optimize for except the enrolled group's enjoyment.
 3. **The deadline is the clock.** Every surface answers "what is due, and am I locked?" before it answers anything else. Nothing outranks an open pick before its deadline.
-4. **Fuel the argument, do not host it.** CCC supplies the facts the group chat runs on: standings, movement, receipts, ownership. It does not become the chat. No comment threads, no activity feed, no reactions.
+4. **Fuel the argument, do not host it.** CCC supplies the facts the group chat runs on: standings, movement, receipts, ownership. It does not become the chat. No comment threads, no activity feed, no member-to-member reactions. This is about *social* reactions between members; the "Live reactions" listed under Design Principle 2 are the product reacting to a live event (a score moving, a pick locking), and those are core.
 5. **A season is a record, not a session.** Completed seasons stay reachable with their real data intact rather than being wiped for a fresh start.
 6. **Membership is granted, never self-serve.** Enrollment, admin, and season operations are explicit acts by a person. No signup funnel, no viral invite loop, no self-serve unenroll.
 
