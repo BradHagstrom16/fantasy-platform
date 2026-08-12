@@ -296,6 +296,32 @@ def test_check_designation_flags_an_unsound_designation(app):
     assert any('before the' in p for p in check_designation(week))
 
 
+def test_check_designation_reads_the_frozen_kickoff_once_stamped(app):
+    """Post-stamp — which is when the deadline pass calls it — the frozen
+    column is the honest one. A designation whose LIVE kickoff moved late is
+    still judged on the docket the players saw."""
+    from games.docket.services.deadline_pass import check_designation
+
+    week, games = _seed()
+    games[0].kickoff_at_deadline = WEEK1_DEADLINE_UTC.replace(hour=15)
+    games[0].kickoff = KICK  # the live column says "after the deadline"
+    db.session.flush()
+
+    assert any('before the' in p for p in check_designation(week))
+
+
+def test_check_designation_flags_a_game_from_another_week(app):
+    from games.docket.services.deadline_pass import check_designation
+
+    week, _games = _seed()
+    other = make_week(2)
+    stray = make_game(other, kickoff=datetime(2026, 9, 12, 18, 0))
+    week.tiebreaker_game_id = stray.id
+    db.session.flush()
+
+    assert any('belongs to another week' in p for p in check_designation(week))
+
+
 def test_a_market_with_no_bookmaker_is_skipped_not_invented(app, monkeypatch):
     """D17 provenance is auditable or absent: a value locked without a book
     is unpostable (locked_line refuses it, exactly as the sheet does), so the

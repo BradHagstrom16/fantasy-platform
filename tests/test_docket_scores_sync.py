@@ -106,6 +106,32 @@ def test_is_final_is_one_way(app):
     assert summary['scores_written'] == 1
 
 
+def test_a_live_score_can_never_reach_the_engine(app):
+    """The finality contract lives in the ADAPTER, not the snapshot type.
+
+    GameSnapshot.is_final is score-presence, so writing a live score here
+    would be dangerous if build_week_snapshot passed it through — it doesn't:
+    it gates on the persisted is_final column. This locks that gate, since
+    the CLI grades immediately after a scores run.
+    """
+    from games.docket.services.grading_pass import build_week_snapshot
+
+    week = make_week(1)
+    game = _seed_game(week, 'e-1', home='Notre Dame', away='Wisconsin')
+    game.kickoff_at_deadline = KICK
+    week.tiebreaker_game_id = game.id
+    db.session.commit()
+
+    _run(app, [_event('e-1', 'Notre Dame', 'Wisconsin', home_score=14,
+                      away_score=7)])
+
+    assert (game.home_score, game.away_score) == (14, 7)
+    snapshot = build_week_snapshot(week)
+    assert snapshot.games[0].home_score is None
+    assert snapshot.games[0].is_final is False, \
+        'a live score must not satisfy the engine\'s final-score contract'
+
+
 def test_a_partial_score_pair_is_refused(app):
     """GameSnapshot's both-or-neither contract: half a score would grade as
     a real result with a phantom zero."""

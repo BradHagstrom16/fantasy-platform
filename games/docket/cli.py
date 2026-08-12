@@ -120,14 +120,28 @@ def _report_designation(week):
     return not problems
 
 
+def _check_sync_status(summary, what):
+    """Turn a sync summary into an exit code.
+
+    'partial' means one sport failed while the other succeeded — the work
+    that landed is kept, but the run did NOT do its job and must exit
+    non-zero, or a sport can stay dark for a week with every timer green.
+    Called after the useful work, so a failing sport never costs the
+    healthy one its result.
+    """
+    status = summary.get('status')
+    if status in ('error', 'partial'):
+        _fail(f'{what} {"failed" if status == "error" else "partially failed"}'
+              f': {"; ".join(summary.get("errors", []))}')
+
+
 def _run_import(week_number, force_odds, title):
     summary = import_week(week_number, force_odds=force_odds)
     _echo_summary(title, summary)
     week = _get_week(week_number)
     if week is not None:
         _report_designation(week)
-    if summary.get('status') == 'error':
-        _fail(f'import failed: {"; ".join(summary.get("errors", []))}')
+    _check_sync_status(summary, 'import')
 
 
 def _run_scores(week_number, days_from):
@@ -143,6 +157,7 @@ def _run_scores(week_number, days_from):
     else:
         click.secho(f'  grading: {graded["graded"]} players graded',
                     fg='green')
+    _check_sync_status(summary, 'score sync')
 
 
 def _run_deadline(week_number, force):

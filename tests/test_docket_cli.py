@@ -206,6 +206,41 @@ def test_scores_mode_writes_then_grades_when_the_week_is_complete(
         select(DocketWeekResult).filter_by(week_id=week.id)).all()
 
 
+def test_a_partial_sync_exits_non_zero(app, runner, monkeypatch):
+    """One sport dark for a week must not read as a green timer run — the
+    healthy sport's work still lands, and the command still fails."""
+    week, games = _seed(final=False)
+    make_enrollment(make_user('player'))
+    db.session.commit()
+    monkeypatch.setenv('DOCKET_FAKE_NOW', AFTER_DEADLINE)
+    _invoke(runner, 'sync', '--mode', 'deadline')
+    app.config['ODDS_API_KEY'] = 'test-key'
+
+    class _R:
+        headers = {}  # noqa: RUF012 - throwaway stub
+
+        def __init__(self, payload, status=200):
+            self._payload = payload
+            self.status_code = status
+
+        def json(self):
+            return self._payload
+
+    ok = [{'id': games[0].api_event_id, 'home_team': games[0].home_team,
+           'away_team': games[0].away_team, 'completed': True,
+           'scores': [{'name': games[0].home_team, 'score': '31'},
+                      {'name': games[0].away_team, 'score': '17'}]}]
+    # NCAAF 500s after retries; NFL succeeds. (SPORTS order is ncaaf, nfl.)
+    with patch('games.docket.services.scores.odds_api_get',
+               side_effect=[_R([], 500), _R(ok)]):
+        result = _invoke(runner, 'sync', '--mode', 'scores')
+
+    assert result.exit_code == 1
+    assert 'partially failed' in result.output
+    assert games[0].is_final is True, \
+        'the sport that succeeded keeps its update'
+
+
 def test_set_tiebreaker_designates_and_validates(app, runner):
     week, games = _seed(designate=False)
 
