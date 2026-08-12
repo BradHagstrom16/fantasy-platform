@@ -75,7 +75,10 @@ fantasy-platform-and-world-cup-design/
 CCC-final/
 _dbdump/
 
-# Codex CLI artifacts (tried once, not used)
+# Codex CLI artifacts — tried once, never adopted; block RETIRED and deleted 2026-08-12
+# (AGENTS.md had drifted 6 weeks stale and knew nothing of games/docket/). Rules kept as a
+# guard so a future codex/`npx skills add` run can't commit a stray copy. CLAUDE.md is the
+# single agent-instruction SSoT; do not reintroduce a parallel AGENTS.md mirror.
 .agents/
 .codex/
 AGENTS.md

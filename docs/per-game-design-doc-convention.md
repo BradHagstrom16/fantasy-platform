@@ -21,7 +21,7 @@ This keeps project-specific knowledge in the project (where it belongs and survi
 
 ## Running the loader in this repo
 
-The impeccable setup step's project-relative invocation (`node .agents/skills/impeccable/scripts/context.mjs`) does **not** work here — this repo has no `.agents/` directory, so it fails with `MODULE_NOT_FOUND`. Use the skill's base directory instead:
+The impeccable setup step's project-relative invocation (`node .agents/skills/impeccable/scripts/context.mjs`) does **not** work here — impeccable is a *global* install and this repo has no `.agents/` directory, so it fails with `MODULE_NOT_FOUND`. Use the skill's base directory instead:
 
 ```bash
 node ~/.claude/skills/impeccable/scripts/context.mjs
