@@ -310,6 +310,29 @@ def test_check_designation_reads_the_frozen_kickoff_once_stamped(app):
     assert any('before the' in p for p in check_designation(week))
 
 
+def test_try_grade_week_waits_on_readiness_but_never_on_corruption(app):
+    """The line WeekNotReady draws: 'the deadline pass hasn't run' is a wait
+    a timer should keep polling through; 'the designation points at another
+    week's game' is invalid data that must surface as a failure instead of
+    a green run that never grades."""
+    from games.docket.services.grading_pass import try_grade_week
+
+    week, _games = _seed()
+    db.session.commit()
+    assert try_grade_week(week.id)['status'] == 'not_ready'
+
+    from games.docket.services.deadline_pass import stamp_kickoffs
+
+    stamp_kickoffs(week)
+    other = make_week(2)
+    stray = make_game(other, kickoff=datetime(2026, 9, 12, 18, 0))
+    week.tiebreaker_game_id = stray.id
+    db.session.commit()
+
+    with pytest.raises(ValueError, match='not on this week'):
+        try_grade_week(week.id)
+
+
 def test_check_designation_flags_a_game_from_another_week(app):
     from games.docket.services.deadline_pass import check_designation
 

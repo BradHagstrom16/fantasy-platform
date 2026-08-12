@@ -43,10 +43,12 @@ class WeekNotReady(ValueError):
 def build_week_snapshot(week: DocketWeek) -> WeekSnapshot:
     """Map a DocketWeek + its games to the engine's input, verbatim.
 
-    Raises WeekNotReady when the deadline pass hasn't stamped
-    kickoff_at_deadline (F6 — the substitution ordering input must be the
-    frozen kickoff, never the live one) or when no tiebreaker game is
-    designated. Scores flow through only when the persisted is_final says
+    Raises WeekNotReady for the two states that resolve by waiting: the
+    deadline pass hasn't stamped kickoff_at_deadline (F6 — the substitution
+    ordering input must be the frozen kickoff, never the live one), or no
+    tiebreaker game is designated yet. A designation pointing OUTSIDE this
+    week is invalid data and raises plain ValueError, so it surfaces as a
+    failure. Scores flow through only when the persisted is_final says
     so — this gate, not the snapshot's own is_final property, is what keeps
     a live score from ever reaching the engine.
     """
@@ -76,7 +78,12 @@ def build_week_snapshot(week: DocketWeek) -> WeekSnapshot:
         if game.id == week.tiebreaker_game_id:
             tiebreaker_event_id = game.api_event_id
     if tiebreaker_event_id is None:
-        raise WeekNotReady(
+        # NOT WeekNotReady: a designation pointing at another week's game is
+        # invalid data, not a state that resolves by waiting. It must reach
+        # the operator as a failure rather than as "check back later" —
+        # set_tiebreaker cannot produce it, so if it exists something wrote
+        # the column directly. WeekSnapshot enforces the same invariant.
+        raise ValueError(
             f'week {week.week_number}: designated tiebreaker game is not '
             f'on this week\'s docket')
     return WeekSnapshot(
