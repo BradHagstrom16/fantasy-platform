@@ -1,0 +1,131 @@
+{# The clerk's margin: slots 1-8, the reserve, the headliner, the number.
+   Context: sheet, week, games_by_id, designated, tb_locked, active_day.
+   Rendered twice (desktop aside + mobile drawer); all state comes from the
+   sheet dict so both copies always agree. #}
+
+{% macro pick_line(p) -%}
+  {%- set g = games_by_id[p.game_id] -%}
+  {%- if p.market == 'spread' -%}
+    {%- set team = g.home_team if p.side == 'home' else g.away_team -%}
+    {%- set num = p.line_value if p.side == 'home' else -p.line_value -%}
+    {{ team }} {% if p.line_value == 0 %}PK{% else %}{{ '%+g'|format(num) }}{% endif %}
+  {%- else -%}
+    {{ 'Over' if p.side == 'over' else 'Under' }} {{ '%g'|format(p.line_value) }}
+  {%- endif -%}
+{%- endmacro %}
+
+{% macro slot_actions(p) %}
+  {% if not sheet.deadline_passed and not p.locked %}
+    <div class="docket-slot-actions">
+      {% if p.is_best %}
+        <form method="POST" action="{{ url_for('docket.set_best') }}"
+              class="docket-inline-form" data-docket-action="clear-best">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+          <input type="hidden" name="clear" value="1"/>
+          <input type="hidden" name="day" value="{{ active_day.key if active_day else '' }}"/>
+          <button type="submit" class="docket-slot-btn"
+                  title="Clear the headliner designation">Clear x2</button>
+        </form>
+      {% elif p.slot != 9 %}
+        <form method="POST" action="{{ url_for('docket.set_best') }}"
+              class="docket-inline-form" data-docket-action="set-best">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+          <input type="hidden" name="game_id" value="{{ p.game_id }}"/>
+          <input type="hidden" name="market" value="{{ p.market }}"/>
+          <input type="hidden" name="day" value="{{ active_day.key if active_day else '' }}"/>
+          <button type="submit" class="docket-slot-btn"
+                  title="Make this the headliner, worth double">Make x2</button>
+        </form>
+      {% endif %}
+      <form method="POST" action="{{ url_for('docket.remove_pick') }}"
+            class="docket-inline-form" data-docket-action="remove-pick">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+        <input type="hidden" name="game_id" value="{{ p.game_id }}"/>
+        <input type="hidden" name="market" value="{{ p.market }}"/>
+        <input type="hidden" name="day" value="{{ active_day.key if active_day else '' }}"/>
+        <button type="submit" class="docket-slot-btn docket-slot-btn-remove"
+                title="Withdraw this pick">Withdraw</button>
+      </form>
+    </div>
+  {% endif %}
+{% endmacro %}
+
+{% macro slot_frame(slot_num, p) %}
+  <li class="docket-slot{% if not p %} is-empty{% endif %}{% if p and p.is_best %} is-best{% endif %}{% if p and p.locked %} is-locked{% endif %}{% if slot_num == 9 %} docket-slot-backup{% endif %}">
+    <span class="docket-slot-num">{{ 'R' if slot_num == 9 else slot_num }}</span>
+    {% if p %}
+      <div class="docket-slot-body">
+        <span class="docket-slot-pick">{{ pick_line(p) }}</span>
+        <span class="docket-caption">
+          {{ games_by_id[p.game_id].away_team }} at {{ games_by_id[p.game_id].home_team }}
+          {%- if p.locked %} · locked{% endif %}
+        </span>
+        {% if p.is_best %}<span class="docket-headliner-tag">Headliner x2</span>{% endif %}
+      </div>
+      {{ slot_actions(p) }}
+    {% elif slot_num == 9 %}
+      <span class="docket-slot-open">Held in reserve. Your ninth side files
+        here and substitutes if a case is thrown out.</span>
+    {% else %}
+      <span class="docket-slot-open">Open</span>
+    {% endif %}
+  </li>
+{% endmacro %}
+
+<div class="docket-rail-inner">
+  <div class="docket-rail-head">
+    <span class="docket-eyebrow">Your sheet</span>
+    <span class="docket-rail-count"><strong>{{ sheet.scoring_count }}</strong> of 8</span>
+  </div>
+  <p class="docket-deadline">
+    {% if sheet.deadline_passed %}
+      The docket is closed. Verdicts to follow.
+    {% else %}
+      Docket closes {{ week.deadline_at|ct('%A %-I:%M %p CT') }}
+    {% endif %}
+  </p>
+
+  {% set slot_map = {} %}
+  {% for p in sheet.picks %}{% if slot_map.update({p.slot: p}) %}{% endif %}{% endfor %}
+  <ol class="docket-slots">
+    {% for slot_num in range(1, 10) %}
+      {{ slot_frame(slot_num, slot_map.get(slot_num)) }}
+    {% endfor %}
+  </ol>
+
+  <div class="docket-tiebreaker">
+    <span class="docket-eyebrow docket-eyebrow-ink">The number</span>
+    {% if designated %}
+      <p class="docket-tb-case">{{ designated.away_team }} at {{ designated.home_team }}</p>
+      <p class="docket-caption">
+        Combined final score, to the tenth.
+        {% if designated.total_points is not none %}
+          The line says {{ '%g'|format(designated.total_points) }}.
+        {% endif %}
+      </p>
+      {% if tb_locked %}
+        <p class="docket-tb-held">
+          Your number: {{ sheet.prediction if sheet.prediction is not none
+                          else 'none recorded (the line stands in)' }}
+        </p>
+      {% else %}
+        <form method="POST" action="{{ url_for('docket.set_tiebreaker') }}"
+              class="docket-tb-form" data-docket-action="set-tiebreaker">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+          <input type="hidden" name="day" value="{{ active_day.key if active_day else '' }}"/>
+          <label class="form-label" for="docket-prediction-{{ 'm' if mobile_rail else 'd' }}">Your number</label>
+          <div class="docket-tb-controls">
+            <input class="form-control" type="text" inputmode="decimal"
+                   id="docket-prediction-{{ 'm' if mobile_rail else 'd' }}"
+                   name="prediction" value="{{ sheet.prediction or '' }}"
+                   placeholder="51.5" pattern="[0-9]+(\.[0-9])?"/>
+            <button type="submit" class="btn btn-game docket-tb-submit">Record</button>
+          </div>
+        </form>
+      {% endif %}
+    {% else %}
+      <p class="docket-caption">The tiebreaker case has not been designated
+        yet. Check back before the deadline.</p>
+    {% endif %}
+  </div>
+</div>

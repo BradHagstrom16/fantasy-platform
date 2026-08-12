@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block title %}Join The Docket · The Docket{% endblock %}
+
+{% block content %}
+<div class="page-hero docket-hero">
+    <div class="container">
+        <span class="docket-eyebrow">The Commissioner's Court</span>
+        <h1>Join The Docket</h1>
+        <p class="lead mb-0">A weekly pick sheet across college football and
+            the NFL, from CFB Week 1 through NFL Week 18.</p>
+    </div>
+</div>
+
+<div class="container pb-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-7 col-md-9">
+            <div class="card border-0 animate-in">
+                <div class="card-body p-4 p-md-5">
+                    <span class="docket-eyebrow docket-eyebrow-ink">How the court works</span>
+                    <dl class="docket-join-rules">
+                        <div class="docket-join-rule">
+                            <dt>Eight sides a week</dt>
+                            <dd>Any mix of college and pro: a spread side or an
+                                Over/Under, against lines frozen Tuesday morning.
+                                Win 1, mistrial (push) half, loss 0.</dd>
+                        </div>
+                        <div class="docket-join-rule">
+                            <dt>One headliner</dt>
+                            <dd>Name your best pick each week. It scores double.</dd>
+                        </div>
+                        <div class="docket-join-rule">
+                            <dt>One in reserve</dt>
+                            <dd>An optional ninth side that substitutes if one of
+                                your cases is thrown out.</dd>
+                        </div>
+                        <div class="docket-join-rule">
+                            <dt>The number</dt>
+                            <dd>Predict the combined score of the week's
+                                designated game, to the tenth. Your season error
+                                is the last tiebreaker, and it never resets.</dd>
+                        </div>
+                        <div class="docket-join-rule">
+                            <dt>The season ledger</dt>
+                            <dd>Points, then wins, then the number. Your single
+                                worst week is stricken from the record.</dd>
+                        </div>
+                        <div class="docket-join-rule">
+                            <dt>Deadlines</dt>
+                            <dd>Sheets close Saturdays at 11:00 AM CT; each game
+                                locks at its own kickoff.</dd>
+                        </div>
+                    </dl>
+
+                    <form method="POST">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                        <p class="docket-join-entry">{{ docket_season_year }} season.
+                            <strong>${{ docket_entry_fee }}</strong> to enter the pool.</p>
+                        <div class="mb-4">
+                            <label for="display_name" class="form-label">Name on the docket (optional)</label>
+                            <input type="text" class="form-control" id="display_name"
+                                   name="display_name" maxlength="80"
+                                   placeholder="{{ current_user.username }}">
+                        </div>
+                        <button type="submit" class="btn btn-game btn-lg w-100">Join The Docket</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

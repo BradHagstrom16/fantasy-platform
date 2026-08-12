@@ -1,0 +1,309 @@
+"""The Docket routes — the room: join, the pick sheet, sheet mutations.
+
+The pick sheet is the room's index until the season ledger lands (T10).
+Every mutation is a plain POST form (PRG + flash, fully functional without
+JS); a client sending ``Accept: application/json`` gets the authoritative
+sheet state back instead of a redirect, which is what the sheet's
+enhancement script repaints from. All rule enforcement lives in
+games/docket/services/picks.py; these handlers stay declarative.
+"""
+from datetime import UTC
+from functools import wraps
+
+from flask import (
+    current_app,
+    flash,
+    jsonify,
+    redirect,
+    render_template,
+    request,
+    url_for,
+)
+from flask_login import current_user, login_required
+
+from extensions import db
+from games.common import enrollment_required, game_must_be_open
+from games.docket.blueprint import docket_bp
+from games.docket.models import DocketEnrollment, DocketGame
+from games.docket.services import picks as picks_service
+from games.docket.services.bridge_sheet import SPORT_LABELS
+from games.docket.services.enrollment import get_enrollment
+from games.docket.services.picks import PickError
+from games.docket.services.weeks import CT, SEASON_YEAR, WEEK_1_BOUNDARY_LOCAL
+
+
+def _kickoff_ct(dt):
+    """Render seam: naive-UTC column value -> aware America/Chicago.
+
+    Deliberately NOT utils.time.to_ct: that module transitively imports the
+    frozen worldcup package, which re-enters utils.time when the docket
+    package loads first (the models/__init__.py re-export) — an import
+    cycle. The Jinja ``ct`` filter is unaffected (registered at app boot).
+    """
+    return dt.replace(tzinfo=UTC).astimezone(CT)
+
+
+def docket_admin_required(f):
+    """Two-tier admin gate: platform admin always passes; otherwise the
+    user's current-season enrollment must carry ``is_admin``."""
+    @wraps(f)
+    @login_required
+    def decorated_function(*args, **kwargs):
+        if current_user.is_admin:
+            return f(*args, **kwargs)
+        enrollment = get_enrollment(current_user.id)
+        if not enrollment or not enrollment.is_admin:
+            flash('Docket admin access required.', 'error')
+            return redirect(url_for('docket.index'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+
+@docket_bp.context_processor
+def inject_docket_globals():
+    docket_enrollment = None
+    if current_user.is_authenticated:
+        docket_enrollment = get_enrollment(current_user.id)
+    return {
+        'body_class': 'game-docket',
+        'docket_enrollment': docket_enrollment,
+        'docket_season_year': SEASON_YEAR,
+        'docket_entry_fee': current_app.config.get('DOCKET_ENTRY_FEE', 25),
+        'docket_sport_labels': SPORT_LABELS,
+    }
+
+
+@docket_bp.before_request
+def before_request():
+    """Blueprint-pattern hook; The Docket has no request-time refresh work
+    (line import and grading run via CLI/timers, T8+)."""
+
+
+# --------------------------------------------------------------------------
+# Enrollment
+# --------------------------------------------------------------------------
+
+@docket_bp.route('/join', methods=['GET', 'POST'])
+@login_required
+@game_must_be_open('docket')
+def join():
+    """Enrollment page for The Docket."""
+    existing = get_enrollment(current_user.id)
+    if existing:
+        flash('You are already on the docket.', 'info')
+        return redirect(url_for('docket.index'))
+
+    if request.method == 'POST':
+        display_name = request.form.get('display_name', '').strip()[:80]
+        enrollment = DocketEnrollment(
+            user_id=current_user.id,
+            season_year=SEASON_YEAR,
+            display_name=display_name or None,
+        )
+        db.session.add(enrollment)
+        db.session.commit()
+        flash('Welcome to The Docket. Court is in session.', 'success')
+        return redirect(url_for('docket.index'))
+
+    return render_template('docket/join.html')
+
+
+# --------------------------------------------------------------------------
+# The pick sheet
+# --------------------------------------------------------------------------
+
+@docket_bp.route('/')
+@enrollment_required('docket')
+def index():
+    """The weekly pick sheet (the room's index until the T10 ledger).
+
+    The slate is a court calendar: one day of cases at a time, navigated by
+    day-tab links (``?day=YYYY-MM-DD``, the CT calendar date). Server-side
+    tabs keep the no-JS spine intact; the sheet rail persists across days.
+    """
+    week = picks_service.current_week()
+    if week is None:
+        # Pre-season (or between-season) empty state; the date derives from
+        # the week math, never hardcoded prose.
+        season_opens_label = WEEK_1_BOUNDARY_LOCAL.strftime('%B %-d')
+        return render_template(
+            'docket/sheet.html',
+            week=None,
+            days=[],
+            active_day=None,
+            sheet=None,
+            held={},
+            designated=None,
+            season_opens_label=season_opens_label,
+        )
+
+    games = (
+        DocketGame.query.filter_by(week_id=week.id)
+        .order_by(DocketGame.kickoff, DocketGame.api_event_id)
+        .all()
+    )
+    sheet = picks_service.sheet_state(current_user.id, week)
+    held = {(p['game_id'], p['market']): p for p in sheet['picks']}
+    locked_ids = set(sheet['locked_game_ids'])
+
+    # Group by CT calendar day in the route (never Jinja sort/group).
+    days: list[dict] = []
+    for game in games:
+        kickoff_ct = _kickoff_ct(game.kickoff)
+        key = kickoff_ct.date().isoformat()
+        if not days or days[-1]['key'] != key:
+            days.append({
+                'key': key,
+                'label': kickoff_ct.strftime('%A, %B %-d'),
+                'tab_label': kickoff_ct.strftime('%a %-m/%-d'),
+                'games': [],
+            })
+        days[-1]['games'].append(game)
+
+    # Active day: the requested tab if it exists, else the first day still
+    # holding an unlocked case, else the last day.
+    requested = request.args.get('day')
+    active_day = None
+    if requested:
+        active_day = next((d for d in days if d['key'] == requested), None)
+    if active_day is None:
+        active_day = next(
+            (d for d in days
+             if any(g.id not in locked_ids for g in d['games'])),
+            days[-1] if days else None,
+        )
+
+    designated = week.tiebreaker_game
+    tb_locked = bool(
+        designated is not None
+        and (designated.id in locked_ids or sheet['deadline_passed'])
+    )
+
+    return render_template(
+        'docket/sheet.html',
+        week=week,
+        days=days,
+        active_day=active_day,
+        sheet=sheet,
+        held=held,
+        games_by_id={g.id: g for g in games},
+        designated=designated,
+        tb_locked=tb_locked,
+        season_opens_label=None,
+    )
+
+
+# --------------------------------------------------------------------------
+# Sheet mutations (POST-only; PRG for forms, sheet-state JSON for fetch)
+# --------------------------------------------------------------------------
+
+def _wants_json() -> bool:
+    return 'application/json' in request.headers.get('Accept', '')
+
+
+def _back_to_sheet():
+    """PRG target preserving the day tab the form was submitted from."""
+    day = request.form.get('day') or None
+    return redirect(url_for('docket.index', day=day))
+
+
+def _sheet_error(err: PickError):
+    if _wants_json():
+        payload = {'ok': False, 'error': err.code, 'message': err.message}
+        return jsonify(payload), err.status
+    flash(err.message, 'error' if err.status == 400 else 'warning')
+    return _back_to_sheet()
+
+
+def _sheet_success(week, message=None):
+    if _wants_json():
+        return jsonify({
+            'ok': True,
+            'sheet': picks_service.sheet_state(current_user.id, week),
+        })
+    if message:
+        flash(message, 'success')
+    return _back_to_sheet()
+
+
+@docket_bp.route('/picks/set', methods=['POST'])
+@enrollment_required('docket')
+def set_pick():
+    """Add a pick, or move a held market to its other side."""
+    week = picks_service.current_week()
+    try:
+        picks_service.set_pick(
+            current_user.id,
+            week,
+            game_id=request.form.get('game_id', type=int),
+            market=request.form.get('market', ''),
+            side=request.form.get('side', ''),
+            backup=request.form.get('backup') == '1',
+        )
+    except PickError as err:
+        return _sheet_error(err)
+    return _sheet_success(week, 'Pick recorded.')
+
+
+@docket_bp.route('/picks/remove', methods=['POST'])
+@enrollment_required('docket')
+def remove_pick():
+    """Withdraw an unlocked pick; its slot stays open in place."""
+    week = picks_service.current_week()
+    try:
+        picks_service.remove_pick(
+            current_user.id,
+            week,
+            game_id=request.form.get('game_id', type=int),
+            market=request.form.get('market', ''),
+        )
+    except PickError as err:
+        return _sheet_error(err)
+    return _sheet_success(week, 'Pick withdrawn.')
+
+
+@docket_bp.route('/best', methods=['POST'])
+@enrollment_required('docket')
+def set_best():
+    """Set, move, or clear the headliner designation."""
+    week = picks_service.current_week()
+    try:
+        if request.form.get('clear') == '1':
+            picks_service.clear_best(current_user.id, week)
+            message = 'Headliner cleared.'
+        else:
+            picks_service.set_best(
+                current_user.id,
+                week,
+                game_id=request.form.get('game_id', type=int),
+                market=request.form.get('market', ''),
+            )
+            message = 'Headliner set.'
+    except PickError as err:
+        return _sheet_error(err)
+    return _sheet_success(week, message)
+
+
+@docket_bp.route('/tiebreaker', methods=['POST'])
+@enrollment_required('docket')
+def set_tiebreaker():
+    """Submit (or clear, on empty input) the combined-score prediction."""
+    week = picks_service.current_week()
+    try:
+        row = picks_service.set_tiebreaker(
+            current_user.id, week, request.form.get('prediction', ''))
+    except PickError as err:
+        return _sheet_error(err)
+    message = 'Prediction recorded.' if row is not None else 'Prediction cleared.'
+    return _sheet_success(week, message)
+
+
+# --------------------------------------------------------------------------
+# Admin (stub — surfaces land with T9)
+# --------------------------------------------------------------------------
+
+@docket_bp.route('/admin/')
+@docket_admin_required
+def admin_dashboard():
+    """Mount point for the T9 admin cluster; gate is live, surfaces pending."""
+    return render_template('docket/admin/dashboard.html')

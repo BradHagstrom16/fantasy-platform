@@ -15,6 +15,7 @@ from typing import Any, Literal
 
 from games.cfb.services import enrollment as _cfb_enrollment
 from games.cfb.services import lounge as _cfb_lounge
+from games.docket.services import enrollment as _docket_enrollment
 from games.golf.services import enrollment as _golf_enrollment
 from games.worldcup.services import enrollment as _worldcup_enrollment
 from games.worldcup.services import lounge as _worldcup_lounge
@@ -91,6 +92,25 @@ GAMES: list[GameRegistryEntry] = [
         launch_label='Sep 3',
         lounge_state=_cfb_lounge.cfb_lounge_state,
         lounge_context=_cfb_lounge.build_lounge_context,
+    ),
+    GameRegistryEntry(
+        slug='docket',
+        display_name='The Docket',
+        description=(
+            'Weekly pick sheet across college football and the NFL. Eight '
+            'picks against frozen lines, one headliner worth double.'
+        ),
+        emoji='⚖️',
+        status='open',
+        # Not featured: CFB Survivor keeps the lounge. The Docket enters the
+        # lounge via the T13 static strip; multi-featured is the ~Oct redesign.
+        is_featured=False,
+        blueprint_index='docket.index',
+        blueprint_join='docket.join',
+        get_enrollment=_docket_enrollment.get_enrollment,
+        admin_enroll=_docket_enrollment.admin_enroll,
+        short_name='Docket',
+        launch_label='Sep 1',
     ),
     GameRegistryEntry(
         slug='golf',

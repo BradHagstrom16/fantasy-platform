@@ -1,0 +1,92 @@
+{# One case on the docket calendar.
+   Context: game, sheet, held, designated, active_day, docket_sport_labels.
+   States: open sides are mini-forms (PRG spine); a held side is a stamped
+   span; a locked case renders static with its reason in the head. #}
+{% set locked = sheet.deadline_passed or game.id in sheet.locked_game_ids %}
+{% set spread_pick = held.get((game.id, 'spread')) %}
+{% set total_pick = held.get((game.id, 'total')) %}
+{% set send_reserve = sheet.scoring_count >= 8 and not sheet.backup %}
+
+{% macro side_number(market, side) -%}
+  {%- if market == 'spread' -%}
+    {%- if game.home_spread == 0 -%}PK{%- else -%}
+      {{ '%+g'|format(game.home_spread if side == 'home' else -game.home_spread) }}
+    {%- endif -%}
+  {%- else -%}
+    {{ '%g'|format(game.total_points) }}
+  {%- endif -%}
+{%- endmacro %}
+
+{% macro side_pill(market, side, label, pick) %}
+  {% if pick and pick.side == side %}
+    <span class="docket-side is-picked{% if locked %} is-locked{% endif %}{% if pick.is_best %} is-best{% endif %}">
+      <span class="docket-side-team">{{ label }}</span>
+      <span class="docket-side-num">{{ side_number(market, side) }}</span>
+      <span class="docket-slot-badge">{{ 'R' if pick.slot == 9 else pick.slot }}</span>
+      {% if pick.is_best %}<span class="docket-headliner-chip">x2</span>{% endif %}
+    </span>
+  {% elif locked %}
+    <span class="docket-side is-locked">
+      <span class="docket-side-team">{{ label }}</span>
+      <span class="docket-side-num">{{ side_number(market, side) }}</span>
+    </span>
+  {% else %}
+    <form method="POST" action="{{ url_for('docket.set_pick') }}"
+          class="docket-side-form" data-docket-action="set-pick">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+      <input type="hidden" name="game_id" value="{{ game.id }}"/>
+      <input type="hidden" name="market" value="{{ market }}"/>
+      <input type="hidden" name="side" value="{{ side }}"/>
+      <input type="hidden" name="day" value="{{ active_day.key }}"/>
+      {% if send_reserve %}<input type="hidden" name="backup" value="1"/>{% endif %}
+      <button type="submit" class="docket-side{% if pick %} is-move{% endif %}">
+        <span class="docket-side-team">{{ label }}</span>
+        <span class="docket-side-num">{{ side_number(market, side) }}</span>
+        {% if send_reserve %}<span class="docket-reserve-hint">reserve</span>{% endif %}
+      </button>
+    </form>
+  {% endif %}
+{% endmacro %}
+
+<article class="docket-case-row{% if locked %} is-locked{% endif %}{% if spread_pick or total_pick %} is-held{% endif %}"
+         data-docket-game="{{ game.id }}">
+  <header class="docket-case-head">
+    <div class="docket-case-meta">
+      <span class="docket-sport-tag">{{ docket_sport_labels.get(game.sport, game.sport) }}</span>
+      <span class="docket-caption">{{ game.kickoff|ct('%-I:%M %p CT') }}</span>
+      {% if designated and designated.id == game.id %}
+        <span class="docket-tb-tag">Tiebreaker case</span>
+      {% endif %}
+      {% if locked and not sheet.deadline_passed %}
+        <span class="docket-locked-note">Locked at kickoff</span>
+      {% endif %}
+    </div>
+    <h3 class="docket-case-caption">
+      {{ game.away_team }} <span class="docket-at">at</span> {{ game.home_team }}
+    </h3>
+  </header>
+  <div class="docket-markets">
+    <div class="docket-market">
+      <span class="docket-market-label">Spread</span>
+      {% if game.home_spread is not none and game.spread_book %}
+        <div class="docket-sides">
+          {{ side_pill('spread', 'away', game.away_team, spread_pick) }}
+          {{ side_pill('spread', 'home', game.home_team, spread_pick) }}
+        </div>
+      {% else %}
+        <span class="docket-no-line">No line posted</span>
+      {% endif %}
+    </div>
+    <div class="docket-market">
+      <span class="docket-market-label">Total</span>
+      {% if game.total_points is not none and game.total_book %}
+        <div class="docket-sides">
+          {{ side_pill('total', 'over', 'Over', total_pick) }}
+          {{ side_pill('total', 'under', 'Under', total_pick) }}
+        </div>
+      {% else %}
+        <span class="docket-no-line">No line posted</span>
+      {% endif %}
+    </div>
+  </div>
+</article>

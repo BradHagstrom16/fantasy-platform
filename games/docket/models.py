@@ -24,6 +24,43 @@ from extensions import db
 from games.docket.utils import to_naive_utc
 
 
+class DocketEnrollment(db.Model):
+    """A user's season membership in The Docket (CfbEnrollment shape).
+
+    One row per (user, season). ``is_admin`` is the enrollment-scoped game
+    admin tier (platform admins bypass it in ``docket_admin_required``).
+    ``created_at`` follows the D6 naive-UTC contract, unlike CFB's aware
+    audit lambda — every docket column stores naive UTC.
+    """
+    __tablename__ = 'docket_enrollment'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(
+        db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    season_year = db.Column(db.Integer, nullable=False)
+    is_admin = db.Column(db.Boolean, nullable=False, default=False)
+    has_paid = db.Column(db.Boolean, nullable=False, default=False)
+    display_name = db.Column(db.String(80), nullable=True)
+    created_at = db.Column(
+        db.DateTime, default=lambda: to_naive_utc(datetime.now(UTC)))
+
+    user = db.relationship('User', backref='docket_enrollments')
+
+    __table_args__ = (
+        db.UniqueConstraint('user_id', 'season_year',
+                            name='uq_docket_enrollment_user_season'),
+    )
+
+    def get_display_name(self):
+        """Pool display name, falling back to the platform username."""
+        if self.display_name:
+            return self.display_name
+        return self.user.username
+
+    def __repr__(self):
+        return f'<DocketEnrollment user={self.user_id} season={self.season_year}>'
+
+
 class DocketWeek(db.Model):
     """One docket week: a half-open [start_at, end_at) slice of the season.
 

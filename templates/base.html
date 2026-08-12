@@ -200,6 +200,24 @@
             </div>
         </div>
     </nav>
+    {% elif request.blueprint == 'docket' %}
+    <nav class="game-subnav subnav-docket" aria-label="Docket section">
+        <div class="container">
+            <a class="subnav-game-label" href="{{ url_for('docket.index') }}">
+                ⚖️ <span class="subnav-label-text">Docket 2026</span>
+            </a>
+            <div class="subnav-scroll">
+                <div class="subnav-pills">
+                    <a class="subnav-pill {% if request.endpoint == 'docket.index' %}active{% endif %}"
+                       href="{{ url_for('docket.index') }}">My Sheet</a>
+                    {% if current_user.is_authenticated and (current_user.is_admin or (docket_enrollment and docket_enrollment.is_admin)) %}
+                    <a class="subnav-pill {% if request.endpoint == 'docket.admin_dashboard' %}active{% endif %}"
+                       href="{{ url_for('docket.admin_dashboard') }}">Admin</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </nav>
     {% endif %}
 
     <!-- Flash Messages: container only renders when there is something to flash.
