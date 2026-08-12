@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+
+{% block title %}Tiebreaker Case · Week {{ week.week_number }} · The Docket{% endblock %}
+
+{% block content %}
+<div class="page-hero docket-hero">
+    <div class="container">
+        <span class="docket-eyebrow">The Clerk's Office · Week {{ week.week_number }}</span>
+        <h1>The Tiebreaker Case</h1>
+        <p class="lead mb-0">One case a week carries the combined-score
+            prediction. The error it produces accrues all season and is never
+            forgiven.</p>
+    </div>
+</div>
+
+<div class="container pb-5">
+    <div class="card border-0 animate-in mb-4">
+        <div class="card-body p-4">
+            <span class="docket-eyebrow docket-eyebrow-ink">On file</span>
+            {% if week.tiebreaker_game %}
+                <p class="docket-desk-current">
+                    {{ week.tiebreaker_game.away_team }} at {{ week.tiebreaker_game.home_team }}
+                    {%- if week.tiebreaker_game.total_points is not none %},
+                    total {{ '%g'|format(week.tiebreaker_game.total_points) }}{% endif %}
+                </p>
+                {% if problems %}
+                    <ul class="docket-desk-problems">
+                        {% for problem in problems %}<li>{{ problem }}</li>{% endfor %}
+                    </ul>
+                {% endif %}
+            {% else %}
+                <p class="docket-desk-current">No case designated yet.</p>
+                <p class="docket-caption">Without one the deadline pass
+                    freezes kickoffs but deals no auto-picks, and the week
+                    cannot grade.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="card border-0 animate-in">
+        <div class="card-body p-4">
+            {% if not is_open %}
+                <p class="mb-0">The docket has closed. A designation cannot
+                    move now. If the case died after the deadline, the week
+                    accrues no tiebreaker error for anyone, which is the
+                    ruling and needs no action here.</p>
+            {% elif not eligible %}
+                <p class="mb-0">No case on this docket can hold the
+                    tiebreaker yet. A case qualifies once its total is locked
+                    and its kickoff is at or after the deadline.</p>
+            {% else %}
+                <form method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <label class="form-label" for="docket-tb-game">Designate a case</label>
+                    <p class="docket-caption" id="docket-tb-help">Listed cases
+                        already satisfy the contract: a locked total, and a
+                        kickoff at or after the deadline so nobody predicts a
+                        score already in progress.</p>
+                    <select class="form-select" id="docket-tb-game" name="game_id"
+                            aria-describedby="docket-tb-help">
+                        {% for game in eligible %}
+                            <option value="{{ game.id }}"
+                                    {% if game.id == week.tiebreaker_game_id %}selected{% endif %}>
+                                {{ game.away_team }} at {{ game.home_team }}
+                                ({{ game.kickoff|ct('%a %-I:%M %p CT') }}, total
+                                {{ '%g'|format(game.total_points) }})
+                            </option>
+                        {% endfor %}
+                    </select>
+                    {% if week.tiebreaker_game %}
+                        <p class="docket-desk-warn">Moving the case clears
+                            every prediction recorded for this week. Players
+                            are emailed that the new case's locked total
+                            stands in until they enter a number.</p>
+                    {% endif %}
+                    <div class="docket-desk-submit">
+                        <button type="submit" class="btn btn-game">Designate</button>
+                        <a href="{{ url_for('docket.admin_dashboard') }}"
+                           class="btn btn-game-ghost">Back to the desk</a>
+                    </div>
+                </form>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,23 +1,75 @@
 {% extends "base.html" %}
 
-{% block title %}Docket Admin · The Docket{% endblock %}
+{% block title %}The Clerk's Office · The Docket{% endblock %}
 
 {% block content %}
 <div class="page-hero docket-hero">
     <div class="container">
         <span class="docket-eyebrow">The Commissioner's Court</span>
         <h1>The Clerk's Office</h1>
-        <p class="lead mb-0">Admin surfaces for The Docket.</p>
+        <p class="lead mb-0">Designate the tiebreaker case, throw a case out,
+            correct a bad line.</p>
     </div>
 </div>
 
 <div class="container pb-5">
-    <div class="card border-0 animate-in">
-        <div class="card-body p-4">
-            <p class="mb-0">The desk is being built: tiebreaker designation,
-                No Contest rulings, and line corrections land with the admin
-                slice (T9). Until then, operations run through the CLI.</p>
+    {% if not rows %}
+        <div class="card border-0 animate-in">
+            <div class="card-body p-4">
+                <p class="mb-0">No docket weeks exist yet. The first one is
+                    created by <code>flask docket sync --mode setup</code>
+                    when lines freeze Tuesday morning.</p>
+            </div>
         </div>
-    </div>
+    {% else %}
+        <div class="card border-0 animate-in">
+            <div class="card-body p-4">
+                <table class="docket-desk-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Week</th>
+                            <th scope="col">Cases</th>
+                            <th scope="col">Tiebreaker case</th>
+                            <th scope="col">Thrown out</th>
+                            <th scope="col"><span class="visually-hidden">Rulings</span></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for row in rows %}
+                        <tr>
+                            <th scope="row">
+                                <span class="docket-desk-week">Week {{ row.week.week_number }}</span>
+                                <span class="docket-caption">
+                                    {% if row.open %}closes {{ row.week.deadline_at|ct('%a %-I:%M %p CT') }}
+                                    {% else %}closed{% endif %}
+                                </span>
+                            </th>
+                            <td>{{ row.games }}</td>
+                            <td>
+                                {% if row.designated %}
+                                    {{ row.designated.away_team }} at {{ row.designated.home_team }}
+                                    {% if row.problems %}
+                                        <span class="docket-desk-flag">Unsound</span>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="docket-desk-flag">None designated</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ row.thrown_out or '' }}</td>
+                            <td class="docket-desk-actions">
+                                <a href="{{ url_for('docket.admin_tiebreaker', week_number=row.week.week_number) }}"
+                                   class="btn btn-game-ghost btn-sm">Tiebreaker</a>
+                                <a href="{{ url_for('docket.admin_rulings', week_number=row.week.week_number) }}"
+                                   class="btn btn-game-ghost btn-sm">No Contest</a>
+                                <a href="{{ url_for('docket.admin_lines', week_number=row.week.week_number) }}"
+                                   class="btn btn-game-ghost btn-sm">Lines</a>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    {% endif %}
 </div>
 {% endblock %}

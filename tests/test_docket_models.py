@@ -14,16 +14,22 @@ from sqlalchemy.exc import IntegrityError
 
 
 def _all_docket_models():
-    from games.docket.models import (
-        DocketGame,
-        DocketPick,
-        DocketTiebreakerPrediction,
-        DocketWeek,
-        DocketWeekResult,
-    )
+    """Every mapped docket table, discovered rather than listed.
 
-    return (DocketWeek, DocketGame, DocketPick,
-            DocketTiebreakerPrediction, DocketWeekResult)
+    This used to be a hardcoded tuple, which silently stopped covering the
+    schema the moment a table was added — docket_line_correction shipped
+    outside the D6 sweep that way. Discovery means a new docket table is
+    inside the timezone lock the day it lands.
+    """
+    import games.docket.models  # noqa: F401 — registers the mappers
+    from extensions import db
+
+    models = [
+        mapper.class_ for mapper in db.Model.registry.mappers
+        if getattr(mapper.class_, '__tablename__', '').startswith('docket_')
+    ]
+    assert models, 'no docket models discovered'
+    return sorted(models, key=lambda m: m.__tablename__)
 
 
 def _mk_week(db, number=1):

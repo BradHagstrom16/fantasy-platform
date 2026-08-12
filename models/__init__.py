@@ -51,6 +51,7 @@ from games.docket.models import (
     DocketPick,
     DocketTiebreakerPrediction,
     DocketWeekResult,
+    DocketLineCorrection,
 )
 
 __all__ = [
@@ -80,4 +81,5 @@ __all__ = [
     'DocketPick',
     'DocketTiebreakerPrediction',
     'DocketWeekResult',
+    'DocketLineCorrection',
 ]

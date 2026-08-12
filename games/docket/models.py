@@ -306,3 +306,49 @@ class DocketWeekResult(db.Model):
     def __repr__(self):
         return (f'<DocketWeekResult u{self.user_id} w{self.week_id} '
                 f'{self.points}pts>')
+
+
+class DocketLineCorrection(db.Model):
+    """One audited admin correction of a locked line (D18).
+
+    Locked lines never move (D3) — except when the imported number was
+    simply wrong, which is a data error, not a market move. D18 allows the
+    fix PRE-DEADLINE ONLY, demands a reason, records old and new here, and
+    requires the market's pickers be told to re-decide. A bad line found
+    after the deadline is not corrected; it resolves as a No Contest ruling.
+
+    The row is the evidence. Because a pick snapshots its own line
+    (DocketPick.line_value/book) and grading reads that snapshot, correcting
+    a game's line must also re-snapshot the picks already made on it —
+    ``picks_resnapshotted`` records how many moved, so the audit trail
+    explains a changed pick row rather than leaving it looking like drift.
+    """
+    __tablename__ = 'docket_line_correction'
+
+    id = db.Column(db.Integer, primary_key=True)
+    game_id = db.Column(db.Integer, db.ForeignKey('docket_game.id'),
+                        nullable=False, index=True)
+    # market: 'spread' | 'total', the same value space as DocketPick.market.
+    market = db.Column(db.String(10), nullable=False)
+    # A correction only ever edits an already-locked market, so both sides
+    # of the change are known.
+    old_value = db.Column(db.Float, nullable=False)
+    old_book = db.Column(db.String(40), nullable=False)
+    new_value = db.Column(db.Float, nullable=False)
+    new_book = db.Column(db.String(40), nullable=False)
+    reason = db.Column(db.String(200), nullable=False)
+    admin_user_id = db.Column(db.Integer, db.ForeignKey('users.id'),
+                              nullable=False, index=True)
+    picks_resnapshotted = db.Column(db.Integer, nullable=False, default=0)
+
+    # Audit timestamp: real wall clock (never the fake-now seam), stripped
+    # to naive UTC explicitly rather than trusting driver offset handling.
+    created_at = db.Column(
+        db.DateTime, default=lambda: to_naive_utc(datetime.now(UTC)))
+
+    game = db.relationship('DocketGame', foreign_keys=[game_id])
+    admin = db.relationship('User', foreign_keys=[admin_user_id])
+
+    def __repr__(self):
+        return (f'<DocketLineCorrection g{self.game_id} {self.market} '
+                f'{self.old_value}->{self.new_value}>')

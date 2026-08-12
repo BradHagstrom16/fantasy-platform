@@ -82,6 +82,14 @@ def set_tiebreaker(week, matchup):
     Case-insensitive substring match on both team names; exactly one game
     must match (Week 1 hand-set: 'Wisconsin @ Notre Dame'). Raises
     ValueError on no match, an ambiguous match, or a malformed matchup.
+
+    Only the matchup-string resolution lives here. The write itself
+    delegates to ``admin_ops.designate_tiebreaker``, so this CLI fallback and
+    T9's admin UI share one contract: the same designation validation, the
+    same prediction-clearing on a re-designation, the same notification. An
+    unsound designation now rolls back instead of committing and then being
+    reported, which is why the refusal arrives as a ValueError carrying the
+    contract's own problem strings.
     """
     if ' @ ' not in matchup:
         raise ValueError(f"Tiebreaker must be 'Away @ Home', got {matchup!r}")
@@ -99,6 +107,14 @@ def set_tiebreaker(week, matchup):
         raise ValueError(
             f'Tiebreaker {matchup!r} matched {len(matches)} games in week '
             f'{week.week_number}; need exactly 1')
-    week.tiebreaker_game_id = matches[0].id
-    db.session.commit()
-    return matches[0]
+    # Imported here, not at module scope: routes.py imports this module for
+    # SPORT_LABELS while the blueprint is still assembling, and admin_ops
+    # reaches the grading and deadline services.
+    from games.docket.services.admin_ops import (
+        AdminOpError,
+        designate_tiebreaker,
+    )
+    try:
+        return designate_tiebreaker(week, matches[0].id)['game']
+    except AdminOpError as exc:
+        raise ValueError('; '.join([exc.message, *exc.problems])) from exc

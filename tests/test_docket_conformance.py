@@ -6,7 +6,12 @@ from unittest.mock import patch
 
 import games.registry as registry
 from extensions import db
-from tests._docket_fixtures import login, make_enrollment, make_user
+from tests._docket_fixtures import (
+    login,
+    make_enrollment,
+    make_user,
+    make_week,
+)
 
 
 def _coming_soon_docket_games():
@@ -92,27 +97,61 @@ def test_mutation_route_redirects_unenrolled_to_join(app, client):
     assert '/docket/join' in resp.headers['Location']
 
 
+# Every admin surface, gated identically. A new screen belongs here.
+ADMIN_PATHS = (
+    '/docket/admin/',
+    '/docket/admin/week/1/tiebreaker',
+    '/docket/admin/week/1/rulings',
+    '/docket/admin/week/1/lines',
+)
+
+
 def test_admin_routes_reject_enrolled_non_admin(app, client):
     user = make_user('pleb')
     make_enrollment(user)
     db.session.commit()
     login(client, user)
-    resp = client.get('/docket/admin/')
-    assert resp.status_code == 302
-    assert '/docket' in resp.headers['Location']
+    for path in ADMIN_PATHS:
+        resp = client.get(path)
+        assert resp.status_code == 302, path
+        assert '/docket' in resp.headers['Location']
+
+
+def test_admin_routes_reject_anonymous(app, client):
+    for path in ADMIN_PATHS:
+        resp = client.get(path)
+        assert resp.status_code == 302, path
+        assert '/login' in resp.headers['Location']
 
 
 def test_admin_routes_allow_enrollment_admin(app, client):
     user = make_user('gameadmin')
     enrollment = make_enrollment(user)
     enrollment.is_admin = True
+    make_week(1)
     db.session.commit()
     login(client, user)
-    assert client.get('/docket/admin/').status_code == 200
+    for path in ADMIN_PATHS:
+        assert client.get(path).status_code == 200, path
 
 
 def test_admin_routes_allow_platform_admin_without_enrollment(app, client):
     admin = make_user('padmin', is_admin=True)
+    make_week(1)
     db.session.commit()
     login(client, admin)
-    assert client.get('/docket/admin/').status_code == 200
+    for path in ADMIN_PATHS:
+        assert client.get(path).status_code == 200, path
+
+
+def test_admin_mutations_reject_an_enrolled_non_admin(app, client):
+    """The gate is on the POST too, not just the page that shows the form."""
+    user = make_user('pleb2')
+    make_enrollment(user)
+    make_week(1)
+    db.session.commit()
+    login(client, user)
+    for path in ADMIN_PATHS[1:]:
+        resp = client.post(path, data={'csrf_token': 'x'})
+        assert resp.status_code == 302, path
+        assert '/docket/admin' not in resp.headers['Location']

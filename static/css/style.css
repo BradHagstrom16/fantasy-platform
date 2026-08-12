@@ -12460,7 +12460,10 @@ button.docket-side.is-move:hover { color: var(--text-primary); }
   color: var(--text-secondary);
 }
 .docket-headliner-tag {
-  display: inline-block;
+  /* Block, not inline: the caption above it is an inline span, so the tag
+     used to run on after "· locked" as one long line. Its own line reads as
+     the slot's standing, which is what it is. */
+  display: block;
   font-family: 'Teko', sans-serif;
   font-weight: 600;
   font-size: .72rem;
@@ -12638,7 +12641,119 @@ button.docket-side.is-move:hover { color: var(--text-primary); }
   margin-bottom: 1rem;
 }
 
+/* --- The clerk's office (admin, T9) ------------------------------------
+   Working-document register: ruled lines rather than nested boxes, Teko for
+   labels and cases, Newsreader for prose. No alert styling anywhere — an
+   admin ruling is procedure, not an error, so consequential notices sit in
+   a muted well and let the copy carry the weight. */
+.docket-desk-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.docket-desk-table th,
+.docket-desk-table td {
+  padding: .6rem .5rem;
+  border-bottom: 1px solid var(--docket-rule);
+  text-align: left;
+  vertical-align: top;
+  font-family: 'Newsreader', Georgia, serif;
+  font-size: .92rem;
+}
+.docket-desk-table thead th {
+  font-family: 'Teko', sans-serif;
+  font-weight: 500;
+  font-size: .8rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+.docket-desk-week {
+  display: block;
+  font-family: 'Teko', sans-serif;
+  font-weight: 600;
+  font-size: 1.1rem;
+  color: var(--text-primary);
+}
+.docket-desk-flag {
+  font-family: 'Teko', sans-serif;
+  font-weight: 500;
+  font-size: .72rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+.docket-desk-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .35rem;
+  justify-content: flex-end;
+}
+.docket-desk-current {
+  font-family: 'Newsreader', Georgia, serif;
+  font-weight: 600;
+  font-size: 1.05rem;
+  color: var(--text-primary);
+  margin: .15rem 0 .2rem;
+}
+.docket-desk-problems {
+  margin: .4rem 0 0;
+  padding-left: 1.1rem;
+  font-family: 'Newsreader', Georgia, serif;
+  font-size: .88rem;
+  color: var(--text-secondary);
+}
+.docket-desk-warn {
+  background: var(--bg-muted);
+  border-radius: var(--radius);
+  padding: .65rem .8rem;
+  margin: .8rem 0 0;
+  font-family: 'Newsreader', Georgia, serif;
+  font-size: .88rem;
+  color: var(--text-primary);
+}
+.docket-desk-submit {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+  margin-top: 1rem;
+}
+.docket-desk-list {
+  list-style: none;
+  margin: .3rem 0 0;
+  padding: 0;
+}
+.docket-desk-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+  padding: .55rem 0;
+  border-bottom: 1px solid var(--docket-rule);
+}
+.docket-desk-row.is-out { opacity: .62; }
+.docket-desk-case {
+  display: block;
+  font-family: 'Newsreader', Georgia, serif;
+  font-weight: 600;
+  font-size: .95rem;
+  color: var(--text-primary);
+}
+.docket-desk-correction {
+  border-top: 1px solid var(--docket-rule);
+  margin-top: 1rem;
+  padding-top: 1rem;
+}
+.docket-desk-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: .75rem;
+  margin-bottom: .75rem;
+}
+
 @media (max-width: 767.98px) {
   .docket-markets { grid-template-columns: 1fr; gap: .55rem; }
   .docket-case-caption { font-size: 1.2rem; }
+  .docket-desk-fields { grid-template-columns: 1fr; }
+  .docket-desk-row { align-items: flex-start; flex-direction: column; }
+  .docket-desk-actions { justify-content: flex-start; }
 }

@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+
+{% block title %}Correct a Line · Week {{ week.week_number }} · The Docket{% endblock %}
+
+{% macro correction_form(game, market, label, value, book) %}
+    <form method="POST" class="docket-desk-correction">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+        <input type="hidden" name="game_id" value="{{ game.id }}"/>
+        <input type="hidden" name="market" value="{{ market }}"/>
+        <span class="docket-eyebrow docket-eyebrow-ink">{{ label }}</span>
+        <p class="docket-caption">On file: {{ '%g'|format(value) }} ({{ book }})</p>
+        <div class="docket-desk-fields">
+            <div>
+                <label class="form-label" for="value-{{ market }}">Corrected number</label>
+                <input class="form-control" type="text" inputmode="decimal"
+                       id="value-{{ market }}" name="value"
+                       value="{{ '%g'|format(value) }}" required/>
+            </div>
+            <div>
+                <label class="form-label" for="book-{{ market }}">Bookmaker</label>
+                <input class="form-control" type="text" id="book-{{ market }}"
+                       name="book" value="{{ book }}" maxlength="40" required/>
+            </div>
+        </div>
+        <label class="form-label" for="reason-{{ market }}">Reason</label>
+        <input class="form-control" type="text" id="reason-{{ market }}"
+               name="reason" maxlength="200" required
+               placeholder="Imported total was 5.15, book had 51.5"/>
+        <div class="docket-desk-submit">
+            <button type="submit" class="btn btn-game">Correct the {{ label|lower }}</button>
+        </div>
+    </form>
+{% endmacro %}
+
+{% block content %}
+<div class="page-hero docket-hero">
+    <div class="container">
+        <span class="docket-eyebrow">The Clerk's Office · Week {{ week.week_number }}</span>
+        <h1>Correct a Line</h1>
+        <p class="lead mb-0">For data errors only. Locked lines do not move
+            with the market; this fixes a number that was wrong when it was
+            imported.</p>
+    </div>
+</div>
+
+<div class="container pb-5">
+    <div class="card border-0 animate-in mb-4">
+        <div class="card-body p-4">
+            <p class="mb-0">A correction is recorded with its reason, and the
+                sides already taken on that market are re-snapshotted so they
+                grade against the corrected number. Those pickers are emailed
+                and can change their side until the docket closes. After the
+                deadline a bad line is not corrected: it is thrown out as No
+                Contest.</p>
+        </div>
+    </div>
+
+    {% if not is_open %}
+        <div class="card border-0 animate-in">
+            <div class="card-body p-4">
+                <p class="mb-0">The docket has closed. Rule
+                    <a href="{{ url_for('docket.admin_rulings', week_number=week.week_number) }}">No
+                    Contest</a> instead.</p>
+            </div>
+        </div>
+    {% else %}
+        {% if selected %}
+        <div class="card border-0 animate-in mb-4">
+            <div class="card-body p-4">
+                <span class="docket-eyebrow docket-eyebrow-ink">The case</span>
+                <p class="docket-desk-current">
+                    {{ selected.away_team }} at {{ selected.home_team }}
+                </p>
+                <p class="docket-caption">
+                    {{ docket_sport_labels.get(selected.sport, selected.sport) }}
+                    · {{ selected.kickoff|ct('%a %-I:%M %p CT') }}
+                </p>
+                {% if selected.kickoff <= now %}
+                    <p class="docket-desk-warn">This case kicked off. Its
+                        picks are frozen and its numbers can no longer move.
+                        Rule No Contest instead.</p>
+                {% else %}
+                    {% if selected.home_spread is not none and selected.spread_book %}
+                        {{ correction_form(selected, 'spread', 'Spread',
+                                           selected.home_spread, selected.spread_book) }}
+                    {% endif %}
+                    {% if selected.total_points is not none and selected.total_book %}
+                        {{ correction_form(selected, 'total', 'Total',
+                                           selected.total_points, selected.total_book) }}
+                    {% endif %}
+                    {% if not (selected.home_spread is not none and selected.spread_book)
+                          and not (selected.total_points is not none and selected.total_book) %}
+                        <p class="mb-0">No market on this case is locked yet.
+                            An unposted market fills from the next lines run;
+                            there is nothing here to correct.</p>
+                    {% endif %}
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="card border-0 animate-in">
+            <div class="card-body p-4">
+                <span class="docket-eyebrow docket-eyebrow-ink">The docket</span>
+                {% if not games %}
+                    <p class="mb-0">No cases on this docket yet.</p>
+                {% else %}
+                    <ul class="docket-desk-list">
+                    {% for game in games %}
+                        <li class="docket-desk-row{% if game.kickoff <= now %} is-out{% endif %}">
+                            <div>
+                                <span class="docket-desk-case">{{ game.away_team }} at {{ game.home_team }}</span>
+                                <span class="docket-caption">
+                                    {{ docket_sport_labels.get(game.sport, game.sport) }}
+                                    · {{ game.kickoff|ct('%a %-I:%M %p CT') }}
+                                    {%- if game.home_spread is not none %} · spread {{ '%+g'|format(game.home_spread) }}{% endif %}
+                                    {%- if game.total_points is not none %} · total {{ '%g'|format(game.total_points) }}{% endif %}
+                                    {%- if game.kickoff <= now %} · kicked off{% endif %}
+                                </span>
+                            </div>
+                            {% if game.kickoff > now %}
+                                <a class="btn btn-game-ghost btn-sm"
+                                   href="{{ url_for('docket.admin_lines', week_number=week.week_number, game=game.id) }}">Correct</a>
+                            {% endif %}
+                        </li>
+                    {% endfor %}
+                    </ul>
+                {% endif %}
+            </div>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
