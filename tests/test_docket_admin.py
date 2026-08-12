@@ -155,6 +155,21 @@ def test_redesignation_clears_predictions_and_notifies(monkeypatch, week):
     assert 'tiebreaker case changed' in sent[0][1]
 
 
+def test_designation_refuses_a_thrown_out_case(monkeypatch, week):
+    """The form hides these, but the form is not the guard: check_designation
+    tests the total and the kickoff, never no_contest, so a stale form or a
+    direct POST would land the tiebreaker on a void case."""
+    game = _sat(week)
+    game.no_contest = True
+    db.session.commit()
+    at(monkeypatch, BEFORE_DEADLINE)
+
+    with pytest.raises(AdminOpError) as err:
+        admin_ops.designate_tiebreaker(week, game.id)
+    assert err.value.code == 'no_contest'
+    assert week.tiebreaker_game_id is None
+
+
 def test_redesignating_the_same_case_is_a_no_op(monkeypatch, week):
     game = _sat(week)
     week.tiebreaker_game_id = game.id

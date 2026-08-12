@@ -12646,8 +12646,15 @@ button.docket-side.is-move:hover { color: var(--text-primary); }
    labels and cases, Newsreader for prose. No alert styling anywhere — an
    admin ruling is procedure, not an error, so consequential notices sit in
    a muted well and let the copy carry the weight. */
+/* Five columns do not fit a phone. The table scrolls inside its own
+   container rather than pushing the page sideways (platform rule). */
+.docket-desk-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
 .docket-desk-table {
   width: 100%;
+  min-width: 34rem;
   border-collapse: collapse;
 }
 .docket-desk-table th,
@@ -12682,12 +12689,15 @@ button.docket-side.is-move:hover { color: var(--text-primary); }
   text-transform: uppercase;
   color: var(--text-secondary);
 }
+/* Not display:flex — this class lands on a <td>, and a flex-level box stops
+   participating in the table's column grid (the browser wraps it in an
+   anonymous cell), taking its vertical-align and border-bottom out of line
+   with its siblings. */
 .docket-desk-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: .35rem;
-  justify-content: flex-end;
+  text-align: right;
+  white-space: nowrap;
 }
+.docket-desk-actions .btn { margin: 0 0 .35rem .35rem; }
 .docket-desk-current {
   font-family: 'Newsreader', Georgia, serif;
   font-weight: 600;
@@ -12755,5 +12765,6 @@ button.docket-side.is-move:hover { color: var(--text-primary); }
   .docket-case-caption { font-size: 1.2rem; }
   .docket-desk-fields { grid-template-columns: 1fr; }
   .docket-desk-row { align-items: flex-start; flex-direction: column; }
-  .docket-desk-actions { justify-content: flex-start; }
+  .docket-desk-actions { text-align: left; }
+  .docket-desk-actions .btn { margin: 0 .35rem .35rem 0; }
 }

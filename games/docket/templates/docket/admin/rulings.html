@@ -85,9 +85,11 @@
                                 {%- if game.no_contest %} · thrown out{% endif %}
                             </span>
                         </div>
+                        {# Every row's link would otherwise announce as a bare
+                           "Rule"; the case name makes each one distinct. #}
                         <a class="btn btn-game-ghost btn-sm"
                            href="{{ url_for('docket.admin_rulings', week_number=week.week_number, game=game.id) }}">
-                            {{ 'Review' if game.no_contest else 'Rule' }}
+                            {{ 'Review' if game.no_contest else 'Rule' }}<span class="visually-hidden">: {{ game.away_team }} at {{ game.home_team }}</span>
                         </a>
                     </li>
                 {% endfor %}

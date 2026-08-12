@@ -115,6 +115,14 @@ def designate_tiebreaker(week, game_id, *, notify=True) -> dict:
             'The docket has closed. A designation cannot move now; if the '
             'case died after the deadline the week accrues no error at all.')
     game = _week_game(week, game_id)
+    # eligible_tiebreaker_games hides thrown-out cases from the form, but
+    # the form is not the guard: check_designation tests the total and the
+    # kickoff, not no_contest, so a stale form or a direct POST would
+    # otherwise land the week's tiebreaker on a void case.
+    if game.no_contest:
+        raise AdminOpError(
+            'no_contest',
+            'That case is thrown out. Reinstate it or designate another.')
     previous_id = week.tiebreaker_game_id
     if previous_id == game.id:
         return {'changed': False, 'game': game, 'cleared': 0, 'notified': 0}
