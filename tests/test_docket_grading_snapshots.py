@@ -111,7 +111,8 @@ def test_game_accepts_final_score_and_no_contest():
 @pytest.mark.parametrize('kw', [
     {'home_spread': 1.1}, {'total': 33.3}, {'home_spread': True},
     {'home_spread': float('inf')}, {'total': float('-inf')},
-    {'total': float('nan')},
+    {'total': float('nan')}, {'home_spread': 1e308},
+    {'total': 10**1000},
 ])
 def test_game_rejects_non_quarter_point_lines(kw):
     """Lines are quarter-point multiples — dyadic and float-exact; a 1.1

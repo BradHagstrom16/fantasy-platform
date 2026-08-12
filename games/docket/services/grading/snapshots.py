@@ -79,7 +79,13 @@ def _require_line(value, name):
         return
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         raise ValueError(f'{name} must be a number or None, got {value!r}')
-    if not math.isfinite(value) or value * 4 != int(value * 4):
+    try:
+        valid = math.isfinite(value) and value * 4 == int(value * 4)
+    except OverflowError:
+        # 1e308*4 overflows to inf; isfinite(10**1000) can't even float —
+        # both are the same data error, one failure type.
+        valid = False
+    if not valid:
         raise ValueError(
             f'{name} must be a quarter-point line, got {value!r}')
 
