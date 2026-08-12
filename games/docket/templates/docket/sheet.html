@@ -80,8 +80,16 @@ the finish review, the verdict, and DESIGN.md.
                     <span class="docket-caption">{{ active_day.games|length }} case{{ 's' if active_day.games|length != 1 }}</span>
                 </div>
 
-                {% for game in active_day.games %}
-                    {% include 'docket/_game_row.html' %}
+                {% for session_label, session_games in active_day.sessions %}
+                    {% if active_day.sessions|length > 1 %}
+                    <div class="docket-session-head">
+                        <span class="docket-session-label">{{ session_label }}</span>
+                        <span class="docket-caption">{{ session_games|length }}</span>
+                    </div>
+                    {% endif %}
+                    {% for game in session_games %}
+                        {% include 'docket/_game_row.html' %}
+                    {% endfor %}
                 {% endfor %}
             </div>
         </div>
@@ -98,9 +106,11 @@ the finish review, the verdict, and DESIGN.md.
     {% set mobile_rail = True %}
     <details id="docket-rail-mobile" class="docket-rail-drawer d-lg-none">
         <summary class="docket-rail-bar">
-            <span class="docket-rail-bar-count">{{ sheet.scoring_count }} of 8 picks</span>
-            <span class="docket-rail-bar-fact">{{ 'headliner set' if sheet.best else 'no headliner' }}</span>
-            <span class="docket-rail-bar-fact">{{ 'number ' ~ sheet.prediction if sheet.prediction is not none else 'no number' }}</span>
+            <span class="docket-rail-bar-count">{{ sheet.scoring_count }} of 8</span>
+            <span class="docket-rail-bar-fact">{{ 'x2 set' if sheet.best else 'no x2' }}</span>
+            <span class="docket-rail-bar-fact">{{ 'R held' if sheet.backup else 'R open' }}</span>
+            <span class="docket-rail-bar-fact">{{ sheet.prediction if sheet.prediction is not none else 'no number' }}</span>
+            <span class="docket-rail-bar-fact">{{ 'closed' if sheet.deadline_passed else 'closes ' ~ week.deadline_at|ct('%a %-I:%M %p') }}</span>
         </summary>
         <div class="docket-rail-drawer-body">
             {% include 'docket/_sheet_rail.html' %}

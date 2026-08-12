@@ -157,8 +157,25 @@ def index():
                 'label': kickoff_ct.strftime('%A, %B %-d'),
                 'tab_label': kickoff_ct.strftime('%a %-m/%-d'),
                 'games': [],
+                'sessions': [],
             })
         days[-1]['games'].append(game)
+
+    # Court sessions: kickoff waves inside a day (morning < noon CT,
+    # afternoon < 5 PM, evening after). Keeps the 60-case Saturday orderly;
+    # a day with a single session renders no sub-heads.
+    for day in days:
+        for game in day['games']:
+            hour = _kickoff_ct(game.kickoff).hour
+            if hour < 12:
+                label = 'Morning session'
+            elif hour < 17:
+                label = 'Afternoon session'
+            else:
+                label = 'Evening session'
+            if not day['sessions'] or day['sessions'][-1][0] != label:
+                day['sessions'].append((label, []))
+            day['sessions'][-1][1].append(game)
 
     # Active day: the requested tab if it exists, else the first day still
     # holding an unlocked case, else the last day.

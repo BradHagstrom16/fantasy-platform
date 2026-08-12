@@ -177,7 +177,7 @@ them automatically):
 | `--game-primary` | `#6E1F2E` | Law-book Oxblood | Room identity: hero gradient terminus, `.btn-game`, held-side commitment |
 | `--game-primary-dark` | `#421219` | Chambers | Hero gradient origin |
 | `--game-primary-light` | `#8A3B4A` | Worn Spine | Hover lift for oxblood fills |
-| `--game-accent` | `#A63446` | Stamp Garnet | The docket stamp: active/selected accents, subnav accent, headliner marker |
+| `--game-accent` | `#A63446` | Stamp Garnet | The docket stamp: active/selected accents, subnav accent, slot badges |
 | `--game-accent-light` | `#C4707E` | Faded Stamp | Tints, dark-surface accent text |
 
 Docket-scoped additions (defined inside the `/* === THE DOCKET === */` section):
@@ -328,8 +328,11 @@ scanning eye finds its own commitments without reading every pill.
 The decision primitive, escalating with commitment (pick-surface doctrine shared with CFB):
 
 - **Resting**: quiet bordered pill, team/side + signed number.
-- **Hover/focus**: half-step lift, garnet border hint, visible focus ring (platform gold
-  ring stays platform-default on light surfaces).
+- **Hover/focus**: half-step lift, garnet border hint, visible focus ring. **The room's
+  focus ring is garnet** (`outline: 2px solid --game-accent`, offset 2) on docket
+  interactive controls: the platform gold ring reads sub-3:1 on bone and this room runs
+  its own ring the way CFB's admin desk runs crimson; the tiebreaker input keeps the
+  platform form-control focus (gold border + glow) unchanged.
 - **Held** (`.is-picked`): the stamp — garnet border, garnet 8-12% tint, weight step, slot
   number badge. Never tint alone.
 - **Opposite-of-held**: available but visibly secondary (selecting it moves the pick, 2.5).
@@ -337,12 +340,15 @@ The decision primitive, escalating with commitment (pick-surface doctrine shared
   side keeps its stamp under reduced contrast.
 - **No line** (`.is-no-line`): the market group renders once, disabled, "No line posted."
 
-### 7.4 The headliner — `.docket-headliner`
+### 7.4 The headliner — `.docket-headliner-chip`, `.docket-headliner-tag`
 
-The best-pick designation as the docket's one ceremonial mark: a garnet "HEADLINER · x2"
-tag on the held slot/side it decorates, plus the rail line naming it. Setting it is a
-one-tap action on a held side; moving it obeys the lock rules and refusals state why. It is
-deliberately the loudest recurring mark on the sheet and must stay the only one.
+The best-pick designation as the docket's one ceremonial mark: an **oxblood** "x2" chip on
+the held side it decorates, an oxblood-filled slot number and "HEADLINER x2" tag in the
+rail. Oxblood, not garnet, by ruling: the garnet slot badge rides the same stamped pill,
+and the double earns the ramp's more ceremonial step rather than a second garnet chip that
+would blur into it. Setting it is a one-tap action on a held pick; moving it obeys the
+lock rules and refusals state why. It is deliberately the loudest recurring mark on the
+sheet and must stay the only one.
 
 ### 7.5 The reserve — `.docket-slot-backup`
 

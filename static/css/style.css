@@ -12106,6 +12106,29 @@ body.game-docket {
   color: var(--text-secondary);
 }
 .docket-day-tab.is-active .docket-day-tab-count { color: var(--game-accent); }
+@media (max-width: 575.98px) {
+  /* All court days stay visible on a phone: wrap instead of hiding the
+     tail behind a suppressed scrollbar. */
+  .docket-day-tabs { flex-wrap: wrap; overflow-x: visible; }
+}
+
+/* Session sub-heads: kickoff waves inside a day (the register's court
+   sessions) — keeps the 60-case Saturday orderly. */
+.docket-session-head {
+  display: flex;
+  align-items: baseline;
+  gap: .5rem;
+  margin-top: 1.4rem;
+  padding-bottom: .2rem;
+}
+.docket-session-label {
+  font-family: 'Teko', sans-serif;
+  font-weight: 500;
+  font-size: .95rem;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
 
 .docket-day-head {
   display: flex;
@@ -12240,6 +12263,14 @@ button.docket-side:hover {
   font-weight: 600;
 }
 .docket-side.is-picked .docket-side-num { color: var(--game-accent); font-weight: 700; }
+/* The opposite of a held side: available but visibly secondary — choosing
+   it MOVES the pick (one side per market), it never adds a second one. */
+.docket-side.is-move {
+  color: var(--text-secondary);
+  background: var(--bg-page);
+}
+.docket-side.is-move .docket-side-num { color: var(--text-secondary); }
+button.docket-side.is-move:hover { color: var(--text-ink); }
 .docket-slot-badge {
   font-family: 'Teko', sans-serif;
   font-weight: 600;
@@ -12289,7 +12320,7 @@ button.docket-side:hover {
 .docket-reserve-hint {
   font-family: 'Teko', sans-serif;
   font-weight: 500;
-  font-size: .7rem;
+  font-size: .72rem;
   letter-spacing: .06em;
   text-transform: uppercase;
   color: var(--game-accent);
@@ -12303,9 +12334,8 @@ button.docket-side:hover {
 .docket-rail { position: sticky; top: 118px; }
 .docket-rail-inner {
   background: var(--bg-card);
-  border: 1px solid var(--border);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-sm);  /* elevation declared once — no border */
   padding: 1.1rem 1.1rem 1.25rem;
 }
 .docket-rail-head {
@@ -12482,7 +12512,6 @@ button.docket-side:hover {
   padding: 0 1rem 1rem;
 }
 .docket-rail-drawer .docket-rail-inner {
-  border: none;
   box-shadow: none;
   padding: 0 0 .5rem;
 }

@@ -39,7 +39,8 @@
       <input type="hidden" name="side" value="{{ side }}"/>
       <input type="hidden" name="day" value="{{ active_day.key }}"/>
       {% if send_reserve %}<input type="hidden" name="backup" value="1"/>{% endif %}
-      <button type="submit" class="docket-side{% if pick %} is-move{% endif %}">
+      <button type="submit" class="docket-side{% if pick %} is-move{% endif %}"
+              {% if pick %}title="Moves your pick to this side"{% endif %}>
         <span class="docket-side-team">{{ label }}</span>
         <span class="docket-side-num">{{ side_number(market, side) }}</span>
         {% if send_reserve %}<span class="docket-reserve-hint">reserve</span>{% endif %}
