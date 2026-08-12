@@ -1,0 +1,48 @@
+{
+  "description": "The backup's OWN game is No Contest: the backup is dead, so the cancelled scoring slot falls back to a push instead of a substitution (D6-session).",
+  "rulings": ["D6-session"],
+  "week": {
+    "week_number": 7,
+    "deadline_at": "2026-10-17T16:00:00",
+    "tiebreaker_event_id": "e-1",
+    "games": [
+      {"api_event_id": "e-1", "sport": "americanfootball_ncaaf", "home_team": "H1", "away_team": "A1", "kickoff_at_deadline": "2026-10-17T16:00:00", "home_spread": -7.0, "total": 50.0, "home_score": 30, "away_score": 20},
+      {"api_event_id": "e-2", "sport": "americanfootball_ncaaf", "home_team": "H2", "away_team": "A2", "kickoff_at_deadline": "2026-10-17T19:30:00", "home_spread": -7.0, "total": 50.0, "home_score": null, "away_score": null, "no_contest": true},
+      {"api_event_id": "e-3", "sport": "americanfootball_ncaaf", "home_team": "H3", "away_team": "A3", "kickoff_at_deadline": "2026-10-17T19:30:00", "home_spread": -7.0, "total": 50.0, "home_score": 30, "away_score": 20},
+      {"api_event_id": "e-4", "sport": "americanfootball_ncaaf", "home_team": "H4", "away_team": "A4", "kickoff_at_deadline": "2026-10-17T23:00:00", "home_spread": -7.0, "total": 50.0, "home_score": 30, "away_score": 20},
+      {"api_event_id": "e-5", "sport": "americanfootball_ncaaf", "home_team": "H5", "away_team": "A5", "kickoff_at_deadline": "2026-10-17T23:00:00", "home_spread": -7.0, "total": 50.0, "home_score": 30, "away_score": 20},
+      {"api_event_id": "e-6", "sport": "americanfootball_nfl", "home_team": "H6", "away_team": "A6", "kickoff_at_deadline": "2026-10-18T17:00:00", "home_spread": -7.0, "total": 50.0, "home_score": 30, "away_score": 20},
+      {"api_event_id": "e-7", "sport": "americanfootball_nfl", "home_team": "H7", "away_team": "A7", "kickoff_at_deadline": "2026-10-18T20:25:00", "home_spread": -7.0, "total": 50.0, "home_score": 30, "away_score": 20},
+      {"api_event_id": "e-8", "sport": "americanfootball_nfl", "home_team": "H8", "away_team": "A8", "kickoff_at_deadline": "2026-10-19T00:20:00", "home_spread": -7.0, "total": 50.0, "home_score": 30, "away_score": 20},
+      {"api_event_id": "e-9", "sport": "americanfootball_nfl", "home_team": "H9", "away_team": "A9", "kickoff_at_deadline": "2026-10-19T00:20:00", "home_spread": -3.0, "total": 44.0, "home_score": null, "away_score": null, "no_contest": true}
+    ]
+  },
+  "players": [
+    {
+      "player_id": "alice",
+      "tiebreaker": 49.0,
+      "picks": [
+        {"slot": 1, "event": "e-1", "market": "spread", "side": "home", "best": true},
+        {"slot": 2, "event": "e-2", "market": "spread", "side": "home"},
+        {"slot": 3, "event": "e-3", "market": "spread", "side": "home"},
+        {"slot": 4, "event": "e-4", "market": "spread", "side": "home"},
+        {"slot": 5, "event": "e-5", "market": "spread", "side": "home"},
+        {"slot": 6, "event": "e-6", "market": "spread", "side": "home"},
+        {"slot": 7, "event": "e-7", "market": "spread", "side": "home"},
+        {"slot": 8, "event": "e-8", "market": "spread", "side": "home"},
+        {"slot": 9, "event": "e-9", "market": "total", "side": "over"}
+      ]
+    }
+  ],
+  "expected": {
+    "alice": {
+      "points": 8.5,
+      "wins": 7,
+      "error_tenths": 10,
+      "used_default_prediction": false,
+      "slots": [
+        {"slot": 2, "event": null, "market": null, "side": null, "outcome": "push", "via": "nc_push", "points": 0.5}
+      ]
+    }
+  }
+}

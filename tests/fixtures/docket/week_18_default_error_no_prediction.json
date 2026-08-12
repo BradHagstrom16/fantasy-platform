@@ -1,0 +1,228 @@
+{
+  "description": "A FULL manual picker who skipped only the tiebreaker prediction: the designated game's locked total (47.0) is their default, and used_default_prediction is flagged; a submitted prediction grades normally beside it (Grading Clarifications: default error).",
+  "rulings": [
+    "Grading Clarifications: tiebreaker default",
+    "D5-session"
+  ],
+  "week": {
+    "week_number": 18,
+    "deadline_at": "2027-01-02T17:00:00",
+    "tiebreaker_event_id": "e-1",
+    "games": [
+      {
+        "api_event_id": "e-1",
+        "sport": "americanfootball_nfl",
+        "home_team": "H1",
+        "away_team": "A1",
+        "kickoff_at_deadline": "2027-01-02T17:00:00",
+        "home_spread": -7.0,
+        "total": 47.0,
+        "home_score": 24,
+        "away_score": 20
+      },
+      {
+        "api_event_id": "e-2",
+        "sport": "americanfootball_nfl",
+        "home_team": "H2",
+        "away_team": "A2",
+        "kickoff_at_deadline": "2027-01-02T19:30:00",
+        "home_spread": -7.0,
+        "total": 50.0,
+        "home_score": 30,
+        "away_score": 20
+      },
+      {
+        "api_event_id": "e-3",
+        "sport": "americanfootball_nfl",
+        "home_team": "H3",
+        "away_team": "A3",
+        "kickoff_at_deadline": "2027-01-02T20:30:00",
+        "home_spread": -7.0,
+        "total": 50.0,
+        "home_score": 30,
+        "away_score": 20
+      },
+      {
+        "api_event_id": "e-4",
+        "sport": "americanfootball_nfl",
+        "home_team": "H4",
+        "away_team": "A4",
+        "kickoff_at_deadline": "2027-01-02T23:00:00",
+        "home_spread": -7.0,
+        "total": 50.0,
+        "home_score": 30,
+        "away_score": 20
+      },
+      {
+        "api_event_id": "e-5",
+        "sport": "americanfootball_nfl",
+        "home_team": "H5",
+        "away_team": "A5",
+        "kickoff_at_deadline": "2027-01-03T18:00:00",
+        "home_spread": -7.0,
+        "total": 50.0,
+        "home_score": 30,
+        "away_score": 20
+      },
+      {
+        "api_event_id": "e-6",
+        "sport": "americanfootball_nfl",
+        "home_team": "H6",
+        "away_team": "A6",
+        "kickoff_at_deadline": "2027-01-03T18:00:00",
+        "home_spread": -7.0,
+        "total": 50.0,
+        "home_score": 30,
+        "away_score": 20
+      },
+      {
+        "api_event_id": "e-7",
+        "sport": "americanfootball_nfl",
+        "home_team": "H7",
+        "away_team": "A7",
+        "kickoff_at_deadline": "2027-01-03T21:25:00",
+        "home_spread": -7.0,
+        "total": 50.0,
+        "home_score": 30,
+        "away_score": 20
+      },
+      {
+        "api_event_id": "e-8",
+        "sport": "americanfootball_nfl",
+        "home_team": "H8",
+        "away_team": "A8",
+        "kickoff_at_deadline": "2027-01-04T01:20:00",
+        "home_spread": -7.0,
+        "total": 50.0,
+        "home_score": 30,
+        "away_score": 20
+      }
+    ]
+  },
+  "players": [
+    {
+      "player_id": "alice",
+      "tiebreaker": null,
+      "picks": [
+        {
+          "slot": 1,
+          "event": "e-1",
+          "market": "spread",
+          "side": "home",
+          "best": true
+        },
+        {
+          "slot": 2,
+          "event": "e-2",
+          "market": "spread",
+          "side": "home"
+        },
+        {
+          "slot": 3,
+          "event": "e-3",
+          "market": "spread",
+          "side": "home"
+        },
+        {
+          "slot": 4,
+          "event": "e-4",
+          "market": "spread",
+          "side": "home"
+        },
+        {
+          "slot": 5,
+          "event": "e-5",
+          "market": "spread",
+          "side": "home"
+        },
+        {
+          "slot": 6,
+          "event": "e-6",
+          "market": "spread",
+          "side": "home"
+        },
+        {
+          "slot": 7,
+          "event": "e-7",
+          "market": "spread",
+          "side": "home"
+        },
+        {
+          "slot": 8,
+          "event": "e-8",
+          "market": "spread",
+          "side": "home"
+        }
+      ]
+    },
+    {
+      "player_id": "bob",
+      "tiebreaker": 44.0,
+      "picks": [
+        {
+          "slot": 1,
+          "event": "e-1",
+          "market": "spread",
+          "side": "home",
+          "best": true
+        },
+        {
+          "slot": 2,
+          "event": "e-2",
+          "market": "spread",
+          "side": "home"
+        },
+        {
+          "slot": 3,
+          "event": "e-3",
+          "market": "spread",
+          "side": "home"
+        },
+        {
+          "slot": 4,
+          "event": "e-4",
+          "market": "spread",
+          "side": "home"
+        },
+        {
+          "slot": 5,
+          "event": "e-5",
+          "market": "spread",
+          "side": "home"
+        },
+        {
+          "slot": 6,
+          "event": "e-6",
+          "market": "spread",
+          "side": "home"
+        },
+        {
+          "slot": 7,
+          "event": "e-7",
+          "market": "spread",
+          "side": "home"
+        },
+        {
+          "slot": 8,
+          "event": "e-8",
+          "market": "spread",
+          "side": "home"
+        }
+      ]
+    }
+  ],
+  "expected": {
+    "alice": {
+      "points": 7.0,
+      "wins": 7,
+      "error_tenths": 30,
+      "used_default_prediction": true
+    },
+    "bob": {
+      "points": 7.0,
+      "wins": 7,
+      "error_tenths": 0,
+      "used_default_prediction": false
+    }
+  }
+}

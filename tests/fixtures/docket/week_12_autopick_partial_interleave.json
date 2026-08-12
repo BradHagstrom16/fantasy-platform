@@ -1,0 +1,50 @@
+{
+  "description": "Partial picker (5 of 8): k=3 top-ups in interleaved order O1,F1,O2 — skipping the market she already holds (e-1's total, the would-be O1) and honoring per-game bucket exclusivity (e-3 claimed by F1 is skipped by the Over bucket). Own best designation stands; top-ups fill empty slots ascending.",
+  "rulings": ["D5-session", "Grading Clarifications: autopick matrix"],
+  "week": {
+    "week_number": 12,
+    "deadline_at": "2026-11-21T17:00:00",
+    "tiebreaker_event_id": "e-4",
+    "games": [
+      {"api_event_id": "e-1", "sport": "americanfootball_ncaaf", "home_team": "H1", "away_team": "A1", "kickoff_at_deadline": "2026-11-21T19:30:00", "home_spread": -2.0, "total": 61.5, "home_score": 35, "away_score": 30},
+      {"api_event_id": "e-2", "sport": "americanfootball_ncaaf", "home_team": "H2", "away_team": "A2", "kickoff_at_deadline": "2026-11-21T23:00:00", "home_spread": -1.0, "total": 58.0, "home_score": 21, "away_score": 20},
+      {"api_event_id": "e-3", "sport": "americanfootball_ncaaf", "home_team": "H3", "away_team": "A3", "kickoff_at_deadline": "2026-11-22T17:00:00", "home_spread": -20.0, "total": 55.0, "home_score": 45, "away_score": 20},
+      {"api_event_id": "e-4", "sport": "americanfootball_ncaaf", "home_team": "H4", "away_team": "A4", "kickoff_at_deadline": "2026-11-22T20:25:00", "home_spread": -3.0, "total": 54.0, "home_score": 28, "away_score": 27},
+      {"api_event_id": "e-5", "sport": "americanfootball_ncaaf", "home_team": "H5", "away_team": "A5", "kickoff_at_deadline": "2026-11-21T02:30:00", "home_spread": -7.0, "total": 48.0, "home_score": 30, "away_score": 20},
+      {"api_event_id": "e-6", "sport": "americanfootball_nfl", "home_team": "H6", "away_team": "A6", "kickoff_at_deadline": "2026-11-21T20:30:00", "home_spread": -7.0, "total": 44.0, "home_score": 21, "away_score": 17},
+      {"api_event_id": "e-7", "sport": "americanfootball_nfl", "home_team": "H7", "away_team": "A7", "kickoff_at_deadline": "2026-11-22T18:00:00", "home_spread": -6.0, "total": 47.0, "home_score": 21, "away_score": 20},
+      {"api_event_id": "e-8", "sport": "americanfootball_nfl", "home_team": "H8", "away_team": "A8", "kickoff_at_deadline": "2026-11-23T01:20:00", "home_spread": -6.0, "total": 45.0, "home_score": 24, "away_score": 20}
+    ]
+  },
+  "players": [
+    {
+      "player_id": "alice",
+      "tiebreaker": 53.8,
+      "picks": [
+        {"slot": 1, "event": "e-1", "market": "total", "side": "over", "best": true},
+        {"slot": 2, "event": "e-5", "market": "spread", "side": "home"},
+        {"slot": 3, "event": "e-6", "market": "spread", "side": "home"},
+        {"slot": 4, "event": "e-7", "market": "total", "side": "under"},
+        {"slot": 5, "event": "e-8", "market": "spread", "side": "away"}
+      ]
+    }
+  ],
+  "expected": {
+    "alice": {
+      "points": 7.0,
+      "wins": 6,
+      "used_default_prediction": false,
+      "error_tenths": 12,
+      "slots": [
+        {"slot": 1, "event": "e-1", "market": "total", "side": "over", "outcome": "win", "via": "pick", "best": true, "points": 2.0},
+        {"slot": 2, "event": "e-5", "market": "spread", "side": "home", "outcome": "win", "via": "pick", "points": 1.0},
+        {"slot": 3, "event": "e-6", "market": "spread", "side": "home", "outcome": "loss", "via": "pick", "points": 0.0},
+        {"slot": 4, "event": "e-7", "market": "total", "side": "under", "outcome": "win", "via": "pick", "points": 1.0},
+        {"slot": 5, "event": "e-8", "market": "spread", "side": "away", "outcome": "win", "via": "pick", "points": 1.0},
+        {"slot": 6, "event": "e-2", "market": "total", "side": "over", "outcome": "loss", "via": "pick", "autopick": true, "points": 0.0},
+        {"slot": 7, "event": "e-3", "market": "spread", "side": "home", "outcome": "win", "via": "pick", "autopick": true, "points": 1.0},
+        {"slot": 8, "event": "e-4", "market": "total", "side": "over", "outcome": "win", "via": "pick", "autopick": true, "points": 1.0}
+      ]
+    }
+  }
+}

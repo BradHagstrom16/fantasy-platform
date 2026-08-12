@@ -1,0 +1,570 @@
+{
+  "description": "Full three-key tie: alice and bob are identical on points, wins, and error \u2014 they share rank 1 and carol is rank 3 (competition rank, the platform convention). Equal-rank order is player_id.",
+  "rulings": [
+    "Grading Clarifications: full three-key tie"
+  ],
+  "roster": [
+    "alice",
+    "bob",
+    "carol"
+  ],
+  "weeks": [
+    {
+      "week": {
+        "week_number": 1,
+        "deadline_at": "2026-09-05T16:00:00",
+        "tiebreaker_event_id": "e-1",
+        "games": [
+          {
+            "api_event_id": "e-1",
+            "sport": "americanfootball_ncaaf",
+            "home_team": "H1",
+            "away_team": "A1",
+            "kickoff_at_deadline": "2026-09-05T18:00:00",
+            "home_spread": -7.0,
+            "total": 50.0,
+            "home_score": 30,
+            "away_score": 20
+          },
+          {
+            "api_event_id": "e-2",
+            "sport": "americanfootball_ncaaf",
+            "home_team": "H2",
+            "away_team": "A2",
+            "kickoff_at_deadline": "2026-09-05T18:00:00",
+            "home_spread": -7.0,
+            "total": 50.0,
+            "home_score": 30,
+            "away_score": 20
+          },
+          {
+            "api_event_id": "e-3",
+            "sport": "americanfootball_ncaaf",
+            "home_team": "H3",
+            "away_team": "A3",
+            "kickoff_at_deadline": "2026-09-05T18:00:00",
+            "home_spread": -7.0,
+            "total": 50.0,
+            "home_score": 30,
+            "away_score": 20
+          },
+          {
+            "api_event_id": "e-4",
+            "sport": "americanfootball_ncaaf",
+            "home_team": "H4",
+            "away_team": "A4",
+            "kickoff_at_deadline": "2026-09-05T18:00:00",
+            "home_spread": -7.0,
+            "total": 50.0,
+            "home_score": 30,
+            "away_score": 20
+          },
+          {
+            "api_event_id": "e-5",
+            "sport": "americanfootball_ncaaf",
+            "home_team": "H5",
+            "away_team": "A5",
+            "kickoff_at_deadline": "2026-09-05T18:00:00",
+            "home_spread": -7.0,
+            "total": 50.0,
+            "home_score": 30,
+            "away_score": 20
+          },
+          {
+            "api_event_id": "e-6",
+            "sport": "americanfootball_ncaaf",
+            "home_team": "H6",
+            "away_team": "A6",
+            "kickoff_at_deadline": "2026-09-05T18:00:00",
+            "home_spread": -7.0,
+            "total": 50.0,
+            "home_score": 30,
+            "away_score": 20
+          },
+          {
+            "api_event_id": "e-7",
+            "sport": "americanfootball_ncaaf",
+            "home_team": "H7",
+            "away_team": "A7",
+            "kickoff_at_deadline": "2026-09-05T18:00:00",
+            "home_spread": -7.0,
+            "total": 50.0,
+            "home_score": 30,
+            "away_score": 20
+          },
+          {
+            "api_event_id": "e-8",
+            "sport": "americanfootball_ncaaf",
+            "home_team": "H8",
+            "away_team": "A8",
+            "kickoff_at_deadline": "2026-09-05T18:00:00",
+            "home_spread": -7.0,
+            "total": 50.0,
+            "home_score": 30,
+            "away_score": 20
+          }
+        ]
+      },
+      "players": [
+        {
+          "player_id": "alice",
+          "tiebreaker": 49.0,
+          "picks": [
+            {
+              "slot": 1,
+              "event": "e-1",
+              "market": "spread",
+              "side": "home",
+              "best": true
+            },
+            {
+              "slot": 2,
+              "event": "e-2",
+              "market": "spread",
+              "side": "home"
+            },
+            {
+              "slot": 3,
+              "event": "e-3",
+              "market": "spread",
+              "side": "home"
+            },
+            {
+              "slot": 4,
+              "event": "e-4",
+              "market": "spread",
+              "side": "home"
+            },
+            {
+              "slot": 5,
+              "event": "e-5",
+              "market": "spread",
+              "side": "home"
+            },
+            {
+              "slot": 6,
+              "event": "e-6",
+              "market": "spread",
+              "side": "home"
+            },
+            {
+              "slot": 7,
+              "event": "e-7",
+              "market": "spread",
+              "side": "away"
+            },
+            {
+              "slot": 8,
+              "event": "e-8",
+              "market": "spread",
+              "side": "away"
+            }
+          ]
+        },
+        {
+          "player_id": "bob",
+          "tiebreaker": 49.0,
+          "picks": [
+            {
+              "slot": 1,
+              "event": "e-1",
+              "market": "spread",
+              "side": "home",
+              "best": true
+            },
+            {
+              "slot": 2,
+              "event": "e-2",
+              "market": "spread",
+              "side": "home"
+            },
+            {
+              "slot": 3,
+              "event": "e-3",
+              "market": "spread",
+              "side": "home"
+            },
+            {
+              "slot": 4,
+              "event": "e-4",
+              "market": "spread",
+              "side": "home"
+            },
+            {
+              "slot": 5,
+              "event": "e-5",
+              "market": "spread",
+              "side": "home"
+            },
+            {
+              "slot": 6,
+              "event": "e-6",
+              "market": "spread",
+              "side": "home"
+            },
+            {
+              "slot": 7,
+              "event": "e-7",
+              "market": "spread",
+              "side": "away"
+            },
+            {
+              "slot": 8,
+              "event": "e-8",
+              "market": "spread",
+              "side": "away"
+            }
+          ]
+        },
+        {
+          "player_id": "carol",
+          "tiebreaker": 48.0,
+          "picks": [
+            {
+              "slot": 1,
+              "event": "e-1",
+              "market": "spread",
+              "side": "home",
+              "best": true
+            },
+            {
+              "slot": 2,
+              "event": "e-2",
+              "market": "spread",
+              "side": "home"
+            },
+            {
+              "slot": 3,
+              "event": "e-3",
+              "market": "spread",
+              "side": "home"
+            },
+            {
+              "slot": 4,
+              "event": "e-4",
+              "market": "spread",
+              "side": "home"
+            },
+            {
+              "slot": 5,
+              "event": "e-5",
+              "market": "spread",
+              "side": "away"
+            },
+            {
+              "slot": 6,
+              "event": "e-6",
+              "market": "spread",
+              "side": "away"
+            },
+            {
+              "slot": 7,
+              "event": "e-7",
+              "market": "spread",
+              "side": "away"
+            },
+            {
+              "slot": 8,
+              "event": "e-8",
+              "market": "spread",
+              "side": "away"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "week": {
+        "week_number": 2,
+        "deadline_at": "2026-09-12T16:00:00",
+        "tiebreaker_event_id": "e-1",
+        "games": [
+          {
+            "api_event_id": "e-1",
+            "sport": "americanfootball_ncaaf",
+            "home_team": "H1",
+            "away_team": "A1",
+            "kickoff_at_deadline": "2026-09-12T18:00:00",
+            "home_spread": -7.0,
+            "total": 50.0,
+            "home_score": 30,
+            "away_score": 20
+          },
+          {
+            "api_event_id": "e-2",
+            "sport": "americanfootball_ncaaf",
+            "home_team": "H2",
+            "away_team": "A2",
+            "kickoff_at_deadline": "2026-09-12T18:00:00",
+            "home_spread": -7.0,
+            "total": 50.0,
+            "home_score": 30,
+            "away_score": 20
+          },
+          {
+            "api_event_id": "e-3",
+            "sport": "americanfootball_ncaaf",
+            "home_team": "H3",
+            "away_team": "A3",
+            "kickoff_at_deadline": "2026-09-12T18:00:00",
+            "home_spread": -7.0,
+            "total": 50.0,
+            "home_score": 30,
+            "away_score": 20
+          },
+          {
+            "api_event_id": "e-4",
+            "sport": "americanfootball_ncaaf",
+            "home_team": "H4",
+            "away_team": "A4",
+            "kickoff_at_deadline": "2026-09-12T18:00:00",
+            "home_spread": -7.0,
+            "total": 50.0,
+            "home_score": 30,
+            "away_score": 20
+          },
+          {
+            "api_event_id": "e-5",
+            "sport": "americanfootball_ncaaf",
+            "home_team": "H5",
+            "away_team": "A5",
+            "kickoff_at_deadline": "2026-09-12T18:00:00",
+            "home_spread": -7.0,
+            "total": 50.0,
+            "home_score": 30,
+            "away_score": 20
+          },
+          {
+            "api_event_id": "e-6",
+            "sport": "americanfootball_ncaaf",
+            "home_team": "H6",
+            "away_team": "A6",
+            "kickoff_at_deadline": "2026-09-12T18:00:00",
+            "home_spread": -7.0,
+            "total": 50.0,
+            "home_score": 30,
+            "away_score": 20
+          },
+          {
+            "api_event_id": "e-7",
+            "sport": "americanfootball_ncaaf",
+            "home_team": "H7",
+            "away_team": "A7",
+            "kickoff_at_deadline": "2026-09-12T18:00:00",
+            "home_spread": -7.0,
+            "total": 50.0,
+            "home_score": 30,
+            "away_score": 20
+          },
+          {
+            "api_event_id": "e-8",
+            "sport": "americanfootball_ncaaf",
+            "home_team": "H8",
+            "away_team": "A8",
+            "kickoff_at_deadline": "2026-09-12T18:00:00",
+            "home_spread": -7.0,
+            "total": 50.0,
+            "home_score": 30,
+            "away_score": 20
+          }
+        ]
+      },
+      "players": [
+        {
+          "player_id": "alice",
+          "tiebreaker": 49.5,
+          "picks": [
+            {
+              "slot": 1,
+              "event": "e-1",
+              "market": "spread",
+              "side": "home",
+              "best": true
+            },
+            {
+              "slot": 2,
+              "event": "e-2",
+              "market": "spread",
+              "side": "home"
+            },
+            {
+              "slot": 3,
+              "event": "e-3",
+              "market": "spread",
+              "side": "home"
+            },
+            {
+              "slot": 4,
+              "event": "e-4",
+              "market": "spread",
+              "side": "home"
+            },
+            {
+              "slot": 5,
+              "event": "e-5",
+              "market": "spread",
+              "side": "home"
+            },
+            {
+              "slot": 6,
+              "event": "e-6",
+              "market": "spread",
+              "side": "away"
+            },
+            {
+              "slot": 7,
+              "event": "e-7",
+              "market": "spread",
+              "side": "away"
+            },
+            {
+              "slot": 8,
+              "event": "e-8",
+              "market": "spread",
+              "side": "away"
+            }
+          ]
+        },
+        {
+          "player_id": "bob",
+          "tiebreaker": 49.5,
+          "picks": [
+            {
+              "slot": 1,
+              "event": "e-1",
+              "market": "spread",
+              "side": "home",
+              "best": true
+            },
+            {
+              "slot": 2,
+              "event": "e-2",
+              "market": "spread",
+              "side": "home"
+            },
+            {
+              "slot": 3,
+              "event": "e-3",
+              "market": "spread",
+              "side": "home"
+            },
+            {
+              "slot": 4,
+              "event": "e-4",
+              "market": "spread",
+              "side": "home"
+            },
+            {
+              "slot": 5,
+              "event": "e-5",
+              "market": "spread",
+              "side": "home"
+            },
+            {
+              "slot": 6,
+              "event": "e-6",
+              "market": "spread",
+              "side": "away"
+            },
+            {
+              "slot": 7,
+              "event": "e-7",
+              "market": "spread",
+              "side": "away"
+            },
+            {
+              "slot": 8,
+              "event": "e-8",
+              "market": "spread",
+              "side": "away"
+            }
+          ]
+        },
+        {
+          "player_id": "carol",
+          "tiebreaker": 49.5,
+          "picks": [
+            {
+              "slot": 1,
+              "event": "e-1",
+              "market": "spread",
+              "side": "home",
+              "best": true
+            },
+            {
+              "slot": 2,
+              "event": "e-2",
+              "market": "spread",
+              "side": "home"
+            },
+            {
+              "slot": 3,
+              "event": "e-3",
+              "market": "spread",
+              "side": "home"
+            },
+            {
+              "slot": 4,
+              "event": "e-4",
+              "market": "spread",
+              "side": "home"
+            },
+            {
+              "slot": 5,
+              "event": "e-5",
+              "market": "spread",
+              "side": "home"
+            },
+            {
+              "slot": 6,
+              "event": "e-6",
+              "market": "spread",
+              "side": "away"
+            },
+            {
+              "slot": 7,
+              "event": "e-7",
+              "market": "spread",
+              "side": "away"
+            },
+            {
+              "slot": 8,
+              "event": "e-8",
+              "market": "spread",
+              "side": "away"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "expected_standings": [
+    {
+      "player_id": "alice",
+      "rank": 1,
+      "points": 7.0,
+      "wins": 11,
+      "error_tenths": 15,
+      "dropped_week": 2,
+      "dropped_points": 6.0
+    },
+    {
+      "player_id": "bob",
+      "rank": 1,
+      "points": 7.0,
+      "wins": 11,
+      "error_tenths": 15,
+      "dropped_week": 2,
+      "dropped_points": 6.0
+    },
+    {
+      "player_id": "carol",
+      "rank": 3,
+      "points": 6.0,
+      "wins": 9,
+      "error_tenths": 25,
+      "dropped_week": 1,
+      "dropped_points": 5.0
+    }
+  ]
+}
