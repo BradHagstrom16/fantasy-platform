@@ -80,8 +80,23 @@ def test_day_tab_switches_active_day(monkeypatch, client, member):
     resp = client.get('/docket/?day=2026-09-05')
     html = resp.data.decode()
     assert 'Wisconsin Badgers' in html
-    assert 'Chicago Bears' not in html.replace(
-        'Chicago Bears at Green Bay Packers', '')  # only via other-tab label
+    # The Thursday case belongs to the other tab; day tabs carry dates only.
+    assert 'Chicago Bears' not in html
+
+
+def test_mutation_without_active_week_is_refused_not_500(
+        monkeypatch, client, member):
+    """A POST outside any week window: the service's _require_open_week
+    guard refuses with no_active_week; it never dereferences week=None."""
+    at(monkeypatch, '2026-08-15T12:00:00')  # before the Week 1 boundary
+    resp = client.post(
+        '/docket/picks/set',
+        data={'game_id': 1, 'market': 'spread', 'side': 'home',
+              'csrf_token': 'x'},
+        headers=JSON,
+    )
+    assert resp.status_code == 409
+    assert resp.get_json()['error'] == 'no_active_week'
 
 
 def test_set_pick_json_returns_sheet_state(monkeypatch, client, member):

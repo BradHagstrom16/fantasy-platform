@@ -26,7 +26,7 @@
           <button type="submit" class="docket-slot-btn"
                   title="Clear the headliner designation">Clear x2</button>
         </form>
-      {% elif p.slot != 9 %}
+      {% elif p.slot != backup_slot %}
         <form method="POST" action="{{ url_for('docket.set_best') }}"
               class="docket-inline-form" data-docket-action="set-best">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
@@ -51,8 +51,8 @@
 {% endmacro %}
 
 {% macro slot_frame(slot_num, p) %}
-  <li class="docket-slot{% if not p %} is-empty{% endif %}{% if p and p.is_best %} is-best{% endif %}{% if p and p.locked %} is-locked{% endif %}{% if slot_num == 9 %} docket-slot-backup{% endif %}">
-    <span class="docket-slot-num">{{ 'R' if slot_num == 9 else slot_num }}</span>
+  <li class="docket-slot{% if not p %} is-empty{% endif %}{% if p and p.is_best %} is-best{% endif %}{% if p and p.locked %} is-locked{% endif %}{% if slot_num == backup_slot %} docket-slot-backup{% endif %}">
+    <span class="docket-slot-num">{{ 'R' if slot_num == backup_slot else slot_num }}</span>
     {% if p %}
       <div class="docket-slot-body">
         <span class="docket-slot-pick">{{ pick_line(p) }}</span>
@@ -63,7 +63,7 @@
         {% if p.is_best %}<span class="docket-headliner-tag">Headliner x2</span>{% endif %}
       </div>
       {{ slot_actions(p) }}
-    {% elif slot_num == 9 %}
+    {% elif slot_num == backup_slot %}
       <span class="docket-slot-open">Held in reserve. Your ninth side files
         here and substitutes if a case is thrown out.</span>
     {% else %}
@@ -85,10 +85,8 @@
     {% endif %}
   </p>
 
-  {% set slot_map = {} %}
-  {% for p in sheet.picks %}{% if slot_map.update({p.slot: p}) %}{% endif %}{% endfor %}
   <ol class="docket-slots">
-    {% for slot_num in range(1, 10) %}
+    {% for slot_num in range(1, backup_slot + 1) %}
       {{ slot_frame(slot_num, slot_map.get(slot_num)) }}
     {% endfor %}
   </ol>

@@ -208,6 +208,7 @@ def test_mutations_refused_at_exactly_the_deadline(monkeypatch, week, user):
         lambda: _pick(user, week, game, 'total', 'over'),
         lambda: picks_service.remove_pick(user.id, week, game.id, 'spread'),
         lambda: picks_service.set_best(user.id, week, game.id, 'spread'),
+        lambda: picks_service.clear_best(user.id, week),
         lambda: picks_service.set_tiebreaker(user.id, week, '51.5'),
     ):
         with pytest.raises(PickError) as err:
@@ -403,7 +404,7 @@ def test_prediction_parses_to_integer_tenths(raw, tenths):
 
 
 @pytest.mark.parametrize('raw', [
-    '51.55', '.5', '51.', '-3', 'abc', '5 1', '1e3', '9999.1',
+    '51.55', '.5', '51.', '-3', 'abc', '5 1', '1e3', '9999.1', '²',
 ])
 def test_prediction_rejects_non_tenths(raw):
     with pytest.raises(PickError) as err:
@@ -467,6 +468,20 @@ def test_duplicate_submit_race_returns_existing_row(monkeypatch, week, user):
     result = picks_service.set_pick(
         user.id, week, game.id, 'spread', 'home')
     assert result.id == winner.id
+    assert DocketPick.query.count() == 1
+
+
+def test_slot_collision_race_reports_retryable(monkeypatch, week, user):
+    """When the insert loses a constraint race and the market lookup finds
+    no row (the collision was the slot, not the market), the error is the
+    retryable slot_taken, never a misleading 'already recorded'."""
+    at(monkeypatch, IN_WEEK1)
+    game = make_game(week, kickoff=KICK_SAT)
+    _pick(user, week, game, 'spread', 'home')
+    monkeypatch.setattr(picks_service, '_market_row', lambda *a, **k: None)
+    with pytest.raises(PickError) as err:
+        picks_service.set_pick(user.id, week, game.id, 'spread', 'home')
+    assert err.value.code == 'slot_taken'
     assert DocketPick.query.count() == 1
 
 

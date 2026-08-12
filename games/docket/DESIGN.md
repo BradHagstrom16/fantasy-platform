@@ -283,7 +283,8 @@ of `◈`/`◇` for lounge ceremony).
   any future T10 ceremonial primitive (named there, one surface, following the
   one-ceremonial-dark-surface pattern).
 - Emoji as icons (platform ban); emoji appear only where the platform already sanctions them
-  (registry tile, navbar switcher label).
+  (registry tile, navbar switcher label, and the `.subnav-game-label` — the established
+  cross-game sub-nav pattern: 🏈 CFB, ⛳ Golf, ⚖️ Docket).
 - Red-family escalation: no brightening docket reds toward crimson/signal red (6.3).
 
 ### 6.11 Named rules
@@ -369,7 +370,10 @@ The slate is navigated one day at a time (the built structure, seed 7861f3cd):
 so the no-JS spine extends to navigation) carry the day and its case count; the
 active tab takes the stamp treatment. Below them, `.docket-day-head` opens the
 day: Teko title, case count, a `--docket-rule` rule. Grouping is computed in the
-route. The default day is the first still holding an unlocked case.
+route. The default day is the first still holding a case that has not kicked off:
+pre-deadline that is the first still-pickable day; after the docket closes it is the
+next day still to play (the sheet is read-only either way), falling back to the last
+day once the week is fully played.
 
 ### 7.8 Sub-nav — `.subnav-docket`
 

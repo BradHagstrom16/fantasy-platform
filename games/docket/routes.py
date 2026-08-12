@@ -20,6 +20,7 @@ from flask import (
     url_for,
 )
 from flask_login import current_user, login_required
+from sqlalchemy.exc import IntegrityError
 
 from extensions import db
 from games.common import enrollment_required, game_must_be_open
@@ -28,6 +29,7 @@ from games.docket.models import DocketEnrollment, DocketGame
 from games.docket.services import picks as picks_service
 from games.docket.services.bridge_sheet import SPORT_LABELS
 from games.docket.services.enrollment import get_enrollment
+from games.docket.services.grading.snapshots import BACKUP_SLOT
 from games.docket.services.picks import PickError
 from games.docket.services.weeks import CT, SEASON_YEAR, WEEK_1_BOUNDARY_LOCAL
 
@@ -101,7 +103,12 @@ def join():
             display_name=display_name or None,
         )
         db.session.add(enrollment)
-        db.session.commit()
+        try:
+            db.session.commit()
+        except IntegrityError:
+            # Concurrent double-submit: the unique (user, season) constraint
+            # is the backstop — the first POST won, this one is a no-op.
+            db.session.rollback()
         flash('Welcome to The Docket. Court is in session.', 'success')
         return redirect(url_for('docket.index'))
 
@@ -144,6 +151,7 @@ def index():
     )
     sheet = picks_service.sheet_state(current_user.id, week)
     held = {(p['game_id'], p['market']): p for p in sheet['picks']}
+    slot_map = {p['slot']: p for p in sheet['picks']}
     locked_ids = set(sheet['locked_game_ids'])
 
     # Group by CT calendar day in the route (never Jinja sort/group).
@@ -203,6 +211,8 @@ def index():
         active_day=active_day,
         sheet=sheet,
         held=held,
+        slot_map=slot_map,
+        backup_slot=BACKUP_SLOT,
         games_by_id={g.id: g for g in games},
         designated=designated,
         tb_locked=tb_locked,

@@ -1,6 +1,7 @@
 """Docket /join flow locks (mirrors the CFB block in test_join_flows.py)."""
 from extensions import db
 from games.docket.models import DocketEnrollment
+from games.docket.services.weeks import SEASON_YEAR
 from tests._docket_fixtures import login, make_enrollment, make_user
 from tests._registry_helpers import set_status
 
@@ -43,7 +44,7 @@ def test_docket_join_post_creates_enrollment(app, client):
     assert resp.status_code == 302
     enrollment = DocketEnrollment.query.filter_by(user_id=user.id).first()
     assert enrollment is not None
-    assert enrollment.season_year == 2026
+    assert enrollment.season_year == SEASON_YEAR
     assert enrollment.display_name is None
 
 

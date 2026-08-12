@@ -12023,6 +12023,7 @@ body.game-docket {
   --game-primary-dark: #421219;   /* Chambers */
   --game-primary-light: #8A3B4A;  /* Worn Spine */
   --game-accent: #A63446;         /* Stamp Garnet */
+  --game-accent-rgb: 166, 52, 70; /* Stamp Garnet, for tint layers */
   --game-accent-light: #C4707E;   /* Faded Stamp */
   --docket-rule: #D8CFC0;         /* ledger hairline (bone family) */
 }
@@ -12055,7 +12056,7 @@ body.game-docket {
   line-height: 1.15;
   letter-spacing: .02em;
   text-transform: uppercase;
-  color: var(--text-ink);
+  color: var(--text-primary);
   margin: .2rem 0 0;
 }
 .docket-case-caption .docket-at {
@@ -12094,10 +12095,10 @@ body.game-docket {
   white-space: nowrap;
   transition: color var(--transition), border-color var(--transition), background var(--transition);
 }
-.docket-day-tab:hover { border-color: var(--game-accent-light); color: var(--text-ink); }
+.docket-day-tab:hover { border-color: var(--game-accent-light); color: var(--text-primary); }
 .docket-day-tab.is-active {
   border-color: var(--game-accent);
-  background: rgba(166, 52, 70, .09);
+  background: rgba(var(--game-accent-rgb), .09);
   color: var(--game-accent);
   font-weight: 600;
 }
@@ -12177,7 +12178,7 @@ body.game-docket {
   letter-spacing: .08em;
   text-transform: uppercase;
   color: var(--game-accent);
-  border: 1px solid rgba(166, 52, 70, .4);
+  border: 1px solid rgba(var(--game-accent-rgb), .4);
   border-radius: .35rem;
   padding: .08rem .4rem;
 }
@@ -12225,7 +12226,7 @@ body.game-docket {
   padding: .45rem .6rem;
   font-family: 'Newsreader', Georgia, serif;
   font-size: .92rem;
-  color: var(--text-ink);
+  color: var(--text-primary);
   text-align: left;
   background: var(--bg-card);
   border: 1px solid var(--border);
@@ -12259,7 +12260,7 @@ button.docket-side:hover {
 .docket-side.is-picked {
   border-color: var(--game-accent);
   box-shadow: inset 0 0 0 1px var(--game-accent);
-  background: rgba(166, 52, 70, .09);
+  background: rgba(var(--game-accent-rgb), .09);
   font-weight: 600;
 }
 .docket-side.is-picked .docket-side-num { color: var(--game-accent); font-weight: 700; }
@@ -12270,13 +12271,13 @@ button.docket-side:hover {
   background: var(--bg-page);
 }
 .docket-side.is-move .docket-side-num { color: var(--text-secondary); }
-button.docket-side.is-move:hover { color: var(--text-ink); }
+button.docket-side.is-move:hover { color: var(--text-primary); }
 .docket-slot-badge {
   font-family: 'Teko', sans-serif;
   font-weight: 600;
   font-size: .72rem;
   letter-spacing: .05em;
-  color: #F3EFE6;
+  color: var(--text-on-dark);
   background: var(--game-accent);
   border-radius: .3rem;
   padding: .1rem .38rem;
@@ -12288,7 +12289,7 @@ button.docket-side.is-move:hover { color: var(--text-ink); }
   font-size: .72rem;
   letter-spacing: .05em;
   text-transform: uppercase;
-  color: #F3EFE6;
+  color: var(--text-on-dark);
   background: var(--game-primary);
   border-radius: .3rem;
   padding: .1rem .38rem;
@@ -12301,9 +12302,9 @@ button.docket-side.is-move:hover { color: var(--text-ink); }
 }
 .docket-side.is-locked .docket-side-num { color: var(--text-secondary); }
 .docket-side.is-picked.is-locked {
-  border-color: rgba(166, 52, 70, .55);
-  box-shadow: inset 0 0 0 1px rgba(166, 52, 70, .55);
-  background: rgba(166, 52, 70, .06);
+  border-color: rgba(var(--game-accent-rgb), .55);
+  box-shadow: inset 0 0 0 1px rgba(var(--game-accent-rgb), .55);
+  background: rgba(var(--game-accent-rgb), .06);
 }
 .docket-no-line {
   display: flex;
@@ -12324,7 +12325,7 @@ button.docket-side.is-move:hover { color: var(--text-ink); }
   letter-spacing: .06em;
   text-transform: uppercase;
   color: var(--game-accent);
-  border: 1px solid rgba(166, 52, 70, .4);
+  border: 1px solid rgba(var(--game-accent-rgb), .4);
   border-radius: .3rem;
   padding: .05rem .3rem;
   flex-shrink: 0;
@@ -12382,7 +12383,7 @@ button.docket-side.is-move:hover { color: var(--text-ink); }
   margin-top: .1rem;
 }
 .docket-slot.is-best .docket-slot-num {
-  color: #F3EFE6;
+  color: var(--text-on-dark);
   background: var(--game-primary);
   border-color: var(--game-primary);
 }
@@ -12392,7 +12393,7 @@ button.docket-side.is-move:hover { color: var(--text-ink); }
   font-family: 'Newsreader', Georgia, serif;
   font-weight: 600;
   font-size: .95rem;
-  color: var(--text-ink);
+  color: var(--text-primary);
 }
 .docket-slot.is-locked .docket-slot-pick { color: var(--text-secondary); }
 .docket-slot-open {
@@ -12529,8 +12530,8 @@ button.docket-side.is-move:hover { color: var(--text-ink); }
   transform: translateX(-50%);
   z-index: 1040;
   max-width: 92vw;
-  background: var(--text-ink);
-  color: #F3EFE6;
+  background: var(--text-primary);
+  color: var(--text-on-dark);
   font-family: 'Newsreader', Georgia, serif;
   font-size: .9rem;
   padding: .5rem .95rem;

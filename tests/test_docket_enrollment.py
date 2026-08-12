@@ -25,11 +25,12 @@ def test_docket_admin_enroll_is_idempotent(app):
     user = make_user('docketuser')
     db.session.commit()
     from games.docket.services import enrollment
+    from games.docket.services.weeks import SEASON_YEAR
     e1 = enrollment.admin_enroll(user.id)
     e2 = enrollment.admin_enroll(user.id)
     assert e1.id == e2.id
     assert e1.user_id == user.id
-    assert e1.season_year == 2026
+    assert e1.season_year == SEASON_YEAR
 
 
 def test_docket_entry_registered_in_GAMES(app):

@@ -22,7 +22,7 @@
     <span class="docket-side is-picked{% if locked %} is-locked{% endif %}{% if pick.is_best %} is-best{% endif %}">
       <span class="docket-side-team">{{ label }}</span>
       <span class="docket-side-num">{{ side_number(market, side) }}</span>
-      <span class="docket-slot-badge">{{ 'R' if pick.slot == 9 else pick.slot }}</span>
+      <span class="docket-slot-badge">{{ 'R' if pick.slot == backup_slot else pick.slot }}</span>
       {% if pick.is_best %}<span class="docket-headliner-chip">x2</span>{% endif %}
     </span>
   {% elif locked %}

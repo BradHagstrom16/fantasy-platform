@@ -223,10 +223,18 @@ def set_pick(user_id: int, week: DocketWeek, game_id, market, side,
         # backstop. If the row that won matches this request, report success.
         db.session.rollback()
         existing = _market_row(user_id, week, game.id, market)
-        if existing is not None and existing.side == side.value:
-            return existing
-        raise PickError('conflict',
-                        'That pick was already recorded. Refresh the sheet.'
+        if existing is not None:
+            if existing.side == side.value:
+                return existing
+            raise PickError(
+                'conflict',
+                'That pick was already recorded. Refresh the sheet.'
+            ) from None
+        # Market still free: a concurrent add claimed the slot instead
+        # (uq_docket_pick_slot). Nothing was recorded; a retry recomputes
+        # the lowest free slot and succeeds.
+        raise PickError('slot_taken',
+                        'The sheet moved under you. Try that pick again.'
                         ) from None
     return pick
 
@@ -317,7 +325,10 @@ def parse_prediction_tenths(raw: str) -> int:
     """
     s = raw.strip()
     whole, dot, frac = s.partition('.')
-    if not whole.isdigit() or (dot and (len(frac) != 1 or not frac.isdigit())):
+    # isdecimal, not isdigit: isdigit() accepts superscripts ('²') that
+    # int() then refuses, which would surface as a 500 instead of a 400.
+    if not whole.isdecimal() or (dot and (len(frac) != 1
+                                          or not frac.isdecimal())):
         raise PickError('invalid',
                         'Enter a combined score like 51.5.', status=400)
     tenths = int(whole) * 10 + (int(frac) if dot else 0)
