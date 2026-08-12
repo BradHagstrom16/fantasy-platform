@@ -171,7 +171,12 @@ def grade_week(week: WeekSnapshot,
         # week, submitted predictions included (Grading Clarifications).
         default_error = 0
     else:
-        default_prediction = default_tiebreaker_tenths(week)
+        try:
+            default_prediction = default_tiebreaker_tenths(week)
+        except ValueError as exc:
+            # One failure type for an ungradeable week: callers catch
+            # EngineError, so the designated-total contract joins it.
+            raise EngineError(str(exc)) from exc
         actual = _actual_combined_tenths(week)
         default_error = abs(default_prediction - actual)
 

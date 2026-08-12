@@ -25,6 +25,7 @@ def test_catalog_is_not_empty():
     """A glob typo or a moved directory must fail loudly, never collect
     zero cases and pass green."""
     assert WEEK_CASES, f'no week fixtures found under {FIXTURE_DIR}'
+    assert SEASON_CASES, f'no season fixtures found under {FIXTURE_DIR}'
 
 
 def _assert_player_grade(got, exp, where):

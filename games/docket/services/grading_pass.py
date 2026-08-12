@@ -119,6 +119,11 @@ def run_grading_pass(week_id: int, user_ids=None) -> dict:
     week = db.session.get(DocketWeek, week_id)
     if week is None:
         raise ValueError(f'no docket week with id {week_id}')
+    # Serialize concurrent passes (scores timer vs admin recalc) on the
+    # week row — the CFB process_week_results pattern: Postgres enforces
+    # the row lock, SQLite ignores it harmlessly. With writers serialized,
+    # the select-then-upsert below cannot race itself.
+    db.session.refresh(week, with_for_update=True)
     snapshot = build_week_snapshot(week)
     players = build_player_inputs(week)
     if user_ids is not None:

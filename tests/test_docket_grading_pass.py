@@ -196,13 +196,24 @@ def test_run_grading_pass_upserts_week_results_idempotently(app):
     assert by_user[alice.id].graded_at is not None
     first_graded_at = by_user[alice.id].graded_at
 
-    # re-run: same two rows, updated in place (D14-eng idempotent recalc)
+    # Re-run against CHANGED data: a corrected score must update the same
+    # rows in place (D14-eng recalc), and is_dropped — owned by the season
+    # pass — must survive the update untouched.
+    row_ids = {r.user_id: r.id for r in rows}
+    by_user[alice.id].is_dropped = True
+    games[7].home_score, games[7].away_score = 21, 17  # -7 now a loss
+    db.session.commit()
+
     summary = run_grading_pass(week.id)
     assert summary['graded'] == 2
     rows = db.session.scalars(
         select(DocketWeekResult).filter_by(week_id=week.id)).all()
     assert len(rows) == 2
-    assert all(r.points == 9.0 for r in rows)
+    for row in rows:
+        assert row.id == row_ids[row.user_id]  # updated, not re-inserted
+        assert row.points == 8.0  # slot 8 flipped to a loss
+        assert row.wins == 7
+    assert next(r for r in rows if r.user_id == alice.id).is_dropped is True
     assert first_graded_at is not None
 
 

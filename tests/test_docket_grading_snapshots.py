@@ -108,6 +108,42 @@ def test_game_accepts_final_score_and_no_contest():
     assert _game(no_contest=True).no_contest is True
 
 
+@pytest.mark.parametrize('kw', [
+    {'home_spread': 1.1}, {'total': 33.3}, {'home_spread': True},
+])
+def test_game_rejects_non_quarter_point_lines(kw):
+    """Lines are quarter-point multiples — dyadic and float-exact; a 1.1
+    would silently corrupt push comparisons."""
+    with pytest.raises(ValueError):
+        _game(**kw)
+
+
+def test_game_accepts_quarter_point_line():
+    assert _game(home_spread=-6.25).home_spread == -6.25
+
+
+def test_week_normalizes_games_list_to_tuple():
+    """A caller-held list must not be a mutation escape hatch out of the
+    frozen contract: the snapshot owns an immutable copy."""
+    from games.docket.services.grading.snapshots import WeekSnapshot
+
+    games = [_game('e-1'), _game('e-2')]
+    week = WeekSnapshot(week_number=1, deadline_at=DEADLINE, games=games,
+                        tiebreaker_event_id='e-1')
+    assert isinstance(week.games, tuple)
+    games.append(_game('e-3'))
+    assert len(week.games) == 2
+
+    from games.docket.services.grading.snapshots import PlayerWeekInput
+
+    picks = [_pick(slot=1, eid='e-1')]
+    player = PlayerWeekInput(player_id='p', picks=picks,
+                             tiebreaker_tenths=None)
+    assert isinstance(player.picks, tuple)
+    picks.append(_pick(slot=2, eid='e-2'))
+    assert len(player.picks) == 1
+
+
 # --- WeekSnapshot validation
 
 

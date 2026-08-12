@@ -40,7 +40,8 @@ def test_grading_package_never_asks_for_now():
     grading is replayable byte-for-byte (fixtures, bridge re-grades)."""
     for path in sorted(GRADING_DIR.glob('*.py')):
         source = path.read_text()
-        for forbidden in ('datetime.now(', 'datetime.today(', 'time.time('):
+        for forbidden in ('datetime.now(', 'datetime.today(', 'time.time(',
+                          'utcnow('):
             assert forbidden not in source, (
                 f'{path.name} asks for wall-clock time ({forbidden}) — '
                 f'temporal inputs must arrive as snapshot data')

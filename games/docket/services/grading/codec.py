@@ -109,6 +109,14 @@ def _strict_int(value, where):
     return value
 
 
+def _strict_bool(value, where):
+    """JSON true/false only — bool("false") is True, so a string or 0/1
+    flag would silently flip a No Contest or a designation."""
+    if not isinstance(value, bool):
+        raise ValueError(f'{where}: must be true or false, got {value!r}')
+    return value
+
+
 def _number(value, where):
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         raise ValueError(f'{where}: must be a number, got {value!r}')
@@ -158,7 +166,8 @@ def _parse_game(raw, where):
         away_score=(None if raw['away_score'] is None
                     else _strict_int(raw['away_score'],
                                      f'{where}.away_score')),
-        no_contest=bool(raw.get('no_contest', False)),
+        no_contest=_strict_bool(raw.get('no_contest', False),
+                                f'{where}.no_contest'),
     )
 
 
@@ -185,8 +194,9 @@ def _parse_pick(raw, where):
         api_event_id=raw['event'],
         market=raw['market'],
         side=raw['side'],
-        is_best=bool(raw.get('best', False)),
-        is_autopick=bool(raw.get('autopick', False)),
+        is_best=_strict_bool(raw.get('best', False), f'{where}.best'),
+        is_autopick=_strict_bool(raw.get('autopick', False),
+                                 f'{where}.autopick'),
     )
 
 
@@ -213,8 +223,9 @@ def _parse_expected_slot(raw, where):
         side=None if raw['side'] is None else Side(raw['side']),
         outcome=None if raw['outcome'] is None else Outcome(raw['outcome']),
         via=raw['via'],
-        is_best=bool(raw.get('best', False)),
-        is_autopick=bool(raw.get('autopick', False)),
+        is_best=_strict_bool(raw.get('best', False), f'{where}.best'),
+        is_autopick=_strict_bool(raw.get('autopick', False),
+                                 f'{where}.autopick'),
         points=_number(raw['points'], f'{where}.points'),
     )
 
@@ -231,7 +242,8 @@ def _parse_expected_player(raw, where):
                                  f'{where}.error_tenths'),
         used_default_prediction=(
             None if 'used_default_prediction' not in raw
-            else bool(raw['used_default_prediction'])),
+            else _strict_bool(raw['used_default_prediction'],
+                              f'{where}.used_default_prediction')),
         slots=(None if slots is None else tuple(
             _parse_expected_slot(s, f'{where}.slots[{i}]')
             for i, s in enumerate(slots))),

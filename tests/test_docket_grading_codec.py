@@ -222,3 +222,45 @@ def test_bool_error_tenths_rejected(tmp_path):
     payload['expected']['alice']['error_tenths'] = True
     with pytest.raises(ValueError, match='error_tenths'):
         _load_week(tmp_path, payload)
+
+
+@pytest.mark.parametrize('mutate,field', [
+    (lambda c: c['week']['games'][1].__setitem__('no_contest', 'false'),
+     'no_contest'),
+    (lambda c: c['week']['games'][1].__setitem__('no_contest', 1),
+     'no_contest'),
+    (lambda c: c['players'][0]['picks'][0].__setitem__('best', 'true'),
+     'best'),
+    (lambda c: c['players'][0]['picks'][1].__setitem__('autopick', 0),
+     'autopick'),
+    (lambda c: c['expected']['alice'].__setitem__(
+        'used_default_prediction', 1), 'used_default_prediction'),
+    (lambda c: c['expected']['alice']['slots'][0].__setitem__('best', 'yes'),
+     'best'),
+])
+def test_non_boolean_flags_rejected(tmp_path, mutate, field):
+    """bool('false') is True — a stringly-typed flag could flip a No
+    Contest or a designation, so flags are JSON true/false ONLY."""
+    payload = copy.deepcopy(WEEK_CASE)
+    mutate(payload)
+    with pytest.raises(ValueError, match=field):
+        _load_week(tmp_path, payload)
+
+
+@pytest.mark.parametrize('field,value', [
+    ('home_spread', 1.1), ('total', 33.3), ('home_spread', True),
+])
+def test_non_quarter_point_lines_rejected(tmp_path, field, value):
+    """Posted lines are quarter-point multiples (dyadic, float-exact);
+    anything else would corrupt push comparisons — refused at load."""
+    payload = copy.deepcopy(WEEK_CASE)
+    payload['week']['games'][0][field] = value
+    with pytest.raises(ValueError, match=field.split('_')[-1]):
+        _load_week(tmp_path, payload)
+
+
+def test_quarter_point_line_accepted(tmp_path):
+    payload = copy.deepcopy(WEEK_CASE)
+    payload['week']['games'][0]['home_spread'] = -20.25
+    case = _load_week(tmp_path, payload)
+    assert case.week.game('e-1').home_spread == -20.25

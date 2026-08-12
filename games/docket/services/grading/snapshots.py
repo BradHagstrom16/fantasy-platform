@@ -68,6 +68,21 @@ def _require_tenths(value, name):
         raise ValueError(f'{name} must be integer tenths (or None)')
 
 
+def _require_line(value, name):
+    """A posted line or None: numeric and a quarter-point multiple.
+
+    Every real book line is n/4 (.0/.25/.5/.75) — dyadic, so float-exact.
+    Anything else (1.1, a bool, a string) would silently corrupt push
+    comparisons and is refused at construction."""
+    if value is None:
+        return
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise ValueError(f'{name} must be a number or None, got {value!r}')
+    if value * 4 != int(value * 4):
+        raise ValueError(
+            f'{name} must be a quarter-point line, got {value!r}')
+
+
 @dataclass(frozen=True, slots=True)
 class GameSnapshot:
     """One game as the engine sees it: frozen lines, frozen kickoff, final
@@ -87,6 +102,9 @@ class GameSnapshot:
 
     def __post_init__(self):
         _require_naive(self.kickoff_at_deadline, 'kickoff_at_deadline')
+        _require_line(self.home_spread,
+                      f'{self.api_event_id}: home_spread')
+        _require_line(self.total, f'{self.api_event_id}: total')
         if (self.home_score is None) != (self.away_score is None):
             raise ValueError(
                 f'{self.api_event_id}: scores are both-or-neither')
@@ -106,6 +124,9 @@ class WeekSnapshot:
     tiebreaker_event_id: str
 
     def __post_init__(self):
+        # Normalize to a tuple first: a caller-held list must never be a
+        # mutation escape hatch out of the frozen contract.
+        object.__setattr__(self, 'games', tuple(self.games))
         _require_naive(self.deadline_at, 'deadline_at')
         ids = [g.api_event_id for g in self.games]
         if len(ids) != len(set(ids)):
@@ -164,6 +185,7 @@ class PlayerWeekInput:
     tiebreaker_tenths: int | None  # 515 == 51.5; None => default rule
 
     def __post_init__(self):
+        object.__setattr__(self, 'picks', tuple(self.picks))
         if len(self.picks) > BACKUP_SLOT:
             raise ValueError('a player holds at most nine picks (8 + backup)')
         slots = [p.slot for p in self.picks]
@@ -214,6 +236,7 @@ class PlayerWeekGrade:
     used_default_prediction: bool
 
     def __post_init__(self):
+        object.__setattr__(self, 'slots', tuple(self.slots))
         if len(self.slots) != SCORING_SLOTS:
             raise ValueError('a week grade carries exactly eight slot grades')
         _require_tenths(self.error_tenths, 'error_tenths')
@@ -229,6 +252,7 @@ class WeekGrade:
     players: tuple[PlayerWeekGrade, ...] = field(default=())
 
     def __post_init__(self):
+        object.__setattr__(self, 'players', tuple(self.players))
         _require_tenths(self.default_error_tenths, 'default_error_tenths')
 
 
