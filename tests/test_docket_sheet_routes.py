@@ -3,6 +3,7 @@ seam (form PRG vs sheet-state JSON), and the client-input tamper lock."""
 from datetime import datetime
 
 import pytest
+from sqlalchemy import select
 
 from extensions import db
 from games.docket.models import DocketPick
@@ -220,7 +221,8 @@ def test_auto_filed_sides_are_marked_and_the_sheet_says_why(
         user_id=member.id, week_id=week.id, game_id=filed.id,
         market='total', side='over', slot=2, is_autopick=True,
         line_value=filed.total_points, book=filed.total_book))
-    own = DocketPick.query.filter_by(game_id=mine.id).one()
+    own = db.session.scalars(
+        select(DocketPick).filter_by(game_id=mine.id)).one()
     own.is_best = True
     own.is_auto_best = True
     db.session.commit()

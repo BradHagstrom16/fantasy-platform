@@ -20,6 +20,7 @@ Content assembly lives here per the platform convention
 import logging
 
 from flask import current_app
+from markupsafe import Markup
 
 from utils.email import send_platform_email
 
@@ -49,7 +50,12 @@ def _side_phrase(pick, game):
 
 
 def _send(recipients, subject, build_body):
-    """Send one message per recipient; return how many were accepted."""
+    """Send one message per recipient; return how many were accepted.
+
+    The failure log carries the user id, never the address: these lines land
+    in the journal on the droplet and a bounced send is not a reason to put
+    a member's email in it.
+    """
     sent = 0
     for user, context in recipients:
         if not user.email:
@@ -58,20 +64,26 @@ def _send(recipients, subject, build_body):
         if send_platform_email(user.email, subject, plain, html):
             sent += 1
         else:
-            logger.warning('Docket notification to %s was not accepted',
-                           user.email)
+            logger.warning('Docket notification to user %s was not accepted',
+                           user.id)
     return sent
 
 
-def _wrap(lines):
-    """Plain lines -> (plain, minimal HTML). Table layout + inline styles is
-    the platform's Gmail-safe shape; this message is a short paragraph set,
-    so paragraphs inside one table cell are enough."""
-    plain = '\n\n'.join(lines)
+def _wrap(plain_lines, html_lines):
+    """Paragraph pairs -> (plain body, HTML body).
+
+    Plain and HTML are built from SEPARATE line lists rather than deriving
+    one from the other, so every dynamic value (an admin's free-text reason,
+    a team name, a bookmaker key) is escaped exactly once on the HTML side
+    via Markup.format while the plain side stays literal. Table layout with
+    inline styles is the platform's Gmail-safe shape; this message is a
+    short paragraph set, so paragraphs in one cell are enough.
+    """
+    plain = '\n\n'.join(plain_lines)
     body = ''.join(
         f'<p style="margin:0 0 14px;font-family:Georgia,serif;'
         f'font-size:15px;line-height:1.5;color:#1C1730;">{line}</p>'
-        for line in lines)
+        for line in html_lines)
     html = (
         '<table role="presentation" width="100%" cellpadding="0" '
         'cellspacing="0" style="background:#F3EFE6;padding:24px 0;">'
@@ -98,16 +110,31 @@ def notify_line_correction(correction, game, picks):
     link = _sheet_url()
 
     def build(user, pick):
+        side = _side_phrase(pick, game)
+        moved = (f'{case}: the {market} was {correction.old_value:g} '
+                 f'({correction.old_book}) and is now '
+                 f'{correction.new_value:g} ({correction.new_book}).')
+        held = (f'Your side is now recorded as {side}. It will grade against '
+                f'the corrected number. You may change or withdraw it until '
+                f'the docket closes.')
         return _wrap([
             'The commissioner corrected a line on your sheet.',
-            f'<strong>{case}</strong> — the {market} was '
-            f'{correction.old_value:g} ({correction.old_book}) and is now '
-            f'{correction.new_value:g} ({correction.new_book}).',
+            moved,
             f'Reason given: {correction.reason}',
-            f'Your side is now recorded as {_side_phrase(pick, game)}. It '
-            f'will grade against the corrected number. You may change or '
-            f'withdraw it until the docket closes.',
+            held,
             f'Your sheet: {link}',
+        ], [
+            Markup('The commissioner corrected a line on your sheet.'),
+            Markup('<strong>{}</strong>: the {} was {} ({}) and is now '
+                   '{} ({}).').format(
+                       case, market, f'{correction.old_value:g}',
+                       correction.old_book, f'{correction.new_value:g}',
+                       correction.new_book),
+            Markup('Reason given: {}').format(correction.reason),
+            Markup('Your side is now recorded as <strong>{}</strong>. It '
+                   'will grade against the corrected number. You may change '
+                   'or withdraw it until the docket closes.').format(side),
+            Markup('Your sheet: {}').format(link),
         ])
 
     return _send([(p.user, p) for p in picks], subject, build)
@@ -127,15 +154,24 @@ def notify_redesignation(week, new_game, old_game, users):
     total = ('' if new_game.total_points is None
              else f' The line says {new_game.total_points:g}.')
 
+    cleared = (f'Any combined-score prediction you had recorded has been '
+               f'cleared. Until you enter a new one, the designated case\'s '
+               f'locked total stands in for you.{total}')
+
     def build(user, _context):
         return _wrap([
             f'The tiebreaker case for Week {week.week_number} moved from '
-            f'<strong>{old_case}</strong> to <strong>{new_case}</strong>.',
-            f'Any combined-score prediction you had recorded has been '
-            f'cleared. Until you enter a new one, the designated case\'s '
-            f'locked total stands in for you.{total}',
+            f'{old_case} to {new_case}.',
+            cleared,
             'You may enter a number until the docket closes.',
             f'Your sheet: {link}',
+        ], [
+            Markup('The tiebreaker case for Week {} moved from '
+                   '<strong>{}</strong> to <strong>{}</strong>.').format(
+                       week.week_number, old_case, new_case),
+            Markup('{}').format(cleared),
+            Markup('You may enter a number until the docket closes.'),
+            Markup('Your sheet: {}').format(link),
         ])
 
     return _send([(u, None) for u in users], subject, build)

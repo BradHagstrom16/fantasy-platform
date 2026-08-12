@@ -10,6 +10,7 @@ window and the rule that a mail failure never unwinds a recorded ruling.
 from datetime import datetime
 
 import pytest
+from sqlalchemy import func, select
 
 from extensions import db
 from games.docket.models import (
@@ -55,11 +56,11 @@ def _sat(week, **kw):
 
 
 def _no_mail(monkeypatch):
-    """Count sends without touching SMTP. Patched at the read site."""
+    """Capture sends without touching SMTP. Patched at the read site."""
     sent = []
 
     def fake(to_addr, subject, plain, html=None):
-        sent.append((to_addr, subject))
+        sent.append((to_addr, subject, plain, html))
         return True
 
     monkeypatch.setattr(
@@ -149,7 +150,8 @@ def test_redesignation_clears_predictions_and_notifies(monkeypatch, week):
 
     assert result['cleared'] == 1
     assert result['notified'] == 1
-    assert DocketTiebreakerPrediction.query.count() == 0
+    assert db.session.scalar(
+        select(func.count()).select_from(DocketTiebreakerPrediction)) == 0
     assert 'tiebreaker case changed' in sent[0][1]
 
 
@@ -236,13 +238,16 @@ def test_no_contest_regrades_a_gradeable_week(monkeypatch, week):
     db.session.commit()
     at(monkeypatch, AFTER_DEADLINE)
     run_deadline_pass(1)
-    assert DocketWeekResult.query.count() == 0
+    assert db.session.scalar(
+        select(func.count()).select_from(DocketWeekResult)) == 0
 
     result = admin_ops.rule_no_contest(week, games[5].id, 'Abandoned at half')
 
     assert result['grading']['status'] == 'ok'
     assert result['grading']['graded'] == 1
-    assert DocketWeekResult.query.filter_by(user_id=player.id).count() == 1
+    assert db.session.scalar(
+        select(func.count()).select_from(DocketWeekResult)
+        .filter_by(user_id=player.id)) == 1
 
 
 # ── D18 line correction ──────────────────────────────────────────────────
@@ -267,10 +272,10 @@ def test_line_correction_audits_resnapshots_and_notifies(monkeypatch, week):
     assert game.total_points == 48.5
     assert result['resnapshotted'] == 1
     assert result['notified'] == 1
-    pick = DocketPick.query.one()
+    pick = db.session.scalars(select(DocketPick)).one()
     assert pick.line_value == 48.5, \
         'the pick grades on its own snapshot; the correction must reach it'
-    audit = DocketLineCorrection.query.one()
+    audit = db.session.scalars(select(DocketLineCorrection)).one()
     assert (audit.old_value, audit.new_value) == (51.5, 48.5)
     assert audit.reason == 'Imported total was wrong'
     assert audit.picks_resnapshotted == 1
@@ -293,7 +298,7 @@ def test_line_correction_leaves_the_other_market_alone(monkeypatch, week):
                            'total was wrong', picker.id)
 
     assert game.home_spread == -3.5
-    assert DocketPick.query.one().line_value == -3.5
+    assert db.session.scalars(select(DocketPick)).one().line_value == -3.5
 
 
 def test_line_correction_requires_a_reason(monkeypatch, week):
@@ -305,7 +310,8 @@ def test_line_correction_requires_a_reason(monkeypatch, week):
         admin_ops.correct_line(week, game.id, 'total', '48.5', 'draftkings',
                                '', 1)
     assert err.value.code == 'reason_required'
-    assert DocketLineCorrection.query.count() == 0
+    assert db.session.scalar(
+        select(func.count()).select_from(DocketLineCorrection)) == 0
 
 
 def test_line_correction_is_refused_after_the_deadline(monkeypatch, week):
@@ -356,6 +362,53 @@ def test_line_correction_refuses_junk_numbers(monkeypatch, week):
         assert err.value.code == 'invalid_number'
 
 
+def test_correcting_the_designated_total_must_keep_the_contract(
+        monkeypatch, week):
+    """The number range check is looser than the designation contract, so a
+    total like 48.55 on the tiebreaker case would leave key 3 with no
+    computable default. Refused, and the game keeps its old number."""
+    game = _sat(week)
+    db.session.commit()
+    at(monkeypatch, BEFORE_DEADLINE)
+    admin_ops.designate_tiebreaker(week, game.id)
+
+    with pytest.raises(AdminOpError) as err:
+        admin_ops.correct_line(week, game.id, 'total', '48.55', 'draftkings',
+                               'fat fingered it', 1)
+
+    assert err.value.code == 'unsound_designation'
+    assert err.value.problems
+    assert db.session.get(DocketGame, game.id).total_points == 51.5
+    assert db.session.scalar(
+        select(func.count()).select_from(DocketLineCorrection)) == 0
+
+
+def test_correction_email_escapes_the_admin_reason(monkeypatch, week):
+    """The reason is admin free text going straight into an HTML body."""
+    game = _sat(week)
+    picker = make_user('picker')
+    db.session.commit()
+    db.session.add(DocketPick(
+        user_id=picker.id, week_id=week.id, game_id=game.id,
+        market='total', side='over', slot=1,
+        line_value=51.5, book='draftkings'))
+    db.session.commit()
+    sent = _no_mail(monkeypatch)
+    at(monkeypatch, BEFORE_DEADLINE)
+
+    admin_ops.correct_line(week, game.id, 'total', '48.5', 'draftkings',
+                           '<script>alert(1)</script> & co', picker.id)
+
+    _to, _subject, plain, html = sent[0]
+    assert '<script>' not in html
+    assert '&lt;script&gt;' in html
+    assert '&amp; co' in html
+    # The plain-text part is not HTML and stays literal.
+    assert '<script>alert(1)</script> & co' in plain
+    # Intentional markup still renders as markup.
+    assert '<strong>' in html
+
+
 def test_a_failed_send_never_unwinds_the_ruling(monkeypatch, week):
     """send_platform_email returns False rather than raising; a mail outage
     must not roll back a correction already recorded."""
@@ -377,8 +430,9 @@ def test_a_failed_send_never_unwinds_the_ruling(monkeypatch, week):
                                     picker.id)
 
     assert result['notified'] == 0
-    assert DocketLineCorrection.query.count() == 1
-    assert DocketPick.query.one().line_value == 48.5
+    assert db.session.scalar(
+        select(func.count()).select_from(DocketLineCorrection)) == 1
+    assert db.session.scalars(select(DocketPick)).one().line_value == 48.5
 
 
 # ── The screens ──────────────────────────────────────────────────────────

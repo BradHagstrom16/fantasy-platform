@@ -10,6 +10,7 @@ by the real CT->UTC math), and integer-tenths tiebreaker parsing (D20).
 from datetime import datetime
 
 import pytest
+from sqlalchemy import select
 
 from extensions import db
 from games.docket.models import DocketPick
@@ -518,7 +519,8 @@ def test_sheet_state_carries_the_autopick_facts(monkeypatch, week, user):
     _pick(user, week, sat, 'total', 'over')
     # Stand in for the deadline pass: one filed side, and the double
     # assigned onto the side the player picked themselves.
-    filed = DocketPick.query.filter_by(game_id=sat.id).one()
+    filed = db.session.scalars(
+        select(DocketPick).filter_by(game_id=sat.id)).one()
     filed.is_autopick = True
     mine.is_best = True
     mine.is_auto_best = True

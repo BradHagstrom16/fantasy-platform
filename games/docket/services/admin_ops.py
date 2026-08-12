@@ -265,6 +265,23 @@ def correct_line(week, game_id, market, value, book, reason,
     else:
         game.total_points, game.total_book = number, book
 
+    # A corrected total on the DESIGNATED case feeds key 3's default
+    # prediction, so the designation contract has to survive the edit — the
+    # number range check above is looser than total_to_tenths, so a typo
+    # like 48.55 would otherwise leave the week ungradeable. Same authority
+    # as designate_tiebreaker: ask check_designation, roll back if it
+    # objects.
+    if market is Market.TOTAL and game.id == week.tiebreaker_game_id:
+        db.session.flush()
+        problems = check_designation(week)
+        if problems:
+            db.session.rollback()
+            raise AdminOpError(
+                'unsound_designation',
+                'That number would break the designation contract on the '
+                'tiebreaker case.',
+                problems=problems)
+
     # The pick's own snapshot is what grades (models.py), so the correction
     # has to reach the rows already made on this market. Explicit
     # re-snapshot, never silent drift.

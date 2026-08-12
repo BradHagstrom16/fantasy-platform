@@ -25,8 +25,10 @@
       <span class="docket-slot-badge">{{ 'R' if pick.slot == backup_slot else pick.slot }}</span>
       {% if pick.is_autopick %}<span class="docket-auto-tag"
             title="Filed for you when the docket closed">Auto</span>{% endif %}
+      {# The assigned double is carried visually by the dashed chip, which a
+         screen reader cannot see and title does not reliably announce. #}
       {% if pick.is_best %}<span class="docket-headliner-chip{% if pick.is_auto_best %} is-auto{% endif %}"
-            {% if pick.is_auto_best %}title="Assigned for you when the docket closed"{% endif %}>x2</span>{% endif %}
+            {% if pick.is_auto_best %}title="Assigned for you when the docket closed"{% endif %}>x2{% if pick.is_auto_best %}<span class="visually-hidden">, assigned for you</span>{% endif %}</span>{% endif %}
     </span>
   {% elif locked %}
     <span class="docket-side is-locked">
