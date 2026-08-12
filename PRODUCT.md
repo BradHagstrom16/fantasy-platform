@@ -146,9 +146,9 @@ Success looks like:
 
 ## Positioning
 
-**Formats are built, not configured.** Every CCC game is a purpose-built rules engine with its own models, scoring, deadline mechanics, and vocabulary, not a preset selected inside a generic fantasy framework. A mainstream platform can add a survivor pool; it cannot carry spread-lock survivor, tier-plus-multiplier World Cup, and frozen-line NFL+CFB pick'em as first-class games at once, because each one would have to be built rather than configured. This is the claim a neighboring product cannot truthfully copy, and it is the reason each game lives in its own blueprint under `games/<slug>/` with its own models, services, and design doctrine.
+**Formats are built, not configured.** Every CCC game is a purpose-built rules engine with its own models, scoring, deadline mechanics, and vocabulary, not a preset selected inside a generic fantasy framework. Spread-lock survivor, tier-plus-multiplier World Cup, and frozen-line NFL+CFB pick'em each ship as first-class games, which is why each one lives in its own blueprint under `games/<slug>/` with its own models, services, and design doctrine rather than as configuration over a shared engine. The cost of that choice is that every new format is real engineering; the return is that a format is never bent to fit a framework it was not designed for.
 
-**No house edge.** CCC serves a fixed, privately enrolled roster. There are no ads, no upsell, no acquisition surface, no growth mechanics, and no data business, so there is nothing to optimize for except the enjoyment of the people already in the club. A platform serving millions is structurally unable to make the same trade.
+**No house edge.** CCC serves a fixed, privately enrolled roster. There are no ads, no upsell, no acquisition surface, no growth mechanics, and no data business, so there is nothing to optimize for except the enjoyment of the people already in the club. Every product tradeoff is settled on that basis alone.
 
 ## Operating Context
 

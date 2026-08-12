@@ -313,7 +313,12 @@ The bone family. The pressroom paper. Default page background, light card text o
 
 **The Line-Length Rule.** Newsreader paragraphs cap at 65 to 75 ch. Wider paragraphs read as a wall of text and lose the editorial register.
 
-**The Ramp Rule.** The six roles above name the canonical voices; the frontmatter's `typography.scale` enumerates every size step the platform and its game rooms are allowed to use. A size that isn't on the ramp is drift, not a new step, and the mechanical detector reports it as such. If a surface genuinely needs a step the ramp lacks, add it to the frontmatter deliberately rather than letting the value land loose in `style.css`. The same applies to `rounded` for corner radii.
+**The Ramp Rule.** The frontmatter's `typography.scale` enumerates the size steps the platform and its game rooms are allowed to use. Two things make the ramp larger than that list looks, and both are deliberate:
+
+- **The six role sizes are steps too.** Each role's own `fontSize` (`display` through `eyebrow`) counts as a documented step, so `scale` does not repeat them. Read the ramp as the roles plus the scale, never the scale alone.
+- **Steps carry a ±0.5px tolerance.** A value within half a pixel of a step resolves to that step, so `0.72rem` and `0.92rem` are sanctioned by `0.7rem` and the `label` role rather than being drift. This is why the ramp lists round increments instead of every literal in `style.css`: enumerating the near neighbours individually would fuse the small-text band into one continuous allowed range and stop the ramp from catching anything.
+
+A size outside that tolerance is drift, not a new step, and the mechanical detector reports it as such. If a surface genuinely needs a step the ramp lacks, add it to the frontmatter deliberately rather than letting the value land loose in `style.css`. The same applies to `rounded` for corner radii.
 
 ## 4. Elevation
 

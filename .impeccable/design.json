@@ -497,7 +497,7 @@
       },
       {
         "name": "The Ramp Rule",
-        "body": "The six roles above name the canonical voices; the frontmatter's typography.scale enumerates every size step the platform and its game rooms are allowed to use. A size that isn't on the ramp is drift, not a new step, and the mechanical detector reports it as such. If a surface genuinely needs a step the ramp lacks, add it to the frontmatter deliberately rather than letting the value land loose in style.css. The same applies to rounded for corner radii.",
+        "body": "The frontmatter's typography.scale enumerates the size steps the platform and its game rooms are allowed to use. Two things make the ramp larger than that list looks, and both are deliberate:",
         "section": "typography"
       },
       {
