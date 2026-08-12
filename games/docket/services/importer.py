@@ -10,7 +10,9 @@ One import pass over both sports (NCAAF + NFL) for one docket week:
 - ``/odds`` with ``markets='spreads,totals'`` (2 credits/sport/run) supplies
   lines under the D3/DQ-6 analog: the first fetch that finds a posted market
   locks it, later runs fill still-empty markets only, and a locked line is
-  NEVER overwritten.
+  NEVER overwritten. A sport whose every market is already locked has
+  nothing left to fill, so its /odds call is skipped outright — the free
+  /events kickoff refresh still runs (``force_odds`` overrides).
 - Bookmaker provenance (D17): DraftKings preferred, then the fixed fallback
   order below, then any other book alphabetically (a deterministic tail —
   never response-order-dependent). Each market walks the policy
@@ -26,7 +28,7 @@ import logging
 from datetime import datetime
 
 from flask import current_app
-from sqlalchemy import select
+from sqlalchemy import or_, select
 
 from extensions import db
 from games.docket.models import DocketGame, DocketWeek
@@ -71,7 +73,7 @@ def ensure_week(week_number):
     return week
 
 
-def _decode_payload(resp, endpoint):
+def decode_payload(resp, endpoint):
     """Decode + shape-check a 200 response body.
 
     The Odds API's list endpoints return a JSON array of objects; anything
@@ -168,6 +170,25 @@ def _sync_events(week, sport, events, summary):
             summary['kickoff_moved'] += 1
 
 
+def _has_open_market(week, sport):
+    """Does this sport still have an unlocked market on this week's docket?
+
+    The /odds call costs 2 credits per sport per run against a 500/month
+    budget, and once every market of a sport is locked the D3 gap-fill has
+    nothing left to do — a locked line is never overwritten. A sport with no
+    games on this week's docket answers False for the same reason, which is
+    what keeps the empty NFL slate from taxing every CFB Week 1 run. Called
+    AFTER the events sync so a game created by this very run still triggers
+    the fetch it needs.
+    """
+    return db.session.scalar(
+        select(DocketGame.id)
+        .filter_by(week_id=week.id, sport=sport)
+        .filter(or_(DocketGame.spread_locked_at.is_(None),
+                    DocketGame.total_locked_at.is_(None)))
+        .limit(1)) is not None
+
+
 def _apply_odds(events, now_naive, summary):
     """Lock still-open markets per DQ-6 + D17; never touch a locked one."""
     for event in events:
@@ -193,12 +214,16 @@ def _apply_odds(events, now_naive, summary):
                 summary['totals_locked'] += 1
 
 
-def import_week(week_number):
+def import_week(week_number, force_odds=False):
     """Run the two-sport /events + /odds import for one docket week.
 
     Per-sport failures are isolated: one sport erroring never blocks the
     other's import. Returns a summary dict; ``errors`` lists any sport-level
     failures.
+
+    ``force_odds`` re-fetches /odds even for a sport whose markets are all
+    locked — the escape hatch for the skip that keeps late-week gap-fill
+    runs from spending credits on a docket with nothing left to fill.
     """
     api_key = current_app.config.get('ODDS_API_KEY', '')
     if not api_key:
@@ -216,7 +241,7 @@ def import_week(week_number):
         'created': 0, 'kickoff_moved': 0,
         'spreads_locked': 0, 'totals_locked': 0,
         'skipped_out_of_window': 0, 'skipped_malformed': 0,
-        'unmatched_odds': 0, 'errors': [],
+        'unmatched_odds': 0, 'odds_skipped': [], 'errors': [],
     }
     now_naive = to_naive_utc(now_utc())
     sports_succeeded = 0
@@ -228,8 +253,20 @@ def import_week(week_number):
                                 params={'apiKey': api_key, **window})
             if resp.status_code != 200:
                 raise OddsApiError(f'/events returned HTTP {resp.status_code}')
-            _sync_events(week, sport, _decode_payload(resp, '/events'),
+            _sync_events(week, sport, decode_payload(resp, '/events'),
                          summary)
+            # Flush so games created moments ago are visible to the
+            # open-market check below (autoflush would cover it; being
+            # explicit keeps the credit decision from riding on a default).
+            db.session.flush()
+
+            if not force_odds and not _has_open_market(week, sport):
+                logger.info('All %s markets are locked for week %s — '
+                            'skipping the /odds fetch (2 credits saved).',
+                            sport, week_number)
+                summary['odds_skipped'].append(sport)
+                sports_succeeded += 1
+                continue
 
             resp = odds_api_get(f'{base}/odds', params={
                 'apiKey': api_key,
@@ -240,7 +277,7 @@ def import_week(week_number):
             })
             if resp.status_code != 200:
                 raise OddsApiError(f'/odds returned HTTP {resp.status_code}')
-            _apply_odds(_decode_payload(resp, '/odds'), now_naive, summary)
+            _apply_odds(decode_payload(resp, '/odds'), now_naive, summary)
             sports_succeeded += 1
         except (OddsApiError, ValueError) as exc:
             logger.error('Docket import failed for %s: %s', sport, exc)

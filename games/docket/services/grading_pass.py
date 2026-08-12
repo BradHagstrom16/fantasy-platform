@@ -108,6 +108,28 @@ def build_player_inputs(week: DocketWeek) -> tuple[PlayerWeekInput, ...]:
     )
 
 
+def player_inputs_for(week: DocketWeek, user_ids=None
+                      ) -> tuple[PlayerWeekInput, ...]:
+    """The week's player inputs, optionally projected onto a roster.
+
+    ``user_ids=None`` keeps the submitted-input population (every user with
+    a pick or a prediction). Passing a roster returns exactly those users in
+    the given order, materializing an empty input for anyone who submitted
+    nothing — the shape the D5 autopick package completes and the grading
+    pass grades. Both callers (the deadline pass and run_grading_pass) share
+    this one builder so their populations can never drift apart.
+    """
+    players = build_player_inputs(week)
+    if user_ids is None:
+        return players
+    by_id = {p.player_id: p for p in players}
+    return tuple(
+        by_id.get(str(uid), PlayerWeekInput(
+            player_id=str(uid), picks=(), tiebreaker_tenths=None))
+        for uid in user_ids
+    )
+
+
 def run_grading_pass(week_id: int, user_ids=None) -> dict:
     """Grade a week and upsert docket_week_result rows (D14-eng).
 
@@ -125,13 +147,7 @@ def run_grading_pass(week_id: int, user_ids=None) -> dict:
     # the select-then-upsert below cannot race itself.
     db.session.refresh(week, with_for_update=True)
     snapshot = build_week_snapshot(week)
-    players = build_player_inputs(week)
-    if user_ids is not None:
-        by_id = {p.player_id: p for p in players}
-        players = tuple(
-            by_id.get(str(uid), PlayerWeekInput(
-                player_id=str(uid), picks=(), tiebreaker_tenths=None))
-            for uid in user_ids)
+    players = player_inputs_for(week, user_ids)
 
     grade = grade_week(snapshot, players)
     graded_at = to_naive_utc(now_utc())
@@ -158,3 +174,27 @@ def run_grading_pass(week_id: int, user_ids=None) -> dict:
         'week_number': week.week_number,
         'graded': len(grade.players),
     }
+
+
+def try_grade_week(week_id: int, user_ids=None) -> dict:
+    """Grade a week when it is ready; report why when it is not.
+
+    A week that is missing a final score, or whose deadline pass hasn't run,
+    is a NORMAL state for a Sunday-evening scores run — the engine refuses it
+    by design and the caller decides what that means. Polling callers want
+    'not ready yet' with a reason, not a traceback. A genuinely bad week id
+    still raises: that is a bug, not a wait.
+    """
+    week = db.session.get(DocketWeek, week_id)
+    if week is None:
+        raise ValueError(f'no docket week with id {week_id}')
+    week_number = week.week_number
+    try:
+        return run_grading_pass(week_id, user_ids=user_ids)
+    except ValueError as exc:
+        # EngineError subclasses ValueError: an incomplete week (no final
+        # score yet) and an unstamped one (no deadline pass yet) arrive here
+        # as the same "not ready" answer.
+        db.session.rollback()
+        return {'status': 'not_ready', 'week_number': week_number,
+                'reason': str(exc)}

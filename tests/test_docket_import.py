@@ -266,3 +266,78 @@ def test_one_failed_sport_reports_partial_even_with_zero_creates(app):
     assert summary['created'] == 0
     assert summary['status'] == 'partial'
     assert summary['errors'] and 'americanfootball_nfl' in summary['errors'][0]
+
+
+def _urls(mock):
+    return [call.args[0] for call in mock.call_args_list]
+
+
+def test_a_fully_locked_sport_skips_its_odds_call(app):
+    """The /odds fetch costs 2 credits per sport per run against a 500/month
+    budget, and a docket with no empty market has nothing left to gap-fill.
+    The FREE /events kickoff refresh (D19) still runs."""
+    from games.docket.services.importer import import_week
+
+    app.config['ODDS_API_KEY'] = 'test-key'
+    _run(app, [W1],
+         [_odds('e-wnd', 'Notre Dame Fighting Irish', 'Wisconsin Badgers',
+                '2026-09-06T00:30:00Z',
+                [_bm('draftkings', home='Notre Dame Fighting Irish',
+                     home_spread=-6.5, away='Wisconsin Badgers', total=51.5)])])
+
+    moved = _event('e-wnd', 'Notre Dame Fighting Irish', 'Wisconsin Badgers',
+                   '2026-09-06T01:00:00Z')
+    with patch('games.docket.services.importer.odds_api_get',
+               side_effect=[_resp([moved]), _resp([])]) as mock:
+        summary = import_week(1)
+
+    assert [u.rsplit('/', 1)[-1] for u in _urls(mock)] == ['events', 'events']
+    assert summary['odds_skipped'] == ['americanfootball_ncaaf',
+                                       'americanfootball_nfl']
+    assert summary['kickoff_moved'] == 1
+    assert _get('e-wnd').kickoff == datetime(2026, 9, 6, 1, 0)
+
+
+def test_a_sport_with_an_open_market_still_fetches_odds(app):
+    """The skip is per sport and computed AFTER the events sync, so a game
+    created by this very run still gets the fetch it needs."""
+    from games.docket.services.importer import import_week
+
+    app.config['ODDS_API_KEY'] = 'test-key'
+    # Locked spread, no total anywhere: the total market stays open.
+    _run(app, [W1],
+         [_odds('e-wnd', 'Notre Dame Fighting Irish', 'Wisconsin Badgers',
+                '2026-09-06T00:30:00Z',
+                [_bm('draftkings', home='Notre Dame Fighting Irish',
+                     home_spread=-6.5, away='Wisconsin Badgers')])])
+
+    with patch('games.docket.services.importer.odds_api_get',
+               side_effect=[_resp([W1]), _resp([]), _resp([]),
+                            _resp([])]) as mock:
+        summary = import_week(1)
+
+    assert [u.rsplit('/', 1)[-1] for u in _urls(mock)] == [
+        'events', 'odds', 'events']
+    # NFL has no games on this week's docket at all — same answer, same
+    # saving, which is exactly the CFB Week 1 shape (NFL opens in week 2).
+    assert summary['odds_skipped'] == ['americanfootball_nfl']
+
+
+def test_force_odds_overrides_the_skip(app):
+    from games.docket.services.importer import import_week
+
+    app.config['ODDS_API_KEY'] = 'test-key'
+    _run(app, [W1],
+         [_odds('e-wnd', 'Notre Dame Fighting Irish', 'Wisconsin Badgers',
+                '2026-09-06T00:30:00Z',
+                [_bm('draftkings', home='Notre Dame Fighting Irish',
+                     home_spread=-6.5, away='Wisconsin Badgers', total=51.5)])])
+
+    with patch('games.docket.services.importer.odds_api_get',
+               side_effect=[_resp([W1]), _resp([]), _resp([]),
+                            _resp([])]) as mock:
+        summary = import_week(1, force_odds=True)
+
+    assert [u.rsplit('/', 1)[-1] for u in _urls(mock)] == [
+        'events', 'odds', 'events', 'odds']
+    assert summary['odds_skipped'] == []
