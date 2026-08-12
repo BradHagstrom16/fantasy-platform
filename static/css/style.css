@@ -12306,6 +12306,44 @@ button.docket-side.is-move:hover { color: var(--text-primary); }
   box-shadow: inset 0 0 0 1px rgba(var(--game-accent-rgb), .55);
   background: rgba(var(--game-accent-rgb), .06);
 }
+/* Auto-filed: the deadline pass put this side on the sheet, the player did
+   not. It grades exactly like a chosen side, so it keeps the stamp — but the
+   stamp goes DASHED and the doubled inset comes off. Dashed is this room's
+   one grammar for "the clerk did this, not you": it costs no horizontal
+   space in an already crowded pill and separates mine from dealt at a glance
+   down a column. Garnet stays, because garnet means "yours" and an
+   auto-filed side IS yours; what it is not is chosen (DESIGN.md 6.5).
+   Must follow .is-picked.is-locked: equal specificity, and every autopick
+   row renders locked. */
+.docket-side.is-picked.is-autopick {
+  border-style: dashed;
+  box-shadow: none;
+}
+/* The clerk's mark. Cold register, borderless, same weight and colour as
+   .docket-locked-note — the sheet's established "procedural fact" voice.
+   The dashed stamp does the scanning work; this names it. Deliberately
+   quieter than the garnet slot badge, and far quieter than the headliner,
+   which stays the one loud recurring mark on the sheet (DESIGN.md 7.4). */
+.docket-auto-tag {
+  font-family: 'Teko', sans-serif;
+  font-weight: 500;
+  font-size: .72rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+/* An auto-ASSIGNED double. This is the case is_autopick cannot express: the
+   fallback chain evaluates the final 8-slot set, so the double can land on a
+   side the player picked themselves. The ceremonial mark stays singular and
+   stays oxblood; it goes hollow and dashed so one grammar carries both
+   marks. Padding compensates for the added border so the box does not grow. */
+.docket-headliner-chip.is-auto {
+  color: var(--game-primary);
+  background: transparent;
+  border: 1px dashed var(--game-primary);
+  padding: calc(.1rem - 1px) calc(.38rem - 1px);
+}
 .docket-no-line {
   display: flex;
   align-items: center;
@@ -12362,6 +12400,25 @@ button.docket-side.is-move:hover { color: var(--text-primary); }
   color: var(--text-secondary);
   margin: .15rem 0 .7rem;
 }
+/* What the deadline pass filed, and why, stated once. Ledger material: a
+   hairline rule above it, no card and no alert styling — nothing went wrong
+   here, and the Cold-Docket Rule asks a procedural state to give its reason
+   rather than leave a badge unexplained. */
+.docket-auto-note {
+  display: flex;
+  align-items: flex-start;
+  gap: .45rem;
+  padding: .5rem 0 .65rem;
+  border-top: 1px solid var(--docket-rule);
+}
+.docket-auto-note p {
+  margin: 0;
+  font-family: 'Newsreader', Georgia, serif;
+  font-size: .82rem;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+.docket-auto-note .docket-auto-tag { margin-top: .16rem; }
 .docket-slots { list-style: none; margin: 0; padding: 0; }
 .docket-slot {
   display: flex;

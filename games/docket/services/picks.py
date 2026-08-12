@@ -285,8 +285,12 @@ def set_best(user_id: int, week: DocketWeek, game_id, market) -> DocketPick:
         # Clear before set, flushed in between: the partial unique index is
         # statement-time on Postgres, so set-before-clear would refuse.
         current.is_best = False
+        current.is_auto_best = False
         db.session.flush()
     row.is_best = True
+    # A designation the player moves is theirs, whatever put it there first
+    # (a forced deadline pass in development can auto-designate pre-deadline).
+    row.is_auto_best = False
     try:
         db.session.commit()
     except IntegrityError:
@@ -314,6 +318,7 @@ def clear_best(user_id: int, week: DocketWeek) -> None:
         raise PickError('best_locked',
                         'Your headliner locked at its kickoff.')
     current.is_best = False
+    current.is_auto_best = False
     db.session.commit()
 
 
@@ -414,6 +419,7 @@ def sheet_state(user_id: int, week: DocketWeek) -> dict:
             'slot': p.slot,
             'is_best': p.is_best,
             'is_autopick': p.is_autopick,
+            'is_auto_best': p.is_auto_best,
             'line_value': p.line_value,
             'book': p.book,
             'locked': p.game_id in locked_game_ids,
@@ -427,6 +433,10 @@ def sheet_state(user_id: int, week: DocketWeek) -> dict:
         'deadline_passed': now >= week.deadline_at,
         'picks': pick_dicts,
         'scoring_count': sum(1 for p in pick_dicts if p['slot'] != BACKUP_SLOT),
+        # How many of the sheet's sides the deadline pass filed. Travels with
+        # the other progress facts (the rail carries them as one unit), and
+        # is the count the post-deadline explainer states.
+        'autopick_count': sum(1 for p in pick_dicts if p['is_autopick']),
         'backup': next(
             (p for p in pick_dicts if p['slot'] == BACKUP_SLOT), None),
         'best': best,

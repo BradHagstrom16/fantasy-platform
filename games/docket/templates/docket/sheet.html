@@ -106,6 +106,7 @@ the finish review, the verdict, and DESIGN.md.
     <details id="docket-rail-mobile" class="docket-rail-drawer d-lg-none">
         <summary class="docket-rail-bar">
             <span class="docket-rail-bar-count">{{ sheet.scoring_count }} of 8</span>
+            {% if sheet.deadline_passed and sheet.autopick_count %}<span class="docket-rail-bar-fact">{{ sheet.autopick_count }} auto</span>{% endif %}
             <span class="docket-rail-bar-fact">{{ 'x2 set' if sheet.best else 'no x2' }}</span>
             <span class="docket-rail-bar-fact">{{ 'R held' if sheet.backup else 'R open' }}</span>
             <span class="docket-rail-bar-fact">{{ sheet.prediction if sheet.prediction is not none else 'no number' }}</span>

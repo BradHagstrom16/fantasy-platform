@@ -177,6 +177,19 @@ def _mk_pick(db, user, week, game, slot=1, market='spread', side='home', **kw):
     return pick
 
 
+def test_new_pick_is_neither_filed_nor_auto_designated(app):
+    """Both provenance flags are opt-in, written only by the deadline pass.
+    is_auto_best is separate from is_autopick because auto-designation can
+    land the double on a pick the player made themselves."""
+    from extensions import db
+
+    user, week = _mk_user(db), _mk_week(db)
+    pick = _mk_pick(db, user, week, _mk_game(db, week))
+    assert pick.is_best is False
+    assert pick.is_autopick is False
+    assert pick.is_auto_best is False
+
+
 def test_pick_rejects_both_sides_of_one_market(app):
     """D7-eng: one-side-per-market is STRUCTURAL — (user, week, game, market)
     is unique, so holding home and away of the same spread is a schema

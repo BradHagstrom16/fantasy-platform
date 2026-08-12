@@ -183,6 +183,11 @@ class DocketPick(db.Model):
                            name='ck_docket_pick_slot_range'),
         db.CheckConstraint('NOT (is_best AND slot = 9)',
                            name='ck_docket_pick_best_not_backup'),
+        # is_auto_best marks HOW a designation was made, so it is meaningless
+        # without one. Schema-enforced like its siblings above rather than
+        # left to the writers.
+        db.CheckConstraint('NOT is_auto_best OR is_best',
+                           name='ck_docket_pick_auto_best_implies_best'),
     )
 
     id = db.Column(db.Integer, primary_key=True)
@@ -199,6 +204,15 @@ class DocketPick(db.Model):
     slot = db.Column(db.Integer, nullable=False)
     is_best = db.Column(db.Boolean, nullable=False, default=False)
     is_autopick = db.Column(db.Boolean, nullable=False, default=False)
+    # Written only by the deadline pass, and only where the player set no
+    # headliner of their own. Distinct from is_autopick because
+    # auto-designation can land the double on a pick the player DID make
+    # (Grading Clarifications: the fallback chain evaluates the final 8-slot
+    # set, own picks included) — is_autopick alone cannot tell that case from
+    # a headliner the player chose, and the sheet has to say which it was.
+    # Invariant (schema-enforced above): is_auto_best implies is_best.
+    is_auto_best = db.Column(db.Boolean, nullable=False, default=False,
+                             server_default=db.false())
     line_value = db.Column(db.Float, nullable=False)
     book = db.Column(db.String(40), nullable=False)
 

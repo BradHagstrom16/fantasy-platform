@@ -506,3 +506,30 @@ def test_sheet_state_reports_progress_and_locks(monkeypatch, week, user):
     assert state['deadline_passed'] is False
     locked_flags = {p['game_id']: p['locked'] for p in state['picks']}
     assert locked_flags == {thu.id: True, sat.id: False}
+
+
+def test_sheet_state_carries_the_autopick_facts(monkeypatch, week, user):
+    """The badge renders off these three keys; nothing else knows a pick was
+    filed rather than chosen."""
+    thu = make_game(week, kickoff=KICK_THU)
+    sat = make_game(week, kickoff=KICK_SAT)
+    at(monkeypatch, IN_WEEK1)
+    mine = _pick(user, week, thu)
+    _pick(user, week, sat, 'total', 'over')
+    # Stand in for the deadline pass: one filed side, and the double
+    # assigned onto the side the player picked themselves.
+    filed = DocketPick.query.filter_by(game_id=sat.id).one()
+    filed.is_autopick = True
+    mine.is_best = True
+    mine.is_auto_best = True
+    db.session.commit()
+
+    state = picks_service.sheet_state(user.id, week)
+
+    assert state['autopick_count'] == 1
+    by_game = {p['game_id']: p for p in state['picks']}
+    assert by_game[sat.id]['is_autopick'] is True
+    assert by_game[thu.id]['is_autopick'] is False
+    assert state['best']['game_id'] == thu.id
+    assert state['best']['is_auto_best'] is True, \
+        'an assigned double on a hand-made pick must still surface'

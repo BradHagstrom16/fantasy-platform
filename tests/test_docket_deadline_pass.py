@@ -216,6 +216,77 @@ def test_autopick_designates_the_headliner_and_respects_an_existing_one(
         'a player-set headliner is never moved'
 
 
+def test_auto_designation_on_a_hand_made_pick_is_recorded(app, monkeypatch):
+    """The case is_autopick cannot express: a full sheet with no headliner.
+
+    Auto-designation lands the double on a side the player picked
+    themselves, so the row stays is_autopick=False. Without is_auto_best the
+    sheet would show an x2 the player never set, unmarked.
+    """
+    from games.docket.services.deadline_pass import run_deadline_pass
+
+    week, games = _seed()
+    user = make_user('full-sheet')
+    make_enrollment(user)
+    # Eight hand-made favorite-side spread picks, no headliner among them.
+    for slot, game in enumerate(games[:8], start=1):
+        _hold(user, week, game, 'spread', 'home', slot)
+    db.session.commit()
+    monkeypatch.setenv('DOCKET_FAKE_NOW', AFTER_DEADLINE)
+
+    run_deadline_pass(1)
+
+    picks = _picks(user, week)
+    assert not any(p.is_autopick for p in picks), 'nothing was topped up'
+    best = [p for p in picks if p.is_best]
+    assert len(best) == 1
+    # Largest favorite among the held set: home_spread is -(3.5 + i).
+    assert best[0].game_id == games[7].id
+    assert best[0].is_autopick is False
+    assert best[0].is_auto_best is True, \
+        'the double was assigned, not chosen — the sheet has to say so'
+    assert all(p.is_auto_best is False for p in picks if not p.is_best)
+
+
+def test_an_autopick_row_carrying_the_double_is_marked_auto_designated(
+        app, monkeypatch):
+    from games.docket.services.deadline_pass import run_deadline_pass
+
+    week, _games = _seed()
+    user = make_user('silent-auto')
+    make_enrollment(user)
+    db.session.commit()
+    monkeypatch.setenv('DOCKET_FAKE_NOW', AFTER_DEADLINE)
+
+    run_deadline_pass(1)
+
+    best = [p for p in _picks(user, week) if p.is_best]
+    assert len(best) == 1
+    assert best[0].is_autopick is True
+    assert best[0].is_auto_best is True
+
+
+def test_a_player_set_headliner_is_never_marked_auto_designated(
+        app, monkeypatch):
+    """A partial picker who DID name a headliner gets top-ups, but the
+    designation stays theirs and unmarked."""
+    from games.docket.services.deadline_pass import run_deadline_pass
+
+    week, games = _seed()
+    user = make_user('own-x2')
+    make_enrollment(user)
+    _hold(user, week, games[0], 'total', 'over', 1, is_best=True)
+    db.session.commit()
+    monkeypatch.setenv('DOCKET_FAKE_NOW', AFTER_DEADLINE)
+
+    run_deadline_pass(1)
+
+    picks = _picks(user, week)
+    assert any(p.is_autopick for p in picks), 'the sheet was topped up'
+    assert all(p.is_auto_best is False for p in picks), \
+        'the player named this headliner; nothing may claim otherwise'
+
+
 def test_the_default_tiebreaker_prediction_is_never_materialized(
         app, monkeypatch):
     """D5/D20: the default is COMPUTED at grading so used_default_prediction

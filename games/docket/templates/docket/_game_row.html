@@ -19,11 +19,14 @@
 
 {% macro side_pill(market, side, label, pick) %}
   {% if pick and pick.side == side %}
-    <span class="docket-side is-picked{% if locked %} is-locked{% endif %}{% if pick.is_best %} is-best{% endif %}">
+    <span class="docket-side is-picked{% if locked %} is-locked{% endif %}{% if pick.is_best %} is-best{% endif %}{% if pick.is_autopick %} is-autopick{% endif %}">
       <span class="docket-side-team">{{ label }}</span>
       <span class="docket-side-num">{{ side_number(market, side) }}</span>
       <span class="docket-slot-badge">{{ 'R' if pick.slot == backup_slot else pick.slot }}</span>
-      {% if pick.is_best %}<span class="docket-headliner-chip">x2</span>{% endif %}
+      {% if pick.is_autopick %}<span class="docket-auto-tag"
+            title="Filed for you when the docket closed">Auto</span>{% endif %}
+      {% if pick.is_best %}<span class="docket-headliner-chip{% if pick.is_auto_best %} is-auto{% endif %}"
+            {% if pick.is_auto_best %}title="Assigned for you when the docket closed"{% endif %}>x2</span>{% endif %}
     </span>
   {% elif locked %}
     <span class="docket-side is-locked">

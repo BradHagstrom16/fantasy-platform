@@ -157,6 +157,10 @@ def _add_autopick_rows(week, user_id, added, game_by_event, summary):
             side=pick.side.value,
             slot=pick.slot,
             is_best=pick.is_best,
+            # A top-up row carries is_best only when auto_designate set it:
+            # complete_player_input leaves the designation alone whenever the
+            # player made one, so no added row can inherit a player's choice.
+            is_auto_best=pick.is_best,
             is_autopick=True,
             line_value=value,
             book=book,
@@ -204,7 +208,11 @@ def run_autopick(week: DocketWeek, user_ids=None) -> dict:
                 user_id=user_id, week_id=week.id, slot=best.slot))
             if row is None:  # pragma: no cover - held slots come from rows
                 continue
+            # The double landing on a pick the player made themselves: the
+            # row stays is_autopick=False, so is_auto_best is the only record
+            # that the designation was not theirs.
             row.is_best = True
+            row.is_auto_best = True
         elif best.slot not in written:
             continue  # its row was skipped for a missing book
         summary['designations'] += 1
