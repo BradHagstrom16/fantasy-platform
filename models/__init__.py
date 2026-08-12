@@ -43,9 +43,9 @@ from games.worldcup.models import (
     WorldCupRankSnapshot,
 )
 
-# The Docket (NFL + CFB pick'em) models — import + grading spine; blueprint
-# wiring deliberately absent until the UI workstream lands.
+# The Docket (NFL + CFB pick'em) models
 from games.docket.models import (
+    DocketEnrollment,
     DocketWeek,
     DocketGame,
     DocketPick,
@@ -74,6 +74,7 @@ __all__ = [
     'WorldCupMatch',
     'WorldCupPick',
     'WorldCupRankSnapshot',
+    'DocketEnrollment',
     'DocketWeek',
     'DocketGame',
     'DocketPick',

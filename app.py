@@ -76,6 +76,13 @@ def create_app(config_name=None):
     from games.worldcup.cli import register_worldcup_cli
     register_worldcup_cli(app)
 
+    # Register The Docket blueprint (CLI namespace lands with T8 sync/recalc).
+    # Imported from games.docket.blueprint, not the package init — the init
+    # stays import-light so the pure grading package's flask-free import
+    # graph holds (D9 purity lock).
+    from games.docket.blueprint import docket_bp
+    app.register_blueprint(docket_bp)
+
     # Platform-wide context processors
     from core.context import register_context_processors
     register_context_processors(app)

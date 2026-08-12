@@ -107,7 +107,7 @@ def test_per_game_fade_tints_cover_both_edges():
     """Every game sub-nav tints both edge fades to its own substrate so the
     fade reads as the strip running off the edge, not a gray smudge."""
     code_only = _code_only_css()
-    for game in ('worldcup', 'golf', 'cfb'):
+    for game in ('worldcup', 'golf', 'cfb', 'docket'):
         assert re.search(
             rf'\.subnav-{game}\s+\.subnav-scroll::before\s*\{{[^}}]*linear-gradient\(to left',
             code_only,
@@ -132,8 +132,8 @@ def test_every_subnav_pills_wrapped_in_subnav_scroll():
     """
     html = BASE_HTML.read_text()
     pills = list(re.finditer(r'<div class="subnav-pills">', html))
-    assert len(pills) == 3, (
-        f'Expected one `.subnav-pills` per game sub-nav (3 total), '
+    assert len(pills) == 4, (
+        f'Expected one `.subnav-pills` per game sub-nav (4 total), '
         f'found {len(pills)}.'
     )
     for m in pills:

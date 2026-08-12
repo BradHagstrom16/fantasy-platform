@@ -18,6 +18,8 @@ from core.admin import admin_bp
 from core.admin.routes import admin_required
 from extensions import db
 from games.cfb.models import CfbEnrollment
+from games.docket.models import DocketEnrollment
+from games.docket.services.weeks import SEASON_YEAR as DOCKET_SEASON_YEAR
 from games.golf.models import GolfEnrollment
 from games.registry import GAMES
 from games.worldcup.constants import SEASON_YEAR as WC_SEASON_YEAR
@@ -90,9 +92,29 @@ def _golf_recipients(active_only):
     ]
 
 
+def _docket_recipients(active_only):
+    """Docket recipients for the current season.
+
+    The Docket has no elimination concept (missed weeks score 0 and the
+    season continues), so active == enrolled and ``active_only`` is
+    accepted but ignored.
+    """
+    stmt = (
+        select(DocketEnrollment)
+        .filter_by(season_year=DOCKET_SEASON_YEAR)
+        .options(joinedload(DocketEnrollment.user))
+    )
+    enrollments = db.session.execute(stmt).scalars().all()
+    return [
+        Recipient(e.user.email, e.get_display_name())
+        for e in enrollments if e.user and e.user.email
+    ]
+
+
 _RESOLVERS = {
     'worldcup': _wc_recipients,
     'cfb': _cfb_recipients,
+    'docket': _docket_recipients,
     'golf': _golf_recipients,
 }
 

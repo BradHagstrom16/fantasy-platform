@@ -9163,11 +9163,14 @@ main { flex: 1; }
 .subnav-golf     .subnav-scroll::after  { background: linear-gradient(to right, rgba(0,26,13,0), #001a0d); }
 .subnav-cfb      .subnav-scroll::before { background: linear-gradient(to left, rgba(10,8,15,0), #0a080f); }
 .subnav-cfb      .subnav-scroll::after  { background: linear-gradient(to right, rgba(10,8,15,0), #0a080f); }
+.subnav-docket   .subnav-scroll::before { background: linear-gradient(to left, rgba(24,12,16,0), #180C10); }
+.subnav-docket   .subnav-scroll::after  { background: linear-gradient(to right, rgba(24,12,16,0), #180C10); }
 
 /* Per-game palettes */
 .subnav-worldcup { background: #00122e; --subnav-accent: #BF0A30; --subnav-accent-rgb: 191,10,48; }
 .subnav-golf     { background: #001a0d; --subnav-accent: #b8993e; --subnav-accent-rgb: 184,153,62; }
 .subnav-cfb      { background: #0a080f; --subnav-accent: #C5050C; --subnav-accent-rgb: 197,5,12; }
+.subnav-docket   { background: #180C10; --subnav-accent: #A63446; --subnav-accent-rgb: 166,52,70; }
 
 /* Game label — links back to game index */
 .subnav-game-label {
@@ -12006,4 +12009,579 @@ body.game-worldcup .form-text {
 @media (max-width: 575px) {
   .wc-ballots-card { padding: .85rem .85rem .5rem; }
   .wc-ballots-name { font-size: 1.25rem; }
+}
+
+/* === THE DOCKET === */
+/* The light court-paper room (games/docket/DESIGN.md): bone substrate and
+   platform tokens unchanged (no rebase — that is CFB's carve-out), law-book
+   oxblood + stamp garnet layered via the game slots. The sheet is a court
+   record: ruled lines over nested boxes, stamped commitment states, cold
+   procedural locks. */
+
+body.game-docket {
+  --game-primary: #6E1F2E;        /* Law-book Oxblood */
+  --game-primary-dark: #421219;   /* Chambers */
+  --game-primary-light: #8A3B4A;  /* Worn Spine */
+  --game-accent: #A63446;         /* Stamp Garnet */
+  --game-accent-rgb: 166, 52, 70; /* Stamp Garnet, for tint layers */
+  --game-accent-light: #C4707E;   /* Faded Stamp */
+  --docket-rule: #D8CFC0;         /* ledger hairline (bone family) */
+}
+
+/* --- Eyebrow primitive (garnet default on paper; ink variant; the hero
+       scopes its own bone-mute lift for the dark oxblood band) --- */
+.docket-eyebrow {
+  display: block;
+  font-family: 'Teko', sans-serif;
+  font-weight: 500;
+  font-size: .85rem;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--game-accent);
+  margin-bottom: .3rem;
+}
+.docket-eyebrow-ink { color: var(--text-secondary); }
+.docket-hero .docket-eyebrow { color: rgba(243, 239, 230, .82); }
+
+/* --- Case captions and shared captions --- */
+.docket-caption {
+  font-family: 'Newsreader', Georgia, serif;
+  font-size: .8rem;
+  color: var(--text-secondary);
+}
+.docket-case-caption {
+  font-family: 'Teko', sans-serif;
+  font-weight: 600;
+  font-size: 1.3rem;
+  line-height: 1.15;
+  letter-spacing: .02em;
+  text-transform: uppercase;
+  color: var(--text-primary);
+  margin: .2rem 0 0;
+}
+.docket-case-caption .docket-at {
+  font-size: .78em;
+  font-weight: 400;
+  color: var(--text-secondary);
+}
+
+/* --- Court calendar (day tabs; real links, server-side active state) --- */
+.docket-day-tabs {
+  display: flex;
+  gap: .4rem;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  margin: 1.4rem 0 1.1rem;
+  padding: .15rem 0;
+}
+.docket-day-tabs::-webkit-scrollbar { display: none; }
+.docket-day-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: .45rem;
+  font-family: 'Teko', sans-serif;
+  font-weight: 500;
+  font-size: .95rem;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  text-decoration: none;
+  padding: .45rem .85rem;
+  min-height: 44px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  white-space: nowrap;
+  transition: color var(--transition), border-color var(--transition), background var(--transition);
+}
+.docket-day-tab:hover { border-color: var(--game-accent-light); color: var(--text-primary); }
+.docket-day-tab.is-active {
+  border-color: var(--game-accent);
+  background: rgba(var(--game-accent-rgb), .09);
+  color: var(--game-accent);
+  font-weight: 600;
+}
+.docket-day-tab-count {
+  font-size: .78rem;
+  color: var(--text-secondary);
+}
+.docket-day-tab.is-active .docket-day-tab-count { color: var(--game-accent); }
+@media (max-width: 575.98px) {
+  /* All court days stay visible on a phone: wrap instead of hiding the
+     tail behind a suppressed scrollbar. */
+  .docket-day-tabs { flex-wrap: wrap; overflow-x: visible; }
+}
+
+/* Session sub-heads: kickoff waves inside a day (the register's court
+   sessions) — keeps the 60-case Saturday orderly. */
+.docket-session-head {
+  display: flex;
+  align-items: baseline;
+  gap: .5rem;
+  margin-top: 1.4rem;
+  padding-bottom: .2rem;
+}
+.docket-session-label {
+  font-family: 'Teko', sans-serif;
+  font-weight: 500;
+  font-size: .95rem;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.docket-day-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: .8rem;
+  padding-bottom: .4rem;
+  border-bottom: 2px solid var(--docket-rule);
+}
+.docket-day-title {
+  font-family: 'Teko', sans-serif;
+  font-weight: 600;
+  font-size: 1.45rem;
+  letter-spacing: .03em;
+  text-transform: uppercase;
+  margin: 0;
+}
+
+/* --- Case rows: the docket is a ruled document, not a card grid --- */
+.docket-case-row {
+  padding: 1rem 0 1.15rem;
+  border-bottom: 1px solid var(--docket-rule);
+}
+.docket-case-meta {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  flex-wrap: wrap;
+}
+.docket-sport-tag {
+  font-family: 'Teko', sans-serif;
+  font-weight: 500;
+  font-size: .72rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  border-radius: .35rem;
+  padding: .08rem .4rem;
+  background: var(--bg-muted);
+}
+.docket-tb-tag {
+  font-family: 'Teko', sans-serif;
+  font-weight: 500;
+  font-size: .72rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--game-accent);
+  border: 1px solid rgba(var(--game-accent-rgb), .4);
+  border-radius: .35rem;
+  padding: .08rem .4rem;
+}
+.docket-locked-note {
+  font-family: 'Teko', sans-serif;
+  font-weight: 500;
+  font-size: .72rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+.docket-case-row.is-locked .docket-case-caption { color: var(--text-secondary); }
+
+.docket-markets {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: .9rem;
+  margin-top: .65rem;
+}
+.docket-market-label {
+  display: block;
+  font-family: 'Teko', sans-serif;
+  font-weight: 500;
+  font-size: .72rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  margin-bottom: .3rem;
+}
+.docket-sides {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: .45rem;
+}
+.docket-side-form { display: block; min-width: 0; }
+
+/* The side control: resting -> hover -> held (the stamp) -> locked (cold). */
+.docket-side {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .5rem;
+  width: 100%;
+  min-height: 44px;
+  padding: .45rem .6rem;
+  font-family: 'Newsreader', Georgia, serif;
+  font-size: .92rem;
+  color: var(--text-primary);
+  text-align: left;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  transition: border-color var(--transition), box-shadow var(--transition),
+              background var(--transition), transform var(--transition);
+}
+button.docket-side { cursor: pointer; }
+button.docket-side:hover {
+  border-color: var(--game-accent-light);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+.docket-side:focus-visible,
+.docket-slot-btn:focus-visible,
+.docket-day-tab:focus-visible {
+  outline: 2px solid var(--game-accent);
+  outline-offset: 2px;
+}
+.docket-side-team { flex: 1 1 auto; min-width: 0; }
+.docket-side-num {
+  font-family: 'Teko', sans-serif;
+  font-weight: 600;
+  font-size: 1.05rem;
+  letter-spacing: .02em;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+/* Held: the stamp — garnet border doubled inset + tint + weight. Never tint
+   alone (the Stamped-Side Rule). */
+.docket-side.is-picked {
+  border-color: var(--game-accent);
+  box-shadow: inset 0 0 0 1px var(--game-accent);
+  background: rgba(var(--game-accent-rgb), .09);
+  font-weight: 600;
+}
+.docket-side.is-picked .docket-side-num { color: var(--game-accent); font-weight: 700; }
+/* The opposite of a held side: available but visibly secondary — choosing
+   it MOVES the pick (one side per market), it never adds a second one. */
+.docket-side.is-move {
+  color: var(--text-secondary);
+  background: var(--bg-page);
+}
+.docket-side.is-move .docket-side-num { color: var(--text-secondary); }
+button.docket-side.is-move:hover { color: var(--text-primary); }
+.docket-slot-badge {
+  font-family: 'Teko', sans-serif;
+  font-weight: 600;
+  font-size: .72rem;
+  letter-spacing: .05em;
+  color: var(--text-on-dark);
+  background: var(--game-accent);
+  border-radius: .3rem;
+  padding: .1rem .38rem;
+  flex-shrink: 0;
+}
+.docket-headliner-chip {
+  font-family: 'Teko', sans-serif;
+  font-weight: 600;
+  font-size: .72rem;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: var(--text-on-dark);
+  background: var(--game-primary);
+  border-radius: .3rem;
+  padding: .1rem .38rem;
+  flex-shrink: 0;
+}
+/* Locked: cold and procedural, reduced contrast, reason lives in the head. */
+.docket-side.is-locked {
+  background: var(--bg-muted);
+  color: var(--text-secondary);
+}
+.docket-side.is-locked .docket-side-num { color: var(--text-secondary); }
+.docket-side.is-picked.is-locked {
+  border-color: rgba(var(--game-accent-rgb), .55);
+  box-shadow: inset 0 0 0 1px rgba(var(--game-accent-rgb), .55);
+  background: rgba(var(--game-accent-rgb), .06);
+}
+.docket-no-line {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  padding: .45rem .6rem;
+  font-family: 'Newsreader', Georgia, serif;
+  font-style: italic;
+  font-size: .85rem;
+  color: var(--text-secondary);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+}
+.docket-reserve-hint {
+  font-family: 'Teko', sans-serif;
+  font-weight: 500;
+  font-size: .72rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--game-accent);
+  border: 1px solid rgba(var(--game-accent-rgb), .4);
+  border-radius: .3rem;
+  padding: .05rem .3rem;
+  flex-shrink: 0;
+}
+
+/* --- The sheet rail: the clerk's margin --- */
+.docket-rail { position: sticky; top: 118px; }
+.docket-rail-inner {
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);  /* elevation declared once — no border */
+  padding: 1.1rem 1.1rem 1.25rem;
+}
+.docket-rail-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: .6rem;
+}
+.docket-rail-count {
+  font-family: 'Teko', sans-serif;
+  font-weight: 500;
+  font-size: 1rem;
+  color: var(--text-secondary);
+}
+.docket-rail-count strong {
+  font-size: 1.35rem;
+  font-weight: 600;
+  color: var(--game-accent);
+}
+.docket-deadline {
+  font-family: 'Newsreader', Georgia, serif;
+  font-size: .85rem;
+  color: var(--text-secondary);
+  margin: .15rem 0 .7rem;
+}
+.docket-slots { list-style: none; margin: 0; padding: 0; }
+.docket-slot {
+  display: flex;
+  align-items: flex-start;
+  gap: .6rem;
+  padding: .5rem 0;
+  border-bottom: 1px solid var(--docket-rule);
+}
+.docket-slot-num {
+  font-family: 'Teko', sans-serif;
+  font-weight: 600;
+  font-size: .95rem;
+  color: var(--text-secondary);
+  border: 1px solid var(--docket-rule);
+  border-radius: .3rem;
+  width: 1.5rem;
+  text-align: center;
+  flex-shrink: 0;
+  margin-top: .1rem;
+}
+.docket-slot.is-best .docket-slot-num {
+  color: var(--text-on-dark);
+  background: var(--game-primary);
+  border-color: var(--game-primary);
+}
+.docket-slot-body { flex: 1 1 auto; min-width: 0; }
+.docket-slot-pick {
+  display: block;
+  font-family: 'Newsreader', Georgia, serif;
+  font-weight: 600;
+  font-size: .95rem;
+  color: var(--text-primary);
+}
+.docket-slot.is-locked .docket-slot-pick { color: var(--text-secondary); }
+.docket-slot-open {
+  font-family: 'Newsreader', Georgia, serif;
+  font-style: italic;
+  font-size: .85rem;
+  color: var(--text-secondary);
+}
+.docket-headliner-tag {
+  display: inline-block;
+  font-family: 'Teko', sans-serif;
+  font-weight: 600;
+  font-size: .72rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--game-primary);
+  margin-top: .1rem;
+}
+.docket-slot-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: .3rem;
+  flex-shrink: 0;
+}
+.docket-inline-form { display: inline; }
+.docket-slot-btn {
+  font-family: 'Teko', sans-serif;
+  font-weight: 500;
+  font-size: .74rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: .35rem;
+  padding: .2rem .5rem;
+  min-height: 34px;
+  min-width: 44px;
+  cursor: pointer;
+  transition: color var(--transition), border-color var(--transition);
+}
+.docket-slot-btn:hover { color: var(--game-accent); border-color: var(--game-accent-light); }
+.docket-slot-btn-remove:hover { color: var(--danger); border-color: var(--danger); }
+/* The reserve slot reads dormant: recessed well, no ledger rule. */
+.docket-slot-backup {
+  background: var(--bg-muted);
+  border-bottom: none;
+  border-radius: var(--radius);
+  padding: .55rem .55rem;
+  margin-top: .5rem;
+}
+
+/* --- The number (tiebreaker) --- */
+.docket-tiebreaker {
+  margin-top: 1.1rem;
+  padding-top: .9rem;
+  border-top: 2px solid var(--docket-rule);
+}
+.docket-tb-case {
+  font-family: 'Teko', sans-serif;
+  font-weight: 600;
+  font-size: 1.1rem;
+  letter-spacing: .02em;
+  text-transform: uppercase;
+  margin: 0 0 .1rem;
+}
+.docket-tb-held {
+  font-family: 'Newsreader', Georgia, serif;
+  font-size: .95rem;
+  margin: .3rem 0 0;
+}
+.docket-tb-form .form-label { margin-bottom: .25rem; }
+.docket-tb-controls { display: flex; gap: .5rem; }
+.docket-tb-controls .form-control { flex: 1 1 auto; min-width: 0; }
+
+/* --- Mobile: the rail collapses to a fixed bottom drawer --- */
+.docket-rail-drawer {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1030;
+  background: var(--bg-card);
+  border-top: 2px solid var(--game-accent);
+  box-shadow: var(--shadow-sticky-up);
+}
+.docket-rail-bar {
+  display: flex;
+  align-items: center;
+  gap: .9rem;
+  min-height: 52px;
+  padding: .4rem 1rem;
+  cursor: pointer;
+  list-style: none;
+}
+.docket-rail-bar::-webkit-details-marker { display: none; }
+.docket-rail-bar-count {
+  font-family: 'Teko', sans-serif;
+  font-weight: 600;
+  font-size: 1.05rem;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--game-accent);
+}
+.docket-rail-bar-fact {
+  font-family: 'Teko', sans-serif;
+  font-weight: 500;
+  font-size: .85rem;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+.docket-rail-drawer-body {
+  max-height: 62vh;
+  overflow-y: auto;
+  padding: 0 1rem 1rem;
+}
+.docket-rail-drawer .docket-rail-inner {
+  box-shadow: none;
+  padding: 0 0 .5rem;
+}
+/* Keep the fixed bar from covering the last case row. */
+.docket-sheet-page { padding-bottom: 3rem; }
+@media (max-width: 991.98px) {
+  .docket-sheet-page { padding-bottom: 7.5rem; }
+}
+
+/* --- Notices (enhancement-layer toast; aria-live region) --- */
+.docket-notice {
+  position: fixed;
+  bottom: 64px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1040;
+  max-width: 92vw;
+  background: var(--text-primary);
+  color: var(--text-on-dark);
+  font-family: 'Newsreader', Georgia, serif;
+  font-size: .9rem;
+  padding: .5rem .95rem;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
+}
+.docket-notice.is-error { background: var(--danger); }
+
+/* --- Empty states (Awaiting the docket) --- */
+.docket-empty { max-width: 660px; margin: 2rem auto 0; }
+.docket-empty .card-body { padding: 2rem 1.75rem; }
+.docket-empty-title {
+  font-family: 'Teko', sans-serif;
+  font-weight: 600;
+  font-size: 1.7rem;
+  letter-spacing: .02em;
+  margin: .2rem 0 .4rem;
+}
+.docket-empty-copy {
+  font-family: 'Newsreader', Georgia, serif;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+/* --- Join page --- */
+.docket-join-rules { margin: 1rem 0 1.4rem; }
+.docket-join-rule {
+  padding: .6rem 0;
+  border-bottom: 1px solid var(--docket-rule);
+}
+.docket-join-rule:last-child { border-bottom: none; }
+.docket-join-rule dt {
+  font-family: 'Teko', sans-serif;
+  font-weight: 600;
+  font-size: 1.05rem;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+.docket-join-rule dd {
+  font-family: 'Newsreader', Georgia, serif;
+  font-size: .95rem;
+  color: var(--text-secondary);
+  margin: .1rem 0 0;
+}
+.docket-join-entry {
+  font-family: 'Newsreader', Georgia, serif;
+  margin-bottom: 1rem;
+}
+
+@media (max-width: 767.98px) {
+  .docket-markets { grid-template-columns: 1fr; gap: .55rem; }
+  .docket-case-caption { font-size: 1.2rem; }
 }

@@ -38,6 +38,8 @@ colors:
   wc-navy: "#001A4D"        # --wc-navy (tokens.css) — the WC brand-token navy (text/accent consumers)
   wc-navy-slot: "#002868"   # body.game-worldcup --game-primary — the game-slot navy platform components consume; two navies by construction (frozen)
   wc-red: "#BF0A30"
+  docket-oxblood: "#6E1F2E" # --game-primary on body.game-docket (light court-paper room; full family in games/docket/DESIGN.md)
+  docket-garnet: "#A63446"  # --game-accent on body.game-docket — the docket stamp
 typography:
   display:
     fontFamily: "'Teko', sans-serif"
@@ -161,6 +163,7 @@ This file is the platform foundation. Per-game design doctrine — palette speci
 - **World Cup**: `games/worldcup/DESIGN.md` (archived game; doc frozen). Owns the WC accent rank (red → white → navy → gold-quaternary), the Casual-Light substrate pattern, the `.wc-champion-banner` ceremonial primitive, the `.wc-stat-card` reference, the `.wc-eyebrow` variants (`-red` / `-gold`), the team-tier palette (`--wc-tier1`…`--wc-tier5`), the three tier primitives (`.wc-tier-dot` / `.tier-badge` / `.wc-multiplier-chip`), the Tribune voice for WC H1s.
 - **CFB**: `games/cfb/DESIGN.md` — the flagship's design contract. Owns the dark-first midnight room (the sanctioned §6 dark-room carve-out), the warm midnight ramp + crimson accent rank + survivor-state color layer, the OPEN/HELD/LOCKED/VERDICT state model, the Survivor voice for CFB H1s, the shipped `.cfb-*` component vocabulary (incl. `.championship-hero`, the `.cfb-verdict` family, the Commissioner's Desk admin register), the CFB-era lounge contract (C1), and CFB implementation guidance.
 - **Golf**: `games/golf/DESIGN.md` (planned; authored in the ~Jan 2027 UI phase). Augusta Green + warm gold palette; tournament-rhythm primitives.
+- **The Docket**: `games/docket/DESIGN.md` — the light court-paper room (bone substrate, WC/Golf family). Owns the law-book oxblood + stamp-garnet palette, the courtroom register (docket/case/verdict/mistrial/headliner), the `.docket-*` sheet primitives (rail, slot, side control, headliner, reserve, tiebreaker), and the frozen-number doctrine.
 
 When working on a game's surfaces, treat the game-scoped file as authoritative for game-specific decisions; this top-level file remains authoritative for cross-game concerns (the palette framework, typography, elevation, motion, design laws). Tooling note: the stock impeccable loader emits only the top-level `PRODUCT.md`/`DESIGN.md` — it does **not** discover per-game files. The layering is enforced by the CLAUDE.md hard rule instead: read `games/<slug>/DESIGN.md` yourself, alongside this file, before producing design output (contract + history in `docs/per-game-design-doc-convention.md`).
 
@@ -206,6 +209,7 @@ Each game blueprint adds a palette layered over the CCC chrome via a `body.game-
 - **Golf** (`body.game-golf`): Augusta Green (`#006747`) + warm gold (`#B8993E`). Tournament rhythm, season progression.
 - **CFB** (`body.game-cfb`): Crimson (`#C5050C`) + a warm midnight ramp (canvas `#0E0A0C`) + bone accent. Survivor pressure, weekly spreads. CFB is the sanctioned dark-first room — it rebases the platform surface/text tokens onto its midnight ramp under `body.game-cfb`; full doctrine in `games/cfb/DESIGN.md`.
 - **World Cup** (`body.game-worldcup`): Navy + Match Red (`#BF0A30`). Knockout urgency, multipliers. WC carries **two navies by construction**: the brand token `--wc-navy` (`#001A4D`, tokens.css — text/accent consumers) and the game-slot `--game-primary` (`#002868` — what platform components consume, echoed by literal `rgba(0,40,104,…)` tints). Both are frozen with the WC surfaces; don't "correct" one into the other. WC additionally specializes the accent rank (red primary, gold quaternary) and adds a team-tier color set — see `games/worldcup/DESIGN.md`.
+- **The Docket** (`body.game-docket`): Law-book Oxblood (`#6E1F2E`) + Stamp Garnet (`#A63446`). Frozen-line pick'em on court paper; a light room (no token rebase). The wine family is deliberately darker and browner than CFB's signal crimson and WC's match red — don't brighten it toward either. Full ramp + register in `games/docket/DESIGN.md`.
 
 ### Neutral
 

@@ -82,3 +82,4 @@ AGENTS.md
 
 # Ruff linter cache
 .ruff_cache/
+.gstack/

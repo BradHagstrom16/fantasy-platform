@@ -64,6 +64,10 @@ class Config:
     CFB_ENTRY_FEE = int(os.environ.get('CFB_ENTRY_FEE', '25'))
     CFB_SEASON_YEAR = int(os.environ.get('CFB_SEASON_YEAR', '2026'))
 
+    # The Docket Settings (season year lives in games/docket/services/weeks.py,
+    # the week-math SSoT — deliberately not a config knob)
+    DOCKET_ENTRY_FEE = int(os.environ.get('DOCKET_ENTRY_FEE', '25'))
+
     # World Cup Fantasy Pool — football-data.org sync
     FOOTBALL_DATA_API_KEY = os.environ.get('FOOTBALL_DATA_API_KEY', '')
 
