@@ -1,5 +1,6 @@
 """Docket pick-sheet route locks: rendering states, the dual-mode mutation
 seam (form PRG vs sheet-state JSON), and the client-input tamper lock."""
+import re
 from datetime import datetime
 
 import pytest
@@ -260,10 +261,18 @@ def test_an_assigned_double_on_a_full_sheet_reads_on_its_own(
     at(monkeypatch, '2026-09-05T16:30:00')
     html = client.get('/docket/').data.decode()
 
-    assert 'Your headliner was assigned for you.' in html
-    assert 'filed for you when the docket closed' not in html
-    assert 'It scores exactly like every other side you picked.' in html
-    assert 'They score exactly like' not in html
+    # Scope the negatives to the notice itself: a page-wide "not in" would
+    # fail for an unrelated reason the day some other surface uses one of
+    # these phrases. The rail renders twice (desktop aside + mobile drawer),
+    # so both copies are checked.
+    notes = re.findall(r'<div class="docket-auto-note">.*?</div>', html,
+                       re.DOTALL)
+    assert len(notes) == 2, 'the note renders in both rail copies'
+    for note in notes:
+        assert 'Your headliner was assigned for you.' in note
+        assert 'It scores exactly like every other side you picked.' in note
+        assert 'filed for you when the docket closed' not in note
+        assert 'They score exactly like' not in note
 
 
 def test_a_sheet_the_player_filled_carries_no_auto_marks(
