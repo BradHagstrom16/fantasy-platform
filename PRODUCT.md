@@ -1,8 +1,6 @@
 # Product
 
-## Register
-
-product
+<!-- impeccable:product-schema 1 -->
 
 ## Platform
 
@@ -145,6 +143,21 @@ Success looks like:
 - Leaderboards create emotional reactions
 - The UI reinforces group identity and rivalry
 - The experience consistently feels like "our site," not a generic fantasy product
+
+## Positioning
+
+**Formats are built, not configured.** Every CCC game is a purpose-built rules engine with its own models, scoring, deadline mechanics, and vocabulary, not a preset selected inside a generic fantasy framework. A mainstream platform can add a survivor pool; it cannot carry spread-lock survivor, tier-plus-multiplier World Cup, and frozen-line NFL+CFB pick'em as first-class games at once, because each one would have to be built rather than configured. This is the claim a neighboring product cannot truthfully copy, and it is the reason each game lives in its own blueprint under `games/<slug>/` with its own models, services, and design doctrine.
+
+**No house edge.** CCC serves a fixed, privately enrolled roster. There are no ads, no upsell, no acquisition surface, no growth mechanics, and no data business, so there is nothing to optimize for except the enjoyment of the people already in the club. A platform serving millions is structurally unable to make the same trade.
+
+## Operating Context
+
+These are factual conditions of use, not aspirations. Work that ignores them is wrong regardless of how it looks in isolation.
+
+- **The deadline is a hard, real-world clock.** Play is governed by actual kickoff times (The Docket's Saturday 11:00 CT line, CFB Survivor's weekly lock, Golf's tee-time cutoffs). Members act in the hours before a deadline and check repeatedly during the live window afterward. Reminder emails go out on a schedule from systemd timers on the production droplet.
+- **A phone, one-handed, with the game on.** The primary environment is mobile, during live sports, while multitasking or in company. Sessions are short and repeated across a weekend rather than long and deliberate.
+- **The group chat is the second screen.** The banter, rivalry, and trash talk happen in the group's own text thread. CCC supplies the facts that argument runs on and does not attempt to host the conversation itself.
+- **A commish runs the season by hand.** One admin performs real operational work on a calendar: freezing lines, importing weeks, managing teams, enrolling members, and deploying. Members never see this surface, but it is a factual part of how a season runs and it is why enrollment and admin are explicit acts rather than self-serve flows.
 
 ## Brand Personality
 
@@ -302,6 +315,27 @@ Each game feels meaningfully distinct while remaining inside the CCC system:
 - Survivor pools emphasize elimination pressure and weekly spread locks
 
 The CCC platform provides the consistent chrome (purple/gold + bone, Teko + Newsreader, navbar, login). Each game provides its own room: its own palette, sub-nav, and interaction emphasis. Game blueprints inject their identity via `body.game-<game>` and a per-game CSS section in `style.css`.
+
+## Evidence on Hand
+
+Real material that design and product work must use rather than invent.
+
+- **A finished season of real data.** The 2026 World Cup pool ran to completion with real members, real picks, and real final standings, and is archived in-product in a permanent post-state. A 2025 CFB Survivor season sits in a legacy database outside this repo and is queued to migrate. Real history exists, so never mock up fictional standings, scores, or member names to fill a surface.
+- **A commissioned logo kit.** The King Viking Badger identity was delivered by a designer on 2026-05-27: head mark, mascot bust, wordmarks in bone/gold/purple, and the seal, wired at `static/img/logo/`. These are the brand assets. Do not generate substitutes or redraw the mark.
+- **Live in production.** `cccfantasy.com` is live and load-bearing for a real group right now. It is not a portfolio piece, a staging concept, or a demo.
+
+**Absences that must not be fabricated.** There are no customers, testimonials, case studies, reviews, press mentions, benchmarks, usage statistics, awards, pricing, or licensing, and there will not be. Any surface that appears to need one of these needs a different surface.
+
+## Product Principles
+
+Durable strategic locks. The visual counterparts live in `## Design Principles` above and in `DESIGN.md`; these are product-level and bind regardless of how a surface looks.
+
+1. **The format is the product.** A new game gets purpose-built rules, models, deadline mechanics, and vocabulary. Never reskin an existing game's engine with the nouns swapped.
+2. **No house edge.** No ads, no upsell, no acquisition surface, no growth mechanics, no data business. There is nothing to optimize for except the enrolled group's enjoyment.
+3. **The deadline is the clock.** Every surface answers "what is due, and am I locked?" before it answers anything else. Nothing outranks an open pick before its deadline.
+4. **Fuel the argument, do not host it.** CCC supplies the facts the group chat runs on: standings, movement, receipts, ownership. It does not become the chat. No comment threads, no activity feed, no reactions.
+5. **A season is a record, not a session.** Completed seasons stay reachable with their real data intact rather than being wiped for a fresh start.
+6. **Membership is granted, never self-serve.** Enrollment, admin, and season operations are explicit acts by a person. No signup funnel, no viral invite loop, no self-serve unenroll.
 
 ## Accessibility & Inclusion
 

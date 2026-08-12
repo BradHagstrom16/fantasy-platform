@@ -1,7 +1,6 @@
 ---
 name: World Cup Fantasy Pool — Design Specialization
 description: Per-game design doctrine for the World Cup tab cluster. Layers on top of the platform foundation at the repo root's DESIGN.md.
-register: product
 extends: ../../DESIGN.md
 colors:
   # WC carries two navies by construction (both frozen; don't "correct" one into the other):

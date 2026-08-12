@@ -76,9 +76,55 @@ typography:
     fontWeight: 500
     lineHeight: 1.2
     letterSpacing: "0.14em"
+  # The enumerated type ramp. The six roles above name the canonical voices;
+  # this map is the full set of steps the platform + game rooms are allowed to
+  # use, so anything off it reads as drift. Round increments only: near
+  # neighbours (0.66/0.68/0.72/0.74/0.76/0.78rem and friends) resolve to the
+  # nearest step rather than earning one of their own.
+  scale:
+    step-0-60: "0.6rem"
+    step-0-65: "0.65rem"
+    step-0-70: "0.7rem"
+    step-0-75: "0.75rem"
+    step-0-80: "0.8rem"
+    step-0-95: "0.95rem"
+    step-1-05: "1.05rem"
+    step-1-10: "1.1rem"
+    step-1-15: "1.15rem"
+    step-1-20: "1.2rem"
+    step-1-25: "1.25rem"
+    step-1-30: "1.3rem"
+    step-1-35: "1.35rem"
+    step-1-40: "1.4rem"
+    step-1-60: "1.6rem"
+    step-1-70: "1.7rem"
+    step-1-80: "1.8rem"
+    step-2-00: "2rem"
+    step-2-20: "2.2rem"
+    step-2-60: "2.6rem"
+    step-2-80: "2.8rem"
+    step-3-00: "3rem"
+    step-3-50: "3.5rem"
+    step-4-00: "4rem"
+    step-4-50: "4.5rem"
+    step-5-00: "5rem"
+    step-6-00: "6rem"
+    step-7-00: "7rem"
 rounded:
+  hairline: "1px"
+  xxs: "2px"
+  xs: "3px"
+  xs-lg: "4px"
+  sm-tight: "5px"
+  sm-mid: "6px"
   sm: "0.5rem"
+  md-tight: "10px"
+  md: "12px"
   lg: "0.875rem"
+  lg-plus: "16px"
+  xl: "22px"
+  xxl: "2rem"
+  pill: "999px"
 spacing:
   card-padding: "1rem"
   hero-padding-y: "3.5rem"
@@ -151,7 +197,7 @@ A private sports bulletin assembled inside the club itself. Editorial hierarchy,
 - Brand-tinted depth (purple shadows, gold glow), never neutral gray
 - Quiet authority in chrome, loud moments at primary CTAs
 - Mobile-first surfaces (375 px viewport is the design floor)
-- Three game palettes layered over CCC chrome via `body.game-<slug>` overrides
+- Four game palettes layered over CCC chrome via `body.game-<slug>` overrides
 - Newsreader serif paragraphs, Teko condensed-sans headlines, no third font
 
 The system explicitly rejects: ESPN/Yahoo fantasy chrome (banner ads, untiered tables, navigation overload); generic SaaS dashboards (Inter on gray-on-white, hero-metric template, identical card grids); Bootstrap-starter regression (stock `.card`, unscoped `.btn-primary`, default navbar); crypto/Web3 aesthetic (neon-on-black, glassmorphism); generic sports skeuomorphism (stadium textures, scoreboard fonts).
@@ -178,7 +224,7 @@ A surface's home follows its depth: the lounge orients and summarizes; a room co
 
 ## 2. Colors: The Commissioner's Club Palette
 
-A two-color brand system (deep purple + ceremonial gold) on a warm bone neutral, with three per-game palettes layered selectively. Shadows tint with the purple. Live indicators are the only saturated reds and greens permitted; everything else routes through the brand's two-axis identity.
+A two-color brand system (deep purple + ceremonial gold) on a warm bone neutral, with four per-game palettes layered selectively. Shadows tint with the purple. Live indicators are the only saturated reds and greens permitted; everything else routes through the brand's two-axis identity.
 
 ### Primary
 
@@ -232,7 +278,7 @@ The bone family. The pressroom paper. Default page background, light card text o
 
 **The Trophy Rule.** The metal-gold gradients (`--metal-gold` / `--metal-gold-flat`) are reserved for primary CTAs and the active navbar button. Gold gradients on cards, page backgrounds, badges, or decorative chrome dilute the trophy. If you find yourself reaching for `--metal-gold` on a non-CTA surface, you want a flat gold (`--gold` or `--gold-light`) or no gold at all.
 
-**The Two-Color Rule.** CCC is purple plus gold on bone. Game tertiaries (Golf green, CFB crimson, WC navy/red) layer **only** when the surface is scoped under a `body.game-<slug>` class. A platform-chrome surface that introduces a third color outside the CCC duo without that scoping is a design failure.
+**The Two-Color Rule.** CCC is purple plus gold on bone. Game tertiaries (Golf green, CFB crimson, WC navy/red, Docket oxblood/garnet) layer **only** when the surface is scoped under a `body.game-<slug>` class. A platform-chrome surface that introduces a third color outside the CCC duo without that scoping is a design failure.
 
 **The No-Pure-White Rule.** The page background is Pressroom Bone (`#F3EFE6`), not white. The literal white (`#FFFFFF`) is reserved for `.card` interiors nested on bone. The body of a CCC page should never read as a white SaaS surface.
 
@@ -266,6 +312,8 @@ The bone family. The pressroom paper. Default page background, light card text o
 **The Uppercase Rule.** Uppercase is for Teko (labels, eyebrows, button text, table heads, navbar links). Newsreader is never uppercased. Mixing is a slop signal.
 
 **The Line-Length Rule.** Newsreader paragraphs cap at 65 to 75 ch. Wider paragraphs read as a wall of text and lose the editorial register.
+
+**The Ramp Rule.** The six roles above name the canonical voices; the frontmatter's `typography.scale` enumerates every size step the platform and its game rooms are allowed to use. A size that isn't on the ramp is drift, not a new step, and the mechanical detector reports it as such. If a surface genuinely needs a step the ramp lacks, add it to the frontmatter deliberately rather than letting the value land loose in `style.css`. The same applies to `rounded` for corner radii.
 
 ## 4. Elevation
 

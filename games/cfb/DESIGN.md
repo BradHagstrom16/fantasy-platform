@@ -1,7 +1,6 @@
 ---
 name: CFB Survivor Pool — Design Doctrine
 description: Per-game design doctrine for CFB Survivor at cccfantasy.com. A dark-first room layered on the platform foundation (repo root DESIGN.md). Product philosophy, identity system, component doctrine, lounge + room architecture, implementation guidance.
-register: product
 extends: ../../DESIGN.md
 colors:
   # Shipped tokens — these ARE the values in static/css/style.css (body.game-cfb block),
