@@ -15,6 +15,7 @@ every posted line is a dyadic rational (.0/.5/.25), exactly representable,
 so push-equality against integer scores is float-exact. Points are float in
 exact half steps.
 """
+import math
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import StrEnum
@@ -78,7 +79,7 @@ def _require_line(value, name):
         return
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         raise ValueError(f'{name} must be a number or None, got {value!r}')
-    if value * 4 != int(value * 4):
+    if not math.isfinite(value) or value * 4 != int(value * 4):
         raise ValueError(
             f'{name} must be a quarter-point line, got {value!r}')
 
