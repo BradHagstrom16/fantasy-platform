@@ -144,8 +144,10 @@ def admin_tiebreaker(week_number):
                           f'cleared to the new default; '
                           f'{_count(result["notified"], "player")} notified '
                           f'they may resubmit.', 'info')
-            return redirect(url_for('docket.admin_tiebreaker',
-                                    week_number=week_number))
+        # Redirect on both outcomes, like the two sibling screens: one
+        # failure shape across the desk, and flashes survive the redirect.
+        return redirect(url_for('docket.admin_tiebreaker',
+                                week_number=week_number))
 
     return render_template(
         'docket/admin/tiebreaker.html',

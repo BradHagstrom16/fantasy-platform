@@ -45,6 +45,20 @@ def upgrade():
 
 
 def downgrade():
+    # is_auto_best cannot be recomputed once dropped: the deadline pass
+    # short-circuits on any player who already has a headliner, and is_best
+    # survives the drop, so a downgrade/upgrade cycle would silently relabel
+    # assigned headliners as player-chosen. Refuse rather than destroy the
+    # evidence. Clearing the flags deliberately unblocks the rollback for an
+    # operator who really means it.
+    assigned = op.get_bind().execute(sa.text(
+        'SELECT COUNT(*) FROM docket_pick WHERE is_auto_best')).scalar()
+    if assigned:
+        raise RuntimeError(
+            f'{assigned} pick(s) record an auto-assigned headliner. Dropping '
+            f'is_auto_best would lose that permanently and it cannot be '
+            f'recomputed. Clear the flag deliberately first if you truly '
+            f'intend to discard it, then re-run this downgrade.')
     with op.batch_alter_table('docket_pick', schema=None) as batch_op:
         batch_op.drop_constraint('ck_docket_pick_auto_best_implies_best',
                                  type_='check')

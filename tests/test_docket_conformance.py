@@ -114,7 +114,12 @@ def test_admin_routes_reject_enrolled_non_admin(app, client):
     for path in ADMIN_PATHS:
         resp = client.get(path)
         assert resp.status_code == 302, path
-        assert '/docket' in resp.headers['Location']
+        # Not just "/docket": every admin path starts with /docket/admin/,
+        # so a loose check would pass if the gate bounced an unauthorized
+        # user onto another admin screen, which is what this test exists
+        # to catch.
+        assert '/docket/admin' not in resp.headers['Location'], path
+        assert '/docket' in resp.headers['Location'], path
 
 
 def test_admin_routes_reject_anonymous(app, client):

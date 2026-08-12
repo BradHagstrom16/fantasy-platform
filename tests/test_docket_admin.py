@@ -362,6 +362,47 @@ def test_line_correction_refuses_junk_numbers(monkeypatch, week):
         assert err.value.code == 'invalid_number'
 
 
+def test_line_correction_refuses_non_finite_numbers(monkeypatch, week):
+    """float() accepts 'nan' and 'inf' happily; only the explicit check stops
+    a non-finite number reaching the column."""
+    game = _sat(week)
+    db.session.commit()
+    at(monkeypatch, BEFORE_DEADLINE)
+
+    for value in ('nan', 'inf', '-inf'):
+        with pytest.raises(AdminOpError) as err:
+            admin_ops.correct_line(week, game.id, 'total', value,
+                                   'draftkings', 'typo', 1)
+        assert err.value.code == 'invalid_number', value
+    assert db.session.get(DocketGame, game.id).total_points == 51.5
+
+
+def test_line_correction_requires_a_usable_bookmaker(monkeypatch, week):
+    game = _sat(week)
+    db.session.commit()
+    at(monkeypatch, BEFORE_DEADLINE)
+
+    for book in ('', '   ', 'x' * 41):
+        with pytest.raises(AdminOpError) as err:
+            admin_ops.correct_line(week, game.id, 'total', '48.5', book,
+                                   'bad import', 1)
+        assert err.value.code == 'book_required', repr(book)
+
+
+def test_line_correction_refuses_the_number_already_on_file(monkeypatch, week):
+    """No audit row for a correction that corrects nothing."""
+    game = _sat(week, total=51.5)
+    db.session.commit()
+    at(monkeypatch, BEFORE_DEADLINE)
+
+    with pytest.raises(AdminOpError) as err:
+        admin_ops.correct_line(week, game.id, 'total', '51.5',
+                               game.total_book, 'no change', 1)
+    assert err.value.code == 'no_change'
+    assert db.session.scalar(
+        select(func.count()).select_from(DocketLineCorrection)) == 0
+
+
 def test_correcting_the_designated_total_must_keep_the_contract(
         monkeypatch, week):
     """The number range check is looser than the designation contract, so a

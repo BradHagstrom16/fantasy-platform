@@ -241,6 +241,31 @@ def test_auto_filed_sides_are_marked_and_the_sheet_says_why(
     assert 'is-picked is-locked is-best' in html
 
 
+def test_an_assigned_double_on_a_full_sheet_reads_on_its_own(
+        monkeypatch, client, member):
+    """A player who picked all their sides but named no headliner: nothing
+    was filed, so the note must not talk about sides that do not exist."""
+    week = make_week(1)
+    game = make_game(week, kickoff=KICK_SAT)
+    db.session.commit()
+    at(monkeypatch, IN_WEEK1)
+    client.post('/docket/picks/set',
+                data={'game_id': game.id, 'market': 'spread',
+                      'side': 'home', 'csrf_token': 'x'})
+    own = db.session.scalars(select(DocketPick)).one()
+    own.is_best = True
+    own.is_auto_best = True
+    db.session.commit()
+
+    at(monkeypatch, '2026-09-05T16:30:00')
+    html = client.get('/docket/').data.decode()
+
+    assert 'Your headliner was assigned for you.' in html
+    assert 'filed for you when the docket closed' not in html
+    assert 'It scores exactly like every other side you picked.' in html
+    assert 'They score exactly like' not in html
+
+
 def test_a_sheet_the_player_filled_carries_no_auto_marks(
         monkeypatch, client, member):
     week = make_week(1)

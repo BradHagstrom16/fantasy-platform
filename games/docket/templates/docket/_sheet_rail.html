@@ -101,7 +101,10 @@
           favorites on the largest spreads.
         {%- endif %}
         {%- if auto_best %} Your headliner was assigned for you.{% endif %}
-        They score exactly like the sides you picked.
+        {#- A full sheet with no headliner named gets the second sentence
+            only, so "they" would have nothing to refer to. -#}
+        {% if auto_n %}They score exactly like the sides you picked.
+        {%- else %}It scores exactly like every other side you picked.{% endif %}
       </p>
     </div>
   {% endif %}
