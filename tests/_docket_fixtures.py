@@ -60,13 +60,18 @@ def make_week(week_number=1):
 def make_game(week, *, kickoff, home='Home Team', away='Away Team',
               sport='americanfootball_ncaaf',
               home_spread=-3.5, spread_book='draftkings',
-              total=51.5, total_book='draftkings'):
+              total=51.5, total_book='draftkings', created_at=None):
     """A game with both markets locked by default; pass None to unpost one.
 
-    ``kickoff`` is naive UTC (the D6 column contract).
+    ``kickoff`` is naive UTC (the D6 column contract). ``created_at`` is
+    pinned to the Tuesday line freeze rather than left to the model's
+    real-wall-clock default: the deadline pass compares it against the
+    week deadline to spot a late arrival, so a real ``now()`` would silently
+    reclassify every seeded game once the calendar passes Sep 5 2026.
     """
     locked_at = datetime(2026, 9, 1, 11, 0)
     game = DocketGame(
+        created_at=created_at if created_at is not None else locked_at,
         week_id=week.id,
         sport=sport,
         api_event_id=f'test-ev-{next(_event_ids)}',

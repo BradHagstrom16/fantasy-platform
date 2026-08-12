@@ -21,23 +21,30 @@ from games.docket.services.grading.snapshots import (
 )
 
 
-def default_tiebreaker_tenths(week: WeekSnapshot) -> int:
-    """The designated game's locked O/U total, in integer tenths.
+def total_to_tenths(total, where: str) -> int:
+    """A locked O/U total as integer tenths — the designation contract's
+    numeric half, on its own so the deadline pass can pre-flight an ORM row
+    days before any snapshot exists (a snapshot needs frozen kickoffs; the
+    early warning must fire on Tuesday).
 
     Raises when the total is missing (designation requires a locked total)
     or not a whole tenth (a .25 total is an admin re-designation, never
     silent rounding — F7)."""
-    total = week.tiebreaker_game.total
     if total is None:
         raise ValueError(
-            f'designated game {week.tiebreaker_event_id!r} has no locked '
-            f'total — designation requires one')
+            f'{where} has no locked total — designation requires one')
     scaled = Decimal(str(total)) * 10
     if scaled != scaled.to_integral_value():
         raise ValueError(
-            f'designated total {total!r} is not a whole tenth — '
+            f'{where}: total {total!r} is not a whole tenth — '
             f're-designate rather than round')
     return int(scaled)
+
+
+def default_tiebreaker_tenths(week: WeekSnapshot) -> int:
+    """The designated game's locked O/U total, in integer tenths."""
+    return total_to_tenths(week.tiebreaker_game.total,
+                           f'designated game {week.tiebreaker_event_id!r}')
 
 
 def _favored_side(game: GameSnapshot) -> Side | None:

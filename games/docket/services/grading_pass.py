@@ -20,7 +20,7 @@ from games.docket.models import (
     DocketWeek,
     DocketWeekResult,
 )
-from games.docket.services.grading.engine import grade_week
+from games.docket.services.grading.engine import EngineError, grade_week
 from games.docket.services.grading.snapshots import (
     GameSnapshot,
     PickSnapshot,
@@ -30,23 +30,36 @@ from games.docket.services.grading.snapshots import (
 from games.docket.utils import now_utc, to_naive_utc
 
 
+class WeekNotReady(ValueError):
+    """The week cannot be graded YET — a wait, not a defect.
+
+    Distinct from the ValueErrors that mean corrupt data (a duplicate slot,
+    two headliners): those must reach the operator as failures, not be
+    reported as "check back later" by a timer that then exits 0. Subclasses
+    ValueError so existing callers and locks keep working.
+    """
+
+
 def build_week_snapshot(week: DocketWeek) -> WeekSnapshot:
     """Map a DocketWeek + its games to the engine's input, verbatim.
 
-    Refuses to build when the deadline pass hasn't stamped
-    kickoff_at_deadline (F6 — the substitution ordering input must be the
-    frozen kickoff, never the live one) or when no tiebreaker game is
-    designated. Scores flow through only when is_final — an in-progress
-    score must never grade.
+    Raises WeekNotReady for the two states that resolve by waiting: the
+    deadline pass hasn't stamped kickoff_at_deadline (F6 — the substitution
+    ordering input must be the frozen kickoff, never the live one), or no
+    tiebreaker game is designated yet. A designation pointing OUTSIDE this
+    week is invalid data and raises plain ValueError, so it surfaces as a
+    failure. Scores flow through only when the persisted is_final says
+    so — this gate, not the snapshot's own is_final property, is what keeps
+    a live score from ever reaching the engine.
     """
     if week.tiebreaker_game_id is None:
-        raise ValueError(
+        raise WeekNotReady(
             f'week {week.week_number} has no designated tiebreaker game')
     tiebreaker_event_id = None
     games = []
     for game in sorted(week.games, key=lambda g: g.api_event_id):
         if game.kickoff_at_deadline is None:
-            raise ValueError(
+            raise WeekNotReady(
                 f'{game.api_event_id}: kickoff_at_deadline is not stamped '
                 f'— run the deadline pass before grading')
         final = game.is_final and not game.no_contest
@@ -65,6 +78,11 @@ def build_week_snapshot(week: DocketWeek) -> WeekSnapshot:
         if game.id == week.tiebreaker_game_id:
             tiebreaker_event_id = game.api_event_id
     if tiebreaker_event_id is None:
+        # NOT WeekNotReady: a designation pointing at another week's game is
+        # invalid data, not a state that resolves by waiting. It must reach
+        # the operator as a failure rather than as "check back later" —
+        # set_tiebreaker cannot produce it, so if it exists something wrote
+        # the column directly. WeekSnapshot enforces the same invariant.
         raise ValueError(
             f'week {week.week_number}: designated tiebreaker game is not '
             f'on this week\'s docket')
@@ -108,6 +126,28 @@ def build_player_inputs(week: DocketWeek) -> tuple[PlayerWeekInput, ...]:
     )
 
 
+def player_inputs_for(week: DocketWeek, user_ids=None
+                      ) -> tuple[PlayerWeekInput, ...]:
+    """The week's player inputs, optionally projected onto a roster.
+
+    ``user_ids=None`` keeps the submitted-input population (every user with
+    a pick or a prediction). Passing a roster returns exactly those users in
+    the given order, materializing an empty input for anyone who submitted
+    nothing — the shape the D5 autopick package completes and the grading
+    pass grades. Both callers (the deadline pass and run_grading_pass) share
+    this one builder so their populations can never drift apart.
+    """
+    players = build_player_inputs(week)
+    if user_ids is None:
+        return players
+    by_id = {p.player_id: p for p in players}
+    return tuple(
+        by_id.get(str(uid), PlayerWeekInput(
+            player_id=str(uid), picks=(), tiebreaker_tenths=None))
+        for uid in user_ids
+    )
+
+
 def run_grading_pass(week_id: int, user_ids=None) -> dict:
     """Grade a week and upsert docket_week_result rows (D14-eng).
 
@@ -125,13 +165,7 @@ def run_grading_pass(week_id: int, user_ids=None) -> dict:
     # the select-then-upsert below cannot race itself.
     db.session.refresh(week, with_for_update=True)
     snapshot = build_week_snapshot(week)
-    players = build_player_inputs(week)
-    if user_ids is not None:
-        by_id = {p.player_id: p for p in players}
-        players = tuple(
-            by_id.get(str(uid), PlayerWeekInput(
-                player_id=str(uid), picks=(), tiebreaker_tenths=None))
-            for uid in user_ids)
+    players = player_inputs_for(week, user_ids)
 
     grade = grade_week(snapshot, players)
     graded_at = to_naive_utc(now_utc())
@@ -158,3 +192,29 @@ def run_grading_pass(week_id: int, user_ids=None) -> dict:
         'week_number': week.week_number,
         'graded': len(grade.players),
     }
+
+
+def try_grade_week(week_id: int, user_ids=None) -> dict:
+    """Grade a week when it is ready; report why when it is not.
+
+    A week that is missing a final score, or whose deadline pass hasn't run,
+    is a NORMAL state for a Sunday-evening scores run — the engine refuses it
+    by design and the caller decides what that means. Polling callers want
+    'not ready yet' with a reason, not a traceback. A genuinely bad week id
+    still raises: that is a bug, not a wait.
+    """
+    week = db.session.get(DocketWeek, week_id)
+    if week is None:
+        raise ValueError(f'no docket week with id {week_id}')
+    week_number = week.week_number
+    try:
+        return run_grading_pass(week_id, user_ids=user_ids)
+    except (WeekNotReady, EngineError) as exc:
+        # The two readiness shapes: WeekNotReady (no deadline pass, no
+        # designation) and EngineError (a picked game has no final score
+        # yet). Anything else — a duplicate slot, two headliners — is
+        # corrupt data and propagates, so a timer fails loudly instead of
+        # reporting "check back later" and exiting 0.
+        db.session.rollback()
+        return {'status': 'not_ready', 'week_number': week_number,
+                'reason': str(exc)}
