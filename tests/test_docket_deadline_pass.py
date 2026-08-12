@@ -317,9 +317,14 @@ def test_try_grade_week_waits_on_readiness_but_never_on_corruption(app):
     a green run that never grades."""
     from games.docket.services.grading_pass import try_grade_week
 
+    # _seed designates games[0], so the only thing missing is the stamp —
+    # assert the reason, not just the status, or a regression in the
+    # designation check would satisfy this call too.
     week, _games = _seed()
     db.session.commit()
-    assert try_grade_week(week.id)['status'] == 'not_ready'
+    waiting = try_grade_week(week.id)
+    assert waiting['status'] == 'not_ready'
+    assert 'kickoff_at_deadline is not stamped' in waiting['reason']
 
     from games.docket.services.deadline_pass import stamp_kickoffs
 
