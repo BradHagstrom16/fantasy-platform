@@ -10,7 +10,7 @@ A unified fantasy sports platform consolidating multiple games under one domain,
 
 **Games** (status lives in `games/registry.py`):
 - `games/cfb/` — CFB Survivor Pool — **active focus**; registry `open` + featured since the 2026-08-11 changeover (season starts Thu Sep 3). Dark-first room + admin cluster shipped; design doctrine in `games/cfb/DESIGN.md`.
-- `games/docket/` — The Docket (NFL+CFB weekly pick'em) — **active focus**; registry `open`, NOT featured (Survivor keeps the lounge until the ~Oct multi-featured redesign). Light court-paper room; design doctrine in `games/docket/DESIGN.md`; concept brief in `docs/2026-08-11-nfl-cfb-pickem-office-hours-kickoff.md`; binding rulings (Session Rulings, Grading Clarifications, Eng Review Addendum D5–D24, RULING OVERRIDE) in the 2026-08-11 design SSoT at `~/.gstack/projects/BradHagstrom16-fantasy-platform/bhagstrom-main-design-20260811-120329.md` (local gstack artifact, not in-repo). Pick sheet + join shipped (T7); sync/recalc CLI (T8), admin (T9), standings (T10), timers (T11) pending. The blueprint lives in `games/docket/blueprint.py`, not the package `__init__` — the pure grading package's flask-free import graph is a locked contract (D9). Prod docket tables stay empty until the deliberate Week-1 import at the real line freeze (Tue Sep 1).
+- `games/docket/` — The Docket (NFL+CFB weekly pick'em) — **active focus**; registry `open`, NOT featured (Survivor keeps the lounge until the ~Oct multi-featured redesign). Light court-paper room; design doctrine in `games/docket/DESIGN.md`; concept brief in `docs/2026-08-11-nfl-cfb-pickem-office-hours-kickoff.md`; binding rulings (Session Rulings, Grading Clarifications, Eng Review Addendum D5–D24, RULING OVERRIDE) in the 2026-08-11 design SSoT at `~/.gstack/projects/BradHagstrom16-fantasy-platform/bhagstrom-main-design-20260811-120329.md` (local gstack artifact, not in-repo). Pick sheet + join shipped (T7); sync/recalc CLI + deadline pass shipped (T8); admin (T9), standings (T10), timers (T11) pending. The blueprint lives in `games/docket/blueprint.py`, not the package `__init__` — the pure grading package's flask-free import graph is a locked contract (D9). **Grading readiness has two distinct shapes**: `grading_pass.WeekNotReady` (a `ValueError` subclass) means "resolves by waiting" — the deadline pass hasn't stamped `kickoff_at_deadline`, or no tiebreaker is designated yet — and `try_grade_week` reports it as `not_ready`; every other `ValueError` is corrupt data and propagates, so a timer fails loudly instead of exiting 0 forever. Don't widen that catch. **`is_autopick` reaches `sheet_state()` but no template renders it** — after the first deadline pass a player sees picks they never made, unmarked; a designed pick-sheet slice still owes that badge. Prod docket tables stay empty until the deliberate Week-1 import at the real line freeze (Tue Sep 1).
 - `games/worldcup/` — World Cup Fantasy Pool — **archived** (2026 tournament concluded 2026-07-19; permanent post-state). Registry `'completed'` since the 2026-08-11 changeover.
 - `games/golf/` — Golf Pick 'Em — `coming_soon` (launches ~Jan 2027; backend hardened, UI phase pending)
 
@@ -58,6 +58,16 @@ FLASK_APP=app.py venv/bin/flask cfb sync --mode scores      # Fetch scores, auto
 FLASK_APP=app.py venv/bin/flask cfb sync --mode autopick    # Process auto-picks for past-deadline weeks
 FLASK_APP=app.py venv/bin/flask cfb sync --mode remind      # Send email reminders (Fri/Sat only)
 FLASK_APP=app.py venv/bin/flask cfb sync --mode status      # Print season summary
+
+# Docket CLI (no timers until T11 — every command below is run by hand for now)
+FLASK_APP=app.py venv/bin/flask docket sync --mode setup     # Create the week + import both slates + lock first-posted lines (Tue)
+FLASK_APP=app.py venv/bin/flask docket sync --mode lines     # Gap-fill still-empty markets + D19 kickoff refresh; warns on a bad tiebreaker designation (Tue-Fri)
+FLASK_APP=app.py venv/bin/flask docket sync --mode deadline  # Freeze kickoff_at_deadline + deal the D5 autopick package (Sat 11:00 CT)
+FLASK_APP=app.py venv/bin/flask docket sync --mode scores    # Fetch scores (2 credits/sport), then grade the week if it's complete
+FLASK_APP=app.py venv/bin/flask docket sync --mode status    # Print season summary
+FLASK_APP=app.py venv/bin/flask docket recalc [WEEK]         # Idempotent re-grade; no arg = every past-deadline week
+FLASK_APP=app.py venv/bin/flask docket set-tiebreaker 1 "Wisconsin @ Notre Dame"   # Week-1 hand-set until T9's admin UI
+# All modes take --week N (default: the week containing now). The Sep 1 runbook lives in games/docket/cli.py's docstring.
 
 # World Cup CLI (game archived; ops mothballed 2026-07-20 — commands retained for the archive + a future revival)
 FLASK_APP=app.py venv/bin/flask worldcup status          # Print tournament state summary
