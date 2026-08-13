@@ -180,6 +180,42 @@ def test_kickoff_refresh_updates_live_kickoff_without_touching_locks(app):
     assert game.kickoff_at_deadline is None
 
 
+def test_a_replayed_lines_run_cannot_move_an_already_frozen_kickoff(app):
+    """docket-lines.timer carries Persistent=true, so a firing missed to an
+    outage replays later — possibly after the deadline pass has already run.
+
+    That is safe, and this is the reason: stamp_kickoffs writes
+    kickoff_at_deadline only where it is NULL, so the D7 ordering input is
+    immutable once frozen. The live kickoff column keeps tracking reality
+    (D19); the frozen one keeps describing the docket the players saw. The
+    two are allowed to disagree, and grading reads only the frozen one.
+    """
+    from games.docket.services.deadline_pass import stamp_kickoffs
+    from games.docket.services.weeks import deadline_utc
+    from games.docket.utils import to_naive_utc
+
+    _run(app, [W1],
+         [_odds('e-wnd', 'Notre Dame Fighting Irish', 'Wisconsin Badgers',
+                '2026-09-06T00:30:00Z',
+                [_bm('draftkings', home='Notre Dame Fighting Irish',
+                     home_spread=-6.5, away='Wisconsin Badgers', total=51.5)])])
+    game = _get('e-wnd')
+    week = game.week
+    week.deadline_at = to_naive_utc(deadline_utc(1))
+    stamp_kickoffs(week)
+    frozen = game.kickoff_at_deadline
+    assert frozen == datetime(2026, 9, 6, 0, 30)
+
+    # The catch-up run, with a kickoff that moved three hours later.
+    _run(app, [_event('e-wnd', 'Notre Dame Fighting Irish',
+                      'Wisconsin Badgers', '2026-09-06T03:30:00Z')], [])
+
+    game = _get('e-wnd')
+    assert game.kickoff == datetime(2026, 9, 6, 3, 30), 'D19 refresh still runs'
+    assert game.kickoff_at_deadline == frozen, (
+        'a replayed lines run must never move an already-frozen kickoff')
+
+
 def test_exact_end_boundary_kickoff_belongs_to_the_next_week(app):
     """Half-open window: a kickoff exactly at end_at is NOT this week's game."""
     boundary_kick = _event('e-boundary', 'Texas Longhorns',

@@ -1,0 +1,32 @@
+# Runs The Docket score sync on the D12 cadence: Tue 05:15 CT, then Wed, Thu,
+# Sun and Mon at 08:00 CT, going daily Dec 15 - Jan 11.
+#
+# The midweek runs are not padding. /scores looks back at most daysFrom=3, and
+# D3 deliberately keeps Tuesday and Wednesday CFB games pickable, so a
+# weekend-only cadence would silently never see them finish.
+#
+# !! Tuesday fires at 05:15, BEFORE the 06:00 CT week boundary, on purpose.
+#    The mode resolves its week from the clock; at 05:15 that is still the
+#    week whose games just finished (Monday night football), which is the week
+#    that needs grading. After 06:00 it would resolve to the new one.
+#
+# The December window mirrors cfb-scores.timer's shape but ends Jan 11, not
+# Jan 25: the Docket's 19th and last week ends Tue Jan 12 2027 06:00 CT, and
+# the Tue 05:15 rule already covers Jan 12 itself. In that window the daily
+# 08:00 rule also fires on Tuesdays, post-boundary — it resolves to the fresh
+# week, finds nothing to grade, and exits 0.
+#
+# Overlapping dates collapse to a single firing.
+[Unit]
+Description=Run The Docket score sync (Tue/Wed/Thu/Sun/Mon; daily Dec 15 - Jan 11)
+
+[Timer]
+# Timezone is INLINE in OnCalendar — no TimeZone= directive exists.
+OnCalendar=Tue *-*-* 05:15:00 America/Chicago
+OnCalendar=Wed,Thu,Sun,Mon *-*-* 08:00:00 America/Chicago
+OnCalendar=*-12-15..31 08:00:00 America/Chicago
+OnCalendar=*-01-01..11 08:00:00 America/Chicago
+Persistent=true
+
+[Install]
+WantedBy=timers.target

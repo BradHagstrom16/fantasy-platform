@@ -1,4 +1,4 @@
-"""The Docket — admin-ruling notifications.
+"""The Docket — admin-ruling notifications + the game's shared email plumbing.
 
 Two rulings oblige the commissioner to tell players something changed under
 them, and both come from the 2026-08-11 design SSoT:
@@ -16,6 +16,11 @@ not roll back an admin decision that has already been recorded.
 
 Content assembly lives here per the platform convention
 (games/<game>/services/reminders.py); transport is the shared helper.
+
+``sheet_url``, ``send_each``, and ``wrap_email`` are public because the D24
+deadline reminders (games/docket/services/reminders.py) send through the same
+Gmail-safe shell. One copy of the table-and-inline-styles wrapper means a fix
+to how The Docket's mail renders lands on every message the game sends.
 """
 import logging
 
@@ -32,7 +37,7 @@ logger = logging.getLogger(__name__)
 SHEET_PATH = '/docket/'
 
 
-def _sheet_url():
+def sheet_url():
     """Absolute pick-sheet link for an email body."""
     base = current_app.config.get(
         'SITE_URL', 'http://localhost:5000').rstrip('/')
@@ -49,7 +54,7 @@ def _side_phrase(pick, game):
     return f'{team} {"PK" if pick.line_value == 0 else f"{number:+g}"}'
 
 
-def _send(recipients, subject, build_body):
+def send_each(recipients, subject, build_body):
     """Send one message per recipient; return how many were accepted.
 
     The failure log carries the user id, never the address: these lines land
@@ -69,7 +74,7 @@ def _send(recipients, subject, build_body):
     return sent
 
 
-def _wrap(plain_lines, html_lines):
+def wrap_email(plain_lines, html_lines):
     """Paragraph pairs -> (plain body, HTML body).
 
     Plain and HTML are built from SEPARATE line lists rather than deriving
@@ -107,7 +112,7 @@ def notify_line_correction(correction, game, picks):
     case = f'{game.away_team} at {game.home_team}'
     market = 'spread' if correction.market == 'spread' else 'total'
     subject = f'A line was corrected: {case}'
-    link = _sheet_url()
+    link = sheet_url()
 
     def build(user, pick):
         side = _side_phrase(pick, game)
@@ -117,7 +122,7 @@ def notify_line_correction(correction, game, picks):
         held = (f'Your side is now recorded as {side}. It will grade against '
                 f'the corrected number. You may change or withdraw it until '
                 f'the docket closes.')
-        return _wrap([
+        return wrap_email([
             'The commissioner corrected a line on your sheet.',
             moved,
             f'Reason given: {correction.reason}',
@@ -137,7 +142,7 @@ def notify_line_correction(correction, game, picks):
             Markup('Your sheet: {}').format(link),
         ])
 
-    return _send([(p.user, p) for p in picks], subject, build)
+    return send_each([(p.user, p) for p in picks], subject, build)
 
 
 def notify_redesignation(week, new_game, old_game, users):
@@ -150,7 +155,7 @@ def notify_redesignation(week, new_game, old_game, users):
     old_case = (f'{old_game.away_team} at {old_game.home_team}'
                 if old_game is not None else 'the previous case')
     subject = f'The Week {week.week_number} tiebreaker case changed'
-    link = _sheet_url()
+    link = sheet_url()
     total = ('' if new_game.total_points is None
              else f' The line says {new_game.total_points:g}.')
 
@@ -159,7 +164,7 @@ def notify_redesignation(week, new_game, old_game, users):
                f'locked total stands in for you.{total}')
 
     def build(user, _context):
-        return _wrap([
+        return wrap_email([
             f'The tiebreaker case for Week {week.week_number} moved from '
             f'{old_case} to {new_case}.',
             cleared,
@@ -174,4 +179,4 @@ def notify_redesignation(week, new_game, old_game, users):
             Markup('Your sheet: {}').format(link),
         ])
 
-    return _send([(u, None) for u in users], subject, build)
+    return send_each([(u, None) for u in users], subject, build)

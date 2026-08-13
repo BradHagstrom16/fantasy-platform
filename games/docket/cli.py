@@ -3,8 +3,16 @@ The Docket — CLI Commands
 =========================
 Flask CLI commands namespaced under the ``docket`` AppGroup. These are the
 runners for logic that already exists: the two-sport importer (T2), the pure
-grading engine + adapter (T4), and the D5 autopick package. Systemd timers
-land with T11; until then every command below is run by hand.
+grading engine + adapter (T4), the D5 autopick package, and the D24 deadline
+reminders.
+
+``deploy/docket-*.timer`` runs every mode below on the D12 cadence. The units
+pass ``--scheduled``, which turns the two "nothing to do yet" states (out of
+season, week not imported) into a clean exit 0 so a red docket timer keeps
+meaning something. Typed by hand, without that flag, the same states refuse
+loudly. Installing a unit does not enable it (ADR-041): enable by explicit
+name, and hold ``docket-setup.timer`` back until after the Week-1 import
+below, so that first write to production stays deliberate.
 
 Season runbook
 --------------
@@ -32,6 +40,13 @@ window; /scores looks back at most 3 days, which is why midweek runs exist).
 Writes scores and grades the week as soon as it is complete::
 
     flask docket sync --mode scores
+
+**Hourly — deadline reminders** (D24). Three tiers before the Saturday close
+(48h/24h/2h), to unfinished sheets only. Hourly is safe because
+``DocketWeek.last_reminder_tier`` de-dups; the cadence is not what prevents a
+double send. Costs no API credits::
+
+    flask docket sync --mode remind
 
 **Any time — re-grade.** Idempotent; the fix after a corrected score. A No
 Contest ruling made through the admin desk already re-grades its own week
@@ -69,41 +84,76 @@ from games.docket.services.deadline_pass import (
 from games.docket.services.enrollment import roster_user_ids
 from games.docket.services.grading_pass import try_grade_week
 from games.docket.services.importer import import_week
+from games.docket.services.reminders import run_reminder_pass
 from games.docket.services.scores import sync_scores
 from games.docket.services.weeks import SEASON_YEAR, TOTAL_WEEKS, week_number_for
 from games.docket.utils import now_utc, to_naive_utc
 
 docket_cli = AppGroup('docket', help="The Docket (NFL+CFB pick'em) commands.")
 
-SYNC_MODES = ('setup', 'lines', 'scores', 'deadline', 'status')
+SYNC_MODES = ('setup', 'lines', 'scores', 'deadline', 'remind', 'status')
 
 
 def _fail(message):
     """Report an operator-facing refusal and exit non-zero.
 
-    Non-zero matters: T11's timers alert on it, and `deploy.sh`-style
+    Non-zero matters: the timers alert on it, and `deploy.sh`-style
     "it printed something" is not a success signal.
     """
     click.secho(f'ERROR: {message}', fg='red', err=True)
     raise SystemExit(1)
 
 
-def _resolve_week_number(week):
+def _no_work(message, scheduled):
+    """Disposition for the two states that mean "nothing to do YET".
+
+    The docket season covers 19 of the year's 52 weeks, and its tables are
+    empty until the deliberate Week-1 import at the line freeze. Out of
+    season, and before that first import, every mode below has genuinely
+    nothing to do. That is a refusal worth shouting at a human who just
+    typed the command and a non-event for a timer, so the two callers get
+    different exit codes for the same condition.
+
+    Timers alone pass --scheduled. Keeping the benign set to exactly these
+    two conditions is the point: a red docket timer has to stay rare enough
+    to be worth reading, and everything else here still exits non-zero.
+    """
+    if scheduled:
+        click.echo(f'Standing down: {message}')
+        raise SystemExit(0)
+    _fail(message)
+
+
+def _resolve_week_number(week, scheduled=False):
     """The explicit --week, else the week containing now (pure math, so it
-    resolves before the row exists — which is exactly the setup case)."""
+    resolves before the row exists — which is exactly the setup case).
+
+    An out-of-range explicit --week is a typo, not a benign state, so it
+    fails loudly even under --scheduled.
+    """
     if week is not None:
         if not 1 <= week <= TOTAL_WEEKS:
             _fail(f'week must be 1-{TOTAL_WEEKS}, got {week}')
         return week
     resolved = week_number_for(now_utc())
     if resolved is None:
-        _fail('the current time is outside the docket season — pass --week')
+        _no_work('the current time is outside the docket season '
+                 '(pass --week to target one)', scheduled)
     return resolved
 
 
 def _get_week(week_number):
     return db.session.scalar(
         select(DocketWeek).filter_by(week_number=week_number))
+
+
+def _require_week(week_number, scheduled):
+    """The week row, or the right disposition when it does not exist yet."""
+    week = _get_week(week_number)
+    if week is None:
+        _no_work(f'no docket week {week_number} yet — run `flask docket sync '
+                 f'--mode setup --week {week_number}`', scheduled)
+    return week
 
 
 def _echo_summary(title, summary):
@@ -185,6 +235,41 @@ def _run_deadline(week_number, force):
             f'idempotent, and picks are already frozen by the deadline')
 
 
+def _run_remind(week):
+    """Mail the week's due reminder tier, if one is due (D24).
+
+    Quiet by design. This mode runs hourly, so "no tier is due" and "this
+    tier already went out" are the ordinary outcomes and neither is a
+    failure — the sent flag, not the schedule, is what prevents a double
+    send. Only a tier that reached nobody at all exits non-zero: that means
+    mail is down with a deadline approaching.
+    """
+    summary = run_reminder_pass(week)
+    status = summary.pop('status')
+    if status == 'send_failed':
+        _echo_summary(f'docket sync --mode remind (week {week.week_number})',
+                      summary)
+        _fail(f'week {week.week_number}: the {summary["tier"]} reminder '
+              f'reached none of its {summary["recipients"]} recipients')
+    if status == 'sent':
+        click.secho(
+            f'  reminders: {summary["tier"]} sent to {summary["sent"]}/'
+            f'{summary["recipients"]} unfinished sheets', fg='green')
+    elif status == 'already_sent':
+        click.echo(f'  reminders: {summary["tier"]} already sent '
+                   f'(last: {summary["last_tier"]})')
+    elif status == 'all_complete':
+        click.echo('  reminders: every sheet is finished')
+    elif status == 'closed':
+        click.echo(f'  reminders: week {week.week_number} is closed')
+    elif status == 'no_window':
+        click.echo('  reminders: no tier is due right now')
+    else:
+        # A status this function does not know is a bug in the pass, not a
+        # quiet day. Say so rather than printing nothing and exiting 0.
+        _fail(f'unknown reminder status {status!r}')
+
+
 def _run_status():
     click.echo(f'\n[docket status — season {SEASON_YEAR}]')
     now = to_naive_utc(now_utc())
@@ -239,29 +324,32 @@ def _run_status():
               help='setup/lines: fetch /odds even when every market is locked.')
 @click.option('--days-from', type=int, default=3, show_default=True,
               help='scores: lookback window in days (API caps at 3).')
-def sync_cmd(mode, week, force, force_odds, days_from):
+@click.option('--scheduled', is_flag=True,
+              help='Timer mode: exit 0 (not 1) when the season has not '
+                   'started or the week has not been imported yet.')
+def sync_cmd(mode, week, force, force_odds, days_from, scheduled):
     """Unified Docket automation CLI — run weekly tasks by mode."""
     if mode == 'status':
         _run_status()
         return
 
-    week_number = _resolve_week_number(week)
+    week_number = _resolve_week_number(week, scheduled)
     if mode == 'setup':
+        # No _require_week: setup is the mode that creates it.
         _run_import(week_number, force_odds,
                     f'docket sync --mode setup (week {week_number})')
     elif mode == 'lines':
-        if _get_week(week_number) is None:
-            _fail(f'no docket week {week_number} yet — run '
-                  f'`flask docket sync --mode setup --week {week_number}`')
+        _require_week(week_number, scheduled)
         _run_import(week_number, force_odds,
                     f'docket sync --mode lines (week {week_number})')
     elif mode == 'scores':
-        if _get_week(week_number) is None:
-            _fail(f'no docket week {week_number} yet — run '
-                  f'`flask docket sync --mode setup --week {week_number}`')
+        _require_week(week_number, scheduled)
         _run_scores(week_number, days_from)
     elif mode == 'deadline':
+        _require_week(week_number, scheduled)
         _run_deadline(week_number, force)
+    elif mode == 'remind':
+        _run_remind(_require_week(week_number, scheduled))
 
 
 @docket_cli.command('recalc')

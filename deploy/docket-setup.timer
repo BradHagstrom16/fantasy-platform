@@ -1,0 +1,21 @@
+# Runs The Docket's week setup Tuesday 06:15 CT.
+#
+# 06:15, not 06:00: docket weeks partition time at Tuesday 06:00 America/
+# Chicago boundaries (games/docket/services/weeks.py), and the mode resolves
+# its week from the clock. Firing at the boundary instant itself would race
+# the arithmetic that decides which week it is creating.
+#
+# !! ENABLE THIS ONE LAST. It is the mode that writes to empty production
+#    tables for the first time, and the Week 1 import at the Tue Sep 1 line
+#    freeze is a deliberate hand-run (see games/docket/cli.py's runbook).
+#    Enable this timer AFTER that import, for Week 2 onward.
+[Unit]
+Description=Run The Docket week setup Tuesday 06:15 CT
+
+[Timer]
+# Timezone is INLINE in OnCalendar — no TimeZone= directive exists.
+OnCalendar=Tue *-*-* 06:15:00 America/Chicago
+Persistent=true
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,27 @@
+# Runs The Docket's line gap-fill Tue-Fri 07:00 CT.
+#
+# Tuesday's firing is 45 minutes after docket-setup.timer, so the week and its
+# slates exist before this tries to fill them. Stops at Friday because by then
+# there is nothing left worth an API call: locked lines never move (D3), and
+# four D19 kickoff refreshes have already run.
+#
+# Persistent=true is deliberate, and a catch-up firing is SAFE rather than
+# merely tolerable. A replay after a droplet outage cannot disturb the D7
+# freeze: stamp_kickoffs only ever writes kickoff_at_deadline where it is
+# NULL, so an already-frozen ordering input is immutable no matter what the
+# live kickoff column does afterwards (tests/test_docket_import.py::
+# test_a_replayed_lines_run_cannot_move_an_already_frozen_kickoff). A replay
+# that lands BEFORE the deadline is actively good: it refreshes kickoffs
+# closer to the instant D7 actually asks about. Turning persistence off would
+# trade that for silently skipping the one run that catches a market posted
+# late in the week.
+[Unit]
+Description=Run The Docket line gap-fill Tue-Fri 07:00 CT
+
+[Timer]
+# Timezone is INLINE in OnCalendar — no TimeZone= directive exists.
+OnCalendar=Tue,Wed,Thu,Fri *-*-* 07:00:00 America/Chicago
+Persistent=true
+
+[Install]
+WantedBy=timers.target
