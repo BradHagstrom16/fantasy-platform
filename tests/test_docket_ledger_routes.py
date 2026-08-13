@@ -227,9 +227,12 @@ def test_current_user_row_is_tinted_not_striped(app, client):
 
     # The exact declaration, not a substring: 'background' alone would also be
     # satisfied by background-image or a custom property.
-    assert re.search(r'\bbackground\s*:\s*rgba\(\s*var\(--game-accent-rgb\)',
-                     body), \
-        'the highlight is a garnet tint (DESIGN.md 6.5: garnet means "yours")'
+    assert re.search(
+        r'(?<![-\w])background\s*:\s*'
+        r'rgba\(\s*var\(--game-accent-rgb\)\s*,\s*\.09\s*\)\s*;',
+        body), \
+        'the highlight is the garnet tint at .09 (DESIGN.md 6.5: garnet ' \
+        'means "yours"; 6.3 sets the tint recipe at 8-12%)'
 
     # Every way a side stripe could be spelled, shorthand and logical
     # properties included.
