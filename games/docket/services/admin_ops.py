@@ -36,7 +36,7 @@ from games.docket.models import (
 )
 from games.docket.services import notifications
 from games.docket.services.deadline_pass import check_designation
-from games.docket.services.enrollment import roster_user_ids
+from games.docket.services.enrollment import roster_user_ids_as_of
 from games.docket.services.grading.snapshots import Market
 from games.docket.services.grading_pass import try_grade_week
 from games.docket.services.picks import locked_line, now_naive
@@ -201,7 +201,11 @@ def clear_no_contest(week, game_id) -> dict:
 
 
 def _recalc(week) -> dict:
-    return try_grade_week(week.id, user_ids=roster_user_ids())
+    # The roster as of the deadline, not the live one: a No Contest ruling
+    # lands after the week closed, and re-grading must not deal a package to
+    # anyone who joined since.
+    return try_grade_week(
+        week.id, user_ids=roster_user_ids_as_of(week.deadline_at))
 
 
 # ── D18 line correction ──────────────────────────────────────────────────

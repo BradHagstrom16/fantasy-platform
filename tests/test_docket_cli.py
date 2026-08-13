@@ -362,3 +362,45 @@ def test_status_summarizes_the_season(app, runner, monkeypatch):
     assert 'enrolled players: 1' in result.output
     assert 'week  1:   9 games' in result.output
     assert 'tiebreaker: Away 0 @ Home 0' in result.output
+
+
+def test_recalc_does_not_back_grade_a_late_joiner(app, runner, monkeypatch):
+    """A full recalc grades each week against the roster AS OF ITS DEADLINE.
+
+    Grading a closed week against the LIVE roster hands a later joiner an
+    empty input, which the engine completes into a full 8-slot autopick
+    package worth real points. That would make a player's season total depend
+    on whether an operator ever typed `flask docket recalc`.
+    """
+    week, _games = _seed()
+    early = make_user('early')
+    make_enrollment(early, created_at=datetime.fromisoformat(BEFORE_DEADLINE))
+    late = make_user('late')
+    make_enrollment(late,
+                    created_at=datetime(2026, 9, 20, 12, 0))
+    db.session.commit()
+    monkeypatch.setenv('DOCKET_FAKE_NOW', AFTER_DEADLINE)
+    _invoke(runner, 'sync', '--mode', 'deadline')
+
+    _invoke(runner, 'recalc')
+
+    graded = {r.user_id: r for r in db.session.scalars(
+        select(DocketWeekResult).filter_by(week_id=week.id))}
+    assert early.id in graded, 'a member enrolled before the deadline grades'
+    assert graded[early.id].points > 0, 'the autopick package scored'
+    assert late.id not in graded, (
+        'a member who joined after the deadline must not be back-graded into '
+        'a week they never played')
+
+
+def test_roster_as_of_counts_a_null_created_at_as_enrolled(app):
+    """A NULL created_at cannot prove a late join, and wrongly excluding a
+    real member from a graded week is the worse error."""
+    from games.docket.services.enrollment import roster_user_ids_as_of
+
+    unknown = make_user('unknown')
+    make_enrollment(unknown, created_at=None)
+    db.session.commit()
+
+    assert unknown.id in roster_user_ids_as_of(
+        datetime.fromisoformat(BEFORE_DEADLINE))

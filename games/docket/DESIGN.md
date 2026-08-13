@@ -21,9 +21,10 @@ colors:
 > this file owns The Docket's substrate, palette, register, and named primitives. When working
 > any surface under `games/docket/`, read both.
 >
-> Authored 2026-08-12 (T7, design-first). Component doctrine below is the build contract for
-> the pick sheet; it gets reconciled against the shipped surfaces at the end of each build
-> slice, and T9 (admin) / T10 (standings, rules) extend it rather than re-deriving.
+> Authored 2026-08-12 (T7, design-first); §8 added 2026-08-13 (T10, from the built surfaces).
+> §7 is the build contract for the pick sheet, §8 for the season surfaces (ledger, rules).
+> Each is reconciled against what shipped at the end of its slice; later slices extend this
+> file rather than re-deriving it.
 
 ---
 
@@ -295,8 +296,10 @@ of `◈`/`◇` for lounge ceremony).
 - Legal skeuomorphism: gavel icons, scales-of-justice watermarks, rotated rubber stamps,
   "CONFIDENTIAL" tape. The register is a working document, not a courtroom costume.
 - A second dark room. Dark surfaces in this room are limited to the shared subnav chrome and
-  any future T10 ceremonial primitive (named there, one surface, following the
-  one-ceremonial-dark-surface pattern).
+  **`.docket-verdict-banner`** (§8.4), the one ceremonial primitive this reservation was held
+  for. It renders only when every week of the season is graded, so the room is court paper for
+  all nineteen weeks and the dark surface arrives once. A banner on every visit would have been
+  the second dark room this rule bans, whatever it was named.
 - Emoji as icons (platform ban); emoji appear only where the platform already sanctions them
   (registry tile, navbar switcher label, and the `.subnav-game-label` — the established
   cross-game sub-nav pattern: 🏈 CFB, ⛳ Golf, ⚖️ Docket).
@@ -395,7 +398,9 @@ day once the week is fully played.
 Platform `.game-subnav` shape: background `#180C10` (warm oxblood-cast near-black, distinct
 from CFB's purple-cast `#0a080f`), `--subnav-accent: #A63446`, `--subnav-accent-rgb:
 166,52,70`, plus both scroll-fade tints matching the background. Label: "⚖️ Docket 2026".
-T7 pills: My Sheet. (T10 adds Ledger and Rules.)
+Pills, in order: **My Sheet · Ledger · Rules**, then Admin for admins only. The weekly
+obligation leads because that is what members arrive for Tuesday through Saturday; the ledger
+is what they come back to.
 
 ### 7.9 Join page
 
@@ -418,3 +423,105 @@ Behavior hooks are `data-docket-*` attributes (`data-docket-action`, `-game`, `-
 `is-no-line`) ship alongside styling classes and are never renamed for styling reasons
 (platform template-restyling rule). The sheet is fully functional without JS (mini-form
 PRG); JS is an enhancement layer that repaints from the server's authoritative sheet state.
+
+---
+
+## 8. Component Doctrine (season surfaces, T10 scope)
+
+The weekly surfaces answer "what do I still owe?"; the season surfaces answer "where do I
+stand, and how did I get here?". §5 gives these the polish budget, and §1.1 is the reason:
+the ledger is the product. They inherit §7's world unchanged. One center of gravity: the
+ledger's is the ranked table, and the weekly entries are its drawer.
+
+### 8.1 The ledger table — `.docket-ledger-table`, `.docket-ledger-figure`
+
+Extends the platform `.table` (which already carries the Teko head treatment) rather than
+re-deriving it the way `.docket-desk-table` did; the overrides are only the `--docket-rule`
+ruling and the figures. Three ranking keys, three columns, each head carrying a
+`.docket-ledger-keytag` ("Key 1/2/3") so the ordering is legible without reading the rules
+page. Figures are Teko 500 with `tabular-nums`, right-aligned, so the column reads as an
+account rather than a scoreboard.
+
+**Precision is uniform.** Points render to one decimal everywhere (`13.0`, not `13`). A
+ruled account column with ragged precision stops scanning as a column, which is the whole
+reason the ledger is a ledger.
+
+**Key 3 is divided by ten at render and nowhere else** (D20-eng). The template performs the
+only `/ 10` in the system.
+
+**Ties.** Render `SeasonStanding.rank` (competition rank: shares and gaps, `1, 1, 3, 4`) and
+mark a shared rank with an inline `.docket-ledger-tied`. Inline, not stacked, or the tied
+rows grow taller than their neighbours and break the ruled rhythm. Never `loop.index`: it
+renders row position, which disagrees with the ranking engine on every tie.
+
+### 8.2 The current-user row
+
+`.row-current-user` with a **garnet tint only** — the platform Tables rule allows a game to
+override the tint colour and nothing else, and §6.5 is why garnet is the right colour here:
+this row is *yours*, which is the one thing the accent is permitted to mean. Never a side
+stripe, and never garnet on an outcome.
+
+### 8.3 The weekly entries — `.docket-entry`, `.docket-week`
+
+Each player's line opens onto its own weeks, as a `<details>`/`<summary>` drawer. No JS: the
+room's no-JS spine (§7.11) covers the season surfaces too, and native disclosure is the whole
+mechanism.
+
+- **The summary must look openable.** The native marker is suppressed, so it carries a drawn
+  `.docket-entry-caret` (CSS geometry, not a glyph) that rotates on `[open]`, plus a 44px
+  target and the garnet focus ring.
+- **The summary must not restate the table.** Its right-hand figure is the week count, not the
+  season total. Repeating the total made the section read as a second leaderboard rather than a
+  drawer, which is how a reader concludes the page is broken.
+- **The struck week is stated, not subtracted silently.** `<s>` on the points plus its reason
+  in words. The drop is the game's most confusing rule; a total that does not match the weeks
+  above it, with no explanation, is the failure mode this section exists to prevent.
+- **Cold-Docket treatment for a struck or unfiled week** (§6.11): reduced contrast with the
+  reason stated. Never garnet, which would read as "wrong"; the drop is procedure, and an
+  unfiled week is a charge, not a punishment.
+
+### 8.4 The verdict — `.docket-verdict-banner`
+
+**The room's one ceremonial dark surface**, the reservation §6.10 was holding. Chambers to
+oxblood through the game slots (the same ramp `.page-hero` uses, so it reads as the room's
+terminus rather than a foreign surface), bone text, `--game-accent-light` for the eyebrow per
+§6.4's dark-surface note.
+
+It renders **only when every week of the season is graded**, so it appears once, in January.
+That gate is the primitive's whole justification: a dark band on a page members visit weekly
+would be a second dark room wearing a ceremonial name.
+
+### 8.5 Mobile composition
+
+Below `md` the ledger's three keys plus a name do not fit 375px as table columns. The table
+scrolls inside `.docket-scroll` on desktop, but on a phone that would hide two of the three
+ranking keys behind a gesture with no affordance, so the same rows render as
+`.docket-card` ruled cards (rank and name on one line, the three keys beneath). The platform
+leaderboard precedent, one source, two compositions.
+
+### 8.6 The rules page — `.docket-ruleset`, `.docket-article`
+
+Articles under a jump index, inheriting the join page's ruled `dl` (promoted from
+`.docket-join-rules` now that two surfaces use it). The clerk's voice: state the awkward
+cases plainly rather than explaining the easy half.
+
+**Every number is read from the engine, the week math, or config — never a literal.** The
+scoring table calls `slot_points`, the perfect week derives from `SCORING_SLOTS`, the season
+length from `TOTAL_WEEKS`. A rules page that restates the scoring as prose is a rules page
+that will eventually be wrong, and it is the one surface where being wrong is a dispute.
+
+Two rulings are published here because they say so in as many words: **D17-eng** (bookmaker
+provenance and the fallback order, via `.docket-book`) and **D23-eng** (overtime, NFL ties).
+
+### 8.7 Empty and partial states
+
+The ledger ships empty: prod docket tables stay empty until the Week-1 import, so the
+pre-verdict state is the state members see first. Per §4.1 and §7.10, never an empty table.
+
+- **No graded week** — a calm statement of when the first verdicts land, plus an "Appearing
+  this season" roster so the page is about the people rather than about the absence.
+- **One graded week** — the standings render and the page says the drop has not started yet.
+  That is a rule surfacing, not a placeholder.
+- **A member with no sheet filed** — 0 points and the week's default error, said out loud
+  ("no sheet filed, charged 18.0"). The late-joiner rule made visible so it does not read as
+  a bug.

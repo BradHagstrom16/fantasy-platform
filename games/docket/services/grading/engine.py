@@ -62,9 +62,13 @@ def grade_pick_outcome(game: GameSnapshot, market: Market,
             else Outcome.LOSS)
 
 
-def _points(outcome: Outcome, doubled: bool) -> float:
+def slot_points(outcome: Outcome, doubled: bool) -> float:
     """Win 1 / push 0.5 / loss 0; the best-pick slot doubles (D4-session):
-    win 2 / push 1 / loss 0. Exact half-step floats."""
+    win 2 / push 1 / loss 0. Exact half-step floats.
+
+    Public so the rules page can state the scoring table by calling the same
+    function that grades, rather than repeating the numbers as prose that can
+    drift away from the engine."""
     if outcome is Outcome.WIN:
         return 2.0 if doubled else 1.0
     if outcome is Outcome.PUSH:
@@ -112,7 +116,7 @@ def _resolve_slots(week: WeekSnapshot,
                     is_best=pick.is_best,  # the double lives on the SLOT
                     is_autopick=backup.is_autopick,
                     via=VIA_BACKUP,
-                    points=_points(outcome, doubled=pick.is_best),
+                    points=slot_points(outcome, doubled=pick.is_best),
                 ))
             else:
                 grades.append(SlotGrade(
@@ -124,7 +128,7 @@ def _resolve_slots(week: WeekSnapshot,
                     is_best=pick.is_best,
                     is_autopick=pick.is_autopick,
                     via=VIA_NC_PUSH,
-                    points=_points(Outcome.PUSH, doubled=pick.is_best),
+                    points=slot_points(Outcome.PUSH, doubled=pick.is_best),
                 ))
             continue
         game = week.game(pick.api_event_id)
@@ -138,7 +142,7 @@ def _resolve_slots(week: WeekSnapshot,
             is_best=pick.is_best,
             is_autopick=pick.is_autopick,
             via=VIA_PICK,
-            points=_points(outcome, doubled=pick.is_best),
+            points=slot_points(outcome, doubled=pick.is_best),
         ))
     # Defensive: a slot the pool couldn't fill grades empty (0 points) —
     # the engine never invents picks.

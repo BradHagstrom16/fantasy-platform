@@ -1,12 +1,15 @@
-"""The Docket routes — the room: join, the pick sheet, sheet mutations.
+"""The Docket routes — the room: join, the pick sheet, the ledger, the rules.
 
-The pick sheet is the room's index until the season ledger lands (T10).
+The pick sheet stays the room's index; the season ledger has its own route.
+The weekly obligation is what members land here for between Tuesday and
+Saturday, and the ledger is where they go to see what it bought them.
 Every mutation is a plain POST form (PRG + flash, fully functional without
 JS); a client sending ``Accept: application/json`` gets the authoritative
 sheet state back instead of a redirect, which is what the sheet's
 enhancement script repaints from. All rule enforcement lives in
 games/docket/services/picks.py; these handlers stay declarative.
 """
+from collections import Counter
 from datetime import UTC
 
 from flask import (
@@ -28,9 +31,17 @@ from games.docket.models import DocketEnrollment, DocketGame
 from games.docket.services import picks as picks_service
 from games.docket.services.bridge_sheet import SPORT_LABELS
 from games.docket.services.enrollment import get_enrollment
-from games.docket.services.grading.snapshots import BACKUP_SLOT
+from games.docket.services.grading.engine import slot_points
+from games.docket.services.grading.snapshots import BACKUP_SLOT, SCORING_SLOTS, Outcome
+from games.docket.services.importer import BOOKMAKER_LABELS, BOOKMAKER_PRIORITY
 from games.docket.services.picks import PickError
-from games.docket.services.weeks import CT, SEASON_YEAR, WEEK_1_BOUNDARY_LOCAL
+from games.docket.services.season_pass import season_ledger
+from games.docket.services.weeks import (
+    CT,
+    SEASON_YEAR,
+    TOTAL_WEEKS,
+    WEEK_1_BOUNDARY_LOCAL,
+)
 
 
 def _kickoff_ct(dt):
@@ -42,6 +53,16 @@ def _kickoff_ct(dt):
     cycle. The Jinja ``ct`` filter is unaffected (registered at app boot).
     """
     return dt.replace(tzinfo=UTC).astimezone(CT)
+
+
+def _ordinal(n):
+    """1 -> '1st'. The teens are the exception every naive version gets
+    wrong: 11th, 12th, 13th, not 11st/12nd/13rd."""
+    if 10 <= n % 100 <= 20:
+        suffix = 'th'
+    else:
+        suffix = {1: 'st', 2: 'nd', 3: 'rd'}.get(n % 10, 'th')
+    return f'{n}{suffix}'
 
 
 @docket_bp.context_processor
@@ -108,7 +129,7 @@ def join():
 @docket_bp.route('/')
 @enrollment_required('docket')
 def index():
-    """The weekly pick sheet (the room's index until the T10 ledger).
+    """The weekly pick sheet — the room's index.
 
     The slate is a court calendar: one day of cases at a time, navigated by
     day-tab links (``?day=YYYY-MM-DD``, the CT calendar date). Server-side
@@ -309,5 +330,78 @@ def set_tiebreaker():
         return _sheet_error(err)
     message = 'Prediction recorded.' if row is not None else 'Prediction cleared.'
     return _sheet_success(week, message)
+
+
+# --------------------------------------------------------------------------
+# The season ledger
+# --------------------------------------------------------------------------
+
+@docket_bp.route('/ledger')
+@enrollment_required('docket')
+def ledger():
+    """The season ledger: where every filed sheet ends up.
+
+    Reads the persisted rollup through the season pass (D14-eng) and renders
+    it. Nothing is computed here: rank, the drop, and every charged week come
+    from the pure engine, so the page and `flask docket recalc` can never tell
+    different stories.
+    """
+    ledger = season_ledger()
+    # Presentation derived in the route, never in Jinja (the room's rule).
+    # A shared rank is stated out loud: competition rank otherwise shows two
+    # players as "2" with nothing saying why.
+    counts = Counter(row.standing.rank for row in ledger.rows)
+    shared_ranks = {rank for rank, n in counts.items() if n > 1}
+    your_row = None
+    if current_user.is_authenticated:
+        your_row = next((row for row in ledger.rows
+                         if row.enrollment.user_id == current_user.id), None)
+    return render_template(
+        'docket/ledger.html',
+        ledger=ledger,
+        shared_ranks=shared_ranks,
+        your_row=your_row,
+        your_rank_label=_ordinal(your_row.standing.rank) if your_row else None,
+        season_opens_label=WEEK_1_BOUNDARY_LOCAL.strftime('%B %-d'),
+    )
+
+
+# --------------------------------------------------------------------------
+# The published rules
+# --------------------------------------------------------------------------
+
+@docket_bp.route('/rules')
+def rules():
+    """The rulebook. Public, so a prospective member can read the terms
+    before joining (the worldcup.rules shape).
+
+    Every number comes from the engine, the week math, or config — never a
+    literal in the template. A rules page that restates the scoring as prose
+    is a rules page that will eventually be wrong. D17-eng (bookmaker
+    provenance) and D23-eng (overtime and NFL ties) both say "on the rules
+    page" in as many words; they are requirements, not decoration.
+    """
+    scoring = [
+        ('A verdict (win)', slot_points(Outcome.WIN, doubled=False),
+         slot_points(Outcome.WIN, doubled=True)),
+        ('A mistrial (push)', slot_points(Outcome.PUSH, doubled=False),
+         slot_points(Outcome.PUSH, doubled=True)),
+        ('A loss', slot_points(Outcome.LOSS, doubled=False),
+         slot_points(Outcome.LOSS, doubled=True)),
+    ]
+    # The perfect week, derived: seven ordinary wins plus the doubled one.
+    max_week = ((SCORING_SLOTS - 1) * slot_points(Outcome.WIN, doubled=False)
+                + slot_points(Outcome.WIN, doubled=True))
+    return render_template(
+        'docket/rules.html',
+        scoring=scoring,
+        max_week=max_week,
+        scoring_slots=SCORING_SLOTS,
+        backup_slot=BACKUP_SLOT,
+        total_weeks=TOTAL_WEEKS,
+        bookmakers=[BOOKMAKER_LABELS.get(key, key)
+                    for key in BOOKMAKER_PRIORITY],
+    )
+
 
 # The admin desk (the gate included) lives in games/docket/admin_routes.py.

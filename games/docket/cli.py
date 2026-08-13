@@ -81,7 +81,10 @@ from games.docket.services.deadline_pass import (
     check_designation,
     run_deadline_pass,
 )
-from games.docket.services.enrollment import roster_user_ids
+from games.docket.services.enrollment import (
+    roster_user_ids,
+    roster_user_ids_as_of,
+)
 from games.docket.services.grading_pass import try_grade_week
 from games.docket.services.importer import import_week
 from games.docket.services.reminders import run_reminder_pass
@@ -207,7 +210,11 @@ def _run_scores(week_number, days_from):
         _fail(f'score sync failed: {"; ".join(summary.get("errors", []))}')
 
     week = _get_week(week_number)
-    graded = try_grade_week(week.id, user_ids=roster_user_ids())
+    # The roster as of this week's deadline, never the live one: grading is
+    # always post-deadline, and a later joiner must not be dealt an autopick
+    # package for a week they were not enrolled for.
+    graded = try_grade_week(
+        week.id, user_ids=roster_user_ids_as_of(week.deadline_at))
     if graded['status'] == 'not_ready':
         click.echo(f'  grading: not ready — {graded["reason"]}')
     else:
@@ -357,12 +364,15 @@ def sync_cmd(mode, week, force, force_odds, days_from, scheduled):
 def recalc_cmd(week):
     """Re-grade WEEK (or every past-deadline week) idempotently.
 
-    The population is the full enrolled roster, per the grading pass's
-    contract: a player who submitted nothing still gets a week result (0
-    points, 0 wins, the week's default tiebreaker error) rather than being
-    skipped. ``is_dropped`` belongs to the season rollup and is left alone.
+    The population is each week's roster AS OF ITS DEADLINE, per the grading
+    pass's contract: a player who submitted nothing still gets a week result
+    (0 points, 0 wins, the week's default tiebreaker error) rather than being
+    skipped, but a player who joined afterwards is not back-graded into a week
+    they never played. Without that, a full recalc would hand a late joiner
+    eight autopicks per past week and their season total would depend on
+    whether this command was ever run. ``is_dropped`` is derived by the season
+    pass and is left alone.
     """
-    roster = roster_user_ids()
     if week is not None:
         target = _get_week(week)
         if target is None:
@@ -377,8 +387,13 @@ def recalc_cmd(week):
             click.echo('No week has reached its deadline yet.')
             return
 
-    click.echo(f'\n[docket recalc] roster: {len(roster)} enrolled')
+    # The live roster is context, not the population: each week grades the
+    # roster as of its own deadline, so print that per week rather than one
+    # season-wide number a historical recalc would overstate.
+    click.echo(f'\n[docket recalc] {len(roster_user_ids())} enrolled today; '
+               f'each week grades its roster as of its deadline')
     for target in weeks:
+        roster = roster_user_ids_as_of(target.deadline_at)
         result = try_grade_week(target.id, user_ids=roster)
         if result['status'] == 'not_ready':
             click.echo(f'  week {target.week_number}: not ready — '

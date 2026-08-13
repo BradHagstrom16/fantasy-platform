@@ -264,6 +264,64 @@ class WeekGrade:
 
 
 @dataclass(frozen=True, slots=True)
+class PlayerWeekTotal:
+    """One player's week as the SEASON pass sees it: the three ranking
+    numbers, no slot trace.
+
+    Structurally the docket_week_result row (D14-eng) and, equally, the
+    projection of a PlayerWeekGrade. A PlayerWeekGrade cannot serve here:
+    it requires exactly eight SlotGrades, and the persisted rollup stores
+    no slot trace to rebuild them from.
+    """
+    player_id: str
+    points: float
+    wins: int
+    error_tenths: int
+
+    def __post_init__(self):
+        _require_tenths(self.error_tenths, 'error_tenths')
+
+
+@dataclass(frozen=True, slots=True)
+class WeekRollup:
+    """A graded week reduced to its ranking inputs — THE season pass input.
+
+    Two producers, one type: the engine path projects a WeekGrade onto it
+    (season.week_rollup) and the persisted path rebuilds one from rollup
+    rows. Neither can drift from the other, because season_standings knows
+    only this shape.
+    """
+    week_number: int
+    default_error_tenths: int
+    players: tuple[PlayerWeekTotal, ...] = field(default=())
+
+    def __post_init__(self):
+        object.__setattr__(self, 'players', tuple(self.players))
+        _require_tenths(self.default_error_tenths, 'default_error_tenths')
+        ids = [p.player_id for p in self.players]
+        if len(ids) != len(set(ids)):
+            raise ValueError('duplicate player_id in a week rollup')
+
+
+@dataclass(frozen=True, slots=True)
+class PlayerWeekRow:
+    """One charged week on one player's ledger line: the week strip's cell.
+
+    ``submitted`` False means no grade existed for this player that week and
+    the week's default error was charged instead — the late-joiner rule made
+    visible (late joiners buy no advantage on key 3).
+    """
+    week_number: int
+    points: float
+    wins: int
+    error_tenths: int
+    submitted: bool
+
+    def __post_init__(self):
+        _require_tenths(self.error_tenths, 'error_tenths')
+
+
+@dataclass(frozen=True, slots=True)
 class SeasonStanding:
     player_id: str
     rank: int                    # competition rank (1,1,3,4)

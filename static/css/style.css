@@ -12617,20 +12617,20 @@ button.docket-side.is-move:hover { color: var(--text-primary); }
 }
 
 /* --- Join page --- */
-.docket-join-rules { margin: 1rem 0 1.4rem; }
-.docket-join-rule {
+.docket-ruleset { margin: 1rem 0 1.4rem; }
+.docket-ruleset-item {
   padding: .6rem 0;
   border-bottom: 1px solid var(--docket-rule);
 }
-.docket-join-rule:last-child { border-bottom: none; }
-.docket-join-rule dt {
+.docket-ruleset-item:last-child { border-bottom: none; }
+.docket-ruleset-item dt {
   font-family: 'Teko', sans-serif;
   font-weight: 600;
   font-size: 1.05rem;
   letter-spacing: .04em;
   text-transform: uppercase;
 }
-.docket-join-rule dd {
+.docket-ruleset-item dd {
   font-family: 'Newsreader', Georgia, serif;
   font-size: .95rem;
   color: var(--text-secondary);
@@ -12648,7 +12648,7 @@ button.docket-side.is-move:hover { color: var(--text-primary); }
    a muted well and let the copy carry the weight. */
 /* Five columns do not fit a phone. The table scrolls inside its own
    container rather than pushing the page sideways (platform rule). */
-.docket-desk-scroll {
+.docket-scroll {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
 }
@@ -12760,6 +12760,368 @@ button.docket-side.is-move:hover { color: var(--text-primary); }
   margin-bottom: .75rem;
 }
 
+/* --- The season ledger (T10) -------------------------------------------
+   The account book: ruled lines rather than boxes, three keys kept as three
+   columns, and each line opening onto its own weekly entries. Garnet marks
+   "yours" and never an outcome (DESIGN.md 6.5); a struck week takes the
+   Cold-Docket treatment, because the drop is procedure, not punishment. */
+.docket-ledger-page { padding-bottom: 3rem; }
+
+.docket-section-head {
+  font-family: 'Teko', sans-serif;
+  font-weight: 600;
+  font-size: 1.5rem;
+  letter-spacing: .03em;
+  text-transform: uppercase;
+  margin: 2.25rem 0 .5rem;
+  padding-bottom: .35rem;
+  border-bottom: 2px solid var(--game-primary);
+}
+
+.docket-your-standing {
+  font-family: 'Newsreader', Georgia, serif;
+  font-size: 1.05rem;
+  color: var(--text-secondary);
+  max-width: 62ch;
+  margin: 1.5rem 0 1rem;
+}
+.docket-your-standing strong { color: var(--game-primary); font-weight: 600; }
+
+/* The table extends the platform .table (which already sets the Teko head
+   treatment); only the ruling and the figures are docket-specific. */
+.docket-ledger-table { min-width: 30rem; margin-bottom: 0; }
+.docket-ledger-table > :not(caption) > * > * {
+  border-bottom-color: var(--docket-rule);
+}
+.docket-ledger-rank-head { width: 4.5rem; }
+.docket-ledger-figure-head { text-align: right; white-space: nowrap; }
+.docket-ledger-keytag {
+  display: block;
+  font-size: .68rem;
+  letter-spacing: .1em;
+  color: var(--text-secondary);
+  font-weight: 400;
+}
+.docket-ledger-rank {
+  font-family: 'Teko', sans-serif;
+  font-weight: 600;
+  font-size: 1.15rem;
+  color: var(--game-primary);
+  white-space: nowrap;
+}
+/* Inline, so a shared rank does not make its rows taller than the rest and
+   break the ruled rhythm the ledger is built on. */
+.docket-ledger-tied {
+  font-family: 'Newsreader', Georgia, serif;
+  font-size: .7rem;
+  font-weight: 400;
+  color: var(--text-secondary);
+  letter-spacing: .02em;
+  margin-left: .25rem;
+}
+.docket-ledger-avatar { margin-right: .4rem; }
+.docket-ledger-name { font-weight: 600; }
+.docket-ledger-figure {
+  font-family: 'Teko', sans-serif;
+  font-weight: 500;
+  font-size: 1.1rem;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+/* Tint only, never a stripe (platform Tables rule); garnet because this row
+   is YOURS, the one thing the accent is allowed to mean. */
+.docket-ledger-table .row-current-user > td {
+  background: rgba(var(--game-accent-rgb), .09);
+}
+.docket-you-tag {
+  display: inline-block;
+  margin-left: .4rem;
+  padding: .05rem .35rem;
+  font-family: 'Teko', sans-serif;
+  font-size: .72rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--game-accent);
+  border: 1px solid var(--game-accent);
+  border-radius: var(--radius);
+}
+
+/* --- The weekly entries (per-line disclosure) --- */
+.docket-entries-note {
+  font-family: 'Newsreader', Georgia, serif;
+  font-size: .92rem;
+  color: var(--text-secondary);
+  max-width: 68ch;
+  margin-bottom: 1rem;
+}
+.docket-entry { border-bottom: 1px solid var(--docket-rule); }
+.docket-entry-summary {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  min-height: 44px;
+  padding: .5rem .25rem;
+  cursor: pointer;
+  list-style: none;
+}
+.docket-entry-summary::-webkit-details-marker { display: none; }
+.docket-entry-summary:hover { background: var(--bg-muted); }
+.docket-entry-summary:focus-visible {
+  outline: 2px solid var(--game-accent);
+  outline-offset: 2px;
+}
+.docket-entry-rank {
+  font-family: 'Teko', sans-serif;
+  font-weight: 600;
+  font-size: 1rem;
+  color: var(--game-primary);
+  min-width: 1.6rem;
+}
+.docket-entry-name {
+  font-family: 'Newsreader', Georgia, serif;
+  font-weight: 600;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.docket-entry-count {
+  font-family: 'Teko', sans-serif;
+  font-weight: 500;
+  font-size: .95rem;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+/* A drawn caret, not a glyph: the summary marker is suppressed, so without
+   this the row reads as static text and nobody opens it. Cut with clip-path
+   rather than the usual rotated two-border trick — a 2px border-right here
+   is a chevron, but tests/test_design_p0_side_stripes.py scans the
+   stylesheet as text and cannot tell that from a side stripe, and the
+   platform ban is worth more than the shortcut. */
+.docket-entry-caret {
+  flex: 0 0 auto;
+  width: .6rem;
+  height: .4rem;
+  margin-left: .1rem;
+  background: var(--game-accent);
+  clip-path: polygon(0 15%, 16% 0, 50% 45%, 84% 0, 100% 15%, 50% 100%);
+  transition: transform var(--transition);
+}
+.docket-entry[open] > .docket-entry-summary .docket-entry-caret {
+  transform: rotate(180deg);
+}
+
+/* --- Mobile standings cards (below md) ---
+   Three keys plus a name do not fit 375px as table columns; a sideways
+   scroll would hide two of the three ranking keys behind a gesture with no
+   affordance. Same rows, ruled-card composition. */
+.docket-cards { list-style: none; margin: 0 0 1rem; padding: 0; }
+.docket-card {
+  display: grid;
+  grid-template-columns: 2.2rem 1fr;
+  grid-template-areas: 'rank name' '. keys';
+  gap: .15rem .5rem;
+  padding: .6rem 0;
+  border-bottom: 1px solid var(--docket-rule);
+}
+.docket-card.is-you { background: rgba(var(--game-accent-rgb), .09); }
+.docket-card-rank {
+  grid-area: rank;
+  font-family: 'Teko', sans-serif;
+  font-weight: 600;
+  font-size: 1.15rem;
+  color: var(--game-primary);
+}
+.docket-card-name {
+  grid-area: name;
+  font-family: 'Newsreader', Georgia, serif;
+  font-weight: 600;
+}
+.docket-card-keys {
+  grid-area: keys;
+  display: flex;
+  flex-wrap: wrap;
+  gap: .1rem .9rem;
+  font-family: 'Newsreader', Georgia, serif;
+  font-size: .85rem;
+  color: var(--text-secondary);
+}
+.docket-card-keys b {
+  font-family: 'Teko', sans-serif;
+  font-weight: 500;
+  font-size: 1rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+.docket-entry.is-you .docket-entry-name { color: var(--game-primary); }
+
+.docket-weeks {
+  list-style: none;
+  margin: 0 0 .75rem;
+  padding: 0 0 0 2.1rem;
+}
+.docket-week {
+  display: flex;
+  align-items: baseline;
+  gap: .6rem;
+  padding: .3rem 0;
+  border-top: 1px solid var(--docket-rule);
+}
+.docket-week-num {
+  font-family: 'Teko', sans-serif;
+  font-weight: 500;
+  font-size: .9rem;
+  letter-spacing: .06em;
+  color: var(--text-secondary);
+  min-width: 2.4rem;
+}
+.docket-week-points {
+  font-family: 'Teko', sans-serif;
+  font-weight: 500;
+  font-size: 1.05rem;
+  font-variant-numeric: tabular-nums;
+  min-width: 2.2rem;
+  text-align: right;
+}
+.docket-week-note {
+  font-family: 'Newsreader', Georgia, serif;
+  font-size: .82rem;
+  color: var(--text-secondary);
+}
+/* Cold-Docket treatment: reduced contrast with the reason stated, never a
+   bare fade and never garnet (garnet means "yours", not "wrong"). */
+.docket-week.is-dropped .docket-week-points,
+.docket-week.is-absent .docket-week-points { color: var(--text-secondary); }
+.docket-week.is-dropped .docket-week-note { font-style: italic; }
+
+/* --- Appearing this season (pre-verdict roster) --- */
+.docket-appearing-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  columns: 2;
+  column-gap: 2rem;
+}
+.docket-appearing-item {
+  font-family: 'Newsreader', Georgia, serif;
+  padding: .4rem 0;
+  border-bottom: 1px solid var(--docket-rule);
+  break-inside: avoid;
+}
+.docket-appearing-item.is-you .docket-appearing-name {
+  color: var(--game-primary);
+  font-weight: 600;
+}
+
+/* --- The verdict (the room's ONE ceremonial dark surface, DESIGN.md 6.10)
+   Renders only when every week of the season is graded, so the room stays
+   court paper for all nineteen weeks and this arrives once. Chambers to
+   oxblood, the same family as the hero, so it reads as the record closing
+   rather than a foreign surface. */
+.docket-verdict-banner {
+  /* Chambers to oxblood via the game slots, the same ramp .page-hero uses,
+     so the record closing reads as the room's terminus and the palette
+     lives in exactly one place. */
+  background: linear-gradient(135deg,
+              var(--game-primary-dark) 0%, var(--game-primary) 100%);
+  color: var(--text-on-dark);
+  border-radius: var(--radius);
+  padding: 2rem 1.75rem;
+  margin: 2rem 0 1rem;
+  text-align: center;
+  box-shadow: var(--shadow-md);
+}
+.docket-verdict-eyebrow {
+  display: block;
+  font-family: 'Teko', sans-serif;
+  font-weight: 500;
+  font-size: .85rem;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--game-accent-light);
+  margin-bottom: .4rem;
+}
+.docket-verdict-name {
+  font-family: 'Teko', sans-serif;
+  font-weight: 700;
+  font-size: 2.4rem;
+  letter-spacing: .02em;
+  text-transform: uppercase;
+  color: var(--text-on-dark);
+  margin: 0 0 .35rem;
+}
+.docket-verdict-avatar { margin-right: .5rem; }
+.docket-verdict-line {
+  font-family: 'Newsreader', Georgia, serif;
+  font-size: 1rem;
+  color: rgba(243, 239, 230, .82);
+  margin: 0;
+}
+
+/* --- The published rules (T10) --- */
+.docket-rules-page { padding-bottom: 3rem; }
+.docket-rules-index {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .4rem;
+  margin: 1.5rem 0 .5rem;
+}
+.docket-rules-index-link {
+  font-family: 'Teko', sans-serif;
+  font-weight: 500;
+  font-size: .9rem;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  text-decoration: none;
+  padding: .35rem .7rem;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  transition: color var(--transition), border-color var(--transition);
+}
+.docket-rules-index-link:hover,
+.docket-rules-index-link:focus-visible {
+  color: var(--game-primary);
+  border-color: var(--game-accent);
+}
+.docket-rules-index-link:focus-visible {
+  outline: 2px solid var(--game-accent);
+  outline-offset: 2px;
+}
+.docket-article { scroll-margin-top: 5rem; }
+.docket-article-copy,
+.docket-article-note {
+  font-family: 'Newsreader', Georgia, serif;
+  font-size: .98rem;
+  max-width: 68ch;
+  margin-bottom: .8rem;
+}
+.docket-article-note { color: var(--text-secondary); font-size: .9rem; }
+.docket-rules-table { min-width: 22rem; margin-bottom: .5rem; }
+.docket-rules-table > :not(caption) > * > * {
+  border-bottom-color: var(--docket-rule);
+}
+.docket-rules-rowhead {
+  font-family: 'Newsreader', Georgia, serif;
+  font-weight: 600;
+}
+.docket-book-order {
+  font-family: 'Newsreader', Georgia, serif;
+  max-width: 68ch;
+  margin: 0 0 1rem;
+  padding-left: 1.3rem;
+}
+/* The bookmaker provenance line (DESIGN.md 6.6 sanctioned caption class). */
+.docket-book {
+  font-size: .9rem;
+  color: var(--text-secondary);
+  padding: .15rem 0;
+}
+
 @media (max-width: 767.98px) {
   .docket-markets { grid-template-columns: 1fr; gap: .55rem; }
   .docket-case-caption { font-size: 1.2rem; }
@@ -12767,4 +13129,9 @@ button.docket-side.is-move:hover { color: var(--text-primary); }
   .docket-desk-row { align-items: flex-start; flex-direction: column; }
   .docket-desk-actions { text-align: left; }
   .docket-desk-actions .btn { margin: 0 .35rem .35rem 0; }
+  .docket-appearing-list { columns: 1; }
+  .docket-verdict-name { font-size: 1.9rem; }
+  .docket-weeks { padding-left: .5rem; }
+  .docket-week { flex-wrap: wrap; gap: .35rem .5rem; }
+  .docket-section-head { font-size: 1.3rem; }
 }

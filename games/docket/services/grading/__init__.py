@@ -16,9 +16,12 @@ from games.docket.services.grading.snapshots import (
     PickSnapshot,
     PlayerWeekGrade,
     PlayerWeekInput,
+    PlayerWeekRow,
+    PlayerWeekTotal,
     SeasonStanding,
     Side,
     SlotGrade,
     WeekGrade,
+    WeekRollup,
     WeekSnapshot,
 )
