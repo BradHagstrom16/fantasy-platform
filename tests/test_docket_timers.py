@@ -61,7 +61,10 @@ def test_service_runs_a_real_mode_in_scheduled_form(service):
     assert 'flask docket sync --mode ' in command
     mode = command.split('--mode ')[1].split()[0]
     assert mode in SYNC_MODES, f'{service.name} runs unknown mode {mode!r}'
-    assert '--scheduled' in command, (
+    # Whole-token match, not a substring: '--scheduled' in command would also
+    # accept '--scheduled-later' or '--scheduled=false', neither of which is
+    # the boolean flag click defines.
+    assert re.search(r'(?<!\S)--scheduled(?!\S)', command), (
         f'{service.name} must pass --scheduled: a timer that exits 1 for '
         f'"nothing to do yet" trains the operator to ignore it')
 

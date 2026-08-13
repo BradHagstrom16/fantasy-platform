@@ -22,6 +22,16 @@ to act on a Thursday case has to hear about it on Thursday.
 Progress comes from ``picks.sheet_state`` and is never re-derived here: it is
 the same assembly the sheet rail renders, so an email cannot contradict the
 page it links to.
+
+**Accepted trade: the flag is per-week, not per-recipient.** It is written
+once, after the send loop, so a process that dies mid-loop leaves the tier
+unrecorded and the next hourly run re-mails everyone — including whoever
+already received it. Making that airtight means a per-recipient outbox with
+provider idempotency keys, committed before each send. Deliberately not built:
+the pool is roughly twenty people, the cost of the failure is one duplicate
+reminder, and every other game on the platform makes the same trade (Golf's
+recap and reminder paths both name it). If it is ever built, it should be
+built once for all games, not here.
 """
 import logging
 from datetime import UTC, timedelta
