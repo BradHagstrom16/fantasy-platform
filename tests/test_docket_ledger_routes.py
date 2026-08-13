@@ -8,6 +8,8 @@ prose that can drift.
 import re
 from datetime import datetime
 
+from sqlalchemy import select
+
 from extensions import db
 from games.docket.models import DocketWeekResult
 from tests._docket_fixtures import make_enrollment, make_user, make_week
@@ -107,8 +109,9 @@ def test_competition_rank_renders_shared_and_gapped(app, client):
     for name, points, wins in [('alice', 9.0, 9), ('bob', 9.0, 9),
                                ('carol', 4.0, 4)]:
         _result(week, _member(name), points, wins)
+    viewer = _member('viewer')
     db.session.commit()
-    _login(client, _member('viewer'))
+    _login(client, viewer)
 
     html = client.get('/docket/ledger').data.decode()
     ranks = [row[0].split()[0] for row in _standings_cells(html)]
@@ -119,8 +122,9 @@ def test_shared_ranks_say_tied_out_loud(app, client):
     week = _week(1)
     for name in ('alice', 'bob'):
         _result(week, _member(name), 5.0, 5)
+    viewer = _member('viewer')
     db.session.commit()
-    _login(client, _member('viewer'))
+    _login(client, viewer)
 
     html = client.get('/docket/ledger').data.decode()
     tied = [row[0] for row in _standings_cells(html) if 'tied' in row[0]]
@@ -152,7 +156,9 @@ def test_key_three_is_divided_by_ten_only_at_render(app, client):
 
     html = client.get('/docket/ledger').data.decode()
     assert _standings_cells(html)[0][4] == '51.5'
-    stored = db.session.get(DocketWeekResult, 1).error_tenths
+    stored = db.session.scalar(
+        select(DocketWeekResult).filter_by(user_id=alice.id, week_id=week.id)
+    ).error_tenths
     assert stored == 515 and isinstance(stored, int)
 
 
@@ -198,15 +204,29 @@ def test_a_week_with_no_sheet_filed_states_its_charge(app, client):
 
 
 def test_current_user_row_is_tinted_not_striped(app, client):
+    """The page emits the hook; the stylesheet decides the treatment. Asserting
+    'border-left' not in html would pass unconditionally, since neither the
+    tint nor a stripe can appear in rendered markup — so check the actual
+    rule, scoped to it rather than sweeping the whole file."""
+    import re
+    from pathlib import Path
+
     week = _week(1)
     alice = _member('alice')
     _result(week, alice, 5.0, 5)
     db.session.commit()
     _login(client, alice)
 
-    html = client.get('/docket/ledger').data.decode()
-    assert 'row-current-user' in html
-    assert 'border-left' not in html
+    assert 'row-current-user' in client.get('/docket/ledger').data.decode()
+
+    css = Path('static/css/style.css').read_text()
+    rule = re.search(
+        r'\.docket-ledger-table \.row-current-user\s*>\s*td\s*\{([^}]*)\}', css)
+    assert rule, 'the ledger must scope its own current-user tint'
+    body = rule.group(1)
+    assert 'background' in body, 'the highlight is a tint'
+    assert 'border-left' not in body and 'border-right' not in body, \
+        'tint only, never a side stripe (platform Tables rule)'
 
 
 def test_verdict_banner_is_absent_until_the_season_is_complete(app, client):
@@ -251,8 +271,9 @@ def test_ledger_query_count_does_not_scale_with_the_roster(app, client):
     week = _week(1)
     for i in range(12):
         _result(week, _member(f'p{i:02d}'), float(i), i)
+    viewer = _member('viewer')
     db.session.commit()
-    _login(client, _member('viewer'))
+    _login(client, viewer)
 
     statements = []
     engine = db.engine

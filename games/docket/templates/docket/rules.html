@@ -23,7 +23,7 @@ finish review, the verdict, and DESIGN.md.
         <span class="docket-eyebrow">Standing orders</span>
         <h1>House Rules</h1>
         <p class="lead mb-0">
-            Eight sides a week against frozen lines, one headliner worth double,
+            {{ scoring_slots }} sides a week against frozen lines, one headliner worth double,
             one worst week eventually forgiven.
         </p>
     </div>
@@ -112,8 +112,8 @@ finish review, the verdict, and DESIGN.md.
                     </table>
                 </div>
                 <p class="docket-article-note">
-                    A perfect week is {{ '%g'|format(max_week) }}: seven ordinary
-                    verdicts plus the headliner. The double is not stacked on top of
+                    A perfect week is {{ '%g'|format(max_week) }}: {{ scoring_slots - 1 }}
+                    ordinary verdicts plus the headliner. The double is not stacked on top of
                     anything, it replaces the ordinary value.
                 </p>
             </section>
@@ -128,7 +128,7 @@ finish review, the verdict, and DESIGN.md.
                 </p>
                 <p class="docket-article-copy">
                     Name none and the deadline pass names one for you, judged across
-                    your final eight sides: the largest favorite, else the highest
+                    your final {{ scoring_slots }} sides: the largest favorite, else the highest
                     Over, else the earliest kickoff.
                 </p>
             </section>
@@ -136,7 +136,7 @@ finish review, the verdict, and DESIGN.md.
             <section class="docket-article" id="rules-reserve">
                 <h2 class="docket-section-head">Held in reserve</h2>
                 <p class="docket-article-copy">
-                    A ninth pick sits dormant. It scores nothing unless one of your
+                    Pick {{ backup_slot }} sits dormant. It scores nothing unless one of your
                     {{ scoring_slots }} cases is thrown out, in which case it
                     substitutes into the cancelled slot whose game had the earliest
                     scheduled kickoff. Any further cancelled slots settle as a

@@ -387,7 +387,11 @@ def recalc_cmd(week):
             click.echo('No week has reached its deadline yet.')
             return
 
-    click.echo(f'\n[docket recalc] roster: {len(roster_user_ids())} enrolled')
+    # The live roster is context, not the population: each week grades the
+    # roster as of its own deadline, so print that per week rather than one
+    # season-wide number a historical recalc would overstate.
+    click.echo(f'\n[docket recalc] {len(roster_user_ids())} enrolled today; '
+               f'each week grades its roster as of its deadline')
     for target in weeks:
         roster = roster_user_ids_as_of(target.deadline_at)
         result = try_grade_week(target.id, user_ids=roster)
