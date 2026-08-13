@@ -121,7 +121,8 @@ write_good_preset() {
 write_good_preset
 # $SANDBOX/etc-preset is deliberately NOT created here or in reset_state: the
 # real /etc/systemd/system-preset does not exist on the droplet either, so every
-# run exercises the install -D that has to create it.
+# run exercises the `install -d` that has to create it. (Not `install -D`, which
+# BSD/macOS spells as an option taking an argument — see deploy.sh's sync_preset.)
 PRESET_DIR="$SANDBOX/etc-preset"
 
 # Created empty so case T can count lines unconditionally. Left to accumulate

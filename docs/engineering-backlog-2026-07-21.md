@@ -239,7 +239,7 @@ installed by a dedicated `sync_preset` path in `deploy.sh` gated on a bash shape
 `ignore` for `cfb-*`/`docket-*`/`golf-*`, which makes `preset-all` a no-op for
 hand-managed families in **both** directions and needs no flip at any milestone —
 that is the answer to the open judgement call at the end of this item. Covered by
-`tests/test_systemd_preset.py` (13) and cases V–Z of `tests/test-deploy-guards.sh`
+`tests/test_systemd_preset.py` (17) and cases V–Z of `tests/test-deploy-guards.sh`
 (102 → 132 assertions locally, 97 → 127 on the droplet). The World Cup units stay in
 `deploy/` — see ADR-044 for why removing them would have reduced exposure by zero.
 
@@ -511,7 +511,7 @@ claims. It is what caught 1.1.
 | | |
 |---|---|
 | `main` | PR #130 (2026-07-30; 2.1/2.5/2.6 all shipped 2026-07-30 via #128/#129/#130) |
-| Tests | **1764 passing**, ruff clean; plus `tests/test-deploy-guards.sh` at 102 (97 on the droplet) — *stale; 2026-08-13 reads 2212 passing and 132 (127 on the droplet)* |
+| Tests | **1764 passing**, ruff clean; plus `tests/test-deploy-guards.sh` at 102 (97 on the droplet) — *stale; 2026-08-13 reads 2216 passing and 132 (127 on the droplet)* |
 | Production | deployed and verified — 29 units in sync; rate limits on shared Redis keyed by real client IP (realip, PR #129); origin cloaked by `fantasy-platform-fw` (80/443 CF-only, rollback drill measured ~55s); site 200 — *stale; 2026-08-13 reads 39 units + 1 preset file* |
 | Prod ↔ repo pins | converged under `constraints.txt` (ADR-042; `click` 8.4.2, `urllib3` 2.7.0, `redis` 8.1.0) |
 | Active era | CFB Survivor launch prep; WC archived; Golf UI phase ~Jan 2027 |
