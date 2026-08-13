@@ -1,0 +1,44 @@
+{# Second-bill strip — the interim multi-game seam (docket binding rulings:
+   premise 3 + D21-eng). One strip per open game that does NOT own the lounge.
+
+   STATIC BY RULING. Mark, name, tagline and cadence all come off the
+   GameRegistryEntry; the only viewer-dependent bit is the CTA, resolved from
+   the enrollment `second_bill_games()` already pairs with each entry. No
+   countdown, no deadline math, no per-user pick state — the single-overlay
+   seam (`lounge_game()` + the `build_home_context` merge) stays untouched for
+   the ~Oct multi-featured redesign, which is where that work belongs.
+
+   Registry-generic on purpose: this partial names no game. The Docket is the
+   only entry it renders today; a future open non-featured game arrives with
+   no change here.
+
+   Informational register (DESIGN.md §5): the strip states the record, it does
+   not ask anything of you before a deadline. Its CTA is `.cta-outline`, never
+   `.cta-seal` — the CFB-era lounge's two metal-gold CTAs are already spent on
+   the decree and the OPEN summons.
+
+   Substrate: the club's own purple and gold. A game enters the lounge through
+   content and copy, never its room's palette (DESIGN.md §1.6; docket §3). #}
+{% for entry, enrollment in second_bill %}
+<section class="second-bill" aria-labelledby="second-bill-{{ entry.slug }}">
+  <p class="second-bill-eyebrow">&#9671; Also in Session</p>
+  <div class="second-bill-head">
+    <span class="second-bill-mark" aria-hidden="true">{{ entry.emoji }}</span>
+    <h2 class="second-bill-title" id="second-bill-{{ entry.slug }}">{{ entry.display_name }}</h2>
+  </div>
+  <p class="second-bill-sub">{{ entry.description }}</p>
+  {% if entry.lounge_cadence %}
+  <p class="second-bill-cadence">{{ entry.lounge_cadence }}</p>
+  {% endif %}
+  {# Join vs enter, off the paired enrollment. A logged-out viewer routes
+     through auth.register with `next=blueprint_join` so signing up lands on
+     the join page, matching the conversion card's path. #}
+  {% if enrollment %}
+  <a class="cta-outline" href="{{ url_for(entry.blueprint_index) }}">Enter {{ entry.display_name }}</a>
+  {% elif current_user.is_authenticated %}
+  <a class="cta-outline" href="{{ url_for(entry.blueprint_join) }}">Join {{ entry.display_name }}</a>
+  {% else %}
+  <a class="cta-outline" href="{{ url_for('auth.register', next=url_for(entry.blueprint_join)) }}">Join {{ entry.display_name }}</a>
+  {% endif %}
+</section>
+{% endfor %}
