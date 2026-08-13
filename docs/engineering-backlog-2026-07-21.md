@@ -312,13 +312,22 @@ stray `worldcup-*` back off.
 > `iscsid.service` and six system timers. It also writes its output to **stderr**, so
 > `> file` captures an empty file and the run looks like it did nothing.
 >
-> **To see what preset policy says, without changing anything:**
+> **To inspect, without changing anything:**
 > ```bash
-> systemctl list-unit-files '<prefix>-*.timer' --no-pager   # read the PRESET column
+> systemctl list-unit-files 'worldcup-*.timer' 'cfb-*.timer' \
+>                           'docket-*.timer' 'golf-*.timer' --no-pager
 > ```
-> No sudo, no writes. `PRESET` reads `disabled` for `worldcup-*` and `ignored` for the
-> three active games — that IS the verification. `systemd-analyze cat-config
-> systemd/system-preset` shows the merged policy if you need the file view.
+> No sudo, no writes, no pager. **Read both columns — they answer different questions,
+> and this incident is exactly where they disagree:**
+>
+> | Column | Question | Expected |
+> |---|---|---|
+> | `PRESET` | what policy *should* be | `disabled` for `worldcup-*`; `ignored` for `cfb-*`/`docket-*`/`golf-*` |
+> | `STATE` | what is actually enabled **now** | `enabled` for `docket-{lines,scores,deadline,remind}` only; everything else `disabled`, **`docket-setup.timer` included** until after the hand-run Week-1 import (Tue Sep 1, by ruling) |
+>
+> Mid-incident `PRESET` read `ignored` while `STATE` read `enabled` on 15 timers — a
+> PRESET-only check would have reported all-clear with the hazard live. `systemd-analyze
+> cat-config systemd/system-preset` shows the merged policy if you need the file view.
 >
 > If `preset-all` is ever run by accident, recovery is `systemctl disable --now` naming
 > each unit explicitly. Note `ignore` cannot repair it: `ignore` preserves whatever
