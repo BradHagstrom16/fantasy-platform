@@ -60,6 +60,7 @@ sed -e 's|^cd /home/deploy/fantasy-platform$|cd "$(dirname "$0")"|' \
     -e 's|^lockfile=/home/deploy/.*$|lockfile="$(dirname "$0")/deploy.lock"|' \
     -e 's|^unit_dir=/etc/systemd/system$|unit_dir="$(dirname "$0")/etc-systemd"|' \
     -e "s|^unit_owner=root:root\$|unit_owner=$HARNESS_USER|" \
+    -e 's|^preset_dir=/etc/systemd/system-preset$|preset_dir="$(dirname "$0")/etc-preset"|' \
     "$REPO_SCRIPT" > "$SANDBOX/deploy.sh"
 chmod +x "$SANDBOX/deploy.sh"
 
@@ -70,8 +71,9 @@ echo
 # Fail loudly if a sed silently matched nothing — a no-op sed would leave the
 # test running against /home/deploy paths and quietly prove nothing.
 grep -q 'cd "$(dirname "$0")"' "$SANDBOX/deploy.sh" || { echo "SED 1 MISSED"; exit 1; }
-# SEDs 2–4 are relaxed only for the red-baseline run against a pre-fix script,
-# which has no lockfile line and no unit_dir/unit_owner lines to rewrite.
+# SEDs 2–5 are relaxed only for the red-baseline run against a pre-fix script,
+# which has no lockfile line and no unit_dir/unit_owner/preset_dir lines to
+# rewrite.
 if ! grep -q 'lockfile="$(dirname "$0")/deploy.lock"' "$SANDBOX/deploy.sh"; then
     [ -n "${ALLOW_MISSING_LOCK_SED:-}" ] || { echo "SED 2 MISSED"; exit 1; }
     echo "(no lockfile line — running the legacy-baseline comparison)"
@@ -83,6 +85,10 @@ fi
 if ! grep -q "^unit_owner=$HARNESS_USER\$" "$SANDBOX/deploy.sh"; then
     [ -n "${ALLOW_MISSING_LOCK_SED:-}" ] || { echo "SED 4 MISSED"; exit 1; }
     echo "(no unit_owner line — legacy baseline)"
+fi
+if ! grep -q 'preset_dir="$(dirname "$0")/etc-preset"' "$SANDBOX/deploy.sh"; then
+    [ -n "${ALLOW_MISSING_LOCK_SED:-}" ] || { echo "SED 5 MISSED"; exit 1; }
+    echo "(no preset_dir line — legacy baseline)"
 fi
 
 cp "$SANDBOX/deploy.sh" "$SANDBOX/deploy.sh.pristine"
@@ -101,6 +107,22 @@ for u in guard-alpha guard-beta; do
         "$u" > "$SANDBOX/deploy/$u.timer"
 done
 UNIT_FIXTURE_COUNT=5
+
+# Preset fixture. Kept separate from the unit fixtures above because the unit
+# loop globs only *.service and *.timer — a *.preset in deploy/ does not move
+# UNIT_FIXTURE_COUNT, so every hardcoded "4 in sync, 1 updated, ..." string in
+# cases N–U stays valid. Cases V–Z rewrite this file to drive the validator and
+# restore it afterwards, so this is the known-good content they return to.
+PRESET_FIXTURE="$SANDBOX/deploy/guard.preset"
+write_good_preset() {
+    printf '# fixture preset\n\ndisable guard-alpha-*.timer\nignore guard-beta-*.timer\n' \
+        > "$PRESET_FIXTURE"
+}
+write_good_preset
+# $SANDBOX/etc-preset is deliberately NOT created here or in reset_state: the
+# real /etc/systemd/system-preset does not exist on the droplet either, so every
+# run exercises the install -D that has to create it.
+PRESET_DIR="$SANDBOX/etc-preset"
 
 # Created empty so case T can count lines unconditionally. Left to accumulate
 # for the whole run — reset_state must never clear it.
@@ -292,6 +314,10 @@ reset_state() {
     # run so case T can assert on every case at once.
     rm -rf "$SANDBOX/etc-systemd"
     mkdir -p "$SANDBOX/etc-systemd"
+    # Removed but NOT recreated — see PRESET_DIR above. The preset sync has to
+    # create its own directory, the way it must on a box with no local preset.
+    rm -rf "$PRESET_DIR"
+    write_good_preset
 }
 
 # ------------------------------------------------------------------ tests ---
@@ -658,6 +684,118 @@ check "repaired the mode it could not read" \
       "$(stat -c '%a' "$SANDBOX/etc-systemd/guard-beta.timer")" "644"
 check "counted exactly one warning" "$(grep -c 'with 1 warning' "$SANDBOX/u.out")" "1"
 check "did not claim success" "$(grep -c 'Done. App is live' "$SANDBOX/u.out")" "0"
+echo
+
+# Cases V–Z cover the preset path (ADR-044). They sit after U and before T
+# because T asserts across the whole run and must stay last, and because
+# nothing may be added above G, which counts restarts accumulated across E–F.
+# None of them disturb the unit counts: the unit loop globs only *.service and
+# *.timer, so deploy/guard.preset is invisible to it.
+
+echo "=== V: preset absent ⇒ installed, and its own directory created ==="
+# /etc/systemd/system-preset does not exist on a box that never had a local
+# preset — verified absent on the droplet. A path that assumed the directory
+# would work everywhere except the one machine it has to work on.
+reset_state
+check "the preset dir really starts absent" \
+      "$([ -d "$PRESET_DIR" ] && echo present || echo absent)" "absent"
+MUTATE_PULLS=0 "$SANDBOX/deploy.sh" > "$SANDBOX/v.out" 2>&1
+check "exit code" "$?" "0"
+check "installed the preset" \
+      "$(grep -c '0 in sync, 0 updated, 1 installed, 0 failed' "$SANDBOX/v.out")" "1"
+check "created the directory it needed" \
+      "$([ -d "$PRESET_DIR" ] && echo present || echo absent)" "present"
+check "said a preset changes nothing by itself" \
+      "$(grep -c 'a preset file changes nothing by itself' "$SANDBOX/v.out")" "1"
+check "landed at mode 644" "$(stat -c '%a' "$PRESET_DIR/guard.preset")" "644"
+check "landed byte-identical to the repo copy" \
+      "$(cmp -s "$PRESET_FIXTURE" "$PRESET_DIR/guard.preset" && echo same || echo differs)" "same"
+check "no temp file survived the run" \
+      "$(find "$PRESET_DIR" -name '*.new.*' 2>/dev/null | wc -l | tr -d ' ')" "0"
+check "reached the end" "$(grep -c 'Done. App is live' "$SANDBOX/v.out")" "1"
+echo
+
+echo "=== W: preset unchanged since the last deploy ⇒ reported in sync, not rewritten ==="
+reset_state
+MUTATE_PULLS=0 "$SANDBOX/deploy.sh" > /dev/null 2>&1
+MUTATE_PULLS=0 "$SANDBOX/deploy.sh" > "$SANDBOX/w.out" 2>&1
+check "exit code" "$?" "0"
+check "reported in sync rather than reinstalling" \
+      "$(grep -c '1 in sync, 0 updated, 0 installed, 0 failed' "$SANDBOX/w.out")" "1"
+check "reached the end" "$(grep -c 'Done. App is live' "$SANDBOX/w.out")" "1"
+echo
+
+echo "=== X: a preset with an unknown directive is refused, not installed ==="
+# systemd-analyze verify cannot do this — it rejects preset files outright
+# ("Invalid argument"), which is why the shape lint exists at all.
+reset_state
+printf 'mask guard-alpha-*.timer\n' > "$PRESET_FIXTURE"
+MUTATE_PULLS=0 "$SANDBOX/deploy.sh" > "$SANDBOX/x.out" 2>&1
+check "exit code (warned ⇒ non-zero)" "$?" "1"
+check "named the line and the bad directive" \
+      "$(grep -c "guard.preset:1: 'mask' is not enable, disable or ignore" "$SANDBOX/x.out")" "1"
+check "said it stays absent" "$(grep -c 'guard.preset stays absent' "$SANDBOX/x.out")" "1"
+check "counted it as failed" \
+      "$(grep -c '0 in sync, 0 updated, 0 installed, 1 failed' "$SANDBOX/x.out")" "1"
+check "the rejected preset did not land" \
+      "$([ -e "$PRESET_DIR/guard.preset" ] && echo present || echo absent)" "absent"
+check "the units still synced" \
+      "$(grep -c "0 in sync, 0 updated, $UNIT_FIXTURE_COUNT installed, 0 failed" "$SANDBOX/x.out")" "1"
+check "counted exactly one warning" "$(grep -c 'with 1 warning' "$SANDBOX/x.out")" "1"
+check "did not claim success" "$(grep -c 'Done. App is live' "$SANDBOX/x.out")" "0"
+echo
+
+echo "=== Y: a preset that could reach beyond this platform's timers is refused ==="
+# The load-bearing case. A preset file in /etc outranks the vendor
+# 90-systemd.preset for every unit it matches, so an over-broad pattern here is
+# not a bad deploy, it is a bad box: `disable *` would take getty@, resolved and
+# remote-fs.target down at the next preset-all. `disable *.timer` is the sneaky
+# one — it satisfies a naive "must end in .timer" rule while still matching
+# every timer on the machine, which is why the first character is checked too.
+reset_state
+MUTATE_PULLS=0 "$SANDBOX/deploy.sh" > /dev/null 2>&1
+cp "$PRESET_FIXTURE" "$SANDBOX/guard.preset.good"
+y_refused=0
+y_preserved=0
+y_total=0
+while IFS= read -r bad; do
+    y_total=$((y_total + 1))
+    printf '%s\n' "$bad" > "$PRESET_FIXTURE"
+    MUTATE_PULLS=0 "$SANDBOX/deploy.sh" > "$SANDBOX/y.out" 2>&1 || true
+    grep -q 'failed validation' "$SANDBOX/y.out" && y_refused=$((y_refused + 1))
+    cmp -s "$SANDBOX/guard.preset.good" "$PRESET_DIR/guard.preset" \
+        && y_preserved=$((y_preserved + 1))
+done <<'BADPRESETS'
+disable *
+disable *.timer
+disable getty@.service
+enable fantasy-platform.service
+disable guard-alpha-*.timer # trailing comment
+BADPRESETS
+check "every dangerous pattern was refused" "$y_refused" "$y_total"
+check "the known-good live preset survived every one" "$y_preserved" "$y_total"
+write_good_preset
+echo
+
+echo "=== Z: the preset install itself fails ⇒ warned, temp cleaned, units unaffected ==="
+reset_state
+SUDO_FAIL_RE='^install .*guard\.preset' MUTATE_PULLS=0 \
+    "$SANDBOX/deploy.sh" > "$SANDBOX/z.out" 2>&1
+check "exit code (warned ⇒ non-zero)" "$?" "1"
+check "named the preset it could not install" \
+      "$(grep -c 'could not install guard.preset' "$SANDBOX/z.out")" "1"
+# Anchored on the '!!' prefix: the sudo shim echoes the command it was forced to
+# fail, which names the same two paths and would otherwise be counted too.
+check "offered the by-hand fix, naming both paths" \
+      "$(grep -c '!!.*deploy/guard.preset .*etc-preset/guard.preset' "$SANDBOX/z.out")" "1"
+check "counted it as failed" \
+      "$(grep -c '0 in sync, 0 updated, 0 installed, 1 failed' "$SANDBOX/z.out")" "1"
+check "the units installed anyway" \
+      "$(grep -c "0 in sync, 0 updated, $UNIT_FIXTURE_COUNT installed, 0 failed" "$SANDBOX/z.out")" "1"
+check "left no temp file behind" \
+      "$(find "$PRESET_DIR" -name '*.new.*' 2>/dev/null | wc -l | tr -d ' ')" "0"
+check "counted exactly one warning" "$(grep -c 'with 1 warning' "$SANDBOX/z.out")" "1"
+check "did not claim success" "$(grep -c 'Done. App is live' "$SANDBOX/z.out")" "0"
 echo
 
 echo "=== T: across every case above, no privileged call was aimed outside the sandbox ==="

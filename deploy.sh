@@ -169,19 +169,20 @@ ENVIRONMENT=production FLASK_APP=app.py venv/bin/flask db upgrade
 # would leave migrations applied but the app never restarted — a worse state
 # than deploying with a stale unit. Warn loudly and carry on instead.
 #
-# These two are rewritten by tests/test-deploy-guards.sh (SED 3 / SED 4) so the
-# harness can drive this loop against a sandbox directory as an unprivileged
-# user. Keep them literal, one per line, anchored at column 0.
+# These three are rewritten by tests/test-deploy-guards.sh (SED 3 / SED 4 /
+# SED 5) so the harness can drive this loop against a sandbox directory as an
+# unprivileged user. Keep them literal, one per line, anchored at column 0.
 unit_dir=/etc/systemd/system
 unit_owner=root:root
+preset_dir=/etc/systemd/system-preset
 
 echo "==> Syncing systemd units..."
 # One trap covering every iteration's temp rather than one per unit. Without it,
 # an interrupted run (dropped SSH -> SIGHUP) between an install and its rename
 # strands a root-owned temp in $unit_dir that the deploy user cannot remove. A
 # glob matching nothing expands to itself, and `rm -f` on a nonexistent literal
-# is a silent no-op.
-trap 'sudo rm -f "$unit_dir"/*.new.$$ 2>/dev/null || true' EXIT INT TERM HUP
+# is a silent no-op — which also covers $preset_dir not existing yet.
+trap 'sudo rm -f "$unit_dir"/*.new.$$ "$preset_dir"/*.new.$$ 2>/dev/null || true' EXIT INT TERM HUP
 
 # Syncs one unit by name. Prints its own failure explanation; the caller owns
 # deploy_warnings so the accounting stays in one place. Return codes are
@@ -317,6 +318,185 @@ if [ "$unit_installed" -gt 0 ]; then
     echo "    starts nothing. Enable deliberately, one game at a time, naming"
     echo "    each unit in full (systemctl enable does not accept globs):"
     echo "        sudo systemctl enable --now <name>.timer [<name>.timer ...]"
+fi
+
+# Preset files are policy, not units, so the loop above cannot carry them:
+# `systemd-analyze verify` rejects one outright ("Failed to prepare filename
+# ...: Invalid argument", exit 1 — checked on the droplet 2026-08-13), which
+# would score every preset as a failed unit. They get their own path, their own
+# validation, and their own directory (ADR-044, backlog 2.4).
+#
+# Ordering note: nothing below re-reads this file. A preset is consulted only by
+# `systemctl preset` / `preset-all`, never at boot on an installed system and
+# never by daemon-reload, so this could sit anywhere after the pull. It runs
+# beside the unit sync because that is where a reader looks for it.
+
+# Shape lint, the preset equivalent of `systemd-analyze verify`. Two rules:
+# every line is a directive systemd understands, and every pattern ends in
+# .timer.
+#
+# The second rule is the one that matters. A bad UNIT file is inert until
+# something starts it, which is why validating its syntax is enough. A bad
+# PRESET file is not inert: it is box-wide policy in /etc that outranks the
+# vendor 90-systemd.preset for every unit it matches, so `disable *` here would
+# take getty@.service, systemd-resolved.service and remote-fs.target down with
+# it at the next preset-all. Requiring a .timer suffix AND a non-wildcard first
+# character makes that unrepresentable rather than merely discouraged — it
+# rejects `*`, `*.timer` and `getty@.service` alike, instead of blacklisting one
+# spelling of the mistake.
+#
+# Bash builtins only: case I of the harness runs this script on a PATH stripped
+# to an explicit list of binaries, so every external command added here has to
+# be added there too. `read` with the default IFS strips leading whitespace and
+# splits the fields for free.
+validate_preset() {
+    local file="$1"
+    local lineno=0 directive pattern rest
+    while read -r directive pattern rest || [ -n "$directive" ]; do
+        lineno=$((lineno + 1))
+        # systemd ignores blank lines and lines whose first non-whitespace
+        # character is # or ; — matched here in both spellings, `# x` and `#x`.
+        case "$directive" in
+            ''|'#'*|';'*) continue ;;
+        esac
+        case "$directive" in
+            enable|disable|ignore) ;;
+            *)  echo "    !! $file:$lineno: '$directive' is not enable, disable or ignore" >&2
+                return 1 ;;
+        esac
+        if [ -z "$pattern" ]; then
+            echo "    !! $file:$lineno: '$directive' has no unit pattern" >&2
+            return 1
+        fi
+        # systemd has no trailing-comment syntax: anything after the pattern is
+        # read as a template instance name, so `disable x.timer # note` would
+        # silently mean something else entirely. Refuse it.
+        if [ -n "$rest" ]; then
+            echo "    !! $file:$lineno: trailing text after '$pattern' ('$rest')." >&2
+            echo "    !! Preset files have no trailing-comment syntax; put it on its own line." >&2
+            return 1
+        fi
+        case "$pattern" in
+            [a-zA-Z0-9]*) ;;
+            *)  echo "    !! $file:$lineno: '$pattern' starts with a wildcard." >&2
+                echo "    !! This file may only name <prefix>-*.timer, never all timers." >&2
+                return 1 ;;
+        esac
+        case "$pattern" in
+            *.timer) ;;
+            *)  echo "    !! $file:$lineno: '$pattern' does not end in .timer." >&2
+                echo "    !! This file governs game timers only — a rule reaching any other" >&2
+                echo "    !! unit type would outrank 90-systemd.preset for system units." >&2
+                return 1 ;;
+        esac
+    done < "$file"
+    return 0
+}
+
+# Mirrors sync_unit's return codes, idempotence check and atomic install so the
+# two report identically. Deliberately a second function rather than a
+# generalisation of sync_unit: the validation step is not substitutable between
+# them, and sync_unit is load-bearing enough that widening it to serve a second
+# caller is a worse trade than the duplication.
+#   0  already in sync    10  installed (was absent)
+#   1  failed             11  updated (content or metadata had drifted)
+#                         12  reinstalled, but mode/owner could not be verified
+sync_preset() {
+    local name="$1"
+    local repo_file="deploy/$name"
+    local live="$preset_dir/$name"
+    local tmp="$live.new.$$"
+    local meta="" existed=0 stat_failed=0
+
+    if [ -e "$live" ]; then
+        existed=1
+        if meta=$(stat -c '%a %U:%G' "$live" 2>/dev/null); then
+            if [ "$meta" = "644 $unit_owner" ] && diff -q "$repo_file" "$live" >/dev/null 2>&1; then
+                return 0
+            fi
+            if [ "$meta" != "644 $unit_owner" ]; then
+                echo "    $name metadata is '$meta', expected '644 $unit_owner' — repairing"
+            fi
+        else
+            stat_failed=1
+            echo "    !! WARNING: $name exists but stat failed — cannot verify mode/owner." >&2
+            echo "    !! Reinstalling it regardless; check by hand: stat -c '%a %U:%G' $live" >&2
+        fi
+    fi
+
+    if ! validate_preset "$repo_file"; then
+        echo "    !! WARNING: $repo_file failed validation (above). NOT installing it;" >&2
+        if [ "$existed" = 1 ]; then
+            echo "    !! keeping the current live preset. Fix the repo file." >&2
+        else
+            echo "    !! $name stays absent from $preset_dir. Fix the repo file." >&2
+        fi
+        return 1
+    fi
+
+    # $preset_dir, unlike $unit_dir, is not guaranteed to exist: a box that has
+    # never had a local preset has no /etc/systemd/system-preset at all
+    # (verified absent on the droplet 2026-08-13). Create it before the install
+    # rather than after validation fails, so a rejected preset leaves no empty
+    # directory behind.
+    #
+    # `install -d`, NOT `install -D` and not `mkdir`. GNU's -D creates the
+    # destination's leading directories, but BSD/macOS install spells -D as an
+    # option that TAKES AN ARGUMENT, so it silently swallows the following -m and
+    # then fails — and the harness runs on both. `sudo mkdir` is a no-op under
+    # the harness, whose sudo shim executes only install/mv/rm. -d is the one
+    # spelling that behaves the same on both and survives the shim.
+    if ! sudo install -d -m 755 -o "${unit_owner%%:*}" -g "${unit_owner##*:}" "$preset_dir"; then
+        echo "    !! WARNING: could not create $preset_dir; $name not installed." >&2
+        echo "    !! Fix with: sudo install -d -m 755 -o ${unit_owner%%:*} -g ${unit_owner##*:} $preset_dir" >&2
+        return 1
+    fi
+    if sudo install -m 644 -o "${unit_owner%%:*}" -g "${unit_owner##*:}" "$repo_file" "$tmp" \
+       && sudo mv -f "$tmp" "$live"; then
+        if [ "$stat_failed" = 1 ]; then return 12; fi
+        if [ "$existed" = 1 ]; then return 11; else return 10; fi
+    fi
+
+    sudo rm -f "$tmp" 2>/dev/null || true
+    if [ "$existed" = 1 ]; then
+        echo "    !! WARNING: could not install $name; continuing with the STALE one." >&2
+    else
+        echo "    !! WARNING: could not install $name; it stays absent from $preset_dir." >&2
+    fi
+    echo "    !! Fix with: sudo install -m 644 -o ${unit_owner%%:*} -g ${unit_owner##*:} \\" >&2
+    echo "    !!             $repo_file $live" >&2
+    return 1
+}
+
+echo "==> Syncing systemd preset policy..."
+preset_ok=0
+preset_updated=0
+preset_installed=0
+preset_failed=0
+for preset_path in deploy/*.preset; do
+    [ -f "$preset_path" ] || continue
+    preset_name="${preset_path##*/}"
+    preset_rc=0
+    sync_preset "$preset_name" || preset_rc=$?
+    case "$preset_rc" in
+        0)  preset_ok=$((preset_ok + 1)) ;;
+        10) preset_installed=$((preset_installed + 1))
+            echo "    $preset_name installed (644 $unit_owner)" ;;
+        11) preset_updated=$((preset_updated + 1))
+            echo "    $preset_name updated (644 $unit_owner)" ;;
+        12) preset_updated=$((preset_updated + 1))
+            deploy_warnings=$((deploy_warnings + 1))
+            echo "    $preset_name reinstalled (prior mode/owner unverifiable)" ;;
+        *)  preset_failed=$((preset_failed + 1))
+            deploy_warnings=$((deploy_warnings + 1)) ;;
+    esac
+done
+echo "    $preset_ok in sync, $preset_updated updated, $preset_installed installed, $preset_failed failed"
+if [ "$preset_installed" -gt 0 ]; then
+    echo "    NOTE: a preset file changes nothing by itself — systemd reads it only"
+    echo "    when someone runs 'systemctl preset' or 'preset-all'. It bounds the"
+    echo "    blast radius of that command; it does not enable or disable anything"
+    echo "    now. Confirm with: systemctl list-unit-files '*-*.timer' (PRESET column)"
 fi
 
 # Once for the whole loop, not per unit. Unconditional, and deliberately NOT
