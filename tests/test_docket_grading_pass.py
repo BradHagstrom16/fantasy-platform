@@ -237,3 +237,57 @@ def test_run_grading_pass_accepts_explicit_population(app):
     # ghost got the full D5 autopick week: deterministic, non-zero points
     assert rows[ghost.id].points > 0
     assert rows[ghost.id].error_tenths == 0  # default prediction, actual 50
+
+
+def test_run_grading_pass_persists_the_weeks_default_error(app):
+    """The default error is a grading fact the season rollup charges to
+    roster members absent from the week, so the pass persists it rather than
+    letting it die with the WeekGrade."""
+    from extensions import db
+    from games.docket.services.grading_pass import run_grading_pass
+
+    week, games = _seed_week(db)
+    alice = _seed_user(db, 'alice')
+    _seed_full_picks(db, alice, week, games)
+    assert week.default_error_tenths is None  # nothing graded yet
+
+    run_grading_pass(week.id)
+    # designated game's locked total 50.0 vs actual combined 50 -> 0 tenths
+    assert week.default_error_tenths == 0
+    assert isinstance(week.default_error_tenths, int)
+
+
+def test_regrading_updates_the_persisted_default_error(app):
+    """A corrected score moves the default error in the same transaction as
+    the per-player errors, so the two can never disagree."""
+    from extensions import db
+    from games.docket.services.grading_pass import run_grading_pass
+
+    week, games = _seed_week(db)
+    alice = _seed_user(db, 'alice')
+    _seed_full_picks(db, alice, week, games)
+    run_grading_pass(week.id)
+    assert week.default_error_tenths == 0
+
+    # The designated game is e-1 (lowest api_event_id); correct its score so
+    # the actual combined total moves 50 -> 62, i.e. 120 tenths of error.
+    games[0].home_score, games[0].away_score = 42, 20
+    db.session.commit()
+    run_grading_pass(week.id)
+    assert week.default_error_tenths == 120
+
+
+def test_designated_no_contest_persists_a_zero_error_week(app):
+    """Post-deadline designation death is a zero-error week for everyone, and
+    0 is a real value here, not a placeholder for 'ungraded'."""
+    from extensions import db
+    from games.docket.services.grading_pass import run_grading_pass
+
+    week, games = _seed_week(db)
+    alice = _seed_user(db, 'alice')
+    _seed_full_picks(db, alice, week, games)
+    games[0].no_contest = True
+    db.session.commit()
+
+    run_grading_pass(week.id)
+    assert week.default_error_tenths == 0

@@ -93,6 +93,20 @@ class DocketWeek(db.Model):
     # deliberately NOT CFB's cadence-dependent shape, which double-sends if
     # its timer is ever scheduled more often than its windows are wide).
     last_reminder_tier = db.Column(db.String(10), nullable=True)
+    # The week's default tiebreaker error in integer tenths (D20), written by
+    # the grading pass: |designated game's locked O/U total - actual combined
+    # score|, or 0 when that game was ruled No Contest (post-deadline
+    # designation death is a zero-error week for everyone). NULL until the
+    # week grades.
+    #
+    # Persisted rather than re-derived at read time because the season rollup
+    # charges it to roster members with no result row that week, including
+    # weeks before a late joiner enrolled (Grading Clarifications). Writing it
+    # in the same transaction as the docket_week_result rows it must be
+    # commensurable with is what keeps them consistent: recomputing at render
+    # would let an admin score correction move this default without moving the
+    # per-player errors, which only move on recalc.
+    default_error_tenths = db.Column(db.Integer, nullable=True)
     # Audit timestamp: real wall clock (never the fake-now seam), stripped
     # to naive UTC explicitly rather than trusting driver offset handling.
     created_at = db.Column(

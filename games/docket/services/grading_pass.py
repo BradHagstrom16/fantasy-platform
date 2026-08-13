@@ -169,6 +169,10 @@ def run_grading_pass(week_id: int, user_ids=None) -> dict:
 
     grade = grade_week(snapshot, players)
     graded_at = to_naive_utc(now_utc())
+    # The week's default error is a grading fact the season rollup charges to
+    # roster members absent from this week (late joiners). It lands in the same
+    # transaction as the rows it must be commensurable with.
+    week.default_error_tenths = grade.default_error_tenths
     for player_grade in grade.players:
         user_id = int(player_grade.player_id)
         row = db.session.scalar(
