@@ -16,4 +16,8 @@ docket_bp = Blueprint(
 )
 
 # Routes imported at bottom to avoid circular imports (blueprint pattern).
-from games.docket import routes  # noqa: E402, F401
+# The player's room and the clerk's office register separately.
+from games.docket import (  # noqa: E402
+    admin_routes,  # noqa: F401
+    routes,  # noqa: F401
+)

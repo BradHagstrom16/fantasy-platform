@@ -59,8 +59,9 @@
         <span class="docket-caption">
           {{ games_by_id[p.game_id].away_team }} at {{ games_by_id[p.game_id].home_team }}
           {%- if p.locked %} · locked{% endif %}
+          {%- if p.is_autopick %} · auto-filed{% endif %}
         </span>
-        {% if p.is_best %}<span class="docket-headliner-tag">Headliner x2</span>{% endif %}
+        {% if p.is_best %}<span class="docket-headliner-tag">Headliner x2{% if p.is_auto_best %} · assigned{% endif %}</span>{% endif %}
       </div>
       {{ slot_actions(p) }}
     {% elif slot_num == backup_slot %}
@@ -84,6 +85,29 @@
       Docket closes {{ week.deadline_at|ct('%A %-I:%M %p CT') }}
     {% endif %}
   </p>
+
+  {# What the deadline pass filed, stated plainly and once. The badges on the
+     slots and sides mark WHICH; this states WHY (the Cold-Docket Rule: a
+     procedural state always gives its reason). #}
+  {% set auto_n = sheet.autopick_count %}
+  {% set auto_best = sheet.best and sheet.best.is_auto_best %}
+  {% if sheet.deadline_passed and (auto_n or auto_best) %}
+    <div class="docket-auto-note">
+      <span class="docket-auto-tag">Auto</span>
+      <p>
+        {%- if auto_n %}
+          {{ auto_n }} of your eight sides {{ 'was' if auto_n == 1 else 'were' }}
+          filed for you when the docket closed: Overs on the highest totals,
+          favorites on the largest spreads.
+        {%- endif %}
+        {%- if auto_best %} Your headliner was assigned for you.{% endif %}
+        {#- A full sheet with no headliner named gets the second sentence
+            only, so "they" would have nothing to refer to. -#}
+        {% if auto_n %}They score exactly like the sides you picked.
+        {%- else %}It scores exactly like every other side you picked.{% endif %}
+      </p>
+    </div>
+  {% endif %}
 
   <ol class="docket-slots">
     {% for slot_num in range(1, backup_slot + 1) %}

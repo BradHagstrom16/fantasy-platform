@@ -8,7 +8,6 @@ enhancement script repaints from. All rule enforcement lives in
 games/docket/services/picks.py; these handlers stay declarative.
 """
 from datetime import UTC
-from functools import wraps
 
 from flask import (
     current_app,
@@ -43,22 +42,6 @@ def _kickoff_ct(dt):
     cycle. The Jinja ``ct`` filter is unaffected (registered at app boot).
     """
     return dt.replace(tzinfo=UTC).astimezone(CT)
-
-
-def docket_admin_required(f):
-    """Two-tier admin gate: platform admin always passes; otherwise the
-    user's current-season enrollment must carry ``is_admin``."""
-    @wraps(f)
-    @login_required
-    def decorated_function(*args, **kwargs):
-        if current_user.is_admin:
-            return f(*args, **kwargs)
-        enrollment = get_enrollment(current_user.id)
-        if not enrollment or not enrollment.is_admin:
-            flash('Docket admin access required.', 'error')
-            return redirect(url_for('docket.index'))
-        return f(*args, **kwargs)
-    return decorated_function
 
 
 @docket_bp.context_processor
@@ -327,13 +310,4 @@ def set_tiebreaker():
     message = 'Prediction recorded.' if row is not None else 'Prediction cleared.'
     return _sheet_success(week, message)
 
-
-# --------------------------------------------------------------------------
-# Admin (stub — surfaces land with T9)
-# --------------------------------------------------------------------------
-
-@docket_bp.route('/admin/')
-@docket_admin_required
-def admin_dashboard():
-    """Mount point for the T9 admin cluster; gate is live, surfaces pending."""
-    return render_template('docket/admin/dashboard.html')
+# The admin desk (the gate included) lives in games/docket/admin_routes.py.

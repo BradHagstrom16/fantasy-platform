@@ -12,7 +12,7 @@ Season runbook
 first write to the (until now empty) production docket tables::
 
     flask docket sync --mode setup                              # week 1 + both slates + first-posted lines
-    flask docket set-tiebreaker 1 "Wisconsin @ Notre Dame"      # hand-set until T9's admin UI
+    flask docket set-tiebreaker 1 "Wisconsin @ Notre Dame"      # or /docket/admin/week/1/tiebreaker
     flask docket sync --mode status                             # verify: games in, lines locked, designation set
 
 **Tue-Fri — gap fill.** Fills markets that weren't posted Tuesday and
@@ -33,11 +33,17 @@ Writes scores and grades the week as soon as it is complete::
 
     flask docket sync --mode scores
 
-**Any time — re-grade.** Idempotent; the fix after an admin No Contest
-ruling or a corrected score::
+**Any time — re-grade.** Idempotent; the fix after a corrected score. A No
+Contest ruling made through the admin desk already re-grades its own week
+(D14), so this is the manual counterpart, not a required follow-up::
 
     flask docket recalc          # every past-deadline week
     flask docket recalc 1        # one week
+
+**The admin desk** (`/docket/admin/`, T9) owns the three rulings the sync
+runs must never make: designating the tiebreaker case, throwing a case out
+(No Contest), and correcting a bad line pre-deadline (D18, audited). The
+commands here stay as the fallback.
 
 Credit budget: /events is free, /odds costs 2 per sport per run (skipped
 once a sport's markets are all locked), /scores costs 2 per sport per run.
@@ -300,10 +306,12 @@ def recalc_cmd(week):
 def set_tiebreaker_cmd(week, matchup):
     """Designate WEEK's tiebreaker game from an 'Away @ Home' MATCHUP.
 
-    The Week 1 hand-set (`"Wisconsin @ Notre Dame"`) until T9 ships the admin
-    designation UI. Designation must satisfy the Grading Clarifications
-    contract — a locked whole-tenth O/U total and a kickoff at or after the
-    deadline — which this command verifies and reports.
+    The fallback for T9's admin screen at /docket/admin/week/N/tiebreaker;
+    both write through the same service, so the rules cannot drift. Only the
+    'Away @ Home' matching lives here. Designation must satisfy the Grading
+    Clarifications contract — a locked whole-tenth O/U total and a kickoff at
+    or after the deadline — and is pre-deadline only. An unsound designation
+    rolls back rather than sticking.
     """
     target = _get_week(week)
     if target is None:

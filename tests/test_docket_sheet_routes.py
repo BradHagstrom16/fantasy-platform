@@ -1,8 +1,10 @@
 """Docket pick-sheet route locks: rendering states, the dual-mode mutation
 seam (form PRG vs sheet-state JSON), and the client-input tamper lock."""
+import re
 from datetime import datetime
 
 import pytest
+from sqlalchemy import select
 
 from extensions import db
 from games.docket.models import DocketPick
@@ -200,6 +202,94 @@ def test_closed_docket_renders_read_only(monkeypatch, client, member):
     # No mutation forms anywhere (the enhancement script's selector string
     # legitimately contains the attribute name, so match the form syntax).
     assert 'data-docket-action="' not in html
+
+
+def test_auto_filed_sides_are_marked_and_the_sheet_says_why(
+        monkeypatch, client, member):
+    """After the deadline pass a player sees sides they never chose. Each is
+    marked, an assigned double is marked, and the reason is stated once."""
+    week = make_week(1)
+    mine = make_game(week, kickoff=KICK_SAT, home='Mine H', away='Mine A')
+    filed = make_game(week, kickoff=KICK_SAT, home='Filed H', away='Filed A')
+    db.session.commit()
+    at(monkeypatch, IN_WEEK1)
+    client.post('/docket/picks/set',
+                data={'game_id': mine.id, 'market': 'spread',
+                      'side': 'home', 'csrf_token': 'x'})
+    # Stand in for the deadline pass: one filed side, and the double
+    # assigned onto the side the player picked themselves.
+    db.session.add(DocketPick(
+        user_id=member.id, week_id=week.id, game_id=filed.id,
+        market='total', side='over', slot=2, is_autopick=True,
+        line_value=filed.total_points, book=filed.total_book))
+    own = db.session.scalars(
+        select(DocketPick).filter_by(game_id=mine.id)).one()
+    own.is_best = True
+    own.is_auto_best = True
+    db.session.commit()
+
+    at(monkeypatch, '2026-09-05T16:30:00')
+    html = client.get('/docket/').data.decode()
+
+    assert 'is-picked is-locked is-autopick' in html
+    assert 'docket-auto-tag' in html
+    assert '· auto-filed' in html                     # the rail slot caption
+    assert 'docket-headliner-chip is-auto' in html    # the assigned double
+    assert 'Headliner x2 · assigned' in html
+    assert 'filed for you when the docket closed' in html
+    assert 'Your headliner was assigned for you.' in html
+    # The player's own side keeps the plain stamp, unmarked.
+    assert 'is-picked is-locked is-best' in html
+
+
+def test_an_assigned_double_on_a_full_sheet_reads_on_its_own(
+        monkeypatch, client, member):
+    """A player who picked all their sides but named no headliner: nothing
+    was filed, so the note must not talk about sides that do not exist."""
+    week = make_week(1)
+    game = make_game(week, kickoff=KICK_SAT)
+    db.session.commit()
+    at(monkeypatch, IN_WEEK1)
+    client.post('/docket/picks/set',
+                data={'game_id': game.id, 'market': 'spread',
+                      'side': 'home', 'csrf_token': 'x'})
+    own = db.session.scalars(select(DocketPick)).one()
+    own.is_best = True
+    own.is_auto_best = True
+    db.session.commit()
+
+    at(monkeypatch, '2026-09-05T16:30:00')
+    html = client.get('/docket/').data.decode()
+
+    # Scope the negatives to the notice itself: a page-wide "not in" would
+    # fail for an unrelated reason the day some other surface uses one of
+    # these phrases. The rail renders twice (desktop aside + mobile drawer),
+    # so both copies are checked.
+    notes = re.findall(r'<div class="docket-auto-note">.*?</div>', html,
+                       re.DOTALL)
+    assert len(notes) == 2, 'the note renders in both rail copies'
+    for note in notes:
+        assert 'Your headliner was assigned for you.' in note
+        assert 'It scores exactly like every other side you picked.' in note
+        assert 'filed for you when the docket closed' not in note
+        assert 'They score exactly like' not in note
+
+
+def test_a_sheet_the_player_filled_carries_no_auto_marks(
+        monkeypatch, client, member):
+    week = make_week(1)
+    game = make_game(week, kickoff=KICK_SAT)
+    db.session.commit()
+    at(monkeypatch, IN_WEEK1)
+    client.post('/docket/picks/set',
+                data={'game_id': game.id, 'market': 'spread',
+                      'side': 'home', 'csrf_token': 'x'})
+    at(monkeypatch, '2026-09-05T16:30:00')
+    html = client.get('/docket/').data.decode()
+
+    assert 'is-autopick' not in html
+    assert 'docket-auto-tag' not in html
+    assert 'docket-auto-note' not in html
 
 
 def test_best_and_tiebreaker_json_flow(monkeypatch, client, member):

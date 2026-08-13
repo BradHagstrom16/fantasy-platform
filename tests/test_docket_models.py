@@ -14,16 +14,22 @@ from sqlalchemy.exc import IntegrityError
 
 
 def _all_docket_models():
-    from games.docket.models import (
-        DocketGame,
-        DocketPick,
-        DocketTiebreakerPrediction,
-        DocketWeek,
-        DocketWeekResult,
-    )
+    """Every mapped docket table, discovered rather than listed.
 
-    return (DocketWeek, DocketGame, DocketPick,
-            DocketTiebreakerPrediction, DocketWeekResult)
+    This used to be a hardcoded tuple, which silently stopped covering the
+    schema the moment a table was added — docket_line_correction shipped
+    outside the D6 sweep that way. Discovery means a new docket table is
+    inside the timezone lock the day it lands.
+    """
+    import games.docket.models  # noqa: F401 — registers the mappers
+    from extensions import db
+
+    models = [
+        mapper.class_ for mapper in db.Model.registry.mappers
+        if getattr(mapper.class_, '__tablename__', '').startswith('docket_')
+    ]
+    assert models, 'no docket models discovered'
+    return sorted(models, key=lambda m: m.__tablename__)
 
 
 def _mk_week(db, number=1):
@@ -175,6 +181,19 @@ def _mk_pick(db, user, week, game, slot=1, market='spread', side='home', **kw):
     db.session.add(pick)
     db.session.commit()
     return pick
+
+
+def test_new_pick_is_neither_filed_nor_auto_designated(app):
+    """Both provenance flags are opt-in, written only by the deadline pass.
+    is_auto_best is separate from is_autopick because auto-designation can
+    land the double on a pick the player made themselves."""
+    from extensions import db
+
+    user, week = _mk_user(db), _mk_week(db)
+    pick = _mk_pick(db, user, week, _mk_game(db, week))
+    assert pick.is_best is False
+    assert pick.is_autopick is False
+    assert pick.is_auto_best is False
 
 
 def test_pick_rejects_both_sides_of_one_market(app):

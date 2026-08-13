@@ -88,14 +88,30 @@ def test_csv_snapshot(app):
     )
 
 
-def test_set_tiebreaker_matches_away_at_home(app):
+def test_set_tiebreaker_matches_away_at_home(app, monkeypatch):
     from extensions import db
     from games.docket.services.bridge_sheet import set_tiebreaker
+    from tests._docket_fixtures import at
 
     week = _seed(db, tiebreaker=False)
+    at(monkeypatch, '2026-09-02T12:00:00')  # designation is pre-deadline only
     game = set_tiebreaker(week, 'Wisconsin @ Notre Dame')
     assert game.api_event_id == 'e-wnd'
     assert week.tiebreaker_game_id == game.id
+
+
+def test_set_tiebreaker_is_refused_once_the_docket_closes(app, monkeypatch):
+    """The CLI fallback shares the admin service, so it inherits the
+    pre-deadline gate: a designation cannot move after the docket closes."""
+    from extensions import db
+    from games.docket.services.bridge_sheet import set_tiebreaker
+    from tests._docket_fixtures import at
+
+    week = _seed(db, tiebreaker=False)
+    at(monkeypatch, '2026-09-05T16:30:00')
+    with pytest.raises(ValueError, match='closed'):
+        set_tiebreaker(week, 'Wisconsin @ Notre Dame')
+    assert week.tiebreaker_game_id is None
 
 
 def test_set_tiebreaker_rejects_unmatched_and_ambiguous(app):

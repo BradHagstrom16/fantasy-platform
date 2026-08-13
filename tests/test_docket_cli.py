@@ -14,6 +14,7 @@ from sqlalchemy import select
 from extensions import db
 from games.docket.models import DocketPick, DocketWeekResult
 from tests._docket_fixtures import (
+    at,
     make_enrollment,
     make_game,
     make_user,
@@ -21,6 +22,7 @@ from tests._docket_fixtures import (
 )
 
 AFTER_DEADLINE = '2026-09-05T16:30:00'
+BEFORE_DEADLINE = '2026-09-02T12:00:00'
 KICK = datetime(2026, 9, 5, 18, 0)
 
 
@@ -241,8 +243,9 @@ def test_a_partial_sync_exits_non_zero(app, runner, monkeypatch):
         'the sport that succeeded keeps its update'
 
 
-def test_set_tiebreaker_designates_and_validates(app, runner):
+def test_set_tiebreaker_designates_and_validates(app, runner, monkeypatch):
     week, games = _seed(designate=False)
+    at(monkeypatch, BEFORE_DEADLINE)  # designation is pre-deadline only
 
     result = _invoke(runner, 'set-tiebreaker', '1', 'Away 3 @ Home 3')
 
@@ -250,17 +253,21 @@ def test_set_tiebreaker_designates_and_validates(app, runner):
     assert week.tiebreaker_game_id == games[3].id
 
 
-def test_set_tiebreaker_refuses_an_unsound_designation(app, runner):
+def test_set_tiebreaker_refuses_an_unsound_designation(app, runner,
+                                                       monkeypatch):
     """A designated game with no locked total cannot supply key 3's default
     prediction — the command says so instead of leaving it to Saturday."""
     week, games = _seed(designate=False)
     games[3].total_points = None
     db.session.commit()
+    at(monkeypatch, BEFORE_DEADLINE)
 
     result = _invoke(runner, 'set-tiebreaker', '1', 'Away 3 @ Home 3')
 
     assert result.exit_code == 1
     assert 'no locked total' in result.output
+    assert week.tiebreaker_game_id is None, \
+        'an unsound designation rolls back rather than sticking'
 
 
 def test_status_summarizes_the_season(app, runner, monkeypatch):
