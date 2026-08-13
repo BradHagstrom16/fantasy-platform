@@ -80,14 +80,17 @@ def test_week_cases(path):
 @pytest.mark.parametrize('path', SEASON_CASES, ids=_ids(SEASON_CASES))
 def test_season_cases(path):
     from games.docket.services.grading.codec import load_season_case
-    from games.docket.services.grading.season import season_standings
+    from games.docket.services.grading.season import season_standings, week_rollup
 
     case = load_season_case(path)
     week_grades = [
         _grade_and_check_week(wk, f'{path.stem}/week{wk.week.week_number}')
         for wk in case.weeks
     ]
-    standings = season_standings(week_grades, case.roster)
+    # The season pass consumes WeekRollup, not WeekGrade — the smaller type
+    # the persisted path can also produce (D14-eng).
+    standings = season_standings([week_rollup(g) for g in week_grades],
+                                 case.roster)
     assert len(standings) == len(case.expected_standings), (
         f'{path.stem}: standings row count')
     for got, exp in zip(standings, case.expected_standings, strict=True):
