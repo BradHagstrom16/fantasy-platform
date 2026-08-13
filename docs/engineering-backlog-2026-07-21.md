@@ -30,8 +30,9 @@ All three surfaced during PR #120 and are the same surface. **1.1 and 1.3 shippe
 PR #121**, **1.2 in PR #123** (all merged 2026-07-21) and all are verified on the droplet.
 **Priority 1 is closed.**
 
-Regression cover for this surface: `tests/test-deploy-guards.sh` (102 assertions; run it
-with `USE_REAL_FLOCK=1` on the droplet, where it is 97 — case L needs the shim). Extend it
+Regression cover for this surface: `tests/test-deploy-guards.sh` (**132** assertions as of
+2026-08-13, up from 102 when cases V–Z added the preset path in ADR-044; run it with
+`USE_REAL_FLOCK=1` on the droplet, where it is **127** — case L needs the shim). Extend it
 rather than hand-testing anything on this surface.
 
 ### 1.1 `deploy.sh` must re-exec itself after a self-update ✅ SHIPPED (PR #121)
@@ -132,6 +133,12 @@ does **not** address `preset-all`, which is independent of how anything was enab
 `deploy.sh` prints an explicit `NOT enabled` note on any first install. The only mechanical
 defence is a preset file — see 2.4, whose case the `worldcup-*` finding strengthened.
 
+> **Closed 2026-08-13 (ADR-044).** The preset file shipped. Also: "fourteen" is now
+> **nineteen** unit files, of which fifteen are disabled — five `docket-*` pairs landed in
+> PR #142 after this was written. The count reached nineteen the same way it reached
+> fourteen, by silent inheritance, which is why `tests/test_systemd_preset.py` now fails CI
+> on any `deploy/*.timer` prefix with no preset rule.
+
 **Known gap, accepted.** Orphans are not handled: a unit deleted or renamed in `deploy/`
 leaves its old copy in `/etc` untouched and unreported. Detecting "ours" would need either
 game-name knowledge in `deploy.sh` or persisted state, and auto-removing units is
@@ -224,7 +231,25 @@ files are next touched for another reason. **Not worth its own PR.**
 
 ---
 
-### 2.4 `preset-all` would enable all 14 timers, including the archived WC ones 🟠
+### 2.4 `preset-all` timer hazard — closed by a scoped preset policy ✅
+
+**✅ SHIPPED 2026-08-13 (ADR-044).** `deploy/10-fantasy-platform.preset` → `/etc/systemd/system-preset/`,
+installed by a dedicated `sync_preset` path in `deploy.sh` gated on a bash shape lint
+(`systemd-analyze verify` rejects preset files outright). `disable worldcup-*.timer`;
+`ignore` for `cfb-*`/`docket-*`/`golf-*`, which makes `preset-all` a no-op for
+hand-managed families in **both** directions and needs no flip at any milestone —
+that is the answer to the open judgement call at the end of this item. Covered by
+`tests/test_systemd_preset.py` (17) and cases V–Z of `tests/test-deploy-guards.sh`
+(102 → 132 assertions locally, 97 → 127 on the droplet). The World Cup units stay in
+`deploy/` — see ADR-044 for why removing them would have reduced exposure by zero.
+
+**The numbers below were stale by the time this shipped — re-verified on the droplet
+2026-08-13.** There are **19** game timer unit files, not 14 (five `docket-*` landed in PR
+#142); **15** are `disabled` with `PRESET enabled` (the four live docket timers are
+`enabled`); box-wide the count is **21**, and the repo carries **39** units, not 29. The
+19 `.service` units are all still `static`/immune. This item's own warning at the top of
+the document came due on the item itself; the original text is kept below unedited as the
+record of what was believed on 2026-07-21.
 
 **Evidence (verified 2026-07-21, on the droplet after the 1.2 deploy):**
 `systemctl list-unit-files 'cfb-*' 'golf-*' 'worldcup-*'` reports **14 timers** as
@@ -273,6 +298,12 @@ in #124, which was docs-only and opened before this was understood.
 **Interim mitigation:** do not run `systemctl preset-all` on the droplet. Note this is
 exactly the "remember not to do the thing" posture that ADR-040 and ADR-041 exist to
 replace, which is itself the argument for building the file.
+
+**~~Interim mitigation~~ superseded 2026-08-13.** The preset file is the mechanical
+defence, so `preset-all` is no longer a command that must be remembered-not-to-be-run:
+it now leaves every game timer exactly as it found it, except that it would switch a
+stray `worldcup-*` back off. `sudo systemctl preset-all --dry-run` prints what it would
+do without doing it, and is the verification used in the shipping PR.
 
 ### 2.5 Rate-limit keys are Cloudflare edge IPs (`ProxyFix x_for=1`) ✅ SHIPPED (PR #129)
 
@@ -480,7 +511,7 @@ claims. It is what caught 1.1.
 | | |
 |---|---|
 | `main` | PR #130 (2026-07-30; 2.1/2.5/2.6 all shipped 2026-07-30 via #128/#129/#130) |
-| Tests | **1764 passing**, ruff clean; plus `tests/test-deploy-guards.sh` at 102 (97 on the droplet) |
-| Production | deployed and verified — 29 units in sync; rate limits on shared Redis keyed by real client IP (realip, PR #129); origin cloaked by `fantasy-platform-fw` (80/443 CF-only, rollback drill measured ~55s); site 200 |
+| Tests | **1764 passing**, ruff clean; plus `tests/test-deploy-guards.sh` at 102 (97 on the droplet) — *stale; 2026-08-13 reads 2216 passing and 132 (127 on the droplet)* |
+| Production | deployed and verified — 29 units in sync; rate limits on shared Redis keyed by real client IP (realip, PR #129); origin cloaked by `fantasy-platform-fw` (80/443 CF-only, rollback drill measured ~55s); site 200 — *stale; 2026-08-13 reads 39 units + 1 preset file* |
 | Prod ↔ repo pins | converged under `constraints.txt` (ADR-042; `click` 8.4.2, `urllib3` 2.7.0, `redis` 8.1.0) |
 | Active era | CFB Survivor launch prep; WC archived; Golf UI phase ~Jan 2027 |

@@ -1,0 +1,66 @@
+# Preset policy for this platform's game timers (ADR-044, backlog 2.4, D13-eng).
+#
+# Installed to /etc/systemd/system-preset/ by deploy.sh. This is NOT a unit
+# file: systemd reads it only when someone runs `systemctl preset` or
+# `systemctl preset-all`, never at boot on an installed system and never
+# during daemon-reload. It changes nothing on its own.
+#
+# WHY IT EXISTS
+# Without a matching rule, a unit falls through to systemd's built-in *enable*
+# default. Every game timer here carries [Install] WantedBy=timers.target, so
+# before this file `systemctl preset-all` would have switched on 15 disabled
+# timers at once — four of them worldcup-*, which mail real players about a
+# tournament that concluded 2026-07-19. All four also set Persistent=true, so
+# an accidental enable fires IMMEDIATELY on the next start rather than waiting
+# for the next scheduled tick. The defence used to be prose in two documents
+# saying "never run preset-all", which is the remember-not-to-do-the-thing
+# posture ADR-040 and ADR-041 exist to replace.
+#
+# WHY THE 10- PREFIX IS LOAD-BEARING
+# systemd.preset(5): "All preset files are sorted by their filename in
+# lexicographic order, regardless of which of the directories they reside in"
+# and "If multiple lines apply to a unit name, the first matching one takes
+# precedence over all others." The box carries /usr/lib/systemd/system-preset/
+# 90-systemd.preset, so 10- is read first and wins. Do not rename this to
+# drop the prefix: 'f' sorts AFTER '9', which would put an unprefixed
+# fantasy-platform.preset behind the vendor file. That is harmless only while
+# 90-systemd.preset has no rule matching ours, which is not a property to
+# depend on. tests/test_systemd_preset.py locks the prefix below 90.
+#
+# NO CATCH-ALL, EVER
+# A `disable *` line here would outrank 90-systemd.preset for EVERY unit on
+# the box — getty@.service, systemd-resolved.service, remote-fs.target. The
+# validator in deploy.sh refuses any pattern not ending in .timer, which makes
+# that class of mistake unrepresentable rather than merely discouraged.
+
+# The World Cup is archived (2026 tournament concluded 2026-07-19; registry
+# status 'completed'). Its units stay in deploy/ on purpose — the transition
+# plan keeps them as the revival recipe, and deleting them would strand the
+# /etc copies anyway, since deploy.sh does not remove orphans (ADR-041). So
+# the assertion belongs here instead: these must never run again as things
+# stand. `disable` rather than `ignore` because this is a claim about the
+# world, not a shrug — if one is ever enabled by accident, preset-all is
+# entitled to switch it back off. This line never needs revisiting.
+disable worldcup-*.timer
+
+# The three active games are hand-managed ops state, enabled one unit at a
+# time at each game's milestone (`systemctl enable` takes no globs — enable by
+# explicit name). `ignore` means preset-all leaves whatever is currently set
+# alone: it can neither switch these on early nor switch a live one off.
+#
+# That second half is why these are not `disable`. Four docket timers
+# (lines, scores, deadline, remind) are enabled and firing right now, and the
+# five cfb-* join them at launch week. A `disable` line would make preset-all
+# silently stop in-season reminders — trading one quiet footgun for another
+# rather than removing it. `ignore` also costs nothing at a milestone, which
+# `disable` would: it would need a deliberate flip per game, and a policy file
+# that drifts from reality with no signal is worse than no policy file.
+ignore cfb-*.timer
+ignore docket-*.timer
+ignore golf-*.timer
+
+# A new game's timers are NOT covered until a line lands here, and would
+# inherit the enable default. tests/test_systemd_preset.py fails CI when a
+# prefix in deploy/*.timer has no rule, so that choice has to be made
+# deliberately rather than inherited by silence — which is how the exposure
+# went 4 -> 14 -> 19 with nobody widening it on purpose.
