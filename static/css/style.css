@@ -12894,19 +12894,22 @@ button.docket-side.is-move:hover { color: var(--text-primary); }
   white-space: nowrap;
 }
 /* A drawn caret, not a glyph: the summary marker is suppressed, so without
-   this the row reads as static text and nobody opens it. */
+   this the row reads as static text and nobody opens it. Cut with clip-path
+   rather than the usual rotated two-border trick — a 2px border-right here
+   is a chevron, but tests/test_design_p0_side_stripes.py scans the
+   stylesheet as text and cannot tell that from a side stripe, and the
+   platform ban is worth more than the shortcut. */
 .docket-entry-caret {
   flex: 0 0 auto;
-  width: .5rem;
-  height: .5rem;
+  width: .6rem;
+  height: .4rem;
   margin-left: .1rem;
-  border-right: 2px solid var(--game-accent);
-  border-bottom: 2px solid var(--game-accent);
-  transform: rotate(45deg) translate(-.1rem, -.1rem);
+  background: var(--game-accent);
+  clip-path: polygon(0 15%, 16% 0, 50% 45%, 84% 0, 100% 15%, 50% 100%);
   transition: transform var(--transition);
 }
 .docket-entry[open] > .docket-entry-summary .docket-entry-caret {
-  transform: rotate(-135deg) translate(-.15rem, -.15rem);
+  transform: rotate(180deg);
 }
 
 /* --- Mobile standings cards (below md) ---
