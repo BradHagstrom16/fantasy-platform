@@ -331,19 +331,25 @@ fi
 # never by daemon-reload, so this could sit anywhere after the pull. It runs
 # beside the unit sync because that is where a reader looks for it.
 
-# Shape lint, the preset equivalent of `systemd-analyze verify`. Two rules:
-# every line is a directive systemd understands, and every pattern ends in
-# .timer.
+# Shape lint, the preset equivalent of `systemd-analyze verify`. Every line must
+# be a directive systemd understands, and every pattern must clear three checks:
+# a non-wildcard first character, a .timer suffix, and a prefix naming a game
+# this repo ships timers for.
 #
-# The second rule is the one that matters. A bad UNIT file is inert until
-# something starts it, which is why validating its syntax is enough. A bad
-# PRESET file is not inert: it is box-wide policy in /etc that outranks the
-# vendor 90-systemd.preset for every unit it matches, so `disable *` here would
-# take getty@.service, systemd-resolved.service and remote-fs.target down with
-# it at the next preset-all. Requiring a .timer suffix AND a non-wildcard first
-# character makes that unrepresentable rather than merely discouraged — it
-# rejects `*`, `*.timer` and `getty@.service` alike, instead of blacklisting one
-# spelling of the mistake.
+# The pattern checks are what matter. A bad UNIT file is inert until something
+# starts it, which is why validating its syntax is enough there. A bad PRESET
+# file is not inert: it is box-wide policy in /etc that outranks the vendor
+# 90-systemd.preset for every unit it matches. All three checks are load-bearing
+# and each catches something the others let through:
+#   `disable *`             — the catch-all; caught by the first-character rule
+#   `disable *.timer`       — every timer on the box, including apt-daily and
+#                             fstrim; ends in .timer, so only the first-character
+#                             rule stops it
+#   `disable getty@.service`— caught by the suffix rule
+#   `disable apt-*.timer`   — clears BOTH of the above and still disables
+#                             apt-daily.timer; only the prefix rule stops it
+# Together they make the mistake unrepresentable rather than merely discouraged,
+# instead of blacklisting one spelling of it.
 #
 # Bash builtins only: case I of the harness runs this script on a PATH stripped
 # to an explicit list of binaries, so every external command added here has to
@@ -352,6 +358,21 @@ fi
 validate_preset() {
     local file="$1"
     local lineno=0 directive pattern rest
+    local timer_path timer_name known_prefixes=' '
+
+    # The set of game prefixes this repo actually ships timers for, read from
+    # deploy/ rather than hardcoded so a new game needs no edit here. Split on
+    # the FIRST hyphen: worldcup-digest-player.timer belongs to 'worldcup', and
+    # splitting on the last would invent a 'worldcup-digest' game.
+    for timer_path in deploy/*.timer; do
+        [ -f "$timer_path" ] || continue
+        timer_name="${timer_path##*/}"
+        case "$known_prefixes" in
+            *" ${timer_name%%-*} "*) ;;
+            *) known_prefixes="$known_prefixes${timer_name%%-*} " ;;
+        esac
+    done
+
     while read -r directive pattern rest || [ -n "$directive" ]; do
         lineno=$((lineno + 1))
         # systemd ignores blank lines and lines whose first non-whitespace
@@ -387,6 +408,19 @@ validate_preset() {
             *)  echo "    !! $file:$lineno: '$pattern' does not end in .timer." >&2
                 echo "    !! This file governs game timers only — a rule reaching any other" >&2
                 echo "    !! unit type would outrank 90-systemd.preset for system units." >&2
+                return 1 ;;
+        esac
+        # Ending in .timer is not enough on its own: 'apt-*.timer' clears both
+        # checks above and would take apt-daily.timer and apt-daily-upgrade.timer
+        # down with it at the next preset-all. The prefix must name a game this
+        # repo actually ships timers for, which is what confines the file to
+        # units this platform owns.
+        case "$known_prefixes" in
+            *" ${pattern%%-*} "*) ;;
+            *)  echo "    !! $file:$lineno: '$pattern' names '${pattern%%-*}', which has no" >&2
+                echo "    !! timers in deploy/. This file may only govern units this platform" >&2
+                echo "    !! ships; a rule for anything else reaches system timers." >&2
+                echo "    !! Known prefixes:$known_prefixes" >&2
                 return 1 ;;
         esac
     done < "$file"

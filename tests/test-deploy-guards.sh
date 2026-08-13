@@ -749,9 +749,11 @@ echo "=== Y: a preset that could reach beyond this platform's timers is refused 
 # The load-bearing case. A preset file in /etc outranks the vendor
 # 90-systemd.preset for every unit it matches, so an over-broad pattern here is
 # not a bad deploy, it is a bad box: `disable *` would take getty@, resolved and
-# remote-fs.target down at the next preset-all. `disable *.timer` is the sneaky
-# one — it satisfies a naive "must end in .timer" rule while still matching
-# every timer on the machine, which is why the first character is checked too.
+# remote-fs.target down at the next preset-all. The last three are each sneakier
+# than the one before: `*.timer` satisfies a naive "must end in .timer" rule
+# while matching every timer on the machine; `apt-*.timer` clears BOTH the
+# suffix and first-character rules and still disables apt-daily.timer, which is
+# why the prefix must also name a game deploy/ actually ships timers for.
 reset_state
 MUTATE_PULLS=0 "$SANDBOX/deploy.sh" > /dev/null 2>&1
 cp "$PRESET_FIXTURE" "$SANDBOX/guard.preset.good"
@@ -771,6 +773,8 @@ disable *.timer
 disable getty@.service
 enable fantasy-platform.service
 disable guard-alpha-*.timer # trailing comment
+disable apt-*.timer
+disable logrotate.timer
 BADPRESETS
 check "every dangerous pattern was refused" "$y_refused" "$y_total"
 check "the known-good live preset survived every one" "$y_preserved" "$y_total"

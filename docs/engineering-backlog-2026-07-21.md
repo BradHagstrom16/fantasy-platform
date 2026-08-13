@@ -135,7 +135,7 @@ defence is a preset file — see 2.4, whose case the `worldcup-*` finding streng
 
 > **Closed 2026-08-13 (ADR-044).** The preset file shipped. Also: "fourteen" is now
 > **nineteen** unit files, of which fifteen are disabled — five `docket-*` pairs landed in
-> #142 after this was written. The count reached nineteen the same way it reached
+> PR #142 after this was written. The count reached nineteen the same way it reached
 > fourteen, by silent inheritance, which is why `tests/test_systemd_preset.py` now fails CI
 > on any `deploy/*.timer` prefix with no preset rule.
 
@@ -231,7 +231,7 @@ files are next touched for another reason. **Not worth its own PR.**
 
 ---
 
-### 2.4 `preset-all` would enable all 14 timers, including the archived WC ones ✅
+### 2.4 `preset-all` timer hazard — closed by a scoped preset policy ✅
 
 **✅ SHIPPED 2026-08-13 (ADR-044).** `deploy/10-fantasy-platform.preset` → `/etc/systemd/system-preset/`,
 installed by a dedicated `sync_preset` path in `deploy.sh` gated on a bash shape lint
@@ -244,7 +244,7 @@ that is the answer to the open judgement call at the end of this item. Covered b
 `deploy/` — see ADR-044 for why removing them would have reduced exposure by zero.
 
 **The numbers below were stale by the time this shipped — re-verified on the droplet
-2026-08-13.** There are **19** game timer unit files, not 14 (five `docket-*` landed in
+2026-08-13.** There are **19** game timer unit files, not 14 (five `docket-*` landed in PR
 #142); **15** are `disabled` with `PRESET enabled` (the four live docket timers are
 `enabled`); box-wide the count is **21**, and the repo carries **39** units, not 29. The
 19 `.service` units are all still `static`/immune. This item's own warning at the top of

@@ -87,6 +87,9 @@ def test_pattern_cannot_reach_beyond_this_platform(rule):
     would take getty@.service and systemd-resolved.service down at the next
     preset-all. `disable *.timer` is the one that looks safe and is not — it
     ends in .timer while still matching every timer on the machine.
+
+    The prefix half of the containment lives in
+    test_every_rule_targets_a_game_this_repo_ships.
     """
     pattern = rule[1]
     assert pattern.endswith('.timer'), (
@@ -95,6 +98,24 @@ def test_pattern_cannot_reach_beyond_this_platform(rule):
     assert pattern[0].isalnum(), (
         f'{pattern!r} starts with a wildcard and would match timers this '
         'platform does not own'
+    )
+
+
+@pytest.mark.parametrize('rule', _rules(), ids=lambda r: ' '.join(r))
+def test_every_rule_targets_a_game_this_repo_ships(rule):
+    """The other half of the bijection: no rule may name a prefix we do not own.
+
+    Ending in .timer bounds a rule to timers, not to *our* timers —
+    `disable apt-*.timer` clears both pattern checks and would still take
+    apt-daily.timer and apt-daily-upgrade.timer down at the next preset-all.
+    Pairs with test_every_game_has_a_preset_policy so the rule set and the
+    shipped timer set agree on prefixes in both directions.
+    """
+    prefix = rule[1].split('-', 1)[0]
+    assert prefix in _timer_prefixes(), (
+        f"{rule[1]!r} names {prefix!r}, which ships no timers in deploy/. A "
+        f"preset rule for a prefix this platform does not own reaches system "
+        f"timers instead."
     )
 
 
