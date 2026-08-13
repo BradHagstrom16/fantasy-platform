@@ -27,6 +27,31 @@
 # 90-systemd.preset has no rule matching ours, which is not a property to
 # depend on. tests/test_systemd_preset.py locks the prefix below 90.
 #
+# !! `systemctl preset-all --dry-run` IS NOT A DRY RUN. Never run it.
+# systemd accepts --dry-run and silently ignores it for preset/preset-all (only
+# verbs like reboot honour it). Run on the droplet 2026-08-13 it enabled 15 game
+# timers for real, and wrote its output to stderr so `> file` looked empty.
+# To inspect safely — no sudo, no writes, and it never pages:
+#     systemctl list-unit-files 'worldcup-*.timer' 'cfb-*.timer' \
+#                               'docket-*.timer' 'golf-*.timer' --no-pager
+#
+# READ BOTH COLUMNS. They answer different questions, and the 2026-08-13
+# incident is exactly the case where they disagree:
+#   PRESET = what this file says policy *should* be. Expect `disabled` for
+#            worldcup-*, `ignored` for the three active games. It says nothing
+#            about what is running.
+#   STATE  = what is actually enabled right now. This is the one that matters.
+#            Expect `enabled` for docket-{lines,scores,deadline,remind} only,
+#            and `disabled` for everything else — including docket-setup.timer,
+#            which stays disabled until after the hand-run Week-1 import
+#            (Tue Sep 1) by ruling.
+# During the incident PRESET read `ignored` while STATE read `enabled` on 15
+# timers: a PRESET-only check would have reported all-clear with the hazard live.
+#
+# Recovery from an accidental preset-all is `systemctl disable --now` naming each
+# unit. `ignore` cannot do it for you — it preserves whatever state it finds
+# rather than asserting one, so it will happily preserve a wrong one.
+
 # NO CATCH-ALL, EVER
 # A `disable *` line here would outrank 90-systemd.preset for EVERY unit on
 # the box — getty@.service, systemd-resolved.service, remote-fs.target. The

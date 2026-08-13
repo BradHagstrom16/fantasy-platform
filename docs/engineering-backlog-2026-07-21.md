@@ -302,8 +302,37 @@ replace, which is itself the argument for building the file.
 **~~Interim mitigation~~ superseded 2026-08-13.** The preset file is the mechanical
 defence, so `preset-all` is no longer a command that must be remembered-not-to-be-run:
 it now leaves every game timer exactly as it found it, except that it would switch a
-stray `worldcup-*` back off. `sudo systemctl preset-all --dry-run` prints what it would
-do without doing it, and is the verification used in the shipping PR.
+stray `worldcup-*` back off.
+
+> 🚨 **`systemctl preset-all --dry-run` IS NOT A DRY RUN. Never run it.**
+> systemd accepts `--dry-run` and **silently ignores it** for `preset`/`preset-all` —
+> the flag is only honoured by verbs like `reboot` and `poweroff`. Run on the droplet
+> 2026-08-13 it enabled 15 game timers for real, including the four archived
+> `worldcup-*` that mail players, plus `rsync.service`, `nftables.service`,
+> `iscsid.service` and six system timers. It also writes its output to **stderr**, so
+> `> file` captures an empty file and the run looks like it did nothing.
+>
+> **To inspect, without changing anything:**
+> ```bash
+> systemctl list-unit-files 'worldcup-*.timer' 'cfb-*.timer' \
+>                           'docket-*.timer' 'golf-*.timer' --no-pager
+> ```
+> No sudo, no writes, no pager. **Read both columns — they answer different questions,
+> and this incident is exactly where they disagree:**
+>
+> | Column | Question | Expected |
+> |---|---|---|
+> | `PRESET` | what policy *should* be | `disabled` for `worldcup-*`; `ignored` for `cfb-*`/`docket-*`/`golf-*` |
+> | `STATE` | what is actually enabled **now** | `enabled` for `docket-{lines,scores,deadline,remind}` only; everything else `disabled`, **`docket-setup.timer` included** until after the hand-run Week-1 import (Tue Sep 1, by ruling) |
+>
+> Mid-incident `PRESET` read `ignored` while `STATE` read `enabled` on 15 timers — a
+> PRESET-only check would have reported all-clear with the hazard live. `systemd-analyze
+> cat-config systemd/system-preset` shows the merged policy if you need the file view.
+>
+> If `preset-all` is ever run by accident, recovery is `systemctl disable --now` naming
+> each unit explicitly. Note `ignore` cannot repair it: `ignore` preserves whatever
+> state it finds, so a second `preset-all` would fix `worldcup-*` and leave the rest
+> enabled.
 
 ### 2.5 Rate-limit keys are Cloudflare edge IPs (`ProxyFix x_for=1`) ✅ SHIPPED (PR #129)
 
