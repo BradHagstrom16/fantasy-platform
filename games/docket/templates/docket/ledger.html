@@ -1,0 +1,240 @@
+{% extends "base.html" %}
+
+{% block title %}The Season Ledger · The Docket{% endblock %}
+
+{% block content %}
+<!--
+THESIS: the season as a clerk's account book, where the three keys are three
+separate accounts kept side by side and each line opens to show its own
+weekly entries; refuses the leaderboard-as-scoreboard arrangement that prints
+one total and hides the arithmetic that produced it.
+OWN-WORLD: CCC court paper — bone page, ruled --docket-rule hairlines, Teko
+figures in tabular columns, law-book oxblood for the account heads and stamp
+garnet reserved for "yours". One dark surface, the verdict, and only when the
+season has ended.
+STORY: a member finds their own line first, reads what the drop forgave and
+what the error account did not, and opens any line to see the weeks behind it.
+FIRST VIEWPORT: masthead, the standing of the reader's own line stated in a
+sentence, then the ledger itself with the three account heads; no chart, no
+hero metric.
+FORM: the ranked ledger with per-line week entries — pinned by the user's T10
+scope decision (standings plus the week-by-week record), so no structure roll
+was run; a roll here could only have overridden a choice already made.
+FINISH: unreviewed and undocumented is unfinished; this build ends with the
+finish review, the verdict, and DESIGN.md.
+-->
+<div class="page-hero docket-hero">
+    <div class="container">
+        <span class="docket-eyebrow">The Commissioner's Court</span>
+        <h1>The Season Ledger</h1>
+        <p class="lead mb-0">
+            {% if ledger.is_graded %}
+            Points are forgiven once. Wins and the error account never are.
+            {% else %}
+            Every sheet filed this season is accounted for here.
+            {% endif %}
+        </p>
+    </div>
+</div>
+
+<div class="container docket-ledger-page">
+
+    {% if not ledger.rows %}
+    {# No members at all: the docket has not been called yet. #}
+    <div class="docket-empty card border-0 animate-in">
+        <div class="card-body">
+            <span class="docket-eyebrow docket-eyebrow-ink">No appearances</span>
+            <h2 class="docket-empty-title">The docket has no members yet</h2>
+            <p class="docket-empty-copy">Once players join, every graded week
+                posts to this ledger. Court convenes {{ season_opens_label }}.</p>
+        </div>
+    </div>
+
+    {% elif not ledger.is_graded %}
+    {# The state this ships in: a roster exists, nothing has been graded. #}
+    <div class="docket-empty card border-0 animate-in">
+        <div class="card-body">
+            <span class="docket-eyebrow docket-eyebrow-ink">Awaiting verdicts</span>
+            <h2 class="docket-empty-title">The ledger opens with the first verdicts</h2>
+            <p class="docket-empty-copy">Nothing has been graded yet. Scores land
+                Sunday evening and the first week posts here as soon as every case
+                on it is final.</p>
+        </div>
+    </div>
+
+    <section class="docket-appearing" aria-labelledby="ledger-appearing">
+        <h2 id="ledger-appearing" class="docket-section-head">
+            Appearing this season
+        </h2>
+        <ul class="docket-appearing-list">
+            {% for row in ledger.rows %}
+            <li class="docket-appearing-item{% if current_user.is_authenticated and row.enrollment.user_id == current_user.id %} is-you{% endif %}">
+                <span class="docket-ledger-avatar" aria-hidden="true">{{ row.enrollment.user.get_avatar() }}</span>
+                <span class="docket-appearing-name">{{ row.enrollment.get_display_name() }}</span>
+                {% if current_user.is_authenticated and row.enrollment.user_id == current_user.id %}
+                <span class="docket-you-tag">You</span>
+                {% endif %}
+            </li>
+            {% endfor %}
+        </ul>
+    </section>
+
+    {% else %}
+
+    {% if ledger.season_complete and ledger.leader %}
+    {# The room's one ceremonial dark surface, and its only appearance: the
+       season is over and the record is closed (DESIGN.md 6.10, 7.12). #}
+    <section class="docket-verdict-banner" aria-labelledby="ledger-verdict">
+        <span class="docket-verdict-eyebrow">The record is closed</span>
+        <h2 id="ledger-verdict" class="docket-verdict-name">
+            <span class="docket-verdict-avatar" aria-hidden="true">{{ ledger.leader.enrollment.user.get_avatar() }}</span>
+            {{ ledger.leader.enrollment.get_display_name() }}
+        </h2>
+        <p class="docket-verdict-line">
+            {{ '%.1f'|format(ledger.leader.standing.total_points) }} points,
+            {{ ledger.leader.standing.wins }} wins,
+            {{ '%.1f'|format(ledger.leader.standing.error_tenths / 10) }} off across
+            {{ ledger.total_weeks }} weeks.
+        </p>
+    </section>
+    {% endif %}
+
+    {% if your_row %}
+    <p class="docket-your-standing">
+        You stand <strong>{{ your_rank_label }}</strong>
+        of {{ ledger.rows|length }} on
+        {{ '%.1f'|format(your_row.standing.total_points) }} points,
+        {% if your_row.standing.dropped_week %}
+        after {{ '%.1f'|format(your_row.standing.dropped_points) }} from Week
+        {{ your_row.standing.dropped_week }} was struck from the record.
+        {% else %}
+        with no week struck yet.
+        {% endif %}
+    </p>
+    {% endif %}
+
+    {# Below md the three keys do not fit a phone without a sideways scroll
+       that hides two of them, so the same rows render as ruled cards (the
+       platform leaderboard precedent). One source, two compositions. #}
+    <ul class="docket-cards d-md-none">
+        {% for row in ledger.rows %}
+        <li class="docket-card{% if current_user.is_authenticated and row.enrollment.user_id == current_user.id %} is-you{% endif %}">
+            <span class="docket-card-rank">
+                {{ row.standing.rank }}
+                {%- if row.standing.rank in shared_ranks %}<span class="docket-ledger-tied">tied</span>{% endif %}
+            </span>
+            <span class="docket-card-name">
+                <span class="docket-ledger-avatar" aria-hidden="true">{{ row.enrollment.user.get_avatar() }}</span>
+                {{ row.enrollment.get_display_name() }}
+            </span>
+            <span class="docket-card-keys">
+                <span><b>{{ '%.1f'|format(row.standing.total_points) }}</b> pts</span>
+                <span><b>{{ row.standing.wins }}</b> W</span>
+                <span>off by <b>{{ '%.1f'|format(row.standing.error_tenths / 10) }}</b></span>
+            </span>
+        </li>
+        {% endfor %}
+    </ul>
+
+    <div class="docket-scroll d-none d-md-block">
+        <table class="table docket-ledger-table">
+            <caption class="visually-hidden">
+                The Docket season standings, ranked by points after the drop,
+                then wins, then cumulative tiebreaker error.
+            </caption>
+            <thead>
+                <tr>
+                    <th scope="col" class="docket-ledger-rank-head">#</th>
+                    <th scope="col">Player</th>
+                    <th scope="col" class="docket-ledger-figure-head">
+                        Points <span class="docket-ledger-keytag">Key 1</span>
+                    </th>
+                    <th scope="col" class="docket-ledger-figure-head">
+                        Wins <span class="docket-ledger-keytag">Key 2</span>
+                    </th>
+                    <th scope="col" class="docket-ledger-figure-head">
+                        Off by <span class="docket-ledger-keytag">Key 3</span>
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in ledger.rows %}
+                {% set is_you = current_user.is_authenticated and row.enrollment.user_id == current_user.id %}
+                <tr class="{% if is_you %}row-current-user{% endif %}">
+                    <td class="docket-ledger-rank">
+                        {{ row.standing.rank }}
+                        {%- if row.standing.rank in shared_ranks %}<span class="docket-ledger-tied">tied</span>{% endif %}
+                    </td>
+                    <td>
+                        <span class="docket-ledger-avatar" aria-hidden="true">{{ row.enrollment.user.get_avatar() }}</span>
+                        <span class="docket-ledger-name">{{ row.enrollment.get_display_name() }}</span>
+                        {% if is_you %}<span class="docket-you-tag">You</span>{% endif %}
+                    </td>
+                    <td class="docket-ledger-figure">{{ '%.1f'|format(row.standing.total_points) }}</td>
+                    <td class="docket-ledger-figure">{{ row.standing.wins }}</td>
+                    <td class="docket-ledger-figure">{{ '%.1f'|format(row.standing.error_tenths / 10) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <section class="docket-entries" aria-labelledby="ledger-entries">
+        <h2 id="ledger-entries" class="docket-section-head">The weekly entries</h2>
+        <p class="docket-entries-note">
+            Open a line to read the weeks behind it.
+            {% if ledger.drop_active %}
+            One worst week is struck from each player's points. Its wins and its
+            error stay on the account.
+            {% else %}
+            The drop begins once a second week is graded. Until then every week
+            counts in full.
+            {% endif %}
+        </p>
+
+        {% for row in ledger.rows %}
+        <details class="docket-entry{% if current_user.is_authenticated and row.enrollment.user_id == current_user.id %} is-you{% endif %}">
+            {# The right-hand figure states the week count, not the season
+               total: the total is already the table above, and repeating it
+               made this read as a second leaderboard rather than a drawer. #}
+            <summary class="docket-entry-summary">
+                <span class="docket-entry-rank">{{ row.standing.rank }}</span>
+                <span class="docket-ledger-avatar" aria-hidden="true">{{ row.enrollment.user.get_avatar() }}</span>
+                <span class="docket-entry-name">{{ row.enrollment.get_display_name() }}</span>
+                <span class="docket-entry-count">
+                    {{ row.weeks|length }} {% if row.weeks|length == 1 %}week{% else %}weeks{% endif %}
+                </span>
+                <span class="docket-entry-caret" aria-hidden="true"></span>
+            </summary>
+            <ol class="docket-weeks">
+                {% for week in row.weeks %}
+                <li class="docket-week{% if week.week_number == row.dropped_week %} is-dropped{% endif %}{% if not week.submitted %} is-absent{% endif %}">
+                    <span class="docket-week-num">W{{ week.week_number }}</span>
+                    <span class="docket-week-points">
+                        {% if week.week_number == row.dropped_week %}
+                        <s>{{ '%.1f'|format(week.points) }}</s>
+                        {% else %}
+                        {{ '%.1f'|format(week.points) }}
+                        {% endif %}
+                    </span>
+                    <span class="docket-week-note">
+                        {% if week.week_number == row.dropped_week %}
+                        struck from the record
+                        {% elif not week.submitted %}
+                        no sheet filed, charged {{ '%.1f'|format(week.error_tenths / 10) }}
+                        {% else %}
+                        {{ week.wins }}
+                        {%- if week.wins == 1 %} win{% else %} wins{% endif %},
+                        off by {{ '%.1f'|format(week.error_tenths / 10) }}
+                        {% endif %}
+                    </span>
+                </li>
+                {% endfor %}
+            </ol>
+        </details>
+        {% endfor %}
+    </section>
+
+    {% endif %}
+</div>
+{% endblock %}

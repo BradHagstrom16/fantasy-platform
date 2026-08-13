@@ -52,6 +52,20 @@ BOOKMAKER_PRIORITY = (
     'bovada',
 )
 
+# Display names for the API's bookmaker keys. Kept beside the priority tuple
+# so the published fallback order (D17-eng, "policy published on the rules
+# page") and the names players read cannot drift apart. A key with no entry
+# renders as itself rather than vanishing.
+BOOKMAKER_LABELS = {
+    'draftkings': 'DraftKings',
+    'fanduel': 'FanDuel',
+    'betmgm': 'BetMGM',
+    'espnbet': 'ESPN BET',
+    'williamhill_us': 'Caesars',
+    'betrivers': 'BetRivers',
+    'bovada': 'Bovada',
+}
+
 _TIME_FMT = '%Y-%m-%dT%H:%M:%SZ'
 
 
