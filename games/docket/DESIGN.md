@@ -107,8 +107,17 @@ the longest memory, so the sheet treats it as a first-class obligation, not a fo
 
 The Docket's room lives under `/docket/`, scoped by `body.game-docket`. The platform lounge
 (`/`) stays the club's dark purple-and-gold surface; The Docket enters the lounge only
-through content and copy (registry tile now; the T13 static strip later), never through this
-room's palette or substrate. Substrate contrast at the threshold is by design.
+through content and copy, never through this room's palette or substrate. Substrate contrast
+at the threshold is by design.
+
+That entry is the **`.second-bill` strip** (T13, shipped): club purple and gold, the registry
+mark and description, one static cadence line, and a join-or-enter outline CTA. It is
+registry-generic and names no game, so nothing in it is The Docket's to style. Zero oxblood,
+zero garnet, and no `.docket-*` class reaches the lounge — those selectors are global rather
+than scoped under `body.game-docket`, so borrowing one there would half-apply and paint
+`--text-primary` ink on the purple substrate. The strip's copy is the only Docket-shaped thing
+about it, and the cadence line lives on the registry entry (`lounge_cadence`), not in lounge
+markup. Platform doctrine for the primitive is root `DESIGN.md` §5.
 
 The room is a **light court-paper room**: Pressroom Bone body, white paper cards, ink text,
 oxblood-and-garnet accents. It deliberately runs opposite Survivor's midnight room; the two

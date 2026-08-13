@@ -19,6 +19,7 @@ from games.registry import (
     coming_soon_games,
     joined_games,
     lounge_game,
+    second_bill_games,
 )
 from models.content import commish_note_paragraphs
 
@@ -51,6 +52,12 @@ def build_home_context(user: Any, state: str | None) -> dict:
             # compact tile strip reads emoji/short_name/blueprint_index
             # off it, slug-agnostically).
             ctx['lounge_entry'] = game
+    # The interim second bill (D21-eng): open games that don't own the lounge,
+    # each paired with this viewer's enrollment. Assigned AFTER the overlay for
+    # the same reason `lounge_entry` is — a featured game's context dict must
+    # not be able to clobber a registry-generic key. All four states get it;
+    # `games_for_user` handles the logged-out `user=None` on its own.
+    ctx['second_bill'] = second_bill_games(user)
     if state is not None:
         # Admin-editable "From the Commish" note for the narrative band. The
         # post body may interpolate {champion}, so pass the champion through

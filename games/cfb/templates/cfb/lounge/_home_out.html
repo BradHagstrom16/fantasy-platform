@@ -47,8 +47,14 @@
   {# Conversion unit — the featured open pool folded into the join card so
      the logged-out viewer gets ONE gold CTA. Identity (name / emoji /
      description / join route) is registry-driven; the deadline line is
-     the only game-specific copy. #}
-  {% for game in available_games %}
+     the only game-specific copy.
+
+     Filtered to the FEATURED entry. The unfiltered loop painted one full
+     ceremonial card per open game, so The Docket opening (status='open',
+     2026-08-12) gave anonymous visitors a second card wearing this card's
+     CFB copy and a second gold CTA. Open games that don't own the lounge
+     belong in the second-bill strip below, not here (D21-eng). #}
+  {% for game in available_games if game.is_featured %}
   <div class="join">
     <div class="join-head">
       <div class="seal">◇ Open Court &middot; CFB Survivor &rsquo;26</div>
@@ -75,6 +81,10 @@
     </div>
   </div>
   {% endfor %}
+
+  {# Second bill — the other open pools. Outline CTA, so the join card above
+     stays the page's single gold primary action. #}
+  {% include 'main/_second_bill.html' %}
 
 </div>{# /.home-col #}
 

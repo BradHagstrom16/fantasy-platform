@@ -2391,6 +2391,79 @@ body.game-golf {
   color: var(--gold-light);
 }
 
+/* --- Second-bill strip (interim multi-game seam, D21-eng) ---
+   One strip per open game that does not own the lounge — The Docket today.
+   Static by ruling: registry identity + cadence copy + an enrollment-aware
+   outline CTA, nothing time-sensitive. Shares the Informational recipe with
+   .farewell-strip above (DESIGN.md §5) rather than inventing a silhouette,
+   so the home shell's card taxonomy stays at two registers. Club purple and
+   gold only: a game enters the lounge through content, never its room's
+   palette (DESIGN.md §1.6). */
+.home-shell .second-bill {
+  margin: 1.5rem 0;
+  padding: 1.1rem 1.4rem;
+  background: linear-gradient(180deg,
+    var(--purple-850) 0%,
+    var(--purple-950) 100%);
+  border: 1px solid rgba(243,239,230,.08);
+  border-radius: 12px;
+}
+/* --bone-dim, not the --bone-mute the older lounge eyebrows carry: mute is
+   rgba(243,239,230,.55), which composites to roughly 4.2:1 on purple-850 and
+   lands under AA for text this size. Same lift the S6.1.1 eyebrow pass made. */
+.home-shell .second-bill-eyebrow {
+  font-family: var(--font-teko);
+  font-weight: 500;
+  font-size: 0.85rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--bone-dim);
+  margin: 0;
+}
+.home-shell .second-bill-head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.55rem;
+  margin-top: 0.4rem;
+}
+.home-shell .second-bill-mark {
+  font-size: 1.4rem;
+  line-height: 1;
+}
+.home-shell .second-bill-title {
+  font-family: var(--font-teko);
+  font-weight: 600;
+  font-size: 1.6rem;
+  letter-spacing: 0.02em;
+  color: var(--bone);
+  margin: 0;
+}
+/* The pitch reads at full strength (this is the recruiting line); the cadence
+   below steps down to --bone-dim and separates by family + case rather than
+   by another color, the same hierarchy .farewell-line/.farewell-fin uses. */
+.home-shell .second-bill-sub {
+  font-family: var(--font-news);
+  font-size: 0.95rem;
+  line-height: 1.55;
+  color: var(--bone);
+  max-width: 60ch;
+  margin: 0.4rem 0 0;
+}
+.home-shell .second-bill-cadence {
+  font-family: var(--font-teko);
+  font-weight: 500;
+  font-size: 0.95rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--bone-dim);
+  margin: 0.55rem 0 0;
+}
+/* The strip's CTA is the shared .cta-outline recipe; margin delta only, so
+   the metal-gold budget (decree + OPEN summons) is untouched. */
+.home-shell .second-bill .cta-outline {
+  margin-top: 0.9rem;
+}
+
 /* --- The Summons + CFB-era live vocabulary (C1 §3.1/§3.2/§5/§7) ---
    One card identity across the four beats: OPEN/HELD wear the
    Ceremonial recipe, LOCKED/VERDICT the Informational (.summons--info).

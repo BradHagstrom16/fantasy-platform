@@ -68,6 +68,11 @@
     </div>
     {% include 'cfb/lounge/_whos_left.html' %}
 
+    {# Second bill — rides the rail with the tiles, never the main column:
+       nothing promotional sits above the player's weekly obligation
+       (games/cfb/DESIGN.md §8.20). #}
+    {% include 'main/_second_bill.html' %}
+
     {# Compact game tiles #}
     {% include 'main/_game_tiles_compact.html' %}
 

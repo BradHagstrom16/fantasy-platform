@@ -40,6 +40,10 @@ class GameRegistryEntry:
     # the partial slug-agnostic when an entry omits them.
     short_name: str = ''
     launch_label: str = ''
+    # Static weekly rhythm for the second-bill strip (D21-eng). Prose only —
+    # no dates, no computed times — so the strip stays true all season and
+    # the lounge never grows a countdown. Empty means the strip omits the line.
+    lounge_cadence: str = ''
     # Lounge state resolver (transition plan §5, C2 slice 1): returns the
     # lounge state for an authenticated viewer ('pre' | 'live' | 'post').
     # Required for a game to own the lounge (see lounge_game()); None for
@@ -111,6 +115,7 @@ GAMES: list[GameRegistryEntry] = [
         admin_enroll=_docket_enrollment.admin_enroll,
         short_name='Docket',
         launch_label='Sep 1',
+        lounge_cadence='Sheets post Tuesday. Court adjourns Saturday, 11:00 AM CT.',
     ),
     GameRegistryEntry(
         slug='golf',
@@ -171,6 +176,27 @@ def available_games(user) -> list[GameRegistryEntry]:
 def coming_soon_games() -> list[GameRegistryEntry]:
     """Games flagged coming_soon, regardless of user."""
     return [entry for entry in GAMES if entry.status == 'coming_soon']
+
+
+def second_bill_games(user) -> list[tuple[GameRegistryEntry, Any | None]]:
+    """Open games that do NOT own the lounge, paired with the viewer's enrollment.
+
+    The interim second bill (docket binding rulings, premise 3 + D21-eng): the
+    lounge stays single-featured, and an open game that isn't the featured one
+    would otherwise render nowhere — the compact tile strip only feeds off the
+    featured entry, the archived tiles, and `coming_soon_games`. The Docket is
+    the only such game today; a future open non-featured game joins the list
+    without a code change. Multi-featured is the ~Oct redesign, not this.
+
+    Pairing the enrollment here (via `games_for_user`, as D21-eng names) is what
+    lets the strip resolve a join-vs-enter CTA without a per-user data path:
+    anonymous viewers get None enrollments and fall through to join.
+    """
+    lead = lounge_game()
+    return [
+        (entry, enr) for entry, enr in games_for_user(user)
+        if entry.status == 'open' and entry is not lead
+    ]
 
 
 def lounge_game() -> GameRegistryEntry | None:
