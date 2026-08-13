@@ -224,9 +224,21 @@ def test_current_user_row_is_tinted_not_striped(app, client):
         r'\.docket-ledger-table \.row-current-user\s*>\s*td\s*\{([^}]*)\}', css)
     assert rule, 'the ledger must scope its own current-user tint'
     body = rule.group(1)
-    assert 'background' in body, 'the highlight is a tint'
-    assert 'border-left' not in body and 'border-right' not in body, \
-        'tint only, never a side stripe (platform Tables rule)'
+
+    # The exact declaration, not a substring: 'background' alone would also be
+    # satisfied by background-image or a custom property.
+    assert re.search(r'\bbackground\s*:\s*rgba\(\s*var\(--game-accent-rgb\)',
+                     body), \
+        'the highlight is a garnet tint (DESIGN.md 6.5: garnet means "yours")'
+
+    # Every way a side stripe could be spelled, shorthand and logical
+    # properties included.
+    for prop in ('border-left', 'border-right',
+                 'border-inline-start', 'border-inline-end', 'border-inline'):
+        assert not re.search(rf'\b{prop}\s*:', body), \
+            f'{prop} is a side stripe; the platform Tables rule is tint only'
+    assert not re.search(r'(?<![-\w])border\s*:', body), \
+        'a border shorthand can set the side edges; tint only'
 
 
 def test_verdict_banner_is_absent_until_the_season_is_complete(app, client):
