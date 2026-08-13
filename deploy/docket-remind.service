@@ -1,0 +1,25 @@
+# The Docket deadline reminders (D24) — three tiers before the Saturday
+# 11:00 AM CT close (48h Thursday, 24h Friday, 2h Saturday), to unfinished
+# sheets only. Costs no API credits.
+#
+# Exits non-zero only when a due tier reached NOBODY, which means mail is down
+# with a deadline approaching. "No tier is due" and "this tier already went
+# out" are the ordinary outcomes of an hourly run and exit 0.
+
+[Unit]
+Description=The Docket deadline reminders (de-duped, unfinished sheets only)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=deploy
+Group=deploy
+WorkingDirectory=/home/deploy/fantasy-platform
+EnvironmentFile=/home/deploy/fantasy-platform/.env
+Environment=ENVIRONMENT=production
+Environment=FLASK_APP=app.py
+NoNewPrivileges=true
+PrivateTmp=true
+TimeoutStartSec=5m
+ExecStart=/home/deploy/fantasy-platform/venv/bin/flask docket sync --mode remind --scheduled

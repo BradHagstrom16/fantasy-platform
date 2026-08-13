@@ -1,0 +1,16 @@
+# Runs The Docket's line gap-fill Tue-Fri 07:00 CT.
+#
+# Tuesday's firing is 45 minutes after docket-setup.timer, so the week and its
+# slates exist before this tries to fill them. Stops at Friday: locked lines
+# never move (D3), and the Saturday deadline pass wants the kickoff column
+# holding Friday's values rather than a refresh racing the freeze.
+[Unit]
+Description=Run The Docket line gap-fill Tue-Fri 07:00 CT
+
+[Timer]
+# Timezone is INLINE in OnCalendar — no TimeZone= directive exists.
+OnCalendar=Tue,Wed,Thu,Fri *-*-* 07:00:00 America/Chicago
+Persistent=true
+
+[Install]
+WantedBy=timers.target

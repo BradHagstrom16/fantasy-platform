@@ -69,6 +69,86 @@ def test_lines_before_setup_refuses_and_names_the_fix(app, runner,
     assert '--mode setup' in result.output
 
 
+@pytest.mark.parametrize('mode',
+                         ['setup', 'lines', 'scores', 'deadline', 'remind'])
+def test_scheduled_stands_down_out_of_season(app, runner, monkeypatch, mode):
+    """The docket season covers 19 of 52 weeks. A timer firing in the other
+    33 has nothing to do, and must say so with exit 0 — otherwise a red
+    docket timer is the normal state and stops carrying information."""
+    monkeypatch.setenv('DOCKET_FAKE_NOW', '2026-06-01T12:00:00')
+    result = _invoke(runner, 'sync', '--mode', mode, '--scheduled')
+    assert result.exit_code == 0, result.output
+    assert 'Standing down' in result.output
+
+
+@pytest.mark.parametrize('mode', ['lines', 'scores', 'deadline', 'remind'])
+def test_scheduled_stands_down_before_the_week_is_imported(app, runner,
+                                                           monkeypatch, mode):
+    """Production docket tables stay empty until the deliberate Week-1
+    import at the line freeze, so every timer enabled before then fires
+    against nothing."""
+    monkeypatch.setenv('DOCKET_FAKE_NOW', BEFORE_DEADLINE)
+    result = _invoke(runner, 'sync', '--mode', mode, '--scheduled')
+    assert result.exit_code == 0, result.output
+    assert 'Standing down' in result.output
+
+
+def test_scheduled_does_not_soften_a_real_failure(app, runner, monkeypatch):
+    """--scheduled reclassifies exactly two benign states. A week that
+    reached its deadline with no sound designation is not one of them: that
+    is the alert the Saturday timer exists to raise."""
+    _seed(designate=False)
+    make_enrollment(make_user('player'))
+    db.session.commit()
+    monkeypatch.setenv('DOCKET_FAKE_NOW', AFTER_DEADLINE)
+
+    result = _invoke(runner, 'sync', '--mode', 'deadline', '--scheduled')
+
+    assert result.exit_code == 1
+    assert 'AUTOPICK WAS SKIPPED' in result.output
+
+
+def test_scheduled_does_not_soften_a_bad_week_number(app, runner, monkeypatch):
+    """An out-of-range --week is a typo, not a benign state."""
+    monkeypatch.setenv('DOCKET_FAKE_NOW', BEFORE_DEADLINE)
+    result = _invoke(runner, 'sync', '--mode', 'lines', '--week', '99',
+                     '--scheduled')
+    assert result.exit_code == 1
+    assert 'week must be 1-' in result.output
+
+
+def test_remind_mode_mails_an_unfinished_sheet(app, runner, monkeypatch):
+    _seed(final=False)
+    make_enrollment(make_user('player'))
+    db.session.commit()
+    # Thursday morning, inside the 48h tier before the Sat 11:00 CT close.
+    monkeypatch.setenv('DOCKET_FAKE_NOW', '2026-09-03T16:00:00')
+
+    with patch('games.docket.services.notifications.send_platform_email',
+               return_value=True) as send:
+        result = _invoke(runner, 'sync', '--mode', 'remind')
+
+    assert result.exit_code == 0, result.output
+    assert '48h sent to 1/1' in result.output
+    assert send.call_count == 1
+
+
+def test_remind_mode_is_quiet_outside_a_tier(app, runner, monkeypatch):
+    """Hourly firings mostly land between tiers. That is not a failure."""
+    _seed(final=False)
+    make_enrollment(make_user('player'))
+    db.session.commit()
+    monkeypatch.setenv('DOCKET_FAKE_NOW', '2026-09-04T04:00:00')
+
+    with patch('games.docket.services.notifications.send_platform_email',
+               return_value=True) as send:
+        result = _invoke(runner, 'sync', '--mode', 'remind')
+
+    assert result.exit_code == 0, result.output
+    assert 'no tier is due' in result.output
+    assert send.call_count == 0
+
+
 def test_deadline_mode_reports_the_freeze_and_the_deal(app, runner,
                                                        monkeypatch):
     week, games = _seed()

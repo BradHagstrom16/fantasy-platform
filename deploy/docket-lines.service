@@ -1,0 +1,25 @@
+# The Docket line gap-fill — fill markets that were not posted at setup, and
+# refresh live kickoffs off the free /events endpoint (D19). Also reports a
+# missing or unsound tiebreaker designation, days before it would matter:
+# a week with no designation blocks the whole autopick half of the deadline
+# pass, and Saturday 11:00 is the worst time to discover that.
+#
+# Costs 4 API credits per run at most, and 0 once every market is locked.
+
+[Unit]
+Description=The Docket line gap-fill + kickoff refresh
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=deploy
+Group=deploy
+WorkingDirectory=/home/deploy/fantasy-platform
+EnvironmentFile=/home/deploy/fantasy-platform/.env
+Environment=ENVIRONMENT=production
+Environment=FLASK_APP=app.py
+NoNewPrivileges=true
+PrivateTmp=true
+TimeoutStartSec=5m
+ExecStart=/home/deploy/fantasy-platform/venv/bin/flask docket sync --mode lines --scheduled

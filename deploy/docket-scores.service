@@ -1,0 +1,26 @@
+# The Docket score sync — fetch finals for both sports, then grade the week
+# once it is complete. Costs 4 API credits per run (/scores is billed at 2
+# whenever daysFrom is set, and takes one sport per request).
+#
+# A week that is not ready to grade (a picked game still has no final score,
+# or the deadline pass has not run) is reported as "not ready" and exits 0:
+# that is the ordinary state of a Sunday-evening run. Corrupt data still
+# propagates and fails the unit.
+
+[Unit]
+Description=The Docket score sync (fetch finals, grade the week)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=deploy
+Group=deploy
+WorkingDirectory=/home/deploy/fantasy-platform
+EnvironmentFile=/home/deploy/fantasy-platform/.env
+Environment=ENVIRONMENT=production
+Environment=FLASK_APP=app.py
+NoNewPrivileges=true
+PrivateTmp=true
+TimeoutStartSec=5m
+ExecStart=/home/deploy/fantasy-platform/venv/bin/flask docket sync --mode scores --scheduled

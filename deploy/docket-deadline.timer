@@ -1,0 +1,23 @@
+# Runs The Docket's deadline pass Saturday 11:02 + 11:32 CT, after the
+# 11:00 AM CT submission deadline.
+#
+# !! 11:02, never 11:00:00. run_deadline_pass refuses while now < deadline_at
+#    (games/docket/services/deadline_pass.py), so a firing at the deadline
+#    instant races its own precondition and fails.
+#
+# Running LATE is free, which is why the retry is a plain second firing rather
+# than anything cleverer: the freeze is only-if-null, and the autopick pool is
+# `kickoff_at_deadline >= deadline_at` — a pure function of data that stopped
+# moving at 11:00. Persistent=true therefore makes a firing missed to a reboot
+# correct rather than merely late.
+[Unit]
+Description=Run The Docket deadline pass Sat 11:02 + 11:32 CT
+
+[Timer]
+# Timezone is INLINE in OnCalendar — no TimeZone= directive exists.
+OnCalendar=Sat *-*-* 11:02:00 America/Chicago
+OnCalendar=Sat *-*-* 11:32:00 America/Chicago
+Persistent=true
+
+[Install]
+WantedBy=timers.target

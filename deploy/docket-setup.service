@@ -1,0 +1,24 @@
+# The Docket week setup — create the week, import both slates, lock the
+# first-posted lines. Fired by docket-setup.timer on Tuesday mornings, after
+# the 06:00 CT week boundary.
+#
+# Costs 4 API credits per run (/odds is 2 per sport, and it is skipped once a
+# sport's markets are all locked). /events is free.
+
+[Unit]
+Description=The Docket week setup (create week, import slates, lock lines)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=deploy
+Group=deploy
+WorkingDirectory=/home/deploy/fantasy-platform
+EnvironmentFile=/home/deploy/fantasy-platform/.env
+Environment=ENVIRONMENT=production
+Environment=FLASK_APP=app.py
+NoNewPrivileges=true
+PrivateTmp=true
+TimeoutStartSec=5m
+ExecStart=/home/deploy/fantasy-platform/venv/bin/flask docket sync --mode setup --scheduled

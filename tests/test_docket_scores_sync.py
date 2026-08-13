@@ -209,3 +209,94 @@ def test_a_missing_key_or_week_reports_instead_of_raising(app):
     assert 'no docket week 1' in result['errors'][0]
     # A missing week must not spend credits.
     mock.assert_not_called()
+
+
+# --- Captured live payload -------------------------------------------------
+# Verbatim from The Odds API, 2026-08-12: GET /v4/sports/baseball_mlb/scores/
+# ?daysFrom=1 (HTTP 200, x-requests-last: 2). MLB rather than football because
+# the probe needed a sport with games ALREADY COMPLETE — every fixture above
+# is hand-built, so until this ran nothing had confirmed that the shapes they
+# assume are the shapes the API actually sends.
+#
+# What it settles, all three verified across the 30 events in that response:
+#   * scores[].name repeats home_team/away_team VERBATIM — the one place D22's
+#     id-only matching still leans on a name. An abbreviation here would make
+#     _event_scores return (None, None) for every game and no week would grade.
+#   * score is a STRING ("3"), never a number, so the int() cast is load-
+#     bearing rather than defensive.
+#   * a game that has not started carries scores: null — the key is present
+#     with a null value, which is why the reader coalesces rather than .get()s
+#     a default.
+LIVE_COMPLETED = {
+    'id': 'bbf1e6cb506f7bad49e73490f15d2a14',
+    'sport_key': 'baseball_mlb',
+    'sport_title': 'MLB',
+    'commence_time': '2026-08-12T01:39:00Z',
+    'completed': True,
+    'home_team': 'Los Angeles Angels',
+    'away_team': 'Texas Rangers',
+    'scores': [
+        {'name': 'Los Angeles Angels', 'score': '3'},
+        {'name': 'Texas Rangers', 'score': '2'},
+    ],
+    'last_update': '2026-08-12T17:36:22Z',
+}
+
+LIVE_IN_PROGRESS = {
+    'id': 'f6f17db1f13670f04ec571027601d33c',
+    'sport_key': 'baseball_mlb',
+    'sport_title': 'MLB',
+    'commence_time': '2026-08-12T22:41:00Z',
+    'completed': False,
+    'home_team': 'Miami Marlins',
+    'away_team': 'Pittsburgh Pirates',
+    'scores': [
+        {'name': 'Miami Marlins', 'score': '8'},
+        {'name': 'Pittsburgh Pirates', 'score': '2'},
+    ],
+    'last_update': '2026-08-13T00:58:21Z',
+}
+
+LIVE_NOT_STARTED = {
+    'id': 'b0c3869f276e1d63fbbce0cfdcbf8f1c',
+    'sport_key': 'baseball_mlb',
+    'sport_title': 'MLB',
+    'commence_time': '2026-08-13T02:10:00Z',
+    'completed': False,
+    'home_team': 'Los Angeles Dodgers',
+    'away_team': 'Kansas City Royals',
+    'scores': None,
+    'last_update': '2026-08-13T00:58:21Z',
+}
+
+
+def test_live_completed_payload_parses():
+    """The branch no mocked test could prove: a real populated scores array."""
+    from games.docket.services.scores import _event_scores
+
+    assert _event_scores(LIVE_COMPLETED) == (3, 2)
+
+
+def test_live_in_progress_payload_parses_but_is_not_final():
+    """Scores arrive before `completed` flips. sync_scores writes them and
+    leaves is_final alone, which is what keeps a live score out of grading."""
+    from games.docket.services.scores import _event_scores
+
+    assert _event_scores(LIVE_IN_PROGRESS) == (8, 2)
+    assert LIVE_IN_PROGRESS['completed'] is False
+
+
+def test_live_not_started_payload_yields_no_scores():
+    """scores is null, not absent and not []."""
+    from games.docket.services.scores import _event_scores
+
+    assert _event_scores(LIVE_NOT_STARTED) == (None, None)
+
+
+def test_live_payload_sport_agnostic_shape_matches_the_hand_built_fixtures():
+    """The football fixtures above are trusted only because this holds: the
+    captured payload's shape is exactly what _event() constructs."""
+    built = _event('x', 'Los Angeles Angels', 'Texas Rangers',
+                   home_score=3, away_score=2, completed=True)
+    assert built['scores'] == LIVE_COMPLETED['scores']
+    assert set(built) <= set(LIVE_COMPLETED)
