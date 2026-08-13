@@ -302,8 +302,28 @@ replace, which is itself the argument for building the file.
 **~~Interim mitigation~~ superseded 2026-08-13.** The preset file is the mechanical
 defence, so `preset-all` is no longer a command that must be remembered-not-to-be-run:
 it now leaves every game timer exactly as it found it, except that it would switch a
-stray `worldcup-*` back off. `sudo systemctl preset-all --dry-run` prints what it would
-do without doing it, and is the verification used in the shipping PR.
+stray `worldcup-*` back off.
+
+> 🚨 **`systemctl preset-all --dry-run` IS NOT A DRY RUN. Never run it.**
+> systemd accepts `--dry-run` and **silently ignores it** for `preset`/`preset-all` —
+> the flag is only honoured by verbs like `reboot` and `poweroff`. Run on the droplet
+> 2026-08-13 it enabled 15 game timers for real, including the four archived
+> `worldcup-*` that mail players, plus `rsync.service`, `nftables.service`,
+> `iscsid.service` and six system timers. It also writes its output to **stderr**, so
+> `> file` captures an empty file and the run looks like it did nothing.
+>
+> **To see what preset policy says, without changing anything:**
+> ```bash
+> systemctl list-unit-files '<prefix>-*.timer' --no-pager   # read the PRESET column
+> ```
+> No sudo, no writes. `PRESET` reads `disabled` for `worldcup-*` and `ignored` for the
+> three active games — that IS the verification. `systemd-analyze cat-config
+> systemd/system-preset` shows the merged policy if you need the file view.
+>
+> If `preset-all` is ever run by accident, recovery is `systemctl disable --now` naming
+> each unit explicitly. Note `ignore` cannot repair it: `ignore` preserves whatever
+> state it finds, so a second `preset-all` would fix `worldcup-*` and leave the rest
+> enabled.
 
 ### 2.5 Rate-limit keys are Cloudflare edge IPs (`ProxyFix x_for=1`) ✅ SHIPPED (PR #129)
 

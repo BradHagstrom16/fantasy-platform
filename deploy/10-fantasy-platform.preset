@@ -27,6 +27,17 @@
 # 90-systemd.preset has no rule matching ours, which is not a property to
 # depend on. tests/test_systemd_preset.py locks the prefix below 90.
 #
+# !! `systemctl preset-all --dry-run` IS NOT A DRY RUN. Never run it.
+# systemd accepts --dry-run and silently ignores it for preset/preset-all (only
+# verbs like reboot honour it). Run on the droplet 2026-08-13 it enabled 15 game
+# timers for real, and wrote its output to stderr so `> file` looked empty.
+# To read preset policy safely, no sudo and no writes:
+#     systemctl list-unit-files '<prefix>-*.timer' --no-pager
+# The PRESET column is the answer: `disabled` for worldcup-*, `ignored` for the
+# three active games. Recovery from an accidental run is `systemctl disable --now`
+# naming each unit; `ignore` cannot repair it, because it preserves whatever state
+# it finds rather than asserting one.
+
 # NO CATCH-ALL, EVER
 # A `disable *` line here would outrank 90-systemd.preset for EVERY unit on
 # the box — getty@.service, systemd-resolved.service, remote-fs.target. The
