@@ -199,15 +199,19 @@ TEAM_CONFERENCES = {short: conf for short, _, _, conf, _ in FBS_MASTER_TEAMS}
 # Maps short display name -> API long name (for reverse lookups)
 SHORT_TO_API = {short: api_name for short, api_name, _, _, _ in FBS_MASTER_TEAMS}
 
-# 2025 season teams — used by `flask cfb populate-teams` for dev/test convenience only.
-# In production, teams are managed via admin UI (Manage Teams page).
+# 2026 season teams — the preseason AP Top 25 (poll order) + every "others
+# receiving votes" team (votes desc), per the pool recipe ruled 2026-08-17.
+# `flask cfb populate-teams` seeds these as the one-shot initial season seed
+# (it refuses on a non-empty table); later corrections go through the admin
+# Manage Teams page. AP's "Miami (FL)" is short name 'Miami' here.
 DEV_SEED_TEAMS = [
-    'Texas', 'Penn State', 'Ohio State', 'Clemson', 'Georgia', 'Notre Dame',
-    'Oregon', 'Alabama', 'LSU', 'Miami', 'Arizona State', 'Illinois',
-    'South Carolina', 'Michigan', 'Florida', 'SMU', 'Kansas State', 'Oklahoma',
-    'Texas A&M', 'Indiana', 'Ole Miss', 'Iowa State', 'Texas Tech', 'Tennessee',
-    'Boise State', 'BYU', 'Utah', 'Baylor', 'Louisville', 'USC', 'Georgia Tech',
-    'Missouri', 'Tulane', 'Nebraska', 'UNLV', 'Toledo', 'Auburn',
-    'James Madison', 'Memphis', 'Florida State', 'Duke', 'Liberty', 'Navy',
-    'Iowa', 'TCU', 'Pittsburgh', 'Army', 'Colorado', 'Louisiana-Lafayette',
+    'Ohio State', 'Oregon', 'Georgia', 'Notre Dame', 'Texas', 'Indiana',
+    'Miami', 'Texas A&M', 'Ole Miss', 'Oklahoma', 'LSU', 'Texas Tech',
+    'Alabama', 'BYU', 'USC', 'Michigan', 'Washington', 'Penn State', 'SMU',
+    'Tennessee', 'Utah', 'Iowa', 'Houston', 'Louisville', 'Missouri',
+    'Clemson', 'Florida', 'Boise State', 'Arizona', 'TCU', 'Navy',
+    'South Carolina', 'Illinois', 'Oklahoma State', 'Vanderbilt', 'Pittsburgh',
+    'Virginia Tech', 'Minnesota', 'UNLV', 'New Mexico', 'Georgia Tech',
+    'James Madison', 'Auburn', 'Memphis', 'California', 'Liberty',
+    'Western Michigan', 'Tulane', 'Virginia',
 ]
