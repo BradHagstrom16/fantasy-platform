@@ -132,12 +132,21 @@ Binding preservation rules for all subsequent work:
 
 - [ ] Verify prod `.env`: `ODDS_API_KEY` valid (quota check), `ADMIN_EMAIL` = real mailbox (fixed 2026-07-06), Brevo SMTP vars intact.
 - [ ] Audit prod `cfb_*` tables: expect teams present, zero transactional rows (`flask cfb sync --mode status` first; then psql read-only if anything looks off). Confirm no sandbox/test data ever reached prod.
-- [ ] Enable the five CFB timers, **by explicit name** — `systemctl enable` does not accept glob patterns (systemd rejects them outright: *"Glob pattern passed to enable, but globs are not supported for this"*; and glob expansion elsewhere in `systemctl` only matches units already in memory, which these will not be). Verified on the droplet 2026-07-21:
+- [ ] Enable the five CFB timers, **by explicit name** — `systemctl enable` does not accept glob patterns (systemd rejects them outright: *"Glob pattern passed to enable, but globs are not supported for this"*; and glob expansion elsewhere in `systemctl` only matches units already in memory, which these will not be). Verified on the droplet 2026-07-21.
+
+  **STAGED, not all-at-once (amended 2026-08-17):** `run_setup` has no date guard — every firing creates week `last+1` and *activates* it on successful import (`games/cfb/services/automation.py`), and `Persistent=true` catch-up behavior on a *freshly enabled* timer is unverified on this droplet. Enabling `cfb-setup.timer` at the wrong moment (or a surprise catch-up firing) can therefore create **and activate Week 2 before the season starts**, silently deactivating Week 1. Mirror the docket-setup doctrine (hand-run the first import, enable the setup timer last):
 
   ```bash
+  # Launch week (any day Aug 30–31): the four timers that stand down without an active week
   sudo systemctl enable --now \
-      cfb-setup.timer cfb-spreads.timer cfb-scores.timer \
+      cfb-spreads.timer cfb-scores.timer \
       cfb-autopick.timer cfb-remind.timer
+  # Mon Aug 31 morning: hand-run Week-1 setup + verify (active week, game_count > 0)
+  FLASK_APP=app.py ENVIRONMENT=production venv/bin/flask cfb sync --mode setup
+  FLASK_APP=app.py ENVIRONMENT=production venv/bin/flask cfb sync --mode status
+  # Tue Sep 1 (after the Mon 06:00 CT slot has passed): the setup timer, LAST —
+  # its first natural firing is Mon Sep 7, which creates Week 2 on the designed cadence
+  sudo systemctl enable --now cfb-setup.timer
   systemctl list-timers 'cfb-*' --no-pager     # list-timers DOES glob; expect 5 rows
   ```
 
@@ -145,7 +154,7 @@ Binding preservation rules for all subsequent work:
 
   If any are missing, **a deploy that never ran is only one of the explanations** — the more likely one is that `systemd-analyze verify` rejected that unit, in which case `deploy.sh` warned, skipped it by name, and exited non-zero while still deploying the app. Read the deploy output and its exit status rather than inferring: find the `failed validation` line naming the unit, fix the repo file, and redeploy. Either way, hand-copying is the wrong fix — it skips the validation gate and drifts back on the next deploy. Do **not** un-comment the legacy CFB crontab lines — timers are the canonical mechanism; delete or leave the commented cron lines as history.
 - [ ] Week-1 dry run on prod timing: `cfb sync --mode setup` (Tue-gated spreads follow), verify spreads lock on first fetch, verify reminder emails address the right cohort. Rehearse in the local sandbox first with `CFB_FAKE_NOW` anchors.
-- [ ] Deadline-semantics sanity check on week 1 specifically (Thu Sep 3 season start vs the locked Sat-11am-CT cadence): confirm the intended player experience for Thu/Fri week-1 games. The cadence is deliberately locked by `test_cfb_cfp_datemath.py` — this is a *verify the product intent* item, not a code change.
+- [x] Deadline-semantics sanity check on week 1 specifically (Thu Sep 3 season start vs the locked Sat-11am-CT cadence): confirm the intended player experience for Thu/Fri week-1 games. The cadence is deliberately locked by `test_cfb_cfp_datemath.py` — this is a *verify the product intent* item, not a code change. **Confirmed by Brad 2026-08-17:** rigid Sat 11:00 CT deadline stands; a pick locks at its game's kickoff (players waiting past Thursday simply lose the Thu/Fri teams as options). Enforcement verified both directions: can't change off a started pick (`games/cfb/routes.py` `pick_locked`) and can't pick a started team.
 - [ ] Post-flip smoke on prod: join → pick → standings as a non-admin, plus all four lounge states via the changeover checklist.
 
 **Known-deferred CFB items (by prior ruling, not launch-blocking):** CFP week 16–19 real dates + `get_playoff_teams()` hardcode (December, manual runbook); DQ-5 manual commish weekly email; `national_title_odds` display feature.

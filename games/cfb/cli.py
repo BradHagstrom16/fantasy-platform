@@ -5,7 +5,7 @@ Flask CLI commands for CFB management.
 Commands are namespaced under the 'cfb' AppGroup.
 
 Usage:
-    flask cfb populate-teams          # Seed dev teams (2025 season list)
+    flask cfb populate-teams          # Seed the 2026 season team pool (one-shot)
     flask cfb sync --mode setup       # Create next week + import games
     flask cfb sync --mode spreads     # Update spreads from API
     flask cfb sync --mode scores      # Fetch scores + auto-process
@@ -25,10 +25,12 @@ cfb_cli = AppGroup('cfb', help="CFB Survivor Pool management commands.")
 
 @cfb_cli.command('populate-teams')
 def populate_teams_cmd():
-    """Seed the CfbTeam table with the 2025 season's 49 teams.
+    """Seed the CfbTeam table with the 2026 season's 49 teams.
 
-    This is a dev/test convenience command. In production, teams are
-    managed via the admin Manage Teams page.
+    One-shot initial seed for a fresh season (refuses if the table is
+    non-empty) — used both for dev/test databases and the deliberate
+    first prod seed. Later corrections go through the admin Manage
+    Teams page.
     """
     existing = CfbTeam.query.count()
     if existing > 0:

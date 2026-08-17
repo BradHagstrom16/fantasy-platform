@@ -9,11 +9,19 @@ this kit is the *what to type*.
 
 ## 1. Preconditions (Brad, before the PR is cut)
 
-- [ ] AP preseason poll released (~Aug 17).
-- [ ] Populate the CFB team list via the admin Manage Teams surface (admin routes work
-      pre-flip). As of 2026-07-30 prod `cfb_team` has **0 rows** (expected; see §7) — this
-      step is what makes "teams present" true.
-- [ ] Confirm on prod: `cfb_team` count > 0, still zero transactional rows.
+- [x] AP preseason poll released (~Aug 17). **Landed 2026-08-17.** Pool ruled: Top 25 +
+      every "others receiving votes" team = **49** (same recipe/size as 2025). Louisiana is
+      NOT in the ORV list — the AP-page numbers checksum exactly (69 voters × 325 = 22,425);
+      the ESPN/Yahoo syndicated lists showing "Louisiana 4" are wrong.
+- [ ] Populate the CFB team list. **Path re-ruled 2026-08-17:** run
+      `flask cfb populate-teams` on the droplet (the 2026 list now lives in
+      `DEV_SEED_TEAMS`, reviewed in its own PR; the command's empty-table guard makes it a
+      deliberate one-shot). The Manage Teams surface remains the tool for *later
+      corrections*, not the initial seed — hand-checking ~49 of 138 boxes is
+      transcription-error-prone and unreviewable. As of 2026-07-30 prod `cfb_team` has
+      **0 rows** (expected; see §7) — this step is what makes "teams present" true.
+- [ ] Confirm on prod: `cfb_team` count = 49, still zero transactional rows; Manage Teams
+      page shows exactly the 49 checked (visual cross-check).
 
 ## 2. The changeover PR (cut from MAIN, one commit-series, full CR cycle)
 
