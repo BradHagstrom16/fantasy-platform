@@ -13,15 +13,19 @@ this kit is the *what to type*.
       every "others receiving votes" team = **49** (same recipe/size as 2025). Louisiana is
       NOT in the ORV list — the AP-page numbers checksum exactly (69 voters × 325 = 22,425);
       the ESPN/Yahoo syndicated lists showing "Louisiana 4" are wrong.
-- [ ] Populate the CFB team list. **Path re-ruled 2026-08-17:** run
+- [x] Populate the CFB team list. **Executed 2026-08-17:** PR #148 merged (`4e31054`),
+      deployed, `flask cfb populate-teams` added 49. **Path re-ruled 2026-08-17:** run
       `flask cfb populate-teams` on the droplet (the 2026 list now lives in
       `DEV_SEED_TEAMS`, reviewed in its own PR; the command's empty-table guard makes it a
       deliberate one-shot). The Manage Teams surface remains the tool for *later
       corrections*, not the initial seed — hand-checking ~49 of 138 boxes is
       transcription-error-prone and unreviewable. As of 2026-07-30 prod `cfb_team` has
       **0 rows** (expected; see §7) — this step is what makes "teams present" true.
-- [ ] Confirm on prod: `cfb_team` count = 49, still zero transactional rows; Manage Teams
-      page shows exactly the 49 checked (visual cross-check).
+- [x] Confirm on prod: `cfb_team` count = 49, still zero transactional rows; Manage Teams
+      page shows exactly the 49 checked (visual cross-check). **Confirmed 2026-08-17:**
+      49/49 exact set match against `DEV_SEED_TEAMS` (none missing, none unexpected, all
+      conferences valid); 0 weeks / 0 games / 0 picks; the 1 enrollment is Brad's own
+      (joined 2026-08-13 post-flip — legitimate, not test data).
 
 ## 2. The changeover PR (cut from MAIN, one commit-series, full CR cycle)
 
@@ -140,6 +144,9 @@ post-deploy verification (CLAUDE.md Production Deployment — all four checks, i
 The three CFB-era Commish notes, drafted to the C1 copy laws (survivor lexicon, no em
 dashes, no manufactured drama; the WC-era notes below are replaced wholesale). The post
 note's `{champion}` placeholder interpolates at render time — keep it verbatim.
+
+**Executed at the Aug 11 flip** — verified on prod 2026-08-17: all three `commish_notes`
+rows present, updated 2026-08-11 19:24 UTC, bodies matching the texts below.
 
 **pre:**
 

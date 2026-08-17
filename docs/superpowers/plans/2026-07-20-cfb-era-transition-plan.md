@@ -130,8 +130,8 @@ Binding preservation rules for all subsequent work:
 
 **F. CFB ops enablement (runbook, no PR; execute launch week):**
 
-- [ ] Verify prod `.env`: `ODDS_API_KEY` valid (quota check), `ADMIN_EMAIL` = real mailbox (fixed 2026-07-06), Brevo SMTP vars intact.
-- [ ] Audit prod `cfb_*` tables: expect teams present, zero transactional rows (`flask cfb sync --mode status` first; then psql read-only if anything looks off). Confirm no sandbox/test data ever reached prod.
+- [x] Verify prod `.env`: `ODDS_API_KEY` valid (quota check), `ADMIN_EMAIL` = real mailbox (fixed 2026-07-06), Brevo SMTP vars intact. **Verified 2026-08-17:** all vars present; quota 491 credits remaining (the `/events` probe is free); bonus — 90 events already listed in the Week-1 window, so the Aug 31 setup run has a real slate waiting.
+- [x] Audit prod `cfb_*` tables: expect teams present, zero transactional rows (`flask cfb sync --mode status` first; then psql read-only if anything looks off). Confirm no sandbox/test data ever reached prod. **Done 2026-08-17** (post-seed): 49 teams (exact set match vs `DEV_SEED_TEAMS`), 0 weeks / 0 games / 0 picks; the single enrollment is Brad's own post-flip join (2026-08-13) — no sandbox data.
 - [ ] Enable the five CFB timers, **by explicit name** — `systemctl enable` does not accept glob patterns (systemd rejects them outright: *"Glob pattern passed to enable, but globs are not supported for this"*; and glob expansion elsewhere in `systemctl` only matches units already in memory, which these will not be). Verified on the droplet 2026-07-21.
 
   **STAGED, not all-at-once (amended 2026-08-17):** `run_setup` has no date guard — every firing creates week `last+1` and *activates* it on successful import (`games/cfb/services/automation.py`), and `Persistent=true` catch-up behavior on a *freshly enabled* timer is unverified on this droplet. Enabling `cfb-setup.timer` at the wrong moment (or a surprise catch-up firing) can therefore create **and activate Week 2 before the season starts**, silently deactivating Week 1. Mirror the docket-setup doctrine (hand-run the first import, enable the setup timer last):
