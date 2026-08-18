@@ -326,6 +326,28 @@ def test_panel_headers_bill_full_game_names(app, client):
     assert 'hl-panel-name">Docket</span>' not in text
 
 
+def test_both_headliners_carry_the_commish_decree(app, client):
+    """Design review 2026-08-18: both games are decrees of the Commish.
+    Per-era numbering (WC No 001, CFB No 002, Docket No 003); the docket
+    band is the seal only — no CFB copy leaks in, and the gold CTA budget
+    stays at two (the docket keeps its garnet .hl-cta)."""
+    with app.app_context():
+        auth_id = _make_user('decreewatch').auth_id
+    _login(client, auth_id)
+    with patch.dict(os.environ, DUAL_PRE):
+        text = client.get('/').get_data(as_text=True)
+    cfb_panel = text[text.index('hl-panel--cfb'):text.index('hl-panel--docket')]
+    docket_panel = text[text.index('hl-panel--docket'):]
+    assert 'By Decree of the Commish' in cfb_panel
+    assert 'No 002' in cfb_panel
+    assert 'By Decree of the Commish' in docket_panel
+    assert 'No 003' in docket_panel
+    assert 'The Docket &rsquo;26' in docket_panel
+    assert 'First Pick Locks In' not in docket_panel
+    assert 'No 003' not in cfb_panel
+    assert 'cta-seal' not in docket_panel
+
+
 def test_docket_lounge_module_never_imports_writers():
     src = (REPO_ROOT / 'games' / 'docket' / 'services' / 'lounge.py').read_text()
     import_lines = [line for line in src.splitlines()
