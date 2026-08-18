@@ -282,3 +282,58 @@ def test_docket_lounge_module_never_imports_writers():
                     if line.strip().startswith(('import ', 'from '))]
     for forbidden in ('deadline_pass', 'grading_pass', 'importer', 'scores'):
         assert not any(forbidden in line for line in import_lines)
+
+
+# == the join-route hard close ==============================================
+
+def test_join_routes_open_before_the_deadline(app, client):
+    with app.app_context():
+        auth_id = _make_user('promptjoiner').auth_id
+    _login(client, auth_id)
+    with patch.dict(os.environ, DUAL_PRE):
+        assert client.get('/cfb/join').status_code == 200
+        assert client.get('/docket/join').status_code == 200
+
+
+def test_join_routes_hard_close_at_the_deadline(app, client):
+    """The ruling's enforcement layer: a direct link past the window is
+    refused with the Commish note, for both games, GET and POST alike."""
+    with app.app_context():
+        auth_id = _make_user('latecomer').auth_id
+    _login(client, auth_id)
+    with patch.dict(os.environ, WINDOW_CLOSED):
+        for path in ('/cfb/join', '/docket/join'):
+            resp = client.get(path)
+            assert resp.status_code == 302
+            assert resp.headers['Location'] in ('/', 'http://localhost/')
+            resp = client.post(path, data={'csrf_token': 'x'})
+            assert resp.status_code == 302
+    with app.app_context():
+        from games.cfb.models import CfbEnrollment as _CfbE
+        from games.docket.models import DocketEnrollment as _DkE
+        assert _CfbE.query.count() == 0
+        assert _DkE.query.count() == 0
+
+
+def test_join_route_still_redirects_enrolled_members_post_window(app, client):
+    """An enrolled member hitting /join past the window gets the route's own
+    'already enrolled' redirect to the room, never the closed-door flash."""
+    with app.app_context():
+        user = _make_user('earlybird')
+        docket_enrollment.admin_enroll(user.id)
+        auth_id = user.auth_id
+    _login(client, auth_id)
+    with patch.dict(os.environ, WINDOW_CLOSED):
+        resp = client.get('/docket/join')
+    assert resp.status_code == 302
+    assert '/docket/' in resp.headers['Location']
+
+
+def test_admin_enroll_still_works_post_window(app):
+    """Late seats are the Commish's to grant: the admin path ignores the
+    window entirely."""
+    with app.app_context(), patch.dict(os.environ, WINDOW_CLOSED):
+        user = _make_user('grantedseat')
+        enrollment = docket_enrollment.admin_enroll(user.id)
+        assert enrollment is not None
+        assert enrollment.user_id == user.id
