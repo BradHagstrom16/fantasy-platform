@@ -1,19 +1,28 @@
-"""T13 — the Docket second-bill lounge strip (premise 3 + D21-eng).
+"""The Docket second-bill strip (now dormant) + the multi-featured out-state.
 
-The lounge stays single-featured: CFB owns it, and The Docket enters as a
-static strip that renders from registry-generic keys only. These locks pin the
-three things that would quietly undo that:
+T13 shipped The Docket as a static second-bill strip under a single-featured
+lounge. The 2026-08-18 multi-featured rework (ADR-049) made both games
+co-headline, so `second_bill_games()` now returns [] and the strip is dormant
+machinery — retained, reappearance-locked, for a future open-but-unfeatured
+game. These locks pin the four things that would quietly undo that:
 
-1. **The seam stays untouched.** `second_bill_games()` selects on flags, not on
-   the slug 'docket', and never disturbs `lounge_game()` or the single-overlay
-   merge. Multi-featured is the ~Oct redesign.
-2. **Static means static** (D21-eng). No countdown, no deadline math, no
-   per-user pick state. Only the CTA varies, off the paired enrollment.
-3. **The out-state conversion card renders once.** The unfiltered
-   `available_games` loop painted one full ceremonial card per open game, so
-   The Docket opening gave anonymous visitors a second card wearing CFB's
-   copy and a second gold CTA. The old lock counted the literal in template
-   source, which is why it never fired; these count the rendered page.
+1. **The selector follows flags, never the slug 'docket'.** It reports an
+   empty bill under the dual-featured registry, and catches a demoted or
+   future open-unfeatured game with no code change (the reason the machinery
+   is kept). It never gates on the lounge callables — that is
+   `lounge_games()`'s job, not this one's.
+2. **The registry-generic `second_bill` key is unclobberable.** A headliner's
+   context dict cannot overwrite it — in the flat overlay or, its composite
+   twin, namespaced inside each Headliner — and the core dispatcher reaches
+   the strip through `games.registry` only, never a game import.
+3. **The out-state renders exactly one conversion card + CTA per headliner**,
+   counted on the RENDERED page (the old source-literal count passed while
+   the loop painted two), each in its own game's voice. The CTA retires past
+   the shared enrollment deadline (ADR-050), so those assertions pin the
+   clock rather than trust real `now`.
+4. **Static means static** (D21-eng): whenever the strip renders it carries no
+   countdown, deadline math, or per-user pick state, and never the Docket
+   room palette/classes or the metal-gold seal.
 """
 import os
 import re
@@ -36,6 +45,10 @@ STYLE_CSS = REPO_ROOT / 'static' / 'css' / 'style.css'
 
 PRE_ANCHOR = {'ENVIRONMENT': 'testing', 'CFB_FAKE_NOW': '2026-08-18T17:00:00',
               'DOCKET_FAKE_NOW': '2026-08-18T17:00:00'}
+# Past the shared Sat Sep 5 enrollment deadline: both games' join windows are
+# closed, so the conversion cards stay but their asks retire (ADR-050).
+CLOSED_ANCHOR = {'ENVIRONMENT': 'testing', 'CFB_FAKE_NOW': '2026-09-06T00:00:00',
+                 'DOCKET_FAKE_NOW': '2026-09-06T00:00:00'}
 
 
 def _make_user(username='stripuser'):
@@ -273,12 +286,31 @@ def test_out_state_renders_one_join_card_per_headliner(app, client):
     the multi-featured shell. Counted on the RENDERED page (the original
     source-literal count passed while the loop painted two cards): exactly
     one conversion card and one CTA per lounge headliner, derived from the
-    registry so the docket flip moves this lock instead of breaking it."""
+    registry so the docket flip moves this lock instead of breaking it.
+
+    Pinned pre-deadline: the CTA is gated on the open enrollment window
+    (ADR-050), so an unpinned clock would pass today and fail after Sep 5."""
     from games.registry import lounge_games
     expected = len(lounge_games())
-    text = client.get('/').get_data(as_text=True)
+    with patch.dict(os.environ, PRE_ANCHOR):
+        text = client.get('/').get_data(as_text=True)
     assert text.count('class="join hl-conv') == expected
     assert text.count('hl-cta"') == expected
+
+
+def test_out_state_closed_window_retires_the_cta(app, client):
+    """The other half of ADR-050: past the shared enrollment deadline the
+    conversion cards stay (a visitor still sees both games on the bill), but
+    every headliner's ask retires — one card per headliner, zero `.hl-cta`,
+    each replaced by that game's own closed-window copy."""
+    from games.registry import lounge_games
+    expected = len(lounge_games())
+    with patch.dict(os.environ, CLOSED_ANCHOR):
+        text = client.get('/').get_data(as_text=True)
+    assert text.count('class="join hl-conv') == expected
+    assert text.count('hl-cta"') == 0
+    assert 'Late seats are granted by the Commish' in text   # CFB retired ask
+    assert 'Late filings require the Commish' in text         # Docket retired ask
 
 
 def test_out_state_join_card_never_wears_another_games_name(app, client):

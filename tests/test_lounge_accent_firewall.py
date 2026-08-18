@@ -35,10 +35,21 @@ ROOM_CLASS_PREFIX = re.compile(r'^(docket|cfb|wc)-')
 
 
 def _lounge_template_paths():
-    """Shared shell partials + every game's lounge panel/conv-card set."""
+    """Shared shell partials + every composite headliner's FULL lounge set.
+
+    A lounge dir is a composite (panel-rendered) headliner iff it ships
+    _panel_*.html; scan all of its _*.html so a room class/var/hex hiding in
+    a nested include (_summons, _whos_left, _view_cta, _decree, …) is caught,
+    not just the panel roots and the conv-card. A lounge dir with no _panel_*
+    is the archival page-mode surface (worldcup's frozen _home_* tree) and is
+    excluded — it predates this firewall. Deriving from the panel dirs keeps
+    the locks binding every future headliner's partials automatically.
+    """
     paths = list((REPO / 'core/main/templates/main').glob('_lounge_*.html'))
-    paths += list(REPO.glob('games/*/templates/*/lounge/_panel_*.html'))
-    paths += list(REPO.glob('games/*/templates/*/lounge/_conv_card.html'))
+    for lounge_dir in sorted(REPO.glob('games/*/templates/*/lounge')):
+        if not list(lounge_dir.glob('_panel_*.html')):
+            continue  # page-mode archival (worldcup); not a composite headliner
+        paths += sorted(lounge_dir.glob('_*.html'))
     return paths
 
 

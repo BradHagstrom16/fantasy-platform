@@ -94,8 +94,10 @@ Routed forward per §0.4 (locked in §9 rollup of the plan):
   affects every authenticated state's home + game pages. P3; routed to
   S6.1 cross-phase polish.
 """
+import os
 import re
 from pathlib import Path
+from unittest.mock import patch
 
 ROOT = Path(__file__).parent.parent
 CSS = (ROOT / 'static' / 'css' / 'style.css').read_text()
@@ -521,7 +523,14 @@ def test_rendered_out_state_no_longer_carries_col_md_4_registry_grid():
     app = create_app('testing')
     with app.app_context():
         db.create_all()
-        with app.test_client() as c:
+        # `hl-cta` is gated on the open enrollment window (ADR-050); pin a
+        # pre-deadline instant on both game clocks so the positive marker
+        # assertion below stays true past the Sep 5 2026 deadline.
+        with app.test_client() as c, patch.dict(os.environ, {
+            'ENVIRONMENT': 'testing',
+            'CFB_FAKE_NOW': '2026-08-18T17:00:00',
+            'DOCKET_FAKE_NOW': '2026-08-18T17:00:00',
+        }):
             resp = c.get('/')
             body = resp.data.decode('utf-8')
     # The `<div class="col-sm-6 col-md-4">` pattern was the registry grid
