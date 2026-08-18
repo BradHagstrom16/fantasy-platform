@@ -272,8 +272,8 @@ def test_panel_include_sees_loop_local_headliner(app, client):
     assert 'First Pick Locks In' in cfb_panel      # decree, nested include
     assert 'First Pick Locks In' not in docket_panel
     assert 'The first docket posts Tuesday, September 1.' in docket_panel
-    assert 'The court convenes' in docket_panel    # docket court_line
-    assert 'The court convenes' not in cfb_panel
+    assert 'Sheets due Saturdays' in docket_panel  # docket court_line
+    assert 'Sheets due Saturdays' not in cfb_panel
 
 
 def test_docket_lounge_module_never_imports_writers():

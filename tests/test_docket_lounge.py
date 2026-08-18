@@ -87,7 +87,7 @@ def test_context_pre_first_deadline_line(app, monkeypatch):
     assert ctx['is_enrolled'] is True
     assert ctx['viewer_mode'] == 'member'
     assert ctx['game_tile_label'] == 'OPENS · SEP 1'
-    assert ctx['court_line'] == 'The court convenes Tuesday, September 1'
+    assert ctx['court_line'] == 'Sheets due Saturdays · 11:00 AM CT'
     # Naive UTC (D6): Sat Sep 5 11:00 CT == 16:00 UTC. Templates ct-filter it.
     assert ctx['first_deadline_at'] == datetime(2026, 9, 5, 16, 0)
     assert ctx['archived_tiles'] == []

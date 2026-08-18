@@ -95,9 +95,11 @@ def _total_enrolled() -> int:
 
 
 def _context_pre() -> dict:
-    """Before the Week 1 boundary: the docket has not convened yet."""
+    """Before the Week 1 boundary: the docket has not convened yet. The
+    court line carries the weekly cadence (dateless); the panel body owns
+    the convening date, once."""
     return {
-        'court_line': 'The court convenes Tuesday, September 1',
+        'court_line': 'Sheets due Saturdays · 11:00 AM CT',
         'game_tile_label': 'OPENS · SEP 1',
         # Naive UTC; templates render it through the ct filter.
         'first_deadline_at': to_naive_utc(weeks.deadline_utc(1)),
