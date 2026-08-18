@@ -20,13 +20,17 @@
    list; the archival page-mode lounge still supplies the single
    `lounge_entry` + flat `game_tile_label`. #}
 <div class="court-games-wrap">
+  {% if headliners %}{% set _unjoined = headliners|rejectattr('enrollment')|list %}{% endif %}
   <div class="sec-head">
-    <div class="t">Your Games</div>
+    {# Truth in the heading: "Your Games" only when every billed game is
+       actually the viewer's; a bill with unjoined headliners is "The
+       Games" and the unjoined tiles drop the gold --active chrome. #}
+    <div class="t">{{ 'The Games' if headliners and _unjoined else 'Your Games' }}</div>
   </div>
   <div class="court-games">
     {% if headliners %}
     {% for h in headliners %}
-    <a class="cg cg--active" href="{{ url_for(h.entry.blueprint_index) }}">
+    <a class="cg {{ 'cg--active' if h.enrollment else 'cg--billed' }}" href="{{ url_for(h.entry.blueprint_index) }}">
       <div class="g">{{ h.entry.emoji }}</div>
       <div class="n">{{ h.entry.short_name or h.entry.display_name }}</div>
       <div class="p">{{ h.ctx.game_tile_label }}</div>

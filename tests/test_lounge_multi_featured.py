@@ -246,15 +246,41 @@ def test_authed_cfb_member_after_window_sees_only_cfb(app, client):
 
 # == shared sections under the composite ====================================
 
-def test_composite_tile_strip_one_active_tile_per_headliner(app, client):
+def test_composite_tiles_billed_not_claimed_for_joined_neither(app, client):
+    """One tile per headliner, but the gold --active chrome and the 'Your
+    Games' heading only for games the viewer actually joined (finish-review
+    fix: the strip was claiming unjoined headliners as 'Your Games').
+
+    One login per test on purpose: the conftest app fixture yields inside
+    a long-lived app context, so flask-login's per-request user cache on
+    `g` persists across a single test's requests — a second login inside
+    one test renders as the first user (test artifact, not a prod path).
+    """
     with app.app_context():
         auth_id = _make_user('tilewatcher').auth_id
     _login(client, auth_id)
     with patch.dict(os.environ, DUAL_PRE):
         text = client.get('/').get_data(as_text=True)
-    assert text.count('cg cg--active') == 2
+    assert text.count('cg cg--active') == 0        # joined nothing
+    assert text.count('cg cg--billed') == 2
+    assert 'The Games' in text
+    assert 'Your Games' not in text
     assert 'OPENS · SEP 1' in text                 # docket tile label
     assert 'PRESEASON' in text                     # CFB tile label
+
+
+def test_composite_tiles_active_for_joined_both(app, client):
+    with app.app_context():
+        user = _make_user('tileowner')
+        _enroll_cfb(user)
+        docket_enrollment.admin_enroll(user.id)
+        auth_id = user.auth_id
+    _login(client, auth_id)
+    with patch.dict(os.environ, DUAL_PRE):
+        text = client.get('/').get_data(as_text=True)
+    assert text.count('cg cg--active') == 2        # joined both
+    assert text.count('cg cg--billed') == 0
+    assert 'Your Games' in text
 
 
 def test_panel_include_sees_loop_local_headliner(app, client):

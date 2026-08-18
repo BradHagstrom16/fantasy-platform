@@ -34,13 +34,22 @@
     <div class="summons-eyebrow summons-eyebrow--info">◇ Week {{ g.week_number }} &middot; Docket Open</div>
     {% if g.progress.outstanding %}
     <div class="summons-line">Your sheet is not finished.</div>
+    {% else %}
+    <div class="summons-line">Your sheet is complete.</div>
+    {% endif %}
+    {# The Clerk's-Ledger count as shape: held slots tint garnet. #}
+    <div class="hl-slots" role="img"
+         aria-label="{{ g.progress.scoring_count }} of 8 sides held{{ ', one in reserve' if g.progress.backup_held else '' }}">
+      {% for i in range(1, 9) %}<span class="hl-slot{{ ' hl-slot--held' if i <= g.progress.scoring_count else '' }}" aria-hidden="true">{{ i }}</span>{% endfor %}
+      <span class="hl-slot hl-slot--reserve{{ ' hl-slot--held' if g.progress.backup_held else '' }}" aria-hidden="true">R</span>
+    </div>
+    {% if g.progress.outstanding %}
     <ul class="hl-tape">
       {% for item in g.progress.outstanding %}
       <li>{{ item }}</li>
       {% endfor %}
     </ul>
     {% else %}
-    <div class="summons-line">Your sheet is complete.</div>
     <p class="summons-sub">Eight sides held{% if g.progress.backup_held %}, one in reserve{% endif %}. The number is recorded.</p>
     {% endif %}
     <div class="summons-meta">

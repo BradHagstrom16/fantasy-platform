@@ -3958,31 +3958,61 @@ body.game-golf {
     background: linear-gradient(180deg, transparent,
         rgba(201, 162, 39, .5) 18%, rgba(201, 162, 39, .5) 82%, transparent);
   }
-  .home-shell .hl-seal {
+  .home-shell .hl-duo--paired .hl-seal {
     position: absolute;
     left: 50%;
     top: 50%;
     transform: translate(-50%, -50%);
-    width: 58px;
-    height: 58px;
-    border-radius: 50%;
-    background: var(--purple-950);
-    border: 2px solid var(--gold);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-family: var(--font-teko);
-    font-weight: 600;
-    font-size: .8rem;
-    letter-spacing: .12em;
-    text-transform: uppercase;
-    color: var(--gold-light);
     z-index: 2;
   }
 }
+/* The seal's face is its own element so the seam can re-orient per
+   viewport: a floating circle on the vertical seam at >=768px, a
+   horizontal gold rule between the stacked cards below it — the
+   signature geometry survives every required viewport. */
 .home-shell .hl-seal { display: none; }
+.home-shell .hl-seal-core {
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  background: var(--purple-950);
+  border: 2px solid var(--gold);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-teko);
+  font-weight: 600;
+  font-size: .8rem;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--gold-light);
+  flex: none;
+}
 @media (min-width: 768px) {
   .home-shell .hl-duo--paired .hl-seal { display: flex; }
+}
+@media (max-width: 767.98px) {
+  .home-shell .hl-duo--paired .hl-seal {
+    display: flex;
+    align-items: center;
+    gap: .8rem;
+    width: 100%;
+    order: 2;
+  }
+  .home-shell .hl-duo--paired .hl-seal::before,
+  .home-shell .hl-duo--paired .hl-seal::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+  }
+  .home-shell .hl-duo--paired .hl-seal::before {
+    background: linear-gradient(90deg, transparent, rgba(201, 162, 39, .5));
+  }
+  .home-shell .hl-duo--paired .hl-seal::after {
+    background: linear-gradient(90deg, rgba(201, 162, 39, .5), transparent);
+  }
+  .home-shell .hl-duo--paired > *:nth-child(2) { order: 1; }
+  .home-shell .hl-duo--paired > *:nth-child(3) { order: 3; }
 }
 
 /* Headliner panel: Ceremonial ground carrying the game's wash. */
@@ -4107,6 +4137,41 @@ body.game-golf {
 .home-shell .hl-cta--outline:hover {
   background: color-mix(in srgb, var(--hl-accent, transparent) 14%, transparent);
   color: var(--hl-accent-bright, var(--bone));
+}
+
+/* Slot chips: the docket's structural texture on the lounge — eight
+   scoring slots plus the dashed reserve, held ones tinted in the
+   headliner's accent. A summary of shape and count, never a control. */
+.home-shell .hl-slots {
+  display: flex;
+  gap: .35rem;
+  margin: .8rem 0 .2rem;
+}
+.home-shell .hl-slot {
+  width: 26px;
+  height: 32px;
+  border-radius: 5px;
+  border: 1px solid rgba(243, 239, 230, .18);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-teko);
+  font-weight: 500;
+  font-size: .8rem;
+  color: var(--bone-mute);
+}
+.home-shell .hl-slot--held {
+  background: color-mix(in srgb, var(--hl-accent, var(--gold)) 16%, transparent);
+  border-color: color-mix(in srgb, var(--hl-accent, var(--gold)) 55%, transparent);
+  color: var(--bone);
+}
+.home-shell .hl-slot--reserve { border-style: dashed; }
+
+/* An open headliner tile the viewer has NOT joined: on the bill, not in
+   their pocket — bone hairline instead of the gold --active chrome. */
+.home-shell .cg--billed {
+  border: 1px solid rgba(243, 239, 230, .14);
+  background: linear-gradient(180deg, var(--purple-850), var(--purple-950));
 }
 
 /* Shell-owned sign-in line under the duo (once, never per card). */

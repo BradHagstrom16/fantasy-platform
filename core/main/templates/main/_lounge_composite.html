@@ -31,7 +31,7 @@
     {% if headliners|length == 2 %}
       {% set _wk = headliners[0].ctx.get('week_number') %}
       {% set _same_week = _wk and headliners[1].ctx.get('week_number') == _wk %}
-      <div class="hl-seal" aria-hidden="true">{% if _same_week %}Wk {{ _wk }}{% else %}CCC{% endif %}</div>
+      <div class="hl-seal" aria-hidden="true"><span class="hl-seal-core">{% if _same_week %}Wk {{ _wk }}{% else %}CCC{% endif %}</span></div>
     {% endif %}
     {% for h in headliners %}
       {% include h.tree ~ '/_panel_' ~ h.state ~ '.html' %}

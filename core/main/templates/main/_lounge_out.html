@@ -11,7 +11,10 @@ on the bill until the enrollment deadline closes it.
 FIRST VIEWPORT: compact club hero (crest, ◈ eyebrow, The Fix Is In.), then
 the duo: two accent-washed cards meeting at the gold seam with the CHOOSE
 seal; each card = chip, glyph, name, three tape lines, meta, accent CTA.
-FORM: design-shotgun 2026-08-18, Variant D pure (board pick, approved.json).
+FORM: design-shotgun 2026-08-18, Variant D pure. Board-pick record (user-side
+by gstack rule, not in-repo): ~/.gstack/projects/BradHagstrom16-fantasy-platform/
+designs/multi-featured-lounge-20260818/approved.json; ruling summary in
+ARCHITECTURE_DECISION_LOG.md ADR-049.
 FINISH: unreviewed and undocumented is unfinished; this build ends with the
 finish review, the verdict, DESIGN.md, and every shipping raster carrying
 its provenance.
@@ -42,7 +45,7 @@ its provenance.
 
   {# The bill — one conversion card per headliner, meeting at the seam #}
   <div class="hl-duo{% if headliners|length == 2 %} hl-duo--paired{% endif %}">
-    {% if headliners|length == 2 %}<div class="hl-seal" aria-hidden="true">Choose</div>{% endif %}
+    {% if headliners|length == 2 %}<div class="hl-seal" aria-hidden="true"><span class="hl-seal-core">Choose</span></div>{% endif %}
     {% for h in headliners %}
       {% include h.tree ~ '/_conv_card.html' %}
     {% endfor %}
@@ -63,7 +66,7 @@ its provenance.
   <div class="container">
     <header class="out-registry-head">
       <span class="out-registry-eyebrow">◇ The Court This Year</span>
-      <h2 id="out-registry-head" class="out-registry-title">Up Next on the Docket</h2>
+      <h2 id="out-registry-head" class="out-registry-title">Up Next at the Club</h2>
     </header>
 
     <div class="out-registry-grid">
