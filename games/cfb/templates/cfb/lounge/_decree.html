@@ -10,15 +10,11 @@
 
    Gold CTA budget (C1 §3.1): this is one of exactly two metal-gold CTAs
    in the CFB-era lounge; the other is the OPEN summons. #}
-{% if not is_enrolled %}
-  {% set _cta_href = url_for('cfb.join') %}
-  {% set _cta_label = 'Take Your Two Lives' %}
-  {% set _cta_sub = "Join the pool. Lose twice and you're out." %}
-{% else %}
-  {% set _cta_href = url_for('cfb.index') %}
-  {% set _cta_label = 'Enter the Room' %}
-  {% set _cta_sub = none %}
-{% endif %}
+{# CTA registers (ADR-049 gold economy): the member's ceremonial entry
+   keeps the metal-gold seal; the JOIN ask wears the game's accent fill
+   (.hl-cta picks up crimson from the panel's --hl-accent) — on the bill,
+   gold never sells, it seats. Window closed (ADR-050): the countdown
+   stands, the ask retires. #}
 <div class="decree animate-in-scale">
   <div class="decree-seal">
     <div class="s">By Decree of the Commish <span class="num">No 002</span></div>
@@ -27,15 +23,27 @@
 
   <div class="decree-body">
     <h2>First Pick Locks In</h2>
+    {% if g.decree_days > 0 %}
     <div class="decree-hero" role="text"
-         aria-label="{{ decree_days }} day{{ '' if decree_days == 1 else 's' }} until the first pick locks">
-      <div class="decree-hero-num" aria-hidden="true">{{ '%02d'|format(decree_days) }}</div>
+         aria-label="{{ g.decree_days }} day{{ '' if g.decree_days == 1 else 's' }} until the first pick locks">
+      <div class="decree-hero-num" aria-hidden="true">{{ '%02d'|format(g.decree_days) }}</div>
       <div class="decree-hero-unit" aria-hidden="true">Days</div>
     </div>
-    <p class="decree-foot">Everyone starts with two lives. One team a week, win outright.<br>{{ decree_deadline_line }}</p>
-    <a class="cta-seal decree-cta" href="{{ _cta_href }}">
-      <span class="cta-seal-label">{{ _cta_label }}<i class="bi bi-arrow-right" aria-hidden="true"></i></span>
-      {% if _cta_sub %}<span class="cta-seal-sub">{{ _cta_sub }}</span>{% endif %}
+    {% else %}
+    {# Zero-day floor: never a "00 DAYS" countdown. #}
+    <div class="summons-line">The first pick locks today.</div>
+    {% endif %}
+    <p class="decree-foot">Everyone starts with two lives. One team a week, win outright.<br>{{ g.decree_deadline_line }}</p>
+    {% if g.is_enrolled %}
+    <a class="cta-seal decree-cta" href="{{ url_for('cfb.index') }}">
+      <span class="cta-seal-label">Enter the Room<i class="bi bi-arrow-right" aria-hidden="true"></i></span>
     </a>
+    {% elif h.join_open %}
+    <a class="hl-cta" href="{{ url_for('cfb.join') }}">
+      Take Your Two Lives
+      <i class="bi bi-arrow-right" aria-hidden="true"></i>
+    </a>
+    <div class="commish-echo">Join the pool. Lose twice and you&rsquo;re out.</div>
+    {% endif %}
   </div>
 </div>

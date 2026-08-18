@@ -31,11 +31,8 @@ def _wc_era_registry(monkeypatch):
     """Pin the WC-era registry (post-2026-08-11 changeover the real config
     features CFB). This module renders the archived WC lounge states — the
     frozen-WC regression net — so every test runs against the WC era."""
-    from tests._registry_helpers import set_is_featured, set_status
-    set_status(monkeypatch, 'worldcup', 'open')
-    set_is_featured(monkeypatch, 'worldcup', True)
-    set_status(monkeypatch, 'cfb', 'coming_soon')
-    set_is_featured(monkeypatch, 'cfb', False)
+    from tests._registry_helpers import pin_wc_era
+    pin_wc_era(monkeypatch)
 
 
 def _make_user(username='alice', email='alice@example.com'):

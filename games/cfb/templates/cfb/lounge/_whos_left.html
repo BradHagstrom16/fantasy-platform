@@ -4,7 +4,7 @@
    Banned by §8.10/§8.14: donuts, percentages without counts, trend
    arrows, synthetic field-health scores. #}
 {% from 'cfb/lounge/_pips.html' import pips %}
-{% set wl = whos_left %}
+{% set wl = g.whos_left %}
 {% macro name_rows(rows) %}
 <ul class="wl-names">
   {% for r in rows %}

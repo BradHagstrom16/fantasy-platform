@@ -19,7 +19,7 @@ section 3.6). The WC imports below are the ruled C1 design: the farewell
 strip (spec 3.5) and the archived WC tile (spec 3.4) read frozen 2026
 archive facts through the WC lounge module's helpers.
 """
-from datetime import date
+from datetime import UTC, date, datetime
 from types import SimpleNamespace
 from typing import Any, Literal
 
@@ -35,6 +35,7 @@ from games.cfb.services.game_logic import (
 )
 from games.cfb.utils import (
     get_current_time,
+    get_utc_time,
     get_week_display_name,
     make_aware,
     safe_is_after,
@@ -64,6 +65,21 @@ def _season_year() -> int:
 
 def _week_1_kickoff() -> date:
     return date.fromisoformat(SEASON_SCHEDULE['week_1_start'])
+
+
+# The season's enrollment deadline (ruled 2026-08-18): self-serve joining
+# closes at the Week 1 pick deadline, Sat Sep 5 2026 11:00 AM CT (16:00
+# UTC; CDT is UTC-5) — the same instant as The Docket's Week 1 deadline by
+# construction, so the club has one cutoff. A season constant rather than a
+# DB read: the window must resolve identically against empty tables.
+ENROLLMENT_DEADLINE_UTC = datetime(2026, 9, 5, 16, 0, tzinfo=UTC)
+
+
+def join_window_open() -> bool:
+    """Whether self-serve enrollment is still open. Strict at the instant,
+    matching the pick deadline's own rule. Late seats are granted by the
+    Commish through admin enrollment, never through /cfb/join."""
+    return get_utc_time() < ENROLLMENT_DEADLINE_UTC
 
 
 def cfb_lounge_state() -> CfbLoungeState:

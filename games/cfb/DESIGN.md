@@ -175,7 +175,7 @@ This describes dominant purpose, not an exclusive division of data. Concretely, 
 
 The room is operational: act, compare, inspect, verify. The lounge is orienting and social: notice, understand, remember, return. Both surfaces preserve critical survival and pick state (invariant 2.7).
 
-**Substrate boundary (load-bearing).** §6's midnight identity governs the room only — the dark doctrine stops at `body.game-cfb`. The lounge keeps the platform's CCC purple/gold identity; CFB enters the lounge through **content, copy, and state** (survival counts, lives, the summons, the verdict), never through substrate. This is the platform's lounge-vs-room architecture (CLAUDE.md; transition plan §5): substrate distinction between the lounge and a game room is by-design separation, not whiplash.
+**Substrate boundary (load-bearing).** §6's midnight identity governs the room only — the dark doctrine stops at `body.game-cfb`. The lounge keeps the platform's CCC purple/gold identity; CFB enters the lounge through **content, copy, state, and its lounge accent signature** (survival counts, lives, the summons, the verdict; since ADR-049 also the crimson panel wash/CTA fill via the platform's `--lounge-cfb-*` tokens and `.hl-panel--cfb` mapping — never `--cfb-*` room tokens, never room classes), never through substrate. This is the platform's lounge-vs-room architecture (CLAUDE.md; root DESIGN.md §1.6): substrate distinction between the lounge and a game room is by-design separation, not whiplash.
 
 ### 3.2 The room's landing page
 
@@ -619,9 +619,9 @@ Canonical composition orders — room landing: player card/summons → deadline 
 
 ---
 
-## 8. Lounge Architecture (C1 contract — FUTURE surface)
+## 8. Lounge Architecture (C1 contract — historical basis; amended by ADR-049)
 
-The CFB-era lounge is designed (C1) then built (C2) per the transition plan §5. This section is the contract that design executes. **Substrate note (binding):** everything here describes content, copy, hierarchy, and state; the lounge's visual identity remains the platform's CCC purple/gold lounge system — §6's midnight room identity does not apply at `/` (§3.1).
+The CFB-era lounge was designed (C1) then built (C2) per the transition plan §5; this section is that contract. **Since the 2026-08-18 multi-featured rework (ADR-049), CFB shares the lounge as a co-headliner**: the full-page `_home_<state>.html` composition described below now lives as CFB's *panel* (`games/cfb/templates/cfb/lounge/_panel_<state>.html` + `_conv_card.html`) inside the composite shell — the greet is platform-owned, the tiles/second-bill/commish note are shell-owned, and the interior beats (summons, decree, Who's Left, standings) survive unchanged inside the panel. §8's content, hierarchy, beat, and copy rules still govern those interiors. **Substrate note (binding):** everything here describes content, copy, hierarchy, and state; the lounge's visual identity remains the platform's CCC purple/gold lounge system — §6's midnight room identity does not apply at `/` (§3.1).
 
 ### 8.1 Purpose
 

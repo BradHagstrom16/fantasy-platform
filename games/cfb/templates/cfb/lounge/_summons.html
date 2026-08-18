@@ -9,7 +9,7 @@
    last metal-gold CTA (the first is the pre-state decree). ◈ appears
    only on the OPEN eyebrow (and the post-state champion banner). #}
 {% from 'cfb/lounge/_pips.html' import pips %}
-{% set s = summons %}
+{% set s = g.summons %}
 <div class="summons{% if s.beat in ('locked', 'verdict') %} summons--info{% endif %}">
   <span class="state-chip{% if s.beat == 'open' %} state-chip--open{% endif %}">{{ s.chip }}</span>
   <div class="summons-eyebrow{% if s.beat != 'open' %} summons-eyebrow--info{% endif %}">{% if s.beat == 'open' %}◈{% else %}◇{% endif %} The Summons &middot; {{ s.week_label }}</div>

@@ -79,4 +79,17 @@
      calc() resolves through them. */
   --ccc-nav-h: 56px;
   --ccc-footer-h: 200px;
+
+  /* Lounge headliner accents (multi-featured lounge, ruled 2026-08-18):
+     the ONLY place room-family hues are written for lounge use. The lounge
+     consumes them through the .home-shell --hl-* mapping in style.css;
+     room tokens (--game-primary / --game-accent / --cfb-*) never cross in.
+     Both families are dark pigments, so the base hues are non-text
+     signatures (rules, washes, borders); the -bright variants are the
+     AA-checked text forms for the purple substrate. */
+  --lounge-cfb-accent: #C5050C;          /* Survivor crimson (signal) */
+  --lounge-cfb-accent-bright: #E8464C;   /* crimson text on purple, AA large */
+  --lounge-docket-ground: #6E1F2E;       /* Law-book oxblood (wash ground) */
+  --lounge-docket-accent: #A63446;       /* Stamp garnet (action) */
+  --lounge-docket-accent-bright: #D06A7A; /* garnet text on purple, AA */
 }

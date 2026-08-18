@@ -110,14 +110,21 @@ The Docket's room lives under `/docket/`, scoped by `body.game-docket`. The plat
 through content and copy, never through this room's palette or substrate. Substrate contrast
 at the threshold is by design.
 
-That entry is the **`.second-bill` strip** (T13, shipped): club purple and gold, the registry
-mark and description, one static cadence line, and a join-or-enter outline CTA. It is
-registry-generic and names no game, so nothing in it is The Docket's to style. Zero oxblood,
-zero garnet, and no `.docket-*` class reaches the lounge — those selectors are global rather
-than scoped under `body.game-docket`, so borrowing one there would half-apply and paint
-`--text-primary` ink on the purple substrate. The strip's copy is the only Docket-shaped thing
-about it, and the cadence line lives on the registry entry (`lounge_cadence`), not in lounge
-markup. Platform doctrine for the primitive is root `DESIGN.md` §5.
+That entry is the **headliner panel set** (multi-featured lounge, ADR-049): The Docket
+co-headlines `/` beside CFB Survivor through `games/docket/templates/docket/lounge/` — a
+conversion card plus per-state panels (`_conv_card`, `_panel_{pre,live,post}`) rendered by
+the composite shell, with `games/docket/services/lounge.py` supplying the state (pure week
+math, never the DB) and the panel context. The panels speak the clerk's voice and wear the
+game's accent AS SIGNATURE only, through the platform's `--lounge-docket-*` tokens and the
+`.hl-panel--docket` / `.join--docket` mapping (root `DESIGN.md` §5) — an oxblood wash, a
+garnet action fill, bone text. Still true and still enforced: **no `.docket-*` class reaches
+the lounge** — those selectors are global rather than scoped under `body.game-docket`, so
+borrowing one there would half-apply and paint `--text-primary` ink on the purple substrate —
+and no room variable (`--game-primary`/`--game-accent`/`--docket-rule`) crosses in; the
+lounge accent firewall (`tests/test_lounge_accent_firewall.py`) locks both. The `.second-bill`
+strip that carried this entry in the interim is dormant (empty under the dual-featured
+registry) and the `lounge_cadence` line stays on the registry entry for the strip's possible
+future tenants.
 
 The room is a **light court-paper room**: Pressroom Bone body, white paper cards, ink text,
 oxblood-and-garnet accents. It deliberately runs opposite Survivor's midnight room; the two

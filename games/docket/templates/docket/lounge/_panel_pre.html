@@ -1,0 +1,28 @@
+{# The Docket pre-season headliner panel: the court has not convened. The
+   clerk states the calendar and the one deadline that matters, literally.
+   No .docket-* classes reach the lounge; the panel wears the lounge's own
+   primitives under the docket accent hooks. #}
+{% set g = h.ctx %}
+<section class="hl-panel hl-panel--docket" aria-label="The Docket">
+  <header class="hl-panel-head">
+    <span class="hl-panel-mark" aria-hidden="true">{{ h.entry.emoji }}</span>
+    <span class="hl-panel-name">{{ h.entry.short_name or h.entry.display_name }}</span>
+    <span class="hl-panel-court">{{ g.court_line }}</span>
+  </header>
+
+  <div class="summons">
+    <div class="summons-eyebrow summons-eyebrow--info">◇ Opening Session</div>
+    <div class="summons-line">The first docket posts Tuesday, September 1.</div>
+    {# The sheet's shape, waiting: eight scoring slots and the reserve. #}
+    <div class="hl-slots" role="img" aria-label="Eight scoring slots and one reserve, all open">
+      {% for i in range(1, 9) %}<span class="hl-slot" aria-hidden="true">{{ i }}</span>{% endfor %}
+      <span class="hl-slot hl-slot--reserve" aria-hidden="true">R</span>
+    </div>
+    <p class="summons-sub">Eight picks against frozen lines, one headliner worth double, one number to settle the week. First sheets close {{ g.first_deadline_at|ct('%A, %B %-d at %-I:%M %p CT') }}.</p>
+    {% if g.is_enrolled %}
+    <a class="hl-cta hl-cta--outline" href="{{ url_for(h.entry.blueprint_index) }}">Enter the Court</a>
+    {% elif h.join_open %}
+    <a class="hl-cta" href="{{ url_for(h.entry.blueprint_join) }}">Take the Oath</a>
+    {% endif %}
+  </div>
+</section>

@@ -28,7 +28,7 @@ def _make_user(app, username='u1', is_admin=False):
 
 
 def _mock_entry(slug, status='open', is_featured=False,
-                enrollment=None):
+                enrollment=None, lounge_state=None, lounge_context=None):
     """Build a GameRegistryEntry-shaped mock with get_enrollment returning `enrollment`."""
     from games.registry import GameRegistryEntry
     return GameRegistryEntry(
@@ -42,6 +42,8 @@ def _mock_entry(slug, status='open', is_featured=False,
         blueprint_join=f'{slug}.join',
         get_enrollment=lambda uid: enrollment,
         admin_enroll=lambda uid: enrollment,
+        lounge_state=lounge_state,
+        lounge_context=lounge_context,
     )
 
 
@@ -237,3 +239,25 @@ def test_cfb_description_reflects_outright_win_mechanic():
     desc = get_entry('cfb').description.lower()
     assert 'against the spread' not in desc
     assert 'outright' in desc
+
+
+def test_lounge_games_plural_respects_flags(app, monkeypatch):
+    """The multi-featured seam: every featured-open entry with both lounge
+    callables is a headliner; unfeatured and not-open entries never are."""
+    from games import registry
+    entries = [
+        _mock_entry('alpha', status='open', is_featured=True,
+                    lounge_state=lambda: 'pre',
+                    lounge_context=lambda user, state: {}),
+        _mock_entry('beta', status='open', is_featured=True,
+                    lounge_state=lambda: 'live',
+                    lounge_context=lambda user, state: {}),
+        _mock_entry('gamma', status='open', is_featured=False,
+                    lounge_state=lambda: 'pre',
+                    lounge_context=lambda user, state: {}),
+        _mock_entry('delta', status='coming_soon', is_featured=True,
+                    lounge_state=lambda: 'pre',
+                    lounge_context=lambda user, state: {}),
+    ]
+    monkeypatch.setattr(registry, 'GAMES', entries)
+    assert [e.slug for e in registry.lounge_games()] == ['alpha', 'beta']

@@ -1,13 +1,14 @@
 {# View variant (authenticated, not enrolled — C1 §2.3): the field line
-   + a join CTA while the registry says joining is open + the follow
-   route. The lounge is only dispatched while the featured game's status
-   is 'open', so gating the CTA on lounge_entry.status mirrors the
-   room's join policy (the lounge invents none). Outline CTA on purpose:
-   the metal-gold budget belongs to the OPEN summons and the decree. #}
+   + a join CTA while the join window is open + the follow route. The
+   gate is the headliner's join_open (registry seam), which carries the
+   2026-08-18 enrollment-deadline ruling: after the Week 1 deadline the
+   ask retires and membership is by the Commish's approval. Outline CTA
+   on purpose: the metal-gold budget belongs to the OPEN summons and the
+   decree. #}
 <div class="summons summons--info">
   <div class="summons-eyebrow summons-eyebrow--info">◇ Open Court</div>
-  <div class="summons-line">{{ view_module.field_line }}</div>
-  {% if lounge_entry.status == 'open' %}
+  <div class="summons-line">{{ g.view_module.field_line }}</div>
+  {% if h.join_open %}
   <a class="cta-outline" href="{{ url_for('cfb.join') }}">Take Your Two Lives</a>
   {% endif %}
   <div class="field-impact">

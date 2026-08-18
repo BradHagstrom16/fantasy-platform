@@ -1,19 +1,28 @@
-"""T13 — the Docket second-bill lounge strip (premise 3 + D21-eng).
+"""The Docket second-bill strip (now dormant) + the multi-featured out-state.
 
-The lounge stays single-featured: CFB owns it, and The Docket enters as a
-static strip that renders from registry-generic keys only. These locks pin the
-three things that would quietly undo that:
+T13 shipped The Docket as a static second-bill strip under a single-featured
+lounge. The 2026-08-18 multi-featured rework (ADR-049) made both games
+co-headline, so `second_bill_games()` now returns [] and the strip is dormant
+machinery — retained, reappearance-locked, for a future open-but-unfeatured
+game. These locks pin the four things that would quietly undo that:
 
-1. **The seam stays untouched.** `second_bill_games()` selects on flags, not on
-   the slug 'docket', and never disturbs `lounge_game()` or the single-overlay
-   merge. Multi-featured is the ~Oct redesign.
-2. **Static means static** (D21-eng). No countdown, no deadline math, no
-   per-user pick state. Only the CTA varies, off the paired enrollment.
-3. **The out-state conversion card renders once.** The unfiltered
-   `available_games` loop painted one full ceremonial card per open game, so
-   The Docket opening gave anonymous visitors a second card wearing CFB's
-   copy and a second gold CTA. The old lock counted the literal in template
-   source, which is why it never fired; these count the rendered page.
+1. **The selector follows flags, never the slug 'docket'.** It reports an
+   empty bill under the dual-featured registry, and catches a demoted or
+   future open-unfeatured game with no code change (the reason the machinery
+   is kept). It never gates on the lounge callables — that is
+   `lounge_games()`'s job, not this one's.
+2. **The registry-generic `second_bill` key is unclobberable.** A headliner's
+   context dict cannot overwrite it — in the flat overlay or, its composite
+   twin, namespaced inside each Headliner — and the core dispatcher reaches
+   the strip through `games.registry` only, never a game import.
+3. **The out-state renders exactly one conversion card + CTA per headliner**,
+   counted on the RENDERED page (the old source-literal count passed while
+   the loop painted two), each in its own game's voice. The CTA retires past
+   the shared enrollment deadline (ADR-050), so those assertions pin the
+   clock rather than trust real `now`.
+4. **Static means static** (D21-eng): whenever the strip renders it carries no
+   countdown, deadline math, or per-user pick state, and never the Docket
+   room palette/classes or the metal-gold seal.
 """
 import os
 import re
@@ -29,12 +38,17 @@ from tests._registry_helpers import set_is_featured
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 PARTIAL = REPO_ROOT / 'core' / 'main' / 'templates' / 'main' / '_second_bill.html'
-CFB_HOME_OUT = (
-    REPO_ROOT / 'games' / 'cfb' / 'templates' / 'cfb' / 'lounge' / '_home_out.html'
+LOUNGE_OUT = (
+    REPO_ROOT / 'core' / 'main' / 'templates' / 'main' / '_lounge_out.html'
 )
 STYLE_CSS = REPO_ROOT / 'static' / 'css' / 'style.css'
 
-PRE_ANCHOR = {'ENVIRONMENT': 'testing', 'CFB_FAKE_NOW': '2026-08-18T17:00:00'}
+PRE_ANCHOR = {'ENVIRONMENT': 'testing', 'CFB_FAKE_NOW': '2026-08-18T17:00:00',
+              'DOCKET_FAKE_NOW': '2026-08-18T17:00:00'}
+# Past the shared Sat Sep 5 enrollment deadline: both games' join windows are
+# closed, so the conversion cards stay but their asks retire (ADR-050).
+CLOSED_ANCHOR = {'ENVIRONMENT': 'testing', 'CFB_FAKE_NOW': '2026-09-06T00:00:00',
+                 'DOCKET_FAKE_NOW': '2026-09-06T00:00:00'}
 
 
 def _make_user(username='stripuser'):
@@ -70,12 +84,14 @@ def _partial_body():
 
 # == the selector ==========================================================
 
-def test_second_bill_is_the_open_non_featured_game(app):
-    """Against the real registry: The Docket and nothing else."""
+def test_second_bill_is_empty_under_the_dual_featured_registry(app):
+    """Against the real registry: both open games co-headline, so nothing
+    is a second bill. The machinery stays (see the reappearance lock below)
+    for a future open-but-unfeatured game."""
     from games.registry import second_bill_games
     with app.app_context():
         pairs = second_bill_games(AnonymousUserMixin())
-    assert [entry.slug for entry, _ in pairs] == ['docket']
+    assert pairs == []
 
 
 def test_second_bill_excludes_lounge_owner_completed_and_coming_soon(app):
@@ -97,17 +113,20 @@ def test_second_bill_selects_on_flags_not_on_the_docket_slug(app, monkeypatch):
     set_is_featured(monkeypatch, 'cfb', False)
     set_is_featured(monkeypatch, 'docket', True)
     monkeypatch.setattr(
-        'games.registry.lounge_game',
-        lambda: __import__('games.registry', fromlist=['x']).get_entry('docket'),
+        'games.registry.lounge_games',
+        lambda: [__import__('games.registry', fromlist=['x']).get_entry('docket')],
     )
     with app.app_context():
         slugs = [entry.slug for entry, _ in second_bill_games(AnonymousUserMixin())]
     assert slugs == ['cfb']
 
 
-def test_second_bill_pairs_the_viewers_enrollment(app):
-    """The join-vs-enter CTA reads this pairing; anonymous viewers get None."""
+def test_second_bill_pairs_the_viewers_enrollment(app, monkeypatch):
+    """The join-vs-enter CTA reads this pairing; anonymous viewers get None.
+    The Docket co-headlines in the real registry now, so the pairing is
+    exercised by demoting it back to the bill for this test."""
     from games.registry import second_bill_games
+    set_is_featured(monkeypatch, 'docket', False)
     with app.app_context():
         user = _make_user()
         assert second_bill_games(user)[0][1] is None
@@ -118,12 +137,35 @@ def test_second_bill_pairs_the_viewers_enrollment(app):
         assert enr is not None and enr.user_id == user.id
 
 
-def test_second_bill_survives_a_game_with_no_lounge_callables(app):
-    """The Docket carries neither lounge callable by design. Selecting it must
-    not depend on them (that is `lounge_game()`'s gate, not this one)."""
-    from games.registry import get_entry
-    entry = get_entry('docket')
-    assert entry.lounge_state is None and entry.lounge_context is None
+def test_second_bill_reappears_for_a_future_open_unfeatured_game(app, monkeypatch):
+    """The dormant-machinery lock: demote one headliner and the strip
+    catches it again with no code change — the promise the machinery is
+    kept around for."""
+    from games.registry import second_bill_games
+    set_is_featured(monkeypatch, 'docket', False)
+    with app.app_context():
+        slugs = [entry.slug for entry, _ in second_bill_games(AnonymousUserMixin())]
+    assert slugs == ['docket']
+
+
+def test_second_bill_accepts_entries_without_lounge_callables(app, monkeypatch):
+    """Selecting a second bill must not depend on the lounge callables
+    (that is `lounge_games()`'s gate, not this one): an open, unfeatured
+    entry with neither callable still makes the strip."""
+    from dataclasses import replace
+
+    from games import registry
+    from games.registry import get_entry, second_bill_games
+    bare = [
+        e if e.slug != 'docket' else replace(
+            get_entry('docket'), is_featured=False,
+            lounge_state=None, lounge_context=None, join_open=None)
+        for e in registry.GAMES
+    ]
+    monkeypatch.setattr(registry, 'GAMES', bare)
+    with app.app_context():
+        slugs = [entry.slug for entry, _ in second_bill_games(AnonymousUserMixin())]
+    assert slugs == ['docket']
 
 
 # == the context key ======================================================
@@ -136,7 +178,9 @@ def test_build_home_context_carries_second_bill_in_every_state(app):
             with patch.dict(os.environ, PRE_ANCHOR):
                 ctx = build_home_context(user, state)
             assert 'second_bill' in ctx, f'missing in state={state}'
-            assert [e.slug for e, _ in ctx['second_bill']] == ['docket']
+            # Empty under the dual-featured registry; the key itself is the
+            # contract (the shell includes the strip unconditionally).
+            assert ctx['second_bill'] == []
 
 
 def test_featured_overlay_cannot_clobber_second_bill(app, monkeypatch):
@@ -156,7 +200,34 @@ def test_featured_overlay_cannot_clobber_second_bill(app, monkeypatch):
     with app.app_context():
         ctx = build_home_context(None, None)
     assert ctx['second_bill'] != 'HIJACKED'
-    assert [e.slug for e, _ in ctx['second_bill']] == ['docket']
+    assert ctx['second_bill'] == []
+
+
+def test_composite_game_dict_cannot_clobber_registry_generic_keys(app, monkeypatch):
+    """The composite twin of the hijack lock: a headliner's context dict is
+    namespaced inside its Headliner, so even a dict claiming the shell's own
+    keys cannot reach them."""
+    from dataclasses import replace
+
+    from core.main.home_context import build_home_context
+    from games import registry
+    from games.registry import get_entry
+    hijack = {'second_bill': 'HIJACKED', 'headliners': 'HIJACKED',
+              'commish_paragraphs': 'HIJACKED', 'archived_tiles': 'HIJACKED'}
+    hijacker = [
+        e if e.slug != 'cfb' else replace(
+            get_entry('cfb'), lounge_context=lambda user, state: dict(hijack))
+        for e in registry.GAMES
+    ]
+    monkeypatch.setattr(registry, 'GAMES', hijacker)
+    with app.app_context():
+        resolved = [(registry.get_entry('cfb'), None)]
+        ctx = build_home_context(None, None, headliners=resolved)
+    assert ctx['second_bill'] == []
+    assert ctx['archived_tiles'] == []
+    assert 'commish_paragraphs' not in ctx
+    assert len(ctx['headliners']) == 1
+    assert ctx['headliners'][0].ctx == hijack
 
 
 def test_home_context_reaches_the_second_bill_only_through_the_registry():
@@ -171,57 +242,9 @@ def test_home_context_reaches_the_second_bill_only_through_the_registry():
 
 
 # == the rendered audience matrix =========================================
-
-def test_strip_renders_for_anonymous_visitor_routed_through_register(app, client):
-    """The recruiting case. A logged-out viewer cannot join directly, so the
-    CTA carries them through auth.register with next=the join page, matching
-    the conversion card's path."""
-    resp = client.get('/')
-    assert resp.status_code == 200
-    strip = _strip_html(resp.get_data(as_text=True))
-    assert strip, 'the second-bill strip must render on the logged-out lounge'
-    assert 'The Docket' in strip
-    assert 'Join The Docket' in strip
-    assert '/register?next=%2Fdocket%2Fjoin' in strip or \
-           '/register?next=/docket/join' in strip
-
-
-def test_strip_offers_join_to_an_authenticated_non_member(app, client):
-    with app.app_context():
-        auth_id = _make_user('nonmember').auth_id
-    _login(client, auth_id)
-    with patch.dict(os.environ, PRE_ANCHOR):
-        strip = _strip_html(client.get('/').get_data(as_text=True))
-    assert 'Join The Docket' in strip
-    assert 'href="/docket/join"' in strip
-
-
-def test_strip_offers_enter_to_a_docket_member(app, client):
-    """Members are not excluded: The Docket appears nowhere else on the
-    authenticated lounge (open != coming_soon, and it is neither the featured
-    tile nor an archived one), so hiding the strip would leave a member with
-    no lounge route to their own game."""
-    with app.app_context():
-        user = _make_user('docketmember')
-        docket_enrollment.admin_enroll(user.id)
-        db.session.commit()
-        auth_id = user.auth_id
-    _login(client, auth_id)
-    with patch.dict(os.environ, PRE_ANCHOR):
-        strip = _strip_html(client.get('/').get_data(as_text=True))
-    assert 'Enter The Docket' in strip
-    assert 'href="/docket/"' in strip
-    assert 'Join The Docket' not in strip
-
-
-def test_strip_renders_in_the_authenticated_pre_state(app, client):
-    with app.app_context():
-        auth_id = _make_user('prestrip').auth_id
-    _login(client, auth_id)
-    with patch.dict(os.environ, PRE_ANCHOR):
-        text = client.get('/').get_data(as_text=True)
-    assert 'home-shell--pre' in text
-    assert 'second-bill' in text
+# The Docket co-headlines now, so the strip renders empty and the rendered
+# join/enter/register audience matrix lives at panel level in
+# tests/test_lounge_multi_featured.py (the strip's successor surface).
 
 
 # == D21-eng: static means static =========================================
@@ -248,48 +271,69 @@ def test_strip_renders_no_timer_or_live_region(app, client):
     assert 'data-countdown' not in strip
 
 
-def test_strip_does_not_disturb_the_single_overlay_seam(app):
-    """The lounge owner and the docket entry's flags are exactly as before."""
-    from games.registry import get_entry, lounge_game
+def test_dual_featured_registry_bills_cfb_first(app):
+    """The new-era registry lock: both games headline, CFB takes first
+    billing (GAMES order), and the strip machinery reports an empty bill."""
+    from games.registry import lounge_game, lounge_games
+    assert [e.slug for e in lounge_games()] == ['cfb', 'docket']
     assert lounge_game().slug == 'cfb'
-    entry = get_entry('docket')
-    assert entry.is_featured is False
-    assert entry.status == 'open'
 
 
 # == the out-state conversion card ========================================
 
-def test_out_state_renders_exactly_one_join_card(app, client):
-    """Regression lock for the duplicate conversion card. Counted on the
-    RENDERED page: the pre-existing source-literal count passed while the
-    loop painted two cards."""
-    text = client.get('/').get_data(as_text=True)
-    assert text.count('class="join"') == 1
-    assert text.count('class="join-cta"') == 1
+def test_out_state_renders_one_join_card_per_headliner(app, client):
+    """Regression lock for the duplicate conversion card, generalized to
+    the multi-featured shell. Counted on the RENDERED page (the original
+    source-literal count passed while the loop painted two cards): exactly
+    one conversion card and one CTA per lounge headliner, derived from the
+    registry so the docket flip moves this lock instead of breaking it.
+
+    Pinned pre-deadline: the CTA is gated on the open enrollment window
+    (ADR-050), so an unpinned clock would pass today and fail after Sep 5."""
+    from games.registry import lounge_games
+    expected = len(lounge_games())
+    with patch.dict(os.environ, PRE_ANCHOR):
+        text = client.get('/').get_data(as_text=True)
+    assert text.count('class="join hl-conv') == expected
+    assert text.count('hl-cta"') == expected
+
+
+def test_out_state_closed_window_retires_the_cta(app, client):
+    """The other half of ADR-050: past the shared enrollment deadline the
+    conversion cards stay (a visitor still sees both games on the bill), but
+    every headliner's ask retires — one card per headliner, zero `.hl-cta`,
+    each replaced by that game's own closed-window copy."""
+    from games.registry import lounge_games
+    expected = len(lounge_games())
+    with patch.dict(os.environ, CLOSED_ANCHOR):
+        text = client.get('/').get_data(as_text=True)
+    assert text.count('class="join hl-conv') == expected
+    assert text.count('hl-cta"') == 0
+    assert 'Late seats are granted by the Commish' in text   # CFB retired ask
+    assert 'Late filings require the Commish' in text         # Docket retired ask
 
 
 def test_out_state_join_card_never_wears_another_games_name(app, client):
-    """The card's seal and kickoff line are CFB copy. With the loop
-    unfiltered they were stamped onto The Docket's card too."""
+    """Each card carries its own game's copy. With the pre-rework loop
+    unfiltered, CFB's seal and kickoff line were stamped onto The Docket's
+    card too."""
     text = client.get('/').get_data(as_text=True)
-    start = text.index('<div class="join">')
-    # The strip is the next block after the card; everything between is the
-    # conversion unit, however its inner divs happen to nest.
-    card = text[start:text.index('<section class="second-bill"', start)]
+    start = text.index('class="join hl-conv join--cfb"')
+    next_card = text.find('class="join hl-conv', start + 1)
+    end = next_card if next_card != -1 else text.index('hl-signin', start)
+    card = text[start:end]
     assert 'CFB Survivor Pool' in card
     assert 'The Docket' not in card
 
 
-def test_cfb_out_partial_filters_the_conversion_loop_to_the_featured_game():
-    """Source lock the CFB out partial never had. Identity stays registry
-    driven (no hardcoded slug), but only the lounge owner gets the
-    ceremonial card; other open games are second bills."""
-    source = CFB_HOME_OUT.read_text()
-    assert '{% for game in available_games if game.is_featured %}' in source, (
-        'the conversion card must loop the featured entry only — an '
-        'unfiltered available_games loop renders one ceremonial card and one '
-        'gold CTA per open game.'
-    )
+def test_out_shell_loops_headliners_and_keeps_the_second_bill():
+    """Successor to the old featured-loop source lock: the shell renders one
+    per-game conversion card per headliner (each game's own _conv_card, so
+    no card can wear another game's copy) and keeps the second-bill strip
+    for open games that are not headliners."""
+    source = LOUNGE_OUT.read_text()
+    assert "{% for h in headliners %}" in source
+    assert "_conv_card.html" in source
     assert '{% include \'main/_second_bill.html\' %}' in source
 
 

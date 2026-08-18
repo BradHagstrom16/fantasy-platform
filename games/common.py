@@ -17,7 +17,14 @@ from flask_login import current_user, login_required
 
 
 def game_must_be_open(slug: str):
-    """Redirect to homepage with a flash if the game's registry status != 'open'.
+    """Redirect to homepage with a flash unless self-serve enrollment is open.
+
+    Two gates: the registry status must be 'open', and when the entry
+    carries a ``join_open`` window (the 2026-08-18 enrollment-deadline
+    ruling) that window must not have closed. An already-enrolled member
+    passes the window gate so the route's own "already enrolled" handling
+    still runs; admin enrollment never routes through here, so late seats
+    stay the Commish's to grant.
 
     Apply to /join routes and any enrollment-mutating routes.
     """
@@ -32,6 +39,18 @@ def game_must_be_open(slug: str):
                     'info',
                 )
                 return redirect(url_for('main.index'))
+            if entry.join_open is not None and not entry.join_open():
+                already_enrolled = (
+                    current_user.is_authenticated
+                    and entry.get_enrollment(current_user.id) is not None
+                )
+                if not already_enrolled:
+                    flash(
+                        f'Enrollment for {entry.display_name} is closed for '
+                        'the season. Late seats are granted by the Commish.',
+                        'info',
+                    )
+                    return redirect(url_for('main.index'))
             return f(*args, **kwargs)
         return wrapper
     return decorator

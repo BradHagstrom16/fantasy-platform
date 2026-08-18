@@ -1,0 +1,87 @@
+<!--
+THESIS: One club, two games on the bill. The Undercard: both headliners face
+off across a gold seam as equals; the visitor picks a side. Refuses the
+category default of one hero game plus a buried second offer.
+OWN-WORLD: CCC purple radial atmosphere, gold as shared chrome (seam, seal,
+hero eyebrow), each game's card washed in its own pigment: Survivor crimson
+vs Docket oxblood, garnet action. Teko display, Newsreader body, ◈/◇ glyphs.
+STORY: A visitor understands the club runs two games, reads each card's
+tale-of-the-tape, and joins one. Members enter their game; the other stays
+on the bill until the enrollment deadline closes it.
+FIRST VIEWPORT: compact club hero (crest, ◈ eyebrow, The Fix Is In.), then
+the duo: two accent-washed cards meeting at the gold seam with the CHOOSE
+seal; each card = chip, glyph, name, three tape lines, meta, accent CTA.
+FORM: design-shotgun 2026-08-18, Variant D pure. Board-pick record (user-side
+by gstack rule, not in-repo): ~/.gstack/projects/BradHagstrom16-fantasy-platform/
+designs/multi-featured-lounge-20260818/approved.json; ruling summary in
+ARCHITECTURE_DECISION_LOG.md ADR-049.
+FINISH: unreviewed and undocumented is unfinished; this build ends with the
+finish review, the verdict, DESIGN.md, and every shipping raster carrying
+its provenance.
+-->
+{# Logged-out lounge — the members' door (multi-featured shell). The shell
+   owns the hero, the duo frame, the single sign-in line, the second bill,
+   and the coming-soon registry; each headliner contributes its own
+   conversion card ('<slug>/lounge/_conv_card.html', voice included) via
+   the loop-local `h`. Join CTAs render only while h.join_open — after the
+   enrollment deadline the cards stay as the club's face with no ask
+   (2026-08-18 ruling). #}
+<div class="hl-stage">
+
+  {# The club's face — platform-owned, unchanged across eras #}
+  <div class="out-hero">
+    <img class="out-mark animate-in"
+         src="{{ url_for('static', filename='img/logo/mascot-bust.svg') }}?v={{ asset_version }}"
+         alt="" width="200" height="200">
+    <div class="out-eyebrow">◈ Fantasy for crooked kings &amp; queens ◈</div>
+    <h1 class="out-title">
+      <span class="out-title-a">The Fix</span>
+      <span class="out-title-b">Is In.</span>
+    </h1>
+    <p class="out-sub">
+      Pay tribute. Bend the odds to your will. No honor required.
+    </p>
+  </div>
+
+  {# The bill — one conversion card per headliner, meeting at the seam #}
+  <div class="hl-duo{% if headliners|length == 2 %} hl-duo--paired{% endif %}">
+    {% if headliners|length == 2 %}<div class="hl-seal" aria-hidden="true"><span class="hl-seal-core">Choose</span></div>{% endif %}
+    {% for h in headliners %}
+      {% include h.tree ~ '/_conv_card.html' %}
+    {% endfor %}
+  </div>
+
+  <div class="hl-signin">
+    Already sworn in? <a href="{{ url_for('auth.login') }}">Sign in</a>
+  </div>
+
+  {# Second bill — open games that are not headliners (empty today) #}
+  {% include 'main/_second_bill.html' %}
+
+</div>{# /.hl-stage #}
+
+{# Breadth signal — the coming-soon docket (registry-driven) #}
+{% if coming_soon_games %}
+<section class="out-registry" aria-labelledby="out-registry-head">
+  <div class="container">
+    <header class="out-registry-head">
+      <span class="out-registry-eyebrow">◇ The Court This Year</span>
+      <h2 id="out-registry-head" class="out-registry-title">Up Next at the Club</h2>
+    </header>
+
+    <div class="out-registry-grid">
+      <aside class="out-coming-rail" aria-label="Pools coming soon">
+        {% for game in coming_soon_games %}
+        <div class="out-coming-strip">
+          <span class="out-coming-strip-icon" aria-hidden="true">{{ game.emoji }}</span>
+          <div class="out-coming-strip-text">
+            <div class="out-coming-strip-title">{{ game.display_name }}</div>
+            <div class="out-coming-strip-meta">Opens {{ game.launch_label or 'TBA' }}</div>
+          </div>
+        </div>
+        {% endfor %}
+      </aside>
+    </div>
+  </div>
+</section>
+{% endif %}

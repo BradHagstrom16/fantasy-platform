@@ -13,17 +13,36 @@
    user is already viewing this game's live data in the lounge above —
    the `.cg--active` chrome + dynamic state label differentiate it. If
    multiple games ever run live at once, a dot can return gated on
-   "this game is not the one we are viewing." #}
+   "this game is not the one we are viewing."
+
+   Dual-mode (multi-featured shell): under the composite the strip
+   renders one active tile per headliner from the namespaced `headliners`
+   list; the archival page-mode lounge still supplies the single
+   `lounge_entry` + flat `game_tile_label`. #}
 <div class="court-games-wrap">
+  {% if headliners %}{% set _unjoined = headliners|rejectattr('enrollment')|list %}{% endif %}
   <div class="sec-head">
-    <div class="t">Your Games</div>
+    {# Truth in the heading: "Your Games" only when every billed game is
+       actually the viewer's; a bill with unjoined headliners is "The
+       Games" and the unjoined tiles drop the gold --active chrome. #}
+    <div class="t">{{ 'The Games' if headliners and _unjoined else 'Your Games' }}</div>
   </div>
   <div class="court-games">
+    {% if headliners %}
+    {% for h in headliners %}
+    <a class="cg {{ 'cg--active' if h.enrollment else 'cg--billed' }}" href="{{ url_for(h.entry.blueprint_index) }}">
+      <div class="g">{{ h.entry.emoji }}</div>
+      <div class="n">{{ h.entry.short_name or h.entry.display_name }}</div>
+      <div class="p">{{ h.ctx.game_tile_label }}</div>
+    </a>
+    {% endfor %}
+    {% else %}
     <a class="cg cg--active" href="{{ url_for(lounge_entry.blueprint_index) }}">
       <div class="g">{{ lounge_entry.emoji }}</div>
       <div class="n">{{ lounge_entry.short_name or lounge_entry.display_name }}</div>
       <div class="p">{{ game_tile_label }}</div>
     </a>
+    {% endif %}
 
     {% for tile in archived_tiles %}
     <a class="cg cg--archived" href="{{ url_for(tile.endpoint) }}">

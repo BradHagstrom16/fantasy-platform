@@ -1,0 +1,36 @@
+{# CFB Survivor conversion card — the club's left corner on the logged-out
+   bill (Variant D). Rendered by main/_lounge_out.html once per headliner
+   via the loop-local `h`; identity (emoji, name, join route) is
+   registry-driven, the tale-of-the-tape is this game's own voice. The CTA
+   is the game's accent fill, never metal gold: on the bill, gold belongs
+   to the shared chrome. After the enrollment deadline the ask retires and
+   the card stays as the club's face (2026-08-18 ruling). #}
+{% set g = h.ctx %}
+<div class="join hl-conv join--cfb">
+  <div class="join-head">
+    <div class="seal">◇ Open Court &middot; CFB Survivor &rsquo;26</div>
+    {% if g.total_enrolled > 0 %}
+    <div class="count">
+      <span class="v">{{ g.total_enrolled }}</span> competitor{{ '' if g.total_enrolled == 1 else 's' }} in the club
+    </div>
+    {% endif %}
+  </div>
+  <span class="join-icon" aria-hidden="true">{{ h.entry.emoji }}</span>
+  <h2 class="join-title">{{ h.entry.display_name }}</h2>
+  <ul class="hl-tape">
+    <li>One pick a week, win outright</li>
+    <li>Two lives</li>
+    <li>Last one standing takes the pot</li>
+  </ul>
+  <div class="hl-conv-meta">Season kicks off Thursday, Sep 3</div>
+  {% if h.join_open %}
+  {# Route through auth.register with next=join so a new user lands on the
+     join page after sign-up rather than the generic home. #}
+  <a class="hl-cta" href="{{ url_for('auth.register', next=url_for(h.entry.blueprint_join)) }}">
+    Join Survivor
+    <i class="bi bi-arrow-right" aria-hidden="true"></i>
+  </a>
+  {% else %}
+  <div class="hl-conv-closed">Season in session. Late seats are granted by the Commish.</div>
+  {% endif %}
+</div>

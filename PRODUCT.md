@@ -316,6 +316,10 @@ Each game feels meaningfully distinct while remaining inside the CCC system:
 
 The CCC platform provides the consistent chrome (purple/gold + bone, Teko + Newsreader, navbar, login). Each game provides its own room: its own palette, sub-nav, and interaction emphasis. Game blueprints inject their identity via `body.game-<game>` and a per-game CSS section in `style.css`.
 
+### 6. The Lounge Bills Every Game Fairly
+
+The homepage `/` is the club lounge: a members' door, never a marketing landing page. When more than one game is in session, the lounge presents them as equal co-headliners — as of fall 2026, CFB Survivor and The Docket share the bill — because most members join exactly one game and the page must sell both fairly to someone about to pick, while serving members of one, the other, or both. Each headliner speaks in its own voice on its own panel; the club's chrome (purple, gold, the seam between them) is what holds the bill together. Enrollment has a season deadline (the shared Week 1 deadline): after it, the lounge stops selling a member games they did not join, visitors see the season in session without an ask, and late seats are granted by the Commish alone — consistent with membership being granted, never self-serve.
+
 ## Evidence on Hand
 
 Real material that design and product work must use rather than invent.

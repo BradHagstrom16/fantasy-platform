@@ -3,11 +3,17 @@
 {% block title %}Corrupt Commish Club{% endblock %}
 
 {% block content %}
-{# The state shells come from the featured game's partial tree (lounge_tree
-   = '<slug>/lounge', set by core/main/routes.py off the registry seam).
-   No tree (the between-eras fallback) renders the shell empty. The
-   whitespace-control dashes (here and on the outer if) keep the rendered
-   bytes identical to the pre-seam single-tree dispatch. -#}
+{# Two dispatch shapes share this shell (core/main/routes.py, registry seam):
+
+   - Archival page mode (lounge_tree set): a sole 'page' headliner owns the
+     whole lounge through its '<slug>/lounge/_home_<state>.html' tree — the
+     frozen World Cup shape, byte-identical to the pre-seam dispatch.
+   - Composite (lounge_tree None): the multi-featured shell. `state` is the
+     aggregate; each headliner renders its own panel inside the shared
+     _lounge_out / _lounge_composite frame.
+
+   The whitespace-control dashes keep the page-mode bytes identical to the
+   pre-seam single-tree dispatch. -#}
 <div class="home-shell home-shell--{{ state }}">
 {%- if lounge_tree %}
 {% if state == 'out' %}
@@ -19,6 +25,10 @@
 {% elif state == 'post' %}
   {% include lounge_tree ~ '/_home_post.html' %}
 {% endif %}
+{%- elif state == 'out' %}
+  {% include 'main/_lounge_out.html' %}
+{%- else %}
+  {% include 'main/_lounge_composite.html' %}
 {%- endif %}
 </div>
 {% endblock %}

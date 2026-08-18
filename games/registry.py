@@ -16,6 +16,7 @@ from typing import Any, Literal
 from games.cfb.services import enrollment as _cfb_enrollment
 from games.cfb.services import lounge as _cfb_lounge
 from games.docket.services import enrollment as _docket_enrollment
+from games.docket.services import lounge as _docket_lounge
 from games.golf.services import enrollment as _golf_enrollment
 from games.worldcup.services import enrollment as _worldcup_enrollment
 from games.worldcup.services import lounge as _worldcup_lounge
@@ -54,6 +55,20 @@ class GameRegistryEntry:
     # the logged-out surface. Like lounge_state, required for a game to own
     # the lounge; None for games whose lounge builders haven't shipped.
     lounge_context: Callable[[Any, str | None], dict] | None = None
+    # How this game renders when it is a lounge headliner (multi-featured
+    # seam). 'panel' games contribute per-state panel partials to the
+    # composite shell ('<slug>/lounge/_panel_<state>.html' + '_conv_card').
+    # 'page' is the archival full-page tree ('_home_<state>.html' owning the
+    # whole lounge) — the World Cup's frozen shape, served only when a page
+    # game is the SOLE headliner. New games are panel games; do not add
+    # another 'page' entry.
+    lounge_mode: Literal['page', 'panel'] = 'panel'
+    # Whether self-serve joining is currently open, judged on the game's own
+    # clock seam. None means the join window follows status alone (open =
+    # joinable). Wired for games with a ruled enrollment deadline (2026-08-18:
+    # both fall-'26 games close at the shared Week 1 deadline, Sat Sep 5
+    # 11:00 AM CT); late membership is granted via admin enrollment only.
+    join_open: Callable[[], bool] | None = None
 
 
 # Populated in Tasks 3, 5, 8. Intentionally empty at file-creation time so
@@ -77,6 +92,9 @@ GAMES: list[GameRegistryEntry] = [
         launch_label='Jun 11',
         lounge_state=_worldcup_state.worldcup_state,
         lounge_context=_worldcup_lounge.build_lounge_context,
+        # Archival full-page lounge tree, kept intact for the frozen-WC
+        # regression net and a possible revival. See lounge_mode's docstring.
+        lounge_mode='page',
     ),
     GameRegistryEntry(
         slug='cfb',
@@ -96,6 +114,7 @@ GAMES: list[GameRegistryEntry] = [
         launch_label='Sep 3',
         lounge_state=_cfb_lounge.cfb_lounge_state,
         lounge_context=_cfb_lounge.build_lounge_context,
+        join_open=_cfb_lounge.join_window_open,
     ),
     GameRegistryEntry(
         slug='docket',
@@ -106,9 +125,9 @@ GAMES: list[GameRegistryEntry] = [
         ),
         emoji='⚖️',
         status='open',
-        # Not featured: CFB Survivor keeps the lounge. The Docket enters the
-        # lounge via the T13 static strip; multi-featured is the ~Oct redesign.
-        is_featured=False,
+        # Co-headliner (multi-featured lounge, 2026-08-18): The Docket
+        # shares the bill with CFB Survivor through the composite shell.
+        is_featured=True,
         blueprint_index='docket.index',
         blueprint_join='docket.join',
         get_enrollment=_docket_enrollment.get_enrollment,
@@ -116,6 +135,9 @@ GAMES: list[GameRegistryEntry] = [
         short_name='Docket',
         launch_label='Sep 1',
         lounge_cadence='Sheets post Tuesday. Court adjourns Saturday, 11:00 AM CT.',
+        lounge_state=_docket_lounge.docket_lounge_state,
+        lounge_context=_docket_lounge.build_lounge_context,
+        join_open=_docket_lounge.join_window_open,
     ),
     GameRegistryEntry(
         slug='golf',
@@ -179,46 +201,53 @@ def coming_soon_games() -> list[GameRegistryEntry]:
 
 
 def second_bill_games(user) -> list[tuple[GameRegistryEntry, Any | None]]:
-    """Open games that do NOT own the lounge, paired with the viewer's enrollment.
+    """Open games that are NOT lounge headliners, paired with the viewer's
+    enrollment.
 
-    The interim second bill (docket binding rulings, premise 3 + D21-eng): the
-    lounge stays single-featured, and an open game that isn't the featured one
-    would otherwise render nowhere — the compact tile strip only feeds off the
-    featured entry, the archived tiles, and `coming_soon_games`. The Docket is
-    the only such game today; a future open non-featured game joins the list
-    without a code change. Multi-featured is the ~Oct redesign, not this.
+    Under the multi-featured lounge both fall-'26 games are headliners, so
+    this returns [] today — the machinery stays because it is the generic
+    answer for a future open-but-unfeatured game (D21-eng's original case),
+    which joins the strip without a code change.
 
-    Pairing the enrollment here (via `games_for_user`, as D21-eng names) is what
-    lets the strip resolve a join-vs-enter CTA without a per-user data path:
-    anonymous viewers get None enrollments and fall through to join.
+    Pairing the enrollment here (via `games_for_user`, as D21-eng names) is
+    what lets the strip resolve a join-vs-enter CTA without a per-user data
+    path: anonymous viewers get None enrollments and fall through to join.
     """
-    lead = lounge_game()
+    headliners = lounge_games()
     return [
         (entry, enr) for entry, enr in games_for_user(user)
-        if entry.status == 'open' and entry is not lead
+        if entry.status == 'open'
+        and all(entry is not lead for lead in headliners)
+    ]
+
+
+def lounge_games() -> list[GameRegistryEntry]:
+    """Every lounge headliner, in GAMES order.
+
+    The multi-featured seam: each featured-open entry carrying BOTH lounge
+    callables co-owns the lounge. The callables are required per entry — a
+    game that cannot resolve a state or build per-state context cannot
+    render a panel, so a featured+open entry missing either is skipped
+    (launch safety: the flags alone never seat a game whose lounge code
+    hasn't shipped). GAMES order is billing order; the shell renders
+    headliners in this sequence.
+    """
+    return [
+        entry for entry in GAMES
+        if entry.is_featured
+        and entry.status == 'open'
+        and entry.lounge_state is not None
+        and entry.lounge_context is not None
     ]
 
 
 def lounge_game() -> GameRegistryEntry | None:
-    """The single featured-open game that owns the lounge, or None.
+    """The first lounge headliner, or None.
 
-    Doctrine (DESIGN.md §1.6): the lounge is dominated by whichever single
-    game is currently live — exactly one entry should be featured+open at a
-    time; the atomic changeover (transition plan §6 E) flips both flags in
-    one commit. First match wins if that invariant is ever violated.
-
-    Both lounge callables are required to own the lounge: a game that
-    cannot resolve a state or build the per-state context cannot render
-    one, so a featured+open entry missing either is skipped (launch
-    safety — the flags alone never hand the lounge to a game whose
-    lounge code hasn't shipped).
+    Kept for the single-game consumers: the archival page-mode branch (a
+    sole 'page' headliner renders its full lounge tree) and the legacy
+    single-overlay path in build_home_context. Under the multi-featured
+    seam "the" lounge game means the first billing, nothing more.
     """
-    for entry in GAMES:
-        if (
-            entry.is_featured
-            and entry.status == 'open'
-            and entry.lounge_state is not None
-            and entry.lounge_context is not None
-        ):
-            return entry
-    return None
+    games = lounge_games()
+    return games[0] if games else None
