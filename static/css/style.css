@@ -3898,6 +3898,26 @@ body.game-golf {
   }
 }
 
+/* --- Headliner accent mapping (multi-featured lounge, Variant D) ---
+   Slug-suffixed hooks map each headliner's panel and conversion card onto
+   its lounge accent tokens (tokens.css, the single source of the hues).
+   Components consume var(--hl-accent) / var(--hl-ground) with CCC
+   fallbacks; templates only ever emit the class, never a color. Adding a
+   third headliner (Golf, ~Jan 2027) means one new token pair and one new
+   mapping rule here, nothing else. */
+.home-shell .hl-panel--cfb,
+.home-shell .join--cfb {
+  --hl-accent: var(--lounge-cfb-accent);
+  --hl-accent-bright: var(--lounge-cfb-accent-bright);
+  --hl-ground: var(--lounge-cfb-accent);
+}
+.home-shell .hl-panel--docket,
+.home-shell .join--docket {
+  --hl-accent: var(--lounge-docket-accent);
+  --hl-accent-bright: var(--lounge-docket-accent-bright);
+  --hl-ground: var(--lounge-docket-ground);
+}
+
 /* --- Polish: print-friendly fallback (just in case) --- */
 @media print {
   .home-shell {
