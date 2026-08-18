@@ -43,6 +43,12 @@ its provenance.
     </p>
   </div>
 
+  {# First-time framing (design review 2026-08-18): the door answer,
+     stated before the bill while any join window is open. #}
+  {% if headliners | selectattr('join_open') | list %}
+  <div class="out-bridge">◇ Two games on the card. Play one, or play both.</div>
+  {% endif %}
+
   {# The bill — one conversion card per headliner, meeting at the seam #}
   <div class="hl-duo{% if headliners|length == 2 %} hl-duo--paired{% endif %}">
     {% if headliners|length == 2 %}<div class="hl-seal" aria-hidden="true"><span class="hl-seal-core">Choose</span></div>{% endif %}

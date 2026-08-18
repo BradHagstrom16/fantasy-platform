@@ -35,6 +35,8 @@
     <a class="hl-cta hl-cta--outline" href="{{ url_for(h.entry.blueprint_index) }}">Enter the Court</a>
     {% elif h.join_open %}
     <a class="hl-cta" href="{{ url_for(h.entry.blueprint_join) }}">Take the Oath</a>
+    {# Echo parity with the CFB decree's join line: the oath, plainly. #}
+    <div class="commish-echo">Join the Docket. One sheet a week, all season.</div>
     {% endif %}
   </div>
 </section>

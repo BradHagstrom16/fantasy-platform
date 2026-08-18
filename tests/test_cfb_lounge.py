@@ -1030,7 +1030,13 @@ def test_cfb_pre_shell_renders_for_unenrolled_viewer(app, client, monkeypatch):
     assert resp.status_code == 200
     text = resp.get_data(as_text=True)
     assert 'home-shell--pre' in text
-    assert 'The Season' in text and 'Opens' in text
+    # First-time framing (design review 2026-08-18): a joined-nothing
+    # viewer gets the door answer, not the member season greet.
+    assert 'Welcome to the club,' in text
+    assert 'Choose Your' in text
+    assert 'Two games on the card. Play one, or play both.' in text
+    assert 'The Season' not in text
+    assert 'The club reconvenes,' not in text
     assert 'No 002' in text
     assert 'First Pick Locks In' in text
     assert 'Take Your Two Lives' in text
@@ -1048,6 +1054,10 @@ def test_cfb_pre_shell_enrolled_viewer_gets_room_cta(app, client, monkeypatch):
     with patch.dict(os.environ, PRE_ANCHOR):
         resp = client.get('/')
     text = resp.get_data(as_text=True)
+    # Members keep the season-status greet (the welcome variant is the
+    # joined-nothing viewer's only).
+    assert 'The Season' in text and 'Opens' in text
+    assert 'Welcome to the club,' not in text
     assert 'Enter the Room' in text
     assert 'Take Your Two Lives' not in text
     # Farewell ledger (pre-state only, C1 ruling 4) + archived WC tile

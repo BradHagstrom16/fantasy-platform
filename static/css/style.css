@@ -1021,6 +1021,19 @@ body.game-golf {
   margin: 1.5rem auto 0;
   max-width: 480px;
 }
+/* First-time bridge (design review 2026-08-18): the one instruction a
+   cold visitor needs before the bill — choose your games. Informational
+   ◇ register; retires with the join window (ADR-050). */
+.home-shell .out-bridge {
+  font-family: var(--font-teko);
+  font-weight: 500;
+  font-size: .95rem;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--bone-dim);
+  text-align: center;
+  margin: 0 0 1.1rem;
+}
 
 /* --- Logged-out: value props ---
    design/home-out-polish: dropped the S4.1.2 PI-4 differentiated gutter
@@ -1376,6 +1389,16 @@ body.game-golf {
 .home-shell .greet-court .sep {
   color: rgba(242,211,107,.5);
   margin: 0 0.4rem;
+}
+/* First-time greet instruction (design review 2026-08-18): the one line
+   under CHOOSE YOUR GAMES for a joined-nothing viewer. Newsreader voice,
+   a step brighter than the court line because it is the actionable ask. */
+.home-shell .greet-sub {
+  font-family: var(--font-news);
+  font-style: italic;
+  font-size: 0.95rem;
+  color: var(--bone-dim);
+  margin: 0.75rem 0 0;
 }
 
 /* --- Pre-state: countdown card.

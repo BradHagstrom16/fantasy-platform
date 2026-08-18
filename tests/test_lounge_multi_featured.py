@@ -145,6 +145,8 @@ def test_out_bill_pairs_two_cards_at_the_seam(app, client):
     assert text.count('class="join hl-conv') == 2
     assert text.count('hl-cta"') == 2
     assert text.count('hl-signin') == 1
+    # The first-time bridge sits above the bill while joining is open.
+    assert 'Two games on the card. Play one, or play both.' in text
 
 
 def test_out_after_window_keeps_both_cards_without_asks(app, client):
@@ -156,6 +158,8 @@ def test_out_after_window_keeps_both_cards_without_asks(app, client):
     assert 'hl-cta"' not in text
     assert 'hl-signin' in text
     assert 'hl-conv-closed' in text
+    # The bridge instruction retires with the asks (ADR-050).
+    assert 'Play one, or play both.' not in text
 
 
 def test_every_panel_mode_headliner_ships_conv_card_and_panels():
@@ -186,6 +190,12 @@ def test_authed_joined_neither_sees_both_join_paths(app, client):
     assert 'Take the Oath' in text                # Docket pre join ask
     assert 'Enter the Room' not in text
     assert 'Enter the Court' not in text
+    # First-time framing (design review 2026-08-18): the door answer for
+    # a joined-nothing viewer, plus the docket join echo under the oath.
+    assert 'Welcome to the club,' in text
+    assert 'Two games on the card. Play one, or play both.' in text
+    assert 'The club reconvenes,' not in text
+    assert 'Join the Docket. One sheet a week, all season.' in text
 
 
 def test_authed_cfb_member_sees_enter_cfb_join_docket(app, client):
@@ -229,6 +239,26 @@ def test_authed_joined_both_sees_two_personal_panels(app, client):
     assert 'Enter the Court' in text
     assert 'Take Your Two Lives' not in text
     assert 'Take the Oath' not in text
+    # Members keep the member greet.
+    assert 'The club reconvenes,' in text
+    assert 'Welcome to the club,' not in text
+
+
+def test_authed_joined_neither_after_window_keeps_member_greet(app, client):
+    """Post-window a joined-nothing viewer can no longer act on 'Choose
+    Your Games', so the welcome variant retires with the asks and the
+    season-status greet returns (no CTA, no echo)."""
+    with app.app_context():
+        auth_id = _make_user('lateneither').auth_id
+    _login(client, auth_id)
+    with patch.dict(os.environ, WINDOW_CLOSED):
+        text = client.get('/').get_data(as_text=True)
+    assert 'Welcome to the club,' not in text
+    # Docket is live on Sep 6, so the aggregate greet is the live one.
+    assert 'The club plays on,' in text
+    assert 'Play one, or play both.' not in text
+    assert 'Join the Docket. One sheet a week, all season.' not in text
+    assert 'hl-cta"' not in text
 
 
 def test_authed_cfb_member_after_window_sees_only_cfb(app, client):
