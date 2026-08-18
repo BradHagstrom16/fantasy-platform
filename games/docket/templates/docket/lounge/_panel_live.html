@@ -1,0 +1,78 @@
+{# The Docket live headliner panel: one weekly beat at a time, in the
+   clerk's voice. awaiting → open → closed → adjourned (§4.1 projected
+   onto the lounge). The lounge summarizes; the sheet completes — no
+   cases, no lines, no per-slot controls here. Members get the
+   Clerk's-Ledger facts; non-members get the sell while the join window
+   is open. Deadlines state the literal time, always. #}
+{% set g = h.ctx %}
+<section class="hl-panel hl-panel--docket" aria-label="The Docket">
+  <header class="hl-panel-head">
+    <span class="hl-panel-mark" aria-hidden="true">{{ h.entry.emoji }}</span>
+    <span class="hl-panel-name">{{ h.entry.short_name or h.entry.display_name }}</span>
+    <span class="hl-panel-court">{{ g.court_line }}</span>
+  </header>
+
+  {% if g.viewer_mode == 'view' %}
+  <div class="summons summons--info">
+    <div class="summons-eyebrow summons-eyebrow--info">◇ Week {{ g.week_number }} &middot; The Docket</div>
+    <div class="summons-line">Eight picks against frozen lines.</div>
+    <p class="summons-sub">One headliner worth double. Court adjourns Saturday at 11:00 AM CT.</p>
+    {% if h.join_open %}
+    <a class="hl-cta hl-cta--outline" href="{{ url_for(h.entry.blueprint_join) }}">Join the Docket</a>
+    {% endif %}
+  </div>
+
+  {% elif g.beat == 'awaiting' %}
+  <div class="summons summons--info">
+    <div class="summons-eyebrow summons-eyebrow--info">◇ Awaiting the Docket</div>
+    <div class="summons-line">This week&rsquo;s docket has not been posted.</div>
+    <p class="summons-sub">Sheets post Tuesday. The clerk will call when the lines freeze.</p>
+  </div>
+
+  {% elif g.beat == 'open' %}
+  <div class="summons">
+    <div class="summons-eyebrow summons-eyebrow--info">◇ Week {{ g.week_number }} &middot; Docket Open</div>
+    {% if g.progress.outstanding %}
+    <div class="summons-line">Your sheet is not finished.</div>
+    <ul class="hl-tape">
+      {% for item in g.progress.outstanding %}
+      <li>{{ item }}</li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <div class="summons-line">Your sheet is complete.</div>
+    <p class="summons-sub">Eight sides held{% if g.progress.backup_held %}, one in reserve{% endif %}. The number is recorded.</p>
+    {% endif %}
+    <div class="summons-meta">
+      <span>The docket closes {{ g.week_deadline_at|ct('%A at %-I:%M %p CT') }}.</span>
+    </div>
+    <a class="hl-cta" href="{{ url_for(h.entry.blueprint_index) }}">Open Your Sheet</a>
+    {% if g.progress.outstanding %}
+    <div class="commish-echo">Whatever stays open is filed for you from the locked lines.</div>
+    {% endif %}
+  </div>
+
+  {% elif g.beat == 'closed' %}
+  <div class="summons summons--info">
+    <div class="summons-eyebrow summons-eyebrow--info">◇ Week {{ g.week_number }} &middot; Docket Closed</div>
+    <div class="summons-line">The docket is closed.</div>
+    <p class="summons-sub">Verdicts to follow as the scores land.</p>
+    <div class="field-impact">
+      <a class="route-link" href="{{ url_for(h.entry.blueprint_index) }}">Review your sheet &rsaquo;</a>
+    </div>
+  </div>
+
+  {% else %}
+  <div class="summons summons--info">
+    <div class="summons-eyebrow summons-eyebrow--info">◇ Week {{ g.week_number }} &middot; Adjourned</div>
+    {% if g.result %}
+    <div class="summons-line">Your line: {{ g.result.points_label }} points, {{ g.result.wins }} win{{ '' if g.result.wins == 1 else 's' }}.</div>
+    {% else %}
+    <div class="summons-line">The week is adjourned.</div>
+    {% endif %}
+    <div class="field-impact">
+      <a class="route-link" href="{{ url_for('docket.ledger') }}">The season ledger &rsaquo;</a>
+    </div>
+  </div>
+  {% endif %}
+</section>

@@ -10,14 +10,18 @@
 
    Gold CTA budget (C1 §3.1): this is one of exactly two metal-gold CTAs
    in the CFB-era lounge; the other is the OPEN summons. #}
-{% if not g.is_enrolled %}
+{% if g.is_enrolled %}
+  {% set _cta_href = url_for('cfb.index') %}
+  {% set _cta_label = 'Enter the Room' %}
+  {% set _cta_sub = none %}
+{% elif h.join_open %}
   {% set _cta_href = url_for('cfb.join') %}
   {% set _cta_label = 'Take Your Two Lives' %}
   {% set _cta_sub = "Join the pool. Lose twice and you're out." %}
 {% else %}
-  {% set _cta_href = url_for('cfb.index') %}
-  {% set _cta_label = 'Enter the Room' %}
-  {% set _cta_sub = none %}
+  {# Enrollment window closed (2026-08-18 ruling): the countdown stands,
+     the ask retires. Late seats are granted by the Commish. #}
+  {% set _cta_href = none %}
 {% endif %}
 <div class="decree animate-in-scale">
   <div class="decree-seal">
@@ -33,9 +37,11 @@
       <div class="decree-hero-unit" aria-hidden="true">Days</div>
     </div>
     <p class="decree-foot">Everyone starts with two lives. One team a week, win outright.<br>{{ g.decree_deadline_line }}</p>
+    {% if _cta_href %}
     <a class="cta-seal decree-cta" href="{{ _cta_href }}">
       <span class="cta-seal-label">{{ _cta_label }}<i class="bi bi-arrow-right" aria-hidden="true"></i></span>
       {% if _cta_sub %}<span class="cta-seal-sub">{{ _cta_sub }}</span>{% endif %}
     </a>
+    {% endif %}
   </div>
 </div>

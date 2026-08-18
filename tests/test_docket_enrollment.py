@@ -39,19 +39,23 @@ def test_docket_entry_registered_in_GAMES(app):
     assert 'docket' in slugs
 
 
-def test_docket_entry_is_open_not_featured_no_lounge(app):
-    """Survivor keeps the lounge: the docket entry must stay invisible to
-    lounge_game() — not featured AND both lounge callables absent."""
-    from games.registry import get_entry, lounge_game
+def test_docket_entry_is_featured_co_headliner(app):
+    """The multi-featured lounge (2026-08-18): The Docket co-headlines with
+    both lounge callables wired to the canonical module functions, CFB
+    keeps first billing, and the endpoints are unchanged."""
+    from games.docket.services import lounge as docket_lounge
+    from games.registry import get_entry, lounge_game, lounge_games
     entry = get_entry('docket')
     assert entry.status == 'open'
-    assert entry.is_featured is False
-    assert entry.lounge_state is None
-    assert entry.lounge_context is None
+    assert entry.is_featured is True
+    assert entry.lounge_state is docket_lounge.docket_lounge_state
+    assert entry.lounge_context is docket_lounge.build_lounge_context
+    assert entry.join_open is docket_lounge.join_window_open
+    assert entry.lounge_mode == 'panel'
     assert entry.blueprint_index == 'docket.index'
     assert entry.blueprint_join == 'docket.join'
-    lounge = lounge_game()
-    assert lounge is not None and lounge.slug == 'cfb'
+    assert 'docket' in [e.slug for e in lounge_games()]
+    assert lounge_game().slug == 'cfb'
 
 
 def test_docket_enrollment_created_at_is_naive_utc(app):

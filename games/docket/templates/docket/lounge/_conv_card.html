@@ -1,0 +1,34 @@
+{# The Docket conversion card — the club's right corner on the logged-out
+   bill (Variant D). Clerk's voice, glossary terms, the literal time
+   whenever a deadline is stated. Zero .docket-* classes: those selectors
+   are the room's and would half-apply on the purple substrate; identity
+   here is copy plus the lounge accent hooks (join--docket). After the
+   enrollment deadline the ask retires and the card stays as the club's
+   face (2026-08-18 ruling). #}
+{% set g = h.ctx %}
+<div class="join hl-conv join--docket">
+  <div class="join-head">
+    <div class="seal">◇ Now in Session &middot; The Docket &rsquo;26</div>
+    {% if g.total_enrolled > 0 %}
+    <div class="count">
+      <span class="v">{{ g.total_enrolled }}</span> sworn to the roster
+    </div>
+    {% endif %}
+  </div>
+  <span class="join-icon" aria-hidden="true">{{ h.entry.emoji }}</span>
+  <h2 class="join-title">{{ h.entry.display_name }}</h2>
+  <ul class="hl-tape">
+    <li>Eight picks against frozen lines</li>
+    <li>One headliner worth double</li>
+    <li>One number settles the week</li>
+  </ul>
+  <div class="hl-conv-meta">First docket posts Tuesday, Sep 1</div>
+  {% if h.join_open %}
+  <a class="hl-cta" href="{{ url_for('auth.register', next=url_for(h.entry.blueprint_join)) }}">
+    Join the Docket
+    <i class="bi bi-arrow-right" aria-hidden="true"></i>
+  </a>
+  {% else %}
+  <div class="hl-conv-closed">The court is in session. Late filings require the Commish&rsquo;s approval.</div>
+  {% endif %}
+</div>

@@ -134,10 +134,16 @@ def build_home_context(user: Any, state: str | None, headliners=None) -> dict:
             ))
         ctx['headliners'] = built
         # Registry-generic union for the shared tile strip, deduped by
-        # endpoint (both games name the same WC archive tile).
+        # endpoint (both games name the same WC archive tile). Defensive on
+        # shape: a game dict that mistypes the key must not break the shell.
         tiles, seen = [], set()
         for h in built:
-            for tile in h.ctx.get('archived_tiles', ()):
+            game_tiles = h.ctx.get('archived_tiles')
+            if not isinstance(game_tiles, list):
+                continue
+            for tile in game_tiles:
+                if not isinstance(tile, dict) or 'endpoint' not in tile:
+                    continue
                 if tile['endpoint'] not in seen:
                     seen.add(tile['endpoint'])
                     tiles.append(tile)

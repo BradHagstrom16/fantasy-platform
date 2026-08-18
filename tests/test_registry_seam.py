@@ -219,26 +219,32 @@ def test_completed_game_still_joined_for_enrolled_user(app, monkeypatch):
 # ── lounge route dispatch through the seam ────────────────────────────────
 
 def test_home_route_resolves_state_via_lounge_game(app, client, monkeypatch):
-    """The home route must call the featured game's lounge_state resolver,
-    not import worldcup_state directly."""
+    """The home route must call EVERY headliner's lounge_state resolver
+    (never import a game's state function directly). Both real headliners
+    get a spy so the test is wall-clock-independent."""
     from games import registry
     auth_id = _make_user(app)
     calls = []
 
-    def fake_resolver():
-        calls.append(True)
-        return 'pre'
+    def make_resolver(slug):
+        def fake_resolver():
+            calls.append(slug)
+            return 'pre'
+        return fake_resolver
 
     patched = [
-        replace(entry, lounge_state=fake_resolver)
-        if entry.slug == 'cfb' else entry
+        replace(entry, lounge_state=make_resolver(entry.slug))
+        if entry.slug in ('cfb', 'docket') else entry
         for entry in registry.GAMES
     ]
     monkeypatch.setattr(registry, 'GAMES', patched)
     _login(client, auth_id)
     resp = client.get('/')
     assert resp.status_code == 200
-    assert calls, 'lounge_state resolver was never called by the home route'
+    assert sorted(calls) == ['cfb', 'docket'], (
+        'the home route must resolve state through each headliner, '
+        f'got {calls}'
+    )
     assert b'home-shell--pre' in resp.data
 
 

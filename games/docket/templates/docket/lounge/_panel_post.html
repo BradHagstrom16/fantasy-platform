@@ -1,0 +1,19 @@
+{# The Docket post-season headliner panel: the season is a record. Sparse
+   by design; the ledger page holds the gravity. #}
+{% set g = h.ctx %}
+<section class="hl-panel hl-panel--docket" aria-label="The Docket">
+  <header class="hl-panel-head">
+    <span class="hl-panel-mark" aria-hidden="true">{{ h.entry.emoji }}</span>
+    <span class="hl-panel-name">{{ h.entry.short_name or h.entry.display_name }}</span>
+    <span class="hl-panel-court">{{ g.court_line }}</span>
+  </header>
+
+  <div class="summons summons--info">
+    <div class="summons-eyebrow summons-eyebrow--info">◇ The Season Ledger</div>
+    <div class="summons-line">The ledger is closed.</div>
+    <p class="summons-sub">Nineteen weeks, graded and recorded.</p>
+    <div class="field-impact">
+      <a class="route-link" href="{{ url_for('docket.ledger') }}">Read the final ledger &rsaquo;</a>
+    </div>
+  </div>
+</section>

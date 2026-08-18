@@ -1,0 +1,284 @@
+"""The multi-featured lounge: composite shell, the four viewer situations,
+and the enrollment-window ruling (2026-08-18).
+
+Anchors: every rendered test pins BOTH game clocks (CFB_FAKE_NOW +
+DOCKET_FAKE_NOW). DUAL_PRE sits before the season with empty tables (both
+resolvers report 'pre' from data absence + pure math); WINDOW_CLOSED sits
+past the shared Sep 5 enrollment deadline while the tables stay empty, so
+visibility filtering is exercised independently of game data.
+"""
+import os
+from pathlib import Path
+from unittest.mock import patch
+
+from extensions import db
+from games.cfb.models import CfbEnrollment
+from games.docket.services import enrollment as docket_enrollment
+from models.user import User
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+
+DUAL_PRE = {'ENVIRONMENT': 'testing',
+            'CFB_FAKE_NOW': '2026-08-18T17:00:00',
+            'DOCKET_FAKE_NOW': '2026-08-18T17:00:00'}
+WINDOW_CLOSED = {'ENVIRONMENT': 'testing',
+                 'CFB_FAKE_NOW': '2026-09-06T00:00:00',
+                 'DOCKET_FAKE_NOW': '2026-09-06T00:00:00'}
+
+
+def _make_user(username='duouser'):
+    user = User(username=username, email=f'{username}@test.com')
+    user.set_password('pw')
+    db.session.add(user)
+    db.session.commit()
+    return user
+
+
+def _enroll_cfb(user):
+    enrollment = CfbEnrollment(user_id=user.id, season_year=2026)
+    db.session.add(enrollment)
+    db.session.commit()
+    return enrollment
+
+
+def _login(client, auth_id):
+    with client.session_transaction() as sess:
+        sess['_user_id'] = auth_id
+        sess['_fresh'] = True
+
+
+# == aggregate state ========================================================
+
+def test_aggregate_state_live_beats_post_beats_pre():
+    from core.main.home_context import aggregate_lounge_state
+    assert aggregate_lounge_state(['pre', 'live']) == 'live'
+    assert aggregate_lounge_state(['post', 'live']) == 'live'
+    assert aggregate_lounge_state(['post', 'pre']) == 'post'
+    assert aggregate_lounge_state(['pre', 'pre']) == 'pre'
+    assert aggregate_lounge_state([]) == 'pre'
+
+
+# == composite context ======================================================
+
+def test_build_home_context_composite_namespaces_per_game_ctx(app):
+    """Two games' dicts can never collide: each lives inside its own
+    Headliner, keyed data intact, tree and billing order preserved."""
+    from core.main.home_context import build_home_context
+    from games.registry import lounge_games
+    with app.app_context(), patch.dict(os.environ, DUAL_PRE):
+        user = _make_user('nsuser')
+        resolved = [(e, 'pre') for e in lounge_games()]
+        ctx = build_home_context(user, 'pre', headliners=resolved)
+    built = ctx['headliners']
+    assert [h.entry.slug for h in built] == ['cfb', 'docket']
+    assert [h.tree for h in built] == ['cfb/lounge', 'docket/lounge']
+    # Both builders emit these keys; namespacing is what keeps them apart.
+    for h in built:
+        assert 'court_line' in h.ctx
+        assert 'game_tile_label' in h.ctx
+    assert built[0].ctx['game_tile_label'] != built[1].ctx['game_tile_label']
+    # No flat leak: the game keys stay off the top level in composite mode.
+    assert 'court_line' not in ctx
+    assert 'game_tile_label' not in ctx
+
+
+def test_composite_headliners_carry_enrollment_and_join_open(app):
+    from core.main.home_context import build_home_context
+    from games.registry import lounge_games
+    with app.app_context(), patch.dict(os.environ, DUAL_PRE):
+        user = _make_user('joinable')
+        _enroll_cfb(user)
+        resolved = [(e, 'pre') for e in lounge_games()]
+        ctx = build_home_context(user, 'pre', headliners=resolved)
+    by_slug = {h.entry.slug: h for h in ctx['headliners']}
+    assert by_slug['cfb'].enrollment is not None
+    assert by_slug['docket'].enrollment is None
+    assert by_slug['cfb'].join_open is True
+    assert by_slug['docket'].join_open is True
+
+
+def test_visible_headliners_enrollment_window_matrix(app):
+    """The ruling's core: post-window, a member stops seeing games they did
+    not join; members of both keep both; joined-neither keeps the bill."""
+    from core.main.home_context import visible_headliners
+    from games.registry import lounge_games
+    with app.app_context():
+        cfb_only = _make_user('cfbonly')
+        _enroll_cfb(cfb_only)
+        both = _make_user('bothgames')
+        _enroll_cfb(both)
+        docket_enrollment.admin_enroll(both.id)
+        neither = _make_user('neithergame')
+        resolved = [(e, 'pre') for e in lounge_games()]
+        with patch.dict(os.environ, DUAL_PRE):
+            assert len(visible_headliners(cfb_only, resolved)) == 2
+        with patch.dict(os.environ, WINDOW_CLOSED):
+            assert [e.slug for e, _ in visible_headliners(cfb_only, resolved)] == ['cfb']
+            assert len(visible_headliners(both, resolved)) == 2
+            assert len(visible_headliners(neither, resolved)) == 2
+
+
+# == the logged-out bill ====================================================
+
+def test_out_cards_each_wear_their_own_identity(app, client):
+    with patch.dict(os.environ, DUAL_PRE):
+        text = client.get('/').get_data(as_text=True)
+    cfb_start = text.index('join--cfb')
+    docket_start = text.index('join--docket')
+    cfb_card = text[cfb_start:docket_start]
+    docket_card = text[docket_start:text.index('hl-signin')]
+    assert 'CFB Survivor Pool' in cfb_card
+    assert 'The Docket' not in cfb_card
+    assert 'The Docket' in docket_card
+    assert 'CFB Survivor' not in docket_card
+    assert 'frozen lines' in docket_card.lower()
+
+
+def test_out_bill_pairs_two_cards_at_the_seam(app, client):
+    with patch.dict(os.environ, DUAL_PRE):
+        text = client.get('/').get_data(as_text=True)
+    assert 'hl-duo--paired' in text
+    assert 'hl-seal' in text
+    assert text.count('class="join hl-conv') == 2
+    assert text.count('hl-cta"') == 2
+    assert text.count('hl-signin') == 1
+
+
+def test_out_after_window_keeps_both_cards_without_asks(app, client):
+    """D4 ruling: post-deadline visitors still see the club's face — both
+    cards, zero join CTAs, the sign-in line as the only door."""
+    with patch.dict(os.environ, WINDOW_CLOSED):
+        text = client.get('/').get_data(as_text=True)
+    assert text.count('class="join hl-conv') == 2
+    assert 'hl-cta"' not in text
+    assert 'hl-signin' in text
+    assert 'hl-conv-closed' in text
+
+
+def test_every_panel_mode_headliner_ships_conv_card_and_panels():
+    """Filesystem lock: a panel-mode headliner without its lounge set would
+    TemplateNotFound at request time; catch it at test time instead."""
+    from games.registry import lounge_games
+    for entry in lounge_games():
+        if entry.lounge_mode != 'panel':
+            continue
+        base = (REPO_ROOT / 'games' / entry.slug / 'templates' / entry.slug
+                / 'lounge')
+        for name in ('_conv_card.html', '_panel_pre.html',
+                     '_panel_live.html', '_panel_post.html'):
+            assert (base / name).exists(), f'{entry.slug} missing {name}'
+
+
+# == the authenticated matrix ===============================================
+
+def test_authed_joined_neither_sees_both_join_paths(app, client):
+    with app.app_context():
+        auth_id = _make_user('neitheryet').auth_id
+    _login(client, auth_id)
+    with patch.dict(os.environ, DUAL_PRE):
+        text = client.get('/').get_data(as_text=True)
+    assert 'hl-panel--cfb' in text
+    assert 'hl-panel--docket' in text
+    assert 'Take Your Two Lives' in text          # CFB decree join ask
+    assert 'Take the Oath' in text                # Docket pre join ask
+    assert 'Enter the Room' not in text
+    assert 'Enter the Court' not in text
+
+
+def test_authed_cfb_member_sees_enter_cfb_join_docket(app, client):
+    with app.app_context():
+        user = _make_user('survivorman')
+        _enroll_cfb(user)
+        auth_id = user.auth_id
+    _login(client, auth_id)
+    with patch.dict(os.environ, DUAL_PRE):
+        text = client.get('/').get_data(as_text=True)
+    assert 'Enter the Room' in text
+    assert 'Take Your Two Lives' not in text
+    assert 'Take the Oath' in text
+
+
+def test_authed_docket_member_sees_enter_docket_join_cfb(app, client):
+    with app.app_context():
+        user = _make_user('clerkfan')
+        docket_enrollment.admin_enroll(user.id)
+        auth_id = user.auth_id
+    _login(client, auth_id)
+    with patch.dict(os.environ, DUAL_PRE):
+        text = client.get('/').get_data(as_text=True)
+    assert 'Enter the Court' in text
+    assert 'Take the Oath' not in text
+    assert 'Take Your Two Lives' in text
+
+
+def test_authed_joined_both_sees_two_personal_panels(app, client):
+    with app.app_context():
+        user = _make_user('doubleagent')
+        _enroll_cfb(user)
+        docket_enrollment.admin_enroll(user.id)
+        auth_id = user.auth_id
+    _login(client, auth_id)
+    with patch.dict(os.environ, DUAL_PRE):
+        text = client.get('/').get_data(as_text=True)
+    assert 'hl-panel--cfb' in text
+    assert 'hl-panel--docket' in text
+    assert 'Enter the Room' in text
+    assert 'Enter the Court' in text
+    assert 'Take Your Two Lives' not in text
+    assert 'Take the Oath' not in text
+
+
+def test_authed_cfb_member_after_window_sees_only_cfb(app, client):
+    """The ruling rendered: post-window, the other game's panel is gone
+    entirely — no cross-sell, and the duo degrades to a single panel."""
+    with app.app_context():
+        user = _make_user('lonesurvivor')
+        _enroll_cfb(user)
+        auth_id = user.auth_id
+    _login(client, auth_id)
+    with patch.dict(os.environ, WINDOW_CLOSED):
+        text = client.get('/').get_data(as_text=True)
+    assert 'hl-panel--cfb' in text
+    assert 'hl-panel--docket' not in text
+    assert 'The Docket' not in text.split('court-games')[0].split('hl-panel--cfb')[1]
+    assert 'hl-duo--paired' not in text
+
+
+# == shared sections under the composite ====================================
+
+def test_composite_tile_strip_one_active_tile_per_headliner(app, client):
+    with app.app_context():
+        auth_id = _make_user('tilewatcher').auth_id
+    _login(client, auth_id)
+    with patch.dict(os.environ, DUAL_PRE):
+        text = client.get('/').get_data(as_text=True)
+    assert text.count('cg cg--active') == 2
+    assert 'OPENS · SEP 1' in text                 # docket tile label
+    assert 'PRESEASON' in text                     # CFB tile label
+
+
+def test_panel_include_sees_loop_local_headliner(app, client):
+    """The Jinja mechanism micro-lock: each included panel reads ITS OWN
+    headliner's namespaced ctx through the loop-local `h` (and the
+    panel-local `g` reaches nested includes — the decree's numbers render).
+    A regression here would render one game's data under both names."""
+    with app.app_context():
+        auth_id = _make_user('jinjaproof').auth_id
+    _login(client, auth_id)
+    with patch.dict(os.environ, DUAL_PRE):
+        text = client.get('/').get_data(as_text=True)
+    cfb_panel = text[text.index('hl-panel--cfb'):text.index('hl-panel--docket')]
+    docket_panel = text[text.index('hl-panel--docket'):]
+    assert 'First Pick Locks In' in cfb_panel      # decree, nested include
+    assert 'First Pick Locks In' not in docket_panel
+    assert 'The first docket posts Tuesday, September 1.' in docket_panel
+    assert 'The court convenes' in docket_panel    # docket court_line
+    assert 'The court convenes' not in cfb_panel
+
+
+def test_docket_lounge_module_never_imports_writers():
+    src = (REPO_ROOT / 'games' / 'docket' / 'services' / 'lounge.py').read_text()
+    import_lines = [line for line in src.splitlines()
+                    if line.strip().startswith(('import ', 'from '))]
+    for forbidden in ('deadline_pass', 'grading_pass', 'importer', 'scores'):
+        assert not any(forbidden in line for line in import_lines)
