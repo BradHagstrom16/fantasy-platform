@@ -26,7 +26,7 @@ import pytest
 from app import create_app
 from extensions import db
 from models.user import User
-from tests._registry_helpers import set_is_featured, set_status
+from tests._registry_helpers import pin_wc_era, set_is_featured, set_status
 
 # Tuesday 2026-08-18 noon CT (17:00 UTC): the handoff-window anchor.
 # Kickoff (Thu Sep 3) is 16 days out; the week-1 deadline (Sat Sep 5,
@@ -1120,10 +1120,7 @@ def test_wc_pre_shell_tiles_unchanged_before_flip(app, client, monkeypatch):
     """WC-era regression (era pinned post-changeover): the generalized tile
     strip still renders the WC active tile + registry coming-soon tiles
     exactly as it did before the 2026-08-11 flip."""
-    set_status(monkeypatch, 'worldcup', 'open')
-    set_is_featured(monkeypatch, 'worldcup', True)
-    set_status(monkeypatch, 'cfb', 'coming_soon')
-    set_is_featured(monkeypatch, 'cfb', False)
+    pin_wc_era(monkeypatch)
     with app.app_context():
         user = _make_user()
         auth_id = user.auth_id

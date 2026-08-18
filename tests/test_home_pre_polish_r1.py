@@ -569,11 +569,8 @@ def test_unenrolled_pre_state_home_renders_correct_cta_and_copy(app, client, mon
     WC-era pinned: the 2026-08-11 changeover features CFB in the real
     registry; this render lock covers the archived WC pre-state lounge.
     """
-    from tests._registry_helpers import set_is_featured, set_status
-    set_status(monkeypatch, 'worldcup', 'open')
-    set_is_featured(monkeypatch, 'worldcup', True)
-    set_status(monkeypatch, 'cfb', 'coming_soon')
-    set_is_featured(monkeypatch, 'cfb', False)
+    from tests._registry_helpers import pin_wc_era
+    pin_wc_era(monkeypatch)
     _login_as_unenrolled(app, client)
     resp = client.get('/')
     assert resp.status_code == 200

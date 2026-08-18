@@ -37,11 +37,8 @@ _REAL_REGISTRY = {'test_context_out_basic'}
 def _wc_era_registry(request, monkeypatch):
     if request.node.name in _REAL_REGISTRY:
         return
-    from tests._registry_helpers import set_is_featured, set_status
-    set_status(monkeypatch, 'worldcup', 'open')
-    set_is_featured(monkeypatch, 'worldcup', True)
-    set_status(monkeypatch, 'cfb', 'coming_soon')
-    set_is_featured(monkeypatch, 'cfb', False)
+    from tests._registry_helpers import pin_wc_era
+    pin_wc_era(monkeypatch)
 
 
 def _seed_final_match(completed: bool, winner_id: int | None = None):

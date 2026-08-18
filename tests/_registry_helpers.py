@@ -24,3 +24,21 @@ def set_is_featured(monkeypatch, slug, is_featured):
         for entry in registry.GAMES
     ]
     monkeypatch.setattr(registry, 'GAMES', patched)
+
+
+def pin_wc_era(monkeypatch):
+    """Pin the full WC-era registry: WC the sole lounge owner, CFB pre-changeover.
+
+    The frozen-WC test nets (test_home_routes, test_home_context, the pre-polish
+    render, the pre-flip tiles lock) all assert the single-game WC lounge. Under
+    the multi-featured seam the docket flag matters too: leaving docket featured
+    would put a second headliner behind these pins and change every rendered
+    byte. Pinning docket unfeatured here is what keeps those nets meaningful,
+    and it composes from the two helpers above so future registry fields ride
+    along automatically.
+    """
+    set_status(monkeypatch, 'worldcup', 'open')
+    set_is_featured(monkeypatch, 'worldcup', True)
+    set_status(monkeypatch, 'cfb', 'coming_soon')
+    set_is_featured(monkeypatch, 'cfb', False)
+    set_is_featured(monkeypatch, 'docket', False)
