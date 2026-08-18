@@ -258,14 +258,28 @@ def test_context_pre_enrolled_viewer(app):
         assert ctx['enrollment'].id == enrollment.id
 
 
-def test_context_pre_court_line(app):
+def test_context_pre_court_line_below_roster_floor(app):
+    """Design review 2026-08-18: below the roster floor the raw count
+    reads as a dead pool, so the calendar carries the line alone."""
     from games.cfb.services.lounge import build_lounge_context
     with app.app_context():
         user = _make_user()
         _seed_cfb_field([(2, False), (2, False)])
         with patch.dict(os.environ, PRE_ANCHOR):
             ctx = build_lounge_context(user, 'pre')
-    assert ctx['court_line'] == 'Tuesday · 2 enrolled · first kickoff in 16 days'
+    assert ctx['court_line'] == 'Tuesday · first kickoff in 16 days'
+
+
+def test_context_pre_court_line_at_roster_floor(app):
+    from games.cfb.services.lounge import ROSTER_COUNT_FLOOR, build_lounge_context
+    with app.app_context():
+        user = _make_user()
+        _seed_cfb_field([(2, False)] * ROSTER_COUNT_FLOOR)
+        with patch.dict(os.environ, PRE_ANCHOR):
+            ctx = build_lounge_context(user, 'pre')
+    assert ctx['court_line'] == (
+        f'Tuesday · {ROSTER_COUNT_FLOOR} enrolled · first kickoff in 16 days'
+    )
 
 
 def test_context_pre_decree_uses_week1_db_deadline(app):

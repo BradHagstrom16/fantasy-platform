@@ -82,6 +82,19 @@ def join_window_open() -> bool:
     return get_utc_time() < ENROLLMENT_DEADLINE_UTC
 
 
+# Roster-count display floor (design review 2026-08-18): below this many
+# members the lounge omits raw enrollment counts — "1 enrolled" reads as a
+# dead pool to a cold visitor. Mirrored in the docket lounge service; a
+# shared-value test locks the two floors together.
+ROSTER_COUNT_FLOOR = 6
+
+
+def _roster_count(total_enrolled: int) -> int:
+    """The count the lounge may show: the real number at or above the
+    floor, else 0 (templates hide a zero)."""
+    return total_enrolled if total_enrolled >= ROSTER_COUNT_FLOOR else 0
+
+
 def cfb_lounge_state() -> CfbLoungeState:
     """Resolve the CFB lounge state for an authenticated viewer.
 
@@ -139,10 +152,12 @@ def build_lounge_context(user: Any, state: CfbLoungeState | None) -> dict:
 def _context_out() -> dict:
     """Logged-out marketing surface -- CFB's contribution is the enrolled
     count (the registry tiles come from the core dispatcher's base)."""
+    total_enrolled = CfbEnrollment.query.filter_by(
+        season_year=_season_year()
+    ).count()
     return {
-        'total_enrolled': CfbEnrollment.query.filter_by(
-            season_year=_season_year()
-        ).count(),
+        'total_enrolled': total_enrolled,
+        'roster_count': _roster_count(total_enrolled),
     }
 
 
@@ -183,9 +198,13 @@ def _context_pre(user, enrollment) -> dict:
         proximity = 'first kickoff in 1 day'
     else:
         proximity = f'first kickoff in {days_to_kickoff} days'
-    court_line = (
-        f"{now.strftime('%A')} · {total_enrolled} enrolled · {proximity}"
-    )
+    if total_enrolled >= ROSTER_COUNT_FLOOR:
+        court_line = (
+            f"{now.strftime('%A')} · {total_enrolled} enrolled · {proximity}"
+        )
+    else:
+        # Below the roster floor the calendar carries the line alone.
+        court_line = f"{now.strftime('%A')} · {proximity}"
 
     # WC farewell ledger (C1 3.5, pre-state only per ruling 4). Frozen
     # archive facts via the WC lounge helper; an incomplete archive omits

@@ -162,6 +162,40 @@ def test_out_after_window_keeps_both_cards_without_asks(app, client):
     assert 'Play one, or play both.' not in text
 
 
+def test_out_cards_hide_subfloor_roster_counts(app, client):
+    """Design review 2026-08-18: a 1-member roster never shows its count
+    on the bill — the count lines wait for the floor."""
+    with app.app_context():
+        user = _make_user('lonelyjoiner')
+        _enroll_cfb(user)
+        docket_enrollment.admin_enroll(user.id)
+    with patch.dict(os.environ, DUAL_PRE):
+        text = client.get('/').get_data(as_text=True)
+    assert 'in the club' not in text
+    assert 'sworn to the roster' not in text
+
+
+def test_out_cards_show_roster_counts_at_floor(app, client):
+    from games.cfb.services.lounge import ROSTER_COUNT_FLOOR
+    with app.app_context():
+        for i in range(ROSTER_COUNT_FLOOR):
+            user = _make_user(f'floorfiller{i}')
+            _enroll_cfb(user)
+            docket_enrollment.admin_enroll(user.id)
+    with patch.dict(os.environ, DUAL_PRE):
+        text = client.get('/').get_data(as_text=True)
+    assert f'{ROSTER_COUNT_FLOOR}</span> competitors in the club' in text
+    assert f'{ROSTER_COUNT_FLOOR}</span> sworn to the roster' in text
+
+
+def test_both_games_share_one_roster_count_floor():
+    """Same shape as the shared-deadline invariant below: the two floors
+    are 'the same value by construction', so lock the equality."""
+    from games.cfb.services import lounge as cfb_lounge
+    from games.docket.services import lounge as docket_lounge
+    assert cfb_lounge.ROSTER_COUNT_FLOOR == docket_lounge.ROSTER_COUNT_FLOOR
+
+
 def test_every_panel_mode_headliner_ships_conv_card_and_panels():
     """Filesystem lock: a panel-mode headliner without its lounge set would
     TemplateNotFound at request time; catch it at test time instead."""

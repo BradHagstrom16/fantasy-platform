@@ -9,9 +9,10 @@
 <div class="join hl-conv join--docket">
   <div class="join-head">
     <div class="seal">◇ Now in Session &middot; The Docket &rsquo;26</div>
-    {% if g.total_enrolled > 0 %}
+    {# Floor-gated display count — see the CFB card's twin comment. #}
+    {% if g.roster_count > 0 %}
     <div class="count">
-      <span class="v">{{ g.total_enrolled }}</span> sworn to the roster
+      <span class="v">{{ g.roster_count }}</span> sworn to the roster
     </div>
     {% endif %}
   </div>

@@ -60,10 +60,20 @@ def join_window_open() -> bool:
     return now_utc() < weeks.deadline_utc(1)
 
 
+# Roster-count display floor (design review 2026-08-18) — mirrored in the
+# CFB lounge service; a shared-value test locks the two floors together.
+ROSTER_COUNT_FLOOR = 6
+
+
 def build_lounge_context(user: Any, state: DocketLoungeState | None) -> dict:
     """Per-state lounge panel data. state=None is the logged-out surface."""
     if state is None:
-        return {'total_enrolled': _total_enrolled()}
+        total_enrolled = _total_enrolled()
+        return {
+            'total_enrolled': total_enrolled,
+            'roster_count': (total_enrolled
+                             if total_enrolled >= ROSTER_COUNT_FLOOR else 0),
+        }
 
     enrollment = get_enrollment(user.id)
     is_enrolled = enrollment is not None
