@@ -97,8 +97,8 @@ def test_second_bill_selects_on_flags_not_on_the_docket_slug(app, monkeypatch):
     set_is_featured(monkeypatch, 'cfb', False)
     set_is_featured(monkeypatch, 'docket', True)
     monkeypatch.setattr(
-        'games.registry.lounge_game',
-        lambda: __import__('games.registry', fromlist=['x']).get_entry('docket'),
+        'games.registry.lounge_games',
+        lambda: [__import__('games.registry', fromlist=['x']).get_entry('docket')],
     )
     with app.app_context():
         slugs = [entry.slug for entry, _ in second_bill_games(AnonymousUserMixin())]

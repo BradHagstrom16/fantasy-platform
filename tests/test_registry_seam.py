@@ -446,3 +446,61 @@ def test_index_dispatcher_includes_via_lounge_tree():
     assert "lounge_tree ~ '/_home_" in src
     assert "main/_home_" not in src
     assert 'worldcup' not in src
+
+
+# ── lounge_games() — the multi-featured seam ──────────────────────────────
+
+def test_lounge_games_returns_all_featured_open_in_order(app, monkeypatch):
+    """Every featured-open entry with both callables is a headliner, in
+    GAMES (billing) order."""
+    from games import registry
+    entries = [
+        _mock_entry('alpha', status='open', is_featured=True,
+                    lounge_state=lambda: 'pre'),
+        _mock_entry('beta', status='open', is_featured=False,
+                    lounge_state=lambda: 'pre'),
+        _mock_entry('gamma', status='open', is_featured=True,
+                    lounge_state=lambda: 'live'),
+    ]
+    monkeypatch.setattr(registry, 'GAMES', entries)
+    assert [e.slug for e in registry.lounge_games()] == ['alpha', 'gamma']
+
+
+def test_lounge_games_requires_both_callables_per_entry(app, monkeypatch):
+    """The launch-safety gate is per entry: a featured-open game missing
+    either lounge callable is skipped without disqualifying the others."""
+    from games import registry
+    entries = [
+        _mock_entry('alpha', status='open', is_featured=True,
+                    lounge_state=None),
+        _mock_entry('beta', status='open', is_featured=True,
+                    lounge_state=lambda: 'pre', lounge_context=None),
+        _mock_entry('gamma', status='open', is_featured=True,
+                    lounge_state=lambda: 'pre'),
+    ]
+    monkeypatch.setattr(registry, 'GAMES', entries)
+    assert [e.slug for e in registry.lounge_games()] == ['gamma']
+
+
+def test_lounge_game_is_first_of_lounge_games(app, monkeypatch):
+    """lounge_game() survives as 'the first billing' for the archival
+    page-mode branch and the legacy single-overlay path."""
+    from games import registry
+    entries = [
+        _mock_entry('alpha', status='open', is_featured=True,
+                    lounge_state=lambda: 'pre'),
+        _mock_entry('beta', status='open', is_featured=True,
+                    lounge_state=lambda: 'live'),
+    ]
+    monkeypatch.setattr(registry, 'GAMES', entries)
+    assert registry.lounge_game().slug == 'alpha'
+    assert registry.lounge_game() is registry.lounge_games()[0]
+
+
+def test_worldcup_entry_is_page_mode_all_others_panel():
+    """Exactly one archival full-page lounge tree exists: the World Cup's.
+    Every other entry (and every future game) is a panel game."""
+    from games.registry import GAMES
+    modes = {entry.slug: entry.lounge_mode for entry in GAMES}
+    assert modes.pop('worldcup') == 'page'
+    assert set(modes.values()) == {'panel'}
