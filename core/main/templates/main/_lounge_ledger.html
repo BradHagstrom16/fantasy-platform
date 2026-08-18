@@ -1,0 +1,16 @@
+{# The season ledger strip — the club's archive record, shell-owned and
+   full width (C1 §3.5, restored 2026-08-18: it is the club's history, not
+   one headliner's interior). Informational recipe. Data is the registry-
+   generic `ledger` dict lifted in home_context (first headliner supplying
+   a farewell); it carries its own route endpoint, so the shell never
+   names a game. An absent or incomplete archive omits the strip. #}
+{% if ledger %}
+<div class="farewell-strip">
+  <div class="farewell-eyebrow">◇ The {{ ledger.season_year }} Ledger</div>
+  <div class="farewell-body">
+    <span class="farewell-line">{{ ledger.line }}</span>
+    {% if ledger.finish %}<span class="farewell-fin">{{ ledger.finish }}</span>{% endif %}
+    <a class="farewell-route" href="{{ url_for(ledger.endpoint) }}">Visit the archive &rsaquo;</a>
+  </div>
+</div>
+{% endif %}

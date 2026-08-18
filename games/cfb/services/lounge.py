@@ -187,9 +187,12 @@ def _context_pre(user, enrollment) -> dict:
         f"{now.strftime('%A')} · {total_enrolled} enrolled · {proximity}"
     )
 
-    # WC farewell strip (C1 3.5, pre-state only per ruling 4). Frozen
+    # WC farewell ledger (C1 3.5, pre-state only per ruling 4). Frozen
     # archive facts via the WC lounge helper; an incomplete archive omits
-    # the strip rather than rendering a broken line.
+    # the strip rather than rendering a broken line. Rendered by the
+    # shell's full-width main/_lounge_ledger.html — the endpoint key is
+    # what lets the shell route to the archive without importing a game
+    # module (same shape as archived_tiles).
     farewell = None
     archive = worldcup_lounge.archive_summary(user)
     if archive is not None:
@@ -206,6 +209,7 @@ def _context_pre(user, enrollment) -> dict:
                 f"{archive['winner_name']} took the pool."
             ),
             'finish': finish,
+            'endpoint': 'worldcup.index',
         }
 
     return {

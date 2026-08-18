@@ -245,6 +245,9 @@ def test_authed_cfb_member_after_window_sees_only_cfb(app, client):
     assert 'hl-panel--docket' not in text
     assert 'The Docket' not in text.split('court-games')[0].split('hl-panel--cfb')[1]
     assert 'hl-duo--paired' not in text
+    # No WC archive seeded here: the shell's ledger strip stays absent
+    # rather than rendering a broken line.
+    assert 'farewell-strip' not in text
 
 
 # == shared sections under the composite ====================================
