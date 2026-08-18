@@ -9293,6 +9293,20 @@ main { flex: 1; }
   transition: background var(--transition), color var(--transition), padding-left var(--transition);
 }
 
+/* Section caption inside the account dropdown (The Archive — design
+   review 2026-08-18). Bootstrap ships no themed .dropdown-header on
+   this dark menu; caption voice, aligned to the item padding. */
+.navbar .dropdown-header {
+  display: block;
+  font-family: 'Teko', sans-serif;
+  font-weight: 500;
+  font-size: .8rem;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,.55);
+  padding: .45rem 1.2rem .15rem;
+}
+
 /* Keyboard focus must match the mouse-hover gold treatment. Without `:focus`
    here, Bootstrap's default `.dropdown-item:focus` paints its light-gray bg
    (#f8f9fa) under our white-72% item text — white-on-white, ~1:1 — so the

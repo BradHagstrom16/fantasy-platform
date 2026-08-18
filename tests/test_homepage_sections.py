@@ -70,7 +70,10 @@ def test_navbar_hides_games_for_zero_joined_logged_in_user(app, client):
     assert 'Golf' not in nav_section
 
 
-def test_navbar_shows_only_joined_games(app, client):
+def test_navbar_shows_only_joined_active_games(app, client):
+    """The switcher carries ACTIVE joined games only; a completed game
+    (WC) lives in the account dropdown's Archive section instead (design
+    review 2026-08-18 — full gating matrix in test_navbar_solo_game)."""
     uid = _make_user(app, 'wconly')
     _login(client, uid)
     with app.app_context():
@@ -81,9 +84,13 @@ def test_navbar_shows_only_joined_games(app, client):
     nav_start = data.find('navbar-nav me-auto')
     nav_end = data.find('</ul>', nav_start)
     nav_section = data[nav_start:nav_end]
-    assert 'World Cup' in nav_section
+    assert 'World Cup' not in nav_section
     assert 'CFB' not in nav_section
     assert 'Golf' not in nav_section
+    dd_start = data.find('dropdown-menu')
+    dd_section = data[dd_start:data.find('</ul>', dd_start)]
+    assert 'The Archive' in dd_section
+    assert 'World Cup' in dd_section
 
 
 def test_game_card_partial_renders_each_state(app):
