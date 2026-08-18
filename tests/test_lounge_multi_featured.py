@@ -132,6 +132,9 @@ def test_out_cards_each_wear_their_own_identity(app, client):
     assert 'The Docket' in docket_card
     assert 'CFB Survivor' not in docket_card
     assert 'frozen lines' in docket_card.lower()
+    # Genre line for the cold visitor (design review 2026-08-18): the name
+    # alone doesn't say pick 'em.
+    assert 'Weekly pick &rsquo;em across college football and the NFL' in docket_card
 
 
 def test_out_bill_pairs_two_cards_at_the_seam(app, client):
@@ -300,6 +303,24 @@ def test_panel_include_sees_loop_local_headliner(app, client):
     assert 'The first docket posts Tuesday, September 1.' in docket_panel
     assert 'Sheets due Saturdays' in docket_panel  # docket court_line
     assert 'Sheets due Saturdays' not in cfb_panel
+
+
+def test_panel_headers_bill_full_game_names(app, client):
+    """Design review 2026-08-18: panel headers name the game for a cold
+    viewer — the registry lounge_label ('CFB Survivor', 'The Docket ·
+    Pick ’Em'), never the bare navbar short names."""
+    with app.app_context():
+        auth_id = _make_user('coldreader').auth_id
+    _login(client, auth_id)
+    with patch.dict(os.environ, DUAL_PRE):
+        text = client.get('/').get_data(as_text=True)
+    cfb_panel = text[text.index('hl-panel--cfb'):text.index('hl-panel--docket')]
+    docket_panel = text[text.index('hl-panel--docket'):]
+    assert 'hl-panel-name">CFB Survivor</span>' in cfb_panel
+    assert 'hl-panel-name">The Docket · Pick ’Em</span>' in docket_panel
+    # The bare short names must be gone from every panel header.
+    assert 'hl-panel-name">CFB</span>' not in text
+    assert 'hl-panel-name">Docket</span>' not in text
 
 
 def test_docket_lounge_module_never_imports_writers():

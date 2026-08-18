@@ -4094,6 +4094,18 @@ body.game-golf {
   color: var(--bone-mute);
   margin: .5rem 0 .2rem;
 }
+/* Genre line under a conversion-card title (the cold visitor's one-line
+   answer to "what is this game?"). Same voice as the meta line, seated
+   directly under the title. */
+.home-shell .hl-conv-sub {
+  font-family: var(--font-teko);
+  font-weight: 500;
+  font-size: .92rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--bone-mute);
+  margin: .1rem 0 .5rem;
+}
 .home-shell .hl-conv-closed {
   font-family: var(--font-news);
   font-style: italic;
