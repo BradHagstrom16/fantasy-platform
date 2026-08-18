@@ -126,6 +126,15 @@ strip that carried this entry in the interim is dormant (empty under the dual-fe
 registry) and the `lounge_cadence` line stays on the registry entry for the strip's possible
 future tenants.
 
+Two 2026-08-18 design-review amendments (ADR-051). The pre panel opens with the club's
+decree seal band — "By Decree of the Commish No 003 · The Docket '26" — the platform
+`decree`/`decree-seal` primitives with per-era numbering (WC No 001, CFB No 002). Band
+only: the summons below stays the clerk's voice, and the CTA stays the garnet `.hl-cta`,
+never `.cta-seal` (the lounge's two gold seals are CFB's). And the panel header bills the
+registry `lounge_label` ("The Docket · Pick 'Em") so a cold viewer can parse the game;
+the conversion card carries a matching genre line, and the oath CTA a join echo
+("Join the Docket. One sheet a week, all season.").
+
 The room is a **light court-paper room**: Pressroom Bone body, white paper cards, ink text,
 oxblood-and-garnet accents. It deliberately runs opposite Survivor's midnight room; the two
 games run concurrently and their rooms must never feel like reskins of each other. CFB
