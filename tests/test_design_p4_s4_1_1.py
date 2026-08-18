@@ -531,9 +531,9 @@ def test_rendered_out_state_no_longer_carries_col_md_4_registry_grid():
         "containers — the identical-card-grid pattern is back. Use "
         "`.out-registry-grid` instead."
     )
-    # Positive lock: the merged conversion CTA + breadth section + rail must
-    # all render.
-    for marker in ('join-cta', 'out-registry', 'out-coming-rail'):
+    # Positive lock: the conversion CTA (accent-filled `.hl-cta` under the
+    # multi-featured shell) + breadth section + rail must all render.
+    for marker in ('hl-cta', 'out-registry', 'out-coming-rail'):
         assert marker in body, (
             f"Rendered home is missing `{marker}` — the distill merge didn't "
             f"make it to the response body."

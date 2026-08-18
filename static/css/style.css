@@ -3910,12 +3910,221 @@ body.game-golf {
   --hl-accent: var(--lounge-cfb-accent);
   --hl-accent-bright: var(--lounge-cfb-accent-bright);
   --hl-ground: var(--lounge-cfb-accent);
+  /* Crimson is a strong pigment: lighter hand on the wash. */
+  --hl-wash: linear-gradient(160deg,
+      color-mix(in srgb, var(--lounge-cfb-accent) 18%, transparent),
+      color-mix(in srgb, var(--lounge-cfb-accent) 5%, transparent) 55%);
 }
 .home-shell .hl-panel--docket,
 .home-shell .join--docket {
   --hl-accent: var(--lounge-docket-accent);
   --hl-accent-bright: var(--lounge-docket-accent-bright);
   --hl-ground: var(--lounge-docket-ground);
+  /* Oxblood is near-black on purple: heavier wash to read as wine. */
+  --hl-wash: linear-gradient(200deg,
+      color-mix(in srgb, var(--lounge-docket-ground) 32%, transparent),
+      color-mix(in srgb, var(--lounge-docket-ground) 8%, transparent) 55%);
+}
+
+/* --- The Undercard (Variant D): stage, duo grid, seam, panels, cards ---
+   Two headliners meet at a thin gold seam like a fight bill. Accent enters
+   as signature only: the panel wash, a hairline border, tinted chips, and
+   the accent CTA fill. Text stays bone; --hl-accent-bright appears only at
+   large-text sizes (CTA labels), where it holds ≥3:1 on every ground. */
+.home-shell .hl-stage {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+.home-shell .hl-duo {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+  align-items: start;
+}
+@media (min-width: 768px) {
+  .home-shell .hl-duo--paired {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    column-gap: 2.25rem;
+  }
+  .home-shell .hl-duo--paired::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 8px;
+    bottom: 8px;
+    width: 1px;
+    background: linear-gradient(180deg, transparent,
+        rgba(201, 162, 39, .5) 18%, rgba(201, 162, 39, .5) 82%, transparent);
+  }
+  .home-shell .hl-seal {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 58px;
+    height: 58px;
+    border-radius: 50%;
+    background: var(--purple-950);
+    border: 2px solid var(--gold);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-teko);
+    font-weight: 600;
+    font-size: .8rem;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--gold-light);
+    z-index: 2;
+  }
+}
+.home-shell .hl-seal { display: none; }
+@media (min-width: 768px) {
+  .home-shell .hl-duo--paired .hl-seal { display: flex; }
+}
+
+/* Headliner panel: Ceremonial ground carrying the game's wash. */
+.home-shell .hl-panel {
+  background: var(--hl-wash, linear-gradient(transparent, transparent)),
+              linear-gradient(180deg, var(--purple-800), var(--purple-900));
+  border: 1px solid color-mix(in srgb, var(--hl-ground, var(--gold)) 35%, transparent);
+  border-radius: 14px;
+  padding: 1.6rem 1.6rem 1.5rem;
+  min-width: 0;
+}
+.home-shell .hl-panel-head {
+  display: flex;
+  align-items: baseline;
+  gap: .6rem;
+  margin-bottom: .9rem;
+  border-bottom: 1px solid rgba(243, 239, 230, .08);
+  padding-bottom: .55rem;
+}
+.home-shell .hl-panel-mark { font-size: 1.15rem; line-height: 1; }
+.home-shell .hl-panel-name {
+  font-family: var(--font-teko);
+  font-weight: 600;
+  font-size: 1.35rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--bone);
+}
+.home-shell .hl-panel-court {
+  margin-left: auto;
+  font-family: var(--font-teko);
+  font-weight: 500;
+  font-size: .85rem;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--bone-mute);
+  text-align: right;
+}
+/* Panels own their interior spacing; interior cards lose their outer card
+   chrome inside a panel (the panel is the card). */
+.home-shell .hl-panel .summons,
+.home-shell .hl-panel .decree,
+.home-shell .hl-panel .wl-card {
+  background: none;
+  border: none;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+/* Conversion card: the .join base wearing the wash + accent border. */
+.home-shell .hl-conv {
+  background: var(--hl-wash, linear-gradient(transparent, transparent)),
+              linear-gradient(180deg, var(--purple-800), var(--purple-900));
+  border: 1px solid color-mix(in srgb, var(--hl-ground, var(--gold)) 35%, transparent);
+  min-width: 0;
+}
+.home-shell .hl-tape {
+  list-style: none;
+  margin: .9rem 0 .4rem;
+  padding: 0;
+  font-family: var(--font-teko);
+  font-weight: 500;
+  font-size: 1.02rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--bone-dim);
+  text-align: left;
+}
+.home-shell .hl-tape li {
+  padding: .3rem 0 .18rem;
+  border-bottom: 1px solid rgba(243, 239, 230, .08);
+}
+.home-shell .hl-conv-meta {
+  font-family: var(--font-teko);
+  font-weight: 500;
+  font-size: .88rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--bone-mute);
+  margin: .5rem 0 .2rem;
+}
+.home-shell .hl-conv-closed {
+  font-family: var(--font-news);
+  font-style: italic;
+  color: var(--bone-dim);
+  margin-top: .9rem;
+}
+
+/* Accent CTA: the headliner's own action color. Bone on crimson 5.4:1,
+   bone on garnet 5.7:1 (AA normal); labels are large Teko anyway. */
+.home-shell .hl-cta {
+  display: inline-block;
+  background: var(--hl-accent, var(--purple-700));
+  color: var(--bone);
+  font-family: var(--font-teko);
+  font-weight: 600;
+  font-size: 1.25rem;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  padding: .55rem 1.5rem .38rem;
+  border-radius: var(--radius, 0.5rem);
+  border: none;
+  text-decoration: none;
+  margin-top: 1rem;
+  min-height: 44px;
+  transition: filter .15s ease-out, transform .15s ease-out;
+}
+.home-shell .hl-cta:hover {
+  filter: brightness(1.12);
+  transform: translateY(-2px);
+  color: var(--bone);
+}
+.home-shell .hl-cta:focus-visible {
+  outline: 2px solid var(--gold-light);
+  outline-offset: 2px;
+}
+.home-shell .hl-cta--outline {
+  background: transparent;
+  border: 1px solid color-mix(in srgb, var(--hl-accent, var(--bone)) 55%, transparent);
+  color: var(--hl-accent-bright, var(--bone));
+}
+.home-shell .hl-cta--outline:hover {
+  background: color-mix(in srgb, var(--hl-accent, transparent) 14%, transparent);
+  color: var(--hl-accent-bright, var(--bone));
+}
+
+/* Shell-owned sign-in line under the duo (once, never per card). */
+.home-shell .hl-signin {
+  text-align: center;
+  margin: 1.4rem 0 0;
+  font-family: var(--font-teko);
+  font-weight: 500;
+  font-size: .95rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--bone-mute);
+}
+.home-shell .hl-signin a { color: var(--gold-light); }
+
+@media (prefers-reduced-motion: reduce) {
+  .home-shell .hl-cta,
+  .home-shell .hl-cta:hover { transition: none; transform: none; }
 }
 
 /* --- Polish: print-friendly fallback (just in case) --- */

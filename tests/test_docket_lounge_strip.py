@@ -29,12 +29,13 @@ from tests._registry_helpers import set_is_featured
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 PARTIAL = REPO_ROOT / 'core' / 'main' / 'templates' / 'main' / '_second_bill.html'
-CFB_HOME_OUT = (
-    REPO_ROOT / 'games' / 'cfb' / 'templates' / 'cfb' / 'lounge' / '_home_out.html'
+LOUNGE_OUT = (
+    REPO_ROOT / 'core' / 'main' / 'templates' / 'main' / '_lounge_out.html'
 )
 STYLE_CSS = REPO_ROOT / 'static' / 'css' / 'style.css'
 
-PRE_ANCHOR = {'ENVIRONMENT': 'testing', 'CFB_FAKE_NOW': '2026-08-18T17:00:00'}
+PRE_ANCHOR = {'ENVIRONMENT': 'testing', 'CFB_FAKE_NOW': '2026-08-18T17:00:00',
+              'DOCKET_FAKE_NOW': '2026-08-18T17:00:00'}
 
 
 def _make_user(username='stripuser'):
@@ -259,37 +260,40 @@ def test_strip_does_not_disturb_the_single_overlay_seam(app):
 
 # == the out-state conversion card ========================================
 
-def test_out_state_renders_exactly_one_join_card(app, client):
-    """Regression lock for the duplicate conversion card. Counted on the
-    RENDERED page: the pre-existing source-literal count passed while the
-    loop painted two cards."""
+def test_out_state_renders_one_join_card_per_headliner(app, client):
+    """Regression lock for the duplicate conversion card, generalized to
+    the multi-featured shell. Counted on the RENDERED page (the original
+    source-literal count passed while the loop painted two cards): exactly
+    one conversion card and one CTA per lounge headliner, derived from the
+    registry so the docket flip moves this lock instead of breaking it."""
+    from games.registry import lounge_games
+    expected = len(lounge_games())
     text = client.get('/').get_data(as_text=True)
-    assert text.count('class="join"') == 1
-    assert text.count('class="join-cta"') == 1
+    assert text.count('class="join hl-conv') == expected
+    assert text.count('hl-cta"') == expected
 
 
 def test_out_state_join_card_never_wears_another_games_name(app, client):
-    """The card's seal and kickoff line are CFB copy. With the loop
-    unfiltered they were stamped onto The Docket's card too."""
+    """Each card carries its own game's copy. With the pre-rework loop
+    unfiltered, CFB's seal and kickoff line were stamped onto The Docket's
+    card too."""
     text = client.get('/').get_data(as_text=True)
-    start = text.index('<div class="join">')
-    # The strip is the next block after the card; everything between is the
-    # conversion unit, however its inner divs happen to nest.
-    card = text[start:text.index('<section class="second-bill"', start)]
+    start = text.index('class="join hl-conv join--cfb"')
+    next_card = text.find('class="join hl-conv', start + 1)
+    end = next_card if next_card != -1 else text.index('hl-signin', start)
+    card = text[start:end]
     assert 'CFB Survivor Pool' in card
     assert 'The Docket' not in card
 
 
-def test_cfb_out_partial_filters_the_conversion_loop_to_the_featured_game():
-    """Source lock the CFB out partial never had. Identity stays registry
-    driven (no hardcoded slug), but only the lounge owner gets the
-    ceremonial card; other open games are second bills."""
-    source = CFB_HOME_OUT.read_text()
-    assert '{% for game in available_games if game.is_featured %}' in source, (
-        'the conversion card must loop the featured entry only — an '
-        'unfiltered available_games loop renders one ceremonial card and one '
-        'gold CTA per open game.'
-    )
+def test_out_shell_loops_headliners_and_keeps_the_second_bill():
+    """Successor to the old featured-loop source lock: the shell renders one
+    per-game conversion card per headliner (each game's own _conv_card, so
+    no card can wear another game's copy) and keeps the second-bill strip
+    for open games that are not headliners."""
+    source = LOUNGE_OUT.read_text()
+    assert "{% for h in headliners %}" in source
+    assert "_conv_card.html" in source
     assert '{% include \'main/_second_bill.html\' %}' in source
 
 

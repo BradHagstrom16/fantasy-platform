@@ -1,0 +1,50 @@
+{# Authenticated composite lounge — the multi-featured shell (direction
+   contract in _lounge_out.html; same world). The shell owns the greet, the
+   duo frame, the second bill, the compact tiles, and the Commissioner's
+   note; each headliner contributes one per-state panel
+   ('<slug>/lounge/_panel_<state>.html') that reads the loop-local `h` and
+   sets `g = h.ctx` for its interiors. Panel count is per viewer: after the
+   enrollment deadline a member of one game sees only that game
+   (2026-08-18 ruling), and the duo degrades to a single full-width panel.
+   `state` here is the aggregate (live > post > pre) — it drives the shell
+   backdrop and the commish note key, never a panel's own copy. #}
+{% set _greets = {
+  'pre':  ('The club reconvenes,', 'The Season', 'Opens'),
+  'live': ('The club plays on,',   'Court Is',   'In Session'),
+  'post': ('The ledger closes,',   'The',        'Final Word'),
+} %}
+{% set _g = _greets[state] %}
+<div class="hl-stage">
+
+  <div class="greet">
+    <p class="greet-line">
+      {{ _g[0] }}
+      <span class="v">{{ current_user.get_display_name() }}</span>
+    </p>
+    <h1 class="greet-title">
+      {{ _g[1] }}
+      <span class="home-metal-text">{{ _g[2] }}</span>
+    </h1>
+  </div>
+
+  <div class="hl-duo{% if headliners|length == 2 %} hl-duo--paired{% endif %}">
+    {% if headliners|length == 2 %}
+      {% set _wk = headliners[0].ctx.get('week_number') %}
+      {% set _same_week = _wk and headliners[1].ctx.get('week_number') == _wk %}
+      <div class="hl-seal" aria-hidden="true">{% if _same_week %}Wk {{ _wk }}{% else %}CCC{% endif %}</div>
+    {% endif %}
+    {% for h in headliners %}
+      {% include h.tree ~ '/_panel_' ~ h.state ~ '.html' %}
+    {% endfor %}
+  </div>
+
+  {# Second bill — open games that are not headliners (empty today) #}
+  {% include 'main/_second_bill.html' %}
+
+  {# Compact game tiles #}
+  {% include 'main/_game_tiles_compact.html' %}
+
+  {# Commissioner presence — full-width Newsreader band #}
+  {% include 'main/_commish_note.html' ignore missing %}
+
+</div>{# /.hl-stage #}

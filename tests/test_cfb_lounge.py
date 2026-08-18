@@ -31,7 +31,8 @@ from tests._registry_helpers import pin_wc_era, set_is_featured, set_status
 # Tuesday 2026-08-18 noon CT (17:00 UTC): the handoff-window anchor.
 # Kickoff (Thu Sep 3) is 16 days out; the week-1 deadline (Sat Sep 5,
 # 11:00 AM CT) is 17 full days out.
-PRE_ANCHOR = {'ENVIRONMENT': 'testing', 'CFB_FAKE_NOW': '2026-08-18T17:00:00'}
+PRE_ANCHOR = {'ENVIRONMENT': 'testing', 'CFB_FAKE_NOW': '2026-08-18T17:00:00',
+              'DOCKET_FAKE_NOW': '2026-08-18T17:00:00'}
 
 SEASON_YEAR = 2026
 
@@ -461,7 +462,11 @@ def test_cfb_post_shell_renders_sole_survivor(app, client, monkeypatch):
         user, _ = _seed_champion_season()
         auth_id = user.auth_id
     _login(client, auth_id)
-    resp = client.get('/')
+    # Docket anchored post-season so the aggregate stays 'post' on any CI
+    # wall clock once The Docket co-headlines (live > post > pre).
+    with patch.dict(os.environ, {'ENVIRONMENT': 'testing',
+                                 'DOCKET_FAKE_NOW': '2027-01-20T00:00:00'}):
+        resp = client.get('/')
     assert resp.status_code == 200
     text = resp.get_data(as_text=True)
     assert 'home-shell--post' in text
@@ -508,8 +513,10 @@ def test_wc_lounge_context_supplies_tile_keys(app):
 
 # Thursday 2026-09-24 noon CT: week 4 active, deadline Sat Sep 26 11:00 CT
 # (1d 23h out). LIVE_POST is Saturday 7:00 PM CT, past the deadline.
-LIVE_PRE = {'ENVIRONMENT': 'testing', 'CFB_FAKE_NOW': '2026-09-24T17:00:00'}
-LIVE_POST = {'ENVIRONMENT': 'testing', 'CFB_FAKE_NOW': '2026-09-27T00:00:00'}
+LIVE_PRE = {'ENVIRONMENT': 'testing', 'CFB_FAKE_NOW': '2026-09-24T17:00:00',
+            'DOCKET_FAKE_NOW': '2026-09-24T17:00:00'}
+LIVE_POST = {'ENVIRONMENT': 'testing', 'CFB_FAKE_NOW': '2026-09-27T00:00:00',
+             'DOCKET_FAKE_NOW': '2026-09-27T00:00:00'}
 
 W4_DEADLINE = datetime(2026, 9, 26, 11, 0)
 
@@ -1057,11 +1064,14 @@ def test_cfb_out_shell_copy_pass(app, client, monkeypatch):
     assert 'home-shell--out' in text
     assert 'CFB Survivor' in text
     assert 'Open Court' in text
-    assert 'Survive the season' in text
-    assert 'Outlast the field' in text
-    # One combined join-card paragraph (registry description + kickoff
-    # date), not a description followed by a repetitive deadline line.
-    assert 'Last survivor wins. Season kicks off Thursday, Sep 3.' in text
+    # The Undercard conversion card: tale-of-the-tape lines + kickoff meta
+    # (the old .out-props value strip retired into the card itself).
+    assert 'One pick a week, win outright' in text
+    assert 'Two lives' in text
+    assert 'Last one standing takes the pot' in text
+    assert 'Season kicks off Thursday, Sep 3' in text
+    # The Docket is on the bill too (strip today, co-headliner post-flip)
+    assert 'The Docket' in text
     # Golf still on the docket; the finished WC pool is a members' surface
     assert 'Golf' in text
     assert 'World Cup' not in text
@@ -1081,7 +1091,9 @@ def test_cfb_live_open_shell_renders(app, client, monkeypatch):
     assert resp.status_code == 200
     text = resp.get_data(as_text=True)
     assert 'home-shell--live' in text
-    assert 'Still' in text and 'Standing' in text
+    # Shell greet is platform-owned under the composite ('Court Is In
+    # Session'); the game copy lives in the panel below.
+    assert 'In Session' in text
     assert 'The Summons' in text
     assert 'You have not made a pick.' in text
     assert 'Choose Team' in text

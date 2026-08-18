@@ -1,20 +1,33 @@
-"""Lounge context dispatch (transition plan §5, C2 slice 2).
+"""Lounge context dispatch (transition plan §5 → multi-featured seam).
 
-Public entry point: ``build_home_context(user, state)`` — assembles the
-registry-generic context (open-game tiles, coming-soon rail, commish note)
-and overlays the featured game's per-state data via its ``lounge_context``
-callable from the registry seam. The WC builders this module used to hold
-live in ``games/worldcup/services/lounge.py``; CFB's arrive in C2 slice 3+.
+Public entry point: ``build_home_context(user, state, headliners=None)`` —
+assembles the registry-generic context (open-game tiles, coming-soon rail,
+commish note) and the game data for the lounge render.
 
-state=None renders the logged-out marketing surface; authenticated states
-('pre' | 'live' | 'post') come from the featured game's ``lounge_state``
-resolver (see core/main/routes.py).
+Two shapes share it:
+
+- ``headliners=None`` (legacy / archival page mode): the single featured
+  game's ``lounge_context`` dict overlays the base flat, exactly the
+  pre-seam contract. The frozen-WC nets and the page-mode branch run here.
+- ``headliners=[(entry, state), ...]`` (composite): NO flat overlay — each
+  game's dict is namespaced inside its ``Headliner`` so two games can
+  never collide on a key, and the registry-generic keys are assigned
+  after the builds so no game dict can clobber them.
+
+state=None renders the logged-out surface; per-game states come from each
+entry's ``lounge_state`` resolver (see core/main/routes.py). In composite
+mode ``state`` is the aggregate (live > post > pre).
+
+This module never imports a game module — everything reaches it through
+the registry seam (locked by tests/test_registry_seam.py).
 """
+from dataclasses import dataclass
 from typing import Any
 
 from flask_login import AnonymousUserMixin
 
 from games.registry import (
+    GameRegistryEntry,
     available_games,
     coming_soon_games,
     joined_games,
@@ -24,14 +37,66 @@ from games.registry import (
 from models.content import commish_note_paragraphs
 
 
-def build_home_context(user: Any, state: str | None) -> dict:
-    """Assemble the render context for the home page in the given state.
+@dataclass(frozen=True)
+class Headliner:
+    """One lounge headliner, namespaced: the entry, its own resolved state,
+    its context dict, its partial tree, the viewer's enrollment, and
+    whether its self-serve join window is open."""
+    entry: GameRegistryEntry
+    state: str | None
+    ctx: dict
+    tree: str
+    enrollment: Any | None
+    join_open: bool
 
-    Registry-generic keys are built here; game-specific keys come from the
-    featured game's ``lounge_context`` callable and win on any overlap.
-    With no featured game (the between-eras fallback, unreachable while
-    the changeover flip is atomic) the base context alone backs an empty
-    out shell — safe defaults, no game keys.
+
+def aggregate_lounge_state(states: list[str]) -> str:
+    """The shell-level state for a composite render: live > post > pre.
+
+    A concluded season's ceremony outranks another game's countdown, and
+    anything live outranks both. Drives the shell backdrop class, the
+    commish-note key, and the countdown script gate — never a panel's
+    own copy.
+    """
+    if 'live' in states:
+        return 'live'
+    if 'post' in states:
+        return 'post'
+    return 'pre'
+
+
+def visible_headliners(user, resolved):
+    """Filter (entry, state) pairs to what this viewer's lounge shows.
+
+    The 2026-08-18 enrollment ruling: once a game's join window closes, a
+    member of at least one game stops seeing games they did not join — no
+    late cross-sell, and the game is not theirs. Members of both keep
+    both; visitors and joined-neither members keep the full bill (the
+    club's face), with the templates retiring the ask via join_open.
+    """
+    enrollments = {
+        entry.slug: entry.get_enrollment(user.id) for entry, _ in resolved
+    }
+    if not any(enr is not None for enr in enrollments.values()):
+        return resolved
+    return [
+        (entry, state) for entry, state in resolved
+        if enrollments[entry.slug] is not None or _join_open(entry)
+    ]
+
+
+def _join_open(entry: GameRegistryEntry) -> bool:
+    if entry.join_open is not None:
+        return entry.join_open()
+    return entry.status == 'open'
+
+
+def build_home_context(user: Any, state: str | None, headliners=None) -> dict:
+    """Assemble the render context for the home page.
+
+    Registry-generic keys are built here. Game keys come from the games'
+    ``lounge_context`` callables: flat (and winning on overlap) in legacy
+    mode, namespaced per headliner in composite mode.
     """
     if state is None:
         ctx = {
@@ -44,25 +109,57 @@ def build_home_context(user: Any, state: str | None) -> dict:
             'joined_games': joined_games(user),
             'coming_soon_games': coming_soon_games(),
         }
-    game = lounge_game()
-    if game is not None and game.lounge_context is not None:
-        ctx.update(game.lounge_context(user, state))
-        if state is not None:
-            # Name the featured entry for registry-generic partials (the
-            # compact tile strip reads emoji/short_name/blueprint_index
-            # off it, slug-agnostically).
-            ctx['lounge_entry'] = game
-    # The interim second bill (D21-eng): open games that don't own the lounge,
-    # each paired with this viewer's enrollment. Assigned AFTER the overlay for
-    # the same reason `lounge_entry` is — a featured game's context dict must
-    # not be able to clobber a registry-generic key. All four states get it;
-    # `games_for_user` handles the logged-out `user=None` on its own.
+
+    if headliners is None:
+        # Legacy single-overlay path (archival page mode + direct callers).
+        game = lounge_game()
+        if game is not None and game.lounge_context is not None:
+            ctx.update(game.lounge_context(user, state))
+            if state is not None:
+                # Name the featured entry for registry-generic partials (the
+                # compact tile strip reads emoji/short_name/blueprint_index
+                # off it, slug-agnostically).
+                ctx['lounge_entry'] = game
+    else:
+        built = []
+        for entry, game_state in headliners:
+            built.append(Headliner(
+                entry=entry,
+                state=game_state,
+                ctx=entry.lounge_context(user, game_state),
+                tree=f'{entry.slug}/lounge',
+                enrollment=(entry.get_enrollment(user.id)
+                            if state is not None else None),
+                join_open=_join_open(entry),
+            ))
+        ctx['headliners'] = built
+        # Registry-generic union for the shared tile strip, deduped by
+        # endpoint (both games name the same WC archive tile).
+        tiles, seen = [], set()
+        for h in built:
+            for tile in h.ctx.get('archived_tiles', ()):
+                if tile['endpoint'] not in seen:
+                    seen.add(tile['endpoint'])
+                    tiles.append(tile)
+        ctx['archived_tiles'] = tiles
+
+    # The second bill (D21-eng): open games that are not headliners, each
+    # paired with this viewer's enrollment. Assigned AFTER the overlay /
+    # headliner builds for the same reason `lounge_entry` is — a game's
+    # context dict must not be able to clobber a registry-generic key. All
+    # states get it; `games_for_user` handles the logged-out user itself.
     ctx['second_bill'] = second_bill_games(user)
     if state is not None:
         # Admin-editable "From the Commish" note for the narrative band. The
-        # post body may interpolate {champion}, so pass the champion through
-        # when the game's overlay set one.
-        ctx['commish_paragraphs'] = commish_note_paragraphs(
-            state, ctx.get('champion_team')
-        )
+        # post body may interpolate {champion}; in composite mode the
+        # champion is the first post-state headliner's, legacy reads the
+        # flat overlay key.
+        champion = ctx.get('champion_team')
+        if headliners is not None:
+            champion = next(
+                (h.ctx.get('champion_team') for h in ctx['headliners']
+                 if h.state == 'post' and h.ctx.get('champion_team')),
+                None,
+            )
+        ctx['commish_paragraphs'] = commish_note_paragraphs(state, champion)
     return ctx
