@@ -4,27 +4,26 @@
 
 {% block content %}
 <!--
-THESIS: the rulebook as the court's published standing orders, written in the
-clerk's voice and stating the awkward cases out loud; refuses the marketing
-"how it works" page that explains the easy half and leaves overtime, ties,
-and where the numbers came from to a support thread.
-OWN-WORLD: CCC court paper — bone page, ruled --docket-rule hairlines between
-articles, Teko article heads, oxblood section rules. No cards in a grid.
-STORY: a member or a prospective one reads the terms end to end, finds the
-edge case they came for, and knows the scoring cannot differ from the page.
-FIRST VIEWPORT: masthead, the jump index, then the scoring table, because
-that is the article everyone arrives for.
-FORM: articles under a jump index, inheriting the join page's ruled dl.
-FINISH: unreviewed and undocumented is unfinished; this build ends with the
-finish review, the verdict, and DESIGN.md.
+THESIS: the game in one breath first, the rulings underneath. A newcomer reads
+the short version and knows how to play; everything below answers the question
+that comes next, "okay, but what happens if...", in the clerk's plain voice.
+OWN-WORLD: CCC court paper — bone page, ruled --docket-rule hairlines, Teko
+article heads, oxblood section rules. No cards in a grid.
+LAYERS: (1) the short version, prominent, under a garnet masthead rule; (2) the
+core rules, the everyday how-to; (3) the fine print, visually demoted under a
+heavier closing rule, where the awkward cases live for the people who want them.
+NUMBERS: every figure is read from the engine, the week math, or config — never
+a literal. A rules page that restates the scoring as prose eventually lies, and
+this is the one surface where being wrong becomes a dispute.
+FINISH: unreviewed and undocumented is unfinished; ends with the finish review.
 -->
 <div class="page-hero docket-hero">
     <div class="container">
         <span class="docket-eyebrow">Standing orders</span>
         <h1>House Rules</h1>
         <p class="lead mb-0">
-            {{ scoring_slots }} sides a week against frozen lines, one headliner worth double,
-            one worst week eventually forgiven.
+            Pick {{ scoring_slots }} sides a week against frozen lines, name one your
+            Headliner for double, and drop your worst week before it counts.
         </p>
     </div>
 </div>
@@ -33,15 +32,27 @@ finish review, the verdict, and DESIGN.md.
     <div class="row justify-content-center">
         <div class="col-lg-9">
 
+            <section class="docket-article docket-rules-lede-block" id="rules-short">
+                <span class="docket-eyebrow">The short version</span>
+                <div class="docket-rules-lede">
+                    <p>Every week, you pick {{ scoring_slots }} sides: college or NFL,
+                        spreads or totals, whatever you like.</p>
+                    <p>Then you name one of your {{ scoring_slots }} the Headliner. It is
+                        the pick you like most, and it scores double.</p>
+                    <p>That is the whole game. Everything below just answers the question
+                        that comes next: "okay, but what happens if...?"</p>
+                </div>
+            </section>
+
             <nav class="docket-rules-index" aria-label="Jump to article">
                 <a class="docket-rules-index-link" href="#rules-week">The week</a>
+                <a class="docket-rules-index-link" href="#rules-headliner">The Headliner</a>
                 <a class="docket-rules-index-link" href="#rules-scoring">Scoring</a>
-                <a class="docket-rules-index-link" href="#rules-headliner">The headliner</a>
-                <a class="docket-rules-index-link" href="#rules-reserve">Held in reserve</a>
+                <a class="docket-rules-index-link" href="#rules-reserve">The reserve</a>
                 <a class="docket-rules-index-link" href="#rules-standings">The ledger</a>
-                <a class="docket-rules-index-link" href="#rules-tiebreaker">The number</a>
-                <a class="docket-rules-index-link" href="#rules-edges">Awkward cases</a>
-                <a class="docket-rules-index-link" href="#rules-lines">Where the lines come from</a>
+                <a class="docket-rules-index-link" href="#rules-tiebreaker">The tiebreaker</a>
+                <a class="docket-rules-index-link" href="#rules-season">The season</a>
+                <a class="docket-rules-index-link" href="#rules-fine">The fine print</a>
             </nav>
 
             <section class="docket-article" id="rules-week">
@@ -54,44 +65,50 @@ finish review, the verdict, and DESIGN.md.
                     </div>
                     <div class="docket-ruleset-item">
                         <dt>One side per market</dt>
-                        <dd>You cannot take both sides of the same market. A spread
-                            pick and a total pick on the same game are two legal
+                        <dd>You can't take both sides of the same market. A spread
+                            pick and a total pick on the same game are two separate
                             picks, not one.</dd>
                     </div>
                     <div class="docket-ruleset-item">
                         <dt>The deadline</dt>
-                        <dd>Saturday 11:00 AM CT. Picks must land before 11:00:00;
-                            10:59:59 is on time. Individual cases lock earlier, at
-                            their own kickoff, so a Thursday game is committed
-                            Thursday while the rest of your sheet stays open.</dd>
+                        <dd>Saturday 11:00 AM CT. Your picks must land before
+                            11:00:00; 10:59:59 is on time. Each game also locks at
+                            its own kickoff, so a Thursday game is committed Thursday
+                            while the rest of your sheet stays open.</dd>
                     </div>
                     <div class="docket-ruleset-item">
                         <dt>If you file nothing</dt>
-                        <dd>The deadline pass fills your sheet: Overs on the highest
-                            totals and favorites on the largest spreads, drawn from
-                            games kicking off after the deadline. It never overwrites
-                            a pick you made, and it never assigns a backup.</dd>
-                    </div>
-                    <div class="docket-ruleset-item">
-                        <dt>The season</dt>
-                        <dd>{{ total_weeks }} weeks, from college Week 1 through NFL
-                            Week 18, bowls and playoff rounds included. Weeks turn
-                            over Tuesday at 6:00 AM CT.</dd>
-                    </div>
-                    <div class="docket-ruleset-item">
-                        <dt>Entry</dt>
-                        <dd>${{ docket_entry_fee }}, one entry per member. How the pot
-                            is divided is the Commissioner's ruling.</dd>
+                        <dd>Miss the deadline with no sheet and the system fills one
+                            for you: favorites on the largest spreads and Overs on the
+                            highest totals, drawn only from games that kick off at or
+                            after the deadline. It never overwrites a pick you made,
+                            and it never files a reserve for you.</dd>
                     </div>
                 </dl>
             </section>
 
+            <section class="docket-article" id="rules-headliner">
+                <h2 class="docket-section-head">The Headliner</h2>
+                <p class="docket-article-copy">
+                    One of your {{ scoring_slots }} picks is your Headliner, and it
+                    scores double. You name it yourself, on any side you hold. You
+                    can't move it onto a game that has already kicked off, which
+                    closes the obvious exploit: naming Saturday's winner on Saturday
+                    morning.
+                </p>
+                <p class="docket-article-copy">
+                    Forget to name one? The system names it for you at the deadline:
+                    your largest favorite; if you backed no favorite, your
+                    highest-total Over; if you have neither, your earliest kickoff.
+                </p>
+            </section>
+
             <section class="docket-article" id="rules-scoring">
-                <h2 class="docket-section-head">Scoring</h2>
+                <h2 class="docket-section-head">What your picks are worth</h2>
                 <div class="docket-scroll">
                     <table class="table docket-rules-table">
                         <caption class="visually-hidden">
-                            Points per pick, ordinary and headliner.
+                            Points per pick, ordinary and Headliner.
                         </caption>
                         <thead>
                             <tr>
@@ -113,141 +130,177 @@ finish review, the verdict, and DESIGN.md.
                 </div>
                 <p class="docket-article-note">
                     A perfect week is {{ '%g'|format(max_week) }}: {{ scoring_slots - 1 }}
-                    ordinary verdicts plus the headliner. The double is not stacked on top of
-                    anything, it replaces the ordinary value.
-                </p>
-            </section>
-
-            <section class="docket-article" id="rules-headliner">
-                <h2 class="docket-section-head">The headliner</h2>
-                <p class="docket-article-copy">
-                    One pick a week is your headliner and scores double. You name it
-                    yourself on any side you hold. It cannot be moved onto a case
-                    that has already kicked off, which closes the obvious exploit:
-                    naming Saturday's winner on Saturday morning.
-                </p>
-                <p class="docket-article-copy">
-                    Name none and the deadline pass names one for you, judged across
-                    your final {{ scoring_slots }} sides: the largest favorite, else the highest
-                    Over, else the earliest kickoff.
+                    ordinary wins plus your doubled Headliner. The double replaces the
+                    pick's ordinary value; it is not added on top.
                 </p>
             </section>
 
             <section class="docket-article" id="rules-reserve">
                 <h2 class="docket-section-head">Held in reserve</h2>
                 <p class="docket-article-copy">
-                    Pick {{ backup_slot }} sits dormant. It scores nothing unless one of your
-                    {{ scoring_slots }} cases is thrown out, in which case it
-                    substitutes into the cancelled slot whose game had the earliest
-                    scheduled kickoff. Any further cancelled slots settle as a
-                    mistrial.
+                    Pick {{ backup_slot }} sits in reserve and normally scores
+                    nothing. If one of your first {{ scoring_slots }} picks is ruled
+                    No Contest, your reserve takes its place, filling the
+                    earliest-kickoff cancelled pick. If more than one is cancelled,
+                    only that first one is replaced; the rest are scored as pushes. If
+                    the cancelled pick was your Headliner, the reserve inherits the
+                    double.
                 </p>
                 <p class="docket-article-copy">
-                    If your reserve's own case is thrown out, or you never filed one,
-                    every cancelled slot settles as a mistrial. A substitute inherits
-                    the headliner if the slot it fills carried it.
+                    No reserve, whether you never filed one or it was itself ruled No
+                    Contest? Then every cancelled pick that week is scored as a push.
                 </p>
             </section>
 
             <section class="docket-article" id="rules-standings">
                 <h2 class="docket-section-head">The ledger</h2>
                 <p class="docket-article-copy">
-                    Three keys, in order. Points decide it. Wins break a tie on
-                    points. The tiebreaker error breaks a tie on both, lowest first.
-                    Players level on all three share a rank.
+                    Your season standings, decided by three keys in order. Points
+                    decide it. Wins break a tie on points. The tiebreaker error breaks
+                    a tie on both, lowest first. Anyone level on all three shares a
+                    rank.
                 </p>
                 <dl class="docket-ruleset">
                     <div class="docket-ruleset-item">
                         <dt>Key 1, points</dt>
-                        <dd>The sum of your weeks, less your worst one. The drop
-                            starts once a second week is graded.</dd>
+                        <dd>The sum of your weekly points, minus your worst week. The
+                            drop starts once a second week is graded.</dd>
                     </div>
                     <div class="docket-ruleset-item">
                         <dt>Key 2, wins</dt>
-                        <dd>Winning picks. A doubled win counts once here. Never
-                            dropped.</dd>
+                        <dd>Your total winning picks. A Headliner win counts once
+                            here, not twice. Never dropped.</dd>
                     </div>
                     <div class="docket-ruleset-item">
                         <dt>Key 3, the error account</dt>
                         <dd>Your tiebreaker error added up across the whole season,
                             lowest first. Never dropped. The drop forgives points
-                            only, so a struck week keeps its wins and its error.</dd>
+                            only, so a dropped week still counts toward your wins and
+                            your error.</dd>
                     </div>
                 </dl>
             </section>
 
             <section class="docket-article" id="rules-tiebreaker">
-                <h2 class="docket-section-head">The number</h2>
+                <h2 class="docket-section-head">The tiebreaker</h2>
                 <p class="docket-article-copy">
-                    One case a week is designated, and everyone predicts its combined
-                    final score to a tenth. Your error is the distance from the real
-                    total, and it accumulates all season.
+                    One game a week is the designated tiebreaker, and everyone
+                    predicts its combined final score to the nearest tenth. Your error
+                    is the distance between your prediction and the real total: predict
+                    47.3 on a game that finishes 44, and your error is 3.3. It adds up
+                    all season.
                 </p>
                 <p class="docket-article-copy">
-                    Skip it and you are charged the designated case's posted total as
-                    your guess. That charge applies to every member every week,
-                    including weeks before you joined, so arriving late buys no
-                    advantage on this key.
+                    Skip it and you are charged the game's posted total as your
+                    prediction. That charge applies to everyone, every week, including
+                    weeks before you joined. Showing up late buys no advantage on this
+                    key.
                 </p>
             </section>
 
-            <section class="docket-article" id="rules-edges">
-                <h2 class="docket-section-head">Awkward cases</h2>
+            <section class="docket-article" id="rules-season">
+                <h2 class="docket-section-head">The season</h2>
                 <dl class="docket-ruleset">
                     <div class="docket-ruleset-item">
-                        <dt>Overtime</dt>
-                        <dd>Everything grades on the final score, overtime included:
-                            spreads, totals, and the tiebreaker number.</dd>
+                        <dt>How long</dt>
+                        <dd>The {{ docket_season_year }} season runs {{ total_weeks }}
+                            weeks, from college Week 1 through NFL Week 18, bowls and
+                            the early playoff rounds included. Weeks turn over Tuesday
+                            at 6:00 AM CT.</dd>
                     </div>
                     <div class="docket-ruleset-item">
-                        <dt>An NFL tie</dt>
-                        <dd>Graded normally against the number. A tie still beats a
-                            spread you were getting points on. On a pick'em, where
-                            the line is zero, a tie is a mistrial.</dd>
-                    </div>
-                    <div class="docket-ruleset-item">
-                        <dt>A case thrown out</dt>
-                        <dd>The Commissioner can rule a case No Contest, which is
-                            also what happens to a game postponed out of its week.
-                            Your reserve covers the first one; the rest settle as
-                            mistrials.</dd>
-                    </div>
-                    <div class="docket-ruleset-item">
-                        <dt>A bad line</dt>
-                        <dd>A line imported wrong can be corrected before the
-                            deadline and before that game kicks off, with a reason
-                            recorded. Everyone holding that market is told to
-                            re-decide. After the deadline it is not corrected; it
-                            resolves as a case thrown out.</dd>
-                    </div>
-                    <div class="docket-ruleset-item">
-                        <dt>The designated case dies</dt>
-                        <dd>Before the deadline, another is designated and the
-                            predictions reset to the new posted total. After the
-                            deadline, the week charges no error to anyone.</dd>
+                        <dt>Entry</dt>
+                        <dd>${{ docket_entry_fee }} per member, one entry each. How the
+                            pot is divided is the Commissioner's call.</dd>
                     </div>
                 </dl>
             </section>
 
-            <section class="docket-article" id="rules-lines">
-                <h2 class="docket-section-head">Where the lines come from</h2>
-                <p class="docket-article-copy">
-                    Lines are imported Tuesday morning and frozen. The first fetch
-                    that finds a posted market locks it; later runs only fill markets
-                    that were still empty. A locked line never moves again, and your
-                    pick is graded against the number shown when you made it.
-                </p>
-                <p class="docket-article-copy">
-                    Each market takes the first book on this list that has posted it,
-                    independently, so a game's spread and its total can come from
-                    different books. The book is recorded on the line and on your
-                    pick.
-                </p>
-                <ol class="docket-book-order">
-                    {% for book in bookmakers %}
-                    <li class="docket-book">{{ book }}</li>
-                    {% endfor %}
-                </ol>
+            <section class="docket-rules-fine" id="rules-fine">
+                <div class="docket-rules-fine-intro">
+                    <span class="docket-eyebrow docket-eyebrow-ink">The fine print</span>
+                    <p>The rest of the rules exist because eventually someone will ask.</p>
+                </div>
+
+                <section class="docket-article">
+                    <h2 class="docket-section-head">Overtime</h2>
+                    <p class="docket-article-copy">
+                        Final score means final score. Everything grades on it,
+                        overtime included: spreads, totals, and the tiebreaker number.
+                    </p>
+                </section>
+
+                <section class="docket-article">
+                    <h2 class="docket-section-head">An NFL tie</h2>
+                    <p class="docket-article-copy">
+                        Graded normally against the number. A tie still beats a spread
+                        you were getting points on. On a pick'em, where the line is
+                        zero, a tie is a push.
+                    </p>
+                </section>
+
+                <section class="docket-article">
+                    <h2 class="docket-section-head">A game thrown out</h2>
+                    <p class="docket-article-copy">
+                        The Commissioner can rule a game No Contest, which is also what
+                        happens to a game postponed out of its week. Your reserve
+                        covers the first cancelled pick; any others are scored as
+                        pushes.
+                    </p>
+                </section>
+
+                <section class="docket-article">
+                    <h2 class="docket-section-head">A bad line</h2>
+                    <p class="docket-article-copy">
+                        A line imported wrong can be corrected, but only before the
+                        deadline and before that game kicks off, with a reason
+                        recorded. Everyone holding that market is notified so they can
+                        decide again. After the deadline it is not corrected: the game
+                        is ruled No Contest instead, and the reserve and push rules
+                        above take over.
+                    </p>
+                </section>
+
+                <section class="docket-article">
+                    <h2 class="docket-section-head">The tiebreaker game is cancelled</h2>
+                    <p class="docket-article-copy">
+                        If the designated tiebreaker game is cancelled before the
+                        deadline, a new one is designated and everyone's predictions
+                        reset to the new posted total. If it is cancelled after the
+                        deadline, no one is charged an error that week.
+                    </p>
+                </section>
+
+                <section class="docket-article">
+                    <h2 class="docket-section-head">Where the lines come from</h2>
+                    <p class="docket-article-copy">
+                        Lines are imported Tuesday morning and then frozen. The first
+                        fetch that finds a posted market locks it; later runs only fill
+                        markets that were still empty. A locked line never moves again,
+                        and your pick is graded against the number shown when you made
+                        it.
+                    </p>
+                    <p class="docket-article-copy">
+                        Each market takes the first book below that has posted it, on
+                        its own, so a game's spread and its total can come from
+                        different books. The book is recorded on the line and on your
+                        pick.
+                    </p>
+                    <ol class="docket-book-order">
+                        {% for book in bookmakers %}
+                        <li class="docket-book">{{ book }}</li>
+                        {% endfor %}
+                    </ol>
+                </section>
+
+                <section class="docket-article">
+                    <h2 class="docket-section-head">The Commissioner has final say</h2>
+                    <p class="docket-article-copy">
+                        These rules cover the normal course of play and the obvious
+                        weirdness. For anything they don't, the Commissioner's ruling
+                        is final. The ledger is the record.
+                    </p>
+                </section>
             </section>
 
         </div>
