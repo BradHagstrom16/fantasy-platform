@@ -278,10 +278,11 @@ def admin_update_payment(user_id):
         return jsonify({'success': False,
                         'error': 'Enrollment not found'}), 404
     data = request.get_json(silent=True)
-    if not data:
+    if (not isinstance(data, dict)
+            or not isinstance(data.get('has_paid'), bool)):
         return jsonify({'success': False,
                         'error': 'Invalid request body'}), 400
-    has_paid = bool(data.get('has_paid', False))
+    has_paid = data['has_paid']
     enrollment.has_paid = has_paid
     db.session.commit()
     return jsonify({'success': True, 'has_paid': has_paid})

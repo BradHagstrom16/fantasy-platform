@@ -76,6 +76,20 @@ def test_toggle_400s_without_a_json_body(app, client):
     assert resp.status_code == 400
 
 
+def test_toggle_400s_unless_has_paid_is_a_real_boolean(app, client):
+    """A JSON string "false" is truthy and a list body has no .get() —
+    anything but {"has_paid": <bool>} is refused before mutating."""
+    member = make_user('member')
+    enrollment = make_enrollment(member)
+    _login_admin(client)
+    for body in ({}, {'has_paid': 'false'}, {'has_paid': 0},
+                 ['has_paid'], {'has_paid': None}):
+        resp = client.post(f'/docket/admin/update-payment/{member.id}',
+                           json=body)
+        assert resp.status_code == 400, body
+    assert db.session.get(DocketEnrollment, enrollment.id).has_paid is False
+
+
 def test_toggle_is_post_only(app, client):
     _login_admin(client)
     assert client.get('/docket/admin/update-payment/1').status_code == 405
