@@ -57,20 +57,55 @@ def test_no_gold_seal_or_bone_outline_on_lounge_panel_buttons(path):
     )
 
 
-def test_every_named_panel_action_is_a_solid_hl_cta():
-    """Positive lock: the primary/convert CTAs the design review named carry
-    the bare solid `.hl-cta`, so a silent downgrade to a text link, a gold
-    seal, or a room class is caught. (`class="hl-cta"` matches the solid
-    fill only; the HELD `class="hl-cta hl-cta--outline"` does not, by
-    design.)"""
-    solid = 'class="hl-cta"'
-    assert solid in _markup(CFB_LOUNGE / '_decree.html')      # Enter the Room + Take Your Two Lives
-    assert solid in _markup(CFB_LOUNGE / '_summons.html')     # Choose Team (OPEN)
-    assert solid in _markup(CFB_LOUNGE / '_view_cta.html')    # Take Your Two Lives (live view)
-    assert solid in _markup(CFB_LOUNGE / '_conv_card.html')   # Join Survivor
-    assert solid in _markup(DOCKET_LOUNGE / '_panel_pre.html')   # Enter the Court + Take the Oath
-    assert solid in _markup(DOCKET_LOUNGE / '_panel_live.html')  # Open Your Sheet + Join the Docket
-    assert solid in _markup(DOCKET_LOUNGE / '_conv_card.html')   # Join the Docket
+def _anchor_class_for_label(markup: str, label: str) -> str | None:
+    """Return the `class` attribute of the <a> element whose visible text
+    contains `label`, or None if no anchor wraps it. Anchors don't nest, so
+    a non-greedy `.*?</a>` correctly bounds each element (inner <i> icons and
+    newlines included)."""
+    for m in re.finditer(r'<a\b([^>]*)>(.*?)</a>', markup, re.S):
+        attrs, inner = m.group(1), m.group(2)
+        if label in inner:
+            cls = re.search(r'class="([^"]*)"', attrs)
+            return cls.group(1) if cls else ''
+    return None
+
+
+# Each primary/convert CTA the design review named, paired with the panel it
+# lives in. Every one must be the bare solid `.hl-cta` (ADR-052). Anchored per
+# label so a downgrade of ONE CTA (e.g. to the accent outline, or a room class)
+# cannot be masked by a sibling CTA in the same file keeping the solid class.
+NAMED_SOLID_CTAS = [
+    (CFB_LOUNGE / '_decree.html', 'Enter the Room'),        # enrolled
+    (CFB_LOUNGE / '_decree.html', 'Take Your Two Lives'),   # unenrolled join
+    (CFB_LOUNGE / '_summons.html', 'Choose Team'),          # live OPEN pick
+    (CFB_LOUNGE / '_view_cta.html', 'Take Your Two Lives'),  # live visitor convert
+    (CFB_LOUNGE / '_conv_card.html', 'Join Survivor'),      # anonymous convert
+    (DOCKET_LOUNGE / '_panel_pre.html', 'Enter the Court'),  # enrolled
+    (DOCKET_LOUNGE / '_panel_pre.html', 'Take the Oath'),   # unenrolled join
+    (DOCKET_LOUNGE / '_panel_live.html', 'Open Your Sheet'),  # live member
+    (DOCKET_LOUNGE / '_panel_live.html', 'Join the Docket'),  # live visitor convert
+    (DOCKET_LOUNGE / '_conv_card.html', 'Join the Docket'),  # anonymous convert
+]
+
+
+@pytest.mark.parametrize(
+    'path,label', NAMED_SOLID_CTAS,
+    ids=lambda v: v if isinstance(v, str) else v.name,
+)
+def test_each_named_panel_action_is_a_solid_hl_cta(path, label):
+    """Positive lock, per CTA: each named primary/convert action is its own
+    <a> element carrying the bare solid `class="hl-cta"` — not a gold seal, a
+    room class, an accent outline, or a text link. Anchoring by visible label
+    means a regression in one CTA can't hide behind another. The HELD "Review
+    Pick" accent outline is intentionally excluded here and locked separately
+    below."""
+    cls = _anchor_class_for_label(_markup(path), label)
+    assert cls is not None, f'{path.name}: no <a> element wraps {label!r}'
+    assert cls == 'hl-cta', (
+        f'{path.name}: {label!r} carries class="{cls}", expected the bare '
+        'solid "hl-cta" (ADR-052). An outline, gold seal, or route link here '
+        'breaks cross-state CTA parity.'
+    )
 
 
 def test_the_only_accent_outline_is_the_cfb_held_review():
