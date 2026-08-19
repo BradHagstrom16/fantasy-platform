@@ -20,44 +20,45 @@
                     <span class="docket-eyebrow docket-eyebrow-ink">How the court works</span>
                     <dl class="docket-ruleset">
                         <div class="docket-ruleset-item">
-                            <dt>Eight sides a week</dt>
-                            <dd>Any mix of college and pro: a spread side or an
-                                Over/Under, against lines frozen Tuesday morning.
-                                Win 1, mistrial (push) half, loss 0.</dd>
+                            <dt>Pick 8</dt>
+                            <dd>Every week, pick <strong>8 sides</strong> from
+                                college or pro. Spreads and totals are both
+                                fair game. A win is worth 1 point. A push is
+                                worth ½. A loss is worth 0.</dd>
                         </div>
                         <div class="docket-ruleset-item">
-                            <dt>One headliner</dt>
-                            <dd>Name your best pick each week. It scores double.</dd>
+                            <dt>Double your best</dt>
+                            <dd>Choose <strong>one of your 8</strong> as your
+                                <strong>Headliner</strong>. It scores double.
+                                Think you're right? Put a little more on it.</dd>
                         </div>
                         <div class="docket-ruleset-item">
-                            <dt>One in reserve</dt>
-                            <dd>An optional ninth side that substitutes if one of
-                                your cases is thrown out.</dd>
+                            <dt>Break the tie</dt>
+                            <dd>Each week, everyone predicts the final combined
+                                score of one designated game. Closest overall
+                                prediction wins the tiebreaker at season's
+                                end.</dd>
                         </div>
                         <div class="docket-ruleset-item">
-                            <dt>The number</dt>
-                            <dd>Predict the combined score of the week's
-                                designated game, to the tenth. Your season error
-                                is the last tiebreaker, and it never resets.</dd>
-                        </div>
-                        <div class="docket-ruleset-item">
-                            <dt>The season ledger</dt>
-                            <dd>Points, then wins, then the number. Your single
-                                worst week is stricken from the record.</dd>
-                        </div>
-                        <div class="docket-ruleset-item">
-                            <dt>Deadlines</dt>
-                            <dd>Sheets close Saturdays at 11:00 AM CT; each game
-                                locks at its own kickoff.</dd>
+                            <dt>That's the game</dt>
+                            <dd>Your worst week is dropped. The standings are
+                                decided by points, then wins, then the
+                                tiebreaker.</dd>
                         </div>
                     </dl>
 
+                    <p>Picks lock <strong>Saturday at 11:00 AM CT</strong>,
+                        with individual games locking at kickoff. The finer
+                        points live in
+                        <a href="{{ url_for('docket.rules') }}">the rules</a>.</p>
+
                     <form method="POST">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                        <p class="docket-join-entry">{{ docket_season_year }} season.
-                            <strong>${{ docket_entry_fee }}</strong> to enter the pool.</p>
+                        <p class="docket-join-entry"><strong>{{ docket_season_year }}
+                            entry: ${{ docket_entry_fee }}.</strong>
+                            One entry per member.</p>
                         <div class="mb-4">
-                            <label for="display_name" class="form-label">Name on the docket (optional)</label>
+                            <label for="display_name" class="form-label">Display name on the docket leaderboard (optional)</label>
                             <input type="text" class="form-control" id="display_name"
                                    name="display_name" maxlength="80"
                                    placeholder="{{ current_user.username }}">

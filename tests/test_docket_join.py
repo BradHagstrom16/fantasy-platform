@@ -34,6 +34,28 @@ def test_docket_join_open_renders_form(app, client):
     assert b'display_name' in resp.data
 
 
+def test_docket_join_states_the_game_in_four_beats(app, client):
+    """The 2026-08-19 simplification: the enrollment page has one job — get
+    someone to understand the game well enough to confidently click Join.
+    Contingencies (the reserve, No Contest, tenths) live on the rules page,
+    which this page links instead of restating."""
+    user = make_user('joiner')
+    db.session.commit()
+    login(client, user)
+    data = client.get('/docket/join').data.decode()
+    for beat in ('Pick 8', 'Double your best', 'Break the tie',
+                 "That's the game"):
+        assert beat in data, beat
+    assert 'Saturday at 11:00 AM CT' in data
+    fee = app.config['DOCKET_ENTRY_FEE']
+    assert f'${fee}' in data
+    assert 'One entry per member' in data
+    assert '/docket/rules' in data
+    # The simplification lock: fine-print vocabulary stays off this page.
+    assert 'reserve' not in data
+    assert 'tenth' not in data
+
+
 def test_docket_join_post_creates_enrollment(app, client):
     user = make_user('joiner')
     db.session.commit()
