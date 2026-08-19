@@ -132,6 +132,9 @@ def test_out_cards_each_wear_their_own_identity(app, client):
     assert 'The Docket' in docket_card
     assert 'CFB Survivor' not in docket_card
     assert 'frozen lines' in docket_card.lower()
+    # Genre line for the cold visitor (design review 2026-08-18): the name
+    # alone doesn't say pick 'em.
+    assert 'Weekly pick &rsquo;em across college football and the NFL' in docket_card
 
 
 def test_out_bill_pairs_two_cards_at_the_seam(app, client):
@@ -142,6 +145,8 @@ def test_out_bill_pairs_two_cards_at_the_seam(app, client):
     assert text.count('class="join hl-conv') == 2
     assert text.count('hl-cta"') == 2
     assert text.count('hl-signin') == 1
+    # The first-time bridge sits above the bill while joining is open.
+    assert 'Two games on the card. Play one, or play both.' in text
 
 
 def test_out_after_window_keeps_both_cards_without_asks(app, client):
@@ -153,6 +158,45 @@ def test_out_after_window_keeps_both_cards_without_asks(app, client):
     assert 'hl-cta"' not in text
     assert 'hl-signin' in text
     assert 'hl-conv-closed' in text
+    # The bridge instruction retires with the asks (ADR-050).
+    assert 'Play one, or play both.' not in text
+
+
+def test_out_cards_hide_subfloor_roster_counts(app, client):
+    """Design review 2026-08-18: a 1-member roster never shows its count
+    on the bill — the count lines wait for the floor."""
+    with app.app_context():
+        user = _make_user('lonelyjoiner')
+        _enroll_cfb(user)
+        docket_enrollment.admin_enroll(user.id)
+    with patch.dict(os.environ, DUAL_PRE):
+        text = client.get('/').get_data(as_text=True)
+    assert 'in the club' not in text
+    assert 'sworn to the roster' not in text
+
+
+def test_out_cards_show_roster_counts_at_floor(app, client):
+    from games.cfb.services.lounge import ROSTER_COUNT_FLOOR
+    with app.app_context():
+        for i in range(ROSTER_COUNT_FLOOR):
+            user = _make_user(f'floorfiller{i}')
+            _enroll_cfb(user)
+            docket_enrollment.admin_enroll(user.id)
+    with patch.dict(os.environ, DUAL_PRE):
+        text = client.get('/').get_data(as_text=True)
+    assert f'{ROSTER_COUNT_FLOOR}</span> competitors in the club' in text
+    assert f'{ROSTER_COUNT_FLOOR}</span> sworn to the roster' in text
+
+
+def test_both_games_share_one_roster_count_floor():
+    """Same shape as the shared-deadline invariant below: the two floors
+    are 'the same value by construction', so lock the equality. Equality
+    alone would still pass if both sides were changed to any matching value
+    (0 would silently defeat the floor), so pin the ADR-051 magnitude too."""
+    from games.cfb.services import lounge as cfb_lounge
+    from games.docket.services import lounge as docket_lounge
+    assert cfb_lounge.ROSTER_COUNT_FLOOR == docket_lounge.ROSTER_COUNT_FLOOR
+    assert cfb_lounge.ROSTER_COUNT_FLOOR == 6
 
 
 def test_every_panel_mode_headliner_ships_conv_card_and_panels():
@@ -183,6 +227,12 @@ def test_authed_joined_neither_sees_both_join_paths(app, client):
     assert 'Take the Oath' in text                # Docket pre join ask
     assert 'Enter the Room' not in text
     assert 'Enter the Court' not in text
+    # First-time framing (design review 2026-08-18): the door answer for
+    # a joined-nothing viewer, plus the docket join echo under the oath.
+    assert 'Welcome to the club,' in text
+    assert 'Two games on the card. Play one, or play both.' in text
+    assert 'The club reconvenes,' not in text
+    assert 'Join the Docket. One sheet a week, all season.' in text
 
 
 def test_authed_cfb_member_sees_enter_cfb_join_docket(app, client):
@@ -226,6 +276,26 @@ def test_authed_joined_both_sees_two_personal_panels(app, client):
     assert 'Enter the Court' in text
     assert 'Take Your Two Lives' not in text
     assert 'Take the Oath' not in text
+    # Members keep the member greet.
+    assert 'The club reconvenes,' in text
+    assert 'Welcome to the club,' not in text
+
+
+def test_authed_joined_neither_after_window_keeps_member_greet(app, client):
+    """Post-window a joined-nothing viewer can no longer act on 'Choose
+    Your Games', so the welcome variant retires with the asks and the
+    season-status greet returns (no CTA, no echo)."""
+    with app.app_context():
+        auth_id = _make_user('lateneither').auth_id
+    _login(client, auth_id)
+    with patch.dict(os.environ, WINDOW_CLOSED):
+        text = client.get('/').get_data(as_text=True)
+    assert 'Welcome to the club,' not in text
+    # Docket is live on Sep 6, so the aggregate greet is the live one.
+    assert 'The club plays on,' in text
+    assert 'Play one, or play both.' not in text
+    assert 'Join the Docket. One sheet a week, all season.' not in text
+    assert 'hl-cta"' not in text
 
 
 def test_authed_cfb_member_after_window_sees_only_cfb(app, client):
@@ -242,6 +312,9 @@ def test_authed_cfb_member_after_window_sees_only_cfb(app, client):
     assert 'hl-panel--docket' not in text
     assert 'The Docket' not in text.split('court-games')[0].split('hl-panel--cfb')[1]
     assert 'hl-duo--paired' not in text
+    # No WC archive seeded here: the shell's ledger strip stays absent
+    # rather than rendering a broken line.
+    assert 'farewell-strip' not in text
 
 
 # == shared sections under the composite ====================================
@@ -300,6 +373,46 @@ def test_panel_include_sees_loop_local_headliner(app, client):
     assert 'The first docket posts Tuesday, September 1.' in docket_panel
     assert 'Sheets due Saturdays' in docket_panel  # docket court_line
     assert 'Sheets due Saturdays' not in cfb_panel
+
+
+def test_panel_headers_bill_full_game_names(app, client):
+    """Design review 2026-08-18: panel headers name the game for a cold
+    viewer — the registry lounge_label ('CFB Survivor', 'The Docket ·
+    Pick ’Em'), never the bare navbar short names."""
+    with app.app_context():
+        auth_id = _make_user('coldreader').auth_id
+    _login(client, auth_id)
+    with patch.dict(os.environ, DUAL_PRE):
+        text = client.get('/').get_data(as_text=True)
+    cfb_panel = text[text.index('hl-panel--cfb'):text.index('hl-panel--docket')]
+    docket_panel = text[text.index('hl-panel--docket'):]
+    assert 'hl-panel-name">CFB Survivor</span>' in cfb_panel
+    assert 'hl-panel-name">The Docket · Pick ’Em</span>' in docket_panel
+    # The bare short names must be gone from every panel header.
+    assert 'hl-panel-name">CFB</span>' not in text
+    assert 'hl-panel-name">Docket</span>' not in text
+
+
+def test_both_headliners_carry_the_commish_decree(app, client):
+    """Design review 2026-08-18: both games are decrees of the Commish.
+    Per-era numbering (WC No 001, CFB No 002, Docket No 003); the docket
+    band is the seal only — no CFB copy leaks in, and the gold CTA budget
+    stays at two (the docket keeps its garnet .hl-cta)."""
+    with app.app_context():
+        auth_id = _make_user('decreewatch').auth_id
+    _login(client, auth_id)
+    with patch.dict(os.environ, DUAL_PRE):
+        text = client.get('/').get_data(as_text=True)
+    cfb_panel = text[text.index('hl-panel--cfb'):text.index('hl-panel--docket')]
+    docket_panel = text[text.index('hl-panel--docket'):]
+    assert 'By Decree of the Commish' in cfb_panel
+    assert 'No 002' in cfb_panel
+    assert 'By Decree of the Commish' in docket_panel
+    assert 'No 003' in docket_panel
+    assert 'The Docket &rsquo;26' in docket_panel
+    assert 'First Pick Locks In' not in docket_panel
+    assert 'No 003' not in cfb_panel
+    assert 'cta-seal' not in docket_panel
 
 
 def test_docket_lounge_module_never_imports_writers():

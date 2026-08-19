@@ -148,6 +148,18 @@ def build_home_context(user: Any, state: str | None, headliners=None) -> dict:
                     seen.add(tile['endpoint'])
                     tiles.append(tile)
         ctx['archived_tiles'] = tiles
+        # The season ledger strip (C1 3.5, restored to full width by the
+        # 2026-08-18 design review): the first headliner supplying a
+        # farewell dict names the club's archive record; the shell renders
+        # it once, outside any panel. Same defensive shape rule as the
+        # tiles — a malformed game value must not break the shell.
+        ledger = None
+        for h in built:
+            farewell = h.ctx.get('farewell')
+            if isinstance(farewell, dict) and farewell.get('endpoint'):
+                ledger = farewell
+                break
+        ctx['ledger'] = ledger
 
     # The second bill (D21-eng): open games that are not headliners, each
     # paired with this viewer's enrollment. Assigned AFTER the overlay /

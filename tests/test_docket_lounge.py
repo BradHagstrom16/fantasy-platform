@@ -75,7 +75,9 @@ def test_context_out_counts_enrollments(app, monkeypatch):
         make_enrollment(make_user('clerk1'))
         make_enrollment(make_user('clerk2'))
         ctx = lounge.build_lounge_context(None, None)
-    assert ctx == {'total_enrolled': 2}
+    # roster_count is the floor-gated display count (ADR-051): 0 below
+    # ROSTER_COUNT_FLOOR so the bill hides a tiny pre-launch roster.
+    assert ctx == {'total_enrolled': 2, 'roster_count': 0}
 
 
 def test_context_pre_first_deadline_line(app, monkeypatch):

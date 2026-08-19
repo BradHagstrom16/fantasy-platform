@@ -9,9 +9,12 @@
 <div class="join hl-conv join--cfb">
   <div class="join-head">
     <div class="seal">◇ Open Court &middot; CFB Survivor &rsquo;26</div>
-    {% if g.total_enrolled > 0 %}
+    {# roster_count is the floor-gated display count (design review
+       2026-08-18): 0 below the floor, so a tiny pre-launch roster never
+       reads as a dead pool. #}
+    {% if g.roster_count > 0 %}
     <div class="count">
-      <span class="v">{{ g.total_enrolled }}</span> competitor{{ '' if g.total_enrolled == 1 else 's' }} in the club
+      <span class="v">{{ g.roster_count }}</span> competitor{{ '' if g.roster_count == 1 else 's' }} in the club
     </div>
     {% endif %}
   </div>

@@ -60,7 +60,16 @@ def register_context_processors(app):
             # DB session may be in a bad state when the navbar renders during
             # 500-page handling — degrade to empty nav rather than re-500.
             games = []
-        return {'nav_games': games}
+        # Navbar split (design review 2026-08-18): the top-bar switcher
+        # carries active games only; a completed game moves to the account
+        # dropdown's Archive section for its members. joined_games itself
+        # still returns completed entries — the archive-reachability
+        # contract lives at the registry seam (test_registry_seam), and
+        # this split is navbar presentation only.
+        return {
+            'nav_games': [g for g in games if g.status != 'completed'],
+            'nav_archived': [g for g in games if g.status == 'completed'],
+        }
 
     @app.context_processor
     def inject_asset_version():

@@ -258,14 +258,28 @@ def test_context_pre_enrolled_viewer(app):
         assert ctx['enrollment'].id == enrollment.id
 
 
-def test_context_pre_court_line(app):
+def test_context_pre_court_line_below_roster_floor(app):
+    """Design review 2026-08-18: below the roster floor the raw count
+    reads as a dead pool, so the calendar carries the line alone."""
     from games.cfb.services.lounge import build_lounge_context
     with app.app_context():
         user = _make_user()
         _seed_cfb_field([(2, False), (2, False)])
         with patch.dict(os.environ, PRE_ANCHOR):
             ctx = build_lounge_context(user, 'pre')
-    assert ctx['court_line'] == 'Tuesday · 2 enrolled · first kickoff in 16 days'
+    assert ctx['court_line'] == 'Tuesday · first kickoff in 16 days'
+
+
+def test_context_pre_court_line_at_roster_floor(app):
+    from games.cfb.services.lounge import ROSTER_COUNT_FLOOR, build_lounge_context
+    with app.app_context():
+        user = _make_user()
+        _seed_cfb_field([(2, False)] * ROSTER_COUNT_FLOOR)
+        with patch.dict(os.environ, PRE_ANCHOR):
+            ctx = build_lounge_context(user, 'pre')
+    assert ctx['court_line'] == (
+        f'Tuesday · {ROSTER_COUNT_FLOOR} enrolled · first kickoff in 16 days'
+    )
 
 
 def test_context_pre_decree_uses_week1_db_deadline(app):
@@ -305,6 +319,9 @@ def test_context_pre_farewell_from_frozen_wc_data(app):
         'Spain took the Cup. The Commish took the pool.'
     )
     assert ctx['farewell']['finish'] == 'You finished 2nd of 3 · 250.0 pts'
+    # The shell's ledger strip routes through this key (registry-generic
+    # lift in home_context — the shell never names a game).
+    assert ctx['farewell']['endpoint'] == 'worldcup.index'
     assert len(ctx['archived_tiles']) == 1
     assert ctx['archived_tiles'][0]['label'] == '2026 · ESP Won · You 2nd'
     assert ctx['archived_tiles'][0]['endpoint'] == 'worldcup.index'
@@ -1027,7 +1044,13 @@ def test_cfb_pre_shell_renders_for_unenrolled_viewer(app, client, monkeypatch):
     assert resp.status_code == 200
     text = resp.get_data(as_text=True)
     assert 'home-shell--pre' in text
-    assert 'The Season' in text and 'Opens' in text
+    # First-time framing (design review 2026-08-18): a joined-nothing
+    # viewer gets the door answer, not the member season greet.
+    assert 'Welcome to the club,' in text
+    assert 'Choose Your' in text
+    assert 'Two games on the card. Play one, or play both.' in text
+    assert 'The Season' not in text
+    assert 'The club reconvenes,' not in text
     assert 'No 002' in text
     assert 'First Pick Locks In' in text
     assert 'Take Your Two Lives' in text
@@ -1045,13 +1068,39 @@ def test_cfb_pre_shell_enrolled_viewer_gets_room_cta(app, client, monkeypatch):
     with patch.dict(os.environ, PRE_ANCHOR):
         resp = client.get('/')
     text = resp.get_data(as_text=True)
+    # Members keep the season-status greet (the welcome variant is the
+    # joined-nothing viewer's only).
+    assert 'The Season' in text and 'Opens' in text
+    assert 'Welcome to the club,' not in text
     assert 'Enter the Room' in text
     assert 'Take Your Two Lives' not in text
-    # Farewell strip (pre-state only, C1 ruling 4) + archived WC tile
+    # Farewell ledger (pre-state only, C1 ruling 4) + archived WC tile
     assert 'Spain took the Cup. The Commish took the pool.' in text
     assert 'Visit the archive' in text
     assert 'cg--archived' in text
     assert '2026 · ESP Won · You 2nd' in text
+    # Full-width restoration (design review 2026-08-18): the strip is the
+    # shell's, rendered after every panel closes — never a panel interior.
+    strip_idx = text.index('farewell-strip')
+    assert strip_idx > text.index('hl-panel--cfb')
+    assert 'hl-panel' not in text[strip_idx:]
+
+
+def test_ledger_strip_is_shell_owned_not_panel_interior():
+    """Design review 2026-08-18: the season ledger is the club's record,
+    rendered by the shell's full-width main/_lounge_ledger.html — the CFB
+    panel no longer carries it, and the shell include is what keeps it on
+    the page (C1 §3.5's own word: full-width)."""
+    from pathlib import Path
+    repo = Path(__file__).resolve().parents[1]
+    panel = (repo / 'games' / 'cfb' / 'templates' / 'cfb' / 'lounge'
+             / '_panel_pre.html').read_text()
+    assert 'farewell' not in panel
+    shell = (repo / 'core' / 'main' / 'templates' / 'main'
+             / '_lounge_composite.html').read_text()
+    assert "_lounge_ledger.html" in shell
+    assert not (repo / 'games' / 'cfb' / 'templates' / 'cfb' / 'lounge'
+                / '_farewell_strip.html').exists()
 
 
 def test_cfb_out_shell_copy_pass(app, client, monkeypatch):
@@ -1075,6 +1124,8 @@ def test_cfb_out_shell_copy_pass(app, client, monkeypatch):
     # Golf still on the docket; the finished WC pool is a members' surface
     assert 'Golf' in text
     assert 'World Cup' not in text
+    # The season ledger is an authed surface; the logged-out bill omits it.
+    assert 'farewell-strip' not in text
 
 
 def test_cfb_live_open_shell_renders(app, client, monkeypatch):
@@ -1094,6 +1145,8 @@ def test_cfb_live_open_shell_renders(app, client, monkeypatch):
     # Shell greet is platform-owned under the composite ('Court Is In
     # Session'); the game copy lives in the panel below.
     assert 'In Session' in text
+    # C1 ruling 4: the season ledger retires when CFB leaves pre.
+    assert 'farewell-strip' not in text
     assert 'The Summons' in text
     assert 'You have not made a pick.' in text
     assert 'Choose Team' in text

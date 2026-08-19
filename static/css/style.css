@@ -1021,6 +1021,19 @@ body.game-golf {
   margin: 1.5rem auto 0;
   max-width: 480px;
 }
+/* First-time bridge (design review 2026-08-18): the one instruction a
+   cold visitor needs before the bill — choose your games. Informational
+   ◇ register; retires with the join window (ADR-050). */
+.home-shell .out-bridge {
+  font-family: var(--font-teko);
+  font-weight: 500;
+  font-size: .95rem;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--bone-dim);
+  text-align: center;
+  margin: 0 0 1.1rem;
+}
 
 /* --- Logged-out: value props ---
    design/home-out-polish: dropped the S4.1.2 PI-4 differentiated gutter
@@ -1377,6 +1390,16 @@ body.game-golf {
   color: rgba(242,211,107,.5);
   margin: 0 0.4rem;
 }
+/* First-time greet instruction (design review 2026-08-18): the one line
+   under CHOOSE YOUR GAMES for a joined-nothing viewer. Newsreader voice,
+   a step brighter than the court line because it is the actionable ask. */
+.home-shell .greet-sub {
+  font-family: var(--font-news);
+  font-style: italic;
+  font-size: 0.95rem;
+  color: var(--bone-dim);
+  margin: 0.75rem 0 0;
+}
 
 /* --- Pre-state: countdown card.
    S4.1.2 PI-3 — Ceremonial recipe lock. Border opacity normalized from
@@ -1408,10 +1431,18 @@ body.game-golf {
 .home-shell .decree-seal {
   display: flex;
   justify-content: space-between;
+  /* Narrow panels: the band wraps BETWEEN its two phrases, never inside
+     them — each .s stays intact (mobile decree legibility, ADR-051). */
+  flex-wrap: wrap;
+  column-gap: 1rem;
+  row-gap: .1rem;
   padding: 0.75rem 1rem;
   border-bottom: 1px dashed rgba(201,162,39,.25);
   position: relative;
   z-index: 1;
+}
+.home-shell .decree-seal .s {
+  white-space: nowrap;
 }
 .home-shell .decree-seal .s {
   font-family: var(--font-teko);
@@ -4093,6 +4124,18 @@ body.game-golf {
   text-transform: uppercase;
   color: var(--bone-mute);
   margin: .5rem 0 .2rem;
+}
+/* Genre line under a conversion-card title (the cold visitor's one-line
+   answer to "what is this game?"). Same voice as the meta line, seated
+   directly under the title. */
+.home-shell .hl-conv-sub {
+  font-family: var(--font-teko);
+  font-weight: 500;
+  font-size: .92rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--bone-mute);
+  margin: .1rem 0 .5rem;
 }
 .home-shell .hl-conv-closed {
   font-family: var(--font-news);
@@ -9256,6 +9299,20 @@ main { flex: 1; }
   letter-spacing: .04em;
   padding: .55rem 1.2rem;
   transition: background var(--transition), color var(--transition), padding-left var(--transition);
+}
+
+/* Section caption inside the account dropdown (The Archive — design
+   review 2026-08-18). Bootstrap ships no themed .dropdown-header on
+   this dark menu; caption voice, aligned to the item padding. */
+.navbar .dropdown-header {
+  display: block;
+  font-family: 'Teko', sans-serif;
+  font-weight: 500;
+  font-size: .8rem;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,.55);
+  padding: .45rem 1.2rem .15rem;
 }
 
 /* Keyboard focus must match the mouse-hover gold treatment. Without `:focus`

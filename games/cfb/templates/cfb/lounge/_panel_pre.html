@@ -1,18 +1,15 @@
 {# CFB pre-season headliner panel (multi-featured shell). The shell owns
-   the greet/tiles/second-bill/commish; this panel is CFB's column on the
-   bill: identity head, the preseason decree, the WC farewell strip.
-   `h` is the shell's loop-local headliner; `g` is CFB's own context and
-   is visible to every interior include below. #}
+   the greet/tiles/second-bill/commish (and, since 2026-08-18, the season
+   ledger strip); this panel is CFB's column on the bill: identity head
+   plus the preseason decree. `h` is the shell's loop-local headliner;
+   `g` is CFB's own context and is visible to every interior include. #}
 {% set g = h.ctx %}
 <section class="hl-panel hl-panel--cfb" aria-label="CFB Survivor">
   <header class="hl-panel-head">
     <span class="hl-panel-mark" aria-hidden="true">{{ h.entry.emoji }}</span>
-    <span class="hl-panel-name">{{ h.entry.short_name or h.entry.display_name }}</span>
+    <span class="hl-panel-name">{{ h.entry.lounge_label or h.entry.short_name or h.entry.display_name }}</span>
     <span class="hl-panel-court">{{ g.court_line }}</span>
   </header>
 
   {% include 'cfb/lounge/_decree.html' %}
-
-  {# The farewell ledger strip — WC archive, pre-state only #}
-  {% include 'cfb/lounge/_farewell_strip.html' %}
 </section>

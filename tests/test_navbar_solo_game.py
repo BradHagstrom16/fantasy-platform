@@ -1,15 +1,22 @@
-"""Navbar solo-game hoist + full mobile lockup (mobile top-bar redesign).
+"""Navbar solo-game hoist + full mobile lockup (mobile top-bar redesign),
+plus the archive split (design review 2026-08-18).
 
-While a user's enrolled-game count == 1, the game switcher hoists out of the
-hamburger into the visible bar (`.navbar-solo-game`, below-lg only) and the
-collapse copy hides below lg (`d-none d-lg-block`) so the link appears exactly
-once per breakpoint. The brand wordmark renders at all widths (the CSS
-≤350px fallback hides it; the template no longer gates it at `d-md-inline`).
+While a user's ACTIVE enrolled-game count == 1, the game switcher hoists out
+of the hamburger into the visible bar (`.navbar-solo-game`, below-lg only)
+and the collapse copy hides below lg (`d-none d-lg-block`) so the link
+appears exactly once per breakpoint. A completed game (World Cup) leaves the
+switcher entirely and lives in the account dropdown's Archive section for
+its members — `joined_games()` still returns it (registry archive contract);
+the split happens in the nav context processor. The brand wordmark renders
+at all widths (the CSS ≤350px fallback hides it; the template no longer
+gates it at `d-md-inline`).
 """
 import pytest
 
 from app import create_app
 from extensions import db
+from games.cfb.services.enrollment import admin_enroll as cfb_admin_enroll
+from games.docket.services.enrollment import admin_enroll as docket_admin_enroll
 from tests._worldcup_fixtures import make_enrollment, make_user
 
 
@@ -41,8 +48,16 @@ def _login(client, user):
 
 
 def _enrolled_user(email='solo@test'):
-    """Create a user joined to exactly one game (World Cup) — the hoist case."""
+    """Create a user joined to exactly one ACTIVE game (CFB) — the hoist case."""
     u = make_user(email=email, display_name='Solo')
+    db.session.commit()
+    cfb_admin_enroll(u.id)
+    return u
+
+
+def _wc_archived_user(email='archivist@test'):
+    """Create a user whose only membership is the completed World Cup."""
+    u = make_user(email=email, display_name='Archivist')
     make_enrollment(u, picks_submitted=True)
     db.session.commit()
     return u
@@ -56,8 +71,8 @@ def test_solo_game_link_hoisted_into_bar(app, client):
     assert 'navbar-solo-game' in html
     solo = _tag_containing(html, 'navbar-solo-game')
     assert 'd-lg-none' in solo
-    assert '/worldcup' in solo
-    assert 'World Cup' in html
+    assert '/cfb' in solo
+    assert 'CFB' in html
 
 
 def test_solo_game_collapse_copy_hidden_below_lg(app, client):
@@ -88,10 +103,9 @@ def test_logged_in_zero_enrollments_gets_no_solo_game_link(app, client):
 
 
 def test_two_enrollments_fall_back_to_dropdown(app, client):
-    """2+ joined games ⇒ no hoist; both collapse items render unhidden."""
+    """2+ joined ACTIVE games ⇒ no hoist; both collapse items render unhidden."""
     u = _enrolled_user()
-    from games.cfb.services.enrollment import admin_enroll as cfb_enroll
-    cfb_enroll(u.id)
+    docket_admin_enroll(u.id)
     _login(client, u)
     html = client.get('/').get_data(as_text=True)
     assert 'navbar-solo-game' not in html
@@ -112,9 +126,58 @@ def test_solo_game_link_active_on_game_pages(app, client):
     """On the game's own blueprint the hoisted link carries the gold .active."""
     u = _enrolled_user()
     _login(client, u)
-    html = client.get('/worldcup/rules').get_data(as_text=True)
+    html = client.get('/cfb/history').get_data(as_text=True)
     solo = _tag_containing(html, 'navbar-solo-game')
     assert 'active' in solo
+
+
+# ── the archive split (design review 2026-08-18) ─────────────────────────
+
+def _nav_section(html):
+    start = html.find('navbar-nav me-auto')
+    return html[start:html.find('</ul>', start)]
+
+
+def _dropdown_section(html):
+    start = html.find('dropdown-menu')
+    return html[start:html.find('</ul>', start)]
+
+
+def test_completed_game_moves_to_the_archive_dropdown(app, client):
+    """A WC member's link leaves the switcher and lands in the account
+    dropdown under The Archive — same audience as before, new address."""
+    u = _wc_archived_user()
+    _login(client, u)
+    html = client.get('/').get_data(as_text=True)
+    assert 'World Cup' not in _nav_section(html)
+    dd = _dropdown_section(html)
+    assert 'The Archive' in dd
+    assert 'World Cup' in dd
+    assert '/worldcup' in dd
+
+
+def test_archived_game_never_hoists_solo(app, client):
+    """A WC-only member has zero ACTIVE games: no hoist, archive only."""
+    u = _wc_archived_user(email='wconly@test')
+    _login(client, u)
+    html = client.get('/').get_data(as_text=True)
+    assert 'navbar-solo-game' not in html
+    assert 'The Archive' in html
+
+
+def test_no_archive_section_without_archived_membership(app, client):
+    """A CFB-only member gets no Archive section — the dropdown stays
+    member-gated exactly like the old navbar link."""
+    u = _enrolled_user(email='cfbonly@test')
+    _login(client, u)
+    html = client.get('/').get_data(as_text=True)
+    assert 'The Archive' not in html
+    assert 'dropdown-header' not in html
+
+
+def test_anonymous_gets_no_archive_section(app, client):
+    html = client.get('/').get_data(as_text=True)
+    assert 'The Archive' not in html
 
 
 def _tag_containing(html, needle, tag='a'):

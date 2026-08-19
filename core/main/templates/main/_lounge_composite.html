@@ -14,9 +14,12 @@
   'post': ('The ledger closes,',   'The',        'Final Word'),
 } %}
 {% set _g = _greets[state] %}
+{% set _member = headliners | selectattr('enrollment') | list | length > 0 %}
+{% set _joinable = headliners | selectattr('join_open') | list | length > 0 %}
 <div class="hl-stage">
 
   <div class="greet">
+    {% if _member or not _joinable %}
     <p class="greet-line">
       {{ _g[0] }}
       <span class="v">{{ current_user.get_display_name() }}</span>
@@ -25,6 +28,21 @@
       {{ _g[1] }}
       <span class="home-metal-text">{{ _g[2] }}</span>
     </h1>
+    {% else %}
+    {# First-time framing (design review 2026-08-18): a viewer who has
+       joined nothing gets the door answer while joining is open.
+       Members keep the season-status greet, and once the window closes
+       the instruction retires with the asks (ADR-050). #}
+    <p class="greet-line">
+      Welcome to the club,
+      <span class="v">{{ current_user.get_display_name() }}</span>
+    </p>
+    <h1 class="greet-title">
+      Choose Your
+      <span class="home-metal-text">Games</span>
+    </h1>
+    <p class="greet-sub">Two games on the card. Play one, or play both.</p>
+    {% endif %}
   </div>
 
   <div class="hl-duo{% if headliners|length == 2 %} hl-duo--paired{% endif %}">
@@ -37,6 +55,9 @@
       {% include h.tree ~ '/_panel_' ~ h.state ~ '.html' %}
     {% endfor %}
   </div>
+
+  {# The season ledger — the club's archive record, full width (C1 §3.5) #}
+  {% include 'main/_lounge_ledger.html' %}
 
   {# Second bill — open games that are not headliners (empty today) #}
   {% include 'main/_second_bill.html' %}

@@ -41,6 +41,10 @@ class GameRegistryEntry:
     # the partial slug-agnostic when an entry omits them.
     short_name: str = ''
     launch_label: str = ''
+    # Lounge panel header billing (2026-08-18 design review): the full game
+    # name a cold visitor can parse, worn only by the headliner panels.
+    # Empty falls back to short_name (navbar/tiles keep their own labels).
+    lounge_label: str = ''
     # Static weekly rhythm for the second-bill strip (D21-eng). Prose only —
     # no dates, no computed times — so the strip stays true all season and
     # the lounge never grows a countdown. Empty means the strip omits the line.
@@ -112,6 +116,7 @@ GAMES: list[GameRegistryEntry] = [
         admin_enroll=_cfb_enrollment.admin_enroll,
         short_name='CFB',
         launch_label='Sep 3',
+        lounge_label='CFB Survivor',
         lounge_state=_cfb_lounge.cfb_lounge_state,
         lounge_context=_cfb_lounge.build_lounge_context,
         join_open=_cfb_lounge.join_window_open,
@@ -134,6 +139,7 @@ GAMES: list[GameRegistryEntry] = [
         admin_enroll=_docket_enrollment.admin_enroll,
         short_name='Docket',
         launch_label='Sep 1',
+        lounge_label='The Docket · Pick ’Em',
         lounge_cadence='Sheets post Tuesday. Court adjourns Saturday, 11:00 AM CT.',
         lounge_state=_docket_lounge.docket_lounge_state,
         lounge_context=_docket_lounge.build_lounge_context,
