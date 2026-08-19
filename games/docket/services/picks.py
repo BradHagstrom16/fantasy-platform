@@ -31,6 +31,7 @@ Rules enforced (2026-08-11 design SSoT):
 Datetime contract: naive UTC everywhere (D6). ``now_naive()`` is the one
 "now" in this module; every comparison is naive-vs-naive column math.
 """
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
 from extensions import db
@@ -99,8 +100,9 @@ def upcoming_week(now=None) -> DocketWeek | None:
     boundary, so nothing pickable can ever come from here."""
     if now is None:
         now = now_naive()
-    return (DocketWeek.query.filter(DocketWeek.start_at > now)
-            .order_by(DocketWeek.start_at).first())
+    return db.session.scalars(
+        select(DocketWeek).filter(DocketWeek.start_at > now)
+        .order_by(DocketWeek.start_at)).first()
 
 
 def game_locked(game: DocketGame, now) -> bool:

@@ -22,6 +22,7 @@ from flask import (
     url_for,
 )
 from flask_login import current_user, login_required
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
 from extensions import db
@@ -147,11 +148,9 @@ def index():
 
     games = []
     if week is not None:
-        games = (
-            DocketGame.query.filter_by(week_id=week.id)
-            .order_by(DocketGame.kickoff, DocketGame.api_event_id)
-            .all()
-        )
+        games = db.session.scalars(
+            select(DocketGame).filter_by(week_id=week.id)
+            .order_by(DocketGame.kickoff, DocketGame.api_event_id)).all()
 
     if week is None or (preview and not games):
         # Pre-season (or between-season) empty state; the date derives from

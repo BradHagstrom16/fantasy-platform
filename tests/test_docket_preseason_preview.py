@@ -5,6 +5,8 @@ current_week() is None until the start boundary, so the preview is display
 only by construction."""
 from datetime import datetime
 
+from sqlalchemy import func, select
+
 from extensions import db
 from games.docket.models import DocketPick
 from tests._docket_fixtures import (
@@ -57,12 +59,18 @@ def test_preseason_pick_post_is_refused(app, client, monkeypatch):
     _week, game = _seeded_week()
     _member(client)
     at(monkeypatch, PRE_SEASON)
-    resp = client.post('/docket/picks/set', data={
-        'csrf_token': 'x', 'game_id': game.id,
-        'market': 'spread', 'side': 'home',
-    })
+    form = {'csrf_token': 'x', 'game_id': game.id,
+            'market': 'spread', 'side': 'home'}
+    # No-JS form path: flash + redirect back to the sheet.
+    resp = client.post('/docket/picks/set', data=form)
     assert resp.status_code == 302
-    assert DocketPick.query.count() == 0
+    # JSON path: PickError('no_active_week') answers 409.
+    resp = client.post('/docket/picks/set', data=form,
+                       headers={'Accept': 'application/json'})
+    assert resp.status_code == 409
+    assert resp.get_json()['error'] == 'no_active_week'
+    assert db.session.scalar(
+        select(func.count()).select_from(DocketPick)) == 0
 
 
 def test_preseason_without_a_week_keeps_the_empty_state(
