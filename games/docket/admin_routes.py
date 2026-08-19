@@ -9,6 +9,8 @@ designation is pre-deadline only, a correction is pre-deadline AND
 pre-kickoff, and a No Contest ruling can land at any time. Every rule lives
 in games/docket/services/admin_ops.py; these handlers stay declarative and
 do nothing but resolve the week, hand over the form, and flash the outcome.
+Court costs (the entry-fee ledger) sit at the end: a season screen, not a
+weekly ruling, so it touches enrollments and never admin_ops.
 
 Both ruling screens take an optional ``?game=<id>`` so the page stays light
 on a 90-case docket: the list shows state, the selected case shows controls.
@@ -16,23 +18,27 @@ on a 90-case docket: the list shows state, the selected case shows controls.
 from functools import wraps
 
 from flask import (
+    current_app,
     flash,
+    jsonify,
     redirect,
     render_template,
     request,
     url_for,
 )
 from flask_login import current_user, login_required
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from extensions import db
 from games.docket.blueprint import docket_bp
-from games.docket.models import DocketGame, DocketWeek
+from games.docket.models import DocketEnrollment, DocketGame, DocketWeek
 from games.docket.services import admin_ops
 from games.docket.services.admin_ops import AdminOpError
 from games.docket.services.deadline_pass import check_designation
 from games.docket.services.enrollment import get_enrollment
 from games.docket.services.picks import now_naive
+from games.docket.services.weeks import SEASON_YEAR
+from models.user import User
 
 
 def docket_admin_required(f):
@@ -234,3 +240,48 @@ def admin_lines(week_number):
                            selected=_selected_game(week, games),
                            is_open=now < week.deadline_at,
                            now=now)
+
+
+# --------------------------------------------------------------------------
+# Court costs (entry-fee collection)
+# --------------------------------------------------------------------------
+
+@docket_bp.route('/admin/payments')
+@docket_admin_required
+def admin_payments():
+    """Entry-fee tracking for the current season's roster."""
+    entry_fee = current_app.config.get('DOCKET_ENTRY_FEE', 60)
+    enrollments = db.session.scalars(
+        select(DocketEnrollment)
+        .filter_by(season_year=SEASON_YEAR)
+        .join(User)
+        .order_by(func.lower(User.username))).all()
+    paid_count = sum(1 for e in enrollments if e.has_paid)
+    return render_template(
+        'docket/admin/payments.html',
+        enrollments=enrollments,
+        entry_fee=entry_fee,
+        paid_count=paid_count,
+        total_users=len(enrollments),
+        total_collected=paid_count * entry_fee,
+    )
+
+
+@docket_bp.route('/admin/update-payment/<int:user_id>', methods=['POST'])
+@docket_admin_required
+def admin_update_payment(user_id):
+    """Toggle a member's payment status (AJAX; CFB's endpoint shape)."""
+    enrollment = db.session.scalar(
+        select(DocketEnrollment).filter_by(
+            user_id=user_id, season_year=SEASON_YEAR))
+    if not enrollment:
+        return jsonify({'success': False,
+                        'error': 'Enrollment not found'}), 404
+    data = request.get_json(silent=True)
+    if not data:
+        return jsonify({'success': False,
+                        'error': 'Invalid request body'}), 400
+    has_paid = bool(data.get('has_paid', False))
+    enrollment.has_paid = has_paid
+    db.session.commit()
+    return jsonify({'success': True, 'has_paid': has_paid})
