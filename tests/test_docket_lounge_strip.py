@@ -360,8 +360,12 @@ def test_strip_uses_no_docket_room_classes():
 
 
 def test_strip_cta_is_outline_never_the_metal_gold_seal():
-    """The CFB-era lounge budgets exactly two .cta-seal CTAs (the decree and
-    the OPEN summons). A third would break the Trophy Rule."""
+    """The dormant second-bill strip's CTA is the registry-generic gold
+    .cta-outline, never the metal-gold .cta-seal — the strip asks nothing
+    before a deadline. (ADR-052 moved the headliner panels to solid accent
+    .hl-cta fills; metal-gold seals now live only in the frozen WC lounge.
+    The strip is a separate, registry-generic surface and keeps its gold
+    outline.)"""
     source = _partial_body()
     assert 'cta-outline' in source
     assert 'cta-seal' not in source

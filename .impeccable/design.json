@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-08-12T00:00:00Z",
+  "generatedAt": "2026-08-19T00:00:00Z",
   "title": "Design System: Corrupt Commish Club",
   "extensions": {
     "colorMeta": {
@@ -213,11 +213,6 @@
         "role": "tertiary",
         "displayName": "Match Red",
         "canonical": "#BF0A30"
-      },
-      "wc-card-navy": {
-        "role": "tertiary",
-        "displayName": "Tribune-Dark Navy",
-        "canonical": "rgba(0, 17, 46, 0.8)"
       },
       "ink-purple": {
         "role": "primary",

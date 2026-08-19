@@ -18,7 +18,9 @@
     <div class="summons-line">Eight picks against frozen lines.</div>
     <p class="summons-sub">One headliner worth double. Court adjourns Saturday at 11:00 AM CT.</p>
     {% if h.join_open %}
-    <a class="hl-cta hl-cta--outline" href="{{ url_for(h.entry.blueprint_join) }}">Join the Docket</a>
+    {# Convert ask → solid garnet .hl-cta, matched to every other join CTA
+       across the lounge (ADR-052). #}
+    <a class="hl-cta" href="{{ url_for(h.entry.blueprint_join) }}">Join the Docket</a>
     {% endif %}
   </div>
 

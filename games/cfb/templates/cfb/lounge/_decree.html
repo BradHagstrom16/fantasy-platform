@@ -1,20 +1,18 @@
 {# Preseason decree — the platform decree primitive generalized off the
-   WC countdown card (C1 §3.6): seal band No 002, H2, the big-days
-   numeral (the only big-numeral countdown in the CFB era), foot copy,
-   state-aware gold CTA.
+   WC countdown card (C1 §3.6): seal band No 002, a matched ◇ eyebrow,
+   the big-days numeral (the only big-numeral countdown in the CFB era),
+   foot copy, and the accent CTA.
 
    Static day count on purpose: the pre state ends when week 1 is
    activated (an admin/cron action), not at a client-computable instant,
    so there is no live tick and no data-deadline-utc reload hook —
    countdown.js quietly no-ops on this page.
 
-   Gold CTA budget (C1 §3.1): this is one of exactly two metal-gold CTAs
-   in the CFB-era lounge; the other is the OPEN summons. #}
-{# CTA registers (ADR-049 gold economy): the member's ceremonial entry
-   keeps the metal-gold seal; the JOIN ask wears the game's accent fill
-   (.hl-cta picks up crimson from the panel's --hl-accent) — on the bill,
-   gold never sells, it seats. Window closed (ADR-050): the countdown
-   stands, the ask retires. #}
+   CTA (ADR-052): every lounge action button is the game's own SOLID
+   accent — the member's entry and the JOIN ask alike wear crimson via
+   the panel's --hl-accent (.hl-cta). Gold is lounge chrome only now (the
+   seam, the seal band, the eyebrow glyph); it no longer fills a button.
+   Window closed (ADR-050): the countdown stands, the ask retires. #}
 <div class="decree animate-in-scale">
   <div class="decree-seal">
     <div class="s">By Decree of the Commish <span class="num">No 002</span></div>
@@ -22,7 +20,10 @@
   </div>
 
   <div class="decree-body">
-    <h2>First Pick Locks In</h2>
+    {# ◇ eyebrow, matched to the Docket panel's opening eyebrow (same
+       .summons-eyebrow--info primitive) so the two headliners frame their
+       hero identically; the countdown numeral below is CFB's own voice. #}
+    <div class="summons-eyebrow summons-eyebrow--info">◇ First Pick Locks In</div>
     {% if g.decree_days > 0 %}
     <div class="decree-hero" role="text"
          aria-label="{{ g.decree_days }} day{{ '' if g.decree_days == 1 else 's' }} until the first pick locks">
@@ -35,8 +36,9 @@
     {% endif %}
     <p class="decree-foot">Everyone starts with two lives. One team a week, win outright.<br>{{ g.decree_deadline_line }}</p>
     {% if g.is_enrolled %}
-    <a class="cta-seal decree-cta" href="{{ url_for('cfb.index') }}">
-      <span class="cta-seal-label">Enter the Room<i class="bi bi-arrow-right" aria-hidden="true"></i></span>
+    <a class="hl-cta" href="{{ url_for('cfb.index') }}">
+      Enter the Room
+      <i class="bi bi-arrow-right" aria-hidden="true"></i>
     </a>
     {% elif h.join_open %}
     <a class="hl-cta" href="{{ url_for('cfb.join') }}">

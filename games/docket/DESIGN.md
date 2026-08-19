@@ -129,8 +129,11 @@ future tenants.
 Two 2026-08-18 design-review amendments (ADR-051). The pre panel opens with the club's
 decree seal band — "By Decree of the Commish No 003 · The Docket '26" — the platform
 `decree`/`decree-seal` primitives with per-era numbering (WC No 001, CFB No 002). Band
-only: the summons below stays the clerk's voice, and the CTA stays the garnet `.hl-cta`,
-never `.cta-seal` (the lounge's two gold seals are CFB's). And the panel header bills the
+only: the summons below stays the clerk's voice, and the CTA is the garnet `.hl-cta`. Every
+Docket action button is that solid garnet fill in every state — the enter and the oath alike
+(ADR-052, 2026-08-19, retiring the earlier `.hl-cta--outline` enter treatment); no `.cta-seal`
+ever reaches the panel, and gold no longer fills any lounge button (CFB's two seals were
+retired the same day, so gold is now purely lounge chrome). And the panel header bills the
 registry `lounge_label` ("The Docket · Pick 'Em") so a cold viewer can parse the game;
 the conversion card carries a matching genre line, and the oath CTA a join echo
 ("Join the Docket. One sheet a week, all season.").
