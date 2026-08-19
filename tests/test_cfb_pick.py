@@ -16,7 +16,7 @@ a week pickable, a past game_time marks an individual game started.
 import dataclasses
 import os
 from contextlib import contextmanager
-from datetime import datetime
+from datetime import datetime, timedelta
 from unittest.mock import patch
 
 import pytest
@@ -520,6 +520,11 @@ def test_lines_pending_shows_the_slate_without_controls(app, client):
     assert 'Notre Dame' in data
     assert 'Wisconsin' in data
     assert 'Lines and eligibility post' in data
+    # The notice carries the computed lock date: the week's Tuesday, which
+    # the fixture geometry puts at deadline - 4 days (start = deadline - 2,
+    # lock = start - 2) — the same math the route runs.
+    expected_lock = (FUTURE_DEADLINE - timedelta(days=4)).strftime('%A, %B %-d')
+    assert f'spreads lock {expected_lock}.' in data
     # Attribute form: the picker JS's selector string mentions the name.
     assert 'data-team-id="' not in data
     assert 'No Open Teams' not in data
