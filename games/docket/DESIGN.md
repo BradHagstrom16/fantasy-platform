@@ -432,9 +432,14 @@ is what they come back to.
 
 ### 7.9 Join page
 
-Platform join shape (page-hero + how-it-works + form + `.btn-game`), CFB's
-`cfb-join-rules` dl pattern as the structural reference, the clerk's voice for the rules
-summary, $60 entry line via `DOCKET_ENTRY_FEE`.
+Platform join shape (page-hero + how-it-works + form + `.btn-game`) on the ruled
+`.docket-ruleset` dl. **Four beats, plain voice, by ruling (2026-08-19):** Pick 8, Double
+Your Best, Break the Tie, That's the Game — then the Saturday lock line and the $60 entry
+line via `DOCKET_ENTRY_FEE`. The enrollment page has one job: understanding sufficient to
+confidently click Join. Every contingency (the reserve, No Contest, tenths precision,
+frozen-Tuesday mechanics) lives on the rules page, which this page links instead of
+restating — the simplification is locked by `tests/test_docket_join.py` (fine-print
+vocabulary must stay off the page).
 
 ### 7.10 Empty states
 
