@@ -1474,6 +1474,14 @@ body.game-golf {
   color: var(--gold-light);
   margin: 0 0 1.25rem;
 }
+/* The CFB decree opens with the shared .summons-eyebrow--info primitive
+   (matched to the Docket panel's opening eyebrow) in place of its former
+   <h2>; restore the breathing room the h2's bottom margin gave before the
+   countdown numeral. Scoped to the CFB panel so the frozen WC countdown
+   card, which keeps its <h2>, is untouched. */
+.home-shell .hl-panel--cfb .decree-body .summons-eyebrow {
+  margin-bottom: 0.9rem;
+}
 /* S4.1.1 PI-2 — countdown hero: one dominant Days numeral. The former
    4-cell .decree-days strip (Days · Hours · Min · Sec at equal weight)
    read as hero-metric adjacency (DESIGN.md §6 Don't #8 + S2.3.1
@@ -1539,6 +1547,13 @@ body.game-golf {
   font-size: 0.85rem;
   color: var(--bone-mute);
   margin: 1rem 0 0;
+}
+/* Supporting-prose parity (ADR-052): the CFB decree foot reads roman so it
+   matches the Docket panel's roman .summons-sub, giving the two headliners'
+   supporting lines one shared treatment. Scoped to the CFB panel; the frozen
+   WC decree keeps its italic foot. */
+.home-shell .hl-panel--cfb .decree-foot {
+  font-style: normal;
 }
 
 /* CTA Seal — the home-shell's Loud Trophy primary CTA recipe, shared by the

@@ -396,8 +396,9 @@ def test_panel_headers_bill_full_game_names(app, client):
 def test_both_headliners_carry_the_commish_decree(app, client):
     """Design review 2026-08-18: both games are decrees of the Commish.
     Per-era numbering (WC No 001, CFB No 002, Docket No 003); the docket
-    band is the seal only — no CFB copy leaks in, and the gold CTA budget
-    stays at two (the docket keeps its garnet .hl-cta)."""
+    band is the seal only — no CFB copy leaks in, and both headliners'
+    action buttons are solid accent .hl-cta fills (ADR-052: gold is lounge
+    chrome, never a button fill, so no .cta-seal reaches either panel)."""
     with app.app_context():
         auth_id = _make_user('decreewatch').auth_id
     _login(client, auth_id)
