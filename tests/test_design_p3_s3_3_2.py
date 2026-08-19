@@ -21,7 +21,7 @@ Iteration map:
   not from ternaries in a shared partial. S3.3.2 implemented option (a):
   added optional `short_name` (default `''`) and `launch_label` (default
   `''`) fields to `GameRegistryEntry`, populated them on all three entries
-  (WC: `"World Cup"` / `"Jun 11"`; CFB: `"CFB"` / `"Sep 3"`; Golf:
+  (WC: `"World Cup"` / `"Jun 11"`; CFB: `"Survivor"` / `"Sep 3"`; Golf:
   `"Golf"` / `"2027"`), and rewrote the partial to read
   `{{ game.short_name or game.display_name }}` and
   `{{ game.launch_label or 'TBA' }}` so it carries no slug knowledge.
@@ -116,7 +116,7 @@ def test_pi1_registry_populates_cfb_and_golf_metadata():
     consistency (the WC tile in the compact partial uses its own stateful
     label, but populating WC keeps every entry uniform)."""
     # CFB — replaces `display_name.split()[0]` ternary + `Sep 3` literal.
-    assert "short_name='CFB'" in REGISTRY, "PI-1: CFB entry must set short_name='CFB'."
+    assert "short_name='Survivor'" in REGISTRY, "PI-1: CFB entry must set short_name='Survivor'."
     assert "launch_label='Sep 3'" in REGISTRY, "PI-1: CFB entry must set launch_label='Sep 3'."
     # Golf — replaces the `'Golf'` fallback + `2027` literal.
     assert "short_name='Golf'" in REGISTRY, "PI-1: Golf entry must set short_name='Golf'."
