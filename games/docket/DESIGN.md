@@ -374,7 +374,10 @@ One game as one case: sport tag (CFB/NFL), case caption (away at home), `.docket
 kickoff line (CT), then two market groups (spread, total) of two `.docket-side` controls
 each. Rows separate by `--docket-rule` hairlines under day heads; the slate is a document,
 not a card grid. A case with a held side carries a quiet held indicator at row level so the
-scanning eye finds its own commitments without reading every pill.
+scanning eye finds its own commitments without reading every pill — shipped
+2026-08-19 as `.docket-held-tag` ("Filed · Slot 3", "Filed · Slot 3 & Reserve"):
+the Stamped-Side grammar at meta-tag scale (garnet border + 8% tint + weight
+step), riding `.docket-case-meta`.
 
 ### 7.3 The side control — `.docket-side`
 
@@ -426,6 +429,30 @@ route. The default day is the first still holding a case that has not kicked off
 pre-deadline that is the first still-pickable day; after the docket closes it is the
 next day still to play (the sheet is read-only either way), falling back to the last
 day once the week is fully played.
+
+Three calendar aids (design review 2026-08-19, for the ~60-case Saturday):
+
+- **Conference chips — `.docket-conf-chips` / `.docket-conf-chip`.** A second
+  chip row under the day tabs (`?conf=<slug>`, plain GET links — the filter is
+  navigation, never mutation, so it works identically in preview/open/locked/
+  closed). Day-scoped: chips list only the active day's conferences with counts,
+  so a chip always yields at least one case. Classification is display-only via
+  the CFB master list keyed by Odds-API names (identity stays `api_event_id`,
+  D22); an FCS visitor classifies by its mapped opponent; **NFL cases are never
+  filtered**. Chips render only when the day holds 2+ conferences. Secondary
+  targets per §6.9 (36px height, 44px min width), one visual step quieter than
+  the day tabs. A filtered day head states the reduction and the way back:
+  "Showing N of M cases · All conferences ›" (`.docket-showing`) — no silent
+  caps. Day-tab links drop the param; an unknown slug falls back to all.
+- **The sticky calendar — `.docket-calendar`.** Day tabs + chips travel as one
+  block; at `lg+` it sticks under the club chrome (bone paint, soft downward
+  cast) so the long Saturday can be navigated from anywhere in the scroll.
+  Below `lg` it scrolls with the page (tabs wrap there, and the fixed bottom
+  drawer bar already persists — a second sticky band would sandwich content).
+- **Session jumps — `.docket-session-jumps`.** On a multi-wave day the day head
+  offers anchor links ("Morning 13 · Afternoon 29 · Evening 25") to the session
+  heads, which carry ids + `scroll-margin-top` clearing the sticky chrome. Plain
+  hrefs; the no-JS spine covers wayfinding too.
 
 ### 7.8 Sub-nav — `.subnav-docket`
 

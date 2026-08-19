@@ -67,25 +67,62 @@ the finish review, the verdict, and DESIGN.md.
     <div class="row">
         <div class="col-lg-8">
             <div id="docket-slate" data-docket-region="slate">
-                <nav class="docket-day-tabs" aria-label="Court calendar">
-                    {% for day in days %}
-                    <a class="docket-day-tab{% if day.key == active_day.key %} is-active{% endif %}"
-                       {% if day.key == active_day.key %}aria-current="page"{% endif %}
-                       href="{{ url_for('docket.index', day=day.key) }}">
-                        <span class="docket-day-tab-label">{{ day.tab_label }}</span>
-                        <span class="docket-day-tab-count">{{ day.games|length }}</span>
-                    </a>
-                    {% endfor %}
-                </nav>
+                {# The court calendar: day tabs + conference chips travel as
+                   one block; at lg+ it sticks under the chrome so the long
+                   Saturday can be navigated from anywhere in the scroll. #}
+                <div class="docket-calendar">
+                    <nav class="docket-day-tabs" aria-label="Court calendar">
+                        {% for day in days %}
+                        <a class="docket-day-tab{% if day.key == active_day.key %} is-active{% endif %}"
+                           {% if day.key == active_day.key %}aria-current="page"{% endif %}
+                           href="{{ url_for('docket.index', day=day.key) }}">
+                            <span class="docket-day-tab-label">{{ day.tab_label }}</span>
+                            <span class="docket-day-tab-count">{{ day.games|length }}</span>
+                        </a>
+                        {% endfor %}
+                    </nav>
+                    {# Conference chips (design review 2026-08-19): plain GET
+                       links, day-scoped so every chip yields at least one
+                       case; NFL cases are never filtered. #}
+                    {% if conferences|length >= 2 %}
+                    <nav class="docket-conf-chips" aria-label="Conference filter">
+                        <a class="docket-conf-chip{% if not active_conf %} is-active{% endif %}"
+                           {% if not active_conf %}aria-current="true"{% endif %}
+                           href="{{ url_for('docket.index', day=active_day.key) }}">All</a>
+                        {% for conf in conferences %}
+                        <a class="docket-conf-chip{% if active_conf and active_conf.slug == conf.slug %} is-active{% endif %}"
+                           {% if active_conf and active_conf.slug == conf.slug %}aria-current="true"{% endif %}
+                           href="{{ url_for('docket.index', day=active_day.key, conf=conf.slug) }}">
+                            {{ conf.name }}
+                            <span class="docket-conf-chip-count">{{ conf.count }}</span>
+                        </a>
+                        {% endfor %}
+                    </nav>
+                    {% endif %}
+                </div>
 
                 <div class="docket-day-head">
                     <h2 class="docket-day-title">{{ active_day.label }}</h2>
+                    {% if active_conf %}
+                    {# The no-silent-caps line: a filtered day states the
+                       reduction and offers the whole calendar back. #}
+                    <span class="docket-caption docket-showing">Showing {{ active_day.games|length }} of {{ day_case_total }} case{{ 's' if day_case_total != 1 }} · <a href="{{ url_for('docket.index', day=active_day.key) }}">All conferences &rsaquo;</a></span>
+                    {% else %}
                     <span class="docket-caption">{{ active_day.games|length }} case{{ 's' if active_day.games|length != 1 }}</span>
+                    {% endif %}
                 </div>
+
+                {% if active_day.sessions|length > 1 %}
+                <nav class="docket-session-jumps" aria-label="Jump to session">
+                    {% for session_label, session_games in active_day.sessions %}
+                    <a class="docket-session-jump" href="#docket-session-{{ session_label.split(' ')[0]|lower }}">{{ session_label.split(' ')[0] }} <span class="docket-session-jump-count">{{ session_games|length }}</span></a>
+                    {% endfor %}
+                </nav>
+                {% endif %}
 
                 {% for session_label, session_games in active_day.sessions %}
                     {% if active_day.sessions|length > 1 %}
-                    <div class="docket-session-head">
+                    <div class="docket-session-head" id="docket-session-{{ session_label.split(' ')[0]|lower }}">
                         <span class="docket-session-label">{{ session_label }}</span>
                         <span class="docket-caption">{{ session_games|length }}</span>
                     </div>

@@ -136,13 +136,27 @@ Binding preservation rules for all subsequent work:
 
   **STAGED, not all-at-once (amended 2026-08-17):** `run_setup` has no date guard — every firing creates week `last+1` and *activates* it on successful import (`games/cfb/services/automation.py`), and `Persistent=true` catch-up behavior on a *freshly enabled* timer is unverified on this droplet. Enabling `cfb-setup.timer` at the wrong moment (or a surprise catch-up firing) can therefore create **and activate Week 2 before the season starts**, silently deactivating Week 1. Mirror the docket-setup doctrine (hand-run the first import, enable the setup timer last):
 
+  **Amended again 2026-08-19 (preview import):** Week 1 already exists on prod —
+  the 2026-08-19 preview import created it (42 games, `is_active=True`, spreads
+  deliberately empty, so the room shows the lines-pending board and picks are
+  impossible). That retires the "Mon Aug 31 hand-run setup" step: Week 1 is not
+  an orphan (`_lowest_orphan_week` only retries 0-game weeks), so **any**
+  `--mode setup` run before Week 1 completes creates AND activates Week 2. The
+  real Week-1 lines land via `--mode spreads` on Tue Sep 1 (first fetch locks,
+  DQ-6 — no wipe needed since nothing is locked yet). Two data corrections were
+  also found in the 2026-08-19 design review: the Week-1 row's `deadline`
+  (16:00) and `start_date` (05:00) were written as UTC instants into the
+  pool-tz wall-clock columns — fix to `2026-09-05 11:00:00` / `2026-09-03
+  00:00:00` before Sep 5 or lock + autopick run five hours late.
+
   ```bash
   # Launch week (any day Aug 30–31): the four timers that stand down without an active week
   sudo systemctl enable --now \
       cfb-spreads.timer cfb-scores.timer \
       cfb-autopick.timer cfb-remind.timer
-  # Mon Aug 31 morning: hand-run Week-1 setup + verify (active week, game_count > 0)
-  FLASK_APP=app.py ENVIRONMENT=production venv/bin/flask cfb sync --mode setup
+  # Tue Sep 1: cfb-spreads.timer's Tuesday firing locks the real Week-1 lines
+  # against the existing week (hand-run `--mode spreads` only if the timer
+  # hasn't fired yet); then verify — expect 42 games, spreads locked
   FLASK_APP=app.py ENVIRONMENT=production venv/bin/flask cfb sync --mode status
   # Tue Sep 1 (after the Mon 06:00 CT slot has passed): the setup timer, LAST —
   # its first natural firing is Mon Sep 7, which creates Week 2 on the designed cadence
