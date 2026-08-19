@@ -72,7 +72,7 @@ def test_solo_game_link_hoisted_into_bar(app, client):
     solo = _tag_containing(html, 'navbar-solo-game')
     assert 'd-lg-none' in solo
     assert '/cfb' in solo
-    assert 'CFB' in html
+    assert 'Survivor' in html
 
 
 def test_solo_game_collapse_copy_hidden_below_lg(app, client):

@@ -131,7 +131,7 @@
     {# Game Sub-Nav: contextual strip, only inside game blueprints.
        P3 S3.4 — wrapper switched from `<div>` to `<nav aria-label="…">` so
        screen-reader users hear the game context. On mobile the inline
-       `.subnav-game-label` ("⚽ WC 2026" / "⛳ Golf 2026" / "🏈 CFB 2026") is
+       `.subnav-game-label` ("⚽ WC 2026" / "⛳ Golf 2026" / "🏈 Survivor 2026") is
        `display: none` via `d-none d-sm-inline-flex`, so without the label
        SR users lost the "Hub of what?" cue. Per-game `aria-label` closes
        the gap without affecting sighted users. #}
@@ -194,7 +194,7 @@
     <nav class="game-subnav subnav-cfb" aria-label="CFB section">
         <div class="container">
             <a class="subnav-game-label" href="{{ url_for('cfb.index') }}">
-                🏈 <span class="subnav-label-text">CFB 2026</span>
+                🏈 <span class="subnav-label-text">Survivor 2026</span>
             </a>
             <div class="subnav-scroll">
                 <div class="subnav-pills">

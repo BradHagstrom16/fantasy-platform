@@ -54,7 +54,7 @@ def test_navbar_hides_all_games_for_anonymous(client):
     nav_end = data.find('</ul>', nav_start)
     nav_section = data[nav_start:nav_end]
     assert 'World Cup' not in nav_section
-    assert 'CFB' not in nav_section
+    assert 'Survivor' not in nav_section
     assert 'Golf' not in nav_section
 
 
@@ -85,7 +85,7 @@ def test_navbar_shows_only_joined_active_games(app, client):
     nav_end = data.find('</ul>', nav_start)
     nav_section = data[nav_start:nav_end]
     assert 'World Cup' not in nav_section
-    assert 'CFB' not in nav_section
+    assert 'Survivor' not in nav_section
     assert 'Golf' not in nav_section
     dd_start = data.find('dropdown-menu')
     dd_section = data[dd_start:data.find('</ul>', dd_start)]
