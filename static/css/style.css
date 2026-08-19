@@ -1431,10 +1431,18 @@ body.game-golf {
 .home-shell .decree-seal {
   display: flex;
   justify-content: space-between;
+  /* Narrow panels: the band wraps BETWEEN its two phrases, never inside
+     them — each .s stays intact (mobile decree legibility, ADR-051). */
+  flex-wrap: wrap;
+  column-gap: 1rem;
+  row-gap: .1rem;
   padding: 0.75rem 1rem;
   border-bottom: 1px dashed rgba(201,162,39,.25);
   position: relative;
   z-index: 1;
+}
+.home-shell .decree-seal .s {
+  white-space: nowrap;
 }
 .home-shell .decree-seal .s {
   font-family: var(--font-teko);
