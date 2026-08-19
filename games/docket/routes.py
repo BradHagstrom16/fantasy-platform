@@ -136,9 +136,27 @@ def index():
     tabs keep the no-JS spine intact; the sheet rail persists across days.
     """
     week = picks_service.current_week()
+    preview = False
     if week is None:
+        # Pre-season posted-docket preview (2026-08-19 ruling): once a
+        # future week has been imported, members read the frozen board
+        # before court convenes. Display only — every mutation resolves
+        # through current_week() and _require_open_week, both still closed.
+        week = picks_service.upcoming_week()
+        preview = week is not None
+
+    games = []
+    if week is not None:
+        games = (
+            DocketGame.query.filter_by(week_id=week.id)
+            .order_by(DocketGame.kickoff, DocketGame.api_event_id)
+            .all()
+        )
+
+    if week is None or (preview and not games):
         # Pre-season (or between-season) empty state; the date derives from
-        # the week math, never hardcoded prose.
+        # the week math, never hardcoded prose. An imported-but-empty future
+        # week reads the same as no docket at all.
         season_opens_label = WEEK_1_BOUNDARY_LOCAL.strftime('%B %-d')
         return render_template(
             'docket/sheet.html',
@@ -149,13 +167,8 @@ def index():
             held={},
             designated=None,
             season_opens_label=season_opens_label,
+            preview=False,
         )
-
-    games = (
-        DocketGame.query.filter_by(week_id=week.id)
-        .order_by(DocketGame.kickoff, DocketGame.api_event_id)
-        .all()
-    )
     sheet = picks_service.sheet_state(current_user.id, week)
     held = {(p['game_id'], p['market']): p for p in sheet['picks']}
     slot_map = {p['slot']: p for p in sheet['picks']}
@@ -224,6 +237,7 @@ def index():
         designated=designated,
         tb_locked=tb_locked,
         season_opens_label=None,
+        preview=preview,
     )
 
 

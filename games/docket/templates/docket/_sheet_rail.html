@@ -79,7 +79,10 @@
     <span class="docket-rail-count"><strong>{{ sheet.scoring_count }}</strong> of 8</span>
   </div>
   <p class="docket-deadline">
-    {% if sheet.deadline_passed %}
+    {% if preview %}
+      Picks open {{ week.start_at|ct('%A, %B %-d') }} and close
+      {{ week.deadline_at|ct('%A %-I:%M %p CT') }}.
+    {% elif sheet.deadline_passed %}
       The docket is closed. Verdicts to follow.
     {% else %}
       Docket closes {{ week.deadline_at|ct('%A %-I:%M %p CT') }}
@@ -125,7 +128,10 @@
           The line says {{ '%g'|format(designated.total_points) }}.
         {% endif %}
       </p>
-      {% if tb_locked %}
+      {% if preview %}
+        <p class="docket-caption">The number opens with the rest of the
+          sheet when court convenes.</p>
+      {% elif tb_locked %}
         <p class="docket-tb-held">
           Your number: {{ sheet.prediction if sheet.prediction is not none
                           else 'none recorded (the line stands in)' }}

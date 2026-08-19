@@ -90,6 +90,19 @@ def current_week(now=None) -> DocketWeek | None:
     ).first()
 
 
+def upcoming_week(now=None) -> DocketWeek | None:
+    """The next not-yet-started week, if one has been imported.
+
+    Read only by the pre-season posted-docket preview (2026-08-19 ruling):
+    the sheet shows the frozen board before court convenes. Every mutation
+    still resolves through current_week(), which stays None until the start
+    boundary, so nothing pickable can ever come from here."""
+    if now is None:
+        now = now_naive()
+    return (DocketWeek.query.filter(DocketWeek.start_at > now)
+            .order_by(DocketWeek.start_at).first())
+
+
 def game_locked(game: DocketGame, now) -> bool:
     """Kickoff lock: t >= kickoff freezes the case (live kickoff column;
     ``kickoff_at_deadline`` is the grading pass's frozen copy, never read

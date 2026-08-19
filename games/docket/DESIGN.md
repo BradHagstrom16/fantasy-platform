@@ -157,6 +157,12 @@ surface, ask "lounge or room?" first (platform §1.6).
 - **Awaiting docket** — the week exists but games have not been imported (or the season has
   not begun). The room states when the docket posts (Tuesday) rather than showing an empty
   table.
+- **Docket posted (pre-season preview, 2026-08-19 ruling)** — a future week is imported but
+  court has not convened. The room shows the frozen board read-only: full-contrast resting
+  pills as static spans (never the Cold-Docket dim — nothing is locked, it has not opened),
+  with the hero and rail stating once when picks open. Display only: mutations still resolve
+  through `current_week()`, which stays None until the start boundary. Locked by
+  `tests/test_docket_preseason_preview.py`.
 - **Docket open** — lines frozen, picks editable, cases lock individually at kickoff.
 - **Docket closed** — Saturday 11:00:00 AM CT reached. The whole sheet is read-only. The
   submission boundary is strict: 10:59:59 is on time, 11:00:00 is late.
