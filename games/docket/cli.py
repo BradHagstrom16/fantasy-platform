@@ -26,9 +26,12 @@ preview lines ship as the frozen Week 1 numbers. The wipe (flask shell;
 picks are zero pre-season, and the tiebreaker FK must clear before its game
 rows can go)::
 
-    w = DocketWeek.query.filter_by(week_number=1).first()
+    from sqlalchemy import delete, select
+    from extensions import db
+    from games.docket.models import DocketGame, DocketWeek
+    w = db.session.scalar(select(DocketWeek).filter_by(week_number=1))
     w.tiebreaker_game_id = None; db.session.flush()
-    DocketGame.query.filter_by(week_id=w.id).delete()
+    db.session.execute(delete(DocketGame).where(DocketGame.week_id == w.id))
     db.session.delete(w); db.session.commit()
 
 Then the import is the familiar three lines (the tiebreaker designation does
