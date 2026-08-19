@@ -6,7 +6,7 @@ Mounted at /cfb/ via blueprint url_prefix.
 """
 import logging
 from collections import Counter
-from datetime import datetime
+from datetime import datetime, timedelta
 from functools import wraps
 
 from flask import (
@@ -570,6 +570,19 @@ def make_pick(week_number):
     for game in games:
         game._aware_time = make_aware(game.game_time)
 
+    # Pre-spread-lock slate (2026-08-19 ruling): games import days before
+    # the Tuesday spread lock, so a week whose every game is still lineless
+    # renders the full board read-only instead of the misleading
+    # exhausted-state copy. A single posted spread ends the state.
+    lines_pending = bool(games) and all(
+        g.home_team_spread is None for g in games)
+    lines_post_label = ''
+    if lines_pending:
+        # Weeks start Thursday; the spread lock is that week's Tuesday.
+        lines_post_label = (
+            make_aware(week.start_date) - timedelta(days=2)
+        ).strftime('%A, %B %-d')
+
     used_team_ids = get_used_team_ids(current_user.id, week)
 
     eligible_teams = []
@@ -613,6 +626,8 @@ def make_pick(week_number):
         pick_locked=pick_locked,
         team_spreads=team_spreads,
         used_team_ids=used_team_ids,
+        lines_pending=lines_pending,
+        lines_post_label=lines_post_label,
     )
 
 

@@ -16,7 +16,7 @@ a week pickable, a past game_time marks an individual game started.
 import dataclasses
 import os
 from contextlib import contextmanager
-from datetime import datetime
+from datetime import datetime, timedelta
 from unittest.mock import patch
 
 import pytest
@@ -362,16 +362,22 @@ def test_pick_updated_in_place_not_duplicated(app, client):
 
 def test_no_eligible_alert_uses_accurate_cap_copy(app, client):
     """The empty-state alert says 'favored by 16.5 or more' — exactly 16.5 is
-    already ineligible, so the old 'more than 16.5' was wrong (audit §1 LOW)."""
-    week = make_week(1, deadline=FUTURE_DEADLINE)
-    home, away = make_team('NoSpreadH'), make_team('NoSpreadA')
-    make_game(week, home, away, spread=None)  # no spread → nobody eligible
+    already ineligible, so the old 'more than 16.5' was wrong (audit §1 LOW).
+
+    Exhaustion needs a posted spread since the 2026-08-19 lines-pending
+    slate: an all-lineless week previews the board instead. Here the home
+    side is capped and the away side is already used."""
     user = make_user('p1')
     make_enrollment(user)
+    prior = make_week(1)                               # past deadline
+    away = make_team('UsedAway')
+    make_pick(user, prior, away)
+    week = make_week(2, deadline=FUTURE_DEADLINE)
+    make_game(week, make_team('CappedHome'), away, spread=-20.5)
     db.session.commit()
     _login(client, user)
 
-    text = client.get('/cfb/pick/1').get_data(as_text=True)
+    text = client.get('/cfb/pick/2').get_data(as_text=True)
 
     assert '16.5 or more' in text
     assert 'more than 16.5' not in text
@@ -496,3 +502,61 @@ def test_pick_rejected_when_deadline_slips_past(app, client):
     assert resp.status_code == 302
     assert resp.headers['Location'] in ('/cfb/', 'http://localhost/cfb/')
     assert CfbPick.query.filter_by(user_id=user.id, week_id=week.id).first() is None
+
+
+# ── Lines-pending slate (pre-spread-lock board, 2026-08-19 ruling) ────────
+
+def test_lines_pending_shows_the_slate_without_controls(app, client):
+    """Games imported before the Tuesday spread lock render the full board
+    read-only, not the misleading exhausted-state copy."""
+    week = make_week(1, deadline=FUTURE_DEADLINE)
+    home, away = make_team('Notre Dame'), make_team('Wisconsin')
+    make_game(week, home, away)                        # no spread yet
+    user = make_user('previewer')
+    make_enrollment(user)
+    db.session.commit()
+    _login(client, user)
+    data = client.get('/cfb/pick/1').data.decode()
+    assert 'Notre Dame' in data
+    assert 'Wisconsin' in data
+    assert 'Lines and eligibility post' in data
+    # The notice carries the computed lock date: the week's Tuesday, which
+    # the fixture geometry puts at deadline - 4 days (start = deadline - 2,
+    # lock = start - 2) — the same math the route runs.
+    expected_lock = (FUTURE_DEADLINE - timedelta(days=4)).strftime('%A, %B %-d')
+    assert f'spreads lock {expected_lock}.' in data
+    # Attribute form: the picker JS's selector string mentions the name.
+    assert 'data-team-id="' not in data
+    assert 'No Open Teams' not in data
+    assert 'Lock It In' not in data
+
+
+def test_one_posted_spread_ends_lines_pending(app, client):
+    week = make_week(1, deadline=FUTURE_DEADLINE)
+    make_game(week, make_team('Notre Dame'), make_team('Wisconsin'),
+              spread=-3.5)
+    make_game(week, make_team('Texas'), make_team('Ohio State'))
+    user = make_user('p1')
+    make_enrollment(user)
+    db.session.commit()
+    _login(client, user)
+    data = client.get('/cfb/pick/1').data.decode()
+    assert 'Lines and eligibility post' not in data
+    assert 'data-team-id="' in data
+
+
+def test_exhausted_board_keeps_the_no_open_teams_copy(app, client):
+    """Spreads posted but nothing pickable stays the real empty state."""
+    user = make_user('p1')
+    make_enrollment(user)
+    prior = make_week(1)                               # past deadline
+    away_used = make_team('Wisconsin')
+    make_pick(user, prior, away_used)
+    week = make_week(2, deadline=FUTURE_DEADLINE)
+    make_game(week, make_team('Notre Dame'), away_used,
+              spread=-20.5)                            # home 16.5+, away used
+    db.session.commit()
+    _login(client, user)
+    data = client.get('/cfb/pick/2').data.decode()
+    assert 'No Open Teams' in data
+    assert 'Lines and eligibility post' not in data
