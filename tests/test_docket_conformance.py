@@ -103,6 +103,17 @@ ADMIN_PATHS = (
     '/docket/admin/week/1/tiebreaker',
     '/docket/admin/week/1/rulings',
     '/docket/admin/week/1/lines',
+    '/docket/admin/payments',
+)
+
+# Every admin POST endpoint. A new mutation belongs here (GET-only screens
+# like the dashboard and payments 405 a POST before the gate runs, so they
+# can't share the matrix above).
+ADMIN_MUTATION_PATHS = (
+    '/docket/admin/week/1/tiebreaker',
+    '/docket/admin/week/1/rulings',
+    '/docket/admin/week/1/lines',
+    '/docket/admin/update-payment/1',
 )
 
 
@@ -156,7 +167,7 @@ def test_admin_mutations_reject_an_enrolled_non_admin(app, client):
     make_week(1)
     db.session.commit()
     login(client, user)
-    for path in ADMIN_PATHS[1:]:
+    for path in ADMIN_MUTATION_PATHS:
         resp = client.post(path, data={'csrf_token': 'x'})
         assert resp.status_code == 302, path
         assert '/docket/admin' not in resp.headers['Location']

@@ -7,10 +7,12 @@ from functools import wraps
 
 from flask import flash, redirect, render_template, url_for
 from flask_login import current_user
+from sqlalchemy import func, select
 
 from core.admin import admin_bp
 from extensions import db
 from games.cfb.models import CfbEnrollment
+from games.docket.models import DocketEnrollment
 from games.golf.models import GolfEnrollment
 from games.worldcup.models import WorldCupEnrollment
 from models.user import User
@@ -62,6 +64,18 @@ def dashboard():
             'payments_url': url_for('cfb.admin_payments'),
             'enrolled': CfbEnrollment.query.count(),
             'paid': CfbEnrollment.query.filter_by(has_paid=True).count(),
+        },
+        {
+            'name': 'The Docket',
+            'emoji': '⚖️',
+            'slug': 'docket',
+            'admin_url': url_for('docket.admin_dashboard'),
+            'payments_url': url_for('docket.admin_payments'),
+            'enrolled': db.session.scalar(
+                select(func.count()).select_from(DocketEnrollment)),
+            'paid': db.session.scalar(
+                select(func.count()).select_from(DocketEnrollment)
+                .filter(DocketEnrollment.has_paid.is_(True))),
         },
     ]
 

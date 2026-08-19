@@ -74,7 +74,7 @@ def inject_docket_globals():
         'body_class': 'game-docket',
         'docket_enrollment': docket_enrollment,
         'docket_season_year': SEASON_YEAR,
-        'docket_entry_fee': current_app.config.get('DOCKET_ENTRY_FEE', 25),
+        'docket_entry_fee': current_app.config.get('DOCKET_ENTRY_FEE', 60),
         'docket_sport_labels': SPORT_LABELS,
     }
 

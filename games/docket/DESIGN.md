@@ -434,7 +434,7 @@ is what they come back to.
 
 Platform join shape (page-hero + how-it-works + form + `.btn-game`), CFB's
 `cfb-join-rules` dl pattern as the structural reference, the clerk's voice for the rules
-summary, $25 entry line via `DOCKET_ENTRY_FEE`.
+summary, $60 entry line via `DOCKET_ENTRY_FEE`.
 
 ### 7.10 Empty states
 

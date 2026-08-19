@@ -66,7 +66,7 @@ class Config:
 
     # The Docket Settings (season year lives in games/docket/services/weeks.py,
     # the week-math SSoT — deliberately not a config knob)
-    DOCKET_ENTRY_FEE = int(os.environ.get('DOCKET_ENTRY_FEE', '25'))
+    DOCKET_ENTRY_FEE = int(os.environ.get('DOCKET_ENTRY_FEE', '60'))
 
     # World Cup Fantasy Pool — football-data.org sync
     FOOTBALL_DATA_API_KEY = os.environ.get('FOOTBALL_DATA_API_KEY', '')
