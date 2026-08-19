@@ -28,7 +28,10 @@ the finish review, the verdict, and DESIGN.md.
         <h1>The Week {{ week.week_number }} Docket</h1>
         <p class="lead mb-0">
             Eight sides against frozen lines, one headliner worth double.
-            {% if not sheet.deadline_passed %}
+            {% if preview %}
+            The docket is posted for reading. Court convenes
+            {{ week.start_at|ct('%A, %B %-d') }}.
+            {% elif not sheet.deadline_passed %}
             Court adjourns {{ week.deadline_at|ct('%A %-I:%M %p CT') }}.
             {% else %}
             The docket is closed. Verdicts to follow.
@@ -110,7 +113,7 @@ the finish review, the verdict, and DESIGN.md.
             <span class="docket-rail-bar-fact">{{ 'x2 set' if sheet.best else 'no x2' }}</span>
             <span class="docket-rail-bar-fact">{{ 'R held' if sheet.backup else 'R open' }}</span>
             <span class="docket-rail-bar-fact">{{ sheet.prediction if sheet.prediction is not none else 'no number' }}</span>
-            <span class="docket-rail-bar-fact">{{ 'closed' if sheet.deadline_passed else 'closes ' ~ week.deadline_at|ct('%a %-I:%M %p') }}</span>
+            <span class="docket-rail-bar-fact">{% if sheet.deadline_passed %}closed{% elif preview %}opens {{ week.start_at|ct('%a %-m/%-d') }}{% else %}closes {{ week.deadline_at|ct('%a %-I:%M %p') }}{% endif %}</span>
         </summary>
         <div class="docket-rail-drawer-body">
             {% with mobile_rail = True %}{% include 'docket/_sheet_rail.html' %}{% endwith %}

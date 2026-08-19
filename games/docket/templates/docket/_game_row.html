@@ -35,6 +35,14 @@
       <span class="docket-side-team">{{ label }}</span>
       <span class="docket-side-num">{{ side_number(market, side) }}</span>
     </span>
+  {% elif preview %}
+    {# Pre-season posted docket: the resting pill at full contrast, as a
+       static span. Not Cold-Docket dim — nothing here is locked, it just
+       has not opened yet, and the hero states that reason once. #}
+    <span class="docket-side">
+      <span class="docket-side-team">{{ label }}</span>
+      <span class="docket-side-num">{{ side_number(market, side) }}</span>
+    </span>
   {% else %}
     <form method="POST" action="{{ url_for('docket.set_pick') }}"
           class="docket-side-form" data-docket-action="set-pick">
