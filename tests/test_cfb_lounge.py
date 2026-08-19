@@ -168,8 +168,32 @@ def test_state_pre_when_week_rows_exist_but_none_started(app):
 
 
 def test_state_live_when_a_week_is_active(app):
+    # The resolver reads the clock since the SEASON_LIVE_UTC gate (design
+    # review 2026-08-19): live states pin an in-season anchor.
     from games.cfb.services.lounge import cfb_lounge_state
-    with app.app_context():
+    with app.app_context(), patch.dict(os.environ, LIVE_PRE):
+        _make_week(number=1, active=True)
+        _seed_cfb_field([(2, False), (2, False)])
+        assert cfb_lounge_state() == 'live'
+
+
+def test_state_pre_when_week_active_before_season_live(app):
+    """The preview window (design review 2026-08-19): Week 1 imported and
+    activated for reading before Tue Sep 1 must NOT flip the lounge live —
+    members get the decree, not standings, until picks open."""
+    from games.cfb.services.lounge import cfb_lounge_state
+    with app.app_context(), patch.dict(os.environ, PRE_ANCHOR):
+        _make_week(number=1, active=True)
+        _seed_cfb_field([(2, False), (2, False)])
+        assert cfb_lounge_state() == 'pre'
+
+
+def test_state_live_at_the_season_live_instant(app):
+    """Half-open like every platform boundary: the instant itself is live."""
+    from games.cfb.services.lounge import cfb_lounge_state
+    with app.app_context(), patch.dict(os.environ, {
+        'ENVIRONMENT': 'testing', 'CFB_FAKE_NOW': '2026-09-01T11:00:00',
+    }):
         _make_week(number=1, active=True)
         _seed_cfb_field([(2, False), (2, False)])
         assert cfb_lounge_state() == 'live'
@@ -178,7 +202,7 @@ def test_state_live_when_a_week_is_active(app):
 def test_state_live_in_aftermath_window(app):
     """No active week but a completed one: the verdict window is live."""
     from games.cfb.services.lounge import cfb_lounge_state
-    with app.app_context():
+    with app.app_context(), patch.dict(os.environ, LIVE_PRE):
         _make_week(number=1, active=False, complete=True)
         _seed_cfb_field([(2, False), (1, False)])
         assert cfb_lounge_state() == 'live'
@@ -186,7 +210,7 @@ def test_state_live_in_aftermath_window(app):
 
 def test_state_live_with_eliminations_but_multiple_active(app):
     from games.cfb.services.lounge import cfb_lounge_state
-    with app.app_context():
+    with app.app_context(), patch.dict(os.environ, LIVE_PRE):
         _make_week(number=8, active=True)
         _seed_cfb_field([(2, False), (1, False), (0, True), (0, True)])
         assert cfb_lounge_state() == 'live'
@@ -213,7 +237,7 @@ def test_state_post_on_final_week_tiebreak_conclusion(app):
 
 def test_state_live_when_final_week_not_yet_complete(app):
     from games.cfb.services.lounge import cfb_lounge_state
-    with app.app_context():
+    with app.app_context(), patch.dict(os.environ, LIVE_PRE):
         _make_week(number=19, active=True, playoff=True)
         _seed_cfb_field([(1, False), (1, False), (0, True)])
         assert cfb_lounge_state() == 'live'
@@ -306,6 +330,31 @@ def test_context_pre_decree_falls_back_to_week_1_start(app):
             ctx = build_lounge_context(user, 'pre')
     assert ctx['decree_days'] == 16
     assert ctx['decree_deadline_line'] == 'First kickoff Thursday, Sep 3.'
+
+
+def test_context_pre_board_week_set_when_week1_has_games(app):
+    """Preview affordance (design review 2026-08-19, Issue 1A): a
+    games-bearing Week 1 lets the decree route members to the room's
+    lines-pending board before picks open."""
+    from games.cfb.services.lounge import build_lounge_context
+    with app.app_context():
+        user = _make_user()
+        week = _make_week(number=1, active=True)
+        _make_game(week, _make_team('Ohio State'), _make_team('Texas'),
+                   spread=None)
+        with patch.dict(os.environ, PRE_ANCHOR):
+            ctx = build_lounge_context(user, 'pre')
+    assert ctx['board_week'] == 1
+
+
+def test_context_pre_board_week_none_without_games(app):
+    from games.cfb.services.lounge import build_lounge_context
+    with app.app_context():
+        user = _make_user()
+        _make_week(number=1, active=False)
+        with patch.dict(os.environ, PRE_ANCHOR):
+            ctx = build_lounge_context(user, 'pre')
+    assert ctx['board_week'] is None
 
 
 def test_context_pre_farewell_from_frozen_wc_data(app):
@@ -1084,6 +1133,34 @@ def test_cfb_pre_shell_enrolled_viewer_gets_room_cta(app, client, monkeypatch):
     strip_idx = text.index('farewell-strip')
     assert strip_idx > text.index('hl-panel--cfb')
     assert 'hl-panel' not in text[strip_idx:]
+
+
+def test_cfb_pre_shell_preview_window_keeps_the_decree(app, client, monkeypatch):
+    """Design review 2026-08-19: an active, games-bearing Week 1 before the
+    season-live instant renders the PRE shell — decree, no standings, no
+    Who's Left — and the decree offers the board-preview route as a quiet
+    route-link, never a second .hl-cta."""
+    _flip_to_cfb(monkeypatch)
+    with app.app_context():
+        user = _make_user()
+        _enroll_cfb(user)
+        week = _make_week(number=1, active=True)
+        _make_game(week, _make_team('Ohio State'), _make_team('Texas'),
+                   spread=None)
+        auth_id = user.auth_id
+    _login(client, auth_id)
+    with patch.dict(os.environ, PRE_ANCHOR):
+        resp = client.get('/')
+    text = resp.get_data(as_text=True)
+    assert 'home-shell--pre' in text
+    assert 'First Pick Locks In' in text
+    # The live panel's interior stays off the preseason lounge.
+    assert 'You have not made a pick.' not in text
+    assert 'Full standings' not in text
+    assert 'The field ›' not in text
+    # The preview route, as a route-link on the room's board.
+    assert 'Preview the Week 1 board' in text
+    assert 'class="route-link" href="/cfb/pick/1"' in text
 
 
 def test_ledger_strip_is_shell_owned_not_panel_interior():

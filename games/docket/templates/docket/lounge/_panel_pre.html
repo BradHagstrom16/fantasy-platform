@@ -25,7 +25,15 @@
 
   <div class="summons">
     <div class="summons-eyebrow summons-eyebrow--info">◇ Opening Session</div>
+    {# Posted branch (design review 2026-08-19): the room's pre-season
+       preview means the docket can already be read — the lounge must not
+       promise a post that already happened. The convening date derives
+       from the week math (§7.10), matching the room hero's own line. #}
+    {% if g.posted_week_number %}
+    <div class="summons-line">The Week {{ g.posted_week_number }} docket is posted for reading. Court convenes {{ g.court_convenes_at|ct('%A, %B %-d') }}.</div>
+    {% else %}
     <div class="summons-line">The first docket posts Tuesday, September 1.</div>
+    {% endif %}
     {# The sheet's shape, waiting: eight scoring slots and the reserve. #}
     <div class="hl-slots" role="img" aria-label="Eight scoring slots and one reserve, all open">
       {% for i in range(1, 9) %}<span class="hl-slot" aria-hidden="true">{{ i }}</span>{% endfor %}

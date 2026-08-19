@@ -28,6 +28,7 @@ from sqlalchemy import func, select
 from extensions import db
 from games.docket.models import (
     DocketEnrollment,
+    DocketGame,
     DocketPick,
     DocketTiebreakerPrediction,
     DocketWeekResult,
@@ -107,12 +108,26 @@ def _total_enrolled() -> int:
 def _context_pre() -> dict:
     """Before the Week 1 boundary: the docket has not convened yet. The
     court line carries the weekly cadence (dateless); the panel body owns
-    the convening date, once."""
+    the convening date, once.
+
+    The posted branch (design review 2026-08-19): once a future week is
+    imported with games, the room shows it read-only (the pre-season
+    preview), so the panel must say posted-for-reading instead of promising
+    a post that already happened. Count-only existence read — the games
+    themselves stay in the room, per the module contract above."""
+    posted_week_number = None
+    upcoming = picks_service.upcoming_week()
+    if upcoming is not None and db.session.scalar(
+        select(func.count(DocketGame.id)).filter_by(week_id=upcoming.id)
+    ):
+        posted_week_number = upcoming.week_number
     return {
         'court_line': 'Sheets due Saturdays · 11:00 AM CT',
         'game_tile_label': 'OPENS · SEP 1',
-        # Naive UTC; templates render it through the ct filter.
+        # Naive UTC; templates render these through the ct filter.
         'first_deadline_at': to_naive_utc(weeks.deadline_utc(1)),
+        'court_convenes_at': to_naive_utc(weeks.boundary_utc(1)),
+        'posted_week_number': posted_week_number,
     }
 
 

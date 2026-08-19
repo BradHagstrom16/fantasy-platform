@@ -95,6 +95,36 @@ def test_context_pre_first_deadline_line(app, monkeypatch):
     assert ctx['archived_tiles'] == []
 
 
+def test_context_pre_posted_branch_when_week_imported_with_games(app, monkeypatch):
+    """Design review 2026-08-19: the room's pre-season preview means the
+    docket can already be read — the panel says posted-for-reading, dated
+    from the week math, instead of promising a post that already happened."""
+    at(monkeypatch, PRE_ANCHOR)
+    with app.app_context():
+        user = make_user('reader')
+        make_enrollment(user)
+        week = make_week(1)
+        make_game(week, kickoff=datetime(2026, 9, 3, 22, 0))
+        db.session.commit()
+        ctx = lounge.build_lounge_context(user, 'pre')
+    assert ctx['posted_week_number'] == 1
+    # Naive UTC (D6): Tue Sep 1 06:00 CT == 11:00 UTC. Templates ct-filter it.
+    assert ctx['court_convenes_at'] == datetime(2026, 9, 1, 11, 0)
+
+
+def test_context_pre_posted_branch_stays_off_without_games(app, monkeypatch):
+    """An imported-but-empty week is not a posted docket (mirrors the room's
+    own empty-state rule for the preview)."""
+    at(monkeypatch, PRE_ANCHOR)
+    with app.app_context():
+        user = make_user('early2')
+        make_enrollment(user)
+        make_week(1)
+        db.session.commit()
+        ctx = lounge.build_lounge_context(user, 'pre')
+    assert ctx['posted_week_number'] is None
+
+
 def test_context_live_awaiting_beat_when_week_not_imported(app, monkeypatch):
     """Week 1 is CFB-only and imports by hand: a missing week row in season
     is the 'awaiting' beat, never an error. week_number still resolves from
