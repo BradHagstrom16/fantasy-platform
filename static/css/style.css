@@ -2266,8 +2266,21 @@ body.game-golf {
 }
 .home-shell .court-games {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
+  /* One row, whatever the bill: every tile shares equal width via auto-flow
+     columns, so 2, 3, 4, or a future 5 games all stay on a single line
+     rather than wrapping (the old fixed `1fr 1fr 1fr` dropped tile 4). */
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
   gap: 0.6rem;
+}
+/* Phones: one row of 4 is too tight (~78px/tile), so fall back to a clean
+   2-up grid; the desktop/tablet bill above stays on one line. */
+@media (max-width: 559.98px) {
+  .home-shell .court-games {
+    grid-auto-flow: row;
+    grid-auto-columns: auto;
+    grid-template-columns: 1fr 1fr;
+  }
 }
 .home-shell .cg {
   display: block;
@@ -3978,6 +3991,12 @@ body.game-golf {
   .home-shell .hl-duo--paired {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     column-gap: 2.25rem;
+    /* Equal-height headliners: both cards fill the taller card's height so
+       neither game reads as the larger bill, and the gold seam sits flush
+       between two matched panels instead of trailing past the shorter one.
+       Widths are already equal (the minmax columns); this equalizes height
+       across every state, for both .hl-panel (authed) and .hl-conv (out). */
+    align-items: stretch;
   }
   .home-shell .hl-duo--paired::before {
     content: '';
