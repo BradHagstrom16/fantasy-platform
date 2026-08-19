@@ -40,6 +40,14 @@
       Enter the Room
       <i class="bi bi-arrow-right" aria-hidden="true"></i>
     </a>
+    {% if g.board_week %}
+    {# Preview route (design review 2026-08-19): the Week-1 board is
+       imported for reading before picks open — offer the slate, quietly
+       (a route-link, never a second CTA). #}
+    <div class="field-impact">
+      <a class="route-link" href="{{ url_for('cfb.make_pick', week_number=g.board_week) }}">Preview the Week {{ g.board_week }} board &rsaquo;</a>
+    </div>
+    {% endif %}
     {% elif h.join_open %}
     <a class="hl-cta" href="{{ url_for('cfb.join') }}">
       Take Your Two Lives

@@ -28,7 +28,7 @@ from sqlalchemy.orm import joinedload
 
 from extensions import db
 from games.cfb.constants import SEASON_SCHEDULE
-from games.cfb.models import CfbEnrollment, CfbPick, CfbWeek, CfbWeekOutcome
+from games.cfb.models import CfbEnrollment, CfbGame, CfbPick, CfbWeek, CfbWeekOutcome
 from games.cfb.services.game_logic import (
     get_game_for_team,
     get_official_standings,
@@ -75,6 +75,18 @@ def _week_1_kickoff() -> date:
 ENROLLMENT_DEADLINE_UTC = datetime(2026, 9, 5, 16, 0, tzinfo=UTC)
 
 
+# The season-live instant (design review 2026-08-19): the lounge flips
+# pre -> live at Tue Sep 1 2026 6:00 AM CT (11:00 UTC; CDT is UTC-5) — the
+# same instant as The Docket's Week 1 boundary by construction, so both
+# headliners go live together when the real Week-1 import lands and picks
+# open. A time gate rather than a data gate on purpose: preview imports
+# exist before the season by design (Week 1 was activated 2026-08-19 so
+# members can read the board), so neither "a week is active" nor "a spread
+# is posted" can mean live. Equality-locked to
+# games/docket/services/weeks.boundary_utc(1) in tests.
+SEASON_LIVE_UTC = datetime(2026, 9, 1, 11, 0, tzinfo=UTC)
+
+
 def join_window_open() -> bool:
     """Whether self-serve enrollment is still open. Strict at the instant,
     matching the pick deadline's own rule. Late seats are granted by the
@@ -100,8 +112,12 @@ def cfb_lounge_state() -> CfbLoungeState:
 
     C1 spec section 2.1:
 
-    pre  -- season not started: no week has been activated or completed
-    live -- any week active or completed, season not concluded
+    pre  -- season not started: no week activated or completed, OR the
+            preview window (a week exists for reading but the season-live
+            instant, Tue Sep 1 6:00 AM CT, has not arrived — picks are not
+            open, so standings and Who's Left stay off the lounge)
+    live -- any week active or completed AND the season-live instant
+            reached, season not concluded
     post -- a sole survivor exists (the room's championship gate: one
             active enrollment with at least one eliminated), OR the final
             playoff week is complete with more than one active player
@@ -128,7 +144,8 @@ def cfb_lounge_state() -> CfbLoungeState:
     season_started = CfbWeek.query.filter(
         db.or_(CfbWeek.is_active.is_(True), CfbWeek.is_complete.is_(True))
     ).first() is not None
-    return 'live' if season_started else 'pre'
+    season_live = get_utc_time() >= SEASON_LIVE_UTC
+    return 'live' if (season_started and season_live) else 'pre'
 
 
 def build_lounge_context(user: Any, state: CfbLoungeState | None) -> dict:
@@ -180,6 +197,14 @@ def _context_pre(user, enrollment) -> dict:
     # Decree countdown target: week 1's DB deadline when the row exists,
     # else the WEEK_1_START constant with first-kickoff copy (C1 3.6).
     week1 = CfbWeek.query.filter_by(week_number=1).first()
+    # The preview affordance (design review 2026-08-19, Issue 1A): once the
+    # Week-1 board is imported, an enrolled member can read the slate before
+    # picks open — the decree routes to the room's lines-pending board.
+    board_week = None
+    if week1 is not None and CfbGame.query.filter_by(
+        week_id=week1.id
+    ).first() is not None:
+        board_week = week1.week_number
     if week1 is not None:
         deadline = make_aware(week1.deadline)
         decree_days = max(0, (deadline - now).days)
@@ -239,6 +264,7 @@ def _context_pre(user, enrollment) -> dict:
         'court_line': court_line,
         'decree_days': decree_days,
         'decree_deadline_line': decree_deadline_line,
+        'board_week': board_week,
         'farewell': farewell,
         'game_tile_label': (
             f"PRESEASON · {kickoff.strftime('%b %-d').upper()}"

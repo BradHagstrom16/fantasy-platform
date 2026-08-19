@@ -375,6 +375,28 @@ def test_panel_include_sees_loop_local_headliner(app, client):
     assert 'Sheets due Saturdays' not in cfb_panel
 
 
+def test_docket_pre_panel_reads_posted_for_reading(app, client):
+    """Design review 2026-08-19: with the Week-1 docket imported for the
+    room's read-only preview, the lounge must not promise a post that
+    already happened — it says posted-for-reading, dated from the week
+    math."""
+    from datetime import datetime
+
+    from tests._docket_fixtures import make_game, make_week
+    with app.app_context():
+        auth_id = _make_user('postedreader').auth_id
+        week = make_week(1)
+        make_game(week, kickoff=datetime(2026, 9, 3, 22, 0))
+        db.session.commit()
+    _login(client, auth_id)
+    with patch.dict(os.environ, DUAL_PRE):
+        text = client.get('/').get_data(as_text=True)
+    docket_panel = text[text.index('hl-panel--docket'):]
+    assert 'The Week 1 docket is posted for reading.' in docket_panel
+    assert 'Court convenes Tuesday, September 1.' in docket_panel
+    assert 'The first docket posts' not in docket_panel
+
+
 def test_panel_headers_bill_full_game_names(app, client):
     """Design review 2026-08-18: panel headers name the game for a cold
     viewer — the registry lounge_label ('CFB Survivor', 'The Docket ·
@@ -493,3 +515,15 @@ def test_both_games_share_one_enrollment_deadline_instant():
     from games.cfb.services.lounge import ENROLLMENT_DEADLINE_UTC
     from games.docket.services import weeks
     assert weeks.deadline_utc(1) == ENROLLMENT_DEADLINE_UTC
+
+
+def test_both_games_share_one_season_live_instant():
+    """Design review 2026-08-19 (the preseason gate): the CFB lounge flips
+    pre → live at SEASON_LIVE_UTC and The Docket at its Week-1 boundary.
+    Both headliners must go live together Tuesday morning — the same
+    one-cutoff reasoning as the enrollment-deadline lock above, and the
+    same exposure: CFB pins a literal UTC constant while the docket derives
+    its boundary from CT wall-clock math."""
+    from games.cfb.services.lounge import SEASON_LIVE_UTC
+    from games.docket.services import weeks
+    assert weeks.boundary_utc(1) == SEASON_LIVE_UTC
