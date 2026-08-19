@@ -84,7 +84,13 @@ def test_game_tiles_wrap_two_up_on_phones():
         "`.home-shell .court-games` so phones get a 2-up grid instead of a "
         "cramped one-line row of tiles."
     )
-    assert 'grid-template-columns: 1fr 1fr' in m.group('body'), (
+    body = m.group('body')
+    assert 'grid-auto-flow: row' in body, (
+        "The phone `.court-games` override must reset `grid-auto-flow: row` — "
+        "without it the desktop `grid-auto-flow: column` stays in effect and "
+        "the explicit 2-column template does not lay the tiles out 2-up."
+    )
+    assert 'grid-template-columns: 1fr 1fr' in body, (
         "The phone `.court-games` override must set "
         "`grid-template-columns: 1fr 1fr` (a clean 2×2 for four tiles)."
     )
