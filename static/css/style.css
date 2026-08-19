@@ -13546,6 +13546,46 @@ button.docket-side.is-move:hover { color: var(--text-primary); }
   padding: .15rem 0;
 }
 
+/* The short version: the 30-second read, lifted above the rules under a garnet
+   masthead rule. Prominence is type and air, never a card (6.9 ruled lines). */
+.docket-rules-lede-block { margin-bottom: .5rem; }
+.docket-rules-lede {
+  font-family: 'Newsreader', Georgia, serif;
+  font-size: 1.2rem;
+  line-height: 1.6;
+  max-width: 60ch;
+  margin: .35rem 0 0;
+  padding-top: 1.1rem;
+  border-top: 2px solid var(--game-accent);
+}
+.docket-rules-lede p { margin-bottom: .85rem; }
+.docket-rules-lede p:last-child {
+  margin-bottom: 0;
+  font-size: 1rem;
+  color: var(--text-secondary);
+}
+
+/* The fine print: everything past the everyday rules, demoted under a heavier
+   closing rule with quieted heads so it stops competing with how-to-play. */
+.docket-rules-fine {
+  margin-top: 3rem;
+  padding-top: 2rem;
+  border-top: 3px double var(--docket-rule);
+}
+.docket-rules-fine-intro { max-width: 60ch; margin-bottom: .25rem; }
+.docket-rules-fine-intro p {
+  font-family: 'Newsreader', Georgia, serif;
+  font-size: .95rem;
+  color: var(--text-secondary);
+  margin: 0;
+}
+.docket-rules-fine .docket-section-head {
+  font-size: 1.2rem;
+  margin-top: 1.75rem;
+  border-bottom-width: 1px;
+  border-bottom-color: var(--docket-rule);
+}
+
 @media (max-width: 767.98px) {
   .docket-markets { grid-template-columns: 1fr; gap: .55rem; }
   .docket-case-caption { font-size: 1.2rem; }
@@ -13558,4 +13598,6 @@ button.docket-side.is-move:hover { color: var(--text-primary); }
   .docket-weeks { padding-left: .5rem; }
   .docket-week { flex-wrap: wrap; gap: .35rem .5rem; }
   .docket-section-head { font-size: 1.3rem; }
+  .docket-rules-lede { font-size: 1.1rem; }
+  .docket-rules-fine .docket-section-head { font-size: 1.15rem; }
 }
