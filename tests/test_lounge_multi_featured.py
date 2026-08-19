@@ -190,10 +190,13 @@ def test_out_cards_show_roster_counts_at_floor(app, client):
 
 def test_both_games_share_one_roster_count_floor():
     """Same shape as the shared-deadline invariant below: the two floors
-    are 'the same value by construction', so lock the equality."""
+    are 'the same value by construction', so lock the equality. Equality
+    alone would still pass if both sides were changed to any matching value
+    (0 would silently defeat the floor), so pin the ADR-051 magnitude too."""
     from games.cfb.services import lounge as cfb_lounge
     from games.docket.services import lounge as docket_lounge
     assert cfb_lounge.ROSTER_COUNT_FLOOR == docket_lounge.ROSTER_COUNT_FLOOR
+    assert cfb_lounge.ROSTER_COUNT_FLOOR == 6
 
 
 def test_every_panel_mode_headliner_ships_conv_card_and_panels():
