@@ -37,7 +37,51 @@
         </div>
         {% endif %}
 
-        {% if not pick_locked %}
+        {% if lines_pending %}
+        {# Pre-spread-lock slate: the full board, read-only. No role, no
+           tabindex, no data-team-id, so the picker JS and its cursor and
+           hover affordances never attach (they bind [role="button"] /
+           [data-team-id] only). Full-contrast resting rows, deliberately
+           not the dimmed team-option-out treatment: nothing here is out,
+           it has not opened yet, and the note states that reason once. #}
+        <div class="cfb-slate-head">
+            <span class="cfb-eyebrow">The Board</span>
+            <span class="cfb-slate-count">{{ games|length }} game{{ 's' if games|length != 1 }}, lines pending</span>
+        </div>
+
+        <div class="card mb-3 cfb-lines-pending">
+            <div class="card-body py-3">
+                <span class="cfb-eyebrow">Lines Pending</span>
+                <p class="mb-0">The slate is set. Lines and eligibility post
+                    when spreads lock {{ lines_post_label }}. Picking opens
+                    then.</p>
+            </div>
+        </div>
+
+        {% for game in games %}
+        <div class="card mb-2 team-pick-card" data-game-card>
+            <div class="card-header py-2">
+                <div class="d-flex justify-content-between align-items-center gap-2">
+                    <strong class="cfb-matchup">
+                        {{ game.get_away_team_display() }} <span class="cfb-at">@</span> {{ game.get_home_team_display() }}
+                    </strong>
+                    <span class="cfb-kickoff">
+                        {% if game._aware_time %}{{ game._aware_time.strftime('%a %m/%d %I:%M %p') }}{% else %}TBD{% endif %}
+                    </span>
+                </div>
+            </div>
+            <div class="card-body py-2">
+                <div class="d-flex justify-content-between align-items-center p-2 rounded mb-1 team-option bg-light">
+                    <span class="cfb-team-id"><span class="cfb-team-name">{{ game.get_away_team_display() }}</span></span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center p-2 rounded team-option bg-light">
+                    <span class="cfb-team-id"><span class="cfb-team-name">{{ game.get_home_team_display() }}</span> <span class="cfb-home-tag">Home</span></span>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+
+        {% elif not pick_locked %}
         <form method="POST" id="pickForm">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
             <input type="hidden" name="team_id" id="selectedTeamId" value="{% if existing_pick %}{{ existing_pick.team_id }}{% endif %}"/>
