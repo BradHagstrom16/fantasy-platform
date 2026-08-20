@@ -146,8 +146,10 @@ Binding preservation rules for all subsequent work:
   DQ-6 — no wipe needed since nothing is locked yet). Two data corrections were
   also found in the 2026-08-19 design review: the Week-1 row's `deadline`
   (16:00) and `start_date` (05:00) were written as UTC instants into the
-  pool-tz wall-clock columns — fix to `2026-09-05 11:00:00` / `2026-09-03
-  00:00:00` before Sep 5 or lock + autopick run five hours late.
+  pool-tz wall-clock columns — fix `start_date` (to `2026-09-03 00:00:00`)
+  before Week 1 starts Thu Sep 3, and `deadline` (to `2026-09-05 11:00:00`)
+  before Sat Sep 5 11:00 AM CT, or the recorded week start and the
+  deadline-driven lock + autopick each run five hours late.
 
   ```bash
   # Launch week (any day Aug 30–31): the four timers that stand down without an active week
