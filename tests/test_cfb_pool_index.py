@@ -8,6 +8,8 @@ index.html, including the viewer-aware "used team" strike-through.
 Conference grouping is by constants.TEAM_CONFERENCES, so the seeded team
 NAMES must be real short names (Alabama -> SEC, etc.).
 """
+import re
+
 import pytest
 
 from app import create_app
@@ -153,12 +155,23 @@ def test_index_no_strike_for_member_without_picks(client, app):
 # -- design lock: card headers use the .cfb-* vocabulary, not generic
 #    Bootstrap .card + bi-* / semantic-alert headers (games/cfb/DESIGN.md
 #    §7.8 Component prohibitions). Locks both render branches of index.html.
-#    Negative assertions are scoped to the exact icon/alert tokens we remove
-#    -- a blanket 'bi bi-' would false-fail on base.html navbar chrome
-#    (e.g. bi-gear-fill), which is why bi-gear is deliberately not asserted.
+#    Each header is asserted per-section (title bound to the .cfb-field-head
+#    primitive), not by a page-wide substring. Negative assertions stay scoped
+#    to the exact icon/alert tokens removed -- a blanket 'bi bi-' would
+#    false-fail on base.html navbar chrome (e.g. bi-gear-fill), which is why
+#    bi-gear is deliberately not asserted.
+
+def _has_field_head(html, title):
+    """True when ``title`` renders as the <h5> of a .cfb-field-head header
+    (the CFB native section-header primitive), tolerating the whitespace
+    between the wrapper div and the heading."""
+    return re.search(
+        r'cfb-field-head">\s*<h5[^>]*>' + re.escape(title) + r'</h5>', html
+    ) is not None
+
 
 def test_index_regular_headers_use_cfb_field_head(client, app):
-    """Regular-season landing: section headers render via the native
+    """Regular-season landing: each section header renders via the native
     .cfb-field-head primitive, and the CFP notice is a crimson-identity
     card -- not a danger-red Bootstrap alert (crimson = identity, red =
     survivor-state; games/cfb/DESIGN.md §6.5/§7.8)."""
@@ -170,24 +183,25 @@ def test_index_regular_headers_use_cfb_field_head(client, app):
 
     html = client.get('/cfb/').get_data(as_text=True)
 
-    # Native section-header primitive is in use.
-    assert 'cfb-field-head' in html
-    # Active Players + Pool Rules dropped their generic bi-* icons.
-    assert 'bi-people-fill' not in html
-    assert 'bi-journal-text' not in html
-    # Tiebreaker Rules is a card now, not a foreign-blue Bootstrap alert.
-    assert 'alert-info' not in html
-    assert 'bi-info-circle' not in html
-    # CFP notice re-cast as a crimson-identity card, not alert-danger.
-    assert 'College Football Playoff' in html
+    # Each header title is bound to the .cfb-field-head primitive.
+    assert _has_field_head(html, 'Active Players')
+    assert _has_field_head(html, 'Pool Rules')
+    assert _has_field_head(html, 'Tiebreaker Rules')
+    assert _has_field_head(html, 'College Football Playoff')
+    # CFP notice is the crimson-identity card, not a danger-red alert.
     assert 'card border-primary' in html
-    assert 'alert-danger' not in html
-    assert 'bi-exclamation-triangle-fill' not in html
+    # The removed generic icons / semantic alerts are gone (section-specific).
+    assert 'bi-people-fill' not in html       # Active Players
+    assert 'bi-journal-text' not in html      # Pool Rules
+    assert 'alert-info' not in html           # Tiebreaker Rules
+    assert 'bi-info-circle' not in html       # Tiebreaker Rules
+    assert 'alert-danger' not in html         # CFP notice
+    assert 'bi-exclamation-triangle-fill' not in html  # CFP notice
 
 
 def test_index_champion_headers_use_cfb_field_head(client, app):
     """Champion landing: Championship Journey / Fallen Competitors /
-    Season Summary use .cfb-field-head, not generic .card + bi-* headers."""
+    Season Summary each use .cfb-field-head, not generic .card + bi-*."""
     champ = make_user('champ')
     make_enrollment(champ, display_name='Champ Carl')
     fallen = make_user('fallen')
@@ -199,8 +213,11 @@ def test_index_champion_headers_use_cfb_field_head(client, app):
     html = client.get('/cfb/').get_data(as_text=True)
 
     assert 'CFB Survivor Pool Champion' in html   # champion branch rendered
-    assert 'Championship Journey' in html          # the conditional card actually rendered
-    assert 'cfb-field-head' in html
-    assert 'bi-graph-up-arrow' not in html         # Championship Journey
-    assert 'bi-people' not in html                 # Fallen Competitors
-    assert 'bi-bar-chart' not in html              # Season Summary
+    # Each champion-view card header is bound to the .cfb-field-head primitive.
+    assert _has_field_head(html, 'Championship Journey')
+    assert _has_field_head(html, 'Fallen Competitors')
+    assert _has_field_head(html, 'Season Summary')
+    # The removed generic icons are gone (section-specific).
+    assert 'bi-graph-up-arrow' not in html    # Championship Journey
+    assert 'bi-people' not in html            # Fallen Competitors
+    assert 'bi-bar-chart' not in html         # Season Summary
