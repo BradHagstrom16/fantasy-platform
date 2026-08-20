@@ -809,7 +809,7 @@ def my_picks():
                         break
             else:
                 available_teams.append(team)
-                conference = TEAM_CONFERENCES.get(team.name, 'Unknown')
+                conference = team.get_conference()
                 if conference not in teams_by_conference:
                     teams_by_conference[conference] = []
                 teams_by_conference[conference].append(team)
