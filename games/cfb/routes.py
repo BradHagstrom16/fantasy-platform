@@ -19,7 +19,7 @@ from flask import (
     url_for,
 )
 from flask_login import current_user, login_required
-from sqlalchemy import func
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import contains_eager, joinedload
 
@@ -110,7 +110,8 @@ def inject_cfb_globals():
     # route that would just redirect.
     cfb_pick_target = None
     if cfb_enrollment and not cfb_enrollment.is_eliminated:
-        active_week = CfbWeek.query.filter_by(is_active=True).first()
+        active_week = db.session.scalar(
+            select(CfbWeek).filter_by(is_active=True))
         if active_week and not deadline_has_passed(active_week.deadline):
             cfb_pick_target = active_week
 
@@ -640,22 +641,28 @@ def make_pick(week_number):
         if game.away_team_id:
             team_game[game.away_team_id] = game
 
+    playoff = is_week_playoff(week)
     pool_ledger = []
-    for team in CfbTeam.query.order_by(CfbTeam.name).all():
+    for team in db.session.scalars(select(CfbTeam).order_by(CfbTeam.name)).all():
         if team.id in team_game:
             continue  # playing this week -> shown on the board with its state
-        pool_ledger.append({
-            'team': team,
-            'reason': 'used' if team.id in used_team_ids else 'not_playing',
-        })
+        if team.id in used_team_ids:
+            reason = 'used'
+        elif playoff and team.name in cfp_eliminated_names:
+            reason = 'cfp_out'  # match the board's out-reason for eliminated teams
+        else:
+            reason = 'not_playing'
+        pool_ledger.append({'team': team, 'reason': reason})
 
     # The state legend teaches the taxonomy; only list states that can occur in
     # the current phase (no favorite/started split before lines lock).
     if lines_pending:
         legend_states = ['on_slate', 'used', 'not_playing']
+        if playoff and cfp_eliminated_names:
+            legend_states.append('cfp_out')
     else:
         legend_states = ['open', 'too_favored', 'used', 'started', 'not_playing']
-        if is_week_playoff(week):
+        if playoff:
             legend_states.insert(4, 'cfp_out')
         if any(g.home_team_spread is None for g in games):
             legend_states.append('no_line')

@@ -4,12 +4,22 @@
    .cfb-used-grid / .cfb-team-chip.is-out pool primitives. #}
 {% set ledger_not_playing = pool_ledger | selectattr('reason', 'equalto', 'not_playing') | list %}
 {% set ledger_used = pool_ledger | selectattr('reason', 'equalto', 'used') | list %}
+{% set ledger_cfp_out = pool_ledger | selectattr('reason', 'equalto', 'cfp_out') | list %}
 <div class="cfb-pool-ledger">
     {% if pool_ledger %}
         <div class="cfb-slate-head">
             <span class="cfb-eyebrow">Not On The Board This Week</span>
             <span class="cfb-slate-count">{{ pool_ledger|length }} team{{ 's' if pool_ledger|length != 1 }}</span>
         </div>
+
+        {% if ledger_cfp_out %}
+        <p class="cfb-eyebrow cfb-ledger-group">Out of the playoff</p>
+        <div class="cfb-used-grid">
+            {% for e in ledger_cfp_out %}
+            <span class="cfb-team-chip is-out">{{ e.team.name }}<span class="cfb-team-chip-note">CFP Out</span></span>
+            {% endfor %}
+        </div>
+        {% endif %}
 
         {% if ledger_not_playing %}
         <p class="cfb-eyebrow cfb-ledger-group">Not playing</p>
