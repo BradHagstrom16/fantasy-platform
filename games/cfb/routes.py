@@ -666,6 +666,10 @@ def make_pick(week_number):
             legend_states.insert(4, 'cfp_out')
         if any(g.home_team_spread is None for g in games):
             legend_states.append('no_line')
+    # A game with an untracked side (a pool team's non-pool opponent) is on the
+    # board because ONE side is rostered; the other can never be picked.
+    if any(g.home_team_id is None or g.away_team_id is None for g in games):
+        legend_states.append('not_in_pool')
 
     return render_template(
         'cfb/pick.html',

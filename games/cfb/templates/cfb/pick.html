@@ -65,6 +65,8 @@
             {% set home_team = game.home_team %}
             {% set away_used = away_team and away_team.id in used_team_ids %}
             {% set home_used = home_team and home_team.id in used_team_ids %}
+            {% set away_pool = away_team is not none %}
+            {% set home_pool = home_team is not none %}
         <div class="card mb-2 team-pick-card" data-game-card>
             <div class="card-header py-2">
                 <div class="d-flex justify-content-between align-items-center gap-2">
@@ -77,14 +79,14 @@
                 </div>
             </div>
             <div class="card-body py-2">
-                <div class="d-flex justify-content-between align-items-center p-2 rounded mb-1 team-option {% if away_used %}team-option-out{% else %}bg-light{% endif %}">
+                <div class="d-flex justify-content-between align-items-center p-2 rounded mb-1 team-option {% if away_used or not away_pool %}team-option-out{% else %}bg-light{% endif %}">
                     <span class="cfb-team-id"><span class="cfb-team-name">{{ game.get_away_team_display() }}</span>
-                        {% if away_used %}<span class="cfb-out-reason">Used</span>{% endif %}
+                        {% if away_used %}<span class="cfb-out-reason">Used</span>{% elif not away_pool %}<span class="cfb-out-reason">Not in Pool</span>{% endif %}
                     </span>
                 </div>
-                <div class="d-flex justify-content-between align-items-center p-2 rounded team-option {% if home_used %}team-option-out{% else %}bg-light{% endif %}">
+                <div class="d-flex justify-content-between align-items-center p-2 rounded team-option {% if home_used or not home_pool %}team-option-out{% else %}bg-light{% endif %}">
                     <span class="cfb-team-id"><span class="cfb-team-name">{{ game.get_home_team_display() }}</span> <span class="cfb-home-tag">Home</span>
-                        {% if home_used %}<span class="cfb-out-reason">Used</span>{% endif %}
+                        {% if home_used %}<span class="cfb-out-reason">Used</span>{% elif not home_pool %}<span class="cfb-out-reason">Not in Pool</span>{% endif %}
                     </span>
                 </div>
             </div>
@@ -155,6 +157,14 @@
                                 {% if away_spread is not none %}<span class="spread-badge">{{ "%+.1f"|format(away_spread) }}</span>{% endif %}
                             </div>
                             {% endif %}
+                        {% else %}
+                            {# Non-pool opponent (not one of the 49): never pickable. #}
+                            <div class="d-flex justify-content-between align-items-center p-2 rounded mb-1 team-option team-option-out">
+                                <span class="cfb-team-id">
+                                    <span class="cfb-team-name">{{ game.get_away_team_display() }}</span>
+                                    <span class="cfb-out-reason">Not in Pool</span>
+                                </span>
+                            </div>
                         {% endif %}
 
                         {# Home team option #}
@@ -175,6 +185,14 @@
                                 {% if home_spread is not none %}<span class="spread-badge">{{ "%+.1f"|format(home_spread) }}</span>{% endif %}
                             </div>
                             {% endif %}
+                        {% else %}
+                            {# Non-pool opponent (not one of the 49): never pickable. #}
+                            <div class="d-flex justify-content-between align-items-center p-2 rounded team-option team-option-out">
+                                <span class="cfb-team-id">
+                                    <span class="cfb-team-name">{{ game.get_home_team_display() }}</span> <span class="cfb-home-tag">Home</span>
+                                    <span class="cfb-out-reason">Not in Pool</span>
+                                </span>
+                            </div>
                         {% endif %}
                     </div>
                 </div>
