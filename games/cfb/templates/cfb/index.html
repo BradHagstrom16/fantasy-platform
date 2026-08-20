@@ -52,7 +52,9 @@
             {% if champion_picks %}
             <div class="card mb-4 animate-in stagger-2">
                 <div class="card-header">
-                    <h4 class="mb-0"><i class="bi bi-graph-up-arrow me-2"></i>Championship Journey</h4>
+                    <div class="cfb-field-head">
+                        <h5 class="mb-0">Championship Journey</h5>
+                    </div>
                 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
@@ -98,7 +100,9 @@
             {# Fallen Competitors #}
             <div class="card animate-in stagger-3">
                 <div class="card-header">
-                    <h4 class="mb-0"><i class="bi bi-people me-2"></i>Fallen Competitors</h4>
+                    <div class="cfb-field-head">
+                        <h5 class="mb-0">Fallen Competitors</h5>
+                    </div>
                 </div>
                 <div class="card-body">
                     <div class="row g-2">
@@ -115,7 +119,9 @@
         <div class="col-lg-4">
             <div class="card animate-in stagger-4">
                 <div class="card-header">
-                    <h4 class="mb-0"><i class="bi bi-bar-chart me-2"></i>Season Summary</h4>
+                    <div class="cfb-field-head">
+                        <h5 class="mb-0">Season Summary</h5>
+                    </div>
                 </div>
                 <div class="card-body">
                     <ul class="list-unstyled mb-0">
@@ -162,9 +168,15 @@
             {% if current_week %}
                 {# CFP Alert #}
                 {% if is_week_playoff(current_week) %}
-                <div class="alert alert-danger mb-3 animate-in stagger-1">
-                    <h5 class="mb-1"><i class="bi bi-exclamation-triangle-fill me-1"></i>College Football Playoff</h5>
-                    <p class="mb-0">All teams reset. Pick any of the 12 playoff teams, even if used in regular season.</p>
+                <div class="card border-primary mb-3 animate-in stagger-1">
+                    <div class="card-header">
+                        <div class="cfb-field-head">
+                            <h5 class="mb-0">College Football Playoff</h5>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <p class="mb-0">All teams reset. Pick any of the 12 playoff teams, even if used in regular season.</p>
+                    </div>
                 </div>
                 {% endif %}
 
@@ -221,7 +233,9 @@
             {# Standings Table #}
             <div class="card mb-4 animate-in stagger-3">
                 <div class="card-header">
-                    <h4 class="mb-0"><i class="bi bi-people-fill me-2"></i>Active Players</h4>
+                    <div class="cfb-field-head">
+                        <h5 class="mb-0">Active Players</h5>
+                    </div>
                 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
@@ -275,12 +289,18 @@
             </div>
 
             {# Tiebreaker Rules #}
-            <div class="alert alert-info animate-in stagger-4">
-                <h6 class="mb-2"><i class="bi bi-info-circle me-1"></i>Tiebreaker Rules</h6>
-                <ol class="mb-0 small">
-                    <li><strong>Lives Remaining:</strong> Two lives is better than one</li>
-                    <li><strong>Cumulative Spread:</strong> Lower is better. Picking favorites adds points, underdogs subtract.</li>
-                </ol>
+            <div class="card mb-3 animate-in stagger-4">
+                <div class="card-header">
+                    <div class="cfb-field-head">
+                        <h5 class="mb-0">Tiebreaker Rules</h5>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <ol class="mb-0 small">
+                        <li><strong>Lives Remaining:</strong> Two lives is better than one</li>
+                        <li><strong>Cumulative Spread:</strong> Lower is better. Picking favorites adds points, underdogs subtract.</li>
+                    </ol>
+                </div>
             </div>
 
             {# Eliminated Players #}
@@ -300,7 +320,9 @@
             {# Pool Rules Card #}
             <div class="card mb-3 animate-in stagger-4">
                 <div class="card-header">
-                    <h4 class="mb-0"><i class="bi bi-journal-text me-2"></i>Pool Rules</h4>
+                    <div class="cfb-field-head">
+                        <h5 class="mb-0">Pool Rules</h5>
+                    </div>
                 </div>
                 <div class="card-body">
                     <ul>
@@ -319,7 +341,9 @@
             {% if cfb_enrollment and cfb_enrollment.is_admin %}
             <div class="card mt-3 animate-in stagger-5">
                 <div class="card-header">
-                    <h4 class="mb-0"><i class="bi bi-gear me-2"></i>Admin</h4>
+                    <div class="cfb-field-head">
+                        <h5 class="mb-0">Admin</h5>
+                    </div>
                 </div>
                 <div class="card-body">
                     <div class="d-grid">
