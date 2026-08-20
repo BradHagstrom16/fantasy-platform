@@ -73,6 +73,19 @@ def test_pool_teams_by_conference_groups_orders_and_counts(app):
     assert [t.name for t in sec_teams] == ['Alabama', 'Georgia', 'Tennessee']
 
 
+def test_pool_uses_stored_conference_for_offmaster_team(app):
+    """A team off the master list groups by its stored conference column
+    (CfbTeam.get_conference()), never dumped into 'Unknown'."""
+    from games.cfb.models import CfbTeam
+    db.session.add(CfbTeam(name='Directional State', conference='Big Sky'))
+    db.session.commit()
+
+    groups, total, conf_count = pool_teams_by_conference()
+
+    assert total == 1
+    assert [(conf, count) for conf, _, count in groups] == [('Big Sky', 1)]
+
+
 def test_pool_teams_by_conference_empty_pool(app):
     """No seeded teams -> empty groups, zero totals (out-of-season / fresh DB)."""
     groups, total, conf_count = pool_teams_by_conference()

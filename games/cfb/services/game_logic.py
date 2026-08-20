@@ -8,10 +8,10 @@ cumulative spread calculation.
 import logging
 
 from flask import current_app
+from sqlalchemy import select
 from sqlalchemy.orm import joinedload
 
 from extensions import db
-from games.cfb.constants import TEAM_CONFERENCES
 from games.cfb.models import (
     CfbEnrollment,
     CfbGame,
@@ -73,21 +73,22 @@ def pool_teams_by_conference():
     """The eligible team pool grouped by conference, for display.
 
     Pool membership is row existence in cfb_team (there is no boolean
-    flag). Teams group by their master-list conference
-    (constants.TEAM_CONFERENCES, fail-open to 'Unknown' on an unmapped
-    name). Groups are ordered by size DESC then conference name ASC; teams
-    within a group keep the name order the query returns.
+    flag). Teams group by CfbTeam.get_conference() -- the master-list
+    conference, falling back to the stored row value then 'Unknown', so an
+    admin-added team off the master list still lands in its real
+    conference. Groups are ordered by size DESC then conference name ASC;
+    teams within a group keep the name order the query returns.
 
     Returns (groups, total, conference_count) where groups is a list of
     (conference_name, [CfbTeam], count). Pure/no per-user state -- the
     viewer's spent-team set is applied at the call site so this stays
     cacheable and directly testable.
     """
-    teams = CfbTeam.query.order_by(CfbTeam.name).all()
+    teams = db.session.scalars(select(CfbTeam).order_by(CfbTeam.name)).all()
 
     by_conf = {}
     for team in teams:
-        conf = TEAM_CONFERENCES.get(team.name, 'Unknown')
+        conf = team.get_conference()
         by_conf.setdefault(conf, []).append(team)
 
     groups = sorted(
