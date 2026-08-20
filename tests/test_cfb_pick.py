@@ -745,12 +745,20 @@ def test_cfp_eliminated_team_shows_cfp_out_on_board_and_ledger(app, client):
 
 # ── Non-pool opponent: a pool team's non-49 opponent is never pickable ─────
 
-def _add_untracked_opponent_game(week, pool_home, *, spread=None):
-    """A game whose away side is a non-pool (untracked) opponent — only the
-    home team is one of the 49. Mirrors a real FCS/non-pool matchup."""
-    g = CfbGame(week_id=week.id, home_team_id=pool_home.id, away_team_id=None,
-                away_team_name='Arkansas Pine Bluff Golden Lions',
-                home_team_spread=spread, game_time=week.deadline)
+def _add_untracked_opponent_game(week, pool_team, *, spread=None,
+                                 untracked_side='away'):
+    """A game with one non-pool (untracked) side. ``pool_team`` is the rostered
+    team; ``untracked_side`` places the non-pool opponent home or away. Mirrors
+    a real FCS/non-pool matchup. ``spread`` is always home-perspective."""
+    opp = 'Arkansas Pine Bluff Golden Lions'
+    if untracked_side == 'away':
+        g = CfbGame(week_id=week.id, home_team_id=pool_team.id, away_team_id=None,
+                    away_team_name=opp, home_team_spread=spread,
+                    game_time=week.deadline)
+    else:
+        g = CfbGame(week_id=week.id, away_team_id=pool_team.id, home_team_id=None,
+                    home_team_name=opp, home_team_spread=spread,
+                    game_time=week.deadline)
     db.session.add(g)
     db.session.flush()
     return g
@@ -794,6 +802,24 @@ def test_interactive_shows_non_pool_opponent_as_not_in_pool(app, client):
     assert f'data-team-id="{missouri.id}"' in data                     # pool team selectable
     assert _chip_reason(data, 'Arkansas Pine Bluff Golden Lions') == 'Not in Pool'
     assert 'cfb-legend-label">Not in Pool</span>' in data
+
+
+def test_untracked_home_opponent_marked_not_in_pool(app, client):
+    """The non-pool side can be the HOME team (pool team away) — the
+    home-missing branch renders 'Not in Pool' the same as the away one."""
+    week = make_week(1, deadline=FUTURE_DEADLINE)
+    missouri = make_team('Missouri')
+    # Home +3 => away (Missouri) favored by 3 => eligible & selectable.
+    _add_untracked_opponent_game(week, missouri, spread=3.0, untracked_side='home')
+    user = make_user('p1')
+    make_enrollment(user)
+    db.session.commit()
+    _login(client, user)
+
+    data = client.get('/cfb/pick/1').data.decode()
+
+    assert f'data-team-id="{missouri.id}"' in data                     # away pool team selectable
+    assert _chip_reason(data, 'Arkansas Pine Bluff Golden Lions') == 'Not in Pool'
 
 
 # ── Sub-nav "Pick" pill: reachable only when a pick is actually possible ───
