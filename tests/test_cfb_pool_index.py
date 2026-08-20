@@ -148,3 +148,59 @@ def test_index_no_strike_for_member_without_picks(client, app):
 
     assert 'cfb-team-chip is-out' not in html
     assert 'struck through' not in html
+
+
+# -- design lock: card headers use the .cfb-* vocabulary, not generic
+#    Bootstrap .card + bi-* / semantic-alert headers (games/cfb/DESIGN.md
+#    §7.8 Component prohibitions). Locks both render branches of index.html.
+#    Negative assertions are scoped to the exact icon/alert tokens we remove
+#    -- a blanket 'bi bi-' would false-fail on base.html navbar chrome
+#    (e.g. bi-gear-fill), which is why bi-gear is deliberately not asserted.
+
+def test_index_regular_headers_use_cfb_field_head(client, app):
+    """Regular-season landing: section headers render via the native
+    .cfb-field-head primitive, and the CFP notice is a crimson-identity
+    card -- not a danger-red Bootstrap alert (crimson = identity, red =
+    survivor-state; games/cfb/DESIGN.md §6.5/§7.8)."""
+    _seed_pool()
+    make_week(1, is_playoff=True, is_active=True)  # active -> current_week; playoff -> CFP notice
+    make_enrollment(make_user('alice'))
+    make_enrollment(make_user('bob'))  # 2 active, 0 eliminated -> regular-season branch
+    db.session.commit()
+
+    html = client.get('/cfb/').get_data(as_text=True)
+
+    # Native section-header primitive is in use.
+    assert 'cfb-field-head' in html
+    # Active Players + Pool Rules dropped their generic bi-* icons.
+    assert 'bi-people-fill' not in html
+    assert 'bi-journal-text' not in html
+    # Tiebreaker Rules is a card now, not a foreign-blue Bootstrap alert.
+    assert 'alert-info' not in html
+    assert 'bi-info-circle' not in html
+    # CFP notice re-cast as a crimson-identity card, not alert-danger.
+    assert 'College Football Playoff' in html
+    assert 'card border-primary' in html
+    assert 'alert-danger' not in html
+    assert 'bi-exclamation-triangle-fill' not in html
+
+
+def test_index_champion_headers_use_cfb_field_head(client, app):
+    """Champion landing: Championship Journey / Fallen Competitors /
+    Season Summary use .cfb-field-head, not generic .card + bi-* headers."""
+    champ = make_user('champ')
+    make_enrollment(champ, display_name='Champ Carl')
+    fallen = make_user('fallen')
+    make_enrollment(fallen, lives=0, eliminated=True, display_name='Dino Dan')
+    week = make_week(1, is_complete=True)
+    make_pick(champ, week, make_team('Alabama'))  # champion_picks truthy -> Championship Journey renders
+    db.session.commit()
+
+    html = client.get('/cfb/').get_data(as_text=True)
+
+    assert 'CFB Survivor Pool Champion' in html   # champion branch rendered
+    assert 'Championship Journey' in html          # the conditional card actually rendered
+    assert 'cfb-field-head' in html
+    assert 'bi-graph-up-arrow' not in html         # Championship Journey
+    assert 'bi-people' not in html                 # Fallen Competitors
+    assert 'bi-bar-chart' not in html              # Season Summary
