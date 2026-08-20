@@ -5015,8 +5015,48 @@ body.game-cfb .alert-warning { background: rgba(243,239,230,.05); border-color: 
   vertical-align: middle;
 }
 
+/* State legend: teaches the eligibility taxonomy at a glance (Krug: self-evident).
+   Teko labels + hairline, no glyph (room surface). Swatch carries the state by
+   fill, the label by text -- state survives without color (DESIGN.md S6.7). */
+.cfb-pick-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .4rem 1rem;
+  margin: 0 0 1rem;
+  padding: .55rem .8rem;
+  background: var(--cfb-surface);
+  border: 1px solid var(--cfb-hairline);
+  border-radius: var(--radius);
+}
+.cfb-legend-item { display: inline-flex; align-items: center; gap: .4rem; }
+.cfb-legend-swatch {
+  width: .7rem;
+  height: .7rem;
+  flex: none;
+  border-radius: .15rem;
+  border: 1px solid var(--cfb-hairline-strong);
+}
+.cfb-legend-swatch.is-open { background: var(--cfb-crimson); border-color: var(--cfb-crimson); }
+.cfb-legend-swatch.is-neutral { background: var(--cfb-lifted); }
+.cfb-legend-swatch.is-out { background: var(--cfb-canvas); }
+.cfb-legend-label {
+  font-family: 'Teko', sans-serif;
+  font-size: .85rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--cfb-bone-muted);
+}
+
+/* Pool ledger: the rest of the 49 (not on this week's board). Informational,
+   reuses .cfb-used-grid / .cfb-team-chip.is-out. */
+.cfb-pool-ledger { margin-top: 1.5rem; }
+.cfb-pool-ledger .cfb-ledger-group { display: block; margin: .9rem 0 .4rem; }
+.cfb-ledger-allin { font-family: 'Newsreader', serif; color: var(--cfb-bone-muted); margin: 0; }
+
 /* -- Team options: the escalating states (games/cfb/DESIGN.md S4 .team-pick-card) -- */
 body.game-cfb .team-option {
+  min-height: 44px; /* touch target (DESIGN.md mobile rule) */
   transition: background var(--transition), box-shadow var(--transition), transform var(--transition);
 }
 body.game-cfb .team-option[role="button"] { cursor: pointer; }

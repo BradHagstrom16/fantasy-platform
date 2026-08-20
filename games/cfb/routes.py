@@ -103,6 +103,17 @@ def inject_cfb_globals():
             user_id=current_user.id, season_year=season_year
         ).first()
 
+    # The sub-nav "Pick" pill target: the active week, but only when the viewer
+    # can actually act on it (enrolled, not eliminated, deadline not passed).
+    # Resolved here because the active week (CfbWeek.is_active) is otherwise not
+    # exposed to base.html; a None target hides the pill so it never links to a
+    # route that would just redirect.
+    cfb_pick_target = None
+    if cfb_enrollment and not cfb_enrollment.is_eliminated:
+        active_week = CfbWeek.query.filter_by(is_active=True).first()
+        if active_week and not deadline_has_passed(active_week.deadline):
+            cfb_pick_target = active_week
+
     helpers = get_display_helpers()
 
     return {
@@ -111,6 +122,7 @@ def inject_cfb_globals():
         'cfb_entry_fee': entry_fee,
         'cfb_enrollment': cfb_enrollment,
         'cfb_current_time': get_current_time(),
+        'cfb_pick_target': cfb_pick_target,
         **helpers,
         'format_deadline': format_deadline,
         'to_pool_time': to_pool_time,
@@ -616,6 +628,38 @@ def make_pick(week_number):
         if game.away_team_id and game.home_team_spread is not None:
             team_spreads[game.away_team_id] = game.get_spread_for_team(game.away_team_id)
 
+    # Full-pool accounting: the board is game-centric, so a pool team with no
+    # game this week would otherwise be invisible. Map every rostered team to
+    # its game, then the pool_ledger is the remainder — every CfbTeam NOT on the
+    # board — each tagged 'used' (survivor carryover) or 'not_playing' (bye /
+    # off-slate). Board teams + ledger teams == the full roster, no overlap.
+    team_game = {}
+    for game in games:
+        if game.home_team_id:
+            team_game[game.home_team_id] = game
+        if game.away_team_id:
+            team_game[game.away_team_id] = game
+
+    pool_ledger = []
+    for team in CfbTeam.query.order_by(CfbTeam.name).all():
+        if team.id in team_game:
+            continue  # playing this week -> shown on the board with its state
+        pool_ledger.append({
+            'team': team,
+            'reason': 'used' if team.id in used_team_ids else 'not_playing',
+        })
+
+    # The state legend teaches the taxonomy; only list states that can occur in
+    # the current phase (no favorite/started split before lines lock).
+    if lines_pending:
+        legend_states = ['on_slate', 'used', 'not_playing']
+    else:
+        legend_states = ['open', 'too_favored', 'used', 'started', 'not_playing']
+        if is_week_playoff(week):
+            legend_states.insert(4, 'cfp_out')
+        if any(g.home_team_spread is None for g in games):
+            legend_states.append('no_line')
+
     return render_template(
         'cfb/pick.html',
         week=week,
@@ -628,6 +672,9 @@ def make_pick(week_number):
         used_team_ids=used_team_ids,
         lines_pending=lines_pending,
         lines_post_label=lines_post_label,
+        pool_ledger=pool_ledger,
+        legend_states=legend_states,
+        cfp_eliminated_names=cfp_eliminated_names,
     )
 
 

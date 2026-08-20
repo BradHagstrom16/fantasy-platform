@@ -1,0 +1,34 @@
+{# The rest of the 49: pool teams NOT on this week's board. Reads `pool_ledger`
+   (list of {team, reason}) from context. Informational only — plain chips, no
+   role/tabindex, so screen readers get no phantom controls. Reuses the shipped
+   .cfb-used-grid / .cfb-team-chip.is-out pool primitives. #}
+{% set ledger_not_playing = pool_ledger | selectattr('reason', 'equalto', 'not_playing') | list %}
+{% set ledger_used = pool_ledger | selectattr('reason', 'equalto', 'used') | list %}
+<div class="cfb-pool-ledger">
+    {% if pool_ledger %}
+        <div class="cfb-slate-head">
+            <span class="cfb-eyebrow">Not On The Board This Week</span>
+            <span class="cfb-slate-count">{{ pool_ledger|length }} team{{ 's' if pool_ledger|length != 1 }}</span>
+        </div>
+
+        {% if ledger_not_playing %}
+        <p class="cfb-eyebrow cfb-ledger-group">Not playing</p>
+        <div class="cfb-used-grid">
+            {% for e in ledger_not_playing %}
+            <span class="cfb-team-chip is-out">{{ e.team.name }}<span class="cfb-team-chip-note">Not Playing</span></span>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        {% if ledger_used %}
+        <p class="cfb-eyebrow cfb-ledger-group">Already used</p>
+        <div class="cfb-used-grid">
+            {% for e in ledger_used %}
+            <span class="cfb-team-chip is-out">{{ e.team.name }}<span class="cfb-team-chip-note">Used</span></span>
+            {% endfor %}
+        </div>
+        {% endif %}
+    {% else %}
+        <p class="cfb-ledger-allin">Every pool team is on the board this week.</p>
+    {% endif %}
+</div>

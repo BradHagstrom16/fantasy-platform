@@ -198,6 +198,10 @@
             </a>
             <div class="subnav-scroll">
                 <div class="subnav-pills">
+                    {% if cfb_pick_target %}
+                    <a class="subnav-pill {% if request.endpoint == 'cfb.make_pick' %}active{% endif %}"
+                       href="{{ url_for('cfb.make_pick', week_number=cfb_pick_target.week_number) }}">Pick</a>
+                    {% endif %}
                     <a class="subnav-pill {% if request.endpoint == 'cfb.index' %}active{% endif %}"
                        href="{{ url_for('cfb.index') }}">Standings</a>
                     <a class="subnav-pill {% if request.endpoint == 'cfb.weekly_results' %}active{% endif %}"
