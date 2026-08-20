@@ -27,7 +27,7 @@ from sqlalchemy.exc import IntegrityError
 import games.registry as registry
 from app import create_app
 from extensions import db
-from games.cfb.models import CfbPick
+from games.cfb.models import CfbGame, CfbPick
 from tests._cfb_fixtures import (
     make_enrollment,
     make_game,
@@ -741,6 +741,59 @@ def test_cfp_eliminated_team_shows_cfp_out_on_board_and_ledger(app, client):
     assert _chip_reason(data, 'Elim On Board') == 'CFP Out'         # board row
     assert _ledger_names(templates)['Elim Off Board'] == 'cfp_out'  # ledger tag
     assert _ledger_chip_note(data, 'Elim Off Board') == 'CFP Out'   # rendered ledger chip
+
+
+# ── Non-pool opponent: a pool team's non-49 opponent is never pickable ─────
+
+def _add_untracked_opponent_game(week, pool_home, *, spread=None):
+    """A game whose away side is a non-pool (untracked) opponent — only the
+    home team is one of the 49. Mirrors a real FCS/non-pool matchup."""
+    g = CfbGame(week_id=week.id, home_team_id=pool_home.id, away_team_id=None,
+                away_team_name='Arkansas Pine Bluff Golden Lions',
+                home_team_spread=spread, game_time=week.deadline)
+    db.session.add(g)
+    db.session.flush()
+    return g
+
+
+def test_preview_marks_non_pool_opponent(app, client):
+    """In the pre-line preview, the non-pool opponent reads 'Not in Pool' and
+    the pool team stays a plain on-slate row, so it's clear which side is in
+    play. The legend gains the key and nothing is selectable yet."""
+    week = make_week(1, deadline=FUTURE_DEADLINE)
+    missouri = make_team('Missouri')
+    _add_untracked_opponent_game(week, missouri)       # no spread -> lines pending
+    user = make_user('p1')
+    make_enrollment(user)
+    db.session.commit()
+    _login(client, user)
+
+    data = client.get('/cfb/pick/1').data.decode()
+
+    assert 'Lines and eligibility post' in data                        # preview state
+    assert _chip_reason(data, 'Arkansas Pine Bluff Golden Lions') == 'Not in Pool'
+    assert _chip_reason(data, 'Missouri') is None                      # pool team: no out-reason
+    assert 'cfb-legend-label">Not in Pool</span>' in data              # legend key
+    assert 'data-team-id="' not in data                                # nothing pickable yet
+
+
+def test_interactive_shows_non_pool_opponent_as_not_in_pool(app, client):
+    """Once lines post, the pool team is selectable and the non-pool opponent
+    is rendered (not silently omitted) as a 'Not in Pool' row."""
+    week = make_week(1, deadline=FUTURE_DEADLINE)
+    missouri = make_team('Missouri')
+    _add_untracked_opponent_game(week, missouri, spread=-3.0)  # pool team a 3-pt fav
+    user = make_user('p1')
+    make_enrollment(user)
+    db.session.commit()
+    _login(client, user)
+
+    data = client.get('/cfb/pick/1').data.decode()
+
+    assert 'Lines and eligibility post' not in data                    # interactive
+    assert f'data-team-id="{missouri.id}"' in data                     # pool team selectable
+    assert _chip_reason(data, 'Arkansas Pine Bluff Golden Lions') == 'Not in Pool'
+    assert 'cfb-legend-label">Not in Pool</span>' in data
 
 
 # ── Sub-nav "Pick" pill: reachable only when a pick is actually possible ───
