@@ -583,6 +583,17 @@ def _chip_reason(data, name):
     return m.group(1) if m else None
 
 
+def _ledger_chip_note(data, name):
+    """The note text rendered on a specific team's pool-ledger chip, or None.
+    Targets the chip markup so a board-row 'CFP Out' can't satisfy a ledger
+    assertion by accident (CR #161)."""
+    m = re.search(
+        r'cfb-team-chip is-out">' + re.escape(name) +
+        r'<span class="cfb-team-chip-note">([^<]+)</span>',
+        data)
+    return m.group(1) if m else None
+
+
 def test_not_playing_team_lands_in_the_ledger(app, client):
     """A pool team with no game this week is not on the board — it shows in the
     ledger tagged 'not_playing', so 'not playing this week' is a visible state."""
@@ -729,7 +740,7 @@ def test_cfp_eliminated_team_shows_cfp_out_on_board_and_ledger(app, client):
 
     assert _chip_reason(data, 'Elim On Board') == 'CFP Out'         # board row
     assert _ledger_names(templates)['Elim Off Board'] == 'cfp_out'  # ledger tag
-    assert 'CFP Out' in data                                        # ledger group renders
+    assert _ledger_chip_note(data, 'Elim Off Board') == 'CFP Out'   # rendered ledger chip
 
 
 # ── Sub-nav "Pick" pill: reachable only when a pick is actually possible ───
