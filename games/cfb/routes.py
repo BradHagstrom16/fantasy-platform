@@ -33,6 +33,7 @@ from games.cfb.services.game_logic import (
     get_official_standings,
     get_used_team_ids,
     get_week_user_statuses,
+    pool_teams_by_conference,
     process_autopicks,
     process_week_results,
 )
@@ -249,6 +250,18 @@ def index():
     entry_fee = current_app.config.get('CFB_ENTRY_FEE', 25)
     prize_pool = total_participants * entry_fee
 
+    # The eligible pool, grouped by conference (the "which teams can I pick
+    # from?" answer for a first-time visitor). Viewer-aware: an enrolled
+    # member's spent teams are struck through -- reuse the phase-aware used-set
+    # helper (exclude_current=False mirrors My Picks' season-used semantics and
+    # auto-handles the CFP reset).
+    pool_by_conference, pool_total, pool_conference_count = pool_teams_by_conference()
+    viewer_used_team_ids = set()
+    if current_week is not None and current_user.is_authenticated:
+        viewer_used_team_ids = get_used_team_ids(
+            current_user.id, current_week, exclude_current=False
+        )
+
     return render_template(
         'cfb/index.html',
         current_week=current_week,
@@ -264,6 +277,10 @@ def index():
         weeks_played=weeks_played,
         total_participants=total_participants,
         prize_pool=prize_pool,
+        pool_by_conference=pool_by_conference,
+        pool_total=pool_total,
+        pool_conference_count=pool_conference_count,
+        viewer_used_team_ids=viewer_used_team_ids,
     )
 
 

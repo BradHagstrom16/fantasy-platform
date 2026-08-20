@@ -330,6 +330,39 @@
             {% endif %}
         </div>
     </div>
+
+    {# The Pool -- every eligible team, grouped by conference. Answers a
+       first-time visitor's "which teams can I pick from?" at a glance, and
+       for an enrolled member doubles as a live "what's left for me": spent
+       teams recede to struck ash (.cfb-team-chip.is-out). Full-width lower
+       section (DESIGN.md 9.7); quiet bone, no crimson/gold, no glyph. #}
+    {% if pool_by_conference %}
+    <section class="cfb-pool animate-in stagger-5" aria-labelledby="cfb-pool-heading">
+        <span class="cfb-eyebrow">The Pool</span>
+        <h2 id="cfb-pool-heading" class="cfb-pool-headline">
+            <span class="cfb-count">{{ pool_total }}</span> eligible {{ 'team' if pool_total == 1 else 'teams' }} across
+            <span class="cfb-count">{{ pool_conference_count }}</span> {{ 'conference' if pool_conference_count == 1 else 'conferences' }}
+        </h2>
+        {% if viewer_used_team_ids %}
+        <p class="cfb-pool-note">Teams you have already used are struck through.</p>
+        {% endif %}
+        <div class="cfb-pool-groups">
+            {% for conf_name, teams, count in pool_by_conference %}
+            <div class="cfb-pool-conf">
+                <div class="cfb-pool-conf-head">
+                    <span class="cfb-pool-conf-name">{{ conf_name }}</span>
+                    <span class="cfb-conf-count">{{ count }}</span>
+                </div>
+                <div class="cfb-team-pool">
+                    {% for team in teams %}
+                    <span class="cfb-team-chip{% if team.id in viewer_used_team_ids %} is-out{% endif %}">{{ team.name }}</span>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
 </div>
 {% endif %}
 

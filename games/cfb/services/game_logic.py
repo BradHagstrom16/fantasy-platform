@@ -11,10 +11,12 @@ from flask import current_app
 from sqlalchemy.orm import joinedload
 
 from extensions import db
+from games.cfb.constants import TEAM_CONFERENCES
 from games.cfb.models import (
     CfbEnrollment,
     CfbGame,
     CfbPick,
+    CfbTeam,
     CfbWeek,
     CfbWeekOutcome,
 )
@@ -61,6 +63,38 @@ def get_used_team_ids(user_id, week, *, exclude_current=True):
         q = q.filter(CfbPick.week_id != week.id)
 
     return {t[0] for t in q.all()}
+
+
+# ---------------------------------------------------------------------------
+# Team pool (display)
+# ---------------------------------------------------------------------------
+
+def pool_teams_by_conference():
+    """The eligible team pool grouped by conference, for display.
+
+    Pool membership is row existence in cfb_team (there is no boolean
+    flag). Teams group by their master-list conference
+    (constants.TEAM_CONFERENCES, fail-open to 'Unknown' on an unmapped
+    name). Groups are ordered by size DESC then conference name ASC; teams
+    within a group keep the name order the query returns.
+
+    Returns (groups, total, conference_count) where groups is a list of
+    (conference_name, [CfbTeam], count). Pure/no per-user state -- the
+    viewer's spent-team set is applied at the call site so this stays
+    cacheable and directly testable.
+    """
+    teams = CfbTeam.query.order_by(CfbTeam.name).all()
+
+    by_conf = {}
+    for team in teams:
+        conf = TEAM_CONFERENCES.get(team.name, 'Unknown')
+        by_conf.setdefault(conf, []).append(team)
+
+    groups = sorted(
+        ((conf, tms, len(tms)) for conf, tms in by_conf.items()),
+        key=lambda g: (-g[2], g[0]),
+    )
+    return groups, len(teams), len(groups)
 
 
 # ---------------------------------------------------------------------------

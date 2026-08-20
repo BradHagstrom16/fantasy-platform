@@ -5444,6 +5444,56 @@ body.game-cfb .accordion-button:not(.collapsed) { box-shadow: inset 0 -2px 0 var
   color: var(--cfb-bone-subtle);
 }
 
+/* The Pool -- the eligible-team roster on the room landing, grouped by
+   conference (the newcomer's "which teams can I pick from?"). A full-width
+   lower section (DESIGN.md 9.7); availability is neutral bone, never crimson
+   (the Crimson-Is-Identity Rule), and no glyph (room surface). Elevation is
+   substrate + the hairline conference rule, never a card grid or shadow. */
+.cfb-pool { margin-top: 2.5rem; }
+.cfb-pool .cfb-eyebrow { display: block; margin-bottom: .35rem; }
+.cfb-pool-headline {
+  margin: 0;
+  font-family: 'Newsreader', Georgia, serif;
+  font-size: 1.15rem;
+  color: var(--cfb-bone);
+}
+.cfb-pool-headline .cfb-count {
+  font-family: 'Teko', sans-serif;
+  font-weight: 600;
+  font-size: 1.6rem;
+  color: var(--cfb-white);
+  margin-right: .04rem;
+}
+.cfb-pool-note {
+  margin: .5rem 0 0;
+  font-family: 'Newsreader', Georgia, serif;
+  font-size: .9rem;
+  color: var(--cfb-bone-muted);
+}
+.cfb-pool-groups {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1.4rem 1.8rem;
+  margin-top: 1.4rem;
+}
+.cfb-pool-conf-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: .5rem;
+  padding-bottom: .4rem;
+  margin-bottom: .6rem;
+  border-bottom: 1px solid var(--cfb-hairline);
+}
+.cfb-pool-conf-name {
+  font-family: 'Teko', sans-serif;
+  font-weight: 600;
+  font-size: 1.1rem;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--cfb-bone);
+}
+
 /* Title teams in hand -- the conference-championship coverage, de-traffic-lighted.
    Green ONLY as the positive "held" signal; thin/spent recede to bone (no amber,
    which is off the CFB survivor-state palette). Structure + the "1 left" / "none"
