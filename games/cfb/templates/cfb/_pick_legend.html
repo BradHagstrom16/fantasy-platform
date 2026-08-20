@@ -1,0 +1,23 @@
+{# State legend for the pick board. Reads `legend_states` (a phase-filtered list
+   of state keys) from context. Teaches the eligibility taxonomy at a glance so
+   the board + ledger are self-evident. Room surface: no ◈/◇ glyph. #}
+{% set LEGEND_LABELS = {
+    'open': 'Open',
+    'on_slate': 'On The Slate',
+    'too_favored': '16.5+ Fav',
+    'used': 'Used',
+    'not_playing': 'Not Playing',
+    'started': 'Started',
+    'no_line': 'No Line',
+    'cfp_out': 'CFP Out',
+} %}
+{% if legend_states %}
+<div class="cfb-pick-legend" aria-label="What each team state means">
+    {% for s in legend_states %}
+    <span class="cfb-legend-item">
+        <span class="cfb-legend-swatch {% if s == 'open' %}is-open{% elif s == 'on_slate' %}is-neutral{% else %}is-out{% endif %}" aria-hidden="true"></span>
+        <span class="cfb-legend-label">{{ LEGEND_LABELS[s] }}</span>
+    </span>
+    {% endfor %}
+</div>
+{% endif %}

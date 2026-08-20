@@ -58,7 +58,13 @@
             </div>
         </div>
 
+        {% include 'cfb/_pick_legend.html' %}
+
         {% for game in games %}
+            {% set away_team = game.away_team %}
+            {% set home_team = game.home_team %}
+            {% set away_used = away_team and away_team.id in used_team_ids %}
+            {% set home_used = home_team and home_team.id in used_team_ids %}
         <div class="card mb-2 team-pick-card" data-game-card>
             <div class="card-header py-2">
                 <div class="d-flex justify-content-between align-items-center gap-2">
@@ -71,26 +77,40 @@
                 </div>
             </div>
             <div class="card-body py-2">
-                <div class="d-flex justify-content-between align-items-center p-2 rounded mb-1 team-option bg-light">
-                    <span class="cfb-team-id"><span class="cfb-team-name">{{ game.get_away_team_display() }}</span></span>
+                <div class="d-flex justify-content-between align-items-center p-2 rounded mb-1 team-option {% if away_used %}team-option-out{% else %}bg-light{% endif %}">
+                    <span class="cfb-team-id"><span class="cfb-team-name">{{ game.get_away_team_display() }}</span>
+                        {% if away_used %}<span class="cfb-out-reason">Used</span>{% endif %}
+                    </span>
                 </div>
-                <div class="d-flex justify-content-between align-items-center p-2 rounded team-option bg-light">
-                    <span class="cfb-team-id"><span class="cfb-team-name">{{ game.get_home_team_display() }}</span> <span class="cfb-home-tag">Home</span></span>
+                <div class="d-flex justify-content-between align-items-center p-2 rounded team-option {% if home_used %}team-option-out{% else %}bg-light{% endif %}">
+                    <span class="cfb-team-id"><span class="cfb-team-name">{{ game.get_home_team_display() }}</span> <span class="cfb-home-tag">Home</span>
+                        {% if home_used %}<span class="cfb-out-reason">Used</span>{% endif %}
+                    </span>
                 </div>
             </div>
         </div>
         {% endfor %}
+
+        {% include 'cfb/_pick_ledger.html' %}
 
         {% elif not pick_locked %}
         <form method="POST" id="pickForm">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
             <input type="hidden" name="team_id" id="selectedTeamId" value="{% if existing_pick %}{{ existing_pick.team_id }}{% endif %}"/>
 
-            {% if eligible_teams %}
+            {% include 'cfb/_pick_legend.html' %}
+
             <div class="cfb-slate-head">
                 <span class="cfb-eyebrow">The Board</span>
                 <span class="cfb-slate-count">{{ eligible_teams|length }} still open</span>
             </div>
+
+            {% if not eligible_teams %}
+            <div class="alert alert-warning cfb-empty-slate mb-3">
+                <span class="cfb-eyebrow">No Open Teams</span>
+                <p class="mb-0">You have used every team still available this week, or all remaining teams are favored by 16.5 or more points. The rest of the pool is below.</p>
+            </div>
+            {% endif %}
 
             {% for game in games %}{# pre-sorted None-safe in the route #}
                 {% set home_team = game.home_team %}
@@ -102,10 +122,8 @@
                 {% set game_started = game._aware_time and game._aware_time < current_time %}
                 {% set home_spread = team_spreads.get(home_team.id) if home_team else none %}
                 {% set away_spread = team_spreads.get(away_team.id) if away_team else none %}
-                {% set has_eligible = home_eligible or away_eligible %}
-                {% set has_relevant = has_eligible or home_used or away_used %}
 
-                {% if has_relevant or has_eligible %}
+                {% if home_team or away_team %}
                 <div class="card mb-2 team-pick-card {% if game_started %}ineligible{% endif %} {% if existing_pick and ((home_team and existing_pick.team_id == home_team.id) or (away_team and existing_pick.team_id == away_team.id)) %}border-primary{% endif %}" data-game-card>
                     <div class="card-header py-2">
                         <div class="d-flex justify-content-between align-items-center gap-2">
@@ -132,7 +150,7 @@
                             <div class="d-flex justify-content-between align-items-center p-2 rounded mb-1 team-option team-option-out">
                                 <span class="cfb-team-id">
                                     <span class="cfb-team-name">{{ away_team.name }}</span>
-                                    <span class="cfb-out-reason">{% if away_used %}Used{% elif game_started %}Started{% elif away_spread is not none and away_spread <= -16.5 %}16.5+ Fav{% elif away_spread is none %}No Line{% else %}Out{% endif %}</span>
+                                    <span class="cfb-out-reason">{% if away_used %}Used{% elif away_team.name in cfp_eliminated_names %}CFP Out{% elif game_started %}Started{% elif away_spread is not none and away_spread <= -16.5 %}16.5+ Fav{% elif away_spread is none %}No Line{% else %}Out{% endif %}</span>
                                 </span>
                                 {% if away_spread is not none %}<span class="spread-badge">{{ "%+.1f"|format(away_spread) }}</span>{% endif %}
                             </div>
@@ -152,7 +170,7 @@
                             <div class="d-flex justify-content-between align-items-center p-2 rounded team-option team-option-out">
                                 <span class="cfb-team-id">
                                     <span class="cfb-team-name">{{ home_team.name }}</span> <span class="cfb-home-tag">Home</span>
-                                    <span class="cfb-out-reason">{% if home_used %}Used{% elif game_started %}Started{% elif home_spread is not none and home_spread <= -16.5 %}16.5+ Fav{% elif home_spread is none %}No Line{% else %}Out{% endif %}</span>
+                                    <span class="cfb-out-reason">{% if home_used %}Used{% elif home_team.name in cfp_eliminated_names %}CFP Out{% elif game_started %}Started{% elif home_spread is not none and home_spread <= -16.5 %}16.5+ Fav{% elif home_spread is none %}No Line{% else %}Out{% endif %}</span>
                                 </span>
                                 {% if home_spread is not none %}<span class="spread-badge">{{ "%+.1f"|format(home_spread) }}</span>{% endif %}
                             </div>
@@ -163,7 +181,8 @@
                 {% endif %}
             {% endfor %}
 
-            {# Confirmation bar: the weekly call #}
+            {# Confirmation bar: the weekly call (only when a pick is possible) #}
+            {% if eligible_teams or existing_pick %}
             <div class="card mt-3 cfb-pick-cta" id="pickConfirmBar" style="{% if not existing_pick %}display: none;{% endif %}">
                 <div class="card-body d-flex justify-content-between align-items-center flex-wrap gap-3">
                     <div class="cfb-confirm-pick">
@@ -185,13 +204,9 @@
                     </div>
                 </div>
             </div>
-
-            {% else %}
-            <div class="alert alert-warning mt-3 cfb-empty-slate">
-                <span class="cfb-eyebrow">No Open Teams</span>
-                <p class="mb-0">You have used every team still available this week, or all remaining teams are favored by 16.5 or more points. Sit tight, the season continues.</p>
-            </div>
             {% endif %}
+
+            {% include 'cfb/_pick_ledger.html' %}
         </form>
         {% endif %}
 

@@ -15,6 +15,7 @@ a week pickable, a past game_time marks an individual game started.
 """
 import dataclasses
 import os
+import re
 from contextlib import contextmanager
 from datetime import datetime, timedelta
 from unittest.mock import patch
@@ -560,3 +561,226 @@ def test_exhausted_board_keeps_the_no_open_teams_copy(app, client):
     data = client.get('/cfb/pick/2').data.decode()
     assert 'No Open Teams' in data
     assert 'Lines and eligibility post' not in data
+
+
+# ── Full-pool accounting: board + ledger cover all 49 (the state work) ─────
+
+def _ledger_names(templates):
+    """(name -> reason) for every team in the pool_ledger context list."""
+    ctx = next(c for t, c in templates if t.name == 'cfb/pick.html')
+    return {e['team'].name: e['reason'] for e in ctx['pool_ledger']}
+
+
+def _chip_reason(data, name):
+    """The out-reason chip text rendered on a specific team's board row, or
+    None. Targets that team's own markup so a legend label can't satisfy the
+    assertion by accident (CR #161)."""
+    m = re.search(
+        r'cfb-team-name">' + re.escape(name) + r'</span>'
+        r'(?:\s*<span class="cfb-home-tag">Home</span>)?'
+        r'\s*<span class="cfb-out-reason">([^<]+)</span>',
+        data)
+    return m.group(1) if m else None
+
+
+def _ledger_chip_note(data, name):
+    """The note text rendered on a specific team's pool-ledger chip, or None.
+    Targets the chip markup so a board-row 'CFP Out' can't satisfy a ledger
+    assertion by accident (CR #161)."""
+    m = re.search(
+        r'cfb-team-chip is-out">' + re.escape(name) +
+        r'<span class="cfb-team-chip-note">([^<]+)</span>',
+        data)
+    return m.group(1) if m else None
+
+
+def test_not_playing_team_lands_in_the_ledger(app, client):
+    """A pool team with no game this week is not on the board — it shows in the
+    ledger tagged 'not_playing', so 'not playing this week' is a visible state."""
+    week = make_week(1, deadline=FUTURE_DEADLINE)
+    home, away = make_team('Playing A'), make_team('Playing B')
+    make_game(week, home, away, spread=-3.0)
+    make_team('Bye Team')                              # rostered, no game
+    user = make_user('p1')
+    make_enrollment(user)
+    db.session.commit()
+    _login(client, user)
+
+    with captured_templates(app) as templates:
+        data = client.get('/cfb/pick/1').data.decode()
+
+    ledger = _ledger_names(templates)
+    assert ledger == {'Bye Team': 'not_playing'}       # only the bye team
+    assert 'Not On The Board This Week' in data
+    assert 'Not Playing' in data
+
+
+def test_used_team_off_the_slate_shows_used_in_ledger(app, client):
+    """A team already used AND not playing this week shows in the ledger tagged
+    'used' — otherwise a used team on a bye would be invisible."""
+    user = make_user('p1')
+    make_enrollment(user)
+    prior = make_week(1)                               # past deadline
+    burned = make_team('Burned')
+    make_pick(user, prior, burned)                     # used in week 1
+    week = make_week(2, deadline=FUTURE_DEADLINE)
+    make_game(week, make_team('OnBoard A'), make_team('OnBoard B'), spread=-3.0)
+    db.session.commit()                                # Burned has no week-2 game
+    _login(client, user)
+
+    with captured_templates(app) as templates:
+        client.get('/cfb/pick/2')
+
+    assert _ledger_names(templates)['Burned'] == 'used'
+
+
+def test_board_plus_ledger_account_for_every_pool_team(app, client):
+    """Board teams + ledger teams == the whole roster, with no overlap."""
+    week = make_week(1, deadline=FUTURE_DEADLINE)
+    a, b = make_team('A'), make_team('B')
+    make_game(week, a, b, spread=-7.0)
+    make_team('C')                                     # not playing
+    make_team('D')                                     # not playing
+    user = make_user('p1')
+    make_enrollment(user)
+    db.session.commit()
+    _login(client, user)
+
+    with captured_templates(app) as templates:
+        client.get('/cfb/pick/1')
+    ctx = next(c for t, c in templates if t.name == 'cfb/pick.html')
+
+    from games.cfb.models import CfbTeam
+    on_board = {g.home_team_id for g in ctx['games']} | {
+        g.away_team_id for g in ctx['games']}
+    ledger_ids = {e['team'].id for e in ctx['pool_ledger']}
+    all_ids = {t.id for t in CfbTeam.query.all()}
+    assert on_board.isdisjoint(ledger_ids)             # no team counted twice
+    assert on_board | ledger_ids == all_ids            # everyone accounted for
+    assert {e['team'].name for e in ctx['pool_ledger']} == {'C', 'D'}
+
+
+# ── State legend: phase-aware key, no favorite split before lines lock ─────
+
+def test_legend_omits_favorite_split_in_preview(app, client):
+    """Before lines lock there is no spread, so the legend must not claim a
+    16.5+ split it cannot compute — it shows On The Slate / Used / Not Playing."""
+    week = make_week(1, deadline=FUTURE_DEADLINE)
+    make_game(week, make_team('Notre Dame'), make_team('Wisconsin'))  # no line
+    user = make_user('p1')
+    make_enrollment(user)
+    db.session.commit()
+    _login(client, user)
+
+    data = client.get('/cfb/pick/1').data.decode()
+
+    assert 'cfb-pick-legend' in data
+    assert 'cfb-legend-label">On The Slate</span>' in data
+    assert '16.5+ Fav' not in data                     # no favorite split yet
+
+
+def test_legend_shows_live_states_once_lines_post(app, client):
+    """A posted spread lights up the full legend, including the Open swatch."""
+    week = make_week(1, deadline=FUTURE_DEADLINE)
+    make_game(week, make_team('Open A'), make_team('Open B'), spread=-3.0)
+    user = make_user('p1')
+    make_enrollment(user)
+    db.session.commit()
+    _login(client, user)
+
+    data = client.get('/cfb/pick/1').data.decode()
+
+    assert 'cfb-legend-label">Open</span>' in data
+    assert 'cfb-legend-label">16.5+ Fav</span>' in data
+
+
+def test_out_reason_labels_render_for_each_state(app, client):
+    """The reason taxonomy stays distinct on the board: each team's OWN chip
+    carries its reason (Used / 16.5+ Fav / No Line), never a bare 'Unavailable'.
+    Asserting per team-chip (not page-wide) so a legend label can't pass it."""
+    user = make_user('p1')
+    make_enrollment(user)
+    prior = make_week(1)                               # past deadline
+    used = make_team('UsedTeam')
+    make_pick(user, prior, used)
+    week = make_week(2, deadline=FUTURE_DEADLINE)
+    make_game(week, make_team('BigFav'), make_team('OkDog'), spread=-20.5)  # 16.5+
+    make_game(week, used, make_team('UsedOpp'), spread=-3.0)                # Used
+    make_game(week, make_team('NoLineH'), make_team('NoLineA'))             # No Line
+    db.session.commit()
+    _login(client, user)
+
+    data = client.get('/cfb/pick/2').data.decode()
+
+    assert _chip_reason(data, 'BigFav') == '16.5+ Fav'
+    assert _chip_reason(data, 'UsedTeam') == 'Used'
+    assert _chip_reason(data, 'NoLineH') == 'No Line'
+
+
+def test_cfp_eliminated_team_shows_cfp_out_on_board_and_ledger(app, client):
+    """In a playoff week, a CFP-eliminated team reads 'CFP Out' both on the
+    board (when it has a game) and in the ledger (when it doesn't) — not the
+    generic 'Not Playing' the ledger would otherwise give an off-slate team."""
+    user = make_user('p1')
+    make_enrollment(user)
+    # A completed prior playoff week where two teams lose -> CFP-eliminated.
+    pw1 = make_week(16, is_playoff=True)               # past deadline, decided
+    elim_board = make_team('Elim On Board')
+    elim_ledger = make_team('Elim Off Board')
+    make_game(pw1, make_team('Winner A'), elim_board, spread=-3.0, winner='home')
+    make_game(pw1, make_team('Winner B'), elim_ledger, spread=-3.0, winner='home')
+    # Active playoff week: elim_board has a game, elim_ledger does not.
+    pw2 = make_week(17, deadline=FUTURE_DEADLINE, is_playoff=True, is_active=True)
+    make_game(pw2, make_team('Still Alive'), elim_board, spread=-3.0)
+    db.session.commit()
+    _login(client, user)
+
+    with captured_templates(app) as templates:
+        data = client.get('/cfb/pick/17').data.decode()
+
+    assert _chip_reason(data, 'Elim On Board') == 'CFP Out'         # board row
+    assert _ledger_names(templates)['Elim Off Board'] == 'cfp_out'  # ledger tag
+    assert _ledger_chip_note(data, 'Elim Off Board') == 'CFP Out'   # rendered ledger chip
+
+
+# ── Sub-nav "Pick" pill: reachable only when a pick is actually possible ───
+
+def test_pick_pill_shows_for_active_pickable_week(app, client):
+    """An enrolled, non-eliminated member with an active, still-open week gets a
+    Pick pill in the CFB sub-nav pointing at that week's board."""
+    make_week(1, deadline=FUTURE_DEADLINE, is_active=True)
+    user = make_user('p1')
+    make_enrollment(user)
+    db.session.commit()
+    _login(client, user)
+
+    data = client.get('/cfb/').data.decode()
+
+    assert 'href="/cfb/pick/1">Pick</a>' in data
+
+
+def test_pick_pill_hidden_for_eliminated_member(app, client):
+    """An eliminated member can't pick, so the pill is absent."""
+    make_week(1, deadline=FUTURE_DEADLINE, is_active=True)
+    user = make_user('p1')
+    make_enrollment(user, lives=0, eliminated=True)
+    db.session.commit()
+    _login(client, user)
+
+    data = client.get('/cfb/').data.decode()
+
+    assert '>Pick</a>' not in data
+
+
+def test_pick_pill_hidden_when_active_week_deadline_passed(app, client):
+    """A past-deadline active week is not pickable, so the pill is absent
+    (it would only bounce back to the index)."""
+    make_week(1, is_active=True)                        # default PAST_DEADLINE
+    user = make_user('p1')
+    make_enrollment(user)
+    db.session.commit()
+    _login(client, user)
+
+    data = client.get('/cfb/').data.decode()
+
+    assert '>Pick</a>' not in data
