@@ -26,6 +26,12 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
 from extensions import db
+
+# Display-only conference lookup for the sheet's filter chips (design review
+# 2026-08-19): the CFB master list is keyed by the exact Odds-API participant
+# names DocketGame stores. Game identity stays api_event_id (D22 — this is
+# render-time classification, never matching); an unmapped name fails open.
+from games.cfb.constants import TEAM_CONFERENCES, TEAM_NAME_MAP
 from games.common import enrollment_required, game_must_be_open
 from games.docket.blueprint import docket_bp
 from games.docket.models import DocketEnrollment, DocketGame
@@ -54,6 +60,48 @@ def _kickoff_ct(dt):
     cycle. The Jinja ``ct`` filter is unaffected (registered at app boot).
     """
     return dt.replace(tzinfo=UTC).astimezone(CT)
+
+
+_NCAAF = 'americanfootball_ncaaf'
+
+
+def _game_conferences(game) -> set[str]:
+    """The conferences a CFB case belongs to, by either side's mapped name.
+
+    Display-only (the filter chips); NFL cases classify to nothing and are
+    never filtered. An FCS visitor with no mapping classifies by its mapped
+    opponent, so a case never vanishes just because one side is obscure."""
+    if game.sport != _NCAAF:
+        return set()
+    confs = set()
+    for name in (game.home_team, game.away_team):
+        conf = TEAM_CONFERENCES.get(TEAM_NAME_MAP.get(name, ''))
+        if conf:
+            confs.add(conf)
+    return confs
+
+
+def _conf_slug(name: str) -> str:
+    return name.lower().replace(' ', '-')
+
+
+def _sessions_for(games: list) -> list[tuple[str, list]]:
+    """Court sessions: kickoff waves inside a day (morning < noon CT,
+    afternoon < 5 PM, evening after). Keeps the 60-case Saturday orderly;
+    a day with a single session renders no sub-heads."""
+    sessions: list[tuple[str, list]] = []
+    for game in games:
+        hour = _kickoff_ct(game.kickoff).hour
+        if hour < 12:
+            label = 'Morning session'
+        elif hour < 17:
+            label = 'Afternoon session'
+        else:
+            label = 'Evening session'
+        if not sessions or sessions[-1][0] != label:
+            sessions.append((label, []))
+        sessions[-1][1].append(game)
+    return sessions
 
 
 def _ordinal(n):
@@ -188,21 +236,8 @@ def index():
             })
         days[-1]['games'].append(game)
 
-    # Court sessions: kickoff waves inside a day (morning < noon CT,
-    # afternoon < 5 PM, evening after). Keeps the 60-case Saturday orderly;
-    # a day with a single session renders no sub-heads.
     for day in days:
-        for game in day['games']:
-            hour = _kickoff_ct(game.kickoff).hour
-            if hour < 12:
-                label = 'Morning session'
-            elif hour < 17:
-                label = 'Afternoon session'
-            else:
-                label = 'Evening session'
-            if not day['sessions'] or day['sessions'][-1][0] != label:
-                day['sessions'].append((label, []))
-            day['sessions'][-1][1].append(game)
+        day['sessions'] = _sessions_for(day['games'])
 
     # Active day: the requested tab if it exists, else the first day still
     # holding an unlocked case, else the last day.
@@ -216,6 +251,40 @@ def index():
              if any(g.id not in locked_ids for g in d['games'])),
             days[-1] if days else None,
         )
+
+    # Conference chips (design review 2026-08-19): day-scoped, so a chip
+    # always yields at least one case and the empty filtered view is
+    # unreachable. Chips are plain GET links (?conf=), never forms — the
+    # filter is navigation, so it works identically in preview, open,
+    # locked, and closed states. Day-tab links drop the param (switching
+    # day resets the filter); an unknown slug falls back to unfiltered.
+    conf_counts: Counter[str] = Counter()
+    if active_day is not None:
+        for game in active_day['games']:
+            conf_counts.update(_game_conferences(game))
+    conferences = [
+        {'name': name, 'slug': _conf_slug(name), 'count': count}
+        for name, count in sorted(
+            conf_counts.items(), key=lambda kv: (-kv[1], kv[0])
+        )
+    ]
+    active_conf = None
+    requested_conf = request.args.get('conf')
+    if requested_conf and active_day is not None:
+        active_conf = next(
+            (c for c in conferences if c['slug'] == requested_conf), None)
+    day_case_total = len(active_day['games']) if active_day else 0
+    if active_conf is not None:
+        filtered = [
+            g for g in active_day['games']
+            if g.sport != _NCAAF
+            or active_conf['name'] in _game_conferences(g)
+        ]
+        active_day = {
+            **active_day,
+            'games': filtered,
+            'sessions': _sessions_for(filtered),
+        }
 
     designated = week.tiebreaker_game
     tb_locked = bool(
@@ -237,6 +306,9 @@ def index():
         tb_locked=tb_locked,
         season_opens_label=None,
         preview=preview,
+        conferences=conferences,
+        active_conf=active_conf,
+        day_case_total=day_case_total,
     )
 
 

@@ -16,8 +16,26 @@ below, so that first write to production stays deliberate.
 
 Season runbook
 --------------
-**Tue Sep 1, ~06:00 CT — the Week 1 line freeze.** This is the deliberate
-first write to the (until now empty) production docket tables::
+**Tue Sep 1, ~06:00 CT — the Week 1 line freeze.** Amended 2026-08-19: the
+tables are no longer empty — a preview Week 1 (games + lines, locked at
+import) was deliberately imported 2026-08-19 so members could read the board
+pre-season. **Locked lines are never overwritten** (the importer's gap-fill
+contract), so the real Tuesday numbers land only if the preview week is wiped
+first; without the wipe, ``--mode setup`` gap-fills and the two-week-old
+preview lines ship as the frozen Week 1 numbers. The wipe (flask shell;
+picks are zero pre-season, and the tiebreaker FK must clear before its game
+rows can go)::
+
+    from sqlalchemy import delete, select
+    from extensions import db
+    from games.docket.models import DocketGame, DocketWeek
+    w = db.session.scalar(select(DocketWeek).filter_by(week_number=1))
+    w.tiebreaker_game_id = None; db.session.flush()
+    db.session.execute(delete(DocketGame).where(DocketGame.week_id == w.id))
+    db.session.delete(w); db.session.commit()
+
+Then the import is the familiar three lines (the tiebreaker designation does
+not survive the wipe — re-designate, then verify)::
 
     flask docket sync --mode setup                              # week 1 + both slates + first-posted lines
     flask docket set-tiebreaker 1 "Wisconsin @ Notre Dame"      # or /docket/admin/week/1/tiebreaker

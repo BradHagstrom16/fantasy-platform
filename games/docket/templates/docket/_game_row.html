@@ -74,6 +74,14 @@
       {% if locked and not sheet.deadline_passed %}
         <span class="docket-locked-note">Locked at kickoff</span>
       {% endif %}
+      {# Row-level held indicator (DESIGN.md 7.2, shipped 2026-08-19): the
+         scanning eye finds its own commitments without reading every pill. #}
+      {% if spread_pick or total_pick %}
+        {% set held_labels = [] %}
+        {% if spread_pick %}{% set _ = held_labels.append('Reserve' if spread_pick.slot == backup_slot else 'Slot ' ~ spread_pick.slot) %}{% endif %}
+        {% if total_pick %}{% set _ = held_labels.append('Reserve' if total_pick.slot == backup_slot else 'Slot ' ~ total_pick.slot) %}{% endif %}
+        <span class="docket-held-tag">Filed · {{ held_labels|join(' & ') }}</span>
+      {% endif %}
     </div>
     <h3 class="docket-case-caption">
       {{ game.away_team }} <span class="docket-at">at</span> {{ game.home_team }}

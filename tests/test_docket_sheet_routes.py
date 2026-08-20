@@ -339,3 +339,119 @@ def test_remove_pick_form_flow_leaves_gap(monkeypatch, client, member):
     )
     assert resp.status_code == 302
     assert {p.slot for p in DocketPick.query.all()} == {2}
+
+
+# == conference filter + session jumps (design review 2026-08-19) ===========
+
+def _make_sat_slate(week):
+    """A mixed Saturday: two conferences, an FCS visitor, and an NFL case.
+    Kickoffs span three CT waves (11:00 AM, 4:00 PM, 6:30 PM)."""
+    osu = make_game(week, kickoff=datetime(2026, 9, 5, 16, 0),
+                    away='Ohio State Buckeyes', home='Michigan Wolverines')
+    make_game(week, kickoff=datetime(2026, 9, 5, 21, 0),
+              away='Georgia Bulldogs', home='Alabama Crimson Tide')
+    make_game(week, kickoff=KICK_SAT,
+              away='Albany Great Danes', home='Buffalo Bulls')
+    make_game(week, kickoff=KICK_SAT, sport='americanfootball_nfl',
+              away='Chicago Bears', home='Green Bay Packers')
+    return osu
+
+
+def test_conference_chips_render_day_scoped(monkeypatch, client, member):
+    week = make_week(1)
+    _make_sat_slate(week)
+    db.session.commit()
+    at(monkeypatch, IN_WEEK1)
+    html = client.get('/docket/?day=2026-09-05').data.decode()
+    assert 'docket-conf-chips' in html
+    assert 'conf=big-ten' in html
+    assert 'conf=sec' in html
+    # The FCS visitor classifies by its mapped opponent, never vanishes.
+    assert 'conf=mac' in html
+    # NFL is not a conference; it never chips and is never filtered.
+    assert 'conf=nfl' not in html
+    # Unfiltered day head keeps the plain count.
+    assert 'Showing' not in html
+
+
+def test_conference_filter_thins_cfb_and_never_nfl(
+        monkeypatch, client, member):
+    week = make_week(1)
+    _make_sat_slate(week)
+    db.session.commit()
+    at(monkeypatch, IN_WEEK1)
+    html = client.get('/docket/?day=2026-09-05&conf=big-ten').data.decode()
+    assert 'Ohio State Buckeyes' in html
+    assert 'Georgia Bulldogs' not in html      # SEC case filtered out
+    assert 'Buffalo Bulls' not in html         # MAC case filtered out
+    assert 'Chicago Bears' in html             # the NFL case stays
+    # The no-silent-caps line states the reduction and offers the way back.
+    assert 'Showing 2 of 4 cases' in html
+    assert 'All conferences' in html
+
+
+def test_unknown_conference_slug_falls_back_to_all(
+        monkeypatch, client, member):
+    week = make_week(1)
+    _make_sat_slate(week)
+    db.session.commit()
+    at(monkeypatch, IN_WEEK1)
+    html = client.get('/docket/?day=2026-09-05&conf=big-8').data.decode()
+    assert 'Ohio State Buckeyes' in html
+    assert 'Georgia Bulldogs' in html
+    assert 'Showing' not in html
+
+
+def test_chips_absent_on_a_single_conference_day(monkeypatch, client, member):
+    week = make_week(1)
+    make_game(week, kickoff=KICK_SAT,
+              away='Ohio State Buckeyes', home='Michigan Wolverines')
+    make_game(week, kickoff=KICK_SAT, sport='americanfootball_nfl',
+              away='Chicago Bears', home='Green Bay Packers')
+    db.session.commit()
+    at(monkeypatch, IN_WEEK1)
+    html = client.get('/docket/?day=2026-09-05').data.decode()
+    assert 'docket-conf-chips' not in html
+
+
+def test_conference_filter_works_in_preseason_preview(
+        monkeypatch, client, member):
+    """The filter is navigation, not mutation: it works on the read-only
+    preview without breaking its locks (no is-locked, no action forms)."""
+    week = make_week(1)
+    _make_sat_slate(week)
+    db.session.commit()
+    at(monkeypatch, '2026-08-20T12:00:00')  # before the Week 1 boundary
+    html = client.get('/docket/?day=2026-09-05&conf=sec').data.decode()
+    assert 'Georgia Bulldogs' in html
+    assert 'Ohio State Buckeyes' not in html
+    assert 'is-locked' not in html
+    assert 'data-docket-action="' not in html
+
+
+def test_session_jumps_render_for_a_multi_wave_day(
+        monkeypatch, client, member):
+    week = make_week(1)
+    _make_sat_slate(week)
+    db.session.commit()
+    at(monkeypatch, IN_WEEK1)
+    html = client.get('/docket/?day=2026-09-05').data.decode()
+    assert 'docket-session-jumps' in html
+    assert 'href="#docket-session-morning"' in html
+    assert 'id="docket-session-morning"' in html
+    assert 'id="docket-session-evening"' in html
+
+
+def test_held_row_carries_the_filed_tag(monkeypatch, client, member):
+    week = make_week(1)
+    game = make_game(week, kickoff=KICK_SAT,
+                     away='Wisconsin Badgers', home='Notre Dame Fighting Irish')
+    db.session.commit()
+    at(monkeypatch, IN_WEEK1)
+    before = client.get('/docket/').data.decode()
+    assert 'docket-held-tag' not in before
+    client.post('/docket/picks/set',
+                data={'game_id': game.id, 'market': 'spread',
+                      'side': 'home', 'csrf_token': 'x'})
+    after = client.get('/docket/').data.decode()
+    assert 'Filed · Slot 1' in after

@@ -98,5 +98,10 @@ def login(client, user):
 
 
 def at(monkeypatch, iso):
-    """Drive the docket clock: naive ISO ⇒ UTC via DOCKET_FAKE_NOW."""
+    """Drive the docket clock: naive ISO ⇒ UTC via DOCKET_FAKE_NOW.
+
+    ENVIRONMENT=testing rides along (the time-seam convention): the fake-now
+    seam only activates in dev/testing, and the outside-process env var does
+    not propagate when a test file runs without the ENVIRONMENT prefix."""
+    monkeypatch.setenv('ENVIRONMENT', 'testing')
     monkeypatch.setenv('DOCKET_FAKE_NOW', iso)

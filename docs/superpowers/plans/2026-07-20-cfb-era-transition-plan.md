@@ -136,13 +136,29 @@ Binding preservation rules for all subsequent work:
 
   **STAGED, not all-at-once (amended 2026-08-17):** `run_setup` has no date guard — every firing creates week `last+1` and *activates* it on successful import (`games/cfb/services/automation.py`), and `Persistent=true` catch-up behavior on a *freshly enabled* timer is unverified on this droplet. Enabling `cfb-setup.timer` at the wrong moment (or a surprise catch-up firing) can therefore create **and activate Week 2 before the season starts**, silently deactivating Week 1. Mirror the docket-setup doctrine (hand-run the first import, enable the setup timer last):
 
+  **Amended again 2026-08-19 (preview import):** Week 1 already exists on prod —
+  the 2026-08-19 preview import created it (42 games, `is_active=True`, spreads
+  deliberately empty, so the room shows the lines-pending board and picks are
+  impossible). That retires the "Mon Aug 31 hand-run setup" step: Week 1 is not
+  an orphan (`_lowest_orphan_week` only retries 0-game weeks), so **any**
+  `--mode setup` run before Week 1 completes creates AND activates Week 2. The
+  real Week-1 lines land via `--mode spreads` on Tue Sep 1 (first fetch locks,
+  DQ-6 — no wipe needed since nothing is locked yet). Two data corrections were
+  also found in the 2026-08-19 design review: the Week-1 row's `deadline`
+  (16:00) and `start_date` (05:00) were written as UTC instants into the
+  pool-tz wall-clock columns — fix `start_date` (to `2026-09-03 00:00:00`)
+  before Week 1 starts Thu Sep 3, and `deadline` (to `2026-09-05 11:00:00`)
+  before Sat Sep 5 11:00 AM CT, or the recorded week start and the
+  deadline-driven lock + autopick each run five hours late.
+
   ```bash
   # Launch week (any day Aug 30–31): the four timers that stand down without an active week
   sudo systemctl enable --now \
       cfb-spreads.timer cfb-scores.timer \
       cfb-autopick.timer cfb-remind.timer
-  # Mon Aug 31 morning: hand-run Week-1 setup + verify (active week, game_count > 0)
-  FLASK_APP=app.py ENVIRONMENT=production venv/bin/flask cfb sync --mode setup
+  # Tue Sep 1: cfb-spreads.timer's Tuesday firing locks the real Week-1 lines
+  # against the existing week (hand-run `--mode spreads` only if the timer
+  # hasn't fired yet); then verify — expect 42 games, spreads locked
   FLASK_APP=app.py ENVIRONMENT=production venv/bin/flask cfb sync --mode status
   # Tue Sep 1 (after the Mon 06:00 CT slot has passed): the setup timer, LAST —
   # its first natural firing is Mon Sep 7, which creates Week 2 on the designed cadence
@@ -153,7 +169,7 @@ Binding preservation rules for all subsequent work:
   **No copying step** — since ADR-041 (PR #123) `deploy.sh` installs every unit in `deploy/` on every deploy, so the `cfb-*` units are already present in `/etc/systemd/system/`, `disabled`. Verify that before enabling: `systemctl list-unit-files 'cfb-*'` should list all ten.
 
   If any are missing, **a deploy that never ran is only one of the explanations** — the more likely one is that `systemd-analyze verify` rejected that unit, in which case `deploy.sh` warned, skipped it by name, and exited non-zero while still deploying the app. Read the deploy output and its exit status rather than inferring: find the `failed validation` line naming the unit, fix the repo file, and redeploy. Either way, hand-copying is the wrong fix — it skips the validation gate and drifts back on the next deploy. Do **not** un-comment the legacy CFB crontab lines — timers are the canonical mechanism; delete or leave the commented cron lines as history.
-- [ ] Week-1 dry run on prod timing: `cfb sync --mode setup` (Tue-gated spreads follow), verify spreads lock on first fetch, verify reminder emails address the right cohort. Rehearse in the local sandbox first with `CFB_FAKE_NOW` anchors.
+- [x] Week-1 dry run on prod timing — **superseded 2026-08-19 by the preview import**, which exercised the real setup path on prod (42 games imported and activated). Do NOT run `cfb sync --mode setup` on prod again before Week 1 completes (see the amendment above — it would create and activate Week 2); the remaining verifications are read-only: `cfb sync --mode status` after Tuesday's spreads firing (expect 42 games, spreads locked on first fetch), and the reminder-cohort check. Any further setup rehearsal happens in the local sandbox with `CFB_FAKE_NOW` anchors only.
 - [x] Deadline-semantics sanity check on week 1 specifically (Thu Sep 3 season start vs the locked Sat-11am-CT cadence): confirm the intended player experience for Thu/Fri week-1 games. The cadence is deliberately locked by `test_cfb_cfp_datemath.py` — this is a *verify the product intent* item, not a code change. **Confirmed by Brad 2026-08-17:** rigid Sat 11:00 CT deadline stands; a pick locks at its game's kickoff (players waiting past Thursday simply lose the Thu/Fri teams as options). Enforcement verified both directions: can't change off a started pick (`games/cfb/routes.py` `pick_locked`) and can't pick a started team.
 - [ ] Post-flip smoke on prod: join → pick → standings as a non-admin, plus all four lounge states via the changeover checklist.
 
