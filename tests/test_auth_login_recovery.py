@@ -152,3 +152,25 @@ def test_reset_email_escapes_username_in_html(app, client):
 
     assert '<b>evil</b>' not in captured['html']       # raw markup must not survive
     assert '&lt;b&gt;evil&lt;/b&gt;' in captured['html']  # escaped form present
+
+
+def test_forgot_password_does_not_reveal_account_existence(app):
+    """A registered and an unregistered email get the identical redirect + flash,
+    so the forgot-password form never signals which addresses have an account."""
+    _make_user(app, 'known', 'known@test.com', uuid.uuid4().hex)
+
+    def _forgot(email, **kw):
+        c = app.test_client()  # fresh session per call — no flash bleed across posts
+        with mock.patch('core.auth.routes.send_platform_email', lambda *a, **k: None):
+            return c.post('/forgot-password',
+                          data={'email': email, 'csrf_token': 'x'}, **kw)
+
+    # Immediate redirect is identical whether or not the account exists.
+    known, unknown = _forgot('known@test.com'), _forgot('nobody@test.com')
+    assert known.status_code == unknown.status_code == 302
+    assert known.headers['Location'] == unknown.headers['Location']
+
+    # ...and both render the same anti-enumeration flash on the login page.
+    msg = 'If that email is registered'
+    assert msg in _forgot('known@test.com', follow_redirects=True).get_data(as_text=True)
+    assert msg in _forgot('nobody@test.com', follow_redirects=True).get_data(as_text=True)
