@@ -10,7 +10,7 @@ from urllib.parse import urlparse
 
 from flask import current_app, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required, login_user, logout_user
-from sqlalchemy import func
+from sqlalchemy import func, select
 
 from core.auth import auth_bp
 from core.auth.tokens import generate_reset_token, verify_reset_token
@@ -45,6 +45,7 @@ def _is_safe_next(target):
 @auth_bp.route('/login', methods=['GET', 'POST'])
 @limiter.limit("10 per minute")
 def login():
+    """Authenticate by username or email + password, then honor a safe `next`."""
     if current_user.is_authenticated:
         return redirect(url_for('main.index'))
 
@@ -58,12 +59,12 @@ def login():
         # unique columns), the username match wins rather than an ambiguous OR
         # returning an arbitrary row.
         user = (
-            User.query.filter(
-                func.lower(User.username) == identifier.casefold()
-            ).first()
-            or User.query.filter(
-                func.lower(User.email) == identifier.casefold()
-            ).first()
+            db.session.scalar(
+                select(User).where(func.lower(User.username) == identifier.casefold())
+            )
+            or db.session.scalar(
+                select(User).where(func.lower(User.email) == identifier.casefold())
+            )
         )
 
         if user and user.check_password(password):
@@ -156,6 +157,7 @@ def logout():
 @auth_bp.route('/forgot-password', methods=['GET', 'POST'])
 @limiter.limit("10 per minute")
 def forgot_password():
+    """Email a password-reset link (anti-enumeration: identical response either way)."""
     if current_user.is_authenticated:
         return redirect(url_for('main.index'))
 

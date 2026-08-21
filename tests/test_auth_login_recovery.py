@@ -29,6 +29,7 @@ def _make_user(app, username, email, password):
 
 
 def _login(client, identifier, password):
+    """POST the login form and follow redirects to the resulting page."""
     return client.post(
         '/login',
         data={'username': identifier, 'password': password, 'csrf_token': 'x'},
@@ -39,6 +40,7 @@ def _login(client, identifier, password):
 # --- login by username OR email -------------------------------------------
 
 def test_login_by_username_still_succeeds(app, client):
+    """The pre-existing username login path is unchanged."""
     pw = uuid.uuid4().hex
     _make_user(app, 'carol', 'carol@test.com', pw)
     body = _login(client, 'carol', pw).get_data(as_text=True)
@@ -46,6 +48,7 @@ def test_login_by_username_still_succeeds(app, client):
 
 
 def test_login_by_email_succeeds(app, client):
+    """A user can sign in with their account email instead of their username."""
     pw = uuid.uuid4().hex
     _make_user(app, 'alice', 'alice@test.com', pw)
     body = _login(client, 'alice@test.com', pw).get_data(as_text=True)
@@ -53,6 +56,7 @@ def test_login_by_email_succeeds(app, client):
 
 
 def test_login_by_email_is_case_insensitive(app, client):
+    """Email login matches regardless of the case the user types."""
     pw = uuid.uuid4().hex
     _make_user(app, 'dave', 'dave@test.com', pw)
     body = _login(client, 'DAVE@TEST.COM', pw).get_data(as_text=True)
@@ -60,6 +64,7 @@ def test_login_by_email_is_case_insensitive(app, client):
 
 
 def test_login_wrong_password_shows_generic_error(app, client):
+    """A wrong password yields the generic error and no login."""
     pw = uuid.uuid4().hex
     _make_user(app, 'bob', 'bob@test.com', pw)
     body = _login(client, 'bob', 'not-the-password').get_data(as_text=True)
@@ -68,6 +73,7 @@ def test_login_wrong_password_shows_generic_error(app, client):
 
 
 def test_login_unknown_identifier_shows_generic_error(app, client):
+    """An unknown identifier is indistinguishable from a wrong password."""
     # No such account: response is identical to the wrong-password case (no
     # enumeration signal from login).
     body = _login(client, 'ghost@nowhere.test', uuid.uuid4().hex).get_data(as_text=True)
@@ -98,6 +104,7 @@ def test_username_takes_precedence_over_email_collision(app, client):
 
 
 def test_login_page_labels_field_username_or_email(client):
+    """The login form advertises that the field accepts a username or email."""
     body = client.get('/login').get_data(as_text=True)
     assert 'Username or email' in body
 
@@ -105,6 +112,7 @@ def test_login_page_labels_field_username_or_email(client):
 # --- reset email: username shown + link built from SITE_URL ----------------
 
 def test_reset_email_shows_username_and_uses_site_url(app, client):
+    """The reset email surfaces the username and builds links from SITE_URL."""
     site_url = 'https://canonical.example'
     app.config['SITE_URL'] = site_url
     _make_user(app, 'reseeker', 'reseeker@test.com', uuid.uuid4().hex)
