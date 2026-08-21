@@ -1,10 +1,11 @@
 # Runs The Docket's deadline reminders hourly, on the hour, CT.
 #
-# Hourly is SAFE here, unlike cfb-remind.timer, because DocketWeek
-# .last_reminder_tier de-dups: a run whose active tier was already sent does
-# nothing (D24). The guarantee lives in the flag, not in this schedule, so
-# the cadence only has to be dense enough to land inside each tier's window
-# at least once. Off-window firings are cheap no-ops.
+# Hourly is SAFE because DocketWeek.last_reminder_tier de-dups: a run whose
+# active tier was already sent does nothing (D24). The guarantee lives in
+# the flag, not in this schedule, so the cadence only has to be dense enough
+# to land inside each tier's window at least once. Off-window firings are
+# cheap no-ops. (cfb-remind.timer follows the same shape via
+# CfbWeek.last_reminder_type.)
 [Unit]
 Description=Run The Docket deadline reminders (hourly, de-duped)
 

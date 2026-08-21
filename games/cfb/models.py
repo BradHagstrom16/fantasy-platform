@@ -98,6 +98,10 @@ class CfbWeek(db.Model):
     is_playoff_week = db.Column(db.Boolean, default=False)
     round_name = db.Column(db.String(100), nullable=True)
     recap_email_sent = db.Column(db.Boolean, default=False, nullable=False)
+    # Closest reminder window already mailed for this week ('warning'/'final').
+    # Written only by run_reminder_check once >=1 send succeeds; the de-dup
+    # guarantee lives in this flag, not in any timer cadence (D24-eng shape).
+    last_reminder_type = db.Column(db.String(10), nullable=True)
 
     def __repr__(self):
         return f'<CfbWeek {self.week_number}>'

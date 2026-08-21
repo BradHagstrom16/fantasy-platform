@@ -6,6 +6,10 @@ Email pick reminders and weekly results recap.
 Reminder windows:
   - 25 hours before deadline (typically Friday)
   - 1 hour before deadline (typically Saturday -- FINAL reminder)
+  Each window is sent at most once per week, de-duped via
+  CfbWeek.last_reminder_type — safe under any timer cadence (the hourly
+  cfb-remind.timer, catch-up firings, and hand-runs all no-op once a
+  window is recorded).
 
 Results recap:
   - Sent once per week after results are processed (gated by recap_email_sent)
@@ -36,6 +40,7 @@ from games.cfb.utils import (
 )
 from models import User
 from utils.email import send_platform_email
+from utils.reminders import tier_already_sent
 
 logger = logging.getLogger(__name__)
 
@@ -44,6 +49,11 @@ REMINDER_WINDOWS = [
     {'hours': 25, 'type': 'warning', 'label': '25-hour'},
     {'hours': 1, 'type': 'final', 'label': '1-hour FINAL'},
 ]
+
+# De-dup ordering for CfbWeek.last_reminder_type. Higher = closer to the
+# deadline; sending 'final' also closes 'warning' (a catch-up firing after
+# the final went out must not send yesterday's warning).
+REMINDER_ORDER = {'warning': 0, 'final': 1}
 
 # Tolerance window (minutes) - send reminder if within this window of the target time
 TOLERANCE_MINUTES = 35
@@ -285,7 +295,24 @@ def _build_reminder_html(display_name, week_name, deadline_str, time_remaining,
 
 
 def run_reminder_check():
-    """Main reminder processing function. Called from CLI."""
+    """Main reminder processing function. Called from CLI.
+
+    De-dup gate (the guarantee lives in the flag, not the timer cadence):
+
+        hourly firing ──► active week? ──no──► exit
+                              │yes
+                         deadline passed? ──yes──► exit
+                              │no
+                         window active? (T-25h/T-1h ±35m) ──no──► exit
+                              │yes
+                         tier_already_sent(week.last_reminder_type)? ──yes──► exit
+                              │no
+                         recipients w/o picks? ──none──► exit (flag NOT recorded)
+                              │some
+                         send each ──► 0 sent? ──yes──► log error, exit
+                              │≥1 sent          (flag NOT recorded → retried)
+                         week.last_reminder_type = window type; commit
+    """
     now = get_current_time()
     season_year = current_app.config.get('CFB_SEASON_YEAR', 2026)
     site_url = current_app.config.get('SITE_URL', 'http://localhost:5000')
@@ -321,7 +348,15 @@ def run_reminder_check():
 
     print(f"\nActive window: {window['label']} ({window['type']})")
 
-    # Get users needing reminders
+    if tier_already_sent(week.last_reminder_type, window['type'], REMINDER_ORDER):
+        print(f"{window['label']} reminder already sent for {week_name} "
+              f"(last sent: {week.last_reminder_type}). Skipping.")
+        return
+
+    # Get users needing reminders. Deliberately NOT recorded when empty:
+    # nothing was mailed, so the window stays open — a player who withdraws
+    # a pick later in the same window is still reachable, and the flag keeps
+    # meaning "this window went out".
     recipients = get_users_without_picks(week.id, season_year)
     if not recipients:
         print(f"\nAll active users have picks for {week_name}")
@@ -377,6 +412,18 @@ Good luck!
 
         if send_platform_email(user.email, subject, body, html):
             success_count += 1
+
+    if success_count > 0:
+        # Recorded once ANY send succeeds (Golf/Docket reasoning): gating on
+        # all-recipient success would let one permanently bad address hold
+        # the window open and re-mail every good recipient next firing.
+        week.last_reminder_type = window['type']
+        db.session.commit()
+    else:
+        # Every send failed: leave the window open so the next firing
+        # retries — recording here would swallow a full mail outage.
+        logger.error("Week %s: %s reminder reached nobody (%s recipients)",
+                     week.week_number, window['type'], len(recipients))
 
     print(f"\nSummary: {success_count}/{len(recipients)} reminders sent")
     print("=" * 60)

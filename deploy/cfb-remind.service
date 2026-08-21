@@ -1,9 +1,10 @@
 # CFB Survivor pick reminders — emails users who haven't picked.
-# Fired Fri + Sat 10:00 CT by cfb-remind.timer, landing exactly on the
-# T-25h (Friday) and T-1h (Saturday) windows for the Sat 11:00 deadline.
+# Fired hourly by cfb-remind.timer; the T-25h / T-1h windows are resolved
+# from the active week's deadline at runtime, and CfbWeek.last_reminder_type
+# de-dups so each window mails at most once.
 
 [Unit]
-Description=CFB Survivor pick reminders (T-25h / T-1h)
+Description=CFB Survivor pick reminders (T-25h / T-1h, de-duped)
 After=network-online.target
 Wants=network-online.target
 

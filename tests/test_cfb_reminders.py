@@ -20,6 +20,7 @@ from games.cfb.services.game_logic import process_week_results
 from games.cfb.services.reminders import (
     get_active_reminder_window,
     get_users_without_picks,
+    run_reminder_check,
     send_weekly_recap_email,
 )
 from tests._cfb_fixtures import (
@@ -290,3 +291,116 @@ def test_reminder_recipients_exclude_eliminated_and_picked(app):
     recipients = get_users_without_picks(week.id, 2026)
 
     assert [(e.user_id, u.id) for e, u in recipients] == [(needs.id, needs.id)]
+
+
+# ── sent-flag de-dup (CfbWeek.last_reminder_type) ─────────────────────────
+# The guarantee that lets cfb-remind.timer run hourly: each window mails at
+# most once per week, regardless of cadence, catch-up firings, or hand-runs.
+
+WARNING_INSTANT = '2026-01-02T16:00:00+00:00'  # exactly T-25h
+LATER_IN_WARNING_WINDOW = '2026-01-02T16:20:00+00:00'  # +20min, same window
+FINAL_INSTANT = '2026-01-03T16:00:00+00:00'    # exactly T-1h
+
+
+def _seed_reminder_week():
+    """One active week, one enrolled user with no pick."""
+    week = make_week(1, deadline=DEADLINE_POOL, is_active=True)
+    user = make_user('needs')
+    make_enrollment(user)
+    db.session.commit()
+    return week, user
+
+
+def _run_reminders_at(fake_utc_iso):
+    with patch.dict(os.environ, {'ENVIRONMENT': 'testing',
+                                 'CFB_FAKE_NOW': fake_utc_iso}):
+        run_reminder_check()
+
+
+def test_first_send_records_the_window(app):
+    week, _ = _seed_reminder_week()
+    assert week.last_reminder_type is None  # fresh week starts unset
+    sent, patcher = _capture_emails()
+    with patcher:
+        _run_reminders_at(WARNING_INSTANT)
+    assert len(sent) == 1
+    assert week.last_reminder_type == 'warning'
+
+
+def test_second_firing_in_the_same_window_sends_nothing(app):
+    """The hourly-cadence contract: a re-fire inside an already-mailed
+    window (catch-up, hand-run, faster timer) is a no-op."""
+    week, _ = _seed_reminder_week()
+    sent, patcher = _capture_emails()
+    with patcher:
+        _run_reminders_at(WARNING_INSTANT)
+        _run_reminders_at(LATER_IN_WARNING_WINDOW)
+    assert len(sent) == 1
+    assert week.last_reminder_type == 'warning'
+
+
+def test_final_still_sends_after_warning(app):
+    week, _ = _seed_reminder_week()
+    week.last_reminder_type = 'warning'
+    db.session.commit()
+    sent, patcher = _capture_emails()
+    with patcher:
+        _run_reminders_at(FINAL_INSTANT)
+    assert len(sent) == 1
+    assert 'FINAL' in sent[0]['subject']
+    assert week.last_reminder_type == 'final'
+
+
+def test_warning_never_resends_after_final(app):
+    """Order gate, not equality: once 'final' is recorded, a stray firing
+    that lands in the (earlier-ranked) warning window stays silent."""
+    week, _ = _seed_reminder_week()
+    week.last_reminder_type = 'final'
+    db.session.commit()
+    sent, patcher = _capture_emails()
+    with patcher:
+        _run_reminders_at(WARNING_INSTANT)
+    assert sent == []
+    assert week.last_reminder_type == 'final'
+
+
+def test_all_picked_leaves_the_window_open(app):
+    """Nothing mailed -> nothing recorded: a player who withdraws a pick
+    later in the same window must still be reachable."""
+    week, user = _seed_reminder_week()
+    team = make_team('Team A')
+    make_pick(user, week, team)
+    db.session.commit()
+    sent, patcher = _capture_emails()
+    with patcher:
+        _run_reminders_at(WARNING_INSTANT)
+    assert sent == []
+    assert week.last_reminder_type is None
+
+
+def test_total_send_failure_leaves_the_window_open_for_retry(app):
+    """A full mail outage must not swallow the window; the next hourly
+    firing retries and the flag records only when a send succeeds."""
+    week, _ = _seed_reminder_week()
+    with patch('games.cfb.services.reminders.send_platform_email',
+               return_value=False):
+        _run_reminders_at(WARNING_INSTANT)
+    assert week.last_reminder_type is None
+
+    sent, patcher = _capture_emails()
+    with patcher:
+        _run_reminders_at(LATER_IN_WARNING_WINDOW)
+    assert len(sent) == 1
+    assert week.last_reminder_type == 'warning'
+
+
+def test_unknown_stored_value_does_not_block_sends(app):
+    """A legacy/corrupt stored tier ranks -1 and must never suppress mail."""
+    week, _ = _seed_reminder_week()
+    week.last_reminder_type = 'legacy'
+    db.session.commit()
+    sent, patcher = _capture_emails()
+    with patcher:
+        _run_reminders_at(FINAL_INSTANT)
+    assert len(sent) == 1
+    assert week.last_reminder_type == 'final'
