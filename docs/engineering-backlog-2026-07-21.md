@@ -428,6 +428,42 @@ Survivor's** reminders to match. Small change (`games/cfb/services/reminders.py`
 no-double-send lock test), but it touches the live game — **own PR, post-launch**, not
 part of the Docket build.
 
+### 2.8 Auth identifier normalization is inlined four ways 🟡
+
+**Added 2026-08-21 (deferred from PR #167, username-or-email login + recovery).** There is
+no shared identifier-normalizer; every auth path hand-rolls its own case fold and they
+disagree:
+
+- `.casefold()` vs `func.lower(col)` — login (`core/auth/routes.py:63,66`), register dup
+  checks (`:110,:112`), profile email change (`:297`).
+- `.lower()` vs `func.lower(col)` — forgot-password (`:166`), reset-password (`:207`),
+  `create-admin` CLI (`app.py:141`).
+- Storage is itself uneven: username stored case-preserved (`:90`), email `.strip().lower()`
+  (`:91`); DB unique indexes are on the raw columns — **no functional lower() index**
+  (`models/user.py:27-28`).
+
+**Not a security item — stated up front so no one re-escalates it.** Register uniqueness and
+login lookup use the *same* `func.lower == casefold`, so fold-colliding accounts can't be
+minted through the register form, and login checks the password regardless — no takeover or
+ambiguous-`scalar()` vector from the public surface. Real effects are minor: (a) a user who
+registered a literal ß-username couldn't log in with it (input casefolds to `ss`, Postgres
+`lower()` leaves the stored ß) — a 🟠 lockout with ≈zero realistic occurrence here; (b) the
+four idioms are a latent trap for whoever adds the next auth path.
+
+**Approach:** one `normalize_identifier()` helper (`.strip().casefold()`, `.casefold()` being
+the i18n-correct superset of `.lower()` and identical for ASCII) in `utils/`, route all ~6
+sites through it. No existing test breaks — only ASCII case-insensitivity and the
+username-first precedence order are locked (`tests/test_auth_login_recovery.py`); add a couple
+of helper tests. **Own PR, post-launch, low priority** — closes no live hole.
+
+**Explicitly out of scope:** the DB functional lower() unique index. It is the only part with
+teeth (it would actually block `Alice`/`alice`), but it's a separate, riskier migration gated
+on a prod query returning zero rows first (`SELECT lower(username), count(*) FROM users GROUP
+BY 1 HAVING count(*) > 1`, and the same for email). Do not bundle it.
+
+**Re-verify the line numbers before quoting** (per this doc's own rule) — they are PR #167's
+merge state (`9ba8d6a`); confirmed against the tree 2026-08-21.
+
 ## Priority 3 — Test-suite leverage 🟡
 
 ### 3.1 No `tests/conftest.py` — highest-leverage prep work available 🟡
