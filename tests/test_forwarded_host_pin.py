@@ -31,6 +31,7 @@ NGINX_CONF = Path(__file__).parent.parent / 'deploy' / 'nginx.conf'
 
 
 def _host_probe_client():
+    """Return a test client whose /__host_probe route echoes request.host."""
     from app import create_app
     app = create_app('testing')
 
@@ -46,6 +47,7 @@ def _host_probe_client():
 
 class TestProxyFixHostContract:
     def test_x_forwarded_host_drives_request_host(self):
+        """X-Forwarded-Host (the nginx pin) wins over the raw Host header."""
         # ProxyFix(x_host=1) must prefer X-Forwarded-Host over the raw Host, so
         # nginx's pinned apex value wins even when the visitor used www.
         resp = _host_probe_client().get(
@@ -58,6 +60,7 @@ class TestProxyFixHostContract:
         assert resp.text == 'cccfantasy.com'
 
     def test_no_x_forwarded_host_falls_back_to_host(self):
+        """Without the header, request.host is the raw Host (pin, not ProxyFix)."""
         # Sanity: without the header, request.host is just the Host — so it is
         # the pin, not ProxyFix, that normalizes www-vs-apex.
         resp = _host_probe_client().get(
@@ -72,6 +75,7 @@ class TestNginxForwardedHostPinLock:
     # "inside the 443 block".
 
     def test_x_forwarded_host_pinned_in_443_block(self):
+        """nginx pins X-Forwarded-Host inside the 443 proxy block."""
         src = NGINX_CONF.read_text()
         m = re.search(
             r'proxy_set_header\s+X-Forwarded-Host\s+(\S+);', src
@@ -80,6 +84,7 @@ class TestNginxForwardedHostPinLock:
         assert src.index('listen 443') < m.start()
 
     def test_x_forwarded_host_is_the_bare_apex_placeholder(self):
+        """The pinned value is the bare placeholder host — never $host or www."""
         # Pinned to a single static host (the install substitutes the real
         # apex for `yourdomain.com`) — never $host (would echo www-vs-apex)
         # and never a www-prefixed value.
