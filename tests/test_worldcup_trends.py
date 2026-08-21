@@ -9,9 +9,6 @@ and the new home_context._context_live builder:
 """
 from datetime import date, timedelta
 
-import pytest
-
-from app import create_app
 from extensions import db
 from games.worldcup.constants import SEASON_YEAR
 from games.worldcup.models import WorldCupEnrollment, WorldCupRankSnapshot
@@ -20,16 +17,6 @@ from games.worldcup.services.trends import (
     show_trend_column,
 )
 from models.user import User
-
-
-@pytest.fixture()
-def app():
-    app = create_app('testing')
-    with app.app_context():
-        db.create_all()
-        yield app
-        db.session.remove()
-        db.drop_all()
 
 
 def _make_user(email='u@test'):

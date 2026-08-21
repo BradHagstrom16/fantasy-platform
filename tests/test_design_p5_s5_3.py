@@ -36,26 +36,11 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-import pytest
-
-from app import create_app
-from extensions import db
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
 STYLE_CSS = REPO_ROOT / 'static' / 'css' / 'style.css'
 WC_HOME_POST = REPO_ROOT / 'games' / 'worldcup' / 'templates' / 'worldcup' / '_home_post.html'
 HOME_SHELL = REPO_ROOT / 'games' / 'worldcup' / 'templates' / 'worldcup' / 'home_shell.html'
 PLATFORM_CHAMPION_BANNER = REPO_ROOT / 'games' / 'worldcup' / 'templates' / 'worldcup' / 'lounge' / '_champion_banner.html'
-
-
-@pytest.fixture()
-def app():
-    app = create_app('testing')
-    with app.app_context():
-        db.create_all()
-        yield app
-        db.session.remove()
-        db.drop_all()
 
 
 def _champion_branches(src: str) -> tuple[str, str]:

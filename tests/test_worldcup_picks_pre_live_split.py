@@ -223,22 +223,6 @@ def test_tier_jump_count_avoids_raw_text_muted_on_white(css_src):
 
 # --- Behavioral: derived KO elimination wired through the picks render --------
 
-@pytest.fixture()
-def app():
-    from app import create_app
-    from extensions import db
-    app = create_app('testing')
-    with app.app_context():
-        db.create_all()
-        yield app
-        db.session.remove()
-        db.drop_all()
-
-
-@pytest.fixture()
-def client(app):
-    return app.test_client()
-
 
 def test_picks_page_marks_knockout_loser_out(app, client, monkeypatch):
     """End-to-end: a pick that lost a completed knockout match renders the

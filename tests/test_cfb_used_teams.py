@@ -15,7 +15,6 @@ honors exclude_current; calculate_cumulative_spread is phase-agnostic.
 """
 import pytest
 
-from app import create_app
 from extensions import db
 from games.cfb.services.game_logic import (
     calculate_cumulative_spread,
@@ -29,17 +28,6 @@ from tests._cfb_fixtures import (
     make_user,
     make_week,
 )
-
-
-@pytest.fixture()
-def app():
-    app = create_app('testing')
-    with app.app_context():
-        db.create_all()
-        yield app
-        db.session.remove()
-        db.drop_all()
-
 
 # ── DQ-3 — regular-season pool spans weeks 1-15 ───────────────────────────
 

@@ -8,24 +8,11 @@ import os
 from datetime import timedelta
 from unittest.mock import patch
 
-import pytest
-
-from app import create_app
 from extensions import db
 from games.worldcup.constants import SEASON_YEAR, TOURNAMENT_DEADLINE_UTC
 from games.worldcup.models import WorldCupEnrollment, WorldCupMatch
 from games.worldcup.services.state import worldcup_hub_state
 from models.user import User
-
-
-@pytest.fixture()
-def app():
-    app = create_app('testing')
-    with app.app_context():
-        db.create_all()
-        yield app
-        db.session.remove()
-        db.drop_all()
 
 
 def _make_user(email='u@test'):

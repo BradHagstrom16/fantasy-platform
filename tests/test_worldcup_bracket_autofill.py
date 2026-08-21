@@ -7,21 +7,8 @@ team BLOCKS that side; an unresolved/absent API confirms nothing (writes flagged
 """
 from unittest.mock import patch
 
-import pytest
-
-from app import create_app
 from extensions import db
 from games.worldcup.models import WorldCupMatch, WorldCupTeam
-
-
-@pytest.fixture()
-def app():
-    app = create_app('testing')
-    with app.app_context():
-        db.create_all()
-        yield app
-        db.session.remove()
-        db.drop_all()
 
 
 def test_topology_is_structurally_consistent():

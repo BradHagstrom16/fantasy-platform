@@ -14,7 +14,6 @@ from zoneinfo import ZoneInfo
 
 import pytest
 
-from app import create_app
 from extensions import db
 from games.cfb.services.game_logic import process_week_results
 from games.cfb.services.reminders import (
@@ -31,18 +30,6 @@ from tests._cfb_fixtures import (
     make_user,
     make_week,
 )
-
-
-@pytest.fixture()
-def app():
-    """App fixture: testing config + in-memory schema per test."""
-    app = create_app('testing')
-    with app.app_context():
-        db.create_all()
-        yield app
-        db.session.remove()
-        db.drop_all()
-
 
 # Deadline is naive pool-tz wall clock: Sat Jan 3, 2026 11:00 CST (UTC-6).
 DEADLINE_POOL = datetime(2026, 1, 3, 11, 0)

@@ -5,9 +5,6 @@ state guards. Complements tests/test_worldcup_scoring.py (engine tests).
 from datetime import UTC, datetime
 from unittest.mock import patch
 
-import pytest
-
-from app import create_app
 from extensions import db
 from games.worldcup.models import (
     WorldCupEnrollment,
@@ -19,21 +16,6 @@ from models.user import User
 
 PAST_DEADLINE = datetime(2000, 1, 1, tzinfo=UTC)
 FUTURE_DEADLINE = datetime(2099, 1, 1, tzinfo=UTC)
-
-
-@pytest.fixture()
-def app():
-    app = create_app('testing')
-    with app.app_context():
-        db.create_all()
-        yield app
-        db.session.remove()
-        db.drop_all()
-
-
-@pytest.fixture()
-def client(app):
-    return app.test_client()
 
 
 def _make_enrolled_user_with_tiebreaker(app, guess=7):

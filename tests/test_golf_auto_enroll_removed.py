@@ -1,28 +1,10 @@
 """Regression tests: golf pick routes must NOT silently auto-enroll users."""
 from datetime import UTC, datetime, timedelta
 
-import pytest
-
-from app import create_app
 from extensions import db
 from games.golf.models import GolfEnrollment, GolfPick, GolfPlayer, GolfTournament
 from models.user import User
 from tests._registry_helpers import set_status as _set_status
-
-
-@pytest.fixture()
-def app():
-    app = create_app('testing')
-    with app.app_context():
-        db.create_all()
-        yield app
-        db.session.remove()
-        db.drop_all()
-
-
-@pytest.fixture()
-def client(app):
-    return app.test_client()
 
 
 def _make_user(app, username='gu', is_admin=False):

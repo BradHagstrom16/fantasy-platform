@@ -21,11 +21,6 @@ def app():
         db.drop_all()
 
 
-@pytest.fixture
-def client(app):
-    return app.test_client()
-
-
 # The 2026-08-11 changeover flipped the real registry to CFB open+featured.
 # This module exercises the archived WC lounge-context builders (the frozen-WC
 # regression net), so the WC-era registry is pinned per test. Tests listed in

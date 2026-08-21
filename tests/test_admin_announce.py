@@ -1,32 +1,12 @@
 """Tests for the platform-admin announce (mass email) tool."""
 from unittest.mock import patch
 
-import pytest
-
-from app import create_app
 from extensions import db
 from games.cfb.models import CfbEnrollment
 from games.golf.models import GolfEnrollment
 from games.worldcup.constants import SEASON_YEAR
 from games.worldcup.models import WorldCupEnrollment
 from models.user import User
-
-
-@pytest.fixture()
-def app():
-    """Fresh testing app with an empty in-memory schema per test."""
-    app = create_app('testing')
-    with app.app_context():
-        db.create_all()
-        yield app
-        db.session.remove()
-        db.drop_all()
-
-
-@pytest.fixture()
-def client(app):
-    """Test client bound to the per-test app."""
-    return app.test_client()
 
 
 def _make_user(app, username='u1', is_admin=False):

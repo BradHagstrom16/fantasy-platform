@@ -12,26 +12,8 @@ from unittest import mock
 
 import pytest
 
-from app import create_app
 from extensions import db
 from games.worldcup.constants import TOURNAMENT_DEADLINE_UTC, WORLDCUP_TZ
-
-
-@pytest.fixture()
-def app():
-    """Testing app with a fresh in-memory schema per test."""
-    app = create_app('testing')
-    with app.app_context():
-        db.create_all()
-        yield app
-        db.session.remove()
-        db.drop_all()
-
-
-@pytest.fixture()
-def client(app):
-    """Flask test client bound to the testing app."""
-    return app.test_client()
 
 
 @pytest.fixture()

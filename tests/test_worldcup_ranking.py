@@ -3,7 +3,6 @@ from datetime import timedelta
 
 import pytest
 
-from app import create_app
 from extensions import db
 from games.worldcup.constants import SEASON_YEAR, WORLDCUP_TZ
 from games.worldcup.models import WorldCupEnrollment, WorldCupRankSnapshot
@@ -14,16 +13,6 @@ from games.worldcup.services.ranking import (
 )
 from games.worldcup.services.state import now_utc
 from models.user import User
-
-
-@pytest.fixture()
-def app():
-    app = create_app('testing')
-    with app.app_context():
-        db.create_all()
-        yield app
-        db.session.remove()
-        db.drop_all()
 
 
 def _seed_enrollments(scores: list[float]) -> list[int]:

@@ -36,27 +36,14 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-import pytest
 from flask import render_template
 
-from app import create_app
-from extensions import db
 from models.content import commish_note_paragraphs
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 CHAMPION_BANNER = REPO_ROOT / 'games' / 'worldcup' / 'templates' / 'worldcup' / 'lounge' / '_champion_banner.html'
 COMMISH_NOTE = REPO_ROOT / 'core' / 'main' / 'templates' / 'main' / '_commish_note.html'
 STYLE_CSS = REPO_ROOT / 'static' / 'css' / 'style.css'
-
-
-@pytest.fixture()
-def app():
-    app = create_app('testing')
-    with app.app_context():
-        db.create_all()
-        yield app
-        db.session.remove()
-        db.drop_all()
 
 
 # ---------------------------------------------------------------------------

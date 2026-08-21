@@ -26,9 +26,6 @@ from datetime import timedelta
 from pathlib import Path
 from unittest.mock import patch
 
-import pytest
-
-from app import create_app
 from extensions import db
 from games.worldcup.constants import TOURNAMENT_DEADLINE_UTC
 from games.worldcup.services.home_context import _context_post
@@ -36,16 +33,6 @@ from tests._worldcup_fixtures import make_match, seed_full_tournament
 
 TEMPLATE = Path(__file__).resolve().parents[1] / 'games' / 'worldcup' / 'templates' / 'worldcup' / '_home_post.html'
 STYLE_CSS = Path(__file__).resolve().parents[1] / 'static' / 'css' / 'style.css'
-
-
-@pytest.fixture()
-def app():
-    app = create_app('testing')
-    with app.app_context():
-        db.create_all()
-        yield app
-        db.session.remove()
-        db.drop_all()
 
 
 # ---------------------------------------------------------------------------

@@ -11,9 +11,7 @@ Two guards on the admin team/game admin surfaces:
 Admin routes use the two-tier @cfb_admin_required (platform admin passes
 directly), so these tests log in a platform admin via auth_id.
 """
-import pytest
 
-from app import create_app
 from extensions import db
 from games.cfb.models import CfbGame, CfbTeam
 from tests._cfb_fixtures import (
@@ -24,21 +22,6 @@ from tests._cfb_fixtures import (
     make_user,
     make_week,
 )
-
-
-@pytest.fixture()
-def app():
-    app = create_app('testing')
-    with app.app_context():
-        db.create_all()
-        yield app
-        db.session.remove()
-        db.drop_all()
-
-
-@pytest.fixture()
-def client(app):
-    return app.test_client()
 
 
 def _login_admin(client):

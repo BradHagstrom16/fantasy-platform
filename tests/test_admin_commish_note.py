@@ -6,10 +6,8 @@ rendering + champion substitution) and the platform-admin edit route
 """
 from urllib.parse import urlparse
 
-import pytest
 from flask import url_for
 
-from app import create_app
 from extensions import db
 from models.content import (
     COMMISH_NOTE_DEFAULTS,
@@ -18,22 +16,6 @@ from models.content import (
     commish_note_paragraphs,
 )
 from models.user import User
-
-
-@pytest.fixture()
-def app():
-    """Fresh testing app with an empty in-memory schema per test."""
-    app = create_app('testing')
-    with app.app_context():
-        db.create_all()
-        yield app
-        db.session.remove()
-        db.drop_all()
-
-
-@pytest.fixture()
-def client(app):
-    return app.test_client()
 
 
 def _make_user(app, username='u1', is_admin=False):

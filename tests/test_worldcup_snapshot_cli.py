@@ -1,22 +1,8 @@
 """Tests for the `flask worldcup snapshot-ranks` CLI (Spec B follow-up B2)."""
 from datetime import timedelta
 
-import pytest
-
-from app import create_app
 from extensions import db
 from games.worldcup.cli import worldcup_cli
-
-
-@pytest.fixture
-def app():
-    """Testing app with in-memory SQLite."""
-    app = create_app('testing')
-    with app.app_context():
-        db.create_all()
-        yield app
-        db.session.remove()
-        db.drop_all()
 
 
 def _make_enrollment(total_score=0.0, username='u'):

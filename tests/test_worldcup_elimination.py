@@ -4,23 +4,11 @@ is_eliminated is GROUP-STAGE-ONLY (scoring sets it only for group non-advancers)
 eliminated_team_ids() must additionally derive knockout losers from completed
 matches, matching team_detail._path_status() elimination semantics.
 """
-import pytest
 
-from app import create_app
 from extensions import db
 from games.worldcup.models import WorldCupMatch, WorldCupTeam
 from games.worldcup.services.elimination import eliminated_team_ids
 from games.worldcup.services.team_detail import _path_status
-
-
-@pytest.fixture
-def app():
-    app = create_app('testing')
-    with app.app_context():
-        db.create_all()
-        yield app
-        db.session.remove()
-        db.drop_all()
 
 
 def _team(name, code, *, is_eliminated=False, best_finish=None, advancement_method=None):

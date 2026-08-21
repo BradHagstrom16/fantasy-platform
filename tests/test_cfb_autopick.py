@@ -15,9 +15,6 @@ week uses a past deadline (autopick eligible) with future game_times
 from datetime import datetime
 from unittest.mock import patch
 
-import pytest
-
-from app import create_app
 from extensions import db
 from games.cfb.models import CfbPick
 from games.cfb.services.game_logic import (
@@ -38,16 +35,6 @@ from tests._cfb_fixtures import (
 FUTURE_GAME = datetime(2099, 1, 1, 12, 0)
 FUTURE_DEADLINE = datetime(2099, 1, 1, 11, 0)
 STARTED = datetime(2020, 1, 1, 12, 0)
-
-
-@pytest.fixture()
-def app():
-    app = create_app('testing')
-    with app.app_context():
-        db.create_all()
-        yield app
-        db.session.remove()
-        db.drop_all()
 
 
 def _future_game(week, home, away, *, spread):

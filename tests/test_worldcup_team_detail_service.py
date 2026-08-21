@@ -1,7 +1,6 @@
 """Tests for games/worldcup/services/team_detail helpers."""
 import pytest
 
-from app import create_app
 from extensions import db
 from games.worldcup.constants import ADVANCE_GROUP_WINNER, KNOCKOUT_POINTS
 from games.worldcup.models import (
@@ -16,16 +15,6 @@ from games.worldcup.services.team_detail import (
     current_user_owns_team,
 )
 from models.user import User
-
-
-@pytest.fixture()
-def app():
-    app = create_app('testing')
-    with app.app_context():
-        db.create_all()
-        yield app
-        db.session.remove()
-        db.drop_all()
 
 
 def _seed_team(fifa='USA', tier=1, multiplier=1.0, group='A',
