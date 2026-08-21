@@ -159,18 +159,22 @@ def test_forgot_password_does_not_reveal_account_existence(app):
     so the forgot-password form never signals which addresses have an account."""
     _make_user(app, 'known', 'known@test.com', uuid.uuid4().hex)
 
-    def _forgot(email, **kw):
+    def _forgot(email):
         c = app.test_client()  # fresh session per call — no flash bleed across posts
         with mock.patch('core.auth.routes.send_platform_email', lambda *a, **k: None):
-            return c.post('/forgot-password',
-                          data={'email': email, 'csrf_token': 'x'}, **kw)
+            resp = c.post('/forgot-password', data={'email': email, 'csrf_token': 'x'})
+        with c.session_transaction() as sess:
+            return resp, sess.get('_flashes', [])
 
-    # Immediate redirect is identical whether or not the account exists.
-    known, unknown = _forgot('known@test.com'), _forgot('nobody@test.com')
-    assert known.status_code == unknown.status_code == 302
-    assert known.headers['Location'] == unknown.headers['Location']
+    known_resp, known_flashes = _forgot('known@test.com')
+    unknown_resp, unknown_flashes = _forgot('nobody@test.com')
 
-    # ...and both render the same anti-enumeration flash on the login page.
-    msg = 'If that email is registered'
-    assert msg in _forgot('known@test.com', follow_redirects=True).get_data(as_text=True)
-    assert msg in _forgot('nobody@test.com', follow_redirects=True).get_data(as_text=True)
+    # Identical redirect (status + target) whether or not the account exists...
+    assert known_resp.status_code == unknown_resp.status_code == 302
+    assert known_resp.headers['Location'] == unknown_resp.headers['Location']
+    # ...and the exact same flash list (category + full message), so a caller
+    # cannot distinguish the two by any part of the response.
+    assert known_flashes == unknown_flashes
+    assert known_flashes == [
+        ('info', 'If that email is registered, a password reset link has been sent.'),
+    ]
