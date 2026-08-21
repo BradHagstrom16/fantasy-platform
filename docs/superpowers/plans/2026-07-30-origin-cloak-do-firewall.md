@@ -1,6 +1,6 @@
 # Origin Cloak — DigitalOcean Cloud Firewall Runbook
 
-**Backlog item:** 2.6 (`docs/engineering-backlog-2026-07-21.md`) · **Decision record:** ADR-043
+**Backlog item:** 2.6 of the 2026-07-21 engineering backlog (doc deleted 2026-08-21, see git history) · **Decision record:** ADR-043
 **Created:** 2026-07-30 · **This doc is living** — it is the runbook for the initial rollout AND for every future Cloudflare range refresh (§9).
 
 ## 1. Goal and evidence

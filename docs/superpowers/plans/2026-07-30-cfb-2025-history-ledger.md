@@ -943,7 +943,7 @@ Merge gate per repo practice: pytest + ruff + GitGuardian on the HEAD SHA. CodeR
 
 - [x] **Step 6: Merge, deploy is NOT required**
 
-The page ships with the next routine deploy; nothing here needs prod steps, timers, nginx, or env vars. After merge: `gh pr merge --merge --delete-branch` (repo practice), then flip the plan's checkboxes and update the engineering-backlog/transition docs only if Brad asks.
+The page ships with the next routine deploy; nothing here needs prod steps, timers, nginx, or env vars. After merge: `gh pr merge --merge --delete-branch` (repo practice), then flip the plan's checkboxes and update the transition docs only if Brad asks.
 
 ---
 
