@@ -36,6 +36,7 @@ from games.golf.models import (
 )
 from games.golf.utils import GOLF_LEAGUE_TZ, format_score_to_par
 from utils.email import send_platform_email
+from utils.reminders import tier_already_sent
 
 logger = logging.getLogger(__name__)
 
@@ -976,13 +977,11 @@ def run_reminder_check():
     # tournament. Lets the reminder cron run hourly across the 24h window without
     # re-sending — the tolerance windows overlap an hourly cadence (audit §6).
     current_tier = f"{window['hours']}h"
-    if tournament.last_reminder_type:
-        last_order = REMINDER_ORDER.get(tournament.last_reminder_type, -1)
-        current_order = REMINDER_ORDER.get(current_tier, -1)
-        if current_order <= last_order:
-            print(f"\n{current_tier} reminder already sent "
-                  f"(last sent: {tournament.last_reminder_type}). Skipping.")
-            return
+    if tier_already_sent(tournament.last_reminder_type, current_tier,
+                         REMINDER_ORDER):
+        print(f"\n{current_tier} reminder already sent "
+              f"(last sent: {tournament.last_reminder_type}). Skipping.")
+        return
 
     # Get users who need reminders (returns ORM objects attached to this context)
     users_without_picks = get_users_without_picks(tournament.id, tournament.season_year)

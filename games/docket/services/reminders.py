@@ -49,6 +49,7 @@ from games.docket.services.picks import sheet_state
 from games.docket.services.weeks import CT
 from games.docket.utils import now_utc, to_naive_utc
 from models.user import User
+from utils.reminders import tier_already_sent
 
 logger = logging.getLogger(__name__)
 
@@ -168,11 +169,9 @@ def run_reminder_pass(week, now=None, user_ids=None) -> dict:
         return {'status': 'no_window', 'week_number': week.week_number}
 
     tier = window['tier']
-    if week.last_reminder_tier is not None:
-        last_order = REMINDER_ORDER.get(week.last_reminder_tier, -1)
-        if REMINDER_ORDER[tier] <= last_order:
-            return {'status': 'already_sent', 'week_number': week.week_number,
-                    'tier': tier, 'last_tier': week.last_reminder_tier}
+    if tier_already_sent(week.last_reminder_tier, tier, REMINDER_ORDER):
+        return {'status': 'already_sent', 'week_number': week.week_number,
+                'tier': tier, 'last_tier': week.last_reminder_tier}
 
     if user_ids is None:
         user_ids = roster_user_ids()
