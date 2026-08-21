@@ -428,7 +428,14 @@ Survivor's** reminders to match. Small change (`games/cfb/services/reminders.py`
 no-double-send lock test), but it touches the live game — **own PR, post-launch**, not
 part of the Docket build.
 
-### 2.8 Auth identifier normalization is inlined four ways 🟡
+### 2.8 Auth identifier normalization is inlined four ways 🟢 fold shipped (PR 172); schema half still deferred
+
+**Update 2026-08-21 (PR 172).** The fold half shipped: a shared `normalize_identifier()`
+(`utils/identifier.py`) now backs all ~6 sites, and each touched `User.query.filter(...).first()`
+lookup was modernized to `db.session.scalar(select(...))` in the same pass (login already used
+that form). CodeRabbit on PR 172 re-raised the **DB functional-index + case-insensitive UNIQUE**
+half — declined there and left deferred exactly as **Explicitly out of scope** below describes;
+still gated on the zero-rows prod query. Everything from here down is the original 2.8 writeup.
 
 **Added 2026-08-21 (deferred from PR #167, username-or-email login + recovery).** There is
 no shared identifier-normalizer; every auth path hand-rolls its own case fold and they

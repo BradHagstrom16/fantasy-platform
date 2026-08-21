@@ -19,6 +19,7 @@ from games.worldcup.services import enrollment as worldcup_enrollment
 from games.worldcup.services.state import worldcup_state
 from models.user import User
 from utils.email import send_platform_email
+from utils.identifier import normalize_identifier
 from utils.phone import normalize_us_phone
 
 
@@ -60,10 +61,12 @@ def login():
         # returning an arbitrary row.
         user = (
             db.session.scalar(
-                select(User).where(func.lower(User.username) == identifier.casefold())
+                select(User).where(
+                    func.lower(User.username) == normalize_identifier(identifier))
             )
             or db.session.scalar(
-                select(User).where(func.lower(User.email) == identifier.casefold())
+                select(User).where(
+                    func.lower(User.email) == normalize_identifier(identifier))
             )
         )
 
@@ -107,9 +110,11 @@ def register():
         if phone_error:
             errors.append(phone_error)
 
-        if User.query.filter(func.lower(User.username) == username.casefold()).first():
+        if db.session.scalar(select(User).where(
+                func.lower(User.username) == normalize_identifier(username))):
             errors.append('That username is already taken.')
-        if User.query.filter(func.lower(User.email) == email.casefold()).first():
+        if db.session.scalar(select(User).where(
+                func.lower(User.email) == normalize_identifier(email))):
             errors.append('That email is already registered.')
 
         if errors:
@@ -163,7 +168,8 @@ def forgot_password():
 
     if request.method == 'POST':
         email = request.form.get('email', '').strip().lower()
-        user = User.query.filter(func.lower(User.email) == email).first()
+        user = db.session.scalar(select(User).where(
+            func.lower(User.email) == normalize_identifier(email)))
 
         # Always show the same message — prevents user enumeration
         flash('If that email is registered, a password reset link has been sent.', 'info')
@@ -204,7 +210,8 @@ def reset_password(token):
         flash('That reset link is invalid or has expired. Please request a new one.', 'error')
         return redirect(url_for('auth.forgot_password'))
 
-    user = User.query.filter(func.lower(User.email) == email.lower()).first()
+    user = db.session.scalar(select(User).where(
+        func.lower(User.email) == normalize_identifier(email)))
     if not user:
         flash('No account found for that reset link.', 'error')
         return redirect(url_for('auth.forgot_password'))
@@ -294,7 +301,8 @@ def profile():
                                    avatar_categories=AVATAR_CATEGORIES)
 
         if email != current_user.email:
-            if User.query.filter(func.lower(User.email) == email.casefold()).first():
+            if db.session.scalar(select(User).where(
+                    func.lower(User.email) == normalize_identifier(email))):
                 flash('That email is already registered.', 'error')
                 return render_template('auth/profile.html',
                                        avatar_categories=AVATAR_CATEGORIES)
