@@ -155,6 +155,9 @@ def create_app(config_name=None):
     # request.remote_addr — and the Flask-Limiter key — the real client IP.
     # Keep x_for=1: raising it would trust a client-supplied XFF entry on
     # direct-to-origin requests. Locked by tests/test_client_ip_keying.py.
+    # x_host=1 reads the X-Forwarded-Host that nginx pins to the canonical apex
+    # (deploy/nginx.conf), making request.host deterministic regardless of the
+    # www-vs-apex host the visitor used. Locked by tests/test_forwarded_host_pin.py.
     app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
 
     return app
