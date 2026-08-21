@@ -8,9 +8,9 @@ All routes are platform-level — no game model involvement.
 import re
 from urllib.parse import urlparse
 
-from flask import flash, redirect, render_template, request, url_for
+from flask import current_app, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required, login_user, logout_user
-from sqlalchemy import func
+from sqlalchemy import func, select
 
 from core.auth import auth_bp
 from core.auth.tokens import generate_reset_token, verify_reset_token
@@ -45,16 +45,27 @@ def _is_safe_next(target):
 @auth_bp.route('/login', methods=['GET', 'POST'])
 @limiter.limit("10 per minute")
 def login():
+    """Authenticate by username or email + password, then honor a safe `next`."""
     if current_user.is_authenticated:
         return redirect(url_for('main.index'))
 
     if request.method == 'POST':
-        username = request.form.get('username', '').strip()
+        identifier = request.form.get('username', '').strip()
         password = request.form.get('password', '')
 
-        user = User.query.filter(
-            func.lower(User.username) == username.casefold()
-        ).first()
+        # Accept either the username or the account email. Username-first,
+        # email-fallback is deterministic: if one account's username happens to
+        # equal another account's email (username and email are independently
+        # unique columns), the username match wins rather than an ambiguous OR
+        # returning an arbitrary row.
+        user = (
+            db.session.scalar(
+                select(User).where(func.lower(User.username) == identifier.casefold())
+            )
+            or db.session.scalar(
+                select(User).where(func.lower(User.email) == identifier.casefold())
+            )
+        )
 
         if user and user.check_password(password):
             login_user(user, remember=True)
@@ -64,7 +75,7 @@ def login():
                 return redirect(next_page)
             return redirect(url_for('main.index'))
         else:
-            flash('Invalid username or password.', 'error')
+            flash('Invalid login or password.', 'error')
 
     return render_template('auth/login.html')
 
@@ -146,6 +157,7 @@ def logout():
 @auth_bp.route('/forgot-password', methods=['GET', 'POST'])
 @limiter.limit("10 per minute")
 def forgot_password():
+    """Email a password-reset link (anti-enumeration: identical response either way)."""
     if current_user.is_authenticated:
         return redirect(url_for('main.index'))
 
@@ -158,8 +170,14 @@ def forgot_password():
 
         if user:
             token = generate_reset_token(user.email)
-            reset_url = url_for('auth.reset_password', token=token, _external=True)
-            seal_url = url_for('static', filename='img/logo/seal-email.png', _external=True)
+            # Build external links from the configured SITE_URL (the canonical
+            # apex) rather than url_for(_external=True), whose host/scheme derive
+            # from the proxied request.host and so inherit whichever www-vs-apex
+            # host the requester arrived on. Mirrors the SITE_URL + path pattern
+            # the game email builders already use (games/*/services/notifications.py).
+            base = current_app.config['SITE_URL'].rstrip('/')
+            reset_url = base + url_for('auth.reset_password', token=token)
+            seal_url = base + url_for('static', filename='img/logo/seal-email.png')
             plain = render_template('email/reset_password_plain.txt',
                                     reset_url=reset_url, user=user)
             html = render_template('email/reset_password_html.j2',
