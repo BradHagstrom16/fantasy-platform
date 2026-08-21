@@ -27,7 +27,7 @@ from games.cfb.utils import (
     make_aware,
 )
 from utils.email import send_platform_email
-from utils.odds_api import odds_api_get
+from utils.odds_api import OddsApiError, odds_api_get
 
 logger = logging.getLogger(__name__)
 
@@ -171,8 +171,11 @@ def _import_games_for_week(week, start_date, end_date):
             logger.error("Events API returned status %d", response.status_code)
             return 0
         events = response.json()
-    except Exception as e:
-        logger.error("Events API request failed: %s", e)
+    except OddsApiError as e:
+        logger.error("Events API request failed (network): %s", e)
+        return 0
+    except ValueError as e:
+        logger.error("Events API returned a malformed body: %s", e)
         return 0
 
     # Build team lookup
@@ -391,8 +394,10 @@ def run_spread_update():
             return {'status': 'error', 'details': f'API returned status {response.status_code}'}
         api_events = response.json()
         credits_remaining = response.headers.get('x-requests-remaining', 'unknown')
-    except Exception as e:
-        return {'status': 'error', 'details': f'API request failed: {e}'}
+    except OddsApiError as e:
+        return {'status': 'error', 'details': f'API request failed (network): {e}'}
+    except ValueError as e:
+        return {'status': 'error', 'details': f'Malformed API response: {e}'}
 
     # Build event lookup
     events_by_id = {e.get('id'): e for e in api_events}
@@ -505,6 +510,8 @@ def run_scores():
                     db.session.commit()
                     logger.info("Sent weekly recap to %s users for Week %s",
                                 emails_sent, week.week_number)
+            # Deliberately broad: recap mail is a side effect of score
+            # processing — no mail failure of any kind may kill the sync.
             except Exception as e:
                 logger.error("Failed to send recap for Week %s: %s",
                              week.week_number, e)
@@ -534,6 +541,8 @@ def run_scores():
                 subject,
                 f'Score sync completed at {datetime.now(CHICAGO_TZ).strftime("%Y-%m-%d %I:%M %p CT")}\n\n{summary}',
             )
+        # Deliberately broad: the summary email must never fail the sync
+        # it reports on.
         except Exception as e:
             logger.warning("Failed to send admin email: %s", e)
 
