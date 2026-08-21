@@ -2,7 +2,7 @@
 
 The whole suite runs on this pair since the 2026-08-21 migration (backlog
 3.1): 103 exact-canonical local duplicates across 66 files were deleted.
-The 16 files whose fixtures genuinely differ (FAKE_NOW seams, golf season
+The 15 files whose fixtures genuinely differ (FAKE_NOW seams, golf season
 pins, module-scoped seeds) keep them locally — pytest resolves a local
 fixture first, and conftest's ``client(app)`` binds to whichever ``app``
 wins in the requesting module. The allowlist and the no-new-duplicates

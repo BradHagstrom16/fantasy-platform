@@ -23,7 +23,7 @@ TESTS_DIR = Path(__file__).parent
 ALLOWED = {
     'test_asset_versioning.py',            # no-teardown variant (asset checks, no DB writes)
     'test_auth_session_identity.py',       # pops WC_FAKE_NOW before create_app
-    'test_cfb_history.py',                 # module-scoped client over seeded 2025 history
+    'test_cfb_history.py',                 # module-scoped client for /cfb/history (static snapshot, empty DB)
     'test_cfb_time_seam.py',               # app-context only, deliberately no DB
     'test_design_p2_s2_2_1.py',            # seeds WorldCupMatch rows inside the fixture
     'test_design_p2_s2_4_1.py',            # no-remove variant + stats-route empty-table note
@@ -36,8 +36,28 @@ ALLOWED = {
     'test_login_callout.py',               # standalone client (yields the client directly)
     'test_logo_assets.py',                 # standalone client (yields the client directly)
     'test_response_cache_headers.py',      # pops WC_FAKE_NOW before create_app
-    'test_worldcup_picks_pre_live_split.py',  # module-scoped seeded-tournament fixture set
 }
+
+
+def _is_fixture_decorator(dec):
+    """A pytest fixture decorator in any real form.
+
+    Matches ``@pytest.fixture``, ``@pytest.fixture()``,
+    ``@pytest.fixture(scope=...)`` and a bare ``@fixture``
+    (``from pytest import fixture``) by structure — not by a substring,
+    so an unrelated decorator that merely contains "fixture"
+    (e.g. ``@some_fixture_factory()``) is rejected.
+    """
+    target = dec.func if isinstance(dec, ast.Call) else dec  # unwrap the call form
+    if isinstance(target, ast.Attribute):
+        return target.attr == 'fixture'                      # <module>.fixture
+    return isinstance(target, ast.Name) and target.id == 'fixture'  # bare fixture
+
+
+def _is_fixture(node):
+    """True if node is a (sync or async) def decorated with a pytest fixture."""
+    return (isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+            and any(_is_fixture_decorator(d) for d in node.decorator_list))
 
 
 def _local_fixture_files():
@@ -46,10 +66,7 @@ def _local_fixture_files():
     for path in sorted(TESTS_DIR.glob('test_*.py')):
         tree = ast.parse(path.read_text())
         for node in tree.body:
-            if (isinstance(node, ast.FunctionDef)
-                    and node.name in ('app', 'client')
-                    and any('fixture' in ast.unparse(d)
-                            for d in node.decorator_list)):
+            if _is_fixture(node) and node.name in ('app', 'client'):
                 offenders.add(path.name)
     return offenders
 
@@ -74,6 +91,5 @@ def test_allowlist_carries_no_dead_entries():
 def test_conftest_still_owns_the_canonical_pair():
     """The lock is meaningless if the shared fixtures themselves vanish."""
     tree = ast.parse((TESTS_DIR / 'conftest.py').read_text())
-    names = {node.name for node in tree.body
-             if isinstance(node, ast.FunctionDef) and node.decorator_list}
+    names = {node.name for node in tree.body if _is_fixture(node)}
     assert {'app', 'client'} <= names
