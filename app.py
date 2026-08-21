@@ -140,8 +140,8 @@ def create_app(config_name=None):
         email = input('Admin email: ').strip()
         password = getpass.getpass('Admin password: ')
 
-        if User.query.filter(
-                func.lower(User.username) == normalize_identifier(username)).first():
+        if db.session.scalar(select(User).where(
+                func.lower(User.username) == normalize_identifier(username))):
             click.echo(f'User "{username}" already exists.')
             return
 
