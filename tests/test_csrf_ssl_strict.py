@@ -1,20 +1,21 @@
 """CSRF SSL-strict referrer-check config lock.
 
 Flask-WTF's ``CSRFProtect.protect()`` runs, on every HTTPS POST and *after*
-the signed-token check, an additional referrer sub-check: it rejects the
-request unless the browser's ``Referer`` origin byte-matches
-``https://<request.host>/`` (flask_wtf/csrf.py, guarded by
-``request.is_secure and WTF_CSRF_SSL_STRICT``). Behind Cloudflare that
-comparison is unreliable — ``request.host`` is proxy-driven and www-vs-apex,
-translated pages, and privacy/proxy referrers all differ from it — which is
-what produced "Bad Request — The referrer does not match the host." on login
-and password reset (real-user report 2026-08-21).
+the token check, an additional referrer sub-check: it rejects the request
+unless the browser's ``Referer`` origin matches ``https://<request.host>/``
+(flask_wtf/csrf.py, guarded by ``request.is_secure and WTF_CSRF_SSL_STRICT``;
+its ``same_origin`` compares parsed scheme, hostname, and port). Behind
+Cloudflare that comparison is unreliable — ``request.host`` is proxy-driven and
+www-vs-apex, translated pages, and privacy/proxy referrers all differ from it —
+which is what produced "Bad Request — The referrer does not match the host." on
+login and password reset (real-user report 2026-08-21).
 
 Production therefore disables ONLY that referrer sub-check. These tests lock
 two things a future edit must not silently break:
 
 - The referrer sub-check stays OFF in production (``WTF_CSRF_SSL_STRICT`` False).
-- The cryptographic token check — the actual CSRF protection — stays ON
+- The signed CSRF token check — the submitted token validated against the value
+  stored in the session, the actual CSRF protection — stays ON
   (``WTF_CSRF_ENABLED`` True, inherited from base). Disabling the referrer
   check must never be mistaken for, or drift into, disabling CSRF wholesale.
 """
