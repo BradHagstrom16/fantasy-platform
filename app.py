@@ -134,11 +134,14 @@ def create_app(config_name=None):
 
         from sqlalchemy import func
 
+        from utils.identifier import normalize_identifier
+
         username = input('Admin username: ').strip()
         email = input('Admin email: ').strip()
         password = getpass.getpass('Admin password: ')
 
-        if User.query.filter(func.lower(User.username) == username.lower()).first():
+        if User.query.filter(
+                func.lower(User.username) == normalize_identifier(username)).first():
             click.echo(f'User "{username}" already exists.')
             return
 
