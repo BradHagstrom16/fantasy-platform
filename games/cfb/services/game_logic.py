@@ -54,9 +54,9 @@ def get_used_team_ids(user_id, week, *, exclude_current=True):
     q = db.session.query(CfbPick.team_id).join(CfbWeek)
 
     if is_week_playoff(week):
-        q = q.filter(CfbWeek.is_playoff_week == True)  # noqa: E712
+        q = q.filter(CfbWeek.is_playoff_week.is_(True))
     else:
-        q = q.filter(CfbWeek.is_playoff_week == False)  # noqa: E712
+        q = q.filter(CfbWeek.is_playoff_week.is_(False))
 
     q = q.filter(CfbPick.user_id == user_id)
     if exclude_current:

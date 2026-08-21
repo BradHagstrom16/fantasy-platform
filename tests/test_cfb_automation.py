@@ -735,6 +735,72 @@ def test_fetch_scores_error_when_odds_api_down(mock_api, app):
     assert fetched.get('error')
 
 
+# The three fetch call sites catch OddsApiError + ValueError specifically
+# (backlog 2.3): a 10pm game-Saturday debug session needs the alert to say
+# WHICH failure happened, and anything genuinely unexpected must propagate
+# loudly (a red timer) instead of masquerading as "API request failed".
+
+@patch('games.cfb.services.score_fetcher.odds_api_get')
+def test_fetch_scores_error_names_the_failure_kind(mock_api, app):
+    """Network outage and malformed body produce distinct error text."""
+    from games.cfb.services.odds_api import OddsApiError
+    from games.cfb.services.score_fetcher import ScoreFetcher
+    week, game = _seed_score_week(app)
+
+    mock_api.side_effect = OddsApiError('Odds API unreachable')
+    down = ScoreFetcher().fetch_scores_for_week(week.id)
+    assert '(network)' in down['error']
+
+    mock_api.side_effect = None
+    mock_api.return_value = _api_json_raises()
+    garbled = ScoreFetcher().fetch_scores_for_week(week.id)
+    assert 'Malformed' in garbled['error']
+    assert garbled['error'] != down['error']
+
+
+@patch('games.cfb.services.automation.send_platform_email', return_value=True)
+@patch('games.cfb.services.automation.odds_api_get')
+def test_spread_update_error_names_the_failure_kind(mock_api, mock_send, app):
+    """Same distinction on the odds fetch: the admin summary can say whether
+    the API was unreachable or handed back garbage."""
+    from games.cfb.services.automation import run_spread_update
+    from games.cfb.services.odds_api import OddsApiError
+    _seed_active_week_game(app)
+
+    mock_api.side_effect = OddsApiError('Odds API unreachable')
+    down = run_spread_update()
+    assert '(network)' in down['details']
+
+    mock_api.side_effect = None
+    mock_api.return_value = _api_json_raises()
+    garbled = run_spread_update()
+    assert 'Malformed' in garbled['details']
+    assert garbled['details'] != down['details']
+
+
+@patch('games.cfb.services.score_fetcher.odds_api_get')
+def test_fetch_scores_unexpected_exception_propagates(mock_api, app):
+    """The narrowed excepts must not swallow a genuine bug: anything that is
+    neither OddsApiError nor ValueError crashes the run (visible red unit)."""
+    from games.cfb.services.score_fetcher import ScoreFetcher
+    week, game = _seed_score_week(app)
+    mock_api.side_effect = RuntimeError('a real bug, not an API failure')
+
+    with pytest.raises(RuntimeError):
+        ScoreFetcher().fetch_scores_for_week(week.id)
+
+
+@patch('games.cfb.services.automation.send_platform_email', return_value=True)
+@patch('games.cfb.services.automation.odds_api_get')
+def test_spread_update_unexpected_exception_propagates(mock_api, mock_send, app):
+    from games.cfb.services.automation import run_spread_update
+    _seed_active_week_game(app)
+    mock_api.side_effect = RuntimeError('a real bug, not an API failure')
+
+    with pytest.raises(RuntimeError):
+        run_spread_update()
+
+
 @patch('games.cfb.services.automation.send_platform_email', return_value=True)
 @patch('games.cfb.services.odds_api.requests.get')
 def test_import_skips_event_missing_required_fields(mock_get, mock_send, app):

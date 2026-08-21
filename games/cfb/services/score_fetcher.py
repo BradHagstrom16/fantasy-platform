@@ -14,7 +14,7 @@ from games.cfb.constants import API_BASE_URL, TEAM_NAME_MAP
 from games.cfb.models import CfbGame, CfbWeek
 from games.cfb.services.game_logic import process_week_results
 from games.cfb.utils import deadline_has_passed, make_aware
-from utils.odds_api import odds_api_get
+from utils.odds_api import OddsApiError, odds_api_get
 
 logger = logging.getLogger(__name__)
 
@@ -60,8 +60,10 @@ class ScoreFetcher:
                 return {'error': f'API returned status {response.status_code}'}
             api_events = response.json()
             credits_remaining = response.headers.get('x-requests-remaining')
-        except Exception as e:
-            return {'error': f'API request failed: {e}'}
+        except OddsApiError as e:
+            return {'error': f'API request failed (network): {e}'}
+        except ValueError as e:
+            return {'error': f'Malformed API response: {e}'}
 
         # Load games for this week
         games = CfbGame.query.filter_by(week_id=week_id).all()
