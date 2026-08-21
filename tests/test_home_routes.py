@@ -21,11 +21,6 @@ def app():
         db.drop_all()
 
 
-@pytest.fixture
-def client(app):
-    return app.test_client()
-
-
 @pytest.fixture(autouse=True)
 def _wc_era_registry(monkeypatch):
     """Pin the WC-era registry (post-2026-08-11 changeover the real config

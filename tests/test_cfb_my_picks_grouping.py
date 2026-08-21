@@ -7,27 +7,10 @@ agrees: an admin-added team OFF the master list must land in its stored
 conference, not 'Unknown'. The assertion fails on the pre-fix code
 (TEAM_CONFERENCES.get(team.name, 'Unknown')) and passes after.
 """
-import pytest
 
-from app import create_app
 from extensions import db
 from games.cfb.models import CfbTeam
 from tests._cfb_fixtures import make_enrollment, make_user, make_week
-
-
-@pytest.fixture()
-def app():
-    app = create_app('testing')
-    with app.app_context():
-        db.create_all()
-        yield app
-        db.session.remove()
-        db.drop_all()
-
-
-@pytest.fixture()
-def client(app):
-    return app.test_client()
 
 
 def _login(client, user):

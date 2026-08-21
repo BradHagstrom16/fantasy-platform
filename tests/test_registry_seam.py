@@ -21,28 +21,11 @@ renders identically — tests/test_home_context.py remains the net.
 from dataclasses import replace
 from unittest.mock import MagicMock
 
-import pytest
 from sqlalchemy import select
 
-from app import create_app
 from extensions import db
 from models.user import User
 from tests._registry_helpers import set_is_featured, set_status
-
-
-@pytest.fixture()
-def app():
-    app = create_app('testing')
-    with app.app_context():
-        db.create_all()
-        yield app
-        db.session.remove()
-        db.drop_all()
-
-
-@pytest.fixture()
-def client(app):
-    return app.test_client()
 
 
 def _stub_lounge_context(user, state):

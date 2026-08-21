@@ -10,7 +10,6 @@ from unittest.mock import patch
 
 import pytest
 
-from app import create_app
 from extensions import db
 from games.worldcup.constants import (
     ENTRY_FEE,
@@ -34,16 +33,6 @@ from tests._worldcup_fixtures import (
     make_user,
     seed_full_tournament,
 )
-
-
-@pytest.fixture()
-def app():
-    app = create_app('testing')
-    with app.app_context():
-        db.create_all()
-        yield app
-        db.session.remove()
-        db.drop_all()
 
 
 def test_dispatcher_routes_to_out_builder(app):

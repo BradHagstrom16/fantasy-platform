@@ -18,9 +18,6 @@ import re
 from datetime import UTC, date, datetime, timedelta
 from unittest.mock import patch
 
-import pytest
-
-from app import create_app
 from extensions import db
 from games.worldcup.constants import SEASON_YEAR, WORLDCUP_TZ
 from games.worldcup.models import (
@@ -54,21 +51,6 @@ FUTURE_DEADLINE = datetime(2099, 1, 1, tzinfo=UTC)
 # itself, keeping worldcup_state() AND deadline_passed coherent (matching
 # test_worldcup_stats.py's _BEFORE_KICKOFF idiom).
 _BEFORE_KICKOFF = {'WC_FAKE_NOW': '2026-06-01T12:00:00+00:00', 'ENVIRONMENT': 'testing'}
-
-
-@pytest.fixture
-def app():
-    app = create_app('testing')
-    with app.app_context():
-        db.create_all()
-        yield app
-        db.session.remove()
-        db.drop_all()
-
-
-@pytest.fixture
-def client(app):
-    return app.test_client()
 
 
 def _seed_user(username, password='pass'):

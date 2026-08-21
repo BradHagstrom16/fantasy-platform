@@ -235,11 +235,6 @@ def app():
         db.drop_all()
 
 
-@pytest.fixture()
-def client(app):
-    return app.test_client()
-
-
 def test_picks_page_marks_knockout_loser_out(app, client, monkeypatch):
     """End-to-end: a pick that lost a completed knockout match renders the
     'Out' status on the live picks ledger, even though is_eliminated stays

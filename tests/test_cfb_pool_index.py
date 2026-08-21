@@ -10,9 +10,6 @@ NAMES must be real short names (Alabama -> SEC, etc.).
 """
 import re
 
-import pytest
-
-from app import create_app
 from extensions import db
 from games.cfb.services.game_logic import pool_teams_by_conference
 from tests._cfb_fixtures import (
@@ -22,21 +19,6 @@ from tests._cfb_fixtures import (
     make_user,
     make_week,
 )
-
-
-@pytest.fixture()
-def app():
-    app = create_app('testing')
-    with app.app_context():
-        db.create_all()
-        yield app
-        db.session.remove()
-        db.drop_all()
-
-
-@pytest.fixture()
-def client(app):
-    return app.test_client()
 
 
 def _seed_pool():

@@ -10,9 +10,6 @@ import os
 from types import SimpleNamespace
 from unittest.mock import patch
 
-import pytest
-
-from app import create_app
 from extensions import db
 from games.worldcup.constants import (
     ENTRY_FEE,
@@ -75,20 +72,6 @@ def test_payment_constants_present():
 # ---------------------------------------------------------------------------
 # Rendered: the nudge on real WC-room surfaces
 # ---------------------------------------------------------------------------
-
-@pytest.fixture
-def app():
-    app = create_app('testing')
-    with app.app_context():
-        db.create_all()
-        yield app
-        db.session.remove()
-        db.drop_all()
-
-
-@pytest.fixture
-def client(app):
-    return app.test_client()
 
 
 def _member(username, *, picks_submitted=True, has_paid=False, is_admin=False):

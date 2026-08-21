@@ -4,22 +4,8 @@ Seeds the real 48 teams + 104 match shells via the existing seed commands, then
 exercises the bulk group-result simulator. Asserts the deterministic 9/4/3/1
 standings, one-draw-per-group invariant, and that knockout shells stay untouched.
 """
-import pytest
 
-from app import create_app
-from extensions import db
 from games.worldcup.cli import worldcup_cli
-
-
-@pytest.fixture
-def app():
-    """Testing app with in-memory SQLite."""
-    app = create_app('testing')
-    with app.app_context():
-        db.create_all()
-        yield app
-        db.session.remove()
-        db.drop_all()
 
 
 def _seed(runner):

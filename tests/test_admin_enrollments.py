@@ -3,28 +3,11 @@
 Post-2026-08-11 changeover the only 'open' game is CFB, so the happy-path
 tests run against the CFB entry; WC ('completed') locks the rejection path.
 """
-import pytest
 
-from app import create_app
 from extensions import db
 from games.cfb.models import CfbEnrollment
 from games.worldcup.models import WorldCupEnrollment
 from models.user import User
-
-
-@pytest.fixture()
-def app():
-    app = create_app('testing')
-    with app.app_context():
-        db.create_all()
-        yield app
-        db.session.remove()
-        db.drop_all()
-
-
-@pytest.fixture()
-def client(app):
-    return app.test_client()
 
 
 def _make_user(app, username='u1', is_admin=False):

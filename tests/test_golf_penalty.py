@@ -13,9 +13,6 @@ Golf tests run against in-memory SQLite via ``create_app('testing')``.
 """
 from datetime import UTC, datetime, timedelta
 
-import pytest
-
-from app import create_app
 from extensions import db
 from games.golf.models import (
     PENALTY_PER_INCIDENT,
@@ -30,21 +27,6 @@ from models.user import User
 from tests._registry_helpers import set_status as _set_status
 
 SEASON = 2026
-
-
-@pytest.fixture()
-def app():
-    app = create_app('testing')
-    with app.app_context():
-        db.create_all()
-        yield app
-        db.session.remove()
-        db.drop_all()
-
-
-@pytest.fixture()
-def client(app):
-    return app.test_client()
 
 
 # --- seed helpers (run inside the fixture's app context) --------------------

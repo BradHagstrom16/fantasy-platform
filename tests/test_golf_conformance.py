@@ -67,11 +67,6 @@ def app():
         db.drop_all()
 
 
-@pytest.fixture()
-def client(app):
-    return app.test_client()
-
-
 # --- seed helpers (run inside the fixture's app context) --------------------
 
 def _make_user(username='golfer', is_admin=False, display_name=None, avatar=None):

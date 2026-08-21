@@ -2,9 +2,6 @@
 from datetime import UTC, timedelta
 from unittest import mock
 
-import pytest
-
-from app import create_app
 from extensions import db
 from games.worldcup.constants import SEASON_YEAR
 from games.worldcup.models import (
@@ -14,16 +11,6 @@ from games.worldcup.models import (
     WorldCupTeam,
 )
 from models.user import User
-
-
-@pytest.fixture()
-def app():
-    app = create_app('testing')
-    with app.app_context():
-        db.create_all()
-        yield app
-        db.session.remove()
-        db.drop_all()
 
 
 def _make_user(session, username='player1', email='player1@example.com'):

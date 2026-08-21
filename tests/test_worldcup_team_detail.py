@@ -3,9 +3,6 @@ import re
 from datetime import UTC, datetime
 from unittest.mock import patch
 
-import pytest
-
-from app import create_app
 from extensions import db
 from games.worldcup.constants import SEASON_YEAR
 from games.worldcup.models import (
@@ -18,21 +15,6 @@ from models.user import User
 
 PAST_DEADLINE = datetime(2000, 1, 1, tzinfo=UTC)
 FUTURE_DEADLINE = datetime(2099, 1, 1, tzinfo=UTC)
-
-
-@pytest.fixture()
-def app():
-    app = create_app('testing')
-    with app.app_context():
-        db.create_all()
-        yield app
-        db.session.remove()
-        db.drop_all()
-
-
-@pytest.fixture()
-def client(app):
-    return app.test_client()
 
 
 def _seed_team(app, fifa='USA'):

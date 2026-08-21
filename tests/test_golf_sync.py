@@ -19,7 +19,6 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from app import create_app
 from extensions import db
 from games.golf.models import (
     GolfPlayer,
@@ -31,16 +30,6 @@ from games.golf.services.sync import TournamentSync, seed_schedule
 from games.golf.utils import calculate_projected_earnings, normalize_position
 
 SEASON = 2026
-
-
-@pytest.fixture()
-def app():
-    app = create_app('testing')
-    with app.app_context():
-        db.create_all()
-        yield app
-        db.session.remove()
-        db.drop_all()
 
 
 # --- seed helpers (run inside the fixture's app context) --------------------

@@ -1,7 +1,6 @@
 """Tests for admin-reserved crown avatar + signup/profile phone collection."""
 import pytest
 
-from app import create_app
 from core.auth.routes import AVATAR_CATEGORIES
 from extensions import db
 from models.user import User
@@ -9,23 +8,6 @@ from utils.phone import normalize_us_phone
 
 CROWN = "\U0001F451"  # crown
 DEFAULT = "⚽"   # soccer ball
-
-
-@pytest.fixture()
-def app():
-    """Provide a testing app with a fresh in-memory schema per test."""
-    app = create_app('testing')
-    with app.app_context():
-        db.create_all()
-        yield app
-        db.session.remove()
-        db.drop_all()
-
-
-@pytest.fixture()
-def client(app):
-    """Return a test client bound to the testing app."""
-    return app.test_client()
 
 
 def _make_user(app, username='u1', is_admin=False, avatar_emoji=None):

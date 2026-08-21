@@ -16,7 +16,6 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from app import create_app
 from extensions import db
 from games.cfb.models import CfbGame, CfbWeek
 from tests._cfb_fixtures import (
@@ -24,23 +23,6 @@ from tests._cfb_fixtures import (
     make_team,
     make_week,
 )
-
-
-@pytest.fixture()
-def app():
-    """App fixture: testing config + in-memory schema per test."""
-    app = create_app('testing')
-    with app.app_context():
-        db.create_all()
-        yield app
-        db.session.remove()
-        db.drop_all()
-
-
-@pytest.fixture()
-def client(app):
-    """Flask test client bound to the app fixture."""
-    return app.test_client()
 
 
 def _api_response(payload, status_code=200, headers=None):

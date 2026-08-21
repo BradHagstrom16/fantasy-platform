@@ -27,11 +27,6 @@ def app():
         db.drop_all()
 
 
-@pytest.fixture
-def client(app):
-    return app.test_client()
-
-
 def _make_user(username='alice', email='alice@example.com'):
     user = User(username=username, email=email)
     user.set_password('test1234')

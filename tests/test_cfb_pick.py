@@ -25,7 +25,6 @@ from flask import template_rendered
 from sqlalchemy.exc import IntegrityError
 
 import games.registry as registry
-from app import create_app
 from extensions import db
 from games.cfb.models import CfbGame, CfbPick
 from tests._cfb_fixtures import (
@@ -41,21 +40,6 @@ from tests._cfb_fixtures import (
 # game_time safely in the past so that one game reads as kicked off.
 FUTURE_DEADLINE = datetime(2099, 1, 1, 11, 0)
 STARTED = datetime(2020, 1, 1, 11, 0)
-
-
-@pytest.fixture()
-def app():
-    app = create_app('testing')
-    with app.app_context():
-        db.create_all()
-        yield app
-        db.session.remove()
-        db.drop_all()
-
-
-@pytest.fixture()
-def client(app):
-    return app.test_client()
 
 
 def _open_cfb_games():

@@ -21,9 +21,6 @@ import os
 from datetime import datetime
 from unittest.mock import patch
 
-import pytest
-
-from app import create_app
 from extensions import db
 from models.user import User
 from tests._registry_helpers import pin_wc_era, set_is_featured, set_status
@@ -35,21 +32,6 @@ PRE_ANCHOR = {'ENVIRONMENT': 'testing', 'CFB_FAKE_NOW': '2026-08-18T17:00:00',
               'DOCKET_FAKE_NOW': '2026-08-18T17:00:00'}
 
 SEASON_YEAR = 2026
-
-
-@pytest.fixture()
-def app():
-    app = create_app('testing')
-    with app.app_context():
-        db.create_all()
-        yield app
-        db.session.remove()
-        db.drop_all()
-
-
-@pytest.fixture()
-def client(app):
-    return app.test_client()
 
 
 def _make_user(username='loungeuser'):

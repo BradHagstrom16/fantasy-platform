@@ -11,30 +11,11 @@ the split happens in the nav context processor. The brand wordmark renders
 at all widths (the CSS ≤350px fallback hides it; the template no longer
 gates it at `d-md-inline`).
 """
-import pytest
 
-from app import create_app
 from extensions import db
 from games.cfb.services.enrollment import admin_enroll as cfb_admin_enroll
 from games.docket.services.enrollment import admin_enroll as docket_admin_enroll
 from tests._worldcup_fixtures import make_enrollment, make_user
-
-
-@pytest.fixture
-def app():
-    """Testing app with a fresh in-memory schema per test."""
-    app = create_app('testing')
-    with app.app_context():
-        db.create_all()
-        yield app
-        db.session.remove()
-        db.drop_all()
-
-
-@pytest.fixture
-def client(app):
-    """Flask test client bound to the per-test app."""
-    return app.test_client()
 
 
 def _login(client, user):

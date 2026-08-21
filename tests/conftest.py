@@ -1,10 +1,15 @@
 """Canonical shared pytest fixtures (D11, Docket eng review 2026-08-11).
 
-Additive by design: new docket tests consume these fixtures; the ~120
-pre-existing test files keep their own local fixtures untouched (pytest
-local fixtures shadow conftest ones, so nothing changes for them). The
-full-suite migration onto this file is a future, dedicated PR — do not
-grow this module beyond the canonical app/client pair without that PR.
+The whole suite runs on this pair since the 2026-08-21 migration (backlog
+3.1): 103 exact-canonical local duplicates across 66 files were deleted.
+The 16 files whose fixtures genuinely differ (FAKE_NOW seams, golf season
+pins, module-scoped seeds) keep them locally — pytest resolves a local
+fixture first, and conftest's ``client(app)`` binds to whichever ``app``
+wins in the requesting module. The allowlist and the no-new-duplicates
+rule are enforced by ``tests/test_conftest_lock.py``.
+
+Keep this module to the canonical app/client pair; a fixture that only
+some files need belongs in those files (and on the allowlist), not here.
 """
 import pytest
 

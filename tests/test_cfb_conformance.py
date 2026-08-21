@@ -12,10 +12,7 @@ Session identity is auth_id, never str(user.id) — see CLAUDE.md.
 import dataclasses
 from unittest.mock import patch
 
-import pytest
-
 import games.registry as registry
-from app import create_app
 from extensions import db
 from tests._cfb_fixtures import (
     make_enrollment,
@@ -25,23 +22,6 @@ from tests._cfb_fixtures import (
     make_user,
     make_week,
 )
-
-
-@pytest.fixture()
-def app():
-    """App fixture: testing config + in-memory schema per test."""
-    app = create_app('testing')
-    with app.app_context():
-        db.create_all()
-        yield app
-        db.session.remove()
-        db.drop_all()
-
-
-@pytest.fixture()
-def client(app):
-    """Flask test client bound to the app fixture."""
-    return app.test_client()
 
 
 def _login(client, user):

@@ -12,8 +12,6 @@ from pathlib import Path
 import pytest
 from markupsafe import escape
 
-from app import create_app
-from extensions import db
 from games.worldcup.constants import (
     ADVANCE_BEST_THIRD,
     ADVANCE_GROUP_WINNER,
@@ -26,23 +24,6 @@ from games.worldcup.world_cup_countries import TEAMS, TIERS, teams_by_tier
 
 ROOT = Path(__file__).parent.parent
 RULES_TPL = ROOT / 'games' / 'worldcup' / 'templates' / 'worldcup' / 'rules.html'
-
-
-@pytest.fixture
-def app():
-    """Testing app context backed by a fresh in-memory schema."""
-    app = create_app('testing')
-    with app.app_context():
-        db.create_all()
-        yield app
-        db.session.remove()
-        db.drop_all()
-
-
-@pytest.fixture
-def client(app):
-    """Flask test client bound to the testing app."""
-    return app.test_client()
 
 
 @pytest.fixture(scope='module')

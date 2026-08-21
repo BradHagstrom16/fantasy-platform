@@ -31,7 +31,6 @@ import pytest
 from flask import template_rendered
 
 import games.registry as registry
-from app import create_app
 from extensions import db
 from games.cfb.constants import SEASON_SCHEDULE
 from games.cfb.models import CfbPick
@@ -48,21 +47,6 @@ from tests._cfb_fixtures import (
 # Naive pool-tz wall clock — a far-future deadline keeps the playoff week
 # pickable for the route-level CFP-eliminated guard test.
 FUTURE_DEADLINE = datetime(2099, 1, 1, 11, 0)
-
-
-@pytest.fixture()
-def app():
-    app = create_app('testing')
-    with app.app_context():
-        db.create_all()
-        yield app
-        db.session.remove()
-        db.drop_all()
-
-
-@pytest.fixture()
-def client(app):
-    return app.test_client()
 
 
 def _open_cfb_games():
