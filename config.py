@@ -105,6 +105,19 @@ class ProductionConfig(Config):
         'RATELIMIT_STORAGE_URI', 'redis://localhost:6379/0'
     )
     RATELIMIT_IN_MEMORY_FALLBACK_ENABLED = True
+    # Disable Flask-WTF's SSL-strict *referrer* sub-check. On any HTTPS POST,
+    # flask_wtf.csrf.CSRFProtect.protect() runs AFTER the token check and
+    # additionally rejects the request unless the browser's Referer origin
+    # matches https://<request.host>/ — its same_origin() compares the parsed
+    # scheme, hostname, and port. Behind Cloudflare that comparison is
+    # unreliable: request.host is proxy-driven (ProxyFix x_host=1) and
+    # www-vs-apex, translated pages (*.translate.goog), and privacy/proxy
+    # referrers all differ from it, producing "Bad Request — The referrer does
+    # not match the host." on login and password reset (reported by a real user
+    # 2026-08-21). This flag disables ONLY that referrer sub-check; the signed
+    # CSRF token check — the submitted token validated against the value stored
+    # in the session, the actual CSRF protection — stays fully active.
+    WTF_CSRF_SSL_STRICT = False
 
 
 class TestingConfig(Config):
