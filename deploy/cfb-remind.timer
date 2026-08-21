@@ -1,13 +1,17 @@
-# Runs CFB pick reminders Fri + Sat 10:00 CT — inside the ±35-minute
-# tolerance of the T-25h and T-1h windows for the Sat 11:00 CT deadline.
-# !! Never schedule this more often than once per ~70-minute window: there
-#    is no per-window sent-flag, so a faster cadence double-sends (audit §6).
+# Runs CFB Survivor pick reminders hourly, on the hour, CT.
+#
+# Hourly is SAFE because CfbWeek.last_reminder_type de-dups: a firing whose
+# active window was already mailed does nothing, so the guarantee lives in
+# the flag, not in this schedule (same shape as docket-remind.timer, D24).
+# The cadence only has to land inside each window's ±35-minute tolerance at
+# least once — which hourly does for ANY deadline time, including manually
+# scheduled CFP weeks. Off-window firings are cheap no-ops.
 [Unit]
-Description=Run CFB Survivor pick reminders Fri/Sat 10:00 CT
+Description=Run CFB Survivor pick reminders (hourly, de-duped)
 
 [Timer]
 # Timezone is INLINE in OnCalendar — no TimeZone= directive exists.
-OnCalendar=Fri,Sat *-*-* 10:00:00 America/Chicago
+OnCalendar=*-*-* *:00:00 America/Chicago
 Persistent=true
 
 [Install]
