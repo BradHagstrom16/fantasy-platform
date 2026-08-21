@@ -9,10 +9,10 @@ members whose sheet is still short of its obligations.
 a run whose active tier is at or behind it sends nothing. That is why
 ``docket-remind.timer`` can fire hourly and why the tolerance window below is
 allowed to be wide: correctness does not depend on the timer landing in any
-particular minute. CFB's reminder shape is deliberately NOT reproduced here.
-It has no per-window flag, so its safety comes from its schedule, and
-scheduling it more often than once per window double-sends (its own retrofit
-is backlog 2.7).
+particular minute. Every game now shares this shape — CFB
+(``CfbWeek.last_reminder_type``, retrofitted from backlog 2.7) and Golf
+(``GolfTournament.last_reminder_type``) — with the order-gate math in
+``utils.reminders.tier_already_sent``.
 
 The 48h tier lands Thursday morning, ahead of the Thursday-night kickoffs
 that lock their own cases hours before the week's deadline (D3 keeps early
