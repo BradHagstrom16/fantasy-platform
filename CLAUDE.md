@@ -70,6 +70,8 @@ FLASK_APP=app.py venv/bin/flask cfb sync --mode status      # Print season summa
 
 # Docket CLI (timers ship as deploy/docket-*; the units pass --scheduled, see below)
 FLASK_APP=app.py venv/bin/flask docket sync --mode setup     # Create the week + import both slates + lock first-posted lines (Tue)
+# !! Prod already holds the preview Week 1 (lines locked at import): against an existing week --mode setup only GAP-FILLS —
+#    locked lines are NEVER overwritten, so the Tue Sep 1 line freeze is wipe-then-import (runbook in games/docket/cli.py).
 FLASK_APP=app.py venv/bin/flask docket sync --mode lines     # Gap-fill empty markets + D19-eng kickoff refresh; warns on a bad tiebreaker designation (Tue-Fri)
 FLASK_APP=app.py venv/bin/flask docket sync --mode deadline  # Freeze kickoff_at_deadline + deal the D5-session autopick package (Sat 11:00 CT)
 FLASK_APP=app.py venv/bin/flask docket sync --mode scores    # Fetch scores (2 credits/sport), then grade the week if complete
@@ -340,7 +342,7 @@ FOOTBALL_DATA_API_KEY=...  # football-data.org (WC results sync — archived; re
 SLASHGOLF_API_KEY=...    # SlashGolf API (Golf leaderboards)
 EMAIL_ADDRESS=...        # SMTP auth login (prod: Brevo SMTP login, e.g. ad34xxxxx@smtp-brevo.com)
 EMAIL_PASSWORD=...       # SMTP key/password (prod: Brevo SMTP key)
-MAIL_FROM_ADDRESS=...    # Visible From; prod: commish@cccfantasy.com. Falls back to EMAIL_ADDRESS if unset
+MAIL_FROM_ADDRESS=...    # Visible From; prod: commish@cccfantasy.com. REQUIRED in prod — the EMAIL_ADDRESS fallback is the bare SMTP login Gmail silently drops, so it's dev/test-safe only
 ADMIN_EMAIL=...          # Game-admin alert inbox. MUST be a real mailbox in prod (EMAIL_ADDRESS there is the Brevo login, not an inbox). Falls back to EMAIL_ADDRESS
 SMTP_SERVER=...          # Dev default smtp.gmail.com; prod smtp-relay.brevo.com
 SMTP_PORT=...            # Dev default 587; prod 2525 (DO blocks 587)
