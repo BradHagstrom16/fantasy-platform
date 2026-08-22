@@ -198,9 +198,15 @@ def test_an_existing_designation_is_never_moved(app, monkeypatch):
 
 def test_a_designation_written_behind_the_session_is_still_kept(app, monkeypatch):
     """Fill-only must hold against a hand designation that lands after this
-    session loaded the week: the applier re-reads the row (locked, on
-    Postgres) before deciding, so a stale in-session None never turns the
-    commissioner's write into a silent overwrite."""
+    session loaded the week: the applier re-reads the row before deciding,
+    so a stale in-session None never turns the commissioner's write into a
+    silent overwrite.
+
+    This locks the RE-READ, which SQLite can exercise. The FOR UPDATE that
+    serializes a write landing DURING the call is Postgres-only: the suite
+    runs on in-memory SQLite by decision (CLAUDE.md), so that half is smoked
+    by hand against the local Postgres (FOR UPDATE emitted, then COMMIT)
+    rather than asserted here."""
     at(monkeypatch, IN_WEEK2)
     week = make_week(2)
     snf = _nfl(week, SNF)
