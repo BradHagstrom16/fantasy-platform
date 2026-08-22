@@ -5,10 +5,13 @@
 # its week from the clock. Firing at the boundary instant itself would race
 # the arithmetic that decides which week it is creating.
 #
-# !! ENABLE THIS ONE LAST. It is the mode that writes to empty production
-#    tables for the first time, and the Week 1 import at the Tue Sep 1 line
-#    freeze is a deliberate hand-run (see games/docket/cli.py's runbook).
-#    Enable this timer AFTER that import, for Week 2 onward.
+# This timer was held back until the first write to empty production tables
+# had been a deliberate act; that write happened with the 2026-08-19 preview
+# Week-1 import, so it now runs alongside the other docket timers. Out of
+# season it exits 0 under --scheduled; against an existing week it only
+# gap-fills (locked lines are never overwritten), so the real Tue Sep 1
+# Week-1 numbers still ride on the hand-run wipe-then-import in
+# games/docket/cli.py's runbook.
 [Unit]
 Description=Run The Docket week setup Tuesday 06:15 CT
 

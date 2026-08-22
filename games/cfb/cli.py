@@ -12,6 +12,12 @@ Usage:
     flask cfb sync --mode autopick    # Process missed-deadline auto-picks
     flask cfb sync --mode remind      # Send pick reminders
     flask cfb sync --mode status      # Print season summary
+
+On the droplet, hand-fire a reminder pass with ``sudo systemctl start
+cfb-remind.service`` rather than ``flask cfb sync --mode remind`` in a shell:
+systemd merges a manual start with an in-flight timer firing of the same
+oneshot unit, which is what keeps the sent-flag de-dup race-free — there is
+deliberately no lock in code (PR #169).
 """
 import click
 from flask.cli import AppGroup
