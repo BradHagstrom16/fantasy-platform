@@ -88,4 +88,4 @@ Don't restate these conventions in office-hours output — reference them. Full 
 - **Blueprint Pattern** (`CLAUDE.md` § Blueprint Pattern) — the required shape for any new game blueprint. You are Claude Fable, if the blueprint is wrong or you are confident in a better way to construct this new game, Brad has approved that.
 - **`games/cfb/`** — nearest structural analog for this game: spread lock/fill behavior (DQ-6), `flask cfb sync --mode autopick`, the `CFB_FAKE_NOW` time seam, and the naive-datetime split-contract for `deadline`/`start_date`/`game_time` vs. `created_at`/`spread_locked_at`. Brad is open to improvements.
 - **`games/registry.py`** — SSoT for game registration; any new game needs an entry here per the Blueprint Pattern.
-- **Engineering backlog** (`docs/engineering-backlog-2026-07-21.md`) — check for anything already flagged that overlaps this game (rate-limiting, timer hazards) before assuming a clean slate.
+- **Engineering backlog** — burned down and deleted 2026-08-21 (PRs #169–#173); it lived at `docs/engineering-backlog-2026-07-21.md` (git history). Nothing outstanding overlaps this game.
