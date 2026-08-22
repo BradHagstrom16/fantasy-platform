@@ -137,7 +137,8 @@ def create_app(config_name=None):
         from utils.identifier import normalize_identifier
 
         username = input('Admin username: ').strip()
-        email = input('Admin email: ').strip()
+        # Stored lowered like every web write site (utils/identifier.py contract).
+        email = input('Admin email: ').strip().lower()
         password = getpass.getpass('Admin password: ')
 
         if db.session.scalar(select(User).where(
