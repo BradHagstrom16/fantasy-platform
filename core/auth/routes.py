@@ -256,10 +256,13 @@ def change_password():
     return render_template('auth/change_password.html')
 
 
+# The picker's allow-list. Two glyphs are deliberately absent because they are
+# reserved and assigned by User.get_avatar(): the crown (platform admins) and
+# the trophy (the reigning Survivor champion) — see models/user.py.
 AVATAR_CATEGORIES = {
     "Sports & Games": [
         "⚽", "🏈", "⛳", "🏒", "🎾", "🏀", "🎱", "🥊",
-        "🏆", "🎯", "🏊", "🚴", "🎿", "🏇", "🤺",
+        "⚾", "🎯", "🏊", "🚴", "🎿", "🏇", "🤺",
     ],
     "Animals": [
         "🦊", "🐺", "🦁", "🐯", "🦅", "🐬", "🦈", "🐻",

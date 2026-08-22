@@ -45,12 +45,19 @@
                            maxlength="100">
                 </div>
 
-                {% if current_user.is_admin %}
+                {# Reserved glyphs are assigned by User.get_avatar(), so the
+                   picker is hidden for anyone wearing one: admins (crown) and
+                   the reigning Survivor champion (trophy). #}
+                {% if current_user.is_admin or current_user.is_reigning_champion %}
                 <div class="mb-3">
                     <label class="form-label">Avatar</label>
                     <div class="avatar-admin-note">
                         <span class="avatar-admin-crown" aria-hidden="true">{{ current_user.get_avatar() }}</span>
+                        {% if current_user.is_admin %}
                         As Commish, your avatar is the crown, reserved for admins.
+                        {% else %}
+                        As reigning Survivor champion, your avatar is the trophy this season.
+                        {% endif %}
                     </div>
                 </div>
                 {% else %}
@@ -81,7 +88,10 @@
                         {% endfor %}
                     </ul>
 
-                    <div class="tab-content avatar-tab-content" id="avatarTabContent">
+                    {# data-default-avatar is the ONE source the deselect script
+                       reads: the default lives on the model, never in JS. #}
+                    <div class="tab-content avatar-tab-content" id="avatarTabContent"
+                         data-default-avatar="{{ current_user.DEFAULT_AVATAR }}">
                         {% for category, emojis in avatar_categories.items() %}
                         {% set tab_id = category | lower | replace(' ', '-') | replace('&', 'and') %}
                         <div class="tab-pane fade{% if loop.first %} show active{% endif %} pt-2 pb-1"
@@ -215,7 +225,9 @@ document.addEventListener('DOMContentLoaded', function() {
     var input = document.getElementById('avatarInput');
     var preview = document.getElementById('avatarPreview');
 
-    if (!tabContent) return;  // admin: picker hidden (crown is reserved)
+    if (!tabContent) return;  // picker hidden: admin (crown) or reigning champion (trophy)
+
+    var defaultAvatar = tabContent.dataset.defaultAvatar;  // User.DEFAULT_AVATAR, templated
 
     tabContent.addEventListener('click', function(e) {
         var btn = e.target.closest('.avatar-pick-btn');
@@ -230,7 +242,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         if (wasActive) {
             input.value = '';
-            preview.textContent = '⚽';
+            preview.textContent = defaultAvatar;
         } else {
             btn.classList.add('active');
             input.value = emoji;

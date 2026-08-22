@@ -11,6 +11,7 @@ from flask_login import UserMixin
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from extensions import db
+from utils.identifier import normalize_identifier
 
 
 class User(UserMixin, db.Model):
@@ -74,20 +75,38 @@ class User(UserMixin, db.Model):
         """Return display name, falling back to username."""
         return self.display_name or self.username
 
-    # Crown is reserved for platform admins.
-    ADMIN_AVATAR = '\U0001F451'  # crown
-    DEFAULT_AVATAR = '\u26bd'    # soccer ball
+    # Reserved avatars \u2014 always the ``\U\u2026`` escapes here, never a literal
+    # non-BMP char (a literal can break import as an invalid surrogate pair).
+    ADMIN_AVATAR = '\U0001F451'     # crown \u2014 platform admins only
+    CHAMPION_AVATAR = '\U0001F3C6'  # trophy \u2014 the reigning Survivor champion only
+    DEFAULT_AVATAR = '\U0001F3C8'   # football \u2014 anyone who never chose
+    # The 2025 Survivor champion reigns through the 2026 season. Re-point this
+    # when the 2026 title resolves (the 2025 archive stores only a display
+    # name, so the identity has to be declared here). Matched case-insensitively
+    # through the same fold every auth lookup uses.
+    REIGNING_CHAMPION_USERNAME = 'cubbies22'
+
+    @property
+    def is_reigning_champion(self) -> bool:
+        """True for the one account that wears the trophy this season."""
+        return normalize_identifier(self.username) == normalize_identifier(
+            self.REIGNING_CHAMPION_USERNAME)
 
     def get_avatar(self) -> str:
-        """Return the user's avatar emoji, or a sensible default.
+        """Return the user's avatar emoji, or the platform default.
 
-        The crown is reserved for platform admins: admins always render it,
-        and a non-admin can never display it (enforced here so every
-        get_avatar() call site inherits the rule).
+        Two glyphs are reserved and enforced here \u2014 so every get_avatar()
+        call site inherits the rule, not just the picker: the crown renders
+        for every platform admin, the trophy for the reigning Survivor
+        champion. Precedence: admin crown > champion trophy > stored choice
+        > default. Anyone else who has a reserved glyph stored renders the
+        default instead.
         """
         if self.is_admin:
             return self.ADMIN_AVATAR
-        if self.avatar_emoji == self.ADMIN_AVATAR:
+        if self.is_reigning_champion:
+            return self.CHAMPION_AVATAR
+        if self.avatar_emoji in (self.ADMIN_AVATAR, self.CHAMPION_AVATAR):
             return self.DEFAULT_AVATAR
         return self.avatar_emoji or self.DEFAULT_AVATAR
 
