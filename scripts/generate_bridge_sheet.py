@@ -9,9 +9,13 @@ stderr, so stdout stays clean for redirection:
 
     venv/bin/python scripts/generate_bridge_sheet.py --week 1 > week1.csv
 
-Week 1's tiebreaker default is the ruled hand-set (Wisconsin @ Notre Dame);
-pass --tiebreaker 'Away @ Home' for other weeks, or --no-tiebreaker to skip
-designation (the column then stays blank).
+`flask docket sync --mode setup/lines` designates the tiebreaker by rule (the
+last game on the docket: Monday Night Football; Week 1 = SMU @ Florida
+State). This script calls import_week directly, so it does not run that rule
+and never designates on its own: pass --tiebreaker 'Away @ Home' to hand-set
+the bridge week's case (a re-designation clears predictions and mails the
+roster, like the admin desk); omit it to leave the designation on file
+untouched. The CSV's tiebreaker column reflects whatever is on file.
 """
 import argparse
 import logging
@@ -39,10 +43,11 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--week', type=int, default=1,
                         help='docket week number (default: 1)')
-    parser.add_argument('--tiebreaker', default='Wisconsin @ Notre Dame',
-                        help="designated tiebreaker matchup, 'Away @ Home'")
+    parser.add_argument('--tiebreaker', default=None,
+                        help="explicit hand override, 'Away @ Home'; omit to "
+                             "leave the saved designation untouched")
     parser.add_argument('--no-tiebreaker', action='store_true',
-                        help='skip tiebreaker designation')
+                        help='never designate, even if --tiebreaker is given')
     parser.add_argument('--skip-import', action='store_true',
                         help='emit from the DB without hitting The Odds API')
     args = parser.parse_args()
@@ -69,7 +74,7 @@ def main():
                   f'(run without --skip-import to create it)', file=sys.stderr)
             return 1
 
-        if not args.no_tiebreaker:
+        if not args.no_tiebreaker and args.tiebreaker is not None:
             try:
                 game = set_tiebreaker(week, args.tiebreaker)
             except ValueError as exc:

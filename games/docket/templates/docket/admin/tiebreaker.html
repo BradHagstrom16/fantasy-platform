@@ -30,10 +30,19 @@
                 {% endif %}
             {% else %}
                 <p class="docket-desk-current">No case designated yet.</p>
-                <p class="docket-caption">Without one the deadline pass
-                    freezes kickoffs but deals no auto-picks, and the week
-                    cannot grade.</p>
+                <p class="docket-caption">The Tuesday import names it by rule,
+                    the last NFL game of the week (Week 1: the last case on the
+                    docket), once its total is locked. Designate by hand only to
+                    override. Without one the deadline pass freezes kickoffs but
+                    deals no auto-picks, and the week cannot grade.</p>
             {% endif %}
+            <p class="docket-caption mb-0">By rule:
+                {%- if rule_game %} {{ rule_game.away_team }} at {{ rule_game.home_team }}
+                    {%- if rule_game.total_points is none %} (total not locked yet)
+                    {%- elif week.tiebreaker_game and rule_game.id != week.tiebreaker_game_id %} (the case on file stands; the rule never moves one)
+                    {%- endif %}
+                {%- else %} {{ rule_reason }}
+                {%- endif %}</p>
         </div>
     </div>
 

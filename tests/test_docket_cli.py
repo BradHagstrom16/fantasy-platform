@@ -404,3 +404,104 @@ def test_roster_as_of_counts_a_null_created_at_as_enrolled(app):
 
     assert unknown.id in roster_user_ids_as_of(
         datetime.fromisoformat(BEFORE_DEADLINE))
+
+
+# ── the rule-derived default tiebreaker (league vote 2026-08-22) ────────────
+# setup and lines both apply it through _run_import; the exit code is the
+# import's, never the designation's (only the deadline pass exits 1 on that).
+
+IN_WEEK2 = '2026-09-09T12:00:00'
+SNF = datetime(2026, 9, 14, 0, 20)
+MNF = datetime(2026, 9, 15, 0, 15)
+OK_SUMMARY = {'status': 'ok', 'week_number': 2, 'created': 0,
+              'spreads_locked': 0, 'totals_locked': 0, 'errors': []}
+
+
+def _seed_nfl_week(*, mnf_total=47.5, designate=None):
+    from games.docket.services.tiebreaker_rule import NFL
+
+    week = make_week(2)
+    snf = make_game(week, sport=NFL, kickoff=SNF, home='Sunday Home',
+                    away='Sunday Away')
+    mnf = make_game(week, sport=NFL, kickoff=MNF, home='Monday Home',
+                    away='Monday Away', total=mnf_total)
+    if designate == 'snf':
+        week.tiebreaker_game_id = snf.id
+    db.session.commit()
+    return week, snf, mnf
+
+
+def test_lines_mode_designates_by_rule_and_exits_zero(app, runner, monkeypatch):
+    week, _snf, mnf = _seed_nfl_week()
+    at(monkeypatch, IN_WEEK2)
+
+    with patch('games.docket.cli.import_week', return_value=dict(OK_SUMMARY)):
+        result = _invoke(runner, 'sync', '--mode', 'lines')
+
+    assert result.exit_code == 0, result.output
+    assert 'designated by rule' in result.output
+    assert 'Monday Away @ Monday Home' in result.output
+    assert 'WARNING' not in result.output
+    db.session.expire_all()
+    assert week.tiebreaker_game_id == mnf.id
+
+
+def test_setup_mode_on_a_fresh_week_designates(app, runner, monkeypatch):
+    """setup creates the week inside import_week; the rule runs right after,
+    so the Tuesday run leaves the week designated in one pass."""
+    from games.docket.models import DocketWeek
+
+    at(monkeypatch, IN_WEEK2)
+
+    def fake_import(week_number, force_odds=False):
+        _seed_nfl_week()
+        return dict(OK_SUMMARY)
+
+    with patch('games.docket.cli.import_week', side_effect=fake_import):
+        result = _invoke(runner, 'sync', '--mode', 'setup')
+
+    assert result.exit_code == 0, result.output
+    assert 'designated by rule' in result.output
+    week = db.session.scalar(select(DocketWeek).filter_by(week_number=2))
+    assert week.tiebreaker_game.away_team == 'Monday Away'
+
+
+def test_lines_mode_keeps_a_hand_designation(app, runner, monkeypatch):
+    week, snf, _mnf = _seed_nfl_week(designate='snf')
+    at(monkeypatch, IN_WEEK2)
+
+    with patch('games.docket.cli.import_week', return_value=dict(OK_SUMMARY)):
+        result = _invoke(runner, 'sync', '--mode', 'lines')
+
+    assert result.exit_code == 0, result.output
+    assert 'tiebreaker: kept' in result.output
+    assert 'note: the rule now names Monday Away @ Monday Home' in result.output
+    db.session.expire_all()
+    assert week.tiebreaker_game_id == snf.id
+
+
+def test_lines_mode_waiting_keeps_exit_zero_and_still_warns(app, runner,
+                                                            monkeypatch):
+    week, _snf, _mnf = _seed_nfl_week(mnf_total=None)
+    at(monkeypatch, IN_WEEK2)
+
+    with patch('games.docket.cli.import_week', return_value=dict(OK_SUMMARY)):
+        result = _invoke(runner, 'sync', '--mode', 'lines')
+
+    assert result.exit_code == 0, result.output
+    assert 'tiebreaker: waiting' in result.output
+    assert 'WARNING' in result.output
+    assert 'set-tiebreaker' in result.output
+    db.session.expire_all()
+    assert week.tiebreaker_game_id is None
+
+
+def test_status_prints_the_rule_default(app, runner, monkeypatch):
+    _seed_nfl_week(designate='snf')
+    at(monkeypatch, IN_WEEK2)
+
+    result = _invoke(runner, 'sync', '--mode', 'status')
+
+    assert result.exit_code == 0, result.output
+    assert 'tiebreaker: Sunday Away @ Sunday Home' in result.output
+    assert 'rule: Monday Away @ Monday Home' in result.output

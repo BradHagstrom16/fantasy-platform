@@ -80,8 +80,9 @@ def set_tiebreaker(week, matchup):
     """Designate the week's tiebreaker game from an 'Away @ Home' string.
 
     Case-insensitive substring match on both team names; exactly one game
-    must match (Week 1 hand-set: 'Wisconsin @ Notre Dame'). Raises
-    ValueError on no match, an ambiguous match, or a malformed matchup.
+    must match (e.g. 'SMU @ Florida State'). Raises ValueError on no match,
+    an ambiguous match, or a malformed matchup. This is the hand override of
+    the rule-derived default (services/tiebreaker_rule.py).
 
     Only the matchup-string resolution lives here. The write itself
     delegates to ``admin_ops.designate_tiebreaker``, so this CLI fallback and

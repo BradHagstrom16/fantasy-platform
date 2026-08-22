@@ -37,6 +37,7 @@ from games.docket.services.admin_ops import AdminOpError
 from games.docket.services.deadline_pass import check_designation
 from games.docket.services.enrollment import get_enrollment
 from games.docket.services.picks import now_naive
+from games.docket.services.tiebreaker_rule import default_tiebreaker_game
 from games.docket.services.weeks import SEASON_YEAR
 from models.user import User
 
@@ -155,11 +156,17 @@ def admin_tiebreaker(week_number):
         return redirect(url_for('docket.admin_tiebreaker',
                                 week_number=week_number))
 
+    # What the rule names today, shown beside what is on file: the desk-side
+    # twin of the lines run's "note:" line, so a designation the rule would
+    # not make is visible without reading the journal.
+    rule_game, rule_reason = default_tiebreaker_game(week)
     return render_template(
         'docket/admin/tiebreaker.html',
         week=week,
         eligible=admin_ops.eligible_tiebreaker_games(week),
         problems=check_designation(week),
+        rule_game=rule_game,
+        rule_reason=rule_reason,
         is_open=now_naive() < week.deadline_at)
 
 
