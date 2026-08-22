@@ -75,7 +75,24 @@ def apply_default_tiebreaker(week) -> dict:
     the rule would name today), ``closed`` (past the deadline), ``none`` (the
     rule names nothing, or its game fails the contract), ``waiting`` (its game
     has no locked total yet) or ``designated``. Never raises AdminOpError.
+
+    Fill-only is decided on a fresh, row-locked read of the week (``SELECT …
+    FOR UPDATE`` on Postgres; SQLite ignores the lock), so a hand designation
+    that landed after this session loaded the row is seen and kept, and one
+    that lands during this call serializes behind it and arrives as the
+    re-designation it is (predictions cleared, roster told). Every path ends
+    the transaction — the write through ``designate_tiebreaker`` commits or
+    rolls back, the read-only outcomes commit nothing-pending — so the lock
+    never outlives the decision.
     """
+    db.session.refresh(week, with_for_update=True)
+    outcome = _decide(week)
+    if outcome['status'] != 'designated':
+        db.session.commit()
+    return outcome
+
+
+def _decide(week) -> dict:
     rule_game, reason = default_tiebreaker_game(week)
     if week.tiebreaker_game_id is not None:
         return {'status': 'kept', 'game': week.tiebreaker_game,

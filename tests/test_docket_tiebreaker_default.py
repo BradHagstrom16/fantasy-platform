@@ -12,10 +12,14 @@ game, and hands every write to admin_ops.designate_tiebreaker so the contract
 from datetime import UTC, datetime
 from unittest.mock import MagicMock
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 
 from extensions import db
-from games.docket.models import DocketGame, DocketTiebreakerPrediction
+from games.docket.models import (
+    DocketGame,
+    DocketTiebreakerPrediction,
+    DocketWeek,
+)
 from games.docket.services import admin_ops, notifications
 from games.docket.services.deadline_pass import check_designation
 from games.docket.services.importer import SPORTS
@@ -189,6 +193,32 @@ def test_an_existing_designation_is_never_moved(app, monkeypatch):
     assert outcome['status'] == 'kept'
     assert outcome['game'].id == snf.id
     assert outcome['rule_game'].id == mnf.id
+    assert _id_of(week) == snf.id
+
+
+def test_a_designation_written_behind_the_session_is_still_kept(app, monkeypatch):
+    """Fill-only must hold against a hand designation that lands after this
+    session loaded the week: the applier re-reads the row (locked, on
+    Postgres) before deciding, so a stale in-session None never turns the
+    commissioner's write into a silent overwrite."""
+    at(monkeypatch, IN_WEEK2)
+    week = make_week(2)
+    snf = _nfl(week, SNF)
+    _nfl(week, MNF)
+    db.session.commit()
+    assert week.tiebreaker_game_id is None
+    # Another session's write: an UPDATE that does not synchronize this
+    # session's identity map leaves the loaded row stale, exactly the shape
+    # of a concurrent admin ruling landing between the check and the write.
+    db.session.execute(update(DocketWeek).where(DocketWeek.id == week.id)
+                       .values(tiebreaker_game_id=snf.id)
+                       .execution_options(synchronize_session=False))
+    assert week.tiebreaker_game_id is None, 'precondition: the row is stale'
+
+    outcome = apply_default_tiebreaker(week)
+
+    assert outcome['status'] == 'kept'
+    assert outcome['game'].id == snf.id
     assert _id_of(week) == snf.id
 
 
