@@ -47,7 +47,7 @@ All agreed in-session (D2), with premise 3 revised by Brad and re-sequenced afte
 | D8-session | **December composition:** bowls + CFP rounds pickable alongside NFL 15–18. Import stays "any FBS game in the window"; CFP games after the season end (Jan 11) are out. |
 | D10-session | Lounge: destination multi-featured, lands post-launch (premise 3 above). Changeover greenlit now. |
 | D11-session | **Approach C — the Provisional Docket.** ⚠️ **SUPERSEDED** by the Ruling Override below. |
-| Core-session (from brief, unchallenged) | 8 picks/week exactly, any mix, spread or O/U sides; the pick constraint is **per-market** — you may not take both sides of one market, but a spread pick and a total pick on the *same game* are two legal picks; max 1 entry; current-week picking only; win 1 / push 0.5 / loss 0; drop single worst week once >1 weeks completed; weekly designated tiebreaker game (SNF convention; Week 1 = Wisconsin @ Notre Dame), combined-score prediction to 0.1, absolute error accumulates season-long, lower better. |
+| Core-session (from brief, unchallenged) | 8 picks/week exactly, any mix, spread or O/U sides; the pick constraint is **per-market** — you may not take both sides of one market, but a spread pick and a total pick on the *same game* are two legal picks; max 1 entry; current-week picking only; win 1 / push 0.5 / loss 0; drop single worst week once >1 weeks completed; weekly designated tiebreaker game (SNF convention; Week 1 = Wisconsin @ Notre Dame — ⚠️ **this clause AMENDED 2026-08-22 by league vote: MNF default, Week 1 = SMU @ Florida State; see Amendments below**), combined-score prediction to 0.1, absolute error accumulates season-long, lower better. |
 
 ---
 
@@ -121,3 +121,16 @@ Defaults set during spec review; none vetoed at approval.
 - **T5 (Form/Apps Script bridge ops) and T6 (bridge import) leave the active plan.** Parachute only: if a **~Tue Sep 1 go/no-go** [transcribed as "Mon Sep 1"; 2026-09-01 is a **Tuesday**, and the rest of the repo keys the line freeze to Tue Sep 1 — the date is the binding part, the weekday was a slip] (replacing D15-eng's Sep 8 checkpoint) finds the pick sheet not ready, a minimal Form is assembled in ~a day from the shipped `scripts/generate_bridge_sheet.py` + the WC Apps Script precedent. No Apps Script work before that.
 - All scoring/grading rulings are UNCHANGED (Core-session, D4/D5/D6-session, all Grading Clarifications, D9/D10/D14/D17/D18/D19/D20/D23-eng). D8-eng (full-fidelity bridge import) and D16-eng (identity mapping, Sep 13) apply only if the parachute deploys.
 - Build state at override time: T1 ✅ (#134), T2 ✅ (#135), T3 ✅ (#136, grading-spine models incl. `docket_pick`/`docket_week_result`/scores+NC columns), T4 ✅ (#137, pure engine + 26-case fixture catalog + adapter). Remaining sprint: T7a/T7b (DESIGN.md + scaffold + pick sheet), T8 (sync + recalc CLI), T9 (minimal admin), T10 (standings), T11 (timers + D13-eng preset), T13 (lounge strip), launch ops.
+
+---
+
+## Amendments
+
+### 2026-08-22 — Default tiebreaker case (league vote)
+
+Supersedes the Core-session clause *"weekly designated tiebreaker game (SNF convention; Week 1 = Wisconsin @ Notre Dame)"* and the concept brief's "preferably Sunday Night Football" intent. Nothing else moves: the D5-session default prediction (the designated game's locked O/U total) and the Grading Clarifications designation constraints (a locked whole-tenth total, a kickoff ≥ the week deadline, pre-deadline re-designation clears predictions and notifies, post-deadline death = zero error) are unchanged.
+
+- **The default is Monday Night Football** — formally, the week's **latest-kickoff NFL game** on the docket: MNF when one exists, the **later kickoff of a doubleheader**, and **Sunday night when there is no Monday game** (NFL Week 18's shape). From Docket Week 2 on the pool is NFL-only; it never falls back to a college game after Week 1.
+- **Week 1** carries no NFL game (NFL Week 1 opens Thu Sep 10 = Docket Week 2), so its pool is the whole slate and the rule resolves to the latest game on it: **SMU @ Florida State, Mon Sep 7 (Labor Day)**.
+- **Designated automatically**, by the Tuesday `--mode setup` import and every Tue–Fri `--mode lines` run (`games/docket/services/tiebreaker_rule.py`), once the rule's game carries a locked total. The rule **waits** for that total rather than sliding to the next game (a slide would make Sunday night sticky), and it **fills only an empty designation — it never moves one on file**. A total that never posts surfaces as before: WARNINGs all week, exit 1 at the Saturday deadline pass.
+- **The commissioner's hand designation is the override** (`/docket/admin/week/N/tiebreaker`, `flask docket set-tiebreaker`), pre-deadline only, with the existing clear-and-notify consequences. Recorded as ADR-054.

@@ -34,16 +34,20 @@ rows can go)::
     db.session.execute(delete(DocketGame).where(DocketGame.week_id == w.id))
     db.session.delete(w); db.session.commit()
 
-Then the import is the familiar three lines (the tiebreaker designation does
-not survive the wipe — re-designate, then verify)::
+Then the import is two lines — the tiebreaker designates itself (the
+league's 2026-08-22 rule, ``services/tiebreaker_rule.py``: the last game on
+the docket, which in Week 1 is SMU @ Florida State on Labor Day)::
 
-    flask docket sync --mode setup                              # week 1 + both slates + first-posted lines
-    flask docket set-tiebreaker 1 "Wisconsin @ Notre Dame"      # or /docket/admin/week/1/tiebreaker
-    flask docket sync --mode status                             # verify: games in, lines locked, designation set
+    flask docket sync --mode setup      # week 1 + both slates + first-posted lines + the rule's tiebreaker
+    flask docket sync --mode status     # verify: games in, lines locked, tiebreaker: SMU Mustangs @ Florida State Seminoles
+    flask docket set-tiebreaker 1 "SMU @ Florida State"   # ONLY if status shows NONE or "waiting" (or /docket/admin/week/1/tiebreaker)
 
 **Tue-Fri — gap fill.** Fills markets that weren't posted Tuesday and
-refreshes live kickoffs off the free /events endpoint (D19). Also reports a
-missing or unsound tiebreaker designation, days before it would matter::
+refreshes live kickoffs off the free /events endpoint (D19). Also applies the
+default-tiebreaker rule when the week has none on file (it waits for the
+rule's game to carry a locked total rather than sliding to another game, and
+it never moves a designation already on file), and reports a missing or
+unsound designation days before it would matter::
 
     flask docket sync --mode lines
 
@@ -73,10 +77,15 @@ Contest ruling made through the admin desk already re-grades its own week
     flask docket recalc          # every past-deadline week
     flask docket recalc 1        # one week
 
-**The admin desk** (`/docket/admin/`, T9) owns the three rulings the sync
-runs must never make: designating the tiebreaker case, throwing a case out
-(No Contest), and correcting a bad line pre-deadline (D18, audited). The
-commands here stay as the fallback.
+**The admin desk** (`/docket/admin/`, T9) owns the two rulings the sync runs
+must never make — throwing a case out (No Contest) and correcting a bad line
+pre-deadline (D18, audited) — plus the tiebreaker *override*: the default
+designation is rule-derived (the latest-kickoff NFL game = Monday Night
+Football, or Sunday night when no Monday game exists; Week 1 = the latest
+game on the slate) and applied by the setup/lines runs, which never move a
+designation on file; the desk and ``set-tiebreaker`` move it, pre-deadline
+only, clearing predictions and mailing the roster. The commands here stay as
+the fallback.
 
 Credit budget: /events is free, /odds costs 2 per sport per run (skipped
 once a sport's markets are all locked), /scores costs 2 per sport per run.
@@ -107,6 +116,10 @@ from games.docket.services.grading_pass import try_grade_week
 from games.docket.services.importer import import_week
 from games.docket.services.reminders import run_reminder_pass
 from games.docket.services.scores import sync_scores
+from games.docket.services.tiebreaker_rule import (
+    apply_default_tiebreaker,
+    default_tiebreaker_game,
+)
 from games.docket.services.weeks import SEASON_YEAR, TOTAL_WEEKS, week_number_for
 from games.docket.utils import now_utc, to_naive_utc
 
@@ -193,8 +206,42 @@ def _report_designation(week):
     if problems:
         click.secho(
             '  Fix with: flask docket set-tiebreaker '
-            f'{week.week_number} "Away @ Home"', fg='yellow')
+            f'{week.week_number} "Away @ Home" (overrides the rule\'s default)',
+            fg='yellow')
     return not problems
+
+
+def _matchup(game):
+    return f'{game.away_team} @ {game.home_team}'
+
+
+def _echo_rule_outcome(week, outcome):
+    """One line for what the default-tiebreaker rule did on this run.
+
+    ``kept`` gets a second, yellow line when the rule would name a different
+    game today: the designation on file stands (the rule never moves one),
+    but an operator reading the journal should see the disagreement.
+    """
+    status, game, rule_game = (outcome['status'], outcome['game'],
+                               outcome['rule_game'])
+    if status == 'designated':
+        click.secho(f'  tiebreaker: designated by rule — {_matchup(game)} '
+                    f'(total {game.total_points})', fg='green')
+    elif status == 'kept':
+        click.echo(f'  tiebreaker: kept — {_matchup(game)}')
+        if rule_game is not None and rule_game.id != game.id:
+            click.secho(
+                f'  note: the rule now names {_matchup(rule_game)}; the '
+                f'designation on file stands (override: '
+                f'/docket/admin/week/{week.week_number}/tiebreaker)',
+                fg='yellow')
+    elif status == 'waiting':
+        click.secho(f'  tiebreaker: waiting — {outcome["reason"]}; the next '
+                    f'lines run retries', fg='yellow')
+    elif status == 'closed':
+        click.echo(f'  tiebreaker: docket closed — {outcome["reason"]}')
+    else:
+        click.secho(f'  tiebreaker: none — {outcome["reason"]}', fg='yellow')
 
 
 def _check_sync_status(summary, what):
@@ -217,6 +264,11 @@ def _run_import(week_number, force_odds, title):
     _echo_summary(title, summary)
     week = _get_week(week_number)
     if week is not None:
+        # The rule runs before the partial/error exit below so a failed CFB
+        # half on an NFL week still leaves the tiebreaker designated; the
+        # exit code stays the import's (a missing designation is a WARNING
+        # here and exit 1 only at the deadline pass).
+        _echo_rule_outcome(week, apply_default_tiebreaker(week))
         _report_designation(week)
     _check_sync_status(summary, 'import')
 
@@ -335,6 +387,8 @@ def _run_status():
             f'({spreads} spreads, {totals} totals locked, {stamped} frozen, '
             f'{finals} final) | {picks} picks | {results} graded | '
             f'deadline {week.deadline_at} UTC | tiebreaker: {designated}')
+        rule_game, reason = default_tiebreaker_game(week)
+        click.echo(f'    rule: {_matchup(rule_game) if rule_game else reason}')
         _report_designation(week)
 
 
@@ -427,9 +481,11 @@ def recalc_cmd(week):
 def set_tiebreaker_cmd(week, matchup):
     """Designate WEEK's tiebreaker game from an 'Away @ Home' MATCHUP.
 
-    The fallback for T9's admin screen at /docket/admin/week/N/tiebreaker;
-    both write through the same service, so the rules cannot drift. Only the
-    'Away @ Home' matching lives here. Designation must satisfy the Grading
+    The override of the rule-derived default (services/tiebreaker_rule.py,
+    applied by the setup/lines runs) and the fallback for T9's admin screen at
+    /docket/admin/week/N/tiebreaker; all three write through the same
+    service, so the rules cannot drift. Only the 'Away @ Home' matching lives
+    here. Designation must satisfy the Grading
     Clarifications contract — a locked whole-tenth O/U total and a kickoff at
     or after the deadline — and is pre-deadline only. An unsound designation
     rolls back rather than sticking.

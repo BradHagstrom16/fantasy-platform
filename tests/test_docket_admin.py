@@ -515,6 +515,24 @@ def test_designation_screen_posts_and_redirects(monkeypatch, client, admin,
     assert week.tiebreaker_game_id == game.id
 
 
+def test_designation_screen_names_the_rule_default(monkeypatch, client, admin,
+                                                   week):
+    """The desk shows what the rule names today next to what is on file, so
+    a commissioner reading the screen sees the same disagreement the lines
+    run prints (week 1: the latest game on the slate)."""
+    _sat(week, home='Notre Dame', away='Wisconsin')
+    labor_day = make_game(week, kickoff=KICK_SAT.replace(day=7),
+                          home='Florida State', away='SMU')
+    db.session.commit()
+    at(monkeypatch, BEFORE_DEADLINE)
+
+    html = client.get('/docket/admin/week/1/tiebreaker').data.decode()
+
+    assert 'By rule: SMU at Florida State' in html
+    assert labor_day.total_points is not None  # eligible, so no caveat
+    assert 'No case designated yet' in html
+
+
 def test_designation_screen_reports_the_contract_problems(
         monkeypatch, client, admin, week):
     early = make_game(week, kickoff=KICK_THU)

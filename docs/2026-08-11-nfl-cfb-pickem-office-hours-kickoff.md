@@ -61,10 +61,10 @@ Ranking order, both weekly and season standings:
 2. Wins
 3. Weekly tiebreaker — cumulative point-differential accuracy for the season
 
-**Tiebreaker mechanic:** each week, one designated game (preferably NFL Sunday Night Football) asks every player to predict the final combined score, to 0.1 precision. The imported O/U line is shown as a reference. Score it as absolute difference from the actual total; that difference accumulates across the season as the season-long tiebreaker value (lower is better).
+**Tiebreaker mechanic:** each week, one designated game (preferably NFL Sunday Night Football [superseded 2026-08-22 by league vote: Monday Night Football by default, Week 1 = SMU @ Florida State, designated by rule — see the binding rulings' Amendments]) asks every player to predict the final combined score, to 0.1 precision. The imported O/U line is shown as a reference. Score it as absolute difference from the actual total; that difference accumulates across the season as the season-long tiebreaker value (lower is better).
 
-- Week 1 tiebreaker game: Wisconsin @ Notre Dame (CFB) — chosen because it's the marquee CFB Week 1 game.
-- From there, Brad's intent is Sunday Night Football for the rest of the season.
+- Week 1 tiebreaker game: Wisconsin @ Notre Dame (CFB) — chosen because it's the marquee CFB Week 1 game. [superseded 2026-08-22: SMU @ Florida State, the last game on the Week 1 slate]
+- From there, Brad's intent is Sunday Night Football for the rest of the season. [superseded 2026-08-22: Monday Night Football, i.e. the week's latest-kickoff NFL game, with Sunday night as the no-Monday fallback]
 
 ---
 

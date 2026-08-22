@@ -24,6 +24,10 @@ SEASON_YEAR = 2026
 # (CFB Week 1: games from Thu Sep 3, picks due Sat Sep 5 11:00 AM CT).
 WEEK_1_BOUNDARY_LOCAL = datetime(2026, 9, 1, 6, 0)
 TOTAL_WEEKS = 19
+# NFL Week 1 kicks off Thu Sep 10 2026, inside Docket Week 2; Docket Week 1
+# is CFB-only. The default-tiebreaker rule (services/tiebreaker_rule.py)
+# takes NFL games only from this week on.
+FIRST_NFL_WEEK = 2
 # Tuesday boundary + 4 days = the week's Saturday.
 _DEADLINE_DAY_OFFSET = 4
 _DEADLINE_HOUR = 11

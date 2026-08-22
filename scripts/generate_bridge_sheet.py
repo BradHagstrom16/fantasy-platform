@@ -9,9 +9,12 @@ stderr, so stdout stays clean for redirection:
 
     venv/bin/python scripts/generate_bridge_sheet.py --week 1 > week1.csv
 
-Week 1's tiebreaker default is the ruled hand-set (Wisconsin @ Notre Dame);
-pass --tiebreaker 'Away @ Home' for other weeks, or --no-tiebreaker to skip
-designation (the column then stays blank).
+`flask docket sync --mode setup/lines` designates the tiebreaker by rule (the
+last game on the docket: Monday Night Football; Week 1 = SMU @ Florida
+State). This script calls import_week directly, so it does not run that rule:
+--tiebreaker 'Away @ Home' hand-sets the bridge week's case, and
+--no-tiebreaker leaves the designation on file untouched (the column
+reflects it either way).
 """
 import argparse
 import logging
@@ -39,8 +42,9 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--week', type=int, default=1,
                         help='docket week number (default: 1)')
-    parser.add_argument('--tiebreaker', default='Wisconsin @ Notre Dame',
-                        help="designated tiebreaker matchup, 'Away @ Home'")
+    parser.add_argument('--tiebreaker', default='SMU @ Florida State',
+                        help="designated tiebreaker matchup, 'Away @ Home' "
+                             "(overrides the rule-derived default)")
     parser.add_argument('--no-tiebreaker', action='store_true',
                         help='skip tiebreaker designation')
     parser.add_argument('--skip-import', action='store_true',

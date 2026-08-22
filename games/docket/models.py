@@ -76,8 +76,11 @@ class DocketWeek(db.Model):
     start_at = db.Column(db.DateTime, nullable=False)
     end_at = db.Column(db.DateTime, nullable=False)
     deadline_at = db.Column(db.DateTime, nullable=False)
-    # Weekly designated tiebreaker game (Week 1 hand-set: Wisconsin @ Notre
-    # Dame; admin designation UI lands with T9). use_alter breaks the
+    # Weekly designated tiebreaker game. Filled by rule on the Tuesday
+    # setup/lines runs (services/tiebreaker_rule.py: the latest-kickoff NFL
+    # game = Monday Night Football; Week 1 = the latest game on the slate);
+    # moved only by the commissioner (admin_ops.designate_tiebreaker, pre-
+    # deadline) — the rule never moves a value on file. use_alter breaks the
     # docket_week <-> docket_game FK cycle at CREATE TABLE time.
     tiebreaker_game_id = db.Column(
         db.Integer,
