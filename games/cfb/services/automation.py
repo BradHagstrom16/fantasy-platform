@@ -445,6 +445,17 @@ def run_spread_update():
 
     db.session.commit()
 
+    # Announce that picks are open — once, when spreads first land on the
+    # active week. Latched on the week so a later gap-fill run stays silent;
+    # the latch is consumed only on a successful send, so a mail outage retries
+    # on the next run rather than swallowing the announcement.
+    if not week.picks_open_notified and any(
+            g.home_team_spread is not None for g in games):
+        from games.cfb.services.reminders import send_picks_open_email
+        if send_picks_open_email(week.id) > 0:
+            week.picks_open_notified = True
+            db.session.commit()
+
     # Surface games still without a spread — both teams are unpickable
     # until one arrives, which was previously silent (§5.5/§1).
     games_without_spread = [

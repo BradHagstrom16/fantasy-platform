@@ -98,6 +98,11 @@ class CfbWeek(db.Model):
     is_playoff_week = db.Column(db.Boolean, default=False)
     round_name = db.Column(db.String(100), nullable=True)
     recap_email_sent = db.Column(db.Boolean, default=False, nullable=False)
+    # Set once the season-open "Picks Are Open" announcement has been mailed
+    # for this week (games/cfb/services/reminders.send_picks_open_email);
+    # latched by run_spread_update when spreads first land on the active week.
+    # De-dup lives in this flag, never in a timer cadence.
+    picks_open_notified = db.Column(db.Boolean, default=False, nullable=False)
     # Closest reminder window already mailed for this week ('warning'/'final').
     # Written only by run_reminder_check once >=1 send succeeds; the de-dup
     # guarantee lives in this flag, not in any timer cadence (D24-eng shape).

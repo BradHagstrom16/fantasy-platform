@@ -114,6 +114,7 @@ from games.docket.services.enrollment import (
 )
 from games.docket.services.grading_pass import try_grade_week
 from games.docket.services.importer import import_week
+from games.docket.services.notifications import notify_picks_open
 from games.docket.services.reminders import run_reminder_pass
 from games.docket.services.scores import sync_scores
 from games.docket.services.tiebreaker_rule import (
@@ -122,6 +123,7 @@ from games.docket.services.tiebreaker_rule import (
 )
 from games.docket.services.weeks import SEASON_YEAR, TOTAL_WEEKS, week_number_for
 from games.docket.utils import now_utc, to_naive_utc
+from models import User
 
 docket_cli = AppGroup('docket', help="The Docket (NFL+CFB pick'em) commands.")
 
@@ -259,6 +261,27 @@ def _check_sync_status(summary, what):
               f': {"; ".join(summary.get("errors", []))}')
 
 
+def _announce_picks_open(week, summary):
+    """Mail the roster the "Picks Are Open" announcement — once, when the week
+    first has games. Latched on the week so a later gap-fill import stays
+    silent; the latch is consumed only on a successful send, so a mail outage
+    retries on the next run. Skipped on a hard/partial import failure and on an
+    empty week (has-games gates it), so a launch email never fires on nothing.
+    """
+    if (week.picks_open_notified
+            or summary.get('status') in ('error', 'partial')):
+        return
+    has_games = db.session.scalar(
+        select(DocketGame.id).filter_by(week_id=week.id).limit(1)) is not None
+    if not has_games:
+        return
+    users = [u for u in (db.session.get(User, uid)
+                         for uid in roster_user_ids()) if u is not None]
+    if notify_picks_open(week, users) > 0:
+        week.picks_open_notified = True
+        db.session.commit()
+
+
 def _run_import(week_number, force_odds, title):
     summary = import_week(week_number, force_odds=force_odds)
     _echo_summary(title, summary)
@@ -270,6 +293,7 @@ def _run_import(week_number, force_odds, title):
         # here and exit 1 only at the deadline pass).
         _echo_rule_outcome(week, apply_default_tiebreaker(week))
         _report_designation(week)
+        _announce_picks_open(week, summary)
     _check_sync_status(summary, 'import')
 
 

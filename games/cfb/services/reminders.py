@@ -21,6 +21,8 @@ import logging
 from datetime import timedelta
 
 from flask import current_app
+from markupsafe import escape
+from sqlalchemy import select
 from sqlalchemy.orm import joinedload
 
 from extensions import db
@@ -427,6 +429,80 @@ Good luck!
 
     print(f"\nSummary: {success_count}/{len(recipients)} reminders sent")
     print("=" * 60)
+
+
+# ============================================================================
+# PICKS OPEN ANNOUNCEMENT EMAIL
+# ============================================================================
+
+def send_picks_open_email(week_id: int) -> int:
+    """Announce that picks are open to EVERY enrolled player for the season.
+
+    Not gated on who has yet to pick (that is the deadline reminder's job):
+    this is the season-open "it's live" note, sent once per week and latched
+    by the caller (run_spread_update) on ``CfbWeek.picks_open_notified``.
+
+    Returns the number of emails accepted.
+    """
+    config = current_app.config
+    season_year = config.get('CFB_SEASON_YEAR', 2026)
+    site_url = config.get('SITE_URL', 'http://localhost:5000')
+
+    week = db.session.get(CfbWeek, week_id)
+    if not week:
+        logger.warning("Picks-open email: week id %s not found", week_id)
+        return 0
+
+    week_name = get_week_display_name(week)
+    deadline_str = make_aware(week.deadline).strftime(
+        '%A, %B %d at %I:%M %p %Z')
+    pick_url = f"{site_url}/cfb/pick/{week.week_number}"
+    subject = f"Picks Are Open: CFB Survivor — Week {week.week_number}"
+
+    enrollments = db.session.scalars(
+        select(CfbEnrollment)
+        .filter_by(season_year=season_year)
+        .options(joinedload(CfbEnrollment.user))  # avoid a User get per row
+    ).all()
+
+    success_count = 0
+    for enrollment in enrollments:
+        user = enrollment.user
+        if not user or not user.email:
+            continue
+        display_name = enrollment.get_display_name()
+
+        plain = (
+            f"Hi {display_name},\n\n"
+            f"Picks are open for {week_name}. The lines are set — get your "
+            f"survivor pick in before the deadline.\n\n"
+            f"Deadline: {deadline_str}\n\n"
+            f"Make your pick: {pick_url}\n\n"
+            f"You're picking a team to win outright (not against the spread), "
+            f"and each team can be used only once all season.\n\n"
+            f"Good luck,\nThe Corrupt Commish Club\n"
+        )
+        content = (
+            f'<h2 style="margin: 0 0 6px 0; font-family: '
+            f'{CFB_EMAIL["font_heading"]}; font-size: 24px; color: '
+            f'{CFB_EMAIL["text_primary"]};">Picks Are Open</h2>'
+            f'<p style="margin: 0 0 24px 0; font-size: 15px; color: '
+            f'{CFB_EMAIL["text_secondary"]};">Hi {escape(display_name)}, the '
+            f'lines are set. Get your survivor pick in before the deadline.</p>'
+            f'{_cfb_html_week_card(week_name, deadline_str)}'
+            f'{_cfb_html_button(pick_url, "Make Your Pick")}'
+            f'<p style="margin: 16px 0 0 0; font-size: 13px; color: '
+            f'{CFB_EMAIL["text_muted"]}; text-align: center;">Pick a team to '
+            f'win outright — each team can be used once all season.</p>'
+        )
+        html = _cfb_html_wrapper(content, season_year)
+
+        if send_platform_email(user.email, subject, plain, html):
+            success_count += 1
+
+    logger.info("Picks-open email: %s/%s sent for week %s",
+                success_count, len(enrollments), week.week_number)
+    return success_count
 
 
 # ============================================================================
