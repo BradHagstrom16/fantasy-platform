@@ -96,6 +96,13 @@ class DocketWeek(db.Model):
     # deliberately NOT CFB's cadence-dependent shape, which double-sends if
     # its timer is ever scheduled more often than its windows are wide).
     last_reminder_tier = db.Column(db.String(10), nullable=True)
+    # Set once the "Picks Are Open" announcement has been mailed for this week
+    # (games/docket/services/notifications.notify_picks_open); latched by the
+    # import run (_run_import) when the week first has games. The preview
+    # Week-1 row is back-filled True by migration so an already-enabled timer
+    # never announces a stale week before the Sep 1 wipe; a fresh post-wipe
+    # import (a new row, default False) announces correctly.
+    picks_open_notified = db.Column(db.Boolean, default=False, nullable=False)
     # The week's default tiebreaker error in integer tenths (D20), written by
     # the grading pass: |designated game's locked O/U total - actual combined
     # score|, or 0 when that game was ruled No Contest (post-deadline

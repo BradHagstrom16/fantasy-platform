@@ -180,3 +180,29 @@ def notify_redesignation(week, new_game, old_game, users):
         ])
 
     return send_each([(u, None) for u in users], subject, build)
+
+
+def notify_picks_open(week, users):
+    """Tell the roster that picks are open for a freshly imported week.
+
+    The season-open announcement (not a deadline reminder): sent once per week,
+    latched by the import run on ``DocketWeek.picks_open_notified``, to every
+    roster member with the sheet link. Returns how many messages were accepted.
+    """
+    subject = f'Picks Are Open: The Docket — Week {week.week_number}'
+    link = sheet_url()
+
+    def build(user, _context):
+        return wrap_email([
+            f'Picks are open for Week {week.week_number} of The Docket.',
+            'The board is set — make your picks before the docket closes.',
+            f'Your sheet: {link}',
+        ], [
+            Markup('Picks are open for <strong>Week {}</strong> of The '
+                   'Docket.').format(week.week_number),
+            Markup('The board is set — make your picks before the docket '
+                   'closes.'),
+            Markup('Your sheet: {}').format(link),
+        ])
+
+    return send_each([(u, None) for u in users], subject, build)
