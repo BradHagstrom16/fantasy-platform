@@ -22,6 +22,7 @@ from datetime import timedelta
 
 from flask import current_app
 from markupsafe import escape
+from sqlalchemy import select
 from sqlalchemy.orm import joinedload
 
 from extensions import db
@@ -458,12 +459,11 @@ def send_picks_open_email(week_id: int) -> int:
     pick_url = f"{site_url}/cfb/pick/{week.week_number}"
     subject = f"Picks Are Open: CFB Survivor — Week {week.week_number}"
 
-    enrollments = (
-        CfbEnrollment.query
+    enrollments = db.session.scalars(
+        select(CfbEnrollment)
         .filter_by(season_year=season_year)
         .options(joinedload(CfbEnrollment.user))  # avoid a User get per row
-        .all()
-    )
+    ).all()
 
     success_count = 0
     for enrollment in enrollments:
