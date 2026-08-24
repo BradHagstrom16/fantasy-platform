@@ -1,0 +1,23 @@
+# Golf Pick 'Em 8 PM CT live sync + withdrawal check — the live leaderboard
+# update plus a forced check_withdrawals() pass (pre-Round-2 WDs activate the
+# backup on the live board). Fired Thu–Sun by golf-live-wd.timer. Identical to
+# golf-live.service except for the mode.
+
+[Unit]
+Description=Golf Pick 'Em 8 PM live sync + withdrawal check
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=deploy
+Group=deploy
+WorkingDirectory=/home/deploy/fantasy-platform
+EnvironmentFile=/home/deploy/fantasy-platform/.env
+Environment=ENVIRONMENT=production
+Environment=FLASK_APP=app.py
+NoNewPrivileges=true
+PrivateTmp=true
+# Bound the run well under the results timer that follows at 20:30.
+TimeoutStartSec=5m
+ExecStart=/home/deploy/fantasy-platform/venv/bin/flask golf sync-run --mode live-with-wd

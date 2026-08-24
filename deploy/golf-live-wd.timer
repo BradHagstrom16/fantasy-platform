@@ -1,0 +1,21 @@
+# Runs the Golf Pick 'Em 8 PM CT live read Thu–Sun — the third daily
+# leaderboard update, and the one that carries the withdrawal check
+# (`--mode live-with-wd`). Friday's firing is the load-bearing one: it is what
+# catches a primary who withdrew before completing Round 2 so the backup
+# activates on the weekend board instead of at Sunday's finalization.
+#
+# This is the read users know as "leaderboard updates at 8 PM Central" — the
+# retired PythonAnywhere app ran the same job at the same hour. Two API calls
+# per firing (leaderboard + WD check); see golf-live.timer for the free-tier
+# budget this cadence is sized to. Locked by tests/test_golf_timers.py.
+[Unit]
+Description=Run Golf Pick 'Em 8 PM live sync + withdrawal check (Thu–Sun)
+
+[Timer]
+# Timezone is INLINE in OnCalendar — no TimeZone= directive exists for timers.
+# Validate on the droplet: systemd-analyze calendar 'Thu..Sun *-*-* 20:00:00 America/Chicago'
+OnCalendar=Thu..Sun *-*-* 20:00:00 America/Chicago
+Persistent=true
+
+[Install]
+WantedBy=timers.target

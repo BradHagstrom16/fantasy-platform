@@ -1,13 +1,14 @@
-# Runs the Golf Pick 'Em schedule sync Mondays 06:00 CT. `sync-run --mode
-# schedule` is internally gated to Mondays anyway (it links seeded rows to real
-# SlashGolf ids and refreshes purses); the timer just lands it once a week.
+# Runs the Golf Pick 'Em schedule sync Mondays 07:00 CT (the hour the retired
+# PythonAnywhere app used). `sync-run --mode schedule` is internally gated to
+# Mondays anyway (it links seeded rows to real SlashGolf ids and refreshes
+# purses); the timer just lands it once a week.
 # Season seeding itself is a one-off manual `flask golf seed-schedule` (Phase L).
 [Unit]
-Description=Run Golf Pick 'Em schedule sync (Mon 06:00 CT)
+Description=Run Golf Pick 'Em schedule sync (Mon 07:00 CT)
 
 [Timer]
 # Timezone is INLINE in OnCalendar — no TimeZone= directive exists for timers.
-OnCalendar=Mon *-*-* 06:00:00 America/Chicago
+OnCalendar=Mon *-*-* 07:00:00 America/Chicago
 Persistent=true
 
 [Install]
