@@ -16,11 +16,12 @@ runbook uses. What is locked:
   SAVEPOINT that is always rolled back — zero diffs on a consistent file,
   a named diff on a perturbed one, never a commit and never an email.
 """
+import secrets
 import sqlite3
 from unittest.mock import patch
 
 import pytest
-from sqlalchemy import func
+from sqlalchemy import delete, func, select
 
 from extensions import db
 from games.golf.models import (
@@ -33,9 +34,11 @@ from games.golf.models import (
     GolfTournamentResult,
 )
 from games.golf.services.legacy_import import (
+    import_season,
     load_snapshot,
     match_users,
     open_legacy,
+    resolve_users_readonly,
     run_import,
     verify_scoring,
 )
@@ -45,6 +48,8 @@ from tests._golf_legacy_fixtures import PASSWORDS, build_legacy_db, default_data
 SEASON = 2026
 GOLF_TABLES = (GolfEnrollment, GolfPlayer, GolfTournament, GolfTournamentField,
                GolfTournamentResult, GolfSeasonPlayerUsage, GolfPick)
+# Generated so no literal password sits beside a username (GitGuardian).
+PLATFORM_PW = secrets.token_urlsafe(16)
 
 
 # --- helpers ---------------------------------------------------------------
@@ -53,17 +58,17 @@ def _seed_platform_users():
     """The platform side of the fixture: one email match (different case) and
     one username collision (same username, different email)."""
     casey = User(username='caseyplat', email='casey@example.com', display_name='Casey Platform')
-    casey.set_password('platform-pw')
+    casey.set_password(PLATFORM_PW)
     brock = User(username='brock', email='brock@platform.test')
-    brock.set_password('platform-pw')
+    brock.set_password(PLATFORM_PW)
     db.session.add_all([casey, brock])
     db.session.commit()
     return casey, brock
 
 
 def _counts():
-    return {m.__tablename__: db.session.query(func.count(m.id)).scalar() for m in GOLF_TABLES} | {
-        'users': db.session.query(func.count(User.id)).scalar()}
+    return {m.__tablename__: db.session.scalar(select(func.count()).select_from(m)) for m in GOLF_TABLES} | {
+        'users': db.session.scalar(select(func.count()).select_from(User))}
 
 
 def _legacy(tmp_path, dataset=None):
@@ -86,17 +91,17 @@ def _import(path, **kw):
 
 
 def _user(username):
-    return User.query.filter(func.lower(User.username) == username.lower()).one()
+    return db.session.scalars(select(User).where(func.lower(User.username) == username.lower())).one()
 
 
 def _pick(username, tourn_api_id):
     u = _user(username)
-    t = GolfTournament.query.filter_by(api_tourn_id=tourn_api_id, season_year=SEASON).one()
-    return GolfPick.query.filter_by(user_id=u.id, tournament_id=t.id).one()
+    t = db.session.scalars(select(GolfTournament).filter_by(api_tourn_id=tourn_api_id, season_year=SEASON)).one()
+    return db.session.scalars(select(GolfPick).filter_by(user_id=u.id, tournament_id=t.id)).one()
 
 
 def _player(api_id):
-    return GolfPlayer.query.filter_by(api_player_id=api_id).one()
+    return db.session.scalars(select(GolfPlayer).filter_by(api_player_id=api_id)).one()
 
 
 # --- matching --------------------------------------------------------------
@@ -141,8 +146,8 @@ def test_attached_user_columns_are_untouched(app, tmp_path):
     assert casey.username == 'caseyplat'
     assert casey.display_name == 'Casey Platform'
     assert casey.password_hash == snapshot_hash
-    assert casey.check_password('platform-pw')
-    assert User.query.filter_by(username='Casey').first() is None
+    assert casey.check_password(PLATFORM_PW)
+    assert db.session.scalar(select(User).filter_by(username='Casey')) is None
 
 
 def test_username_collision_is_flagged_and_aborts_before_any_write(app, tmp_path):
@@ -162,8 +167,9 @@ def test_link_option_attaches_collision_to_platform_user(app, tmp_path):
     report = _import(_legacy(tmp_path), links={'brock': 'brock'})
 
     assert report.outcome == 'committed'
-    assert User.query.filter(func.lower(User.username) == 'brock').count() == 1
-    enrollment = GolfEnrollment.query.filter_by(user_id=brock.id, season_year=SEASON).one()
+    assert db.session.scalar(
+        select(func.count()).select_from(User).where(func.lower(User.username) == 'brock')) == 1
+    enrollment = db.session.scalars(select(GolfEnrollment).filter_by(user_id=brock.id, season_year=SEASON)).one()
     assert enrollment.total_points == 750_000
 
 
@@ -177,7 +183,8 @@ def test_rename_option_creates_collision_under_new_username(app, tmp_path):
     assert renamed.id != brock.id
     assert renamed.email == 'brock@legacy.test'
     assert renamed.check_password(PASSWORDS['brock'])   # the scrypt hash carried
-    assert GolfEnrollment.query.filter_by(user_id=brock.id).count() == 0
+    assert db.session.scalar(
+        select(func.count()).select_from(GolfEnrollment).where(GolfEnrollment.user_id == brock.id)) == 0
 
 
 def test_two_legacy_users_resolving_to_one_platform_user_aborts(app, tmp_path):
@@ -198,6 +205,24 @@ def test_import_refuses_unknown_link_or_rename_target(app, tmp_path):
 
     report = _import(_legacy(tmp_path), links={}, renames={'brock': 'caseyplat'})   # taken
     assert report.outcome == 'blocked'
+
+
+def test_new_user_without_email_is_blocked(app, tmp_path):
+    """A create/rename with no email can't mint an account (User.email is
+    NOT NULL + UNIQUE). The legacy DDL forbids NULL, so '' is the reachable
+    shape; normalize_identifier folds '' and None identically."""
+    _seed_platform_users()
+    data = default_dataset()
+    for u in data['user']:
+        if u['username'] == 'dana':          # dana matches nothing → would 'create'
+            u['email'] = ''
+    before = _counts()
+
+    report = _import(_legacy(tmp_path, data))
+
+    assert report.outcome == 'blocked'
+    assert any('dana' in msg and 'no email' in msg for msg in report.plan.blocking)
+    assert _counts() == before
 
 
 # --- users -----------------------------------------------------------------
@@ -237,7 +262,7 @@ def test_enrollment_carries_totals_has_paid_penalty_paid_not_is_admin(app, tmp_p
     casey, _ = _seed_platform_users()
     report = _import(_legacy(tmp_path))
 
-    e = GolfEnrollment.query.filter_by(user_id=casey.id, season_year=SEASON).one()
+    e = db.session.scalars(select(GolfEnrollment).filter_by(user_id=casey.id, season_year=SEASON)).one()
     assert e.total_points == 1_150_000
     assert e.has_paid is True
     assert e.penalty_paid == 15
@@ -245,7 +270,7 @@ def test_enrollment_carries_totals_has_paid_penalty_paid_not_is_admin(app, tmp_p
     assert e.created_at.day == 5        # legacy user.created_at
     assert 'Casey' in report.plan.legacy_admins
 
-    dana = GolfEnrollment.query.filter_by(user_id=_user('dana').id, season_year=SEASON).one()
+    dana = db.session.scalars(select(GolfEnrollment).filter_by(user_id=_user('dana').id, season_year=SEASON)).one()
     assert dana.has_paid is False
     assert dana.penalty_owed() == 15 and dana.penalty_outstanding() == 15
 
@@ -292,18 +317,19 @@ def test_pick_fields_verbatim_incl_override_penalty_null_active_timestamps(app, 
     unresolved = _pick('evan', '001')
     assert unresolved.active_player_id is None and unresolved.points_earned is None
     assert unresolved.primary_used is False and unresolved.backup_used is False
-    assert GolfSeasonPlayerUsage.query.filter_by(user_id=_user('evan').id).count() == 0
+    assert db.session.scalar(select(func.count()).select_from(GolfSeasonPlayerUsage)
+                             .where(GolfSeasonPlayerUsage.user_id == _user('evan').id)) == 0
 
 
 def test_result_status_strings_verbatim(app, tmp_path):
     _seed_platform_users()
     _import(_legacy(tmp_path))
 
-    t1 = GolfTournament.query.filter_by(api_tourn_id='001', season_year=SEASON).one()
-    r = GolfTournamentResult.query.filter_by(tournament_id=t1.id, player_id=_player('p4').id).one()
+    t1 = db.session.scalars(select(GolfTournament).filter_by(api_tourn_id='001', season_year=SEASON)).one()
+    r = db.session.scalars(select(GolfTournamentResult).filter_by(tournament_id=t1.id, player_id=_player('p4').id)).one()
     assert r.status == 'CUT'                      # legacy casing anomaly, not normalised
     assert r.final_position == 'CUT' and r.score_to_par == 3 and r.rounds_completed == 2
-    wd = GolfTournamentResult.query.filter_by(tournament_id=t1.id, player_id=_player('p2').id).one()
+    wd = db.session.scalars(select(GolfTournamentResult).filter_by(tournament_id=t1.id, player_id=_player('p2').id)).one()
     assert wd.status == 'wd' and wd.score_to_par is None
     assert t1.last_reminder_type == '1h' and t1.purse == 8_700_000
     assert t1.pick_deadline.isoformat() == '2026-01-15T06:50:00'
@@ -313,15 +339,15 @@ def test_tournament_adopts_seed_schedule_placeholder_row(app, tmp_path):
     from games.golf.services.sync import seed_schedule
     _seed_platform_users()
     seed_schedule(SEASON)
-    assert GolfTournament.query.count() == 32
+    assert db.session.scalar(select(func.count()).select_from(GolfTournament)) == 32
 
     report = _import(_legacy(tmp_path))
 
     assert report.outcome == 'committed', report.render()
-    assert GolfTournament.query.count() == 32       # adopted, not duplicated
-    wk1 = GolfTournament.query.filter_by(season_year=SEASON, week_number=1).one()
+    assert db.session.scalar(select(func.count()).select_from(GolfTournament)) == 32  # adopted, not duplicated
+    wk1 = db.session.scalars(select(GolfTournament).filter_by(season_year=SEASON, week_number=1)).one()
     assert wk1.api_tourn_id == '001' and wk1.name == 'Sony Open in Hawaii'
-    wk2 = GolfTournament.query.filter_by(season_year=SEASON, week_number=2).one()
+    wk2 = db.session.scalars(select(GolfTournament).filter_by(season_year=SEASON, week_number=2)).one()
     assert wk2.api_tourn_id == '002' and wk2.name == 'Masters Tournament' and wk2.is_major is True
     assert report.counts['golf_tournament'] == {'created': 0, 'changed': 2}
 
@@ -330,7 +356,7 @@ def test_recap_email_sent_forced_true(app, tmp_path):
     _seed_platform_users()
     report = _import(_legacy(tmp_path))
 
-    t1 = GolfTournament.query.filter_by(api_tourn_id='001', season_year=SEASON).one()
+    t1 = db.session.scalars(select(GolfTournament).filter_by(api_tourn_id='001', season_year=SEASON)).one()
     assert t1.recap_email_sent is True               # legacy 0
     assert t1.picks_open_notified is True and t1.field_alert_sent is False   # verbatim
     assert 'recap_email_sent' in report.render()
@@ -342,7 +368,7 @@ def test_reimport_is_idempotent(app, tmp_path):
     first = _import(path)
     assert first.outcome == 'committed'
     after_first = _counts()
-    stamps = {p.id: p.updated_at for p in GolfPick.query.all()}
+    stamps = {p.id: p.updated_at for p in db.session.scalars(select(GolfPick)).all()}
 
     second = _import(path)
 
@@ -350,7 +376,7 @@ def test_reimport_is_idempotent(app, tmp_path):
     assert _counts() == after_first
     assert all(v == {'created': 0, 'changed': 0} for v in second.counts.values()), second.counts
     db.session.expire_all()
-    assert {p.id: p.updated_at for p in GolfPick.query.all()} == stamps
+    assert {p.id: p.updated_at for p in db.session.scalars(select(GolfPick)).all()} == stamps
 
 
 def test_import_refuses_non_finalized_season(app, tmp_path):
@@ -423,7 +449,7 @@ def test_import_refuses_to_commit_on_diffs_without_force(app, tmp_path):
     _perturb(path, 'UPDATE pick SET points_earned = points_earned + 1 WHERE id = 51')
 
     refused = _import(path)
-    assert refused.outcome == 'refused' and GolfPick.query.count() == 0
+    assert refused.outcome == 'refused' and db.session.scalar(select(func.count()).select_from(GolfPick)) == 0
 
     forced = _import(path, force=True)
     assert forced.outcome == 'committed' and forced.parity.diff_count == 1
@@ -452,7 +478,7 @@ def test_oracle_with_snapshot_checks_column_fidelity(app, tmp_path):
     _seed_platform_users()
     path = _legacy(tmp_path)
     _import(path)
-    r = GolfTournamentResult.query.filter_by(player_id=_player('p3').id).first()
+    r = db.session.scalar(select(GolfTournamentResult).filter_by(player_id=_player('p3').id))
     r.final_position = 'T6'
     db.session.commit()
 
@@ -460,6 +486,31 @@ def test_oracle_with_snapshot_checks_column_fidelity(app, tmp_path):
 
     assert parity.fidelity_checked is True
     assert any(d.kind == 'golf_tournament_result' and d.field == 'final_position' for d in parity.diffs)
+
+
+def test_fidelity_reports_missing_player_instead_of_raising(app, tmp_path):
+    """check_only must emit a diff — never a KeyError — when the platform lacks
+    a player that a legacy pick references as its primary/backup (p1 is both a
+    backup in pick 51 and a primary in pick 56). That is exactly the corrupt
+    state `flask golf verify-legacy PATH` exists to report."""
+    _seed_platform_users()
+    path = _legacy(tmp_path)
+    _import(path)
+
+    # Core delete (no ORM cascade/nullify): drop only the player row, leaving
+    # the picks' foreign keys dangling — the platform-missing shape.
+    db.session.execute(delete(GolfPlayer).where(GolfPlayer.api_player_id == 'p1'))
+    db.session.commit()
+
+    conn = open_legacy(str(path))
+    snapshot = load_snapshot(conn, SEASON, str(path))
+    conn.close()
+
+    _, diffs = import_season(snapshot, resolve_users_readonly(snapshot.users), SEASON, check_only=True)
+
+    kinds = {d.kind for d in diffs}
+    assert 'golf_player' in kinds        # the player loop flags the missing row
+    assert 'golf_pick' in kinds          # the guarded pick loop reports it, never KeyErrors
 
 
 # --- CLI -------------------------------------------------------------------
@@ -476,7 +527,22 @@ def test_import_legacy_cli_dry_run_and_collision_exit_codes(app, tmp_path):
     ok = runner.invoke(args=['golf', 'import-legacy', path, '--dry-run', '--link', 'brock=brock'])
     assert ok.exit_code == 0, ok.output
     assert 'DRY RUN' in ok.output and 'diffs: 0' in ok.output
-    assert GolfPick.query.count() == 0
+    assert db.session.scalar(select(func.count()).select_from(GolfPick)) == 0
+
+
+def test_import_legacy_cli_rejects_a_repeated_mapping_key(app, tmp_path):
+    """A duplicate --link/--rename key must abort before any write — the last
+    value would otherwise silently win and file the account to the wrong user."""
+    _seed_platform_users()
+    path = str(_legacy(tmp_path))
+    runner = app.test_cli_runner()
+
+    dup = runner.invoke(args=['golf', 'import-legacy', path,
+                              '--link', 'brock=brock', '--link', 'brock=caseyplat'])
+
+    assert dup.exit_code == 1, dup.output
+    assert 'more than once' in dup.output
+    assert db.session.scalar(select(func.count()).select_from(GolfPick)) == 0
 
 
 def test_verify_legacy_cli_is_read_only_and_exits_nonzero_on_diff(app, tmp_path):

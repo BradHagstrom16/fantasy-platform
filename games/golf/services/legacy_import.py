@@ -28,11 +28,12 @@ Shape of a run (``run_import``):
 """
 import hashlib
 import sqlite3
+from contextlib import closing
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 
-from sqlalchemy import func
+from sqlalchemy import func, select
 from sqlalchemy.orm.attributes import flag_modified
 
 from extensions import db
@@ -277,11 +278,11 @@ def load_snapshot(conn, season, path):
 
 
 def _user_by_email(email):
-    return User.query.filter(func.lower(User.email) == normalize_identifier(email)).first()
+    return db.session.scalar(select(User).where(func.lower(User.email) == normalize_identifier(email)))
 
 
 def _user_by_username(username):
-    return User.query.filter(func.lower(User.username) == normalize_identifier(username)).first()
+    return db.session.scalar(select(User).where(func.lower(User.username) == normalize_identifier(username)))
 
 
 # ── user matching ─────────────────────────────────────────────────────────
@@ -351,6 +352,10 @@ def match_users(legacy_users, links=None, renames=None):
                     f'legacy {other!r} and {m.legacy_username!r} both resolve to platform user '
                     f'#{m.platform_user_id} {m.platform_username!r}')
         if m.action in ('create', 'rename'):
+            if not (m.legacy['email'] or '').strip():
+                plan.blocking.append(
+                    f'legacy {m.legacy_username!r} has no email — a new account needs one; '
+                    f'resolve with --link {m.legacy_username}=<platform username> or fix the source file')
             folded = normalize_identifier(m.new_username or m.legacy_username)
             other = seen_names.setdefault(folded, m.legacy_username)
             if other != m.legacy_username:
@@ -435,7 +440,7 @@ def import_season(snapshot, users, season, check_only=False):
     # players — keyed on api_player_id
     players = {}
     for p in snapshot.players:
-        obj = GolfPlayer.query.filter_by(api_player_id=p['api_player_id']).first()
+        obj = db.session.scalar(select(GolfPlayer).filter_by(api_player_id=p['api_player_id']))
         desired = {'first_name': p['first_name'], 'last_name': p['last_name'],
                        'is_amateur': _as_bool(p['is_amateur']),
                        'created_at': _parse_dt(p['created_at']), 'updated_at': _parse_dt(p['updated_at'])}
@@ -456,13 +461,14 @@ def import_season(snapshot, users, season, check_only=False):
     tournaments = {}
     for t in snapshot.tournaments:
         key = f"wk{t['week_number']} {t['name']}"
-        obj = GolfTournament.query.filter_by(api_tourn_id=t['api_tourn_id'], season_year=season).first()
+        obj = db.session.scalar(select(GolfTournament).filter_by(api_tourn_id=t['api_tourn_id'], season_year=season))
         if obj is None and t['week_number'] is not None:
-            placeholder = GolfTournament.query.filter_by(season_year=season, week_number=t['week_number']).first()
+            placeholder = db.session.scalar(
+                select(GolfTournament).filter_by(season_year=season, week_number=t['week_number']))
             if placeholder is not None and placeholder.api_tourn_id == f"{season}_{int(t['week_number']):02d}":
                 obj = placeholder
         if obj is None:
-            obj = GolfTournament.query.filter_by(name=t['name'], season_year=season).first()
+            obj = db.session.scalar(select(GolfTournament).filter_by(name=t['name'], season_year=season))
         desired = {
             'api_tourn_id': t['api_tourn_id'], 'name': t['name'],
             'start_date': _parse_dt(t['start_date']), 'end_date': _parse_dt(t['end_date']),
@@ -497,7 +503,7 @@ def import_season(snapshot, users, season, check_only=False):
         if t is None or p is None:
             continue
         key = f'{t.name} / {p.api_player_id}'
-        obj = GolfTournamentField.query.filter_by(tournament_id=t.id, player_id=p.id).first()
+        obj = db.session.scalar(select(GolfTournamentField).filter_by(tournament_id=t.id, player_id=p.id))
         desired = {'created_at': _parse_dt(f['created_at'])}
         if obj is None:
             if check_only:
@@ -515,7 +521,7 @@ def import_season(snapshot, users, season, check_only=False):
         if t is None or p is None:
             continue
         key = f'{t.name} / {p.api_player_id}'
-        obj = GolfTournamentResult.query.filter_by(tournament_id=t.id, player_id=p.id).first()
+        obj = db.session.scalar(select(GolfTournamentResult).filter_by(tournament_id=t.id, player_id=p.id))
         desired = {'status': r['status'], 'final_position': r['final_position'], 'earnings': r['earnings'],
                        'rounds_completed': r['rounds_completed'], 'score_to_par': r['score_to_par'],
                        'created_at': _parse_dt(r['created_at']), 'updated_at': _parse_dt(r['updated_at'])}
@@ -537,7 +543,7 @@ def import_season(snapshot, users, season, check_only=False):
         if u is None:
             continue
         key = user.username
-        obj = GolfEnrollment.query.filter_by(user_id=user.id, season_year=season).first()
+        obj = db.session.scalar(select(GolfEnrollment).filter_by(user_id=user.id, season_year=season))
         desired = {'total_points': u['total_points'] or 0, 'has_paid': _as_bool(u['has_paid']),
                        'penalty_paid': u['penalty_paid'] or 0, 'created_at': _parse_dt(u['created_at'])}
         if obj is None:
@@ -556,7 +562,8 @@ def import_season(snapshot, users, season, check_only=False):
         if user is None or p is None:
             continue
         key = f'{user.username} / {p.api_player_id}'
-        obj = GolfSeasonPlayerUsage.query.filter_by(user_id=user.id, player_id=p.id, season_year=season).first()
+        obj = db.session.scalar(
+            select(GolfSeasonPlayerUsage).filter_by(user_id=user.id, player_id=p.id, season_year=season))
         desired = {'created_at': _parse_dt(s['created_at'])}
         if obj is None:
             if check_only:
@@ -574,11 +581,17 @@ def import_season(snapshot, users, season, check_only=False):
         if user is None or t is None:
             continue
         key = f'{user.username} / {t.name}'
-        obj = GolfPick.query.filter_by(user_id=user.id, tournament_id=t.id).first()
+        obj = db.session.scalar(select(GolfPick).filter_by(user_id=user.id, tournament_id=t.id))
+        primary = players.get(pk['primary_player_id'])
+        backup = players.get(pk['backup_player_id'])
+        if primary is None or backup is None:
+            if check_only:
+                _missing(diffs, 'golf_pick', key)
+            continue
         active = players.get(pk['active_player_id']) if pk['active_player_id'] is not None else None
         desired = {
-            'primary_player_id': players[pk['primary_player_id']].id,
-            'backup_player_id': players[pk['backup_player_id']].id,
+            'primary_player_id': primary.id,
+            'backup_player_id': backup.id,
             'active_player_id': active.id if active is not None else None,
             'points_earned': pk['points_earned'],
             'primary_used': _as_bool(pk['primary_used']), 'backup_used': _as_bool(pk['backup_used']),
@@ -618,19 +631,20 @@ def verify_scoring(season, legacy_path=None):
     diffs = []
     fidelity = False
     if legacy_path:
-        snapshot = load_snapshot(open_legacy(legacy_path), season, legacy_path)
+        with closing(open_legacy(legacy_path)) as conn:
+            snapshot = load_snapshot(conn, season, legacy_path)
         _, fidelity_diffs = import_season(
             snapshot, resolve_users_readonly(snapshot.users), season, check_only=True)
         diffs.extend(fidelity_diffs)
         fidelity = True
 
-    picks = (
-        GolfPick.query.join(GolfTournament, GolfPick.tournament_id == GolfTournament.id)
-        .filter(GolfTournament.season_year == season)
+    picks = db.session.scalars(
+        select(GolfPick).join(GolfTournament, GolfPick.tournament_id == GolfTournament.id)
+        .where(GolfTournament.season_year == season)
         .order_by(GolfTournament.week_number, GolfPick.id)
-        .all()
-    )
-    enrollments = GolfEnrollment.query.filter_by(season_year=season).order_by(GolfEnrollment.id).all()
+    ).all()
+    enrollments = db.session.scalars(
+        select(GolfEnrollment).filter_by(season_year=season).order_by(GolfEnrollment.id)).all()
     expected_picks = {
         p.id: (p.active_player_id, p.points_earned, _as_bool(p.primary_used),
                _as_bool(p.backup_used), _as_bool(p.penalty_triggered))
@@ -639,7 +653,7 @@ def verify_scoring(season, legacy_path=None):
     expected_totals = {e.id: (e.total_points or 0) for e in enrollments}
     expected_usage = {
         (u.user_id, u.player_id)
-        for u in GolfSeasonPlayerUsage.query.filter_by(season_year=season).all()
+        for u in db.session.scalars(select(GolfSeasonPlayerUsage).filter_by(season_year=season)).all()
     }
     labels = {p.id: f'{p.user.username} wk{p.tournament.week_number} {p.tournament.name}' for p in picks}
     overrides = sum(1 for p in picks if p.admin_override)
@@ -660,8 +674,8 @@ def verify_scoring(season, legacy_path=None):
         resolved_usage = {(p.user_id, p.active_player_id) for p in picks if p.active_player_id is not None}
         usage_ok = resolved_usage == expected_usage
         if not usage_ok:
-            user_names = {u.id: u.username for u in User.query.filter(
-                User.id.in_({uid for uid, _ in resolved_usage | expected_usage})).all()}
+            user_names = {u.id: u.username for u in db.session.scalars(select(User).where(
+                User.id.in_({uid for uid, _ in resolved_usage | expected_usage}))).all()}
             for uid, pid in sorted(expected_usage - resolved_usage):
                 diffs.append(Diff('usage', f'{user_names.get(uid, uid)} / player #{pid}', 'row', 'used', 'not derived'))
             for uid, pid in sorted(resolved_usage - expected_usage):
@@ -690,7 +704,8 @@ def _platform_counts():
 def run_import(path, season=2026, *, dry_run=False, links=None, renames=None,
                verify=True, force=False):
     """The whole import as one transaction; see the module docstring."""
-    snapshot = load_snapshot(open_legacy(path), season, path)
+    with closing(open_legacy(path)) as conn:
+        snapshot = load_snapshot(conn, season, path)
     report = ImportReport(path=str(path), sha256=snapshot.sha256, alembic_head=snapshot.alembic_head,
                           season=season, before=_platform_counts(), plan=MatchPlan(), dry_run=dry_run)
     report.plan = match_users(snapshot.users, links=links, renames=renames)

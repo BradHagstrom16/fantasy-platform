@@ -379,6 +379,8 @@ def _parse_pairs(values, option):
         legacy, target = raw.split('=', 1)
         if not legacy or not target:
             raise ValueError(f"{option} expects LEGACY=TARGET, got {raw!r}")
+        if legacy in pairs:
+            raise ValueError(f"{option} specifies {legacy!r} more than once")
         pairs[legacy] = target
     return pairs
 
@@ -401,7 +403,8 @@ def import_legacy_cmd(path, season, dry_run, links, renames, no_verify, force):
     their existing password hashes, upserts every golf_* table by natural key,
     then re-scores the season with resolve_pick() inside a rolled-back SAVEPOINT
     and commits only if that oracle is clean. Exit 1 (nothing written) on an
-    unresolved username collision, a non-finalized season, or oracle diffs.
+    unresolved username collision or a non-finalized season; a real run also
+    exits 1 on oracle diffs (a --dry-run always rolls back and exits 0).
     """
     from games.golf.services.legacy_import import run_import
     try:
