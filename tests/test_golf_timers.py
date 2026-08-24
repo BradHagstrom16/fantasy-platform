@@ -105,6 +105,13 @@ def test_timer_is_enableable(timer):
 
 # ── The free-tier cadence (the API budget gate) ───────────────────────────
 
+def test_schedule_syncs_monday_morning_only():
+    """The schedule/purse sync is Monday-gated in cli.py; one 07:00 CT firing
+    is all it needs. Pinned exactly so an added firing (another API call)
+    fails here."""
+    assert _rules('golf-schedule.timer') == ['Mon *-*-* 07:00:00 America/Chicago']
+
+
 def test_live_reads_twice_a_day_during_play():
     """Noon + 4 PM CT, Thu–Sun. Each firing is one leaderboard call for the
     active tournament (off-week firings make no call)."""
@@ -132,9 +139,13 @@ def test_results_land_sunday_night_after_the_last_live_read():
 
 def test_field_syncs_tuesday_and_wednesday_only():
     """Field syncs are the calls that fire "Picks Are Open"; keeping them to
-    Tue/Wed matches both the free-tier gate in cli.py and the legacy cadence."""
-    for rule in _rules('golf-field.timer'):
-        assert rule.startswith('Tue,Wed '), rule
+    Tue/Wed (08:00 + 18:00 CT) matches both the free-tier gate in cli.py and
+    the legacy cadence. Pinned exactly so a third firing or a weekday slip
+    fails here, not just a non-Tue/Wed prefix."""
+    assert _rules('golf-field.timer') == [
+        'Tue,Wed *-*-* 08:00:00 America/Chicago',
+        'Tue,Wed *-*-* 18:00:00 America/Chicago',
+    ]
 
 
 def test_field_timer_is_not_persistent():
