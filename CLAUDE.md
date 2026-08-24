@@ -54,7 +54,12 @@ FLASK_APP=app.py venv/bin/flask golf sync-run --mode live-with-wd  # Same + forc
 FLASK_APP=app.py venv/bin/flask golf sync-run --mode results    # Finalize results + process picks (Sun night/Mon)
 FLASK_APP=app.py venv/bin/flask golf sync-run --mode remind     # Reminders (hourly; no API key; de-duped via last_reminder_type) = `flask golf remind`
 FLASK_APP=app.py venv/bin/flask golf refresh-live-penalties     # Re-derive major cut/DQ penalty flags (ADR-034)
+FLASK_APP=app.py venv/bin/flask golf import-legacy PATH --dry-run [--link L=P] [--rename L=N] [--force]  # Phase I: the retired standalone's season → golf_* tables + accounts (ADR-055); dry-run = full import + oracle, rolled back
+FLASK_APP=app.py venv/bin/flask golf verify-legacy [PATH]       # Read-only parity oracle: re-runs resolve_pick() in a rolled-back SAVEPOINT, exit 1 on any diff; PATH adds column fidelity vs the file
 # --mode all chains every mode (dev/manual only — refuses under ENVIRONMENT=production)
+# !! Never `seed-schedule 2026` AFTER the legacy import: it matches by (name, season) and three 2026 legacy names differ
+#    from TOURNAMENTS_2026 (Cognizant / Arnold Palmer / the Memorial) → three duplicate tournaments. Seed BEFORE (the
+#    import adopts the placeholders) or not at all. The oracle must never call process_tournament_picks (commits + mails).
 
 # CFB CLI
 FLASK_APP=app.py venv/bin/flask cfb sync --mode setup       # Create next week, import games, activate

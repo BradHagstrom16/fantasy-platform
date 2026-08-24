@@ -296,20 +296,22 @@ starts ~mid-Sep 2026 once CFB/Docket launch week settles.
 [--force]` + `flask golf verify-legacy [PATH]` over a new `games/golf/services/legacy_import.py` (the
 `seed_schedule` precedent, not the CFB JSON ledger — the schema is a 1:1 port). No migration.
 
-- [ ] Service + CLI: read-only sqlite open; natural-key upserts (never explicit ids); user matching by
+- [x] Service + CLI: read-only sqlite open; natural-key upserts (never explicit ids); user matching by
       folded email, collision → exit 1 before any write; attached users never modified; `GolfEnrollment
       (season_year=2026)` carries `total_points`/`has_paid`/`penalty_paid` but **not** `is_admin`;
       `recap_email_sent` forced True (weeks 1–7 are 0 in the legacy DB — `process_tournament_picks`
       would mail a January recap); result-status strings verbatim (Sony/Zurich casing anomalies).
-- [ ] Parity oracle: re-run `resolve_pick()` + `calculate_total_points()` over every 2026 pick inside a
+- [x] Parity oracle: re-run `resolve_pick()` + `calculate_total_points()` over every 2026 pick inside a
       SAVEPOINT that is always rolled back, diff the five pick fields + totals + the usage set against
       the legacy values; default-on in `import-legacy`, standalone as `verify-legacy`; never calls
-      `process_tournament_picks`.
-- [ ] Tests `tests/test_golf_legacy_import.py` (+ `_golf_legacy_fixtures.py` writing the legacy DDL):
+      `process_tournament_picks`. **Real-data result (ccc_local Postgres, 2026-08-24): 563 picks
+      re-scored, 40 overrides, 19 totals, usage set identical — 0 diffs.** The platform resolver
+      reproduces the standalone's whole season.
+- [x] Tests `tests/test_golf_legacy_import.py` (+ `_golf_legacy_fixtures.py` writing the legacy DDL):
       matching/collision/link/rename, hash carried verbatim + login, verbatim pick fields, placeholder
       adoption after `seed_schedule`, idempotent re-run, oracle zero-diff + perturbation cases,
       never-commits-or-emails.
-- [ ] ADR-055; `CLAUDE.md` Commands lines + "never `seed-schedule` 2026 after the import" (3 legacy
+- [x] ADR-055; `CLAUDE.md` Commands lines + "never `seed-schedule` 2026 after the import" (3 legacy
       names differ from `TOURNAMENTS_2026`).
 - [ ] Prod runbook: scp the archive DB to `/home/deploy/` (outside the checkout) → deploy → read-only
       row count (expect 0) → `--dry-run` (5 attach / 13 create / 1 collision / 0 diffs) → Brad resolves
@@ -481,6 +483,15 @@ Ordered by user impact.
   task schedule alone → timers retuned + `tests/test_golf_timers.py`. Three bugs fixed (ADR-033 copy,
   un-season-scoped reminder lookup, hardcoded subnav year). Legacy DB archived (sha256 above); Brad's
   four rulings recorded in Phase R. **Next: Phase I (import the 2026 season).**
+- **2026-08-24** — **Phase I code (`feat/golf-legacy-import`).** `flask golf import-legacy` /
+  `verify-legacy` over `games/golf/services/legacy_import.py`; ADR-055. Smoked against the REAL
+  archived file on `ccc_local` Postgres: dry-run blocked on the `brockhusk` collision with nothing
+  written; with `--link brockhusk=brockhusk` → 5 attach / 13 create / 1 link, 450 players / 32
+  tournaments / 3,732 field / 3,723 results / 19 enrollments / 562 usage / 563 picks, **oracle 0
+  diffs** (563 picks, 40 overrides, 19 totals, usage set identical); committed; `verify-legacy PATH`
+  clean (column fidelity + oracle); re-run → 0 created / 0 changed. +27 tests
+  (`tests/test_golf_legacy_import.py`). **Remaining: the prod runbook** (above) once the PR merges +
+  deploys — Brad resolves the collision and flips `SEASON_YEAR=2027`.
 
 ## Key reference sources
 
