@@ -350,3 +350,55 @@ Fix: Remove the unused import.
 `test_admin_override_requires_confirm_for_complete`: completed-tournament override previews first and commits only with confirm.
 
 `test_admin_override_rejects_used_or_non_field_player`: POST validation blocks invalid override submissions.
+
+---
+
+## 2026-08-24 addendum — legacy retirement parity audit
+
+The standalone app finished its 2026 season (32/32 events finalized, 19 members, 563 picks, 7 backup activations, 13 major-cut penalties, 40 admin overrides) and is retired; its final DB is archived (roadmap Phase R). This addendum is the feature-by-feature comparison of the two codebases taken *after* PRs 1–6, so the June findings above are settled and only the surfaces remain. Legend: ✅ parity · ◐ partial · ❌ missing · ⭐ platform is better.
+
+### Rules engine — ✅ parity (locked by ~150 tests)
+
+| Rule | Legacy | Platform |
+|---|---|---|
+| Primary + mandatory backup, one golfer per event, each golfer once per season (usage = active player only) | ✅ | ✅ |
+| Points = prize money; majors ×1.5; Zurich = full team payout (ADR-033; 2026 data confirms the full payout shipped) | ✅ | ✅ (two "team events half" template strings fixed 2026-08-24) |
+| WD matrix; $15 major cut/DQ side pot (ADR-034); tee-time deadline + 07:00 CT fallback; picks hidden until deadline; field ≥50 gate; amateurs excluded; locked 32-event schedule | ✅ | ✅ |
+| `is_major` provisioning | ❌ hand-set in SQLite | ⭐ `seed_schedule` from the locked list |
+| Season-scoped totals | ❌ `User.total_points` is all-time | ⭐ `GolfEnrollment.total_points` |
+
+### Sync, ops, email — ✅ parity (platform more automated)
+
+The real PythonAnywhere cadence (task list is in UTC; intent in CT): schedule Mon 07:00 · earnings 08:00 · field 09:00 + 18:00 (Tue/Wed) · field-check + **live 12:00** · **live 16:00** · **live-with-wd + results 20:00** · withdrawals 14:00 · reminders hourly. The README's "no live polling" was stale. Neither codebase enforces the free tier in code (`free_tier_blocked = set()` on both sides) — the schedule is the budget gate, now mirrored by the `golf-*` units and locked in `tests/test_golf_timers.py`. Only gap: the admin API-usage meter (calls / 250) — Phase U6.
+
+### Player surfaces — the gaps
+
+| Surface | Legacy | Platform |
+|---|---|---|
+| Standings | progress bar, pick CTA, results banner, medals, Season to Par, per-row pills (Backup ↳ replaces, Override, Penalty $15, Unpaid, projected-vs-banked), next-pick thread card during play, League Rules card, legend bar, mobile card list | ◐ progress bar, LIVE banner, CTA, cum. score, projected earnings, paid, prize pool — no pills / legend / rules card / next-pick thread / mobile cards |
+| Schedule | numbered rows, "Next pick" status, "Jump to this week" mobile anchor, mobile cards | ◐ stat blocks + table + per-row CTA |
+| Tournament detail | 3 states; Your Pick card; Penalties Assessed; "updates at 8 PM Central" + last-synced banner; competition ranking (shared ranks); "Didn't pick (N)"; stakes bands; legend | ◐ 4 stat blocks + picks table + badges; no shared-rank, no no-pick roster, no Your-Pick card |
+| Make pick | Tom Select w/ punctuation-normalized search, burn-% bar per option, two-way exclusion, "N available · M used", empty-field state | ◐ Tom Select, one-way exclusion only |
+| Member Scorecard `/member/<id>` | any member's week-by-week season, 7 tiles, idle-golfer muting, Used Golfers card, Commissioner's Ledger, member switcher, server-side pick secrecy | ◐ `my_picks` is self-only, 4 tiles, no used-golfers list |
+| Stats Hub `/stats` | Season Race SVG + "Play the season" replay, Your Scorecard, five superlatives, Form Guide, searchable Burn List, Still on the Board (`stats.py`, 642 lines, ~50 tests) | ❌ absent entirely |
+| Nav | Standings · Schedule · Results · Stats · My Scorecard (+ Admin); mobile navbar pins your season `$` | ◐ Standings · Schedule · My Picks (label now `{{ season_year }}`) |
+| Mobile | card list + table on every data page | ❌ tables only |
+| Auth / profile / errors | own login/register/change-password; mailto "forgot password" | ⭐ platform auth, avatars, phone, reset tokens |
+
+### Admin surfaces
+
+Dashboard / tournaments / users / payments / override / process-results — ✅ parity (override validation ⭐ stricter). Missing: confirm-before-reresolve gate on a complete event (deferred in PR 5 → U6), API-usage meter (U6). Reset-password and enrollment are ⭐ platform flows.
+
+### Neither app has
+
+Multi-season archive / champion record (the Phase I import makes it possible; surface = U4/U7) · a standings tiebreaker (both order by points only; the recap email and legacy tournament detail do shared ranks) · a payout structure (off-app) · lounge integration for Golf.
+
+### Bugs found and fixed 2026-08-24
+
+1. `join.html` + `make_pick.html` told players "team events earn half" — contradicted ADR-033 and the code.
+2. `reminders.get_upcoming_tournament_for_reminders()` had no `season_year` filter — one stale non-complete prior-season row would sort first and suppress every reminder (PR 4 scoped the four `sync.py` queries and missed this one).
+3. `base.html` hardcoded "Golf 2026" in the subnav label.
+
+### Latent items carried to Phase U (not bugs today)
+
+`clear_resolution` isn't season-scoped (`models.py:501-507`); 2026 result-status casing anomalies (`ACTIVE`/`CUT`/`between rounds`) are harmless to scoring but display code must expect them; `games/golf/static/` is declared by the blueprint but doesn't exist.

@@ -270,21 +270,100 @@ Files: `games/golf/models.py`, `games/golf/services/sync.py`, `games/golf/routes
 
 ---
 
-## Phase U — UI elevation to the DESIGN.md bar  *(mirrors CFB `cfb/launch-prep` sessions; multi-session)*
+## Phase R — Legacy retirement audit  *(2026-08-24; the standalone's 2026 season is over)*
 
-- [ ] Author `games/golf/DESIGN.md` (does not exist yet — only WC + CFB do): Golf palette
-      (Augusta green `#006747` + gold `#b8993e`), accent-rank, register, named primitives. Read
-      top-level `DESIGN.md` + this file together (the per-game hard rule).
-- [ ] Per-screen `impeccable` polish (index/standings, make-pick, tournament detail, my-picks, join,
-      admin cluster) + CCC email palette (retire the standalone green/gold email chrome).
+The parity audit that closed out the PythonAnywhere app: addendum in
+`docs/golf-pickem-platform-code-audit-2026-06-30.md` (§"2026-08-24 addendum"). Brad's rulings, binding:
+**(1)** import the full 2026 season into the `golf_*` tables as an archived season; **(2)** import the
+13 members without a platform account carrying their Werkzeug password hashes, attach the 5 email
+matches, flag the one username collision for Brad; joining 2027 stays self-serve; **(3)** stay on the
+FREE SlashGolf tier and keep the legacy cadence (three live reads a day during play); **(4)** Phase U
+starts ~mid-Sep 2026 once CFB/Docket launch week settles.
+
+- [x] Legacy DB archived: `~/Golf_Pick_Em/archive/golf_pickem_2026_final.db` (+ a gitignored copy in
+      `instance/`), sha256 `09f397c6eafa5989f3130b6f4f59e15f93621a6ce195f59608fa4ec584199864`, matching
+      the PythonAnywhere original; `env_config.sh` (the API key) beside it, 0400. Scheduled-task
+      cadence recorded; web app left to expire.
+- [x] Audit bugs fixed: "team events half" copy (ADR-033), the un-season-scoped reminder lookup, the
+      hardcoded "Golf 2026" subnav label.
+- [x] Timers retuned to the free-tier cadence + locked (`tests/test_golf_timers.py`): live noon + 4 PM,
+      new `golf-live-wd` at 8 PM (`live-with-wd`), results Sun 20:30 / Mon 08:00 / Mon 18:00 — ~115
+      calls/mo of 250.
+
+## Phase I — Import the 2026 season  *(next; `feat/golf-legacy-import`)*
+
+`flask golf import-legacy PATH [--season 2026] [--dry-run] [--link L=P]... [--rename L=N]... [--no-verify]
+[--force]` + `flask golf verify-legacy [PATH]` over a new `games/golf/services/legacy_import.py` (the
+`seed_schedule` precedent, not the CFB JSON ledger — the schema is a 1:1 port). No migration.
+
+- [ ] Service + CLI: read-only sqlite open; natural-key upserts (never explicit ids); user matching by
+      folded email, collision → exit 1 before any write; attached users never modified; `GolfEnrollment
+      (season_year=2026)` carries `total_points`/`has_paid`/`penalty_paid` but **not** `is_admin`;
+      `recap_email_sent` forced True (weeks 1–7 are 0 in the legacy DB — `process_tournament_picks`
+      would mail a January recap); result-status strings verbatim (Sony/Zurich casing anomalies).
+- [ ] Parity oracle: re-run `resolve_pick()` + `calculate_total_points()` over every 2026 pick inside a
+      SAVEPOINT that is always rolled back, diff the five pick fields + totals + the usage set against
+      the legacy values; default-on in `import-legacy`, standalone as `verify-legacy`; never calls
+      `process_tournament_picks`.
+- [ ] Tests `tests/test_golf_legacy_import.py` (+ `_golf_legacy_fixtures.py` writing the legacy DDL):
+      matching/collision/link/rename, hash carried verbatim + login, verbatim pick fields, placeholder
+      adoption after `seed_schedule`, idempotent re-run, oracle zero-diff + perturbation cases,
+      never-commits-or-emails.
+- [ ] ADR-055; `CLAUDE.md` Commands lines + "never `seed-schedule` 2026 after the import" (3 legacy
+      names differ from `TOURNAMENTS_2026`).
+- [ ] Prod runbook: scp the archive DB to `/home/deploy/` (outside the checkout) → deploy → read-only
+      row count (expect 0) → `--dry-run` (5 attach / 13 create / 1 collision / 0 diffs) → Brad resolves
+      `brockhusk` (`--link` or `--rename`) → real run → `verify-legacy` → re-run for 0 created / 0
+      changed → `SEASON_YEAR=2027` in `.env` + restart (so 19 imported members don't get a navbar link
+      into a `coming_soon` room) → one imported member logs in with their old password.
+
+## Phase U — UI elevation to the DESIGN.md bar  *(starts ~mid-Sep 2026; one session per cluster)*
+
+The 2026-08-24 audit found the rules engine, sync and email at parity but the **surfaces** behind the
+legacy app. Every cluster reads top-level `DESIGN.md` + `games/golf/DESIGN.md`; the legacy
+`Golf_Pick_Em/DESIGN.md` ("The Greenside Ledger") is reference, not doctrine — the room is CCC-branded.
+Ordered by user impact.
+
+- [ ] **U0** Author `games/golf/DESIGN.md` (does not exist yet): Golf palette (Augusta green `#006747` +
+      gold `#b8993e`), accent-rank, register, named primitives incl. the pill vocabulary (Backup ↳
+      replaces, Override 👑, Penalty $15, Unpaid, Projected/Banked, Used). Subnav pills **Standings ·
+      Schedule · Results · Stats · My Scorecard · Admin**.
+- [ ] **U1 Standings** — pills, legend bar, League Rules card, next-pick thread card during live play,
+      shared-rank ties (the platform's competition-rank convention), mobile card rendering,
+      projected-vs-banked.
+- [ ] **U2 Make pick** — burn-% per option (port `stats.remaining_pct_map`), punctuation-normalized
+      search (`jj` → `J.J.`), two-way mutual exclusion, "N available · M used", empty-field state; CCC
+      email chrome for the four emails (retire the standalone green/gold).
+- [ ] **U3 Tournament detail** — Your Pick card, Penalties Assessed card, "updates at noon, 4 PM and
+      8 PM Central · last synced" banner, competition ranking, "Didn't pick (N)" `<details>`, team/major
+      stakes bands, legend, mobile cards.
+- [ ] **U4 Member Scorecard** — `/golf/member/<id>` replacing self-only `my_picks` (keep `/golf/my-picks`
+      as the redirect alias): tiles (Rank ordinal, Total, In the Money, Golfers Used, Overrides, Best
+      Pick, Missed Cuts at Majors + pot status), idle-golfer muting, Used Golfers card, Commissioner's
+      Ledger, member switcher, server-side pick secrecy; **season selector** (2026 archive ↔ current).
+- [ ] **U5 Stats Hub** — port `Golf_Pick_Em/stats.py` → `games/golf/services/stats.py` (+ its ~50
+      tests): Season Race SVG (server-side geometry) + "Play the season" replay JS
+      (`games/golf/static/js/season-replay.js`, `burn-list.js` — the blueprint's `static/` dir doesn't
+      exist yet), superlatives, Form Guide, Burn List, Still on the Board; reduced-motion + SR mirror
+      table preserved; season-aware so 2026 is browsable.
+- [ ] **U6 Admin** — API-usage meter (parse `api_calls.log` against the 250 budget),
+      confirm-before-reresolve gate on override (deferred from PR 5), admin tables on `.table-golf`.
+- [ ] **U7 Season archive / champion** — 2026 champion + final board; lounge integration
+      (`lounge_state`/`lounge_context`) as a separate decision.
+- [ ] Bundled: `lazy='dynamic'`/`backref` cleanup; season-scope `clear_resolution`
+      (`models.py:501-507`); 2026 result-status casing in display code.
 
 ## Phase L — Launch
 
+- [ ] `TOURNAMENTS_2027` in `constants.py` (+ majors/team flags) and a 2027 `SEASON_CUTOFF_DATE` —
+      `seed_schedule` raises for any other year until then.
 - [ ] Flip `games/registry.py` golf `status` `'coming_soon'` → `'open'` (+ `launch_label`). For
       pre-launch local testing use `git update-index --skip-worktree games/registry.py` (never commit
       the flip); tests use `set_status`.
-- [ ] Set `SLASHGOLF_API_KEY` in prod `.env`; `flask golf seed-schedule` for the season on prod;
-      enable + start the `golf-*` timers on the droplet (`systemd-analyze calendar` to validate strings).
+- [ ] Prod `.env`: `SLASHGOLF_API_KEY` (from the archived `env_config.sh`), `SYNC_MODE=free`,
+      `SEASON_YEAR=2027` (set at Phase I). `flask golf seed-schedule` for 2027 on prod.
+- [ ] Enable + start the six `golf-*` timers (`systemd-analyze calendar` each); confirm the monthly
+      call estimate stays ≤ 250 against the U6 meter.
 - [ ] Production verification pass (mirror `docs/production-launch-test-script.md`): seed → picks →
       live sync → results → penalty → standings.
 
@@ -393,11 +472,22 @@ Files: `games/golf/models.py`, `games/golf/services/sync.py`, `games/golf/routes
   **Golf PRs 1-6 complete — the backend is hardened to standalone parity + platform conventions.
   Next: Phase U (UI elevation — author `games/golf/DESIGN.md` first), deferred to near the
   Jan 2027 launch.**
+- **2026-08-24** — **Phase R (legacy retirement audit).** The standalone's 2026 season ended
+  (32/32 finalized, 19 members, 563 picks, 13 major-cut penalties); full feature inventory of both
+  codebases → audit addendum. Rules engine / sync / email confirmed at parity; the surfaces are not
+  (Stats Hub absent, Member Scorecard self-only, no burn-% picker, no mobile cards, no shared-rank
+  detail) → Phase U rewritten above. Discovered the real PythonAnywhere cadence was three live reads
+  a day (the README's "no live polling" was stale) and that the free-tier budget is gated by the
+  task schedule alone → timers retuned + `tests/test_golf_timers.py`. Three bugs fixed (ADR-033 copy,
+  un-season-scoped reminder lookup, hardcoded subnav year). Legacy DB archived (sha256 above); Brad's
+  four rulings recorded in Phase R. **Next: Phase I (import the 2026 season).**
 
 ## Key reference sources
 
-- Audit: `docs/golf-pickem-platform-code-audit-2026-06-30.md`
-- Standalone port sources: `/Users/bhagstrom/Golf_Pick_Em/{models.py, sync_api.py, app.py, send_reminders.py, import_tournaments.py, force_schedule_sync.py, stats.py}`
+- Audit: `docs/golf-pickem-platform-code-audit-2026-06-30.md` (+ its 2026-08-24 addendum)
+- Legacy 2026 season data (the parity-oracle answer key): `~/Golf_Pick_Em/archive/golf_pickem_2026_final.db`
+  (read-only, gitignored; copy in `instance/`); sha256 `09f397c6…9864`
+- Standalone port sources (read-only reference, retired 2026-08-24): `/Users/bhagstrom/Golf_Pick_Em/{models.py, sync_api.py, app.py, send_reminders.py, import_tournaments.py, force_schedule_sync.py, stats.py, static/js/season-replay.js, static/js/burn-list.js}`
 - Platform exemplars to mirror: `games/worldcup/services/notifications.py` (enrollment-scoped mail),
   `games/worldcup/templates/worldcup/leaderboard.html` (avatars), `deploy/cfb-*.{timer,service}`,
   `config.py` (`ODDS_API_KEY`/`FOOTBALL_DATA_API_KEY` pattern), `tests/test_cfb_automation.py`.

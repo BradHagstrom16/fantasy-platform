@@ -830,8 +830,15 @@ def get_upcoming_tournament_for_reminders():
     now = get_current_time()
     max_future = now + timedelta(hours=24, minutes=TOLERANCE_MINUTES)
 
-    # Find tournaments with a future deadline, regardless of upcoming/active status
+    # Find tournaments with a future deadline, regardless of upcoming/active status.
+    # Season-scoped like the sync.py automation queries (PR #106): this takes the
+    # EARLIEST-deadline row and bails if that deadline has passed, so one stale
+    # non-complete row from a prior season (e.g. an archived season imported
+    # beside the live one) would otherwise sort first and suppress every
+    # reminder for the current season.
+    season_year = current_app.config['SEASON_YEAR']
     tournament = GolfTournament.query.filter(
+        GolfTournament.season_year == season_year,
         GolfTournament.status != 'complete',
         GolfTournament.pick_deadline.isnot(None)
     ).order_by(GolfTournament.pick_deadline).first()

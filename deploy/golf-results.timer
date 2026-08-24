@@ -1,14 +1,17 @@
 # Runs the Golf Pick 'Em results sync Sunday night + Monday CT — fetch actual
 # earnings once the API marks the tournament Complete/Official, resolve every
-# pick, and send the results recap. Two Monday firings catch a major whose
+# pick, and send the results recap. Sunday fires at 20:30, right after the
+# 20:00 golf-live-wd read, so the recap email lands Sunday night the way the
+# retired PythonAnywhere app's did. Two Monday firings catch a major whose
 # official results post late Monday. Only processes tournaments the API has
-# confirmed complete; earlier runs are cheap no-ops.
+# confirmed complete; earlier runs are cheap no-ops. Locked by
+# tests/test_golf_timers.py.
 [Unit]
-Description=Run Golf Pick 'Em results sync (Sun night + Mon CT)
+Description=Run Golf Pick 'Em results sync (Sun 20:30 + Mon CT)
 
 [Timer]
 # Timezone is INLINE in OnCalendar — no TimeZone= directive exists for timers.
-OnCalendar=Sun *-*-* 22:00:00 America/Chicago
+OnCalendar=Sun *-*-* 20:30:00 America/Chicago
 OnCalendar=Mon *-*-* 08:00:00 America/Chicago
 OnCalendar=Mon *-*-* 18:00:00 America/Chicago
 Persistent=true
