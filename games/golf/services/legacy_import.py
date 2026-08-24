@@ -633,8 +633,15 @@ def verify_scoring(season, legacy_path=None):
     if legacy_path:
         with closing(open_legacy(legacy_path)) as conn:
             snapshot = load_snapshot(conn, season, legacy_path)
-        _, fidelity_diffs = import_season(
-            snapshot, resolve_users_readonly(snapshot.users), season, check_only=True)
+        resolved = resolve_users_readonly(snapshot.users)
+        # A member the import attached to a differently-named account (e.g.
+        # --link A=B where B's email/username match nothing in the file) can't
+        # be re-resolved here without the import mapping. Flag it loudly instead
+        # of silently skipping its enrollment/usage/pick fidelity checks.
+        for u in snapshot.users:
+            if u['id'] not in resolved:
+                diffs.append(Diff('user', u['username'], '<account>', 'present', 'unresolved'))
+        _, fidelity_diffs = import_season(snapshot, resolved, season, check_only=True)
         diffs.extend(fidelity_diffs)
         fidelity = True
 

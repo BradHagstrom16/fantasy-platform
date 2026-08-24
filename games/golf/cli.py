@@ -401,15 +401,19 @@ def import_legacy_cmd(path, season, dry_run, links, renames, no_verify, force):
 
     Matches legacy members to platform accounts by email, creates the rest with
     their existing password hashes, upserts every golf_* table by natural key,
-    then re-scores the season with resolve_pick() inside a rolled-back SAVEPOINT
-    and commits only if that oracle is clean. Exit 1 (nothing written) on an
-    unresolved username collision or a non-finalized season; a real run also
-    exits 1 on oracle diffs (a --dry-run always rolls back and exits 0).
+    then, unless --no-verify is set, re-scores the season with resolve_pick()
+    inside a rolled-back SAVEPOINT and commits only if that oracle is clean.
+    Exit 1 (nothing written) on an unresolved username collision or a
+    non-finalized season; a real run exits 1 on oracle diffs unless --force is
+    set. A --dry-run always rolls back and exits 0.
     """
     from games.golf.services.legacy_import import run_import
     try:
         link_map = _parse_pairs(links, '--link')
         rename_map = _parse_pairs(renames, '--rename')
+        both = sorted(set(link_map) & set(rename_map))
+        if both:
+            raise ValueError(f"{', '.join(both)} given to both --link and --rename")
     except ValueError as exc:
         click.echo(f"Error: {exc}")
         sys.exit(1)

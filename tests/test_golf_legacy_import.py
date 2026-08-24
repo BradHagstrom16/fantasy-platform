@@ -513,6 +513,32 @@ def test_fidelity_reports_missing_player_instead_of_raising(app, tmp_path):
     assert 'golf_pick' in kinds          # the guarded pick loop reports it, never KeyErrors
 
 
+def test_verify_flags_a_linked_member_it_cannot_resolve(app, tmp_path):
+    """verify-legacy PATH re-resolves fidelity users by email/username only. A
+    member the import linked to a differently-named account (different email
+    too) can't be re-resolved, so the fidelity pass emits an identity diff
+    rather than silently skip that member — otherwise it reports a false zero."""
+    _seed_platform_users()               # caseyplat + brock
+    zoe = User(username='zoe', email='zoe@platform.test')   # matches no legacy row
+    zoe.set_password(PLATFORM_PW)
+    db.session.add(zoe)
+    db.session.commit()
+
+    data = default_dataset()
+    data['user'].append({'id': 9, 'username': 'zed', 'email': 'zed@legacy.test',
+                         'password_hash': data['user'][2]['password_hash'], 'display_name': 'Zed',
+                         'total_points': 0, 'is_admin': 0, 'has_paid': 0,
+                         'created_at': '2026-01-08 09:00:00.000000', 'penalty_paid': 0})
+    path = _legacy(tmp_path, data)
+
+    report = _import(path, links={'brock': 'brock', 'zed': 'zoe'})   # zed -> zoe (cross-name)
+    assert report.outcome == 'committed', report.render()
+
+    parity = verify_scoring(SEASON, legacy_path=str(path))
+
+    assert any(d.kind == 'user' and d.key == 'zed' for d in parity.diffs)
+
+
 # --- CLI -------------------------------------------------------------------
 
 def test_import_legacy_cli_dry_run_and_collision_exit_codes(app, tmp_path):
@@ -542,6 +568,21 @@ def test_import_legacy_cli_rejects_a_repeated_mapping_key(app, tmp_path):
 
     assert dup.exit_code == 1, dup.output
     assert 'more than once' in dup.output
+    assert db.session.scalar(select(func.count()).select_from(GolfPick)) == 0
+
+
+def test_import_legacy_cli_rejects_a_key_in_both_link_and_rename(app, tmp_path):
+    """A legacy key given to BOTH --link and --rename is ambiguous intent —
+    abort before any write rather than let --link silently take precedence."""
+    _seed_platform_users()
+    path = str(_legacy(tmp_path))
+    runner = app.test_cli_runner()
+
+    clash = runner.invoke(args=['golf', 'import-legacy', path,
+                                '--link', 'brock=brock', '--rename', 'brock=brock_golf'])
+
+    assert clash.exit_code == 1, clash.output
+    assert 'both --link and --rename' in clash.output
     assert db.session.scalar(select(func.count()).select_from(GolfPick)) == 0
 
 
