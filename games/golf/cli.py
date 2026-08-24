@@ -371,6 +371,67 @@ def remind_cmd():
     run_reminder_check()
 
 
+def _parse_pairs(values, option):
+    pairs = {}
+    for raw in values:
+        if '=' not in raw:
+            raise ValueError(f"{option} expects LEGACY=TARGET, got {raw!r}")
+        legacy, target = raw.split('=', 1)
+        if not legacy or not target:
+            raise ValueError(f"{option} expects LEGACY=TARGET, got {raw!r}")
+        pairs[legacy] = target
+    return pairs
+
+
+@golf_cli.command('import-legacy')
+@click.argument('path', type=click.Path(exists=True, dir_okay=False))
+@click.option('--season', type=int, default=2026, show_default=True,
+              help='Season to import from the file (the standalone only ever held 2026).')
+@click.option('--dry-run', is_flag=True, help='Run the whole import + oracle, then roll everything back.')
+@click.option('--link', 'links', multiple=True, metavar='LEGACY=PLATFORM',
+              help='Attach a colliding legacy username to an existing platform username (same person).')
+@click.option('--rename', 'renames', multiple=True, metavar='LEGACY=NEW',
+              help='Create a colliding legacy username under a new platform username.')
+@click.option('--no-verify', is_flag=True, help='Skip the parity oracle.')
+@click.option('--force', is_flag=True, help='Commit even if the oracle reports diffs.')
+def import_legacy_cmd(path, season, dry_run, links, renames, no_verify, force):
+    """Import the retired standalone app's season from its SQLite file (Phase I, ADR-055).
+
+    Matches legacy members to platform accounts by email, creates the rest with
+    their existing password hashes, upserts every golf_* table by natural key,
+    then re-scores the season with resolve_pick() inside a rolled-back SAVEPOINT
+    and commits only if that oracle is clean. Exit 1 (nothing written) on an
+    unresolved username collision, a non-finalized season, or oracle diffs.
+    """
+    from games.golf.services.legacy_import import run_import
+    try:
+        link_map = _parse_pairs(links, '--link')
+        rename_map = _parse_pairs(renames, '--rename')
+    except ValueError as exc:
+        click.echo(f"Error: {exc}")
+        sys.exit(1)
+    report = run_import(path, season=season, dry_run=dry_run, links=link_map,
+                        renames=rename_map, verify=not no_verify, force=force)
+    click.echo(report.render())
+    sys.exit(0 if report.outcome in ('dry-run', 'committed') else 1)
+
+
+@golf_cli.command('verify-legacy')
+@click.argument('path', required=False, type=click.Path(exists=True, dir_okay=False))
+@click.option('--season', type=int, default=2026, show_default=True)
+def verify_legacy_cmd(path, season):
+    """Read-only parity oracle over an imported season (exit 1 on any diff).
+
+    Re-runs resolve_pick() + calculate_total_points() inside a SAVEPOINT that is
+    always rolled back and diffs the result against the stored rows. With PATH,
+    every stored column is also compared against the legacy file first.
+    """
+    from games.golf.services.legacy_import import verify_scoring
+    parity = verify_scoring(season, legacy_path=path)
+    click.echo(parity.render())
+    sys.exit(0 if parity.diff_count == 0 else 1)
+
+
 def register_golf_cli(app):
     """Register golf CLI commands with the Flask app."""
     app.cli.add_command(golf_cli)
