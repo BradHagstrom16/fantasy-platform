@@ -207,6 +207,38 @@ def test_get_used_player_ids_returns_current_season_only(app):
     assert enrollment.get_used_player_ids() == [this_yr.id]
 
 
+def test_reminder_lookup_ignores_prior_season(app):
+    """The reminder lookup takes the earliest-deadline non-complete tournament
+    and returns (None, None) if that deadline has passed. Without a season
+    filter, one stale non-complete row from a PRIOR season (a skipped event,
+    or an archived season imported alongside the live one) sorts first
+    forever and silently suppresses every reminder for the current season.
+    PR #106 season-scoped the sync.py automation queries; this is the one
+    query it missed."""
+    from games.golf.services.reminders import get_upcoming_tournament_for_reminders
+    now_ct = datetime.now(GOLF_LEAGUE_TZ)
+    stale = (now_ct - timedelta(days=200)).replace(tzinfo=None)
+    _make_tournament(name='Stale Prior Season', status='upcoming',
+                     season_year=SEASON - 1, start_date=stale, end_date=stale,
+                     pick_deadline=stale)
+    current = _make_reminder_tournament(hours_to_deadline=12, name='Live Season')
+
+    with patch('games.golf.services.reminders.is_field_ready', return_value=True):
+        tournament, deadline = get_upcoming_tournament_for_reminders()
+
+    assert tournament is not None and tournament.id == current.id
+    assert deadline is not None
+
+
+def test_golf_subnav_label_reads_the_configured_season(app):
+    """The subnav label must follow SEASON_YEAR, not a literal year — a
+    hardcoded '2026' would read wrong the day the 2027 season is configured."""
+    app.config['SEASON_YEAR'] = 2031
+    html = app.test_client().get('/golf/').get_data(as_text=True)
+    assert 'Golf 2031' in html
+    assert 'Golf 2026' not in html
+
+
 # ── Reminder de-dup (audit §6 HIGH) ──────────────────────────────────────────
 
 @patch('games.golf.services.reminders.get_field_count', return_value=50)
