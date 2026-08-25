@@ -230,6 +230,11 @@
                 </div>
             {% endif %}
 
+            {# Settle the Tab: enrolled + unpaid only (gate in the context
+               processor). Sits under the weekly call, never above it: the
+               pick stays the page's center of gravity (DESIGN.md §7.1). #}
+            {% with eyebrow_class='cfb-eyebrow' %}{% include '_settle_tab.html' %}{% endwith %}
+
             {# Standings Table #}
             <div class="card mb-4 animate-in stagger-3">
                 <div class="card-header">

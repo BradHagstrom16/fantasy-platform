@@ -45,6 +45,9 @@
         </div>
     </div>
 
+    {# Settle the Tab: enrolled + unpaid only (gate in the context processor). #}
+    {% with eyebrow_class='cfb-eyebrow' %}{% include '_settle_tab.html' %}{% endwith %}
+
     {# Season record - one editorial line, not a stat grid (the four-up
        hero-metric template is a platform absolute ban). Numbers carry Teko
        weight; survived/lost carry survivor-state color WITH a label. #}

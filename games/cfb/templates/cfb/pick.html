@@ -228,6 +228,10 @@
         </form>
         {% endif %}
 
+        {# Settle the Tab: bottom of the column so it never competes with
+           the pick (enrolled + unpaid only; gate in the context processor). #}
+        {% with eyebrow_class='cfb-eyebrow' %}{% include '_settle_tab.html' %}{% endwith %}
+
     </div>
 </div>
 </div>

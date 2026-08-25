@@ -38,6 +38,7 @@ from games.cfb.services.game_logic import (
     process_week_results,
 )
 from games.cfb.services.history import get_season_2025
+from games.cfb.services.payment import payment_nudge_for
 from games.cfb.services.score_fetcher import ScoreFetcher
 from games.cfb.utils import (
     deadline_has_passed,
@@ -123,6 +124,11 @@ def inject_cfb_globals():
         'cfb_season_year': season_year,
         'cfb_entry_fee': entry_fee,
         'cfb_enrollment': cfb_enrollment,
+        # "Settle the Tab": available to every CFB template but only renders
+        # where templates/_settle_tab.html is included (index, pick, my-picks).
+        # No extra query — cfb_enrollment is already in hand.
+        'payment_nudge': payment_nudge_for(
+            cfb_enrollment, getattr(current_user, 'is_admin', False)),
         'cfb_current_time': get_current_time(),
         'cfb_pick_target': cfb_pick_target,
         **helpers,

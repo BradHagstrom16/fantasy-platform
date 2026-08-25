@@ -71,6 +71,14 @@ class Config:
     # World Cup Fantasy Pool — football-data.org sync
     FOOTBALL_DATA_API_KEY = os.environ.get('FOOTBALL_DATA_API_KEY', '')
 
+    # Member payment rails (utils/payment.py::payment_rails) — where the
+    # "Settle the Tab" nudge + the picks-open emails send a member's buy-in.
+    # Defaults ARE the live values (already public in
+    # games/worldcup/constants.py) so launch needs no .env edit; blank either
+    # one to hide every nudge. The frozen World Cup keeps its own constants.
+    PAYMENT_VENMO_HANDLE = os.environ.get('PAYMENT_VENMO_HANDLE', 'Bradley-Hagstrom')
+    PAYMENT_ZELLE_PHONE = os.environ.get('PAYMENT_ZELLE_PHONE', '(630) 408-3424')
+
     # Rate limiting (Flask-Limiter reads this at init_app; extensions.py
     # deliberately passes no storage_uri so this key stays authoritative).
     # memory:// is correct for single-process dev; production overrides below.

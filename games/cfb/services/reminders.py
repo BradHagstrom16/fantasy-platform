@@ -33,6 +33,7 @@ from games.cfb.models import (
     CfbWeek,
     CfbWeekOutcome,
 )
+from games.cfb.services.payment import payment_nudge_for
 from games.cfb.utils import (
     get_current_time,
     get_week_display_name,
@@ -435,6 +436,30 @@ Good luck!
 # PICKS OPEN ANNOUNCEMENT EMAIL
 # ============================================================================
 
+def _picks_open_tab_lines(nudge) -> tuple[str, str]:
+    """The "Settle the tab" paragraph pair for the picks-open email, or two
+    empty strings when the member owes nothing (paid, or the Commish)."""
+    if not nudge:
+        return '', ''
+    c = CFB_EMAIL
+    plain = (
+        f"Settle the tab: the ${nudge['entry_fee']} entry is due. "
+        f"Pay on Venmo (amount and your name filled in): {nudge['venmo_url']}\n"
+        f"Or Zelle {nudge['zelle_phone']} — put your name in the memo.\n\n"
+    )
+    html = (
+        f'<p style="margin: 24px 0 0 0; padding-top: 16px; border-top: 1px '
+        f'solid #e5e7eb; font-size: 14px; line-height: 1.5; color: '
+        f'{c["text_secondary"]};"><strong style="color: {c["text_primary"]};">'
+        f'Settle the tab.</strong> The ${nudge["entry_fee"]} entry is due. '
+        f'<a href="{escape(nudge["venmo_url"])}" style="color: {c["primary"]}; '
+        f'font-weight: 600;">Pay on Venmo</a> (amount and your name filled in), '
+        f'or Zelle <strong style="color: {c["text_primary"]};">'
+        f'{escape(nudge["zelle_phone"])}</strong> — put your name in the memo.</p>'
+    )
+    return plain, html
+
+
 def send_picks_open_email(week_id: int) -> int:
     """Announce that picks are open to EVERY enrolled player for the season.
 
@@ -472,6 +497,13 @@ def send_picks_open_email(week_id: int) -> int:
             continue
         display_name = enrollment.get_display_name()
 
+        # "Settle the tab" rides the season-open note for anyone who still
+        # owes the buy-in (gate: games/cfb/services/payment.py — unpaid
+        # only, never the Commish). A text link, not a second button: "Make
+        # Your Pick" stays the CTA.
+        tab_plain, tab_html = _picks_open_tab_lines(
+            payment_nudge_for(enrollment, bool(user.is_admin)))
+
         plain = (
             f"Hi {display_name},\n\n"
             f"Picks are open for {week_name}. The lines are set — get your "
@@ -480,6 +512,7 @@ def send_picks_open_email(week_id: int) -> int:
             f"Make your pick: {pick_url}\n\n"
             f"You're picking a team to win outright (not against the spread), "
             f"and each team can be used only once all season.\n\n"
+            f"{tab_plain}"
             f"Good luck,\nThe Corrupt Commish Club\n"
         )
         content = (
@@ -494,6 +527,7 @@ def send_picks_open_email(week_id: int) -> int:
             f'<p style="margin: 16px 0 0 0; font-size: 13px; color: '
             f'{CFB_EMAIL["text_muted"]}; text-align: center;">Pick a team to '
             f'win outright — each team can be used once all season.</p>'
+            f'{tab_html}'
         )
         html = _cfb_html_wrapper(content, season_year)
 

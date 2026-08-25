@@ -27,6 +27,7 @@ import logging
 from flask import current_app
 from markupsafe import Markup
 
+from games.docket.services.payment import payment_nudge_for
 from utils.email import send_platform_email
 
 logger = logging.getLogger(__name__)
@@ -182,27 +183,47 @@ def notify_redesignation(week, new_game, old_game, users):
     return send_each([(u, None) for u in users], subject, build)
 
 
-def notify_picks_open(week, users):
+def notify_picks_open(week, recipients):
     """Tell the roster that picks are open for a freshly imported week.
 
     The season-open announcement (not a deadline reminder): sent once per week,
     latched by the import run on ``DocketWeek.picks_open_notified``, to every
-    roster member with the sheet link. Returns how many messages were accepted.
+    roster member with the sheet link. ``recipients`` are ``(user,
+    enrollment)`` pairs: a member who still owes the buy-in also gets the
+    "Settle the tab" paragraph (gate: services/payment.py — unpaid only,
+    never the Commish; ``None`` for the enrollment means no tab). Returns how
+    many messages were accepted.
     """
     subject = f'Picks Are Open: The Docket — Week {week.week_number}'
     link = sheet_url()
 
-    def build(user, _context):
-        return wrap_email([
+    def build(user, enrollment):
+        plain_lines = [
             f'Picks are open for Week {week.week_number} of The Docket.',
             'The board is set — make your picks before the docket closes.',
             f'Your sheet: {link}',
-        ], [
+        ]
+        html_lines = [
             Markup('Picks are open for <strong>Week {}</strong> of The '
                    'Docket.').format(week.week_number),
             Markup('The board is set — make your picks before the docket '
                    'closes.'),
             Markup('Your sheet: {}').format(link),
-        ])
+        ]
+        nudge = payment_nudge_for(enrollment, bool(user.is_admin))
+        if nudge:
+            plain_lines.append(
+                f'Settle the tab: the ${nudge["entry_fee"]} entry is due. '
+                f'Pay on Venmo (amount and your name filled in): '
+                f'{nudge["venmo_url"]}\n'
+                f'Or Zelle {nudge["zelle_phone"]} — put your name in the memo.')
+            html_lines.append(
+                Markup('<strong>Settle the tab.</strong> The ${} entry is due. '
+                       '<a href="{}">Pay on Venmo</a> (amount and your name '
+                       'filled in), or Zelle <strong>{}</strong> — put your '
+                       'name in the memo.').format(
+                           nudge['entry_fee'], nudge['venmo_url'],
+                           nudge['zelle_phone']))
+        return wrap_email(plain_lines, html_lines)
 
-    return send_each([(u, None) for u in users], subject, build)
+    return send_each(recipients, subject, build)

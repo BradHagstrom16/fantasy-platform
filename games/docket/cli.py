@@ -94,9 +94,11 @@ Every call logs the account's remaining credits via utils/odds_api.py.
 import click
 from flask.cli import AppGroup
 from sqlalchemy import func, select
+from sqlalchemy.orm import joinedload
 
 from extensions import db
 from games.docket.models import (
+    DocketEnrollment,
     DocketGame,
     DocketPick,
     DocketWeek,
@@ -123,7 +125,6 @@ from games.docket.services.tiebreaker_rule import (
 )
 from games.docket.services.weeks import SEASON_YEAR, TOTAL_WEEKS, week_number_for
 from games.docket.utils import now_utc, to_naive_utc
-from models import User
 
 docket_cli = AppGroup('docket', help="The Docket (NFL+CFB pick'em) commands.")
 
@@ -275,9 +276,15 @@ def _announce_picks_open(week, summary):
         select(DocketGame.id).filter_by(week_id=week.id).limit(1)) is not None
     if not has_games:
         return
-    users = [u for u in (db.session.get(User, uid)
-                         for uid in roster_user_ids()) if u is not None]
-    if notify_picks_open(week, users) > 0:
+    # (user, enrollment) pairs: the enrollment is what lets the announcement
+    # carry the "Settle the tab" paragraph to unpaid members only.
+    enrollments = db.session.scalars(
+        select(DocketEnrollment)
+        .filter_by(season_year=SEASON_YEAR)
+        .options(joinedload(DocketEnrollment.user))
+        .order_by(DocketEnrollment.user_id)).all()
+    recipients = [(e.user, e) for e in enrollments if e.user is not None]
+    if notify_picks_open(week, recipients) > 0:
         week.picks_open_notified = True
         db.session.commit()
 

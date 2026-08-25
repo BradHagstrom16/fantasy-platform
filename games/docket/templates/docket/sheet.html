@@ -45,6 +45,12 @@ the finish review, the verdict, and DESIGN.md.
 </div>
 
 <div class="container docket-sheet-page">
+    {# Settle the Tab: enrolled + unpaid only (gate in the context
+       processor). Above the week branches on purpose: it shows in the
+       pre-season "awaiting the docket" state, which is when a new member is
+       primed to pay. #}
+    {% with eyebrow_class='docket-eyebrow' %}{% include '_settle_tab.html' %}{% endwith %}
+
     {% if week is none %}
     <div class="docket-empty card border-0 animate-in">
         <div class="card-body">

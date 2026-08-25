@@ -529,6 +529,10 @@ Platform `.game-subnav` shape: background `#0a080f`, `--subnav-accent: #C5050C`,
 
 The standings row carries a structural "You" tag plus a crimson tint (`rgba(197,5,12,.12)`) — identity never rests on tint alone, and the tint-only convention (no side-stripe) is the settled platform pattern for current-user rows.
 
+#### Settle the Tab — `.settle-tab` (platform partial `templates/_settle_tab.html`)
+
+The how-to-pay card for an enrolled, unpaid member (gate: `games/cfb/services/payment.py`, ADR-056). A platform primitive wearing this room's `.card` skin: gold top rule (money = CCC gold, never crimson — a friendly ask, not an alarm), the room's `.cfb-eyebrow` passed in by the include, `.btn-game` (crimson = the primary action, §6.5) for the Venmo link with the amount and memo pre-filled, and the copyable Zelle number. Bill layout — the ask left, the rails right, stacking on a phone. Placement follows §7.1's one center of gravity: under the weekly call on the index, at the foot of the pick page, under the season lead on Your Card — never above a pick. Payment stays admin-confirmed; the card carries no self-mark.
+
 #### The Commissioner's Desk — admin cluster (`.cfb-admin-*` + the A3-admin block)
 
 Eight admin screens with their own register, doctrine previously recorded only in CSS comments, now canonical:
