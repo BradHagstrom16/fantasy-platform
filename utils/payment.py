@@ -13,9 +13,14 @@ here offers a member a self-mark.
 The archived World Cup carries its own frozen copy
 (``games/worldcup/constants.py``) and does not read this module.
 """
+import logging
 from urllib.parse import quote_plus
 
 from flask import current_app
+
+from utils.phone import normalize_us_phone
+
+logger = logging.getLogger(__name__)
 
 
 def venmo_pay_url(handle: str, amount: int, memo: str) -> str:
@@ -31,9 +36,20 @@ def payment_rails(entry_fee: int, memo: str) -> dict | None:
     """The nudge payload — ``{'entry_fee', 'venmo_url', 'zelle_phone'}`` —
     or ``None`` when either rail is blank in config (a deliberately blanked
     env hides every nudge platform-wide rather than rendering a half-card).
+
+    The Zelle number flows through ``normalize_us_phone`` like every phone on
+    the platform, so the card prints the canonical NANP form whatever the
+    operator typed; a value that does not parse hides the nudge and logs a
+    warning — a member must never be handed a malformed number to Zelle to.
     """
     handle = (current_app.config.get('PAYMENT_VENMO_HANDLE') or '').strip()
-    zelle = (current_app.config.get('PAYMENT_ZELLE_PHONE') or '').strip()
+    raw_zelle = current_app.config.get('PAYMENT_ZELLE_PHONE') or ''
+    zelle, error = normalize_us_phone(raw_zelle)
+    if error:
+        logger.warning(
+            'PAYMENT_ZELLE_PHONE is not a valid NANP number (%r); hiding '
+            'every payment nudge until it is fixed', raw_zelle)
+        return None
     if not handle or not zelle:
         return None
     return {

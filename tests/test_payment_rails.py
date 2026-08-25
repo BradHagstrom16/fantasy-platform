@@ -54,14 +54,18 @@ def test_env_overrides_both_rails():
     # The config-plumbing gotcha: a key read via current_app.config must have
     # a matching os.environ.get() line in config.py.
     import config as config_module
-    with patch.dict(os.environ, {
-        'PAYMENT_VENMO_HANDLE': 'Someone-Else',
-        'PAYMENT_ZELLE_PHONE': '(312) 555-0100',
-    }):
-        cfg = importlib.reload(config_module).Config
-        assert cfg.PAYMENT_VENMO_HANDLE == 'Someone-Else'
-        assert cfg.PAYMENT_ZELLE_PHONE == '(312) 555-0100'
-    importlib.reload(config_module)  # restore module-level defaults
+    try:
+        with patch.dict(os.environ, {
+            'PAYMENT_VENMO_HANDLE': 'Someone-Else',
+            'PAYMENT_ZELLE_PHONE': '(312) 555-0100',
+        }):
+            cfg = importlib.reload(config_module).Config
+            assert cfg.PAYMENT_VENMO_HANDLE == 'Someone-Else'
+            assert cfg.PAYMENT_ZELLE_PHONE == '(312) 555-0100'
+    finally:
+        # Restore the module-level defaults even on a failed assertion, so a
+        # later test never observes the override.
+        importlib.reload(config_module)
 
 
 def test_blank_venmo_handle_hides_every_nudge(app):
@@ -74,3 +78,21 @@ def test_blank_zelle_phone_hides_every_nudge(app):
     app.config['PAYMENT_ZELLE_PHONE'] = '   '
     with app.app_context():
         assert payment_rails(25, 'memo') is None
+
+
+def test_zelle_phone_is_normalized_to_the_platform_shape(app):
+    # Every phone flows through utils/phone.normalize_us_phone (CLAUDE.md):
+    # an operator can write the env value loosely and the card still prints
+    # the canonical NANP form.
+    app.config['PAYMENT_ZELLE_PHONE'] = '630.408.3424'
+    with app.app_context():
+        assert payment_rails(25, 'memo')['zelle_phone'] == '(630) 408-3424'
+
+
+def test_malformed_zelle_phone_hides_every_nudge_and_warns(app, caplog):
+    # A bad number must never reach a member (a Zelle to a wrong number has
+    # no take-backs): hide the nudge and say so in the log.
+    app.config['PAYMENT_ZELLE_PHONE'] = '12345'
+    with app.app_context(), caplog.at_level('WARNING', logger='utils.payment'):
+        assert payment_rails(25, 'memo') is None
+    assert 'PAYMENT_ZELLE_PHONE' in caplog.text
