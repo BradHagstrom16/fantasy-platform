@@ -41,6 +41,7 @@ from games.docket.services.enrollment import get_enrollment
 from games.docket.services.grading.engine import slot_points
 from games.docket.services.grading.snapshots import BACKUP_SLOT, SCORING_SLOTS, Outcome
 from games.docket.services.importer import BOOKMAKER_LABELS, BOOKMAKER_PRIORITY
+from games.docket.services.payment import payment_nudge_for
 from games.docket.services.picks import PickError
 from games.docket.services.season_pass import season_ledger
 from games.docket.services.weeks import (
@@ -125,6 +126,10 @@ def inject_docket_globals():
         'docket_season_year': SEASON_YEAR,
         'docket_entry_fee': current_app.config.get('DOCKET_ENTRY_FEE', 60),
         'docket_sport_labels': SPORT_LABELS,
+        # "Settle the Tab": available to every Docket template but only
+        # renders where templates/_settle_tab.html is included (sheet, ledger).
+        'payment_nudge': payment_nudge_for(
+            docket_enrollment, getattr(current_user, 'is_admin', False)),
     }
 
 

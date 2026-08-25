@@ -490,6 +490,17 @@ Behavior hooks are `data-docket-*` attributes (`data-docket-action`, `-game`, `-
 (platform template-restyling rule). The sheet is fully functional without JS (mini-form
 PRG); JS is an enhancement layer that repaints from the server's authoritative sheet state.
 
+### 7.12 Settle the Tab — `.settle-tab` (platform partial `templates/_settle_tab.html`)
+
+The how-to-pay card for an enrolled, unpaid member (gate: `games/docket/services/payment.py`,
+ADR-056). A platform primitive on the room's white paper card: gold top rule (money = CCC
+gold; not garnet, which is commitment, not debt), the room's `.docket-eyebrow` passed in by
+the include, `.btn-game` (oxblood) for the Venmo link with the amount and memo pre-filled, and
+the copyable Zelle number. Bill layout — the ask left, the rails right, stacking on a phone.
+It heads the sheet page **including the pre-season "awaiting the docket" state** (§7.10) — a
+new member's first visit is when they are primed to pay — and the ledger. Payment stays
+admin-confirmed (the court costs desk, §admin); the card carries no self-mark.
+
 ---
 
 ## 8. Component Doctrine (season surfaces, T10 scope)

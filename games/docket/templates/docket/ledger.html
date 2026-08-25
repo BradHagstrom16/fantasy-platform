@@ -38,6 +38,8 @@ finish review, the verdict, and DESIGN.md.
 </div>
 
 <div class="container docket-ledger-page">
+    {# Settle the Tab: enrolled + unpaid only (gate in the context processor). #}
+    {% with eyebrow_class='docket-eyebrow' %}{% include '_settle_tab.html' %}{% endwith %}
 
     {% if not ledger.rows %}
     {# No members at all: the docket has not been called yet. #}

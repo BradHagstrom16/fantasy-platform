@@ -1,0 +1,76 @@
+{# "Settle the Tab" — the member-facing how-to-pay card, shared by every room.
+
+   Renders only when `payment_nudge` is truthy. Each game's gate
+   (games/<game>/services/payment.payment_nudge_for, injected by that
+   blueprint's context processor) shows it to an enrolled member who has not
+   paid, and never to the platform admin. The payload comes from
+   utils/payment.py: the Commish's Venmo (amount + memo pre-filled, so the
+   member only confirms) and Zelle number.
+
+   Reads one optional include-local: `eyebrow_class` — the room's eyebrow
+   primitive (`cfb-eyebrow` / `docket-eyebrow`), passed via {% with %}.
+   The card wears the room's own `.card` skin; `.settle-tab` adds the gold
+   top rule (money = CCC gold, both rooms) and the bill layout.
+
+   Payment stays admin-confirmed: there is deliberately NO member-facing
+   "I paid" / self-mark control here — the Commish flips has_paid from
+   /<game>/admin/payments once the money lands.
+
+   The archived World Cup keeps its own frozen copy
+   (games/worldcup/templates/worldcup/_settle_tab.html). #}
+{% if payment_nudge %}
+<div class="card settle-tab mb-4 animate-in">
+  <div class="card-body settle-tab-body">
+    <div class="settle-tab-text">
+      <span class="{{ eyebrow_class|default('settle-tab-eyebrow') }}">Settle the Tab</span>
+      <p class="settle-tab-lead">You&rsquo;re in. Now square up.</p>
+      <p class="settle-tab-copy">
+        The Commish collects ${{ payment_nudge.entry_fee }} to make your spot
+        official. Venmo fills in the amount and your name; on Zelle, put your
+        name in the memo.
+      </p>
+    </div>
+    <div class="settle-tab-actions">
+      <a class="btn btn-game settle-venmo" href="{{ payment_nudge.venmo_url }}"
+         target="_blank" rel="noopener">
+        Pay ${{ payment_nudge.entry_fee }} on Venmo <span aria-hidden="true">&rarr;</span>
+      </a>
+      <div class="settle-zelle">
+        <span class="settle-zelle-label">or Zelle</span>
+        <span class="settle-zelle-num">{{ payment_nudge.zelle_phone }}</span>
+        <button type="button" class="settle-copy" data-copy="{{ payment_nudge.zelle_phone }}"
+                aria-label="Copy Zelle number">
+          <i class="bi bi-clipboard" aria-hidden="true"></i><span class="settle-copy-text">Copy</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+/* Copy-to-clipboard for the Zelle number. Progressive enhancement — the number
+   is plain selectable text without JS. Idempotent + delegated so a page that
+   includes the card twice (or already bound it) can't double-fire. */
+(function () {
+  if (window.__settleCopyBound) return;
+  window.__settleCopyBound = true;
+  document.addEventListener('click', function (e) {
+    var btn = e.target.closest('.settle-copy');
+    if (!btn) return;
+    var num = btn.getAttribute('data-copy') || '';
+    var label = btn.querySelector('.settle-copy-text');
+    var icon = btn.querySelector('.bi');
+    if (!(navigator.clipboard && navigator.clipboard.writeText)) return;
+    navigator.clipboard.writeText(num).then(function () {
+      btn.classList.add('is-copied');
+      if (label) label.textContent = 'Copied';
+      if (icon) icon.className = 'bi bi-check2';
+      setTimeout(function () {
+        btn.classList.remove('is-copied');
+        if (label) label.textContent = 'Copy';
+        if (icon) icon.className = 'bi bi-clipboard';
+      }, 1600);
+    }).catch(function () { /* clipboard blocked; number is still selectable */ });
+  });
+})();
+</script>
+{% endif %}

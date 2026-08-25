@@ -51,7 +51,7 @@ def test_notify_picks_open_reaches_the_whole_roster(app):
 
     calls, patcher = _capture()
     with patcher:
-        sent = notify_picks_open(week, [u1, u2])
+        sent = notify_picks_open(week, [(u1, None), (u2, None)])
 
     assert sent == 2
     assert {c['to'] for c in calls} == {'a@test.com', 'b@test.com'}
@@ -65,7 +65,7 @@ def test_notify_picks_open_links_the_sheet(app):
 
     calls, patcher = _capture()
     with patcher:
-        notify_picks_open(week, [make_user('a')])
+        notify_picks_open(week, [(make_user('a'), None)])
 
     assert 'https://cccfantasy.com/docket/' in calls[0]['html']
 
