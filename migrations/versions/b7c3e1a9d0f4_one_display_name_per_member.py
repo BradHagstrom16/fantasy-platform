@@ -85,9 +85,11 @@ def _promote_per_pool_names(conn):
         if display_name and uid not in latest:
             display_names[uid] = _fold(display_name)
 
-    for user_id, (_, name) in latest.items():
+    promoted = set()   # folded names already taken by an earlier promotion
+    for user_id, (_, name) in sorted(latest.items()):
         folded = _fold(name)
-        clash = (any(f == folded for uid, f in usernames.items() if uid != user_id)
+        clash = (folded in promoted
+                 or any(f == folded for uid, f in usernames.items() if uid != user_id)
                  or any(f == folded for uid, f in display_names.items()
                         if uid != user_id))
         if clash:
@@ -97,6 +99,7 @@ def _promote_per_pool_names(conn):
         conn.execute(users.update()
                      .where(users.c.id == user_id)
                      .values(display_name=name))
+        promoted.add(folded)
 
 
 def upgrade():
