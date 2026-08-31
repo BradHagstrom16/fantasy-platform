@@ -40,7 +40,6 @@ class DocketEnrollment(db.Model):
     season_year = db.Column(db.Integer, nullable=False)
     is_admin = db.Column(db.Boolean, nullable=False, default=False)
     has_paid = db.Column(db.Boolean, nullable=False, default=False)
-    display_name = db.Column(db.String(80), nullable=True)
     created_at = db.Column(
         db.DateTime, default=lambda: to_naive_utc(datetime.now(UTC)))
 
@@ -52,10 +51,9 @@ class DocketEnrollment(db.Model):
     )
 
     def get_display_name(self):
-        """Pool display name, falling back to the platform username."""
-        if self.display_name:
-            return self.display_name
-        return self.user.username
+        """The member's one platform display name (ADR-057); the ledger,
+        the sheet rail, emails and the payment memo all read it here."""
+        return self.user.get_display_name()
 
     def __repr__(self):
         return f'<DocketEnrollment user={self.user_id} season={self.season_year}>'

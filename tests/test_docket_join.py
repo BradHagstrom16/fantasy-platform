@@ -31,7 +31,8 @@ def test_docket_join_open_renders_form(app, client):
     resp = client.get('/docket/join')
     assert resp.status_code == 200
     assert b'Join The Docket' in resp.data
-    assert b'display_name' in resp.data
+    # ADR-057: the page states the member's name; it collects none.
+    assert b'name="display_name"' not in resp.data
 
 
 def test_docket_join_states_the_game_in_four_beats(app, client):
@@ -67,17 +68,6 @@ def test_docket_join_post_creates_enrollment(app, client):
     enrollment = DocketEnrollment.query.filter_by(user_id=user.id).first()
     assert enrollment is not None
     assert enrollment.season_year == SEASON_YEAR
-    assert enrollment.display_name is None
-
-
-def test_docket_join_post_stores_display_name(app, client):
-    user = make_user('joiner')
-    db.session.commit()
-    login(client, user)
-    client.post('/docket/join',
-                data={'display_name': '  The Gavel  ', 'csrf_token': 'x'})
-    enrollment = DocketEnrollment.query.filter_by(user_id=user.id).first()
-    assert enrollment.display_name == 'The Gavel'
 
 
 def test_docket_join_duplicate_redirects_to_sheet(app, client):

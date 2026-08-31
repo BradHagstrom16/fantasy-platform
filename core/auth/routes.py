@@ -18,6 +18,7 @@ from extensions import db, limiter
 from games.worldcup.services import enrollment as worldcup_enrollment
 from games.worldcup.services.state import worldcup_state
 from models.user import User
+from utils.display_name import normalize_display_name
 from utils.email import send_platform_email
 from utils.identifier import normalize_identifier
 from utils.phone import normalize_us_phone
@@ -92,7 +93,8 @@ def register():
     if request.method == 'POST':
         username = request.form.get('username', '').strip()
         email = request.form.get('email', '').strip().lower()
-        display_name = request.form.get('display_name', '').strip() or None
+        display_name, display_name_error = normalize_display_name(
+            request.form.get('display_name', ''))
         password = request.form.get('password', '')
         confirm_password = request.form.get('confirm_password', '')
         phone, phone_error = normalize_us_phone(request.form.get('phone', ''))
@@ -107,6 +109,8 @@ def register():
             errors.append('Password must be at least 6 characters.')
         if password != confirm_password:
             errors.append('Passwords do not match.')
+        if display_name_error:
+            errors.append(display_name_error)
         if phone_error:
             errors.append(phone_error)
 
@@ -289,7 +293,11 @@ AVATAR_CATEGORIES = {
 def profile():
     """View and update the current user's profile (name, email, avatar, phone)."""
     if request.method == 'POST':
-        display_name = request.form.get('display_name', '').strip() or None
+        # The member's one display name, shown on every standings surface
+        # (ADR-057); the validator excludes the member's own row so a
+        # re-save never collides with itself.
+        display_name, display_name_error = normalize_display_name(
+            request.form.get('display_name', ''), exclude_user_id=current_user.id)
         email = request.form.get('email', '').strip().lower()
 
         avatar_emoji = request.form.get('avatar_emoji', '').strip()
@@ -298,10 +306,11 @@ def profile():
             avatar_emoji = None
 
         phone, phone_error = normalize_us_phone(request.form.get('phone', ''))
-        if phone_error:
-            flash(phone_error, 'error')
-            return render_template('auth/profile.html',
-                                   avatar_categories=AVATAR_CATEGORIES)
+        for error in (display_name_error, phone_error):
+            if error:
+                flash(error, 'error')
+                return render_template('auth/profile.html',
+                                       avatar_categories=AVATAR_CATEGORIES)
 
         if email != current_user.email:
             if db.session.scalar(select(User).where(

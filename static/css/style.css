@@ -384,6 +384,14 @@ body.auth-page .alert-success {
   color: var(--text-secondary);
   margin-bottom: 0;
 }
+/* The Commish's inline rename (ADR-057) on /admin/users: input + save, one row. */
+.admin-rename {
+  display: flex;
+  align-items: center;
+  gap: .35rem;
+  min-width: 15rem;
+}
+.admin-rename .form-control { min-width: 11rem; }
 
 /* === CCC ADMIN DASHBOARD === */
 .admin-actions-row {
@@ -5796,6 +5804,29 @@ body.game-cfb .accordion-button:not(.collapsed) { box-shadow: inset 0 -2px 0 var
   letter-spacing: .02em;
   color: var(--cfb-white);
 }
+
+/* The name the member stands under (ADR-057) -- stated, never collected;
+   the change lives on /profile, so the link is the only control here. */
+.cfb-join-name {
+  margin: 0 0 1.25rem;
+  font-family: 'Newsreader', Georgia, serif;
+  font-size: .96rem;
+  color: var(--cfb-bone-muted);
+}
+.cfb-join-name strong {
+  font-family: 'Teko', sans-serif;
+  font-weight: 600;
+  font-size: 1.2rem;
+  letter-spacing: .02em;
+  color: var(--cfb-white);
+}
+.cfb-join-name a {
+  color: var(--cfb-bone);
+  text-decoration: underline;
+  text-underline-offset: .18em;
+}
+.cfb-join-name a:hover,
+.cfb-join-name a:focus-visible { color: var(--cfb-white); }
 
 /* Optional-field marker -- quiet tertiary metadata beside the Teko form label. */
 .cfb-join-optional {
@@ -13430,6 +13461,17 @@ button.docket-side.is-move:hover { color: var(--text-primary); }
 .docket-join-entry {
   font-family: 'Newsreader', Georgia, serif;
   margin-bottom: 1rem;
+}
+/* The name the ledger will list (ADR-057) -- stated, never collected. */
+.docket-join-name {
+  font-family: 'Newsreader', Georgia, serif;
+  margin-bottom: 1.25rem;
+}
+.docket-join-name strong {
+  font-family: 'Teko', sans-serif;
+  font-weight: 600;
+  font-size: 1.15rem;
+  letter-spacing: .02em;
 }
 
 /* --- The clerk's office (admin, T9) ------------------------------------

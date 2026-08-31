@@ -304,11 +304,11 @@ def join():
         return redirect(url_for('cfb.index'))
 
     if request.method == 'POST':
-        display_name = request.form.get('display_name', '').strip()
+        # No per-pool name: the member stands under their one platform
+        # display name (ADR-057), edited on /profile.
         enrollment = CfbEnrollment(
             user_id=current_user.id,
             season_year=season_year,
-            display_name=display_name or None,
         )
         db.session.add(enrollment)
         db.session.commit()

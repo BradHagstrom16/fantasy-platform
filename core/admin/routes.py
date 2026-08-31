@@ -5,7 +5,7 @@ Platform-level admin: user management, overview.
 """
 from functools import wraps
 
-from flask import flash, redirect, render_template, url_for
+from flask import flash, redirect, render_template, request, url_for
 from flask_login import current_user
 from sqlalchemy import func, select
 
@@ -16,6 +16,7 @@ from games.docket.models import DocketEnrollment
 from games.golf.models import GolfEnrollment
 from games.worldcup.models import WorldCupEnrollment
 from models.user import User
+from utils.display_name import normalize_display_name
 
 
 def admin_required(f):
@@ -109,6 +110,27 @@ def toggle_admin(user_id):
         db.session.commit()
         status = 'admin' if user.is_admin else 'regular user'
         flash(f'{user.get_display_name()} is now a {status}.', 'success')
+    return redirect(url_for('admin.users'))
+
+
+@admin_bp.route('/users/<int:user_id>/display-name', methods=['POST'])
+@admin_required
+def rename_user(user_id):
+    """Set (or blank) a member's one platform display name (ADR-057).
+
+    The Commish's answer to "change my name in the pool": the same validator
+    the member's own /profile runs, so the two edit points can't drift.
+    """
+    user = db.get_or_404(User, user_id)
+    display_name, error = normalize_display_name(
+        request.form.get('display_name', ''), exclude_user_id=user.id)
+    if error:
+        flash(error, 'error')
+    else:
+        user.display_name = display_name
+        db.session.commit()
+        flash(f'{user.username} now appears as {user.get_display_name()}.',
+              'success')
     return redirect(url_for('admin.users'))
 
 

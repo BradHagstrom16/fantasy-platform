@@ -37,13 +37,18 @@ def make_user(name, *, is_admin=False):
 
 def make_enrollment(user, *, lives=2, eliminated=False, season=SEASON,
                     display_name=None):
-    """Create a CfbEnrollment with the given lives/elimination state."""
+    """Create a CfbEnrollment with the given lives/elimination state.
+
+    ``display_name`` sets the member's one platform name (ADR-057) — the
+    enrollment no longer carries its own.
+    """
+    if display_name is not None:
+        user.display_name = display_name
     e = CfbEnrollment(
         user_id=user.id,
         season_year=season,
         lives_remaining=lives,
         is_eliminated=eliminated,
-        display_name=display_name,
     )
     db.session.add(e)
     db.session.flush()

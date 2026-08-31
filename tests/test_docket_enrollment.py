@@ -78,12 +78,14 @@ def test_docket_enrollment_unique_per_user_season(app):
     db.session.rollback()
 
 
-def test_docket_display_name_falls_back_to_username(app):
+def test_docket_display_name_follows_the_platform_name(app):
+    """ADR-057: the enrollment has no name of its own — it reads the
+    member's one platform display name, username when that is blank."""
     user = make_user('docketuser')
     enrollment = make_enrollment(user)
     db.session.commit()
     assert enrollment.get_display_name() == 'docketuser'
-    enrollment.display_name = 'The Gavel'
+    user.display_name = 'The Gavel'
     assert enrollment.get_display_name() == 'The Gavel'
 
 

@@ -407,8 +407,8 @@ def _seed_champion_season(viewer_eliminated=True):
     user = _make_user()
     _enroll_cfb(user, lives=0, eliminated=viewer_eliminated)
     champ_user = _make_user(username='champuser')
+    champ_user.display_name = 'Jordan'
     ce = _enroll_cfb(champ_user, lives=2)
-    ce.display_name = 'Jordan'
     ce.cumulative_spread = 41.5
     db.session.commit()
     week = None
@@ -450,12 +450,12 @@ def test_context_post_tiebreak_conclusion(app):
     with app.app_context():
         user = _make_user()
         winner_user = _make_user(username='tbwinner')
+        winner_user.display_name = 'Casey'
         we = _enroll_cfb(winner_user, lives=1)
-        we.display_name = 'Casey'
         we.cumulative_spread = 41.5
         runner_user = _make_user(username='tbrunner')
+        runner_user.display_name = 'Jordan'
         re_ = _enroll_cfb(runner_user, lives=1)
-        re_.display_name = 'Jordan'
         re_.cumulative_spread = 48.0
         _enroll_cfb(user, lives=0, eliminated=True)
         db.session.commit()
@@ -484,12 +484,12 @@ def test_context_post_tiebreak_lives_led(app):
     with app.app_context():
         user = _make_user()
         winner_user = _make_user(username='llwinner')
+        winner_user.display_name = 'Casey'
         we = _enroll_cfb(winner_user, lives=2)
-        we.display_name = 'Casey'
         we.cumulative_spread = 50.0
         runner_user = _make_user(username='llrunner')
+        runner_user.display_name = 'Jordan'
         re_ = _enroll_cfb(runner_user, lives=1)
-        re_.display_name = 'Jordan'
         re_.cumulative_spread = 40.0
         _enroll_cfb(user, lives=0, eliminated=True)
         db.session.commit()

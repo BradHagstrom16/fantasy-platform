@@ -154,11 +154,11 @@ def join():
         return redirect(url_for('docket.index'))
 
     if request.method == 'POST':
-        display_name = request.form.get('display_name', '').strip()[:80]
+        # No per-pool name: the member stands under their one platform
+        # display name (ADR-057), edited on /profile.
         enrollment = DocketEnrollment(
             user_id=current_user.id,
             season_year=SEASON_YEAR,
-            display_name=display_name or None,
         )
         db.session.add(enrollment)
         try:

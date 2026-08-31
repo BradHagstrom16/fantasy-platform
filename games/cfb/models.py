@@ -39,7 +39,6 @@ class CfbEnrollment(db.Model):
     is_admin = db.Column(db.Boolean, default=False)
     has_paid = db.Column(db.Boolean, default=False)
     cumulative_spread = db.Column(db.Float, default=0.0)
-    display_name = db.Column(db.String(80), nullable=True)
 
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(UTC))
 
@@ -50,10 +49,13 @@ class CfbEnrollment(db.Model):
     )
 
     def get_display_name(self):
-        """Return display_name if set, otherwise fall back to User.username."""
-        if self.display_name:
-            return self.display_name
-        return self.user.username if self.user else 'Unknown'
+        """The member's one platform display name (ADR-057).
+
+        Kept as a method so every standings, email, memo and sort-key call
+        site reads the same way; the per-pool name it used to hold was
+        retired because nothing could edit it after the join.
+        """
+        return self.user.get_display_name() if self.user else 'Unknown'
 
     def __repr__(self):
         return f'<CfbEnrollment user={self.user_id} season={self.season_year}>'
