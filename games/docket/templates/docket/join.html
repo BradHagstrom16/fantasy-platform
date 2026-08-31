@@ -57,12 +57,11 @@
                         <p class="docket-join-entry"><strong>{{ docket_season_year }}
                             entry: ${{ docket_entry_fee }}.</strong>
                             One entry per member.</p>
-                        <div class="mb-4">
-                            <label for="display_name" class="form-label">Display name on the docket leaderboard (optional)</label>
-                            <input type="text" class="form-control" id="display_name"
-                                   name="display_name" maxlength="80"
-                                   placeholder="{{ current_user.username }}">
-                        </div>
+                        {# One name per member (ADR-057): the page states it, never collects it. #}
+                        <p class="docket-join-name" id="join-current-name">
+                            The ledger will list you as <strong>{{ current_user.get_display_name() }}</strong>.
+                            <a href="{{ url_for('auth.profile') }}">Change your name</a> on your profile.
+                        </p>
                         <button type="submit" class="btn btn-game btn-lg w-100">Join The Docket</button>
                     </form>
                 </div>

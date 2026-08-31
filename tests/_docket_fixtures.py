@@ -37,6 +37,11 @@ def make_user(username='player', is_admin=False):
 
 
 def make_enrollment(user, **kwargs):
+    # ``display_name`` is the member's one platform name (ADR-057); the
+    # enrollment no longer carries its own, so it lands on the user.
+    display_name = kwargs.pop('display_name', None)
+    if display_name is not None:
+        user.display_name = display_name
     enrollment = DocketEnrollment(
         user_id=user.id, season_year=SEASON_YEAR, **kwargs)
     db.session.add(enrollment)

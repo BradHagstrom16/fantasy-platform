@@ -42,7 +42,24 @@
                         <td>
                             <span class="fw-semibold">{{ user.username }}</span>
                         </td>
-                        <td class="text-muted">{{ user.display_name or '·' }}</td>
+                        <td>
+                            {# The Commish's rename control (ADR-057): the one platform
+                               display name, same validator as the member's /profile. #}
+                            <form method="POST" class="admin-rename"
+                                  action="{{ url_for('admin.rename_user', user_id=user.id) }}">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                <label for="display-name-{{ user.id }}" class="visually-hidden">Display name for {{ user.username }}</label>
+                                <input type="text" class="form-control form-control-sm"
+                                       id="display-name-{{ user.id }}" name="display_name"
+                                       value="{{ user.display_name or '' }}"
+                                       placeholder="{{ user.username }}" maxlength="100"
+                                       autocomplete="off">
+                                <button type="submit" class="btn btn-outline-secondary btn-sm"
+                                        title="Save display name" aria-label="Save display name for {{ user.username }}">
+                                    <i class="bi bi-check-lg"></i>
+                                </button>
+                            </form>
+                        </td>
                         <td class="text-muted small">{{ user.email }}</td>
                         <td class="text-muted small">
                             {% if user.phone %}

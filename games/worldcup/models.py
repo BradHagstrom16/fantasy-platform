@@ -38,10 +38,16 @@ class WorldCupEnrollment(db.Model):
     )
 
     def get_display_name(self):
-        """Return display_name if set, otherwise fall back to User.username."""
+        """Return display_name if set, otherwise the platform display name.
+
+        The one sanctioned post-archive edit (ADR-057): the archived
+        leaderboard used to fall back to the raw username, so 28 of 31
+        members read as their login name. The frozen per-pool column still
+        wins wherever it was ever set.
+        """
         if self.display_name:
             return self.display_name
-        return self.user.username if self.user else 'Unknown'
+        return self.user.get_display_name() if self.user else 'Unknown'
 
     def __repr__(self):
         return f'<WorldCupEnrollment user={self.user_id} season={self.season_year}>'
