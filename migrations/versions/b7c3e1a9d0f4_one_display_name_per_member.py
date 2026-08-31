@@ -76,22 +76,23 @@ def _promote_per_pool_names(conn):
         return
 
     # The names every promoted value must stay clear of (the validator's
-    # rule): every other member's username, and the display name of every
-    # other member who is NOT themselves being re-promoted here.
-    usernames, display_names = {}, {}
+    # rule): every other member's username, every display name another
+    # member currently holds — a candidate's own old name stays reserved
+    # until the moment it is actually replaced, since a candidate can still
+    # be skipped — and every name an earlier promotion in this batch took.
+    usernames, held = {}, {}
     for uid, username, display_name in conn.execute(
             sa.select(users.c.id, users.c.username, users.c.display_name)):
         usernames[uid] = _fold(username)
-        if display_name and uid not in latest:
-            display_names[uid] = _fold(display_name)
+        if display_name:
+            held[uid] = _fold(display_name)
 
-    promoted = set()   # folded names already taken by an earlier promotion
+    promoted = set()
     for user_id, (_, name) in sorted(latest.items()):
         folded = _fold(name)
         clash = (folded in promoted
                  or any(f == folded for uid, f in usernames.items() if uid != user_id)
-                 or any(f == folded for uid, f in display_names.items()
-                        if uid != user_id))
+                 or any(f == folded for uid, f in held.items() if uid != user_id))
         if clash:
             print(f'  skipped user {user_id}: {name!r} collides with another '
                   f'member; set it by hand on /admin/users if wanted')
@@ -99,6 +100,7 @@ def _promote_per_pool_names(conn):
         conn.execute(users.update()
                      .where(users.c.id == user_id)
                      .values(display_name=name))
+        held.pop(user_id, None)   # the old name is released only once replaced
         promoted.add(folded)
 
 
