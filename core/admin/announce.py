@@ -5,12 +5,10 @@ Platform-level admin: compose and mass-send an announcement email to a
 game's enrolled members (or every game, deduplicated) via the browser.
 """
 import logging
-import re
 from typing import NamedTuple
 
 from flask import current_app, flash, redirect, render_template, request, url_for
 from flask_login import current_user
-from markupsafe import escape
 from sqlalchemy import select
 from sqlalchemy.orm import joinedload
 
@@ -25,6 +23,7 @@ from games.registry import GAMES
 from games.worldcup.constants import SEASON_YEAR as WC_SEASON_YEAR
 from games.worldcup.models import WorldCupEnrollment
 from utils.email import send_platform_email
+from utils.email_layout import Letter, paragraphs_block, render_letter, site_url
 
 logger = logging.getLogger(__name__)
 
@@ -166,33 +165,22 @@ def _clean_form():
     return form_data, errors
 
 
-def _body_paragraphs(body_text):
-    """Split body text into pre-escaped HTML paragraph fragments.
-
-    Flask does NOT autoescape ``.j2`` templates, so each blank-line-separated
-    block is escaped here before single newlines become ``<br>``.
-    """
-    return [
-        str(escape(block)).replace('\n', '<br>')
-        for block in re.split(r'\n\s*\n', body_text) if block.strip()
-    ]
-
-
 def render_announcement(subject, body_text):
-    """Render the announcement email. Returns (plain_body, html_body).
+    """Render the announcement as a Club Letter. Returns (plain_body, html_body).
 
-    Requires a request context (external seal URL + asset_version context
-    processor).
+    The admin's free text becomes a ``paragraphs_block`` (a blank line starts
+    a paragraph, a single newline is a ``<br>``, everything escaped once);
+    the subject is the headline. Club business, so the CTA is the trophy
+    gold and the eyebrow carries no game accent.
     """
-    seal_url = url_for('static', filename='img/logo/seal-email.png', _external=True)
-    plain = render_template('email/announcement_plain.txt', body_text=body_text)
-    html = render_template(
-        'email/announcement_html.j2',
+    letter = Letter(
         subject=subject,
-        body_paragraphs=_body_paragraphs(body_text),
-        seal_url=seal_url,
+        headline=subject,
+        eyebrow='From the Commish',
+        extras=[paragraphs_block(body_text)],
+        cta=('Open the lounge', site_url() + '/'),
     )
-    return plain, html
+    return render_letter(letter)
 
 
 def _safe_send(to_addr, subject, plain, html):

@@ -101,7 +101,7 @@ def test_picks_open_email_subject_and_pick_link(app):
     with patcher:
         send_picks_open_email(week.id)
 
-    assert calls[0]['subject'] == 'Picks Are Open: CFB Survivor — Week 3'
+    assert calls[0]['subject'] == 'Picks are open: CFB Survivor, Week 3'
     assert 'https://cccfantasy.com/cfb/pick/3' in calls[0]['html']
 
 

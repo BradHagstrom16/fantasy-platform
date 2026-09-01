@@ -34,26 +34,37 @@ recap and reminder paths both name it). If it is ever built, it should be
 built once for all games, not here.
 """
 import logging
-from datetime import UTC, timedelta
-
-from markupsafe import Markup
+from datetime import timedelta
 
 from extensions import db
 from games.docket.services.enrollment import roster_user_ids
 from games.docket.services.notifications import (
+    deadline_line,
+    letter,
     send_each,
     sheet_url,
-    wrap_email,
 )
 from games.docket.services.picks import sheet_state
-from games.docket.services.weeks import CT
 from games.docket.utils import now_utc, to_naive_utc
 from models.user import User
+from utils.email_layout import items_block, render_letter
 from utils.reminders import tier_already_sent
 
 logger = logging.getLogger(__name__)
 
 SCORING_SLOTS = 8
+
+# One subject per tier, so Gmail never threads three reminders into one.
+SUBJECTS = {
+    '48h': 'Sheet not finished: The Docket, Week {n}',
+    '24h': 'Closes tomorrow: The Docket, Week {n}',
+    '2h': 'Two hours left: The Docket, Week {n}',
+}
+COUNTDOWNS = {
+    '48h': 'Two days to go.',
+    '24h': 'One day to go.',
+    '2h': 'Two hours to go.',
+}
 
 # Hours before the deadline, farthest first. The tier tag is what lands in
 # DocketWeek.last_reminder_tier.
@@ -73,20 +84,6 @@ REMINDER_ORDER = {window['tier']: index
 # what prevents a double send, so this only has to guarantee that an hourly
 # timer lands inside every tier at least once.
 TOLERANCE_MINUTES = 35
-
-
-def _deadline_phrase(deadline_naive_utc):
-    """'Saturday, September 5 at 11:00 AM CT'.
-
-    A render boundary, so this is one of the sanctioned places a D6 naive-UTC
-    column becomes America/Chicago (bridge_sheet._format_ct is the other).
-    The deadline line always states the literal time (DESIGN.md 6.7).
-    """
-    local = deadline_naive_utc.replace(tzinfo=UTC).astimezone(CT)
-    hour12 = local.hour % 12 or 12
-    ampm = 'AM' if local.hour < 12 else 'PM'
-    return (f'{local:%A}, {local:%B} {local.day} at '
-            f'{hour12}:{local.minute:02d} {ampm} CT')
 
 
 def active_window(deadline_naive_utc, now_naive_utc):
@@ -128,28 +125,30 @@ def outstanding(state) -> list[str]:
     return items
 
 
-def _build_body(week, deadline, link):
-    """Per-recipient (plain, html) builder for send_each."""
+def _build_body(week, tier, subject, deadline, link):
+    """Per-recipient (plain, html) builder for send_each: the tier's letter,
+    with the sheet's outstanding items (``outstanding()``'s prose, verbatim)
+    as the list the CTA acts on. The lede counts down; the fact block states
+    the literal time."""
+    filed = ('Whatever is still open when the docket closes will be filled '
+             'for you from the locked lines, and a side filed for you scores '
+             'exactly like one you filed yourself. It is a safety net, not a '
+             'plan.')
+    reserve = ('You may also hold one side in reserve. It stays dormant '
+               'unless a case is thrown out.')
+
     def build(_user, items):
-        opening = (f'Your Week {week.week_number} sheet is not finished. '
-                   f'The docket closes {deadline}.')
-        filed = ('Whatever is still open when the docket closes will be '
-                 'filled for you from the locked lines, and a side filed for '
-                 'you scores exactly like one you filed yourself. It is a '
-                 'safety net, not a plan.')
-        reserve = ('You may also hold one side in reserve. It stays dormant '
-                   'unless a case is thrown out.')
-        return wrap_email(
-            [opening] + items + [filed, reserve, f'Your sheet: {link}'],
-            [Markup('Your Week {} sheet is not finished. The docket closes '
-                    '{}.').format(week.week_number, deadline)]
-            + [Markup('{}').format(item) for item in items]
-            + [
-                Markup('{}').format(filed),
-                Markup('{}').format(reserve),
-                Markup('Your sheet: {}').format(link),
-            ],
-        )
+        return render_letter(letter(
+            week,
+            subject=subject,
+            headline=f'Your Week {week.week_number} sheet is not finished',
+            preheader=f'The docket closes {deadline}.',
+            lede=[COUNTDOWNS[tier]],
+            facts=[('Deadline', deadline)],
+            extras=[items_block(items, title='Still open on your sheet')],
+            cta=('Open your sheet', link),
+            supporting=[filed, reserve],
+        ))
     return build
 
 
@@ -192,10 +191,10 @@ def run_reminder_pass(week, now=None, user_ids=None) -> dict:
         return {'status': 'all_complete', 'week_number': week.week_number,
                 'tier': tier}
 
-    deadline = _deadline_phrase(week.deadline_at)
-    subject = (f'The Week {week.week_number} docket closes {deadline}')
+    subject = SUBJECTS[tier].format(n=week.week_number)
     sent = send_each(recipients, subject,
-                     _build_body(week, deadline, sheet_url()))
+                     _build_body(week, tier, subject, deadline_line(week),
+                                 sheet_url()))
 
     if sent == 0:
         # Every send failed, so the tier is left open for the next hourly run

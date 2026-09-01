@@ -20,6 +20,7 @@ from games.worldcup.services.state import worldcup_state
 from models.user import User
 from utils.display_name import normalize_display_name
 from utils.email import send_platform_email
+from utils.email_layout import Letter, render_letter
 from utils.identifier import normalize_identifier
 from utils.phone import normalize_us_phone
 
@@ -187,17 +188,27 @@ def forgot_password():
             # the game email builders already use (games/*/services/notifications.py).
             base = current_app.config['SITE_URL'].rstrip('/')
             reset_url = base + url_for('auth.reset_password', token=token)
-            seal_url = base + url_for('static', filename='img/logo/seal-email.png')
-            plain = render_template('email/reset_password_plain.txt',
-                                    reset_url=reset_url, user=user)
-            html = render_template('email/reset_password_html.j2',
-                                   reset_url=reset_url, seal_url=seal_url, user=user)
-            send_platform_email(
-                user.email,
-                "Reset your password — Corrupt Commish Club",
-                plain,
-                html,
+            letter = Letter(
+                subject='Reset your password',
+                headline='Reset your password',
+                eyebrow='Your account',
+                preheader='Your reset link expires in 1 hour.',
+                greeting=user.get_display_name(),
+                lede=[
+                    'You asked for a password reset for your Corrupt Commish '
+                    'Club account.',
+                    'Use the button below to set a new password. The link '
+                    'expires in 1 hour.',
+                ],
+                facts=[('Username', user.username)],
+                cta=('Reset password', reset_url),
+                supporting=[
+                    "If you didn't ask for this, ignore this email. Your "
+                    'password will not change unless you use the link.',
+                ],
             )
+            plain, html = render_letter(letter)
+            send_platform_email(user.email, letter.subject, plain, html)
 
         return redirect(url_for('auth.login'))
 

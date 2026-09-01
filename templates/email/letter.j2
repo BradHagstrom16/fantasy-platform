@@ -1,0 +1,52 @@
+{% autoescape true %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="light">
+<meta name="supported-color-schemes" content="light">
+<title>{{ letter.subject }}</title>
+<link href="{{ font_link }}" rel="stylesheet">
+<!--[if mso]><xml><o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml><![endif]-->
+</head>
+<body style="margin:0; padding:0; background:#F3EFE6; font-family:{{ bf }}; color:#1C1730; -webkit-text-size-adjust:100%; -ms-text-size-adjust:100%;">
+{% if letter.preheader %}<div style="display:none; max-height:0; overflow:hidden; mso-hide:all; font-size:1px; line-height:1px; color:#F3EFE6;">{{ letter.preheader }}</div>{% endif %}
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#F3EFE6; min-width:320px;">
+<tr><td align="center" style="padding:24px 16px 32px;">
+<table role="presentation" width="560" cellpadding="0" cellspacing="0" border="0" style="max-width:560px; width:100%; background:#FFFFFF; border-radius:8px; overflow:hidden; box-shadow:0 4px 20px rgba(58,29,114,.12);">
+
+<!-- Masthead: the club, never the game -->
+<tr><td style="background:#2A1150; padding:22px 28px 18px; text-align:center;">
+<img src="{{ seal_url }}" width="56" height="56" alt="Corrupt Commish Club" style="display:block; margin:0 auto 8px; border:0;">
+<span style="font-family:{{ df }}; font-size:22px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:#C9A227;">{{ club }}</span>
+</td></tr>
+
+<!-- The letter -->
+<tr><td style="padding:28px 28px 12px;">
+<p style="margin:0 0 4px; font-family:{{ df }}; font-size:14px; font-weight:500; letter-spacing:.12em; text-transform:uppercase; color:{{ accent }};">{{ letter.eyebrow }}</p>
+<h1 style="margin:0 0 16px; font-family:{{ df }}; font-size:29px; font-weight:600; line-height:1.1; letter-spacing:.04em; text-transform:uppercase; color:#3A1D72;">{{ letter.headline }}</h1>
+{% if letter.greeting %}<p style="margin:0 0 14px; font-family:{{ bf }}; font-size:16px; line-height:1.55; color:#1C1730;">Hi {{ letter.greeting }},</p>
+{% endif %}{% for paragraph in letter.lede %}<p style="margin:0 0 14px; font-family:{{ bf }}; font-size:16px; line-height:1.55; color:#1C1730;">{{ paragraph }}</p>
+{% endfor %}{{ facts_html }}
+{% for block in extras %}{{ block.html }}
+{% endfor %}{% if letter.cta %}<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:4px auto 20px;">
+<tr><td align="center"><a class="cta" href="{{ letter.cta[1] }}" style="display:inline-block; padding:13px 28px; border-radius:8px; background:{{ cta_bg }}; color:{{ cta_fg }}; font-family:{{ df }}; font-size:17px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; text-decoration:none;">{{ letter.cta[0] }}</a></td></tr>
+</table>
+{% endif %}{% for sentence in letter.supporting %}<p style="margin:0 0 12px; font-family:{{ bf }}; font-size:14px; line-height:1.55; color:#5A5470;">{{ sentence }}</p>
+{% endfor %}{% for block in notes %}{{ block.html }}
+{% endfor %}{% if letter.footer_note %}<p style="margin:16px 0 12px; font-family:{{ bf }}; font-size:14px; line-height:1.55; color:#5A5470;">{{ letter.footer_note }}</p>
+{% endif %}</td></tr>
+
+<!-- Footer: the club's voice band -->
+<tr><td style="background:#1C0A3A; padding:18px 28px; text-align:center;">
+<a href="{{ site_url }}/" style="font-family:{{ df }}; font-size:12px; letter-spacing:.12em; text-transform:uppercase; color:rgba(243,239,230,.55); text-decoration:none;">{{ club }} &middot; {{ domain }}</a>
+<p style="margin:6px 0 0; font-family:{{ bf }}; font-size:12px; line-height:1.5; color:rgba(243,239,230,.55);">Sent to you as a member of {{ membership }}.</p>
+</td></tr>
+
+</table>
+</td></tr>
+</table>
+</body>
+</html>
+{% endautoescape %}

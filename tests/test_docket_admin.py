@@ -152,7 +152,7 @@ def test_redesignation_clears_predictions_and_notifies(monkeypatch, week):
     assert result['notified'] == 1
     assert db.session.scalar(
         select(func.count()).select_from(DocketTiebreakerPrediction)) == 0
-    assert 'tiebreaker case changed' in sent[0][1]
+    assert 'Tiebreaker case changed' in sent[0][1]
 
 
 def test_designation_refuses_a_thrown_out_case(monkeypatch, week):
@@ -294,7 +294,7 @@ def test_line_correction_audits_resnapshots_and_notifies(monkeypatch, week):
     assert (audit.old_value, audit.new_value) == (51.5, 48.5)
     assert audit.reason == 'Imported total was wrong'
     assert audit.picks_resnapshotted == 1
-    assert 'A line was corrected' in sent[0][1]
+    assert 'Line corrected' in sent[0][1]
 
 
 def test_line_correction_leaves_the_other_market_alone(monkeypatch, week):

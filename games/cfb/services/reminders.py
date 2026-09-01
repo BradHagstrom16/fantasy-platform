@@ -21,7 +21,6 @@ import logging
 from datetime import timedelta
 
 from flask import current_app
-from markupsafe import escape
 from sqlalchemy import select
 from sqlalchemy.orm import joinedload
 
@@ -35,6 +34,7 @@ from games.cfb.models import (
 )
 from games.cfb.services.payment import payment_nudge_for
 from games.cfb.utils import (
+    format_deadline_short,
     get_current_time,
     get_week_display_name,
     is_week_playoff,
@@ -43,6 +43,13 @@ from games.cfb.utils import (
 )
 from models import User
 from utils.email import send_platform_email
+from utils.email_layout import (
+    Letter,
+    items_block,
+    render_letter,
+    result_block,
+    tab_block,
+)
 from utils.reminders import tier_already_sent
 
 logger = logging.getLogger(__name__)
@@ -61,104 +68,15 @@ REMINDER_ORDER = {'warning': 0, 'final': 1}
 # Tolerance window (minutes) - send reminder if within this window of the target time
 TOLERANCE_MINUTES = 35
 
-# ============================================================================
-# Inline style constants — Gmail-safe, no <style> blocks
-# ============================================================================
-CFB_EMAIL = {
-    "primary":       "#C5050C",
-    "primary_dark":  "#0f0f1a",
-    "primary_light": "#e8282f",
-    "accent":        "#FFFFFF",
-    "bg_body":       "#1a1a2e",
-    "bg_card":       "#ffffff",
-    "text_primary":  "#1a1a1a",
-    "text_secondary": "#4a5568",
-    "text_muted":    "#8b95a2",
-    "text_on_dark":  "#f7f8f9",
-    "survived":      "#22c55e",
-    "lost_life":     "#ef4444",
-    "font_heading":  "Georgia, 'Times New Roman', serif",
-    "font_body":     "-apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif",
-}
+# The consequence of a missed deadline, stated once per letter
+# (game_logic.process_autopicks: the biggest eligible favorite among the
+# teams the player has not used; a no-pick with nothing eligible costs a
+# life, DQ-2). Commissioner voice reinforces the rule; the deadline fact
+# still states the time itself (DESIGN.md 6.11).
+MISS_RULE = ('Miss the deadline and the Commish picks for you: the biggest '
+             'eligible favorite you have not used.')
 
 
-# ============================================================================
-# HTML Email Infrastructure
-# ============================================================================
-
-def _cfb_html_wrapper(content_html: str, season_year: int) -> str:
-    """Wrap email content in the CFB Survivor Pool HTML shell."""
-    c = CFB_EMAIL
-    site_url = current_app.config.get('SITE_URL', 'http://localhost:5000')
-    return f'''<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CFB Survivor Pool</title>
-<!--[if mso]><xml><o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml><![endif]-->
-</head>
-<body style="margin: 0; padding: 0; background-color: {c['bg_body']}; font-family: {c['font_body']}; -webkit-font-smoothing: antialiased;">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: {c['bg_body']};">
-<tr><td align="center" style="padding: 24px 16px;">
-
-<table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="max-width: 600px; width: 100%; background-color: {c['bg_card']};">
-
-<!-- HEADER -->
-<tr><td style="background-color: {c['primary_dark']}; padding: 22px 32px; text-align: center;">
-<span style="font-family: {c['font_heading']}; font-size: 22px; font-weight: 700; color: {c['text_on_dark']}; letter-spacing: 0.01em;">&#127944; CFB Survivor Pool</span>
-</td></tr>
-
-<!-- CRIMSON ACCENT BAR -->
-<tr><td style="background-color: {c['primary']}; height: 3px; font-size: 0; line-height: 0;">&nbsp;</td></tr>
-
-<!-- CONTENT -->
-<tr><td style="padding: 32px 32px 24px 32px;">
-{content_html}
-</td></tr>
-
-<!-- FOOTER -->
-<tr><td style="background-color: {c['primary_dark']}; padding: 20px 32px; text-align: center;">
-<p style="margin: 0; font-size: 13px; color: rgba(247,248,249,0.6); font-family: {c['font_body']};">
-CFB Survivor Pool {season_year} &middot; <a href="{site_url}" style="color: {c['primary_light']}; text-decoration: none;">Corrupt Commish Club</a>
-</p>
-</td></tr>
-
-</table>
-
-</td></tr>
-</table>
-</body>
-</html>'''
-
-
-def _cfb_html_button(url: str, text: str, bg_color: str | None = None) -> str:
-    """Render a CTA button as a styled <a> tag (Gmail-safe)."""
-    c = CFB_EMAIL
-    bg = bg_color or c['primary']
-    return f'''<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
-<tr><td align="center" style="padding: 8px 0 16px 0;">
-<a href="{url}" style="display: inline-block; background-color: {bg}; color: {c['text_on_dark']}; font-family: {c['font_body']}; font-size: 16px; font-weight: 600; text-decoration: none; padding: 14px 36px; border-radius: 6px;">{text} &rarr;</a>
-</td></tr>
-</table>'''
-
-
-def _cfb_html_week_card(week_name: str, deadline_str: str,
-                        accent_color: str | None = None) -> str:
-    """Render a week info card with left accent border."""
-    c = CFB_EMAIL
-    accent = accent_color or c['primary']
-    return f'''<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-left: 4px solid {accent}; background-color: #f8f8fa; margin-bottom: 24px;">
-<tr><td style="padding: 20px 24px;">
-<p style="margin: 0 0 4px 0; font-size: 11px; font-weight: 600; color: {c['text_muted']}; text-transform: uppercase; letter-spacing: 0.05em;">This Week</p>
-<p style="margin: 0 0 14px 0; font-family: {c['font_heading']}; font-size: 20px; font-weight: 700; color: {c['text_primary']};">{week_name}</p>
-<p style="margin: 0; font-size: 11px; color: {c['text_muted']}; text-transform: uppercase; letter-spacing: 0.03em;">Deadline</p>
-<p style="margin: 2px 0 0 0; font-size: 16px; font-weight: 700; color: {c['text_primary']};">{deadline_str}</p>
-</td></tr>
-</table>'''
-
-
-# ============================================================================
 # ============================================================================
 # Utility Functions
 # ============================================================================
@@ -233,68 +151,39 @@ def format_time_remaining(deadline):
 # PICK REMINDER EMAILS
 # ============================================================================
 
-def _build_reminder_html(display_name, week_name, deadline_str, time_remaining,
-                         lives_remaining, cumulative_spread, pick_url, window,
-                         season_year):
-    """Build HTML body for a pick reminder email."""
-    c = CFB_EMAIL
+def _reminder_letter(*, week_name, deadline_short, time_remaining, lives,
+                     cumulative_spread, pick_url, window, season_year):
+    """The T-25h / T-1h reminder as a Club Letter (a broadcast: no greeting).
 
+    Calm and consequential (DESIGN.md 6.11): the deadline leads the fact
+    block, lives and spread sit beside it with their labels, and the
+    consequence of missing it is stated once. Both tiers keep distinct
+    subjects so Gmail never threads them into one.
+    """
     if window['type'] == 'final':
-        accent = c['lost_life']
-        urgency_bg = "#fef2f2"
-        urgency_label = "FINAL REMINDER"
-        urgency_msg = "Less than 1 hour left. Make your pick NOW or risk elimination."
+        subject = f'FINAL, 1 hour left: CFB Survivor, {week_name}'
+        headline = 'Final call: one hour left'
+        lede = [f'Your {week_name} pick is not in and the deadline is less '
+                f'than an hour away.']
     else:
-        accent = c['primary']
-        urgency_bg = "#f8f8fa"
-        urgency_label = "HEADS UP"
-        urgency_msg = f"About {time_remaining} left. You&#8217;ll get one more reminder at 1 hour."
-
-    # Lives visual
-    lives_dots = ""
-    for _ in range(lives_remaining):
-        lives_dots += f'<span style="display: inline-block; width: 12px; height: 12px; border-radius: 50%; background: {c["survived"]}; margin-right: 4px;"></span>'
-    for _ in range(2 - lives_remaining):
-        lives_dots += '<span style="display: inline-block; width: 12px; height: 12px; border-radius: 50%; border: 2px solid #d1d5db; margin-right: 4px;"></span>'
-
-    content = f'''<!-- Urgency banner -->
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: {urgency_bg}; border-left: 4px solid {accent}; margin-bottom: 24px;">
-<tr><td style="padding: 16px 20px;">
-<p style="margin: 0 0 2px 0; font-size: 11px; font-weight: 700; color: {accent}; text-transform: uppercase; letter-spacing: 0.06em;">{urgency_label}</p>
-<p style="margin: 0; font-size: 15px; font-weight: 600; color: {c['text_primary']};">{urgency_msg}</p>
-</td></tr>
-</table>
-
-<h2 style="margin: 0 0 6px 0; font-family: {c['font_heading']}; font-size: 22px; color: {c['text_primary']};">You Haven&#8217;t Picked Yet</h2>
-<p style="margin: 0 0 24px 0; font-size: 15px; color: {c['text_secondary']};">Hi {display_name}, the clock is ticking.</p>
-
-{_cfb_html_week_card(week_name, deadline_str, accent_color=accent)}
-
-<!-- Status -->
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom: 24px;">
-<tr>
-<td width="50%" style="padding-right: 8px;">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f8f8fa; text-align: center; border-radius: 8px;">
-<tr><td style="padding: 16px;">
-<p style="margin: 0 0 4px 0; font-size: 11px; font-weight: 600; color: {c['text_muted']}; text-transform: uppercase; letter-spacing: 0.05em;">Lives</p>
-<p style="margin: 0;">{lives_dots}</p>
-</td></tr>
-</table>
-</td>
-<td width="50%" style="padding-left: 8px;">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f8f8fa; text-align: center; border-radius: 8px;">
-<tr><td style="padding: 16px;">
-<p style="margin: 0 0 4px 0; font-size: 11px; font-weight: 600; color: {c['text_muted']}; text-transform: uppercase; letter-spacing: 0.05em;">Spread</p>
-<p style="margin: 0; font-family: {c['font_heading']}; font-size: 22px; font-weight: 700; color: {c['text_primary']};">{cumulative_spread:.1f}</p>
-</td></tr>
-</table>
-</td>
-</tr>
-</table>
-
-{_cfb_html_button(pick_url, "Make Your Pick", bg_color=accent if window['type'] == 'final' else None)}'''
-
-    return _cfb_html_wrapper(content, season_year)
+        subject = f'Pick due tomorrow: CFB Survivor, {week_name}'
+        headline = f'Your {week_name} pick is due tomorrow'
+        lede = [f'About {time_remaining} left. One more reminder comes at '
+                f'one hour.']
+    return Letter(
+        subject=subject,
+        headline=headline,
+        eyebrow=f'CFB Survivor · {week_name}',
+        game_slug='cfb',
+        season=season_year,
+        preheader=f'Deadline {deadline_short}.',
+        lede=lede,
+        facts=[('Deadline', deadline_short),
+               ('Lives', f'{lives} of 2'),
+               ('Cumulative spread', f'{cumulative_spread:.1f}')],
+        cta=('Make your pick', pick_url),
+        supporting=[MISS_RULE],
+    )
 
 
 def run_reminder_check():
@@ -367,53 +256,24 @@ def run_reminder_check():
 
     print(f"Users without picks: {len(recipients)}")
 
-    hours_left = int((deadline - now).total_seconds() // 3600)
-    deadline_str = deadline.strftime('%A, %B %d at %I:%M %p %Z')
+    deadline_short = format_deadline_short(deadline)
     time_remaining = format_time_remaining(deadline)
+    pick_url = f"{site_url}/cfb/pick/{week.week_number}"
 
     success_count = 0
     for enrollment, user in recipients:
-        display_name = enrollment.get_display_name()
-        pick_url = f"{site_url}/cfb/pick/{week.week_number}"
-
-        if window['type'] == 'final':
-            subject = f"FINAL: {week_name} pick due in ~1 hour!"
-        else:
-            subject = f"{week_name} pick due tomorrow"
-
-        # Plain text
-        body = f"""Hi {display_name},
-
-You still need to make your {week_name} pick!
-
-Deadline: {deadline_str}
-Time remaining: ~{hours_left} hour(s)
-
-Make your pick now: {pick_url}
-
-Your status:
-- Lives remaining: {enrollment.lives_remaining}
-- Cumulative spread: {enrollment.cumulative_spread:.1f}
-
-{'This is your FINAL reminder! Make your pick NOW or risk elimination.' if window['type'] == 'final' else 'You will get one more reminder before the deadline.'}
-
-Good luck!
-"""
-
-        # HTML
-        html = _build_reminder_html(
-            display_name=display_name,
+        letter = _reminder_letter(
             week_name=week_name,
-            deadline_str=deadline_str,
+            deadline_short=deadline_short,
             time_remaining=time_remaining,
-            lives_remaining=enrollment.lives_remaining,
-            cumulative_spread=enrollment.cumulative_spread,
+            lives=enrollment.lives_remaining,
+            cumulative_spread=enrollment.cumulative_spread or 0.0,
             pick_url=pick_url,
             window=window,
             season_year=season_year,
         )
-
-        if send_platform_email(user.email, subject, body, html):
+        plain, html = render_letter(letter)
+        if send_platform_email(user.email, letter.subject, plain, html):
             success_count += 1
 
     if success_count > 0:
@@ -436,28 +296,34 @@ Good luck!
 # PICKS OPEN ANNOUNCEMENT EMAIL
 # ============================================================================
 
-def _picks_open_tab_lines(nudge) -> tuple[str, str]:
-    """The "Settle the tab" paragraph pair for the picks-open email, or two
-    empty strings when the member owes nothing (paid, or the Commish)."""
-    if not nudge:
-        return '', ''
-    c = CFB_EMAIL
-    plain = (
-        f"Settle the tab: the ${nudge['entry_fee']} entry is due. "
-        f"Pay on Venmo (amount and your name filled in): {nudge['venmo_url']}\n"
-        f"Or Zelle {nudge['zelle_phone']} — put your name in the memo.\n\n"
+def _picks_open_letter(*, week_name, deadline_short, pick_url, nudge,
+                       season_year):
+    """The season-open note as a Club Letter (a broadcast: no greeting).
+
+    "Settle the tab" rides along for anyone who still owes the buy-in
+    (gate: games/cfb/services/payment.py, unpaid only, never the Commish) as
+    a text strip after the CTA, never a second button: "Make your pick"
+    stays the CTA.
+    """
+    return Letter(
+        subject=f'Picks are open: CFB Survivor, {week_name}',
+        headline='Picks are open',
+        eyebrow=f'CFB Survivor · {week_name}',
+        game_slug='cfb',
+        season=season_year,
+        preheader=f'Deadline {deadline_short}.',
+        lede=['The lines are set. Get your survivor pick in before the '
+              'deadline.'],
+        facts=[('Deadline', deadline_short)],
+        cta=('Make your pick', pick_url),
+        supporting=[
+            'You are picking a team to win outright (not against the '
+            'spread), and each team can be used once all season. You can '
+            'change your pick until the deadline.',
+            MISS_RULE,
+        ],
+        notes=[tab_block(nudge, 'cfb')],
     )
-    html = (
-        f'<p style="margin: 24px 0 0 0; padding-top: 16px; border-top: 1px '
-        f'solid #e5e7eb; font-size: 14px; line-height: 1.5; color: '
-        f'{c["text_secondary"]};"><strong style="color: {c["text_primary"]};">'
-        f'Settle the tab.</strong> The ${nudge["entry_fee"]} entry is due. '
-        f'<a href="{escape(nudge["venmo_url"])}" style="color: {c["primary"]}; '
-        f'font-weight: 600;">Pay on Venmo</a> (amount and your name filled in), '
-        f'or Zelle <strong style="color: {c["text_primary"]};">'
-        f'{escape(nudge["zelle_phone"])}</strong> — put your name in the memo.</p>'
-    )
-    return plain, html
 
 
 def send_picks_open_email(week_id: int) -> int:
@@ -479,10 +345,8 @@ def send_picks_open_email(week_id: int) -> int:
         return 0
 
     week_name = get_week_display_name(week)
-    deadline_str = make_aware(week.deadline).strftime(
-        '%A, %B %d at %I:%M %p %Z')
+    deadline_short = format_deadline_short(week.deadline)
     pick_url = f"{site_url}/cfb/pick/{week.week_number}"
-    subject = f"Picks Are Open: CFB Survivor — Week {week.week_number}"
 
     enrollments = db.session.scalars(
         select(CfbEnrollment)
@@ -495,43 +359,15 @@ def send_picks_open_email(week_id: int) -> int:
         user = enrollment.user
         if not user or not user.email:
             continue
-        display_name = enrollment.get_display_name()
-
-        # "Settle the tab" rides the season-open note for anyone who still
-        # owes the buy-in (gate: games/cfb/services/payment.py — unpaid
-        # only, never the Commish). A text link, not a second button: "Make
-        # Your Pick" stays the CTA.
-        tab_plain, tab_html = _picks_open_tab_lines(
-            payment_nudge_for(enrollment, bool(user.is_admin)))
-
-        plain = (
-            f"Hi {display_name},\n\n"
-            f"Picks are open for {week_name}. The lines are set — get your "
-            f"survivor pick in before the deadline.\n\n"
-            f"Deadline: {deadline_str}\n\n"
-            f"Make your pick: {pick_url}\n\n"
-            f"You're picking a team to win outright (not against the spread), "
-            f"and each team can be used only once all season.\n\n"
-            f"{tab_plain}"
-            f"Good luck,\nThe Corrupt Commish Club\n"
+        letter = _picks_open_letter(
+            week_name=week_name,
+            deadline_short=deadline_short,
+            pick_url=pick_url,
+            nudge=payment_nudge_for(enrollment, bool(user.is_admin)),
+            season_year=season_year,
         )
-        content = (
-            f'<h2 style="margin: 0 0 6px 0; font-family: '
-            f'{CFB_EMAIL["font_heading"]}; font-size: 24px; color: '
-            f'{CFB_EMAIL["text_primary"]};">Picks Are Open</h2>'
-            f'<p style="margin: 0 0 24px 0; font-size: 15px; color: '
-            f'{CFB_EMAIL["text_secondary"]};">Hi {escape(display_name)}, the '
-            f'lines are set. Get your survivor pick in before the deadline.</p>'
-            f'{_cfb_html_week_card(week_name, deadline_str)}'
-            f'{_cfb_html_button(pick_url, "Make Your Pick")}'
-            f'<p style="margin: 16px 0 0 0; font-size: 13px; color: '
-            f'{CFB_EMAIL["text_muted"]}; text-align: center;">Pick a team to '
-            f'win outright — each team can be used once all season.</p>'
-            f'{tab_html}'
-        )
-        html = _cfb_html_wrapper(content, season_year)
-
-        if send_platform_email(user.email, subject, plain, html):
+        plain, html = render_letter(letter)
+        if send_platform_email(user.email, letter.subject, plain, html):
             success_count += 1
 
     logger.info("Picks-open email: %s/%s sent for week %s",
@@ -626,7 +462,7 @@ def send_weekly_recap_email(week_id: int) -> int:
     # ---- Calculate rankings (non-eliminated, sorted by lives desc then spread asc) ----
     ranked = sorted(
         [e for e in all_enrollments if not e.is_eliminated],
-        key=lambda e: (-e.lives_remaining, e.cumulative_spread),
+        key=lambda e: (-e.lives_remaining, e.cumulative_spread or 0.0),
     )
     rank_by_user: dict[int, int] = {}
     for i, enrollment in enumerate(ranked):
@@ -684,266 +520,127 @@ def send_weekly_recap_email(week_id: int) -> int:
 
         # Current status
         lives = enrollment.lives_remaining
-        cumulative_spread = enrollment.cumulative_spread
+        cumulative_spread = enrollment.cumulative_spread or 0.0
         rank = rank_by_user.get(enrollment.user_id)
         was_eliminated_this_week = enrollment.user_id in eliminated_this_week_ids
         outcome_row = outcome_by_user.get(enrollment.user_id)
         no_pick_lost_life = bool(outcome_row and outcome_row.no_pick)
 
-        # Subject line
-        if was_eliminated_this_week:
-            subject = f"{week_name}: You've been eliminated"
-        elif outcome == "SURVIVED":
-            subject = f"{week_name}: You survived"
-        else:
-            subject = f"{week_name} Results"
-
-        # Build emails
-        plain = _build_recap_plain_text(
-            display_name, week_name, team_name, outcome, spread,
-            is_autopick, lives, cumulative_spread, rank, active_count,
-            correct_count, incorrect_count, len(all_picks),
-            eliminated_this_week, was_eliminated_this_week,
-            is_playoff, site_url, week.week_number,
+        letter = _recap_letter(
+            display_name=display_name,
+            week_name=week_name,
+            team_name=team_name,
+            outcome=outcome,
+            spread=spread,
+            is_autopick=is_autopick,
+            lives=lives,
+            cumulative_spread=cumulative_spread,
+            rank=rank,
+            active_count=active_count,
+            correct_count=correct_count,
+            incorrect_count=incorrect_count,
+            total_picks=len(all_picks),
+            eliminated_names=eliminated_this_week,
+            was_eliminated=was_eliminated_this_week,
+            is_playoff=is_playoff,
+            results_url=f"{site_url}/cfb/results/{week.week_number}",
+            season_year=season_year,
             no_pick_lost_life=no_pick_lost_life,
         )
-        html = _build_recap_html(
-            display_name, week_name, team_name, outcome, spread,
-            is_autopick, lives, cumulative_spread, rank, active_count,
-            correct_count, incorrect_count, len(all_picks),
-            eliminated_this_week, was_eliminated_this_week,
-            is_playoff, site_url, week.week_number, season_year,
-            no_pick_lost_life=no_pick_lost_life,
-        )
-
-        if send_platform_email(user.email, subject, plain, html):
+        plain, html = render_letter(letter)
+        if send_platform_email(user.email, letter.subject, plain, html):
             success_count += 1
 
     print(f"\nResults Recap Summary: {success_count}/{len(recipients)} emails sent")
     return success_count
 
 
-def _build_recap_plain_text(display_name, week_name, team_name, outcome, spread,
-                            is_autopick, lives, cumulative_spread, rank,
-                            active_count, correct_count, incorrect_count,
-                            total_picks, eliminated_names, was_eliminated,
-                            is_playoff, site_url, week_number, *,
-                            no_pick_lost_life=False):
-    """Build plain-text fallback for the weekly recap email."""
-    lines = [f"Hi {display_name},\n"]
-    lines.append(f"Here's your {week_name} recap.\n")
+RESULT_WORDS = {'SURVIVED': 'Survived', 'LOST A LIFE': 'Lost a life',
+                'PENDING': 'Pending'}
 
-    # Your pick
-    if team_name:
-        autopick_note = " (autopick)" if is_autopick else ""
-        lines.append(f"Your Pick: {team_name}{autopick_note}")
-        if spread is not None:
-            lines.append(f"Spread: {spread:+.1f}")
-        lines.append(f"Result: {outcome}")
-    elif no_pick_lost_life:
-        # DQ-2: missing the deadline costs a life
-        lines.append("Your Pick: No pick — life lost")
-    else:
-        lines.append("Your Pick: No pick submitted")
 
-    lines.append("")
+def _players_remain(count: int) -> str:
+    """'3 players remain' / '1 player remains' (pluralization is a rule)."""
+    if count == 1:
+        return '1 player remains'
+    return f'{count} players remain'
 
-    # Status
+
+def _recap_letter(*, display_name, week_name, team_name, outcome, spread,
+                  is_autopick, lives, cumulative_spread, rank, active_count,
+                  correct_count, incorrect_count, total_picks,
+                  eliminated_names, was_eliminated, is_playoff, results_url,
+                  season_year, no_pick_lost_life=False):
+    """The weekly verdict as a Club Letter (personal: greets by name).
+
+    Results are said in words (Survived / Lost a life / Pending), never by
+    colour (the Traffic-Light Ban, DESIGN.md 6.6); the standing and the
+    week around the pool are labelled facts in result blocks, not a metric
+    row. The eliminated are a list, not red badges.
+    """
     if was_eliminated:
-        lines.append("You've been eliminated from the pool.")
-        lines.append(f"Final spread: {cumulative_spread:.1f}")
+        subject = f"You've been eliminated: CFB Survivor, {week_name}"
+        headline = 'End of the road'
+        lede = [f'You have been eliminated. {_players_remain(active_count)}.']
+    elif outcome == 'SURVIVED':
+        subject = f'You survived: CFB Survivor, {week_name}'
+        headline = f'You survived {week_name}'
+        lede = [f'Here is how {week_name} went down.']
     else:
-        life_visual = ("*" * lives) + ("o" * (2 - lives))
-        lines.append(f"Lives: {life_visual} ({lives} remaining)")
-        lines.append(f"Cumulative spread: {cumulative_spread:.1f}")
+        subject = f'Results: CFB Survivor, {week_name}'
+        headline = f'{week_name} results'
+        lede = [f'Here is how {week_name} went down.']
+
+    facts = []
+    if team_name:
+        facts.append(('Your pick', team_name,
+                      'autopick' if is_autopick else None))
+        facts.append(('Result', RESULT_WORDS[outcome]))
+        if spread is not None:
+            facts.append(('Spread', f'{spread:+.1f}'))
+    elif no_pick_lost_life:
+        # DQ-2: missing the deadline costs a life.
+        facts.append(('Your pick', 'No pick: life lost'))
+    else:
+        facts.append(('Your pick', 'No pick submitted'))
+
+    if was_eliminated:
+        standing = [('Final cumulative spread', f'{cumulative_spread:.1f}')]
+    else:
+        standing = [('Lives', f'{lives} of 2'),
+                    ('Cumulative spread', f'{cumulative_spread:.1f}')]
         if rank:
-            lines.append(f"Rank: {rank} of {active_count} active")
-
-    lines.append("")
-
-    # Week summary
-    lines.append("Week Summary:")
-    lines.append(f"- {total_picks} picks submitted")
-    lines.append(f"- {correct_count} correct, {incorrect_count} incorrect")
-
+            standing.append(('Rank', f'{rank} of {active_count} active'))
+    extras = [
+        result_block('Your standing', standing),
+        result_block(f'{week_name} around the pool', [
+            ('Picks submitted', str(total_picks)),
+            ('Correct', str(correct_count)),
+            ('Incorrect', str(incorrect_count)),
+            ('Players remaining', str(active_count)),
+        ]),
+    ]
+    supporting = []
     if eliminated_names:
-        lines.append(f"\nEliminated this week: {', '.join(eliminated_names)}")
+        extras.append(items_block(eliminated_names,
+                                  title='Eliminated this week'))
     else:
-        lines.append("\nNo eliminations this week — everyone survived!")
-
-    lines.append(f"\n{active_count} players remaining in the pool.")
-
+        supporting.append('No eliminations this week.')
     if is_playoff:
-        lines.append("\nNote: CFP phase — all teams have been reset.")
+        supporting.append('College Football Playoff: every team has been '
+                          'reset.')
 
-    lines.append(f"\nView full results: {site_url}/cfb/results/{week_number}")
-    lines.append("")
-
-    return "\n".join(lines)
-
-
-def _build_recap_html(display_name, week_name, team_name, outcome, spread,
-                      is_autopick, lives, cumulative_spread, rank,
-                      active_count, correct_count, incorrect_count,
-                      total_picks, eliminated_names, was_eliminated,
-                      is_playoff, site_url, week_number, season_year, *,
-                      no_pick_lost_life=False):
-    """Build the HTML body for the weekly recap email."""
-    c = CFB_EMAIL
-
-    # ---- Your Pick Result Card ----
-    if team_name:
-        if outcome == "SURVIVED":
-            outcome_color = c['survived']
-            outcome_bg = "#f0fdf4"
-        elif outcome == "LOST A LIFE":
-            outcome_color = c['lost_life']
-            outcome_bg = "#fef2f2"
-        else:
-            outcome_color = "#d97706"
-            outcome_bg = "#fffbeb"
-
-        autopick_badge = ""
-        if is_autopick:
-            autopick_badge = ' <span style="display: inline-block; background-color: rgba(217,119,6,0.1); color: #d97706; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 4px; vertical-align: middle;">AUTOPICK</span>'
-
-        spread_text = ""
-        if spread is not None:
-            spread_text = f'<p style="margin: 0; font-size: 11px; color: {c["text_muted"]}; text-transform: uppercase; letter-spacing: 0.03em;">Spread</p><p style="margin: 2px 0 0 0; font-size: 16px; font-weight: 700; color: {c["text_primary"]};">{spread:+.1f}</p>'
-
-        pick_card = f'''<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: {outcome_bg}; border-left: 4px solid {outcome_color}; margin-bottom: 24px;">
-<tr><td style="padding: 20px 24px;">
-<p style="margin: 0 0 4px 0; font-size: 11px; font-weight: 600; color: {c['text_muted']}; text-transform: uppercase; letter-spacing: 0.05em;">Your Pick</p>
-<p style="margin: 0 0 12px 0; font-family: {c['font_heading']}; font-size: 20px; font-weight: 700; color: {c['text_primary']};">{team_name}{autopick_badge}</p>
-<table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
-<td style="padding-right: 32px;">
-<p style="margin: 0; font-size: 11px; color: {c['text_muted']}; text-transform: uppercase; letter-spacing: 0.03em;">Result</p>
-<p style="margin: 2px 0 0 0; font-size: 18px; font-weight: 700; color: {outcome_color};">{outcome}</p>
-</td>
-<td>{spread_text}</td>
-</tr></table>
-</td></tr>
-</table>'''
-    elif no_pick_lost_life:
-        # DQ-2: missing the deadline costs a life — styled as a loss
-        pick_card = f'''<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #fef2f2; border-left: 4px solid {c['lost_life']}; margin-bottom: 24px;">
-<tr><td style="padding: 20px 24px;">
-<p style="margin: 0 0 4px 0; font-size: 11px; font-weight: 600; color: {c['text_muted']}; text-transform: uppercase; letter-spacing: 0.05em;">Your Pick</p>
-<p style="margin: 0 0 6px 0; font-family: {c['font_heading']}; font-size: 18px; color: {c['text_primary']};">No pick &mdash; life lost</p>
-<p style="margin: 0; font-size: 13px; color: {c['text_secondary']};">No pick was submitted before the deadline, so a life was lost.</p>
-</td></tr>
-</table>'''
-    else:
-        pick_card = f'''<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f1f3f5; border-left: 4px solid {c['text_muted']}; margin-bottom: 24px;">
-<tr><td style="padding: 20px 24px;">
-<p style="margin: 0 0 4px 0; font-size: 11px; font-weight: 600; color: {c['text_muted']}; text-transform: uppercase; letter-spacing: 0.05em;">Your Pick</p>
-<p style="margin: 0; font-family: {c['font_heading']}; font-size: 18px; color: {c['text_muted']};">No pick submitted</p>
-</td></tr>
-</table>'''
-
-    # ---- Your Status ----
-    lives_dots = ""
-    for _ in range(lives):
-        lives_dots += f'<span style="display: inline-block; width: 14px; height: 14px; border-radius: 50%; background: {c["survived"]}; margin-right: 4px;"></span>'
-    for _ in range(2 - lives):
-        lives_dots += '<span style="display: inline-block; width: 14px; height: 14px; border-radius: 50%; border: 2px solid #d1d5db; margin-right: 4px;"></span>'
-
-    rank_display = f"{rank} of {active_count}" if rank else "&mdash;"
-
-    status_card = f'''<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom: 28px;">
-<tr>
-<td width="33%" style="padding-right: 6px;">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f8f8fa; text-align: center; border-radius: 8px;">
-<tr><td style="padding: 16px 8px;">
-<p style="margin: 0 0 4px 0; font-size: 11px; font-weight: 600; color: {c['text_muted']}; text-transform: uppercase; letter-spacing: 0.05em;">Lives</p>
-<p style="margin: 0;">{lives_dots}</p>
-</td></tr>
-</table>
-</td>
-<td width="33%" style="padding: 0 3px;">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f8f8fa; text-align: center; border-radius: 8px;">
-<tr><td style="padding: 16px 8px;">
-<p style="margin: 0 0 4px 0; font-size: 11px; font-weight: 600; color: {c['text_muted']}; text-transform: uppercase; letter-spacing: 0.05em;">Spread</p>
-<p style="margin: 0; font-family: {c['font_heading']}; font-size: 22px; font-weight: 700; color: {c['text_primary']};">{cumulative_spread:.1f}</p>
-</td></tr>
-</table>
-</td>
-<td width="33%" style="padding-left: 6px;">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f8f8fa; text-align: center; border-radius: 8px;">
-<tr><td style="padding: 16px 8px;">
-<p style="margin: 0 0 4px 0; font-size: 11px; font-weight: 600; color: {c['text_muted']}; text-transform: uppercase; letter-spacing: 0.05em;">Rank</p>
-<p style="margin: 0; font-family: {c['font_heading']}; font-size: 22px; font-weight: 700; color: {c['text_primary']};">{rank_display}</p>
-</td></tr>
-</table>
-</td>
-</tr>
-</table>'''
-
-    # ---- Eliminations (the drama) ----
-    elim_section = ""
-    if eliminated_names:
-        elim_badges = ""
-        for name in eliminated_names:
-            elim_badges += f'<span style="display: inline-block; background-color: {c["lost_life"]}; color: #fff; font-family: {c["font_body"]}; font-size: 14px; font-weight: 600; padding: 6px 14px; border-radius: 4px; margin: 3px 4px 3px 0;">{name}</span>'
-
-        elim_section = f'''<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #fef2f2; border-left: 4px solid {c['lost_life']}; margin-bottom: 24px;">
-<tr><td style="padding: 20px 24px;">
-<p style="margin: 0 0 10px 0; font-family: {c['font_heading']}; font-size: 18px; font-weight: 700; color: {c['lost_life']};">Eliminated This Week</p>
-<p style="margin: 0;">{elim_badges}</p>
-</td></tr>
-</table>'''
-    else:
-        elim_section = f'''<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f0fdf4; border-left: 4px solid {c['survived']}; margin-bottom: 24px;">
-<tr><td style="padding: 16px 24px;">
-<p style="margin: 0; font-size: 15px; font-weight: 600; color: {c['survived']};">Everyone survived this week. Impressive.</p>
-</td></tr>
-</table>'''
-
-    # ---- Week summary stats ----
-    summary = f'''<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom: 24px;">
-<tr>
-<td width="33%" style="text-align: center; padding: 8px;">
-<p style="margin: 0; font-family: {c['font_heading']}; font-size: 28px; font-weight: 700; color: {c['text_primary']};">{total_picks}</p>
-<p style="margin: 2px 0 0 0; font-size: 11px; color: {c['text_muted']}; text-transform: uppercase; letter-spacing: 0.05em;">Picks</p>
-</td>
-<td width="33%" style="text-align: center; padding: 8px;">
-<p style="margin: 0; font-family: {c['font_heading']}; font-size: 28px; font-weight: 700; color: {c['survived']};">{correct_count}</p>
-<p style="margin: 2px 0 0 0; font-size: 11px; color: {c['text_muted']}; text-transform: uppercase; letter-spacing: 0.05em;">Correct</p>
-</td>
-<td width="33%" style="text-align: center; padding: 8px;">
-<p style="margin: 0; font-family: {c['font_heading']}; font-size: 28px; font-weight: 700; color: {c['lost_life']};">{incorrect_count}</p>
-<p style="margin: 2px 0 0 0; font-size: 11px; color: {c['text_muted']}; text-transform: uppercase; letter-spacing: 0.05em;">Incorrect</p>
-</td>
-</tr>
-</table>'''
-
-    # ---- Playoff note ----
-    playoff_note = ""
-    if is_playoff:
-        playoff_note = f'''<p style="margin: 0 0 16px 0; font-size: 13px; color: {c['text_muted']}; text-align: center; font-style: italic;">College Football Playoff &mdash; all teams have been reset.</p>'''
-
-    # ---- Pool status ----
-    pool_line = f'''<p style="margin: 0 0 24px 0; font-size: 14px; color: {c['text_secondary']}; text-align: center;"><strong>{active_count}</strong> players remaining in the pool.</p>'''
-
-    # ---- Assemble ----
-    results_url = f"{site_url}/cfb/results/{week_number}"
-
-    if was_eliminated:
-        header_text = f"End of the road, {display_name}."
-        sub_text = f"Your {week_name} journey is over. It was a good run."
-    else:
-        header_text = f"{week_name} Recap"
-        sub_text = f"Here&#8217;s how the week went down, {display_name}."
-
-    content = f'''<h2 style="margin: 0 0 6px 0; font-family: {c['font_heading']}; font-size: 24px; color: {c['text_primary']};">{header_text}</h2>
-<p style="margin: 0 0 24px 0; font-size: 15px; color: {c['text_secondary']};">{sub_text}</p>
-
-{pick_card}
-{status_card}
-{elim_section}
-{summary}
-{playoff_note}
-{pool_line}
-{_cfb_html_button(results_url, "View Full Results")}'''
-
-    return _cfb_html_wrapper(content, season_year)
+    return Letter(
+        subject=subject,
+        headline=headline,
+        eyebrow=f'CFB Survivor · {week_name} results',
+        game_slug='cfb',
+        season=season_year,
+        preheader=lede[0],
+        greeting=display_name,
+        lede=lede,
+        facts=facts,
+        extras=extras,
+        cta=('View results', results_url),
+        supporting=supporting,
+    )

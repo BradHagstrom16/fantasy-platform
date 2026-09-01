@@ -55,7 +55,7 @@ def test_notify_picks_open_reaches_the_whole_roster(app):
 
     assert sent == 2
     assert {c['to'] for c in calls} == {'a@test.com', 'b@test.com'}
-    assert calls[0]['subject'] == 'Picks Are Open: The Docket — Week 1'
+    assert calls[0]['subject'] == 'Picks are open: The Docket, Week 1'
 
 
 def test_notify_picks_open_links_the_sheet(app):

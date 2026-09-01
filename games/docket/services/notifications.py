@@ -15,12 +15,15 @@ how many messages went out and let the caller flash it. A mail outage must
 not roll back an admin decision that has already been recorded.
 
 Content assembly lives here per the platform convention
-(games/<game>/services/reminders.py); transport is the shared helper.
+(games/<game>/services/reminders.py); transport is the shared helper, and
+every message is a Club Letter (utils/email_layout.py, ADR-058): this module
+supplies words, facts, and the sheet link, never markup. The copy is the
+clerk's (DESIGN.md 6.7): the deadline line always states the literal time,
+the ninth pick is "Reserve", the mark is "x2".
 
-``sheet_url``, ``send_each``, and ``wrap_email`` are public because the D24
-deadline reminders (games/docket/services/reminders.py) send through the same
-Gmail-safe shell. One copy of the table-and-inline-styles wrapper means a fix
-to how The Docket's mail renders lands on every message the game sends.
+``sheet_url``, ``send_each``, ``letter``, and ``deadline_line`` are public
+because the D24 deadline reminders (games/docket/services/reminders.py) send
+through the same shape.
 """
 import logging
 
@@ -28,7 +31,14 @@ from flask import current_app
 from markupsafe import Markup
 
 from games.docket.services.payment import payment_nudge_for
+from games.docket.services.weeks import SEASON_YEAR
 from utils.email import send_platform_email
+from utils.email_layout import (
+    Letter,
+    format_deadline_short,
+    render_letter,
+    tab_block,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +53,23 @@ def sheet_url():
     base = current_app.config.get(
         'SITE_URL', 'http://localhost:5000').rstrip('/')
     return f'{base}{SHEET_PATH}'
+
+
+def letter(week, **fields) -> Letter:
+    """A Docket letter: the eyebrow names the week, the accent is the stamp
+    garnet, the footer names the season. ``fields`` are the Letter's own."""
+    return Letter(eyebrow=f'The Docket · Week {week.week_number}',
+                  game_slug='docket', season=SEASON_YEAR, **fields)
+
+
+def deadline_line(week) -> str:
+    """'Saturday, Sep 5 · 11:00 AM CT' for the week's deadline.
+
+    A render boundary, so this is one of the sanctioned places a D6 naive-UTC
+    column becomes America/Chicago (bridge_sheet._format_ct is the other);
+    the platform formatter reads naive input as UTC.
+    """
+    return format_deadline_short(week.deadline_at)
 
 
 def _side_phrase(pick, game):
@@ -75,73 +102,41 @@ def send_each(recipients, subject, build_body):
     return sent
 
 
-def wrap_email(plain_lines, html_lines):
-    """Paragraph pairs -> (plain body, HTML body).
-
-    Plain and HTML are built from SEPARATE line lists rather than deriving
-    one from the other, so every dynamic value (an admin's free-text reason,
-    a team name, a bookmaker key) is escaped exactly once on the HTML side
-    via Markup.format while the plain side stays literal. Table layout with
-    inline styles is the platform's Gmail-safe shape; this message is a
-    short paragraph set, so paragraphs in one cell are enough.
-    """
-    plain = '\n\n'.join(plain_lines)
-    body = ''.join(
-        f'<p style="margin:0 0 14px;font-family:Georgia,serif;'
-        f'font-size:15px;line-height:1.5;color:#1C1730;">{line}</p>'
-        for line in html_lines)
-    html = (
-        '<table role="presentation" width="100%" cellpadding="0" '
-        'cellspacing="0" style="background:#F3EFE6;padding:24px 0;">'
-        '<tr><td align="center">'
-        '<table role="presentation" width="560" cellpadding="0" '
-        'cellspacing="0" style="max-width:560px;background:#FFFFFF;'
-        'border-radius:12px;padding:28px;">'
-        f'<tr><td>{body}</td></tr>'
-        '</table></td></tr></table>'
-    )
-    return plain, html
-
-
-def notify_line_correction(correction, game, picks):
+def notify_line_correction(correction, game, picks, week):
     """Tell the pickers of a corrected market that their number moved (D18).
 
     ``picks`` are that market's rows, already re-snapshotted. Each player is
     told their own side and the new number, and that they may change it
-    until the deadline.
+    until the deadline. Personal mail, so it greets by name; the admin's
+    free-text reason is escaped by the shell like every other string.
     """
     case = f'{game.away_team} at {game.home_team}'
     market = 'spread' if correction.market == 'spread' else 'total'
-    subject = f'A line was corrected: {case}'
+    old, new = f'{correction.old_value:g}', f'{correction.new_value:g}'
+    subject = f'Line corrected: The Docket, Week {week.week_number}'
     link = sheet_url()
 
     def build(user, pick):
         side = _side_phrase(pick, game)
-        moved = (f'{case}: the {market} was {correction.old_value:g} '
-                 f'({correction.old_book}) and is now '
-                 f'{correction.new_value:g} ({correction.new_book}).')
-        held = (f'Your side is now recorded as {side}. It will grade against '
-                f'the corrected number. You may change or withdraw it until '
-                f'the docket closes.')
-        return wrap_email([
-            'The commissioner corrected a line on your sheet.',
-            moved,
-            f'Reason given: {correction.reason}',
-            held,
-            f'Your sheet: {link}',
-        ], [
-            Markup('The commissioner corrected a line on your sheet.'),
-            Markup('<strong>{}</strong>: the {} was {} ({}) and is now '
-                   '{} ({}).').format(
-                       case, market, f'{correction.old_value:g}',
-                       correction.old_book, f'{correction.new_value:g}',
-                       correction.new_book),
-            Markup('Reason given: {}').format(correction.reason),
-            Markup('Your side is now recorded as <strong>{}</strong>. It '
-                   'will grade against the corrected number. You may change '
-                   'or withdraw it until the docket closes.').format(side),
-            Markup('Your sheet: {}').format(link),
-        ])
+        return render_letter(letter(
+            week,
+            subject=subject,
+            headline='A line on your sheet was corrected',
+            preheader=f'{case}: the {market} is now {new}.',
+            greeting=user.get_display_name(),
+            lede=[
+                Markup('<strong>{}</strong>: the {} was {} ({}) and is now '
+                       '{} ({}).').format(case, market, old,
+                                          correction.old_book, new,
+                                          correction.new_book),
+                f'Reason given: {correction.reason}',
+            ],
+            facts=[('Your side', side),
+                   ('Grades against', f'{new} ({correction.new_book})')],
+            cta=('Open your sheet', link),
+            supporting=['You may change or withdraw it until the docket '
+                        'closes.'],
+        ))
 
     return send_each([(p.user, p) for p in picks], subject, build)
 
@@ -155,30 +150,32 @@ def notify_redesignation(week, new_game, old_game, users):
     new_case = f'{new_game.away_team} at {new_game.home_team}'
     old_case = (f'{old_game.away_team} at {old_game.home_team}'
                 if old_game is not None else 'the previous case')
-    subject = f'The Week {week.week_number} tiebreaker case changed'
+    subject = f'Tiebreaker case changed: The Docket, Week {week.week_number}'
     link = sheet_url()
-    total = ('' if new_game.total_points is None
-             else f' The line says {new_game.total_points:g}.')
-
-    cleared = (f'Any combined-score prediction you had recorded has been '
-               f'cleared. Until you enter a new one, the designated case\'s '
-               f'locked total stands in for you.{total}')
+    facts = [('New case', new_case)]
+    if new_game.total_points is not None:
+        facts.append(('Line total', f'{new_game.total_points:g}'))
+    cleared = ('Any combined-score prediction you had recorded has been '
+               'cleared. Until you enter a new one, the designated case\'s '
+               'locked total stands in for you.')
 
     def build(user, _context):
-        return wrap_email([
-            f'The tiebreaker case for Week {week.week_number} moved from '
-            f'{old_case} to {new_case}.',
-            cleared,
-            'You may enter a number until the docket closes.',
-            f'Your sheet: {link}',
-        ], [
-            Markup('The tiebreaker case for Week {} moved from '
-                   '<strong>{}</strong> to <strong>{}</strong>.').format(
-                       week.week_number, old_case, new_case),
-            Markup('{}').format(cleared),
-            Markup('You may enter a number until the docket closes.'),
-            Markup('Your sheet: {}').format(link),
-        ])
+        return render_letter(letter(
+            week,
+            subject=subject,
+            headline='The tiebreaker case moved',
+            preheader=f'Now {new_case}. Enter a new number before the docket '
+                      f'closes.',
+            lede=[
+                Markup('The tiebreaker case for Week {} moved from '
+                       '<strong>{}</strong> to <strong>{}</strong>.').format(
+                           week.week_number, old_case, new_case),
+                cleared,
+            ],
+            facts=facts,
+            cta=('Open your sheet', link),
+            supporting=['You may enter a number until the docket closes.'],
+        ))
 
     return send_each([(u, None) for u in users], subject, build)
 
@@ -190,40 +187,32 @@ def notify_picks_open(week, recipients):
     latched by the import run on ``DocketWeek.picks_open_notified``, to every
     roster member with the sheet link. ``recipients`` are ``(user,
     enrollment)`` pairs: a member who still owes the buy-in also gets the
-    "Settle the tab" paragraph (gate: services/payment.py — unpaid only,
-    never the Commish; ``None`` for the enrollment means no tab). Returns how
-    many messages were accepted.
+    "Settle the tab" strip (gate: services/payment.py — unpaid only, never
+    the Commish; ``None`` for the enrollment means no tab). Returns how many
+    messages were accepted.
     """
-    subject = f'Picks Are Open: The Docket — Week {week.week_number}'
+    number = week.week_number
+    subject = f'Picks are open: The Docket, Week {number}'
     link = sheet_url()
+    deadline = deadline_line(week)
 
     def build(user, enrollment):
-        plain_lines = [
-            f'Picks are open for Week {week.week_number} of The Docket.',
-            'The board is set — make your picks before the docket closes.',
-            f'Your sheet: {link}',
-        ]
-        html_lines = [
-            Markup('Picks are open for <strong>Week {}</strong> of The '
-                   'Docket.').format(week.week_number),
-            Markup('The board is set — make your picks before the docket '
-                   'closes.'),
-            Markup('Your sheet: {}').format(link),
-        ]
         nudge = payment_nudge_for(enrollment, bool(user.is_admin))
-        if nudge:
-            plain_lines.append(
-                f'Settle the tab: the ${nudge["entry_fee"]} entry is due. '
-                f'Pay on Venmo (amount and your name filled in): '
-                f'{nudge["venmo_url"]}\n'
-                f'Or Zelle {nudge["zelle_phone"]} — put your name in the memo.')
-            html_lines.append(
-                Markup('<strong>Settle the tab.</strong> The ${} entry is due. '
-                       '<a href="{}">Pay on Venmo</a> (amount and your name '
-                       'filled in), or Zelle <strong>{}</strong> — put your '
-                       'name in the memo.').format(
-                           nudge['entry_fee'], nudge['venmo_url'],
-                           nudge['zelle_phone']))
-        return wrap_email(plain_lines, html_lines)
+        return render_letter(letter(
+            week,
+            subject=subject,
+            headline=f'The Week {number} docket is open',
+            preheader=f'The docket closes {deadline}.',
+            lede=[f'The Week {number} slate is posted and the lines are '
+                  f'frozen. File eight sides, name your x2 (it scores '
+                  f'double), and enter your number before the docket '
+                  f'closes.'],
+            facts=[('Deadline', deadline)],
+            cta=('Open your sheet', link),
+            supporting=['Anything still open when the docket closes is '
+                        'filled for you from the locked lines. A case locks '
+                        'at its own kickoff, so the early games close early.'],
+            notes=[tab_block(nudge, 'docket')],
+        ))
 
     return send_each(recipients, subject, build)

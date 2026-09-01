@@ -320,6 +320,6 @@ def correct_line(week, game_id, market, value, book, reason,
     notified = 0
     if notify and picks:
         notified = notifications.notify_line_correction(
-            correction, game, picks)
+            correction, game, picks, week)
     return {'correction': correction, 'game': game,
             'resnapshotted': len(picks), 'notified': notified}
