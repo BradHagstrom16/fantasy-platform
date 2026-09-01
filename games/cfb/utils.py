@@ -120,6 +120,53 @@ def format_deadline(deadline):
     return deadline_local.strftime('%B %d, %Y at %I:%M %p %Z')
 
 
+# Short zone labels for the room's deadline line ("11:00 AM CT"): the lounge
+# and The Docket both say "CT", so the pick surface matches rather than
+# printing strftime's "CDT"/"CST" split. Unknown zones fall back to %Z.
+_ZONE_LABELS = {
+    'CDT': 'CT', 'CST': 'CT',
+    'EDT': 'ET', 'EST': 'ET',
+    'MDT': 'MT', 'MST': 'MT',
+    'PDT': 'PT', 'PST': 'PT',
+}
+
+
+def format_deadline_short(deadline):
+    """'Saturday, Sep 5 · 11:00 AM CT': the room's deadline line.
+
+    Weekday + short date + wall clock in the pool tz, no year, no leading
+    zero (the impeccable critique 2026-09-01: the long form wrapped to two
+    lines at 375px and split the zone as "CDT"). Admin surfaces keep
+    format_deadline.
+    """
+    if deadline is None:
+        return 'TBD'
+    pool_tz = _get_pool_tz()
+    if deadline.tzinfo is not None:
+        local = deadline.astimezone(pool_tz)
+    else:
+        local = deadline.replace(tzinfo=pool_tz)
+    zone = local.strftime('%Z')
+    return (f"{local.strftime('%A, %b %-d · %-I:%M %p')} "
+            f"{_ZONE_LABELS.get(zone, zone)}")
+
+
+def format_relative(delta):
+    """Calm one-line countdown: '2d 14h' / '3h 18m' / '42m' (never negative).
+
+    Shared by the lounge summons and the room's pick page so the two never
+    disagree about how long is left.
+    """
+    total_minutes = max(0, int(delta.total_seconds() // 60))
+    days, rem = divmod(total_minutes, 1440)
+    hours, minutes = divmod(rem, 60)
+    if days > 0:
+        return f'{days}d {hours}h'
+    if hours > 0:
+        return f'{hours}h {minutes}m'
+    return f'{minutes}m'
+
+
 def parse_form_datetime(datetime_str):
     """Parse datetime from HTML form input and make it timezone-aware in pool timezone."""
     naive_dt = datetime.strptime(datetime_str, '%Y-%m-%dT%H:%M')

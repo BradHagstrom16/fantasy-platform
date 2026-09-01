@@ -27,6 +27,7 @@ from extensions import db
 from games.cfb import cfb_bp
 from games.cfb.constants import FBS_MASTER_TEAMS, TEAM_CONFERENCES
 from games.cfb.models import CfbEnrollment, CfbGame, CfbPick, CfbTeam, CfbWeek
+from games.cfb.services import board as board_service
 from games.cfb.services.game_logic import (
     calculate_cumulative_spread,
     get_game_for_team,
@@ -43,6 +44,8 @@ from games.cfb.services.score_fetcher import ScoreFetcher
 from games.cfb.utils import (
     deadline_has_passed,
     format_deadline,
+    format_deadline_short,
+    format_relative,
     get_cfp_eliminated_teams,
     get_cfp_teams_in_week,
     get_current_time,
@@ -666,7 +669,8 @@ def make_pick(week_number):
 
     playoff = is_week_playoff(week)
     pool_ledger = []
-    for team in db.session.scalars(select(CfbTeam).order_by(CfbTeam.name)).all():
+    all_teams = db.session.scalars(select(CfbTeam).order_by(CfbTeam.name)).all()
+    for team in all_teams:
         if team.id in team_game:
             continue  # playing this week -> shown on the board with its state
         if team.id in used_team_ids:
@@ -677,27 +681,46 @@ def make_pick(week_number):
             reason = 'not_playing'
         pool_ledger.append({'team': team, 'reason': reason})
 
-    # The state legend teaches the taxonomy; only list states that can occur in
-    # the current phase (no favorite/started split before lines lock).
-    if lines_pending:
-        legend_states = ['on_slate', 'used', 'not_playing']
-        if playoff and cfp_eliminated_names:
-            legend_states.append('cfp_out')
-    else:
-        legend_states = ['open', 'too_favored', 'used', 'started', 'not_playing']
-        if playoff:
-            legend_states.insert(4, 'cfp_out')
-        if any(g.home_team_spread is None for g in games):
-            legend_states.append('no_line')
-    # A game with an untracked side (a pool team's non-pool opponent) is on the
-    # board because ONE side is rostered; the other can never be picked.
-    if any(g.home_team_id is None or g.away_team_id is None for g in games):
-        legend_states.append('not_in_pool')
+    # The board (impeccable critique 2026-09-01): one state per side, computed
+    # once here and rendered as-is. A game shows by default iff a side is
+    # pickable (or it holds the member's pick); the rest collapse behind a
+    # disclosure so the answer set is the page, not a needle in 42 cards. The
+    # legend is a census of what actually rendered, never a phase list.
+    board_states = board_service.board_states(
+        games,
+        preview=lines_pending,
+        used_ids=used_team_ids,
+        eligible_ids={t.id for t in eligible_teams},
+        cfp_out_names=cfp_eliminated_names if playoff else set(),
+        current_time=current_time,
+        team_spreads=team_spreads,
+    )
+    open_games, hidden_games = board_service.partition_board(
+        games, board_states,
+        held_team_id=existing_pick.team_id if existing_pick else None,
+    )
+    legend_states = board_service.legend_census(
+        board_states, ledger_reasons={e['reason'] for e in pool_ledger})
+    hidden_sentence = board_service.hidden_games_sentence(
+        hidden_games, board_states)
+
+    # The status strip's clock: relative + short absolute, the same pair the
+    # lounge summons renders (games/cfb/DESIGN.md §6.14). The deadline column
+    # is pool-tz wall clock; current_time is the CFB_FAKE_NOW seam.
+    deadline_relative = format_relative(make_aware(week.deadline) - current_time)
 
     return render_template(
         'cfb/pick.html',
         week=week,
+        deadline_relative=deadline_relative,
+        deadline_short=format_deadline_short(week.deadline),
         games=games,
+        open_games=open_games,
+        hidden_games=hidden_games,
+        board_states=board_states,
+        state_labels=board_service.STATE_LABELS,
+        hidden_sentence=hidden_sentence,
+        pool_size=len(all_teams),
         eligible_teams=eligible_teams,
         existing_pick=existing_pick,
         current_time=current_time,

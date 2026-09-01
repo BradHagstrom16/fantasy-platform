@@ -596,7 +596,7 @@ def test_not_playing_team_lands_in_the_ledger(app, client):
     ledger = _ledger_names(templates)
     assert ledger == {'Bye Team': 'not_playing'}       # only the bye team
     assert 'Not On The Board This Week' in data
-    assert 'Not Playing' in data
+    assert 'No Game This Week' in data
 
 
 def test_used_team_off_the_slate_shows_used_in_ledger(app, client):
@@ -660,13 +660,16 @@ def test_legend_omits_favorite_split_in_preview(app, client):
 
     assert 'cfb-pick-legend' in data
     assert 'cfb-legend-label">On The Slate</span>' in data
-    assert '16.5+ Fav' not in data                     # no favorite split yet
+    assert 'Favored 16.5+' not in data                     # no favorite split yet
 
 
 def test_legend_shows_live_states_once_lines_post(app, client):
-    """A posted spread lights up the full legend, including the Open swatch."""
+    """Posted spreads light up the legend as a census of the board: the Open
+    swatch plus every out-reason actually rendered (here the 16.5+ cap). A key
+    nobody can find on the page is homework, not help (critique 2026-09-01)."""
     week = make_week(1, deadline=FUTURE_DEADLINE)
     make_game(week, make_team('Open A'), make_team('Open B'), spread=-3.0)
+    make_game(week, make_team('Big Fav'), make_team('Big Dog'), spread=-20.5)
     user = make_user('p1')
     make_enrollment(user)
     db.session.commit()
@@ -675,7 +678,7 @@ def test_legend_shows_live_states_once_lines_post(app, client):
     data = client.get('/cfb/pick/1').data.decode()
 
     assert 'cfb-legend-label">Open</span>' in data
-    assert 'cfb-legend-label">16.5+ Fav</span>' in data
+    assert 'cfb-legend-label">Favored 16.5+</span>' in data
 
 
 def test_out_reason_labels_render_for_each_state(app, client):
@@ -696,8 +699,8 @@ def test_out_reason_labels_render_for_each_state(app, client):
 
     data = client.get('/cfb/pick/2').data.decode()
 
-    assert _chip_reason(data, 'BigFav') == '16.5+ Fav'
-    assert _chip_reason(data, 'UsedTeam') == 'Used'
+    assert _chip_reason(data, 'BigFav') == 'Favored 16.5+'
+    assert _chip_reason(data, 'UsedTeam') == 'Already Used'
     assert _chip_reason(data, 'NoLineH') == 'No Line'
 
 
@@ -763,9 +766,9 @@ def test_preview_marks_non_pool_opponent(app, client):
     data = client.get('/cfb/pick/1').data.decode()
 
     assert 'Lines and eligibility post' in data                        # preview state
-    assert _chip_reason(data, 'Arkansas Pine Bluff Golden Lions') == 'Not in Pool'
+    assert _chip_reason(data, 'Arkansas Pine Bluff Golden Lions') == 'Not a Pool Team'
     assert _chip_reason(data, 'Missouri') is None                      # pool team: no out-reason
-    assert 'cfb-legend-label">Not in Pool</span>' in data              # legend key
+    assert 'cfb-legend-label">Not a Pool Team</span>' in data              # legend key
     assert 'data-team-id="' not in data                                # nothing pickable yet
 
 
@@ -784,8 +787,8 @@ def test_interactive_shows_non_pool_opponent_as_not_in_pool(app, client):
 
     assert 'Lines and eligibility post' not in data                    # interactive
     assert f'data-team-id="{missouri.id}"' in data                     # pool team selectable
-    assert _chip_reason(data, 'Arkansas Pine Bluff Golden Lions') == 'Not in Pool'
-    assert 'cfb-legend-label">Not in Pool</span>' in data
+    assert _chip_reason(data, 'Arkansas Pine Bluff Golden Lions') == 'Not a Pool Team'
+    assert 'cfb-legend-label">Not a Pool Team</span>' in data
 
 
 def test_untracked_home_opponent_marked_not_in_pool(app, client):
@@ -803,7 +806,7 @@ def test_untracked_home_opponent_marked_not_in_pool(app, client):
     data = client.get('/cfb/pick/1').data.decode()
 
     assert f'data-team-id="{missouri.id}"' in data                     # away pool team selectable
-    assert _chip_reason(data, 'Arkansas Pine Bluff Golden Lions') == 'Not in Pool'
+    assert _chip_reason(data, 'Arkansas Pine Bluff Golden Lions') == 'Not a Pool Team'
 
 
 # ── Sub-nav "Pick" pill: reachable only when a pick is actually possible ───

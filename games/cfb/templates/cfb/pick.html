@@ -1,6 +1,64 @@
 {% extends "base.html" %}
 {% block title %}Your Card · {{ get_week_display_name(week) }}{% endblock %}
 
+{# One side of one game. `state` comes from board_states (games/cfb/services/
+   board.py), never re-derived here. The inner row markup is locked by
+   tests/test_cfb_pick.py::_chip_reason (name, optional home tag, then the
+   out-reason chip) and tests/test_cfb_pick_a3.py (the picker's attribute
+   order + the .bg-primary/.text-white/.selected toggle classes the JS owns):
+   keep it byte-identical across the open and hidden halves of the board. #}
+{% macro side_row(game, side, team, state, in_open_card) %}
+    {% set is_home = side == 'home' %}
+    {% set spread = team_spreads.get(team.id) if team else none %}
+    {% if state == 'open' %}
+    <div class="d-flex justify-content-between align-items-center p-2 rounded {% if not is_home %}mb-1 {% endif %}team-option {% if existing_pick and existing_pick.team_id == team.id %}bg-primary text-white selected{% else %}bg-light{% endif %}"
+         role="button" tabindex="0" aria-pressed="{% if existing_pick and existing_pick.team_id == team.id %}true{% else %}false{% endif %}"
+         data-team-id="{{ team.id }}" data-team-name="{{ team.name }}" data-team-spread="{{ team_spreads.get(team.id, 0) }}">
+        <span class="cfb-team-id"><span class="cfb-team-name">{{ team.name }}</span>{% if is_home %} <span class="cfb-home-tag">Home</span>{% endif %}</span>
+        {% if spread is not none %}<span class="spread-badge">{{ "%+.1f"|format(spread) }}</span>{% endif %}
+    </div>
+    {% elif state == 'on_slate' %}
+    {# Pre-spread-lock slate: a full-contrast resting row, no role, no
+       data-team-id, so the picker JS never attaches. Nothing here is out,
+       it has not opened yet. #}
+    <div class="d-flex justify-content-between align-items-center p-2 rounded {% if not is_home %}mb-1 {% endif %}team-option bg-light">
+        <span class="cfb-team-id"><span class="cfb-team-name">{{ team.name }}</span>{% if is_home %} <span class="cfb-home-tag">Home</span>{% endif %}</span>
+    </div>
+    {% else %}
+    <div class="d-flex justify-content-between align-items-center p-2 rounded {% if not is_home %}mb-1 {% endif %}team-option team-option-out{% if in_open_card %} is-opponent{% endif %}">
+        <span class="cfb-team-id">
+            <span class="cfb-team-name">{{ game.get_home_team_display() if is_home else game.get_away_team_display() }}</span>{% if is_home %} <span class="cfb-home-tag">Home</span>{% endif %}
+            <span class="cfb-out-reason">{{ state_labels[state] }}</span>
+        </span>
+        {% if spread is not none %}<span class="spread-badge">{{ "%+.1f"|format(spread) }}</span>{% endif %}
+    </div>
+    {% endif %}
+{% endmacro %}
+
+{# One game on the board. `in_open_set` marks a card the member can act on,
+   so its non-pickable side reads as the opponent (demoted), not a peer. #}
+{% macro game_card(game, in_open_set) %}
+    {% set state = board_states[game.id] %}
+    {% set game_started = (not lines_pending) and game._aware_time and game._aware_time < current_time %}
+    <div class="card mb-2 team-pick-card {% if game_started %}ineligible{% endif %} {% if existing_pick and existing_pick.team_id in (game.home_team_id, game.away_team_id) %}border-primary{% endif %}" data-game-card>
+        <div class="card-header py-2">
+            <div class="d-flex justify-content-between align-items-center gap-2">
+                <strong class="cfb-matchup">
+                    {{ game.get_away_team_display() }} <span class="cfb-at">@</span> {{ game.get_home_team_display() }}
+                </strong>
+                <span class="cfb-kickoff">
+                    {% if game._aware_time %}{{ game._aware_time.strftime('%a, %b %-d · %-I:%M %p') }}{% else %}TBD{% endif %}
+                    {% if game_started %}<span class="cfb-out-reason ms-1">Started</span>{% endif %}
+                </span>
+            </div>
+        </div>
+        <div class="card-body py-2">
+            {{ side_row(game, 'away', game.away_team, state.away, in_open_set) }}
+            {{ side_row(game, 'home', game.home_team, state.home, in_open_set) }}
+        </div>
+    </div>
+{% endmacro %}
+
 {% block content %}
 <div class="page-hero cfb-hero">
   <div class="hero-glow"></div>
@@ -15,11 +73,30 @@
 <div class="row justify-content-center">
     <div class="col-lg-9 col-xl-8">
 
-        <p class="cfb-deadline">
-            <i class="bi bi-clock-fill" aria-hidden="true"></i>
-            <span class="cfb-eyebrow">Picks Lock</span>
-            <strong>{{ format_deadline(week.deadline) }}</strong>
-        </p>
+        {# Status strip (games/cfb/DESIGN.md §2.1, §6.14): lives, the clock
+           as relative + absolute, and the unresolved obligation with its
+           consequence, stated where it binds. "Picks Lock" stays literal (the
+           payment-nudge lock orders it above Settle the Tab). #}
+        <div class="cfb-pick-status">
+            <p class="cfb-deadline">
+                <i class="bi bi-clock-fill" aria-hidden="true"></i>
+                <span class="cfb-eyebrow">Picks Lock</span>
+                <strong>in {{ deadline_relative }}</strong>
+                <span class="cfb-deadline-abs">&middot; {{ deadline_short }}</span>
+            </p>
+            {% if cfb_enrollment %}
+            <p class="cfb-status-lives">
+                <span class="lives-indicator">
+                    {% for i in range(cfb_enrollment.lives_remaining) %}<span class="life"></span>{% endfor %}
+                    {% for i in range(2 - cfb_enrollment.lives_remaining) %}<span class="life lost"></span>{% endfor %}
+                </span>
+                <span class="cfb-status-label">{{ cfb_enrollment.lives_remaining }} {{ 'life' if cfb_enrollment.lives_remaining == 1 else 'lives' }}</span>
+            </p>
+            {% endif %}
+            {% if not existing_pick and not lines_pending %}
+            <p class="cfb-status-line">You have not made a pick. Miss the deadline and you get the biggest available favorite.</p>
+            {% endif %}
+        </div>
 
         {% if existing_pick %}
         <div class="cfb-holding {% if pick_locked %}is-locked{% endif %}">
@@ -32,18 +109,16 @@
             </div>
             <p class="cfb-holding-note">
                 {% if pick_locked %}This game has kicked off. Your call is final for the week.
-                {% else %}Change it below any time before picks lock.{% endif %}
+                {% else %}Change it any time before picks lock.{% endif %}
             </p>
         </div>
         {% endif %}
 
         {% if lines_pending %}
-        {# Pre-spread-lock slate: the full board, read-only. No role, no
-           tabindex, no data-team-id, so the picker JS and its cursor and
-           hover affordances never attach (they bind [role="button"] /
-           [data-team-id] only). Full-contrast resting rows, deliberately
-           not the dimmed team-option-out treatment: nothing here is out,
-           it has not opened yet, and the note states that reason once. #}
+        {# Pre-spread-lock slate: the full board, read-only (the on_slate
+           rows carry no picker hooks). Full-contrast resting rows, deliberately
+           not the dimmed team-option-out treatment: nothing here is out, it
+           has not opened yet, and the note states that reason once. #}
         <div class="cfb-slate-head">
             <span class="cfb-eyebrow">The Board</span>
             <span class="cfb-slate-count">{{ games|length }} game{{ 's' if games|length != 1 }}, lines pending</span>
@@ -59,38 +134,10 @@
         </div>
 
         {% include 'cfb/_pick_legend.html' %}
+        <p class="cfb-board-rules">Pick one team to win outright. A team is yours for the season once you use it. Teams favored by 16.5 or more are off the board. Only the {{ pool_size }} pool teams can be picked; everyone else on the slate is an opponent.</p>
 
         {% for game in games %}
-            {% set away_team = game.away_team %}
-            {% set home_team = game.home_team %}
-            {% set away_used = away_team and away_team.id in used_team_ids %}
-            {% set home_used = home_team and home_team.id in used_team_ids %}
-            {% set away_pool = away_team is not none %}
-            {% set home_pool = home_team is not none %}
-        <div class="card mb-2 team-pick-card" data-game-card>
-            <div class="card-header py-2">
-                <div class="d-flex justify-content-between align-items-center gap-2">
-                    <strong class="cfb-matchup">
-                        {{ game.get_away_team_display() }} <span class="cfb-at">@</span> {{ game.get_home_team_display() }}
-                    </strong>
-                    <span class="cfb-kickoff">
-                        {% if game._aware_time %}{{ game._aware_time.strftime('%a %m/%d %I:%M %p') }}{% else %}TBD{% endif %}
-                    </span>
-                </div>
-            </div>
-            <div class="card-body py-2">
-                <div class="d-flex justify-content-between align-items-center p-2 rounded mb-1 team-option {% if away_used or not away_pool %}team-option-out{% else %}bg-light{% endif %}">
-                    <span class="cfb-team-id"><span class="cfb-team-name">{{ game.get_away_team_display() }}</span>
-                        {% if away_used %}<span class="cfb-out-reason">Used</span>{% elif not away_pool %}<span class="cfb-out-reason">Not in Pool</span>{% endif %}
-                    </span>
-                </div>
-                <div class="d-flex justify-content-between align-items-center p-2 rounded team-option {% if home_used or not home_pool %}team-option-out{% else %}bg-light{% endif %}">
-                    <span class="cfb-team-id"><span class="cfb-team-name">{{ game.get_home_team_display() }}</span> <span class="cfb-home-tag">Home</span>
-                        {% if home_used %}<span class="cfb-out-reason">Used</span>{% elif not home_pool %}<span class="cfb-out-reason">Not in Pool</span>{% endif %}
-                    </span>
-                </div>
-            </div>
-        </div>
+            {{ game_card(game, False) }}
         {% endfor %}
 
         {% include 'cfb/_pick_ledger.html' %}
@@ -101,11 +148,13 @@
             <input type="hidden" name="team_id" id="selectedTeamId" value="{% if existing_pick %}{{ existing_pick.team_id }}{% endif %}"/>
 
             {% include 'cfb/_pick_legend.html' %}
+            <p class="cfb-board-rules">Pick one team to win outright. A team is yours for the season once you use it. Teams favored by 16.5 or more are off the board. Only the {{ pool_size }} pool teams can be picked; everyone else on the slate is an opponent.</p>
 
             <div class="cfb-slate-head">
-                <span class="cfb-eyebrow">The Board</span>
-                <span class="cfb-slate-count">{{ eligible_teams|length }} still open</span>
+                <h2 class="cfb-eyebrow cfb-slate-title">The Board</h2>
+                <span class="cfb-slate-count">{{ open_games|length }} game{{ 's' if open_games|length != 1 }} with an open team &middot; {{ eligible_teams|length }} open team{{ 's' if eligible_teams|length != 1 }}</span>
             </div>
+            <p class="cfb-slate-caption">Tap a team, then lock it in below. Minus means favored. All times CT.</p>
 
             {% if not eligible_teams %}
             <div class="alert alert-warning cfb-empty-slate mb-3">
@@ -114,97 +163,37 @@
             </div>
             {% endif %}
 
-            {% for game in games %}{# pre-sorted None-safe in the route #}
-                {% set home_team = game.home_team %}
-                {% set away_team = game.away_team %}
-                {% set home_eligible = home_team and home_team in eligible_teams %}
-                {% set away_eligible = away_team and away_team in eligible_teams %}
-                {% set home_used = home_team and home_team.id in used_team_ids %}
-                {% set away_used = away_team and away_team.id in used_team_ids %}
-                {% set game_started = game._aware_time and game._aware_time < current_time %}
-                {% set home_spread = team_spreads.get(home_team.id) if home_team else none %}
-                {% set away_spread = team_spreads.get(away_team.id) if away_team else none %}
-
-                {% if home_team or away_team %}
-                <div class="card mb-2 team-pick-card {% if game_started %}ineligible{% endif %} {% if existing_pick and ((home_team and existing_pick.team_id == home_team.id) or (away_team and existing_pick.team_id == away_team.id)) %}border-primary{% endif %}" data-game-card>
-                    <div class="card-header py-2">
-                        <div class="d-flex justify-content-between align-items-center gap-2">
-                            <strong class="cfb-matchup">
-                                {{ game.get_away_team_display() }} <span class="cfb-at">@</span> {{ game.get_home_team_display() }}
-                            </strong>
-                            <span class="cfb-kickoff">
-                                {% if game._aware_time %}{{ game._aware_time.strftime('%a %m/%d %I:%M %p') }}{% else %}TBD{% endif %}
-                                {% if game_started %}<span class="cfb-out-reason ms-1">Started</span>{% endif %}
-                            </span>
-                        </div>
-                    </div>
-                    <div class="card-body py-2">
-                        {# Away team option #}
-                        {% if away_team %}
-                            {% if away_eligible %}
-                            <div class="d-flex justify-content-between align-items-center p-2 rounded mb-1 team-option {% if existing_pick and existing_pick.team_id == away_team.id %}bg-primary text-white selected{% else %}bg-light{% endif %}"
-                                 role="button" tabindex="0" aria-pressed="{% if existing_pick and existing_pick.team_id == away_team.id %}true{% else %}false{% endif %}"
-                                 data-team-id="{{ away_team.id }}" data-team-name="{{ away_team.name }}" data-team-spread="{{ team_spreads.get(away_team.id, 0) }}">
-                                <span class="cfb-team-id"><span class="cfb-team-name">{{ away_team.name }}</span></span>
-                                {% if away_spread is not none %}<span class="spread-badge">{{ "%+.1f"|format(away_spread) }}</span>{% endif %}
-                            </div>
-                            {% else %}
-                            <div class="d-flex justify-content-between align-items-center p-2 rounded mb-1 team-option team-option-out">
-                                <span class="cfb-team-id">
-                                    <span class="cfb-team-name">{{ away_team.name }}</span>
-                                    <span class="cfb-out-reason">{% if away_used %}Used{% elif away_team.name in cfp_eliminated_names %}CFP Out{% elif game_started %}Started{% elif away_spread is not none and away_spread <= -16.5 %}16.5+ Fav{% elif away_spread is none %}No Line{% else %}Out{% endif %}</span>
-                                </span>
-                                {% if away_spread is not none %}<span class="spread-badge">{{ "%+.1f"|format(away_spread) }}</span>{% endif %}
-                            </div>
-                            {% endif %}
-                        {% else %}
-                            {# Non-pool opponent (not one of the 49): never pickable. #}
-                            <div class="d-flex justify-content-between align-items-center p-2 rounded mb-1 team-option team-option-out">
-                                <span class="cfb-team-id">
-                                    <span class="cfb-team-name">{{ game.get_away_team_display() }}</span>
-                                    <span class="cfb-out-reason">Not in Pool</span>
-                                </span>
-                            </div>
-                        {% endif %}
-
-                        {# Home team option #}
-                        {% if home_team %}
-                            {% if home_eligible %}
-                            <div class="d-flex justify-content-between align-items-center p-2 rounded team-option {% if existing_pick and existing_pick.team_id == home_team.id %}bg-primary text-white selected{% else %}bg-light{% endif %}"
-                                 role="button" tabindex="0" aria-pressed="{% if existing_pick and existing_pick.team_id == home_team.id %}true{% else %}false{% endif %}"
-                                 data-team-id="{{ home_team.id }}" data-team-name="{{ home_team.name }}" data-team-spread="{{ team_spreads.get(home_team.id, 0) }}">
-                                <span class="cfb-team-id"><span class="cfb-team-name">{{ home_team.name }}</span> <span class="cfb-home-tag">Home</span></span>
-                                {% if home_spread is not none %}<span class="spread-badge">{{ "%+.1f"|format(home_spread) }}</span>{% endif %}
-                            </div>
-                            {% else %}
-                            <div class="d-flex justify-content-between align-items-center p-2 rounded team-option team-option-out">
-                                <span class="cfb-team-id">
-                                    <span class="cfb-team-name">{{ home_team.name }}</span> <span class="cfb-home-tag">Home</span>
-                                    <span class="cfb-out-reason">{% if home_used %}Used{% elif home_team.name in cfp_eliminated_names %}CFP Out{% elif game_started %}Started{% elif home_spread is not none and home_spread <= -16.5 %}16.5+ Fav{% elif home_spread is none %}No Line{% else %}Out{% endif %}</span>
-                                </span>
-                                {% if home_spread is not none %}<span class="spread-badge">{{ "%+.1f"|format(home_spread) }}</span>{% endif %}
-                            </div>
-                            {% endif %}
-                        {% else %}
-                            {# Non-pool opponent (not one of the 49): never pickable. #}
-                            <div class="d-flex justify-content-between align-items-center p-2 rounded team-option team-option-out">
-                                <span class="cfb-team-id">
-                                    <span class="cfb-team-name">{{ game.get_home_team_display() }}</span> <span class="cfb-home-tag">Home</span>
-                                    <span class="cfb-out-reason">Not in Pool</span>
-                                </span>
-                            </div>
-                        {% endif %}
-                    </div>
-                </div>
-                {% endif %}
+            {% for game in open_games %}{# pre-sorted None-safe in the route #}
+                {{ game_card(game, True) }}
             {% endfor %}
 
-            {# Confirmation bar: the weekly call (only when a pick is possible) #}
+            {# The rest of the slate: games with no open team, collapsed but
+               never omitted (their reasons stay on their rows). Opens by
+               default when nothing on the board is pickable, so the exhausted
+               state still shows the whole slate. #}
+            {% if hidden_games %}
+            <p class="cfb-board-rest-note">{{ hidden_sentence }}</p>
+            <details class="cfb-board-rest"{% if not eligible_teams %} open{% endif %}>
+                <summary class="cfb-board-toggle">
+                    <span class="cfb-toggle-closed">Show all {{ games|length }} games</span>
+                    <span class="cfb-toggle-open">Show open games only</span>
+                </summary>
+                {% for game in hidden_games %}
+                    {{ game_card(game, False) }}
+                {% endfor %}
+            </details>
+            {% endif %}
+
+            {# Confirmation bar: the weekly call (only when a pick is possible).
+               Sticky at the viewport bottom so the commit control follows the
+               thumb (it was 8.5 screens below the first card); the button
+               names the team it locks in (games/cfb/DESIGN.md §7.2: never a
+               bare "Submit"), and Clear is a real deselect, not an exit. #}
             {% if eligible_teams or existing_pick %}
-            <div class="card mt-3 cfb-pick-cta" id="pickConfirmBar" style="{% if not existing_pick %}display: none;{% endif %}">
+            <div class="card mt-3 cfb-pick-cta" id="pickConfirmBar" aria-live="polite" style="{% if not existing_pick %}display: none;{% endif %}">
                 <div class="card-body d-flex justify-content-between align-items-center flex-wrap gap-3">
                     <div class="cfb-confirm-pick">
-                        <span class="cfb-eyebrow">Your Call</span>
+                        <span class="cfb-eyebrow" id="confirmEyebrow">{% if existing_pick %}Your Standing Pick{% else %}Your Call &middot; Not Locked Yet{% endif %}</span>
                         <div class="cfb-confirm-line">
                             <strong class="cfb-team-name" id="confirmTeamName">{% if existing_pick %}{{ existing_pick.team.name }}{% endif %}</strong>
                             <span class="spread-badge" id="confirmTeamSpread">
@@ -213,12 +202,8 @@
                         </div>
                     </div>
                     <div class="d-flex gap-2">
-                        {% if existing_pick %}
-                            <button type="submit" class="btn btn-game">Update Pick</button>
-                        {% else %}
-                            <button type="submit" class="btn btn-game" id="submitBtn">Lock It In</button>
-                        {% endif %}
-                        <a href="{{ url_for('cfb.index') }}" class="btn btn-outline-light">Cancel</a>
+                        <button type="submit" class="btn btn-game" id="submitBtn">{% if existing_pick %}Keep{% else %}Lock In{% endif %} <span id="confirmBtnTeam">{% if existing_pick %}{{ existing_pick.team.name }}{% endif %}</span></button>
+                        <button type="button" class="btn btn-outline-light" id="clearSelection">Clear</button>
                     </div>
                 </div>
             </div>
@@ -245,14 +230,17 @@ document.addEventListener('DOMContentLoaded', function() {
     var confirmBar = document.getElementById('pickConfirmBar');
     var confirmName = document.getElementById('confirmTeamName');
     var confirmSpread = document.getElementById('confirmTeamSpread');
+    var confirmEyebrow = document.getElementById('confirmEyebrow');
+    var confirmBtnTeam = document.getElementById('confirmBtnTeam');
+    var submitBtn = document.getElementById('submitBtn');
+    var clearBtn = document.getElementById('clearSelection');
     var form = document.getElementById('pickForm');
+    // The pick already on file (empty when the member has none): the bar
+    // reads "held" while it shows that team and "not locked yet" the moment
+    // another team is tapped, so selection never looks like submission.
+    var heldTeamId = hiddenInput ? hiddenInput.value : '';
 
-    function selectOption(option) {
-        var teamId = option.getAttribute('data-team-id');
-        var teamName = option.getAttribute('data-team-name');
-        var teamSpread = parseFloat(option.getAttribute('data-team-spread'));
-
-        // Deselect all
+    function deselectAll() {
         document.querySelectorAll('.team-option.selected').forEach(function(el) {
             el.classList.remove('selected', 'bg-primary', 'text-white');
             el.classList.add('bg-light');
@@ -261,6 +249,14 @@ document.addEventListener('DOMContentLoaded', function() {
         document.querySelectorAll('[data-game-card].border-primary').forEach(function(el) {
             el.classList.remove('border-primary');
         });
+    }
+
+    function selectOption(option) {
+        var teamId = option.getAttribute('data-team-id');
+        var teamName = option.getAttribute('data-team-name');
+        var teamSpread = parseFloat(option.getAttribute('data-team-spread'));
+
+        deselectAll();
 
         // Select this one
         option.classList.add('selected', 'bg-primary', 'text-white');
@@ -272,7 +268,30 @@ document.addEventListener('DOMContentLoaded', function() {
         confirmName.textContent = teamName;
         var spreadStr = (teamSpread >= 0 ? '+' : '') + teamSpread.toFixed(1);
         confirmSpread.textContent = spreadStr;
+        var isHeld = heldTeamId && teamId === heldTeamId;
+        if (confirmEyebrow) {
+            confirmEyebrow.textContent = isHeld ? 'Your Standing Pick' : 'Your Call · Not Locked Yet';
+        }
+        if (submitBtn && confirmBtnTeam) {
+            submitBtn.firstChild.textContent = (isHeld ? 'Keep' : (heldTeamId ? 'Change To' : 'Lock In')) + ' ';
+            confirmBtnTeam.textContent = teamName;
+        }
         confirmBar.style.display = '';
+    }
+
+    if (clearBtn) {
+        clearBtn.addEventListener('click', function() {
+            // A real deselect: back to the held pick if there is one, otherwise
+            // an empty card with the bar put away.
+            var heldRow = heldTeamId ? document.querySelector('.team-option[data-team-id=' + JSON.stringify(heldTeamId) + ']') : null;
+            if (heldRow) {
+                selectOption(heldRow);
+                return;
+            }
+            deselectAll();
+            hiddenInput.value = '';
+            confirmBar.style.display = 'none';
+        });
     }
 
     teamOptions.forEach(function(option) {
