@@ -473,7 +473,8 @@ def send_results_recap_email(tournament_id: int) -> int:
     # ---- Calculate standings with tied ranks ----
     enrollments = GolfEnrollment.query.filter_by(
         season_year=season_year
-    ).order_by(GolfEnrollment.total_points.desc(), GolfEnrollment.user_id).all()
+    ).order_by(db.func.coalesce(GolfEnrollment.total_points, 0).desc(),
+               GolfEnrollment.user_id).all()
     total_users = len(enrollments)
 
     standings: dict[int, dict] = {}

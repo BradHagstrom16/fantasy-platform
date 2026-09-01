@@ -288,7 +288,7 @@ def test_recap_null_total_points_renders_zero(app, monkeypatch):
 
     assert sent == 1
     assert captured
-    assert '$0' in captured[0]['plain']
+    assert 'Season total: $0' in captured[0]['plain']
 
 
 # ============================================================================
