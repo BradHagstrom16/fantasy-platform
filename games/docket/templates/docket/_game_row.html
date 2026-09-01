@@ -24,8 +24,13 @@
        is-best, is-autopick); the x2 control lives ON the pill (DESIGN.md
        7.4: one tap on a held pick), never on a locked or reserve pill. #}
     <div class="docket-side is-picked{% if locked %} is-locked{% endif %}{% if pick.is_best %} is-best{% endif %}{% if pick.is_autopick %} is-autopick{% endif %}">
-      <span class="docket-side-team">{{ label }}</span>
-      <span class="docket-side-num">{{ side_number(market, side) }}</span>
+      <span class="docket-side-main">
+        <span class="docket-side-team">{{ label }}</span>
+        <span class="docket-side-num">{{ side_number(market, side) }}</span>
+      </span>
+      {# The marks (slot, auto, x2) take their own row so a long team name
+         keeps the width it needs on a 175px pill. #}
+      <span class="docket-side-marks">
       <span class="docket-slot-badge">{{ 'Reserve' if pick.slot == backup_slot else pick.slot }}</span>
       {% if pick.is_autopick %}<span class="docket-auto-tag"
             title="Filed for you when the docket closed">Auto</span>{% endif %}
@@ -58,6 +63,7 @@
                   aria-label="Make this your x2, it scores double">x2</button>
         </form>
       {% endif %}
+      </span>
     </div>
   {% elif locked %}
     <span class="docket-side is-locked">

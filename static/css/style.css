@@ -13580,11 +13580,39 @@ button.docket-side.is-move:hover { color: var(--text-primary); }
 }
 .docket-next.is-urgent { color: var(--game-accent); font-weight: 600; }
 .docket-next.is-complete { color: var(--game-primary); font-weight: 600; }
+/* The open drawer still shows the bar (its summary) above the rail, so the
+   rail's copy of the ask would print twice 150px apart: hide it there. */
+.docket-rail-drawer .docket-rail-inner > .docket-next { display: none; }
+.docket-tb-submit { white-space: nowrap; }
 
 /* --- x2 on the pill (DESIGN.md 7.4: one tap on a held pick) ---
    A ghost oxblood chip that becomes the filled headliner chip once set. The
    held pill gives back its vertical padding so a 44px target fits. */
-.docket-side.is-picked { padding-top: .25rem; padding-bottom: .25rem; }
+.docket-side.is-picked {
+  flex-wrap: wrap;
+  row-gap: .15rem;
+  padding-top: .3rem;
+  padding-bottom: .3rem;
+}
+/* Two deterministic rows on a held pill: team + number, then the marks. */
+.docket-side-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .5rem;
+  flex: 1 1 100%;
+  min-width: 0;
+}
+/* The marks row: slot badge, auto tag, x2. Full width under the team + number
+   so a long team name never fights the control for the pill's 175px. */
+.docket-side-marks {
+  display: flex;
+  flex: 1 0 100%;
+  align-items: center;
+  justify-content: flex-end;
+  gap: .4rem;
+}
+.docket-side.is-locked .docket-side-marks { min-height: 0; }
 .docket-x2-form { display: inline-flex; flex-shrink: 0; }
 .docket-x2-btn {
   min-height: 44px;
