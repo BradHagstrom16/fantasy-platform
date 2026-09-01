@@ -92,9 +92,14 @@ def test_out_reason_chip_is_a_readable_cold_label():
 
 
 def test_pick_explains_the_spread_cap_reason():
-    # the custom 16.5+ rule is the reason most worth teaching at the decision
-    assert "16.5+ Fav" in TPL, \
+    # the custom 16.5+ rule is the reason most worth teaching at the decision.
+    # The label lives in the board service (one dict shared by the chips, the
+    # legend, and the ledger) and the chip renders it verbatim.
+    from games.cfb.services.board import STATE_LABELS
+    assert STATE_LABELS['too_favored'] == "16.5+ Fav", \
         "an ineligible favorite must carry the explicit 16.5+ reason, not a vague 'Unavailable'"
+    assert 'class="cfb-out-reason">{{ state_labels[state] }}' in TPL, \
+        "the out-reason chip must render the shared state label"
 
 
 # -- Quiet spread: neutral rule-data, not green/red on every team (S4) ------

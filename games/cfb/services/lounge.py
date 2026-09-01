@@ -34,6 +34,7 @@ from games.cfb.services.game_logic import (
     get_official_standings,
 )
 from games.cfb.utils import (
+    format_relative,
     get_current_time,
     get_utc_time,
     get_week_display_name,
@@ -300,18 +301,6 @@ def _fmt_time(dt) -> str:
     return f"{dt.strftime('%A, %-I:%M %p')} CT"
 
 
-def _fmt_relative(delta) -> str:
-    """Calm one-line countdown: '2d 14h' / '3h 18m' / '42m'."""
-    total_minutes = max(0, int(delta.total_seconds() // 60))
-    days, rem = divmod(total_minutes, 1440)
-    hours, minutes = divmod(rem, 60)
-    if days > 0:
-        return f'{days}d {hours}h'
-    if hours > 0:
-        return f'{hours}h {minutes}m'
-    return f'{minutes}m'
-
-
 def _lives_phrase(n: int) -> str:
     """'two lives' / 'one life' -- prose form for sentences."""
     return 'one life' if n == 1 else f'{_count_word(n, lower=True)} lives'
@@ -488,7 +477,7 @@ def _summons_payload(week, week_label, deadline, now, beat, pick, outcome,
 
     if beat == 'open':
         s['sentence'] = 'You have not made a pick.'
-        s['deadline_relative'] = _fmt_relative(deadline - now)
+        s['deadline_relative'] = format_relative(deadline - now)
         s['deadline_absolute'] = _fmt_time(deadline)
         return s
 

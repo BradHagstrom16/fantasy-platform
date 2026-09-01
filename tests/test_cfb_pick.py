@@ -664,9 +664,12 @@ def test_legend_omits_favorite_split_in_preview(app, client):
 
 
 def test_legend_shows_live_states_once_lines_post(app, client):
-    """A posted spread lights up the full legend, including the Open swatch."""
+    """Posted spreads light up the legend as a census of the board: the Open
+    swatch plus every out-reason actually rendered (here the 16.5+ cap). A key
+    nobody can find on the page is homework, not help (critique 2026-09-01)."""
     week = make_week(1, deadline=FUTURE_DEADLINE)
     make_game(week, make_team('Open A'), make_team('Open B'), spread=-3.0)
+    make_game(week, make_team('Big Fav'), make_team('Big Dog'), spread=-20.5)
     user = make_user('p1')
     make_enrollment(user)
     db.session.commit()
