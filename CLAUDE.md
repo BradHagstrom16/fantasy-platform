@@ -5,7 +5,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Decisions: `ARCHITECTURE_DECISION_LOG.md` — one row per ADR (options, choice, rationale); every `(ADR-0xx)` below resolves there.
 - Design doctrine: `DESIGN.md` (platform + lounge) and `games/<slug>/DESIGN.md` (each active room; golf's is pending Phase U); product spine `PRODUCT.md`; the split rule in `docs/per-game-design-doc-convention.md`.
 - The Docket's binding rulings: `docs/2026-08-11-docket-binding-rulings.md` (concept brief `docs/2026-08-11-nfl-cfb-pickem-office-hours-kickoff.md`). Two D-namespaces from two sittings collide at D5–D11 with different content — **always cite the suffixed form** (`D5-session` = the autopick package, `D5-eng` = the shared odds client). Everything binding is in-repo.
-- WC→CFB transition + CFB launch runbook (read before transition-adjacent work): `docs/superpowers/plans/2026-07-20-cfb-era-transition-plan.md`; the Docket's Sep 1 runbook: `games/docket/cli.py` docstring; the frozen World Cup's invariants: `docs/worldcup-archive-invariants.md`.
+- WC→CFB transition + CFB launch runbook (read before transition-adjacent work): `docs/superpowers/plans/2026-07-20-cfb-era-transition-plan.md`.
 - Ops: origin cloak `docs/superpowers/plans/2026-07-30-origin-cloak-do-firewall.md`; first-time deploy `docs/superpowers/plans/2026-04-21-production-deployment.md`; prod re-verification template `docs/archive/production-launch-test-script.md` (WC-era); dependency refresh recipe in `constraints.txt`'s header.
 - A rule followed by a `tests/…` path is test-locked — change the test with the rule, never around it. **Re-verify any number a doc quotes before acting on it.**
 
@@ -25,7 +25,7 @@ A unified fantasy sports platform consolidating multiple games under one domain,
 
 **Production:** Live at `cccfantasy.com`. CCC design system shipped at tag `impeccable-v1`. Any UI work invokes the `impeccable` skill. Its loader resolves **exactly one** `DESIGN.md` — with `--target` it walks up to the nearest dir holding `PRODUCT.md` *or* `DESIGN.md` and resolves each doc there, falling back to the root only for what that dir lacks; so `--target games/<slug>/…` loads `games/<slug>/DESIGN.md` + the root `PRODUCT.md` and **drops** the top-level `DESIGN.md`; no `--target` loads only the top-level pair. **Hard rule: when working any UI surface under `games/<slug>/`, read `games/<slug>/DESIGN.md` alongside the top-level `DESIGN.md` before producing design output** (top-level owns cross-game/platform concerns; the per-game file owns that game's palette/accent-rank/register/primitives). Update impeccable **only via `/update-plugins`** — never `npx impeccable update` / legacy `skills update` from a repo root (drops a stray project-local copy; a guardrail hook blocks both).
 
-**Architecture: lounge vs rooms.** `/` is the **club lounge** — dark CCC purple+gold, billing every headliner as an equal (ADR-049); each game has its own **room** (WC light · CFB dark-first midnight · Docket light court-paper). **Lounge↔room substrate contrast is by-design separation, not whiplash** — never converge substrates. Doctrine in `DESIGN.md` §"The headliner panel system" + each `games/<slug>/DESIGN.md`. Code contracts: `lounge_games()` seats featured-open entries carrying **both** callables; `visible_headliners` (ADR-050) filters post-deadline; `build_home_context` namespaces headliners so context keys never collide (hijack-locked; never imports a game module — `tests/test_registry_seam.py`). Archival page mode (`lounge_mode='page'`) is worldcup-only, frozen. Locks: **never mutate `short_name`** (string-locked); `ROSTER_COUNT_FLOOR = 6` equality-locked across both lounge services; accents are `--lounge-*`/`--hl-*` only, never room `--game-*` vars (`tests/test_lounge_accent_firewall.py`); every panel action is a solid `.hl-cta`, gold is lounge chrome only (`tests/test_lounge_cta_parity.py`).
+**Architecture: lounge vs rooms.** `/` is the **club lounge** (dark CCC purple+gold, ADR-049); each game has its own **room** (WC light · CFB dark-first midnight · Docket light court-paper). **Substrate contrast is by-design separation** — never converge substrates. Doctrine: `DESIGN.md` §"The headliner panel system" + each `games/<slug>/DESIGN.md`. Archival page mode (`lounge_mode='page'`) is worldcup-only, frozen. Locks: **never mutate `short_name`** (string-locked); `ROSTER_COUNT_FLOOR = 6` equality-locked across both lounge services; accents are `--lounge-*`/`--hl-*` only, never room `--game-*` vars (`tests/test_lounge_accent_firewall.py`); every panel action is a solid `.hl-cta`, gold is lounge chrome only (`tests/test_lounge_cta_parity.py`); hijack-locked — `build_home_context` never imports a game module (`tests/test_registry_seam.py`).
 
 ---
 
@@ -44,22 +44,10 @@ FLASK_APP=app.py venv/bin/flask db upgrade          # Apply migrations
 FLASK_APP=app.py venv/bin/flask db migrate -m "..."  # Generate new migration — review the file in migrations/versions/ before upgrading
 FLASK_APP=app.py venv/bin/flask create-admin        # Create platform admin user
 
-# Golf CLI (prod runs these via the deploy/golf-*.timer units)
-FLASK_APP=app.py venv/bin/flask golf seed-schedule              # Seed the locked season schedule (one-off; sync_schedule only updates)
-FLASK_APP=app.py venv/bin/flask golf force-schedule-sync        # Run sync_schedule now, bypassing the Monday gate
-FLASK_APP=app.py venv/bin/flask golf sync-run --mode schedule   # Link seeded rows to real ids + refresh purses (Monday-gated)
-FLASK_APP=app.py venv/bin/flask golf sync-run --mode field      # Sync field + tee times (Tue/Wed) + picks-open email
-FLASK_APP=app.py venv/bin/flask golf sync-run --mode live       # Live leaderboard/projections (+ live major penalty refresh); timer: noon + 4 PM CT Thu–Sun
-FLASK_APP=app.py venv/bin/flask golf sync-run --mode live-with-wd  # Same + forced withdrawal check; timer: 8 PM CT Thu–Sun (the "updates at 8 PM Central" read; Fri = R2 WD window)
-FLASK_APP=app.py venv/bin/flask golf sync-run --mode results    # Finalize results + process picks (Sun night/Mon)
-FLASK_APP=app.py venv/bin/flask golf sync-run --mode remind     # Reminders (hourly; no API key; sent-flag de-duped) = `flask golf remind`
-FLASK_APP=app.py venv/bin/flask golf refresh-live-penalties     # Re-derive major cut/DQ penalty flags (ADR-034)
-FLASK_APP=app.py venv/bin/flask golf import-legacy PATH --dry-run [--link L=P] [--rename L=N] [--force]  # Phase I: the retired standalone's season → golf_* tables + accounts (ADR-055); dry-run = full import + oracle, rolled back
-FLASK_APP=app.py venv/bin/flask golf verify-legacy [PATH]       # Read-only parity oracle: re-runs resolve_pick() in a rolled-back SAVEPOINT, exit 1 on any diff; PATH adds column fidelity vs the file
-# --mode all chains every mode (dev/manual only — refuses under ENVIRONMENT=production)
-# !! Never `seed-schedule 2026` AFTER the legacy import: it matches by (name, season) and three 2026 legacy names differ
-#    from TOURNAMENTS_2026 (Cognizant / Arnold Palmer / the Memorial) → three duplicate tournaments. Seed BEFORE (the
-#    import adopts the placeholders) or not at all. The oracle must never call process_tournament_picks (commits + mails).
+# Golf CLI (coming_soon, Phase L ~Jan 2027; all timers disabled; full CLI in games/golf/cli.py)
+# Commands: seed-schedule, force-schedule-sync, sync-run --mode {schedule,field,live,live-with-wd,results,remind},
+#   refresh-live-penalties, import-legacy PATH --dry-run [--link L=P] [--rename L=N] [--force], verify-legacy [PATH]
+# !! Never seed-schedule AFTER import-legacy: 3 name mismatches → duplicate tournaments. Seed BEFORE or not at all.
 
 # CFB CLI
 FLASK_APP=app.py venv/bin/flask cfb sync --mode setup       # Create next week, import games, activate (cfb-setup.timer runs Mon 06:00 CT)
@@ -87,10 +75,8 @@ FLASK_APP=app.py venv/bin/flask docket set-tiebreaker 1 "SMU @ Florida State"   
 # `--mode scores` costs 2 credits/sport (logged at INFO on `utils.odds_api`); `/events` is free; the score-WRITE path is
 # still unexercised live. Don't probe with `--mode setup` — it also fires /odds (4 more credits).
 
-# World Cup CLI (archived; ops mothballed 2026-07-20 — retained for the archive + a future revival)
-FLASK_APP=app.py venv/bin/flask worldcup status          # Print tournament state summary
-FLASK_APP=app.py venv/bin/flask worldcup recalc          # Recalculate all scores (idempotent)
-# Full CLI surface (seeding, sync, digests, snapshots) lives in games/worldcup/cli.py + the results-automation specs.
+# World Cup CLI (archived; full surface in games/worldcup/cli.py)
+FLASK_APP=app.py venv/bin/flask worldcup status   # or: worldcup recalc
 
 # Tests
 ENVIRONMENT=testing venv/bin/python -m pytest tests/      # Run all tests (env var enables the *_FAKE_NOW seams)
@@ -146,10 +132,8 @@ Grep is still right for known exact strings, regex, multiline patterns, file glo
 - **Gradient text is retired:** zero `background-clip: text` in `style.css`; test-locked (`tests/test_design_p6_s6_1_1.py`).
 - **Navbar lockup:** brand pairs head mark + `wordmark-bone.svg` at every width. Switcher carries **active** joined games only (`core/context.py` splits `nav_games`/`nav_archived`; `joined_games()` itself never filters — `tests/test_registry_seam.py`). Solo-game hoist: exactly one active joined game hoists into the bar (`.navbar-solo-game`). Locks: `tests/test_navbar_solo_game.py`, `tests/test_logo_assets.py`, `tests/test_asset_versioning.py`.
 - **Eyebrow glyph reservation:** `◈` = ceremonial only (keep rare); `◇` = informational. Game-body eyebrow primitives never carry glyphs.
-- **Game theming:** platform components (`.page-hero`, `.stat-block`, `.btn-game`) consume `--game-primary`/`--game-accent` automatically — game CSS must NOT duplicate this.
-- **Game CSS sections:** each game has its own section in `style.css` (e.g. `/* === CFB SURVIVOR POOL === */`).
-- **Game sub-nav:** each game needs a `.subnav-<game>` class in the `/* === GAME SUB-NAV === */` section setting `background`, `--subnav-accent` (hex) and `--subnav-accent-rgb` (R,G,B) — the shared pill `.active` rule consumes them.
-- **Game palettes:** per-game ramps in each `games/<slug>/DESIGN.md`; full framework in root `DESIGN.md` §2.
+- **Game theming:** platform components (`.page-hero`, `.stat-block`, `.btn-game`) consume `--game-primary`/`--game-accent` automatically — game CSS must NOT duplicate this. Each game has its own section in `style.css` (e.g. `/* === CFB SURVIVOR POOL === */`). Palettes: per-game ramps in each `games/<slug>/DESIGN.md`; full framework in root `DESIGN.md` §2.
+- **Game sub-nav:** each game needs `.subnav-<game>` in the `/* === GAME SUB-NAV === */` section setting `background`, `--subnav-accent` (hex) and `--subnav-accent-rgb` (R,G,B).
 - **Country flags:** self-hosted SVG, never emoji (Windows renders letters). `{% from '_flag.html' import flag with context %}`; test-locked (`tests/test_worldcup_flag_emoji.py`).
 
 ### Platform integration
@@ -192,13 +176,13 @@ Engineering contracts (grading shapes, pick provenance, admin ops, tiebreaker ru
 
 ### World Cup (archived — 2026 tournament complete)
 
-**WC surfaces are frozen** — don't restyle, refactor, or "clean up" WC code outside an actual revival; the WC half of the suite is the regression net under the lounge. Read `docs/worldcup-archive-invariants.md` before touching anything under `games/worldcup/`. One invariant is platform-wide:
+**WC surfaces are frozen** — read `docs/worldcup-archive-invariants.md` before touching `games/worldcup/`. The WC test suite is the regression net under the lounge. One invariant is platform-wide:
 
 - **Competition rank, never dense rank** — `rank = 1 + (count scoring strictly higher)`, ties share and gap (`1, 1, 3, 4`); the convention for any tied-score leaderboard, future games included. Jinja idiom: `namespace(rank=0, prev_score=None)` + `{% if e.total_score != ns.prev_score %}{% set ns.rank = loop.index %}{% endif %}`.
 
 ### Production ops
 
-- **Scheduled jobs:** every `deploy/*.timer` is installed by every deploy (ADR-041) and stays `disabled` until enabled by name. Query the truth: `systemctl list-unit-files 'worldcup-*.timer' 'cfb-*.timer' 'docket-*.timer' 'golf-*.timer' --no-pager` (no sudo). **Off for good:** `worldcup-*`. **Held until Phase L (~Jan 2027):** all six `golf-*` (free-tier cadence, ~115 API calls/mo — never widen without re-doing that arithmetic). A freshly enabled `Persistent=true` timer does NOT catch-up fire on this droplet. Enablement history: `docs/superpowers/plans/2026-07-20-cfb-era-transition-plan.md` §6F.
+- **Scheduled jobs:** every `deploy/*.timer` is installed by every deploy (ADR-041) and stays `disabled` until enabled by name. Query the truth: `systemctl list-unit-files 'worldcup-*.timer' 'cfb-*.timer' 'docket-*.timer' 'golf-*.timer' --no-pager` (no sudo). **Off for good:** `worldcup-*`. **Held until Phase L (~Jan 2027):** all six `golf-*` (free-tier cadence, ~115 API calls/mo — never widen without re-doing that arithmetic).
 - **`ENVIRONMENT=production`** is set in three places (`.env`, units, `deploy.sh`) — keep in sync. A stray `development` silently migrates against SQLite.
 - **Client-IP keying:** `ProxyFix(x_for=1)` in `app.py` — **keep `x_for=1`** (raising it trusts client-supplied XFF). CF range list is CI-locked across nginx.conf, `tests/test_client_ip_keying.py`, and the runbook marker block — update all three + the live firewall together. **`deploy/nginx.conf` is NOT synced by `deploy.sh`** — manual install via its header comment.
 - **`request.host` pinned at nginx:** `X-Forwarded-Host` → bare apex; `ProxyFix(x_host=1)`. `tests/test_forwarded_host_pin.py`.
@@ -312,7 +296,7 @@ SITE_URL=...             # Used in password-reset and reminder email links (http
 PLATFORM_TIMEZONE=...    # Default: America/Chicago
 RATELIMIT_STORAGE_URI=...  # Leave unset: dev/test memory://; prod redis://localhost:6379/0 (ProductionConfig). Set only to override.
 ODDS_API_KEY=...         # The Odds API (CFB + Docket scores/spreads)
-FOOTBALL_DATA_API_KEY=...  # football-data.org (WC results sync — archived; retained for a revival. Free tier covered WC 2026; API-Football free did NOT)
+FOOTBALL_DATA_API_KEY=...  # football-data.org (WC results sync — archived; retained for a revival)
 SLASHGOLF_API_KEY=...    # SlashGolf API (Golf leaderboards)
 EMAIL_ADDRESS=...        # SMTP auth login (prod: Brevo SMTP login, e.g. ad34xxxxx@smtp-brevo.com)
 EMAIL_PASSWORD=...       # SMTP key/password (prod: Brevo SMTP key)
@@ -325,5 +309,5 @@ DOCKET_ENTRY_FEE=...     # Default 60
 SEASON_YEAR=...          # GOLF's season (bare name — golf owns the unprefixed keys; also scopes /admin/announce's golf list). Default 2026; ENTRY_FEE default 25
 PAYMENT_VENMO_HANDLE=... # Member payment rails (utils/payment.py); defaults = the live values, blank to hide every "Settle the Tab" nudge
 PAYMENT_ZELLE_PHONE=...  # Same; the copyable Zelle number on the card + in the picks-open emails
-SYNC_MODE=...            # Golf SlashGolf tier: 'standard' (default) | 'free' — prod is FREE (250 calls/mo); set 'free' at Phase L. Gates field/results weekdays only; the timer cadence is the real budget gate
+SYNC_MODE=...            # Golf SlashGolf tier: 'standard' (default) | 'free' — prod is FREE (250 calls/mo)
 ```
