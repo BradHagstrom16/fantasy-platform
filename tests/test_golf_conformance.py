@@ -270,27 +270,65 @@ def test_recap_mail_only_golf_enrollees(app, monkeypatch):
     assert sent == 1
 
 
+def test_recap_null_total_points_renders_zero(app, monkeypatch):
+    """An enrollment with NULL total_points must not crash the recap formatter.
+
+    The column has ``default=0`` but not ``nullable=False``, so ``None`` is
+    technically possible.  The standings builder normalises it to 0 so the
+    currency format (``$0``) never receives ``None``.
+    """
+    captured = _patch_mail(monkeypatch)
+    member = _make_user('null_pts')
+    enrollment = _make_enrollment(member)
+    enrollment.total_points = None
+    db.session.commit()
+
+    tournament = _make_tournament(status='complete', results_finalized=True)
+    sent = send_results_recap_email(tournament.id)
+
+    assert sent == 1
+    assert captured
+    assert 'Season total: $0' in captured[0]['plain']
+
+
 # ============================================================================
 # Email HTML escaping
 # ============================================================================
 
 def test_email_html_escapes_dynamic_values(app, monkeypatch):
-    """User display names and tournament names are HTML-escaped in email bodies."""
+    """Tournament names are HTML-escaped in the picks-open letter.
+
+    (Display names left broadcasts with the Club Letter's greeting policy —
+    the recap's greeting covers them in the test below.)
+    """
     captured = _patch_mail(monkeypatch)
-    hostile = _make_user('hostile', display_name='Evil<script>&amp')
-    _make_enrollment(hostile)
+    member = _make_user('member')
+    _make_enrollment(member)
     tournament = _make_tournament(name='The <Open> & Masters', status='upcoming')
 
     send_picks_open_email(tournament.id)
 
     assert captured, 'no email captured'
     html = captured[0]['html']
-    # Raw markup from user/tournament names must not survive into the HTML body.
-    assert 'Evil<script>' not in html
+    # Raw markup from the tournament name must not survive into the HTML body.
     assert 'The <Open>' not in html
-    # …and the escaped forms must be present.
-    assert 'Evil&lt;script&gt;' in html
+    # …and the escaped form must be present.
     assert 'The &lt;Open&gt; &amp; Masters' in html
+
+
+def test_recap_email_escapes_display_name(app, monkeypatch):
+    """The recap greets by display name; a hostile name is escaped."""
+    captured = _patch_mail(monkeypatch)
+    hostile = _make_user('hostile', display_name='Evil<script>&amp')
+    _make_enrollment(hostile)
+    tournament = _make_tournament(status='complete', results_finalized=True)
+
+    send_results_recap_email(tournament.id)
+
+    assert captured, 'no email captured'
+    html = captured[0]['html']
+    assert 'Evil<script>' not in html
+    assert 'Evil&lt;script&gt;' in html
 
 
 def test_recap_email_escapes_golfer_name(app, monkeypatch):

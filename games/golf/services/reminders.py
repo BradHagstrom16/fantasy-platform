@@ -2,10 +2,14 @@
 Golf Pick 'Em — Tournament Reminder & Notification Module
 ===========================================================
 
-Handles three types of emails:
+Handles three types of member emails, all Club Letters (ADR-058:
+utils/email_layout owns the markup; this module supplies words and facts):
+
 1. "Picks Are Open" - Sent when field is synced (called from services/sync.py)
 2. Deadline Reminders - Sent at 24h, 12h, 1h before deadline
 3. Results Recap - Sent once per tournament after earnings finalized
+
+Plus the admin field alert, which stays plain text (ops mail, not a letter).
 
 Reminder Schedule:
   - 24 hours before deadline
@@ -24,7 +28,6 @@ import logging
 from datetime import datetime, timedelta
 
 from flask import current_app
-from markupsafe import escape
 
 from extensions import db
 from games.golf.models import (
@@ -36,15 +39,21 @@ from games.golf.models import (
 )
 from games.golf.utils import GOLF_LEAGUE_TZ, format_score_to_par
 from utils.email import send_platform_email
+from utils.email_layout import (
+    Letter,
+    format_deadline_short,
+    render_letter,
+    result_block,
+)
 from utils.reminders import tier_already_sent
 
 logger = logging.getLogger(__name__)
 
 # Reminder windows (hours before deadline)
 REMINDER_WINDOWS = [
-    {'hours': 24, 'type': 'warning', 'emoji': ''},
-    {'hours': 12, 'type': 'reminder', 'emoji': ''},
-    {'hours': 1, 'type': 'final', 'emoji': ''},
+    {'hours': 24, 'type': 'warning'},
+    {'hours': 12, 'type': 'reminder'},
+    {'hours': 1, 'type': 'final'},
 ]
 
 # De-dup ordering for GolfTournament.last_reminder_type. Higher = closer to the
@@ -63,6 +72,15 @@ MIN_FIELD_SIZE = 50
 # "Sun Day Regrets" league name).
 ADMIN_ALERT_NAME = "Commish"
 
+# The one rule every golf letter restates (picks-open in full, reminders in
+# brief). Golf has no payment gate (ADR-056 covers CFB + Docket only), so no
+# tab strip rides these letters.
+PICK_RULE = ('Pick a primary golfer and a backup. Each golfer can be used '
+             'once this season. Points are the actual prize money your '
+             'golfer earns.')
+PICK_RULE_BRIEF = ('Pick a primary golfer and a backup before the deadline. '
+                   'Each golfer can be used once this season.')
+
 
 def _admin_alert_recipient() -> str:
     """Resolve the admin-alert inbox: ADMIN_EMAIL, else EMAIL_ADDRESS (dev).
@@ -74,109 +92,19 @@ def _admin_alert_recipient() -> str:
     config = current_app.config
     return config.get('ADMIN_EMAIL', '') or config.get('EMAIL_ADDRESS', '')
 
-# ============================================================================
-# Inline style constants — Gmail-safe, no <style> blocks
-# ============================================================================
-_FONT_DISPLAY = "Georgia, 'Times New Roman', serif"
-_FONT_BODY = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif"
 
-_GREEN_900 = "#00432e"
-_GREEN_800 = "#005c3f"
-_GREEN_700 = "#006747"
-_GREEN_100 = "#e8f5ef"
-_GREEN_50 = "#f0faf5"
-_GOLD_500 = "#b8993e"
-_GOLD_300 = "#d4be6a"
-_GOLD_100 = "#faf3e0"
-_CREAM = "#faf8f4"
-_WHITE = "#ffffff"
-_TEXT_PRIMARY = "#1a1f25"
-_TEXT_SECONDARY = "#4a5568"
-_TEXT_MUTED = "#8b95a2"
-_TEXT_ON_DARK = "#f7f8f9"
-_DANGER = "#b91c1c"
-_WARNING = "#d97706"
+def _deadline_short(deadline) -> str:
+    """'Thursday, Jun 4 · 7:00 AM CT' for a golf pick deadline.
 
-
-# ============================================================================
-# HTML Email Infrastructure
-# ============================================================================
-
-def _html_wrapper(content_html: str, season_year: int, site_url: str) -> str:
-    """Wrap email content in the standard Golf Pick 'Em HTML shell."""
-    return f'''<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Golf Pick 'Em</title>
-<!--[if mso]><xml><o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml><![endif]-->
-</head>
-<body style="margin: 0; padding: 0; background-color: {_CREAM}; font-family: {_FONT_BODY}; -webkit-font-smoothing: antialiased;">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: {_CREAM};">
-<tr><td align="center" style="padding: 24px 16px;">
-
-<table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="max-width: 600px; width: 100%; background-color: {_WHITE};">
-
-<!-- HEADER -->
-<tr><td style="background-color: {_GREEN_800}; padding: 22px 32px; text-align: center;">
-<span style="font-family: {_FONT_DISPLAY}; font-size: 22px; font-weight: 700; color: {_TEXT_ON_DARK}; letter-spacing: 0.01em;">&#9971; Golf Pick &#8217;Em</span>
-</td></tr>
-
-<!-- GOLD ACCENT BAR -->
-<tr><td style="background-color: {_GOLD_500}; height: 3px; font-size: 0; line-height: 0;">&nbsp;</td></tr>
-
-<!-- CONTENT -->
-<tr><td style="padding: 32px 32px 24px 32px;">
-{content_html}
-</td></tr>
-
-<!-- FOOTER -->
-<tr><td style="background-color: {_GREEN_900}; padding: 20px 32px; text-align: center;">
-<p style="margin: 0; font-size: 13px; color: rgba(247,248,249,0.6); font-family: {_FONT_BODY};">
-Golf Pick &#8217;Em {season_year} &middot; <a href="{site_url}" style="color: {_GOLD_300}; text-decoration: none;">Corrupt Commish Club</a>
-</p>
-</td></tr>
-
-</table>
-
-</td></tr>
-</table>
-</body>
-</html>'''
-
-
-def _html_button(url: str, label: str, bg_color: str | None = None) -> str:
-    """Render a CTA button as a styled <a> tag (Gmail-safe)."""
-    bg = bg_color or _GREEN_700
-    return f'''<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
-<tr><td align="center" style="padding: 8px 0 16px 0;">
-<a href="{url}" style="display: inline-block; background-color: {bg}; color: {_TEXT_ON_DARK}; font-family: {_FONT_BODY}; font-size: 16px; font-weight: 600; text-decoration: none; padding: 14px 36px; border-radius: 6px;">{label} &rarr;</a>
-</td></tr>
-</table>'''
-
-
-def _html_tournament_card(tournament_name: str, purse: int, deadline_str: str,
-                          accent_color: str | None = None) -> str:
-    """Render a tournament info card with left accent border."""
-    accent = accent_color or _GREEN_700
-    bg = _GREEN_50 if accent == _GREEN_700 else _CREAM
-    return f'''<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-left: 4px solid {accent}; background-color: {bg}; margin-bottom: 24px;">
-<tr><td style="padding: 20px 24px;">
-<p style="margin: 0 0 4px 0; font-size: 11px; font-weight: 600; color: {_TEXT_MUTED}; text-transform: uppercase; letter-spacing: 0.05em;">This Week</p>
-<p style="margin: 0 0 14px 0; font-family: {_FONT_DISPLAY}; font-size: 20px; font-weight: 700; color: {_TEXT_PRIMARY};">{escape(tournament_name)}</p>
-<table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
-<td style="padding-right: 32px;">
-<p style="margin: 0; font-size: 11px; color: {_TEXT_MUTED}; text-transform: uppercase; letter-spacing: 0.03em;">Purse</p>
-<p style="margin: 2px 0 0 0; font-size: 16px; font-weight: 700; color: {_TEXT_PRIMARY};">${purse:,}</p>
-</td>
-<td>
-<p style="margin: 0; font-size: 11px; color: {_TEXT_MUTED}; text-transform: uppercase; letter-spacing: 0.03em;">Deadline</p>
-<p style="margin: 2px 0 0 0; font-size: 16px; font-weight: 700; color: {_TEXT_PRIMARY};">{deadline_str}</p>
-</td>
-</tr></table>
-</td></tr>
-</table>'''
+    Golf's naive datetime columns are league wall clock (America/Chicago),
+    so a naive value gains GOLF_LEAGUE_TZ before the platform formatter
+    (whose naive convention is UTC) sees it.
+    """
+    if deadline is None:
+        return 'TBD'
+    if deadline.tzinfo is None:
+        deadline = deadline.replace(tzinfo=GOLF_LEAGUE_TZ)
+    return format_deadline_short(deadline, tz=GOLF_LEAGUE_TZ)
 
 
 # ============================================================================
@@ -201,6 +129,32 @@ def is_field_ready(tournament_id, minimum=MIN_FIELD_SIZE):
 # =============================================================================
 # PICKS OPEN NOTIFICATION (Called from sync.py after field sync)
 # =============================================================================
+
+def _picks_open_letter(*, tournament_name, deadline_short, purse, pick_url,
+                       season_total, golfers_used, season_year):
+    """The field-is-set note as a Club Letter (a broadcast: no greeting).
+
+    The season block is the letter's per-recipient depth: the casual reader
+    stops at the deadline and the button; the analyst gets their running
+    total and how much of their bench is spent.
+    """
+    return Letter(
+        subject=f'Picks are open: Golf, {tournament_name}',
+        headline='Picks are open',
+        eyebrow=f"Golf Pick 'Em · {tournament_name}",
+        game_slug='golf',
+        season=season_year,
+        preheader=f'Deadline {deadline_short}.',
+        lede=['The field is set. Time to make your pick.'],
+        facts=[('Deadline', deadline_short), ('Purse', f'${purse:,}')],
+        extras=[result_block('Your season', [
+            ('Season total', f'${season_total:,}'),
+            ('Golfers used', str(golfers_used)),
+        ])],
+        cta=('Make your pick', pick_url),
+        supporting=[PICK_RULE],
+    )
+
 
 def send_picks_open_email(tournament_id_or_obj) -> int:
     """
@@ -229,7 +183,6 @@ def send_picks_open_email(tournament_id_or_obj) -> int:
         return 0
 
     site_url = config.get('SITE_URL', 'http://localhost:5000')
-    commissioner_name = config.get('COMMISSIONER_NAME', 'The Commish')
 
     # Re-query tournament to ensure it's bound to this session
     tournament = db.session.get(GolfTournament, tournament_id)
@@ -239,16 +192,8 @@ def send_picks_open_email(tournament_id_or_obj) -> int:
 
     print(f"  Tournament: {tournament.name}")
 
-    # Get deadline for display
-    deadline = tournament.pick_deadline
-    if deadline and deadline.tzinfo is None:
-        deadline = deadline.replace(tzinfo=GOLF_LEAGUE_TZ)
-
-    deadline_str = deadline.strftime('%A, %B %d at %I:%M %p CT') if deadline else "TBD"
-
-    # Build email
+    deadline_short = _deadline_short(tournament.pick_deadline)
     pick_url = f"{site_url}/golf/pick/{tournament.id}"
-    subject = f"Picks Are Open: {tournament.name}"
     season_year = tournament.season_year
     tournament_name = tournament.name
     purse = tournament.purse or 0
@@ -262,52 +207,18 @@ def send_picks_open_email(tournament_id_or_obj) -> int:
         user = enrollment.user
         if not user or not user.email:
             continue
-        display_name = user.get_display_name()
-        user_email = user.email
 
-        total_points = enrollment.total_points or 0
-        golfers_used = len(enrollment.get_used_player_ids())
-
-        # Plain text
-        plain = f"""Hi {display_name},
-
-The field for {tournament_name} is now available, and picks are open!
-
-Tournament: {tournament_name}
-Purse: ${purse:,}
-Pick Deadline: {deadline_str}
-
-Make your pick now: {pick_url}
-
-Remember:
-- Pick a primary golfer and a backup
-- Each golfer can only be used once this season
-- Points = actual prize money earned
-
-Your Season Stats:
-- Total Points: ${total_points:,}
-- Golfers Used: {golfers_used}
-
-Good luck this week!
-{commissioner_name}
-
----
-Golf Pick 'Em {season_year}
-{site_url}
-"""
-
-        # HTML
-        content = f'''<h2 style="margin: 0 0 6px 0; font-family: {_FONT_DISPLAY}; font-size: 24px; color: {_TEXT_PRIMARY};">Picks Are Open</h2>
-<p style="margin: 0 0 24px 0; font-size: 15px; color: {_TEXT_SECONDARY};">Hi {escape(display_name)}, the field is set. Time to make your pick.</p>
-
-{_html_tournament_card(tournament_name, purse, deadline_str)}
-{_html_button(pick_url, "Make Your Pick")}
-
-<p style="margin: 16px 0 0 0; font-size: 13px; color: {_TEXT_MUTED}; text-align: center;">Remember: each golfer can only be used once this season.</p>'''
-
-        html = _html_wrapper(content, season_year, site_url)
-
-        if send_platform_email(user_email, subject, plain, html):
+        letter = _picks_open_letter(
+            tournament_name=tournament_name,
+            deadline_short=deadline_short,
+            purse=purse,
+            pick_url=pick_url,
+            season_total=enrollment.total_points or 0,
+            golfers_used=len(enrollment.get_used_player_ids()),
+            season_year=season_year,
+        )
+        plain, html = render_letter(letter)
+        if send_platform_email(user.email, letter.subject, plain, html):
             success_count += 1
 
     print(f"\nPicks Open Summary: {success_count}/{len(enrollments)} emails sent")
@@ -318,106 +229,42 @@ Golf Pick 'Em {season_year}
 # DEADLINE REMINDER EMAILS
 # =============================================================================
 
-def build_reminder_email(user_display_name, user_total_points, user_golfers_used,
-                         tournament_name, tournament_id, tournament_purse, tournament_season_year,
-                         deadline, window, site_url, commissioner_name):
+def _reminder_letter(*, tournament_name, deadline_short, time_remaining,
+                     purse, golfers_used, pick_url, window, season_year):
+    """The 24h / 12h / 1h reminder as a Club Letter (a broadcast: no greeting).
+
+    Each tier keeps a distinct subject so Gmail never threads three
+    reminders into one conversation.
     """
-    Build the email subject, plain-text body, and HTML body for a deadline reminder.
-
-    Takes primitive values instead of ORM objects to avoid session issues.
-
-    Returns:
-        Tuple of (subject, plain_body, html_body)
-    """
-    time_remaining = format_time_remaining(deadline)
-    pick_url = f"{site_url}/golf/pick/{tournament_id}"
-    deadline_str = deadline.strftime('%A, %B %d at %I:%M %p %Z')
-
-    # Subject line based on urgency
     if window['type'] == 'final':
-        subject = f"FINAL REMINDER: {tournament_name} pick due in ~1 hour!"
+        subject = f'FINAL, 1 hour left: Golf, {tournament_name}'
+        headline = 'Final call: one hour left'
+        lede = [f'Your pick for {tournament_name} is not in and the deadline '
+                f'is less than an hour away.']
     elif window['type'] == 'reminder':
-        subject = f"Reminder: {tournament_name} pick due in ~12 hours"
+        subject = f'Pick due in 12 hours: Golf, {tournament_name}'
+        headline = 'Your pick is due in 12 hours'
+        lede = [f'About {time_remaining} left. One more reminder comes at '
+                f'one hour.']
     else:
-        subject = f"Reminder: {tournament_name} pick due in ~24 hours"
-
-    # --- Plain text body ---
-    plain = f"""Hi {user_display_name},
-
-You haven't made your pick for {tournament_name} yet!
-
-Tournament: {tournament_name}
-Purse: ${tournament_purse:,}
-Deadline: {deadline_str}
-Time Remaining: {time_remaining}
-
-Make your pick now: {pick_url}
-
-Your Season Stats:
-- Total Points: ${user_total_points:,}
-- Golfers Used: {user_golfers_used}
-
-"""
-
-    # Add urgency message based on window type
-    if window['type'] == 'final':
-        plain += """WARNING: THIS IS YOUR FINAL REMINDER!
-The deadline is less than 1 hour away. Make your pick NOW to avoid missing out!
-
-"""
-    elif window['type'] == 'reminder':
-        plain += """You have about 12 hours left. You'll receive one more reminder
-1 hour before the deadline.
-
-"""
-    else:
-        plain += """You have about 24 hours left. You'll receive additional reminders
-at 12 hours and 1 hour before the deadline.
-
-"""
-
-    plain += f"""Good luck!
-{commissioner_name}
-
----
-Golf Pick 'Em {tournament_season_year}
-{site_url}
-"""
-
-    # --- HTML body ---
-    # Urgency-based styling
-    if window['type'] == 'final':
-        accent_color = _DANGER
-        urgency_bg = "#fef2f2"
-        urgency_label = "FINAL REMINDER"
-        urgency_msg = "Less than 1 hour left. Make your pick NOW."
-    elif window['type'] == 'reminder':
-        accent_color = _WARNING
-        urgency_bg = _GOLD_100
-        urgency_label = "REMINDER"
-        urgency_msg = f"About {time_remaining} left. One more reminder at 1 hour."
-    else:
-        accent_color = _GREEN_700
-        urgency_bg = _GREEN_100
-        urgency_label = "HEADS UP"
-        urgency_msg = f"About {time_remaining} left. More reminders at 12h and 1h."
-
-    content = f'''<!-- Urgency banner -->
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: {urgency_bg}; border-left: 4px solid {accent_color}; margin-bottom: 24px;">
-<tr><td style="padding: 16px 20px;">
-<p style="margin: 0 0 2px 0; font-size: 11px; font-weight: 700; color: {accent_color}; text-transform: uppercase; letter-spacing: 0.06em;">{urgency_label}</p>
-<p style="margin: 0; font-size: 15px; font-weight: 600; color: {_TEXT_PRIMARY};">{urgency_msg}</p>
-</td></tr>
-</table>
-
-<h2 style="margin: 0 0 6px 0; font-family: {_FONT_DISPLAY}; font-size: 22px; color: {_TEXT_PRIMARY};">Don&#8217;t Miss Out</h2>
-<p style="margin: 0 0 24px 0; font-size: 15px; color: {_TEXT_SECONDARY};">Hi {escape(user_display_name)}, you haven&#8217;t made your pick yet.</p>
-
-{_html_tournament_card(tournament_name, tournament_purse, deadline_str, accent_color=accent_color)}
-{_html_button(pick_url, "Make Your Pick Now", bg_color=accent_color if window['type'] == 'final' else None)}'''
-
-    html = _html_wrapper(content, tournament_season_year, site_url)
-    return subject, plain, html
+        subject = f'Pick due in 24 hours: Golf, {tournament_name}'
+        headline = 'Your pick is due in 24 hours'
+        lede = [f'About {time_remaining} left. More reminders come at 12 '
+                f'hours and at one hour.']
+    return Letter(
+        subject=subject,
+        headline=headline,
+        eyebrow=f"Golf Pick 'Em · {tournament_name}",
+        game_slug='golf',
+        season=season_year,
+        preheader=f'Deadline {deadline_short}.',
+        lede=lede,
+        facts=[('Deadline', deadline_short),
+               ('Purse', f'${purse:,}'),
+               ('Golfers used', str(golfers_used))],
+        cta=('Make your pick', pick_url),
+        supporting=[PICK_RULE_BRIEF],
+    )
 
 
 # =============================================================================
@@ -460,12 +307,7 @@ def send_admin_field_alert(tournament_id_or_obj, field_count: int) -> bool:
 
     print(f"  Tournament: {tournament.name}")
 
-    # Get deadline for display
-    deadline = tournament.pick_deadline
-    if deadline and deadline.tzinfo is None:
-        deadline = deadline.replace(tzinfo=GOLF_LEAGUE_TZ)
-
-    deadline_str = deadline.strftime('%A, %B %d at %I:%M %p CT') if deadline else "TBD"
+    deadline_str = _deadline_short(tournament.pick_deadline)
 
     recipient = _admin_alert_recipient()
     if not recipient:
@@ -501,7 +343,6 @@ Admin Dashboard: {site_url}/admin
 
 This alert will only be sent once per tournament.
 
----
 Corrupt Commish Club · Golf Pick 'Em Automated Alert System
 """
 
@@ -511,6 +352,62 @@ Corrupt Commish Club · Golf Pick 'Em Automated Alert System
 # =============================================================================
 # RESULTS RECAP EMAIL (Called from sync.py after earnings finalization)
 # =============================================================================
+
+def _recap_letter(*, display_name, tournament_name, golfer_name, position,
+                  score, earnings, backup_activated, rank_display,
+                  season_total, top_3, user_id, results_url, season_year):
+    """The tournament recap as a Club Letter (personal: greets by name).
+
+    The pick, its finish, and its earnings are labelled facts; the standing
+    and the week's top 3 are result blocks. A backup that came off the
+    bench is a quiet tag, not a badge.
+    """
+    facts = []
+    if golfer_name:
+        facts.append(('Your pick', golfer_name,
+                      'backup' if backup_activated else None))
+        if position is not None:
+            finish = str(position)
+            if score:
+                finish = f'{finish} ({score})'
+            facts.append(('Finish', finish))
+        facts.append(('Earnings', f'${earnings:,}'))
+    else:
+        facts.append(('Your pick', 'No pick submitted'))
+        facts.append(('Earnings', '$0'))
+
+    top3_rows = []
+    for i, entry in enumerate(top_3, 1):
+        label = f"{i}. {entry['user_name']}"
+        if entry['user_id'] == user_id:
+            label += ' (you)'
+        value = entry['golfer_name']
+        if entry['score_to_par']:
+            value += f" ({entry['score_to_par']})"
+        value += f", ${entry['earnings']:,}"
+        top3_rows.append((label, value))
+
+    extras = [result_block('Your standing', [
+        ('Rank', rank_display),
+        ('Season total', f'${season_total:,}'),
+    ])]
+    if top3_rows:
+        extras.append(result_block("This week's top 3", top3_rows))
+
+    return Letter(
+        subject=f'Results: Golf, {tournament_name}',
+        headline='Results are in',
+        eyebrow=f"Golf Pick 'Em · {tournament_name}",
+        game_slug='golf',
+        season=season_year,
+        preheader=f'{tournament_name}: your week, settled.',
+        greeting=display_name,
+        lede=['Here is how your week went.'],
+        facts=facts,
+        extras=extras,
+        cta=('View standings', results_url),
+    )
+
 
 def send_results_recap_email(tournament_id: int) -> int:
     """
@@ -527,7 +424,6 @@ def send_results_recap_email(tournament_id: int) -> int:
 
     config = current_app.config
     site_url = config.get('SITE_URL', 'http://localhost:5000')
-    commissioner_name = config.get('COMMISSIONER_NAME', 'The Commish')
 
     tournament = db.session.get(GolfTournament, tournament_id)
     if not tournament:
@@ -577,7 +473,8 @@ def send_results_recap_email(tournament_id: int) -> int:
     # ---- Calculate standings with tied ranks ----
     enrollments = GolfEnrollment.query.filter_by(
         season_year=season_year
-    ).order_by(GolfEnrollment.total_points.desc(), GolfEnrollment.user_id).all()
+    ).order_by(db.func.coalesce(GolfEnrollment.total_points, 0).desc(),
+               GolfEnrollment.user_id).all()
     total_users = len(enrollments)
 
     standings: dict[int, dict] = {}
@@ -586,13 +483,14 @@ def send_results_recap_email(tournament_id: int) -> int:
     rank_counts: dict[int, int] = {}
 
     for i, enrollment in enumerate(enrollments):
-        rank = i + 1 if enrollment.total_points != prev_points else prev_rank
+        pts = enrollment.total_points or 0
+        rank = i + 1 if pts != prev_points else prev_rank
         standings[enrollment.user_id] = {
             'rank': rank,
-            'total_points': enrollment.total_points,
+            'total_points': pts,
         }
         rank_counts[rank] = rank_counts.get(rank, 0) + 1
-        prev_points = enrollment.total_points
+        prev_points = pts
         prev_rank = rank
 
     # ---- Send personalized recap to each enrolled member (audit §6) ----
@@ -600,14 +498,10 @@ def send_results_recap_email(tournament_id: int) -> int:
     # non-golf platform account never receives a golf recap.
     success_count = 0
 
-    subject = f"Results: {tournament_name}"
-
     for enrollment in enrollments:
         user = enrollment.user
         if not user or not user.email:
             continue
-        display_name = user.get_display_name()
-        user_email = user.email
 
         pick = pick_by_user.get(user.id)
         user_standing = standings.get(user.id, {'rank': total_users, 'total_points': 0})
@@ -627,7 +521,7 @@ def send_results_recap_email(tournament_id: int) -> int:
                 tournament_id=tournament_id,
                 player_id=pick.active_player_id
             ).first()
-            position = result.final_position if result else "—"
+            position = result.final_position if result else 'Pending'
             score = format_score_to_par(result.score_to_par) if result else None
         elif pick:
             # Pick exists but no active player resolved (both WD edge case)
@@ -644,168 +538,27 @@ def send_results_recap_email(tournament_id: int) -> int:
             position = None
             score = None
 
-        plain = _build_recap_plain_text(
-            display_name, tournament_name, golfer_name, position,
-            earnings, backup_activated, rank_display, season_total,
-            top_3, user.id, season_year, site_url, commissioner_name
+        letter = _recap_letter(
+            display_name=user.get_display_name(),
+            tournament_name=tournament_name,
+            golfer_name=golfer_name,
+            position=position,
+            score=score,
+            earnings=earnings,
+            backup_activated=backup_activated,
+            rank_display=rank_display,
+            season_total=season_total,
+            top_3=top_3,
+            user_id=user.id,
+            results_url=f"{site_url}/golf/",
+            season_year=season_year,
         )
-        html = _build_recap_html(
-            display_name, tournament_name, golfer_name, position,
-            score, earnings, backup_activated, rank_display, season_total,
-            top_3, user.id, season_year, site_url
-        )
-
-        if send_platform_email(user_email, subject, plain, html):
+        plain, html = render_letter(letter)
+        if send_platform_email(user.email, letter.subject, plain, html):
             success_count += 1
 
     print(f"\nResults Recap Summary: {success_count}/{len(enrollments)} emails sent")
     return success_count
-
-
-def _build_recap_plain_text(display_name, tournament_name, golfer_name, position,
-                            earnings, backup_activated, rank_display, season_total,
-                            top_3, user_id, season_year, site_url, commissioner_name):
-    """Build plain-text fallback for the results recap email."""
-    backup_note = " (backup activated)" if backup_activated else ""
-
-    if golfer_name:
-        pick_line = f"Your Pick: {golfer_name}{backup_note}"
-        position_line = f"Finish: {position}"
-        earnings_line = f"Earnings: ${earnings:,}"
-    else:
-        pick_line = "Your Pick: No pick submitted"
-        position_line = ""
-        earnings_line = "Earnings: $0"
-
-    top3_lines = ""
-    for i, entry in enumerate(top_3, 1):
-        marker = " <-- YOU" if entry['user_id'] == user_id else ""
-        score_part = f" ({entry['score_to_par']})" if entry['score_to_par'] else ""
-        top3_lines += f"  {i}. {entry['user_name']} -- {entry['golfer_name']}{score_part} -- ${entry['earnings']:,}{marker}\n"
-
-    text = f"""Hi {display_name},
-
-Here's your recap for {tournament_name}.
-
-{pick_line}
-{position_line}
-{earnings_line}
-
-Your Standing: {rank_display}
-Season Total: ${season_total:,}
-
-This Week's Top 3:
-{top3_lines}
-View full standings: {site_url}/golf/
-
-Good luck next week!
-{commissioner_name}
-
----
-Golf Pick 'Em {season_year}
-{site_url}
-"""
-    return text
-
-
-def _build_recap_html(display_name, tournament_name, golfer_name, position,
-                      score, earnings, backup_activated, rank_display, season_total,
-                      top_3, user_id, season_year, site_url):
-    """Build the HTML body for the results recap email."""
-
-    # --- Your Pick Result Card ---
-    if golfer_name:
-        backup_badge = ""
-        if backup_activated:
-            backup_badge = ' <span style="display: inline-block; background-color: rgba(37,99,235,0.1); color: #2563eb; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 4px; vertical-align: middle;">BACKUP</span>'
-
-        earnings_color = _GREEN_700 if earnings > 0 else _DANGER
-
-        score_text = f' <span style="color: {_TEXT_MUTED}; font-size: 14px; font-weight: 400;">({score})</span>' if score else ""
-
-        pick_card = f'''<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: {_CREAM}; border-left: 4px solid {_GREEN_700}; margin-bottom: 24px;">
-<tr><td style="padding: 20px 24px;">
-<p style="margin: 0 0 4px 0; font-size: 11px; font-weight: 600; color: {_TEXT_MUTED}; text-transform: uppercase; letter-spacing: 0.05em;">Your Pick</p>
-<p style="margin: 0 0 12px 0; font-family: {_FONT_DISPLAY}; font-size: 20px; font-weight: 700; color: {_TEXT_PRIMARY};">{escape(golfer_name)}{backup_badge}</p>
-<table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
-<td style="padding-right: 32px;">
-<p style="margin: 0; font-size: 11px; color: {_TEXT_MUTED}; text-transform: uppercase; letter-spacing: 0.03em;">Finish</p>
-<p style="margin: 2px 0 0 0; font-size: 18px; font-weight: 700; color: {_TEXT_PRIMARY};">{position}{score_text}</p>
-</td>
-<td>
-<p style="margin: 0; font-size: 11px; color: {_TEXT_MUTED}; text-transform: uppercase; letter-spacing: 0.03em;">Earnings</p>
-<p style="margin: 2px 0 0 0; font-size: 18px; font-weight: 700; color: {earnings_color};">${earnings:,}</p>
-</td>
-</tr></table>
-</td></tr>
-</table>'''
-    else:
-        pick_card = f'''<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f1f3f5; border-left: 4px solid {_TEXT_MUTED}; margin-bottom: 24px;">
-<tr><td style="padding: 20px 24px;">
-<p style="margin: 0 0 4px 0; font-size: 11px; font-weight: 600; color: {_TEXT_MUTED}; text-transform: uppercase; letter-spacing: 0.05em;">Your Pick</p>
-<p style="margin: 0; font-family: {_FONT_DISPLAY}; font-size: 18px; color: {_TEXT_MUTED};">No pick submitted &mdash; $0</p>
-</td></tr>
-</table>'''
-
-    # --- Your Standing ---
-    standing_card = f'''<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom: 28px;">
-<tr>
-<td width="50%" style="padding-right: 8px;">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: {_GREEN_100}; text-align: center; border-radius: 8px;">
-<tr><td style="padding: 16px;">
-<p style="margin: 0 0 2px 0; font-size: 11px; font-weight: 600; color: {_TEXT_MUTED}; text-transform: uppercase; letter-spacing: 0.05em;">Rank</p>
-<p style="margin: 0; font-family: {_FONT_DISPLAY}; font-size: 26px; font-weight: 700; color: {_GREEN_700};">{rank_display}</p>
-</td></tr>
-</table>
-</td>
-<td width="50%" style="padding-left: 8px;">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: {_GOLD_100}; text-align: center; border-radius: 8px;">
-<tr><td style="padding: 16px;">
-<p style="margin: 0 0 2px 0; font-size: 11px; font-weight: 600; color: {_TEXT_MUTED}; text-transform: uppercase; letter-spacing: 0.05em;">Season Total</p>
-<p style="margin: 0; font-family: {_FONT_DISPLAY}; font-size: 26px; font-weight: 700; color: {_GOLD_500};">${season_total:,}</p>
-</td></tr>
-</table>
-</td>
-</tr>
-</table>'''
-
-    # --- Top 3 Weekly Leaderboard ---
-    top3_rows = ""
-    for i, entry in enumerate(top_3):
-        is_self = entry['user_id'] == user_id
-        row_bg = _GOLD_100 if is_self else (_CREAM if i % 2 == 1 else _WHITE)
-        bold = "font-weight: 700;" if is_self else ""
-        self_marker = f' <span style="color: {_GOLD_500}; font-size: 11px; font-weight: 700;">*</span>' if is_self else ""
-        score_part = f' <span style="color: {_TEXT_MUTED}; font-size: 12px;">({entry["score_to_par"]})</span>' if entry['score_to_par'] else ""
-
-        top3_rows += f'''<tr>
-<td style="padding: 10px 12px; border-bottom: 1px solid rgba(0,67,46,0.06); background-color: {row_bg}; {bold} font-size: 14px; color: {_TEXT_PRIMARY}; text-align: center; width: 36px;">{i + 1}</td>
-<td style="padding: 10px 12px; border-bottom: 1px solid rgba(0,67,46,0.06); background-color: {row_bg}; {bold} font-size: 14px; color: {_TEXT_PRIMARY};">{escape(entry['user_name'])}{self_marker}</td>
-<td style="padding: 10px 12px; border-bottom: 1px solid rgba(0,67,46,0.06); background-color: {row_bg}; font-size: 14px; color: {_TEXT_SECONDARY};">{escape(entry['golfer_name'])}{score_part}</td>
-<td style="padding: 10px 12px; border-bottom: 1px solid rgba(0,67,46,0.06); background-color: {row_bg}; {bold} font-size: 14px; color: {_GREEN_700}; text-align: right;">${entry['earnings']:,}</td>
-</tr>'''
-
-    leaderboard = f'''<p style="margin: 0 0 12px 0; font-family: {_FONT_DISPLAY}; font-size: 18px; color: {_TEXT_PRIMARY};">This Week&#8217;s Top 3</p>
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse: collapse; margin-bottom: 24px;">
-<tr>
-<td style="background-color: {_GREEN_800}; color: {_TEXT_ON_DARK}; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; padding: 10px 12px; text-align: center; width: 36px;">#</td>
-<td style="background-color: {_GREEN_800}; color: {_TEXT_ON_DARK}; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; padding: 10px 12px;">Member</td>
-<td style="background-color: {_GREEN_800}; color: {_TEXT_ON_DARK}; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; padding: 10px 12px;">Golfer</td>
-<td style="background-color: {_GREEN_800}; color: {_TEXT_ON_DARK}; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; padding: 10px 12px; text-align: right;">Earned</td>
-</tr>
-{top3_rows}
-</table>'''
-
-    # --- Assemble ---
-    content = f'''<h2 style="margin: 0 0 6px 0; font-family: {_FONT_DISPLAY}; font-size: 24px; color: {_TEXT_PRIMARY};">{escape(tournament_name)}</h2>
-<p style="margin: 0 0 24px 0; font-size: 15px; color: {_TEXT_SECONDARY};">Here&#8217;s how your week went, {escape(display_name)}.</p>
-
-{pick_card}
-{standing_card}
-{leaderboard}
-{_html_button(site_url + "/golf/", "View Full Standings")}'''
-
-    return _html_wrapper(content, season_year, site_url)
 
 
 # =============================================================================
@@ -952,7 +705,6 @@ def run_reminder_check():
     email_address = config.get('EMAIL_ADDRESS', '')
     email_password = config.get('EMAIL_PASSWORD', '')
     site_url = config.get('SITE_URL', 'http://localhost:5000')
-    commissioner_name = config.get('COMMISSIONER_NAME', 'The Commish')
 
     if not email_address or not email_password:
         print("\nCannot proceed without email configuration")
@@ -1004,38 +756,34 @@ def run_reminder_check():
     tournament_id = tournament.id
     tournament_purse = tournament.effective_purse or 0
     tournament_season_year = tournament.season_year
+    deadline_short = _deadline_short(deadline)
+    time_remaining = format_time_remaining(deadline)
+    pick_url = f"{site_url}/golf/pick/{tournament_id}"
 
-    # Send reminders - extract user data while still in context
+    # Send reminders
     success_count = 0
     for user in users_without_picks:
-        # Extract all user data we need (while ORM object is attached)
         user_email = user.email
-        user_display_name = user.get_display_name()
 
-        # Get golf-specific stats from enrollment
+        # Golf-specific stats from enrollment
         enrollment = GolfEnrollment.query.filter_by(
             user_id=user.id,
             season_year=tournament_season_year
         ).first()
-        user_total_points = enrollment.total_points if enrollment else 0
-        user_golfers_used = len(enrollment.get_used_player_ids()) if enrollment else 0
+        golfers_used = len(enrollment.get_used_player_ids()) if enrollment else 0
 
-        # Build email with primitive values
-        subject, plain, html = build_reminder_email(
-            user_display_name=user_display_name,
-            user_total_points=user_total_points,
-            user_golfers_used=user_golfers_used,
+        letter = _reminder_letter(
             tournament_name=tournament_name,
-            tournament_id=tournament_id,
-            tournament_purse=tournament_purse,
-            tournament_season_year=tournament_season_year,
-            deadline=deadline,
+            deadline_short=deadline_short,
+            time_remaining=time_remaining,
+            purse=tournament_purse,
+            golfers_used=golfers_used,
+            pick_url=pick_url,
             window=window,
-            site_url=site_url,
-            commissioner_name=commissioner_name,
+            season_year=tournament_season_year,
         )
-
-        if send_platform_email(user_email, subject, plain, html):
+        plain, html = render_letter(letter)
+        if send_platform_email(user_email, letter.subject, plain, html):
             success_count += 1
 
     # Record the tier once ANY send succeeds (standalone parity), so a total

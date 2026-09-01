@@ -74,15 +74,19 @@ BROADCASTS = {
     'cfb-picks-open', 'cfb-reminder-warning', 'cfb-reminder-final',
     'docket-picks-open', 'docket-reminder-48h', 'docket-reminder-24h',
     'docket-reminder-2h', 'docket-tiebreaker-changed', 'platform-announce',
+    'golf-picks-open', 'golf-reminder-24h', 'golf-reminder-12h',
+    'golf-reminder-1h',
 }
 PERSONAL = {
     'cfb-recap-survived', 'cfb-recap-eliminated', 'cfb-recap-no-pick',
-    'docket-line-corrected', 'platform-reset',
+    'docket-line-corrected', 'platform-reset', 'golf-recap',
+    'golf-recap-no-pick',
 }
 WITH_DEADLINE = {
     'cfb-picks-open', 'cfb-reminder-warning', 'cfb-reminder-final',
     'docket-picks-open', 'docket-reminder-48h', 'docket-reminder-24h',
-    'docket-reminder-2h',
+    'docket-reminder-2h', 'golf-picks-open', 'golf-reminder-24h',
+    'golf-reminder-12h', 'golf-reminder-1h',
 }
 GAME_OF = {
     'cfb-picks-open': 'cfb', 'cfb-reminder-warning': 'cfb',
@@ -91,6 +95,9 @@ GAME_OF = {
     'docket-picks-open': 'docket', 'docket-reminder-48h': 'docket',
     'docket-reminder-24h': 'docket', 'docket-reminder-2h': 'docket',
     'docket-line-corrected': 'docket', 'docket-tiebreaker-changed': 'docket',
+    'golf-picks-open': 'golf', 'golf-reminder-24h': 'golf',
+    'golf-reminder-12h': 'golf', 'golf-reminder-1h': 'golf',
+    'golf-recap': 'golf', 'golf-recap-no-pick': 'golf',
     'platform-reset': None, 'platform-announce': None,
 }
 
@@ -103,6 +110,11 @@ CFB_DEADLINE_TEXT = 'Saturday, Jan 3 · 11:00 AM CT'
 # Docket Week 1: Sat Sep 5 2026 11:00 CDT = 16:00 UTC.
 DOCKET_DEADLINE_UTC = datetime(2026, 9, 5, 16, 0, tzinfo=UTC)
 DOCKET_DEADLINE_TEXT = 'Saturday, Sep 5 · 11:00 AM CT'
+# Golf: Thu Jun 4 2026 07:00, stored naive as league wall clock (CDT).
+GOLF_DEADLINE = datetime(2026, 6, 4, 7, 0)
+GOLF_DEADLINE_TEXT = 'Thursday, Jun 4 · 7:00 AM CT'
+DEADLINE_TEXT_OF = {'cfb': CFB_DEADLINE_TEXT, 'docket': DOCKET_DEADLINE_TEXT,
+                    'golf': GOLF_DEADLINE_TEXT}
 
 
 def _text(html):
@@ -379,6 +391,83 @@ def _docket_letters(app):
     return out
 
 
+def _golf_letters(app):
+    from games.golf.services.reminders import (
+        _reminder_letter as golf_reminder_letter,
+    )
+    from games.golf.services.reminders import (
+        send_picks_open_email as golf_picks_open,
+    )
+    from games.golf.services.reminders import (
+        send_results_recap_email as golf_recap,
+    )
+    from tests.test_golf_conformance import (
+        _add_to_field,
+        _make_enrollment,
+        _make_pick,
+        _make_player,
+        _make_result,
+        _make_tournament,
+        _make_user,
+    )
+
+    out = {}
+    app.config['SEASON_YEAR'] = 2026
+    app.config['EMAIL_ADDRESS'] = 'commish@test.com'
+    app.config['EMAIL_PASSWORD'] = 'x'
+    member = _make_user('golfmember', display_name='Fairway Fred')
+    _make_enrollment(member)
+    ghost = _make_user('golfghost', display_name='Cart Path Carl')
+    _make_enrollment(ghost)
+
+    open_t = _make_tournament(name='The Memorial', status='upcoming')
+    open_t.pick_deadline = GOLF_DEADLINE
+    db.session.commit()
+    target = 'games.golf.services.reminders.send_platform_email'
+    sent, patcher = _capture(target)
+    with patcher:
+        golf_picks_open(open_t.id)
+    out['golf-picks-open'] = sent[0]
+
+    # Golf's reminder pass is gated on the real clock (no fake-now seam) and
+    # a 50-player field, so the tiers render through the pure builder that
+    # run_reminder_check itself calls.
+    for window in ({'hours': 24, 'type': 'warning', 'countdown': '23 hours, 40 minutes'},
+                   {'hours': 12, 'type': 'reminder', 'countdown': '11 hours, 40 minutes'},
+                   {'hours': 1, 'type': 'final', 'countdown': '55 minutes'}):
+        letter = golf_reminder_letter(
+            tournament_name='The Memorial',
+            deadline_short=GOLF_DEADLINE_TEXT,
+            time_remaining=window['countdown'],
+            purse=20_000_000,
+            golfers_used=4,
+            pick_url=f'{SITE}/golf/pick/{open_t.id}',
+            window=window,
+            season_year=2026)
+        plain, html = render_letter(letter)
+        out[f"golf-reminder-{window['hours']}h"] = {
+            'subject': letter.subject, 'plain': plain, 'html': html}
+
+    done_t = _make_tournament(name='The Memorial Finale', status='complete',
+                              results_finalized=True)
+    p1 = _make_player('GP1', 'Rory', 'McIlroy')
+    p2 = _make_player('GP2', 'Jon', 'Rahm')
+    _add_to_field(done_t, p1)
+    _add_to_field(done_t, p2)
+    _make_result(done_t, p1, earnings=1_500_000, final_position='1')
+    pick = _make_pick(member, done_t, p1, p2)
+    pick.active_player_id = p1.id
+    pick.points_earned = 1_500_000
+    db.session.commit()
+    sent, patcher = _capture(target)
+    with patcher:
+        golf_recap(done_t.id)
+    by_to = {m['to']: m for m in sent}
+    out['golf-recap'] = by_to['golfmember@test.com']
+    out['golf-recap-no-pick'] = by_to['golfghost@test.com']
+    return out
+
+
 @pytest.fixture()
 def letters(app):
     """name -> {'subject', 'plain', 'html'} for every in-scope letter."""
@@ -387,6 +476,7 @@ def letters(app):
     out.update(_platform_letters(app))
     out.update(_cfb_letters(app))
     out.update(_docket_letters(app))
+    out.update(_golf_letters(app))
     assert set(out) == set(GAME_OF), sorted(set(GAME_OF) ^ set(out))
     return out
 
@@ -407,8 +497,7 @@ def test_deadlines_say_ct_and_lead_the_fact_block(letters):
         assert 'CDT' not in text and 'CST' not in text, name
         assert 'CDT' not in m['plain'] and 'CST' not in m['plain'], name
         if name in WITH_DEADLINE:
-            expected = (CFB_DEADLINE_TEXT if GAME_OF[name] == 'cfb'
-                        else DOCKET_DEADLINE_TEXT)
+            expected = DEADLINE_TEXT_OF[GAME_OF[name]]
             assert f'Deadline: {expected}' in m['plain'], (name, m['plain'])
             assert '>Deadline<' in m['html'], name
             assert expected in text, name
@@ -467,7 +556,8 @@ def test_letters_carry_their_own_accent_and_no_other(letters):
 
 
 def test_subject_grammar(letters):
-    game_names = {'cfb': 'CFB Survivor', 'docket': 'The Docket'}
+    game_names = {'cfb': 'CFB Survivor', 'docket': 'The Docket',
+                  'golf': 'Golf'}
     for name, m in letters.items():
         slug = GAME_OF[name]
         subject = m['subject']
@@ -480,6 +570,8 @@ def test_subject_grammar(letters):
         'Picks are open: CFB Survivor, Week 2'
     assert letters['docket-picks-open']['subject'] == \
         'Picks are open: The Docket, Week 1'
+    assert letters['golf-picks-open']['subject'] == \
+        'Picks are open: Golf, The Memorial'
     assert 'FINAL' in letters['cfb-reminder-final']['subject']
     assert "You've been eliminated" in letters['cfb-recap-eliminated']['subject']
     assert 'You survived' in letters['cfb-recap-survived']['subject']
@@ -494,6 +586,7 @@ def test_greeting_policy(letters):
     assert 'Hi Steady Eddie,' in letters['cfb-recap-survived']['plain']
     assert 'Hi Ghost Gary,' in letters['cfb-recap-eliminated']['plain']
     assert 'Hi Clerk of Court,' in letters['docket-line-corrected']['plain']
+    assert 'Hi Fairway Fred,' in letters['golf-recap']['plain']
     assert 'Hi Re Seeker,' in letters['platform-reset']['plain']
 
 
@@ -506,6 +599,8 @@ def test_footer_names_the_membership(letters):
             line = 'Sent to you as a member of CFB Survivor 2026.'
         elif slug == 'docket':
             line = 'Sent to you as a member of The Docket 2026.'
+        elif slug == 'golf':
+            line = "Sent to you as a member of Golf Pick 'Em 2026."
         else:
             line = 'Sent to you as a member of the Corrupt Commish Club.'
         assert line in m['plain'] and line in _text(m['html']), name
@@ -522,6 +617,9 @@ def test_each_game_states_its_consequence_and_the_tab_names_its_game(letters):
     reminder = letters['docket-reminder-48h']['plain']
     assert 'Still open on your sheet:\n- Sides committed: 0 of 8.' in reminder
     assert '- No headliner named.\n- No combined-score number recorded.' in reminder
+    golf_open = letters['golf-picks-open']['plain']
+    assert 'Each golfer can be used once this season' in golf_open
+    assert 'Your season\nSeason total: $0\nGolfers used: 0' in golf_open
 
 
 def test_recap_says_the_result_in_words(letters):
@@ -543,9 +641,10 @@ def test_recap_says_the_result_in_words(letters):
 
 SHELL_MARKERS = ('role="presentation"', '<!DOCTYPE html>')
 THE_SHELL = {'utils/email_layout.py', 'templates/email/letter.j2'}
-# Hand-rolled shells still standing. Each entry leaves in the PR that
-# migrates it (Golf: its own PR, timers held until ~Jan 2027).
-LEGACY_SHELLS = {'games/golf/services/reminders.py'}
+# Hand-rolled shells still standing. Empty since the Golf migration; a new
+# entry needs the same one-PR lifespan Golf's had (added with its reason,
+# removed in the PR that migrates it).
+LEGACY_SHELLS = set()
 SKIP_DIRS = {'venv', '.git', '.claude', '.worktrees', 'migrations', 'docs',
              'node_modules', 'tests', 'static'}
 
