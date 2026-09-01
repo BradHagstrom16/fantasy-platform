@@ -31,6 +31,8 @@ Rules enforced (2026-08-11 design SSoT):
 Datetime contract: naive UTC everywhere (D6). ``now_naive()`` is the one
 "now" in this module; every comparison is naive-vs-naive column math.
 """
+from datetime import UTC, timedelta
+
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
@@ -47,6 +49,7 @@ from games.docket.services.grading.snapshots import (
     Market,
     Side,
 )
+from games.docket.services.weeks import CT
 from games.docket.utils import now_utc, to_naive_utc
 
 # Legal sides per market. The engine enforces the same pairing at its own
@@ -57,8 +60,16 @@ SIDES_FOR_MARKET = {
     Market.TOTAL: frozenset({Side.OVER, Side.UNDER}),
 }
 
-# Combined-score predictions above this are data errors, not opinions.
-MAX_PREDICTION_TENTHS = 9990
+# Combined-score predictions above this are a dropped decimal ("515" for
+# 51.5), not an opinion: no football game has combined for 200 points.
+MAX_PREDICTION_TENTHS = 2000
+
+# The ask escalates inside this window before the deadline (DESIGN.md 2.2:
+# "escalation only near the deadline").
+URGENT_HOURS = 6
+
+# The deadline, said the way every sheet surface says it.
+CLOSE_LABEL = 'Saturday 11:00 AM CT'
 
 
 class PickError(Exception):
@@ -211,10 +222,12 @@ def set_pick(user_id: int, week: DocketWeek, game_id, market, side,
     else:
         free = sorted(set(range(1, SCORING_SLOTS + 1)) - taken)
         if not free:
+            # Reached only with the reserve already held (the sheet UI arms
+            # the 9th tap as the reserve), so the way out is a swap.
             raise PickError(
                 'sheet_full',
-                'All eight slots are filled. Remove a pick first, or add '
-                'this one as your reserve.')
+                'Your sheet is full: eight sides plus a reserve. Remove a '
+                'pick to swap this one in.')
         slot = free[0]
 
     value, book = line
@@ -353,8 +366,10 @@ def parse_prediction_tenths(raw: str) -> int:
                         'Enter a combined score like 51.5.', status=400)
     tenths = int(whole) * 10 + (int(frac) if dot else 0)
     if tenths > MAX_PREDICTION_TENTHS:
-        raise PickError('invalid',
-                        'Enter a combined score like 51.5.', status=400)
+        raise PickError(
+            'invalid',
+            'That looks high for a combined score. Enter it like 51.5.',
+            status=400)
     return tenths
 
 
@@ -411,6 +426,84 @@ def format_tenths(tenths: int) -> str:
     return f'{tenths // 10}.{tenths % 10}'
 
 
+def describe_pick(pick: DocketPick) -> str:
+    """'Utah Utes -3.5' / 'Over 51.5': a pick as its own snapshot reads."""
+    game = pick.game
+    if pick.market == Market.SPREAD.value:
+        is_home = pick.side == Side.HOME.value
+        team = game.home_team if is_home else game.away_team
+        if pick.line_value == 0:
+            return f'{team} PK'
+        num = pick.line_value if is_home else -pick.line_value
+        return f'{team} {num:+g}'
+    side = 'Over' if pick.side == Side.OVER.value else 'Under'
+    return f'{side} {pick.line_value:g}'
+
+
+def _closes_in(delta: timedelta) -> str:
+    total = max(0, int(delta.total_seconds() // 60))
+    hours, minutes = divmod(total, 60)
+    return f'{hours}h {minutes}m' if hours else f'{minutes}m'
+
+
+def _number_open(week: DocketWeek, now) -> bool:
+    designated = week.tiebreaker_game
+    if designated is None:
+        return False
+    return now < min(week.deadline_at, designated.kickoff)
+
+
+def next_step(state: dict, week: DocketWeek, now=None) -> dict:
+    """What the sheet asks for next, in one sentence, by priority.
+
+    The sheet's facts (n of 8, headliner, number, reserve) were always
+    visible; the critique of 2026-09-01 found they never named an action.
+    This is the one ask, rendered in the bar, the drawer, and the rail so
+    the three cannot disagree, and appended to every success message.
+
+    Ladder: sides -> x2 -> number (only while a tiebreaker case is
+    designated and unlocked) -> reserve (optional) -> complete. Preview and
+    closed weeks get their own rung. Inside URGENT_HOURS the ask is prefixed
+    with the time left. Never routes reminders.outstanding(): that prose is
+    the email's and is locked separately.
+    """
+    if now is None:
+        now = now_naive()
+    if now < week.start_at:
+        opens = week.start_at.replace(tzinfo=UTC).astimezone(CT)
+        return {'stage': 'preview',
+                'ask': f"Picks open {opens.strftime('%A, %B %-d')}.",
+                'urgent': False, 'remaining': SCORING_SLOTS}
+    if now >= week.deadline_at:
+        return {'stage': 'closed',
+                'ask': 'The docket is closed. Verdicts to follow.',
+                'urgent': False, 'remaining': 0}
+
+    n = state['scoring_count']
+    remaining = max(0, SCORING_SLOTS - n)
+    if n == 0:
+        stage, ask = 'blank', f'Tap {SCORING_SLOTS} sides to fill your sheet.'
+    elif remaining:
+        plural = '' if remaining == 1 else 's'
+        stage, ask = 'sides', f'{remaining} more side{plural} to file.'
+    elif state['best'] is None:
+        stage, ask = 'x2', (f'All {SCORING_SLOTS} filed. Now pick your x2: '
+                            'it scores double.')
+    elif state['prediction'] is None and _number_open(week, now):
+        stage, ask = 'number', 'Now your number: predict the tiebreaker score.'
+    elif state['backup'] is None:
+        stage, ask = 'reserve', 'Optional: tap one more side as your reserve.'
+    else:
+        stage, ask = 'complete', f'Sheet filed. Change anything until {CLOSE_LABEL}.'
+
+    left = week.deadline_at - now
+    urgent = stage != 'complete' and left < timedelta(hours=URGENT_HOURS)
+    if urgent:
+        ask = f'Closes in {_closes_in(left)}. {ask}'
+    return {'stage': stage, 'ask': ask, 'urgent': urgent,
+            'remaining': remaining}
+
+
 def sheet_state(user_id: int, week: DocketWeek) -> dict:
     """The player's sheet as one dict: the GET render and every mutation
     response read the same assembly, so JS repaints from server truth."""
@@ -442,7 +535,7 @@ def sheet_state(user_id: int, week: DocketWeek) -> dict:
         for p in picks
     ]
     best = next((p for p in pick_dicts if p['is_best']), None)
-    return {
+    state = {
         'week_number': week.week_number,
         'deadline_at': week.deadline_at.isoformat(),
         'deadline_passed': now >= week.deadline_at,
@@ -461,3 +554,7 @@ def sheet_state(user_id: int, week: DocketWeek) -> dict:
         ),
         'locked_game_ids': locked_game_ids,
     }
+    # The ask rides with the facts (the Clerk's-Ledger Rule: progress facts
+    # travel together), so template, JSON, and toast read one value.
+    state['next_step'] = next_step(state, week, now)
+    return state
