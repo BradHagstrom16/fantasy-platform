@@ -77,7 +77,7 @@
            as relative + absolute, and the unresolved obligation with its
            consequence, stated where it binds. "Picks Lock" stays literal (the
            payment-nudge lock orders it above Settle the Tab). #}
-        <div class="cfb-pick-status">
+        <div class="cfb-pick-status{% if not existing_pick and not lines_pending %} is-unanswered{% endif %}{% if deadline_soon %} is-soon{% endif %}">
             <p class="cfb-deadline">
                 <i class="bi bi-clock-fill" aria-hidden="true"></i>
                 <span class="cfb-eyebrow">Picks Lock</span>
@@ -100,7 +100,7 @@
 
         {% if existing_pick %}
         <div class="cfb-holding {% if pick_locked %}is-locked{% endif %}">
-            <span class="cfb-eyebrow">{% if pick_locked %}Locked In{% else %}Your Standing Pick{% endif %}</span>
+            <span class="cfb-eyebrow"><i class="bi bi-{% if pick_locked %}lock-fill{% else %}check-circle-fill{% endif %} cfb-holding-mark" aria-hidden="true"></i>{% if pick_locked %}Locked In{% else %}Your Standing Pick{% endif %}</span>
             <div class="cfb-holding-team">
                 <span class="cfb-team-name">{{ existing_pick.team.name }}</span>
                 {% if existing_pick.team_id in team_spreads %}
@@ -240,6 +240,14 @@ document.addEventListener('DOMContentLoaded', function() {
     // another team is tapped, so selection never looks like submission.
     var heldTeamId = hiddenInput ? hiddenInput.value : '';
 
+    if (confirmBar) {
+        // The arrival class is one-shot: cleared when the rise finishes so a
+        // later reveal (after Clear) can play it again.
+        confirmBar.addEventListener('animationend', function(e) {
+            if (e.target === confirmBar) { confirmBar.classList.remove('is-arriving'); }
+        });
+    }
+
     function deselectAll() {
         document.querySelectorAll('.team-option.selected').forEach(function(el) {
             el.classList.remove('selected', 'bg-primary', 'text-white');
@@ -276,7 +284,18 @@ document.addEventListener('DOMContentLoaded', function() {
             submitBtn.firstChild.textContent = (isHeld ? 'Keep' : (heldTeamId ? 'Change To' : 'Lock In')) + ' ';
             confirmBtnTeam.textContent = teamName;
         }
+        // The bar rises from the viewport edge the first time a row is tapped;
+        // its team line settles on every change so a tap reads as "chosen, not
+        // yet locked" (games/cfb/DESIGN.md 6.14: motion clarifies a selection).
+        var wasHidden = confirmBar.style.display === 'none';
         confirmBar.style.display = '';
+        if (wasHidden) { confirmBar.classList.add('is-arriving'); }
+        var line = confirmBar.querySelector('.cfb-confirm-line');
+        if (line) {
+            line.classList.remove('is-updated');
+            void line.offsetWidth;  // restart the acknowledgement
+            line.classList.add('is-updated');
+        }
     }
 
     if (clearBtn) {

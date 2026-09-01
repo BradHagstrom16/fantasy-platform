@@ -709,11 +709,14 @@ def make_pick(week_number):
     # lounge summons renders (games/cfb/DESIGN.md §6.14). The deadline column
     # is pool-tz wall clock; current_time is the CFB_FAKE_NOW seam.
     deadline_relative = format_relative(make_aware(week.deadline) - current_time)
+    # Inside the last day the strip escalates the clock by hierarchy (6.14).
+    deadline_soon = make_aware(week.deadline) - current_time <= timedelta(hours=24)
 
     return render_template(
         'cfb/pick.html',
         week=week,
         deadline_relative=deadline_relative,
+        deadline_soon=deadline_soon,
         deadline_short=format_deadline_short(week.deadline),
         games=games,
         open_games=open_games,
