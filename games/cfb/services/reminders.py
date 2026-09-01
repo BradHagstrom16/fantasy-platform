@@ -32,6 +32,7 @@ from games.cfb.models import (
     CfbWeek,
     CfbWeekOutcome,
 )
+from games.cfb.services.game_logic import get_official_standings
 from games.cfb.services.payment import payment_nudge_for
 from games.cfb.utils import (
     format_deadline_short,
@@ -459,14 +460,9 @@ def send_weekly_recap_email(week_id: int) -> int:
         for uid in eliminated_this_week_ids if uid in enrollment_by_user
     )
 
-    # ---- Calculate rankings (non-eliminated, sorted by lives desc then spread asc) ----
-    ranked = sorted(
-        [e for e in all_enrollments if not e.is_eliminated],
-        key=lambda e: (-e.lives_remaining, e.cumulative_spread or 0.0),
-    )
-    rank_by_user: dict[int, int] = {}
-    for i, enrollment in enumerate(ranked):
-        rank_by_user[enrollment.user_id] = i + 1
+    # ---- Rankings: the official order, implemented once (DESIGN.md 10.5) ----
+    ordered, ranks = get_official_standings(season_year)
+    rank_by_user: dict[int, int] = {e.user_id: ranks[e.id] for e in ordered}
 
     # ---- Send personalized recap (DQ-5 recipients) ----
     # Active players plus this week's eliminations only — a player

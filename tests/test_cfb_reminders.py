@@ -139,6 +139,27 @@ def test_recap_elimination_keyed_by_user_id_not_display_name(app):
     assert 'You survived' in by_to['userb@test.com']['subject']
 
 
+def test_recap_rank_follows_the_official_order(app):
+    """The recap's 'Rank' line comes from the central official order
+    (games/cfb/DESIGN.md 10.5): the underdog pick (+7.0) ranks above the
+    favorite pick (-3.0) on equal lives, never the reverse."""
+    dog_picker = make_user('dogpicker')
+    make_enrollment(dog_picker, lives=2)
+    fav_picker = make_user('favpicker')
+    make_enrollment(fav_picker, lives=2)
+    week, home, away = _seed_graded_week()          # away (+7.0) wins
+    home2, away2 = make_team('Home2'), make_team('Away2')
+    make_game(week, home2, away2, spread=-3.0, winner='home')
+    make_pick(dog_picker, week, away)               # +7.0
+    make_pick(fav_picker, week, home2)              # -3.0
+    db.session.commit()
+
+    by_to = _recap(week)
+
+    assert '1 of 2 active' in by_to['dogpicker@test.com']['body']
+    assert '2 of 2 active' in by_to['favpicker@test.com']['body']
+
+
 def test_recap_skips_players_eliminated_in_prior_weeks(app):
     """DQ-5: recipients are active players plus this week's eliminations
     only — a player eliminated last week gets no further recaps."""
