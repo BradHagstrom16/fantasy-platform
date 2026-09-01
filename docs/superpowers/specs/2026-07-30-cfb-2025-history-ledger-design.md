@@ -58,7 +58,7 @@ Four blocks, nothing else:
   "season": {"year": 2025, "entrants": 26, "weeks": 16,
              "start_date": "2025-08-28", "end_date": "2025-12-19"},
   "champion": {"name": "Fourth & Pine", "final_lives": 2,
-               "cumulative_spread": 163.5},
+               "cumulative_spread": -163.5},
   "standings": [
     {"name": "...", "outcome": "champion" | "eliminated",
      "out_week": null | 1-16, "final_lives": 0-2,

@@ -131,6 +131,7 @@ def get_official_standings(season_year):
         -e.lives_remaining,
         -(e.cumulative_spread or 0.0),
         e.get_display_name().lower(),
+        e.id,
     ))
     ranks = {}
     prev_key = None
