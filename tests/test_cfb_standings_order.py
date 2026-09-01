@@ -66,6 +66,14 @@ def test_room_tiebreaker_copy_states_higher_is_better():
     assert 'deadline' in rules  # a week's picks count once its deadline passes
 
 
+def test_my_picks_spread_note_states_higher_is_better():
+    html = _read('games/cfb/templates/cfb/my_picks.html')
+    note = html.split('How the spread works', 1)[1].split('</div>', 1)[0]
+    assert 'higher total is better' in note
+    assert 'lower total' not in note
+    assert 'adds points' not in note
+
+
 def test_doctrine_states_the_signed_higher_is_better_rule():
     doc = _read('games/cfb/DESIGN.md')
     assert 'lower is better' not in doc
