@@ -270,6 +270,27 @@ def test_recap_mail_only_golf_enrollees(app, monkeypatch):
     assert sent == 1
 
 
+def test_recap_null_total_points_renders_zero(app, monkeypatch):
+    """An enrollment with NULL total_points must not crash the recap formatter.
+
+    The column has ``default=0`` but not ``nullable=False``, so ``None`` is
+    technically possible.  The standings builder normalises it to 0 so the
+    currency format (``$0``) never receives ``None``.
+    """
+    captured = _patch_mail(monkeypatch)
+    member = _make_user('null_pts')
+    enrollment = _make_enrollment(member)
+    enrollment.total_points = None
+    db.session.commit()
+
+    tournament = _make_tournament(status='complete', results_finalized=True)
+    sent = send_results_recap_email(tournament.id)
+
+    assert sent == 1
+    assert captured
+    assert '$0' in captured[0]['plain']
+
+
 # ============================================================================
 # Email HTML escaping
 # ============================================================================

@@ -482,13 +482,14 @@ def send_results_recap_email(tournament_id: int) -> int:
     rank_counts: dict[int, int] = {}
 
     for i, enrollment in enumerate(enrollments):
-        rank = i + 1 if enrollment.total_points != prev_points else prev_rank
+        pts = enrollment.total_points or 0
+        rank = i + 1 if pts != prev_points else prev_rank
         standings[enrollment.user_id] = {
             'rank': rank,
-            'total_points': enrollment.total_points or 0,
+            'total_points': pts,
         }
         rank_counts[rank] = rank_counts.get(rank, 0) + 1
-        prev_points = enrollment.total_points
+        prev_points = pts
         prev_rank = rank
 
     # ---- Send personalized recap to each enrolled member (audit §6) ----
