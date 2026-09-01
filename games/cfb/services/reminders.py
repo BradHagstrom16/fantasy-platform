@@ -267,7 +267,7 @@ def run_reminder_check():
             deadline_short=deadline_short,
             time_remaining=time_remaining,
             lives=enrollment.lives_remaining,
-            cumulative_spread=enrollment.cumulative_spread,
+            cumulative_spread=enrollment.cumulative_spread or 0.0,
             pick_url=pick_url,
             window=window,
             season_year=season_year,
@@ -462,7 +462,7 @@ def send_weekly_recap_email(week_id: int) -> int:
     # ---- Calculate rankings (non-eliminated, sorted by lives desc then spread asc) ----
     ranked = sorted(
         [e for e in all_enrollments if not e.is_eliminated],
-        key=lambda e: (-e.lives_remaining, e.cumulative_spread),
+        key=lambda e: (-e.lives_remaining, e.cumulative_spread or 0.0),
     )
     rank_by_user: dict[int, int] = {}
     for i, enrollment in enumerate(ranked):
@@ -520,7 +520,7 @@ def send_weekly_recap_email(week_id: int) -> int:
 
         # Current status
         lives = enrollment.lives_remaining
-        cumulative_spread = enrollment.cumulative_spread
+        cumulative_spread = enrollment.cumulative_spread or 0.0
         rank = rank_by_user.get(enrollment.user_id)
         was_eliminated_this_week = enrollment.user_id in eliminated_this_week_ids
         outcome_row = outcome_by_user.get(enrollment.user_id)
@@ -625,7 +625,7 @@ def _recap_letter(*, display_name, week_name, team_name, outcome, spread,
         extras.append(items_block(eliminated_names,
                                   title='Eliminated this week'))
     else:
-        supporting.append('No eliminations this week. Everyone survived.')
+        supporting.append('No eliminations this week.')
     if is_playoff:
         supporting.append('College Football Playoff: every team has been '
                           'reset.')

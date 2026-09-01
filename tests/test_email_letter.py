@@ -262,7 +262,7 @@ def _platform_letters(app):
     db.session.commit()
     captured = {}
 
-    def keep(to, subject, plain, html):
+    def keep(to, subject, plain, html=None):
         captured.update(to=to, subject=subject, plain=plain, html=html)
         return True
 
@@ -270,6 +270,7 @@ def _platform_letters(app):
         app.test_client().post('/forgot-password',
                                data={'email': 'reseeker@test.com',
                                      'csrf_token': 'x'})
+    assert captured, 'password-reset did not send an email'
     out['platform-reset'] = dict(captured)
 
     from core.admin.announce import render_announcement

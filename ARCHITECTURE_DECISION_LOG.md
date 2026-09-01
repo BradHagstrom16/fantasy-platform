@@ -1,6 +1,6 @@
 # Architecture Decision Log — Fantasy Sports Platform
 
-**Last Updated:** 2026-08-31
+**Last Updated:** 2026-09-01
 **Status:** Historical record of architecture decisions. For current operational conventions, gotchas, and patterns, see [CLAUDE.md](CLAUDE.md). For deployment architecture, see `docs/superpowers/plans/2026-04-21-production-deployment.md` and the `project_production_deployment.md` memory.
 
 ---
