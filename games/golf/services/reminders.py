@@ -78,6 +78,8 @@ ADMIN_ALERT_NAME = "Commish"
 PICK_RULE = ('Pick a primary golfer and a backup. Each golfer can be used '
              'once this season. Points are the actual prize money your '
              'golfer earns.')
+PICK_RULE_BRIEF = ('Pick a primary golfer and a backup before the deadline. '
+                   'Each golfer can be used once this season.')
 
 
 def _admin_alert_recipient() -> str:
@@ -261,8 +263,7 @@ def _reminder_letter(*, tournament_name, deadline_short, time_remaining,
                ('Purse', f'${purse:,}'),
                ('Golfers used', str(golfers_used))],
         cta=('Make your pick', pick_url),
-        supporting=['Pick a primary golfer and a backup before the deadline. '
-                    'Each golfer can be used once this season.'],
+        supporting=[PICK_RULE_BRIEF],
     )
 
 
@@ -484,7 +485,7 @@ def send_results_recap_email(tournament_id: int) -> int:
         rank = i + 1 if enrollment.total_points != prev_points else prev_rank
         standings[enrollment.user_id] = {
             'rank': rank,
-            'total_points': enrollment.total_points,
+            'total_points': enrollment.total_points or 0,
         }
         rank_counts[rank] = rank_counts.get(rank, 0) + 1
         prev_points = enrollment.total_points

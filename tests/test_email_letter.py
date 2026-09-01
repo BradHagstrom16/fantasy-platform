@@ -432,13 +432,13 @@ def _golf_letters(app):
     # Golf's reminder pass is gated on the real clock (no fake-now seam) and
     # a 50-player field, so the tiers render through the pure builder that
     # run_reminder_check itself calls.
-    for window in ({'hours': 24, 'type': 'warning'},
-                   {'hours': 12, 'type': 'reminder'},
-                   {'hours': 1, 'type': 'final'}):
+    for window in ({'hours': 24, 'type': 'warning', 'countdown': '23 hours, 40 minutes'},
+                   {'hours': 12, 'type': 'reminder', 'countdown': '11 hours, 40 minutes'},
+                   {'hours': 1, 'type': 'final', 'countdown': '55 minutes'}):
         letter = golf_reminder_letter(
             tournament_name='The Memorial',
             deadline_short=GOLF_DEADLINE_TEXT,
-            time_remaining='23 hours, 40 minutes',
+            time_remaining=window['countdown'],
             purse=20_000_000,
             golfers_used=4,
             pick_url=f'{SITE}/golf/pick/{open_t.id}',
