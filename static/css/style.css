@@ -5466,6 +5466,7 @@ body.game-cfb .cfb-verdict.animate-in .cfb-verdict-chip {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  body.game-cfb .animate-in { animation: none; }
   #pickConfirmBar.is-arriving { animation: none; }
   .cfb-confirm-line.is-updated { animation: none; }
   .cfb-board-rest[open] .team-pick-card { animation: none; }
