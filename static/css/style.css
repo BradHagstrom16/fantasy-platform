@@ -5378,6 +5378,100 @@ body.game-cfb .team-pick-card.ineligible .cfb-matchup { color: var(--cfb-bone-mu
   body.game-cfb .team-option.selected { transform: none; }
 }
 
+/* -- Colorize + animate (impeccable, 2026-09-01) ---------------------------
+   Color is state in this room (games/cfb/DESIGN.md 6.5-6.7): the status strip
+   wears the summons signature only while the pick is unanswered, the countdown
+   escalates by hierarchy inside the last day (6.14), the held block carries the
+   confirmed check (6.6), the locked block the lock. Motion clarifies a
+   selection or a state change: the commit bar's arrival and its name swap are
+   the authored moments; the disclosure's cards stagger in under a 200ms cap;
+   the room's entrance runs at Operate tempo. Every rule has a reduced-motion
+   path at the end of this block. Locked by tests/test_cfb_pick_motion.py. */
+body.game-cfb {
+  --cfb-ease-out: cubic-bezier(.16, 1, .3, 1);
+  --cfb-dur-fast: 150ms;
+  --cfb-dur-base: 240ms;
+}
+
+/* The unanswered obligation: the weekly call's crimson rule (the .cfb-pick-cta
+   signature) over the strip, the obligation line lifted to bone-white. A held
+   or lines-pending strip stays quiet: crimson is pressure, not atmosphere. */
+.cfb-pick-status.is-unanswered {
+  border-top: 3px solid var(--game-primary);
+  padding-top: .85rem;
+}
+.cfb-pick-status.is-unanswered .cfb-status-line {
+  color: var(--cfb-white);
+  font-size: 1.12rem;
+}
+/* Inside the last day the relative clock steps up to the decision face: Teko
+   600 at 1.25rem (20px bold clears the large-text bar, the one place
+   crimson-bright is sanctioned as text, 6.4 / 6.10). Static: no ticking, no
+   flash; the deadline component becomes lock state at expiry. */
+.cfb-pick-status.is-soon .cfb-deadline strong {
+  font-family: 'Teko', sans-serif;
+  font-weight: 700; /* WCAG "bold" is 700: 20px/700 is large text, where 4.47:1 clears the 3:1 bar */
+  font-size: 1.25rem;
+  letter-spacing: .02em;
+  color: var(--cfb-crimson-bright);
+}
+
+/* The held block's confirmed check (a calm positive accent, never victory
+   styling: the team still has to play) and the locked block's lock (finality
+   by structure, in bone so the lock never reads as danger). */
+.cfb-holding-mark {
+  color: var(--cfb-survived);
+  font-size: .85rem;
+  margin-right: .3rem;
+  vertical-align: -.05em;
+}
+.cfb-holding.is-locked .cfb-holding-mark { color: var(--cfb-bone-muted); }
+
+/* The authored moment: the commit bar rises from the viewport edge the first
+   time a row is tapped (the picker adds .is-arriving on reveal and clears it
+   on animationend), and its team line acknowledges every change with a short
+   settle, so a tap reads as "chosen, not yet locked". Exit is instant. */
+@keyframes cfb-bar-rise {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes cfb-ack {
+  from { opacity: .35; transform: translateY(3px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+#pickConfirmBar.is-arriving { animation: cfb-bar-rise var(--cfb-dur-base) var(--cfb-ease-out) both; }
+.cfb-confirm-line.is-updated { animation: cfb-ack var(--cfb-dur-fast) var(--cfb-ease-out) both; }
+
+/* The rest of the slate appears as a list, so it staggers as one: 40ms steps
+   capped at 200ms, every later card landing with the fifth. */
+@keyframes cfb-card-rise {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.cfb-board-rest[open] .team-pick-card { animation: cfb-card-rise 200ms var(--cfb-ease-out) both; }
+.cfb-board-rest[open] .team-pick-card:nth-child(n+3) { animation-delay: 40ms; }
+.cfb-board-rest[open] .team-pick-card:nth-child(n+4) { animation-delay: 80ms; }
+.cfb-board-rest[open] .team-pick-card:nth-child(n+5) { animation-delay: 120ms; }
+.cfb-board-rest[open] .team-pick-card:nth-child(n+6) { animation-delay: 160ms; }
+.cfb-board-rest[open] .team-pick-card:nth-child(n+7) { animation-delay: 200ms; }
+
+/* Operate tempo: the platform entrance (.5s) tightened for a room where the
+   member is here to decide, not to watch the page assemble. */
+body.game-cfb .animate-in { animation-duration: .36s; }
+
+/* Saturday's Verdict: the outcome chip lands a beat after its surface, the
+   one brief terminal-state transition 6.14 allows. */
+body.game-cfb .cfb-verdict.animate-in .cfb-verdict-chip {
+  animation: cfb-ack var(--cfb-dur-base) var(--cfb-ease-out) .18s both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #pickConfirmBar.is-arriving { animation: none; }
+  .cfb-confirm-line.is-updated { animation: none; }
+  .cfb-board-rest[open] .team-pick-card { animation: none; }
+  body.game-cfb .cfb-verdict.animate-in .cfb-verdict-chip { animation: none; }
+}
+
 /* ============================================================
    A4 — Weekly results / "Saturday's Verdict" (impeccable critique 2026-06-23,
    26/40). The weekly consequence surface: who survived, who lost a life, who was
