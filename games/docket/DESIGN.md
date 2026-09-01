@@ -298,6 +298,11 @@ applications:
   **held in reserve** (the backup, slot 9), a **verdict** (win), a **mistrial** (push),
   **thrown out** (No Contest), the **ledger** (season standings), **court adjourns** may
   flavor the deadline but the deadline line always states the literal time.
+- On the sheet itself, one word per object where a first-timer taps (clarity pass 2026-09-01, §7.6a):
+  the mark and control are **x2** (every first appearance says "it scores double"; "headliner" stays
+  on the ledger, the rules page, and the rail's slot tag), the ninth pick is **Reserve** (spelled
+  out, never a bare "R", never "backup" player-facing), the tiebreaker is **the number** with
+  "Save number" as its verb, and the destructive slot action is **Remove**.
 - No em dashes or double hyphens in UI copy (platform Copy Discipline).
 
 ### 6.8 `.docket-eyebrow`
@@ -417,6 +422,46 @@ one clerk's sentence.
 The tiebreaker card: designated case named, one decimal-tenths input (`inputmode="decimal"`),
 the frozen total shown as reference ("the line says 51.5"), and the lock time
 (min(deadline, kickoff)). Blank state says the default rule plainly.
+
+### 7.6a The ask, and the sheet's words (clarity pass 2026-09-01)
+
+An impeccable critique of the live Week 1 sheet at 375px (23/40) found the record exquisite and the
+task under-prompted: the sheet stated facts (`0 of 8 · no x2 · R open · no number`) and never named
+an action; x2 and the reserve lived behind a bottom strip with no affordance; pick 8 silently armed
+every open pill as the reserve; success was never confirmed in words. Six contracts, all locked by
+`tests/test_docket_sheet_flow.py`:
+
+- **The ask.** `picks.next_step(state, week, now)` returns one sentence by priority: sides
+  ("5 more sides to file.") → x2 ("All 8 filed. Now pick your x2: it scores double.") → number
+  ("Now your number: predict the tiebreaker score.", only while a case is designated and unlocked)
+  → reserve ("Optional: tap one more side as your reserve.") → complete ("Sheet filed. Change
+  anything until Saturday 11:00 AM CT."), with preview and closed rungs and a "Closes in 3h 0m."
+  prefix inside six hours. `sheet_state` embeds it; `_next_step.html` renders it in the bar, the
+  drawer, and the desktop rail so the three cannot disagree; every success message appends it.
+  `reminders.outstanding()` is a separate, email-locked prose and never routes through it.
+- **The bar is a handle with two rows.** Row 1 speaks in words, never bare letters: `Sheet` (with a
+  drawn caret) · `3 of 8` · `x2 set / x2 open` · `Reserve held / Reserve open` · `Number 53.7 / No
+  number`. Row 2 is the ask. Complete takes the stamp tint; urgent takes a heavier garnet top rule
+  (an inset top shadow, never a side stripe). Every control inside the drawer clears 44px.
+- **x2 is set on the pill.** A held, unlocked, non-reserve pill carries a ghost-oxblood `x2` button
+  (`.docket-x2-btn`, 44px) that becomes the filled headliner chip once set; the rail's
+  "Make this x2" stays as the second path. Locked pills keep the static chip.
+- **The reserve is spelled out.** "Reserve" everywhere on the sheet (pill badge, rail frame, bar,
+  held tag, chips, notices); never a bare "R", never "backup" player-facing. The rail's slot-9 frame
+  is stage-aware ("Reserve. Opens once your 8 sides are filed." → "Reserve open. Your next tap on
+  any open side files here; it only plays if a case is thrown out."). Arming stays automatic and is
+  announced: the post-8 prompt card, the `RESERVE` chip on open pills, and "Filed as your reserve."
+  The rules page keeps "Held in reserve" as register.
+- **Success is confirmed.** `_sheet_success` builds one message ("Filed, slot 3. 5 more sides to
+  file." / "x2 set: Over 51.5." / "Number saved: 53.7.") for both the flash and the JSON toast, which
+  is also the page's `role=status` live region. "Withdraw" is "Remove"; "Record" is "Save number".
+- **The number states its default and moves up when it is the ask.** "Skip it and the line stands
+  in as your number." on the blank state; "Saved: 53.7. Change it until Saturday 11:00 AM CT." once
+  saved; the card is promoted above the slots while it is the next step. A prediction above 200.0 is
+  refused as a dropped decimal ("That looks high for a combined score. Enter it like 51.5.").
+- **First visit.** At 0 picks the slate opens with "How the sheet works" (three steps, "Everything
+  saves as you tap", the deadline, and that blanks are filled for you); at 8 it opens with "All 8
+  filed. Here is what is left" naming each unmet obligation and how to meet it.
 
 ### 7.7 The court calendar — `.docket-day-tabs`, `.docket-day-head`
 

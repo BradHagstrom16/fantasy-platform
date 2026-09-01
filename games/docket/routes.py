@@ -339,14 +339,15 @@ def _sheet_error(err: PickError):
     return _back_to_sheet()
 
 
-def _sheet_success(week, message=None):
+def _sheet_success(week, action):
+    """Confirm a mutation in words: what just happened plus what the sheet
+    asks for next (one message for the flash and the JSON toast, built from
+    the same sheet state the client repaints from)."""
+    state = picks_service.sheet_state(current_user.id, week)
+    message = f"{action} {state['next_step']['ask']}".strip()
     if _wants_json():
-        return jsonify({
-            'ok': True,
-            'sheet': picks_service.sheet_state(current_user.id, week),
-        })
-    if message:
-        flash(message, 'success')
+        return jsonify({'ok': True, 'message': message, 'sheet': state})
+    flash(message, 'success')
     return _back_to_sheet()
 
 
@@ -356,7 +357,7 @@ def set_pick():
     """Add a pick, or move a held market to its other side."""
     week = picks_service.current_week()
     try:
-        picks_service.set_pick(
+        pick = picks_service.set_pick(
             current_user.id,
             week,
             game_id=request.form.get('game_id', type=int),
@@ -366,7 +367,12 @@ def set_pick():
         )
     except PickError as err:
         return _sheet_error(err)
-    return _sheet_success(week, 'Pick recorded.')
+    if pick.slot == BACKUP_SLOT:
+        action = ('Filed as your reserve. It only plays if a case is '
+                  'thrown out.')
+    else:
+        action = f'Filed, slot {pick.slot}.'
+    return _sheet_success(week, action)
 
 
 @docket_bp.route('/picks/remove', methods=['POST'])
@@ -383,7 +389,7 @@ def remove_pick():
         )
     except PickError as err:
         return _sheet_error(err)
-    return _sheet_success(week, 'Pick withdrawn.')
+    return _sheet_success(week, 'Pick removed.')
 
 
 @docket_bp.route('/best', methods=['POST'])
@@ -394,18 +400,18 @@ def set_best():
     try:
         if request.form.get('clear') == '1':
             picks_service.clear_best(current_user.id, week)
-            message = 'Headliner cleared.'
+            action = 'x2 cleared.'
         else:
-            picks_service.set_best(
+            row = picks_service.set_best(
                 current_user.id,
                 week,
                 game_id=request.form.get('game_id', type=int),
                 market=request.form.get('market', ''),
             )
-            message = 'Headliner set.'
+            action = f'x2 set: {picks_service.describe_pick(row)}.'
     except PickError as err:
         return _sheet_error(err)
-    return _sheet_success(week, message)
+    return _sheet_success(week, action)
 
 
 @docket_bp.route('/tiebreaker', methods=['POST'])
@@ -418,8 +424,12 @@ def set_tiebreaker():
             current_user.id, week, request.form.get('prediction', ''))
     except PickError as err:
         return _sheet_error(err)
-    message = 'Prediction recorded.' if row is not None else 'Prediction cleared.'
-    return _sheet_success(week, message)
+    if row is not None:
+        action = (f'Number saved: '
+                  f'{picks_service.format_tenths(row.prediction_tenths)}.')
+    else:
+        action = 'Number cleared.'
+    return _sheet_success(week, action)
 
 
 # --------------------------------------------------------------------------

@@ -1,7 +1,8 @@
 {# One case on the docket calendar.
    Context: game, sheet, held, designated, active_day, docket_sport_labels.
    States: open sides are mini-forms (PRG spine); a held side is a stamped
-   span; a locked case renders static with its reason in the head. #}
+   block carrying its own x2 control; a locked case renders static with its
+   reason in the head. #}
 {% set locked = sheet.deadline_passed or game.id in sheet.locked_game_ids %}
 {% set spread_pick = held.get((game.id, 'spread')) %}
 {% set total_pick = held.get((game.id, 'total')) %}
@@ -19,17 +20,51 @@
 
 {% macro side_pill(market, side, label, pick) %}
   {% if pick and pick.side == side %}
-    <span class="docket-side is-picked{% if locked %} is-locked{% endif %}{% if pick.is_best %} is-best{% endif %}{% if pick.is_autopick %} is-autopick{% endif %}">
-      <span class="docket-side-team">{{ label }}</span>
-      <span class="docket-side-num">{{ side_number(market, side) }}</span>
-      <span class="docket-slot-badge">{{ 'R' if pick.slot == backup_slot else pick.slot }}</span>
+    {# A held side. The class string order is locked (is-picked, is-locked,
+       is-best, is-autopick); the x2 control lives ON the pill (DESIGN.md
+       7.4: one tap on a held pick), never on a locked or reserve pill. #}
+    <div class="docket-side is-picked{% if locked %} is-locked{% endif %}{% if pick.is_best %} is-best{% endif %}{% if pick.is_autopick %} is-autopick{% endif %}">
+      <span class="docket-side-main">
+        <span class="docket-side-team">{{ label }}</span>
+        <span class="docket-side-num">{{ side_number(market, side) }}</span>
+      </span>
+      {# The marks (slot, auto, x2) take their own row so a long team name
+         keeps the width it needs on a 175px pill. #}
+      <span class="docket-side-marks">
+      <span class="docket-slot-badge">{{ 'Reserve' if pick.slot == backup_slot else pick.slot }}</span>
       {% if pick.is_autopick %}<span class="docket-auto-tag"
             title="Filed for you when the docket closed">Auto</span>{% endif %}
-      {# The assigned double is carried visually by the dashed chip, which a
-         screen reader cannot see and title does not reliably announce. #}
-      {% if pick.is_best %}<span class="docket-headliner-chip{% if pick.is_auto_best %} is-auto{% endif %}"
-            {% if pick.is_auto_best %}title="Assigned for you when the docket closed"{% endif %}>x2{% if pick.is_auto_best %}<span class="visually-hidden">, assigned for you</span>{% endif %}</span>{% endif %}
-    </span>
+      {% if pick.is_best %}
+        {% if locked %}
+        {# The assigned double is carried visually by the dashed chip, which a
+           screen reader cannot see and title does not reliably announce. #}
+        <span class="docket-headliner-chip{% if pick.is_auto_best %} is-auto{% endif %}"
+              {% if pick.is_auto_best %}title="Assigned for you when the docket closed"{% endif %}>x2{% if pick.is_auto_best %}<span class="visually-hidden">, assigned for you</span>{% endif %}</span>
+        {% else %}
+        <form method="POST" action="{{ url_for('docket.set_best') }}"
+              class="docket-x2-form" data-docket-action="clear-best">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+          <input type="hidden" name="clear" value="1"/>
+          <input type="hidden" name="day" value="{{ active_day.key }}"/>
+          <button type="submit" class="docket-headliner-chip docket-x2-btn is-set{% if pick.is_auto_best %} is-auto{% endif %}"
+                  title="This is your x2. Tap to clear it."
+                  aria-label="Your x2, scores double. Tap to clear it.">x2</button>
+        </form>
+        {% endif %}
+      {% elif not locked and pick.slot != backup_slot %}
+        <form method="POST" action="{{ url_for('docket.set_best') }}"
+              class="docket-x2-form" data-docket-action="set-best">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+          <input type="hidden" name="game_id" value="{{ game.id }}"/>
+          <input type="hidden" name="market" value="{{ market }}"/>
+          <input type="hidden" name="day" value="{{ active_day.key }}"/>
+          <button type="submit" class="docket-x2-btn"
+                  title="Make this your x2: it scores double"
+                  aria-label="Make this your x2, it scores double">x2</button>
+        </form>
+      {% endif %}
+      </span>
+    </div>
   {% elif locked %}
     <span class="docket-side is-locked">
       <span class="docket-side-team">{{ label }}</span>
@@ -56,7 +91,7 @@
               {% if pick %}title="Moves your pick to this side"{% endif %}>
         <span class="docket-side-team">{{ label }}</span>
         <span class="docket-side-num">{{ side_number(market, side) }}</span>
-        {% if send_reserve %}<span class="docket-reserve-hint">reserve</span>{% endif %}
+        {% if send_reserve %}<span class="docket-reserve-hint">Reserve</span>{% endif %}
       </button>
     </form>
   {% endif %}

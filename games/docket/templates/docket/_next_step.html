@@ -1,0 +1,4 @@
+{# The ask: one sentence owned by sheet state (picks.next_step), rendered in
+   the mobile bar, the drawer, and the desktop rail so the three can never
+   disagree. No forms here: it renders in preview and closed states too. #}
+<p class="docket-next{% if sheet.next_step.urgent %} is-urgent{% endif %}{% if sheet.next_step.stage == 'complete' %} is-complete{% endif %}" data-docket-stage="{{ sheet.next_step.stage }}">{{ sheet.next_step.ask }}</p>

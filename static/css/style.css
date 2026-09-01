@@ -13207,14 +13207,13 @@ button.docket-side:hover {
   font-weight: 600;
 }
 .docket-side.is-picked .docket-side-num { color: var(--game-accent); font-weight: 700; }
-/* The opposite of a held side: available but visibly secondary — choosing
-   it MOVES the pick (one side per market), it never adds a second one. */
+/* The opposite of a held side: tappable, not disabled — choosing it MOVES
+   the pick (one side per market), it never adds a second one. */
 .docket-side.is-move {
-  color: var(--text-secondary);
+  color: var(--text-primary);
   background: var(--bg-page);
 }
 .docket-side.is-move .docket-side-num { color: var(--text-secondary); }
-button.docket-side.is-move:hover { color: var(--text-primary); }
 .docket-slot-badge {
   font-family: 'Teko', sans-serif;
   font-weight: 600;
@@ -13484,16 +13483,53 @@ button.docket-side.is-move:hover { color: var(--text-primary); }
   border-top: 2px solid var(--game-accent);
   box-shadow: var(--shadow-sticky-up);
 }
+/* Two rows (impeccable critique 2026-09-01): the facts in words, then the
+   ask. The "Sheet" handle draws its own caret so the bar reads as something
+   that opens; complete takes the stamp tint; urgent takes a heavier garnet
+   top rule (an inset top shadow, never a side stripe). */
 .docket-rail-bar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: .9rem;
-  min-height: 52px;
-  padding: .4rem 1rem;
+  row-gap: .15rem;
+  min-height: 66px;
+  padding: .45rem 1rem .55rem;
   cursor: pointer;
   list-style: none;
 }
 .docket-rail-bar::-webkit-details-marker { display: none; }
+.docket-rail-bar-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .15rem .75rem;
+  width: 100%;
+}
+.docket-rail-bar-handle {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  font-family: 'Teko', sans-serif;
+  font-weight: 600;
+  font-size: 1.05rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--game-primary);
+}
+.docket-rail-bar-handle::after {
+  /* a drawn caret (a clipped triangle, no borders): points up while the
+     drawer is closed, down once open */
+  content: '';
+  width: .6rem;
+  height: .38rem;
+  background: currentColor;
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+  transition: transform var(--transition);
+}
+.docket-rail-drawer[open] .docket-rail-bar-handle::after { transform: rotate(180deg); }
+.docket-rail-bar.is-complete { background: rgba(var(--game-accent-rgb), .09); }
+.docket-rail-bar.is-urgent { box-shadow: inset 0 3px 0 var(--game-accent); }
+.docket-rail-bar .docket-next { margin: 0; }
 .docket-rail-bar-count {
   font-family: 'Teko', sans-serif;
   font-weight: 600;
@@ -13519,16 +13555,152 @@ button.docket-side.is-move:hover { color: var(--text-primary); }
   box-shadow: none;
   padding: 0 0 .5rem;
 }
+/* The bar already says "3 of 8" 60px above the drawer's head: hide the
+   duplicate count (CSS, not a template branch, so both rail copies stay
+   byte-identical for the auto-note lock). */
+.docket-rail-drawer .docket-rail-count { display: none; }
+/* Every control inside the drawer is a primary target on a phone: the 44px
+   floor, not the 34px secondary sanction the desktop rail keeps. */
+.docket-rail-drawer .docket-slot-btn { min-height: 44px; }
 /* Keep the fixed bar from covering the last case row. */
 .docket-sheet-page { padding-bottom: 3rem; }
 @media (max-width: 991.98px) {
-  .docket-sheet-page { padding-bottom: 7.5rem; }
+  .docket-sheet-page { padding-bottom: 8.5rem; }
 }
+
+/* --- The ask (picks.next_step): one sentence, three homes --- */
+.docket-next {
+  width: 100%;
+  margin: .2rem 0 .6rem;
+  font-family: 'Newsreader', Georgia, serif;
+  font-size: .98rem;
+  line-height: 1.35;
+  color: var(--text-primary);
+}
+.docket-next.is-urgent { color: var(--game-accent); font-weight: 600; }
+.docket-next.is-complete { color: var(--game-primary); font-weight: 600; }
+/* The open drawer still shows the bar (its summary) above the rail, so the
+   rail's copy of the ask would print twice 150px apart: hide it there. */
+.docket-rail-drawer .docket-rail-inner > .docket-next { display: none; }
+.docket-tb-submit { white-space: nowrap; }
+
+/* --- x2 on the pill (DESIGN.md 7.4: one tap on a held pick) ---
+   A ghost oxblood chip that becomes the filled headliner chip once set. The
+   held pill gives back its vertical padding so a 44px target fits. */
+.docket-side.is-picked {
+  flex-wrap: wrap;
+  row-gap: .15rem;
+  padding-top: .3rem;
+  padding-bottom: .3rem;
+}
+/* Two deterministic rows on a held pill: team + number, then the marks. */
+.docket-side-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .5rem;
+  flex: 1 1 100%;
+  min-width: 0;
+}
+/* The marks row: slot badge, auto tag, x2. Full width under the team + number
+   so a long team name never fights the control for the pill's 175px. */
+.docket-side-marks {
+  display: flex;
+  flex: 1 0 100%;
+  align-items: center;
+  justify-content: flex-end;
+  gap: .4rem;
+}
+.docket-side.is-locked .docket-side-marks { min-height: 0; }
+.docket-x2-form { display: inline-flex; flex-shrink: 0; }
+.docket-x2-btn {
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0 .55rem;
+  font-family: 'Teko', sans-serif;
+  font-weight: 600;
+  font-size: .95rem;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: var(--game-primary);
+  background: transparent;
+  border: 1px dashed var(--game-primary);
+  border-radius: .35rem;
+  cursor: pointer;
+  transition: background var(--transition), color var(--transition);
+}
+.docket-x2-btn:hover { background: rgba(var(--game-accent-rgb), .1); }
+.docket-x2-btn.is-set {
+  color: var(--text-on-dark);
+  background: var(--game-primary);
+  border-style: solid;
+}
+.docket-x2-btn:focus-visible { outline: 2px solid var(--game-accent); outline-offset: 2px; }
+
+/* --- The reserve, spelled out: the rail's slot-9 frame carries the word --- */
+.docket-slot-num-reserve {
+  width: auto;
+  padding: 0 .4rem;
+  font-size: .8rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+/* --- Orientation + the post-8 prompt: paper cards under a garnet top rule --- */
+.docket-orient,
+.docket-prompt {
+  margin-bottom: 1.1rem;
+  border-top: 3px solid var(--game-accent);
+}
+.docket-orient .card-body,
+.docket-prompt .card-body { padding: 1rem 1.1rem 1.05rem; }
+.docket-orient .docket-eyebrow,
+.docket-prompt .docket-eyebrow { display: block; margin-bottom: .4rem; }
+.docket-orient-steps {
+  margin: 0 0 .5rem;
+  padding-left: 1.2rem;
+  font-family: 'Newsreader', Georgia, serif;
+  font-size: 1rem;
+  line-height: 1.5;
+}
+.docket-orient-steps li + li { margin-top: .2rem; }
+.docket-orient-note,
+.docket-prompt-list {
+  margin: 0;
+  font-family: 'Newsreader', Georgia, serif;
+  font-size: .95rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+.docket-prompt-list { padding-left: 1.1rem; }
+.docket-prompt-list li + li { margin-top: .3rem; }
+.docket-prompt-list strong { color: var(--text-primary); }
+.docket-linklike {
+  padding: 0;
+  font: inherit;
+  color: var(--game-accent);
+  background: none;
+  border: 0;
+  text-decoration: underline;
+  text-underline-offset: .15em;
+  cursor: pointer;
+}
+.docket-linklike:focus-visible { outline: 2px solid var(--game-accent); outline-offset: 2px; }
+
+/* --- The number, when it is the ask: promoted above the slots --- */
+.docket-tiebreaker.is-asked {
+  margin: .4rem 0 .9rem;
+  padding: .8rem .85rem .9rem;
+  border: 1px solid rgba(var(--game-accent-rgb), .4);
+  border-top: 2px solid var(--docket-rule);
+  border-radius: var(--radius);
+  background: rgba(var(--game-accent-rgb), .06);
+}
+.docket-tb-default { margin: 0 0 .5rem; }
 
 /* --- Notices (enhancement-layer toast; aria-live region) --- */
 .docket-notice {
   position: fixed;
-  bottom: 64px;
+  bottom: 90px; /* clears the two-row bar */
   left: 50%;
   transform: translateX(-50%);
   z-index: 1040;
