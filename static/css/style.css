@@ -5177,7 +5177,7 @@ body.game-cfb .alert-warning { background: rgba(243,239,230,.05); border-color: 
 /* The Open swatch mirrors the resting open row (raised + the strong hairline),
    not a crimson the board never shows at rest: the legend teaches the color
    the board uses (impeccable critique 2026-09-01). */
-.cfb-legend-swatch.is-open { background: var(--cfb-raised); border-color: var(--cfb-bone-muted); }
+.cfb-legend-swatch.is-open { background: var(--cfb-raised); border-color: var(--cfb-bone); }
 .cfb-legend-swatch.is-neutral { background: var(--cfb-lifted); }
 .cfb-legend-swatch.is-out { background: var(--cfb-canvas); }
 .cfb-legend-label {

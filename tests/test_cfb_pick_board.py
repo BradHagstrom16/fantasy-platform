@@ -363,7 +363,7 @@ def test_confirm_bar_names_the_team_and_offers_clear(app, client):
     assert '>Cancel<' not in data
 
 
-def test_confirm_bar_says_change_to_when_a_pick_is_held(app, client):
+def test_confirm_bar_keeps_the_held_pick_by_name(app, client):
     user = make_user('p1')
     make_enrollment(user)
     week = make_week(1, deadline=FUTURE_DEADLINE)
@@ -375,7 +375,10 @@ def test_confirm_bar_says_change_to_when_a_pick_is_held(app, client):
 
     data = client.get('/cfb/pick/1').data.decode()
 
-    assert 'Change To <span id="confirmBtnTeam">Held Team</span>' in data
+    # Held: the bar shows the pick on file and the button keeps it by name;
+    # the JS switches the verb to "Change To" the moment another row is tapped.
+    assert 'Keep <span id="confirmBtnTeam">Held Team</span>' in data
+    assert 'Your Standing Pick' in data
 
 
 # ── The status strip: lives, the clock, the consequence ───────────────────
