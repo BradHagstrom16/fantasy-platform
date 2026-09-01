@@ -47,7 +47,7 @@
                     {{ game.get_away_team_display() }} <span class="cfb-at">@</span> {{ game.get_home_team_display() }}
                 </strong>
                 <span class="cfb-kickoff">
-                    {% if game._aware_time %}{{ game._aware_time.strftime('%a %m/%d %I:%M %p') }}{% else %}TBD{% endif %}
+                    {% if game._aware_time %}{{ game._aware_time.strftime('%a, %b %-d · %-I:%M %p') }}{% else %}TBD{% endif %}
                     {% if game_started %}<span class="cfb-out-reason ms-1">Started</span>{% endif %}
                 </span>
             </div>
@@ -73,11 +73,30 @@
 <div class="row justify-content-center">
     <div class="col-lg-9 col-xl-8">
 
-        <p class="cfb-deadline">
-            <i class="bi bi-clock-fill" aria-hidden="true"></i>
-            <span class="cfb-eyebrow">Picks Lock</span>
-            <strong>{{ format_deadline(week.deadline) }}</strong>
-        </p>
+        {# Status strip (games/cfb/DESIGN.md §2.1, §6.14): lives, the clock
+           as relative + absolute, and the unresolved obligation with its
+           consequence, stated where it binds. "Picks Lock" stays literal (the
+           payment-nudge lock orders it above Settle the Tab). #}
+        <div class="cfb-pick-status">
+            <p class="cfb-deadline">
+                <i class="bi bi-clock-fill" aria-hidden="true"></i>
+                <span class="cfb-eyebrow">Picks Lock</span>
+                <strong>in {{ deadline_relative }}</strong>
+                <span class="cfb-deadline-abs">{{ deadline_short }}</span>
+            </p>
+            {% if cfb_enrollment %}
+            <p class="cfb-status-lives">
+                <span class="lives-indicator">
+                    {% for i in range(cfb_enrollment.lives_remaining) %}<span class="life"></span>{% endfor %}
+                    {% for i in range(2 - cfb_enrollment.lives_remaining) %}<span class="life lost"></span>{% endfor %}
+                </span>
+                <span class="cfb-status-label">{{ cfb_enrollment.lives_remaining }} {{ 'life' if cfb_enrollment.lives_remaining == 1 else 'lives' }}</span>
+            </p>
+            {% endif %}
+            {% if not existing_pick and not lines_pending %}
+            <p class="cfb-status-line">You have not made a pick. Miss the deadline and you get the biggest available favorite.</p>
+            {% endif %}
+        </div>
 
         {% if existing_pick %}
         <div class="cfb-holding {% if pick_locked %}is-locked{% endif %}">
@@ -90,7 +109,7 @@
             </div>
             <p class="cfb-holding-note">
                 {% if pick_locked %}This game has kicked off. Your call is final for the week.
-                {% else %}Change it below any time before picks lock.{% endif %}
+                {% else %}Change it any time before picks lock.{% endif %}
             </p>
         </div>
         {% endif %}
@@ -115,6 +134,7 @@
         </div>
 
         {% include 'cfb/_pick_legend.html' %}
+        <p class="cfb-board-rules">Pick one team to win outright. A team is yours for the season once you use it. Teams favored by 16.5 or more are off the board. Only the {{ pool_size }} pool teams can be picked; everyone else on the slate is an opponent.</p>
 
         {% for game in games %}
             {{ game_card(game, False) }}
@@ -128,11 +148,13 @@
             <input type="hidden" name="team_id" id="selectedTeamId" value="{% if existing_pick %}{{ existing_pick.team_id }}{% endif %}"/>
 
             {% include 'cfb/_pick_legend.html' %}
+            <p class="cfb-board-rules">Pick one team to win outright. A team is yours for the season once you use it. Teams favored by 16.5 or more are off the board. Only the {{ pool_size }} pool teams can be picked; everyone else on the slate is an opponent.</p>
 
             <div class="cfb-slate-head">
                 <h2 class="cfb-eyebrow cfb-slate-title">The Board</h2>
                 <span class="cfb-slate-count">{{ open_games|length }} game{{ 's' if open_games|length != 1 }} with an open team &middot; {{ eligible_teams|length }} open team{{ 's' if eligible_teams|length != 1 }}</span>
             </div>
+            <p class="cfb-slate-caption">Tap a team, then lock it in below. Minus means favored. All times CT.</p>
 
             {% if not eligible_teams %}
             <div class="alert alert-warning cfb-empty-slate mb-3">
@@ -162,12 +184,16 @@
             </details>
             {% endif %}
 
-            {# Confirmation bar: the weekly call (only when a pick is possible) #}
+            {# Confirmation bar: the weekly call (only when a pick is possible).
+               Sticky at the viewport bottom so the commit control follows the
+               thumb (it was 8.5 screens below the first card); the button
+               names the team it locks in (games/cfb/DESIGN.md §7.2: never a
+               bare "Submit"), and Clear is a real deselect, not an exit. #}
             {% if eligible_teams or existing_pick %}
-            <div class="card mt-3 cfb-pick-cta" id="pickConfirmBar" style="{% if not existing_pick %}display: none;{% endif %}">
+            <div class="card mt-3 cfb-pick-cta" id="pickConfirmBar" aria-live="polite" style="{% if not existing_pick %}display: none;{% endif %}">
                 <div class="card-body d-flex justify-content-between align-items-center flex-wrap gap-3">
                     <div class="cfb-confirm-pick">
-                        <span class="cfb-eyebrow">Your Call</span>
+                        <span class="cfb-eyebrow" id="confirmEyebrow">{% if existing_pick %}Your Standing Pick{% else %}Your Call &middot; Not Locked Yet{% endif %}</span>
                         <div class="cfb-confirm-line">
                             <strong class="cfb-team-name" id="confirmTeamName">{% if existing_pick %}{{ existing_pick.team.name }}{% endif %}</strong>
                             <span class="spread-badge" id="confirmTeamSpread">
@@ -176,12 +202,8 @@
                         </div>
                     </div>
                     <div class="d-flex gap-2">
-                        {% if existing_pick %}
-                            <button type="submit" class="btn btn-game">Update Pick</button>
-                        {% else %}
-                            <button type="submit" class="btn btn-game" id="submitBtn">Lock It In</button>
-                        {% endif %}
-                        <a href="{{ url_for('cfb.index') }}" class="btn btn-outline-light">Cancel</a>
+                        <button type="submit" class="btn btn-game" id="submitBtn">{% if existing_pick %}Change To{% else %}Lock In{% endif %} <span id="confirmBtnTeam">{% if existing_pick %}{{ existing_pick.team.name }}{% endif %}</span></button>
+                        <button type="button" class="btn btn-outline-light" id="clearSelection">Clear</button>
                     </div>
                 </div>
             </div>
@@ -208,14 +230,17 @@ document.addEventListener('DOMContentLoaded', function() {
     var confirmBar = document.getElementById('pickConfirmBar');
     var confirmName = document.getElementById('confirmTeamName');
     var confirmSpread = document.getElementById('confirmTeamSpread');
+    var confirmEyebrow = document.getElementById('confirmEyebrow');
+    var confirmBtnTeam = document.getElementById('confirmBtnTeam');
+    var submitBtn = document.getElementById('submitBtn');
+    var clearBtn = document.getElementById('clearSelection');
     var form = document.getElementById('pickForm');
+    // The pick already on file (empty when the member has none): the bar
+    // reads "held" while it shows that team and "not locked yet" the moment
+    // another team is tapped, so selection never looks like submission.
+    var heldTeamId = hiddenInput ? hiddenInput.value : '';
 
-    function selectOption(option) {
-        var teamId = option.getAttribute('data-team-id');
-        var teamName = option.getAttribute('data-team-name');
-        var teamSpread = parseFloat(option.getAttribute('data-team-spread'));
-
-        // Deselect all
+    function deselectAll() {
         document.querySelectorAll('.team-option.selected').forEach(function(el) {
             el.classList.remove('selected', 'bg-primary', 'text-white');
             el.classList.add('bg-light');
@@ -224,6 +249,14 @@ document.addEventListener('DOMContentLoaded', function() {
         document.querySelectorAll('[data-game-card].border-primary').forEach(function(el) {
             el.classList.remove('border-primary');
         });
+    }
+
+    function selectOption(option) {
+        var teamId = option.getAttribute('data-team-id');
+        var teamName = option.getAttribute('data-team-name');
+        var teamSpread = parseFloat(option.getAttribute('data-team-spread'));
+
+        deselectAll();
 
         // Select this one
         option.classList.add('selected', 'bg-primary', 'text-white');
@@ -235,7 +268,30 @@ document.addEventListener('DOMContentLoaded', function() {
         confirmName.textContent = teamName;
         var spreadStr = (teamSpread >= 0 ? '+' : '') + teamSpread.toFixed(1);
         confirmSpread.textContent = spreadStr;
+        var isHeld = heldTeamId && teamId === heldTeamId;
+        if (confirmEyebrow) {
+            confirmEyebrow.textContent = isHeld ? 'Your Standing Pick' : 'Your Call · Not Locked Yet';
+        }
+        if (submitBtn && confirmBtnTeam) {
+            submitBtn.firstChild.textContent = (isHeld ? 'Keep' : (heldTeamId ? 'Change To' : 'Lock In')) + ' ';
+            confirmBtnTeam.textContent = teamName;
+        }
         confirmBar.style.display = '';
+    }
+
+    if (clearBtn) {
+        clearBtn.addEventListener('click', function() {
+            // A real deselect: back to the held pick if there is one, otherwise
+            // an empty card with the bar put away.
+            var heldRow = heldTeamId ? document.querySelector('.team-option[data-team-id=' + JSON.stringify(heldTeamId) + ']') : null;
+            if (heldRow) {
+                selectOption(heldRow);
+                return;
+            }
+            deselectAll();
+            hiddenInput.value = '';
+            confirmBar.style.display = 'none';
+        });
     }
 
     teamOptions.forEach(function(option) {

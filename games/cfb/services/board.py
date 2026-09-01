@@ -18,17 +18,19 @@ from games.cfb.utils import safe_is_after
 SPREAD_CAP = 16.5
 
 # Member-facing label per state. The board chips, the legend, and the pool
-# ledger all read this one dict.
+# ledger all read this one dict. Sentences a first-timer reads, not rule IDs:
+# "Not in Pool" read as a temporary status (it is permanent, and was week 1's
+# largest confusion source at 37 chips); "16.5+ Fav" was a rule's name.
 STATE_LABELS = {
     'open': 'Open',
     'on_slate': 'On The Slate',
-    'too_favored': '16.5+ Fav',
-    'used': 'Used',
-    'not_playing': 'Not Playing',
-    'started': 'Started',
+    'too_favored': 'Favored 16.5+',
+    'used': 'Already Used',
+    'not_playing': 'No Game This Week',
+    'started': 'Kicked Off',
     'no_line': 'No Line',
     'cfp_out': 'CFP Out',
-    'not_in_pool': 'Not in Pool',
+    'not_in_pool': 'Not a Pool Team',
     'out': 'Out',
 }
 

@@ -96,7 +96,7 @@ def test_pick_explains_the_spread_cap_reason():
     # The label lives in the board service (one dict shared by the chips, the
     # legend, and the ledger) and the chip renders it verbatim.
     from games.cfb.services.board import STATE_LABELS
-    assert STATE_LABELS['too_favored'] == "16.5+ Fav", \
+    assert STATE_LABELS['too_favored'] == "Favored 16.5+", \
         "an ineligible favorite must carry the explicit 16.5+ reason, not a vague 'Unavailable'"
     assert 'class="cfb-out-reason">{{ state_labels[state] }}' in TPL, \
         "the out-reason chip must render the shared state label"

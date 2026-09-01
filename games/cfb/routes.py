@@ -44,6 +44,8 @@ from games.cfb.services.score_fetcher import ScoreFetcher
 from games.cfb.utils import (
     deadline_has_passed,
     format_deadline,
+    format_deadline_short,
+    format_relative,
     get_cfp_eliminated_teams,
     get_cfp_teams_in_week,
     get_current_time,
@@ -702,9 +704,16 @@ def make_pick(week_number):
     hidden_sentence = board_service.hidden_games_sentence(
         hidden_games, board_states)
 
+    # The status strip's clock: relative + short absolute, the same pair the
+    # lounge summons renders (games/cfb/DESIGN.md §6.14). The deadline column
+    # is pool-tz wall clock; current_time is the CFB_FAKE_NOW seam.
+    deadline_relative = format_relative(make_aware(week.deadline) - current_time)
+
     return render_template(
         'cfb/pick.html',
         week=week,
+        deadline_relative=deadline_relative,
+        deadline_short=format_deadline_short(week.deadline),
         games=games,
         open_games=open_games,
         hidden_games=hidden_games,

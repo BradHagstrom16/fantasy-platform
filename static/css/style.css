@@ -5141,7 +5141,7 @@ body.game-cfb .alert-warning { background: rgba(243,239,230,.05); border-color: 
 .cfb-out-reason {
   display: inline-block;
   font-family: 'Teko', sans-serif;
-  font-size: .66rem;
+  font-size: .75rem; /* the platform caption floor: the "why not" text was the smallest on the page at .66rem */
   font-weight: 500;
   letter-spacing: .1em;
   text-transform: uppercase;
@@ -5174,7 +5174,10 @@ body.game-cfb .alert-warning { background: rgba(243,239,230,.05); border-color: 
   border-radius: .15rem;
   border: 1px solid var(--cfb-hairline-strong);
 }
-.cfb-legend-swatch.is-open { background: var(--cfb-crimson); border-color: var(--cfb-crimson); }
+/* The Open swatch mirrors the resting open row (raised + the strong hairline),
+   not a crimson the board never shows at rest: the legend teaches the color
+   the board uses (impeccable critique 2026-09-01). */
+.cfb-legend-swatch.is-open { background: var(--cfb-raised); border-color: var(--cfb-bone-muted); }
 .cfb-legend-swatch.is-neutral { background: var(--cfb-lifted); }
 .cfb-legend-swatch.is-out { background: var(--cfb-canvas); }
 .cfb-legend-label {
@@ -5191,12 +5194,106 @@ body.game-cfb .alert-warning { background: rgba(243,239,230,.05); border-color: 
 .cfb-pool-ledger .cfb-ledger-group { display: block; margin: .9rem 0 .4rem; }
 .cfb-ledger-allin { font-family: 'Newsreader', serif; color: var(--cfb-bone-muted); margin: 0; }
 
+/* -- The board's reading layer (impeccable critique 2026-09-01) ------------
+   The status strip (lives + the clock + the unresolved obligation), the one
+   rules line, the slate head as a real heading, and the caption that says
+   what a minus sign means. Newsreader for every sentence, Teko for labels. */
+.cfb-pick-status { margin: 0 0 1.1rem; }
+.cfb-pick-status .cfb-deadline { margin-bottom: .35rem; }
+.cfb-deadline-abs {
+  font-family: 'Newsreader', Georgia, serif;
+  color: var(--cfb-bone-muted);
+  margin-left: .35rem;
+}
+.cfb-status-lives {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  margin: 0 0 .35rem;
+}
+.cfb-status-line {
+  font-family: 'Newsreader', Georgia, serif;
+  font-size: 1.05rem;
+  line-height: 1.5;
+  color: var(--cfb-bone);
+  margin: 0;
+}
+.cfb-board-rules {
+  font-family: 'Newsreader', Georgia, serif;
+  font-size: .95rem;
+  line-height: 1.5;
+  color: var(--cfb-bone-muted);
+  max-width: 68ch;
+  margin: -.35rem 0 1rem;
+}
+.cfb-slate-title { margin: 0; line-height: 1.2; }
+.cfb-slate-caption {
+  font-family: 'Newsreader', Georgia, serif;
+  font-size: .9rem;
+  color: var(--cfb-bone-muted);
+  margin: -.45rem 0 .8rem;
+}
+
+/* -- The rest of the slate: collapsed, never omitted ----------------------
+   A native <details> so the no-JS spine holds; the summary is a full-width
+   44px Teko control whose label swaps with the open state. The note above
+   it states the absence so the shorter board never reads as broken. */
+.cfb-board-rest-note {
+  font-family: 'Newsreader', Georgia, serif;
+  font-size: .95rem;
+  color: var(--cfb-bone-muted);
+  margin: 1rem 0 .5rem;
+}
+.cfb-board-rest { margin-bottom: .5rem; }
+.cfb-board-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: .5rem;
+  min-height: 44px;
+  padding: .45rem 1rem;
+  font-family: 'Teko', sans-serif;
+  font-size: 1rem;
+  font-weight: 500;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--cfb-bone);
+  background: var(--cfb-surface);
+  border: 1px solid var(--cfb-hairline-strong);
+  border-radius: var(--radius);
+  cursor: pointer;
+  list-style: none;
+}
+.cfb-board-toggle::-webkit-details-marker { display: none; }
+.cfb-board-toggle::before {
+  /* a drawn caret, not a glyph; rotates when the rest of the slate is open */
+  content: '';
+  width: .5rem;
+  height: .5rem;
+  border-right: 2px solid var(--cfb-bone-muted);
+  border-bottom: 2px solid var(--cfb-bone-muted);
+  transform: rotate(45deg) translateY(-2px);
+  transition: transform var(--transition);
+}
+.cfb-board-rest[open] > .cfb-board-toggle::before { transform: rotate(-135deg) translateY(-2px); }
+.cfb-board-toggle:hover { background: var(--cfb-raised); border-color: var(--cfb-bone-subtle); }
+.cfb-board-toggle:focus-visible { outline: 2px solid var(--cfb-crimson-bright); outline-offset: 2px; }
+.cfb-board-rest[open] > .cfb-board-toggle { margin-bottom: .75rem; }
+.cfb-board-rest[open] > .cfb-board-toggle .cfb-toggle-closed { display: none; }
+.cfb-board-rest:not([open]) > .cfb-board-toggle .cfb-toggle-open { display: none; }
+
 /* -- Team options: the escalating states (games/cfb/DESIGN.md S4 .team-pick-card) -- */
 body.game-cfb .team-option {
   min-height: 44px; /* touch target (DESIGN.md mobile rule) */
   transition: background var(--transition), box-shadow var(--transition), transform var(--transition);
 }
-body.game-cfb .team-option[role="button"] { cursor: pointer; }
+/* Resting open row: a positive treatment, not merely the absence of a chip.
+   Open vs out was a 1.10:1 background step (raised vs canvas); the inset
+   strong hairline gives the pickable row a visible edge at arm's length. */
+body.game-cfb .team-option[role="button"] {
+  cursor: pointer;
+  box-shadow: inset 0 0 0 1px var(--cfb-hairline-strong);
+}
 
 /* Hover / focus -- possibility: a half-step elevation + a restrained crimson edge. */
 body.game-cfb .team-option[role="button"]:not(.selected):hover {
@@ -5234,6 +5331,15 @@ body.game-cfb .team-option.team-option-out .cfb-team-name {
   color: var(--cfb-bone-subtle);
   font-weight: 500;
 }
+/* The dead half of an OPEN card is the opponent, not a peer option: a compact
+   line under the 44px floor (it is not a target), smaller name, so the
+   pickable team is unmistakably the object. Scoped !important defeats the
+   Bootstrap p-2 utility (sanctioned on dark substrates). */
+body.game-cfb .team-option.team-option-out.is-opponent {
+  min-height: 0;
+  padding: .3rem .6rem !important;
+}
+body.game-cfb .team-option.team-option-out.is-opponent .cfb-team-name { font-size: 1rem; }
 
 /* Game-started card -- cold, not collapsed: recede to canvas + mute the matchup. */
 body.game-cfb .team-pick-card.ineligible {
@@ -5242,7 +5348,22 @@ body.game-cfb .team-pick-card.ineligible {
 body.game-cfb .team-pick-card.ineligible .card-header { background: transparent; }
 body.game-cfb .team-pick-card.ineligible .cfb-matchup { color: var(--cfb-bone-muted); }
 
-/* Confirm bar -- the weekly call (reuses .cfb-pick-cta). */
+/* Confirm bar -- the weekly call (reuses .cfb-pick-cta), pinned to the
+   viewport bottom while the board scrolls above it so the commit control
+   follows the thumb (it sat ~6,900px below the first card; a tap looked like
+   a submission). Opaque --cfb-lifted (the ramp's sticky-bar step) under the
+   crimson rule; a real upward shadow because this is a genuine overlay layer;
+   the platform .card:hover lift is zeroed so a pinned bar never jumps. It
+   settles into its in-flow slot above the pool ledger, so nothing overlaps. */
+#pickConfirmBar {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  background: var(--cfb-lifted);
+  box-shadow: 0 -10px 28px rgba(8,3,4,.6); /* the room's warm near-black scale, never neutral gray */
+  padding-bottom: env(safe-area-inset-bottom);
+}
+#pickConfirmBar:hover { transform: none; }
 .cfb-confirm-pick .cfb-eyebrow { display: block; margin-bottom: .2rem; }
 .cfb-confirm-line { display: flex; align-items: center; gap: .55rem; }
 

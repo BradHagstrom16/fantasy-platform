@@ -234,7 +234,7 @@ def test_game_with_no_open_team_collapses_behind_the_disclosure(app, client):
     rest = data.index('<details class="cfb-board-rest">')     # closed by default
     assert data.index('cfb-team-name">Open A<') < rest        # open card first
     assert data.index('cfb-team-name">BigFav<') > rest        # hidden card inside
-    assert _chip_reason(data, 'BigFav') == '16.5+ Fav'        # chips intact
+    assert _chip_reason(data, 'BigFav') == 'Favored 16.5+'        # chips intact
     assert 'Show all 2 games' in data
     assert '1 game with an open team' in data
     assert '2 open teams' in data
@@ -257,7 +257,7 @@ def test_disclosure_opens_when_nothing_is_pickable(app, client):
 
     assert 'No Open Teams' in data
     assert '<details class="cfb-board-rest" open>' in data
-    assert _chip_reason(data, 'Notre Dame') == '16.5+ Fav'
+    assert _chip_reason(data, 'Notre Dame') == 'Favored 16.5+'
 
 
 def test_board_without_hidden_games_renders_no_disclosure(app, client):
@@ -272,3 +272,178 @@ def test_board_without_hidden_games_renders_no_disclosure(app, client):
 
     assert 'cfb-board-rest' not in data
     assert '1 game with an open team' in data
+
+
+# ── Member language: labels are sentences a first-timer reads, not rule IDs ─
+
+def test_state_labels_speak_member_language():
+    assert board.STATE_LABELS['too_favored'] == 'Favored 16.5+'
+    assert board.STATE_LABELS['not_in_pool'] == 'Not a Pool Team'
+    assert board.STATE_LABELS['used'] == 'Already Used'
+    assert board.STATE_LABELS['started'] == 'Kicked Off'
+    assert board.STATE_LABELS['not_playing'] == 'No Game This Week'
+
+
+def test_board_states_the_binding_rules_once(app, client):
+    week = make_week(1, deadline=FUTURE_DEADLINE)
+    make_game(week, make_team('Open A'), make_team('Open B'), spread=-3.0)
+    user = make_user('p1')
+    make_enrollment(user)
+    db.session.commit()
+    _login(client, user)
+
+    data = client.get('/cfb/pick/1').data.decode()
+
+    assert 'Pick one team to win outright.' in data
+    assert 'A team is yours for the season once you use it.' in data
+    assert 'Teams favored by 16.5 or more are off the board.' in data
+    assert 'Only the 2 pool teams can be picked' in data
+    assert 'Minus means favored' in data
+
+
+def test_ledger_notes_use_the_shared_labels(app, client):
+    week = make_week(1, deadline=FUTURE_DEADLINE)
+    make_game(week, make_team('Open A'), make_team('Open B'), spread=-3.0)
+    make_team('Bye Team')
+    user = make_user('p1')
+    make_enrollment(user)
+    db.session.commit()
+    _login(client, user)
+
+    data = client.get('/cfb/pick/1').data.decode()
+
+    assert ('cfb-team-chip is-out">Bye Team<span class="cfb-team-chip-note">'
+            'No Game This Week</span>') in data
+
+
+# ── The commit bar: sticky, names the team, offers a real Clear ────────────
+
+CSS = None
+
+
+def _css():
+    global CSS
+    if CSS is None:
+        from pathlib import Path
+        CSS = (Path(__file__).resolve().parent.parent / 'static' / 'css'
+               / 'style.css').read_text()
+    return CSS
+
+
+def _rule(anchored_selector):
+    m = re.search(anchored_selector + r'\s*\{([^}]*)\}', _css(), re.M)
+    assert m, f'CSS rule not found: {anchored_selector}'
+    return m.group(1)
+
+
+def test_confirm_bar_is_sticky_at_the_viewport_bottom():
+    block = _rule(r'^#pickConfirmBar')
+    assert re.search(r'position:\s*sticky', block)
+    assert re.search(r'(?<![-\w])bottom:\s*0', block)
+    assert 'z-index' in block
+    # The platform .card:hover lift would make a pinned bar jump.
+    assert re.search(r'transform:\s*none', _rule(r'^#pickConfirmBar:hover'))
+
+
+def test_confirm_bar_names_the_team_and_offers_clear(app, client):
+    week = make_week(1, deadline=FUTURE_DEADLINE)
+    make_game(week, make_team('Open A'), make_team('Open B'), spread=-3.0)
+    user = make_user('p1')
+    make_enrollment(user)
+    db.session.commit()
+    _login(client, user)
+
+    data = client.get('/cfb/pick/1').data.decode()
+
+    assert 'id="confirmBtnTeam"' in data
+    assert 'Lock In <span id="confirmBtnTeam">' in data
+    assert 'Not Locked Yet' in data
+    assert 'id="clearSelection"' in data
+    assert 'aria-live="polite"' in data
+    assert '>Cancel<' not in data
+
+
+def test_confirm_bar_says_change_to_when_a_pick_is_held(app, client):
+    user = make_user('p1')
+    make_enrollment(user)
+    week = make_week(1, deadline=FUTURE_DEADLINE)
+    held = make_team('Held Team')
+    make_game(week, held, make_team('Other'), spread=-3.0)
+    make_pick(user, week, held)
+    db.session.commit()
+    _login(client, user)
+
+    data = client.get('/cfb/pick/1').data.decode()
+
+    assert 'Change To <span id="confirmBtnTeam">Held Team</span>' in data
+
+
+# ── The status strip: lives, the clock, the consequence ───────────────────
+
+def test_status_strip_states_the_unmade_pick_and_its_consequence(app, client):
+    week = make_week(1, deadline=FUTURE_DEADLINE)
+    make_game(week, make_team('Open A'), make_team('Open B'), spread=-3.0)
+    user = make_user('p1')
+    make_enrollment(user)
+    db.session.commit()
+    _login(client, user)
+
+    data = client.get('/cfb/pick/1').data.decode()
+
+    assert 'You have not made a pick.' in data
+    assert 'Miss the deadline and you get the biggest available favorite.' in data
+    assert data.count('<span class="life"></span>') == 2       # two lives, pips
+    assert 'Picks Lock' in data                                  # literal eyebrow
+    assert re.search(r'in \d+d \d+h', data)                     # relative
+    assert '11:00 AM CT' in data                                 # short absolute
+    assert 'at 11:00 AM' not in data                             # long form gone
+
+
+def test_status_strip_holds_the_pick_without_the_unmade_line(app, client):
+    user = make_user('p1')
+    make_enrollment(user, lives=1)
+    week = make_week(1, deadline=FUTURE_DEADLINE)
+    held = make_team('Held Team')
+    make_game(week, held, make_team('Other'), spread=-3.0)
+    make_pick(user, week, held)
+    db.session.commit()
+    _login(client, user)
+
+    data = client.get('/cfb/pick/1').data.decode()
+
+    assert 'You have not made a pick.' not in data
+    assert 'Change it any time before picks lock.' in data
+    assert data.count('<span class="life"></span>') == 1
+    assert data.count('<span class="life lost"></span>') == 1
+
+
+# ── Format polish ─────────────────────────────────────────────────────────
+
+def test_kickoff_reads_like_the_deadline(app, client):
+    week = make_week(1, deadline=datetime(2026, 9, 5, 11, 0))
+    make_game(week, make_team('Open A'), make_team('Open B'), spread=-3.0)
+    user = make_user('p1')
+    make_enrollment(user)
+    db.session.commit()
+    _login(client, user)
+    import os
+    from unittest.mock import patch as _patch
+    with _patch.dict(os.environ, {'ENVIRONMENT': 'testing',
+                                  'CFB_FAKE_NOW': '2026-09-01T13:00:00'}):
+        data = client.get('/cfb/pick/1').data.decode()
+
+    assert 'Sat, Sep 5 · 11:00 AM' in data      # kickoff = fixture deadline
+    assert '09/05' not in data
+
+
+def test_out_reason_chip_clears_the_caption_floor():
+    block = _rule(r'^\.cfb-out-reason')
+    m = re.search(r'font-size:\s*([\d.]+)rem', block)
+    assert m and float(m.group(1)) >= 0.75
+
+
+def test_open_rows_carry_a_visible_edge_and_opponents_demote():
+    assert 'inset' in _rule(r'^body\.game-cfb \.team-option\[role="button"\]')
+    assert _rule(r'^body\.game-cfb \.team-option\.team-option-out\.is-opponent')
+    assert re.search(r'min-height:\s*44px',
+                     _rule(r'^\.cfb-board-toggle'))
