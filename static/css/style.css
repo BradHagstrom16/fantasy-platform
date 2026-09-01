@@ -13582,7 +13582,7 @@ button.docket-side:hover {
 /* The open drawer still shows the bar (its summary) above the rail, so the
    rail's copy of the ask would print twice 150px apart: hide it there. */
 .docket-rail-drawer .docket-rail-inner > .docket-next { display: none; }
-.docket-tb-submit { white-space: nowrap; }
+.docket-tb-submit { white-space: nowrap; flex-shrink: 0; }
 
 /* --- x2 on the pill (DESIGN.md 7.4: one tap on a held pick) ---
    A ghost oxblood chip that becomes the filled headliner chip once set. The
