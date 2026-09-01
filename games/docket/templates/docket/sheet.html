@@ -195,8 +195,8 @@ the finish review, the verdict, and DESIGN.md.
                 <span class="docket-rail-bar-handle">Sheet</span>
                 <span class="docket-rail-bar-count">{{ sheet.scoring_count }} of 8</span>
                 {% if sheet.deadline_passed and sheet.autopick_count %}<span class="docket-rail-bar-fact">{{ sheet.autopick_count }} auto</span>{% endif %}
-                <span class="docket-rail-bar-fact">{{ 'x2 set' if sheet.best else 'x2 open' }}</span>
-                <span class="docket-rail-bar-fact">{{ 'Reserve held' if sheet.backup else 'Reserve open' }}</span>
+                <span class="docket-rail-bar-fact">{{ 'x2 set' if sheet.best else ('x2 open' if sheet.scoring_count >= 8 else 'x2') }}</span>
+                <span class="docket-rail-bar-fact">{{ 'Reserve held' if sheet.backup else ('Reserve open' if sheet.scoring_count >= 8 else 'Reserve') }}</span>
                 <span class="docket-rail-bar-fact">{% if sheet.prediction is not none %}Number {{ sheet.prediction }}{% else %}No number{% endif %}</span>
             </span>
             {% include 'docket/_next_step.html' %}
@@ -237,10 +237,13 @@ the finish review, the verdict, and DESIGN.md.
             var focusKey = null;
             if (active && active.form && active.form.dataset.docketAction) {
                 var f = active.form;
-                focusKey = [f.dataset.docketAction,
+                var region = f.closest('[id]');
+                focusKey = [(region ? region.id : ''),
+                            f.dataset.docketAction,
                             (f.querySelector('[name=game_id]') || {}).value || '',
                             (f.querySelector('[name=market]') || {}).value || '',
-                            (f.querySelector('[name=side]') || {}).value || ''].join('|');
+                            (f.querySelector('[name=side]') || {}).value || '',
+                            (f.querySelector('[name=clear]') || {}).value || ''].join('|');
             }
             return fetch(window.location.href, { headers: { 'X-Requested-With': 'docket-refresh' } })
                 .then(function (resp) { return resp.text(); })
@@ -261,10 +264,13 @@ the finish review, the verdict, and DESIGN.md.
                         var forms = document.querySelectorAll('form[data-docket-action]');
                         for (var i = 0; i < forms.length; i++) {
                             var g = forms[i];
-                            var key = [g.dataset.docketAction,
+                            var r = g.closest('[id]');
+                            var key = [(r ? r.id : ''),
+                                       g.dataset.docketAction,
                                        (g.querySelector('[name=game_id]') || {}).value || '',
                                        (g.querySelector('[name=market]') || {}).value || '',
-                                       (g.querySelector('[name=side]') || {}).value || ''].join('|');
+                                       (g.querySelector('[name=side]') || {}).value || '',
+                                       (g.querySelector('[name=clear]') || {}).value || ''].join('|');
                             if (key === focusKey) {
                                 var btn = g.querySelector('button, input[type=text]');
                                 if (btn) btn.focus({ preventScroll: true });

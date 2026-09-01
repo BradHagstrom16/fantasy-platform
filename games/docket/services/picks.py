@@ -222,12 +222,15 @@ def set_pick(user_id: int, week: DocketWeek, game_id, market, side,
     else:
         free = sorted(set(range(1, SCORING_SLOTS + 1)) - taken)
         if not free:
-            # Reached only with the reserve already held (the sheet UI arms
-            # the 9th tap as the reserve), so the way out is a swap.
+            if BACKUP_SLOT in taken:
+                raise PickError(
+                    'sheet_full',
+                    'Your sheet is full: eight sides plus a reserve. '
+                    'Remove a pick to swap this one in.')
             raise PickError(
                 'sheet_full',
-                'Your sheet is full: eight sides plus a reserve. Remove a '
-                'pick to swap this one in.')
+                'All eight scoring slots are filled. Remove a pick, '
+                'or file this one as your reserve.')
         slot = free[0]
 
     value, book = line

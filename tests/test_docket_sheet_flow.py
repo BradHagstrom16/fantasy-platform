@@ -254,6 +254,24 @@ def test_sheet_full_copy_names_the_way_out(monkeypatch, app):
         'swap this one in.')
 
 
+def test_sheet_full_without_reserve_offers_reserve(monkeypatch, app):
+    """When all 8 scoring slots are full but the reserve is empty, the error
+    message mentions the reserve as an option, not as something already held."""
+    user = make_user('u')
+    week = make_week(1)
+    games = [make_game(week, kickoff=KICK_SAT) for _ in range(10)]
+    db.session.flush()
+    at(monkeypatch, IN_WEEK1)
+    for g in games[:8]:
+        picks_service.set_pick(user.id, week, g.id, 'spread', 'home')
+    with pytest.raises(PickError) as err:
+        picks_service.set_pick(user.id, week, games[8].id, 'spread', 'home')
+    assert err.value.message == (
+        'All eight scoring slots are filled. Remove a pick, '
+        'or file this one as your reserve.')
+    assert 'plus a reserve' not in err.value.message
+
+
 def test_prediction_cap_catches_a_dropped_decimal():
     with pytest.raises(PickError) as err:
         picks_service.parse_prediction_tenths('515')
@@ -274,7 +292,9 @@ def test_blank_sheet_renders_orientation_and_the_ask(
     assert 'docket-orient' in html
     assert 'How the sheet works' in html
     assert html.count('Tap 8 sides to fill your sheet.') == 3   # bar, drawer, rail
-    assert 'Reserve open' in html and 'x2 open' in html and 'No number' in html
+    # Before 8 scoring picks, the bar shows neutral labels (not "open")
+    assert 'x2 open' not in html and 'Reserve open' not in html
+    assert '>x2<' in html and '>Reserve<' in html and 'No number' in html
     assert 'R open' not in html and 'no x2' not in html
     assert 'docket-rail-bar-handle' in html
 

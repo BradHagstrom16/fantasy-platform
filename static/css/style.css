@@ -13207,14 +13207,13 @@ button.docket-side:hover {
   font-weight: 600;
 }
 .docket-side.is-picked .docket-side-num { color: var(--game-accent); font-weight: 700; }
-/* The opposite of a held side: available but visibly secondary — choosing
-   it MOVES the pick (one side per market), it never adds a second one. */
+/* The opposite of a held side: tappable, not disabled — choosing it MOVES
+   the pick (one side per market), it never adds a second one. */
 .docket-side.is-move {
-  color: var(--text-secondary);
+  color: var(--text-primary);
   background: var(--bg-page);
 }
 .docket-side.is-move .docket-side-num { color: var(--text-secondary); }
-button.docket-side.is-move:hover { color: var(--text-primary); }
 .docket-slot-badge {
   font-family: 'Teko', sans-serif;
   font-weight: 600;
@@ -13646,9 +13645,6 @@ button.docket-side.is-move:hover { color: var(--text-primary); }
   letter-spacing: .06em;
   text-transform: uppercase;
 }
-/* The other side of a held market reads tappable, not disabled. */
-.docket-side.is-move { color: var(--text-primary); }
-
 /* --- Orientation + the post-8 prompt: paper cards under a garnet top rule --- */
 .docket-orient,
 .docket-prompt {
