@@ -602,3 +602,20 @@ pre-verdict state is the state members see first. Per §4.1 and §7.10, never an
 - **A member with no sheet filed** — 0 points and the week's default error, said out loud
   ("no sheet filed, charged 18.0"). The late-joiner rule made visible so it does not read as
   a bug.
+
+---
+
+## 9. Engineering Invariants
+
+Contracts that guard grading correctness and admin operations. All test-locked — change the test with the rule, never around it.
+
+- **The blueprint is `games/docket/blueprint.py`, not the package `__init__`** — the pure grading package's flask-free import graph is a locked contract (D9-eng). It registers **two** route modules: `routes.py` (the player's room) and `admin_routes.py` (the clerk's office; owns `docket_admin_required`).
+- **The season pass consumes `WeekRollup`, never `WeekGrade`** (ADR-045): never rebuild a `WeekGrade` from the DB (no slot trace is persisted) — `grading/season.week_rollup()` projects the engine path onto the type `services/season_pass.py` builds from `docket_week` + `docket_week_result`, which is all it may read (D14-eng as a query plan). `tests/test_docket_season_parity.py`.
+- **`DocketWeekResult.is_dropped` has no writer by decision** (ADR-046) — the drop is derived on every read; do not add one.
+- **`DocketWeek.default_error_tenths` is written by `run_grading_pass`** (ADR-047) and charges a week to members absent from it; a graded week with NULL there is refused loudly, never skipped.
+- **A CLOSED week grades `roster_user_ids_as_of(week.deadline_at)`, never the live roster** (ADR-048) — otherwise `recalc` hands a later joiner a full autopick package worth real points.
+- **Grading readiness has two shapes:** `grading_pass.WeekNotReady` (a `ValueError` subclass) = "resolves by waiting" (no `kickoff_at_deadline` stamped yet, or no tiebreaker designated) → `try_grade_week` reports `not_ready`; every other `ValueError` is corrupt data and propagates, so a timer fails loudly instead of exiting 0 forever. Don't widen that catch.
+- **Pick provenance is two columns:** `is_autopick` = a side the deadline pass filed; `is_auto_best` = a designation it assigned, evaluated on the final 8-slot set, so it can land on a pick the player made (`is_auto_best` implies `is_best`, CHECK-enforced). Both surface through the dashed treatment; the rail states the reason once.
+- **Admin rulings all live in `games/docket/services/admin_ops.py`** — designation (re-designating clears the week's predictions and emails the roster), No Contest (auto-recalcs, reversible), D18-eng line correction (pre-deadline AND pre-kickoff, reason required, audit row `docket_line_correction`, picks re-snapshotted, pickers emailed). `flask docket set-tiebreaker` delegates there, so CLI and UI can't drift. **The tiebreaker's default is rule-derived** (`services/tiebreaker_rule.py`, ADR-054: the latest-kickoff NFL game = MNF from `weeks.FIRST_NFL_WEEK`, the whole slate in Week 1; fill-only — never moves a designation on file; waits for the total rather than sliding) — applied by every `setup`/`lines` import; `designate_tiebreaker` is the override (`tests/test_docket_tiebreaker_default.py`).
+- **Reminders de-dup on the sent flag (`DocketWeek.last_reminder_tier`), never on cadence** (D24-eng) via `utils/reminders.py::tier_already_sent` — the shape CFB (`CfbWeek.last_reminder_type`) and Golf share (PRs #169/#170); it is why every `*-remind.timer` runs hourly.
+- **The second-bill strip is dormant machinery:** `games.registry.second_bill_games(user)` returns open non-headliner games (empty under the dual-featured registry; retained for a future open-unfeatured game; reappearance-locked in `tests/test_docket_lounge_strip.py`); whenever it renders it is registry-generic and static (D21-eng) with its gold `.cta-outline`.
