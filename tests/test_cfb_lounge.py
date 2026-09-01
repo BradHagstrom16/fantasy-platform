@@ -452,11 +452,11 @@ def test_context_post_tiebreak_conclusion(app):
         winner_user = _make_user(username='tbwinner')
         winner_user.display_name = 'Casey'
         we = _enroll_cfb(winner_user, lives=1)
-        we.cumulative_spread = 41.5
+        we.cumulative_spread = 48.0
         runner_user = _make_user(username='tbrunner')
         runner_user.display_name = 'Jordan'
         re_ = _enroll_cfb(runner_user, lives=1)
-        re_.cumulative_spread = 48.0
+        re_.cumulative_spread = 41.5
         _enroll_cfb(user, lives=0, eliminated=True)
         db.session.commit()
         _make_week(number=19, complete=True, playoff=True,
@@ -466,7 +466,7 @@ def test_context_post_tiebreak_conclusion(app):
     assert champ['name'] == 'Casey'
     assert champ['is_tiebreak'] is True
     assert champ['evidence'] == (
-        "Wins on cumulative spread: 41.5 against Jordan's 48.0."
+        "Wins on cumulative spread: 48.0 against Jordan's 41.5."
     )
     assert ctx['court_line'] == (
         'Two remained of 3 · the Commish records the year'
@@ -486,11 +486,11 @@ def test_context_post_tiebreak_lives_led(app):
         winner_user = _make_user(username='llwinner')
         winner_user.display_name = 'Casey'
         we = _enroll_cfb(winner_user, lives=2)
-        we.cumulative_spread = 50.0
+        we.cumulative_spread = 40.0
         runner_user = _make_user(username='llrunner')
         runner_user.display_name = 'Jordan'
         re_ = _enroll_cfb(runner_user, lives=1)
-        re_.cumulative_spread = 40.0
+        re_.cumulative_spread = 50.0
         _enroll_cfb(user, lives=0, eliminated=True)
         db.session.commit()
         _make_week(number=19, complete=True, playoff=True,
@@ -1000,7 +1000,9 @@ def test_whos_left_phase_d_endgame(app):
 
 def test_get_official_standings_order_and_tie_ranks(app):
     """Central helper (room + lounge): official order is lives DESC,
-    cumulative spread ASC; competition ranks share on exact ties."""
+    cumulative spread DESC (an underdog's plus counts for you, a favorite's
+    minus against you, so higher is the harder road); competition ranks
+    share on exact ties."""
     from games.cfb.services.game_logic import get_official_standings
     with app.app_context():
         spec = [(2, 41.5), (2, 48.0), (1, 30.0), (2, 41.5)]
@@ -1012,8 +1014,40 @@ def test_get_official_standings_order_and_tie_ranks(app):
         ordered, ranks = get_official_standings(SEASON_YEAR)
         names = [e.get_display_name() for e in ordered]
         rank_list = [ranks[e.id] for e in ordered]
-    assert names == ['rankuser0', 'rankuser3', 'rankuser1', 'rankuser2']
-    assert rank_list == [1, 1, 3, 4]
+    assert names == ['rankuser1', 'rankuser0', 'rankuser3', 'rankuser2']
+    assert rank_list == [1, 2, 2, 4]
+
+
+def test_get_official_standings_negative_spread_ranks_below_zero_and_positive(app):
+    """The sign is the rule: +3.0 (an underdog) beats 0.0 beats -13.5 (a
+    big favorite). Week 1 of 2026 ranked the biggest favorite first."""
+    from games.cfb.services.game_logic import get_official_standings
+    with app.app_context():
+        for name, spread in [('fav', -13.5), ('even', 0.0), ('dog', 3.0)]:
+            e = _enroll_cfb(_make_user(username=name), lives=2)
+            e.cumulative_spread = spread
+        db.session.commit()
+        ordered, ranks = get_official_standings(SEASON_YEAR)
+        names = [e.get_display_name() for e in ordered]
+        rank_list = [ranks[e.id] for e in ordered]
+    assert names == ['dog', 'even', 'fav']
+    assert rank_list == [1, 2, 3]
+
+
+def test_get_official_standings_ties_order_by_display_name(app):
+    """Tied rows (the whole pool before Week 1 grades) come back in a
+    stable, name-alphabetical order rather than insertion or storage order,
+    so the table never reshuffles between requests."""
+    from games.cfb.services.game_logic import get_official_standings
+    with app.app_context():
+        for name in ['zed', 'Amy', 'mike']:
+            _enroll_cfb(_make_user(username=name), lives=2)
+        db.session.commit()
+        ordered, ranks = get_official_standings(SEASON_YEAR)
+        names = [e.get_display_name() for e in ordered]
+        rank_list = [ranks[e.id] for e in ordered]
+    assert names == ['Amy', 'mike', 'zed']
+    assert rank_list == [1, 1, 1]
 
 
 def test_live_standings_rows_top3_plus_you(app):
@@ -1031,7 +1065,7 @@ def test_live_standings_rows_top3_plus_you(app):
     rows = ctx['standings_rows']
     assert len(rows) == 4
     assert [r['rank'] for r in rows] == [1, 2, 3, 5]
-    assert rows[0]['tagline'] == 'Two lives · spread 41.5'
+    assert rows[0]['tagline'] == 'Two lives · spread 61.0'
     assert rows[3]['is_you'] is True
     assert rows[3]['separator_above'] is True
     assert rows[3]['tagline'] == 'One life · spread 99.0'

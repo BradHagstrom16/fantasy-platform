@@ -41,6 +41,13 @@ SEASON_YEAR = 2025
 TOTAL_LIVES = 2
 
 
+def _live_convention(legacy_spread):
+    """Legacy stored favorites positive ("lower is better"); the platform
+    stores the signed spread from the picked team's side (favorite
+    negative, higher is better). Same season, opposite sign (2026-09-01)."""
+    return -legacy_spread if legacy_spread else 0.0
+
+
 def connect_readonly(db_path):
     conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
     conn.row_factory = sqlite3.Row
@@ -109,7 +116,7 @@ def derive(conn):
                 "outcome": "eliminated",
                 "out_week": out_week,
                 "final_lives": 0,
-                "cumulative_spread": u["cumulative_spread"],
+                "cumulative_spread": _live_convention(u["cumulative_spread"]),
             })
         else:
             standings.append({
@@ -117,14 +124,14 @@ def derive(conn):
                 "outcome": "champion",
                 "out_week": None,
                 "final_lives": u["lives_remaining"],
-                "cumulative_spread": u["cumulative_spread"],
+                "cumulative_spread": _live_convention(u["cumulative_spread"]),
             })
 
     standings.sort(
         key=lambda r: (
             0 if r["outcome"] == "champion" else 1,
             -(r["out_week"] or 0),
-            r["cumulative_spread"],
+            -r["cumulative_spread"],  # higher spread first (the live rule)
             r["name"].lower(),
         )
     )
@@ -172,7 +179,7 @@ def derive(conn):
         "champion": {
             "name": champ["name"],
             "final_lives": champ["final_lives"],
-            "cumulative_spread": champ["cumulative_spread"],
+            "cumulative_spread": champ["cumulative_spread"],  # already converted
         },
         "standings": standings,
         "attrition": attrition,

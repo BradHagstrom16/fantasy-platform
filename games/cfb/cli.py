@@ -12,6 +12,7 @@ Usage:
     flask cfb sync --mode autopick    # Process missed-deadline auto-picks
     flask cfb sync --mode remind      # Send pick reminders
     flask cfb sync --mode status      # Print season summary
+    flask cfb recalc-spreads          # Recompute every cumulative spread under the current rule
 
 On the droplet, hand-fire a reminder pass with ``sudo systemctl start
 cfb-remind.service`` rather than ``flask cfb sync --mode remind`` in a shell:
@@ -24,7 +25,7 @@ from flask.cli import AppGroup
 
 from extensions import db
 from games.cfb.constants import DEV_SEED_TEAMS, TEAM_CONFERENCES
-from games.cfb.models import CfbTeam
+from games.cfb.models import CfbEnrollment, CfbTeam
 
 cfb_cli = AppGroup('cfb', help="CFB Survivor Pool management commands.")
 
@@ -130,6 +131,29 @@ def remind_cmd():
 def status_cmd():
     """Print season summary."""
     _run_mode('status')
+
+
+@cfb_cli.command('recalc-spreads')
+def recalc_spreads_cmd():
+    """Recompute every enrollment's cumulative spread from its picks.
+
+    Idempotent operator repair (the 2026-09-01 rule fix: a pick's spread
+    counts only once its week deadline passes, and higher is better).
+    Prints old -> new per member and commits.
+    """
+    from games.cfb.services.game_logic import settle_cumulative_spreads
+
+    before = {e.id: (e.cumulative_spread or 0.0) for e in CfbEnrollment.query.all()}
+    settled = settle_cumulative_spreads()
+    changed = 0
+    for enrollment in sorted(settled, key=lambda e: e.get_display_name().lower()):
+        old, new = before.get(enrollment.id, 0.0), enrollment.cumulative_spread
+        moved = old != new
+        changed += moved
+        click.echo(f"  {enrollment.get_display_name()}: {old:.1f} -> {new:.1f}"
+                   f"{'  (changed)' if moved else ''}")
+    click.echo(f"\n[cfb recalc-spreads] {len(settled)} enrollments recalculated, "
+               f"{changed} changed")
 
 
 def register_cfb_cli(app):

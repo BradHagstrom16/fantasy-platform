@@ -277,6 +277,7 @@ def index():
         user_pick=user_pick,
         user_pick_spread=user_pick_spread,
         enrollments=enrollments,
+        standings_ranks=standings_ranks,
         eliminated_enrollments=eliminated_enrollments,
         current_user_rank=current_user_rank,
         week_picks=week_picks,

@@ -56,7 +56,10 @@ class TestSnapshotIntegrity:
         assert champ["name"] == snapshot["champion"]["name"] == "Fourth & Pine"
         assert snapshot["champion"]["final_lives"] == 2
         spread = snapshot["champion"]["cumulative_spread"]
-        assert champ["cumulative_spread"] == spread == 163.5
+        # 2026-09-01: the archive was converted to the live convention
+        # (signed from the picked team's side, higher is better); the
+        # legacy 163.5 (favorites add) is the same season read as -163.5.
+        assert champ["cumulative_spread"] == spread == -163.5
 
     def test_25_eliminated_each_with_out_week(self, snapshot):
         eliminated = [r for r in snapshot["standings"] if r["outcome"] == "eliminated"]
@@ -87,7 +90,7 @@ class TestSnapshotIntegrity:
         rows = snapshot["standings"]
         assert rows[0]["outcome"] == "champion"
         keys = [
-            (-r["out_week"], r["cumulative_spread"], r["name"].lower())
+            (-r["out_week"], -r["cumulative_spread"], r["name"].lower())
             for r in rows[1:]
         ]
         assert keys == sorted(keys)

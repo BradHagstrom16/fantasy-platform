@@ -56,6 +56,7 @@ FLASK_APP=app.py venv/bin/flask cfb sync --mode scores      # Fetch scores, auto
 FLASK_APP=app.py venv/bin/flask cfb sync --mode autopick    # Process auto-picks for past-deadline weeks
 FLASK_APP=app.py venv/bin/flask cfb sync --mode remind      # Pick reminders: hourly timer, T-25h/T-1h ±35m windows, de-duped on CfbWeek.last_reminder_type (tests/test_cfb_timers.py, tests/test_cfb_reminders.py)
 FLASK_APP=app.py venv/bin/flask cfb sync --mode status      # Print season summary
+FLASK_APP=app.py venv/bin/flask cfb recalc-spreads          # Recompute every cumulative spread under the current rule (idempotent; a pick counts only after its week deadline, higher is better)
 # Hand-firing any reminder pass ON THE DROPLET: `sudo systemctl start cfb-remind.service` (same for docket/golf), never
 # `flask … --mode remind` in a shell — systemd merges a manual start with an in-flight timer firing of the same oneshot
 # unit, which is what makes the sent-flag race impossible; there is deliberately no lock in code (PR #169).

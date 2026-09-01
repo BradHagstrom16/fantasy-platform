@@ -259,7 +259,7 @@
                         <tbody>
                             {% for enrollment in enrollments %}
                             <tr class="{% if current_user.is_authenticated and enrollment.user_id == current_user.id %}row-current-user{% endif %}">
-                                <td>{{ loop.index }}</td>
+                                <td class="cfb-rank-cell">{{ standings_ranks[enrollment.id] }}</td>
                                 <td><span class="me-1">{{ enrollment.user.get_avatar() }}</span><strong>{{ enrollment.get_display_name() }}</strong>{% if current_user.is_authenticated and enrollment.user_id == current_user.id %}<span class="cfb-you-tag">You</span>{% endif %}</td>
                                 <td>
                                     <span class="lives-indicator">
@@ -303,7 +303,7 @@
                 <div class="card-body">
                     <ol class="mb-0 small">
                         <li><strong>Lives Remaining:</strong> Two lives is better than one</li>
-                        <li><strong>Cumulative Spread:</strong> Lower is better. Picking favorites adds points, underdogs subtract.</li>
+                        <li><strong>Cumulative Spread:</strong> Higher is better. A favorite counts its minus spread against you; an underdog counts for you. A week's picks count once its deadline passes.</li>
                     </ol>
                 </div>
             </div>

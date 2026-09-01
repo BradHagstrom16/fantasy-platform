@@ -105,10 +105,16 @@ def pool_teams_by_conference():
 def get_official_standings(season_year):
     """Active enrollments in the official standings order, plus ranks.
 
-    Official order is lives DESC, cumulative spread ASC -- the single
-    displayed-order implementation consumed by both the room landing and
-    the lounge (DESIGN.md 10.5/10.8: official ordering implemented once,
-    centrally; room and lounge must never disagree).
+    Official order is lives DESC, cumulative spread DESC -- the single
+    displayed-order implementation consumed by the room landing, the
+    lounge, and the recap email (DESIGN.md 10.5/10.8: official ordering
+    implemented once, centrally; the surfaces must never disagree).
+
+    Spread DESC because the total is the signed spread from the picked
+    team's side: an underdog's plus counts for you, a favorite's minus
+    against you, so the higher total is the harder road. Rows tied on
+    the full key come back in display-name order so the table never
+    reshuffles between requests (Postgres gives tied rows no order).
 
     Returns (ordered_enrollments, ranks) where ranks maps enrollment id
     to competition rank: ties on the full (lives, spread) key share a
@@ -119,17 +125,18 @@ def get_official_standings(season_year):
         CfbEnrollment.query
         .filter_by(season_year=season_year, is_eliminated=False)
         .options(joinedload(CfbEnrollment.user))
-        .order_by(
-            CfbEnrollment.lives_remaining.desc(),
-            CfbEnrollment.cumulative_spread.asc(),
-        )
         .all()
     )
+    enrollments.sort(key=lambda e: (
+        -e.lives_remaining,
+        -(e.cumulative_spread or 0.0),
+        e.get_display_name().lower(),
+    ))
     ranks = {}
     prev_key = None
     prev_rank = 0
     for position, enrollment in enumerate(enrollments, start=1):
-        key = (enrollment.lives_remaining, enrollment.cumulative_spread)
+        key = (enrollment.lives_remaining, enrollment.cumulative_spread or 0.0)
         rank = prev_rank if key == prev_key else position
         ranks[enrollment.id] = rank
         prev_key, prev_rank = key, rank
@@ -143,14 +150,28 @@ def get_official_standings(season_year):
 def calculate_cumulative_spread(enrollment):
     """Recalculate cumulative spread for an enrollment.
 
-    Cumulative spread = sum of the spread (from the picked team's perspective)
-    across all of this user's picks where the game has a spread.
-    Used as a tiebreaker — tracks how safely users pick.
+    Cumulative spread = sum of each pick's signed spread from the picked
+    team's side (favorite negative, underdog positive) across the user's
+    picks whose WEEK DEADLINE has passed. Higher is better: it is the
+    lifetime tiebreaker behind lives, and it taxes the safest picks.
+
+    A pick's spread never enters the total before its week's deadline,
+    even when that game has already kicked off (a Thursday kickoff locks
+    the pick, it does not settle the spread) -- the standings must not
+    leak a hidden pick through its spread. Lifetime means lifetime: no
+    season filter (one season exists today), and no CFP reset.
     """
-    picks = CfbPick.query.filter_by(user_id=enrollment.user_id).all()
+    picks = (
+        CfbPick.query
+        .filter_by(user_id=enrollment.user_id)
+        .options(joinedload(CfbPick.week))
+        .all()
+    )
     total = 0.0
 
     for pick in picks:
+        if not deadline_has_passed(pick.week.deadline):
+            continue
         game = get_game_for_team(pick.week_id, pick.team_id)
         # No Contest games are a push — their spread is excluded (DQ-4).
         if game and not game.is_no_contest and game.home_team_spread is not None:
@@ -539,6 +560,29 @@ def process_autopicks(week_id, season_year=None):
     }
 
 
+def settle_cumulative_spreads(season_year=None):
+    """Recalculate the cumulative spread of every enrollment in the season.
+
+    Runs from the post-deadline autopick sweep so the standings carry a
+    week's spreads minutes after its deadline (the spreads were hidden with
+    the picks until then) rather than after result processing, and from
+    the operator's ``flask cfb recalc-spreads``. Idempotent; commits.
+    Returns the recalculated enrollments.
+    """
+    if season_year is None:
+        season_year = _get_season_year()
+    enrollments = (
+        CfbEnrollment.query
+        .filter_by(season_year=season_year)
+        .options(joinedload(CfbEnrollment.user))
+        .all()
+    )
+    for enrollment in enrollments:
+        calculate_cumulative_spread(enrollment)
+    db.session.commit()
+    return enrollments
+
+
 def check_and_process_autopicks():
     """Check all active weeks and process autopicks if past deadline.
 
@@ -554,6 +598,7 @@ def check_and_process_autopicks():
         deadline = make_aware(week.deadline)
         if deadline_has_passed(deadline):
             result = process_autopicks(week.id)
+            settle_cumulative_spreads()
             if not result.get("processed"):
                 continue
             if result.get("autopicks"):

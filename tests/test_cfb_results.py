@@ -8,6 +8,8 @@ semantics, and cumulative-spread recalculation — plus the admin-route
 processing guards (mark-results / apply-scores) and the
 auto_process_week is_complete ordering.
 """
+import os
+from datetime import datetime
 from unittest.mock import Mock, patch
 
 from extensions import db
@@ -17,6 +19,7 @@ from games.cfb.models import (
 )
 from games.cfb.services.game_logic import (
     calculate_cumulative_spread,
+    check_and_process_autopicks,
     get_used_team_ids,
     process_week_results,
 )
@@ -864,3 +867,71 @@ def test_outcomes_not_duplicated_on_rerun(app):
     process_week_results(week.id)
 
     assert CfbWeekOutcome.query.filter_by(week_id=week.id).count() == 1
+
+
+# ── Deadline rule — a pick's spread counts only once its week's deadline passes ──
+# A locked game (kickoff before the Saturday deadline) does not settle the
+# spread either; only the week deadline does. Naive deadlines are pool wall
+# clock (CT); CFB_FAKE_NOW is UTC (CT + 5h in September).
+
+W1_DEADLINE = datetime(2026, 9, 5, 11, 0)
+BEFORE_DEADLINE = {'ENVIRONMENT': 'testing', 'CFB_FAKE_NOW': '2026-09-01T17:00:00'}
+AFTER_DEADLINE = {'ENVIRONMENT': 'testing', 'CFB_FAKE_NOW': '2026-09-05T16:05:00'}
+
+
+def _seed_open_week_pick(game_time=None):
+    """One Week-1 pick on a 13.5-point favorite against a Saturday 11:00 deadline."""
+    week = make_week(1, deadline=W1_DEADLINE, is_active=True)
+    fav, dog = make_team('Fav'), make_team('Dog')
+    game = make_game(week, fav, dog, spread=-13.5)
+    if game_time is not None:
+        game.game_time = game_time
+    user = make_user('p1')
+    enrollment = make_enrollment(user)
+    make_pick(user, week, fav)
+    db.session.commit()
+    return enrollment
+
+
+def test_pre_deadline_pick_is_excluded_from_cumulative_spread(app):
+    """Before the week deadline the pick's spread stays out of the tiebreaker."""
+    enrollment = _seed_open_week_pick()
+
+    with patch.dict(os.environ, BEFORE_DEADLINE):
+        calculate_cumulative_spread(enrollment)
+
+    assert enrollment.cumulative_spread == 0.0
+
+
+def test_pick_counts_once_the_week_deadline_passes(app):
+    """The same pick enters the tiebreaker the moment the deadline passes."""
+    enrollment = _seed_open_week_pick()
+
+    with patch.dict(os.environ, AFTER_DEADLINE):
+        calculate_cumulative_spread(enrollment)
+
+    assert enrollment.cumulative_spread == -13.5
+
+
+def test_kicked_off_game_before_deadline_is_still_excluded(app):
+    """A Thursday kickoff locks the pick but does not settle its spread."""
+    enrollment = _seed_open_week_pick(game_time=datetime(2026, 9, 3, 19, 0))
+
+    with patch.dict(os.environ, {'ENVIRONMENT': 'testing',
+                                 'CFB_FAKE_NOW': '2026-09-04T17:00:00'}):
+        calculate_cumulative_spread(enrollment)
+
+    assert enrollment.cumulative_spread == 0.0
+
+
+def test_autopick_sweep_settles_spreads_for_members_who_already_picked(app):
+    """The post-deadline sweep recalculates every enrollment, not only the
+    autopicked ones, so standings carry the week's spreads minutes after
+    the deadline rather than after Sunday's processing."""
+    enrollment = _seed_open_week_pick()
+    assert enrollment.cumulative_spread == 0.0
+
+    with patch.dict(os.environ, AFTER_DEADLINE):
+        check_and_process_autopicks()
+
+    assert enrollment.cumulative_spread == -13.5
