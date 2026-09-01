@@ -4,7 +4,7 @@ Covers the recap autopick timezone bug (created_at is naive UTC and must
 convert via to_pool_time, not make_aware — §7 HIGH: any manual pick within
 ~6h of the deadline was mislabeled AUTOPICK), the user_id-keyed
 eliminated-this-week detection, DQ-5 recipient gating, the DQ-2
-"No pick — life lost" outcome line, and the T-25h/T-1h ±35min reminder
+"No pick: life lost" outcome line, and the T-25h/T-1h ±35min reminder
 windows (driven through the CFB_FAKE_NOW seam).
 """
 import os
@@ -169,7 +169,7 @@ def test_recap_skips_players_eliminated_in_prior_weeks(app):
 
 def test_recap_no_pick_life_loss_line(app):
     """DQ-2: an active player penalized for not picking sees
-    'No pick — life lost', not the old no-consequence framing."""
+    'No pick: life lost', not the old no-consequence framing."""
     ghost = make_user('ghost')
     make_enrollment(ghost, lives=2)
     active = make_user('active')
@@ -181,7 +181,7 @@ def test_recap_no_pick_life_loss_line(app):
     by_to = _recap(week)
 
     body = by_to['ghost@test.com']['body']
-    assert 'No pick — life lost' in body
+    assert 'No pick: life lost' in body
     assert 'No pick submitted' not in body
     assert 'No pick' in by_to['ghost@test.com']['html']
     assert 'life lost' in by_to['ghost@test.com']['html']

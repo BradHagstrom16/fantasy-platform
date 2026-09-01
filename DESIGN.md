@@ -232,6 +232,7 @@ The CCC purple ramp. Used for chrome (navbar, footer, page heroes), primary CTAs
 
 - **Council Purple** (`#3A1D72`): the CCC signature purple. Navbar background, primary button fill, page-hero gradient terminus, eyebrow link color. The most-used brand color in the system.
 - **Chamber Purple** (`#1C0A3A`): the deeper companion. Page-hero gradient origin, footer voice band, dark text on gold.
+- **Masthead Purple** (`#2A1150`, `--purple-800`): the step between Council and Chamber. The Club Letter's masthead band (the seal's gold arcs were tuned against it); never a page background.
 - **Tribunal Black** (`#140828`): the deepest purple, used on full-page atmospheric backdrops (auth pages, home shell). Effectively the system's "dark surface" without ever being literal black.
 - **Press Purple** (`#6B3FAD`): the lighter purple, used for primary-button hover and as a brighter accent inside dark contexts.
 - **Ink Purple** (`#0A0612`): a near-black purple used as ink for the deepest text on light surfaces. Never `#000`.
@@ -439,6 +440,16 @@ Games define their own primitives for surfaces and patterns specific to that gam
 
 - **`.page-hero`**: linear gradient from `var(--game-primary-dark)` to `var(--game-primary)` at `135deg`, `var(--text-on-dark)` text, `3.5rem 0 3rem` vertical padding, halftone-dot pattern overlay (`radial-gradient(circle, rgba(212, 168, 32, 0.06) 1px, transparent 1px)` at `24px` tile). The masthead band that opens game pages. Game palettes flow through automatically.
 - Game-specific hero variants follow the `.page-hero.<game>-hero-grad` shape (e.g., World Cup's `.page-hero.wc-hero-grad` navy-+-red gradient documented in `games/worldcup/DESIGN.md`).
+
+### Email: the Club Letter
+
+An email is the club's letter, not a room (ADR-058). It arrives From "Corrupt Commish Club", so it wears club chrome the way the lounge does, and a game enters it the way a game enters the lounge (§1.6, ADR-049/052): through copy, state, and thin strokes of its own accent. One shell for every member email: `templates/email/letter.j2`, rendered only by `utils/email_layout.render_letter(Letter)`; games supply fields and module-built blocks, never markup, and the plain-text part is generated from the same fields.
+
+- **Material:** 560px Pressroom Bone page, white card (`--radius` 8px) with the purple-tinted `--shadow-md`, Masthead Purple band carrying the 56px `seal-email.png` (raster only; Gmail drops SVG) and the gold Teko-stack wordmark, Chamber Purple footer ("Corrupt Commish Club · cccfantasy.com" + the membership line). Stacks that actually render: display `'Teko','Arial Narrow',Arial`, body `'Newsreader',Georgia`; one Google Fonts link for the clients that honor it.
+- **Anatomy:** eyebrow (game · week, in the game's lounge accent: crimson `#C5050C`, garnet `#A63446`, Augusta `#006747`; ink on club business) → Teko-stack H1 in Council Purple → greeting only on personal mail → lede → the **fact block** (a bone inset ringed `1px #E8E5F0`, label above value, at most three facts, the deadline first; never a side-stripe, never the hero-metric trio) → extras the CTA acts on → **exactly one CTA** (solid game accent with bone text; club business wears flat Commish Gold with Chamber text; gold never fills a game button) → one supporting line → footnotes (the "Settle the tab" strip, a text link that names its game).
+- **Copy:** no em dashes, no emoji, "CT" never "CDT", one deadline formatter (`utils.time.format_deadline_short`), subjects read `{What}: {Game}, Week {n}` within 45 characters, results in words (Survived / Lost a life) never colour, each letter states its consequence once, the tab strip names its game.
+
+Locked on rendered output by `tests/test_email_letter.py`, which also fails on any second `role="presentation"` / `<!DOCTYPE html>` outside the shell.
 
 ## 6. Do's and Don'ts
 

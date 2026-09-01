@@ -15,6 +15,8 @@ from zoneinfo import ZoneInfo
 
 from flask import current_app
 
+from utils.time import format_deadline_short as _platform_deadline_short
+
 logger = logging.getLogger(__name__)
 
 
@@ -120,35 +122,19 @@ def format_deadline(deadline):
     return deadline_local.strftime('%B %d, %Y at %I:%M %p %Z')
 
 
-# Short zone labels for the room's deadline line ("11:00 AM CT"): the lounge
-# and The Docket both say "CT", so the pick surface matches rather than
-# printing strftime's "CDT"/"CST" split. Unknown zones fall back to %Z.
-_ZONE_LABELS = {
-    'CDT': 'CT', 'CST': 'CT',
-    'EDT': 'ET', 'EST': 'ET',
-    'MDT': 'MT', 'MST': 'MT',
-    'PDT': 'PT', 'PST': 'PT',
-}
-
-
 def format_deadline_short(deadline):
-    """'Saturday, Sep 5 · 11:00 AM CT': the room's deadline line.
+    """'Saturday, Sep 5 · 11:00 AM CT': the room's (and the email's) deadline line.
 
-    Weekday + short date + wall clock in the pool tz, no year, no leading
-    zero (the impeccable critique 2026-09-01: the long form wrapped to two
-    lines at 375px and split the zone as "CDT"). Admin surfaces keep
-    format_deadline.
+    The platform formatter (``utils.time.format_deadline_short``) with CFB's
+    datetime contract applied first: a naive deadline is pool wall clock
+    (``make_aware``), never UTC. Weekday + short date + wall clock, no year,
+    no leading zero (the impeccable critique 2026-09-01: the long form
+    wrapped to two lines at 375px and split the zone as "CDT"). Admin
+    surfaces keep format_deadline.
     """
     if deadline is None:
         return 'TBD'
-    pool_tz = _get_pool_tz()
-    if deadline.tzinfo is not None:
-        local = deadline.astimezone(pool_tz)
-    else:
-        local = deadline.replace(tzinfo=pool_tz)
-    zone = local.strftime('%Z')
-    return (f"{local.strftime('%A, %b %-d · %-I:%M %p')} "
-            f"{_ZONE_LABELS.get(zone, zone)}")
+    return _platform_deadline_short(make_aware(deadline), tz=_get_pool_tz())
 
 
 def format_relative(delta):
