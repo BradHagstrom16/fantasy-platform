@@ -343,6 +343,12 @@ the finish review, the verdict, and DESIGN.md.
                             }
                         }
                     }
+                })
+                .catch(function (err) {
+                    // A superseded repaint's failure is nobody's problem;
+                    // only the current repaint's error reaches the caller.
+                    if (seq !== refreshSeq || url !== window.location.href) return;
+                    throw err;
                 });
         }
 

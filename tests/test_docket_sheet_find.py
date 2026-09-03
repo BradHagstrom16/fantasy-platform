@@ -281,7 +281,9 @@ def test_find_submit_rides_the_repaint_layer():
     # A repaint whose URL the page has since left is discarded, so a quick
     # Back during a search never paints the old results under the new
     # address (the sequence check is the guard).
-    assert 'seq !== refreshSeq || url !== window.location.href' in script
+    # Both the response and the rejection paths are gated, so a superseded
+    # repaint's failure never reloads the page over the current one.
+    assert script.count('seq !== refreshSeq || url !== window.location.href') == 2
     assert 'docket-find-q' in script
     # Touch keeps its keyboard down; the sticky offset follows the
     # measured calendar height.
