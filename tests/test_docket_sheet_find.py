@@ -328,6 +328,8 @@ def test_room_inputs_focus_garnet_not_gold():
     assert m, 'body.game-docket .form-control:focus is missing'
     rule = m.group(1)
     assert re.search(r'border-color:\s*var\(--game-accent\)', rule)
-    assert 'rgba(var(--game-accent-rgb)' in rule
+    # The halo is the box-shadow declaration itself: 3px of garnet at 22%.
+    assert re.search(
+        r'box-shadow:\s*0 0 0 3px rgba\(var\(--game-accent-rgb\),\s*\.22\)', rule)
     for gold in ('--platform-accent', '--gold', '212,168,32', '212, 168, 32'):
         assert gold not in rule, f'gold leaked into the room input ring: {gold}'
