@@ -22,7 +22,7 @@ from flask import (
     url_for,
 )
 from flask_login import current_user, login_required
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 
 from extensions import db
@@ -43,6 +43,7 @@ from games.docket.services.grading.snapshots import BACKUP_SLOT, SCORING_SLOTS, 
 from games.docket.services.importer import BOOKMAKER_LABELS, BOOKMAKER_PRIORITY
 from games.docket.services.payment import payment_nudge_for
 from games.docket.services.picks import PickError
+from games.docket.services.purse import season_purse
 from games.docket.services.season_pass import season_ledger
 from games.docket.services.weeks import (
     CT,
@@ -533,6 +534,10 @@ def ledger():
         your_row=your_row,
         your_rank_label=_ordinal(your_row.standing.rank) if your_row else None,
         season_opens_label=WEEK_1_BOUNDARY_LOCAL.strftime('%B %-d'),
+        # The purse follows the roster the ledger already loaded (one row per
+        # enrollment, graded or not); the split weeks mark the drawer receipt.
+        purse=season_purse(len(ledger.rows)),
+        split_weeks={v.week_number for v in ledger.verdicts if v.split},
     )
 
 
@@ -562,10 +567,14 @@ def rules():
     # The perfect week, derived: seven ordinary wins plus the doubled one.
     max_week = ((SCORING_SLOTS - 1) * slot_points(Outcome.WIN, doubled=False)
                 + slot_points(Outcome.WIN, doubled=True))
+    member_count = db.session.scalar(
+        select(func.count()).select_from(DocketEnrollment)
+        .filter_by(season_year=SEASON_YEAR)) or 0
     return render_template(
         'docket/rules.html',
         scoring=scoring,
         max_week=max_week,
+        purse=season_purse(member_count),
         scoring_slots=SCORING_SLOTS,
         backup_slot=BACKUP_SLOT,
         total_weeks=TOTAL_WEEKS,

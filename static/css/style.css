@@ -14308,6 +14308,68 @@ body.game-docket .form-select:focus {
 .docket-week.is-dropped .docket-week-points,
 .docket-week.is-absent .docket-week-points { color: var(--text-secondary); }
 .docket-week.is-dropped .docket-week-note { font-style: italic; }
+/* The receipt: a week's prize noted on the week that won it. Ink on a bone
+   tint, never garnet (garnet means "yours", not "won"). */
+.docket-week-verdict {
+  margin-left: auto;
+  align-self: center;
+  font-family: 'Teko', sans-serif;
+  font-weight: 500;
+  font-size: .8rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  line-height: 1.4;
+  color: var(--text-primary);
+  background: rgba(216, 207, 192, .35);
+  border-radius: var(--radius);
+  padding: .05rem .45rem;
+  white-space: nowrap;
+}
+
+/* --- The purse and the weekly verdicts (rulings Amendments 2026-09-03) ---
+   Every dollar is derived from the roster and config (services/purse.py);
+   the ledger states the purse in one caption line wherever the standings
+   are, and lists each graded week's top sheet on the week-row primitives. */
+.docket-purse-line {
+  font-size: .92rem;
+  max-width: 68ch;
+  margin: .85rem 0 0;
+}
+.docket-purse-line a {
+  color: var(--game-primary);
+  text-decoration: none;
+  padding: .45rem 0;
+  margin: -.45rem 0;
+}
+.docket-purse-line a:hover,
+.docket-purse-line a:focus-visible { text-decoration: underline; }
+.docket-verdict-list {
+  list-style: none;
+  margin: 0 0 .75rem;
+  padding: 0;
+}
+.docket-verdict {
+  display: grid;
+  grid-template-columns: 2.4rem minmax(0, 1fr) auto;
+  column-gap: .6rem;
+  row-gap: .1rem;
+  align-items: baseline;
+  padding: .45rem 0;
+  border-top: 1px solid var(--docket-rule);
+}
+.docket-verdict:last-child { border-bottom: 1px solid var(--docket-rule); }
+.docket-verdict-names {
+  font-family: 'Newsreader', Georgia, serif;
+  font-size: 1rem;
+  overflow-wrap: anywhere;
+}
+/* Below sm the note takes its own line under the names; from sm up the
+   four cells sit on one ruled line. */
+.docket-verdict .docket-week-note { grid-column: 2 / -1; }
+@media (min-width: 576px) {
+  .docket-verdict { grid-template-columns: 2.4rem minmax(0, 1fr) auto auto; }
+  .docket-verdict .docket-week-note { grid-column: auto; }
+}
 
 /* --- Appearing this season (pre-verdict roster) --- */
 .docket-appearing-list {

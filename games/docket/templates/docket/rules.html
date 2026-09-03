@@ -219,8 +219,30 @@ FINISH: unreviewed and undocumented is unfinished; ends with the finish review.
                     </div>
                     <div class="docket-ruleset-item">
                         <dt>Entry</dt>
-                        <dd>${{ docket_entry_fee }} per member, one entry each. How the
-                            pot is divided is the Commissioner's call.</dd>
+                        <dd>${{ purse.entry_fee }} per member, one entry each.</dd>
+                    </div>
+                    {# The purse (rulings Amendments 2026-09-03). Every dollar is
+                       derived from the live roster and config: the roster is open
+                       until the Week 1 deadline, and a typed number would be wrong
+                       the moment it moved. #}
+                    <div class="docket-ruleset-item">
+                        <dt>The weekly verdict</dt>
+                        <dd>${{ purse.weekly_prize }} to the week's top sheet, all
+                            {{ purse.weeks }} weeks. Points decide it; wins break a
+                            tie, then that week's tiebreaker error; anyone still level
+                            splits it.</dd>
+                    </div>
+                    <div class="docket-ruleset-item">
+                        <dt>The season pot</dt>
+                        <dd>{{ purse.members }} member{{ 's' if purse.members != 1 else '' }}
+                            &times; ${{ purse.entry_fee }} is ${{ '{:,}'.format(purse.gross) }}.
+                            The weekly verdicts take ${{ '{:,}'.format(purse.weekly_total) }}.
+                            What is left, ${{ '{:,}'.format(purse.season_pot) }}, pays
+                            {% for line in purse.podium %}{{ line.label|lower }} {{ line.percent }}% (${{ '{:,}'.format(line.dollars) }}){{ ', ' if not loop.last else '' }}{% endfor %},
+                            to the dollar, first taking the remainder. The roster is
+                            open until the Week 1 deadline, so the pot moves with it.
+                            A season-long tie on all three keys is the Commissioner's
+                            call.</dd>
                     </div>
                 </dl>
             </section>
