@@ -22,11 +22,16 @@ Behavior:
 """
 import argparse
 import sys
+from pathlib import Path
 
-from sqlalchemy import func, select
+# Running `python scripts/docket_unenroll_user.py` puts scripts/ on
+# sys.path, not the repo root (same gotcha as verify_worldcup_scoring.py).
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from app import create_app
-from extensions import db
+from sqlalchemy import func, select  # noqa: E402
+
+from app import create_app  # noqa: E402
+from extensions import db  # noqa: E402
 
 
 def main() -> int:
