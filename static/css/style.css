@@ -13061,6 +13061,71 @@ body.game-docket {
    thin the CFB half of a day; NFL cases are never filtered. Same court-
    calendar voice as the day tabs, one visual step quieter. Secondary
    targets per DESIGN.md 6.9: 36px height with 44px min width. */
+/* The index (design review 2026-09-02): the find field leads the calendar
+   block. One ruled line of the clerk's voice: a Teko label, the platform
+   form control (44px floor, the same focus ring the tiebreaker keeps, the
+   16px mobile anti-zoom), and a Find button in the day-tab family one step
+   quieter. Label above the field on a phone, inline from sm up. */
+.docket-find {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .4rem .6rem;
+  margin: 0 0 .65rem;
+}
+.docket-find-label {
+  flex: 1 0 100%;
+  margin: 0;
+  font-family: 'Teko', sans-serif;
+  font-weight: 500;
+  font-size: .9rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+.docket-find .form-control {
+  flex: 1 1 10rem;
+  min-width: 0;
+}
+.docket-find-btn {
+  flex: 0 0 auto;
+  min-height: 44px;
+  min-width: 44px;
+  padding: .35rem 1rem;
+  font-family: 'Teko', sans-serif;
+  font-weight: 500;
+  font-size: .95rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--text-primary);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  transition: color var(--transition), border-color var(--transition);
+}
+.docket-find-btn:hover {
+  color: var(--game-accent);
+  border-color: var(--game-accent);
+}
+@media (min-width: 576px) {
+  .docket-find-label { flex: 0 0 auto; }
+  .docket-find .form-control { max-width: 24rem; }
+}
+.docket-find-empty {
+  margin: .25rem 0 1.5rem;
+  max-width: 60ch;
+  color: var(--text-secondary);
+}
+/* The results head stacks its count line under the title below md: the
+   title and the "Showing N of M … · All cases" line are both long, and side
+   by side on a phone each wraps into the other. */
+@media (max-width: 767.98px) {
+  .docket-find-head {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: .2rem;
+  }
+}
 .docket-conf-chips {
   display: flex;
   flex-wrap: wrap;
@@ -13140,7 +13205,7 @@ body.game-docket {
   scroll-margin-top: 120px;
 }
 @media (min-width: 992px) {
-  .docket-session-head { scroll-margin-top: 235px; }
+  .docket-session-head { scroll-margin-top: 290px; }
 }
 .docket-session-label {
   font-family: 'Teko', sans-serif;
@@ -13280,7 +13345,8 @@ button.docket-side:hover {
 .docket-slot-btn:focus-visible,
 .docket-day-tab:focus-visible,
 .docket-conf-chip:focus-visible,
-.docket-session-jump:focus-visible {
+.docket-session-jump:focus-visible,
+.docket-find-btn:focus-visible {
   outline: 2px solid var(--game-accent);
   outline-offset: 2px;
 }

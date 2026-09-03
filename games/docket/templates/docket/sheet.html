@@ -110,14 +110,30 @@ the finish review, the verdict, and DESIGN.md.
                     {% endif %}
                 {% endif %}
 
-                {# The court calendar: day tabs + conference chips travel as
-                   one block; at lg+ it sticks under the chrome so the long
-                   Saturday can be navigated from anywhere in the scroll. #}
+                {# The court calendar: the find field, day tabs, and
+                   conference chips travel as one block; at lg+ it sticks
+                   under the chrome so the long Saturday can be navigated
+                   from anywhere in the scroll. #}
                 <div class="docket-calendar">
+                    {# The index (design review 2026-09-02): a plain GET on
+                       the no-JS spine, week-wide so a member who knows the
+                       team but not the day still finds the case. First in
+                       the block: the broadest aid leads. The hidden day is
+                       only the way back. No data-docket-action: it is
+                       navigation, never mutation. #}
+                    <form role="search" method="get" action="{{ url_for('docket.index') }}" class="docket-find">
+                        {% if sheet_return.day %}<input type="hidden" name="day" value="{{ sheet_return.day }}"/>{% endif %}
+                        <label class="docket-find-label" for="docket-find-q">Find a case</label>
+                        <input type="search" class="form-control" id="docket-find-q" name="q"
+                               value="{{ find_query }}" placeholder="Team, conference, or NFL"
+                               maxlength="60" autocomplete="off" spellcheck="false" enterkeyhint="search"/>
+                        <button type="submit" class="docket-find-btn">Find</button>
+                    </form>
                     <nav class="docket-day-tabs" aria-label="Court calendar">
                         {% for day in days %}
-                        <a class="docket-day-tab{% if day.key == active_day.key %} is-active{% endif %}"
-                           {% if day.key == active_day.key %}aria-current="page"{% endif %}
+                        {% set current = not find_query and day.key == active_day.key %}
+                        <a class="docket-day-tab{% if current %} is-active{% endif %}"
+                           {% if current %}aria-current="page"{% endif %}
                            href="{{ url_for('docket.index', day=day.key) }}">
                             <span class="docket-day-tab-label">{{ day.tab_label }}</span>
                             <span class="docket-day-tab-count">{{ day.games|length }}</span>
@@ -126,8 +142,9 @@ the finish review, the verdict, and DESIGN.md.
                     </nav>
                     {# Conference chips (design review 2026-08-19): plain GET
                        links, day-scoped so every chip yields at least one
-                       case; NFL cases are never filtered. #}
-                    {% if conferences|length >= 2 %}
+                       case; NFL cases are never filtered. They step aside
+                       while a find query is in force. #}
+                    {% if not find_query and conferences|length >= 2 %}
                     <nav class="docket-conf-chips" aria-label="Conference filter">
                         <a class="docket-conf-chip{% if not active_conf %} is-active{% endif %}"
                            {% if not active_conf %}aria-current="true"{% endif %}
@@ -144,6 +161,33 @@ the finish review, the verdict, and DESIGN.md.
                     {% endif %}
                 </div>
 
+                {% if find_query %}
+                {# The results view: every match this week grouped by day
+                   under the session-head primitive. Two no-silent-caps
+                   lines: the count with the way back, or the zero-match
+                   statement with a hint; the field keeps the typed text. #}
+                <div class="docket-day-head docket-find-head">
+                    {% if find_total %}
+                    <h2 class="docket-day-title">Matching cases</h2>
+                    <span class="docket-caption docket-showing">Showing {{ find_total }} of {{ week_case_total }} case{{ 's' if week_case_total != 1 }} matching &ldquo;{{ find_query }}&rdquo; · <a href="{{ url_for('docket.index', day=sheet_return.day) }}">All cases &rsaquo;</a></span>
+                    {% else %}
+                    <h2 class="docket-day-title">No matching case</h2>
+                    <span class="docket-caption docket-showing">No case this week matches &ldquo;{{ find_query }}&rdquo; · <a href="{{ url_for('docket.index', day=sheet_return.day) }}">All cases &rsaquo;</a></span>
+                    {% endif %}
+                </div>
+                {% if not find_total %}
+                <p class="docket-find-empty">Try a team name, a conference, or NFL.</p>
+                {% endif %}
+                {% for day in find_days %}
+                <div class="docket-session-head docket-find-day">
+                    <span class="docket-session-label">{{ day.label }}</span>
+                    <span class="docket-caption">{{ day.games|length }} case{{ 's' if day.games|length != 1 }}</span>
+                </div>
+                {% for game in day.games %}
+                    {% include 'docket/_game_row.html' %}
+                {% endfor %}
+                {% endfor %}
+                {% else %}
                 <div class="docket-day-head">
                     <h2 class="docket-day-title">{{ active_day.label }}</h2>
                     {% if active_conf %}
@@ -174,6 +218,7 @@ the finish review, the verdict, and DESIGN.md.
                         {% include 'docket/_game_row.html' %}
                     {% endfor %}
                 {% endfor %}
+                {% endif %}
             </div>
         </div>
 
@@ -298,6 +343,34 @@ the finish review, the verdict, and DESIGN.md.
             }
             var field = target ? target.querySelector('input[name=prediction]') : null;
             if (field) field.focus({ preventScroll: !!drawer && target === drawer });
+        });
+
+        // The find form (design review 2026-09-02): a GET on the no-JS
+        // spine. With JS the search repaints the slate in place through
+        // the same refresh (the URL stays honest, the caret stays in the
+        // field) and the result line is announced the way a pick is.
+        document.addEventListener('submit', function (event) {
+            var form = event.target.closest('form.docket-find');
+            if (!form) return;
+            event.preventDefault();
+            if (busy) return;
+            busy = true;
+            var params = new URLSearchParams(new FormData(form));
+            if (!(params.get('q') || '').trim()) params.delete('q');
+            var query = params.toString();
+            history.replaceState(null, '', window.location.pathname + (query ? '?' + query : ''));
+            refreshRegions().then(function () {
+                var field = document.getElementById('docket-find-q');
+                if (field) {
+                    field.focus({ preventScroll: true });
+                    var end = field.value.length;
+                    try { field.setSelectionRange(end, end); } catch (e) { /* not selectable */ }
+                }
+                var line = document.querySelector('.docket-find-head .docket-showing');
+                if (line) notice(line.textContent.split('·')[0].replace(/\s+/g, ' ').trim(), false);
+            }).catch(function () {
+                notice('Connection hiccup. Refresh the sheet to search it.', true);
+            }).finally(function () { busy = false; });
         });
 
         document.addEventListener('submit', function (event) {

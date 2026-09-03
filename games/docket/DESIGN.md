@@ -296,7 +296,8 @@ applications:
 - Register glossary (use consistently): the **docket** (a week's slate + your sheet), a
   **case** (one game), a **side** (one pick), the **headliner** (best pick, worth double),
   **held in reserve** (the backup, slot 9), a **verdict** (win), a **mistrial** (push),
-  **thrown out** (No Contest), the **ledger** (season standings), **court adjourns** may
+  **thrown out** (No Contest), the **ledger** (season standings), **find a case** (the
+  sheet's week-wide search, §7.7), **court adjourns** may
   flavor the deadline but the deadline line always states the literal time.
 - On the sheet itself, one word per object where a first-timer taps (clarity pass 2026-09-01, §7.6a):
   the mark and control are **x2** (every first appearance says "it scores double"; "headliner" stays
@@ -499,6 +500,38 @@ Three calendar aids (design review 2026-08-19, for the ~60-case Saturday):
   heads, which carry ids + `scroll-margin-top` clearing the sticky chrome. Plain
   hrefs; the no-JS spine covers wayfinding too.
 
+A fourth aid (design review 2026-09-02, from a member's ask: "especially when we
+have pros in there as well it's gonna be tough looking for a specific game"):
+
+- **The index — `.docket-find`.** A "Find a case" field that leads the calendar
+  block: a `role="search"` GET form (`?q=`, plain navigation, never mutation, so
+  it works identically in preview/open/locked/closed and without JS). **Week-wide
+  by design**: the member knows the team, not the day, so the query ignores the
+  day scope and the hidden `day` it carries is only the way back. Every typed word
+  must appear on the case: either team name, the sport's search words (`NFL pro
+  pros`, `CFB college NCAA`, so "nfl" or "pros" lists the whole pro slate), or a
+  conference name via the same display-only classifier the chips use. The query
+  is whitespace-collapsed and capped at 60 characters. Anatomy: a visible Teko
+  label (never placeholder-as-label), the platform `.form-control` (44px floor,
+  the platform focus ring the tiebreaker input also keeps, the 16px mobile
+  anti-zoom), and a 44px "Find" button in the day-tab family one step quieter;
+  label above the field on a phone, inline from `sm` up. Phone: top of the slate,
+  the same reach the day tabs have (the no-second-sticky-band ruling above
+  stands); `lg+`: sticky with the calendar. While a query is in force the
+  day-scoped aids step aside (no chips, no session jumps, no current day tab) and
+  the results render under `.docket-find-head`: "Matching cases" plus the
+  no-silent-caps line "Showing N of M cases matching “q” · All cases ›", grouped
+  by day under the session-head primitive, rows unchanged and pickable in place.
+  Zero matches is the one new state and it is stated plainly: "No matching case",
+  "No case this week matches “q” · All cases ›", one hint line ("Try a team name,
+  a conference, or NFL."), and the field keeps the typed text. Locked by
+  `tests/test_docket_sheet_find.py`.
+- **The return fields — `_return_fields.html`.** Every mutation form carries the
+  view it was submitted from (`day`, `conf`, `q`) as hidden inputs, and
+  `_back_to_sheet` redirects with the same keys, so a no-JS pick from a filtered
+  or searched view lands back on that view (before 2026-09-02 a conference filter
+  was dropped on the way back).
+
 ### 7.8 Sub-nav — `.subnav-docket`
 
 Platform `.game-subnav` shape: background `#180C10` (warm oxblood-cast near-black, distinct
@@ -534,6 +567,10 @@ Behavior hooks are `data-docket-*` attributes (`data-docket-action`, `-game`, `-
 `is-no-line`) ship alongside styling classes and are never renamed for styling reasons
 (platform template-restyling rule). The sheet is fully functional without JS (mini-form
 PRG); JS is an enhancement layer that repaints from the server's authoritative sheet state.
+The find form (§7.7) is the sheet's one GET form: with JS its submit replaces the URL and
+rides the same repaint (`refreshRegions`), keeping the caret in the field and announcing
+the result line through the page's `role=status` notice; without JS it is an ordinary
+navigation.
 
 ### 7.12 Settle the Tab — `.settle-tab` (platform partial `templates/_settle_tab.html`)
 
