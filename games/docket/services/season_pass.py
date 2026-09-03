@@ -24,6 +24,7 @@ from games.docket.models import DocketEnrollment, DocketWeek, DocketWeekResult
 from games.docket.services.grading.season import (
     player_week_rows,
     season_standings,
+    week_winners,
 )
 from games.docket.services.grading.snapshots import (
     PlayerWeekRow,
@@ -45,10 +46,25 @@ class LedgerRow:
     standing: SeasonStanding
     enrollment: DocketEnrollment
     weeks: tuple[PlayerWeekRow, ...]
+    prize_weeks: frozenset[int] = frozenset()  # weeks this line took or split
 
     @property
     def dropped_week(self) -> int | None:
         return self.standing.dropped_week
+
+
+@dataclass(frozen=True, slots=True)
+class LedgerVerdict:
+    """One graded week's top sheet (the purse's weekly prize): the three
+    keys applied to that week alone; ``split`` when more than one line was
+    level on all three. ``winners`` are enrollments (avatar + name), in
+    display-name order."""
+    week_number: int
+    winners: tuple[DocketEnrollment, ...]
+    points: float
+    wins: int
+    error_tenths: int
+    split: bool
 
 
 @dataclass(frozen=True, slots=True)
@@ -57,6 +73,7 @@ class SeasonLedger:
     week_numbers: tuple[int, ...]   # graded weeks, ascending
     total_weeks: int                # TOTAL_WEEKS, never a literal
     season_complete: bool           # every week graded; gates the ceremony
+    verdicts: tuple[LedgerVerdict, ...] = ()   # one per graded week
 
     @property
     def is_graded(self) -> bool:
@@ -144,11 +161,35 @@ def season_ledger(season_year: int = SEASON_YEAR) -> SeasonLedger:
     rollups = week_rollups_from_db()
     standings = season_standings(rollups, tuple(by_player_id))
 
+    # The weekly verdicts: the engine names the week's top sheet(s); this
+    # only joins the enrollments on. A result row for a player no longer on
+    # the roster is ignored here exactly as season_standings ignores it.
+    verdicts = []
+    prize_weeks: dict[str, set[int]] = {}
+    for rollup in rollups:
+        winner_ids = [pid for pid in week_winners(rollup) if pid in by_player_id]
+        if not winner_ids:
+            continue
+        top = next(p for p in rollup.players if p.player_id == winner_ids[0])
+        verdicts.append(LedgerVerdict(
+            week_number=rollup.week_number,
+            winners=tuple(sorted(
+                (by_player_id[pid] for pid in winner_ids),
+                key=lambda e: e.get_display_name().lower())),
+            points=top.points,
+            wins=top.wins,
+            error_tenths=top.error_tenths,
+            split=len(winner_ids) > 1,
+        ))
+        for pid in winner_ids:
+            prize_weeks.setdefault(pid, set()).add(rollup.week_number)
+
     rows = [
         LedgerRow(
             standing=standing,
             enrollment=by_player_id[standing.player_id],
             weeks=player_week_rows(rollups, standing.player_id),
+            prize_weeks=frozenset(prize_weeks.get(standing.player_id, ())),
         )
         for standing in standings
     ]
@@ -165,4 +206,5 @@ def season_ledger(season_year: int = SEASON_YEAR) -> SeasonLedger:
         week_numbers=week_numbers,
         total_weeks=TOTAL_WEEKS,
         season_complete=len(week_numbers) == TOTAL_WEEKS,
+        verdicts=tuple(verdicts),
     )
