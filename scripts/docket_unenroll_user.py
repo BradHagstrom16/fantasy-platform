@@ -56,10 +56,17 @@ def main() -> int:
         from utils.identifier import normalize_identifier
 
         needle = normalize_identifier(args.identifier)
-        user = (
-            db.session.scalar(select(User).where(func.lower(User.username) == needle))
-            or db.session.scalar(select(User).where(func.lower(User.email) == needle))
-        )
+        by_name = db.session.scalar(
+            select(User).where(func.lower(User.username) == needle))
+        by_email = db.session.scalar(
+            select(User).where(func.lower(User.email) == needle))
+        matched_ids = {u.id for u in [by_name, by_email] if u is not None}
+        if len(matched_ids) > 1:
+            print(f'ABORT: {args.identifier!r} matches multiple users '
+                  f'(username → id {by_name.id}, email → id {by_email.id}). '
+                  'Use a more specific identifier.')
+            return 1
+        user = by_name or by_email
         if user is None:
             print(f'ABORT: no user found matching {args.identifier!r}.')
             return 1
