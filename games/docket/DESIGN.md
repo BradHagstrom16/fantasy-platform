@@ -393,8 +393,13 @@ The decision primitive, escalating with commitment (pick-surface doctrine shared
 - **Hover/focus**: half-step lift, garnet border hint, visible focus ring. **The room's
   focus ring is garnet** (`outline: 2px solid --game-accent`, offset 2) on docket
   interactive controls: the platform gold ring reads sub-3:1 on bone and this room runs
-  its own ring the way CFB's admin desk runs crimson; the tiebreaker input keeps the
-  platform form-control focus (gold border + glow) unchanged.
+  its own ring the way CFB's admin desk runs crimson. **The room's inputs take the same
+  identity** (`body.game-docket .form-control:focus`: garnet border + a 22% garnet glow,
+  the mirror of CFB's crimson re-derive): the platform's gold input focus measured ~2.8:1
+  on the white field and ~2.4:1 on bone, and once the find field sat 8px from a
+  garnet-ringed Find button, two ring colours inside one control was the inconsistency
+  (ruled 2026-09-03; the earlier carve-out that left the tiebreaker input gold is
+  withdrawn). Locked by `tests/test_docket_sheet_find.py`.
 - **Held** (`.is-picked`): the stamp — garnet border, garnet 8-12% tint, weight step, slot
   number badge. Never tint alone.
 - **Opposite-of-held**: available but visibly secondary (selecting it moves the pick, 2.5).
@@ -495,6 +500,12 @@ Three calendar aids (design review 2026-08-19, for the ~60-case Saturday):
   cast) so the long Saturday can be navigated from anywhere in the scroll.
   Below `lg` it scrolls with the page (tabs wrap there, and the fixed bottom
   drawer bar already persists — a second sticky band would sandwich content).
+  The find field rides inside the band (ruled 2026-09-03, measured on the
+  60-case Saturday at 1440×815: chrome 106px + calendar 208px = 314px pinned,
+  38.5% of the viewport, of which the find row is 55px; the two chip rows are
+  78px). It stays because it is the broadest aid and the one a member
+  mid-scroll has to *see* rather than remember; if the band's height is ever
+  the complaint, the lever is the chip rows, not the find row.
 - **Session jumps — `.docket-session-jumps`.** On a multi-wave day the day head
   offers anchor links ("Morning 13 · Afternoon 29 · Evening 25") to the session
   heads, which carry ids + `scroll-margin-top` clearing the sticky chrome. Plain
@@ -514,8 +525,8 @@ have pros in there as well it's gonna be tough looking for a specific game"):
   day's name ("sunday"). The query is whitespace-collapsed and capped at 60
   characters. Anatomy: a visible Teko
   label (never placeholder-as-label), the platform `.form-control` (44px floor,
-  the platform focus ring the tiebreaker input also keeps, the 16px mobile
-  anti-zoom), and a 44px "Find" button in the day-tab family (a resting tab's
+  the room's garnet input focus per §7.3, the 16px mobile anti-zoom), and a
+  44px "Find" button in the day-tab family (a resting tab's
   weight and hover, never louder than a tab); label above the field on a phone,
   inline from `sm` up. Phone: top of the slate, the same reach the day tabs have
   (the no-second-sticky-band ruling above stands); `lg+`: sticky with the

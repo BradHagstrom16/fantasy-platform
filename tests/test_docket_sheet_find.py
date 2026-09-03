@@ -315,3 +315,19 @@ def test_find_control_css_contract():
     # The room's shared garnet focus ring covers the new control.
     ring = re.search(r'^\.docket-side:focus-visible,[^{]*\{', CSS, re.M)
     assert ring and '.docket-find-btn:focus-visible' in ring.group(0)
+
+
+def test_room_inputs_focus_garnet_not_gold():
+    """The platform .form-control:focus paints Commish Gold (~2.8:1 on the
+    white field, ~2.4:1 on bone, under the 3:1 non-text floor). The room
+    re-derives its inputs to the garnet identity its buttons already
+    carry, so a Tab from the find field to its Find button never changes
+    ring colour (the CFB crimson re-derive, mirrored; DESIGN.md §7.3)."""
+    m = re.search(
+        r'body\.game-docket\s+\.form-control:focus[^{]*\{([^}]*)\}', CSS)
+    assert m, 'body.game-docket .form-control:focus is missing'
+    rule = m.group(1)
+    assert re.search(r'border-color:\s*var\(--game-accent\)', rule)
+    assert 'rgba(var(--game-accent-rgb)' in rule
+    for gold in ('--platform-accent', '--gold', '212,168,32', '212, 168, 32'):
+        assert gold not in rule, f'gold leaked into the room input ring: {gold}'

@@ -13063,9 +13063,9 @@ body.game-docket {
    targets per DESIGN.md 6.9: 36px height with 44px min width. */
 /* The index (design review 2026-09-02): the find field leads the calendar
    block. One ruled line of the clerk's voice: a Teko label, the platform
-   form control (44px floor, the same focus ring the tiebreaker keeps, the
-   16px mobile anti-zoom), and a Find button in the day-tab family one step
-   quieter. Label above the field on a phone, inline from sm up. */
+   form control (44px floor, the room's garnet input focus, the 16px mobile
+   anti-zoom), and a Find button in the day-tab family one step quieter.
+   Label above the field on a phone, inline from sm up. */
 .docket-find {
   display: flex;
   flex-wrap: wrap;
@@ -13366,6 +13366,16 @@ button.docket-side:hover {
 .docket-find-btn:focus-visible {
   outline: 2px solid var(--game-accent);
   outline-offset: 2px;
+}
+/* The room's inputs (the find field, the tiebreaker number) take the same
+   garnet identity: the platform .form-control:focus paints Commish Gold,
+   which reads ~2.8:1 on the white field and ~2.4:1 on bone (under the 3:1
+   non-text floor), and a Tab from the find field to its Find button must
+   not change ring colour. Mirror of CFB's crimson re-derive. */
+body.game-docket .form-control:focus,
+body.game-docket .form-select:focus {
+  border-color: var(--game-accent);
+  box-shadow: 0 0 0 3px rgba(var(--game-accent-rgb), .22);
 }
 .docket-side-team { flex: 1 1 auto; min-width: 0; }
 .docket-side-num {
