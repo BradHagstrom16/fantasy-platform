@@ -278,6 +278,10 @@ def test_find_submit_rides_the_repaint_layer():
     assert 'history.pushState' in script
     assert "addEventListener('popstate'" in script
     assert 'refreshRegions()' in script
+    # A repaint whose URL the page has since left is discarded, so a quick
+    # Back during a search never paints the old results under the new
+    # address (the sequence check is the guard).
+    assert 'seq !== refreshSeq || url !== window.location.href' in script
     assert 'docket-find-q' in script
     # Touch keeps its keyboard down; the sticky offset follows the
     # measured calendar height.
@@ -300,8 +304,9 @@ def test_find_control_css_contract():
     back = _rule(r'^\.docket-showing a')
     assert re.search(r'padding:\s*\.45rem', back)
     assert re.search(r'margin:\s*-\.45rem', back)
-    # The button rests at the day tab's weight, never louder.
-    assert re.search(r'color:\s*var\(--text-secondary\)',
+    # The button rests at the day tab's weight, never louder (the
+    # foreground color property, not border-color or background-color).
+    assert re.search(r'(?<![-\w])color:\s*var\(--text-secondary\)',
                      _rule(r'^\.docket-find-btn'))
     assert re.search(r'white-space:\s*nowrap', _rule(r'^\.docket-showing-back'))
     assert 'var(--docket-cal-h' in CSS

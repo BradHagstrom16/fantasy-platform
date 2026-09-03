@@ -272,6 +272,10 @@ the finish review, the verdict, and DESIGN.md.
     (function () {
         var REGIONS = ['docket-slate', 'docket-rail', 'docket-rail-mobile'];
         var busy = false;
+        // Each repaint takes a sequence number; a later one (a newer
+        // search, a Back or Forward) supersedes it, so a response for a
+        // URL the page has since left is never painted.
+        var refreshSeq = 0;
 
         function notice(message, isError) {
             var el = document.getElementById('docket-notice');
@@ -284,6 +288,8 @@ the finish review, the verdict, and DESIGN.md.
         }
 
         function refreshRegions() {
+            var seq = ++refreshSeq;
+            var url = window.location.href;
             // The repaint swaps innerHTML, which would throw away the drawer's
             // scroll position and the member's focus; remember both and put
             // them back so setting x2 on slot 7 does not bounce to slot 1.
@@ -301,9 +307,11 @@ the finish review, the verdict, and DESIGN.md.
                             (f.querySelector('[name=side]') || {}).value || '',
                             (f.querySelector('[name=clear]') || {}).value || ''].join('|');
             }
-            return fetch(window.location.href, { headers: { 'X-Requested-With': 'docket-refresh' } })
+            return fetch(url, { headers: { 'X-Requested-With': 'docket-refresh' } })
                 .then(function (resp) { return resp.text(); })
                 .then(function (html) {
+                    // Stale: a later repaint took over, or the address moved on.
+                    if (seq !== refreshSeq || url !== window.location.href) return;
                     var doc = new DOMParser().parseFromString(html, 'text/html');
                     REGIONS.forEach(function (id) {
                         var next = doc.getElementById(id);
@@ -412,11 +420,10 @@ the finish review, the verdict, and DESIGN.md.
         window.addEventListener('popstate', function () {
             // Back or Forward across a search: repaint the slate for the
             // URL the browser landed on, so the view matches the address.
-            if (busy) return;
-            busy = true;
+            // Not gated on busy: this repaint supersedes any in flight
+            // (the sequence check above discards the older response).
             refreshRegions().then(announceFind)
-                .catch(function () { window.location.reload(); })
-                .finally(function () { busy = false; });
+                .catch(function () { window.location.reload(); });
         });
 
         document.addEventListener('submit', function (event) {
