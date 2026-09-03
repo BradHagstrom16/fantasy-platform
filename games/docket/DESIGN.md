@@ -705,6 +705,42 @@ pre-verdict state is the state members see first. Per §4.1 and §7.10, never an
   ("no sheet filed, charged 18.0"). The late-joiner rule made visible so it does not read as
   a bug.
 
+### 8.8 The purse and the weekly verdicts — `.docket-purse-line`, `.docket-verdict`
+
+Brad's ruling of 2026-09-03 (rulings doc, Amendments; ADR-059): a fixed prize to each
+week's top sheet across all nineteen weeks, then what is left of the entries split by
+percent into first, second, and third. The room states it in three places and derives it
+in one.
+
+- **Every dollar is derived, never typed.** `games/docket/services/purse.py` computes the
+  purse from the live roster count, `DOCKET_ENTRY_FEE`, `DOCKET_WEEKLY_PRIZE`, and
+  `DOCKET_PODIUM_SPLIT` (default `65,25,10`), with `TOTAL_WEEKS` from the week math. Second
+  and third floor to the dollar and first takes the remainder, so the three always sum to
+  the pot; the pot floors at zero. Enrollment is open until the Week 1 deadline, which is
+  the whole reason a percent rule beat fixed dollars: a typed number is wrong the moment
+  the roster moves. Thousands get a separator (`$1,080`), the same as a bank statement.
+- **The rules page** (§8.6) carries the rule under "The season": entry, the weekly verdict
+  (the three keys applied to one week; a level week splits the prize), and the season pot
+  with its arithmetic shown in full, ending on the standing line that a season-long tie on
+  all three keys is the Commissioner's call.
+- **The ledger** states the purse in one caption line (`.docket-purse-line`) directly under
+  the standings — the table on desktop, the cards on a phone, the roster before any week
+  grades — linking to the rule. Under the table, **the weekly verdicts** (`.docket-verdicts`)
+  list each graded week's top sheet on the week-row primitives (`W1`, avatar + name,
+  points, "7 wins, off by 3.5 · $20"); a level week reads "amy and zed … split $20". Inside
+  the drawers the week that won carries a `.docket-week-verdict` receipt ("$20" / "split
+  $20"): Teko, ink on a bone tint, **never garnet** (§6.5 — garnet means yours, not won).
+  The January verdict banner (§8.4) gains one sentence, the first prize; nothing else
+  about it moves.
+- **Never the lounge.** The purse is room content, like the fee and Settle the Tab.
+- **The weekly winner is the engine's** (`grading/season.py::week_winners`): points, then
+  wins, then that week's tiebreaker error, in `player_id` order when level; a roster member
+  with no sheet is absent from the rollup and never in the running. The season pass joins
+  the enrollments on (`LedgerVerdict`, `LedgerRow.prize_weeks`) and adds no query.
+
+Locked by `tests/test_docket_purse.py`, `tests/test_docket_season_pass.py`, and the purse
+tests in `tests/test_docket_ledger_routes.py` (a config flip must move every number).
+
 ---
 
 ## 9. Engineering Invariants
