@@ -296,7 +296,8 @@ applications:
 - Register glossary (use consistently): the **docket** (a week's slate + your sheet), a
   **case** (one game), a **side** (one pick), the **headliner** (best pick, worth double),
   **held in reserve** (the backup, slot 9), a **verdict** (win), a **mistrial** (push),
-  **thrown out** (No Contest), the **ledger** (season standings), **court adjourns** may
+  **thrown out** (No Contest), the **ledger** (season standings), **find a case** (the
+  sheet's week-wide search, §7.7), **court adjourns** may
   flavor the deadline but the deadline line always states the literal time.
 - On the sheet itself, one word per object where a first-timer taps (clarity pass 2026-09-01, §7.6a):
   the mark and control are **x2** (every first appearance says "it scores double"; "headliner" stays
@@ -392,8 +393,13 @@ The decision primitive, escalating with commitment (pick-surface doctrine shared
 - **Hover/focus**: half-step lift, garnet border hint, visible focus ring. **The room's
   focus ring is garnet** (`outline: 2px solid --game-accent`, offset 2) on docket
   interactive controls: the platform gold ring reads sub-3:1 on bone and this room runs
-  its own ring the way CFB's admin desk runs crimson; the tiebreaker input keeps the
-  platform form-control focus (gold border + glow) unchanged.
+  its own ring the way CFB's admin desk runs crimson. **The room's inputs take the same
+  identity** (`body.game-docket .form-control:focus`: garnet border + a 22% garnet glow,
+  the mirror of CFB's crimson re-derive): the platform's gold input focus measured ~2.8:1
+  on the white field and ~2.4:1 on bone, and once the find field sat 8px from a
+  garnet-ringed Find button, two ring colours inside one control was the inconsistency
+  (ruled 2026-09-03; the earlier carve-out that left the tiebreaker input gold is
+  withdrawn). Locked by `tests/test_docket_sheet_find.py`.
 - **Held** (`.is-picked`): the stamp — garnet border, garnet 8-12% tint, weight step, slot
   number badge. Never tint alone.
 - **Opposite-of-held**: available but visibly secondary (selecting it moves the pick, 2.5).
@@ -494,10 +500,56 @@ Three calendar aids (design review 2026-08-19, for the ~60-case Saturday):
   cast) so the long Saturday can be navigated from anywhere in the scroll.
   Below `lg` it scrolls with the page (tabs wrap there, and the fixed bottom
   drawer bar already persists — a second sticky band would sandwich content).
+  The find field rides inside the band (ruled 2026-09-03, measured on the
+  60-case Saturday at 1440×815: chrome 106px + calendar 208px = 314px pinned,
+  38.5% of the viewport, of which the find row is 55px; the two chip rows are
+  78px). It stays because it is the broadest aid and the one a member
+  mid-scroll has to *see* rather than remember; if the band's height is ever
+  the complaint, the lever is the chip rows, not the find row.
 - **Session jumps — `.docket-session-jumps`.** On a multi-wave day the day head
   offers anchor links ("Morning 13 · Afternoon 29 · Evening 25") to the session
   heads, which carry ids + `scroll-margin-top` clearing the sticky chrome. Plain
   hrefs; the no-JS spine covers wayfinding too.
+
+A fourth aid (design review 2026-09-02, from a member's ask: "especially when we
+have pros in there as well it's gonna be tough looking for a specific game"):
+
+- **The index — `.docket-find`.** A "Find a case" field that leads the calendar
+  block: a `role="search"` GET form (`?q=`, plain navigation, never mutation, so
+  it works identically in preview/open/locked/closed and without JS). **Week-wide
+  by design**: the member knows the team, not the day, so the query ignores the
+  day scope and the hidden `day` it carries is only the way back. Every typed word
+  must appear on the case: either team name, the sport's search words (`NFL pro
+  pros`, `CFB college NCAA`, so "nfl" or "pros" lists the whole pro slate), a
+  conference name via the same display-only classifier the chips use, or the CT
+  day's name ("sunday"). The query is whitespace-collapsed and capped at 60
+  characters. Anatomy: a visible Teko
+  label (never placeholder-as-label), the platform `.form-control` (44px floor,
+  the room's garnet input focus per §7.3, the 16px mobile anti-zoom), and a
+  44px "Find" button in the day-tab family (a resting tab's
+  weight and hover, never louder than a tab); label above the field on a phone,
+  inline from `sm` up. Phone: top of the slate, the same reach the day tabs have
+  (the no-second-sticky-band ruling above stands); `lg+`: sticky with the
+  calendar, whose measured height the sheet script writes to `--docket-cal-h` so
+  the session heads' scroll margin clears it on every chip-row count. While a
+  query is in force the day-scoped aids step aside (no chips, no session jumps,
+  no current day tab) and the results render under `.docket-find-head`:
+  "Matching cases" plus the no-silent-caps line "Showing N of M cases matching
+  “q” · All cases ›", grouped by day under the session-head primitive (the day as
+  an h3, with day jumps when matches span more than one day), rows unchanged and
+  pickable in place. Zero matches is the one new state and it is stated once, in
+  the clerk's register: the title carries the query ("Nothing filed under “q”"),
+  the caption keeps the count and the way back ("0 of M cases · All cases ›"),
+  one hint line ("Try a team name, a conference, a day, or NFL."), and the field
+  keeps the typed text. With JS the result line is announced through the
+  `role=status` notice and the caret returns to the field on pointer devices
+  only (on touch a programmatic focus would raise the keyboard over the result).
+  Locked by `tests/test_docket_sheet_find.py`.
+- **The return fields — `_return_fields.html`.** Every mutation form carries the
+  view it was submitted from (`day`, `conf`, `q`) as hidden inputs, and
+  `_back_to_sheet` redirects with the same keys, so a no-JS pick from a filtered
+  or searched view lands back on that view (before 2026-09-02 a conference filter
+  was dropped on the way back).
 
 ### 7.8 Sub-nav — `.subnav-docket`
 
@@ -534,6 +586,11 @@ Behavior hooks are `data-docket-*` attributes (`data-docket-action`, `-game`, `-
 `is-no-line`) ship alongside styling classes and are never renamed for styling reasons
 (platform template-restyling rule). The sheet is fully functional without JS (mini-form
 PRG); JS is an enhancement layer that repaints from the server's authoritative sheet state.
+The find form (§7.7) is the sheet's one GET form: with JS its submit pushes the URL and
+rides the same repaint (`refreshRegions`), keeping the caret in the field and announcing
+the result line through the page's `role=status` notice; Back and Forward across a search
+repaint the slate for the URL they land on (`popstate`); without JS it is an ordinary
+navigation.
 
 ### 7.12 Settle the Tab — `.settle-tab` (platform partial `templates/_settle_tab.html`)
 
@@ -647,6 +704,42 @@ pre-verdict state is the state members see first. Per §4.1 and §7.10, never an
 - **A member with no sheet filed** — 0 points and the week's default error, said out loud
   ("no sheet filed, charged 18.0"). The late-joiner rule made visible so it does not read as
   a bug.
+
+### 8.8 The purse and the weekly verdicts — `.docket-purse-line`, `.docket-verdict`
+
+Brad's ruling of 2026-09-03 (rulings doc, Amendments; ADR-059): a fixed prize to each
+week's top sheet across all nineteen weeks, then what is left of the entries split by
+percent into first, second, and third. The room states it in three places and derives it
+in one.
+
+- **Every dollar is derived, never typed.** `games/docket/services/purse.py` computes the
+  purse from the live roster count, `DOCKET_ENTRY_FEE`, `DOCKET_WEEKLY_PRIZE`, and
+  `DOCKET_PODIUM_SPLIT` (default `65,25,10`), with `TOTAL_WEEKS` from the week math. Second
+  and third floor to the dollar and first takes the remainder, so the three always sum to
+  the pot; the pot floors at zero. Enrollment is open until the Week 1 deadline, which is
+  the whole reason a percent rule beat fixed dollars: a typed number is wrong the moment
+  the roster moves. Thousands get a separator (`$1,080`), the same as a bank statement.
+- **The rules page** (§8.6) carries the rule under "The season": entry, the weekly verdict
+  (the three keys applied to one week; a level week splits the prize), and the season pot
+  with its arithmetic shown in full, ending on the standing line that a season-long tie on
+  all three keys is the Commissioner's call.
+- **The ledger** states the purse in one caption line (`.docket-purse-line`) directly under
+  the standings — the table on desktop, the cards on a phone, the roster before any week
+  grades — linking to the rule. Under the table, **the weekly verdicts** (`.docket-verdicts`)
+  list each graded week's top sheet on the week-row primitives (`W1`, avatar + name,
+  points, "7 wins, off by 3.5 · $20"); a level week reads "amy and zed … split $20". Inside
+  the drawers the week that won carries a `.docket-week-verdict` receipt ("$20" / "split
+  $20"): Teko, ink on a bone tint, **never garnet** (§6.5 — garnet means yours, not won).
+  The January verdict banner (§8.4) gains one sentence, the first prize; nothing else
+  about it moves.
+- **Never the lounge.** The purse is room content, like the fee and Settle the Tab.
+- **The weekly winner is the engine's** (`grading/season.py::week_winners`): points, then
+  wins, then that week's tiebreaker error, in `player_id` order when level; a roster member
+  with no sheet is absent from the rollup and never in the running. The season pass joins
+  the enrollments on (`LedgerVerdict`, `LedgerRow.prize_weeks`) and adds no query.
+
+Locked by `tests/test_docket_purse.py`, `tests/test_docket_season_pass.py`, and the purse
+tests in `tests/test_docket_ledger_routes.py` (a config flip must move every number).
 
 ---
 

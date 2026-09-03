@@ -113,3 +113,19 @@ def season_standings(week_rollups: Sequence[WeekRollup],
             dropped_points=dropped_points,
         ))
     return tuple(standings)
+
+
+def week_winners(rollup: WeekRollup) -> tuple[str, ...]:
+    """The player ids that top one graded week: the ledger's three keys
+    applied to that week alone — points (desc), wins (desc), that week's
+    tiebreaker error (asc) — in player_id order (the engine's tie device).
+    More than one id means the week's prize splits (rulings Amendments,
+    2026-09-03). A roster member with no sheet is absent from the rollup
+    and therefore never in the running; an ungraded week has no winner.
+    """
+    if not rollup.players:
+        return ()
+    best = min((-p.points, -p.wins, p.error_tenths) for p in rollup.players)
+    return tuple(sorted(
+        p.player_id for p in rollup.players
+        if (-p.points, -p.wins, p.error_tenths) == best))

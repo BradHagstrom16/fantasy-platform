@@ -134,3 +134,27 @@ Supersedes the Core-session clause *"weekly designated tiebreaker game (SNF conv
 - **Week 1** carries no NFL game (NFL Week 1 opens Thu Sep 10 = Docket Week 2), so its pool is the whole slate and the rule resolves to the latest game on it: **SMU @ Florida State, Mon Sep 7 (Labor Day)**.
 - **Designated automatically**, by the Tuesday `--mode setup` import and every Tue–Fri `--mode lines` run (`games/docket/services/tiebreaker_rule.py`), once the rule's game carries a locked total. The rule **waits** for that total rather than sliding to the next game (a slide would make Sunday night sticky), and it **fills only an empty designation — it never moves one on file**. A total that never posts surfaces as before: WARNINGs all week, exit 1 at the Saturday deadline pass.
 - **The commissioner's hand designation is the override** (`/docket/admin/week/N/tiebreaker`, `flask docket set-tiebreaker`), pre-deadline only, with the existing clear-and-notify consequences. Recorded as ADR-054.
+
+### 2026-09-03 — The purse (Brad)
+
+Settles the "How the pot is divided is the Commissioner's call" line the rules page shipped
+with. The season is **19 docket weeks** (`TOTAL_WEEKS`, CFB Week 1 through NFL Week 18);
+Brad's first draft ($20 × 18 weeks, $450 / $200 / $70 on an 18-member pot) assumed 18, and
+the ruling trims to the pot rather than covering the difference.
+
+- **The weekly verdict:** a fixed **$20** (`DOCKET_WEEKLY_PRIZE`) to the week's top sheet,
+  every week including CFB-only Week 1. The week's winner is the ledger's three keys applied
+  to that week alone — **points, then wins, then that week's tiebreaker error (lowest)**; a
+  sheet still level on all three **splits** the prize. A member with no sheet filed is never
+  in the running.
+- **The season pot:** the roster × the entry fee, less 19 × the weekly prize, split by
+  percent (`DOCKET_PODIUM_SPLIT`, default **65 / 25 / 10**) into first, second, and third;
+  second and third floor to the dollar, first takes the remainder. The numbers are derived
+  from the live roster on every render, never typed, because enrollment is open until the
+  Week 1 deadline. At 18 members: $1,080 in, $380 to the weeks, $700 to the podium as
+  $455 / $175 / $70.
+- **A season-long tie on all three keys** stays a commissioner ruling (Grading
+  Clarifications, "Full three-key tie"); the site states that and computes nothing for it.
+- Surfaces: the rules page ("The season"), the ledger (purse line, weekly verdicts, the
+  drawer receipt, the first prize on the closing banner). Never the lounge. Recorded as
+  ADR-059; doctrine in `games/docket/DESIGN.md` §8.8.

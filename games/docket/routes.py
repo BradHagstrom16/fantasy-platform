@@ -22,7 +22,7 @@ from flask import (
     url_for,
 )
 from flask_login import current_user, login_required
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 
 from extensions import db
@@ -43,6 +43,7 @@ from games.docket.services.grading.snapshots import BACKUP_SLOT, SCORING_SLOTS, 
 from games.docket.services.importer import BOOKMAKER_LABELS, BOOKMAKER_PRIORITY
 from games.docket.services.payment import payment_nudge_for
 from games.docket.services.picks import PickError
+from games.docket.services.purse import season_purse
 from games.docket.services.season_pass import season_ledger
 from games.docket.services.weeks import (
     CT,
@@ -65,6 +66,14 @@ def _kickoff_ct(dt):
 
 _NCAAF = 'americanfootball_ncaaf'
 
+# The find field's haystack words for a sport: the label plus the plain
+# words a member types ("pros" was the ask that prompted the field).
+_SPORT_SEARCH_WORDS = {
+    _NCAAF: 'CFB college NCAA',
+    'americanfootball_nfl': 'NFL pro pros',
+}
+FIND_QUERY_MAX = 60
+
 
 def _game_conferences(game) -> set[str]:
     """The conferences a CFB case belongs to, by either side's mapped name.
@@ -84,6 +93,46 @@ def _game_conferences(game) -> set[str]:
 
 def _conf_slug(name: str) -> str:
     return name.lower().replace(' ', '-')
+
+
+def _find_query(raw: str | None) -> str:
+    """Normalize the find field: collapse whitespace, cap the length."""
+    return ' '.join((raw or '').split())[:FIND_QUERY_MAX].strip()
+
+
+def _case_matches(game, tokens: list[str]) -> bool:
+    """Every typed word appears somewhere on the case: either team, the
+    sport's search words, a conference name (display-only, D22), or the
+    CT day's name ("sunday" is the pro slate in one word)."""
+    haystack = ' '.join([
+        game.away_team,
+        game.home_team,
+        _SPORT_SEARCH_WORDS.get(game.sport, SPORT_LABELS.get(game.sport, '')),
+        _kickoff_ct(game.kickoff).strftime('%A'),
+        *sorted(_game_conferences(game)),
+    ]).casefold()
+    return all(token in haystack for token in tokens)
+
+
+def _group_by_day(games: list) -> list[dict]:
+    """Bucket kickoff-sorted games by CT calendar day, each day carrying
+    its session waves. In the route, never Jinja sort/group."""
+    days: list[dict] = []
+    for game in games:
+        kickoff_ct = _kickoff_ct(game.kickoff)
+        key = kickoff_ct.date().isoformat()
+        if not days or days[-1]['key'] != key:
+            days.append({
+                'key': key,
+                'label': kickoff_ct.strftime('%A, %B %-d'),
+                'tab_label': kickoff_ct.strftime('%a %-m/%-d'),
+                'games': [],
+                'sessions': [],
+            })
+        days[-1]['games'].append(game)
+    for day in days:
+        day['sessions'] = _sessions_for(day['games'])
+    return days
 
 
 def _sessions_for(games: list) -> list[tuple[str, list]]:
@@ -220,29 +269,16 @@ def index():
             designated=None,
             season_opens_label=season_opens_label,
             preview=False,
+            find_query='',
+            sheet_return={},
         )
     sheet = picks_service.sheet_state(current_user.id, week)
     held = {(p['game_id'], p['market']): p for p in sheet['picks']}
     slot_map = {p['slot']: p for p in sheet['picks']}
     locked_ids = set(sheet['locked_game_ids'])
 
-    # Group by CT calendar day in the route (never Jinja sort/group).
-    days: list[dict] = []
-    for game in games:
-        kickoff_ct = _kickoff_ct(game.kickoff)
-        key = kickoff_ct.date().isoformat()
-        if not days or days[-1]['key'] != key:
-            days.append({
-                'key': key,
-                'label': kickoff_ct.strftime('%A, %B %-d'),
-                'tab_label': kickoff_ct.strftime('%a %-m/%-d'),
-                'games': [],
-                'sessions': [],
-            })
-        days[-1]['games'].append(game)
-
-    for day in days:
-        day['sessions'] = _sessions_for(day['games'])
+    days = _group_by_day(games)
+    find_query = _find_query(request.args.get('q'))
 
     # Active day: the requested tab if it exists, else the first day still
     # holding an unlocked case, else the last day.
@@ -257,6 +293,23 @@ def index():
             days[-1] if days else None,
         )
 
+    # The index (design review 2026-09-02): the find field is week-wide,
+    # so a member who knows the team but not the day still finds the case.
+    # A plain GET (?q=) on the no-JS spine, navigation never mutation, like
+    # the chips; the day param is only the way back ("All cases"). While a
+    # query is in force the day-scoped aids (chips, session jumps) step
+    # aside and no day tab is current.
+    find_days: list[dict] = []
+    find_total = 0
+    return_day = None
+    if find_query:
+        tokens = find_query.casefold().split()
+        find_days = _group_by_day(
+            [g for g in games if _case_matches(g, tokens)])
+        find_total = sum(len(d['games']) for d in find_days)
+        if requested and any(d['key'] == requested for d in days):
+            return_day = requested
+
     # Conference chips (design review 2026-08-19): day-scoped, so a chip
     # always yields at least one case and the empty filtered view is
     # unreachable. Chips are plain GET links (?conf=), never forms — the
@@ -264,7 +317,7 @@ def index():
     # locked, and closed states. Day-tab links drop the param (switching
     # day resets the filter); an unknown slug falls back to unfiltered.
     conf_counts: Counter[str] = Counter()
-    if active_day is not None:
+    if active_day is not None and not find_query:
         for game in active_day['games']:
             conf_counts.update(_game_conferences(game))
     conferences = [
@@ -297,6 +350,17 @@ def index():
         and (designated.id in locked_ids or sheet['deadline_passed'])
     )
 
+    # The return fields: the view every mutation form was submitted from,
+    # carried as hidden inputs so the PRG redirect lands back on it
+    # (_back_to_sheet reads the same keys).
+    if find_query:
+        sheet_return = {'day': return_day, 'q': find_query}
+    else:
+        sheet_return = {
+            'day': active_day['key'] if active_day else None,
+            'conf': active_conf['slug'] if active_conf else None,
+        }
+
     return render_template(
         'docket/sheet.html',
         week=week,
@@ -314,6 +378,11 @@ def index():
         conferences=conferences,
         active_conf=active_conf,
         day_case_total=day_case_total,
+        find_query=find_query,
+        find_days=find_days,
+        find_total=find_total,
+        week_case_total=len(games),
+        sheet_return=sheet_return,
     )
 
 
@@ -326,9 +395,11 @@ def _wants_json() -> bool:
 
 
 def _back_to_sheet():
-    """PRG target preserving the day tab the form was submitted from."""
-    day = request.form.get('day') or None
-    return redirect(url_for('docket.index', day=day))
+    """PRG target preserving the view the form was submitted from: the
+    day tab, its conference filter, and the find query (the return fields
+    every mutation form carries via docket/_return_fields.html)."""
+    view = {key: request.form.get(key) or None for key in ('day', 'conf', 'q')}
+    return redirect(url_for('docket.index', **view))
 
 
 def _sheet_error(err: PickError):
@@ -463,6 +534,10 @@ def ledger():
         your_row=your_row,
         your_rank_label=_ordinal(your_row.standing.rank) if your_row else None,
         season_opens_label=WEEK_1_BOUNDARY_LOCAL.strftime('%B %-d'),
+        # The purse follows the roster the ledger already loaded (one row per
+        # enrollment, graded or not); the split weeks mark the drawer receipt.
+        purse=season_purse(len(ledger.rows)),
+        split_weeks={v.week_number for v in ledger.verdicts if v.split},
     )
 
 
@@ -492,10 +567,14 @@ def rules():
     # The perfect week, derived: seven ordinary wins plus the doubled one.
     max_week = ((SCORING_SLOTS - 1) * slot_points(Outcome.WIN, doubled=False)
                 + slot_points(Outcome.WIN, doubled=True))
+    member_count = db.session.scalar(
+        select(func.count()).select_from(DocketEnrollment)
+        .filter_by(season_year=SEASON_YEAR)) or 0
     return render_template(
         'docket/rules.html',
         scoring=scoring,
         max_week=max_week,
+        purse=season_purse(member_count),
         scoring_slots=SCORING_SLOTS,
         backup_slot=BACKUP_SLOT,
         total_weeks=TOTAL_WEEKS,

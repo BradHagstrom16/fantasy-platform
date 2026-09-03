@@ -382,3 +382,121 @@ def test_rules_states_the_three_keys_and_the_points_only_drop(app, client):
     assert 'Key 2, wins' in text
     assert 'Key 3, the error account' in text
     assert 'The drop forgives points only' in text
+
+
+# ---------------------------------------------------------------------------
+# The purse (rulings Amendments 2026-09-03): every dollar derived, never typed
+# ---------------------------------------------------------------------------
+
+def _roster(n):
+    return [_member(f'p{i:02d}') for i in range(n)]
+
+
+def _verdict_rows(html):
+    start = html.find('class="docket-verdicts"')
+    end = html.find('class="docket-entries"')
+    assert start != -1 and end != -1 and start < end
+    return re.findall(r'<li class="docket-verdict[^"]*">(.*?)</li>',
+                      html[start:end], re.S)
+
+
+def test_ledger_states_the_purse_before_any_week_grades(app, client):
+    members = _roster(18)
+    db.session.commit()
+    _login(client, members[0])
+
+    html = client.get('/docket/ledger').data.decode()
+    assert 'docket-purse-line' in html
+    text = _text(html)
+    assert 'first $455, second $175, third $70' in text
+    assert '$20 to each week' in text
+    assert '/docket/rules#rules-season' in html
+    assert 'docket-verdicts' not in html
+
+
+def test_weekly_verdicts_name_each_weeks_top_sheet(app, client):
+    week1, week2 = _week(1), _week(2)
+    alice, bob = _member('alice'), _member('bob')
+    _result(week1, alice, 7.5, 7, 40)
+    _result(week1, bob, 4.0, 4)
+    _result(week2, alice, 3.0, 3)
+    _result(week2, bob, 6.0, 6, 120)
+    db.session.commit()
+    _login(client, alice)
+
+    html = client.get('/docket/ledger').data.decode()
+    assert 'The weekly verdicts' in _text(html)
+    rows = _verdict_rows(html)
+    assert len(rows) == 2
+    first, second = _text(rows[0]), _text(rows[1])
+    assert first.startswith('W1')
+    assert 'alice' in first and '7.5' in first
+    assert '7 wins, off by 4.0' in first
+    assert '$20' in first
+    assert second.startswith('W2') and 'bob' in second
+    # The platform integration point: the avatar precedes the name.
+    assert rows[0].find('docket-ledger-avatar') < rows[0].find('alice')
+    # The receipt in each drawer: one tag per winning week, on the week won.
+    tags = re.findall(r'<span class="docket-week-verdict">(.*?)</span>', html)
+    assert [t.strip() for t in tags] == ['$20', '$20']
+
+
+def test_a_level_week_splits_the_prize_out_loud(app, client):
+    week = _week(1)
+    zed, amy = _member('zed'), _member('amy')
+    _result(week, zed, 7.0, 7, 15)
+    _result(week, amy, 7.0, 7, 15)
+    db.session.commit()
+    _login(client, amy)
+
+    html = client.get('/docket/ledger').data.decode()
+    (row,) = _verdict_rows(html)
+    text = _text(row)
+    # Both names, in display-name order, each behind its avatar.
+    assert text.index('amy') < text.index(' and ') < text.index('zed')
+    assert 'split $20' in text
+    tags = re.findall(r'<span class="docket-week-verdict">(.*?)</span>', html)
+    assert [t.strip() for t in tags] == ['split $20', 'split $20']
+
+
+def test_verdict_banner_carries_the_first_prize(app, client):
+    from games.docket.services.weeks import TOTAL_WEEKS
+
+    members = _roster(18)
+    alice = members[0]
+    for n in range(1, TOTAL_WEEKS + 1):
+        _result(_week(n), alice, 5.0, 5)
+    db.session.commit()
+    _login(client, alice)
+
+    text = _text(client.get('/docket/ledger').data.decode())
+    assert 'The record is closed' in text
+    assert 'First prize, $455.' in text
+
+
+def test_rules_states_the_purse_from_the_roster_and_config(app, client):
+    _roster(18)
+    db.session.commit()
+
+    text = _text(client.get('/docket/rules').data.decode())
+    assert '$20 to the week' in text
+    assert '19 weeks' in text
+    assert '18 members' in text
+    assert '$1,080' in text and '$380' in text and '$700' in text
+    assert 'first 65% ($455), second 25% ($175), third 10% ($70)' in text
+    assert "Commissioner's call" in text
+    assert 'How the pot is divided' not in text
+
+
+def test_rules_purse_follows_a_config_change(app, client, monkeypatch):
+    """No literal anywhere: flip the config and the page follows."""
+    _roster(10)
+    db.session.commit()
+    monkeypatch.setitem(app.config, 'DOCKET_ENTRY_FEE', 50)
+    monkeypatch.setitem(app.config, 'DOCKET_WEEKLY_PRIZE', 10)
+    monkeypatch.setitem(app.config, 'DOCKET_PODIUM_SPLIT', (50, 30, 20))
+
+    text = _text(client.get('/docket/rules').data.decode())
+    assert '$10 to the week' in text
+    assert '10 members' in text and '$500' in text and '$190' in text
+    assert 'first 50% ($155), second 30% ($93), third 20% ($62)' in text

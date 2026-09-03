@@ -1,0 +1,7 @@
+{#- The return fields (design review 2026-09-02): every mutation form
+    carries the view it was submitted from (day tab, conference filter,
+    find query) so the no-JS PRG redirect lands back on that view. Fed by
+    the route's sheet_return dict; _back_to_sheet reads the same keys. -#}
+{%- for name in ('day', 'conf', 'q') if sheet_return and sheet_return.get(name) %}
+<input type="hidden" name="{{ name }}" value="{{ sheet_return[name] }}"/>
+{%- endfor %}

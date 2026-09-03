@@ -45,7 +45,7 @@
               class="docket-x2-form" data-docket-action="clear-best">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
           <input type="hidden" name="clear" value="1"/>
-          <input type="hidden" name="day" value="{{ active_day.key }}"/>
+          {% include 'docket/_return_fields.html' %}
           <button type="submit" class="docket-headliner-chip docket-x2-btn is-set{% if pick.is_auto_best %} is-auto{% endif %}"
                   title="This is your x2. Tap to clear it."
                   aria-label="Your x2, scores double. Tap to clear it.">x2</button>
@@ -57,7 +57,7 @@
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
           <input type="hidden" name="game_id" value="{{ game.id }}"/>
           <input type="hidden" name="market" value="{{ market }}"/>
-          <input type="hidden" name="day" value="{{ active_day.key }}"/>
+          {% include 'docket/_return_fields.html' %}
           <button type="submit" class="docket-x2-btn"
                   title="Make this your x2: it scores double"
                   aria-label="Make this your x2, it scores double">x2</button>
@@ -85,7 +85,7 @@
       <input type="hidden" name="game_id" value="{{ game.id }}"/>
       <input type="hidden" name="market" value="{{ market }}"/>
       <input type="hidden" name="side" value="{{ side }}"/>
-      <input type="hidden" name="day" value="{{ active_day.key }}"/>
+      {% include 'docket/_return_fields.html' %}
       {% if send_reserve %}<input type="hidden" name="backup" value="1"/>{% endif %}
       <button type="submit" class="docket-side{% if pick %} is-move{% endif %}"
               {% if pick %}title="Moves your pick to this side"{% endif %}>

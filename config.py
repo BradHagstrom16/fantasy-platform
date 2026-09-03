@@ -67,6 +67,12 @@ class Config:
     # The Docket Settings (season year lives in games/docket/services/weeks.py,
     # the week-math SSoT — deliberately not a config knob)
     DOCKET_ENTRY_FEE = int(os.environ.get('DOCKET_ENTRY_FEE', '60'))
+    # The purse (rulings doc Amendments, 2026-09-03): a fixed prize to each
+    # week's top sheet across TOTAL_WEEKS, then a percent split of what is
+    # left into first / second / third (games/docket/services/purse.py).
+    DOCKET_WEEKLY_PRIZE = int(os.environ.get('DOCKET_WEEKLY_PRIZE', '20'))
+    DOCKET_PODIUM_SPLIT = tuple(
+        int(x) for x in os.environ.get('DOCKET_PODIUM_SPLIT', '65,25,10').split(','))
 
     # World Cup Fantasy Pool — football-data.org sync
     FOOTBALL_DATA_API_KEY = os.environ.get('FOOTBALL_DATA_API_KEY', '')

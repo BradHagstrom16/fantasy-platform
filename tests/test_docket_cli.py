@@ -399,7 +399,12 @@ def test_roster_as_of_counts_a_null_created_at_as_enrolled(app):
     from games.docket.services.enrollment import roster_user_ids_as_of
 
     unknown = make_user('unknown')
-    make_enrollment(unknown, created_at=None)
+    enrollment = make_enrollment(unknown)
+    # created_at=None on the constructor is not NULL: SQLAlchemy fires the
+    # column default (real wall clock) on INSERT, which put this member
+    # AFTER the fixture deadline once the calendar reached 2026-09-02.
+    # Null the column after the insert so the test exercises NULL itself.
+    enrollment.created_at = None
     db.session.commit()
 
     assert unknown.id in roster_user_ids_as_of(

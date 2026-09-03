@@ -326,3 +326,56 @@ def test_season_complete_only_when_every_week_is_graded(app):
     ledger = season_ledger()
     assert ledger.total_weeks == TOTAL_WEEKS
     assert ledger.season_complete is True
+
+
+# ---------------------------------------------------------------------------
+# The weekly verdicts (the purse, rulings Amendments 2026-09-03)
+# ---------------------------------------------------------------------------
+
+def test_verdicts_name_each_graded_weeks_top_sheet(app):
+    from games.docket.services.season_pass import season_ledger
+
+    week1, week2 = _graded_week(1), _graded_week(2)
+    alice, bob = _player('alice'), _player('bob')
+    _result(week1, alice, 7.5, 7, 40)
+    _result(week1, bob, 4.0, 4, 5)
+    _result(week2, alice, 3.0, 3, 0)
+    _result(week2, bob, 6.0, 6, 120)
+    db.session.commit()
+
+    ledger = season_ledger()
+    assert [(v.week_number, [e.user_id for e in v.winners], v.split)
+            for v in ledger.verdicts] == [(1, [alice.id], False),
+                                          (2, [bob.id], False)]
+    first = ledger.verdicts[0]
+    assert (first.points, first.wins, first.error_tenths) == (7.5, 7, 40)
+    by_name = {row.enrollment.user.username: row for row in ledger.rows}
+    assert by_name['alice'].prize_weeks == frozenset({1})
+    assert by_name['bob'].prize_weeks == frozenset({2})
+
+
+def test_a_level_week_splits_and_names_everyone_by_display_name(app):
+    from games.docket.services.season_pass import season_ledger
+
+    week = _graded_week(1)
+    zed, amy = _player('zed'), _player('amy')
+    _result(week, zed, 7.0, 7, 15)
+    _result(week, amy, 7.0, 7, 15)
+    db.session.commit()
+
+    (verdict,) = season_ledger().verdicts
+    assert verdict.split is True
+    assert [e.user.username for e in verdict.winners] == ['amy', 'zed']
+    for row in season_ledger().rows:
+        assert row.prize_weeks == frozenset({1})
+
+
+def test_verdicts_are_empty_before_any_week_grades(app):
+    from games.docket.services.season_pass import season_ledger
+
+    _player('alice')
+    db.session.commit()
+
+    ledger = season_ledger()
+    assert ledger.verdicts == ()
+    assert ledger.rows[0].prize_weeks == frozenset()

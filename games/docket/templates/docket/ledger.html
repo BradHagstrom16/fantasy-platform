@@ -3,6 +3,11 @@
 {% block title %}The Season Ledger · The Docket{% endblock %}
 
 {% block content %}
+{# The purse in one line (rulings Amendments 2026-09-03): derived from the
+   roster and config, stated wherever the standings are, linked to the rule. #}
+{% macro purse_line() -%}
+<p class="docket-caption docket-purse-line">The purse: {% for line in purse.podium %}{{ line.label|lower }} ${{ '{:,}'.format(line.dollars) }}{{ ', ' if not loop.last else '' }}{% endfor %}; ${{ purse.weekly_prize }} to each week's top sheet. <a href="{{ url_for('docket.rules') }}#rules-season">How it's figured &rsaquo;</a></p>
+{%- endmacro %}
 <!--
 THESIS: the season as a clerk's account book, where the three keys are three
 separate accounts kept side by side and each line opens to show its own
@@ -80,6 +85,7 @@ finish review, the verdict, and DESIGN.md.
             {% endfor %}
         </ul>
     </section>
+    {{ purse_line() }}
 
     {% else %}
 
@@ -96,7 +102,7 @@ finish review, the verdict, and DESIGN.md.
             {{ '%.1f'|format(ledger.leader.standing.total_points) }} points,
             {{ ledger.leader.standing.wins }} wins,
             {{ '%.1f'|format(ledger.leader.standing.error_tenths / 10) }} off across
-            {{ ledger.total_weeks }} weeks.
+            {{ ledger.total_weeks }} weeks. First prize, ${{ '{:,}'.format(purse.podium[0].dollars) }}.
         </p>
     </section>
     {% endif %}
@@ -180,6 +186,37 @@ finish review, the verdict, and DESIGN.md.
             </tbody>
         </table>
     </div>
+    {{ purse_line() }}
+
+    {% if ledger.verdicts %}
+    {# One line per graded week: who took the week's prize, on the same
+       three keys the ledger ranks by, applied to that week alone. #}
+    <section class="docket-verdicts" aria-labelledby="ledger-verdicts">
+        <h2 id="ledger-verdicts" class="docket-section-head">The weekly verdicts</h2>
+        <p class="docket-entries-note">
+            ${{ purse.weekly_prize }} to the top sheet each week. Points decide it,
+            then wins, then that week's tiebreaker error; a level week splits it.
+        </p>
+        <ol class="docket-verdict-list">
+            {% for verdict in ledger.verdicts %}
+            <li class="docket-verdict{% if verdict.split %} is-split{% endif %}">
+                <span class="docket-week-num">W{{ verdict.week_number }}</span>
+                <span class="docket-verdict-names">
+                    {%- for e in verdict.winners -%}
+                    <span class="docket-ledger-avatar" aria-hidden="true">{{ e.user.get_avatar() }}</span><span class="docket-ledger-name">{{ e.get_display_name() }}</span>{% if not loop.last %} and {% endif %}
+                    {%- endfor -%}
+                </span>
+                <span class="docket-week-points">{{ '%.1f'|format(verdict.points) }}</span>
+                <span class="docket-week-note">
+                    {{ verdict.wins }} win{{ 's' if verdict.wins != 1 else '' }},
+                    off by {{ '%.1f'|format(verdict.error_tenths / 10) }}
+                    &middot; {% if verdict.split %}split {% endif %}${{ purse.weekly_prize }}
+                </span>
+            </li>
+            {% endfor %}
+        </ol>
+    </section>
+    {% endif %}
 
     <section class="docket-entries" aria-labelledby="ledger-entries">
         <h2 id="ledger-entries" class="docket-section-head">The weekly entries</h2>
@@ -230,6 +267,9 @@ finish review, the verdict, and DESIGN.md.
                         off by {{ '%.1f'|format(week.error_tenths / 10) }}
                         {% endif %}
                     </span>
+                    {% if week.week_number in row.prize_weeks %}
+                    <span class="docket-week-verdict">{% if week.week_number in split_weeks %}split {% endif %}${{ purse.weekly_prize }}</span>
+                    {% endif %}
                 </li>
                 {% endfor %}
             </ol>

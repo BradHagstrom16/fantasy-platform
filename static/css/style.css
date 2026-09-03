@@ -13061,6 +13061,76 @@ body.game-docket {
    thin the CFB half of a day; NFL cases are never filtered. Same court-
    calendar voice as the day tabs, one visual step quieter. Secondary
    targets per DESIGN.md 6.9: 36px height with 44px min width. */
+/* The index (design review 2026-09-02): the find field leads the calendar
+   block. One ruled line of the clerk's voice: a Teko label, the platform
+   form control (44px floor, the room's garnet input focus, the 16px mobile
+   anti-zoom), and a Find button in the day-tab family one step quieter.
+   Label above the field on a phone, inline from sm up. */
+.docket-find {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .4rem .6rem;
+  margin: 0 0 .65rem;
+}
+.docket-find-label {
+  flex: 1 0 100%;
+  margin: 0;
+  font-family: 'Teko', sans-serif;
+  font-weight: 500;
+  font-size: .9rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+.docket-find .form-control {
+  flex: 1 1 10rem;
+  min-width: 0;
+}
+.docket-find-btn {
+  flex: 0 0 auto;
+  min-height: 44px;
+  min-width: 44px;
+  padding: .35rem 1rem;
+  font-family: 'Teko', sans-serif;
+  font-weight: 500;
+  font-size: .95rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  transition: color var(--transition), border-color var(--transition);
+}
+/* The resting day tab's weight and hover: the button sits in the tab
+   family and is never louder than a tab (the x2 chip stays the sheet's
+   loudest mark). */
+.docket-find-btn:hover { border-color: var(--game-accent-light); color: var(--text-primary); }
+/* The way-back never orphans its middot onto a line of its own. */
+.docket-showing-back { white-space: nowrap; }
+/* Result day heads are h3s (reachable by heading); the session-label
+   voice already sets the face and size, so only the heading margin goes. */
+.docket-find-day .docket-session-label { margin: 0; line-height: 1.2; }
+@media (min-width: 576px) {
+  .docket-find-label { flex: 0 0 auto; }
+  .docket-find .form-control { max-width: 24rem; }
+}
+.docket-find-empty {
+  margin: .25rem 0 1.5rem;
+  max-width: 60ch;
+  color: var(--text-secondary);
+}
+/* The results head stacks its count line under the title below md: the
+   title and the "Showing N of M … · All cases" line are both long, and side
+   by side on a phone each wraps into the other. */
+@media (max-width: 767.98px) {
+  .docket-find-head {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: .2rem;
+  }
+}
 .docket-conf-chips {
   display: flex;
   flex-wrap: wrap;
@@ -13099,7 +13169,16 @@ body.game-docket {
 .docket-conf-chip.is-active .docket-conf-chip-count { color: var(--game-accent); }
 
 /* The no-silent-caps line: a filtered day states the reduction. */
-.docket-showing a { color: var(--game-accent); text-decoration: none; }
+/* The way-back link in a caption line is 12px of text; pad its hit area
+   (negative margin, so the caption's rhythm does not move) past the WCAG
+   2.5.8 24px minimum. */
+.docket-showing a {
+  display: inline-block;
+  padding: .45rem .2rem;
+  margin: -.45rem -.2rem;
+  color: var(--game-accent);
+  text-decoration: none;
+}
 .docket-showing a:hover,
 .docket-showing a:focus-visible { text-decoration: underline; }
 
@@ -13140,7 +13219,10 @@ body.game-docket {
   scroll-margin-top: 120px;
 }
 @media (min-width: 992px) {
-  .docket-session-head { scroll-margin-top: 235px; }
+  /* Chrome (106px) + the sticky calendar, whose height the sheet script
+     measures into --docket-cal-h (the chip rows wrap with the day and the
+     viewport); the fallback is the two-chip-row Saturday without JS. */
+  .docket-session-head { scroll-margin-top: calc(106px + var(--docket-cal-h, 224px) + 16px); }
 }
 .docket-session-label {
   font-family: 'Teko', sans-serif;
@@ -13280,9 +13362,20 @@ button.docket-side:hover {
 .docket-slot-btn:focus-visible,
 .docket-day-tab:focus-visible,
 .docket-conf-chip:focus-visible,
-.docket-session-jump:focus-visible {
+.docket-session-jump:focus-visible,
+.docket-find-btn:focus-visible {
   outline: 2px solid var(--game-accent);
   outline-offset: 2px;
+}
+/* The room's inputs (the find field, the tiebreaker number) take the same
+   garnet identity: the platform .form-control:focus paints Commish Gold,
+   which reads ~2.8:1 on the white field and ~2.4:1 on bone (under the 3:1
+   non-text floor), and a Tab from the find field to its Find button must
+   not change ring colour. Mirror of CFB's crimson re-derive. */
+body.game-docket .form-control:focus,
+body.game-docket .form-select:focus {
+  border-color: var(--game-accent);
+  box-shadow: 0 0 0 3px rgba(var(--game-accent-rgb), .22);
 }
 .docket-side-team { flex: 1 1 auto; min-width: 0; }
 .docket-side-num {
@@ -14215,6 +14308,68 @@ button.docket-side:hover {
 .docket-week.is-dropped .docket-week-points,
 .docket-week.is-absent .docket-week-points { color: var(--text-secondary); }
 .docket-week.is-dropped .docket-week-note { font-style: italic; }
+/* The receipt: a week's prize noted on the week that won it. Ink on a bone
+   tint, never garnet (garnet means "yours", not "won"). */
+.docket-week-verdict {
+  margin-left: auto;
+  align-self: center;
+  font-family: 'Teko', sans-serif;
+  font-weight: 500;
+  font-size: .8rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  line-height: 1.4;
+  color: var(--text-primary);
+  background: rgba(216, 207, 192, .35);
+  border-radius: var(--radius);
+  padding: .05rem .45rem;
+  white-space: nowrap;
+}
+
+/* --- The purse and the weekly verdicts (rulings Amendments 2026-09-03) ---
+   Every dollar is derived from the roster and config (services/purse.py);
+   the ledger states the purse in one caption line wherever the standings
+   are, and lists each graded week's top sheet on the week-row primitives. */
+.docket-purse-line {
+  font-size: .92rem;
+  max-width: 68ch;
+  margin: .85rem 0 0;
+}
+.docket-purse-line a {
+  color: var(--game-primary);
+  text-decoration: none;
+  padding: .45rem 0;
+  margin: -.45rem 0;
+}
+.docket-purse-line a:hover,
+.docket-purse-line a:focus-visible { text-decoration: underline; }
+.docket-verdict-list {
+  list-style: none;
+  margin: 0 0 .75rem;
+  padding: 0;
+}
+.docket-verdict {
+  display: grid;
+  grid-template-columns: 2.4rem minmax(0, 1fr) auto;
+  column-gap: .6rem;
+  row-gap: .1rem;
+  align-items: baseline;
+  padding: .45rem 0;
+  border-top: 1px solid var(--docket-rule);
+}
+.docket-verdict:last-child { border-bottom: 1px solid var(--docket-rule); }
+.docket-verdict-names {
+  font-family: 'Newsreader', Georgia, serif;
+  font-size: 1rem;
+  overflow-wrap: anywhere;
+}
+/* Below sm the note takes its own line under the names; from sm up the
+   four cells sit on one ruled line. */
+.docket-verdict .docket-week-note { grid-column: 2 / -1; }
+@media (min-width: 576px) {
+  .docket-verdict { grid-template-columns: 2.4rem minmax(0, 1fr) auto auto; }
+  .docket-verdict .docket-week-note { grid-column: auto; }
+}
 
 /* --- Appearing this season (pre-verdict roster) --- */
 .docket-appearing-list {

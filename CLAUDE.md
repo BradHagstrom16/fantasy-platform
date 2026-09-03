@@ -173,7 +173,7 @@ Grep is still right for known exact strings, regex, multiline patterns, file glo
 
 ### The Docket (engineering invariants)
 
-Engineering contracts (grading shapes, pick provenance, admin ops, tiebreaker rule, reminder de-dup, second-bill strip) live in `games/docket/DESIGN.md` §9 Engineering Invariants — read before modifying grading or admin code. All test-locked. Key ADRs: 045 (WeekRollup not WeekGrade), 046 (is_dropped derived), 047 (default_error_tenths), 048 (roster snapshot at deadline), 054 (tiebreaker rule).
+Engineering contracts (grading shapes, pick provenance, admin ops, tiebreaker rule, reminder de-dup, second-bill strip) live in `games/docket/DESIGN.md` §9 Engineering Invariants — read before modifying grading or admin code. All test-locked. Key ADRs: 045 (WeekRollup not WeekGrade), 046 (is_dropped derived), 047 (default_error_tenths), 048 (roster snapshot at deadline), 054 (tiebreaker rule), 059 (the purse is derived from the roster — `services/purse.py`, `DOCKET_WEEKLY_PRIZE`/`DOCKET_PODIUM_SPLIT`, DESIGN.md §8.8).
 
 ### World Cup (archived — 2026 tournament complete)
 
@@ -307,6 +307,8 @@ SMTP_SERVER=...          # Dev default smtp.gmail.com; prod smtp-relay.brevo.com
 SMTP_PORT=...            # Dev default 587; prod 2525 (DO blocks 587)
 CFB_SEASON_YEAR=...      # Default 2026 (config.py); CFB_ENTRY_FEE default 25
 DOCKET_ENTRY_FEE=...     # Default 60
+DOCKET_WEEKLY_PRIZE=...  # Default 20 — the purse (ADR-059): $ to each week's top sheet across TOTAL_WEEKS
+DOCKET_PODIUM_SPLIT=...  # Default 65,25,10 — percent split of what's left into 1st/2nd/3rd; must sum to 100
 SEASON_YEAR=...          # GOLF's season (bare name — golf owns the unprefixed keys; also scopes /admin/announce's golf list). Default 2026; ENTRY_FEE default 25
 PAYMENT_VENMO_HANDLE=... # Member payment rails (utils/payment.py); defaults = the live values, blank to hide every "Settle the Tab" nudge
 PAYMENT_ZELLE_PHONE=...  # Same; the copyable Zelle number on the card + in the picks-open emails
