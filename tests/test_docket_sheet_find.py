@@ -75,6 +75,9 @@ def test_find_matches_a_team_anywhere_in_the_week(
     # The no-silent-caps line: the reduction and the way back.
     assert 'Showing 1 of 4 cases matching' in html
     assert 'All cases' in html
+    # One day of matches: no day jumps.
+    assert 'docket-session-jumps' not in html
+    assert 'Find: wis · The Week 1 Docket' in html
 
 
 def test_find_ignores_case_and_needs_every_word(monkeypatch, client, member):
@@ -96,15 +99,20 @@ def test_find_spans_days_and_groups_the_matches_by_day(
     assert 'Wisconsin Badgers' in html         # Saturday
     assert 'Chicago Bears' not in html
     assert 'Showing 3 of 4 cases matching' in html
-    # Grouped under day heads, in calendar order.
+    # Grouped under day heads (real headings), in calendar order, with day
+    # jumps because the matches span more than one day.
+    assert '<h3 class="docket-session-label">Thursday, September 3</h3>' in html
     assert html.index('Thursday, September 3') < html.index(
         'Saturday, September 5')
+    assert 'aria-label="Jump to day"' in html
+    assert 'href="#docket-find-day-2026-09-03"' in html
+    assert 'id="docket-find-day-2026-09-05"' in html
     # The day tabs stay for navigation, none is the current page, and the
     # day-scoped aids step aside.
     assert html.count('docket-day-tab-label') == 3
     assert 'aria-current="page"' not in html
     assert 'docket-conf-chips' not in html
-    assert 'docket-session-jumps' not in html
+    assert 'Jump to session' not in html
 
 
 def test_find_by_league_word_reaches_the_pro_slate(
@@ -118,6 +126,16 @@ def test_find_by_league_word_reaches_the_pro_slate(
     html = client.get('/docket/?q=college').data.decode()
     assert 'Wisconsin Badgers' in html
     assert 'Chicago Bears' not in html
+
+
+def test_find_by_day_word(monkeypatch, client, member):
+    _open_week(monkeypatch)
+    html = client.get('/docket/?q=sunday').data.decode()
+    assert 'Chicago Bears' in html
+    assert 'Wisconsin Badgers' not in html
+    html = client.get('/docket/?q=thursday').data.decode()
+    assert 'Nebraska Cornhuskers' in html
+    assert 'Ohio State Buckeyes' not in html
 
 
 def test_find_query_is_normalized_and_capped(monkeypatch, client, member):
@@ -150,12 +168,15 @@ def test_zero_matches_are_stated_plainly(monkeypatch, client, member):
     _open_week(monkeypatch)
     html = client.get('/docket/?q=zzz').data.decode()
     assert 'docket-case-row' not in html
-    assert 'No matching case' in html
-    assert 'No case this week matches' in html
-    assert 'Try a team name, a conference, or NFL.' in html
+    # Stated once: the title carries the query, the caption the count and
+    # the way back, the hint what the field understands.
+    assert 'Nothing filed under' in html
+    assert '0 of 4 cases' in html
+    assert 'Try a team name, a conference, a day, or NFL.' in html
     assert 'All cases' in html
     assert 'value="zzz"' in html               # kept for correction
     assert 'Showing' not in html
+    assert 'docket-session-jumps' not in html
 
 
 # ── the control ────────────────────────────────────────────────────────────
@@ -252,9 +273,16 @@ def test_find_works_on_the_closed_docket(monkeypatch, client, member):
 def test_find_submit_rides_the_repaint_layer():
     script = SHEET_SRC.split('<script>', 1)[1]
     assert 'form.docket-find' in script
-    assert 'replaceState' in script
+    # A search is a navigation: pushed, so Back returns to the prior view
+    # and a popstate repaints the slate for the URL the browser landed on.
+    assert 'history.pushState' in script
+    assert "addEventListener('popstate'" in script
     assert 'refreshRegions()' in script
     assert 'docket-find-q' in script
+    # Touch keeps its keyboard down; the sticky offset follows the
+    # measured calendar height.
+    assert "matchMedia('(pointer: coarse)')" in script
+    assert '--docket-cal-h' in script
     # The closed-state lock matches the literal attribute form; the script
     # must never spell it that way.
     assert 'data-docket-action="' not in script
@@ -268,6 +296,15 @@ def _rule(anchored_selector):
 
 def test_find_control_css_contract():
     assert re.search(r'min-height:\s*44px', _rule(r'^\.docket-find-btn'))
+    # The way-back link pads its hit area without moving the caption line.
+    back = _rule(r'^\.docket-showing a')
+    assert re.search(r'padding:\s*\.45rem', back)
+    assert re.search(r'margin:\s*-\.45rem', back)
+    # The button rests at the day tab's weight, never louder.
+    assert re.search(r'color:\s*var\(--text-secondary\)',
+                     _rule(r'^\.docket-find-btn'))
+    assert re.search(r'white-space:\s*nowrap', _rule(r'^\.docket-showing-back'))
+    assert 'var(--docket-cal-h' in CSS
     # The room's shared garnet focus ring covers the new control.
     ring = re.search(r'^\.docket-side:focus-visible,[^{]*\{', CSS, re.M)
     assert ring and '.docket-find-btn:focus-visible' in ring.group(0)

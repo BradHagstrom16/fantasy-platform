@@ -13097,16 +13097,21 @@ body.game-docket {
   font-size: .95rem;
   letter-spacing: .06em;
   text-transform: uppercase;
-  color: var(--text-primary);
+  color: var(--text-secondary);
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   transition: color var(--transition), border-color var(--transition);
 }
-.docket-find-btn:hover {
-  color: var(--game-accent);
-  border-color: var(--game-accent);
-}
+/* The resting day tab's weight and hover: the button sits in the tab
+   family and is never louder than a tab (the x2 chip stays the sheet's
+   loudest mark). */
+.docket-find-btn:hover { border-color: var(--game-accent-light); color: var(--text-primary); }
+/* The way-back never orphans its middot onto a line of its own. */
+.docket-showing-back { white-space: nowrap; }
+/* Result day heads are h3s (reachable by heading); the session-label
+   voice already sets the face and size, so only the heading margin goes. */
+.docket-find-day .docket-session-label { margin: 0; line-height: 1.2; }
 @media (min-width: 576px) {
   .docket-find-label { flex: 0 0 auto; }
   .docket-find .form-control { max-width: 24rem; }
@@ -13164,7 +13169,16 @@ body.game-docket {
 .docket-conf-chip.is-active .docket-conf-chip-count { color: var(--game-accent); }
 
 /* The no-silent-caps line: a filtered day states the reduction. */
-.docket-showing a { color: var(--game-accent); text-decoration: none; }
+/* The way-back link in a caption line is 12px of text; pad its hit area
+   (negative margin, so the caption's rhythm does not move) past the WCAG
+   2.5.8 24px minimum. */
+.docket-showing a {
+  display: inline-block;
+  padding: .45rem .2rem;
+  margin: -.45rem -.2rem;
+  color: var(--game-accent);
+  text-decoration: none;
+}
 .docket-showing a:hover,
 .docket-showing a:focus-visible { text-decoration: underline; }
 
@@ -13205,7 +13219,10 @@ body.game-docket {
   scroll-margin-top: 120px;
 }
 @media (min-width: 992px) {
-  .docket-session-head { scroll-margin-top: 290px; }
+  /* Chrome (106px) + the sticky calendar, whose height the sheet script
+     measures into --docket-cal-h (the chip rows wrap with the day and the
+     viewport); the fallback is the two-chip-row Saturday without JS. */
+  .docket-session-head { scroll-margin-top: calc(106px + var(--docket-cal-h, 224px) + 16px); }
 }
 .docket-session-label {
   font-family: 'Teko', sans-serif;

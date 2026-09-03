@@ -101,11 +101,13 @@ def _find_query(raw: str | None) -> str:
 
 def _case_matches(game, tokens: list[str]) -> bool:
     """Every typed word appears somewhere on the case: either team, the
-    sport's search words, or a conference name (display-only, D22)."""
+    sport's search words, a conference name (display-only, D22), or the
+    CT day's name ("sunday" is the pro slate in one word)."""
     haystack = ' '.join([
         game.away_team,
         game.home_team,
         _SPORT_SEARCH_WORDS.get(game.sport, SPORT_LABELS.get(game.sport, '')),
+        _kickoff_ct(game.kickoff).strftime('%A'),
         *sorted(_game_conferences(game)),
     ]).casefold()
     return all(token in haystack for token in tokens)
