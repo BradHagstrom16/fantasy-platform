@@ -14,6 +14,15 @@ There is no sent flag and no new column; a member who removes a side and
 holds another gets the sheet again, which is the receipt for the sheet they
 now have. A post-deadline receipt was ruled out ("Filed only").
 
+**Accepted trade: the transition is not serialized.** Two requests for the
+same eighth side racing each other (a no-JS double-click; the sheet's
+enhancement layer already holds a ``busy`` flag across each mutation) can
+both read 7 then 8 and mail twice. Making that airtight means a
+per-recipient outbox with provider idempotency keys, committed before each
+send, which is the same trade the reminder passes name and decline: the
+pool is roughly twenty people and the cost is one duplicate receipt. If it
+is ever built, it should be built once for all games, not here.
+
 Sending never gates the pick: ``send_platform_email`` returns False rather
 than raising, and the route records the pick before it asks for the mail.
 Progress comes from ``picks.sheet_state`` and the open items from
