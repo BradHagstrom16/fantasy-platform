@@ -6,9 +6,11 @@ sport per run** — the endpoint is billed at 2 whenever `daysFrom` is set, and
 it takes one sport per request, so a run is 4 credits combined.
 
 `daysFrom` caps at 3. That cap is the whole reason D12's cadence carries
-midweek runs (Tue ~05:15 CT post-MNF, Wed, Thu, plus Sun and Mon, daily
-through the December window): a weekend-only schedule would silently never
-see the Tuesday and Wednesday CFB games that D3 deliberately keeps pickable.
+midweek runs (Tue ~05:15 CT post-MNF, then Wed through Mon at 08:00 CT —
+Fri and Sat joined 2026-09-04 so All Sheets shows Thursday's and Friday's
+finals the next morning — daily through the December window): a
+weekend-only schedule would silently never see the Tuesday and Wednesday
+CFB games that D3 deliberately keeps pickable.
 
 Matching is on ``api_event_id`` alone (D22 — game identity is the Odds API
 event id end-to-end). CFB Survivor's team-name fallback is deliberately not

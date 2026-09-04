@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+
+{% block title %}{% if week %}The Week {{ week.week_number }} Sheets · The Docket{% else %}All Sheets · The Docket{% endif %}{% endblock %}
+
+{% block content %}
+<!--
+THESIS: the week's sheets as a posted record that unseals case by case at
+kickoff; refuses both the live-scoreboard grid and the everyone-at-once
+reveal. What is sealed is said in words and counts, never shown as a side.
+OWN-WORLD: CCC court paper — bone page, ruled --docket-rule hairlines, Teko
+kickoff figures and result words, Newsreader sides; garnet marks "yours"
+and never an outcome (wins and losses carry the platform semantic layer).
+STORY: a member opens it Thursday night, finds the Thursday sides on record
+with their verdicts, reads how far along everyone else is without seeing a
+single sealed side, and comes back Saturday as the sheet opens wave by wave.
+FIRST VIEWPORT: masthead, one sentence stating what is open and what opens
+next, then the sheets, the reader's own row tinted.
+FORM: one stacked composition at every width — a sheet line is a label
+with marks, nothing to compare down a column, so the ledger's table/card
+split is not needed here; every member is an always-open article, not a
+drawer (seventeen taps to see "all sheets" would defeat the page).
+FINISH: unreviewed and undocumented is unfinished; this build ends with
+the finish review and DESIGN.md 7.13.
+-->
+<div class="page-hero docket-hero">
+    <div class="container">
+        <span class="docket-eyebrow">The Commissioner's Court</span>
+        {% if week %}
+        <h1>The Week {{ week.week_number }} Sheets</h1>
+        <p class="lead mb-0">
+            {% if state == 'preview' %}
+            The docket is posted for reading. Court convenes
+            {{ week.start_at|ct('%A, %B %-d') }}. Sheets open here case by case at kickoff.
+            {% elif board and board.deadline_passed %}
+            The docket is closed. Every sheet is on the record.
+            {% else %}
+            Sheets open here case by case at kickoff. Everything shows once the
+            docket closes {{ week.deadline_at|ct('%A %-I:%M %p CT') }}.
+            {% endif %}
+        </p>
+        {% else %}
+        <h1>All Sheets</h1>
+        <p class="lead mb-0">Every sheet on the docket, opened case by case at kickoff.</p>
+        {% endif %}
+    </div>
+</div>
+
+<div class="container docket-sheets-page">
+    {% if state == 'no_week' %}
+    <div class="docket-empty card border-0 animate-in">
+        <div class="card-body">
+            <span class="docket-eyebrow docket-eyebrow-ink">Awaiting the docket</span>
+            <h2 class="docket-empty-title">Court convenes {{ season_opens_label }}</h2>
+            <p class="docket-empty-copy">The Week 1 docket posts Tuesday morning.
+                Every sheet opens here as its cases kick off.</p>
+        </div>
+    </div>
+    {% elif state == 'no_games' %}
+    <div class="docket-empty card border-0 animate-in">
+        <div class="card-body">
+            <span class="docket-eyebrow docket-eyebrow-ink">Awaiting the docket</span>
+            <h2 class="docket-empty-title">This week's docket has not been posted yet</h2>
+            <p class="docket-empty-copy">Lines freeze Tuesday morning and the
+                docket posts here. Check back soon.</p>
+        </div>
+    </div>
+    {% elif state == 'preview' %}
+    <div class="docket-empty card border-0 animate-in">
+        <div class="card-body">
+            <span class="docket-eyebrow docket-eyebrow-ink">Nothing to open yet</span>
+            <h2 class="docket-empty-title">Court convenes {{ week.start_at|ct('%A, %B %-d') }}</h2>
+            <p class="docket-empty-copy">Sheets open here case by case at kickoff,
+                and every sheet is on the record once the docket closes
+                {{ week.deadline_at|ct('%A %-I:%M %p CT') }}.</p>
+        </div>
+    </div>
+    {% else %}
+
+    {# The one sentence that says what is open and what opens next (the
+       Cold-Docket Rule: a sealed state states its reason). #}
+    <p class="docket-entries-note docket-sheets-lede">
+        {% if board.deadline_passed %}
+        Every sheet is on the record. Sides the clerk filed are marked.
+        Points post to the ledger with the week's grade.
+        {% elif not board.any_revealed %}
+        Nothing has locked yet. Sheets open here case by case at kickoff;
+        the first case kicks off {{ board.first_kickoff|ct('%A %-I:%M %p CT') }}.
+        {% else %}
+        {{ board.locked_cases }} of {{ board.total_cases }} cases locked.
+        {% if board.next_lock %}Next to open: {{ board.next_lock|ct('%A %-I:%M %p CT') }}.{% endif %}
+        {% endif %}
+        {% if not board.number_revealed and board.number_lock_at %}
+        The number is sealed until {{ board.number_lock_at|ct('%A %-I:%M %p CT') }}.
+        {% endif %}
+    </p>
+    {% if joined_late %}
+    <p class="docket-entries-note">You joined after this docket closed; your
+        first sheet is next week.</p>
+    {% endif %}
+
+    <ol class="docket-sheets">
+        {% for m in board.members %}
+        {% set is_you = m.user_id == your_user_id %}
+        <li class="docket-sheet{% if is_you %} is-you{% endif %}" id="sheet-{{ m.user_id }}">
+            <div class="docket-sheet-head">
+                <span class="docket-ledger-avatar" aria-hidden="true">{{ m.enrollment.user.get_avatar() }}</span>
+                <span class="docket-entry-name">{{ m.enrollment.get_display_name() }}</span>
+                {% if is_you %}<span class="docket-you-tag">You</span>{% endif %}
+                <span class="docket-entry-count">{{ m.summary }}</span>
+            </div>
+            {% if m.lines %}
+            <ol class="docket-sheet-lines">
+                {% for line in m.lines %}
+                <li class="docket-sheet-line{% if line.is_autopick %} is-autopick{% endif %}{% if line.is_reserve %} is-reserve{% endif %}">
+                    <span class="docket-sheet-when">{{ line.kickoff|ct('%a %-I:%M %p') }}</span>
+                    <span class="docket-sheet-pick">
+                        {{ line.pick }}
+                        {% if line.is_best %}<span class="docket-headliner-chip{% if line.is_auto_best %} is-auto{% endif %}"{% if line.is_auto_best %} title="Assigned when the docket closed"{% endif %}>x2{% if line.is_auto_best %}<span class="visually-hidden">, assigned</span>{% endif %}</span>{% endif %}
+                        {% if line.is_reserve %}<span class="docket-slot-badge">Reserve</span>{% endif %}
+                        {% if line.is_autopick %}<span class="docket-auto-tag" title="Filed when the docket closed">Auto</span>{% endif %}
+                    </span>
+                    <span class="docket-caption">{{ line.sport }} · {{ line.caption }}{% if line.final_score %} · Final {{ line.final_score }}{% endif %}</span>
+                    <span class="docket-sheet-result{% if line.result %} is-{{ line.result }}{% endif %}">{{ result_words.get(line.result, '') }}</span>
+                </li>
+                {% endfor %}
+            </ol>
+            {% endif %}
+            {% if m.sealed_sentence %}
+            <p class="docket-sheet-sealed">{{ m.sealed_sentence }}</p>
+            {% endif %}
+            {% if board.number_revealed %}
+            <p class="docket-sheet-number">
+                {% if m.number %}Number {{ m.number }}{% else %}No number saved; the line stands in{% endif %}
+                {% if board.designated_caption %}<span class="docket-caption">· {{ board.designated_caption }}</span>{% endif %}
+            </p>
+            {% endif %}
+        </li>
+        {% endfor %}
+    </ol>
+    {% endif %}
+</div>
+{% endblock %}

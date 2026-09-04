@@ -163,7 +163,9 @@ surface, ask "lounge or room?" first (platform §1.6).
   with the hero and rail stating once when picks open. Display only: mutations still resolve
   through `current_week()`, which stays None until the start boundary. Locked by
   `tests/test_docket_preseason_preview.py`.
-- **Docket open** — lines frozen, picks editable, cases lock individually at kickoff.
+- **Docket open** — lines frozen, picks editable, cases lock individually at kickoff. A
+  member's side is sealed from the rest of the roster until its case locks; All Sheets (7.13)
+  opens it at kickoff and everything at the deadline (Brad, 2026-09-04).
 - **Docket closed** — Saturday 11:00:00 AM CT reached. The whole sheet is read-only. The
   submission boundary is strict: 10:59:59 is on time, 11:00:00 is late.
 - **Verdicts** — scores land, cases resolve to verdicts (win), mistrials (push), losses; the
@@ -581,9 +583,10 @@ have pros in there as well it's gonna be tough looking for a specific game"):
 Platform `.game-subnav` shape: background `#180C10` (warm oxblood-cast near-black, distinct
 from CFB's purple-cast `#0a080f`), `--subnav-accent: #A63446`, `--subnav-accent-rgb:
 166,52,70`, plus both scroll-fade tints matching the background. Label: "⚖️ Docket 2026".
-Pills, in order: **My Sheet · Ledger · Rules**, then Admin for admins only. The weekly
-obligation leads because that is what members arrive for Tuesday through Saturday; the ledger
-is what they come back to.
+Pills, in order: **My Sheet · All Sheets · Ledger · Rules**, then Admin for admins only. The
+weekly obligation leads because that is what members arrive for Tuesday through Saturday; the
+week's other surface sits beside it (All Sheets, 7.13, added 2026-09-04); the ledger is what
+they come back to.
 
 ### 7.9 Join page
 
@@ -629,6 +632,45 @@ new member's first visit is when they are primed to pay — and the ledger. Paym
 admin-confirmed (the court costs desk, §admin); the card carries no self-mark.
 
 ---
+
+### 7.13 All Sheets — `.docket-sheet`, `.docket-sheet-line` (2026-09-04)
+
+Everyone's picks for the week, at `/docket/sheets`, by member. A member asked to see the
+master sheet on Thursday; before this the room had no everyone's-picks surface at all. Brad's
+ruling: **once a pick locks it releases visibility for everyone.**
+
+- **The reveal rule is the sheet's own lock, reused.** A side shows the moment its case locks
+  (`picks.game_locked`, t ≥ kickoff); at the deadline every side shows. Until then a member's
+  row states what is sealed **in words and counts, never a side**: "5 sides sealed until
+  kickoff · x2 named · reserve held · number in." A member with nothing held reads "Nothing
+  held yet." (the progress count is shown by ruling). The number shows at its own lock,
+  min(deadline, designated kickoff).
+- **Shape.** One stacked composition at every width: each member is an always-open article
+  (a drawer would cost seventeen taps to see "all sheets"), the head row reuses the ledger's
+  avatar, name, "You" tag and Teko count (`.docket-entry-count` carries the summary: "3 of 8
+  held" → "2 of 8 locked" → "1-1 · 5 to play"), and the lines below are kickoff-ordered with
+  the reserve last: Teko kickoff, the side as the sheet prints it with the same three marks as
+  the case row (x2 chip, Reserve badge, Auto tag), the case caption, and the result word.
+  Your row takes the garnet tint (garnet means "yours"). No form, ever.
+- **Result marks are the engine's rule** (`grading.engine.grade_pick_outcome`) behind the
+  week grade's final gate (`is_final and not no_contest`); the words are Win / Loss /
+  Mistrial / No Contest on the platform semantic layer (6.5), with "Final 17-31" in the
+  caption. **No points before the week grades**: the x2 double, the No Contest fallback and
+  the reserve substitution resolve at week grade, so the page shows a count of marks, never a
+  score, and says so ("Points post to the ledger with the week's grade").
+- **A side the clerk filed** keeps the dashed treatment (a dashed rule on the line plus the
+  Auto tag); an assigned x2 is the hollow chip.
+- **Empty states, each with its reason:** no week ("Court convenes September 1"), no cases
+  posted, the pre-season preview ("Nothing to open yet"), and the pre-first-lock week
+  ("Nothing has locked yet. Sheets open here case by case at kickoff; the first case kicks off
+  Thursday 7:15 PM CT."). Mid-week the lede counts locked cases and names the next to open.
+- The rules page states the rule under "Who sees what"; the join page says it in one
+  sentence. The scores timer now runs Friday and Saturday mornings as well, so Thursday's and
+  Friday's finals are on the page the next morning (rulings Amendments 2026-09-04).
+
+Locked by `tests/test_docket_all_sheets.py` (the reveal boundary, the words-only sealed
+facts, the engine parity of every mark, the as-of-deadline roster, the query count) and the
+conformance matrix.
 
 ## 8. Component Doctrine (season surfaces, T10 scope)
 
@@ -783,3 +825,4 @@ Contracts that guard grading correctness and admin operations. All test-locked �
 - **Reminders de-dup on the sent flag (`DocketWeek.last_reminder_tier`), never on cadence** (D24-eng) via `utils/reminders.py::tier_already_sent` — the shape CFB (`CfbWeek.last_reminder_type`) and Golf share (PRs #169/#170); it is why every `*-remind.timer` runs hourly.
 - **The sheet receipt is stateless (Brad, 2026-09-04: "Filed only")** — `services/receipts.py::sheet_just_filed(before, after)` compares the scoring count around the mutation and fires only on 7 → 8: never the reserve, the x2, the number, or a move (a move returns a scoring pick but leaves the count); no sent flag, no new column; a removal followed by a new side sends the sheet again, which is the receipt for the sheet the member now has. The letter lists every side through `describe_pick` and the open items through `reminders.outstanding()`, and rides after the commit in `routes.set_pick` (a refused send is a log line, never a refused pick). No post-deadline receipt, by ruling. `tests/test_docket_sheet_receipt.py`.
 - **The second-bill strip is dormant machinery:** `games.registry.second_bill_games(user)` returns open non-headliner games (empty under the dual-featured registry; retained for a future open-unfeatured game; reappearance-locked in `tests/test_docket_lounge_strip.py`); whenever it renders it is registry-generic and static (D21-eng) with its gold `.cta-outline`.
+- **All Sheets reveals on the sheet's own lock and grades with the engine's own rule** (7.13, Brad 2026-09-04): `services/sheets.py::all_sheets(week, now)` reveals a side iff `now >= week.deadline_at or picks.game_locked(game, now)`; result marks come from `grading.engine.grade_pick_outcome` behind the `is_final and not no_contest` gate `grading_pass.build_week_snapshot` uses, never a second rule; no points before the week grades; a closed week reads `roster_user_ids_as_of(deadline_at)` (ADR-048); four queries whatever the roster size. `tests/test_docket_all_sheets.py`.

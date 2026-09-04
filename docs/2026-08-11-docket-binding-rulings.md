@@ -172,3 +172,31 @@ receipt; the sheet stays the record.
   options "filed + on the record" and "any change, hourly" were declined). The trigger is
   the 7→8 transition, stateless by design; a removal followed by a new side sends the sheet
   again. Code: `games/<game>/services/receipts.py`; doctrine `games/docket/DESIGN.md` §9.
+
+### 2026-09-04 — All Sheets: per-case reveal at kickoff (Brad)
+
+A member asked to see the master sheet on Thursday. The room had no everyone's-picks surface
+at all; Brad ruled that **once a pick locks it releases visibility for everyone**, and chose
+the page's shape.
+
+- **The reveal:** a side is visible to the whole roster the moment its case locks (t ≥
+  kickoff, the same lock that freezes the pick); at the Saturday deadline every side is
+  visible. Nothing that can still be changed is ever shown. The tiebreaker number shows at
+  its own lock, min(deadline, designated kickoff).
+- **What is sealed is stated in words and counts, never as a side** ("5 sides sealed until
+  kickoff · x2 named · reserve held · number in"), including how many sides a member has
+  held so far ("show the sealed count" was chosen over "no count" and "hide until something
+  locks").
+- **Shape:** by member (one row per roster member, locked picks in kickoff order with the
+  x2, reserve and auto-filed marks, and a result mark once the case is final), chosen over a
+  by-case board. A closed week lists the roster as of the deadline (ADR-048).
+- **No points before the week grades.** The page shows Win / Loss / Mistrial / No Contest and
+  a count of them; the x2 double, the No Contest fallback and the reserve substitution stay
+  the grading pass's (D14-eng).
+- **D12-eng cadence amended:** the scores sync also runs **Friday and Saturday at 08:00 CT**
+  so Thursday's and Friday's finals are on the page the next morning. Two more runs a week at
+  2 credits a sport, about 35 credits a month; the Saturday run is pre-deadline and its
+  grading step is the `WeekNotReady` no-op.
+- Surfaces: `/docket/sheets` ("All Sheets", second pill), the rules page ("Who sees what"),
+  one sentence on the join page. Recorded as ADR-060; doctrine in `games/docket/DESIGN.md`
+  §7.13.

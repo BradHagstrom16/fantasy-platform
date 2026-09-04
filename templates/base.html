@@ -226,6 +226,8 @@
                 <div class="subnav-pills">
                     <a class="subnav-pill {% if request.endpoint == 'docket.index' %}active{% endif %}"
                        href="{{ url_for('docket.index') }}">My Sheet</a>
+                    <a class="subnav-pill {% if request.endpoint == 'docket.sheets' %}active{% endif %}"
+                       href="{{ url_for('docket.sheets') }}">All Sheets</a>
                     <a class="subnav-pill {% if request.endpoint == 'docket.ledger' %}active{% endif %}"
                        href="{{ url_for('docket.ledger') }}">Ledger</a>
                     <a class="subnav-pill {% if request.endpoint == 'docket.rules' %}active{% endif %}"

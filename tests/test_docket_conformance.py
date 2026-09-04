@@ -42,10 +42,16 @@ def test_interior_routes_bypass_for_platform_admin_while_coming_soon(
         assert client.get('/docket/').status_code != 404
 
 
+# Every member-facing GET surface, gated identically. A new page belongs
+# here (All Sheets joined 2026-09-04).
+MEMBER_PATHS = ('/docket/', '/docket/ledger', '/docket/sheets')
+
+
 def test_anonymous_interior_route_redirects_to_login(app, client):
-    resp = client.get('/docket/')
-    assert resp.status_code == 302
-    assert '/login' in resp.headers['Location']
+    for path in MEMBER_PATHS:
+        resp = client.get(path)
+        assert resp.status_code == 302, path
+        assert '/login' in resp.headers['Location'], path
 
 
 def test_join_redirects_home_while_coming_soon(app, client):
@@ -63,11 +69,12 @@ def test_enrollment_required_redirects_unenrolled_to_join_when_open(
     user = make_user('wanderer')
     db.session.commit()
     login(client, user)
-    resp = client.get('/docket/')
-    assert resp.status_code == 302
-    location = resp.headers['Location']
-    assert '/docket/join' in location
-    assert 'next=' in location
+    for path in MEMBER_PATHS:
+        resp = client.get(path)
+        assert resp.status_code == 302, path
+        location = resp.headers['Location']
+        assert '/docket/join' in location, path
+        assert 'next=' in location, path
 
 
 def test_enrolled_user_passes_enrollment_gate(app, client):
@@ -75,7 +82,8 @@ def test_enrolled_user_passes_enrollment_gate(app, client):
     make_enrollment(user)
     db.session.commit()
     login(client, user)
-    assert client.get('/docket/').status_code == 200
+    for path in MEMBER_PATHS:
+        assert client.get(path).status_code == 200, path
 
 
 def test_mutation_routes_are_post_only(app, client):
@@ -86,6 +94,16 @@ def test_mutation_routes_are_post_only(app, client):
     for path in ('/docket/picks/set', '/docket/picks/remove',
                  '/docket/best', '/docket/tiebreaker'):
         assert client.get(path).status_code == 405
+
+
+def test_read_only_routes_reject_post(app, client):
+    """The inverse matrix: a page that only reads never takes a POST."""
+    user = make_user('member')
+    make_enrollment(user)
+    db.session.commit()
+    login(client, user)
+    for path in ('/docket/sheets', '/docket/ledger', '/docket/rules'):
+        assert client.post(path, data={'csrf_token': 'x'}).status_code == 405, path
 
 
 def test_mutation_route_redirects_unenrolled_to_join(app, client):

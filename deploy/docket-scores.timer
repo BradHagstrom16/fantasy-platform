@@ -1,9 +1,16 @@
-# Runs The Docket score sync on the D12 cadence: Tue 05:15 CT, then Wed, Thu,
-# Sun and Mon at 08:00 CT, going daily Dec 15 - Jan 11.
+# Runs The Docket score sync on the D12 cadence, amended 2026-09-04: Tue
+# 05:15 CT, then Wed through Mon at 08:00 CT, going daily Dec 15 - Jan 11.
 #
 # The midweek runs are not padding. /scores looks back at most daysFrom=3, and
 # D3 deliberately keeps Tuesday and Wednesday CFB games pickable, so a
 # weekend-only cadence would silently never see them finish.
+#
+# Fri and Sat joined the rule with All Sheets (rulings Amendments 2026-09-04):
+# the page shows each locked pick's result, so Thursday's finals must land
+# before Friday morning and Friday's before Saturday morning. The Saturday
+# run is pre-deadline: its grading step is the WeekNotReady no-op (no
+# kickoff_at_deadline stamped yet) and it exits 0. Cost: 2 more runs a week at
+# 2 credits a sport, about 35 credits a month inside the 500 budget.
 #
 # !! Tuesday fires at 05:15, BEFORE the 06:00 CT week boundary, on purpose.
 #    The mode resolves its week from the clock; at 05:15 that is still the
@@ -18,12 +25,12 @@
 #
 # Overlapping dates collapse to a single firing.
 [Unit]
-Description=Run The Docket score sync (Tue/Wed/Thu/Sun/Mon; daily Dec 15 - Jan 11)
+Description=Run The Docket score sync (Tue 05:15, Wed-Mon 08:00; daily Dec 15 - Jan 11)
 
 [Timer]
 # Timezone is INLINE in OnCalendar — no TimeZone= directive exists.
 OnCalendar=Tue *-*-* 05:15:00 America/Chicago
-OnCalendar=Wed,Thu,Sun,Mon *-*-* 08:00:00 America/Chicago
+OnCalendar=Wed,Thu,Fri,Sat,Sun,Mon *-*-* 08:00:00 America/Chicago
 OnCalendar=*-12-15..31 08:00:00 America/Chicago
 OnCalendar=*-01-01..11 08:00:00 America/Chicago
 Persistent=true

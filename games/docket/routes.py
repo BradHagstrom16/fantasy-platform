@@ -46,6 +46,7 @@ from games.docket.services.payment import payment_nudge_for
 from games.docket.services.picks import PickError
 from games.docket.services.purse import season_purse
 from games.docket.services.season_pass import season_ledger
+from games.docket.services.sheets import all_sheets
 from games.docket.services.weeks import (
     CT,
     SEASON_YEAR,
@@ -230,6 +231,23 @@ def join():
 # The pick sheet
 # --------------------------------------------------------------------------
 
+def _current_or_preview_week():
+    """The week the room shows, and whether it is only a preview.
+
+    The current week when court is in session; otherwise the next imported
+    week as a read-only preview (pre-season posted-docket ruling,
+    2026-08-19): members read the frozen board before court convenes.
+    Display only — every mutation resolves through current_week() and
+    _require_open_week, both still closed. One helper, so My Sheet and All
+    Sheets can never disagree about "this week".
+    """
+    week = picks_service.current_week()
+    if week is not None:
+        return week, False
+    week = picks_service.upcoming_week()
+    return week, week is not None
+
+
 @docket_bp.route('/')
 @enrollment_required('docket')
 def index():
@@ -239,15 +257,7 @@ def index():
     day-tab links (``?day=YYYY-MM-DD``, the CT calendar date). Server-side
     tabs keep the no-JS spine intact; the sheet rail persists across days.
     """
-    week = picks_service.current_week()
-    preview = False
-    if week is None:
-        # Pre-season posted-docket preview (2026-08-19 ruling): once a
-        # future week has been imported, members read the frozen board
-        # before court convenes. Display only — every mutation resolves
-        # through current_week() and _require_open_week, both still closed.
-        week = picks_service.upcoming_week()
-        preview = week is not None
+    week, preview = _current_or_preview_week()
 
     games = []
     if week is not None:
@@ -513,6 +523,58 @@ def set_tiebreaker():
     else:
         action = 'Number cleared.'
     return _sheet_success(week, action)
+
+
+# --------------------------------------------------------------------------
+# All Sheets
+# --------------------------------------------------------------------------
+
+RESULT_WORDS = {
+    'win': 'Win',
+    'loss': 'Loss',
+    'push': 'Mistrial',
+    'no_contest': 'No Contest',
+}
+
+
+@docket_bp.route('/sheets')
+@enrollment_required('docket')
+def sheets():
+    """All Sheets: everyone's picks, revealed case by case at kickoff.
+
+    A read-only page (no form, no mutation): the reveal rule and every
+    fact on it come from services/sheets.py, which reuses the sheet's own
+    kickoff lock and the grading engine's per-pick rule. Presentation is
+    derived here, never in Jinja (the room's rule).
+    """
+    week, preview = _current_or_preview_week()
+    season_opens_label = WEEK_1_BOUNDARY_LOCAL.strftime('%B %-d')
+    if week is None:
+        state = 'no_week'
+    elif not db.session.scalar(
+            select(func.count(DocketGame.id)).filter_by(week_id=week.id)):
+        state = 'no_games'
+    elif preview:
+        state = 'preview'
+    else:
+        state = 'open'
+    board = joined_late = None
+    if state == 'open':
+        board = all_sheets(week, picks_service.now_naive())
+        # A member who joined after this docket closed has no dealt sheet
+        # (ADR-048): say so rather than leave them looking for their row.
+        joined_late = (board.deadline_passed and current_user.id
+                       not in {m.user_id for m in board.members})
+    return render_template(
+        'docket/sheets.html',
+        week=week,
+        state=state,
+        board=board,
+        joined_late=joined_late,
+        your_user_id=current_user.id,
+        result_words=RESULT_WORDS,
+        season_opens_label=season_opens_label,
+    )
 
 
 # --------------------------------------------------------------------------
