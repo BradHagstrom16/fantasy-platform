@@ -288,6 +288,55 @@ def test_scores_mode_writes_then_grades_when_the_week_is_complete(
         select(DocketWeekResult).filter_by(week_id=week.id)).all()
 
 
+def test_scores_mode_midweek_writes_finals_without_grading(
+        app, runner, monkeypatch):
+    """The Friday and Saturday runs (All Sheets cadence, 2026-09-04): a
+    Thursday final lands, the grade step is the WeekNotReady no-op (no
+    kickoff_at_deadline stamped yet), the run exits 0, and the sheet stays
+    open for the Saturday cases."""
+    week, games = _seed(final=False)
+    thu = games[1]
+    thu.kickoff = datetime(2026, 9, 4, 0, 15)
+    user = make_user('player')
+    make_enrollment(user)
+    db.session.commit()
+    monkeypatch.setenv('DOCKET_FAKE_NOW', '2026-09-04T13:00:00')
+    app.config['ODDS_API_KEY'] = 'test-key'
+
+    events = [{'id': thu.api_event_id, 'home_team': thu.home_team,
+               'away_team': thu.away_team, 'completed': True,
+               'scores': [{'name': thu.home_team, 'score': '31'},
+                          {'name': thu.away_team, 'score': '17'}]}]
+
+    class _R:
+        status_code = 200
+        headers = {}  # noqa: RUF012 - throwaway stub
+
+        def __init__(self, payload):
+            self._payload = payload
+
+        def json(self):
+            return self._payload
+
+    with patch('games.docket.services.scores.odds_api_get',
+               side_effect=[_R(events), _R([])]):
+        result = _invoke(runner, 'sync', '--mode', 'scores')
+
+    assert result.exit_code == 0, result.output
+    assert 'finalized: 1' in result.output
+    assert 'grading: not ready' in result.output
+    assert 'kickoff_at_deadline is not stamped' in result.output
+    assert not db.session.scalars(
+        select(DocketWeekResult).filter_by(week_id=week.id)).all()
+    db.session.refresh(thu)
+    assert thu.is_final and (thu.home_score, thu.away_score) == (31, 17)
+
+    from games.docket.services import picks as picks_service
+    at(monkeypatch, '2026-09-04T13:00:00')
+    pick = picks_service.set_pick(user.id, week, games[2].id, 'spread', 'home')
+    assert pick.slot == 1
+
+
 def test_a_partial_sync_exits_non_zero(app, runner, monkeypatch):
     """One sport dark for a week must not read as a green timer run — the
     healthy sport's work still lands, and the command still fails."""

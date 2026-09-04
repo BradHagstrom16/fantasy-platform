@@ -14384,6 +14384,105 @@ body.game-docket .form-select:focus {
    Every dollar is derived from the roster and config (services/purse.py);
    the ledger states the purse in one caption line wherever the standings
    are, and lists each graded week's top sheet on the week-row primitives. */
+/* --- All Sheets (7.13): the week's sheets as a posted record that unseals
+   case by case at kickoff. One stacked composition at every width: a sheet
+   line is a label with marks, nothing to compare down a column. Garnet is
+   "yours"; wins and losses take the platform semantic layer, with the word
+   always beside the color (6.5). The dashed rule is the room's provenance
+   grammar for a side the clerk filed. No side stripes. --- */
+.docket-sheets-page { padding-bottom: 3rem; }
+.docket-sheets-lede { margin-top: 1.5rem; }
+.docket-sheets { list-style: none; margin: 0; padding: 0; }
+.docket-sheet {
+  padding: .35rem .25rem .6rem;
+  border-bottom: 1px solid var(--docket-rule);
+}
+.docket-sheet.is-you { background: rgba(var(--game-accent-rgb), .09); }
+.docket-sheet.is-you .docket-entry-name { color: var(--game-primary); }
+.docket-sheet-head {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  min-height: 44px;
+  padding: .3rem 0;
+}
+.docket-sheet-lines {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 0 .25rem;
+}
+.docket-sheet-line {
+  display: grid;
+  grid-template-columns: 4.6rem minmax(0, 1fr) auto;
+  grid-template-areas: 'when pick result' 'when case result';
+  column-gap: .6rem;
+  align-items: baseline;
+  padding: .35rem 0;
+  border-top: 1px solid var(--docket-rule);
+}
+.docket-sheet-line.is-autopick { border-top-style: dashed; }
+.docket-sheet-when {
+  grid-area: when;
+  font-family: 'Teko', sans-serif;
+  font-weight: 500;
+  font-size: .9rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+.docket-sheet-pick {
+  grid-area: pick;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .3rem .4rem;
+  font-family: 'Newsreader', Georgia, serif;
+  font-weight: 600;
+  font-size: 1rem;
+  line-height: 1.35;
+  color: var(--text-primary);
+}
+.docket-sheet-line .docket-caption { grid-area: case; display: block; margin-top: .05rem; }
+.docket-sheet-result {
+  grid-area: result;
+  align-self: center;
+  font-family: 'Teko', sans-serif;
+  font-weight: 600;
+  font-size: 1rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+  min-width: 3.6rem;
+}
+.docket-sheet-result.is-win { color: var(--success); }
+.docket-sheet-result.is-loss { color: var(--danger); }
+.docket-sheet-result.is-push,
+.docket-sheet-result.is-no_contest { color: var(--text-secondary); }
+/* Sealed facts and the number: Cold-Docket, words only. */
+.docket-sheet-sealed,
+.docket-sheet-number {
+  margin: .3rem 0 0;
+  padding-left: .25rem;
+  font-family: 'Newsreader', Georgia, serif;
+  font-size: .9rem;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+.docket-sheet-sealed { font-style: italic; }
+.docket-sheet-number { font-style: normal; }
+.docket-sheet-number .docket-caption { margin-left: .2rem; }
+@media (max-width: 575.98px) {
+  .docket-sheet-line {
+    grid-template-columns: 3.9rem minmax(0, 1fr) auto;
+    column-gap: .45rem;
+  }
+  .docket-sheet-when { font-size: .82rem; }
+  .docket-sheet-result { min-width: 3rem; font-size: .95rem; }
+}
+
 .docket-purse-line {
   font-size: .92rem;
   max-width: 68ch;

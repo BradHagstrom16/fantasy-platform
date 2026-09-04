@@ -57,9 +57,11 @@ enrolled player::
 
     flask docket sync --mode deadline
 
-**Tue ~05:15 / Wed / Thu / Sun / Mon — scores** (daily through the December
-window; /scores looks back at most 3 days, which is why midweek runs exist).
-Writes scores and grades the week as soon as it is complete::
+**Tue ~05:15, then Wed through Mon at 08:00 — scores** (daily through the
+December window; /scores looks back at most 3 days, which is why midweek runs
+exist; Fri and Sat joined 2026-09-04 so All Sheets shows Thursday's and
+Friday's finals the next morning). Writes scores and grades the week as soon
+as it is complete::
 
     flask docket sync --mode scores
 

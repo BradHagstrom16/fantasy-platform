@@ -128,6 +128,21 @@ def test_tuesday_scores_run_stays_before_the_week_boundary():
             f'{rule!r} fires after the Tue 06:00 CT week boundary')
 
 
+def test_scores_run_covers_every_day_the_docket_plays():
+    """All Sheets (2026-09-04) shows each locked pick's result, so Thursday's
+    finals must land before Friday morning and Friday's before Saturday
+    morning: the 08:00 rule runs Wednesday through Monday. The Saturday run
+    is pre-deadline and its grading step is the WeekNotReady no-op."""
+    rules = _ONCALENDAR.findall((DEPLOY / 'docket-scores.timer').read_text())
+    weekday = [rule for rule in rules
+               if rule.split()[-2] == '08:00:00' and rule[0].isalpha()]
+    assert weekday, 'the 08:00 weekday scores rule is missing'
+    days = set()
+    for rule in weekday:
+        days.update(rule.split()[0].split(','))
+    assert {'Wed', 'Thu', 'Fri', 'Sat', 'Sun', 'Mon'} <= days, days
+
+
 def test_december_window_ends_inside_the_docket_season():
     """CFB's daily window runs to Jan 25; the Docket's 19th week ends Tue
     Jan 12 2027, and the Tue 05:15 rule covers that last day. A January rule
