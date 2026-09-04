@@ -40,6 +40,7 @@ from games.cfb.services.game_logic import (
 )
 from games.cfb.services.history import get_season_2025
 from games.cfb.services.payment import payment_nudge_for
+from games.cfb.services.receipts import send_pick_receipt
 from games.cfb.services.score_fetcher import ScoreFetcher
 from games.cfb.utils import (
     deadline_has_passed,
@@ -599,6 +600,10 @@ def make_pick(week_number):
             # Flash only after a clean commit so a failed write can't leave a
             # stale "success" message queued in the session.
             flash(success_msg, 'success')
+            # The receipt rides after the commit and never gates it: a
+            # refused send is a log line (services/receipts.py).
+            send_pick_receipt(current_user, enrollment, week, team,
+                              new_team_game, changed=existing_pick is not None)
             return redirect(url_for('cfb.index'))
 
     # GET: build eligible teams

@@ -158,3 +158,17 @@ the ruling trims to the pot rather than covering the difference.
 - Surfaces: the rules page ("The season"), the ledger (purse line, weekly verdicts, the
   drawer receipt, the first prize on the closing banner). Never the lounge. Recorded as
   ADR-059; doctrine in `games/docket/DESIGN.md` §8.8.
+
+### 2026-09-04 — Receipts (Brad)
+
+Members asked whether their picks had gone through. Both games now mail a Club Letter
+receipt; the sheet stays the record.
+
+- **CFB Survivor:** one receipt every time a member makes or changes the pick (a change says
+  so in the subject). Autopicks are not receipts; the weekly recap covers them.
+- **The Docket, "Filed only":** one receipt the moment the eighth side is held, listing the
+  sheet as it stands and what is still open. Nothing else on the sheet mails — not the
+  reserve, the x2, the number, or a move — and there is no post-deadline receipt (the
+  options "filed + on the record" and "any change, hourly" were declined). The trigger is
+  the 7→8 transition, stateless by design; a removal followed by a new side sends the sheet
+  again. Code: `games/<game>/services/receipts.py`; doctrine `games/docket/DESIGN.md` §9.
