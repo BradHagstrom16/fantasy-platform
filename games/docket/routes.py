@@ -36,6 +36,7 @@ from games.common import enrollment_required, game_must_be_open
 from games.docket.blueprint import docket_bp
 from games.docket.models import DocketEnrollment, DocketGame
 from games.docket.services import picks as picks_service
+from games.docket.services import receipts as receipts_service
 from games.docket.services.bridge_sheet import SPORT_LABELS
 from games.docket.services.enrollment import get_enrollment
 from games.docket.services.grading.engine import slot_points
@@ -427,6 +428,10 @@ def _sheet_success(week, action):
 def set_pick():
     """Add a pick, or move a held market to its other side."""
     week = picks_service.current_week()
+    # Counted before the write: the sheet receipt fires on the one mutation
+    # that takes the scoring count from 7 to 8 (services/receipts.py).
+    before = (receipts_service.scoring_count(current_user.id, week)
+              if week is not None else 0)
     try:
         pick = picks_service.set_pick(
             current_user.id,
@@ -438,6 +443,11 @@ def set_pick():
         )
     except PickError as err:
         return _sheet_error(err)
+    after = receipts_service.scoring_count(current_user.id, week)
+    if receipts_service.sheet_just_filed(before, after):
+        # After the commit, never gating it: a refused send is a log line.
+        receipts_service.send_sheet_receipt(
+            current_user, get_enrollment(current_user.id), week)
     # One pick is "held"; only the whole sheet is ever "filed" (the ask
     # ladder and the filed card own that word).
     if pick.slot == BACKUP_SLOT:
