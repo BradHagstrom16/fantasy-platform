@@ -73,42 +73,11 @@ the finish review, the verdict, and DESIGN.md.
     <div class="row">
         <div class="col-lg-8">
             <div id="docket-slate" data-docket-region="slate">
-                {# First visit: how the sheet works, once, gone after the
-                   first pick. Full sheet: what is left and how, at the top
-                   of the slate (a refresh region, so it survives repaints).
-                   Neither carries a form; both read only the sheet state. #}
-                {% if not preview and not sheet.deadline_passed %}
-                    {% if sheet.scoring_count == 0 %}
-                    <div class="docket-orient card border-0">
-                        <div class="card-body">
-                            <span class="docket-eyebrow">How the sheet works</span>
-                            <ol class="docket-orient-steps">
-                                <li>Tap 8 sides. Spread or total, any game, any day.</li>
-                                <li>Make one of the 8 your x2. It scores double.</li>
-                                <li>Add a 9th side as your reserve, and save your tiebreaker number.</li>
-                            </ol>
-                            <p class="docket-orient-note">Everything saves as you tap. The sheet closes {{ week.deadline_at|ct('%A %-I:%M %p CT') }}; anything left blank is filled for you.</p>
-                        </div>
-                    </div>
-                    {% elif sheet.scoring_count >= 8 and sheet.next_step.stage in ('x2', 'number', 'reserve') %}
-                    <div class="docket-prompt card border-0">
-                        <div class="card-body">
-                            <span class="docket-eyebrow">All 8 filed. Here is what is left</span>
-                            <ul class="docket-prompt-list">
-                                {% if not sheet.best %}
-                                <li><strong>Your x2.</strong> Tap x2 on any filed pick. It scores double.</li>
-                                {% endif %}
-                                {% if sheet.prediction is none and designated and not tb_locked %}
-                                <li><strong>Your number.</strong> Predict the tiebreaker score in <button type="button" class="docket-linklike" data-docket-open-sheet>your sheet</button>.</li>
-                                {% endif %}
-                                {% if not sheet.backup %}
-                                <li><strong>A reserve, if you want one.</strong> Your next tap on any open side files as your reserve. It only plays if a case is thrown out.</li>
-                                {% endif %}
-                            </ul>
-                        </div>
-                    </div>
-                    {% endif %}
-                {% endif %}
+                {# The sheet's standing, stated once at the top of the slate
+                   (a refresh region, so it survives repaints): how the sheet
+                   works, what is left, or that it is filed / closed. Reads
+                   the sheet state only; never carries a form. #}
+                {% include 'docket/_sheet_standing.html' %}
 
                 {# The court calendar: the find field, day tabs, and
                    conference chips travel as one block; at lg+ it sticks
@@ -246,7 +215,7 @@ the finish review, the verdict, and DESIGN.md.
         {# Two rows: the facts in words (never a bare letter), then the ask.
            The "Sheet" handle carries a drawn caret so the bar reads as
            something that opens, not a status ticker. #}
-        <summary class="docket-rail-bar{% if sheet.next_step.stage == 'complete' %} is-complete{% endif %}{% if sheet.next_step.urgent %} is-urgent{% endif %}">
+        <summary class="docket-rail-bar{% if sheet.next_step.stage in ('reserve', 'complete') %} is-complete{% endif %}{% if sheet.next_step.urgent %} is-urgent{% endif %}">
             <span class="docket-rail-bar-row">
                 <span class="docket-rail-bar-handle">Sheet</span>
                 <span class="docket-rail-bar-count">{{ sheet.scoring_count }} of 8</span>

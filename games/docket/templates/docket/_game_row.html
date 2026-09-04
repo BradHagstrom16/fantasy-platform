@@ -115,7 +115,7 @@
         {% set held_labels = [] %}
         {% if spread_pick %}{% set _ = held_labels.append('Reserve' if spread_pick.slot == backup_slot else 'Slot ' ~ spread_pick.slot) %}{% endif %}
         {% if total_pick %}{% set _ = held_labels.append('Reserve' if total_pick.slot == backup_slot else 'Slot ' ~ total_pick.slot) %}{% endif %}
-        <span class="docket-held-tag">Filed · {{ held_labels|join(' & ') }}</span>
+        <span class="docket-held-tag">Held · {{ held_labels|join(' & ') }}</span>
       {% endif %}
     </div>
     <h3 class="docket-case-caption">

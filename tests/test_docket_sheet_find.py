@@ -229,7 +229,7 @@ def test_results_carry_the_query_through_a_pick(monkeypatch, client, member):
     location = resp.headers['Location']
     assert 'q=wis' in location and 'day=2026-09-05' in location
     after = client.get(location).data.decode()
-    assert 'Filed · Slot 1' in after
+    assert 'Held · Slot 1' in after
     assert 'Showing 1 of 4 cases matching' in after
 
 

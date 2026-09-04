@@ -381,9 +381,9 @@ kickoff line (CT), then two market groups (spread, total) of two `.docket-side` 
 each. Rows separate by `--docket-rule` hairlines under day heads; the slate is a document,
 not a card grid. A case with a held side carries a quiet held indicator at row level so the
 scanning eye finds its own commitments without reading every pill — shipped
-2026-08-19 as `.docket-held-tag` ("Filed · Slot 3", "Filed · Slot 3 & Reserve"):
-the Stamped-Side grammar at meta-tag scale (garnet border + 8% tint + weight
-step), riding `.docket-case-meta`.
+2026-08-19 as `.docket-held-tag` ("Held · Slot 3", "Held · Slot 3 & Reserve"; "Filed"
+until the 2026-09-04 clarity pass, see 7.6a): the Stamped-Side grammar at meta-tag scale
+(garnet border + 8% tint + weight step), riding `.docket-case-meta`.
 
 ### 7.3 The side control — `.docket-side`
 
@@ -438,13 +438,38 @@ every open pill as the reserve; success was never confirmed in words. Six contra
 `tests/test_docket_sheet_flow.py`:
 
 - **The ask.** `picks.next_step(state, week, now)` returns one sentence by priority: sides
-  ("5 more sides to file.") → x2 ("All 8 filed. Now pick your x2: it scores double.") → number
+  ("5 more sides to pick.") → x2 ("All 8 held. Now pick your x2: it scores double.") → number
   ("Now your number: predict the tiebreaker score.", only while a case is designated and unlocked)
-  → reserve ("Optional: tap one more side as your reserve.") → complete ("Sheet filed. Change
-  anything until Saturday 11:00 AM CT."), with preview and closed rungs and a "Closes in 3h 0m."
-  prefix inside six hours. `sheet_state` embeds it; `_next_step.html` renders it in the bar, the
+  → reserve ("Sheet filed. A reserve is optional: tap one more side to hold one.") → complete
+  ("Sheet filed. Change anything until Saturday 11:00 AM CT."), with preview and closed rungs and
+  a "Closes in 3h 0m." prefix inside six hours on every rung but the two filed ones
+  (`FILED_STAGES`). `sheet_state` embeds it; `_next_step.html` renders it in the bar, the
   drawer, and the desktop rail so the three cannot disagree; every success message appends it.
   `reminders.outstanding()` is a separate, email-locked prose and never routes through it.
+- **Held is one pick; filed is the whole sheet (clarity pass 2026-09-04, ruled by Brad).** A
+  member wrote "are my picks submitted? I can't tell": the only confirmation was a 3.5 s toast,
+  the complete state rendered no card at all, the reserve rung read as an ask ("Optional: tap one
+  more side…") to a member who was done, and "Filed" meant both one saved pick ("Filed · Slot 3")
+  and the finished sheet ("Sheet filed."). Now every per-pick surface says **held** (the row tag
+  "Held · Slot 3", the toast "Held, slot 3." / "Held as your reserve.", the prompt card "Tap x2 on
+  any held pick", the rail's reserve frame) and **filed** is reserved for the sheet. The reserve
+  rung leads with the confirmation and is never urgent; the bar and the ask take `is-complete` on
+  both filed rungs.
+- **The sheet says when it is filed — `_sheet_standing.html`, `.docket-filed`.** One standing card
+  at the top of the slate (a refresh region, so it repaints after every tap; never a form), by
+  stage: blank → "How the sheet works" (now opening "There is no submit button: every tap is saved
+  the moment you make it."); 1–7 held → nothing (the rail and the bar carry `n of 8` and the ask;
+  the slate's center of gravity is the docket); x2/number open → "All 8 held. Here is what is
+  left"; reserve/complete → the **filed stamp**: a check mark and "Sheet filed", "Your Week N sheet
+  is in.", the Clerk's-Ledger facts in one Teko line ("8 sides held · x2 on Utah Utes -3.5 ·
+  Reserve held · Number 53.7"), and "Nothing to submit: every tap was saved as you made it.
+  Change anything until Saturday 11:00 AM CT." plus, without a reserve, "A reserve is optional:
+  your next tap on any open side holds one."; closed → the same card cold (`.is-closed`, a lock
+  mark, "Sheet closed", "Your Week N sheet is on the record.", "The docket closed Saturday 11:00
+  AM CT. Verdicts to follow."). The stamp is the Stamped-Side grammar at card scale (garnet
+  border + 8% tint + weight step); the closed state is the Cold-Docket treatment with its reason
+  in the note. `sheet_state` carries each pick's `label` (`describe_pick`) so the card names the
+  x2 from the same snapshot the rail prints. Locked by `tests/test_docket_sheet_flow.py`.
 - **The bar is a handle with two rows.** Row 1 speaks in words, never bare letters: `Sheet` (with a
   drawn caret) · `3 of 8` · `x2 set / x2 open` · `Reserve held / Reserve open` · `Number 53.7 / No
   number`. Row 2 is the ask. Complete takes the stamp tint; urgent takes a heavier garnet top rule

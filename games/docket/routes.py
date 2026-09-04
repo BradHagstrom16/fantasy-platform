@@ -438,11 +438,13 @@ def set_pick():
         )
     except PickError as err:
         return _sheet_error(err)
+    # One pick is "held"; only the whole sheet is ever "filed" (the ask
+    # ladder and the filed card own that word).
     if pick.slot == BACKUP_SLOT:
-        action = ('Filed as your reserve. It only plays if a case is '
+        action = ('Held as your reserve. It only plays if a case is '
                   'thrown out.')
     else:
-        action = f'Filed, slot {pick.slot}.'
+        action = f'Held, slot {pick.slot}.'
     return _sheet_success(week, action)
 
 
