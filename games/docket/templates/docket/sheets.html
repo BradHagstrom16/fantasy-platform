@@ -28,7 +28,10 @@ the finish review and DESIGN.md 7.13.
         {% if week %}
         <h1>The Week {{ week.week_number }} Sheets</h1>
         <p class="lead mb-0">
-            {% if state == 'preview' %}
+            {% if state == 'no_games' %}
+            This week's docket has not been posted yet. Lines freeze Tuesday
+            morning; the sheets follow.
+            {% elif state == 'preview' %}
             The docket is posted for reading. Court convenes
             {{ week.start_at|ct('%A, %B %-d') }}. Sheets open here case by case at kickoff.
             {% elif board and board.deadline_passed %}

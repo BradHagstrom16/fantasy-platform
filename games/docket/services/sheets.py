@@ -22,9 +22,11 @@ The roster is live before the deadline and as-of the deadline after it
 (ADR-048), which is what a closed week grades; a post-deadline joiner has no
 dealt sheet and would otherwise render as an empty row.
 
-Four queries, whatever the roster size: enrollments (with their users), the
-week's games, the week's picks, the week's predictions. Every pick resolves
-its game from the games already in the session, never through a lazy load.
+Five queries, whatever the roster size: the roster ids (the ADR-048 helper,
+kept as the one source of the as-of rule), enrollments with their users,
+the week's games, the week's picks, the week's predictions. Every pick
+resolves its game from the games already in the session, never through a
+lazy load; the count is locked by ``tests/test_docket_all_sheets.py``.
 """
 from dataclasses import dataclass
 from datetime import datetime

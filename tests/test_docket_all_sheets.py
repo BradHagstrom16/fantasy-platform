@@ -8,6 +8,7 @@ as-of-deadline roster (ADR-048); result marks come from the grading engine
 behind the same final gate the week grade uses, and no points are shown
 before the week grades.
 """
+import re
 from datetime import datetime, timedelta
 
 import pytest
@@ -303,6 +304,10 @@ def test_no_n_plus_one(app, monkeypatch):
             _hold(user, week, g)
     db.session.commit()
     db.session.expire_all()
+    # The week is the caller's: its fields are read before the listener so
+    # the count below is the service's own five statements (the roster ids,
+    # enrollments with their users, games, picks, predictions), no more.
+    _ = (week.id, week.deadline_at, week.tiebreaker_game_id, week.week_number)
     statements = []
 
     def count(conn, cursor, statement, parameters, context, executemany):
@@ -321,7 +326,7 @@ def test_no_n_plus_one(app, monkeypatch):
     finally:
         event.remove(db.engine, 'before_cursor_execute', count)
     assert len(board.members) == 3
-    assert len(statements) <= 6, statements
+    assert len(statements) == 5, statements
 
 
 # ── the page ──────────────────────────────────────────────────────────────
@@ -449,6 +454,12 @@ def test_sheets_empty_states(monkeypatch, client, member):
     at(monkeypatch, '2026-08-30T12:00:00')      # posted, court not convened
     html = _page(client)
     assert 'not been posted yet' in html
+    # The hero agrees with the body: no "sheets open at kickoff" promise
+    # above a docket that has no cases yet.
+    lead = re.search(r'<p class="lead mb-0">(.*?)</p>', html, re.S).group(1)
+    assert 'case by case' not in lead
+    assert 'has not been posted yet' in lead
+    assert html.count('has not been posted yet') == 2      # hero + body
     make_game(week, kickoff=KICK_THU)
     db.session.commit()
     html = _page(client)
