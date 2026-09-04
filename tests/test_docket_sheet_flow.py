@@ -80,17 +80,17 @@ def test_partial_sheet_counts_down(app, monkeypatch):
     week = make_week(1)
     at(monkeypatch, IN_WEEK1)
     assert picks_service.next_step(_state(3), week)['ask'] == \
-        '5 more sides to file.'
+        '5 more sides to pick.'
     assert picks_service.next_step(_state(7), week)['ask'] == \
-        '1 more side to file.'
+        '1 more side to pick.'
 
 
-def test_eight_filed_asks_for_the_x2_first(app, monkeypatch):
+def test_eight_held_asks_for_the_x2_first(app, monkeypatch):
     week = make_week(1)
     at(monkeypatch, IN_WEEK1)
     step = picks_service.next_step(_state(8), week)
     assert step['stage'] == 'x2'
-    assert step['ask'] == 'All 8 filed. Now pick your x2: it scores double.'
+    assert step['ask'] == 'All 8 held. Now pick your x2: it scores double.'
 
 
 def test_then_the_number(app, monkeypatch):
@@ -120,7 +120,10 @@ def test_then_the_reserve_is_optional(app, monkeypatch):
     step = picks_service.next_step(
         _state(8, best={'slot': 1}, prediction='51.5'), week)
     assert step['stage'] == 'reserve'
-    assert step['ask'] == 'Optional: tap one more side as your reserve.'
+    # The reserve is optional, so the rung leads with the confirmation: a
+    # member with 8 sides, an x2 and a number is done, not still asked.
+    assert step['ask'] == ('Sheet filed. A reserve is optional: tap one more '
+                           'side to hold one.')
 
 
 def test_complete_sheet_has_a_closing_line(app, monkeypatch):
@@ -154,9 +157,21 @@ def test_urgent_prefix_inside_six_hours(app, monkeypatch):
     at(monkeypatch, '2026-09-05T13:00:00')          # 3h before 16:00 UTC
     step = picks_service.next_step(_state(6), week)
     assert step['urgent'] is True
-    assert step['ask'] == 'Closes in 3h 0m. 2 more sides to file.'
+    assert step['ask'] == 'Closes in 3h 0m. 2 more sides to pick.'
     at(monkeypatch, '2026-09-04T12:00:00')
     assert picks_service.next_step(_state(6), week)['urgent'] is False
+
+
+def test_filed_sheet_is_never_urgent(app, monkeypatch):
+    """Inside six hours a sheet that only lacks the optional reserve is
+    filed, not late: no countdown prefix on the reserve rung either."""
+    week = make_week(1)
+    at(monkeypatch, '2026-09-05T13:00:00')
+    step = picks_service.next_step(
+        _state(8, best={'slot': 1}, prediction='51.5'), week)
+    assert step['stage'] == 'reserve'
+    assert step['urgent'] is False
+    assert step['ask'].startswith('Sheet filed.')
 
 
 def test_sheet_state_embeds_next_step(app, monkeypatch):
@@ -178,7 +193,7 @@ def test_set_pick_json_carries_a_message_with_the_ask(
     at(monkeypatch, IN_WEEK1)
     payload = _file(client, game).get_json()
     assert payload['ok'] is True
-    assert payload['message'] == 'Filed, slot 1. 7 more sides to file.'
+    assert payload['message'] == 'Held, slot 1. 7 more sides to pick.'
 
 
 def test_eighth_pick_message_turns_to_the_x2(monkeypatch, client, member):
@@ -190,7 +205,7 @@ def test_eighth_pick_message_turns_to_the_x2(monkeypatch, client, member):
         _file(client, g)
     payload = _file(client, games[7]).get_json()
     assert payload['message'] == \
-        'Filed, slot 8. All 8 filed. Now pick your x2: it scores double.'
+        'Held, slot 8. All 8 held. Now pick your x2: it scores double.'
 
 
 def test_reserve_message_says_what_a_reserve_is(monkeypatch, client, member):
@@ -202,7 +217,7 @@ def test_reserve_message_says_what_a_reserve_is(monkeypatch, client, member):
         _file(client, g)
     payload = _file(client, games[8], backup='1').get_json()
     assert payload['message'].startswith(
-        'Filed as your reserve. It only plays if a case is thrown out.')
+        'Held as your reserve. It only plays if a case is thrown out.')
 
 
 def test_x2_and_number_messages(monkeypatch, client, member):
@@ -232,7 +247,7 @@ def test_form_post_flashes_the_same_message(monkeypatch, client, member):
                        data={'game_id': game.id, 'market': 'spread',
                              'side': 'home', 'csrf_token': 'x'},
                        follow_redirects=True)
-    assert 'Filed, slot 1. 7 more sides to file.' in resp.data.decode()
+    assert 'Held, slot 1. 7 more sides to pick.' in resp.data.decode()
 
 
 # ── Refusals say what to do ───────────────────────────────────────────────
@@ -292,6 +307,10 @@ def test_blank_sheet_renders_orientation_and_the_ask(
     assert 'docket-orient' in html
     assert 'How the sheet works' in html
     assert html.count('Tap 8 sides to fill your sheet.') == 3   # bar, drawer, rail
+    # The first-visit card answers "is there a submit button?" before it is
+    # asked: the only save is the tap itself.
+    assert ('There is no submit button: every tap is saved the moment you '
+            'make it.') in html
     # Before 8 scoring picks, the bar shows neutral labels (not "open")
     assert 'x2 open' not in html and 'Reserve open' not in html
     assert '>x2<' in html and '>Reserve<' in html and 'No number' in html
@@ -307,7 +326,13 @@ def test_orientation_leaves_after_the_first_pick(monkeypatch, client, member):
     _file(client, game)
     html = client.get('/docket/').data.decode()
     assert 'docket-orient' not in html
-    assert '7 more sides to file.' in html
+    assert '7 more sides to pick.' in html
+    # In progress: no status card at all. The rail and the bar carry
+    # "1 of 8" and the ask; the slate's center of gravity is the docket.
+    assert 'docket-filed' not in html and 'docket-prompt' not in html
+    # One pick is "held"; only the whole sheet is ever "filed".
+    assert 'Held · Slot 1' in html
+    assert 'Filed · Slot' not in html
 
 
 def test_held_pill_carries_the_x2_button(monkeypatch, client, member):
@@ -356,9 +381,96 @@ def test_full_sheet_renders_the_prompt_card(monkeypatch, client, member):
         _file(client, g)
     html = client.get('/docket/').data.decode()
     assert 'docket-prompt' in html
-    assert 'Tap x2 on any filed pick' in html
-    assert 'Your next tap on any open side files as your reserve' in html
+    assert 'All 8 held. Here is what is left' in html
+    assert 'Tap x2 on any held pick' in html
+    assert 'Your next tap on any open side is held as your reserve' in html
     assert 'data-docket-open-sheet' in html
+    assert 'docket-filed' not in html
+
+
+# ── The sheet says when it is filed (clarity pass 2026-09-04) ─────────────
+
+FILED_CARD = re.compile(r'class="docket-filed(?:\s[^"]*)?"')
+
+
+def _file_eight_with_x2_and_number(client, week, games):
+    for g in games:
+        _file(client, g)
+    client.post('/docket/best',
+                data={'game_id': games[0].id, 'market': 'spread',
+                      'csrf_token': 'x'}, headers=JSON)
+    client.post('/docket/tiebreaker',
+                data={'prediction': '53.7', 'csrf_token': 'x'}, headers=JSON)
+
+
+def test_reserve_stage_renders_the_filed_card_once(monkeypatch, client, member):
+    """8 sides, an x2 and a number, no reserve: the member is done. The
+    slate says so in a standing card (the toast is gone in 3.5 s), the bar
+    takes the complete tint, and the prompt card is gone."""
+    week = make_week(1)
+    games = [make_game(week, kickoff=KICK_SAT, home=f'Home {i}',
+                       away=f'Away {i}') for i in range(8)]
+    week.tiebreaker_game_id = games[7].id
+    db.session.commit()
+    at(monkeypatch, IN_WEEK1)
+    _file_eight_with_x2_and_number(client, week, games)
+    html = client.get('/docket/').data.decode()
+    assert len(FILED_CARD.findall(html)) == 1
+    assert 'Sheet filed' in html
+    assert 'Your Week 1 sheet is in.' in html
+    assert ('Nothing to submit: every tap was saved as you made it. '
+            'Change anything until Saturday 11:00 AM CT.') in html
+    assert '8 sides held' in html
+    assert 'x2 on Home 0 -3.5' in html
+    assert 'No reserve' in html and 'Number 53.7' in html
+    assert 'A reserve is optional: your next tap on any open side holds one.' in html
+    assert 'docket-prompt' not in html
+    assert 'docket-rail-bar is-complete' in html
+
+
+def test_complete_sheet_renders_the_filed_card_with_the_reserve(
+        monkeypatch, client, member):
+    week = make_week(1)
+    games = [make_game(week, kickoff=KICK_SAT) for _ in range(9)]
+    week.tiebreaker_game_id = games[7].id
+    db.session.commit()
+    at(monkeypatch, IN_WEEK1)
+    _file_eight_with_x2_and_number(client, week, games[:8])
+    _file(client, games[8], backup='1')
+    html = client.get('/docket/').data.decode()
+    assert len(FILED_CARD.findall(html)) == 1
+    assert 'Reserve held' in html
+    assert 'A reserve is optional' not in html
+    assert 'is-closed' not in html
+
+
+def test_closed_sheet_renders_the_closed_card_and_no_forms(
+        monkeypatch, client, member):
+    """After the deadline the same card answers the question in its closed
+    state; it carries no form, like everything else on a closed sheet."""
+    week = make_week(1)
+    games = [make_game(week, kickoff=KICK_SAT) for _ in range(8)]
+    week.tiebreaker_game_id = games[7].id
+    db.session.commit()
+    at(monkeypatch, IN_WEEK1)
+    _file_eight_with_x2_and_number(client, week, games)
+    at(monkeypatch, '2026-09-05T17:00:00')          # noon CT Saturday
+    html = client.get('/docket/').data.decode()
+    cards = FILED_CARD.findall(html)
+    assert len(cards) == 1 and 'is-closed' in cards[0]
+    assert 'Sheet closed' in html
+    assert 'Your Week 1 sheet is on the record.' in html
+    assert 'The docket closed Saturday 11:00 AM CT. Verdicts to follow.' in html
+    assert 'data-docket-action="' not in html
+
+
+def test_the_filed_card_carries_no_form():
+    """A refresh region that is only ever read: no mutation form may ride
+    in it (the closed sheet's no-forms lock would otherwise be one include
+    away from breaking)."""
+    src = (Path(__file__).resolve().parent.parent / 'games' / 'docket'
+           / 'templates' / 'docket' / '_sheet_standing.html').read_text()
+    assert '<form' not in src and 'data-docket-action' not in src
 
 
 def test_number_card_states_its_default_and_saves(monkeypatch, client, member):

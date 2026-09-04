@@ -71,6 +71,10 @@ URGENT_HOURS = 6
 # The deadline, said the way every sheet surface says it.
 CLOSE_LABEL = 'Saturday 11:00 AM CT'
 
+# The rungs on which the sheet is filed: nothing is owed but the optional
+# reserve. They take the complete tint and never the urgent countdown.
+FILED_STAGES = ('reserve', 'complete')
+
 
 class PickError(Exception):
     """A refused sheet mutation, in user-facing terms.
@@ -488,19 +492,24 @@ def next_step(state: dict, week: DocketWeek, now=None) -> dict:
         stage, ask = 'blank', f'Tap {SCORING_SLOTS} sides to fill your sheet.'
     elif remaining:
         plural = '' if remaining == 1 else 's'
-        stage, ask = 'sides', f'{remaining} more side{plural} to file.'
+        stage, ask = 'sides', f'{remaining} more side{plural} to pick.'
     elif state['best'] is None:
-        stage, ask = 'x2', (f'All {SCORING_SLOTS} filed. Now pick your x2: '
+        stage, ask = 'x2', (f'All {SCORING_SLOTS} held. Now pick your x2: '
                             'it scores double.')
     elif state['prediction'] is None and _number_open(week, now):
         stage, ask = 'number', 'Now your number: predict the tiebreaker score.'
     elif state['backup'] is None:
-        stage, ask = 'reserve', 'Optional: tap one more side as your reserve.'
+        # The reserve is optional (DESIGN.md 1.5), so this rung leads with
+        # the confirmation: the member is done, the reserve is an offer.
+        stage, ask = 'reserve', ('Sheet filed. A reserve is optional: tap one '
+                                 'more side to hold one.')
     else:
         stage, ask = 'complete', f'Sheet filed. Change anything until {CLOSE_LABEL}.'
 
     left = week.deadline_at - now
-    urgent = stage != 'complete' and left < timedelta(hours=URGENT_HOURS)
+    # A filed sheet is never late, with or without the optional reserve.
+    urgent = (stage not in FILED_STAGES
+              and left < timedelta(hours=URGENT_HOURS))
     if urgent:
         ask = f'Closes in {_closes_in(left)}. {ask}'
     return {'stage': stage, 'ask': ask, 'urgent': urgent,
@@ -534,6 +543,10 @@ def sheet_state(user_id: int, week: DocketWeek) -> dict:
             'line_value': p.line_value,
             'book': p.book,
             'locked': p.game_id in locked_game_ids,
+            # The side as the sheet prints it ("Utah Utes -3.5"), so a
+            # surface that names a pick in prose (the filed card) reads the
+            # same snapshot the rail renders.
+            'label': describe_pick(p),
         }
         for p in picks
     ]

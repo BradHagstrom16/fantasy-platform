@@ -1,0 +1,77 @@
+{# The sheet's standing, stated once at the top of the slate (DESIGN.md 7.6a,
+   clarity pass 2026-09-04). One card by stage:
+     - blank:            how the sheet works (first visit), gone after pick 1
+     - 1 to 7 held:      nothing here; the rail and the bar carry "n of 8"
+     - x2 / number open: what is left and how
+     - reserve/complete: the filed stamp (a member with 8 sides, an x2 and a
+                         number is done; the reserve is an offer)
+     - closed:           the same stamp, cold: the sheet is on the record
+   The toast confirms a tap for 3.5 s; this card answers "is my sheet in?"
+   for as long as the page is open. Reads the sheet state only; carries no
+   form (the closed sheet's no-forms lock rides on that).
+   Context: sheet, week, preview, designated, tb_locked. #}
+{% if not preview %}
+  {% set filed_stages = ('reserve', 'complete') %}
+  {% if sheet.deadline_passed or sheet.next_step.stage in filed_stages %}
+  {% set closed = sheet.deadline_passed %}
+  <div class="docket-filed{% if closed %} is-closed{% endif %}">
+    <span class="docket-eyebrow{% if closed %} docket-eyebrow-ink{% endif %} docket-filed-stamp">
+      <i class="bi bi-{{ 'lock-fill' if closed else 'check-circle-fill' }}" aria-hidden="true"></i>
+      {{ 'Sheet closed' if closed else 'Sheet filed' }}
+    </span>
+    <p class="docket-filed-line">
+      {%- if closed -%}
+        Your Week {{ week.week_number }} sheet is on the record.
+      {%- else -%}
+        Your Week {{ week.week_number }} sheet is in.
+      {%- endif -%}
+    </p>
+    {# The Clerk's-Ledger Rule: the progress facts travel together. #}
+    <p class="docket-filed-facts">
+      <span class="docket-filed-fact">{{ sheet.scoring_count }} sides held</span>
+      <span class="docket-filed-fact">{% if sheet.best %}x2 on {{ sheet.best.label }}{% else %}No x2{% endif %}</span>
+      <span class="docket-filed-fact">{{ 'Reserve held' if sheet.backup else 'No reserve' }}</span>
+      <span class="docket-filed-fact">{% if sheet.prediction is not none %}Number {{ sheet.prediction }}{% else %}No number{% endif %}</span>
+    </p>
+    {% if closed %}
+    <p class="docket-filed-note">The docket closed {{ week.deadline_at|ct('%A %-I:%M %p CT') }}. Verdicts to follow.</p>
+    {% else %}
+    <p class="docket-filed-note">Nothing to submit: every tap was saved as you made it. Change anything until {{ week.deadline_at|ct('%A %-I:%M %p CT') }}.</p>
+      {% if not sheet.backup %}
+      <p class="docket-filed-note">A reserve is optional: your next tap on any open side holds one.</p>
+      {% endif %}
+    {% endif %}
+  </div>
+
+  {% elif sheet.scoring_count == 0 %}
+  <div class="docket-orient card border-0">
+    <div class="card-body">
+      <span class="docket-eyebrow">How the sheet works</span>
+      <ol class="docket-orient-steps">
+        <li>Tap 8 sides. Spread or total, any game, any day.</li>
+        <li>Make one of the 8 your x2. It scores double.</li>
+        <li>Add a 9th side as your reserve, and save your tiebreaker number.</li>
+      </ol>
+      <p class="docket-orient-note">There is no submit button: every tap is saved the moment you make it. The sheet closes {{ week.deadline_at|ct('%A %-I:%M %p CT') }}; anything left blank is filled for you.</p>
+    </div>
+  </div>
+
+  {% elif sheet.scoring_count >= 8 and sheet.next_step.stage in ('x2', 'number') %}
+  <div class="docket-prompt card border-0">
+    <div class="card-body">
+      <span class="docket-eyebrow">All 8 held. Here is what is left</span>
+      <ul class="docket-prompt-list">
+        {% if not sheet.best %}
+        <li><strong>Your x2.</strong> Tap x2 on any held pick. It scores double.</li>
+        {% endif %}
+        {% if sheet.prediction is none and designated and not tb_locked %}
+        <li><strong>Your number.</strong> Predict the tiebreaker score in <button type="button" class="docket-linklike" data-docket-open-sheet>your sheet</button>.</li>
+        {% endif %}
+        {% if not sheet.backup %}
+        <li><strong>A reserve, if you want one.</strong> Your next tap on any open side is held as your reserve. It only plays if a case is thrown out.</li>
+        {% endif %}
+      </ul>
+    </div>
+  </div>
+  {% endif %}
+{% endif %}

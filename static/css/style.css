@@ -13833,6 +13833,60 @@ body.game-docket .form-select:focus {
   letter-spacing: .06em;
   text-transform: uppercase;
 }
+/* --- The filed stamp: the sheet's standing once nothing is owed (reserve /
+   complete), and its cold closed state. The Stamped-Side grammar at card
+   scale: garnet border + tint + a weight step, never tint alone. --- */
+.docket-filed {
+  margin-bottom: 1.1rem;
+  padding: .9rem 1.1rem 1rem;
+  background: rgba(var(--game-accent-rgb), .08);
+  border: 1px solid rgba(var(--game-accent-rgb), .45);
+  border-radius: var(--radius-lg);
+}
+.docket-filed .docket-eyebrow { display: block; margin-bottom: .3rem; }
+.docket-filed-stamp .bi { margin-right: .3rem; }
+.docket-filed-line {
+  margin: 0 0 .4rem;
+  font-family: 'Newsreader', Georgia, serif;
+  font-size: 1.1rem;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--text-primary);
+}
+.docket-filed-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .1rem .55rem;
+  margin: 0 0 .5rem;
+  font-family: 'Teko', sans-serif;
+  font-size: 1rem;
+  font-weight: 500;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--game-primary);
+}
+/* The separator trails each fact, so a wrapped line ends on a dot rather
+   than opening with one. */
+.docket-filed-fact:not(:last-child)::after {
+  content: '\00b7';
+  margin-left: .55rem;
+  color: var(--text-secondary);
+}
+.docket-filed-note {
+  margin: 0;
+  font-family: 'Newsreader', Georgia, serif;
+  font-size: .95rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+.docket-filed-note + .docket-filed-note { margin-top: .25rem; }
+/* Closed: the Cold-Docket treatment, the reason stated in the note. */
+.docket-filed.is-closed {
+  background: var(--bg-card);
+  border-color: var(--docket-rule);
+}
+.docket-filed.is-closed .docket-filed-facts { color: var(--text-secondary); }
+
 /* --- Orientation + the post-8 prompt: paper cards under a garnet top rule --- */
 .docket-orient,
 .docket-prompt {

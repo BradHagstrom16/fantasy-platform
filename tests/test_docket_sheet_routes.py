@@ -442,7 +442,7 @@ def test_session_jumps_render_for_a_multi_wave_day(
     assert 'id="docket-session-evening"' in html
 
 
-def test_held_row_carries_the_filed_tag(monkeypatch, client, member):
+def test_held_row_carries_the_held_tag(monkeypatch, client, member):
     week = make_week(1)
     game = make_game(week, kickoff=KICK_SAT,
                      away='Wisconsin Badgers', home='Notre Dame Fighting Irish')
@@ -454,4 +454,4 @@ def test_held_row_carries_the_filed_tag(monkeypatch, client, member):
                 data={'game_id': game.id, 'market': 'spread',
                       'side': 'home', 'csrf_token': 'x'})
     after = client.get('/docket/').data.decode()
-    assert 'Filed · Slot 1' in after
+    assert 'Held · Slot 1' in after
