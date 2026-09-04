@@ -567,6 +567,11 @@ def make_pick(week_number):
                 return redirect(url_for('cfb.make_pick', week_number=week_number))
 
             utc_now = get_utc_time()
+            # Decided before the write below overwrites team_id: the pick
+            # page's "Keep" posts the standing team again, and that is not
+            # a change (no receipt, and never a "Pick changed" one).
+            same_team = (existing_pick is not None
+                         and existing_pick.team_id == team_id)
             if existing_pick:
                 existing_pick.team_id = team_id
                 existing_pick.created_at = utc_now
@@ -602,8 +607,10 @@ def make_pick(week_number):
             flash(success_msg, 'success')
             # The receipt rides after the commit and never gates it: a
             # refused send is a log line (services/receipts.py).
-            send_pick_receipt(current_user, enrollment, week, team,
-                              new_team_game, changed=existing_pick is not None)
+            if not same_team:
+                send_pick_receipt(current_user, enrollment, week, team,
+                                  new_team_game,
+                                  changed=existing_pick is not None)
             return redirect(url_for('cfb.index'))
 
     # GET: build eligible teams

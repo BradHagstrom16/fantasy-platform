@@ -443,7 +443,8 @@ def set_pick():
         )
     except PickError as err:
         return _sheet_error(err)
-    if receipts_service.sheet_just_filed(before, pick):
+    after = receipts_service.scoring_count(current_user.id, week)
+    if receipts_service.sheet_just_filed(before, after):
         # After the commit, never gating it: a refused send is a log line.
         receipts_service.send_sheet_receipt(
             current_user, get_enrollment(current_user.id), week)

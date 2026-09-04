@@ -76,6 +76,19 @@ def test_a_changed_pick_says_so(client, app):
     assert 'Your Week 1 pick: South Carolina +7.0' in plain
 
 
+def test_resubmitting_the_same_team_sends_nothing(client, app):
+    """The pick page's "Keep" posts the standing team again; nothing
+    changed, so nothing mails (and never as "Pick changed")."""
+    user, navy, _dog, _heavy = _seed()
+    _login(client, user)
+    with patch.dict(os.environ, FAR_NOW), \
+            patch(SEND, return_value=True) as send:
+        _pick(client, navy)
+        _pick(client, navy)
+    assert send.call_count == 1
+    assert send.call_args[0][1] == 'Your pick is in: CFB Survivor, Week 1'
+
+
 def test_a_refused_pick_sends_nothing(client, app):
     user, _navy, _dog, heavy = _seed()
     _login(client, user)

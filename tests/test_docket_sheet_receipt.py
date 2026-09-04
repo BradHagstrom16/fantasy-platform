@@ -97,6 +97,20 @@ def test_nothing_else_on_the_sheet_mails(monkeypatch, client, member):
     assert send.call_count == 1
 
 
+def test_a_move_at_seven_sides_does_not_mail(monkeypatch, client, member):
+    """Moving a held market to its other side returns a scoring pick but
+    leaves the count at seven: not the filing of the sheet."""
+    week, games = _week_with_games()
+    at(monkeypatch, IN_WEEK1)
+    with patch(SEND, return_value=True) as send:
+        for g in games[:7]:
+            _file(client, g)
+        _file(client, games[0], side='away')                # a move
+        assert send.call_count == 0
+        _file(client, games[7])
+    assert send.call_count == 1
+
+
 def test_holding_again_after_a_removal_sends_the_sheet_again(
         monkeypatch, client, member):
     week, games = _week_with_games()

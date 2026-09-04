@@ -6,9 +6,10 @@ is still open, the deadline, and the sheet link. A member who asked "are my
 picks submitted? I can't tell" gets the answer in their inbox as well as on
 the sheet.
 
-**The trigger is stateless.** ``sheet_just_filed`` is true for the mutation
-that takes the scoring count from 7 to 8, so nothing else on the sheet ever
-mails: not the reserve (slot 9), not the x2, not the number, not a move.
+**The trigger is stateless.** ``sheet_just_filed`` compares the scoring
+count before and after the mutation and is true only for 7 -> 8, so nothing
+else on the sheet ever mails: not the reserve (slot 9), not the x2, not the
+number, not a move (which returns a scoring pick but leaves the count).
 There is no sent flag and no new column; a member who removes a side and
 holds another gets the sheet again, which is the receipt for the sheet they
 now have. A post-deadline receipt was ruled out ("Filed only").
@@ -21,6 +22,9 @@ the reminder that may follow it.
 """
 import logging
 
+from sqlalchemy import func, select
+
+from extensions import db
 from games.docket.models import DocketPick
 from games.docket.services.notifications import (
     deadline_line,
@@ -43,16 +47,16 @@ logger = logging.getLogger(__name__)
 
 def scoring_count(user_id: int, week) -> int:
     """How many scoring sides (slots 1-8) the member holds this week."""
-    return (
-        DocketPick.query.filter_by(user_id=user_id, week_id=week.id)
+    return db.session.scalar(
+        select(func.count(DocketPick.id))
+        .filter_by(user_id=user_id, week_id=week.id)
         .filter(DocketPick.slot != BACKUP_SLOT)
-        .count()
     )
 
 
-def sheet_just_filed(before: int, pick: DocketPick) -> bool:
-    """The trigger: a scoring side that took the count from 7 to 8."""
-    return pick.slot != BACKUP_SLOT and before == SCORING_SLOTS - 1
+def sheet_just_filed(before: int, after: int) -> bool:
+    """The trigger: the mutation took the scoring count from 7 to 8."""
+    return before == SCORING_SLOTS - 1 and after == SCORING_SLOTS
 
 
 def _sheet_lines(picks) -> list[str]:
@@ -104,11 +108,10 @@ def send_sheet_receipt(user, enrollment, week) -> bool:
     if not user.email:
         return False
     state = sheet_state(user.id, week)
-    picks = (
-        DocketPick.query.filter_by(user_id=user.id, week_id=week.id)
+    picks = db.session.scalars(
+        select(DocketPick).filter_by(user_id=user.id, week_id=week.id)
         .order_by(DocketPick.slot)
-        .all()
-    )
+    ).all()
     nudge = payment_nudge_for(enrollment, bool(user.is_admin))
     receipt = sheet_receipt_letter(week, state, picks, nudge)
     plain, html = render_letter(receipt)
