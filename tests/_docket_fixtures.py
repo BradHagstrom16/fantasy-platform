@@ -26,6 +26,14 @@ _event_ids = itertools.count(1)
 WEEK1_DEADLINE_UTC = datetime(2026, 9, 5, 16, 0)
 IN_WEEK1 = '2026-09-02T12:00:00'
 
+# When a fixture member enrolled (naive UTC), well before every deadline of
+# the season. A CLOSED week grades roster_user_ids_as_of(week.deadline_at)
+# (ADR-048), which compares this column with the deadline; the model's
+# real-clock default stopped qualifying for Week 1 the moment its deadline
+# passed on 2026-09-05 and silently emptied every graded roster in the
+# suite. A test that wants a late joiner passes created_at explicitly.
+ENROLLED_AT = datetime(2026, 8, 20, 12, 0)
+
 
 def make_user(username='player', is_admin=False):
     user = User(username=username, email=f'{username}@test.com',
@@ -42,6 +50,7 @@ def make_enrollment(user, **kwargs):
     display_name = kwargs.pop('display_name', None)
     if display_name is not None:
         user.display_name = display_name
+    kwargs.setdefault('created_at', ENROLLED_AT)
     enrollment = DocketEnrollment(
         user_id=user.id, season_year=SEASON_YEAR, **kwargs)
     db.session.add(enrollment)
