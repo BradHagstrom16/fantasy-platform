@@ -187,6 +187,74 @@ def calculate_cumulative_spread(enrollment):
 # Result processing
 # ---------------------------------------------------------------------------
 
+def _eliminated_in_another_week(user_id, week_id):
+    """True when a completed week other than ``week_id`` eliminated the
+    player — its outcome snapshot carries the elimination WITH the lost
+    life (a later week's snapshot only inherits ``is_eliminated``)."""
+    outcomes = CfbWeekOutcome.query.filter(
+        CfbWeekOutcome.user_id == user_id,
+        CfbWeekOutcome.week_id != week_id,
+    ).all()
+    return any(o.eliminated_this_week for o in outcomes)
+
+
+def reverse_game_grade(game, season_year=None):
+    """Undo the per-pick effects of a settled game's grade so a corrected
+    ruling can re-grade it (ADR-061 corrections, pre-completion only).
+
+    Every graded pick on the game returns to ungraded (``is_correct`` =
+    None) and a wrong pick gets back the life the grade charged, so the
+    next ``process_week_results`` grades the game again under the new
+    result. Before a week completes these are the only effects a grade has
+    had — no-pick penalties, revival and the outcome snapshot fire in the
+    completing run, and both admin routes refuse a complete week.
+
+    "Charged" mirrors the grader's own gate: an enrollment that is active
+    now was active when the pick graded, so its life comes back; one that
+    is eliminated now was charged only if THIS pick eliminated it — a
+    player eliminated by an earlier week (that week's ``CfbWeekOutcome``
+    says so) was skipped by the grader and keeps its state.
+
+    Returns the number of picks reversed.
+    """
+    team_ids = [tid for tid in (game.home_team_id, game.away_team_id) if tid]
+    if not team_ids:
+        return 0
+    picks = CfbPick.query.filter(
+        CfbPick.week_id == game.week_id,
+        CfbPick.team_id.in_(team_ids),
+        CfbPick.is_correct.is_not(None),
+    ).all()
+    if not picks:
+        return 0
+
+    if season_year is None:
+        season_year = _get_season_year()
+    enrollments = CfbEnrollment.query.filter(
+        CfbEnrollment.season_year == season_year,
+        CfbEnrollment.user_id.in_([p.user_id for p in picks]),
+    ).all()
+    enrollment_by_user = {e.user_id: e for e in enrollments}
+
+    for pick in picks:
+        if pick.is_correct is False:
+            enrollment = enrollment_by_user.get(pick.user_id)
+            if enrollment and (
+                    not enrollment.is_eliminated
+                    or not _eliminated_in_another_week(
+                        pick.user_id, game.week_id)):
+                enrollment.lives_remaining += 1
+                enrollment.is_eliminated = False
+        pick.is_correct = None
+
+    logger.info(
+        "reverse_game_grade: game %s (week %s) — %d pick(s) returned to "
+        "ungraded ahead of a corrected ruling",
+        game.id, game.week_id, len(picks),
+    )
+    return len(picks)
+
+
 def process_week_results(week_id, season_year=None):
     """Grade picks and settle lives for a week. Safe to re-run.
 

@@ -129,7 +129,9 @@ def test_scores_run_covers_every_day_cfb_plays():
     days = set()
     for rule in _weekday_rules('cfb-scores.timer', '08:00:00'):
         days.update(rule.split()[0].split(','))
-    assert {'Sun', 'Mon', 'Tue', 'Wed', 'Thu'} <= days, days
+    # Equality, not subset: every extra weekday is one more /scores call
+    # (2 credits) that can only see pre-deadline games.
+    assert days == {'Sun', 'Mon', 'Tue', 'Wed', 'Thu'}, days
 
 
 def test_monday_setup_fires_after_the_scores_run():
@@ -147,3 +149,15 @@ def test_monday_setup_fires_after_the_scores_run():
     for rule in setup:
         assert rule.split()[-2] > '08:00:00', (
             f'{rule!r} fires before or with the 08:00 CT scores run')
+
+
+def test_setup_service_is_ordered_after_the_scores_service():
+    """The clock ordering above covers an ordinary Monday; a boot that
+    missed BOTH firings replays them together (Persistent=true), and only
+    a unit-level After= keeps the old week's scores run ahead of the
+    is_active flip. Ordering only — a Wants= would fire a second /scores
+    call (2 credits) on every setup."""
+    directives = _directives(DEPLOY / 'cfb-setup.service')
+    assert 'After=cfb-scores.service' in directives
+    assert not any(d.startswith('Wants=cfb-scores') or
+                   d.startswith('Requires=cfb-scores') for d in directives)
