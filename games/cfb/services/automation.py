@@ -33,10 +33,23 @@ logger = logging.getLogger(__name__)
 
 CHICAGO_TZ = ZoneInfo('America/Chicago')
 
-# A week still incomplete this long past its deadline has fallen out of the
-# scores API's daysFrom=3 window (or needs a manual ruling) — escalate it
-# in the admin summary instead of re-reporting 'partial' forever (§5.1).
+# A week still incomplete this long past its LAST KICKOFF (or its deadline,
+# whichever is later) has fallen out of the scores API's daysFrom=3 window
+# (or needs a manual ruling) — escalate it in the admin summary instead of
+# re-reporting 'partial' forever (§5.1). Measured from the last kickoff, not
+# the deadline alone, because a Labor-Day Monday or November MACtion week is
+# legitimately partial on Tuesday and Wednesday mornings (2026-09-07).
 STUCK_WEEK_ALERT_DAYS = 2
+
+
+def _stuck_anchor(week, deadline):
+    """The instant a week's staleness is measured from: its last kickoff,
+    or its deadline when that is later (or when it has no timed games)."""
+    latest = max((g.game_time for g in CfbGame.query.filter_by(week_id=week.id)
+                  if g.game_time is not None), default=None)
+    if latest is None:
+        return deadline
+    return max(deadline, make_aware(latest))
 
 
 # ---------------------------------------------------------------------------
@@ -504,7 +517,8 @@ def run_scores():
             'week_number': week.week_number,
             **result,
         }
-        overdue = get_current_time() - deadline > timedelta(days=STUCK_WEEK_ALERT_DAYS)
+        overdue = (get_current_time() - _stuck_anchor(week, deadline)
+                   > timedelta(days=STUCK_WEEK_ALERT_DAYS))
         if result.get('status') not in ('completed', 'already_complete') and overdue:
             entry['stuck'] = True
             stuck_weeks.append(week.week_number)
@@ -536,9 +550,9 @@ def run_scores():
             if r.get('stuck'):
                 lines.append(
                     f"  STUCK: more than {STUCK_WEEK_ALERT_DAYS} days past "
-                    "deadline without completing — the scores API window "
-                    "(daysFrom=3) may have passed. Mark results or enter "
-                    "scores via the admin pages."
+                    "its last kickoff without completing — the scores API "
+                    "window (daysFrom=3) may have passed. Mark results or "
+                    "enter scores via the admin pages."
                 )
         summary = '\n'.join(lines)
 

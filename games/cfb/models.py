@@ -16,11 +16,27 @@ converter per column — see games/cfb/utils.py):
   naive **UTC**. Read with ``to_pool_time()`` (assumes UTC). Using
   ``make_aware()`` on these shifts them +5/6h — the recap-autopick
   mislabel bug (audit §7, locked by tests/test_cfb_reminders.py).
+- The wall-clock columns are enforced on assignment: an aware value is
+  converted to pool-tz wall clock and stripped (``_pool_wall_clock``).
+  Postgres casts an aware bind in the SESSION zone (GMT on the droplet),
+  which is how Week 2 2026's 11:00 AM CT deadline was stored as 16:00;
+  SQLite keeps the digits, so CI never saw it
+  (tests/test_cfb_week_datetime_contract.py).
 """
 from datetime import UTC, datetime
 
+from sqlalchemy.orm import validates
+
 from extensions import db
 from games.cfb.constants import TEAM_CONFERENCES
+from games.cfb.utils import _get_pool_tz
+
+
+def _pool_wall_clock(value):
+    """Aware datetime -> naive pool-tz wall clock; naive and None pass through."""
+    if value is None or value.tzinfo is None:
+        return value
+    return value.astimezone(_get_pool_tz()).replace(tzinfo=None)
 
 
 class CfbEnrollment(db.Model):
@@ -110,6 +126,10 @@ class CfbWeek(db.Model):
     # guarantee lives in this flag, not in any timer cadence (D24-eng shape).
     last_reminder_type = db.Column(db.String(10), nullable=True)
 
+    @validates('start_date', 'deadline')
+    def _wall_clock(self, _key, value):
+        return _pool_wall_clock(value)
+
     def __repr__(self):
         return f'<CfbWeek {self.week_number}>'
 
@@ -146,6 +166,10 @@ class CfbGame(db.Model):
     week = db.relationship('CfbWeek', backref='games')
     home_team = db.relationship('CfbTeam', foreign_keys=[home_team_id], backref='home_games')
     away_team = db.relationship('CfbTeam', foreign_keys=[away_team_id], backref='away_games')
+
+    @validates('game_time')
+    def _wall_clock(self, _key, value):
+        return _pool_wall_clock(value)
 
     def get_home_team_display(self):
         """Return display name for the home team."""
