@@ -5612,8 +5612,22 @@ body.game-cfb .cfb-verdict.animate-in .cfb-verdict-chip {
 /* The Field -- the weekly ledger head + survivor-first table (Player / Pick /
    Result / Lives / Status), folding the old Opponent + Score columns into the
    Pick cell so survivor-state never scrolls off at mobile width. */
-.cfb-field-head { display: flex; align-items: baseline; justify-content: space-between; gap: .5rem; }
+.cfb-field-head { display: flex; align-items: baseline; justify-content: space-between; gap: .5rem; flex-wrap: wrap; }
 .cfb-field-head h4, .cfb-field-head h5, .cfb-field-head h6 { font-family: 'Teko', sans-serif; letter-spacing: .02em; color: var(--cfb-bone); }
+/* The reveal note (2026-09-07): one factual line beside the field head when
+   the pick column shows a locked week that is not the active one. Bone-muted
+   clears AA on the raised card; never crimson — it is state, not identity. */
+.cfb-field-note { font-size: .85rem; color: var(--cfb-bone-muted); }
+/* A pick and its state chip: one line from md up; below md the table already
+   scrolls sideways, and a nowrap cell pushed the chip past the scroll edge at
+   375px, so the chip drops under the team instead. */
+.cfb-pick-cell .badge { margin-left: .35rem; vertical-align: middle; }
+@media (min-width: 768px) {
+  .cfb-pick-cell { white-space: nowrap; }
+}
+@media (max-width: 767.98px) {
+  .cfb-pick-cell .badge { display: inline-block; margin: .2rem 0 0; }
+}
 .cfb-field-week {
   font-family: 'Teko', sans-serif;
   font-size: .82rem;

@@ -185,25 +185,50 @@ def index():
             if game:
                 user_pick_spread = game.get_spread_for_team(user_pick.team_id)
 
+    # The reveal week: the latest week whose deadline has passed, complete or
+    # not, independent of is_active (Brad's ruling 2026-09-07). Monday's
+    # setup flips is_active to the next week while a Monday-night or
+    # midweek game is still pending; the field's picks stay on the board,
+    # each with its own state (LOCKED = pending, VERDICT = survived / lost,
+    # DESIGN.md 4.1), until the next week locks. The pick call, countdown
+    # and eligibility keep following the active week.
+    reveal_week = next(
+        (w for w in CfbWeek.query.order_by(CfbWeek.week_number.desc()).all()
+         if deadline_has_passed(w.deadline)),
+        None,
+    )
     week_picks = {}
-    show_picks = False
-    if current_week:
-        deadline = make_aware(current_week.deadline)
-        show_picks = deadline_has_passed(deadline)
-
-        if show_picks:
-            all_picks = (
-                CfbPick.query.filter_by(week_id=current_week.id)
-                .options(joinedload(CfbPick.team))
-                .all()
-            )
-            for pick in all_picks:
-                game = games_by_team.get(pick.team_id)
-                if game:
-                    spread = game.get_spread_for_team(pick.team_id)
-                    week_picks[pick.user_id] = f"{pick.team.name} ({spread:+.1f})"
-                else:
-                    week_picks[pick.user_id] = pick.team.name
+    show_picks = reveal_week is not None
+    if reveal_week:
+        reveal_games_by_team = games_by_team
+        if not current_week or reveal_week.id != current_week.id:
+            reveal_games_by_team = {}
+            for game in CfbGame.query.filter_by(week_id=reveal_week.id).all():
+                if game.home_team_id:
+                    reveal_games_by_team[game.home_team_id] = game
+                if game.away_team_id:
+                    reveal_games_by_team[game.away_team_id] = game
+        all_picks = (
+            CfbPick.query.filter_by(week_id=reveal_week.id)
+            .options(joinedload(CfbPick.team))
+            .all()
+        )
+        for pick in all_picks:
+            game = reveal_games_by_team.get(pick.team_id)
+            label = pick.team.name
+            if game and game.get_spread_for_team(pick.team_id) is not None:
+                label = f"{pick.team.name} ({game.get_spread_for_team(pick.team_id):+.1f})"
+            if pick.is_correct is True:
+                state = 'survived'
+            elif pick.is_correct is False:
+                state = 'lost'
+            elif game is not None and game.is_no_contest:
+                state = 'no_contest'
+            else:
+                state = 'pending'
+            week_picks[pick.user_id] = {'label': label, 'state': state}
+    reveal_note = bool(
+        reveal_week and current_week and reveal_week.id != current_week.id)
 
     # Official standings order + competition ranks via the central helper
     # (shared with the lounge -- DESIGN.md 10.5 room/lounge consistency).
@@ -283,6 +308,8 @@ def index():
         current_user_rank=current_user_rank,
         week_picks=week_picks,
         show_picks=show_picks,
+        reveal_week=reveal_week,
+        reveal_note=reveal_note,
         champion_picks=champion_picks,
         champion_correct=champion_correct,
         weeks_played=weeks_played,

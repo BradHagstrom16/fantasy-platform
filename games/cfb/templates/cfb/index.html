@@ -235,11 +235,20 @@
                pick stays the page's center of gravity (DESIGN.md §7.1). #}
             {% with eyebrow_class='cfb-eyebrow' %}{% include '_settle_tab.html' %}{% endwith %}
 
-            {# Standings Table #}
+            {# Standings Table. The pick column belongs to the reveal week
+               (the latest week whose deadline has passed), not the active
+               week: after Monday's flip a Monday-night or midweek game is
+               still pending and the field's picks stay on the board with
+               their own state until the next week locks (DESIGN.md 4.1,
+               9.9; ruled 2026-09-07). #}
+            {% set pick_week = reveal_week or current_week %}
             <div class="card mb-4 animate-in stagger-3">
                 <div class="card-header">
                     <div class="cfb-field-head">
                         <h5 class="mb-0">Active Players</h5>
+                        {% if reveal_note %}
+                        <span class="cfb-field-note">{{ get_week_display_name(reveal_week) }} picks stay on the board until {{ get_week_display_name(current_week) }} locks.</span>
+                        {% endif %}
                     </div>
                 </div>
                 <div class="card-body p-0">
@@ -251,8 +260,8 @@
                                 <th>Player</th>
                                 <th>Lives</th>
                                 <th>Spread</th>
-                                {% if current_week %}
-                                <th>{{ get_week_short_label(current_week) }} Pick</th>
+                                {% if pick_week %}
+                                <th>{{ get_week_short_label(pick_week) }} Pick</th>
                                 {% endif %}
                             </tr>
                         </thead>
@@ -272,11 +281,23 @@
                                     </span>
                                 </td>
                                 <td><span class="spread-badge">{{ "%.1f"|format(enrollment.cumulative_spread) }}</span></td>
-                                {% if current_week %}
-                                <td>
+                                {% if pick_week %}
+                                <td class="cfb-pick-cell">
                                     {% if show_picks %}
-                                        {% if enrollment.user_id in week_picks %}
-                                            <strong>{{ week_picks[enrollment.user_id] }}</strong>
+                                        {% set wp = week_picks.get(enrollment.user_id) %}
+                                        {% if wp %}
+                                            <strong>{{ wp.label }}</strong>
+                                            {# The pick's own state, by structure not hue (7.2):
+                                               filled survived / lost chips, the hollow pending chip. #}
+                                            {% if wp.state == 'survived' %}
+                                                <span class="badge badge-survived">W</span>
+                                            {% elif wp.state == 'lost' %}
+                                                <span class="badge badge-lost-life">L</span>
+                                            {% elif wp.state == 'no_contest' %}
+                                                <span class="badge badge-pending">NC</span>
+                                            {% else %}
+                                                <span class="badge badge-pending">TBD</span>
+                                            {% endif %}
                                         {% else %}
                                             <span class="text-muted">No Pick</span>
                                         {% endif %}
