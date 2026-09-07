@@ -323,13 +323,15 @@ def _grade(week):
 
 
 def _is_graded(week):
-    return db.session.scalar(
-        select(func.count()).select_from(DocketWeekResult)
-        .filter_by(week_id=week.id)) > 0
+    """ADR-047's marker: run_grading_pass stamps default_error_tenths on
+    every grade, roster or no roster — result rows are per user, so an
+    empty roster grades to zero rows and a row count would keep paying
+    for the catch-up every run."""
+    return week.default_error_tenths is not None
 
 
 def _catch_up_previous_week(week_number, days_from):
-    """Sync and grade week N-1 while it carries no result rows.
+    """Sync and grade week N-1 while it is ungraded (no default_error_tenths).
 
     The mode resolves its week from the clock, so after the Tuesday 06:00 CT
     boundary every run targets the fresh week. Week 1 2026 ended with a

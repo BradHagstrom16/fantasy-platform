@@ -585,11 +585,12 @@ def _closed_week_1(*, final=True):
     return week, games, player
 
 
-def _run_week_2_scores(runner, monkeypatch, *, api_calls):
+def _run_week_2_scores(runner, monkeypatch, *, api_calls, create_week=True):
     """Invoke --mode scores with the clock inside Week 2 and a scores API
     that returns nothing; ``api_calls`` is the list the stub records."""
-    make_week(2)
-    db.session.commit()
+    if create_week:
+        make_week(2)
+        db.session.commit()
     at(monkeypatch, IN_WEEK2)
 
     def _get(url, params=None, **_kwargs):
@@ -670,3 +671,36 @@ def test_scores_mode_catch_up_that_is_not_ready_stays_exit_zero(
     assert 'not ready' in result.output
     assert not db.session.scalars(
         select(DocketWeekResult).filter_by(week_id=week.id)).all()
+
+
+def test_scores_mode_catch_up_stops_after_an_empty_roster_grades(
+        app, runner, monkeypatch):
+    """A week with nobody enrolled at its deadline grades to zero result
+    rows but still stamps default_error_tenths (ADR-047). That marker, not
+    a row count, is what ends the catch-up — a row count would re-sync
+    week N-1 for 2 credits a sport on every later run, forever."""
+    week, games = _seed(final=False)         # no enrollment at all
+    monkeypatch.setenv('DOCKET_FAKE_NOW', AFTER_DEADLINE)
+    _invoke(runner, 'sync', '--mode', 'deadline')
+    for game in games:
+        game.home_score, game.away_score, game.is_final = 31, 17, True
+    db.session.commit()
+    app.config['ODDS_API_KEY'] = 'test-key'
+    api_calls = []
+
+    first = _run_week_2_scores(runner, monkeypatch, api_calls=api_calls)
+
+    assert first.exit_code == 0, first.output
+    assert 'catch-up' in first.output
+    assert '0 players graded' in first.output
+    assert week.default_error_tenths is not None
+    assert not db.session.scalars(
+        select(DocketWeekResult).filter_by(week_id=week.id)).all()
+
+    api_calls.clear()
+    second = _run_week_2_scores(runner, monkeypatch, api_calls=api_calls,
+                                create_week=False)
+
+    assert second.exit_code == 0, second.output
+    assert 'catch-up' not in second.output
+    assert len(api_calls) == 2              # the current week only
