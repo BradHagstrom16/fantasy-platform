@@ -154,21 +154,21 @@ def test_ledger_drawer_opens_onto_the_sheet(app, client):
     assert 'Points post to the ledger' not in html   # graded: no sealed copy
 
 
-def test_ledger_query_count_stays_flat_with_the_sheets(app, client):
-    """Three more reads for the sheets (weeks, picks with their games) —
-    never a query per member or per week."""
-    week1, week2 = _graded_week(1), _graded_week(2)
+def _enroll_with_sheets(weeks, names):
+    """Enrol each name with a full graded sheet on every week."""
     users = []
-    for i in range(10):
-        user = make_user(f'p{i:02d}')
+    for i, name in enumerate(names):
+        user = make_user(name)
         make_enrollment(user)
-        for week in (week1, week2):
+        for week in weeks:
             _full_sheet(user, week)
             _result(week, user, float(i), i)
         users.append(user)
     db.session.commit()
-    login(client, users[0])
+    return users
 
+
+def _ledger_statement_count(client):
     statements = []
 
     def before(conn, cursor, statement, *args):
@@ -179,8 +179,25 @@ def test_ledger_query_count_stays_flat_with_the_sheets(app, client):
         assert client.get('/docket/ledger').status_code == 200
     finally:
         event.remove(db.engine, 'before_cursor_execute', before)
+    return len(statements)
 
-    assert len(statements) < 18, f'{len(statements)} queries for 10 members x 2 weeks'
+
+def test_ledger_query_count_stays_flat_with_the_sheets(app, client):
+    """Three more reads for the sheets (weeks, picks with their games) —
+    never a query per member or per week: the count for two members is
+    the count for ten, on the same two graded weeks."""
+    weeks = (_graded_week(1), _graded_week(2))
+    users = _enroll_with_sheets(weeks, ['p00', 'p01'])
+    login(client, users[0])
+    two_members = _ledger_statement_count(client)
+
+    _enroll_with_sheets(weeks, [f'p{i:02d}' for i in range(2, 10)])
+    ten_members = _ledger_statement_count(client)
+
+    assert ten_members == two_members, (
+        f'{two_members} queries for 2 members, {ten_members} for 10 — '
+        'a per-member read crept into the ledger')
+    assert two_members < 18, f'{two_members} queries for 2 members x 2 weeks'
 
 
 @pytest.mark.parametrize('path', ['/docket/ledger'])

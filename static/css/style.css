@@ -14419,7 +14419,7 @@ body.game-docket .form-select:focus {
   content: '';
   width: .5rem;
   height: .35rem;
-  background: currentColor;
+  background: currentcolor;
   clip-path: polygon(0 15%, 16% 0, 50% 45%, 84% 0, 100% 15%, 50% 100%);
   opacity: 0;
   transition: transform var(--transition), opacity var(--transition);

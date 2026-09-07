@@ -133,6 +133,7 @@ def test_find_query_is_normalized_and_capped(app, client):
     ('name', 'desc', ['Zach Myers', 'Mike Tierney', 'Marty Tierney', 'Greg Tierney']),
     ('points', 'desc', ['Marty Tierney', 'Greg Tierney', 'Mike Tierney', 'Zach Myers']),
     ('points', 'asc', ['Zach Myers', 'Greg Tierney', 'Mike Tierney', 'Marty Tierney']),
+    ('wins', 'desc', ['Marty Tierney', 'Greg Tierney', 'Mike Tierney', 'Zach Myers']),
     ('wins', 'asc', ['Zach Myers', 'Greg Tierney', 'Mike Tierney', 'Marty Tierney']),
     ('error', 'asc', ['Greg Tierney', 'Mike Tierney', 'Marty Tierney', 'Zach Myers']),
     ('error', 'desc', ['Zach Myers', 'Marty Tierney', 'Mike Tierney', 'Greg Tierney']),
