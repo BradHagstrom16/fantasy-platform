@@ -4,6 +4,7 @@ import pytest
 from extensions import db
 from games.worldcup.models import WorldCupEnrollment
 from models.user import User
+from tests._registry_helpers import open_join_window
 from tests._registry_helpers import set_status as _set_status
 
 
@@ -117,6 +118,7 @@ def test_cfb_join_coming_soon_rejects_logged_in(app, client, monkeypatch):
 
 def test_cfb_join_open_renders_form(app, client, monkeypatch):
     _set_status(monkeypatch, 'cfb', 'open')
+    open_join_window(monkeypatch)
     uid = _make_user(app, 'cfb2')
     _login(client, uid)
     resp = client.get('/cfb/join')
@@ -126,6 +128,7 @@ def test_cfb_join_open_renders_form(app, client, monkeypatch):
 
 def test_cfb_join_post_creates_enrollment(app, client, monkeypatch):
     _set_status(monkeypatch, 'cfb', 'open')
+    open_join_window(monkeypatch)
     uid = _make_user(app, 'cfb3')
     _login(client, uid)
     resp = client.post('/cfb/join',

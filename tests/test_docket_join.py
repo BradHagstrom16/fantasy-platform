@@ -3,7 +3,7 @@ from extensions import db
 from games.docket.models import DocketEnrollment
 from games.docket.services.weeks import SEASON_YEAR
 from tests._docket_fixtures import login, make_enrollment, make_user
-from tests._registry_helpers import set_status
+from tests._registry_helpers import open_join_window, set_status
 
 
 def test_docket_join_anonymous_redirects_to_login(client):
@@ -24,7 +24,8 @@ def test_docket_join_coming_soon_rejects_logged_in(app, client, monkeypatch):
     assert resp.location.endswith('/')
 
 
-def test_docket_join_open_renders_form(app, client):
+def test_docket_join_open_renders_form(app, client, monkeypatch):
+    open_join_window(monkeypatch)
     user = make_user('joiner')
     db.session.commit()
     login(client, user)
@@ -35,7 +36,8 @@ def test_docket_join_open_renders_form(app, client):
     assert b'name="display_name"' not in resp.data
 
 
-def test_docket_join_states_the_game_in_four_beats(app, client):
+def test_docket_join_states_the_game_in_four_beats(app, client, monkeypatch):
+    open_join_window(monkeypatch)
     """The 2026-08-19 simplification: the enrollment page has one job — get
     someone to understand the game well enough to confidently click Join.
     Contingencies (the reserve, No Contest, tenths) live on the rules page,
@@ -57,7 +59,8 @@ def test_docket_join_states_the_game_in_four_beats(app, client):
     assert 'tenth' not in data
 
 
-def test_docket_join_post_creates_enrollment(app, client):
+def test_docket_join_post_creates_enrollment(app, client, monkeypatch):
+    open_join_window(monkeypatch)
     user = make_user('joiner')
     db.session.commit()
     login(client, user)
