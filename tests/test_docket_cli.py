@@ -559,3 +559,114 @@ def test_status_prints_the_rule_default(app, runner, monkeypatch):
     assert result.exit_code == 0, result.output
     assert 'tiebreaker: Sunday Away @ Sunday Home' in result.output
     assert 'rule: Monday Away @ Monday Home' in result.output
+
+
+# ── the previous week never stays ungraded (D12-eng amendment 2026-09-07) ─
+
+class _Resp:
+    status_code = 200
+    headers = {}  # noqa: RUF012 - throwaway stub
+
+    def __init__(self, payload):
+        self._payload = payload
+
+    def json(self):
+        return self._payload
+
+
+def _closed_week_1(*, final=True):
+    """Week 1 past its deadline: the deadline pass has stamped kickoffs and
+    dealt the autopick package; every case is final unless ``final=False``
+    leaves the designated game open. Returns the week."""
+    week, games = _seed(final=False)
+    player = make_user('player')
+    make_enrollment(player, created_at=datetime.fromisoformat(BEFORE_DEADLINE))
+    db.session.commit()
+    return week, games, player
+
+
+def _run_week_2_scores(runner, monkeypatch, *, api_calls):
+    """Invoke --mode scores with the clock inside Week 2 and a scores API
+    that returns nothing; ``api_calls`` is the list the stub records."""
+    make_week(2)
+    db.session.commit()
+    at(monkeypatch, IN_WEEK2)
+
+    def _get(url, params=None, **_kwargs):
+        api_calls.append(url)
+        return _Resp([])
+
+    with patch('games.docket.services.scores.odds_api_get', side_effect=_get):
+        return _invoke(runner, 'sync', '--mode', 'scores')
+
+
+def test_scores_mode_catches_up_the_previous_ungraded_week(
+        app, runner, monkeypatch):
+    """Week 1 2026: its last game was Monday night, and the Tue 05:15 run is
+    the ONLY firing that resolves Week 1 — every run after the 06:00 CT
+    boundary resolves Week 2 and would have left Week 1 ungraded for good
+    had the API lagged by an hour. A scores run now also syncs and grades
+    week N-1 while it has no result rows."""
+    week, games, player = _closed_week_1()
+    monkeypatch.setenv('DOCKET_FAKE_NOW', AFTER_DEADLINE)
+    _invoke(runner, 'sync', '--mode', 'deadline')
+    for game in games:                       # finals landed after the deadline
+        game.home_score, game.away_score, game.is_final = 31, 17, True
+    db.session.commit()
+    app.config['ODDS_API_KEY'] = 'test-key'
+    api_calls = []
+
+    result = _run_week_2_scores(runner, monkeypatch, api_calls=api_calls)
+
+    assert result.exit_code == 0, result.output
+    assert 'catch-up' in result.output and 'week 1' in result.output
+    assert '1 players graded' in result.output
+    assert len(api_calls) == 4              # two sports, two weeks
+    rows = db.session.scalars(
+        select(DocketWeekResult).filter_by(week_id=week.id)).all()
+    assert [row.user_id for row in rows] == [player.id]
+
+
+def test_scores_mode_leaves_a_graded_previous_week_alone(
+        app, runner, monkeypatch):
+    """Once week N-1 carries result rows the catch-up costs nothing: no
+    second /scores call per sport, no re-grade."""
+    week, games, player = _closed_week_1()
+    monkeypatch.setenv('DOCKET_FAKE_NOW', AFTER_DEADLINE)
+    _invoke(runner, 'sync', '--mode', 'deadline')
+    for game in games:
+        game.home_score, game.away_score, game.is_final = 31, 17, True
+    db.session.commit()
+    _invoke(runner, 'recalc', '1')
+    assert db.session.scalars(
+        select(DocketWeekResult).filter_by(week_id=week.id)).all()
+    app.config['ODDS_API_KEY'] = 'test-key'
+    api_calls = []
+
+    result = _run_week_2_scores(runner, monkeypatch, api_calls=api_calls)
+
+    assert result.exit_code == 0, result.output
+    assert 'catch-up' not in result.output
+    assert len(api_calls) == 2              # the current week only
+
+
+def test_scores_mode_catch_up_that_is_not_ready_stays_exit_zero(
+        app, runner, monkeypatch):
+    """A previous week still waiting on its designated game is a wait, not
+    a failure: reported, exit 0, retried by the next run."""
+    week, games, player = _closed_week_1()
+    monkeypatch.setenv('DOCKET_FAKE_NOW', AFTER_DEADLINE)
+    _invoke(runner, 'sync', '--mode', 'deadline')
+    for game in games[1:]:                   # the designated game stays open
+        game.home_score, game.away_score, game.is_final = 31, 17, True
+    db.session.commit()
+    app.config['ODDS_API_KEY'] = 'test-key'
+    api_calls = []
+
+    result = _run_week_2_scores(runner, monkeypatch, api_calls=api_calls)
+
+    assert result.exit_code == 0, result.output
+    assert 'catch-up' in result.output
+    assert 'not ready' in result.output
+    assert not db.session.scalars(
+        select(DocketWeekResult).filter_by(week_id=week.id)).all()

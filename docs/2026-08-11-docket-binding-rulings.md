@@ -200,3 +200,22 @@ the page's shape.
 - Surfaces: `/docket/sheets` ("All Sheets", second pill), the rules page ("Who sees what"),
   one sentence on the join page. Recorded as ADR-060; doctrine in `games/docket/DESIGN.md`
   §7.13.
+
+### 2026-09-07 — The scores sync catches up the previous week (engineering)
+
+Week 1 ended with a Monday-night game (SMU @ Florida State, the rule-derived tiebreaker), and
+the Tuesday 05:15 CT run was the **only** firing that would ever grade it: `--mode scores`
+resolves its week from the clock, so from the 06:00 CT boundary on every run targets the
+fresh week. An hour's lag in the scores feed would have left Week 1 ungraded until an
+operator ran `flask docket recalc 1`.
+
+- **D12-eng amended:** every scores run, after syncing and grading its own week, also syncs
+  and grades **week N-1 while that week carries no `docket_week_result` rows**. The catch-up
+  costs 2 credits a sport only while the previous week is ungraded; an ordinary week pays
+  nothing. A previous week that is still waiting (its designated game not final) is reported
+  as `not ready` and the run exits 0; a dark sport on the catch-up turns the timer red exactly
+  as it does for the current week.
+- Nothing about the Tuesday 05:15 rule changes — it is still the run that grades a normal
+  week the morning after Monday Night Football; it is simply no longer the last chance.
+- Locked by `tests/test_docket_cli.py` (`test_scores_mode_catches_up_the_previous_ungraded_week`,
+  `..._leaves_a_graded_previous_week_alone`, `..._catch_up_that_is_not_ready_stays_exit_zero`).
