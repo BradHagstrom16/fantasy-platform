@@ -41,6 +41,7 @@ from games.docket.services.bridge_sheet import SPORT_LABELS
 from games.docket.services.enrollment import get_enrollment
 from games.docket.services.grading.engine import slot_points
 from games.docket.services.grading.snapshots import BACKUP_SLOT, SCORING_SLOTS, Outcome
+from games.docket.services.history import pick_history
 from games.docket.services.importer import BOOKMAKER_LABELS, BOOKMAKER_PRIORITY
 from games.docket.services.payment import payment_nudge_for
 from games.docket.services.picks import PickError
@@ -581,6 +582,47 @@ def sheets():
 # The season ledger
 # --------------------------------------------------------------------------
 
+# The ledger's sort keys (Brad, 2026-09-07): each with its own natural
+# direction. Sorting reorders rows; it never re-derives a rank, which is
+# the engine's (8.1) and prints on every row in every order.
+LEDGER_SORTS = {
+    'name': ('name', lambda row: row.enrollment.get_display_name().casefold(), 'asc'),
+    'points': ('points', lambda row: row.standing.total_points, 'desc'),
+    'wins': ('wins', lambda row: row.standing.wins, 'desc'),
+    'error': ('the error account', lambda row: row.standing.error_tenths, 'asc'),
+}
+_FLIP = {'asc': 'desc', 'desc': 'asc'}
+_ARIA_SORT = {'asc': 'ascending', 'desc': 'descending'}
+
+
+def _ledger_order(rows, sort_key, direction):
+    """The rows in the requested order: a known key sorted stably over the
+    official order (ties keep their rank order), else the official order."""
+    if sort_key not in LEDGER_SORTS:
+        return list(rows), None, None
+    _label, key_fn, default_direction = LEDGER_SORTS[sort_key]
+    if direction not in _FLIP:
+        direction = default_direction
+    return (sorted(rows, key=key_fn, reverse=direction == 'desc'),
+            sort_key, direction)
+
+
+def _ledger_sort_links(sort_key, direction, find_query):
+    """Per column: the header link (the next direction for the active key,
+    the natural direction otherwise) and its aria-sort state."""
+    links = {}
+    for key, (_label, _fn, default_direction) in LEDGER_SORTS.items():
+        active = key == sort_key
+        next_direction = _FLIP[direction] if active else default_direction
+        links[key] = {
+            'href': url_for('docket.ledger', sort=key, dir=next_direction,
+                            q=find_query or None),
+            'aria': _ARIA_SORT[direction] if active else None,
+            'active': active,
+        }
+    return links
+
+
 @docket_bp.route('/ledger')
 @enrollment_required('docket')
 def ledger():
@@ -589,7 +631,8 @@ def ledger():
     Reads the persisted rollup through the season pass (D14-eng) and renders
     it. Nothing is computed here: rank, the drop, and every charged week come
     from the pure engine, so the page and `flask docket recalc` can never tell
-    different stories.
+    different stories. Find, sort and the drawer sheets (Brad, 2026-09-07)
+    are presentation over that rollup, derived here and never in Jinja.
     """
     ledger = season_ledger()
     # Presentation derived in the route, never in Jinja (the room's rule).
@@ -601,9 +644,32 @@ def ledger():
     if current_user.is_authenticated:
         your_row = next((row for row in ledger.rows
                          if row.enrollment.user_id == current_user.id), None)
+
+    # Sort first, then find: the matches keep the chosen order. With a query
+    # in force your own line always leads, matching or not — the ask behind
+    # the field is "me against the ones I typed", and the You tag and the
+    # official rank on the pinned line say what it is.
+    rows, sort_key, sort_dir = _ledger_order(
+        ledger.rows, request.args.get('sort'), request.args.get('dir'))
+    find_query = _find_query(request.args.get('q'))
+    tokens = find_query.casefold().split()
+    find_total = None
+    if tokens:
+        matches = [row for row in rows if all(
+            token in row.enrollment.get_display_name().casefold()
+            for token in tokens)]
+        find_total = len(matches)
+        rows = matches if your_row is None else (
+            [your_row] + [row for row in matches if row is not your_row])
+
+    history = {}
+    if ledger.is_graded:
+        history = pick_history(
+            ledger.week_numbers, [row.enrollment.user_id for row in rows])
     return render_template(
         'docket/ledger.html',
         ledger=ledger,
+        rows=rows,
         shared_ranks=shared_ranks,
         your_row=your_row,
         your_rank_label=_ordinal(your_row.standing.rank) if your_row else None,
@@ -612,6 +678,15 @@ def ledger():
         # enrollment, graded or not); the split weeks mark the drawer receipt.
         purse=season_purse(len(ledger.rows)),
         split_weeks={v.week_number for v in ledger.verdicts if v.split},
+        find_query=find_query,
+        find_total=find_total,
+        roster_total=len(ledger.rows),
+        sort_key=sort_key,
+        sort_dir=sort_dir,
+        sort_label=LEDGER_SORTS[sort_key][0] if sort_key else None,
+        sort_links=_ledger_sort_links(sort_key, sort_dir, find_query),
+        history=history,
+        result_words=RESULT_WORDS,
     )
 
 

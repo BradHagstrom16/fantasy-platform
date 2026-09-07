@@ -121,11 +121,42 @@ finish review, the verdict, and DESIGN.md.
     </p>
     {% endif %}
 
+    {# Find a line (Brad, 2026-09-07): the sheet's own find shape (7.7), a
+       plain GET, never mutation. Your line leads every result set; the
+       count line never caps silently. Sort rides the header links below
+       and is carried through the form so the two compose. #}
+    <form role="search" method="get" action="{{ url_for('docket.ledger') }}" class="docket-find docket-ledger-find">
+        {% if sort_key %}<input type="hidden" name="sort" value="{{ sort_key }}"/><input type="hidden" name="dir" value="{{ sort_dir }}"/>{% endif %}
+        <label class="docket-find-label" for="ledger-find-q">Find a line</label>
+        <input type="search" class="form-control" id="ledger-find-q" name="q"
+               value="{{ find_query }}" placeholder="A player's name"
+               maxlength="60" autocomplete="off" spellcheck="false" enterkeyhint="search"/>
+        <button type="submit" class="docket-find-btn">Find</button>
+    </form>
+    {% if find_query %}
+    {% set all_lines_href = url_for('docket.ledger', sort=sort_key, dir=sort_dir) %}
+    <div class="docket-find-head docket-ledger-find-head">
+        {% if find_total %}
+        <h2 class="docket-section-head docket-ledger-find-title">Matching lines</h2>
+        <span class="docket-caption docket-showing">Showing {{ find_total }} of {{ roster_total }} line{{ 's' if roster_total != 1 }} matching &ldquo;{{ find_query }}&rdquo;{% if your_row %}, yours first{% endif %} <span class="docket-showing-back">· <a href="{{ all_lines_href }}">All lines &rsaquo;</a></span></span>
+        {% else %}
+        <h2 class="docket-section-head docket-ledger-find-title">No line matches &ldquo;{{ find_query }}&rdquo;</h2>
+        <span class="docket-caption docket-showing">Showing 0 of {{ roster_total }} line{{ 's' if roster_total != 1 }}{% if your_row %}; yours stays{% endif %} <span class="docket-showing-back">· <a href="{{ all_lines_href }}">All lines &rsaquo;</a></span></span>
+        {% endif %}
+    </div>
+    {% if not find_total %}
+    <p class="docket-find-empty">Try part of a name as it appears on the ledger.</p>
+    {% endif %}
+    {% endif %}
+    {% if sort_key %}
+    <p class="docket-caption docket-ledger-sorted">Sorted by {{ sort_label }}, {{ 'ascending' if sort_dir == 'asc' else 'descending' }}; the rank column keeps the official order. <a href="{{ url_for('docket.ledger', q=find_query or None) }}">Official order &rsaquo;</a></p>
+    {% endif %}
+
     {# Below md the three keys do not fit a phone without a sideways scroll
        that hides two of them, so the same rows render as ruled cards (the
        platform leaderboard precedent). One source, two compositions. #}
     <ul class="docket-cards d-md-none">
-        {% for row in ledger.rows %}
+        {% for row in rows %}
         <li class="docket-card{% if current_user.is_authenticated and row.enrollment.user_id == current_user.id %} is-you{% endif %}">
             <span class="docket-card-rank">
                 {{ row.standing.rank }}
@@ -149,24 +180,30 @@ finish review, the verdict, and DESIGN.md.
             <caption class="visually-hidden">
                 The Docket season standings, ranked by points after the drop,
                 then wins, then cumulative tiebreaker error.
+                {% if sort_key %}Shown sorted by {{ sort_label }}, {{ 'ascending' if sort_dir == 'asc' else 'descending' }}; the rank column keeps the official order.{% endif %}
             </caption>
+            {# Sortable heads: plain links carrying the next direction; the
+               active one states its order with aria-sort and a drawn caret.
+               The rank head is not a sort: it IS the official order. #}
             <thead>
                 <tr>
                     <th scope="col" class="docket-ledger-rank-head">#</th>
-                    <th scope="col">Player</th>
-                    <th scope="col" class="docket-ledger-figure-head">
-                        Points <span class="docket-ledger-keytag">Key 1</span>
+                    <th scope="col"{% if sort_links.name.aria %} aria-sort="{{ sort_links.name.aria }}"{% endif %}>
+                        <a class="docket-ledger-sort{% if sort_links.name.active %} is-active is-{{ sort_dir }}{% endif %}" href="{{ sort_links.name.href }}">Player</a>
                     </th>
-                    <th scope="col" class="docket-ledger-figure-head">
-                        Wins <span class="docket-ledger-keytag">Key 2</span>
+                    <th scope="col" class="docket-ledger-figure-head"{% if sort_links.points.aria %} aria-sort="{{ sort_links.points.aria }}"{% endif %}>
+                        <a class="docket-ledger-sort{% if sort_links.points.active %} is-active is-{{ sort_dir }}{% endif %}" href="{{ sort_links.points.href }}">Points <span class="docket-ledger-keytag">Key 1</span></a>
                     </th>
-                    <th scope="col" class="docket-ledger-figure-head">
-                        Off by <span class="docket-ledger-keytag">Key 3</span>
+                    <th scope="col" class="docket-ledger-figure-head"{% if sort_links.wins.aria %} aria-sort="{{ sort_links.wins.aria }}"{% endif %}>
+                        <a class="docket-ledger-sort{% if sort_links.wins.active %} is-active is-{{ sort_dir }}{% endif %}" href="{{ sort_links.wins.href }}">Wins <span class="docket-ledger-keytag">Key 2</span></a>
+                    </th>
+                    <th scope="col" class="docket-ledger-figure-head"{% if sort_links.error.aria %} aria-sort="{{ sort_links.error.aria }}"{% endif %}>
+                        <a class="docket-ledger-sort{% if sort_links.error.active %} is-active is-{{ sort_dir }}{% endif %}" href="{{ sort_links.error.href }}">Off by <span class="docket-ledger-keytag">Key 3</span></a>
                     </th>
                 </tr>
             </thead>
             <tbody>
-                {% for row in ledger.rows %}
+                {% for row in rows %}
                 {% set is_you = current_user.is_authenticated and row.enrollment.user_id == current_user.id %}
                 <tr class="{% if is_you %}row-current-user{% endif %}">
                     <td class="docket-ledger-rank">
@@ -231,7 +268,7 @@ finish review, the verdict, and DESIGN.md.
             {% endif %}
         </p>
 
-        {% for row in ledger.rows %}
+        {% for row in rows %}
         <details class="docket-entry{% if current_user.is_authenticated and row.enrollment.user_id == current_user.id %} is-you{% endif %}">
             {# The right-hand figure states the week count, not the season
                total: the total is already the table above, and repeating it
@@ -269,6 +306,30 @@ finish review, the verdict, and DESIGN.md.
                     </span>
                     {% if week.week_number in row.prize_weeks %}
                     <span class="docket-week-verdict">{% if week.week_number in split_weeks %}split {% endif %}${{ purse.weekly_prize }}</span>
+                    {% endif %}
+                    {# The sheet behind the week (Brad, 2026-09-07): a second
+                       native drawer, the same lines All Sheets prints (7.13),
+                       graded weeks only so nothing sealed can appear here. #}
+                    {% set lines = history.get(row.enrollment.user_id, {}).get(week.week_number) %}
+                    {% if lines %}
+                    <details class="docket-week-sheet">
+                        <summary class="docket-week-sheet-summary">The sheet<span class="docket-entry-caret" aria-hidden="true"></span></summary>
+                        <ol class="docket-sheet-lines">
+                            {% for line in lines %}
+                            <li class="docket-sheet-line{% if line.is_autopick %} is-autopick{% endif %}{% if line.is_reserve %} is-reserve{% endif %}">
+                                <span class="docket-sheet-when">{{ line.kickoff|ct('%a %-I:%M %p') }}</span>
+                                <span class="docket-sheet-pick">
+                                    {{ line.pick }}
+                                    {% if line.is_best %}<span class="docket-headliner-chip{% if line.is_auto_best %} is-auto{% endif %}"{% if line.is_auto_best %} title="Assigned when the docket closed"{% endif %}>x2{% if line.is_auto_best %}<span class="visually-hidden">, assigned</span>{% endif %}</span>{% endif %}
+                                    {% if line.is_reserve %}<span class="docket-slot-badge">Reserve</span>{% endif %}
+                                    {% if line.is_autopick %}<span class="docket-auto-tag" title="Filed when the docket closed">Auto</span>{% endif %}
+                                </span>
+                                <span class="docket-caption">{{ line.sport }} · {{ line.caption }}{% if line.final_score %} · Final {{ line.final_score }}{% endif %}</span>
+                                <span class="docket-sheet-result{% if line.result %} is-{{ line.result }}{% endif %}">{{ result_words.get(line.result, '') }}</span>
+                            </li>
+                            {% endfor %}
+                        </ol>
+                    </details>
                     {% endif %}
                 </li>
                 {% endfor %}
