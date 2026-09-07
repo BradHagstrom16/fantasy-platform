@@ -50,13 +50,17 @@ FLASK_APP=app.py venv/bin/flask create-admin        # Create platform admin user
 # !! Never seed-schedule AFTER import-legacy: 3 name mismatches → duplicate tournaments. Seed BEFORE or not at all.
 
 # CFB CLI
-FLASK_APP=app.py venv/bin/flask cfb sync --mode setup       # Create next week, import games, activate (cfb-setup.timer runs Mon 06:00 CT)
+FLASK_APP=app.py venv/bin/flask cfb sync --mode setup       # Create next week, import games, activate (cfb-setup.timer runs Mon 09:00 CT, AFTER the 08:00 scores run — no completeness guard, it flips is_active regardless)
 FLASK_APP=app.py venv/bin/flask cfb sync --mode spreads     # Lock spreads at first fetch (Tue); later runs fill gaps only (DQ-6)
-FLASK_APP=app.py venv/bin/flask cfb sync --mode scores      # Fetch scores, auto-process completed weeks
+FLASK_APP=app.py venv/bin/flask cfb sync --mode scores      # Fetch scores (daysFrom=3, 2 credits), grade decided picks per game, complete the week when every game settles (cfb-scores.timer: Sun-Thu 08:00 CT — a Mon/Tue/Wed game must be scored inside the 3-day window; tests/test_cfb_timers.py)
 FLASK_APP=app.py venv/bin/flask cfb sync --mode autopick    # Process auto-picks for past-deadline weeks
 FLASK_APP=app.py venv/bin/flask cfb sync --mode remind      # Pick reminders: hourly timer, T-25h/T-1h ±35m windows, de-duped on CfbWeek.last_reminder_type (tests/test_cfb_timers.py, tests/test_cfb_reminders.py)
 FLASK_APP=app.py venv/bin/flask cfb sync --mode status      # Print season summary
 FLASK_APP=app.py venv/bin/flask cfb recalc-spreads          # Recompute every cumulative spread under the current rule (idempotent; a pick counts only after its week deadline, higher is better)
+FLASK_APP=app.py venv/bin/flask cfb repair-week-dates --week N   # Re-derive a regular-season week's start_date/deadline from SEASON_SCHEDULE (the 2026-09-07 GMT-cast repair; refuses playoff/named/complete weeks)
+# CFB wall-clock columns (CfbWeek.start_date/deadline, CfbGame.game_time) are naive pool-tz and the MODEL strips an aware value on
+# assignment (games/cfb/models.py::_pool_wall_clock) — Postgres casts an aware bind in its GMT session (Week 2 2026: 11:00 → 16:00),
+# SQLite keeps the digits, so CI cannot see it. Never bypass the model with a Core insert/update on those columns.
 # Hand-firing any reminder pass ON THE DROPLET: `sudo systemctl start cfb-remind.service` (same for docket/golf), never
 # `flask … --mode remind` in a shell — systemd merges a manual start with an in-flight timer firing of the same oneshot
 # unit, which is what makes the sent-flag race impossible; there is deliberately no lock in code (PR #169).

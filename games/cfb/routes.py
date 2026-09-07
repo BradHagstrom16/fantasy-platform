@@ -1225,18 +1225,23 @@ def admin_apply_scores(week_id):
 
     db.session.commit()
 
-    # The engine owns is_complete — never set the flag here (Top-5 #1/#2).
-    all_settled = all(g.is_settled for g in games)
-    if all_settled:
-        result = process_week_results(week_id)
-        if result.get("success"):
-            flash(f'All {updated} game scores confirmed and results processed!', 'success')
-            _flash_processing_outcomes(result)
-        else:
-            flash(f'Scores saved but result processing failed: {result.get("error")}', 'error')
+    # Grade every decided pick now (per-game grading, ADR-061). The engine
+    # owns is_complete — never set the flag here (Top-5 #1/#2) — and only
+    # completes the week once every game is settled.
+    result = process_week_results(week_id)
+    if not result.get("success"):
+        flash(f'Scores saved but result processing failed: {result.get("error")}', 'error')
+    elif result.get("completed"):
+        flash(f'All {updated} game scores confirmed and results processed!', 'success')
+        _flash_processing_outcomes(result)
     else:
         pending = sum(1 for g in games if not g.is_settled)
-        flash(f'{updated} game scores confirmed. {pending} games still pending.', 'warning')
+        flash(
+            f'{updated} game scores confirmed and results processed '
+            f'({result.get("processed", 0)} picks graded). '
+            f'{pending} game{"" if pending == 1 else "s"} still pending.',
+            'warning',
+        )
 
     return redirect(url_for('cfb.admin_dashboard'))
 
