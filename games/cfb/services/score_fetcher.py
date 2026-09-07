@@ -224,7 +224,15 @@ class ScoreFetcher:
         }
 
     def auto_process_week(self, week_id):
-        """Full pipeline: fetch scores -> apply -> process results if all games decided.
+        """Full pipeline: fetch scores -> apply -> grade what has been decided.
+
+        Picks grade per game as results land (Brad's ruling 2026-09-07,
+        ADR-061): every run that applies a completed score hands the week
+        to process_week_results, which grades the decided picks and settles
+        their lives immediately and defers the week-level effects (no-pick
+        penalties, revival, is_complete, outcome snapshots) to the run that
+        settles the last game. The engine is idempotent, so a daily timer
+        re-running over the same decided games grades nothing twice.
 
         Returns status dict with:
             status: 'completed' | 'partial' | 'already_complete' | 'error'
@@ -257,52 +265,45 @@ class ScoreFetcher:
 
         apply_results = self.apply_scores_to_games(week_id, completed)
 
-        # Step 3: Check if all games are settled (decided or No Contest)
-        games = CfbGame.query.filter_by(week_id=week_id).all()
-        all_settled = all(g.is_settled for g in games)
-        ties = apply_results.get('tie_games', [])
-
-        if ties:
-            return {
-                'status': 'partial',
-                'details': f'Tie games require manual review: {len(ties)}',
-                'fetch_results': fetch_results,
-                'apply_results': apply_results,
-            }
-
-        if not all_settled:
-            pending_count = sum(1 for g in games if not g.is_settled)
-            return {
-                'status': 'partial',
-                'details': f'{apply_results["updated_count"]} games updated, {pending_count} still pending',
-                'fetch_results': fetch_results,
-                'apply_results': apply_results,
-            }
-
-        # All games settled — process results. The engine owns is_complete,
-        # so a failed run leaves the week retryable (never set the flag here).
+        # Step 3: Grade every decided pick now. The engine owns is_complete
+        # and only sets it once every game is settled (decided or No
+        # Contest), so a failed run leaves the week retryable (never set the
+        # flag here). A tied game stays undecided and is skipped by the
+        # engine, so the rest of the week still grades around it.
         result = process_week_results(week_id)
-
-        if result.get("success") and result.get("completed"):
-            return {
-                'status': 'completed',
-                'details': f'Week {week.week_number} fully processed. {apply_results["updated_count"]} games scored.',
-                'fetch_results': fetch_results,
-                'apply_results': apply_results,
-            }
-        elif result.get("success"):
-            # Engine declined to complete the week (e.g. raced by another
-            # worker, or a 0-game week) — report partial, never 'completed'.
-            return {
-                'status': 'partial',
-                'details': f'Week {week.week_number} processed but not completed — check for unsettled games.',
-                'fetch_results': fetch_results,
-                'apply_results': apply_results,
-            }
-        else:
+        if not result.get("success"):
             return {
                 'status': 'error',
                 'details': f'Scores applied but result processing failed: {result.get("error")}',
                 'fetch_results': fetch_results,
                 'apply_results': apply_results,
             }
+
+        if result.get("completed"):
+            return {
+                'status': 'completed',
+                'details': f'Week {week.week_number} fully processed. {apply_results["updated_count"]} games scored.',
+                'fetch_results': fetch_results,
+                'apply_results': apply_results,
+            }
+
+        games = CfbGame.query.filter_by(week_id=week_id).all()
+        pending_count = sum(1 for g in games if not g.is_settled)
+        ties = apply_results.get('tie_games', [])
+        details = (f'{apply_results["updated_count"]} games updated, '
+                   f'{result.get("processed", 0)} picks graded, '
+                   f'{pending_count} still pending')
+        if ties:
+            details += f'; tie games require manual review: {len(ties)}'
+        elif not pending_count:
+            # Engine declined to complete a fully settled week (raced by
+            # another worker, or a 0-game week) — report partial, never
+            # 'completed'.
+            details = (f'Week {week.week_number} processed but not completed '
+                       '— check for unsettled games.')
+        return {
+            'status': 'partial',
+            'details': details,
+            'fetch_results': fetch_results,
+            'apply_results': apply_results,
+        }

@@ -18,6 +18,12 @@
 Description=CFB Survivor weekly setup (create week, import games)
 After=network-online.target
 Wants=network-online.target
+# Ordering only (no Wants=): when both Persistent timers catch up after
+# downtime that spanned Monday 08:00 and 09:00 CT, the old week's scores
+# run finishes before setup flips is_active. On an ordinary Monday the two
+# never overlap and this line is inert; a Wants= would fire a second
+# /scores call (2 credits) every setup.
+After=cfb-scores.service
 
 [Service]
 Type=oneshot

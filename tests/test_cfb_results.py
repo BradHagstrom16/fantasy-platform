@@ -588,6 +588,37 @@ def test_apply_scores_double_post_decrements_once(app, client):
     assert enrollment.lives_remaining == 1
 
 
+def test_apply_scores_grades_decided_games_while_one_still_pends(app, client):
+    """Per-game grading (Brad's ruling 2026-09-07): an admin submit that
+    settles some games grades their picks immediately; the week stays open
+    and the flash says what is still pending."""
+    week = make_week(1)
+    t1, t2, t3, t4 = (make_team(n) for n in ('T1', 'T2', 'T3', 'T4'))
+    decided = make_game(week, t1, t2)
+    make_game(week, t3, t4)  # unplayed (the Monday-night game)
+    loser = make_user('loser')
+    e_loser = make_enrollment(loser, lives=2)
+    make_pick(loser, week, t1)
+    waiting = make_user('waiting')
+    e_waiting = make_enrollment(waiting, lives=2)
+    waiting_pick = make_pick(waiting, week, t3)
+    _login_admin(app, client)
+
+    resp = client.post(
+        f'/cfb/admin/week/{week.id}/apply-scores',
+        data={f'winner_{decided.id}': 'away', 'csrf_token': 'x'},
+        follow_redirects=True,
+    )
+
+    assert e_loser.lives_remaining == 1
+    assert waiting_pick.is_correct is None
+    assert e_waiting.lives_remaining == 2
+    assert week.is_complete is False
+    html = resp.data.decode()
+    assert '1 game still pending' in html
+    assert 'results processed' in html.lower()
+
+
 def test_mark_results_accepts_no_contest(app, client):
     """mark-results persists a No Contest ruling with push semantics."""
     week = make_week(1)
@@ -671,6 +702,139 @@ def test_review_scores_preselects_persisted_no_contest(app, client):
     assert 'value="away" selected' not in html
 
 
+# ── ADR-061 corrections: a settled game's ruling changes pre-completion ──
+
+def _graded_split_week(lives=2):
+    """One decided game (away won), a picker on each side, both graded;
+    a second unplayed game keeps the week open. Returns
+    (week, game, other, (home_enrollment, home_pick), (away_enrollment,
+    away_pick))."""
+    week = make_week(1)
+    home, away = make_team('Home U'), make_team('Away St')
+    game = make_game(week, home, away, winner='away')
+    other = make_game(week, make_team('T3'), make_team('T4'))
+    home_picker = make_user('home_picker')
+    e_home = make_enrollment(home_picker, lives=lives)
+    p_home = make_pick(home_picker, week, home)
+    away_picker = make_user('away_picker')
+    e_away = make_enrollment(away_picker, lives=lives)
+    p_away = make_pick(away_picker, week, away)
+    db.session.commit()
+    assert process_week_results(week.id)['processed'] == 2
+    assert (p_home.is_correct, p_away.is_correct) == (False, True)
+    return week, game, other, (e_home, p_home), (e_away, p_away)
+
+
+def test_apply_scores_correction_reverses_and_regrades(app, client):
+    """A changed ruling on a settled game gives the wrongly charged life
+    back, clears both grades, and grades them again under the new result
+    — in the one request, with the week still open."""
+    week, game, _other, (e_home, p_home), (e_away, p_away) = _graded_split_week()
+    assert (e_home.lives_remaining, e_away.lives_remaining) == (1, 2)
+    _login_admin(app, client)
+
+    resp = client.post(
+        f'/cfb/admin/week/{week.id}/apply-scores',
+        data={f'winner_{game.id}': 'home', 'csrf_token': 'x'},
+        follow_redirects=True,
+    )
+
+    assert game.home_team_won is True
+    assert (p_home.is_correct, p_away.is_correct) == (True, False)
+    assert (e_home.lives_remaining, e_away.lives_remaining) == (2, 1)
+    assert (e_home.is_eliminated, e_away.is_eliminated) == (False, False)
+    assert week.is_complete is False
+    assert 'Corrected 1 settled game; 2 picks re-graded' in resp.data.decode()
+
+
+def test_mark_results_correction_reverses_and_regrades(app, client):
+    """The mark-results path corrects the same way as apply-scores."""
+    week, game, other, (e_home, p_home), (e_away, p_away) = _graded_split_week()
+    _login_admin(app, client)
+
+    resp = client.post(
+        f'/cfb/admin/week/{week.id}/mark-results',
+        data={f'game_{game.id}': 'home', f'game_{other.id}': 'away',
+              'csrf_token': 'x'},
+        follow_redirects=True,
+    )
+
+    assert (p_home.is_correct, p_away.is_correct) == (True, False)
+    assert (e_home.lives_remaining, e_away.lives_remaining) == (2, 1)
+    assert week.is_complete is True  # every game settled on this submit
+    assert 'Corrected 1 settled game; 2 picks re-graded' in resp.data.decode()
+
+
+def test_correction_uneliminates_a_player_this_pick_eliminated(app, client):
+    week, game, _other, (e_home, p_home), _ = _graded_split_week(lives=1)
+    assert (e_home.lives_remaining, e_home.is_eliminated) == (0, True)
+    _login_admin(app, client)
+
+    client.post(f'/cfb/admin/week/{week.id}/apply-scores',
+                data={f'winner_{game.id}': 'home', 'csrf_token': 'x'})
+
+    assert p_home.is_correct is True
+    assert (e_home.lives_remaining, e_home.is_eliminated) == (1, False)
+
+
+def test_correction_leaves_an_earlier_week_elimination_alone(app, client):
+    """A player eliminated by a completed earlier week (its outcome row
+    says so) was never charged for this week's wrong pick — the grader
+    skipped them — so the correction must not hand them a life either."""
+    week1 = make_week(1)
+    week1.is_complete = True
+    week2 = make_week(2)
+    home, away = make_team('Home U'), make_team('Away St')
+    game = make_game(week2, home, away, winner='away')
+    make_game(week2, make_team('T3'), make_team('T4'))
+    gone = make_user('gone')
+    e_gone = make_enrollment(gone, lives=0, eliminated=True)
+    db.session.add(CfbWeekOutcome(
+        week_id=week1.id, user_id=gone.id, lives_remaining=0,
+        is_eliminated=True, lost_life=True))
+    pick = make_pick(gone, week2, home)  # filed before Week 1 graded
+    db.session.commit()
+    process_week_results(week2.id)
+    assert pick.is_correct is False
+    assert (e_gone.lives_remaining, e_gone.is_eliminated) == (0, True)
+    _login_admin(app, client)
+
+    client.post(f'/cfb/admin/week/{week2.id}/apply-scores',
+                data={f'winner_{game.id}': 'home', 'csrf_token': 'x'})
+
+    assert pick.is_correct is True
+    assert (e_gone.lives_remaining, e_gone.is_eliminated) == (0, True)
+
+
+def test_unchanged_resubmit_of_a_settled_game_reverses_nothing(app, client):
+    """review-scores preselects the stored ruling; posting it back is a
+    no-op, never a reversal."""
+    week, game, _other, (e_home, p_home), (e_away, p_away) = _graded_split_week()
+    _login_admin(app, client)
+
+    resp = client.post(
+        f'/cfb/admin/week/{week.id}/apply-scores',
+        data={f'winner_{game.id}': 'away', 'csrf_token': 'x'},
+        follow_redirects=True,
+    )
+
+    assert (p_home.is_correct, p_away.is_correct) == (False, True)
+    assert (e_home.lives_remaining, e_away.lives_remaining) == (1, 2)
+    assert 'Corrected' not in resp.data.decode()
+
+
+def test_correction_to_no_contest_restores_the_life_and_pushes(app, client):
+    week, game, _other, (e_home, p_home), (e_away, p_away) = _graded_split_week()
+    _login_admin(app, client)
+
+    client.post(f'/cfb/admin/week/{week.id}/apply-scores',
+                data={f'winner_{game.id}': 'no_contest', 'csrf_token': 'x'})
+
+    assert (game.is_no_contest, game.home_team_won) == (True, None)
+    assert (p_home.is_correct, p_away.is_correct) == (None, None)
+    assert (e_home.lives_remaining, e_away.lives_remaining) == (2, 2)
+
+
 # ── auto_process_week is_complete ordering (engine owns the flag) ────────
 
 def _fake_fetch(game):
@@ -687,6 +851,65 @@ def _fake_fetch(game):
         'api_credits_remaining': None,
         'error': None,
     }
+
+
+def _seed_split_week():
+    """One decided game (T2 wins 10-20 once fetched) and one unplayed game,
+    with a loser on T1, a winner on T2 and a member waiting on T3."""
+    week = make_week(1)
+    t1, t2, t3, t4 = (make_team(n) for n in ('T1', 'T2', 'T3', 'T4'))
+    decided = make_game(week, t1, t2)
+    make_game(week, t3, t4)
+    members = {}
+    for name, team in (('loser', t1), ('winner', t2), ('waiting', t3)):
+        user = make_user(name)
+        enrollment = make_enrollment(user, lives=2)
+        pick = make_pick(user, week, team)
+        members[name] = (enrollment, pick)
+    db.session.commit()
+    return week, decided, members
+
+
+def test_auto_process_week_grades_decided_picks_while_a_game_pends(app):
+    """Per-game grading (Brad's ruling 2026-09-07). Week 1 2026 sat with 32
+    ungraded picks from Saturday until a Monday-night game finished because
+    the fetcher never called the engine until EVERY game settled — while the
+    engine had graded decided picks incrementally all along
+    (test_partial_processing_grades_each_pick_exactly_once). Decided picks
+    now grade on the run that decides them; the week-level effects
+    (no-pick penalty, revival, is_complete, outcome snapshots, the recap)
+    still wait for the last game."""
+    week, decided, members = _seed_split_week()
+
+    with patch.object(ScoreFetcher, 'fetch_scores_for_week',
+                      return_value=_fake_fetch(decided)):
+        result = ScoreFetcher().auto_process_week(week.id)
+
+    assert result['status'] == 'partial'
+    assert members['loser'][0].lives_remaining == 1
+    assert members['loser'][1].is_correct is False
+    assert members['winner'][1].is_correct is True
+    assert members['waiting'][1].is_correct is None
+    assert members['waiting'][0].lives_remaining == 2
+    assert week.is_complete is False
+    assert CfbWeekOutcome.query.filter_by(week_id=week.id).count() == 0
+    assert '2 picks graded' in result['details']
+    assert '1 still pending' in result['details']
+
+
+def test_second_partial_run_grades_nothing_twice(app):
+    """The scores timer now fires daily; a repeat run over the same decided
+    game must not take a second life."""
+    week, decided, members = _seed_split_week()
+
+    with patch.object(ScoreFetcher, 'fetch_scores_for_week',
+                      return_value=_fake_fetch(decided)):
+        ScoreFetcher().auto_process_week(week.id)
+        result = ScoreFetcher().auto_process_week(week.id)
+
+    assert result['status'] == 'partial'
+    assert members['loser'][0].lives_remaining == 1
+    assert '0 picks graded' in result['details']
 
 
 def test_auto_process_week_completes_via_engine(app):

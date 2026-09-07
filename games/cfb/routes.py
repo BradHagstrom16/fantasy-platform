@@ -37,6 +37,7 @@ from games.cfb.services.game_logic import (
     pool_teams_by_conference,
     process_autopicks,
     process_week_results,
+    reverse_game_grade,
 )
 from games.cfb.services.history import get_season_2025
 from games.cfb.services.payment import payment_nudge_for
@@ -1105,6 +1106,42 @@ def _flash_processing_outcomes(result):
         )
 
 
+_RULINGS = {
+    # posted value -> (home_team_won, is_no_contest)
+    'home': (True, False),
+    'away': (False, False),
+    'no_contest': (None, True),
+}
+
+
+def _apply_ruling(game, ruling):
+    """Apply a posted ruling ('home' | 'away' | 'no_contest') to a game.
+
+    A settled game whose ruling changes is a correction (ADR-061): its
+    graded picks are reversed first — the charged lives come back,
+    ``is_correct`` clears — so the ``process_week_results`` call that
+    follows re-grades them under the new result. An unchanged ruling on a
+    settled game touches nothing. Returns (corrected, picks_reversed).
+    """
+    target = _RULINGS[ruling]
+    if (game.home_team_won, bool(game.is_no_contest)) == target:
+        return False, 0
+    corrected = game.is_settled
+    picks_reversed = reverse_game_grade(game) if corrected else 0
+    game.home_team_won, game.is_no_contest = target
+    return corrected, picks_reversed
+
+
+def _flash_corrections(corrected_games, picks_reversed):
+    if corrected_games:
+        flash(
+            f'Corrected {corrected_games} settled game'
+            f'{"" if corrected_games == 1 else "s"}; {picks_reversed} pick'
+            f'{"" if picks_reversed == 1 else "s"} re-graded under the new '
+            'result.', 'info'
+        )
+
+
 @cfb_bp.route('/admin/week/<int:week_id>/mark-results', methods=['GET', 'POST'])
 @cfb_admin_required
 def admin_mark_results(week_id):
@@ -1121,20 +1158,21 @@ def admin_mark_results(week_id):
             return redirect(url_for('cfb.admin_dashboard'))
 
         missing = []
+        corrected_games = 0
+        picks_reversed = 0
         for game in games:
             result = request.form.get(f'game_{game.id}')
-            if result == 'no_contest':
-                game.is_no_contest = True
-                game.home_team_won = None
-            elif result in ('home', 'away'):
-                game.is_no_contest = False
-                game.home_team_won = (result == 'home')
+            if result in _RULINGS:
+                corrected, reversed_here = _apply_ruling(game, result)
+                corrected_games += int(corrected)
+                picks_reversed += reversed_here
             else:
                 home = game.get_home_team_display()
                 away = game.get_away_team_display()
                 missing.append(f'{away} @ {home}')
 
         if missing:
+            db.session.rollback()
             flash(f'Missing results for: {", ".join(missing)}', 'error')
             return render_template('cfb/admin/mark_results.html', week=week, games=games)
 
@@ -1143,6 +1181,7 @@ def admin_mark_results(week_id):
         result = process_week_results(week_id)
         if result.get("success"):
             flash(f'Results for Week {week.week_number} have been recorded!', 'success')
+            _flash_corrections(corrected_games, picks_reversed)
             _flash_processing_outcomes(result)
         else:
             flash(f'Results saved but processing failed: {result.get("error")}', 'error')
@@ -1186,6 +1225,8 @@ def admin_apply_scores(week_id):
     games = CfbGame.query.filter_by(week_id=week_id).all()
 
     updated = 0
+    corrected_games = 0
+    picks_reversed = 0
     parse_errors = []
     for game in games:
         home_score_key = f'home_score_{game.id}'
@@ -1205,38 +1246,40 @@ def admin_apply_scores(week_id):
                 except ValueError:
                     parse_errors.append(f'Invalid score "{value}" for {label}')
 
-        if winner == 'home':
-            game.home_team_won = True
-            game.is_no_contest = False
-            updated += 1
-        elif winner == 'away':
-            game.home_team_won = False
-            game.is_no_contest = False
-            updated += 1
-        elif winner == 'no_contest':
-            game.is_no_contest = True
-            game.home_team_won = None
+        if winner in _RULINGS:
+            corrected, reversed_here = _apply_ruling(game, winner)
+            corrected_games += int(corrected)
+            picks_reversed += reversed_here
             updated += 1
 
     if parse_errors:
+        db.session.rollback()
         for err in parse_errors:
             flash(err, 'error')
         return redirect(url_for('cfb.admin_fetch_scores', week_id=week_id))
 
     db.session.commit()
 
-    # The engine owns is_complete — never set the flag here (Top-5 #1/#2).
-    all_settled = all(g.is_settled for g in games)
-    if all_settled:
-        result = process_week_results(week_id)
-        if result.get("success"):
-            flash(f'All {updated} game scores confirmed and results processed!', 'success')
-            _flash_processing_outcomes(result)
-        else:
-            flash(f'Scores saved but result processing failed: {result.get("error")}', 'error')
+    # Grade every decided pick now (per-game grading, ADR-061). The engine
+    # owns is_complete — never set the flag here (Top-5 #1/#2) — and only
+    # completes the week once every game is settled. A corrected ruling
+    # had its picks reversed above, so they grade again here.
+    result = process_week_results(week_id)
+    if not result.get("success"):
+        flash(f'Scores saved but result processing failed: {result.get("error")}', 'error')
+    elif result.get("completed"):
+        flash(f'All {updated} game scores confirmed and results processed!', 'success')
+        _flash_corrections(corrected_games, picks_reversed)
+        _flash_processing_outcomes(result)
     else:
+        _flash_corrections(corrected_games, picks_reversed)
         pending = sum(1 for g in games if not g.is_settled)
-        flash(f'{updated} game scores confirmed. {pending} games still pending.', 'warning')
+        flash(
+            f'{updated} game scores confirmed and results processed '
+            f'({result.get("processed", 0)} picks graded). '
+            f'{pending} game{"" if pending == 1 else "s"} still pending.',
+            'warning',
+        )
 
     return redirect(url_for('cfb.admin_dashboard'))
 

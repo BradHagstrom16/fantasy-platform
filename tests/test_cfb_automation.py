@@ -188,6 +188,36 @@ def test_run_setup_import_window_covers_thursday_through_wednesday(
 
 @patch('games.cfb.services.automation.send_platform_email', return_value=True)
 @patch('games.cfb.services.odds_api.requests.get')
+def test_run_setup_stores_the_deadline_as_naive_pool_wall_clock(
+        mock_get, mock_send, app):
+    """2026-09-07 incident: _calculate_week_dates returns aware Chicago
+    datetimes and run_setup handed them to naive columns. On Postgres (session
+    TimeZone GMT) Week 2's 11:00 AM CT deadline was stored as 16:00 and read
+    back as 4:00 PM CT — picks open past kickoff, autopick never fired. The
+    ORM attribute must already be the naive wall clock before the flush;
+    SQLite cannot reproduce the cast, so the round-trip is not the assertion."""
+    from datetime import datetime
+
+    from games.cfb.services.automation import run_setup
+    alabama, georgia = _prep_setup(app)
+    week_1 = make_week(1, deadline=datetime(2026, 9, 5, 11, 0))
+    make_game(week_1, alabama, georgia)  # populated, so setup advances
+    db.session.commit()
+    mock_get.return_value = _api_response([_setup_event(
+        commence='2026-09-12T17:00:00Z')])
+
+    result = run_setup()
+
+    assert result['week_number'] == 2
+    week = CfbWeek.query.filter_by(week_number=2).first()
+    assert week.deadline.tzinfo is None
+    assert week.deadline == datetime(2026, 9, 12, 11, 0)
+    assert week.start_date.tzinfo is None
+    assert week.start_date == datetime(2026, 9, 10, 0, 0)
+
+
+@patch('games.cfb.services.automation.send_platform_email', return_value=True)
+@patch('games.cfb.services.odds_api.requests.get')
 def test_import_logs_skipped_untracked_events(mock_get, mock_send, app, caplog):
     """§5.4: events where neither team resolves are skipped WITH a log line
     (they were silently dropped)."""
@@ -464,6 +494,37 @@ def test_run_scores_fresh_partial_is_not_flagged_stuck(
     body = mock_send.call_args[0][2]
     assert 'STUCK' not in subject
     assert 'STUCK' not in body
+
+
+@patch('games.cfb.services.automation.send_platform_email', return_value=True)
+@patch('games.cfb.services.automation.ScoreFetcher')
+def test_run_scores_measures_stuck_from_the_last_kickoff_not_the_deadline(
+        mock_fetcher_cls, mock_send, app):
+    """The scores timer runs Sun-Thu (2026-09-07), so a week whose last game
+    is Monday night or a Wednesday MACtion game is legitimately still
+    partial on Tuesday and Wednesday mornings — days past its Saturday
+    deadline. STUCK measures from the week's last kickoff: a week is stuck
+    only when its LAST game has been over long enough to fall out of the
+    scores window, not merely when its deadline is old."""
+    from datetime import datetime, timedelta
+    from zoneinfo import ZoneInfo
+
+    from games.cfb.services.automation import run_scores
+    app.config['ADMIN_EMAIL'] = 'commish@cccfantasy.com'
+    now = datetime.now(ZoneInfo('America/Chicago')).replace(tzinfo=None)
+    week = make_week(1, deadline=now - timedelta(days=4))  # last Saturday
+    home, away = make_team('MAC East'), make_team('MAC West')
+    game = make_game(week, home, away)
+    game.game_time = now - timedelta(hours=12)  # last night's kickoff
+    db.session.commit()
+    mock_fetcher_cls.return_value.auto_process_week.return_value = {
+        'status': 'partial', 'details': '0 games updated, 1 still pending'}
+
+    run_scores()
+
+    assert mock_send.called
+    subject = mock_send.call_args[0][1]
+    assert 'STUCK' not in subject
 
 
 # ── §8.16 — ScoreFetcher matching locks ──────────────────────────────────

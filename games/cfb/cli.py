@@ -13,6 +13,7 @@ Usage:
     flask cfb sync --mode remind      # Send pick reminders
     flask cfb sync --mode status      # Print season summary
     flask cfb recalc-spreads          # Recompute every cumulative spread under the current rule
+    flask cfb repair-week-dates --week N   # Re-derive a regular-season week's start/deadline from SEASON_SCHEDULE
 
 On the droplet, hand-fire a reminder pass with ``sudo systemctl start
 cfb-remind.service`` rather than ``flask cfb sync --mode remind`` in a shell:
@@ -154,6 +155,53 @@ def recalc_spreads_cmd():
                    f"{'  (changed)' if moved else ''}")
     click.echo(f"\n[cfb recalc-spreads] {len(settled)} enrollments recalculated, "
                f"{changed} changed")
+
+
+@cfb_cli.command('repair-week-dates')
+@click.option('--week', 'week_number', required=True, type=int,
+              help='Regular-season week number to re-derive.')
+def repair_week_dates_cmd(week_number):
+    """Re-derive one week's start_date/deadline from SEASON_SCHEDULE.
+
+    Operator repair for the 2026-09-07 incident: run_setup handed aware
+    Chicago datetimes to naive columns and Postgres cast them in its GMT
+    session, so Week 2's 11:00 AM CT deadline was stored as 16:00. The model
+    now normalizes on assignment; this rewrites a row that was stored before
+    that fix. Prints old -> new per column and commits. Idempotent.
+
+    Refuses (exit 1, no write) a playoff or named-round week — those are
+    hand-scheduled, and SEASON_SCHEDULE's rigid Saturday cadence is wrong for
+    them — and a completed week, whose dates are history.
+    """
+    from games.cfb.models import CfbWeek
+    from games.cfb.services.automation import _calculate_week_dates
+
+    week = CfbWeek.query.filter_by(week_number=week_number).first()
+    if week is None:
+        click.echo(f"[cfb repair-week-dates] no Week {week_number} exists")
+        raise SystemExit(1)
+    label = week.round_name or f'Week {week_number}'
+    if week.is_playoff_week or week.round_name:
+        click.echo(f"[cfb repair-week-dates] {label} is hand-scheduled "
+                   "(playoff / named round); not rewriting it from the schedule")
+        raise SystemExit(1)
+    if week.is_complete:
+        click.echo(f"[cfb repair-week-dates] {label} is complete; its dates are history")
+        raise SystemExit(1)
+
+    start_date, deadline = _calculate_week_dates(week_number)
+    changed = 0
+    for column, new_value in (('start_date', start_date), ('deadline', deadline)):
+        old_value = getattr(week, column)
+        setattr(week, column, new_value)  # the model strips the aware value
+        new_value = getattr(week, column)
+        moved = old_value != new_value
+        changed += moved
+        click.echo(f"  {column}: {old_value:%Y-%m-%d %H:%M} -> {new_value:%Y-%m-%d %H:%M}"
+                   f"{'  (changed)' if moved else ''}")
+    db.session.commit()
+    click.echo(f"\n[cfb repair-week-dates] {label}: "
+               f"{'unchanged' if not changed else f'{changed} column(s) rewritten'}")
 
 
 def register_cfb_cli(app):
