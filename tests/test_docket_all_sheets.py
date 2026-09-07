@@ -28,6 +28,7 @@ from tests._docket_fixtures import (
     make_user,
     make_week,
 )
+from tests._registry_helpers import open_join_window
 
 KICK_THU = datetime(2026, 9, 4, 0, 15)      # Thu 7:15 PM CT
 KICK_SAT = datetime(2026, 9, 5, 23, 30)     # Sat 6:30 PM CT
@@ -467,7 +468,8 @@ def test_sheets_empty_states(monkeypatch, client, member):
     assert 'Sheets open here case by case at kickoff' in html
 
 
-def test_rules_and_join_state_the_visibility_rule(app, client):
+def test_rules_and_join_state_the_visibility_rule(app, client, monkeypatch):
+    open_join_window(monkeypatch)
     user = make_user('newcomer')                 # not yet enrolled
     db.session.commit()
     login(client, user)
