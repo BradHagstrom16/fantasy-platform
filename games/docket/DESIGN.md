@@ -725,6 +725,15 @@ mechanism.
 - **Cold-Docket treatment for a struck or unfiled week** (§6.11): reduced contrast with the
   reason stated. Never garnet, which would read as "wrong"; the drop is procedure, and an
   unfiled week is a charge, not a punishment.
+- **Each week opens onto its sheet** (Brad, 2026-09-07): a second native `<details>` inside
+  the week line (`.docket-week-sheet`, summary "The sheet" in the entry summary's voice at
+  caption scale, the same drawn caret, a 44px target), listing the eight scoring lines and
+  the reserve exactly as All Sheets prints them (§7.13: `.docket-sheet-line`, the x2 chip,
+  Reserve badge, Auto tag, the case caption with "Final 17-31", the result word). Graded
+  weeks only, read by `services/history.py::pick_history` (two queries whatever the roster,
+  never through the season pass, which keeps its D14-eng read), so nothing sealed can appear
+  here and a pick never reads differently on the two surfaces. Locked by
+  `tests/test_docket_ledger_history.py`.
 
 ### 8.4 The verdict — `.docket-verdict-banner`
 
@@ -809,6 +818,32 @@ Locked by `tests/test_docket_purse.py`, `tests/test_docket_season_pass.py`, and 
 tests in `tests/test_docket_ledger_routes.py` (a config flip must move every number).
 
 ---
+
+### 8.9 Find a line, sort the account — `.docket-ledger-find`, `.docket-ledger-sort` (2026-09-07)
+
+Brad's Phase 3 ask: find a player, sort by the keys, expand to the sheet (§8.3). Both aids
+are plain GETs on `/docket/ledger`; the room's no-JS spine (§7.11) holds.
+
+- **The find field is the sheet's own control** (§7.7 anatomy, reused verbatim: visible Teko
+  label "Find a line", 44px field and Find button in the tab family, garnet focus). Every
+  typed word must appear in a display name; whitespace-collapsed, capped at 60. **Your line
+  always leads a result set**, matching or not — the ask behind the field is "me against the
+  ones I typed", and the You tag plus the official rank on the pinned line say what it is.
+  The count line never caps silently ("Showing 3 of 19 lines matching "tierney", yours first ·
+  All lines ›"); zero matches state the query in the title, keep the typed text in the field,
+  and offer one hint. The filter applies to the table, the cards and the drawers together.
+- **Sort is a header link, never a control bar.** `?sort=name|points|wins|error&dir=asc|desc`,
+  derived in the route (`LEDGER_SORTS`; never Jinja `sort(attribute=…)`), stable over the
+  official order so ties keep their rank order; each key has its natural first direction
+  (name and error ascending, points and wins descending) and the active head flips it. The
+  active head states its order twice: `aria-sort` and a drawn caret (the entry caret's
+  geometry, never a glyph). **The rank column prints the competition rank in every order**
+  (§8.1) — an alternate sort reorders lines, it never invents a rank — and a caption under the
+  find row says "Sorted by points, descending; the rank column keeps the official order" with
+  the way back. The `#` head is not a sort: it *is* the official order. Sort and find compose
+  (the form carries the sort; the heads carry the query).
+
+Locked by `tests/test_docket_ledger_find_sort.py`.
 
 ## 9. Engineering Invariants
 

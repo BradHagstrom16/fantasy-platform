@@ -1,0 +1,192 @@
+"""The ledger's weekly entries open onto the sheet behind each week.
+
+Brad's ask (2026-09-07 handoff, Phase 3): each player's line collapses to
+its summary and expands to the week-by-week eight-slot pick history. The
+read is `services/history.py::pick_history`, a separate module so the
+season pass keeps its D14-eng invariant (it reads `docket_week` and
+`docket_week_result` and nothing else); the lines use All Sheets' own
+wording helpers so the two surfaces never disagree about a pick.
+"""
+import re
+from datetime import datetime
+
+import pytest
+from sqlalchemy import event
+
+from extensions import db
+from games.docket.models import DocketPick, DocketWeekResult
+from games.docket.services.history import pick_history
+from tests._docket_fixtures import (
+    login,
+    make_enrollment,
+    make_game,
+    make_user,
+    make_week,
+)
+
+GRADED_AT = datetime(2026, 9, 6, 4, 0)
+KICK_THU = datetime(2026, 9, 4, 0, 15)
+KICK_SAT = datetime(2026, 9, 5, 18, 0)
+KICK_SUN = datetime(2026, 9, 6, 17, 0)
+
+
+def _graded_week(week_number, *, default_error_tenths=0):
+    week = make_week(week_number)
+    week.default_error_tenths = default_error_tenths
+    db.session.flush()
+    return week
+
+
+def _result(week, user, points, wins, error_tenths=0):
+    db.session.add(DocketWeekResult(
+        user_id=user.id, week_id=week.id, points=points, wins=wins,
+        error_tenths=error_tenths, graded_at=GRADED_AT))
+
+
+def _final(game, home, away):
+    game.home_score, game.away_score, game.is_final = home, away, True
+
+
+def _pick(user, week, game, slot, *, market='spread', side='home',
+          line=-3.5, best=False, auto=False, auto_best=False):
+    pick = DocketPick(user_id=user.id, week_id=week.id, game_id=game.id,
+                      market=market, side=side, slot=slot, is_best=best,
+                      is_autopick=auto, is_auto_best=auto_best,
+                      line_value=line, book='draftkings')
+    db.session.add(pick)
+    db.session.flush()
+    return pick
+
+
+def _full_sheet(user, week):
+    """Nine games, a full eight-slot sheet plus the reserve; kickoffs out of
+    slot order so kickoff ordering is observable. Slot 1 loses, slot 2 wins,
+    slot 3 pushes, the rest win; slot 4 is the x2, slot 8 auto-filed."""
+    games = []
+    for i in range(9):
+        kickoff = (KICK_SUN, KICK_THU, KICK_SAT)[i % 3]
+        game = make_game(week, kickoff=kickoff, home=f'Home {i}',
+                         away=f'Away {i}', home_spread=-3.5)
+        if i == 0:
+            _final(game, 20, 24)          # slot 1: the home side loses outright
+        elif i == 2:
+            game.home_spread = -3.0
+            _final(game, 20, 17)          # slot 3: covers by exactly the line
+        else:
+            _final(game, 24, 17)          # covers -3.5
+        games.append(game)
+    picks = [
+        _pick(user, week, games[i], i + 1,
+              best=(i == 3), auto=(i == 7), auto_best=False)
+        for i in range(8)
+    ]
+    picks.append(_pick(user, week, games[8], 9))         # the reserve
+    db.session.flush()
+    return games, picks
+
+
+def test_pick_history_reads_a_graded_week_in_kickoff_order_reserve_last(app):
+    user = make_user('player')
+    make_enrollment(user)
+    week = _graded_week(1)
+    _full_sheet(user, week)
+    _result(week, user, 7.0, 6)
+    db.session.commit()
+
+    history = pick_history((1,), [user.id])
+
+    lines = history[user.id][1]
+    assert len(lines) == 9
+    assert [line.is_reserve for line in lines] == [False] * 8 + [True]
+    scoring = lines[:8]
+    assert [line.slot for line in scoring] != list(range(1, 9)), 'slot order'
+    kicks = [line.kickoff for line in scoring]
+    assert kicks == sorted(kicks), 'kickoff order'
+    by_slot = {line.slot: line for line in lines}
+    assert by_slot[1].result == 'loss'
+    assert by_slot[2].result == 'win'
+    assert by_slot[3].result == 'push'
+    assert by_slot[4].is_best is True
+    assert by_slot[8].is_autopick is True
+    assert by_slot[1].pick == 'Home 0 -3.5'
+    assert by_slot[1].caption == 'Away 0 at Home 0'
+    assert by_slot[1].final_score == '24-20'
+
+
+def test_pick_history_ignores_weeks_that_are_not_graded(app):
+    """Only graded weeks are asked for; an open week's picks never leak
+    through the ledger (the sheet reveals on its own lock, 7.13)."""
+    user = make_user('player')
+    make_enrollment(user)
+    week1 = _graded_week(1)
+    _full_sheet(user, week1)
+    _result(week1, user, 7.0, 6)
+    week2 = make_week(2)
+    game = make_game(week2, kickoff=datetime(2026, 9, 12, 18, 0))
+    _pick(user, week2, game, 1)
+    db.session.commit()
+
+    history = pick_history((1,), [user.id])
+
+    assert set(history[user.id]) == {1}
+
+
+def test_ledger_drawer_opens_onto_the_sheet(app, client):
+    user = make_user('player')
+    make_enrollment(user, display_name='Steady Eddie')
+    week = _graded_week(1)
+    _full_sheet(user, week)
+    _result(week, user, 7.0, 6)
+    db.session.commit()
+    login(client, user)
+
+    html = client.get('/docket/ledger').get_data(as_text=True)
+
+    assert html.count('<details class="docket-week-sheet"') == 1
+    lines = re.findall(r'<li class="docket-sheet-line[^"]*"', html)
+    assert len(lines) == 9
+    assert 'is-reserve' in lines[-1]
+    assert 'Home 0 -3.5' in html and 'Away 0 at Home 0' in html
+    assert 'Final 24-20' in html
+    for word in ('Win', 'Loss', 'Mistrial'):
+        assert word in html
+    assert 'docket-headliner-chip' in html and 'docket-auto-tag' in html
+    assert 'Points post to the ledger' not in html   # graded: no sealed copy
+
+
+def test_ledger_query_count_stays_flat_with_the_sheets(app, client):
+    """Three more reads for the sheets (weeks, picks with their games) —
+    never a query per member or per week."""
+    week1, week2 = _graded_week(1), _graded_week(2)
+    users = []
+    for i in range(10):
+        user = make_user(f'p{i:02d}')
+        make_enrollment(user)
+        for week in (week1, week2):
+            _full_sheet(user, week)
+            _result(week, user, float(i), i)
+        users.append(user)
+    db.session.commit()
+    login(client, users[0])
+
+    statements = []
+
+    def before(conn, cursor, statement, *args):
+        statements.append(statement)
+
+    event.listen(db.engine, 'before_cursor_execute', before)
+    try:
+        assert client.get('/docket/ledger').status_code == 200
+    finally:
+        event.remove(db.engine, 'before_cursor_execute', before)
+
+    assert len(statements) < 18, f'{len(statements)} queries for 10 members x 2 weeks'
+
+
+@pytest.mark.parametrize('path', ['/docket/ledger'])
+def test_ledger_still_rejects_post(app, client, path):
+    user = make_user('player')
+    make_enrollment(user)
+    db.session.commit()
+    login(client, user)
+    assert client.post(path, data={'q': 'x'}).status_code == 405

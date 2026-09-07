@@ -14362,6 +14362,73 @@ body.game-docket .form-select:focus {
 .docket-week.is-dropped .docket-week-points,
 .docket-week.is-absent .docket-week-points { color: var(--text-secondary); }
 .docket-week.is-dropped .docket-week-note { font-style: italic; }
+/* The sheet behind a week (2026-09-07): a second native drawer inside the
+   week line. The line wraps so the drawer takes the full width beneath the
+   figures; the summary is the entry summary's voice at caption scale, with
+   the same drawn caret and a 44px target. Lines reuse the All Sheets
+   primitive unchanged, so a pick reads identically on both surfaces. */
+.docket-week { flex-wrap: wrap; }
+.docket-week-sheet { flex: 1 0 100%; margin: .1rem 0 .15rem; }
+.docket-week-sheet-summary {
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+  min-height: 44px;
+  cursor: pointer;
+  list-style: none;
+  font-family: 'Teko', sans-serif;
+  font-weight: 500;
+  font-size: .85rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+.docket-week-sheet-summary::-webkit-details-marker { display: none; }
+.docket-week-sheet-summary:hover { color: var(--text-primary); }
+.docket-week-sheet-summary:focus-visible {
+  outline: 2px solid var(--game-accent);
+  outline-offset: 2px;
+}
+.docket-week-sheet[open] > .docket-week-sheet-summary .docket-entry-caret {
+  transform: rotate(180deg);
+}
+.docket-week-sheet .docket-sheet-lines { padding-left: 0; }
+/* Find a line + sort (2026-09-07). The find field is the sheet's own
+   control; sort heads are plain links in the head's voice, the active one
+   carrying a drawn caret (the entry caret's geometry, never a glyph). */
+.docket-ledger-find { margin: .25rem 0 .75rem; }
+.docket-ledger-find-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: .5rem;
+  margin: 0 0 .5rem;
+}
+.docket-ledger-find-title { margin: 0; }
+.docket-ledger-sorted { margin: .35rem 0 .6rem; }
+.docket-ledger-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: .3rem;
+  color: inherit;
+  text-decoration: none;
+}
+.docket-ledger-sort:hover,
+.docket-ledger-sort:focus-visible { color: var(--game-primary); text-decoration: none; }
+.docket-ledger-sort::after {
+  content: '';
+  width: .5rem;
+  height: .35rem;
+  background: currentColor;
+  clip-path: polygon(0 15%, 16% 0, 50% 45%, 84% 0, 100% 15%, 50% 100%);
+  opacity: 0;
+  transition: transform var(--transition), opacity var(--transition);
+}
+.docket-ledger-sort.is-active::after { opacity: 1; }
+.docket-ledger-sort.is-active.is-asc::after { transform: rotate(180deg); }
+@media (max-width: 767.98px) {
+  .docket-ledger-find-head { flex-direction: column; align-items: flex-start; gap: .2rem; }
+}
 /* The receipt: a week's prize noted on the week that won it. Ink on a bone
    tint, never garnet (garnet means "yours", not "won"). */
 .docket-week-verdict {
