@@ -306,16 +306,13 @@ def _run_import(week_number, force_odds, title):
     _check_sync_status(summary, 'import')
 
 
-def _run_scores(week_number, days_from):
-    summary = sync_scores(week_number, days_from=days_from)
-    _echo_summary(f'docket sync --mode scores (week {week_number})', summary)
-    if summary.get('status') == 'error':
-        _fail(f'score sync failed: {"; ".join(summary.get("errors", []))}')
+def _grade(week):
+    """Grade one closed week and print the outcome.
 
-    week = _get_week(week_number)
-    # The roster as of this week's deadline, never the live one: grading is
-    # always post-deadline, and a later joiner must not be dealt an autopick
-    # package for a week they were not enrolled for.
+    The roster as of this week's deadline, never the live one: grading is
+    always post-deadline, and a later joiner must not be dealt an autopick
+    package for a week they were not enrolled for.
+    """
     graded = try_grade_week(
         week.id, user_ids=roster_user_ids_as_of(week.deadline_at))
     if graded['status'] == 'not_ready':
@@ -323,7 +320,52 @@ def _run_scores(week_number, days_from):
     else:
         click.secho(f'  grading: {graded["graded"]} players graded',
                     fg='green')
+
+
+def _is_graded(week):
+    """ADR-047's marker: run_grading_pass stamps default_error_tenths on
+    every grade, roster or no roster — result rows are per user, so an
+    empty roster grades to zero rows and a row count would keep paying
+    for the catch-up every run."""
+    return week.default_error_tenths is not None
+
+
+def _catch_up_previous_week(week_number, days_from):
+    """Sync and grade week N-1 while it is ungraded (no default_error_tenths).
+
+    The mode resolves its week from the clock, so after the Tuesday 06:00 CT
+    boundary every run targets the fresh week. Week 1 2026 ended with a
+    Monday-night game, and the Tue 05:15 run was the only firing that would
+    ever grade it — an hour's lag in the scores feed would have left the
+    week ungraded until an operator noticed (D12-eng amendment 2026-09-07).
+    Costs 2 credits a sport only while the previous week is ungraded;
+    ordinary weeks pay nothing. Its sync status rides the same exit code as
+    the current week's, so a dark sport still turns the timer red.
+    """
+    if week_number <= 1:
+        return None
+    previous = _get_week(week_number - 1)
+    if previous is None or _is_graded(previous):
+        return None
+    summary = sync_scores(previous.week_number, days_from=days_from)
+    _echo_summary(f'docket sync --mode scores (week {previous.week_number}, '
+                  'catch-up)', summary)
+    if summary.get('status') != 'error':
+        _grade(previous)
+    return summary
+
+
+def _run_scores(week_number, days_from):
+    summary = sync_scores(week_number, days_from=days_from)
+    _echo_summary(f'docket sync --mode scores (week {week_number})', summary)
+    if summary.get('status') == 'error':
+        _fail(f'score sync failed: {"; ".join(summary.get("errors", []))}')
+
+    _grade(_get_week(week_number))
+    previous = _catch_up_previous_week(week_number, days_from)
     _check_sync_status(summary, 'score sync')
+    if previous is not None:
+        _check_sync_status(previous, 'previous-week score sync')
 
 
 def _run_deadline(week_number, force):
