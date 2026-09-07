@@ -15,6 +15,7 @@ from models.user import User
 from tests._cfb_fixtures import make_enrollment as make_cfb_enrollment
 from tests._docket_fixtures import login, make_user
 from tests._docket_fixtures import make_enrollment as make_docket_enrollment
+from tests._registry_helpers import open_join_window
 
 LONGEST = 'x' * 100
 
@@ -263,7 +264,8 @@ def test_admin_users_page_carries_a_rename_form_per_member(app, client):
 
 # --- join pages: state the name, collect nothing --------------------------
 
-def test_cfb_join_states_the_name_and_collects_none(app, client):
+def test_cfb_join_states_the_name_and_collects_none(app, client, monkeypatch):
+    open_join_window(monkeypatch)
     user = make_user('joiner')
     user.display_name = 'Fourth & Pine'
     db.session.commit()
@@ -274,7 +276,8 @@ def test_cfb_join_states_the_name_and_collects_none(app, client):
     assert 'Fourth &amp; Pine' in text
 
 
-def test_docket_join_states_the_name_and_collects_none(app, client):
+def test_docket_join_states_the_name_and_collects_none(app, client, monkeypatch):
+    open_join_window(monkeypatch)
     user = make_user('joiner')
     user.display_name = 'The Gavel'
     db.session.commit()
@@ -285,7 +288,8 @@ def test_docket_join_states_the_name_and_collects_none(app, client):
     assert 'The Gavel' in text
 
 
-def test_cfb_join_ignores_a_posted_display_name(app, client):
+def test_cfb_join_ignores_a_posted_display_name(app, client, monkeypatch):
+    open_join_window(monkeypatch)
     user = make_user('joiner')
     db.session.commit()
     login(client, user)
@@ -295,7 +299,8 @@ def test_cfb_join_ignores_a_posted_display_name(app, client):
     assert db.session.get(User, user.id).display_name is None
 
 
-def test_docket_join_ignores_a_posted_display_name(app, client):
+def test_docket_join_ignores_a_posted_display_name(app, client, monkeypatch):
+    open_join_window(monkeypatch)
     user = make_user('joiner')
     db.session.commit()
     login(client, user)

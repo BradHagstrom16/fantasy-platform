@@ -1,6 +1,19 @@
 """Shared helpers for tests that need to patch the game registry."""
 from dataclasses import replace
 
+# An in-season instant inside both games' self-serve join window (Wed Sep 2
+# 2026, naive ISO = UTC on both seams). Both fall-'26 games close joining at
+# the shared Week 1 deadline, Sat Sep 5 2026 11:00 CT (ADR-050), judged on
+# each game's own clock seam — so every /join lock that ran on the real clock
+# went red the moment that deadline passed.
+IN_JOIN_WINDOW = '2026-09-02T12:00:00'
+
+
+def open_join_window(monkeypatch):
+    """Pin both games' clocks inside the self-serve join window."""
+    monkeypatch.setenv('CFB_FAKE_NOW', IN_JOIN_WINDOW)
+    monkeypatch.setenv('DOCKET_FAKE_NOW', IN_JOIN_WINDOW)
+
 
 def set_status(monkeypatch, slug, status):
     """Rewrite a single registry entry's status for the duration of one test.

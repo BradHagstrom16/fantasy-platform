@@ -481,12 +481,20 @@ def letters(app):
     return out
 
 
+_URL = re.compile(r'https?://\S+')
+
+
 def test_no_em_dashes_double_hyphens_or_emoji_anywhere(letters):
+    """Copy rules, so URLs are exempt from the double-hyphen check: the
+    reset letter carries a URLSafeTimedSerializer token, base64url with a
+    signature that changes every second, and roughly one run in a hundred
+    lands a '--' inside it (seen once in the 2026-09-07 full runs, never
+    twice in a row)."""
     emoji = re.compile('[\U0001F000-\U0001FAFF☀-➿]')
     for name, m in letters.items():
         for part in (m['subject'], m['plain'], _text(m['html'])):
             assert '—' not in part, (name, part)
-            assert '--' not in part, (name, part)
+            assert '--' not in _URL.sub('', part), (name, part)
             assert not emoji.search(part), (name, part)
         assert '&mdash;' not in m['html'] and '&#8212;' not in m['html'], name
 
