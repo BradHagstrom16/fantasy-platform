@@ -107,3 +107,43 @@ def test_remind_is_persistent():
     caught-up send instead of a missed reminder; the sent-flag makes the
     catch-up safe to double-fire."""
     assert 'Persistent=true' in _directives(DEPLOY / 'cfb-remind.timer')
+
+
+# ── cfb-scores / cfb-setup: the Monday-game week (2026-09-07 incident) ───
+
+def _weekday_rules(timer_name, clock):
+    """Weekday-restricted OnCalendar rules firing at ``clock`` (HH:MM:SS)."""
+    rules = _ONCALENDAR.findall((DEPLOY / timer_name).read_text())
+    return [rule for rule in rules
+            if rule.split()[-2] == clock and rule[0].isalpha()]
+
+
+def test_scores_run_covers_every_day_cfb_plays():
+    """/scores looks back at most daysFrom=3, and a CFB week runs Thu→Wed
+    with its deadline on Saturday: Labor-Day Monday and November MACtion
+    (Tue/Wed) games finish AFTER the old Sun/Mon cadence and BEFORE the next
+    Sunday run could see them, so the week could never auto-complete (Week 1
+    2026: SMU @ Florida State on Mon Sep 7 sat unscored). Sun through Thu at
+    08:00 CT scores every post-deadline game inside the window; Fri/Sat runs
+    would only see pre-deadline games, which the fetcher refuses anyway."""
+    days = set()
+    for rule in _weekday_rules('cfb-scores.timer', '08:00:00'):
+        days.update(rule.split()[0].split(','))
+    assert {'Sun', 'Mon', 'Tue', 'Wed', 'Thu'} <= days, days
+
+
+def test_monday_setup_fires_after_the_scores_run():
+    """run_setup activates the new week and deactivates the old one with no
+    completeness guard, and every room surface reads is_active. Firing setup
+    AFTER Monday's scores run means an ordinary week (last game Sunday) is
+    complete before the room flips, instead of flipping on ungraded picks."""
+    scores = _weekday_rules('cfb-scores.timer', '08:00:00')
+    assert any('Mon' in rule.split()[0].split(',') for rule in scores), (
+        'cfb-scores.timer must fire on Monday')
+    setup = [rule for rule in
+             _ONCALENDAR.findall((DEPLOY / 'cfb-setup.timer').read_text())
+             if rule.startswith('Mon ')]
+    assert setup, 'cfb-setup.timer must fire on Monday'
+    for rule in setup:
+        assert rule.split()[-2] > '08:00:00', (
+            f'{rule!r} fires before or with the 08:00 CT scores run')

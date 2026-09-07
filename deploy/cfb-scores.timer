@@ -1,13 +1,27 @@
-# Runs CFB score sync Sun + Mon 08:00 CT (regular season), and daily
+# Runs CFB score sync Sun through Thu 08:00 CT (regular season), and daily
 # Dec 15 – Jan 25 08:00 CT (bowls/CFP — keeps every game inside the scores
 # API's 3-day lookback window; the CFP final is a Monday night).
+#
+# Sun-Thu, not Sun/Mon (amended 2026-09-07). A CFB week runs Thu→Wed with its
+# deadline on Saturday, so a Labor-Day Monday game or a Tue/Wed MACtion game
+# in November finishes AFTER Monday's run — and /scores looks back at most
+# daysFrom=3, so the following Sunday's run can no longer see it. Under the
+# old cadence Week 1 2026 (SMU @ Florida State, Mon Sep 7) would never have
+# auto-completed. Each extra run is one /scores call (2 credits); Fri and Sat
+# are left out because everything they could see is pre-deadline, which
+# fetch_scores_for_week refuses anyway.
+#
+# Runs on the same morning as cfb-setup.timer fire FIRST (08:00 vs 09:00):
+# run_setup deactivates the old week with no completeness guard, so in an
+# ordinary week the last (Sunday) game must be graded before the room flips.
+#
 # Overlapping dates collapse to a single firing.
 [Unit]
-Description=Run CFB Survivor score sync (Sun/Mon; daily mid-Dec through Jan 25)
+Description=Run CFB Survivor score sync (Sun-Thu; daily mid-Dec through Jan 25)
 
 [Timer]
 # Timezone is INLINE in OnCalendar — no TimeZone= directive exists.
-OnCalendar=Sun,Mon *-*-* 08:00:00 America/Chicago
+OnCalendar=Sun,Mon,Tue,Wed,Thu *-*-* 08:00:00 America/Chicago
 OnCalendar=*-12-15..31 08:00:00 America/Chicago
 OnCalendar=*-01-01..25 08:00:00 America/Chicago
 Persistent=true
