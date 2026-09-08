@@ -163,7 +163,10 @@ def _extract_home_spread(event):
                     point = outcome.get('point')
                     if point is None:
                         continue
-                    return float(point), bm.get('key')
+                    try:
+                        return float(point), bm.get('key')
+                    except (ValueError, TypeError):
+                        continue
     return None, None
 
 
@@ -450,6 +453,10 @@ def _fetch_and_lock_lines(week, games):
         return _spread_update_error(week, f'API request failed (network): {e}')
     except ValueError as e:
         return _spread_update_error(week, f'Malformed API response: {e}')
+
+    if not isinstance(api_events, list):
+        return _spread_update_error(
+            week, 'API response is not a list')
 
     # Build event lookup
     events_by_id = {e.get('id'): e for e in api_events}
