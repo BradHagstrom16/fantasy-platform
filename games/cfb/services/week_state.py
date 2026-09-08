@@ -1,19 +1,19 @@
 """
-CFB Survivor Pool — Week State
+CFB Survivor Pool -- Week State
 ==============================
 One definition of "which week" for the room AND the lounge (DESIGN.md
 §10.5: never calculate the same fact differently in lounge and room).
 
 Three weeks matter:
 
-- the **reveal week** — the latest week whose deadline has passed and that
+- the **reveal week** -- the latest week whose deadline has passed and that
   has at least one game, complete or not (Brad's ruling 2026-09-07: the
   standings show it; 2026-09-08: the whole room and the lounge lead with it
   while it is unfinished). A 0-game orphan never leads.
-- the **pick week** — the active week while its deadline is ahead: the one
+- the **pick week** -- the active week while its deadline is ahead: the one
   week a member can pick in. Since ADR-062 a week is active only once its
   lines have landed, so "active" and "pickable" are the same thing.
-- the **lead** — the week the room talks about: the reveal week while it
+- the **lead** -- the week the room talks about: the reveal week while it
   is unfinished, else the pick week, else the reveal week's verdict.
 
 Imports only the models and utils, so both ``routes`` and
