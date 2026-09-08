@@ -12,6 +12,7 @@ All Odds-API traffic now flows through one client (games.cfb.services.odds_api),
 so it is mocked at that single boundary (games.cfb.services.odds_api.requests.get)
 regardless of which caller (automation or score_fetcher) issued the request.
 """
+from datetime import datetime, timedelta
 from unittest.mock import Mock, patch
 
 import pytest
@@ -19,10 +20,16 @@ import pytest
 from extensions import db
 from games.cfb.models import CfbGame, CfbWeek
 from tests._cfb_fixtures import (
+    make_enrollment,
     make_game,
     make_team,
+    make_user,
     make_week,
 )
+
+# A week that has not locked (naive pool wall clock; make_week's default
+# deadline is in the past). Pinned, never derived from the real clock.
+FUTURE_DEADLINE = datetime(2099, 9, 5, 11, 0)
 
 
 def _api_response(payload, status_code=200, headers=None):
@@ -119,7 +126,7 @@ def test_run_setup_retries_lowest_orphan_week_before_advancing(
     assert result['week_number'] == 1
     assert result['game_count'] == 1
     assert CfbGame.query.filter_by(week_id=orphan.id).count() == 1
-    assert db.session.get(CfbWeek, orphan.id).is_active is True
+    assert db.session.get(CfbWeek, orphan.id).is_active is False   # ADR-062
     assert CfbWeek.query.filter_by(week_number=2).first() is None
 
 
@@ -305,10 +312,12 @@ def _odds_event(bookmakers, event_id='ev1', home_api='Alabama Crimson Tide',
 
 
 def _seed_active_week_game(app, *, locked_at=None, spread=None):
-    """Active week + one Alabama/Georgia game wired to API event ev1."""
+    """Open (active, unlocked) week + one Alabama/Georgia game wired to API
+    event ev1. The deadline must be in the future: the spreads pass works on
+    the lowest week that has not locked (ADR-062), never on a past week."""
     app.config['ODDS_API_KEY'] = 'test-key'
     app.config['ADMIN_EMAIL'] = 'commish@cccfantasy.com'
-    week = make_week(1, is_active=True)
+    week = make_week(1, is_active=True, deadline=FUTURE_DEADLINE)
     home = make_team('Alabama')
     away = make_team('Georgia')
     game = make_game(week, home, away, spread=spread)
@@ -376,6 +385,7 @@ def test_spread_update_skips_locked_games(mock_get, mock_send, app):
 
     assert result['locked'] == 1
     assert game.home_team_spread == -2.5
+    mock_get.assert_not_called()   # every line locked → no odds call (ADR-062)
 
 
 @patch('games.cfb.services.automation.send_platform_email', return_value=True)
@@ -442,6 +452,283 @@ def test_admin_added_game_spread_is_locked_per_dq6(app, client):
     assert game is not None
     assert game.home_team_spread == -6.5
     assert game.spread_locked_at is not None
+
+
+# ── ADR-062 — a week opens with its lines ────────────────────────────────
+
+def _seed_open_candidates(app):
+    """Week 1 active and complete (last Saturday); Week 2 not yet open: one
+    Alabama/Georgia game wired to API event ev1, no line posted yet."""
+    app.config['ODDS_API_KEY'] = 'test-key'
+    app.config['ADMIN_EMAIL'] = 'commish@cccfantasy.com'
+    done = make_week(1, is_active=True, is_complete=True)
+    make_game(done, make_team('Texas'), make_team('Oklahoma'),
+              spread=-3.0, winner='home')
+    week = make_week(2, deadline=FUTURE_DEADLINE)
+    game = make_game(week, make_team('Alabama'), make_team('Georgia'))
+    game.api_event_id = 'ev1'
+    make_enrollment(make_user('p1'))
+    db.session.commit()
+    return done, week, game
+
+
+@patch('games.cfb.services.reminders.send_platform_email', return_value=True)
+@patch('games.cfb.services.automation.send_platform_email', return_value=True)
+@patch('games.cfb.services.odds_api.requests.get')
+def test_spread_update_opens_the_week_when_a_line_lands(
+        mock_get, mock_admin, mock_letter, app):
+    """ADR-062: the spreads run targets the lowest unlocked week with games,
+    not the active week, and the first line that lands OPENS it: is_active
+    leaves the old week and lands on this one in the same run as the
+    picks-open letter, so members never see an active week without lines."""
+    from games.cfb.services.automation import run_spread_update
+    done, week, game = _seed_open_candidates(app)
+    mock_get.return_value = _api_response([
+        _odds_event([_bm('draftkings', point=-7.5)]),
+    ])
+
+    result = run_spread_update()
+
+    assert result['opened'] is True
+    assert result['week_number'] == 2
+    assert 'opened Week 2' in result['details']
+    assert db.session.get(CfbWeek, week.id).is_active is True
+    assert db.session.get(CfbWeek, done.id).is_active is False
+    assert game.home_team_spread == -7.5
+    assert week.picks_open_notified is True
+    assert mock_letter.call_count == 1
+
+
+@patch('games.cfb.services.reminders.send_platform_email', return_value=True)
+@patch('games.cfb.services.automation.send_platform_email', return_value=True)
+@patch('games.cfb.services.odds_api.requests.get')
+def test_spread_update_does_not_open_without_a_line(
+        mock_get, mock_admin, mock_letter, app):
+    """No line landed → the week stays closed (never an active week without
+    spreads), no letter, and the games-without-spreads alert still reaches
+    the admin."""
+    from games.cfb.services.automation import run_spread_update
+    done, week, game = _seed_open_candidates(app)
+    mock_get.return_value = _api_response([])
+
+    result = run_spread_update()
+
+    assert result['opened'] is False
+    assert db.session.get(CfbWeek, week.id).is_active is False
+    assert db.session.get(CfbWeek, done.id).is_active is True
+    mock_letter.assert_not_called()
+    assert mock_admin.called
+    assert 'Georgia @ Alabama' in mock_admin.call_args[0][2]
+
+
+@patch('games.cfb.services.reminders.send_platform_email', return_value=True)
+@patch('games.cfb.services.automation.send_platform_email', return_value=True)
+@patch('games.cfb.services.odds_api.requests.get')
+def test_spread_update_skips_api_when_every_line_is_locked(
+        mock_get, mock_admin, mock_letter, app):
+    """Friday's gap-fill over a fully locked week costs no credit: no odds
+    call, the week stays open, and the letter already sent is not repeated."""
+    from games.cfb.services.automation import run_spread_update
+    week, game = _seed_active_week_game(
+        app, locked_at=datetime(2026, 9, 8, 11, 0), spread=-2.5)
+    week.picks_open_notified = True
+    db.session.commit()
+
+    result = run_spread_update()
+
+    mock_get.assert_not_called()
+    assert result['status'] == 'updated'
+    assert result['locked'] == 1 and result['updated'] == 0
+    assert result['opened'] is False
+    assert week.is_active is True
+    mock_letter.assert_not_called()
+
+
+@patch('games.cfb.services.reminders.send_platform_email', return_value=True)
+@patch('games.cfb.services.automation.send_platform_email', return_value=True)
+@patch('games.cfb.services.odds_api.requests.get')
+def test_spread_update_opens_on_a_hand_entered_line_when_no_kickoff_is_known(
+        mock_get, mock_admin, mock_letter, app):
+    """A week whose games carry no kickoff time cannot be fetched (the odds
+    window is built from kickoffs), but a hand-entered line is still a line
+    members can pick in: the open and the letter must not be skipped along
+    with the fetch (CodeRabbit, PR #201)."""
+    from games.cfb.services.automation import run_spread_update
+    app.config['ODDS_API_KEY'] = 'test-key'
+    app.config['ADMIN_EMAIL'] = 'commish@cccfantasy.com'
+    week = make_week(2, deadline=FUTURE_DEADLINE)
+    lined = make_game(week, make_team('Alabama'), make_team('Georgia'),
+                      spread=-3.0)
+    lined.spread_locked_at = datetime(2026, 9, 8, 11, 0)   # admin entry
+    lined.game_time = None
+    bare = make_game(week, make_team('Texas'), make_team('Oklahoma'))
+    bare.game_time = None
+    make_enrollment(make_user('p1'))
+    db.session.commit()
+
+    result = run_spread_update()
+
+    mock_get.assert_not_called()
+    assert result['opened'] is True
+    assert db.session.get(CfbWeek, week.id).is_active is True
+    assert mock_letter.call_count == 1
+    assert 'Oklahoma @ Texas' in mock_admin.call_args[0][2]   # still alerted
+
+
+@patch('games.cfb.services.automation.send_platform_email', return_value=True)
+@patch('games.cfb.services.automation.odds_api_get')
+def test_spread_update_emails_admin_on_api_error(mock_api, mock_send, app):
+    """A failed open is no longer silent (the CLI exits 0 either way): the
+    admin hears about it, the week stays closed, and the next scores run
+    retries."""
+    from games.cfb.services.automation import run_spread_update
+    from games.cfb.services.odds_api import OddsApiError
+    done, week, game = _seed_open_candidates(app)
+    mock_api.side_effect = OddsApiError('Odds API unreachable')
+
+    result = run_spread_update()
+
+    assert result['status'] == 'error'
+    assert db.session.get(CfbWeek, week.id).is_active is False
+    assert mock_send.called
+    subject = mock_send.call_args[0][1]
+    assert 'Spread update failed' in subject and 'Week 2' in subject
+
+
+@patch('games.cfb.services.reminders.send_platform_email', return_value=True)
+@patch('games.cfb.services.automation.send_platform_email', return_value=True)
+@patch('games.cfb.services.odds_api.requests.get')
+@patch('games.cfb.services.automation.ScoreFetcher')
+def test_run_scores_retries_an_unopened_week(
+        mock_fetcher_cls, mock_get, mock_admin, mock_letter, app):
+    """Tuesday's open failed, or an admin flipped the old week back by hand:
+    the next scores run finds a week with games that has not opened and runs
+    the opener itself, so members are never more than one 08:00 CT run away
+    from picks — and the admin summary says so."""
+    from games.cfb.services.automation import run_scores
+    done, week, game = _seed_open_candidates(app)
+    mock_get.return_value = _api_response([
+        _odds_event([_bm('draftkings', point=-7.5)]),
+    ])
+
+    result = run_scores()
+
+    assert result['opened'] is True
+    assert db.session.get(CfbWeek, week.id).is_active is True
+    assert db.session.get(CfbWeek, done.id).is_active is False
+    assert 'Opened Week 2' in result['details']
+    assert mock_letter.call_count == 1
+    assert mock_admin.called
+    assert 'Opened Week 2' in mock_admin.call_args[0][2]
+
+
+@patch('games.cfb.services.automation.send_platform_email', return_value=True)
+@patch('games.cfb.services.automation.run_spread_update')
+@patch('games.cfb.services.automation.ScoreFetcher')
+def test_run_scores_makes_no_odds_call_when_candidate_is_active(
+        mock_fetcher_cls, mock_open, mock_send, app):
+    """An open, announced week is left alone: the daily scores run must not
+    spend a credit re-checking a week that already opened."""
+    from games.cfb.services.automation import run_scores
+    week, game = _seed_active_week_game(
+        app, locked_at=datetime(2026, 9, 8, 11, 0), spread=-2.5)
+    week.picks_open_notified = True
+    db.session.commit()
+
+    result = run_scores()
+
+    mock_open.assert_not_called()
+    assert result['opened'] is False
+
+
+@patch('games.cfb.services.automation.send_platform_email', return_value=True)
+@patch('games.cfb.services.automation.run_spread_update',
+       side_effect=RuntimeError('boom'))
+@patch('games.cfb.services.automation.ScoreFetcher')
+def test_run_scores_survives_open_failure(
+        mock_fetcher_cls, mock_open, mock_send, app):
+    """The open is a side effect of the scores sync: whatever it raises is
+    logged and reported, never allowed to kill the run that grades picks."""
+    from games.cfb.services.automation import run_scores
+    _seed_open_candidates(app)
+
+    result = run_scores()
+
+    assert result['opened'] is False
+    assert 'boom' in result['details']
+    assert mock_send.called                    # the summary still goes out
+
+
+@patch('games.cfb.services.automation.send_platform_email', return_value=True)
+@patch('games.cfb.services.automation.ScoreFetcher')
+def test_run_scores_skips_a_week_that_never_got_lines(
+        mock_fetcher_cls, mock_send, app):
+    """A week past its deadline whose games never got a line was never
+    openable — nobody could pick — so grading it would only charge the whole
+    pool a no-pick penalty (DQ-2). It is skipped and escalated as STUCK."""
+    from games.cfb.services.automation import run_scores
+    app.config['ADMIN_EMAIL'] = 'commish@cccfantasy.com'
+    week = make_week(1)                                        # past deadline
+    make_game(week, make_team('Alabama'), make_team('Georgia'))  # no line
+
+    db.session.commit()
+
+    result = run_scores()
+
+    mock_fetcher_cls.return_value.auto_process_week.assert_not_called()
+    assert 'without lines' in result['details']
+    assert 'STUCK' in mock_send.call_args[0][1]
+
+
+@patch('games.cfb.services.automation.send_platform_email', return_value=True)
+@patch('games.cfb.services.odds_api.requests.get')
+def test_run_setup_creates_week_without_activating(mock_get, mock_send, app):
+    """ADR-062: Monday's setup creates the week and imports its games but
+    never flips is_active — a week opens on the spreads run that lands its
+    first line, so members never see an active week they cannot pick in
+    (Brad, 2026-09-08)."""
+    from games.cfb.services.automation import run_setup
+    _prep_setup(app)
+    mock_get.return_value = _api_response([_setup_event()])
+
+    result = run_setup()
+
+    assert result['status'] == 'created'
+    assert result['game_count'] == 1
+    assert CfbWeek.query.filter_by(week_number=1).first().is_active is False
+    assert 'opens with the next spreads run' in result['details']
+
+
+def test_week_to_open_prefers_lowest_incomplete_week_with_games_and_future_deadline(app):
+    """The opener's target is the lowest-numbered week that is not complete,
+    has at least one game, and has not locked — whether or not it is already
+    active (Friday's gap-fill run must find the open week again)."""
+    from games.cfb.services.automation import _week_to_open
+    home, away = make_team('Alabama'), make_team('Georgia')
+    done = make_week(1, is_complete=True, deadline=FUTURE_DEADLINE)
+    make_game(done, home, away)
+    later = make_week(3, deadline=FUTURE_DEADLINE + timedelta(days=14))
+    make_game(later, home, away)
+    target = make_week(2, is_active=True,
+                       deadline=FUTURE_DEADLINE + timedelta(days=7))
+    make_game(target, home, away)
+    db.session.commit()
+
+    assert _week_to_open().id == target.id
+
+
+def test_week_to_open_ignores_zero_game_and_past_deadline_weeks(app):
+    """A 0-game orphan (Monday's setup retries it) and a week whose deadline
+    has passed (nothing left to open) are never the target; no candidate
+    means None, never an exception."""
+    from games.cfb.services.automation import _week_to_open
+    home, away = make_team('Alabama'), make_team('Georgia')
+    locked = make_week(1)                        # PAST_DEADLINE
+    make_game(locked, home, away)
+    make_week(2, deadline=FUTURE_DEADLINE)       # orphan: no games
+    db.session.commit()
+
+    assert _week_to_open() is None
 
 
 # ── §5.1 — run_scores stuck-week alert ───────────────────────────────────
@@ -514,7 +801,7 @@ def test_run_scores_measures_stuck_from_the_last_kickoff_not_the_deadline(
     now = datetime.now(ZoneInfo('America/Chicago')).replace(tzinfo=None)
     week = make_week(1, deadline=now - timedelta(days=4))  # last Saturday
     home, away = make_team('MAC East'), make_team('MAC West')
-    game = make_game(week, home, away)
+    game = make_game(week, home, away, spread=-3.0)   # a week that opened
     game.game_time = now - timedelta(hours=12)  # last night's kickoff
     db.session.commit()
     mock_fetcher_cls.return_value.auto_process_week.return_value = {

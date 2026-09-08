@@ -1,14 +1,23 @@
-# CFB Survivor score sync — fetch finals, grade picks, process weeks.
-# Fired by cfb-scores.timer: Sun + Mon mornings in the regular season, plus
-# DAILY Dec 15 – Jan 25 — bowls and CFP games fall on any weekday, and the
-# scores API only looks back daysFrom=3, so weekly cadence would permanently
-# miss late games (audit §5.1: the Monday-night CFP final). Weeks stuck
-# incomplete >2 days past deadline escalate in the admin email.
+# CFB Survivor score sync — fetch finals, grade picks, process weeks, then
+# retry the open. Fired by cfb-scores.timer: Sun–Thu 08:00 CT in the regular
+# season (a Mon/Tue/Wed game must be scored inside daysFrom=3), plus DAILY
+# Dec 15 – Jan 25 — bowls and CFP games fall on any weekday. Weeks stuck
+# incomplete >2 days past their last kickoff escalate in the admin email.
+# The run ends with the open retry (ADR-062): a week with games that has not
+# opened yet — Tuesday's spreads run failed, or an admin flipped the old
+# week back — gets the opener now instead of waiting for Friday.
 
 [Unit]
-Description=CFB Survivor score sync (grade picks, process weeks)
+Description=CFB Survivor score sync (grade picks, process weeks, retry the open)
 After=network-online.target
 Wants=network-online.target
+# Ordering only (no Wants=): the open retry above runs the same opener the
+# spreads unit runs. Two hours apart on an ordinary day; a Persistent boot
+# replay after downtime spanning 06:00 and 08:00 CT fires both at once, and
+# this line keeps the spreads run first so the opener never runs twice (two
+# odds calls, two letters). A Wants= would fire a spreads run on every
+# scores run.
+After=cfb-spreads.service
 
 [Service]
 Type=oneshot

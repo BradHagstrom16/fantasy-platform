@@ -1,5 +1,7 @@
-# CFB Survivor weekly setup — create next week, import games, activate.
-# Fired Mondays by cfb-setup.timer. Retries orphaned 0-game weeks automatically.
+# CFB Survivor weekly setup — create next week, import games. Never
+# activates: a week opens on the spreads run that lands its first line
+# (ADR-062, cfb-spreads.service). Fired Mondays by cfb-setup.timer. Retries
+# orphaned 0-game weeks automatically.
 #
 # Install (all 5 CFB pairs at once):
 #   sudo cp /home/deploy/fantasy-platform/deploy/cfb-*.service /etc/systemd/system/
@@ -20,8 +22,10 @@ After=network-online.target
 Wants=network-online.target
 # Ordering only (no Wants=): when both Persistent timers catch up after
 # downtime that spanned Monday 08:00 and 09:00 CT, the old week's scores
-# run finishes before setup flips is_active. On an ordinary Monday the two
-# never overlap and this line is inert; a Wants= would fire a second
+# run finishes before setup writes the next week. Setup no longer flips
+# is_active (ADR-062), so this is about log order and the orphan-retry
+# query reading a settled state, not the room. On an ordinary Monday the
+# two never overlap and this line is inert; a Wants= would fire a second
 # /scores call (2 credits) every setup.
 After=cfb-scores.service
 
