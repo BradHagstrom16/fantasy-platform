@@ -144,7 +144,10 @@
 <div class="page-hero cfb-hero">
     <div class="hero-glow"></div>
     <div class="container">
-        <span class="cfb-eyebrow">Under the Lights</span>
+        {# The masthead orients (9.2): the identity eyebrow while a week is
+           open, the reveal week's state while it is unfinished or just
+           settled (ruled 2026-09-08). Built in the route, one source. #}
+        <span class="cfb-eyebrow">{{ hero_eyebrow }}</span>
         <h1>The Survivors</h1>
         <p class="cfb-hero-field">
             <span class="cfb-count">{{ enrollments|length }}</span> still standing{% if eliminated_enrollments %}<span class="cfb-hero-field-sep" aria-hidden="true">&middot;</span><span class="cfb-count cfb-count-cut">{{ eliminated_enrollments|length }}</span> cut{% endif %}
@@ -165,26 +168,80 @@
             </div>
             {% endif %}
 
-            {% if current_week %}
-                {# CFP Alert #}
-                {% if is_week_playoff(current_week) %}
-                <div class="card border-primary mb-3 animate-in stagger-1">
-                    <div class="card-header">
-                        <div class="cfb-field-head">
-                            <h5 class="mb-0">College Football Playoff</h5>
-                        </div>
-                    </div>
-                    <div class="card-body">
-                        <p class="mb-0">All teams reset. Pick any of the 12 playoff teams, even if used in regular season.</p>
+            {# CFP Alert: for the week being picked, else the week the room
+               leads with. #}
+            {% set cfp_week = call_week or lead_week %}
+            {% if cfp_week and is_week_playoff(cfp_week) %}
+            <div class="card border-primary mb-3 animate-in stagger-1">
+                <div class="card-header">
+                    <div class="cfb-field-head">
+                        <h5 class="mb-0">College Football Playoff</h5>
                     </div>
                 </div>
-                {% endif %}
+                <div class="card-body">
+                    <p class="mb-0">All teams reset. Pick any of the 12 playoff teams, even if used in regular season.</p>
+                </div>
+            </div>
+            {% endif %}
 
-                {# Weekly call: your status, then your decision #}
+            {# The lead panel: the reveal week while it is unfinished (LOCKED,
+               or the overlap with the next week's call below), or its verdict
+               while nothing newer is open (DESIGN.md 4.1, 9.2; ruled
+               2026-09-08). The verdict family's shape: raised surface, an
+               outcome-colored top rule, eyebrow → headline → supporting line
+               → the viewer's own line. Never a pick control: there is nothing
+               to pick in here. #}
+            {% if lead_card %}
+            <div class="cfb-week-lead is-{{ lead_card.tone }} mb-4 animate-in stagger-1">
+                <div class="cfb-week-lead-main">
+                    <span class="cfb-eyebrow">{{ lead_card.eyebrow }}</span>
+                    <div class="cfb-week-lead-headline">{{ lead_card.headline }}</div>
+                    {% if lead_card.derivation %}
+                    <p class="cfb-week-lead-line">{{ lead_card.derivation }}</p>
+                    {% endif %}
+                    {% if lead_card.pick %}
+                    <div class="cfb-week-lead-pick">
+                        <span class="cfb-status-label">Your pick</span>
+                        <strong>{{ lead_card.pick.label }}</strong>
+                        {# The pick's own state, by structure not hue (7.2). #}
+                        {% if lead_card.pick.state == 'survived' %}
+                            <span class="badge badge-survived">W</span>
+                        {% elif lead_card.pick.state == 'lost' %}
+                            <span class="badge badge-lost-life">L</span>
+                        {% elif lead_card.pick.state == 'no_contest' %}
+                            <span class="badge badge-pending">NC</span>
+                        {% else %}
+                            <span class="badge badge-pending">TBD</span>
+                        {% endif %}
+                    </div>
+                    {% elif lead_card.no_pick_line %}
+                    <p class="cfb-week-lead-line">{{ lead_card.no_pick_line }}</p>
+                    {% endif %}
+                    {% if lead_card.next_line %}
+                    <p class="cfb-week-lead-line cfb-week-lead-next">{{ lead_card.next_line }}</p>
+                    {% endif %}
+                </div>
+                {% if lead_card.show_lives and cfb_enrollment %}
+                {% set lives = cfb_enrollment.lives_remaining %}
+                <div class="cfb-week-lead-aside">
+                    <span class="lives-indicator">
+                        {% for i in range(lives) %}<span class="life"></span>{% endfor %}
+                        {% for i in range(2 - lives) %}<span class="life lost"></span>{% endfor %}
+                    </span>
+                    <span class="cfb-season-lives-label">{% if cfb_enrollment.is_eliminated %}Eliminated{% else %}{{ lives }} {{ 'life' if lives == 1 else 'lives' }}{% endif %}</span>
+                </div>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            {% if call_week %}
+                {# Weekly call: your status, then your decision. Follows the
+                   pick week (the open, active week); in the overlap it rides
+                   below the lead panel and above the standings (7.2, 9.3). #}
                 <div class="card cfb-pick-cta mb-4 animate-in stagger-2">
                     <div class="card-body">
-                        <span class="cfb-eyebrow">{{ get_week_display_name(current_week) }}</span>
-                        <p class="cfb-deadline">Picks lock <strong>{{ format_deadline(current_week.deadline) }}</strong></p>
+                        <span class="cfb-eyebrow">{{ get_week_display_name(call_week) }}</span>
+                        <p class="cfb-deadline">Picks lock <strong>{{ format_deadline(call_week.deadline) }}</strong></p>
 
                         {% if current_user.is_authenticated and cfb_enrollment %}
                             {% if cfb_enrollment.is_eliminated %}
@@ -217,11 +274,11 @@
                                         {% if user_pick_spread is not none %}
                                             <span class="spread-badge">{{ "%+.1f"|format(user_pick_spread) }}</span>
                                         {% endif %}
-                                        <a href="{{ url_for('cfb.make_pick', week_number=current_week.week_number) }}"
+                                        <a href="{{ url_for('cfb.make_pick', week_number=call_week.week_number) }}"
                                            class="btn btn-outline-light btn-sm ms-1">Change Pick</a>
                                     </div>
                                 {% else %}
-                                    <a href="{{ url_for('cfb.make_pick', week_number=current_week.week_number) }}"
+                                    <a href="{{ url_for('cfb.make_pick', week_number=call_week.week_number) }}"
                                        class="btn btn-game">Make Your Pick</a>
                                 {% endif %}
                             {% endif %}
@@ -236,18 +293,19 @@
             {% with eyebrow_class='cfb-eyebrow' %}{% include '_settle_tab.html' %}{% endwith %}
 
             {# Standings Table. The pick column belongs to the reveal week
-               (the latest week whose deadline has passed), not the active
-               week: after Monday's flip a Monday-night or midweek game is
-               still pending and the field's picks stay on the board with
-               their own state until the next week locks (DESIGN.md 4.1,
-               9.9; ruled 2026-09-07). #}
-            {% set pick_week = reveal_week or current_week %}
+               (the latest week whose deadline has passed), never the week
+               being picked: after Tuesday's open a Monday-night or midweek
+               game is still pending and the field's picks stay on the board
+               with their own state until the next week locks (DESIGN.md 4.1,
+               9.9; ruled 2026-09-07). Before anything has locked it falls
+               back to the week the room leads with. #}
+            {% set pick_week = reveal_week or call_week or lead_week %}
             <div class="card mb-4 animate-in stagger-3">
                 <div class="card-header">
                     <div class="cfb-field-head">
                         <h5 class="mb-0">Active Players</h5>
                         {% if reveal_note %}
-                        <span class="cfb-field-note">{{ get_week_display_name(reveal_week) }} picks stay on the board until {{ get_week_display_name(current_week) }} locks.</span>
+                        <span class="cfb-field-note">{{ get_week_display_name(reveal_week) }} picks stay on the board until {{ get_week_display_name(call_week) }} locks.</span>
                         {% endif %}
                     </div>
                 </div>

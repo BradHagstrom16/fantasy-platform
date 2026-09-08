@@ -2630,6 +2630,15 @@ body.game-golf {
   color: var(--bone-mute);
   margin-top: 0.75rem;
 }
+/* The overlap (ruled 2026-09-08): a LOCKED summons carrying the next week's
+   call. A bone hairline (the Informational baseline) separates the record
+   above from the ask below; the CTA is the same solid accent as OPEN. */
+.home-shell .summons-next {
+  margin-top: 1.1rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(243,239,230,.08);
+}
+.home-shell .summons-next .summons-meta { margin: 0.4rem 0 0.9rem; }
 /* OPEN CTA shares the .cta-seal metal-gold recipe; layout delta only. */
 .home-shell .summons-cta { margin-top: 1rem; }
 .home-shell .cta-outline {
@@ -5737,6 +5746,61 @@ body.game-cfb .cfb-verdict.animate-in .cfb-verdict-chip {
    the lead so "am I alive" reads before the prose. */
 .cfb-season-lead-aside { display: flex; align-items: center; gap: .6rem; flex-shrink: 0; }
 .cfb-season-lead-aside .lives-indicator .life { width: 18px; height: 18px; }
+
+/* The week lead -- the room's answer to "which week is this about?" while
+   the reveal week is unfinished (LOCKED, or the overlap with the next call
+   right below it) or just settled with nothing newer open (VERDICT). The
+   .cfb-season-lead recipe: raised surface, strong hairline, an outcome-colored
+   TOP rule (pending-bone / survived / lost -- never crimson, which stays on
+   the weekly call). Eyebrow -> headline -> supporting line -> the viewer's own
+   pick line; lives ride the aside only when no call follows
+   (games/cfb/DESIGN.md 4.1, 7.2, 9.2; ruled 2026-09-08). */
+.cfb-week-lead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem 2rem;
+  padding: 1.25rem 1.5rem;
+  background: var(--cfb-raised);
+  border: 1px solid var(--cfb-hairline-strong);
+  border-top: 2px solid var(--cfb-bone-subtle);
+  border-radius: var(--radius-lg);
+}
+.cfb-week-lead.is-pending  { border-top-color: var(--cfb-pending); }
+.cfb-week-lead.is-survived { border-top-color: var(--cfb-survived); }
+.cfb-week-lead.is-lost     { border-top-color: var(--cfb-lost-life); }
+.cfb-week-lead-main { flex: 1 1 17rem; min-width: 0; }
+.cfb-week-lead-main .cfb-eyebrow { display: block; margin-bottom: .4rem; }
+.cfb-week-lead-headline {
+  font-family: 'Teko', sans-serif;
+  font-weight: 600;
+  font-size: 1.9rem;
+  line-height: 1;
+  color: var(--cfb-white);
+  text-wrap: balance;
+}
+.cfb-week-lead-line {
+  margin: .5rem 0 0;
+  font-family: 'Newsreader', Georgia, serif;
+  font-size: .96rem;
+  line-height: 1.5;
+  color: var(--cfb-bone-muted);
+  max-width: 60ch;
+}
+.cfb-week-lead-next { color: var(--cfb-bone); }
+.cfb-week-lead-pick {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .5rem;
+  margin-top: .8rem;
+  padding-top: .8rem;
+  border-top: 1px solid var(--cfb-hairline);
+}
+.cfb-week-lead-pick strong { font-size: 1.1rem; color: var(--cfb-white); }
+.cfb-week-lead-aside { display: flex; align-items: center; gap: .6rem; flex-shrink: 0; }
+.cfb-week-lead-aside .lives-indicator .life { width: 18px; height: 18px; }
 .cfb-season-lives-label {
   font-family: 'Teko', sans-serif;
   font-size: 1rem;
