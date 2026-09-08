@@ -84,7 +84,10 @@
                                             </form>
                                         {% endif %}
 
-                                        {% if week.is_active and not week.is_complete %}
+                                        {# Any incomplete week, active or not: from Tuesday a pending
+                                           reveal week is inactive (the next week opened, ADR-062) and
+                                           still needs its scores. #}
+                                        {% if not week.is_complete %}
                                             <a href="{{ url_for('cfb.admin_fetch_scores', week_id=week.id) }}"
                                                class="btn btn-game-ghost btn-sm text-nowrap">Fetch Scores</a>
                                             <a href="{{ url_for('cfb.admin_mark_results', week_id=week.id) }}"

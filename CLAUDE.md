@@ -50,9 +50,9 @@ FLASK_APP=app.py venv/bin/flask create-admin        # Create platform admin user
 # !! Never seed-schedule AFTER import-legacy: 3 name mismatches → duplicate tournaments. Seed BEFORE or not at all.
 
 # CFB CLI
-FLASK_APP=app.py venv/bin/flask cfb sync --mode setup       # Create next week, import games, activate (cfb-setup.timer runs Mon 09:00 CT, AFTER the 08:00 scores run — no completeness guard, it flips is_active regardless)
-FLASK_APP=app.py venv/bin/flask cfb sync --mode spreads     # Lock spreads at first fetch (Tue); later runs fill gaps only (DQ-6)
-FLASK_APP=app.py venv/bin/flask cfb sync --mode scores      # Fetch scores (daysFrom=3, 2 credits), grade decided picks per game, complete the week when every game settles (cfb-scores.timer: Sun-Thu 08:00 CT — a Mon/Tue/Wed game must be scored inside the 3-day window; tests/test_cfb_timers.py)
+FLASK_APP=app.py venv/bin/flask cfb sync --mode setup       # Create next week + import games; NEVER activates (ADR-062). cfb-setup.timer runs Mon 09:00 CT; retries the lowest 0-game week first
+FLASK_APP=app.py venv/bin/flask cfb sync --mode spreads     # OPENS the week (ADR-062): works on the lowest unlocked week with games, locks spreads at first fetch (Tue, DQ-6), and the first line flips is_active + sends the picks-open letter in the same run; later runs fill gaps only and make no odds call when every line is locked; API errors email the admin
+FLASK_APP=app.py venv/bin/flask cfb sync --mode scores      # Fetch scores (daysFrom=3, 2 credits), grade decided picks per game, complete the week when every game settles, then RETRY THE OPEN for a week with games that is not active or not yet announced (cfb-scores.timer: Sun-Thu 08:00 CT — a Mon/Tue/Wed game must be scored inside the 3-day window; unit ordered After=cfb-spreads.service; tests/test_cfb_timers.py). A week whose games never got a line is never graded (alerted instead)
 FLASK_APP=app.py venv/bin/flask cfb sync --mode autopick    # Process auto-picks for past-deadline weeks
 FLASK_APP=app.py venv/bin/flask cfb sync --mode remind      # Pick reminders: hourly timer, T-25h/T-1h ±35m windows, de-duped on CfbWeek.last_reminder_type (tests/test_cfb_timers.py, tests/test_cfb_reminders.py)
 FLASK_APP=app.py venv/bin/flask cfb sync --mode status      # Print season summary

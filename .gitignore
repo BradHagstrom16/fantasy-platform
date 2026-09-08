@@ -77,6 +77,9 @@ fantasy-platform-and-world-cup-design/
 CCC-final/
 _dbdump/
 
+# Brad's weekly write-ups (personal drafts, never repo content)
+docs/WeeklyWriteUps/
+
 # Codex CLI artifacts — tried once, never adopted; block RETIRED and deleted 2026-08-12
 # (AGENTS.md had drifted 6 weeks stale and knew nothing of games/docket/). Rules kept as a
 # guard so a future codex/`npx skills add` run can't commit a stray copy. CLAUDE.md is the

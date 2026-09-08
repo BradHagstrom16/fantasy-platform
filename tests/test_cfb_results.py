@@ -15,6 +15,7 @@ from unittest.mock import Mock, patch
 from extensions import db
 from games.cfb.models import (
     CfbEnrollment,
+    CfbWeek,
     CfbWeekOutcome,
 )
 from games.cfb.services.game_logic import (
@@ -1158,3 +1159,59 @@ def test_autopick_sweep_settles_spreads_for_members_who_already_picked(app):
         check_and_process_autopicks()
 
     assert enrollment.cumulative_spread == -13.5
+
+
+# ── ADR-062 — the admin override still needs a line on the board ─────────
+
+FUTURE_DEADLINE = datetime(2099, 9, 5, 11, 0)
+
+
+def test_admin_activate_refuses_week_without_spreads(app, client):
+    """A week nobody could pick in is never active (Brad, 2026-09-08) — the
+    hand override is refused until at least one game carries a line, and the
+    week that was active stays active."""
+    was_active = make_week(1, is_active=True)
+    week = make_week(2, deadline=FUTURE_DEADLINE)
+    make_game(week, make_team('Alabama'), make_team('Georgia'))   # no line
+    db.session.commit()
+    _login_admin(app, client)
+
+    resp = client.post(f'/cfb/admin/week/{week.id}/activate',
+                       data={'csrf_token': 'x'}, follow_redirects=True)
+
+    assert resp.status_code == 200
+    assert db.session.get(CfbWeek, week.id).is_active is False
+    assert db.session.get(CfbWeek, was_active.id).is_active is True
+    assert 'no lines yet' in resp.get_data(as_text=True)
+
+
+def test_admin_activate_flips_week_with_spreads(app, client):
+    """With a line on the board (hand-entered or fetched) the override works
+    as before: every other week is deactivated."""
+    was_active = make_week(1, is_active=True)
+    week = make_week(2, deadline=FUTURE_DEADLINE)
+    make_game(week, make_team('Alabama'), make_team('Georgia'), spread=-3.0)
+    db.session.commit()
+    _login_admin(app, client)
+
+    resp = client.post(f'/cfb/admin/week/{week.id}/activate',
+                       data={'csrf_token': 'x'}, follow_redirects=True)
+
+    assert resp.status_code == 200
+    assert db.session.get(CfbWeek, week.id).is_active is True
+    assert db.session.get(CfbWeek, was_active.id).is_active is False
+
+
+def test_admin_dashboard_offers_scores_for_an_inactive_pending_week(app, client):
+    """Under ADR-062 a pending reveal week is inactive from Tuesday on
+    (the next week opened); the admin still needs Fetch Scores / Results on
+    it until it completes."""
+    pending = make_week(1)                         # locked, incomplete, inactive
+    make_game(pending, make_team('Alabama'), make_team('Georgia'), spread=-3.0)
+    db.session.commit()
+    _login_admin(app, client)
+
+    html = client.get('/cfb/admin/').get_data(as_text=True)
+
+    assert f'/cfb/admin/week/{pending.id}/fetch-scores' in html
+    assert f'/cfb/admin/week/{pending.id}/mark-results' in html

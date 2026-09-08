@@ -135,10 +135,13 @@ def test_scores_run_covers_every_day_cfb_plays():
 
 
 def test_monday_setup_fires_after_the_scores_run():
-    """run_setup activates the new week and deactivates the old one with no
-    completeness guard, and every room surface reads is_active. Firing setup
-    AFTER Monday's scores run means an ordinary week (last game Sunday) is
-    complete before the room flips, instead of flipping on ungraded picks."""
+    """Setup no longer flips is_active (ADR-062: a week opens on the spreads
+    run that lands its first line), so this ordering is no longer
+    load-bearing for the room. It stays: on a Monday the scores run grades
+    the old week's last game before setup writes the next week, keeping the
+    admin's two emails in causal order and the orphan-retry query
+    (is_complete=False) reading a settled state — and moving OnCalendar on
+    a Persistent timer fires a catch-up run at deploy (2026-09-07)."""
     scores = _weekday_rules('cfb-scores.timer', '08:00:00')
     assert any('Mon' in rule.split()[0].split(',') for rule in scores), (
         'cfb-scores.timer must fire on Monday')
@@ -151,12 +154,26 @@ def test_monday_setup_fires_after_the_scores_run():
             f'{rule!r} fires before or with the 08:00 CT scores run')
 
 
+def test_scores_service_is_ordered_after_the_spreads_service():
+    """The scores run ends with the open retry (ADR-062): if the spreads run
+    has not opened the next week, the scores run calls the opener itself.
+    Two hours apart on an ordinary day; a Persistent boot replay after
+    downtime spanning 06:00 and 08:00 CT fires both at once, and only a
+    unit-level After= keeps the opener from running twice (two odds calls,
+    two letters). Ordering only — a Wants= would fire a spreads run on
+    every scores run."""
+    directives = _directives(DEPLOY / 'cfb-scores.service')
+    assert 'After=cfb-spreads.service' in directives
+    assert not any(d.startswith('Wants=cfb-spreads') or
+                   d.startswith('Requires=cfb-spreads') for d in directives)
+
+
 def test_setup_service_is_ordered_after_the_scores_service():
     """The clock ordering above covers an ordinary Monday; a boot that
     missed BOTH firings replays them together (Persistent=true), and only
-    a unit-level After= keeps the old week's scores run ahead of the
-    is_active flip. Ordering only — a Wants= would fire a second /scores
-    call (2 credits) on every setup."""
+    a unit-level After= keeps the old week's scores run ahead of setup's
+    write of the next week. Ordering only — a Wants= would fire a second
+    /scores call (2 credits) on every setup."""
     directives = _directives(DEPLOY / 'cfb-setup.service')
     assert 'After=cfb-scores.service' in directives
     assert not any(d.startswith('Wants=cfb-scores') or

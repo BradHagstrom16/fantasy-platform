@@ -100,19 +100,19 @@ def sync_cmd(mode):
 
 @cfb_cli.command('setup')
 def setup_cmd():
-    """Create next week, import games, and activate."""
+    """Create next week and import games (never activates — ADR-062)."""
     _run_mode('setup')
 
 
 @cfb_cli.command('scores')
 def scores_cmd():
-    """Fetch scores and auto-process completed weeks."""
+    """Fetch scores, auto-process completed weeks, retry the open."""
     _run_mode('scores')
 
 
 @cfb_cli.command('spreads')
 def spreads_cmd():
-    """Update spreads from The Odds API."""
+    """Open the next week with its lines, or gap-fill the open week."""
     _run_mode('spreads')
 
 

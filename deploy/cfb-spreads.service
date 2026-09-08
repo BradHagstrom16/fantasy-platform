@@ -1,10 +1,15 @@
-# CFB Survivor spread update — lock spreads for the active week's games.
-# Fired Tue + Fri by cfb-spreads.timer. Spreads lock at FIRST successful
-# fetch (Tuesday, by design — DQ-6); the Friday run fills gaps only.
-# Manual admin entries are locked on entry and never overwritten.
+# CFB Survivor spread update — OPEN the next week with its lines, or
+# gap-fill the open week (ADR-062). Fired Tue + Fri by cfb-spreads.timer.
+# Works on the lowest week that has games and has not locked. Spreads lock
+# at FIRST successful fetch (Tuesday, by design — DQ-6); the first line
+# that lands flips is_active to this week and sends the picks-open letter
+# in the same run. The Friday run fills gaps only and makes no odds call
+# when every line is already locked. Manual admin entries are locked on
+# entry and never overwritten. A failed run emails the admin; the scores
+# run (Sun–Thu 08:00 CT) retries the open.
 
 [Unit]
-Description=CFB Survivor spread update (lock spreads)
+Description=CFB Survivor spread update (open the week, lock spreads)
 After=network-online.target
 Wants=network-online.target
 

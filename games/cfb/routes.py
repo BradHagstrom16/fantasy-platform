@@ -187,8 +187,8 @@ def index():
                 user_pick_spread = game.get_spread_for_team(user_pick.team_id)
 
     # The reveal week: the latest week whose deadline has passed, complete or
-    # not, independent of is_active (Brad's ruling 2026-09-07). Monday's
-    # setup flips is_active to the next week while a Monday-night or
+    # not, independent of is_active (Brad's ruling 2026-09-07). Tuesday's
+    # spreads run opens the next week (ADR-062) while a Monday-night or
     # midweek game is still pending; the field's picks stay on the board,
     # each with its own state (LOCKED = pending, VERDICT = survived / lost,
     # DESIGN.md 4.1), until the next week locks. The pick call, countdown
@@ -1025,12 +1025,22 @@ def admin_create_week():
 @cfb_bp.route('/admin/week/<int:week_id>/activate', methods=['POST'])
 @cfb_admin_required
 def admin_activate_week(week_id):
-    """Set a week as active (deactivates all others)."""
-    CfbWeek.query.update({'is_active': False})
+    """Hand override of the opener (ADR-062): set a week active, deactivate
+    every other. Refused while no game carries a line — a week nobody can
+    pick in is never active. The next scores run re-opens the lowest week
+    still waiting, so skipping a week means completing it."""
     week = db.get_or_404(CfbWeek, week_id)
+    if not any(g.home_team_spread is not None
+               for g in CfbGame.query.filter_by(week_id=week.id)):
+        flash(f'Week {week.week_number} has no lines yet. Run the spreads '
+              'sync or enter one on Manage Games first.', 'warning')
+        return redirect(url_for('cfb.admin_dashboard'))
+    CfbWeek.query.update({'is_active': False})
     week.is_active = True
     db.session.commit()
-    flash(f'Week {week.week_number} is now active!', 'success')
+    flash(f'Week {week.week_number} is now active. The next scores run '
+          're-opens the lowest week still waiting, so to skip a week, '
+          'complete it.', 'success')
     return redirect(url_for('cfb.admin_dashboard'))
 
 

@@ -1,14 +1,17 @@
 """CFB Survivor — the "Picks Are Open" announcement email.
 
 The season-open email that did not exist before launch: when spreads first
-land on the active week (the Tuesday freeze), every enrolled player is told
+land on the next week (the Tuesday freeze), every enrolled player is told
 picks are open — exactly once, latched on ``CfbWeek.picks_open_notified``.
-Unlike the T-25h/T-1h deadline reminders, this goes to EVERYONE (eliminated
-players and players who already picked included).
+Since ADR-062 that same run is what OPENS the week (flips is_active), so the
+letter and the open are one moment. Unlike the T-25h/T-1h deadline
+reminders, this goes to EVERYONE (eliminated players and players who
+already picked included).
 
 Mail is faked at the reminders read-site (``games.cfb.services.reminders``),
 per the platform mocking convention; patching utils.email would be a no-op.
 """
+from datetime import datetime
 from unittest.mock import Mock, patch
 
 from extensions import db
@@ -23,6 +26,10 @@ from tests._cfb_fixtures import (
     make_user,
     make_week,
 )
+
+# A week that has not locked: the spreads pass only ever works on the lowest
+# week whose deadline is still ahead (make_week's default deadline is past).
+FUTURE_DEADLINE = datetime(2099, 9, 5, 11, 0)
 
 
 def _api_response(payload):
@@ -114,7 +121,7 @@ def test_spread_update_fires_picks_open_once(mock_admin, mock_get, app):
     run over the now-locked week does not announce again."""
     app.config['ODDS_API_KEY'] = 'test-key'
     app.config['ADMIN_EMAIL'] = 'commish@cccfantasy.com'
-    week = make_week(1, is_active=True)
+    week = make_week(1, is_active=True, deadline=FUTURE_DEADLINE)
     game = make_game(week, make_team('Alabama'), make_team('Georgia'))
     game.api_event_id = 'ev1'
     make_enrollment(make_user('p1'))
@@ -137,7 +144,7 @@ def test_no_picks_open_until_a_spread_lands(mock_admin, mock_get, app):
     False so the next run can still fire it."""
     app.config['ODDS_API_KEY'] = 'test-key'
     app.config['ADMIN_EMAIL'] = 'commish@cccfantasy.com'
-    week = make_week(1, is_active=True)
+    week = make_week(1, is_active=True, deadline=FUTURE_DEADLINE)
     game = make_game(week, make_team('Alabama'), make_team('Georgia'))
     game.api_event_id = 'ev1'
     make_enrollment(make_user('p1'))
@@ -159,7 +166,7 @@ def test_picks_open_not_latched_when_every_send_fails(mock_admin, mock_get,
     """A mail outage must not consume the latch — the next run retries."""
     app.config['ODDS_API_KEY'] = 'test-key'
     app.config['ADMIN_EMAIL'] = 'commish@cccfantasy.com'
-    week = make_week(1, is_active=True)
+    week = make_week(1, is_active=True, deadline=FUTURE_DEADLINE)
     game = make_game(week, make_team('Alabama'), make_team('Georgia'))
     game.api_event_id = 'ev1'
     make_enrollment(make_user('p1'))
@@ -172,6 +179,64 @@ def test_picks_open_not_latched_when_every_send_fails(mock_admin, mock_get,
 
     assert len(calls) == 1                     # it tried
     assert db.session.get(CfbWeek, week.id).picks_open_notified is False
+
+
+@patch('games.cfb.services.odds_api.requests.get')
+@patch('games.cfb.services.automation.send_platform_email', return_value=True)
+def test_picks_open_letter_fires_in_the_open_run(mock_admin, mock_get, app):
+    """ADR-062: the letter and the open are one moment. Week 1 is done and
+    still active; Week 2 exists with a game and no line. The spreads run
+    lands the line, opens Week 2 (is_active moves), and announces it."""
+    app.config['ODDS_API_KEY'] = 'test-key'
+    app.config['ADMIN_EMAIL'] = 'commish@cccfantasy.com'
+    done = make_week(1, is_active=True, is_complete=True)
+    week = make_week(2, deadline=FUTURE_DEADLINE)
+    game = make_game(week, make_team('Alabama'), make_team('Georgia'))
+    game.api_event_id = 'ev1'
+    make_enrollment(make_user('p1'))
+    db.session.commit()
+    mock_get.return_value = _api_response([_draftkings_event()])
+
+    calls, patcher = _capture()
+    with patcher:
+        run_spread_update()
+
+    assert len(calls) == 1
+    assert calls[0]['subject'] == 'Picks are open: CFB Survivor, Week 2'
+    assert db.session.get(CfbWeek, week.id).is_active is True
+    assert db.session.get(CfbWeek, done.id).is_active is False
+    assert db.session.get(CfbWeek, week.id).picks_open_notified is True
+
+
+@patch('games.cfb.services.odds_api.requests.get')
+@patch('games.cfb.services.automation.send_platform_email', return_value=True)
+def test_letter_retry_after_send_failure_does_not_refetch_lines(
+        mock_admin, mock_get, app):
+    """The open happened but every send failed: the week stays open and
+    unnotified; the next run retries the letter without another odds call
+    (every line is already locked)."""
+    app.config['ODDS_API_KEY'] = 'test-key'
+    app.config['ADMIN_EMAIL'] = 'commish@cccfantasy.com'
+    week = make_week(1, deadline=FUTURE_DEADLINE)
+    game = make_game(week, make_team('Alabama'), make_team('Georgia'))
+    game.api_event_id = 'ev1'
+    make_enrollment(make_user('p1'))
+    db.session.commit()
+    mock_get.return_value = _api_response([_draftkings_event()])
+
+    failed, outage = _capture(result=False)
+    with outage:
+        run_spread_update()
+    assert len(failed) == 1
+    assert db.session.get(CfbWeek, week.id).is_active is True
+    assert db.session.get(CfbWeek, week.id).picks_open_notified is False
+
+    sent, mail_back = _capture()
+    with mail_back:
+        run_spread_update()
+    assert len(sent) == 1
+    assert mock_get.call_count == 1                 # no second odds call
+    assert db.session.get(CfbWeek, week.id).picks_open_notified is True
 
 
 def test_new_week_starts_unnotified(app):

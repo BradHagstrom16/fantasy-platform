@@ -109,6 +109,29 @@ def _lowest_orphan_week():
     return None
 
 
+def _week_to_open():
+    """The week the spreads pass works on (ADR-062): the lowest-numbered
+    week that is not complete, has at least one game, and has not reached
+    its deadline. It may already be active — Friday's run gap-fills the open
+    week — or not yet: then the first line that lands opens it.
+
+    Lowest-numbered, not "the week after the latest complete one": on a
+    Monday-game week N is still pending on Tuesday while N+1 must open.
+    Never a 0-game orphan (Monday's setup retries those) and never a week
+    that has locked. If two weeks qualify (an admin created N+2 early), N+1
+    wins until its deadline passes.
+    """
+    weeks = (CfbWeek.query.filter_by(is_complete=False)
+             .order_by(CfbWeek.week_number).all())
+    for week in weeks:
+        if deadline_has_passed(week.deadline):
+            continue
+        if CfbGame.query.filter_by(week_id=week.id).count() == 0:
+            continue
+        return week
+    return None
+
+
 def _unresolvable_team_names():
     """CfbTeam names that no Odds API name maps to (master-list drift).
 
@@ -261,10 +284,13 @@ def _import_games_for_week(week, start_date, end_date):
 # ---------------------------------------------------------------------------
 
 def run_setup():
-    """Create (or retry) the next week, import games, and activate it.
+    """Create (or retry) the next week and import its games. Never activates.
 
-    The lowest-numbered incomplete week with 0 games — a prior run whose
-    import failed — is retried before advancing to a new week number, so a
+    A week opens — is_active flips, the picks-open letter goes out — on the
+    spreads run that lands its first line (ADR-062, ``run_spread_update``),
+    so members never see an active week they cannot pick in. The
+    lowest-numbered incomplete week with 0 games — a prior run whose import
+    failed — is retried before advancing to a new week number, so a
     transient API failure can't permanently orphan a week (audit §5.2).
     Returns a status dict.
     """
@@ -324,54 +350,61 @@ def run_setup():
     game_count = CfbGame.query.filter_by(week_id=week.id).count()
 
     if game_count == 0:
-        logger.error("Week %d created but has 0 games - NOT activating", next_week_num)
+        logger.error("Week %d created but has 0 games", next_week_num)
         _send_admin_email(
             f'Week setup failed — {display_name} has no games',
-            f'{display_name} exists but no games were imported, so it was '
-            'NOT activated. The next setup run retries this week '
-            'automatically; to recover sooner, re-run '
+            f'{display_name} exists but no games were imported, so the '
+            'spreads run has nothing to open. The next setup run retries '
+            'this week automatically; to recover sooner, re-run '
             '`flask cfb sync --mode setup` or add games via Manage Games.',
         )
         return {
             'status': 'error',
-            'details': f'{display_name} created but no games were imported. Week NOT activated.',
+            'details': f'{display_name} created but no games were imported.',
             'week_number': next_week_num,
             'game_count': 0,
             'unresolvable_teams': unresolvable,
         }
 
-    # Activate the week (deactivate others)
-    CfbWeek.query.update({'is_active': False})
-    week.is_active = True
-    db.session.commit()
-
     return {
         'status': 'created',
-        'details': f'{display_name} created with {game_count} games and activated',
+        'details': (f'{display_name} created with {game_count} games; '
+                    'opens with the next spreads run'),
         'week_number': next_week_num,
         'game_count': game_count,
         'unresolvable_teams': unresolvable,
     }
 
 
-def run_spread_update():
-    """Fetch latest odds and update spreads for the active week's games.
+def _spread_update_error(week, details):
+    """The error dict for a failed spreads run — and an admin alert, because
+    the CLI exits 0 either way and a failed OPEN would otherwise stay
+    invisible until Friday's run (ADR-062)."""
+    logger.error("Spread update failed for Week %d: %s", week.week_number, details)
+    if week.is_active:
+        outlook = 'The week is already open; its remaining gaps'
+    else:
+        outlook = 'The week is NOT open yet (no lines, no picks); it'
+    _send_admin_email(
+        f'Spread update failed — Week {week.week_number}',
+        f'{details}\n\n{outlook} will be retried on the next scores run '
+        '(Sun–Thu 08:00 CT) and the next spreads run (Tue/Fri 06:00 CT).',
+    )
+    return {
+        'status': 'error',
+        'details': details,
+        'week_number': week.week_number,
+        'opened': False,
+    }
 
-    Skips games where spread_locked_at is already set.
-    Returns a status dict.
+
+def _fetch_and_lock_lines(week, games):
+    """Fetch odds for ``games`` and lock a line on every game that has none.
+
+    Spreads lock at the first successful fetch (DQ-6); a game already locked
+    is never touched. Returns ``(updated, credits_remaining)`` or, on an API
+    failure, the error dict from ``_spread_update_error``.
     """
-    week = CfbWeek.query.filter_by(is_active=True).first()
-    if not week:
-        return {'status': 'skipped', 'details': 'No active week found'}
-
-    if week.is_complete:
-        return {'status': 'skipped', 'details': f'Week {week.week_number} is already complete'}
-
-    games = CfbGame.query.filter_by(week_id=week.id).all()
-    if not games:
-        return {'status': 'skipped', 'details': f'Week {week.week_number} has no games'}
-
-    # Fetch odds from API
     api_key = current_app.config.get('ODDS_API_KEY', '')
 
     # Build date range from the week's games
@@ -404,13 +437,14 @@ def run_spread_update():
         url = f"{API_BASE_URL}/odds"
         response = odds_api_get(url, params=params)
         if response.status_code != 200:
-            return {'status': 'error', 'details': f'API returned status {response.status_code}'}
+            return _spread_update_error(
+                week, f'API returned status {response.status_code}')
         api_events = response.json()
         credits_remaining = response.headers.get('x-requests-remaining', 'unknown')
     except OddsApiError as e:
-        return {'status': 'error', 'details': f'API request failed (network): {e}'}
+        return _spread_update_error(week, f'API request failed (network): {e}')
     except ValueError as e:
-        return {'status': 'error', 'details': f'Malformed API response: {e}'}
+        return _spread_update_error(week, f'Malformed API response: {e}')
 
     # Build event lookup
     events_by_id = {e.get('id'): e for e in api_events}
@@ -421,12 +455,10 @@ def run_spread_update():
         events_by_teams[(home_short, away_short)] = e
 
     updated = 0
-    locked = 0
     now = get_utc_time()
 
     for game in games:
         if game.spread_locked_at:
-            locked += 1
             continue
 
         # Match API event
@@ -457,11 +489,54 @@ def run_spread_update():
         updated += 1
 
     db.session.commit()
+    return updated, credits_remaining
 
-    # Announce that picks are open — once, when spreads first land on the
-    # active week. Latched on the week so a later gap-fill run stays silent;
-    # the latch is consumed only on a successful send, so a mail outage retries
-    # on the next run rather than swallowing the announcement.
+
+def run_spread_update():
+    """Open the next week with its lines, or gap-fill the open week (ADR-062).
+
+    Works on ``_week_to_open()`` — the lowest week that has games and has
+    not locked — never on "the active week". Spreads lock at the first
+    successful fetch (DQ-6); later runs fill gaps only, and a run over a
+    fully locked week makes no odds call at all. The first line that lands
+    on a week that is not yet active OPENS it: every other week is
+    deactivated, this one becomes active, and the picks-open letter goes
+    out in the same run, so members never see an active week they cannot
+    pick in (Brad, 2026-09-08). Returns a status dict.
+    """
+    week = _week_to_open()
+    if not week:
+        return {'status': 'skipped', 'details': 'No week to open or gap-fill'}
+
+    games = CfbGame.query.filter_by(week_id=week.id).all()
+
+    updated = 0
+    credits_remaining = 'unknown'
+    if any(g.spread_locked_at is None for g in games):
+        fetched = _fetch_and_lock_lines(week, games)
+        if isinstance(fetched, dict):
+            return fetched
+        updated, credits_remaining = fetched
+    locked = sum(1 for g in games if g.spread_locked_at) - updated
+
+    # Open the week: the first line that lands is the moment members can
+    # pick, so it is the moment is_active moves here (ADR-062).
+    opened = False
+    if not week.is_active and any(g.home_team_spread is not None for g in games):
+        CfbWeek.query.update({'is_active': False})
+        week.is_active = True
+        db.session.commit()
+        opened = True
+        logger.info("Opened Week %d: first line landed, is_active moved here",
+                    week.week_number)
+
+    # Announce that picks are open — once, in the run that opens the week.
+    # Latched on the week so a later gap-fill run stays silent; the latch is
+    # consumed only on a successful send, so a mail outage retries on the
+    # next run rather than swallowing the announcement. The refresh reads
+    # the latch as committed, in case a concurrent unit (a boot replay of
+    # both timers) opened the week first.
+    db.session.refresh(week)
     if not week.picks_open_notified and any(
             g.home_team_spread is not None for g in games):
         from games.cfb.services.reminders import send_picks_open_email
@@ -486,19 +561,25 @@ def run_spread_update():
             'via Manage Games):\n\n  ' + listing,
         )
 
+    details = (f'{updated} spreads updated, {locked} already locked, '
+               f'{len(games_without_spread)} without spreads')
+    if opened:
+        details += f'; opened Week {week.week_number}'
     return {
         'status': 'updated',
-        'details': (f'{updated} spreads updated, {locked} already locked, '
-                    f'{len(games_without_spread)} without spreads'),
+        'details': details,
         'api_credits_remaining': credits_remaining,
         'updated': updated,
         'locked': locked,
         'games_without_spread': games_without_spread,
+        'opened': opened,
+        'week_number': week.week_number,
     }
 
 
 def run_scores():
-    """Find incomplete weeks past deadline and auto-process scores.
+    """Find incomplete weeks past deadline and auto-process scores; then run
+    the opener for a week that has games but has not opened (ADR-062).
 
     Returns a status dict with results for each week processed.
     """
@@ -509,6 +590,20 @@ def run_scores():
     for week in weeks:
         deadline = make_aware(week.deadline)
         if not deadline_has_passed(deadline):
+            continue
+
+        # A week whose games never got a line was never openable — nobody
+        # could pick — so grading it would only charge the whole pool the
+        # DQ-2 no-pick penalty. Skip it and escalate instead (ADR-062).
+        games = CfbGame.query.filter_by(week_id=week.id).all()
+        if games and all(g.home_team_spread is None for g in games):
+            results.append({
+                'week_number': week.week_number,
+                'status': 'never_opened',
+                'details': 'passed its deadline without lines; not graded',
+                'stuck': 'never_opened',
+            })
+            stuck_weeks.append(week.week_number)
             continue
 
         fetcher = ScoreFetcher()
@@ -541,13 +636,46 @@ def run_scores():
                 logger.error("Failed to send recap for Week %s: %s",
                              week.week_number, e)
 
+    # The open retry (ADR-062): a week with games that has not opened — or
+    # opened but its letter never went out — gets the opener now, so a
+    # failed Tuesday run (or an admin flipping the old week back by hand)
+    # costs members one 08:00 CT run, not the wait for Friday. An open,
+    # announced week costs nothing: the opener is not even called.
+    opened = False
+    open_line = None
+    candidate = _week_to_open()
+    if candidate and (not candidate.is_active
+                      or not candidate.picks_open_notified):
+        try:
+            outcome = run_spread_update()
+            opened = bool(outcome.get('opened'))
+            if opened:
+                open_line = f'Opened Week {candidate.week_number}'
+            else:
+                open_line = (f'Open attempt for Week {candidate.week_number}: '
+                             f"{outcome.get('details')}")
+        # Deliberately broad: the open is a side effect of the scores sync —
+        # nothing it raises may kill the run that grades picks.
+        except Exception as e:
+            logger.exception("Open attempt for Week %s failed",
+                             candidate.week_number)
+            open_line = (f'Open attempt for Week {candidate.week_number} '
+                         f'failed: {e}')
+
     if not results:
         summary = 'No incomplete weeks past deadline'
     else:
         lines = []
         for r in results:
             lines.append(f"Week {r['week_number']}: {r['status']} - {r['details']}")
-            if r.get('stuck'):
+            if r.get('stuck') == 'never_opened':
+                lines.append(
+                    "  STUCK: no game in this week ever got a line, so "
+                    "nobody could pick and the week never opened. Enter "
+                    "lines via Manage Games (the next scores run then grades "
+                    "it) or mark results by hand."
+                )
+            elif r.get('stuck'):
                 lines.append(
                     f"  STUCK: more than {STUCK_WEEK_ALERT_DAYS} days past "
                     "its last kickoff without completing — the scores API "
@@ -555,9 +683,11 @@ def run_scores():
                     "enter scores via the admin pages."
                 )
         summary = '\n'.join(lines)
+    if open_line:
+        summary += f'\n{open_line}'
 
     # Send admin email with summary
-    if results:
+    if results or open_line:
         subject = 'Score Sync Results'
         if stuck_weeks:
             subject += f' — {len(stuck_weeks)} week(s) STUCK'
@@ -575,6 +705,7 @@ def run_scores():
         'status': 'processed' if results else 'skipped',
         'details': summary,
         'week_results': results,
+        'opened': opened,
     }
 
 
