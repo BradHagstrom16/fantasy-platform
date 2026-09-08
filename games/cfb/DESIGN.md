@@ -217,6 +217,8 @@ The weekly experience is a progression of four canonical states. These labels ar
 - **LOCKED** — the deadline has passed; the pick is final and unresolved. Emphasize: irreversibility, the selected team, game status, the transition from decision to consequence. Remove or clearly disable edit affordances; locked must not read as "broken."
 - **VERDICT** — the game resolved and the consequence is known. State clearly: win or loss, whether a life was lost, updated lives, whether the player remains active, and the effect on the field. Factual and final — never obscured behind decorative celebration. **VERDICT arrives per game, not per week** (ADR-061, ruled 2026-09-07): a pick grades and its life settles on the scores run that decides its game, so on a Monday-game week the field shows Saturday's verdicts beside Monday's LOCKED picks. Only the week-level consequences (no-pick penalties, revival, completion, the recap letter) wait for the last game. A verdict can still be corrected before the week completes: the admin's new ruling reverses the pick's grade (the charged life comes back) and re-grades it under the corrected result, so a wrong final never leaves a life and a verdict disagreeing.
 
+**Which week the room is about (ruled 2026-09-08).** The room and the lounge lead with the **reveal week** — the latest week whose deadline has passed and that has games — while it is unfinished, and with its verdict while nothing newer is open; the **pick week** (the active week while its deadline is ahead; since ADR-062 a week is active only once its lines have landed) is the one thing that never follows it. One resolver, `games/cfb/services/week_state.py` (§10.5), names the state: `open` (the pick week leads), `locked` (the reveal week leads, unfinished, nothing open yet), **`overlap`** (the reveal week leads while the pick week is open — a Monday-night or midweek game still pending after Tuesday's open), `verdict` (the reveal week leads, complete, nothing open yet), `none`. `overlap` is the fifth word in this vocabulary: LOCKED for the week the room is about, OPEN/HELD for the call that rides below it. Half a split is worse than none (2026-09-07: the hero said Week 2 above a Week 1 table) — every surface that names a week reads the same resolver.
+
 ### 4.2 Season states
 
 - **PRESEASON** — explain the core rules, establish the first deadline, show that everyone starts with two lives. Create anticipation without pretending standings exist.
@@ -470,7 +472,7 @@ Doctrine grounded in the classes that exist. (R1 ruling, 2026-07-20: lead emphas
 
 #### The weekly call — `.cfb-pick-cta`
 
-The room's summons: the strongest routine CTA, answering *what is my decision this week?* Crimson 3px top rule over an elevated midnight surface, concise typography, visible deadline (`.cfb-deadline`), the status row (`.cfb-status-row/-item/-num/-label`: lives + rank + spread), and the primary action. On the room landing it sits above the standings and must never be buried beneath standings, history, or explanatory text while picks are open. Player-card states it must support: no pick (action dominates), held pick (team + spread chip + Change Pick), eliminated ("Your season ended. The pool plays on." — no action), locked, verdict.
+The room's summons: the strongest routine CTA, answering *what is my decision this week?* Crimson 3px top rule over an elevated midnight surface, concise typography, visible deadline (`.cfb-deadline`), the status row (`.cfb-status-row/-item/-num/-label`: lives + rank + spread), and the primary action. On the room landing it sits above the standings and must never be buried beneath standings, history, or explanatory text while picks are open. Player-card states it must support: no pick (action dominates), held pick (team + spread chip + Change Pick), eliminated ("Your season ended. The pool plays on." — no action), locked, verdict. It follows the pick week only; in the `overlap` (§4.1) it is the room's second panel — the week lead (below) first, the call second, the standings after both — still never beneath standings while picks are open. When nothing is open it is absent, never a stale "Picks lock <past date>" call.
 
 #### The pick surface — `.team-pick-card` + the pick control
 
@@ -507,9 +509,9 @@ The weekly verdict at chip scale: `SURVIVED`/`W`, `LOST A LIFE`/`L`, `PENDING`/`
 
 Season position; administrative, not emotional.
 
-#### The verdict family — `.cfb-verdict` (+ `.is-survived` / `.is-lost` / `.is-pending`), `.cfb-week-summary`, `.cfb-season-lead`
+#### The verdict family — `.cfb-verdict` (+ `.is-survived` / `.is-lost` / `.is-pending`), `.cfb-week-summary`, `.cfb-season-lead`, `.cfb-week-lead`
 
-The room's raised information surfaces: `--cfb-raised` substrate, strong hairline, and a 2px top rule **colored by outcome state** — survived-green, lost-red, or pending-bone, never crimson (the ratified R1 contract: outcome carries outcome; crimson stays identity). `.cfb-verdict` carries the weekly result (team, matchup, score, outcome chip, lives consequence); `.cfb-week-summary` + `.cfb-summary-*` carry week aggregates; `.cfb-season-lead` opens My Picks with the season line. Internal shape: eyebrow → headline → primary value → supporting context → optional action. These are the room's information-density model: editorial readability with operational structure — surfaces designed for decisions, not telemetry widgets.
+The room's raised information surfaces: `--cfb-raised` substrate, strong hairline, and a 2px top rule **colored by outcome state** — survived-green, lost-red, or pending-bone, never crimson (the ratified R1 contract: outcome carries outcome; crimson stays identity). `.cfb-verdict` carries the weekly result (team, matchup, score, outcome chip, lives consequence); `.cfb-week-summary` + `.cfb-summary-*` carry week aggregates; `.cfb-season-lead` opens My Picks with the season line. `.cfb-week-lead` (ruled 2026-09-08) opens the room landing with the reveal week while it is unfinished — the games still to play with their kickoff, the viewer's pick with its own W/L/TBD chip — or just settled with nothing newer open: the verdict word ("Survived." / "Lost a life." / "Eliminated." / "No pick."), the derivation ("Florida State beat SMU, 24–17."), and what comes next ("Week 2 opens with its lines."). Its top rule is pending-bone while games remain and the viewer's outcome color once settled; lives ride its aside only when no weekly call follows; it carries no pick control, ever. The hero eyebrow names the same state ("Week 1 · Locked · 1 game to go", "Week 1 · Final") and reverts to the identity eyebrow while a week is open. Internal shape: eyebrow → headline → primary value → supporting context → optional action. These are the room's information-density model: editorial readability with operational structure — surfaces designed for decisions, not telemetry widgets.
 
 #### The Cut — `.elimination-alert` + `.cfb-cut-*`
 
@@ -567,6 +569,7 @@ Administrative components identify the affected player, show current state, expl
 | Field ledger | `.cfb-field-table/-head/-week`, `.cfb-avatar`, `.cfb-cell-pick`, `.cfb-col-center`, `.cfb-pick-meta/-score`, `.cfb-auto-tag`, `.cfb-row-nopick`, `.cfb-nopick-note`, `.cfb-result-none` |
 | Pick distribution | `.cfb-distribution`, `.cfb-dist-list/-item/-team/-count` |
 | Season / My Picks | `.cfb-season-lead/-main/-aside`, `.cfb-season-headline/-derivation/-lives-label`, `.cfb-ledger-total` |
+| Week lead | `.cfb-week-lead` (+`.is-pending/.is-survived/.is-lost`), `-main`, `-aside`, `-headline`, `-line`, `-next`, `-pick` |
 | Team pool / used | `.cfb-conf-count`, `.cfb-team-pool`, `.cfb-team-chip/-note`, `.cfb-used-grid/-team/-week`, `.cfb-now-tag` |
 | Coverage | `.cfb-coverage`, `.cfb-coverage-grid/-item/-mark/-note` |
 | Notes | `.cfb-spread-note`, `.cfb-board-note` |
@@ -678,7 +681,7 @@ Calmer than OPEN; field and standings may gain weight because the obligation is 
 > Your pick is final.
 > Kickoff Saturday at 3:30 PM. *(or: Alabama leads Auburn, 21–17.)*
 
-No Choose Team / Change Pick / Submit affordances, no orphaned disabled buttons. The lounge quiets; field, remaining players, and game status may become more prominent.
+No Choose Team / Change Pick / Submit affordances, no orphaned disabled buttons. The lounge quiets; field, remaining players, and game status may become more prominent. One exception, the `overlap` (§4.1, ruled 2026-09-08): while this week's game is still to play and the next week has opened, the LOCKED summons keeps its register and carries the next week's call as its one action (`.summons-next`: a ◇ eyebrow naming the week, its lock time, the solid `.hl-cta` Choose Team — or the HELD Review Pick outline once that pick exists), because a missed pick is more damaging than duplicated information (§8.2). The panel's court line, seal key and Who's Left stay on the week the room leads with; only the endgame reveal note names the open week, whose picks it explains.
 
 ### 8.7 VERDICT — explicit consequence
 
@@ -720,7 +723,7 @@ Compact aggregate progression is welcome (Week 1: 32 active → Week 9: 7 active
 
 ### 8.15 Routing
 
-Every module routes toward a meaningful next action with specific labels (Choose Team, Review Pick, View Full Standings, Inspect Used Teams, Review My Season, Follow Who's Left). Route priority follows state: OPEN → Choose Team dominates; HELD → Review/Change Pick; LOCKED → Follow Game; VERDICT → View Week Results / See Who's Left; ELIMINATED → Follow the Field / Review My Season.
+Every module routes toward a meaningful next action with specific labels (Choose Team, Review Pick, View Full Standings, Inspect Used Teams, Review My Season, Follow Who's Left). Route priority follows state: OPEN → Choose Team dominates; HELD → Review/Change Pick; LOCKED → Follow Game (in the `overlap`, the next week's Choose Team / Review Pick); VERDICT → View Week Results / See Who's Left; ELIMINATED → Follow the Field / Review My Season.
 
 ### 8.16 Density by phase; hierarchy by state
 
@@ -771,7 +774,7 @@ The core pick flow stays coherent and continuous — never spread across disconn
 
 ### 9.2 State model at depth
 
-Same four beats as everywhere, at operational depth, with no contradictory actions across them: OPEN shows selection + submission; HELD shows current pick + change controls; LOCKED shows no editable controls; VERDICT explains result + updated state. The room header orients (week, survival state, lives, pick state, deadline/lock, route back) — it is not a decorative hero: no oversized imagery, slogans, or promotional copy.
+Same four beats as everywhere, at operational depth, with no contradictory actions across them: OPEN shows selection + submission; HELD shows current pick + change controls; LOCKED shows no editable controls; VERDICT explains result + updated state. The room header orients (week, survival state, lives, pick state, deadline/lock, route back) — the hero eyebrow names the reveal week's state while it is unfinished or just settled (§4.1) — it is not a decorative hero: no oversized imagery, slogans, or promotional copy.
 
 ### 9.3 Canonical hierarchy
 
@@ -870,7 +873,7 @@ Presentation derives from canonical state, not scattered booleans. Weekly: OPEN 
 
 ### 10.5 Authoritative data; room/lounge consistency
 
-Every critical fact has one documented authoritative source: current week, deadline, lives, elimination, submitted pick, lock status, eligibility, result, cumulative spread, standings order, champion status. Never derive critical state from presentation text; never calculate the same fact differently in lounge and room — they format differently but consume the same state (shared helpers / domain functions / serialized state). If room and lounge disagree, the product loses trust immediately; fail visibly, room-canonical.
+Every critical fact has one documented authoritative source: current week, deadline, lives, elimination, submitted pick, lock status, eligibility, result, cumulative spread, standings order, champion status. Never derive critical state from presentation text; never calculate the same fact differently in lounge and room — they format differently but consume the same state (shared helpers / domain functions / serialized state). If room and lounge disagree, the product loses trust immediately; fail visibly, room-canonical. The week itself — the reveal week, the pick week, the lead and its state — comes from one resolver, `games/cfb/services/week_state.room_weeks()`, consumed by the room routes and `services/lounge.py` alike (ruled 2026-09-08); the deadline predicate on both sides is `deadline_has_passed` (strict), so they never disagree for an instant.
 
 ### 10.6 Deadline integrity
 

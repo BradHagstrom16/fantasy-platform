@@ -43,6 +43,13 @@ from games.cfb.services.history import get_season_2025
 from games.cfb.services.payment import payment_nudge_for
 from games.cfb.services.receipts import send_pick_receipt
 from games.cfb.services.score_fetcher import ScoreFetcher
+from games.cfb.services.week_state import (
+    LOCKED,
+    OVERLAP,
+    VERDICT,
+    pick_week,
+    room_weeks,
+)
 from games.cfb.utils import (
     deadline_has_passed,
     format_deadline,
@@ -110,17 +117,15 @@ def inject_cfb_globals():
             user_id=current_user.id, season_year=season_year
         ).first()
 
-    # The sub-nav "Pick" pill target: the active week, but only when the viewer
-    # can actually act on it (enrolled, not eliminated, deadline not passed).
-    # Resolved here because the active week (CfbWeek.is_active) is otherwise not
-    # exposed to base.html; a None target hides the pill so it never links to a
+    # The sub-nav "Pick" pill target: the pick week (the active week while
+    # its deadline is ahead — one definition, games/cfb/services/week_state),
+    # but only when the viewer can actually act on it (enrolled, not
+    # eliminated). Resolved here because the week is otherwise not exposed
+    # to base.html; a None target hides the pill so it never links to a
     # route that would just redirect.
     cfb_pick_target = None
     if cfb_enrollment and not cfb_enrollment.is_eliminated:
-        active_week = db.session.scalar(
-            select(CfbWeek).filter_by(is_active=True))
-        if active_week and not deadline_has_passed(active_week.deadline):
-            cfb_pick_target = active_week
+        cfb_pick_target = pick_week()
 
     helpers = get_display_helpers()
 
@@ -160,55 +165,177 @@ def cfb_before_request():
 # Public Routes
 # ============================================================================
 
+def _games_by_team(week_id):
+    """{team_id: game} for one week (both sides of every game)."""
+    by_team = {}
+    for game in CfbGame.query.filter_by(week_id=week_id).all():
+        if game.home_team_id:
+            by_team[game.home_team_id] = game
+        if game.away_team_id:
+            by_team[game.away_team_id] = game
+    return by_team
+
+
+def _pick_state(pick, game):
+    """The per-pick state the standings chips and the lead panel share:
+    survived / lost / no_contest / pending (DESIGN.md 4.1, per game)."""
+    if pick.is_correct is True:
+        return 'survived'
+    if pick.is_correct is False:
+        return 'lost'
+    if game is not None and game.is_no_contest:
+        return 'no_contest'
+    return 'pending'
+
+
+def _matchup(game):
+    return f'{game.get_away_team_display()} at {game.get_home_team_display()}'
+
+
+def _lead_card(room, games_by_team, viewer_pick, enrollment):
+    """The room's lead panel (DESIGN.md 4.1, 9.2; ruled 2026-09-08): the
+    reveal week while it is unfinished (LOCKED, or the overlap with the
+    next week's call) or its verdict while nothing newer is open. Eyebrow →
+    headline → supporting line → the viewer's own line; copy is factual,
+    stoic, and never guesses a time it does not have."""
+    lead = room.lead
+    label = get_week_display_name(lead)
+    card = {
+        'tone': 'pending',
+        'pick': None,
+        'no_pick_line': None,
+        'next_line': None,
+        # Lives ride the aside only when no weekly call follows (the call's
+        # status row already carries them in the overlap).
+        'show_lives': enrollment is not None and room.state != OVERLAP,
+    }
+    game = games_by_team.get(viewer_pick.team_id) if viewer_pick else None
+    state = _pick_state(viewer_pick, game) if viewer_pick else None
+    if viewer_pick is not None:
+        pick_label = viewer_pick.team.name
+        if game is not None and game.get_spread_for_team(viewer_pick.team_id) is not None:
+            spread = game.get_spread_for_team(viewer_pick.team_id)
+            pick_label = f'{viewer_pick.team.name} ({spread:+.1f})'
+        card['pick'] = {'label': pick_label, 'state': state}
+
+    if room.state == VERDICT:
+        card['eyebrow'] = f'{label} · Final'
+        card['hero_eyebrow'] = card['eyebrow']
+        team = viewer_pick.team.name if viewer_pick else None
+        opponent = None
+        score = ''
+        if game is not None and viewer_pick is not None:
+            mine_home = game.home_team_id == viewer_pick.team_id
+            opponent = (game.get_away_team_display() if mine_home
+                        else game.get_home_team_display())
+            if game.home_score is not None and game.away_score is not None:
+                mine = game.home_score if mine_home else game.away_score
+                theirs = game.away_score if mine_home else game.home_score
+                score = f', {mine}–{theirs}'
+        if enrollment is None:
+            card['headline'] = 'In the books.'
+            card['derivation'] = None
+            card['tone'] = 'neutral'
+        elif viewer_pick is None:
+            card['headline'] = 'No pick.'
+            card['derivation'] = 'No pick was filed.'
+            card['tone'] = 'lost'
+        elif state == 'survived':
+            card['headline'] = 'Survived.'
+            card['derivation'] = f'{team} beat {opponent}{score}.' if opponent else f'{team} won.'
+            card['tone'] = 'survived'
+        elif state == 'lost':
+            card['headline'] = 'Eliminated.' if enrollment.is_eliminated else 'Lost a life.'
+            card['derivation'] = f'{team} fell to {opponent}{score}.' if opponent else f'{team} lost.'
+            card['tone'] = 'lost'
+        elif state == 'no_contest':
+            card['headline'] = 'No contest.'
+            card['derivation'] = f"{team}'s game was ruled a no contest."
+        else:
+            card['headline'] = 'In the books.'
+            card['derivation'] = None
+        following = CfbWeek.query.filter_by(week_number=lead.week_number + 1).first()
+        if following is not None and CfbGame.query.filter_by(week_id=following.id).count():
+            card['next_line'] = f'{get_week_display_name(following)} opens with its lines.'
+        else:
+            card['next_line'] = f'Week {lead.week_number + 1} is not on the board yet.'
+        return card
+
+    pending = room.pending
+    n = len(pending)
+    card['eyebrow'] = f'{label} · Locked'
+    card['hero_eyebrow'] = f"{label} · Locked · {n} game{'' if n == 1 else 's'} to go"
+    if 0 < n <= 3:
+        card['headline'] = ' · '.join(_matchup(g) for g in pending)
+    elif n > 3:
+        card['headline'] = f'{n} games to go'
+    else:
+        card['headline'] = 'Awaiting the verdict'
+    timed = [g for g in pending if g.game_time is not None]
+    if n == 1 and timed:
+        when = format_deadline_short(timed[0].game_time)
+        if make_aware(timed[0].game_time) > get_current_time():
+            card['derivation'] = f'Kickoff {when}.'
+        else:
+            card['derivation'] = f'Kicked off {when}. Verdict pending.'
+    elif timed:
+        last = max(g.game_time for g in timed)
+        card['derivation'] = f'Last kickoff {format_deadline_short(last)}.'
+    else:
+        card['derivation'] = 'Verdict pending.'
+    if enrollment is not None and viewer_pick is None:
+        # Same fact the lounge states ("The Commish is assigning your pick
+        # under the missed-pick rule"), in the room's terser register.
+        card['no_pick_line'] = 'No pick on the board. The missed-pick rule applies.'
+    return card
+
+
 @cfb_bp.route('/')
 def index():
     """Season standings page."""
     season_year = current_app.config.get('CFB_SEASON_YEAR', 2026)
-    current_week = CfbWeek.query.filter_by(is_active=True).first()
+
+    # One definition of "which week" for the room and the lounge
+    # (games/cfb/services/week_state, DESIGN.md 10.5). The weekly call
+    # follows the pick week (the active week while it is open); the lead
+    # panel and the standings follow the reveal week (Brad's rulings
+    # 2026-09-07 / 2026-09-08).
+    room = room_weeks()
+    call_week = room.pick
+    active_week = CfbWeek.query.filter_by(is_active=True).first()
+
+    viewer_enrollment = None
+    if current_user.is_authenticated:
+        viewer_enrollment = CfbEnrollment.query.filter_by(
+            user_id=current_user.id, season_year=season_year
+        ).first()
 
     user_pick = None
     user_pick_spread = None
-    games_by_team = {}
+    games_by_team = _games_by_team(call_week.id) if call_week else {}
 
-    if current_week:
-        for game in CfbGame.query.filter_by(week_id=current_week.id).all():
-            if game.home_team_id:
-                games_by_team[game.home_team_id] = game
-            if game.away_team_id:
-                games_by_team[game.away_team_id] = game
-
-    if current_week and current_user.is_authenticated:
+    if call_week and current_user.is_authenticated:
         user_pick = CfbPick.query.filter_by(
-            user_id=current_user.id, week_id=current_week.id
+            user_id=current_user.id, week_id=call_week.id
         ).first()
         if user_pick:
             game = games_by_team.get(user_pick.team_id)
             if game:
                 user_pick_spread = game.get_spread_for_team(user_pick.team_id)
 
-    # The reveal week: the latest week whose deadline has passed, complete or
-    # not, independent of is_active (Brad's ruling 2026-09-07). Tuesday's
-    # spreads run opens the next week (ADR-062) while a Monday-night or
-    # midweek game is still pending; the field's picks stay on the board,
-    # each with its own state (LOCKED = pending, VERDICT = survived / lost,
-    # DESIGN.md 4.1), until the next week locks. The pick call, countdown
-    # and eligibility keep following the active week.
-    reveal_week = next(
-        (w for w in CfbWeek.query.order_by(CfbWeek.week_number.desc()).all()
-         if deadline_has_passed(w.deadline)),
-        None,
-    )
+    # The reveal week's picks stay on the board with their own state
+    # (LOCKED = pending, VERDICT = survived / lost, DESIGN.md 4.1) until the
+    # next week locks.
+    reveal_week = room.reveal
     week_picks = {}
     show_picks = reveal_week is not None
+    reveal_games_by_team = {}
+    viewer_reveal_pick = None
     if reveal_week:
-        reveal_games_by_team = games_by_team
-        if not current_week or reveal_week.id != current_week.id:
-            reveal_games_by_team = {}
-            for game in CfbGame.query.filter_by(week_id=reveal_week.id).all():
-                if game.home_team_id:
-                    reveal_games_by_team[game.home_team_id] = game
-                if game.away_team_id:
-                    reveal_games_by_team[game.away_team_id] = game
+        reveal_games_by_team = (
+            games_by_team if call_week and reveal_week.id == call_week.id
+            else _games_by_team(reveal_week.id)
+        )
         all_picks = (
             CfbPick.query.filter_by(week_id=reveal_week.id)
             .options(joinedload(CfbPick.team))
@@ -219,17 +346,18 @@ def index():
             label = pick.team.name
             if game and game.get_spread_for_team(pick.team_id) is not None:
                 label = f"{pick.team.name} ({game.get_spread_for_team(pick.team_id):+.1f})"
-            if pick.is_correct is True:
-                state = 'survived'
-            elif pick.is_correct is False:
-                state = 'lost'
-            elif game is not None and game.is_no_contest:
-                state = 'no_contest'
-            else:
-                state = 'pending'
-            week_picks[pick.user_id] = {'label': label, 'state': state}
-    reveal_note = bool(
-        reveal_week and current_week and reveal_week.id != current_week.id)
+            week_picks[pick.user_id] = {
+                'label': label, 'state': _pick_state(pick, game)}
+            if current_user.is_authenticated and pick.user_id == current_user.id:
+                viewer_reveal_pick = pick
+    reveal_note = room.note
+
+    hero_eyebrow = 'Under the Lights'
+    lead_card = None
+    if room.state in (LOCKED, OVERLAP, VERDICT):
+        lead_card = _lead_card(
+            room, reveal_games_by_team, viewer_reveal_pick, viewer_enrollment)
+        hero_eyebrow = lead_card['hero_eyebrow']
 
     # Official standings order + competition ranks via the central helper
     # (shared with the lounge -- DESIGN.md 10.5 room/lounge consistency).
@@ -293,14 +421,17 @@ def index():
     # auto-handles the CFP reset).
     pool_by_conference, pool_total, pool_conference_count = pool_teams_by_conference()
     viewer_used_team_ids = set()
-    if current_week is not None and current_user.is_authenticated:
+    if active_week is not None and current_user.is_authenticated:
         viewer_used_team_ids = get_used_team_ids(
-            current_user.id, current_week, exclude_current=False
+            current_user.id, active_week, exclude_current=False
         )
 
     return render_template(
         'cfb/index.html',
-        current_week=current_week,
+        call_week=call_week,
+        lead_week=room.lead,
+        lead_card=lead_card,
+        hero_eyebrow=hero_eyebrow,
         user_pick=user_pick,
         user_pick_spread=user_pick_spread,
         enrollments=enrollments,
@@ -791,6 +922,9 @@ def my_picks():
 
     current_week = CfbWeek.query.filter_by(is_active=True).first()
     in_cfp = current_week and is_week_playoff(current_week)
+    # Your Card is about the week the room leads with (the reveal week
+    # while it is unfinished), not the week that happens to be open.
+    display_week = room_weeks().lead or current_week
 
     user_picks = (
         CfbPick.query.filter_by(user_id=current_user.id)
@@ -916,18 +1050,19 @@ def my_picks():
     total_conferences = len(all_conferences)
 
     current_week_display = None
-    if current_week:
+    if display_week:
         current_week_display = {
-            'display_name': get_week_display_name(current_week),
-            'short_label': get_week_short_label(current_week),
-            'badge_type': 'playoff' if is_week_playoff(current_week) else (
-                'conference' if current_week.week_number == 15 else None
+            'display_name': get_week_display_name(display_week),
+            'short_label': get_week_short_label(display_week),
+            'badge_type': 'playoff' if is_week_playoff(display_week) else (
+                'conference' if display_week.week_number == 15 else None
             ),
-            'progress_text': get_week_display_name(current_week),
+            'progress_text': get_week_display_name(display_week),
         }
 
     return render_template(
         'cfb/my_picks.html',
+        lead_week_id=display_week.id if display_week else None,
         enrollment=enrollment,
         user_picks=user_picks,
         used_teams=used_teams,

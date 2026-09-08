@@ -49,6 +49,28 @@
   <a class="hl-cta hl-cta--outline" href="{{ url_for('cfb.make_pick', week_number=s.week_number) }}">Review Pick</a>
   {% endif %}
 
+  {% if s.next_call %}
+  {# The overlap (ruled 2026-09-08): this week is locked with a game still
+     to play while the next week has opened. The LOCKED card keeps its
+     register and carries the next week's call as its one action — a missed
+     pick is more damaging than duplicated information (§8.2). The same
+     solid accent CTA (ADR-052); a held next pick gets the HELD outline. #}
+  {% set n = s.next_call %}
+  <div class="summons-next">
+    <div class="summons-eyebrow summons-eyebrow--info">◇ {{ n.week_label }} &middot; Picks Open</div>
+    <div class="summons-meta">
+      <span>Locks in <span class="num">{{ n.deadline_relative }}</span> &middot; {{ n.deadline_absolute }}</span>
+    </div>
+    {% if n.held %}
+    <a class="hl-cta hl-cta--outline" href="{{ url_for('cfb.make_pick', week_number=n.week_number) }}">Review Pick</a>
+    {% else %}
+    <a class="hl-cta" href="{{ url_for('cfb.make_pick', week_number=n.week_number) }}">
+      Choose Team<i class="bi bi-arrow-right" aria-hidden="true"></i>
+    </a>
+    {% endif %}
+  </div>
+  {% endif %}
+
   {% if s.beat == 'verdict' %}
   <div class="field-impact">
     {% if s.field_impact %}<span class="field-impact-line">{{ s.field_impact }}</span>{% endif %}

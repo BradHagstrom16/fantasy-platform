@@ -33,7 +33,9 @@ from games.cfb.services.game_logic import (
     get_game_for_team,
     get_official_standings,
 )
+from games.cfb.services.week_state import OVERLAP, room_weeks
 from games.cfb.utils import (
+    deadline_has_passed,
     format_relative,
     get_current_time,
     get_utc_time,
@@ -338,17 +340,15 @@ def _context_live(user, enrollment) -> dict:
         else user.get_display_name()
     )
 
-    # Current week W: the active week, else the latest complete week (the
-    # aftermath window, which resolves to VERDICT). The state resolver
-    # only returns 'live' when one of the two exists; a direct call
-    # without either falls back to the preseason shape rather than crash.
-    week = CfbWeek.query.filter_by(is_active=True).first()
-    if week is None:
-        week = (
-            CfbWeek.query.filter_by(is_complete=True)
-            .order_by(CfbWeek.week_number.desc())
-            .first()
-        )
+    # Current week W: the week the room leads with — the reveal week while
+    # it is unfinished (a Monday-night or midweek game still pending), else
+    # the open week, else the latest complete week (the aftermath window,
+    # which resolves to VERDICT). One definition for room and lounge
+    # (services/week_state, DESIGN.md 10.5; ruled 2026-09-08). A direct
+    # call with nothing to lead with falls back to the preseason shape
+    # rather than crash.
+    room = room_weeks()
+    week = room.lead
     if week is None:
         return _context_pre(user, enrollment)
     deadline = make_aware(week.deadline)
@@ -382,7 +382,7 @@ def _context_live(user, enrollment) -> dict:
     )
     cuts_line = _cuts_line(latest_complete, all_enrollments)
     whos_left = _whos_left(
-        week, week_label, deadline, now, standings_active, user,
+        room.pick, standings_active, user,
         two_lives=two_lives, one_life=one_life, out=out,
         active=active, total=total, cuts_line=cuts_line,
     )
@@ -411,6 +411,8 @@ def _context_live(user, enrollment) -> dict:
                 week, week_label, deadline, now, beat, pick, outcome,
                 enrollment,
             )
+            if room.state == OVERLAP:
+                summons['next_call'] = _next_call(room.pick, user, now)
 
     remains = 'remains' if active == 1 else 'remain'
     court_line = f"{now.strftime('%A')} · {week_label} · {active} {remains}"
@@ -455,9 +457,28 @@ def _resolve_beat(week, deadline, user, now):
     ).first()
     if outcome is not None:
         return 'verdict', pick, outcome
-    if now < deadline:
+    # The room's predicate (strict: at 11:00:00 a pick still goes in), so
+    # lounge and room never disagree for an instant (DESIGN.md 10.5).
+    if not deadline_has_passed(deadline):
         return ('held' if pick is not None else 'open'), pick, None
     return 'locked', pick, None
+
+
+def _next_call(week, user, now) -> dict:
+    """The overlap (ruled 2026-09-08): the reveal week's LOCKED summons
+    carries the open week's call as its one action — a missed pick is more
+    damaging than duplicated information (8.2)."""
+    deadline = make_aware(week.deadline)
+    held = CfbPick.query.filter_by(
+        week_id=week.id, user_id=user.id
+    ).first() is not None
+    return {
+        'week_label': get_week_display_name(week),
+        'week_number': week.week_number,
+        'held': held,
+        'deadline_relative': format_relative(deadline - now),
+        'deadline_absolute': _fmt_time(deadline),
+    }
 
 
 def _summons_payload(week, week_label, deadline, now, beat, pick, outcome,
@@ -702,11 +723,13 @@ def _eliminated_module(user) -> dict:
     }
 
 
-def _whos_left(week, week_label, deadline, now, standings_active, user,
+def _whos_left(pick_week, standings_active, user,
                *, two_lives, one_life, out, active, total,
                cuts_line) -> dict:
     """Who's Left phase resolution (C1 3.2) -- phases from data, never
-    week numbers."""
+    week numbers. ``pick_week`` is the open week (None while nothing is
+    open): the endgame note explains ITS hidden picks, which in the overlap
+    is not the week the panel leads with."""
     wl = {
         'two_lives': two_lives,
         'one_life': one_life,
@@ -723,9 +746,10 @@ def _whos_left(week, week_label, deadline, now, standings_active, user,
         wl['phase'] = 'D'
         wl['remain_line'] = f'{active} remain. One survives.'
         wl['rows'] = _field_rows(standings_active, user)
-        if week.is_active and now < deadline:
+        if pick_week is not None:
             wl['reveal_note'] = (
-                f'{week_label} picks lock {_fmt_time(deadline)}. '
+                f'{get_week_display_name(pick_week)} picks lock '
+                f'{_fmt_time(make_aware(pick_week.deadline))}. '
                 'Revealed at the deadline.'
             )
         return wl

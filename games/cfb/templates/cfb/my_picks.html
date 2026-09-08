@@ -110,7 +110,7 @@
                                     <tr>
                                         <td>
                                             <strong>{{ pick.week_display.display_name if pick.week_display else 'Week ' + pick.week.week_number|string }}</strong>
-                                            {% if pick.week.is_active %}<span class="cfb-now-tag">This Week</span>{% endif %}
+                                            {% if pick.week_id == lead_week_id %}<span class="cfb-now-tag">This Week</span>{% endif %}
                                         </td>
                                         <td><span class="cfb-team-name">{{ pick.team.name }}</span></td>
                                         <td><small class="text-muted">{{ pick.team.get_conference() }}</small></td>
@@ -159,7 +159,7 @@
                                 <tr>
                                     <td>
                                         <strong>{{ pick.week_display.display_name if pick.week_display else 'Week ' + pick.week.week_number|string }}</strong>
-                                        {% if pick.week.is_active %}<span class="cfb-now-tag">This Week</span>{% endif %}
+                                        {% if pick.week_id == lead_week_id %}<span class="cfb-now-tag">This Week</span>{% endif %}
                                     </td>
                                     <td><span class="cfb-team-name">{{ pick.team.name }}</span></td>
                                     <td>

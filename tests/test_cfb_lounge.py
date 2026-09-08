@@ -1295,3 +1295,153 @@ def test_wc_pre_shell_tiles_unchanged_before_flip(app, client, monkeypatch):
     # Coming-soon tiles stay registry-driven
     assert 'Sep 3' in text and '2027' in text
     assert 'cg--archived' not in text
+
+
+# == the reveal week leads (ruled 2026-09-08) ===============================
+#
+# The lounge and the room share one definition of "which week"
+# (games/cfb/services/week_state, DESIGN.md 10.5): while the reveal week is
+# unfinished the panel leads with it — court line, summons, the seal key —
+# and, once the next week has opened (ADR-062: its lines landed), the LOCKED
+# summons carries that week's call as its one action.
+
+W3_DEADLINE = datetime(2026, 9, 19, 11, 0)
+W3_MONDAY_KICKOFF = datetime(2026, 9, 21, 18, 30)
+AT_W4_DEADLINE = {'ENVIRONMENT': 'testing',
+                  'CFB_FAKE_NOW': '2026-09-26T16:00:00',   # 11:00:00 CT exactly
+                  'DOCKET_FAKE_NOW': '2026-09-26T16:00:00'}
+
+
+def _pending_week_3(user, *, with_pick=True):
+    """Week 3 locked with SMU @ Florida State still unsettled; the viewer
+    picked Florida State."""
+    week3 = _make_week(number=3, active=False, deadline=W3_DEADLINE)
+    fsu = _make_team('Florida State')
+    smu = _make_team('SMU')
+    game = _make_game(week3, home=fsu, away=smu, spread=-3.5,
+                      game_time=W3_MONDAY_KICKOFF)
+    if with_pick:
+        _make_pick(user, week3, fsu)
+    return week3, fsu, smu, game
+
+
+def _week_4_on_the_board(*, active):
+    week4 = _make_week(number=4, active=active, deadline=W4_DEADLINE)
+    _make_game(week4, home=_make_team('Auburn'), away=_make_team('Alabama'))
+    return week4
+
+
+def test_live_overlap_leads_with_the_pending_week_and_calls_the_next(app):
+    """Week 3 still pending, Week 4 open: the summons is Week 3's LOCKED
+    card, the court line and the seal key name Week 3, and the card carries
+    Week 4's call as its one action."""
+    with app.app_context():
+        user = _make_user()
+        _enroll_cfb(user)
+        _pending_week_3(user)
+        _week_4_on_the_board(active=True)
+        ctx = _live_ctx(user)
+    assert ctx['court_line'] == 'Thursday · Week 3 · 1 remains'
+    assert ctx['week_number'] == 3
+    s = ctx['summons']
+    assert s['beat'] == 'locked'
+    assert s['week_label'] == 'Week 3'
+    assert s['sentence'] == 'SMU at Florida State. Your pick is final.'
+    assert s['next_call'] == {
+        'week_label': 'Week 4', 'week_number': 4, 'held': False,
+        'deadline_relative': '1d 23h',
+        'deadline_absolute': 'Saturday, 11:00 AM CT',
+    }
+
+
+def test_live_overlap_next_call_is_held_when_the_next_pick_exists(app):
+    with app.app_context():
+        user = _make_user()
+        _enroll_cfb(user)
+        _pending_week_3(user)
+        week4 = _week_4_on_the_board(active=True)
+        alabama = db.session.scalar(
+            db.select(db.Model.registry._class_registry['CfbTeam'])
+            .filter_by(name='Alabama'))
+        _make_pick(user, week4, alabama)
+        ctx = _live_ctx(user)
+    assert ctx['summons']['beat'] == 'locked'
+    assert ctx['summons']['next_call']['held'] is True
+
+
+def test_live_locked_week_leads_before_the_next_opens(app):
+    """Week 4 imported but not yet opened (its lines land Tuesday): Week 3's
+    LOCKED card stands alone — no next call, nothing to pick in."""
+    with app.app_context():
+        user = _make_user()
+        _enroll_cfb(user)
+        _pending_week_3(user)
+        _week_4_on_the_board(active=False)
+        ctx = _live_ctx(user)
+    s = ctx['summons']
+    assert s['beat'] == 'locked'
+    assert 'next_call' not in s
+    assert ctx['week_number'] == 3
+
+
+def test_live_verdict_after_completion_before_the_next_open(app):
+    with app.app_context():
+        user = _make_user()
+        _enroll_cfb(user)
+        week3, fsu, smu, game = _pending_week_3(user)
+        game.home_team_won = True
+        week3.is_complete = True
+        db.session.commit()
+        _make_outcome(week3, user, lives=2)
+        _week_4_on_the_board(active=False)
+        ctx = _live_ctx(user)
+    assert ctx['summons']['beat'] == 'verdict'
+    assert ctx['week_number'] == 3
+    assert ctx['court_line'] == 'Thursday · Week 3 · 1 remains'
+
+
+def test_whos_left_reveal_note_names_the_open_week_not_the_lead(app):
+    """Endgame in the overlap: the note explains the OPEN week's hidden
+    picks (Week 4), not the week the panel leads with (Week 3)."""
+    with app.app_context():
+        user = _make_user()
+        _enroll_cfb(user)
+        _pending_week_3(user)
+        _week_4_on_the_board(active=True)
+        _seed_cfb_field([(1, False), (1, False)] + [(0, True)] * 10)
+        ctx = _live_ctx(user)
+    wl = ctx['whos_left']
+    assert wl['phase'] == 'D'
+    assert wl['reveal_note'] == (
+        'Week 4 picks lock Saturday, 11:00 AM CT. Revealed at the deadline.'
+    )
+
+
+def test_lounge_and_room_agree_at_the_deadline_instant(app):
+    """At 11:00:00 exactly the room still takes a pick (deadline_has_passed
+    is strict); the lounge must say OPEN, not LOCKED (DESIGN.md 10.5)."""
+    with app.app_context():
+        user = _make_user()
+        _enroll_cfb(user)
+        _make_week(number=4, active=True, deadline=W4_DEADLINE)
+        ctx = _live_ctx(user, AT_W4_DEADLINE)
+    assert ctx['summons']['beat'] == 'open'
+
+
+def test_cfb_live_overlap_shell_renders_the_next_call(app, client, monkeypatch):
+    _flip_to_cfb(monkeypatch)
+    with app.app_context():
+        user = _make_user()
+        _enroll_cfb(user)
+        _pending_week_3(user)
+        _week_4_on_the_board(active=True)
+        _seed_cfb_field([(2, False), (2, False)])
+        auth_id = user.auth_id
+    _login(client, auth_id)
+    with patch.dict(os.environ, LIVE_PRE):
+        text = client.get('/').get_data(as_text=True)
+    assert 'The Summons &middot; Week 3' in text
+    assert 'Your pick is final.' in text
+    assert 'Week 4 &middot; Picks Open' in text
+    assert 'href="/cfb/pick/4"' in text
+    assert 'Choose Team' in text
