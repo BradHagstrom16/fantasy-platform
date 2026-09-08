@@ -544,6 +544,37 @@ def test_spread_update_skips_api_when_every_line_is_locked(
     mock_letter.assert_not_called()
 
 
+@patch('games.cfb.services.reminders.send_platform_email', return_value=True)
+@patch('games.cfb.services.automation.send_platform_email', return_value=True)
+@patch('games.cfb.services.odds_api.requests.get')
+def test_spread_update_opens_on_a_hand_entered_line_when_no_kickoff_is_known(
+        mock_get, mock_admin, mock_letter, app):
+    """A week whose games carry no kickoff time cannot be fetched (the odds
+    window is built from kickoffs), but a hand-entered line is still a line
+    members can pick in: the open and the letter must not be skipped along
+    with the fetch (CodeRabbit, PR #201)."""
+    from games.cfb.services.automation import run_spread_update
+    app.config['ODDS_API_KEY'] = 'test-key'
+    app.config['ADMIN_EMAIL'] = 'commish@cccfantasy.com'
+    week = make_week(2, deadline=FUTURE_DEADLINE)
+    lined = make_game(week, make_team('Alabama'), make_team('Georgia'),
+                      spread=-3.0)
+    lined.spread_locked_at = datetime(2026, 9, 8, 11, 0)   # admin entry
+    lined.game_time = None
+    bare = make_game(week, make_team('Texas'), make_team('Oklahoma'))
+    bare.game_time = None
+    make_enrollment(make_user('p1'))
+    db.session.commit()
+
+    result = run_spread_update()
+
+    mock_get.assert_not_called()
+    assert result['opened'] is True
+    assert db.session.get(CfbWeek, week.id).is_active is True
+    assert mock_letter.call_count == 1
+    assert 'Oklahoma @ Texas' in mock_admin.call_args[0][2]   # still alerted
+
+
 @patch('games.cfb.services.automation.send_platform_email', return_value=True)
 @patch('games.cfb.services.automation.odds_api_get')
 def test_spread_update_emails_admin_on_api_error(mock_api, mock_send, app):

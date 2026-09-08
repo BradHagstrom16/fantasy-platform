@@ -407,10 +407,15 @@ def _fetch_and_lock_lines(week, games):
     """
     api_key = current_app.config.get('ODDS_API_KEY', '')
 
-    # Build date range from the week's games
+    # Build date range from the week's games. No kickoff times means no odds
+    # window to ask for — but a hand-entered line is still a line members
+    # can pick in, so the caller's open step and letter must still run:
+    # report "nothing fetched", never the early-exit dict.
     game_times = [g.game_time for g in games if g.game_time]
     if not game_times:
-        return {'status': 'skipped', 'details': 'No game times available'}
+        logger.warning("Week %d has no kickoff times; skipping the odds fetch",
+                       week.week_number)
+        return 0, 'unknown'
 
     earliest = min(game_times)
     latest = max(game_times)
