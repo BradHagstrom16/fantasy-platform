@@ -220,17 +220,17 @@ finish review, the verdict, and DESIGN.md.
         <div class="docket-board-head">
             <span class="dbc-rank">#</span>
             <span class="dbc-player"{% if sort_links.name.aria %} aria-sort="{{ sort_links.name.aria }}"{% endif %}>
-                <a class="docket-ledger-sort{% if sort_links.name.active %} is-active is-{{ sort_dir }}{% endif %}" href="{{ sort_links.name.href }}">Player</a>
+                <a class="docket-ledger-sort{% if sort_links.name.active %} is-active is-{{ sort_dir }}{% endif %}" href="{{ sort_links.name.href }}"{% if sort_links.name.active %} aria-label="Player, sorted {{ sort_links.name.aria }}"{% endif %}>Player</a>
             </span>
             <span class="dbc-week">This week</span>
             <span class="dbc-fig"{% if sort_links.points.aria %} aria-sort="{{ sort_links.points.aria }}"{% endif %}>
-                <a class="docket-ledger-sort{% if sort_links.points.active %} is-active is-{{ sort_dir }}{% endif %}" href="{{ sort_links.points.href }}">Points</a>
+                <a class="docket-ledger-sort{% if sort_links.points.active %} is-active is-{{ sort_dir }}{% endif %}" href="{{ sort_links.points.href }}"{% if sort_links.points.active %} aria-label="Points, sorted {{ sort_links.points.aria }}"{% endif %}>Points</a>
             </span>
             <span class="dbc-fig"{% if sort_links.wins.aria %} aria-sort="{{ sort_links.wins.aria }}"{% endif %}>
-                <a class="docket-ledger-sort{% if sort_links.wins.active %} is-active is-{{ sort_dir }}{% endif %}" href="{{ sort_links.wins.href }}">Wins</a>
+                <a class="docket-ledger-sort{% if sort_links.wins.active %} is-active is-{{ sort_dir }}{% endif %}" href="{{ sort_links.wins.href }}"{% if sort_links.wins.active %} aria-label="Wins, sorted {{ sort_links.wins.aria }}"{% endif %}>Wins</a>
             </span>
             <span class="dbc-fig"{% if sort_links.error.aria %} aria-sort="{{ sort_links.error.aria }}"{% endif %}>
-                <a class="docket-ledger-sort{% if sort_links.error.active %} is-active is-{{ sort_dir }}{% endif %}" href="{{ sort_links.error.href }}">Off by</a>
+                <a class="docket-ledger-sort{% if sort_links.error.active %} is-active is-{{ sort_dir }}{% endif %}" href="{{ sort_links.error.href }}"{% if sort_links.error.active %} aria-label="Off by, sorted {{ sort_links.error.aria }}"{% endif %}>Off by</a>
             </span>
             <span class="dbc-caret" aria-hidden="true"></span>
         </div>
