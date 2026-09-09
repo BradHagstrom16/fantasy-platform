@@ -146,6 +146,7 @@ the finish review and DESIGN.md 7.13.
     <ol class="docket-sheets">
         {% for m in members %}
         {% set is_you = m.user_id == your_user_id %}
+        <li>
         <details class="docket-sheet{% if is_you %} is-you{% endif %}" id="sheet-{{ m.user_id }}">
             <summary class="docket-sheet-head">
                 <span class="docket-ledger-avatar" aria-hidden="true">{{ m.enrollment.user.get_avatar() }}</span>
@@ -181,6 +182,7 @@ the finish review and DESIGN.md 7.13.
             </p>
             {% endif %}
         </details>
+        </li>
         {% endfor %}
     </ol>
     {% endif %}
