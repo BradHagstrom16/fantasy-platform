@@ -7,18 +7,16 @@
 THESIS: the week's sheets as a posted record that unseals case by case at
 kickoff; refuses both the live-scoreboard grid and the everyone-at-once
 reveal. What is sealed is said in words and counts, never shown as a side.
-OWN-WORLD: CCC court paper — bone page, ruled --docket-rule hairlines, Teko
+OWN-WORLD: CCC court paper — bone page, ruled docket-rule hairlines, Teko
 kickoff figures and result words, Newsreader sides; garnet marks "yours"
 and never an outcome (wins and losses carry the platform semantic layer).
 STORY: a member opens it Thursday night, finds the Thursday sides on record
 with their verdicts, reads how far along everyone else is without seeing a
-single sealed side, and comes back Saturday as the sheet opens wave by wave.
-FIRST VIEWPORT: masthead, one sentence stating what is open and what opens
-next, then the sheets, the reader's own row tinted.
-FORM: one stacked composition at every width — a sheet line is a label
-with marks, nothing to compare down a column, so the ledger's table/card
-split is not needed here; every member is an always-open article, not a
-drawer (seventeen taps to see "all sheets" would defeat the page).
+single sealed side, and comes back Sunday as the sheet opens wave by wave.
+FIRST VIEWPORT: masthead, find field, sort controls, then collapsible
+sheets, the reader's own row tinted.
+FORM: one stacked composition at every width — sheet lines are labels
+with marks; each member is a collapsible drawer, default closed.
 FINISH: unreviewed and undocumented is unfinished; this build ends with
 the finish review and DESIGN.md 7.13.
 -->
@@ -101,16 +99,59 @@ the finish review and DESIGN.md 7.13.
         first sheet is next week.</p>
     {% endif %}
 
+    {# Find a sheet (Brad, 2026-09-08): the ledger's find shape (8.9),
+       a plain GET, never mutation. Your sheet leads every result set;
+       the count line never caps silently. Sort rides the text links
+       below and is carried through the form so the two compose. #}
+    <form role="search" method="get" action="{{ url_for('docket.sheets') }}" class="docket-find docket-sheets-find">
+        {% if sort_key %}<input type="hidden" name="sort" value="{{ sort_key }}"/><input type="hidden" name="dir" value="{{ sort_dir }}"/>{% endif %}
+        <label class="docket-find-label" for="sheets-find-q">Find a sheet</label>
+        <input type="search" class="form-control" id="sheets-find-q" name="q"
+               value="{{ find_query }}" placeholder="A player's name"
+               maxlength="60" autocomplete="off" spellcheck="false" enterkeyhint="search"/>
+        <button type="submit" class="docket-find-btn">Find</button>
+    </form>
+    {% if find_query %}
+    {% set all_sheets_href = url_for('docket.sheets', sort=sort_key, dir=sort_dir) %}
+    <div class="docket-find-head docket-sheets-find-head">
+        {% if find_total %}
+        <h2 class="docket-section-head docket-sheets-find-title">Matching sheets</h2>
+        <span class="docket-caption docket-showing">Showing {{ find_total }} of {{ roster_total }} sheet{{ 's' if roster_total != 1 }} matching &ldquo;{{ find_query }}&rdquo;, yours first <span class="docket-showing-back">· <a href="{{ all_sheets_href }}">All sheets &rsaquo;</a></span></span>
+        {% else %}
+        <h2 class="docket-section-head docket-sheets-find-title">No sheet matches &ldquo;{{ find_query }}&rdquo;</h2>
+        <span class="docket-caption docket-showing">Showing 0 of {{ roster_total }} sheet{{ 's' if roster_total != 1 }} <span class="docket-showing-back">· <a href="{{ all_sheets_href }}">All sheets &rsaquo;</a></span></span>
+        {% endif %}
+    </div>
+    {% if not find_total %}
+    <p class="docket-find-empty">Try part of a name as it appears on the sheet.</p>
+    {% endif %}
+    {% endif %}
+
+    {# Sort controls: text links, not column headers (this page has no table).
+       The active sort shows its direction with the entry caret. #}
+    <div class="docket-sheets-sort">
+        <span class="docket-sheets-sort-label">Sort by</span>
+        {% for key in ['name', 'record'] %}
+        {% set link = sort_links[key] %}
+        <a class="docket-sheets-sort-link{% if link.active %} is-active{% endif %}"
+           href="{{ link.href }}"{% if link.aria %} aria-sort="{{ link.aria }}"{% endif %}>{{ key|capitalize }}{% if link.active %}<span class="docket-entry-caret{% if sort_dir == 'asc' %} is-asc{% endif %}"></span>{% endif %}</a>
+        {% endfor %}
+    </div>
+    {% if sort_key %}
+    <p class="docket-caption docket-sheets-sorted">Sorted by {{ sort_label }}, {{ 'ascending' if sort_dir == 'asc' else 'descending' }}. <a href="{{ url_for('docket.sheets', q=find_query or None) }}">Default order &rsaquo;</a></p>
+    {% endif %}
+
     <ol class="docket-sheets">
-        {% for m in board.members %}
+        {% for m in members %}
         {% set is_you = m.user_id == your_user_id %}
-        <li class="docket-sheet{% if is_you %} is-you{% endif %}" id="sheet-{{ m.user_id }}">
-            <div class="docket-sheet-head">
+        <details class="docket-sheet{% if is_you %} is-you{% endif %}" id="sheet-{{ m.user_id }}">
+            <summary class="docket-sheet-head">
                 <span class="docket-ledger-avatar" aria-hidden="true">{{ m.enrollment.user.get_avatar() }}</span>
                 <span class="docket-entry-name">{{ m.enrollment.get_display_name() }}</span>
                 {% if is_you %}<span class="docket-you-tag">You</span>{% endif %}
                 <span class="docket-entry-count">{{ m.summary }}</span>
-            </div>
+                <span class="docket-entry-caret" aria-hidden="true"></span>
+            </summary>
             {% if m.lines %}
             <ol class="docket-sheet-lines">
                 {% for line in m.lines %}
@@ -137,7 +178,7 @@ the finish review and DESIGN.md 7.13.
                 {% if board.designated_caption %}<span class="docket-caption">· {{ board.designated_caption }}</span>{% endif %}
             </p>
             {% endif %}
-        </li>
+        </details>
         {% endfor %}
     </ol>
     {% endif %}

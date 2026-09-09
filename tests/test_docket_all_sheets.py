@@ -356,17 +356,21 @@ def test_sheets_requires_enrollment(app, client):
     assert '/docket/join' in resp.headers['Location']
 
 
-def test_sheets_carries_no_forms(monkeypatch, client, member):
+def test_sheets_carries_no_mutation_forms(monkeypatch, client, member):
+    """The page is read-only: no POST forms, no mutation hooks, no CSRF.
+    The GET search form (role=search) is navigation, not mutation."""
     week = make_week(1)
     thu = make_game(week, kickoff=KICK_THU)
     at(monkeypatch, IN_WEEK1)
     _hold(member, week, thu)
     db.session.commit()
-    at(monkeypatch, '2026-09-05T17:00:00')      # closed
+    at(monkeypatch, '2026-09-06T18:00:00')      # closed (past Sun 12:00 PM CT)
     html = _page(client)
-    assert '<form' not in html
+    assert 'method="post"' not in html.lower()
     assert 'data-docket-action="' not in html
     assert 'csrf_token' not in html
+    # The find field is a GET form — navigation, never mutation
+    assert 'role="search"' in html
 
 
 def test_sheets_marks_you_once_and_lists_every_member(
