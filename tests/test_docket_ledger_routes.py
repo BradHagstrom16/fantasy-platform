@@ -168,9 +168,9 @@ def test_key_three_is_divided_by_ten_only_at_render(app, client):
     assert stored == 515 and isinstance(stored, int)
 
 
-def test_the_dropped_week_is_struck_in_place(app, client):
-    """The drop is the game's most confusing rule; the ledger states it
-    rather than silently subtracting."""
+def test_the_dropped_week_total_reflects_the_drop(app, client):
+    """The board shows points after the drop; the per-week struck line lives
+    on the member page now (§8.10), not the ledger board (Brad, 2026-09-09)."""
     w1, w2 = _week(1), _week(2)
     alice = _member('alice')
     _result(w1, alice, 2.0, 2)
@@ -179,34 +179,12 @@ def test_the_dropped_week_is_struck_in_place(app, client):
     _login(client, alice)
 
     html = client.get('/docket/ledger').data.decode()
-    assert 'is-dropped' in html
-    text = _text(html)
-    assert 'struck from the record' in text
     assert _standings_cells(html)[0][2] == '8.0'   # 10.0 less the dropped 2.0
-
-
-def test_the_drop_explains_itself_before_it_applies(app, client):
-    w1 = _week(1)
-    alice = _member('alice')
-    _result(w1, alice, 6.0, 6)
-    db.session.commit()
-    _login(client, alice)
-
-    text = _text(client.get('/docket/ledger').data.decode())
-    assert 'The drop begins once a second week is graded' in text
-
-
-def test_a_week_with_no_sheet_filed_states_its_charge(app, client):
-    """The late-joiner rule made visible: 0 points and the week's default
-    error, said out loud so it does not read as a bug."""
-    week = _week(1, default_error_tenths=180)
-    alice, ghost = _member('alice'), _member('ghost')
-    _result(week, alice, 6.0, 6)
-    db.session.commit()
-    _login(client, ghost)
-
-    text = _text(client.get('/docket/ledger').data.decode())
-    assert 'no sheet filed, charged 18.0' in text
+    # the per-week breakdown moved off the board to the member page: the
+    # struck-week ROW (is-dropped) and the weekly-entries section are gone.
+    # (The reader's own "You stand ..." sentence still names the drop.)
+    assert 'is-dropped' not in html
+    assert 'The weekly entries' not in html
 
 
 def test_current_user_row_is_tinted_not_striped(app, client):
@@ -400,7 +378,7 @@ def _roster(n):
 
 def _verdict_rows(html):
     start = html.find('class="docket-verdicts"')
-    end = html.find('class="docket-entries"')
+    end = html.find('</section>', start)
     assert start != -1 and end != -1 and start < end
     return re.findall(r'<li class="docket-verdict[^"]*">(.*?)</li>',
                       html[start:end], re.S)
@@ -442,9 +420,9 @@ def test_weekly_verdicts_name_each_weeks_top_sheet(app, client):
     assert second.startswith('W2') and 'bob' in second
     # The platform integration point: the avatar precedes the name.
     assert rows[0].find('docket-ledger-avatar') < rows[0].find('alice')
-    # The receipt in each drawer: one tag per winning week, on the week won.
-    tags = re.findall(r'<span class="docket-week-verdict">(.*?)</span>', html)
-    assert [t.strip() for t in tags] == ['$20', '$20']
+    # The per-week prize receipt (docket-week-verdict) rides the member page
+    # now, not the ledger board.
+    assert 'docket-week-verdict' not in html
 
 
 def test_a_level_week_splits_the_prize_out_loud(app, client):
@@ -461,8 +439,6 @@ def test_a_level_week_splits_the_prize_out_loud(app, client):
     # Both names, in display-name order, each behind its avatar.
     assert text.index('amy') < text.index(' and ') < text.index('zed')
     assert 'split $20' in text
-    tags = re.findall(r'<span class="docket-week-verdict">(.*?)</span>', html)
-    assert [t.strip() for t in tags] == ['split $20', 'split $20']
 
 
 def test_verdict_banner_carries_the_first_prize(app, client):
@@ -558,31 +534,43 @@ def test_ledger_lines_link_to_the_member_page(app, client):
     assert href in html
 
 
-def test_ledger_shows_the_live_current_week_board(app, client, monkeypatch):
-    """An open, ungraded week posts a marks-only board above the table; it
-    never shows points, since none are scored before the week grades."""
+def test_ledger_board_shows_this_week_and_opens_selections(
+        app, client, monkeypatch):
+    """The one leaderboard (Brad, 2026-09-09): a live 'this week' record
+    column (marks only, never a side) and a drawer that opens on the member's
+    current-week selections, sealed sides still stated in words. The
+    standalone live-board slab is gone."""
     graded = _week(1)                            # so the season body renders
     alice = _member('alice')
     _result(graded, alice, 9.0, 9)
     live = make_week(2)                          # ungraded, current
-    game = make_game(live, kickoff=datetime(2026, 9, 10, 0, 15),
-                     home='Utah Utes', away='Idaho Vandals')
-    game.home_score, game.away_score, game.is_final = 31, 17, True
+    kicked = make_game(live, kickoff=datetime(2026, 9, 10, 0, 15),
+                       home='Utah Utes', away='Idaho Vandals')
+    kicked.home_score, kicked.away_score, kicked.is_final = 31, 17, True
+    sealed = make_game(live, kickoff=datetime(2026, 9, 13, 0, 0),
+                       home='Georgia Bulldogs', away='LSU Tigers')
     db.session.add(DocketPick(
-        user_id=alice.id, week_id=live.id, game_id=game.id, market='spread',
+        user_id=alice.id, week_id=live.id, game_id=kicked.id, market='spread',
         side='home', slot=1, line_value=-3.5, book='draftkings'))
+    db.session.add(DocketPick(
+        user_id=alice.id, week_id=live.id, game_id=sealed.id, market='spread',
+        side='home', slot=2, line_value=-7.0, book='draftkings'))
     viewer = _member('viewer')
     db.session.commit()
     _login(client, viewer)
-    at(monkeypatch, '2026-09-10T12:00:00')       # in Week 2, after kickoff
+    at(monkeypatch, '2026-09-10T12:00:00')       # in Week 2, after kickoff 1
 
     html = client.get('/docket/ledger').data.decode()
-    assert 'docket-liveweek' in html
-    assert 'Week 2 so far' in html
-    board = html[html.index('docket-liveweek'):html.index('docket-ledger-key')]
-    assert 'Utah Utes' not in board              # a record, never a side
-    assert '1-0' in board                        # alice's marks so far
-    assert '9.0' not in board                    # no points figure on the board
+    assert 'docket-liveweek' not in html          # the slab is gone
+    assert 'docket-board' in html and 'This week' in html
+    assert '1-0' in html                          # alice's marks so far
+    # the drawer opens on the current selections: the revealed side shows,
+    # the sealed one is stated in words, never as a side
+    assert 'Utah Utes' in html
+    assert 'Georgia Bulldogs' not in html
+    assert 'sealed until kickoff' in html
+    # the board is the season standing too: points still ride the row
+    assert '9.0' in html
 
 
 def test_ledger_no_live_board_when_no_open_week(app, client):

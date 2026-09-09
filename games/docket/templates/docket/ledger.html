@@ -8,6 +8,39 @@
 {% macro purse_line() -%}
 <p class="docket-caption docket-purse-line">The purse: {% for line in purse.podium %}{{ line.label|lower }} ${{ '{:,}'.format(line.dollars) }}{{ ', ' if not loop.last else '' }}{% endfor %}; ${{ purse.weekly_prize }} to each week's top sheet. <a href="{{ url_for('docket.rules') }}#rules-season">How it's figured &rsaquo;</a></p>
 {%- endmacro %}
+{# A member's CURRENT-week selections, opened from their leaderboard line
+   (Brad, 2026-09-09). The same reveal rule and the same sheet-line primitive
+   All Sheets prints (7.13): a sealed side is stated in words, never shown. #}
+{% macro board_detail(m, board) -%}
+    {% if m and m.lines %}
+    <ol class="docket-sheet-lines">
+        {% for line in m.lines %}
+        <li class="docket-sheet-line{% if line.is_autopick %} is-autopick{% endif %}{% if line.is_reserve %} is-reserve{% endif %}">
+            <span class="docket-sheet-when">{{ line.kickoff|ct('%a %-I:%M %p') }}</span>
+            <span class="docket-sheet-pick">
+                {{ line.pick }}
+                {% if line.is_best %}<span class="docket-headliner-chip{% if line.is_auto_best %} is-auto{% endif %}"{% if line.is_auto_best %} title="Assigned when the docket closed"{% endif %}>x2{% if line.is_auto_best %}<span class="visually-hidden">, assigned</span>{% endif %}</span>{% endif %}
+                {% if line.is_reserve %}<span class="docket-slot-badge">Reserve</span>{% endif %}
+                {% if line.is_autopick %}<span class="docket-auto-tag" title="Filed when the docket closed">Auto</span>{% endif %}
+            </span>
+            <span class="docket-caption">{{ line.sport }} · {{ line.caption }}{% if line.final_score %} · Final {{ line.final_score }}{% endif %}</span>
+            <span class="docket-sheet-result{% if line.result %} is-{{ line.result }}{% endif %}">{{ result_words.get(line.result, '') }}</span>
+        </li>
+        {% endfor %}
+    </ol>
+    {% endif %}
+    {% if m and m.sealed_sentence %}
+    <p class="docket-sheet-sealed">{{ m.sealed_sentence }}</p>
+    {% elif not m or not m.lines %}
+    <p class="docket-sheet-sealed">No sheet filed for this week.</p>
+    {% endif %}
+    {% if m and board.number_revealed %}
+    <p class="docket-sheet-number">
+        {% if m.number %}Number {{ m.number }}{% else %}No number saved; the line stands in{% endif %}
+        {% if board.designated_caption %}<span class="docket-caption">· {{ board.designated_caption }}</span>{% endif %}
+    </p>
+    {% endif %}
+{%- endmacro %}
 <!--
 THESIS: the season as a clerk's account book, where the three keys are three
 separate accounts kept side by side and each line opens to show its own
@@ -46,46 +79,10 @@ finish review, the verdict, and DESIGN.md.
     {# Settle the Tab: enrolled + unpaid only (gate in the context processor). #}
     {% with eyebrow_class='docket-eyebrow' %}{% include '_settle_tab.html' %}{% endwith %}
 
-    {# The live current-week board (Brad, 2026-09-09): each member's record so
-       far this week, ranked by wins then fewest losses. Marks only, never
-       points (no points before the week grades, 7.13). It leads the page in
-       every state (it matters most the week nothing has graded yet) and
-       disappears once its week grades into the season table below. #}
-    {% if live %}
-    <section class="docket-liveweek" aria-labelledby="ledger-liveweek">
-        <h2 id="ledger-liveweek" class="docket-section-head docket-liveweek-head">
-            Week {{ live.week.week_number }} so far
-        </h2>
-        {% if live.board.any_revealed %}
-        <p class="docket-caption docket-liveweek-note">
-            {{ live.board.locked_cases }} of {{ live.board.total_cases }} cases locked.
-            {% if live.board.next_lock %}Next opens {{ live.board.next_lock|ct('%a %-I:%M %p CT') }}.{% endif %}
-            Records so far; points post with the week's grade.
-        </p>
-        <ol class="docket-liveweek-list">
-            {% for m in live.members %}
-            {% set is_you = current_user.is_authenticated and m.user_id == current_user.id %}
-            <li class="docket-liveweek-row{% if is_you %} is-you{% endif %}">
-                <span class="docket-liveweek-pos" aria-hidden="true">{{ loop.index }}</span>
-                <span class="docket-liveweek-name">
-                    <span class="docket-ledger-avatar" aria-hidden="true">{{ m.enrollment.user.get_avatar() }}</span>
-                    <a class="docket-ledger-namelink" href="{{ url_for('docket.member', enrollment_id=m.enrollment.id) }}">{{ m.enrollment.get_display_name() }}</a>
-                    {% if is_you %}<span class="docket-you-tag">You</span>{% endif %}
-                </span>
-                <span class="docket-liveweek-record">{{ m.summary }}</span>
-            </li>
-            {% endfor %}
-        </ol>
-        <p class="docket-caption docket-liveweek-back">
-            <a href="{{ url_for('docket.sheets', week=live.week.week_number) }}">Every sheet for Week {{ live.week.week_number }} &rsaquo;</a>
-        </p>
-        {% else %}
-        <p class="docket-caption docket-liveweek-note">
-            Week {{ live.week.week_number }} is open. Records post here as cases go final{% if live.board.first_kickoff %}; the first kicks off {{ live.board.first_kickoff|ct('%a %-I:%M %p CT') }}{% endif %}.
-        </p>
-        {% endif %}
-    </section>
-    {% endif %}
+    {# The live current-week board no longer sits in its own slab (Brad,
+       2026-09-09: "one leaderboard"). Each ranked line below carries a live
+       "this week" record and expands to that member's current selections;
+       see the leaderboard's own current-week head. #}
 
     {% if not ledger.rows %}
     {# No members at all: the docket has not been called yet. #}
@@ -203,9 +200,99 @@ finish review, the verdict, and DESIGN.md.
     <p class="docket-caption docket-ledger-sorted">Sorted by {{ sort_label }}, {{ 'ascending' if sort_dir == 'asc' else 'descending' }}; the rank column keeps the official order. <a href="{{ url_for('docket.ledger', q=find_query or None) }}">Official order &rsaquo;</a></p>
     {% endif %}
 
-    {# Below md the three keys do not fit a phone without a sideways scroll
-       that hides two of them, so the same rows render as ruled cards (the
-       platform leaderboard precedent). One source, two compositions. #}
+    {# THE ONE LEADERBOARD (Brad, 2026-09-09): the ranked season standing, a
+       live "this week" record column, and a drawer that opens on that member's
+       current selections. The live board no longer sits in its own slab and
+       the weekly-entries list is gone; a member's past weeks live on their
+       season page (§8.10), linked from inside each drawer. With no open week
+       the board is the season standing alone. #}
+    {% if live %}
+    <p class="docket-caption docket-board-note">
+        <strong>This week</strong> is each line's Week {{ live.week.week_number }} record so far
+        {%- if live.board.locked_cases %} ({{ live.board.locked_cases }} of {{ live.board.total_cases }} cases locked){% endif %};
+        points post with the grade. Open a line for its selections.
+    </p>
+
+    {# Desktop: a ruled board, not a <table> — a native <details> cannot expand
+       a <tr> without JS and the room's no-JS spine (7.11) stands. The heads
+       and every summary share one grid so the columns line up. #}
+    <div class="docket-board d-none d-md-block">
+        <div class="docket-board-head">
+            <span class="dbc-rank">#</span>
+            <span class="dbc-player"{% if sort_links.name.aria %} aria-sort="{{ sort_links.name.aria }}"{% endif %}>
+                <a class="docket-ledger-sort{% if sort_links.name.active %} is-active is-{{ sort_dir }}{% endif %}" href="{{ sort_links.name.href }}"{% if sort_links.name.active %} aria-label="Player, sorted {{ sort_links.name.aria }}"{% endif %}>Player</a>
+            </span>
+            <span class="dbc-week">This week</span>
+            <span class="dbc-fig"{% if sort_links.points.aria %} aria-sort="{{ sort_links.points.aria }}"{% endif %}>
+                <a class="docket-ledger-sort{% if sort_links.points.active %} is-active is-{{ sort_dir }}{% endif %}" href="{{ sort_links.points.href }}"{% if sort_links.points.active %} aria-label="Points, sorted {{ sort_links.points.aria }}"{% endif %}>Points</a>
+            </span>
+            <span class="dbc-fig"{% if sort_links.wins.aria %} aria-sort="{{ sort_links.wins.aria }}"{% endif %}>
+                <a class="docket-ledger-sort{% if sort_links.wins.active %} is-active is-{{ sort_dir }}{% endif %}" href="{{ sort_links.wins.href }}"{% if sort_links.wins.active %} aria-label="Wins, sorted {{ sort_links.wins.aria }}"{% endif %}>Wins</a>
+            </span>
+            <span class="dbc-fig"{% if sort_links.error.aria %} aria-sort="{{ sort_links.error.aria }}"{% endif %}>
+                <a class="docket-ledger-sort{% if sort_links.error.active %} is-active is-{{ sort_dir }}{% endif %}" href="{{ sort_links.error.href }}"{% if sort_links.error.active %} aria-label="Off by, sorted {{ sort_links.error.aria }}"{% endif %}>Off by</a>
+            </span>
+            <span class="dbc-caret" aria-hidden="true"></span>
+        </div>
+        {% for row in rows %}
+        {% set is_you = current_user.is_authenticated and row.enrollment.user_id == current_user.id %}
+        {% set m = current_by_user.get(row.enrollment.user_id) %}
+        <details class="docket-board-row{% if is_you %} is-you{% endif %}">
+            <summary class="docket-board-summary">
+                <span class="dbc-rank">{{ row.standing.rank }}{% if row.standing.rank in shared_ranks %}<span class="docket-ledger-tied">tied</span>{% endif %}</span>
+                <span class="dbc-player">
+                    <span class="docket-ledger-avatar" aria-hidden="true">{{ row.enrollment.user.get_avatar() }}</span>
+                    <span class="docket-entry-name">{{ row.enrollment.get_display_name() }}</span>
+                    {% if is_you %}<span class="docket-you-tag">You</span>{% endif %}
+                </span>
+                <span class="dbc-week">{% if m %}{{ m.summary }}{% else %}&mdash;{% endif %}</span>
+                <span class="dbc-fig">{{ '%.1f'|format(row.standing.total_points) }}</span>
+                <span class="dbc-fig">{{ row.standing.wins }}</span>
+                <span class="dbc-fig">{{ '%.1f'|format(row.standing.error_tenths / 10) }}</span>
+                <span class="dbc-caret"><span class="docket-entry-caret" aria-hidden="true"></span></span>
+            </summary>
+            <div class="docket-board-detail">
+                {{ board_detail(m, live.board) }}
+                <p class="docket-caption docket-board-more"><a href="{{ url_for('docket.member', enrollment_id=row.enrollment.id) }}">{{ row.enrollment.get_display_name() }}'s full season &rsaquo;</a></p>
+            </div>
+        </details>
+        {% endfor %}
+    </div>
+
+    {# Mobile: the same lines as expandable ruled cards (three keys don't fit
+       375px as columns; the platform leaderboard precedent). #}
+    <ul class="docket-board docket-board--cards d-md-none">
+        {% for row in rows %}
+        {% set is_you = current_user.is_authenticated and row.enrollment.user_id == current_user.id %}
+        {% set m = current_by_user.get(row.enrollment.user_id) %}
+        <li>
+        <details class="docket-board-row{% if is_you %} is-you{% endif %}">
+            <summary class="docket-board-card-summary">
+                <span class="docket-card-rank">{{ row.standing.rank }}{% if row.standing.rank in shared_ranks %}<span class="docket-ledger-tied">tied</span>{% endif %}</span>
+                <span class="docket-card-name">
+                    <span class="docket-ledger-avatar" aria-hidden="true">{{ row.enrollment.user.get_avatar() }}</span>
+                    {{ row.enrollment.get_display_name() }}
+                    {% if is_you %}<span class="docket-you-tag">You</span>{% endif %}
+                </span>
+                {% if m %}<span class="docket-board-card-week">Wk {{ live.week.week_number }} {{ m.summary }}</span>{% endif %}
+                <span class="docket-card-keys">
+                    <span><b>{{ '%.1f'|format(row.standing.total_points) }}</b> pts</span>
+                    <span><b>{{ row.standing.wins }}</b> W</span>
+                    <span>off by <b>{{ '%.1f'|format(row.standing.error_tenths / 10) }}</b></span>
+                </span>
+                <span class="docket-entry-caret docket-board-card-caret" aria-hidden="true"></span>
+            </summary>
+            <div class="docket-board-detail">
+                {{ board_detail(m, live.board) }}
+                <p class="docket-caption docket-board-more"><a href="{{ url_for('docket.member', enrollment_id=row.enrollment.id) }}">{{ row.enrollment.get_display_name() }}'s full season &rsaquo;</a></p>
+            </div>
+        </details>
+        </li>
+        {% endfor %}
+    </ul>
+
+    {% else %}
+    {# No open week: the season standing alone, each name a link to its season. #}
     <ul class="docket-cards d-md-none">
         {% for row in rows %}
         {% set is_you = current_user.is_authenticated and row.enrollment.user_id == current_user.id %}
@@ -278,6 +365,7 @@ finish review, the verdict, and DESIGN.md.
             </tbody>
         </table>
     </div>
+    {% endif %}
     {{ purse_line() }}
 
     {% if ledger.verdicts %}
@@ -309,89 +397,6 @@ finish review, the verdict, and DESIGN.md.
         </ol>
     </section>
     {% endif %}
-
-    <section class="docket-entries" aria-labelledby="ledger-entries">
-        <h2 id="ledger-entries" class="docket-section-head">The weekly entries</h2>
-        <p class="docket-entries-note">
-            Open a line to read the weeks behind it.
-            {% if ledger.drop_active %}
-            One worst week is struck from each player's points. Its wins and its
-            error stay on the account.
-            {% else %}
-            The drop begins once a second week is graded. Until then every week
-            counts in full.
-            {% endif %}
-        </p>
-
-        {% for row in rows %}
-        <details class="docket-entry{% if current_user.is_authenticated and row.enrollment.user_id == current_user.id %} is-you{% endif %}">
-            {# The right-hand figure states the week count, not the season
-               total: the total is already the table above, and repeating it
-               made this read as a second leaderboard rather than a drawer. #}
-            <summary class="docket-entry-summary">
-                <span class="docket-entry-rank">{{ row.standing.rank }}</span>
-                <span class="docket-ledger-avatar" aria-hidden="true">{{ row.enrollment.user.get_avatar() }}</span>
-                <span class="docket-entry-name">{{ row.enrollment.get_display_name() }}</span>
-                <span class="docket-entry-count">
-                    {{ row.weeks|length }} {% if row.weeks|length == 1 %}week{% else %}weeks{% endif %}
-                </span>
-                <span class="docket-entry-caret" aria-hidden="true"></span>
-            </summary>
-            <ol class="docket-weeks">
-                {% for week in row.weeks %}
-                <li class="docket-week{% if week.week_number == row.dropped_week %} is-dropped{% endif %}{% if not week.submitted %} is-absent{% endif %}">
-                    <span class="docket-week-num">W{{ week.week_number }}</span>
-                    <span class="docket-week-points">
-                        {% if week.week_number == row.dropped_week %}
-                        <s>{{ '%.1f'|format(week.points) }}</s>
-                        {% else %}
-                        {{ '%.1f'|format(week.points) }}
-                        {% endif %}
-                    </span>
-                    <span class="docket-week-note">
-                        {% if week.week_number == row.dropped_week %}
-                        struck from the record
-                        {% elif not week.submitted %}
-                        no sheet filed, charged {{ '%.1f'|format(week.error_tenths / 10) }}
-                        {% else %}
-                        {{ week.wins }}
-                        {%- if week.wins == 1 %} win{% else %} wins{% endif %},
-                        off by {{ '%.1f'|format(week.error_tenths / 10) }}
-                        {% endif %}
-                    </span>
-                    {% if week.week_number in row.prize_weeks %}
-                    <span class="docket-week-verdict">{% if week.week_number in split_weeks %}split {% endif %}${{ purse.weekly_prize }}</span>
-                    {% endif %}
-                    {# The sheet behind the week (Brad, 2026-09-07): a second
-                       native drawer, the same lines All Sheets prints (7.13),
-                       graded weeks only so nothing sealed can appear here. #}
-                    {% set lines = history.get(row.enrollment.user_id, {}).get(week.week_number) %}
-                    {% if lines %}
-                    <details class="docket-week-sheet">
-                        <summary class="docket-week-sheet-summary">The sheet<span class="docket-entry-caret" aria-hidden="true"></span></summary>
-                        <ol class="docket-sheet-lines">
-                            {% for line in lines %}
-                            <li class="docket-sheet-line{% if line.is_autopick %} is-autopick{% endif %}{% if line.is_reserve %} is-reserve{% endif %}">
-                                <span class="docket-sheet-when">{{ line.kickoff|ct('%a %-I:%M %p') }}</span>
-                                <span class="docket-sheet-pick">
-                                    {{ line.pick }}
-                                    {% if line.is_best %}<span class="docket-headliner-chip{% if line.is_auto_best %} is-auto{% endif %}"{% if line.is_auto_best %} title="Assigned when the docket closed"{% endif %}>x2{% if line.is_auto_best %}<span class="visually-hidden">, assigned</span>{% endif %}</span>{% endif %}
-                                    {% if line.is_reserve %}<span class="docket-slot-badge">Reserve</span>{% endif %}
-                                    {% if line.is_autopick %}<span class="docket-auto-tag" title="Filed when the docket closed">Auto</span>{% endif %}
-                                </span>
-                                <span class="docket-caption">{{ line.sport }} · {{ line.caption }}{% if line.final_score %} · Final {{ line.final_score }}{% endif %}</span>
-                                <span class="docket-sheet-result{% if line.result %} is-{{ line.result }}{% endif %}">{{ result_words.get(line.result, '') }}</span>
-                            </li>
-                            {% endfor %}
-                        </ol>
-                    </details>
-                    {% endif %}
-                </li>
-                {% endfor %}
-            </ol>
-        </details>
-        {% endfor %}
-    </section>
 
     {% endif %}
 </div>

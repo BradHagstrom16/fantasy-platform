@@ -75,8 +75,42 @@ def test_member_page_states_the_record_and_the_drop(app, client):
     assert '9.0 points' in html
     assert '13 wins' in html
     assert 'struck from the record' in html
+    # the per-week prize receipt rides the member page now (moved off the
+    # ledger board, 2026-09-09): alice took both weeks she was alone in.
+    assert 'docket-week-verdict' in html
     # the back way out
     assert '/docket/ledger"' in html
+
+
+def test_member_page_states_a_no_sheet_charge(app, client):
+    """The late-joiner rule made visible on the member page (moved off the
+    ledger board, 2026-09-09): 0 points and the week's default error, said
+    out loud so it does not read as a bug."""
+    week = _week(1, default_error_tenths=180)
+    ghost = _member('ghost')
+    _result(week, _member('bob'), 6.0, 6)         # someone graded the week
+    viewer = _member('viewer')
+    db.session.commit()
+    login(client, viewer)
+
+    enrollment = get_enrollment(ghost.id)
+    html = client.get(f'/docket/ledger/{enrollment.id}').data.decode()
+    assert 'no sheet filed, charged 18.0' in html
+
+
+def test_member_page_explains_the_drop_before_it_applies(app, client):
+    """The drop explanation moved off the ledger board onto the member page's
+    standing sentence (Brad, 2026-09-09)."""
+    week = _week(1)
+    alice = _member('alice')
+    _result(week, alice, 6.0, 6)
+    viewer = _member('viewer')
+    db.session.commit()
+    login(client, viewer)
+
+    enrollment = get_enrollment(alice.id)
+    html = client.get(f'/docket/ledger/{enrollment.id}').data.decode()
+    assert 'the drop begins once a second week grades' in html
 
 
 def test_member_page_opens_onto_the_graded_sheet(app, client):
