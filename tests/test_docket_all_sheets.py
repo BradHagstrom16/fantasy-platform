@@ -548,7 +548,10 @@ def test_sheets_unposted_week_falls_back_to_this_week(
     assert 'The Week 1 Sheets' in html            # not a 404
 
 
-def test_sheets_shows_a_finished_weeks_standings(monkeypatch, client, member):
+def test_sheets_finished_week_ranks_the_drawers(monkeypatch, client, member):
+    """Once a week grades, its standings ARE the sheet list (Brad,
+    2026-09-09): the separate standings table is gone and each sheet drawer
+    carries its rank and this-week points, ranked by them."""
     week = _week_with_game(1)
     week.default_error_tenths = 0
     alice = _member('alice', display_name='Alice')
@@ -557,12 +560,16 @@ def test_sheets_shows_a_finished_weeks_standings(monkeypatch, client, member):
     db.session.commit()
     at(monkeypatch, WEEK2_CLOCK)                   # Week 1 is finished
     html = client.get('/docket/sheets?week=1').data.decode()
-    assert 'Week 1 standings' in html
-    assert 'docket-week-standings' in html
-    # each standings line opens that member's season page
-    assert '/docket/ledger/' in html
-    section = html[html.index('docket-week-standings'):html.index('docket-sheets"')]
-    assert section.index('Alice') < section.index('member')   # 9.0 before 7.0
+    # the separate standings table is gone
+    assert 'docket-week-standings' not in html
+    assert 'Week 1 standings' not in html
+    # each drawer is a ranked row: rank badge + this-week points
+    assert 'docket-sheet-rank' in html
+    assert 'docket-sheet-points' in html
+    assert '9.0 pts' in html
+    # ranked by points: Alice (9.0, rank 1) leads the viewer (7.0, rank 2),
+    # whose own drawer carries the You tag
+    assert html.index('Alice') < html.index('You')
 
 
 def _result(week, user, points, wins, error_tenths=0):
@@ -572,12 +579,16 @@ def _result(week, user, points, wins, error_tenths=0):
         graded_at=datetime(2026, 9, 6, 4, 0)))
 
 
-def test_sheets_open_week_shows_no_standings(monkeypatch, client, member):
+def test_sheets_open_week_leaves_the_drawers_unranked(monkeypatch, client, member):
+    """An active week is the good setup unchanged: selections only, no rank,
+    no points (no points before the week grades, 7.13)."""
     _week_with_game(1)
     db.session.commit()
     at(monkeypatch, IN_WEEK1)                       # not graded
     html = _page(client)
     assert 'docket-week-standings' not in html
+    assert 'docket-sheet-rank' not in html
+    assert 'docket-sheet-points' not in html
 
 
 # ── collapsible drawers, find, sort (Brad, 2026-09-08) ─────────────────────

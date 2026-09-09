@@ -7,7 +7,6 @@ season pass keeps its D14-eng invariant (it reads `docket_week` and
 `docket_week_result` and nothing else); the lines use All Sheets' own
 wording helpers so the two surfaces never disagree about a pick.
 """
-import re
 from datetime import datetime
 
 import pytest
@@ -17,6 +16,7 @@ from extensions import db
 from games.docket.models import DocketPick, DocketWeekResult
 from games.docket.services.history import pick_history
 from tests._docket_fixtures import (
+    at,
     login,
     make_enrollment,
     make_game,
@@ -131,29 +131,6 @@ def test_pick_history_ignores_weeks_that_are_not_graded(app):
     assert set(history[user.id]) == {1}
 
 
-def test_ledger_drawer_opens_onto_the_sheet(app, client):
-    user = make_user('player')
-    make_enrollment(user, display_name='Steady Eddie')
-    week = _graded_week(1)
-    _full_sheet(user, week)
-    _result(week, user, 7.0, 6)
-    db.session.commit()
-    login(client, user)
-
-    html = client.get('/docket/ledger').get_data(as_text=True)
-
-    assert html.count('<details class="docket-week-sheet"') == 1
-    lines = re.findall(r'<li class="docket-sheet-line[^"]*"', html)
-    assert len(lines) == 9
-    assert 'is-reserve' in lines[-1]
-    assert 'Home 0 -3.5' in html and 'Away 0 at Home 0' in html
-    assert 'Final 24-20' in html
-    for word in ('Win', 'Loss', 'Mistrial'):
-        assert word in html
-    assert 'docket-headliner-chip' in html and 'docket-auto-tag' in html
-    assert 'Points post to the ledger' not in html   # graded: no sealed copy
-
-
 def _enroll_with_sheets(weeks, names):
     """Enrol each name with a full graded sheet on every week."""
     users = []
@@ -182,10 +159,10 @@ def _ledger_statement_count(client):
     return len(statements)
 
 
-def test_ledger_query_count_stays_flat_with_the_sheets(app, client):
-    """Three more reads for the sheets (weeks, picks with their games) —
-    never a query per member or per week: the count for two members is
-    the count for ten, on the same two graded weeks."""
+def test_ledger_query_count_stays_flat(app, client):
+    """The season board never reads per member or per week: the count for two
+    members is the count for ten, on the same two graded weeks (no open week,
+    so no current-week read)."""
     weeks = (_graded_week(1), _graded_week(2))
     users = _enroll_with_sheets(weeks, ['p00', 'p01'])
     login(client, users[0])
@@ -198,6 +175,35 @@ def test_ledger_query_count_stays_flat_with_the_sheets(app, client):
         f'{two_members} queries for 2 members, {ten_members} for 10 — '
         'a per-member read crept into the ledger')
     assert two_members < 18, f'{two_members} queries for 2 members x 2 weeks'
+
+
+def test_ledger_query_count_flat_with_a_live_week(app, client, monkeypatch):
+    """The current-week column and expand open from one all_sheets read
+    (flat, whatever the roster); a per-member current-week read must never
+    creep in (Brad, 2026-09-09)."""
+    graded = _graded_week(1)
+    live = make_week(2)                          # ungraded, current
+    game = make_game(live, kickoff=datetime(2026, 9, 10, 0, 15))
+    _final(game, 31, 17)
+    at(monkeypatch, '2026-09-10T12:00:00')       # in Week 2, after kickoff
+
+    def add_live_picks(users):
+        for slot_user in users:
+            _pick(slot_user, live, game, 1)
+        db.session.commit()
+
+    two = _enroll_with_sheets([graded], ['p00', 'p01'])
+    add_live_picks(two)
+    login(client, two[0])
+    two_members = _ledger_statement_count(client)
+
+    ten = _enroll_with_sheets([graded], [f'p{i:02d}' for i in range(2, 10)])
+    add_live_picks(ten)
+    ten_members = _ledger_statement_count(client)
+
+    assert ten_members == two_members, (
+        f'{two_members} queries for 2 members, {ten_members} for 10 with a '
+        'live week — a per-member current-week read crept in')
 
 
 @pytest.mark.parametrize('path', ['/docket/ledger'])

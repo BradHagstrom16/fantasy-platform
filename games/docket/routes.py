@@ -680,12 +680,23 @@ def sheets():
     find_query = _find_query(request.args.get('q'))
     find_total = None
     sort_links = {}
+    # Once a week grades, its standings ARE the sheet list (Brad, 2026-09-09):
+    # the separate standings table is gone and each sheet drawer carries its
+    # rank and this-week points. rank_by_user joins the graded standing onto
+    # the drawer; the default order is the rank, and Name/Record still re-sort.
+    rank_by_user = ({r.enrollment.user_id: r for r in standings.rows}
+                    if standings is not None else {})
     your_member = None
     if members:
         your_member = next(
             (m for m in members if m.user_id == current_user.id), None)
         members, sort_key, sort_dir = _sheets_order(
             members, request.args.get('sort'), request.args.get('dir'))
+        if standings is not None and sort_key is None:
+            order = {r.enrollment.user_id: i
+                     for i, r in enumerate(standings.rows)}
+            members = sorted(members,
+                             key=lambda m: order.get(m.user_id, len(order)))
         tokens = find_query.casefold().split()
         if tokens:
             matches = [m for m in members if all(
@@ -716,6 +727,7 @@ def sheets():
         sort_dir=sort_dir,
         sort_label=sort_label,
         sort_links=sort_links,
+        rank_by_user=rank_by_user,
     )
 
 
@@ -829,10 +841,16 @@ def ledger():
         rows = matches if your_row is None else (
             [your_row] + [row for row in matches if row is not your_row])
 
-    history = {}
-    if ledger.is_graded:
-        history = pick_history(
-            ledger.week_numbers, [row.enrollment.user_id for row in rows])
+    # The one leaderboard (Brad, 2026-09-09): each ranked line expands to that
+    # member's CURRENT-week selections, and the row carries a live "this week"
+    # record. Both come from one all_sheets(current week) read, keyed by user
+    # id and joined onto the season rows — the reveal rule and the record are
+    # the sheet's own (7.13), so nothing sealed can appear and the record is
+    # marks only. The past-week drill-down that used to hang here now lives on
+    # the member page alone (§8.10). None off-season / once the week grades.
+    live = _live_week_board()
+    current_by_user = ({m.user_id: m for m in live['board'].members}
+                       if live else {})
     return render_template(
         'docket/ledger.html',
         ledger=ledger,
@@ -852,9 +870,9 @@ def ledger():
         sort_dir=sort_dir,
         sort_label=LEDGER_SORTS[sort_key][0] if sort_key else None,
         sort_links=_ledger_sort_links(sort_key, sort_dir, find_query),
-        history=history,
         result_words=RESULT_WORDS,
-        live=_live_week_board(),
+        live=live,
+        current_by_user=current_by_user,
     )
 
 

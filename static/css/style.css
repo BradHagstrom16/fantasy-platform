@@ -14603,50 +14603,132 @@ body.game-docket .form-select:focus {
   border-color: transparent;
 }
 
-/* --- The live current-week board on the ledger (2026-09-09): each member's
-   record so far, ranked by wins then fewest losses. Marks only, on paper,
-   never a dark band. --- */
-.docket-liveweek { margin: 1.5rem 0 .5rem; }
-.docket-liveweek-head { margin-top: 0; }
-.docket-liveweek-note { max-width: 66ch; margin: 0 0 .6rem; }
-.docket-liveweek-list { list-style: none; margin: 0 0 .35rem; padding: 0; }
-.docket-liveweek-row {
-  display: flex;
+/* The live current-week board folded into the one leaderboard (§8.3), so its
+   standalone .docket-liveweek slab is retired; the finished-week standings on
+   All Sheets merged into the ranked drawers, so .docket-week-standings is gone
+   too. The "no sheet filed" note (below) rides the ranked drawer summary. */
+.docket-week-standings-absent { margin-left: .4rem; font-style: italic; }
+
+/* --- THE ONE LEADERBOARD (Brad, 2026-09-09) --------------------------------
+   The ranked season standing, a live "this week" column, and a drawer that
+   opens on each member's current selections. Not a <table>: a native
+   <details> can't expand a <tr> without JS and the no-JS spine (7.11) stands,
+   so the head and every summary share one grid to line the columns up. The
+   drawer body reuses the All Sheets sheet-line primitive unchanged. */
+.docket-board { margin: 0 0 1rem; }
+.docket-board-note { margin: 0 0 .6rem; max-width: 66ch; }
+.docket-board-note strong { color: var(--game-accent); }
+.docket-board--cards { list-style: none; padding: 0; }
+
+.docket-board-head,
+.docket-board-summary {
+  display: grid;
+  grid-template-columns: 2.4rem minmax(0, 1fr) 7.5rem 4.6rem 3.6rem 4.6rem 1.6rem;
   align-items: center;
-  gap: .5rem;
-  min-height: 40px;
-  padding: .3rem .25rem;
-  border-bottom: 1px solid var(--docket-rule);
+  column-gap: .6rem;
 }
-.docket-liveweek-row.is-you { background: rgba(var(--game-accent-rgb), .09); }
-.docket-liveweek-pos {
+.docket-board-head {
+  padding: .2rem .5rem .3rem .3rem;
+  border-bottom: 2px solid var(--game-primary);
   font-family: 'Teko', sans-serif;
   font-weight: 600;
-  font-size: 1.05rem;
+  font-size: .95rem;
+  letter-spacing: .04em;
+  text-transform: uppercase;
   color: var(--text-secondary);
-  min-width: 1.6rem;
 }
-.docket-liveweek-name {
-  flex: 1 1 auto;
-  min-width: 0;
-  font-family: 'Newsreader', Georgia, serif;
+.docket-board-head .dbc-fig { text-align: right; }
+.docket-board-head .docket-ledger-sort { color: inherit; }
+
+.docket-board-row { border-bottom: 1px solid var(--docket-rule); }
+.docket-board-row.is-you { background: rgba(var(--game-accent-rgb), .09); }
+.docket-board-row.is-you .docket-entry-name { color: var(--game-primary); }
+.docket-board-summary {
+  min-height: 44px;
+  padding: .45rem .5rem .45rem .3rem;
+  cursor: pointer;
+  list-style: none;
+}
+.docket-board-summary::-webkit-details-marker { display: none; }
+.docket-board-summary:hover { background: var(--bg-muted); }
+.docket-board-summary:focus-visible {
+  outline: 2px solid var(--game-accent);
+  outline-offset: -2px;
+}
+.docket-board-row[open] > .docket-board-summary { background: rgba(var(--game-accent-rgb), .05); }
+.docket-board-row[open] > .docket-board-summary .docket-entry-caret,
+.docket-board-row[open] > .docket-board-card-summary .docket-entry-caret {
+  transform: rotate(180deg);
+}
+.dbc-rank {
+  font-family: 'Teko', sans-serif;
   font-weight: 600;
+  font-size: 1.1rem;
+  color: var(--game-primary);
+  font-variant-numeric: tabular-nums;
 }
-.docket-liveweek-record {
+.dbc-player { display: flex; align-items: center; gap: .45rem; min-width: 0; }
+.dbc-player .docket-entry-name { flex: 0 1 auto; min-width: 0; }
+.dbc-week {
   font-family: 'Teko', sans-serif;
   font-weight: 500;
-  font-size: 1rem;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: .03em;
+  font-size: .98rem;
+  letter-spacing: .02em;
   color: var(--text-secondary);
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-variant-numeric: tabular-nums;
 }
-.docket-liveweek-back { margin: .1rem 0 0; }
+.dbc-fig {
+  font-family: 'Teko', sans-serif;
+  font-weight: 500;
+  font-size: 1.1rem;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  color: var(--text-primary);
+}
+.dbc-caret { display: flex; justify-content: flex-end; }
 
-/* --- A finished week's standings on All Sheets (2026-09-09): reuses the
-   ledger table and card compositions on the same three keys. --- */
-.docket-week-standings { margin-bottom: 1.5rem; }
-.docket-week-standings-absent { margin-left: .4rem; font-style: italic; }
+.docket-board-detail { padding: .1rem 0 .85rem 3rem; }
+.docket-board-detail .docket-sheet-lines { padding-left: 0; }
+.docket-board-more { margin: .45rem 0 0; }
+.docket-board-more a { color: var(--game-primary); text-decoration: none; }
+.docket-board-more a:hover,
+.docket-board-more a:focus-visible { color: var(--game-accent); text-decoration: underline; }
+
+/* Mobile: the same lines as expandable ruled cards (the platform precedent). */
+.docket-board-card-summary {
+  display: grid;
+  grid-template-columns: 2.2rem 1fr 1.2rem;
+  grid-template-areas: 'rank name caret' '. week caret' '. keys caret';
+  gap: .12rem .5rem;
+  align-items: center;
+  padding: .6rem .25rem;
+  min-height: 44px;
+  cursor: pointer;
+  list-style: none;
+}
+.docket-board-card-summary::-webkit-details-marker { display: none; }
+.docket-board-card-summary:hover { background: var(--bg-muted); }
+.docket-board-card-summary:focus-visible {
+  outline: 2px solid var(--game-accent);
+  outline-offset: -2px;
+}
+.docket-board-card-summary .docket-card-rank { grid-area: rank; }
+.docket-board-card-summary .docket-card-name { grid-area: name; }
+.docket-board-card-week {
+  grid-area: week;
+  font-family: 'Teko', sans-serif;
+  font-weight: 500;
+  font-size: .9rem;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--game-accent);
+}
+.docket-board-card-summary .docket-card-keys { grid-area: keys; }
+.docket-board-card-caret { grid-area: caret; align-self: center; margin-left: 0; }
+.docket-board--cards .docket-board-detail { padding: .1rem 0 .85rem .25rem; }
 
 /* --- A member's season page (2026-09-09): the ledger's own week strip and
    sheet lines laid open, reached from a ledger line. --- */
@@ -14731,6 +14813,27 @@ body.game-docket .back-link:focus-visible {
   padding: .5rem .25rem;
   cursor: pointer;
   list-style: none;
+}
+/* A graded week's drawer is a ranked row: rank leads, this-week points trail
+   (the standings folded into the sheet, Brad 2026-09-09). */
+.docket-sheet-rank {
+  flex: 0 0 auto;
+  min-width: 1.7rem;
+  font-family: 'Teko', sans-serif;
+  font-weight: 600;
+  font-size: 1.15rem;
+  color: var(--game-primary);
+  font-variant-numeric: tabular-nums;
+}
+.docket-sheet-points {
+  flex: 0 0 auto;
+  font-family: 'Teko', sans-serif;
+  font-weight: 500;
+  font-size: 1rem;
+  letter-spacing: .02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+  white-space: nowrap;
 }
 .docket-sheet-head::-webkit-details-marker { display: none; }
 .docket-sheet-head:hover { background: var(--bg-muted); }
