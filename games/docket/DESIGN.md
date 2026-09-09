@@ -683,10 +683,23 @@ ledger's is the ranked table, and the weekly entries are its drawer.
 
 Extends the platform `.table` (which already carries the Teko head treatment) rather than
 re-deriving it the way `.docket-desk-table` did; the overrides are only the `--docket-rule`
-ruling and the figures. Three ranking keys, three columns, each head carrying a
-`.docket-ledger-keytag` ("Key 1/2/3") so the ordering is legible without reading the rules
-page. Figures are Teko 500 with `tabular-nums`, right-aligned, so the column reads as an
-account rather than a scoreboard.
+ruling and the figures. Three ranking keys, three columns: **Points · Wins · Off by**.
+Figures are Teko 500 with `tabular-nums`, right-aligned, so the column reads as an account
+rather than a scoreboard.
+
+**The ranking is taught in words, not in head tags (clarify pass 2026-09-09).** The heads
+carried a `.docket-ledger-keytag` ("Key 1/2/3") that read as jargon and was the reader's
+reported confusion ("how do two level lines differ on Off by?"). The tags are gone; a single
+`.docket-ledger-key` line under the standing sentence states the order and answers the
+question where the reader is: "Lines rank by points, then wins, then off by. Off by is the
+season-long gap between a player's weekly tiebreaker guesses and the real combined scores;
+level on points and wins, the smaller off by ranks ahead." The rules page keeps the fuller
+"Key 1/2/3" statement; the ledger no longer sends the reader there to parse its own columns.
+
+**The player name is a link** to that member's season page (§8.10): a `.docket-ledger-namelink`
+in the cell (oxblood at rest, garnet on hover/focus, the room's garnet focus ring per §7.3);
+on the phone cards (§8.5) the whole card is the anchor (`.docket-card-link`, 44px, garnet
+focus). The avatar stays `aria-hidden`, so the link's accessible name is the display name.
 
 **Precision is uniform.** Points render to one decimal everywhere (`13.0`, not `13`). A
 ruled account column with ragged precision stops scanning as a column, which is the whole
@@ -734,6 +747,10 @@ mechanism.
   never through the season pass, which keeps its D14-eng read), so nothing sealed can appear
   here and a pick never reads differently on the two surfaces. Locked by
   `tests/test_docket_ledger_history.py`.
+- **The drawer and the member page coexist** (Brad, 2026-09-09): the in-place drawer stays for
+  the quick peek without leaving the ledger; the member page (§8.10) is the same record laid
+  open on its own page for reading a season end to end. Two purposes, not a duplicate. The row
+  name links to the page; the caret opens the drawer.
 
 ### 8.4 The verdict — `.docket-verdict-banner`
 
@@ -844,6 +861,55 @@ are plain GETs on `/docket/ledger`; the room's no-JS spine (§7.11) holds.
   (the form carries the sort; the heads carry the query).
 
 Locked by `tests/test_docket_ledger_find_sort.py`.
+
+### 8.10 The member page — `.docket-member-page` (`/docket/ledger/<enrollment_id>`, 2026-09-09)
+
+Brad's ask: a line on the ledger opens onto that member's whole season on its own page, the
+World Cup rosters→player-detail pattern (a season-scoped `first_or_404` on `DocketEnrollment`;
+the path id is the enrollment id, never a rank or a user id). It does not replace the §8.3
+drawer (that stays for the in-place peek); it is the same record laid open for reading end to
+end, so the reader is not expanding a drawer inside a drawer to read a season.
+
+- **Hero:** the platform `.page-hero docket-hero`, the eyebrow stating rank ("Leading the
+  field" / "Rank N of M"), the name with the avatar, and the three season totals in one
+  Newsreader line (points after the drop, wins, off by, across N weeks). Before any week
+  grades, it says so plainly and the body is the "Nothing graded yet" empty card.
+- **The standing sentence** (`.docket-your-standing`, reused): where the line sits, the gap to
+  the leader and to the next line, and which week the drop forgave. Same voice as the ledger's
+  own "You stand…" line.
+- **The weekly record** reuses §8.3's week strip and sheet lines verbatim (`.docket-week`,
+  `.docket-week-sheet`, `.docket-sheet-line`), read by the same `pick_history` (graded weeks
+  only, nothing sealed). Each week links to that week's All Sheets (§8.11) via
+  `.docket-member-seelink`. No new primitive; the page is a composition of the ledger's own.
+- Back to the ledger by the platform `.back-link`. Locked by `tests/test_docket_member_detail.py`.
+
+### 8.11 All Sheets, by week — week nav, finished-week standings, the live board (2026-09-09)
+
+Brad's ask: step back to a finished week to see how it went (standings + who picked who), and
+watch the current week's record build. Three additions, all on the room's no-JS spine.
+
+- **Week navigation — `.docket-week-nav`.** All Sheets takes `?week=N` and reads any posted
+  week (a week holding at least one imported game); an absent or unposted week falls back to
+  this week rather than 404ing the reader out of the room. Prev/next are real anchors among
+  posted weeks with a "This week" way back; the bounds and the current week render as static,
+  never a jump to an unposted week. `all_sheets(week, now)` was already week-agnostic, so a
+  past week reads fully revealed (deadline passed) and the current week keeps the case-by-case
+  reveal (§7.13).
+- **Finished-week standings — `.docket-week-standings`.** Once a week grades, its standings
+  render above the selections, ranked on the same three keys the ledger uses applied to that
+  week alone (`services/season_pass.py::week_standings`, competition rank, the roster All
+  Sheets reveals so the standings and the selections name the same members; an absent member
+  is charged the week's default error at 0/0). Reuses the ledger's table/card compositions
+  (§8.1, §8.5); each line opens that member's page (§8.10). An ungraded week shows selections
+  only — **no points before the week grades** (§7.13). Locked by `tests/test_docket_all_sheets.py`
+  and `tests/test_docket_week_standings.py`.
+- **The live current-week board — `.docket-liveweek` (on the ledger, not here).** Brad's
+  "current active record": above the season table, each member's record so far this week,
+  ranked by wins then fewest losses, read from `all_sheets`'s `Tally`. **Marks only, never
+  points** (§7.13) and **never a sealed side** (the tally is counts). It leads the ledger in
+  every state because it matters most the launch week, when nothing has graded yet, and
+  disappears once its week grades into the table below. On court paper, never a dark band
+  (§6.10). Locked by `tests/test_docket_ledger_routes.py`.
 
 ## 9. Engineering Invariants
 

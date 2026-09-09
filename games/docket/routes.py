@@ -34,7 +34,7 @@ from extensions import db
 from games.cfb.constants import TEAM_CONFERENCES, TEAM_NAME_MAP
 from games.common import enrollment_required, game_must_be_open
 from games.docket.blueprint import docket_bp
-from games.docket.models import DocketEnrollment, DocketGame
+from games.docket.models import DocketEnrollment, DocketGame, DocketWeek
 from games.docket.services import picks as picks_service
 from games.docket.services import receipts as receipts_service
 from games.docket.services.bridge_sheet import SPORT_LABELS
@@ -46,7 +46,7 @@ from games.docket.services.importer import BOOKMAKER_LABELS, BOOKMAKER_PRIORITY
 from games.docket.services.payment import payment_nudge_for
 from games.docket.services.picks import PickError
 from games.docket.services.purse import season_purse
-from games.docket.services.season_pass import season_ledger
+from games.docket.services.season_pass import season_ledger, week_standings
 from games.docket.services.sheets import all_sheets
 from games.docket.services.weeks import (
     CT,
@@ -538,18 +538,65 @@ RESULT_WORDS = {
 }
 
 
+def _posted_week_numbers() -> list[int]:
+    """Week numbers holding at least one imported game, ascending — the
+    weeks All Sheets can navigate between. A week with no games has no
+    sheets to show, so it is never a nav stop."""
+    return sorted(db.session.scalars(
+        select(DocketWeek.week_number)
+        .join(DocketGame, DocketGame.week_id == DocketWeek.id)
+        .distinct()))
+
+
+def _week_by_number(week_number: int) -> DocketWeek | None:
+    return db.session.scalar(
+        select(DocketWeek).filter_by(week_number=week_number))
+
+
+def _sheets_week_nav(week, posted, current_week):
+    """Prev/next among posted weeks, and the way back to this week. Real
+    hrefs only (the room's no-JS spine); bounds render as disabled, never
+    as a jump to an unposted week."""
+    if week is None or not posted:
+        return None
+    n = week.week_number
+    lower = [w for w in posted if w < n]
+    higher = [w for w in posted if w > n]
+    return {
+        'prev': lower[-1] if lower else None,
+        'next': higher[0] if higher else None,
+        'current': current_week.week_number if current_week else None,
+        'is_current': current_week is not None and current_week.week_number == n,
+    }
+
+
 @docket_bp.route('/sheets')
 @enrollment_required('docket')
 def sheets():
-    """All Sheets: everyone's picks, revealed case by case at kickoff.
+    """All Sheets: everyone's picks for one week, revealed case by case at
+    kickoff, with week navigation and — once a week grades — that week's
+    standings (Brad, 2026-09-09).
 
-    A read-only page (no form, no mutation): the reveal rule and every
-    fact on it come from services/sheets.py, which reuses the sheet's own
-    kickoff lock and the grading engine's per-pick rule. Presentation is
-    derived here, never in Jinja (the room's rule).
+    A read-only page (no form, no mutation): the reveal rule and every fact
+    on it come from services/sheets.py, which reuses the sheet's own kickoff
+    lock and the grading engine's per-pick rule; the week standings come from
+    the season pass on the same three keys the ledger ranks by. Presentation
+    is derived here, never in Jinja (the room's rule).
     """
-    week, preview = _current_or_preview_week()
     season_opens_label = WEEK_1_BOUNDARY_LOCAL.strftime('%B %-d')
+    default_week, default_preview = _current_or_preview_week()
+    posted = _posted_week_numbers()
+
+    # ?week=N addresses any posted week (a finished week reads fully revealed;
+    # a future imported week reads as a preview). An absent or unposted week
+    # falls back to this week rather than 404ing the reader out of the room.
+    requested = request.args.get('week', type=int)
+    if requested is not None and requested in posted:
+        week = _week_by_number(requested)
+        preview = week is not None and picks_service.now_naive() < week.start_at
+    else:
+        week, preview = default_week, default_preview
+
     if week is None:
         state = 'no_week'
     elif not db.session.scalar(
@@ -559,19 +606,31 @@ def sheets():
         state = 'preview'
     else:
         state = 'open'
-    board = joined_late = None
+
+    board = joined_late = standings = None
     if state == 'open':
         board = all_sheets(week, picks_service.now_naive())
         # A member who joined after this docket closed has no dealt sheet
         # (ADR-048): say so rather than leave them looking for their row.
         joined_late = (board.deadline_passed and current_user.id
                        not in {m.user_id for m in board.members})
+        # The week's standings, but only once it grades — no points before
+        # the week grades (7.13); an ungraded week returns None here.
+        standings = week_standings(week.week_number)
+
+    shared_ranks = ()
+    if standings is not None:
+        counts = Counter(row.rank for row in standings.rows)
+        shared_ranks = {rank for rank, n in counts.items() if n > 1}
     return render_template(
         'docket/sheets.html',
         week=week,
         state=state,
         board=board,
         joined_late=joined_late,
+        standings=standings,
+        shared_ranks=shared_ranks,
+        nav=_sheets_week_nav(week, posted, default_week),
         your_user_id=current_user.id,
         result_words=RESULT_WORDS,
         season_opens_label=season_opens_label,
@@ -621,6 +680,32 @@ def _ledger_sort_links(sort_key, direction, find_query):
             'active': active,
         }
     return links
+
+
+def _live_week_board():
+    """The current week's provisional standing for the ledger (Brad,
+    2026-09-09): each member's record so far, ranked by wins then fewest
+    losses. Marks only, never points — no points before a week grades
+    (7.13) — and never a sealed side (Tally is counts). None when there is
+    no open, ungraded, posted week to show; a graded current week is already
+    in the season table below, so it is skipped here.
+    """
+    week = picks_service.current_week()
+    if week is None or week.default_error_tenths is not None:
+        return None
+    if not db.session.scalar(
+            select(func.count(DocketGame.id)).filter_by(week_id=week.id)):
+        return None
+    board = all_sheets(week, picks_service.now_naive())
+
+    def key(member):
+        tally = member.tally
+        return (-(tally.wins if tally else 0),
+                tally.losses if tally else 0,
+                member.enrollment.get_display_name().lower())
+
+    return {'week': week, 'board': board,
+            'members': sorted(board.members, key=key)}
 
 
 @docket_bp.route('/ledger')
@@ -686,6 +771,63 @@ def ledger():
         sort_label=LEDGER_SORTS[sort_key][0] if sort_key else None,
         sort_links=_ledger_sort_links(sort_key, sort_dir, find_query),
         history=history,
+        result_words=RESULT_WORDS,
+        live=_live_week_board(),
+    )
+
+
+@docket_bp.route('/ledger/<int:enrollment_id>')
+@enrollment_required('docket')
+def member(enrollment_id):
+    """One member's season on its own page (Brad, 2026-09-09), reached by
+    clicking a line on the ledger.
+
+    The season table's per-line drawer stays for the in-place peek; this page
+    is the whole record laid open: the standing, the weekly account, and every
+    graded week's sheet. Graded weeks only (``pick_history``), so nothing
+    sealed can appear and a pick never reads differently here than on the
+    ledger drawer or All Sheets. Derived in the route, never in Jinja.
+    """
+    enrollment = db.first_or_404(
+        select(DocketEnrollment).filter_by(
+            id=enrollment_id, season_year=SEASON_YEAR))
+    ledger = season_ledger()
+    row = next((r for r in ledger.rows
+                if r.enrollment.user_id == enrollment.user_id), None)
+
+    neighbors = None
+    if row is not None and ledger.is_graded:
+        rows = ledger.rows
+        idx = rows.index(row)
+        leader_points = ledger.leader.standing.total_points
+        neighbors = {
+            'is_leader': row is ledger.leader,
+            'rank_label': _ordinal(row.standing.rank),
+            'field_size': len(rows),
+            'behind_leader': round(
+                leader_points - row.standing.total_points, 1),
+            'ahead_of_next': (
+                round(row.standing.total_points
+                      - rows[idx + 1].standing.total_points, 1)
+                if idx + 1 < len(rows) else None),
+        }
+
+    history = {}
+    if row is not None and ledger.is_graded:
+        history = pick_history(ledger.week_numbers, [enrollment.user_id])
+
+    is_you = (current_user.is_authenticated
+              and enrollment.user_id == current_user.id)
+    return render_template(
+        'docket/member.html',
+        enrollment=enrollment,
+        row=row,
+        neighbors=neighbors,
+        history=history,
+        is_you=is_you,
+        ledger=ledger,
+        purse=season_purse(len(ledger.rows)),
+        split_weeks={v.week_number for v in ledger.verdicts if v.split},
         result_words=RESULT_WORDS,
     )
 

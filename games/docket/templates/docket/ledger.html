@@ -46,6 +46,47 @@ finish review, the verdict, and DESIGN.md.
     {# Settle the Tab: enrolled + unpaid only (gate in the context processor). #}
     {% with eyebrow_class='docket-eyebrow' %}{% include '_settle_tab.html' %}{% endwith %}
 
+    {# The live current-week board (Brad, 2026-09-09): each member's record so
+       far this week, ranked by wins then fewest losses. Marks only, never
+       points (no points before the week grades, 7.13). It leads the page in
+       every state (it matters most the week nothing has graded yet) and
+       disappears once its week grades into the season table below. #}
+    {% if live %}
+    <section class="docket-liveweek" aria-labelledby="ledger-liveweek">
+        <h2 id="ledger-liveweek" class="docket-section-head docket-liveweek-head">
+            Week {{ live.week.week_number }} so far
+        </h2>
+        {% if live.board.any_revealed %}
+        <p class="docket-caption docket-liveweek-note">
+            {{ live.board.locked_cases }} of {{ live.board.total_cases }} cases locked.
+            {% if live.board.next_lock %}Next opens {{ live.board.next_lock|ct('%a %-I:%M %p CT') }}.{% endif %}
+            Records so far; points post with the week's grade.
+        </p>
+        <ol class="docket-liveweek-list">
+            {% for m in live.members %}
+            {% set is_you = current_user.is_authenticated and m.user_id == current_user.id %}
+            <li class="docket-liveweek-row{% if is_you %} is-you{% endif %}">
+                <span class="docket-liveweek-pos" aria-hidden="true">{{ loop.index }}</span>
+                <span class="docket-liveweek-name">
+                    <span class="docket-ledger-avatar" aria-hidden="true">{{ m.enrollment.user.get_avatar() }}</span>
+                    <a class="docket-ledger-namelink" href="{{ url_for('docket.member', enrollment_id=m.enrollment.id) }}">{{ m.enrollment.get_display_name() }}</a>
+                    {% if is_you %}<span class="docket-you-tag">You</span>{% endif %}
+                </span>
+                <span class="docket-liveweek-record">{{ m.summary }}</span>
+            </li>
+            {% endfor %}
+        </ol>
+        <p class="docket-caption docket-liveweek-back">
+            <a href="{{ url_for('docket.sheets', week=live.week.week_number) }}">Every sheet for Week {{ live.week.week_number }} &rsaquo;</a>
+        </p>
+        {% else %}
+        <p class="docket-caption docket-liveweek-note">
+            Week {{ live.week.week_number }} is open. Records post here as cases go final{% if live.board.first_kickoff %}; the first kicks off {{ live.board.first_kickoff|ct('%a %-I:%M %p CT') }}{% endif %}.
+        </p>
+        {% endif %}
+    </section>
+    {% endif %}
+
     {% if not ledger.rows %}
     {# No members at all: the docket has not been called yet. #}
     <div class="docket-empty card border-0 animate-in">
@@ -121,6 +162,16 @@ finish review, the verdict, and DESIGN.md.
     </p>
     {% endif %}
 
+    {# The three keys, said plainly on the surface itself (clarify pass,
+       2026-09-09): the ranking order and, since it is the reader's usual
+       confusion, why two level lines still split on "off by". #}
+    <p class="docket-caption docket-ledger-key">
+        Lines rank by <strong>points</strong>, then <strong>wins</strong>,
+        then <strong>off by</strong>. Off by is the season-long gap between a
+        player's weekly tiebreaker guesses and the real combined scores; level
+        on points and wins, the smaller off by ranks ahead.
+    </p>
+
     {# Find a line (Brad, 2026-09-07): the sheet's own find shape (7.7), a
        plain GET, never mutation. Your line leads every result set; the
        count line never caps silently. Sort rides the header links below
@@ -157,20 +208,24 @@ finish review, the verdict, and DESIGN.md.
        platform leaderboard precedent). One source, two compositions. #}
     <ul class="docket-cards d-md-none">
         {% for row in rows %}
-        <li class="docket-card{% if current_user.is_authenticated and row.enrollment.user_id == current_user.id %} is-you{% endif %}">
-            <span class="docket-card-rank">
-                {{ row.standing.rank }}
-                {%- if row.standing.rank in shared_ranks %}<span class="docket-ledger-tied">tied</span>{% endif %}
-            </span>
-            <span class="docket-card-name">
-                <span class="docket-ledger-avatar" aria-hidden="true">{{ row.enrollment.user.get_avatar() }}</span>
-                {{ row.enrollment.get_display_name() }}
-            </span>
-            <span class="docket-card-keys">
-                <span><b>{{ '%.1f'|format(row.standing.total_points) }}</b> pts</span>
-                <span><b>{{ row.standing.wins }}</b> W</span>
-                <span>off by <b>{{ '%.1f'|format(row.standing.error_tenths / 10) }}</b></span>
-            </span>
+        {% set is_you = current_user.is_authenticated and row.enrollment.user_id == current_user.id %}
+        <li class="docket-card{% if is_you %} is-you{% endif %}">
+            <a class="docket-card-link" href="{{ url_for('docket.member', enrollment_id=row.enrollment.id) }}">
+                <span class="docket-card-rank">
+                    {{ row.standing.rank }}
+                    {%- if row.standing.rank in shared_ranks %}<span class="docket-ledger-tied">tied</span>{% endif %}
+                </span>
+                <span class="docket-card-name">
+                    <span class="docket-ledger-avatar" aria-hidden="true">{{ row.enrollment.user.get_avatar() }}</span>
+                    {{ row.enrollment.get_display_name() }}
+                    {% if is_you %}<span class="docket-you-tag">You</span>{% endif %}
+                </span>
+                <span class="docket-card-keys">
+                    <span><b>{{ '%.1f'|format(row.standing.total_points) }}</b> pts</span>
+                    <span><b>{{ row.standing.wins }}</b> W</span>
+                    <span>off by <b>{{ '%.1f'|format(row.standing.error_tenths / 10) }}</b></span>
+                </span>
+            </a>
         </li>
         {% endfor %}
     </ul>
@@ -192,13 +247,13 @@ finish review, the verdict, and DESIGN.md.
                         <a class="docket-ledger-sort{% if sort_links.name.active %} is-active is-{{ sort_dir }}{% endif %}" href="{{ sort_links.name.href }}">Player</a>
                     </th>
                     <th scope="col" class="docket-ledger-figure-head"{% if sort_links.points.aria %} aria-sort="{{ sort_links.points.aria }}"{% endif %}>
-                        <a class="docket-ledger-sort{% if sort_links.points.active %} is-active is-{{ sort_dir }}{% endif %}" href="{{ sort_links.points.href }}">Points <span class="docket-ledger-keytag">Key 1</span></a>
+                        <a class="docket-ledger-sort{% if sort_links.points.active %} is-active is-{{ sort_dir }}{% endif %}" href="{{ sort_links.points.href }}">Points</a>
                     </th>
                     <th scope="col" class="docket-ledger-figure-head"{% if sort_links.wins.aria %} aria-sort="{{ sort_links.wins.aria }}"{% endif %}>
-                        <a class="docket-ledger-sort{% if sort_links.wins.active %} is-active is-{{ sort_dir }}{% endif %}" href="{{ sort_links.wins.href }}">Wins <span class="docket-ledger-keytag">Key 2</span></a>
+                        <a class="docket-ledger-sort{% if sort_links.wins.active %} is-active is-{{ sort_dir }}{% endif %}" href="{{ sort_links.wins.href }}">Wins</a>
                     </th>
                     <th scope="col" class="docket-ledger-figure-head"{% if sort_links.error.aria %} aria-sort="{{ sort_links.error.aria }}"{% endif %}>
-                        <a class="docket-ledger-sort{% if sort_links.error.active %} is-active is-{{ sort_dir }}{% endif %}" href="{{ sort_links.error.href }}">Off by <span class="docket-ledger-keytag">Key 3</span></a>
+                        <a class="docket-ledger-sort{% if sort_links.error.active %} is-active is-{{ sort_dir }}{% endif %}" href="{{ sort_links.error.href }}">Off by</a>
                     </th>
                 </tr>
             </thead>
@@ -212,7 +267,7 @@ finish review, the verdict, and DESIGN.md.
                     </td>
                     <td>
                         <span class="docket-ledger-avatar" aria-hidden="true">{{ row.enrollment.user.get_avatar() }}</span>
-                        <span class="docket-ledger-name">{{ row.enrollment.get_display_name() }}</span>
+                        <a class="docket-ledger-name docket-ledger-namelink" href="{{ url_for('docket.member', enrollment_id=row.enrollment.id) }}">{{ row.enrollment.get_display_name() }}</a>
                         {% if is_you %}<span class="docket-you-tag">You</span>{% endif %}
                     </td>
                     <td class="docket-ledger-figure">{{ '%.1f'|format(row.standing.total_points) }}</td>

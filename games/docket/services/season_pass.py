@@ -21,6 +21,7 @@ from sqlalchemy.orm import joinedload
 
 from extensions import db
 from games.docket.models import DocketEnrollment, DocketWeek, DocketWeekResult
+from games.docket.services.enrollment import roster_user_ids_as_of
 from games.docket.services.grading.season import (
     player_week_rows,
     season_standings,
@@ -65,6 +66,28 @@ class LedgerVerdict:
     wins: int
     error_tenths: int
     split: bool
+
+
+@dataclass(frozen=True, slots=True)
+class WeekStandingRow:
+    """One member's line on a single graded week's standings.
+
+    ``enrollment`` carries the avatar and display name; the figures are the
+    charge the season pass would apply for this week alone (an absent member
+    is charged the week's default error at 0 points, 0 wins).
+    """
+    rank: int                    # competition rank (1, 1, 3, 4)
+    enrollment: DocketEnrollment
+    points: float
+    wins: int
+    error_tenths: int
+    submitted: bool
+
+
+@dataclass(frozen=True, slots=True)
+class WeekStanding:
+    week_number: int
+    rows: tuple[WeekStandingRow, ...]
 
 
 @dataclass(frozen=True, slots=True)
@@ -208,3 +231,64 @@ def season_ledger(season_year: int = SEASON_YEAR) -> SeasonLedger:
         season_complete=len(week_numbers) == TOTAL_WEEKS,
         verdicts=tuple(verdicts),
     )
+
+
+def week_standings(week_number: int,
+                   season_year: int = SEASON_YEAR) -> WeekStanding | None:
+    """One graded week, ranked on its own three keys.
+
+    How All Sheets shows a week once it grades: points (desc), wins (desc),
+    that week's tiebreaker error (asc), competition rank (1, 1, 3, 4). The
+    roster is the one All Sheets reveals for a closed week —
+    ``roster_user_ids_as_of(deadline)`` (ADR-048) — so the standings and the
+    selections name exactly the same members; an absent member is charged the
+    week's default error at 0 points, 0 wins (``player_week_rows``). Returns
+    None for a week that is not graded.
+
+    Ranking comes from the pure engine's key, reused; only the enrollment
+    join for names and avatars happens here.
+    """
+    week = db.session.scalar(
+        select(DocketWeek).filter_by(week_number=week_number))
+    if week is None or week.default_error_tenths is None:
+        return None
+    rollup = next((r for r in week_rollups_from_db()
+                   if r.week_number == week_number), None)
+    if rollup is None:
+        return None
+
+    roster_ids = roster_user_ids_as_of(week.deadline_at, season_year)
+    enrollments = db.session.scalars(
+        select(DocketEnrollment)
+        .filter(DocketEnrollment.season_year == season_year,
+                DocketEnrollment.user_id.in_(roster_ids))
+        .options(joinedload(DocketEnrollment.user))
+    ).all()
+    by_player_id = {str(e.user_id): e for e in enrollments}
+
+    # One charged week per member (the absent-member rule lives in the
+    # engine's player_week_rows, so the week board and the season pass agree).
+    charged = {pid: player_week_rows((rollup,), pid)[0]
+               for pid in by_player_id}
+
+    def sort_key(pid):
+        row = charged[pid]
+        return (-row.points, -row.wins, row.error_tenths)
+
+    rows = []
+    for pid in by_player_id:
+        row = charged[pid]
+        rank = 1 + sum(1 for other in by_player_id
+                       if sort_key(other) < sort_key(pid))
+        rows.append(WeekStandingRow(
+            rank=rank,
+            enrollment=by_player_id[pid],
+            points=row.points,
+            wins=row.wins,
+            error_tenths=row.error_tenths,
+            submitted=row.submitted,
+        ))
+    # Within a shared rank, order by display name (the ledger's convention);
+    # the rank itself is never re-derived from row position.
+    rows.sort(key=lambda r: (r.rank, r.enrollment.get_display_name().lower()))
+    return WeekStanding(week_number=week_number, rows=tuple(rows))

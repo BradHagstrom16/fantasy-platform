@@ -11,8 +11,14 @@ from datetime import datetime
 from sqlalchemy import select
 
 from extensions import db
-from games.docket.models import DocketWeekResult
-from tests._docket_fixtures import make_enrollment, make_user, make_week
+from games.docket.models import DocketPick, DocketWeekResult
+from tests._docket_fixtures import (
+    at,
+    make_enrollment,
+    make_game,
+    make_user,
+    make_week,
+)
 
 GRADED_AT = datetime(2026, 9, 6, 4, 0)
 
@@ -500,3 +506,91 @@ def test_rules_purse_follows_a_config_change(app, client, monkeypatch):
     assert '$10 to the week' in text
     assert '10 members' in text and '$500' in text and '$190' in text
     assert 'first 50% ($155), second 30% ($93), third 20% ($62)' in text
+
+
+# ---------------------------------------------------------------------------
+# The clarify pass and the clickable lines (Brad, 2026-09-09)
+# ---------------------------------------------------------------------------
+
+def test_ledger_header_drops_the_key_tags(app, client):
+    """The cryptic 'Key 1/2/3' head tags are gone; the columns still name
+    themselves and the ranking is explained in plain words instead."""
+    week = _week(1)
+    _result(week, _member('alice'), 9.0, 9)
+    viewer = _member('viewer')
+    db.session.commit()
+    _login(client, viewer)
+
+    html = client.get('/docket/ledger').data.decode()
+    assert 'docket-ledger-keytag' not in html
+    assert 'Key 1' not in html and 'Key 2' not in html and 'Key 3' not in html
+    assert '>Points</a>' in html and '>Wins</a>' in html and '>Off by</a>' in html
+
+
+def test_ledger_explains_the_ranking_on_the_page(app, client):
+    """The 'off by' confusion answered where the reader is: why two level
+    lines still split on the error account."""
+    week = _week(1)
+    _result(week, _member('alice'), 9.0, 9)
+    viewer = _member('viewer')
+    db.session.commit()
+    _login(client, viewer)
+
+    html = client.get('/docket/ledger').data.decode()
+    assert 'docket-ledger-key' in html
+    text = _text(html)
+    assert 'Off by is the season-long gap' in text
+    assert 'the smaller off by ranks ahead' in text
+
+
+def test_ledger_lines_link_to_the_member_page(app, client):
+    week = _week(1)
+    alice = _member('alice')
+    _result(week, alice, 9.0, 9)
+    viewer = _member('viewer')
+    db.session.commit()
+    _login(client, viewer)
+
+    from games.docket.services.enrollment import get_enrollment
+    href = f'/docket/ledger/{get_enrollment(alice.id).id}'
+    html = client.get('/docket/ledger').data.decode()
+    assert 'docket-ledger-namelink' in html
+    assert href in html
+
+
+def test_ledger_shows_the_live_current_week_board(app, client, monkeypatch):
+    """An open, ungraded week posts a marks-only board above the table; it
+    never shows points, since none are scored before the week grades."""
+    graded = _week(1)                            # so the season body renders
+    alice = _member('alice')
+    _result(graded, alice, 9.0, 9)
+    live = make_week(2)                          # ungraded, current
+    game = make_game(live, kickoff=datetime(2026, 9, 10, 0, 15),
+                     home='Utah Utes', away='Idaho Vandals')
+    game.home_score, game.away_score, game.is_final = 31, 17, True
+    db.session.add(DocketPick(
+        user_id=alice.id, week_id=live.id, game_id=game.id, market='spread',
+        side='home', slot=1, line_value=-3.5, book='draftkings'))
+    viewer = _member('viewer')
+    db.session.commit()
+    _login(client, viewer)
+    at(monkeypatch, '2026-09-10T12:00:00')       # in Week 2, after kickoff
+
+    html = client.get('/docket/ledger').data.decode()
+    assert 'docket-liveweek' in html
+    assert 'Week 2 so far' in html
+    board = html[html.index('docket-liveweek'):html.index('docket-ledger-key')]
+    assert 'Utah Utes' not in board              # a record, never a side
+    assert '1-0' in board                        # alice's marks so far
+    assert '9.0' not in board                    # no points figure on the board
+
+
+def test_ledger_no_live_board_when_no_open_week(app, client):
+    week = _week(1)
+    _result(week, _member('alice'), 9.0, 9)
+    viewer = _member('viewer')
+    db.session.commit()
+    _login(client, viewer)
+    # No current week row exists beyond the graded one; the board no-ops.
+    html = client.get('/docket/ledger').data.decode()
+    assert 'docket-liveweek' not in html

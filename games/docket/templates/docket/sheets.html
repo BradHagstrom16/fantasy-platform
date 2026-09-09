@@ -49,6 +49,28 @@ the finish review and DESIGN.md 7.13.
 </div>
 
 <div class="container docket-sheets-page">
+    {# Week navigation (Brad, 2026-09-09): step to a finished week to read how
+       it went. Real hrefs (?week=N), the no-JS spine; bounds are disabled,
+       never a jump to an unposted week. #}
+    {% if nav %}
+    <nav class="docket-week-nav" aria-label="Which week">
+        {% if nav.prev %}
+        <a class="docket-week-nav-btn is-prev" href="{{ url_for('docket.sheets', week=nav.prev) }}" rel="prev">&lsaquo; Week {{ nav.prev }}</a>
+        {% else %}
+        <span class="docket-week-nav-btn is-prev is-disabled" aria-disabled="true">&lsaquo; Earliest</span>
+        {% endif %}
+        {% if nav.current and not nav.is_current %}
+        <a class="docket-week-nav-here" href="{{ url_for('docket.sheets') }}">This week</a>
+        {% else %}
+        <span class="docket-week-nav-here is-current" aria-current="page">This week</span>
+        {% endif %}
+        {% if nav.next %}
+        <a class="docket-week-nav-btn is-next" href="{{ url_for('docket.sheets', week=nav.next) }}" rel="next">Week {{ nav.next }} &rsaquo;</a>
+        {% else %}
+        <span class="docket-week-nav-btn is-next is-disabled" aria-disabled="true">Latest &rsaquo;</span>
+        {% endif %}
+    </nav>
+    {% endif %}
     {% if state == 'no_week' %}
     <div class="docket-empty card border-0 animate-in">
         <div class="card-body">
@@ -99,6 +121,70 @@ the finish review and DESIGN.md 7.13.
     {% if joined_late %}
     <p class="docket-entries-note">You joined after this docket closed; your
         first sheet is next week.</p>
+    {% endif %}
+
+    {# The week's standings, once it grades (Brad, 2026-09-09): the same
+       three keys the ledger ranks by, applied to this week alone. Ungraded
+       weeks pass standings=None and show selections only (no points before
+       the week grades, 7.13). Each line opens that member's season. #}
+    {% if standings %}
+    <section class="docket-week-standings" aria-labelledby="sheets-standings">
+        <h2 id="sheets-standings" class="docket-section-head">Week {{ week.week_number }} standings</h2>
+        <p class="docket-caption">Ranked by points, then wins, then this week's off by.</p>
+
+        <ul class="docket-cards d-md-none">
+            {% for r in standings.rows %}
+            {% set is_you = current_user.is_authenticated and r.enrollment.user_id == current_user.id %}
+            <li class="docket-card{% if is_you %} is-you{% endif %}">
+                <a class="docket-card-link" href="{{ url_for('docket.member', enrollment_id=r.enrollment.id) }}">
+                    <span class="docket-card-rank">{{ r.rank }}{% if r.rank in shared_ranks %}<span class="docket-ledger-tied">tied</span>{% endif %}</span>
+                    <span class="docket-card-name">
+                        <span class="docket-ledger-avatar" aria-hidden="true">{{ r.enrollment.user.get_avatar() }}</span>
+                        {{ r.enrollment.get_display_name() }}
+                        {% if is_you %}<span class="docket-you-tag">You</span>{% endif %}
+                    </span>
+                    <span class="docket-card-keys">
+                        <span><b>{{ '%.1f'|format(r.points) }}</b> pts</span>
+                        <span><b>{{ r.wins }}</b> W</span>
+                        <span>off by <b>{{ '%.1f'|format(r.error_tenths / 10) }}</b></span>
+                    </span>
+                </a>
+            </li>
+            {% endfor %}
+        </ul>
+
+        <div class="docket-scroll d-none d-md-block">
+            <table class="table docket-ledger-table">
+                <caption class="visually-hidden">Week {{ week.week_number }} standings, ranked by points, then wins, then this week's tiebreaker error.</caption>
+                <thead>
+                    <tr>
+                        <th scope="col" class="docket-ledger-rank-head">#</th>
+                        <th scope="col">Player</th>
+                        <th scope="col" class="docket-ledger-figure-head">Points</th>
+                        <th scope="col" class="docket-ledger-figure-head">Wins</th>
+                        <th scope="col" class="docket-ledger-figure-head">Off by</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in standings.rows %}
+                    {% set is_you = current_user.is_authenticated and r.enrollment.user_id == current_user.id %}
+                    <tr class="{% if is_you %}row-current-user{% endif %}">
+                        <td class="docket-ledger-rank">{{ r.rank }}{% if r.rank in shared_ranks %}<span class="docket-ledger-tied">tied</span>{% endif %}</td>
+                        <td>
+                            <span class="docket-ledger-avatar" aria-hidden="true">{{ r.enrollment.user.get_avatar() }}</span>
+                            <a class="docket-ledger-name docket-ledger-namelink" href="{{ url_for('docket.member', enrollment_id=r.enrollment.id) }}">{{ r.enrollment.get_display_name() }}</a>
+                            {% if is_you %}<span class="docket-you-tag">You</span>{% endif %}
+                            {% if not r.submitted %}<span class="docket-caption docket-week-standings-absent">no sheet filed</span>{% endif %}
+                        </td>
+                        <td class="docket-ledger-figure">{{ '%.1f'|format(r.points) }}</td>
+                        <td class="docket-ledger-figure">{{ r.wins }}</td>
+                        <td class="docket-ledger-figure">{{ '%.1f'|format(r.error_tenths / 10) }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
     {% endif %}
 
     <ol class="docket-sheets">

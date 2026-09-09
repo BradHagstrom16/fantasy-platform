@@ -15,6 +15,7 @@ import pytest
 from sqlalchemy import event
 
 from extensions import db
+from games.docket.models import DocketWeekResult
 from games.docket.services import picks as picks_service
 from games.docket.services import sheets as sheets_service
 from games.docket.services.grading.engine import grade_pick_outcome
@@ -486,3 +487,90 @@ def test_subnav_carries_all_sheets_after_my_sheet(
     assert html.index('My Sheet') < html.index('All Sheets') < html.index('Ledger')
     sheets = _page(client)
     assert 'subnav-pill active' in sheets
+
+
+# ── week navigation and a finished week's standings (Brad, 2026-09-09) ──────
+
+WEEK2_CLOCK = '2026-09-10T12:00:00'      # inside Week 2
+WEEK3_CLOCK = '2026-09-17T12:00:00'      # inside Week 3
+
+
+def _week_with_game(week_number):
+    week = make_week(week_number)
+    make_game(week, kickoff=week.start_at + timedelta(days=2))
+    return week
+
+
+def test_sheets_nav_steps_between_posted_weeks(monkeypatch, client, member):
+    for n in (1, 2, 3):
+        _week_with_game(n)
+    db.session.commit()
+    at(monkeypatch, WEEK2_CLOCK)                 # this week is Week 2
+    html = _page(client)
+    assert 'docket-week-nav' in html
+    assert '/docket/sheets?week=1' in html       # prev
+    assert '/docket/sheets?week=3' in html       # next
+    assert 'The Week 2 Sheets' in html
+    assert 'docket-week-nav-here is-current' in html   # here, not a link
+
+
+def test_sheets_week_param_reads_a_finished_week(monkeypatch, client, member):
+    for n in (1, 2, 3):
+        _week_with_game(n)
+    db.session.commit()
+    at(monkeypatch, WEEK2_CLOCK)
+    html = client.get('/docket/sheets?week=1').data.decode()
+    assert 'The Week 1 Sheets' in html
+    assert 'The docket is closed. Every sheet is on the record.' in html
+    assert 'is-prev is-disabled' in html          # earliest, prev disabled
+    assert '/docket/sheets"' in html              # "This week" links back
+
+
+def test_sheets_nav_disables_the_latest(monkeypatch, client, member):
+    for n in (1, 2, 3):
+        _week_with_game(n)
+    db.session.commit()
+    at(monkeypatch, WEEK3_CLOCK)
+    html = client.get('/docket/sheets?week=3').data.decode()
+    assert 'is-next is-disabled' in html
+
+
+def test_sheets_unposted_week_falls_back_to_this_week(
+        monkeypatch, client, member):
+    _week_with_game(1)
+    db.session.commit()
+    at(monkeypatch, IN_WEEK1)
+    html = client.get('/docket/sheets?week=9').data.decode()
+    assert 'The Week 1 Sheets' in html            # not a 404
+
+
+def test_sheets_shows_a_finished_weeks_standings(monkeypatch, client, member):
+    week = _week_with_game(1)
+    week.default_error_tenths = 0
+    alice = _member('alice', display_name='Alice')
+    _result(week, member, 7.0, 6, 20)             # the viewer, rank 2
+    _result(week, alice, 9.0, 8, 5)               # rank 1
+    db.session.commit()
+    at(monkeypatch, WEEK2_CLOCK)                   # Week 1 is finished
+    html = client.get('/docket/sheets?week=1').data.decode()
+    assert 'Week 1 standings' in html
+    assert 'docket-week-standings' in html
+    # each standings line opens that member's season page
+    assert '/docket/ledger/' in html
+    section = html[html.index('docket-week-standings'):html.index('docket-sheets"')]
+    assert section.index('Alice') < section.index('member')   # 9.0 before 7.0
+
+
+def _result(week, user, points, wins, error_tenths=0):
+    db.session.add(DocketWeekResult(
+        user_id=user.id, week_id=week.id, points=points, wins=wins,
+        error_tenths=error_tenths,
+        graded_at=datetime(2026, 9, 6, 4, 0)))
+
+
+def test_sheets_open_week_shows_no_standings(monkeypatch, client, member):
+    _week_with_game(1)
+    db.session.commit()
+    at(monkeypatch, IN_WEEK1)                       # not graded
+    html = _page(client)
+    assert 'docket-week-standings' not in html
