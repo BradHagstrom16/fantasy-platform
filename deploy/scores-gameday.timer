@@ -1,0 +1,28 @@
+# Runs the game-day scores pass hourly at :30 through game hours, 13:30 to
+# 23:30 CT, plus 00:30 for late West Coast finals; December every two hours
+# (bowl games most days would otherwise push the month toward the tier).
+# The pass itself decides whether to spend: a tick with no tracked game that
+# could have ended costs nothing, so there are no per-weekday rules, and
+# Thu/Fri CFB, TNF, MNF and November midweek games are covered without an
+# edit here. The :30 offset keeps it off the :00 reminder ticks and the
+# 08:00 daily passes.
+#
+# Persistent=false on purpose (the one departure from the docket set): a
+# missed hourly tick's catch-up is worthless because the next tick is under
+# an hour away, and a boot replay must not spend credits for nothing.
+#
+# All four rules validated with `systemd-analyze calendar` on the droplet,
+# 2026-09-09. Locked by tests/test_scores_timers.py.
+[Unit]
+Description=Run the game-day scores pass (hourly :30 during game hours; every 2 h in December)
+
+[Timer]
+# Timezone is INLINE in OnCalendar — no TimeZone= directive exists.
+OnCalendar=*-01..11-* 13..23:30:00 America/Chicago
+OnCalendar=*-01..11-* 00:30:00 America/Chicago
+OnCalendar=*-12-* 13..23/2:30:00 America/Chicago
+OnCalendar=*-12-* 00:30:00 America/Chicago
+Persistent=false
+
+[Install]
+WantedBy=timers.target

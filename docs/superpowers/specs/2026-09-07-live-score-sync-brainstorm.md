@@ -1,6 +1,15 @@
 # Live score sync (CFB Survivor + The Docket) — design brief for the brainstorm
 
-**Status: design only. No code until Brad has ruled on the questions at the end.**
+**Status: SUPERSEDED (2026-09-09) by ADR-063 and `docs/designs/same-evening-finals.md`.**
+Brad's rulings at the brainstorm: members want their verdict and week record the same
+evening, not a running score mid-game; the surfaces already exist (the Docket ledger's
+"this week" record, CFB per-game grading), only the cadence was wrong. What shipped is one
+shared game-day `/scores` pass (`flask scores game-day`, `deploy/scores-gameday.timer`).
+§5 (a live surface) and §6 (`live_state` columns) were dropped: The Odds API gives no
+period or clock, and a 1-credit `/scores` call returns only live and upcoming games, so it
+can never land a final. Kept for the option analysis and the budget arithmetic.
+
+**Original status: design only. No code until Brad has ruled on the questions at the end.**
 Prepared 2026-09-07 from the live automation, the Odds API client and the two games' data
 models. Numbers are re-verified facts, not the handoff's guesses.
 

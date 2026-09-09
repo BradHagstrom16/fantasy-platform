@@ -81,6 +81,9 @@ FLASK_APP=app.py venv/bin/flask docket repair-deadline [WEEK]   # Re-derive dead
 # `--mode scores` costs 2 credits/sport (logged at INFO on `utils.odds_api`); `/events` is free; the score-WRITE path is
 # still unexercised live. Don't probe with `--mode setup` — it also fires /odds (4 more credits).
 
+# Game-day scores pass (ADR-063; cross-game, games/gameday.py; unit deploy/scores-gameday.*, hourly :30 through game hours)
+FLASK_APP=app.py venv/bin/flask scores game-day [--scheduled]   # ONE /scores call per sport (2 credits) only when a tracked unsettled game kicked off 3-12 h ago, fanned to CFB (run_scores prefetched=, notify=False, retry_open=False) AND the Docket (sync_scores events_by_sport=) — idle/floor exit 0, any fetch or game error exits 1 after both games ran. Stands down below 100 remaining credits (free /sports probe) so the daily passes always grade. Sends NO mail; the daily units keep the admin summary, STUCK and the ADR-062 open retry. CFB never wants a game before its week deadline (tests/test_gameday_pass.py, tests/test_scores_timers.py)
+
 # World Cup CLI (archived; full surface in games/worldcup/cli.py)
 FLASK_APP=app.py venv/bin/flask worldcup status   # or: worldcup recalc
 
@@ -188,7 +191,7 @@ Engineering contracts (grading shapes, pick provenance, admin ops, tiebreaker ru
 
 ### Production ops
 
-- **Scheduled jobs:** every `deploy/*.timer` is installed by every deploy (ADR-041) and stays `disabled` until enabled by name. Query the truth: `systemctl list-unit-files 'worldcup-*.timer' 'cfb-*.timer' 'docket-*.timer' 'golf-*.timer' --no-pager` (no sudo). **Off for good:** `worldcup-*`. **Held until Phase L (~Jan 2027):** all six `golf-*` (free-tier cadence, ~115 API calls/mo — never widen without re-doing that arithmetic).
+- **Scheduled jobs:** every `deploy/*.timer` is installed by every deploy (ADR-041) and stays `disabled` until enabled by name. Query the truth: `systemctl list-unit-files 'worldcup-*.timer' 'cfb-*.timer' 'docket-*.timer' 'golf-*.timer' 'scores-*.timer' --no-pager` (no sudo). **Off for good:** `worldcup-*`. **Held until Phase L (~Jan 2027):** all six `golf-*` (free-tier cadence, ~115 API calls/mo — never widen without re-doing that arithmetic).
 - **`ENVIRONMENT=production`** is set in three places (`.env`, units, `deploy.sh`) — keep in sync. A stray `development` silently migrates against SQLite.
 - **Client-IP keying:** `ProxyFix(x_for=1)` in `app.py` — **keep `x_for=1`** (raising it trusts client-supplied XFF). CF range list is CI-locked across nginx.conf, `tests/test_client_ip_keying.py`, and the runbook marker block — update all three + the live firewall together. **`deploy/nginx.conf` is NOT synced by `deploy.sh`** — manual install via its header comment.
 - **`request.host` pinned at nginx:** `X-Forwarded-Host` → bare apex; `ProxyFix(x_host=1)`. `tests/test_forwarded_host_pin.py`.

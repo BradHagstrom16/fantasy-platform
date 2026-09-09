@@ -589,9 +589,18 @@ def run_spread_update():
     }
 
 
-def run_scores():
+def run_scores(prefetched=None, notify=True, retry_open=True):
     """Find incomplete weeks past deadline and auto-process scores; then run
     the opener for a week that has games but has not opened (ADR-062).
+
+    The game-day pass (ADR-063) calls this with ``prefetched`` (an
+    already-decoded `/scores` payload handed to every eligible week),
+    ``notify=False`` (no "Score Sync Results" mail — this function mails on
+    EVERY run that processes a week, which hourly would be spam) and
+    ``retry_open=False`` (the open retry belongs to the daily unit: on a
+    Monday-game week an hourly opener would spend /odds credits, mail
+    "games without spreads" and open the next week Monday night instead of
+    Tuesday 06:00). The defaults are the daily pass, unchanged.
 
     Returns a status dict with results for each week processed.
     """
@@ -619,7 +628,7 @@ def run_scores():
             continue
 
         fetcher = ScoreFetcher()
-        result = fetcher.auto_process_week(week.id)
+        result = fetcher.auto_process_week(week.id, events=prefetched)
         entry = {
             'week_number': week.week_number,
             **result,
@@ -655,7 +664,7 @@ def run_scores():
     # announced week costs nothing: the opener is not even called.
     opened = False
     open_line = None
-    candidate = _week_to_open()
+    candidate = _week_to_open() if retry_open else None
     if candidate and (not candidate.is_active
                       or not candidate.picks_open_notified):
         try:
@@ -698,8 +707,8 @@ def run_scores():
     if open_line:
         summary += f'\n{open_line}'
 
-    # Send admin email with summary
-    if results or open_line:
+    # Send admin email with summary (the daily pass only, never hourly)
+    if notify and (results or open_line):
         subject = 'Score Sync Results'
         if stuck_weeks:
             subject += f' — {len(stuck_weeks)} week(s) STUCK'

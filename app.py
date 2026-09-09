@@ -86,6 +86,10 @@ def create_app(config_name=None):
     from games.docket.cli import register_docket_cli
     register_docket_cli(app)
 
+    # Register the cross-game game-day scores pass (ADR-063)
+    from games.gameday_cli import register_scores_cli
+    register_scores_cli(app)
+
     # Platform-wide context processors
     from core.context import register_context_processors
     register_context_processors(app)

@@ -33,7 +33,8 @@
 # timers for real, and wrote its output to stderr so `> file` looked empty.
 # To inspect safely — no sudo, no writes, and it never pages:
 #     systemctl list-unit-files 'worldcup-*.timer' 'cfb-*.timer' \
-#                               'docket-*.timer' 'golf-*.timer' --no-pager
+#                               'docket-*.timer' 'golf-*.timer' \
+#                               'scores-*.timer' --no-pager
 #
 # READ BOTH COLUMNS. They answer different questions, and the 2026-08-13
 # incident is exactly the case where they disagree:
@@ -83,6 +84,10 @@ disable worldcup-*.timer
 ignore cfb-*.timer
 ignore docket-*.timer
 ignore golf-*.timer
+
+# The cross-game game-day scores pass (ADR-063) is hand-managed ops state
+# like the game timers above: enabled by name once, then left alone.
+ignore scores-*.timer
 
 # A new game's timers are NOT covered until a line lands here, and would
 # inherit the enable default. tests/test_systemd_preset.py fails CI when a

@@ -1,0 +1,27 @@
+# The shared game-day scores pass (ADR-063): one /scores call per sport,
+# only when a tracked game could have ended, handed to CFB Survivor and The
+# Docket alike so a Saturday noon verdict lands Saturday afternoon.
+#
+# Spends nothing on a quiet hour (idle, exit 0) and stands down below the
+# credit floor (exit 0 with a WARNING) so the daily passes are never starved.
+# Fails (exit 1) only on a fetch error or a game's write error, after every
+# game has had its turn. Sends no mail: the daily cfb-scores unit keeps the
+# admin summary, the STUCK alert and the ADR-062 open retry.
+
+[Unit]
+Description=Game-day scores pass (same-evening finals for CFB Survivor + The Docket)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=deploy
+Group=deploy
+WorkingDirectory=/home/deploy/fantasy-platform
+EnvironmentFile=/home/deploy/fantasy-platform/.env
+Environment=ENVIRONMENT=production
+Environment=FLASK_APP=app.py
+NoNewPrivileges=true
+PrivateTmp=true
+TimeoutStartSec=5m
+ExecStart=/home/deploy/fantasy-platform/venv/bin/flask scores game-day --scheduled
