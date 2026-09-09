@@ -645,13 +645,29 @@ ruling: **once a pick locks it releases visibility for everyone.**
   kickoff · x2 named · reserve held · number in." A member with nothing held reads "Nothing
   held yet." (the progress count is shown by ruling). The number shows at its own lock,
   min(deadline, designated kickoff).
-- **Shape.** One stacked composition at every width: each member is an always-open article
-  (a drawer would cost seventeen taps to see "all sheets"), the head row reuses the ledger's
+- **Shape.** One stacked composition at every width: each member is a collapsible drawer
+  (`<details class="docket-sheet">`, default closed — the 2026-09-08 override of the original
+  always-open article; the roster grew and a wall of open sheets buried the reader's own row
+  and the person they came to check). The summary reuses the ledger drawer's grammar
+  (`.docket-sheet-head` as `<summary>`, suppressed marker, the drawn `.docket-entry-caret`
+  that rotates on `[open]`, a 44px target, the garnet focus ring) and the ledger's head row:
   avatar, name, "You" tag and Teko count (`.docket-entry-count` carries the summary: "3 of 8
-  held" → "2 of 8 locked" → "1-1 · 5 to play"), and the lines below are kickoff-ordered with
+  held" → "2 of 8 locked" → "1-1 · 5 to play"). Inside, the lines are kickoff-ordered with
   the reserve last: Teko kickoff, the side as the sheet prints it with the same three marks as
   the case row (x2 chip, Reserve badge, Auto tag), the case caption, and the result word.
-  Your row takes the garnet tint (garnet means "yours"). No form, ever.
+  Your row takes the garnet tint (garnet means "yours"). No JS: native disclosure is the whole
+  mechanism, the room's no-JS spine (§7.11).
+- **Find and sort (Brad, 2026-09-08), the ledger's aids reused (8.9).** A `role="search"` GET
+  find field (`.docket-find.docket-sheets-find`, the §7.7 anatomy) filters by display name;
+  **your sheet always leads a result set**, matching or not, and the count line never caps
+  silently ("Showing 3 of 12 sheets matching "adams", yours first · All sheets ›"), zero
+  matches state the query and keep the typed text. Sort is a pair of text links
+  (`.docket-sheets-sort`, `?sort=name|record&dir=asc|desc`, derived in the route via
+  `SHEETS_SORTS`, never Jinja `sort(attribute=…)`): name (natural ascending) and record (wins,
+  then fewer losses, then more sides held; natural descending). The active link states its
+  order with the entry caret and `aria-sort`. Find and sort compose (the form carries the
+  sort; the links carry the query). Both are plain GETs — navigation, never mutation — so the
+  page's one form is the search form; the sheets themselves stay formless.
 - **Result marks are the engine's rule** (`grading.engine.grade_pick_outcome`) behind the
   week grade's final gate (`is_final and not no_contest`); the words are Win / Loss /
   Mistrial / No Contest on the platform semantic layer (6.5), with "Final 17-31" in the
@@ -669,7 +685,8 @@ ruling: **once a pick locks it releases visibility for everyone.**
   Friday's finals are on the page the next morning (rulings Amendments 2026-09-04).
 
 Locked by `tests/test_docket_all_sheets.py` (the reveal boundary, the words-only sealed
-facts, the engine parity of every mark, the as-of-deadline roster, the query count) and the
+facts, the engine parity of every mark, the as-of-deadline roster, the query count, the
+collapsed-by-default drawers, the you-first find, and the name/record sort) and the
 conformance matrix.
 
 ## 8. Component Doctrine (season surfaces, T10 scope)

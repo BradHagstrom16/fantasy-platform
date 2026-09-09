@@ -543,10 +543,15 @@ RESULT_WORDS = {
 # column, and the natural order is alphabetical by name.
 SHEETS_SORTS = {
     'name': ('name', lambda m: m.enrollment.get_display_name().casefold(), 'asc'),
+    # Record is a composite read under one direction flag (like the ledger's
+    # single-value keys): wins, then fewer losses, then more sides held. The
+    # -losses term keeps "fewer losses ranks better" aligned with wins so the
+    # reverse flag alone flips the whole order. A member with no final yet
+    # sorts to the bottom of the desc order (0 wins).
     'record': ('record', lambda m: (
-        -(m.tally.wins if m.tally else 0),
-        (m.tally.losses if m.tally else 0),
-        -m.held_count,
+        m.tally.wins if m.tally else 0,
+        -(m.tally.losses if m.tally else 0),
+        m.held_count,
     ), 'desc'),
 }
 
