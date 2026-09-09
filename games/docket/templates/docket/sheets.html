@@ -169,7 +169,7 @@ the finish review and DESIGN.md 7.13.
         {% for key in ['name', 'record'] %}
         {% set link = sort_links[key] %}
         <a class="docket-sheets-sort-link{% if link.active %} is-active{% endif %}"
-           href="{{ link.href }}"{% if link.aria %} aria-sort="{{ link.aria }}"{% endif %}>{{ key|capitalize }}{% if link.active %}<span class="docket-entry-caret{% if sort_dir == 'asc' %} is-asc{% endif %}"></span>{% endif %}</a>
+           href="{{ link.href }}"{% if link.aria %} aria-sort="{{ link.aria }}"{% endif %}{% if link.active %} aria-label="{{ key|capitalize }}, sorted {{ link.aria }}"{% endif %}>{{ key|capitalize }}{% if link.active %}<span class="docket-entry-caret{% if sort_dir == 'asc' %} is-asc{% endif %}"></span>{% endif %}</a>
         {% endfor %}
     </div>
     {% if sort_key %}
