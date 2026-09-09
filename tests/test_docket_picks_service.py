@@ -25,10 +25,10 @@ from tests._docket_fixtures import (
     make_week,
 )
 
-# Kickoffs (naive UTC): Thursday night CT, Saturday evening CT (before the
-# Sunday deadline), and a kickoff == deadline instant.
+# Kickoffs (naive UTC): Thursday night CT (before the deadline), and a
+# Sunday evening CT game that kicks off after the Sun 12:00 PM CT deadline.
 KICK_THU = datetime(2026, 9, 4, 0, 15)
-KICK_SAT = datetime(2026, 9, 5, 23, 30)
+KICK_SAT = datetime(2026, 9, 6, 23, 30)
 
 
 @pytest.fixture()

@@ -45,10 +45,11 @@ STYLE_CSS = REPO_ROOT / 'static' / 'css' / 'style.css'
 
 PRE_ANCHOR = {'ENVIRONMENT': 'testing', 'CFB_FAKE_NOW': '2026-08-18T17:00:00',
               'DOCKET_FAKE_NOW': '2026-08-18T17:00:00'}
-# Past the shared Sat Sep 5 enrollment deadline: both games' join windows are
-# closed, so the conversion cards stay but their asks retire (ADR-050).
-CLOSED_ANCHOR = {'ENVIRONMENT': 'testing', 'CFB_FAKE_NOW': '2026-09-06T00:00:00',
-                 'DOCKET_FAKE_NOW': '2026-09-06T00:00:00'}
+# Past the shared enrollment deadline (CFB Sat Sep 5, Docket's Week 1 close
+# now Sun Sep 6 12:00 PM CT): both games' join windows are closed, so the
+# conversion cards stay but their asks retire (ADR-050).
+CLOSED_ANCHOR = {'ENVIRONMENT': 'testing', 'CFB_FAKE_NOW': '2026-09-07T00:00:00',
+                 'DOCKET_FAKE_NOW': '2026-09-07T00:00:00'}
 
 
 def _make_user(username='stripuser'):

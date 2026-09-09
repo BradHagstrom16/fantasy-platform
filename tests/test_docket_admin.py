@@ -34,7 +34,9 @@ from tests._docket_fixtures import (
 BEFORE_DEADLINE = '2026-09-02T12:00:00'
 AFTER_DEADLINE = '2026-09-06T17:30:00'
 KICK_THU = datetime(2026, 9, 4, 0, 15)     # before the Sunday deadline
-KICK_SAT = datetime(2026, 9, 5, 23, 30)    # after it
+# The standard designatable game: kicks off after the Sun 12:00 PM CT
+# deadline (Sun evening), so it is eligible as the tiebreaker.
+KICK_SAT = datetime(2026, 9, 6, 23, 30)
 
 
 @pytest.fixture()

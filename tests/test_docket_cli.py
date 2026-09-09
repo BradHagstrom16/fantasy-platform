@@ -23,7 +23,7 @@ from tests._docket_fixtures import (
 
 AFTER_DEADLINE = '2026-09-06T17:30:00'
 BEFORE_DEADLINE = '2026-09-02T12:00:00'
-KICK = datetime(2026, 9, 5, 18, 0)
+KICK = datetime(2026, 9, 6, 18, 0)      # Sun 1:00 PM CT — after the deadline
 
 
 @pytest.fixture()
@@ -121,8 +121,8 @@ def test_remind_mode_mails_an_unfinished_sheet(app, runner, monkeypatch):
     _seed(final=False)
     make_enrollment(make_user('player'))
     db.session.commit()
-    # Thursday morning, inside the 48h tier before the Sun 12:00 CT close.
-    monkeypatch.setenv('DOCKET_FAKE_NOW', '2026-09-03T16:00:00')
+    # Friday noon, inside the 48h tier before the Sun 12:00 CT close.
+    monkeypatch.setenv('DOCKET_FAKE_NOW', '2026-09-04T17:00:00')
 
     with patch('games.docket.services.notifications.send_platform_email',
                return_value=True) as send:
