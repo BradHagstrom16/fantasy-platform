@@ -2,7 +2,7 @@
 
 The pick sheet stays the room's index; the season ledger has its own route.
 The weekly obligation is what members land here for between Tuesday and
-Saturday, and the ledger is where they go to see what it bought them.
+Sunday, and the ledger is where they go to see what it bought them.
 Every mutation is a plain POST form (PRG + flash, fully functional without
 JS); a client sending ``Accept: application/json`` gets the authoritative
 sheet state back instead of a redirect, which is what the sheet's
@@ -538,6 +538,50 @@ RESULT_WORDS = {
 }
 
 
+# The All Sheets sort keys (Brad, 2026-09-08): name and record. Sorting
+# reorders members; it never invents a ranking — this page has no rank
+# column, and the natural order is alphabetical by name.
+SHEETS_SORTS = {
+    'name': ('name', lambda m: m.enrollment.get_display_name().casefold(), 'asc'),
+    # Record is a composite read under one direction flag (like the ledger's
+    # single-value keys): wins, then fewer losses, then more sides held. The
+    # -losses term keeps "fewer losses ranks better" aligned with wins so the
+    # reverse flag alone flips the whole order. A member with no final yet
+    # sorts to the bottom of the desc order (0 wins).
+    'record': ('record', lambda m: (
+        m.tally.wins if m.tally else 0,
+        -(m.tally.losses if m.tally else 0),
+        m.held_count,
+    ), 'desc'),
+}
+
+
+def _sheets_order(members, sort_key, direction):
+    """Members in the requested order, stably over the default name order."""
+    if sort_key not in SHEETS_SORTS:
+        return list(members), None, None
+    _label, key_fn, default_direction = SHEETS_SORTS[sort_key]
+    if direction not in _FLIP:
+        direction = default_direction
+    return (sorted(members, key=key_fn, reverse=direction == 'desc'),
+            sort_key, direction)
+
+
+def _sheets_sort_links(sort_key, direction, find_query):
+    """Per sort key: the link and its aria-sort state."""
+    links = {}
+    for key, (_label, _fn, default_direction) in SHEETS_SORTS.items():
+        active = key == sort_key
+        next_direction = _FLIP[direction] if active else default_direction
+        links[key] = {
+            'href': url_for('docket.sheets', sort=key, dir=next_direction,
+                            q=find_query or None),
+            'aria': _ARIA_SORT[direction] if active else None,
+            'active': active,
+        }
+    return links
+
+
 @docket_bp.route('/sheets')
 @enrollment_required('docket')
 def sheets():
@@ -547,6 +591,8 @@ def sheets():
     fact on it come from services/sheets.py, which reuses the sheet's own
     kickoff lock and the grading engine's per-pick rule. Presentation is
     derived here, never in Jinja (the room's rule).
+
+    Find, sort (Brad, 2026-09-08): same pattern as the ledger (8.9).
     """
     week, preview = _current_or_preview_week()
     season_opens_label = WEEK_1_BOUNDARY_LOCAL.strftime('%B %-d')
@@ -560,12 +606,40 @@ def sheets():
     else:
         state = 'open'
     board = joined_late = None
+    members = []
+    roster_total = 0
     if state == 'open':
         board = all_sheets(week, picks_service.now_naive())
         # A member who joined after this docket closed has no dealt sheet
         # (ADR-048): say so rather than leave them looking for their row.
         joined_late = (board.deadline_passed and current_user.id
                        not in {m.user_id for m in board.members})
+        members = list(board.members)
+        roster_total = len(members)
+
+    # Sort first, then find: matches keep the chosen order. Your row
+    # always leads when a query is active, matching or not — the ask is
+    # "me against the ones I typed" (ledger precedent, 8.9).
+    sort_key = sort_dir = sort_label = None
+    find_query = _find_query(request.args.get('q'))
+    find_total = None
+    sort_links = {}
+    your_member = None
+    if members:
+        your_member = next(
+            (m for m in members if m.user_id == current_user.id), None)
+        members, sort_key, sort_dir = _sheets_order(
+            members, request.args.get('sort'), request.args.get('dir'))
+        tokens = find_query.casefold().split()
+        if tokens:
+            matches = [m for m in members if all(
+                token in m.enrollment.get_display_name().casefold()
+                for token in tokens)]
+            find_total = len(matches)
+            members = matches if your_member is None else (
+                [your_member] + [m for m in matches if m is not your_member])
+        sort_links = _sheets_sort_links(sort_key, sort_dir, find_query)
+        sort_label = SHEETS_SORTS[sort_key][0] if sort_key else None
     return render_template(
         'docket/sheets.html',
         week=week,
@@ -575,6 +649,14 @@ def sheets():
         your_user_id=current_user.id,
         result_words=RESULT_WORDS,
         season_opens_label=season_opens_label,
+        members=members,
+        find_query=find_query,
+        find_total=find_total,
+        roster_total=roster_total,
+        sort_key=sort_key,
+        sort_dir=sort_dir,
+        sort_label=sort_label,
+        sort_links=sort_links,
     )
 
 

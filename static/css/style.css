@@ -14537,9 +14537,46 @@ body.game-docket .form-select:focus {
    grammar for a side the clerk filed. No side stripes. --- */
 .docket-sheets-page { padding-bottom: 3rem; }
 .docket-sheets-lede { margin-top: 1.5rem; }
+/* --- All Sheets find field --- */
+.docket-sheets-find { margin-top: 1rem; }
+.docket-sheets-find-head { margin-top: .5rem; }
+.docket-sheets-find-title {
+  font-family: 'Teko', sans-serif;
+  font-weight: 600;
+  font-size: 1.1rem;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  margin: 0;
+}
+/* --- All Sheets sort controls --- */
+.docket-sheets-sort {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  margin: .8rem 0 .3rem;
+  font-family: 'Teko', sans-serif;
+  font-weight: 500;
+  font-size: .92rem;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--text-secondary);
+}
+.docket-sheets-sort-link {
+  color: var(--text-secondary);
+  text-decoration: none;
+  padding: .25rem .1rem;
+  display: inline-flex;
+  align-items: center;
+  gap: .25rem;
+}
+.docket-sheets-sort-link:hover { color: var(--text-primary); }
+.docket-sheets-sort-link.is-active { color: var(--game-primary); font-weight: 600; }
+.docket-sheets-sort-link .docket-entry-caret { margin-left: 0; }
+.docket-sheets-sort-link .docket-entry-caret.is-asc { transform: rotate(180deg); }
+.docket-sheets-sorted { margin: 0 0 .5rem; }
+/* --- All Sheets collapsible drawers --- */
 .docket-sheets { list-style: none; margin: 0; padding: 0; }
 .docket-sheet {
-  padding: .35rem .25rem .6rem;
   border-bottom: 1px solid var(--docket-rule);
 }
 .docket-sheet.is-you { background: rgba(var(--game-accent-rgb), .09); }
@@ -14549,12 +14586,23 @@ body.game-docket .form-select:focus {
   align-items: center;
   gap: .5rem;
   min-height: 44px;
-  padding: .3rem 0;
+  padding: .5rem .25rem;
+  cursor: pointer;
+  list-style: none;
+}
+.docket-sheet-head::-webkit-details-marker { display: none; }
+.docket-sheet-head:hover { background: var(--bg-muted); }
+.docket-sheet-head:focus-visible {
+  outline: 2px solid var(--game-accent);
+  outline-offset: 2px;
+}
+.docket-sheet[open] > .docket-sheet-head .docket-entry-caret {
+  transform: rotate(180deg);
 }
 .docket-sheet-lines {
   list-style: none;
   margin: 0;
-  padding: 0 0 0 .25rem;
+  padding: 0 0 .4rem .25rem;
 }
 .docket-sheet-line {
   display: grid;

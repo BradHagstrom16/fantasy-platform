@@ -4,7 +4,7 @@ Grading Clarifications (design SSoT 2026-08-11): docket weeks partition time
 continuously at Tuesday 06:00 America/Chicago boundaries, half-open
 [boundary, next boundary); a game belongs to the week containing its kickoff.
 Week 1 opens Tue Sep 1 2026 06:00 CT; the season is 19 docket weeks. The
-deadline is the week's Saturday 11:00 AM CT. All service outputs are aware
+deadline is the week's Sunday 12:00 PM CT. All service outputs are aware
 UTC (the D6 naive-UTC strip happens at the column boundary, not here).
 """
 from datetime import UTC, datetime, timedelta
@@ -56,13 +56,13 @@ def test_week_number_for_returns_none_outside_the_season():
     assert week_number_for(boundary_utc(TOTAL_WEEKS + 1)) is None
 
 
-def test_deadline_is_saturday_1100_ct_and_dst_aware():
+def test_deadline_is_sunday_1200_ct_and_dst_aware():
     from games.docket.services.weeks import deadline_utc
 
-    # Week 1: Sat Sep 5 2026 11:00 CDT == 16:00 UTC.
-    assert deadline_utc(1) == datetime(2026, 9, 5, 16, 0, tzinfo=UTC)
-    # Week 10 (post-fall-back): Sat Nov 7 2026 11:00 CST == 17:00 UTC.
-    assert deadline_utc(10) == datetime(2026, 11, 7, 17, 0, tzinfo=UTC)
+    # Week 1: Sun Sep 6 2026 12:00 CDT == 17:00 UTC.
+    assert deadline_utc(1) == datetime(2026, 9, 6, 17, 0, tzinfo=UTC)
+    # Week 10 (post-fall-back): Sun Nov 8 2026 12:00 CST == 18:00 UTC.
+    assert deadline_utc(10) == datetime(2026, 11, 8, 18, 0, tzinfo=UTC)
 
 
 def test_deadline_falls_inside_its_own_week():

@@ -371,8 +371,8 @@ def test_panel_include_sees_loop_local_headliner(app, client):
     assert 'First Pick Locks In' in cfb_panel      # decree, nested include
     assert 'First Pick Locks In' not in docket_panel
     assert 'The first docket posts Tuesday, September 1.' in docket_panel
-    assert 'Sheets due Saturdays' in docket_panel  # docket court_line
-    assert 'Sheets due Saturdays' not in cfb_panel
+    assert 'Sheets due Sundays' in docket_panel   # docket court_line
+    assert 'Sheets due Sundays' not in cfb_panel
 
 
 def test_docket_pre_panel_reads_posted_for_reading(app, client):
@@ -504,17 +504,16 @@ def test_admin_enroll_still_works_post_window(app):
 # == the shared enrollment deadline (ADR-050 invariant) =====================
 
 def test_both_games_share_one_enrollment_deadline_instant():
-    """ADR-050 and the CFB constant's own comment call the two Week-1
-    deadlines 'the same instant by construction' — the club has one cutoff.
-    But CFB pins a literal UTC constant while The Docket derives its deadline
-    from Tue-boundary CT wall-clock math, so nothing enforced the equality:
-    a change to either side (the docket season start, the DST conversion, the
-    CFB constant) could silently split the window this whole file assumes is
-    shared — DUAL_PRE/WINDOW_CLOSED move both clocks as one, and the join-route
-    hard close reads each game's own seam. Lock the invariant directly."""
-    from games.cfb.services.lounge import ENROLLMENT_DEADLINE_UTC
-    from games.docket.services import weeks
-    assert weeks.deadline_utc(1) == ENROLLMENT_DEADLINE_UTC
+    """ADR-050: the club has one self-serve enrollment cutoff, shared by both
+    headliners. Both games now pin it as a literal UTC constant (Sat Sep 5
+    11:00 AM CT); until 2026-09-09 The Docket derived its cutoff from
+    deadline_utc(1), but the weekly pick deadline then moved to Sunday while
+    the enrollment cutoff deliberately stayed Saturday, so the join window is
+    a season constant of its own. Nothing but this test enforces that the two
+    literals agree, and DUAL_PRE/WINDOW_CLOSED assume they do — lock it."""
+    from games.cfb.services.lounge import ENROLLMENT_DEADLINE_UTC as cfb_deadline
+    from games.docket.services.lounge import ENROLLMENT_DEADLINE_UTC as docket_deadline
+    assert docket_deadline == cfb_deadline
 
 
 def test_both_games_share_one_season_live_instant():

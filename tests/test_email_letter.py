@@ -107,9 +107,9 @@ CFB_DEADLINE = datetime(2026, 1, 3, 11, 0)
 CFB_WARNING_AT = '2026-01-02T16:00:00+00:00'
 CFB_FINAL_AT = '2026-01-03T16:00:00+00:00'
 CFB_DEADLINE_TEXT = 'Saturday, Jan 3 · 11:00 AM CT'
-# Docket Week 1: Sat Sep 5 2026 11:00 CDT = 16:00 UTC.
-DOCKET_DEADLINE_UTC = datetime(2026, 9, 5, 16, 0, tzinfo=UTC)
-DOCKET_DEADLINE_TEXT = 'Saturday, Sep 5 · 11:00 AM CT'
+# Docket Week 1: Sun Sep 6 2026 12:00 CDT = 17:00 UTC.
+DOCKET_DEADLINE_UTC = datetime(2026, 9, 6, 17, 0, tzinfo=UTC)
+DOCKET_DEADLINE_TEXT = 'Sunday, Sep 6 · 12:00 PM CT'
 # Golf: Thu Jun 4 2026 07:00, stored naive as league wall clock (CDT).
 GOLF_DEADLINE = datetime(2026, 6, 4, 7, 0)
 GOLF_DEADLINE_TEXT = 'Thursday, Jun 4 · 7:00 AM CT'

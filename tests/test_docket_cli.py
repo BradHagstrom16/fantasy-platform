@@ -21,9 +21,9 @@ from tests._docket_fixtures import (
     make_week,
 )
 
-AFTER_DEADLINE = '2026-09-05T16:30:00'
+AFTER_DEADLINE = '2026-09-06T17:30:00'
 BEFORE_DEADLINE = '2026-09-02T12:00:00'
-KICK = datetime(2026, 9, 5, 18, 0)
+KICK = datetime(2026, 9, 6, 18, 0)      # Sun 1:00 PM CT — after the deadline
 
 
 @pytest.fixture()
@@ -96,7 +96,7 @@ def test_scheduled_stands_down_before_the_week_is_imported(app, runner,
 def test_scheduled_does_not_soften_a_real_failure(app, runner, monkeypatch):
     """--scheduled reclassifies exactly two benign states. A week that
     reached its deadline with no sound designation is not one of them: that
-    is the alert the Saturday timer exists to raise."""
+    is the alert the Sunday timer exists to raise."""
     _seed(designate=False)
     make_enrollment(make_user('player'))
     db.session.commit()
@@ -121,8 +121,8 @@ def test_remind_mode_mails_an_unfinished_sheet(app, runner, monkeypatch):
     _seed(final=False)
     make_enrollment(make_user('player'))
     db.session.commit()
-    # Thursday morning, inside the 48h tier before the Sat 11:00 CT close.
-    monkeypatch.setenv('DOCKET_FAKE_NOW', '2026-09-03T16:00:00')
+    # Friday noon, inside the 48h tier before the Sun 12:00 CT close.
+    monkeypatch.setenv('DOCKET_FAKE_NOW', '2026-09-04T17:00:00')
 
     with patch('games.docket.services.notifications.send_platform_email',
                return_value=True) as send:
@@ -385,7 +385,7 @@ def test_set_tiebreaker_designates_and_validates(app, runner, monkeypatch):
 def test_set_tiebreaker_refuses_an_unsound_designation(app, runner,
                                                        monkeypatch):
     """A designated game with no locked total cannot supply key 3's default
-    prediction — the command says so instead of leaving it to Saturday."""
+    prediction — the command says so instead of leaving it to Sunday."""
     week, games = _seed(designate=False)
     games[3].total_points = None
     db.session.commit()
@@ -704,3 +704,31 @@ def test_scores_mode_catch_up_stops_after_an_empty_roster_grades(
     assert second.exit_code == 0, second.output
     assert 'catch-up' not in second.output
     assert len(api_calls) == 2              # the current week only
+
+
+# ── repair-deadline (the 2026-09-09 Sat 11 AM -> Sun 12 PM move) ────────────
+
+def test_repair_deadline_corrects_a_stale_future_week(app, runner, monkeypatch):
+    """A week imported under the old rule keeps its Saturday deadline; the
+    command re-derives it to the current Sunday math when it is still ahead."""
+    monkeypatch.setenv('DOCKET_FAKE_NOW', '2026-09-09T12:00:00')
+    week = make_week(2)
+    week.deadline_at = datetime(2026, 9, 12, 16, 0)   # old Sat 11 AM CT
+    db.session.commit()
+    result = _invoke(runner, 'repair-deadline', '2')
+    assert result.exit_code == 0, result.output
+    assert '1 week(s) updated' in result.output
+    assert week.deadline_at == datetime(2026, 9, 13, 17, 0)  # Sun 12 PM CT
+
+
+def test_repair_deadline_refuses_a_passed_deadline(app, runner, monkeypatch):
+    """A graded week's deadline is historical (roster-as-of reads it), so a
+    deadline already in the past is never moved."""
+    monkeypatch.setenv('DOCKET_FAKE_NOW', '2026-09-09T12:00:00')
+    week = make_week(1)
+    week.deadline_at = datetime(2026, 9, 5, 16, 0)    # old Sat, already passed
+    db.session.commit()
+    result = _invoke(runner, 'repair-deadline', '1')
+    assert result.exit_code == 0, result.output
+    assert 'SKIP' in result.output and '0 week(s) updated' in result.output
+    assert week.deadline_at == datetime(2026, 9, 5, 16, 0)  # unchanged

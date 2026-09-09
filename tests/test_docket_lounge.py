@@ -22,7 +22,7 @@ PRE_ANCHOR = '2026-08-18T17:00:00'
 IN_SEASON = '2026-09-24T17:00:00'
 WEEK1_BOUNDARY_UTC = '2026-09-01T11:00:00'   # Tue Sep 1 06:00 CT
 IN_WEEK1_OPEN = '2026-09-02T12:00:00'
-IN_WEEK1_CLOSED = '2026-09-05T17:00:00'      # past Sat 11:00 CT (16:00 UTC)
+IN_WEEK1_CLOSED = '2026-09-06T18:00:00'      # past Sun 12:00 CT (17:00 UTC)
 POST_SEASON = '2027-01-20T00:00:00'          # season ends Tue Jan 12 2027
 
 
@@ -59,9 +59,11 @@ def test_state_never_touches_db(monkeypatch):
     assert lounge.docket_lounge_state() == 'live'
 
 
-def test_join_window_open_flips_at_week1_deadline(app, monkeypatch):
-    """Brad's enrollment ruling: self-serve joining closes at the Week 1
-    deadline, strictly (the deadline instant itself is closed)."""
+def test_join_window_open_flips_at_the_enrollment_deadline(app, monkeypatch):
+    """Brad's enrollment ruling: self-serve joining closes at the shared
+    enrollment deadline (Sat Sep 5 11:00 AM CT = 16:00 UTC), strictly (the
+    deadline instant itself is closed). Decoupled from the weekly pick
+    deadline, which moved to Sunday (2026-09-09)."""
     at(monkeypatch, '2026-09-05T15:59:00')
     assert lounge.join_window_open() is True
     at(monkeypatch, '2026-09-05T16:00:00')
@@ -89,9 +91,9 @@ def test_context_pre_first_deadline_line(app, monkeypatch):
     assert ctx['is_enrolled'] is True
     assert ctx['viewer_mode'] == 'member'
     assert ctx['game_tile_label'] == 'OPENS · SEP 1'
-    assert ctx['court_line'] == 'Sheets due Saturdays · 11:00 AM CT'
-    # Naive UTC (D6): Sat Sep 5 11:00 CT == 16:00 UTC. Templates ct-filter it.
-    assert ctx['first_deadline_at'] == datetime(2026, 9, 5, 16, 0)
+    assert ctx['court_line'] == 'Sheets due Sundays · 12:00 PM CT'
+    # Naive UTC (D6): Sun Sep 6 12:00 CT == 17:00 UTC. Templates ct-filter it.
+    assert ctx['first_deadline_at'] == datetime(2026, 9, 6, 17, 0)
     assert ctx['archived_tiles'] == []
 
 

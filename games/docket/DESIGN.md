@@ -56,7 +56,7 @@ sportsbook.
 
 ### 1.4 Decisions lock in waves
 
-The week deadline is Saturday 11:00 AM CT, but individual cases lock earlier, at kickoff. A
+The week deadline is Sunday 12:00 PM CT, but individual cases lock earlier, at kickoff. A
 Thursday-night pick is committed Thursday while the rest of the sheet stays open. The
 interface must always distinguish, per case: open to me, held by me, held and locked, locked
 before I acted. Locked is procedural and cold, never punitive; a locked case always states
@@ -166,8 +166,8 @@ surface, ask "lounge or room?" first (platform §1.6).
 - **Docket open** — lines frozen, picks editable, cases lock individually at kickoff. A
   member's side is sealed from the rest of the roster until its case locks; All Sheets (7.13)
   opens it at kickoff and everything at the deadline (Brad, 2026-09-04).
-- **Docket closed** — Saturday 11:00:00 AM CT reached. The whole sheet is read-only. The
-  submission boundary is strict: 10:59:59 is on time, 11:00:00 is late.
+- **Docket closed** — Sunday 12:00:00 PM CT reached. The whole sheet is read-only. The
+  submission boundary is strict: 11:59:59 is on time, 12:00:00 is late.
 - **Verdicts** — scores land, cases resolve to verdicts (win), mistrials (push), losses; the
   week grades (T8+).
 - **Adjourned** — the week is graded into the season ledger (T10 renders this).
@@ -195,7 +195,7 @@ When two treatments conflict, resolve in this order:
 1. **Truth of the record** — frozen numbers, lock states, and progress facts are never
    obscured by styling.
 2. **Speed of the weekly task** — eight decisions plus three obligations, mobile-first,
-   before Saturday morning. Density serves scanning; ceremony never blocks input.
+   before Sunday noon. Density serves scanning; ceremony never blocks input.
 3. **The ledger's gravity** — season surfaces (T10) get the polish budget; weekly surfaces
    feed them and visually defer to them.
 4. **Register flavor** — courtroom voice is applied last and removed first when it costs
@@ -443,7 +443,7 @@ every open pill as the reserve; success was never confirmed in words. Six contra
   ("5 more sides to pick.") → x2 ("All 8 held. Now pick your x2: it scores double.") → number
   ("Now your number: predict the tiebreaker score.", only while a case is designated and unlocked)
   → reserve ("Sheet filed. A reserve is optional: tap one more side to hold one.") → complete
-  ("Sheet filed. Change anything until Saturday 11:00 AM CT."), with preview and closed rungs and
+  ("Sheet filed. Change anything until Sunday 12:00 PM CT."), with preview and closed rungs and
   a "Closes in 3h 0m." prefix inside six hours on every rung but the two filed ones
   (`FILED_STAGES`). `sheet_state` embeds it; `_next_step.html` renders it in the bar, the
   drawer, and the desktop rail so the three cannot disagree; every success message appends it.
@@ -465,10 +465,10 @@ every open pill as the reserve; success was never confirmed in words. Six contra
   left"; reserve/complete → the **filed stamp**: a check mark and "Sheet filed", "Your Week N sheet
   is in.", the Clerk's-Ledger facts in one Teko line ("8 sides held · x2 on Utah Utes -3.5 ·
   Reserve held · Number 53.7"), and "Nothing to submit: every tap was saved as you made it.
-  Change anything until Saturday 11:00 AM CT." plus, without a reserve, "A reserve is optional:
+  Change anything until Sunday 12:00 PM CT." plus, without a reserve, "A reserve is optional:
   your next tap on any open side holds one."; closed → the same card cold (`.is-closed`, a lock
-  mark, "Sheet closed", "Your Week N sheet is on the record.", "The docket closed Saturday 11:00
-  AM CT. Verdicts to follow."). The stamp is the Stamped-Side grammar at card scale (garnet
+  mark, "Sheet closed", "Your Week N sheet is on the record.", "The docket closed Sunday 12:00
+  PM CT. Verdicts to follow."). The stamp is the Stamped-Side grammar at card scale (garnet
   border + 8% tint + weight step); the closed state is the Cold-Docket treatment with its reason
   in the note. `sheet_state` carries each pick's `label` (`describe_pick`) so the card names the
   x2 from the same snapshot the rail prints. Locked by `tests/test_docket_sheet_flow.py`.
@@ -489,7 +489,7 @@ every open pill as the reserve; success was never confirmed in words. Six contra
   file." / "x2 set: Over 51.5." / "Number saved: 53.7.") for both the flash and the JSON toast, which
   is also the page's `role=status` live region. "Withdraw" is "Remove"; "Record" is "Save number".
 - **The number states its default and moves up when it is the ask.** "Skip it and the line stands
-  in as your number." on the blank state; "Saved: 53.7. Change it until Saturday 11:00 AM CT." once
+  in as your number." on the blank state; "Saved: 53.7. Change it until Sunday 12:00 PM CT." once
   saved; the card is promoted above the slots while it is the next step. A prediction above 200.0 is
   refused as a dropped decimal ("That looks high for a combined score. Enter it like 51.5.").
 - **First visit.** At 0 picks the slate opens with "How the sheet works" (three steps, "Everything
@@ -584,7 +584,7 @@ Platform `.game-subnav` shape: background `#180C10` (warm oxblood-cast near-blac
 from CFB's purple-cast `#0a080f`), `--subnav-accent: #A63446`, `--subnav-accent-rgb:
 166,52,70`, plus both scroll-fade tints matching the background. Label: "⚖️ Docket 2026".
 Pills, in order: **My Sheet · All Sheets · Ledger · Rules**, then Admin for admins only. The
-weekly obligation leads because that is what members arrive for Tuesday through Saturday; the
+weekly obligation leads because that is what members arrive for Tuesday through Sunday; the
 week's other surface sits beside it (All Sheets, 7.13, added 2026-09-04); the ledger is what
 they come back to.
 
@@ -592,7 +592,7 @@ they come back to.
 
 Platform join shape (page-hero + how-it-works + form + `.btn-game`) on the ruled
 `.docket-ruleset` dl. **Four beats, plain voice, by ruling (2026-08-19):** Pick 8, Double
-Your Best, Break the Tie, That's the Game — then the Saturday lock line and the $60 entry
+Your Best, Break the Tie, That's the Game — then the Sunday lock line and the $60 entry
 line via `DOCKET_ENTRY_FEE`. The enrollment page has one job: understanding sufficient to
 confidently click Join. Every contingency (the reserve, No Contest, tenths precision,
 frozen-Tuesday mechanics) lives on the rules page, which this page links instead of
@@ -645,13 +645,29 @@ ruling: **once a pick locks it releases visibility for everyone.**
   kickoff · x2 named · reserve held · number in." A member with nothing held reads "Nothing
   held yet." (the progress count is shown by ruling). The number shows at its own lock,
   min(deadline, designated kickoff).
-- **Shape.** One stacked composition at every width: each member is an always-open article
-  (a drawer would cost seventeen taps to see "all sheets"), the head row reuses the ledger's
+- **Shape.** One stacked composition at every width: each member is a collapsible drawer
+  (`<details class="docket-sheet">`, default closed — the 2026-09-08 override of the original
+  always-open article; the roster grew and a wall of open sheets buried the reader's own row
+  and the person they came to check). The summary reuses the ledger drawer's grammar
+  (`.docket-sheet-head` as `<summary>`, suppressed marker, the drawn `.docket-entry-caret`
+  that rotates on `[open]`, a 44px target, the garnet focus ring) and the ledger's head row:
   avatar, name, "You" tag and Teko count (`.docket-entry-count` carries the summary: "3 of 8
-  held" → "2 of 8 locked" → "1-1 · 5 to play"), and the lines below are kickoff-ordered with
+  held" → "2 of 8 locked" → "1-1 · 5 to play"). Inside, the lines are kickoff-ordered with
   the reserve last: Teko kickoff, the side as the sheet prints it with the same three marks as
   the case row (x2 chip, Reserve badge, Auto tag), the case caption, and the result word.
-  Your row takes the garnet tint (garnet means "yours"). No form, ever.
+  Your row takes the garnet tint (garnet means "yours"). No JS: native disclosure is the whole
+  mechanism, the room's no-JS spine (§7.11).
+- **Find and sort (Brad, 2026-09-08), the ledger's aids reused (8.9).** A `role="search"` GET
+  find field (`.docket-find.docket-sheets-find`, the §7.7 anatomy) filters by display name;
+  **your sheet always leads a result set**, matching or not, and the count line never caps
+  silently ("Showing 3 of 12 sheets matching "adams", yours first · All sheets ›"), zero
+  matches state the query and keep the typed text. Sort is a pair of text links
+  (`.docket-sheets-sort`, `?sort=name|record&dir=asc|desc`, derived in the route via
+  `SHEETS_SORTS`, never Jinja `sort(attribute=…)`): name (natural ascending) and record (wins,
+  then fewer losses, then more sides held; natural descending). The active link states its
+  order with the entry caret and `aria-sort`. Find and sort compose (the form carries the
+  sort; the links carry the query). Both are plain GETs — navigation, never mutation — so the
+  page's one form is the search form; the sheets themselves stay formless.
 - **Result marks are the engine's rule** (`grading.engine.grade_pick_outcome`) behind the
   week grade's final gate (`is_final and not no_contest`); the words are Win / Loss /
   Mistrial / No Contest on the platform semantic layer (6.5), with "Final 17-31" in the
@@ -669,7 +685,8 @@ ruling: **once a pick locks it releases visibility for everyone.**
   Friday's finals are on the page the next morning (rulings Amendments 2026-09-04).
 
 Locked by `tests/test_docket_all_sheets.py` (the reveal boundary, the words-only sealed
-facts, the engine parity of every mark, the as-of-deadline roster, the query count) and the
+facts, the engine parity of every mark, the as-of-deadline roster, the query count, the
+collapsed-by-default drawers, the you-first find, and the name/record sort) and the
 conformance matrix.
 
 ## 8. Component Doctrine (season surfaces, T10 scope)

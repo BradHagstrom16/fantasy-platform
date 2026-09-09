@@ -33,7 +33,7 @@ from tests._registry_helpers import open_join_window
 KICK_THU = datetime(2026, 9, 4, 0, 15)      # Thu 7:15 PM CT
 KICK_SAT = datetime(2026, 9, 5, 23, 30)     # Sat 6:30 PM CT
 KICK_SUN = datetime(2026, 9, 6, 17, 0)      # Sun noon CT
-DEADLINE = datetime(2026, 9, 5, 16, 0)      # Sat 11:00 AM CT
+DEADLINE = datetime(2026, 9, 6, 17, 0)      # Sun 12:00 PM CT
 FRIDAY = datetime(2026, 9, 4, 12, 0)        # Thursday's cases locked
 JSON = {'Accept': 'application/json'}
 
@@ -356,17 +356,21 @@ def test_sheets_requires_enrollment(app, client):
     assert '/docket/join' in resp.headers['Location']
 
 
-def test_sheets_carries_no_forms(monkeypatch, client, member):
+def test_sheets_carries_no_mutation_forms(monkeypatch, client, member):
+    """The page is read-only: no POST forms, no mutation hooks, no CSRF.
+    The GET search form (role=search) is navigation, not mutation."""
     week = make_week(1)
     thu = make_game(week, kickoff=KICK_THU)
     at(monkeypatch, IN_WEEK1)
     _hold(member, week, thu)
     db.session.commit()
-    at(monkeypatch, '2026-09-05T17:00:00')      # closed
+    at(monkeypatch, '2026-09-06T18:00:00')      # closed (past Sun 12:00 PM CT)
     html = _page(client)
-    assert '<form' not in html
+    assert 'method="post"' not in html.lower()
     assert 'data-docket-action="' not in html
     assert 'csrf_token' not in html
+    # The find field is a GET form — navigation, never mutation
+    assert 'role="search"' in html
 
 
 def test_sheets_marks_you_once_and_lists_every_member(
@@ -437,7 +441,7 @@ def test_sheets_closed_shows_the_clerks_marks(monkeypatch, client, member):
     pick = _hold(member, week, sat)
     pick.is_autopick, pick.is_best, pick.is_auto_best = True, True, True
     db.session.commit()
-    at(monkeypatch, '2026-09-05T17:00:00')
+    at(monkeypatch, '2026-09-06T18:00:00')
     html = _page(client)
     assert 'docket-sheet-line is-autopick' in html
     assert 'docket-auto-tag' in html
@@ -486,3 +490,96 @@ def test_subnav_carries_all_sheets_after_my_sheet(
     assert html.index('My Sheet') < html.index('All Sheets') < html.index('Ledger')
     sheets = _page(client)
     assert 'subnav-pill active' in sheets
+
+
+# ── collapsible drawers, find, sort (Brad, 2026-09-08) ─────────────────────
+
+def test_sheets_render_as_collapsed_drawers(monkeypatch, client, member):
+    """Each member is a <details> drawer, default collapsed (no `open`)."""
+    week = make_week(1)
+    make_game(week, kickoff=KICK_THU)
+    _member('zed', display_name='Zed')
+    db.session.commit()
+    at(monkeypatch, IN_WEEK1)
+    html = _page(client)
+    assert '<details class="docket-sheet' in html
+    assert '<summary class="docket-sheet-head"' in html
+    # Default collapsed: no member drawer carries the `open` attribute.
+    assert re.search(r'<details class="docket-sheet[^"]*" id="[^"]*" open',
+                     html) is None
+
+
+def test_sheets_find_pins_you_first(monkeypatch, client, member):
+    week = make_week(1)
+    make_game(week, kickoff=KICK_THU)
+    _member('amy', display_name='Amy Adams')
+    _member('bob', display_name='Bob Adams')
+    db.session.commit()
+    at(monkeypatch, IN_WEEK1)
+    html = client.get('/docket/sheets?q=adams').data.decode()
+    assert 'Matching sheets' in html and 'yours first' in html
+    # You lead even though "member" does not match "adams".
+    assert html.index('>You<') < html.index('Amy Adams') < html.index('Bob Adams')
+
+
+def test_sheets_find_zero_matches_states_query(monkeypatch, client, member):
+    week = make_week(1)
+    make_game(week, kickoff=KICK_THU)
+    db.session.commit()
+    at(monkeypatch, IN_WEEK1)
+    html = client.get('/docket/sheets?q=nobodyhere').data.decode()
+    assert 'No sheet matches' in html and 'nobodyhere' in html
+    assert 'value="nobodyhere"' in html          # the field keeps the text
+    assert 'Try part of a name' in html
+
+
+def _name_order(html):
+    """Display names in render order, scoped to the sheets list (the word
+    'member' also appears in page chrome, so a bare .index is unreliable)."""
+    body = html[html.find('<ol class="docket-sheets">'):]
+    return re.findall(r'<span class="docket-entry-name">([^<]+)</span>', body)
+
+
+def test_sheets_sort_by_name_reverses(monkeypatch, client, member):
+    week = make_week(1)
+    make_game(week, kickoff=KICK_THU)
+    _member('zed', display_name='Zed')
+    db.session.commit()
+    at(monkeypatch, IN_WEEK1)
+    asc = client.get('/docket/sheets?sort=name&dir=asc').data.decode()
+    assert _name_order(asc) == ['member', 'Zed']
+    desc = client.get('/docket/sheets?sort=name&dir=desc').data.decode()
+    assert _name_order(desc) == ['Zed', 'member']
+    assert 'Sorted by name' in desc
+
+
+def test_sheets_sort_by_record(monkeypatch, client, member):
+    """Record sort ranks by wins (desc): the winner leads the loser."""
+    week = make_week(1)
+    thu = make_game(week, kickoff=KICK_THU, home='Utah Utes',
+                    away='Idaho Vandals')
+    champ = _member('champ', display_name='Champ')
+    at(monkeypatch, IN_WEEK1)
+    _hold(member, week, thu, side='away')        # away does not cover: a loss
+    _hold(champ, week, thu, side='home')         # home covers -3.5: a win
+    _final(thu, 31, 17)
+    db.session.commit()
+    at(monkeypatch, '2026-09-04T12:00:00')       # Friday, the Thu case revealed
+    html = client.get('/docket/sheets?sort=record&dir=desc').data.decode()
+    order = _name_order(html)
+    assert order.index('Champ') < order.index('member')
+    assert 'Sorted by record' in html
+
+
+def test_sheets_sort_and_find_compose(monkeypatch, client, member):
+    week = make_week(1)
+    make_game(week, kickoff=KICK_THU)
+    _member('amy', display_name='Amy Adams')
+    _member('bob', display_name='Bob Adams')
+    db.session.commit()
+    at(monkeypatch, IN_WEEK1)
+    html = client.get('/docket/sheets?sort=name&dir=desc&q=adams').data.decode()
+    # The find form carries the active sort so the two compose.
+    assert 'name="sort" value="name"' in html
+    assert 'name="dir" value="desc"' in html
+    assert 'Matching sheets' in html

@@ -26,11 +26,11 @@ from tests._docket_fixtures import (
     make_week,
 )
 
-AFTER_DEADLINE = '2026-09-05T16:30:00'
-BEFORE_DEADLINE = '2026-09-05T15:59:00'
+AFTER_DEADLINE = '2026-09-06T17:30:00'
+BEFORE_DEADLINE = '2026-09-06T16:59:00'
 # Every seeded kickoff sits after the deadline, so the whole docket is in
 # the autopick pool unless a test says otherwise.
-KICK = datetime(2026, 9, 5, 18, 0)
+KICK = datetime(2026, 9, 6, 18, 0)
 
 
 def _seed(week_games=9, *, final=True):
@@ -99,7 +99,7 @@ def test_a_game_imported_after_the_deadline_is_stamped_and_flagged(app):
 
     week, _games = _seed(week_games=1)
     latecomer = make_game(week, kickoff=KICK, home='Late', away='Arrival')
-    latecomer.created_at = datetime(2026, 9, 5, 20, 0)  # after the deadline
+    latecomer.created_at = datetime(2026, 9, 6, 20, 0)  # after the deadline
     db.session.commit()
 
     result = stamp_kickoffs(week)

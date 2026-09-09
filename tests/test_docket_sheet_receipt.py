@@ -74,7 +74,7 @@ def test_eighth_side_sends_the_sheet_receipt_once(monkeypatch, client, member):
     assert 'Still open on your sheet' in plain
     assert 'No headliner named.' in plain
     assert 'No combined-score number recorded.' in plain
-    assert 'Saturday, Sep 5' in plain           # the deadline, literal
+    assert 'Sunday, Sep 6' in plain             # the deadline, literal
     assert '/docket/' in plain                  # the sheet link
     assert 'Home 0 -3.5' in html
 

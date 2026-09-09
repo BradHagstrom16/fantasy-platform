@@ -32,9 +32,9 @@ from games.docket.services.weeks import FIRST_NFL_WEEK, week_number_for
 from tests._docket_fixtures import IN_WEEK1, at, make_game, make_week
 
 # Week 2 = Docket week of NFL Week 1: [Tue Sep 8 06:00 CT, Tue Sep 15 06:00 CT),
-# deadline Sat Sep 12 11:00 CT = 16:00 UTC. Kickoffs are naive UTC.
+# deadline Sun Sep 13 12:00 CT = 17:00 UTC. Kickoffs are naive UTC.
 IN_WEEK2 = '2026-09-09T12:00:00'
-AFTER_W2_DEADLINE = '2026-09-12T16:30:00'
+AFTER_W2_DEADLINE = '2026-09-13T17:30:00'
 THU = datetime(2026, 9, 11, 0, 15)        # Thu night, before the deadline
 SAT = datetime(2026, 9, 12, 18, 0)
 SUN_EARLY = datetime(2026, 9, 13, 17, 0)

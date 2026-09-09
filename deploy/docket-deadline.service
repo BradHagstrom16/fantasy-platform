@@ -3,7 +3,7 @@
 # enrolled player. Nothing downstream can grade a week until this has run.
 #
 # Costs no API credits. Idempotent: the freeze is only-if-null and a completed
-# sheet passes through autopick unchanged, so the 11:32 retry is free.
+# sheet passes through autopick unchanged, so the 12:32 retry is free.
 #
 # Exits non-zero when the week has no sound tiebreaker designation. That is
 # the alert that matters: kickoffs still froze, but autopick was skipped and

@@ -22,8 +22,8 @@ from models.user import User
 _event_ids = itertools.count(1)
 
 # Week 1 anchors (naive UTC): boundary Tue Sep 1 06:00 CT, deadline
-# Sat Sep 5 11:00 CT.
-WEEK1_DEADLINE_UTC = datetime(2026, 9, 5, 16, 0)
+# Sun Sep 6 12:00 CT.
+WEEK1_DEADLINE_UTC = datetime(2026, 9, 6, 17, 0)
 IN_WEEK1 = '2026-09-02T12:00:00'
 
 # When a fixture member enrolled (naive UTC), well before every deadline of

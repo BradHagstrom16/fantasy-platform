@@ -1,7 +1,7 @@
 """The Docket — deadline reminders (D24).
 
-Three tiers before a week's Saturday 11:00 AM CT deadline (48h Thursday
-morning, 24h Friday morning, 2h Saturday morning), sent only to roster
+Three tiers before a week's Sunday 12:00 PM CT deadline (48h Friday
+afternoon, 24h Saturday afternoon, 2h Sunday morning), sent only to roster
 members whose sheet is still short of its obligations.
 
 **De-dup is the sent flag, never the cadence** (D24). ``DocketWeek

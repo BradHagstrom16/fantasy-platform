@@ -21,6 +21,7 @@ Read-only by contract: this module must never import the writer services
 Datetimes handed to templates are naive UTC (the D6 column form); the Jinja
 ``ct`` filter is the render boundary, exactly as the room's templates do it.
 """
+from datetime import UTC, datetime
 from typing import Any, Literal
 
 from sqlalchemy import func, select
@@ -53,12 +54,23 @@ def docket_lounge_state() -> DocketLoungeState:
     return 'post'
 
 
+# The season's enrollment deadline: self-serve joining closes Sat Sep 5 2026
+# 11:00 AM CT (16:00 UTC; CDT is UTC-5) — the shared club cutoff (ADR-050),
+# the same instant as CFB's ENROLLMENT_DEADLINE_UTC. Pinned as a season
+# constant, NOT derived from deadline_utc(1): when the weekly pick deadline
+# moved to Sunday 12:00 PM CT (Brad, 2026-09-09) the join cutoff deliberately
+# stayed Saturday, so the two are no longer the same instant. Equality with
+# the CFB constant is locked in tests. A literal, so the window resolves
+# identically against empty tables.
+ENROLLMENT_DEADLINE_UTC = datetime(2026, 9, 5, 16, 0, tzinfo=UTC)
+
+
 def join_window_open() -> bool:
     """Whether self-serve enrollment is still open (Brad's ruling, 2026-08-18):
-    the Week 1 deadline (Sat Sep 5, 11:00 AM CT) closes joining for the
-    season. Late membership is granted by the Commish through admin
+    the shared enrollment deadline (Sat Sep 5, 11:00 AM CT) closes joining for
+    the season. Late membership is granted by the Commish through admin
     enrollment, never through /docket/join."""
-    return now_utc() < weeks.deadline_utc(1)
+    return now_utc() < ENROLLMENT_DEADLINE_UTC
 
 
 # Roster-count display floor (design review 2026-08-18) — mirrored in the
@@ -122,7 +134,7 @@ def _context_pre() -> dict:
     ):
         posted_week_number = upcoming.week_number
     return {
-        'court_line': 'Sheets due Saturdays · 11:00 AM CT',
+        'court_line': 'Sheets due Sundays · 12:00 PM CT',
         'game_tile_label': 'OPENS · SEP 1',
         # Naive UTC; templates render these through the ct filter.
         'first_deadline_at': to_naive_utc(weeks.deadline_utc(1)),
