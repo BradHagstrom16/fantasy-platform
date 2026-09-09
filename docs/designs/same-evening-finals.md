@@ -46,7 +46,7 @@ Estimated burn after shipping about 420/month at hourly cadence (baseline 185 + 
 
 ## Success Criteria
 
-- Saturday Sep 12: first Survivor verdict visible on `/cfb/` within an hour of the game's final; the Docket ledger's "this week" column ticks the same afternoon.
+- Saturday Sep 12: for any game that ends before the 00:30 CT tick, the Survivor verdict is visible on `/cfb/` within an hour of the final, and the Docket ledger's "this week" column ticks the same afternoon. A final after 00:30 CT (a late West Coast kickoff) is by design the Sunday 08:00 daily pass's: by the next 13:30 tick it is past the 12-hour guard window, and an overnight tick for one game a week is not worth its credits.
 - Journal shows idle exits (zero credits) outside game hours.
 - Month-end credits used at or under 450 in September with the timer enabled from Sep 12.
 
