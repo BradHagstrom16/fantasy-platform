@@ -14596,7 +14596,6 @@ body.game-docket .form-select:focus {
 }
 .docket-week-nav-btn.is-disabled {
   color: var(--text-secondary);
-  opacity: .5;
   cursor: default;
 }
 .docket-week-nav-here.is-current {

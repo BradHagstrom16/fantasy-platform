@@ -59,10 +59,10 @@ the finish review and DESIGN.md 7.13.
         {% else %}
         <span class="docket-week-nav-btn is-prev is-disabled" aria-disabled="true">&lsaquo; Earliest</span>
         {% endif %}
-        {% if nav.current and not nav.is_current %}
-        <a class="docket-week-nav-here" href="{{ url_for('docket.sheets') }}">This week</a>
-        {% else %}
+        {% if nav.is_current %}
         <span class="docket-week-nav-here is-current" aria-current="page">This week</span>
+        {% else %}
+        <a class="docket-week-nav-here" href="{{ url_for('docket.sheets') }}">This week</a>
         {% endif %}
         {% if nav.next %}
         <a class="docket-week-nav-btn is-next" href="{{ url_for('docket.sheets', week=nav.next) }}" rel="next">Week {{ nav.next }} &rsaquo;</a>
@@ -142,6 +142,7 @@ the finish review and DESIGN.md 7.13.
                         <span class="docket-ledger-avatar" aria-hidden="true">{{ r.enrollment.user.get_avatar() }}</span>
                         {{ r.enrollment.get_display_name() }}
                         {% if is_you %}<span class="docket-you-tag">You</span>{% endif %}
+                        {% if not r.submitted %}<span class="docket-caption docket-week-standings-absent">no sheet filed</span>{% endif %}
                     </span>
                     <span class="docket-card-keys">
                         <span><b>{{ '%.1f'|format(r.points) }}</b> pts</span>

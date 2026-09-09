@@ -105,10 +105,12 @@ never reads differently here than on the ledger drawer or All Sheets.
                         {% endfor %}
                     </ol>
                 </details>
+                {% endif %}
+                {# The link stands for every week — the pool's sheets are on the
+                   record whether or not this member filed one. #}
                 <p class="docket-caption docket-member-seelink">
                     <a href="{{ url_for('docket.sheets', week=wk.week_number) }}">Every sheet for Week {{ wk.week_number }} &rsaquo;</a>
                 </p>
-                {% endif %}
             </li>
             {% endfor %}
         </ol>
