@@ -125,7 +125,12 @@ from games.docket.services.tiebreaker_rule import (
     apply_default_tiebreaker,
     default_tiebreaker_game,
 )
-from games.docket.services.weeks import SEASON_YEAR, TOTAL_WEEKS, week_number_for
+from games.docket.services.weeks import (
+    SEASON_YEAR,
+    TOTAL_WEEKS,
+    deadline_utc,
+    week_number_for,
+)
 from games.docket.utils import now_utc, to_naive_utc
 
 docket_cli = AppGroup('docket', help="The Docket (NFL+CFB pick'em) commands.")
@@ -576,6 +581,57 @@ def set_tiebreaker_cmd(week, matchup):
                 f'(total {game.total_points})', fg='green')
     if not _report_designation(target):
         _fail('the designated game does not satisfy the designation contract')
+
+
+@docket_cli.command('repair-deadline')
+@click.argument('week', type=int, required=False)
+def repair_deadline_cmd(week):
+    """Re-derive deadline_at for WEEK (or every not-yet-closed week) from the
+    current week math.
+
+    The 2026-09-09 move of the weekly deadline (Sat 11:00 AM CT -> Sun 12:00
+    PM CT) only changes NEW week creation; a week already imported under the
+    old rule keeps its stored deadline. This backfills those. Idempotent, and
+    it refuses to move a deadline that has already passed: a graded week's
+    deadline is historical (roster_user_ids_as_of and every past grade read
+    it), so only a week whose deadline is still in the future is repaired.
+    The write goes through the ORM with a naive-UTC value (games/docket/
+    utils.to_naive_utc), never a Core update, so the Postgres aware-cast
+    gotcha cannot bite.
+    """
+    now = to_naive_utc(now_utc())
+    if week is not None:
+        target = _get_week(week)
+        if target is None:
+            _fail(f'no docket week {week}')
+        weeks = [target]
+    else:
+        weeks = db.session.scalars(
+            select(DocketWeek).order_by(DocketWeek.week_number)).all()
+        if not weeks:
+            click.echo('No docket weeks exist yet.')
+            return
+
+    changed = 0
+    for target in weeks:
+        correct = to_naive_utc(deadline_utc(target.week_number))
+        if target.deadline_at == correct:
+            click.echo(f'  week {target.week_number}: already correct '
+                       f'({correct} UTC)')
+            continue
+        if target.deadline_at <= now:
+            click.secho(f'  week {target.week_number}: SKIP — its deadline '
+                        f'({target.deadline_at} UTC) has already passed; '
+                        f'not moving a historical deadline', fg='yellow')
+            continue
+        old = target.deadline_at
+        target.deadline_at = correct
+        changed += 1
+        click.secho(f'  week {target.week_number}: {old} -> {correct} UTC',
+                    fg='green')
+    if changed:
+        db.session.commit()
+    click.echo(f'\n[docket repair-deadline] {changed} week(s) updated.')
 
 
 def register_docket_cli(app):

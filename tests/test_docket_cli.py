@@ -704,3 +704,31 @@ def test_scores_mode_catch_up_stops_after_an_empty_roster_grades(
     assert second.exit_code == 0, second.output
     assert 'catch-up' not in second.output
     assert len(api_calls) == 2              # the current week only
+
+
+# ── repair-deadline (the 2026-09-09 Sat 11 AM -> Sun 12 PM move) ────────────
+
+def test_repair_deadline_corrects_a_stale_future_week(app, runner, monkeypatch):
+    """A week imported under the old rule keeps its Saturday deadline; the
+    command re-derives it to the current Sunday math when it is still ahead."""
+    monkeypatch.setenv('DOCKET_FAKE_NOW', '2026-09-09T12:00:00')
+    week = make_week(2)
+    week.deadline_at = datetime(2026, 9, 12, 16, 0)   # old Sat 11 AM CT
+    db.session.commit()
+    result = _invoke(runner, 'repair-deadline', '2')
+    assert result.exit_code == 0, result.output
+    assert '1 week(s) updated' in result.output
+    assert week.deadline_at == datetime(2026, 9, 13, 17, 0)  # Sun 12 PM CT
+
+
+def test_repair_deadline_refuses_a_passed_deadline(app, runner, monkeypatch):
+    """A graded week's deadline is historical (roster-as-of reads it), so a
+    deadline already in the past is never moved."""
+    monkeypatch.setenv('DOCKET_FAKE_NOW', '2026-09-09T12:00:00')
+    week = make_week(1)
+    week.deadline_at = datetime(2026, 9, 5, 16, 0)    # old Sat, already passed
+    db.session.commit()
+    result = _invoke(runner, 'repair-deadline', '1')
+    assert result.exit_code == 0, result.output
+    assert 'SKIP' in result.output and '0 week(s) updated' in result.output
+    assert week.deadline_at == datetime(2026, 9, 5, 16, 0)  # unchanged

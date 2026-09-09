@@ -68,12 +68,13 @@ FLASK_APP=app.py venv/bin/flask cfb repair-week-dates --week N   # Re-derive a r
 # Docket CLI (timers ship as deploy/docket-*; the units pass --scheduled, see below)
 FLASK_APP=app.py venv/bin/flask docket sync --mode setup     # Create week + import slates + lock first-posted lines + rule-derived tiebreaker (Tue). Against an existing week, gap-fills only — locked lines are NEVER overwritten (runbook in games/docket/cli.py).
 FLASK_APP=app.py venv/bin/flask docket sync --mode lines     # Gap-fill empty markets + D19-eng kickoff refresh + the tiebreaker rule (fill-only; waits for the total); warns on a bad designation (Tue-Fri)
-FLASK_APP=app.py venv/bin/flask docket sync --mode deadline  # Freeze kickoff_at_deadline + deal the D5-session autopick package (Sat 11:00 CT)
+FLASK_APP=app.py venv/bin/flask docket sync --mode deadline  # Freeze kickoff_at_deadline + deal the D5-session autopick package (Sun 12:00 PM CT deadline)
 FLASK_APP=app.py venv/bin/flask docket sync --mode scores    # Fetch scores (2 credits/sport), then grade the week if complete
 FLASK_APP=app.py venv/bin/flask docket sync --mode remind    # D24-eng deadline reminders (hourly; sent-flag de-duped, no API credits)
 FLASK_APP=app.py venv/bin/flask docket sync --mode status    # Print season summary
 FLASK_APP=app.py venv/bin/flask docket recalc [WEEK]         # Idempotent re-grade; no arg = every past-deadline week
 FLASK_APP=app.py venv/bin/flask docket set-tiebreaker 1 "SMU @ Florida State"   # hand OVERRIDE of the rule-derived default (pre-deadline); fallback for /docket/admin/week/1/tiebreaker
+FLASK_APP=app.py venv/bin/flask docket repair-deadline [WEEK]   # Re-derive deadline_at from the current week math (the 2026-09-09 Sat 11 AM -> Sun 12 PM move); idempotent, refuses to move a deadline already passed. No arg = every not-yet-closed week
 # All modes take --week N (default: the week containing now). `--scheduled` is the TIMER-ONLY flag: exactly two states —
 # out of season, and week-not-imported-yet — become a logged exit 0; nothing else is softened (a missing designation at
 # the deadline still exits 1). Every unit's ExecStart carries it (tests/test_docket_timers.py).
