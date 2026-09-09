@@ -88,7 +88,8 @@ def _apply_event(game, event, summary):
         summary['scores_written'] += 1
 
 
-def sync_scores(week_number, days_from=MAX_DAYS_FROM) -> dict:
+def sync_scores(week_number, days_from=MAX_DAYS_FROM,
+                events_by_sport=None) -> dict:
     """Fetch both sports' scores and write them onto one week's games.
 
     Per-sport failures are isolated exactly as in the importer: one sport's
@@ -96,9 +97,15 @@ def sync_scores(week_number, days_from=MAX_DAYS_FROM) -> dict:
     game on this week's docket are ignored silently — every run returns the
     whole lookback window, most of which belongs to other weeks (or to CFB
     Survivor's slate).
+
+    ``events_by_sport`` (ADR-063): decoded `/scores` payloads from the
+    shared game-day pass, keyed by sport. When given, a sport PRESENT in
+    the dict is applied without an HTTP call and a sport ABSENT from it is
+    skipped outright — never fetched here, and neither an error nor a
+    success. ``None`` fetches every sport as the daily pass always has.
     """
     api_key = current_app.config.get('ODDS_API_KEY', '')
-    if not api_key:
+    if not api_key and events_by_sport is None:
         logger.warning('ODDS_API_KEY not configured; cannot fetch scores.')
         return {'status': 'error', 'errors': ['ODDS_API_KEY not configured']}
 
@@ -120,14 +127,20 @@ def sync_scores(week_number, days_from=MAX_DAYS_FROM) -> dict:
     sports_succeeded = 0
 
     for sport in SPORTS:
+        if events_by_sport is not None and sport not in events_by_sport:
+            continue
         try:
-            resp = odds_api_get(f'{sport_base_url(sport)}/scores', params={
-                'apiKey': api_key,
-                'daysFrom': min(days_from, MAX_DAYS_FROM),
-            })
-            if resp.status_code != 200:
-                raise OddsApiError(f'/scores returned HTTP {resp.status_code}')
-            for event in decode_payload(resp, '/scores'):
+            if events_by_sport is not None:
+                events = events_by_sport[sport]
+            else:
+                resp = odds_api_get(f'{sport_base_url(sport)}/scores', params={
+                    'apiKey': api_key,
+                    'daysFrom': min(days_from, MAX_DAYS_FROM),
+                })
+                if resp.status_code != 200:
+                    raise OddsApiError(f'/scores returned HTTP {resp.status_code}')
+                events = decode_payload(resp, '/scores')
+            for event in events:
                 game = games_by_event.get(event.get('id'))
                 if game is None:
                     summary['unmatched'] += 1

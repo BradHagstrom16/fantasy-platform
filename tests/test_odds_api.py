@@ -11,6 +11,8 @@ through the compatibility re-export.
 import logging
 from unittest.mock import patch
 
+import pytest
+
 
 def _resp(code=200, payload=None, headers=None):
     class _R:
@@ -94,3 +96,41 @@ def test_cfb_shim_reexports_shared_client():
     assert cfb_shim.odds_api_get is shared.odds_api_get
     assert cfb_shim.OddsApiError is shared.OddsApiError
     assert cfb_shim.ODDS_API_MAX_RETRIES is shared.ODDS_API_MAX_RETRIES
+
+
+# ── odds_credits_remaining: the free probe behind the game-day floor ──────
+
+def test_credits_probe_reads_the_header_off_the_free_sports_endpoint():
+    """/sports costs nothing and still carries x-requests-remaining, so the
+    game-day pass (ADR-063) can decide whether to spend before spending."""
+    from utils import odds_api
+
+    with patch.object(odds_api.time, 'sleep'), \
+         patch.object(odds_api.requests, 'get', return_value=_resp(200)) as get:
+        assert odds_api.odds_credits_remaining('k') == 447
+    url = get.call_args.args[0]
+    assert url == 'https://api.the-odds-api.com/v4/sports'
+    assert get.call_args.kwargs['params'] == {'apiKey': 'k'}
+
+
+@pytest.mark.parametrize('resp', [
+    _resp(200, headers={}),                               # header missing
+    _resp(200, headers={'x-requests-remaining': 'n/a'}),  # unparseable
+    _resp(401),                                           # bad key
+])
+def test_credits_probe_returns_none_when_it_cannot_answer(resp):
+    from utils import odds_api
+
+    with patch.object(odds_api.time, 'sleep'), \
+         patch.object(odds_api.requests, 'get', return_value=resp):
+        assert odds_api.odds_credits_remaining('k') is None
+
+
+def test_credits_probe_returns_none_on_a_sustained_outage():
+    """A probe that cannot answer must never block its caller by itself."""
+    from utils import odds_api
+
+    with patch.object(odds_api.time, 'sleep'), \
+         patch.object(odds_api.requests, 'get',
+                      side_effect=odds_api.requests.ConnectionError('down')):
+        assert odds_api.odds_credits_remaining('k', timeout=1) is None

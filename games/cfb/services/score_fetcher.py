@@ -28,8 +28,13 @@ class ScoreFetcher:
             logger.warning("ODDS_API_KEY is not configured; score fetching will fail.")
         self.scores_url = f"{API_BASE_URL}/scores"
 
-    def fetch_scores_for_week(self, week_id):
+    def fetch_scores_for_week(self, week_id, events=None):
         """Fetch scores from API and match to CfbGame records for a given week.
+
+        ``events`` (ADR-063): an already-decoded `/scores` payload from the
+        shared game-day pass. When given (``is not None`` — an empty list is
+        a real, empty payload) the HTTP call is skipped and the same matcher
+        runs over it. The refusals below stay in front of both paths.
 
         Returns a dict with:
             matched_completed: list of matched completed games
@@ -49,21 +54,25 @@ class ScoreFetcher:
         if not deadline_has_passed(deadline):
             return {'error': f'Week {week.week_number} deadline has not passed yet'}
 
-        params = {
-            'apiKey': self.api_key,
-            'daysFrom': 3,
-        }
+        if events is not None:
+            api_events = events
+            credits_remaining = None
+        else:
+            params = {
+                'apiKey': self.api_key,
+                'daysFrom': 3,
+            }
 
-        try:
-            response = odds_api_get(self.scores_url, params=params)
-            if response.status_code != 200:
-                return {'error': f'API returned status {response.status_code}'}
-            api_events = response.json()
-            credits_remaining = response.headers.get('x-requests-remaining')
-        except OddsApiError as e:
-            return {'error': f'API request failed (network): {e}'}
-        except ValueError as e:
-            return {'error': f'Malformed API response: {e}'}
+            try:
+                response = odds_api_get(self.scores_url, params=params)
+                if response.status_code != 200:
+                    return {'error': f'API returned status {response.status_code}'}
+                api_events = response.json()
+                credits_remaining = response.headers.get('x-requests-remaining')
+            except OddsApiError as e:
+                return {'error': f'API request failed (network): {e}'}
+            except ValueError as e:
+                return {'error': f'Malformed API response: {e}'}
 
         # Load games for this week
         games = CfbGame.query.filter_by(week_id=week_id).all()
@@ -223,8 +232,11 @@ class ScoreFetcher:
             'tie_games': tie_games,
         }
 
-    def auto_process_week(self, week_id):
+    def auto_process_week(self, week_id, events=None):
         """Full pipeline: fetch scores -> apply -> grade what has been decided.
+
+        ``events``: a prefetched `/scores` payload (the game-day pass,
+        ADR-063); None fetches as the daily pass always has.
 
         Picks grade per game as results land (Brad's ruling 2026-09-07,
         ADR-061): every run that applies a completed score hands the week
@@ -246,7 +258,7 @@ class ScoreFetcher:
             return {'status': 'already_complete', 'details': f'Week {week.week_number} already complete'}
 
         # Step 1: Fetch scores
-        fetch_results = self.fetch_scores_for_week(week_id)
+        fetch_results = self.fetch_scores_for_week(week_id, events=events)
         if fetch_results.get('error'):
             return {
                 'status': 'error',

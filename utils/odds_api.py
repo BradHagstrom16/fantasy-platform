@@ -84,3 +84,24 @@ def odds_api_get(url, params=None, timeout=30, retries=ODDS_API_MAX_RETRIES):
             sleep_for *= (1 + random.uniform(-0.25, 0.25))
             time.sleep(max(0.5, sleep_for))
     raise OddsApiError(last_error or f'request to {url} failed after {retries} attempts')
+
+
+def odds_credits_remaining(api_key, timeout=30):
+    """The account's remaining monthly credits, read off a FREE call.
+
+    ``/sports`` costs nothing and still carries ``x-requests-remaining``, so
+    a caller can decide whether to spend before spending (the game-day
+    pass's credit floor, ADR-063). Returns ``None`` on any failure — a
+    probe that cannot answer must never block the caller by itself.
+    """
+    try:
+        resp = odds_api_get(f'{ODDS_API_ROOT}/sports',
+                            params={'apiKey': api_key}, timeout=timeout)
+    except OddsApiError:
+        return None
+    if resp.status_code != 200:
+        return None
+    try:
+        return int(resp.headers.get('x-requests-remaining'))
+    except (TypeError, ValueError):
+        return None
