@@ -63,7 +63,7 @@ def letter(week, **fields) -> Letter:
 
 
 def deadline_line(week) -> str:
-    """'Saturday, Sep 5 · 11:00 AM CT' for the week's deadline.
+    """'Sunday, Sep 6 · 12:00 PM CT' for the week's deadline.
 
     A render boundary, so this is one of the sanctioned places a D6 naive-UTC
     column becomes America/Chicago (bridge_sheet._format_ct is the other);

@@ -195,7 +195,7 @@ def test_closed_docket_renders_read_only(monkeypatch, client, member):
     week = make_week(1)
     make_game(week, kickoff=KICK_SAT)
     db.session.commit()
-    at(monkeypatch, '2026-09-05T16:30:00')  # past the deadline
+    at(monkeypatch, '2026-09-06T17:30:00')  # past the deadline
     resp = client.get('/docket/')
     html = resp.data.decode()
     assert 'The docket is closed' in html
@@ -228,7 +228,7 @@ def test_auto_filed_sides_are_marked_and_the_sheet_says_why(
     own.is_auto_best = True
     db.session.commit()
 
-    at(monkeypatch, '2026-09-05T16:30:00')
+    at(monkeypatch, '2026-09-06T17:30:00')
     html = client.get('/docket/').data.decode()
 
     assert 'is-picked is-locked is-autopick' in html
@@ -258,7 +258,7 @@ def test_an_assigned_double_on_a_full_sheet_reads_on_its_own(
     own.is_auto_best = True
     db.session.commit()
 
-    at(monkeypatch, '2026-09-05T16:30:00')
+    at(monkeypatch, '2026-09-06T17:30:00')
     html = client.get('/docket/').data.decode()
 
     # Scope the negatives to the notice itself: a page-wide "not in" would
@@ -284,7 +284,7 @@ def test_a_sheet_the_player_filled_carries_no_auto_marks(
     client.post('/docket/picks/set',
                 data={'game_id': game.id, 'market': 'spread',
                       'side': 'home', 'csrf_token': 'x'})
-    at(monkeypatch, '2026-09-05T16:30:00')
+    at(monkeypatch, '2026-09-06T17:30:00')
     html = client.get('/docket/').data.decode()
 
     assert 'is-autopick' not in html

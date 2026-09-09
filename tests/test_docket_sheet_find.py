@@ -261,7 +261,7 @@ def test_find_works_on_the_preseason_preview(monkeypatch, client, member):
 
 
 def test_find_works_on_the_closed_docket(monkeypatch, client, member):
-    _open_week(monkeypatch, now='2026-09-05T17:00:00')  # past Sat 11:00 CT
+    _open_week(monkeypatch, now='2026-09-06T18:00:00')  # past Sun 12:00 CT
     html = client.get('/docket/?q=wis').data.decode()
     assert 'Wisconsin Badgers' in html
     assert 'Ohio State Buckeyes' not in html
