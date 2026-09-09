@@ -32,8 +32,8 @@ from tests._docket_fixtures import (
 
 KICK = datetime(2026, 9, 5, 18, 0)
 
-# Instants inside each tier's window, as naive UTC (deadline is Sat Sep 5
-# 11:00 CT == 16:00 UTC).
+# Instants inside each tier's window, as naive UTC (deadline is Sun Sep 6
+# 12:00 CT == 17:00 UTC).
 AT_48H = WEEK1_DEADLINE_UTC - timedelta(hours=48)
 AT_24H = WEEK1_DEADLINE_UTC - timedelta(hours=24)
 AT_2H = WEEK1_DEADLINE_UTC - timedelta(hours=2)

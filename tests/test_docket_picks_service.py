@@ -25,8 +25,8 @@ from tests._docket_fixtures import (
     make_week,
 )
 
-# Kickoffs (naive UTC): Thursday night CT, Saturday evening CT (after the
-# deadline), and the Big Noon instant (kickoff == deadline).
+# Kickoffs (naive UTC): Thursday night CT, Saturday evening CT (before the
+# Sunday deadline), and a kickoff == deadline instant.
 KICK_THU = datetime(2026, 9, 4, 0, 15)
 KICK_SAT = datetime(2026, 9, 5, 23, 30)
 
@@ -191,11 +191,11 @@ def test_backup_on_held_market_flips_side_in_place(monkeypatch, week, user):
     assert DocketPick.query.count() == 1
 
 
-# ── Deadline boundary (strictly before Sat 11:00:00 CT) ─────────────────
+# ── Deadline boundary (strictly before Sun 12:00:00 CT) ─────────────────
 
 def test_mutations_allowed_at_deadline_minus_one_second(
         monkeypatch, week, user):
-    at(monkeypatch, '2026-09-05T15:59:59')  # 10:59:59 CT
+    at(monkeypatch, '2026-09-06T16:59:59')  # 11:59:59 CT
     game = make_game(week, kickoff=KICK_SAT)
     assert _pick(user, week, game).slot == 1
 
@@ -204,7 +204,7 @@ def test_mutations_refused_at_exactly_the_deadline(monkeypatch, week, user):
     at(monkeypatch, IN_WEEK1)
     game = make_game(week, kickoff=KICK_SAT)
     _pick(user, week, game)
-    at(monkeypatch, WEEK1_DEADLINE_UTC.isoformat())  # 11:00:00.000 is late
+    at(monkeypatch, WEEK1_DEADLINE_UTC.isoformat())  # 12:00:00.000 is late
     for call in (
         lambda: _pick(user, week, game, 'total', 'over'),
         lambda: picks_service.remove_pick(user.id, week, game.id, 'spread'),
@@ -263,10 +263,10 @@ def test_other_games_unaffected_by_one_kickoff(monkeypatch, week, user):
 
 
 def test_big_noon_agrees_with_the_deadline(monkeypatch, week, user):
-    """kickoff == deadline: pickable at 10:59:59, refused at 11:00:00 with
+    """kickoff == deadline: pickable at 11:59:59, refused at 12:00:00 with
     no special-case code (the deadline and the lock coincide)."""
     game = make_game(week, kickoff=WEEK1_DEADLINE_UTC)
-    at(monkeypatch, '2026-09-05T15:59:59')
+    at(monkeypatch, '2026-09-06T16:59:59')
     pick = _pick(user, week, game)
     assert pick.slot == 1
     at(monkeypatch, WEEK1_DEADLINE_UTC.isoformat())

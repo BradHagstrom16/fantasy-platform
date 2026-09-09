@@ -55,7 +55,7 @@ def docket_lounge_state() -> DocketLoungeState:
 
 def join_window_open() -> bool:
     """Whether self-serve enrollment is still open (Brad's ruling, 2026-08-18):
-    the Week 1 deadline (Sat Sep 5, 11:00 AM CT) closes joining for the
+    the Week 1 deadline (Sun Sep 6, 12:00 PM CT) closes joining for the
     season. Late membership is granted by the Commish through admin
     enrollment, never through /docket/join."""
     return now_utc() < weeks.deadline_utc(1)
@@ -122,7 +122,7 @@ def _context_pre() -> dict:
     ):
         posted_week_number = upcoming.week_number
     return {
-        'court_line': 'Sheets due Saturdays · 11:00 AM CT',
+        'court_line': 'Sheets due Sundays · 12:00 PM CT',
         'game_tile_label': 'OPENS · SEP 1',
         # Naive UTC; templates render these through the ct filter.
         'first_deadline_at': to_naive_utc(weeks.deadline_utc(1)),

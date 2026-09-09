@@ -33,7 +33,7 @@ from tests._registry_helpers import open_join_window
 KICK_THU = datetime(2026, 9, 4, 0, 15)      # Thu 7:15 PM CT
 KICK_SAT = datetime(2026, 9, 5, 23, 30)     # Sat 6:30 PM CT
 KICK_SUN = datetime(2026, 9, 6, 17, 0)      # Sun noon CT
-DEADLINE = datetime(2026, 9, 5, 16, 0)      # Sat 11:00 AM CT
+DEADLINE = datetime(2026, 9, 6, 17, 0)      # Sun 12:00 PM CT
 FRIDAY = datetime(2026, 9, 4, 12, 0)        # Thursday's cases locked
 JSON = {'Accept': 'application/json'}
 
@@ -362,7 +362,7 @@ def test_sheets_carries_no_forms(monkeypatch, client, member):
     at(monkeypatch, IN_WEEK1)
     _hold(member, week, thu)
     db.session.commit()
-    at(monkeypatch, '2026-09-05T17:00:00')      # closed
+    at(monkeypatch, '2026-09-06T18:00:00')      # closed
     html = _page(client)
     assert '<form' not in html
     assert 'data-docket-action="' not in html
@@ -437,7 +437,7 @@ def test_sheets_closed_shows_the_clerks_marks(monkeypatch, client, member):
     pick = _hold(member, week, sat)
     pick.is_autopick, pick.is_best, pick.is_auto_best = True, True, True
     db.session.commit()
-    at(monkeypatch, '2026-09-05T17:00:00')
+    at(monkeypatch, '2026-09-06T18:00:00')
     html = _page(client)
     assert 'docket-sheet-line is-autopick' in html
     assert 'docket-auto-tag' in html

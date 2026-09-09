@@ -6,7 +6,7 @@ this page the room had no everyone's-picks surface at all.
 
 The reveal predicate is the sheet's own lock, reused rather than restated:
 ``deadline_passed or picks.game_locked(game, now)``. A Thursday side is on
-record Thursday while the rest of the sheet stays sealed; at the Saturday
+record Thursday while the rest of the sheet stays sealed; at the Sunday
 deadline everything is on record. What is sealed is stated in words and
 counts ("5 sides sealed until kickoff · x2 named"), never a side.
 

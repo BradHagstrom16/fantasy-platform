@@ -49,7 +49,7 @@ def test_docket_join_states_the_game_in_four_beats(app, client, monkeypatch):
     for beat in ('Pick 8', 'Double your best', 'Break the tie',
                  "That's the game"):
         assert beat in data, beat
-    assert 'Saturday at 11:00 AM CT' in data
+    assert 'Sunday at 12:00 PM CT' in data
     fee = app.config['DOCKET_ENTRY_FEE']
     assert f'${fee}' in data
     assert 'One entry per member' in data

@@ -5,11 +5,11 @@ Docket weeks partition time continuously at Tuesday 06:00 America/Chicago
 boundaries (import instant → next import instant), half-open
 [boundary, next boundary); a game belongs to the week containing its
 kickoff. Week 1 opens Tue Sep 1 2026; the season runs 19 docket weeks
-(CFB Week 1 through NFL Week 18). The week deadline is its Saturday
-11:00 AM CT.
+(CFB Week 1 through NFL Week 18). The week deadline is its Sunday
+12:00 PM CT.
 
 Boundaries are computed by wall-clock arithmetic in CT and only then
-converted to UTC, so they stay 06:00/11:00 *local* across the November
+converted to UTC, so they stay 06:00/12:00 *local* across the November
 DST fall-back by construction (D6). Everything returned here is aware
 UTC; the naive-UTC strip for storage happens at the column boundary
 (games/docket/utils.to_naive_utc).
@@ -21,16 +21,16 @@ CT = ZoneInfo('America/Chicago')
 
 SEASON_YEAR = 2026
 # Tue Sep 1 2026 06:00 CT — the boundary that opens Docket Week 1
-# (CFB Week 1: games from Thu Sep 3, picks due Sat Sep 5 11:00 AM CT).
+# (CFB Week 1: games from Thu Sep 3, picks due Sun Sep 6 12:00 PM CT).
 WEEK_1_BOUNDARY_LOCAL = datetime(2026, 9, 1, 6, 0)
 TOTAL_WEEKS = 19
 # NFL Week 1 kicks off Thu Sep 10 2026, inside Docket Week 2; Docket Week 1
 # is CFB-only. The default-tiebreaker rule (services/tiebreaker_rule.py)
 # takes NFL games only from this week on.
 FIRST_NFL_WEEK = 2
-# Tuesday boundary + 4 days = the week's Saturday.
-_DEADLINE_DAY_OFFSET = 4
-_DEADLINE_HOUR = 11
+# Tuesday boundary + 5 days = the week's Sunday.
+_DEADLINE_DAY_OFFSET = 5
+_DEADLINE_HOUR = 12
 
 
 def _validate_week_number(week_number, *, allow_season_end=False):
@@ -59,7 +59,7 @@ def week_bounds_utc(week_number):
 
 
 def deadline_utc(week_number):
-    """UTC instant of the week's Sat 11:00 AM CT submission deadline."""
+    """UTC instant of the week's Sun 12:00 PM CT submission deadline."""
     _validate_week_number(week_number)
     local = (WEEK_1_BOUNDARY_LOCAL
              + timedelta(weeks=week_number - 1, days=_DEADLINE_DAY_OFFSET))

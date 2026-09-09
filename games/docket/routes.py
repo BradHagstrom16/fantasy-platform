@@ -2,7 +2,7 @@
 
 The pick sheet stays the room's index; the season ledger has its own route.
 The weekly obligation is what members land here for between Tuesday and
-Saturday, and the ledger is where they go to see what it bought them.
+Sunday, and the ledger is where they go to see what it bought them.
 Every mutation is a plain POST form (PRG + flash, fully functional without
 JS); a client sending ``Accept: application/json`` gets the authoritative
 sheet state back instead of a redirect, which is what the sheet's
