@@ -1,6 +1,6 @@
 """The Docket — Deadline Pass (D7 freeze + the D5 autopick package)
 
-Runs once at or after a week's Saturday 11:00 AM CT deadline, in this order
+Runs once at or after a week's Sunday 12:00 PM CT deadline, in this order
 (the order IS the contract):
 
 1. **Stamp** ``kickoff_at_deadline`` from the live kickoff column — the D7
@@ -17,7 +17,7 @@ must capture kickoffs as they stood at the deadline — so it runs
 unconditionally. Autopick is a pure replay of Tuesday-locked lines over
 already-frozen picks, so it is safe to run late: nobody can submit after the
 deadline, and the completion is a deterministic function of state that stopped
-moving at 11:00. A missing designation therefore blocks autopick (loudly, with
+moving at 12:00. A missing designation therefore blocks autopick (loudly, with
 nothing written) instead of blocking the freeze.
 
 **Persisted autopick rows are transparency, not correctness.** ``grade_week``
@@ -100,7 +100,7 @@ def check_designation(week: DocketWeek) -> list[str]:
     Called twice on different clocks: as the gate on the autopick half of
     this pass, and by the Tuesday-through-Friday ``lines`` runs, where it is
     the early warning that keeps a missing designation from first surfacing
-    at 11:00 on Saturday.
+    at 12:00 on Sunday.
     """
     problems = []
     game = week.tiebreaker_game

@@ -21,7 +21,7 @@ from tests._docket_fixtures import (
     make_week,
 )
 
-AFTER_DEADLINE = '2026-09-05T16:30:00'
+AFTER_DEADLINE = '2026-09-06T17:30:00'
 BEFORE_DEADLINE = '2026-09-02T12:00:00'
 KICK = datetime(2026, 9, 5, 18, 0)
 
@@ -96,7 +96,7 @@ def test_scheduled_stands_down_before_the_week_is_imported(app, runner,
 def test_scheduled_does_not_soften_a_real_failure(app, runner, monkeypatch):
     """--scheduled reclassifies exactly two benign states. A week that
     reached its deadline with no sound designation is not one of them: that
-    is the alert the Saturday timer exists to raise."""
+    is the alert the Sunday timer exists to raise."""
     _seed(designate=False)
     make_enrollment(make_user('player'))
     db.session.commit()
@@ -121,7 +121,7 @@ def test_remind_mode_mails_an_unfinished_sheet(app, runner, monkeypatch):
     _seed(final=False)
     make_enrollment(make_user('player'))
     db.session.commit()
-    # Thursday morning, inside the 48h tier before the Sat 11:00 CT close.
+    # Thursday morning, inside the 48h tier before the Sun 12:00 CT close.
     monkeypatch.setenv('DOCKET_FAKE_NOW', '2026-09-03T16:00:00')
 
     with patch('games.docket.services.notifications.send_platform_email',
@@ -385,7 +385,7 @@ def test_set_tiebreaker_designates_and_validates(app, runner, monkeypatch):
 def test_set_tiebreaker_refuses_an_unsound_designation(app, runner,
                                                        monkeypatch):
     """A designated game with no locked total cannot supply key 3's default
-    prediction — the command says so instead of leaving it to Saturday."""
+    prediction — the command says so instead of leaving it to Sunday."""
     week, games = _seed(designate=False)
     games[3].total_points = None
     db.session.commit()

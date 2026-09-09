@@ -51,7 +51,7 @@ unsound designation days before it would matter::
 
     flask docket sync --mode lines
 
-**Sat 11:00 AM CT — the deadline pass.** Freezes each game's kickoff (the D7
+**Sun 12:00 PM CT — the deadline pass.** Freezes each game's kickoff (the D7
 substitution-ordering input) and deals the D5 autopick package to every
 enrolled player::
 
@@ -65,7 +65,7 @@ as it is complete::
 
     flask docket sync --mode scores
 
-**Hourly — deadline reminders** (D24). Three tiers before the Saturday close
+**Hourly — deadline reminders** (D24). Three tiers before the Sunday close
 (48h/24h/2h), to unfinished sheets only. Hourly is safe because
 ``DocketWeek.last_reminder_tier`` de-dups; the cadence is not what prevents a
 double send. Costs no API credits::

@@ -32,8 +32,8 @@ from tests._docket_fixtures import (
 )
 
 BEFORE_DEADLINE = '2026-09-02T12:00:00'
-AFTER_DEADLINE = '2026-09-05T16:30:00'
-KICK_THU = datetime(2026, 9, 4, 0, 15)     # before the Saturday deadline
+AFTER_DEADLINE = '2026-09-06T17:30:00'
+KICK_THU = datetime(2026, 9, 4, 0, 15)     # before the Sunday deadline
 KICK_SAT = datetime(2026, 9, 5, 23, 30)    # after it
 
 

@@ -102,16 +102,16 @@ def test_timer_is_enableable(timer):
 
 def test_deadline_never_fires_at_the_deadline_instant():
     """run_deadline_pass refuses while now < deadline_at, so a firing at
-    Saturday 11:00:00 races its own precondition. Running late is free (the
+    Sunday 12:00:00 races its own precondition. Running late is free (the
     freeze is only-if-null and the autopick pool is deadline-relative), so
     the fix is to fire after the hour, never on it."""
     rules = _ONCALENDAR.findall((DEPLOY / 'docket-deadline.timer').read_text())
     assert rules, 'the deadline pass has no schedule'
     for rule in rules:
-        assert 'Sat ' in rule, f'the deadline pass must be Saturday: {rule!r}'
+        assert 'Sun ' in rule, f'the deadline pass must be Sunday: {rule!r}'
         clock = rule.split()[-2]
-        assert clock > '11:00:00', (
-            f'{rule!r} fires at or before the 11:00 CT deadline; '
+        assert clock > '12:00:00', (
+            f'{rule!r} fires at or before the 12:00 CT deadline; '
             f'run_deadline_pass would refuse it')
 
 

@@ -69,7 +69,7 @@ MAX_PREDICTION_TENTHS = 2000
 URGENT_HOURS = 6
 
 # The deadline, said the way every sheet surface says it.
-CLOSE_LABEL = 'Saturday 11:00 AM CT'
+CLOSE_LABEL = 'Sunday 12:00 PM CT'
 
 # The rungs on which the sheet is filed: nothing is owed but the optional
 # reserve. They take the complete tint and never the urgent countdown.
@@ -165,7 +165,7 @@ def _require_open_week(week: DocketWeek | None, now) -> None:
         raise PickError('no_active_week', 'No docket is open right now.')
     if now >= week.deadline_at:
         raise PickError('deadline_passed',
-                        'The docket closed Saturday at 11:00 AM CT.')
+                        'The docket closed Sunday at 12:00 PM CT.')
 
 
 def _get_week_game(week: DocketWeek, game_id, now) -> DocketGame:

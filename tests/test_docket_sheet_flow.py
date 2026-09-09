@@ -137,7 +137,7 @@ def test_complete_sheet_has_a_closing_line(app, monkeypatch):
         week)
     assert step['stage'] == 'complete'
     assert step['ask'] == \
-        'Sheet filed. Change anything until Saturday 11:00 AM CT.'
+        'Sheet filed. Change anything until Sunday 12:00 PM CT.'
 
 
 def test_preview_and_closed_rungs(app, monkeypatch):
@@ -146,7 +146,7 @@ def test_preview_and_closed_rungs(app, monkeypatch):
     step = picks_service.next_step(_state(0), week)
     assert step['stage'] == 'preview'
     assert step['ask'] == 'Picks open Tuesday, September 1.'
-    at(monkeypatch, '2026-09-05T16:00:00')          # 11:00 AM CT exactly
+    at(monkeypatch, '2026-09-06T17:00:00')          # 12:00 PM CT exactly
     step = picks_service.next_step(_state(3), week)
     assert step['stage'] == 'closed'
     assert step['ask'] == 'The docket is closed. Verdicts to follow.'
@@ -154,7 +154,7 @@ def test_preview_and_closed_rungs(app, monkeypatch):
 
 def test_urgent_prefix_inside_six_hours(app, monkeypatch):
     week = make_week(1)
-    at(monkeypatch, '2026-09-05T13:00:00')          # 3h before 16:00 UTC
+    at(monkeypatch, '2026-09-06T14:00:00')          # 3h before 17:00 UTC
     step = picks_service.next_step(_state(6), week)
     assert step['urgent'] is True
     assert step['ask'] == 'Closes in 3h 0m. 2 more sides to pick.'
@@ -166,7 +166,7 @@ def test_filed_sheet_is_never_urgent(app, monkeypatch):
     """Inside six hours a sheet that only lacks the optional reserve is
     filed, not late: no countdown prefix on the reserve rung either."""
     week = make_week(1)
-    at(monkeypatch, '2026-09-05T13:00:00')
+    at(monkeypatch, '2026-09-06T14:00:00')
     step = picks_service.next_step(
         _state(8, best={'slot': 1}, prediction='51.5'), week)
     assert step['stage'] == 'reserve'
@@ -419,7 +419,7 @@ def test_reserve_stage_renders_the_filed_card_once(monkeypatch, client, member):
     assert 'Sheet filed' in html
     assert 'Your Week 1 sheet is in.' in html
     assert ('Nothing to submit: every tap was saved as you made it. '
-            'Change anything until Saturday 11:00 AM CT.') in html
+            'Change anything until Sunday 12:00 PM CT.') in html
     assert '8 sides held' in html
     assert 'x2 on Home 0 -3.5' in html
     assert 'No reserve' in html and 'Number 53.7' in html
@@ -454,13 +454,13 @@ def test_closed_sheet_renders_the_closed_card_and_no_forms(
     db.session.commit()
     at(monkeypatch, IN_WEEK1)
     _file_eight_with_x2_and_number(client, week, games)
-    at(monkeypatch, '2026-09-05T17:00:00')          # noon CT Saturday
+    at(monkeypatch, '2026-09-06T18:00:00')          # 1 PM CT Sunday
     html = client.get('/docket/').data.decode()
     cards = FILED_CARD.findall(html)
     assert len(cards) == 1 and 'is-closed' in cards[0]
     assert 'Sheet closed' in html
     assert 'Your Week 1 sheet is on the record.' in html
-    assert 'The docket closed Saturday 11:00 AM CT. Verdicts to follow.' in html
+    assert 'The docket closed Sunday 12:00 PM CT. Verdicts to follow.' in html
     assert 'data-docket-action="' not in html
 
 
@@ -487,7 +487,7 @@ def test_number_card_states_its_default_and_saves(monkeypatch, client, member):
     client.post('/docket/tiebreaker',
                 data={'prediction': '53.7', 'csrf_token': 'x'})
     html = client.get('/docket/').data.decode()
-    assert 'Saved: 53.7. Change it until Saturday 11:00 AM CT.' in html
+    assert 'Saved: 53.7. Change it until Sunday 12:00 PM CT.' in html
 
 
 def test_rail_speaks_reserve_and_remove(monkeypatch, client, member):
