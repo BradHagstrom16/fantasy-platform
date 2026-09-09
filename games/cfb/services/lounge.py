@@ -71,10 +71,13 @@ def _week_1_kickoff() -> date:
 
 
 # The season's enrollment deadline (ruled 2026-08-18): self-serve joining
-# closes at the Week 1 pick deadline, Sat Sep 5 2026 11:00 AM CT (16:00
-# UTC; CDT is UTC-5) — the same instant as The Docket's Week 1 deadline by
-# construction, so the club has one cutoff. A season constant rather than a
-# DB read: the window must resolve identically against empty tables.
+# closes Sat Sep 5 2026 11:00 AM CT (16:00 UTC; CDT is UTC-5) — the shared
+# club cutoff (ADR-050), the same instant as The Docket's own
+# ENROLLMENT_DEADLINE_UTC (equality-locked in tests). This was originally the
+# same instant as both games' Week 1 pick deadline; The Docket's pick
+# deadline moved to Sunday 12:00 PM CT (2026-09-09) but the join cutoff stayed
+# here. A season constant rather than a DB read: the window must resolve
+# identically against empty tables.
 ENROLLMENT_DEADLINE_UTC = datetime(2026, 9, 5, 16, 0, tzinfo=UTC)
 
 

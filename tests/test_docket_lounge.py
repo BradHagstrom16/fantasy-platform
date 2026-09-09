@@ -59,12 +59,14 @@ def test_state_never_touches_db(monkeypatch):
     assert lounge.docket_lounge_state() == 'live'
 
 
-def test_join_window_open_flips_at_week1_deadline(app, monkeypatch):
-    """Brad's enrollment ruling: self-serve joining closes at the Week 1
-    deadline, strictly (the deadline instant itself is closed)."""
-    at(monkeypatch, '2026-09-06T16:59:00')
+def test_join_window_open_flips_at_the_enrollment_deadline(app, monkeypatch):
+    """Brad's enrollment ruling: self-serve joining closes at the shared
+    enrollment deadline (Sat Sep 5 11:00 AM CT = 16:00 UTC), strictly (the
+    deadline instant itself is closed). Decoupled from the weekly pick
+    deadline, which moved to Sunday (2026-09-09)."""
+    at(monkeypatch, '2026-09-05T15:59:00')
     assert lounge.join_window_open() is True
-    at(monkeypatch, '2026-09-06T17:00:00')
+    at(monkeypatch, '2026-09-05T16:00:00')
     assert lounge.join_window_open() is False
 
 
