@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+
+{% block title %}{{ enrollment.get_display_name() }} · The Season Ledger · The Docket{% endblock %}
+
+{% block content %}
+<!--
+THESIS: one member's whole season laid open on a page, reached by clicking a
+line on the ledger; the season table's drawer keeps the in-place peek, this is
+the record read end to end. Refuses making the reader expand a drawer, then a
+nested drawer, to read a season.
+OWN-WORLD: CCC court paper — the ledger's own week strip and sheet lines, no
+new primitive; oxblood heads, garnet marks "yours", one figure precision.
+STORY: a member reads the standing, sees which week the drop forgave and what
+the error account kept, and opens any week to the eight sides that scored it.
+FIRST VIEWPORT: masthead with the rank, the standing in a sentence, then the
+weekly record.
+FINISH: graded weeks only (pick_history), so nothing sealed appears and a pick
+never reads differently here than on the ledger drawer or All Sheets.
+-->
+<div class="page-hero docket-hero">
+    <div class="container">
+        <span class="docket-eyebrow">
+            {% if neighbors and neighbors.is_leader %}Leading the field{% elif neighbors %}Rank {{ neighbors.rank_label }} of {{ neighbors.field_size }}{% else %}The Commissioner's Court{% endif %}
+        </span>
+        <h1>
+            <span class="docket-ledger-avatar" aria-hidden="true">{{ enrollment.user.get_avatar() }}</span>
+            {{ enrollment.get_display_name() }}
+        </h1>
+        {% if row and ledger.is_graded %}
+        <p class="lead mb-0">
+            {{ '%.1f'|format(row.standing.total_points) }} points,
+            {{ row.standing.wins }} win{{ 's' if row.standing.wins != 1 }},
+            {{ '%.1f'|format(row.standing.error_tenths / 10) }} off across
+            {{ row.weeks|length }} week{{ 's' if row.weeks|length != 1 }}.
+        </p>
+        {% else %}
+        <p class="lead mb-0">No week graded yet. This line fills in as the season posts.</p>
+        {% endif %}
+    </div>
+</div>
+
+<div class="container docket-member-page">
+    <a class="back-link" href="{{ url_for('docket.ledger') }}">&lsaquo; The season ledger</a>
+
+    {% if row and ledger.is_graded %}
+    <p class="docket-your-standing">
+        {% if neighbors.is_leader %}
+        Leads the field{% if neighbors.ahead_of_next is not none %} by {{ '%.1f'|format(neighbors.ahead_of_next) }} point{{ 's' if neighbors.ahead_of_next != 1 }}{% endif %}.
+        {% else %}
+        Sits <strong>{{ neighbors.rank_label }}</strong> of {{ neighbors.field_size }},
+        {{ '%.1f'|format(neighbors.behind_leader) }} behind the leader{% if neighbors.ahead_of_next is not none %}, {{ '%.1f'|format(neighbors.ahead_of_next) }} ahead of the next line{% endif %}.
+        {% endif %}
+        {% if row.standing.dropped_week %}
+        Week {{ row.standing.dropped_week }} ({{ '%.1f'|format(row.standing.dropped_points) }} points) is struck from the points; its wins and its off by stay.
+        {% else %}
+        No week struck yet.
+        {% endif %}
+    </p>
+
+    <section class="docket-member-weeks" aria-labelledby="member-weeks">
+        <h2 id="member-weeks" class="docket-section-head">The weekly record</h2>
+        <ol class="docket-weeks docket-member-weeklist">
+            {% for wk in row.weeks %}
+            <li class="docket-week{% if wk.week_number == row.dropped_week %} is-dropped{% endif %}{% if not wk.submitted %} is-absent{% endif %}">
+                <span class="docket-week-num">W{{ wk.week_number }}</span>
+                <span class="docket-week-points">
+                    {% if wk.week_number == row.dropped_week %}
+                    <s>{{ '%.1f'|format(wk.points) }}</s>
+                    {% else %}
+                    {{ '%.1f'|format(wk.points) }}
+                    {% endif %}
+                </span>
+                <span class="docket-week-note">
+                    {% if wk.week_number == row.dropped_week %}
+                    struck from the record
+                    {% elif not wk.submitted %}
+                    no sheet filed, charged {{ '%.1f'|format(wk.error_tenths / 10) }}
+                    {% else %}
+                    {{ wk.wins }}{% if wk.wins == 1 %} win{% else %} wins{% endif %},
+                    off by {{ '%.1f'|format(wk.error_tenths / 10) }}
+                    {% endif %}
+                </span>
+                {% if wk.week_number in row.prize_weeks %}
+                <span class="docket-week-verdict">{% if wk.week_number in split_weeks %}split {% endif %}${{ purse.weekly_prize }}</span>
+                {% endif %}
+                {# The sheet behind the week: the same lines All Sheets and the
+                   ledger drawer print (7.13), graded weeks only. #}
+                {% set lines = history.get(enrollment.user_id, {}).get(wk.week_number) %}
+                {% if lines %}
+                <details class="docket-week-sheet">
+                    <summary class="docket-week-sheet-summary">The sheet<span class="docket-entry-caret" aria-hidden="true"></span></summary>
+                    <ol class="docket-sheet-lines">
+                        {% for line in lines %}
+                        <li class="docket-sheet-line{% if line.is_autopick %} is-autopick{% endif %}{% if line.is_reserve %} is-reserve{% endif %}">
+                            <span class="docket-sheet-when">{{ line.kickoff|ct('%a %-I:%M %p') }}</span>
+                            <span class="docket-sheet-pick">
+                                {{ line.pick }}
+                                {% if line.is_best %}<span class="docket-headliner-chip{% if line.is_auto_best %} is-auto{% endif %}"{% if line.is_auto_best %} title="Assigned when the docket closed"{% endif %}>x2{% if line.is_auto_best %}<span class="visually-hidden">, assigned</span>{% endif %}</span>{% endif %}
+                                {% if line.is_reserve %}<span class="docket-slot-badge">Reserve</span>{% endif %}
+                                {% if line.is_autopick %}<span class="docket-auto-tag" title="Filed when the docket closed">Auto</span>{% endif %}
+                            </span>
+                            <span class="docket-caption">{{ line.sport }} · {{ line.caption }}{% if line.final_score %} · Final {{ line.final_score }}{% endif %}</span>
+                            <span class="docket-sheet-result{% if line.result %} is-{{ line.result }}{% endif %}">{{ result_words.get(line.result, '') }}</span>
+                        </li>
+                        {% endfor %}
+                    </ol>
+                </details>
+                {% endif %}
+                {# The link stands for every week — the pool's sheets are on the
+                   record whether or not this member filed one. #}
+                <p class="docket-caption docket-member-seelink">
+                    <a href="{{ url_for('docket.sheets', week=wk.week_number) }}">Every sheet for Week {{ wk.week_number }} &rsaquo;</a>
+                </p>
+            </li>
+            {% endfor %}
+        </ol>
+    </section>
+
+    {% else %}
+    <div class="docket-empty card border-0">
+        <div class="card-body">
+            <span class="docket-eyebrow docket-eyebrow-ink">No record yet</span>
+            <h2 class="docket-empty-title">Nothing graded yet</h2>
+            <p class="docket-empty-copy">Once the first week grades,
+                {{ enrollment.get_display_name() }}'s weeks post here.</p>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

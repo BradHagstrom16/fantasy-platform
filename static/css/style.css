@@ -14241,13 +14241,6 @@ body.game-docket .form-select:focus {
 }
 .docket-ledger-rank-head { width: 4.5rem; }
 .docket-ledger-figure-head { text-align: right; white-space: nowrap; }
-.docket-ledger-keytag {
-  display: block;
-  font-size: .68rem;
-  letter-spacing: .1em;
-  color: var(--text-secondary);
-  font-weight: 400;
-}
 .docket-ledger-rank {
   font-family: 'Teko', sans-serif;
   font-weight: 600;
@@ -14267,6 +14260,22 @@ body.game-docket .form-select:focus {
 }
 .docket-ledger-avatar { margin-right: .4rem; }
 .docket-ledger-name { font-weight: 600; }
+/* The name opens that member's season page (2026-09-09). Oxblood at rest
+   (11:1 on white), garnet on hover/focus, the room's garnet focus ring. */
+.docket-ledger-namelink {
+  color: var(--game-primary);
+  text-decoration: none;
+}
+.docket-ledger-namelink:hover,
+.docket-ledger-namelink:focus-visible {
+  color: var(--game-accent);
+  text-decoration: underline;
+}
+.docket-ledger-namelink:focus-visible {
+  outline: 2px solid var(--game-accent);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
 .docket-ledger-figure {
   font-family: 'Teko', sans-serif;
   font-weight: 500;
@@ -14363,15 +14372,28 @@ body.game-docket .form-select:focus {
    scroll would hide two of the three ranking keys behind a gesture with no
    affordance. Same rows, ruled-card composition. */
 .docket-cards { list-style: none; margin: 0 0 1rem; padding: 0; }
-.docket-card {
+.docket-card { border-bottom: 1px solid var(--docket-rule); }
+.docket-card.is-you { background: rgba(var(--game-accent-rgb), .09); }
+/* The whole card is the tap target and opens that member's season page
+   (2026-09-09): a real anchor so keyboard focus lands on one control, 44px
+   floor, the room's garnet focus ring inset so it reads on the ruled row. */
+.docket-card-link {
   display: grid;
   grid-template-columns: 2.2rem 1fr;
   grid-template-areas: 'rank name' '. keys';
   gap: .15rem .5rem;
-  padding: .6rem 0;
-  border-bottom: 1px solid var(--docket-rule);
+  padding: .6rem .25rem;
+  min-height: 44px;
+  color: inherit;
+  text-decoration: none;
 }
-.docket-card.is-you { background: rgba(var(--game-accent-rgb), .09); }
+.docket-card-link:hover,
+.docket-card-link:focus { color: inherit; text-decoration: none; }
+.docket-card-link:hover { background: var(--bg-muted); }
+.docket-card-link:focus-visible {
+  outline: 2px solid var(--game-accent);
+  outline-offset: -2px;
+}
 .docket-card-rank {
   grid-area: rank;
   font-family: 'Teko', sans-serif;
@@ -14523,6 +14545,126 @@ body.game-docket .form-select:focus {
   border-radius: var(--radius);
   padding: .05rem .45rem;
   white-space: nowrap;
+}
+
+/* --- The three keys, said plainly near the table (clarify pass 2026-09-09):
+   the ledger teaches its own ranking rather than sending the reader to the
+   rules page. Replaces the head "Key 1/2/3" tags. --- */
+.docket-ledger-key {
+  max-width: 66ch;
+  margin: .25rem 0 1rem;
+}
+.docket-ledger-key strong { color: var(--game-primary); font-weight: 600; }
+
+/* --- Week navigation on All Sheets (2026-09-09): step to a finished week to
+   read how it went. Real anchors, 44px targets, garnet focus; the bounds and
+   the current week render as static, never a jump to an unposted week. --- */
+.docket-week-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .5rem;
+  margin: 1.25rem 0 .25rem;
+}
+.docket-week-nav-btn,
+.docket-week-nav-here {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: .35rem .7rem;
+  font-family: 'Teko', sans-serif;
+  font-weight: 500;
+  font-size: 1rem;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  text-decoration: none;
+  border: 1px solid var(--docket-rule);
+  border-radius: var(--radius);
+  color: var(--game-primary);
+  background: transparent;
+}
+.docket-week-nav-btn:hover,
+.docket-week-nav-here:hover {
+  border-color: var(--game-accent);
+  color: var(--game-accent);
+  text-decoration: none;
+}
+.docket-week-nav-btn:focus-visible,
+.docket-week-nav-here:focus-visible {
+  outline: 2px solid var(--game-accent);
+  outline-offset: 2px;
+}
+.docket-week-nav-btn.is-disabled {
+  color: var(--text-secondary);
+  cursor: default;
+}
+.docket-week-nav-here.is-current {
+  color: var(--text-secondary);
+  border-color: transparent;
+}
+
+/* --- The live current-week board on the ledger (2026-09-09): each member's
+   record so far, ranked by wins then fewest losses. Marks only, on paper,
+   never a dark band. --- */
+.docket-liveweek { margin: 1.5rem 0 .5rem; }
+.docket-liveweek-head { margin-top: 0; }
+.docket-liveweek-note { max-width: 66ch; margin: 0 0 .6rem; }
+.docket-liveweek-list { list-style: none; margin: 0 0 .35rem; padding: 0; }
+.docket-liveweek-row {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  min-height: 40px;
+  padding: .3rem .25rem;
+  border-bottom: 1px solid var(--docket-rule);
+}
+.docket-liveweek-row.is-you { background: rgba(var(--game-accent-rgb), .09); }
+.docket-liveweek-pos {
+  font-family: 'Teko', sans-serif;
+  font-weight: 600;
+  font-size: 1.05rem;
+  color: var(--text-secondary);
+  min-width: 1.6rem;
+}
+.docket-liveweek-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-family: 'Newsreader', Georgia, serif;
+  font-weight: 600;
+}
+.docket-liveweek-record {
+  font-family: 'Teko', sans-serif;
+  font-weight: 500;
+  font-size: 1rem;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: .03em;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+.docket-liveweek-back { margin: .1rem 0 0; }
+
+/* --- A finished week's standings on All Sheets (2026-09-09): reuses the
+   ledger table and card compositions on the same three keys. --- */
+.docket-week-standings { margin-bottom: 1.5rem; }
+.docket-week-standings-absent { margin-left: .4rem; font-style: italic; }
+
+/* --- A member's season page (2026-09-09): the ledger's own week strip and
+   sheet lines laid open, reached from a ledger line. --- */
+.docket-member-page { padding-bottom: 3rem; }
+.docket-member-weeklist { padding-left: 0; }
+.docket-member-seelink { flex: 1 0 100%; margin: 0 0 .3rem; }
+/* The platform .back-link is bone-mute for dark surfaces (its hover is
+   wc-white); on the room's bone page it is invisible, so re-ink it: oxblood
+   at rest, garnet on hover, the room's garnet focus ring. */
+body.game-docket .back-link {
+  color: var(--game-primary);
+  margin: 1.25rem 0 .5rem;
+}
+body.game-docket .back-link:hover,
+body.game-docket .back-link:focus-visible { color: var(--game-accent); }
+body.game-docket .back-link:focus-visible {
+  outline: 2px solid var(--game-accent);
+  outline-offset: 2px;
 }
 
 /* --- The purse and the weekly verdicts (rulings Amendments 2026-09-03) ---
