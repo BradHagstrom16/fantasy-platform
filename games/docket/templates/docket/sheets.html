@@ -103,6 +103,7 @@ the finish review and DESIGN.md 7.13.
        a plain GET, never mutation. Your sheet leads every result set;
        the count line never caps silently. Sort rides the text links
        below and is carried through the form so the two compose. #}
+    {% if roster_total %}
     <form role="search" method="get" action="{{ url_for('docket.sheets') }}" class="docket-find docket-sheets-find">
         {% if sort_key %}<input type="hidden" name="sort" value="{{ sort_key }}"/><input type="hidden" name="dir" value="{{ sort_dir }}"/>{% endif %}
         <label class="docket-find-label" for="sheets-find-q">Find a sheet</label>
@@ -139,6 +140,7 @@ the finish review and DESIGN.md 7.13.
     </div>
     {% if sort_key %}
     <p class="docket-caption docket-sheets-sorted">Sorted by {{ sort_label }}, {{ 'ascending' if sort_dir == 'asc' else 'descending' }}. <a href="{{ url_for('docket.sheets', q=find_query or None) }}">Default order &rsaquo;</a></p>
+    {% endif %}
     {% endif %}
 
     <ol class="docket-sheets">
