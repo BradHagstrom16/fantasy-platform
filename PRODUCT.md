@@ -154,7 +154,7 @@ Success looks like:
 
 These are factual conditions of use, not aspirations. Work that ignores them is wrong regardless of how it looks in isolation.
 
-- **The deadline is a hard, real-world clock.** Play is governed by actual kickoff times (The Docket's Saturday 11:00 CT line, CFB Survivor's weekly lock, Golf's tee-time cutoffs). Members act in the hours before a deadline and check repeatedly during the live window afterward. Reminder emails go out on a schedule from systemd timers on the production droplet.
+- **The deadline is a hard, real-world clock.** Play is governed by actual kickoff times (The Docket's Sunday 12:00 PM CT line, CFB Survivor's weekly lock, Golf's tee-time cutoffs). Members act in the hours before a deadline and check repeatedly during the live window afterward. Reminder emails go out on a schedule from systemd timers on the production droplet.
 - **A phone, one-handed, with the game on.** The primary environment is mobile, during live sports, while multitasking or in company. Sessions are short and repeated across a weekend rather than long and deliberate.
 - **The group chat is the second screen.** The banter, rivalry, and trash talk happen in the group's own text thread. CCC supplies the facts that argument runs on and does not attempt to host the conversation itself.
 - **A commish runs the season by hand.** One admin performs real operational work on a calendar: freezing lines, importing weeks, managing teams, enrolling members, and deploying. Members never see this surface, but it is a factual part of how a season runs and it is why enrollment and admin are explicit acts rather than self-serve flows.

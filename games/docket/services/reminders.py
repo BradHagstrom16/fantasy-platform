@@ -14,10 +14,12 @@ particular minute. Every game now shares this shape — CFB
 (``GolfTournament.last_reminder_type``) — with the order-gate math in
 ``utils.reminders.tier_already_sent``.
 
-The 48h tier lands Thursday morning, ahead of the Thursday-night kickoffs
-that lock their own cases hours before the week's deadline (D3 keeps early
-games pickable, DESIGN.md 1.4 makes the wave visible). A player who is going
-to act on a Thursday case has to hear about it on Thursday.
+The 48h tier lands Friday afternoon. Thursday-night kickoffs still lock their
+own cases hours ahead of the week's deadline (D3 keeps early games pickable,
+DESIGN.md 1.4 makes the wave visible), but since the deadline moved to Sunday
+12:00 PM CT (PR #203) that first reminder no longer precedes them — an accepted
+gap: the reminders guard the Sunday deadline, and the Thursday wave is surfaced
+on the sheet itself, not by mail.
 
 Progress comes from ``picks.sheet_state`` and is never re-derived here: it is
 the same assembly the sheet rail renders, so an email cannot contradict the

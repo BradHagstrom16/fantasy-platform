@@ -1,5 +1,5 @@
-# The Docket deadline reminders (D24) — three tiers before the Saturday
-# 11:00 AM CT close (48h Thursday, 24h Friday, 2h Saturday), to unfinished
+# The Docket deadline reminders (D24) — three tiers before the Sunday
+# 12:00 PM CT close (48h Friday, 24h Saturday, 2h Sunday), to unfinished
 # sheets only. Costs no API credits.
 #
 # Exits non-zero only when a due tier reached NOBODY, which means mail is down
