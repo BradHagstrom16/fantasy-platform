@@ -40,8 +40,8 @@ def pick_receipt_letter(*, week_name, week_number, label, kickoff_short,
     else:
         subject = f'Your pick is in: CFB Survivor, {week_name}'
         lede = [f'Your {week_name} pick is on file.']
-    lede.append('Change it any time before picks lock; once its game kicks '
-                'off, the call is final for the week.')
+    lede.append('Picks lock at the deadline or game kickoff, whichever '
+                'comes first.')
     return Letter(
         subject=subject,
         headline=f'Your {week_name} pick: {label}',

@@ -1,12 +1,13 @@
 """CFB Survivor — the "Picks Are Open" announcement email.
 
 The season-open email that did not exist before launch: when spreads first
-land on the next week (the Tuesday freeze), every enrolled player is told
+land on the next week (the Tuesday freeze), every still-active player is told
 picks are open — exactly once, latched on ``CfbWeek.picks_open_notified``.
 Since ADR-062 that same run is what OPENS the week (flips is_active), so the
-letter and the open are one moment. Unlike the T-25h/T-1h deadline
-reminders, this goes to EVERYONE (eliminated players and players who
-already picked included).
+letter and the open are one moment. Unlike the T-25h/T-1h deadline reminders
+it does not gate on who has yet to pick — a player who already picked still
+gets it — but it DOES skip the already-eliminated (Brad, 2026-09-11): the
+letter's only action is "Make your pick", which they cannot do.
 
 Mail is faked at the reminders read-site (``games.cfb.services.reminders``),
 per the platform mocking convention; patching utils.email would be a no-op.
@@ -72,11 +73,12 @@ def _capture(result=True):
         'games.cfb.services.reminders.send_platform_email', side_effect=fake)
 
 
-# ── Sender: reaches everyone, once ───────────────────────────────────────
+# ── Sender: reaches every active player, once ────────────────────────────
 
-def test_picks_open_email_goes_to_every_enrollee(app):
-    """Not a 'you haven't picked' reminder — an eliminated player and a
-    player who already picked both still get the announcement."""
+def test_picks_open_email_goes_to_active_players_including_those_who_picked(app):
+    """Not a 'you haven't picked' reminder — a player who already picked
+    still gets the announcement — but an eliminated player does not (the
+    letter's only action, "Make your pick", is one they cannot take)."""
     week = make_week(1, is_active=True)
     make_enrollment(make_user('plain'))
     make_enrollment(make_user('gone'), eliminated=True)
@@ -91,9 +93,8 @@ def test_picks_open_email_goes_to_every_enrollee(app):
     with patcher:
         sent = send_picks_open_email(week.id)
 
-    assert sent == 3
-    assert {c['to'] for c in calls} == {
-        'plain@test.com', 'gone@test.com', 'picked@test.com'}
+    assert sent == 2
+    assert {c['to'] for c in calls} == {'plain@test.com', 'picked@test.com'}
 
 
 def test_picks_open_email_subject_and_pick_link(app):
