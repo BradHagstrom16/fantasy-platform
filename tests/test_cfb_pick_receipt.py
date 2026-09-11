@@ -63,6 +63,25 @@ def test_a_new_pick_sends_the_receipt(client, app):
     assert 'Navy -7.0' in html
 
 
+def test_early_kickoff_locks_the_receipt_at_kickoff_not_the_deadline(client, app):
+    """When the picked team plays before the week deadline, the pick is final
+    at kickoff — so "Picks lock" shows the kickoff, not the deadline."""
+    week = make_week(1, deadline=DEADLINE, is_active=True)
+    navy, dog = make_team('Navy'), make_team('South Carolina')
+    game = make_game(week, navy, dog, spread=-7.0)
+    game.game_time = datetime(2026, 9, 4, 18, 30)   # Fri, before Sat deadline
+    user = make_user('member')
+    make_enrollment(user)
+    db.session.commit()
+    _login(client, user)
+    with patch.dict(os.environ, FAR_NOW), \
+            patch(SEND, return_value=True) as send:
+        _pick(client, navy)
+    plain = send.call_args[0][2]
+    assert 'Picks lock' in plain and 'Friday, Sep 4' in plain
+    assert 'Saturday, Sep 5' not in plain
+
+
 def test_a_changed_pick_says_so(client, app):
     user, navy, dog, _heavy = _seed()
     _login(client, user)

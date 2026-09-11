@@ -30,29 +30,34 @@ def pick_label(team, game) -> str:
 
 
 def pick_receipt_letter(*, week_name, week_number, label, kickoff_short,
-                        deadline_short, changed, nudge, season_year,
+                        lock_short, changed, nudge, season_year,
                         site_url) -> Letter:
     """The receipt as a Club Letter (personal, so it still keeps the
-    broadcast shape: the pick leads the fact block, the lock closes it)."""
+    broadcast shape: the pick leads the fact block, the lock closes it).
+
+    ``lock_short`` is when THIS pick is final — the earlier of its game's
+    kickoff and the week deadline (send_pick_receipt resolves it), so the
+    "whichever comes first" copy and the "Picks lock" fact agree.
+    """
     if changed:
         subject = f'Pick changed: CFB Survivor, {week_name}'
         lede = [f'Your {week_name} pick changed. This is the one on file now.']
     else:
         subject = f'Your pick is in: CFB Survivor, {week_name}'
         lede = [f'Your {week_name} pick is on file.']
-    lede.append('Change it any time before picks lock; once its game kicks '
-                'off, the call is final for the week.')
+    lede.append('Picks lock at the deadline or game kickoff, whichever '
+                'comes first.')
     return Letter(
         subject=subject,
         headline=f'Your {week_name} pick: {label}',
         eyebrow=f'CFB Survivor · {week_name}',
         game_slug='cfb',
         season=season_year,
-        preheader=f'{label}. Picks lock {deadline_short}.',
+        preheader=f'{label}. Picks lock {lock_short}.',
         lede=lede,
         facts=[('Pick', label),
                ('Kickoff', kickoff_short),
-               ('Picks lock', deadline_short)],
+               ('Picks lock', lock_short)],
         cta=('See your pick', f'{site_url}/cfb/pick/{week_number}'),
         supporting=['Each team can be used once all season.'],
         notes=[tab_block(nudge, 'cfb')],
@@ -65,12 +70,20 @@ def send_pick_receipt(user, enrollment, week, team, game, *,
     if not user.email:
         return False
     config = current_app.config
+    # This pick is final at the earlier of its game's kickoff and the week
+    # deadline (routes.make_pick: an existing pick locks once its game starts,
+    # and no pick survives the deadline). Both are naive pool wall clock, so
+    # they compare directly; fall back to the deadline when there is no game
+    # or no kickoff time yet.
+    game_time = game.game_time if game else None
+    lock_time = (game_time if game_time is not None
+                 and game_time < week.deadline else week.deadline)
     receipt = pick_receipt_letter(
         week_name=get_week_display_name(week),
         week_number=week.week_number,
         label=pick_label(team, game),
-        kickoff_short=format_deadline_short(game.game_time if game else None),
-        deadline_short=format_deadline_short(week.deadline),
+        kickoff_short=format_deadline_short(game_time),
+        lock_short=format_deadline_short(lock_time),
         changed=changed,
         nudge=payment_nudge_for(enrollment, bool(user.is_admin)),
         season_year=config.get('CFB_SEASON_YEAR', 2026),

@@ -152,7 +152,7 @@ def format_time_remaining(deadline):
 # PICK REMINDER EMAILS
 # ============================================================================
 
-def _reminder_letter(*, week_name, deadline_short, time_remaining, lives,
+def _reminder_letter(*, week_name, deadline_short, lives,
                      cumulative_spread, pick_url, window, season_year):
     """The T-25h / T-1h reminder as a Club Letter (a broadcast: no greeting).
 
@@ -169,8 +169,7 @@ def _reminder_letter(*, week_name, deadline_short, time_remaining, lives,
     else:
         subject = f'Pick due tomorrow: CFB Survivor, {week_name}'
         headline = f'Your {week_name} pick is due tomorrow'
-        lede = [f'About {time_remaining} left. One more reminder comes at '
-                f'one hour.']
+        lede = []
     return Letter(
         subject=subject,
         headline=headline,
@@ -258,7 +257,6 @@ def run_reminder_check():
     print(f"Users without picks: {len(recipients)}")
 
     deadline_short = format_deadline_short(deadline)
-    time_remaining = format_time_remaining(deadline)
     pick_url = f"{site_url}/cfb/pick/{week.week_number}"
 
     success_count = 0
@@ -266,7 +264,6 @@ def run_reminder_check():
         letter = _reminder_letter(
             week_name=week_name,
             deadline_short=deadline_short,
-            time_remaining=time_remaining,
             lives=enrollment.lives_remaining,
             cumulative_spread=enrollment.cumulative_spread or 0.0,
             pick_url=pick_url,
@@ -319,8 +316,7 @@ def _picks_open_letter(*, week_name, deadline_short, pick_url, nudge,
         cta=('Make your pick', pick_url),
         supporting=[
             'You are picking a team to win outright (not against the '
-            'spread), and each team can be used once all season. You can '
-            'change your pick until the deadline.',
+            'spread), and each team can be used once all season.',
             MISS_RULE,
         ],
         notes=[tab_block(nudge, 'cfb')],
@@ -328,11 +324,15 @@ def _picks_open_letter(*, week_name, deadline_short, pick_url, nudge,
 
 
 def send_picks_open_email(week_id: int) -> int:
-    """Announce that picks are open to EVERY enrolled player for the season.
+    """Announce that picks are open to every still-active player.
 
     Not gated on who has yet to pick (that is the deadline reminder's job):
     this is the season-open "it's live" note, sent once per week and latched
     by the caller (run_spread_update) on ``CfbWeek.picks_open_notified``.
+    Eliminated players are excluded (Brad, 2026-09-11): the letter's only
+    action is "Make your pick", which an eliminated player cannot do, so it
+    reads as noise. This matches the deadline reminder and recap, which also
+    skip the already-eliminated.
 
     Returns the number of emails accepted.
     """
@@ -351,7 +351,7 @@ def send_picks_open_email(week_id: int) -> int:
 
     enrollments = db.session.scalars(
         select(CfbEnrollment)
-        .filter_by(season_year=season_year)
+        .filter_by(season_year=season_year, is_eliminated=False)
         .options(joinedload(CfbEnrollment.user))  # avoid a User get per row
     ).all()
 
