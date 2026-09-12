@@ -4233,33 +4233,117 @@ body.game-golf {
   color: var(--hl-accent-bright, var(--bone));
 }
 
-/* Slot chips: the docket's structural texture on the lounge — eight
-   scoring slots plus the dashed reserve, held ones tinted in the
-   headliner's accent. A summary of shape and count, never a control. */
-.home-shell .hl-slots {
+/* The docket board (bolder pass 2026-09-12): the viewer's nine slots as
+   verdict tiles, the lounge's one vocabulary for a sheet's shape AND its
+   results. Open = hairline + digit; held = the headliner's accent as a
+   tinted chip (§1.6); in play = held plus the platform live dot; final = a
+   lit tile carrying its letter. Outcome color enters ONLY through the live
+   tokens (the summons ruling above), and the letter rides in dark ink:
+   bone on live-red measures 3.6:1 and fails, purple-950 clears 4.6:1 on
+   live-red and ~10:1 on live-green. Structure before color: the letter is
+   the state, the board is role="img" with the whole sentence, never a
+   control. Tiles flex to one row at every width (nine fit 375px). */
+.home-shell .hl-board {
   display: flex;
-  gap: .35rem;
-  margin: .8rem 0 .2rem;
+  gap: .4rem;
+  margin: .9rem 0 .3rem;
+  max-width: 26rem;
 }
-.home-shell .hl-slot {
-  width: 26px;
-  height: 32px;
-  border-radius: 5px;
+.home-shell .hl-tile {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: 40px;
+  aspect-ratio: 5 / 6;
+  border-radius: 6px;
   border: 1px solid rgba(243, 239, 230, .18);
   display: flex;
   align-items: center;
   justify-content: center;
   font-family: var(--font-teko);
-  font-weight: 500;
-  font-size: .8rem;
+  font-weight: 600;
+  font-size: 1.1rem;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
   color: var(--bone-mute);
 }
-.home-shell .hl-slot--held {
+.home-shell .hl-tile.is-held,
+.home-shell .hl-tile.is-live {
   background: color-mix(in srgb, var(--hl-accent, var(--gold)) 16%, transparent);
   border-color: color-mix(in srgb, var(--hl-accent, var(--gold)) 55%, transparent);
   color: var(--bone);
 }
-.home-shell .hl-slot--reserve { border-style: dashed; }
+/* The live dot (platform Live Indicator) knocked out of the tile corner. */
+.home-shell .hl-tile.is-live::after {
+  content: '';
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: .5rem;
+  height: .5rem;
+  border-radius: 50%;
+  background: var(--live-red);
+  box-shadow: 0 0 0 2px var(--purple-900);
+}
+.home-shell .hl-tile.is-win {
+  background: var(--live-green);
+  border-color: var(--live-green);
+  color: var(--purple-950);
+}
+.home-shell .hl-tile.is-loss {
+  background: var(--live-red);
+  border-color: var(--live-red);
+  color: var(--purple-950);
+}
+.home-shell .hl-tile.is-push {
+  background: var(--bone-dim);
+  border-color: var(--bone-dim);
+  color: var(--purple-950);
+}
+.home-shell .hl-tile.is-no_contest {
+  border-style: dashed;
+  font-size: .8rem;
+  color: var(--bone-dim);
+}
+.home-shell .hl-tile--reserve { border-style: dashed; }
+/* The x2: the docket's one ceremonial mark reaches the lounge as an
+   accent ring plus a tag riding the tile's top edge (bone on garnet 5.7:1). */
+.home-shell .hl-tile.is-x2 { box-shadow: 0 0 0 2px var(--hl-accent, var(--gold)); }
+.home-shell .hl-tile.is-live.is-x2 { box-shadow: 0 0 0 2px var(--hl-accent, var(--gold)); }
+.home-shell .hl-tile-x2 {
+  position: absolute;
+  top: -.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: .08rem .3rem 0;
+  border-radius: 3px;
+  background: var(--hl-accent, var(--gold));
+  color: var(--bone);
+  font-size: .65rem;
+  font-weight: 600;
+  letter-spacing: .06em;
+  line-height: 1.15;
+  text-transform: lowercase;
+}
+/* The record as the verdict word: the summons' 2.7rem/700 register (the
+   one size live-red may color text at, per the summons ruling), wins and
+   losses each in their live token, the rest warm white and bone. */
+.home-shell .hl-record {
+  display: flex;
+  align-items: baseline;
+  font-family: var(--font-teko);
+  font-weight: 700;
+  font-size: 2.7rem;
+  line-height: 1;
+  letter-spacing: .03em;
+  font-variant-numeric: tabular-nums;
+  color: var(--lounge-warm-white);
+  margin: .55rem 0 .35rem;
+}
+.home-shell .hl-record .w { color: var(--live-green); }
+.home-shell .hl-record .l { color: var(--live-red); }
+.home-shell .hl-record .m { color: var(--bone-dim); }
+.home-shell .hl-record .sep { color: var(--bone-mute); padding: 0 .06em; }
 
 /* An open headliner tile the viewer has NOT joined: on the bill, not in
    their pocket — bone hairline instead of the gold --active chrome. */
@@ -14339,15 +14423,68 @@ body.game-docket .form-select:focus {
   flex: 1 1 auto;
   min-width: 0;
 }
-.docket-entry-count {
-  font-family: 'Teko', sans-serif;
-  font-weight: 500;
-  font-size: .95rem;
-  letter-spacing: .04em;
-  text-transform: uppercase;
-  color: var(--text-secondary);
+/* The record (bolder pass 2026-09-12; docket/_record.html): the figure a
+   summary row exists to state. Once a side is final it is a Teko figure,
+   wins in success and losses in danger (large text, both clear 3:1 with
+   room on white and bone), the pushes and the "to play" tail quiet; before
+   that the held/locked count in ink at label weight, never the row's
+   quietest text. Under it the mark strip: nine squares in the order the
+   lines print, finals filled, a playing side hollow, a sealed side cold
+   (a count, never a side: 7.13), an open slot dotted, the reserve round.
+   Garnet never touches an outcome (6.5). */
+.docket-record {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: .22rem;
   white-space: nowrap;
 }
+.docket-record-fig {
+  display: inline-flex;
+  align-items: baseline;
+  font-family: 'Teko', sans-serif;
+  font-weight: 600;
+  font-size: 1.45rem;
+  line-height: 1;
+  letter-spacing: .02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+.docket-record-fig b { font-weight: inherit; }
+.docket-record-w { color: var(--success); }
+.docket-record-l { color: var(--danger); }
+.docket-record-p { color: var(--text-secondary); }
+.docket-record-sep { color: var(--text-secondary); padding: 0 .05em; }
+.docket-record-tail,
+.docket-record-text {
+  font-family: 'Teko', sans-serif;
+  font-weight: 500;
+  font-size: .8rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+.docket-record-tail { margin-left: .5rem; }
+.docket-record-text {
+  font-size: 1rem;
+  letter-spacing: .04em;
+  color: var(--text-primary);
+}
+.docket-marks { display: inline-flex; gap: 3px; }
+.docket-mark {
+  display: block;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  border: 1px solid var(--docket-rule);
+}
+.docket-mark.is-win { background: var(--success); border-color: var(--success); }
+.docket-mark.is-loss { background: var(--danger); border-color: var(--danger); }
+.docket-mark.is-push { background: var(--text-muted); border-color: var(--text-muted); }
+.docket-mark.is-no_contest { border-style: dashed; border-color: var(--text-secondary); }
+.docket-mark.is-pending { border-color: var(--text-secondary); }
+.docket-mark.is-open { border-style: dotted; }
+.docket-mark.is-reserve { border-radius: 50%; margin-left: 3px; }
 /* A drawn caret, not a glyph: the summary marker is suppressed, so without
    this the row reads as static text and nobody opens it. Cut with clip-path
    rather than the usual rotated two-border trick — a 2px border-right here
@@ -14623,7 +14760,7 @@ body.game-docket .form-select:focus {
 .docket-board-head,
 .docket-board-summary {
   display: grid;
-  grid-template-columns: 2.4rem minmax(0, 1fr) 7.5rem 4.6rem 3.6rem 4.6rem 1.6rem;
+  grid-template-columns: 2.4rem minmax(0, 1fr) 9.5rem 4.6rem 3.6rem 4.6rem 1.6rem;
   align-items: center;
   column-gap: .6rem;
 }
@@ -14677,9 +14814,9 @@ body.game-docket .form-select:focus {
   color: var(--text-secondary);
   white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;
   font-variant-numeric: tabular-nums;
 }
+.docket-board-summary .dbc-week { line-height: 1; }
 .dbc-fig {
   font-family: 'Teko', sans-serif;
   font-weight: 500;
@@ -14717,15 +14854,7 @@ body.game-docket .form-select:focus {
 }
 .docket-board-card-summary .docket-card-rank { grid-area: rank; }
 .docket-board-card-summary .docket-card-name { grid-area: name; }
-.docket-board-card-week {
-  grid-area: week;
-  font-family: 'Teko', sans-serif;
-  font-weight: 500;
-  font-size: .9rem;
-  letter-spacing: .04em;
-  text-transform: uppercase;
-  color: var(--game-accent);
-}
+.docket-board-card-week { grid-area: week; padding: .1rem 0; }
 .docket-board-card-summary .docket-card-keys { grid-area: keys; }
 .docket-board-card-caret { grid-area: caret; align-self: center; margin-left: 0; }
 .docket-board--cards .docket-board-detail { padding: .1rem 0 .85rem .25rem; }
@@ -14882,23 +15011,51 @@ body.game-docket .back-link:focus-visible {
   color: var(--text-primary);
 }
 .docket-sheet-line .docket-caption { grid-area: case; display: block; margin-top: .05rem; }
+/* The verdict stamp (bolder pass 2026-09-12): the outcome outranks the
+   garnet marks beside it. Win and Loss are solid fills on the platform
+   semantic layer with bone text (success 4.7:1, danger 4.7:1, verified),
+   the word always inside the stamp (6.5, 7.13); Mistrial and No Contest
+   are hollow. Rectangular at the platform radius (6.9). A pending line
+   prints nothing here; the kickoff column already says when. */
 .docket-sheet-result {
   grid-area: result;
   align-self: center;
+  justify-self: end;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 4.2rem;
+  padding: .14rem .55rem .04rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
   font-family: 'Teko', sans-serif;
   font-weight: 600;
-  font-size: 1rem;
-  letter-spacing: .06em;
+  font-size: .95rem;
+  line-height: 1.3;
+  letter-spacing: .08em;
   text-transform: uppercase;
-  font-variant-numeric: tabular-nums;
-  text-align: right;
   white-space: nowrap;
-  min-width: 3.6rem;
 }
-.docket-sheet-result.is-win { color: var(--success); }
-.docket-sheet-result.is-loss { color: var(--danger); }
-.docket-sheet-result.is-push,
-.docket-sheet-result.is-no_contest { color: var(--text-secondary); }
+.docket-sheet-result:empty { display: none; }
+.docket-sheet-result.is-win {
+  background: var(--success);
+  border-color: var(--success);
+  color: var(--bone);
+}
+.docket-sheet-result.is-loss {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: var(--bone);
+}
+.docket-sheet-result.is-push {
+  border-color: var(--text-secondary);
+  color: var(--text-primary);
+}
+.docket-sheet-result.is-no_contest {
+  border-style: dashed;
+  border-color: var(--text-secondary);
+  color: var(--text-secondary);
+}
 /* Sealed facts and the number: Cold-Docket, words only. */
 .docket-sheet-sealed,
 .docket-sheet-number {
@@ -14918,7 +15075,7 @@ body.game-docket .back-link:focus-visible {
     column-gap: .45rem;
   }
   .docket-sheet-when { font-size: .82rem; }
-  .docket-sheet-result { min-width: 3rem; font-size: .95rem; }
+  .docket-sheet-result { min-width: 3.4rem; padding-left: .4rem; padding-right: .4rem; }
 }
 
 .docket-purse-line {

@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from 'docket/_record.html' import record with context %}
 
 {% block title %}The Season Ledger · The Docket{% endblock %}
 
@@ -245,7 +246,7 @@ finish review, the verdict, and DESIGN.md.
                     <span class="docket-entry-name">{{ row.enrollment.get_display_name() }}</span>
                     {% if is_you %}<span class="docket-you-tag">You</span>{% endif %}
                 </span>
-                <span class="dbc-week">{% if m %}{{ m.summary }}{% else %}&mdash;{% endif %}</span>
+                <span class="dbc-week">{% if m %}{{ record(m) }}{% else %}&mdash;{% endif %}</span>
                 <span class="dbc-fig">{{ '%.1f'|format(row.standing.total_points) }}</span>
                 <span class="dbc-fig">{{ row.standing.wins }}</span>
                 <span class="dbc-fig">{{ '%.1f'|format(row.standing.error_tenths / 10) }}</span>
@@ -274,7 +275,7 @@ finish review, the verdict, and DESIGN.md.
                     {{ row.enrollment.get_display_name() }}
                     {% if is_you %}<span class="docket-you-tag">You</span>{% endif %}
                 </span>
-                {% if m %}<span class="docket-board-card-week">Wk {{ live.week.week_number }} {{ m.summary }}</span>{% endif %}
+                {% if m %}<span class="docket-board-card-week">{{ record(m, 'Wk ' ~ live.week.week_number) }}</span>{% endif %}
                 <span class="docket-card-keys">
                     <span><b>{{ '%.1f'|format(row.standing.total_points) }}</b> pts</span>
                     <span><b>{{ row.standing.wins }}</b> W</span>

@@ -1,0 +1,32 @@
+{# The record figure and the mark strip (bolder pass 2026-09-12), shared by
+   All Sheets and the ledger's one leaderboard so the three summary shapes
+   cannot disagree. Once a scoring side is final the record is a Teko
+   figure, wins in the platform success green and losses in danger red
+   (large text; both clear 3:1 on white and bone with room), the pushes and
+   the "to play" tail quiet. The whole figure is one role="img" whose label
+   is the service's own summary string, so a screen reader hears "3-1 · 4 to
+   play" as one sentence and the ledger's substring locks still hold.
+
+   The strip is the record's visual form: nine squares in the order the
+   lines print. Finals fill (win / loss / push), a revealed side still
+   playing is a hollow square, a sealed side a cold one (a count, never a
+   side: the 7.13 reveal rule stands), an open slot a dotted one, and the
+   reserve is round and last, only when held. Decorative to a reader
+   (aria-hidden); the figure carries the words. Garnet never touches an
+   outcome (6.5). #}
+{% macro marks(m) -%}
+<span class="docket-marks" aria-hidden="true">{% for k in m.marks() %}<i class="docket-mark is-{{ k.kind }}{% if k.is_reserve %} is-reserve{% endif %}"></i>{% endfor %}</span>
+{%- endmacro %}
+{% macro record(m, week_label=None) -%}
+{% if m.tally %}
+<span class="docket-record" role="img" aria-label="{% if week_label %}{{ week_label }} {% endif %}{{ m.summary }}">
+  <span class="docket-record-fig" aria-hidden="true"><b class="docket-record-w">{{ m.tally.wins }}</b><span class="docket-record-sep">-</span><b class="docket-record-l">{{ m.tally.losses }}</b>{% if m.tally.pushes %}<span class="docket-record-sep">-</span><b class="docket-record-p">{{ m.tally.pushes }}</b>{% endif %}{% if m.tally.pending %}<span class="docket-record-tail">{{ m.tally.pending }} to play</span>{% endif %}</span>
+  {{ marks(m) }}
+</span>
+{% else %}
+<span class="docket-record docket-record--count">
+  <span class="docket-record-text">{% if week_label %}{{ week_label }} {% endif %}{{ m.summary }}</span>
+  {{ marks(m) }}
+</span>
+{% endif %}
+{%- endmacro %}

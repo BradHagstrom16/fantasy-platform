@@ -10,9 +10,11 @@ Registry-bound pair (multi-featured seam):
   state of its own.
 - ``build_lounge_context(user, state)`` assembles the per-state panel data.
   The lounge summarizes and orients (DESIGN.md §3); it never offers per-case
-  controls, so nothing here loads the week's games — the sheet's
-  ``locked_game_ids`` scan stays in the room. Standings gravity stays on
-  the ledger page: no ``season_ledger()`` call belongs in a lounge builder.
+  controls, so the only games read here are the viewer's OWN cases, joined
+  off their at-most-nine picks (``sheets.viewer_marks``) — the sheet's
+  week-wide ``locked_game_ids`` scan stays in the room. Standings gravity
+  stays on the ledger page: no ``season_ledger()`` call belongs in a lounge
+  builder.
 
 Read-only by contract: this module must never import the writer services
 (deadline_pass, grading_pass, importer, scores) — it is imported by
@@ -30,15 +32,19 @@ from extensions import db
 from games.docket.models import (
     DocketEnrollment,
     DocketGame,
-    DocketPick,
     DocketTiebreakerPrediction,
     DocketWeekResult,
 )
 from games.docket.services import picks as picks_service
 from games.docket.services import weeks
 from games.docket.services.enrollment import get_enrollment
-from games.docket.services.grading.snapshots import BACKUP_SLOT
+from games.docket.services.grading.snapshots import SCORING_SLOTS
 from games.docket.services.reminders import outstanding
+from games.docket.services.sheets import (
+    marks_tally,
+    record_label,
+    viewer_marks,
+)
 from games.docket.utils import now_utc, to_naive_utc
 
 DocketLoungeState = Literal['pre', 'live', 'post']
@@ -179,10 +185,12 @@ def _context_live(user, is_enrolled: bool) -> dict:
     }
 
     if is_enrolled and week is not None:
-        if beat == 'open':
-            ctx['progress'] = _sheet_progress(user.id, week.id)
+        if beat in ('open', 'closed'):
+            # Closed carries the same facts as open (bolder pass 2026-09-12):
+            # the board and the record keep painting while verdicts land.
+            ctx['progress'] = _sheet_progress(user.id, week, now)
         elif beat == 'adjourned':
-            ctx['result'] = _week_result(user.id, week.id)
+            ctx['result'] = _week_result(user.id, week, now)
     return ctx
 
 
@@ -195,26 +203,26 @@ def _context_post() -> dict:
     }
 
 
-def _sheet_progress(user_id: int, week_id: int) -> dict:
+def _sheet_progress(user_id: int, week, now) -> dict:
     """The Clerk's-Ledger facts for the lounge card, from two cheap queries.
 
     Deliberately NOT ``picks.sheet_state``: its third query loads every game
     of the week purely to compute ``locked_game_ids``, which a summary card
-    never renders. The ≤9 pick rows and the prediction row are the whole
-    read. ``outstanding`` is the room's own phrasing (one prose SSoT with
-    the reminder emails); it only inspects ``is None`` on best/prediction.
+    never renders. The viewer's ≤9 picks joined to their own games
+    (``viewer_marks``) and the prediction row are the whole read; the board
+    paints each slot's state and the record is the tally of its finals.
+    ``outstanding`` is the room's own phrasing (one prose SSoT with the
+    reminder emails); it only inspects ``is None`` on best/prediction.
     """
-    pick_rows = db.session.execute(
-        select(DocketPick.slot, DocketPick.is_best)
-        .filter_by(user_id=user_id, week_id=week_id)
-    ).all()
-    scoring_count = sum(1 for slot, _ in pick_rows if slot != BACKUP_SLOT)
-    best_named = any(is_best for _, is_best in pick_rows)
-    backup_held = any(slot == BACKUP_SLOT for slot, _ in pick_rows)
+    marks = viewer_marks(user_id, week, now)
+    scoring_count = sum(1 for m in marks if m.held and not m.is_reserve)
+    best_named = any(m.is_best for m in marks if m.held)
+    backup_held = any(m.held and m.is_reserve for m in marks)
     prediction = db.session.scalar(
         select(DocketTiebreakerPrediction.prediction_tenths)
-        .filter_by(user_id=user_id, week_id=week_id)
+        .filter_by(user_id=user_id, week_id=week.id)
     )
+    tally = marks_tally(marks)
     return {
         'scoring_count': scoring_count,
         'best_named': best_named,
@@ -226,17 +234,52 @@ def _sheet_progress(user_id: int, week_id: int) -> dict:
             'prediction': (picks_service.format_tenths(prediction)
                            if prediction is not None else None),
         }),
+        'marks': marks,
+        'tally': tally,
+        'record': record_label(tally) if tally is not None else None,
+        'board_label': _board_label(marks, tally),
     }
 
 
-def _week_result(user_id: int, week_id: int) -> dict | None:
-    """The viewer's graded line for the week, or None when absent."""
+def _board_label(marks, tally) -> str:
+    """The board's text equivalent (role="img"): the record once a case is
+    final, the held count before; then the x2 slot and the reserve."""
+    held = sum(1 for m in marks if m.held and not m.is_reserve)
+    if tally is None:
+        parts = [f'{held} of {SCORING_SLOTS} sides held']
+    else:
+        parts = [f'{tally.wins} win{"" if tally.wins == 1 else "s"}, '
+                 f'{tally.losses} loss{"" if tally.losses == 1 else "es"}']
+        if tally.pushes:
+            parts[0] += f', {tally.pushes} mistrial{"" if tally.pushes == 1 else "s"}'
+        if tally.pending:
+            parts.append(f'{tally.pending} to play')
+    in_play = sum(1 for m in marks if m.in_play and not m.is_reserve)
+    if in_play:
+        parts.append(f'{in_play} in play')
+    best = next((m for m in marks if m.held and m.is_best), None)
+    if best is not None:
+        parts.append(f'x2 on slot {best.slot}')
+    if any(m.held and m.is_reserve for m in marks):
+        parts.append('reserve held')
+    return '; '.join(parts)
+
+
+def _week_result(user_id: int, week, now) -> dict | None:
+    """The viewer's graded line for the week, or None when absent, with
+    the final board and its record so the adjourned card keeps the shape."""
     result = db.session.scalar(
-        select(DocketWeekResult).filter_by(user_id=user_id, week_id=week_id)
+        select(DocketWeekResult).filter_by(user_id=user_id, week_id=week.id)
     )
     if result is None:
         return None
+    marks = viewer_marks(user_id, week, now)
+    tally = marks_tally(marks)
     return {
         'points_label': f'{result.points:.1f}',
         'wins': result.wins,
+        'marks': marks,
+        'tally': tally,
+        'record': record_label(tally) if tally is not None else None,
+        'board_label': _board_label(marks, tally),
     }

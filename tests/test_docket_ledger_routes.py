@@ -564,6 +564,14 @@ def test_ledger_board_shows_this_week_and_opens_selections(
     assert 'docket-liveweek' not in html          # the slab is gone
     assert 'docket-board' in html and 'This week' in html
     assert '1-0' in html                          # alice's marks so far
+    # The record figure (bolder pass 2026-09-12) on both compositions: the
+    # desktop board cell and the phone card, the service summary as label,
+    # and no garnet on an outcome (6.5: the old card-week accent is gone).
+    assert html.count('class="docket-record" role="img" aria-label="1-0 · 1 to play"') == 1
+    assert 'aria-label="Wk 2 1-0 · 1 to play"' in html
+    assert '<b class="docket-record-w">1</b>' in html
+    assert '<span class="docket-record-tail">1 to play</span>' in html
+    assert html.count('class="docket-marks"') == 4   # two members × two compositions
     # the drawer opens on the current selections: the revealed side shows,
     # the sealed one is stated in words, never as a side
     assert 'Utah Utes' in html
