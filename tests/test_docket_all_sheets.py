@@ -435,6 +435,53 @@ def test_sheets_reveals_at_kickoff_with_the_result(
     assert 'Next to open' in html
 
 
+def test_sheets_record_figure_carries_the_summary_as_its_label(
+        monkeypatch, client, member):
+    """The record (bolder pass 2026-09-12): once a side is final the summary
+    row states it as a two-tone figure whose text equivalent is the
+    service's own summary string, with the mark strip beneath in the order
+    the lines print (finals filled, the playing side hollow, the sealed
+    side cold, the open slots dotted, the reserve round and last)."""
+    week = make_week(1)
+    thu = [make_game(week, kickoff=KICK_THU) for _ in range(3)]
+    sat = make_game(week, kickoff=KICK_SAT)
+    at(monkeypatch, IN_WEEK1)
+    for g in thu:
+        _hold(member, week, g)
+    _hold(member, week, sat)
+    _hold(member, week, thu[0], market='total', side='over', backup=True)
+    _final(thu[0], 31, 17)                       # win (and the reserve: under 48 → over loses)
+    _final(thu[1], 20, 17)                       # loss
+    db.session.commit()
+    at(monkeypatch, '2026-09-04T12:00:00')      # Friday: Thursday revealed
+    html = _page(client)
+    assert 'class="docket-record" role="img" aria-label="1-1 · 2 to play"' in html
+    assert '<b class="docket-record-w">1</b>' in html
+    assert '<b class="docket-record-l">1</b>' in html
+    assert 'docket-record-p' not in html         # no pushes, no third figure
+    assert '<span class="docket-record-tail">2 to play</span>' in html
+    strip = re.search(r'<span class="docket-marks" aria-hidden="true">(.*?)</span>', html).group(1)
+    kinds = re.findall(r'<i class="docket-mark ([^"]+)"></i>', strip)
+    assert kinds == ['is-win', 'is-loss', 'is-pending', 'is-sealed',
+                     'is-open', 'is-open', 'is-open', 'is-open',
+                     'is-loss is-reserve']
+    assert 'docket-entry-count' not in html      # the quiet string is retired
+
+
+def test_sheets_record_before_any_final_is_the_count_with_the_strip(
+        monkeypatch, client, member):
+    week = make_week(1)
+    sat = make_game(week, kickoff=KICK_SAT)
+    at(monkeypatch, IN_WEEK1)
+    _hold(member, week, sat)
+    db.session.commit()
+    html = _page(client)
+    assert '<span class="docket-record-text">1 of 8 held</span>' in html
+    assert 'docket-record-fig' not in html
+    kinds = re.findall(r'<i class="docket-mark ([^"]+)"></i>', html)
+    assert kinds == ['is-sealed'] + ['is-open'] * 7    # no reserve square unheld
+
+
 def test_sheets_closed_shows_the_clerks_marks(monkeypatch, client, member):
     week = make_week(1)
     sat = make_game(week, kickoff=KICK_SAT)

@@ -126,6 +126,31 @@ strip that carried this entry in the interim is dormant (empty under the dual-fe
 registry) and the `lounge_cadence` line stays on the registry entry for the strip's possible
 future tenants.
 
+**The board and the record (bolder + colorize pass, 2026-09-12).** Brad's ask: the card
+"could use more juice" once results come in. The live panel's nine slot chips were a fill
+meter (held = garnet tint) and the closed and adjourned beats collapsed to one sentence, while
+the CFB panel beside it stacked the 2.7rem verdict word and the live-green pips: the Docket
+panel had opted out of the lounge's own strongest moves. Now the panel carries **the board**
+(`.hl-board` of nine `.hl-tile`s): the viewer's own slots as verdict tiles. Open = hairline
+and digit; held = the accent as a tinted chip (root §1.6); a case that has kicked off wears
+the platform live dot (`.is-live`); a final case lights its tile and prints its letter (W /
+L / M, `NC` dashed), color **only** through the lounge's `--live-green` / `--live-red` /
+`--bone-dim` (never `--success`/`--danger`, never a room hex), the letter in `--purple-950`
+because bone on live-red is 3.6:1 and fails (4.6:1 and ~10:1 verified). The x2 slot carries a
+2px accent ring and a garnet `x2` tag on its top edge, the one ceremonial mark reaching the
+lounge as a tinted chip. Once any scoring side is final, **the record** (`.hl-record`, wins
+green and losses red, e.g. `3-1`) takes the sentence's place at the summons' 2.7rem/700
+register, the one size the lounge lets live-red color text at, with "N to play" in the meta
+line. The board is `role="img"` with the whole sentence as its label ("1 win, 1 loss; 2 to
+play; 1 in play; x2 on slot 3; reserve held"); the letter is the state, color is the second
+channel. Closed and adjourned keep painting the board and the record (`_context_live`
+attaches `progress` to both open and closed; `_week_result` carries `marks`). Data comes from
+`sheets.viewer_marks` — the viewer's ≤9 picks joined to their own games, one query, results by
+the engine's rule through the All Sheets final gate — so the card can never disagree with the
+sheet, and the record string is `sheets.record_label`, the same words the room prints. Still no
+`.docket-*` class, no `--game-*` variable, and the `.hl-cta` untouched. Locked by
+`tests/test_docket_lounge.py`.
+
 Two 2026-08-18 design-review amendments (ADR-051). The pre panel opens with the club's
 decree seal band — "By Decree of the Commish No 003 · The Docket '26" — the platform
 `decree`/`decree-seal` primitives with per-era numbering (WC No 001, CFB No 002). Band
@@ -651,8 +676,8 @@ ruling: **once a pick locks it releases visibility for everyone.**
   and the person they came to check). The summary reuses the ledger drawer's grammar
   (`.docket-sheet-head` as `<summary>`, suppressed marker, the drawn `.docket-entry-caret`
   that rotates on `[open]`, a 44px target, the garnet focus ring) and the ledger's head row:
-  avatar, name, "You" tag and Teko count (`.docket-entry-count` carries the summary: "3 of 8
-  held" → "2 of 8 locked" → "1-1 · 5 to play"). Inside, the lines are kickoff-ordered with
+  avatar, name, "You" tag and the record (the `docket/_record.html` macro since 2026-09-12,
+  below; it carries the summary "3 of 8 held" → "2 of 8 locked" → "1-1 · 5 to play"). Inside, the lines are kickoff-ordered with
   the reserve last: Teko kickoff, the side as the sheet prints it with the same three marks as
   the case row (x2 chip, Reserve badge, Auto tag), the case caption, and the result word.
   Your row takes the garnet tint (garnet means "yours"). No JS: native disclosure is the whole
@@ -683,6 +708,25 @@ ruling: **once a pick locks it releases visibility for everyone.**
 - The rules page states the rule under "Who sees what"; the join page says it in one
   sentence. The scores timer now runs Friday and Saturday mornings as well, so Thursday's and
   Friday's finals are on the page the next morning (rulings Amendments 2026-09-04).
+- **The verdict stamp and the record figure (bolder + colorize pass, 2026-09-12).** Brad:
+  the records "feel muted, it's what matters." The result word was a color-only Teko word
+  beside filled garnet marks (Reserve, x2), so the outcome was outranked by the chips, and
+  the record sat in `--text-secondary` as the quietest text in the row. Now
+  `.docket-sheet-result` is a **stamp**: Win a solid `--success` fill and Loss a solid
+  `--danger` fill with bone text (4.7:1 each), Mistrial hollow-ruled, No Contest hollow dashed,
+  rectangular at the platform radius (6.9), the word always inside (6.5); a pending line
+  prints nothing there. **The record** is the shared `docket/_record.html` macro on every
+  summary row (the All Sheets drawer head, the ledger board cell, the ledger phone card):
+  once a scoring side is final, a Teko 1.45rem figure with wins in success and losses in
+  danger (large text; both clear 3:1 with room), pushes and the "N to play" tail quiet, the
+  whole figure one `role="img"` whose label is the service's own `summary` string; before
+  that, the held/locked count in ink at label weight. Under it **the mark strip**
+  (`.docket-marks`, `MemberSheet.marks()`): nine 10px squares in the order the lines print,
+  finals filled (win / loss / push), a revealed side still playing hollow, a sealed side cold
+  (a count, never a side: the reveal rule stands), an open slot dotted, the reserve round and
+  last, only when held; `aria-hidden`, the figure carries the words. Garnet never touches an
+  outcome, and the ledger phone card's garnet record (a 6.5 slip) is corrected by the same
+  macro. Locked by `tests/test_docket_all_sheets.py` and `tests/test_docket_ledger_routes.py`.
 
 Locked by `tests/test_docket_all_sheets.py` (the reveal boundary, the words-only sealed
 facts, the engine parity of every mark, the as-of-deadline roster, the query count, the
@@ -751,7 +795,10 @@ board (§8.11) and a drill-down into one surface:
 - **The "this week" column.** Each line carries its record in the open week so far (the live
   `Tally` from `all_sheets`, e.g. `3-1 · 4 to play`), **marks only, never a side and never a
   point** (no points before the week grades, §7.13). The season keys (Points · Wins · Off by)
-  keep the official ranking; the record is a supplementary column, not a ranking key.
+  keep the official ranking; the record is a supplementary column, not a ranking key. Since
+  the 2026-09-12 bolder pass the cell is the shared record figure plus mark strip (§7.13,
+  `docket/_record.html`) on the desktop board (`.dbc-week`, widened to 9.5rem) and the phone
+  card alike, so the ledger reads green and red at a glance without a single point moving.
 - **The line opens onto the current week.** Expanding a line shows that member's open-week sheet
   through the same `all_sheets` read and the same `.docket-sheet-line` primitive All Sheets
   prints, under the **same reveal rule** (§7.13): a side shows once its case locks at kickoff,

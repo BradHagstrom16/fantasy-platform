@@ -210,6 +210,9 @@ def test_context_live_outstanding_empty_when_sheet_complete(app, monkeypatch):
 
 
 def test_context_live_closed_beat_post_deadline_ungraded(app, monkeypatch):
+    """Closed carries the board too (bolder pass 2026-09-12): the card keeps
+    painting the viewer's slots and record while verdicts land, instead of
+    collapsing to one sentence. No sheet: nine open tiles, no record."""
     at(monkeypatch, IN_WEEK1_CLOSED)
     with app.app_context():
         user = make_user('waiting-verdicts')
@@ -218,8 +221,12 @@ def test_context_live_closed_beat_post_deadline_ungraded(app, monkeypatch):
         ctx = lounge.build_lounge_context(user, 'live')
     assert ctx['beat'] == 'closed'
     assert ctx['court_line'] == 'Week 1 · docket closed'
-    assert 'progress' not in ctx
     assert 'result' not in ctx
+    progress = ctx['progress']
+    assert len(progress['marks']) == 9
+    assert not any(m.held for m in progress['marks'])
+    assert progress['tally'] is None and progress['record'] is None
+    assert progress['board_label'] == '0 of 8 sides held'
 
 
 def test_context_live_adjourned_beat_when_graded(app, monkeypatch):
@@ -235,7 +242,128 @@ def test_context_live_adjourned_beat_when_graded(app, monkeypatch):
         db.session.flush()
         ctx = lounge.build_lounge_context(user, 'live')
     assert ctx['beat'] == 'adjourned'
-    assert ctx['result'] == {'points_label': '6.5', 'wins': 5}
+    result = ctx['result']
+    assert result['points_label'] == '6.5' and result['wins'] == 5
+    # The final board rides the adjourned card (bolder pass 2026-09-12).
+    assert len(result['marks']) == 9
+    assert set(result) == {'points_label', 'wins', 'marks', 'tally',
+                           'record', 'board_label'}
+
+
+def test_context_live_open_beat_paints_verdicts_as_they_land(app, monkeypatch):
+    """The board (bolder pass 2026-09-12): each of the viewer's own slots
+    carries its state — a final case its engine result, a kicked-off case
+    the live flag — and the record is the tally of the finals, in the same
+    words All Sheets prints. The reserve never counts."""
+    at(monkeypatch, IN_WEEK1_OPEN)                      # Wed Sep 2 12:00 UTC
+    with app.app_context():
+        user = make_user('scorer')
+        make_enrollment(user)
+        week = make_week(1)
+        done = make_game(week, kickoff=datetime(2026, 9, 1, 23, 30))
+        done.home_score, done.away_score, done.is_final = 31, 17, True
+        live = make_game(week, kickoff=datetime(2026, 9, 2, 0, 0))    # kicked off
+        later = make_game(week, kickoff=datetime(2026, 9, 3, 23, 30))
+        db.session.add_all([
+            # home -3.5, final 31-17: a win. Over 51.5 on 48: a loss.
+            DocketPick(user_id=user.id, week_id=week.id, game_id=done.id,
+                       market='spread', side='home', slot=1,
+                       line_value=-3.5, book='draftkings'),
+            DocketPick(user_id=user.id, week_id=week.id, game_id=done.id,
+                       market='total', side='over', slot=2,
+                       line_value=51.5, book='draftkings'),
+            DocketPick(user_id=user.id, week_id=week.id, game_id=live.id,
+                       market='spread', side='away', slot=3, is_best=True,
+                       line_value=3.5, book='draftkings'),
+            DocketPick(user_id=user.id, week_id=week.id, game_id=later.id,
+                       market='spread', side='home', slot=4,
+                       line_value=-3.5, book='draftkings'),
+            # The reserve rides the kicked-off case's other market: on the
+            # board with the live flag, never counted.
+            DocketPick(user_id=user.id, week_id=week.id, game_id=live.id,
+                       market='total', side='under', slot=9,
+                       line_value=51.5, book='draftkings'),
+        ])
+        db.session.flush()
+        ctx = lounge.build_lounge_context(user, 'live')
+    progress = ctx['progress']
+    by_slot = {m.slot: m for m in progress['marks']}
+    assert [m.slot for m in progress['marks']] == [1, 2, 3, 4, 5, 6, 7, 8, 9]
+    assert by_slot[1].result == 'win' and by_slot[2].result == 'loss'
+    assert by_slot[3].result is None and by_slot[3].in_play is True
+    assert by_slot[3].is_best is True
+    assert by_slot[4].in_play is False and by_slot[4].held is True
+    assert by_slot[5].held is False
+    assert by_slot[9].is_reserve and by_slot[9].held and by_slot[9].in_play
+    tally = progress['tally']
+    assert (tally.wins, tally.losses, tally.pushes, tally.pending) == (1, 1, 0, 2)
+    assert progress['record'] == '1-1 · 2 to play'
+    assert progress['board_label'] == (
+        '1 win, 1 loss; 2 to play; 1 in play; x2 on slot 3; reserve held')
+    assert progress['scoring_count'] == 4 and progress['backup_held'] is True
+
+
+def test_context_live_record_is_none_until_a_scoring_side_is_final(app, monkeypatch):
+    at(monkeypatch, IN_WEEK1_OPEN)
+    with app.app_context():
+        user = make_user('early-bird')
+        make_enrollment(user)
+        week = make_week(1)
+        game = make_game(week, kickoff=datetime(2026, 9, 3, 23, 30))
+        db.session.add(DocketPick(
+            user_id=user.id, week_id=week.id, game_id=game.id,
+            market='spread', side='home', slot=1, is_best=True,
+            line_value=-3.5, book='draftkings'))
+        db.session.flush()
+        ctx = lounge.build_lounge_context(user, 'live')
+    progress = ctx['progress']
+    assert progress['tally'] is None and progress['record'] is None
+    assert progress['board_label'] == '1 of 8 sides held; x2 on slot 1'
+
+
+def test_lounge_renders_the_board_and_the_record(app, client, monkeypatch):
+    """Rendered: a final case lights its tile with its letter (structure
+    before color), the record takes the verdict register with its text
+    equivalent, and the pre-results copy steps aside."""
+    monkeypatch.setenv('CFB_FAKE_NOW', IN_WEEK1_OPEN)   # both clocks in season
+    at(monkeypatch, IN_WEEK1_OPEN)
+    with app.app_context():
+        user = make_user('viewer')
+        make_enrollment(user)
+        week = make_week(1)
+        done = make_game(week, kickoff=datetime(2026, 9, 1, 23, 30))
+        done.home_score, done.away_score, done.is_final = 31, 17, True
+        later = make_game(week, kickoff=datetime(2026, 9, 3, 23, 30))
+        db.session.add_all([
+            DocketPick(user_id=user.id, week_id=week.id, game_id=done.id,
+                       market='spread', side='home', slot=1,
+                       line_value=-3.5, book='draftkings'),
+            DocketPick(user_id=user.id, week_id=week.id, game_id=done.id,
+                       market='total', side='over', slot=2,
+                       line_value=51.5, book='draftkings'),
+            DocketPick(user_id=user.id, week_id=week.id, game_id=later.id,
+                       market='spread', side='home', slot=3, is_best=True,
+                       line_value=-3.5, book='draftkings'),
+        ])
+        db.session.commit()
+        auth_id = user.auth_id
+    with client.session_transaction() as sess:
+        sess['_user_id'] = auth_id
+        sess['_fresh'] = True
+    html = client.get('/').get_data(as_text=True)
+    docket = html[html.index('hl-panel--docket'):]
+    assert 'class="hl-tile is-win" aria-hidden="true">W</span>' in docket
+    assert 'class="hl-tile is-loss" aria-hidden="true">L</span>' in docket
+    assert 'hl-tile is-held is-x2" aria-hidden="true">3<span class="hl-tile-x2">x2</span>' in docket
+    assert 'class="hl-tile" aria-hidden="true">4</span>' in docket
+    assert 'hl-tile hl-tile--reserve" aria-hidden="true">R</span>' in docket
+    assert 'class="hl-record" role="img" aria-label="1-1 · 1 to play"' in docket
+    assert 'Your sheet is complete.' not in docket
+    assert 'Your sheet is not finished.' not in docket
+    assert '>1</span> to play' in docket
+    assert 'class="hl-cta" href="/docket/">Open Your Sheet</a>' in docket
+    # No room class or variable leaks into the lounge (the accent firewall).
+    assert 'docket-sheet' not in docket and '--game-accent' not in docket
 
 
 def test_context_live_view_mode_unenrolled(app, monkeypatch):

@@ -3,8 +3,33 @@
    onto the lounge). The lounge summarizes; the sheet completes — no
    cases, no lines, no per-slot controls here. Members get the
    Clerk's-Ledger facts; non-members get the sell while the join window
-   is open. Deadlines state the literal time, always. #}
+   is open. Deadlines state the literal time, always.
+
+   The board (bolder pass 2026-09-12): the viewer's nine slots as verdict
+   tiles. Held slots wear the headliner's accent as a tinted chip; a case
+   that has kicked off carries the platform live dot; a final case lights
+   its tile and prints its letter (W / L / M), color through the lounge's
+   live tokens only, the letter always inside (structure before color, the
+   CFB pips' own grammar). Once any case is final the record takes the
+   2.7rem verdict register in place of the sentence. The board is a
+   role="img" with the whole sentence as its label, never a control. #}
 {% set g = h.ctx %}
+{% macro board(p) -%}
+<div class="hl-board" role="img" aria-label="{{ p.board_label }}">
+  {%- for m in p.marks -%}
+  <span class="hl-tile{% if m.result %} is-{{ m.result }}{% elif m.in_play %} is-live{% elif m.held %} is-held{% endif %}{% if m.is_reserve %} hl-tile--reserve{% endif %}{% if m.is_best %} is-x2{% endif %}" aria-hidden="true">
+    {%- if m.result == 'win' %}W{% elif m.result == 'loss' %}L{% elif m.result == 'push' %}M{% elif m.result == 'no_contest' %}NC{% elif m.is_reserve %}R{% else %}{{ m.slot }}{% endif -%}
+    {%- if m.is_best %}<span class="hl-tile-x2">x2</span>{% endif -%}
+  </span>
+  {%- endfor -%}
+</div>
+{%- endmacro %}
+{% macro record(p) -%}
+<div class="hl-record" role="img" aria-label="{{ p.record }}">
+  <span class="w" aria-hidden="true">{{ p.tally.wins }}</span><span class="sep" aria-hidden="true">-</span><span class="l" aria-hidden="true">{{ p.tally.losses }}</span>
+  {%- if p.tally.pushes %}<span class="sep" aria-hidden="true">-</span><span class="m" aria-hidden="true">{{ p.tally.pushes }}</span>{% endif -%}
+</div>
+{%- endmacro %}
 <section class="hl-panel hl-panel--docket" aria-label="The Docket">
   <header class="hl-panel-head">
     <span class="hl-panel-mark" aria-hidden="true">{{ h.entry.emoji }}</span>
@@ -32,52 +57,67 @@
   </div>
 
   {% elif g.beat == 'open' %}
+  {% set p = g.progress %}
   <div class="summons">
     <div class="summons-eyebrow summons-eyebrow--info">◇ Week {{ g.week_number }} &middot; Docket Open</div>
-    {% if g.progress.outstanding %}
+    {% if p.tally %}
+    {{ record(p) }}
+    {% elif p.outstanding %}
     <div class="summons-line">Your sheet is not finished.</div>
     {% else %}
     <div class="summons-line">Your sheet is complete.</div>
     {% endif %}
-    {# The Clerk's-Ledger count as shape: held slots tint garnet. #}
-    <div class="hl-slots" role="img"
-         aria-label="{{ g.progress.scoring_count }} of 8 sides held{{ ', one in reserve' if g.progress.backup_held else '' }}">
-      {% for i in range(1, 9) %}<span class="hl-slot{{ ' hl-slot--held' if i <= g.progress.scoring_count else '' }}" aria-hidden="true">{{ i }}</span>{% endfor %}
-      <span class="hl-slot hl-slot--reserve{{ ' hl-slot--held' if g.progress.backup_held else '' }}" aria-hidden="true">R</span>
-    </div>
-    {% if g.progress.outstanding %}
+    {{ board(p) }}
+    {% if p.outstanding %}
     <ul class="hl-tape">
-      {% for item in g.progress.outstanding %}
+      {% for item in p.outstanding %}
       <li>{{ item }}</li>
       {% endfor %}
     </ul>
-    {% else %}
-    <p class="summons-sub">Eight sides held{% if g.progress.backup_held %}, one in reserve{% endif %}. The number is recorded.</p>
+    {% elif not p.tally %}
+    <p class="summons-sub">Eight sides held{% if p.backup_held %}, one in reserve{% endif %}. The number is recorded.</p>
     {% endif %}
     <div class="summons-meta">
+      {% if p.tally and p.tally.pending %}<span><span class="num">{{ p.tally.pending }}</span> to play</span>{% endif %}
       <span>The docket closes {{ g.week_deadline_at|ct('%A at %-I:%M %p CT') }}.</span>
     </div>
     <a class="hl-cta" href="{{ url_for(h.entry.blueprint_index) }}">Open Your Sheet</a>
-    {% if g.progress.outstanding %}
+    {% if p.outstanding %}
     <div class="commish-echo">Whatever stays open is filed for you from the locked lines.</div>
     {% endif %}
   </div>
 
   {% elif g.beat == 'closed' %}
+  {% set p = g.progress %}
   <div class="summons summons--info">
     <div class="summons-eyebrow summons-eyebrow--info">◇ Week {{ g.week_number }} &middot; Docket Closed</div>
+    {% if p and p.tally %}
+    {{ record(p) }}
+    {% else %}
     <div class="summons-line">The docket is closed.</div>
-    <p class="summons-sub">Verdicts to follow as the scores land.</p>
+    {% endif %}
+    {% if p %}{{ board(p) }}{% endif %}
+    <p class="summons-sub">Verdicts land as the scores do.</p>
+    {% if p and p.tally and p.tally.pending %}
+    <div class="summons-meta"><span><span class="num">{{ p.tally.pending }}</span> to play</span></div>
+    {% endif %}
     <div class="field-impact">
       <a class="route-link" href="{{ url_for(h.entry.blueprint_index) }}">Review your sheet &rsaquo;</a>
     </div>
   </div>
 
   {% else %}
+  {% set r = g.result %}
   <div class="summons summons--info">
     <div class="summons-eyebrow summons-eyebrow--info">◇ Week {{ g.week_number }} &middot; Adjourned</div>
-    {% if g.result %}
-    <div class="summons-line">Your line: {{ g.result.points_label }} points, {{ g.result.wins }} win{{ '' if g.result.wins == 1 else 's' }}.</div>
+    {% if r and r.tally %}
+    {{ record(r) }}
+    {{ board(r) }}
+    <div class="summons-meta">
+      <span>Your line: <span class="num">{{ r.points_label }}</span> points, <span class="num">{{ r.wins }}</span> win{{ '' if r.wins == 1 else 's' }}.</span>
+    </div>
+    {% elif r %}
+    <div class="summons-line">Your line: {{ r.points_label }} points, {{ r.wins }} win{{ '' if r.wins == 1 else 's' }}.</div>
     {% else %}
     <div class="summons-line">The week is adjourned.</div>
     {% endif %}

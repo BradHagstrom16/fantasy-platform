@@ -90,6 +90,30 @@ class Tally:
 
 
 @dataclass(frozen=True, slots=True)
+class StripMark:
+    """One square of the mark strip under a member's record (7.13): the
+    kickoff-ordered revealed lines, then the sealed count, then the open
+    slots, the reserve last. A kind, never a side."""
+    kind: str                    # 'win' | 'loss' | 'push' | 'no_contest' | 'pending' | 'sealed' | 'open'
+    is_reserve: bool
+
+
+@dataclass(frozen=True, slots=True)
+class SlotMark:
+    """One of the viewer's OWN nine slots, as the lounge board paints it.
+
+    Nothing here is sealed from its owner, so every held slot carries its
+    result the moment the case is final; ``in_play`` is a kicked-off case
+    still waiting on a score (the live dot)."""
+    slot: int
+    held: bool
+    is_reserve: bool
+    is_best: bool
+    in_play: bool
+    result: str | None           # 'win' | 'loss' | 'push' | 'no_contest' | None
+
+
+@dataclass(frozen=True, slots=True)
 class MemberSheet:
     enrollment: DocketEnrollment
     user_id: int
@@ -103,6 +127,21 @@ class MemberSheet:
     tally: Tally | None          # None until a scoring line is final
     sealed_sentence: str
     summary: str
+
+    def marks(self) -> tuple[StripMark, ...]:
+        """The mark strip: eight scoring squares in the order the lines
+        print (revealed first, then sealed, then open), plus the reserve
+        square when one is held. Reveals only what the lines already do."""
+        squares = [StripMark(line.result or 'pending', False)
+                   for line in self.lines if not line.is_reserve]
+        squares += [StripMark('sealed', False)] * self.sealed_count
+        squares += [StripMark('open', False)] * max(0, SCORING_SLOTS - len(squares))
+        reserve = next((line for line in self.lines if line.is_reserve), None)
+        if reserve is not None:
+            squares.append(StripMark(reserve.result or 'pending', True))
+        elif self.sealed_reserve:
+            squares.append(StripMark('sealed', True))
+        return tuple(squares)
 
 
 @dataclass(frozen=True, slots=True)
@@ -175,14 +214,34 @@ def _sealed_sentence(*, held, sealed, x2_sealed, sealed_reserve,
     return ' · '.join(parts) + '.' if parts else ''
 
 
+def record_label(tally: Tally) -> str:
+    """The record as one string ("3-1", "3-1-1 · 4 to play"): the room's
+    summary and the lounge card read the same words from the same tally."""
+    text = f'{tally.wins}-{tally.losses}'
+    if tally.pushes:
+        text += f'-{tally.pushes}'
+    if tally.pending:
+        text += f' · {tally.pending} to play'
+    return text
+
+
+def _tally(results, *, pending_extra=0) -> Tally | None:
+    """A count of the marks (never a grade): None until a scoring side is
+    final; ``pending`` is every scoring side without a final result."""
+    finals = [r for r in results if r in FINAL_RESULTS]
+    if not finals:
+        return None
+    return Tally(
+        wins=finals.count('win'),
+        losses=finals.count('loss'),
+        pushes=finals.count('push'),
+        pending=sum(1 for r in results if r is None) + pending_extra,
+    )
+
+
 def _summary(*, held, revealed, tally) -> str:
     if tally is not None:
-        text = f'{tally.wins}-{tally.losses}'
-        if tally.pushes:
-            text += f'-{tally.pushes}'
-        if tally.pending:
-            text += f' · {tally.pending} to play'
-        return text
+        return record_label(tally)
     if revealed:
         return f'{revealed} of {SCORING_SLOTS} locked'
     return f'{held} of {SCORING_SLOTS} held'
@@ -226,16 +285,7 @@ def _member_sheet(enrollment, picks, prediction_tenths, *, games_by_id,
         ))
     lines = [line for _, line in sorted(keyed, key=lambda item: item[0])]
     scoring = [line for line in lines if not line.is_reserve]
-    finals = [line for line in scoring if line.result in FINAL_RESULTS]
-    tally = None
-    if finals:
-        pending = sum(1 for line in scoring if line.result is None) + sealed
-        tally = Tally(
-            wins=sum(1 for line in finals if line.result == 'win'),
-            losses=sum(1 for line in finals if line.result == 'loss'),
-            pushes=sum(1 for line in finals if line.result == 'push'),
-            pending=pending,
-        )
+    tally = _tally([line.result for line in scoring], pending_extra=sealed)
     number_in = prediction_tenths is not None
     return MemberSheet(
         enrollment=enrollment,
@@ -317,3 +367,37 @@ def all_sheets(week: DocketWeek, now: datetime) -> WeekSheets:
         designated_caption=_caption(designated) if designated else None,
         members=tuple(members),
     )
+
+
+def viewer_marks(user_id: int, week: DocketWeek, now: datetime) -> tuple[SlotMark, ...]:
+    """The viewer's own nine slots for the lounge board, one query: their
+    picks joined to their games (at most nine rows; the rest of the week's
+    docket stays in the room). Results are the engine's rule through the
+    same final gate All Sheets uses, so the card and the sheet agree on
+    every case."""
+    rows = db.session.execute(
+        select(DocketPick, DocketGame)
+        .join(DocketGame, DocketGame.id == DocketPick.game_id)
+        .filter(DocketPick.user_id == user_id, DocketPick.week_id == week.id)
+    ).all()
+    by_slot = {pick.slot: (pick, game) for pick, game in rows}
+    marks = []
+    for slot in (*range(1, SCORING_SLOTS + 1), BACKUP_SLOT):
+        is_reserve = slot == BACKUP_SLOT
+        entry = by_slot.get(slot)
+        if entry is None:
+            marks.append(SlotMark(slot=slot, held=False, is_reserve=is_reserve,
+                                  is_best=False, in_play=False, result=None))
+            continue
+        pick, game = entry
+        result = _result(pick, game, _snapshot(game))
+        marks.append(SlotMark(
+            slot=slot, held=True, is_reserve=is_reserve, is_best=pick.is_best,
+            in_play=result is None and game_locked(game, now), result=result))
+    return tuple(marks)
+
+
+def marks_tally(marks: tuple[SlotMark, ...]) -> Tally | None:
+    """The record behind a board of slot marks: the scoring slots only
+    (the reserve never counts), None until one of them is final."""
+    return _tally([m.result for m in marks if m.held and not m.is_reserve])

@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from 'docket/_record.html' import record with context %}
 
 {% block title %}{% if week %}The Week {{ week.week_number }} Sheets · The Docket{% else %}All Sheets · The Docket{% endif %}{% endblock %}
 
@@ -189,7 +190,7 @@ the finish review and DESIGN.md 7.13.
                 <span class="docket-entry-name">{{ m.enrollment.get_display_name() }}</span>
                 {% if is_you %}<span class="docket-you-tag">You</span>{% endif %}
                 {% if r and not r.submitted %}<span class="docket-caption docket-week-standings-absent">no sheet filed</span>{% endif %}
-                <span class="docket-entry-count">{{ m.summary }}</span>
+                {{ record(m) }}
                 {% if r %}<span class="docket-sheet-points">{{ '%.1f'|format(r.points) }} pts</span>{% endif %}
                 <span class="docket-entry-caret" aria-hidden="true"></span>
             </summary>
