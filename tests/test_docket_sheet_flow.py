@@ -464,6 +464,122 @@ def test_closed_sheet_renders_the_closed_card_and_no_forms(
     assert 'data-docket-action="' not in html
 
 
+# ── verdicts: how each pick did, as cases go final (DESIGN.md 7.3) ──────────
+
+def _final(game, *, home, away):
+    game.home_score = home
+    game.away_score = away
+    game.is_final = True
+
+
+def test_decided_held_side_carries_the_verdict_and_final_score(
+        monkeypatch, client, member):
+    """The state 7.3 named and the sheet never rendered: once a case is final
+    the held side wears a Win/Loss stamp and the case head prints the final
+    score. All eight sides are home -3.5 (the _file default)."""
+    week = make_week(1)
+    games = [make_game(week, kickoff=KICK_SAT, home=f'Home {i}',
+                       away=f'Away {i}') for i in range(8)]
+    week.tiebreaker_game_id = games[7].id
+    db.session.commit()
+    at(monkeypatch, IN_WEEK1)
+    _file_eight_with_x2_and_number(client, week, games)
+    _final(games[0], home=30, away=20)      # home covers -3.5 -> Win
+    _final(games[1], home=20, away=30)      # home loses -> Loss
+    db.session.commit()
+    at(monkeypatch, '2026-09-06T18:00:00')  # closed, Sunday 1 PM CT
+    html = client.get('/docket/').data.decode()
+    assert 'docket-verdict is-win' in html and '>Win<' in html
+    assert 'docket-verdict is-loss' in html and '>Loss<' in html
+    assert 'Final 20-30' in html            # away-home (win case)
+    assert 'Final 30-20' in html            # away-home (loss case)
+
+
+def test_verdict_uses_the_platform_semantic_layer_not_garnet(monkeypatch):
+    """The 7.13 grammar reused (6.5: garnet means yours, never an outcome):
+    Win is the success fill, Loss the danger fill, both bone; push/no-contest
+    are hollow. No --game-* colour on the stamp."""
+    win = _rule(r'\.docket-verdict\.is-win')
+    loss = _rule(r'\.docket-verdict\.is-loss')
+    assert 'var(--success)' in win and 'var(--bone)' in win
+    assert 'var(--danger)' in loss and 'var(--bone)' in loss
+    base = _rule(r'\.docket-verdict')
+    assert '--game-' not in base and '--game-' not in win and '--game-' not in loss
+
+
+def test_the_filed_card_and_rail_carry_the_running_record(
+        monkeypatch, client, member):
+    """Bolder: the record leads the standing card and the rail head, the same
+    figure All Sheets and the ledger print, and the closed note stops
+    promising verdicts once they are landing."""
+    week = make_week(1)
+    games = [make_game(week, kickoff=KICK_SAT) for _ in range(8)]
+    week.tiebreaker_game_id = games[7].id
+    db.session.commit()
+    at(monkeypatch, IN_WEEK1)
+    _file_eight_with_x2_and_number(client, week, games)
+    _final(games[0], home=30, away=20)      # win
+    _final(games[1], home=20, away=30)      # loss
+    db.session.commit()
+    at(monkeypatch, '2026-09-06T18:00:00')
+    html = client.get('/docket/').data.decode()
+    assert 'docket-filed-record' in html and 'docket-rail-record' in html
+    assert 'docket-record-w' in html and 'docket-record-l' in html
+    # The standing card's note and the hero stop promising verdicts once the
+    # live marks are landing (the next_step ask still refers to the pending
+    # week grade, which genuinely follows: no ledger points before it).
+    assert 'Cases score here as they finish.' in html
+    assert 'The docket closed Sunday 12:00 PM CT. Verdicts to follow.' not in html
+    assert 'The docket is closed. Verdicts are landing.' in html
+
+
+def test_verdict_lands_case_by_case_before_the_deadline(
+        monkeypatch, client, member):
+    """As games are decided the sheet updates: a Thursday case that has gone
+    final shows its verdict while the rest of the week is still open."""
+    week = make_week(1)
+    thu = make_game(week, kickoff=KICK_THU, home='Utah Utes',
+                    away='Idaho Vandals')
+    sat = [make_game(week, kickoff=KICK_SAT) for _ in range(7)]
+    week.tiebreaker_game_id = sat[-1].id
+    db.session.commit()
+    at(monkeypatch, IN_WEEK1)
+    _file(client, thu)                      # Utah Utes -3.5
+    for g in sat:
+        _file(client, g)
+    _final(thu, home=40, away=10)           # Utah covers -> Win
+    db.session.commit()
+    at(monkeypatch, '2026-09-04T02:00:00')  # after Thu kickoff, before Sunday
+    html = client.get('/docket/').data.decode()
+    # The rail carries every slot regardless of the day in view, so the
+    # decided Thursday case updates the margin (verdict + running record)
+    # while the rest of the week is still open (the day view is Saturday).
+    assert 'docket-verdict is-win' in html
+    assert 'docket-rail-record' in html
+    assert 'Docket closes' in html          # still open, not closed
+    # The case-row final score is on the Thursday tab; the rest is unlocked.
+    thu_day = client.get('/docket/?day=2026-09-03').data.decode()
+    assert 'Final 10-40' in thu_day
+
+
+def test_the_reserve_never_carries_a_verdict(monkeypatch, client, member):
+    """The reserve scores only on a substitution, so its decided case shows a
+    final score but never a win or loss on My Sheet."""
+    week = make_week(1)
+    games = [make_game(week, kickoff=KICK_SAT) for _ in range(9)]
+    week.tiebreaker_game_id = games[7].id
+    db.session.commit()
+    at(monkeypatch, IN_WEEK1)
+    _file_eight_with_x2_and_number(client, week, games[:8])
+    _file(client, games[8], backup='1')     # the reserve
+    _final(games[8], home=30, away=20)       # the reserve's case is final
+    db.session.commit()
+    at(monkeypatch, '2026-09-06T18:00:00')
+    html = client.get('/docket/').data.decode()
+    assert 'Final 20-30' in html             # the case is decided
+    assert 'docket-verdict' not in html      # but the reserve gets no verdict
+
+
 def test_the_filed_card_carries_no_form():
     """A refresh region that is only ever read: no mutation form may ride
     in it (the closed sheet's no-forms lock would otherwise be one include

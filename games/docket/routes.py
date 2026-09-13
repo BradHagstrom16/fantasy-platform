@@ -47,7 +47,7 @@ from games.docket.services.payment import payment_nudge_for
 from games.docket.services.picks import PickError
 from games.docket.services.purse import season_purse
 from games.docket.services.season_pass import season_ledger, week_standings
-from games.docket.services.sheets import all_sheets
+from games.docket.services.sheets import all_sheets, viewer_sheet
 from games.docket.services.weeks import (
     CT,
     SEASON_YEAR,
@@ -283,8 +283,18 @@ def index():
             preview=False,
             find_query='',
             sheet_return={},
+            results={},
+            viewer_record=None,
+            result_words=RESULT_WORDS,
         )
     sheet = picks_service.sheet_state(current_user.id, week)
+    # Verdicts once cases go final (DESIGN.md 7.3 final state): the viewer's
+    # own record and a per-(game_id, market) result map for the case rows and
+    # the rail slots, both through the engine gate All Sheets uses so no two
+    # docket surfaces disagree. Preview weeks have nothing decided.
+    viewer_record, results = (
+        viewer_sheet(current_user.id, week, picks_service.now_naive())
+        if not preview else (None, {}))
     held = {(p['game_id'], p['market']): p for p in sheet['picks']}
     slot_map = {p['slot']: p for p in sheet['picks']}
     locked_ids = set(sheet['locked_game_ids'])
@@ -395,6 +405,9 @@ def index():
         find_total=find_total,
         week_case_total=len(games),
         sheet_return=sheet_return,
+        results=results,
+        viewer_record=viewer_record,
+        result_words=RESULT_WORDS,
     )
 
 

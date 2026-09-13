@@ -33,6 +33,8 @@ the finish review, the verdict, and DESIGN.md.
             {{ week.start_at|ct('%A, %B %-d') }}.
             {% elif not sheet.deadline_passed %}
             Court adjourns {{ week.deadline_at|ct('%A %-I:%M %p CT') }}.
+            {% elif viewer_record and viewer_record.tally %}
+            The docket is closed. Verdicts are landing.
             {% else %}
             The docket is closed. Verdicts to follow.
             {% endif %}

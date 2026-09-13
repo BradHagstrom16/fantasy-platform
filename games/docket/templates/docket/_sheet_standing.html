@@ -9,7 +9,8 @@
    The toast confirms a tap for 3.5 s; this card answers "is my sheet in?"
    for as long as the page is open. Reads the sheet state only; carries no
    form (the closed sheet's no-forms lock rides on that).
-   Context: sheet, week, preview, designated, tb_locked. #}
+   Context: sheet, week, preview, designated, tb_locked, viewer_record. #}
+{% from 'docket/_record.html' import record %}
 {% if not preview %}
   {% set filed_stages = ('reserve', 'complete') %}
   {% if sheet.deadline_passed or sheet.next_step.stage in filed_stages %}
@@ -26,6 +27,12 @@
         Your Week {{ week.week_number }} sheet is in.
       {%- endif -%}
     </p>
+    {# The verdict, once cases go final: the running record leads the card,
+       the same figure and mark strip All Sheets and the ledger print (7.13),
+       so "how am I doing" is answered here before the facts. #}
+    {% if viewer_record and viewer_record.tally %}
+    <div class="docket-filed-record">{{ record(viewer_record) }}</div>
+    {% endif %}
     {# The Clerk's-Ledger Rule: the progress facts travel together. #}
     <p class="docket-filed-facts">
       <span class="docket-filed-fact">{{ sheet.scoring_count }} sides held</span>
@@ -34,7 +41,7 @@
       <span class="docket-filed-fact">{% if sheet.prediction is not none %}Number {{ sheet.prediction }}{% else %}No number{% endif %}</span>
     </p>
     {% if closed %}
-    <p class="docket-filed-note">The docket closed {{ week.deadline_at|ct('%A %-I:%M %p CT') }}. Verdicts to follow.</p>
+    <p class="docket-filed-note">The docket closed {{ week.deadline_at|ct('%A %-I:%M %p CT') }}. {% if viewer_record and viewer_record.tally %}Cases score here as they finish.{% else %}Verdicts to follow.{% endif %}</p>
     {% else %}
     <p class="docket-filed-note">Nothing to submit: every tap was saved as you made it. Change anything until {{ week.deadline_at|ct('%A %-I:%M %p CT') }}.</p>
       {% if not sheet.backup %}

@@ -424,3 +424,72 @@ def marks_tally(marks: tuple[SlotMark, ...]) -> Tally | None:
     """The record behind a board of slot marks: the scoring slots only
     (the reserve never counts), None until one of them is final."""
     return _tally([m.result for m in marks if m.held and not m.is_reserve])
+
+
+@dataclass(frozen=True, slots=True)
+class CaseVerdict:
+    """One decided case on the viewer's own sheet: the engine's result and
+    the final score for the case row and its rail slot. The owner sees their
+    own sides, so this lands the moment the case is final."""
+    result: str                  # 'win' | 'loss' | 'push' | 'no_contest'
+    final_score: str | None      # 'away-home'; None on a No Contest
+
+
+def viewer_sheet(
+    user_id: int, week: DocketWeek, now: datetime,
+) -> tuple[MemberSheet | None, dict[tuple[int, str], CaseVerdict]]:
+    """The viewer's OWN sheet, decided (My Sheet, DESIGN.md 7.3 final state).
+
+    Returns the viewer's ``MemberSheet`` (so the room's running record reads
+    the same figure and mark strip All Sheets and the ledger do, from
+    ``_record.html``) and a per-``(game_id, market)`` verdict map for the case
+    rows and the rail slots. The owner always sees their own sides and a final
+    case is always locked, so the record's reveal set (locked-or-deadline)
+    already carries every verdict; the map keys the scoring slots only (the
+    reserve scores only on a substitution, so its case shows its score but
+    never a win or loss). Every result is the grading engine's rule through
+    the same final gate All Sheets uses (``_result``/``_snapshot``), so the
+    sheet can never disagree with All Sheets, the ledger, or the lounge.
+    """
+    enrollment = db.session.scalar(
+        select(DocketEnrollment).filter_by(
+            user_id=user_id, season_year=SEASON_YEAR))
+    if enrollment is None:
+        return None, {}
+    rows = db.session.execute(
+        select(DocketPick, DocketGame)
+        .join(DocketGame, DocketGame.id == DocketPick.game_id)
+        .filter(DocketPick.user_id == user_id, DocketPick.week_id == week.id)
+    ).all()
+    picks = [pick for pick, _ in rows]
+    games_by_id = {game.id: game for _, game in rows}
+    snapshots = {gid: snap for gid, game in games_by_id.items()
+                 if (snap := _snapshot(game)) is not None}
+    deadline_passed = now >= week.deadline_at
+    revealed_ids = {gid for gid, game in games_by_id.items()
+                    if deadline_passed or game_locked(game, now)}
+    prediction = db.session.scalar(
+        select(DocketTiebreakerPrediction).filter_by(
+            user_id=user_id, week_id=week.id))
+    designated = week.tiebreaker_game
+    number_lock_at = (min(week.deadline_at, designated.kickoff)
+                      if designated is not None else week.deadline_at)
+    record = _member_sheet(
+        enrollment, picks,
+        prediction.prediction_tenths if prediction is not None else None,
+        games_by_id=games_by_id, snapshots=snapshots,
+        revealed_ids=revealed_ids, number_revealed=now >= number_lock_at)
+
+    verdicts: dict[tuple[int, str], CaseVerdict] = {}
+    for pick in picks:
+        if pick.slot == BACKUP_SLOT:
+            continue
+        game = games_by_id[pick.game_id]
+        result = _result(pick, game, snapshots.get(pick.game_id))
+        if result is None:
+            continue
+        verdicts[(pick.game_id, pick.market)] = CaseVerdict(
+            result=result,
+            final_score=(f'{game.away_score}-{game.home_score}'
+                         if game.is_final and not game.no_contest else None))
+    return record, verdicts
