@@ -1,7 +1,10 @@
 {# The clerk's margin: the ask, slots 1-8, the reserve, the x2, the number.
-   Context: sheet, week, games_by_id, designated, tb_locked, active_day.
+   Context: sheet, week, games_by_id, designated, tb_locked, active_day,
+   results (the viewer's verdict map), result_words, viewer_record.
    Rendered twice (desktop aside + mobile drawer); all state comes from the
    sheet dict so both copies always agree. #}
+{% from 'docket/_verdict.html' import stamp %}
+{% from 'docket/_record.html' import record %}
 
 {% macro pick_line(p) -%}
   {%- set g = games_by_id[p.game_id] -%}
@@ -51,7 +54,8 @@
 {% endmacro %}
 
 {% macro slot_frame(slot_num, p) %}
-  <li class="docket-slot{% if not p %} is-empty{% endif %}{% if p and p.is_best %} is-best{% endif %}{% if p and p.locked %} is-locked{% endif %}{% if slot_num == backup_slot %} docket-slot-backup{% endif %}">
+  {% set verdict = results.get((p.game_id, p.market)) if p else None %}
+  <li class="docket-slot{% if not p %} is-empty{% endif %}{% if p and p.is_best %} is-best{% endif %}{% if p and p.locked %} is-locked{% endif %}{% if verdict %} is-{{ verdict.result }}{% endif %}{% if slot_num == backup_slot %} docket-slot-backup{% endif %}">
     {% if slot_num == backup_slot %}
       <span class="docket-slot-num docket-slot-num-reserve">Reserve</span>
     {% else %}
@@ -62,12 +66,14 @@
         <span class="docket-slot-pick">{{ pick_line(p) }}</span>
         <span class="docket-caption">
           {{ games_by_id[p.game_id].away_team }} at {{ games_by_id[p.game_id].home_team }}
-          {%- if p.locked %} · locked{% endif %}
+          {%- if not verdict and p.locked %} · locked{% endif %}
           {%- if p.is_autopick %} · auto-filed{% endif %}
         </span>
         {% if p.is_best %}<span class="docket-headliner-tag">Headliner x2{% if p.is_auto_best %} · assigned{% endif %}</span>{% endif %}
       </div>
-      {{ slot_actions(p) }}
+      {# The verdict for this slot, once its case is final: the compact stamp
+         in the same words and color grammar as the case row (DESIGN.md 7.3). #}
+      {% if verdict %}{{ stamp(verdict.result, result_words, compact=True) }}{% else %}{{ slot_actions(p) }}{% endif %}
     {% elif slot_num == backup_slot %}
       {# Stage-aware: the rarest mechanic is explained when it is live, not
          on a blank sheet. #}
@@ -136,14 +142,20 @@
 <div class="docket-rail-inner">
   <div class="docket-rail-head">
     <span class="docket-eyebrow">Your sheet</span>
+    {% if viewer_record and viewer_record.tally %}
+    {# The running record leads the margin once verdicts land: the slots
+       below carry the per-pick detail, so the figure stands alone here. #}
+    <span class="docket-rail-record">{{ record(viewer_record, figure_only=True) }}</span>
+    {% else %}
     <span class="docket-rail-count"><strong>{{ sheet.scoring_count }}</strong> of 8</span>
+    {% endif %}
   </div>
   <p class="docket-deadline">
     {% if preview %}
       Picks open {{ week.start_at|ct('%A, %B %-d') }} and close
       {{ week.deadline_at|ct('%A %-I:%M %p CT') }}.
     {% elif sheet.deadline_passed %}
-      The docket is closed. Verdicts to follow.
+      The docket is closed. {% if viewer_record and viewer_record.tally %}Verdicts are landing.{% else %}Verdicts to follow.{% endif %}
     {% else %}
       Docket closes {{ week.deadline_at|ct('%A %-I:%M %p CT') }}
     {% endif %}

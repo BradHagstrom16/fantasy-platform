@@ -14021,6 +14021,80 @@ body.game-docket .form-select:focus {
 }
 .docket-x2-btn:focus-visible { outline: 2px solid var(--game-accent); outline-offset: 2px; }
 
+/* --- The verdict (My Sheet, DESIGN.md 7.3 final state): how the viewer's own
+   side did, the moment its case is final. The 7.13 color grammar, so the sheet
+   never disagrees with All Sheets, the ledger, or the lounge: Win a solid
+   success fill, Loss a solid danger fill, both bone text (4.7:1); Mistrial
+   hollow-ruled; No Contest hollow dashed. The word is always inside, and
+   garnet never marks an outcome (6.5). On the held pill it takes its own row
+   under the marks (flex-wrap), so the loudest thing on a decided pill is the
+   result, sitting on top of the garnet "yours" stamp. --- */
+.docket-verdict {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Teko', sans-serif;
+  font-weight: 600;
+  font-size: .92rem;
+  line-height: 1.25;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  padding: .12rem .55rem .02rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  white-space: nowrap;
+}
+.docket-verdict:empty { display: none; }
+.docket-verdict.is-win { background: var(--success); border-color: var(--success); color: var(--bone); }
+.docket-verdict.is-loss { background: var(--danger); border-color: var(--danger); color: var(--bone); }
+.docket-verdict.is-push { border-color: var(--text-secondary); color: var(--text-primary); }
+.docket-verdict.is-no_contest { border-style: dashed; border-color: var(--text-secondary); color: var(--text-secondary); }
+/* On the held pill: its own full-width row (the pill wraps), so the result
+   never fights the team name or the marks for the 175px width. */
+.docket-side .docket-verdict {
+  flex: 1 0 100%;
+  margin-top: .1rem;
+}
+/* A locked, decided pill keeps the verdict at full strength: the Cold-Docket
+   dim is about "you can no longer act", the verdict is a fact and stays loud. */
+.docket-side.is-locked .docket-verdict.is-win,
+.docket-side.is-locked .docket-verdict.is-loss { color: var(--bone); }
+/* The compact rail-slot verdict: the same grammar, sized for the margin, in
+   the slot-actions column's place (a decided slot has no actions left). */
+.docket-verdict--compact {
+  align-self: flex-start;
+  flex-shrink: 0;
+  margin-top: .1rem;
+  font-size: .76rem;
+  letter-spacing: .07em;
+  padding: .08rem .4rem .0rem;
+  border-radius: .35rem;
+}
+/* The decided case's final score, in the case head's meta line: a printed
+   record fact in the room's procedural voice, the anti-sportsbook (no ticker,
+   no movement). Quiet; the verdict on the pill carries the color. */
+.docket-final-score {
+  font-family: 'Teko', sans-serif;
+  font-weight: 600;
+  font-size: .74rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--text-primary);
+}
+.docket-final-score.is-thrown-out { color: var(--text-secondary); }
+/* The slot frame borrows the faintest outcome tint on its number chip so a
+   glance down the rail reads won-from-lost without re-reading each word;
+   never garnet (6.5), never a heavy fill (the verdict tag carries the color). */
+.docket-slot.is-win .docket-slot-num { border-color: var(--success); color: var(--success); }
+.docket-slot.is-loss .docket-slot-num { border-color: var(--danger); color: var(--danger); }
+/* The running record in the rail head, once verdicts land: the figure stands
+   alone (the slots below are the mark strip), replacing the "n of 8" count. */
+.docket-rail-record { display: inline-flex; }
+.docket-rail-record .docket-record-fig { font-size: 1.3rem; }
+/* The record on the filed / closed standing card: the bold "how am I doing"
+   answer, figure over its mark strip, above the facts line. */
+.docket-filed-record { margin: .1rem 0 .55rem; }
+
 /* --- The reserve, spelled out: the rail's slot-9 frame carries the word --- */
 .docket-slot-num-reserve {
   width: auto;

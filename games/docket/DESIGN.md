@@ -450,7 +450,33 @@ The decision primitive, escalating with commitment (pick-surface doctrine shared
 - **Opposite-of-held**: available but visibly secondary (selecting it moves the pick, 2.5).
 - **Locked** (`.is-locked`): Cold-Docket treatment with the stated reason; a held-and-locked
   side keeps its stamp under reduced contrast.
+- **Final (the verdict, `.docket-verdict`, My Sheet bolder pass 2026-09-12)**: once a held
+  side's case is final it wears the verdict, the state 4.2 named and this list never carried.
+  Brad, looking at his own sheet: "I have no idea how each pick did." The 2026-09-12 verdict
+  work had reached All Sheets, the ledger, and the lounge (§7.13, §8.3, §3) but not the one
+  surface a member sits on. The stamp reuses the §7.13 grammar so no two docket surfaces
+  disagree: **Win** a solid `--success` fill, **Loss** a solid `--danger` fill, both bone
+  text; **Mistrial** hollow-ruled; **No Contest** hollow dashed; the word always inside, and
+  **garnet never marks an outcome** (§6.5) — it keeps meaning "yours" on the pill under the
+  verdict. On the held pill the stamp takes its own full-width row under the marks (the loudest
+  thing on a decided pill, on top of the garnet stamp); the case head prints the final score
+  (`.docket-final-score`, "Final 17-31", the anti-sportsbook printed record) for **every**
+  decided case, held or not, so the slate reflects the day's decisions. The reserve never
+  carries a verdict (it scores only on a substitution): its case shows the score, never a
+  win or loss. The verdict lands the moment its case is final, before the week grades, because
+  a member always sees their own sides; the running record and ledger points still wait for the
+  week grade (§7.13, "no points before the week grades"). Data is `sheets.viewer_sheet`, the
+  viewer's own picks joined to their games through the same engine gate All Sheets uses.
 - **No line** (`.is-no-line`): the market group renders once, disabled, "No line posted."
+
+The rail carries the same verdict on each decided slot (`.docket-verdict--compact`, in the
+slot-actions column a decided slot no longer needs), and the **running record** leads both the
+rail head and the filed / closed standing card (§7.6a): the shared `_record.html` figure and
+mark strip once a scoring side is final, so the sheet answers "how am I doing" in the same
+words the ledger and All Sheets do (`sheets.viewer_sheet` returns the viewer's `MemberSheet`).
+The hero and the rail deadline line drop "Verdicts to follow" for "Verdicts are landing" once
+a tally exists; the `next_step` closed ask keeps "Verdicts to follow" because it refers to the
+pending week grade, which genuinely still follows. Locked by `tests/test_docket_sheet_flow.py`.
 
 ### 7.4 The headliner — `.docket-headliner-chip`, `.docket-headliner-tag`
 

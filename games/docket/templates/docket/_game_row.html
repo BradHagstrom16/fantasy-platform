@@ -1,12 +1,17 @@
 {# One case on the docket calendar.
-   Context: game, sheet, held, designated, active_day, docket_sport_labels.
+   Context: game, sheet, held, designated, active_day, docket_sport_labels,
+   results (the viewer's verdict map keyed by (game_id, market)), result_words.
    States: open sides are mini-forms (PRG spine); a held side is a stamped
    block carrying its own x2 control; a locked case renders static with its
-   reason in the head. #}
+   reason in the head; a decided case carries its final score in the head and
+   the verdict on the held side (DESIGN.md 7.3 final state). #}
+{% from 'docket/_verdict.html' import stamp %}
 {% set locked = sheet.deadline_passed or game.id in sheet.locked_game_ids %}
 {% set spread_pick = held.get((game.id, 'spread')) %}
 {% set total_pick = held.get((game.id, 'total')) %}
 {% set send_reserve = sheet.scoring_count >= 8 and not sheet.backup %}
+{% set thrown_out = game.no_contest %}
+{% set final_score = game.away_score ~ '-' ~ game.home_score if game.is_final and not thrown_out else None %}
 
 {% macro side_number(market, side) -%}
   {%- if market == 'spread' -%}
@@ -64,6 +69,12 @@
         </form>
       {% endif %}
       </span>
+      {# The verdict: how this side did, the moment its case is final (the
+         reserve never carries one, it scores only on a substitution). The
+         loudest thing on a decided pill, on top of the garnet "yours" stamp
+         (6.5). #}
+      {% set verdict = results.get((game.id, market)) %}
+      {% if verdict %}{{ stamp(verdict.result, result_words) }}{% endif %}
     </div>
   {% elif locked %}
     <span class="docket-side is-locked">
@@ -106,7 +117,11 @@
       {% if designated and designated.id == game.id %}
         <span class="docket-tb-tag">Tiebreaker case</span>
       {% endif %}
-      {% if locked and not sheet.deadline_passed %}
+      {% if final_score %}
+        <span class="docket-final-score">Final {{ final_score }}</span>
+      {% elif thrown_out %}
+        <span class="docket-final-score is-thrown-out">Thrown out</span>
+      {% elif locked and not sheet.deadline_passed %}
         <span class="docket-locked-note">Locked at kickoff</span>
       {% endif %}
       {# Row-level held indicator (DESIGN.md 7.2, shipped 2026-08-19): the

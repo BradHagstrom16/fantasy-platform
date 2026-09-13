@@ -1,0 +1,11 @@
+{# The verdict stamp for the viewer's OWN decided sides (My Sheet, DESIGN.md
+   7.3 final state). It reuses the All Sheets color grammar (7.13): Win a solid
+   success fill, Loss a solid danger fill with bone text, Mistrial hollow-ruled,
+   No Contest hollow dashed, the word always inside; garnet never marks an
+   outcome (6.5). Shared by the case row and the rail slot so the two cannot
+   disagree on how a pick did.
+   Args: result ('win'|'loss'|'push'|'no_contest'), words (the RESULT_WORDS
+   map), compact (the small rail-slot size). #}
+{% macro stamp(result, words, compact=False) -%}
+<span class="docket-verdict is-{{ result }}{% if compact %} docket-verdict--compact{% endif %}">{{ words.get(result, '') }}</span>
+{%- endmacro %}
