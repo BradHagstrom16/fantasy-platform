@@ -70,6 +70,7 @@ class SheetLine:
     """One revealed pick, as the sheet prints it."""
     slot: int
     is_reserve: bool
+    is_substituted: bool         # a reserve that came into use (No Contest)
     is_best: bool
     is_auto_best: bool
     is_autopick: bool
@@ -247,14 +248,35 @@ def _summary(*, held, revealed, tally) -> str:
     return f'{held} of {SCORING_SLOTS} held'
 
 
+def _reserve_in_use(picks, games_by_id) -> bool:
+    """Whether the reserve came into use this week (Brad, 2026-09-12): the
+    reserve is noise ~99% of weeks, so it is hidden until it substitutes.
+
+    This mirrors the grading engine's substitution condition exactly
+    (``grading/engine.py::_resolve_slots``): a reserve exists, its own game is
+    NOT thrown out (the backup is alive), and at least one scoring slot's game
+    IS thrown out. It can only be true after a No Contest ruling, which is what
+    "came into use" means. A pure read-time derivation from picks already in
+    hand, matching the engine so the sheet never disagrees with the ledger."""
+    reserve = next((p for p in picks if p.slot == BACKUP_SLOT), None)
+    if reserve is None or games_by_id[reserve.game_id].no_contest:
+        return False
+    return any(games_by_id[p.game_id].no_contest
+               for p in picks if p.slot != BACKUP_SLOT)
+
+
 def _member_sheet(enrollment, picks, prediction_tenths, *, games_by_id,
                   snapshots, revealed_ids, number_revealed) -> MemberSheet:
     keyed = []                   # (sort key, line): kickoff order, reserve last
     held = sealed = 0
     x2_sealed = sealed_reserve = False
+    reserve_in_use = _reserve_in_use(picks, games_by_id)
     for pick in picks:
-        game = games_by_id[pick.game_id]
         is_reserve = pick.slot == BACKUP_SLOT
+        # Hide the reserve until it actually substitutes; it is noise otherwise.
+        if is_reserve and not reserve_in_use:
+            continue
+        game = games_by_id[pick.game_id]
         if not is_reserve:
             held += 1
         if pick.game_id not in revealed_ids:
@@ -271,6 +293,7 @@ def _member_sheet(enrollment, picks, prediction_tenths, *, games_by_id,
             SheetLine(
                 slot=pick.slot,
                 is_reserve=is_reserve,
+                is_substituted=is_reserve,   # reaches here only when in use
                 is_best=pick.is_best,
                 is_auto_best=pick.is_auto_best,
                 is_autopick=pick.is_autopick,

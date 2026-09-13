@@ -680,6 +680,16 @@ def sheets():
     find_query = _find_query(request.args.get('q'))
     find_total = None
     sort_links = {}
+    # Active (ungraded) week defaults to record, then name (Brad, 2026-09-12):
+    # record is a composite whose stable sort falls to the all_sheets name
+    # order, so equal records read alphabetically. A graded week keeps its
+    # official points-rank default (the standings order below). sort_explicit
+    # tracks a member-chosen sort so the "Default order" reset caption shows
+    # only when there is a non-default order to reset from.
+    requested_sort = request.args.get('sort')
+    sort_explicit = requested_sort in SHEETS_SORTS
+    if requested_sort is None and standings is None:
+        requested_sort = 'record'
     # Once a week grades, its standings ARE the sheet list (Brad, 2026-09-09):
     # the separate standings table is gone and each sheet drawer carries its
     # rank and this-week points. rank_by_user joins the graded standing onto
@@ -691,7 +701,7 @@ def sheets():
         your_member = next(
             (m for m in members if m.user_id == current_user.id), None)
         members, sort_key, sort_dir = _sheets_order(
-            members, request.args.get('sort'), request.args.get('dir'))
+            members, requested_sort, request.args.get('dir'))
         if standings is not None and sort_key is None:
             order = {r.enrollment.user_id: i
                      for i, r in enumerate(standings.rows)}
@@ -726,6 +736,7 @@ def sheets():
         sort_key=sort_key,
         sort_dir=sort_dir,
         sort_label=sort_label,
+        sort_explicit=sort_explicit,
         sort_links=sort_links,
         rank_by_user=rank_by_user,
     )

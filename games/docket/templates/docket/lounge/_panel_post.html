@@ -1,6 +1,7 @@
 {# The Docket post-season headliner panel: the season is a record. Sparse
    by design; the ledger page holds the gravity. #}
 {% set g = h.ctx %}
+{% from 'docket/lounge/_standings.html' import standings with context %}
 <section class="hl-panel hl-panel--docket" aria-label="The Docket">
   <header class="hl-panel-head">
     <span class="hl-panel-mark" aria-hidden="true">{{ h.entry.emoji }}</span>
@@ -16,4 +17,9 @@
       <a class="route-link" href="{{ url_for('docket.ledger') }}">Read the final ledger &rsaquo;</a>
     </div>
   </div>
+
+  {# The final standings, if a member (the season is a record). #}
+  {% if g.leaderboard %}
+  {{ standings(g.leaderboard) }}
+  {% endif %}
 </section>

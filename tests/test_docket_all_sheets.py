@@ -97,10 +97,14 @@ def test_sealed_facts_are_words_never_sides(app, monkeypatch):
     sheet = _sheet(_board(week, FRIDAY), user)
     assert sheet.lines == ()
     assert sheet.sealed_count == 2
-    assert sheet.x2_sealed and sheet.sealed_reserve and sheet.number_in
+    assert sheet.x2_sealed and sheet.number_in
+    # The reserve is noise until it substitutes (Brad, 2026-09-12): no case is
+    # thrown out here, so it is hidden and never named in the sealed facts.
+    assert not sheet.sealed_reserve
     assert sheet.number is None
     assert sheet.sealed_sentence == ('2 sides sealed until kickoff · x2 named '
-                                     '· reserve held · number in.')
+                                     '· number in.')
+    assert 'reserve' not in sheet.sealed_sentence
     assert 'Home' not in sheet.sealed_sentence
 
 
@@ -141,16 +145,27 @@ def test_autopick_and_auto_best_marks_carry_through(app, monkeypatch):
     assert line.is_autopick and line.is_best and line.is_auto_best
 
 
-def test_reserve_line_is_marked_and_last(app, monkeypatch):
+def test_reserve_hidden_until_it_substitutes(app, monkeypatch):
+    """The reserve is noise ~99% of weeks (Brad, 2026-09-12): it stays off the
+    sheet until a case is thrown out and it comes into use, then it shows,
+    marked substituted, last."""
     week = make_week(1)
     a = make_game(week, kickoff=KICK_SAT, home='A Home', away='A Away')
     b = make_game(week, kickoff=KICK_THU, home='B Home', away='B Away')
     user = _member('ann')
     at(monkeypatch, IN_WEEK1)
     _hold(user, week, a)
-    _hold(user, week, b, backup=True)          # earlier kickoff, still last
+    _hold(user, week, b, backup=True)          # earlier kickoff, would be last
+    # No case thrown out: the reserve is hidden entirely.
+    shown = _sheet(_board(week, DEADLINE), user)
+    assert [line.is_reserve for line in shown.lines] == [False]
+    assert not shown.sealed_reserve
+    # The scoring case is thrown out and the reserve is alive: it comes into
+    # use, and now shows last, marked substituted.
+    a.no_contest = True
     shown = _sheet(_board(week, DEADLINE), user)
     assert [line.is_reserve for line in shown.lines] == [False, True]
+    assert shown.lines[-1].is_substituted
 
 
 # ── result marks: the engine's rule, behind the week grade's final gate ──
@@ -431,8 +446,11 @@ def test_sheets_reveals_at_kickoff_with_the_result(
     assert 'Final 17-31' in html
     assert 'Sat Home' not in html
     assert '1 side sealed until kickoff.' in html
-    assert '1 of 2 cases locked' in html
-    assert 'Next to open' in html
+    # The mid-week running lede is retired (Brad, 2026-09-12): no case count,
+    # no "next to open", no "number sealed until" line against the sheets.
+    assert 'cases locked' not in html
+    assert 'Next to open' not in html
+    assert 'The number is sealed until' not in html
 
 
 def test_sheets_record_figure_carries_the_summary_as_its_label(
@@ -462,9 +480,10 @@ def test_sheets_record_figure_carries_the_summary_as_its_label(
     assert '<span class="docket-record-tail">2 to play</span>' in html
     strip = re.search(r'<span class="docket-marks" aria-hidden="true">(.*?)</span>', html).group(1)
     kinds = re.findall(r'<i class="docket-mark ([^"]+)"></i>', strip)
+    # The reserve is hidden (no case thrown out): eight scoring squares, no
+    # reserve square (Brad, 2026-09-12).
     assert kinds == ['is-win', 'is-loss', 'is-pending', 'is-sealed',
-                     'is-open', 'is-open', 'is-open', 'is-open',
-                     'is-loss is-reserve']
+                     'is-open', 'is-open', 'is-open', 'is-open']
     assert 'docket-entry-count' not in html      # the quiet string is retired
 
 
@@ -715,6 +734,45 @@ def test_sheets_sort_by_record(monkeypatch, client, member):
     order = _name_order(html)
     assert order.index('Champ') < order.index('member')
     assert 'Sorted by record' in html
+
+
+def test_sheets_default_sort_is_record_then_name(monkeypatch, client, member):
+    """Active-week default (Brad, 2026-09-12): record, then name. No ?sort, so
+    the reset caption stays hidden and Record reads active."""
+    week = make_week(1)
+    thu = make_game(week, kickoff=KICK_THU, home='Utah Utes',
+                    away='Idaho Vandals')
+    champ = _member('champ', display_name='Champ')
+    _member('amy', display_name='Amy')
+    _member('zeb', display_name='Zeb')
+    at(monkeypatch, IN_WEEK1)
+    _hold(champ, week, thu, side='home')          # home covers -3.5: a win
+    _final(thu, 31, 17)
+    db.session.commit()
+    at(monkeypatch, '2026-09-04T12:00:00')        # Friday, the Thu case revealed
+    html = client.get('/docket/sheets').data.decode()
+    order = _name_order(html)
+    assert order[0] == 'Champ'                    # record leads with no ?sort
+    assert order.index('Amy') < order.index('Zeb')  # ties fall to name asc
+    # The default: no reset caption, but Record reads active with its caret.
+    assert 'Sorted by record' not in html and 'Default order' not in html
+    assert re.search(r'docket-sheets-sort-link is-active[^>]*>Record', html)
+
+
+def test_sheets_graded_week_default_stays_rank(monkeypatch, client, member):
+    """The record default is active-week only (Brad Q2): a graded week keeps
+    its official points-rank default, never record."""
+    week = _week_with_game(1)
+    week.default_error_tenths = 0
+    alice = _member('alice', display_name='Alice')
+    _result(week, member, 9.0, 4, 5)              # more points, fewer wins: rank 1
+    _result(week, alice, 7.0, 8, 5)               # more wins, fewer points: rank 2
+    db.session.commit()
+    at(monkeypatch, WEEK2_CLOCK)                   # Week 1 finished
+    html = client.get('/docket/sheets?week=1').data.decode()
+    # Points rank (member 9.0) leads, not the record sort (Alice's 8 wins).
+    assert html.index('You') < html.index('Alice')
+    assert 'Sorted by record' not in html         # no default record caption
 
 
 def test_sheets_sort_and_find_compose(monkeypatch, client, member):

@@ -100,23 +100,22 @@ the finish review and DESIGN.md 7.13.
     </div>
     {% else %}
 
-    {# The one sentence that says what is open and what opens next (the
-       Cold-Docket Rule: a sealed state states its reason). #}
+    {# The lede states only the two edge cases (Brad, 2026-09-12): every sheet
+       on record, or nothing locked yet. The mid-week running count ("N of M
+       cases locked · next to open · the number is sealed until …") was noise
+       against the sheets themselves and is gone; the drawers carry each case's
+       own lock state. #}
+    {% if board.deadline_passed or not board.any_revealed %}
     <p class="docket-entries-note docket-sheets-lede">
         {% if board.deadline_passed %}
         Every sheet is on the record. Sides the clerk filed are marked.
         Points post to the ledger with the week's grade.
-        {% elif not board.any_revealed %}
+        {% else %}
         Nothing has locked yet. Sheets open here case by case at kickoff;
         the first case kicks off {{ board.first_kickoff|ct('%A %-I:%M %p CT') }}.
-        {% else %}
-        {{ board.locked_cases }} of {{ board.total_cases }} cases locked.
-        {% if board.next_lock %}Next to open: {{ board.next_lock|ct('%A %-I:%M %p CT') }}.{% endif %}
-        {% endif %}
-        {% if not board.number_revealed and board.number_lock_at %}
-        The number is sealed until {{ board.number_lock_at|ct('%A %-I:%M %p CT') }}.
         {% endif %}
     </p>
+    {% endif %}
     {% if joined_late %}
     <p class="docket-entries-note">You joined after this docket closed; your
         first sheet is next week.</p>
@@ -173,7 +172,9 @@ the finish review and DESIGN.md 7.13.
            href="{{ link.href }}"{% if link.aria %} aria-sort="{{ link.aria }}"{% endif %}{% if link.active %} aria-label="{{ key|capitalize }}, sorted {{ link.aria }}"{% endif %}>{{ key|capitalize }}{% if link.active %}<span class="docket-entry-caret{% if sort_dir == 'asc' %} is-asc{% endif %}"></span>{% endif %}</a>
         {% endfor %}
     </div>
-    {% if sort_key %}
+    {# Only for a member-chosen sort: the active-week default is already record
+       (Brad, 2026-09-12), so "Default order" would reset to the same order. #}
+    {% if sort_explicit %}
     <p class="docket-caption docket-sheets-sorted">Sorted by {{ sort_label }}, {{ 'ascending' if sort_dir == 'asc' else 'descending' }}. <a href="{{ url_for('docket.sheets', q=find_query or None) }}">Default order &rsaquo;</a></p>
     {% endif %}
     {% endif %}
@@ -197,12 +198,12 @@ the finish review and DESIGN.md 7.13.
             {% if m.lines %}
             <ol class="docket-sheet-lines">
                 {% for line in m.lines %}
-                <li class="docket-sheet-line{% if line.is_autopick %} is-autopick{% endif %}{% if line.is_reserve %} is-reserve{% endif %}">
+                <li class="docket-sheet-line{% if line.is_autopick %} is-autopick{% endif %}{% if line.is_reserve %} is-reserve{% endif %}{% if line.is_substituted %} is-substituted{% endif %}">
                     <span class="docket-sheet-when">{{ line.kickoff|ct('%a %-I:%M %p') }}</span>
                     <span class="docket-sheet-pick">
                         {{ line.pick }}
                         {% if line.is_best %}<span class="docket-headliner-chip{% if line.is_auto_best %} is-auto{% endif %}"{% if line.is_auto_best %} title="Assigned when the docket closed"{% endif %}>x2{% if line.is_auto_best %}<span class="visually-hidden">, assigned</span>{% endif %}</span>{% endif %}
-                        {% if line.is_reserve %}<span class="docket-slot-badge">Reserve</span>{% endif %}
+                        {% if line.is_reserve %}<span class="docket-slot-badge" title="A case was thrown out; the reserve substituted in">Reserve substituted</span>{% endif %}
                         {% if line.is_autopick %}<span class="docket-auto-tag" title="Filed when the docket closed">Auto</span>{% endif %}
                     </span>
                     <span class="docket-caption">{{ line.sport }} · {{ line.caption }}{% if line.final_score %} · Final {{ line.final_score }}{% endif %}</span>

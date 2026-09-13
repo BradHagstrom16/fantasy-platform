@@ -10,15 +10,23 @@ Registry-bound pair (multi-featured seam):
   state of its own.
 - ``build_lounge_context(user, state)`` assembles the per-state panel data.
   The lounge summarizes and orients (DESIGN.md §3); it never offers per-case
-  controls, so the only games read here are the viewer's OWN cases, joined
-  off their at-most-nine picks (``sheets.viewer_marks``) — the sheet's
-  week-wide ``locked_game_ids`` scan stays in the room. Standings gravity
-  stays on the ledger page: no ``season_ledger()`` call belongs in a lounge
-  builder.
+  controls. For the viewer's OWN card it reads their at-most-nine picks
+  (``sheets.viewer_marks``) — the sheet's week-wide ``locked_game_ids`` scan
+  stays in the room.
+
+The leaderboard (Brad, 2026-09-12): the panel now carries a standings board,
+like the survivor section. The earlier doctrine kept "standings gravity on the
+ledger page" and barred ``season_ledger()`` here; Brad overruled it — a member
+who lands on the club door wants to see where the field stands. The board reads
+the weekly live record (``sheets.all_sheets``) once >=3 members have a final,
+and otherwise the season ledger (``season_pass.season_ledger``); both are
+read-only, top-3 + a you-row, so the lounge summarizes the ledger without
+becoming it. The "Full standings" link is always one tap to the room.
 
 Read-only by contract: this module must never import the writer services
 (deadline_pass, grading_pass, importer, scores) — it is imported by
 ``games/registry.py`` at boot and runs on every lounge render.
+``all_sheets`` and ``season_ledger`` are pure reads and are permitted.
 
 Datetimes handed to templates are naive UTC (the D6 column form); the Jinja
 ``ct`` filter is the render boundary, exactly as the room's templates do it.
@@ -40,7 +48,9 @@ from games.docket.services import weeks
 from games.docket.services.enrollment import get_enrollment
 from games.docket.services.grading.snapshots import SCORING_SLOTS
 from games.docket.services.reminders import outstanding
+from games.docket.services.season_pass import season_ledger
 from games.docket.services.sheets import (
+    all_sheets,
     marks_tally,
     record_label,
     viewer_marks,
@@ -112,7 +122,7 @@ def build_lounge_context(user: Any, state: DocketLoungeState | None) -> dict:
     elif state == 'live':
         ctx.update(_context_live(user, is_enrolled))
     else:
-        ctx.update(_context_post())
+        ctx.update(_context_post(user, is_enrolled))
     return ctx
 
 
@@ -184,22 +194,28 @@ def _context_live(user, is_enrolled: bool) -> dict:
         'week_deadline_at': week.deadline_at if week is not None else None,
     }
 
-    if is_enrolled and week is not None:
-        if beat in ('open', 'closed'):
+    if is_enrolled:
+        if week is not None and beat in ('open', 'closed'):
             # Closed carries the same facts as open (bolder pass 2026-09-12):
             # the board and the record keep painting while verdicts land.
             ctx['progress'] = _sheet_progress(user.id, week, now)
-        elif beat == 'adjourned':
+        elif week is not None and beat == 'adjourned':
             ctx['result'] = _week_result(user.id, week, now)
+        # The standings board (Brad, 2026-09-12): weekly while the week is
+        # live and >=3 members have a final; the season ledger otherwise
+        # (including between weeks). None when neither can be ranked yet.
+        ctx['leaderboard'] = _leaderboard(user, beat, week, now)
     return ctx
 
 
-def _context_post() -> dict:
-    """After Week 19: the season is a record."""
+def _context_post(user, is_enrolled: bool) -> dict:
+    """After Week 19: the season is a record. The board shows the final
+    season standings for a member."""
     return {
         'season_complete': True,
         'court_line': 'The season ledger is closed',
         'game_tile_label': 'SEASON CLOSED',
+        'leaderboard': _season_leaderboard(user) if is_enrolled else None,
     }
 
 
@@ -283,3 +299,102 @@ def _week_result(user_id: int, week, now) -> dict | None:
         'record': record_label(tally) if tally is not None else None,
         'board_label': _board_label(marks, tally),
     }
+
+
+# The standings board (Brad, 2026-09-12). The lounge shows the field, like the
+# survivor section: top-3 plus a you-row when the viewer ranks below it.
+LEADERBOARD_TOP = 3
+# The weekly board needs enough of the field to have played to be worth showing;
+# under this many finals it defers to the season ledger.
+WEEKLY_MIN_SCORED = 3
+
+
+def _leaderboard(user, beat, week, now) -> dict | None:
+    """The panel's standings board: the weekly live record once the week is
+    in play and >=3 members have a final, else the season ledger. None when
+    neither can be ranked (early Week 1, nothing final and nothing graded)."""
+    if week is not None and beat in ('open', 'closed'):
+        weekly = _weekly_leaderboard(user, week, now)
+        if weekly is not None:
+            return weekly
+    return _season_leaderboard(user)
+
+
+def _weekly_leaderboard(user, week, now) -> dict | None:
+    """This week's live record board, or None until >=3 members have a final.
+
+    Ranked by live record (wins, then fewer losses, then more sides held),
+    stable over the all_sheets name order so equal records read alphabetically
+    — the same key the room's All Sheets record sort uses. Marks only, never a
+    point: no points post before the week grades (§7.13)."""
+    board = all_sheets(week, now)
+    if sum(1 for m in board.members if m.tally is not None) < WEEKLY_MIN_SCORED:
+        return None
+
+    def key(m):
+        t = m.tally
+        return (-(t.wins if t else 0), t.losses if t else 0, -m.held_count)
+
+    ordered = sorted(board.members, key=key)
+    entries = []
+    prev_key = None
+    rank = 0
+    for i, m in enumerate(ordered):
+        this_key = key(m)
+        if this_key != prev_key:
+            rank = i + 1
+            prev_key = this_key
+        t = m.tally
+        entries.append({
+            'rank': rank,
+            'user_id': m.user_id,
+            'name': m.enrollment.get_display_name(),
+            'avatar': m.enrollment.user.get_avatar(),
+            'record': record_label(t) if t is not None else None,
+            'wins': t.wins if t is not None else 0,
+            'losses': t.losses if t is not None else 0,
+            'pushes': t.pushes if t is not None else 0,
+            'pending': t.pending if t is not None else m.held_count,
+        })
+    return {
+        'mode': 'weekly',
+        'title': 'This week',
+        'rows': _top_and_you(entries, user.id),
+    }
+
+
+def _season_leaderboard(user) -> dict | None:
+    """The season ledger board, or None before any week grades."""
+    ledger = season_ledger()
+    if not ledger.is_graded:
+        return None
+    entries = [
+        {
+            'rank': row.standing.rank,
+            'user_id': row.enrollment.user_id,
+            'name': row.enrollment.get_display_name(),
+            'avatar': row.enrollment.user.get_avatar(),
+            'points': row.standing.total_points,
+            'wins': row.standing.wins,
+        }
+        for row in ledger.rows          # already (rank, name)-ordered
+    ]
+    return {
+        'mode': 'season',
+        'title': 'The season, so far',
+        'rows': _top_and_you(entries, user.id),
+    }
+
+
+def _top_and_you(entries: list[dict], viewer_user_id: int) -> list[dict]:
+    """Top-N rows plus the viewer's own row (with a separator) when it ranks
+    below the cut — the survivor standings shape (`_standings_rows`)."""
+    top = entries[:LEADERBOARD_TOP]
+    rows = [{**e, 'is_you': e['user_id'] == viewer_user_id,
+             'separator_above': False} for e in top]
+    if all(e['user_id'] != viewer_user_id for e in top):
+        you = next((e for e in entries
+                    if e['user_id'] == viewer_user_id), None)
+        if you is not None:
+            rows.append({**you, 'is_you': True, 'separator_above': True})
+    return rows

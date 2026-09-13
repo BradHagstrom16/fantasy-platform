@@ -4345,6 +4345,40 @@ body.game-golf {
 .home-shell .hl-record .m { color: var(--bone-dim); }
 .home-shell .hl-record .sep { color: var(--bone-mute); padding: 0 .06em; }
 
+/* --- The lounge standings board (Brad, 2026-09-12) ---
+   The field below the viewer's own line, the survivor .rolls shape reused. The
+   weekly value is a compact two-tone record (the panel's own w/l tokens at row
+   scale, so the ledger reads green and red at a glance with no point moving);
+   the season value is the roll-pts figure. "Yours" wears the panel accent, not
+   the survivor gold, so each headliner stays cohesive with its own signature
+   (§6.5: garnet means yours). */
+.home-shell .hl-standings { margin-top: .35rem; }
+.home-shell .roll-meta { min-width: 0; }
+.home-shell .roll-record {
+  font-family: var(--font-teko);
+  font-weight: 700;
+  font-size: 1.35rem;
+  line-height: 1;
+  letter-spacing: .02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--lounge-warm-white);
+  justify-self: end;
+}
+.home-shell .roll-record .w { color: var(--live-green); }
+.home-shell .roll-record .l { color: var(--live-red); }
+.home-shell .roll-record .m { color: var(--bone-dim); }
+.home-shell .roll-record .sep { color: var(--bone-mute); padding: 0 .04em; }
+.home-shell .hl-panel--docket .roll-row--you {
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--hl-accent) 16%, transparent) 0%,
+    rgba(26, 10, 54, .5) 100%);
+  border-color: color-mix(in srgb, var(--hl-accent) 45%, transparent);
+}
+.home-shell .hl-panel--docket .roll-you-chip {
+  background: var(--hl-accent);
+  color: var(--bone);
+}
+
 /* An open headliner tile the viewer has NOT joined: on the bill, not in
    their pocket — bone hairline instead of the gold --active chrome. */
 .home-shell .cg--billed {
