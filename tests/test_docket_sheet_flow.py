@@ -59,9 +59,11 @@ def _file(client, game, market='spread', side='home', **extra):
     return client.post('/docket/picks/set', data=data, headers=JSON)
 
 
-def _rule(anchored_selector):
-    m = re.search(anchored_selector + r'\s*\{([^}]*)\}', CSS, re.M)
-    assert m, f'CSS rule not found: {anchored_selector}'
+def _rule(selector):
+    # Anchor at the start of a rule so a bare selector can't match the tail of a
+    # scoped one (e.g. '.docket-verdict' vs '.docket-verdict-list .docket-verdict').
+    m = re.search('^' + selector.lstrip('^') + r'\s*\{([^}]*)\}', CSS, re.M)
+    assert m, f'CSS rule not found: {selector}'
     return m.group(1)
 
 

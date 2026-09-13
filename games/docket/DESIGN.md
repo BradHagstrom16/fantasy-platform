@@ -464,7 +464,8 @@ The decision primitive, escalating with commitment (pick-surface doctrine shared
   decided case, held or not, so the slate reflects the day's decisions. The reserve never
   carries a verdict (it scores only on a substitution): its case shows the score, never a
   win or loss. The verdict lands the moment its case is final, before the week grades, because
-  a member always sees their own sides; the running record and ledger points still wait for the
+  a member always sees their own sides; the running record builds the same way, side by side with
+  the verdicts as each scoring side finals, while only the ledger points still wait for the
   week grade (§7.13, "no points before the week grades"). Data is `sheets.viewer_sheet`, the
   viewer's own picks joined to their games through the same engine gate All Sheets uses.
 - **No line** (`.is-no-line`): the market group renders once, disabled, "No line posted."

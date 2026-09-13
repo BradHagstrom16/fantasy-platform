@@ -15204,7 +15204,12 @@ body.game-docket .back-link:focus-visible {
   margin: 0 0 .75rem;
   padding: 0;
 }
-.docket-verdict {
+/* The ledger's weekly-verdict ROW is a grid; it must stay scoped under the
+   list. `.docket-verdict` is also the WIN/LOSS stamp primitive (the case
+   row + rail slots, DESIGN.md 7.3/7.13); an unscoped grid rule here rode over
+   the stamp's inline-flex/centering by source order and shoved WIN/LOSS into a
+   left column with zero side padding. Keep this block anchored to the list. */
+.docket-verdict-list .docket-verdict {
   display: grid;
   grid-template-columns: 2.4rem minmax(0, 1fr) auto;
   column-gap: .6rem;
@@ -15213,7 +15218,7 @@ body.game-docket .back-link:focus-visible {
   padding: .45rem 0;
   border-top: 1px solid var(--docket-rule);
 }
-.docket-verdict:last-child { border-bottom: 1px solid var(--docket-rule); }
+.docket-verdict-list .docket-verdict:last-child { border-bottom: 1px solid var(--docket-rule); }
 .docket-verdict-names {
   font-family: 'Newsreader', Georgia, serif;
   font-size: 1rem;
@@ -15221,10 +15226,10 @@ body.game-docket .back-link:focus-visible {
 }
 /* Below sm the note takes its own line under the names; from sm up the
    four cells sit on one ruled line. */
-.docket-verdict .docket-week-note { grid-column: 2 / -1; }
+.docket-verdict-list .docket-verdict .docket-week-note { grid-column: 2 / -1; }
 @media (min-width: 576px) {
-  .docket-verdict { grid-template-columns: 2.4rem minmax(0, 1fr) auto auto; }
-  .docket-verdict .docket-week-note { grid-column: auto; }
+  .docket-verdict-list .docket-verdict { grid-template-columns: 2.4rem minmax(0, 1fr) auto auto; }
+  .docket-verdict-list .docket-verdict .docket-week-note { grid-column: auto; }
 }
 
 /* --- Appearing this season (pre-verdict roster) --- */
