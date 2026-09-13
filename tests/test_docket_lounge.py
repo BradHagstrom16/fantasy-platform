@@ -26,6 +26,18 @@ IN_WEEK1_CLOSED = '2026-09-06T18:00:00'      # past Sun 12:00 CT (17:00 UTC)
 POST_SEASON = '2027-01-20T00:00:00'          # season ends Tue Jan 12 2027
 
 
+def _hold(user, week, game, *, market='spread', side='home', slot=1,
+          line=-3.5, is_best=False):
+    db.session.add(DocketPick(
+        user_id=user.id, week_id=week.id, game_id=game.id, market=market,
+        side=side, slot=slot, is_best=is_best, line_value=line,
+        book='draftkings'))
+
+
+def _final(game, home_score, away_score):
+    game.home_score, game.away_score, game.is_final = home_score, away_score, True
+
+
 # --- State resolver: pure time math ---------------------------------------
 
 def test_state_pre_before_week1_boundary(app, monkeypatch):
@@ -388,6 +400,204 @@ def test_context_post_minimal(app, monkeypatch):
         ctx = lounge.build_lounge_context(user, 'post')
     assert ctx['season_complete'] is True
     assert ctx['game_tile_label'] == 'SEASON CLOSED'
+
+
+# --- The standings board (Brad, 2026-09-12) --------------------------------
+
+def test_leaderboard_weekly_once_three_have_a_final(app, monkeypatch):
+    """The board goes weekly once >=3 members have a final this week, ranked by
+    live record (marks only, never a point before the week grades)."""
+    at(monkeypatch, IN_WEEK1_OPEN)
+    with app.app_context():
+        week = make_week(1)
+        won = make_game(week, kickoff=datetime(2026, 9, 1, 23, 30))
+        _final(won, 31, 17)                       # home -3.5 covers → win
+        lost = make_game(week, kickoff=datetime(2026, 9, 1, 23, 30))
+        _final(lost, 17, 31)                      # home -3.5 fails → loss
+        viewer = make_user('you')
+        make_enrollment(viewer)
+        _hold(viewer, week, won)                  # 1-0
+        for name, game in (('amy', won), ('bob', won), ('cyd', lost)):
+            u = make_user(name)
+            make_enrollment(u)
+            _hold(u, week, game)
+        db.session.flush()
+        ctx = lounge.build_lounge_context(viewer, 'live')
+    lb = ctx['leaderboard']
+    assert lb['mode'] == 'weekly' and lb['title'] == 'This week'
+    top = lb['rows'][0]
+    assert top['rank'] == 1 and 'record' in top and 'points' not in top
+
+
+def test_leaderboard_top_three_plus_you_row(app, monkeypatch):
+    """Below the cut, the viewer's own line rides a separator (survivor shape)."""
+    at(monkeypatch, IN_WEEK1_OPEN)
+    with app.app_context():
+        week = make_week(1)
+        won = make_game(week, kickoff=datetime(2026, 9, 1, 23, 30))
+        _final(won, 31, 17)
+        lost = make_game(week, kickoff=datetime(2026, 9, 1, 23, 30))
+        _final(lost, 17, 31)
+        for name in ('amy', 'bob', 'cyd'):        # three winners: rank 1
+            u = make_user(name)
+            make_enrollment(u)
+            _hold(u, week, won)
+        viewer = make_user('zed')
+        make_enrollment(viewer)
+        _hold(viewer, week, lost)                 # 0-1: below the top three
+        db.session.flush()
+        ctx = lounge.build_lounge_context(viewer, 'live')
+    rows = ctx['leaderboard']['rows']
+    assert len(rows) == 4
+    assert [r['is_you'] for r in rows] == [False, False, False, True]
+    assert rows[-1]['separator_above'] is True and rows[-1]['rank'] == 4
+
+
+def test_leaderboard_falls_back_to_season_below_three(app, monkeypatch):
+    """Under three finals, a graded season carries the board instead."""
+    at(monkeypatch, IN_WEEK1_OPEN)
+    with app.app_context():
+        week = make_week(1)
+        won = make_game(week, kickoff=datetime(2026, 9, 1, 23, 30))
+        _final(won, 31, 17)
+        viewer = make_user('you')
+        make_enrollment(viewer)
+        _hold(viewer, week, won)                  # only one final: under three
+        # A prior graded week gives the season ledger something to rank.
+        graded = make_week(2)
+        graded.default_error_tenths = 20
+        db.session.add(DocketWeekResult(
+            user_id=viewer.id, week_id=graded.id, points=9.0, wins=6,
+            error_tenths=15, graded_at=datetime(2026, 9, 8, 12, 0)))
+        db.session.flush()
+        ctx = lounge.build_lounge_context(viewer, 'live')
+    lb = ctx['leaderboard']
+    assert lb['mode'] == 'season' and lb['title'] == 'The season, so far'
+    assert 'points' in lb['rows'][0]
+
+
+def test_leaderboard_none_when_nothing_to_rank(app, monkeypatch):
+    """Early Week 1: under three finals and no graded week, no board at all."""
+    at(monkeypatch, IN_WEEK1_OPEN)
+    with app.app_context():
+        week = make_week(1)
+        won = make_game(week, kickoff=datetime(2026, 9, 1, 23, 30))
+        _final(won, 31, 17)
+        viewer = make_user('you')
+        make_enrollment(viewer)
+        _hold(viewer, week, won)
+        db.session.flush()
+        ctx = lounge.build_lounge_context(viewer, 'live')
+    assert ctx['leaderboard'] is None
+
+
+def test_leaderboard_adjourned_shows_season(app, monkeypatch):
+    """Between weeks (adjourned), the board is the season ledger (Brad Q1)."""
+    at(monkeypatch, IN_WEEK1_CLOSED)
+    with app.app_context():
+        week = make_week(1)
+        week.default_error_tenths = 20
+        viewer = make_user('graded')
+        make_enrollment(viewer)
+        db.session.add(DocketWeekResult(
+            user_id=viewer.id, week_id=week.id, points=6.5, wins=5,
+            error_tenths=30, graded_at=datetime(2026, 9, 8, 12, 0)))
+        db.session.flush()
+        ctx = lounge.build_lounge_context(viewer, 'live')
+    assert ctx['beat'] == 'adjourned'
+    assert ctx['leaderboard']['mode'] == 'season'
+
+
+def test_leaderboard_unenrolled_gets_none(app, monkeypatch):
+    """A non-member sees the sell, never a you-less board."""
+    at(monkeypatch, IN_WEEK1_OPEN)
+    with app.app_context():
+        week = make_week(1)
+        won = make_game(week, kickoff=datetime(2026, 9, 1, 23, 30))
+        _final(won, 31, 17)
+        for name in ('amy', 'bob', 'cyd'):
+            u = make_user(name)
+            make_enrollment(u)
+            _hold(u, week, won)
+        spectator = make_user('nosy')             # enrolled in nothing
+        db.session.flush()
+        ctx = lounge.build_lounge_context(spectator, 'live')
+    assert ctx['viewer_mode'] == 'view'
+    assert 'leaderboard' not in ctx
+
+
+def test_context_post_shows_season_board_for_member(app, monkeypatch):
+    at(monkeypatch, POST_SEASON)
+    with app.app_context():
+        week = make_week(1)
+        week.default_error_tenths = 20
+        viewer = make_user('after')
+        make_enrollment(viewer)
+        db.session.add(DocketWeekResult(
+            user_id=viewer.id, week_id=week.id, points=6.5, wins=5,
+            error_tenths=30, graded_at=datetime(2026, 9, 8, 12, 0)))
+        db.session.flush()
+        ctx = lounge.build_lounge_context(viewer, 'post')
+    assert ctx['season_complete'] is True
+    assert ctx['leaderboard']['mode'] == 'season'
+
+
+def test_lounge_renders_the_standings_board(app, client, monkeypatch):
+    """Rendered: the weekly board prints the survivor .rolls shape, the viewer's
+    row wears the You chip, and no room class or var leaks (accent firewall)."""
+    monkeypatch.setenv('CFB_FAKE_NOW', IN_WEEK1_OPEN)
+    at(monkeypatch, IN_WEEK1_OPEN)
+    with app.app_context():
+        week = make_week(1)
+        won = make_game(week, kickoff=datetime(2026, 9, 1, 23, 30))
+        _final(won, 31, 17)
+        viewer = make_user('viewer')
+        make_enrollment(viewer)
+        _hold(viewer, week, won)
+        for name in ('amy', 'bob'):
+            u = make_user(name)
+            make_enrollment(u)
+            _hold(u, week, won)
+        db.session.commit()
+        auth_id = viewer.auth_id
+    with client.session_transaction() as sess:
+        sess['_user_id'] = auth_id
+        sess['_fresh'] = True
+    html = client.get('/').get_data(as_text=True)
+    docket = html[html.index('hl-panel--docket'):]
+    assert 'class="hl-standings"' in docket
+    assert 'class="roll-row roll-row--you"' in docket
+    assert 'class="roll-you-chip">You<' in docket
+    assert 'Full standings' in docket
+    assert 'class="roll-record"' in docket
+    assert 'docket-sheet' not in docket and '--game-accent' not in docket
+
+
+def test_weekly_board_member_with_no_picks_reads_nothing_held_yet(
+        app, client, monkeypatch):
+    """A member holding nothing reads "Nothing held yet", not "All played"
+    (pending 0 alone cannot tell the two apart — held distinguishes them)."""
+    monkeypatch.setenv('CFB_FAKE_NOW', IN_WEEK1_OPEN)
+    at(monkeypatch, IN_WEEK1_OPEN)
+    with app.app_context():
+        week = make_week(1)
+        won = make_game(week, kickoff=datetime(2026, 9, 1, 23, 30))
+        _final(won, 31, 17)
+        for name in ('amy', 'bob', 'cyd'):        # three finals: board goes weekly
+            u = make_user(name)
+            make_enrollment(u)
+            _hold(u, week, won)
+        viewer = make_user('viewer')              # holds nothing: ranks last
+        make_enrollment(viewer)
+        db.session.commit()
+        auth_id = viewer.auth_id
+    with client.session_transaction() as sess:
+        sess['_user_id'] = auth_id
+        sess['_fresh'] = True
+    html = client.get('/').get_data(as_text=True)
+    docket = html[html.index('hl-panel--docket'):]
+    you_row = docket[docket.index('roll-row--you'):]
+    assert 'Nothing held yet' in you_row and 'All played' not in you_row
 
 
 def test_lounge_module_never_imports_writers():

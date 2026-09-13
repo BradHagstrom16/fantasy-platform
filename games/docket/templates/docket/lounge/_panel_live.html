@@ -14,6 +14,7 @@
    2.7rem verdict register in place of the sentence. The board is a
    role="img" with the whole sentence as its label, never a control. #}
 {% set g = h.ctx %}
+{% from 'docket/lounge/_standings.html' import standings with context %}
 {% macro board(p) -%}
 <div class="hl-board" role="img" aria-label="{{ p.board_label }}">
   {%- for m in p.marks -%}
@@ -125,5 +126,12 @@
       <a class="route-link" href="{{ url_for('docket.ledger') }}">The season ledger &rsaquo;</a>
     </div>
   </div>
+  {% endif %}
+
+  {# The standings board (Brad, 2026-09-12): the field on the club door, below
+     the viewer's own line. Weekly while a week is live and >=3 have a final,
+     else the season ledger; the builder decides, the panel just prints it. #}
+  {% if g.leaderboard %}
+  {{ standings(g.leaderboard) }}
   {% endif %}
 </section>

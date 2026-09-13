@@ -16,12 +16,12 @@
     {% if m and m.lines %}
     <ol class="docket-sheet-lines">
         {% for line in m.lines %}
-        <li class="docket-sheet-line{% if line.is_autopick %} is-autopick{% endif %}{% if line.is_reserve %} is-reserve{% endif %}">
+        <li class="docket-sheet-line{% if line.is_autopick %} is-autopick{% endif %}{% if line.is_reserve %} is-reserve{% endif %}{% if line.is_substituted %} is-substituted{% endif %}">
             <span class="docket-sheet-when">{{ line.kickoff|ct('%a %-I:%M %p') }}</span>
             <span class="docket-sheet-pick">
                 {{ line.pick }}
                 {% if line.is_best %}<span class="docket-headliner-chip{% if line.is_auto_best %} is-auto{% endif %}"{% if line.is_auto_best %} title="Assigned when the docket closed"{% endif %}>x2{% if line.is_auto_best %}<span class="visually-hidden">, assigned</span>{% endif %}</span>{% endif %}
-                {% if line.is_reserve %}<span class="docket-slot-badge">Reserve</span>{% endif %}
+                {% if line.is_reserve %}<span class="docket-slot-badge" title="A case was thrown out; the reserve substituted in">Reserve substituted</span>{% endif %}
                 {% if line.is_autopick %}<span class="docket-auto-tag" title="Filed when the docket closed">Auto</span>{% endif %}
             </span>
             <span class="docket-caption">{{ line.sport }} · {{ line.caption }}{% if line.final_score %} · Final {{ line.final_score }}{% endif %}</span>

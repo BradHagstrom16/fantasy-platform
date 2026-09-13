@@ -151,6 +151,24 @@ sheet, and the record string is `sheets.record_label`, the same words the room p
 `.docket-*` class, no `--game-*` variable, and the `.hl-cta` untouched. Locked by
 `tests/test_docket_lounge.py`.
 
+**The standings board (bolder pass 2026-09-12).** Brad's ask: the panel should carry the
+field, like the survivor section. The earlier doctrine kept "standings gravity on the ledger
+page" and barred `season_ledger()` from a lounge builder; that is withdrawn. Below the
+viewer's own line the panel now prints a standings board (`lounge/_standings.html`, the
+survivor `.rolls` shape reused): top-3 plus a you-row when the viewer ranks below the cut,
+with a "Full standings ›" link always one tap to the room. The builder
+(`lounge.py::_leaderboard`) decides the board and the panel only prints it: the **weekly**
+live record (`sheets.all_sheets`, marks only, never a point before the week grades §7.13)
+once the week is in play and **>=3 members have a final**, and the **season ledger**
+(`season_pass.season_ledger`) otherwise (under the threshold, between weeks/adjourned, and
+post-season, per Brad's Q1). None when neither can be ranked yet (early Week 1). Both reads
+are pure; the module contract still bars the *writer* services. Firewall-clean: only
+`.hl-*`/`.roll-*` classes, no `.docket-*`, no room var or hex; "yours" wears the panel
+`--hl-accent` (garnet, §6.5), not the survivor gold, so each headliner stays cohesive. The
+weekly value is the compact two-tone `.roll-record` (the lounge `--live-green`/`--live-red`
+at row scale), the season value the `.roll-pts` figure. It shows to a member only; a
+non-member sees the sell, never a you-less board. Locked by `tests/test_docket_lounge.py`.
+
 Two 2026-08-18 design-review amendments (ADR-051). The pre panel opens with the club's
 decree seal band — "By Decree of the Commish No 003 · The Docket '26" — the platform
 `decree`/`decree-seal` primitives with per-era numbering (WC No 001, CFB No 002). Band
@@ -678,10 +696,21 @@ ruling: **once a pick locks it releases visibility for everyone.**
   that rotates on `[open]`, a 44px target, the garnet focus ring) and the ledger's head row:
   avatar, name, "You" tag and the record (the `docket/_record.html` macro since 2026-09-12,
   below; it carries the summary "3 of 8 held" → "2 of 8 locked" → "1-1 · 5 to play"). Inside, the lines are kickoff-ordered with
-  the reserve last: Teko kickoff, the side as the sheet prints it with the same three marks as
-  the case row (x2 chip, Reserve badge, Auto tag), the case caption, and the result word.
+  the reserve last: Teko kickoff, the side as the sheet prints it with the same marks as
+  the case row (x2 chip, Auto tag), the case caption, and the result word.
   Your row takes the garnet tint (garnet means "yours"). No JS: native disclosure is the whole
   mechanism, the room's no-JS spine (§7.11).
+- **The reserve is hidden until it comes into use (Brad, 2026-09-12).** The reserve (slot 9)
+  is noise ~99% of weeks, so it is left off `/docket/sheets` and the ledger drawers entirely
+  (the line, the "Reserve" badge, its mark-strip square, and the "reserve held" sealed
+  phrase) until it actually substitutes. "Came into use" is derived at read time in
+  `sheets._reserve_in_use`, matching the grading engine's condition exactly (a reserve
+  exists, its own game is not thrown out, and a scoring case IS thrown out — the No Contest
+  substitution), so the sheet never disagrees with the ledger. When it does substitute it
+  shows last, marked "Reserve substituted" (the garnet stamp, `is_substituted`). The reserve
+  is never a scoring side, so the tally, the record, and the record sort are unchanged.
+  `viewer_marks` (the viewer's own lounge board) keeps all nine slots — that is the owner's
+  own status, not the everyone's-sheet noise this hides.
 - **Find and sort (Brad, 2026-09-08), the ledger's aids reused (8.9).** A `role="search"` GET
   find field (`.docket-find.docket-sheets-find`, the §7.7 anatomy) filters by display name;
   **your sheet always leads a result set**, matching or not, and the count line never caps
@@ -692,7 +721,12 @@ ruling: **once a pick locks it releases visibility for everyone.**
   then fewer losses, then more sides held; natural descending). The active link states its
   order with the entry caret and `aria-sort`. Find and sort compose (the form carries the
   sort; the links carry the query). Both are plain GETs — navigation, never mutation — so the
-  page's one form is the search form; the sheets themselves stay formless.
+  page's one form is the search form; the sheets themselves stay formless. **The default sort
+  is record, then name, on the active week (Brad, 2026-09-12):** with no `?sort`, an ungraded
+  week orders by record (the stable sort falls to the all_sheets name order, so equal records
+  read alphabetically) and marks the Record link active without the "Default order" reset
+  caption (it would reset to the same order; `sort_explicit` gates it). A graded week keeps
+  its official points-rank default (§8.11, Q2); Record/Name still re-sort either view.
 - **Result marks are the engine's rule** (`grading.engine.grade_pick_outcome`) behind the
   week grade's final gate (`is_final and not no_contest`); the words are Win / Loss /
   Mistrial / No Contest on the platform semantic layer (6.5), with "Final 17-31" in the
@@ -704,7 +738,10 @@ ruling: **once a pick locks it releases visibility for everyone.**
 - **Empty states, each with its reason:** no week ("Court convenes September 1"), no cases
   posted, the pre-season preview ("Nothing to open yet"), and the pre-first-lock week
   ("Nothing has locked yet. Sheets open here case by case at kickoff; the first case kicks off
-  Thursday 7:15 PM CT."). Mid-week the lede counts locked cases and names the next to open.
+  Thursday 7:15 PM CT."). **The mid-week running lede is retired (Brad, 2026-09-12):** the
+  "N of M cases locked · next to open · the number is sealed until …" count read as noise
+  against the sheets, and each drawer already carries its own case's lock state; only the two
+  edge ledes (every sheet on record; nothing locked yet) remain.
 - The rules page states the rule under "Who sees what"; the join page says it in one
   sentence. The scores timer now runs Friday and Saturday mornings as well, so Thursday's and
   Friday's finals are on the page the next morning (rulings Amendments 2026-09-04).
