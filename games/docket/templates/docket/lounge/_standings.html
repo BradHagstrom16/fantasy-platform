@@ -20,7 +20,7 @@
         <div class="roll-name">{{ row.avatar }}{{ row.name }}{% if row.is_you %}<span class="roll-you-chip">You</span>{% endif %}</div>
         <div class="roll-tagline">
           {%- if lb.mode == 'weekly' -%}
-          {% if row.pending %}{{ row.pending }} to play{% else %}All played{% endif %}
+          {% if row.pending %}{{ row.pending }} to play{% elif not row.held %}Nothing held yet{% else %}All played{% endif %}
           {%- else -%}
           {{ row.wins }} win{{ '' if row.wins == 1 else 's' }}
           {%- endif -%}

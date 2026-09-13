@@ -759,6 +759,27 @@ def test_sheets_default_sort_is_record_then_name(monkeypatch, client, member):
     assert re.search(r'docket-sheets-sort-link is-active[^>]*>Record', html)
 
 
+def test_sheets_unrecognized_sort_falls_to_record_on_active_week(
+        monkeypatch, client, member):
+    """An unrecognized ?sort on an active week falls to the record default, not
+    to bare name order with no active control — and stays implicit (no reset)."""
+    week = make_week(1)
+    thu = make_game(week, kickoff=KICK_THU, home='Utah Utes',
+                    away='Idaho Vandals')
+    champ = _member('champ', display_name='Champ')
+    _member('amy', display_name='Amy')
+    _member('zeb', display_name='Zeb')
+    at(monkeypatch, IN_WEEK1)
+    _hold(champ, week, thu, side='home')          # home covers -3.5: a win
+    _final(thu, 31, 17)
+    db.session.commit()
+    at(monkeypatch, '2026-09-04T12:00:00')
+    html = client.get('/docket/sheets?sort=bogus').data.decode()
+    assert _name_order(html)[0] == 'Champ'        # record leads, not alphabetical
+    assert 'Sorted by record' not in html and 'Default order' not in html
+    assert re.search(r'docket-sheets-sort-link is-active[^>]*>Record', html)
+
+
 def test_sheets_graded_week_default_stays_rank(monkeypatch, client, member):
     """The record default is active-week only (Brad Q2): a graded week keeps
     its official points-rank default, never record."""

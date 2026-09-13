@@ -573,6 +573,33 @@ def test_lounge_renders_the_standings_board(app, client, monkeypatch):
     assert 'docket-sheet' not in docket and '--game-accent' not in docket
 
 
+def test_weekly_board_member_with_no_picks_reads_nothing_held_yet(
+        app, client, monkeypatch):
+    """A member holding nothing reads "Nothing held yet", not "All played"
+    (pending 0 alone cannot tell the two apart — held distinguishes them)."""
+    monkeypatch.setenv('CFB_FAKE_NOW', IN_WEEK1_OPEN)
+    at(monkeypatch, IN_WEEK1_OPEN)
+    with app.app_context():
+        week = make_week(1)
+        won = make_game(week, kickoff=datetime(2026, 9, 1, 23, 30))
+        _final(won, 31, 17)
+        for name in ('amy', 'bob', 'cyd'):        # three finals: board goes weekly
+            u = make_user(name)
+            make_enrollment(u)
+            _hold(u, week, won)
+        viewer = make_user('viewer')              # holds nothing: ranks last
+        make_enrollment(viewer)
+        db.session.commit()
+        auth_id = viewer.auth_id
+    with client.session_transaction() as sess:
+        sess['_user_id'] = auth_id
+        sess['_fresh'] = True
+    html = client.get('/').get_data(as_text=True)
+    docket = html[html.index('hl-panel--docket'):]
+    you_row = docket[docket.index('roll-row--you'):]
+    assert 'Nothing held yet' in you_row and 'All played' not in you_row
+
+
 def test_lounge_module_never_imports_writers():
     """Read-only contract: the lounge runs on every home render and is
     imported by the registry at boot. The write passes stay out."""

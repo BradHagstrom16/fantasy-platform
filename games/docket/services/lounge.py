@@ -355,6 +355,10 @@ def _weekly_leaderboard(user, week, now) -> dict | None:
             'losses': t.losses if t is not None else 0,
             'pushes': t.pushes if t is not None else 0,
             'pending': t.pending if t is not None else m.held_count,
+            # Distinguishes a member holding nothing yet (tagline "Nothing held
+            # yet") from one whose sides are all final ("All played") — both
+            # read pending 0.
+            'held': m.held_count,
         })
     return {
         'mode': 'weekly',

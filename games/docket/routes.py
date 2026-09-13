@@ -688,7 +688,9 @@ def sheets():
     # only when there is a non-default order to reset from.
     requested_sort = request.args.get('sort')
     sort_explicit = requested_sort in SHEETS_SORTS
-    if requested_sort is None and standings is None:
+    if not sort_explicit and standings is None:
+        # Any missing OR unrecognized sort on an active week falls to record
+        # (sort_explicit stays false, so the reset caption does not show).
         requested_sort = 'record'
     # Once a week grades, its standings ARE the sheet list (Brad, 2026-09-09):
     # the separate standings table is gone and each sheet drawer carries its
