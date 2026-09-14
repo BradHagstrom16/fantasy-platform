@@ -89,8 +89,8 @@ def _apply_event(game, event, summary, verdicts):
     never silently fall back to ungradeable because the feed flapped, and a
     real correction still lands (the scores themselves keep updating).
 
-    Appends a push verdict to ``verdicts`` when a completed event either flips
-    the game final (all sides are new) or corrects an already-final game's
+    Appends a push verdict to ``verdicts`` when an event flips the game final
+    (a completed event; all sides are new) or corrects an already-final game's
     scores (before-results captured pre-overwrite so the caller pushes only the
     sides that flip). Presentation-only; never affects the write.
     """
@@ -101,22 +101,27 @@ def _apply_event(game, event, summary, verdicts):
     changed = (game.home_score, game.away_score) != (home, away)
     old_final = game.is_final
     completed = bool(event.get('completed'))
-    # Capture BEFORE the overwrite, only for a real correction to a final game.
+    # Capture BEFORE the overwrite, for any real correction to a final game.
+    # ``completed`` is not required: is_final is one-way, so a payload that
+    # flaps back to in-progress still grades on the corrected scores, and the
+    # sides that flip must be buzzed.
     before = (_capture_side_results(game)
-              if changed and old_final and completed else None)
+              if changed and old_final else None)
     game.home_score = home
     game.away_score = away
-    if completed:
-        if not game.is_final:
-            game.is_final = True
-            summary['finalized'] += 1
+    if old_final:
+        # Already final (is_final is one-way). A real score correction
+        # re-grades and buzzes the sides that flip, whether or not this payload
+        # carries ``completed`` — the standings already reflect the new score.
+        summary['already_final'] += 1
+        if changed:
             verdicts.append(
-                {'game_id': game.id, 'kind': 'flipped', 'before': None})
-        else:
-            summary['already_final'] += 1
-            if changed:
-                verdicts.append(
-                    {'game_id': game.id, 'kind': 'corrected', 'before': before})
+                {'game_id': game.id, 'kind': 'corrected', 'before': before})
+    elif completed:
+        game.is_final = True
+        summary['finalized'] += 1
+        verdicts.append(
+            {'game_id': game.id, 'kind': 'flipped', 'before': None})
     else:
         summary['in_progress'] += 1
     if changed:

@@ -277,7 +277,10 @@ def push_docket_verdicts(verdict_games):
                         title=f'{_side_phrase(p, game)}: {word}.',
                         body=f'{n} {"sheet" if n == 1 else "sheets"} had them.',
                         url=DOCKET_ROOM_URL,
-                        tag=f'docket-game-{game.id}',
+                        # Market is in the tag: a sheet can hold this game's
+                        # spread AND its total, and a per-game tag would let the
+                        # second verdict replace the first on the device.
+                        tag=f'docket-game-{game.id}-{p.market}',
                         ttl=DOCKET_VERDICT_TTL,
                         urgency='high',
                     )

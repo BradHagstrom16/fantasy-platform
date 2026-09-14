@@ -93,6 +93,25 @@ def test_already_final_changed_yields_a_corrected_verdict(app):
     assert verdicts[0]['before']  # non-empty {pick_id: result}
 
 
+def test_correction_with_completed_cleared_still_yields_a_verdict(app):
+    # is_final is one-way: a final game whose corrected scores arrive on an
+    # in-progress payload still re-grades, so the flip must be buzzed.
+    week = make_week(1)
+    game = make_game(week, kickoff=_KICKOFF)
+    home = make_user('h')
+    make_enrollment(home)
+    _pick(home, week, game, 'spread', 'home', 1, -3.5)
+    db.session.commit()
+    _sync(game, 24, 14)                                 # flip: home wins by 10
+    summary = _sync(game, 24, 30, completed=False)      # away now wins, live
+    assert game.is_final is True                        # one-way latch holds
+    assert summary['scores_written'] == 1
+    verdicts = summary['verdict_games']
+    assert len(verdicts) == 1
+    assert verdicts[0]['kind'] == 'corrected'
+    assert verdicts[0]['before']
+
+
 # ---- push_docket_verdicts copy + routing ----------------------------------
 
 def test_flip_pushes_every_scoring_side_with_the_tally(app):
@@ -118,7 +137,10 @@ def test_flip_pushes_every_scoring_side_with_the_tally(app):
     under = [c for c in calls if c['title'].startswith('Under')][0]
     assert under['title'] == 'Under 51.5: WIN.'
     assert under['body'] == '1 sheet had them.'
-    assert all(c['tag'] == f'docket-game-{game.id}' for c in calls)
+    # One distinct tag per market so both verdicts survive on a device that
+    # holds this game's spread and its total.
+    assert {c['tag'] for c in calls} == {
+        f'docket-game-{game.id}-spread', f'docket-game-{game.id}-total'}
     assert all(c['urgency'] == 'high' and 'app_badge' not in c for c in calls)
 
 
