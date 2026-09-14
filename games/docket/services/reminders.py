@@ -50,6 +50,7 @@ from games.docket.services.picks import sheet_state
 from games.docket.utils import now_utc, to_naive_utc
 from models.user import User
 from utils.email_layout import items_block, render_letter
+from utils.push import send_push
 from utils.reminders import tier_already_sent
 
 logger = logging.getLogger(__name__)
@@ -154,6 +155,23 @@ def _build_body(week, tier, subject, deadline, link):
     return build
 
 
+def _push_deadline_nag(week, tier, now_naive, user_ids):
+    """The deadline nag as a push (T11): the buzz twin of the reminder email.
+    Never raises (send_push swallows its own errors)."""
+    if not user_ids:
+        return
+    ttl = max(int((week.deadline_at - now_naive).total_seconds()), 0)
+    title = ('Last call: your sheet.' if tier == '2h'
+             else 'Your Docket sheet is due.')
+    send_push(user_ids,
+              title=title,
+              body=f'{COUNTDOWNS[tier]} Sides still open.',
+              url='/docket/',
+              tag=f'docket-w{week.week_number}-nag',
+              topic=f'docket-w{week.week_number}',
+              ttl=ttl, urgency='normal', app_badge=1)
+
+
 def run_reminder_pass(week, now=None, user_ids=None) -> dict:
     """Mail the week's due reminder tier. Idempotent within a tier.
 
@@ -197,6 +215,12 @@ def run_reminder_pass(week, now=None, user_ids=None) -> dict:
     sent = send_each(recipients, subject,
                      _build_body(week, tier, subject, deadline_line(week),
                                  sheet_url()))
+
+    # Buzz the same recipients regardless of the email outcome — a mail outage
+    # is exactly when push matters (T11). Tag replaces an earlier tier on the
+    # device, topic collapses queued messages, app_badge=1 means "you owe a
+    # sheet" (cleared on app open), TTL to the deadline drops a late nag.
+    _push_deadline_nag(week, tier, now_naive, [u.id for u, _ in recipients])
 
     if sent == 0:
         # Every send failed, so the tier is left open for the next hourly run

@@ -275,6 +275,14 @@ def run_reminder_check():
         if send_platform_email(user.email, letter.subject, plain, html):
             success_count += 1
 
+    # Buzz the same recipients regardless of the email outcome — a mail outage
+    # is exactly when push matters (T11). The tag replaces an earlier tier's
+    # notification on the device, the topic collapses still-queued messages,
+    # app_badge=1 means "you owe a pick" (cleared on app open), and the TTL to
+    # the deadline drops a nag the push service delivers too late.
+    _push_pick_nag(week, window, deadline, now,
+                   [user.id for _, user in recipients])
+
     if success_count > 0:
         # Recorded once ANY send succeeds (Golf/Docket reasoning): gating on
         # all-recipient success would let one permanently bad address hold
@@ -289,6 +297,25 @@ def run_reminder_check():
 
     print(f"\nSummary: {success_count}/{len(recipients)} reminders sent")
     print("=" * 60)
+
+
+def _push_pick_nag(week, window, deadline, now, user_ids):
+    """The deadline nag as a push (T11): the buzz twin of the reminder email.
+    Never raises (send_push swallows its own errors)."""
+    if not user_ids:
+        return
+    ttl = max(int((deadline - now).total_seconds()), 0)
+    if window['type'] == 'final':
+        title = 'Last call: CFB pick.'
+        body = 'Picks lock in about an hour. No pick on file.'
+    else:
+        title = 'Your CFB pick is due.'
+        body = f'Picks lock {format_deadline_short(deadline)}. No pick on file.'
+    send_push(user_ids, title=title, body=body,
+              url=f'/cfb/pick/{week.week_number}',
+              tag=f'cfb-w{week.week_number}-nag',
+              topic=f'cfb-w{week.week_number}',
+              ttl=ttl, urgency='normal', app_badge=1)
 
 
 # ============================================================================
