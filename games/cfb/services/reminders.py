@@ -704,6 +704,9 @@ def push_survivor_verdicts(week, result):
                     CfbEnrollment.is_eliminated.is_(False)))
             tally = {'survived': survived, 'fell': fell, 'remaining': remaining}
         except Exception:
+            # A failed count poisons the session (Postgres aborts the txn);
+            # roll back so the fallback verdict pushes' own reads succeed.
+            db.session.rollback()
             logger.warning('CFB verdict tally read failed; tally-free bodies',
                            exc_info=True)
 

@@ -441,7 +441,16 @@ def process_week_results(week_id, season_year=None):
         # Push feed: what to buzz this run. The elimination diff is computed
         # AFTER all mutations incl. the DQ-1 revival (revived users flip back to
         # not-eliminated, so they never buzz the ceremony).
-        result["graded"] = graded_details
+        # Carry only picks that should still produce a game-verdict push:
+        # drop any whose enrollment is eliminated post-revival (they get the
+        # ceremony instead), so `graded` is self-consistent for the consumer.
+        result["graded"] = [
+            detail for detail in graded_details
+            if not (
+                enrollment_by_user.get(detail[0]) is not None
+                and enrollment_by_user[detail[0]].is_eliminated
+            )
+        ]
         result["eliminated_user_ids"] = [
             uid for uid, e in enrollment_by_user.items()
             if e.is_eliminated and not was_eliminated.get(uid, False)

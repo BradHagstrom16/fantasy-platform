@@ -59,6 +59,48 @@ def test_graded_list_carries_pick_tuples(app):
     assert graded[loser.id] == (game.id, away.id, False)
 
 
+def test_eliminated_this_run_pick_dropped_from_graded_feed(app):
+    """A pick that eliminates its owner this run is filtered out of `graded`
+    (the owner gets the ceremony, not a game verdict) and appears in the
+    elimination diff instead."""
+    week, home, away, game = _seed_one_game('home')  # home wins, away loses
+    survivor = make_user('s')
+    make_enrollment(survivor, lives=2)
+    make_pick(survivor, week, home)
+    doomed = make_user('d')
+    make_enrollment(doomed, lives=1)  # one life, picks the loser -> eliminated
+    make_pick(doomed, week, away)
+    db.session.commit()
+
+    result = process_week_results(week.id)
+
+    graded_users = {u for (u, _, _, _) in result['graded']}
+    assert survivor.id in graded_users        # winner keeps the game verdict
+    assert doomed.id not in graded_users       # eliminated -> ceremony only
+    assert doomed.id in result['eliminated_user_ids']
+
+
+def test_revived_pickers_stay_in_graded_feed(app):
+    """A whole-pool wipe + DQ-1 revival flips wiped pickers back to alive;
+    their losing picks are retained in `graded` (they get a game verdict, not
+    the ceremony) and never appear in the elimination diff."""
+    week, home, away, game = _seed_one_game('home')  # away is the loser
+    u1 = make_user('r1')
+    make_enrollment(u1, lives=1)
+    u2 = make_user('r2')
+    make_enrollment(u2, lives=1)
+    make_pick(u1, week, away)
+    make_pick(u2, week, away)
+    db.session.commit()
+
+    result = process_week_results(week.id)
+
+    assert result['revived'] == 2
+    graded_users = {u for (u, _, _, _) in result['graded']}
+    assert {u1.id, u2.id} <= graded_users            # retained despite the loss
+    assert result['eliminated_user_ids'] == []        # revived -> not eliminated
+
+
 def test_eliminated_diff_is_this_run_only(app):
     """A member already eliminated coming in never appears in the diff."""
     week = make_week(1)
@@ -182,6 +224,25 @@ def test_tally_read_failure_falls_back_to_short_body(app):
     kw = sp.call_args.kwargs
     assert kw['title'] == 'Ohio State won.'
     assert kw['body'] == 'You survive.'  # tally-free fallback, still sent
+
+
+def test_tally_failure_rolls_back_before_fallback_pushes(app):
+    """A failed tally count poisons the session (Postgres aborts the txn);
+    the handler must roll back so the fallback verdict pushes' own DB reads
+    succeed rather than the first one silently returning 0."""
+    week, home, away, game = _seed_one_game('home')
+    u = make_user('a')
+    make_enrollment(u, lives=2)
+    db.session.commit()
+    result = {'graded': [(u.id, game.id, home.id, True)],
+              'eliminated_user_ids': []}
+    with patch('games.cfb.services.reminders.db.session.scalar',
+               side_effect=RuntimeError('db hiccup')), \
+         patch('games.cfb.services.reminders.db.session.rollback') as rb, \
+         patch(_PATH) as sp:
+        push_survivor_verdicts(week, result)
+    rb.assert_called_once()          # session rolled back before fallback
+    assert sp.call_args.kwargs['body'] == 'You survive.'  # push still sent
 
 
 def test_helper_never_raises_and_noop_on_empty(app):
