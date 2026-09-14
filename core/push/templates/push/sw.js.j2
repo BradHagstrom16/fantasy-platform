@@ -1,0 +1,66 @@
+/* Corrupt Commish Club — push-only service worker.
+ *
+ * DELIBERATELY has NO `fetch` listener: a Cache API copy of an authenticated
+ * page (e.g. /docket/) on a shared phone is exactly the cross-user leak the
+ * platform's `Cache-Control: private, no-store` invariant exists to prevent.
+ * The worker only shows pushed notifications and routes taps.
+ */
+const ICON = "{{ url_for('static', filename='img/pwa/icon-192.png') }}?v={{ asset_version }}";
+const BADGE = "{{ url_for('static', filename='img/pwa/badge-96.png') }}?v={{ asset_version }}";
+
+self.addEventListener('install', function () {
+  self.skipWaiting();
+});
+
+self.addEventListener('activate', function (event) {
+  event.waitUntil(self.clients.claim());
+});
+
+self.addEventListener('push', function (event) {
+  // ALWAYS show a notification. An undisplayed push costs the member their
+  // permission on iOS, so a payload that fails to parse falls back to a fixed
+  // title/body rather than showing nothing.
+  let payload = {};
+  try {
+    payload = event.data ? event.data.json() : {};
+  } catch (err) {
+    payload = {};
+  }
+  const title = payload.title || 'Corrupt Commish Club';
+  const options = {
+    body: payload.body || 'Open the app.',
+    tag: payload.tag || 'ccc',
+    icon: ICON,
+    badge: BADGE,
+    data: { url: payload.url || '/' }
+  };
+  const shown = self.registration.showNotification(title, options);
+
+  // The red count on the home-screen icon. Only the nag sets it; a verdict
+  // omits it. `app_badge` is the payload key — `badge` above is the glyph URL.
+  if (payload.app_badge != null && self.navigator && self.navigator.setAppBadge) {
+    self.navigator.setAppBadge(payload.app_badge).catch(function () {});
+  }
+
+  event.waitUntil(shown);
+});
+
+self.addEventListener('notificationclick', function (event) {
+  event.notification.close();
+  const target = (event.notification.data && event.notification.data.url) || '/';
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function (list) {
+      for (const client of list) {
+        if ('focus' in client) {
+          if ('navigate' in client) {
+            client.navigate(target);
+          }
+          return client.focus();
+        }
+      }
+      if (self.clients.openWindow) {
+        return self.clients.openWindow(target);
+      }
+    })
+  );
+});

@@ -1,0 +1,29 @@
+{
+  "name": "Corrupt Commish Club",
+  "short_name": "CCC",
+  "display": "standalone",
+  "start_url": "/",
+  "scope": "/",
+  "theme_color": "#3A1D72",
+  "background_color": "#140828",
+  "icons": [
+    {
+      "src": "{{ url_for('static', filename='img/pwa/icon-192.png') }}?v={{ asset_version }}",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "{{ url_for('static', filename='img/pwa/icon-512.png') }}?v={{ asset_version }}",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "{{ url_for('static', filename='img/pwa/icon-512-maskable.png') }}?v={{ asset_version }}",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

@@ -13,6 +13,9 @@ from models.user import User
 # Platform editorial content (admin-editable copy)
 from models.content import CommishNote
 
+# Web push subscriptions (installable-app buzz — platform-level, no game import)
+from models.push import PushSubscription
+
 # Golf Pick 'Em models
 from games.golf.models import (
     GolfEnrollment,
@@ -57,6 +60,7 @@ from games.docket.models import (
 __all__ = [
     'User',
     'CommishNote',
+    'PushSubscription',
     'GolfEnrollment',
     'GolfPlayer',
     'GolfTournament',
