@@ -3,6 +3,7 @@ import os
 import subprocess
 from pathlib import Path
 
+from flask import current_app
 from flask_login import current_user
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -74,3 +75,9 @@ def register_context_processors(app):
     @app.context_processor
     def inject_asset_version():
         return {'asset_version': asset_version}
+
+    @app.context_processor
+    def inject_vapid_public_key():
+        # Rendered as data-vapid-key on <body> for push.js. Blank when web push
+        # is unconfigured — push.js then never reveals the buzz button.
+        return {'vapid_public_key': current_app.config.get('VAPID_PUBLIC_KEY', '')}

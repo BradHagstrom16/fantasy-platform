@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block body_class %}auth-page{% endblock %}
+
+{% block title %}Put the Club on your phone · Corrupt Commish Club{% endblock %}
+
+{% block content %}
+{# PR 1 minimal render: one template, install steps, and (when logged in) the
+   "Turn on the buzz" button that push.js wires. PR 2 builds the full
+   eight-branch device-fact state machine (Safari tab / standalone / denied /
+   subscribed / …) in push.js against this same markup. #}
+<div class="auth-wrapper">
+  <div class="card auth-card">
+    <div class="card-body">
+      <div class="mb-4">
+        <span class="auth-eyebrow">Corrupt Commish Club · The Buzz</span>
+        <h1 class="auth-title mt-2">Put the Club on your home screen</h1>
+        <p class="auth-subtitle">
+          Add CCC to your phone and let the verdicts land the hour your game
+          goes final. Email keeps coming either way.
+        </p>
+      </div>
+
+      {% if current_user.is_authenticated %}
+        {# Install steps (shown to everyone; a Safari tab has no button — the
+           action is Share → Add to Home Screen). #}
+        <ol class="mb-4" id="push-steps">
+          <li>In Safari, tap the Share button.</li>
+          <li>Tap <strong>Add to Home Screen</strong>.</li>
+          <li>Open CCC from your home screen. It will ask you to log in once
+              more; that's normal.</li>
+        </ol>
+
+        {# The buzz control. Hidden by default; push.js reveals it only where
+           the device can subscribe (standalone on iOS, or an Android tab). #}
+        <div class="d-grid mb-3" id="push-cta-wrap" hidden>
+          <button type="button" class="btn btn-primary btn-lg" id="push-cta">
+            Turn on the buzz
+          </button>
+        </div>
+        <p class="text-secondary" id="push-status" role="status" aria-live="polite"></p>
+      {% else %}
+        <p class="auth-subtitle">
+          Sign in first, then come back here to turn on the buzz.
+        </p>
+        <div class="d-grid mb-3">
+          <a class="btn btn-primary btn-lg"
+             href="{{ url_for('auth.login', next=url_for('push.app_page')) }}">Sign In</a>
+        </div>
+      {% endif %}
+
+      <hr>
+      <p class="auth-link-row mb-0">
+        <a href="{{ url_for('main.index') }}">Back to the lounge</a>
+      </p>
+    </div>
+  </div>
+</div>
+{% endblock %}

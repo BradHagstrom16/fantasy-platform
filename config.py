@@ -85,6 +85,18 @@ class Config:
     PAYMENT_VENMO_HANDLE = os.environ.get('PAYMENT_VENMO_HANDLE', 'Bradley-Hagstrom')
     PAYMENT_ZELLE_PHONE = os.environ.get('PAYMENT_ZELLE_PHONE', '(630) 408-3424')
 
+    # Web Push (installable-app "buzz" — utils/push.py). VAPID keypair signs
+    # every push; the private key is a secret on the same footing as SECRET_KEY
+    # (rotating it orphans every subscription). All three read via os.environ so
+    # current_app.config.get() sees them — the MAIL_FROM_ADDRESS gotcha above.
+    # Blank private key OR subject → send_push is a no-op (feature off), the
+    # blank-config-hides-feature convention (utils/payment.py). Generate the
+    # keypair locally with `vapid --gen`; store the single-line base64url forms
+    # in .env (never the multi-line PEM), the private key at Brad's TTY only.
+    VAPID_PRIVATE_KEY = os.environ.get('VAPID_PRIVATE_KEY', '')
+    VAPID_PUBLIC_KEY = os.environ.get('VAPID_PUBLIC_KEY', '')
+    VAPID_SUBJECT = os.environ.get('VAPID_SUBJECT', '')
+
     # Rate limiting (Flask-Limiter reads this at init_app; extensions.py
     # deliberately passes no storage_uri so this key stays authoritative).
     # memory:// is correct for single-process dev; production overrides below.
