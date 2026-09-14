@@ -170,10 +170,18 @@ def send_push(user_ids, *, title, body, url, tag, ttl, urgency,
     ids = list(user_ids)
     if not ids:
         return 0
-    subs = db.session.scalars(
-        db.select(PushSubscription)
-        .where(PushSubscription.user_id.in_(ids))
-    ).all()
+    try:
+        subs = db.session.scalars(
+            db.select(PushSubscription)
+            .where(PushSubscription.user_id.in_(ids))
+        ).all()
+    except Exception:
+        # Uphold the never-raises contract even out of our own DB work: a bad
+        # session must not fail the caller's systemd pass after its grade landed.
+        db.session.rollback()
+        logger.exception('Push subscription lookup failed for %s user(s)',
+                         len(ids))
+        return 0
     payload = _build_payload(title=title, body=body, url=url, tag=tag,
                              app_badge=app_badge)
     return _send_to_subscriptions(subs, payload, ttl=ttl, urgency=urgency,
@@ -184,10 +192,15 @@ def send_push_to_endpoint(user_id, endpoint, *, title, body, url, tag):
     """Send a test push to ONE device — the row matching BOTH endpoint and
     user_id (so a member can never buzz another member's device). Returns 0 if
     no such row. Never raises. Shares the send path with send_push."""
-    sub = db.session.scalar(
-        db.select(PushSubscription)
-        .filter_by(endpoint=endpoint, user_id=user_id)
-    )
+    try:
+        sub = db.session.scalar(
+            db.select(PushSubscription)
+            .filter_by(endpoint=endpoint, user_id=user_id)
+        )
+    except Exception:
+        db.session.rollback()
+        logger.exception('Push endpoint lookup failed for user %s', user_id)
+        return 0
     if sub is None:
         return 0
     payload = _build_payload(title=title, body=body, url=url, tag=tag)

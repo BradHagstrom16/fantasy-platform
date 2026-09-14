@@ -38,6 +38,15 @@ from utils.push import send_push_to_endpoint
 
 logger = logging.getLogger(__name__)
 
+
+def _json_dict():
+    """Parsed JSON body as a dict, or {} for missing/empty/array/scalar bodies.
+
+    A top-level JSON array or scalar is truthy, so `get_json(silent=True) or {}`
+    would pass it straight to `.get()` and raise — reject it to {} here."""
+    data = request.get_json(silent=True)
+    return data if isinstance(data, dict) else {}
+
 # Push-service hosts we will POST to. A security allowlist, deliberately a code
 # constant (not env-overridable) so a bad env can never widen it. Windows uses a
 # per-region subdomain of notify.windows.com, matched as a suffix.
@@ -67,7 +76,7 @@ def _test_endpoint_key() -> str:
     """Rate-limit key for /push/test: the sha256 of the posted endpoint, so the
     quota is per device — extensions.limiter keys on the client IP, and every
     phone on one household's Wi-Fi would otherwise share it."""
-    data = request.get_json(silent=True) or {}
+    data = _json_dict()
     endpoint = data.get('endpoint') or ''
     if endpoint:
         return 'pushtest:' + hashlib.sha256(endpoint.encode('utf-8')).hexdigest()
@@ -116,7 +125,7 @@ def subscribe():
     Ownership-following upsert lives on the model; this route validates the
     endpoint against the SSRF allowlist first.
     """
-    data = request.get_json(silent=True) or {}
+    data = _json_dict()
     endpoint = data.get('endpoint')
     keys = data.get('keys') or {}
     p256dh = keys.get('p256dh')
@@ -145,7 +154,7 @@ def subscribe():
 def unsubscribe():
     """Delete only THIS device's row (other devices stay armed). Scoped to the
     current user so a guessed endpoint can't drop someone else's subscription."""
-    data = request.get_json(silent=True) or {}
+    data = _json_dict()
     endpoint = data.get('endpoint')
     if endpoint:
         db.session.query(PushSubscription).filter_by(
@@ -160,7 +169,7 @@ def unsubscribe():
 def test_push():
     """Send the fixed 'This is the buzz.' push to ONE of the caller's own
     devices (the posted endpoint), so a member can confirm the buzz works."""
-    data = request.get_json(silent=True) or {}
+    data = _json_dict()
     endpoint = data.get('endpoint')
     if not endpoint:
         return jsonify({'ok': False, 'error': 'missing_endpoint'}), 400

@@ -69,6 +69,9 @@ class PushSubscription(db.Model):
         if existing is not None:
             if existing.user_id != user_id:
                 # Re-point a shared device to the member using it right now.
+                # Evict first (on the recipient's current rows, before this one
+                # counts) so a transfer can't push them past the cap.
+                cls._evict_over_cap(user_id)
                 existing.user_id = user_id
             existing.p256dh = p256dh
             existing.auth = auth

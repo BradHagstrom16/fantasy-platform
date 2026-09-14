@@ -114,8 +114,10 @@
         var href = link.getAttribute('href');
         if (!('serviceWorker' in navigator)) { return; }
         event.preventDefault();
-        navigator.serviceWorker.ready.then(function (reg) {
-          return reg.pushManager.getSubscription();
+        // getRegistration (not .ready): .ready never resolves when no worker is
+        // active, which would hang this preventDefault()'d logout forever.
+        navigator.serviceWorker.getRegistration().then(function (reg) {
+          return reg ? reg.pushManager.getSubscription() : null;
         }).then(function (sub) {
           if (!sub) { return null; }
           var endpoint = sub.endpoint;
@@ -132,10 +134,11 @@
   window.addEventListener('load', function () {
     navigator.serviceWorker.register('/sw.js', { scope: '/' }).then(function (reg) {
       wireButton(reg);
-      if (isStandalone()) {
-        upsertOnOpen(reg);
-        clearBadge();
-      }
+      // Refresh last_seen_at on every open — including a browser tab, where
+      // Android subscribes — so in-tab subscriptions aren't the unfair eviction
+      // target. The icon badge only exists for the installed app.
+      upsertOnOpen(reg);
+      if (isStandalone()) { clearBadge(); }
     }).catch(function () { /* registration failed; email still works */ });
     wireLogout();
   });

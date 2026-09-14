@@ -110,6 +110,37 @@ def test_upsert_evicts_oldest_last_seen_past_cap(app):
         assert _APPLE + 'd5' in endpoints
 
 
+def test_upsert_transfer_into_full_user_stays_within_cap(app):
+    """Re-pointing a shared endpoint to a member who already holds five devices
+    evicts their stalest first, so the transfer never leaves them at six."""
+    from datetime import UTC, datetime, timedelta
+    a_id, _ = _make_user(app, 'alice')
+    b_id, _ = _make_user(app, 'bob')
+    with app.app_context():
+        base = datetime(2026, 9, 1, tzinfo=UTC)
+        # Bob is already at the cap; d0 is his stalest.
+        for i in range(5):
+            db.session.add(PushSubscription(
+                user_id=b_id, endpoint=_APPLE + f'bob{i}', p256dh='p', auth='a',
+                last_seen_at=base + timedelta(hours=i)))
+        # A shared device currently owned by Alice.
+        db.session.add(PushSubscription(
+            user_id=a_id, endpoint=_APPLE + 'shared', p256dh='pa', auth='aa'))
+        db.session.commit()
+
+        PushSubscription.upsert(b_id, _APPLE + 'shared', 'pb', 'ab')
+        db.session.commit()
+
+        endpoints = {r.endpoint for r in
+                     db.session.query(PushSubscription).filter_by(user_id=b_id)}
+        assert len(endpoints) == 5
+        assert _APPLE + 'shared' in endpoints  # the transferred device kept
+        assert _APPLE + 'bob0' not in endpoints  # Bob's stalest evicted
+        # The shared endpoint now belongs only to Bob.
+        assert db.session.query(PushSubscription).filter_by(
+            endpoint=_APPLE + 'shared').count() == 1
+
+
 # ============================ routes: subscribe =============================
 
 def test_subscribe_requires_login(client):

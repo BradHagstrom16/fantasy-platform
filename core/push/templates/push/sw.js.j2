@@ -34,15 +34,16 @@ self.addEventListener('push', function (event) {
     badge: BADGE,
     data: { url: payload.url || '/' }
   };
-  const shown = self.registration.showNotification(title, options);
+  const work = [self.registration.showNotification(title, options)];
 
   // The red count on the home-screen icon. Only the nag sets it; a verdict
   // omits it. `app_badge` is the payload key — `badge` above is the glyph URL.
+  // Tracked in waitUntil so the worker stays alive until the badge is written.
   if (payload.app_badge != null && self.navigator && self.navigator.setAppBadge) {
-    self.navigator.setAppBadge(payload.app_badge).catch(function () {});
+    work.push(self.navigator.setAppBadge(payload.app_badge).catch(function () {}));
   }
 
-  event.waitUntil(shown);
+  event.waitUntil(Promise.all(work));
 });
 
 self.addEventListener('notificationclick', function (event) {
@@ -52,8 +53,10 @@ self.addEventListener('notificationclick', function (event) {
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function (list) {
       for (const client of list) {
         if ('focus' in client) {
+          // focus() called synchronously either way (keeps its transient
+          // activation); navigate() tracked alongside it so the tap survives.
           if ('navigate' in client) {
-            client.navigate(target);
+            return Promise.all([client.navigate(target), client.focus()]);
           }
           return client.focus();
         }
