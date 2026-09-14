@@ -346,6 +346,116 @@ body.auth-page .alert-success {
   color: var(--success);
 }
 
+/* === /APP · THE BUZZ (installable app, PR 2) ===
+   The install-and-buzz page. Logged-in utility auth register with the
+   left-aligned Club Letter anatomy (.auth-card--letter): eyebrow -> H1 ->
+   lede -> steps/facts -> one CTA -> supporting line. Two-Color Rule holds
+   (purple + gold on bone, no third color). One authored motion: the
+   unsubscribed -> subscribed swap. */
+
+/* .auth-card--letter: the left-aligned utility card for step-shaped pages.
+   Profile and change-password keep the centered default. */
+body.auth-page .auth-card.auth-card--letter { text-align: left; max-width: 460px; }
+body.auth-page .auth-card--letter h1,
+body.auth-page .auth-card--letter .auth-title { text-align: left; }
+
+.auth-eyebrow {
+  display: block;
+  font-family: var(--font-teko);
+  font-weight: 500;
+  font-size: .85rem;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  /* Gold lifted to --gold-dark on bone, matching the auth links (Commish Gold
+     itself is too light on bone). */
+  color: var(--gold-dark);
+  margin-bottom: .5rem;
+}
+.app-card .auth-title { font-weight: 600; font-size: 2rem; line-height: 1.05; margin-bottom: .85rem; }
+.app-lede { font-family: var(--font-news); font-size: 1.05rem; line-height: 1.6; color: var(--text-primary); margin-bottom: 1.25rem; }
+.app-body { font-family: var(--font-news); font-size: 1rem; line-height: 1.65; color: var(--text-primary); margin-bottom: 1rem; }
+.app-note { font-family: var(--font-news); font-style: italic; font-size: .9rem; color: var(--text-secondary); margin-bottom: 1rem; }
+.app-subhead {
+  font-family: var(--font-teko); font-weight: 600; text-transform: uppercase;
+  letter-spacing: .04em; font-size: 1.25rem; color: var(--purple-700); margin: 0 0 .5rem;
+}
+.app-steps { font-family: var(--font-news); font-size: 1rem; line-height: 1.5; padding-left: 1.25rem; margin-bottom: 1.25rem; }
+.app-steps li { margin-bottom: .6rem; }
+.app-steps li:last-child { margin-bottom: 0; }
+.app-rule { border: 0; border-top: 2px solid var(--gold); opacity: 1; margin: 1.5rem 0 1.25rem; }
+.app-cta-wrap { display: grid; margin-bottom: .75rem; }
+.app-back { margin-top: 1.25rem; }
+
+/* Subscribed status row: between two gold hairlines, never a nested card. */
+.app-status-row {
+  display: flex; align-items: center; gap: .6rem;
+  border-top: 1px solid var(--gold);
+  border-bottom: 1px solid var(--gold);
+  padding: .75rem 0; margin: 0 0 1.1rem;
+}
+.app-live-dot { width: .6rem; height: .6rem; border-radius: 50%; background: var(--live-green); flex: 0 0 auto; }
+.app-status-label {
+  font-family: var(--font-teko); font-weight: 500; letter-spacing: .06em;
+  font-size: 1.15rem; text-transform: uppercase; color: var(--purple-700); flex: 1 1 auto;
+}
+.app-turn-off {
+  background: none; border: 0; padding: .4rem .2rem; min-height: 44px;
+  font-family: var(--font-teko); text-transform: uppercase; letter-spacing: .06em;
+  font-size: .95rem; color: var(--gold-dark); cursor: pointer;
+  white-space: nowrap; flex: 0 0 auto;
+}
+.app-turn-off:hover { color: var(--purple-700); text-decoration: underline; }
+
+/* Secondary outline button (test buzz): purple outline, never gray Bootstrap. */
+body.auth-page .app-secondary {
+  background: transparent; border: 1.5px solid var(--purple-700); color: var(--purple-700);
+  font-family: var(--font-teko); text-transform: uppercase; letter-spacing: .08em; font-weight: 600;
+}
+body.auth-page .app-secondary:hover { background: var(--purple-700); color: var(--bone); }
+
+.app-inline-status { font-family: var(--font-news); font-size: .95rem; margin: 0 0 1rem; min-height: 1.2em; }
+.app-inline-status.is-error {
+  color: var(--danger); background: var(--danger-bg);
+  border-radius: var(--radius); padding: .5rem .75rem;
+}
+.app-cta[aria-busy="true"] { opacity: .8; }
+
+/* Lounge / profile "Get the buzz" distribution link (push.js hides it on a
+   device already subscribed). */
+.greet-buzz { margin: .6rem 0 0; }
+.greet-buzz a {
+  font-family: var(--font-teko); text-transform: uppercase; letter-spacing: .08em;
+  font-size: .9rem; color: var(--gold);
+}
+.greet-buzz a:hover { color: var(--gold-light); }
+
+/* Panel visibility: default (no JS) shows the install steps; the pre-paint
+   inline script sets data-app-state and CSS reveals exactly one panel. */
+.app-panel { display: none; }
+.app-panel[data-state="tab"] { display: block; }
+html[data-app-state] .app-panel { display: none; }
+html[data-app-state="tab"] .app-panel[data-state="tab"],
+html[data-app-state="inapp"] .app-panel[data-state="inapp"],
+html[data-app-state="checking"] .app-panel[data-state="checking"],
+html[data-app-state="unsubscribed"] .app-panel[data-state="unsubscribed"],
+html[data-app-state="subscribed"] .app-panel[data-state="subscribed"],
+html[data-app-state="denied"] .app-panel[data-state="denied"],
+html[data-app-state="desktop"] .app-panel[data-state="desktop"],
+html[data-app-state="unsupported"] .app-panel[data-state="unsupported"],
+html[data-app-state="signin"] .app-panel[data-state="signin"] { display: block; }
+
+/* The single authored moment: the buzz turning on. */
+html[data-app-state="subscribed"] .app-panel[data-state="subscribed"] {
+  animation: app-swap-in .2s cubic-bezier(.4, 0, .2, 1) both;
+}
+@keyframes app-swap-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html[data-app-state="subscribed"] .app-panel[data-state="subscribed"] { animation: none; }
+}
+
 /* === CCC ADMIN EYEBROW === */
 .admin-eyebrow {
   font-family: var(--font-teko);
@@ -9928,6 +10038,12 @@ main { flex: 1; }
   padding: .3rem 0;
 }
 
+/* Safe-area top inset for the notched-iPhone standalone app (viewport-fit=cover
+   + black-translucent status bar draws the app under the clock). env() is 0 in
+   a normal tab and on non-notched devices, so this is inert there. */
+.navbar { padding-top: calc(.65rem + env(safe-area-inset-top)); }
+.navbar-scrolled { padding-top: calc(.3rem + env(safe-area-inset-top)); }
+
 /* P3 S3.4 — orphan `.navbar-brand` block removed (was `style.css:~4019`).
    It painted the wordmark `var(--platform-accent) !important` (Commish Gold)
    plus `font-size: 1.35rem`, `font-weight: 700`, `letter-spacing: .08em`,
@@ -13866,6 +13982,9 @@ body.game-docket .form-select:focus {
   background: var(--bg-card);
   border-top: 2px solid var(--game-accent);
   box-shadow: var(--shadow-sticky-up);
+  /* Clear the home indicator in the notched-iPhone standalone app; inert (0)
+     in a normal tab and on non-notched devices. */
+  padding-bottom: env(safe-area-inset-bottom);
 }
 /* Two rows (impeccable critique 2026-09-01): the facts in words, then the
    ask. The "Sheet" handle draws its own caret so the bar reads as something

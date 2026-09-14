@@ -43,6 +43,13 @@
     </h1>
     <p class="greet-sub">Two games on the card. Play one, or play both.</p>
     {% endif %}
+    {% if current_user.is_authenticated %}
+    {# Distribution nudge for the installable app; push.js hides it once this
+       device is already subscribed. #}
+    <p class="greet-buzz js-buzz-link">
+      <a href="{{ url_for('push.app_page') }}">Get the buzz on your phone</a>
+    </p>
+    {% endif %}
   </div>
 
   <div class="hl-duo{% if headliners|length == 2 %} hl-duo--paired{% endif %}">

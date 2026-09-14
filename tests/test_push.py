@@ -287,6 +287,42 @@ def test_app_page_logged_in_shows_buzz_button(app, client):
     assert 'push-cta' in resp.get_data(as_text=True)
 
 
+def test_app_page_has_all_device_panels(app, client):
+    _, auth_id = _make_user(app)
+    _login(client, auth_id)
+    body = client.get('/app').get_data(as_text=True)
+    for state in ('tab', 'inapp', 'checking', 'unsubscribed', 'subscribed',
+                  'denied', 'desktop', 'unsupported', 'signin'):
+        assert f'data-state="{state}"' in body, state
+    # The pre-paint script decides the state before first paint.
+    assert 'data-app-state' in body
+
+
+def test_app_page_uses_letter_card_and_no_disabled_button(app, client):
+    _, auth_id = _make_user(app)
+    _login(client, auth_id)
+    body = client.get('/app').get_data(as_text=True)
+    assert 'auth-card--letter' in body
+    # "What buzzes" appears in the Safari-tab state only (design decision).
+    assert body.count('What buzzes') == 1
+    # No disabled CTA in any state (design review 5A).
+    assert 'disabled' not in body
+
+
+def test_settle_tab_external_links_carry_rel_noopener():
+    import re
+    from pathlib import Path
+    src = Path('templates/_settle_tab.html').read_text()
+    # The Venmo deep link opens externally; iOS must get a dismissable sheet,
+    # never a hijacked app window (design review 1A, test-locked). Every _blank
+    # anchor must carry rel=noopener — not merely both strings somewhere in src.
+    anchors = re.findall(r'<a\b[^>]*>', src)
+    blank = [a for a in anchors if 'target="_blank"' in a]
+    assert blank, 'expected at least one target="_blank" anchor'
+    for a in blank:
+        assert 'noopener' in a, f'_blank anchor missing rel=noopener: {a}'
+
+
 # ============================ routes: /push/test ============================
 
 def test_test_push_only_hits_callers_own_endpoint(app, client):
