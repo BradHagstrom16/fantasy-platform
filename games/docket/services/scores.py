@@ -27,7 +27,7 @@ from flask import current_app
 from sqlalchemy import select
 
 from extensions import db
-from games.docket.models import DocketGame, DocketWeek
+from games.docket.models import DocketGame, DocketPick, DocketWeek
 from games.docket.services.importer import SPORTS, decode_payload
 from utils.odds_api import OddsApiError, odds_api_get, sport_base_url
 
@@ -35,6 +35,26 @@ logger = logging.getLogger(__name__)
 
 # The Odds API refuses a larger lookback on /scores.
 MAX_DAYS_FROM = 3
+
+# Slots 1-8 score; slot 9 is the dormant reserve (D6) — never buzzed.
+_SCORING_SLOT_MAX = 8
+
+
+def _capture_side_results(game):
+    """Snapshot each scoring side's grading result from the game's CURRENT
+    (pre-overwrite) scores, so a correction can later push only the sides whose
+    result actually flips. Called only for a changed, already-final game (eng
+    review 9A), so an unchanged final game does no grading reads.
+
+    Returns {pick_id: result_value_or_None}. sheets is imported lazily to keep
+    the score sync's top-level import graph light.
+    """
+    from games.docket.services.sheets import _result, _snapshot
+    snap = _snapshot(game)
+    picks = db.session.scalars(
+        select(DocketPick).filter_by(game_id=game.id)
+        .where(DocketPick.slot <= _SCORING_SLOT_MAX)).all()
+    return {p.id: _result(p, game, snap) for p in picks}
 
 
 def _event_scores(event):
@@ -61,27 +81,42 @@ def _event_scores(event):
     return home, away
 
 
-def _apply_event(game, event, summary):
+def _apply_event(game, event, summary, verdicts):
     """Write one event's scores onto its game.
 
     ``is_final`` is one-way: once a game is final it stays final even if a
     later payload reports it in progress again. An already-graded week must
     never silently fall back to ungradeable because the feed flapped, and a
     real correction still lands (the scores themselves keep updating).
+
+    Appends a push verdict to ``verdicts`` when a completed event either flips
+    the game final (all sides are new) or corrects an already-final game's
+    scores (before-results captured pre-overwrite so the caller pushes only the
+    sides that flip). Presentation-only; never affects the write.
     """
     home, away = _event_scores(event)
     if home is None:
         summary['no_scores'] += 1
         return
     changed = (game.home_score, game.away_score) != (home, away)
+    old_final = game.is_final
+    completed = bool(event.get('completed'))
+    # Capture BEFORE the overwrite, only for a real correction to a final game.
+    before = (_capture_side_results(game)
+              if changed and old_final and completed else None)
     game.home_score = home
     game.away_score = away
-    if event.get('completed'):
+    if completed:
         if not game.is_final:
             game.is_final = True
             summary['finalized'] += 1
+            verdicts.append(
+                {'game_id': game.id, 'kind': 'flipped', 'before': None})
         else:
             summary['already_final'] += 1
+            if changed:
+                verdicts.append(
+                    {'game_id': game.id, 'kind': 'corrected', 'before': before})
     else:
         summary['in_progress'] += 1
     if changed:
@@ -124,6 +159,9 @@ def sync_scores(week_number, days_from=MAX_DAYS_FROM,
         'scores_written': 0, 'finalized': 0, 'already_final': 0,
         'in_progress': 0, 'no_scores': 0, 'unmatched': 0, 'errors': [],
     }
+    # Games to buzz this run (flipped-final ∪ corrected-final); read by the
+    # caller AFTER the commit via push_docket_verdicts. Additive to the summary.
+    verdicts = []
     sports_succeeded = 0
 
     for sport in SPORTS:
@@ -145,13 +183,14 @@ def sync_scores(week_number, days_from=MAX_DAYS_FROM,
                 if game is None:
                     summary['unmatched'] += 1
                     continue
-                _apply_event(game, event, summary)
+                _apply_event(game, event, summary, verdicts)
             sports_succeeded += 1
         except (OddsApiError, ValueError) as exc:
             logger.error('Docket score sync failed for %s: %s', sport, exc)
             summary['errors'].append(f'{sport}: {exc}')
 
     db.session.commit()
+    summary['verdict_games'] = verdicts
     if summary['errors']:
         summary['status'] = 'partial' if sports_succeeded else 'error'
     return summary

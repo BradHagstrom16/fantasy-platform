@@ -37,9 +37,14 @@ from flask import current_app
 from pywebpush import WebPushException, webpush
 
 from extensions import db
-from models.push import PushSubscription
 
 logger = logging.getLogger(__name__)
+
+# PushSubscription is imported lazily inside the two query functions, NOT at
+# module top level: importing models.push pulls models/__init__, which loads
+# the game blueprints, whose reminder modules import send_push from here — a
+# cycle that bites whenever utils.push is the first module in an import chain.
+# Lazy import keeps `import utils.push` free of any model/game import.
 
 # POST timeout to a single push service (seconds).
 PUSH_TIMEOUT_SEC = 10
@@ -170,6 +175,7 @@ def send_push(user_ids, *, title, body, url, tag, ttl, urgency,
     ids = list(user_ids)
     if not ids:
         return 0
+    from models.push import PushSubscription  # lazy: see module note
     try:
         subs = db.session.scalars(
             db.select(PushSubscription)
@@ -192,6 +198,7 @@ def send_push_to_endpoint(user_id, endpoint, *, title, body, url, tag):
     """Send a test push to ONE device — the row matching BOTH endpoint and
     user_id (so a member can never buzz another member's device). Returns 0 if
     no such row. Never raises. Shares the send path with send_push."""
+    from models.push import PushSubscription  # lazy: see module note
     try:
         sub = db.session.scalar(
             db.select(PushSubscription)

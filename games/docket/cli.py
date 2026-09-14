@@ -118,7 +118,10 @@ from games.docket.services.enrollment import (
 )
 from games.docket.services.grading_pass import try_grade_week
 from games.docket.services.importer import import_week
-from games.docket.services.notifications import notify_picks_open
+from games.docket.services.notifications import (
+    notify_picks_open,
+    push_docket_verdicts,
+)
 from games.docket.services.reminders import run_reminder_pass
 from games.docket.services.scores import sync_scores
 from games.docket.services.tiebreaker_rule import (
@@ -356,6 +359,8 @@ def _catch_up_previous_week(week_number, days_from):
     _echo_summary(f'docket sync --mode scores (week {previous.week_number}, '
                   'catch-up)', summary)
     if summary.get('status') != 'error':
+        # A Monday-night final graded Tuesday must buzz too (PR 4).
+        push_docket_verdicts(summary.get('verdict_games') or [])
         _grade(previous)
     return summary
 
@@ -366,6 +371,7 @@ def _run_scores(week_number, days_from):
     if summary.get('status') == 'error':
         _fail(f'score sync failed: {"; ".join(summary.get("errors", []))}')
 
+    push_docket_verdicts(summary.get('verdict_games') or [])
     _grade(_get_week(week_number))
     previous = _catch_up_previous_week(week_number, days_from)
     _check_sync_status(summary, 'score sync')

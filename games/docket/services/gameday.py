@@ -23,6 +23,7 @@ from games.docket.models import DocketGame, DocketWeek
 from games.docket.services.enrollment import roster_user_ids_as_of
 from games.docket.services.grading_pass import try_grade_week
 from games.docket.services.importer import SPORTS
+from games.docket.services.notifications import push_docket_verdicts
 from games.docket.services.picks import now_naive
 from games.docket.services.scores import sync_scores
 from games.gameday import GAME_COULD_HAVE_ENDED, GAME_DAY_WINDOW, GameDayConsumer
@@ -69,6 +70,9 @@ def apply(events_by_sport):
             raise RuntimeError(
                 f'week {week.week_number}: '
                 f'{"; ".join(summary.get("errors", []))}')
+        # Buzz the sides whose games just finaled (PR 4). After the sync
+        # commit; never raises, so a push cannot roll back the pass.
+        push_docket_verdicts(summary.get('verdict_games') or [])
         graded = try_grade_week(
             week.id, user_ids=roster_user_ids_as_of(week.deadline_at))
         results[week.week_number] = {'sync': summary, 'grade': graded}

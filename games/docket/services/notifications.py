@@ -29,7 +29,9 @@ import logging
 
 from flask import current_app
 from markupsafe import Markup
+from sqlalchemy import select
 
+from extensions import db
 from games.docket.services.payment import payment_nudge_for
 from games.docket.services.weeks import SEASON_YEAR
 from utils.email import send_platform_email
@@ -39,6 +41,7 @@ from utils.email_layout import (
     render_letter,
     tab_block,
 )
+from utils.push import send_push
 
 logger = logging.getLogger(__name__)
 
@@ -216,3 +219,70 @@ def notify_picks_open(week, recipients):
         ))
 
     return send_each(recipients, subject, build)
+
+
+# ---------------------------------------------------------------------------
+# Push feed (PR 4): the verdict stamp as a case finals
+# ---------------------------------------------------------------------------
+# Called after sync_scores commits, from gameday.apply and both CLI callers.
+# The copy is the clerk's: "Nebraska -3.5: WIN. 7 sheets had them." Never
+# raises (send_push swallows its own errors); an unreadable side is skipped.
+DOCKET_ROOM_URL = '/docket/'
+DOCKET_VERDICT_TTL = 6 * 3600
+_SCORING_SLOT_MAX = 8  # slots 1-8 score; slot 9 is the dormant reserve (D6)
+_RESULT_WORD = {'win': 'WIN', 'loss': 'LOSS', 'push': 'PUSH'}
+
+
+def push_docket_verdicts(verdict_games):
+    """Buzz each scoring side its verdict as its game finals.
+
+    ``verdict_games`` is sync_scores' return: entries {game_id, kind, before}
+    where kind is 'flipped' (all sides new) or 'corrected' (push only the sides
+    whose captured before-result differs from the after-result, so a cosmetic
+    score edit buzzes nothing).
+    """
+    try:
+        if not verdict_games:
+            return
+        from games.docket.models import DocketGame, DocketPick
+        from games.docket.services.sheets import _result, _snapshot
+        for entry in verdict_games:
+            try:
+                game = db.session.get(DocketGame, entry['game_id'])
+                if game is None:
+                    continue
+                snap = _snapshot(game)
+                if snap is None:
+                    continue  # not final / No Contest: nothing to stamp
+                picks = db.session.scalars(
+                    select(DocketPick).filter_by(game_id=game.id)
+                    .where(DocketPick.slot <= _SCORING_SLOT_MAX)).all()
+                # "N sheets had them" — how many sheets share each side.
+                side_counts = {}
+                for p in picks:
+                    key = (p.market, p.side)
+                    side_counts[key] = side_counts.get(key, 0) + 1
+                before = entry.get('before') or {}
+                corrected = entry.get('kind') == 'corrected'
+                for p in picks:
+                    after = _result(p, game, snap)
+                    word = _RESULT_WORD.get(after)
+                    if word is None:
+                        continue  # None / no_contest → no verdict to report
+                    if corrected and before.get(p.id) == after:
+                        continue  # this side did not flip
+                    n = side_counts.get((p.market, p.side), 1)
+                    send_push(
+                        [p.user_id],
+                        title=f'{_side_phrase(p, game)}: {word}.',
+                        body=f'{n} {"sheet" if n == 1 else "sheets"} had them.',
+                        url=DOCKET_ROOM_URL,
+                        tag=f'docket-game-{game.id}',
+                        ttl=DOCKET_VERDICT_TTL,
+                        urgency='high',
+                    )
+            except Exception:
+                logger.exception('Docket verdict push failed for game %s',
+                                 entry.get('game_id'))
+    except Exception:
+        logger.exception('push_docket_verdicts failed; verdicts not sent')
