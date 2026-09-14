@@ -21,7 +21,7 @@ import logging
 from datetime import timedelta
 
 from flask import current_app
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import joinedload
 
 from extensions import db
@@ -51,6 +51,7 @@ from utils.email_layout import (
     result_block,
     tab_block,
 )
+from utils.push import send_push
 from utils.reminders import tier_already_sent
 
 logger = logging.getLogger(__name__)
@@ -640,3 +641,100 @@ def _recap_letter(*, display_name, week_name, team_name, outcome, spread,
         cta=('View results', results_url),
         supporting=supporting,
     )
+
+
+# ---------------------------------------------------------------------------
+# Push feed (PR 3): the Saturday-night buzz
+# ---------------------------------------------------------------------------
+# CFB has no notifications module; the push copy lives here beside the email
+# twins. Called after process_week_results commits, from run_scores AND both
+# admin correction routes, so an admin re-grade re-pushes the corrected verdict
+# under the same per-game tag (which replaces the earlier notification on the
+# device). NEVER raises into the caller: send_push swallows its own errors and
+# the pool tally is garnish (a failed read falls back to a tally-free body).
+CFB_ROOM_URL = '/cfb/'
+VERDICT_TTL = 6 * 3600  # a verdict is stale after the evening; urgency high
+
+
+def _picked_team_display(game, team_id):
+    """The display name of the team a member picked, from the game row."""
+    if game is None:
+        return 'Your team'
+    if team_id == game.home_team_id:
+        return game.get_home_team_display()
+    return game.get_away_team_display()
+
+
+def push_survivor_verdicts(week, result):
+    """Buzz each member their game verdict and the elimination ceremony.
+
+    Three outcomes per straight-up graded pick (the spread is only the
+    cumulative tiebreaker, so the verb is "won"/"lost", never "covered"):
+    survive, lose a life, or the ceremony. A member eliminated on their game
+    gets the ceremony instead of a game verdict; a DQ-2 no-pick life loss that
+    does not eliminate buzzes nothing (no game, still alive).
+    """
+    try:
+        graded = result.get('graded') or []
+        eliminated = set(result.get('eliminated_user_ids') or [])
+        if not graded and not eliminated:
+            return
+        season = current_app.config.get('CFB_SEASON_YEAR', 2026)
+
+        graded_user_ids = {u for u, _, _, _ in graded}
+        game_ids = {g for _, g, _, _ in graded}
+        games = ({g.id: g for g in
+                  CfbGame.query.filter(CfbGame.id.in_(game_ids)).all()}
+                 if game_ids else {})
+        needed_users = graded_user_ids | eliminated
+        enr = ({e.user_id: e for e in CfbEnrollment.query.filter(
+                    CfbEnrollment.season_year == season,
+                    CfbEnrollment.user_id.in_(needed_users)).all()}
+               if needed_users else {})
+
+        # Pool tally is garnish: a failed read drops it, never the verdict.
+        tally = None
+        try:
+            survived = sum(1 for _, _, _, ok in graded if ok)
+            fell = (sum(1 for _, _, _, ok in graded if not ok)
+                    + len(eliminated - graded_user_ids))
+            remaining = db.session.scalar(
+                select(func.count()).select_from(CfbEnrollment).where(
+                    CfbEnrollment.season_year == season,
+                    CfbEnrollment.is_eliminated.is_(False)))
+            tally = {'survived': survived, 'fell': fell, 'remaining': remaining}
+        except Exception:
+            # A failed count poisons the session (Postgres aborts the txn);
+            # roll back so the fallback verdict pushes' own reads succeed.
+            db.session.rollback()
+            logger.warning('CFB verdict tally read failed; tally-free bodies',
+                           exc_info=True)
+
+        for user_id, game_id, team_id, is_correct in graded:
+            if user_id in eliminated:
+                continue  # the ceremony speaks for a run that ended
+            team = _picked_team_display(games.get(game_id), team_id)
+            if is_correct:
+                title = f'{team} won.'
+                body = 'You survive.'
+                if tally:
+                    others = max(tally['survived'] - 1, 0)
+                    body = (f'You survive. So do {others} others. '
+                            f'{tally["fell"]} fell. {tally["remaining"]} remain.')
+            else:
+                lives = enr[user_id].lives_remaining if user_id in enr else 0
+                title = f'{team} lost.'
+                body = f'You lose a life. {lives} left.'
+            send_push([user_id], title=title, body=body, url=CFB_ROOM_URL,
+                      tag=f'cfb-game-{game_id}', ttl=VERDICT_TTL, urgency='high')
+
+        remaining = tally['remaining'] if tally else None
+        for user_id in eliminated:
+            title = f'Your run ends at Week {week.week_number}.'
+            body = (f'{remaining} remain.' if remaining is not None
+                    else 'Your Survivor run is over.')
+            send_push([user_id], title=title, body=body, url=CFB_ROOM_URL,
+                      tag=f'cfb-elim-{week.week_number}', ttl=VERDICT_TTL,
+                      urgency='high')
+    except Exception:
+        logger.exception('push_survivor_verdicts failed; verdicts not sent')
