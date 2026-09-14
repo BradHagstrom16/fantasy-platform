@@ -2,7 +2,7 @@
 core/push/routes.py
 ===================
 The installable-app surface: the service worker, the web manifest, the /app
-install-and-buzz page, and the subscribe / unsubscribe / test JSON endpoints.
+install-and-wire page (The Wire), and the subscribe / unsubscribe / test JSON endpoints.
 
     /app STATE DECISION (server half only; push.js decides device facts)
     --------------------------------------------------------------------
@@ -84,7 +84,7 @@ def _test_endpoint_key() -> str:
 
 @push_bp.route('/app')
 def app_page():
-    """The install-and-buzz page. Anonymous callers see a sign-in prompt; the
+    """The install-and-wire page (The Wire). Anonymous callers see a sign-in prompt; the
     device-fact branching lives in push.js (PR 2 expands it)."""
     return render_template('push/app.html')
 
@@ -167,14 +167,14 @@ def unsubscribe():
 @login_required
 @limiter.limit('1 per minute', key_func=_test_endpoint_key)
 def test_push():
-    """Send the fixed 'This is the buzz.' push to ONE of the caller's own
-    devices (the posted endpoint), so a member can confirm the buzz works."""
+    """Send the fixed 'Message from the wire.' push to ONE of the caller's own
+    devices (the posted endpoint), so a member can confirm the wire works."""
     endpoint = _json_dict().get('endpoint')
     if not isinstance(endpoint, str) or not endpoint:
         return jsonify({'ok': False, 'error': 'missing_endpoint'}), 400
     delivered = send_push_to_endpoint(
         current_user.id, endpoint,
-        title='This is the buzz.',
+        title='Message from the wire.',
         body='See you Saturday. Tap to come back.',
         url='/app',
         tag='test',

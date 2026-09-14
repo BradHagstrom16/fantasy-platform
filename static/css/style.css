@@ -346,8 +346,8 @@ body.auth-page .alert-success {
   color: var(--success);
 }
 
-/* === /APP · THE BUZZ (installable app, PR 2) ===
-   The install-and-buzz page. Logged-in utility auth register with the
+/* === /APP · THE WIRE (installable app, PR 2) ===
+   The install-and-wire page. Logged-in utility auth register with the
    left-aligned Club Letter anatomy (.auth-card--letter): eyebrow -> H1 ->
    lede -> steps/facts -> one CTA -> supporting line. Two-Color Rule holds
    (purple + gold on bone, no third color). One authored motion: the
@@ -406,7 +406,7 @@ body.auth-page .auth-card--letter .auth-title { text-align: left; }
 }
 .app-turn-off:hover { color: var(--purple-700); text-decoration: underline; }
 
-/* Secondary outline button (test buzz): purple outline, never gray Bootstrap. */
+/* Secondary outline button (test dispatch): purple outline, never gray Bootstrap. */
 body.auth-page .app-secondary {
   background: transparent; border: 1.5px solid var(--purple-700); color: var(--purple-700);
   font-family: var(--font-teko); text-transform: uppercase; letter-spacing: .08em; font-weight: 600;
@@ -420,7 +420,7 @@ body.auth-page .app-secondary:hover { background: var(--purple-700); color: var(
 }
 .app-cta[aria-busy="true"] { opacity: .8; }
 
-/* Lounge / profile "Get the buzz" distribution link (push.js hides it on a
+/* Lounge / profile "Get on the wire" distribution link (push.js hides it on a
    device already subscribed). */
 .greet-buzz { margin: .6rem 0 0; }
 .greet-buzz a {
@@ -444,7 +444,7 @@ html[data-app-state="desktop"] .app-panel[data-state="desktop"],
 html[data-app-state="unsupported"] .app-panel[data-state="unsupported"],
 html[data-app-state="signin"] .app-panel[data-state="signin"] { display: block; }
 
-/* The single authored moment: the buzz turning on. */
+/* The single authored moment: getting on the wire. */
 html[data-app-state="subscribed"] .app-panel[data-state="subscribed"] {
   animation: app-swap-in .2s cubic-bezier(.4, 0, .2, 1) both;
 }

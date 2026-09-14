@@ -13,7 +13,7 @@ from models.user import User
 # Platform editorial content (admin-editable copy)
 from models.content import CommishNote
 
-# Web push subscriptions (installable-app buzz — platform-level, no game import)
+# Web push subscriptions (installable-app The Wire — platform-level, no game import)
 from models.push import PushSubscription
 
 # Golf Pick 'Em models

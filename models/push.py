@@ -3,7 +3,7 @@ Fantasy Sports Platform - Web Push Subscription Model
 ======================================================
 One row per (member, device). A browser hands us a push *subscription* — an
 endpoint URL at the member's push service plus two crypto keys — when they tap
-"Turn on the buzz" on /app. We store it against the User and send Web Push to it
+"Get on the wire" on /app. We store it against the User and send Web Push to it
 from the same systemd timers that send email (utils/push.py). Push is additive:
 a dead token here can never cost a member an email.
 

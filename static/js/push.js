@@ -3,7 +3,7 @@
  * On every page: registers the push-only service worker, and on a standalone
  * open bumps last_seen_at + clears the icon badge. On /app: resolves the
  * subscribed / unsubscribed / denied state that the pre-paint script left as
- * "checking", and wires the buzz button, the turn-off link, and the test buzz.
+ * "checking", and wires the wire button, the turn-off link, and the test dispatch.
  * Logout is intercepted everywhere so a shared device unsubscribes before the
  * next member signs in.
  */
@@ -120,7 +120,7 @@
   function restoreCta(btn) {
     btn.removeAttribute('aria-busy');
     btn.disabled = false;
-    btn.textContent = 'Turn on the buzz';
+    btn.textContent = 'Get on the wire';
   }
 
   function wireCta(reg) {
@@ -156,7 +156,7 @@
         reg.pushManager.getSubscription().then(function (s) { if (s) { s.unsubscribe(); } });
         restoreCta(btn);
         status('push-status',
-          'Couldn’t turn on the buzz. Try once more; email keeps coming either way.', true);
+          'Couldn’t get you on the wire. Try once more; email keeps coming either way.', true);
       });
     });
   }
@@ -180,12 +180,12 @@
       }).then(function (ok) {
         if (ok) {
           setState('unsubscribed');
-          status('push-status', 'The buzz is off on this phone.', false);
+          status('push-status', 'You’re off the wire on this phone.', false);
         } else {
-          status('push-status', 'Couldn’t turn the buzz off. Try once more.', true);
+          status('push-status', 'Couldn’t take you off the wire. Try once more.', true);
         }
       }).catch(function () {
-        status('push-status', 'Couldn’t turn the buzz off. Try once more.', true);
+        status('push-status', 'Couldn’t take you off the wire. Try once more.', true);
       });
     });
   }
@@ -196,7 +196,7 @@
     btn.addEventListener('click', function () {
       btn.disabled = true;
       reg.pushManager.getSubscription().then(function (sub) {
-        if (!sub) { status('push-test-status', 'Turn the buzz on first.', false); return; }
+        if (!sub) { status('push-test-status', 'Get on the wire first.', false); return; }
         return postJSON('/push/test', { endpoint: sub.endpoint }).then(function (resp) {
           // A followed login redirect reports resp.ok=true; only a genuine,
           // non-redirected 200 means the test actually sent.
@@ -240,7 +240,7 @@
     });
   }
 
-  // Hide the "Get the buzz" distribution links once this device is subscribed.
+  // Hide the "Get on the wire" distribution links once this device is subscribed.
   function hideBuzzLinkIfSubscribed(reg) {
     var links = document.querySelectorAll('.js-buzz-link');
     if (!links.length) { return; }

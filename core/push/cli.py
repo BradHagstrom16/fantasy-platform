@@ -1,6 +1,6 @@
 """`flask push *` — web push admin/debug commands.
 
-`push test --user <name>` hand-fires the fixed test buzz to every device a
+`push test --user <name>` hand-fires the fixed test dispatch to every device a
 member has armed, so the commish can confirm a real phone before the Club
 Letter without waiting for a game to go final.
 """
@@ -18,9 +18,9 @@ push_cli = AppGroup('push', help='Web push admin/debug commands.')
 
 @push_cli.command('test')
 @click.option('--user', 'identifier', required=True,
-              help='Username or email of the member to buzz.')
+              help='Username or email of the member to send to.')
 def test(identifier):
-    """Send the fixed test buzz to every device the member has subscribed."""
+    """Send the fixed test dispatch to every device the member has subscribed."""
     folded = normalize_identifier(identifier)
     user = db.session.scalar(
         select(User).where(func.lower(User.username) == folded))
@@ -32,7 +32,7 @@ def test(identifier):
         return
     delivered = send_push(
         [user.id],
-        title='This is the buzz.',
+        title='Message from the wire.',
         body='See you Saturday. Tap to come back.',
         url='/app',
         tag='test',

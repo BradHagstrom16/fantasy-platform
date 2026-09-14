@@ -14,6 +14,7 @@ CSRF is disabled in the testing config (WTF_CSRF_ENABLED=False), so the "require
 CSRF" half of the login+CSRF rule is not exercised here — no route is
 csrf-exempt, so it is protected in prod by default. Login is exercised.
 """
+import json
 import types
 from unittest.mock import patch
 
@@ -303,8 +304,12 @@ def test_app_page_uses_letter_card_and_no_disabled_button(app, client):
     _login(client, auth_id)
     body = client.get('/app').get_data(as_text=True)
     assert 'auth-card--letter' in body
-    # "What buzzes" appears in the Safari-tab state only (design decision).
-    assert body.count('What buzzes') == 1
+    # "What comes over the wire" appears in the Safari-tab state only (design decision).
+    assert body.count('What comes over the wire') == 1
+    # The feature is The Wire on every rendered surface; "buzz" never reaches a member.
+    assert 'The Wire' in body
+    assert 'Get on the wire' in body
+    assert 'buzz' not in body.lower()
     # No disabled CTA in any state (design review 5A).
     assert 'disabled' not in body
 
@@ -346,6 +351,12 @@ def test_test_push_delivers_to_own_endpoint(app, client):
         assert resp.status_code == 200
         assert resp.get_json()['delivered'] == 1
         wp.assert_called_once()
+        # The test dispatch speaks for The Wire; the body/url/tag are unchanged.
+        payload = json.loads(wp.call_args.kwargs['data'])
+        assert payload['title'] == 'Message from the wire.'
+        assert payload['body'] == 'See you Saturday. Tap to come back.'
+        assert payload['url'] == '/app'
+        assert payload['tag'] == 'test'
 
 
 def test_test_push_rate_limited_per_endpoint(app, client):

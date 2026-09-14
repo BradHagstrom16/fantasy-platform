@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block body_class %}auth-page{% endblock %}
 
-{% block title %}The Buzz · Corrupt Commish Club{% endblock %}
+{% block title %}The Wire · Corrupt Commish Club{% endblock %}
 
 {% block head %}
 {# Decide the visible state BEFORE first paint so a standalone open never
@@ -54,17 +54,17 @@
 
     {# ---- Safari tab: install steps (also the no-JS default) ---- #}
     <section class="app-panel" data-state="tab">
-      <span class="auth-eyebrow">Corrupt Commish Club · The Buzz</span>
+      <span class="auth-eyebrow">Corrupt Commish Club · The Wire</span>
       <h1 class="auth-title">Put the Club on your home screen</h1>
-      <p class="app-lede">Two taps. Then the Club can buzz you when your game goes
+      <p class="app-lede">Two taps. Then the Club can reach you on the wire when your game goes
         final and when a deadline is close.</p>
       <ol class="app-steps">
         <li>Tap <strong>Share</strong> (the box with the arrow) at the bottom of Safari.</li>
         <li>Choose <strong>Add to Home Screen</strong>, then <strong>Add</strong>.</li>
-        <li>Open <strong>CCC</strong> from your home screen and tap <em>Turn on the buzz</em>.</li>
+        <li>Open <strong>CCC</strong> from your home screen and tap <em>Get on the wire</em>.</li>
       </ol>
       <hr class="app-rule">
-      <h2 class="app-subhead">What buzzes</h2>
+      <h2 class="app-subhead">What comes over the wire</h2>
       <p class="app-body">Your pick's game going final. A deadline 24 hours and 1
         hour out when you haven't picked.</p>
       <p class="app-note">Picks open, recaps and receipts stay in your inbox.
@@ -75,7 +75,7 @@
 
     {# ---- iOS in-app browser: go to Safari first ---- #}
     <section class="app-panel" data-state="inapp">
-      <span class="auth-eyebrow">Corrupt Commish Club · The Buzz</span>
+      <span class="auth-eyebrow">Corrupt Commish Club · The Wire</span>
       <h1 class="auth-title">Open this in Safari first</h1>
       <p class="app-lede">This page can only add the Club to your home screen from
         Safari. Tap your browser's menu, then <strong>Open in Safari</strong>, and
@@ -85,27 +85,27 @@
       <ol class="app-steps">
         <li>Tap <strong>Share</strong> (the box with the arrow) at the bottom of Safari.</li>
         <li>Choose <strong>Add to Home Screen</strong>, then <strong>Add</strong>.</li>
-        <li>Open <strong>CCC</strong> from your home screen and tap <em>Turn on the buzz</em>.</li>
+        <li>Open <strong>CCC</strong> from your home screen and tap <em>Get on the wire</em>.</li>
       </ol>
       {{ back_to_lounge() }}
     </section>
 
     {# ---- Standalone, checking (transient until getSubscription resolves) ---- #}
     <section class="app-panel" data-state="checking">
-      <span class="auth-eyebrow">Corrupt Commish Club · The Buzz</span>
-      <h1 class="auth-title">The Buzz</h1>
+      <span class="auth-eyebrow">Corrupt Commish Club · The Wire</span>
+      <h1 class="auth-title">The Wire</h1>
       <p class="app-lede">Checking this phone.</p>
     </section>
 
-    {# ---- Standalone, unsubscribed: the buzz button ---- #}
+    {# ---- Standalone, unsubscribed: the wire button ---- #}
     <section class="app-panel" data-state="unsubscribed">
-      <span class="auth-eyebrow">Corrupt Commish Club · The Buzz</span>
+      <span class="auth-eyebrow">Corrupt Commish Club · The Wire</span>
       <h1 class="auth-title">You're in. One more tap.</h1>
       <p class="app-lede">This phone can hear the verdicts once you allow it. Your
         phone will ask; that's the Club.</p>
       <div class="app-cta-wrap">
         <button type="button" class="btn btn-primary btn-lg app-cta" id="push-cta">
-          Turn on the buzz
+          Get on the wire
         </button>
       </div>
       <p class="app-inline-status" id="push-status" role="status" aria-live="polite"></p>
@@ -114,22 +114,22 @@
       {{ back_to_lounge() }}
     </section>
 
-    {# ---- Standalone, subscribed: status + test buzz ---- #}
+    {# ---- Standalone, subscribed: status + test dispatch ---- #}
     <section class="app-panel" data-state="subscribed">
-      <span class="auth-eyebrow">Corrupt Commish Club · The Buzz</span>
-      <h1 class="auth-title">The buzz is on</h1>
+      <span class="auth-eyebrow">Corrupt Commish Club · The Wire</span>
+      <h1 class="auth-title">You're on the wire</h1>
       <div class="app-status-row">
         <span class="app-live-dot" aria-hidden="true"></span>
         <span class="app-status-label">This phone hears the Club</span>
         <button type="button" class="app-turn-off" id="push-turn-off">Turn off</button>
       </div>
       <p class="app-body">Next up: verdicts land the hour your game goes final,
-        Saturday and Sunday. A Thursday game buzzes Saturday.</p>
+        Saturday and Sunday. A Thursday game hits the wire Saturday.</p>
       <hr class="app-rule">
       <h2 class="app-subhead">Not hearing it?</h2>
       <div class="app-cta-wrap">
         <button type="button" class="btn btn-outline-secondary btn-lg app-secondary" id="push-test">
-          Send me a test buzz
+          Send a test dispatch
         </button>
       </div>
       <p class="app-inline-status" id="push-test-status" role="status" aria-live="polite"></p>
@@ -139,8 +139,8 @@
 
     {# ---- Denied ---- #}
     <section class="app-panel" data-state="denied">
-      <span class="auth-eyebrow">Corrupt Commish Club · The Buzz</span>
-      <h1 class="auth-title">The buzz is blocked on this phone</h1>
+      <span class="auth-eyebrow">Corrupt Commish Club · The Wire</span>
+      <h1 class="auth-title">You're off the wire</h1>
       <p class="app-lede" id="push-denied-lede">To turn it back on, open Settings,
         then Notifications, then CCC, and allow notifications. Then come back here.</p>
       {{ back_to_lounge() }}
@@ -148,27 +148,27 @@
 
     {# ---- Desktop ---- #}
     <section class="app-panel" data-state="desktop">
-      <span class="auth-eyebrow">Corrupt Commish Club · The Buzz</span>
-      <h1 class="auth-title">The buzz lives on your phone</h1>
+      <span class="auth-eyebrow">Corrupt Commish Club · The Wire</span>
+      <h1 class="auth-title">The wire lives on your phone</h1>
       <p class="app-lede">Open cccfantasy.com/app on your phone to add the Club to
-        your home screen and turn on the buzz.</p>
+        your home screen and get on the wire.</p>
       {{ back_to_lounge() }}
     </section>
 
     {# ---- Old iOS (installed but no Web Push) ---- #}
     <section class="app-panel" data-state="unsupported">
-      <span class="auth-eyebrow">Corrupt Commish Club · The Buzz</span>
-      <h1 class="auth-title">The buzz needs a newer iPhone</h1>
-      <p class="app-lede">This iPhone can't buzz, but email keeps coming either way.</p>
+      <span class="auth-eyebrow">Corrupt Commish Club · The Wire</span>
+      <h1 class="auth-title">The wire needs a newer iPhone</h1>
+      <p class="app-lede">This iPhone can't get on the wire, but email keeps coming either way.</p>
       {{ back_to_lounge() }}
     </section>
 
     {# ---- Signed out ---- #}
     <section class="app-panel" data-state="signin">
-      <span class="auth-eyebrow">Corrupt Commish Club · The Buzz</span>
+      <span class="auth-eyebrow">Corrupt Commish Club · The Wire</span>
       <h1 class="auth-title">Sign in first</h1>
       <p class="app-lede">Sign in, then come back here to put the Club on your phone
-        and turn on the buzz.</p>
+        and get on the wire.</p>
       <div class="app-cta-wrap">
         <a class="btn btn-primary btn-lg app-cta"
            href="{{ url_for('auth.login', next=url_for('push.app_page')) }}">Sign In</a>
