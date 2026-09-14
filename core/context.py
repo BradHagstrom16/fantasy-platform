@@ -79,5 +79,5 @@ def register_context_processors(app):
     @app.context_processor
     def inject_vapid_public_key():
         # Rendered as data-vapid-key on <body> for push.js. Blank when web push
-        # is unconfigured — push.js then never reveals the buzz button.
+        # is unconfigured — push.js then never reveals the wire button.
         return {'vapid_public_key': current_app.config.get('VAPID_PUBLIC_KEY', '')}

@@ -85,7 +85,7 @@ class Config:
     PAYMENT_VENMO_HANDLE = os.environ.get('PAYMENT_VENMO_HANDLE', 'Bradley-Hagstrom')
     PAYMENT_ZELLE_PHONE = os.environ.get('PAYMENT_ZELLE_PHONE', '(630) 408-3424')
 
-    # Web Push (installable-app "buzz" — utils/push.py). VAPID keypair signs
+    # Web Push (installable-app "The Wire" — utils/push.py). VAPID keypair signs
     # every push; the private key is a secret on the same footing as SECRET_KEY
     # (rotating it orphans every subscription). All three read via os.environ so
     # current_app.config.get() sees them — the MAIL_FROM_ADDRESS gotcha above.

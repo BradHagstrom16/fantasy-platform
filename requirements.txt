@@ -20,7 +20,7 @@ psycopg2-binary==2.9.12
 # as a deliberate direct dep — same footing as psycopg2-binary: a driver the
 # app needs in prod but never imports by name. Zero transitive deps.
 redis==8.1.0
-# Web Push (installable-app "buzz" — utils/push.py imports it by name). Pulls
+# Web Push (installable-app "The Wire" — utils/push.py imports it by name). Pulls
 # py-vapid, http-ece, cryptography, aiohttp and requests; all transitives are
 # pinned in constraints.txt. VAPID keys are generated locally (`vapid --gen`),
 # so py-vapid stays a transitive there, not a direct dep here.
