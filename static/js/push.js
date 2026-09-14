@@ -1,15 +1,18 @@
 /* Corrupt Commish Club — web push client.
  *
- * Registers the push-only service worker, wires the /app "Turn on the buzz"
- * button, bumps last_seen_at + clears the icon badge on every app open, and
- * intercepts logout so a shared device unsubscribes before the next member
- * signs in. PR 1 scope; PR 2 adds the full /app state machine on top.
+ * On every page: registers the push-only service worker, and on a standalone
+ * open bumps last_seen_at + clears the icon badge. On /app: resolves the
+ * subscribed / unsubscribed / denied state that the pre-paint script left as
+ * "checking", and wires the buzz button, the turn-off link, and the test buzz.
+ * Logout is intercepted everywhere so a shared device unsubscribes before the
+ * next member signs in.
  */
 (function () {
   'use strict';
 
   if (!('serviceWorker' in navigator)) { return; }
 
+  var el = document.documentElement;
   var VAPID_KEY = (document.body && document.body.dataset)
     ? (document.body.dataset.vapidKey || '') : '';
 
@@ -22,17 +25,14 @@
     return fetch(url, {
       method: 'POST',
       credentials: 'same-origin',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRFToken': csrfToken()
-      },
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken() },
       body: JSON.stringify(payload || {})
     });
   }
 
-  function urlBase64ToUint8Array(base64String) {
-    var padding = '='.repeat((4 - (base64String.length % 4)) % 4);
-    var base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  function keyBytes() {
+    var padding = '='.repeat((4 - (VAPID_KEY.length % 4)) % 4);
+    var base64 = (VAPID_KEY + padding).replace(/-/g, '+').replace(/_/g, '/');
     var raw = window.atob(base64);
     var out = new Uint8Array(raw.length);
     for (var i = 0; i < raw.length; i++) { out[i] = raw.charCodeAt(i); }
@@ -44,9 +44,6 @@
       || window.navigator.standalone === true;
   }
 
-  // The device can subscribe if the APIs exist and we have a key. On iOS the
-  // Notification API is exposed only to the installed (standalone) web app; on
-  // Android it exists in the browser tab too, so feature detection is the gate.
   function canSubscribe() {
     return VAPID_KEY && ('PushManager' in window) && ('Notification' in window);
   }
@@ -60,49 +57,117 @@
     return { endpoint: sub.endpoint, keys: json.keys };
   }
 
-  // Bump last_seen_at (pushsubscriptionchange is unreliable, so upsert on open).
+  function setState(s) { el.setAttribute('data-app-state', s); }
+
+  function status(id, msg, isError) {
+    var node = document.getElementById(id);
+    if (!node) { return; }
+    node.textContent = msg;
+    node.classList.toggle('is-error', !!isError);
+  }
+
+  function subscribe(reg) {
+    return reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: keyBytes()
+    });
+  }
+
+  // Bump last_seen_at on every standalone open (pushsubscriptionchange is
+  // unreliable, so upsert on open).
   function upsertOnOpen(reg) {
     reg.pushManager.getSubscription().then(function (sub) {
       if (sub) { postJSON('/push/subscribe', subscriptionPayload(sub)); }
     });
   }
 
-  function setStatus(msg) {
-    var el = document.getElementById('push-status');
-    if (el) { el.textContent = msg; }
+  // Resolve the last states the pre-paint script left as "checking".
+  function resolveAppState(reg) {
+    if (el.getAttribute('data-app-state') !== 'checking') { return; }
+    if (Notification.permission === 'denied') { setState('denied'); return; }
+    reg.pushManager.getSubscription().then(function (sub) {
+      if (sub) { setState('subscribed'); return; }
+      if (Notification.permission === 'granted' && canSubscribe()) {
+        // Granted but no subscription (revoked/expired) → silently re-subscribe.
+        return subscribe(reg)
+          .then(function (s) { return postJSON('/push/subscribe', subscriptionPayload(s)); })
+          .then(function () { setState('subscribed'); })
+          .catch(function () { setState('unsubscribed'); });
+      }
+      setState('unsubscribed');
+    }).catch(function () { setState('unsubscribed'); });
   }
 
-  function wireButton(reg) {
-    var wrap = document.getElementById('push-cta-wrap');
-    var btn = document.getElementById('push-cta');
-    if (!wrap || !btn) { return; }
-    if (!canSubscribe()) { return; }
-    wrap.hidden = false;
+  function restoreCta(btn) {
+    btn.removeAttribute('aria-busy');
+    btn.disabled = false;
+    btn.textContent = 'Turn on the buzz';
+  }
 
+  function wireCta(reg) {
+    var btn = document.getElementById('push-cta');
+    if (!btn) { return; }
     btn.addEventListener('click', function () {
-      // requestPermission MUST run inside the tap handler.
+      status('push-status', '', false);
+      btn.setAttribute('aria-busy', 'true');
+      btn.disabled = true;
+      btn.textContent = 'Turning on.';
       Notification.requestPermission().then(function (perm) {
-        if (perm !== 'granted') {
-          setStatus('The buzz is blocked on this phone. You can allow it in Settings.');
-          return;
-        }
-        return reg.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array(VAPID_KEY)
-        }).then(function (sub) {
+        if (perm === 'denied') { setState('denied'); return; }
+        if (perm !== 'granted') { restoreCta(btn); return; }  // dismissed: stay
+        return subscribe(reg).then(function (sub) {
           return postJSON('/push/subscribe', subscriptionPayload(sub)).then(function (resp) {
-            if (resp.ok) {
-              setStatus('The buzz is on. See you Saturday.');
-            } else {
-              // Never leave the phone half-armed.
-              sub.unsubscribe();
-              setStatus('Couldn’t turn on the buzz. Try once more; email keeps coming either way.');
-            }
+            if (resp.status === 401) { window.location.href = '/login?next=/app'; return; }
+            if (!resp.ok) { sub.unsubscribe(); throw new Error('subscribe post failed'); }
+            setState('subscribed');
           });
         });
       }).catch(function () {
-        setStatus('Couldn’t turn on the buzz. Try once more; email keeps coming either way.');
+        // Never leave the phone half-armed: drop the browser subscription.
+        reg.pushManager.getSubscription().then(function (s) { if (s) { s.unsubscribe(); } });
+        restoreCta(btn);
+        status('push-status',
+          'Couldn’t turn on the buzz. Try once more; email keeps coming either way.', true);
       });
+    });
+  }
+
+  function wireTurnOff(reg) {
+    var btn = document.getElementById('push-turn-off');
+    if (!btn) { return; }
+    btn.addEventListener('click', function () {
+      reg.pushManager.getSubscription().then(function (sub) {
+        var endpoint = sub && sub.endpoint;
+        var done = sub ? sub.unsubscribe() : Promise.resolve();
+        return done.then(function () {
+          if (endpoint) { return postJSON('/push/unsubscribe', { endpoint: endpoint }); }
+        });
+      }).catch(function () {}).finally(function () {
+        setState('unsubscribed');
+        status('push-status', 'The buzz is off on this phone.', false);
+      });
+    });
+  }
+
+  function wireTest(reg) {
+    var btn = document.getElementById('push-test');
+    if (!btn) { return; }
+    btn.addEventListener('click', function () {
+      btn.disabled = true;
+      reg.pushManager.getSubscription().then(function (sub) {
+        if (!sub) { status('push-test-status', 'Turn the buzz on first.', false); return; }
+        return postJSON('/push/test', { endpoint: sub.endpoint }).then(function (resp) {
+          if (resp.ok) {
+            status('push-test-status', 'Sent. Lock your phone; it lands in a few seconds.', false);
+          } else if (resp.status === 429) {
+            status('push-test-status', 'Already sent one. Give it a minute.', false);
+          } else {
+            status('push-test-status', 'Couldn’t send the test. Email keeps coming either way.', true);
+          }
+        });
+      }).catch(function () {
+        status('push-test-status', 'Couldn’t send the test.', true);
+      }).finally(function () { btn.disabled = false; });
     });
   }
 
@@ -112,12 +177,9 @@
     links.forEach(function (link) {
       link.addEventListener('click', function (event) {
         var href = link.getAttribute('href');
-        if (!('serviceWorker' in navigator)) { return; }
         event.preventDefault();
-        // getRegistration (not .ready): .ready never resolves when no worker is
-        // active, which would hang this preventDefault()'d logout forever.
-        navigator.serviceWorker.getRegistration().then(function (reg) {
-          return reg ? reg.pushManager.getSubscription() : null;
+        navigator.serviceWorker.ready.then(function (reg) {
+          return reg.pushManager.getSubscription();
         }).then(function (sub) {
           if (!sub) { return null; }
           var endpoint = sub.endpoint;
@@ -131,14 +193,28 @@
     });
   }
 
+  // Hide the "Get the buzz" distribution links once this device is subscribed.
+  function hideBuzzLinkIfSubscribed(reg) {
+    var links = document.querySelectorAll('.js-buzz-link');
+    if (!links.length) { return; }
+    reg.pushManager.getSubscription().then(function (sub) {
+      if (sub) { links.forEach(function (n) { n.hidden = true; }); }
+    }).catch(function () {});
+  }
+
   window.addEventListener('load', function () {
     navigator.serviceWorker.register('/sw.js', { scope: '/' }).then(function (reg) {
-      wireButton(reg);
-      // Refresh last_seen_at on every open — including a browser tab, where
-      // Android subscribes — so in-tab subscriptions aren't the unfair eviction
-      // target. The icon badge only exists for the installed app.
-      upsertOnOpen(reg);
-      if (isStandalone()) { clearBadge(); }
+      if (isStandalone()) {
+        upsertOnOpen(reg);
+        clearBadge();
+      }
+      if (document.querySelector('.app-card')) {
+        resolveAppState(reg);
+        wireCta(reg);
+        wireTurnOff(reg);
+        wireTest(reg);
+      }
+      hideBuzzLinkIfSubscribed(reg);
     }).catch(function () { /* registration failed; email still works */ });
     wireLogout();
   });
