@@ -220,14 +220,15 @@ def test_unsubscribe_non_string_endpoint_is_noop_not_error(app, client):
         assert db.session.query(PushSubscription).filter_by(user_id=uid).count() == 1
 
 
-def test_test_push_non_string_endpoint_does_not_500(app, client):
-    """A non-string endpoint must not crash the rate-limit key func (.encode on
-    a non-str) — the request resolves cleanly rather than 500-ing."""
+def test_test_push_non_string_endpoint_rejected(app, client):
+    """A non-string endpoint is rejected at the boundary with the missing_endpoint
+    400 (and never crashes the rate-limit key func via .encode on a non-str)."""
     uid, auth_id = _make_user(app)
     _login(client, auth_id)
     with patch('utils.push.webpush') as wp, patch.dict(app.config, _VAPID):
         resp = client.post('/push/test', json={'endpoint': [1, 2]})
-        assert resp.status_code == 404  # no matching row; never a 500
+        assert resp.status_code == 400
+        assert resp.get_json()['error'] == 'missing_endpoint'
         wp.assert_not_called()
 
 

@@ -169,9 +169,8 @@ def unsubscribe():
 def test_push():
     """Send the fixed 'This is the buzz.' push to ONE of the caller's own
     devices (the posted endpoint), so a member can confirm the buzz works."""
-    data = _json_dict()
-    endpoint = data.get('endpoint')
-    if not endpoint:
+    endpoint = _json_dict().get('endpoint')
+    if not isinstance(endpoint, str) or not endpoint:
         return jsonify({'ok': False, 'error': 'missing_endpoint'}), 400
     delivered = send_push_to_endpoint(
         current_user.id, endpoint,
