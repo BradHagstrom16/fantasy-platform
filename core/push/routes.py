@@ -76,9 +76,8 @@ def _test_endpoint_key() -> str:
     """Rate-limit key for /push/test: the sha256 of the posted endpoint, so the
     quota is per device — extensions.limiter keys on the client IP, and every
     phone on one household's Wi-Fi would otherwise share it."""
-    data = _json_dict()
-    endpoint = data.get('endpoint') or ''
-    if endpoint:
+    endpoint = _json_dict().get('endpoint')
+    if isinstance(endpoint, str) and endpoint:
         return 'pushtest:' + hashlib.sha256(endpoint.encode('utf-8')).hexdigest()
     return 'pushtest:' + (request.remote_addr or 'anon')
 
@@ -154,9 +153,10 @@ def subscribe():
 def unsubscribe():
     """Delete only THIS device's row (other devices stay armed). Scoped to the
     current user so a guessed endpoint can't drop someone else's subscription."""
-    data = _json_dict()
-    endpoint = data.get('endpoint')
-    if endpoint:
+    endpoint = _json_dict().get('endpoint')
+    # Idempotent by design: a missing endpoint is a no-op 200. Guard the type so
+    # a non-string value can never reach the query as a bad bind param.
+    if isinstance(endpoint, str) and endpoint:
         db.session.query(PushSubscription).filter_by(
             endpoint=endpoint, user_id=current_user.id).delete()
         db.session.commit()

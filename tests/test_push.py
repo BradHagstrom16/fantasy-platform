@@ -207,6 +207,30 @@ def test_unsubscribe_deletes_only_posted_endpoint(app, client):
         assert left == {_APPLE + 'keep'}
 
 
+def test_unsubscribe_non_string_endpoint_is_noop_not_error(app, client):
+    """A non-string endpoint value must not reach the query as a bad bind param;
+    unsubscribe stays an idempotent 200."""
+    uid, auth_id = _make_user(app)
+    _make_sub(app, uid, _APPLE + 'keep')
+    _login(client, auth_id)
+    for bad in ([_APPLE + 'x'], {'a': 1}, 123):
+        resp = client.post('/push/unsubscribe', json={'endpoint': bad})
+        assert resp.status_code == 200, bad
+    with app.app_context():
+        assert db.session.query(PushSubscription).filter_by(user_id=uid).count() == 1
+
+
+def test_test_push_non_string_endpoint_does_not_500(app, client):
+    """A non-string endpoint must not crash the rate-limit key func (.encode on
+    a non-str) — the request resolves cleanly rather than 500-ing."""
+    uid, auth_id = _make_user(app)
+    _login(client, auth_id)
+    with patch('utils.push.webpush') as wp, patch.dict(app.config, _VAPID):
+        resp = client.post('/push/test', json={'endpoint': [1, 2]})
+        assert resp.status_code == 404  # no matching row; never a 500
+        wp.assert_not_called()
+
+
 def test_unsubscribe_cannot_delete_another_users_row(app, client):
     a_id, _ = _make_user(app, 'alice')
     b_id, b_auth = _make_user(app, 'bob')

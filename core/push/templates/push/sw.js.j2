@@ -56,7 +56,9 @@ self.addEventListener('notificationclick', function (event) {
           // focus() called synchronously either way (keeps its transient
           // activation); navigate() tracked alongside it so the tap survives.
           if ('navigate' in client) {
-            return Promise.all([client.navigate(target), client.focus()]);
+            // allSettled, not all: a navigate() rejection must not reject the
+            // waitUntil promise or discard the focus() that already fired.
+            return Promise.allSettled([client.navigate(target), client.focus()]);
           }
           return client.focus();
         }
