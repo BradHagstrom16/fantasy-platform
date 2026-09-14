@@ -310,12 +310,17 @@ def test_app_page_uses_letter_card_and_no_disabled_button(app, client):
 
 
 def test_settle_tab_external_links_carry_rel_noopener():
+    import re
     from pathlib import Path
     src = Path('templates/_settle_tab.html').read_text()
     # The Venmo deep link opens externally; iOS must get a dismissable sheet,
-    # never a hijacked app window (design review 1A, test-locked).
-    assert 'target="_blank"' in src
-    assert 'rel="noopener"' in src
+    # never a hijacked app window (design review 1A, test-locked). Every _blank
+    # anchor must carry rel=noopener — not merely both strings somewhere in src.
+    anchors = re.findall(r'<a\b[^>]*>', src)
+    blank = [a for a in anchors if 'target="_blank"' in a]
+    assert blank, 'expected at least one target="_blank" anchor'
+    for a in blank:
+        assert 'noopener' in a, f'_blank anchor missing rel=noopener: {a}'
 
 
 # ============================ routes: /push/test ============================

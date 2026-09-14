@@ -30,6 +30,15 @@
     });
   }
 
+  // A followed login redirect (302 -> /login) or any non-ok response is NOT a
+  // genuine API success even though fetch reports resp.ok. Resolve true only for
+  // a same-origin, non-redirected {ok:true} JSON body.
+  function postedOk(resp) {
+    if (resp.redirected || !resp.ok) { return Promise.resolve(false); }
+    return resp.json().then(function (j) { return !!(j && j.ok); },
+                            function () { return false; });
+  }
+
   function keyBytes() {
     var padding = '='.repeat((4 - (VAPID_KEY.length % 4)) % 4);
     var base64 = (VAPID_KEY + padding).replace(/-/g, '+').replace(/_/g, '/');
@@ -77,7 +86,10 @@
   // unreliable, so upsert on open).
   function upsertOnOpen(reg) {
     reg.pushManager.getSubscription().then(function (sub) {
-      if (sub) { postJSON('/push/subscribe', subscriptionPayload(sub)); }
+      // Best-effort heartbeat: validate the response so a lapsed session no
+      // longer reads as success, but never flip state or drop the local sub —
+      // the user stays subscribed pending re-auth.
+      if (sub) { postJSON('/push/subscribe', subscriptionPayload(sub)).then(postedOk); }
     });
   }
 
@@ -89,10 +101,17 @@
       if (sub) { setState('subscribed'); return; }
       if (Notification.permission === 'granted' && canSubscribe()) {
         // Granted but no subscription (revoked/expired) → silently re-subscribe.
-        return subscribe(reg)
-          .then(function (s) { return postJSON('/push/subscribe', subscriptionPayload(s)); })
-          .then(function () { setState('subscribed'); })
-          .catch(function () { setState('unsubscribed'); });
+        // Background path: any failure (incl. a lapsed session) falls back to
+        // unsubscribed without a jarring redirect, dropping the orphan sub.
+        return subscribe(reg).then(function (s) {
+          return postJSON('/push/subscribe', subscriptionPayload(s))
+            .then(postedOk)
+            .then(function (ok) {
+              if (ok) { setState('subscribed'); return; }
+              s.unsubscribe().catch(function () {});
+              setState('unsubscribed');
+            });
+        }).catch(function () { setState('unsubscribed'); });
       }
       setState('unsubscribed');
     }).catch(function () { setState('unsubscribed'); });
@@ -117,9 +136,19 @@
         if (perm !== 'granted') { restoreCta(btn); return; }  // dismissed: stay
         return subscribe(reg).then(function (sub) {
           return postJSON('/push/subscribe', subscriptionPayload(sub)).then(function (resp) {
-            if (resp.status === 401) { window.location.href = '/login?next=/app'; return; }
-            if (!resp.ok) { sub.unsubscribe(); throw new Error('subscribe post failed'); }
-            setState('subscribed');
+            // Interactive path: a lapsed session (followed 302 → /login) routes
+            // to sign-in; any other failure drops the sub and throws to the
+            // catch below for the retry message.
+            if (resp.redirected) {
+              sub.unsubscribe().catch(function () {});
+              window.location.href = '/login?next=/app';
+              return;
+            }
+            return postedOk(resp).then(function (ok) {
+              if (ok) { setState('subscribed'); return; }
+              sub.unsubscribe().catch(function () {});
+              throw new Error('subscribe post failed');
+            });
           });
         });
       }).catch(function () {
@@ -136,15 +165,27 @@
     var btn = document.getElementById('push-turn-off');
     if (!btn) { return; }
     btn.addEventListener('click', function () {
+      // Only report "off" when BOTH local unsubscribe and server cleanup
+      // succeed — a lapsed session (followed 302) or a false unsubscribe() is
+      // a failure, not a silent success.
       reg.pushManager.getSubscription().then(function (sub) {
-        var endpoint = sub && sub.endpoint;
-        var done = sub ? sub.unsubscribe() : Promise.resolve();
-        return done.then(function () {
-          if (endpoint) { return postJSON('/push/unsubscribe', { endpoint: endpoint }); }
+        if (!sub) { return true; }  // nothing local to clear → already off
+        var endpoint = sub.endpoint;
+        return sub.unsubscribe().then(function (dropped) {
+          if (!dropped) { return false; }
+          return postJSON('/push/unsubscribe', { endpoint: endpoint }).then(function (resp) {
+            return !resp.redirected && resp.ok;
+          });
         });
-      }).catch(function () {}).finally(function () {
-        setState('unsubscribed');
-        status('push-status', 'The buzz is off on this phone.', false);
+      }).then(function (ok) {
+        if (ok) {
+          setState('unsubscribed');
+          status('push-status', 'The buzz is off on this phone.', false);
+        } else {
+          status('push-status', 'Couldn’t turn the buzz off. Try once more.', true);
+        }
+      }).catch(function () {
+        status('push-status', 'Couldn’t turn the buzz off. Try once more.', true);
       });
     });
   }
@@ -157,10 +198,14 @@
       reg.pushManager.getSubscription().then(function (sub) {
         if (!sub) { status('push-test-status', 'Turn the buzz on first.', false); return; }
         return postJSON('/push/test', { endpoint: sub.endpoint }).then(function (resp) {
-          if (resp.ok) {
+          // A followed login redirect reports resp.ok=true; only a genuine,
+          // non-redirected 200 means the test actually sent.
+          if (resp.ok && !resp.redirected) {
             status('push-test-status', 'Sent. Lock your phone; it lands in a few seconds.', false);
-          } else if (resp.status === 429) {
+          } else if (resp.status === 429) {  // rate-limited; never redirected
             status('push-test-status', 'Already sent one. Give it a minute.', false);
+          } else if (resp.redirected) {
+            status('push-test-status', 'Please sign in again to send the test.', false);
           } else {
             status('push-test-status', 'Couldn’t send the test. Email keeps coming either way.', true);
           }
@@ -178,8 +223,10 @@
       link.addEventListener('click', function (event) {
         var href = link.getAttribute('href');
         event.preventDefault();
-        navigator.serviceWorker.ready.then(function (reg) {
-          return reg.pushManager.getSubscription();
+        // getRegistration() (not .ready) so logout still completes when no
+        // worker is active — .ready never resolves without one, hanging the nav.
+        navigator.serviceWorker.getRegistration().then(function (reg) {
+          return reg ? reg.pushManager.getSubscription() : null;
         }).then(function (sub) {
           if (!sub) { return null; }
           var endpoint = sub.endpoint;
