@@ -42,6 +42,7 @@ from games.cfb.services.game_logic import (
 from games.cfb.services.history import get_season_2025
 from games.cfb.services.payment import payment_nudge_for
 from games.cfb.services.receipts import send_pick_receipt
+from games.cfb.services.reminders import push_survivor_verdicts
 from games.cfb.services.score_fetcher import ScoreFetcher
 from games.cfb.services.week_state import (
     LOCKED,
@@ -1352,6 +1353,7 @@ def admin_mark_results(week_id):
 
         result = process_week_results(week_id)
         if result.get("success"):
+            push_survivor_verdicts(week, result)
             flash(f'Results for Week {week.week_number} have been recorded!', 'success')
             _flash_corrections(corrected_games, picks_reversed)
             _flash_processing_outcomes(result)
@@ -1437,6 +1439,8 @@ def admin_apply_scores(week_id):
     # completes the week once every game is settled. A corrected ruling
     # had its picks reversed above, so they grade again here.
     result = process_week_results(week_id)
+    if result.get("success"):
+        push_survivor_verdicts(week, result)
     if not result.get("success"):
         flash(f'Scores saved but result processing failed: {result.get("error")}', 'error')
     elif result.get("completed"):

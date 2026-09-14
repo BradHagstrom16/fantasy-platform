@@ -13,6 +13,7 @@ from extensions import db
 from games.cfb.constants import API_BASE_URL, TEAM_NAME_MAP
 from games.cfb.models import CfbGame, CfbWeek
 from games.cfb.services.game_logic import process_week_results
+from games.cfb.services.reminders import push_survivor_verdicts
 from games.cfb.utils import deadline_has_passed, make_aware
 from utils.odds_api import OddsApiError, odds_api_get
 
@@ -290,6 +291,10 @@ class ScoreFetcher:
                 'fetch_results': fetch_results,
                 'apply_results': apply_results,
             }
+
+        # Buzz the graded verdicts + any elimination ceremony (PR 3). After the
+        # grading commit, never raises; a push failure cannot fail the pass.
+        push_survivor_verdicts(week, result)
 
         if result.get("completed"):
             return {

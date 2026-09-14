@@ -54,6 +54,10 @@ def create_app(config_name=None):
     app.register_blueprint(admin_bp)
     app.register_blueprint(push_bp)
 
+    # Web push CLI (flask push test --user ...)
+    from core.push.cli import register_push_cli
+    register_push_cli(app)
+
     # Register golf blueprint
     from games.golf import golf_bp
     app.register_blueprint(golf_bp)

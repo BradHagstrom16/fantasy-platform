@@ -273,7 +273,9 @@ def process_week_results(week_id, season_year=None):
     a wipe with nobody eligible to revive is surfaced via pool_empty.
 
     Returns dict: success, already_complete, processed (picks graded this
-    run), completed, no_pick_penalties, revived, pool_empty.
+    run), completed, no_pick_penalties, revived, pool_empty, plus the push
+    feed graded [(user_id, game_id, team_id, is_correct)] and
+    eliminated_user_ids (this-run False->True diff, post-revival).
     """
     week = db.session.get(CfbWeek, week_id)
     if not week:
@@ -284,6 +286,10 @@ def process_week_results(week_id, season_year=None):
         "success": True, "already_complete": False, "processed": 0,
         "completed": False, "no_pick_penalties": 0, "revived": 0,
         "pool_empty": False,
+        # Push feed (PR 3): per-pick grading results and the this-run
+        # False->True elimination diff, consumed by push_survivor_verdicts.
+        # Presentation-only — never gates grading. Empty on every early return.
+        "graded": [], "eliminated_user_ids": [],
     }
     if week.is_complete:
         return {**result, "already_complete": True}
@@ -308,6 +314,9 @@ def process_week_results(week_id, season_year=None):
             season_year=season_year
         ).all()
         enrollment_by_user = {e.user_id: e for e in season_enrollments}
+        # Snapshot elimination BEFORE any mutation, for the this-run
+        # False->True diff (a Week-3 casualty is never re-buzzed in Week 4).
+        was_eliminated = {e.user_id: e.is_eliminated for e in season_enrollments}
 
         # Team-keyed lookup of gradeable games (decided, not No Contest)
         games = CfbGame.query.filter_by(week_id=week_id).all()
@@ -320,6 +329,7 @@ def process_week_results(week_id, season_year=None):
                     games_by_team[game.away_team_id] = game
 
         graded = 0
+        graded_details = []
         for pick in picks:
             if pick.is_correct is not None:
                 continue  # graded on a previous run — never re-grade
@@ -332,6 +342,8 @@ def process_week_results(week_id, season_year=None):
                 else not game.home_team_won
             )
             graded += 1
+            graded_details.append(
+                (pick.user_id, game.id, pick.team_id, pick.is_correct))
 
             if not pick.is_correct:
                 enrollment = enrollment_by_user.get(pick.user_id)
@@ -425,6 +437,15 @@ def process_week_results(week_id, season_year=None):
                     no_pick=enrollment.user_id in no_pick_user_ids,
                     revived=enrollment.user_id in revived_user_ids,
                 ))
+
+        # Push feed: what to buzz this run. The elimination diff is computed
+        # AFTER all mutations incl. the DQ-1 revival (revived users flip back to
+        # not-eliminated, so they never buzz the ceremony).
+        result["graded"] = graded_details
+        result["eliminated_user_ids"] = [
+            uid for uid, e in enrollment_by_user.items()
+            if e.is_eliminated and not was_eliminated.get(uid, False)
+        ]
 
         db.session.commit()
         return result
