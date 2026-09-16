@@ -5062,6 +5062,14 @@ body.game-cfb .alert-warning { background: rgba(243,239,230,.05); border-color: 
   letter-spacing: .04em;
   padding: .3em .65em;
 }
+/* The full-width eliminated badges carry a member display name (the Fallen
+   Competitors / Eliminated Players grids). Bootstrap's base .badge sets
+   white-space: nowrap, so a long name overran its col-6 cell at 375px; let the
+   name wrap. The short "OUT" stamp usages keep nowrap (Brad, 2026-09-16). */
+.badge-eliminated.w-100 {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
 
 /* Extra-small badge */
 .badge-xs {
@@ -5460,7 +5468,9 @@ body.game-cfb .alert-warning { background: rgba(243,239,230,.05); border-color: 
   font-size: .95rem;
   line-height: 1.5;
   color: var(--cfb-bone-muted);
-  max-width: 68ch;
+  /* A longer explainer above the game board: a bounded wide measure so it uses
+     the width and drops a line, not a full-container reading line (Brad, 2026-09-16). */
+  max-width: 100ch;
   margin: -.35rem 0 1rem;
 }
 .cfb-slate-title { margin: 0; line-height: 1.2; }
@@ -5968,7 +5978,8 @@ body.game-cfb .cfb-verdict.animate-in .cfb-verdict-chip {
   font-size: .96rem;
   line-height: 1.5;
   color: var(--cfb-bone-muted);
-  max-width: 60ch;
+  /* One sentence above the picks grid: span the container so it stays on one
+     line on desktop instead of wrapping beside empty whitespace (Brad, 2026-09-16). */
 }
 /* The lives pip row is the survivor signal -- give it a half-step of scale in
    the lead so "am I alive" reads before the prose. */
