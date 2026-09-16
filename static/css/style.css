@@ -14539,7 +14539,8 @@ body.game-docket .form-select:focus {
   font-family: 'Newsreader', Georgia, serif;
   font-size: 1.05rem;
   color: var(--text-secondary);
-  max-width: 62ch;
+  /* One sentence: span the container so it sits on a single line on desktop
+     rather than wrapping a word or two beside empty whitespace (Brad, 2026-09-16). */
   margin: 1.5rem 0 1rem;
 }
 .docket-your-standing strong { color: var(--game-primary); font-weight: 600; }
@@ -14618,7 +14619,9 @@ body.game-docket .form-select:focus {
   font-family: 'Newsreader', Georgia, serif;
   font-size: .92rem;
   color: var(--text-secondary);
-  max-width: 68ch;
+  /* A longer explainer: a bounded wide measure, not a full-container line
+     (Brad, 2026-09-16). */
+  max-width: 100ch;
   margin-bottom: 1rem;
 }
 .docket-entry { border-bottom: 1px solid var(--docket-rule); }
@@ -14915,7 +14918,10 @@ body.game-docket .form-select:focus {
    the ledger teaches its own ranking rather than sending the reader to the
    rules page. Replaces the head "Key 1/2/3" tags. --- */
 .docket-ledger-key {
-  max-width: 66ch;
+  /* A longer explainer: a bounded wide measure so it uses the horizontal
+     whitespace and drops a line, without a full-container reading measure
+     (Brad, 2026-09-16). */
+  max-width: 100ch;
   margin: .25rem 0 1rem;
 }
 .docket-ledger-key strong { color: var(--game-primary); font-weight: 600; }
@@ -14980,7 +14986,8 @@ body.game-docket .form-select:focus {
    so the head and every summary share one grid to line the columns up. The
    drawer body reuses the All Sheets sheet-line primitive unchanged. */
 .docket-board { margin: 0 0 1rem; }
-.docket-board-note { margin: 0 0 .6rem; max-width: 66ch; }
+/* One sentence: span the container, one line on desktop (Brad, 2026-09-16). */
+.docket-board-note { margin: 0 0 .6rem; }
 .docket-board-note strong { color: var(--game-accent); }
 .docket-board--cards { list-style: none; padding: 0; }
 
@@ -15307,7 +15314,8 @@ body.game-docket .back-link:focus-visible {
 
 .docket-purse-line {
   font-size: .92rem;
-  max-width: 68ch;
+  /* One sentence: span the container (one line on desktop). Shared partial, so
+     this also un-wraps the purse where it heads My Sheet (Brad, 2026-09-16). */
   margin: .85rem 0 0;
 }
 .docket-purse-line a {
@@ -15341,6 +15349,10 @@ body.game-docket .back-link:focus-visible {
 .docket-verdict-names {
   font-family: 'Newsreader', Georgia, serif;
   font-size: 1rem;
+  /* The row reuses the .docket-verdict stamp class, which sets white-space:
+     nowrap (14151); reset it here so a winner name (or a two-name split) wraps
+     instead of overrunning the viewport at 375px (Brad, 2026-09-16). */
+  white-space: normal;
   overflow-wrap: anywhere;
 }
 /* Below sm the note takes its own line under the names; from sm up the
