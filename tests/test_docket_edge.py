@@ -86,30 +86,53 @@ def test_key_number_flag_only_for_nfl_crossings():
     assert cfb['key_cross'] == []
 
 
+def test_key_number_flag_survives_a_favorite_flip():
+    # -4 -> +4 crosses 3 (and 0); taking abs() first would collapse both
+    # endpoints to 4 and report nothing.
+    assert edge._crosses_key_numbers(-4.0, 4.0) == [3]
+    # a bigger swing crosses several magnitudes
+    assert edge._crosses_key_numbers(-8.0, 8.0) == [3, 6, 7]
+    # same-signed move still reads the magnitude it passed
+    assert edge._crosses_key_numbers(-6.0, -2.0) == [3]
+
+
 def test_pickable_filters_started_final_and_nc():
     submit = datetime(2026, 9, 18, 12, 0, tzinfo=UTC)
+    deadline = datetime(2027, 1, 1, tzinfo=UTC)  # far off — isolates the other checks
     future = _game(kickoff=datetime(2026, 9, 20, 17, 0, tzinfo=UTC))
     past = _game(kickoff=datetime(2026, 9, 17, 17, 0, tzinfo=UTC))
-    assert edge.is_pickable(future, submit) is True
-    assert edge.is_pickable(past, submit) is False
-    assert edge.is_pickable(_game(is_final=True), submit) is False
-    assert edge.is_pickable(_game(no_contest=True), submit) is False
+    assert edge.is_pickable(future, submit, deadline) is True
+    assert edge.is_pickable(past, submit, deadline) is False
+    assert edge.is_pickable(_game(is_final=True), submit, deadline) is False
+    assert edge.is_pickable(_game(no_contest=True), submit, deadline) is False
+
+
+def test_pickable_requires_picks_still_open_at_the_deadline():
+    # a game kicking after the deadline (MNF) is pickable before the deadline
+    # and unpickable once submit_time reaches it.
+    deadline = datetime(2026, 9, 20, 17, 0, tzinfo=UTC)
+    mnf = _game(kickoff=datetime(2026, 9, 22, 0, 15, tzinfo=UTC))
+    assert edge.is_pickable(mnf, datetime(2026, 9, 20, 16, 0, tzinfo=UTC), deadline) is True
+    assert edge.is_pickable(mnf, deadline, deadline) is False  # exactly at close
+    assert edge.is_pickable(mnf, datetime(2026, 9, 21, 12, 0, tzinfo=UTC), deadline) is False
 
 
 def test_pickable_accepts_naive_utc_kickoff():
     # stored kickoff is naive UTC; the filter must coerce, not crash
     submit = datetime(2026, 9, 18, 12, 0, tzinfo=UTC)
+    deadline = datetime(2027, 1, 1, tzinfo=UTC)
     naive = _game(kickoff=datetime(2026, 9, 20, 17, 0))
-    assert edge.is_pickable(naive, submit) is True
+    assert edge.is_pickable(naive, submit, deadline) is True
 
 
 def test_analyze_ranks_by_probability_and_reports_unmatched():
     submit = datetime(2026, 9, 18, 12, 0, tzinfo=UTC)
+    deadline = datetime(2027, 1, 1, tzinfo=UTC)
     matched = _game(id=1, api_event_id='a')
     missing = _game(id=2, api_event_id='no-event')
     consensus = {'a': {'cons_spread': -9.0, 'cons_total': 52.0,
                        'cons_home_winprob': 0.7, 'n_books': 6}}
-    rows, unmatched = edge.analyze([matched, missing], consensus, submit)
+    rows, unmatched = edge.analyze([matched, missing], consensus, submit, deadline)
     assert unmatched == [missing]
     assert rows == sorted(rows, key=lambda r: r['prob'], reverse=True)
     assert all(r['game_id'] == 1 for r in rows)  # only the matched game scored

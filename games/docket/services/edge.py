@@ -98,8 +98,14 @@ def consensus_from_event(event):
 
 
 def _crosses_key_numbers(frozen, current):
-    lo, hi = sorted((abs(frozen), abs(current)))
-    return [k for k in NFL_KEY_NUMBERS if lo < k < hi]
+    """NFL key magnitudes strictly between the frozen and current home spread.
+
+    Works in signed space and reports the magnitude, so a move that flips the
+    favorite (e.g. -4 to +4, crossing 3) is not hidden by taking absolute
+    values first — which would collapse equal-magnitude endpoints to an empty
+    range."""
+    lo, hi = sorted((frozen, current))
+    return [k for k in NFL_KEY_NUMBERS if lo < k < hi or lo < -k < hi]
 
 
 def _spread_side(game, cons_spread):
@@ -145,20 +151,25 @@ def _side_row(game, market, side, prob, frozen, current, key_cross):
     }
 
 
-def is_pickable(game, submit_time):
-    """A side is pickable when its game has not started by submit_time and is
-    not already final or ruled No Contest."""
+def is_pickable(game, submit_time, deadline):
+    """A side is pickable when picks are still open at submit_time — the week
+    deadline has not passed (the whole-sheet cutoff, so a game kicking after it
+    like MNF is unpickable once it does) and the game has not started — and it
+    is not already final or ruled No Contest."""
+    if deadline is not None and submit_time >= deadline:
+        return False
     kickoff = _as_utc(game.kickoff)
     return (not game.is_final and not game.no_contest
             and kickoff is not None and kickoff > submit_time)
 
 
-def analyze(games, consensus_by_event, submit_time):
+def analyze(games, consensus_by_event, submit_time, deadline):
     """Score every side of every game, ranked by cover probability desc.
 
-    Returns (rows, unmatched): rows carry a ``pickable`` flag (games that have
-    started or lack a current line are marked, not dropped, so the caller can
-    report coverage); unmatched is the games with no current Odds API event.
+    Returns (rows, unmatched): rows carry a ``pickable`` flag (games past their
+    kickoff, or past the week ``deadline``, or lacking a current line, are
+    marked not-pickable rather than dropped, so the caller can report
+    coverage); unmatched is the games with no current Odds API event.
     """
     rows, unmatched = [], []
     for game in games:
@@ -166,7 +177,7 @@ def analyze(games, consensus_by_event, submit_time):
         if cons is None:
             unmatched.append(game)
             continue
-        pickable = is_pickable(game, submit_time)
+        pickable = is_pickable(game, submit_time, deadline)
         for row in (_spread_side(game, cons['cons_spread']),
                     _total_side(game, cons['cons_total'])):
             if row is None:

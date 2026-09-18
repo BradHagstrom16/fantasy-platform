@@ -683,7 +683,7 @@ def _fmt_edge_row(row, deadline, index=None):
 @click.option('--submit-time', 'submit_time', default=None, metavar='ISO',
               help='Instant you would lock picks; a game kicked off by then is '
                    'shown but flagged unpickable (default: now).')
-@click.option('--top', type=int, default=9, show_default=True,
+@click.option('--top', type=click.IntRange(min=1), default=9, show_default=True,
               help='Best sides to recommend (a full sheet is 8 scoring + 1 '
                    'reserve).')
 def edge_cmd(week, submit_time, top):
@@ -719,9 +719,9 @@ def edge_cmd(week, submit_time, top):
     for err in errors:
         click.secho(f'  WARNING: {err}', fg='yellow')
 
-    rows, unmatched = edge.analyze(games, consensus, submit)
-    pickable = [r for r in rows if r['pickable']]
     deadline = _aware_utc(wk.deadline_at)
+    rows, unmatched = edge.analyze(games, consensus, submit, deadline)
+    pickable = [r for r in rows if r['pickable']]
 
     click.echo(f'\n[docket edge — week {week_number}]')
     click.echo(f'  submit-time: {submit.isoformat()}')
