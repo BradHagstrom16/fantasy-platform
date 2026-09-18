@@ -23,6 +23,7 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.engine import make_url
 
 from app import create_app
+from config import TestingConfig
 from extensions import db as _db
 
 TEST_DATABASE_URL = os.environ.get('TEST_DATABASE_URL')
@@ -76,7 +77,12 @@ def _postgres_clean_module():
     """Postgres only: every module starts on empty tables, including the
     modules whose local fixtures never pass through the canonical ``app``."""
     if ON_POSTGRES:
-        engine = create_engine(TEST_DATABASE_URL)
+        # Same connect_args as every other suite connection (TestingConfig):
+        # the UTC session zone, and — load-bearing on this TRUNCATE path — the
+        # lock_timeout that turns a leaked transaction blocking the cleanup
+        # into a loud failure instead of a hung run.
+        engine = create_engine(
+            TEST_DATABASE_URL, **TestingConfig.SQLALCHEMY_ENGINE_OPTIONS)
         with engine.begin() as connection:
             _empty_every_table(connection)
         engine.dispose()

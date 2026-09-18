@@ -596,7 +596,7 @@ def test_reserve_rule_holds_against_a_concurrent_scoring_pick(
     and reads the sheet under that lock — so the reserve request here must
     (1) block while another connection holds the row, and (2) once released,
     see the scoring side that landed meanwhile and refuse."""
-    from threading import Thread
+    from threading import Event, Thread
 
     from games.docket.models import DocketWeek
     from tests._docket_fixtures import make_enrollment
@@ -607,6 +607,19 @@ def test_reserve_rule_holds_against_a_concurrent_scoring_pick(
     db.session.commit()
     user_id, week_id, game_id = user.id, week.id, game.id
     db.session.remove()  # this session must hold nothing the thread waits on
+
+    # Signal the instant the request reaches the real sheet lock, so the
+    # "still blocked" assertion below waits on that fact instead of guessing a
+    # sleep long enough for the thread to get there. The real _lock_sheet still
+    # runs (and blocks on the held row) since the wrapper calls straight through.
+    reached_lock = Event()
+    real_lock_sheet = picks_service._lock_sheet
+
+    def signalling_lock_sheet(uid):
+        reached_lock.set()
+        return real_lock_sheet(uid)
+
+    monkeypatch.setattr(picks_service, '_lock_sheet', signalling_lock_sheet)
 
     holder = db.engine.connect()
     held = holder.begin()
@@ -630,7 +643,9 @@ def test_reserve_rule_holds_against_a_concurrent_scoring_pick(
 
     request = Thread(target=file_reserve)
     request.start()
-    request.join(timeout=1.0)
+    assert reached_lock.wait(timeout=10), 'set_pick never reached the sheet lock'
+    # Inside _lock_sheet now, blocking on the row this session holds FOR UPDATE:
+    # it cannot return until held.commit() releases the row, so it is alive.
     assert request.is_alive(), 'set_pick did not wait on the sheet lock'
 
     # The racing request's scoring side lands while the reserve waits.
