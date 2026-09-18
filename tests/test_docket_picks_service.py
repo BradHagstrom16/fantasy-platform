@@ -191,6 +191,54 @@ def test_backup_on_held_market_flips_side_in_place(monkeypatch, week, user):
     assert DocketPick.query.count() == 1
 
 
+# ── The reserve is a genuine backup: a distinct case (DESIGN.md 1.5) ─────
+
+def test_backup_on_the_other_market_of_a_picked_case_is_refused(
+        monkeypatch, week, user):
+    """A reserve on the total of a case whose spread is already held would
+    die on the same No Contest it is meant to cover, so it is refused."""
+    at(monkeypatch, IN_WEEK1)
+    game = make_game(week, kickoff=KICK_SAT)
+    _pick(user, week, game, 'spread', 'home')
+    with pytest.raises(PickError) as err:
+        _pick(user, week, game, 'total', 'over', backup=True)
+    assert err.value.code == 'reserve_same_game'
+
+
+def test_backup_on_a_picked_case_refused_when_the_total_is_held(
+        monkeypatch, week, user):
+    """The same rule from the other market: total held, reserve on the
+    spread of that case is refused."""
+    at(monkeypatch, IN_WEEK1)
+    game = make_game(week, kickoff=KICK_SAT)
+    _pick(user, week, game, 'total', 'over')
+    with pytest.raises(PickError) as err:
+        _pick(user, week, game, 'spread', 'home', backup=True)
+    assert err.value.code == 'reserve_same_game'
+
+
+def test_backup_on_a_fresh_case_is_allowed(monkeypatch, week, user):
+    at(monkeypatch, IN_WEEK1)
+    picked = make_game(week, kickoff=KICK_SAT)
+    fresh = make_game(week, kickoff=KICK_SAT)
+    _pick(user, week, picked, 'spread', 'home')
+    backup = _pick(user, week, fresh, 'total', 'over', backup=True)
+    assert backup.slot == 9
+
+
+def test_scoring_pick_onto_the_reserves_case_is_refused(
+        monkeypatch, week, user):
+    """The invariant holds both ways: once a case is held in reserve, a
+    scoring side may not land on it (a freed slot must not recreate the
+    shared-fate the reserve rule forbids)."""
+    at(monkeypatch, IN_WEEK1)
+    reserved = make_game(week, kickoff=KICK_SAT)
+    _pick(user, week, reserved, 'spread', 'home', backup=True)
+    with pytest.raises(PickError) as err:
+        _pick(user, week, reserved, 'total', 'over')
+    assert err.value.code == 'reserve_here'
+
+
 # ── Deadline boundary (strictly before Sun 12:00:00 CT) ─────────────────
 
 def test_mutations_allowed_at_deadline_minus_one_second(

@@ -70,8 +70,8 @@ def autopick_topup(week: WeekSnapshot,
     Over bucket: pool games with a locked total, descending total.
     Favorite bucket: pool games with a non-PK locked spread, favorite
     side, descending |spread|. Ties rank by api_event_id. Interleave
-    O1,F1,O2,F2,... skipping markets the player holds and games already
-    claimed this run (bucket exclusivity per game); a short bucket
+    O1,F1,O2,F2,... skipping markets the player holds, the reserve's case,
+    and games already claimed (bucket exclusivity per game); a short bucket
     backfills from the other. First k fill the empty slots ascending.
     Never touches held picks; never adds a backup.
     """
@@ -93,7 +93,11 @@ def autopick_topup(week: WeekSnapshot,
     # games already claimed by earlier autopicks stay claimed, so
     # re-completing a short (pool-exhausted) input is a no-op instead of
     # double-dipping the other market of the same game.
-    claimed: set[str] = {p.api_event_id for p in picks if p.is_autopick}
+    # The reserve's case is closed to the top-up as well: the sheet refuses a
+    # scoring side there (picks.py `reserve_here`, DESIGN.md 1.5), and a dealt
+    # one would share the reserve's No Contest fate.
+    claimed: set[str] = {p.api_event_id for p in picks
+                         if p.is_autopick or p.slot == BACKUP_SLOT}
     added: list[PickSnapshot] = []
     indexes = {'O': 0, 'F': 0}
     buckets = {'O': overs, 'F': favorites}

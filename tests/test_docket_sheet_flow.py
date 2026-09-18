@@ -124,8 +124,8 @@ def test_then_the_reserve_is_optional(app, monkeypatch):
     assert step['stage'] == 'reserve'
     # The reserve is optional, so the rung leads with the confirmation: a
     # member with 8 sides, an x2 and a number is done, not still asked.
-    assert step['ask'] == ('Sheet filed. A reserve is optional: tap one more '
-                           'side to hold one.')
+    assert step['ask'] == ('Sheet filed. A reserve is optional: tap a side of '
+                           "a case you haven't picked to hold one.")
 
 
 def test_complete_sheet_has_a_closing_line(app, monkeypatch):
@@ -385,7 +385,7 @@ def test_full_sheet_renders_the_prompt_card(monkeypatch, client, member):
     assert 'docket-prompt' in html
     assert 'All 8 held. Here is what is left' in html
     assert 'Tap x2 on any held pick' in html
-    assert 'Your next tap on any open side is held as your reserve' in html
+    assert "Your next tap on a case you haven't picked is held as your reserve" in html
     assert 'data-docket-open-sheet' in html
     assert 'docket-filed' not in html
 
@@ -425,7 +425,7 @@ def test_reserve_stage_renders_the_filed_card_once(monkeypatch, client, member):
     assert '8 sides held' in html
     assert 'x2 on Home 0 -3.5' in html
     assert 'No reserve' in html and 'Number 53.7' in html
-    assert 'A reserve is optional: your next tap on any open side holds one.' in html
+    assert "A reserve is optional: your next tap on a case you haven't picked holds one." in html
     assert 'docket-prompt' not in html
     assert 'docket-rail-bar is-complete' in html
 

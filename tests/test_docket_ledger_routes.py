@@ -581,6 +581,28 @@ def test_ledger_board_shows_this_week_and_opens_selections(
     assert '9.0' in html
 
 
+def test_ledger_drawer_reveals_the_owners_own_sealed_side(
+        app, client, monkeypatch):
+    """A member always reads their own current-week sheet on the ledger,
+    before or after each case kicks off (the rival's stays sealed)."""
+    graded = _week(1)                            # so the season body renders
+    me = _member('owner')
+    _result(graded, me, 9.0, 9)
+    live = make_week(2)                          # ungraded, current
+    sealed = make_game(live, kickoff=datetime(2026, 9, 13, 0, 0),
+                       home='Georgia Bulldogs', away='LSU Tigers')
+    db.session.add(DocketPick(
+        user_id=me.id, week_id=live.id, game_id=sealed.id, market='spread',
+        side='home', slot=1, line_value=-7.0, book='draftkings'))
+    db.session.commit()
+    _login(client, me)
+    at(monkeypatch, '2026-09-10T12:00:00')       # Week 2, before the case kicks off
+
+    html = client.get('/docket/ledger').data.decode()
+    assert 'Georgia Bulldogs' in html            # the owner reads their own side
+    assert 'Only you can see this until each case kicks off.' in html
+
+
 def test_ledger_no_live_board_when_no_open_week(app, client):
     week = _week(1)
     _result(week, _member('alice'), 9.0, 9)

@@ -124,6 +124,22 @@ def test_completion_respects_one_side_per_market_against_held_picks():
     assert len(markets) == len(set(markets))
 
 
+def test_completion_never_deals_a_scoring_side_onto_the_reserves_case():
+    """The reserve is a genuine backup (DESIGN.md 1.5): the sheet refuses a
+    scoring side on the reserve's case, so the top-up must too — or one No
+    Contest takes the dealt side and the reserve down together. e-12 tops
+    BOTH buckets; holding its total in reserve must close its spread too."""
+    from games.docket.services.grading.autopick import complete_player_input
+    from games.docket.services.grading.snapshots import BACKUP_SLOT
+
+    week = _week()
+    held = (_pick(BACKUP_SLOT, 'e-12', 'total', 'over'),)
+    completed = complete_player_input(week, _player(held))
+    scoring = [p for p in completed.picks if p.slot != BACKUP_SLOT]
+    assert len(scoring) == 8
+    assert 'e-12' not in {p.api_event_id for p in scoring}
+
+
 def test_exhausted_pool_degrades_to_fewer_than_eight():
     """3 pool games for 8 slots: bucket exclusivity is per GAME (D5-session
     — a game claimed by one bucket can't also fill the other), so autopick

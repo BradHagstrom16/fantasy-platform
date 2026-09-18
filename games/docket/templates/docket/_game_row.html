@@ -9,7 +9,10 @@
 {% set locked = sheet.deadline_passed or game.id in sheet.locked_game_ids %}
 {% set spread_pick = held.get((game.id, 'spread')) %}
 {% set total_pick = held.get((game.id, 'total')) %}
-{% set send_reserve = sheet.scoring_count >= 8 and not sheet.backup %}
+{# The reserve is a backup for a thrown-out case, so it arms only on a case
+   the member holds no side of (DESIGN.md 1.5); an already-picked case keeps
+   its open pills but never files a reserve. #}
+{% set send_reserve = sheet.scoring_count >= 8 and not sheet.backup and not (spread_pick or total_pick) %}
 {% set thrown_out = game.no_contest %}
 {% set final_score = game.away_score ~ '-' ~ game.home_score if game.is_final and not thrown_out else None %}
 

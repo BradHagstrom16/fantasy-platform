@@ -415,11 +415,13 @@ def test_sheets_pre_first_lock_states_the_reason(monkeypatch, client, member):
 
 
 def test_sheets_seals_sides_in_words(monkeypatch, client, member):
+    # Another member's sheet, so the seal (not the owner-reveal) is under test.
     week = make_week(1)
     sat = make_game(week, kickoff=KICK_SAT, home='Utah Utes',
                     away='Idaho Vandals')
+    other = _member('bo')
     at(monkeypatch, IN_WEEK1)
-    _hold(member, week, sat)
+    _hold(other, week, sat)
     db.session.commit()
     html = _page(client)
     assert 'Utah Utes' not in html
@@ -429,13 +431,16 @@ def test_sheets_seals_sides_in_words(monkeypatch, client, member):
 
 def test_sheets_reveals_at_kickoff_with_the_result(
         monkeypatch, client, member):
+    # A non-owner's sheet: the Thursday case reveals at kickoff for everyone,
+    # the Saturday case stays sealed (the owner-reveal is tested separately).
     week = make_week(1)
     thu = make_game(week, kickoff=KICK_THU, home='Utah Utes',
                     away='Idaho Vandals')
     sat = make_game(week, kickoff=KICK_SAT, home='Sat Home', away='Sat Away')
+    other = _member('bo')
     at(monkeypatch, IN_WEEK1)
-    _hold(member, week, thu)
-    _hold(member, week, sat)
+    _hold(other, week, thu)
+    _hold(other, week, sat)
     _final(thu, 31, 17)
     db.session.commit()
     at(monkeypatch, '2026-09-04T12:00:00')      # Friday morning
@@ -463,12 +468,15 @@ def test_sheets_record_figure_carries_the_summary_as_its_label(
     week = make_week(1)
     thu = [make_game(week, kickoff=KICK_THU) for _ in range(3)]
     sat = make_game(week, kickoff=KICK_SAT)
+    # The reserve sits on a case the member holds no side of (DESIGN.md 1.5);
+    # it stays hidden here anyway (no case thrown out).
+    res = make_game(week, kickoff=KICK_SAT)
     at(monkeypatch, IN_WEEK1)
     for g in thu:
         _hold(member, week, g)
     _hold(member, week, sat)
-    _hold(member, week, thu[0], market='total', side='over', backup=True)
-    _final(thu[0], 31, 17)                       # win (and the reserve: under 48 → over loses)
+    _hold(member, week, res, market='total', side='over', backup=True)
+    _final(thu[0], 31, 17)                       # win
     _final(thu[1], 20, 17)                       # loss
     db.session.commit()
     at(monkeypatch, '2026-09-04T12:00:00')      # Friday: Thursday revealed
@@ -515,6 +523,134 @@ def test_sheets_closed_shows_the_clerks_marks(monkeypatch, client, member):
     assert 'docket-headliner-chip is-auto' in html
     assert 'Every sheet is on the record.' in html
     assert 'Points post to the ledger with the week' in html
+
+
+# ── The owner always reads their own sheet (before or after kickoff) ──────
+
+def test_owner_sees_own_sealed_sides_before_kickoff(
+        monkeypatch, client, member):
+    week = make_week(1)
+    sat = make_game(week, kickoff=KICK_SAT, home='Utah Utes',
+                    away='Idaho Vandals')
+    at(monkeypatch, IN_WEEK1)
+    _hold(member, week, sat)
+    db.session.commit()
+    html = _page(client)
+    # The owner reads their own side though the case has not kicked off.
+    assert 'Utah Utes -3.5' in html
+    assert 'Only you can see this until each case kicks off.' in html
+    assert 'sealed until kickoff' not in html
+
+
+def test_a_rivals_sides_stay_sealed_while_the_owner_reads_theirs(
+        monkeypatch, client, member):
+    week = make_week(1)
+    make_game(week, kickoff=KICK_SAT, home='My Team', away='My Foe')
+    make_game(week, kickoff=KICK_SAT, home='Their Team', away='Their Foe')
+    mine, theirs = week.games[0], week.games[1]
+    rival = _member('rival')
+    at(monkeypatch, IN_WEEK1)
+    _hold(member, week, mine)
+    _hold(rival, week, theirs)
+    db.session.commit()
+    html = _page(client)
+    assert 'My Team' in html            # the owner's own side, revealed to them
+    assert 'Their Team' not in html     # the rival's side stays sealed
+    assert 'sealed until kickoff' in html
+
+
+def test_owner_reserve_stays_hidden_before_kickoff(
+        monkeypatch, client, member):
+    week = make_week(1)
+    games = [make_game(week, kickoff=KICK_SAT, home=f'Team{i}',
+                       away=f'Foe{i}') for i in range(8)]
+    res = make_game(week, kickoff=KICK_SAT, home='ReserveTeam',
+                    away='ReserveFoe')
+    at(monkeypatch, IN_WEEK1)
+    for g in games:
+        _hold(member, week, g)
+    _hold(member, week, res, market='total', side='over', backup=True)
+    db.session.commit()
+    html = _page(client)
+    assert 'Team0' in html              # a scoring side, revealed to the owner
+    assert 'ReserveTeam' not in html    # the reserve waits until it substitutes
+
+
+def test_owner_sees_substituted_reserve_while_its_case_is_sealed(
+        app, monkeypatch):
+    """A reserve that has come into use is part of the owner's own sheet, even
+    while its own case is still sealed. In a mixed state — one scoring case
+    revealed, another sealed, and the reserve substituted on a case that has
+    not kicked off — the owner reads the reserve in their drawer while the
+    collapsed row (everyone's view) still withholds it."""
+    week = make_week(1)
+    make_game(week, kickoff=KICK_THU, home='Thu Home', away='Thu Away')
+    make_game(week, kickoff=KICK_THU, home='NC Home', away='NC Away')
+    make_game(week, kickoff=KICK_SAT, home='Sat Home', away='Sat Away')
+    make_game(week, kickoff=KICK_SAT, home='ReserveTeam', away='ReserveFoe')
+    thu, nc, sat, res = week.games
+    owner, rival = _member('owner'), _member('rival')
+    at(monkeypatch, IN_WEEK1)
+    for user in (owner, rival):
+        _hold(user, week, thu)
+        _hold(user, week, nc)
+        _hold(user, week, sat)
+        _hold(user, week, res, backup=True)
+    nc.no_contest = True                 # the reserve comes into use
+    db.session.commit()
+    # FRIDAY: thu/nc have kicked off (revealed); sat and the reserve are sealed.
+    board = sheets_service.all_sheets(week, FRIDAY, viewer_id=owner.id)
+    owner_sheet = _sheet(board, owner)
+    # The collapsed row never carries the still-sealed reserve.
+    assert not any(line.is_reserve for line in owner_sheet.lines)
+    # The owner's own drawer carries the whole sheet: the reserve is last,
+    # marked substituted.
+    assert owner_sheet.own_lines[-1].is_reserve
+    assert owner_sheet.own_lines[-1].is_substituted
+    assert 'ReserveTeam' in owner_sheet.own_lines[-1].pick
+    # A rival gets no owner preview and never sees another member's reserve.
+    rival_sheet = _sheet(board, rival)
+    assert rival_sheet.own_lines == ()
+    assert not any(line.is_reserve for line in rival_sheet.lines)
+
+
+def test_owner_sees_substituted_reserve_when_only_it_is_sealed(
+        app, monkeypatch):
+    """The owner preview fires on a sealed substituted reserve alone: even
+    when every scoring case has revealed, the reserve still reaches the
+    drawer (the sealed-scoring gate on its own would drop it)."""
+    week = make_week(1)
+    make_game(week, kickoff=KICK_THU, home='Thu Home', away='Thu Away')
+    make_game(week, kickoff=KICK_THU, home='NC Home', away='NC Away')
+    make_game(week, kickoff=KICK_SAT, home='ReserveTeam', away='ReserveFoe')
+    thu, nc, res = week.games
+    owner = _member('owner')
+    at(monkeypatch, IN_WEEK1)
+    _hold(owner, week, thu)
+    _hold(owner, week, nc)
+    _hold(owner, week, res, backup=True)
+    nc.no_contest = True
+    db.session.commit()
+    sheet = _sheet(sheets_service.all_sheets(week, FRIDAY, viewer_id=owner.id),
+                   owner)
+    assert sheet.sealed_count == 0           # every scoring case revealed
+    assert sheet.sealed_reserve              # only the reserve stays sealed
+    assert sheet.own_lines                   # the drawer is still populated
+    assert sheet.own_lines[-1].is_reserve
+    assert sheet.own_lines[-1].is_substituted
+
+
+def test_owner_sees_own_number_before_its_lock(monkeypatch, client, member):
+    week = make_week(1)
+    sat = make_game(week, kickoff=KICK_SAT)
+    week.tiebreaker_game_id = sat.id
+    db.session.commit()
+    at(monkeypatch, IN_WEEK1)
+    _hold(member, week, sat)
+    picks_service.set_tiebreaker(member.id, week, '52.3')
+    db.session.commit()
+    html = _page(client)
+    assert 'Number 52.3' in html
 
 
 def test_sheets_empty_states(monkeypatch, client, member):

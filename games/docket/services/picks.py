@@ -38,6 +38,7 @@ from sqlalchemy.exc import IntegrityError
 
 from extensions import db
 from games.docket.models import (
+    DocketEnrollment,
     DocketGame,
     DocketPick,
     DocketTiebreakerPrediction,
@@ -49,7 +50,7 @@ from games.docket.services.grading.snapshots import (
     Market,
     Side,
 )
-from games.docket.services.weeks import CT
+from games.docket.services.weeks import CT, SEASON_YEAR
 from games.docket.utils import now_utc, to_naive_utc
 
 # Legal sides per market. The engine enforces the same pairing at its own
@@ -183,6 +184,62 @@ def _market_row(user_id: int, week: DocketWeek, game_id: int,
     ).first()
 
 
+def _lock_sheet(user_id: int) -> None:
+    """Serialize this member's sheet mutations (``SELECT … FOR UPDATE``).
+
+    The enrollment row is the lock: one per member, guaranteed by
+    ``@enrollment_required``, and nothing holds a foreign key to it, so only
+    this member's own concurrent pick requests ever wait. No row (a service
+    caller without an enrollment) locks nothing.
+    """
+    db.session.scalar(
+        select(DocketEnrollment.id)
+        .filter_by(user_id=user_id, season_year=SEASON_YEAR)
+        .with_for_update())
+
+
+def _assign_slot(user_id: int, week: DocketWeek, game: DocketGame,
+                 backup: bool) -> int:
+    """The slot a new pick on ``game`` takes, or the PickError refusing it."""
+    existing_picks = DocketPick.query.filter_by(
+        user_id=user_id, week_id=week.id).all()
+    taken = {p.slot for p in existing_picks}
+    if backup:
+        if BACKUP_SLOT in taken:
+            raise PickError('backup_taken',
+                            'You already hold a case in reserve.')
+        # The reserve is a genuine backup: it must sit on a case the member
+        # has not already picked, so a No Contest can never take a scoring
+        # side and the reserve down together (DESIGN.md 1.5).
+        if any(p.game_id == game.id and p.slot != BACKUP_SLOT
+               for p in existing_picks):
+            raise PickError(
+                'reserve_same_game',
+                "Your reserve must be a case you haven't already picked.")
+        return BACKUP_SLOT
+    # Symmetric guard: a freed scoring slot (remove_pick) must not let a
+    # scoring side land on the case already held in reserve, or the two
+    # would share a No Contest fate — the same rule from the other side.
+    if any(p.game_id == game.id and p.slot == BACKUP_SLOT
+           for p in existing_picks):
+        raise PickError(
+            'reserve_here',
+            'You hold your reserve on this case. Change your reserve '
+            'first, or pick a different case.')
+    free = sorted(set(range(1, SCORING_SLOTS + 1)) - taken)
+    if not free:
+        if BACKUP_SLOT in taken:
+            raise PickError(
+                'sheet_full',
+                'Your sheet is full: eight sides plus a reserve. '
+                'Remove a pick to swap this one in.')
+        raise PickError(
+            'sheet_full',
+            'All eight scoring slots are filled. Remove a pick, '
+            'or file this one as your reserve.')
+    return free[0]
+
+
 def set_pick(user_id: int, week: DocketWeek, game_id, market, side,
              backup: bool = False) -> DocketPick:
     """Create or move a pick: one side of one market on one case.
@@ -214,28 +271,19 @@ def set_pick(user_id: int, week: DocketWeek, game_id, market, side,
         db.session.commit()
         return existing
 
-    taken = {
-        p.slot for p in DocketPick.query.filter_by(
-            user_id=user_id, week_id=week.id).all()
-    }
-    if backup:
-        if BACKUP_SLOT in taken:
-            raise PickError('backup_taken',
-                            'You already hold a case in reserve.')
-        slot = BACKUP_SLOT
-    else:
-        free = sorted(set(range(1, SCORING_SLOTS + 1)) - taken)
-        if not free:
-            if BACKUP_SLOT in taken:
-                raise PickError(
-                    'sheet_full',
-                    'Your sheet is full: eight sides plus a reserve. '
-                    'Remove a pick to swap this one in.')
-            raise PickError(
-                'sheet_full',
-                'All eight scoring slots are filled. Remove a pick, '
-                'or file this one as your reserve.')
-        slot = free[0]
+    # The same-case guards in _assign_slot are a cross-row rule no
+    # uq_docket_pick_* constraint can express (spread + total on one case is
+    # legal; reserve-vs-scoring is only slot 9), so the member's sheet is
+    # serialized instead: row-lock their enrollment, then read the sheet under
+    # the lock. The tiebreaker_rule / grading_pass pattern: Postgres enforces
+    # the lock, SQLite ignores it harmlessly. A refusal commits nothing-pending
+    # so the lock never outlives the decision.
+    _lock_sheet(user_id)
+    try:
+        slot = _assign_slot(user_id, week, game, backup)
+    except PickError:
+        db.session.commit()
+        raise
 
     value, book = line
     pick = DocketPick(
@@ -501,8 +549,9 @@ def next_step(state: dict, week: DocketWeek, now=None) -> dict:
     elif state['backup'] is None:
         # The reserve is optional (DESIGN.md 1.5), so this rung leads with
         # the confirmation: the member is done, the reserve is an offer.
-        stage, ask = 'reserve', ('Sheet filed. A reserve is optional: tap one '
-                                 'more side to hold one.')
+        stage, ask = 'reserve', ('Sheet filed. A reserve is optional: tap a '
+                                 "side of a case you haven't picked to hold "
+                                 'one.')
     else:
         stage, ask = 'complete', f'Sheet filed. Change anything until {CLOSE_LABEL}.'
 
