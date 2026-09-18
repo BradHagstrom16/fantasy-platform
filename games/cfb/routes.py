@@ -1495,7 +1495,42 @@ def admin_users():
         .order_by(func.lower(User.username))
         .all()
     )
-    return render_template('cfb/admin/users.html', enrollments=enrollments)
+
+    # Active-week pick status for the commish: who has (and hasn't) a pick in.
+    # Always the raw is_active week, so the column keeps its audit value after
+    # the deadline (a lingering "No pick" then means autopick missed someone).
+    active_week = CfbWeek.query.filter_by(is_active=True).first()
+    picks_by_user = {}
+    picked_count = active_total = 0
+    if active_week is not None:
+        picks = (
+            CfbPick.query.filter_by(week_id=active_week.id)
+            .options(joinedload(CfbPick.team))
+            .all()
+        )
+        for pick in picks:
+            # Transient autopick flag, mirroring the weekly_results route.
+            pick._pool_created_at = to_pool_time(pick.created_at)
+            pick.is_autopick = safe_is_after(
+                pick._pool_created_at, active_week.deadline
+            )
+            picks_by_user[pick.user_id] = pick
+        # Eliminated players aren't expected to pick — count only live ones.
+        active_enrollments = [e for e in enrollments if not e.is_eliminated]
+        active_total = len(active_enrollments)
+        picked_count = sum(
+            1 for e in active_enrollments if e.user_id in picks_by_user
+        )
+
+    return render_template(
+        'cfb/admin/users.html',
+        enrollments=enrollments,
+        active_week=active_week,
+        picks_by_user=picks_by_user,
+        picked_count=picked_count,
+        active_total=active_total,
+        missing_count=active_total - picked_count,
+    )
 
 
 @cfb_bp.route('/admin/users/<int:user_id>/toggle-admin', methods=['POST'])
