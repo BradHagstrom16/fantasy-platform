@@ -60,7 +60,7 @@ FLASK_APP=app.py venv/bin/flask cfb recalc-spreads          # Recompute every cu
 FLASK_APP=app.py venv/bin/flask cfb repair-week-dates --week N   # Re-derive a regular-season week's start_date/deadline from SEASON_SCHEDULE (the 2026-09-07 GMT-cast repair; refuses playoff/named/complete weeks)
 # CFB wall-clock columns (CfbWeek.start_date/deadline, CfbGame.game_time) are naive pool-tz and the MODEL strips an aware value on
 # assignment (games/cfb/models.py::_pool_wall_clock) — Postgres casts an aware bind in its GMT session (Week 2 2026: 11:00 → 16:00),
-# SQLite keeps the digits, so CI cannot see it. Never bypass the model with a Core insert/update on those columns.
+# SQLite keeps the digits, so only CI's Postgres job sees it (tests/test_cfb_week_datetime_contract.py). Never bypass the model with a Core insert/update on those columns.
 # Hand-firing any reminder pass ON THE DROPLET: `sudo systemctl start cfb-remind.service` (same for docket/golf), never
 # `flask … --mode remind` in a shell — systemd merges a manual start with an in-flight timer firing of the same oneshot
 # unit, which is what makes the sent-flag race impossible; there is deliberately no lock in code (PR #169).
@@ -88,14 +88,17 @@ FLASK_APP=app.py venv/bin/flask scores game-day [--scheduled]   # ONE /scores ca
 FLASK_APP=app.py venv/bin/flask worldcup status   # or: worldcup recalc
 
 # Tests
-ENVIRONMENT=testing venv/bin/python -m pytest tests/      # Run all tests (env var enables the *_FAKE_NOW seams)
+ENVIRONMENT=testing venv/bin/python -m pytest tests/      # Run all tests (env var enables the *_FAKE_NOW seams) — in-memory SQLite, the fast default
+# The SAME suite on Postgres, production's engine (ADR-064). One-time: `createdb ccc_test`. The name MUST end in `_test` — the
+# fixtures truncate and drop every table, and tests/conftest.py refuses anything else. Never point it at ccc_local.
+TEST_DATABASE_URL=postgresql:///ccc_test ENVIRONMENT=testing venv/bin/python -m pytest tests/
 # Per-area suites are tests/test_<game>_*.py + tests/test_design_*.py; single test by name:
 ENVIRONMENT=testing venv/bin/python -m pytest tests/test_worldcup_scoring.py::test_points_for_pick_on_match_parity_with_compute_team_score_events -q
 # deploy.sh has its own bash harness (invisible to pytest). Run it after ANY deploy.sh edit; on the droplet add USE_REAL_FLOCK=1:
 bash tests/test-deploy-guards.sh
 ```
 
-**Linting: Ruff** (pinned in `requirements-dev.txt`, config in `ruff.toml` — curated ruleset; no E501, no formatter). `venv/bin/ruff check .` must exit clean; enforced by `.github/workflows/lint.yml` + a check-only PostToolUse hook on `*.py` edits. **Ruff's version is pinned in `requirements-dev.txt` AND `lint.yml` — bump both together.** `.github/workflows/test.yml` runs the suite on in-memory SQLite (no DB service) — it **cannot catch a Postgres-only regression**. SQLAlchemy boolean filters use `.is_(True)`/`.is_(False)`/`.is_not(None)` — never `== True` (E712) and never the Python-idiom rewrite, which silently breaks the query; `__init__.py` re-exports are a per-file-ignore (F401), not `noqa`. No pyright — verify behavior with pytest.
+**Linting: Ruff** (pinned in `requirements-dev.txt`, config in `ruff.toml` — curated ruleset; no E501, no formatter). `venv/bin/ruff check .` must exit clean; enforced by `.github/workflows/lint.yml` + a check-only PostToolUse hook on `*.py` edits. **Ruff's version is pinned in `requirements-dev.txt` AND `lint.yml` — bump both together.** `.github/workflows/test.yml` runs the suite **twice** (ADR-064): `pytest` on in-memory SQLite and `pytest-postgres` on a Postgres 18 service container, production's engine and major version. A test that needs a real Postgres (a row lock, a second connection, the timestamptz cast) carries `@pytest.mark.postgres` and runs only there; one that builds a state Postgres refuses to hold (a float in an Integer column, a dangling key) carries `@pytest.mark.sqlite_only`. Test data must fit its column — Postgres enforces `String(n)`, types and foreign keys, SQLite none of them. Still unseen by both: the migration chain (the fixtures use `create_all()`). SQLAlchemy boolean filters use `.is_(True)`/`.is_(False)`/`.is_not(None)` — never `== True` (E712) and never the Python-idiom rewrite, which silently breaks the query; `__init__.py` re-exports are a per-file-ignore (F401), not `noqa`. No pyright — verify behavior with pytest.
 
 **Dependencies: exact `==` pins, never `>=` floors** (ADR-037). Anything app code imports by name is a direct dep in `requirements.txt`. **Transitives pinned in `constraints.txt`** (ADR-042); `deploy.sh` and CI install with `-c constraints.txt`; constraints resolve from `requirements-dev.txt` (the superset). Refresh recipe in `constraints.txt`'s header (the `--upgrade-strategy eager` flag is load-bearing). Held back: Werkzeug 3.2, SQLAlchemy 2.1 (beta), Flask-SQLAlchemy 4 (removes `Model.query`) — ADR-039.
 
@@ -173,7 +176,7 @@ Grep is still right for known exact strings, regex, multiline patterns, file glo
 - **Admin scoping:** two-tier — platform admin (`User.is_admin`) always has access to every game's admin routes; game admin (`<Game>Enrollment.is_admin`) delegates to enrolled non-platform-admins. Every `<game>_admin_required` decorator checks platform admin first, enrollment admin second.
 - **Session identity is `User.auth_id`, NOT the integer PK.** **Security invariant** — do NOT revert to `id` (a DB wipe would let a pre-wipe cookie authenticate as a different person). `tests/test_auth_session_identity.py`. Corollary: destructive DB resets must rotate `SECRET_KEY`.
 - **Authenticated responses are `Cache-Control: private, no-store`:** stamped by an `@app.after_request` hook in `app.py` when `current_user.is_authenticated` (static endpoint excepted). **Security invariant** — a shared cache ignoring `Vary: Cookie` (e.g. a Cloudflare "Cache Everything" rule) could serve one user's page to another. Anonymous responses stay cacheable on purpose — never blanket `no-store` onto them. `tests/test_response_cache_headers.py`.
-- **Login accepts username OR email** (`tests/test_auth_login_recovery.py`). **Every auth identifier comparison folds through `utils/identifier.py::normalize_identifier`** — never hand-roll a fold (`tests/test_utils_identifier.py`). **No DB-level case-insensitive uniqueness, by decision**: don't add a functional `lower()` unique index without a Postgres smoke (SQLite CI can't test it). Reset-email links build from `SITE_URL`, never `request.host`.
+- **Login accepts username OR email** (`tests/test_auth_login_recovery.py`). **Every auth identifier comparison folds through `utils/identifier.py::normalize_identifier`** — never hand-roll a fold (`tests/test_utils_identifier.py`). **No DB-level case-insensitive uniqueness, by decision**: don't add a functional `lower()` unique index without a `postgres`-marked test (the SQLite run can't see it). Reset-email links build from `SITE_URL`, never `request.host`.
 - **Password reset tokens:** `core/auth/tokens.py`, `itsdangerous.URLSafeTimedSerializer`, 1-hour expiry; forgot-password uses the anti-enumeration pattern (identical flash regardless of email existence).
 - **Game registry:** `games/registry.py` is the SSoT — one `GameRegistryEntry` per game (slug, status, is_featured, endpoints, `get_enrollment` + `admin_enroll` callables); its helpers drive homepage, navbar, and admin add-user page. Flip `status` `'coming_soon'` → `'open'` at launch.
 - **Enrollment is explicit:** users reach a game's interior routes only via `/<game>/join` (guarded by `@game_must_be_open(slug)` in `games/common.py`); interior pick routes carry `@enrollment_required(slug)` (redirects to `/<game>/join?next=<current>`). **Never** create `<Game>Enrollment` rows from pick or admin paths — platform admins enroll users via `/admin/enrollments`.
@@ -299,6 +302,7 @@ ENVIRONMENT=development|testing|production
 SECRET_KEY=...
 # Dev default if unset: SQLite. This machine's .env points at local Postgres `ccc_local` — use it for smoke; the SQLite file is stale
 DATABASE_URL=sqlite:///instance/fantasy_platform.db
+TEST_DATABASE_URL=...    # Optional, tests only: run the suite on Postgres (postgresql:///ccc_test). Deliberately NOT DATABASE_URL — the fixtures empty it; the name must end in `_test`
 # Prod: DO Managed Postgres (requires ?sslmode=require)
 # DATABASE_URL=postgresql://doadmin:<pw>@<host>.db.ondigitalocean.com:25060/defaultdb?sslmode=require
 SITE_URL=...             # Used in password-reset and reminder email links (https://<domain> in prod)

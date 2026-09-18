@@ -203,10 +203,11 @@ def test_a_designation_written_behind_the_session_is_still_kept(app, monkeypatch
     silent overwrite.
 
     This locks the RE-READ, which SQLite can exercise. The FOR UPDATE that
-    serializes a write landing DURING the call is Postgres-only: the suite
-    runs on in-memory SQLite by decision (CLAUDE.md), so that half is smoked
-    by hand against the local Postgres (FOR UPDATE emitted, then COMMIT)
-    rather than asserted here."""
+    serializes a write landing DURING the call needs a second connection,
+    so it can only be asserted by a ``postgres``-marked test (ADR-064; the
+    pattern is test_reserve_rule_holds_against_a_concurrent_scoring_pick in
+    tests/test_docket_picks_service.py). That half of THIS path was smoked by
+    hand against the local Postgres (FOR UPDATE emitted, then COMMIT)."""
     at(monkeypatch, IN_WEEK2)
     week = make_week(2)
     snf = _nfl(week, SNF)

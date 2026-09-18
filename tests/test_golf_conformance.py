@@ -89,7 +89,8 @@ def _make_tournament(name='Test Open', is_major=False, is_team_event=False,
                      status='complete', results_finalized=False, season_year=SEASON):
     now = datetime.now(UTC)
     t = GolfTournament(
-        api_tourn_id=f'T-{name}',
+        # [:20]: api_tourn_id is String(20), enforced by Postgres only
+        api_tourn_id=f'T-{name}'[:20],
         name=name,
         season_year=season_year,
         start_date=now - timedelta(days=4),

@@ -15,6 +15,8 @@ SQLite cannot reproduce.
 from datetime import UTC, datetime
 from zoneinfo import ZoneInfo
 
+import pytest
+
 from games.cfb.models import CfbGame, CfbWeek
 
 CHICAGO = ZoneInfo('America/Chicago')
@@ -66,3 +68,45 @@ def test_aware_game_time_is_stripped_to_pool_wall_clock(app):
 def test_none_dates_stay_none(app):
     game = CfbGame(week_id=1, game_time=None)
     assert game.game_time is None
+
+
+@pytest.mark.postgres
+def test_aware_deadline_survives_the_postgres_round_trip(app):
+    """The incident itself, end to end: an aware 11:00 AM CT deadline is
+    written, the row is read back from Postgres in a UTC session (production's
+    zone, pinned by TestingConfig), and it is still 11:00 — not 16:00."""
+    from extensions import db
+
+    week = CfbWeek(
+        week_number=2,
+        start_date=datetime(2026, 9, 10, 0, 0, tzinfo=CHICAGO),
+        deadline=datetime(2026, 9, 12, 11, 0, tzinfo=CHICAGO),
+    )
+    db.session.add(week)
+    db.session.commit()
+    db.session.expire_all()
+
+    stored = db.session.execute(db.text(
+        'SELECT deadline, start_date FROM cfb_week WHERE week_number = 2'
+    )).one()
+    assert stored.deadline == datetime(2026, 9, 12, 11, 0)
+    assert stored.start_date == datetime(2026, 9, 10, 0, 0)
+
+
+@pytest.mark.postgres
+def test_the_bypass_the_model_guards_against_is_real_on_postgres(app):
+    """Why "never bypass the model with a Core insert" is a rule: the same
+    aware value bound straight to the column is cast in the session zone and
+    lands five hours late. If this ever stops failing that way, the guard in
+    the model has stopped being load-bearing and the rule can be revisited."""
+    from extensions import db
+
+    db.session.execute(
+        db.insert(CfbWeek.__table__).values(
+            week_number=3,
+            start_date=datetime(2026, 9, 17, 0, 0, tzinfo=CHICAGO),
+            deadline=datetime(2026, 9, 19, 11, 0, tzinfo=CHICAGO)))
+    db.session.commit()
+    stored = db.session.execute(db.text(
+        'SELECT deadline FROM cfb_week WHERE week_number = 3')).scalar_one()
+    assert stored == datetime(2026, 9, 19, 16, 0)

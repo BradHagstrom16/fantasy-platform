@@ -282,12 +282,12 @@ class TestKnockoutScoring:
         with app.app_context():
             from games.worldcup.services.scoring import process_match_result
 
-            t1 = _make_team(db.session, 'R16A', 'R16 Team A', 3, 2.5)
-            t2 = _make_team(db.session, 'R16B', 'R16 Team B', 4, 4.0)
+            t1 = _make_team(db.session, 'R6A', 'R16 Team A', 3, 2.5)
+            t2 = _make_team(db.session, 'R6B', 'R16 Team B', 4, 4.0)
             match = _make_match(db.session, 60, 'R16', t1, t2)
             db.session.commit()
 
-            process_match_result(match.id, 1, 0, 'R16A')
+            process_match_result(match.id, 1, 0, 'R6A')
 
             db.session.refresh(t1)
             assert t1.base_points == 11.0
@@ -327,13 +327,13 @@ class TestKnockoutScoring:
         with app.app_context():
             from games.worldcup.services.scoring import process_match_result
 
-            t1 = _make_team(db.session, 'PEN1', 'Pen Team 1', 4, 4.0)
-            t2 = _make_team(db.session, 'PEN2', 'Pen Team 2', 5, 7.0)
+            t1 = _make_team(db.session, 'PN1', 'Pen Team 1', 4, 4.0)
+            t2 = _make_team(db.session, 'PN2', 'Pen Team 2', 5, 7.0)
             match = _make_match(db.session, 55, 'R32', t1, t2)
             db.session.commit()
 
             process_match_result(
-                match.id, 1, 1, 'PEN1',
+                match.id, 1, 1, 'PN1',
                 extra_time=True, penalties=True,
             )
 
@@ -367,12 +367,12 @@ class TestKnockoutScoring:
         with app.app_context():
             from games.worldcup.services.scoring import process_match_result
 
-            t1 = _make_team(db.session, 'REG1', 'Reg One', 4, 4.0)
-            t2 = _make_team(db.session, 'REG2', 'Reg Two', 5, 7.0)
+            t1 = _make_team(db.session, 'RG1', 'Reg One', 4, 4.0)
+            t2 = _make_team(db.session, 'RG2', 'Reg Two', 5, 7.0)
             match = _make_match(db.session, 202, 'R32', t1, t2)
             db.session.commit()
 
-            process_match_result(match.id, 2, 0, 'REG1')
+            process_match_result(match.id, 2, 0, 'RG1')
 
             db.session.refresh(match)
             assert match.home_pen is None
@@ -428,12 +428,12 @@ class TestPodiumBonuses:
         with app.app_context():
             from games.worldcup.services.scoring import process_match_result
 
-            t1 = _make_team(db.session, 'FIN1', 'Finalist 1', 1, 1.0)
-            t2 = _make_team(db.session, 'FIN2', 'Finalist 2', 1, 1.0)
+            t1 = _make_team(db.session, 'FN1', 'Finalist 1', 1, 1.0)
+            t2 = _make_team(db.session, 'FN2', 'Finalist 2', 1, 1.0)
             match = _make_match(db.session, 104, 'final', t1, t2)
             db.session.commit()
 
-            process_match_result(match.id, 3, 1, 'FIN1')
+            process_match_result(match.id, 3, 1, 'FN1')
 
             db.session.refresh(t1)
             db.session.refresh(t2)
@@ -492,8 +492,8 @@ class TestPickEnrollmentCascade:
         with app.app_context():
             from games.worldcup.services.scoring import recalculate_all_scores
 
-            t1 = _make_team(db.session, 'SUM1', 'Sum1', 1, 1.0, 'A')
-            t2 = _make_team(db.session, 'SUM2', 'Sum2', 5, 7.0, 'B')
+            t1 = _make_team(db.session, 'SM1', 'Sum1', 1, 1.0, 'A')
+            t2 = _make_team(db.session, 'SM2', 'Sum2', 5, 7.0, 'B')
             t1.advancement_method = 'group_winner'
             t2.advancement_method = 'best_third'
             user = _make_user(db.session, 'sumuser')
@@ -739,13 +739,13 @@ class TestProcessMatchErrors:
         with app.app_context():
             from games.worldcup.services.scoring import process_match_result
 
-            t1 = _make_team(db.session, 'DUP1', 'Dup1', 1, 1.0, 'A')
-            t2 = _make_team(db.session, 'DUP2', 'Dup2', 2, 1.5, 'A')
+            t1 = _make_team(db.session, 'DP1', 'Dup1', 1, 1.0, 'A')
+            t2 = _make_team(db.session, 'DP2', 'Dup2', 2, 1.5, 'A')
             match = _make_match(db.session, 99, 'group', t1, t2, 'A')
             db.session.commit()
 
-            process_match_result(match.id, 2, 0, 'DUP1')
-            result = process_match_result(match.id, 3, 1, 'DUP1')
+            process_match_result(match.id, 2, 0, 'DP1')
+            result = process_match_result(match.id, 3, 1, 'DP1')
 
             assert 'error' in result
 
