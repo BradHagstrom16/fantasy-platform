@@ -316,19 +316,22 @@ def _member_sheet(enrollment, picks, prediction_tenths, *, games_by_id,
                 sealed += 1
             if pick.is_best:
                 x2_sealed = True
-        # The owner always sees their own scoring sides in their own drawer,
-        # whether the case has locked or not. This never feeds the collapsed
-        # row (summary, mark strip, tally stay on the true lock state).
-        if is_owner and not is_reserve:
+        # The owner always sees their own sheet in their own drawer, whether
+        # each case has locked or not: every scoring side, plus a reserve that
+        # has come into use (dormant reserves already `continue`d above). This
+        # never feeds the collapsed row (summary, mark strip, tally stay on the
+        # true lock state).
+        if is_owner:
             owner_keyed.append((key, line))
     lines = [line for _, line in sorted(keyed, key=lambda item: item[0])]
     scoring = [line for line in lines if not line.is_reserve]
     tally = _tally([line.result for line in scoring], pending_extra=sealed)
     number_in = prediction_tenths is not None
     # Owner-preview surfaces (drawer only), populated only while something of
-    # theirs is still sealed from the room; otherwise `lines`/`number` already
-    # carry the whole sheet.
-    own_preview = is_owner and sealed > 0
+    # theirs is still sealed from the room — a scoring side, or a substituted
+    # reserve whose own case has not yet locked; otherwise `lines`/`number`
+    # already carry the whole sheet.
+    own_preview = is_owner and (sealed > 0 or sealed_reserve)
     own_lines = (tuple(line for _, line in
                        sorted(owner_keyed, key=lambda item: item[0]))
                  if own_preview else ())

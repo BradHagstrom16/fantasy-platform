@@ -214,6 +214,16 @@ def set_pick(user_id: int, week: DocketWeek, game_id, market, side,
         db.session.commit()
         return existing
 
+    # The reserve/scoring same-game guards below read-then-write, so two
+    # concurrent same-user mutations (one reserve, one scoring on this game)
+    # could each pass and land the forbidden pair. No DB constraint backs it:
+    # game_id is not unique across scoring picks (spread + total on one game is
+    # legal) and reserve-vs-scoring is only slot 9, so the uq_docket_pick_*
+    # backstops below cannot express it. Accepted, not locked: the race needs a
+    # single member racing their own sheet within milliseconds on one game that
+    # is then ruled No Contest; the cost is a lost reserve the member can re-file
+    # or an admin can fix. A pg_advisory_xact_lock on (user_id, week_id) would
+    # close it, but it is Postgres-only and unexercised by the SQLite CI suite.
     existing_picks = DocketPick.query.filter_by(
         user_id=user_id, week_id=week.id).all()
     taken = {p.slot for p in existing_picks}
