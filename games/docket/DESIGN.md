@@ -69,7 +69,8 @@ off. The backup sits dormant in slot 9 and only enters if a case is thrown out (
 the mistrial's older sibling). Because it is a genuine backup, it must sit on a case the
 member holds no scoring side of: a reserve on the second market of an already-picked case
 would die on the same No Contest that took the side it was meant to cover, so the sheet
-refuses it (enforced both ways — a scoring side never lands on the reserve's case either).
+refuses it (enforced both ways — a scoring side never lands on the reserve's case either,
+whether the member files it or the deadline autopick deals it).
 Both mechanics reward foresight; the design gives the headliner ceremony-in-miniature and
 the backup a deliberately quiet, held-in-reserve character. They are not equal-weight
 features.
