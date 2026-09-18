@@ -732,3 +732,103 @@ def test_repair_deadline_refuses_a_passed_deadline(app, runner, monkeypatch):
     assert result.exit_code == 0, result.output
     assert 'SKIP' in result.output and '0 week(s) updated' in result.output
     assert week.deadline_at == datetime(2026, 9, 5, 16, 0)  # unchanged
+
+
+# ── edge (frozen-line value analyzer) ───────────────────────────────────────
+
+def _edge_consensus(games, exclude=()):
+    """A fetch_current_lines return keyed by each game's api_event_id, seeded
+    at frozen == consensus (a coin flip) so a test can move exactly the lines
+    it cares about. Games in ``exclude`` are omitted (they read as unmatched)."""
+    return {
+        g.api_event_id: {
+            'cons_spread': g.home_spread, 'cons_total': g.total_points,
+            'cons_home_winprob': 0.5, 'n_books': 6,
+        }
+        for g in games if g not in exclude
+    }
+
+
+def _patch_fetch(monkeypatch, consensus, errors=()):
+    monkeypatch.setattr(
+        'games.docket.services.edge.fetch_current_lines',
+        lambda api_key, sports: (consensus, list(errors)))
+
+
+def test_edge_ranks_the_moved_line_and_recommends_a_sheet(app, runner,
+                                                          monkeypatch):
+    at(monkeypatch, BEFORE_DEADLINE)
+    app.config['ODDS_API_KEY'] = 'test-key'
+    week = make_week(1)
+    kick = datetime(2026, 9, 6, 18, 0)  # after IN_WEEK1 -> pickable
+    games = [make_game(week, kickoff=kick, home=f'H{i}', away=f'A{i}',
+                       home_spread=-3.0, total=45.0) for i in range(9)]
+    week.tiebreaker_game_id = games[0].id
+    db.session.commit()
+
+    # One total jumps 6 points -> a strong Over edge that must headline; one
+    # game is left out of the feed and must be reported unmatched.
+    consensus = _edge_consensus(games, exclude=[games[8]])
+    consensus[games[3].api_event_id]['cons_total'] = 51.0
+    _patch_fetch(monkeypatch, consensus)
+
+    result = _invoke(runner, 'edge', '--week', '1')
+
+    assert result.exit_code == 0, result.output
+    assert 'docket edge — week 1' in result.output
+    assert 'HEADLINER' in result.output
+    assert 'Over 45' in result.output              # the moved total surfaced
+    assert 'Expected points:' in result.output
+    assert 'Tiebreaker (A0 @ H0)' in result.output
+    assert 'Unmatched games' in result.output      # games[8]
+
+
+def test_edge_requires_an_api_key(app, runner, monkeypatch):
+    at(monkeypatch, BEFORE_DEADLINE)
+    app.config['ODDS_API_KEY'] = ''
+    make_week(1)
+    db.session.commit()
+
+    result = _invoke(runner, 'edge', '--week', '1')
+
+    assert result.exit_code == 1
+    assert 'ODDS_API_KEY' in result.output
+
+
+def test_edge_reports_when_nothing_is_pickable(app, runner, monkeypatch):
+    # submit-time after every week-1 kickoff -> all games have started
+    at(monkeypatch, '2026-09-07T12:00:00')
+    app.config['ODDS_API_KEY'] = 'k'
+    week = make_week(1)
+    games = [make_game(week, kickoff=datetime(2026, 9, 6, 18, 0))
+             for _ in range(2)]
+    db.session.commit()
+    _patch_fetch(monkeypatch, _edge_consensus(games))
+
+    result = _invoke(runner, 'edge', '--week', '1')
+
+    assert result.exit_code == 0, result.output
+    assert 'no pickable sides' in result.output
+
+
+def test_edge_submit_time_flag_reopens_earlier_games(app, runner, monkeypatch):
+    # clock is past kickoff, but an explicit earlier --submit-time makes the
+    # games pickable again (the "what if I had locked Friday" rerun).
+    at(monkeypatch, '2026-09-07T12:00:00')
+    app.config['ODDS_API_KEY'] = 'k'
+    week = make_week(1)
+    games = [make_game(week, kickoff=datetime(2026, 9, 6, 18, 0),
+                       home=f'H{i}', away=f'A{i}', total=45.0)
+             for i in range(3)]
+    week.tiebreaker_game_id = games[0].id
+    db.session.commit()
+    consensus = _edge_consensus(games)
+    consensus[games[1].api_event_id]['cons_total'] = 50.0
+    _patch_fetch(monkeypatch, consensus)
+
+    result = _invoke(runner, 'edge', '--week', '1',
+                     '--submit-time', '2026-09-05T12:00:00Z')
+
+    assert result.exit_code == 0, result.output
+    assert 'Recommended sheet' in result.output
+    assert 'Over 45' in result.output

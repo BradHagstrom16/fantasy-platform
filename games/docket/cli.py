@@ -93,7 +93,10 @@ Credit budget: /events is free, /odds costs 2 per sport per run (skipped
 once a sport's markets are all locked), /scores costs 2 per sport per run.
 Every call logs the account's remaining credits via utils/odds_api.py.
 """
+from datetime import UTC, datetime
+
 import click
+from flask import current_app
 from flask.cli import AppGroup
 from sqlalchemy import func, select
 from sqlalchemy.orm import joinedload
@@ -106,6 +109,7 @@ from games.docket.models import (
     DocketWeek,
     DocketWeekResult,
 )
+from games.docket.services import edge
 from games.docket.services.bridge_sheet import set_tiebreaker
 from games.docket.services.deadline_pass import (
     DeadlinePassError,
@@ -638,6 +642,126 @@ def repair_deadline_cmd(week):
     if changed:
         db.session.commit()
     click.echo(f'\n[docket repair-deadline] {changed} week(s) updated.')
+
+
+def _aware_utc(dt):
+    """A stored naive-UTC column value as aware UTC (for display/compare)."""
+    if dt is None:
+        return None
+    return dt.replace(tzinfo=UTC) if dt.tzinfo is None else dt.astimezone(UTC)
+
+
+def _parse_submit_time(raw):
+    try:
+        dt = datetime.fromisoformat(raw.replace('Z', '+00:00'))
+    except ValueError:
+        _fail(f'--submit-time must be ISO 8601, got {raw!r}')
+    return dt if dt.tzinfo else dt.replace(tzinfo=UTC)
+
+
+def _fmt_edge_row(row, deadline, index=None):
+    pre = f'  {index:>2}. ' if index is not None else '      '
+    keys = (' *crosses ' + '/'.join(map(str, row['key_cross'])) + '*'
+            if row['key_cross'] else '')
+    if row['market'] == 'spread':
+        frozen, current = f"{row['frozen']:+g}", f"{row['current']:+g}"
+    else:
+        frozen, current = f"{row['frozen']:g}", f"{row['current']:g}"
+    lock = ''
+    if (row['kickoff'] is not None and deadline is not None
+            and row['kickoff'] < deadline):
+        lock = f'  (locks {row["kickoff"]:%a %H:%M} UTC)'
+    return (f'{pre}{row["prob"] * 100:5.1f}%  {row["sport"]} '
+            f'{row["side"]:<26} [{row["market"]}]  frozen {frozen} -> mkt '
+            f'{current} (move {row["move"]:+.1f}){keys}{lock}\n'
+            f'        {row["matchup"]}')
+
+
+@docket_cli.command('edge')
+@click.option('--week', type=int, default=None,
+              help='Docket week to analyze (default: the week containing now).')
+@click.option('--submit-time', 'submit_time', default=None, metavar='ISO',
+              help='Instant you would lock picks; a game kicked off by then is '
+                   'shown but flagged unpickable (default: now).')
+@click.option('--top', type=click.IntRange(min=1), default=9, show_default=True,
+              help='Best sides to recommend (a full sheet is 8 scoring + 1 '
+                   'reserve).')
+def edge_cmd(week, submit_time, top):
+    """Rank this week's FROZEN lines by how far the market has moved off them.
+
+    Every Docket pick grades against Tuesday's frozen number. This compares
+    each frozen line to the current consensus market line (median across US
+    books) and scores each still-pickable side by its implied cover
+    probability (== expected points for the slot: win 1.0 / push 0.5 / loss
+    0.0, headliner doubled). Prints the most-vulnerable frozen lines, the top
+    recommended sheet with a headliner, and a tiebreaker number.
+
+    Read-only. Spends ~3 Odds API credits per sport on the /odds fetch.
+    """
+    week_number = _resolve_week_number(week)
+    wk = _require_week(week_number, scheduled=False)
+
+    api_key = current_app.config.get('ODDS_API_KEY', '')
+    if not api_key:
+        _fail('ODDS_API_KEY not configured')
+
+    submit = (_parse_submit_time(submit_time) if submit_time
+              else edge.default_submit_time())
+
+    games = db.session.scalars(
+        select(DocketGame).filter_by(week_id=wk.id)
+        .order_by(DocketGame.kickoff)).all()
+    if not games:
+        _fail(f'docket week {week_number} has no games imported yet')
+
+    sports = sorted({g.sport for g in games})
+    consensus, errors = edge.fetch_current_lines(api_key, sports)
+    for err in errors:
+        click.secho(f'  WARNING: {err}', fg='yellow')
+
+    deadline = _aware_utc(wk.deadline_at)
+    rows, unmatched = edge.analyze(games, consensus, submit, deadline)
+    pickable = [r for r in rows if r['pickable']]
+
+    click.echo(f'\n[docket edge — week {week_number}]')
+    click.echo(f'  submit-time: {submit.isoformat()}')
+    click.echo(f'  deadline:    {deadline} (UTC)')
+    click.echo(f'  games: {len(games)}   sports: {", ".join(sports)}   '
+               f'unmatched: {len(unmatched)}   pickable sides: {len(pickable)}')
+
+    if not pickable:
+        if errors:
+            _fail('no pickable sides and the current-line fetch failed')
+        click.secho('  no pickable sides — every game has started or lacks a '
+                    'current line', fg='yellow')
+        return
+
+    click.echo('\n  Most vulnerable frozen lines (biggest favorable drift):')
+    for row in sorted(pickable, key=lambda r: abs(r['move']), reverse=True)[:10]:
+        click.echo(_fmt_edge_row(row, deadline))
+
+    click.echo(f'\n  Recommended sheet (top {top} by expected points):')
+    sheet = pickable[:top]
+    for i, row in enumerate(sheet, 1):
+        tag = ''
+        if i == 1:
+            tag = '  <<< HEADLINER (x2)'
+        elif i == 9:
+            tag = '  (reserve — slot 9)'
+        click.echo(_fmt_edge_row(row, deadline, index=i) + tag)
+
+    click.secho(f'\n  Expected points: {edge.expected_points(sheet):.2f} / 9.0',
+                fg='green')
+
+    tb_game, tb_total = edge.tiebreaker_total(wk, games, consensus)
+    if tb_game is not None and tb_total is not None:
+        click.echo(f'  Tiebreaker ({_matchup(tb_game)}): predict {tb_total:.1f}')
+
+    if unmatched:
+        click.echo('\n  Unmatched games (no current line — excluded):')
+        for game in unmatched:
+            click.echo(f'    {edge.SPORT_LABEL[game.sport]} {_matchup(game)} '
+                       f'(final={game.is_final})')
 
 
 def register_docket_cli(app):
