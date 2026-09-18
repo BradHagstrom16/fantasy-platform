@@ -50,7 +50,9 @@ jobs:
       # -ra surfaces skip reasons. A few tests self-skip on the *symptom* of a
       # regression (a route 404ing, a page 302ing), which would otherwise turn
       # a failure into a silent skip on a green run.
-      - run: pytest tests/ -q -ra
+      # -n auto --dist loadfile: one worker per core, each test FILE kept whole on
+      # one worker (module-scoped fixtures and the per-module cleanup rely on it).
+      - run: pytest tests/ -q -ra -n auto --dist loadfile
         env:
           ENVIRONMENT: testing
 
@@ -105,7 +107,8 @@ jobs:
           ENVIRONMENT: testing
           FLASK_APP: app.py
           TEST_DATABASE_URL: postgresql://postgres@localhost:5432/ccc_migrations_test
-      - run: pytest tests/ -q -ra
+      # Each xdist worker gets its own database, ccc_test_gw0 … (tests/conftest.py).
+      - run: pytest tests/ -q -ra -n auto --dist loadfile
         env:
           ENVIRONMENT: testing
           TEST_DATABASE_URL: postgresql://postgres@localhost:5432/ccc_test

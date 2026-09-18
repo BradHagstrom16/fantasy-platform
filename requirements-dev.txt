@@ -10,3 +10,8 @@ ruff==0.15.22
 # the CI job in .github/workflows/test.yml reproducible.
 pytest==9.1.1
 pillow==12.3.0
+# Parallel test runs (`-n auto --dist loadfile`, both CI jobs). Measured
+# 2026-09-18: the Postgres job took 9.5-9.75 min serially. On Postgres each
+# worker gets its own database (tests/conftest.py). execnet, its one
+# transitive, is pinned in constraints.txt.
+pytest-xdist==3.8.0

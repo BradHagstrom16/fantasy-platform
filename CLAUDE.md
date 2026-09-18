@@ -92,6 +92,8 @@ ENVIRONMENT=testing venv/bin/python -m pytest tests/      # Run all tests (env v
 # The SAME suite on Postgres, production's engine (ADR-064). One-time: `createdb ccc_test`. The name MUST end in `_test` — the
 # fixtures truncate and drop every table, and tests/conftest.py refuses anything else. Never point it at ccc_local.
 TEST_DATABASE_URL=postgresql:///ccc_test ENVIRONMENT=testing venv/bin/python -m pytest tests/
+# Either run takes `-n auto --dist loadfile` (pytest-xdist; what CI uses): ~40 s SQLite / ~60 s Postgres on this Mac vs ~4-5 min serial.
+# On Postgres each worker creates and owns `ccc_test_gwN`. Keep `--dist loadfile` — module-scoped fixtures need a file kept on one worker.
 # Per-area suites are tests/test_<game>_*.py + tests/test_design_*.py; single test by name:
 ENVIRONMENT=testing venv/bin/python -m pytest tests/test_worldcup_scoring.py::test_points_for_pick_on_match_parity_with_compute_team_score_events -q
 # deploy.sh has its own bash harness (invisible to pytest). Run it after ANY deploy.sh edit; on the droplet add USE_REAL_FLOCK=1:
