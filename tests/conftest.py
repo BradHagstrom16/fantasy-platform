@@ -14,7 +14,8 @@ some files need belongs in those files (and on the allowlist), not here.
 Two databases, one suite. In-memory SQLite is the default. With
 ``TEST_DATABASE_URL`` set (config.py) the same tests run on Postgres —
 production's engine — where the tables persist between tests, so they are
-created once and emptied per test instead of created and dropped.
+created once per run (on a schema emptied at session start) and emptied per
+test instead of created and dropped.
 """
 import os
 
@@ -26,8 +27,50 @@ from app import create_app
 from config import TestingConfig
 from extensions import db as _db
 
-TEST_DATABASE_URL = os.environ.get('TEST_DATABASE_URL')
-ON_POSTGRES = bool(TEST_DATABASE_URL)
+_BASE_DATABASE_URL = os.environ.get('TEST_DATABASE_URL')
+ON_POSTGRES = bool(_BASE_DATABASE_URL)
+
+
+def _is_throwaway(database_url):
+    url = make_url(database_url)
+    return url.get_backend_name() == 'postgresql' and (
+        url.database or '').endswith('_test')
+
+
+def _worker_database_url(base_url):
+    """Under pytest-xdist every worker process gets its own database
+    (``ccc_test`` -> ``ccc_test_gw0`` …), created on first use: the workers
+    truncate concurrently, and one shared database would have them emptying
+    each other's tables mid-test. A plain run uses the base database as is.
+
+    Nothing is created off a base the ``_test`` guard is about to refuse.
+    """
+    worker = os.environ.get('PYTEST_XDIST_WORKER')
+    if not worker or not _is_throwaway(base_url):
+        return base_url
+    url = make_url(base_url)
+    name = f'{url.database}_{worker}'
+    engine = create_engine(base_url, isolation_level='AUTOCOMMIT')
+    with engine.connect() as connection:
+        exists = connection.execute(
+            text('SELECT 1 FROM pg_database WHERE datname = :name'),
+            {'name': name}).scalar()
+        if not exists:
+            # template0: never connected to, so concurrent workers can all
+            # copy it at once (template1 refuses while another session is on it)
+            quoted = connection.dialect.identifier_preparer.quote(name)
+            connection.execute(
+                text(f'CREATE DATABASE {quoted} TEMPLATE template0'))
+    engine.dispose()
+    return url.set(database=name).render_as_string(hide_password=False)
+
+
+TEST_DATABASE_URL = (
+    _worker_database_url(_BASE_DATABASE_URL) if ON_POSTGRES else None)
+if ON_POSTGRES:
+    # Every create_app('testing') — the canonical fixture and the 15 local
+    # ones alike — reads the URI off this class.
+    TestingConfig.SQLALCHEMY_DATABASE_URI = TEST_DATABASE_URL
 
 
 def pytest_configure(config):
@@ -44,12 +87,11 @@ def pytest_configure(config):
         return
     # The fixtures truncate and drop every table. Only a throwaway database
     # may ever be on the other end of that.
-    url = make_url(TEST_DATABASE_URL)
-    if url.get_backend_name() != 'postgresql' or not (
-            url.database or '').endswith('_test'):
+    if not _is_throwaway(_BASE_DATABASE_URL):
         raise pytest.UsageError(
             'TEST_DATABASE_URL must be a Postgres database whose name ends in '
-            f'"_test" (got {url.database!r}). The suite empties it.')
+            f'"_test" (got {make_url(_BASE_DATABASE_URL).database!r}). '
+            'The suite empties it.')
 
 
 def pytest_collection_modifyitems(config, items):
@@ -70,6 +112,28 @@ def _empty_every_table(connection):
     if tables:
         connection.execute(text(
             f'TRUNCATE {", ".join(tables)} RESTART IDENTITY CASCADE'))
+
+
+@pytest.fixture(scope='session', autouse=True)
+def _postgres_fresh_schema():
+    """Postgres only: every run — and every xdist worker — starts from an
+    EMPTY schema and lets the first create_all() build today's models.
+
+    The test databases outlive a run, and create_all() never alters a table
+    that already exists: after a model change a kept schema is the OLD one,
+    and the run fails on a column the database has never heard of. Dropping
+    the schema rather than the database covers the base database and the
+    worker ones with one path, and does not care who else is connected.
+    Runs after pytest_configure, so only ever against a guarded `_test` name.
+    """
+    if ON_POSTGRES:
+        engine = create_engine(
+            TEST_DATABASE_URL, **TestingConfig.SQLALCHEMY_ENGINE_OPTIONS)
+        with engine.begin() as connection:
+            connection.execute(text('DROP SCHEMA public CASCADE'))
+            connection.execute(text('CREATE SCHEMA public'))
+        engine.dispose()
+    yield
 
 
 @pytest.fixture(scope='module', autouse=True)
