@@ -66,9 +66,13 @@ its reason.
 
 The best pick doubles and the designation cannot be moved onto a game that already kicked
 off. The backup sits dormant in slot 9 and only enters if a case is thrown out (No Contest,
-the mistrial's older sibling). Both mechanics reward foresight; the design gives the
-headliner ceremony-in-miniature and the backup a deliberately quiet, held-in-reserve
-character. They are not equal-weight features.
+the mistrial's older sibling). Because it is a genuine backup, it must sit on a case the
+member holds no scoring side of: a reserve on the second market of an already-picked case
+would die on the same No Contest that took the side it was meant to cover, so the sheet
+refuses it (enforced both ways — a scoring side never lands on the reserve's case either).
+Both mechanics reward foresight; the design gives the headliner ceremony-in-miniature and
+the backup a deliberately quiet, held-in-reserve character. They are not equal-weight
+features.
 
 ### 1.6 The tiebreaker number matters forever
 
@@ -536,7 +540,7 @@ every open pill as the reserve; success was never confirmed in words. Six contra
   is in.", the Clerk's-Ledger facts in one Teko line ("8 sides held · x2 on Utah Utes -3.5 ·
   Reserve held · Number 53.7"), and "Nothing to submit: every tap was saved as you made it.
   Change anything until Sunday 12:00 PM CT." plus, without a reserve, "A reserve is optional:
-  your next tap on any open side holds one."; closed → the same card cold (`.is-closed`, a lock
+  your next tap on a case you haven't picked holds one."; closed → the same card cold (`.is-closed`, a lock
   mark, "Sheet closed", "Your Week N sheet is on the record.", "The docket closed Sunday 12:00
   PM CT. Verdicts to follow."). The stamp is the Stamped-Side grammar at card scale (garnet
   border + 8% tint + weight step); the closed state is the Cold-Docket treatment with its reason
@@ -552,9 +556,11 @@ every open pill as the reserve; success was never confirmed in words. Six contra
 - **The reserve is spelled out.** "Reserve" everywhere on the sheet (pill badge, rail frame, bar,
   held tag, chips, notices); never a bare "R", never "backup" player-facing. The rail's slot-9 frame
   is stage-aware ("Reserve. Opens once your 8 sides are filed." → "Reserve open. Your next tap on
-  any open side files here; it only plays if a case is thrown out."). Arming stays automatic and is
-  announced: the post-8 prompt card, the `RESERVE` chip on open pills, and "Filed as your reserve."
-  The rules page keeps "Held in reserve" as register.
+  a case you haven't picked is held here; it only plays if a case is thrown out."). Arming stays
+  automatic but only on a case the member holds no side of (§1.5): an already-picked case keeps its
+  open pills without the `RESERVE` chip, so the backup can never share a No Contest fate with a
+  scoring side. It is announced by the post-8 prompt card, the `RESERVE` chip on eligible open pills,
+  and "Filed as your reserve." The rules page keeps "Held in reserve" as register.
 - **Success is confirmed.** `_sheet_success` builds one message ("Filed, slot 3. 5 more sides to
   file." / "x2 set: Over 51.5." / "Number saved: 53.7.") for both the flash and the JSON toast, which
   is also the page's `role=status` live region. "Withdraw" is "Remove"; "Record" is "Save number".

@@ -670,7 +670,8 @@ def sheets():
     members = []
     roster_total = 0
     if state == 'open':
-        board = all_sheets(week, picks_service.now_naive())
+        board = all_sheets(week, picks_service.now_naive(),
+                           viewer_id=current_user.id)
         # A member who joined after this docket closed has no dealt sheet
         # (ADR-048): say so rather than leave them looking for their row.
         joined_late = (board.deadline_passed and current_user.id
@@ -816,7 +817,8 @@ def _live_week_board():
     if not db.session.scalar(
             select(func.count(DocketGame.id)).filter_by(week_id=week.id)):
         return None
-    board = all_sheets(week, picks_service.now_naive())
+    board = all_sheets(week, picks_service.now_naive(),
+                       viewer_id=current_user.id)
 
     def key(member):
         tally = member.tally

@@ -214,16 +214,32 @@ def set_pick(user_id: int, week: DocketWeek, game_id, market, side,
         db.session.commit()
         return existing
 
-    taken = {
-        p.slot for p in DocketPick.query.filter_by(
-            user_id=user_id, week_id=week.id).all()
-    }
+    existing_picks = DocketPick.query.filter_by(
+        user_id=user_id, week_id=week.id).all()
+    taken = {p.slot for p in existing_picks}
     if backup:
         if BACKUP_SLOT in taken:
             raise PickError('backup_taken',
                             'You already hold a case in reserve.')
+        # The reserve is a genuine backup: it must sit on a case the member
+        # has not already picked, so a No Contest can never take a scoring
+        # side and the reserve down together (DESIGN.md 1.5).
+        if any(p.game_id == game.id and p.slot != BACKUP_SLOT
+               for p in existing_picks):
+            raise PickError(
+                'reserve_same_game',
+                "Your reserve must be a case you haven't already picked.")
         slot = BACKUP_SLOT
     else:
+        # Symmetric guard: a freed scoring slot (remove_pick) must not let a
+        # scoring side land on the case already held in reserve, or the two
+        # would share a No Contest fate — the same rule from the other side.
+        if any(p.game_id == game.id and p.slot == BACKUP_SLOT
+               for p in existing_picks):
+            raise PickError(
+                'reserve_here',
+                'You hold your reserve on this case. Change your reserve '
+                'first, or pick a different case.')
         free = sorted(set(range(1, SCORING_SLOTS + 1)) - taken)
         if not free:
             if BACKUP_SLOT in taken:
@@ -501,8 +517,9 @@ def next_step(state: dict, week: DocketWeek, now=None) -> dict:
     elif state['backup'] is None:
         # The reserve is optional (DESIGN.md 1.5), so this rung leads with
         # the confirmation: the member is done, the reserve is an offer.
-        stage, ask = 'reserve', ('Sheet filed. A reserve is optional: tap one '
-                                 'more side to hold one.')
+        stage, ask = 'reserve', ('Sheet filed. A reserve is optional: tap a '
+                                 "side of a case you haven't picked to hold "
+                                 'one.')
     else:
         stage, ask = 'complete', f'Sheet filed. Change anything until {CLOSE_LABEL}.'
 

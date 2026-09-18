@@ -195,9 +195,13 @@ the finish review and DESIGN.md 7.13.
                 {% if r %}<span class="docket-sheet-points">{{ '%.1f'|format(r.points) }} pts</span>{% endif %}
                 <span class="docket-entry-caret" aria-hidden="true"></span>
             </summary>
-            {% if m.lines %}
+            {# The owner reads their own sheet whether the cases have locked or
+               not; everyone else sees only the revealed lines (7.13). #}
+            {% set own_preview = is_you and m.own_lines %}
+            {% set drawer_lines = m.own_lines if own_preview else m.lines %}
+            {% if drawer_lines %}
             <ol class="docket-sheet-lines">
-                {% for line in m.lines %}
+                {% for line in drawer_lines %}
                 <li class="docket-sheet-line{% if line.is_autopick %} is-autopick{% endif %}{% if line.is_reserve %} is-reserve{% endif %}{% if line.is_substituted %} is-substituted{% endif %}">
                     <span class="docket-sheet-when">{{ line.kickoff|ct('%a %-I:%M %p') }}</span>
                     <span class="docket-sheet-pick">
@@ -212,12 +216,15 @@ the finish review and DESIGN.md 7.13.
                 {% endfor %}
             </ol>
             {% endif %}
-            {% if m.sealed_sentence %}
+            {% if own_preview %}
+            <p class="docket-sheet-sealed">Only you can see this until each case kicks off.</p>
+            {% elif m.sealed_sentence %}
             <p class="docket-sheet-sealed">{{ m.sealed_sentence }}</p>
             {% endif %}
-            {% if board.number_revealed %}
+            {% if board.number_revealed or (is_you and m.own_number) %}
             <p class="docket-sheet-number">
-                {% if m.number %}Number {{ m.number }}{% else %}No number saved; the line stands in{% endif %}
+                {% set shown_number = m.number or m.own_number %}
+                {% if shown_number %}Number {{ shown_number }}{% else %}No number saved; the line stands in{% endif %}
                 {% if board.designated_caption %}<span class="docket-caption">· {{ board.designated_caption }}</span>{% endif %}
             </p>
             {% endif %}

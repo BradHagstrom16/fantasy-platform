@@ -45,7 +45,7 @@
     {% else %}
     <p class="docket-filed-note">Nothing to submit: every tap was saved as you made it. Change anything until {{ week.deadline_at|ct('%A %-I:%M %p CT') }}.</p>
       {% if not sheet.backup %}
-      <p class="docket-filed-note">A reserve is optional: your next tap on any open side holds one.</p>
+      <p class="docket-filed-note">A reserve is optional: your next tap on a case you haven't picked holds one.</p>
       {% endif %}
     {% endif %}
   </div>
@@ -75,7 +75,7 @@
         <li><strong>Your number.</strong> Predict the tiebreaker score in <button type="button" class="docket-linklike" data-docket-open-sheet>your sheet</button>.</li>
         {% endif %}
         {% if not sheet.backup %}
-        <li><strong>A reserve, if you want one.</strong> Your next tap on any open side is held as your reserve. It only plays if a case is thrown out.</li>
+        <li><strong>A reserve, if you want one.</strong> Your next tap on a case you haven't picked is held as your reserve. It only plays if a case is thrown out.</li>
         {% endif %}
       </ul>
     </div>

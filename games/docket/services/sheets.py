@@ -128,6 +128,12 @@ class MemberSheet:
     tally: Tally | None          # None until a scoring line is final
     sealed_sentence: str
     summary: str
+    # Drawer-only, owner's own eyes: their scoring sides shown early (before
+    # the case locks) and their own number, so a member can always read their
+    # own sheet. Empty/None for everyone else and once nothing is sealed. These
+    # never touch the collapsed row or the mark strip (see _member_sheet).
+    own_lines: tuple[SheetLine, ...] = ()
+    own_number: str | None = None
 
     def marks(self) -> tuple[StripMark, ...]:
         """The mark strip: eight scoring squares in the order the lines
@@ -266,50 +272,68 @@ def _reserve_in_use(picks, games_by_id) -> bool:
 
 
 def _member_sheet(enrollment, picks, prediction_tenths, *, games_by_id,
-                  snapshots, revealed_ids, number_revealed) -> MemberSheet:
+                  snapshots, revealed_ids, number_revealed,
+                  is_owner=False) -> MemberSheet:
     keyed = []                   # (sort key, line): kickoff order, reserve last
+    owner_keyed = []             # the owner's own scoring sides, sealed or not
     held = sealed = 0
     x2_sealed = sealed_reserve = False
     reserve_in_use = _reserve_in_use(picks, games_by_id)
     for pick in picks:
         is_reserve = pick.slot == BACKUP_SLOT
-        # Hide the reserve until it actually substitutes; it is noise otherwise.
+        # Hide the reserve until it actually substitutes; it is noise otherwise
+        # (true for the owner too, by decision — the reserve waits for use).
         if is_reserve and not reserve_in_use:
             continue
         game = games_by_id[pick.game_id]
         if not is_reserve:
             held += 1
-        if pick.game_id not in revealed_ids:
+        revealed = pick.game_id in revealed_ids
+        snap = snapshots.get(game.id)
+        line = SheetLine(
+            slot=pick.slot,
+            is_reserve=is_reserve,
+            is_substituted=is_reserve,   # a revealed reserve is one in use
+            is_best=pick.is_best,
+            is_auto_best=pick.is_auto_best,
+            is_autopick=pick.is_autopick,
+            sport=SPORT_LABELS.get(game.sport, game.sport),
+            caption=_caption(game),
+            kickoff=game.kickoff,
+            pick=describe_pick(pick),
+            # An owner's early-view side is held, not yet graded: no verdict.
+            result=_result(pick, game, snap) if revealed else None,
+            final_score=(f'{snap.away_score}-{snap.home_score}'
+                         if revealed and snap is not None else None),
+        )
+        key = (is_reserve, game.kickoff, game.api_event_id, pick.slot)
+        if revealed:
+            keyed.append((key, line))
+        else:
             if is_reserve:
                 sealed_reserve = True
             else:
                 sealed += 1
             if pick.is_best:
                 x2_sealed = True
-            continue
-        snap = snapshots.get(game.id)
-        keyed.append((
-            (is_reserve, game.kickoff, game.api_event_id, pick.slot),
-            SheetLine(
-                slot=pick.slot,
-                is_reserve=is_reserve,
-                is_substituted=is_reserve,   # reaches here only when in use
-                is_best=pick.is_best,
-                is_auto_best=pick.is_auto_best,
-                is_autopick=pick.is_autopick,
-                sport=SPORT_LABELS.get(game.sport, game.sport),
-                caption=_caption(game),
-                kickoff=game.kickoff,
-                pick=describe_pick(pick),
-                result=_result(pick, game, snap),
-                final_score=(f'{snap.away_score}-{snap.home_score}'
-                             if snap is not None else None),
-            ),
-        ))
+        # The owner always sees their own scoring sides in their own drawer,
+        # whether the case has locked or not. This never feeds the collapsed
+        # row (summary, mark strip, tally stay on the true lock state).
+        if is_owner and not is_reserve:
+            owner_keyed.append((key, line))
     lines = [line for _, line in sorted(keyed, key=lambda item: item[0])]
     scoring = [line for line in lines if not line.is_reserve]
     tally = _tally([line.result for line in scoring], pending_extra=sealed)
     number_in = prediction_tenths is not None
+    # Owner-preview surfaces (drawer only), populated only while something of
+    # theirs is still sealed from the room; otherwise `lines`/`number` already
+    # carry the whole sheet.
+    own_preview = is_owner and sealed > 0
+    own_lines = (tuple(line for _, line in
+                       sorted(owner_keyed, key=lambda item: item[0]))
+                 if own_preview else ())
+    own_number = (format_tenths(prediction_tenths)
+                  if is_owner and number_in and not number_revealed else None)
     return MemberSheet(
         enrollment=enrollment,
         user_id=enrollment.user_id,
@@ -327,11 +351,19 @@ def _member_sheet(enrollment, picks, prediction_tenths, *, games_by_id,
             sealed_reserve=sealed_reserve,
             number_pending=number_in and not number_revealed),
         summary=_summary(held=held, revealed=len(scoring), tally=tally),
+        own_lines=own_lines,
+        own_number=own_number,
     )
 
 
-def all_sheets(week: DocketWeek, now: datetime) -> WeekSheets:
-    """Every member's sheet for the week as of ``now`` (naive UTC)."""
+def all_sheets(week: DocketWeek, now: datetime,
+               viewer_id: int | None = None) -> WeekSheets:
+    """Every member's sheet for the week as of ``now`` (naive UTC).
+
+    ``viewer_id`` is the logged-in member: their own row reveals its scoring
+    sides (and number) in the drawer whether or not each case has locked, so a
+    member can always read their own sheet. Everyone else's sides stay sealed
+    until kickoff; the collapsed row is identical either way."""
     deadline_passed = now >= week.deadline_at
     ids = (roster_user_ids() if not deadline_passed
            else roster_user_ids_as_of(week.deadline_at))
@@ -369,7 +401,8 @@ def all_sheets(week: DocketWeek, now: datetime) -> WeekSheets:
             enrollment, picks_by_user.get(enrollment.user_id, []),
             predictions.get(enrollment.user_id),
             games_by_id=games_by_id, snapshots=snapshots,
-            revealed_ids=revealed_ids, number_revealed=number_revealed)
+            revealed_ids=revealed_ids, number_revealed=number_revealed,
+            is_owner=enrollment.user_id == viewer_id)
         for enrollment in enrollments
     ]
     members.sort(key=lambda m: (m.enrollment.get_display_name().casefold(),
