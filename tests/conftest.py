@@ -14,7 +14,8 @@ some files need belongs in those files (and on the allowlist), not here.
 Two databases, one suite. In-memory SQLite is the default. With
 ``TEST_DATABASE_URL`` set (config.py) the same tests run on Postgres —
 production's engine — where the tables persist between tests, so they are
-created once and emptied per test instead of created and dropped.
+created once per run (on a schema emptied at session start) and emptied per
+test instead of created and dropped.
 """
 import os
 
@@ -57,8 +58,9 @@ def _worker_database_url(base_url):
         if not exists:
             # template0: never connected to, so concurrent workers can all
             # copy it at once (template1 refuses while another session is on it)
+            quoted = connection.dialect.identifier_preparer.quote(name)
             connection.execute(
-                text(f'CREATE DATABASE "{name}" TEMPLATE template0'))
+                text(f'CREATE DATABASE {quoted} TEMPLATE template0'))
     engine.dispose()
     return url.set(database=name).render_as_string(hide_password=False)
 
@@ -110,6 +112,28 @@ def _empty_every_table(connection):
     if tables:
         connection.execute(text(
             f'TRUNCATE {", ".join(tables)} RESTART IDENTITY CASCADE'))
+
+
+@pytest.fixture(scope='session', autouse=True)
+def _postgres_fresh_schema():
+    """Postgres only: every run — and every xdist worker — starts from an
+    EMPTY schema and lets the first create_all() build today's models.
+
+    The test databases outlive a run, and create_all() never alters a table
+    that already exists: after a model change a kept schema is the OLD one,
+    and the run fails on a column the database has never heard of. Dropping
+    the schema rather than the database covers the base database and the
+    worker ones with one path, and does not care who else is connected.
+    Runs after pytest_configure, so only ever against a guarded `_test` name.
+    """
+    if ON_POSTGRES:
+        engine = create_engine(
+            TEST_DATABASE_URL, **TestingConfig.SQLALCHEMY_ENGINE_OPTIONS)
+        with engine.begin() as connection:
+            connection.execute(text('DROP SCHEMA public CASCADE'))
+            connection.execute(text('CREATE SCHEMA public'))
+        engine.dispose()
+    yield
 
 
 @pytest.fixture(scope='module', autouse=True)
