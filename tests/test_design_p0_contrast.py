@@ -5,11 +5,11 @@ assertions only verify that the rule body declares chamber-purple text
 (`var(--purple-900)` / `var(--chamber)` / `#1C0A3A`); they do not compute
 the rendered contrast ratio against the metal-gold gradient stops.
 
-Rendered contrast against gold-dark (#8A6A1A, the gradient's worst-stop)
-is currently ~3.6:1 — below WCAG AA 4.5:1. The DESIGN.md token retune
-that lifts the gold floor is tracked in plan §0.4 (P6 S6.1 backlog) and
-will close that gap. Until then, the locks below freeze the text-color
-half of the fix; pair them with the rendered probe in browser DevTools.
+When this lock was written the gradient's worst stop was gold-dark
+(#8A6A1A), ~3.6:1 against chamber-purple — below WCAG AA 4.5:1. P6 S6.1.3
+closed that gap by lifting `--metal-gold-flat`'s 100% stop to #A88420
+(~5.2:1; static/css/tokens.css); `--gold-dark` itself is unchanged by
+decision. The locks below still freeze the text-color half of the fix.
 
 Hover is pinned alongside rest so a future hover-flip can't quietly
 re-introduce the white-on-gold bug (~1.5:1 against the lightest stop).

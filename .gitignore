@@ -47,8 +47,6 @@ logs/
 
 # DO NOT ignore migrations/ — these must be committed
 
-_migration_source/
-
 # Git worktrees
 .worktrees/
 
@@ -73,9 +71,8 @@ fantasy-platform-and-world-cup-design/
 .impeccable-review/
 .impeccable/
 
-# Designer logo delivery — under review, not yet integrated
+# Designer logo delivery — the masters, kept on file (integrated May 2026; brand-kit variants unwired)
 CCC-final/
-_dbdump/
 
 # Brad's weekly write-ups (personal drafts, never repo content)
 docs/WeeklyWriteUps/
