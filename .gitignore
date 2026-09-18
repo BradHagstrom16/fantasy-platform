@@ -47,6 +47,12 @@ logs/
 
 # DO NOT ignore migrations/ — these must be committed
 
+# PII guards: neither directory exists today (both removed 2026-09-18), but if a
+# legacy-DB staging copy or a prod dump is ever dropped here again it carries
+# member emails + password hashes and must never be staged.
+_migration_source/
+_dbdump/
+
 # Git worktrees
 .worktrees/
 
