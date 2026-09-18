@@ -488,6 +488,7 @@ def test_oracle_with_snapshot_checks_column_fidelity(app, tmp_path):
     assert any(d.kind == 'golf_tournament_result' and d.field == 'final_position' for d in parity.diffs)
 
 
+@pytest.mark.sqlite_only  # the dangling key below is a FK violation on Postgres
 def test_fidelity_reports_missing_player_instead_of_raising(app, tmp_path):
     """check_only must emit a diff — never a KeyError — when the platform lacks
     a player that a legacy pick references as its primary/backup (p1 is both a

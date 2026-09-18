@@ -144,7 +144,9 @@ def seed_full_tournament(num_enrollments=5, num_picks_each=9,
     for tier_num, count in [(1, 5), (2, 5), (3, 11), (4, 11), (5, 16)]:
         for i in range(count):
             t = make_team(
-                fifa_code=f'T{tier_num}{i:02d}',
+                # three characters: worldcup_team.fifa_code is String(3),
+                # which Postgres enforces and SQLite does not
+                fifa_code=f'{tier_num}{i:02d}',
                 name=f'Tier{tier_num}-{i}',
                 tier=tier_num,
                 multiplier={1: 1.0, 2: 1.5, 3: 2.0, 4: 2.5, 5: 3.0}[tier_num],

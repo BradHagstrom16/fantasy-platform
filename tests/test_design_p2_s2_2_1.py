@@ -251,6 +251,9 @@ def app():
         db.session.add_all([m1, m2, m3])
         db.session.commit()
         yield app
+        # remove() first: Postgres will not drop a table the session's open
+        # transaction still holds a lock on (SQLite never minded)
+        db.session.remove()
         db.drop_all()
 
 

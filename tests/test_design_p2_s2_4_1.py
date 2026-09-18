@@ -310,6 +310,9 @@ def app():
         # on empty country_stats), so no seed is required for the smoke
         # test — we only assert the new structural classes are present.
         yield app
+        # remove() first: Postgres will not drop a table the session's open
+        # transaction still holds a lock on (SQLite never minded)
+        db.session.remove()
         db.drop_all()
 
 

@@ -26,7 +26,7 @@ ALLOWED = {
     'test_cfb_history.py',                 # module-scoped client for /cfb/history (static snapshot, empty DB)
     'test_cfb_time_seam.py',               # app-context only, deliberately no DB
     'test_design_p2_s2_2_1.py',            # seeds WorldCupMatch rows inside the fixture
-    'test_design_p2_s2_4_1.py',            # no-remove variant + stats-route empty-table note
+    'test_design_p2_s2_4_1.py',            # no ENVIRONMENT pin + stats-route empty-table note
     'test_design_wc_schedule_redesign.py', # seeds a picker user, stashes _picker_id in config
     'test_golf_automation.py',             # pins SEASON_YEAR to the golf fixtures' season
     'test_golf_cleanup.py',                # pins SEASON_YEAR

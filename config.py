@@ -146,9 +146,27 @@ class ProductionConfig(Config):
     WTF_CSRF_SSL_STRICT = False
 
 
+# The suite's Postgres seam. A dedicated name, never DATABASE_URL: load_dotenv()
+# fills that one with the dev database (the droplet's .env, with production) and
+# the fixtures truncate and drop tables. tests/conftest.py refuses any database
+# whose name does not end in `_test`.
+_TEST_DATABASE_URL = os.environ.get('TEST_DATABASE_URL')
+
+
 class TestingConfig(Config):
     TESTING = True
-    SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
+    # In-memory SQLite is the fast default; TEST_DATABASE_URL runs the same
+    # suite on Postgres (CI's `pytest-postgres` job).
+    SQLALCHEMY_DATABASE_URI = _TEST_DATABASE_URL or 'sqlite:///:memory:'
+    if _TEST_DATABASE_URL:
+        # timezone=UTC is production's session zone (DO Managed Postgres runs
+        # GMT) — the zone the 2026-09-07 aware-datetime cast depended on, which
+        # a laptop's local-zone session would hide. lock_timeout turns a leaked
+        # transaction blocking TRUNCATE into a loud failure, not a hung run.
+        SQLALCHEMY_ENGINE_OPTIONS: ClassVar[dict] = {
+            'connect_args': {
+                'options': '-c timezone=UTC -c lock_timeout=15000'},
+        }
     WTF_CSRF_ENABLED = False
     # Pinned, not env-derived: the suite must never need a rate-limit service,
     # even on a machine whose .env points production at Redis.

@@ -78,7 +78,9 @@ def _make_tournament(name='Test Open', status='upcoming', season_year=SEASON,
                      pick_deadline=None):
     now = datetime.now(UTC)
     t = GolfTournament(
-        api_tourn_id=f'T-{name}-{season_year}',
+        # [:20]: api_tourn_id is String(20), enforced by Postgres only (the
+        # unique key pairs it with season_year, so the year need not survive)
+        api_tourn_id=f'T-{name}'[:20],
         name=name,
         season_year=season_year,
         start_date=start_date if start_date is not None else now - timedelta(days=4),
@@ -106,7 +108,7 @@ def _make_reminder_tournament(hours_to_deadline=24, name='Reminder Open',
     now_ct = datetime.now(GOLF_LEAGUE_TZ)
     deadline = (now_ct + timedelta(hours=hours_to_deadline)).replace(tzinfo=None)
     t = GolfTournament(
-        api_tourn_id=f'REM-{name}',
+        api_tourn_id=f'REM-{name}'[:20],
         name=name,
         season_year=SEASON,
         start_date=(now_ct + timedelta(hours=hours_to_deadline)).replace(tzinfo=None),

@@ -583,3 +583,64 @@ def test_sheet_state_carries_the_autopick_facts(monkeypatch, week, user):
     assert state['best']['game_id'] == thu.id
     assert state['best']['is_auto_best'] is True, \
         'an assigned double on a hand-made pick must still surface'
+
+
+# ── The sheet lock (Postgres only: a row lock needs a second connection) ──
+
+@pytest.mark.postgres
+def test_reserve_rule_holds_against_a_concurrent_scoring_pick(
+        monkeypatch, app, week, user):
+    """The race PR #222's review found: a reserve and a scoring side on one
+    case, filed by the same member at the same moment, each read the sheet
+    before the other wrote. set_pick now waits on the member's enrollment row
+    and reads the sheet under that lock — so the reserve request here must
+    (1) block while another connection holds the row, and (2) once released,
+    see the scoring side that landed meanwhile and refuse."""
+    from threading import Thread
+
+    from games.docket.models import DocketWeek
+    from tests._docket_fixtures import make_enrollment
+
+    at(monkeypatch, IN_WEEK1)
+    make_enrollment(user)
+    game = make_game(week, kickoff=KICK_SAT)
+    db.session.commit()
+    user_id, week_id, game_id = user.id, week.id, game.id
+    db.session.remove()  # this session must hold nothing the thread waits on
+
+    holder = db.engine.connect()
+    held = holder.begin()
+    holder.execute(db.text(
+        'SELECT id FROM docket_enrollment WHERE user_id = :u FOR UPDATE'),
+        {'u': user_id})
+
+    outcome = {}
+
+    def file_reserve():
+        with app.app_context():
+            try:
+                picks_service.set_pick(
+                    user_id, db.session.get(DocketWeek, week_id), game_id,
+                    'total', 'over', backup=True)
+                outcome['code'] = 'filed'
+            except PickError as err:
+                outcome['code'] = err.code
+            finally:
+                db.session.remove()
+
+    request = Thread(target=file_reserve)
+    request.start()
+    request.join(timeout=1.0)
+    assert request.is_alive(), 'set_pick did not wait on the sheet lock'
+
+    # The racing request's scoring side lands while the reserve waits.
+    holder.execute(db.insert(DocketPick.__table__).values(
+        user_id=user_id, week_id=week_id, game_id=game_id, market='spread',
+        side='home', slot=1, is_best=False, is_autopick=False,
+        is_auto_best=False, line_value=-3.5, book='draftkings'))
+    held.commit()
+    holder.close()
+
+    request.join(timeout=10)
+    assert not request.is_alive()
+    assert outcome['code'] == 'reserve_same_game'

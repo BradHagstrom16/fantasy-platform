@@ -136,9 +136,11 @@ def test_no_float_enters_key_three_through_the_db_path(app):
     assert error == 515
 
 
+@pytest.mark.sqlite_only
 def test_a_float_error_is_refused_at_the_seam(app):
     """SQLite is dynamically typed and will store 4.5 in an Integer column,
-    so the snapshot guard is the real gate, not the schema."""
+    so the snapshot guard is the real gate, not the schema. (Postgres casts
+    51.5 to 52 on assignment: the float never reaches the seam there.)"""
     from games.docket.services.season_pass import week_rollups_from_db
 
     week = _graded_week(1)
