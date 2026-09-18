@@ -6,7 +6,7 @@
     <div class="container">
         <span class="cfb-eyebrow">CFB Survivor &middot; The Commissioner&rsquo;s Desk</span>
         <h1 class="cfb-admin-title">The Roster</h1>
-        <p class="cfb-admin-sub"><strong>{{ enrollments|length }}</strong> enrolled. Lives, status, and admin access.</p>
+        <p class="cfb-admin-sub"><strong>{{ enrollments|length }}</strong> enrolled. Lives, status, and admin access.{% if active_week %} Week {{ active_week.week_number }}: <strong>{{ picked_count }}</strong> of <strong>{{ active_total }}</strong> picked, {{ missing_count }} still out.{% endif %}</p>
     </div>
 </header>
 
@@ -24,12 +24,13 @@
                         <th>Email</th>
                         <th>Lives</th>
                         <th>Status</th>
+                        {% if active_week %}<th>Week {{ active_week.week_number }} Pick</th>{% endif %}
                         <th>CFB Admin</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for enrollment in enrollments %}
-                    <tr>
+                    <tr class="{% if active_week and not enrollment.is_eliminated and enrollment.user_id not in picks_by_user %}table-warning{% endif %}">
                         <td>
                             <strong>{{ enrollment.get_display_name() }}</strong>
                             {% if enrollment.user.username != enrollment.get_display_name() %}
@@ -50,6 +51,19 @@
                                 <span class="badge badge-survived">Active</span>
                             {% endif %}
                         </td>
+                        {% if active_week %}
+                        <td class="cfb-cell-pick">
+                            {% if enrollment.is_eliminated %}
+                                <span class="cfb-result-none" aria-label="Not expected to pick">&middot;</span>
+                            {% elif enrollment.user_id in picks_by_user %}
+                                {% set pick = picks_by_user[enrollment.user_id] %}
+                                <span class="cfb-team-name">{{ pick.team.name }}</span>
+                                {% if pick.is_autopick %}<span class="cfb-auto-tag">Auto</span>{% endif %}
+                            {% else %}
+                                <span class="cfb-admin-chip is-attention">No pick</span>
+                            {% endif %}
+                        </td>
+                        {% endif %}
                         <td>
                             <form method="POST" action="{{ url_for('cfb.admin_toggle_admin', user_id=enrollment.user_id) }}" class="d-inline">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
