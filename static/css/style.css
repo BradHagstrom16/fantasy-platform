@@ -15108,7 +15108,54 @@ body.game-docket .form-select:focus {
    sheet lines laid open, reached from a ledger line. --- */
 .docket-member-page { padding-bottom: 3rem; }
 .docket-member-weeklist { padding-left: 0; }
-.docket-member-seelink { flex: 1 0 100%; margin: 0 0 .3rem; }
+.docket-member-seelink { margin: 0; }
+/* Typeset + clarify pass (2026-09-18): the standing reads as two facts, the
+   position then what the drop forgave; a bounded reading measure keeps it from
+   running edge to edge and clipping (the ledger's own single-line note keeps
+   Brad's 2026-09-16 full-container treatment, unscoped). */
+.docket-member-page .docket-your-standing { max-width: 62ch; }
+.docket-standing-drop {
+  display: block;
+  margin-top: .4rem;
+  font-family: 'Newsreader', Georgia, serif;
+  font-size: .95rem;
+  color: var(--text-secondary);
+}
+/* The week entry is an account line: the points figure is the datum (ink, one
+   step up), the week label and note stay quiet beside it, and each week gets a
+   little air between it and the next. */
+.docket-member-weeklist .docket-week { padding: .5rem 0 .55rem; row-gap: .15rem; }
+.docket-member-weeklist .docket-week-points {
+  color: var(--text-primary);
+  font-size: 1.2rem;
+  min-width: 3.9rem;
+}
+.docket-member-weeklist .docket-week.is-dropped .docket-week-points,
+.docket-member-weeklist .docket-week.is-absent .docket-week-points {
+  color: var(--text-secondary);
+}
+.docket-week-unit {
+  font-family: 'Teko', sans-serif;
+  font-weight: 500;
+  font-size: .8rem;
+  letter-spacing: .04em;
+  color: var(--text-secondary);
+  margin-left: .05rem;
+}
+/* Look closer: the member's own graded sheet, then the whole pool's, grouped
+   as one quiet cluster under the figure so "Your sheet" and "Every sheet" read
+   as the two ways in, not two rival links. */
+.docket-week-look {
+  flex: 1 0 100%;
+  margin: .1rem 0 0 2.65rem;
+  padding-left: .1rem;
+  border-left: 1px solid var(--docket-rule);
+}
+.docket-week-look .docket-week-sheet { margin: 0; }
+.docket-week-look .docket-member-seelink { margin: .15rem 0 .1rem .4rem; }
+@media (max-width: 575.98px) {
+  .docket-week-look { margin-left: 1.4rem; }
+}
 /* The platform .back-link is bone-mute for dark surfaces (its hover is
    wc-white); on the room's bone page it is invisible, so re-ink it: oxblood
    at rest, garnet on hover, the room's garnet focus ring. */
