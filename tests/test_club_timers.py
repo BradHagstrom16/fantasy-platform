@@ -47,8 +47,17 @@ def _after(path):
 
 def _pulls(path, unit):
     """True when the unit would START ``unit``, not just order after it."""
-    return any(d.startswith(('Wants=', 'Requires=')) and unit in d.split()
+    return any(d.startswith(('Wants=', 'Requires='))
+               and unit in d.split('=', 1)[1].split()
                for d in _directives(path))
+
+
+def test_pulls_sees_a_pull_dependency():
+    """The guard for the ordering-only assertions below: a `Wants=` line
+    with the key still attached to the unit name must register."""
+    assert 'network-online.target' in _after(PAPER_SERVICE)
+    assert _pulls(PAPER_SERVICE, 'network-online.target')
+    assert not _pulls(PAPER_SERVICE, 'cfb-spreads.service')
 
 
 def _clock(rule):
