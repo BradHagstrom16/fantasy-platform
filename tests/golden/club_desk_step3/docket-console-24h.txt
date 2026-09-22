@@ -1,1 +1,0 @@
-  reminders: 24h sent to 1/1 unfinished sheets

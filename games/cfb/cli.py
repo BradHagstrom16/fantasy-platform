@@ -10,15 +10,16 @@ Usage:
     flask cfb sync --mode spreads     # Update spreads from API
     flask cfb sync --mode scores      # Fetch scores + auto-process
     flask cfb sync --mode autopick    # Process missed-deadline auto-picks
-    flask cfb sync --mode remind      # Send pick reminders
     flask cfb sync --mode status      # Print season summary
     flask cfb recalc-spreads          # Recompute every cumulative spread under the current rule
     flask cfb repair-week-dates --week N   # Re-derive a regular-season week's start/deadline from SEASON_SCHEDULE
 
-On the droplet, hand-fire a reminder pass with ``sudo systemctl start
-cfb-remind.service`` rather than ``flask cfb sync --mode remind`` in a shell:
+Pick reminders are the Club Desk's (``flask club desk``, games/club_desk_cli.py;
+unit deploy/club-remind.*, ADR-065 step 9): the ``remind`` mode that lived
+here was retired with the cfb-remind unit. Hand-fire ON THE DROPLET with
+``sudo systemctl start club-remind.service``, never the bare command —
 systemd merges a manual start with an in-flight timer firing of the same
-oneshot unit, which is what keeps the sent-flag de-dup race-free — there is
+oneshot unit, which is what keeps the sent-flag de-dup race-free; there is
 deliberately no lock in code (PR #169).
 """
 import click
@@ -74,10 +75,6 @@ def _run_mode(mode):
             'status': 'processed',
             'details': '\n'.join(results) if results else 'No auto-picks needed',
         }
-    elif mode == 'remind':
-        from games.cfb.services.reminders import run_reminder_check
-        run_reminder_check()
-        return  # run_reminder_check handles its own output
     elif mode == 'status':
         from games.cfb.services.automation import run_status
         result = run_status()
@@ -91,7 +88,7 @@ def _run_mode(mode):
 
 @cfb_cli.command('sync')
 @click.option('--mode', required=True,
-              type=click.Choice(['setup', 'spreads', 'scores', 'autopick', 'remind', 'status']),
+              type=click.Choice(['setup', 'spreads', 'scores', 'autopick', 'status']),
               help='Sync mode to run.')
 def sync_cmd(mode):
     """Unified CFB automation CLI -- run weekly tasks by mode."""
@@ -120,12 +117,6 @@ def spreads_cmd():
 def autopick_cmd():
     """Process auto-picks for users who missed the deadline."""
     _run_mode('autopick')
-
-
-@cfb_cli.command('remind')
-def remind_cmd():
-    """Send pick reminders for the active week."""
-    _run_mode('remind')
 
 
 @cfb_cli.command('status')

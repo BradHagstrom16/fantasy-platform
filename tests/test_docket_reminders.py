@@ -1,4 +1,4 @@
-"""The Docket deadline reminders (D24).
+"""The Docket deadline reminders (D24), as the Club Desk sends them.
 
 The lock this file exists for is no-double-send: the reminder timer fires
 hourly and each tier's window is 70 minutes wide, so a run inside an
@@ -6,22 +6,23 @@ already-sent tier MUST send nothing. That guarantee has to live in
 DocketWeek.last_reminder_tier and not in the schedule, because a schedule is
 one deploy away from changing.
 
-Mail is faked at games.docket.services.notifications.send_platform_email —
-the read site, per the platform mocking convention. Patching utils.email
-would be a silent no-op here.
+Since ADR-065 step 9 the send loop is the desk's (games/club_desk.py) and
+this module supplies the tiers, recipients and letter; a Docket-only firing
+(`--anchor docket`, no rides) is the legacy pass's exact contract. The
+cross-game rules (riders, pre-marks) live in tests/test_club_desk*.py.
+
+Mail is faked at games.club_desk.send_platform_email — the read site, per the
+platform mocking convention. Patching utils.email would be a silent no-op.
 """
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from unittest.mock import patch
 
 import pytest
 
 from extensions import db
+from games.club_desk import run_desk
 from games.docket.models import DocketPick, DocketTiebreakerPrediction
-from games.docket.services.reminders import (
-    active_window,
-    outstanding,
-    run_reminder_pass,
-)
+from games.docket.services.reminders import active_window, outstanding
 from tests._docket_fixtures import (
     WEEK1_DEADLINE_UTC,
     make_enrollment,
@@ -31,6 +32,8 @@ from tests._docket_fixtures import (
 )
 
 KICK = datetime(2026, 9, 5, 18, 0)
+DESK_SEND = 'games.club_desk.send_platform_email'
+NO_PUSH = 'games.docket.services.reminders.send_push'
 
 # Instants inside each tier's window, as naive UTC (deadline is Sun Sep 6
 # 12:00 CT == 17:00 UTC).
@@ -68,6 +71,16 @@ def _finish_sheet(user, week, games):
     db.session.commit()
 
 
+def _pass(now_naive_utc):
+    """One Docket-only desk firing at ``now`` (naive UTC, like the deadline
+    column). Returns the run: ``anchors`` empty means no tier was due or
+    the due tier is already sent; ``exit_code`` 1 means the tier reached
+    nobody; ``latched`` names what was recorded."""
+    with patch(NO_PUSH):
+        return run_desk(now_naive_utc.replace(tzinfo=UTC),
+                        anchors=('docket',), rides=())
+
+
 @pytest.fixture()
 def sent():
     """Collect (recipient, subject) for every accepted send."""
@@ -77,8 +90,7 @@ def sent():
         calls.append((to, subject))
         return True
 
-    with patch('games.docket.services.notifications.send_platform_email',
-               side_effect=fake):
+    with patch(DESK_SEND, side_effect=fake):
         yield calls
 
 
@@ -90,12 +102,11 @@ def test_two_runs_in_one_tier_send_once(app, sent):
     make_enrollment(user)
     db.session.commit()
 
-    first = run_reminder_pass(week, now=AT_48H)
-    second = run_reminder_pass(week, now=AT_48H + timedelta(minutes=30))
+    first = _pass(AT_48H)
+    second = _pass(AT_48H + timedelta(minutes=30))
 
-    assert first['status'] == 'sent'
-    assert first['sent'] == 1
-    assert second['status'] == 'already_sent'
+    assert first.delivered == {'docket': 1} and first.latched == {'docket': '48h'}
+    assert second.anchors == [] and second.delivered == {}
     assert len(sent) == 1, 'the same tier must never mail a player twice'
     assert week.last_reminder_tier == '48h'
 
@@ -106,10 +117,10 @@ def test_each_tier_sends_once_as_the_deadline_closes(app, sent):
     make_enrollment(user)
     db.session.commit()
 
-    statuses = [run_reminder_pass(week, now=instant)['status']
-                for instant in (AT_48H, AT_24H, AT_2H)]
+    latched = [_pass(instant).latched.get('docket')
+               for instant in (AT_48H, AT_24H, AT_2H)]
 
-    assert statuses == ['sent', 'sent', 'sent']
+    assert latched == ['48h', '24h', '2h']
     assert len(sent) == 3
     assert week.last_reminder_tier == '2h'
 
@@ -122,11 +133,12 @@ def test_a_later_run_never_reopens_an_earlier_tier(app, sent):
     make_enrollment(user)
     db.session.commit()
 
-    run_reminder_pass(week, now=AT_2H)
-    replay = run_reminder_pass(week, now=AT_48H)
+    _pass(AT_2H)
+    replay = _pass(AT_48H)
 
-    assert replay['status'] == 'already_sent'
+    assert replay.anchors == []
     assert len(sent) == 1
+    assert week.last_reminder_tier == '2h'
 
 
 def test_finished_sheet_is_not_a_recipient(app, sent):
@@ -136,10 +148,10 @@ def test_finished_sheet_is_not_a_recipient(app, sent):
     db.session.commit()
     _finish_sheet(done, week, games)
 
-    result = run_reminder_pass(week, now=AT_48H)
+    run = _pass(AT_48H)
 
-    assert result['status'] == 'all_complete'
-    assert sent == []
+    assert [a.tier for a in run.anchors] == ['48h'], 'the tier was due'
+    assert sent == [] and run.exit_code == 0
     assert week.last_reminder_tier is None, (
         'nothing was mailed, so the tier stays open for a player who '
         'withdraws a side later in the same window')
@@ -154,10 +166,10 @@ def test_only_unfinished_sheets_are_mailed(app, sent):
     db.session.commit()
     _finish_sheet(done, week, games)
 
-    result = run_reminder_pass(week, now=AT_24H)
+    run = _pass(AT_24H)
 
-    assert result == {'status': 'sent', 'week_number': 1, 'tier': '24h',
-                      'recipients': 1, 'sent': 1}
+    assert run.recipients == {'docket': 1} and run.delivered == {'docket': 1}
+    assert run.latched == {'docket': '24h'}
     assert [to for to, _subject in sent] == [short.email]
 
 
@@ -169,16 +181,14 @@ def test_total_send_failure_leaves_the_tier_open(app):
     make_enrollment(user)
     db.session.commit()
 
-    with patch('games.docket.services.notifications.send_platform_email',
-               return_value=False):
-        failed = run_reminder_pass(week, now=AT_48H)
-    assert failed['status'] == 'send_failed'
+    with patch(DESK_SEND, return_value=False):
+        failed = _pass(AT_48H)
+    assert failed.exit_code == 1 and failed.delivered == {}
     assert week.last_reminder_tier is None
 
-    with patch('games.docket.services.notifications.send_platform_email',
-               return_value=True):
-        retried = run_reminder_pass(week, now=AT_48H + timedelta(minutes=20))
-    assert retried['status'] == 'sent'
+    with patch(DESK_SEND, return_value=True):
+        retried = _pass(AT_48H + timedelta(minutes=20))
+    assert retried.exit_code == 0 and retried.latched == {'docket': '48h'}
     assert week.last_reminder_tier == '48h'
 
 
@@ -198,11 +208,11 @@ def test_partial_send_failure_still_records_the_tier(app):
             accepted.append(to)
         return ok
 
-    with patch('games.docket.services.notifications.send_platform_email',
-               side_effect=fake):
-        result = run_reminder_pass(week, now=AT_48H)
+    with patch(DESK_SEND, side_effect=fake):
+        run = _pass(AT_48H)
 
-    assert result['sent'] == 1 and result['recipients'] == 2
+    assert run.recipients == {'docket': 2} and run.delivered == {'docket': 1}
+    assert run.exit_code == 0
     assert week.last_reminder_tier == '48h'
     assert accepted == ['bob@test.com']
 
@@ -212,10 +222,10 @@ def test_a_closed_week_sends_nothing(app, sent):
     make_enrollment(make_user('unfinished'))
     db.session.commit()
 
-    result = run_reminder_pass(week, now=WEEK1_DEADLINE_UTC)
+    run = _pass(WEEK1_DEADLINE_UTC)
 
-    assert result['status'] == 'closed'
-    assert sent == []
+    assert run.anchors == [] and sent == []
+    assert week.last_reminder_tier is None
 
 
 def test_between_tiers_sends_nothing(app, sent):
@@ -223,11 +233,10 @@ def test_between_tiers_sends_nothing(app, sent):
     make_enrollment(make_user('unfinished'))
     db.session.commit()
 
-    result = run_reminder_pass(week, now=WEEK1_DEADLINE_UTC
-                               - timedelta(hours=12))
+    run = _pass(WEEK1_DEADLINE_UTC - timedelta(hours=12))
 
-    assert result['status'] == 'no_window'
-    assert sent == []
+    assert run.anchors == [] and sent == []
+    assert week.last_reminder_tier is None
 
 
 @pytest.mark.parametrize('hours,expected', [

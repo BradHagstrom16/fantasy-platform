@@ -38,10 +38,10 @@ from markupsafe import Markup, escape
 from extensions import db
 from games.cfb.services.game_logic import process_week_results
 from games.cfb.services.reminders import (
-    run_reminder_check,
     send_picks_open_email,
     send_weekly_recap_email,
 )
+from games.club_desk import run_desk
 from games.docket.models import DocketLineCorrection, DocketPick
 from games.docket.services.deadline_pass import run_deadline_pass
 from games.docket.services.enrollment import roster_user_ids_as_of
@@ -52,7 +52,6 @@ from games.docket.services.notifications import (
     notify_redesignation,
 )
 from games.docket.services.record import run_record_pass
-from games.docket.services.reminders import run_reminder_pass
 from tests import _cfb_fixtures as cfb
 from tests import _docket_fixtures as docket
 from utils import email_layout
@@ -138,6 +137,10 @@ DEADLINE_TEXT_OF = {'cfb': CFB_DEADLINE_TEXT, 'docket': DOCKET_DEADLINE_TEXT,
 def _text(html):
     """The words a member reads: tags and comments stripped, entities decoded."""
     return Markup(html).striptags()
+
+
+# Both games' deadline reminders send from the Club Desk (ADR-065 step 9).
+DESK_SEND = 'games.club_desk.send_platform_email'
 
 
 def _capture(target):
@@ -350,12 +353,13 @@ def _cfb_letters(app):
         send_picks_open_email(week2.id)
     out['cfb-picks-open'] = {m['to']: m for m in sent}['ghost@test.com']
 
+    # The deadline reminders are the Club Desk's (ADR-065 step 9): a
+    # Survivor-only firing at each tier's instant.
     for key, instant in (('cfb-reminder-warning', CFB_WARNING_AT),
                          ('cfb-reminder-final', CFB_FINAL_AT)):
-        sent, patcher = _capture(target)
-        with patcher, patch.dict(os.environ, {'ENVIRONMENT': 'testing',
-                                              'CFB_FAKE_NOW': instant}):
-            run_reminder_check()
+        sent, patcher = _capture(DESK_SEND)
+        with patcher:
+            run_desk(datetime.fromisoformat(instant), anchors=('cfb',), rides=())
         assert sent, key
         out[key] = sent[0]
     return out
@@ -380,12 +384,11 @@ def _docket_letters(app):
     out['docket-picks-open'] = sent[0]
 
     for tier, hours in (('48h', 48), ('24h', 24), ('2h', 2)):
-        sent, patcher = _capture(target)
+        sent, patcher = _capture(DESK_SEND)
         with patcher:
-            result = run_reminder_pass(
-                week, now=DOCKET_DEADLINE_UTC - timedelta(hours=hours),
-                user_ids=[user.id])
-        assert result['status'] == 'sent', result
+            run = run_desk(DOCKET_DEADLINE_UTC - timedelta(hours=hours),
+                           anchors=('docket',), rides=())
+        assert run.latched == {'docket': tier}, run
         out[f'docket-reminder-{tier}'] = sent[0]
 
     pick = DocketPick(user_id=user.id, week_id=week.id, game_id=sat.id,

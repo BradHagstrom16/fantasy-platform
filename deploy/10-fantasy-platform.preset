@@ -42,10 +42,11 @@
 #            worldcup-*, `ignored` for the three active games. It says nothing
 #            about what is running.
 #   STATE  = what is actually enabled right now. This is the one that matters.
-#            Expect `enabled` for docket-{lines,scores,deadline,remind} only,
-#            and `disabled` for everything else — including docket-setup.timer,
-#            which stays disabled until after the hand-run Week-1 import
-#            (Tue Sep 1) by ruling.
+#            In season (2026-09-22): `enabled` for cfb-{setup,spreads,scores,
+#            autopick}, docket-{lines,scores,deadline}, scores-gameday and
+#            club-{paper,remind}; `disabled` for worldcup-* and golf-*.
+#            (docket-setup, cfb-remind and docket-remind were retired by the
+#            Club Desk, ADR-065 steps 5 and 9.)
 # During the incident PRESET read `ignored` while STATE read `enabled` on 15
 # timers: a PRESET-only check would have reported all-clear with the hazard live.
 #

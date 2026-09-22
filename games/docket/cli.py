@@ -3,16 +3,19 @@ The Docket — CLI Commands
 =========================
 Flask CLI commands namespaced under the ``docket`` AppGroup. These are the
 runners for logic that already exists: the two-sport importer (T2), the pure
-grading engine + adapter (T4), the D5 autopick package, and the D24 deadline
-reminders.
+grading engine + adapter (T4), and the D5 autopick package. The D24 deadline
+reminders are the Club Desk's (``flask club desk``, unit deploy/club-remind.*,
+ADR-065 step 9); the ``remind`` mode that lived here was retired with the
+docket-remind unit. ``--mode setup`` is the Tuesday open, which club-paper
+runs inside the Paper since step 5 (docket-setup's unit was retired at step
+9); typed by hand it is the Week-1 import and the gap-fill.
 
-``deploy/docket-*.timer`` runs every mode below on the D12 cadence. The units
-pass ``--scheduled``, which turns the two "nothing to do yet" states (out of
-season, week not imported) into a clean exit 0 so a red docket timer keeps
-meaning something. Typed by hand, without that flag, the same states refuse
-loudly. Installing a unit does not enable it (ADR-041): enable by explicit
-name, and hold ``docket-setup.timer`` back until after the Week-1 import
-below, so that first write to production stays deliberate.
+``deploy/docket-*.timer`` runs the lines, deadline and scores modes on the D12
+cadence. The units pass ``--scheduled``, which turns the two "nothing to do
+yet" states (out of season, week not imported) into a clean exit 0 so a red
+docket timer keeps meaning something. Typed by hand, without that flag, the
+same states refuse loudly. Installing a unit does not enable it (ADR-041):
+enable by explicit name.
 
 Season runbook
 --------------
@@ -67,12 +70,14 @@ week that has not had it (``services/record.py``, latched on
 
     flask docket sync --mode scores
 
-**Hourly — deadline reminders** (D24). Three tiers before the Sunday close
-(48h/24h/2h), to unfinished sheets only. Hourly is safe because
+**Hourly — deadline reminders** (D24) are the Club Desk's: three tiers before
+the Sunday close (48h/24h/2h), to unfinished sheets only, from
+``club-remind.timer`` (``flask club desk``; the 48h and 24h tiers ride
+Survivor's Friday and Saturday letters as a footnote). Hourly is safe because
 ``DocketWeek.last_reminder_tier`` de-dups; the cadence is not what prevents a
-double send. Costs no API credits::
+double send. Costs no API credits. Rehearse with::
 
-    flask docket sync --mode remind
+    flask club desk --dry-run --now 2026-09-04T12:00 --anchor docket
 
 **Any time — re-grade.** Idempotent; the fix after a corrected score. A No
 Contest ruling made through the admin desk already re-grades its own week
@@ -125,7 +130,6 @@ from games.docket.services.importer import import_week
 from games.docket.services.notifications import push_docket_verdicts
 from games.docket.services.opener import open_week
 from games.docket.services.record import run_record_pass
-from games.docket.services.reminders import run_reminder_pass
 from games.docket.services.scores import sync_scores
 from games.docket.services.tiebreaker_rule import default_tiebreaker_game
 from games.docket.services.weeks import (
@@ -138,7 +142,7 @@ from games.docket.utils import now_utc, to_naive_utc
 
 docket_cli = AppGroup('docket', help="The Docket (NFL+CFB pick'em) commands.")
 
-SYNC_MODES = ('setup', 'lines', 'scores', 'deadline', 'remind', 'status')
+SYNC_MODES = ('setup', 'lines', 'scores', 'deadline', 'status')
 
 
 def _fail(message):
@@ -403,41 +407,6 @@ def _run_deadline(week_number, force):
             f'idempotent, and picks are already frozen by the deadline')
 
 
-def _run_remind(week):
-    """Mail the week's due reminder tier, if one is due (D24).
-
-    Quiet by design. This mode runs hourly, so "no tier is due" and "this
-    tier already went out" are the ordinary outcomes and neither is a
-    failure — the sent flag, not the schedule, is what prevents a double
-    send. Only a tier that reached nobody at all exits non-zero: that means
-    mail is down with a deadline approaching.
-    """
-    summary = run_reminder_pass(week)
-    status = summary.pop('status')
-    if status == 'send_failed':
-        _echo_summary(f'docket sync --mode remind (week {week.week_number})',
-                      summary)
-        _fail(f'week {week.week_number}: the {summary["tier"]} reminder '
-              f'reached none of its {summary["recipients"]} recipients')
-    if status == 'sent':
-        click.secho(
-            f'  reminders: {summary["tier"]} sent to {summary["sent"]}/'
-            f'{summary["recipients"]} unfinished sheets', fg='green')
-    elif status == 'already_sent':
-        click.echo(f'  reminders: {summary["tier"]} already sent '
-                   f'(last: {summary["last_tier"]})')
-    elif status == 'all_complete':
-        click.echo('  reminders: every sheet is finished')
-    elif status == 'closed':
-        click.echo(f'  reminders: week {week.week_number} is closed')
-    elif status == 'no_window':
-        click.echo('  reminders: no tier is due right now')
-    else:
-        # A status this function does not know is a bug in the pass, not a
-        # quiet day. Say so rather than printing nothing and exiting 0.
-        _fail(f'unknown reminder status {status!r}')
-
-
 def _run_status():
     click.echo(f'\n[docket status — season {SEASON_YEAR}]')
     now = to_naive_utc(now_utc())
@@ -518,8 +487,6 @@ def sync_cmd(mode, week, force, force_odds, days_from, scheduled):
     elif mode == 'deadline':
         _require_week(week_number, scheduled)
         _run_deadline(week_number, force)
-    elif mode == 'remind':
-        _run_remind(_require_week(week_number, scheduled))
 
 
 @docket_cli.command('recalc')

@@ -1,33 +1,35 @@
-"""Club Desk step 3: the legacy passes are byte-identical before and after.
+"""Club Desk: every letter the desk sends standalone is byte-identical to the
+letter the legacy pass sent.
 
-The refactor that step 3 of ``docs/designs/unified-email.md`` calls for
-(extract the Docket opener out of the CLI, add ``announce=`` to both
-openers, extract ``reminder_recipients`` / ``reminder_letter`` in both games,
-add the explicit-``now`` CFB window reader) promises NO behavior change.
-This file is that promise, mechanically: every letter the legacy passes
-send, and the console lines an operator reads in the journal, were captured
-from the pre-refactor tree into ``tests/golden/club_desk_step3/`` and are
-compared byte for byte here.
+Step 3 of ``docs/designs/unified-email.md`` promised the refactor changed no
+letter, and captured every legacy letter into ``tests/golden/club_desk_step3/``
+from the pre-refactor tree. Step 6 re-derived the Survivor final's "one hour"
+copy (the one deliberate regen). Step 9 deleted the legacy passes, so the
+goldens are now compared against the desk's own standalone firings
+(``--anchor <game>``, no rides) at the same instants — the proof that the
+desk reproduces the old letters, byte for byte, with no legacy code left to
+compare against. The console goldens went with the legacy passes; the
+Docket opener's console line stays, since ``_run_import`` still exists.
 
-Regenerate ONLY when a later step deliberately changes copy (step 6 re-derives
-the "one hour" strings): ``CLUB_DESK_UPDATE_GOLDENS=1 pytest
-tests/test_club_desk_step3_regression.py`` rewrites the files, and the diff in
-the PR is the review.
+Regenerate ONLY when a later change deliberately alters copy:
+``CLUB_DESK_UPDATE_GOLDENS=1 pytest tests/test_club_desk_step3_regression.py``
+rewrites the files, and the diff in the PR is the review.
 
 Fixed inputs: the same data shapes as ``tests/test_email_letter.py``, the
-``*_FAKE_NOW`` seams for every clock read, and ``ASSET_VERSION=golden`` so the
-seal's cache-bust never drifts.
+desk's explicit clock, the docket seam for the opener, and
+``ASSET_VERSION=golden`` so the seal's cache-bust never drifts.
 """
 import os
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from unittest.mock import patch
 
 import pytest
 
 from extensions import db
-from games.cfb.services.reminders import run_reminder_check, send_picks_open_email
-from games.docket.cli import _run_import, _run_remind
+from games.cfb.services.reminders import send_picks_open_email
+from games.club_desk import run_desk
+from games.docket.cli import _run_import
 from games.docket.models import DocketWeek
 from tests import _cfb_fixtures as cfb
 from tests import _docket_fixtures as docket
@@ -36,6 +38,9 @@ from utils import email_layout
 GOLDEN_DIR = Path(__file__).resolve().parent / 'golden' / 'club_desk_step3'
 SITE = 'https://cccfantasy.com'
 UPDATE = os.environ.get('CLUB_DESK_UPDATE_GOLDENS') == '1'
+DESK_SEND = 'games.club_desk.send_platform_email'
+NO_PUSH = (patch('games.cfb.services.reminders.send_push'),
+           patch('games.docket.services.reminders.send_push'))
 
 # CFB: Sat Jan 3 2026 11:00 CST (naive pool wall clock); T-25h / T-1h in UTC.
 CFB_DEADLINE = datetime(2026, 1, 3, 11, 0)
@@ -65,7 +70,7 @@ def _check(name, actual: str):
         return
     assert path.exists(), f'missing golden {path.name}; regenerate deliberately'
     expected = path.read_text()
-    assert actual == expected, f'{name} drifted from the pre-refactor golden'
+    assert actual == expected, f'{name} drifted from the legacy golden'
 
 
 def _check_letter(name, message):
@@ -83,35 +88,32 @@ def pinned(app, monkeypatch):
     email_layout._asset_version.cache_clear()
 
 
-def test_cfb_legacy_passes_are_byte_identical(pinned, capsys):
+def test_cfb_letters_are_byte_identical(pinned):
     week = cfb.make_week(2, deadline=CFB_DEADLINE, is_active=True)
     ghost = cfb.make_user('ghost')
     enrollment = cfb.make_enrollment(ghost, lives=2, display_name='Ghost Gary')
     enrollment.has_paid = False
     db.session.commit()
 
-    target = 'games.cfb.services.reminders.send_platform_email'
-    sent, patcher = _capture(target)
+    sent, patcher = _capture('games.cfb.services.reminders.send_platform_email')
     with patcher:
         send_picks_open_email(week.id)
     assert len(sent) == 1
     _check_letter('cfb-picks-open', sent[0])
 
     for tier, instant in CFB_INSTANTS.items():
-        sent, patcher = _capture(target)
-        capsys.readouterr()
-        with patcher, patch.dict(os.environ, {'ENVIRONMENT': 'testing',
-                                              'CFB_FAKE_NOW': instant}):
-            run_reminder_check()
-        console = capsys.readouterr().out
+        sent, patcher = _capture(DESK_SEND)
+        with patcher, NO_PUSH[0]:
+            run = run_desk(datetime.fromisoformat(instant),
+                           anchors=('cfb',), rides=())
+        assert run.latched == {'cfb': tier}, run
         assert len(sent) == 1, tier
         _check_letter(f'cfb-reminder-{tier}', sent[0])
-        _check(f'cfb-console-{tier}.txt', console)
 
 
 @patch('games.docket.cli.import_week', return_value={'status': 'ok'})
-def test_docket_legacy_passes_are_byte_identical(mock_import, pinned, capsys,
-                                                 monkeypatch):
+def test_docket_letters_are_byte_identical(mock_import, pinned, capsys,
+                                           monkeypatch):
     week = docket.make_week(1)
     docket.make_game(week, kickoff=datetime(2026, 9, 4, 0, 30),
                      home='Notre Dame', away='Wisconsin')
@@ -140,15 +142,13 @@ def test_docket_legacy_passes_are_byte_identical(mock_import, pinned, capsys,
     _check('docket-console-setup.txt', console)
 
     for tier, instant in DOCKET_INSTANTS.items():
-        docket.at(monkeypatch, instant)
-        sent, patcher = _capture(target)
-        capsys.readouterr()
-        with patcher:
-            _run_remind(week)
-        console = capsys.readouterr().out
+        sent, patcher = _capture(DESK_SEND)
+        with patcher, NO_PUSH[1]:
+            run = run_desk(datetime.fromisoformat(instant).replace(tzinfo=UTC),
+                           anchors=('docket',), rides=())
+        assert run.latched == {'docket': tier}, run
         assert len(sent) == 1, tier
         _check_letter(f'docket-reminder-{tier}', sent[0])
-        _check(f'docket-console-{tier}.txt', console)
 
 
 def test_golden_set_is_complete():
@@ -160,7 +160,5 @@ def test_golden_set_is_complete():
                  'docket-picks-open', 'docket-reminder-48h',
                  'docket-reminder-24h', 'docket-reminder-2h'):
         names |= {f'{base}.subject.txt', f'{base}.plain.txt', f'{base}.html'}
-    names |= {'cfb-console-warning.txt', 'cfb-console-final.txt',
-              'docket-console-setup.txt', 'docket-console-48h.txt',
-              'docket-console-24h.txt', 'docket-console-2h.txt'}
+    names |= {'docket-console-setup.txt'}
     assert {p.name for p in GOLDEN_DIR.iterdir()} == names

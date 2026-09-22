@@ -1,14 +1,15 @@
 """Club Desk step 3: the seams the refactor added, behind the golden net.
 
-``tests/test_club_desk_step3_regression.py`` proves the legacy passes did
-not change. This file proves the NEW surface the desk (step 4) will build on:
+``tests/test_club_desk_step3_regression.py`` holds the letters byte for
+byte. This file proves the surface the desk (step 4) builds on:
 
 - ``games.docket.services.opener.open_week`` opens a week with or without
   the announcement (``announce=``), and reports what it did;
 - ``run_spread_update(announce=False)`` opens Survivor's week silently and
   leaves the latch for the Paper;
 - each game's ``reminder_recipients`` / ``reminder_context`` /
-  ``reminder_letter`` build exactly the letter the legacy pass sends;
+  ``reminder_letter`` build exactly the letter the desk sends (since step 9
+  the desk is the only sender; these were the legacy pass's letters);
 - the explicit-``now`` Survivor window reader never touches a clock
   (eng review 7A).
 """
@@ -24,8 +25,8 @@ from games.cfb.services import reminders as cfb_reminders
 from games.cfb.services.reminders import (
     active_reminder_window_at,
     format_time_remaining,
-    run_reminder_check,
 )
+from games.club_desk import run_desk
 from games.docket.models import DocketWeek
 from games.docket.services import reminders as docket_reminders
 from games.docket.services.opener import OpenResult, open_week
@@ -194,7 +195,7 @@ def test_spread_update_default_still_announces(
 # Shared reminder builders: the same Letter the legacy pass sends
 # ═══════════════════════════════════════════════════════════════════════════
 
-def test_cfb_builders_reproduce_the_legacy_reminder(app):
+def test_cfb_builders_reproduce_the_desk_reminder(app):
     app.config['SITE_URL'] = 'https://cccfantasy.com'
     week = cfb.make_week(2, deadline=CFB_DEADLINE, is_active=True)
     user = cfb.make_user('needs')
@@ -216,18 +217,17 @@ def test_cfb_builders_reproduce_the_legacy_reminder(app):
     built = render_letter(
         cfb_reminders.reminder_letter(recipients[0], context, 'warning'))
 
-    sent, patcher = _capture('games.cfb.services.reminders.send_platform_email')
-    with patcher, patch.dict(os.environ, {'ENVIRONMENT': 'testing',
-                                          'CFB_FAKE_NOW': WARNING_AT}):
-        run_reminder_check()
+    sent, patcher = _capture('games.club_desk.send_platform_email')
+    with patcher:
+        run_desk(now, anchors=('cfb',), rides=())
     assert [m['to'] for m in sent] == ['needs@test.com']
-    legacy = sent[0]
-    assert legacy['subject'] == 'Pick due tomorrow: CFB Survivor, Week 2'
-    assert (legacy['plain'], legacy['html']) == built
+    desk = sent[0]
+    assert desk['subject'] == 'Pick due tomorrow: CFB Survivor, Week 2'
+    assert (desk['plain'], desk['html']) == built
     assert 'Lives: 1 of 2' in built[0] and 'Cumulative spread: 18.5' in built[0]
 
 
-def test_docket_builders_reproduce_the_legacy_reminder(app):
+def test_docket_builders_reproduce_the_desk_reminder(app):
     app.config['SITE_URL'] = 'https://cccfantasy.com'
     week = docket.make_week(1)
     docket.make_game(week, kickoff=KICK)
@@ -246,12 +246,11 @@ def test_docket_builders_reproduce_the_legacy_reminder(app):
     built = render_letter(
         docket_reminders.reminder_letter(recipients[0], context, '24h'))
 
-    sent, patcher = _capture(
-        'games.docket.services.notifications.send_platform_email')
+    sent, patcher = _capture('games.club_desk.send_platform_email')
     with patcher:
-        result = docket_reminders.run_reminder_pass(
-            week, now=DOCKET_DEADLINE_UTC - timedelta(hours=24))
-    assert result['status'] == 'sent'
+        run = run_desk(DOCKET_DEADLINE_UTC - timedelta(hours=24),
+                       anchors=('docket',), rides=())
+    assert run.latched == {'docket': '24h'}
     assert sent[0]['subject'] == 'Closes tomorrow: The Docket, Week 1'
     assert (sent[0]['plain'], sent[0]['html']) == built
 

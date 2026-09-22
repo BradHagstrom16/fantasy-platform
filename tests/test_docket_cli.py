@@ -70,7 +70,7 @@ def test_lines_before_setup_refuses_and_names_the_fix(app, runner,
 
 
 @pytest.mark.parametrize('mode',
-                         ['setup', 'lines', 'scores', 'deadline', 'remind'])
+                         ['setup', 'lines', 'scores', 'deadline'])
 def test_scheduled_stands_down_out_of_season(app, runner, monkeypatch, mode):
     """The docket season covers 19 of 52 weeks. A timer firing in the other
     33 has nothing to do, and must say so with exit 0 — otherwise a red
@@ -81,7 +81,7 @@ def test_scheduled_stands_down_out_of_season(app, runner, monkeypatch, mode):
     assert 'Standing down' in result.output
 
 
-@pytest.mark.parametrize('mode', ['lines', 'scores', 'deadline', 'remind'])
+@pytest.mark.parametrize('mode', ['lines', 'scores', 'deadline'])
 def test_scheduled_stands_down_before_the_week_is_imported(app, runner,
                                                            monkeypatch, mode):
     """Production docket tables stay empty until the deliberate Week-1
@@ -117,36 +117,13 @@ def test_scheduled_does_not_soften_a_bad_week_number(app, runner, monkeypatch):
     assert 'week must be 1-' in result.output
 
 
-def test_remind_mode_mails_an_unfinished_sheet(app, runner, monkeypatch):
-    _seed(final=False)
-    make_enrollment(make_user('player'))
-    db.session.commit()
-    # Friday noon, inside the 48h tier before the Sun 12:00 CT close.
-    monkeypatch.setenv('DOCKET_FAKE_NOW', '2026-09-04T17:00:00')
-
-    with patch('games.docket.services.notifications.send_platform_email',
-               return_value=True) as send:
-        result = _invoke(runner, 'sync', '--mode', 'remind')
-
-    assert result.exit_code == 0, result.output
-    assert '48h sent to 1/1' in result.output
-    assert send.call_count == 1
-
-
-def test_remind_mode_is_quiet_outside_a_tier(app, runner, monkeypatch):
-    """Hourly firings mostly land between tiers. That is not a failure."""
-    _seed(final=False)
-    make_enrollment(make_user('player'))
-    db.session.commit()
-    monkeypatch.setenv('DOCKET_FAKE_NOW', '2026-09-04T04:00:00')
-
-    with patch('games.docket.services.notifications.send_platform_email',
-               return_value=True) as send:
-        result = _invoke(runner, 'sync', '--mode', 'remind')
-
-    assert result.exit_code == 0, result.output
-    assert 'no tier is due' in result.output
-    assert send.call_count == 0
+def test_remind_mode_is_gone(app, runner):
+    """The reminders are the Club Desk's (`flask club desk`, ADR-065 step 9);
+    a `--mode remind` that still parsed would be a second sender on the
+    same sent flag."""
+    result = _invoke(runner, 'sync', '--mode', 'remind')
+    assert result.exit_code == 2
+    assert 'remind' in result.output
 
 
 def test_deadline_mode_reports_the_freeze_and_the_deal(app, runner,

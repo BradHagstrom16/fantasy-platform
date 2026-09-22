@@ -22,10 +22,10 @@ from games.cfb.services.reminders import (
     active_reminder_window_at,
     get_active_reminder_window,
     get_users_without_picks,
-    run_reminder_check,
     send_weekly_recap_email,
     time_left_phrase,
 )
+from games.club_desk import run_desk
 from games.docket.services import reminders as docket_reminders
 from games.docket.services.weeks import deadline_utc as docket_deadline_utc
 from tests._cfb_fixtures import (
@@ -46,18 +46,22 @@ MANUAL_PICK_UTC = datetime(2026, 1, 3, 12, 0)
 AUTOPICK_UTC = datetime(2026, 1, 3, 17, 30)
 
 
-def _capture_emails():
-    """Patch send_platform_email at the reminders read-site; capture calls."""
+# The recap sends from the reminders module; the deadline reminders send
+# from the Club Desk (games/club_desk.py, ADR-065 step 9), so each is
+# patched at its own read site.
+RECAP_SEND = 'games.cfb.services.reminders.send_platform_email'
+DESK_SEND = 'games.club_desk.send_platform_email'
+
+
+def _capture_emails(target=RECAP_SEND):
+    """Patch send_platform_email at a read-site; capture calls."""
     sent = []
 
     def fake_send(to, subject, body, html=None):
         sent.append({'to': to, 'subject': subject, 'body': body, 'html': html})
         return True
 
-    return sent, patch(
-        'games.cfb.services.reminders.send_platform_email',
-        side_effect=fake_send,
-    )
+    return sent, patch(target, side_effect=fake_send)
 
 
 def _seed_completed_week(*, pick_created_at):
@@ -365,7 +369,7 @@ def test_final_copy_says_the_time_actually_left(app):
     """The final window spans two firings, so "one hour" would be wrong at
     the first: subject, headline, lede and push body all carry the phrase."""
     _seed_reminder_week()
-    sent, patcher = _capture_emails()
+    sent, patcher = _capture_emails(DESK_SEND)
     pushed = []
     with patcher, patch('games.cfb.services.reminders.send_push',
                         side_effect=lambda ids, **kw: pushed.append(kw)):
@@ -401,8 +405,10 @@ def test_reminder_recipients_exclude_eliminated_and_picked(app):
 
 
 # ── sent-flag de-dup (CfbWeek.last_reminder_type) ─────────────────────────
-# The guarantee that lets cfb-remind.timer run hourly: each window mails at
+# The guarantee that lets club-remind.timer run hourly: each window mails at
 # most once per week, regardless of cadence, catch-up firings, or hand-runs.
+# Survivor-only desk firings (`--anchor cfb`, no rides) are the legacy pass's
+# exact contract; the cross-game rules live in tests/test_club_desk*.py.
 
 WARNING_INSTANT = '2026-01-02T15:00:00+00:00'  # Fri 09:00 CST, first firing
 LATER_IN_WARNING_WINDOW = '2026-01-02T16:00:00+00:00'  # Fri 10:00, second firing
@@ -419,16 +425,16 @@ def _seed_reminder_week():
     return week, user
 
 
-def _run_reminders_at(fake_utc_iso):
-    with patch.dict(os.environ, {'ENVIRONMENT': 'testing',
-                                 'CFB_FAKE_NOW': fake_utc_iso}):
-        run_reminder_check()
+def _run_reminders_at(utc_iso):
+    """One Survivor-only desk firing at the stated instant (the desk takes
+    its clock explicitly; nothing here reads CFB_FAKE_NOW)."""
+    return run_desk(datetime.fromisoformat(utc_iso), anchors=('cfb',), rides=())
 
 
 def test_first_send_records_the_window(app):
     week, _ = _seed_reminder_week()
     assert week.last_reminder_type is None  # fresh week starts unset
-    sent, patcher = _capture_emails()
+    sent, patcher = _capture_emails(DESK_SEND)
     with patcher:
         _run_reminders_at(WARNING_INSTANT)
     assert len(sent) == 1
@@ -440,7 +446,7 @@ def test_second_firing_in_the_same_window_sends_nothing(app):
     catch-up or hand-run) after a delivered first is a no-op — the second
     firing is an outage retry, never a second nag."""
     week, _ = _seed_reminder_week()
-    sent, patcher = _capture_emails()
+    sent, patcher = _capture_emails(DESK_SEND)
     with patcher:
         _run_reminders_at(WARNING_INSTANT)
         _run_reminders_at(LATER_IN_WARNING_WINDOW)
@@ -452,7 +458,7 @@ def test_final_still_sends_after_warning(app):
     week, _ = _seed_reminder_week()
     week.last_reminder_type = 'warning'
     db.session.commit()
-    sent, patcher = _capture_emails()
+    sent, patcher = _capture_emails(DESK_SEND)
     with patcher:
         _run_reminders_at(FINAL_INSTANT)
     assert len(sent) == 1
@@ -466,7 +472,7 @@ def test_warning_never_resends_after_final(app):
     week, _ = _seed_reminder_week()
     week.last_reminder_type = 'final'
     db.session.commit()
-    sent, patcher = _capture_emails()
+    sent, patcher = _capture_emails(DESK_SEND)
     with patcher:
         _run_reminders_at(WARNING_INSTANT)
     assert sent == []
@@ -480,7 +486,7 @@ def test_all_picked_leaves_the_window_open(app):
     team = make_team('Team A')
     make_pick(user, week, team)
     db.session.commit()
-    sent, patcher = _capture_emails()
+    sent, patcher = _capture_emails(DESK_SEND)
     with patcher:
         _run_reminders_at(WARNING_INSTANT)
     assert sent == []
@@ -491,12 +497,12 @@ def test_total_send_failure_leaves_the_window_open_for_retry(app):
     """A full mail outage must not swallow the window; the window's second
     hourly firing retries and the flag records only when a send succeeds."""
     week, _ = _seed_reminder_week()
-    with patch('games.cfb.services.reminders.send_platform_email',
-               return_value=False):
-        _run_reminders_at(WARNING_INSTANT)
+    with patch(DESK_SEND, return_value=False):
+        run = _run_reminders_at(WARNING_INSTANT)
+    assert run.exit_code == 1, 'an active tier that reached nobody is loud'
     assert week.last_reminder_type is None
 
-    sent, patcher = _capture_emails()
+    sent, patcher = _capture_emails(DESK_SEND)
     with patcher:
         _run_reminders_at(LATER_IN_WARNING_WINDOW)
     assert len(sent) == 1
@@ -508,7 +514,7 @@ def test_unknown_stored_value_does_not_block_sends(app):
     week, _ = _seed_reminder_week()
     week.last_reminder_type = 'legacy'
     db.session.commit()
-    sent, patcher = _capture_emails()
+    sent, patcher = _capture_emails(DESK_SEND)
     with patcher:
         _run_reminders_at(FINAL_INSTANT)
     assert len(sent) == 1

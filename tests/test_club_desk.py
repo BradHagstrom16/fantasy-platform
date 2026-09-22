@@ -6,7 +6,6 @@ record line, the two dry runs, and the regressions that keep every legacy
 announce path standalone. The 12-state matrix (tests/test_club_desk_matrix.py)
 is the spec of who gets what; this file is everything around it.
 """
-import os
 import re
 from datetime import UTC, datetime, timedelta
 from unittest.mock import patch
@@ -17,7 +16,6 @@ from markupsafe import Markup
 from extensions import db
 from games.cfb.models import CfbPick, CfbWeek
 from games.cfb.services import desk as cfb_desk
-from games.cfb.services.reminders import run_reminder_check
 from games.club_desk import ANCHOR_SLUGS, SLOTS, run_desk, run_paper
 from games.docket.models import DocketPick, DocketWeek
 from games.docket.services import desk as docket_desk
@@ -26,7 +24,6 @@ from games.docket.services.enrollment import roster_user_ids_as_of
 from games.docket.services.grading_pass import try_grade_week
 from games.docket.services.opener import OpenResult, open_week
 from games.docket.services.record import send_record_letters
-from games.docket.services.reminders import run_reminder_pass
 from tests import _docket_fixtures as docket
 from tests._club_desk_fixtures import (
     D_AT,
@@ -66,49 +63,32 @@ def _flags(seeded):
 
 # ── send rules under failure and retry ────────────────────────────────────
 
-def test_legacy_pass_then_desk_sends_once(app, monkeypatch):
-    """Sequential idempotence: the flag gate, both directions."""
+def test_second_firing_in_a_window_sends_nothing(app):
+    """Sequential idempotence: the flag gate. Survivor's windows hold two
+    hourly firings; after a delivered first, the second finds no anchor
+    (the tier is sent), so a rider never joins it either and the Docket's
+    48h waits for its own hour."""
     app.config['SITE_URL'] = SITE
     seeded = seed('owes', 'incomplete')
-    legacy, legacy_patch = capture('games.cfb.services.reminders.send_platform_email')
-    with legacy_patch, NO_PUSH[0], patch.dict(os.environ, {
-            'ENVIRONMENT': 'testing', 'CFB_FAKE_NOW': F_AT.isoformat()}):
-        run_reminder_check()
-    assert len(legacy) == 1
     sent, run = _desk(F_AT)
-    # Survivor's tier is sent, so nothing anchors this firing: a rider only
-    # ever joins an anchor, and the Docket's own 48h tier fires two hours
-    # later on its own. The Survivor letter is never re-sent.
+    assert len(sent) == 1 and run.latched == {'cfb': 'warning', 'docket': '48h'}
+    sent, run = _desk(F_AT + timedelta(hours=1))
     assert sent == [] and run.anchors == []
-    assert _flags(seeded) == ('warning', None)
-
-    sent, run = _desk(D_AT)
-    assert len(sent) == 1 and 'Two hours left' in sent[0]['subject']
-    legacy, legacy_patch = capture(
-        'games.docket.services.notifications.send_platform_email')
-    with legacy_patch, NO_PUSH[1]:
-        result = run_reminder_pass(db.session.get(DocketWeek, seeded.docket.week4.id),
-                                   now=D_AT)
-    assert result['status'] == 'already_sent' and legacy == []
+    assert _flags(seeded) == ('warning', '48h')
 
 
-def test_desk_then_legacy_sends_once(app):
+def test_a_ridden_tier_never_sends_standalone_later(app):
+    """The pre-mark. The Docket rode Saturday's final (24h covered); its own
+    24h window, two hours later, finds the tier already sent — even with
+    the Docket anchoring alone, as the desk would if Survivor's week were
+    gone."""
     app.config['SITE_URL'] = SITE
     seeded = seed('owes', 'incomplete')
     sent, run = _desk(S_AT)
-    assert len(sent) == 1
-    legacy, legacy_patch = capture('games.cfb.services.reminders.send_platform_email')
-    with legacy_patch, NO_PUSH[0], patch.dict(os.environ, {
-            'ENVIRONMENT': 'testing', 'CFB_FAKE_NOW': S_AT.isoformat()}):
-        run_reminder_check()
-    assert legacy == []
-    legacy, legacy_patch = capture(
-        'games.docket.services.notifications.send_platform_email')
-    with legacy_patch, NO_PUSH[1]:
-        # The rider pre-marked 24h; the Docket's own 24h firing is a no-op.
-        result = run_reminder_pass(db.session.get(DocketWeek, seeded.docket.week4.id),
-                                   now=S_AT + timedelta(hours=2))
-    assert result['status'] == 'already_sent' and legacy == []
+    assert len(sent) == 1 and run.latched == {'cfb': 'final', 'docket': '24h'}
+    sent, run = _desk(S_AT + timedelta(hours=2), anchors=('docket',), rides=())
+    assert sent == [] and run.anchors == []
+    assert _flags(seeded) == ('final', '24h')
 
 
 def test_dual_send_fails_docket_only_succeeds_survivor_does_not_latch(app):
@@ -229,7 +209,6 @@ HIDDEN_CLOCKS = (
     'games.cfb.services.reminders.get_current_time',
     'games.docket.utils.now_utc',
     'games.docket.services.picks.now_utc',
-    'games.docket.services.reminders.now_utc',
     'games.docket.services.record.now_utc',
 )
 
