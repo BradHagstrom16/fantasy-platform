@@ -394,6 +394,9 @@ def _run_scores(week_number, days_from):
     summary = sync_scores(week_number, days_from=days_from)
     _echo_summary(f'docket sync --mode scores (week {week_number})', summary)
     if summary.get('status') == 'error':
+        # A dark sport must not withhold a record an earlier week already
+        # earned: the daily scores run is the only sender (see _send_records).
+        _send_records()
         _fail(f'score sync failed: {"; ".join(summary.get("errors", []))}')
 
     push_docket_verdicts(summary.get('verdict_games') or [])

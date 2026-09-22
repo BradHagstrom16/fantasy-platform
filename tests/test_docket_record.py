@@ -378,6 +378,28 @@ def test_scores_mode_mails_the_record_once_the_week_grades(
     assert sent == []
 
 
+def test_scores_mode_still_mails_records_when_the_current_sport_errors(
+        app, monkeypatch):
+    """A dark current-week sport fails the run, but a week already graded and
+    unnotified still gets its record before the non-zero exit — the daily
+    scores run is the only sender, so the error branch must send too."""
+    app.config['ODDS_API_KEY'] = 'test-key'
+    week, _users = _seed(monkeypatch, ROSTER)
+    from games.docket import cli as docket_cli_mod
+    from games.docket.cli import docket_cli
+
+    sent, patcher = _capture()
+    with patcher, patch.object(
+            docket_cli_mod, 'sync_scores',
+            return_value={'status': 'error', 'errors': ['dark sport']}):
+        result = app.test_cli_runner().invoke(
+            docket_cli, ['sync', '--mode', 'scores'])
+    assert result.exit_code != 0, result.output
+    assert 'record: week 1 sent to 3/3 sheets' in result.output
+    assert len(sent) == 3
+    assert db.session.get(DocketWeek, week.id).record_notified is True
+
+
 def test_scores_mode_reports_an_unlatched_record_without_failing(
         app, monkeypatch):
     app.config['ODDS_API_KEY'] = 'test-key'
