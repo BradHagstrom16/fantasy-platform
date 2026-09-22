@@ -60,8 +60,10 @@ enrolled player::
 **Tue ~05:15, then Wed through Mon at 08:00 — scores** (daily through the
 December window; /scores looks back at most 3 days, which is why midweek runs
 exist; Fri and Sat joined 2026-09-04 so All Sheets shows Thursday's and
-Friday's finals the next morning). Writes scores and grades the week as soon
-as it is complete::
+Friday's finals the next morning). Writes scores, grades the week as soon
+as it is complete, and then mails the weekly record letter for any graded
+week that has not had it (``services/record.py``, latched on
+``DocketWeek.record_notified``; this run is its only sender)::
 
     flask docket sync --mode scores
 
@@ -126,6 +128,7 @@ from games.docket.services.notifications import (
     notify_picks_open,
     push_docket_verdicts,
 )
+from games.docket.services.record import run_record_pass
 from games.docket.services.reminders import run_reminder_pass
 from games.docket.services.scores import sync_scores
 from games.docket.services.tiebreaker_rule import (
@@ -369,6 +372,24 @@ def _catch_up_previous_week(week_number, days_from):
     return summary
 
 
+def _send_records():
+    """Mail the weekly record for every graded week that has not had it
+    (Club Desk step 1). The daily scores run is the ONLY caller: the
+    game-day pass sends no mail (ADR-063) and a regrade issues no
+    correction. Runs before the sync exit checks so a dark sport never
+    withholds a record already earned; a mail outage is reported here and
+    left for the next daily run (the latch stays open), never turned into
+    the sync's exit code.
+    """
+    for outcome in run_record_pass():
+        line = (f'  record: week {outcome["week_number"]} sent to '
+                f'{outcome["sent"]}/{outcome["recipients"]} sheets')
+        if outcome['latched']:
+            click.secho(line, fg='green')
+        else:
+            click.secho(f'{line}; not latched', fg='red')
+
+
 def _run_scores(week_number, days_from):
     summary = sync_scores(week_number, days_from=days_from)
     _echo_summary(f'docket sync --mode scores (week {week_number})', summary)
@@ -378,6 +399,7 @@ def _run_scores(week_number, days_from):
     push_docket_verdicts(summary.get('verdict_games') or [])
     _grade(_get_week(week_number))
     previous = _catch_up_previous_week(week_number, days_from)
+    _send_records()
     _check_sync_status(summary, 'score sync')
     if previous is not None:
         _check_sync_status(previous, 'previous-week score sync')
