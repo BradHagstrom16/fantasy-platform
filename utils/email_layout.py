@@ -389,7 +389,8 @@ def _check_desk_rules(letter: Letter, extras) -> None:
             f'game_slug={sections[0].slug!r} (club chrome needs two or more '
             'sections).')
     for section in sections:
-        if section.deadline is not None and section.deadline.tzinfo is None:
+        if (section.deadline is not None
+                and section.deadline.utcoffset() is None):
             raise ValueError(
                 f'Section {section.slug!r} has a naive deadline; desk '
                 'deadlines must be aware — they sort across games.')
