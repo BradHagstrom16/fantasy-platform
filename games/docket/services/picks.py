@@ -565,10 +565,15 @@ def next_step(state: dict, week: DocketWeek, now=None) -> dict:
             'remaining': remaining}
 
 
-def sheet_state(user_id: int, week: DocketWeek) -> dict:
+def sheet_state(user_id: int, week: DocketWeek, now=None) -> dict:
     """The player's sheet as one dict: the GET render and every mutation
-    response read the same assembly, so JS repaints from server truth."""
-    now = now_naive()
+    response read the same assembly, so JS repaints from server truth.
+
+    ``now`` (naive UTC) is the desk's explicit clock (Club Desk, eng review
+    7A); the routes leave it None and read the seam-aware clock here.
+    """
+    if now is None:
+        now = now_naive()
     picks = (
         DocketPick.query.filter_by(user_id=user_id, week_id=week.id)
         .order_by(DocketPick.slot)

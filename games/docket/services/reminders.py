@@ -150,9 +150,10 @@ def reminder_recipients(week, tier, now, user_ids=None):
     ``user_ids`` narrows the roster (tests)."""
     if user_ids is None:
         user_ids = roster_user_ids()
+    now_naive = to_naive_utc(now)
     recipients = []
     for user_id in user_ids:
-        items = outstanding(sheet_state(user_id, week))
+        items = outstanding(sheet_state(user_id, week, now=now_naive))
         if not items:
             continue
         user = db.session.get(User, user_id)

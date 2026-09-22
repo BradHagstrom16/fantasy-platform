@@ -96,6 +96,10 @@ def create_app(config_name=None):
     from games.gameday_cli import register_scores_cli
     register_scores_cli(app)
 
+    # The Club Desk (ADR-065): cross-game member mail, `flask club …`
+    from games.club_desk_cli import register_club_cli
+    register_club_cli(app)
+
     # Platform-wide context processors
     from core.context import register_context_processors
     register_context_processors(app)
