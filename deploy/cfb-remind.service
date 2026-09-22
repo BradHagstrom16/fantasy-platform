@@ -21,14 +21,14 @@ Environment=FLASK_APP=app.py
 NoNewPrivileges=true
 PrivateTmp=true
 TimeoutStartSec=5m
-# Club Desk step 7 (ADR-065, docs/designs/unified-email.md): this firing IS
-# the reminder desk. --anchor cfb: the desk leads Survivor's tiers only.
-# --ride F: the Docket rides Friday's warning as a footnote and its 48h tier
-# is pre-marked, so docket-remind (After= this unit) skips it; Saturday's
-# final goes out anchor-only. Rollout state lives on this line, never in
-# .env. Rollback is this one line back to
-#   flask cfb sync --mode remind
-# (the legacy pass stays in the CLI until step 9). Unlike that pass, the
-# desk exits 1 when an active tier reached nobody, so a mail outage shows
-# as a failed unit.
-ExecStart=/home/deploy/fantasy-platform/venv/bin/flask club desk --scheduled --anchor cfb --ride F
+# Club Desk steps 7-8 (ADR-065, docs/designs/unified-email.md): this firing
+# IS the reminder desk. --anchor cfb: the desk leads Survivor's tiers only.
+# --ride F,S: the Docket rides Friday's warning (pre-marking its 48h tier)
+# and Saturday's final (pre-marking 24h) as a footnote, so docket-remind
+# (After= this unit) skips both; the Docket's Sunday 2h tier stays its own.
+# Rollout state lives on this line, never in .env. Rollback is this one
+# line: `--ride F` undoes step 8; `flask cfb sync --mode remind` undoes the
+# desk (the legacy pass stays in the CLI until step 9). Unlike that pass,
+# the desk exits 1 when an active tier reached nobody, so a mail outage
+# shows as a failed unit.
+ExecStart=/home/deploy/fantasy-platform/venv/bin/flask club desk --scheduled --anchor cfb --ride F,S
