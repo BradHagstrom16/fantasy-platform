@@ -136,7 +136,7 @@ Build progress (flipped on merge; the step's PR is the pointer):
 - [x] Step 1 record letter (PR #226, merged 2026-09-21)
 - [x] Step 2 section_block + desk-letter shape (PR #228, merged 2026-09-21)
 - [x] Step 3 refactor, no behavior change (PR #227, merged 2026-09-21; soaks one live Tuesday + Saturday)
-- [ ] Step 4 desk + dry run
+- [x] Step 4 desk + dry run (PR #229, merged 2026-09-22; no unit invokes it until step 5)
 - [ ] Step 5 club-paper cutover
 - [ ] Step 6 wider Survivor windows
 - [ ] Step 7 --ride F
@@ -356,7 +356,7 @@ Existing deployment pipeline covers this (`deploy.sh` syncs unit files; a unit e
 ## Implementation Tasks
 Synthesized from the eng review's findings. Checkbox as you ship.
 
-- [ ] **T1 (P1, human: ~1 day / CC: ~30 min)** — desk core — every active unsent tier of every game anchors; nearest deadline owns the subject
+- [x] **T1 (P1, human: ~1 day / CC: ~30 min)** — desk core — every active unsent tier of every game anchors; nearest deadline owns the subject
   - Surfaced by: Architecture issue 1 (1A) — Docket 48h/24h orphaned once its own pass is disabled
   - Files: games/club_desk.py, games/cfb/services/, games/docket/services/
   - Verify: Docket-only-week test; two-anchors test
@@ -376,11 +376,11 @@ Synthesized from the eng review's findings. Checkbox as you ship.
   - Surfaced by: Code quality issue 6 (6A)
   - Files: games/cfb/services/reminders.py, games/docket/services/reminders.py
   - Verify: byte-identical-letter regression test
-- [ ] **T6 (P2, human: ~half day / CC: ~20 min)** — clock — explicit `now` through the desk and the new Survivor window reader
+- [x] **T6 (P2, human: ~half day / CC: ~20 min)** — clock — explicit `now` through the desk and the new Survivor window reader
   - Surfaced by: Code quality issue 7 (7A)
   - Files: games/cfb/services/reminders.py, games/club_desk.py
   - Verify: hidden-clock-read test; `--dry-run --now` against the sandbox
-- [ ] **T7 (P1, human: ~half day / CC: ~20 min)** — tests — the 12-state matrix
+- [x] **T7 (P1, human: ~half day / CC: ~20 min)** — tests — the 12-state matrix
   - Surfaced by: Test issue 8 (8A)
   - Files: tests/test_club_desk_matrix.py
   - Verify: both CI jobs green
@@ -393,7 +393,7 @@ Synthesized from the eng review's findings. Checkbox as you ship.
   - Surfaced by: design review Issues 1, 2, 5 (Variant B, 2A, 5A)
   - Files: utils/email_layout.py, DESIGN.md, tests/test_email_letter.py
   - Verify: render the approved states through the real shell; compare to `designs/club-desk-letters-20260921/paper-b.png`
-- [ ] **T10 (P2, human: ~2 hours / CC: ~10 min)** — Paper copy — state headlines, subject `The Morning Line, Week n: state`, eliminated spectator line, persisted-facts-only sources
+- [x] **T10 (P2, human: ~2 hours / CC: ~10 min)** — Paper copy — state headlines, subject `The Morning Line, Week n: state`, eliminated spectator line, persisted-facts-only sources
   - Surfaced by: design review Issues 3, 4, 6 (3A, 4A, 6A)
   - Files: games/club_desk.py, games/cfb/services/, games/docket/services/
   - Verify: the 12-state matrix asserts subject, headline and section contents per state
