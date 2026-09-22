@@ -133,9 +133,9 @@ Each game's reminders module exposes `reminder_recipients(week, tier, now)` and 
 
 Build progress (flipped on merge; the step's PR is the pointer):
 
-- [ ] Step 1 record letter (PR #TBD)
-- [ ] Step 2 section_block + desk-letter shape
-- [ ] Step 3 refactor, no behavior change
+- [x] Step 1 record letter (PR #226, merged 2026-09-21)
+- [x] Step 2 section_block + desk-letter shape (PR #228, merged 2026-09-21)
+- [x] Step 3 refactor, no behavior change (PR #227, merged 2026-09-21; soaks one live Tuesday + Saturday)
 - [ ] Step 4 desk + dry run
 - [ ] Step 5 club-paper cutover
 - [ ] Step 6 wider Survivor windows
@@ -360,7 +360,7 @@ Synthesized from the eng review's findings. Checkbox as you ship.
   - Surfaced by: Architecture issue 1 (1A) — Docket 48h/24h orphaned once its own pass is disabled
   - Files: games/club_desk.py, games/cfb/services/, games/docket/services/
   - Verify: Docket-only-week test; two-anchors test
-- [ ] **T2 (P1, human: ~1 day / CC: ~30 min)** — refactor — extract Docket open logic from cli.py and add `announce=` to both openers, no behavior change
+- [x] **T2 (P1, human: ~1 day / CC: ~30 min)** — refactor — extract Docket open logic from cli.py and add `announce=` to both openers, no behavior change
   - Surfaced by: Architecture issue 2 (2A) — structural and behavioral change in one PR on the week-creating path
   - Files: games/docket/cli.py, games/docket/services/, games/cfb/services/automation.py
   - Verify: full suite unchanged on SQLite and Postgres; one live Tuesday
@@ -372,7 +372,7 @@ Synthesized from the eng review's findings. Checkbox as you ship.
   - Surfaced by: Architecture issue 4 (4A)
   - Files: deploy/club-paper.*, deploy/10-fantasy-platform.preset, deploy/cfb-spreads.timer, deploy/cfb-scores.service, deploy/docket-lines.service, tests/test_systemd_preset.py
   - Verify: preset and unit-file tests; `systemctl list-unit-files '*.timer'` STATE and PRESET columns
-- [ ] **T5 (P2, human: ~half day / CC: ~20 min)** — refactor — shared `reminder_recipients()` / `reminder_letter()` per game
+- [x] **T5 (P2, human: ~half day / CC: ~20 min)** — refactor — shared `reminder_recipients()` / `reminder_letter()` per game
   - Surfaced by: Code quality issue 6 (6A)
   - Files: games/cfb/services/reminders.py, games/docket/services/reminders.py
   - Verify: byte-identical-letter regression test
@@ -389,7 +389,7 @@ Synthesized from the eng review's findings. Checkbox as you ship.
   - Files: games/cfb/services/reminders.py, games/docket/services/reminders.py, games/cfb/cli.py, games/docket/cli.py, deploy/, deploy.sh, tests/test-deploy-guards.sh, CLAUDE.md
   - Verify: `bash tests/test-deploy-guards.sh`; full suite
 
-- [ ] **T9 (P1, human: ~half day / CC: ~20 min)** — email layout — `game_section()` and `rider_block()` blocks; the desk-letter shape in DESIGN.md; desk-letter locks in `tests/test_email_letter.py`
+- [x] **T9 (P1, human: ~half day / CC: ~20 min)** — email layout — `game_section()` and `rider_block()` blocks; the desk-letter shape in DESIGN.md; desk-letter locks in `tests/test_email_letter.py`
   - Surfaced by: design review Issues 1, 2, 5 (Variant B, 2A, 5A)
   - Files: utils/email_layout.py, DESIGN.md, tests/test_email_letter.py
   - Verify: render the approved states through the real shell; compare to `designs/club-desk-letters-20260921/paper-b.png`
