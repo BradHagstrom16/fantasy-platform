@@ -408,8 +408,9 @@ def _docket_letters(app):
     out['docket-tiebreaker-changed'] = sent[0]
 
     # The record: the week closes, every case finals, the deadline pass files
-    # and freezes, the grade lands, and the daily scores run's record pass
-    # mails the one member their 1-0 (the Over came home).
+    # and freezes, the grade lands, and the Wednesday daily scores run's
+    # record pass (past the Paper's handoff window, RECORD_HANDOFF) mails
+    # the one member their 1-0 (the Over came home).
     for game in (thu, sat):
         game.home_score, game.away_score, game.is_final = 31, 27, True
     week.tiebreaker_game_id = sat.id
@@ -420,6 +421,8 @@ def _docket_letters(app):
         assert try_grade_week(
             week.id, user_ids=roster_user_ids_as_of(week.deadline_at)
         )['status'] == 'ok'
+    with patch.dict(os.environ, {'ENVIRONMENT': 'testing',
+                                 'DOCKET_FAKE_NOW': '2026-09-09T13:00:00'}):
         sent, patcher = _capture(target)
         with patcher:
             run_record_pass()

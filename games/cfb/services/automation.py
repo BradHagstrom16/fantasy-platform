@@ -391,7 +391,8 @@ def _spread_update_error(week, details):
     _send_admin_email(
         f'Spread update failed — Week {week.week_number}',
         f'{details}\n\n{outlook} will be retried on the next scores run '
-        '(Sun–Thu 08:00 CT) and the next spreads run (Tue/Fri 06:00 CT).',
+        '(Sun–Thu 08:00 CT), the Tuesday Paper (club-paper, 06:15 CT) and '
+        'the Friday spreads run (06:00 CT).',
     )
     return {
         'status': 'error',

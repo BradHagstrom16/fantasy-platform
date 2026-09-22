@@ -10,6 +10,12 @@
 Description=The Docket line gap-fill + kickoff refresh
 After=network-online.target
 Wants=network-online.target
+# Ordering only (no Wants=): the Tuesday 07:00 run is the standalone
+# announcer for a week the 06:15 Paper imported partial or failed to open
+# (ADR-065 step 5). A Persistent boot replay that fires both at once must
+# run the Paper first, or this unit announces standalone a week the Paper
+# was about to carry.
+After=club-paper.service
 
 [Service]
 Type=oneshot

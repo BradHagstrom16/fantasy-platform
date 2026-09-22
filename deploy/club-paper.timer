@@ -1,0 +1,25 @@
+# Runs the Tuesday Paper at 06:15 CT (ADR-065 step 5).
+#
+# 06:15, not 06:00: Docket weeks partition time at Tuesday 06:00 America/
+# Chicago boundaries (games/docket/services/weeks.py) and the Paper resolves
+# the Docket week from the clock, so firing at the boundary instant would
+# race the arithmetic that decides which week it is creating. It is also an
+# hour after the Tue 05:15 docket-scores run that grades Monday night's
+# game, so the record the Paper carries is the graded one; the standalone
+# record pass waits until 07:00 CT for this unit to go first
+# (games/docket/services/record.py, RECORD_HANDOFF).
+#
+# This timer opens BOTH games on Tuesday. It must stay enabled until
+# Survivor's last CFP week (late January), which is after the Docket's
+# season ends on Jan 12: out of the Docket's season that side stands down
+# under --scheduled and the Paper goes out Survivor-only.
+[Unit]
+Description=Run the Tuesday Paper 06:15 CT (open both games, send the club letter)
+
+[Timer]
+# Timezone is INLINE in OnCalendar — no TimeZone= directive exists.
+OnCalendar=Tue *-*-* 06:15:00 America/Chicago
+Persistent=true
+
+[Install]
+WantedBy=timers.target

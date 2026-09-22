@@ -5,9 +5,11 @@ grades: a personal Club Letter built from facts the room already shows
 (the sheet's tally, the week standings, the season ledger, the purse).
 It is latch-driven (``DocketWeek.record_notified``) from the daily scores
 run ONLY: never the game-day pass (ADR-063 sends no mail), never a regrade.
+Since step 5 the standalone pass also waits ``RECORD_HANDOFF`` past the
+next week's boundary so the Tuesday Paper can carry the record first.
 Assertions are on captured RENDERED letters, not a mocked builder.
 """
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from unittest.mock import patch
 
@@ -43,6 +45,11 @@ SITE = 'https://cccfantasy.com'
 # Week 1 closes Sun Sep 6 12:00 CT = 17:00 UTC; every case kicks off after.
 AFTER_DEADLINE = '2026-09-06T17:30:00'
 KICK = datetime(2026, 9, 6, 18, 0)
+# Week 2 opens Tue Sep 8 06:00 CT = 11:00 UTC. The standalone record pass is
+# eligible an hour later (the Paper's handoff); RECORD_AT is the Wednesday
+# 08:00 CT daily run, the first ordinary run past it.
+HANDOFF_OPENS = datetime(2026, 9, 8, 12, 0, tzinfo=UTC)
+RECORD_AT = '2026-09-09T13:00:00'
 SCORING_SLOTS = 8
 SEND = 'games.docket.services.notifications.send_platform_email'
 
@@ -95,7 +102,17 @@ def _seed(monkeypatch, sheets, *, week_number=1):
     graded = try_grade_week(
         week.id, user_ids=roster_user_ids_as_of(week.deadline_at))
     assert graded['status'] == 'ok', graded
+    at(monkeypatch, RECORD_AT)
     return week, users
+
+
+def _daily_run(monkeypatch):
+    """The Wednesday 08:00 CT daily scores run as production sees it: the
+    next week already exists (Tuesday's setup created it) and Week 1's
+    handoff window has passed."""
+    make_week(2)
+    db.session.commit()
+    at(monkeypatch, RECORD_AT)
 
 
 ROSTER = (('dana', 'Dana Whitfield', 7),
@@ -271,7 +288,7 @@ def test_an_ungraded_week_is_skipped(app, monkeypatch):
     make_game(week, kickoff=KICK)
     make_enrollment(make_user('player'))
     db.session.commit()
-    at(monkeypatch, AFTER_DEADLINE)
+    at(monkeypatch, RECORD_AT)
     sent, patcher = _capture()
     with patcher:
         assert run_record_pass() == []
@@ -344,9 +361,11 @@ def test_scores_mode_mails_the_record_once_the_week_grades(
     app.config['SITE_URL'] = SITE
     app.config['ODDS_API_KEY'] = 'test-key'
     week, _users = _seed(monkeypatch, ROSTER)
-    # Undo the grade so the CLI's own scores run is what grades it.
+    # Undo the grade so the CLI's own scores run is what grades it, on the
+    # Sunday-evening run inside Week 1.
     week.default_error_tenths = None
     db.session.commit()
+    at(monkeypatch, AFTER_DEADLINE)
     from games.docket.cli import docket_cli
 
     class _R:
@@ -363,11 +382,23 @@ def test_scores_mode_mails_the_record_once_the_week_grades(
             docket_cli, ['sync', '--mode', 'scores'])
     assert result.exit_code == 0, result.output
     assert '3 players graded' in result.output
+    # Graded, but inside the handoff window: the Paper has first claim.
+    assert 'record:' not in result.output
+    assert sent == []
+    assert db.session.get(DocketWeek, week.id).record_notified is False
+
+    # The Wednesday daily run finds the record still unlatched and sends it.
+    _daily_run(monkeypatch)
+    with patcher, patch.object(docket_scores, 'odds_api_get',
+                               return_value=_R()):
+        result = app.test_cli_runner().invoke(
+            docket_cli, ['sync', '--mode', 'scores'])
+    assert result.exit_code == 0, result.output
     assert 'record: week 1 sent to 3/3 sheets' in result.output
     assert len(sent) == 3
     assert db.session.get(DocketWeek, week.id).record_notified is True
 
-    # A second daily run grades nothing new and mails nothing.
+    # The next daily run grades nothing new and mails nothing.
     sent.clear()
     with patcher, patch.object(docket_scores, 'odds_api_get',
                                return_value=_R()):
@@ -385,6 +416,7 @@ def test_scores_mode_still_mails_records_when_the_current_sport_errors(
     scores run is the only sender, so the error branch must send too."""
     app.config['ODDS_API_KEY'] = 'test-key'
     week, _users = _seed(monkeypatch, ROSTER)
+    _daily_run(monkeypatch)
     from games.docket import cli as docket_cli_mod
     from games.docket.cli import docket_cli
 
@@ -404,6 +436,7 @@ def test_scores_mode_reports_an_unlatched_record_without_failing(
         app, monkeypatch):
     app.config['ODDS_API_KEY'] = 'test-key'
     week, _users = _seed(monkeypatch, ROSTER)
+    _daily_run(monkeypatch)
     from games.docket.cli import docket_cli
 
     class _R:
@@ -435,8 +468,52 @@ def test_a_graded_week_with_an_empty_roster_latches_with_nobody_to_write_to(
     at(monkeypatch, AFTER_DEADLINE)
     run_deadline_pass(1)
     assert try_grade_week(week.id, user_ids=[])['status'] == 'ok'
+    at(monkeypatch, RECORD_AT)
     sent, patcher = _capture()
     with patcher:
         assert run_record_pass() == [{'week_number': 1, 'recipients': 0,
                                       'sent': 0, 'latched': True}]
     assert sent == [] and week.record_notified is True
+
+
+# ── the Paper's handoff (step 5) ──────────────────────────────────────────
+
+def test_the_standalone_pass_waits_an_hour_past_the_next_boundary(
+        app, monkeypatch):
+    """The record handoff, no weekday key: Tuesday's 05:15 scores run grades
+    Monday night's game and stands down; the 06:15 Paper carries the record
+    and latches it; the standalone pass is eligible from 07:00 CT, inclusive
+    at the instant, and picks up whatever the Paper did not deliver."""
+    week, _users = _seed(monkeypatch, ROSTER)
+    assert record.record_eligible_at(1) == HANDOFF_OPENS
+    sent, patcher = _capture()
+    for iso in ('2026-09-08T10:15:00',    # Tue 05:15 CT, before the boundary
+                '2026-09-08T11:59:00'):   # Tue 06:59 CT, inside the handoff
+        at(monkeypatch, iso)
+        with patcher:
+            assert run_record_pass() == []
+    assert sent == [] and week.record_notified is False
+
+    at(monkeypatch, '2026-09-08T12:00:00')  # Tue 07:00 CT, the instant itself
+    with patcher:
+        outcome = run_record_pass()
+    assert outcome == [{'week_number': 1, 'recipients': 3, 'sent': 3,
+                        'latched': True}]
+    assert week.record_notified is True
+
+
+def test_the_last_week_of_the_season_has_a_handoff_instant():
+    """boundary_utc accepts TOTAL_WEEKS + 1 (the season end), so the final
+    record is not stranded behind a ValueError."""
+    assert record.record_eligible_at(TOTAL_WEEKS) > record.record_eligible_at(1)
+
+
+def test_a_week_the_paper_latched_is_not_sent_again(app, monkeypatch):
+    """The Paper's ``mark_announced`` sets the same flag this pass reads."""
+    week, _users = _seed(monkeypatch, ROSTER)
+    week.record_notified = True
+    db.session.commit()
+    sent, patcher = _capture()
+    with patcher:
+        assert run_record_pass() == []
+    assert sent == []

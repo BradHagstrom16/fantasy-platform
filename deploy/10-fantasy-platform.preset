@@ -89,6 +89,11 @@ ignore golf-*.timer
 # like the game timers above: enabled by name once, then left alone.
 ignore scores-*.timer
 
+# The Club Desk's cross-game mail units (ADR-065: club-paper at step 5,
+# club-remind at step 9) are cut over by name, one per step, and the old
+# unit disabled in the same sitting; preset-all must touch neither side.
+ignore club-*.timer
+
 # A new game's timers are NOT covered until a line lands here, and would
 # inherit the enable default. tests/test_systemd_preset.py fails CI when a
 # prefix in deploy/*.timer has no rule, so that choice has to be made
