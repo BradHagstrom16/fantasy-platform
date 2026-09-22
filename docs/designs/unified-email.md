@@ -140,8 +140,8 @@ Build progress (flipped on merge; the step's PR is the pointer):
 - [x] Step 5 club-paper cutover (PR #230, merged 2026-09-22; live once Brad deploys + enables `club-paper.timer`, first Paper Tue Sep 29)
 - [x] Step 6 wider Survivor windows (PR #231, merged 2026-09-22; live from the deploy that morning, first wider Friday Sep 25)
 - [x] Step 7 --ride F (PR #232, merged 2026-09-22; cut over in the same deploy — no systemctl change; first Slot F Fri Sep 25 09:00)
-- [ ] Step 8 --ride F,S
-- [ ] Step 9 club-remind + cleanup
+- [x] Step 8 --ride F,S (PR #233, merged + deployed 2026-09-22; checkpoint read on prod: dual 6, alive 5)
+- [x] Step 9 club-remind + cleanup (PR #234, merged + cut over 2026-09-22 ~10:25 CT: `club-remind.timer` enabled, `cfb-remind`/`docket-remind`/`docket-setup` disabled and removed from the box; first desk-led Docket tier = Sun Sep 27 10:00). **Build complete.**
 
 1. **Docket record letter, standalone.** From `WeekRollup` and `services/purse.py`: W-L-P, headliner and tiebreaker result, rank, purse line. New `DocketWeek.record_notified` on week N, with migration. It is a **latch-driven pass in the daily `docket sync --mode scores` CLI path only**: week graded and not `record_notified`. It never lives in `try_grade_week`, the game-day consumer, or `admin_ops`. A regrade after send issues no correction. Zero deliveries leaves the latch open. Body is a function returning a `Block`. Known cost: until step 5, a dual member's Tuesday is three emails (05:15, 06:00, 06:15).
 2. **`section_block()` and the two-section Letter**, tests in `tests/test_email_letter.py` (including a 47-character display name and an 8-item outstanding list).
@@ -364,7 +364,7 @@ Synthesized from the eng review's findings. Checkbox as you ship.
   - Surfaced by: Architecture issue 2 (2A) — structural and behavioral change in one PR on the week-creating path
   - Files: games/docket/cli.py, games/docket/services/, games/cfb/services/automation.py
   - Verify: full suite unchanged on SQLite and Postgres; one live Tuesday
-- [ ] **T3 (P2, human: ~30 min / CC: ~5 min)** — units — rollout state as `--anchor` / `--ride` on the ExecStart line, exact values test-locked
+- [x] **T3 (P2, human: ~30 min / CC: ~5 min)** — units — rollout state as `--anchor` / `--ride` on the ExecStart line, exact values test-locked
   - Surfaced by: Architecture issues 3 (3A) and 5 (5A)
   - Files: deploy/cfb-remind.service, deploy/club-remind.*, tests/test_cfb_timers.py
   - Verify: timer tests; `ps -o args=` after deploy
@@ -384,7 +384,7 @@ Synthesized from the eng review's findings. Checkbox as you ship.
   - Surfaced by: Test issue 8 (8A)
   - Files: tests/test_club_desk_matrix.py
   - Verify: both CI jobs green
-- [ ] **T8 (P2, human: ~half day / CC: ~20 min)** — cleanup — delete legacy passes, `--mode remind`, and the three retired units inside step 9; `deploy.sh` double-enable guard
+- [x] **T8 (P2, human: ~half day / CC: ~20 min)** — cleanup — delete legacy passes, `--mode remind`, and the three retired units inside step 9; `deploy.sh` double-enable guard
   - Surfaced by: TODO 1 (Brad: do it in the step, no deferral date)
   - Files: games/cfb/services/reminders.py, games/docket/services/reminders.py, games/cfb/cli.py, games/docket/cli.py, deploy/, deploy.sh, tests/test-deploy-guards.sh, CLAUDE.md
   - Verify: `bash tests/test-deploy-guards.sh`; full suite
