@@ -942,6 +942,11 @@ def test_a_single_section_is_that_games_own_letter(app):
     app.config['SITE_URL'] = SITE
     with pytest.raises(ValueError, match="own letter"):
         render_letter(_paper(extras=[_survivor_section()]))
+    # A single CFB section under a non-null but wrong game_slug would render
+    # Docket chrome over CFB content — reject it, not just the null case.
+    with pytest.raises(ValueError, match="own letter"):
+        render_letter(_paper(extras=[_survivor_section()], game_slug='docket',
+                             eyebrow='CFB Survivor · Week 4'))
     letter = _paper(extras=[_survivor_section()], game_slug='cfb', season=2026,
                     eyebrow='CFB Survivor · Week 4', headline='Picks are open',
                     notes=[])
@@ -950,6 +955,39 @@ def test_a_single_section_is_that_games_own_letter(app):
     assert html.count('class="section-cta"') == 1 and 'class="cta"' not in html
     assert '#A63446' not in html and 'background:#C9A227' not in html
     assert 'Sent to you as a member of CFB Survivor 2026.' in plain
+
+
+def test_game_section_refuses_a_half_given_deadline_or_cta_pair():
+    # A button without a url would render href="None"; a deadline without a
+    # label would render "None" as the fact label. Reject the half-pairs.
+    with pytest.raises(ValueError, match='deadline and deadline_label'):
+        game_section('cfb', 'CFB Survivor · Week 4', ['Out.'], deadline=SAT)
+    with pytest.raises(ValueError, match='deadline and deadline_label'):
+        game_section('cfb', 'CFB Survivor · Week 4', ['Out.'],
+                     deadline_label='Survivor locks')
+    with pytest.raises(ValueError, match='button and url'):
+        game_section('cfb', 'CFB Survivor · Week 4', ['Out.'], button='Pick')
+    with pytest.raises(ValueError, match='button and url'):
+        game_section('cfb', 'CFB Survivor · Week 4', ['Out.'],
+                     url=f'{SITE}/cfb/')
+
+
+def test_a_desk_letter_carries_one_section_per_game(app):
+    app.config['SITE_URL'] = SITE
+    with pytest.raises(ValueError, match='one section per game'):
+        render_letter(_paper(extras=[_survivor_section(),
+                                     _survivor_section(deadline=SUN)]))
+
+
+def test_a_naive_section_deadline_is_refused(app):
+    # Docket columns are naive-UTC and CFB deadlines are aware; a Paper that
+    # mixed them would raise TypeError deep in sorted(). Fail with a clear
+    # message at the section instead.
+    app.config['SITE_URL'] = SITE
+    naive = SUN.replace(tzinfo=None)
+    with pytest.raises(ValueError, match='naive deadline'):
+        render_letter(_paper(extras=[_survivor_section(),
+                                     _docket_section(deadline=naive)]))
 
 
 def test_letters_without_sections_are_untouched_by_the_desk_locks(app):

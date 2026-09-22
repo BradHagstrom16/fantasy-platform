@@ -304,6 +304,12 @@ def game_section(slug, title, lines, *, deadline=None, deadline_label=None,
     ``section-cta``, never ``cta``: the letter's single-CTA lock counts the
     latter, and a desk letter has no club button beside its sections.
     """
+    if (deadline is None) != (deadline_label is None):
+        raise ValueError('game_section: deadline and deadline_label are a '
+                         'pair — pass both or neither.')
+    if (button is None) != (url is None):
+        raise ValueError('game_section: button and url are a pair — pass '
+                         'both or neither.')
     accent = GAME_ACCENTS[slug]
     html = Markup(
         '<p style="margin:26px 0 6px; padding-top:18px; border-top:1px solid '
@@ -373,11 +379,20 @@ def _check_desk_rules(letter: Letter, extras) -> None:
         raise ValueError(
             'A desk letter carries no club-gold button beside a game '
             'button: drop Letter.cta or the section buttons.')
-    if letter.game_slug is None and len(sections) == 1:
+    slugs = [s.slug for s in sections]
+    if len(set(slugs)) != len(slugs):
+        raise ValueError(
+            f'A desk letter carries one section per game; got {slugs}.')
+    if len(sections) == 1 and letter.game_slug != sections[0].slug:
         raise ValueError(
             'A single-section letter is that game\'s own letter: set '
             f'game_slug={sections[0].slug!r} (club chrome needs two or more '
             'sections).')
+    for section in sections:
+        if section.deadline is not None and section.deadline.tzinfo is None:
+            raise ValueError(
+                f'Section {section.slug!r} has a naive deadline; desk '
+                'deadlines must be aware — they sort across games.')
     ordered = [s.deadline for s in sections if s.deadline is not None]
     dated = [s.deadline is not None for s in sections]
     if ordered != sorted(ordered) or dated != sorted(dated, reverse=True):
