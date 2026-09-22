@@ -17,6 +17,12 @@ Two kinds of lock live here.
 Plus the "no other shell" lock: a second `role="presentation"` / `<!DOCTYPE
 html>` anywhere in Python source or an email template directory fails, so a
 sixth hand-rolled shell cannot regrow (Golf's is allowlisted until its PR).
+
+4. **The desk letter** (DESIGN.md "The desk letter"): the second shape, one
+   letter for more than one game. Its blocks (`game_section`, `rider_block`)
+   and the locks `render_letter` enforces on them: one CTA per section and no
+   club-gold button beside a game button, sections in deadline order, club
+   chrome only with two or more sections; a rider is one link in `notes`.
 """
 import os
 import re
@@ -24,6 +30,7 @@ from datetime import UTC, datetime, timedelta
 from html import unescape
 from pathlib import Path
 from unittest.mock import patch
+from zoneinfo import ZoneInfo
 
 import pytest
 from markupsafe import Markup, escape
@@ -46,12 +53,18 @@ from tests import _cfb_fixtures as cfb
 from tests import _docket_fixtures as docket
 from utils import email_layout
 from utils.email_layout import (
+    Block,
     Letter,
+    Section,
+    SectionBlock,
+    game_section,
     items_block,
     paragraphs_block,
     render_letter,
     result_block,
+    rider_block,
     seal_url,
+    section_block,
     tab_block,
 )
 
@@ -688,3 +701,288 @@ def test_no_other_shell_exists():
 def test_legacy_shell_allowlist_has_no_dead_entries():
     dead = LEGACY_SHELLS - _files_with_shell_markers()
     assert not dead, f'Migrated shells still allowlisted: {sorted(dead)}'
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 4. The desk letter
+# ═══════════════════════════════════════════════════════════════════════════
+
+CT = ZoneInfo('America/Chicago')
+SAT = datetime(2026, 9, 26, 11, 0, tzinfo=CT)
+SUN = datetime(2026, 9, 27, 12, 0, tzinfo=CT)
+SAT_TEXT = 'Saturday, Sep 26 · 11:00 AM CT'
+SUN_TEXT = 'Sunday, Sep 27 · 12:00 PM CT'
+DOCKET_NUDGE = {'entry_fee': 60, 'venmo_url': f'{SITE}/venmo?amount=60&note=n',
+                'zelle_phone': '(312) 555-0142'}
+RIDER_SENTENCE = ('three sides still to file. The docket closes Sun, Sep 27, '
+                  '12:00 PM CT.')
+
+
+def _survivor_section(**overrides):
+    fields = {
+        'lines': [Markup('Last week: <strong>Survived</strong> with Oregon. '
+                         'Two lives in hand. 27 of 31 still alive.')],
+        'deadline': SAT, 'deadline_label': 'Survivor locks',
+        'button': 'Make your pick', 'url': f'{SITE}/cfb/', **overrides}
+    return game_section('cfb', 'CFB Survivor · Week 4', fields.pop('lines'),
+                        **fields)
+
+
+def _docket_section(**overrides):
+    fields = {
+        'lines': ['Last week: 6-2, 7 points. 4th of 31 sheets. Dana Whitfield '
+                  'went 7-1 and takes the $20 weekly purse.'],
+        'deadline': SUN, 'deadline_label': 'The docket closes',
+        'button': 'Open your sheet', 'url': f'{SITE}/docket/', **overrides}
+    return game_section('docket', 'The Docket · Week 4', fields.pop('lines'),
+                        **fields)
+
+
+def _paper(**overrides):
+    """The approved Variant-B Paper: club chrome, Survivor then Docket, one
+    tab strip for the owed game, no club CTA."""
+    return Letter(**{
+        'subject': 'The Morning Line, Week 4: Both boards are open',
+        'headline': 'Both boards are open',
+        'eyebrow': 'The Morning Line · Week 4',
+        'preheader': 'You went 6-2 and survived with Oregon',
+        'lede': ['Last week is in the books and this week\u2019s lines are '
+                 'posted.'],
+        'extras': [_survivor_section(), _docket_section()],
+        'notes': [tab_block(DOCKET_NUDGE, 'docket')],
+        **overrides})
+
+
+def _merged_reminder():
+    """The merged Saturday nag: the anchor letter as sent today, plus the
+    Docket rider as a footnote before the tab strip."""
+    return Letter(
+        subject='FINAL, two hours left: CFB Survivor, Week 4',
+        headline='Final call: two hours left',
+        eyebrow='CFB Survivor · Week 4', game_slug='cfb', season=2026,
+        preheader='Deadline Sat, Sep 26, 11:00 AM CT.',
+        lede=['Your Week 4 pick is not in and the deadline is about two '
+              'hours away.'],
+        facts=[('Deadline', 'Sat, Sep 26, 11:00 AM CT'), ('Lives', '2 of 2'),
+               ('Cumulative spread', '18.5')],
+        cta=('Make your pick', f'{SITE}/cfb/'),
+        supporting=['Miss the deadline and the pool picks for you: the '
+                    'biggest favorite you have not used.'],
+        notes=[rider_block('docket', RIDER_SENTENCE, 'Open your sheet',
+                           f'{SITE}/docket/'),
+               tab_block({'entry_fee': 25, 'venmo_url': f'{SITE}/venmo',
+                          'zelle_phone': '(312) 555-0142'}, 'cfb')],
+    )
+
+
+def _assert_material_rules(name, html, subject):
+    """The same material rules the catalogue test applies, on a letter that
+    has no send path yet (the desk composer lands in a later step)."""
+    hexes = re.compile(r'(?<!&)#[0-9A-Fa-f]{3,8}\b')
+    assert re.search(r'border-(left|right)\s*:\s*([2-9]|\d{2,})px',
+                     html) is None, name
+    assert '.svg' not in html, name
+    assert re.search(r'(?<!&)#(000|fff)\b', html, re.I) is None, name
+    found = set()
+    for style in re.findall(r'style="([^"]*)"', html):
+        found.update(h.upper() for h in hexes.findall(style))
+    assert found <= PALETTE, (name, sorted(found - PALETTE))
+    assert 'width="560"' in html and 'max-width:560px' in html, name
+    assert html.count('<img ') == 1, name
+    assert f'<title>{escape(subject)}</title>' in html, name
+    assert '{% ' not in html and '{{' not in html, name
+    text = _text(html)
+    assert '—' not in text and 'CDT' not in text and 'CST' not in text, name
+
+
+def test_game_section_escapes_and_pairs_plain_with_html(app):
+    app.config['SITE_URL'] = SITE
+    block = game_section('cfb', 'Title <t>', ['<i>line', Markup('<b>ok</b>')],
+                         deadline=SAT, deadline_label='Locks <l>',
+                         button='Go <b>', url='https://x/?a=1&b=2')
+    assert isinstance(block, Block) and isinstance(block, SectionBlock)
+    assert block.slug == 'cfb' and block.deadline == SAT and block.has_button
+    for raw in ('<t>', '<i>line', '<l>', 'Go <b>'):
+        assert raw not in block.html, raw
+    assert '&lt;t&gt;' in block.html and '<b>ok</b>' in block.html
+    assert 'href="https://x/?a=1&amp;b=2"' in block.html
+    assert block.plain == (f'Title <t>\n<i>line\nok\nLocks <l>: {SAT_TEXT}\n'
+                           f'Go <b>: https://x/?a=1&b=2')
+
+
+def test_section_block_renders_a_section_dataclass(app):
+    app.config['SITE_URL'] = SITE
+    section = Section(slug='docket', title='The Docket · Week 4',
+                      lines=['One line.'], deadline=SUN,
+                      deadline_label='The docket closes',
+                      button='Open your sheet', url=f'{SITE}/docket/',
+                      nudge=DOCKET_NUDGE)
+    block = section_block(section)
+    assert block == _docket_section(lines=['One line.'])
+    assert block.deadline == SUN and block.slug == 'docket'
+    assert 'Settle the tab' not in block.html    # the nudge is the composer's
+
+
+def test_game_section_wears_its_accent_and_the_mockup_markup(app):
+    app.config['SITE_URL'] = SITE
+    html = _survivor_section().html
+    # The hairline-topped eyebrow, the one-row inset, the solid button.
+    assert ('margin:26px 0 6px; padding-top:18px; border-top:1px solid '
+            '#E8E5F0;') in html
+    assert 'color:#C5050C;">CFB Survivor · Week 4</p>' in html
+    assert '>Survivor locks</div>' in html and SAT_TEXT in html
+    assert 'background:#C5050C; color:#F3EFE6;' in html
+    assert html.count('class="section-cta"') == 1
+    assert 'class="cta"' not in html
+    assert 'margin:4px auto 6px;' in html
+    assert '#A63446' not in html
+
+
+def test_spectator_section_has_no_inset_and_no_button(app):
+    app.config['SITE_URL'] = SITE
+    block = game_section('cfb', 'CFB Survivor · Week 4',
+                         ['Out after Week 3. 27 of 31 still alive.'])
+    assert block.deadline is None and not block.has_button
+    assert 'role="presentation"' not in block.html   # no inset table
+    assert 'section-cta' not in block.html and '<a ' not in block.html
+    assert block.plain == ('CFB Survivor · Week 4\nOut after Week 3. 27 of 31 '
+                           'still alive.')
+
+
+def test_rider_block_is_one_link_in_the_tab_strip_register(app):
+    app.config['SITE_URL'] = SITE
+    block = rider_block('docket', 'three <sides> to file.', 'Open <s>',
+                        'https://x/?a=1&b=2')
+    assert block.html.count('<a ') == 1
+    assert 'class="cta"' not in block.html and 'section-cta' not in block.html
+    assert ('margin:24px 0 0; padding-top:16px; border-top:1px solid '
+            '#E8E5F0;') in block.html
+    assert ('>Also on your desk.</strong> The Docket: three &lt;sides&gt; to '
+            'file. <a href="https://x/?a=1&amp;b=2" style="color:#A63446; '
+            'font-weight:600;">Open &lt;s&gt;</a>') in block.html
+    assert block.plain == ('Also on your desk. The Docket: three <sides> to '
+                           'file. Open <s>: https://x/?a=1&b=2')
+
+
+def test_the_paper_renders_two_sections_under_club_chrome(app):
+    app.config['SITE_URL'] = SITE
+    letter = _paper()
+    plain, html = render_letter(letter)
+    _assert_material_rules('paper', html, letter.subject)
+    assert html.count('class="section-cta"') == 2
+    assert 'class="cta"' not in html
+    assert ACCENTS['cfb'] in html and ACCENTS['docket'] in html
+    assert 'background:#C9A227' not in html          # no club-gold button
+    assert 'color:#5A5470;">The Morning Line · Week 4</p>' in html
+    assert 'Sent to you as a member of the Corrupt Commish Club.' in plain
+    # Plain text follows the letter: sections in order, each with its own
+    # deadline line and button line, the tab strip after both.
+    marks = ['The Morning Line · Week 4', 'Both boards are open',
+             'Last week is in the books', 'CFB Survivor · Week 4',
+             'Last week: Survived with Oregon.', f'Survivor locks: {SAT_TEXT}',
+             f'Make your pick: {SITE}/cfb/', 'The Docket · Week 4',
+             f'The docket closes: {SUN_TEXT}', f'Open your sheet: {SITE}/docket/',
+             'Settle the tab. The Docket: the $60 entry is due',
+             'Corrupt Commish Club · cccfantasy.com']
+    positions = [plain.index(m) for m in marks]
+    assert positions == sorted(positions), plain
+    assert '<strong>' not in plain
+    assert len(letter.subject) <= 50
+
+
+def test_the_paper_renders_a_long_name_and_an_eight_item_list(app):
+    """A 47-character display name and an 8-item outstanding list (the widest
+    content a section carries) render inside the 560px card without breaking
+    the material rules."""
+    app.config['SITE_URL'] = SITE
+    name = 'Bartholomew Montgomery-Fitzgerald the Third Esq'
+    assert len(name) == 47
+    owed = [f'Slot {n}: no side filed.' for n in range(1, 9)]
+    letter = _paper(
+        greeting=name,
+        extras=[_survivor_section(),
+                _docket_section(lines=['Your sheet is short.']),
+                items_block(owed, title='Still open on your sheet')])
+    plain, html = render_letter(letter)
+    _assert_material_rules('paper-long', html, letter.subject)
+    assert f'Hi {name},' in plain and escape(name) in html
+    assert plain.count('Slot ') == 8 and html.count('<li ') == 8
+    assert plain.index('Open your sheet:') < plain.index('Slot 1:')
+
+
+def test_no_gold_cta_beside_a_game_button(app):
+    app.config['SITE_URL'] = SITE
+    with pytest.raises(ValueError, match='club-gold'):
+        render_letter(_paper(cta=('Open the lounge', SITE)))
+    # A section without a button leaves a club CTA legal (nothing competes).
+    spectator = game_section('cfb', 'CFB Survivor · Week 4', ['Out.'])
+    quiet = game_section('docket', 'The Docket · Week 4', ['Filed.'])
+    _, html = render_letter(_paper(extras=[quiet, spectator],
+                                   cta=('Open the lounge', SITE)))
+    assert html.count('class="cta"') == 1 and 'section-cta' not in html
+
+
+def test_sections_render_in_deadline_order(app):
+    app.config['SITE_URL'] = SITE
+    with pytest.raises(ValueError, match='deadline order'):
+        render_letter(_paper(extras=[_docket_section(), _survivor_section()]))
+    spectator = game_section('cfb', 'CFB Survivor · Week 4', ['Out.'])
+    with pytest.raises(ValueError, match='undated'):
+        render_letter(_paper(extras=[spectator, _docket_section()]))
+    _, html = render_letter(_paper(extras=[_docket_section(), spectator]))
+    assert html.index('The Docket · Week 4') < html.index('CFB Survivor · Week 4')
+    # Equal deadlines are in order; a non-section extra between sections is
+    # not a section and does not enter the ordering.
+    render_letter(_paper(extras=[_survivor_section(),
+                                 items_block(['x'], title='Between'),
+                                 _docket_section(deadline=SAT)]))
+
+
+def test_a_single_section_is_that_games_own_letter(app):
+    app.config['SITE_URL'] = SITE
+    with pytest.raises(ValueError, match="own letter"):
+        render_letter(_paper(extras=[_survivor_section()]))
+    letter = _paper(extras=[_survivor_section()], game_slug='cfb', season=2026,
+                    eyebrow='CFB Survivor · Week 4', headline='Picks are open',
+                    notes=[])
+    plain, html = render_letter(letter)
+    _assert_material_rules('single', html, letter.subject)
+    assert html.count('class="section-cta"') == 1 and 'class="cta"' not in html
+    assert '#A63446' not in html and 'background:#C9A227' not in html
+    assert 'Sent to you as a member of CFB Survivor 2026.' in plain
+
+
+def test_letters_without_sections_are_untouched_by_the_desk_locks(app):
+    """A single-game letter with a club CTA and ordinary extras never trips
+    the desk rules: they apply only when a SectionBlock is present."""
+    app.config['SITE_URL'] = SITE
+    _, html = render_letter(Letter(
+        subject='s', headline='h', eyebrow='e', cta=('Go', SITE),
+        extras=[items_block(['one']), result_block('R', [('a', '1')])]))
+    assert html.count('class="cta"') == 1
+
+
+def test_merged_reminder_keeps_one_cta_and_the_rider_before_the_tab(app):
+    app.config['SITE_URL'] = SITE
+    letter = _merged_reminder()
+    plain, html = render_letter(letter)
+    _assert_material_rules('merged-reminder', html, letter.subject)
+    assert html.count('class="cta"') == 1 and 'section-cta' not in html
+    assert len(letter.subject) <= 45
+    rider = html[html.index('Also on your desk.'):]
+    rider = rider[:rider.index('Settle the tab.')]
+    assert rider.count('<a ') == 1 and 'href="https://cccfantasy.com/docket/"' in rider
+    assert ACCENTS['docket'] in rider and 'background:#A63446' not in html
+    # After the supporting line, before the tab strip, never between the
+    # inset and the button.
+    order = [html.index('class="cta"'), html.index('Miss the deadline'),
+             html.index('Also on your desk.'), html.index('Settle the tab.'),
+             html.index('#1C0A3A; padding')]
+    assert order == sorted(order)
+    assert (f'Also on your desk. The Docket: {RIDER_SENTENCE} Open your sheet: '
+            f'{SITE}/docket/') in plain
+    assert plain.index('Miss the deadline') < plain.index('Also on your desk.') \
+        < plain.index('Settle the tab.')
+    # The anchor's own words are the ones a single-game reminder carries.
+    assert f'Make your pick: {SITE}/cfb/' in plain
+    assert 'Sent to you as a member of CFB Survivor 2026.' in plain

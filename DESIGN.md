@@ -452,6 +452,36 @@ An email is the club's letter, not a room (ADR-058). It arrives From "Corrupt Co
 
 Locked on rendered output by `tests/test_email_letter.py`, which also fails on any second `role="presentation"` / `<!DOCTYPE html>` outside the shell.
 
+#### The desk letter
+
+The second Club Letter shape (`docs/designs/unified-email.md`, the Tuesday Paper and the merged reminder): one letter that speaks for more than one game. Games still supply content only; the two blocks live in `utils/email_layout.py` and `render_letter` refuses a letter that breaks the rules below.
+
+```
+ masthead   (club, unchanged)
+ eyebrow    The Morning Line · Week 4        (ink; club business)
+ H1         Both boards are open             (state headline)
+ lede       one sentence
+ ─────────────────────────────────────────── hairline
+ eyebrow    CFB SURVIVOR · WEEK 4            (game accent)   <- sections in DEADLINE order
+ verdict    Last week: Survived with Oregon. Two lives in hand. 27 of 31 still alive.
+ inset      SURVIVOR LOCKS  Saturday, Sep 26 · 11:00 AM CT   (one fact inset per section)
+ button     MAKE YOUR PICK                   (solid game accent, bone text)
+ ─────────────────────────────────────────── hairline
+ eyebrow    THE DOCKET · WEEK 4
+ verdict    Last week: 6-2, 7 points. 4th of 31 sheets. Dana Whitfield went 7-1 and takes the $20 weekly purse.
+ inset      THE DOCKET CLOSES  Sunday, Sep 27 · 12:00 PM CT
+ button     OPEN YOUR SHEET
+ ─────────────────────────────────────────── hairline
+ tab strip(s)  one per owed game, section order (footnotes)
+ footer     club band, "a member of the Corrupt Commish Club"
+```
+
+- **Blocks:** `game_section(slug, title, lines, deadline=, deadline_label=, button=, url=)` is one game's section, a mini-letter: hairline, eyebrow in the game's lounge accent, one paragraph per line, the one-row bone inset (the deadline through `format_deadline_short`), one solid game-accent button (`section-cta`, never `cta`). A spectator section (an eliminated Survivor member) passes no deadline and no button: eyebrow and lines only. `rider_block(slug, sentence, link_label, url)` is the merged reminder's footnote: the tab strip's register, bold "Also on your desk.", the game's name, one sentence carrying that game's deadline, one accent text link, its only tap target.
+- **Rules (locked in `render_letter`):** one section per game with something to say; one CTA per section and no club-gold button when any game button is present; sections in deadline order, undated sections last; `game_slug=None` chrome only when two or more sections render (a single-section Paper is that game's own letter: its eyebrow, accent, subject). Subjects read `The Morning Line, Week {n}: {state}` within 50 characters, the Paper's one relaxation of the 45-character rule; the preheader carries the personal hook. One tab strip per owed game, in section order, after the sections.
+- **Merged reminder:** the anchor letter is byte-identical to its single-game self (one `cta`, three facts, 45-character subject); the rider goes in `notes`, after the supporting line and before the tab strip, never between the deadline inset and the button. Subject and headline belong to the anchor.
+
+Locked on rendered output by `tests/test_email_letter.py` (section 4), which keeps the single-CTA lock for single letters and adds the desk locks above.
+
 ## 6. Do's and Don'ts
 
 Concrete guardrails. Each is forceful on purpose; the design director is in the room.
