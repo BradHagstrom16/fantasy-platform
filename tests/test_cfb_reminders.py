@@ -4,24 +4,30 @@ Covers the recap autopick timezone bug (created_at is naive UTC and must
 convert via to_pool_time, not make_aware — §7 HIGH: any manual pick within
 ~6h of the deadline was mislabeled AUTOPICK), the user_id-keyed
 eliminated-this-week detection, DQ-5 recipient gating, the DQ-2
-"No pick: life lost" outcome line, and the T-25h/T-1h ±35min reminder
-windows (driven through the CFB_FAKE_NOW seam).
+"No pick: life lost" outcome line, and the two reminder windows (day-before
+T-26h35m..24h25m, final T-2h35m..25m; driven through the CFB_FAKE_NOW seam).
 """
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 from unittest.mock import patch
 from zoneinfo import ZoneInfo
 
 import pytest
 
 from extensions import db
+from games.cfb.constants import SEASON_SCHEDULE
 from games.cfb.services.game_logic import process_week_results
 from games.cfb.services.reminders import (
+    REMINDER_WINDOWS,
+    active_reminder_window_at,
     get_active_reminder_window,
     get_users_without_picks,
     run_reminder_check,
     send_weekly_recap_email,
+    time_left_phrase,
 )
+from games.docket.services import reminders as docket_reminders
+from games.docket.services.weeks import deadline_utc as docket_deadline_utc
 from tests._cfb_fixtures import (
     make_enrollment,
     make_game,
@@ -226,11 +232,14 @@ def test_recap_no_pick_elimination_detected_and_announced(app):
     assert 'Eliminated this week' in by_to['active@test.com']['body']
 
 
-# ── §8.18 — reminder windows: T-25h / T-1h ± 35 min ───────────────────────
+# ── §8.18 — reminder windows (Club Desk step 6): two hourly firings each ──
 
 # Deadline: Sat Jan 3, 2026 11:00 CST = 17:00 UTC.
-# 25h target: Fri Jan 2 10:00 CST = 16:00 UTC; 1h target: Sat 10:00 CST.
+# Day-before window: Fri Jan 2 08:25-10:35 CST = 14:25-16:35 UTC (firings at
+# 09:00 and 10:00). Final window: Sat 08:25-10:35 CST = 14:25-16:35 UTC.
 DEADLINE_AWARE = datetime(2026, 1, 3, 11, 0, tzinfo=ZoneInfo('America/Chicago'))
+CT = ZoneInfo('America/Chicago')
+HOUR = timedelta(hours=1)
 
 
 def _window_at(fake_utc_iso):
@@ -241,31 +250,41 @@ def _window_at(fake_utc_iso):
 
 
 @pytest.mark.parametrize('instant', [
-    '2026-01-02T15:25:00+00:00',  # target -35min (inclusive edge)
-    '2026-01-02T16:00:00+00:00',  # exactly T-25h
-    '2026-01-02T16:35:00+00:00',  # target +35min (inclusive edge)
+    '2026-01-02T14:25:00+00:00',  # T-26h35m (inclusive edge)
+    '2026-01-02T15:00:00+00:00',  # Fri 09:00 CST, the first firing
+    '2026-01-02T16:00:00+00:00',  # Fri 10:00 CST, the second firing (T-25h)
+    '2026-01-02T16:35:00+00:00',  # T-24h25m (inclusive edge)
 ])
-def test_25h_warning_window_inclusive_boundaries(app, instant):
+def test_warning_window_inclusive_boundaries(app, instant):
     window = _window_at(instant)
     assert window is not None and window['type'] == 'warning'
 
 
 @pytest.mark.parametrize('instant', [
-    '2026-01-02T15:24:59+00:00',  # 1s before the window opens
+    '2026-01-02T14:24:59+00:00',  # 1s before the window opens
     '2026-01-02T16:35:01+00:00',  # 1s after the window closes
 ])
-def test_just_outside_25h_window_sends_nothing(app, instant):
+def test_just_outside_warning_window_sends_nothing(app, instant):
     assert _window_at(instant) is None
 
 
 @pytest.mark.parametrize('instant', [
-    '2026-01-03T15:25:00+00:00',  # target -35min (inclusive edge)
-    '2026-01-03T16:00:00+00:00',  # exactly T-1h
-    '2026-01-03T16:35:00+00:00',  # target +35min (25 min before deadline)
+    '2026-01-03T14:25:00+00:00',  # T-2h35m (inclusive edge)
+    '2026-01-03T15:00:00+00:00',  # Sat 09:00 CST, the first firing (T-2h)
+    '2026-01-03T16:00:00+00:00',  # Sat 10:00 CST, the second firing (T-1h)
+    '2026-01-03T16:35:00+00:00',  # T-25m (inclusive edge)
 ])
-def test_1h_final_window_inclusive_boundaries(app, instant):
+def test_final_window_inclusive_boundaries(app, instant):
     window = _window_at(instant)
     assert window is not None and window['type'] == 'final'
+
+
+@pytest.mark.parametrize('instant', [
+    '2026-01-03T14:24:59+00:00',  # 1s before the window opens
+    '2026-01-03T16:35:01+00:00',  # 1s after the window closes
+])
+def test_just_outside_final_window_sends_nothing(app, instant):
+    assert _window_at(instant) is None
 
 
 def test_between_windows_sends_nothing(app):
@@ -275,6 +294,86 @@ def test_between_windows_sends_nothing(app):
 def test_at_or_past_deadline_sends_nothing(app):
     assert _window_at('2026-01-03T17:00:00+00:00') is None
     assert _window_at('2026-01-03T18:00:00+00:00') is None
+
+
+def _on_the_hour_hits(deadline, tier):
+    """How many on-the-hour instants the hourly timer lands inside
+    ``tier``'s window for this deadline."""
+    window = next(w for w in REMINDER_WINDOWS if w['type'] == tier)
+    first = (deadline - window['start']).replace(minute=0, second=0)
+    hits = 0
+    for step in range(4):
+        instant = first + step * HOUR
+        active = active_reminder_window_at(deadline, instant)
+        if active is not None and active['type'] == tier:
+            hits += 1
+    return hits
+
+
+@pytest.mark.parametrize('tier', ['warning', 'final'])
+@pytest.mark.parametrize('minute', range(60))
+def test_every_deadline_minute_gets_two_firings(tier, minute):
+    """A window of 120 minutes or more holds two hourly firings whatever
+    the deadline minute; the second is the outage retry. A CFP week's
+    deadline is hand-scheduled (a Friday 18:30, say), so this must hold
+    off the hour and off Saturday, not just for the default 11:00."""
+    deadline = datetime(2026, 1, 9, 18, minute, tzinfo=CT)
+    assert deadline.weekday() == 4  # Friday, not the default Saturday
+    assert _on_the_hour_hits(deadline, tier) >= 2
+
+
+def test_default_week_survivor_and_docket_windows_are_disjoint():
+    """The Docket's 48h tier lands Fri 11:25-12:35 on a default week; the
+    Survivor warning must end before it (hence T-24h25m, not T-23h35m) so
+    the Slot F rider never competes with the Docket's own pass. After= on
+    the units orders co-queued firings only; disjoint windows protect a
+    hand start too. Both spans come from each game's own deadline rule."""
+    docket_deadline = docket_deadline_utc(3).astimezone(CT)
+    assert docket_deadline.strftime('%a %H:%M') == 'Sun 12:00'
+    assert SEASON_SCHEDULE['default_deadline_day'] == 'Saturday'
+    cfb_deadline = (docket_deadline - timedelta(days=1)).replace(
+        hour=SEASON_SCHEDULE['default_deadline_hour'],
+        minute=SEASON_SCHEDULE['default_deadline_minute'])
+    survivor = [(cfb_deadline - w['start'], cfb_deadline - w['end'])
+                for w in REMINDER_WINDOWS]
+    tolerance = timedelta(minutes=docket_reminders.TOLERANCE_MINUTES)
+    docket = []
+    for w in docket_reminders.REMINDER_WINDOWS:
+        target = docket_deadline - timedelta(hours=w['hours'])
+        docket.append((target - tolerance, target + tolerance))
+    for s_start, s_end in survivor:
+        for d_start, d_end in docket:
+            assert s_end < d_start or d_end < s_start, (
+                f'Survivor {s_start:%a %H:%M}-{s_end:%H:%M} overlaps '
+                f'Docket {d_start:%a %H:%M}-{d_end:%H:%M}')
+
+
+@pytest.mark.parametrize('left, phrase', [
+    (timedelta(hours=2), '2 hours'),
+    (timedelta(hours=1, minutes=59, seconds=30), '2 hours'),  # AccuracySec
+    (timedelta(hours=1), '1 hour'),
+    (timedelta(hours=1, minutes=30), '1 hour, 30 minutes'),  # an 18:30 deadline
+    (timedelta(minutes=45), '45 minutes'),
+    (timedelta(minutes=25), '30 minutes'),  # the window's last edge
+    (timedelta(minutes=3), '15 minutes'),  # never "0 minutes"
+])
+def test_time_left_phrase_rounds_to_the_quarter_hour(left, phrase):
+    assert time_left_phrase(DEADLINE_AWARE, DEADLINE_AWARE - left) == phrase
+
+
+def test_final_copy_says_the_time_actually_left(app):
+    """The final window spans two firings, so "one hour" would be wrong at
+    the first: subject, headline, lede and push body all carry the phrase."""
+    _seed_reminder_week()
+    sent, patcher = _capture_emails()
+    pushed = []
+    with patcher, patch('games.cfb.services.reminders.send_push',
+                        side_effect=lambda ids, **kw: pushed.append(kw)):
+        _run_reminders_at(FIRST_FINAL_INSTANT)
+    assert sent[0]['subject'] == 'FINAL, 2 hours left: CFB Survivor, Week 1'
+    assert 'Final call: 2 hours left' in sent[0]['body']
+    assert 'the deadline is 2 hours away' in sent[0]['body']
+    assert pushed[0]['body'] == 'Picks lock in 2 hours. No pick on file.'
 
 
 # ── §8.18 — reminder recipients ───────────────────────────────────────────
@@ -305,9 +404,10 @@ def test_reminder_recipients_exclude_eliminated_and_picked(app):
 # The guarantee that lets cfb-remind.timer run hourly: each window mails at
 # most once per week, regardless of cadence, catch-up firings, or hand-runs.
 
-WARNING_INSTANT = '2026-01-02T16:00:00+00:00'  # exactly T-25h
-LATER_IN_WARNING_WINDOW = '2026-01-02T16:20:00+00:00'  # +20min, same window
-FINAL_INSTANT = '2026-01-03T16:00:00+00:00'    # exactly T-1h
+WARNING_INSTANT = '2026-01-02T15:00:00+00:00'  # Fri 09:00 CST, first firing
+LATER_IN_WARNING_WINDOW = '2026-01-02T16:00:00+00:00'  # Fri 10:00, second firing
+FIRST_FINAL_INSTANT = '2026-01-03T15:00:00+00:00'  # Sat 09:00 CST (T-2h)
+FINAL_INSTANT = '2026-01-03T16:00:00+00:00'    # Sat 10:00 CST (T-1h)
 
 
 def _seed_reminder_week():
@@ -336,8 +436,9 @@ def test_first_send_records_the_window(app):
 
 
 def test_second_firing_in_the_same_window_sends_nothing(app):
-    """The hourly-cadence contract: a re-fire inside an already-mailed
-    window (catch-up, hand-run, faster timer) is a no-op."""
+    """The hourly-cadence contract: the window's second firing (and any
+    catch-up or hand-run) after a delivered first is a no-op — the second
+    firing is an outage retry, never a second nag."""
     week, _ = _seed_reminder_week()
     sent, patcher = _capture_emails()
     with patcher:
@@ -387,8 +488,8 @@ def test_all_picked_leaves_the_window_open(app):
 
 
 def test_total_send_failure_leaves_the_window_open_for_retry(app):
-    """A full mail outage must not swallow the window; the next hourly
-    firing retries and the flag records only when a send succeeds."""
+    """A full mail outage must not swallow the window; the window's second
+    hourly firing retries and the flag records only when a send succeeds."""
     week, _ = _seed_reminder_week()
     with patch('games.cfb.services.reminders.send_platform_email',
                return_value=False):

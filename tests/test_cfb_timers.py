@@ -118,8 +118,9 @@ def test_timer_is_enableable(timer):
 
 def test_remind_fires_hourly_with_no_weekday_restriction():
     """The de-dup guarantee lives in CfbWeek.last_reminder_type, so the
-    cadence only has to land inside every window's ±35-minute tolerance at
-    least once — hourly does, for ANY deadline time. A weekday-restricted
+    cadence only has to land inside every window (each spans 130 minutes)
+    at least once — hourly does twice, for ANY deadline time; the second
+    landing is the outage retry (step 6). A weekday-restricted
     rule (the old `Fri,Sat 10:00`) silently sends ZERO reminders for a week
     whose deadline isn't Saturday ~11:00 CT, e.g. a hand-scheduled CFP week."""
     rules = _ONCALENDAR.findall((DEPLOY / 'cfb-remind.timer').read_text())

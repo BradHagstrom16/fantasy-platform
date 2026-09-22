@@ -8,7 +8,7 @@ Week 2
 Deadline: Saturday, January 03 at 11:00 AM CST
 Time remaining: 1 day, 1 hour
 
-Active window: 25-hour (warning)
+Active window: day-before (T-26h35m to T-24h25m) (warning)
 Users without picks: 1
 
 Summary: 1/1 reminders sent

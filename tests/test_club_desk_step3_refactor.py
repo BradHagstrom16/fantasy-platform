@@ -282,17 +282,21 @@ def _clock_forbidden():
 
 
 @pytest.mark.parametrize('offset, expected', [
+    (timedelta(hours=26, minutes=36), None),
+    (timedelta(hours=26, minutes=35), 'warning'),
     (timedelta(hours=25), 'warning'),
-    (timedelta(hours=25, minutes=35), 'warning'),
-    (timedelta(hours=25, minutes=36), None),
+    (timedelta(hours=24, minutes=25), 'warning'),
+    (timedelta(hours=24, minutes=24), None),
     (timedelta(hours=12), None),
+    (timedelta(hours=2, minutes=36), None),
+    (timedelta(hours=2, minutes=35), 'final'),
     (timedelta(hours=1), 'final'),
     (timedelta(minutes=25), 'final'),
     (timedelta(minutes=24), None),
     (timedelta(0), None),
     (-timedelta(minutes=1), None),
 ])
-def test_explicit_reader_matches_the_symmetric_windows_without_a_clock(
+def test_explicit_reader_matches_the_windows_without_a_clock(
         offset, expected):
     deadline = datetime(2026, 1, 3, 17, 0, tzinfo=UTC)
     with _clock_forbidden():
