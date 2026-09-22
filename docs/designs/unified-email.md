@@ -138,8 +138,8 @@ Build progress (flipped on merge; the step's PR is the pointer):
 - [x] Step 3 refactor, no behavior change (PR #227, merged 2026-09-21; soaks one live Tuesday + Saturday)
 - [x] Step 4 desk + dry run (PR #229, merged 2026-09-22; no unit invokes it until step 5)
 - [x] Step 5 club-paper cutover (PR #230, merged 2026-09-22; live once Brad deploys + enables `club-paper.timer`, first Paper Tue Sep 29)
-- [ ] Step 6 wider Survivor windows
-- [ ] Step 7 --ride F
+- [x] Step 6 wider Survivor windows (PR #231, merged 2026-09-22; live from the deploy that morning, first wider Friday Sep 25)
+- [x] Step 7 --ride F (PR #232, merged 2026-09-22; cut over in the same deploy — no systemctl change; first Slot F Fri Sep 25 09:00)
 - [ ] Step 8 --ride F,S
 - [ ] Step 9 club-remind + cleanup
 
