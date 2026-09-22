@@ -3,13 +3,15 @@ CFB Survivor Pool — Reminder & Notification Service
 ======================================================
 Email pick reminders and weekly results recap.
 
-Reminder windows:
-  - 25 hours before deadline (typically Friday)
-  - 1 hour before deadline (typically Saturday -- FINAL reminder)
-  Each window is sent at most once per week, de-duped via
-  CfbWeek.last_reminder_type — safe under any timer cadence (the hourly
-  cfb-remind.timer, catch-up firings, and hand-runs all no-op once a
-  window is recorded).
+Reminder windows (Club Desk step 6, docs/designs/unified-email.md):
+  - warning: T-26h35m to T-24h25m (a default week: Fri 09:00 and 10:00 CT)
+  - final:   T-2h35m to T-25m (Sat 09:00 and 10:00 CT -- the FINAL reminder)
+  Each spans at least two hours so the hourly timer lands in it twice for
+  ANY deadline minute (an 18:30 CFP deadline included). The second firing
+  is an outage retry, not a second nag: each window is sent at most once
+  per week, de-duped via CfbWeek.last_reminder_type — safe under any timer
+  cadence (the hourly cfb-remind.timer, catch-up firings, and hand-runs all
+  no-op once a window is recorded).
 
 Results recap:
   - Sent once per week after results are processed (gated by recap_email_sent)
@@ -56,19 +58,27 @@ from utils.reminders import tier_already_sent
 
 logger = logging.getLogger(__name__)
 
-# Reminder windows (hours before deadline)
+# Reminder windows: ``start``/``end`` are offsets BEFORE the deadline, so
+# a window is active while ``deadline - start <= now <= deadline - end``.
+# Each spans 130 minutes: the hourly timer lands twice whatever the
+# deadline minute, and the second firing retries a first that reached
+# nobody. The warning's end is pinned before T-23h35m on purpose: any later
+# and it re-enters the Docket's 48h window (Fri 11:25-12:35 on a default
+# week), the overlap that kept Slot F at T-25h. ``hours`` is the tier's
+# nominal distance, kept for the legacy ``should_send_reminder`` wrapper.
 REMINDER_WINDOWS = [
-    {'hours': 25, 'type': 'warning', 'label': '25-hour'},
-    {'hours': 1, 'type': 'final', 'label': '1-hour FINAL'},
+    {'hours': 25, 'type': 'warning', 'label': 'day-before (T-26h35m to T-24h25m)',
+     'start': timedelta(hours=26, minutes=35),
+     'end': timedelta(hours=24, minutes=25)},
+    {'hours': 1, 'type': 'final', 'label': 'FINAL (T-2h35m to T-25m)',
+     'start': timedelta(hours=2, minutes=35),
+     'end': timedelta(minutes=25)},
 ]
 
 # De-dup ordering for CfbWeek.last_reminder_type. Higher = closer to the
 # deadline; sending 'final' also closes 'warning' (a catch-up firing after
 # the final went out must not send yesterday's warning).
 REMINDER_ORDER = {'warning': 0, 'final': 1}
-
-# Tolerance window (minutes) - send reminder if within this window of the target time
-TOLERANCE_MINUTES = 35
 
 # The consequence of a missed deadline, stated once per letter
 # (game_logic.process_autopicks: the biggest eligible favorite among the
@@ -106,14 +116,9 @@ def get_users_without_picks(week_id, season_year):
     return results
 
 
-def _in_window(deadline, window_hours, now):
-    """Is ``now`` within the tolerance window for this reminder?"""
-    target_time = deadline - timedelta(hours=window_hours)
-
-    window_start = target_time - timedelta(minutes=TOLERANCE_MINUTES)
-    window_end = target_time + timedelta(minutes=TOLERANCE_MINUTES)
-
-    return window_start <= now <= window_end
+def _in_window(deadline, window, now):
+    """Is ``now`` inside this reminder window (both edges inclusive)?"""
+    return deadline - window['start'] <= now <= deadline - window['end']
 
 
 def active_reminder_window_at(deadline, now):
@@ -128,15 +133,17 @@ def active_reminder_window_at(deadline, now):
         return None
 
     for window in REMINDER_WINDOWS:
-        if _in_window(deadline, window['hours'], now):
+        if _in_window(deadline, window, now):
             return window
 
     return None
 
 
 def should_send_reminder(deadline, window_hours):
-    """Check if current time is within the tolerance window for this reminder."""
-    return _in_window(deadline, window_hours, get_current_time())
+    """Is the pool clock inside the window whose nominal tier is
+    ``window_hours`` before the deadline (25 or 1)?"""
+    window = next(w for w in REMINDER_WINDOWS if w['hours'] == window_hours)
+    return _in_window(deadline, window, get_current_time())
 
 
 def get_active_reminder_window(deadline):
@@ -164,24 +171,46 @@ def format_time_remaining(deadline, now=None):
         return f"{minutes} minute{'s' if minutes != 1 else ''}"
 
 
+def time_left_phrase(deadline, now):
+    """The time left, to the nearest quarter hour, for the final tier's
+    copy: ``2 hours`` / ``1 hour, 30 minutes`` / ``45 minutes``.
+
+    Rounded because the timer fires up to a minute late (systemd's default
+    AccuracySec), and "1 hour, 59 minutes" would be precision without
+    truth. Never "0 minutes": the window closes at T-25m.
+    """
+    quarters = max(round((deadline - now) / timedelta(minutes=15)), 1)
+    hours, minutes = divmod(quarters * 15, 60)
+    parts = []
+    if hours:
+        parts.append(f"{hours} hour{'s' if hours != 1 else ''}")
+    if minutes or not hours:
+        parts.append(f"{minutes} minute{'s' if minutes != 1 else ''}")
+    return ', '.join(parts)
+
+
 # ============================================================================
 # PICK REMINDER EMAILS
 # ============================================================================
 
 def _reminder_letter(*, week_name, deadline_short, lives,
-                     cumulative_spread, pick_url, window, season_year):
-    """The T-25h / T-1h reminder as a Club Letter (a broadcast: no greeting).
+                     cumulative_spread, pick_url, window, season_year,
+                     time_left):
+    """The day-before / final reminder as a Club Letter (a broadcast: no
+    greeting).
 
     Calm and consequential (DESIGN.md 6.11): the deadline leads the fact
     block, lives and spread sit beside it with their labels, and the
     consequence of missing it is stated once. Both tiers keep distinct
-    subjects so Gmail never threads them into one.
+    subjects so Gmail never threads them into one. The final tier says how
+    long is actually left (``time_left``): its window spans two firings,
+    so "one hour" would be wrong at the first of them.
     """
     if window['type'] == 'final':
-        subject = f'FINAL, 1 hour left: CFB Survivor, {week_name}'
-        headline = 'Final call: one hour left'
-        lede = [f'Your {week_name} pick is not in and the deadline is less '
-                f'than an hour away.']
+        subject = f'FINAL, {time_left} left: CFB Survivor, {week_name}'
+        headline = f'Final call: {time_left} left'
+        lede = [f'Your {week_name} pick is not in and the deadline is '
+                f'{time_left} away.']
     else:
         subject = f'Pick due tomorrow: CFB Survivor, {week_name}'
         headline = f'Your {week_name} pick is due tomorrow'
@@ -224,6 +253,7 @@ def reminder_context(week, now):
         'week_name': get_week_display_name(week),
         'deadline': deadline,
         'deadline_short': format_deadline_short(deadline),
+        'time_left': time_left_phrase(deadline, now),
         'pick_url': f"{site_url}/cfb/pick/{week.week_number}",
         'season_year': current_app.config.get('CFB_SEASON_YEAR', 2026),
     }
@@ -242,6 +272,7 @@ def reminder_letter(recipient, context, tier):
         pick_url=context['pick_url'],
         window=window,
         season_year=context['season_year'],
+        time_left=context['time_left'],
     )
 
 
@@ -254,7 +285,7 @@ def run_reminder_check():
                               │yes
                          deadline passed? ──yes──► exit
                               │no
-                         window active? (T-25h/T-1h ±35m) ──no──► exit
+                         window active? (T-26h35m..24h25m / T-2h35m..25m) ──no──► exit
                               │yes
                          tier_already_sent(week.last_reminder_type)? ──yes──► exit
                               │no
@@ -354,7 +385,7 @@ def _push_pick_nag(week, window, deadline, now, user_ids):
     ttl = max(int((deadline - now).total_seconds()), 0)
     if window['type'] == 'final':
         title = 'Last call: CFB pick.'
-        body = 'Picks lock in about an hour. No pick on file.'
+        body = f'Picks lock in {time_left_phrase(deadline, now)}. No pick on file.'
     else:
         title = 'Your CFB pick is due.'
         body = f'Picks lock {format_deadline_short(deadline)}. No pick on file.'
