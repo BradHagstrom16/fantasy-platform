@@ -43,11 +43,15 @@ from games.cfb.services.reminders import (
     send_weekly_recap_email,
 )
 from games.docket.models import DocketLineCorrection, DocketPick
+from games.docket.services.deadline_pass import run_deadline_pass
+from games.docket.services.enrollment import roster_user_ids_as_of
+from games.docket.services.grading_pass import try_grade_week
 from games.docket.services.notifications import (
     notify_line_correction,
     notify_picks_open,
     notify_redesignation,
 )
+from games.docket.services.record import run_record_pass
 from games.docket.services.reminders import run_reminder_pass
 from tests import _cfb_fixtures as cfb
 from tests import _docket_fixtures as docket
@@ -92,7 +96,7 @@ BROADCASTS = {
 }
 PERSONAL = {
     'cfb-recap-survived', 'cfb-recap-eliminated', 'cfb-recap-no-pick',
-    'docket-line-corrected', 'platform-reset', 'golf-recap',
+    'docket-line-corrected', 'docket-record', 'platform-reset', 'golf-recap',
     'golf-recap-no-pick',
 }
 WITH_DEADLINE = {
@@ -108,6 +112,7 @@ GAME_OF = {
     'docket-picks-open': 'docket', 'docket-reminder-48h': 'docket',
     'docket-reminder-24h': 'docket', 'docket-reminder-2h': 'docket',
     'docket-line-corrected': 'docket', 'docket-tiebreaker-changed': 'docket',
+    'docket-record': 'docket',
     'golf-picks-open': 'golf', 'golf-reminder-24h': 'golf',
     'golf-reminder-12h': 'golf', 'golf-reminder-1h': 'golf',
     'golf-recap': 'golf', 'golf-recap-no-pick': 'golf',
@@ -401,6 +406,24 @@ def _docket_letters(app):
     with patcher:
         notify_redesignation(week, sat, thu, [user])
     out['docket-tiebreaker-changed'] = sent[0]
+
+    # The record: the week closes, every case finals, the deadline pass files
+    # and freezes, the grade lands, and the daily scores run's record pass
+    # mails the one member their 1-0 (the Over came home).
+    for game in (thu, sat):
+        game.home_score, game.away_score, game.is_final = 31, 27, True
+    week.tiebreaker_game_id = sat.id
+    db.session.commit()
+    with patch.dict(os.environ, {'ENVIRONMENT': 'testing',
+                                 'DOCKET_FAKE_NOW': '2026-09-06T17:30:00'}):
+        run_deadline_pass(1)
+        assert try_grade_week(
+            week.id, user_ids=roster_user_ids_as_of(week.deadline_at)
+        )['status'] == 'ok'
+        sent, patcher = _capture(target)
+        with patcher:
+            run_record_pass()
+    out['docket-record'] = sent[0]
     return out
 
 
@@ -598,6 +621,8 @@ def test_subject_grammar(letters):
     assert 'You survived' in letters['cfb-recap-survived']['subject']
     tiers = {letters[f'docket-reminder-{t}']['subject'] for t in ('48h', '24h', '2h')}
     assert len(tiers) == 3, tiers      # distinct, so Gmail never threads them
+    assert letters['docket-record']['subject'] == \
+        'Your record: The Docket, Week 1'
 
 
 def test_greeting_policy(letters):
@@ -607,6 +632,7 @@ def test_greeting_policy(letters):
     assert 'Hi Steady Eddie,' in letters['cfb-recap-survived']['plain']
     assert 'Hi Ghost Gary,' in letters['cfb-recap-eliminated']['plain']
     assert 'Hi Clerk of Court,' in letters['docket-line-corrected']['plain']
+    assert 'Hi Clerk of Court,' in letters['docket-record']['plain']
     assert 'Hi Fairway Fred,' in letters['golf-recap']['plain']
     assert 'Hi Re Seeker,' in letters['platform-reset']['plain']
 
@@ -641,6 +667,16 @@ def test_each_game_states_its_consequence_and_the_tab_names_its_game(letters):
     golf_open = letters['golf-picks-open']['plain']
     assert 'Each golfer can be used once this season' in golf_open
     assert 'Your season\nSeason total: $0\nGolfers used: 0' in golf_open
+
+
+def test_record_says_the_week_in_digits_and_the_docket_around_it(letters):
+    record = letters['docket-record']['plain']
+    assert 'The Docket · Week 1\nWeek 1: 1-0' in record
+    # The one filed side became the auto-designated x2, so 1-0 scores 2.
+    assert 'Week 1: 1-0 · 2 points\nOn the week: 1st of 1\nSeason: 1st · 2 points' in record
+    assert 'Around the docket\nTop sheet: You, 1-0\nWeekly purse: $20 to you' in record
+    assert 'The Week 2 docket opens Tuesday morning.' in record
+    assert 'Hardest case' not in record
 
 
 def test_recap_says_the_result_in_words(letters):

@@ -101,6 +101,14 @@ class DocketWeek(db.Model):
     # never announces a stale week before the Sep 1 wipe; a fresh post-wipe
     # import (a new row, default False) announces correctly.
     picks_open_notified = db.Column(db.Boolean, default=False, nullable=False)
+    # Set once the weekly record letter has been mailed for this graded week
+    # (games/docket/services/record.py, Club Desk step 1); latched by the
+    # daily scores run when at least one record was delivered, and never
+    # reset: a regrade after the send issues no correction (the ledger page
+    # is the truth). The migration backfills True on weeks already graded
+    # when it shipped (no retroactive records) and False on open weeks.
+    record_notified = db.Column(db.Boolean, default=False, nullable=False,
+                                server_default=db.false())
     # The week's default tiebreaker error in integer tenths (D20), written by
     # the grading pass: |designated game's locked O/U total - actual combined
     # score|, or 0 when that game was ruled No Contest (post-deadline
