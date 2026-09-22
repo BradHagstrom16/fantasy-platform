@@ -137,7 +137,7 @@ Build progress (flipped on merge; the step's PR is the pointer):
 - [x] Step 2 section_block + desk-letter shape (PR #228, merged 2026-09-21)
 - [x] Step 3 refactor, no behavior change (PR #227, merged 2026-09-21; soaks one live Tuesday + Saturday)
 - [x] Step 4 desk + dry run (PR #229, merged 2026-09-22; no unit invokes it until step 5)
-- [ ] Step 5 club-paper cutover
+- [x] Step 5 club-paper cutover (PR #230, merged 2026-09-22; live once Brad deploys + enables `club-paper.timer`, first Paper Tue Sep 29)
 - [ ] Step 6 wider Survivor windows
 - [ ] Step 7 --ride F
 - [ ] Step 8 --ride F,S
@@ -368,7 +368,7 @@ Synthesized from the eng review's findings. Checkbox as you ship.
   - Surfaced by: Architecture issues 3 (3A) and 5 (5A)
   - Files: deploy/cfb-remind.service, deploy/club-remind.*, tests/test_cfb_timers.py
   - Verify: timer tests; `ps -o args=` after deploy
-- [ ] **T4 (P2, human: ~2 hours / CC: ~15 min)** — units — `club-paper` unit, preset rule, `After=` edges, Tue removed from cfb-spreads.timer in the same commit
+- [x] **T4 (P2, human: ~2 hours / CC: ~15 min)** — units — `club-paper` unit, preset rule, `After=` edges, Tue removed from cfb-spreads.timer in the same commit
   - Surfaced by: Architecture issue 4 (4A)
   - Files: deploy/club-paper.*, deploy/10-fantasy-platform.preset, deploy/cfb-spreads.timer, deploy/cfb-scores.service, deploy/docket-lines.service, tests/test_systemd_preset.py
   - Verify: preset and unit-file tests; `systemctl list-unit-files '*.timer'` STATE and PRESET columns
