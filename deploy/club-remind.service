@@ -1,0 +1,47 @@
+# The Club Desk's reminder desk (ADR-065 step 9) — every deadline-reminder
+# tier of every game, from one unit. Fired hourly by club-remind.timer.
+#
+# --anchor cfb,docket: each game's active, unsent tier anchors a letter keyed
+# to its deadline (never a weekday); the nearest deadline owns the subject.
+# --ride F,S: the Docket rides Survivor's Friday warning (its 48h tier) and
+# Saturday final (24h) as a footnote, and those tiers are pre-marked; its
+# Sunday 2h anchors on its own. De-dup is each game's sent flag
+# (CfbWeek.last_reminder_type, DocketWeek.last_reminder_tier), never the
+# cadence; each Survivor window spans two firings, so the second is an
+# outage retry. Rollout state lives on the ExecStart line, never in .env.
+#
+# Exits 1 only when an active tier reached NOBODY (mail is down with a
+# deadline approaching); --scheduled turns out-of-season and week-not-
+# imported into a logged exit 0. Hand-fire ON THE DROPLET with
+#     sudo systemctl start club-remind.service
+# never the bare command: systemd merges a manual start with an in-flight
+# timer firing of this oneshot unit, which is what keeps the flags
+# race-free — there is deliberately no lock in code.
+#
+# Cutover — Brad runs it. The retired cfb-remind and docket-remind units
+# left the repo in the same commit that added this one; deploy.sh never
+# removes a unit from the box, so they are removed by hand (runbook in the
+# step-9 PR). deploy.sh warns when this timer and a retired remind timer
+# are enabled together.
+#     sudo systemctl disable --now cfb-remind.timer docket-remind.timer
+#     sudo systemctl enable --now club-remind.timer
+# Rollback is `git revert` + ./deploy.sh (which reinstalls the reverted
+# units) + re-enabling the two old timers.
+
+[Unit]
+Description=The Club Desk reminder desk (every game's deadline tiers, hourly, de-duped)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=deploy
+Group=deploy
+WorkingDirectory=/home/deploy/fantasy-platform
+EnvironmentFile=/home/deploy/fantasy-platform/.env
+Environment=ENVIRONMENT=production
+Environment=FLASK_APP=app.py
+NoNewPrivileges=true
+PrivateTmp=true
+TimeoutStartSec=5m
+ExecStart=/home/deploy/fantasy-platform/venv/bin/flask club desk --scheduled --anchor cfb,docket --ride F,S

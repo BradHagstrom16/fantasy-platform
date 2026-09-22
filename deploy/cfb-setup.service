@@ -3,12 +3,11 @@
 # (ADR-062, cfb-spreads.service). Fired Mondays by cfb-setup.timer. Retries
 # orphaned 0-game weeks automatically.
 #
-# Install (all 5 CFB pairs at once):
-#   sudo cp /home/deploy/fantasy-platform/deploy/cfb-*.service /etc/systemd/system/
-#   sudo cp /home/deploy/fantasy-platform/deploy/cfb-*.timer   /etc/systemd/system/
-#   sudo systemctl daemon-reload
+# Installed by every deploy (deploy.sh syncs deploy/*.service + *.timer,
+# ADR-041); enabling stays deliberate, by name. The four CFB pairs:
 #   sudo systemctl enable --now cfb-setup.timer cfb-spreads.timer \
-#       cfb-autopick.timer cfb-scores.timer cfb-remind.timer
+#       cfb-autopick.timer cfb-scores.timer
+# (Pick reminders are the Club Desk's: club-remind.timer, ADR-065 step 9.)
 #
 # !! Do NOT enable before launch prep: SEASON_SCHEDULE['week_1_start'] in
 #    games/cfb/constants.py must be updated to the 2026 season first, or

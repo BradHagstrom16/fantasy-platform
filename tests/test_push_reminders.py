@@ -6,19 +6,22 @@ badge (app_badge=1), a per-week tag that replaces an earlier tier on the
 device, a topic that collapses queued messages, and a TTL to the deadline.
 send_push and email are patched; nothing here needs VAPID or SMTP.
 """
-import os
 from datetime import UTC, datetime, timedelta
 from unittest.mock import patch
 
 import tests._cfb_fixtures as cfbf
 import tests._docket_fixtures as dkf
 from extensions import db
-from games.cfb.services.reminders import _push_pick_nag, run_reminder_check
+from games.cfb.services.reminders import _push_pick_nag
 from games.cfb.utils import make_aware
-from games.docket.services.reminders import _push_deadline_nag, run_reminder_pass
+from games.club_desk import run_desk
+from games.docket.services.reminders import _push_deadline_nag
 
 _CFB_PUSH = 'games.cfb.services.reminders.send_push'
 _DK_PUSH = 'games.docket.services.reminders.send_push'
+# Both games' reminders send from the Club Desk (ADR-065 step 9); the push
+# still goes out from each game's own module.
+_DESK_SEND = 'games.club_desk.send_platform_email'
 _CFB_DEADLINE = datetime(2026, 1, 3, 11, 0)          # pool wall clock
 _CFB_WARNING_NOW = '2026-01-02T16:00:00+00:00'       # exactly T-25h
 
@@ -69,12 +72,11 @@ def test_cfb_nag_fires_even_when_email_fails(app):
     user = cfbf.make_user('needs')
     cfbf.make_enrollment(user)
     db.session.commit()
-    with patch.dict(os.environ, {'ENVIRONMENT': 'testing',
-                                 'CFB_FAKE_NOW': _CFB_WARNING_NOW}), \
-            patch('games.cfb.services.reminders.send_platform_email',
-                  return_value=False), \
-            patch(_CFB_PUSH) as sp:
-        run_reminder_check()
+    with patch(_DESK_SEND, return_value=False), patch(_CFB_PUSH) as sp:
+        run = run_desk(datetime.fromisoformat(_CFB_WARNING_NOW),
+                       anchors=('cfb',), rides=())
+    # The email outage is loud (exit 1), but the buzz still went out.
+    assert run.exit_code == 1 and run.delivered == {}
     assert sp.call_count == 1
     assert sp.call_args.args[0] == [user.id]
     assert sp.call_args.kwargs['app_badge'] == 1
@@ -114,11 +116,10 @@ def test_docket_nag_fires_even_when_email_fails(app):
     dkf.make_enrollment(user)
     db.session.commit()
     now = (week.deadline_at - timedelta(hours=24)).replace(tzinfo=UTC)
-    with patch('games.docket.services.reminders.send_each', return_value=0), \
-            patch(_DK_PUSH) as sp:
-        result = run_reminder_pass(week, now=now, user_ids=[user.id])
-    # The email pass reports the outage, but the buzz still went out.
-    assert result['status'] == 'send_failed'
+    with patch(_DESK_SEND, return_value=False), patch(_DK_PUSH) as sp:
+        run = run_desk(now, anchors=('docket',), rides=())
+    # The email outage is loud (exit 1), but the buzz still went out.
+    assert run.exit_code == 1 and run.delivered == {}
     assert sp.call_count == 1
     assert sp.call_args.args[0] == [user.id]
     assert sp.call_args.kwargs['app_badge'] == 1

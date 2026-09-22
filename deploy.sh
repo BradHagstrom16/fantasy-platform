@@ -553,6 +553,25 @@ else
     echo "    !! Fix with: sudo systemctl daemon-reload && sudo systemctl restart fantasy-platform" >&2
 fi
 
+# The Club Desk's reminder desk owns every reminder tier (ADR-065 step 9):
+# club-remind.timer replaced cfb-remind.timer and docket-remind.timer, and
+# there is deliberately no lock in code — two units running the same tier in
+# the same hour would race the sent flag. Their unit files left the repo, but
+# this script never removes a unit from the box (ADR-041), so a retired timer
+# can only be switched off by hand; warn while one is still enabled beside the
+# desk. Read-only, no sudo: `is-enabled` exits 1 for disabled AND for a unit
+# file that is gone, which are both the quiet case.
+if systemctl is-enabled --quiet club-remind.timer 2>/dev/null; then
+    for retired_timer in cfb-remind.timer docket-remind.timer; do
+        if systemctl is-enabled --quiet "$retired_timer" 2>/dev/null; then
+            deploy_warnings=$((deploy_warnings + 1))
+            echo "    !! WARNING: $retired_timer is enabled beside club-remind.timer — two units" >&2
+            echo "    !! own one reminder flag, and the second firing can double-send." >&2
+            echo "    !! Fix with: sudo systemctl disable --now $retired_timer" >&2
+        fi
+    done
+fi
+
 echo "==> Restarting application..."
 sudo systemctl restart fantasy-platform
 

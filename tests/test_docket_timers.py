@@ -18,8 +18,12 @@ DEPLOY = Path(__file__).parent.parent / 'deploy'
 
 # Every mode the units are expected to run. Deliberately spelled out rather
 # than globbed from the directory: a unit pair that goes missing in a rename
-# should fail this file, not quietly shrink the covered set.
-EXPECTED_MODES = ('setup', 'lines', 'deadline', 'scores', 'remind')
+# should fail this file, not quietly shrink the covered set. The Tuesday
+# open (setup) is club-paper's since ADR-065 step 5 and the reminders are
+# club-remind's since step 9 (tests/test_club_timers.py); their docket-*
+# units were retired, and one reappearing here would race the Club Desk
+# unit on the same latch.
+EXPECTED_MODES = ('lines', 'deadline', 'scores')
 
 TIMERS = [DEPLOY / f'docket-{mode}.timer' for mode in EXPECTED_MODES]
 SERVICES = [DEPLOY / f'docket-{mode}.service' for mode in EXPECTED_MODES]
@@ -52,8 +56,8 @@ def test_service_runs_a_real_mode_in_scheduled_form(service):
     """ExecStart must name a mode the CLI accepts AND pass --scheduled.
 
     Without the flag the two benign states (out of season, week not imported)
-    exit 1, so four of these five units would report failure on every firing
-    for most of the year and a red docket timer would stop meaning anything.
+    exit 1, so these units would report failure on every firing for most of
+    the year and a red docket timer would stop meaning anything.
     """
     exec_starts = _EXECSTART.findall(service.read_text())
     assert len(exec_starts) == 1, f'{service.name} needs exactly one ExecStart'
@@ -98,6 +102,16 @@ def test_timer_is_enableable(timer):
     directives = _directives(timer)
     assert '[Install]' in directives
     assert 'WantedBy=timers.target' in directives
+
+
+@pytest.mark.parametrize('retired', ['docket-setup', 'docket-remind'])
+def test_retired_units_stay_retired(retired):
+    """docket-setup's Tuesday open is club-paper's (step 5) and docket-remind's
+    tiers are club-remind's (step 9). deploy.sh installs every unit in
+    deploy/, so one of these reappearing would be one deploy from racing the
+    Club Desk unit on the same latch."""
+    assert not (DEPLOY / f'{retired}.service').exists()
+    assert not (DEPLOY / f'{retired}.timer').exists()
 
 
 def test_deadline_never_fires_at_the_deadline_instant():

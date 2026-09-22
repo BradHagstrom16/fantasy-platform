@@ -1,0 +1,20 @@
+# Runs the Club Desk's reminder desk hourly, on the hour, CT (ADR-065 step 9).
+#
+# Hourly is SAFE because each game's sent flag de-dups (CfbWeek
+# .last_reminder_type, DocketWeek.last_reminder_tier): a firing whose active
+# tier was already mailed does nothing, so the guarantee lives in the flags,
+# not in this schedule. Survivor's windows span 130 minutes, so hourly lands
+# inside each TWICE for any deadline time (a hand-scheduled CFP week
+# included) and the second landing retries a first that reached nobody; the
+# Docket's 70-minute tiers get one landing each. Off-window firings are cheap
+# no-ops. Never Tue 06:15 — that instant is club-paper.timer's.
+[Unit]
+Description=Run the Club Desk reminder desk (hourly, de-duped)
+
+[Timer]
+# Timezone is INLINE in OnCalendar — no TimeZone= directive exists.
+OnCalendar=*-*-* *:00:00 America/Chicago
+Persistent=true
+
+[Install]
+WantedBy=timers.target

@@ -17,23 +17,22 @@
 # Costs what the two openers cost on their own (4 Docket credits, 2 CFB);
 # the Paper itself makes no odds call.
 #
-# Cutover — Brad runs these; there is no lock in code, so exactly one unit
-# owns the Tuesday Docket open at a time:
-#     sudo systemctl disable --now docket-setup.timer
-#     sudo systemctl enable --now club-paper.timer
-# Rollback is the reverse. Survivor's Tuesday rule left cfb-spreads.timer in
-# the same commit that added this unit (Friday's gap-fill stays there).
+# Cut over 2026-09-22 (Brad ran `disable --now docket-setup.timer` then
+# `enable --now club-paper.timer`); docket-setup's unit files were retired
+# at step 9, so this is now the ONLY Tuesday Docket open. Survivor's Tuesday
+# rule left cfb-spreads.timer in the same commit that added this unit
+# (Friday's gap-fill stays there). There is no lock in code.
 
 [Unit]
 Description=The Tuesday Paper (open both games, one club letter per member)
 After=network-online.target
 Wants=network-online.target
-# Ordering only (no Wants=). While a legacy Tuesday opener and this unit
-# coexist on the box — the cutover window, or a Persistent boot replay that
-# fires every missed Tuesday unit at once — the legacy opener runs first and
-# its picks_open_notified latch makes the Paper's matching section a no-op,
+# Ordering only (no Wants=). cfb-spreads is Friday-only, so the two never
+# share a scheduled instant; a Persistent boot replay after downtime that
+# spanned both can queue them together, and then the opener runs first and
+# its picks_open_notified latch makes the Paper's Survivor section a no-op,
 # so no week is ever opened or announced twice.
-After=cfb-spreads.service docket-setup.service
+After=cfb-spreads.service
 
 [Service]
 Type=oneshot

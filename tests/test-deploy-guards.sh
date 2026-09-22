@@ -302,6 +302,24 @@ if [ -n "${SLOW_MIGRATION:-}" ]; then /bin/sleep "$SLOW_MIGRATION"; fi
 exit 0
 FLASK
 
+# systemctl, bare (no sudo): deploy.sh's only unprivileged call is the
+# read-only `is-enabled` behind the step-9 double-enable guard (ADR-065). It
+# answers from ENABLED_TIMERS so cases AA/AB can stage the two states the
+# guard distinguishes; any other verb is a no-op. Real systemctl exits 1 for
+# "disabled" and for a unit file that is gone, and the shim mirrors that.
+cat > "$SHIMS/systemctl" <<'SYSTEMCTL'
+#!/bin/bash
+if [ "${1:-}" = "is-enabled" ]; then
+    shift
+    [ "${1:-}" = "--quiet" ] && shift
+    case " ${ENABLED_TIMERS:-} " in
+        *" ${1:-} "*) exit 0 ;;
+        *) exit 1 ;;
+    esac
+fi
+exit 0
+SYSTEMCTL
+
 chmod +x "$SHIMS"/* "$SANDBOX/venv/bin/pip" "$SANDBOX/venv/bin/flask"
 export SANDBOX
 export PATH="$SHIMS:$PATH"
@@ -440,7 +458,7 @@ reset_state
 # why an earlier version of this test passed locally and failed there). So build
 # an explicit bin dir: symlink exactly what deploy.sh calls, and nothing else.
 mkdir -p "$SANDBOX/shims-noflock"
-for s in git sudo sleep; do cp "$SHIMS/$s" "$SANDBOX/shims-noflock/"; done
+for s in git sudo sleep systemctl; do cp "$SHIMS/$s" "$SANDBOX/shims-noflock/"; done
 for b in dirname basename sha256sum shasum stat diff head cat cksum rm mv install kill; do
     src="$(command -v "$b" 2>/dev/null)" && ln -sf "$src" "$SANDBOX/shims-noflock/$b"
 done
@@ -801,6 +819,43 @@ check "left no temp file behind" \
       "$(find "$PRESET_DIR" -name '*.new.*' 2>/dev/null | wc -l | tr -d ' ')" "0"
 check "counted exactly one warning" "$(grep -c 'with 1 warning' "$SANDBOX/z.out")" "1"
 check "did not claim success" "$(grep -c 'Done. App is live' "$SANDBOX/z.out")" "0"
+echo
+
+# Cases AA–AB cover the step-9 double-enable guard (ADR-065). deploy.sh never
+# removes a unit from the box, so after club-remind replaced the two legacy
+# reminder timers the only thing standing between "retired" and "still firing
+# beside the desk" is a by-hand disable — and a warning here when it was
+# forgotten. They sit before T so T's safety net still covers them.
+
+echo "=== AA: a retired remind timer enabled beside club-remind.timer ⇒ warned, exit non-zero ==="
+reset_state
+ENABLED_TIMERS='club-remind.timer cfb-remind.timer' MUTATE_PULLS=0 \
+    "$SANDBOX/deploy.sh" > "$SANDBOX/aa.out" 2>&1
+check "exit code (warned ⇒ non-zero)" "$?" "1"
+check "named the retired timer" \
+      "$(grep -c 'cfb-remind.timer is enabled beside club-remind.timer' "$SANDBOX/aa.out")" "1"
+check "did not blame the one that is off" \
+      "$(grep -c 'docket-remind.timer is enabled beside' "$SANDBOX/aa.out")" "0"
+check "offered the by-hand fix" \
+      "$(grep -c 'sudo systemctl disable --now cfb-remind.timer' "$SANDBOX/aa.out")" "1"
+check "counted exactly one warning" "$(grep -c 'with 1 warning' "$SANDBOX/aa.out")" "1"
+check "did not claim success" "$(grep -c 'Done. App is live' "$SANDBOX/aa.out")" "0"
+echo
+
+echo "=== AB: club-remind.timer enabled alone (the intended state) ⇒ quiet, exit 0 ==="
+reset_state
+ENABLED_TIMERS='club-remind.timer' MUTATE_PULLS=0 \
+    "$SANDBOX/deploy.sh" > "$SANDBOX/ab.out" 2>&1
+check "exit code" "$?" "0"
+check "no double-enable warning" "$(grep -c 'enabled beside' "$SANDBOX/ab.out")" "0"
+# The guard is keyed on the desk being enabled: with club-remind off (an
+# out-of-season box, or a rollback) an old timer is the legitimate owner.
+reset_state
+ENABLED_TIMERS='cfb-remind.timer docket-remind.timer' MUTATE_PULLS=0 \
+    "$SANDBOX/deploy.sh" > "$SANDBOX/ab2.out" 2>&1
+check "exit code in a rollback state" "$?" "0"
+check "old timers alone (a rollback) are not warned" \
+      "$(grep -c 'enabled beside' "$SANDBOX/ab2.out")" "0"
 echo
 
 echo "=== T: across every case above, no privileged call was aimed outside the sandbox ==="

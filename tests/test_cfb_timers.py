@@ -4,11 +4,9 @@ Same rationale as tests/test_docket_timers.py: `systemd-analyze verify` on the
 droplet checks syntax, not whether an ExecStart names a real mode or a timer
 fires at an hour the game can use. Those are repo-side facts, asserted here.
 
-The remind pair gets its own locks: its correctness contract changed from
-"fire only inside the two windows" (cadence-dependent, the pre-sent-flag
-shape) to "fire hourly, de-dup via CfbWeek.last_reminder_type". A weekday
-restriction reappearing on cfb-remind.timer would silently zero out reminders
-for any non-Saturday deadline (manually scheduled CFP weeks).
+Pick reminders are the Club Desk's since ADR-065 step 9 (deploy/club-remind.*,
+tests/test_club_timers.py); the cfb-remind pair is gone, and a unit named
+cfb-remind reappearing here would put two units on one sent flag.
 """
 import re
 from pathlib import Path
@@ -19,22 +17,17 @@ DEPLOY = Path(__file__).parent.parent / 'deploy'
 
 # Deliberately spelled out rather than globbed: a unit pair that goes missing
 # in a rename should fail this file, not quietly shrink the covered set.
-EXPECTED_MODES = ('setup', 'spreads', 'scores', 'autopick', 'remind')
+EXPECTED_MODES = ('setup', 'spreads', 'scores', 'autopick')
 
-# The exact command each unit runs, after the venv's `flask`. Rollout state
-# for the Club Desk lives on the ExecStart line (ADR-065: --anchor names the
-# games the desk leads for, --ride the slots that may carry a rider), so the
-# values are locked here, not just the shape: step 7 was `--anchor cfb
-# --ride F`, step 8 widened it to `--ride F,S` (the Docket also rides
-# Saturday's final), step 9 retires the unit for club-remind. A stray
-# `--anchor cfb,docket` here would have two units leading the Docket's
-# tiers.
+# The exact command each unit runs, after the venv's `flask`. Locked as
+# values, not just a shape: a unit that quietly started running a different
+# mode is a production change. (The reminder desk's --anchor/--ride rollout
+# state is locked the same way on club-remind, tests/test_club_timers.py.)
 EXPECTED_EXECSTART = {
     'setup': 'flask cfb sync --mode setup',
     'spreads': 'flask cfb sync --mode spreads',
     'scores': 'flask cfb sync --mode scores',
     'autopick': 'flask cfb sync --mode autopick',
-    'remind': 'flask club desk --scheduled --anchor cfb --ride F,S',
 }
 
 TIMERS = [DEPLOY / f'cfb-{mode}.timer' for mode in EXPECTED_MODES]
@@ -64,26 +57,13 @@ def test_every_timer_has_its_service(timer):
 
 @pytest.mark.parametrize('mode', EXPECTED_MODES)
 def test_service_runs_the_expected_command(mode):
-    """Exact match on the command after the venv's `flask`: the unit's
-    ExecStart is where the Club Desk's rollout state lives (step 7), so a
-    changed flag is a production cutover and must change this map too."""
+    """Exact match on the command after the venv's `flask`."""
     service = DEPLOY / f'cfb-{mode}.service'
     exec_starts = _EXECSTART.findall(service.read_text())
     assert len(exec_starts) == 1, f'{service.name} needs exactly one ExecStart'
     prefix = '/home/deploy/fantasy-platform/venv/bin/'
     assert exec_starts[0].startswith(prefix), exec_starts[0]
     assert exec_starts[0][len(prefix):] == EXPECTED_EXECSTART[mode]
-
-
-def test_remind_runs_the_desk_in_scheduled_form():
-    """`--scheduled` as a whole token (not a substring: `--scheduled=false`
-    would pass a looser check): without it the desk exits 1 for "no active
-    week", which is most of the year, and a red timer stops meaning
-    anything. `--anchor cfb` alone: the desk never leads a Docket tier while
-    docket-remind still does (5A)."""
-    command = _EXECSTART.findall((DEPLOY / 'cfb-remind.service').read_text())[0]
-    assert re.search(r'(?<!\S)--scheduled(?!\S)', command), command
-    assert re.search(r'(?<!\S)--anchor cfb(?!\S)', command), command
 
 
 @pytest.mark.parametrize('service', SERVICES, ids=lambda p: p.name)
@@ -115,25 +95,14 @@ def test_timer_is_enableable(timer):
     assert 'WantedBy=timers.target' in directives
 
 
-# ── cfb-remind: hourly + de-duped, never cadence-dependent again ──────────
+# ── no cfb-remind pair: the reminder desk owns it (ADR-065 step 9) ───────
 
-def test_remind_fires_hourly_with_no_weekday_restriction():
-    """The de-dup guarantee lives in CfbWeek.last_reminder_type, so the
-    cadence only has to land inside every window (each spans 130 minutes)
-    at least once — hourly does twice, for ANY deadline time; the second
-    landing is the outage retry (step 6). A weekday-restricted
-    rule (the old `Fri,Sat 10:00`) silently sends ZERO reminders for a week
-    whose deadline isn't Saturday ~11:00 CT, e.g. a hand-scheduled CFP week."""
-    rules = _ONCALENDAR.findall((DEPLOY / 'cfb-remind.timer').read_text())
-    assert rules == ['*-*-* *:00:00 America/Chicago'], (
-        f'cfb-remind.timer must fire hourly every day, got {rules!r}')
-
-
-def test_remind_is_persistent():
-    """Persistent=true is what turns droplet downtime inside a window into a
-    caught-up send instead of a missed reminder; the sent-flag makes the
-    catch-up safe to double-fire."""
-    assert 'Persistent=true' in _directives(DEPLOY / 'cfb-remind.timer')
+def test_no_cfb_remind_unit_reappears():
+    """club-remind.timer sends every Survivor tier and there is no lock in
+    code: a cfb-remind unit landing back in deploy/ would be installed by
+    the next deploy and, if enabled, race the desk on last_reminder_type."""
+    assert not (DEPLOY / 'cfb-remind.service').exists()
+    assert not (DEPLOY / 'cfb-remind.timer').exists()
 
 
 # ── cfb-spreads: Friday only since the Paper took Tuesday (ADR-065 step 5) ─

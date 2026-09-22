@@ -122,7 +122,8 @@ class CfbWeek(db.Model):
     # De-dup lives in this flag, never in a timer cadence.
     picks_open_notified = db.Column(db.Boolean, default=False, nullable=False)
     # Closest reminder window already mailed for this week ('warning'/'final').
-    # Written only by run_reminder_check once >=1 send succeeds; the de-dup
+    # Written only by the Club Desk (games/cfb/services/desk.py::_mark_sent)
+    # once >=1 letter carrying this week's section was delivered; the de-dup
     # guarantee lives in this flag, not in any timer cadence (D24-eng shape).
     last_reminder_type = db.Column(db.String(10), nullable=True)
 

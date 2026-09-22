@@ -7,12 +7,18 @@ members whose sheet is still short of its obligations.
 **De-dup is the sent flag, never the cadence** (D24). ``DocketWeek
 .last_reminder_tier`` records the closest tier already mailed for the week;
 a run whose active tier is at or behind it sends nothing. That is why
-``docket-remind.timer`` can fire hourly and why the tolerance window below is
+``club-remind.timer`` can fire hourly and why the tolerance window below is
 allowed to be wide: correctness does not depend on the timer landing in any
-particular minute. Every game now shares this shape — CFB
-(``CfbWeek.last_reminder_type``, retrofitted from backlog 2.7) and Golf
-(``GolfTournament.last_reminder_type``) — with the order-gate math in
+particular minute. Every game shares this shape — CFB
+(``CfbWeek.last_reminder_type``) and Golf (``GolfTournament
+.last_reminder_type``) — with the order-gate math in
 ``utils.reminders.tier_already_sent``.
+
+The send loop itself is the Club Desk's (``games/club_desk.py``, ADR-065):
+this module owns the Docket's tiers, recipients and letter, and
+``services/desk.py`` is the consumer that hands them to the desk. A tier the
+Docket rode as a footnote on a Survivor letter is pre-marked in the same
+flag, so the desk's next firing never sends it standalone.
 
 The 48h tier lands Friday afternoon. Thursday-night kickoffs still lock their
 own cases hours ahead of the week's deadline (D3 keeps early games pickable,
@@ -35,7 +41,6 @@ reminder, and every other game on the platform makes the same trade (Golf's
 recap and reminder paths both name it). If it is ever built, it should be
 built once for all games, not here.
 """
-import logging
 from datetime import timedelta
 
 from extensions import db
@@ -43,17 +48,13 @@ from games.docket.services.enrollment import roster_user_ids
 from games.docket.services.notifications import (
     deadline_line,
     letter,
-    send_each,
     sheet_url,
 )
 from games.docket.services.picks import sheet_state
-from games.docket.utils import now_utc, to_naive_utc
+from games.docket.utils import to_naive_utc
 from models.user import User
-from utils.email_layout import items_block, render_letter
+from utils.email_layout import items_block
 from utils.push import send_push
-from utils.reminders import tier_already_sent
-
-logger = logging.getLogger(__name__)
 
 SCORING_SLOTS = 8
 
@@ -129,9 +130,9 @@ def outstanding(state) -> list[str]:
 
 
 # ---------------------------------------------------------------------------
-# Shared builders (Club Desk step 3, eng review 6A): the legacy pass below
-# and the desk's Docket consumer both compose through these, so the rollback
-# path is the live path's own code.
+# Shared builders (Club Desk step 3, eng review 6A): the desk's Docket
+# consumer (services/desk.py) composes through these; the legacy pass that
+# once sat below them was retired at step 9.
 # ---------------------------------------------------------------------------
 
 FILED = ('Whatever is still open when the docket closes will be filled '
@@ -203,62 +204,3 @@ def _push_deadline_nag(week, tier, now_naive, user_ids):
               tag=f'docket-w{week.week_number}-nag',
               topic=f'docket-w{week.week_number}',
               ttl=ttl, urgency='normal', app_badge=1)
-
-
-def run_reminder_pass(week, now=None, user_ids=None) -> dict:
-    """Mail the week's due reminder tier. Idempotent within a tier.
-
-    Reports a status rather than raising for every "no mail today" case: this
-    runs hourly, so quiet is the normal outcome and a timer must not read it
-    as a failure.
-    """
-    now_naive = to_naive_utc(now or now_utc())
-    if now_naive >= week.deadline_at:
-        return {'status': 'closed', 'week_number': week.week_number}
-
-    window = active_window(week.deadline_at, now_naive)
-    if window is None:
-        return {'status': 'no_window', 'week_number': week.week_number}
-
-    tier = window['tier']
-    if tier_already_sent(week.last_reminder_tier, tier, REMINDER_ORDER):
-        return {'status': 'already_sent', 'week_number': week.week_number,
-                'tier': tier, 'last_tier': week.last_reminder_tier}
-
-    recipients = reminder_recipients(week, tier, now_naive, user_ids)
-    if not recipients:
-        # Deliberately NOT recorded: nothing was mailed, so this tier stays
-        # open. A player who withdraws a side later in the same window is
-        # still reachable, and the flag keeps meaning "this tier went out".
-        return {'status': 'all_complete', 'week_number': week.week_number,
-                'tier': tier}
-
-    subject = SUBJECTS[tier].format(n=week.week_number)
-    context = reminder_context(week)
-    sent = send_each(
-        recipients, subject,
-        lambda user, items: render_letter(
-            reminder_letter((user, items), context, tier)))
-
-    # Buzz the same recipients regardless of the email outcome — a mail outage
-    # is exactly when push matters (T11). Tag replaces an earlier tier on the
-    # device, topic collapses queued messages, app_badge=1 means "you owe a
-    # sheet" (cleared on app open), TTL to the deadline drops a late nag.
-    _push_deadline_nag(week, tier, now_naive, [u.id for u, _ in recipients])
-
-    if sent == 0:
-        # Every send failed, so the tier is left open for the next hourly run
-        # to retry. Recording it here would swallow a full mail outage.
-        logger.error('Week %s: %s reminder reached nobody (%s recipients)',
-                     week.week_number, tier, len(recipients))
-        return {'status': 'send_failed', 'week_number': week.week_number,
-                'tier': tier, 'recipients': len(recipients), 'sent': 0}
-
-    # Recorded once ANY send succeeds, matching Golf's reasoning: gating on
-    # all-recipient success would let one permanently bad address hold the
-    # tier open and re-mail every good recipient on the next hourly firing,
-    # which is the exact duplicate storm the flag exists to prevent.
-    week.last_reminder_tier = tier
-    db.session.commit()
-    return {'status': 'sent', 'week_number': week.week_number, 'tier': tier,
-            'recipients': len(recipients), 'sent': sent}

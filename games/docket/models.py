@@ -88,11 +88,11 @@ class DocketWeek(db.Model):
     )
     # The closest deadline-reminder tier already sent for this week ('48h',
     # '24h', '2h'), or NULL if none has been. THE de-dup mechanism for D24:
-    # the reminder run computes the active tier from deadline_at and skips
-    # when that tier is at or behind this one, so correctness comes from the
-    # flag and never from the timer's cadence (Golf's last_reminder_type;
-    # deliberately NOT CFB's cadence-dependent shape, which double-sends if
-    # its timer is ever scheduled more often than its windows are wide).
+    # the Club Desk (games/docket/services/desk.py) computes the active tier
+    # from deadline_at and skips when that tier is at or behind this one, so
+    # correctness comes from the flag and never from the timer's cadence. A
+    # tier the Docket rode as a footnote on a Survivor letter is pre-marked
+    # here too (ADR-065). Golf's last_reminder_type is the same shape.
     last_reminder_tier = db.Column(db.String(10), nullable=True)
     # Set once the "Picks Are Open" announcement has been mailed for this week
     # (games/docket/services/notifications.notify_picks_open); latched by the

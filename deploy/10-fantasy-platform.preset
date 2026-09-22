@@ -34,7 +34,7 @@
 # To inspect safely — no sudo, no writes, and it never pages:
 #     systemctl list-unit-files 'worldcup-*.timer' 'cfb-*.timer' \
 #                               'docket-*.timer' 'golf-*.timer' \
-#                               'scores-*.timer' --no-pager
+#                               'scores-*.timer' 'club-*.timer' --no-pager
 #
 # READ BOTH COLUMNS. They answer different questions, and the 2026-08-13
 # incident is exactly the case where they disagree:
@@ -42,10 +42,11 @@
 #            worldcup-*, `ignored` for the three active games. It says nothing
 #            about what is running.
 #   STATE  = what is actually enabled right now. This is the one that matters.
-#            Expect `enabled` for docket-{lines,scores,deadline,remind} only,
-#            and `disabled` for everything else — including docket-setup.timer,
-#            which stays disabled until after the hand-run Week-1 import
-#            (Tue Sep 1) by ruling.
+#            In season (2026-09-22): `enabled` for cfb-{setup,spreads,scores,
+#            autopick}, docket-{lines,scores,deadline}, scores-gameday and
+#            club-{paper,remind}; `disabled` for worldcup-* and golf-*.
+#            (docket-setup, cfb-remind and docket-remind were retired by the
+#            Club Desk, ADR-065 steps 5 and 9.)
 # During the incident PRESET read `ignored` while STATE read `enabled` on 15
 # timers: a PRESET-only check would have reported all-clear with the hazard live.
 #
@@ -74,10 +75,10 @@ disable worldcup-*.timer
 # explicit name). `ignore` means preset-all leaves whatever is currently set
 # alone: it can neither switch these on early nor switch a live one off.
 #
-# That second half is why these are not `disable`. Four docket timers
-# (lines, scores, deadline, remind) are enabled and firing right now, and the
-# five cfb-* join them at launch week. A `disable` line would make preset-all
-# silently stop in-season reminders — trading one quiet footgun for another
+# That second half is why these are not `disable`. Three docket timers
+# (lines, scores, deadline) and four cfb-* (setup, spreads, scores, autopick)
+# are enabled and firing in season. A `disable` line would make preset-all
+# silently stop in-season syncs — trading one quiet footgun for another
 # rather than removing it. `ignore` also costs nothing at a milestone, which
 # `disable` would: it would need a deliberate flip per game, and a policy file
 # that drifts from reality with no signal is worse than no policy file.

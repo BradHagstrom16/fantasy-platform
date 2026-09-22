@@ -1,7 +1,8 @@
 # Runs The Docket's line gap-fill Tue-Fri 07:00 CT.
 #
-# Tuesday's firing is 45 minutes after docket-setup.timer, so the week and its
-# slates exist before this tries to fill them. Stops at Friday because by then
+# Tuesday's firing is 45 minutes after club-paper.timer opens the week, so the
+# week and its slates exist before this tries to fill them (and this is the
+# standalone announcer for a week the Paper imported partial). Stops at Friday because by then
 # there is nothing left worth an API call: locked lines never move (D3), and
 # four D19 kickoff refreshes have already run.
 #

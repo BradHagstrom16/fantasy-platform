@@ -10,8 +10,9 @@ Reminder windows (Club Desk step 6, docs/designs/unified-email.md):
   ANY deadline minute (an 18:30 CFP deadline included). The second firing
   is an outage retry, not a second nag: each window is sent at most once
   per week, de-duped via CfbWeek.last_reminder_type — safe under any timer
-  cadence (the hourly cfb-remind.timer, catch-up firings, and hand-runs all
-  no-op once a window is recorded).
+  cadence (the hourly club-remind.timer, catch-up firings, and hand-runs all
+  no-op once a window is recorded). The send loop is the Club Desk's
+  (games/club_desk.py, ADR-065); services/desk.py is the consumer.
 
 Results recap:
   - Sent once per week after results are processed (gated by recap_email_sent)
@@ -54,7 +55,6 @@ from utils.email_layout import (
     tab_block,
 )
 from utils.push import send_push
-from utils.reminders import tier_already_sent
 
 logger = logging.getLogger(__name__)
 
@@ -232,9 +232,9 @@ def _reminder_letter(*, week_name, deadline_short, lives,
 
 
 # ---------------------------------------------------------------------------
-# Shared builders (Club Desk step 3, eng review 6A): the legacy pass below
-# and the desk's Survivor consumer both compose through these, so the
-# rollback path is the live path's own code.
+# Shared builders (Club Desk step 3, eng review 6A): the desk's Survivor
+# consumer (services/desk.py) composes through these; the legacy pass that
+# once sat below them was retired at step 9.
 # ---------------------------------------------------------------------------
 
 def reminder_recipients(week, tier, now):
@@ -274,107 +274,6 @@ def reminder_letter(recipient, context, tier):
         season_year=context['season_year'],
         time_left=context['time_left'],
     )
-
-
-def run_reminder_check():
-    """Main reminder processing function. Called from CLI.
-
-    De-dup gate (the guarantee lives in the flag, not the timer cadence):
-
-        hourly firing ──► active week? ──no──► exit
-                              │yes
-                         deadline passed? ──yes──► exit
-                              │no
-                         window active? (T-26h35m..24h25m / T-2h35m..25m) ──no──► exit
-                              │yes
-                         tier_already_sent(week.last_reminder_type)? ──yes──► exit
-                              │no
-                         recipients w/o picks? ──none──► exit (flag NOT recorded)
-                              │some
-                         send each ──► 0 sent? ──yes──► log error, exit
-                              │≥1 sent          (flag NOT recorded → retried)
-                         week.last_reminder_type = window type; commit
-    """
-    now = get_current_time()
-
-    print()
-    print("=" * 60)
-    print("CFB Survivor Pool Reminder Check")
-    print(f"Time: {now.strftime('%A, %B %d, %Y at %I:%M %p %Z')}")
-    print("=" * 60)
-
-    # Find active week
-    week = CfbWeek.query.filter_by(is_active=True).first()
-    if not week:
-        print("\nNo active week found")
-        return
-
-    deadline = make_aware(week.deadline)
-
-    if deadline <= now:
-        print(f"\nDeadline for Week {week.week_number} has passed")
-        return
-
-    context = reminder_context(week, now)
-    week_name = context['week_name']
-    print(f"\n{week_name}")
-    print(f"Deadline: {deadline.strftime('%A, %B %d at %I:%M %p %Z')}")
-    print(f"Time remaining: {format_time_remaining(deadline, now)}")
-
-    # Check which reminder window is active
-    window = active_reminder_window_at(deadline, now)
-    if not window:
-        print("\nNot within any reminder window")
-        return
-
-    print(f"\nActive window: {window['label']} ({window['type']})")
-
-    if tier_already_sent(week.last_reminder_type, window['type'], REMINDER_ORDER):
-        print(f"{window['label']} reminder already sent for {week_name} "
-              f"(last sent: {week.last_reminder_type}). Skipping.")
-        return
-
-    # Get users needing reminders. Deliberately NOT recorded when empty:
-    # nothing was mailed, so the window stays open — a player who withdraws
-    # a pick later in the same window is still reachable, and the flag keeps
-    # meaning "this window went out".
-    recipients = reminder_recipients(week, window['type'], now)
-    if not recipients:
-        print(f"\nAll active users have picks for {week_name}")
-        return
-
-    print(f"Users without picks: {len(recipients)}")
-
-    success_count = 0
-    for recipient in recipients:
-        _enrollment, user = recipient
-        letter = reminder_letter(recipient, context, window['type'])
-        plain, html = render_letter(letter)
-        if send_platform_email(user.email, letter.subject, plain, html):
-            success_count += 1
-
-    # Buzz the same recipients regardless of the email outcome — a mail outage
-    # is exactly when push matters (T11). The tag replaces an earlier tier's
-    # notification on the device, the topic collapses still-queued messages,
-    # app_badge=1 means "you owe a pick" (cleared on app open), and the TTL to
-    # the deadline drops a nag the push service delivers too late.
-    _push_pick_nag(week, window, deadline, now,
-                   [user.id for _, user in recipients])
-
-    if success_count > 0:
-        # Recorded once ANY send succeeds (Golf/Docket reasoning): gating on
-        # all-recipient success would let one permanently bad address hold
-        # the window open and re-mail every good recipient next firing.
-        week.last_reminder_type = window['type']
-        db.session.commit()
-    else:
-        # Every send failed: leave the window open so the next firing
-        # retries — recording here would swallow a full mail outage.
-        logger.error("Week %s: %s reminder reached nobody (%s recipients)",
-                     week.week_number, window['type'], len(recipients))
-
-    print(f"\nSummary: {success_count}/{len(recipients)} reminders sent")
-    print("=" * 60)
 
 
 def _push_pick_nag(week, window, deadline, now, user_ids):
