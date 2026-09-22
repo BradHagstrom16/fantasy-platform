@@ -106,9 +106,8 @@ def get_users_without_picks(week_id, season_year):
     return results
 
 
-def should_send_reminder(deadline, window_hours):
-    """Check if current time is within the tolerance window for this reminder."""
-    now = get_current_time()
+def _in_window(deadline, window_hours, now):
+    """Is ``now`` within the tolerance window for this reminder?"""
     target_time = deadline - timedelta(hours=window_hours)
 
     window_start = target_time - timedelta(minutes=TOLERANCE_MINUTES)
@@ -117,23 +116,39 @@ def should_send_reminder(deadline, window_hours):
     return window_start <= now <= window_end
 
 
-def get_active_reminder_window(deadline):
-    """Determine which reminder window (if any) is currently active."""
-    now = get_current_time()
+def active_reminder_window_at(deadline, now):
+    """The reminder window active at ``now`` (aware), or None.
 
+    The explicit-clock reader (Club Desk step 3, eng review 7A): the desk
+    reads the clock once and passes ``now`` to everything it calls, so a
+    dry run at a stated instant is truthful even in production where the
+    fake-now seam is off. Nothing here reads a clock.
+    """
     if deadline <= now:
         return None
 
     for window in REMINDER_WINDOWS:
-        if should_send_reminder(deadline, window['hours']):
+        if _in_window(deadline, window['hours'], now):
             return window
 
     return None
 
 
-def format_time_remaining(deadline):
-    """Format the time remaining until deadline."""
-    now = get_current_time()
+def should_send_reminder(deadline, window_hours):
+    """Check if current time is within the tolerance window for this reminder."""
+    return _in_window(deadline, window_hours, get_current_time())
+
+
+def get_active_reminder_window(deadline):
+    """Determine which reminder window (if any) is currently active."""
+    return active_reminder_window_at(deadline, get_current_time())
+
+
+def format_time_remaining(deadline, now=None):
+    """Format the time remaining until deadline (``now`` defaults to the
+    pool clock; the desk passes its own)."""
+    if now is None:
+        now = get_current_time()
     delta = deadline - now
 
     total_hours = int(delta.total_seconds() // 3600)
@@ -187,6 +202,49 @@ def _reminder_letter(*, week_name, deadline_short, lives,
     )
 
 
+# ---------------------------------------------------------------------------
+# Shared builders (Club Desk step 3, eng review 6A): the legacy pass below
+# and the desk's Survivor consumer both compose through these, so the
+# rollback path is the live path's own code.
+# ---------------------------------------------------------------------------
+
+def reminder_recipients(week, tier, now):
+    """Who owes a pick right now: ``(enrollment, user)`` per still-active
+    member without a pick this week. ``tier`` and ``now`` are part of the
+    cross-game contract; Survivor's recipients do not depend on them."""
+    season_year = current_app.config.get('CFB_SEASON_YEAR', 2026)
+    return get_users_without_picks(week.id, season_year)
+
+
+def reminder_context(week, now):
+    """The per-run facts every reminder letter for ``week`` shares."""
+    site_url = current_app.config.get('SITE_URL', 'http://localhost:5000')
+    deadline = make_aware(week.deadline)
+    return {
+        'week_name': get_week_display_name(week),
+        'deadline': deadline,
+        'deadline_short': format_deadline_short(deadline),
+        'pick_url': f"{site_url}/cfb/pick/{week.week_number}",
+        'season_year': current_app.config.get('CFB_SEASON_YEAR', 2026),
+    }
+
+
+def reminder_letter(recipient, context, tier):
+    """One recipient's reminder as a Letter. ``recipient`` is an element of
+    ``reminder_recipients``; ``tier`` is ``'warning'`` or ``'final'``."""
+    enrollment, _user = recipient
+    window = next(w for w in REMINDER_WINDOWS if w['type'] == tier)
+    return _reminder_letter(
+        week_name=context['week_name'],
+        deadline_short=context['deadline_short'],
+        lives=enrollment.lives_remaining,
+        cumulative_spread=enrollment.cumulative_spread or 0.0,
+        pick_url=context['pick_url'],
+        window=window,
+        season_year=context['season_year'],
+    )
+
+
 def run_reminder_check():
     """Main reminder processing function. Called from CLI.
 
@@ -207,8 +265,6 @@ def run_reminder_check():
                          week.last_reminder_type = window type; commit
     """
     now = get_current_time()
-    season_year = current_app.config.get('CFB_SEASON_YEAR', 2026)
-    site_url = current_app.config.get('SITE_URL', 'http://localhost:5000')
 
     print()
     print("=" * 60)
@@ -228,13 +284,14 @@ def run_reminder_check():
         print(f"\nDeadline for Week {week.week_number} has passed")
         return
 
-    week_name = get_week_display_name(week)
+    context = reminder_context(week, now)
+    week_name = context['week_name']
     print(f"\n{week_name}")
     print(f"Deadline: {deadline.strftime('%A, %B %d at %I:%M %p %Z')}")
-    print(f"Time remaining: {format_time_remaining(deadline)}")
+    print(f"Time remaining: {format_time_remaining(deadline, now)}")
 
     # Check which reminder window is active
-    window = get_active_reminder_window(deadline)
+    window = active_reminder_window_at(deadline, now)
     if not window:
         print("\nNot within any reminder window")
         return
@@ -250,27 +307,17 @@ def run_reminder_check():
     # nothing was mailed, so the window stays open — a player who withdraws
     # a pick later in the same window is still reachable, and the flag keeps
     # meaning "this window went out".
-    recipients = get_users_without_picks(week.id, season_year)
+    recipients = reminder_recipients(week, window['type'], now)
     if not recipients:
         print(f"\nAll active users have picks for {week_name}")
         return
 
     print(f"Users without picks: {len(recipients)}")
 
-    deadline_short = format_deadline_short(deadline)
-    pick_url = f"{site_url}/cfb/pick/{week.week_number}"
-
     success_count = 0
-    for enrollment, user in recipients:
-        letter = _reminder_letter(
-            week_name=week_name,
-            deadline_short=deadline_short,
-            lives=enrollment.lives_remaining,
-            cumulative_spread=enrollment.cumulative_spread or 0.0,
-            pick_url=pick_url,
-            window=window,
-            season_year=season_year,
-        )
+    for recipient in recipients:
+        _enrollment, user = recipient
+        letter = reminder_letter(recipient, context, window['type'])
         plain, html = render_letter(letter)
         if send_platform_email(user.email, letter.subject, plain, html):
             success_count += 1

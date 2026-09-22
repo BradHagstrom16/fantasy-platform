@@ -1,0 +1,4 @@
+
+[docket sync --mode setup (week 1)]
+  status: ok
+  tiebreaker: designated by rule — LSU @ Miami (total 47.5)
