@@ -109,6 +109,20 @@ def test_remind_is_persistent():
     assert 'Persistent=true' in _directives(DEPLOY / 'cfb-remind.timer')
 
 
+# ── cfb-spreads: Friday only since the Paper took Tuesday (ADR-065 step 5) ─
+
+def test_spreads_timer_is_friday_only():
+    """Tuesday's OPEN — the first fetch, which locks the lines (DQ-6) and
+    announces the week — runs inside the Paper (deploy/club-paper.*, Tue
+    06:15 CT), which calls this same opener. A Tuesday rule here would open
+    and announce the week fifteen minutes before the Paper and turn its
+    Survivor section into a no-op every week. Friday stays: the gap-fill
+    that makes no odds call once every line is locked."""
+    rules = [r.strip() for r in
+             _ONCALENDAR.findall((DEPLOY / 'cfb-spreads.timer').read_text())]
+    assert rules == ['Fri *-*-* 06:00:00 America/Chicago'], rules
+
+
 # ── cfb-scores / cfb-setup: the Monday-game week (2026-09-07 incident) ───
 
 def _weekday_rules(timer_name, clock):

@@ -1,0 +1,50 @@
+# The Tuesday Paper (ADR-065 step 5) — open BOTH games, then send one club
+# letter per member. The Docket week first (create it, import both slates,
+# lock the first-posted lines: the one job no other path recovers), then
+# Survivor's spreads run (open the week with its lines), then the Paper:
+# last week's Docket record, Survivor's verdict and lives, "both boards are
+# open". Fired by club-paper.timer Tue 06:15 CT.
+#
+# Each open runs in its own isolation and the exit code takes the worst
+# result, so a CFB hang or failure never stops the Docket week being
+# created. A Docket import that comes back partial or failed is NOT
+# announced here — docket-lines at 07:00 announces it standalone once it is
+# whole. A Survivor week the Paper did not open gets the ADR-062 open retry
+# from cfb-scores at 08:00, standalone. Both latches (picks_open_notified
+# per game, record_notified on the Docket's previous week) are set only
+# when a letter carrying that section was delivered.
+#
+# Costs what the two openers cost on their own (4 Docket credits, 2 CFB);
+# the Paper itself makes no odds call.
+#
+# Cutover — Brad runs these; there is no lock in code, so exactly one unit
+# owns the Tuesday Docket open at a time:
+#     sudo systemctl disable --now docket-setup.timer
+#     sudo systemctl enable --now club-paper.timer
+# Rollback is the reverse. Survivor's Tuesday rule left cfb-spreads.timer in
+# the same commit that added this unit (Friday's gap-fill stays there).
+
+[Unit]
+Description=The Tuesday Paper (open both games, one club letter per member)
+After=network-online.target
+Wants=network-online.target
+# Ordering only (no Wants=). While a legacy Tuesday opener and this unit
+# coexist on the box — the cutover window, or a Persistent boot replay that
+# fires every missed Tuesday unit at once — the legacy opener runs first and
+# its picks_open_notified latch makes the Paper's matching section a no-op,
+# so no week is ever opened or announced twice.
+After=cfb-spreads.service docket-setup.service
+
+[Service]
+Type=oneshot
+User=deploy
+Group=deploy
+WorkingDirectory=/home/deploy/fantasy-platform
+EnvironmentFile=/home/deploy/fantasy-platform/.env
+Environment=ENVIRONMENT=production
+Environment=FLASK_APP=app.py
+NoNewPrivileges=true
+PrivateTmp=true
+# Two openers back to back; each had 5m on its own unit.
+TimeoutStartSec=10m
+ExecStart=/home/deploy/fantasy-platform/venv/bin/flask club paper --scheduled

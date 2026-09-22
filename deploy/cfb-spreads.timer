@@ -1,11 +1,14 @@
-# Runs CFB spread updates Tuesday (initial lock) and Friday (gap fill) at
-# 06:00 CT. Spreads lock on first fetch by design (DQ-6).
+# Runs the CFB spread gap-fill Friday 06:00 CT. Tuesday's OPEN — the first
+# fetch, which locks the lines (DQ-6) and announces the week — moved to
+# club-paper.timer (ADR-065 step 5, Tue 06:15 CT), which runs this same
+# opener silently and announces inside the Paper. A Tuesday the Paper could
+# not open is caught by cfb-scores' ADR-062 retry at 08:00, then here.
 [Unit]
-Description=Run CFB Survivor spread update Tue/Fri 06:00 CT
+Description=Run CFB Survivor spread gap-fill Fri 06:00 CT
 
 [Timer]
 # Timezone is INLINE in OnCalendar — no TimeZone= directive exists.
-OnCalendar=Tue,Fri *-*-* 06:00:00 America/Chicago
+OnCalendar=Fri *-*-* 06:00:00 America/Chicago
 Persistent=true
 
 [Install]

@@ -19,9 +19,19 @@ the next daily run. It never runs from ``try_grade_week``, the game-day
 consumer (ADR-063: that pass sends no mail), the admin desk, or
 ``recalc`` — a regrade after the send issues no correction; the ledger
 page is the truth.
+
+**The Paper has first claim (step 5, the record handoff).** A week's
+record is eligible here only from ``RECORD_HANDOFF`` past the boundary
+that opens the next week: the Tuesday 05:15 scores run grades Monday
+night's game and stands down, the 06:15 Paper carries the record in its
+Docket section and latches ``record_notified``, and a record the Paper did
+not deliver (Docket week not created, mail down, a late grade) goes out
+standalone on the next daily run. No weekday is keyed anywhere: the same
+rule sends a Thursday grade on Friday morning.
 """
 import logging
 from dataclasses import dataclass
+from datetime import timedelta
 
 from sqlalchemy import select
 
@@ -31,13 +41,16 @@ from games.docket.services.notifications import send_each
 from games.docket.services.purse import season_purse
 from games.docket.services.season_pass import season_ledger, week_standings
 from games.docket.services.sheets import Tally, all_sheets
-from games.docket.services.weeks import SEASON_YEAR, TOTAL_WEEKS
+from games.docket.services.weeks import SEASON_YEAR, TOTAL_WEEKS, boundary_utc
 from games.docket.utils import now_utc, to_naive_utc
 from utils.email_layout import Letter, render_letter, result_block, site_url
 
 logger = logging.getLogger(__name__)
 
 LEDGER_PATH = '/docket/ledger'
+# How long past the next week's Tue 06:00 CT boundary the standalone pass
+# waits for the 06:15 Paper (club-paper.timer) to carry the record first.
+RECORD_HANDOFF = timedelta(minutes=60)
 NO_TALLY = Tally(wins=0, losses=0, pushes=0, pending=0)
 
 
@@ -199,20 +212,40 @@ def send_record_letters(week, *, now=None) -> int:
     return _send(week, week_records(week, to_naive_utc(now or now_utc())))
 
 
-def pending_weeks():
-    """Graded weeks whose record has not gone out, ascending."""
-    return db.session.scalars(
+def record_eligible_at(week_number):
+    """The aware-UTC instant from which the standalone pass may send this
+    week's record: ``RECORD_HANDOFF`` past the boundary that opens the next
+    week, so the Paper at 06:15 gets to carry it first."""
+    return boundary_utc(week_number + 1) + RECORD_HANDOFF
+
+
+def pending_weeks(now=None):
+    """Graded weeks whose record has not gone out and whose handoff window
+    has passed, ascending. A graded week still inside the window is the
+    Paper's to carry; it is logged, not returned."""
+    now = now or now_utc()
+    weeks = db.session.scalars(
         select(DocketWeek)
         .filter(DocketWeek.default_error_tenths.is_not(None),
                 DocketWeek.record_notified.is_(False))
         .order_by(DocketWeek.week_number)).all()
+    eligible = []
+    for week in weeks:
+        eligible_at = record_eligible_at(week.week_number)
+        if now < eligible_at:
+            logger.info('Week %s: record waits for the Paper until %s',
+                        week.week_number, eligible_at.isoformat())
+            continue
+        eligible.append(week)
+    return eligible
 
 
 def run_record_pass() -> list[dict]:
     """Mail and latch every pending week's record. One entry per week."""
-    now_naive = to_naive_utc(now_utc())
+    now = now_utc()
+    now_naive = to_naive_utc(now)
     results = []
-    for week in pending_weeks():
+    for week in pending_weeks(now):
         recipients = week_records(week, now_naive)
         sent = _send(week, recipients)
         # Latched on any delivery, and on a week with nobody to write to

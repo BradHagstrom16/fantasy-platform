@@ -12,6 +12,13 @@
 # gap-fills (locked lines are never overwritten), so the real Tue Sep 1
 # Week-1 numbers still ride on the hand-run wipe-then-import in
 # games/docket/cli.py's runbook.
+#
+# Superseded by club-paper.timer (ADR-065 step 5), which fires at the same
+# instant, runs this same setup silently and announces inside the Paper.
+# The cutover is `sudo systemctl disable --now docket-setup.timer` then
+# `sudo systemctl enable --now club-paper.timer`; club-paper.service is
+# ordered After= this unit so the two can coexist during the switch. The
+# unit file itself is retired in step 9.
 [Unit]
 Description=Run The Docket week setup Tuesday 06:15 CT
 
