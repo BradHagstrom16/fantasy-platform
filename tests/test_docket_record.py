@@ -394,7 +394,7 @@ def test_scores_mode_still_mails_records_when_the_current_sport_errors(
             return_value={'status': 'error', 'errors': ['dark sport']}):
         result = app.test_cli_runner().invoke(
             docket_cli, ['sync', '--mode', 'scores'])
-    assert result.exit_code != 0, result.output
+    assert result.exit_code == 1, result.output
     assert 'record: week 1 sent to 3/3 sheets' in result.output
     assert len(sent) == 3
     assert db.session.get(DocketWeek, week.id).record_notified is True
