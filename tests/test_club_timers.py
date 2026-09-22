@@ -47,7 +47,7 @@ def _after(path):
 
 def _pulls(path, unit):
     """True when the unit would START ``unit``, not just order after it."""
-    return any(d.startswith(('Wants=', 'Requires='))
+    return any(d.startswith(('Wants=', 'Requires=', 'BindsTo='))
                and unit in d.split('=', 1)[1].split()
                for d in _directives(path))
 
