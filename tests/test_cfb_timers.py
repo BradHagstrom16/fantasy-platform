@@ -21,9 +21,20 @@ DEPLOY = Path(__file__).parent.parent / 'deploy'
 # in a rename should fail this file, not quietly shrink the covered set.
 EXPECTED_MODES = ('setup', 'spreads', 'scores', 'autopick', 'remind')
 
-# Modes `flask cfb sync --mode` accepts (games/cfb/cli.py defines the Choice
-# inline, so the list is mirrored here; 'status' has no unit on purpose).
-CLI_MODES = ('setup', 'spreads', 'scores', 'autopick', 'remind', 'status')
+# The exact command each unit runs, after the venv's `flask`. Rollout state
+# for the Club Desk lives on the ExecStart line (ADR-065: --anchor names the
+# games the desk leads for, --ride the slots that may carry a rider), so the
+# values are locked here, not just the shape: step 7 is `--anchor cfb
+# --ride F`, step 8 widens to `--ride F,S`, step 9 retires the unit for
+# club-remind. A stray `--anchor cfb,docket` here would have two units
+# leading the Docket's tiers.
+EXPECTED_EXECSTART = {
+    'setup': 'flask cfb sync --mode setup',
+    'spreads': 'flask cfb sync --mode spreads',
+    'scores': 'flask cfb sync --mode scores',
+    'autopick': 'flask cfb sync --mode autopick',
+    'remind': 'flask club desk --scheduled --anchor cfb --ride F',
+}
 
 TIMERS = [DEPLOY / f'cfb-{mode}.timer' for mode in EXPECTED_MODES]
 SERVICES = [DEPLOY / f'cfb-{mode}.service' for mode in EXPECTED_MODES]
@@ -50,14 +61,28 @@ def test_every_timer_has_its_service(timer):
     assert timer.with_suffix('.service').is_file()
 
 
-@pytest.mark.parametrize('service', SERVICES, ids=lambda p: p.name)
-def test_service_runs_a_real_mode(service):
+@pytest.mark.parametrize('mode', EXPECTED_MODES)
+def test_service_runs_the_expected_command(mode):
+    """Exact match on the command after the venv's `flask`: the unit's
+    ExecStart is where the Club Desk's rollout state lives (step 7), so a
+    changed flag is a production cutover and must change this map too."""
+    service = DEPLOY / f'cfb-{mode}.service'
     exec_starts = _EXECSTART.findall(service.read_text())
     assert len(exec_starts) == 1, f'{service.name} needs exactly one ExecStart'
-    command = exec_starts[0]
-    assert 'flask cfb sync --mode ' in command
-    mode = command.split('--mode ')[1].split()[0]
-    assert mode in CLI_MODES, f'{service.name} runs unknown mode {mode!r}'
+    prefix = '/home/deploy/fantasy-platform/venv/bin/'
+    assert exec_starts[0].startswith(prefix), exec_starts[0]
+    assert exec_starts[0][len(prefix):] == EXPECTED_EXECSTART[mode]
+
+
+def test_remind_runs_the_desk_in_scheduled_form():
+    """`--scheduled` as a whole token (not a substring: `--scheduled=false`
+    would pass a looser check): without it the desk exits 1 for "no active
+    week", which is most of the year, and a red timer stops meaning
+    anything. `--anchor cfb` alone: the desk never leads a Docket tier while
+    docket-remind still does (5A)."""
+    command = _EXECSTART.findall((DEPLOY / 'cfb-remind.service').read_text())[0]
+    assert re.search(r'(?<!\S)--scheduled(?!\S)', command), command
+    assert re.search(r'(?<!\S)--anchor cfb(?!\S)', command), command
 
 
 @pytest.mark.parametrize('service', SERVICES, ids=lambda p: p.name)

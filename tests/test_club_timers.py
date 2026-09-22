@@ -47,7 +47,7 @@ def _after(path):
 
 def _pulls(path, unit):
     """True when the unit would START ``unit``, not just order after it."""
-    return any(d.startswith(('Wants=', 'Requires='))
+    return any(d.startswith(('Wants=', 'Requires=', 'BindsTo='))
                and unit in d.split('=', 1)[1].split()
                for d in _directives(path))
 
@@ -176,3 +176,27 @@ def test_paper_and_docket_setup_share_the_tuesday_instant():
              _ONCALENDAR.findall((DEPLOY / 'docket-setup.timer').read_text())]
     paper = [r.strip() for r in _ONCALENDAR.findall(PAPER_TIMER.read_text())]
     assert setup == paper, (setup, paper)
+
+
+# ── step 7: the Survivor desk carries a Docket rider; the Docket pass follows ─
+
+def test_docket_remind_runs_after_the_survivor_desk():
+    """Since step 7 cfb-remind IS the desk (`--anchor cfb --ride F`): the
+    Docket rides Friday's warning and its 48h tier is pre-marked. Both timers
+    fire on the hour and a Persistent replay queues them together; only this
+    After= lands the mark before docket-remind reads last_reminder_tier.
+    Ordering only — a Wants= would run the desk on every Docket firing."""
+    service = DEPLOY / 'docket-remind.service'
+    assert 'cfb-remind.service' in _after(service)
+    assert not _pulls(service, 'cfb-remind.service')
+
+
+def test_both_remind_timers_share_the_hourly_instant():
+    """The After= edge sequences co-queued firings only. If the two clocks
+    ever drifted apart the edge would stop applying and the guard would
+    silently become a race."""
+    cfb = [r.strip() for r in
+           _ONCALENDAR.findall((DEPLOY / 'cfb-remind.timer').read_text())]
+    docket = [r.strip() for r in
+              _ONCALENDAR.findall((DEPLOY / 'docket-remind.timer').read_text())]
+    assert cfb == docket == ['*-*-* *:00:00 America/Chicago'], (cfb, docket)

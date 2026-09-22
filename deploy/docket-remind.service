@@ -10,6 +10,13 @@
 Description=The Docket deadline reminders (de-duped, unfinished sheets only)
 After=network-online.target
 Wants=network-online.target
+# Ordering only (no Wants=): since Club Desk step 7 the Survivor desk in
+# cfb-remind pre-marks a Docket tier it carried as a rider. Both timers fire
+# on the hour, and a Persistent boot replay queues them together; this edge
+# lands the desk's mark before this pass reads last_reminder_tier, so a
+# tier the rider covered is never sent twice. There is deliberately no lock
+# in code.
+After=cfb-remind.service
 
 [Service]
 Type=oneshot
