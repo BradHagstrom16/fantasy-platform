@@ -87,6 +87,11 @@ FLASK_APP=app.py venv/bin/flask docket edge [--week N] [--submit-time ISO] [--to
 # Game-day scores pass (ADR-063; cross-game — logic games/gameday.py, CLI group games/gameday_cli.py; unit deploy/scores-gameday.*, hourly :30 through game hours)
 FLASK_APP=app.py venv/bin/flask scores game-day [--scheduled]   # ONE /scores call per sport (2 credits) only when a tracked unsettled game kicked off 3-12 h ago, fanned to CFB (run_scores prefetched=, notify=False, retry_open=False) AND the Docket (sync_scores events_by_sport=) — idle/floor exit 0, any fetch or game error exits 1 after both games ran. Stands down below 100 remaining credits (free /sports probe) so the daily passes always grade. Sends NO mail; the daily units keep the admin summary, STUCK and the ADR-062 open retry. CFB never wants a game before its week deadline (tests/test_gameday_pass.py, tests/test_scores_timers.py)
 
+# Club Desk (ADR-065; cross-game member mail — logic games/club_desk.py + one consumer per game in games/<slug>/services/desk.py, CLI group games/club_desk_cli.py; docs/designs/unified-email.md)
+FLASK_APP=app.py venv/bin/flask club desk --dry-run [--now ISO] [--anchor cfb,docket] [--ride F,S]   # One firing of the reminder desk: prints per member what would go (anchor letter, rider) and what would latch. SENDS NOTHING, WRITES NOTHING. --now is the ONE clock the run reads (naive = CT); --anchor = games the desk may lead for, --ride = slots (F=cfb/warning, S=cfb/final, D=docket/2h) that may carry a rider. Without --dry-run it sends and latches; no unit invokes it until step 7 (tests/test_club_desk_matrix.py is the spec)
+FLASK_APP=app.py venv/bin/flask club paper --dry-run [--now ISO]                                   # The Tuesday Paper composed from whatever is open right now (the openers are NOT called under --dry-run): prints per member the sections and subject; sends nothing, writes nothing. Without --dry-run it opens the Docket week first, then Survivor, sends, and latches picks_open_notified per game + record_notified on the Docket's previous week; no unit invokes it until step 5
+# Both take --scheduled (timer-only: out-of-season / week-not-imported exit 0). Rollout state lives on the unit ExecStart line (--anchor/--ride), never .env.
+
 # World Cup CLI (archived; full surface in games/worldcup/cli.py)
 FLASK_APP=app.py venv/bin/flask worldcup status   # or: worldcup recalc
 
@@ -249,7 +254,7 @@ app.py wsgi.py config.py extensions.py   # factory / Gunicorn entry (`wsgi:appli
 models/          # shared User (user.py), PushSubscription (push.py), content.py; __init__.py re-exports every model for Alembic
 utils/           # display_name.py, email.py (send_platform_email), email_layout.py (Letter, render_letter), identifier.py, odds_api.py, payment.py, phone.py (normalize_us_phone), push.py (send_push), reminders.py (tier_already_sent), time.py
 core/            # auth/ (no URL prefix — /login, /profile; tokens.py), admin/, main/ (lounge), push/ (The Wire), context.py (nav context processor)
-games/           # registry.py, common.py, gameday.py + gameday_cli.py (cross-game scores pass), then one dir per game: cfb/ docket/ golf/ worldcup/
+games/           # registry.py, common.py, gameday.py + gameday_cli.py (cross-game scores pass), club_desk.py + club_desk_cli.py (the Club Desk, ADR-065), then one dir per game: cfb/ docket/ golf/ worldcup/
 templates/       # base.html, email/, errors/
 static/css/      # tokens.css loads BEFORE style.css
 migrations/      # Alembic history

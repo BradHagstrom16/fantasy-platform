@@ -130,8 +130,10 @@ def record_letter(*, week_number, display_name, tally, points, week_rank,
     )
 
 
-def _records_for(week, now_naive):
-    """``(user, record_letter fields)`` per graded member of ``week``.
+def week_records(week, now_naive):
+    """``(user, record_letter fields)`` per graded member of ``week``: THE
+    shared reader (the record letter and the Tuesday Paper's Docket line
+    both read it, so the two can never disagree).
 
     One read of each source for the whole roster, so the recipient's own
     line and the top sheet's record come from the same tallies. The roster
@@ -194,7 +196,7 @@ def _send(week, recipients) -> int:
 def send_record_letters(week, *, now=None) -> int:
     """Mail every graded member of ``week`` their record; return how many
     were accepted. The latch is the caller's (``run_record_pass``)."""
-    return _send(week, _records_for(week, to_naive_utc(now or now_utc())))
+    return _send(week, week_records(week, to_naive_utc(now or now_utc())))
 
 
 def pending_weeks():
@@ -211,7 +213,7 @@ def run_record_pass() -> list[dict]:
     now_naive = to_naive_utc(now_utc())
     results = []
     for week in pending_weeks():
-        recipients = _records_for(week, now_naive)
+        recipients = week_records(week, now_naive)
         sent = _send(week, recipients)
         # Latched on any delivery, and on a week with nobody to write to
         # (an empty roster owes no letter and must not alert every day).

@@ -60,7 +60,7 @@ Ruled out during the session:
 Manifest, root push-only SW, subscribe button, subscription table, send helper, hooks at the two existing moments. Verdict copy is yours only. Effort M (human ~1 wk / CC ~1 day), risk low. Rejected as the cut because the verdict reads like a receipt; everything in A is inside C.
 
 ### Approach B: Shared outbox with per-member channel preference
-Every game emits a notification event; one outbox routes email / push / both per a profile setting; absorbs the Aug 24 unified-email wedge; clean home for Golf in January. Effort L (human ~3 wks / CC ~2-3 days), risk medium. Deferred: it refactors the code that sends the Saturday rescue nag mid-season, and puts a preference column and profile UI ahead of the first buzz. Revisit in the December quiet window alongside unified email.
+Every game emits a notification event; one outbox routes email / push / both per a profile setting; absorbs the Aug 24 unified-email wedge; clean home for Golf in January. Effort L (human ~3 wks / CC ~2-3 days), risk medium. Deferred: it refactors the code that sends the Saturday rescue nag mid-season, and puts a preference column and profile UI ahead of the first buzz. Revisit in the December quiet window. (Amended 2026-09-21: the unified-email half was pulled forward into The Club Desk, ADR-065, `docs/designs/unified-email.md`; only the per-member channel preference stays in December.)
 
 ### Approach C: "The room talking" (chosen)
 Approach A plus the social beat: verdict carries the tally, elimination gets its own push, Docket sides show how many sheets shared them. Kickoff reveal is the first follow-on. Effort M (human ~1.5 wks / CC ~1.5 days), risk low.
@@ -171,7 +171,7 @@ Inline ASCII diagrams belong in: `utils/push.py` (the send pipeline above, statu
 ### NOT in scope (deferred, each with its trigger)
 
 - **Kickoff reveal push** ("7 of you are on Nebraska, 3 faded"): new trigger at kickoff time and new copy. Trigger: after two weeks of verdict buzz, if members ask for more, or if the nag overlap measurement comes back under 3 and the nag effort is freed.
-- **Shared outbox with per-member channel preference (Approach B)**: absorbs the Aug 24 unified-email ask and the double-ping for installers. Trigger: the December quiet window, before Golf's reminders (Phase U, ~Jan 2027).
+- **Per-member channel preference (the rest of Approach B)**: the double-ping for installers. Trigger: the December quiet window, before Golf's reminders (Phase U, ~Jan 2027). The unified-email half of Approach B was pulled forward into The Club Desk on 2026-09-21 (ADR-065, `docs/designs/unified-email.md`), which reversed this note's December ruling for that half only.
 - **Collapsing a Sunday's Docket verdict pushes** into one "3 more sides landed" push. Trigger: after Week 1 of buzz, if a member calls it noisy.
 - **Nag overlap measurement**: `push_subscription.user_id` ∩ recipients of `run_reminder_check` / `run_reminder_pass`. Trigger: two weeks after the Club Letter; under ~3 → nag goes email-only.
 - **Store wrapper + home-screen widget**: only if members ask; needs bundled assets and native features beyond push (guideline 4.2), $99/yr.

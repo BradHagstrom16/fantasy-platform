@@ -313,7 +313,7 @@ Fri 09:00  Slot F: Survivor warning + Docket footnote | Sat 09:00 Slot S: final 
 3. Resolved by the design review section above (Variant B, 2A, 3A, 4A, 5A, 6A).
 4. An eliminated Survivor member who is not in the Docket gets no Paper (nothing owed, nothing earned). Confirm.
 5. Resolved in eng review (4A): the Tuesday run gets its own `club-paper` unit.
-6. ADR number, and amending the 2026-09-14 "December" line in `docs/designs/installable-app-push.md` in the same PR as step 4.
+6. Resolved in the step-4 PR: ADR-065 (`ARCHITECTURE_DECISION_LOG.md`), and both "December" lines in `docs/designs/installable-app-push.md` now say the unified-email half was pulled forward here.
 
 ## Success Criteria
 
