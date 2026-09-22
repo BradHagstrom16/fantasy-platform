@@ -24,16 +24,17 @@ EXPECTED_MODES = ('setup', 'spreads', 'scores', 'autopick', 'remind')
 # The exact command each unit runs, after the venv's `flask`. Rollout state
 # for the Club Desk lives on the ExecStart line (ADR-065: --anchor names the
 # games the desk leads for, --ride the slots that may carry a rider), so the
-# values are locked here, not just the shape: step 7 is `--anchor cfb
-# --ride F`, step 8 widens to `--ride F,S`, step 9 retires the unit for
-# club-remind. A stray `--anchor cfb,docket` here would have two units
-# leading the Docket's tiers.
+# values are locked here, not just the shape: step 7 was `--anchor cfb
+# --ride F`, step 8 widened it to `--ride F,S` (the Docket also rides
+# Saturday's final), step 9 retires the unit for club-remind. A stray
+# `--anchor cfb,docket` here would have two units leading the Docket's
+# tiers.
 EXPECTED_EXECSTART = {
     'setup': 'flask cfb sync --mode setup',
     'spreads': 'flask cfb sync --mode spreads',
     'scores': 'flask cfb sync --mode scores',
     'autopick': 'flask cfb sync --mode autopick',
-    'remind': 'flask club desk --scheduled --anchor cfb --ride F',
+    'remind': 'flask club desk --scheduled --anchor cfb --ride F,S',
 }
 
 TIMERS = [DEPLOY / f'cfb-{mode}.timer' for mode in EXPECTED_MODES]
