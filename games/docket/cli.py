@@ -101,11 +101,9 @@ import click
 from flask import current_app
 from flask.cli import AppGroup
 from sqlalchemy import func, select
-from sqlalchemy.orm import joinedload
 
 from extensions import db
 from games.docket.models import (
-    DocketEnrollment,
     DocketGame,
     DocketPick,
     DocketWeek,
@@ -124,17 +122,12 @@ from games.docket.services.enrollment import (
 )
 from games.docket.services.grading_pass import try_grade_week
 from games.docket.services.importer import import_week
-from games.docket.services.notifications import (
-    notify_picks_open,
-    push_docket_verdicts,
-)
+from games.docket.services.notifications import push_docket_verdicts
+from games.docket.services.opener import open_week
 from games.docket.services.record import run_record_pass
 from games.docket.services.reminders import run_reminder_pass
 from games.docket.services.scores import sync_scores
-from games.docket.services.tiebreaker_rule import (
-    apply_default_tiebreaker,
-    default_tiebreaker_game,
-)
+from games.docket.services.tiebreaker_rule import default_tiebreaker_game
 from games.docket.services.weeks import (
     SEASON_YEAR,
     TOTAL_WEEKS,
@@ -218,9 +211,15 @@ def _echo_summary(title, summary):
         click.echo(f'  {key}: {value}')
 
 
-def _report_designation(week):
-    """Print designation problems; True when the week is sound."""
-    problems = check_designation(week)
+def _report_designation(week, problems=None):
+    """Print designation problems; True when the week is sound.
+
+    ``problems`` are the lines ``check_designation`` already produced when
+    the caller ran the opener (``OpenResult.problems``); the other callers
+    let this compute them.
+    """
+    if problems is None:
+        problems = check_designation(week)
     for problem in problems:
         click.secho(f'  WARNING: {problem}', fg='yellow')
     if problems:
@@ -279,46 +278,23 @@ def _check_sync_status(summary, what):
               f': {"; ".join(summary.get("errors", []))}')
 
 
-def _announce_picks_open(week, summary):
-    """Mail the roster the "Picks Are Open" announcement — once, when the week
-    first has games. Latched on the week so a later gap-fill import stays
-    silent; the latch is consumed only on a successful send, so a mail outage
-    retries on the next run. Skipped on a hard/partial import failure and on an
-    empty week (has-games gates it), so a launch email never fires on nothing.
-    """
-    if (week.picks_open_notified
-            or summary.get('status') in ('error', 'partial')):
-        return
-    has_games = db.session.scalar(
-        select(DocketGame.id).filter_by(week_id=week.id).limit(1)) is not None
-    if not has_games:
-        return
-    # (user, enrollment) pairs: the enrollment is what lets the announcement
-    # carry the "Settle the tab" paragraph to unpaid members only.
-    enrollments = db.session.scalars(
-        select(DocketEnrollment)
-        .filter_by(season_year=SEASON_YEAR)
-        .options(joinedload(DocketEnrollment.user))
-        .order_by(DocketEnrollment.user_id)).all()
-    recipients = [(e.user, e) for e in enrollments if e.user is not None]
-    if notify_picks_open(week, recipients) > 0:
-        week.picks_open_notified = True
-        db.session.commit()
-
-
 def _run_import(week_number, force_odds, title):
-    summary = import_week(week_number, force_odds=force_odds)
-    _echo_summary(title, summary)
-    week = _get_week(week_number)
-    if week is not None:
-        # The rule runs before the partial/error exit below so a failed CFB
-        # half on an NFL week still leaves the tiebreaker designated; the
-        # exit code stays the import's (a missing designation is a WARNING
-        # here and exit 1 only at the deadline pass).
-        _echo_rule_outcome(week, apply_default_tiebreaker(week))
-        _report_designation(week)
-        _announce_picks_open(week, summary)
-    _check_sync_status(summary, 'import')
+    """Open the week through the service and print what it did.
+
+    The open itself (import, rule, designation check, announcement) lives in
+    ``games/docket/services/opener.py`` since Club Desk step 3; this wrapper
+    owns every printed line and the exit code. ``import_week`` is passed by
+    this module's own name on purpose: the existing tests patch
+    ``games.docket.cli.import_week``, and the injection keeps that seam where
+    they patch it.
+    """
+    result = open_week(week_number, force_odds=force_odds, announce=True,
+                       importer=import_week)
+    _echo_summary(title, result.summary)
+    if result.week is not None:
+        _echo_rule_outcome(result.week, result.rule_outcome)
+        _report_designation(result.week, result.problems)
+    _check_sync_status(result.summary, 'import')
 
 
 def _grade(week):

@@ -504,7 +504,7 @@ def _fetch_and_lock_lines(week, games):
     return updated, credits_remaining
 
 
-def run_spread_update():
+def run_spread_update(announce=True):
     """Open the next week with its lines, or gap-fill the open week (ADR-062).
 
     Works on ``_week_to_open()`` — the lowest week that has games and has
@@ -515,6 +515,11 @@ def run_spread_update():
     deactivated, this one becomes active, and the picks-open letter goes
     out in the same run, so members never see an active week they cannot
     pick in (Brad, 2026-09-08). Returns a status dict.
+
+    ``announce=False`` opens without the letter and leaves
+    ``picks_open_notified`` untouched: the Club Desk's Tuesday Paper
+    (docs/designs/unified-email.md step 5) announces both games itself and
+    latches after its own send. Every timer path keeps the default.
     """
     week = _week_to_open()
     if not week:
@@ -549,7 +554,7 @@ def run_spread_update():
     # the latch as committed, in case a concurrent unit (a boot replay of
     # both timers) opened the week first.
     db.session.refresh(week)
-    if not week.picks_open_notified and any(
+    if announce and not week.picks_open_notified and any(
             g.home_team_spread is not None for g in games):
         from games.cfb.services.reminders import send_picks_open_email
         if send_picks_open_email(week.id) > 0:

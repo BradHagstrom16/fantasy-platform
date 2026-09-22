@@ -12,6 +12,15 @@ that file) and the plain part GENERATED from the same fields, so the two can
 never drift. Anything richer than a string goes through a Block helper below,
 which escapes its inputs and builds both halves together.
 
+The desk letter (docs/designs/unified-email.md, DESIGN.md "The desk
+letter") is the second shape: a club letter whose ``extras`` are
+:func:`game_section` blocks, one per game with something to say, each a
+mini-letter (eyebrow, verdict line, one deadline inset, one solid game
+button) in deadline order, with no club-gold CTA beside them. A merged
+reminder keeps its single-game shape and carries :func:`rider_block` in
+``notes``, after the supporting line and before the tab strip.
+:func:`render_letter` refuses a letter that breaks those rules.
+
 Runs with only an app context (systemd timers, the CLI): links are
 ``SITE_URL`` + a literal path, never ``url_for``. Locked by
 ``tests/test_email_letter.py``.
@@ -20,6 +29,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
+from datetime import datetime
 from functools import lru_cache
 from typing import NamedTuple
 from urllib.parse import urlparse
@@ -30,9 +40,10 @@ from markupsafe import Markup, escape
 from utils.time import format_deadline_short
 
 __all__ = [
-    'Block', 'Letter', 'GAME_ACCENTS', 'GAME_NAMES', 'format_deadline_short',
-    'items_block', 'paragraphs_block', 'render_letter', 'result_block',
-    'seal_url', 'site_url', 'tab_block',
+    'Block', 'Letter', 'Section', 'SectionBlock', 'GAME_ACCENTS',
+    'GAME_NAMES', 'format_deadline_short', 'game_section', 'items_block',
+    'paragraphs_block', 'render_letter', 'result_block', 'rider_block',
+    'seal_url', 'section_block', 'site_url', 'tab_block',
 ]
 
 CLUB_NAME = 'Corrupt Commish Club'
@@ -69,6 +80,41 @@ class Block(NamedTuple):
     drifts from what the HTML says."""
     plain: str
     html: Markup
+
+
+class SectionBlock(Block):
+    """A rendered :func:`game_section`: a Block (plain, html) that also
+    remembers what :func:`render_letter` must check: which game it is, the
+    deadline it sorts by, and whether it carries a button."""
+
+    def __new__(cls, plain, html, *, slug, deadline, has_button):
+        self = super().__new__(cls, plain, html)
+        self.slug = slug
+        self.deadline = deadline
+        self.has_button = has_button
+        return self
+
+
+@dataclass(frozen=True)
+class Section:
+    """What one game says in a desk letter, content only.
+
+    ``title`` is the eyebrow (``CFB Survivor · Week 4``), ``lines`` the
+    verdict paragraphs (str or ``Markup``), ``deadline`` an aware datetime
+    (the ordering key: sections render in deadline order) with its
+    ``deadline_label`` (``Survivor locks``); both ``None`` for a spectator
+    line with no inset. ``button`` + ``url`` are the section's one CTA;
+    ``None`` for a section with nothing to act on. ``nudge`` is the game's
+    payment nudge dict; the composer turns it into a :func:`tab_block`.
+    """
+    slug: str
+    title: str
+    lines: list
+    deadline: datetime | None = None
+    deadline_label: str | None = None
+    button: str | None = None
+    url: str | None = None
+    nudge: dict | None = None
 
 
 @dataclass
@@ -243,6 +289,120 @@ def tab_block(nudge, game_slug) -> Block | None:
 
 
 # ---------------------------------------------------------------------------
+# The desk letter's blocks
+# ---------------------------------------------------------------------------
+
+def game_section(slug, title, lines, *, deadline=None, deadline_label=None,
+                 button=None, url=None) -> SectionBlock:
+    """One game's section of a desk letter: a mini-letter under a hairline.
+
+    Eyebrow in the game's accent, one paragraph per line, the one-row bone
+    inset (``deadline_label`` above the deadline, through the platform
+    formatter) when ``deadline`` is given, and one solid game-accent button
+    when ``button`` is given. A spectator section (an eliminated Survivor
+    member) passes neither: eyebrow and lines only. The button is
+    ``section-cta``, never ``cta``: the letter's single-CTA lock counts the
+    latter, and a desk letter has no club button beside its sections.
+    """
+    if (deadline is None) != (deadline_label is None):
+        raise ValueError('game_section: deadline and deadline_label are a '
+                         'pair — pass both or neither.')
+    if (button is None) != (url is None):
+        raise ValueError('game_section: button and url are a pair — pass '
+                         'both or neither.')
+    accent = GAME_ACCENTS[slug]
+    html = Markup(
+        '<p style="margin:26px 0 6px; padding-top:18px; border-top:1px solid '
+        '{rule}; font-family:{f}; font-size:14px; font-weight:500; '
+        'letter-spacing:.12em; text-transform:uppercase; color:{accent};">'
+        '{title}</p>'
+    ).format(rule=RULE, f=DISPLAY_FONT, accent=accent, title=title)
+    html += Markup('').join(_para(line, margin='0 0 8px') for line in lines)
+    plain = [str(title)] + [_plain_of(line) for line in lines]
+    if deadline is not None:
+        when = format_deadline_short(deadline)
+        html += _fact_table([(deadline_label, when)])
+        plain.append(f'{deadline_label}: {when}')
+    if button is not None:
+        html += Markup(
+            '<table role="presentation" cellpadding="0" cellspacing="0" '
+            'border="0" style="margin:4px auto 6px;"><tr><td align="center">'
+            '<a class="section-cta" href="{url}" style="display:inline-block; '
+            'padding:13px 28px; border-radius:8px; background:{accent}; '
+            'color:{bone}; font-family:{f}; font-size:17px; font-weight:600; '
+            'letter-spacing:.08em; text-transform:uppercase; '
+            'text-decoration:none;">{button}</a></td></tr></table>'
+        ).format(url=url, accent=accent, bone=BONE, f=DISPLAY_FONT,
+                 button=button)
+        plain.append(f'{button}: {url}')
+    return SectionBlock('\n'.join(plain), html, slug=slug, deadline=deadline,
+                        has_button=button is not None)
+
+
+def section_block(section: Section) -> SectionBlock:
+    """Render a :class:`Section` (the composer's content) as its block."""
+    return game_section(section.slug, section.title, section.lines,
+                        deadline=section.deadline,
+                        deadline_label=section.deadline_label,
+                        button=section.button, url=section.url)
+
+
+def rider_block(slug, sentence, link_label, url) -> Block:
+    """The rider on a merged reminder: a footnote strip in the tab strip's
+    register, after the supporting line and before the tab strip, never
+    between the deadline inset and the button. Names the riding game, says
+    one sentence (with that game's deadline through the platform formatter,
+    supplied by the caller), and carries one accent text link: the strip's
+    only tap target, never a second button."""
+    name, accent = GAME_NAMES[slug], GAME_ACCENTS[slug]
+    html = Markup(
+        '<p style="margin:24px 0 0; padding-top:16px; border-top:1px solid '
+        '{rule}; font-family:{f}; font-size:14px; line-height:1.55; '
+        'color:{sec};"><strong style="color:{ink};">Also on your desk.</strong> '
+        '{name}: {sentence} <a href="{url}" style="color:{accent}; '
+        'font-weight:600;">{label}</a></p>'
+    ).format(rule=RULE, f=BODY_FONT, sec=SECONDARY, ink=INK, name=name,
+             sentence=sentence, url=url, accent=accent, label=link_label)
+    plain = (f'Also on your desk. {name}: {_plain_of(sentence)} '
+             f'{link_label}: {url}')
+    return Block(plain, html)
+
+
+def _check_desk_rules(letter: Letter, extras) -> None:
+    """The desk-letter locks (DESIGN.md "The desk letter"), on the content
+    a caller composed rather than on the rendered HTML, so a bad letter
+    never reaches a member."""
+    sections = [block for block in extras if isinstance(block, SectionBlock)]
+    if not sections:
+        return
+    if letter.cta and any(section.has_button for section in sections):
+        raise ValueError(
+            'A desk letter carries no club-gold button beside a game '
+            'button: drop Letter.cta or the section buttons.')
+    slugs = [s.slug for s in sections]
+    if len(set(slugs)) != len(slugs):
+        raise ValueError(
+            f'A desk letter carries one section per game; got {slugs}.')
+    if len(sections) == 1 and letter.game_slug != sections[0].slug:
+        raise ValueError(
+            'A single-section letter is that game\'s own letter: set '
+            f'game_slug={sections[0].slug!r} (club chrome needs two or more '
+            'sections).')
+    for section in sections:
+        if (section.deadline is not None
+                and section.deadline.utcoffset() is None):
+            raise ValueError(
+                f'Section {section.slug!r} has a naive deadline; desk '
+                'deadlines must be aware — they sort across games.')
+    ordered = [s.deadline for s in sections if s.deadline is not None]
+    dated = [s.deadline is not None for s in sections]
+    if ordered != sorted(ordered) or dated != sorted(dated, reverse=True):
+        raise ValueError(
+            'Desk sections render in deadline order, nearest first, with '
+            f'undated sections last; got {[s.slug for s in sections]}.')
+
+
+# ---------------------------------------------------------------------------
 # Rendering
 # ---------------------------------------------------------------------------
 
@@ -268,6 +428,7 @@ def render_letter(letter: Letter) -> tuple[str, str]:
         membership = f'the {CLUB_NAME}'
     extras = [block for block in letter.extras if block]
     notes = [block for block in letter.notes if block]
+    _check_desk_rules(letter, extras)
     base = site_url()
 
     template = current_app.jinja_env.get_template(TEMPLATE)

@@ -128,31 +128,63 @@ def outstanding(state) -> list[str]:
     return items
 
 
-def _build_body(week, tier, subject, deadline, link):
-    """Per-recipient (plain, html) builder for send_each: the tier's letter,
-    with the sheet's outstanding items (``outstanding()``'s prose, verbatim)
-    as the list the CTA acts on. The lede counts down; the fact block states
-    the literal time."""
-    filed = ('Whatever is still open when the docket closes will be filled '
-             'for you from the locked lines, and a side filed for you scores '
-             'exactly like one you filed yourself. It is a safety net, not a '
-             'plan.')
-    reserve = ('You may also hold one side in reserve. It stays dormant '
-               'unless a case is thrown out.')
+# ---------------------------------------------------------------------------
+# Shared builders (Club Desk step 3, eng review 6A): the legacy pass below
+# and the desk's Docket consumer both compose through these, so the rollback
+# path is the live path's own code.
+# ---------------------------------------------------------------------------
 
-    def build(_user, items):
-        return render_letter(letter(
-            week,
-            subject=subject,
-            headline=f'Your Week {week.week_number} sheet is not finished',
-            preheader=f'The docket closes {deadline}.',
-            lede=[COUNTDOWNS[tier]],
-            facts=[('Deadline', deadline)],
-            extras=[items_block(items, title='Still open on your sheet')],
-            cta=('Open your sheet', link),
-            supporting=[filed, reserve],
-        ))
-    return build
+FILED = ('Whatever is still open when the docket closes will be filled '
+         'for you from the locked lines, and a side filed for you scores '
+         'exactly like one you filed yourself. It is a safety net, not a '
+         'plan.')
+RESERVE = ('You may also hold one side in reserve. It stays dormant '
+           'unless a case is thrown out.')
+
+
+def reminder_recipients(week, tier, now, user_ids=None):
+    """Who owes something on their sheet right now: ``(user, items)`` per
+    roster member whose sheet is short (``outstanding()``'s prose, verbatim,
+    the list the CTA acts on). ``tier`` and ``now`` are part of the
+    cross-game contract; the Docket's recipients do not depend on them.
+    ``user_ids`` narrows the roster (tests)."""
+    if user_ids is None:
+        user_ids = roster_user_ids()
+    recipients = []
+    for user_id in user_ids:
+        items = outstanding(sheet_state(user_id, week))
+        if not items:
+            continue
+        user = db.session.get(User, user_id)
+        if user is None:  # pragma: no cover - roster ids come from FK rows
+            continue
+        recipients.append((user, items))
+    return recipients
+
+
+def reminder_context(week):
+    """The per-run facts every reminder letter for ``week`` shares."""
+    return {'week': week, 'deadline': deadline_line(week), 'link': sheet_url()}
+
+
+def reminder_letter(recipient, context, tier):
+    """One recipient's reminder as a Letter: the tier's subject and
+    countdown, the literal deadline in the fact block, the sheet's
+    outstanding items as the list the CTA acts on. ``recipient`` is an
+    element of ``reminder_recipients``."""
+    _user, items = recipient
+    week, deadline = context['week'], context['deadline']
+    return letter(
+        week,
+        subject=SUBJECTS[tier].format(n=week.week_number),
+        headline=f'Your Week {week.week_number} sheet is not finished',
+        preheader=f'The docket closes {deadline}.',
+        lede=[COUNTDOWNS[tier]],
+        facts=[('Deadline', deadline)],
+        extras=[items_block(items, title='Still open on your sheet')],
+        cta=('Open your sheet', context['link']),
+        supporting=[FILED, RESERVE],
+    )
 
 
 def _push_deadline_nag(week, tier, now_naive, user_ids):
@@ -192,18 +224,7 @@ def run_reminder_pass(week, now=None, user_ids=None) -> dict:
         return {'status': 'already_sent', 'week_number': week.week_number,
                 'tier': tier, 'last_tier': week.last_reminder_tier}
 
-    if user_ids is None:
-        user_ids = roster_user_ids()
-    recipients = []
-    for user_id in user_ids:
-        items = outstanding(sheet_state(user_id, week))
-        if not items:
-            continue
-        user = db.session.get(User, user_id)
-        if user is None:  # pragma: no cover - roster ids come from FK rows
-            continue
-        recipients.append((user, items))
-
+    recipients = reminder_recipients(week, tier, now_naive, user_ids)
     if not recipients:
         # Deliberately NOT recorded: nothing was mailed, so this tier stays
         # open. A player who withdraws a side later in the same window is
@@ -212,9 +233,11 @@ def run_reminder_pass(week, now=None, user_ids=None) -> dict:
                 'tier': tier}
 
     subject = SUBJECTS[tier].format(n=week.week_number)
-    sent = send_each(recipients, subject,
-                     _build_body(week, tier, subject, deadline_line(week),
-                                 sheet_url()))
+    context = reminder_context(week)
+    sent = send_each(
+        recipients, subject,
+        lambda user, items: render_letter(
+            reminder_letter((user, items), context, tier)))
 
     # Buzz the same recipients regardless of the email outcome — a mail outage
     # is exactly when push matters (T11). Tag replaces an earlier tier on the
