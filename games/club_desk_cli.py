@@ -45,11 +45,17 @@ def _echo_now(now):
                f'({now.astimezone(PLATFORM_TZ):%a %b %-d %-I:%M %p} CT)')
 
 
-def _echo_letters(composed):
+def _who(user, dry_run):
+    """The address only under ``--dry-run``, read at a terminal; a live run
+    writes to the journal, which names members by id like the warnings do."""
+    return f'<{user.email}>' if dry_run else f'#{user.id}'
+
+
+def _echo_letters(composed, dry_run):
     for item in composed:
         user = item.user
         rider = f' + rider {item.rider}' if item.rider else ''
-        click.echo(f'  -> {user.get_display_name()} <{user.email}>: '
+        click.echo(f'  -> {user.get_display_name()} {_who(user, dry_run)}: '
                    f'"{item.letter.subject}" [{item.anchor}{rider}]')
 
 
@@ -67,10 +73,17 @@ def _echo_letters(composed):
               help='Timer mode: exit 0 when nothing named has a week.')
 def desk_cmd(dry_run, now_raw, anchors, rides, scheduled):
     """One firing of the reminder desk."""
-    from games.club_desk import SLOTS, run_desk
+    from games.club_desk import ANCHOR_SLUGS, SLOTS, run_desk
 
     now = _parse_now(now_raw)
     anchor_slugs, ride_slots = _csv(anchors), _csv(rides)
+    # Both flags live on a unit's ExecStart line: a typo there must fail
+    # the run, not quietly drop the game it misnamed.
+    unknown = [s for s in anchor_slugs if s not in ANCHOR_SLUGS]
+    if unknown:
+        click.secho(f'ERROR: unknown game(s) {unknown}; known: '
+                    f'{", ".join(ANCHOR_SLUGS)}', fg='red', err=True)
+        raise SystemExit(1)
     bad = [s for s in ride_slots if s not in SLOTS]
     if bad:
         click.secho(f'ERROR: unknown slot(s) {bad}; known: '
@@ -101,7 +114,7 @@ def desk_cmd(dry_run, now_raw, anchors, rides, scheduled):
                    f'(slot {anchor.slot or "-"}, deadline '
                    f'{anchor.deadline.astimezone(PLATFORM_TZ):%a %-I:%M %p} CT)'
                    f'{rider}')
-    _echo_letters(run.composed)
+    _echo_letters(run.composed, dry_run)
     for error in run.errors:
         click.secho(f'  ERROR: {error}', fg='red', err=True)
     if dry_run:
@@ -152,7 +165,7 @@ def paper_cmd(dry_run, now_raw, scheduled):
                    f'{", already sent" if run.record_week.record_notified else ""})')
     for item in run.composed:
         user = item.user
-        click.echo(f'  -> {user.get_display_name()} <{user.email}>: '
+        click.echo(f'  -> {user.get_display_name()} {_who(user, dry_run)}: '
                    f'"{item.letter.subject}" [{", ".join(item.games)}]')
     if dry_run:
         click.echo(f'  would send {len(run.composed)} letter(s)')

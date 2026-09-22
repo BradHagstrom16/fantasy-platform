@@ -18,7 +18,7 @@ from extensions import db
 from games.cfb.models import CfbPick, CfbWeek
 from games.cfb.services import desk as cfb_desk
 from games.cfb.services.reminders import run_reminder_check
-from games.club_desk import SLOTS, run_desk, run_paper
+from games.club_desk import ANCHOR_SLUGS, SLOTS, run_desk, run_paper
 from games.docket.models import DocketPick, DocketWeek
 from games.docket.services import desk as docket_desk
 from games.docket.services.deadline_pass import run_deadline_pass
@@ -624,6 +624,38 @@ def test_cli_desk_dry_run_prints_the_plan(app):
     result = runner.invoke(args=['club', 'desk', '--dry-run', '--ride', 'X'])
     assert result.exit_code == 1 and 'unknown slot' in result.output
     assert set(SLOTS) == {'F', 'S', 'D'}
+
+
+def test_cli_desk_refuses_an_unknown_anchor(app):
+    """A typo on the unit's ExecStart line (``--anchor cfb,dockett``) would
+    otherwise drop the Docket from every firing with exit 0."""
+    seed('owes', 'incomplete')
+    runner = app.test_cli_runner()
+    with patch('games.club_desk.send_platform_email',
+               side_effect=AssertionError('sent')):
+        result = runner.invoke(args=['club', 'desk', '--dry-run',
+                                     '--now', '2026-09-25T10:00',
+                                     '--anchor', 'cfb,dockett'])
+    assert result.exit_code == 1
+    assert "unknown game(s) ['dockett']; known: cfb, docket" in result.output
+    assert '->' not in result.output
+    assert set(ANCHOR_SLUGS) == {'cfb', 'docket'}
+
+
+def test_cli_live_output_names_members_by_id(app):
+    """The address is for the dry run's reader; a live run writes to the
+    journal and names the member by id, as the desk's warnings do."""
+    app.config['SITE_URL'] = SITE
+    seeded = seed('owes', 'incomplete')
+    sent, patcher = capture()
+    with patcher:
+        result = app.test_cli_runner().invoke(
+            args=['club', 'desk', '--now', '2026-09-25T10:00',
+                  '--anchor', 'cfb', '--ride', 'F'])
+    assert result.exit_code == 0, result.output
+    assert [m['to'] for m in sent] == ['member@test.com']
+    assert f'-> Member One #{seeded.user.id}:' in result.output
+    assert 'member@test.com' not in result.output
 
 
 def test_cli_paper_dry_run_prints_the_plan(app):
