@@ -217,6 +217,29 @@ def test_eliminated_player_shows_the_out_week(app, client, monkeypatch):
     assert '<strong>Week 3</strong>' not in html   # no row for the open week; the eyebrow may name it
 
 
+def test_weeks_after_elimination_carry_no_row(app, client, monkeypatch):
+    """Out in Week 1, Week 2 completes without them: no "No pick submitted"
+    row for a week they owed nothing to (and none for an unfinished one)."""
+    monkeypatch.setenv('CFB_FAKE_NOW', '2026-09-16T12:00:00')
+    with app.app_context():
+        week1 = make_week(1, deadline=WEEK1_DEADLINE)
+        a, b = make_team('Aardvark U'), make_team('Badger State')
+        make_game(week1, a, b, spread=-2.0, winner='away')
+        e = make_enrollment(make_user('gone'), lives=1)
+        make_pick(e.user, week1, a, created_at=W1_PICKED_AT)      # loses the last life
+        week2 = make_week(2, deadline=WEEK2_DEADLINE)
+        make_game(week2, b, a, spread=-2.0, winner='home')
+        db.session.commit()
+        assert process_week_results(week1.id)['success'] is True
+        assert process_week_results(week2.id)['success'] is True
+        eid = e.id
+        html = _page(app, client, eid)
+    assert 'Out in Week 1' in html
+    assert '<strong>Week 1</strong>' in html
+    assert '<strong>Week 2</strong>' not in html
+    assert 'No pick submitted' not in html
+
+
 def test_you_tag_and_review_link_only_for_the_owner(app, client, monkeypatch):
     monkeypatch.setenv('CFB_FAKE_NOW', WEEK2_OPEN)
     with app.app_context():

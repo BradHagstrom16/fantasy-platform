@@ -302,12 +302,18 @@ def build_season_ledger(enrollment, card):
     pick_id = room.pick.id if room.pick else None
 
     rows = []
+    out = False
     for week in weeks:
         if week.is_complete:
             outcome = outcome_by_week.get(week.id)
             if outcome is None:
                 continue
             pick = picks_by_week.get(week.id)
+            if out and pick is None and not outcome.revived:
+                # Already out of the pool: no obligation, so no row. The
+                # snapshot still exists (one per enrollment per week).
+                continue
+            out = outcome.is_eliminated
             state = {
                 'lives_after': outcome.lives_remaining,
                 'was_eliminated': outcome.is_eliminated,
@@ -321,6 +327,8 @@ def build_season_ledger(enrollment, card):
                 rows.append(_row(week, card, **_pick_fields(pick, week), **state))
         elif week.id == reveal_id:
             pick = picks_by_week.get(week.id)
+            if pick is None and enrollment.is_eliminated:
+                continue
             live = {
                 'lives_after': enrollment.lives_remaining,
                 'was_eliminated': enrollment.is_eliminated,
