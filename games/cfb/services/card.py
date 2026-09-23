@@ -356,8 +356,17 @@ def build_season_ledger(enrollment, card):
     )
     is_champion = field_size == 1 and eliminated_count > 0 and rank is not None
 
+    # The record counts weeks, not picks: a missed-pick penalty is a life
+    # lost (PR #235's rule on The Field), a No Contest is a survived week.
+    record = {
+        'survived': sum(1 for r in rows if r['result'] in ('W', 'NC')),
+        'lost': sum(1 for r in rows if r['lost_life'] or r['result'] == 'L'),
+        'pending': sum(1 for r in rows if r['result'] == 'TBD'),
+    }
+
     return {
         'ledger': rows,
+        'record': record,
         'ledger_regular': [r for r in rows if not r['is_playoff']],
         'ledger_playoff': [r for r in rows if r['is_playoff']],
         'elimination_week': elimination_week,

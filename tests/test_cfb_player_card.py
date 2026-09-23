@@ -172,6 +172,7 @@ def test_no_pick_completed_week_row_and_lives_drop(app, client, monkeypatch):
     assert 'No pick submitted' in html
     assert 'NO PICK' in html
     assert '1 life left' in html
+    assert 'is-lost">1<' in html            # the penalty counts as a life lost on the record line
 
 
 def test_unfinished_reveal_week_without_a_pick(app, client, monkeypatch):

@@ -52,7 +52,7 @@
             </div>
             <p class="cfb-season-derivation">
                 {%- if standing == 'champion' %}{{ total_picks }} {{ calls_word }} on the card, the last one standing.
-                {%- elif standing == 'out' %}{{ incorrect_picks }} {{ 'loss' if incorrect_picks == 1 else 'losses' }} on the card. The record of how it ran is below.
+                {%- elif standing == 'out' %}{{ record.lost }} {{ 'loss' if record.lost == 1 else 'losses' }} on the card. The record of how it ran is below.
                 {%- elif standing == 'one' %}One loss on the card. {{ available_teams|length }} teams still open on the board.
                 {%- elif total_picks == 0 %}No calls yet. {{ available_teams|length }} teams open on the board.
                 {%- else %}{{ available_teams|length }} teams still open on the board. Every call spends one.
@@ -70,21 +70,21 @@
     </div>
 
     {# The record line: one editorial line, never a stat grid. #}
-    {% if total_picks > 0 %}
+    {% if ledger_regular or ledger_playoff %}
     <div class="cfb-week-summary animate-in">
         <div class="cfb-summary-stat">
-            <span class="cfb-summary-num is-survived">{{ correct_picks }}</span>
+            <span class="cfb-summary-num is-survived">{{ record.survived }}</span>
             <span class="cfb-summary-label">Survived</span>
         </div>
         <span class="cfb-summary-sep" aria-hidden="true"></span>
         <div class="cfb-summary-stat">
-            <span class="cfb-summary-num is-lost">{{ incorrect_picks }}</span>
+            <span class="cfb-summary-num is-lost">{{ record.lost }}</span>
             <span class="cfb-summary-label">Lost a life</span>
         </div>
-        {% if pending_picks %}
+        {% if record.pending %}
         <span class="cfb-summary-sep" aria-hidden="true"></span>
         <div class="cfb-summary-stat">
-            <span class="cfb-summary-num is-pending">{{ pending_picks }}</span>
+            <span class="cfb-summary-num is-pending">{{ record.pending }}</span>
             <span class="cfb-summary-label">Pending</span>
         </div>
         {% endif %}

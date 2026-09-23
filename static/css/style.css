@@ -5311,10 +5311,17 @@ body.game-cfb .alert-warning { background: rgba(243,239,230,.05); border-color: 
 /* The card's way back to the field. The platform .back-link is bone-mute;
    its hover is WC white, re-derived here on the midnight ramp. */
 body.game-cfb .back-link { color: var(--cfb-bone-muted); margin: .75rem 0 .6rem; }
-.cfb-pick-opp { white-space: nowrap; }
 body.game-cfb .back-link:hover,
 body.game-cfb .back-link:focus-visible { color: var(--cfb-white); }
 body.game-cfb .back-link:focus-visible { outline: 2px solid var(--cfb-crimson-bright); outline-offset: 2px; }
+/* The card's ledger: the week is the row's key and never breaks ("Week / 4");
+   the opponent line wraps instead, as it does on The Field. On a phone the
+   THIS WEEK tag drops under the label rather than widening the column. */
+.cfb-card-ledger th:first-child,
+.cfb-card-ledger td:first-child { width: 1%; white-space: nowrap; }
+@media (max-width: 767.98px) {
+  .cfb-card-ledger .cfb-now-tag { display: block; margin: .25rem 0 0; width: max-content; }
+}
 /* Your own card offers the full one: a plain bone underline inside the
    derivation sentence, never a button (the page has no primary action). */
 .cfb-season-derivation a { color: var(--cfb-bone); text-decoration: underline; text-underline-offset: .15em; }
