@@ -5917,9 +5917,10 @@ body.game-cfb .cfb-verdict.animate-in .cfb-verdict-chip {
   color: var(--cfb-bone-muted);
 }
 .cfb-pick-score { font-family: 'Teko', sans-serif; letter-spacing: .03em; color: var(--cfb-bone); margin-left: .25rem; white-space: nowrap; }
-/* Field rows are not links; the shared .table-cfb crimson hover would
+/* Field rows are not links; the shared .table-cfb crimson hover (and the
+   later platform .table hover, equal specificity without .table here) would
    promise a click that never comes. */
-.cfb-field-table > tbody > tr:hover { background: transparent; }
+.table.cfb-field-table > tbody > tr:hover { background: transparent; }
 .cfb-field-lives { display: inline-flex; align-items: center; gap: .45rem; }
 .cfb-field-out {
   font-family: 'Teko', sans-serif;
