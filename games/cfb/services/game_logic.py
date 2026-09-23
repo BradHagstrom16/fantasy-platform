@@ -475,7 +475,9 @@ def get_week_user_statuses(week, enrollments, picks):
     process_week_results keeps live-accurate while grading; there a
     graded losing pick attributes a mid-week elimination to this week.
 
-    Returns {user_id: {'lives', 'is_eliminated', 'eliminated_this_week'}}.
+    Returns {user_id: {'lives', 'is_eliminated', 'eliminated_this_week',
+    'lost_life', 'no_pick'}}. ``no_pick`` (the DQ-2 no-pick penalty) is
+    only ever True from a snapshot: the penalty lands at completion.
     """
     outcome_by_user = {
         o.user_id: o
@@ -491,6 +493,8 @@ def get_week_user_statuses(week, enrollments, picks):
                 'lives': outcome.lives_remaining,
                 'is_eliminated': outcome.is_eliminated,
                 'eliminated_this_week': outcome.eliminated_this_week,
+                'lost_life': outcome.lost_life,
+                'no_pick': outcome.no_pick,
             }
         else:
             pick = pick_by_user.get(enrollment.user_id)
@@ -501,8 +505,40 @@ def get_week_user_statuses(week, enrollments, picks):
                     enrollment.is_eliminated
                     and pick is not None and pick.is_correct is False
                 ),
+                'lost_life': pick is not None and pick.is_correct is False,
+                'no_pick': False,
             }
     return statuses
+
+
+def get_elimination_weeks(user_ids, before_week_number):
+    """The week each player was knocked out, for weeks before this one.
+
+    Reads the CfbWeekOutcome snapshots (the column form of
+    ``eliminated_this_week``: is_eliminated AND lost_life). A revived
+    player can be knocked out twice; the latest week wins. A player
+    whose elimination week carries no snapshot is simply absent.
+
+    Returns {user_id: CfbWeek}.
+    """
+    if not user_ids:
+        return {}
+    rows = db.session.execute(
+        select(CfbWeekOutcome.user_id, CfbWeek)
+        .join(CfbWeek, CfbWeekOutcome.week_id == CfbWeek.id)
+        .where(
+            CfbWeekOutcome.user_id.in_(user_ids),
+            CfbWeekOutcome.is_eliminated.is_(True),
+            CfbWeekOutcome.lost_life.is_(True),
+            CfbWeek.week_number < before_week_number,
+        )
+    ).all()
+    weeks = {}
+    for user_id, week in rows:
+        held = weeks.get(user_id)
+        if held is None or week.week_number > held.week_number:
+            weeks[user_id] = week
+    return weeks
 
 
 # ---------------------------------------------------------------------------

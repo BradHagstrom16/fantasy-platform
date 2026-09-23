@@ -1,0 +1,10 @@
+{# The Field's lives cell: pips plus a label, so survivor state never rests on
+   the pips alone. "Out" is visible (the Status column folded in here); the
+   life count is for screen readers. Expects `entry` (pick or enrollment). #}
+<span class="cfb-field-lives">
+    <span class="lives-indicator" aria-hidden="true">
+        {% for i in range(entry.lives_after) %}<span class="life"></span>{% endfor %}
+        {% for i in range(2 - entry.lives_after) %}<span class="life lost"></span>{% endfor %}
+    </span>
+    {% if entry.was_eliminated %}<span class="cfb-field-out">Out</span>{% else %}<span class="visually-hidden">{{ entry.lives_after }} {{ 'life' if entry.lives_after == 1 else 'lives' }}</span>{% endif %}
+</span>

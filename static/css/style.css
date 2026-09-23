@@ -5764,6 +5764,15 @@ body.game-cfb .cfb-verdict.animate-in .cfb-verdict-chip {
 .cfb-verdict.is-survived { border-top-color: var(--cfb-survived); }
 .cfb-verdict.is-lost     { border-top-color: var(--cfb-lost-life); }
 .cfb-verdict.is-pending  { border-top-color: var(--cfb-pending); }
+/* Observer card (S9.12): a player already out before this week. Ash is a
+   border here, never text (S6.4); the sentence carries the state. */
+.cfb-verdict.is-out      { border-top-color: var(--cfb-eliminated); }
+.cfb-verdict-observer {
+  margin: 0;
+  font-family: 'Newsreader', Georgia, serif;
+  font-size: 1.1rem;
+  color: var(--cfb-bone);
+}
 .cfb-verdict .cfb-eyebrow { display: block; margin-bottom: .4rem; }
 .cfb-verdict-team .cfb-team-name { font-size: 1.7rem; color: var(--cfb-white); }
 /* No-pick verdict: the team slot reads as a muted status, not a team name. */
@@ -5819,6 +5828,14 @@ body.game-cfb .cfb-verdict.animate-in .cfb-verdict-chip {
 .cfb-summary-num.is-lost     { color: var(--cfb-lost-life); }
 .cfb-summary-num.is-pending  { color: var(--cfb-bone-muted); }
 .cfb-summary-stat.is-field .cfb-summary-num { color: var(--cfb-white); }
+/* "28 of 32": the denominator makes the field visibly thin (S2.5), quiet
+   enough that the survivor count still leads. */
+.cfb-summary-of {
+  margin-left: .2rem;
+  font-size: 1.15rem;
+  font-weight: 500;
+  color: var(--cfb-bone-subtle);
+}
 .cfb-summary-label {
   font-family: 'Teko', sans-serif;
   font-size: .85rem;
@@ -5855,10 +5872,14 @@ body.game-cfb .cfb-verdict.animate-in .cfb-verdict-chip {
   letter-spacing: .01em;
   color: var(--cfb-bone);
 }
+/* The OUT chip is a .badge-xs; the platform .65rem sits under the .75rem
+   floor, so the cut list lifts it (scoped; the global class is untouched). */
+.cfb-cut-player .badge-xs { font-size: .75rem !important; }
 
 /* The Field -- the weekly ledger head + survivor-first table (Player / Pick /
-   Result / Lives / Status), folding the old Opponent + Score columns into the
-   Pick cell so survivor-state never scrolls off at mobile width. */
+   Result / Lives), folding the old Opponent + Score columns into the Pick
+   cell and the old Status column into the Lives cell ("Out" beside the
+   pips) so survivor-state never scrolls off at mobile width. */
 .cfb-field-head { display: flex; align-items: baseline; justify-content: space-between; gap: .5rem; flex-wrap: wrap; }
 .cfb-field-head h4, .cfb-field-head h5, .cfb-field-head h6 { font-family: 'Teko', sans-serif; letter-spacing: .02em; color: var(--cfb-bone); }
 /* The reveal note (2026-09-07): one factual line beside the field head when
@@ -5895,7 +5916,20 @@ body.game-cfb .cfb-verdict.animate-in .cfb-verdict-chip {
   font-size: .82rem;
   color: var(--cfb-bone-muted);
 }
-.cfb-pick-score { font-family: 'Teko', sans-serif; letter-spacing: .03em; color: var(--cfb-bone); margin-left: .25rem; }
+.cfb-pick-score { font-family: 'Teko', sans-serif; letter-spacing: .03em; color: var(--cfb-bone); margin-left: .25rem; white-space: nowrap; }
+/* Field rows are not links; the shared .table-cfb crimson hover (and the
+   later platform .table hover, equal specificity without .table here) would
+   promise a click that never comes. */
+.table.cfb-field-table > tbody > tr:hover { background: transparent; }
+.cfb-field-lives { display: inline-flex; align-items: center; gap: .45rem; }
+.cfb-field-out {
+  font-family: 'Teko', sans-serif;
+  font-size: .85rem;
+  font-weight: 500;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--cfb-bone-muted);
+}
 /* Auto-pick marker -- a quiet neutral tag, never the off-palette Bootstrap yellow
    (DESIGN.md S2: survivor-state stays green/red/ash/pending). */
 .cfb-auto-tag {
@@ -5903,7 +5937,7 @@ body.game-cfb .cfb-verdict.animate-in .cfb-verdict-chip {
   margin-left: .4rem;
   padding: .04em .4em;
   font-family: 'Teko', sans-serif;
-  font-size: .66rem;
+  font-size: .75rem;
   font-weight: 500;
   letter-spacing: .1em;
   text-transform: uppercase;
@@ -5915,25 +5949,94 @@ body.game-cfb .cfb-verdict.animate-in .cfb-verdict-chip {
 .cfb-row-nopick .cfb-nopick-note { font-family: 'Newsreader', Georgia, serif; font-style: italic; color: var(--cfb-bone-subtle); }
 .cfb-result-none { color: var(--cfb-bone-subtle); }
 
-/* Pick Distribution -- quiet analytical depth (progressive disclosure). The count
-   is neutral bone, never crimson (crimson is identity, not data). */
+/* Pick Distribution -- quiet analytical depth (progressive disclosure). Each row
+   reads team, locked spread, result, count. The spread is the neutral
+   .spread-badge (never .favorable/.unfavorable: a colored spread on a results
+   page is traffic-light judgment, S6.6); the count is neutral bone, never
+   crimson (crimson is identity, not data). */
 .cfb-distribution { margin-top: 1.5rem; }
 .cfb-dist-list {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: .25rem .5rem;
-  margin-top: .9rem;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: .25rem 1.5rem;
+  margin: .9rem 0 0;
+  padding: 0;
+  list-style: none;
 }
 .cfb-dist-item {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
+  align-items: center;
   gap: .5rem;
-  padding: .45rem .2rem;
+  padding: .5rem .2rem;
   border-bottom: 1px solid var(--cfb-hairline);
 }
-.cfb-dist-team { font-family: 'Newsreader', Georgia, serif; color: var(--cfb-bone); }
-.cfb-dist-count { font-family: 'Teko', sans-serif; font-weight: 600; font-size: 1.1rem; color: var(--cfb-bone-muted); }
+.cfb-dist-team { font-family: 'Newsreader', Georgia, serif; color: var(--cfb-bone); min-width: 0; overflow-wrap: anywhere; }
+.cfb-dist-result .badge { font-size: .75rem; }
+.cfb-dist-count {
+  margin-left: auto;
+  white-space: nowrap;
+  font-family: 'Teko', sans-serif;
+  font-weight: 500;
+  font-size: 1rem;
+  letter-spacing: .03em;
+  color: var(--cfb-bone-muted);
+}
+.cfb-dist-caption {
+  margin: .75rem 0 0;
+  font-size: .85rem;
+  color: var(--cfb-bone-subtle);
+}
+
+/* Already Out -- players eliminated before this week. Deliberately the
+   quietest thing on the page (S2.8, S9.9): no container, no pips, no badges,
+   no lost-red; one hairline rule above. Names in bone-muted, the week they
+   went out in bone-subtle. --cfb-eliminated never appears as text (S6.4). */
+.cfb-out {
+  margin-top: 2.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--cfb-hairline);
+}
+.cfb-out .cfb-field-head h5 { color: var(--cfb-bone-muted); }
+.cfb-out-note {
+  margin: .35rem 0 0;
+  font-size: .9rem;
+  color: var(--cfb-bone-subtle);
+}
+.cfb-out-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem 1.5rem;
+  margin: .9rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+.cfb-out-player { display: inline-flex; align-items: baseline; gap: .45rem; }
+.cfb-out-name { font-family: 'Newsreader', Georgia, serif; color: var(--cfb-bone-muted); }
+.cfb-out-week {
+  font-family: 'Teko', sans-serif;
+  font-size: .8rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--cfb-bone-subtle);
+}
+.cfb-out-details { margin-top: .6rem; }
+.cfb-out-details > summary {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  cursor: pointer;
+  font-family: 'Teko', sans-serif;
+  font-size: .95rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--cfb-bone-muted);
+}
+.cfb-out-details > summary::-webkit-details-marker { display: none; }
+.cfb-out-details > summary { list-style: none; gap: .4rem; }
+.cfb-out-details > summary .bi { font-size: .8rem; }
+.cfb-out-details[open] > summary .bi { transform: rotate(180deg); }
+.cfb-out-details > summary:hover { color: var(--cfb-bone); }
+.cfb-out-details > summary:focus-visible { outline: 2px solid var(--cfb-crimson-bright); outline-offset: 2px; border-radius: .2rem; }
 
 /* ============================================================
    A5 — My Picks / "Your Card" (impeccable critique 2026-06-23, 25/40).

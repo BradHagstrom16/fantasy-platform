@@ -30,6 +30,7 @@ from games.cfb.models import CfbEnrollment, CfbGame, CfbPick, CfbTeam, CfbWeek
 from games.cfb.services import board as board_service
 from games.cfb.services.game_logic import (
     calculate_cumulative_spread,
+    get_elimination_weeks,
     get_game_for_team,
     get_official_standings,
     get_used_team_ids,
@@ -536,6 +537,7 @@ def weekly_results(week_number=None):
                 'spread': game.get_spread_for_team(game.home_team_id),
                 'home_score': game.home_score,
                 'away_score': game.away_score,
+                'no_contest': bool(game.is_no_contest),
             }
         if game.away_team:
             game_results[game.away_team_id] = {
@@ -545,6 +547,7 @@ def weekly_results(week_number=None):
                 'spread': game.get_spread_for_team(game.away_team_id),
                 'home_score': game.home_score,
                 'away_score': game.away_score,
+                'no_contest': bool(game.is_no_contest),
             }
 
     # All enrollments for this season
@@ -569,25 +572,68 @@ def weekly_results(week_number=None):
             else pick.user.username
         )
 
-    correct_picks_list = [p for p in picks if p.is_correct is True]
+    # A No Contest pick is a permanent push: never graded (is_correct
+    # stays None), counts as survived, and must not read as pending.
+    for pick in picks:
+        game = game_results.get(pick.team_id)
+        pick.is_no_contest = bool(game and game['no_contest'])
+
+    correct_picks_list = [
+        p for p in picks if p.is_correct is True or p.is_no_contest
+    ]
     incorrect_picks_list = [p for p in picks if p.is_correct is False]
-    pending_picks_list = [p for p in picks if p.is_correct is None]
+    pending_picks_list = [
+        p for p in picks if p.is_correct is None and not p.is_no_contest
+    ]
 
     # Per-week lives from CfbWeekOutcome snapshots (enrollment-state
     # fallback for in-progress weeks) — never recomputed from pick
     # history, which cannot see no-pick penalties or revivals (§8.19).
     user_statuses = get_week_user_statuses(week, all_enrollments, picks)
-    default_status = {'lives': 2, 'is_eliminated': False}
+    default_status = {
+        'lives': 2, 'is_eliminated': False, 'eliminated_this_week': False,
+        'lost_life': False, 'no_pick': False,
+    }
 
     for pick in picks:
         status = user_statuses.get(pick.user_id, default_status)
         pick.lives_after = status['lives']
         pick.was_eliminated = status['is_eliminated']
 
+    # The Field is this week's story. A player already out before this
+    # week has no call to make, so they leave the Field for the quiet
+    # "Already Out" list; a player who missed THIS week's pick (and paid
+    # the no-pick penalty for it) stays in the Field.
+    field_no_pick = []
+    already_out = []
     for enrollment in enrollments_no_pick:
         status = user_statuses.get(enrollment.user_id, default_status)
         enrollment.lives_after = status['lives']
         enrollment.was_eliminated = status['is_eliminated']
+        enrollment.nopick_penalty = status['no_pick']
+        if status['is_eliminated'] and not status['eliminated_this_week']:
+            already_out.append(enrollment)
+        else:
+            field_no_pick.append(enrollment)
+
+    out_weeks = get_elimination_weeks(
+        [e.user_id for e in already_out], week.week_number
+    )
+    for enrollment in already_out:
+        enrollment.out_week = out_weeks.get(enrollment.user_id)
+
+    # Rows render display names, so they sort by display name (the DB
+    # orders by the never-shown username, which reads as random).
+    picks.sort(key=lambda p: p.display_name.casefold())
+    field_no_pick.sort(key=lambda e: e.get_display_name().casefold())
+    already_out.sort(key=lambda e: e.get_display_name().casefold())
+
+    lost_life_count = len(incorrect_picks_list) + sum(
+        1 for e in field_no_pick if e.nopick_penalty
+    )
+    field_alive = sum(1 for p in picks if not p.was_eliminated) + sum(
+        1 for e in field_no_pick if not e.was_eliminated
+    )
 
     eliminated_this_week = [
         e for e in all_enrollments
@@ -596,6 +642,7 @@ def weekly_results(week_number=None):
 
     current_user_pick = None
     current_user_nopick = None
+    current_user_out = None
     if current_user.is_authenticated:
         current_user_pick = next(
             (p for p in picks if p.user_id == current_user.id), None
@@ -603,13 +650,39 @@ def weekly_results(week_number=None):
         # A no-pick enrollment still carries the player's survivor state
         # (lives_after / was_eliminated) -- surface it so the "Your Verdict"
         # lead answers "am I alive?" even when the user missed the slate.
+        # A player already out gets the observer card instead (§9.12).
         if current_user_pick is None:
             current_user_nopick = next(
-                (e for e in enrollments_no_pick if e.user_id == current_user.id),
+                (e for e in field_no_pick if e.user_id == current_user.id),
+                None,
+            )
+            current_user_out = next(
+                (e for e in already_out if e.user_id == current_user.id),
                 None,
             )
 
-    pick_counts = Counter(pick.team.name for pick in picks)
+    # Pick Distribution: who the field backed, with the locked spread and
+    # the result. Ordered by count, then team name; never by spread,
+    # which would read as a recommendation (§1.4).
+    distribution = []
+    for team_id, count in Counter(p.team_id for p in picks).items():
+        sample = next(p for p in picks if p.team_id == team_id)
+        game = game_results.get(team_id)
+        if sample.is_no_contest:
+            result = 'NC'
+        elif sample.is_correct is True:
+            result = 'W'
+        elif sample.is_correct is False:
+            result = 'L'
+        else:
+            result = None
+        distribution.append({
+            'name': sample.team.name,
+            'spread': game['spread'] if game else None,
+            'result': result,
+            'count': count,
+        })
+    distribution.sort(key=lambda row: (-row['count'], row['name'].casefold()))
 
     return render_template(
         'cfb/weekly_results.html',
@@ -620,11 +693,16 @@ def weekly_results(week_number=None):
         incorrect_picks=incorrect_picks_list,
         pending_picks=pending_picks_list,
         game_results=game_results,
-        enrollments_no_pick=enrollments_no_pick,
+        field_no_pick=field_no_pick,
+        already_out=already_out,
         eliminated_this_week=eliminated_this_week,
+        lost_life_count=lost_life_count,
+        field_alive=field_alive,
+        field_total=len(picks) + len(enrollments_no_pick),
         current_user_pick=current_user_pick,
         current_user_nopick=current_user_nopick,
-        pick_counts=pick_counts,
+        current_user_out=current_user_out,
+        distribution=distribution,
     )
 
 
