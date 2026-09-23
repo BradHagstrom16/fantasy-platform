@@ -5288,18 +5288,20 @@ body.game-cfb .alert-warning { background: rgba(243,239,230,.05); border-color: 
   vertical-align: middle;
 }
 
-/* A member's name is the door to their card (/cfb/player/<id>). Bone at rest
-   so a row reads as it always did; the underline on hover/focus and the
-   crimson focus ring (the room's, never platform gold) carry the affordance.
-   color: inherit lets it sit on any row, the crimson-tinted You row included. */
+/* A member's name is the door to their card (/cfb/player/<id>). Bone text as
+   the row always was, with a bone-subtle underline at rest so a thumb knows
+   it is a door (no hover on a phone); the underline brightens on hover/focus
+   and the focus ring is the room's crimson, never platform gold. color:
+   inherit lets it sit on any row, the crimson-tinted You row included. */
 .cfb-name-link {
   color: inherit;
-  text-decoration: none;
+  text-decoration: underline;
+  text-decoration-color: var(--cfb-bone-subtle);
+  text-underline-offset: .15em;
 }
 .cfb-name-link:hover,
 .cfb-name-link:focus-visible {
-  text-decoration: underline;
-  text-underline-offset: .15em;
+  text-decoration-color: currentColor;
 }
 .cfb-name-link:focus-visible {
   outline: 2px solid var(--cfb-crimson-bright);
@@ -5308,7 +5310,8 @@ body.game-cfb .alert-warning { background: rgba(243,239,230,.05); border-color: 
 }
 /* The card's way back to the field. The platform .back-link is bone-mute;
    its hover is WC white, re-derived here on the midnight ramp. */
-body.game-cfb .back-link { color: var(--cfb-bone-muted); margin: 1.25rem 0 .25rem; }
+body.game-cfb .back-link { color: var(--cfb-bone-muted); margin: .75rem 0 .6rem; }
+.cfb-pick-opp { white-space: nowrap; }
 body.game-cfb .back-link:hover,
 body.game-cfb .back-link:focus-visible { color: var(--cfb-white); }
 body.game-cfb .back-link:focus-visible { outline: 2px solid var(--cfb-crimson-bright); outline-offset: 2px; }

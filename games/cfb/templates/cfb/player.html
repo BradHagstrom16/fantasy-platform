@@ -19,19 +19,17 @@
         <h1><span class="cfb-avatar" aria-hidden="true">{{ enrollment.user.get_avatar() }}</span>{{ enrollment.get_display_name() }}</h1>
         <p class="lead">
             {%- if standing == 'champion' %}Survived every week. The field is gone.
-            {%- elif standing == 'out' %}{% if elimination_week %}Out in {{ get_week_display_name(elimination_week) }}.{% else %}Eliminated.{% endif %} The season played on without them.
-            {%- elif standing == 'one' %}One life left. The next loss ends the season.
+            {%- elif standing == 'out' %}{% if elimination_week %}Out in {{ get_week_display_name(elimination_week) }}{% else %}Eliminated{% endif %} after {{ total_picks }} {{ calls_word }}.
+            {%- elif standing == 'one' %}One life left after {{ total_picks }} {{ calls_word }}.
             {%- elif total_picks == 0 %}Two lives in hand and the full board ahead.
             {%- else %}Two lives in hand after {{ total_picks }} {{ calls_word }}.
             {%- endif %}
         </p>
         <div class="cfb-hero-field">
-            {% if standing == 'out' %}
-            <span class="cfb-count-cut">Out{% if elimination_week %} &middot; {{ get_week_display_name(elimination_week) }}{% endif %}</span>
-            {% elif rank_label %}
+            {% if standing != 'out' and rank_label %}
             <span><span class="cfb-count">{{ rank_label }}</span> of {{ field_size }}</span>
-            {% endif %}
             <span class="cfb-hero-field-sep">&middot;</span>
+            {% endif %}
             <span><span class="cfb-count">{{ total_picks }}</span> {{ calls_word }}</span>
             {% if total_picks %}
             <span class="cfb-hero-field-sep">&middot;</span>
@@ -46,18 +44,18 @@
 
     {# The standing lead: am they alive, at a glance. Outcome-colored top rule,
        never a side-stripe; the pips and the label carry the state by structure. #}
-    <div class="cfb-season-lead animate-in {{ lead_class }} mt-3">
+    <div class="cfb-season-lead animate-in {{ lead_class }}">
         <div class="cfb-season-lead-main">
             <span class="cfb-eyebrow">The Standing{% if is_you %}<span class="cfb-you-tag">You</span>{% endif %}</span>
             <div class="cfb-season-headline cfb-team-name">
                 {%- if standing == 'champion' %}Last One Standing{% elif standing == 'out' %}Eliminated{% elif standing == 'one' %}Final Life{% else %}Still Standing{% endif -%}
             </div>
             <p class="cfb-season-derivation">
-                {%- if standing == 'champion' %}Survived every week. The field is gone.
-                {%- elif standing == 'out' %}{% if elimination_week %}Out in {{ get_week_display_name(elimination_week) }}.{% else %}No lives remain.{% endif %} The card below is the record of how it ran.
+                {%- if standing == 'champion' %}{{ total_picks }} {{ calls_word }} on the card, the last one standing.
+                {%- elif standing == 'out' %}{{ incorrect_picks }} {{ 'loss' if incorrect_picks == 1 else 'losses' }} on the card. The record of how it ran is below.
                 {%- elif standing == 'one' %}One loss on the card. The next one ends the season. {{ available_teams|length }} teams still open on the board.
-                {%- elif total_picks == 0 %}Two lives in hand and the full board ahead.
-                {%- else %}Two lives in hand after {{ total_picks }} {{ calls_word }}. {{ available_teams|length }} teams still open on the board.
+                {%- elif total_picks == 0 %}No calls yet. {{ available_teams|length }} teams open on the board.
+                {%- else %}No losses on the card. {{ available_teams|length }} teams still open on the board.
                 {%- endif %}
                 {% if is_you %}<a href="{{ url_for('cfb.my_picks') }}">Review Your Card &rsaquo;</a>{% endif %}
             </p>
@@ -126,7 +124,7 @@
                         {% if row.opponent or row.is_autopick %}
                         <span class="cfb-pick-meta">
                             {% if row.opponent %}
-                            {% if row.was_home %}vs {{ row.opponent }}{% else %}@ {{ row.opponent }}{% endif %}
+                            <span class="cfb-pick-opp">{% if row.was_home %}vs {{ row.opponent }}{% else %}@ {{ row.opponent }}{% endif %}</span>
                             {% if row.home_score is not none and row.away_score is not none %}
                                 <span class="cfb-pick-score">{% if row.was_home %}{{ row.home_score }}&ndash;{{ row.away_score }}{% else %}{{ row.away_score }}&ndash;{{ row.home_score }}{% endif %}</span>
                             {% endif %}
