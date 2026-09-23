@@ -258,7 +258,8 @@ def test_spread_line_spent_grid_and_flat_board(app, client, monkeypatch):
     with app.app_context():
         m = _season()
         html = _page(app, client, m['loser'])
-    assert 'Cumulative spread' in html
+    assert 'spread <span class="cfb-count">-7.0</span>' in html   # the hero-field line, said once
+    assert 'Cumulative spread' not in html
     assert re.search(r'cfb-used-team">\s*Georgia', html)
     assert 'conferenceAccordion' not in html
     assert 'cfb-pool-conf-name">ACC<' in html and 'Clemson' in html
