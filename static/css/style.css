@@ -5288,6 +5288,36 @@ body.game-cfb .alert-warning { background: rgba(243,239,230,.05); border-color: 
   vertical-align: middle;
 }
 
+/* A member's name is the door to their card (/cfb/player/<id>). Bone at rest
+   so a row reads as it always did; the underline on hover/focus and the
+   crimson focus ring (the room's, never platform gold) carry the affordance.
+   color: inherit lets it sit on any row, the crimson-tinted You row included. */
+.cfb-name-link {
+  color: inherit;
+  text-decoration: none;
+}
+.cfb-name-link:hover,
+.cfb-name-link:focus-visible {
+  text-decoration: underline;
+  text-underline-offset: .15em;
+}
+.cfb-name-link:focus-visible {
+  outline: 2px solid var(--cfb-crimson-bright);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+/* The card's way back to the field. The platform .back-link is bone-mute;
+   its hover is WC white, re-derived here on the midnight ramp. */
+body.game-cfb .back-link { color: var(--cfb-bone-muted); margin: 1.25rem 0 .25rem; }
+body.game-cfb .back-link:hover,
+body.game-cfb .back-link:focus-visible { color: var(--cfb-white); }
+body.game-cfb .back-link:focus-visible { outline: 2px solid var(--cfb-crimson-bright); outline-offset: 2px; }
+/* Your own card offers the full one: a plain bone underline inside the
+   derivation sentence, never a button (the page has no primary action). */
+.cfb-season-derivation a { color: var(--cfb-bone); text-decoration: underline; text-underline-offset: .15em; }
+.cfb-season-derivation a:hover,
+.cfb-season-derivation a:focus-visible { color: var(--cfb-white); }
+
 /* ============================================================
    A3 — Pick screen / the commitment surface (impeccable critique 2026-06-23)
    The decision lives on the dark substrate: a Survivor-voice hero, the slate as

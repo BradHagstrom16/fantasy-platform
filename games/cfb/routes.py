@@ -28,7 +28,7 @@ from games.cfb import cfb_bp
 from games.cfb.constants import FBS_MASTER_TEAMS
 from games.cfb.models import CfbEnrollment, CfbGame, CfbPick, CfbTeam, CfbWeek
 from games.cfb.services import board as board_service
-from games.cfb.services.card import build_player_card
+from games.cfb.services.card import build_player_card, build_season_ledger
 from games.cfb.services.game_logic import (
     calculate_cumulative_spread,
     get_elimination_weeks,
@@ -998,6 +998,24 @@ def my_picks():
     ).first()
 
     return render_template('cfb/my_picks.html', **build_player_card(current_user.id, enrollment))
+
+
+@cfb_bp.route('/player/<int:enrollment_id>')
+def player(enrollment_id):
+    """One member's card, readable by anyone (public, like standings).
+
+    Only weeks whose deadline has passed show a pick (DESIGN.md 9.9);
+    the open pick week is a hidden row for an active player, the owner
+    included. An id from another season is a 404, never a stale page.
+    """
+    season_year = current_app.config.get('CFB_SEASON_YEAR', 2026)
+    enrollment = db.first_or_404(
+        select(CfbEnrollment).filter_by(id=enrollment_id, season_year=season_year)
+    )
+    is_you = current_user.is_authenticated and enrollment.user_id == current_user.id
+    card = build_player_card(enrollment.user_id, enrollment, revealed_only=True)
+    ledger = build_season_ledger(enrollment, card)
+    return render_template('cfb/player.html', is_you=is_you, **card, **ledger)
 
 
 # ============================================================================
