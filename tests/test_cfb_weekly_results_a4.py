@@ -34,6 +34,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 CSS = (ROOT / "static" / "css" / "style.css").read_text()
 TPL = (ROOT / "games" / "cfb" / "templates" / "cfb" / "weekly_results.html").read_text()
+LIVES_TPL = (ROOT / "games" / "cfb" / "templates" / "cfb" / "_field_lives.html").read_text()
+OUT_TPL = (ROOT / "games" / "cfb" / "templates" / "cfb" / "_already_out_list.html").read_text()
 
 EM_DASH = chr(0x2014)        # em dash (chr() keeps the source ASCII-clean)
 
@@ -123,11 +125,18 @@ def test_week_summary_is_one_line_not_a_stat_grid():
 # -- Survivor-first field ledger: folded columns, mobile-readable (S6) ------
 
 def test_field_ledger_folds_columns_for_mobile():
-    # Five columns (Player / Pick / Result / Lives / Status); Opponent + Score
-    # fold into the Pick cell so survivor-state never scrolls off at 375px.
+    # Four columns (Player / Pick / Result / Lives); Opponent + Score fold
+    # into the Pick cell and Status folds into the Lives cell ("Out" beside
+    # the pips) so survivor-state never scrolls off at 390px. Prod Week 3
+    # (2026-09-23): the five-column table ran 407px in a 364px wrapper.
     assert "<th>Pick</th>" in TPL, "the ledger folds the matchup into a single Pick column"
     assert "<th>Opponent</th>" not in TPL and "<th>Score</th>" not in TPL, \
         "the standalone Opponent / Score columns are folded away (mobile survivor-state readability, S6)"
+    assert ">Status</th>" not in TPL, \
+        "Status folds into the Lives cell; a fifth column clips at mobile width"
+    assert "cfb-field-out" in LIVES_TPL, "the lives cell carries the Out label (structure + label, S6.7)"
+    assert re.search(r"(?<![-\w])white-space:\s*nowrap", _rule(r"^\.cfb-pick-score")), \
+        "a score never breaks mid-number (28- / 21)"
     assert "cfb-pick-meta" in TPL, "the matchup sub-line (.cfb-pick-meta) rides inside the Pick cell"
     # Whitespace-tolerant between the two grouped selectors (formatting-proof).
     block = _rule(r"^\.cfb-field-table th\.cfb-col-center,\s*\.cfb-field-table td\.cfb-col-center")
@@ -153,3 +162,23 @@ def test_results_has_no_em_dash_or_double_hyphen_copy():
     assert EM_DASH not in TPL, "no literal em-dash may appear in CFB results copy (S3)"
     assert not re.search(r">\s*--\s*<", TPL), \
         "no double-hyphen placeholder ('--') as displayed content (S3 no-double-hyphen)"
+
+
+# -- Critique 2026-09-23: distribution spread + Already Out ------------------
+
+def test_distribution_spread_is_the_neutral_chip():
+    # A green/red spread on a results page is traffic-light judgment (S6.6).
+    assert "spread-badge" in TPL, "each distribution row carries the locked spread"
+    assert "favorable" not in TPL, "the results page never colors a spread (.favorable/.unfavorable)"
+
+
+def test_already_out_is_quiet_and_never_ash_text():
+    # --cfb-eliminated fails AA as text everywhere on the ramp (S6.4).
+    for sel in (r"^\.cfb-out-name", r"^\.cfb-out-week", r"^\.cfb-out-note"):
+        assert "--cfb-eliminated" not in _rule(sel), f"{sel} must not use ash as text (S6.4)"
+    assert "badge" not in OUT_TPL and "lives-indicator" not in OUT_TPL, \
+        "Already Out carries names and weeks only: no pips, no badges (S2.8)"
+
+
+def test_week_pills_mark_the_current_week():
+    assert 'aria-current="page"' in TPL, "the active week pill is programmatic, not color alone"

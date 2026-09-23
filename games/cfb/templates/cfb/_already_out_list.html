@@ -1,0 +1,10 @@
+{# The Already Out names: avatar, name, and the week each player went out. #}
+<ul class="cfb-out-list">
+    {% for e in already_out %}
+    <li class="cfb-out-player">
+        <span class="cfb-out-avatar" aria-hidden="true">{{ e.user.get_avatar() }}</span>
+        <span class="cfb-out-name">{{ e.get_display_name() }}</span>
+        {% if e.out_week %}<span class="cfb-out-week">{{ get_week_display_name(e.out_week) }}</span>{% endif %}
+    </li>
+    {% endfor %}
+</ul>
