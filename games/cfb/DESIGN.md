@@ -537,6 +537,14 @@ Platform `.game-subnav` shape: background `#0a080f`, `--subnav-accent: #C5050C`,
 
 The standings row carries a structural "You" tag plus a crimson tint (`rgba(197,5,12,.12)`) — identity never rests on tint alone, and the tint-only convention (no side-stripe) is the settled platform pattern for current-user rows.
 
+#### The player card — `/cfb/player/<id>` + `.cfb-name-link` (shipped 2026-09-23)
+
+The §7.4 "Player detail" surface, built: one member's season read by anyone in the club (public, like standings and results; keyed on the enrollment id, a stale season 404s). A record, never a decision surface: the masthead names the member (the dynamic-H1 dispensation) with the standing sentence ("Out in Week N. The season played on." once eliminated) and the `.cfb-hero-field` line (ordinal rank of the active field, calls, spread; the eliminated variant keeps to calls and spread); the `.cfb-season-lead` lead (Still Standing / Final Life / Eliminated / Last One Standing, third-person derivation, pips); the `.cfb-week-summary` record line (Survived · Lost a life · Pending, the third only when non-zero, counted from the ledger's rows so a missed-pick penalty is a life lost and a No Contest a survived week); the card table in the Field's grammar (`.cfb-field-table.cfb-card-ledger`: Week · Pick · Spread · Result · Lives, the `_field_lives.html` cell, `.cfb-auto-tag`, `.cfb-row-nopick` for a no-pick week, `.cfb-now-tag` on the lead row; the week column never wraps, and on a phone the tag drops under the label); the spent grid; and the open board as flat conference groups (the landing's Pool grammar, never the owner's accordion). No payment card (the nudge is the viewer's), no pick controls, no coverage planner.
+
+**Visibility is one rule** (§9.9): a week shows a pick only once its deadline has passed; the open pick week is a single "Hidden until deadline" row for an active player, the owner included, and the builder drops open-week picks before any count or pool is derived so nothing leaks through the spent grid, the board's complement or the record line. The owner's own open pick lives on Your Card, which the card offers ("Review Your Card", a plain underlined link inside the derivation sentence, never a button; the page has no primary action). Both pages read one builder, `games/cfb/services/card.py`. The way back is the platform `.back-link`, re-derived bone-mute with a white hover for the midnight ramp.
+
+**The name is the door.** Every member-name render site links to the card: `.cfb-name-link` in the room and on the admin desk (bone text with a bone-subtle underline at rest, so a thumb knows a door without a hover; the underline brightens on hover/focus, the focus ring is crimson; `color: inherit` so it sits on the You row), and the platform's `.roll-name-link` inside the lounge panel (the accent firewall forbids room classes there). The anchor wraps the name only; avatars and the You / Auto tags stay outside it. Prose sentences (the lounge's cuts sentence) stay plain; the room's Cut list, the Already Out list, the eliminated chips and the champion hero all link. Locked by `tests/test_cfb_player_card.py`.
+
 #### Settle the Tab — `.settle-tab` (platform partial `templates/_settle_tab.html`)
 
 The how-to-pay card for an enrolled, unpaid member (gate: `games/cfb/services/payment.py`, ADR-056). A platform primitive wearing this room's `.card` skin: gold top rule (money = CCC gold, never crimson — a friendly ask, not an alarm), the room's `.cfb-eyebrow` passed in by the include, `.btn-game` (crimson = the primary action, §6.5) for the Venmo link with the amount and memo pre-filled, and the copyable Zelle number. Bill layout — the ask left, the rails right, stacking on a phone. Placement follows §7.1's one center of gravity: under the weekly call on the index, at the foot of the pick page, under the season lead on Your Card — never above a pick. Payment stays admin-confirmed; the card carries no self-mark.
@@ -555,18 +563,18 @@ Administrative components identify the affected player, show current state, expl
 
 ### 7.3 Shipped vocabulary inventory
 
-101 `.cfb-*` classes ship in `style.css`, organized by family. This table is the map — inspect the CSS block for exact rules before styling adjacent work:
+163 distinct `.cfb-*` class selectors ship in `style.css` (counted in selector position with comments stripped, 2026-09-23), organized by family. This table is the map — inspect the CSS block for exact rules before styling adjacent work:
 
 | Family | Classes |
 |---|---|
 | Hero content | `.cfb-hero`, `.cfb-hero-field`, `.cfb-hero-field-sep`, `.cfb-count`, `.cfb-count-cut` |
 | Weekly-call status | `.cfb-status-row/-item/-num/-label/-total`, `.cfb-deadline`, `.cfb-eliminated-note` |
-| Current-user | `.cfb-you-tag` |
+| Current-user / member link | `.cfb-you-tag`, `.cfb-name-link` |
 | Pick / slate | `.cfb-holding/-team/-note`, `.cfb-slate-head/-count`, `.cfb-matchup`, `.cfb-kickoff`, `.cfb-team-name/-id`, `.cfb-home-tag`, `.cfb-at`, `.cfb-out-reason`, `.cfb-confirm-pick/-line`, `.cfb-empty-slate` |
 | Verdict | `.cfb-verdict` (+`.is-survived/.is-lost/.is-pending`), `-team`, `-nopick`, `-matchup`, `-score`, `-outcome`, `-chip`, `-lives`, `-lives-label` |
 | Week summary | `.cfb-week-summary`, `.cfb-summary-stat/-num/-label/-sep` |
 | The Cut | `.cfb-cut-title/-list/-player` |
-| Field ledger | `.cfb-field-table/-head/-week`, `.cfb-avatar`, `.cfb-cell-pick`, `.cfb-col-center`, `.cfb-pick-meta/-score`, `.cfb-auto-tag`, `.cfb-row-nopick`, `.cfb-nopick-note`, `.cfb-result-none` |
+| Field ledger | `.cfb-field-table/-head/-week`, `.cfb-card-ledger`, `.cfb-avatar`, `.cfb-cell-pick`, `.cfb-col-center`, `.cfb-pick-meta/-score`, `.cfb-auto-tag`, `.cfb-row-nopick`, `.cfb-nopick-note`, `.cfb-result-none` |
 | Pick distribution | `.cfb-distribution`, `.cfb-dist-list/-item/-team/-count` |
 | Season / My Picks | `.cfb-season-lead/-main/-aside`, `.cfb-season-headline/-derivation/-lives-label`, `.cfb-ledger-total` |
 | Week lead | `.cfb-week-lead` (+`.is-pending/.is-survived/.is-lost`), `-main`, `-aside`, `-headline`, `-line`, `-next`, `-pick` |
@@ -592,7 +600,6 @@ Doctrine for surfaces the lounge (C1) and later room work will build. Marked so 
 - **The team availability panel** — remaining inventory: grouped Available / Used / Unavailable (reason) / Restored-by-reset; optional search + filters (available-only, ranked, playing-this-week) only where they support a real decision. Never reduced to a bare count ("112 teams available" is less useful than whether the strongest realistic options remain).
 - **Who's Left** (§8.10) and **compact standings** (§8.11) — lounge modules.
 - **Field attrition visualization** — aggregate survival progression where it adds understanding: stacked weekly bars, simple step charts, or a week-by-week table (`Week | Two lives | One life | Eliminated | Active`). Real counts, labeled, readable without color. Never smoothed curves, decorative area charts, percentage-only views, or personal rank trends.
-- **Player detail** — another player's season path (survival state, lives, weekly picks, used teams, spread, elimination week), respecting pick-visibility rules; supports social awareness and verification, never surveillance.
 - **Recent change module** (§8.13) — lounge orientation.
 
 ### 7.5 Component behavior rules
@@ -766,6 +773,7 @@ Shipped screens and their doctrine anchors:
 | `/cfb/` | standings/home (landing) | The Survivors | `.cfb-pick-cta`, standings table, The Cut, `.championship-hero` gate |
 | `/cfb/pick/<week>` | the weekly decision | Your Card | `.team-pick-card`, The Board slate, `.cfb-confirm-pick` |
 | `/cfb/my-picks` | season ledger | Your Card | `.cfb-season-lead`, verdict list, team pool, used grid |
+| `/cfb/player/<id>` | the player card (public) | the member's name | `.cfb-season-lead`, `.cfb-week-summary`, the card table (`.cfb-field-table.cfb-card-ledger`), `.cfb-used-grid`, the Pool groups; reached by `.cfb-name-link` |
 | `/cfb/results/<week>` | weekly verdict | Saturday's Verdict / The Cut | `.cfb-verdict`, `.cfb-week-summary`, The Field table, `.elimination-alert` |
 | `/cfb/join` | enrollment | Take Your Two Lives | `.cfb-join-*` |
 | `/cfb/admin/*` | Commissioner's Desk (8 screens) | functional | `.cfb-admin-*`, A3-admin block |

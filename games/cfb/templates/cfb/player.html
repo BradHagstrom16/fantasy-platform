@@ -1,0 +1,276 @@
+{% extends "base.html" %}
+{% block title %}{{ enrollment.get_display_name() }} &middot; The Card &middot; CFB Survivor{% endblock %}
+
+{% block content %}
+{# The player card (games/cfb/DESIGN.md 7.2, 9.10): one member's season read
+   by anyone in the club. The standing, the calls in order with what each
+   cost, then what is left to spend. A record, not a decision surface: no
+   pick controls, no payment card, no planner. Picks show only for weeks
+   whose deadline has passed (9.9); the open week is a hidden row. #}
+{% set lives = enrollment.lives_remaining %}
+{% if is_champion %}{% set standing = 'champion' %}{% elif enrollment.is_eliminated %}{% set standing = 'out' %}{% elif lives == 1 %}{% set standing = 'one' %}{% else %}{% set standing = 'two' %}{% endif %}
+{% set lead_class = 'is-lost' if standing == 'out' else ('is-pending' if standing == 'one' else 'is-survived') %}
+{% set calls_word = 'call' if total_picks == 1 else 'calls' %}
+
+<div class="page-hero cfb-hero">
+    <div class="hero-glow"></div>
+    <div class="container">
+        <span class="cfb-eyebrow">The Card{% if current_week_display %} &middot; {{ current_week_display.display_name }}{% endif %}</span>
+        <h1><span class="cfb-avatar" aria-hidden="true">{{ enrollment.user.get_avatar() }}</span>{{ enrollment.get_display_name() }}</h1>
+        <p class="lead">
+            {%- if standing == 'champion' %}Survived every week. The field is gone.
+            {%- elif standing == 'out' %}{% if elimination_week %}Out in {{ get_week_display_name(elimination_week) }}.{% else %}Eliminated.{% endif %} The season played on.
+            {%- elif standing == 'one' %}One life left. The next loss ends the season.
+            {%- elif total_picks == 0 %}Two lives in hand and the full board ahead.
+            {%- else %}Two lives in hand. No losses on the card.
+            {%- endif %}
+        </p>
+        <div class="cfb-hero-field">
+            {% if standing != 'out' and rank_label %}
+            <span><span class="cfb-count">{{ rank_label }}</span> of {{ field_size }}</span>
+            <span class="cfb-hero-field-sep">&middot;</span>
+            {% endif %}
+            <span><span class="cfb-count">{{ total_picks }}</span> {{ calls_word }}</span>
+            {% if total_picks %}
+            <span class="cfb-hero-field-sep">&middot;</span>
+            <span>spread <span class="cfb-count">{{ "%+.1f"|format(enrollment.cumulative_spread) }}</span></span>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<div class="container mb-5">
+    <a class="back-link" href="{{ url_for('cfb.index') }}">&lsaquo; The Survivors</a>
+
+    {# The standing lead: am they alive, at a glance. Outcome-colored top rule,
+       never a side-stripe; the pips and the label carry the state by structure. #}
+    <div class="cfb-season-lead animate-in {{ lead_class }}">
+        <div class="cfb-season-lead-main">
+            <span class="cfb-eyebrow">The Standing{% if is_you %}<span class="cfb-you-tag">You</span>{% endif %}</span>
+            <div class="cfb-season-headline cfb-team-name">
+                {%- if standing == 'champion' %}Last One Standing{% elif standing == 'out' %}Eliminated{% elif standing == 'one' %}Final Life{% else %}Still Standing{% endif -%}
+            </div>
+            <p class="cfb-season-derivation">
+                {%- if standing == 'champion' %}{{ total_picks }} {{ calls_word }} on the card, the last one standing.
+                {%- elif standing == 'out' %}{{ record.lost }} {{ 'loss' if record.lost == 1 else 'losses' }} on the card. The record of how it ran is below.
+                {%- elif standing == 'one' %}{{ record.lost }} {{ 'loss' if record.lost == 1 else 'losses' }} on the card. {{ available_teams|length }} teams still open on the board.
+                {%- elif total_picks == 0 %}No calls yet. {{ available_teams|length }} teams open on the board.
+                {%- else %}{{ available_teams|length }} teams still open on the board. Every call spends one.
+                {%- endif %}
+                {% if is_you %}<a href="{{ url_for('cfb.my_picks') }}">Review Your Card &rsaquo;</a>{% endif %}
+            </p>
+        </div>
+        <div class="cfb-season-lead-aside">
+            <span class="lives-indicator" aria-hidden="true">
+                {% for i in range(lives) %}<span class="life"></span>{% endfor %}
+                {% for i in range(2 - lives) %}<span class="life lost"></span>{% endfor %}
+            </span>
+            <span class="cfb-season-lives-label">{% if enrollment.is_eliminated %}Eliminated{% elif lives == 1 %}1 life left{% else %}{{ lives }} lives left{% endif %}</span>
+        </div>
+    </div>
+
+    {# The record line: one editorial line, never a stat grid. #}
+    {% if ledger_regular or ledger_playoff %}
+    <div class="cfb-week-summary animate-in">
+        <div class="cfb-summary-stat">
+            <span class="cfb-summary-num is-survived">{{ record.survived }}</span>
+            <span class="cfb-summary-label">Survived</span>
+        </div>
+        <span class="cfb-summary-sep" aria-hidden="true"></span>
+        <div class="cfb-summary-stat">
+            <span class="cfb-summary-num is-lost">{{ record.lost }}</span>
+            <span class="cfb-summary-label">Lost a life</span>
+        </div>
+        {% if record.pending %}
+        <span class="cfb-summary-sep" aria-hidden="true"></span>
+        <div class="cfb-summary-stat">
+            <span class="cfb-summary-num is-pending">{{ record.pending }}</span>
+            <span class="cfb-summary-label">Pending</span>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {% macro ledger_table(rows, week_col) %}
+    <div class="table-responsive">
+    <table class="table table-cfb cfb-field-table cfb-card-ledger mb-0">
+        <thead>
+            <tr>
+                <th>{{ week_col }}</th>
+                <th>Pick</th>
+                <th class="cfb-col-center">Spread</th>
+                <th class="cfb-col-center">Result</th>
+                <th class="cfb-col-center">Lives</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in rows %}
+            <tr{% if row.state == 'no_pick' %} class="cfb-row-nopick"{% endif %}>
+                <td><strong>{{ row.label }}</strong>{% if row.is_lead %}<span class="cfb-now-tag">This Week</span>{% endif %}</td>
+                {% if row.state == 'hidden' %}
+                {# Nothing to show in the data columns until the deadline: one cell. #}
+                <td class="cfb-cell-pick" colspan="4"><span class="text-muted fst-italic">Hidden until deadline</span></td>
+                {% else %}
+                <td class="cfb-cell-pick">
+                    {% if row.state == 'no_pick' %}
+                        <span class="cfb-nopick-note">No pick submitted</span>
+                    {% else %}
+                        <span class="cfb-team-name">{{ row.team_name }}</span>
+                        {% if row.opponent or row.is_autopick %}
+                        <span class="cfb-pick-meta">
+                            {% if row.opponent %}
+                            {% if row.was_home %}vs {{ row.opponent }}{% else %}@ {{ row.opponent }}{% endif %}
+                            {% if row.home_score is not none and row.away_score is not none %}
+                                <span class="cfb-pick-score">{% if row.was_home %}{{ row.home_score }}&ndash;{{ row.away_score }}{% else %}{{ row.away_score }}&ndash;{{ row.home_score }}{% endif %}</span>
+                            {% endif %}
+                            {% endif %}
+                            {% if row.is_autopick %}<span class="cfb-auto-tag">Auto</span>{% endif %}
+                        </span>
+                        {% endif %}
+                    {% endif %}
+                </td>
+                <td class="cfb-col-center">
+                    {% if row.spread is not none %}{{ "%+.1f"|format(row.spread) }}{% else %}<span class="cfb-result-none" aria-label="No line">&middot;</span>{% endif %}
+                </td>
+                <td class="cfb-col-center">
+                    {% if row.result == 'W' %}<span class="badge badge-survived">W</span>
+                    {% elif row.result == 'L' %}<span class="badge badge-lost-life">L</span>
+                    {% elif row.result == 'NC' %}<span class="badge badge-pending">NC</span>
+                    {% elif row.result == 'TBD' %}<span class="badge badge-pending">TBD</span>
+                    {% elif row.state == 'no_pick' and row.lost_life %}<span class="badge badge-lost-life">NO PICK</span>
+                    {% else %}<span class="cfb-result-none" aria-label="No result">&middot;</span>{% endif %}
+                </td>
+                <td class="cfb-col-center">
+                    {% if row.lives_after is not none %}{% with entry=row %}{% include 'cfb/_field_lives.html' %}{% endwith %}{% else %}<span class="cfb-result-none" aria-label="Not yet settled">&middot;</span>{% endif %}
+                </td>
+                {% endif %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    </div>
+    {% endmacro %}
+
+    <div class="row">
+        {# The ledger: the pick-by-pick record, the page's one center of gravity. #}
+        <div class="col-lg-7">
+            <div class="card mb-3 animate-in">
+                <div class="card-header">
+                    <div class="cfb-field-head">
+                        <h4 class="mb-0">The Card</h4>
+                        <span class="cfb-field-week">{{ total_picks }} {{ calls_word }}</span>
+                    </div>
+                </div>
+                <div class="card-body{% if ledger %} p-0{% endif %}">
+                    {% if ledger %}
+                        {% if ledger_regular %}{{ ledger_table(ledger_regular, 'Week') }}{% endif %}
+                        {% if ledger_playoff %}
+                        <div class="cfb-field-head px-3 pt-3 pb-2">
+                            <h5 class="mb-0">The Playoff</h5>
+                            <span class="cfb-field-week">{{ ledger_playoff|length }} {{ 'round' if ledger_playoff|length == 1 else 'rounds' }}</span>
+                        </div>
+                        {{ ledger_table(ledger_playoff, 'Round') }}
+                        {% endif %}
+                        <div class="cfb-spread-note mx-3 mb-3">
+                            A favorite counts its minus spread against them, an underdog for them. The total is the second tiebreaker after lives, and a week counts once its deadline passes.
+                        </div>
+                    {% else %}
+                        <p class="text-muted mb-0">No calls on the card yet.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        {# What is left to them: teams spent + the open board. #}
+        <div class="col-lg-5">
+            <div class="card mb-3 animate-in">
+                <div class="card-header">
+                    <div class="cfb-field-head">
+                        <h5 class="mb-0">Teams Spent{% if in_cfp %} (CFP){% endif %}</h5>
+                        <span class="cfb-field-week">{{ used_teams|length }} used</span>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if used_teams %}
+                    <div class="cfb-used-grid">
+                        {% for item in used_teams|sort(attribute='week') %}
+                        <span class="cfb-used-team">
+                            {{ item.team.name }}
+                            <span class="cfb-used-week">{{ item.week_display }}</span>
+                            {% if item.is_correct == True %}
+                                <span class="badge badge-survived badge-xs">W</span>
+                            {% elif item.is_correct == False %}
+                                <span class="badge badge-lost-life badge-xs">L</span>
+                            {% endif %}
+                        </span>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p class="text-muted mb-0">No teams spent yet{% if in_cfp %} in the CFP{% endif %}.</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="card animate-in">
+                <div class="card-header">
+                    <div class="cfb-field-head">
+                        <h5 class="mb-0">The Board</h5>
+                        <span class="cfb-field-week">{{ available_teams|length }} open</span>
+                    </div>
+                    {% if not in_cfp %}<p class="cfb-board-note">The board resets when the Playoff begins.</p>{% endif %}
+                </div>
+                <div class="card-body">
+                    {% if in_cfp %}
+                        {% if available_teams %}
+                            <span class="cfb-eyebrow d-block mb-2">Open This Round ({{ available_teams|length }})</span>
+                            <div class="cfb-team-pool mb-3">
+                                {% for team in available_teams|sort(attribute='name') %}
+                                <span class="cfb-team-chip">{{ team.name }}</span>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <p class="text-muted">No teams open this round.</p>
+                        {% endif %}
+                        {% if cfp_teams_on_bye %}
+                            <span class="cfb-eyebrow d-block mb-2">On Bye ({{ cfp_teams_on_bye|length }})</span>
+                            <div class="cfb-team-pool mb-3">
+                                {% for team in cfp_teams_on_bye|sort(attribute='name') %}
+                                <span class="cfb-team-chip">{{ team.name }} <span class="cfb-team-chip-note">bye</span></span>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                        {% if cfp_eliminated_teams %}
+                            <span class="cfb-eyebrow d-block mb-2">Out ({{ cfp_eliminated_teams|length }})</span>
+                            <div class="cfb-team-pool">
+                                {% for team in cfp_eliminated_teams|sort(attribute='name') %}
+                                <span class="cfb-team-chip is-out">{{ team.name }}</span>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    {% elif teams_by_conference %}
+                        {# Flat conference groups (the room landing's Pool grammar), never
+                           the owner's accordion: an inspection page reads at a glance. #}
+                        <div class="cfb-pool-groups mt-0">
+                            {% for conf_name, teams in teams_by_conference.items()|sort %}
+                            <div class="cfb-pool-conf">
+                                <div class="cfb-pool-conf-head">
+                                    <span class="cfb-pool-conf-name">{{ conf_name }}</span>
+                                    <span class="cfb-conf-count">{{ teams|length }}</span>
+                                </div>
+                                <div class="cfb-team-pool">
+                                    {% for team in teams|sort(attribute='name') %}
+                                    <span class="cfb-team-chip">{{ team.name }}</span>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <p class="text-muted mb-0">No teams remaining for {{ phase_description }}.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -3,7 +3,7 @@
     {% for e in already_out %}
     <li class="cfb-out-player">
         <span class="cfb-out-avatar" aria-hidden="true">{{ e.user.get_avatar() }}</span>
-        <span class="cfb-out-name">{{ e.get_display_name() }}</span>
+        <span class="cfb-out-name"><a class="cfb-name-link" href="{{ url_for('cfb.player', enrollment_id=e.id) }}">{{ e.get_display_name() }}</a></span>
         {% if e.out_week %}<span class="cfb-out-week">{{ get_week_display_name(e.out_week) }}</span>{% endif %}
     </li>
     {% endfor %}

@@ -32,7 +32,7 @@
                     {% for enrollment in enrollments %}
                     <tr class="{% if active_week and not enrollment.is_eliminated and enrollment.user_id not in picks_by_user %}table-warning{% endif %}">
                         <td>
-                            <strong>{{ enrollment.get_display_name() }}</strong>
+                            <strong><a class="cfb-name-link" href="{{ url_for('cfb.player', enrollment_id=enrollment.id) }}">{{ enrollment.get_display_name() }}</a></strong>
                             {% if enrollment.user.username != enrollment.get_display_name() %}
                                 <small class="text-muted">({{ enrollment.user.username }})</small>
                             {% endif %}

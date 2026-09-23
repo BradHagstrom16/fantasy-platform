@@ -44,7 +44,7 @@
                     {% for enrollment in enrollments %}
                     <tr class="{% if not enrollment.has_paid %}table-warning{% endif %}">
                         <td>
-                            <strong>{{ enrollment.get_display_name() }}</strong>
+                            <strong><a class="cfb-name-link" href="{{ url_for('cfb.player', enrollment_id=enrollment.id) }}">{{ enrollment.get_display_name() }}</a></strong>
                             {% if enrollment.is_admin %}
                                 <span class="cfb-admin-chip">Admin</span>
                             {% endif %}

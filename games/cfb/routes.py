@@ -25,9 +25,10 @@ from sqlalchemy.orm import contains_eager, joinedload
 
 from extensions import db
 from games.cfb import cfb_bp
-from games.cfb.constants import FBS_MASTER_TEAMS, TEAM_CONFERENCES
+from games.cfb.constants import FBS_MASTER_TEAMS
 from games.cfb.models import CfbEnrollment, CfbGame, CfbPick, CfbTeam, CfbWeek
 from games.cfb.services import board as board_service
+from games.cfb.services.card import build_player_card, build_season_ledger
 from games.cfb.services.game_logic import (
     calculate_cumulative_spread,
     get_elimination_weeks,
@@ -58,13 +59,11 @@ from games.cfb.utils import (
     format_deadline_short,
     format_relative,
     get_cfp_eliminated_teams,
-    get_cfp_teams_in_week,
     get_current_time,
     get_display_helpers,
-    get_playoff_teams,
     get_utc_time,
     get_week_display_name,
-    get_week_short_label,
+    is_autopick,
     is_week_playoff,
     make_aware,
     parse_form_datetime,
@@ -523,8 +522,7 @@ def weekly_results(week_number=None):
         .all()
     )
     for pick in picks:
-        pick._pool_created_at = to_pool_time(pick.created_at)
-        pick.is_autopick = safe_is_after(pick._pool_created_at, week.deadline)
+        pick.is_autopick = is_autopick(pick, week)
 
     games = CfbGame.query.filter_by(week_id=week.id).all()
     game_results = {}
@@ -571,6 +569,7 @@ def weekly_results(week_number=None):
             enrollment.get_display_name() if enrollment
             else pick.user.username
         )
+        pick.enrollment_id = enrollment.id if enrollment else None
 
     # A No Contest pick is a permanent push: never graded (is_correct
     # stays None), counts as survived, and must not read as pending.
@@ -999,169 +998,25 @@ def my_picks():
         user_id=current_user.id, season_year=season_year
     ).first()
 
-    current_week = CfbWeek.query.filter_by(is_active=True).first()
-    in_cfp = current_week and is_week_playoff(current_week)
-    # Your Card is about the week the room leads with (the reveal week
-    # while it is unfinished), not the week that happens to be open.
-    display_week = room_weeks().lead or current_week
+    return render_template('cfb/my_picks.html', **build_player_card(current_user.id, enrollment))
 
-    user_picks = (
-        CfbPick.query.filter_by(user_id=current_user.id)
-        .join(CfbWeek)
-        .options(contains_eager(CfbPick.week))
-        .order_by(CfbWeek.week_number)
-        .all()
+
+@cfb_bp.route('/player/<int:enrollment_id>')
+def player(enrollment_id):
+    """One member's card, readable by anyone (public, like standings).
+
+    Only weeks whose deadline has passed show a pick (DESIGN.md 9.9);
+    the open pick week is a hidden row for an active player, the owner
+    included. An id from another season is a 404, never a stale page.
+    """
+    season_year = current_app.config.get('CFB_SEASON_YEAR', 2026)
+    enrollment = db.first_or_404(
+        select(CfbEnrollment).filter_by(id=enrollment_id, season_year=season_year)
     )
-
-    # Batch the per-pick game lookup into one query (was N+1 via
-    # get_game_for_team per pick) — mirrors the champion-dossier pattern.
-    pick_week_ids = {p.week_id for p in user_picks}
-    games_by_week_team = {}
-    if pick_week_ids:
-        for game in CfbGame.query.filter(CfbGame.week_id.in_(pick_week_ids)).all():
-            if game.home_team_id:
-                games_by_week_team[(game.week_id, game.home_team_id)] = game
-            if game.away_team_id:
-                games_by_week_team[(game.week_id, game.away_team_id)] = game
-
-    for pick in user_picks:
-        pick.week_display = {
-            'display_name': get_week_display_name(pick.week),
-            'short_label': get_week_short_label(pick.week),
-            'badge_type': 'playoff' if is_week_playoff(pick.week) else (
-                'conference' if pick.week.week_number == 15 else None
-            ),
-        }
-
-        game = games_by_week_team.get((pick.week_id, pick.team_id))
-        if game:
-            pick.spread_data = {'team_spread': game.get_spread_for_team(pick.team_id)}
-        else:
-            pick.spread_data = None
-
-    all_teams = CfbTeam.query.order_by(CfbTeam.name).all()
-
-    if in_cfp:
-        relevant_picks = [p for p in user_picks if is_week_playoff(p.week)]
-        phase_description = "CFP Phase"
-    else:
-        relevant_picks = [p for p in user_picks if not is_week_playoff(p.week)]
-        phase_description = "Regular Season"
-
-    used_team_ids = {pick.team_id for pick in relevant_picks}
-
-    used_teams = []
-    available_teams = []
-    teams_by_conference = {}
-
-    cfp_eliminated_teams = []
-    cfp_teams_on_bye = []
-
-    if in_cfp:
-        eliminated_names = get_cfp_eliminated_teams()
-        teams_playing_this_week = get_cfp_teams_in_week(current_week)
-        playoff_team_names = set(get_playoff_teams())
-
-        for team in all_teams:
-            if team.name not in playoff_team_names:
-                continue
-            if team.id in used_team_ids:
-                for pick in relevant_picks:
-                    if pick.team_id == team.id:
-                        used_teams.append({
-                            'team': team,
-                            'week': pick.week.week_number,
-                            'week_display': pick.week_display['display_name'],
-                            'is_correct': pick.is_correct,
-                        })
-                        break
-            elif team.name in eliminated_names:
-                cfp_eliminated_teams.append(team)
-            elif team.name not in teams_playing_this_week:
-                cfp_teams_on_bye.append(team)
-            else:
-                available_teams.append(team)
-    else:
-        for team in all_teams:
-            if team.id in used_team_ids:
-                for pick in relevant_picks:
-                    if pick.team_id == team.id:
-                        used_teams.append({
-                            'team': team,
-                            'week': pick.week.week_number,
-                            'week_display': pick.week_display['display_name'],
-                            'is_correct': pick.is_correct,
-                        })
-                        break
-            else:
-                available_teams.append(team)
-                conference = team.get_conference()
-                if conference not in teams_by_conference:
-                    teams_by_conference[conference] = []
-                teams_by_conference[conference].append(team)
-
-    all_conferences = set()
-    conferences_with_teams = 0
-    conference_status = {}
-    conference_warnings = []
-
-    if not in_cfp:
-        for conf in TEAM_CONFERENCES.values():
-            if conf != 'Independent':
-                all_conferences.add(conf)
-
-        for conf in sorted(all_conferences):
-            team_count = len(teams_by_conference.get(conf, []))
-            conference_status[conf] = {'count': team_count}
-            if team_count > 0:
-                conferences_with_teams += 1
-            if conf != 'Independent':
-                if team_count == 1:
-                    team_name = teams_by_conference[conf][0].name
-                    conference_warnings.append(f"Only {team_name} remaining for {conf} championship")
-                elif team_count == 0:
-                    conference_warnings.append(f"No teams available for {conf} championship")
-
-    total_picks = len(user_picks)
-    correct_picks = sum(1 for p in user_picks if p.is_correct is True)
-    incorrect_picks = sum(1 for p in user_picks if p.is_correct is False)
-    pending_picks = sum(1 for p in user_picks if p.is_correct is None)
-    total_conferences = len(all_conferences)
-
-    current_week_display = None
-    if display_week:
-        current_week_display = {
-            'display_name': get_week_display_name(display_week),
-            'short_label': get_week_short_label(display_week),
-            'badge_type': 'playoff' if is_week_playoff(display_week) else (
-                'conference' if display_week.week_number == 15 else None
-            ),
-            'progress_text': get_week_display_name(display_week),
-        }
-
-    return render_template(
-        'cfb/my_picks.html',
-        lead_week_id=display_week.id if display_week else None,
-        enrollment=enrollment,
-        user_picks=user_picks,
-        used_teams=used_teams,
-        available_teams=available_teams,
-        teams_by_conference=teams_by_conference,
-        conference_status=conference_status,
-        conference_warnings=conference_warnings,
-        conferences_with_teams=conferences_with_teams,
-        total_conferences=total_conferences,
-        current_week=current_week,
-        current_week_display=current_week_display,
-        in_cfp=in_cfp,
-        phase_description=phase_description,
-        total_picks=total_picks,
-        correct_picks=correct_picks,
-        incorrect_picks=incorrect_picks,
-        pending_picks=pending_picks,
-        cfp_eliminated_teams=cfp_eliminated_teams,
-        cfp_teams_on_bye=cfp_teams_on_bye,
-    )
+    is_you = current_user.is_authenticated and enrollment.user_id == current_user.id
+    card = build_player_card(enrollment.user_id, enrollment, revealed_only=True)
+    ledger = build_season_ledger(enrollment, card)
+    return render_template('cfb/player.html', is_you=is_you, **card, **ledger)
 
 
 # ============================================================================
@@ -1588,10 +1443,7 @@ def admin_users():
         )
         for pick in picks:
             # Transient autopick flag, mirroring the weekly_results route.
-            pick._pool_created_at = to_pool_time(pick.created_at)
-            pick.is_autopick = safe_is_after(
-                pick._pool_created_at, active_week.deadline
-            )
+            pick.is_autopick = is_autopick(pick, active_week)
             picks_by_user[pick.user_id] = pick
         # Eliminated players aren't expected to pick — count only live ones.
         active_enrollments = [e for e in enrollments if not e.is_eliminated]
