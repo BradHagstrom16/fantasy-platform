@@ -65,6 +65,7 @@ from games.cfb.utils import (
     get_utc_time,
     get_week_display_name,
     get_week_short_label,
+    is_autopick,
     is_week_playoff,
     make_aware,
     parse_form_datetime,
@@ -523,8 +524,7 @@ def weekly_results(week_number=None):
         .all()
     )
     for pick in picks:
-        pick._pool_created_at = to_pool_time(pick.created_at)
-        pick.is_autopick = safe_is_after(pick._pool_created_at, week.deadline)
+        pick.is_autopick = is_autopick(pick, week)
 
     games = CfbGame.query.filter_by(week_id=week.id).all()
     game_results = {}
@@ -1588,10 +1588,7 @@ def admin_users():
         )
         for pick in picks:
             # Transient autopick flag, mirroring the weekly_results route.
-            pick._pool_created_at = to_pool_time(pick.created_at)
-            pick.is_autopick = safe_is_after(
-                pick._pool_created_at, active_week.deadline
-            )
+            pick.is_autopick = is_autopick(pick, active_week)
             picks_by_user[pick.user_id] = pick
         # Eliminated players aren't expected to pick — count only live ones.
         active_enrollments = [e for e in enrollments if not e.is_eliminated]

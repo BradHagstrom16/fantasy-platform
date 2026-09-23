@@ -171,6 +171,15 @@ def safe_is_after(dt1, dt2):
     return dt1_aware > dt2_aware
 
 
+def is_autopick(pick, week):
+    """A pick written after the pool-tz deadline came from the autopick job.
+
+    ``created_at`` is naive UTC (the model's audit timestamp); the
+    deadline is pool wall clock, so both go through the readers first.
+    """
+    return safe_is_after(to_pool_time(pick.created_at), week.deadline)
+
+
 # ---------------------------------------------------------------------------
 # Display helpers — week names and CFP tracking
 # ---------------------------------------------------------------------------

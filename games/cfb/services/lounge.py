@@ -40,9 +40,8 @@ from games.cfb.utils import (
     get_current_time,
     get_utc_time,
     get_week_display_name,
+    is_autopick,
     make_aware,
-    safe_is_after,
-    to_pool_time,
 )
 from games.worldcup.services import lounge as worldcup_lounge
 
@@ -324,12 +323,6 @@ def _opponent_name(game, team_id) -> str:
     return game.get_home_team_display()
 
 
-def _is_autopick(pick, week) -> bool:
-    # Room idiom (weekly_results): created_at is a naive-UTC audit column;
-    # a pick written after the pool-tz deadline came from the autopick job.
-    return safe_is_after(to_pool_time(pick.created_at), week.deadline)
-
-
 # -- live-state assembly ----------------------------------------------------
 
 def _context_live(user, enrollment) -> dict:
@@ -527,7 +520,7 @@ def _summons_payload(week, week_label, deadline, now, beat, pick, outcome,
             )
         else:
             s['sentence'] = f'{team}. Your pick is final.'
-        if _is_autopick(pick, week):
+        if is_autopick(pick, week):
             s['autopick_note'] = (
                 f'{team} was assigned under the missed-pick rule.'
             )
