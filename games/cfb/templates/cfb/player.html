@@ -114,10 +114,12 @@
             {% for row in rows %}
             <tr{% if row.state == 'no_pick' %} class="cfb-row-nopick"{% endif %}>
                 <td><strong>{{ row.label }}</strong>{% if row.is_lead %}<span class="cfb-now-tag">This Week</span>{% endif %}</td>
+                {% if row.state == 'hidden' %}
+                {# Nothing to show in the data columns until the deadline: one cell. #}
+                <td class="cfb-cell-pick" colspan="4"><span class="text-muted fst-italic">Hidden until deadline</span></td>
+                {% else %}
                 <td class="cfb-cell-pick">
-                    {% if row.state == 'hidden' %}
-                        <span class="text-muted fst-italic">Hidden until deadline</span>
-                    {% elif row.state == 'no_pick' %}
+                    {% if row.state == 'no_pick' %}
                         <span class="cfb-nopick-note">No pick submitted</span>
                     {% else %}
                         <span class="cfb-team-name">{{ row.team_name }}</span>
@@ -148,6 +150,7 @@
                 <td class="cfb-col-center">
                     {% if row.lives_after is not none %}{% with entry=row %}{% include 'cfb/_field_lives.html' %}{% endwith %}{% else %}<span class="cfb-result-none" aria-label="Not yet settled">&middot;</span>{% endif %}
                 </td>
+                {% endif %}
             </tr>
             {% endfor %}
         </tbody>
