@@ -53,7 +53,7 @@
             <p class="cfb-season-derivation">
                 {%- if standing == 'champion' %}{{ total_picks }} {{ calls_word }} on the card, the last one standing.
                 {%- elif standing == 'out' %}{{ record.lost }} {{ 'loss' if record.lost == 1 else 'losses' }} on the card. The record of how it ran is below.
-                {%- elif standing == 'one' %}{{ record.lost }} {{ 'loss' if record.lost == 1 else 'losses' }} on the card.{{ available_teams|length }} teams still open on the board.
+                {%- elif standing == 'one' %}{{ record.lost }} {{ 'loss' if record.lost == 1 else 'losses' }} on the card. {{ available_teams|length }} teams still open on the board.
                 {%- elif total_picks == 0 %}No calls yet. {{ available_teams|length }} teams open on the board.
                 {%- else %}{{ available_teams|length }} teams still open on the board. Every call spends one.
                 {%- endif %}

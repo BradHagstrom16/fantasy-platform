@@ -224,7 +224,7 @@ def test_final_life_counts_the_losses_on_the_record(app, client, monkeypatch):
     monkeypatch.setenv('CFB_FAKE_NOW', '2026-09-16T12:00:00')   # W2 complete, W3 open
     with app.app_context():
         m = _season()
-        assert '1 loss on the card.' in _page(app, client, m['loser'])
+        assert re.search(r'1 loss on the card\. \d+ teams still open', _page(app, client, m['loser']))
         week2 = db.session.scalar(db.select(CfbWeek).filter_by(week_number=2))
         smu = db.session.scalar(db.select(CfbTeam).filter_by(name="SMU"))
         loser = db.session.get(CfbEnrollment, m['loser'])
@@ -240,7 +240,7 @@ def test_final_life_counts_the_losses_on_the_record(app, client, monkeypatch):
         db.session.commit()
         html = _page(app, client, m['loser'])
     assert 'Final Life' in html
-    assert '2 losses on the card.' in html
+    assert re.search(r'2 losses on the card\. \d+ teams still open', html)
     assert 'One loss' not in html
 
 
