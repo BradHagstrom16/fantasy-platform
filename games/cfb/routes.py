@@ -569,6 +569,7 @@ def weekly_results(week_number=None):
             enrollment.get_display_name() if enrollment
             else pick.user.username
         )
+        pick.enrollment_id = enrollment.id if enrollment else None
 
     # A No Contest pick is a permanent push: never graded (is_correct
     # stays None), counts as survived, and must not read as pending.

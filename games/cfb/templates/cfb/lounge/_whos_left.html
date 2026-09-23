@@ -9,7 +9,7 @@
 <ul class="wl-names">
   {% for r in rows %}
   <li{% if r.is_you %} class="wl-you"{% endif %}>
-    <span class="wl-name">{{ r.avatar }} {{ r.name }}{% if r.is_you %}<span class="roll-you-chip">YOU</span>{% endif %}</span>
+    <span class="wl-name">{{ r.avatar }} <a class="roll-name-link" href="{{ url_for('cfb.player', enrollment_id=r.enrollment_id) }}">{{ r.name }}</a>{% if r.is_you %}<span class="roll-you-chip">YOU</span>{% endif %}</span>
     {{ pips(r.lives) }}
   </li>
   {% endfor %}

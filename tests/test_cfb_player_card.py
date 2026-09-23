@@ -282,3 +282,153 @@ def test_is_autopick_reads_created_at_against_the_pool_deadline(app):
     with app.app_context():
         assert is_autopick(late, week) is True
         assert is_autopick(early, week) is False
+
+
+# == every member name is the door to their card ============================
+
+def _href(eid):
+    return f'href="/cfb/player/{eid}"'
+
+
+def test_room_names_link_to_the_card(app, client, monkeypatch):
+    monkeypatch.setenv('CFB_FAKE_NOW', WEEK2_OPEN)
+    with app.app_context():
+        m = _season()
+        standings = client.get('/cfb/').get_data(as_text=True)
+        results = client.get('/cfb/results/1').get_data(as_text=True)
+    for name in ('loser', 'waiter', 'auto', 'idle'):
+        link = f'<a class="cfb-name-link" {_href(m[name])}>{name.title()} Member</a>'
+        assert link in standings, name
+        assert link in results, name
+
+
+def test_cut_already_out_and_champion_names_link(app, client, monkeypatch):
+    monkeypatch.setenv('CFB_FAKE_NOW', '2026-09-16T12:00:00')   # W2 complete, W3 open
+    with app.app_context():
+        m = _season()
+        week2 = db.session.scalar(db.select(CfbWeek).filter_by(week_number=2))
+        smu = db.session.scalar(db.select(CfbTeam).filter_by(name='SMU'))
+        loser = db.session.get(CfbEnrollment, m['loser'])
+        make_pick(loser.user, week2, smu, created_at=W2_PICKED_AT)    # SMU loses: out
+        for game in week2.games:
+            game.home_team_won = True
+        week2.is_active = False
+        week3 = make_week(3, deadline=WEEK3_DEADLINE, is_active=True)
+        georgia = db.session.scalar(db.select(CfbTeam).filter_by(name='Georgia'))
+        make_game(week3, georgia, smu, spread=-6.0)
+        db.session.commit()
+        assert process_week_results(week2.id)['success'] is True
+        results2 = client.get('/cfb/results/2').get_data(as_text=True)
+        standings = client.get('/cfb/').get_data(as_text=True)
+        # Week 3 results: the loser is Already Out, and that name links too.
+        db.session.expire_all()
+        for game in week3.games:
+            game.home_team_won = True
+        db.session.commit()
+    monkeypatch.setenv('CFB_FAKE_NOW', '2026-09-20T12:00:00')
+    with app.app_context():
+        results3 = client.get('/cfb/results/3').get_data(as_text=True)
+    link = f'<a class="cfb-name-link" {_href(m["loser"])}>Loser Member</a>'
+    assert 'cfb-cut-name' in results2 and link in results2       # The Cut
+    assert 'badge-eliminated' in standings and link in standings   # the eliminated chips
+    assert 'cfb-out-name' in results3 and link in results3         # Already Out
+
+
+def test_champion_page_names_link(app, client, monkeypatch):
+    """One survivor and one fallen: the hero name, the summary line and
+    the fallen chips all open the members' cards."""
+    monkeypatch.setenv('CFB_FAKE_NOW', WEEK2_OPEN)
+    with app.app_context():
+        week1 = make_week(1, deadline=WEEK1_DEADLINE, is_complete=True)
+        champ = make_enrollment(make_user('champ'), display_name='Jordan Champ')
+        fallen = make_enrollment(make_user('fallen'), lives=0, eliminated=True,
+                                 display_name='Fallen Member')
+        team = make_team('Michigan')
+        make_pick(champ.user, week1, team, created_at=W1_PICKED_AT, is_correct=True)
+        db.session.commit()
+        cid, fid = champ.id, fallen.id
+        html = client.get('/cfb/').get_data(as_text=True)
+    assert 'championship-hero' in html
+    assert html.count(f'<a class="cfb-name-link" {_href(cid)}>Jordan Champ</a>') == 2   # hero + summary
+    assert f'<a class="cfb-name-link" {_href(fid)}>Fallen Member</a>' in html
+
+
+def test_admin_tables_link_names(app, monkeypatch):
+    monkeypatch.setenv('CFB_FAKE_NOW', WEEK2_OPEN)
+    with app.app_context():
+        m = _season()
+        make_user('padmin', is_admin=True)
+        db.session.commit()
+        admin = _as(app, 'padmin')
+        users = admin.get('/cfb/admin/users').get_data(as_text=True)
+        payments = admin.get('/cfb/admin/payments').get_data(as_text=True)
+    link = f'<a class="cfb-name-link" {_href(m["waiter"])}>Waiter Member</a>'
+    assert link in users and link in payments
+
+
+def _cfb_era(monkeypatch):
+    from tests._registry_helpers import set_is_featured, set_status
+    set_status(monkeypatch, 'worldcup', 'completed')
+    set_is_featured(monkeypatch, 'worldcup', False)
+    set_status(monkeypatch, 'cfb', 'open')
+    set_is_featured(monkeypatch, 'cfb', True)
+
+
+LIVE_ENDGAME = {'ENVIRONMENT': 'testing', 'CFB_FAKE_NOW': '2026-09-24T17:00:00',
+                'DOCKET_FAKE_NOW': '2026-09-24T17:00:00'}
+POST_SEASON = {'ENVIRONMENT': 'testing', 'CFB_FAKE_NOW': '2027-01-20T00:00:00',
+               'DOCKET_FAKE_NOW': '2027-01-20T00:00:00'}
+
+
+def test_lounge_rows_link_names_and_prose_stays_plain(app, monkeypatch):
+    """Who's Left (endgame names), the compact standings, and the post-season
+    champion + final field carry the link; the cuts sentence does not."""
+    import os
+    from unittest.mock import patch
+    _cfb_era(monkeypatch)
+    with app.app_context():
+        viewer = make_user('viewer')
+        make_enrollment(viewer, display_name='Viewer Member')
+        rival = make_enrollment(make_user('rival'), lives=1, display_name='Rival Member')
+        for i in range(10):
+            make_enrollment(make_user(f'gone{i}'), lives=0, eliminated=True,
+                            display_name=f'Gone {i}')
+        make_week(13, deadline=datetime(2026, 9, 26, 11, 0), is_active=True)
+        db.session.commit()
+        rid, auth_id = rival.id, viewer.auth_id
+    client = app.test_client()
+    with client.session_transaction() as sess:
+        sess['_user_id'] = auth_id
+        sess['_fresh'] = True
+    with patch.dict(os.environ, LIVE_ENDGAME):
+        html = client.get('/').get_data(as_text=True)
+    assert 'home-shell--live' in html
+    link = f'<a class="roll-name-link" {_href(rid)}>Rival Member</a>'
+    assert html.count(link) == 2            # Who's Left row + the standings row
+    assert 'cfb-name-link' not in html      # the lounge never wears a room class
+
+
+def test_post_lounge_champion_and_final_field_link(app, monkeypatch):
+    import os
+    from unittest.mock import patch
+    _cfb_era(monkeypatch)
+    with app.app_context():
+        viewer = make_user('viewer')
+        make_enrollment(viewer, lives=0, eliminated=True, display_name='Viewer Member')
+        champ = make_enrollment(make_user('champ'), display_name='Jordan Champ')
+        make_enrollment(make_user('other'), lives=0, eliminated=True, display_name='Other Member')
+        week = None
+        for n in range(1, 15):
+            week = make_week(n, deadline=datetime(2026, 9, 5, 11, 0), is_complete=True)
+        make_pick(champ.user, week, make_team('Michigan'), created_at=W1_PICKED_AT, is_correct=True)
+        db.session.commit()
+        cid, auth_id = champ.id, viewer.auth_id
+    client = app.test_client()
+    with client.session_transaction() as sess:
+        sess['_user_id'] = auth_id
+        sess['_fresh'] = True
+    with patch.dict(os.environ, POST_SEASON):
+        html = client.get('/').get_data(as_text=True)
+    assert 'home-shell--post' in html
+    link = f'<a class="roll-name-link" {_href(cid)}>Jordan Champ</a>'
+    assert html.count(link) == 2            # the champion banner + the final field

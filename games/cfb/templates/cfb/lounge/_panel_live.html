@@ -33,7 +33,7 @@
       <div class="roll-rank{% if row.rank == 1 %} roll-rank--gold{% endif %}">{{ row.rank }}</div>
       <div class="roll-meta">
         <div class="roll-name">
-          {{ row.avatar }}{{ row.name }}
+          {{ row.avatar }}<a class="roll-name-link" href="{{ url_for('cfb.player', enrollment_id=row.enrollment_id) }}">{{ row.name }}</a>
           {% if row.is_you %}<span class="roll-you-chip">YOU</span>{% endif %}
         </div>
         <div class="roll-tagline">{{ row.tagline }}</div>

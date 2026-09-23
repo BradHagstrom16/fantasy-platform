@@ -10,7 +10,7 @@
 
 <div class="championship-hero animate-in">
     <span class="cfb-eyebrow">One Remains</span>
-    <span class="champion-name"><span class="me-2">{{ enrollments[0].user.get_avatar() }}</span>{{ enrollments[0].get_display_name() }}</span>
+    <span class="champion-name"><span class="me-2">{{ enrollments[0].user.get_avatar() }}</span><a class="cfb-name-link" href="{{ url_for('cfb.player', enrollment_id=enrollments[0].id) }}">{{ enrollments[0].get_display_name() }}</a></span>
     <span class="champion-subtitle">CFB Survivor Pool Champion</span>
     <p>Outlasting {{ eliminated_enrollments|length }} competitors through {{ weeks_played }} weeks of college football.</p>
     <span class="prize-badge">Winner: ${{ prize_pool }}</span>
@@ -108,7 +108,7 @@
                     <div class="row g-2">
                         {% for e in eliminated_enrollments %}
                         <div class="col-6 col-md-3">
-                            <span class="badge badge-eliminated w-100 p-2"><span class="me-1">{{ e.user.get_avatar() }}</span>{{ e.get_display_name() }}</span>
+                            <span class="badge badge-eliminated w-100 p-2"><span class="me-1">{{ e.user.get_avatar() }}</span><a class="cfb-name-link" href="{{ url_for('cfb.player', enrollment_id=e.id) }}">{{ e.get_display_name() }}</a></span>
                         </div>
                         {% endfor %}
                     </div>
@@ -128,7 +128,7 @@
                         <li class="mb-2"><strong>Participants:</strong> {{ total_participants }}</li>
                         <li class="mb-2"><strong>Prize Pool:</strong> ${{ prize_pool }}</li>
                         <li class="mb-2"><strong>Weeks Played:</strong> {{ weeks_played }}</li>
-                        <li><strong>Champion:</strong> {{ enrollments[0].get_display_name() }}</li>
+                        <li><strong>Champion:</strong> <a class="cfb-name-link" href="{{ url_for('cfb.player', enrollment_id=enrollments[0].id) }}">{{ enrollments[0].get_display_name() }}</a></li>
                     </ul>
                 </div>
             </div>
@@ -327,7 +327,7 @@
                             {% for enrollment in enrollments %}
                             <tr class="{% if current_user.is_authenticated and enrollment.user_id == current_user.id %}row-current-user{% endif %}">
                                 <td class="cfb-rank-cell">{{ standings_ranks[enrollment.id] }}</td>
-                                <td><span class="me-1">{{ enrollment.user.get_avatar() }}</span><strong>{{ enrollment.get_display_name() }}</strong>{% if current_user.is_authenticated and enrollment.user_id == current_user.id %}<span class="cfb-you-tag">You</span>{% endif %}</td>
+                                <td><span class="me-1">{{ enrollment.user.get_avatar() }}</span><strong><a class="cfb-name-link" href="{{ url_for('cfb.player', enrollment_id=enrollment.id) }}">{{ enrollment.get_display_name() }}</a></strong>{% if current_user.is_authenticated and enrollment.user_id == current_user.id %}<span class="cfb-you-tag">You</span>{% endif %}</td>
                                 <td>
                                     <span class="lives-indicator">
                                         {% for i in range(enrollment.lives_remaining) %}
@@ -393,7 +393,7 @@
             <div class="row g-2 mt-2 animate-in stagger-5">
                 {% for enrollment in eliminated_enrollments %}
                 <div class="col-6 col-md-4">
-                    <span class="badge badge-eliminated w-100 p-2"><span class="me-1">{{ enrollment.user.get_avatar() }}</span>{{ enrollment.get_display_name() }}</span>
+                    <span class="badge badge-eliminated w-100 p-2"><span class="me-1">{{ enrollment.user.get_avatar() }}</span><a class="cfb-name-link" href="{{ url_for('cfb.player', enrollment_id=enrollment.id) }}">{{ enrollment.get_display_name() }}</a></span>
                 </div>
                 {% endfor %}
             </div>

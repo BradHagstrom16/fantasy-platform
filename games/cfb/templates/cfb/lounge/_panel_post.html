@@ -13,7 +13,7 @@
   {% if g.champion %}
   <div class="summons champ-banner">
     <div class="champ-eyebrow">{% if g.champion.is_tiebreak %}◈ Champion ◈{% else %}◈ Sole Survivor ◈{% endif %}</div>
-    <div class="champ-name">{{ g.champion.name }}</div>
+    <div class="champ-name"><a class="roll-name-link" href="{{ url_for('cfb.player', enrollment_id=g.champion.enrollment_id) }}">{{ g.champion.name }}</a></div>
     <div class="champ-rule" aria-hidden="true"></div>
     <p class="champ-evidence">{{ g.champion.evidence }}</p>
     {% if g.champion.detail %}<div class="champ-detail">{{ g.champion.detail }}</div>{% endif %}
@@ -29,7 +29,7 @@
     <ul class="wl-names">
       {% for r in g.final_field.rows %}
       <li{% if r.is_you %} class="wl-you"{% endif %}>
-        <span class="wl-name">{{ r.avatar }} {{ r.name }}{% if r.is_you %}<span class="roll-you-chip">YOU</span>{% endif %}</span>
+        <span class="wl-name">{{ r.avatar }} <a class="roll-name-link" href="{{ url_for('cfb.player', enrollment_id=r.enrollment_id) }}">{{ r.name }}</a>{% if r.is_you %}<span class="roll-you-chip">YOU</span>{% endif %}</span>
         {{ pips(r.lives) }}
       </li>
       {% endfor %}

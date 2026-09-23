@@ -761,6 +761,7 @@ def _field_rows(standings_active, user) -> list[dict]:
     viewer_id = getattr(user, 'id', None)
     return [
         {
+            'enrollment_id': e.id,
             'name': e.get_display_name(),
             'avatar': e.user.get_avatar(),
             'lives': e.lives_remaining,
@@ -800,6 +801,7 @@ def _standings_rows(standings_active, ranks, user) -> list[dict]:
         lives_word = 'One life' if e.lives_remaining == 1 else 'Two lives'
         return {
             'rank': ranks[e.id],
+            'enrollment_id': e.id,
             'name': e.get_display_name(),
             'avatar': e.user.get_avatar(),
             'lives': e.lives_remaining,
@@ -888,6 +890,7 @@ def _context_post(user, enrollment) -> dict:
                 f'{get_week_display_name(final_pick.week)}.'
             )
         champion = {
+            'enrollment_id': champ_enrollment.id,
             'name': champion_name,
             'is_tiebreak': is_tiebreak,
             'evidence': evidence,

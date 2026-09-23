@@ -122,7 +122,7 @@
             {% for e in eliminated_this_week %}
                 <span class="cfb-cut-player">
                     <span class="cfb-cut-avatar" aria-hidden="true">{{ e.user.get_avatar() }}</span>
-                    <span class="cfb-cut-name">{{ e.get_display_name() }}</span>
+                    <span class="cfb-cut-name"><a class="cfb-name-link" href="{{ url_for('cfb.player', enrollment_id=e.id) }}">{{ e.get_display_name() }}</a></span>
                     <span class="badge badge-eliminated badge-xs">OUT</span>
                 </span>
             {% endfor %}
@@ -160,7 +160,7 @@
                         {% set game = game_results.get(pick.team_id) %}
                         <tr class="{% if current_user.is_authenticated and pick.user_id == current_user.id %}row-current-user{% endif %}">
                             <td class="cfb-cell-player">
-                                <span class="cfb-avatar" aria-hidden="true">{{ pick.user.get_avatar() }}</span>{{ pick.display_name }}
+                                <span class="cfb-avatar" aria-hidden="true">{{ pick.user.get_avatar() }}</span>{% if pick.enrollment_id %}<a class="cfb-name-link" href="{{ url_for('cfb.player', enrollment_id=pick.enrollment_id) }}">{{ pick.display_name }}</a>{% else %}{{ pick.display_name }}{% endif %}
                                 {% if current_user.is_authenticated and pick.user_id == current_user.id %}<span class="cfb-you-tag">You</span>{% endif %}
                             </td>
                             <td class="cfb-cell-pick">
@@ -197,7 +197,7 @@
                         {% for enrollment in field_no_pick %}
                         <tr class="cfb-row-nopick {% if current_user.is_authenticated and enrollment.user_id == current_user.id %}row-current-user{% endif %}">
                             <td class="cfb-cell-player">
-                                <span class="cfb-avatar" aria-hidden="true">{{ enrollment.user.get_avatar() }}</span>{{ enrollment.get_display_name() }}
+                                <span class="cfb-avatar" aria-hidden="true">{{ enrollment.user.get_avatar() }}</span><a class="cfb-name-link" href="{{ url_for('cfb.player', enrollment_id=enrollment.id) }}">{{ enrollment.get_display_name() }}</a>
                                 {% if current_user.is_authenticated and enrollment.user_id == current_user.id %}<span class="cfb-you-tag">You</span>{% endif %}
                             </td>
                             <td class="cfb-cell-pick"><span class="cfb-nopick-note">No pick submitted</span></td>
