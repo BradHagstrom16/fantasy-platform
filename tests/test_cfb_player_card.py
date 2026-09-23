@@ -218,6 +218,32 @@ def test_eliminated_player_shows_the_out_week(app, client, monkeypatch):
     assert '<strong>Week 3</strong>' not in html   # no row for the open week; the eyebrow may name it
 
 
+def test_final_life_counts_the_losses_on_the_record(app, client, monkeypatch):
+    """One life left is not one loss: a whole-pool revival hands a member
+    who lost twice one life back, and the lead must agree with the record."""
+    monkeypatch.setenv('CFB_FAKE_NOW', '2026-09-16T12:00:00')   # W2 complete, W3 open
+    with app.app_context():
+        m = _season()
+        assert '1 loss on the card.' in _page(app, client, m['loser'])
+        week2 = db.session.scalar(db.select(CfbWeek).filter_by(week_number=2))
+        smu = db.session.scalar(db.select(CfbTeam).filter_by(name="SMU"))
+        loser = db.session.get(CfbEnrollment, m['loser'])
+        make_pick(loser.user, week2, smu, created_at=W2_PICKED_AT)
+        for game in week2.games:
+            game.home_team_won = True             # SMU loses: the second loss
+        week2.is_active = False
+        make_week(3, deadline=WEEK3_DEADLINE, is_active=True)
+        db.session.commit()
+        assert process_week_results(week2.id)['success'] is True
+        loser = db.session.get(CfbEnrollment, m['loser'])
+        loser.is_eliminated, loser.lives_remaining = False, 1   # the revival's write
+        db.session.commit()
+        html = _page(app, client, m['loser'])
+    assert 'Final Life' in html
+    assert '2 losses on the card.' in html
+    assert 'One loss' not in html
+
+
 def test_weeks_after_elimination_carry_no_row(app, client, monkeypatch):
     """Out in Week 1, Week 2 completes without them: no "No pick submitted"
     row for a week they owed nothing to (and none for an unfinished one)."""
