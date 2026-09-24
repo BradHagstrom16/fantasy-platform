@@ -658,6 +658,8 @@ html[data-app-state="subscribed"] .app-panel[data-state="subscribed"] {
   place-items: center;
   width: 2.25rem;
   height: 2.25rem;
+  min-width: 44px;
+  min-height: 44px; /* the touch floor (DESIGN.md) */
   border: 0;
   border-radius: calc(var(--radius) - 2px);
   background: transparent;
