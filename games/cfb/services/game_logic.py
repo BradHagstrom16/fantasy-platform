@@ -6,6 +6,7 @@ cumulative spread calculation.
 """
 
 import logging
+from collections import Counter
 
 from flask import current_app
 from sqlalchemy import select
@@ -142,6 +143,47 @@ def get_official_standings(season_year):
         ranks[enrollment.id] = rank
         prev_key, prev_rank = key, rank
     return enrollments, ranks
+
+
+# ---------------------------------------------------------------------------
+# Pick distribution
+# ---------------------------------------------------------------------------
+
+def pick_distribution(picks, games):
+    """Who the field backed in a week: one row per picked team,
+    ``{'name', 'spread', 'result', 'count'}`` with ``result`` in
+    ``'W' | 'L' | 'NC' | None`` (None while the game is pending).
+
+    Ordered by count, then team name; never by spread, which would read as
+    a recommendation (DESIGN.md §1.4). ``picks`` are the week's CfbPicks
+    (team loaded), ``games`` its CfbGames. The Results page and the
+    announcement's pick-split board both read this one ordering.
+    """
+    game_of = {}
+    for game in games:
+        for team_id in (game.home_team_id, game.away_team_id):
+            if team_id:
+                game_of[team_id] = game
+    rows = []
+    for team_id, count in Counter(p.team_id for p in picks).items():
+        sample = next(p for p in picks if p.team_id == team_id)
+        game = game_of.get(team_id)
+        if game is not None and game.is_no_contest:
+            result = 'NC'
+        elif sample.is_correct is True:
+            result = 'W'
+        elif sample.is_correct is False:
+            result = 'L'
+        else:
+            result = None
+        rows.append({
+            'name': sample.team.name,
+            'spread': game.get_spread_for_team(team_id) if game else None,
+            'result': result,
+            'count': count,
+        })
+    rows.sort(key=lambda row: (-row['count'], row['name'].casefold()))
+    return rows
 
 
 # ---------------------------------------------------------------------------

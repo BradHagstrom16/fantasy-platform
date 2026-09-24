@@ -308,8 +308,17 @@ def _platform_letters(app):
 
     from core.admin.announce import render_announcement
     with app.test_request_context():
-        plain, html = render_announcement(
-            'Big news', 'Hello everyone.\n\nSee you Saturday.')
+        # Every markup construct, so the rendered-output locks below (no
+        # dash, one CTA, palette, no side-stripe) cover the formatted blocks.
+        plain, html = render_announcement('Big news', (
+            '## Week 3: Carnage\n\nHello **everyone**, *truly*.\n'
+            'See [the results](https://cccfantasy.com/cfb/results).\n\n'
+            '- Illinois (-6) claimed 3 lives.\n- Oklahoma (-5.5) too.\n\n'
+            '### On iPhone\n3. Open Safari.\n4. Tap Share.\n\n'
+            '> Never again.\n> -- cubbies22\n\n'
+            '!! **A friendly reminder:** pick a team to win outright.\n\n'
+            '[[stat 30 | Survivors left]]\n[[stat 4 | Lives claimed]]\n\n'
+            '---\n\nSee you Saturday.'))
     out['platform-announce'] = {'subject': 'Big news', 'plain': plain,
                                 'html': html}
     return out

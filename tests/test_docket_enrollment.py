@@ -98,14 +98,15 @@ def test_docket_has_announce_resolver(app):
         assert entry.slug in _RESOLVERS
 
 
-def test_docket_announce_audience_all_includes_docket_members(app):
+def test_docket_announce_every_game_includes_docket_members(app):
     user = make_user('docketuser')
     make_enrollment(user, display_name='The Gavel')
     db.session.commit()
     from core.admin.announce import resolve_recipients
-    recipients = resolve_recipients('all', active_only=False)
+    from games.registry import GAMES
+    recipients = resolve_recipients([e.slug for e in GAMES], active_only=False)
     assert ('docketuser@test.com', 'The Gavel') in [
         (r.email, r.name) for r in recipients]
     # active_only is accepted (and ignored — no elimination concept).
-    active = resolve_recipients('docket', active_only=True)
+    active = resolve_recipients(['docket'], active_only=True)
     assert [r.email for r in active] == ['docketuser@test.com']

@@ -101,3 +101,58 @@ def commish_note_paragraphs(state: str, champion_team=None) -> list[str]:
         for block in re.split(r'\n\s*\n', body)
         if block.strip()
     ]
+
+
+# Where an announcement's one button points (core/admin/announce.py builds
+# the URL). Club business, so every choice wears the club gold.
+ANNOUNCEMENT_CTAS = ('lounge', 'survivor', 'docket', 'none')
+
+
+class Announcement(db.Model):
+    """One Commish announcement: a draft until it is sent, then the record
+    of what went out (the sent archive). Status is derived from
+    ``sent_at``, never stored: a row with ``sent_at`` set is immutable, and
+    the send claims it with a conditional UPDATE so it can go out once.
+    """
+    __tablename__ = 'announcements'
+
+    id = db.Column(db.Integer, primary_key=True)
+    subject = db.Column(db.String(200), nullable=False, default='')
+    # The letter's H1; None means the subject is the headline.
+    headline = db.Column(db.String(200), nullable=True)
+    # The inbox preview line (Letter.preheader); None means none.
+    preheader = db.Column(db.String(200), nullable=True)
+    cta = db.Column(db.String(16), nullable=False, default='lounge')
+    # Registry slugs, comma-joined ('cfb,docket'), deduplicated at send.
+    audiences = db.Column(db.String(64), nullable=False, default='')
+    recipient_filter = db.Column(db.String(8), nullable=False, default='all')
+    # The announcement markup (utils/letter_markup.py).
+    body = db.Column(db.Text, nullable=False, default='')
+    created_by_id = db.Column(db.Integer, db.ForeignKey('users.id'),
+                              nullable=False, index=True)
+    created_at = db.Column(db.DateTime(timezone=True), nullable=False,
+                           default=lambda: datetime.now(UTC))
+    updated_at = db.Column(db.DateTime(timezone=True), nullable=False,
+                           default=lambda: datetime.now(UTC),
+                           onupdate=lambda: datetime.now(UTC))
+    sent_at = db.Column(db.DateTime(timezone=True), nullable=True, index=True)
+    recipient_count = db.Column(db.Integer, nullable=True)
+    sent_count = db.Column(db.Integer, nullable=True)
+    # The letter exactly as it went out: live boards re-read the database
+    # on every render, so the archive keeps the sent copy, not a re-render.
+    sent_html = db.Column(db.Text, nullable=True)
+    sent_plain = db.Column(db.Text, nullable=True)
+
+    created_by = db.relationship('User')
+
+    @property
+    def is_sent(self) -> bool:
+        return self.sent_at is not None
+
+    @property
+    def audience_list(self) -> list[str]:
+        return [slug for slug in self.audiences.split(',') if slug]
+
+    def __repr__(self):
+        state = 'sent' if self.is_sent else 'draft'
+        return f'<Announcement {self.id} {state} {self.subject!r}>'

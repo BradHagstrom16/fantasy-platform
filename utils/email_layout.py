@@ -41,9 +41,13 @@ from utils.time import format_deadline_short
 
 __all__ = [
     'Block', 'Letter', 'Section', 'SectionBlock', 'GAME_ACCENTS',
-    'GAME_NAMES', 'format_deadline_short', 'game_section', 'items_block',
-    'paragraphs_block', 'render_letter', 'result_block', 'rider_block',
-    'seal_url', 'section_block', 'site_url', 'tab_block',
+    'GAME_NAMES', 'bullet_block', 'callout_block', 'concat_spans',
+    'divider_block', 'em_span', 'format_deadline_short', 'game_section',
+    'heading_block', 'items_block', 'link_span', 'ordered_block',
+    'paragraph_block', 'paragraphs_block', 'quote_block', 'render_letter',
+    'result_block', 'rider_block', 'seal_url', 'section_block', 'site_url',
+    'stack_blocks', 'stat_block', 'strong_span', 'subhead_block', 'tab_block',
+    'text_span',
 ]
 
 CLUB_NAME = 'Corrupt Commish Club'
@@ -210,12 +214,7 @@ def _fact_table(rows) -> Markup:
         ).format(rule=(f' border-top:1px solid {RULE};' if index else ''),
                  f=DISPLAY_FONT, sec=SECONDARY, ink=INK,
                  label=label, value=value, tag=tag_html))
-    return Markup(
-        '<table role="presentation" width="100%" cellpadding="0" '
-        'cellspacing="0" border="0" style="background:{bone}; '
-        'border:1px solid {rule}; border-radius:8px; margin:0 0 20px;">'
-        '{rows}</table>'
-    ).format(bone=BONE, rule=RULE, rows=Markup('').join(cells))
+    return _inset(Markup('').join(cells))
 
 
 def _fact_line(row) -> str:
@@ -260,6 +259,175 @@ def result_block(title, rows) -> Block:
     html = _label(title) + _fact_table(rows)
     plain = '\n'.join([str(title)] + [_fact_line(row) for row in rows])
     return Block(plain, html)
+
+
+# ---------------------------------------------------------------------------
+# The announcement's formatted blocks (utils/letter_markup.py parses the
+# admin's markup into these). Helpers take spans: Blocks whose html is
+# already-escaped inline Markup, so nothing here escapes twice. No em dash
+# reaches the page (DESIGN.md "Copy"): an attribution is a label.
+# ---------------------------------------------------------------------------
+
+LINK = '#3A1D72'   # Council Purple, the H1's color: a link reads as the club's
+
+
+def _join(spans, html_sep, plain_sep) -> Block:
+    return Block(plain_sep.join(s.plain for s in spans),
+                 Markup(html_sep).join(s.html for s in spans))
+
+
+def text_span(text: str) -> Block:
+    return Block(text, escape(text))
+
+
+def strong_span(span: Block) -> Block:
+    return Block(span.plain, Markup(
+        '<strong style="font-weight:600; color:{c};">{t}</strong>'
+    ).format(c=INK, t=span.html))
+
+
+def em_span(span: Block) -> Block:
+    return Block(span.plain, Markup('<em>{}</em>').format(span.html))
+
+
+def link_span(span: Block, url: str) -> Block:
+    """``url`` is validated by the caller (http, https, mailto only)."""
+    return Block(f'{span.plain} ({url})', Markup(
+        '<a href="{u}" style="color:{c}; font-weight:600; '
+        'text-decoration:underline;">{t}</a>'
+    ).format(u=url, c=LINK, t=span.html))
+
+
+def concat_spans(spans) -> Block:
+    return _join(spans, '', '')
+
+
+def stack_blocks(blocks) -> Block:
+    """Several blocks as one (a board's table and the sentence under it)."""
+    return _join(blocks, '', '\n\n')
+
+
+def paragraph_block(lines) -> Block:
+    """One paragraph: its lines (spans) joined by a <br>."""
+    joined = _join(lines, '<br>', '\n')
+    return Block(joined.plain, _para(joined.html))
+
+
+def heading_block(span: Block) -> Block:
+    """A section heading inside the letter: the H1's Teko stack a step
+    down, in ink. Plain carries it in capitals on its own line."""
+    return Block(span.plain.upper(), Markup(
+        '<h2 style="margin:26px 0 8px; font-family:{f}; font-size:23px; '
+        'font-weight:600; line-height:1.15; letter-spacing:.04em; '
+        'text-transform:uppercase; color:{c};">{t}</h2>'
+    ).format(f=DISPLAY_FONT, c=INK, t=span.html))
+
+
+def subhead_block(span: Block) -> Block:
+    """A small label heading ("On iPhone"): the letter's label register."""
+    return Block(span.plain, Markup(
+        '<p style="margin:20px 0 6px; font-family:{f}; font-size:14px; '
+        'font-weight:600; letter-spacing:.1em; text-transform:uppercase; '
+        'color:{c};">{t}</p>'
+    ).format(f=DISPLAY_FONT, c=SECONDARY, t=span.html))
+
+
+def _list(tag, spans, start=1) -> Markup:
+    start_attr = Markup(' start="{}"').format(start) if start != 1 else Markup('')
+    return Markup(
+        '<{tag}{start} style="margin:0 0 16px 22px; padding:0; '
+        'font-family:{f}; font-size:16px; line-height:1.55; color:{c};">'
+        '{lis}</{tag}>'
+    ).format(tag=Markup(tag), start=start_attr, f=BODY_FONT, c=INK,
+             lis=Markup('').join(
+                 Markup('<li style="margin:0 0 6px;">{}</li>').format(s.html)
+                 for s in spans))
+
+
+def bullet_block(spans) -> Block:
+    return Block('\n'.join(f'- {s.plain}' for s in spans), _list('ul', spans))
+
+
+def ordered_block(spans, start=1) -> Block:
+    """A numbered list that keeps its first number, so steps resume after an
+    interrupting line (1, 2, a note, then 3, 4)."""
+    plain = '\n'.join(f'{start + i}. {s.plain}' for i, s in enumerate(spans))
+    return Block(plain, _list('ol', spans, start))
+
+
+def _gold_rule(margin) -> Markup:
+    return Markup(
+        '<table role="presentation" align="center" width="56" cellpadding="0" '
+        'cellspacing="0" border="0" style="margin:{m};"><tr><td height="2" '
+        'style="height:2px; line-height:2px; font-size:0; background:{g};">'
+        '&nbsp;</td></tr></table>'
+    ).format(m=margin, g=GOLD)
+
+
+def divider_block() -> Block:
+    """A short centered gold rule between movements of the letter."""
+    return Block('* * *', _gold_rule('22px auto'))
+
+
+def quote_block(lines, attribution: str | None = None) -> Block:
+    """A pull quote: the body face larger and italic, centered between two
+    short gold rules (never a side-stripe); the attribution a small label."""
+    joined = _join(lines, '<br>', '\n')
+    html = _gold_rule('22px auto 14px') + Markup(
+        '<p style="margin:0 0 {mb}; font-family:{f}; font-size:21px; '
+        'font-style:italic; line-height:1.4; text-align:center; color:{c};">'
+        '{t}</p>'
+    ).format(mb='6px' if attribution else '14px', f=BODY_FONT, c=INK,
+             t=joined.html)
+    quoted = joined.plain[:1] in ('"', '\u201c')
+    plain = joined.plain if quoted else f'"{joined.plain}"'
+    if attribution:
+        html += Markup(
+            '<p style="margin:0 0 14px; font-family:{f}; font-size:13px; '
+            'font-weight:500; letter-spacing:.12em; text-transform:uppercase; '
+            'text-align:center; color:{c};">{a}</p>'
+        ).format(f=DISPLAY_FONT, c=SECONDARY, a=attribution)
+        plain += f'\n  {attribution}'
+    return Block(plain, html + _gold_rule('0 auto 22px'))
+
+
+def _inset(rows: Markup) -> Markup:
+    """The bone inset: a full 1px ring, never a side-stripe."""
+    return Markup(
+        '<table role="presentation" width="100%" cellpadding="0" '
+        'cellspacing="0" border="0" style="background:{bone}; '
+        'border:1px solid {rule}; border-radius:8px; margin:0 0 20px;">'
+        '{rows}</table>'
+    ).format(bone=BONE, rule=RULE, rows=rows)
+
+
+def callout_block(lines) -> Block:
+    """A sentence the reader must not miss ("A friendly reminder: ..."),
+    set in the bone inset."""
+    joined = _join(lines, '<br>', '\n')
+    return Block(joined.plain, _inset(Markup(
+        '<tr><td style="padding:16px 20px; font-family:{f}; font-size:16px; '
+        'line-height:1.55; color:{c};">{t}</td></tr>'
+    ).format(f=BODY_FONT, c=INK, t=joined.html)))
+
+
+def stat_block(stats) -> Block:
+    """The numbers a recap turns on, ``(value, label)`` pairs: one row each
+    in the bone inset (number, then its label), stacked, never set side by
+    side as a hero-metric trio."""
+    rows = Markup('').join(Markup(
+        '<tr><td width="1%" style="padding:12px 0 12px 20px;{rule} '
+        'white-space:nowrap; font-family:{f}; font-size:40px; font-weight:600; '
+        'line-height:1; color:{ink};">{v}</td>'
+        '<td style="padding:12px 20px 12px 16px;{rule} font-family:{f}; '
+        'font-size:16px; font-weight:500; letter-spacing:.1em; '
+        'text-transform:uppercase; line-height:1.2; color:{sec};">{lbl}</td>'
+        '</tr>'
+    ).format(rule=Markup(f' border-top:1px solid {RULE};' if i else ''),
+             f=DISPLAY_FONT, ink=INK, sec=SECONDARY, v=value, lbl=label)
+        for i, (value, label) in enumerate(stats))
+    plain = '\n'.join(f'{label}: {value}' for value, label in stats)
+    return Block(plain, _inset(rows))
 
 
 def tab_block(nudge, game_slug) -> Block | None:
