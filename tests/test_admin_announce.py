@@ -431,3 +431,72 @@ def test_dashboard_shows_announce_card(app, client):
     data = resp.data.decode()
     assert '/admin/announce' in data
     assert 'bi-megaphone-fill' in data
+
+
+# ---------------------------------------------------------------------------
+# Formatting + the live preview endpoint
+# ---------------------------------------------------------------------------
+
+def test_render_announcement_formats_markup(app):
+    """The body's markup reaches the letter as its blocks."""
+    from core.admin.announce import render_announcement
+    with app.app_context():
+        plain, html = render_announcement(
+            'Week 3', '## Carnage\n\n**Two** gone.\n\n[[stat 30 | Survivors left]]')
+    assert '<h2' in html and '<strong' in html
+    assert 'CARNAGE' in plain and 'Survivors left: 30' in plain
+
+
+def test_render_endpoint_redirects_anonymous(client):
+    resp = client.post('/admin/announce/render', data={'body_text': 'x'})
+    assert resp.status_code == 302 and '/login' in resp.location
+
+
+def test_render_endpoint_redirects_non_admin(app, client):
+    _login(client, _make_user(app, 'plain'))
+    resp = client.post('/admin/announce/render', data={'body_text': 'x'})
+    assert resp.status_code == 302 and '/login' not in resp.location
+
+
+def test_render_endpoint_returns_the_letter(app, client):
+    aid = _make_user(app, 'admin', is_admin=True)
+    _login(client, aid)
+    resp = client.post('/admin/announce/render',
+                       data={'subject': 'Week 3', 'body_text': '**Bold** move.'})
+    data = resp.get_json()
+    assert resp.status_code == 200 and data['errors'] == []
+    assert '<strong' in data['html'] and 'Week 3' in data['html']
+    assert data['plain'].startswith('From the Commish\nWeek 3')
+
+
+def test_render_endpoint_blank_subject_uses_a_stand_in(app, client):
+    aid = _make_user(app, 'admin', is_admin=True)
+    _login(client, aid)
+    data = client.post('/admin/announce/render', data={'body_text': ''}).get_json()
+    assert 'Your headline here' in data['html']
+
+
+def test_render_endpoint_reports_markup_errors(app, client):
+    aid = _make_user(app, 'admin', is_admin=True)
+    _login(client, aid)
+    data = client.post('/admin/announce/render', data={
+        'subject': 's', 'body_text': '[x](javascript:alert(1))'}).get_json()
+    assert data['html'] is None
+    assert data['errors'] and data['errors'][0].startswith('Line 1')
+
+
+@patch('core.admin.announce.send_platform_email', return_value=True)
+def test_markup_error_blocks_preview_and_send(mock_send, app, client):
+    """A body with a mistake flashes it and never reaches the send state."""
+    aid = _make_user(app, 'admin', is_admin=True)
+    with app.app_context():
+        _enroll_wc(_make_user_inline('p1').id)
+    _login(client, aid)
+    for action in ('preview', 'send', 'test'):
+        resp = client.post('/admin/announce', data=_compose(
+            action=action, body_text='[[nope]]'))
+        data = resp.data.decode()
+        assert resp.status_code == 200
+        assert 'no board called [[nope]]' in data
+        assert 'value="send"' not in data
+    mock_send.assert_not_called()

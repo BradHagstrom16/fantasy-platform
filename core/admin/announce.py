@@ -7,7 +7,15 @@ game's enrolled members (or every game, deduplicated) via the browser.
 import logging
 from typing import NamedTuple
 
-from flask import current_app, flash, redirect, render_template, request, url_for
+from flask import (
+    current_app,
+    flash,
+    jsonify,
+    redirect,
+    render_template,
+    request,
+    url_for,
+)
 from flask_login import current_user
 from sqlalchemy import select
 from sqlalchemy.orm import joinedload
@@ -23,7 +31,8 @@ from games.registry import GAMES
 from games.worldcup.constants import SEASON_YEAR as WC_SEASON_YEAR
 from games.worldcup.models import WorldCupEnrollment
 from utils.email import send_platform_email
-from utils.email_layout import Letter, paragraphs_block, render_letter, site_url
+from utils.email_layout import Letter, render_letter, site_url
+from utils.letter_markup import MarkupError, parse
 
 logger = logging.getLogger(__name__)
 
@@ -168,16 +177,18 @@ def _clean_form():
 def render_announcement(subject, body_text):
     """Render the announcement as a Club Letter. Returns (plain_body, html_body).
 
-    The admin's free text becomes a ``paragraphs_block`` (a blank line starts
-    a paragraph, a single newline is a ``<br>``, everything escaped once);
-    the subject is the headline. Club business, so the CTA is the trophy
-    gold and the eyebrow carries no game accent.
+    The admin's markup becomes the letter's blocks through
+    ``utils.letter_markup.parse`` (plain text still renders as it always
+    did: a blank line starts a paragraph, a newline is a ``<br>``,
+    everything escaped once); the subject is the headline. Club business,
+    so the CTA is the trophy gold and the eyebrow carries no game accent.
+    Raises ``MarkupError`` listing every mistake in the body.
     """
     letter = Letter(
         subject=subject,
         headline=subject,
         eyebrow='From the Commish',
-        extras=[paragraphs_block(body_text)],
+        extras=parse(body_text),
         cta=('Open the lounge', site_url() + '/'),
     )
     return render_letter(letter)
@@ -213,15 +224,19 @@ def announce():
     if request.method == 'POST':
         action = request.form.get('action', 'preview')
         form_data, errors = _clean_form()
+        if not errors:
+            try:
+                plain, html = render_announcement(
+                    form_data['subject'], form_data['body_text'],
+                )
+            except MarkupError as exc:
+                errors = exc.errors
         if errors:
             for message in errors:
                 flash(message, 'error')
         else:
             active_only = form_data['recipient_filter'] == 'active'
             recipients = resolve_recipients(form_data['audience'], active_only)
-            plain, html = render_announcement(
-                form_data['subject'], form_data['body_text'],
-            )
 
             if action == 'send':
                 if not recipients:
@@ -273,3 +288,18 @@ def announce():
         'admin/announce.html',
         audiences=audiences, form_data=form_data, preview=preview,
     )
+
+
+@admin_bp.route('/announce/render', methods=['POST'])
+@admin_required
+def announce_render():
+    """The composer's live preview: the letter as it stands, as JSON
+    ``{html, plain, errors}``. Renders nothing into the database and sends
+    nothing; a blank subject previews under a stand-in headline."""
+    subject = (request.form.get('subject') or '').strip() or 'Your headline here'
+    body_text = (request.form.get('body_text') or '').replace('\r\n', '\n').strip()
+    try:
+        plain, html = render_announcement(subject[:MAX_SUBJECT], body_text[:MAX_BODY])
+    except MarkupError as exc:
+        return jsonify(html=None, plain=None, errors=exc.errors)
+    return jsonify(html=html, plain=plain, errors=[])
