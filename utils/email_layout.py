@@ -46,7 +46,8 @@ __all__ = [
     'heading_block', 'items_block', 'link_span', 'ordered_block',
     'paragraph_block', 'paragraphs_block', 'quote_block', 'render_letter',
     'result_block', 'rider_block', 'seal_url', 'section_block', 'site_url',
-    'stat_block', 'strong_span', 'subhead_block', 'tab_block', 'text_span',
+    'stack_blocks', 'stat_block', 'strong_span', 'subhead_block', 'tab_block',
+    'text_span',
 ]
 
 CLUB_NAME = 'Corrupt Commish Club'
@@ -299,6 +300,11 @@ def link_span(span: Block, url: str) -> Block:
 
 def concat_spans(spans) -> Block:
     return _join(spans, '', '')
+
+
+def stack_blocks(blocks) -> Block:
+    """Several blocks as one (a board's table and the sentence under it)."""
+    return _join(blocks, '', '\n\n')
 
 
 def paragraph_block(lines) -> Block:

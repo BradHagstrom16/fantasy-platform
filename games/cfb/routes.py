@@ -5,7 +5,6 @@ All route handlers for the CFB Survivor Pool game.
 Mounted at /cfb/ via blueprint url_prefix.
 """
 import logging
-from collections import Counter
 from datetime import datetime, timedelta
 from functools import wraps
 
@@ -36,6 +35,7 @@ from games.cfb.services.game_logic import (
     get_official_standings,
     get_used_team_ids,
     get_week_user_statuses,
+    pick_distribution,
     pool_teams_by_conference,
     process_autopicks,
     process_week_results,
@@ -660,28 +660,7 @@ def weekly_results(week_number=None):
                 None,
             )
 
-    # Pick Distribution: who the field backed, with the locked spread and
-    # the result. Ordered by count, then team name; never by spread,
-    # which would read as a recommendation (§1.4).
-    distribution = []
-    for team_id, count in Counter(p.team_id for p in picks).items():
-        sample = next(p for p in picks if p.team_id == team_id)
-        game = game_results.get(team_id)
-        if sample.is_no_contest:
-            result = 'NC'
-        elif sample.is_correct is True:
-            result = 'W'
-        elif sample.is_correct is False:
-            result = 'L'
-        else:
-            result = None
-        distribution.append({
-            'name': sample.team.name,
-            'spread': game['spread'] if game else None,
-            'result': result,
-            'count': count,
-        })
-    distribution.sort(key=lambda row: (-row['count'], row['name'].casefold()))
+    distribution = pick_distribution(picks, games)
 
     return render_template(
         'cfb/weekly_results.html',

@@ -24,7 +24,9 @@ from core.admin import admin_bp
 from core.admin.routes import admin_required
 from extensions import db
 from games.cfb.models import CfbEnrollment
+from games.cfb.services.announce_blocks import BOARDS as SURVIVOR_BOARDS
 from games.docket.models import DocketEnrollment
+from games.docket.services.announce_blocks import BOARDS as DOCKET_BOARDS
 from games.docket.services.weeks import SEASON_YEAR as DOCKET_SEASON_YEAR
 from games.golf.models import GolfEnrollment
 from games.registry import GAMES
@@ -40,6 +42,18 @@ MAX_SUBJECT = 200
 MAX_BODY = 10_000
 
 _VALID_FILTERS = ('all', 'active')
+
+# The live boards a body may place on a line of its own ([[survivor-board]]),
+# each read from the database at render time. The composer's Insert board
+# menu lists them in this order.
+BOARDS = {**SURVIVOR_BOARDS, **DOCKET_BOARDS}
+BOARD_MENU = (
+    ('survivor-board', 'Survivor: still standing'),
+    ('survivor-cuts', 'Survivor: the week\'s damage'),
+    ('survivor-picks', 'Survivor: pick split'),
+    ('docket-week', 'Docket: the week'),
+    ('docket-season', 'Docket: the season'),
+)
 
 
 class Recipient(NamedTuple):
@@ -188,7 +202,7 @@ def render_announcement(subject, body_text):
         subject=subject,
         headline=subject,
         eyebrow='From the Commish',
-        extras=parse(body_text),
+        extras=parse(body_text, BOARDS),
         cta=('Open the lounge', site_url() + '/'),
     )
     return render_letter(letter)
@@ -287,6 +301,7 @@ def announce():
     return render_template(
         'admin/announce.html',
         audiences=audiences, form_data=form_data, preview=preview,
+        board_menu=BOARD_MENU,
     )
 
 

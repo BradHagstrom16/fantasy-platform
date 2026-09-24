@@ -86,6 +86,21 @@ class TopSheet:
     split: bool
 
 
+def around_the_docket(top_sheet, weekly_prize, *, is_winner=False):
+    """The week around the docket as fact rows: who topped it and where the
+    weekly purse went. The record letter says "You" to a winner; the
+    Commish's announcement board (``is_winner`` False) names everyone."""
+    if top_sheet.split:
+        count = len(top_sheet.names)
+        return [('Top sheet', f'{count} sheets at {top_sheet.record}; the '
+                              f'purse is split'),
+                ('Weekly purse', f'${weekly_prize} split {count} ways')]
+    name = 'You' if is_winner else top_sheet.names[0]
+    purse_to = 'you' if is_winner else top_sheet.names[0]
+    return [('Top sheet', f'{name}, {top_sheet.record}'),
+            ('Weekly purse', f'${weekly_prize} to {purse_to}')]
+
+
 def record_letter(*, week_number, display_name, tally, points, week_rank,
                   roster_size, season_rank, season_points, top_sheet,
                   is_winner, weekly_prize, autopicked, ledger_url) -> Letter:
@@ -101,18 +116,6 @@ def record_letter(*, week_number, display_name, tally, points, week_rank,
             f'decided.']
     if autopicked:
         lede.insert(0, 'Your sheet was filed from the locked lines.')
-
-    if top_sheet.split:
-        count = len(top_sheet.names)
-        top_line = (f'{count} sheets at {top_sheet.record}; the purse is '
-                    f'split')
-        purse_line = f'${weekly_prize} split {count} ways'
-    elif is_winner:
-        top_line = f'You, {top_sheet.record}'
-        purse_line = f'${weekly_prize} to you'
-    else:
-        top_line = f'{top_sheet.names[0]}, {top_sheet.record}'
-        purse_line = f'${weekly_prize} to {top_sheet.names[0]}'
 
     supporting = []
     if week_number < TOTAL_WEEKS:
@@ -134,10 +137,8 @@ def record_letter(*, week_number, display_name, tally, points, week_rank,
             ('On the week', f'{ordinal(week_rank)} of {roster_size}'),
             ('Season', f'{ordinal(season_rank)} · {points_text(season_points)}'),
         ],
-        extras=[result_block('Around the docket', [
-            ('Top sheet', top_line),
-            ('Weekly purse', purse_line),
-        ])],
+        extras=[result_block('Around the docket', around_the_docket(
+            top_sheet, weekly_prize, is_winner=is_winner))],
         cta=('See the ledger', ledger_url),
         supporting=supporting,
     )

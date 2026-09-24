@@ -65,6 +65,18 @@
                 <button type="button" class="announce-tool" data-insert="[[stat 0 | Survivors left]]" data-select="0" title="Big number" aria-label="Big number"><i class="bi bi-123" aria-hidden="true"></i></button>
                 <button type="button" class="announce-tool" data-insert="---" title="Divider" aria-label="Divider"><i class="bi bi-hr" aria-hidden="true"></i></button>
               </div>
+              <div class="announce-tool-group announce-board-menu dropdown">
+                <button type="button" class="announce-tool announce-tool--label dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                  <i class="bi bi-table me-1" aria-hidden="true"></i>Insert board
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                  {% for token, label in board_menu %}
+                  <li><button type="button" class="dropdown-item announce-tool" data-insert="[[{{ token }}]]">{{ label }}</button></li>
+                  {% endfor %}
+                  <li><hr class="dropdown-divider"></li>
+                  <li><span class="dropdown-item-text form-text">Live from the database when you send. Add <code>week=3</code> inside the brackets for an earlier week.</span></li>
+                </ul>
+              </div>
             </div>
             <textarea id="body_text" name="body_text" class="form-control announce-body" rows="18"
                       spellcheck="true" required>{{ form_data.body_text }}</textarea>
@@ -84,6 +96,7 @@
             <dt>!! A friendly reminder: ...</dt><dd>A callout set in the bone box.</dd>
             <dt>[[stat 30 | Survivors left]]</dt><dd>A big number. Stack a few lines for several.</dd>
             <dt>---</dt><dd>A short gold divider.</dd>
+            <dt>[[survivor-board]]</dt><dd>A live board, on a line of its own; read from the database when it renders, so it is current when you send. Survivor: <code>survivor-board</code> (top=10), <code>survivor-cuts</code>, <code>survivor-picks</code>. Docket: <code>docket-week</code> (top=5), <code>docket-season</code> (top=5). Add <code>week=3</code> for an earlier finished week.</dd>
           </dl>
           <p class="form-text mb-0">A blank line starts a new paragraph; a single line break stays a line break.</p>
         </details>

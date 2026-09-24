@@ -42,7 +42,7 @@ from utils.email_layout import (
     text_span,
 )
 
-__all__ = ['MarkupError', 'parse']
+__all__ = ['MarkupError', 'board_number', 'parse']
 
 
 class MarkupError(ValueError):
@@ -71,6 +71,22 @@ _INLINE = re.compile(
     r'|\*(?P<em>(?=[^\s*]).+?(?<=[^\s*]))\*'
 )
 _LINK_SCHEMES = {'http', 'https', 'mailto'}
+
+
+def board_number(args, name, *, allowed, default=None, low=1, high=99):
+    """A board's whole-number setting (``week=3``, ``top=10``), checked
+    against the settings that board takes. Raises ``ValueError`` worded to
+    follow the board's name in the admin's error line."""
+    unknown = sorted(set(args) - set(allowed))
+    if unknown:
+        takes = ', '.join(f'{key}=' for key in allowed) or 'no settings'
+        raise ValueError(f'does not take {unknown[0]}= (it takes {takes}).')
+    if name not in args:
+        return default
+    raw = args[name]
+    if not raw.isdigit() or not low <= int(raw) <= high:
+        raise ValueError(f'needs {name}= to be a number from {low} to {high}.')
+    return int(raw)
 
 
 def _inline(raw: str, errors: list, lineno: int) -> Block:

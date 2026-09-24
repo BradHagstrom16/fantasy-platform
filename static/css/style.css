@@ -670,6 +670,27 @@ html[data-app-state="subscribed"] .app-panel[data-state="subscribed"] {
   color: var(--purple-700);
 }
 .announce-tool:active { background: var(--bone-dim); }
+.announce-tool--label {
+  width: auto;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 .6rem;
+  font-family: var(--font-teko);
+  font-size: 1rem;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+.announce-board-menu { margin-left: auto; }
+.announce-board-menu .dropdown-item.announce-tool {
+  display: block;
+  width: 100%;
+  height: auto;
+  padding: .45rem 1rem;
+  font-size: .95rem;
+  color: var(--text-primary);
+  border-radius: 0;
+}
+.announce-board-menu .dropdown-item-text { max-width: 18rem; white-space: normal; }
 .announce-tool:focus-visible {
   outline: 2px solid var(--purple-700);
   outline-offset: 1px;

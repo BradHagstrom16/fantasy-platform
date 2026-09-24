@@ -376,7 +376,7 @@ def _context_live(user, enrollment) -> dict:
         .order_by(CfbWeek.week_number.desc())
         .first()
     )
-    cuts_line = _cuts_line(latest_complete, all_enrollments)
+    cuts_line = cuts_sentence(latest_complete, all_enrollments)
     whos_left = _whos_left(
         room.pick, standings_active, user,
         two_lives=two_lives, one_life=one_life, out=out,
@@ -640,7 +640,7 @@ def _verdict_payload(week, week_label, pick, outcome, team, game) -> dict:
              'args': {}},
         ]
     else:
-        payload['field_impact'] = _field_impact(week, week_label)
+        payload['field_impact'] = field_impact_sentence(week, week_label)
         payload['routes'] = [
             {'label': 'View week results', 'endpoint': 'cfb.weekly_results',
              'args': {'week_number': week.week_number}},
@@ -648,7 +648,7 @@ def _verdict_payload(week, week_label, pick, outcome, team, game) -> dict:
     return payload
 
 
-def _field_impact(week, week_label) -> str:
+def field_impact_sentence(week, week_label) -> str:
     """'Three players lost a life in Week 8. Two were cut. 12 remain.'"""
     outcomes = CfbWeekOutcome.query.filter_by(week_id=week.id).all()
     lost = sum(1 for o in outcomes if o.lost_life)
@@ -771,7 +771,7 @@ def _field_rows(standings_active, user) -> list[dict]:
     ]
 
 
-def _cuts_line(latest_complete, all_enrollments) -> str | None:
+def cuts_sentence(latest_complete, all_enrollments) -> str | None:
     """'Cut in Week 7: Tyler, Marissa.' from the last processed week's
     outcomes; None when nobody was cut (the line is omitted)."""
     if latest_complete is None:
