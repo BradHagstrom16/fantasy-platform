@@ -34,7 +34,8 @@ from games.registry import (
     lounge_game,
     second_bill_games,
 )
-from models.content import commish_note_paragraphs
+from models.content import commish_note_paragraphs, latest_issue
+from utils.time import format_ct
 
 
 @dataclass(frozen=True)
@@ -180,4 +181,13 @@ def build_home_context(user: Any, state: str | None, headliners=None) -> dict:
                 None,
             )
         ctx['commish_paragraphs'] = commish_note_paragraphs(state, champion)
+        # The Tribune's line under the note: the latest letter the Commish
+        # sent (models.content, never a blueprint). None when nothing has
+        # gone out, and the partial renders nothing.
+        issue = latest_issue()
+        ctx['latest_issue'] = None if issue is None else {
+            'id': issue.id,
+            'headline': issue.headline or issue.subject,
+            'date': format_ct(issue.sent_at, '%b %-d'),
+        }
     return ctx

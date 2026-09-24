@@ -3294,6 +3294,69 @@ body.game-golf {
   margin-top: 1rem !important;
 }
 
+/* --- The Tribune's line (core/tribune): the latest letter on the record,
+   under From the Commish. One row in the farewell strip's register, quieter:
+   no card, a hairline above, the headline as the only door. --- */
+.home-shell .tribune-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: .35rem 1rem;
+  margin: 1rem 0 1.5rem;
+  padding: .9rem 0 0;
+  border-top: 1px solid rgba(243,239,230,.12);
+}
+.home-shell .tribune-line-label {
+  font-family: var(--font-teko);
+  font-weight: 500;
+  font-size: .85rem;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+.home-shell .tribune-line-link {
+  font-family: var(--font-news);
+  font-size: 1.05rem;
+  font-style: italic;
+  color: var(--bone);
+  text-decoration: underline;
+  text-decoration-color: rgba(243,239,230,.35);
+  text-underline-offset: .18em;
+}
+.home-shell .tribune-line-link:hover,
+.home-shell .tribune-line-link:focus-visible {
+  color: var(--gold-light);
+  text-decoration-color: currentColor;
+}
+.home-shell .tribune-line-link:focus-visible,
+.home-shell .tribune-line-all:focus-visible {
+  outline: 2px solid var(--gold-light);
+  outline-offset: 2px;
+}
+.home-shell .tribune-line-date {
+  font-family: var(--font-teko);
+  font-size: .9rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--bone-mute);
+}
+.home-shell .tribune-line-all {
+  margin-left: auto;
+  font-family: var(--font-teko);
+  font-weight: 500;
+  font-size: .95rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--gold);
+  text-decoration: none;
+}
+.home-shell .tribune-line-all:hover { color: var(--gold-light); }
+/* The headline and its date travel together (`.tribune-line-issue`); the
+   phone rule that gives All issues its own row lives in the THE TRIBUNE
+   section's breakpoint block at the end of the file (a new 575.98px block
+   here would shift tests/test_design_p2_s2_3_1's first-block regex). */
+.home-shell .tribune-line-issue { display: inline; }
+
 /* --- Dispatches (short-feed) --- */
 .home-shell .dispatches {
   margin: 1rem 0;
@@ -16026,4 +16089,278 @@ body.game-docket .back-link:focus-visible {
   .docket-section-head { font-size: 1.3rem; }
   .docket-rules-lede { font-size: 1.1rem; }
   .docket-rules-fine .docket-section-head { font-size: 1.15rem; }
+}
+
+
+/* === THE TRIBUNE (core/tribune): every Club Letter, on the record ======
+   A light reading room on the platform's bone page. The letter itself
+   (`.letter-page`, templates/letters/page.j2) is the Club Letter's material
+   at page scale: its blocks arrive inline-styled in the same ink, bone,
+   gold and font stacks the email uses, so these rules only give the shell
+   around them: the sheet, the reading measure, the headline register. */
+.tribune-page main { padding-bottom: 3rem; }
+.tribune-wrap { max-width: 60rem; padding-top: 2.25rem; }
+
+/* The letter as printed. */
+.letter-page {
+  max-width: 40rem;
+  margin: 0 auto;
+}
+.letter-page-eyebrow {
+  margin: 0 0 .35rem;
+  font-family: var(--font-teko);
+  font-weight: 500;
+  font-size: .85rem;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--gold-dark);
+}
+.letter-page-headline {
+  margin: 0 0 1.1rem;
+  font-family: var(--font-teko);
+  font-weight: 600;
+  font-size: clamp(1.9rem, 1.5rem + 1.4vw, 2.4rem);
+  line-height: 1.05;
+  letter-spacing: .03em;
+  text-transform: uppercase;
+  color: var(--purple-700);
+  text-wrap: balance;
+}
+.letter-page-body { font-family: var(--font-news); color: var(--text-primary); }
+/* The blocks' inline px sizes are the email's; the page reads a step larger
+   at desktop widths, so the sheet lifts them through the body font-size. */
+.letter-page-body p,
+.letter-page-body li { font-size: 1.05rem !important; line-height: 1.6 !important; }
+.letter-page-body h2 { color: var(--text-primary) !important; }
+.letter-page-body a { color: var(--purple-700); }
+.letter-page-body a:hover { color: var(--purple-600, var(--purple-700)); }
+.letter-page-body table { max-width: 100%; }
+.letter-page-para { margin: 0 0 .9rem; }
+.letter-page-cta { margin: 1.4rem 0 1rem; }
+.letter-page-cta a {
+  font-family: var(--font-teko);
+  font-weight: 600;
+  font-size: 1.1rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--purple-700);
+  text-decoration: none;
+  border-bottom: 2px solid var(--gold);
+}
+.letter-page-cta a:hover { color: var(--gold-dark); border-color: var(--gold-dark); }
+.letter-page-support {
+  margin: 0 0 .75rem;
+  font-size: .95rem;
+  color: var(--text-secondary);
+}
+.letter-page ::selection { background: rgba(201,162,39,.35); color: var(--text-primary); }
+
+/* --- The masthead and the calendar (/tribune) --- */
+.tribune-masthead {
+  max-width: 40rem;
+  margin: 0 auto 2.25rem;
+  padding-bottom: 1.25rem;
+  border-bottom: 2px solid var(--gold);
+}
+.tribune-title {
+  margin: 0 0 .35rem;
+  font-family: var(--font-teko);
+  font-weight: 700;
+  font-size: clamp(2.4rem, 1.9rem + 1.8vw, 3.2rem);
+  line-height: .95;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--purple-700);
+}
+.tribune-lede {
+  margin: 0;
+  font-family: var(--font-news);
+  font-size: 1.05rem;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  max-width: 60ch;
+}
+.tribune-calendar { max-width: 40rem; margin: 0 auto; }
+.tribune-week { margin: 0 0 2.25rem; }
+.tribune-week-head {
+  /* Sticks under the sticky .navbar (~58px, z-index 1030), never at 0:
+     a head stuck behind the chrome is a head nobody sees. */
+  position: sticky;
+  top: 58px;
+  z-index: 2;
+  display: flex;
+  align-items: baseline;
+  gap: .75rem;
+  margin: 0 0 .5rem;
+  padding: .85rem 0 .45rem;
+  background: var(--bg-page);
+  border-bottom: 2px solid var(--gold);
+  font-family: var(--font-teko);
+  font-weight: 600;
+  font-size: 1.5rem;
+  line-height: 1;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--text-primary);
+}
+.tribune-week-date {
+  font-weight: 500;
+  font-size: .95rem;
+  letter-spacing: .08em;
+  color: var(--text-secondary);
+}
+.tribune-entries { list-style: none; margin: 0; padding: 0; }
+.tribune-entry + .tribune-entry { border-top: 1px solid var(--border-light); }
+.tribune-entry-link {
+  display: block;
+  padding: 1rem 0 1.1rem;
+  text-decoration: none;
+  color: inherit;
+}
+.tribune-entry-line,
+.tribune-issue-line {
+  display: flex;
+  align-items: baseline;
+  gap: .6rem;
+  font-family: var(--font-teko);
+  font-weight: 500;
+  font-size: .95rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+.tribune-no { color: var(--gold-dark); font-weight: 600; }
+.tribune-entry-headline {
+  display: block;
+  margin: .2rem 0 .25rem;
+  font-family: var(--font-teko);
+  font-weight: 600;
+  font-size: 1.7rem;
+  line-height: 1.05;
+  letter-spacing: .02em;
+  color: var(--purple-700);
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-decoration-thickness: 2px;
+  text-underline-offset: .14em;
+  transition: text-decoration-color var(--transition), color var(--transition);
+  text-wrap: balance;
+}
+.tribune-entry-link:hover .tribune-entry-headline,
+.tribune-entry-link:focus-visible .tribune-entry-headline {
+  text-decoration-color: var(--gold);
+}
+.tribune-entry-link:focus-visible { outline: 2px solid var(--purple-700); outline-offset: 4px; border-radius: 4px; }
+.tribune-deck {
+  display: block;
+  font-family: var(--font-news);
+  font-size: 1rem;
+  line-height: 1.55;
+  color: var(--text-secondary);
+  max-width: 62ch;
+}
+.tribune-empty {
+  max-width: 40rem;
+  margin: 3rem auto;
+  text-align: center;
+}
+.tribune-empty-line {
+  margin: 0 0 .5rem;
+  font-family: var(--font-teko);
+  font-weight: 600;
+  font-size: 1.9rem;
+  letter-spacing: .03em;
+  text-transform: uppercase;
+  color: var(--text-primary);
+}
+.tribune-empty-sub {
+  margin: 0 auto;
+  font-family: var(--font-news);
+  color: var(--text-secondary);
+  max-width: 48ch;
+}
+
+/* --- One issue as printed (/tribune/<id>) --- */
+.tribune-issue-nav {
+  max-width: 40rem;
+  margin: 0 auto 1.25rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: .5rem 1rem;
+}
+.tribune-back { color: var(--text-secondary); }
+.tribune-back:hover { color: var(--purple-700); }
+.tribune-issue-week { color: var(--text-primary); }
+.tribune-sheet {
+  max-width: 44rem;
+  margin: 0 auto;
+  padding: 2.25rem clamp(1rem, 4vw, 2.75rem) 1.75rem;
+  background: var(--bg-card);
+  border-radius: 12px;
+  box-shadow: var(--shadow-md);
+}
+.tribune-sheet-foot {
+  max-width: 40rem;
+  margin: 1.75rem auto 0;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-light);
+}
+.tribune-audience,
+.tribune-same-week {
+  margin: 0 0 .35rem;
+  font-family: var(--font-news);
+  font-size: .95rem;
+  line-height: 1.55;
+  color: var(--text-secondary);
+}
+.tribune-same-week a { color: var(--purple-700); }
+.tribune-walk {
+  max-width: 44rem;
+  margin: 1.5rem auto 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+.tribune-walk-link,
+.tribune-walk-end {
+  display: block;
+  padding: .9rem 0;
+  text-decoration: none;
+  color: inherit;
+  border-top: 1px solid var(--border-light);
+}
+.tribune-walk-link--newer,
+.tribune-walk-end--newer { text-align: right; }
+.tribune-walk-label,
+.tribune-walk-end {
+  display: block;
+  font-family: var(--font-teko);
+  font-weight: 500;
+  font-size: .95rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+.tribune-walk-headline {
+  display: block;
+  margin-top: .15rem;
+  font-family: var(--font-teko);
+  font-weight: 600;
+  font-size: 1.25rem;
+  line-height: 1.1;
+  color: var(--purple-700);
+}
+.tribune-walk-link:hover .tribune-walk-headline { color: var(--gold-dark); }
+.tribune-walk-link:focus-visible { outline: 2px solid var(--purple-700); outline-offset: 4px; border-radius: 4px; }
+@media (max-width: 575.98px) {
+  /* The lounge line: All issues takes its own row under the headline + date. */
+  .home-shell .tribune-line-all { flex-basis: 100%; margin-left: 0; }
+  .tribune-wrap { padding-top: 1.5rem; }
+  .tribune-week-head { position: static; }
+  .tribune-entry-headline { font-size: 1.5rem; }
+  .tribune-sheet { padding-top: 1.5rem; }
+  .letter-page-body p,
+  .letter-page-body li { font-size: 1rem !important; }
 }

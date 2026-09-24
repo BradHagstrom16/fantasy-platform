@@ -102,6 +102,10 @@
                                 <li><a class="dropdown-item" href="{{ url_for('auth.change_password') }}">
                                     <i class="bi bi-key me-2"></i>Change Password
                                 </a></li>
+                                {# Every Club Letter on the record (core/tribune). #}
+                                <li><a class="dropdown-item" href="{{ url_for('tribune.index') }}">
+                                    <i class="bi bi-newspaper me-2"></i>The Tribune
+                                </a></li>
                                 {# Completed games a member played stay reachable
                                    here rather than crowding the switcher
                                    (design review 2026-08-18). #}

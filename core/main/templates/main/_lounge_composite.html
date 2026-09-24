@@ -72,7 +72,9 @@
   {# Compact game tiles #}
   {% include 'main/_game_tiles_compact.html' %}
 
-  {# Commissioner presence — full-width Newsreader band #}
+  {# Commissioner presence — full-width Newsreader band, then the latest
+     letter on the record (The Tribune, core/tribune) #}
   {% include 'main/_commish_note.html' ignore missing %}
+  {% include 'main/_tribune_line.html' %}
 
 </div>{# /.hl-stage #}
