@@ -324,7 +324,7 @@ The homepage `/` is the club lounge: a members' door, never a marketing landing 
 
 Real material that design and product work must use rather than invent.
 
-- **A finished season of real data.** The 2026 World Cup pool ran to completion with real members, real picks, and real final standings, and is archived in-product in a permanent post-state. A 2025 CFB Survivor season sits in a legacy database outside this repo and is queued to migrate. Real history exists, so never mock up fictional standings, scores, or member names to fill a surface.
+- **A finished season of real data.** The 2026 World Cup pool ran to completion with real members, real picks, and real final standings, and is archived in-product in a permanent post-state. The 2025 CFB Survivor season is archived in-product at `/cfb/history` (champion, week-by-week attrition, final standings) from a one-time export of the legacy database. Real history exists, so never mock up fictional standings, scores, or member names to fill a surface.
 - **A commissioned logo kit.** The King Viking Badger identity was delivered by a designer on 2026-05-27: head mark, mascot bust, wordmarks in bone/gold/purple, and the seal, wired at `static/img/logo/`. These are the brand assets. Do not generate substitutes or redraw the mark.
 - **Live in production.** `cccfantasy.com` is live and load-bearing for a real group right now. It is not a portfolio piece, a staging concept, or a demo.
 

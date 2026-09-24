@@ -590,15 +590,13 @@ Retired name: `.cfb-stat-card` (+ a CFB `.is-lead`) was planning-era vocabulary 
 
 ### 7.4 Components sanctioned but not yet shipped (FUTURE)
 
-Doctrine for surfaces the lounge (C1) and later room work will build. Marked so nobody reads them as existing code:
+Doctrine for surfaces later room work will build. Marked so nobody reads them as existing code. Shipped since this list was written and removed from it: the used-team ledger (the player card's spent grid and card table, `/cfb/player/<id>`, 2026-09-23, §7.2), Who's Left (§8.10) and compact standings (§8.11) in the lounge panel (ADR-049), and the player detail surface itself (§7.2 "The player card").
 
 - **The deadline component** — exact date/time + relative countdown ("Locks in 4h 12m · Saturday, 11:00 AM"), repeated intentionally across player card, summons, room header, pick controls, compact lounge summaries. Urgency escalates by hierarchy (§6.14). At expiry it *becomes* lock state.
 - **The survival status block** — larger life-state expression for card/verdict/elimination/champion views: state label + lives + concise explanation + next action ("ALIVE · 1 life remaining · Your next loss eliminates you."). Direct language; no euphemisms (inactive / season complete / out of contention) when the state is elimination.
 - **Weekly state badges** — compact OPEN/HELD/LOCKED/VERDICT chips where detailed copy would be excessive. Sparing; shape/text/placement carry meaning, not a badge-color rainbow.
 - **The matchup row** — compact slate alternative for scan speed on large slates: selectable region generous, spreads/kickoffs/status aligned, predictable heights. Cards vs rows is a deliberate density choice (§9.5), consistent week to week.
-- **The used-team ledger** — the record of inventory spent: week, team, opponent, spread, result, life consequence. Chronological when telling the season story. On CFP reset, history is preserved and the reset is explicit ("Playoff reset active — regular-season teams are eligible again") — the reset changes future permission, not past fact.
 - **The team availability panel** — remaining inventory: grouped Available / Used / Unavailable (reason) / Restored-by-reset; optional search + filters (available-only, ranked, playing-this-week) only where they support a real decision. Never reduced to a bare count ("112 teams available" is less useful than whether the strongest realistic options remain).
-- **Who's Left** (§8.10) and **compact standings** (§8.11) — lounge modules.
 - **Field attrition visualization** — aggregate survival progression where it adds understanding: stacked weekly bars, simple step charts, or a week-by-week table (`Week | Two lives | One life | Eliminated | Active`). Real counts, labeled, readable without color. Never smoothed curves, decorative area charts, percentage-only views, or personal rank trends.
 - **Recent change module** (§8.13) — lounge orientation.
 

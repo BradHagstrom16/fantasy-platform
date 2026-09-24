@@ -52,7 +52,7 @@ fantasy-platform/
 ├── models/user.py          # Shared User model
 ├── utils/email.py          # Shared platform email helper
 ├── core/                   # Platform layer (auth, admin, home)
-├── games/                  # Game blueprints (Golf, CFB, World Cup) + registry/common
+├── games/                  # Game blueprints (CFB, Docket, Golf, World Cup) + registry/common
 ├── templates/              # Platform-wide base + email + errors
 ├── static/css/             # tokens.css (Layer 1) + style.css (Layer 2)
 ├── migrations/             # Alembic migration history
@@ -67,12 +67,14 @@ fantasy-platform/
 
 | Game | Status |
 |---|---|
-| World Cup Fantasy Pool | ✅ Live |
-| CFB Survivor Pool | 🔜 Coming soon |
-| Golf Pick 'Em | 🔜 Coming soon |
+| CFB Survivor Pool | ✅ Live (2026 season) |
+| The Docket (NFL + CFB pick'em) | ✅ Live (2026 season) |
+| World Cup Fantasy Pool | 🏆 Archived (2026 tournament complete) |
+| Golf Pick 'Em | 🔜 Coming soon (~Jan 2027) |
 
 Statuses mirror `games/registry.py` (the SSoT). Flip a game's `status` there
-from `coming_soon` to `open` at launch, and update this table to match.
+(`coming_soon` → `open` at launch, `open` → `completed` when a season is
+archived), and update this table to match.
 
 ## Adding a New Game
 
