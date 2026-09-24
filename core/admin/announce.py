@@ -273,10 +273,20 @@ def _errors(values, *, complete):
 
 
 def _save(announcement, values):
-    """Store the composer's values on a draft (a new one when ``None``)."""
+    """Store the composer's values on a draft (a new one when ``None``).
+
+    An existing draft is re-read under a row lock first, so a save racing a
+    send in another tab either lands before the claim or sees the row sent
+    and writes nothing (returns None): a sent record never changes.
+    """
     if announcement is None:
         announcement = Announcement(created_by_id=current_user.id)
         db.session.add(announcement)
+    else:
+        db.session.refresh(announcement, with_for_update=True)
+        if announcement.is_sent:
+            db.session.rollback()
+            return None
     chosen = set(values['audiences'])
     announcement.audiences = ','.join(
         entry.slug for entry in GAMES if entry.slug in chosen)
@@ -430,7 +440,12 @@ def announce(announcement_id=None):
         for message in errors:
             flash(message, 'error')
         return _page(announcement, values)
-    announcement = _save(announcement, values)
+    saved = _save(announcement, values)
+    if saved is None:
+        flash('This announcement already went out. Copy it into a new draft '
+              'to reuse it.', 'warning')
+        return _here(announcement)
+    announcement = saved
     if action == 'save':
         flash('Draft saved.', 'success')
         return _here(announcement)

@@ -198,6 +198,12 @@ def test_unknown_board(app):
     assert errors[0].startswith('Line 3: no board called [[nope]]')
 
 
+def test_two_tokens_on_one_line_are_an_error(app):
+    """A second token never folds into the first one's label."""
+    for line in ('[[stat 1 | x]] [[stat 2 | y]]', '[[nope]] [[nope]]'):
+        assert 'own' in _errors(app, line)[0]
+
+
 def test_board_inside_a_sentence(app):
     assert 'own' in _errors(app, 'see [[survivor-board]] here')[0]
 

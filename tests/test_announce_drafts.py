@@ -202,6 +202,22 @@ def test_a_claimed_draft_is_never_sent_again(app, client, admin):
         assert db.session.get(Announcement, draft_id).sent_plain == 'plain'
 
 
+def test_a_save_racing_a_send_writes_nothing(app, client, admin):
+    """A tab that loaded the draft before another tab sent it cannot
+    rewrite the sent record."""
+    from core.admin.announce import _save
+    location = client.post('/admin/announce', data=_form('save')).location
+    draft_id = int(location.rsplit('/', 1)[1])
+    with app.test_request_context():
+        stale = db.session.get(Announcement, draft_id)
+        assert claim_for_send(draft_id, 2, 'plain', 'html') is True
+        values = {'audiences': ['worldcup'], 'recipient_filter': 'all',
+                  'subject': 'Rewritten', 'headline': '', 'preheader': '',
+                  'cta': 'lounge', 'body_text': 'Rewritten'}
+        assert _save(stale, values) is None
+    assert _only(app).subject == 'Week 3 recap'
+
+
 @pytest.mark.postgres
 def test_two_racing_claims_send_once(app, client, admin):
     """A second tab's claim waits on the first claim's row lock and, once it
@@ -209,13 +225,6 @@ def test_two_racing_claims_send_once(app, client, admin):
     location = client.post('/admin/announce', data=_form('save')).location
     draft_id = int(location.rsplit('/', 1)[1])
     db.session.remove()
-
-    holder = db.engine.connect()
-    held = holder.begin()
-    first = holder.execute(db.text(
-        'UPDATE announcements SET sent_at = now() '
-        'WHERE id = :id AND sent_at IS NULL'), {'id': draft_id})
-    assert first.rowcount == 1
 
     outcome = {}
 
@@ -226,13 +235,24 @@ def test_two_racing_claims_send_once(app, client, admin):
             finally:
                 db.session.remove()
 
+    holder = db.engine.connect()
+    held = holder.begin()
     racer = Thread(target=second_tab)
-    racer.start()
-    racer.join(timeout=1)
-    assert racer.is_alive(), 'the second claim did not wait on the row lock'
-    held.commit()
-    holder.close()
-    racer.join(timeout=10)
+    try:
+        first = holder.execute(db.text(
+            'UPDATE announcements SET sent_at = now() '
+            'WHERE id = :id AND sent_at IS NULL'), {'id': draft_id})
+        assert first.rowcount == 1
+        racer.start()
+        racer.join(timeout=1)
+        assert racer.is_alive(), 'the second claim did not wait on the row lock'
+        held.commit()
+    finally:
+        if held.is_active:
+            held.rollback()
+        holder.close()
+        if racer.ident is not None:          # started
+            racer.join(timeout=10)
     assert outcome == {'claimed': False}
 
 

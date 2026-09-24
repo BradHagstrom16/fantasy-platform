@@ -61,7 +61,9 @@ _QUOTE = re.compile(r'^>\s?(.*)$')
 _ATTRIBUTION = re.compile(r'^(?:--|—|–|-(?=\s))\s*(.+)$')
 _CALLOUT = re.compile(r'^!!\s+(.+)$')
 _DIVIDER = re.compile(r'^(?:-{3,}|\*{3,})$')
-_TOKEN = re.compile(r'^\[\[\s*([a-z][a-z-]*)\s*(.*?)\s*\]\]$')
+# One token per line: its body never holds another [[ or ]], so a second
+# token on the line falls through to the paragraph error.
+_TOKEN = re.compile(r'^\[\[\s*([a-z][a-z-]*)\s*((?:(?!\[\[|\]\]).)*?)\s*\]\]$')
 _ARG = re.compile(r'^([a-z]+)=(\S+)$')
 
 # Inline: a link, then bold, then italic; the earliest match wins.
