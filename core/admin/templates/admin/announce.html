@@ -2,31 +2,74 @@
 {% block title %}Announce · Admin{% endblock %}
 
 {% block content %}
+{% set is_sent = announcement is not none and announcement.is_sent %}
+{% set form_url = url_for('admin.announce', announcement_id=announcement.id) if announcement else url_for('admin.announce') %}
 <header class="admin-masthead">
   <div class="container">
     <span class="admin-eyebrow">The Commish&rsquo;s Desk</span>
     <h1 class="admin-page-title">Announce</h1>
-    <p class="admin-masthead-sub">One bulletin, every inbox. Write it, watch it set, then run the presses.</p>
+    <p class="admin-masthead-sub">
+      {%- if is_sent %}The record of what went out. Copy it into a new draft to reuse it.
+      {%- elif announcement %}Draft saved {{ when(announcement.updated_at) }}. Write it, watch it set, then run the presses.
+      {%- else %}One bulletin, every inbox. Write it, watch it set, then run the presses.{% endif -%}
+    </p>
   </div>
 </header>
 
 <div class="container pb-5">
   <div class="announce-desk">
 
+  {% if is_sent %}
+    <section class="announce-compose announce-record" aria-labelledby="announce-record-title">
+      <h2 id="announce-record-title" class="announce-record-subject">{{ announcement.subject }}</h2>
+      <dl class="announce-record-facts">
+        <dt>Sent</dt><dd>{{ when(announcement.sent_at) }}</dd>
+        <dt>To</dt>
+        <dd>{{ audience_label(announcement) }}, {{ 'active members only' if announcement.recipient_filter == 'active' else 'all enrolled' }}</dd>
+        <dt>Reached</dt>
+        <dd>{% if announcement.sent_count is none %}Sending to {{ announcement.recipient_count }}{% else %}{{ announcement.sent_count }} of {{ announcement.recipient_count }} member{{ 's' if announcement.recipient_count != 1 }}{% endif %}</dd>
+        <dt>By</dt><dd>{{ announcement.created_by.get_display_name() }}</dd>
+      </dl>
+      <form method="POST" action="{{ form_url }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+        <button type="submit" name="action" value="duplicate" class="btn btn-primary">
+          <i class="bi bi-copy me-1" aria-hidden="true"></i>Copy Into a New Draft
+        </button>
+      </form>
+    </section>
+
+    <section class="announce-proof" aria-labelledby="announce-proof-title">
+      <div class="announce-proof-head">
+        <h2 id="announce-proof-title" class="announce-proof-title">As Sent</h2>
+      </div>
+      <iframe class="announce-preview-frame" srcdoc="{{ announcement.sent_html }}"
+              sandbox="" title="The announcement as sent"></iframe>
+      <details class="announce-plain-details">
+        <summary class="announce-plain-toggle">Plain-text version</summary>
+        <pre class="announce-plain">{{ announcement.sent_plain }}</pre>
+      </details>
+    </section>
+
+  {% else %}
+
     <section class="announce-compose" aria-label="Compose">
-      <form method="POST" class="announce-form" data-render-url="{{ url_for('admin.announce_render') }}">
+      <form method="POST" action="{{ form_url }}" class="announce-form" data-render-url="{{ url_for('admin.announce_render') }}">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
 
         <div class="row g-3 mb-1">
-          <div class="col-sm-6">
-            <label for="audience" class="form-label">Audience</label>
-            <select id="audience" name="audience" class="form-select">
+          <fieldset class="col-sm-7">
+            <legend class="form-label">Send to</legend>
+            <div class="announce-audiences">
               {% for slug, label in audiences %}
-              <option value="{{ slug }}" {% if form_data.audience == slug %}selected{% endif %}>{{ label }}</option>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="audiences" value="{{ slug }}" id="audience-{{ slug }}"
+                       {% if slug in form_data.audiences %}checked{% endif %}>
+                <label class="form-check-label" for="audience-{{ slug }}">{{ label }}</label>
+              </div>
               {% endfor %}
-            </select>
-          </div>
-          <div class="col-sm-6">
+            </div>
+          </fieldset>
+          <div class="col-sm-5">
             <label for="recipient_filter" class="form-label">Recipients</label>
             <select id="recipient_filter" name="recipient_filter" class="form-select">
               <option value="all" {% if form_data.recipient_filter == 'all' %}selected{% endif %}>All enrolled</option>
@@ -35,13 +78,34 @@
           </div>
         </div>
         <div class="form-text mb-3">
-          Active means picks submitted (World Cup) or still alive (CFB Survivor). Golf and Docket members are always active.
+          A member in two games gets one copy. Active means still alive (CFB Survivor) or picks submitted (World Cup); Docket and Golf members are always active.
         </div>
 
         <div class="mb-3">
           <label for="subject" class="form-label">Subject</label>
           <input type="text" id="subject" name="subject" class="form-control"
                  maxlength="200" value="{{ form_data.subject }}" required>
+        </div>
+
+        <div class="row g-3 mb-3">
+          <div class="col-md-7">
+            <label for="headline" class="form-label">Headline <span class="announce-optional">optional</span></label>
+            <input type="text" id="headline" name="headline" class="form-control"
+                   maxlength="200" value="{{ form_data.headline }}" placeholder="The subject, unless you write one">
+          </div>
+          <div class="col-md-5">
+            <label for="cta" class="form-label">Button</label>
+            <select id="cta" name="cta" class="form-select">
+              {% for key, label in cta_menu %}
+              <option value="{{ key }}" {% if form_data.cta == key %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-12">
+            <label for="preheader" class="form-label">Inbox preview <span class="announce-optional">optional</span></label>
+            <input type="text" id="preheader" name="preheader" class="form-control"
+                   maxlength="200" value="{{ form_data.preheader }}" placeholder="The line after the subject in the inbox list">
+          </div>
         </div>
 
         <div class="mb-2">
@@ -92,32 +156,41 @@
             <dt>### On iPhone</dt><dd>A small sub-head.</dd>
             <dt>- item</dt><dd>A bulleted list, one line per item.</dd>
             <dt>3. step</dt><dd>A numbered list. It starts at the first number you type, so steps can resume after a note.</dd>
-            <dt>&gt; Never again.<br>&gt; -- cubbies22</dt><dd>A pull quote; a last line starting with -- is the credit.</dd>
-            <dt>!! A friendly reminder: ...</dt><dd>A callout set in the bone box.</dd>
+            <dt>&gt; Never again.<br>&gt; - cubbies22</dt><dd>A pull quote. A last line starting with a dash is the credit.</dd>
+            <dt>!! A friendly reminder: ...</dt><dd>A callout, set in the bone box.</dd>
             <dt>[[stat 30 | Survivors left]]</dt><dd>A big number. Stack a few lines for several.</dd>
             <dt>---</dt><dd>A short gold divider.</dd>
-            <dt>[[survivor-board]]</dt><dd>A live board, on a line of its own; read from the database when it renders, so it is current when you send. Survivor: <code>survivor-board</code> (top=10), <code>survivor-cuts</code>, <code>survivor-picks</code>. Docket: <code>docket-week</code> (top=5), <code>docket-season</code> (top=5). Add <code>week=3</code> for an earlier finished week.</dd>
+            <dt>[[survivor-board]]</dt><dd>A live board on a line of its own, read from the database when it renders, so it is current when you send. Survivor: <code>survivor-board</code> (top=10), <code>survivor-cuts</code>, <code>survivor-picks</code>. Docket: <code>docket-week</code> (top=5), <code>docket-season</code> (top=5). Add <code>week=3</code> for an earlier finished week.</dd>
           </dl>
           <p class="form-text mb-0">A blank line starts a new paragraph; a single line break stays a line break.</p>
         </details>
 
         <div class="announce-actions">
+          <button type="submit" name="action" value="save" class="btn btn-outline-secondary" formnovalidate>
+            <i class="bi bi-floppy me-1" aria-hidden="true"></i>Save Draft
+          </button>
           {% if preview %}
           <button type="submit" name="action" value="preview" class="btn btn-outline-secondary">
-            <i class="bi bi-arrow-repeat me-1"></i>Recount Recipients
+            <i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>Recount
           </button>
           <button type="submit" name="action" value="test" class="btn btn-outline-primary">
-            <i class="bi bi-envelope-check me-1"></i>Send Test to My Inbox
+            <i class="bi bi-envelope-check me-1" aria-hidden="true"></i>Send Test to My Inbox
           </button>
           {% if preview.count > 0 %}
           <button type="submit" name="action" value="send" class="btn btn-primary"
                   onclick="return confirm('Send this announcement to {{ preview.count }} member{{ 's' if preview.count != 1 }}? This cannot be undone.');">
-            <i class="bi bi-megaphone-fill me-1"></i>Send to {{ preview.count }} Member{{ 's' if preview.count != 1 }}
+            <i class="bi bi-megaphone-fill me-1" aria-hidden="true"></i>Send to {{ preview.count }} Member{{ 's' if preview.count != 1 }}
           </button>
           {% endif %}
           {% else %}
-          <button type="submit" name="action" value="preview" class="btn btn-primary btn-lg w-100">
-            <i class="bi bi-people-fill me-1"></i>Review Recipients
+          <button type="submit" name="action" value="preview" class="btn btn-primary">
+            <i class="bi bi-people-fill me-1" aria-hidden="true"></i>Review Recipients
+          </button>
+          {% endif %}
+          {% if announcement %}
+          <button type="submit" name="action" value="delete" class="btn btn-link announce-delete" formnovalidate
+                  onclick="return confirm('Delete this draft? This cannot be undone.');">
+            Delete Draft
           </button>
           {% endif %}
         </div>
@@ -138,7 +211,7 @@
         </p>
         {% else %}
         <p class="text-muted announce-empty">
-          No members match that audience yet. Adjust the audience or filter, then recount.
+          No members match that audience yet. Adjust the games or filter, then recount.
         </p>
         {% endif %}
       {% endif %}
@@ -150,10 +223,56 @@
         <pre class="announce-plain">{{ preview.plain_body if preview else '' }}</pre>
       </details>
     </section>
+  {% endif %}
 
+  </div>
+
+  <div class="announce-files">
+    <section aria-labelledby="announce-drafts-title">
+      <h2 id="announce-drafts-title" class="announce-files-title">Drafts</h2>
+      {% if drafts %}
+      <ul class="announce-file-list">
+        {% for item in drafts %}
+        {% set current = announcement is not none and item.id == announcement.id %}
+        <li>
+          <a class="announce-file{% if current %} is-current{% endif %}"
+             href="{{ url_for('admin.announce', announcement_id=item.id) }}"{% if current %} aria-current="page"{% endif %}>
+            <span class="announce-file-subject">{{ item.subject or 'Untitled draft' }}</span>
+            <span class="announce-file-meta">Saved {{ when(item.updated_at) }} · {{ audience_label(item) }}</span>
+          </a>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p class="announce-files-empty">No drafts. Save Draft keeps your work here while you write the week up.</p>
+      {% endif %}
+      {% if announcement %}
+      <a class="announce-new" href="{{ url_for('admin.announce') }}"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>Start a new announcement</a>
+      {% endif %}
+    </section>
+    <section aria-labelledby="announce-sent-title">
+      <h2 id="announce-sent-title" class="announce-files-title">Sent</h2>
+      {% if sent %}
+      <ul class="announce-file-list">
+        {% for item in sent %}
+        {% set current = announcement is not none and item.id == announcement.id %}
+        <li>
+          <a class="announce-file{% if current %} is-current{% endif %}"
+             href="{{ url_for('admin.announce', announcement_id=item.id) }}"{% if current %} aria-current="page"{% endif %}>
+            <span class="announce-file-subject">{{ item.subject }}</span>
+            <span class="announce-file-meta">Sent {{ when(item.sent_at) }} · {{ audience_label(item) }} · {{ item.recipient_count }} member{{ 's' if item.recipient_count != 1 }}</span>
+          </a>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p class="announce-files-empty">Nothing sent from here yet. Each send is kept, so next week can start from a copy of this one.</p>
+      {% endif %}
+    </section>
   </div>
 </div>
 
+{% if not is_sent %}
 <script>
 (() => {
   const form = document.querySelector('.announce-form');
@@ -276,6 +395,15 @@
     timer = setTimeout(render, 400);
   });
   if (!frame.getAttribute('srcdoc')) render();
+
+  // ---- Leaving with unsaved words asks first; any submit saves.
+  let dirty = false;
+  form.addEventListener('input', () => { dirty = true; });
+  form.addEventListener('submit', () => { dirty = false; });
+  window.addEventListener('beforeunload', (event) => {
+    if (dirty) event.preventDefault();
+  });
 })();
 </script>
+{% endif %}
 {% endblock %}

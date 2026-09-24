@@ -55,12 +55,16 @@ def _enroll_golf(user_id, season=2026):
     return e
 
 
-def _compose(action='preview', audience='worldcup', recipient_filter='all',
-             subject='Big news', body_text='Hello everyone.'):
+ALL_GAMES = ['worldcup', 'cfb', 'docket', 'golf']
+
+
+def _compose(action='preview', audiences=('worldcup',), recipient_filter='all',
+             subject='Big news', body_text='Hello everyone.', **extra):
     """Build announce-form POST data with sensible defaults."""
     return {
         'action': action,
-        'audience': audience,
+        'audiences': list(audiences),
+        **extra,
         'recipient_filter': recipient_filter,
         'subject': subject,
         'body_text': body_text,
@@ -93,14 +97,16 @@ def test_announce_redirects_non_admin(app, client):
 # ---------------------------------------------------------------------------
 
 def test_announce_get_renders_form(app, client):
-    """Admin GET renders all four audiences plus the compose fields."""
+    """Admin GET renders a checkbox per game plus the compose fields."""
     aid = _make_user(app, 'admin', is_admin=True)
     _login(client, aid)
     resp = client.get('/admin/announce')
     assert resp.status_code == 200
     data = resp.data.decode()
-    for slug in ('worldcup', 'cfb', 'golf', 'all'):
-        assert f'value="{slug}"' in data
+    for slug in ALL_GAMES:
+        assert f'name="audiences" value="{slug}"' in data
+    for name in ('headline', 'preheader', 'cta'):
+        assert f'name="{name}"' in data
     assert 'name="subject"' in data
     assert 'name="body_text"' in data
     assert 'value="preview"' in data
@@ -128,10 +134,10 @@ def test_resolve_worldcup_active_filters_picks_submitted(app):
         _enroll_wc(u1.id, picks_submitted=True)
         _enroll_wc(u2.id, picks_submitted=False)
 
-        active = resolve_recipients('worldcup', active_only=True)
+        active = resolve_recipients(['worldcup'], active_only=True)
         assert [r.email for r in active] == ['locked@test.com']
 
-        everyone = resolve_recipients('worldcup', active_only=False)
+        everyone = resolve_recipients(['worldcup'], active_only=False)
         assert sorted(r.email for r in everyone) == [
             'drafting@test.com', 'locked@test.com',
         ]
@@ -148,10 +154,10 @@ def test_resolve_cfb_active_excludes_eliminated_and_other_seasons(app):
         _enroll_cfb(out.id, eliminated=True)
         _enroll_cfb(old.id, eliminated=False, season=2025)
 
-        active = resolve_recipients('cfb', active_only=True)
+        active = resolve_recipients(['cfb'], active_only=True)
         assert [r.email for r in active] == ['alive@test.com']
 
-        everyone = resolve_recipients('cfb', active_only=False)
+        everyone = resolve_recipients(['cfb'], active_only=False)
         assert sorted(r.email for r in everyone) == [
             'alive@test.com', 'out@test.com',
         ]
@@ -161,18 +167,18 @@ def test_resolve_golf_active_equals_all(app):
     """Golf has no inactive concept: active == enrolled, empty table is fine."""
     with app.app_context():
         from core.admin.announce import resolve_recipients
-        assert resolve_recipients('golf', active_only=True) == []
+        assert resolve_recipients(['golf'], active_only=True) == []
 
         u = _make_user_inline('golfer')
         _enroll_golf(u.id)
-        active = resolve_recipients('golf', active_only=True)
-        everyone = resolve_recipients('golf', active_only=False)
+        active = resolve_recipients(['golf'], active_only=True)
+        everyone = resolve_recipients(['golf'], active_only=False)
         assert active == everyone
         assert [r.email for r in active] == ['golfer@test.com']
 
 
 def test_resolve_all_dedupes_by_email_case_insensitive(app):
-    """The 'all' audience unions games and dedupes by lowercased email."""
+    """Several games union and dedupe by lowercased email."""
     with app.app_context():
         from core.admin.announce import resolve_recipients
         both = _make_user_inline('both')
@@ -187,7 +193,7 @@ def test_resolve_all_dedupes_by_email_case_insensitive(app):
         db.session.commit()
         _enroll_cfb(shouty.id)
 
-        recipients = resolve_recipients('all', active_only=False)
+        recipients = resolve_recipients(ALL_GAMES, active_only=False)
         emails = [r.email.lower() for r in recipients]
         assert sorted(emails) == ['both@test.com', 'wconly@test.com']
 
@@ -200,7 +206,7 @@ def test_resolve_skips_falsy_email(app):
         _enroll_wc(u.id)
         u.email = ''
         db.session.commit()
-        assert resolve_recipients('worldcup', active_only=False) == []
+        assert resolve_recipients(['worldcup'], active_only=False) == []
 
 
 def _make_user_inline(username, is_admin=False):
@@ -288,7 +294,8 @@ def test_preview_rejects_invalid_audience_or_filter(mock_send, app, client):
     aid = _make_user(app, 'admin', is_admin=True)
     _login(client, aid)
 
-    for overrides in ({'audience': 'bogus'}, {'recipient_filter': 'bogus'}):
+    for overrides in ({'audiences': ['bogus']}, {'audiences': []},
+                      {'recipient_filter': 'bogus'}, {'cta': 'bogus'}):
         resp = client.post('/admin/announce', data=_compose(**overrides))
         assert resp.status_code == 200
         assert 'value="send"' not in resp.data.decode()
@@ -406,7 +413,7 @@ def test_action_send_zero_recipients_warns_without_sending(mock_send, app, clien
 
 @patch('core.admin.announce.send_platform_email', return_value=True)
 def test_action_send_dedupes_all_audience(mock_send, app, client):
-    """The 'all' audience sends once per distinct mailbox, even for dual enrollees."""
+    """Two games send once per distinct mailbox, even for dual enrollees."""
     aid = _make_user(app, 'admin', is_admin=True)
     with app.app_context():
         u = _make_user_inline('dual')
@@ -414,7 +421,7 @@ def test_action_send_dedupes_all_audience(mock_send, app, client):
         _enroll_cfb(u.id)
     _login(client, aid)
 
-    client.post('/admin/announce', data=_compose(action='send', audience='all'))
+    client.post('/admin/announce', data=_compose(action='send', audiences=ALL_GAMES))
     mock_send.assert_called_once()
     assert mock_send.call_args[0][0] == 'dual@test.com'
 

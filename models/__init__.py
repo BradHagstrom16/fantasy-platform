@@ -11,7 +11,7 @@ When adding a new game, import its models here too.
 from models.user import User
 
 # Platform editorial content (admin-editable copy)
-from models.content import CommishNote
+from models.content import Announcement, CommishNote
 
 # Web push subscriptions (installable-app The Wire — platform-level, no game import)
 from models.push import PushSubscription
@@ -59,6 +59,7 @@ from games.docket.models import (
 
 __all__ = [
     'User',
+    'Announcement',
     'CommishNote',
     'PushSubscription',
     'GolfEnrollment',

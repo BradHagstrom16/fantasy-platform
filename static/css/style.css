@@ -680,7 +680,6 @@ html[data-app-state="subscribed"] .app-panel[data-state="subscribed"] {
   letter-spacing: .05em;
   text-transform: uppercase;
 }
-.announce-board-menu { margin-left: auto; }
 .announce-board-menu .dropdown-item.announce-tool {
   display: block;
   width: 100%;
@@ -743,7 +742,125 @@ html[data-app-state="subscribed"] .app-panel[data-state="subscribed"] {
 .announce-actions {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: .5rem;
+}
+.announce-delete {
+  margin-left: auto;
+  color: var(--danger);
+  text-decoration: none;
+}
+.announce-delete:hover { color: var(--danger); text-decoration: underline; }
+
+.announce-audiences {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(11.5rem, 1fr));
+  gap: .35rem 1.25rem;
+  padding-top: .35rem;
+}
+.announce-audiences .form-check-input:checked {
+  background-color: var(--purple-700);
+  border-color: var(--purple-700);
+}
+.announce-optional {
+  margin-left: .35rem;
+  font-family: 'Newsreader', Georgia, serif;
+  font-size: .82rem;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--text-secondary);
+}
+
+/* The sent record: what went out, when, to whom. */
+.announce-record-subject {
+  margin: 0 0 1rem;
+  font-family: var(--font-teko);
+  font-size: 1.75rem;
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: .03em;
+  text-transform: uppercase;
+  color: var(--purple-700);
+}
+.announce-record-facts {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: .5rem 1.25rem;
+  margin: 0 0 1.5rem;
+}
+.announce-record-facts dt {
+  font-family: var(--font-teko);
+  font-size: .95rem;
+  font-weight: 500;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+.announce-record-facts dd { margin: 0; }
+
+/* Drafts and Sent: the desk's two files, under the work. */
+.announce-files {
+  display: grid;
+  gap: 2rem;
+  margin-top: 2.5rem;
+  padding-top: 1.5rem;
+  border-top: 2px solid var(--gold);
+}
+@media (min-width: 768px) {
+  .announce-files { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+}
+.announce-files-title {
+  margin: 0 0 .75rem;
+  font-family: var(--font-teko);
+  font-size: 1.35rem;
+  font-weight: 600;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--text-primary);
+}
+.announce-file-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: .4rem;
+}
+.announce-file {
+  display: block;
+  padding: .7rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  text-decoration: none;
+  transition: border-color 150ms cubic-bezier(0.4, 0, 0.2, 1), background-color 150ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+.announce-file:hover { border-color: var(--purple-700); color: var(--text-primary); }
+.announce-file:focus-visible { outline: 2px solid var(--purple-700); outline-offset: 2px; }
+.announce-file.is-current {
+  border-color: var(--purple-700);
+  background: rgba(58, 29, 114, .05);
+}
+.announce-file-subject {
+  display: block;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.announce-file-meta {
+  display: block;
+  margin-top: .1rem;
+  font-size: .85rem;
+  color: var(--text-secondary);
+}
+.announce-files-empty {
+  max-width: 48ch;
+  color: var(--text-secondary);
+}
+.announce-new {
+  display: inline-block;
+  margin-top: .9rem;
+  font-weight: 600;
+  color: var(--purple-700);
 }
 
 .announce-proof-head {
