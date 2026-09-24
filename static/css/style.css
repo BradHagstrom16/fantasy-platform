@@ -618,7 +618,7 @@ html[data-app-state="subscribed"] .app-panel[data-state="subscribed"] {
 }
 @media (min-width: 1200px) {
   .announce-desk { grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); }
-  .announce-proof { position: sticky; top: 1rem; }
+  .announce-proof { position: sticky; top: calc(var(--ccc-nav-h) + 1rem); }
 }
 
 .announce-compose,

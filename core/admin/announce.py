@@ -21,7 +21,7 @@ from flask import (
     url_for,
 )
 from flask_login import current_user
-from sqlalchemy import select, update
+from sqlalchemy import delete, select, update
 from sqlalchemy.orm import joinedload
 
 from core.admin import admin_bp
@@ -429,8 +429,18 @@ def announce(announcement_id=None):
         return _here(announcement)
     if action == 'delete':
         if announcement is not None:
-            db.session.delete(announcement)
+            # Conditional, like the claim: a draft another tab just sent is
+            # a sent record now, and a stale tab never deletes it.
+            deleted = db.session.execute(
+                delete(Announcement)
+                .where(Announcement.id == announcement.id,
+                       Announcement.sent_at.is_(None))
+            ).rowcount
             db.session.commit()
+            if not deleted:
+                flash('This announcement already went out, so it is kept.',
+                      'warning')
+                return _here(announcement)
             flash('Draft deleted.', 'success')
         return redirect(url_for('admin.announce'))
 

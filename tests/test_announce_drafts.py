@@ -132,6 +132,19 @@ def test_delete_removes_a_draft(app, client, admin):
         assert db.session.scalars(db.select(Announcement)).all() == []
 
 
+def test_a_stale_delete_never_removes_a_sent_record(app, client, admin):
+    """The draft was sent from another tab before this tab's delete."""
+    location = client.post('/admin/announce', data=_form('save')).location
+    draft_id = int(location.rsplit('/', 1)[1])
+    # The route's early is_sent check read the row before the claim: patch it
+    # to the stale answer so the request reaches the delete itself.
+    with app.app_context(), patch('core.admin.announce.Announcement.is_sent', False):
+        assert claim_for_send(draft_id, 2, 'plain', 'html') is True
+        resp = client.post(location, data={'action': 'delete', 'csrf_token': 'x'})
+    assert resp.status_code == 302 and resp.location.endswith(location)
+    assert _only(app).is_sent
+
+
 def test_an_unknown_announcement_is_a_404(client, admin):
     assert client.get('/admin/announce/999').status_code == 404
 
