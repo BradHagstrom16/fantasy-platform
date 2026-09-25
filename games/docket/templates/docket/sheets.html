@@ -216,6 +216,9 @@ the finish review and DESIGN.md 7.13.
                 {% endfor %}
             </ol>
             {% endif %}
+            {# The member page is the door to the whole season (8.10); a link
+               inside the summary would fight the toggle, so it rides here. #}
+            <p class="docket-sheet-season"><a class="docket-ledger-namelink" href="{{ url_for('docket.member', enrollment_id=m.enrollment.id) }}">{{ m.enrollment.get_display_name() }}'s full season &rsaquo;</a></p>
             {% if own_preview %}
             <p class="docket-sheet-sealed">Only you can see this until each case kicks off.</p>
             {% elif m.sealed_sentence %}

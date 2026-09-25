@@ -348,6 +348,7 @@ def _weekly_leaderboard(user, week, now) -> dict | None:
         entries.append({
             'rank': rank,
             'user_id': m.user_id,
+            'enrollment_id': m.enrollment.id,
             'name': m.enrollment.get_display_name(),
             'avatar': m.enrollment.user.get_avatar(),
             'record': record_label(t) if t is not None else None,
@@ -376,10 +377,19 @@ def _season_leaderboard(user) -> dict | None:
         {
             'rank': row.standing.rank,
             'user_id': row.enrollment.user_id,
+            'enrollment_id': row.enrollment.id,
             'name': row.enrollment.get_display_name(),
             'avatar': row.enrollment.user.get_avatar(),
             'points': row.standing.total_points,
             'wins': row.standing.wins,
+            # The ledger's movement (8.12) at row scale: words for the
+            # label, a direction for the mark, never a room class or var.
+            'move': None if row.move is None else {
+                'label': row.move.label,
+                'direction': row.move.direction,
+                'delta': abs(row.move.delta),
+                'spoken': row.move.spoken,
+            },
         }
         for row in ledger.rows          # already (rank, name)-ordered
     ]

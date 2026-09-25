@@ -44,10 +44,16 @@ never reads differently here than on the ledger drawer or All Sheets.
 
     {% if row and ledger.is_graded %}
     <p class="docket-your-standing">
-        {% if neighbors.is_leader %}
-        Leads the field{% if neighbors.ahead_of_next is not none %} by {{ '%.1f'|format(neighbors.ahead_of_next) }} point{{ 's' if neighbors.ahead_of_next != 1 }}{% endif %}.
+        {% if neighbors.shares_rank and neighbors.rank_label == '1st' %}
+        Shares the lead with {{ neighbors.shares_rank|join(', ') }}{% if row.move %}, {{ row.move.sentence }}{% endif %}.
+        {% elif neighbors.is_leader and neighbors.level_with %}
+        Leads the field, level on points with {{ neighbors.level_with }} and ahead on {% if neighbors.decided_by == 'wins' %}wins{% else %}off by{% endif %}{% if row.move %}, {{ row.move.sentence }}{% endif %}.
+        {% elif neighbors.is_leader %}
+        Leads the field{% if neighbors.ahead_of_next is not none %} by {{ '%.1f'|format(neighbors.ahead_of_next) }} point{{ 's' if neighbors.ahead_of_next != 1 }}{% endif %}{% if row.move %}, {{ row.move.sentence }}{% endif %}.
+        {% elif neighbors.behind_leader == 0 %}
+        Sits <strong>{{ neighbors.rank_label }}</strong> of {{ neighbors.field_size }}, {% if neighbors.shares_rank %}tied with {{ neighbors.shares_rank|join(', ') }}, {% endif %}{% if row.move %}{{ row.move.sentence }}, {% endif %}level on points with the leader and behind on {% if neighbors.decided_by == 'wins' %}wins{% else %}off by{% endif %}.
         {% else %}
-        Sits <strong>{{ neighbors.rank_label }}</strong> of {{ neighbors.field_size }}, {{ '%.1f'|format(neighbors.behind_leader) }} behind the leader{% if neighbors.ahead_of_next is not none %} and {{ '%.1f'|format(neighbors.ahead_of_next) }} ahead of the next line{% endif %}.
+        Sits <strong>{{ neighbors.rank_label }}</strong> of {{ neighbors.field_size }}, {% if neighbors.shares_rank %}tied with {{ neighbors.shares_rank|join(', ') }}, {% endif %}{% if row.move %}{{ row.move.sentence }}, {% endif %}{{ '%.1f'|format(neighbors.behind_leader) }} behind the leader{% if neighbors.level_with %} and level on points with {{ neighbors.level_with }}, {{ neighbors.level_side }} on {% if neighbors.decided_by == 'wins' %}wins{% else %}off by{% endif %}{% elif neighbors.ahead_of_next is not none %} and {{ '%.1f'|format(neighbors.ahead_of_next) }} ahead of the next line{% endif %}.
         {% endif %}
         {% if row.standing.dropped_week %}
         <span class="docket-standing-drop">The drop forgives Week {{ row.standing.dropped_week }}'s {{ '%.1f'|format(row.standing.dropped_points) }} points. Its wins and its off by are never forgiven.</span>

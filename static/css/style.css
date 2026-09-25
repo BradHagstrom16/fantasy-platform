@@ -3630,6 +3630,31 @@ body.game-golf {
 .home-shell .roll-rank--gold {
   color: var(--gold-light);
 }
+/* The ledger's movement at row scale (docket DESIGN.md 8.12): a drawn mark
+   plus the figure under the rank; live-green up, live-red down, bone-mute
+   held. Lounge tokens only, and the words ride the role="img" label. */
+.home-shell .roll-move {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: .15rem;
+  font-family: var(--font-teko);
+  font-weight: 600;
+  font-size: .8rem;
+  line-height: 1;
+  color: var(--bone-mute);
+}
+.home-shell .roll-move-mark {
+  display: inline-block;
+  width: .5rem;
+  height: .34rem;
+  background: currentColor;
+  clip-path: polygon(0 15%, 16% 0, 50% 45%, 84% 0, 100% 15%, 50% 100%);
+}
+.home-shell .roll-move.is-up { color: var(--live-green); }
+.home-shell .roll-move.is-up .roll-move-mark { transform: rotate(180deg); }
+.home-shell .roll-move.is-down { color: var(--live-red); }
+.home-shell .roll-move.is-held .roll-move-mark { clip-path: none; height: 2px; width: .5rem; }
 .home-shell .roll-name {
   font-family: var(--font-teko);
   font-weight: 600;
@@ -15037,6 +15062,7 @@ body.game-docket .form-select:focus {
   font-family: 'Newsreader', Georgia, serif;
   font-size: 1.05rem;
   color: var(--text-secondary);
+  text-wrap: pretty;   /* keeps "Week 2." off a line of its own */
   /* One sentence: span the container so it sits on a single line on desktop
      rather than wrapping a word or two beside empty whitespace (Brad, 2026-09-16). */
   margin: 1.5rem 0 1rem;
@@ -15060,6 +15086,37 @@ body.game-docket .form-select:focus {
 }
 /* Inline, so a shared rank does not make its rows taller than the rest and
    break the ruled rhythm the ledger is built on. */
+/* The ledger's movement (DESIGN.md 8.12): what the latest graded week did
+   to the line. The entry caret's geometry turned up (success) or down
+   (danger), a flat ink bar for held, and the figure in Teko; the whole
+   figure is one role="img" whose label says it in words. Garnet never
+   touches it (6.5): movement belongs to the ledger, never to a line. */
+.docket-move {
+  display: inline-flex;
+  align-items: center;
+  gap: .15rem;
+  margin-left: .4rem;
+  vertical-align: middle;
+  font-family: 'Teko', sans-serif;
+  font-weight: 600;
+  font-size: .85rem;
+  line-height: 1;
+  letter-spacing: .02em;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+.docket-move-mark {
+  display: inline-block;
+  width: .55rem;
+  height: .36rem;
+  background: currentColor;
+  clip-path: polygon(0 15%, 16% 0, 50% 45%, 84% 0, 100% 15%, 50% 100%);
+}
+.docket-move.is-up { color: var(--success); }
+.docket-move.is-up .docket-move-mark { transform: rotate(180deg); }
+.docket-move.is-down { color: var(--danger); }
+.docket-move.is-held .docket-move-mark { clip-path: none; height: 2px; width: .8rem; opacity: .55; }
+
 .docket-ledger-tied {
   font-family: 'Newsreader', Georgia, serif;
   font-size: .7rem;
@@ -16363,4 +16420,147 @@ body.game-docket .back-link:focus-visible {
   .tribune-sheet { padding-top: 1.5rem; }
   .letter-page-body p,
   .letter-page-body li { font-size: 1rem !important; }
+}
+/* === THE DOCKET: The Brief (DESIGN.md 8.13), the Clerk's Tally Sheet =====
+   One continuous ruled account on the room's white paper: sub-heads on the
+   oxblood rule, lines ruled by --docket-rule, labels in Newsreader, figures
+   in Teko tabular right-aligned, verdicts as the room's stamps. No cards, no
+   charts. Garnet only on the reader's own line (6.5). */
+.docket-brief-page { padding-bottom: 3rem; }
+.docket-brief-sheet {
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  padding: .5rem clamp(1rem, 3vw, 2rem) 1.5rem;
+  max-width: 62rem;
+  margin: 0 auto;
+}
+.docket-brief-section:first-child .docket-section-head { margin-top: 1.25rem; }
+.docket-brief-lines { list-style: none; margin: 0; padding: 0; }
+.docket-brief-line {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-areas: "label taken record" "wolves wolves wolves";
+  align-items: baseline;
+  column-gap: 1.25rem;
+  row-gap: .25rem;
+  padding: .55rem 0;
+  border-bottom: 1px solid var(--docket-rule);
+  font-family: 'Newsreader', Georgia, serif;
+  font-size: 1rem;
+  line-height: 1.45;
+  color: var(--text-primary);
+}
+.docket-brief-line.is-you { background: rgba(166, 52, 70, .08); margin: 0 -.5rem; padding-left: .5rem; padding-right: .5rem; }
+.docket-brief-line--field { font-weight: 600; }
+.docket-brief-label { grid-area: label; min-width: 0; }
+.docket-brief-week {
+  font-family: 'Teko', sans-serif;
+  font-weight: 600;
+  font-size: 1.05rem;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--game-primary);
+  margin-right: .35rem;
+}
+.docket-brief-fig {
+  grid-area: taken;
+  font-family: 'Teko', sans-serif;
+  font-weight: 500;
+  font-size: 1.05rem;
+  letter-spacing: .02em;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  text-align: right;
+}
+.docket-brief-fig--record { grid-area: record; color: var(--text-primary); min-width: 4.5rem; }
+.docket-brief-fig--wide { grid-column: taken / span 2; white-space: normal; text-align: right; }
+.docket-brief-record { font-family: 'Teko', sans-serif; font-weight: 600; font-size: 1.15rem; font-variant-numeric: tabular-nums; }
+.docket-brief-record b { font-weight: inherit; }
+.docket-brief-quiet { color: var(--text-secondary); font-weight: 400; }
+.docket-brief-wolves {
+  grid-area: wolves;
+  list-style: none;
+  margin: .15rem 0 0;
+  padding: 0 0 0 1rem;
+  border-left: 1px solid var(--docket-rule);
+  font-size: .95rem;
+  color: var(--text-secondary);
+}
+.docket-brief-wolves li { padding: .1rem 0; }
+.docket-brief-nowolf { grid-area: wolves; padding-left: 1rem; border-left: 1px solid var(--docket-rule); }
+.docket-brief-table { min-width: 44rem; }
+.docket-brief-th { white-space: nowrap; }
+.docket-brief-th--fig { text-align: right; }
+/* A sortable head reads as a control at rest: a dotted rule under the
+   label (the unsortable Over / Under head has none). Active keeps the
+   ledger's caret. */
+.docket-brief-th .docket-ledger-sort {
+  text-decoration: underline dotted;
+  text-decoration-color: var(--game-accent-light);
+  text-underline-offset: .2em;
+}
+.docket-brief-th .docket-ledger-sort.is-active { text-decoration: none; }
+/* The phone composition of the members' rows (one source, two
+   compositions): ruled lines, figures stacked under the name. */
+.docket-brief-phone { display: none; }
+.docket-brief-sortrow { margin: 0 0 .5rem; line-height: 1.8; }
+.docket-brief-sortlink { color: var(--game-primary); text-decoration: underline dotted; text-underline-offset: .2em; }
+.docket-brief-sortlink.is-active { font-weight: 600; text-decoration: none; border-bottom: 2px solid var(--game-accent); }
+.docket-brief-member {
+  display: grid;
+  grid-template-columns: 2rem minmax(0, 1fr);
+  grid-template-areas: "rank name" ". keys";
+  gap: .15rem .5rem;
+  padding: .6rem 0;
+  border-bottom: 1px solid var(--docket-rule);
+  min-height: 44px;
+}
+.docket-brief-member.is-you { background: rgba(166, 52, 70, .08); margin: 0 -.5rem; padding-left: .5rem; padding-right: .5rem; }
+.docket-brief-member-rank {
+  grid-area: rank;
+  font-family: 'Teko', sans-serif;
+  font-weight: 600;
+  font-size: 1.15rem;
+  color: var(--game-primary);
+}
+.docket-brief-member-name { grid-area: name; font-family: 'Newsreader', Georgia, serif; font-weight: 600; }
+.docket-brief-member-keys {
+  grid-area: keys;
+  display: flex;
+  flex-direction: column;
+  gap: .1rem;
+  font-family: 'Newsreader', Georgia, serif;
+  font-size: .92rem;
+  color: var(--text-secondary);
+}
+.docket-brief-member-keys b { font-family: 'Teko', sans-serif; font-weight: 600; font-size: 1.05rem; color: var(--text-primary); font-variant-numeric: tabular-nums; }
+.docket-brief-foot { margin: 1.5rem 0 0; }
+.docket-ledger-brieflink {
+  display: inline-block;
+  margin-top: .35rem;
+  font-family: 'Teko', sans-serif;
+  font-weight: 600;
+  font-size: 1rem;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--game-primary);
+  text-decoration: none;
+  border-bottom: 2px solid var(--game-accent);
+}
+.docket-ledger-brieflink:hover,
+.docket-ledger-brieflink:focus-visible { color: var(--game-accent); }
+.docket-sheet-season { margin: .5rem 0 0; font-size: .95rem; }
+@media (max-width: 575.98px) {
+  .docket-brief-sheet { padding-left: .85rem; padding-right: .85rem; }
+  .docket-brief-wide { display: none; }
+  .docket-brief-phone { display: block; }
+  .docket-brief-line {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: "label record" "taken taken" "wolves wolves";
+  }
+  .docket-brief-fig { text-align: left; }
+  .docket-brief-fig--record { text-align: right; }
+  .docket-brief-fig--wide { grid-column: taken; text-align: left; }
 }

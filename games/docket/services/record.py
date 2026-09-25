@@ -86,24 +86,34 @@ class TopSheet:
     split: bool
 
 
-def around_the_docket(top_sheet, weekly_prize, *, is_winner=False):
+def around_the_docket(top_sheet, weekly_prize, *, is_winner=False,
+                      biggest_mover=None):
     """The week around the docket as fact rows: who topped it and where the
     weekly purse went. The record letter says "You" to a winner; the
     Commish's announcement board (``is_winner`` False) names everyone."""
     if top_sheet.split:
         count = len(top_sheet.names)
-        return [('Top sheet', f'{count} sheets at {top_sheet.record}; the '
+        rows = [('Top sheet', f'{count} sheets at {top_sheet.record}; the '
                               f'purse is split'),
                 ('Weekly purse', f'${weekly_prize} split {count} ways')]
-    name = 'You' if is_winner else top_sheet.names[0]
-    purse_to = 'you' if is_winner else top_sheet.names[0]
-    return [('Top sheet', f'{name}, {top_sheet.record}'),
-            ('Weekly purse', f'${weekly_prize} to {purse_to}')]
+    else:
+        name = 'You' if is_winner else top_sheet.names[0]
+        purse_to = 'you' if is_winner else top_sheet.names[0]
+        rows = [('Top sheet', f'{name}, {top_sheet.record}'),
+                ('Weekly purse', f'${weekly_prize} to {purse_to}')]
+    # The ledger's movement (DESIGN.md 8.12): the line that climbed
+    # furthest on this week's grade, in the same words the ledger prints.
+    if biggest_mover is not None:
+        mover_name, move = biggest_mover
+        rows.append(('Biggest mover',
+                     f'{mover_name}, up {move.delta} to {ordinal(move.rank)}'))
+    return rows
 
 
 def record_letter(*, week_number, display_name, tally, points, week_rank,
                   roster_size, season_rank, season_points, top_sheet,
-                  is_winner, weekly_prize, autopicked, ledger_url) -> Letter:
+                  is_winner, weekly_prize, autopicked, ledger_url,
+                  movement=None, biggest_mover=None) -> Letter:
     """The record as a Club Letter (personal: greets by name).
 
     Digits in the headline (the room's register), words in the lede; three
@@ -135,10 +145,12 @@ def record_letter(*, week_number, display_name, tally, points, week_rank,
         facts=[
             (f'Week {week_number}', f'{record} · {points_text(points)}'),
             ('On the week', f'{ordinal(week_rank)} of {roster_size}'),
-            ('Season', f'{ordinal(season_rank)} · {points_text(season_points)}'),
+            ('Season', f'{ordinal(season_rank)} · {points_text(season_points)}'
+                       + (f' · {movement.label}' if movement is not None else '')),
         ],
         extras=[result_block('Around the docket', around_the_docket(
-            top_sheet, weekly_prize, is_winner=is_winner))],
+            top_sheet, weekly_prize, is_winner=is_winner,
+            biggest_mover=biggest_mover))],
         cta=('See the ledger', ledger_url),
         supporting=supporting,
     )
@@ -159,10 +171,14 @@ def week_records(week, now_naive):
         # Graded with nobody on the roster at its deadline (ADR-047: the
         # marker is stamped, zero result rows): nobody to write to.
         return []
-    ledger = season_ledger()
+    # The season as this week left it: the Season fact and the movement
+    # belong to the letter's week even when a later week has since graded.
+    ledger = season_ledger(through_week=week.week_number)
     sheets = {m.user_id: m for m in all_sheets(week, now_naive).members}
-    season_by_user = {row.enrollment.user_id: row.standing
-                      for row in ledger.rows}
+    season_by_user = {row.enrollment.user_id: row for row in ledger.rows}
+    mover = ledger.biggest_mover
+    biggest_mover = (None if mover is None
+                     else (mover.enrollment.get_display_name(), mover.move))
     verdict = next(v for v in ledger.verdicts
                    if v.week_number == week.week_number)
     winner_ids = {e.user_id for e in verdict.winners}
@@ -178,7 +194,7 @@ def week_records(week, now_naive):
     for row in standing.rows:
         user_id = row.enrollment.user_id
         sheet = sheets[user_id]
-        season = season_by_user[user_id]
+        season = season_by_user[user_id].standing
         recipients.append((row.enrollment.user, {
             'week_number': week.week_number,
             'display_name': row.enrollment.get_display_name(),
@@ -193,6 +209,8 @@ def week_records(week, now_naive):
             'weekly_prize': weekly_prize,
             'autopicked': any(line.is_autopick for line in sheet.lines
                               if not line.is_reserve),
+            'movement': season_by_user[user_id].move,
+            'biggest_mover': biggest_mover,
         }))
     return recipients
 

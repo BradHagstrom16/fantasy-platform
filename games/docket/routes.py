@@ -38,6 +38,7 @@ from games.docket.models import DocketEnrollment, DocketGame, DocketWeek
 from games.docket.services import picks as picks_service
 from games.docket.services import receipts as receipts_service
 from games.docket.services.bridge_sheet import SPORT_LABELS
+from games.docket.services.brief import build_brief
 from games.docket.services.enrollment import get_enrollment
 from games.docket.services.grading.engine import slot_points
 from games.docket.services.grading.snapshots import BACKUP_SLOT, SCORING_SLOTS, Outcome
@@ -928,16 +929,45 @@ def member(enrollment_id):
         rows = ledger.rows
         idx = rows.index(row)
         leader_points = ledger.leader.standing.total_points
+        points = row.standing.total_points
+        # A tie is said honestly (the ledger prints "tied"): the names that
+        # share this rank, and the line level on points but split from this
+        # one by wins or off by: the leader first, then the line just above
+        # (a shared rank has none of its own), then the next line down. The
+        # next line down is the first ranked below this one, so a shared
+        # rank never reads as "0.0 ahead".
+        shares_rank = [r.enrollment.get_display_name() for r in rows
+                       if r is not row and r.standing.rank == row.standing.rank]
+        below = next((r for r in rows[idx + 1:]
+                      if r.standing.rank != row.standing.rank), None)
+        level_with = None
+        level_side = None          # 'ahead' | 'behind' of level_with
+        split_from = None          # the standing the split is measured on
+        if row.standing.rank > 1 and leader_points == points:
+            split_from = ledger.leader.standing
+        elif not shares_rank and idx > 0 \
+                and rows[idx - 1].standing.total_points == points:
+            split_from = rows[idx - 1].standing
+            level_with = rows[idx - 1].enrollment.get_display_name()
+            level_side = 'behind'
+        elif below is not None and below.standing.total_points == points:
+            split_from = below.standing
+            level_with = below.enrollment.get_display_name()
+            level_side = 'ahead'
+        decided_by = (None if split_from is None
+                      else 'wins' if split_from.wins != row.standing.wins
+                      else 'off by')
         neighbors = {
             'is_leader': row is ledger.leader,
             'rank_label': _ordinal(row.standing.rank),
             'field_size': len(rows),
-            'behind_leader': round(
-                leader_points - row.standing.total_points, 1),
-            'ahead_of_next': (
-                round(row.standing.total_points
-                      - rows[idx + 1].standing.total_points, 1)
-                if idx + 1 < len(rows) else None),
+            'behind_leader': round(leader_points - points, 1),
+            'ahead_of_next': (round(points - below.standing.total_points, 1)
+                              if below is not None else None),
+            'shares_rank': shares_rank,
+            'level_with': level_with,
+            'level_side': level_side,
+            'decided_by': decided_by,
         }
 
     history = {}
@@ -957,6 +987,83 @@ def member(enrollment_id):
         purse=season_purse(len(ledger.rows)),
         split_weeks={v.week_number for v in ledger.verdicts if v.split},
         result_words=RESULT_WORDS,
+    )
+
+
+# --------------------------------------------------------------------------
+# The Brief (DESIGN.md 8.13): the analyst layer, argued from graded weeks
+# --------------------------------------------------------------------------
+
+# The members' rows sort like the ledger (8.9): a known key, stably over the
+# ledger order, each with its natural first direction; the rank column keeps
+# the official order whatever the sort. A key of None is a blank (the dash
+# the page prints): blanks follow every measured row in both directions.
+BRIEF_SORTS = {
+    'name': ('name', lambda r: r.enrollment.get_display_name().casefold(), 'asc'),
+    'contrarian': ('against the field', lambda r: r.contrarian_share, 'desc'),
+    'favorites': ('favorites', lambda r: r.favorites, 'desc'),
+    'underdogs': ('underdogs', lambda r: r.underdogs, 'desc'),
+    'x2': ('the x2', lambda r: (r.x2.wins, -r.x2.losses) if r.x2.decided else None, 'desc'),
+    'number': ('off by', lambda r: r.avg_off_tenths, 'asc'),
+    'best': ('best week', lambda r: r.best_points if r.best_week else None, 'desc'),
+}
+
+
+def _brief_order(rows, sort_key, direction):
+    if sort_key not in BRIEF_SORTS:
+        return list(rows), None, None
+    _label, key_fn, default_direction = BRIEF_SORTS[sort_key]
+    if direction not in _FLIP:
+        direction = default_direction
+    measured = [r for r in rows if key_fn(r) is not None]
+    blanks = [r for r in rows if key_fn(r) is None]
+    return (sorted(measured, key=key_fn, reverse=direction == 'desc') + blanks,
+            sort_key, direction)
+
+
+def _brief_sort_links(sort_key, direction):
+    links = {}
+    for key, (_label, _fn, default_direction) in BRIEF_SORTS.items():
+        active = key == sort_key
+        next_direction = _FLIP[direction] if active else default_direction
+        links[key] = {
+            'href': url_for('docket.brief', sort=key, dir=next_direction),
+            'aria': _ARIA_SORT[direction] if active else None,
+            'active': active,
+        }
+    return links
+
+
+def _weeks_counted(week_numbers) -> str:
+    """'Weeks 1 to 3' / 'Week 1': the graded weeks the Brief argues from."""
+    if not week_numbers:
+        return ''
+    if len(week_numbers) == 1:
+        return f'Week {week_numbers[0]}'
+    return f'Weeks {week_numbers[0]} to {week_numbers[-1]}'
+
+
+@docket_bp.route('/brief')
+@enrollment_required('docket')
+def brief():
+    """The Brief: the field's habits, the consensus and the lone wolf, the
+    x2 ledger, the number, and the members' rows, from graded weeks only.
+    Presentation (the sort) is derived here, never in Jinja."""
+    ledger = season_ledger()
+    the_brief = build_brief(ledger)
+    members, sort_key, sort_dir = _brief_order(
+        the_brief.members, request.args.get('sort'), request.args.get('dir'))
+    return render_template(
+        'docket/brief.html',
+        brief=the_brief,
+        ledger=ledger,
+        members=members,
+        sort_key=sort_key,
+        sort_dir=sort_dir,
+        sort_label=BRIEF_SORTS[sort_key][0] if sort_key else None,
+        sort_links=_brief_sort_links(sort_key, sort_dir),
+        result_words=RESULT_WORDS,
+        weeks_counted=_weeks_counted(the_brief.week_numbers),
     )
 
 

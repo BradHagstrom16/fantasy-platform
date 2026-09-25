@@ -382,7 +382,10 @@ of `◈`/`◇` for lounge ceremony).
 ### 6.10 Prohibited visual directions
 
 - Sportsbook chrome: live-odds boards, movement arrows, flashing numbers, parlay-slip
-  styling. The frozen-line register is the anti-sportsbook.
+  styling. The frozen-line register is the anti-sportsbook. **Movement belongs to the
+  ledger, never to a line** (amended 2026-09-24, §8.12): a rank's rise or fall since the last
+  graded week is a printed change to the record and is welcome on the ledger; a line's
+  movement is market chrome and stays banned.
 - Legal skeuomorphism: gavel icons, scales-of-justice watermarks, rotated rubber stamps,
   "CONFIDENTIAL" tape. The register is a working document, not a courtroom costume.
 - A second dark room. Dark surfaces in this room are limited to the shared subnav chrome and
@@ -660,10 +663,11 @@ have pros in there as well it's gonna be tough looking for a specific game"):
 Platform `.game-subnav` shape: background `#180C10` (warm oxblood-cast near-black, distinct
 from CFB's purple-cast `#0a080f`), `--subnav-accent: #A63446`, `--subnav-accent-rgb:
 166,52,70`, plus both scroll-fade tints matching the background. Label: "⚖️ Docket 2026".
-Pills, in order: **My Sheet · All Sheets · Ledger · Rules**, then Admin for admins only. The
-weekly obligation leads because that is what members arrive for Tuesday through Sunday; the
-week's other surface sits beside it (All Sheets, 7.13, added 2026-09-04); the ledger is what
-they come back to.
+Pills, in order: **My Sheet · All Sheets · Ledger · The Brief · Rules**, then Admin for admins
+only. The weekly obligation leads because that is what members arrive for Tuesday through
+Sunday; the week's other surface sits beside it (All Sheets, 7.13, added 2026-09-04); the
+ledger is what they come back to, and the Brief (8.13, added 2026-09-24) sits beside the ledger
+as its analyst layer, before the rules.
 
 ### 7.9 Join page
 
@@ -1054,6 +1058,107 @@ watch the current week's record build. All on the room's no-JS spine.
   never a sealed side**), and expanding a line opens that member's current selections. The
   standalone `.docket-liveweek` section is retired. On court paper, never a dark band (§6.10).
   Locked by `tests/test_docket_ledger_routes.py` and `tests/test_docket_ledger_history.py`.
+
+### 8.12 The ledger moves — `.docket-move`, `.roll-move` (2026-09-24)
+
+Brad's ruling (2026-09-24): the Docket's ledger prints what the latest graded week did to each
+line's rank; CFB's ban on rank-movement surfaces stands (`games/cfb/DESIGN.md`). §6.10's
+amendment is the rule: **movement belongs to the ledger, never to a line.** A rank's rise or
+fall is a printed change to the record; a line's movement is market chrome and stays banned.
+
+- **Derived, never stored.** `season_pass.season_movement` runs the same pure `season_standings`
+  over every graded week but the last, so the drop moves the movement exactly as it moves the
+  ledger. `LedgerRow.move` is a `Movement` (rank, previous_rank, week_number; delta positive
+  going up; direction up / down / held; label "up 2" / "down 1" / "held"; sentence "up 2 in
+  Week 4"; spoken "up 2 places in Week 4"); `SeasonLedger.movement_week` names the week and
+  `.biggest_mover` is the furthest climber. One graded week has no movement: nothing prints.
+- **The mark (`.docket-move`)** follows the rank on the board rows, the phone board cards and the
+  flat table via ledger.html's `move` macro: one `role="img"` labelled `spoken`, holding
+  `.docket-move-mark` (the entry caret's clip-path geometry, .55rem by .36rem, turned up for
+  `is-up`, down for `is-down`) and `.docket-move-fig` (the absolute delta, hidden from AT; no
+  rule of its own, it inherits the mark's Teko 600 .85rem tabular figure). Colors are the
+  semantic layer only: `--success` up, `--danger` down, a flat .8rem bar at 55% opacity in
+  `--text-secondary` for `is-held`. **Garnet never touches it** (§6.5): a rise is not "yours".
+  Inline, so a moved row is no taller than a held one.
+- **The words.** The key line gains "Movement is what Week N did to each standing." The
+  standing sentence folds the clause in when the struck week is the movement week ("You stand
+  1st of 6 on 9.0 points, held in Week 2 after its 7.0 was struck from the record."); otherwise
+  the two clauses stay separate. The member page hero sentence (§8.10) is tie-aware: "Shares
+  the lead with X, up 1 in Week 2." / "Leads the field, level on points with X and ahead on
+  wins, held in Week 2." / "Sits 2nd of 6, down 1 in Week 2, level on points with the leader
+  and behind on wins." / "Sits 3rd of 6, 2.0 behind the leader and level on points with X,
+  behind on wins." / "Sits 4th of 6, tied with X, 5.0 behind the leader and 3.0 ahead of the
+  next line." / "Sits 2nd of 6, tied with X, level on points with the leader and behind on
+  wins." The next line is the first ranked below; when it is level on points the sentence says
+  so ("level on points with X, ahead on wins"), never "0.0 ahead".
+- **The record letter:** the Season fact gains "· up 2" (the `label`); Around the docket gains
+  "Biggest mover: Dana Whitfield, up 6 to 3rd". All three read the season as the letter's own
+  week left it (`season_ledger(through_week=…)`: its graded weeks over its deadline roster,
+  ADR-048), so a letter held back by a mail outage never carries a later week's standing or
+  movement, and a later joiner is never charged into it.
+- **The lounge's season board** (`.home-shell .roll-move` under the rank) carries the mark at
+  row scale in lounge tokens only: `--live-green` up, `--live-red` down, `--bone-mute` held.
+  The context builder passes a plain `move` dict (label, direction, delta, spoken); no room
+  class, var or hex crosses the firewall. Names are now `.roll-name-link` to the member page.
+
+Locked by `tests/test_docket_movement.py`, `tests/test_docket_record.py`,
+`tests/test_docket_lounge.py` and `tests/test_lounge_accent_firewall.py`.
+
+### 8.13 The Brief — `.docket-brief-*` (`/docket/brief`, 2026-09-24)
+
+The room's analyst layer, for the members who ask "does anyone win taking dogs" and "who keeps
+fading the field". Members only. The record argues; the page does not.
+
+- **The rule of evidence: graded weeks only.** `services/brief.py::build_brief` reads the picks,
+  games and tiebreaker predictions of `SeasonLedger.week_numbers` and nothing else, grades every
+  side with `sheets._result` (the engine's rule, never a second one), excludes reserve slots,
+  and makes no market call and no API call. Every count carries its denominator. The hero
+  eyebrow states the evidence ("Argued from the record · Weeks 1 to 2"); the foot restates it
+  with the way back ("The ledger ›").
+- **Composition: The Clerk's Tally Sheet** (the dealt lead, seed d7aa686a, Brad's choice on the
+  decision page). One white sheet (`.docket-brief-sheet`: `--bg-card`, `--radius-lg`,
+  `--shadow-md`, max 62rem) of `.docket-section-head`s over `.docket-brief-line`s ruled by
+  `--docket-rule`: Newsreader labels, Teko 500 tabular figures right-aligned
+  (`.docket-brief-fig`), records in Teko 600 (`.docket-brief-record`, W success and L danger).
+  It refuses the stats dashboard: no cards inside the sheet, no charts. Garnet touches only the
+  reader's own line (`.is-you`, the ledger row's 8% tint).
+- **The five sections.** *The field's habits*: Favorites / Underdogs by the frozen number from
+  the picked side (a pick'em is neither) and Overs / Unders, each "N taken" plus its record.
+  *Consensus and the lone wolf*: per graded week (`.docket-brief-week`), the most-held side,
+  "3 of 6 sheets", its verdict as the room's `.docket-sheet-result` stamp; under it
+  `.docket-brief-wolves`, "Name alone on LSU Tigers +12.5 · caption", names linking the member
+  page, else "No lone wolf won this week." *The x2 ledger*: "The field's x2" first, then every
+  sheet that named one, by wins. *The number*: the closest call ("said 47.0, it was 45.0", "off
+  by 2.0"), guesses over / under / on the frozen total in counts, then each member's average
+  off by ascending. *The members' rows*: rank in ledger order, "1 of 8" against the field
+  (sides held by fewer sheets than the market's other side), Fav, Dog, Over / Under, x2, Off by,
+  Best week ("9.0 Wk 2"); the reader's row is `row-current-user` with the You tag.
+- **The sort contract** (§8.9 inherited): plain GET header links, `BRIEF_SORTS` in the route
+  (name, against the field by contrarian share, favorites, underdogs, x2, off by, best week),
+  each with its natural first direction, `aria-sort` and the ledger's caret on the active head.
+  **The rank column keeps the ledger's official order under any sort.** Sortable heads read as
+  controls at rest, a dotted underline in `--game-accent-light` (`.docket-brief-th
+  .docket-ledger-sort`); the unsortable Over / Under head has none. The caption states the sort
+  and offers "Ledger order ›".
+- **Phone (under 576px).** `.docket-brief-wide` hides and `.docket-brief-phone` prints the same
+  rows as ruled `.docket-brief-member` lines (Teko rank, name plus You, three stacked
+  `.docket-brief-member-keys` figure lines, 44px minimum) under a "Sort by" link row
+  (`.docket-brief-sortlink`, the active one on a garnet rule). One source, two compositions,
+  the ledger's precedent. The rules live in their own 575.98px block at the end of `style.css`,
+  after the file's first such block.
+- **The doors.** Sub-nav pill "The Brief" between Ledger and Rules (§7.8); `.docket-ledger-brieflink`
+  on the ledger under the key line (Teko 600 uppercase on a garnet rule): "The Brief: who fades
+  the field, and how it went ›"; every All Sheets drawer gained `.docket-sheet-season`,
+  "<name>'s full season ›", to the member page.
+- **Empty state:** before any grade, the room's `.docket-empty` card, "Nothing graded yet".
+- **Anti-goals:** no market data or line movement, no projections, no pick grades, no
+  sportsbook chrome (§6.10). The Brief counts; it never advises.
+- **Open question (fix 8, awaiting Brad's ruling):** the platform craft floor bans a kicker or
+  eyebrow above an H1, while this room's §6.8 sanctions `.docket-eyebrow` on every hero and the
+  Brief's hero follows the room; this records the eyebrow as built, not as a new rule.
+
+Locked by `tests/test_docket_brief.py` and `tests/test_design_p2_s2_3_1.py` (the phone
+block's placement).
 
 ## 9. Engineering Invariants
 

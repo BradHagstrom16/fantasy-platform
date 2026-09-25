@@ -5,6 +5,7 @@ on its own page, the World Cup rosters→player-detail pattern. The season
 table's drawer stays for the in-place peek; this page lays the record open.
 Graded weeks only (pick_history), so nothing sealed appears.
 """
+import re
 from datetime import datetime
 
 from extensions import db
@@ -142,3 +143,55 @@ def test_member_page_before_any_grade_states_the_absence(app, client):
     enrollment = get_enrollment(alice.id)
     html = client.get(f'/docket/ledger/{enrollment.id}').data.decode()
     assert 'Nothing graded yet' in html
+
+
+def _standing_sentence(client, user):
+    html = client.get(f'/docket/ledger/{get_enrollment(user.id).id}').data.decode()
+    body = html.split('class="docket-your-standing"', 1)[1].split('</p>', 1)[0]
+    return ' '.join(re.sub(r'<[^>]+>', '', body.split('>', 1)[1]).split())
+
+
+def test_member_page_says_a_level_pair_below_the_lead_honestly(app, client):
+    """Level on points but split by wins, away from the leader, reads as a
+    tie from both sides, and a shared rank says the same of the line below
+    it rather than "0.0 ahead"."""
+    w1 = _week(1)
+    lee, ann, bob, cy, dee, fay, eve = (
+        _member(n) for n in ('lee', 'ann', 'bob', 'cy', 'dee', 'fay', 'eve'))
+    _result(w1, lee, 10.0, 7)
+    _result(w1, ann, 8.0, 6)          # 2nd: level with bob, ahead on wins
+    _result(w1, bob, 8.0, 5)          # 3rd: level with ann, behind on wins
+    _result(w1, cy, 5.0, 4, 10)       # 4th, tied with dee on every key,
+    _result(w1, dee, 5.0, 4, 10)      # and level on points with fay
+    _result(w1, fay, 5.0, 3)
+    _result(w1, eve, 2.0, 1)
+    db.session.commit()
+    login(client, lee)
+
+    assert _standing_sentence(client, ann).startswith(
+        'Sits 2nd of 7, 2.0 behind the leader and level on points with bob, ahead on wins.')
+    assert _standing_sentence(client, bob).startswith(
+        'Sits 3rd of 7, 2.0 behind the leader and level on points with ann, behind on wins.')
+    assert _standing_sentence(client, cy).startswith(
+        'Sits 4th of 7, tied with dee, 5.0 behind the leader and level on points with fay, ahead on wins.')
+
+
+def test_member_page_says_a_shared_rank_honestly(app, client):
+    """A shared rank names its partner, is split from the leader by the key
+    that actually splits it, and measures the gap to the first line ranked
+    below it."""
+    w1 = _week(1)
+    lee, ann, bob, cy, dee, eve = (_member(n) for n in ('lee', 'ann', 'bob', 'cy', 'dee', 'eve'))
+    _result(w1, lee, 10.0, 7)
+    _result(w1, ann, 10.0, 5)         # 2nd with bob, level with lee on points
+    _result(w1, bob, 10.0, 5)
+    _result(w1, cy, 6.0, 4, 10)       # 4th with dee
+    _result(w1, dee, 6.0, 4, 10)
+    _result(w1, eve, 3.0, 1)
+    db.session.commit()
+    login(client, lee)
+
+    assert _standing_sentence(client, ann).startswith(
+        'Sits 2nd of 6, tied with bob, level on points with the leader and behind on wins.')
+    assert _standing_sentence(client, cy).startswith(
+        'Sits 4th of 6, tied with dee, 4.0 behind the leader and 3.0 ahead of the next line.')

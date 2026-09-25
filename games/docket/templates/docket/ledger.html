@@ -1,5 +1,13 @@
 {% extends "base.html" %}
-{% from 'docket/_record.html' import record with context %}
+
+{# The ledger's movement (DESIGN.md 8.12): what the latest graded week did to
+   this line's rank. A drawn mark (the entry caret's geometry, turned up or
+   down, or a flat bar for held) plus the figure; the whole thing is one
+   role="img" whose label says it in words, so the mark is never the only
+   channel. Success up, danger down, ink for held: never garnet (6.5). #}
+{% macro move(row) -%}
+{% if row.move %}<span class="docket-move is-{{ row.move.direction }}" role="img" aria-label="{{ row.move.spoken }}"><i class="docket-move-mark" aria-hidden="true"></i>{% if row.move.delta %}<span class="docket-move-fig" aria-hidden="true">{{ row.move.delta|abs }}</span>{% endif %}</span>{% endif %}
+{%- endmacro %}{% from 'docket/_record.html' import record with context %}
 
 {% block title %}The Season Ledger · The Docket{% endblock %}
 
@@ -158,10 +166,14 @@ finish review, the verdict, and DESIGN.md.
         You stand <strong>{{ your_rank_label }}</strong>
         of {{ ledger.rows|length }} on
         {{ '%.1f'|format(your_row.standing.total_points) }} points,
-        {% if your_row.standing.dropped_week %}
+        {% if your_row.move and your_row.standing.dropped_week == your_row.move.week_number %}
+        {{ your_row.move.sentence }} after its {{ '%.1f'|format(your_row.standing.dropped_points) }} was struck from the record.
+        {% elif your_row.standing.dropped_week %}
+        {% if your_row.move %}{{ your_row.move.sentence }},{% endif %}
         after {{ '%.1f'|format(your_row.standing.dropped_points) }} from Week
         {{ your_row.standing.dropped_week }} was struck from the record.
         {% else %}
+        {% if your_row.move %}{{ your_row.move.sentence }},{% endif %}
         with no week struck yet.
         {% endif %}
     </p>
@@ -174,7 +186,9 @@ finish review, the verdict, and DESIGN.md.
         Lines rank by <strong>points</strong>, then <strong>wins</strong>,
         then <strong>off by</strong>. Off by is the season-long gap between a
         player's weekly tiebreaker guesses and the real combined scores; level
-        on points and wins, the smaller off by ranks ahead.
+        on points and wins, the smaller off by ranks ahead.{% if ledger.movement_week %}
+        Movement is what Week {{ ledger.movement_week }} did to each standing.{% endif %}
+        {% if ledger.is_graded %}<a class="docket-ledger-brieflink" href="{{ url_for('docket.brief') }}">The Brief: who fades the field, and how it went &rsaquo;</a>{% endif %}
     </p>
 
     {# Find a line (Brad, 2026-09-07): the sheet's own find shape (7.7), a
@@ -247,7 +261,7 @@ finish review, the verdict, and DESIGN.md.
         {% set m = current_by_user.get(row.enrollment.user_id) %}
         <details class="docket-board-row{% if is_you %} is-you{% endif %}">
             <summary class="docket-board-summary">
-                <span class="dbc-rank">{{ row.standing.rank }}{% if row.standing.rank in shared_ranks %}<span class="docket-ledger-tied">tied</span>{% endif %}</span>
+                <span class="dbc-rank">{{ row.standing.rank }}{% if row.standing.rank in shared_ranks %}<span class="docket-ledger-tied">tied</span>{% endif %}{{ move(row) }}</span>
                 <span class="dbc-player">
                     <span class="docket-ledger-avatar" aria-hidden="true">{{ row.enrollment.user.get_avatar() }}</span>
                     <span class="docket-entry-name">{{ row.enrollment.get_display_name() }}</span>
@@ -276,7 +290,7 @@ finish review, the verdict, and DESIGN.md.
         <li>
         <details class="docket-board-row{% if is_you %} is-you{% endif %}">
             <summary class="docket-board-card-summary">
-                <span class="docket-card-rank">{{ row.standing.rank }}{% if row.standing.rank in shared_ranks %}<span class="docket-ledger-tied">tied</span>{% endif %}</span>
+                <span class="docket-card-rank">{{ row.standing.rank }}{% if row.standing.rank in shared_ranks %}<span class="docket-ledger-tied">tied</span>{% endif %}{{ move(row) }}</span>
                 <span class="docket-card-name">
                     <span class="docket-ledger-avatar" aria-hidden="true">{{ row.enrollment.user.get_avatar() }}</span>
                     {{ row.enrollment.get_display_name() }}
@@ -309,6 +323,7 @@ finish review, the verdict, and DESIGN.md.
                 <span class="docket-card-rank">
                     {{ row.standing.rank }}
                     {%- if row.standing.rank in shared_ranks %}<span class="docket-ledger-tied">tied</span>{% endif %}
+                    {{- move(row) }}
                 </span>
                 <span class="docket-card-name">
                     <span class="docket-ledger-avatar" aria-hidden="true">{{ row.enrollment.user.get_avatar() }}</span>
@@ -359,6 +374,7 @@ finish review, the verdict, and DESIGN.md.
                     <td class="docket-ledger-rank">
                         {{ row.standing.rank }}
                         {%- if row.standing.rank in shared_ranks %}<span class="docket-ledger-tied">tied</span>{% endif %}
+                        {{- move(row) }}
                     </td>
                     <td>
                         <span class="docket-ledger-avatar" aria-hidden="true">{{ row.enrollment.user.get_avatar() }}</span>
