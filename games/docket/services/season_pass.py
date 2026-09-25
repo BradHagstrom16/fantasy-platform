@@ -227,11 +227,15 @@ def week_rollups_from_db() -> tuple[WeekRollup, ...]:
     return tuple(sorted(rollups, key=lambda r: r.week_number))
 
 
-def season_ledger(season_year: int = SEASON_YEAR) -> SeasonLedger:
+def season_ledger(season_year: int = SEASON_YEAR, *,
+                  through_week: int | None = None) -> SeasonLedger:
     """THE single read the ledger route makes.
 
     Ranking comes from the pure engine; this function only joins names and
     avatars onto it and settles display order inside a shared rank.
+    ``through_week`` reads the season as it stood once that week graded
+    (the record letter's week, so a letter sent late never carries a later
+    week's standing or movement); None is every graded week.
     """
     enrollments = db.session.scalars(
         select(DocketEnrollment)
@@ -241,6 +245,8 @@ def season_ledger(season_year: int = SEASON_YEAR) -> SeasonLedger:
     by_player_id = {str(e.user_id): e for e in enrollments}
 
     rollups = week_rollups_from_db()
+    if through_week is not None:
+        rollups = tuple(r for r in rollups if r.week_number <= through_week)
     standings = season_standings(rollups, tuple(by_player_id))
     moves = season_movement(rollups, tuple(by_player_id), standings)
 

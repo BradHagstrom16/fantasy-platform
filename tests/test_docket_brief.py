@@ -196,3 +196,28 @@ def test_the_brief_page_and_its_doors(app, client, season):
 
 def test_the_brief_is_members_only(client):
     assert client.get('/docket/brief').status_code == 302
+
+
+def test_the_members_sorts_keep_blanks_last_in_both_directions():
+    """A dash on the page (no guess, no x2 decided, no week submitted)
+    follows every measured row whichever way the column is sorted."""
+    from types import SimpleNamespace
+
+    from games.docket.routes import _brief_order
+    from games.docket.services.brief import Record
+
+    def row(name, off, x2, best):
+        return SimpleNamespace(name=name, avg_off_tenths=off, x2=x2,
+                               best_week=1 if best is not None else None,
+                               best_points=best)
+
+    rows = [row('blank', None, Record(), None),
+            row('low', 20, Record(wins=1, losses=1), 2.0),
+            row('high', 90, Record(wins=2), 9.0)]
+    for key, ascending in (('number', ['low', 'high']),
+                           ('x2', ['low', 'high']),
+                           ('best', ['low', 'high'])):
+        for direction, measured in (('asc', ascending),
+                                    ('desc', ascending[::-1])):
+            ordered, _key, _dir = _brief_order(rows, key, direction)
+            assert [r.name for r in ordered] == [*measured, 'blank'], (key, direction)

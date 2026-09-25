@@ -171,7 +171,9 @@ def week_records(week, now_naive):
         # Graded with nobody on the roster at its deadline (ADR-047: the
         # marker is stamped, zero result rows): nobody to write to.
         return []
-    ledger = season_ledger()
+    # The season as this week left it: the Season fact and the movement
+    # belong to the letter's week even when a later week has since graded.
+    ledger = season_ledger(through_week=week.week_number)
     sheets = {m.user_id: m for m in all_sheets(week, now_naive).members}
     season_by_user = {row.enrollment.user_id: row for row in ledger.rows}
     mover = ledger.biggest_mover

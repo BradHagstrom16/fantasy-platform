@@ -127,6 +127,32 @@ def test_the_ledger_rows_carry_their_move_and_the_biggest_mover(app, two_weeks):
         assert ledger.biggest_mover is by_name['Cy']
 
 
+def test_a_late_record_letter_keeps_its_own_weeks_season(app, two_weeks):
+    """Week 2's letter sent after Week 3 has graded (a mail outage held the
+    latch open): the Season fact, the move and the biggest mover are the
+    season as Week 2 left it, never Week 3's."""
+    from games.docket.services.record import week_records
+    with app.app_context():
+        from models.user import User
+        a, b, c = (db.session.get(User, two_weeks[k]) for k in 'abc')
+        w3 = _graded_week(3)
+        _result(w3, a, 9, 7)
+        _result(w3, b, 9, 8)
+        _result(w3, c, 1, 1)
+        db.session.commit()
+        latest = {r.enrollment.get_display_name(): r for r in season_ledger().rows}
+        assert latest['Cy'].move.label == 'down 2'           # what Week 3 did
+
+        from games.docket.models import DocketWeek
+        w2 = db.session.scalar(db.select(DocketWeek).filter_by(week_number=2))
+        fields = {user.username: f for user, f in week_records(w2, datetime(2026, 9, 20))}
+    cy = fields['cy']
+    assert (cy['movement'].label, cy['movement'].week_number) == ('up 2', 2)
+    assert cy['season_rank'] == 1
+    mover_name, mover_move = cy['biggest_mover']
+    assert (mover_name, mover_move.label) == ('Cy', 'up 2')
+
+
 def test_one_graded_week_has_no_movement(app):
     with app.app_context():
         a = _player('ann')

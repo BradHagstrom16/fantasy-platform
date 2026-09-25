@@ -929,33 +929,44 @@ def member(enrollment_id):
         rows = ledger.rows
         idx = rows.index(row)
         leader_points = ledger.leader.standing.total_points
+        points = row.standing.total_points
         # A tie is said honestly (the ledger prints "tied"): the names that
-        # share this rank, and the next line's name when it is level on
-        # points but ranked behind on wins or off by.
+        # share this rank, else the line level on points but split from
+        # this one by wins or off by: the leader first, then the line just
+        # above, then the line just below.
         shares_rank = [r.enrollment.get_display_name() for r in rows
                        if r is not row and r.standing.rank == row.standing.rank]
         level_with = None
-        decided_by = None          # the key that split a level-on-points pair
-        if idx + 1 < len(rows) and not shares_rank \
-                and rows[idx + 1].standing.total_points == row.standing.total_points:
-            nxt = rows[idx + 1].standing
-            level_with = rows[idx + 1].enrollment.get_display_name()
-            decided_by = 'wins' if row.standing.wins != nxt.wins else 'off by'
-        elif idx > 0 and leader_points == row.standing.total_points and not shares_rank:
-            lead = ledger.leader.standing
-            decided_by = 'wins' if lead.wins != row.standing.wins else 'off by'
+        level_side = None          # 'ahead' | 'behind' of level_with
+        split_from = None          # the standing the split is measured on
+        if not shares_rank:
+            if idx > 0 and leader_points == points:
+                split_from = ledger.leader.standing
+            elif idx > 0 and rows[idx - 1].standing.total_points == points:
+                split_from = rows[idx - 1].standing
+                level_with = rows[idx - 1].enrollment.get_display_name()
+                level_side = 'behind'
+            elif idx + 1 < len(rows) and rows[idx + 1].standing.total_points == points:
+                split_from = rows[idx + 1].standing
+                level_with = rows[idx + 1].enrollment.get_display_name()
+                level_side = 'ahead'
+        decided_by = (None if split_from is None
+                      else 'wins' if split_from.wins != row.standing.wins
+                      else 'off by')
+        # The next line down is the first ranked below this one, so a
+        # shared rank never reads as "0.0 ahead".
+        below = next((r for r in rows[idx + 1:]
+                      if r.standing.rank != row.standing.rank), None)
         neighbors = {
             'is_leader': row is ledger.leader,
             'rank_label': _ordinal(row.standing.rank),
             'field_size': len(rows),
-            'behind_leader': round(
-                leader_points - row.standing.total_points, 1),
-            'ahead_of_next': (
-                round(row.standing.total_points
-                      - rows[idx + 1].standing.total_points, 1)
-                if idx + 1 < len(rows) else None),
+            'behind_leader': round(leader_points - points, 1),
+            'ahead_of_next': (round(points - below.standing.total_points, 1)
+                              if below is not None else None),
             'shares_rank': shares_rank,
             'level_with': level_with,
+            'level_side': level_side,
             'decided_by': decided_by,
         }
 
@@ -985,15 +996,16 @@ def member(enrollment_id):
 
 # The members' rows sort like the ledger (8.9): a known key, stably over the
 # ledger order, each with its natural first direction; the rank column keeps
-# the official order whatever the sort.
+# the official order whatever the sort. A key of None is a blank (the dash
+# the page prints): blanks follow every measured row in both directions.
 BRIEF_SORTS = {
     'name': ('name', lambda r: r.enrollment.get_display_name().casefold(), 'asc'),
     'contrarian': ('against the field', lambda r: r.contrarian_share, 'desc'),
     'favorites': ('favorites', lambda r: r.favorites, 'desc'),
     'underdogs': ('underdogs', lambda r: r.underdogs, 'desc'),
-    'x2': ('the x2', lambda r: (r.x2.wins, -r.x2.losses), 'desc'),
-    'number': ('off by', lambda r: (r.avg_off_tenths is None, r.avg_off_tenths or 0), 'asc'),
-    'best': ('best week', lambda r: r.best_points or 0.0, 'desc'),
+    'x2': ('the x2', lambda r: (r.x2.wins, -r.x2.losses) if r.x2.decided else None, 'desc'),
+    'number': ('off by', lambda r: r.avg_off_tenths, 'asc'),
+    'best': ('best week', lambda r: r.best_points if r.best_week else None, 'desc'),
 }
 
 
@@ -1003,7 +1015,9 @@ def _brief_order(rows, sort_key, direction):
     _label, key_fn, default_direction = BRIEF_SORTS[sort_key]
     if direction not in _FLIP:
         direction = default_direction
-    return (sorted(rows, key=key_fn, reverse=direction == 'desc'),
+    measured = [r for r in rows if key_fn(r) is not None]
+    blanks = [r for r in rows if key_fn(r) is None]
+    return (sorted(measured, key=key_fn, reverse=direction == 'desc') + blanks,
             sort_key, direction)
 
 

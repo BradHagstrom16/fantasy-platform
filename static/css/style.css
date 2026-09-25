@@ -16420,6 +16420,7 @@ body.game-docket .back-link:focus-visible {
   .tribune-sheet { padding-top: 1.5rem; }
   .letter-page-body p,
   .letter-page-body li { font-size: 1rem !important; }
+}
 /* === THE DOCKET: The Brief (DESIGN.md 8.13), the Clerk's Tally Sheet =====
    One continuous ruled account on the room's white paper: sub-heads on the
    oxblood rule, lines ruled by --docket-rule, labels in Newsreader, figures
