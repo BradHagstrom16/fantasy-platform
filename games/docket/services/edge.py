@@ -111,8 +111,14 @@ def parse_projections(data, nfl_week):
     if data.get('nfl_week') != nfl_week:
         raise ValueError(f'projections are for NFL week {data.get("nfl_week")}, '
                          f'not {nfl_week}: the source has not rolled over')
-    return {name: float(pts) for name, pts in data['team_points'].items()
-            if pts is not None}
+    points = {}
+    for name, pts in data['team_points'].items():
+        if pts is None:
+            continue
+        if isinstance(pts, bool) or not isinstance(pts, int | float):
+            raise ValueError(f'team_points[{name!r}] must be a number or null')
+        points[name] = float(pts)
+    return points
 
 
 def _team_points(full_name, projections):

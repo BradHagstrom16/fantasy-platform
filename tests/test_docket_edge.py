@@ -231,6 +231,14 @@ def test_parse_projections_checks_the_week_and_skips_byes():
         edge.parse_projections({'nfl_week': 3}, 3)
 
 
+@pytest.mark.parametrize('bad', [[30.4], {'pts': 30.4}, '30.4', True])
+def test_parse_projections_refuses_a_non_number(bad):
+    # a bad capture must be the CLI's clean refusal, not a TypeError, and a
+    # boolean must not pass as 1 point
+    with pytest.raises(ValueError, match=r"team_points\['Bills'\] must be a number"):
+        edge.parse_projections({'nfl_week': 3, 'team_points': {'Bills': bad}}, 3)
+
+
 def test_model_lines_match_nicknames_and_skip_cfb_and_missing_teams():
     proj = {'49ers': 27.4, 'Cardinals': 18.7, 'Bills': 30.4}
     game = _game(home_team='San Francisco 49ers', away_team='Arizona Cardinals')
