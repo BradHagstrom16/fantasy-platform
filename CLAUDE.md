@@ -77,7 +77,7 @@ FLASK_APP=app.py venv/bin/flask docket sync --mode status    # Print season summ
 FLASK_APP=app.py venv/bin/flask docket recalc [WEEK]         # Idempotent re-grade; no arg = every past-deadline week
 FLASK_APP=app.py venv/bin/flask docket set-tiebreaker 1 "SMU @ Florida State"   # hand OVERRIDE of the rule-derived default (pre-deadline); fallback for /docket/admin/week/1/tiebreaker
 FLASK_APP=app.py venv/bin/flask docket repair-deadline [WEEK]   # Re-derive deadline_at from the current week math (the 2026-09-09 Sat 11 AM -> Sun 12 PM move); idempotent, refuses to move a deadline already passed. No arg = every not-yet-closed week
-FLASK_APP=app.py venv/bin/flask docket edge [--week N] [--submit-time ISO] [--top 9]   # READ-ONLY: rank the week's frozen lines by market drift (games/docket/services/edge.py); ~3 credits/sport on /odds; needs the DB that holds the frozen lines (prod)
+FLASK_APP=app.py venv/bin/flask docket edge [--week N] [--submit-time ISO] [--top 9]   # READ-ONLY: rank the week's frozen lines by market drift (games/docket/services/edge.py): ten books incl. Pinnacle, each priced at the frozen number with the juice removed, median across books; 2 credits/sport on /odds from DOCKET_EDGE_ODDS_API_KEY when set (else ODDS_API_KEY); needs the DB that holds the frozen lines (prod)
 # All modes take --week N (default: the week containing now). `--scheduled` is the TIMER-ONLY flag: exactly two states —
 # out of season, and week-not-imported-yet — become a logged exit 0; nothing else is softened (a missing designation at
 # the deadline still exits 1). Every unit's ExecStart carries it (tests/test_docket_timers.py).
@@ -349,6 +349,7 @@ SITE_URL=...             # Used in password-reset and reminder email links (http
 PLATFORM_TIMEZONE=...    # Default: America/Chicago
 RATELIMIT_STORAGE_URI=...  # Leave unset: dev/test memory://; prod redis://localhost:6379/0 (ProductionConfig). Set only to override.
 ODDS_API_KEY=...         # The Odds API (CFB + Docket scores/spreads)
+DOCKET_EDGE_ODDS_API_KEY=...  # Optional: a separate Odds API key for `flask docket edge` only, so the commissioner's line scans never spend the club key. Blank = ODDS_API_KEY
 FOOTBALL_DATA_API_KEY=...  # football-data.org (WC results sync — archived; retained for a revival)
 SLASHGOLF_API_KEY=...    # SlashGolf API (Golf leaderboards)
 EMAIL_ADDRESS=...        # SMTP auth login (prod: Brevo SMTP login, e.g. ad34xxxxx@smtp-brevo.com)

@@ -67,6 +67,10 @@ class Config:
     # The Docket Settings (season year lives in games/docket/services/weeks.py,
     # the week-math SSoT — deliberately not a config knob)
     DOCKET_ENTRY_FEE = int(os.environ.get('DOCKET_ENTRY_FEE', '60'))
+    # `flask docket edge` only: a separate Odds API key so the commissioner's
+    # own line scans never spend the club key the scores passes run on. Blank
+    # falls back to ODDS_API_KEY.
+    DOCKET_EDGE_ODDS_API_KEY = os.environ.get('DOCKET_EDGE_ODDS_API_KEY', '')
     # The purse (rulings doc Amendments, 2026-09-03): a fixed prize to each
     # week's top sheet across TOTAL_WEEKS, then a percent split of what is
     # left into first / second / third (games/docket/services/purse.py).

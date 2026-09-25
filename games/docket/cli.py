@@ -632,17 +632,20 @@ def _fmt_edge_row(row, deadline, index=None):
     keys = (' *crosses ' + '/'.join(map(str, row['key_cross'])) + '*'
             if row['key_cross'] else '')
     if row['market'] == 'spread':
-        frozen, current = f"{row['frozen']:+g}", f"{row['current']:+g}"
+        frozen, current = f"{row['frozen']:+g}", f"{row['current']:+.1f}"
     else:
-        frozen, current = f"{row['frozen']:g}", f"{row['current']:g}"
+        frozen, current = f"{row['frozen']:g}", f"{row['current']:.1f}"
+    lo, hi = row['range']
+    books = (f"{row['n_books']} books {lo:g}" if lo == hi
+             else f"{row['n_books']} books {lo:g}..{hi:g}")
     lock = ''
     if (row['kickoff'] is not None and deadline is not None
             and row['kickoff'] < deadline):
         lock = f'  (locks {row["kickoff"]:%a %H:%M} UTC)'
     return (f'{pre}{row["prob"] * 100:5.1f}%  {row["sport"]} '
             f'{row["side"]:<26} [{row["market"]}]  frozen {frozen} -> mkt '
-            f'{current} (move {row["move"]:+.1f}){keys}{lock}\n'
-            f'        {row["matchup"]}')
+            f'{current:<6} (move {row["move"]:+.1f}){keys}{lock}\n'
+            f'        {row["matchup"]}  [{books}]')
 
 
 @docket_cli.command('edge')
@@ -651,16 +654,17 @@ def _fmt_edge_row(row, deadline, index=None):
 @click.option('--submit-time', 'submit_time', default=None, metavar='ISO',
               help='Instant you would lock picks; a game kicked off by then is '
                    'shown but flagged unpickable (default: now).')
-@click.option('--top', type=click.IntRange(min=1), default=9, show_default=True,
+@click.option('--top', type=click.IntRange(min=1, max=9), default=9,
+              show_default=True,
               help='Best sides to recommend (a full sheet is 8 scoring + 1 '
                    'reserve).')
 def edge_cmd(week, submit_time, top):
     """Rank this week's FROZEN lines by how far the market has moved off them.
 
     Every Docket pick grades against Tuesday's frozen number. This compares
-    each frozen line to the current consensus market line (median across US
-    books) and scores each still-pickable side by its implied cover
-    probability (== expected points for the slot: win 1.0 / push 0.5 / loss
+    each frozen line to the current market (ten books incl. Pinnacle, each
+    priced at the frozen number with its juice removed, median across books)
+    and scores each still-pickable side by its implied cover probability (== expected points for the slot: win 1.0 / push 0.5 / loss
     0.0, headliner doubled). Prints the most-vulnerable frozen lines, the top
     recommended sheet with a headliner, and a tiebreaker number.
 
@@ -669,9 +673,13 @@ def edge_cmd(week, submit_time, top):
     week_number = _resolve_week_number(week)
     wk = _require_week(week_number, scheduled=False)
 
-    api_key = current_app.config.get('ODDS_API_KEY', '')
+    api_key = (current_app.config.get('DOCKET_EDGE_ODDS_API_KEY')
+               or current_app.config.get('ODDS_API_KEY'))
     if not api_key:
-        _fail('ODDS_API_KEY not configured')
+        _fail('neither DOCKET_EDGE_ODDS_API_KEY nor ODDS_API_KEY is configured')
+    key_name = ('DOCKET_EDGE_ODDS_API_KEY'
+                if current_app.config.get('DOCKET_EDGE_ODDS_API_KEY')
+                else 'ODDS_API_KEY')
 
     submit = (_parse_submit_time(submit_time) if submit_time
               else edge.default_submit_time())
@@ -683,7 +691,7 @@ def edge_cmd(week, submit_time, top):
         _fail(f'docket week {week_number} has no games imported yet')
 
     sports = sorted({g.sport for g in games})
-    consensus, errors = edge.fetch_current_lines(api_key, sports)
+    consensus, errors, remaining = edge.fetch_current_lines(api_key, sports)
     for err in errors:
         click.secho(f'  WARNING: {err}', fg='yellow')
 
@@ -696,6 +704,7 @@ def edge_cmd(week, submit_time, top):
     click.echo(f'  deadline:    {deadline} (UTC)')
     click.echo(f'  games: {len(games)}   sports: {", ".join(sports)}   '
                f'unmatched: {len(unmatched)}   pickable sides: {len(pickable)}')
+    click.echo(f'  credits:     {remaining} left on {key_name}')
 
     if not pickable:
         if errors:
@@ -709,7 +718,7 @@ def edge_cmd(week, submit_time, top):
         click.echo(_fmt_edge_row(row, deadline))
 
     click.echo(f'\n  Recommended sheet (top {top} by expected points):')
-    sheet = pickable[:top]
+    sheet = edge.build_sheet(pickable, top)
     for i, row in enumerate(sheet, 1):
         tag = ''
         if i == 1:
