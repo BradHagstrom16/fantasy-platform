@@ -63,8 +63,7 @@
 <div class="page-hero cfb-hero">
   <div class="hero-glow"></div>
   <div class="container">
-    <span class="cfb-eyebrow">{{ get_week_display_name(week) }} &middot; The Slate</span>
-    <h1>Your Card</h1>
+    <h1>Your {{ get_week_display_name(week) }} Card</h1>
     <p class="lead">One pick to survive the week. Win it outright or spend a life.</p>
   </div>
 </div>
@@ -215,7 +214,7 @@
 
         {# Settle the Tab: bottom of the column so it never competes with
            the pick (enrolled + unpaid only; gate in the context processor). #}
-        {% with eyebrow_class='cfb-eyebrow' %}{% include '_settle_tab.html' %}{% endwith %}
+        {% include '_settle_tab.html' %}
 
     </div>
 </div>

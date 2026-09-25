@@ -142,12 +142,10 @@ PRE_DESK_LETTERS = (
 
 def pre_desk_letter(entry: PreDeskLetter) -> Letter:
     """The letter as the plain-text tool built it: the subject as the
-    headline, the club eyebrow, the body as plain paragraphs, the lounge
-    button."""
+    headline, the body as plain paragraphs, the lounge button."""
     return Letter(
         subject=entry.subject,
         headline=entry.subject,
-        eyebrow='From the Commish',
         preheader='',
         extras=[paragraphs_block(entry.body)],
         cta=_cta('lounge'),

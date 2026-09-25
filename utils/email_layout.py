@@ -3,7 +3,9 @@
 An email arrives From "Corrupt Commish Club", so it wears the club's chrome
 (purple, gold, bone, the seal) the way the lounge does, and a game enters it
 the way a game enters the lounge: through copy, state, and thin strokes of its
-own accent (the eyebrow, the CTA fill). No game restyles the shell.
+own accent (the rule over the letter, the CTA fill). No game restyles the
+shell. A letter opens on its headline, which names the game and the week
+where the letter speaks for one (ADR-066: no eyebrow above a heading).
 
 Callers build a :class:`Letter` (content only, no markup) and call
 :func:`render_letter`, which returns ``(plain, html)``: the HTML from
@@ -15,8 +17,8 @@ which escapes its inputs and builds both halves together.
 The desk letter (docs/designs/unified-email.md, DESIGN.md "The desk
 letter") is the second shape: a club letter whose ``extras`` are
 :func:`game_section` blocks, one per game with something to say, each a
-mini-letter (eyebrow, verdict line, one deadline inset, one solid game
-button) in deadline order, with no club-gold CTA beside them. A merged
+mini-letter (its accent section head, verdict line, one deadline inset,
+one solid game button) in deadline order, with no club-gold CTA beside them. A merged
 reminder keeps its single-game shape and carries :func:`rider_block` in
 ``notes``, after the supporting line and before the tab strip.
 :func:`render_letter` refuses a letter that breaks those rules.
@@ -54,7 +56,8 @@ CLUB_NAME = 'Corrupt Commish Club'
 GAME_NAMES = {'cfb': 'CFB Survivor', 'docket': 'The Docket',
               'golf': "Golf Pick 'Em"}
 # The lounge accent per game (tokens.css --lounge-*-accent): the CTA fill and
-# the eyebrow. Club business (auth, announcements) wears no game color.
+# the rule over the letter. Club business (auth, announcements) wears no game
+# color.
 GAME_ACCENTS = {'cfb': '#C5050C', 'docket': '#A63446', 'golf': '#006747'}
 PLATFORM_ACCENT = '#5A5470'
 
@@ -105,7 +108,7 @@ class SectionBlock(Block):
 class Section:
     """What one game says in a desk letter, content only.
 
-    ``title`` is the eyebrow (``CFB Survivor · Week 4``), ``lines`` the
+    ``title`` is the section head (``CFB Survivor · Week 4``), ``lines`` the
     verdict paragraphs (str or ``Markup``), ``deadline`` an aware datetime
     (the ordering key: sections render in deadline order) with its
     ``deadline_label`` (``Survivor locks``); both ``None`` for a spectator
@@ -127,7 +130,7 @@ class Section:
 class Letter:
     """Everything a member email says, in the order the shell says it.
 
-    Order on the page: eyebrow, headline, greeting, lede, facts, extras, the
+    Order on the page: headline, greeting, lede, facts, extras, the
     CTA, supporting, notes, footer_note. ``facts`` are ``(label, value)`` or
     ``(label, value, tag)`` tuples, at most three: the deadline card, never a
     metric row. ``lede`` and ``supporting`` items may be ``Markup`` built
@@ -138,7 +141,6 @@ class Letter:
     """
     subject: str
     headline: str
-    eyebrow: str
     game_slug: str | None = None
     season: int | None = None
     preheader: str = ''
@@ -466,11 +468,11 @@ def game_section(slug, title, lines, *, deadline=None, deadline_label=None,
                  button=None, url=None) -> SectionBlock:
     """One game's section of a desk letter: a mini-letter under a hairline.
 
-    Eyebrow in the game's accent, one paragraph per line, the one-row bone
+    The section head in the game's accent, one paragraph per line, the one-row bone
     inset (``deadline_label`` above the deadline, through the platform
     formatter) when ``deadline`` is given, and one solid game-accent button
     when ``button`` is given. A spectator section (an eliminated Survivor
-    member) passes neither: eyebrow and lines only. The button is
+    member) passes neither: section head and lines only. The button is
     ``section-cta``, never ``cta``: the letter's single-CTA lock counts the
     latter, and a desk letter has no club button beside its sections.
     """
@@ -611,7 +613,7 @@ def render_letter(letter: Letter) -> tuple[str, str]:
         bf=BODY_FONT, club=CLUB_NAME,
     )
 
-    parts = [f'{letter.eyebrow}\n{letter.headline}']
+    parts = [letter.headline]
     if letter.greeting:
         parts.append(f'Hi {letter.greeting},')
     parts += [_plain_of(p) for p in letter.lede]

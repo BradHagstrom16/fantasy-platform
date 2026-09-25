@@ -20,7 +20,6 @@
 
 <div class="page-hero docket-hero">
     <div class="container">
-        <span class="docket-eyebrow">{% if brief.is_graded %}Argued from the record · {{ weeks_counted }}{% else %}Argued from the record{% endif %}</span>
         <h1>The Brief</h1>
         <p class="lead">{% if brief.is_graded %}What the field does, who fades it, and how that went: every count from the {{ brief.week_numbers|length }} graded week{{ 's' if brief.week_numbers|length != 1 }} on the record, nothing from a week still in play.{% else %}What the field does, who fades it, and how that went. The Brief opens once the first week grades.{% endif %}</p>
     </div>

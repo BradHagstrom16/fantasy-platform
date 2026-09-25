@@ -13,7 +13,7 @@ The central design decision these locks encode: the platform admin masthead is
 gold-on-bone (.admin-eyebrow gold + .admin-page-title purple-700 + a gold rule),
 calibrated for the bone canvas; on the CFB midnight canvas it would drift gold +
 render purple-on-purple. The CFB admin register re-derives it for the room -- a
-bone-muted .cfb-eyebrow ("The Commissioner's Desk"), a bone-white functional H1
+no eyebrow (ADR-066 retired "The Commissioner's Desk"), a bone-white functional H1
 (.cfb-admin-title), and the gold ceremonial rule swapped for a thin CRIMSON rule.
 NO gold (the Crimson-Ceremony Rule).
 
@@ -64,8 +64,8 @@ def test_every_admin_surface_carries_the_commissioners_desk_masthead():
     for name, tpl in ADMIN_TPLS.items():
         assert "cfb-admin-masthead" in tpl, f"{name}: must open on the .cfb-admin-masthead (no bare <h1> in a container)"
         assert "cfb-admin-title" in tpl, f"{name}: the functional H1 must be the .cfb-admin-title (bone-white Teko on midnight)"
-        assert "cfb-eyebrow" in tpl, f"{name}: the masthead must carry the .cfb-eyebrow register label"
-        assert "Commissioner" in tpl, f"{name}: the eyebrow must carry 'The Commissioner's Desk' register"
+        # No register label above the H1 (ADR-066): the heading speaks.
+        assert "cfb-eyebrow" not in tpl.split("cfb-admin-title")[0], f"{name}: no eyebrow above the admin H1"
 
 
 def test_admin_does_not_use_the_gold_platform_masthead():

@@ -132,7 +132,8 @@ class TestRoute:
         assert resp.status_code == 200
         html = resp.get_data(as_text=True)
         assert "The First Season" in html
-        assert "Club Archive" in html
+        assert "Club Archive" not in html           # no hero eyebrow (ADR-066)
+        assert '<span class="cfb-count">2025</span>' in html
         assert "Fourth &amp; Pine" in html
         assert "CFP Round 1" in html
         assert "Season one was played at the old clubhouse." in html

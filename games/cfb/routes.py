@@ -197,9 +197,11 @@ def _matchup(game):
 def _lead_card(room, games_by_team, viewer_pick, enrollment):
     """The room's lead panel (DESIGN.md 4.1, 9.2; ruled 2026-09-08): the
     reveal week while it is unfinished (LOCKED, or the overlap with the
-    next week's call) or its verdict while nothing newer is open. Eyebrow →
-    headline → supporting line → the viewer's own line; copy is factual,
-    stoic, and never guesses a time it does not have."""
+    next week's call) or its verdict while nothing newer is open. Headline
+    (the week and its verdict or what is left) → supporting line opening
+    on the week's state word → the viewer's own line; no eyebrow above the
+    headline (ADR-066). Copy is factual, stoic, and never guesses a time it
+    does not have."""
     lead = room.lead
     label = get_week_display_name(lead)
     card = {
@@ -221,8 +223,7 @@ def _lead_card(room, games_by_team, viewer_pick, enrollment):
         card['pick'] = {'label': pick_label, 'state': state}
 
     if room.state == VERDICT:
-        card['eyebrow'] = f'{label} · Final'
-        card['hero_eyebrow'] = card['eyebrow']
+        card['state'] = 'Final'
         team = viewer_pick.team.name if viewer_pick else None
         opponent = None
         score = ''
@@ -261,18 +262,18 @@ def _lead_card(room, games_by_team, viewer_pick, enrollment):
             card['next_line'] = f'{get_week_display_name(following)} opens with its lines.'
         else:
             card['next_line'] = f'Week {lead.week_number + 1} is not on the board yet.'
+        card['headline'] = f"{label}: {card['headline']}"
         return card
 
     pending = room.pending
     n = len(pending)
-    card['eyebrow'] = f'{label} · Locked'
-    card['hero_eyebrow'] = f"{label} · Locked · {n} game{'' if n == 1 else 's'} to go"
+    card['state'] = 'Locked'
     if 0 < n <= 3:
-        card['headline'] = ' · '.join(_matchup(g) for g in pending)
+        card['headline'] = f"{label}: {' · '.join(_matchup(g) for g in pending)}"
     elif n > 3:
-        card['headline'] = f'{n} games to go'
+        card['headline'] = f'{label}: {n} games to go'
     else:
-        card['headline'] = 'Awaiting the verdict'
+        card['headline'] = f'{label}: Awaiting the verdict'
     timed = [g for g in pending if g.game_time is not None]
     if n == 1 and timed:
         when = format_deadline_short(timed[0].game_time)
@@ -354,12 +355,10 @@ def index():
                 viewer_reveal_pick = pick
     reveal_note = room.note
 
-    hero_eyebrow = 'Under the Lights'
     lead_card = None
     if room.state in (LOCKED, OVERLAP, VERDICT):
         lead_card = _lead_card(
             room, reveal_games_by_team, viewer_reveal_pick, viewer_enrollment)
-        hero_eyebrow = lead_card['hero_eyebrow']
 
     # Official standings order + competition ranks via the central helper
     # (shared with the lounge -- DESIGN.md 10.5 room/lounge consistency).
@@ -433,7 +432,6 @@ def index():
         call_week=call_week,
         lead_week=room.lead,
         lead_card=lead_card,
-        hero_eyebrow=hero_eyebrow,
         user_pick=user_pick,
         user_pick_spread=user_pick_spread,
         enrollments=enrollments,

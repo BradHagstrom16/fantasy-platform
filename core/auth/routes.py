@@ -191,7 +191,6 @@ def forgot_password():
             letter = Letter(
                 subject='Reset your password',
                 headline='Reset your password',
-                eyebrow='Your account',
                 preheader='Your reset link expires in 1 hour.',
                 greeting=user.get_display_name(),
                 lede=[

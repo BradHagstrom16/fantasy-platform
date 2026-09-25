@@ -8,9 +8,10 @@
 <div class="page-hero cfb-hero">
   <div class="hero-glow"></div>
   <div class="container">
-    <span class="cfb-eyebrow">Club Archive &middot; {{ season.year }}</span>
     <h1>The First Season</h1>
     <div class="cfb-hero-field">
+      <span class="cfb-count">{{ season.year }}</span>
+      <span class="cfb-hero-field-sep">&middot;</span>
       <span class="cfb-count">{{ season.entrants }} entered</span>
       <span class="cfb-hero-field-sep">&middot;</span>
       <span class="cfb-count-cut">{{ season.entrants - 1 }} cut</span>

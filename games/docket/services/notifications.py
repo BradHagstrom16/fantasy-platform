@@ -58,10 +58,12 @@ def sheet_url():
     return f'{base}{SHEET_PATH}'
 
 
-def letter(week, **fields) -> Letter:
-    """A Docket letter: the eyebrow names the week, the accent is the stamp
-    garnet, the footer names the season. ``fields`` are the Letter's own."""
-    return Letter(eyebrow=f'The Docket · Week {week.week_number}',
+def letter(week, *, headline, **fields) -> Letter:
+    """A Docket letter: the headline names the game and the week (``The
+    Docket, Week 4: ...``; no eyebrow above it, ADR-066), the accent is the
+    stamp garnet, the footer names the season. ``headline`` is what follows
+    the colon; ``fields`` are the Letter's own."""
+    return Letter(headline=f'The Docket, Week {week.week_number}: {headline}',
                   game_slug='docket', season=SEASON_YEAR, **fields)
 
 
@@ -124,7 +126,7 @@ def notify_line_correction(correction, game, picks, week):
         return render_letter(letter(
             week,
             subject=subject,
-            headline='A line on your sheet was corrected',
+            headline='a line on your sheet was corrected',
             preheader=f'{case}: the {market} is now {new}.',
             greeting=user.get_display_name(),
             lede=[
@@ -166,7 +168,7 @@ def notify_redesignation(week, new_game, old_game, users):
         return render_letter(letter(
             week,
             subject=subject,
-            headline='The tiebreaker case moved',
+            headline='the tiebreaker case moved',
             preheader=f'Now {new_case}. Enter a new number before the docket '
                       f'closes.',
             lede=[
@@ -204,7 +206,7 @@ def notify_picks_open(week, recipients):
         return render_letter(letter(
             week,
             subject=subject,
-            headline=f'The Week {number} docket is open',
+            headline='picks are open',
             preheader=f'The docket closes {deadline}.',
             lede=[f'The Week {number} slate is posted and the lines are '
                   f'frozen. File eight sides, name your x2 (it scores '

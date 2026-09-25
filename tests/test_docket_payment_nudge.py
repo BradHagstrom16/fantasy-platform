@@ -61,7 +61,7 @@ def test_gate_hidden_when_paid_or_absent_or_admin(app):
 
 def _assert_nudge(body, app):
     text = unescape(body)
-    assert 'Settle the Tab' in text
+    assert 'Now square up.' in text
     assert 'https://venmo.com/' + app.config['PAYMENT_VENMO_HANDLE'] in text
     assert 'txn=pay&amount=' + str(app.config['DOCKET_ENTRY_FEE']) in text
     assert app.config['PAYMENT_ZELLE_PHONE'] in text
@@ -74,7 +74,7 @@ def test_sheet_awaiting_state_shows_nudge(client, app):
     user, _ = _member('early')
     login(client, user)
     body = client.get('/docket/').get_data(as_text=True)
-    assert 'Awaiting the docket' in body
+    assert 'Court convenes' in body
     _assert_nudge(body, app)
 
 
@@ -96,10 +96,10 @@ def test_nudge_hidden_for_paid_member_and_admin(client):
     paid, _ = _member('settled', has_paid=True)
     login(client, paid)
     for path in ('/docket/', '/docket/ledger'):
-        assert 'Settle the Tab' not in client.get(path).get_data(as_text=True)
+        assert 'Now square up.' not in client.get(path).get_data(as_text=True)
     brad, _ = _member('brad', is_admin=True)
     login(client, brad)
-    assert 'Settle the Tab' not in client.get('/docket/').get_data(as_text=True)
+    assert 'Now square up.' not in client.get('/docket/').get_data(as_text=True)
 
 
 def test_no_member_self_mark_control(client):

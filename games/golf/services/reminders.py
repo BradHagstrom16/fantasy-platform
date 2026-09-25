@@ -140,8 +140,7 @@ def _picks_open_letter(*, tournament_name, deadline_short, purse, pick_url,
     """
     return Letter(
         subject=f'Picks are open: Golf, {tournament_name}',
-        headline='Picks are open',
-        eyebrow=f"Golf Pick 'Em · {tournament_name}",
+        headline=f"Golf Pick 'Em, {tournament_name}: picks are open",
         game_slug='golf',
         season=season_year,
         preheader=f'Deadline {deadline_short}.',
@@ -238,23 +237,22 @@ def _reminder_letter(*, tournament_name, deadline_short, time_remaining,
     """
     if window['type'] == 'final':
         subject = f'FINAL, 1 hour left: Golf, {tournament_name}'
-        headline = 'Final call: one hour left'
+        headline = f"Golf Pick 'Em, {tournament_name}: final call, one hour left"
         lede = [f'Your pick for {tournament_name} is not in and the deadline '
                 f'is less than an hour away.']
     elif window['type'] == 'reminder':
         subject = f'Pick due in 12 hours: Golf, {tournament_name}'
-        headline = 'Your pick is due in 12 hours'
+        headline = f"Golf Pick 'Em, {tournament_name}: your pick is due in 12 hours"
         lede = [f'About {time_remaining} left. One more reminder comes at '
                 f'one hour.']
     else:
         subject = f'Pick due in 24 hours: Golf, {tournament_name}'
-        headline = 'Your pick is due in 24 hours'
+        headline = f"Golf Pick 'Em, {tournament_name}: your pick is due in 24 hours"
         lede = [f'About {time_remaining} left. More reminders come at 12 '
                 f'hours and at one hour.']
     return Letter(
         subject=subject,
         headline=headline,
-        eyebrow=f"Golf Pick 'Em · {tournament_name}",
         game_slug='golf',
         season=season_year,
         preheader=f'Deadline {deadline_short}.',
@@ -396,8 +394,7 @@ def _recap_letter(*, display_name, tournament_name, golfer_name, position,
 
     return Letter(
         subject=f'Results: Golf, {tournament_name}',
-        headline='Results are in',
-        eyebrow=f"Golf Pick 'Em · {tournament_name}",
+        headline=f"Golf Pick 'Em, {tournament_name}: results are in",
         game_slug='golf',
         season=season_year,
         preheader=f'{tournament_name}: your week, settled.',

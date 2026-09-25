@@ -57,7 +57,7 @@ def test_a_new_pick_sends_the_receipt(client, app):
     to_addr, subject, plain, html = send.call_args[0]
     assert to_addr == user.email
     assert subject == 'Your pick is in: CFB Survivor, Week 1'
-    assert 'Your Week 1 pick: Navy -7.0' in plain
+    assert 'CFB Survivor, Week 1: Navy -7.0' in plain
     assert 'Picks lock' in plain and 'Saturday, Sep 5' in plain
     assert '/cfb/pick/1' in plain
     assert 'Navy -7.0' in html
@@ -92,7 +92,7 @@ def test_a_changed_pick_says_so(client, app):
     assert send.call_count == 2
     subject, plain = send.call_args[0][1], send.call_args[0][2]
     assert subject == 'Pick changed: CFB Survivor, Week 1'
-    assert 'Your Week 1 pick: South Carolina +7.0' in plain
+    assert 'CFB Survivor, Week 1: South Carolina +7.0' in plain
 
 
 def test_resubmitting_the_same_team_sends_nothing(client, app):

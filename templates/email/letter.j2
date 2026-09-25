@@ -23,8 +23,7 @@
 </td></tr>
 
 <!-- The letter -->
-<tr><td style="padding:28px 28px 12px;">
-<p style="margin:0 0 4px; font-family:{{ df }}; font-size:14px; font-weight:500; letter-spacing:.12em; text-transform:uppercase; color:{{ accent }};">{{ letter.eyebrow }}</p>
+<tr><td style="padding:28px 28px 12px; border-top:4px solid {{ accent }};">
 <h1 style="margin:0 0 16px; font-family:{{ df }}; font-size:29px; font-weight:600; line-height:1.1; letter-spacing:.04em; text-transform:uppercase; color:#3A1D72;">{{ letter.headline }}</h1>
 {% if letter.greeting %}<p style="margin:0 0 14px; font-family:{{ bf }}; font-size:16px; line-height:1.55; color:#1C1730;">Hi {{ letter.greeting }},</p>
 {% endif %}{% for paragraph in letter.lede %}<p style="margin:0 0 14px; font-family:{{ bf }}; font-size:16px; line-height:1.55; color:#1C1730;">{{ paragraph }}</p>

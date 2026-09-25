@@ -208,17 +208,16 @@ def _reminder_letter(*, week_name, deadline_short, lives,
     """
     if window['type'] == 'final':
         subject = f'FINAL, {time_left} left: CFB Survivor, {week_name}'
-        headline = f'Final call: {time_left} left'
+        headline = f'CFB Survivor, {week_name}: final call, {time_left} left'
         lede = [f'Your {week_name} pick is not in and the deadline is '
                 f'{time_left} away.']
     else:
         subject = f'Pick due tomorrow: CFB Survivor, {week_name}'
-        headline = f'Your {week_name} pick is due tomorrow'
+        headline = f'CFB Survivor, {week_name}: your pick is due tomorrow'
         lede = []
     return Letter(
         subject=subject,
         headline=headline,
-        eyebrow=f'CFB Survivor · {week_name}',
         game_slug='cfb',
         season=season_year,
         preheader=f'Deadline {deadline_short}.',
@@ -310,8 +309,7 @@ def _picks_open_letter(*, week_name, deadline_short, pick_url, nudge,
     """
     return Letter(
         subject=f'Picks are open: CFB Survivor, {week_name}',
-        headline='Picks are open',
-        eyebrow=f'CFB Survivor · {week_name}',
+        headline=f'CFB Survivor, {week_name}: picks are open',
         game_slug='cfb',
         season=season_year,
         preheader=f'Deadline {deadline_short}.',
@@ -581,15 +579,15 @@ def _recap_letter(*, display_name, week_name, team_name, outcome, spread,
     """
     if was_eliminated:
         subject = f"You've been eliminated: CFB Survivor, {week_name}"
-        headline = 'End of the road'
+        headline = f'CFB Survivor, {week_name}: end of the road'
         lede = [f'You have been eliminated. {_players_remain(active_count)}.']
     elif outcome == 'SURVIVED':
         subject = f'You survived: CFB Survivor, {week_name}'
-        headline = f'You survived {week_name}'
+        headline = f'CFB Survivor, {week_name}: you survived'
         lede = [f'Here is how {week_name} went down.']
     else:
         subject = f'Results: CFB Survivor, {week_name}'
-        headline = f'{week_name} results'
+        headline = f'CFB Survivor, {week_name}: the results'
         lede = [f'Here is how {week_name} went down.']
 
     facts = []
@@ -634,7 +632,6 @@ def _recap_letter(*, display_name, week_name, team_name, outcome, spread,
     return Letter(
         subject=subject,
         headline=headline,
-        eyebrow=f'CFB Survivor · {week_name} results',
         game_slug='cfb',
         season=season_year,
         preheader=lede[0],

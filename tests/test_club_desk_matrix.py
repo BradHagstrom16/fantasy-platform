@@ -139,8 +139,8 @@ def test_paper(app, survivor, docket_state):
         assert letter['to'] == 'member@test.com'
         assert letter['subject'] == subject
         plain, html = letter['plain'], letter['html']
-        assert ('CFB SURVIVOR · WEEK 4' in plain.upper()) is ('cfb' in sections)
-        assert ('THE DOCKET · WEEK 4' in plain.upper()) is ('docket' in sections)
+        assert ('CFB SURVIVOR' in plain.upper()) is ('cfb' in sections)
+        assert ('THE DOCKET' in plain.upper()) is ('docket' in sections)
         if len(sections) == 2:
             assert html.count('class="cta"') == 0
             assert html.count('class="section-cta"') == \

@@ -15,7 +15,6 @@
 <div class="page-hero cfb-hero">
     <div class="hero-glow"></div>
     <div class="container">
-        <span class="cfb-eyebrow">The Card{% if current_week_display %} &middot; {{ current_week_display.display_name }}{% endif %}</span>
         <h1><span class="cfb-avatar" aria-hidden="true">{{ enrollment.user.get_avatar() }}</span>{{ enrollment.get_display_name() }}</h1>
         <p class="lead">
             {%- if standing == 'champion' %}Survived every week. The field is gone.
@@ -46,9 +45,9 @@
        never a side-stripe; the pips and the label carry the state by structure. #}
     <div class="cfb-season-lead animate-in {{ lead_class }}">
         <div class="cfb-season-lead-main">
-            <span class="cfb-eyebrow">The Standing{% if is_you %}<span class="cfb-you-tag">You</span>{% endif %}</span>
             <div class="cfb-season-headline cfb-team-name">
                 {%- if standing == 'champion' %}Last One Standing{% elif standing == 'out' %}Eliminated{% elif standing == 'one' %}Final Life{% else %}Still Standing{% endif -%}
+                {%- if is_you %}<span class="cfb-you-tag">You</span>{% endif %}
             </div>
             <p class="cfb-season-derivation">
                 {%- if standing == 'champion' %}{{ total_picks }} {{ calls_word }} on the card, the last one standing.

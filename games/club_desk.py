@@ -406,8 +406,8 @@ HEADLINES = {
 }
 OWN_SUBJECT = {'cfb': 'Picks are open: CFB Survivor, Week {n}',
                'docket': 'Picks are open: The Docket, Week {n}'}
-OWN_HEADLINE = {'cfb': 'Picks are open',
-                'docket': 'The Week {n} docket is open'}
+OWN_HEADLINE = {'cfb': 'CFB Survivor, Week {n}: picks are open',
+                'docket': 'The Docket, Week {n}: picks are open'}
 PAPER_SUBJECT_MAX = 50
 
 
@@ -453,7 +453,9 @@ def _week_label(week):
 
 def _paper_letter(says: list[Say], state_slugs, week_number) -> Letter:
     """One member's Paper: club chrome over two or more sections, or the
-    single game's own letter shape (its eyebrow, accent, subject)."""
+    single game's own letter shape (its headline, accent, subject). The
+    Paper's headline is its name and week; the state opens the lede (no
+    eyebrow above a heading, ADR-066)."""
     says = sorted(says, key=lambda s: (s.section.deadline is None,
                                        s.section.deadline or datetime.max))
     hooks = [s.hook for s in says if s.hook]
@@ -466,13 +468,12 @@ def _paper_letter(says: list[Say], state_slugs, week_number) -> Letter:
         assert len(subject) <= PAPER_SUBJECT_MAX, subject
         return Letter(
             subject=subject,
-            headline=state,
-            eyebrow=f'The Morning Line · Week {week_number}',
+            headline=f'The Morning Line, Week {week_number}',
             game_slug=None,
             preheader=preheader or 'Last week is in the books and this '
                                    'week\'s lines are posted.',
-            lede=['Last week is in the books and this week\'s lines are '
-                  'posted.'],
+            lede=[f'{state}. Last week is in the books and this week\'s '
+                  f'lines are posted.'],
             extras=[section_block(s.section) for s in says],
             cta=None,
             notes=notes,
@@ -483,7 +484,6 @@ def _paper_letter(says: list[Say], state_slugs, week_number) -> Letter:
     return Letter(
         subject=OWN_SUBJECT[slug].format(n=week_number),
         headline=OWN_HEADLINE[slug].format(n=week_number),
-        eyebrow=section.title,
         game_slug=slug,
         season=_season_of(slug),
         preheader=preheader or f'Deadline {format_deadline_short(section.deadline)}.',

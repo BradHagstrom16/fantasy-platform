@@ -68,7 +68,7 @@ def test_eighth_side_sends_the_sheet_receipt_once(monkeypatch, client, member):
     to_addr, subject, plain, html = send.call_args[0]
     assert to_addr == member.email
     assert subject == 'Sheet filed: The Docket, Week 1'
-    assert 'Your Week 1 sheet is filed' in plain
+    assert 'The Docket, Week 1: your sheet is filed' in plain
     for i in range(8):
         assert f'Home {i} -3.5' in plain
     assert 'Still open on your sheet' in plain

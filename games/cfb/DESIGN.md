@@ -387,22 +387,21 @@ User-facing CFB routes treat their H1 as Survivor-register editorial voice, not 
 |---|---|
 | Standings / hub | "The Survivors" |
 | Weekly results | "Saturday's Verdict" / cut weeks: "The Cut" (conditional) |
-| Picks + My Picks | "Your Card" |
+| Picks | "Your Week N Card" (the week moved in from the retired eyebrow, ADR-066) |
+| My Picks | "Your Card" |
 | Join | "Take Your Two Lives" |
-| Champion moment | "One Remains" (eyebrow) |
+| Champion moment | "One Remains" (a label over the champion's name, not over a heading) |
 | Rules | "House Rules" (shared club idiom) |
 
 Platform dispensations carry over: (a) dynamic interpolated H1s read functionally because the value carries the voice; (b) logged-in utility auth surfaces keep functional H1s; (c) **admin keeps functional H1s** (§7's Commissioner's Desk). A flat functional H1 on a routine player-facing CFB tab is a regression — if a title could belong equally to a spreadsheet, a sportsbook, or an admin console, rewrite it.
 
 ### 6.10 `.cfb-eyebrow`
 
-The CFB contextual-label primitive (analog to `.wc-eyebrow`): small uppercase Teko metadata above a headline — week, deadline, survivor count, status. **Shipped metrics: Teko 500, `.8rem`, letter-spacing `.15em`, uppercase, `--cfb-bone-muted` default** (calibrated for midnight). One variant:
+The CFB contextual-label primitive (analog to `.wc-eyebrow`): small uppercase Teko metadata that heads a value, list, paragraph or fold — week, deadline, survivor count, status — and **never sits above a heading** (below). **Shipped metrics: Teko 500, `.8rem`, letter-spacing `.15em`, uppercase, `--cfb-bone-muted` default** (calibrated for midnight). One variant:
 
 - **`.cfb-eyebrow-crimson`** (`--cfb-crimson-bright`) — active/competitive signal. Sanctioned but currently unused in shipped templates, and deliberately narrow: crimson-bright clears AA only at large/bold sizes (§6.4), so reserve it for *sizeable* active labels — a current-leader callout, a deadline banner — never a small routine eyebrow, where bone-muted carries the metadata. CFB adds **no** gold eyebrow variant (the Crimson-Ceremony Rule).
 
-On the hero, `.cfb-hero .cfb-eyebrow` lifts to bone @ .85 to clear the gradient.
-
-**Open question (not a ruling; Brad's call):** The Field ships a hero eyebrow above its H1 ("What the Field Has Spent", §9.15). Is an eyebrow over the room H1 the standing pattern for every tab, or should it be reserved (the reveal-week state line of §9.2, say)? The finish reviewer raised the same question on the Docket room; until Brad rules, neither answer is doctrine.
+**Never above a heading (ADR-066, Brad 2026-09-24; closes the open question the Field raised).** No hero carries an eyebrow, on any tab: the H1 speaks, and a fact the eyebrow carried moves into the heading, the lead or the hero field line ("Your Week 4 Card"; "Week 4." opening the results lead; the archive year in the history field line; a week in the admin H1s, "Mark the Week 4 Results"). Nor does one sit over an in-page headline: the week lead, the season-standing cards (the viewer's "You" tag rides the headline) and The Pool lost theirs. What stays is a label over something that is not a heading: "Picks Lock" over the countdown, "Your Standing Pick" over the held team, "Your Verdict" over the result, "The Spent Board" over its note, the Field's fold heads, "One Remains" over the champion's name. The platform rule is root `DESIGN.md` The Eyebrow Rule; it is restated here because impeccable's `--target games/cfb` loads this file instead of the root one. Locked by `tests/test_eyebrow_above_heading.py`.
 
 ### 6.11 Copy voice
 
@@ -513,7 +512,7 @@ Season position; administrative, not emotional.
 
 #### The verdict family — `.cfb-verdict` (+ `.is-survived` / `.is-lost` / `.is-pending`), `.cfb-week-summary`, `.cfb-season-lead`, `.cfb-week-lead`
 
-The room's raised information surfaces: `--cfb-raised` substrate, strong hairline, and a 2px top rule **colored by outcome state** — survived-green, lost-red, or pending-bone, never crimson (the ratified R1 contract: outcome carries outcome; crimson stays identity). `.cfb-verdict` carries the weekly result (team, matchup, score, outcome chip, lives consequence); `.cfb-week-summary` + `.cfb-summary-*` carry week aggregates; `.cfb-season-lead` opens My Picks with the season line. `.cfb-week-lead` (ruled 2026-09-08) opens the room landing with the reveal week while it is unfinished — the games still to play with their kickoff, the viewer's pick with its own W/L/TBD chip — or just settled with nothing newer open: the verdict word ("Survived." / "Lost a life." / "Eliminated." / "No pick."), the derivation ("Florida State beat SMU, 24–17."), and what comes next ("Week 2 opens with its lines."). Its top rule is pending-bone while games remain and the viewer's outcome color once settled; lives ride its aside only when no weekly call follows; it carries no pick control, ever. The hero eyebrow names the same state ("Week 1 · Locked · 1 game to go", "Week 1 · Final") and reverts to the identity eyebrow while a week is open. Internal shape: eyebrow → headline → primary value → supporting context → optional action. These are the room's information-density model: editorial readability with operational structure — surfaces designed for decisions, not telemetry widgets.
+The room's raised information surfaces: `--cfb-raised` substrate, strong hairline, and a 2px top rule **colored by outcome state** — survived-green, lost-red, or pending-bone, never crimson (the ratified R1 contract: outcome carries outcome; crimson stays identity). `.cfb-verdict` carries the weekly result (team, matchup, score, outcome chip, lives consequence); `.cfb-week-summary` + `.cfb-summary-*` carry week aggregates; `.cfb-season-lead` opens My Picks with the season line. `.cfb-week-lead` (ruled 2026-09-08) opens the room landing with the reveal week while it is unfinished — the games still to play with their kickoff, the viewer's pick with its own W/L/TBD chip — or just settled with nothing newer open: the verdict word ("Survived." / "Lost a life." / "Eliminated." / "No pick."), the derivation ("Florida State beat SMU, 24–17."), and what comes next ("Week 2 opens with its lines."). Its top rule is pending-bone while games remain and the viewer's outcome color once settled; lives ride its aside only when no weekly call follows; it carries no pick control, ever. The panel's headline leads with the week ("Week 1: SMU at Florida State", "Week 4: 6 games to go", "Week 1: Survived.") and its first line opens on the state word ("Locked. Kickoff Monday, Sep 7 · 6:30 PM CT.", "Final. Florida State beat SMU, 24–17."); the hero above it is the H1 and the field alone, with no eyebrow in any state (ADR-066). Internal shape: headline → primary value → supporting context → optional action. These are the room's information-density model: editorial readability with operational structure — surfaces designed for decisions, not telemetry widgets.
 
 #### The Cut — `.elimination-alert` + `.cfb-cut-*`
 
@@ -529,7 +528,7 @@ The last-one-standing declaration (analog to WC's `.wc-champion-banner`), single
 
 CFB uses the platform `.page-hero` directly: crimson is `--game-primary` and warm midnight `#1A0B0D` is `--game-primary-dark`, so the default 135° gradient already resolves to the midnight-and-crimson "under the lights" band. **Do not author a `.cfb-hero-grad`** (held in shipped code; the only grep hit is a comment affirming the ban). CFB-scoped details: the halftone dot overlay is **crimson**, not gold (`rgba(197,5,12,.10)`, test-locked), plus a crimson accent line, ambient `.hero-glow`, and a `.lead` contrast lift.
 
-`.cfb-hero` is a *content* modifier, not a gradient override: it carries the hero eyebrow lift and the survivor-count field — `.cfb-hero-field` with `.cfb-count` ("N still standing") and `.cfb-count-cut` ("M cut") — answering "who is left standing?" in the masthead itself. Used on all five player screens.
+`.cfb-hero` is a *content* modifier, not a gradient override: it carries the survivor-count field (no eyebrow, ADR-066) — `.cfb-hero-field` with `.cfb-count` ("N still standing") and `.cfb-count-cut` ("M cut") — answering "who is left standing?" in the masthead itself. Used on all five player screens.
 
 #### Sub-nav — `.subnav-cfb`
 
@@ -549,14 +548,14 @@ The §7.4 "Player detail" surface, built: one member's season read by anyone in 
 
 #### Settle the Tab — `.settle-tab` (platform partial `templates/_settle_tab.html`)
 
-The how-to-pay card for an enrolled, unpaid member (gate: `games/cfb/services/payment.py`, ADR-056). A platform primitive wearing this room's `.card` skin: gold top rule (money = CCC gold, never crimson — a friendly ask, not an alarm), the room's `.cfb-eyebrow` passed in by the include, `.btn-game` (crimson = the primary action, §6.5) for the Venmo link with the amount and memo pre-filled, and the copyable Zelle number. Bill layout — the ask left, the rails right, stacking on a phone. Placement follows §7.1's one center of gravity: under the weekly call on the index, at the foot of the pick page, under the season lead on Your Card — never above a pick. Payment stays admin-confirmed; the card carries no self-mark.
+The how-to-pay card for an enrolled, unpaid member (gate: `games/cfb/services/payment.py`, ADR-056). A platform primitive wearing this room's `.card` skin: gold top rule (money = CCC gold, never crimson — a friendly ask, not an alarm), its heading "You're in. Now square up." with no eyebrow above it (ADR-066), `.btn-game` (crimson = the primary action, §6.5) for the Venmo link with the amount and memo pre-filled, and the copyable Zelle number. Bill layout — the ask left, the rails right, stacking on a phone. Placement follows §7.1's one center of gravity: under the weekly call on the index, at the foot of the pick page, under the season lead on Your Card — never above a pick. Payment stays admin-confirmed; the card carries no self-mark.
 
 #### The Commissioner's Desk — admin cluster (`.cfb-admin-*` + the A3-admin block)
 
 Eight admin screens with their own register, doctrine previously recorded only in CSS comments, now canonical:
 
 - **Admin keeps a functional H1** — a deliberate exception to the Survivor voice; the desk is operational.
-- **The Crimson-Ceremony Rule applies to admin:** the platform's gold masthead rule + gold eyebrow + purple H1 become a **crimson rule, bone-muted eyebrow, bone-white H1** here. No gold on the desk.
+- **The Crimson-Ceremony Rule applies to admin:** the platform's gold masthead rule + gold eyebrow + purple H1 become a **crimson rule and a bone-white H1** here, with no eyebrow (ADR-066 retired "The Commissioner's Desk" label; a week the page works on is in its H1). No gold on the desk.
 - **The focus ring is crimson** on CFB admin surfaces, replacing the platform gold ring (re-derived for the midnight substrate).
 - **Destructive actions are a restrained lost-red *outline*, never a filled red shout** (Cold-Elimination register), placed on `--cfb-surface` so lost-red clears AA.
 - **Inputs sit a step *deeper* than their card** (canvas, not surface) so fields read as inset wells.
@@ -771,7 +770,7 @@ Shipped screens and their doctrine anchors:
 | Route | Screen | H1 | Anchors |
 |---|---|---|---|
 | `/cfb/` | standings/home (landing) | The Survivors | `.cfb-pick-cta`, standings table, The Cut, `.championship-hero` gate |
-| `/cfb/pick/<week>` | the weekly decision | Your Card | `.team-pick-card`, The Board slate, `.cfb-confirm-pick` |
+| `/cfb/pick/<week>` | the weekly decision | Your Week N Card | `.team-pick-card`, The Board slate, `.cfb-confirm-pick` |
 | `/cfb/my-picks` | season ledger | Your Card | `.cfb-season-lead`, verdict list, team pool, used grid |
 | `/cfb/player/<id>` | the player card (public) | the member's name | `.cfb-season-lead`, `.cfb-week-summary`, the card table (`.cfb-field-table.cfb-card-ledger`), `.cfb-used-grid`, the Pool groups; reached by `.cfb-name-link` |
 | `/cfb/field` | The Field (public) | The Field | the spent board (`.cfb-field-line` + meter), the two folds (`.cfb-field-fold`), §9.15 |
@@ -783,7 +782,7 @@ The sub-nav reads Pick (while a week is pickable) · Standings · Results · The
 
 ### 9.2 State model at depth
 
-Same four beats as everywhere, at operational depth, with no contradictory actions across them: OPEN shows selection + submission; HELD shows current pick + change controls; LOCKED shows no editable controls; VERDICT explains result + updated state. The room header orients (week, survival state, lives, pick state, deadline/lock, route back) — the hero eyebrow names the reveal week's state while it is unfinished or just settled (§4.1) — it is not a decorative hero: no oversized imagery, slogans, or promotional copy.
+Same four beats as everywhere, at operational depth, with no contradictory actions across them: OPEN shows selection + submission; HELD shows current pick + change controls; LOCKED shows no editable controls; VERDICT explains result + updated state. The room header orients (week, survival state, lives, pick state, deadline/lock, route back) — the lead panel names the reveal week's state while it is unfinished or just settled (§4.1) — it is not a decorative hero: no oversized imagery, slogans, or promotional copy.
 
 ### 9.3 Canonical hierarchy
 
@@ -858,7 +857,7 @@ The room must not become a sportsbook, live-score center, generic fantasy dashbo
 
 `/cfb/field`, shipped 2026-09-24: the room's opponent-awareness surface (§1.8, §1.9's midseason and late phases): who among the still-standing has burned each pool team, how many still hold it, how the field was cut. Public, like standings and results. A record, never a decision surface: no pick controls, no countdowns, no recommendation. The reader leaves with opponent awareness, not advice. One builder, `games/cfb/services/field.py::build_field` (`attrition_rows`, `spent_board`, `most_backed`); `tests/test_cfb_field.py`.
 
-**The composition: the Inventory Sheet** (Brad's pick on the decision page). The spent board leads the whole page; the season's story sits folded beneath it. Order: the room hero (eyebrow "What the Field Has Spent", H1 "The Field", the `.cfb-hero-field` line "N still standing · N cut · N weeks on the record", the cut and weeks pairs only when non-zero); the board; two native `<details>` folds, "The Cut, Week by Week" then "Most Backed", both closed by default; a closing `.cfb-field-foot` line routing this week's split to Results. Before any week's deadline has passed the page is one line instead ("Before the First Cut": "The full field remains alive. N players, two lives each. The sheet fills the moment a week locks.").
+**The composition: the Inventory Sheet** (Brad's pick on the decision page). The spent board leads the whole page; the season's story sits folded beneath it. Order: the room hero (H1 "The Field", no eyebrow (ADR-066), the `.cfb-hero-field` line "N still standing · N cut · N weeks on the record", the cut and weeks pairs only when non-zero); the board; two native `<details>` folds, "The Cut, Week by Week" then "Most Backed", both closed by default; a closing `.cfb-field-foot` line routing this week's split to Results. Before any week's deadline has passed the page is one line instead ("Before the First Cut": "The full field remains alive. N players, two lives each. The sheet fills the moment a week locks.").
 
 - **The spent board.** Every pool team, grouped under its conference (a Teko uppercase `.cfb-field-conf-head` with the `.cfb-conf-count`, over a strong hairline), one ruled `.cfb-field-line` per team: The Pool's `.cfb-team-chip` · the meter · the count ("**3** spent · **24** hold", Teko tabular, figures in white) · a caret. A spent line is a `<details>`: tap it and the survivors who burned the team open beneath, each a `.cfb-name-link` door to their player card with the week each spent it (`.cfb-field-when`, Teko uppercase bone-subtle), week order. Eliminated burners are counted apart, never listed: "N of the cut burned it too." (on an unspent line, "unspent · N of the cut burned it"). A team no survivor still holds strikes its chip through (`.is-gone`). An unspent line is a plain row with a hidden caret so every meter shares one track.
 - **The meter** (`.cfb-field-meter`, 6px hairline track): spent in ash (`--cfb-eliminated`), held in muted bone (bone @ .55). **Structure, not hue**: neither segment carries survivor-state meaning; `role="img"` and its label carry the numbers ("spent by 3 of 27 survivors, 24 still hold it"). An unspent line shows a full held track ("unspent; every survivor still holds it").

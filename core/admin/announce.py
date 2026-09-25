@@ -199,13 +199,12 @@ def announcement_letter(subject, body_text, *, headline=None, preheader=None,
     did: a blank line starts a paragraph, a newline is a ``<br>``,
     everything escaped once), live boards included. The headline defaults
     to the subject. Club business, so the button is the trophy gold and the
-    eyebrow carries no game accent. Raises ``MarkupError`` listing every
+    rule over the letter carries no game accent. Raises ``MarkupError`` listing every
     mistake in the body.
     """
     return Letter(
         subject=subject,
         headline=headline or subject,
-        eyebrow='From the Commish',
         preheader=preheader or '',
         extras=parse(body_text, BOARDS),
         cta=_cta(cta),
