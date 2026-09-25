@@ -191,10 +191,26 @@ def test_a_draft_is_not_an_issue_and_a_stale_issue_still_reads(app, client, memb
         stale = _issue(member, 'Old', 'Old words.', page=False,
                        sent_at=datetime(2026, 9, 1, tzinfo=UTC))
     assert client.get(f'/tribune/{draft_id}').status_code == 404
-    # Sent before the column existed and not yet backfilled: the page renders
-    # the body live rather than 404ing a member out of the archive.
+    # Sent before the column existed and not yet backfilled: the page prints
+    # the mailed plain copy rather than 404ing a member out of the archive.
     page = client.get(f'/tribune/{stale}').get_data(as_text=True)
     assert 'Old words.' in page
+
+
+def test_a_stale_issue_reads_as_mailed_and_never_re_renders(app, client, member):
+    with app.app_context():
+        stale = _issue(member, 'Old', 'First line\nsecond <line>.', page=False,
+                       sent_at=datetime(2026, 9, 1, tzinfo=UTC))
+        # A body that no longer parses (a board that is gone) must not 500
+        # the issue, and nothing but the mailed copy reaches the page.
+        row = db.session.get(Announcement, stale)
+        row.body = '[[no-such-board]]'
+        db.session.commit()
+    resp = client.get(f'/tribune/{stale}')
+    assert resp.status_code == 200
+    page = resp.get_data(as_text=True)
+    assert 'First line<br>second &lt;line&gt;.' in page
+    assert 'no-such-board' not in page
 
 
 def test_the_empty_tribune_speaks_in_the_commish_register(client, member):
@@ -300,11 +316,25 @@ def test_backfill_fills_only_sent_rows_without_a_page_copy(app, member):
                      sent_at=datetime(2026, 9, 2, 14, tzinfo=UTC))
         done = _issue(member, 'Done', 'Done.', sent_at=datetime(2026, 9, 3, tzinfo=UTC))
         before = db.session.get(Announcement, done).sent_page_html
-        assert backfill_page_html() == 1
+        assert backfill_page_html() == (1, [])
         assert 'words' in db.session.get(Announcement, old).sent_page_html
         assert db.session.get(Announcement, old).week_number == 1   # Sep 2 = club week 1
         assert db.session.get(Announcement, done).sent_page_html == before
-        assert backfill_page_html() == 0                       # idempotent
+        assert backfill_page_html() == (0, [])                 # idempotent
+
+
+def test_backfill_skips_a_body_that_no_longer_parses_and_commits_the_rest(app, member):
+    with app.app_context():
+        broken = _issue(member, 'Broken', 'Fine then.', page=False,
+                        sent_at=datetime(2026, 9, 1, tzinfo=UTC))
+        good = _issue(member, 'Good', 'Good words.', page=False,
+                      sent_at=datetime(2026, 9, 2, tzinfo=UTC))
+        db.session.get(Announcement, broken).body = '[[no-such-board]]'
+        db.session.commit()
+        assert backfill_page_html() == (1, [broken])
+        assert db.session.get(Announcement, broken).sent_page_html is None
+        assert 'Good words.' in db.session.get(Announcement, good).sent_page_html
+        assert backfill_page_html() == (0, [broken])           # still skipped, still safe
 
 
 def test_backfill_cli_reports_the_count(app, member):
@@ -313,3 +343,4 @@ def test_backfill_cli_reports_the_count(app, member):
     result = app.test_cli_runner().invoke(args=['tribune', 'backfill'])
     assert result.exit_code == 0, result.output
     assert '1 issue' in result.output
+    assert 'Skipped' not in result.output

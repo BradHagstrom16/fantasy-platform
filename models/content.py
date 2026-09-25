@@ -145,7 +145,8 @@ class Announcement(db.Model):
     # The same letter rendered as page content for The Tribune
     # (core/tribune): stored at send for the same reason ``sent_html`` is.
     # NULL on rows sent before the column existed until ``flask tribune
-    # backfill`` fills it (the issue page renders the body live meanwhile).
+    # backfill`` fills it (the issue page shows ``sent_plain`` meanwhile,
+    # never a live re-render).
     sent_page_html = db.Column(db.Text, nullable=True)
     # The season week the letter files under in The Tribune (the "Week N"
     # its subject or headline names, else the club week it was sent in;

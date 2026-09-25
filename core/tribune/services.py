@@ -2,13 +2,15 @@
 
 An issue is a sent ``Announcement``. Its page copy (``sent_page_html``) and
 the week it files under (``week_number``) are stored by the desk at send;
-a row sent before those columns existed reads live through ``page_html``
-and files by ``filed_week`` until ``backfill_page_html`` stores both.
+a row sent before those columns existed reads as its mailed plain copy
+through ``page_html`` and files by ``filed_week`` until
+``backfill_page_html`` stores both. Nothing re-renders the markup on read.
 """
 import logging
 import re
 from datetime import UTC, timedelta
 
+from markupsafe import Markup, escape
 from sqlalchemy import select
 
 from core.admin.announce import announcement_letter
@@ -20,6 +22,7 @@ from games.docket.services.weeks import (
 )
 from models.content import Announcement, latest_issue, sent_issues
 from utils.email_layout import render_letter_page
+from utils.letter_markup import MarkupError
 from utils.time import format_ct
 
 __all__ = ['backfill_page_html', 'filed_week', 'issue_date', 'latest_issue',
@@ -43,11 +46,20 @@ def render_letter_page_for(announcement: Announcement) -> str:
 
 
 def page_html(announcement: Announcement) -> str:
-    """The stored page copy, or a live render for a row sent before the
-    column existed (the backfill makes that case go away)."""
+    """The stored page copy, or, for a row without one (sent before the
+    column existed and not yet backfilled, or skipped by the backfill), the
+    mailed plain copy as page paragraphs. Never a re-render: a live board
+    would show today's field, and a body that no longer parses would 500."""
     if announcement.sent_page_html is not None:
         return announcement.sent_page_html
-    return render_letter_page_for(announcement)
+    paragraphs = [p for p in re.split(r'\n\s*\n', announcement.sent_plain)
+                  if p.strip()]
+    body = Markup('').join(
+        Markup('<p class="letter-page-para">{}</p>').format(
+            Markup('<br>').join(escape(line) for line in p.split('\n')))
+        for p in paragraphs)
+    return Markup('<article class="letter-page"><div class="letter-page-body">'
+                  '{}</div></article>').format(body)
 
 
 def filed_week(subject: str, headline: str | None, sent_at) -> int | None:
@@ -80,20 +92,29 @@ def issue_date(announcement: Announcement) -> str:
     return format_ct(announcement.sent_at, '%b %-d')
 
 
-def backfill_page_html() -> int:
+def backfill_page_html() -> tuple[int, list[int]]:
     """Store the page copy and the filing week on every sent row that
-    lacks the page copy; returns the count filled. Idempotent. A live board
-    ([[survivor-board]]) rendered now shows today's field, not the field
-    on the send date: the caller prints that caveat."""
+    lacks the page copy; returns (count filled, ids skipped). Idempotent.
+    A live board ([[survivor-board]]) rendered now shows today's field, not
+    the field on the send date: the caller prints that caveat. A body that
+    no longer parses (a board that now refuses its settings) is skipped and
+    keeps reading as its mailed plain copy; the rest still commit."""
     rows = db.session.scalars(
         select(Announcement)
         .where(Announcement.sent_at.is_not(None),
                Announcement.sent_page_html.is_(None))
         .order_by(Announcement.sent_at.asc())
     ).all()
+    filled, skipped = 0, []
     for row in rows:
-        row.sent_page_html = render_letter_page_for(row)
+        try:
+            row.sent_page_html = render_letter_page_for(row)
+        except MarkupError:
+            logger.exception('Tribune backfill skipped announcement #%d', row.id)
+            skipped.append(row.id)
+            continue
+        filled += 1
         if row.week_number is None:
             row.week_number = filed_week(row.subject, row.headline, row.sent_at)
     db.session.commit()
-    return len(rows)
+    return filled, skipped
