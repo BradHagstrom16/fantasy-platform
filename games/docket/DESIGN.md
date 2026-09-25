@@ -1136,20 +1136,28 @@ fading the field". Members only. The record argues; the page does not.
 - **The five sections.** *The field's habits*: Favorites / Underdogs by the frozen number from
   the picked side (a pick'em is neither) and Overs / Unders, each "N taken" plus its record.
   *Consensus and the lone wolf*: per graded week (`.docket-brief-week`), the most-held side,
-  "3 of 6 sheets", its verdict as the room's `.docket-sheet-result` stamp; under it
-  `.docket-brief-wolves`, "Name alone on LSU Tigers +12.5 · caption", names linking the member
-  page, else "No lone wolf won this week." *The x2 ledger*: "The field's x2" first, then every
+  "3 of 6 sheets", its verdict as the room's `.docket-sheet-result` stamp; under it ONE
+  `.docket-brief-wolf` line (Brad 2026-09-25: the old every-lone-winner list ran 33 lines on
+  Week 1's wide CFB slate, most of them sides nobody opposed): the one sheet alone on a side
+  that won against the biggest crowd on the other side of its market, at least two sheets (the
+  page's own "against the field"), a tie to the earliest kickoff. "LONE WOLF Name on Clemson
+  +7, against 4 sheets · caption", the name linking the member page, else "No lone wolf this
+  week: no sheet won alone against a crowd." *The x2 ledger*: "The field's x2" first, then every
   sheet that named one, by wins. *The number*: the closest call ("said 47.0, it was 45.0", "off
   by 2.0"), guesses over / under / on the frozen total in counts, then each member's average
-  off by ascending. *The members' rows*: rank in ledger order, "1 of 8" against the field
-  (sides held by fewer sheets than the market's other side), Fav, Dog, Over / Under, x2, Off by,
-  Best week ("9.0 Wk 2"); the reader's row is `row-current-user` with the You tag.
+  off by ascending. *How each member plays* (clarify pass 2026-09-25; it was "The members' rows" and nobody,
+  the commish included, could say what it showed): rank in ledger order, against the field
+  ("6 of 24", sides held by fewer sheets than the market's other side, with the record of those
+  sides beside it, which is the "how that went" the hero lead promises), Favorites, Underdogs,
+  Overs, Unders, Best week ("9.0 Wk 2"). No x2 and no off-by column: each has its own section
+  above and saying it twice was the confusion. The reader's row is `row-current-user` with
+  the You tag. Records colour only a non-zero figure (a "2-0" never prints a red 0).
 - **The sort contract** (§8.9 inherited): plain GET header links, `BRIEF_SORTS` in the route
-  (name, against the field by contrarian share, favorites, underdogs, x2, off by, best week),
+  (name, against the field by contrarian share, favorites, underdogs, overs, unders, best week),
   each with its natural first direction, `aria-sort` and the ledger's caret on the active head.
   **The rank column keeps the ledger's official order under any sort.** Sortable heads read as
   controls at rest, a dotted underline in `--game-accent-light` (`.docket-brief-th
-  .docket-ledger-sort`); the unsortable Over / Under head has none. The caption states the sort
+  .docket-ledger-sort`); every head but the rank is sortable. The caption states the sort
   and offers "Ledger order ›".
 - **Phone (under 576px).** `.docket-brief-wide` hides and `.docket-brief-phone` prints the same
   rows as ruled `.docket-brief-member` lines (Teko rank, name plus You, three stacked

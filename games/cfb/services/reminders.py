@@ -38,6 +38,7 @@ from games.cfb.models import (
 from games.cfb.services.game_logic import get_official_standings
 from games.cfb.services.payment import payment_nudge_for
 from games.cfb.utils import (
+    format_deadline_compact,
     format_deadline_short,
     get_current_time,
     get_week_display_name,
@@ -55,6 +56,7 @@ from utils.email_layout import (
     tab_block,
 )
 from utils.push import send_push
+from utils.time import format_time_left_compact
 
 logger = logging.getLogger(__name__)
 
@@ -281,12 +283,15 @@ def _push_pick_nag(week, window, deadline, now, user_ids):
     if not user_ids:
         return
     ttl = max(int((deadline - now).total_seconds()), 0)
+    # The phone stacks title / "from CCC" / body, and the title is one
+    # line: the title carries the whole message, the body one short line.
+    week_name = get_week_display_name(week)
     if window['type'] == 'final':
-        title = 'Last call: CFB pick.'
-        body = f'Picks lock in {time_left_phrase(deadline, now)}. No pick on file.'
+        title = f'CFB pick locks in {format_time_left_compact(deadline, now)}'
+        body = f'Last call for {week_name}. No pick on file.'
     else:
-        title = 'Your CFB pick is due.'
-        body = f'Picks lock {format_deadline_short(deadline)}. No pick on file.'
+        title = f'CFB pick due {format_deadline_compact(deadline)}'
+        body = f'{week_name}: no pick on file yet.'
     send_push(user_ids, title=title, body=body,
               url=f'/cfb/pick/{week.week_number}',
               tag=f'cfb-w{week.week_number}-nag',

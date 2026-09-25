@@ -415,6 +415,26 @@ def test_panel_headers_bill_full_game_names(app, client):
     assert 'hl-panel-name">Docket</span>' not in text
 
 
+def test_panel_header_names_link_to_each_room(app, client):
+    """Brad 2026-09-25: the panel's mark and name are the door into the
+    game's room, in every lounge state (one shared header partial)."""
+    import re
+    with app.app_context():
+        auth_id = _make_user('doorreader').auth_id
+    _login(client, auth_id)
+    with patch.dict(os.environ, DUAL_PRE):
+        text = client.get('/').get_data(as_text=True)
+    heads = re.findall(r'<header class="hl-panel-head">(.*?)</header>', text, re.S)
+    assert len(heads) == 2
+    cfb_head, docket_head = heads
+    assert '<a class="hl-panel-link" href="/cfb/">' in cfb_head
+    assert '<a class="hl-panel-link" href="/docket/">' in docket_head
+    for head in heads:
+        # The name sits inside the link; the court line stays outside it.
+        link = head[head.index('<a '):head.index('</a>')]
+        assert 'hl-panel-name' in link and 'hl-panel-court' not in link
+
+
 def test_both_headliners_carry_the_commish_decree(app, client):
     """Design review 2026-08-18: both games are decrees of the Commish.
     Per-era numbering (WC No 001, CFB No 002, Docket No 003); the docket

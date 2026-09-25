@@ -117,18 +117,88 @@ def test_the_habits_count_every_graded_scoring_side_with_its_record(app, season)
     assert (habits['unders'].count, habits['unders'].record.label) == (1, '1-0')
 
 
-def test_consensus_and_the_lone_wolf_per_week(app, season):
+def test_consensus_per_week_and_no_wolf_without_a_crowd(app, season):
     with app.app_context():
         brief = build_brief()
         w1, w2 = brief.weeks
         assert (w1.week_number, w1.pick, w1.holders, w1.sheets, w1.result) == (
             1, 'Utah -3.5', 2, 3, 'win')
-        # Sides one sheet held alone and won: Ann's away B and Cy's under B
-        # (Ann's over A was alone too, but it lost at 50).
-        assert [(lw.enrollment.get_display_name(), lw.pick) for lw in w1.lone_wolves] == [
-            ('Ann', 'Tulsa -2.5'), ('Cy', 'Under 40')]
+        # Ann's away B and Cy's under B were each held alone and won, but a
+        # wolf needs a crowd: Ann faced one sheet (Bob), Cy faced none.
+        assert w1.lone_wolf is None
         assert (w2.pick, w2.holders, w2.result) == ('Iowa +7', 2, 'win')
-        assert w2.lone_wolves == ()
+        assert w2.lone_wolf is None
+
+
+@pytest.fixture
+def wolf_week(app):
+    """One graded week, five members, three games.
+
+    Game D (Clemson at LSU, LSU -7): Ann, Bob, Cy and Dee take LSU, Eve
+    alone on Clemson +7; Clemson wins outright: Eve's wolf, against 4.
+    Game E (earlier kickoff): Ann and Bob over, Cy alone under, under hits:
+    a wolf against 2. Game F (earliest): Dee and Eve over, Ann alone under,
+    under hits: against 2, the same crowd as E.
+    """
+    with app.app_context():
+        users = {n: make_user(n.lower()) for n in ('Ann', 'Bob', 'Cy', 'Dee', 'Eve')}
+        for name, u in users.items():
+            make_enrollment(u, display_name=name)
+        wk = _graded_week(1)
+        f = make_game(wk, kickoff=datetime(2026, 9, 5, 15, 0), home='Army', away='Navy',
+                      home_spread=-3.5, total=40.0)
+        e = make_game(wk, kickoff=datetime(2026, 9, 5, 16, 0), home='Utah', away='Idaho',
+                      home_spread=-3.5, total=51.5)
+        d = make_game(wk, kickoff=datetime(2026, 9, 5, 23, 0), home='LSU', away='Clemson',
+                      home_spread=-7.0, total=50.5)
+        _final(f, 17, 13)     # 30: under
+        _final(e, 24, 20)     # 44: under
+        _final(d, 20, 27)     # Clemson outright
+        wk.tiebreaker_game_id = d.id
+        for name in ('Ann', 'Bob', 'Cy', 'Dee'):
+            _pick(users[name], wk, d, 'spread', 'home', 1)
+        _pick(users['Eve'], wk, d, 'spread', 'away', 1)
+        _pick(users['Ann'], wk, e, 'total', 'over', 2)
+        _pick(users['Bob'], wk, e, 'total', 'over', 2)
+        _pick(users['Cy'], wk, e, 'total', 'under', 2)
+        _pick(users['Dee'], wk, f, 'total', 'over', 2)
+        _pick(users['Eve'], wk, f, 'total', 'over', 2)
+        _pick(users['Ann'], wk, f, 'total', 'under', 3)
+        for u in users.values():
+            _result(wk, u, 1, 1)
+        db.session.commit()
+
+
+def test_one_lone_wolf_a_week_the_biggest_crowd_faded(app, wolf_week):
+    with app.app_context():
+        (week,) = build_brief().weeks
+        wolf = week.lone_wolf
+        assert (wolf.enrollment.get_display_name(), wolf.pick, wolf.against) == (
+            'Eve', 'Clemson +7', 4)
+        assert wolf.caption == 'Clemson at LSU'
+
+
+def test_a_tied_crowd_goes_to_the_earliest_kickoff(app, wolf_week):
+    """Take Eve's pick off the board: Cy (under E) and Ann (under F) each
+    faded two sheets; F kicked off first, so Ann is the wolf."""
+    with app.app_context():
+        db.session.query(DocketPick).filter(
+            DocketPick.market == 'spread', DocketPick.side == 'away').delete()
+        db.session.commit()
+        (week,) = build_brief().weeks
+        wolf = week.lone_wolf
+        assert (wolf.enrollment.get_display_name(), wolf.pick, wolf.against) == (
+            'Ann', 'Under 40', 2)
+
+
+def test_the_page_prints_one_wolf_line(app, client, wolf_week):
+    with app.app_context():
+        from models.user import User
+        login(client, db.session.scalar(db.select(User).filter_by(username='ann')))
+    page = client.get('/docket/brief').get_data(as_text=True)
+    assert page.count('docket-brief-wolf"') == 1
+    assert 'Clemson +7' in page and 'against 4 sheets' in page
+    assert 'Eve</a> on Clemson +7' in page
 
 
 def test_the_x2_ledger(app, season):
@@ -166,9 +236,11 @@ def test_the_members_rows(app, season):
     assert (ann.sides, ann.contrarian, ann.favorites, ann.underdogs, ann.overs) == (4, 1, 3, 0, 1)
     assert (bob.sides, bob.contrarian, bob.favorites, bob.underdogs) == (3, 0, 1, 2)
     assert (cy.sides, cy.contrarian, cy.unders) == (3, 1, 1)
-    assert ann.x2.label == '1-1' and cy.x2.label == '0-0'
-    assert (ann.weeks_guessed, ann.avg_off_tenths) == (2, 65)
-    assert (cy.best_week, cy.best_points, cy.struck_week) == (1, 1.0, 1)
+    assert (ann.overs, ann.unders, cy.overs) == (1, 0, 0)
+    # How the fades went: Cy's away A lost, Ann's home C lost.
+    assert (cy.contrarian_record.label, ann.contrarian_record.label) == ('0-1', '0-1')
+    assert bob.contrarian_record.decided == 0
+    assert (cy.best_week, cy.best_points) == (1, 1.0)
     assert ann.contrarian_share == 0.25
 
 
@@ -187,7 +259,8 @@ def test_the_brief_page_and_its_doors(app, client, season):
         login(client, db.session.get(User, season['ann']))
     page = client.get('/docket/brief').get_data(as_text=True)
     assert 'The Brief' in page
-    assert 'Utah -3.5' in page and 'Under 40' in page
+    assert 'Utah -3.5' in page and 'How each member plays' in page
+    assert 'No lone wolf this week' in page
     assert 'graded weeks' in page.lower()
     ledger = client.get('/docket/ledger').get_data(as_text=True)
     assert '/docket/brief' in ledger
@@ -199,25 +272,27 @@ def test_the_brief_is_members_only(client):
 
 
 def test_the_members_sorts_keep_blanks_last_in_both_directions():
-    """A dash on the page (no guess, no x2 decided, no week submitted)
-    follows every measured row whichever way the column is sorted."""
+    """A dash on the page (no week submitted) follows every measured row
+    whichever way the column is sorted."""
     from types import SimpleNamespace
 
     from games.docket.routes import _brief_order
-    from games.docket.services.brief import Record
 
-    def row(name, off, x2, best):
-        return SimpleNamespace(name=name, avg_off_tenths=off, x2=x2,
-                               best_week=1 if best is not None else None,
+    def row(name, best):
+        return SimpleNamespace(name=name, best_week=1 if best is not None else None,
                                best_points=best)
 
-    rows = [row('blank', None, Record(), None),
-            row('low', 20, Record(wins=1, losses=1), 2.0),
-            row('high', 90, Record(wins=2), 9.0)]
-    for key, ascending in (('number', ['low', 'high']),
-                           ('x2', ['low', 'high']),
-                           ('best', ['low', 'high'])):
-        for direction, measured in (('asc', ascending),
-                                    ('desc', ascending[::-1])):
-            ordered, _key, _dir = _brief_order(rows, key, direction)
-            assert [r.name for r in ordered] == [*measured, 'blank'], (key, direction)
+    rows = [row('blank', None), row('low', 2.0), row('high', 9.0)]
+    for direction, measured in (('asc', ['low', 'high']), ('desc', ['high', 'low'])):
+        ordered, _key, _dir = _brief_order(rows, 'best', direction)
+        assert [r.name for r in ordered] == [*measured, 'blank'], direction
+
+
+def test_the_members_rows_sort_only_on_what_they_print():
+    """How each member plays prints no x2 and no off-by (those have their
+    own sections), so neither is a sort; an old link falls back to ledger
+    order rather than erroring."""
+    from games.docket.routes import BRIEF_SORTS, _brief_order
+    assert set(BRIEF_SORTS) == {'name', 'contrarian', 'favorites', 'underdogs',
+                                'overs', 'unders', 'best'}
+    assert _brief_order([], 'x2', 'desc') == ([], None, None)
