@@ -153,6 +153,31 @@ def test_a_late_record_letter_keeps_its_own_weeks_season(app, two_weeks):
     assert (mover_name, mover_move.label) == ('Cy', 'up 2')
 
 
+def test_a_late_record_letter_keeps_its_own_weeks_roster(app):
+    """A member who joined after Week 2's deadline is not on Week 2's
+    season: charged 0 points and the default error for weeks before they
+    joined, they would outrank a member who played and missed by more."""
+    from games.docket.services.record import week_records
+    with app.app_context():
+        ann, eve = _player('ann', 'Ann'), _player('eve', 'Eve')
+        zed = make_user('zed')
+        make_enrollment(zed, display_name='Zed', created_at=datetime(2026, 9, 20))
+        w1, w2, w3 = (_graded_week(n, default_error_tenths=30) for n in (1, 2, 3))
+        for week in (w1, w2):
+            _result(week, ann, 9, 7)
+            _result(week, eve, 0, 0, error_tenths=50)   # played, missed by 5.0
+        _result(w3, ann, 5, 4)
+        _result(w3, eve, 0, 0, error_tenths=50)
+        _result(w3, zed, 4, 3)
+        db.session.commit()
+
+        scoped = season_ledger(through_week=2)
+        assert [r.enrollment.get_display_name() for r in scoped.rows] == ['Ann', 'Eve']
+        fields = {user.username: f for user, f in week_records(w2, datetime(2026, 9, 20))}
+    assert set(fields) == {'ann', 'eve'}
+    assert fields['eve']['season_rank'] == 2        # 3rd behind a charged Zed before
+
+
 def test_one_graded_week_has_no_movement(app):
     with app.app_context():
         a = _player('ann')

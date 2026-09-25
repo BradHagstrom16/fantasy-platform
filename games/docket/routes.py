@@ -931,32 +931,32 @@ def member(enrollment_id):
         leader_points = ledger.leader.standing.total_points
         points = row.standing.total_points
         # A tie is said honestly (the ledger prints "tied"): the names that
-        # share this rank, else the line level on points but split from
-        # this one by wins or off by: the leader first, then the line just
-        # above, then the line just below.
+        # share this rank, and the line level on points but split from this
+        # one by wins or off by: the leader first, then the line just above
+        # (a shared rank has none of its own), then the next line down. The
+        # next line down is the first ranked below this one, so a shared
+        # rank never reads as "0.0 ahead".
         shares_rank = [r.enrollment.get_display_name() for r in rows
                        if r is not row and r.standing.rank == row.standing.rank]
+        below = next((r for r in rows[idx + 1:]
+                      if r.standing.rank != row.standing.rank), None)
         level_with = None
         level_side = None          # 'ahead' | 'behind' of level_with
         split_from = None          # the standing the split is measured on
-        if not shares_rank:
-            if idx > 0 and leader_points == points:
-                split_from = ledger.leader.standing
-            elif idx > 0 and rows[idx - 1].standing.total_points == points:
-                split_from = rows[idx - 1].standing
-                level_with = rows[idx - 1].enrollment.get_display_name()
-                level_side = 'behind'
-            elif idx + 1 < len(rows) and rows[idx + 1].standing.total_points == points:
-                split_from = rows[idx + 1].standing
-                level_with = rows[idx + 1].enrollment.get_display_name()
-                level_side = 'ahead'
+        if row.standing.rank > 1 and leader_points == points:
+            split_from = ledger.leader.standing
+        elif not shares_rank and idx > 0 \
+                and rows[idx - 1].standing.total_points == points:
+            split_from = rows[idx - 1].standing
+            level_with = rows[idx - 1].enrollment.get_display_name()
+            level_side = 'behind'
+        elif below is not None and below.standing.total_points == points:
+            split_from = below.standing
+            level_with = below.enrollment.get_display_name()
+            level_side = 'ahead'
         decided_by = (None if split_from is None
                       else 'wins' if split_from.wins != row.standing.wins
                       else 'off by')
-        # The next line down is the first ranked below this one, so a
-        # shared rank never reads as "0.0 ahead".
-        below = next((r for r in rows[idx + 1:]
-                      if r.standing.rank != row.standing.rank), None)
         neighbors = {
             'is_leader': row is ledger.leader,
             'rank_label': _ordinal(row.standing.rank),

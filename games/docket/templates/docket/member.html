@@ -51,7 +51,7 @@ never reads differently here than on the ledger drawer or All Sheets.
         {% elif neighbors.is_leader %}
         Leads the field{% if neighbors.ahead_of_next is not none %} by {{ '%.1f'|format(neighbors.ahead_of_next) }} point{{ 's' if neighbors.ahead_of_next != 1 }}{% endif %}{% if row.move %}, {{ row.move.sentence }}{% endif %}.
         {% elif neighbors.behind_leader == 0 %}
-        Sits <strong>{{ neighbors.rank_label }}</strong> of {{ neighbors.field_size }}, {% if row.move %}{{ row.move.sentence }}, {% endif %}level on points with the leader and behind on {% if neighbors.decided_by == 'wins' %}wins{% else %}off by{% endif %}.
+        Sits <strong>{{ neighbors.rank_label }}</strong> of {{ neighbors.field_size }}, {% if neighbors.shares_rank %}tied with {{ neighbors.shares_rank|join(', ') }}, {% endif %}{% if row.move %}{{ row.move.sentence }}, {% endif %}level on points with the leader and behind on {% if neighbors.decided_by == 'wins' %}wins{% else %}off by{% endif %}.
         {% else %}
         Sits <strong>{{ neighbors.rank_label }}</strong> of {{ neighbors.field_size }}, {% if neighbors.shares_rank %}tied with {{ neighbors.shares_rank|join(', ') }}, {% endif %}{% if row.move %}{{ row.move.sentence }}, {% endif %}{{ '%.1f'|format(neighbors.behind_leader) }} behind the leader{% if neighbors.level_with %} and level on points with {{ neighbors.level_with }}, {{ neighbors.level_side }} on {% if neighbors.decided_by == 'wins' %}wins{% else %}off by{% endif %}{% elif neighbors.ahead_of_next is not none %} and {{ '%.1f'|format(neighbors.ahead_of_next) }} ahead of the next line{% endif %}.
         {% endif %}

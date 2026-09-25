@@ -1088,11 +1088,14 @@ fall is a printed change to the record; a line's movement is market chrome and s
   wins, held in Week 2." / "Sits 2nd of 6, down 1 in Week 2, level on points with the leader
   and behind on wins." / "Sits 3rd of 6, 2.0 behind the leader and level on points with X,
   behind on wins." / "Sits 4th of 6, tied with X, 5.0 behind the leader and 3.0 ahead of the
-  next line." (the next line is the first ranked below, never a co-ranked "0.0 ahead").
+  next line." / "Sits 2nd of 6, tied with X, level on points with the leader and behind on
+  wins." The next line is the first ranked below; when it is level on points the sentence says
+  so ("level on points with X, ahead on wins"), never "0.0 ahead".
 - **The record letter:** the Season fact gains "· up 2" (the `label`); Around the docket gains
   "Biggest mover: Dana Whitfield, up 6 to 3rd". All three read the season as the letter's own
-  week left it (`season_ledger(through_week=…)`), so a letter held back by a mail outage never
-  carries a later week's standing or movement.
+  week left it (`season_ledger(through_week=…)`: its graded weeks over its deadline roster,
+  ADR-048), so a letter held back by a mail outage never carries a later week's standing or
+  movement, and a later joiner is never charged into it.
 - **The lounge's season board** (`.home-shell .roll-move` under the rank) carries the mark at
   row scale in lounge tokens only: `--live-green` up, `--live-red` down, `--bone-mute` held.
   The context builder passes a plain `move` dict (label, direction, delta, spoken); no room

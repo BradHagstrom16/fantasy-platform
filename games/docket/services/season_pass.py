@@ -235,13 +235,20 @@ def season_ledger(season_year: int = SEASON_YEAR, *,
     avatars onto it and settles display order inside a shared rank.
     ``through_week`` reads the season as it stood once that week graded
     (the record letter's week, so a letter sent late never carries a later
-    week's standing or movement); None is every graded week.
+    week's standing or movement): its graded weeks, and its roster as of
+    that week's deadline (ADR-048, the population ``week_standings`` and the
+    letter's recipients use), so a later joiner is never charged into it.
+    None is every graded week over the live roster.
     """
-    enrollments = db.session.scalars(
-        select(DocketEnrollment)
-        .filter_by(season_year=season_year)
-        .options(joinedload(DocketEnrollment.user))
-    ).all()
+    query = (select(DocketEnrollment)
+             .filter_by(season_year=season_year)
+             .options(joinedload(DocketEnrollment.user)))
+    if through_week is not None:
+        week = db.session.scalar(
+            select(DocketWeek).filter_by(week_number=through_week))
+        query = query.filter(DocketEnrollment.user_id.in_(
+            roster_user_ids_as_of(week.deadline_at, season_year)))
+    enrollments = db.session.scalars(query).all()
     by_player_id = {str(e.user_id): e for e in enrollments}
 
     rollups = week_rollups_from_db()

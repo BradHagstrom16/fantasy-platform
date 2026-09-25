@@ -153,22 +153,45 @@ def _standing_sentence(client, user):
 
 def test_member_page_says_a_level_pair_below_the_lead_honestly(app, client):
     """Level on points but split by wins, away from the leader, reads as a
-    tie from both sides; a shared rank names its partner and measures the
-    gap to the next line ranked below it, never "0.0 ahead"."""
+    tie from both sides, and a shared rank says the same of the line below
+    it rather than "0.0 ahead"."""
     w1 = _week(1)
-    lee, ann, bob, cy, dee, eve = (_member(n) for n in ('lee', 'ann', 'bob', 'cy', 'dee', 'eve'))
+    lee, ann, bob, cy, dee, fay, eve = (
+        _member(n) for n in ('lee', 'ann', 'bob', 'cy', 'dee', 'fay', 'eve'))
     _result(w1, lee, 10.0, 7)
     _result(w1, ann, 8.0, 6)          # 2nd: level with bob, ahead on wins
     _result(w1, bob, 8.0, 5)          # 3rd: level with ann, behind on wins
-    _result(w1, cy, 5.0, 4, 10)       # 4th, tied with dee on every key
-    _result(w1, dee, 5.0, 4, 10)
+    _result(w1, cy, 5.0, 4, 10)       # 4th, tied with dee on every key,
+    _result(w1, dee, 5.0, 4, 10)      # and level on points with fay
+    _result(w1, fay, 5.0, 3)
     _result(w1, eve, 2.0, 1)
     db.session.commit()
     login(client, lee)
 
     assert _standing_sentence(client, ann).startswith(
-        'Sits 2nd of 6, 2.0 behind the leader and level on points with bob, ahead on wins.')
+        'Sits 2nd of 7, 2.0 behind the leader and level on points with bob, ahead on wins.')
     assert _standing_sentence(client, bob).startswith(
-        'Sits 3rd of 6, 2.0 behind the leader and level on points with ann, behind on wins.')
+        'Sits 3rd of 7, 2.0 behind the leader and level on points with ann, behind on wins.')
     assert _standing_sentence(client, cy).startswith(
-        'Sits 4th of 6, tied with dee, 5.0 behind the leader and 3.0 ahead of the next line.')
+        'Sits 4th of 7, tied with dee, 5.0 behind the leader and level on points with fay, ahead on wins.')
+
+
+def test_member_page_says_a_shared_rank_honestly(app, client):
+    """A shared rank names its partner, is split from the leader by the key
+    that actually splits it, and measures the gap to the first line ranked
+    below it."""
+    w1 = _week(1)
+    lee, ann, bob, cy, dee, eve = (_member(n) for n in ('lee', 'ann', 'bob', 'cy', 'dee', 'eve'))
+    _result(w1, lee, 10.0, 7)
+    _result(w1, ann, 10.0, 5)         # 2nd with bob, level with lee on points
+    _result(w1, bob, 10.0, 5)
+    _result(w1, cy, 6.0, 4, 10)       # 4th with dee
+    _result(w1, dee, 6.0, 4, 10)
+    _result(w1, eve, 3.0, 1)
+    db.session.commit()
+    login(client, lee)
+
+    assert _standing_sentence(client, ann).startswith(
+        'Sits 2nd of 6, tied with bob, level on points with the leader and behind on wins.')
+    assert _standing_sentence(client, cy).startswith(
+        'Sits 4th of 6, tied with dee, 4.0 behind the leader and 3.0 ahead of the next line.')
