@@ -26,6 +26,7 @@ Everything here is read-only — no DB writes, no line mutation. It powers
 (spreads,totals across the ten named BOOKS = 2 credits/sport/run).
 """
 from datetime import UTC
+from math import isfinite
 from statistics import NormalDist, median
 
 from games.docket.services import nfl_margin
@@ -115,9 +116,16 @@ def parse_projections(data, nfl_week):
     for name, pts in data['team_points'].items():
         if pts is None:
             continue
+        bad = ValueError(f'team_points[{name!r}] must be a finite number or null')
         if isinstance(pts, bool) or not isinstance(pts, int | float):
-            raise ValueError(f'team_points[{name!r}] must be a number or null')
-        points[name] = float(pts)
+            raise bad
+        try:
+            value = float(pts)   # a huge JSON integer overflows
+        except OverflowError:
+            raise bad from None
+        if not isfinite(value):  # json.load accepts 1e400 (inf) and NaN
+            raise bad
+        points[name] = value
     return points
 
 

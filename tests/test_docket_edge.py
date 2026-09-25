@@ -7,6 +7,7 @@ legal reserve, and the expected-points / tiebreaker helpers. No DB or
 network — games are lightweight stubs and events are dict payloads shaped like
 The Odds API.
 """
+import json
 from datetime import UTC, datetime
 from types import SimpleNamespace
 
@@ -231,12 +232,15 @@ def test_parse_projections_checks_the_week_and_skips_byes():
         edge.parse_projections({'nfl_week': 3}, 3)
 
 
-@pytest.mark.parametrize('bad', [[30.4], {'pts': 30.4}, '30.4', True])
-def test_parse_projections_refuses_a_non_number(bad):
-    # a bad capture must be the CLI's clean refusal, not a TypeError, and a
-    # boolean must not pass as 1 point
-    with pytest.raises(ValueError, match=r"team_points\['Bills'\] must be a number"):
-        edge.parse_projections({'nfl_week': 3, 'team_points': {'Bills': bad}}, 3)
+@pytest.mark.parametrize('raw', ['[30.4]', '{"pts": 30.4}', '"30.4"', 'true',
+                                 '1e400', 'NaN', '1' + '0' * 400])
+def test_parse_projections_refuses_a_non_finite_number(raw):
+    # a bad capture must be the CLI's clean refusal, never a TypeError or
+    # OverflowError traceback, and a boolean, inf or NaN never blends in
+    data = json.loads(f'{{"nfl_week": 3, "team_points": {{"Bills": {raw}}}}}')
+    with pytest.raises(ValueError,
+                       match=r"team_points\['Bills'\] must be a finite number"):
+        edge.parse_projections(data, 3)
 
 
 def test_model_lines_match_nicknames_and_skip_cfb_and_missing_teams():
