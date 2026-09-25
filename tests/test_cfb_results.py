@@ -15,6 +15,7 @@ from unittest.mock import Mock, patch
 from extensions import db
 from games.cfb.models import (
     CfbEnrollment,
+    CfbPick,
     CfbWeek,
     CfbWeekOutcome,
 )
@@ -1091,6 +1092,102 @@ def test_outcomes_not_duplicated_on_rerun(app):
     process_week_results(week.id)
 
     assert CfbWeekOutcome.query.filter_by(week_id=week.id).count() == 1
+
+
+# ── A pick made before its maker went out ────────────────────────────────
+# The next week opens (the Tuesday Paper) while a Monday night game can still
+# be ungraded, and the pick page refuses only players already out, so a
+# player can hold a later-week pick when an earlier week eliminates them. The
+# later pick is still graded; its loss belongs to nobody.
+
+def _out_in_week_one_holding_a_week_two_pick(week2_winner='away'):
+    """Ann (1 life) loses Week 1 and goes out; Bob and Cy (1 life each)
+    win it. All three hold a Week 2 pick of the Week 2 home team."""
+    week1, home1, away1, _ = _seed_basic_week(1)           # away won
+    week2 = make_week(2)
+    home2, away2 = make_team('Home U 2'), make_team('Away St 2')
+    make_game(week2, home2, away2, spread=-7.0, winner=week2_winner)
+    users = {}
+    for name, week1_team in (('ann', home1), ('bob', away1), ('cy', away1)):
+        users[name] = make_user(name)
+        make_enrollment(users[name], lives=1)
+        make_pick(users[name], week1, week1_team)
+        make_pick(users[name], week2, home2)
+    db.session.commit()
+    process_week_results(week1.id)
+    return week1, week2, users
+
+
+def test_an_already_out_players_later_loss_is_not_a_second_cut(app):
+    from games.cfb.services.game_logic import get_elimination_weeks
+    week1, week2, users = _out_in_week_one_holding_a_week_two_pick()
+    ann = users['ann']
+    # Bob and Cy keep a second life so Week 2 is no wipe.
+    for name in ('bob', 'cy'):
+        CfbEnrollment.query.filter_by(user_id=users[name].id).one().lives_remaining = 2
+    db.session.commit()
+    process_week_results(week2.id)
+
+    ann_pick = CfbPick.query.filter_by(user_id=ann.id, week_id=week2.id).one()
+    assert ann_pick.is_correct is False       # still graded: the game is a fact
+    outcome = CfbWeekOutcome.query.filter_by(week_id=week2.id, user_id=ann.id).one()
+    assert outcome.is_eliminated is True
+    assert outcome.lost_life is False
+    assert outcome.eliminated_this_week is False
+    assert get_elimination_weeks([ann.id], 3)[ann.id].id == week1.id
+
+
+def test_revival_never_brings_back_a_player_an_earlier_week_put_out(app):
+    """Week 2 wipes Bob and Cy; Ann, out since Week 1, also lost her Week 2
+    pick. The revival brings back the two who went out this week, never Ann."""
+    week1, week2, users = _out_in_week_one_holding_a_week_two_pick()
+    result = process_week_results(week2.id)
+
+    assert result['revived'] == 2
+    ann = CfbEnrollment.query.filter_by(user_id=users['ann'].id).one()
+    assert (ann.is_eliminated, ann.lives_remaining) == (True, 0)
+    for name in ('bob', 'cy'):
+        e = CfbEnrollment.query.filter_by(user_id=users[name].id).one()
+        assert (e.is_eliminated, e.lives_remaining) == (False, 1)
+    outcome = CfbWeekOutcome.query.filter_by(week_id=week2.id, user_id=users['ann'].id).one()
+    assert (outcome.revived, outcome.lost_life) == (False, False)
+
+
+def test_the_last_player_standing_is_no_wipe_beside_one_already_out(app):
+    """Week 2: Bob, the last player in, loses; Ann, out since Week 1, loses
+    her Week 2 pick too. One player went out this week, so there is no
+    revival: the pool is empty and Bob stays out."""
+    week1, week2, users = _out_in_week_one_holding_a_week_two_pick()
+    cy_pick = CfbPick.query.filter_by(user_id=users['cy'].id, week_id=week2.id).one()
+    db.session.delete(cy_pick)
+    cy = CfbEnrollment.query.filter_by(user_id=users['cy'].id).one()
+    cy.lives_remaining, cy.is_eliminated = 0, True     # out, as if earlier
+    db.session.commit()
+    result = process_week_results(week2.id)
+
+    assert (result['revived'], result['pool_empty']) == (0, True)
+    bob = CfbEnrollment.query.filter_by(user_id=users['bob'].id).one()
+    assert (bob.is_eliminated, bob.lives_remaining) == (True, 0)
+
+
+def test_a_week_in_play_never_cuts_a_player_an_earlier_week_put_out(app):
+    """Week 2 is still in play (a second game unsettled) when Ann's losing
+    pick grades: the live status is out, but neither cut nor a lost life."""
+    from games.cfb.services.game_logic import get_week_user_statuses
+    week1, week2, users = _out_in_week_one_holding_a_week_two_pick()
+    make_game(week2, make_team('Late H'), make_team('Late A'), spread=-3.0)
+    db.session.commit()
+    process_week_results(week2.id)
+    assert week2.is_complete is False
+
+    ann = users['ann']
+    enrollments = CfbEnrollment.query.all()
+    picks = CfbPick.query.filter_by(week_id=week2.id).all()
+    status = get_week_user_statuses(week2, enrollments, picks)[ann.id]
+    assert status['is_eliminated'] is True
+    assert (status['eliminated_this_week'], status['lost_life']) == (False, False)
+    bob_status = get_week_user_statuses(week2, enrollments, picks)[users['bob'].id]
+    assert (bob_status['eliminated_this_week'], bob_status['lost_life']) == (True, True)
 
 
 # ── Deadline rule — a pick's spread counts only once its week's deadline passes ──

@@ -124,9 +124,10 @@ def attrition_rows(enrollments, weeks) -> tuple[AttritionRow, ...]:
         by_week[o.week_id].append(o)
     rows = []
     # Who was cut in an earlier row. A pick made before its maker went out
-    # (the next week opens while a Monday game is still unplayed) is graded
-    # anyway, and its loss reads as lost_life on an eliminated player; the
-    # cut and the lost lives belong only to players still in entering the week.
+    # (the next week opens while a Monday night game is still ungraded) is
+    # graded anyway; outcome rows written before the grader stopped charging
+    # its loss read it as lost_life on an eliminated player. The cut and the
+    # lost lives belong only to players still in entering the week.
     out_before = set()
     for week in weeks:
         week_outcomes = by_week.get(week.id, [])
