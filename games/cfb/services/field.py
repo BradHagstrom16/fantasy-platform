@@ -30,6 +30,7 @@ from games.cfb.models import (
     CfbWeek,
     CfbWeekOutcome,
 )
+from games.cfb.services.game_logic import get_week_user_statuses
 from games.cfb.utils import (
     deadline_has_passed,
     get_week_display_name,
@@ -106,8 +107,11 @@ def _revealed_weeks(season_year):
 def attrition_rows(enrollments, weeks) -> tuple[AttritionRow, ...]:
     """The cut, week by week, over the weeks with an outcome on record.
 
-    A week in progress (deadline passed, not complete) is marked so; its
-    counts are what has settled so far.
+    A week in progress (deadline passed, not complete) has no outcome yet:
+    ``process_week_results`` writes them only when the week completes. Its
+    row reads the live enrollments instead, the way
+    ``get_week_user_statuses`` does, so its counts are what has settled so
+    far; it is marked so. A week whose deadline has not passed gets no row.
     """
     total = len(enrollments)
     week_ids = [w.id for w in weeks]
@@ -122,15 +126,23 @@ def attrition_rows(enrollments, weeks) -> tuple[AttritionRow, ...]:
     out_so_far = 0
     for week in weeks:
         week_outcomes = by_week.get(week.id, [])
-        if not week_outcomes and not week.is_complete:
-            continue                      # nothing settled yet
+        if week_outcomes or week.is_complete:
+            states = [(o.lives_remaining, o.is_eliminated, o.lost_life,
+                       o.eliminated_this_week) for o in week_outcomes]
+        elif deadline_has_passed(week.deadline):
+            picks = CfbPick.query.filter_by(week_id=week.id).all()
+            states = [(s['lives'], s['is_eliminated'], s['lost_life'],
+                       s['eliminated_this_week'])
+                      for s in get_week_user_statuses(week, enrollments, picks).values()]
+        else:
+            continue                      # open: nothing on the record
         alive_entering = total - out_so_far
-        cut = sum(1 for o in week_outcomes if o.eliminated_this_week)
-        lost = sum(1 for o in week_outcomes if o.lost_life and not o.eliminated_this_week)
+        cut = sum(1 for *_, cut_here in states if cut_here)
+        lost = sum(1 for _, _, lost_life, cut_here in states if lost_life and not cut_here)
         out_so_far += cut
         alive_after = total - out_so_far
-        two = sum(1 for o in week_outcomes if not o.is_eliminated and o.lives_remaining >= 2)
-        one = sum(1 for o in week_outcomes if not o.is_eliminated and o.lives_remaining == 1)
+        two = sum(1 for lives, out, *_ in states if not out and lives >= 2)
+        one = sum(1 for lives, out, *_ in states if not out and lives == 1)
         rows.append(AttritionRow(
             week_number=week.week_number, label=get_week_display_name(week),
             alive_entering=alive_entering, lost_life=lost, cut=cut,

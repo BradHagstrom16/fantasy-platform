@@ -133,6 +133,32 @@ def test_an_open_week_never_reaches_a_count(app, season):
                        for line in b.lines for s in line.spent_by)
 
 
+def test_a_week_in_play_reads_its_settled_games_live(app, client, season):
+    """Week 3's deadline passes and one of its games settles: Bob's Iowa
+    loses (one life, so he is cut) while Ann's Utah is still being played.
+    Outcomes are written only when the week completes, so the row is built
+    from the live enrollments, marked in play, and the page says so."""
+    from games.cfb.models import CfbEnrollment, CfbTeam, CfbWeek
+    with app.app_context():
+        w3 = CfbWeek.query.filter_by(week_number=3).one()
+        w3.deadline = PAST_DEADLINE + timedelta(days=14)
+        bob = db.session.get(CfbEnrollment, season['bob'])
+        bob.lives_remaining, bob.is_eliminated = 0, True
+        iowa = CfbTeam.query.filter_by(name='Iowa').one()
+        georgia = CfbTeam.query.filter_by(name='Georgia').one()
+        make_pick(bob.user, w3, iowa, is_correct=False)
+        dee = db.session.get(CfbEnrollment, season['dee'])
+        make_pick(dee.user, w3, georgia, is_correct=True)
+        db.session.commit()
+        field = build_field(SEASON)
+        w3_row = field.weeks[-1]
+        assert (w3_row.week_number, w3_row.complete) == (3, False)
+        assert (w3_row.alive_entering, w3_row.lost_life, w3_row.cut, w3_row.alive_after) == (3, 0, 1, 2)
+        assert (w3_row.two_lives, w3_row.one_life, w3_row.out) == (2, 0, 2)
+    page = client.get('/cfb/field').get_data(as_text=True)
+    assert 'still in play' in page and '>in play</span>' in page
+
+
 def test_the_delta_line_for_the_lounge(app, season):
     from games.cfb.models import CfbEnrollment, CfbWeek
     with app.app_context():
