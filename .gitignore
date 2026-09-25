@@ -40,9 +40,9 @@ logs/
 .claude/scheduled_tasks.lock
 # Claude Code's native worktrees (EnterWorktree) live here; never repo content
 .claude/worktrees/
-# impeccable is a GLOBAL skill (~/.agents/skills, symlinked into ~/.claude);
-# `npx impeccable skills update` run from a repo root drops a stray copy here.
-# add-game is the only intended tracked project skill.
+# impeccable is ONE user-level install (~/.agents/skills, symlinked into ~/.claude).
+# `npx impeccable update` is scope-aware since the v4 CLI and never creates a copy, but
+# a bare `npx impeccable install` in a repo can; add-game is the only tracked project skill.
 .claude/skills/impeccable/
 
 # DO NOT ignore migrations/ — these must be committed
@@ -73,9 +73,16 @@ audit-*.png
 fantasy-platform-and-world-cup-design/
 .remember/
 
-# Impeccable design-review screenshots and rendered HTML (regenerated per session)
+# Impeccable: the shared config (detector exceptions, hook settings), the design sidecar
+# and the surface briefs are committed; per-session output and per-machine state are not
+# (config.local.json holds this machine's hook consent).
 .impeccable-review/
-.impeccable/
+.impeccable/config.local.json
+.impeccable/hook.cache.json
+.impeccable/hook.pending.json
+.impeccable/critique/
+.impeccable/review/
+.impeccable/live/
 
 # Designer logo delivery — the masters, kept on file (integrated May 2026; brand-kit variants unwired)
 CCC-final/
