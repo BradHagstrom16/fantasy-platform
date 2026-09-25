@@ -211,6 +211,10 @@ Grep is still right for known exact strings, regex, multiline patterns, file glo
 - **Enrollment is explicit:** users reach a game's interior routes only via `/<game>/join` (guarded by `@game_must_be_open(slug)` in `games/common.py`); interior pick routes carry `@enrollment_required(slug)` (redirects to `/<game>/join?next=<current>`). **Never** create `<Game>Enrollment` rows from pick or admin paths — platform admins enroll users via `/admin/enrollments`.
 - **Admin destructive actions:** destructive admin POST handlers branch on `request.form.get('action')` — `action=clear` is a distinct, guarded path that short-circuits before the main mutation. Keep it for new admin routes that both mutate and reset.
 
+### CFB Survivor: The Field
+
+- **`/cfb/field` (public, `games/cfb/services/field.py`, DESIGN.md §9.15) reads picks only from weeks past their deadline** (`deadline_has_passed`, the §9.9 rule the player card shares): `attrition_rows` from `CfbWeekOutcome` (the live version of the 2025 archive's "The Cut, Week by Week"), `spent_board` (survivors who burned each pool team, eliminated burners counted apart, holders = survivors minus burners; regular-season weeks only, the CFP reset spends nothing), `most_backed` (counts then name, never spread). `field_delta_line` feeds the lounge's Who's Left ("Two fewer than last week."). No rank movement, no sparklines, no inventory strength (§1.7, §10.13; Brad 2026-09-24: CFB's ban stands). `tests/test_cfb_field.py`.
+
 ### The Docket (engineering invariants)
 
 Engineering contracts (grading shapes, pick provenance, admin ops, tiebreaker rule, reminder de-dup, second-bill strip) live in `games/docket/DESIGN.md` §9 Engineering Invariants — read before modifying grading or admin code. All test-locked. Key ADRs: 045 (WeekRollup not WeekGrade), 046 (is_dropped derived), 047 (default_error_tenths), 048 (roster snapshot at deadline), 054 (tiebreaker rule), 059 (the purse is derived from the roster — `services/purse.py`, `DOCKET_WEEKLY_PRIZE`/`DOCKET_PODIUM_SPLIT`, DESIGN.md §8.8).

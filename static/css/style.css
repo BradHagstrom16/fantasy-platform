@@ -7119,6 +7119,201 @@ body.game-cfb .list-group {
 }
 .cfb-archive-outcome { color: var(--cfb-bone-muted); }
 .cfb-archive-outcome-champion { color: var(--cfb-survived); font-weight: 600; }
+
+/* --- The Field (DESIGN.md 9.15): the Inventory Sheet -------------------
+   What is spent and what is still on the shelf, per line. The spent board
+   leads as ruled lines under conference heads (The Pool's chip, a hairline
+   meter of spent vs held, the count); the cut table and most backed fold
+   beneath as native details. Midnight ramp + hairlines, no crimson, no
+   charts; ash carries "spent", muted bone carries "held" (structure, not
+   hue: the meter's label says the numbers). */
+.cfb-field-intro { margin-bottom: 1.25rem; }
+.cfb-field-intro .cfb-eyebrow { display: block; margin-bottom: .4rem; }
+.cfb-field-page .cfb-field-note {
+  font-family: 'Newsreader', Georgia, serif;
+  font-size: 1rem;
+  line-height: 1.55;
+  color: var(--cfb-bone-muted);
+  max-width: 68ch;
+  margin: 0 0 .75rem;
+}
+.cfb-field-conf { margin: 0 0 1.75rem; }
+.cfb-field-conf-head {
+  display: flex;
+  align-items: baseline;
+  gap: .6rem;
+  padding-bottom: .35rem;
+  border-bottom: 1px solid var(--cfb-hairline-strong);
+}
+.cfb-field-conf-name {
+  font-family: 'Teko', sans-serif;
+  font-weight: 600;
+  font-size: 1.25rem;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--cfb-white);
+}
+.cfb-field-lines { list-style: none; margin: 0; padding: 0; }
+.cfb-field-line { border-bottom: 1px solid var(--cfb-hairline); }
+.cfb-field-team > summary { list-style: none; cursor: pointer; }
+.cfb-field-team > summary::-webkit-details-marker { display: none; }
+.cfb-field-team-head {
+  display: grid;
+  grid-template-columns: minmax(9rem, 14rem) minmax(4rem, 1fr) auto auto;
+  align-items: center;
+  gap: .75rem 1rem;
+  min-height: 44px;
+  padding: .45rem 0;
+}
+.cfb-field-team-head--still .cfb-team-chip { opacity: .85; }
+.cfb-field-caret--none { visibility: hidden; }   /* keeps every meter on one track */
+.cfb-field-hero-pair { display: inline-flex; align-items: baseline; gap: inherit; white-space: nowrap; }
+.cfb-field-team > summary:focus-visible { outline: 2px solid var(--cfb-crimson-bright); outline-offset: 2px; border-radius: .3rem; }
+.cfb-field-team > summary:hover .cfb-team-chip { border-color: var(--cfb-bone-muted); }
+.cfb-field-meter {
+  display: flex;
+  height: 6px;
+  border-radius: 3px;
+  overflow: hidden;
+  background: var(--cfb-hairline);
+}
+.cfb-field-meter-spent { background: var(--cfb-eliminated); }
+.cfb-field-meter-hold { background: rgba(243,239,230,.55); }
+.cfb-field-count {
+  font-family: 'Teko', sans-serif;
+  font-weight: 500;
+  font-size: 1rem;
+  letter-spacing: .03em;
+  color: var(--cfb-bone-muted);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  min-width: 8.5rem;      /* one column width, so every meter shares one track */
+  text-align: right;
+}
+.cfb-field-count b { font-weight: 600; color: var(--cfb-white); }
+.cfb-field-sep { color: var(--cfb-bone-subtle); }
+.cfb-field-line.is-gone .cfb-team-chip { text-decoration: line-through; text-decoration-color: var(--cfb-bone-subtle); color: var(--cfb-bone-muted); }
+.cfb-field-caret {
+  width: .6rem;
+  height: .4rem;
+  background: var(--cfb-bone-subtle);
+  clip-path: polygon(0 15%, 16% 0, 50% 45%, 84% 0, 100% 15%, 50% 100%);
+  transition: transform var(--transition);
+}
+.cfb-field-team[open] > summary .cfb-field-caret,
+.cfb-field-fold[open] > summary .cfb-field-caret { transform: rotate(180deg); }
+.cfb-field-spenders {
+  list-style: none;
+  margin: 0 0 .6rem;
+  padding: .25rem 0 .25rem 1rem;
+  /* A hairline gridline drawn as an inset shadow: the room's locks scan for
+     any border-left (the side-stripe ban), and this is a rule, not a stripe. */
+  box-shadow: inset 1px 0 0 var(--cfb-hairline-strong);
+  font-family: 'Newsreader', Georgia, serif;
+  color: var(--cfb-bone);
+}
+.cfb-field-spenders li { padding: .15rem 0; }
+.cfb-field-when {
+  font-family: 'Teko', sans-serif;
+  font-size: .85rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--cfb-bone-subtle);
+  margin-left: .35rem;
+}
+.cfb-field-out-note { color: var(--cfb-bone-subtle); font-size: .92rem; }
+
+/* The folds beneath the shelf. */
+.cfb-field-fold {
+  margin-top: 1.5rem;
+  border-top: 1px solid var(--cfb-hairline-strong);
+}
+.cfb-field-fold > summary { list-style: none; cursor: pointer; }
+.cfb-field-fold > summary::-webkit-details-marker { display: none; }
+.cfb-field-fold-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: .35rem 1rem;
+  min-height: 44px;
+  padding: .9rem 0 .6rem;
+}
+.cfb-field-fold-head .cfb-eyebrow { color: var(--cfb-bone); }
+.cfb-field-fold-fact {
+  font-family: 'Newsreader', Georgia, serif;
+  font-size: 1rem;
+  color: var(--cfb-bone-muted);
+}
+.cfb-field-fold-head .cfb-field-caret { margin-left: auto; align-self: center; }
+.cfb-field-fold > summary:focus-visible { outline: 2px solid var(--cfb-crimson-bright); outline-offset: 2px; }
+.cfb-field-table .cfb-field-week { white-space: nowrap; }
+.cfb-field-th-short { display: none; }
+.cfb-field-row-pending td { color: var(--cfb-pending); }
+.cfb-field-bar-head { min-width: 12rem; }
+.cfb-field-bar {
+  display: flex;
+  height: 8px;
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--cfb-hairline);
+}
+.cfb-field-seg.is-two { background: var(--cfb-survived); }
+.cfb-field-seg.is-one { background: rgba(100,219,160,.4); }
+.cfb-field-seg.is-out { background: var(--cfb-eliminated); }
+.cfb-field-bar-key {
+  display: block;
+  margin-top: .25rem;
+  font-family: 'Teko', sans-serif;
+  font-size: .82rem;
+  letter-spacing: .05em;
+  color: var(--cfb-bone-subtle);
+  white-space: nowrap;
+}
+.cfb-field-bar-key b { color: var(--cfb-bone-muted); font-weight: 600; }
+.cfb-field-backed-list { margin-top: .5rem; }
+.cfb-field-record { display: inline-flex; gap: .3rem; }
+.cfb-field-record .badge { font-size: .75rem; }
+.cfb-field-foot {
+  margin: 1.5rem 0 0;
+  font-family: 'Newsreader', Georgia, serif;
+  font-size: .95rem;
+  color: var(--cfb-bone-subtle);
+}
+.cfb-field-link { color: var(--cfb-bone); text-decoration: underline; text-decoration-color: var(--cfb-bone-subtle); text-underline-offset: .15em; }
+.cfb-field-link:hover { color: var(--cfb-white); text-decoration-color: currentColor; }
+.cfb-field-empty { max-width: 40rem; margin: 2rem auto 0; }
+.cfb-field-empty .cfb-eyebrow { display: block; margin-bottom: .5rem; }
+.cfb-field-empty-line {
+  font-family: 'Newsreader', Georgia, serif;
+  font-size: 1.1rem;
+  line-height: 1.6;
+  color: var(--cfb-bone);
+}
+@media (max-width: 767.98px) {
+  /* The cut table keeps its five counts; the bar column steps aside so the
+     numbers fit without a sideways scroll on a phone. */
+  .cfb-field-bar-head, .cfb-field-bar-cell { display: none; }
+  .cfb-field-table th, .cfb-field-table td { padding-left: .35rem; padding-right: .35rem; }
+  .cfb-field-table th { white-space: normal; font-size: .8rem; line-height: 1.15; }
+  .cfb-field-th-long { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .cfb-field-th-short { display: inline; }
+  /* The hero's counts stack as their own lines on a phone: a separator
+     belongs only between two items on one line. */
+  .cfb-hero--field .cfb-hero-field { flex-direction: column; align-items: flex-start; gap: .15rem; }
+  .cfb-hero--field .cfb-hero-field-sep { display: none; }
+  .cfb-field-count { min-width: 0; }
+  .cfb-field-team-head,
+  .cfb-field-team-head--still {
+    grid-template-columns: 1fr auto auto;
+    grid-template-areas: "chip count caret" "meter meter meter";
+    row-gap: .35rem;
+    column-gap: .6rem;
+  }
+  .cfb-field-team-head .cfb-team-chip { grid-area: chip; }
+  .cfb-field-team-head .cfb-field-meter { grid-area: meter; }
+  .cfb-field-team-head .cfb-field-count { grid-area: count; }
+  .cfb-field-team-head .cfb-field-caret { grid-area: caret; align-self: center; }
+}
 /* Quiet survived-green tint for the champion row (the tint-only convention;
    rgba of --cfb-survived #64DBA0, same pattern as the crimson you-row tint). */
 .cfb-archive-row-champion > td { background: rgba(100, 219, 160, 0.06); }

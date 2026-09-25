@@ -220,6 +220,8 @@
                        href="{{ url_for('cfb.index') }}">Standings</a>
                     <a class="subnav-pill {% if request.endpoint == 'cfb.weekly_results' %}active{% endif %}"
                        href="{{ url_for('cfb.weekly_results') }}">Results</a>
+                    <a class="subnav-pill {% if request.endpoint == 'cfb.field' %}active{% endif %}"
+                       href="{{ url_for('cfb.field') }}">The Field</a>
                     {% if current_user.is_authenticated %}
                     <a class="subnav-pill {% if request.endpoint == 'cfb.my_picks' %}active{% endif %}"
                        href="{{ url_for('cfb.my_picks') }}">My Picks</a>
