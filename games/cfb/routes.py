@@ -628,9 +628,12 @@ def weekly_results(week_number=None):
     field_no_pick.sort(key=lambda e: e.get_display_name().casefold())
     already_out.sort(key=lambda e: e.get_display_name().casefold())
 
-    lost_life_count = len(incorrect_picks_list) + sum(
-        1 for e in field_no_pick if e.nopick_penalty
-    )
+    # From the statuses, not the losing picks: a player an earlier week put
+    # out can still hold a losing pick here, and it costs no life.
+    lost_life_count = sum(
+        1 for p in picks
+        if user_statuses.get(p.user_id, default_status)['lost_life']
+    ) + sum(1 for e in field_no_pick if e.nopick_penalty)
     field_alive = sum(1 for p in picks if not p.was_eliminated) + sum(
         1 for e in field_no_pick if not e.was_eliminated
     )

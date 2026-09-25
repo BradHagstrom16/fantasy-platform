@@ -1095,10 +1095,10 @@ def test_outcomes_not_duplicated_on_rerun(app):
 
 
 # ── A pick made before its maker went out ────────────────────────────────
-# The next week opens (the Tuesday Paper) while a Monday game can still be
-# unplayed, and the pick page refuses only players already out, so a player
-# can hold a later-week pick when an earlier week eliminates them. The later
-# pick is still graded; its loss belongs to nobody.
+# The next week opens (the Tuesday Paper) while a Monday night game can still
+# be ungraded, and the pick page refuses only players already out, so a
+# player can hold a later-week pick when an earlier week eliminates them. The
+# later pick is still graded; its loss belongs to nobody.
 
 def _out_in_week_one_holding_a_week_two_pick(week2_winner='away'):
     """Ann (1 life) loses Week 1 and goes out; Bob and Cy (1 life each)
@@ -1151,6 +1151,23 @@ def test_revival_never_brings_back_a_player_an_earlier_week_put_out(app):
         assert (e.is_eliminated, e.lives_remaining) == (False, 1)
     outcome = CfbWeekOutcome.query.filter_by(week_id=week2.id, user_id=users['ann'].id).one()
     assert (outcome.revived, outcome.lost_life) == (False, False)
+
+
+def test_the_last_player_standing_is_no_wipe_beside_one_already_out(app):
+    """Week 2: Bob, the last player in, loses; Ann, out since Week 1, loses
+    her Week 2 pick too. One player went out this week, so there is no
+    revival: the pool is empty and Bob stays out."""
+    week1, week2, users = _out_in_week_one_holding_a_week_two_pick()
+    cy_pick = CfbPick.query.filter_by(user_id=users['cy'].id, week_id=week2.id).one()
+    db.session.delete(cy_pick)
+    cy = CfbEnrollment.query.filter_by(user_id=users['cy'].id).one()
+    cy.lives_remaining, cy.is_eliminated = 0, True     # out, as if earlier
+    db.session.commit()
+    result = process_week_results(week2.id)
+
+    assert (result['revived'], result['pool_empty']) == (0, True)
+    bob = CfbEnrollment.query.filter_by(user_id=users['bob'].id).one()
+    assert (bob.is_eliminated, bob.lives_remaining) == (True, 0)
 
 
 def test_a_week_in_play_never_cuts_a_player_an_earlier_week_put_out(app):

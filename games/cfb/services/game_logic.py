@@ -406,10 +406,11 @@ def process_week_results(week_id, season_year=None):
         # no-pick-penalize the entire pool.
         all_settled = bool(games) and all(g.is_settled for g in games)
         if all_settled:
-            # Players an earlier week put out. One can still hold a pick
-            # here, made before that week's last game (the next week opens
-            # while a Monday game is unplayed); it grades, but its loss is
-            # no lost life, no cut and no revival.
+            # Players an earlier week put out, per its outcome snapshot.
+            # One can still hold a pick here, made after this week opened
+            # (the Tuesday Paper) but before their late game in that
+            # earlier week (a Monday night) was graded; it grades, but its
+            # loss is no lost life, no cut and no revival.
             out_before = set(get_elimination_weeks(
                 list(enrollment_by_user), week.week_number))
 
@@ -572,12 +573,14 @@ def get_elimination_weeks(user_ids, before_week_number):
     """The week each player was knocked out, for weeks before this one.
 
     Reads the CfbWeekOutcome snapshots (the column form of
-    ``eliminated_this_week``: is_eliminated AND lost_life). A player is
-    put out once: revival lands in the week that eliminated them, and a
-    later week's loss by a player already out records no lost life
-    (before that rule a later week could carry a second elimination row,
-    so the earliest week wins). A player whose elimination week carries
-    no snapshot is simply absent.
+    ``eliminated_this_week``: is_eliminated AND lost_life). Each player
+    carries at most one such row: a revival week's snapshot records
+    is_eliminated False, and a later week's loss by a player already out
+    records no lost life. Rows written before that second rule could
+    carry a stale later loss as a second elimination, so the earliest
+    week wins (prod held none on 2026-09-24, nor a revival after an
+    earlier elimination). A player whose elimination week carries no
+    snapshot is simply absent.
 
     Returns {user_id: CfbWeek}.
     """

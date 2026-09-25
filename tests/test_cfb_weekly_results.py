@@ -179,9 +179,9 @@ def test_snapshot_status_flags_a_no_pick_penalty(app):
     assert statuses[picker.id]['lost_life'] is False
 
 
-def test_elimination_weeks_take_the_latest_earlier_week(app):
-    """Out week = the latest earlier week whose snapshot eliminated the
-    player; the page's own week and later are never read."""
+def test_elimination_weeks_read_only_earlier_weeks(app):
+    """Out week = the earlier week whose snapshot eliminated the player;
+    the page's own week and later are never read."""
     out = make_user('out')
     make_enrollment(out, lives=1)
     safe = make_user('safe')
@@ -197,6 +197,45 @@ def test_elimination_weeks_take_the_latest_earlier_week(app):
     assert get_elimination_weeks([out.id, safe.id], 2) == {out.id: week1}
     assert get_elimination_weeks([out.id], 1) == {}
     assert get_elimination_weeks([], 2) == {}
+
+
+def test_elimination_weeks_take_the_earliest_of_two_rows(app):
+    """Rows written before the grader stopped charging an already-out
+    player's later loss can carry a second elimination; the first is the
+    one that put the player out."""
+    from games.cfb.models import CfbWeekOutcome
+    out = make_user('out')
+    make_enrollment(out, lives=0, eliminated=True)
+    week1, week2 = make_week(1), make_week(2)
+    for week in (week1, week2):
+        db.session.add(CfbWeekOutcome(week_id=week.id, user_id=out.id,
+                                      lives_remaining=0, is_eliminated=True,
+                                      lost_life=True))
+    db.session.commit()
+
+    assert get_elimination_weeks([out.id], 3) == {out.id: week1}
+
+
+def test_an_already_out_players_loss_is_no_lost_life_on_the_page(client):
+    """Ann went out in Week 1 holding a Week 2 pick; it loses, and so does
+    Bob's (one life left). The Week 2 summary counts Bob's lost life only."""
+    import re
+    ann, bob = make_user('ann'), make_user('bob')
+    make_enrollment(ann, lives=1, display_name='Ann')
+    make_enrollment(bob, display_name='Bob')
+    week1 = make_week(1)
+    h1, a1 = make_team('Home1'), make_team('Away1')
+    make_game(week1, h1, a1, spread=-7.0, winner='away')
+    make_pick(ann, week1, h1)
+    make_pick(bob, week1, a1)
+    week2 = _lose_week(2, [ann, bob])
+    db.session.commit()
+    process_week_results(week1.id)
+    process_week_results(week2.id)
+
+    html = client.get('/cfb/results/2').get_data(as_text=True)
+
+    assert re.search(r'cfb-summary-num is-lost">(\d+)<', html).group(1) == '1'
 
 
 # -- Route: The Field vs Already Out (critique P0, 2026-09-23) ---------------
