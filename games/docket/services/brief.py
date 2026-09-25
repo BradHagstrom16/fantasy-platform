@@ -57,9 +57,12 @@ class Habit:
 
 @dataclass(frozen=True, slots=True)
 class LoneWolf:
+    """The week's one sheet alone on a winning side against the biggest
+    crowd on the other side of its market."""
     enrollment: object
     pick: str
     caption: str
+    against: int                 # sheets on the other side
 
 
 @dataclass(frozen=True, slots=True)
@@ -71,7 +74,7 @@ class WeekConsensus:
     holders: int
     sheets: int                  # scoring sheets filed that week
     result: str | None
-    lone_wolves: tuple[LoneWolf, ...]   # sides one sheet held alone and won
+    lone_wolf: LoneWolf | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -99,28 +102,40 @@ class NumberSection:
     over: int                    # guesses above the frozen total
     under: int
     on_the_number: int
+    unsaved: tuple = ()          # enrollments with no number in any graded week, by name
 
 
 @dataclass(frozen=True, slots=True)
 class MemberRow:
+    """How one member plays: their leans, how often they sided against the
+    field and how that went, and their best week. The x2 and the number
+    have their own sections and are not repeated here."""
     enrollment: object
     rank: int
     sides: int                   # scoring sides graded
     contrarian: int              # sides held against the field's majority
+    contrarian_record: Record
     favorites: int
     underdogs: int
     overs: int
     unders: int
-    x2: Record
-    weeks_guessed: int
-    avg_off_tenths: int | None
     best_week: int | None
     best_points: float | None
-    struck_week: int | None
 
     @property
     def contrarian_share(self) -> float:
         return self.contrarian / self.sides if self.sides else 0.0
+
+
+@dataclass(frozen=True, slots=True)
+class ShortOf:
+    """The page's answer before its detail (critique P1, 2026-09-25): the
+    field's most lopsided habit pair, how the most-held side did week to
+    week, and how the sides taken against the field did. Counts only; the
+    Brief never advises."""
+    leaning: tuple[Habit, Habit] | None   # (better, worse) of the wider split
+    consensus: Record                     # each graded week's most-held side
+    fades: Record                         # every side held against the field
 
 
 @dataclass(frozen=True, slots=True)
@@ -133,6 +148,7 @@ class Brief:
     x2_rows: tuple[X2Row, ...]
     number: NumberSection
     members: tuple[MemberRow, ...]
+    short: ShortOf | None = None
 
     @property
     def is_graded(self) -> bool:
@@ -230,16 +246,26 @@ def build_brief(ledger: SeasonLedger | None = None) -> Brief:
                                             if p.game_id == k[1])))
         sample, sample_result = next((p, r) for p, r in wk_picks
                                      if (p.week_id, p.game_id, p.market, p.side) == top_key)
-        wolves = tuple(
-            LoneWolf(enrollment=rows_by_user[p.user_id].enrollment,
-                     pick=describe_pick(p), caption=_caption(p.game))
-            for p, r in sorted(wk_picks, key=lambda pr: pr[0].game.kickoff)
-            if r == 'win' and holders[(p.week_id, p.game_id, p.market, p.side)] == 1)
+        # The lone wolf: one sheet alone on a side that won, against the
+        # biggest crowd on the other side (at least two sheets, the page's
+        # "against the field"; a side nobody opposed is not a fade). A tie
+        # goes to the earliest kickoff.
+        wolf_pick, wolf_against = None, 1
+        for p, r in sorted(wk_picks, key=lambda pr: pr[0].game.kickoff):
+            if r != 'win' or holders[(p.week_id, p.game_id, p.market, p.side)] != 1:
+                continue
+            against = holders[(p.week_id, p.game_id, p.market, _OPPOSITE[p.side])]
+            if against > wolf_against:
+                wolf_pick, wolf_against = p, against
+        wolf = (LoneWolf(enrollment=rows_by_user[wolf_pick.user_id].enrollment,
+                         pick=describe_pick(wolf_pick),
+                         caption=_caption(wolf_pick.game), against=wolf_against)
+                if wolf_pick is not None else None)
         week_consensus.append(WeekConsensus(
             week_number=week.week_number, pick=describe_pick(sample),
             caption=_caption(sample.game), holders=holders[top_key],
             sheets=len(sheets_per_week[week.id]), result=sample_result,
-            lone_wolves=wolves))
+            lone_wolf=wolf))
 
     # The x2 ledger.
     x2_by_user = defaultdict(list)
@@ -291,13 +317,19 @@ def build_brief(ledger: SeasonLedger | None = None) -> Brief:
         ((rows_by_user[uid].enrollment, len(offs), round(sum(offs) / len(offs)))
          for uid, offs in offs_by_user.items()),
         key=lambda row: (row[2], row[0].get_display_name().casefold())))
+    unsaved = tuple(sorted(
+        (row.enrollment for row in ledger.rows
+         if row.enrollment.user_id not in offs_by_user),
+        key=lambda e: e.get_display_name().casefold()))
     number = NumberSection(rows=number_rows, closest=closest, over=over,
-                           under=under, on_the_number=on_the_number)
+                           under=under, on_the_number=on_the_number,
+                           unsaved=unsaved)
 
     # The members' rows, in ledger order.
     per_user = defaultdict(lambda: {'sides': 0, 'contrarian': 0, 'favorites': 0,
                                     'underdogs': 0, 'overs': 0, 'unders': 0})
-    for p, _r, bucket in graded:
+    contrarian_results = defaultdict(list)
+    for p, result, bucket in graded:
         stats = per_user[p.user_id]
         stats['sides'] += 1
         if bucket in stats:
@@ -306,26 +338,53 @@ def build_brief(ledger: SeasonLedger | None = None) -> Brief:
         theirs = holders[(p.week_id, p.game_id, p.market, _OPPOSITE[p.side])]
         if mine < theirs:
             stats['contrarian'] += 1
+            contrarian_results[p.user_id].append(result)
     members = []
     for row in ledger.rows:
         uid = row.enrollment.user_id
         stats = per_user[uid]
-        offs = offs_by_user.get(uid, [])
         submitted = [w for w in row.weeks if w.submitted]
         best = max(submitted, key=lambda w: (w.points, -w.week_number), default=None)
         members.append(MemberRow(
             enrollment=row.enrollment, rank=row.standing.rank,
             sides=stats['sides'], contrarian=stats['contrarian'],
+            contrarian_record=_tally(contrarian_results[uid]),
             favorites=stats['favorites'], underdogs=stats['underdogs'],
             overs=stats['overs'], unders=stats['unders'],
-            x2=_tally(x2_by_user.get(uid, [])),
-            weeks_guessed=len(offs),
-            avg_off_tenths=round(sum(offs) / len(offs)) if offs else None,
             best_week=best.week_number if best else None,
-            best_points=best.points if best else None,
-            struck_week=row.standing.dropped_week))
+            best_points=best.points if best else None))
+
+    short = ShortOf(
+        leaning=_leaning(habits),
+        consensus=_tally([w.result for w in week_consensus]),
+        fades=_tally([r for rs in contrarian_results.values() for r in rs]))
 
     return Brief(week_numbers=tuple(ledger.week_numbers),
                  sheets_graded=len({p.user_id for p, _r, _b in graded}),
                  habits=habits, weeks=tuple(week_consensus), x2_field=x2_field,
-                 x2_rows=x2_rows, number=number, members=tuple(members))
+                 x2_rows=x2_rows, number=number, members=tuple(members),
+                 short=short)
+
+
+def _win_share(record: Record) -> float:
+    """Wins over decided, a push counting half (the record's own weight)."""
+    return (record.wins + record.pushes / 2) / record.decided
+
+
+def _leaning(habits) -> tuple[Habit, Habit] | None:
+    """The market pair (favorites/underdogs, overs/unders) whose two sides
+    did the most differently, better side first; None until both sides of
+    some pair have a decided result. A dead-even pair says nothing."""
+    by_key = {h.key: h for h in habits}
+    best = None
+    for a, b in (('favorites', 'underdogs'), ('overs', 'unders')):
+        one, two = by_key[a], by_key[b]
+        if not (one.record.decided and two.record.decided):
+            continue
+        gap = _win_share(one.record) - _win_share(two.record)
+        if gap == 0:
+            continue
+        pair = (one, two) if gap > 0 else (two, one)
+        if best is None or abs(gap) > best[0]:
+            best = (abs(gap), pair)
+    return best[1] if best else None

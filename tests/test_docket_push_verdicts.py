@@ -131,11 +131,12 @@ def test_flip_pushes_every_scoring_side_with_the_tally(app):
         push_docket_verdicts([{'game_id': game.id, 'kind': 'flipped', 'before': None}])
     calls = [c.kwargs for c in sp.call_args_list]
     assert len(calls) == 3
-    home_calls = [c for c in calls if c['title'].startswith('Home Team')]
-    assert all(c['title'].endswith('WIN.') for c in home_calls)
+    home_calls = [c for c in calls if 'Home Team' in c['title']]
+    assert len(home_calls) == 2
+    assert all(c['title'] == 'WIN: Home Team -3.5' for c in home_calls)
     assert any('2 sheets had them' in c['body'] for c in home_calls)
-    under = [c for c in calls if c['title'].startswith('Under')][0]
-    assert under['title'] == 'Under 51.5: WIN.'
+    under = [c for c in calls if 'Under' in c['title']][0]
+    assert under['title'] == 'WIN: Under 51.5'
     assert under['body'] == '1 sheet had them.'
     # One distinct tag per market so both verdicts survive on a device that
     # holds this game's spread and its total.
@@ -163,7 +164,7 @@ def test_corrected_pushes_only_the_sides_that_flip(app):
     assert sp.call_count == 1
     assert sp.call_args.args[0] == [flipper.id]  # only the flipped side's owner
     kw = sp.call_args.kwargs
-    assert kw['title'].startswith('Home Team') and kw['title'].endswith('LOSS.')
+    assert kw['title'] == 'LOSS: Home Team -3.5'
 
 
 def test_cosmetic_score_edit_pushes_nothing(app):

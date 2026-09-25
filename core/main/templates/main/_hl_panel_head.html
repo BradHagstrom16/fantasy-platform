@@ -1,0 +1,12 @@
+{# The headliner panel's header, shared by every game's pre / live / post
+   panel: the game's mark and name are the door into its room (Brad
+   2026-09-25), the court line sits right. Registry-generic: it reads the
+   entry and the panel context `g`, never a game module. #}
+<header class="hl-panel-head">
+  <a class="hl-panel-link" href="{{ url_for(h.entry.blueprint_index) }}">
+    <span class="hl-panel-mark" aria-hidden="true">{{ h.entry.emoji }}</span>
+    <span class="hl-panel-name">{{ h.entry.lounge_label or h.entry.short_name or h.entry.display_name }}</span>
+    <span class="hl-panel-chev" aria-hidden="true">&rsaquo;</span>
+  </a>
+  <span class="hl-panel-court">{{ g.court_line }}</span>
+</header>

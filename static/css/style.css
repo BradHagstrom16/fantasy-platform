@@ -4587,11 +4587,54 @@ body.game-golf {
 }
 .home-shell .hl-panel-head {
   display: flex;
+  flex-wrap: wrap;           /* a narrow panel drops the court line under the name */
   align-items: baseline;
-  gap: .6rem;
+  gap: .2rem .6rem;
   margin-bottom: .9rem;
   border-bottom: 1px solid rgba(243, 239, 230, .08);
   padding-bottom: .55rem;
+}
+/* The panel's mark and name are the door into the game's room (2026-09-25).
+   Bone at rest like the heading it was; the game's own bright accent on the
+   chevron says "link" without hover, the name takes an accent underline on
+   hover and focus. Padding lifts the hit area to the 44px floor; the
+   negative margin keeps the header's baseline where it was. */
+.home-shell .hl-panel-link {
+  display: inline-flex;
+  align-items: baseline;
+  gap: .6rem;
+  min-width: 0;
+  padding-block: .6rem;
+  margin-block: -.6rem;
+  color: var(--bone);
+  text-decoration: none;
+  border-radius: 4px;
+}
+.home-shell .hl-panel-chev {
+  font-family: var(--font-teko);
+  font-weight: 600;
+  font-size: 1.35rem;
+  line-height: 1;
+  color: var(--hl-accent-bright, var(--bone-mute));
+  transition: transform .18s cubic-bezier(.22, 1, .36, 1);
+}
+.home-shell .hl-panel-link:hover .hl-panel-name,
+.home-shell .hl-panel-link:focus-visible .hl-panel-name {
+  text-decoration: underline;
+  text-decoration-color: var(--hl-accent-bright, var(--bone));
+  text-decoration-thickness: 2px;
+  text-underline-offset: .2em;
+}
+.home-shell .hl-panel-link:hover .hl-panel-chev,
+.home-shell .hl-panel-link:focus-visible .hl-panel-chev {
+  transform: translateX(3px);
+}
+.home-shell .hl-panel-link:focus-visible {
+  outline: 2px solid var(--hl-accent-bright, var(--bone));
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .home-shell .hl-panel-chev { transition: none; }
 }
 .home-shell .hl-panel-mark { font-size: 1.15rem; line-height: 1; }
 .home-shell .hl-panel-name {
@@ -4601,6 +4644,7 @@ body.game-golf {
   letter-spacing: .06em;
   text-transform: uppercase;
   color: var(--bone);
+  white-space: nowrap;       /* the name never breaks away from its chevron */
 }
 .home-shell .hl-panel-court {
   margin-left: auto;
@@ -16644,23 +16688,33 @@ body.game-docket .back-link:focus-visible {
 .docket-brief-record { font-family: 'Teko', sans-serif; font-weight: 600; font-size: 1.15rem; font-variant-numeric: tabular-nums; }
 .docket-brief-record b { font-weight: inherit; }
 .docket-brief-quiet { color: var(--text-secondary); font-weight: 400; }
-.docket-brief-wolves {
+/* The week's one lone wolf, hung under the consensus line on the sheet's
+   own thin rule. */
+.docket-brief-wolf {
   grid-area: wolves;
-  list-style: none;
-  margin: .15rem 0 0;
-  padding: 0 0 0 1rem;
+  margin: .1rem 0 0;
+  padding-left: 1rem;
   border-left: 1px solid var(--docket-rule);
   font-size: .95rem;
   color: var(--text-secondary);
 }
-.docket-brief-wolves li { padding: .1rem 0; }
-.docket-brief-nowolf { grid-area: wolves; padding-left: 1rem; border-left: 1px solid var(--docket-rule); }
+.docket-brief-wolf-tag {
+  font-family: 'Teko', sans-serif;
+  font-weight: 600;
+  font-size: 1rem;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--game-primary);
+  margin-right: .2rem;
+}
+/* The fades' record rides beside the count, a quiet dot between them. */
+.docket-brief-against-record { margin-left: .45rem; }
+.docket-brief-against-record > .docket-record-sep { margin-right: .45rem; color: var(--text-secondary); }
 .docket-brief-table { min-width: 44rem; }
 .docket-brief-th { white-space: nowrap; }
 .docket-brief-th--fig { text-align: right; }
 /* A sortable head reads as a control at rest: a dotted rule under the
-   label (the unsortable Over / Under head has none). Active keeps the
-   ledger's caret. */
+   label. Active keeps the ledger's caret. */
 .docket-brief-th .docket-ledger-sort {
   text-decoration: underline dotted;
   text-decoration-color: var(--game-accent-light);
@@ -16702,6 +16756,29 @@ body.game-docket .back-link:focus-visible {
 }
 .docket-brief-member-keys b { font-family: 'Teko', sans-serif; font-weight: 600; font-size: 1.05rem; color: var(--text-primary); font-variant-numeric: tabular-nums; }
 .docket-brief-foot { margin: 1.5rem 0 0; }
+/* The hero lead keeps a reading measure on a wide screen. */
+.docket-brief-hero .lead { max-width: 60ch; }
+/* The short of it: the page's answer in plain sentences, a step larger than
+   the ledger lines under it, the figures in the sheet's Teko. */
+.docket-brief-line--short { font-size: 1.1rem; padding: .7rem 0; }
+.docket-brief-line--short .docket-brief-label { grid-column: 1 / -1; }
+.docket-brief-line--short .docket-brief-record { font-size: 1.25rem; }
+/* The doors into each section; each link keeps a 44px tap height without
+   loosening the line. */
+.docket-brief-toc { margin: .75rem 0 0; line-height: 1.6; }
+.docket-brief-toclink {
+  display: inline-block;
+  padding: .75rem 0;
+  margin: -.75rem 0;
+  color: var(--game-primary);
+  text-decoration: underline dotted;
+  text-decoration-color: var(--game-accent-light);
+  text-underline-offset: .2em;
+}
+.docket-brief-toclink:hover,
+.docket-brief-toclink:focus-visible { text-decoration-style: solid; }
+.docket-brief-section { scroll-margin-top: 1rem; }
+.docket-brief-unsaved { margin: .6rem 0 0; }
 .docket-ledger-brieflink {
   display: inline-block;
   margin-top: .35rem;
