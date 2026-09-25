@@ -664,11 +664,13 @@ def edge_cmd(week, submit_time, top):
     Every Docket pick grades against Tuesday's frozen number. This compares
     each frozen line to the current market (ten books incl. Pinnacle, each
     priced at the frozen number with its juice removed, median across books)
-    and scores each still-pickable side by its implied cover probability (== expected points for the slot: win 1.0 / push 0.5 / loss
-    0.0, headliner doubled). Prints the most-vulnerable frozen lines, the top
+    and scores each still-pickable side by its implied cover probability
+    (== expected points for the slot: win 1.0 / push 0.5 / loss 0.0,
+    headliner doubled). Prints the most-vulnerable frozen lines, the top
     recommended sheet with a headliner, and a tiebreaker number.
 
-    Read-only. Spends ~3 Odds API credits per sport on the /odds fetch.
+    Read-only. Spends 2 Odds API credits per sport on the /odds fetch, from
+    DOCKET_EDGE_ODDS_API_KEY when set (else the club's ODDS_API_KEY).
     """
     week_number = _resolve_week_number(week)
     wk = _require_week(week_number, scheduled=False)
