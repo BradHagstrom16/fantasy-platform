@@ -231,6 +231,8 @@ Rendered through the real shell during review; approved mockups in `~/.gstack/pr
 
 ### The desk letter shape (a second Club Letter shape; DESIGN.md gains it, 5A)
 
+> **Superseded in part by ADR-066 (2026-09-24):** no eyebrow above a heading. The Paper's headline is `The Morning Line, Week N` with the state opening the lede; the accent is a 4px rule over the letter; a single-section Paper's headline names the game and week (`CFB Survivor, Week 4: picks are open`). The per-game section heads below stay. `DESIGN.md` is the current spec.
+
 ```
  masthead (club, unchanged)
  eyebrow   The Morning Line · Week 4          (ink; club business)
@@ -260,6 +262,8 @@ Two new blocks in `utils/email_layout.py`: `game_section(slug, title, lines, dea
 The anchor letter is byte-identical to today's. The rider is a footnote strip in the tab-strip register, after the supporting line, before the tab strip: hairline, bold "Also on your desk.", game name, one sentence with that game's deadline through `format_deadline_short`, one accent text link. Never between the deadline inset and the button. Subject and headline belong to the anchor.
 
 ### Docket record letter
+
+> **Superseded in part by ADR-066 (2026-09-24):** no eyebrow; the headline names the game, `The Docket, Week 3: 6-2`.
 
 Eyebrow `The Docket · Week 3`, headline `Week 3: 6-2` (digits, the room's register; words in the lede), facts: `Week 3` (6-2 · 7 points), `On the week` (4th of 31), `Season` (9th · 19.5 points), then `result_block('Around the docket', [Top sheet, Weekly purse])`, CTA `See the ledger`, supporting `The Week 4 docket opens Tuesday morning.`
 

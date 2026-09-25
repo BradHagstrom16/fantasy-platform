@@ -278,7 +278,7 @@ def test_platform_and_game_letters_wear_different_cta_fills(app):
     _, club = render_letter(Letter(subject='s', headline='h',
                                    cta=('Go', SITE)))
     assert 'background:#C9A227' in club and 'color:#1C0A3A' in club
-    assert 'border-top:4px solid #5A5470' in club   # club rule is ink, not gold
+    assert 'border-top:4px solid #5A5470' in club   # club rule is Text Secondary, not gold
     _, game = render_letter(Letter(subject='s', headline='h',
                                    game_slug='cfb', cta=('Go', SITE)))
     assert 'background:#C5050C' in game and 'background:#C9A227' not in game

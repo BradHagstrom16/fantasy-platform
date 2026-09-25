@@ -4902,8 +4902,8 @@ body.game-golf {
    (money = CCC gold in both rooms; gold, not red — a friendly "you owe the
    buy-in" ask, never an alarm) and the bill layout: the ask on the left, the
    two rails on the right, stacking on a phone. Room-agnostic on purpose —
-   only platform tokens, no room font (the body face inherits), the eyebrow
-   is the room's own primitive passed in by the include. The Venmo button is
+   only platform tokens, no room font (the body face inherits). It opens on
+   its heading ("You're in. Now square up."), no eyebrow (ADR-066). The Venmo button is
    `.btn-game` (CFB crimson / Docket oxblood: the room's primary action).
    The frozen WC room keeps its own `.wc-settle*` copy (below). */
 .card.settle-tab {
@@ -5537,7 +5537,8 @@ body.game-cfb .alert-warning { background: rgba(243,239,230,.05); border-color: 
    ============================================================ */
 
 /* Contextual-label primitive (the analog to .wc-eyebrow): small uppercase Teko
-   metadata above a headline -- week, deadline, survivor count, status. Default
+   metadata that heads a value, list, paragraph or fold -- week, deadline,
+   survivor count, status -- never a heading (ADR-066). Default
    is a bone value calibrated for midnight; the one variant carries active /
    competitive signal. CFB adds NO gold eyebrow variant (the Crimson-Ceremony
    Rule). */
@@ -13966,8 +13967,8 @@ body.game-docket {
   --docket-rule: #D8CFC0;         /* ledger hairline (bone family) */
 }
 
-/* --- Eyebrow primitive (garnet default on paper; ink variant; the hero
-       scopes its own bone-mute lift for the dark oxblood band) --- */
+/* --- Eyebrow primitive (garnet default on paper; ink variant). It heads a
+       value, list, paragraph or fold, never a heading (ADR-066) --- */
 .docket-eyebrow {
   display: block;
   font-family: 'Teko', sans-serif;
@@ -16330,6 +16331,18 @@ body.game-docket .back-link:focus-visible {
 .letter-page {
   max-width: 40rem;
   margin: 0 auto;
+}
+/* Frozen issues only: page.j2 has no eyebrow since ADR-066, but every page
+   copy stored before it (`sent_page_html`, served verbatim) still opens on
+   one. Keep this rule as long as those rows exist. */
+.letter-page-eyebrow {
+  margin: 0 0 .35rem;
+  font-family: var(--font-teko);
+  font-weight: 500;
+  font-size: .85rem;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--gold-dark);
 }
 .letter-page-headline {
   margin: 0 0 1.1rem;

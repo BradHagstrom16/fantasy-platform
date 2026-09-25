@@ -12,8 +12,8 @@ masthead, not the player .page-hero.
 The central design decision these locks encode: the platform admin masthead is
 gold-on-bone (.admin-eyebrow gold + .admin-page-title purple-700 + a gold rule),
 calibrated for the bone canvas; on the CFB midnight canvas it would drift gold +
-render purple-on-purple. The CFB admin register re-derives it for the room -- a
-no eyebrow (ADR-066 retired "The Commissioner's Desk"), a bone-white functional H1
+render purple-on-purple. The CFB admin register re-derives it for the room: no
+eyebrow (ADR-066 retired "The Commissioner's Desk"), a bone-white functional H1
 (.cfb-admin-title), and the gold ceremonial rule swapped for a thin CRIMSON rule.
 NO gold (the Crimson-Ceremony Rule).
 
@@ -71,7 +71,7 @@ def test_every_admin_surface_carries_the_commissioners_desk_masthead():
 def test_admin_does_not_use_the_gold_platform_masthead():
     # The platform .admin-masthead / .admin-eyebrow are gold-on-bone; on the CFB
     # midnight canvas they drift gold + render purple H1. The CFB admin register
-    # uses .cfb-admin-masthead / .cfb-eyebrow instead. (cfb-admin-masthead contains
+    # uses .cfb-admin-masthead instead. (cfb-admin-masthead contains
     # the substring 'admin-masthead', so anchor on a non-[-\w] boundary.)
     for name, tpl in ADMIN_TPLS.items():
         assert not re.search(r"(?<![-\w])admin-masthead", tpl), \

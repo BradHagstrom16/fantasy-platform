@@ -123,8 +123,10 @@ def test_cfb_hub_hero_drops_flat_functional_voice():
 
 
 def test_cfb_hub_hero_carries_survivor_count():
-    assert "cfb-hero" in TPL and "cfb-eyebrow" in TPL, \
-        "the hero must carry the .cfb-hero scope + a .cfb-eyebrow"
+    assert "cfb-hero" in TPL, "the hero must carry the .cfb-hero scope"
+    hero_open = TPL.split('<div class="page-hero cfb-hero">', 1)[1].split('<h1>', 1)[0]
+    hero_open = re.sub(r'\{#.*?#\}', '', hero_open, flags=re.S)   # its comment names the rule
+    assert 'eyebrow' not in hero_open, "the hero opens on its H1 (ADR-066)"
     assert "cfb-hero-field" in TPL and "cfb-count" in TPL, \
         "the hero must answer 'who is left standing?' with the survivor count"
     assert "still standing" in TPL, \

@@ -15,8 +15,8 @@ Two locks:
    that is not a heading: not an `<h1>`-`<h6>` and not an element whose class
    names a headline or title. Jinja statements and comments are stripped
    first, so a branch never hides the element that follows.
-2. **The Club Letter.** `Letter` has no eyebrow, and the rendered HTML and
-   plain text open on the headline.
+2. **The Club Letter.** `Letter` has no eyebrow, and the rendered email
+   (HTML and plain text) and the Tribune page copy open on the headline.
 """
 import re
 from dataclasses import fields
@@ -24,7 +24,7 @@ from pathlib import Path
 
 import pytest
 
-from utils.email_layout import Letter, render_letter
+from utils.email_layout import Letter, render_letter, render_letter_page
 
 ROOT = Path(__file__).resolve().parent.parent
 # The lounge partials (games/<slug>/templates/<slug>/lounge/) are lounge
@@ -92,8 +92,26 @@ def test_no_room_eyebrow_sits_above_a_heading(path):
         f'Delete it, or move its fact into the heading or the lead: {offenders}')
 
 
+def test_the_room_glob_still_finds_the_rooms():
+    # An empty glob would skip the parametrized lock instead of failing it.
+    assert len(ROOM_TEMPLATES) > 30
+
+
 def test_letter_has_no_eyebrow():
     assert 'eyebrow' not in {f.name for f in fields(Letter)}
+
+
+LAYOUT_TAGS = {'table', 'tbody', 'tr', 'td', 'article', 'header'}
+
+
+def _first_content_tag(html: str) -> str:
+    """The first opening tag that is not layout: any element, whatever its
+    class, that could carry a kicker above the headline."""
+    for tag in TAG.finditer(html):
+        closing, name, _attrs = tag.groups()
+        if not closing and name.lower() not in LAYOUT_TAGS:
+            return name.lower()
+    return ''
 
 
 def test_rendered_letter_opens_on_the_headline(app):
@@ -104,7 +122,17 @@ def test_rendered_letter_opens_on_the_headline(app):
             season=2026, lede=['The Week 3 docket is closed.']))
     assert plain.startswith('The Docket, Week 3: 5-3')
     body = html.split('<!-- The letter -->', 1)[1]
-    first = re.search(r'<(p|h1)\b', body)
-    assert first.group(1) == 'h1', 'the letter must open on its headline'
+    assert _first_content_tag(body) == 'h1', 'the letter must open on its headline'
     # The game's accent survives as the rule over the letter, not as a label.
     assert 'border-top:4px solid #A63446' in body
+
+
+def test_tribune_page_opens_on_the_headline(app):
+    """The Tribune's page copy (templates/letters/page.j2) of a new issue
+    opens on its H1 too; issues filed before ADR-066 keep their frozen
+    ``sent_page_html``."""
+    with app.app_context():
+        html = render_letter_page(Letter(
+            subject='A word from the Commish', headline='Week 3 in review',
+            game_slug=None, lede=['The boards are graded.']))
+    assert _first_content_tag(html) == 'h1', 'the page must open on its headline'

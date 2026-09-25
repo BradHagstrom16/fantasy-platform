@@ -74,7 +74,7 @@ def test_sheet_awaiting_state_shows_nudge(client, app):
     user, _ = _member('early')
     login(client, user)
     body = client.get('/docket/').get_data(as_text=True)
-    assert 'Court convenes' in body
+    assert 'The Week 1 docket posts Tuesday morning' in body
     _assert_nudge(body, app)
 
 
