@@ -40,6 +40,8 @@
   {% if wl.reveal_note %}<div class="wl-cuts">{{ wl.reveal_note }}</div>{% endif %}
   {% endif %}
   {% if wl.cuts_line and wl.phase in ('B', 'C') %}
-  <div class="wl-cuts">{{ wl.cuts_line }}</div>
+  <div class="wl-cuts">{{ wl.cuts_line }}{% if wl.delta_line %} {{ wl.delta_line }}{% endif %}</div>
+  {% elif wl.delta_line and wl.phase in ('B', 'C') %}
+  <div class="wl-cuts">{{ wl.delta_line }}</div>
   {% endif %}
 </div>

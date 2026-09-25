@@ -28,6 +28,7 @@ from games.cfb.constants import FBS_MASTER_TEAMS
 from games.cfb.models import CfbEnrollment, CfbGame, CfbPick, CfbTeam, CfbWeek
 from games.cfb.services import board as board_service
 from games.cfb.services.card import build_player_card, build_season_ledger
+from games.cfb.services.field import build_field
 from games.cfb.services.game_logic import (
     calculate_cumulative_spread,
     get_elimination_weeks,
@@ -699,6 +700,15 @@ def history():
         standings=season['standings'],
         attrition=season['attrition'],
     )
+
+
+@cfb_bp.route('/field')
+def field():
+    """The Field (DESIGN.md 9.15): the spent board, the cut week by week,
+    and most backed, from weeks past their deadline only (9.9). Public, like
+    standings and results. Everything is built in services/field.py."""
+    season_year = current_app.config.get('CFB_SEASON_YEAR', 2026)
+    return render_template('cfb/field.html', field=build_field(season_year))
 
 
 # ============================================================================

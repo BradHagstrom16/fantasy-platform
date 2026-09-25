@@ -29,6 +29,7 @@ from sqlalchemy.orm import joinedload
 from extensions import db
 from games.cfb.constants import SEASON_SCHEDULE
 from games.cfb.models import CfbEnrollment, CfbGame, CfbPick, CfbWeek, CfbWeekOutcome
+from games.cfb.services.field import field_delta_line
 from games.cfb.services.game_logic import (
     get_game_for_team,
     get_official_standings,
@@ -382,6 +383,12 @@ def _context_live(user, enrollment) -> dict:
         two_lives=two_lives, one_life=one_life, out=out,
         active=active, total=total, cuts_line=cuts_line,
     )
+    # The field's progression in one factual line (8.14): survivors now
+    # against the survivors after the week before the latest on record.
+    whos_left['delta_line'] = field_delta_line(
+        all_enrollments,
+        [w for w in CfbWeek.query.order_by(CfbWeek.week_number).all()
+         if deadline_has_passed(w.deadline)])
 
     summons = None
     eliminated_module = None

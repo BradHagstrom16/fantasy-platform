@@ -402,6 +402,8 @@ The CFB contextual-label primitive (analog to `.wc-eyebrow`): small uppercase Te
 
 On the hero, `.cfb-hero .cfb-eyebrow` lifts to bone @ .85 to clear the gradient.
 
+**Open question (not a ruling; Brad's call):** The Field ships a hero eyebrow above its H1 ("What the Field Has Spent", §9.15). Is an eyebrow over the room H1 the standing pattern for every tab, or should it be reserved (the reveal-week state line of §9.2, say)? The finish reviewer raised the same question on the Docket room; until Brad rules, neither answer is doctrine.
+
 ### 6.11 Copy voice
 
 Direct, calm, consequential — a confident commissioner, not a marketer. Brief, human, unambiguous, grounded in actual game state.
@@ -531,7 +533,7 @@ CFB uses the platform `.page-hero` directly: crimson is `--game-primary` and war
 
 #### Sub-nav — `.subnav-cfb`
 
-Platform `.game-subnav` shape: background `#0a080f`, `--subnav-accent: #C5050C`, `--subnav-accent-rgb: 197,5,12`. The active pill feels *selected*, not illuminated; rest pills stay quiet bone-on-midnight; navigation orients and then disappears behind content. No per-route navigation languages.
+Platform `.game-subnav` shape: background `#0a080f`, `--subnav-accent: #C5050C`, `--subnav-accent-rgb: 197,5,12`. The active pill feels *selected*, not illuminated; rest pills stay quiet bone-on-midnight; navigation orients and then disappears behind content. No per-route navigation languages. Shipped pill order (`templates/base.html`): Pick (only while `cfb_pick_target` is set) · Standings (also active on `/cfb/player/<id>`) · Results · The Field · My Picks (signed-in only) · 2025.
 
 #### Current-user identity — `.cfb-you-tag` + row tint
 
@@ -563,7 +565,7 @@ Administrative components identify the affected player, show current state, expl
 
 ### 7.3 Shipped vocabulary inventory
 
-163 distinct `.cfb-*` class selectors ship in `style.css` (counted in selector position with comments stripped, 2026-09-23), organized by family. This table is the map — inspect the CSS block for exact rules before styling adjacent work:
+201 distinct `.cfb-*` class selectors ship in `style.css` (counted in selector position with comments stripped, 2026-09-24; The Field added 38), organized by family. This table is the map — inspect the CSS block for exact rules before styling adjacent work:
 
 | Family | Classes |
 |---|---|
@@ -574,8 +576,9 @@ Administrative components identify the affected player, show current state, expl
 | Verdict | `.cfb-verdict` (+`.is-survived/.is-lost/.is-pending`), `-team`, `-nopick`, `-matchup`, `-score`, `-outcome`, `-chip`, `-lives`, `-lives-label` |
 | Week summary | `.cfb-week-summary`, `.cfb-summary-stat/-num/-label/-sep` |
 | The Cut | `.cfb-cut-title/-list/-player` |
-| Field ledger | `.cfb-field-table/-head/-week`, `.cfb-card-ledger`, `.cfb-avatar`, `.cfb-cell-pick`, `.cfb-col-center`, `.cfb-pick-meta/-score`, `.cfb-auto-tag`, `.cfb-row-nopick`, `.cfb-nopick-note`, `.cfb-result-none` |
+| Field ledger (Standings / Results / player card) | `.cfb-field-table/-head/-week/-note`, `.cfb-card-ledger`, `.cfb-avatar`, `.cfb-cell-pick`, `.cfb-col-center`, `.cfb-pick-meta/-score`, `.cfb-auto-tag`, `.cfb-row-nopick`, `.cfb-nopick-note`, `.cfb-result-none` |
 | Pick distribution | `.cfb-distribution`, `.cfb-dist-list/-item/-team/-count` |
+| The Field page (§9.15) | `.cfb-hero--field`, `.cfb-field-hero-pair`, `.cfb-field-intro`, `.cfb-field-conf/-conf-head/-conf-name`, `.cfb-field-lines/-line` (+`.is-spent/.is-gone`), `.cfb-field-team`, `.cfb-field-team-head` (+`--still`), `.cfb-field-meter/-meter-spent/-meter-hold`, `.cfb-field-count/-sep`, `.cfb-field-caret` (+`--none`), `.cfb-field-spenders/-when/-out-note`, `.cfb-field-fold/-fold-head/-fold-fact`, `.cfb-field-th-long/-th-short`, `.cfb-field-row-pending`, `.cfb-field-bar/-bar-head/-bar-cell/-bar-key`, `.cfb-field-seg` (+`.is-two/.is-one/.is-out`), `.cfb-field-backed-list`, `.cfb-field-record`, `.cfb-field-foot`, `.cfb-field-link`, `.cfb-field-empty/-empty-line` |
 | Season / My Picks | `.cfb-season-lead/-main/-aside`, `.cfb-season-headline/-derivation/-lives-label`, `.cfb-ledger-total` |
 | Week lead | `.cfb-week-lead` (+`.is-pending/.is-survived/.is-lost`), `-main`, `-aside`, `-headline`, `-line`, `-next`, `-pick` |
 | Team pool / used | `.cfb-conf-count`, `.cfb-team-pool`, `.cfb-team-chip/-note`, `.cfb-used-grid/-team/-week`, `.cfb-now-tag` |
@@ -590,14 +593,13 @@ Retired name: `.cfb-stat-card` (+ a CFB `.is-lead`) was planning-era vocabulary 
 
 ### 7.4 Components sanctioned but not yet shipped (FUTURE)
 
-Doctrine for surfaces later room work will build. Marked so nobody reads them as existing code. Shipped since this list was written and removed from it: the used-team ledger (the player card's spent grid and card table, `/cfb/player/<id>`, 2026-09-23, §7.2), Who's Left (§8.10) and compact standings (§8.11) in the lounge panel (ADR-049), and the player detail surface itself (§7.2 "The player card").
+Doctrine for surfaces later room work will build. Marked so nobody reads them as existing code. Shipped since this list was written and removed from it: the used-team ledger (the player card's spent grid and card table, `/cfb/player/<id>`, 2026-09-23, §7.2), Who's Left (§8.10) and compact standings (§8.11) in the lounge panel (ADR-049), the player detail surface itself (§7.2 "The player card"), and the field attrition visualization (The Field's "The Cut, Week by Week" table with its lives-split bar, `/cfb/field`, 2026-09-24, §9.15).
 
 - **The deadline component** — exact date/time + relative countdown ("Locks in 4h 12m · Saturday, 11:00 AM"), repeated intentionally across player card, summons, room header, pick controls, compact lounge summaries. Urgency escalates by hierarchy (§6.14). At expiry it *becomes* lock state.
 - **The survival status block** — larger life-state expression for card/verdict/elimination/champion views: state label + lives + concise explanation + next action ("ALIVE · 1 life remaining · Your next loss eliminates you."). Direct language; no euphemisms (inactive / season complete / out of contention) when the state is elimination.
 - **Weekly state badges** — compact OPEN/HELD/LOCKED/VERDICT chips where detailed copy would be excessive. Sparing; shape/text/placement carry meaning, not a badge-color rainbow.
 - **The matchup row** — compact slate alternative for scan speed on large slates: selectable region generous, spreads/kickoffs/status aligned, predictable heights. Cards vs rows is a deliberate density choice (§9.5), consistent week to week.
 - **The team availability panel** — remaining inventory: grouped Available / Used / Unavailable (reason) / Restored-by-reset; optional search + filters (available-only, ranked, playing-this-week) only where they support a real decision. Never reduced to a bare count ("112 teams available" is less useful than whether the strongest realistic options remain).
-- **Field attrition visualization** — aggregate survival progression where it adds understanding: stacked weekly bars, simple step charts, or a week-by-week table (`Week | Two lives | One life | Eliminated | Active`). Real counts, labeled, readable without color. Never smoothed curves, decorative area charts, percentage-only views, or personal rank trends.
 - **Recent change module** (§8.13) — lounge orientation.
 
 ### 7.5 Component behavior rules
@@ -772,11 +774,12 @@ Shipped screens and their doctrine anchors:
 | `/cfb/pick/<week>` | the weekly decision | Your Card | `.team-pick-card`, The Board slate, `.cfb-confirm-pick` |
 | `/cfb/my-picks` | season ledger | Your Card | `.cfb-season-lead`, verdict list, team pool, used grid |
 | `/cfb/player/<id>` | the player card (public) | the member's name | `.cfb-season-lead`, `.cfb-week-summary`, the card table (`.cfb-field-table.cfb-card-ledger`), `.cfb-used-grid`, the Pool groups; reached by `.cfb-name-link` |
+| `/cfb/field` | The Field (public) | The Field | the spent board (`.cfb-field-line` + meter), the two folds (`.cfb-field-fold`), §9.15 |
 | `/cfb/results/<week>` | weekly verdict | Saturday's Verdict / The Cut | `.cfb-verdict`, `.cfb-week-summary`, The Field table, `.elimination-alert` |
 | `/cfb/join` | enrollment | Take Your Two Lives | `.cfb-join-*` |
 | `/cfb/admin/*` | Commissioner's Desk (8 screens) | functional | `.cfb-admin-*`, A3-admin block |
 
-The core pick flow stays coherent and continuous — never spread across disconnected pages. The sub-nav's sections are peers; urgent pick state is never hidden inside an inactive section; persistent context (week, lives, pick state, deadline) survives navigation.
+The sub-nav reads Pick (while a week is pickable) · Standings · Results · The Field · My Picks (signed-in) · 2025 (§7.2). The core pick flow stays coherent and continuous — never spread across disconnected pages. The sub-nav's sections are peers; urgent pick state is never hidden inside an inactive section; persistent context (week, lives, pick state, deadline) survives navigation.
 
 ### 9.2 State model at depth
 
@@ -850,6 +853,28 @@ The player season ledger is complete and verifiable: week, team, opponent, sprea
 The room must not become a sportsbook, live-score center, generic fantasy dashboard, analytics terminal, or an admin console for ordinary players. Never hide deadline, current pick, lives, lock state, or submission confirmation. Never merge local selection, submitted pick, and locked pick into one visual state. Never remove used-team history after the reset. Never expose hidden picks early.
 
 **Heuristic:** what decision or verification does this support? Primary workflow or secondary inspection? What changes across the four beats and the three life states? Does it rely on authoritative state? Does it preserve selected-vs-submitted? If a feature doesn't improve action, comparison, verification, or strategic understanding, it doesn't belong in the room.
+
+### 9.15 The Field
+
+`/cfb/field`, shipped 2026-09-24: the room's opponent-awareness surface (§1.8, §1.9's midseason and late phases): who among the still-standing has burned each pool team, how many still hold it, how the field was cut. Public, like standings and results. A record, never a decision surface: no pick controls, no countdowns, no recommendation. The reader leaves with opponent awareness, not advice. One builder, `games/cfb/services/field.py::build_field` (`attrition_rows`, `spent_board`, `most_backed`); `tests/test_cfb_field.py`.
+
+**The composition: the Inventory Sheet** (Brad's pick on the decision page). The spent board leads the whole page; the season's story sits folded beneath it. Order: the room hero (eyebrow "What the Field Has Spent", H1 "The Field", the `.cfb-hero-field` line "N still standing · N cut · N weeks on the record", the cut and weeks pairs only when non-zero); the board; two native `<details>` folds, "The Cut, Week by Week" then "Most Backed", both closed by default; a closing `.cfb-field-foot` line routing this week's split to Results. Before any week's deadline has passed the page is one line instead ("Before the First Cut": "The full field remains alive. N players, two lives each. The sheet fills the moment a week locks.").
+
+- **The spent board.** Every pool team, grouped under its conference (a Teko uppercase `.cfb-field-conf-head` with the `.cfb-conf-count`, over a strong hairline), one ruled `.cfb-field-line` per team: The Pool's `.cfb-team-chip` · the meter · the count ("**3** spent · **24** hold", Teko tabular, figures in white) · a caret. A spent line is a `<details>`: tap it and the survivors who burned the team open beneath, each a `.cfb-name-link` door to their player card with the week each spent it (`.cfb-field-when`, Teko uppercase bone-subtle), week order. Eliminated burners are counted apart, never listed: "N of the cut burned it too." (on an unspent line, "unspent · N of the cut burned it"). A team no survivor still holds strikes its chip through (`.is-gone`). An unspent line is a plain row with a hidden caret so every meter shares one track.
+- **The meter** (`.cfb-field-meter`, 6px hairline track): spent in ash (`--cfb-eliminated`), held in muted bone (bone @ .55). **Structure, not hue**: neither segment carries survivor-state meaning; `role="img"` and its label carry the numbers ("spent by 3 of 27 survivors, 24 still hold it"). An unspent line shows a full held track ("unspent; every survivor still holds it").
+- **The folds.** Each summary line states one headline fact beside its eyebrow, so a closed fold still informs. The Cut: "Week 3: 1 cut, 7 remain" (", still in play" while the latest week is unsettled; "nobody cut" when none). Most Backed, **tie-aware**: "Georgia and 4 others, backed 2 times each", or "Georgia, backed 9 times" when one team leads alone.
+- **The Cut, Week by Week** is §7.4's field attrition visualization, built as the 2025 archive's table grammar (`.cfb-archive-table.cfb-field-table`): Week · Alive entering · Lost a life · Cut · Alive after · The field after. The last column is a lives-split bar (`.cfb-field-bar`: two lives in `--cfb-survived`, one life in survived @ .4, out in ash; the same split the lounge's Who's Left attrition bar draws) over a counted key ("7 two · 2 one · 0 out"), `role="img"` labeled. Survivor-state color is legitimate here because the bar states lives (§6.7). A week past deadline and unsettled reads "in play" in `--cfb-pending`.
+- **Most Backed** reuses the pick-distribution list (`.cfb-dist-list`): every pick on the record by team, with the record when backed as the room's result badges (W / L / NC / TBD), ordered by count then name, **never by spread**.
+
+**Visibility is §9.9's one rule.** Every count, name and complement reads only weeks whose deadline has passed, so nothing leaks an open pick. The spent board reads **regular-season weeks only**: the CFP reset makes every team pickable again (§1.10), so a playoff pick spends nothing here. The reveal week's split stays on Results.
+
+**Phone (below 768px).** The hero counts stack on their own lines and the `·` separators hide (a separator belongs only between two items on one line). A board line becomes a two-row grid: chip · count · caret, over a full-width meter. The cut table drops the bar column and swaps to short heads (Entering / Lost / Cut / After, the long heads kept for screen readers), five counts with no sideways scroll.
+
+**The lounge touch.** Who's Left (§8.10) carries one factual delta sentence after the cuts line in phases B and C: "One fewer than last week." (`field_delta_line`: survivors now against the survivors after the week before the latest one on the record, which may still be in play; nothing when unchanged or when fewer than two weeks are on the record). That is §8.14's sanctioned aggregate, never a trend arrow.
+
+**Prohibitions.** No rank movement, sparklines, inventory strength, recommendation, pick controls or countdowns (§1.7, §10.13; Brad 2026-09-24: CFB's rank-movement ban stands). Crimson marks nothing here but chrome and focus rings; it never marks consequence. No charts beyond the hairline meter and the counted lives bar.
+
+**Primitives** (the §7.3 "The Field page" row). The spenders list's gridline is an inset `box-shadow: inset 1px 0 0 var(--cfb-hairline-strong)`, not a `border-left`: the room's side-stripe locks forbid any `border-left` in CFB CSS, and this is a rule, not a stripe. Summaries are 44px targets with the crimson-bright focus ring; the caret rotates on open (the platform transition, no other motion).
 
 ---
 

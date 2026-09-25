@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+{% block title %}The Field &middot; CFB Survivor{% endblock %}
+
+{% block content %}
+{# The Field (DESIGN.md 9.15): the Inventory Sheet, Brad's pick on the
+   decision page. What is spent and what is still on the shelf, counted per
+   line, from weeks past their deadline only (9.9). The spent board leads the
+   whole page; the cut, week by week, and most backed fold beneath it. A
+   record, never a decision surface: no pick controls, no countdowns, no
+   rank movement (1.7, 10.13). #}
+<div class="page-hero cfb-hero cfb-hero--field">
+  <div class="hero-glow"></div>
+  <div class="container">
+    <span class="cfb-eyebrow">What the Field Has Spent</span>
+    <h1>The Field</h1>
+    <div class="cfb-hero-field">
+      <span class="cfb-count">{{ field.survivors }} still standing</span>
+      {% if field.total - field.survivors %}
+      <span class="cfb-field-hero-pair"><span class="cfb-hero-field-sep">&middot;</span>
+      <span class="cfb-count-cut">{{ field.total - field.survivors }} cut</span></span>
+      {% endif %}
+      {% if field.revealed_weeks %}
+      <span class="cfb-field-hero-pair"><span class="cfb-hero-field-sep">&middot;</span>
+      <span class="cfb-count">{{ field.revealed_weeks }} week{{ 's' if field.revealed_weeks != 1 }} on the record</span></span>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<div class="container mt-4 mb-5 cfb-field-page{% if field.phase == 'late' %} is-late{% endif %}">
+
+  {% if not field.revealed_weeks %}
+  <div class="cfb-field-empty">
+    <span class="cfb-eyebrow">Before the First Cut</span>
+    <p class="cfb-field-empty-line">The full field remains alive. {{ field.total }} player{{ 's' if field.total != 1 }}, two lives each. The sheet fills the moment a week locks.</p>
+  </div>
+  {% else %}
+
+  {# The spent board: every pool team as a ruled line under its conference,
+     who burned it among the still-standing (named on tap, week each), and
+     how many survivors still hold it. #}
+  <section class="cfb-field-board" aria-labelledby="cfb-field-board-head">
+    <div class="cfb-field-intro">
+      <span class="cfb-eyebrow" id="cfb-field-board-head">The Spent Board</span>
+      <p class="cfb-field-note">Every pool team, who has burned it among the {{ field.survivors }} still standing, and how many of them still hold it. Regular-season picks only; the playoff reset spends nothing here. Tap a spent line for the names.</p>
+    </div>
+    {% for conf in field.board %}
+    <div class="cfb-field-conf">
+      <div class="cfb-field-conf-head">
+        <span class="cfb-field-conf-name">{{ conf.name }}</span>
+        <span class="cfb-conf-count">{{ conf.lines|length }}</span>
+      </div>
+      <ul class="cfb-field-lines">
+        {% for line in conf.lines %}
+        <li class="cfb-field-line{% if line.spent %} is-spent{% endif %}{% if line.holders == 0 %} is-gone{% endif %}">
+          {% if line.spent %}
+          <details class="cfb-field-team">
+            <summary class="cfb-field-team-head">
+              <span class="cfb-team-chip">{{ line.team.name }}</span>
+              <span class="cfb-field-meter" role="img" aria-label="spent by {{ line.spent }} of {{ field.survivors }} survivors, {{ line.holders }} still hold it">
+                <span class="cfb-field-meter-spent" style="flex: {{ line.spent }}"></span>
+                {% if line.holders %}<span class="cfb-field-meter-hold" style="flex: {{ line.holders }}"></span>{% endif %}
+              </span>
+              <span class="cfb-field-count"><b>{{ line.spent }}</b> spent <span class="cfb-field-sep">&middot;</span> {% if line.holders %}<b>{{ line.holders }}</b> hold{% else %}none hold{% endif %}</span>
+              <span class="cfb-field-caret" aria-hidden="true"></span>
+            </summary>
+            <ul class="cfb-field-spenders">
+              {% for s in line.spent_by %}
+              <li><a class="cfb-name-link" href="{{ url_for('cfb.player', enrollment_id=s.enrollment.id) }}">{{ s.enrollment.get_display_name() }}</a> <span class="cfb-field-when">{{ s.week_label }}</span></li>
+              {% endfor %}
+              {% if line.spent_by_out %}<li class="cfb-field-out-note">{{ line.spent_by_out }} of the cut burned it too.</li>{% endif %}
+            </ul>
+          </details>
+          {% else %}
+          <div class="cfb-field-team-head cfb-field-team-head--still">
+            <span class="cfb-team-chip">{{ line.team.name }}</span>
+            <span class="cfb-field-meter" role="img" aria-label="unspent; every survivor still holds it">
+              <span class="cfb-field-meter-hold" style="flex: 1"></span>
+            </span>
+            <span class="cfb-field-count">unspent{% if line.spent_by_out %} <span class="cfb-field-sep">&middot;</span> {{ line.spent_by_out }} of the cut burned it{% endif %}</span>
+            <span class="cfb-field-caret cfb-field-caret--none" aria-hidden="true"></span>
+          </div>
+          {% endif %}
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endfor %}
+  </section>
+
+  {# Folded beneath the shelf: the season's story and the field's habits,
+     each stating its one headline fact on the summary line. #}
+  {% set last = field.weeks[-1] if field.weeks else None %}
+  <details class="cfb-field-fold" id="cfb-field-cut">
+    <summary class="cfb-field-fold-head">
+      <span class="cfb-eyebrow">The Cut, Week by Week</span>
+      <span class="cfb-field-fold-fact">{% if last %}{{ last.label }}: {% if last.cut %}{{ last.cut }} cut{% else %}nobody cut{% endif %}, {{ last.alive_after }} remain{% if not last.complete %}, still in play{% endif %}{% else %}Nothing settled yet{% endif %}</span>
+      <span class="cfb-field-caret" aria-hidden="true"></span>
+    </summary>
+    {% if field.weeks %}
+    <div class="table-responsive">
+      <table class="table cfb-archive-table cfb-field-table">
+        <thead>
+          <tr>
+            <th scope="col">Week</th>
+            <th scope="col" class="cfb-col-center"><span class="cfb-field-th-long">Alive entering</span><span class="cfb-field-th-short" aria-hidden="true">Entering</span></th>
+            <th scope="col" class="cfb-col-center"><span class="cfb-field-th-long">Lost a life</span><span class="cfb-field-th-short" aria-hidden="true">Lost</span></th>
+            <th scope="col" class="cfb-col-center">Cut</th>
+            <th scope="col" class="cfb-col-center"><span class="cfb-field-th-long">Alive after</span><span class="cfb-field-th-short" aria-hidden="true">After</span></th>
+            <th scope="col" class="cfb-field-bar-head">The field after</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in field.weeks %}
+          <tr{% if not row.complete %} class="cfb-field-row-pending"{% endif %}>
+            <td class="cfb-field-week">{{ row.label }}{% if not row.complete %} <span class="cfb-archive-round">in play</span>{% endif %}</td>
+            <td class="cfb-col-center cfb-archive-num">{{ row.alive_entering }}</td>
+            <td class="cfb-col-center cfb-archive-num">{% if row.lost_life %}{{ row.lost_life }}{% else %}<span class="cfb-result-none" aria-label="None">&ndash;</span>{% endif %}</td>
+            <td class="cfb-col-center cfb-archive-num">{% if row.cut %}{{ row.cut }}{% else %}<span class="cfb-result-none" aria-label="None cut">&ndash;</span>{% endif %}</td>
+            <td class="cfb-col-center cfb-archive-num">{{ row.alive_after }}</td>
+            <td class="cfb-field-bar-cell">
+              <div class="cfb-field-bar" role="img" aria-label="{{ row.two_lives }} with two lives, {{ row.one_life }} with one, {{ row.out }} out">
+                {% if row.two_lives %}<span class="cfb-field-seg is-two" style="flex: {{ row.two_lives }}"></span>{% endif %}
+                {% if row.one_life %}<span class="cfb-field-seg is-one" style="flex: {{ row.one_life }}"></span>{% endif %}
+                {% if row.out %}<span class="cfb-field-seg is-out" style="flex: {{ row.out }}"></span>{% endif %}
+              </div>
+              <span class="cfb-field-bar-key"><b>{{ row.two_lives }}</b> two &middot; <b>{{ row.one_life }}</b> one &middot; <b>{{ row.out }}</b> out</span>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="cfb-field-note">No week has settled yet. The full field remains alive.</p>
+    {% endif %}
+  </details>
+
+  {% set top = field.backed[0] if field.backed else None %}
+  {% set tied = field.backed|selectattr('count', 'equalto', top.count)|list|length if top else 0 %}
+  <details class="cfb-field-fold" id="cfb-field-backed">
+    <summary class="cfb-field-fold-head">
+      <span class="cfb-eyebrow">Most Backed</span>
+      <span class="cfb-field-fold-fact">{% if not top %}Nothing on the record yet{% elif tied > 1 %}{{ top.team.name }} and {{ tied - 1 }} other{{ 's' if tied != 2 }}, backed {{ top.count }} time{{ 's' if top.count != 1 }} each{% else %}{{ top.team.name }}, backed {{ top.count }} time{{ 's' if top.count != 1 }}{% endif %}</span>
+      <span class="cfb-field-caret" aria-hidden="true"></span>
+    </summary>
+    {% if field.backed %}
+    <p class="cfb-field-note">Every pick on the record, by team, with the record when backed. Ordered by count, never by spread.</p>
+    <ul class="cfb-dist-list cfb-field-backed-list">
+      {% for row in field.backed %}
+      <li class="cfb-dist-item">
+        <span class="cfb-dist-team">{{ row.team.name }}</span>
+        <span class="cfb-field-record" aria-label="{{ row.wins }} won, {{ row.losses }} lost{% if row.no_contests %}, {{ row.no_contests }} no contest{% endif %}{% if row.pending %}, {{ row.pending }} pending{% endif %}">
+          {% if row.wins %}<span class="badge badge-survived">{{ row.wins }} W</span>{% endif %}
+          {% if row.losses %}<span class="badge badge-lost-life">{{ row.losses }} L</span>{% endif %}
+          {% if row.no_contests %}<span class="badge badge-pending">{{ row.no_contests }} NC</span>{% endif %}
+          {% if row.pending %}<span class="badge badge-pending">{{ row.pending }} TBD</span>{% endif %}
+        </span>
+        <span class="cfb-dist-count">{{ row.count }}</span>
+      </li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+  </details>
+
+  <p class="cfb-field-foot">This week's split is on <a class="cfb-field-link" href="{{ url_for('cfb.weekly_results') }}">Results</a>. The board reads only weeks past their deadline.</p>
+
+  {% endif %}
+</div>
+{% endblock %}
