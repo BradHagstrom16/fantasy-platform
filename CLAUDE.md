@@ -44,7 +44,7 @@ FLASK_APP=app.py venv/bin/flask db upgrade          # Apply migrations
 FLASK_APP=app.py venv/bin/flask db migrate -m "..."  # Generate new migration — review the file in migrations/versions/ before upgrading
 FLASK_APP=app.py venv/bin/flask create-admin        # Create platform admin user
 FLASK_APP=app.py venv/bin/flask push test --user <username|email>   # Send the fixed test dispatch to every device that member subscribed (core/push/cli.py); prints the delivered count
-FLASK_APP=app.py venv/bin/flask tribune backfill   # One-shot after the Tribune deploy: store the page copy + filing week on letters sent before those columns existed (core/tribune/cli.py); idempotent
+FLASK_APP=app.py venv/bin/flask tribune backfill   # One-shot after the Tribune deploy: file the four letters sent before the desk kept copies (core/tribune/pre_desk.py, verbatim text, sends nothing), then store the page copy + filing week on letters sent before those columns existed (core/tribune/cli.py); idempotent
 
 # Golf CLI (coming_soon, Phase L ~Jan 2027; all timers disabled; full CLI in games/golf/cli.py)
 # Commands: seed-schedule, force-schedule-sync, sync-run --mode {schedule,field,live,live-with-wd,withdrawals,results,earnings,remind,all},

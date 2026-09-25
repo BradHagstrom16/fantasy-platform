@@ -27,7 +27,7 @@
         <dt>To</dt>
         <dd>{{ audience_label(announcement) }}, {{ 'active members only' if announcement.recipient_filter == 'active' else 'all enrolled' }}</dd>
         <dt>Reached</dt>
-        <dd>{% if announcement.sent_count is none %}Sending to {{ announcement.recipient_count }}{% else %}{{ announcement.sent_count }} of {{ announcement.recipient_count }} member{{ 's' if announcement.recipient_count != 1 }}{% endif %}</dd>
+        <dd>{% if announcement.recipient_count is none %}Not recorded (sent before the desk kept copies){% elif announcement.sent_count is none %}Sending to {{ announcement.recipient_count }}{% else %}{{ announcement.sent_count }} of {{ announcement.recipient_count }} member{{ 's' if announcement.recipient_count != 1 }}{% endif %}</dd>
         <dt>By</dt><dd>{{ announcement.created_by.get_display_name() }}</dd>
         <dt>Filed</dt>
         <dd><a href="{{ url_for('tribune.issue', announcement_id=announcement.id) }}">In The Tribune</a>{% if announcement.week_number %}, under Week {{ announcement.week_number }}{% else %}, between seasons{% endif %}</dd>
@@ -263,7 +263,7 @@
           <a class="announce-file{% if current %} is-current{% endif %}"
              href="{{ url_for('admin.announce', announcement_id=item.id) }}"{% if current %} aria-current="page"{% endif %}>
             <span class="announce-file-subject">{{ item.subject }}</span>
-            <span class="announce-file-meta">Sent {{ when(item.sent_at) }} · {{ audience_label(item) }} · {{ item.recipient_count }} member{{ 's' if item.recipient_count != 1 }}</span>
+            <span class="announce-file-meta">Sent {{ when(item.sent_at) }} · {{ audience_label(item) }}{% if item.recipient_count is not none %} · {{ item.recipient_count }} member{{ 's' if item.recipient_count != 1 }}{% endif %}</span>
           </a>
         </li>
         {% endfor %}

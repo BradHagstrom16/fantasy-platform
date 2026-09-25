@@ -340,8 +340,9 @@ def _page(announcement, values, preview=None):
     names = {entry.slug: entry.display_name for entry in GAMES}
 
     def audience_label(item):
+        # A sent row with no games is a pre-desk letter (core/tribune/pre_desk.py).
         return (' + '.join(names[slug] for slug in item.audience_list)
-                or 'No games picked')
+                or ('Audience not recorded' if item.is_sent else 'No games picked'))
 
     return render_template(
         'admin/announce.html',
