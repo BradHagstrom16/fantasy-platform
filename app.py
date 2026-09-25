@@ -48,15 +48,21 @@ def create_app(config_name=None):
     from core.auth import auth_bp
     from core.main import main_bp
     from core.push import push_bp
+    from core.tribune import tribune_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(main_bp)
     app.register_blueprint(admin_bp)
     app.register_blueprint(push_bp)
+    app.register_blueprint(tribune_bp)
 
     # Web push CLI (flask push test --user ...)
     from core.push.cli import register_push_cli
     register_push_cli(app)
+
+    # The Tribune CLI (flask tribune backfill)
+    from core.tribune.cli import register_tribune_cli
+    register_tribune_cli(app)
 
     # Register golf blueprint
     from games.golf import golf_bp

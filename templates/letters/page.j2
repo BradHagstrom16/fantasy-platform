@@ -1,0 +1,24 @@
+{% autoescape true %}
+{#- The Club Letter as page content (The Tribune, core/tribune). The same
+    Letter the email shell prints, without the shell: no masthead, no
+    footer, no table layout. The page around it (tribune/issue.html)
+    supplies the site chrome, the issue number and date, and the way back.
+    Rendered only by utils.email_layout.render_letter_page. -#}
+<article class="letter-page">
+  <header class="letter-page-head">
+    <p class="letter-page-eyebrow">{{ letter.eyebrow }}</p>
+    <h1 class="letter-page-headline">{{ letter.headline }}</h1>
+  </header>
+  <div class="letter-page-body">
+    {% if letter.greeting %}<p class="letter-page-para">Hi {{ letter.greeting }},</p>{% endif %}
+    {% for paragraph in letter.lede %}<p class="letter-page-para">{{ paragraph }}</p>
+    {% endfor %}{{ facts_html }}
+    {% for block in extras %}{{ block.html }}
+    {% endfor %}
+    {% if letter.cta %}<p class="letter-page-cta"><a href="{{ letter.cta[1] }}">{{ letter.cta[0] }} &rsaquo;</a></p>{% endif %}
+    {% for sentence in letter.supporting %}<p class="letter-page-support">{{ sentence }}</p>
+    {% endfor %}{% for block in notes %}{{ block.html }}
+    {% endfor %}{% if letter.footer_note %}<p class="letter-page-support">{{ letter.footer_note }}</p>{% endif %}
+  </div>
+</article>
+{% endautoescape %}

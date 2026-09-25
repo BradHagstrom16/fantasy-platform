@@ -1,0 +1,12 @@
+{# The Tribune's line on the lounge (shell-owned, registry-free): the latest
+   letter the Commish sent, under From the Commish. Absent when nothing has
+   been sent; never an empty card. `latest_issue` is built in home_context
+   from models.content, so the shell imports no blueprint. The headline and
+   its date are one unit so a phone never orphans the date. #}
+{% if latest_issue %}
+<div class="tribune-line">
+  <span class="tribune-line-label">Latest letter</span>
+  <span class="tribune-line-issue"><a class="tribune-line-link" href="{{ url_for('tribune.issue', announcement_id=latest_issue.id) }}">{{ latest_issue.headline }}</a> <span class="tribune-line-date">{{ latest_issue.date }}</span></span>
+  <a class="tribune-line-all" href="{{ url_for('tribune.index') }}">All issues &rsaquo;</a>
+</div>
+{% endif %}

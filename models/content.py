@@ -142,6 +142,16 @@ class Announcement(db.Model):
     # on every render, so the archive keeps the sent copy, not a re-render.
     sent_html = db.Column(db.Text, nullable=True)
     sent_plain = db.Column(db.Text, nullable=True)
+    # The same letter rendered as page content for The Tribune
+    # (core/tribune): stored at send for the same reason ``sent_html`` is.
+    # NULL on rows sent before the column existed until ``flask tribune
+    # backfill`` fills it (the issue page shows ``sent_plain`` meanwhile,
+    # never a live re-render).
+    sent_page_html = db.Column(db.Text, nullable=True)
+    # The season week the letter files under in The Tribune (the "Week N"
+    # its subject or headline names, else the club week it was sent in;
+    # NULL out of season). Set at send, backfilled with the page copy.
+    week_number = db.Column(db.Integer, nullable=True)
 
     created_by = db.relationship('User')
 
@@ -156,3 +166,22 @@ class Announcement(db.Model):
     def __repr__(self):
         state = 'sent' if self.is_sent else 'draft'
         return f'<Announcement {self.id} {state} {self.subject!r}>'
+
+
+def sent_issues():
+    """Every sent announcement, newest first: The Tribune's issues."""
+    return db.session.scalars(
+        select(Announcement).where(Announcement.sent_at.is_not(None))
+        .order_by(Announcement.sent_at.desc(), Announcement.id.desc())
+    ).all()
+
+
+def latest_issue():
+    """The most recently sent announcement, or None. Read by the lounge
+    (core/main/home_context) through this module so the shell never
+    imports a blueprint."""
+    return db.session.scalars(
+        select(Announcement).where(Announcement.sent_at.is_not(None))
+        .order_by(Announcement.sent_at.desc(), Announcement.id.desc())
+        .limit(1)
+    ).first()

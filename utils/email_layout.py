@@ -45,7 +45,7 @@ __all__ = [
     'divider_block', 'em_span', 'format_deadline_short', 'game_section',
     'heading_block', 'items_block', 'link_span', 'ordered_block',
     'paragraph_block', 'paragraphs_block', 'quote_block', 'render_letter',
-    'result_block', 'rider_block', 'seal_url', 'section_block', 'site_url',
+    'render_letter_page', 'result_block', 'rider_block', 'seal_url', 'section_block', 'site_url',
     'stack_blocks', 'stat_block', 'strong_span', 'subhead_block', 'tab_block',
     'text_span',
 ]
@@ -76,6 +76,8 @@ FONT_LINK = ('https://fonts.googleapis.com/css2?family=Newsreader:wght@400;600'
 # Raster only: Gmail, Outlook, and Yahoo do not render SVG <img>.
 SEAL_PATH = '/static/img/logo/seal-email.png'
 TEMPLATE = 'email/letter.j2'
+# The Tribune's page rendering of the same letter (render_letter_page).
+PAGE_TEMPLATE = 'letters/page.j2'
 MAX_FACTS = 3
 
 
@@ -626,3 +628,25 @@ def render_letter(letter: Letter) -> tuple[str, str]:
                  f'Sent to you as a member of {membership}.')
     plain = '\n\n'.join(parts) + '\n'
     return plain, html
+
+
+def render_letter_page(letter: Letter) -> str:
+    """The same letter as page content for The Tribune (core/tribune):
+    ``templates/letters/page.j2``, an ``<article>`` of the letter's own
+    blocks with no shell around it (no masthead, footer, doctype or layout
+    table of its own; the site chrome is the page's). The block HTML is
+    already inline-styled in the platform's light-room colors and font
+    stacks, so it sits on the bone page as native content. The one CTA
+    becomes a text link at the foot. Same desk rules as the email."""
+    if len(letter.facts) > MAX_FACTS:
+        raise ValueError(
+            f'A letter carries at most {MAX_FACTS} facts; put the rest in a '
+            f'result_block ({len(letter.facts)} given).')
+    extras = [block for block in letter.extras if block]
+    notes = [block for block in letter.notes if block]
+    _check_desk_rules(letter, extras)
+    template = current_app.jinja_env.get_template(PAGE_TEMPLATE)
+    return template.render(
+        letter=letter, extras=extras, notes=notes,
+        facts_html=_fact_table(letter.facts) if letter.facts else Markup(''),
+    )

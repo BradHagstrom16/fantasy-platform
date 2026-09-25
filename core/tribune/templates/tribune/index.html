@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}The Tribune · Corrupt Commish Club{% endblock %}
+{% block body_class %}tribune-page{% endblock %}
+{% block content %}
+{# The Dateline Calendar (direction contract in .impeccable/surfaces/): every
+   letter the Commish sent, filed under the week of the season it speaks to,
+   latest week first. Week heads stick under the chrome on wide screens; the
+   entries are dated, numbered by send order, and the headline is the door. #}
+<div class="container tribune-wrap">
+  <header class="tribune-masthead">
+    <h1 class="tribune-title">The Tribune</h1>
+    <p class="tribune-lede">Every letter the Commish has sent the club, filed by the week it speaks to and kept as it went out.</p>
+  </header>
+
+  {% if calendar %}
+  <div class="tribune-calendar">
+    {% for week in calendar %}
+    <section class="tribune-week" aria-labelledby="tribune-week-{{ week.head.number or 'none' }}">
+      <h2 id="tribune-week-{{ week.head.number or 'none' }}" class="tribune-week-head">
+        <span class="tribune-week-label">{{ week.head.label }}</span>
+        {% if week.head.date %}<span class="tribune-week-date">{{ week.head.date }}</span>{% endif %}
+      </h2>
+      <ol class="tribune-entries">
+        {% for item in week.issues %}
+        <li class="tribune-entry">
+          <a class="tribune-entry-link" href="{{ url_for('tribune.issue', announcement_id=item.id) }}">
+            <span class="tribune-entry-line"><span class="tribune-no">No. {{ item.number }}</span><span class="tribune-entry-date">{{ item.date }}</span></span>
+            <span class="tribune-entry-headline">{{ item.headline }}</span>
+            {% if item.deck %}<span class="tribune-deck">{{ item.deck }}</span>{% endif %}
+          </a>
+        </li>
+        {% endfor %}
+      </ol>
+    </section>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="tribune-empty">
+    <p class="tribune-empty-line">Nothing on the record yet.</p>
+    <p class="tribune-empty-sub">The first letter goes out when the Commish has something to say. It will be kept here, under its week.</p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}{{ issue.headline }} · The Tribune · Corrupt Commish Club{% endblock %}
+{% block body_class %}tribune-page{% endblock %}
+{% block content %}
+{# One issue as printed: the week's dateline over the letter's own blocks
+   (stored at send), the audience it went to, the week around it, and the
+   walk to the letters before and after. #}
+<div class="container tribune-wrap tribune-wrap--issue">
+  <nav class="tribune-issue-nav" aria-label="The Tribune">
+    <a class="back-link tribune-back" href="{{ url_for('tribune.index') }}">&lsaquo; The Tribune</a>
+    <span class="tribune-issue-line">
+      <span class="tribune-no">No. {{ issue.number }}</span>
+      <span class="tribune-issue-sep" aria-hidden="true">·</span>
+      <span class="tribune-issue-week">{{ head.label }}{% if head.date %}, {{ head.date }}{% endif %}</span>
+    </span>
+  </nav>
+
+  <div class="tribune-sheet">
+    {{ body }}
+    {# A div, not <footer>: the site's tag-level footer rule would paint it purple. #}
+    <div class="tribune-sheet-foot">
+      <p class="tribune-audience">{{ issue.audience }} · sent {{ issue.date }}</p>
+      {# The week around it: always said, so a one-letter week (the season's
+         normal case) still names its week on the way out. #}
+      {% if same_week %}
+      <p class="tribune-same-week">Also filed under {{ head.label }}:
+        {% for other in same_week %}<a href="{{ url_for('tribune.issue', announcement_id=other.id) }}">{{ other.headline }}</a>{% if not loop.last %}, {% endif %}{% endfor %}.
+      </p>
+      {% elif head.number %}
+      <p class="tribune-same-week">Filed under {{ head.label }}, the only letter that week. <a href="{{ url_for('tribune.index') }}#tribune-week-{{ head.number }}">The whole calendar &rsaquo;</a></p>
+      {% else %}
+      <p class="tribune-same-week">Filed between seasons. <a href="{{ url_for('tribune.index') }}">The whole calendar &rsaquo;</a></p>
+      {% endif %}
+    </div>
+  </div>
+
+  <nav class="tribune-walk" aria-label="Other issues">
+    {% if older %}
+    <a class="tribune-walk-link tribune-walk-link--older" href="{{ url_for('tribune.issue', announcement_id=older.id) }}">
+      <span class="tribune-walk-label">&lsaquo; Earlier · No. {{ older.number }}</span>
+      <span class="tribune-walk-headline">{{ older.headline }}</span>
+    </a>
+    {% else %}<span class="tribune-walk-end">The first issue</span>{% endif %}
+    {% if newer %}
+    <a class="tribune-walk-link tribune-walk-link--newer" href="{{ url_for('tribune.issue', announcement_id=newer.id) }}">
+      <span class="tribune-walk-label">Later · No. {{ newer.number }} &rsaquo;</span>
+      <span class="tribune-walk-headline">{{ newer.headline }}</span>
+    </a>
+    {% else %}<span class="tribune-walk-end tribune-walk-end--newer">The latest issue</span>{% endif %}
+  </nav>
+</div>
+{% endblock %}

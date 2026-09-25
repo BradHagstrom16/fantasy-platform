@@ -29,6 +29,8 @@
         <dt>Reached</dt>
         <dd>{% if announcement.sent_count is none %}Sending to {{ announcement.recipient_count }}{% else %}{{ announcement.sent_count }} of {{ announcement.recipient_count }} member{{ 's' if announcement.recipient_count != 1 }}{% endif %}</dd>
         <dt>By</dt><dd>{{ announcement.created_by.get_display_name() }}</dd>
+        <dt>Filed</dt>
+        <dd><a href="{{ url_for('tribune.issue', announcement_id=announcement.id) }}">In The Tribune</a>{% if announcement.week_number %}, under Week {{ announcement.week_number }}{% else %}, between seasons{% endif %}</dd>
       </dl>
       <form method="POST" action="{{ form_url }}">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
@@ -208,6 +210,7 @@
         {% if preview.count > 0 %}
         <p class="announce-roster">
           Reaches {{ preview.sample_names|join(', ') }}{% if preview.count > preview.sample_names|length %} and {{ preview.count - preview.sample_names|length }} more{% endif %}.
+          {% if preview.week %}Files in The Tribune under Week {{ preview.week }}.{% else %}Files in The Tribune between seasons.{% endif %}
         </p>
         {% else %}
         <p class="text-muted announce-empty">

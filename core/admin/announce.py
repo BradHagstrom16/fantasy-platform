@@ -38,7 +38,12 @@ from games.worldcup.constants import SEASON_YEAR as WC_SEASON_YEAR
 from games.worldcup.models import WorldCupEnrollment
 from models.content import ANNOUNCEMENT_CTAS, Announcement
 from utils.email import send_platform_email
-from utils.email_layout import Letter, render_letter, site_url
+from utils.email_layout import (
+    Letter,
+    render_letter,
+    render_letter_page,
+    site_url,
+)
 from utils.letter_markup import MarkupError, parse
 from utils.time import format_deadline_short
 
@@ -185,9 +190,9 @@ def _cta(key):
     }[key]
 
 
-def render_announcement(subject, body_text, *, headline=None, preheader=None,
-                        cta='lounge'):
-    """Render the announcement as a Club Letter. Returns (plain_body, html_body).
+def announcement_letter(subject, body_text, *, headline=None, preheader=None,
+                        cta='lounge') -> Letter:
+    """The announcement as a Club Letter (content only).
 
     The admin's markup becomes the letter's blocks through
     ``utils.letter_markup.parse`` (plain text still renders as it always
@@ -197,7 +202,7 @@ def render_announcement(subject, body_text, *, headline=None, preheader=None,
     eyebrow carries no game accent. Raises ``MarkupError`` listing every
     mistake in the body.
     """
-    letter = Letter(
+    return Letter(
         subject=subject,
         headline=headline or subject,
         eyebrow='From the Commish',
@@ -205,7 +210,13 @@ def render_announcement(subject, body_text, *, headline=None, preheader=None,
         extras=parse(body_text, BOARDS),
         cta=_cta(cta),
     )
-    return render_letter(letter)
+
+
+def render_announcement(subject, body_text, *, headline=None, preheader=None,
+                        cta='lounge'):
+    """Render the announcement as mailed. Returns (plain_body, html_body)."""
+    return render_letter(announcement_letter(
+        subject, body_text, headline=headline, preheader=preheader, cta=cta))
 
 
 def _form_values():
@@ -300,10 +311,14 @@ def _save(announcement, values):
     return announcement
 
 
-def _render(values):
-    return render_announcement(
+def _letter(values):
+    return announcement_letter(
         values['subject'], values['body_text'], headline=values['headline'],
         preheader=values['preheader'], cta=values['cta'])
+
+
+def _render(values):
+    return render_letter(_letter(values))
 
 
 def _safe_send(to_addr, subject, plain, html):
@@ -354,27 +369,35 @@ def _duplicate(source):
     return _here(copy)
 
 
-def claim_for_send(announcement_id, recipient_count, plain, html):
+def claim_for_send(announcement_id, recipient_count, plain, html, page=None,
+                   week_number=None):
     """Mark a draft sent, storing the copy that goes out, if and only if
     nobody has yet: a conditional UPDATE on ``sent_at IS NULL``, committed.
     A second tab or a double click finds the row claimed (on Postgres it
     waits on the first claim's row lock, then re-reads) and gets False.
+    ``page`` is the same letter as page content and ``week_number`` the
+    season week it files under (The Tribune, core/tribune).
     """
     claimed = db.session.execute(
         update(Announcement)
         .where(Announcement.id == announcement_id,
                Announcement.sent_at.is_(None))
         .values(sent_at=datetime.now(UTC), recipient_count=recipient_count,
-                sent_html=html, sent_plain=plain)
+                sent_html=html, sent_plain=plain, sent_page_html=page,
+                week_number=week_number)
     ).rowcount
     db.session.commit()
     return claimed == 1
 
 
-def _send(announcement, recipients, plain, html):
+def _send(announcement, recipients, plain, html, page):
     """Claim the draft, then mail every recipient; the archive keeps
-    exactly the copy that was mailed."""
-    if not claim_for_send(announcement.id, len(recipients), plain, html):
+    exactly the copy that was mailed, and The Tribune its page copy."""
+    from core.tribune.services import filed_week
+    week = filed_week(announcement.subject, announcement.headline,
+                      datetime.now(UTC))
+    if not claim_for_send(announcement.id, len(recipients), plain, html, page,
+                          week):
         flash('This announcement already went out; nothing was sent twice.',
               'warning')
         return _here(announcement)
@@ -463,7 +486,8 @@ def announce(announcement_id=None):
     errors = _errors(values, complete=True)
     if not errors:
         try:
-            plain, html = _render(values)
+            letter = _letter(values)
+            plain, html = render_letter(letter)
         except MarkupError as exc:
             errors = exc.errors
     if errors:
@@ -475,7 +499,8 @@ def announce(announcement_id=None):
                                     values['recipient_filter'] == 'active')
     if action == 'send':
         if recipients:
-            return _send(announcement, recipients, plain, html)
+            return _send(announcement, recipients, plain, html,
+                         render_letter_page(letter))
         flash('No recipients matched that audience.', 'warning')
     elif action == 'test':
         if _safe_send(current_user.email, f'[TEST] {values["subject"]}',
@@ -484,11 +509,14 @@ def announce(announcement_id=None):
         else:
             flash('Test email failed. Check the logs.', 'error')
 
+    from core.tribune.services import filed_week
     return _page(announcement, values, preview={
         'count': len(recipients),
         'sample_names': [r.name for r in recipients[:10]],
         'preview_html': html,
         'plain_body': plain,
+        'week': filed_week(values['subject'], values['headline'],
+                           datetime.now(UTC)),
     })
 
 
