@@ -870,7 +870,7 @@ The room must not become a sportsbook, live-score center, generic fantasy dashbo
 
 **Phone (below 768px).** The hero counts stack on their own lines and the `·` separators hide (a separator belongs only between two items on one line). A board line becomes a two-row grid: chip · count · caret, over a full-width meter. The cut table drops the bar column and swaps to short heads (Entering / Lost / Cut / After, the long heads kept for screen readers), five counts with no sideways scroll.
 
-**The lounge touch.** Who's Left (§8.10) carries one factual delta sentence after the cuts line in phases B and C: "One fewer than last week." (`field_delta_line`: survivors now against the survivors after the previous complete week; nothing when unchanged or when fewer than two weeks are complete). That is §8.14's sanctioned aggregate, never a trend arrow.
+**The lounge touch.** Who's Left (§8.10) carries one factual delta sentence after the cuts line in phases B and C: "One fewer than last week." (`field_delta_line`: survivors now against the survivors after the week before the latest one on the record, which may still be in play; nothing when unchanged or when fewer than two weeks are on the record). That is §8.14's sanctioned aggregate, never a trend arrow.
 
 **Prohibitions.** No rank movement, sparklines, inventory strength, recommendation, pick controls or countdowns (§1.7, §10.13; Brad 2026-09-24: CFB's rank-movement ban stands). Crimson marks nothing here but chrome and focus rings; it never marks consequence. No charts beyond the hairline meter and the counted lives bar.
 

@@ -155,6 +155,11 @@ def test_a_week_in_play_reads_its_settled_games_live(app, client, season):
         assert (w3_row.week_number, w3_row.complete) == (3, False)
         assert (w3_row.alive_entering, w3_row.lost_life, w3_row.cut, w3_row.alive_after) == (3, 0, 1, 2)
         assert (w3_row.two_lives, w3_row.one_life, w3_row.out) == (2, 0, 2)
+        # The lounge's delta counts Week 3's cut against the field after
+        # Week 2, never two weeks of cuts against Week 1.
+        enrollments = CfbEnrollment.query.all()
+        weeks = CfbWeek.query.order_by(CfbWeek.week_number).all()
+        assert field_delta_line(enrollments, weeks) == 'One fewer than last week.'
     page = client.get('/cfb/field').get_data(as_text=True)
     assert 'still in play' in page and '>in play</span>' in page
 
@@ -166,6 +171,20 @@ def test_the_delta_line_for_the_lounge(app, season):
         weeks = CfbWeek.query.order_by(CfbWeek.week_number).all()[:2]
         assert field_delta_line(enrollments, weeks) == 'One fewer than last week.'
         assert field_delta_line(enrollments, weeks[:1]) is None
+
+
+def test_the_delta_line_counts_a_second_week_in_play(app, season):
+    """Week 1 complete, Week 2 past its deadline and still in play: Cy's
+    settled loss already cut him, so the line reads against Week 1."""
+    from games.cfb.models import CfbEnrollment, CfbWeek
+    with app.app_context():
+        w2 = CfbWeek.query.filter_by(week_number=2).one()
+        w2.is_complete = False
+        CfbWeekOutcome.query.filter_by(week_id=w2.id).delete()
+        db.session.commit()
+        enrollments = CfbEnrollment.query.all()
+        weeks = CfbWeek.query.order_by(CfbWeek.week_number).all()[:2]
+        assert field_delta_line(enrollments, weeks) == 'One fewer than last week.'
 
 
 def test_the_field_page(app, client, season):

@@ -244,9 +244,10 @@ def build_field(season_year) -> Field:
 
 def field_delta_line(enrollments, weeks) -> str | None:
     """'Two fewer than last week.' for the lounge's Who's Left (8.14): the
-    survivors now against the survivors after the previous complete week.
-    None when nothing changed or only one week is on record."""
-    rows = [r for r in attrition_rows(enrollments, weeks) if r.complete]
+    survivors now against the survivors after the week before the latest
+    one on record, which may still be in play (its settled games already
+    count). None when nothing changed or only one week is on record."""
+    rows = attrition_rows(enrollments, weeks)
     if len(rows) < 2:
         return None
     before = rows[-2].alive_after

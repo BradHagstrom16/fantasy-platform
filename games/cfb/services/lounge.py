@@ -384,7 +384,7 @@ def _context_live(user, enrollment) -> dict:
         active=active, total=total, cuts_line=cuts_line,
     )
     # The field's progression in one factual line (8.14): survivors now
-    # against the survivors after the previous complete week.
+    # against the survivors after the week before the latest on record.
     whos_left['delta_line'] = field_delta_line(
         all_enrollments,
         [w for w in CfbWeek.query.order_by(CfbWeek.week_number).all()
