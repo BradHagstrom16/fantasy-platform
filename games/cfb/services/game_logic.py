@@ -406,6 +406,13 @@ def process_week_results(week_id, season_year=None):
         # no-pick-penalize the entire pool.
         all_settled = bool(games) and all(g.is_settled for g in games)
         if all_settled:
+            # Players an earlier week put out. One can still hold a pick
+            # here, made before that week's last game (the next week opens
+            # while a Monday game is unplayed); it grades, but its loss is
+            # no lost life, no cut and no revival.
+            out_before = set(get_elimination_weeks(
+                list(enrollment_by_user), week.week_number))
+
             # DQ-2: active players with no pick lose a life
             no_pick_eliminated = 0
             no_pick_user_ids = set()
@@ -425,8 +432,8 @@ def process_week_results(week_id, season_year=None):
 
             # DQ-1 revival: whole-pool wipe only. Eliminated-this-week
             # pickers are derived from this week's pick rows so the set
-            # survives partial runs (an enrollment eliminated in an earlier
-            # week cannot have a pick in this one).
+            # survives partial runs; a player an earlier week put out is
+            # never one of them.
             active_remaining = [
                 e for e in season_enrollments if not e.is_eliminated
             ]
@@ -436,7 +443,8 @@ def process_week_results(week_id, season_year=None):
                 for enrollment in season_enrollments:
                     pick = pick_by_user.get(enrollment.user_id)
                     if (enrollment.is_eliminated and pick is not None
-                            and pick.is_correct is False):
+                            and pick.is_correct is False
+                            and enrollment.user_id not in out_before):
                         wiped_pickers.append(enrollment)
 
                 eliminated_this_week = len(wiped_pickers) + no_pick_eliminated
@@ -473,7 +481,8 @@ def process_week_results(week_id, season_year=None):
                     lives_remaining=enrollment.lives_remaining,
                     is_eliminated=enrollment.is_eliminated,
                     lost_life=(
-                        (pick is not None and pick.is_correct is False)
+                        (pick is not None and pick.is_correct is False
+                         and enrollment.user_id not in out_before)
                         or enrollment.user_id in no_pick_user_ids
                     ),
                     no_pick=enrollment.user_id in no_pick_user_ids,
@@ -515,7 +524,8 @@ def get_week_user_statuses(week, enrollments, picks):
     see (audit §2/§8.19). Weeks without snapshot rows (still in
     progress) fall back to current enrollment state, which
     process_week_results keeps live-accurate while grading; there a
-    graded losing pick attributes a mid-week elimination to this week.
+    graded losing pick attributes a mid-week elimination to this week,
+    unless an earlier week's snapshot already put the player out.
 
     Returns {user_id: {'lives', 'is_eliminated', 'eliminated_this_week',
     'lost_life', 'no_pick'}}. ``no_pick`` (the DQ-2 no-pick penalty) is
@@ -526,6 +536,12 @@ def get_week_user_statuses(week, enrollments, picks):
         for o in CfbWeekOutcome.query.filter_by(week_id=week.id).all()
     }
     pick_by_user = {p.user_id: p for p in picks}
+    out_before = set()
+    if len(outcome_by_user) < len(enrollments):
+        out_before = set(get_elimination_weeks(
+            [e.user_id for e in enrollments
+             if e.user_id not in outcome_by_user and e.is_eliminated],
+            week.week_number))
 
     statuses = {}
     for enrollment in enrollments:
@@ -540,14 +556,13 @@ def get_week_user_statuses(week, enrollments, picks):
             }
         else:
             pick = pick_by_user.get(enrollment.user_id)
+            lost_here = (pick is not None and pick.is_correct is False
+                         and enrollment.user_id not in out_before)
             statuses[enrollment.user_id] = {
                 'lives': enrollment.lives_remaining,
                 'is_eliminated': enrollment.is_eliminated,
-                'eliminated_this_week': bool(
-                    enrollment.is_eliminated
-                    and pick is not None and pick.is_correct is False
-                ),
-                'lost_life': pick is not None and pick.is_correct is False,
+                'eliminated_this_week': enrollment.is_eliminated and lost_here,
+                'lost_life': lost_here,
                 'no_pick': False,
             }
     return statuses
@@ -557,9 +572,12 @@ def get_elimination_weeks(user_ids, before_week_number):
     """The week each player was knocked out, for weeks before this one.
 
     Reads the CfbWeekOutcome snapshots (the column form of
-    ``eliminated_this_week``: is_eliminated AND lost_life). A revived
-    player can be knocked out twice; the latest week wins. A player
-    whose elimination week carries no snapshot is simply absent.
+    ``eliminated_this_week``: is_eliminated AND lost_life). A player is
+    put out once: revival lands in the week that eliminated them, and a
+    later week's loss by a player already out records no lost life
+    (before that rule a later week could carry a second elimination row,
+    so the earliest week wins). A player whose elimination week carries
+    no snapshot is simply absent.
 
     Returns {user_id: CfbWeek}.
     """
@@ -578,7 +596,7 @@ def get_elimination_weeks(user_ids, before_week_number):
     weeks = {}
     for user_id, week in rows:
         held = weeks.get(user_id)
-        if held is None or week.week_number > held.week_number:
+        if held is None or week.week_number < held.week_number:
             weeks[user_id] = week
     return weeks
 
