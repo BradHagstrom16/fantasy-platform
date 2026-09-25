@@ -100,6 +100,7 @@ Credit budget: /events is free, /odds costs 2 per sport per run (skipped
 once a sport's markets are all locked), /scores costs 2 per sport per run.
 Every call logs the account's remaining credits via utils/odds_api.py.
 """
+import json
 from datetime import UTC, datetime
 
 import click
@@ -133,6 +134,7 @@ from games.docket.services.record import run_record_pass
 from games.docket.services.scores import sync_scores
 from games.docket.services.tiebreaker_rule import default_tiebreaker_game
 from games.docket.services.weeks import (
+    FIRST_NFL_WEEK,
     SEASON_YEAR,
     TOTAL_WEEKS,
     deadline_utc,
@@ -638,6 +640,9 @@ def _fmt_edge_row(row, deadline, index=None):
     lo, hi = row['range']
     books = (f"{row['n_books']} books {lo:g}" if lo == hi
              else f"{row['n_books']} books {lo:g}..{hi:g}")
+    if row['model'] is not None:
+        current += (f" sva {row['model']:+.1f}" if row['market'] == 'spread'
+                    else f" sva {row['model']:.1f}")
     lock = ''
     if (row['kickoff'] is not None and deadline is not None
             and row['kickoff'] < deadline):
@@ -658,16 +663,25 @@ def _fmt_edge_row(row, deadline, index=None):
               show_default=True,
               help='Best sides to recommend (a full sheet is 8 scoring + 1 '
                    'reserve).')
-def edge_cmd(week, submit_time, top):
+@click.option('--projections', type=click.File('r'), default=None,
+              metavar='FILE',
+              help='NFL team-score projections to blend into the market '
+                   '(JSON {"nfl_week": N, "team_points": {...}}; "-" reads '
+                   'stdin, so a private capture can be piped in over ssh).')
+@click.option('--sva-weight', 'sva_weight', type=click.FloatRange(0, 1),
+              default=edge.SVA_WEIGHT, show_default=True,
+              help='Weight of the projections against the market line.')
+def edge_cmd(week, submit_time, top, projections, sva_weight):
     """Rank this week's FROZEN lines by how far the market has moved off them.
 
     Every Docket pick grades against Tuesday's frozen number. This compares
-    each frozen line to the current market (ten books incl. Pinnacle, each
-    priced at the frozen number with its juice removed, median across books)
-    and scores each still-pickable side by its implied cover probability
-    (== expected points for the slot: win 1.0 / push 0.5 / loss 0.0,
-    headliner doubled). Prints the most-vulnerable frozen lines, the top
-    recommended sheet with a headliner, and a tiebreaker number.
+    each frozen line to the current market (median point across ten books
+    incl. Pinnacle), blended for NFL games with --projections when given, and
+    scores each still-pickable side by its cover probability at the frozen
+    number (== expected points for the slot: win 1.0 / push 0.5 / loss 0.0,
+    headliner doubled; NFL spreads on the key-number margin model). Prints
+    the most-vulnerable frozen lines, the top recommended sheet with a
+    headliner, and a tiebreaker number.
 
     Read-only. Spends 2 Odds API credits per sport on the /odds fetch, from
     DOCKET_EDGE_ODDS_API_KEY when set (else the club's ODDS_API_KEY).
@@ -686,6 +700,18 @@ def edge_cmd(week, submit_time, top):
     submit = (_parse_submit_time(submit_time) if submit_time
               else edge.default_submit_time())
 
+    proj = captured = None
+    if projections is not None:
+        if week_number < FIRST_NFL_WEEK:
+            _fail(f'docket week {week_number} has no NFL games to project')
+        nfl_week = week_number - FIRST_NFL_WEEK + 1
+        try:
+            data = json.load(projections)
+            proj = edge.parse_projections(data, nfl_week)
+        except ValueError as exc:  # a JSON decode error is a ValueError too
+            _fail(f'--projections: {exc}')
+        captured = data.get('captured_at')
+
     games = db.session.scalars(
         select(DocketGame).filter_by(week_id=wk.id)
         .order_by(DocketGame.kickoff)).all()
@@ -698,7 +724,8 @@ def edge_cmd(week, submit_time, top):
         click.secho(f'  WARNING: {err}', fg='yellow')
 
     deadline = _aware_utc(wk.deadline_at)
-    rows, unmatched = edge.analyze(games, consensus, submit, deadline)
+    rows, unmatched = edge.analyze(games, consensus, submit, deadline,
+                                   proj, sva_weight)
     pickable = [r for r in rows if r['pickable']]
 
     click.echo(f'\n[docket edge — week {week_number}]')
@@ -707,6 +734,14 @@ def edge_cmd(week, submit_time, top):
     click.echo(f'  games: {len(games)}   sports: {", ".join(sports)}   '
                f'unmatched: {len(unmatched)}   pickable sides: {len(pickable)}')
     click.echo(f'  credits:     {remaining} left on {key_name}')
+    if proj is not None:
+        click.echo(f'  projections: NFL week {week_number - FIRST_NFL_WEEK + 1},'
+                   f' weight {sva_weight:.0%} (captured {captured})')
+        for game in games:
+            if (game.sport == edge.NFL
+                    and edge.model_lines(game, proj) is None):
+                click.secho(f'  WARNING: no projection for {_matchup(game)} '
+                            f'— market only', fg='yellow')
 
     if not pickable:
         if errors:
@@ -732,7 +767,8 @@ def edge_cmd(week, submit_time, top):
     click.secho(f'\n  Expected points: {edge.expected_points(sheet):.2f} / 9.0',
                 fg='green')
 
-    tb_game, tb_total = edge.tiebreaker_total(wk, games, consensus)
+    tb_game, tb_total = edge.tiebreaker_total(wk, games, consensus, proj,
+                                              sva_weight)
     if tb_game is not None and tb_total is not None:
         click.echo(f'  Tiebreaker ({_matchup(tb_game)}): predict {tb_total:.1f}')
 

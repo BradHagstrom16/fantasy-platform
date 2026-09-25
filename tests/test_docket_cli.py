@@ -5,6 +5,7 @@ week resolution, the non-zero exit codes T11's timers will alert on, the
 recalc population (the full enrolled roster, not just submitters), and the
 scores mode's grade-when-ready behavior.
 """
+import json
 from datetime import datetime
 from unittest.mock import patch
 
@@ -720,16 +721,14 @@ def _edge_consensus(games, exclude=()):
     return {
         g.api_event_id: {
             'cons_spread': g.home_spread, 'cons_total': g.total_points,
-            'spread_quotes': [(g.home_spread, None)],
-            'total_quotes': [(g.total_points, None)],
+            'spreads': [g.home_spread], 'totals': [g.total_points],
         }
         for g in games if g not in exclude
     }
 
 
 def _move_total(consensus, game, total):
-    consensus[game.api_event_id].update(cons_total=total,
-                                        total_quotes=[(total, None)])
+    consensus[game.api_event_id].update(cons_total=total, totals=[total])
 
 
 def _patch_fetch(monkeypatch, consensus, errors=(), keys=None):
@@ -766,6 +765,66 @@ def test_edge_ranks_the_moved_line_and_recommends_a_sheet(app, runner,
     assert 'Expected points:' in result.output
     assert 'Tiebreaker (A0 @ H0)' in result.output
     assert 'Unmatched games' in result.output      # games[8]
+
+
+def _nfl_week2(monkeypatch):
+    """Week 2 (NFL week 1) with Bills-Chargers on Sunday afternoon and the
+    clock mid-week, so the game is pickable."""
+    at(monkeypatch, '2026-09-10T12:00:00')
+    week = make_week(2)
+    game = make_game(week, kickoff=datetime(2026, 9, 13, 18, 0),
+                     sport='americanfootball_nfl', home='Buffalo Bills',
+                     away='Los Angeles Chargers', home_spread=-7.0, total=50.5)
+    week.tiebreaker_game_id = game.id
+    db.session.commit()
+    return week, game
+
+
+def test_edge_blends_projections_piped_on_stdin(app, runner, monkeypatch):
+    from games.docket.cli import docket_cli
+    app.config['ODDS_API_KEY'] = 'k'
+    _, game = _nfl_week2(monkeypatch)
+    _patch_fetch(monkeypatch, _edge_consensus([game]))
+    capture = json.dumps({'nfl_week': 1, 'captured_at': 'fri',
+                          'team_points': {'Bills': 30.4, 'Chargers': 19.7}})
+
+    result = runner.invoke(docket_cli, ['edge', '--week', '2', '--projections',
+                                        '-', '--sva-weight', '0.5'],
+                           input=capture)
+
+    assert result.exit_code == 0, result.output
+    assert 'projections: NFL week 1, weight 50% (captured fri)' in result.output
+    assert 'sva -10.7' in result.output and 'sva 50.1' in result.output
+    assert 'Buffalo Bills -7' in result.output     # the model leans Bills
+    assert 'predict 50.3' in result.output         # (50.5 + 50.1) / 2
+
+
+def test_edge_refuses_a_stale_projection_week(app, runner, monkeypatch):
+    from games.docket.cli import docket_cli
+    app.config['ODDS_API_KEY'] = 'k'
+    _, game = _nfl_week2(monkeypatch)
+    _patch_fetch(monkeypatch, _edge_consensus([game]))
+    capture = json.dumps({'nfl_week': 0, 'team_points': {'Bills': 30.4}})
+
+    result = runner.invoke(docket_cli, ['edge', '--week', '2', '--projections',
+                                        '-'], input=capture)
+
+    assert result.exit_code == 1
+    assert 'has not rolled over' in result.output
+
+
+def test_edge_warns_for_an_unprojected_nfl_game(app, runner, monkeypatch):
+    from games.docket.cli import docket_cli
+    app.config['ODDS_API_KEY'] = 'k'
+    _, game = _nfl_week2(monkeypatch)
+    _patch_fetch(monkeypatch, _edge_consensus([game]))
+    capture = json.dumps({'nfl_week': 1, 'team_points': {'Bills': 30.4}})
+
+    result = runner.invoke(docket_cli, ['edge', '--week', '2', '--projections',
+                                        '-'], input=capture)
+
+    assert result.exit_code == 0, result.output
+    assert 'no projection for Los Angeles Chargers @ Buffalo Bills' in result.output
 
 
 def test_edge_requires_an_api_key(app, runner, monkeypatch):
