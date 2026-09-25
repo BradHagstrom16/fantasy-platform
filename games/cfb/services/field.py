@@ -123,31 +123,36 @@ def attrition_rows(enrollments, weeks) -> tuple[AttritionRow, ...]:
     for o in outcomes:
         by_week[o.week_id].append(o)
     rows = []
-    out_so_far = 0
+    # Who was cut in an earlier row. A pick made before its maker went out
+    # (the next week opens while a Monday game is still unplayed) is graded
+    # anyway, and its loss reads as lost_life on an eliminated player; the
+    # cut and the lost lives belong only to players still in entering the week.
+    out_before = set()
     for week in weeks:
         week_outcomes = by_week.get(week.id, [])
         if week_outcomes or week.is_complete:
-            states = [(o.lives_remaining, o.is_eliminated, o.lost_life,
-                       o.eliminated_this_week) for o in week_outcomes]
+            states = [(o.user_id, o.lives_remaining, o.is_eliminated,
+                       o.lost_life, o.eliminated_this_week) for o in week_outcomes]
         elif deadline_has_passed(week.deadline):
             picks = CfbPick.query.filter_by(week_id=week.id).all()
-            states = [(s['lives'], s['is_eliminated'], s['lost_life'],
+            states = [(user_id, s['lives'], s['is_eliminated'], s['lost_life'],
                        s['eliminated_this_week'])
-                      for s in get_week_user_statuses(week, enrollments, picks).values()]
+                      for user_id, s in get_week_user_statuses(week, enrollments, picks).items()]
         else:
             continue                      # open: nothing on the record
-        alive_entering = total - out_so_far
-        cut = sum(1 for *_, cut_here in states if cut_here)
-        lost = sum(1 for _, _, lost_life, cut_here in states if lost_life and not cut_here)
-        out_so_far += cut
-        alive_after = total - out_so_far
-        two = sum(1 for lives, out, *_ in states if not out and lives >= 2)
-        one = sum(1 for lives, out, *_ in states if not out and lives == 1)
+        alive_entering = total - len(out_before)
+        cut_now = {user_id for user_id, *_, cut_here in states
+                   if cut_here and user_id not in out_before}
+        lost = sum(1 for user_id, _, _, lost_life, cut_here in states
+                   if lost_life and not cut_here and user_id not in out_before)
+        out_before |= cut_now
+        two = sum(1 for _, lives, out, *_ in states if not out and lives >= 2)
+        one = sum(1 for _, lives, out, *_ in states if not out and lives == 1)
         rows.append(AttritionRow(
             week_number=week.week_number, label=get_week_display_name(week),
-            alive_entering=alive_entering, lost_life=lost, cut=cut,
-            alive_after=alive_after, two_lives=two, one_life=one,
-            out=out_so_far, complete=bool(week.is_complete)))
+            alive_entering=alive_entering, lost_life=lost, cut=len(cut_now),
+            alive_after=total - len(out_before), two_lives=two, one_life=one,
+            out=len(out_before), complete=bool(week.is_complete)))
     return tuple(rows)
 
 

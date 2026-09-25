@@ -123,4 +123,6 @@ def test_the_admin_archive_says_the_count_was_not_kept(app, client, commish):
     page = client.get(f'/admin/announce/{row_id}').get_data(as_text=True)
     assert 'Not recorded (sent before the desk kept copies)' in page
     assert 'Audience not recorded' in page
+    # The backfilled filter is not the historical selection: no "all enrolled".
+    assert 'all enrolled' not in page
     assert 'None member' not in page

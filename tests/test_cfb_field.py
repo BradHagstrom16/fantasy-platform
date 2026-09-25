@@ -164,6 +164,33 @@ def test_a_week_in_play_reads_its_settled_games_live(app, client, season):
     assert 'still in play' in page and '>in play</span>' in page
 
 
+def test_a_player_already_out_is_never_cut_twice(app, season):
+    """Cy went out in Week 2, but his Week 3 pick was made while Week 2 was
+    still in play and it loses too. The grader still grades it, so Week 3
+    carries a lost life on an eliminated player, in play and on record; the
+    cut is Week 2's alone."""
+    from games.cfb.models import CfbEnrollment, CfbTeam, CfbWeek
+    with app.app_context():
+        w3 = CfbWeek.query.filter_by(week_number=3).one()
+        w3.deadline = PAST_DEADLINE + timedelta(days=14)
+        cy = db.session.get(CfbEnrollment, season['cy'])
+        make_pick(cy.user, w3, CfbTeam.query.filter_by(name='Iowa').one(), is_correct=False)
+        db.session.commit()
+        enrollments = CfbEnrollment.query.all()
+        weeks = CfbWeek.query.order_by(CfbWeek.week_number).all()
+        in_play = attrition_rows(enrollments, weeks)[-1]
+        assert (in_play.alive_entering, in_play.lost_life, in_play.cut, in_play.alive_after) == (3, 0, 0, 3)
+        assert field_delta_line(enrollments, weeks) is None
+        w3.is_complete = True
+        for e in enrollments:
+            _outcome(w3, e.user, lives=e.lives_remaining, eliminated=e.is_eliminated,
+                     lost=e.user_id == cy.user_id)
+        db.session.commit()
+        on_record = attrition_rows(enrollments, weeks)[-1]
+        assert (on_record.alive_entering, on_record.lost_life, on_record.cut, on_record.alive_after) == (3, 0, 0, 3)
+        assert on_record.out == 1
+
+
 def test_the_delta_line_for_the_lounge(app, season):
     from games.cfb.models import CfbEnrollment, CfbWeek
     with app.app_context():
