@@ -629,10 +629,16 @@ def weekly_results(week_number=None):
     already_out.sort(key=lambda e: e.get_display_name().casefold())
 
     # From the statuses, not the losing picks: a player an earlier week put
-    # out can still hold a losing pick here, and it costs no life.
-    lost_life_count = sum(
-        1 for p in picks
+    # out can still hold a losing pick here, and it costs no life. A row
+    # written before the grader learned that still reads lost_life, so a
+    # player with an earlier elimination is left out here too.
+    lost_pickers = [
+        p.user_id for p in picks
         if user_statuses.get(p.user_id, default_status)['lost_life']
+    ]
+    out_earlier = get_elimination_weeks(lost_pickers, week.week_number)
+    lost_life_count = sum(
+        1 for uid in lost_pickers if uid not in out_earlier
     ) + sum(1 for e in field_no_pick if e.nopick_penalty)
     field_alive = sum(1 for p in picks if not p.was_eliminated) + sum(
         1 for e in field_no_pick if not e.was_eliminated

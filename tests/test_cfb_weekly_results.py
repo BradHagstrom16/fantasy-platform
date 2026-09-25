@@ -238,6 +238,35 @@ def test_an_already_out_players_loss_is_no_lost_life_on_the_page(client):
     assert re.search(r'cfb-summary-num is-lost">(\d+)<', html).group(1) == '1'
 
 
+def test_a_stale_second_elimination_row_is_no_lost_life_on_the_page(client):
+    """A Week 2 row written before the grader stopped charging Ann's later
+    loss still reads lost_life; Week 1 put her out, so the Week 2 summary
+    counts Bob's lost life only."""
+    import re
+
+    from games.cfb.models import CfbWeekOutcome
+    ann, bob = make_user('ann'), make_user('bob')
+    make_enrollment(ann, lives=1, display_name='Ann')
+    make_enrollment(bob, display_name='Bob')
+    week1 = make_week(1)
+    h1, a1 = make_team('Home1'), make_team('Away1')
+    make_game(week1, h1, a1, spread=-7.0, winner='away')
+    make_pick(ann, week1, h1)
+    make_pick(bob, week1, a1)
+    week2 = _lose_week(2, [ann, bob])
+    db.session.commit()
+    process_week_results(week1.id)
+    process_week_results(week2.id)
+    stale = CfbWeekOutcome.query.filter_by(week_id=week2.id,
+                                           user_id=ann.id).one()
+    stale.lost_life = True
+    db.session.commit()
+
+    html = client.get('/cfb/results/2').get_data(as_text=True)
+
+    assert re.search(r'cfb-summary-num is-lost">(\d+)<', html).group(1) == '1'
+
+
 # -- Route: The Field vs Already Out (critique P0, 2026-09-23) ---------------
 
 def _field_html(html):
