@@ -215,6 +215,9 @@ Grep is still right for known exact strings, regex, multiline patterns, file glo
 
 Engineering contracts (grading shapes, pick provenance, admin ops, tiebreaker rule, reminder de-dup, second-bill strip) live in `games/docket/DESIGN.md` §9 Engineering Invariants — read before modifying grading or admin code. All test-locked. Key ADRs: 045 (WeekRollup not WeekGrade), 046 (is_dropped derived), 047 (default_error_tenths), 048 (roster snapshot at deadline), 054 (tiebreaker rule), 059 (the purse is derived from the roster — `services/purse.py`, `DOCKET_WEEKLY_PRIZE`/`DOCKET_PODIUM_SPLIT`, DESIGN.md §8.8).
 
+- **The ledger's movement (§8.12) is derived, never stored:** `season_pass.season_movement` runs the same pure `season_standings` over every graded week but the last; `LedgerRow.move` / `SeasonLedger.movement_week` / `biggest_mover` feed the ledger, the member page, the lounge board (`'move'` dict, lounge classes only) and the record letter. No snapshot table, no writer (`tests/test_docket_movement.py`).
+- **The Brief (`/docket/brief`, §8.13) reads graded weeks only** (`services/brief.py::build_brief`): picks and games of `SeasonLedger.week_numbers`, graded with `sheets._result` (the engine's rule), the tiebreaker predictions, and the ledger. No market data, no API call, no projection; counts carry their denominators. Sorts derive in the route (`BRIEF_SORTS`) like the ledger's (`tests/test_docket_brief.py`).
+
 ### World Cup (archived — 2026 tournament complete)
 
 **WC surfaces are frozen** — read `docs/worldcup-archive-invariants.md` before touching `games/worldcup/`. The WC test suite is the regression net under the lounge. One invariant is platform-wide:

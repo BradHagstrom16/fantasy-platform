@@ -1,0 +1,191 @@
+{% extends "base.html" %}
+{% block title %}The Brief · The Docket · Corrupt Commish Club{% endblock %}
+{% block content %}
+{# The Brief (DESIGN.md 8.13): the Clerk's Tally Sheet, one continuous ruled
+   account. Every figure comes from graded weeks only (services/brief.py);
+   the page prints, it never computes. Sorts on the members' rows are plain
+   GET links (the room's no-JS spine); the rank column keeps the ledger's
+   official order whatever the sort. #}
+{% macro stamp(result) -%}
+<span class="docket-sheet-result{% if result %} is-{{ result }}{% endif %}">{{ result_words.get(result, '') }}</span>
+{%- endmacro %}
+{% macro record(rec) -%}
+<span class="docket-brief-record"><b class="docket-record-w">{{ rec.wins }}</b><span class="docket-record-sep">-</span><b class="docket-record-l">{{ rec.losses }}</b>{% if rec.pushes %}<span class="docket-record-sep">-</span><b class="docket-record-p">{{ rec.pushes }}</b>{% endif %}</span>
+{%- endmacro %}
+{% macro sorthead(key, label) -%}
+<th scope="col" class="docket-brief-th{% if key != 'name' %} docket-brief-th--fig{% endif %}"{% if sort_links[key].aria %} aria-sort="{{ sort_links[key].aria }}"{% endif %}>
+  <a class="docket-ledger-sort{% if sort_links[key].active %} is-active is-{{ sort_dir }}{% endif %}" href="{{ sort_links[key].href }}"{% if sort_links[key].active %} aria-label="{{ label }}, sorted {{ sort_links[key].aria }}"{% endif %}>{{ label }}</a>
+</th>
+{%- endmacro %}
+
+<div class="page-hero docket-hero">
+    <div class="container">
+        <span class="docket-eyebrow">{% if brief.is_graded %}Argued from the record · {{ weeks_counted }}{% else %}Argued from the record{% endif %}</span>
+        <h1>The Brief</h1>
+        <p class="lead">{% if brief.is_graded %}What the field does, who fades it, and how that went: every count from the {{ brief.week_numbers|length }} graded week{{ 's' if brief.week_numbers|length != 1 }} on the record, nothing from a week still in play.{% else %}What the field does, who fades it, and how that went. The Brief opens once the first week grades.{% endif %}</p>
+    </div>
+</div>
+
+<div class="container docket-brief-page">
+    {% if not brief.is_graded %}
+    <div class="docket-empty card border-0 animate-in">
+        <div class="card-body">
+            <h2 class="docket-empty-title">Nothing graded yet</h2>
+            <p class="docket-empty-copy">The first verdicts land Tuesday morning after Week 1. The sheet fills from there.</p>
+        </div>
+    </div>
+    {% else %}
+    <div class="docket-brief-sheet">
+
+        {# 1. The field's habits #}
+        <section class="docket-brief-section" id="brief-habits" aria-labelledby="brief-habits-head">
+            <h2 id="brief-habits-head" class="docket-section-head">The field's habits</h2>
+            <p class="docket-article-note">Every scoring side filed across {{ weeks_counted|lower }}, by what it was: a favorite or an underdog by the frozen number, an over or an under. The record is the engine's grade.</p>
+            <ol class="docket-brief-lines">
+                {% for habit in brief.habits %}
+                <li class="docket-brief-line">
+                    <span class="docket-brief-label">{{ habit.label }}</span>
+                    <span class="docket-brief-fig">{{ habit.count }} taken</span>
+                    <span class="docket-brief-fig docket-brief-fig--record">{% if habit.record.decided %}{{ record(habit.record) }}{% else %}<span class="docket-brief-quiet">none decided</span>{% endif %}</span>
+                </li>
+                {% endfor %}
+            </ol>
+        </section>
+
+        {# 2. Consensus and the lone wolf #}
+        <section class="docket-brief-section" id="brief-consensus" aria-labelledby="brief-consensus-head">
+            <h2 id="brief-consensus-head" class="docket-section-head">Consensus and the lone wolf</h2>
+            <p class="docket-article-note">Each week's most-held side and what it did; under it, the sides one sheet held alone and won.</p>
+            <ol class="docket-brief-lines">
+                {% for week in brief.weeks %}
+                <li class="docket-brief-line docket-brief-line--week">
+                    <span class="docket-brief-label"><span class="docket-brief-week">Week {{ week.week_number }}</span> {{ week.pick }} <span class="docket-caption">· {{ week.caption }}</span></span>
+                    <span class="docket-brief-fig">{{ week.holders }} of {{ week.sheets }} sheets</span>
+                    <span class="docket-brief-fig docket-brief-fig--record">{{ stamp(week.result) }}</span>
+                    {% if week.lone_wolves %}
+                    <ul class="docket-brief-wolves">
+                        {% for wolf in week.lone_wolves %}
+                        <li><a class="docket-ledger-namelink" href="{{ url_for('docket.member', enrollment_id=wolf.enrollment.id) }}">{{ wolf.enrollment.get_display_name() }}</a> alone on {{ wolf.pick }} <span class="docket-caption">· {{ wolf.caption }}</span></li>
+                        {% endfor %}
+                    </ul>
+                    {% else %}
+                    <span class="docket-brief-nowolf docket-caption">No lone wolf won this week.</span>
+                    {% endif %}
+                </li>
+                {% endfor %}
+            </ol>
+        </section>
+
+        {# 3. The x2 ledger #}
+        <section class="docket-brief-section" id="brief-x2" aria-labelledby="brief-x2-head">
+            <h2 id="brief-x2-head" class="docket-section-head">The x2 ledger</h2>
+            <p class="docket-article-note">The double, cashed and missed. The field first, then every sheet that has named one.</p>
+            <ol class="docket-brief-lines">
+                <li class="docket-brief-line docket-brief-line--field">
+                    <span class="docket-brief-label">The field's x2</span>
+                    <span class="docket-brief-fig">{{ brief.x2_field.decided }} decided</span>
+                    <span class="docket-brief-fig docket-brief-fig--record">{% if brief.x2_field.decided %}{{ record(brief.x2_field) }}{% else %}<span class="docket-brief-quiet">none decided</span>{% endif %}</span>
+                </li>
+                {% for row in brief.x2_rows %}
+                <li class="docket-brief-line{% if current_user.is_authenticated and row.enrollment.user_id == current_user.id %} is-you{% endif %}">
+                    <span class="docket-brief-label"><a class="docket-ledger-namelink" href="{{ url_for('docket.member', enrollment_id=row.enrollment.id) }}">{{ row.enrollment.get_display_name() }}</a></span>
+                    <span class="docket-brief-fig">{{ row.record.decided }} decided</span>
+                    <span class="docket-brief-fig docket-brief-fig--record">{{ record(row.record) }}</span>
+                </li>
+                {% endfor %}
+            </ol>
+        </section>
+
+        {# 4. The number #}
+        <section class="docket-brief-section" id="brief-number" aria-labelledby="brief-number-head">
+            <h2 id="brief-number-head" class="docket-section-head">The number</h2>
+            <p class="docket-article-note">Every guess against the real combined score of the designated case. Off by is the average gap, in points, over the weeks a number was saved.</p>
+            <ol class="docket-brief-lines">
+                {% if brief.number.closest %}
+                <li class="docket-brief-line docket-brief-line--field">
+                    <span class="docket-brief-label">Closest call <span class="docket-caption">· <a class="docket-ledger-namelink" href="{{ url_for('docket.member', enrollment_id=brief.number.closest.enrollment.id) }}">{{ brief.number.closest.enrollment.get_display_name() }}</a>, Week {{ brief.number.closest.week_number }}</span></span>
+                    <span class="docket-brief-fig">said {{ '%.1f'|format(brief.number.closest.guess_tenths / 10) }}, it was {{ '%.1f'|format(brief.number.closest.actual_tenths / 10) }}</span>
+                    <span class="docket-brief-fig docket-brief-fig--record">off by {{ '%.1f'|format(brief.number.closest.off_tenths / 10) }}</span>
+                </li>
+                {% endif %}
+                <li class="docket-brief-line docket-brief-line--field">
+                    <span class="docket-brief-label">Against the frozen total</span>
+                    <span class="docket-brief-fig docket-brief-fig--wide">{{ brief.number.over }} guessed over, {{ brief.number.under }} under{% if brief.number.on_the_number %}, {{ brief.number.on_the_number }} on the number{% endif %}</span>
+                </li>
+                {% for enrollment, weeks, avg in brief.number.rows %}
+                <li class="docket-brief-line{% if current_user.is_authenticated and enrollment.user_id == current_user.id %} is-you{% endif %}">
+                    <span class="docket-brief-label"><a class="docket-ledger-namelink" href="{{ url_for('docket.member', enrollment_id=enrollment.id) }}">{{ enrollment.get_display_name() }}</a></span>
+                    <span class="docket-brief-fig">{{ weeks }} week{{ 's' if weeks != 1 }}</span>
+                    <span class="docket-brief-fig docket-brief-fig--record">off by {{ '%.1f'|format(avg / 10) }}</span>
+                </li>
+                {% endfor %}
+            </ol>
+        </section>
+
+        {# 5. The members' rows #}
+        <section class="docket-brief-section" id="brief-members" aria-labelledby="brief-members-head">
+            <h2 id="brief-members-head" class="docket-section-head">The members' rows</h2>
+            <p class="docket-article-note">One line per member, in ledger order. Against the field counts a side held by fewer sheets than the other side of its market.{% if sort_key %} <span class="docket-ledger-sorted">Sorted by {{ sort_label }}, {{ 'descending' if sort_dir == 'desc' else 'ascending' }}; the rank column keeps the ledger's order. <a href="{{ url_for('docket.brief') }}">Ledger order &rsaquo;</a></span>{% endif %}</p>
+            {# Phone: the sheet's own ruled lines, figures stacked under the
+               name, and the sorts as a plain link row above them; the table
+               below is the wide composition (one source, two compositions,
+               the ledger's precedent). #}
+            <div class="docket-brief-phone">
+                <p class="docket-brief-sortrow docket-caption">Sort by
+                    {% for key, label in (('name', 'name'), ('contrarian', 'against the field'), ('favorites', 'favorites'), ('underdogs', 'underdogs'), ('x2', 'x2'), ('number', 'off by'), ('best', 'best week')) %}<a class="docket-brief-sortlink{% if sort_links[key].active %} is-active{% endif %}" href="{{ sort_links[key].href }}"{% if sort_links[key].active %} aria-current="true"{% endif %}>{{ label }}</a>{% if not loop.last %} · {% endif %}{% endfor %}
+                </p>
+                <ol class="docket-brief-lines docket-brief-members">
+                    {% for row in members %}
+                    {% set is_you = current_user.is_authenticated and row.enrollment.user_id == current_user.id %}
+                    <li class="docket-brief-member{% if is_you %} is-you{% endif %}">
+                        <span class="docket-brief-member-rank">{{ row.rank }}</span>
+                        <span class="docket-brief-member-name"><a class="docket-ledger-namelink" href="{{ url_for('docket.member', enrollment_id=row.enrollment.id) }}">{{ row.enrollment.get_display_name() }}</a>{% if is_you %}<span class="docket-you-tag">You</span>{% endif %}</span>
+                        <span class="docket-brief-member-keys">
+                            <span><b>{{ row.contrarian }} of {{ row.sides }}</b> against the field</span>
+                            <span><b>{{ row.favorites }}</b> fav · <b>{{ row.underdogs }}</b> dog · <b>{{ row.overs }}</b> over · <b>{{ row.unders }}</b> under</span>
+                            <span>x2 <b>{% if row.x2.decided %}{{ row.x2.label }}{% else %}&ndash;{% endif %}</b> · off by <b>{% if row.avg_off_tenths is not none %}{{ '%.1f'|format(row.avg_off_tenths / 10) }}{% else %}&ndash;{% endif %}</b> · best <b>{% if row.best_week %}{{ '%.1f'|format(row.best_points) }} in Wk {{ row.best_week }}{% else %}&ndash;{% endif %}</b></span>
+                        </span>
+                    </li>
+                    {% endfor %}
+                </ol>
+            </div>
+            <div class="table-responsive docket-brief-wide">
+                <table class="table docket-ledger-table docket-brief-table">
+                    <thead>
+                        <tr>
+                            <th scope="col" class="docket-ledger-rank-head">#</th>
+                            {{ sorthead('name', 'Member') }}
+                            {{ sorthead('contrarian', 'Against the field') }}
+                            {{ sorthead('favorites', 'Fav') }}
+                            {{ sorthead('underdogs', 'Dog') }}
+                            <th scope="col" class="docket-brief-th docket-brief-th--fig">Over / Under</th>
+                            {{ sorthead('x2', 'x2') }}
+                            {{ sorthead('number', 'Off by') }}
+                            {{ sorthead('best', 'Best week') }}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in members %}
+                        {% set is_you = current_user.is_authenticated and row.enrollment.user_id == current_user.id %}
+                        <tr class="{% if is_you %}row-current-user{% endif %}">
+                            <td class="docket-ledger-rank">{{ row.rank }}</td>
+                            <td><a class="docket-ledger-name docket-ledger-namelink" href="{{ url_for('docket.member', enrollment_id=row.enrollment.id) }}">{{ row.enrollment.get_display_name() }}</a>{% if is_you %}<span class="docket-you-tag">You</span>{% endif %}</td>
+                            <td class="docket-ledger-figure">{{ row.contrarian }} of {{ row.sides }}</td>
+                            <td class="docket-ledger-figure">{{ row.favorites }}</td>
+                            <td class="docket-ledger-figure">{{ row.underdogs }}</td>
+                            <td class="docket-ledger-figure">{{ row.overs }} / {{ row.unders }}</td>
+                            <td class="docket-ledger-figure">{% if row.x2.decided %}{{ record(row.x2) }}{% else %}<span class="docket-brief-quiet">&ndash;</span>{% endif %}</td>
+                            <td class="docket-ledger-figure">{% if row.avg_off_tenths is not none %}{{ '%.1f'|format(row.avg_off_tenths / 10) }}{% else %}<span class="docket-brief-quiet">&ndash;</span>{% endif %}</td>
+                            <td class="docket-ledger-figure">{% if row.best_week %}{{ '%.1f'|format(row.best_points) }} <span class="docket-caption">Wk {{ row.best_week }}</span>{% else %}<span class="docket-brief-quiet">&ndash;</span>{% endif %}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <p class="docket-caption docket-brief-foot">Read from the {{ brief.week_numbers|length }} graded week{{ 's' if brief.week_numbers|length != 1 }} on the record; a week still in play is not on the sheet. <a href="{{ url_for('docket.ledger') }}">The ledger &rsaquo;</a></p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

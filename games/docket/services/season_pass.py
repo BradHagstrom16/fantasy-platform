@@ -37,17 +37,66 @@ from games.docket.services.weeks import SEASON_YEAR, TOTAL_WEEKS
 
 
 @dataclass(frozen=True, slots=True)
+class Movement:
+    """What the latest graded week did to a line's rank (the ledger's
+    movement, DESIGN.md §8.12): the rank now against the rank the same
+    engine gave over every graded week but the last. ``delta`` is
+    positive going up the ledger. ``week_number`` is the week that moved
+    it. A season with one graded week has no movement (None on the row).
+    """
+    rank: int
+    previous_rank: int
+    week_number: int
+
+    @property
+    def delta(self) -> int:
+        return self.previous_rank - self.rank
+
+    @property
+    def direction(self) -> str:
+        """'up' | 'down' | 'held'."""
+        if self.delta > 0:
+            return 'up'
+        if self.delta < 0:
+            return 'down'
+        return 'held'
+
+    @property
+    def label(self) -> str:
+        """'up 2' / 'down 1' / 'held': the figure the ledger prints."""
+        if self.delta == 0:
+            return 'held'
+        return f'{self.direction} {abs(self.delta)}'
+
+    @property
+    def sentence(self) -> str:
+        """'up 2 in Week 4' / 'held in Week 4': the clause the standing
+        sentence and the record letter carry."""
+        return f'{self.label} in Week {self.week_number}'
+
+    @property
+    def spoken(self) -> str:
+        """'up 2 places since Week 3': the accessible name."""
+        places = 'place' if abs(self.delta) == 1 else 'places'
+        if self.delta == 0:
+            return f'held its place in Week {self.week_number}'
+        return f'{self.direction} {abs(self.delta)} {places} in Week {self.week_number}'
+
+
+@dataclass(frozen=True, slots=True)
 class LedgerRow:
     """One player's line: the ranked standing plus what it took to get there.
 
     ``enrollment`` carries the avatar and display name (the platform
     integration point); every number comes from ``standing`` and ``weeks``,
-    which the pure engine produced.
+    which the pure engine produced. ``move`` is the latest graded week's
+    effect on the rank (None until two weeks have graded).
     """
     standing: SeasonStanding
     enrollment: DocketEnrollment
     weeks: tuple[PlayerWeekRow, ...]
     prize_weeks: frozenset[int] = frozenset()  # weeks this line took or split
+    move: Movement | None = None
 
     @property
     def dropped_week(self) -> int | None:
@@ -97,6 +146,16 @@ class SeasonLedger:
     total_weeks: int                # TOTAL_WEEKS, never a literal
     season_complete: bool           # every week graded; gates the ceremony
     verdicts: tuple[LedgerVerdict, ...] = ()   # one per graded week
+    movement_week: int | None = None  # the graded week the rows' moves refer to
+
+    @property
+    def biggest_mover(self) -> 'LedgerRow | None':
+        """The line that climbed furthest on the latest graded week; the
+        higher rank wins a tie, None when nobody climbed."""
+        climbers = [r for r in self.rows if r.move is not None and r.move.delta > 0]
+        if not climbers:
+            return None
+        return max(climbers, key=lambda r: (r.move.delta, -r.standing.rank))
 
     @property
     def is_graded(self) -> bool:
@@ -183,6 +242,7 @@ def season_ledger(season_year: int = SEASON_YEAR) -> SeasonLedger:
 
     rollups = week_rollups_from_db()
     standings = season_standings(rollups, tuple(by_player_id))
+    moves = season_movement(rollups, tuple(by_player_id), standings)
 
     # The weekly verdicts: the engine names the week's top sheet(s); this
     # only joins the enrollments on. A result row for a player no longer on
@@ -213,6 +273,7 @@ def season_ledger(season_year: int = SEASON_YEAR) -> SeasonLedger:
             enrollment=by_player_id[standing.player_id],
             weeks=player_week_rows(rollups, standing.player_id),
             prize_weeks=frozenset(prize_weeks.get(standing.player_id, ())),
+            move=moves.get(standing.player_id),
         )
         for standing in standings
     ]
@@ -230,7 +291,27 @@ def season_ledger(season_year: int = SEASON_YEAR) -> SeasonLedger:
         total_weeks=TOTAL_WEEKS,
         season_complete=len(week_numbers) == TOTAL_WEEKS,
         verdicts=tuple(verdicts),
+        movement_week=rollups[-1].week_number if len(rollups) > 1 else None,
     )
+
+
+def season_movement(rollups, roster, standings=None) -> dict[str, Movement]:
+    """Each roster member's rank now against their rank over every graded
+    week but the last: the same pure ``season_standings`` twice, so the
+    drop moves the movement exactly as it moves the ledger. Empty until two
+    weeks have graded. ``standings`` may be passed to save the second pass
+    when the caller already ranked the full season."""
+    if len(rollups) < 2:
+        return {}
+    if standings is None:
+        standings = season_standings(rollups, roster)
+    before = {s.player_id: s.rank for s in season_standings(rollups[:-1], roster)}
+    week_number = rollups[-1].week_number
+    return {
+        s.player_id: Movement(rank=s.rank, previous_rank=before[s.player_id],
+                              week_number=week_number)
+        for s in standings
+    }
 
 
 def week_standings(week_number: int,

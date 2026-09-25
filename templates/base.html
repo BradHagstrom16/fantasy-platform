@@ -244,6 +244,8 @@
                        href="{{ url_for('docket.sheets') }}">All Sheets</a>
                     <a class="subnav-pill {% if request.endpoint == 'docket.ledger' %}active{% endif %}"
                        href="{{ url_for('docket.ledger') }}">Ledger</a>
+                    <a class="subnav-pill {% if request.endpoint == 'docket.brief' %}active{% endif %}"
+                       href="{{ url_for('docket.brief') }}">The Brief</a>
                     <a class="subnav-pill {% if request.endpoint == 'docket.rules' %}active{% endif %}"
                        href="{{ url_for('docket.rules') }}">Rules</a>
                     {% if current_user.is_authenticated and (current_user.is_admin or (docket_enrollment and docket_enrollment.is_admin)) %}
