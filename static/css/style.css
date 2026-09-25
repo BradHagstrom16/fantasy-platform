@@ -16756,6 +16756,29 @@ body.game-docket .back-link:focus-visible {
 }
 .docket-brief-member-keys b { font-family: 'Teko', sans-serif; font-weight: 600; font-size: 1.05rem; color: var(--text-primary); font-variant-numeric: tabular-nums; }
 .docket-brief-foot { margin: 1.5rem 0 0; }
+/* The hero lead keeps a reading measure on a wide screen. */
+.docket-brief-hero .lead { max-width: 60ch; }
+/* The short of it: the page's answer in plain sentences, a step larger than
+   the ledger lines under it, the figures in the sheet's Teko. */
+.docket-brief-line--short { font-size: 1.1rem; padding: .7rem 0; }
+.docket-brief-line--short .docket-brief-label { grid-column: 1 / -1; }
+.docket-brief-line--short .docket-brief-record { font-size: 1.25rem; }
+/* The doors into each section; each link keeps a 44px tap height without
+   loosening the line. */
+.docket-brief-toc { margin: .75rem 0 0; line-height: 1.6; }
+.docket-brief-toclink {
+  display: inline-block;
+  padding: .75rem 0;
+  margin: -.75rem 0;
+  color: var(--game-primary);
+  text-decoration: underline dotted;
+  text-decoration-color: var(--game-accent-light);
+  text-underline-offset: .2em;
+}
+.docket-brief-toclink:hover,
+.docket-brief-toclink:focus-visible { text-decoration-style: solid; }
+.docket-brief-section { scroll-margin-top: 1rem; }
+.docket-brief-unsaved { margin: .6rem 0 0; }
 .docket-ledger-brieflink {
   display: inline-block;
   margin-top: .35rem;

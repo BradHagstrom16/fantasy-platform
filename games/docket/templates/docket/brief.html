@@ -18,7 +18,7 @@
 </th>
 {%- endmacro %}
 
-<div class="page-hero docket-hero">
+<div class="page-hero docket-hero docket-brief-hero">
     <div class="container">
         <h1>The Brief</h1>
         <p class="lead">{% if brief.is_graded %}What the field does, who fades it, and how that went: every count from the {{ brief.week_numbers|length }} graded week{{ 's' if brief.week_numbers|length != 1 }} on the record, nothing from a week still in play.{% else %}What the field does, who fades it, and how that went. The Brief opens once the first week grades.{% endif %}</p>
@@ -36,10 +36,31 @@
     {% else %}
     <div class="docket-brief-sheet">
 
+        {# The short of it (critique P1, 2026-09-25): the page's answer before
+           its detail, then the doors into each section. Counts only. #}
+        {% set short = brief.short %}
+        {% if short %}
+        <section class="docket-brief-section" id="brief-short" aria-labelledby="brief-short-head">
+            <h2 id="brief-short-head" class="docket-section-head">The short of it</h2>
+            <ul class="docket-brief-lines docket-brief-short">
+                {% if short.leaning %}{% set better, worse = short.leaning %}
+                <li class="docket-brief-line docket-brief-line--short"><span class="docket-brief-label">{{ better.label }} are {{ record(better.record) }}; {{ worse.label|lower }} are {{ record(worse.record) }}.</span></li>
+                {% endif %}
+                {% if short.consensus.decided %}
+                <li class="docket-brief-line docket-brief-line--short"><span class="docket-brief-label">The week's most-held side has gone {{ record(short.consensus) }}.</span></li>
+                {% endif %}
+                <li class="docket-brief-line docket-brief-line--short"><span class="docket-brief-label">{% if short.fades.decided %}Sides taken against the field have gone {{ record(short.fades) }}.{% else %}No side has been taken against the field yet.{% endif %}</span></li>
+            </ul>
+            <nav class="docket-brief-toc docket-caption" aria-label="Sections of the Brief">
+                {% for anchor, label in (('brief-habits', 'Habits'), ('brief-consensus', 'Consensus'), ('brief-x2', 'Headliners'), ('brief-number', 'The number'), ('brief-members', 'Members')) %}<a class="docket-brief-toclink" href="#{{ anchor }}">{{ label }}</a>{% if not loop.last %}<span aria-hidden="true"> · </span>{% endif %}{% endfor %}
+            </nav>
+        </section>
+        {% endif %}
+
         {# 1. The field's habits #}
         <section class="docket-brief-section" id="brief-habits" aria-labelledby="brief-habits-head">
             <h2 id="brief-habits-head" class="docket-section-head">The field's habits</h2>
-            <p class="docket-article-note">Every scoring side filed across {{ weeks_counted|lower }}, by what it was: a favorite or an underdog by the frozen number, an over or an under. The record is the engine's grade.</p>
+            <p class="docket-article-note">Every side on every sheet across {{ weeks_counted|lower }}, reserves aside, sorted by what it was: a favorite or an underdog by the frozen line, an over or an under. The record is how those sides graded.</p>
             <ol class="docket-brief-lines">
                 {% for habit in brief.habits %}
                 <li class="docket-brief-line">
@@ -72,13 +93,13 @@
             </ol>
         </section>
 
-        {# 3. The x2 ledger #}
+        {# 3. The Headliners (the rules page's word for the x2) #}
         <section class="docket-brief-section" id="brief-x2" aria-labelledby="brief-x2-head">
-            <h2 id="brief-x2-head" class="docket-section-head">The x2 ledger</h2>
-            <p class="docket-article-note">The double, cashed and missed. The field first, then every sheet that has named one.</p>
+            <h2 id="brief-x2-head" class="docket-section-head">The Headliners</h2>
+            <p class="docket-article-note">The pick that scores double, cashed and missed. The field first, then every member who has named one.</p>
             <ol class="docket-brief-lines">
                 <li class="docket-brief-line docket-brief-line--field">
-                    <span class="docket-brief-label">The field's x2</span>
+                    <span class="docket-brief-label">The field's Headliners</span>
                     <span class="docket-brief-fig">{{ brief.x2_field.decided }} decided</span>
                     <span class="docket-brief-fig docket-brief-fig--record">{% if brief.x2_field.decided %}{{ record(brief.x2_field) }}{% else %}<span class="docket-brief-quiet">none decided</span>{% endif %}</span>
                 </li>
@@ -95,7 +116,7 @@
         {# 4. The number #}
         <section class="docket-brief-section" id="brief-number" aria-labelledby="brief-number-head">
             <h2 id="brief-number-head" class="docket-section-head">The number</h2>
-            <p class="docket-article-note">Every guess against the real combined score of the designated case. Off by is the average gap, in points, over the weeks a number was saved.</p>
+            <p class="docket-article-note">Every tiebreaker guess against the real combined score of that week's tiebreaker game. Off by is the average miss, in points, over the weeks a member saved a number.</p>
             <ol class="docket-brief-lines">
                 {% if brief.number.closest %}
                 <li class="docket-brief-line docket-brief-line--field">
@@ -104,18 +125,25 @@
                     <span class="docket-brief-fig docket-brief-fig--record">off by {{ '%.1f'|format(brief.number.closest.off_tenths / 10) }}</span>
                 </li>
                 {% endif %}
+                {% if brief.number.over or brief.number.under or brief.number.on_the_number %}
                 <li class="docket-brief-line docket-brief-line--field">
                     <span class="docket-brief-label">Against the frozen total</span>
                     <span class="docket-brief-fig docket-brief-fig--wide">{{ brief.number.over }} guessed over, {{ brief.number.under }} under{% if brief.number.on_the_number %}, {{ brief.number.on_the_number }} on the number{% endif %}</span>
                 </li>
+                {% endif %}
                 {% for enrollment, weeks, avg in brief.number.rows %}
                 <li class="docket-brief-line{% if current_user.is_authenticated and enrollment.user_id == current_user.id %} is-you{% endif %}">
                     <span class="docket-brief-label"><a class="docket-ledger-namelink" href="{{ url_for('docket.member', enrollment_id=enrollment.id) }}">{{ enrollment.get_display_name() }}</a></span>
                     <span class="docket-brief-fig">{{ weeks }} week{{ 's' if weeks != 1 }}</span>
                     <span class="docket-brief-fig docket-brief-fig--record">off by {{ '%.1f'|format(avg / 10) }}</span>
                 </li>
+                {% else %}
+                <li class="docket-brief-line"><span class="docket-brief-label docket-brief-quiet">No number saved in a graded week yet.</span></li>
                 {% endfor %}
             </ol>
+            {% if brief.number.rows and brief.number.unsaved %}
+            <p class="docket-caption docket-brief-unsaved">No number saved: {% for e in brief.number.unsaved %}<a class="docket-ledger-namelink" href="{{ url_for('docket.member', enrollment_id=e.id) }}">{{ e.get_display_name() }}</a>{{ ', ' if not loop.last }}{% endfor %}.</p>
+            {% endif %}
         </section>
 
         {# 5. How each member plays #}

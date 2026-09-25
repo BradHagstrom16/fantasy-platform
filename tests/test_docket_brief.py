@@ -244,6 +244,80 @@ def test_the_members_rows(app, season):
     assert ann.contrarian_share == 0.25
 
 
+def test_the_short_of_it(app, season):
+    """The page's answer first: the most lopsided habit pair (unders 1-0 vs
+    overs 0-1 splits wider than favorites 3-1 vs underdogs 2-2), the
+    most-held side's weeks (both won), and every fade (Cy's away A, Ann's
+    home C: both lost)."""
+    with app.app_context():
+        short = build_brief().short
+        better, worse = short.leaning
+    assert (better.key, better.record.label, worse.key, worse.record.label) == (
+        'unders', '1-0', 'overs', '0-1')
+    assert short.consensus.label == '2-0'
+    assert short.fades.label == '0-2'
+
+
+def test_the_leaning_needs_both_sides_decided_and_a_gap():
+    from games.docket.services.brief import Habit, Record, _leaning
+
+    def habits(fav, dog, over, under):
+        return tuple(Habit(key=k, label=k.title(), count=r.decided, record=r)
+                     for k, r in (('favorites', fav), ('underdogs', dog),
+                                  ('overs', over), ('unders', under)))
+
+    even = Record(wins=1, losses=1)
+    assert _leaning(habits(even, even, even, even)) is None          # no gap
+    assert _leaning(habits(Record(wins=3), Record(), even, even)) is None  # dogs undecided
+    better, worse = _leaning(habits(Record(wins=3), Record(losses=1), even, even))
+    assert (better.key, worse.key) == ('favorites', 'underdogs')
+
+
+def test_the_number_names_who_saved_none(app, client, season):
+    """Dee is on the ledger with a graded week but never saved a number:
+    the section names her rather than dropping her silently."""
+    with app.app_context():
+        dee = make_user('dee')
+        make_enrollment(dee, display_name='Dee')
+        from games.docket.models import DocketWeek
+        w1 = db.session.scalar(db.select(DocketWeek).filter_by(week_number=1))
+        _result(w1, dee, 0, 0, 505)
+        db.session.commit()
+        unsaved = build_brief().number.unsaved
+        assert [e.get_display_name() for e in unsaved] == ['Dee']
+        login(client, dee)
+    page = client.get('/docket/brief').get_data(as_text=True)
+    assert 'No number saved:' in page and '>Dee</a>.' in page
+
+
+def test_the_page_leads_with_the_short_of_it_and_its_doors(app, client, season):
+    with app.app_context():
+        from models.user import User
+        login(client, db.session.get(User, season['ann']))
+    page = client.get('/docket/brief').get_data(as_text=True)
+    short = page[page.index('id="brief-short"'):page.index('id="brief-habits"')]
+    assert 'The short of it' in short
+    assert 'Unders are' in short and 'overs are' in short
+    assert "The week's most-held side has gone" in short
+    assert 'Sides taken against the field have gone' in short
+    for anchor in ('brief-habits', 'brief-consensus', 'brief-x2', 'brief-number', 'brief-members'):
+        assert f'href="#{anchor}"' in short
+    # The rules page's words, not the engine's.
+    assert 'The Headliners' in page and 'x2 ledger' not in page
+    for jargon in ("engine's grade", 'designated case', 'scoring side'):
+        assert jargon not in page
+
+
+def test_no_guess_at_all_reads_as_an_empty_number(app, client, wolf_week):
+    with app.app_context():
+        from models.user import User
+        login(client, db.session.scalar(db.select(User).filter_by(username='ann')))
+    page = client.get('/docket/brief').get_data(as_text=True)
+    number = page[page.index('id="brief-number"'):page.index('id="brief-members"')]
+    assert 'No number saved in a graded week yet.' in number
+    assert 'guessed over' not in number and 'No number saved:' not in number
+
+
 def test_the_brief_is_empty_before_any_week_grades(app):
     with app.app_context():
         u = make_user('ann')

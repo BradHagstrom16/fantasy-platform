@@ -102,6 +102,7 @@ class NumberSection:
     over: int                    # guesses above the frozen total
     under: int
     on_the_number: int
+    unsaved: tuple = ()          # enrollments with no number in any graded week, by name
 
 
 @dataclass(frozen=True, slots=True)
@@ -127,6 +128,17 @@ class MemberRow:
 
 
 @dataclass(frozen=True, slots=True)
+class ShortOf:
+    """The page's answer before its detail (critique P1, 2026-09-25): the
+    field's most lopsided habit pair, how the most-held side did week to
+    week, and how the sides taken against the field did. Counts only; the
+    Brief never advises."""
+    leaning: tuple[Habit, Habit] | None   # (better, worse) of the wider split
+    consensus: Record                     # each graded week's most-held side
+    fades: Record                         # every side held against the field
+
+
+@dataclass(frozen=True, slots=True)
 class Brief:
     week_numbers: tuple[int, ...]
     sheets_graded: int
@@ -136,6 +148,7 @@ class Brief:
     x2_rows: tuple[X2Row, ...]
     number: NumberSection
     members: tuple[MemberRow, ...]
+    short: ShortOf | None = None
 
     @property
     def is_graded(self) -> bool:
@@ -304,8 +317,13 @@ def build_brief(ledger: SeasonLedger | None = None) -> Brief:
         ((rows_by_user[uid].enrollment, len(offs), round(sum(offs) / len(offs)))
          for uid, offs in offs_by_user.items()),
         key=lambda row: (row[2], row[0].get_display_name().casefold())))
+    unsaved = tuple(sorted(
+        (row.enrollment for row in ledger.rows
+         if row.enrollment.user_id not in offs_by_user),
+        key=lambda e: e.get_display_name().casefold()))
     number = NumberSection(rows=number_rows, closest=closest, over=over,
-                           under=under, on_the_number=on_the_number)
+                           under=under, on_the_number=on_the_number,
+                           unsaved=unsaved)
 
     # The members' rows, in ledger order.
     per_user = defaultdict(lambda: {'sides': 0, 'contrarian': 0, 'favorites': 0,
@@ -336,7 +354,37 @@ def build_brief(ledger: SeasonLedger | None = None) -> Brief:
             best_week=best.week_number if best else None,
             best_points=best.points if best else None))
 
+    short = ShortOf(
+        leaning=_leaning(habits),
+        consensus=_tally([w.result for w in week_consensus]),
+        fades=_tally([r for rs in contrarian_results.values() for r in rs]))
+
     return Brief(week_numbers=tuple(ledger.week_numbers),
                  sheets_graded=len({p.user_id for p, _r, _b in graded}),
                  habits=habits, weeks=tuple(week_consensus), x2_field=x2_field,
-                 x2_rows=x2_rows, number=number, members=tuple(members))
+                 x2_rows=x2_rows, number=number, members=tuple(members),
+                 short=short)
+
+
+def _win_share(record: Record) -> float:
+    """Wins over decided, a push counting half (the record's own weight)."""
+    return (record.wins + record.pushes / 2) / record.decided
+
+
+def _leaning(habits) -> tuple[Habit, Habit] | None:
+    """The market pair (favorites/underdogs, overs/unders) whose two sides
+    did the most differently, better side first; None until both sides of
+    some pair have a decided result. A dead-even pair says nothing."""
+    by_key = {h.key: h for h in habits}
+    best = None
+    for a, b in (('favorites', 'underdogs'), ('overs', 'unders')):
+        one, two = by_key[a], by_key[b]
+        if not (one.record.decided and two.record.decided):
+            continue
+        gap = _win_share(one.record) - _win_share(two.record)
+        if gap == 0:
+            continue
+        pair = (one, two) if gap > 0 else (two, one)
+        if best is None or abs(gap) > best[0]:
+            best = (abs(gap), pair)
+    return best[1] if best else None

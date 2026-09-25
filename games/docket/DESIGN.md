@@ -1125,7 +1125,19 @@ fading the field". Members only. The record argues; the page does not.
   side with `sheets._result` (the engine's rule, never a second one), excludes reserve slots,
   and makes no market call and no API call. Every count carries its denominator. The hero
   lead states the evidence (every count from the N graded weeks on the record; no eyebrow,
-  ADR-066); the foot restates it with the way back ("The ledger ›").
+  ADR-066), held to a 60ch measure (`.docket-brief-hero .lead`); the foot restates it with the
+  way back ("The ledger ›").
+- **The short of it (critique P1, 2026-09-25).** The page answers before it details: the
+  first section is `ShortOf`, three plain sentences on `.docket-brief-line--short` (a step
+  larger, the figures in Teko): the market pair whose two sides did most differently, better
+  side first ("Unders are 20-7; overs are 7-21."; none until both sides of a pair have a
+  decided side, none on a dead-even pair), the week's most-held side's record, and the record of
+  every side taken against the field ("No side has been taken against the field yet." before
+  one). Counts, never advice. Under it `.docket-brief-toc`, the doors into each section
+  (Habits · Consensus · Headliners · The number · Members, 44px tap height).
+- **Words (clarify pass 2026-09-25).** The rules page's vocabulary, never the engine's: "side",
+  "the frozen line", "the tiebreaker game", "the Headliner" for the x2; no "engine's grade",
+  "scoring side" or "designated case" on the page (test-locked).
 - **Composition: The Clerk's Tally Sheet** (the dealt lead, seed d7aa686a, Brad's choice on the
   decision page). One white sheet (`.docket-brief-sheet`: `--bg-card`, `--radius-lg`,
   `--shadow-md`, max 62rem) of `.docket-section-head`s over `.docket-brief-line`s ruled by
@@ -1133,7 +1145,7 @@ fading the field". Members only. The record argues; the page does not.
   (`.docket-brief-fig`), records in Teko 600 (`.docket-brief-record`, W success and L danger).
   It refuses the stats dashboard: no cards inside the sheet, no charts. Garnet touches only the
   reader's own line (`.is-you`, the ledger row's 8% tint).
-- **The five sections.** *The field's habits*: Favorites / Underdogs by the frozen number from
+- **The five sections under it.** *The field's habits*: Favorites / Underdogs by the frozen number from
   the picked side (a pick'em is neither) and Overs / Unders, each "N taken" plus its record.
   *Consensus and the lone wolf*: per graded week (`.docket-brief-week`), the most-held side,
   "3 of 6 sheets", its verdict as the room's `.docket-sheet-result` stamp; under it ONE
@@ -1142,10 +1154,12 @@ fading the field". Members only. The record argues; the page does not.
   that won against the biggest crowd on the other side of its market, at least two sheets (the
   page's own "against the field"), a tie to the earliest kickoff. "LONE WOLF Name on Clemson
   +7, against 4 sheets · caption", the name linking the member page, else "No lone wolf this
-  week: no sheet won alone against a crowd." *The x2 ledger*: "The field's x2" first, then every
-  sheet that named one, by wins. *The number*: the closest call ("said 47.0, it was 45.0", "off
-  by 2.0"), guesses over / under / on the frozen total in counts, then each member's average
-  off by ascending. *How each member plays* (clarify pass 2026-09-25; it was "The members' rows" and nobody,
+  week: no sheet won alone against a crowd." *The Headliners* (was "The x2 ledger"; the rules page's
+  word): "The field's Headliners" first, then every member who named one, by wins. *The number*: the closest call ("said 47.0, it was 45.0", "off
+  by 2.0"), guesses over / under / on the frozen total in counts (only once a guess exists), then each
+  member's average off by ascending; a member on the ledger with no number in any graded week is
+  named under it ("No number saved: …", `NumberSection.unsaved`), and with no guess at all the
+  section reads "No number saved in a graded week yet." *How each member plays* (clarify pass 2026-09-25; it was "The members' rows" and nobody,
   the commish included, could say what it showed): rank in ledger order, against the field
   ("6 of 24", sides held by fewer sheets than the market's other side, with the record of those
   sides beside it, which is the "how that went" the hero lead promises), Favorites, Underdogs,
