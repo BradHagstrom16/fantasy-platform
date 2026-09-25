@@ -37,7 +37,8 @@ ROOM_TEMPLATES = sorted(
 
 EYEBROW = re.compile(r'class="[^"]*\b[a-z-]*eyebrow\b')
 TAG = re.compile(r'<(/?)([a-zA-Z][a-zA-Z0-9]*)\b([^>]*)>')
-HEADING_CLASS = re.compile(r'class="[^"]*(?:headline|title|settle-tab-lead)')
+HEADING_CLASS = re.compile(
+    r'class="[^"]*(?:headline|title|settle-tab-lead|champion-name)')
 
 
 def _strip_jinja(source: str) -> str:

@@ -1074,3 +1074,19 @@ def test_merged_reminder_keeps_one_cta_and_the_rider_before_the_tab(app):
     # The anchor's own words are the ones a single-game reminder carries.
     assert f'Make your pick: {SITE}/cfb/' in plain
     assert 'Sent to you as a member of CFB Survivor 2026.' in plain
+
+
+def test_golf_final_reminder_says_the_time_actually_left(app):
+    """The final window spans T-1h +/- 35 min, so the headline and lede say
+    the countdown, never a flat "one hour" (the CFB final tier's rule)."""
+    from games.golf.services.reminders import _reminder_letter
+    with app.app_context():
+        letter = _reminder_letter(
+            tournament_name='The Memorial', deadline_short='Thursday, Jun 4 · 7:00 AM CT',
+            time_remaining='1 hour, 30 minutes', purse=20_000_000, golfers_used=4,
+            pick_url='https://cccfantasy.com/golf/pick/1',
+            window={'hours': 1, 'type': 'final'}, season_year=2026)
+    assert letter.headline == ("Golf Pick 'Em, The Memorial: final call, "
+                               "about 1 hour, 30 minutes left")
+    assert letter.lede == ['Your pick for The Memorial is not in and the '
+                           'deadline is about 1 hour, 30 minutes away.']

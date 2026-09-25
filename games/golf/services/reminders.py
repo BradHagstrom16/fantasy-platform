@@ -237,9 +237,12 @@ def _reminder_letter(*, tournament_name, deadline_short, time_remaining,
     """
     if window['type'] == 'final':
         subject = f'FINAL, 1 hour left: Golf, {tournament_name}'
-        headline = f"Golf Pick 'Em, {tournament_name}: final call, one hour left"
+        # The final window is T-1h +/- TOLERANCE_MINUTES, so the body says
+        # the time actually left, never a flat "one hour" (CFB's rule too).
+        headline = (f"Golf Pick 'Em, {tournament_name}: final call, "
+                    f"about {time_remaining} left")
         lede = [f'Your pick for {tournament_name} is not in and the deadline '
-                f'is less than an hour away.']
+                f'is about {time_remaining} away.']
     elif window['type'] == 'reminder':
         subject = f'Pick due in 12 hours: Golf, {tournament_name}'
         headline = f"Golf Pick 'Em, {tournament_name}: your pick is due in 12 hours"

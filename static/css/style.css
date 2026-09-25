@@ -5471,15 +5471,9 @@ body.game-cfb .alert-warning { background: rgba(243,239,230,.05); border-color: 
   pointer-events: none;
 }
 /* Ceremony by reduction (games/cfb/DESIGN.md S4): the lights stay on, the room
-   goes quiet, one survivor remains. A restrained crimson eyebrow ("ONE REMAINS")
-   replaces the trophy-overload emoji -- conclusive, not triumphant, no gold. */
-.championship-hero .cfb-eyebrow {
-  display: block;
-  margin-bottom: 1rem;
-  color: rgba(243,239,230,.85);
-  position: relative;
-  animation: fadeInUp .5s ease both;
-}
+   goes quiet, one survivor remains. The champion's name opens the hero, no
+   trophy emoji and no eyebrow above it (ADR-066) -- conclusive, not
+   triumphant, no gold. */
 .championship-hero .champion-name {
   font-family: 'Teko', sans-serif;
   font-size: clamp(2.4rem, 6vw, 3.5rem);
@@ -7095,7 +7089,6 @@ body.game-cfb .list-group {
   border-top: 2px solid var(--cfb-survived);
   border-radius: var(--radius-lg);
 }
-.cfb-archive-champion .cfb-eyebrow { display: block; margin-bottom: .5rem; }
 .cfb-archive-champion-name {
   font-family: 'Teko', sans-serif;
   font-weight: 700;

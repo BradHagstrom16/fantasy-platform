@@ -9,7 +9,6 @@
    ═══════════════════════════════════════════════════════════════ #}
 
 <div class="championship-hero animate-in">
-    <span class="cfb-eyebrow">One Remains</span>
     <span class="champion-name"><span class="me-2">{{ enrollments[0].user.get_avatar() }}</span><a class="cfb-name-link" href="{{ url_for('cfb.player', enrollment_id=enrollments[0].id) }}">{{ enrollments[0].get_display_name() }}</a></span>
     <span class="champion-subtitle">CFB Survivor Pool Champion</span>
     <p>Outlasting {{ eliminated_enrollments|length }} competitors through {{ weeks_played }} weeks of college football.</p>
