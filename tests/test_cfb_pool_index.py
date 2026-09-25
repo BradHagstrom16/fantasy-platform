@@ -86,7 +86,7 @@ def test_index_renders_pool_section_for_anonymous(client, app):
 
     html = client.get('/cfb/').get_data(as_text=True)
 
-    assert 'The Pool' in html
+    assert 'cfb-pool-headline' in html
     assert '6' in html and 'eligible teams' in html
     # every team name is listed
     for name in ['Alabama', 'Georgia', 'Tennessee', 'Michigan',

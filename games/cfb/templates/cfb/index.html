@@ -9,7 +9,6 @@
    ═══════════════════════════════════════════════════════════════ #}
 
 <div class="championship-hero animate-in">
-    <span class="cfb-eyebrow">One Remains</span>
     <span class="champion-name"><span class="me-2">{{ enrollments[0].user.get_avatar() }}</span><a class="cfb-name-link" href="{{ url_for('cfb.player', enrollment_id=enrollments[0].id) }}">{{ enrollments[0].get_display_name() }}</a></span>
     <span class="champion-subtitle">CFB Survivor Pool Champion</span>
     <p>Outlasting {{ eliminated_enrollments|length }} competitors through {{ weeks_played }} weeks of college football.</p>
@@ -144,10 +143,9 @@
 <div class="page-hero cfb-hero">
     <div class="hero-glow"></div>
     <div class="container">
-        {# The masthead orients (9.2): the identity eyebrow while a week is
-           open, the reveal week's state while it is unfinished or just
-           settled (ruled 2026-09-08). Built in the route, one source. #}
-        <span class="cfb-eyebrow">{{ hero_eyebrow }}</span>
+        {# The masthead is the H1 and the field (ADR-066: no eyebrow above
+           it). The reveal week's state lives in the lead panel below, which
+           leads with the week (9.2, ruled 2026-09-08). #}
         <h1>The Survivors</h1>
         <p class="cfb-hero-field">
             <span class="cfb-count">{{ enrollments|length }}</span> still standing{% if eliminated_enrollments %}<span class="cfb-hero-field-sep" aria-hidden="true">&middot;</span><span class="cfb-count cfb-count-cut">{{ eliminated_enrollments|length }}</span> cut{% endif %}
@@ -188,16 +186,15 @@
                or the overlap with the next week's call below), or its verdict
                while nothing newer is open (DESIGN.md 4.1, 9.2; ruled
                2026-09-08). The verdict family's shape: raised surface, an
-               outcome-colored top rule, eyebrow → headline → supporting line
+               outcome-colored top rule, headline → supporting line
                → the viewer's own line. Never a pick control: there is nothing
                to pick in here. #}
             {% if lead_card %}
             <div class="cfb-week-lead is-{{ lead_card.tone }} mb-4 animate-in stagger-1">
                 <div class="cfb-week-lead-main">
-                    <span class="cfb-eyebrow">{{ lead_card.eyebrow }}</span>
                     <div class="cfb-week-lead-headline">{{ lead_card.headline }}</div>
                     {% if lead_card.derivation %}
-                    <p class="cfb-week-lead-line">{{ lead_card.derivation }}</p>
+                    <p class="cfb-week-lead-line">{{ lead_card.state }}. {{ lead_card.derivation }}</p>
                     {% endif %}
                     {% if lead_card.pick %}
                     <div class="cfb-week-lead-pick">
@@ -290,7 +287,7 @@
             {# Settle the Tab: enrolled + unpaid only (gate in the context
                processor). Sits under the weekly call, never above it: the
                pick stays the page's center of gravity (DESIGN.md §7.1). #}
-            {% with eyebrow_class='cfb-eyebrow' %}{% include '_settle_tab.html' %}{% endwith %}
+            {% include '_settle_tab.html' %}
 
             {# Standings Table. The pick column belongs to the reveal week
                (the latest week whose deadline has passed), never the week
@@ -446,7 +443,6 @@
        section (DESIGN.md 9.7); quiet bone, no crimson/gold, no glyph. #}
     {% if pool_by_conference %}
     <section class="cfb-pool animate-in stagger-5" aria-labelledby="cfb-pool-heading">
-        <span class="cfb-eyebrow">The Pool</span>
         <h2 id="cfb-pool-heading" class="cfb-pool-headline">
             <span class="cfb-count">{{ pool_total }}</span> eligible {{ 'team' if pool_total == 1 else 'teams' }} across
             <span class="cfb-count">{{ pool_conference_count }}</span> {{ 'conference' if pool_conference_count == 1 else 'conferences' }}

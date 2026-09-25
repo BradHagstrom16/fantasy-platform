@@ -3,11 +3,11 @@
 
 {% block content %}
 {# Page Hero - the season ledger. Survivor voice (games/cfb/DESIGN.md S3):
-   "Your Card" is the player's own card so far; the week rides the eyebrow. #}
+   "Your Card" is the player's own card so far; the week rides the page
+   title and the row's "This Week" chip (no eyebrow, ADR-066). #}
 <div class="page-hero cfb-hero">
     <div class="hero-glow"></div>
     <div class="container">
-        <span class="cfb-eyebrow">{% if current_week_display %}{{ current_week_display.display_name }} &middot; {% endif %}Your Season</span>
         <h1>Your Card</h1>
         <p class="lead">Every team you've spent, every life on the line, and the slate still open to you.</p>
     </div>
@@ -28,7 +28,6 @@
     {% set lives = enrollment.lives_remaining %}
     <div class="cfb-season-lead animate-in {% if enrollment.is_eliminated %}is-lost{% elif lives == 1 %}is-pending{% else %}is-survived{% endif %}">
         <div class="cfb-season-lead-main">
-            <span class="cfb-eyebrow">Your Standing</span>
             <div class="cfb-season-headline cfb-team-name">{% if enrollment.is_eliminated %}Eliminated{% elif lives == 1 %}Final Life{% else %}Still Standing{% endif %}</div>
             <p class="cfb-season-derivation">
                 {% if enrollment.is_eliminated %}Your season is over. The card below is the record of how it ran.
@@ -46,7 +45,7 @@
     </div>
 
     {# Settle the Tab: enrolled + unpaid only (gate in the context processor). #}
-    {% with eyebrow_class='cfb-eyebrow' %}{% include '_settle_tab.html' %}{% endwith %}
+    {% include '_settle_tab.html' %}
 
     {# Season record - one editorial line, not a stat grid (the four-up
        hero-metric template is a platform absolute ban). Numbers carry Teko

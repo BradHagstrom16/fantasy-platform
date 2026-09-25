@@ -8,9 +8,8 @@
 <div class="page-hero cfb-hero">
   <div class="hero-glow"></div>
   <div class="container">
-    <span class="cfb-eyebrow">{{ get_week_display_name(week) }} &middot; Survival Desk</span>
     <h1>{% if is_cut_week %}The Cut{% else %}Saturday's Verdict{% endif %}</h1>
-    <p class="lead">{% if pending_picks %}Games are still being played. Verdicts land as each game goes final.{% elif is_cut_week %}The slate is settled and the field is thinner. Who survived, and who was cut.{% else %}The slate is settled. Who survived the week, and who spent a life.{% endif %}</p>
+    <p class="lead">{{ get_week_display_name(week) }}. {% if pending_picks %}Games are still being played. Verdicts land as each game goes final.{% elif is_cut_week %}The slate is settled and the field is thinner. Who survived, and who was cut.{% else %}The slate is settled. Who survived the week, and who spent a life.{% endif %}</p>
   </div>
 </div>
 

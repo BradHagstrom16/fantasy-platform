@@ -77,7 +77,7 @@ def test_gate_suppressed_for_platform_admin(app):
 
 def _assert_nudge(body, app):
     text = unescape(body)
-    assert 'Settle the Tab' in text
+    assert 'Now square up.' in text
     assert 'https://venmo.com/' + app.config['PAYMENT_VENMO_HANDLE'] in text
     assert 'txn=pay&amount=' + str(app.config['CFB_ENTRY_FEE']) in text
     assert app.config['PAYMENT_ZELLE_PHONE'] in text
@@ -95,7 +95,7 @@ def test_index_shows_nudge_even_before_any_week_exists(client, app):
     user, _ = _member('early')
     _login(client, user)
     body = client.get('/cfb/').get_data(as_text=True)
-    assert 'Settle the Tab' in body
+    assert 'Now square up.' in body
 
 
 def test_pick_page_shows_nudge_below_the_call(client, app):
@@ -105,7 +105,7 @@ def test_pick_page_shows_nudge_below_the_call(client, app):
     body = client.get('/cfb/pick/1').get_data(as_text=True)
     _assert_nudge(body, app)
     # The pick is the page's center of gravity: the tab sits under it.
-    assert body.index('Picks Lock') < body.index('Settle the Tab')
+    assert body.index('Picks Lock') < body.index('Now square up.')
 
 
 def test_my_picks_shows_nudge(client, app):
@@ -118,17 +118,17 @@ def test_nudge_hidden_for_paid_member(client):
     user, _ = _member('settled', has_paid=True)
     _login(client, user)
     for path in ('/cfb/', '/cfb/my-picks'):
-        assert 'Settle the Tab' not in client.get(path).get_data(as_text=True)
+        assert 'Now square up.' not in client.get(path).get_data(as_text=True)
 
 
 def test_nudge_hidden_for_platform_admin(client):
     user, _ = _member('brad', is_admin=True)
     _login(client, user)
-    assert 'Settle the Tab' not in client.get('/cfb/').get_data(as_text=True)
+    assert 'Now square up.' not in client.get('/cfb/').get_data(as_text=True)
 
 
 def test_nudge_absent_for_anonymous_visitor(client):
-    assert 'Settle the Tab' not in client.get('/cfb/').get_data(as_text=True)
+    assert 'Now square up.' not in client.get('/cfb/').get_data(as_text=True)
 
 
 def test_no_member_self_mark_control(client):

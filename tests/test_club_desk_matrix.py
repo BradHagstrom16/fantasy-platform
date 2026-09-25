@@ -95,6 +95,25 @@ def test_reminder_slot(app, slot, survivor, docket_state):
     assert run.latched == latches
 
 
+def test_paper_names_a_survivor_round(app):
+    """A Survivor-only Paper in a named week says the round, as every
+    other CFB letter does (get_week_display_name), never the bare number."""
+    app.config['SITE_URL'] = SITE
+    seeded = seed('picked', 'none')
+    seeded.cfb.week4.round_name = 'CFP Quarterfinals'
+    db.session.commit()
+
+    sent, patcher = capture()
+    cfb_open, docket_open = paper_openers(seeded)
+    with patcher, cfb_open, docket_open:
+        run_paper(PAPER_AT)
+
+    assert len(sent) == 1
+    assert sent[0]['subject'] == 'Picks are open: CFB Survivor, CFP Quarterfinals'
+    assert sent[0]['plain'].startswith(
+        'CFB Survivor, CFP Quarterfinals: picks are open\n')
+
+
 def _expect_paper(survivor, docket_state):
     """(subject, sections, latches) for the Paper in a week both games open
     and the Docket's previous week is not yet graded."""
@@ -139,9 +158,13 @@ def test_paper(app, survivor, docket_state):
         assert letter['to'] == 'member@test.com'
         assert letter['subject'] == subject
         plain, html = letter['plain'], letter['html']
-        assert ('CFB SURVIVOR · WEEK 4' in plain.upper()) is ('cfb' in sections)
-        assert ('THE DOCKET · WEEK 4' in plain.upper()) is ('docket' in sections)
+        assert ('CFB SURVIVOR' in plain.upper()) is ('cfb' in sections)
+        assert ('THE DOCKET' in plain.upper()) is ('docket' in sections)
         if len(sections) == 2:
+            # The Paper's name and week head it; the state opens the lede
+            # (ADR-066: no eyebrow above the heading).
+            assert plain.startswith('The Morning Line, Week 4\n')
+            assert 'Both boards are open. Last week is in the books' in plain
             assert html.count('class="cta"') == 0
             assert html.count('class="section-cta"') == \
                 (2 if survivor != 'eliminated' else 1)
@@ -161,6 +184,8 @@ def test_paper(app, survivor, docket_state):
                 assert 'Survivor locks: Saturday, Sep 26 · 11:00 AM CT' in plain
             assert 'The docket closes: Sunday, Sep 27 · 12:00 PM CT' in plain
         else:
+            game = {'cfb': 'CFB Survivor', 'docket': 'The Docket'}[sections[0]]
+            assert plain.startswith(f'{game}, Week 4: picks are open\n')
             assert html.count('class="cta"') == 1
             assert 'class="section-cta"' not in html
 

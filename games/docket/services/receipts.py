@@ -98,7 +98,7 @@ def sheet_receipt_letter(week, state, picks, nudge):
     return letter(
         week,
         subject=f'Sheet filed: The Docket, Week {number}',
-        headline=f'Your Week {number} sheet is filed',
+        headline='your sheet is filed',
         preheader=f'Eight sides held. The docket closes {deadline}.',
         lede=['All eight sides are held. This is your sheet as it stands; '
               'change anything until the docket closes.'],

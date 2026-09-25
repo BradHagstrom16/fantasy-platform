@@ -179,7 +179,7 @@ def reminder_letter(recipient, context, tier):
     return letter(
         week,
         subject=SUBJECTS[tier].format(n=week.week_number),
-        headline=f'Your Week {week.week_number} sheet is not finished',
+        headline='your sheet is not finished',
         preheader=f'The docket closes {deadline}.',
         lede=[COUNTDOWNS[tier]],
         facts=[('Deadline', deadline)],

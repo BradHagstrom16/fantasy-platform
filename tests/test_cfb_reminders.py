@@ -375,7 +375,7 @@ def test_final_copy_says_the_time_actually_left(app):
                         side_effect=lambda ids, **kw: pushed.append(kw)):
         _run_reminders_at(FIRST_FINAL_INSTANT)
     assert sent[0]['subject'] == 'FINAL, 2 hours left: CFB Survivor, Week 1'
-    assert 'Final call: 2 hours left' in sent[0]['body']
+    assert 'CFB Survivor, Week 1: final call, 2 hours left' in sent[0]['body']
     assert 'the deadline is 2 hours away' in sent[0]['body']
     assert pushed[0]['body'] == 'Picks lock in 2 hours. No pick on file.'
 

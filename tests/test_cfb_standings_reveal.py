@@ -12,7 +12,7 @@ the pick CTA and the countdown keep following the active week.
 
 2026-09-08: half a split was worse than none (the hero said Week 2 above a
 Week 1 table). The room now leads with the reveal week while it is
-unfinished — hero eyebrow, a lead panel, My Picks — and the active week's
+unfinished — a lead panel headed with the week, My Picks — and the active week's
 call rides below it as a second panel (``games/cfb/services/week_state.py``,
 states open | locked | overlap | verdict | none).
 """
@@ -150,7 +150,7 @@ def test_nothing_locked_yet_keeps_the_picks_hidden(app, client, monkeypatch):
 
 def test_locked_week_leads_with_pending_matchups(app, client, monkeypatch):
     """Saturday night: Week 1 is locked with the Monday game still to play
-    and nothing newer is open. The hero eyebrow and a lead panel say so —
+    and nothing newer is open. The lead panel says so, headed with the week —
     the game, its kickoff, the viewer's pick with its LOCKED chip — and
     there is no call to make a pick, because there is nothing to pick in."""
     _week_1()
@@ -159,10 +159,9 @@ def test_locked_week_leads_with_pending_matchups(app, client, monkeypatch):
 
     html = client.get('/cfb/').get_data(as_text=True)
 
-    assert 'Week 1 · Locked · 1 game to go' in html
     assert 'cfb-week-lead' in html
-    assert 'SMU at Florida State' in html
-    assert 'Kickoff Monday, Sep 7 · 6:30 PM CT' in html
+    assert 'Week 1: SMU at Florida State' in html
+    assert 'Locked. Kickoff Monday, Sep 7 · 6:30 PM CT.' in html
     assert 'Your pick' in html and 'Florida State' in html
     assert 'badge-pending' in html
     assert html.index('cfb-week-lead') < html.index('Active Players')
@@ -181,7 +180,7 @@ def test_overlap_orders_lead_panel_before_pick_call(app, client, monkeypatch):
 
     html = client.get('/cfb/').get_data(as_text=True)
 
-    assert 'Week 1 · Locked · 1 game to go' in html
+    assert 'Week 1: SMU at Florida State' in html
     assert html.index('cfb-week-lead') < html.index('cfb-pick-cta')
     assert html.index('cfb-pick-cta') < html.index('Active Players')
     assert 'href="/cfb/pick/2"' in html and 'Make Your Pick' in html
@@ -202,9 +201,8 @@ def test_verdict_state_when_no_week_is_open(app, client, monkeypatch):
 
     html = client.get('/cfb/').get_data(as_text=True)
 
-    assert 'Week 1 · Final' in html
-    assert 'Survived.' in html
-    assert 'Florida State beat SMU' in html
+    assert 'Week 1: Survived.' in html
+    assert 'Final. Florida State beat SMU' in html
     assert 'Week 2 opens with its lines.' in html
     assert 'Make Your Pick' not in html
     assert 'Picks lock' not in html
@@ -224,8 +222,8 @@ def test_verdict_lead_says_lost_a_life_for_the_loser(app, client, monkeypatch):
 
 def test_open_state_keeps_the_weekly_call_as_the_lead(app, client, monkeypatch):
     """Ordinary Tuesday afternoon: Week 1 complete, Week 2 open. No lead
-    panel — the weekly call is the room's center of gravity, the hero keeps
-    its identity eyebrow, and the table shows Week 1's verdicts with the note."""
+    panel — the weekly call is the room's center of gravity, the hero is
+    the H1 alone, and the table shows Week 1's verdicts with the note."""
     _, teams = _week_1(monday_final=True)
     _week_2(teams)
     _login(client, 'waiter')
@@ -234,12 +232,12 @@ def test_open_state_keeps_the_weekly_call_as_the_lead(app, client, monkeypatch):
     html = client.get('/cfb/').get_data(as_text=True)
 
     assert 'cfb-week-lead' not in html
-    assert 'Under the Lights' in html
+    assert 'Under the Lights' not in html          # no hero eyebrow (ADR-066)
     assert 'Make Your Pick' in html
     assert 'until Week 2 locks' in html
 
 
-def test_my_picks_eyebrow_follows_the_lead_week(app, client, monkeypatch):
+def test_my_picks_follows_the_lead_week(app, client, monkeypatch):
     """Monday night: Your Card is about Week 1 (pending), not the open
     Week 2, and the "This Week" chip sits on the Week 1 row."""
     _, teams = _week_1()
@@ -254,6 +252,5 @@ def test_my_picks_eyebrow_follows_the_lead_week(app, client, monkeypatch):
     html = client.get('/cfb/my-picks').get_data(as_text=True)
 
     assert 'Your Card &middot; Week 1 &middot;' in html
-    assert 'Week 1 &middot; Your Season' in html
     assert html.count('cfb-now-tag') == 1
     assert html.index('cfb-now-tag') < html.index('Week 2</strong>')

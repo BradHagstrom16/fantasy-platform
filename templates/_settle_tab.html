@@ -7,9 +7,8 @@
    utils/payment.py: the Commish's Venmo (amount + memo pre-filled, so the
    member only confirms) and Zelle number.
 
-   Reads one optional include-local: `eyebrow_class` — the room's eyebrow
-   primitive (`cfb-eyebrow` / `docket-eyebrow`), passed via {% with %}.
-   The card wears the room's own `.card` skin; `.settle-tab` adds the gold
+   "You're in. Now square up." is the card's heading: no eyebrow above it
+   (ADR-066). The card wears the room's own `.card` skin; `.settle-tab` adds the gold
    top rule (money = CCC gold, both rooms) and the bill layout.
 
    Payment stays admin-confirmed: there is deliberately NO member-facing
@@ -22,7 +21,6 @@
 <div class="card settle-tab mb-4 animate-in">
   <div class="card-body settle-tab-body">
     <div class="settle-tab-text">
-      <span class="{{ eyebrow_class|default('settle-tab-eyebrow') }}">Settle the Tab</span>
       <p class="settle-tab-lead">You&rsquo;re in. Now square up.</p>
       <p class="settle-tab-copy">
         The Commish collects ${{ payment_nudge.entry_fee }} to make your spot

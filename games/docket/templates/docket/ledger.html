@@ -79,7 +79,6 @@ finish review, the verdict, and DESIGN.md.
 -->
 <div class="page-hero docket-hero">
     <div class="container">
-        <span class="docket-eyebrow">The Commissioner's Court</span>
         <h1>The Season Ledger</h1>
         <p class="lead mb-0">
             {% if ledger.is_graded %}
@@ -93,7 +92,7 @@ finish review, the verdict, and DESIGN.md.
 
 <div class="container docket-ledger-page">
     {# Settle the Tab: enrolled + unpaid only (gate in the context processor). #}
-    {% with eyebrow_class='docket-eyebrow' %}{% include '_settle_tab.html' %}{% endwith %}
+    {% include '_settle_tab.html' %}
 
     {# The live current-week board no longer sits in its own slab (Brad,
        2026-09-09: "one leaderboard"). Each ranked line below carries a live
@@ -104,7 +103,6 @@ finish review, the verdict, and DESIGN.md.
     {# No members at all: the docket has not been called yet. #}
     <div class="docket-empty card border-0 animate-in">
         <div class="card-body">
-            <span class="docket-eyebrow docket-eyebrow-ink">No appearances</span>
             <h2 class="docket-empty-title">The docket has no members yet</h2>
             <p class="docket-empty-copy">Once players join, every graded week
                 posts to this ledger. Court convenes {{ season_opens_label }}.</p>
@@ -115,7 +113,6 @@ finish review, the verdict, and DESIGN.md.
     {# The state this ships in: a roster exists, nothing has been graded. #}
     <div class="docket-empty card border-0 animate-in">
         <div class="card-body">
-            <span class="docket-eyebrow docket-eyebrow-ink">Awaiting verdicts</span>
             <h2 class="docket-empty-title">The ledger opens with the first verdicts</h2>
             <p class="docket-empty-copy">Nothing has been graded yet. Scores land
                 Sunday evening and the first week posts here as soon as every case
@@ -147,7 +144,6 @@ finish review, the verdict, and DESIGN.md.
     {# The room's one ceremonial dark surface, and its only appearance: the
        season is over and the record is closed (DESIGN.md 6.10, 7.12). #}
     <section class="docket-verdict-banner" aria-labelledby="ledger-verdict">
-        <span class="docket-verdict-eyebrow">The record is closed</span>
         <h2 id="ledger-verdict" class="docket-verdict-name">
             <span class="docket-verdict-avatar" aria-hidden="true">{{ ledger.leader.enrollment.user.get_avatar() }}</span>
             {{ ledger.leader.enrollment.get_display_name() }}
@@ -157,6 +153,7 @@ finish review, the verdict, and DESIGN.md.
             {{ ledger.leader.standing.wins }} wins,
             {{ '%.1f'|format(ledger.leader.standing.error_tenths / 10) }} off across
             {{ ledger.total_weeks }} weeks. First prize, ${{ '{:,}'.format(purse.podium[0].dollars) }}.
+            The record is closed.
         </p>
     </section>
     {% endif %}

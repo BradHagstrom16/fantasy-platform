@@ -146,8 +146,7 @@ def test_record_letter_is_the_approved_shape(app):
     letter = _letter()
     assert letter.subject == 'Your record: The Docket, Week 3'
     assert len(letter.subject) <= 45
-    assert letter.headline == 'Week 3: 6-2'
-    assert letter.eyebrow == 'The Docket · Week 3'
+    assert letter.headline == 'The Docket, Week 3: 6-2'
     assert letter.game_slug == 'docket'
     assert letter.greeting == 'Clerk of Court'
     assert letter.facts == [('Week 3', '6-2 · 7 points'),
@@ -164,10 +163,10 @@ def test_record_letter_is_the_approved_shape(app):
 
 
 @pytest.mark.parametrize('tally, points, headline, fact', [
-    (Tally(0, 8, 0, 0), 0.0, 'Week 3: 0-8', '0-8 · 0 points'),
-    (Tally(8, 0, 0, 0), 9.0, 'Week 3: 8-0', '8-0 · 9 points'),
-    (Tally(6, 1, 1, 0), 7.5, 'Week 3: 6-1-1', '6-1-1 · 7.5 points'),
-    (Tally(1, 7, 0, 0), 1.0, 'Week 3: 1-7', '1-7 · 1 point'),
+    (Tally(0, 8, 0, 0), 0.0, 'The Docket, Week 3: 0-8', '0-8 · 0 points'),
+    (Tally(8, 0, 0, 0), 9.0, 'The Docket, Week 3: 8-0', '8-0 · 9 points'),
+    (Tally(6, 1, 1, 0), 7.5, 'The Docket, Week 3: 6-1-1', '6-1-1 · 7.5 points'),
+    (Tally(1, 7, 0, 0), 1.0, 'The Docket, Week 3: 1-7', '1-7 · 1 point'),
 ])
 def test_records_are_digits_with_no_consolation_or_celebration(
         tally, points, headline, fact):

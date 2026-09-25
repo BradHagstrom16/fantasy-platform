@@ -8,9 +8,10 @@
 <div class="page-hero cfb-hero">
   <div class="hero-glow"></div>
   <div class="container">
-    <span class="cfb-eyebrow">Club Archive &middot; {{ season.year }}</span>
     <h1>The First Season</h1>
     <div class="cfb-hero-field">
+      <span class="cfb-count">{{ season.year }}</span>
+      <span class="cfb-hero-field-sep">&middot;</span>
       <span class="cfb-count">{{ season.entrants }} entered</span>
       <span class="cfb-hero-field-sep">&middot;</span>
       <span class="cfb-count-cut">{{ season.entrants - 1 }} cut</span>
@@ -27,7 +28,6 @@
      family grammar: raised surface, survived-green top rule (outcome carries
      outcome; crimson stays identity). #}
   <div class="cfb-archive-champion">
-    <span class="cfb-eyebrow">One Remained</span>
     <div class="cfb-archive-champion-name">{{ champion.name }}</div>
     <p class="cfb-archive-champion-line">Survived all sixteen weeks. Both lives intact.</p>
   </div>

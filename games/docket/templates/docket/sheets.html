@@ -23,7 +23,6 @@ the finish review and DESIGN.md 7.13.
 -->
 <div class="page-hero docket-hero">
     <div class="container">
-        <span class="docket-eyebrow">The Commissioner's Court</span>
         {% if week %}
         <h1>The Week {{ week.week_number }} Sheets</h1>
         <p class="lead mb-0">
@@ -73,7 +72,6 @@ the finish review and DESIGN.md 7.13.
     {% if state == 'no_week' %}
     <div class="docket-empty card border-0 animate-in">
         <div class="card-body">
-            <span class="docket-eyebrow docket-eyebrow-ink">Awaiting the docket</span>
             <h2 class="docket-empty-title">Court convenes {{ season_opens_label }}</h2>
             <p class="docket-empty-copy">The Week 1 docket posts Tuesday morning.
                 Every sheet opens here as its cases kick off.</p>
@@ -82,7 +80,6 @@ the finish review and DESIGN.md 7.13.
     {% elif state == 'no_games' %}
     <div class="docket-empty card border-0 animate-in">
         <div class="card-body">
-            <span class="docket-eyebrow docket-eyebrow-ink">Awaiting the docket</span>
             <h2 class="docket-empty-title">This week's docket has not been posted yet</h2>
             <p class="docket-empty-copy">Lines freeze Tuesday morning and the
                 docket posts here. Check back soon.</p>
@@ -91,7 +88,6 @@ the finish review and DESIGN.md 7.13.
     {% elif state == 'preview' %}
     <div class="docket-empty card border-0 animate-in">
         <div class="card-body">
-            <span class="docket-eyebrow docket-eyebrow-ink">Nothing to open yet</span>
             <h2 class="docket-empty-title">Court convenes {{ week.start_at|ct('%A, %B %-d') }}</h2>
             <p class="docket-empty-copy">Sheets open here case by case at kickoff,
                 and every sheet is on the record once the docket closes

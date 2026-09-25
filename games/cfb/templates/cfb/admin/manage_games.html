@@ -4,8 +4,7 @@
 {% block content %}
 <header class="cfb-admin-masthead">
     <div class="container">
-        <span class="cfb-eyebrow">The Commissioner&rsquo;s Desk &middot; {{ get_week_display_name(week) }}</span>
-        <h1 class="cfb-admin-title">Manage the Slate</h1>
+        <h1 class="cfb-admin-title">Manage the {{ get_week_display_name(week) }} Slate</h1>
         <p class="cfb-admin-sub"><strong>{{ games|length }}</strong> game{{ 's' if games|length != 1 else '' }} set. Add or remove this week&rsquo;s matchups.</p>
     </div>
 </header>

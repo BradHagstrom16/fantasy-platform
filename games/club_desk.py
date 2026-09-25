@@ -399,15 +399,17 @@ def _games_with_recipients(run):
 # The Tuesday Paper
 # ---------------------------------------------------------------------------
 
-HEADLINES = {
+# The state sentence that opens a multi-game Paper's subject and lede (the
+# headline is the Paper's name and week, ADR-066).
+STATES = {
     frozenset({'cfb', 'docket'}): 'Both boards are open',
     frozenset({'docket'}): 'The docket is open',
     frozenset({'cfb'}): 'Picks are open',
 }
-OWN_SUBJECT = {'cfb': 'Picks are open: CFB Survivor, Week {n}',
-               'docket': 'Picks are open: The Docket, Week {n}'}
-OWN_HEADLINE = {'cfb': 'Picks are open',
-                'docket': 'The Week {n} docket is open'}
+OWN_SUBJECT = {'cfb': 'Picks are open: CFB Survivor, {week}',
+               'docket': 'Picks are open: The Docket, {week}'}
+OWN_HEADLINE = {'cfb': 'CFB Survivor, {week}: picks are open',
+                'docket': 'The Docket, {week}: picks are open'}
 PAPER_SUBJECT_MAX = 50
 
 
@@ -447,32 +449,35 @@ def _open_all(consumers, now, run, dry_run):
 
 
 def _week_label(week):
-    """``Week 4`` from either game's week row."""
+    """``Week 4`` from either game's week row, or a Survivor week's round
+    name (``CFP Quarterfinals``), as every other CFB letter names it."""
     return getattr(week, 'round_name', None) or f'Week {week.week_number}'
 
 
-def _paper_letter(says: list[Say], state_slugs, week_number) -> Letter:
+def _paper_letter(says: list[Say], state_slugs, week) -> Letter:
     """One member's Paper: club chrome over two or more sections, or the
-    single game's own letter shape (its eyebrow, accent, subject)."""
+    single game's own letter shape (its headline, accent, subject). The
+    Paper's headline is its name and week; the state opens the lede (no
+    eyebrow above a heading, ADR-066)."""
     says = sorted(says, key=lambda s: (s.section.deadline is None,
                                        s.section.deadline or datetime.max))
     hooks = [s.hook for s in says if s.hook]
     preheader = ('You ' + ' and '.join(hooks) + '.') if hooks else ''
     notes = [tab_block(s.section.nudge, s.section.slug)
              for s in says if s.section.nudge]
+    week_number = week.week_number
     if len(says) >= 2:
-        state = HEADLINES[frozenset(state_slugs)]
+        state = STATES[frozenset(state_slugs)]
         subject = f'The Morning Line, Week {week_number}: {state}'
         assert len(subject) <= PAPER_SUBJECT_MAX, subject
         return Letter(
             subject=subject,
-            headline=state,
-            eyebrow=f'The Morning Line · Week {week_number}',
+            headline=f'The Morning Line, Week {week_number}',
             game_slug=None,
             preheader=preheader or 'Last week is in the books and this '
                                    'week\'s lines are posted.',
-            lede=['Last week is in the books and this week\'s lines are '
-                  'posted.'],
+            lede=[f'{state}. Last week is in the books and this week\'s '
+                  f'lines are posted.'],
             extras=[section_block(s.section) for s in says],
             cta=None,
             notes=notes,
@@ -481,9 +486,8 @@ def _paper_letter(says: list[Say], state_slugs, week_number) -> Letter:
     section = say.section
     slug = section.slug
     return Letter(
-        subject=OWN_SUBJECT[slug].format(n=week_number),
-        headline=OWN_HEADLINE[slug].format(n=week_number),
-        eyebrow=section.title,
+        subject=OWN_SUBJECT[slug].format(week=_week_label(week)),
+        headline=OWN_HEADLINE[slug].format(week=_week_label(week)),
         game_slug=slug,
         season=_season_of(slug),
         preheader=preheader or f'Deadline {format_deadline_short(section.deadline)}.',
@@ -528,8 +532,8 @@ def run_paper(now, *, dry_run=False, scheduled=False) -> PaperRun:
                                                  s.section.deadline or datetime.max))
         if len(says) == 1 and says[0].section.button is None:
             continue        # a spectator alone gets no Paper (design 3A)
-        week_number = run.opened[say_sorted[0].section.slug].week_number
-        letter = _paper_letter(says, run.opened.keys(), week_number)
+        letter = _paper_letter(says, run.opened.keys(),
+                               run.opened[say_sorted[0].section.slug])
         run.composed.append(Composed(
             user=says[0].user, letter=letter,
             games=tuple(s.section.slug for s in say_sorted),

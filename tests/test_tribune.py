@@ -78,12 +78,12 @@ def member(app, client):
 def test_render_letter_page_prints_the_letter_as_page_content(app):
     with app.app_context():
         letter = Letter(subject='Week 3 recap', headline='The cut deepens',
-                        eyebrow='From the Commish', lede=['Three lives went.'],
+                        lede=['Three lives went.'],
                         cta=('Open the lounge', 'https://x.test/'))
         html = render_letter_page(letter)
     assert '<!DOCTYPE html>' not in html and 'role="presentation"' not in html
     assert 'The cut deepens' in html and 'Three lives went.' in html
-    assert 'From the Commish' in html
+    assert 'eyebrow' not in html           # opens on the headline (ADR-066)
     # The CTA becomes an ordinary link at the foot, never a button.
     assert 'href="https://x.test/"' in html and 'Open the lounge' in html
     assert 'class="cta"' not in html

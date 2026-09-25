@@ -4,7 +4,6 @@
 {% block content %}
 <header class="cfb-admin-masthead">
     <div class="container">
-        <span class="cfb-eyebrow">CFB Survivor &middot; The Commissioner&rsquo;s Desk</span>
         <h1 class="cfb-admin-title">The Roster</h1>
         <p class="cfb-admin-sub"><strong>{{ enrollments|length }}</strong> enrolled. Lives, status, and admin access.{% if active_week %} Week {{ active_week.week_number }}: <strong>{{ picked_count }}</strong> of <strong>{{ active_total }}</strong> picked, {{ missing_count }} still out.{% endif %}</p>
     </div>

@@ -172,12 +172,12 @@ def test_template_is_the_only_shell_and_autoescapes_itself():
 def test_render_escapes_every_string_field_and_keeps_plain_raw(app):
     app.config['SITE_URL'] = SITE
     plain, html = render_letter(Letter(
-        subject='<s>ubj', headline='<b>x</b>', eyebrow='<e>',
+        subject='<s>ubj', headline='<b>x</b>',
         greeting='<g>', lede=['<i>lede'], facts=[('<l>', '<v>', '<t>')],
         cta=('<c>', 'https://x/?a=1&b=2'), supporting=['<p>sup'],
         footer_note='<f>',
     ))
-    for raw in ('<s>ubj', '<b>x</b>', '<e>', '<g>', '<i>lede', '<l>', '<v>',
+    for raw in ('<s>ubj', '<b>x</b>', '<g>', '<i>lede', '<l>', '<v>',
                 '<c>', '<p>sup', '<f>'):
         assert raw not in html, raw
         if raw != '<s>ubj':               # the subject is a header, not body
@@ -194,7 +194,7 @@ def test_markup_lede_passes_through_but_plain_strips_it(app):
     app.config['SITE_URL'] = SITE
     lede = Markup('<strong>{}</strong> moved to {}.').format('<A>', 'B')
     plain, html = render_letter(Letter(
-        subject='s', headline='h', eyebrow='e', lede=[lede]))
+        subject='s', headline='h', lede=[lede]))
     assert '<strong>&lt;A&gt;</strong> moved to B.' in html
     assert '<A> moved to B.' in plain
     assert '<strong>' not in plain
@@ -247,7 +247,7 @@ def test_seal_url_is_absolute_png_with_a_cache_bust(app, monkeypatch):
 def test_plain_text_follows_the_letter_order(app):
     app.config['SITE_URL'] = SITE
     plain, _ = render_letter(Letter(
-        subject='s', headline='Picks are open', eyebrow='CFB Survivor · Week 1',
+        subject='s', headline='CFB Survivor, Week 1: picks are open',
         game_slug='cfb', season=2026, lede=['The lines are set.'],
         facts=[('Deadline', CFB_DEADLINE_TEXT)],
         extras=[items_block(['one'], title='List')],
@@ -255,7 +255,7 @@ def test_plain_text_follows_the_letter_order(app):
         supporting=['Each team once.'],
         notes=[items_block(['note'], title='Footnote')],
     ))
-    marks = ['CFB Survivor · Week 1', 'Picks are open', 'The lines are set.',
+    marks = ['CFB Survivor, Week 1: picks are open', 'The lines are set.',
              f'Deadline: {CFB_DEADLINE_TEXT}', 'List:\n- one',
              f'Make your pick: {SITE}/cfb/pick/1', 'Each team once.',
              'Footnote:\n- note', 'Corrupt Commish Club · cccfantasy.com',
@@ -268,18 +268,18 @@ def test_more_than_three_facts_is_refused(app):
     """The fact block is a deadline card, not the hero-metric trio's cousin."""
     app.config['SITE_URL'] = SITE
     with pytest.raises(ValueError):
-        render_letter(Letter(subject='s', headline='h', eyebrow='e',
+        render_letter(Letter(subject='s', headline='h',
                              facts=[('a', '1'), ('b', '2'), ('c', '3'),
                                     ('d', '4')]))
 
 
 def test_platform_and_game_letters_wear_different_cta_fills(app):
     app.config['SITE_URL'] = SITE
-    _, club = render_letter(Letter(subject='s', headline='h', eyebrow='e',
+    _, club = render_letter(Letter(subject='s', headline='h',
                                    cta=('Go', SITE)))
     assert 'background:#C9A227' in club and 'color:#1C0A3A' in club
-    assert 'color:#5A5470' in club          # platform eyebrow is ink, not gold
-    _, game = render_letter(Letter(subject='s', headline='h', eyebrow='e',
+    assert 'border-top:4px solid #5A5470' in club   # club rule is Text Secondary, not gold
+    _, game = render_letter(Letter(subject='s', headline='h',
                                    game_slug='cfb', cta=('Go', SITE)))
     assert 'background:#C5050C' in game and 'background:#C9A227' not in game
 
@@ -686,7 +686,7 @@ def test_each_game_states_its_consequence_and_the_tab_names_its_game(letters):
 
 def test_record_says_the_week_in_digits_and_the_docket_around_it(letters):
     record = letters['docket-record']['plain']
-    assert 'The Docket · Week 1\nWeek 1: 1-0' in record
+    assert record.startswith('The Docket, Week 1: 1-0\n')
     # The one filed side became the auto-designated x2, so 1-0 scores 2.
     assert 'Week 1: 1-0 · 2 points\nOn the week: 1st of 1\nSeason: 1st · 2 points' in record
     assert 'Around the docket\nTop sheet: You, 1-0\nWeekly purse: $20 to you' in record
@@ -794,11 +794,10 @@ def _paper(**overrides):
     tab strip for the owed game, no club CTA."""
     return Letter(**{
         'subject': 'The Morning Line, Week 4: Both boards are open',
-        'headline': 'Both boards are open',
-        'eyebrow': 'The Morning Line · Week 4',
+        'headline': 'The Morning Line, Week 4',
         'preheader': 'You went 6-2 and survived with Oregon',
-        'lede': ['Last week is in the books and this week\u2019s lines are '
-                 'posted.'],
+        'lede': ['Both boards are open. Last week is in the books and this '
+                 'week\u2019s lines are posted.'],
         'extras': [_survivor_section(), _docket_section()],
         'notes': [tab_block(DOCKET_NUDGE, 'docket')],
         **overrides})
@@ -809,8 +808,8 @@ def _merged_reminder():
     Docket rider as a footnote before the tab strip."""
     return Letter(
         subject='FINAL, two hours left: CFB Survivor, Week 4',
-        headline='Final call: two hours left',
-        eyebrow='CFB Survivor · Week 4', game_slug='cfb', season=2026,
+        headline='CFB Survivor, Week 4: final call, two hours left',
+        game_slug='cfb', season=2026,
         preheader='Deadline Sat, Sep 26, 11:00 AM CT.',
         lede=['Your Week 4 pick is not in and the deadline is about two '
               'hours away.'],
@@ -877,7 +876,7 @@ def test_section_block_renders_a_section_dataclass(app):
 def test_game_section_wears_its_accent_and_the_mockup_markup(app):
     app.config['SITE_URL'] = SITE
     html = _survivor_section().html
-    # The hairline-topped eyebrow, the one-row inset, the solid button.
+    # The hairline-topped section head, the one-row inset, the solid button.
     assert ('margin:26px 0 6px; padding-top:18px; border-top:1px solid '
             '#E8E5F0;') in html
     assert 'color:#C5050C;">CFB Survivor · Week 4</p>' in html
@@ -924,11 +923,12 @@ def test_the_paper_renders_two_sections_under_club_chrome(app):
     assert 'class="cta"' not in html
     assert ACCENTS['cfb'] in html and ACCENTS['docket'] in html
     assert 'background:#C9A227' not in html          # no club-gold button
-    assert 'color:#5A5470;">The Morning Line · Week 4</p>' in html
+    assert 'border-top:4px solid #5A5470' in html     # the club's rule
+    assert '>The Morning Line, Week 4</h1>' in html
     assert 'Sent to you as a member of the Corrupt Commish Club.' in plain
     # Plain text follows the letter: sections in order, each with its own
     # deadline line and button line, the tab strip after both.
-    marks = ['The Morning Line · Week 4', 'Both boards are open',
+    marks = ['The Morning Line, Week 4', 'Both boards are open.',
              'Last week is in the books', 'CFB Survivor · Week 4',
              'Last week: Survived with Oregon.', f'Survivor locks: {SAT_TEXT}',
              f'Make your pick: {SITE}/cfb/', 'The Docket · Week 4',
@@ -996,10 +996,9 @@ def test_a_single_section_is_that_games_own_letter(app):
     # A single CFB section under a non-null but wrong game_slug would render
     # Docket chrome over CFB content — reject it, not just the null case.
     with pytest.raises(ValueError, match="own letter"):
-        render_letter(_paper(extras=[_survivor_section()], game_slug='docket',
-                             eyebrow='CFB Survivor · Week 4'))
+        render_letter(_paper(extras=[_survivor_section()], game_slug='docket'))
     letter = _paper(extras=[_survivor_section()], game_slug='cfb', season=2026,
-                    eyebrow='CFB Survivor · Week 4', headline='Picks are open',
+                    headline='CFB Survivor, Week 4: picks are open',
                     notes=[])
     plain, html = render_letter(letter)
     _assert_material_rules('single', html, letter.subject)
@@ -1046,7 +1045,7 @@ def test_letters_without_sections_are_untouched_by_the_desk_locks(app):
     the desk rules: they apply only when a SectionBlock is present."""
     app.config['SITE_URL'] = SITE
     _, html = render_letter(Letter(
-        subject='s', headline='h', eyebrow='e', cta=('Go', SITE),
+        subject='s', headline='h', cta=('Go', SITE),
         extras=[items_block(['one']), result_block('R', [('a', '1')])]))
     assert html.count('class="cta"') == 1
 
@@ -1075,3 +1074,19 @@ def test_merged_reminder_keeps_one_cta_and_the_rider_before_the_tab(app):
     # The anchor's own words are the ones a single-game reminder carries.
     assert f'Make your pick: {SITE}/cfb/' in plain
     assert 'Sent to you as a member of CFB Survivor 2026.' in plain
+
+
+def test_golf_final_reminder_says_the_time_actually_left(app):
+    """The final window spans T-1h +/- 35 min, so the headline and lede say
+    the countdown, never a flat "one hour" (the CFB final tier's rule)."""
+    from games.golf.services.reminders import _reminder_letter
+    with app.app_context():
+        letter = _reminder_letter(
+            tournament_name='The Memorial', deadline_short='Thursday, Jun 4 · 7:00 AM CT',
+            time_remaining='1 hour, 30 minutes', purse=20_000_000, golfers_used=4,
+            pick_url='https://cccfantasy.com/golf/pick/1',
+            window={'hours': 1, 'type': 'final'}, season_year=2026)
+    assert letter.headline == ("Golf Pick 'Em, The Memorial: final call, "
+                               "about 1 hour, 30 minutes left")
+    assert letter.lede == ['Your pick for The Memorial is not in and the '
+                           'deadline is about 1 hour, 30 minutes away.']

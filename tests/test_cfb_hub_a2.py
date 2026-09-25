@@ -123,8 +123,10 @@ def test_cfb_hub_hero_drops_flat_functional_voice():
 
 
 def test_cfb_hub_hero_carries_survivor_count():
-    assert "cfb-hero" in TPL and "cfb-eyebrow" in TPL, \
-        "the hero must carry the .cfb-hero scope + a .cfb-eyebrow"
+    assert "cfb-hero" in TPL, "the hero must carry the .cfb-hero scope"
+    hero_open = TPL.split('<div class="page-hero cfb-hero">', 1)[1].split('<h1>', 1)[0]
+    hero_open = re.sub(r'\{#.*?#\}', '', hero_open, flags=re.S)   # its comment names the rule
+    assert 'eyebrow' not in hero_open, "the hero opens on its H1 (ADR-066)"
     assert "cfb-hero-field" in TPL and "cfb-count" in TPL, \
         "the hero must answer 'who is left standing?' with the survivor count"
     assert "still standing" in TPL, \
@@ -150,11 +152,12 @@ def test_cfb_hub_has_no_em_dash_copy():
 
 # -- champion ceremony by reduction (S4) -----------------------------------
 
-def test_cfb_champion_drops_trophy_emoji_for_eyebrow():
+def test_cfb_champion_opens_on_the_name():
     assert TROPHY not in TPL, \
         "the trophy emoji is trophy-overload; ceremony comes from reduction (S4)"
-    assert "One Remains" in TPL, \
-        "the champion ceremony leads with the restrained 'One Remains' eyebrow"
+    hero = TPL.split('<div class="championship-hero', 1)[1].split('class="champion-name"', 1)[0]
+    assert 'eyebrow' not in hero, \
+        "the champion's name opens the hero, no eyebrow above it (ADR-066)"
 
 
 def test_cfb_champion_name_not_pure_white():

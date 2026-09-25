@@ -134,8 +134,7 @@ def record_letter(*, week_number, display_name, tally, points, week_rank,
 
     return Letter(
         subject=f'Your record: The Docket, Week {week_number}',
-        headline=f'Week {week_number}: {record}',
-        eyebrow=f'The Docket · Week {week_number}',
+        headline=f'The Docket, Week {week_number}: {record}',
         game_slug='docket',
         season=SEASON_YEAR,
         preheader=f'Week {week_number}: {record}, {ordinal(week_rank)} of '

@@ -154,8 +154,8 @@ def test_pick_preserves_js_hooks():
 # -- Survivor voice + single focused column (S3) ----------------------------
 
 def test_pick_hero_carries_survivor_voice():
-    assert "<h1>Your Card</h1>" in TPL, \
-        "the pick H1 must carry the Survivor register ('Your Card'), not a flat label"
+    assert "<h1>Your {{ get_week_display_name(week) }} Card</h1>" in TPL, \
+        "the pick H1 must carry the Survivor register ('Your Week N Card'), not a flat label"
     # Scope to element text (>...<) so a Jinja/HTML comment can't false-fail this;
     # the old flat copy lived in the .lead <p>, so an <h1>-only scope would miss it.
     assert not re.search(r'>\s*Make Your Pick\s*<', TPL), \

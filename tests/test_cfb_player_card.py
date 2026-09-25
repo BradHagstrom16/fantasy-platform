@@ -215,7 +215,7 @@ def test_eliminated_player_shows_the_out_week(app, client, monkeypatch):
     assert 'is-lost' in html
     assert 'cfb-field-out">Out<' in html
     assert 'Hidden until deadline' not in html
-    assert '<strong>Week 3</strong>' not in html   # no row for the open week; the eyebrow may name it
+    assert '<strong>Week 3</strong>' not in html   # no row for the open week
 
 
 def test_final_life_counts_the_losses_on_the_record(app, client, monkeypatch):

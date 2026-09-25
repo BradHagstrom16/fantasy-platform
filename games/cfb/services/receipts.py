@@ -49,8 +49,7 @@ def pick_receipt_letter(*, week_name, week_number, label, kickoff_short,
                 'comes first.')
     return Letter(
         subject=subject,
-        headline=f'Your {week_name} pick: {label}',
-        eyebrow=f'CFB Survivor · {week_name}',
+        headline=f'CFB Survivor, {week_name}: {label}',
         game_slug='cfb',
         season=season_year,
         preheader=f'{label}. Picks lock {lock_short}.',

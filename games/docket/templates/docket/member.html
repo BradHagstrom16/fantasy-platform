@@ -19,9 +19,6 @@ never reads differently here than on the ledger drawer or All Sheets.
 -->
 <div class="page-hero docket-hero">
     <div class="container">
-        <span class="docket-eyebrow">
-            {% if neighbors and neighbors.is_leader %}Leading the field{% elif neighbors %}Rank {{ neighbors.rank_label }} of {{ neighbors.field_size }}{% else %}The Commissioner's Court{% endif %}
-        </span>
         <h1>
             <span class="docket-ledger-avatar" aria-hidden="true">{{ enrollment.user.get_avatar() }}</span>
             {{ enrollment.get_display_name() }}
@@ -127,7 +124,6 @@ never reads differently here than on the ledger drawer or All Sheets.
     {% else %}
     <div class="docket-empty card border-0">
         <div class="card-body">
-            <span class="docket-eyebrow docket-eyebrow-ink">No record yet</span>
             <h2 class="docket-empty-title">Nothing graded yet</h2>
             <p class="docket-empty-copy">Once the first week grades,
                 {{ enrollment.get_display_name() }}'s weeks post here.</p>

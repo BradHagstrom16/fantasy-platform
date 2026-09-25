@@ -58,10 +58,14 @@ def commish(app):
 
 
 def test_week_1_rebuilds_exactly_as_delivered(app):
+    """Word for word, less the one line the shell no longer prints: the
+    letter opened on a "From the Commish" eyebrow, retired with every eyebrow
+    above a heading (ADR-066). The rows already filed keep the original."""
     app.config['SITE_URL'] = 'https://cccfantasy.com'
     with app.test_request_context():
         plain, _html = render_letter(pre_desk_letter(PRE_DESK_LETTERS[0]))
-    assert _rstrip_lines(plain) == _rstrip_lines(WEEK_1_AS_DELIVERED)
+    delivered = WEEK_1_AS_DELIVERED.removeprefix('From the Commish\n')
+    assert _rstrip_lines(plain) == _rstrip_lines(delivered)
 
 
 def test_the_body_stays_plain_text_never_markup(app):

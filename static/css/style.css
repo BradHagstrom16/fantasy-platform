@@ -4902,8 +4902,8 @@ body.game-golf {
    (money = CCC gold in both rooms; gold, not red — a friendly "you owe the
    buy-in" ask, never an alarm) and the bill layout: the ask on the left, the
    two rails on the right, stacking on a phone. Room-agnostic on purpose —
-   only platform tokens, no room font (the body face inherits), the eyebrow
-   is the room's own primitive passed in by the include. The Venmo button is
+   only platform tokens, no room font (the body face inherits). It opens on
+   its heading ("You're in. Now square up."), no eyebrow (ADR-066). The Venmo button is
    `.btn-game` (CFB crimson / Docket oxblood: the room's primary action).
    The frozen WC room keeps its own `.wc-settle*` copy (below). */
 .card.settle-tab {
@@ -4928,16 +4928,6 @@ body.game-cfb .card.settle-tab {
 .settle-tab-text {
   flex: 1 1 26ch;
   min-width: 0;
-}
-.settle-tab-eyebrow {
-  /* Fallback only — every room passes its own eyebrow primitive. */
-  display: block;
-  font-family: 'Teko', sans-serif;
-  font-weight: 500;
-  font-size: .85rem;
-  letter-spacing: .14em;
-  text-transform: uppercase;
-  color: var(--settle-gold);
 }
 .settle-tab-lead {
   font-size: 1.15rem;
@@ -5481,15 +5471,9 @@ body.game-cfb .alert-warning { background: rgba(243,239,230,.05); border-color: 
   pointer-events: none;
 }
 /* Ceremony by reduction (games/cfb/DESIGN.md S4): the lights stay on, the room
-   goes quiet, one survivor remains. A restrained crimson eyebrow ("ONE REMAINS")
-   replaces the trophy-overload emoji -- conclusive, not triumphant, no gold. */
-.championship-hero .cfb-eyebrow {
-  display: block;
-  margin-bottom: 1rem;
-  color: rgba(243,239,230,.85);
-  position: relative;
-  animation: fadeInUp .5s ease both;
-}
+   goes quiet, one survivor remains. The champion's name opens the hero, no
+   trophy emoji and no eyebrow above it (ADR-066) -- conclusive, not
+   triumphant, no gold. */
 .championship-hero .champion-name {
   font-family: 'Teko', sans-serif;
   font-size: clamp(2.4rem, 6vw, 3.5rem);
@@ -5547,7 +5531,8 @@ body.game-cfb .alert-warning { background: rgba(243,239,230,.05); border-color: 
    ============================================================ */
 
 /* Contextual-label primitive (the analog to .wc-eyebrow): small uppercase Teko
-   metadata above a headline -- week, deadline, survivor count, status. Default
+   metadata that heads a value, list, paragraph or fold -- week, deadline,
+   survivor count, status -- never a heading (ADR-066). Default
    is a bone value calibrated for midnight; the one variant carries active /
    competitive signal. CFB adds NO gold eyebrow variant (the Crimson-Ceremony
    Rule). */
@@ -5568,10 +5553,8 @@ body.game-cfb .alert-warning { background: rgba(243,239,230,.05); border-color: 
 
 /* Hero: the platform .page-hero gradient is the single sanctioned crimson
    identity anchor. Give it survivor substance so the crimson reads as backdrop,
-   not wallpaper -- eyebrow context, a Survivor-voice H1, and the survivor count
-   (the "who is left standing?" answer) in heavy Teko numerals. The eyebrow lifts
-   to bone @ .85 to clear the gradient (parallels the WC hero-eyebrow lift). */
-.cfb-hero .cfb-eyebrow { display: block; margin-bottom: .7rem; color: rgba(243,239,230,.85); }
+   not wallpaper -- a Survivor-voice H1 and the survivor count (the "who is left
+   standing?" answer) in heavy Teko numerals. No eyebrow above the H1 (ADR-066). */
 .cfb-hero-field {
   margin: 1.1rem 0 0;
   font-family: 'Newsreader', Georgia, serif;
@@ -6482,7 +6465,6 @@ body.game-cfb .cfb-verdict.animate-in .cfb-verdict-chip {
 .cfb-season-lead.is-pending  { border-top-color: var(--cfb-pending); }
 .cfb-season-lead.is-lost     { border-top-color: var(--cfb-lost-life); }
 .cfb-season-lead-main { flex: 1 1 17rem; min-width: 0; }
-.cfb-season-lead-main .cfb-eyebrow { display: block; margin-bottom: .4rem; }
 .cfb-season-headline { font-size: 1.9rem; line-height: 1; color: var(--cfb-white); }
 .cfb-season-derivation {
   margin: .5rem 0 0;
@@ -6522,7 +6504,6 @@ body.game-cfb .cfb-verdict.animate-in .cfb-verdict-chip {
 .cfb-week-lead.is-survived { border-top-color: var(--cfb-survived); }
 .cfb-week-lead.is-lost     { border-top-color: var(--cfb-lost-life); }
 .cfb-week-lead-main { flex: 1 1 17rem; min-width: 0; }
-.cfb-week-lead-main .cfb-eyebrow { display: block; margin-bottom: .4rem; }
 .cfb-week-lead-headline {
   font-family: 'Teko', sans-serif;
   font-weight: 600;
@@ -6632,7 +6613,6 @@ body.game-cfb .accordion-button:not(.collapsed) { box-shadow: inset 0 -2px 0 var
    (the Crimson-Is-Identity Rule), and no glyph (room surface). Elevation is
    substrate + the hairline conference rule, never a card grid or shadow. */
 .cfb-pool { margin-top: 2.5rem; }
-.cfb-pool .cfb-eyebrow { display: block; margin-bottom: .35rem; }
 .cfb-pool-headline {
   margin: 0;
   font-family: 'Newsreader', Georgia, serif;
@@ -6893,13 +6873,13 @@ body.game-cfb .accordion-button:not(.collapsed) { box-shadow: inset 0 -2px 0 var
    NO gold (the Crimson-Ceremony Rule): the platform .admin-masthead gold
    rule + gold eyebrow + purple H1 are calibrated for bone, so on the
    midnight canvas they would drift gold + render purple-on-purple. Here
-   the rule goes crimson, the eyebrow bone-muted, the H1 bone-white.
+   the rule goes crimson and the H1 bone-white, with no eyebrow (ADR-066).
    ============================================================ */
 
 /* The Commissioner's Desk masthead -- the dark parallel to the platform
    .admin-masthead. Admin keeps a functional H1 (the platform dispensation for
-   utility surfaces, top-level DESIGN.md S3); the Commissioner register rides the
-   .cfb-eyebrow + sub-line. A single thin CRIMSON rule replaces the platform gold
+   utility surfaces, top-level DESIGN.md S3); the sub-line carries the context,
+   never an eyebrow above the H1 (ADR-066). A single thin CRIMSON rule replaces the platform gold
    divider -- the room's identity line, kept to one stroke so crimson stays
    pressure, not wallpaper (the Crimson-Pressure Rule). */
 .cfb-admin-masthead {
@@ -6907,7 +6887,6 @@ body.game-cfb .accordion-button:not(.collapsed) { box-shadow: inset 0 -2px 0 var
   margin-bottom: 2rem;
   border-bottom: 2px solid var(--game-primary);
 }
-.cfb-admin-masthead .cfb-eyebrow { display: block; margin-bottom: .45rem; }
 .cfb-admin-title {
   font-family: 'Teko', sans-serif;
   font-size: 2.25rem;
@@ -7110,7 +7089,6 @@ body.game-cfb .list-group {
   border-top: 2px solid var(--cfb-survived);
   border-radius: var(--radius-lg);
 }
-.cfb-archive-champion .cfb-eyebrow { display: block; margin-bottom: .5rem; }
 .cfb-archive-champion-name {
   font-family: 'Teko', sans-serif;
   font-weight: 700;
@@ -13982,8 +13960,8 @@ body.game-docket {
   --docket-rule: #D8CFC0;         /* ledger hairline (bone family) */
 }
 
-/* --- Eyebrow primitive (garnet default on paper; ink variant; the hero
-       scopes its own bone-mute lift for the dark oxblood band) --- */
+/* --- Eyebrow primitive (garnet default on paper; ink variant). It heads a
+       value, list, paragraph or fold, never a heading (ADR-066) --- */
 .docket-eyebrow {
   display: block;
   font-family: 'Teko', sans-serif;
@@ -13995,7 +13973,6 @@ body.game-docket {
   margin-bottom: .3rem;
 }
 .docket-eyebrow-ink { color: var(--text-secondary); }
-.docket-hero .docket-eyebrow { color: rgba(243, 239, 230, .82); }
 
 /* --- Case captions and shared captions --- */
 .docket-caption {
@@ -16197,16 +16174,6 @@ body.game-docket .back-link:focus-visible {
   text-align: center;
   box-shadow: var(--shadow-md);
 }
-.docket-verdict-eyebrow {
-  display: block;
-  font-family: 'Teko', sans-serif;
-  font-weight: 500;
-  font-size: .85rem;
-  letter-spacing: .14em;
-  text-transform: uppercase;
-  color: var(--game-accent-light);
-  margin-bottom: .4rem;
-}
 .docket-verdict-name {
   font-family: 'Teko', sans-serif;
   font-weight: 700;
@@ -16358,6 +16325,9 @@ body.game-docket .back-link:focus-visible {
   max-width: 40rem;
   margin: 0 auto;
 }
+/* Frozen issues only: page.j2 has no eyebrow since ADR-066, but every page
+   copy stored before it (`sent_page_html`, served verbatim) still opens on
+   one. Keep this rule as long as those rows exist. */
 .letter-page-eyebrow {
   margin: 0 0 .35rem;
   font-family: var(--font-teko);

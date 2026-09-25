@@ -341,7 +341,7 @@ applications:
 - H1s use the Tribune voice as editorial section names: "The Week 1 Docket", "The Season
   Ledger" (T10). Dynamic-noun dispensation applies (platform §3).
 - Copy voice is the clerk's: procedural, dry, factual, with the Commissioner's wry authority
-  in eyebrows and empty states, never in error messages. Errors name the problem and the
+  in headings, leads and empty states, never in error messages. Errors name the problem and the
   recovery plainly ("That case locked at kickoff. Your other picks are safe.").
 - Register glossary (use consistently): the **docket** (a week's slate + your sheet), a
   **case** (one game), a **side** (one pick), the **headliner** (best pick, worth double),
@@ -363,6 +363,17 @@ The room's eyebrow primitive, following the platform one-default-plus-variants s
 surfaces. One tonal variant: `.docket-eyebrow-ink` (`--text-secondary`) for informational
 sections where garnet would overreach. No glyphs on game-body eyebrows (platform reservation
 of `◈`/`◇` for lounge ceremony).
+
+**Never above a heading (ADR-066, Brad 2026-09-24).** No hero carries an eyebrow: the H1
+speaks and the lead carries any fact ("The Week 4 Docket", a week in an admin H1 such as
+"Correct a Week 3 Line"). No empty card, verdict banner or panel puts one over its heading
+either; "The Commissioner's Court", "Standing orders" and "Argued from the record" were retired
+with it. The eyebrow survives as a label that heads something that is not a heading: "The
+number" over the case, "Your sheet" over the tally, the "Filed" stamp, "How the sheet works"
+over its steps, "The case" and "On file" on the clerk's desk, "How the court works" over the
+ruleset. The platform rule is root `DESIGN.md` The Eyebrow Rule; it is restated here because
+impeccable's `--target games/docket` loads this file instead of the root one. Locked by
+`tests/test_eyebrow_above_heading.py`.
 
 ### 6.9 Material rules
 
@@ -705,8 +716,8 @@ navigation.
 
 The how-to-pay card for an enrolled, unpaid member (gate: `games/docket/services/payment.py`,
 ADR-056). A platform primitive on the room's white paper card: gold top rule (money = CCC
-gold; not garnet, which is commitment, not debt), the room's `.docket-eyebrow` passed in by
-the include, `.btn-game` (oxblood) for the Venmo link with the amount and memo pre-filled, and
+gold; not garnet, which is commitment, not debt), its heading "You're in. Now square up." with
+no eyebrow above it (ADR-066), `.btn-game` (oxblood) for the Venmo link with the amount and memo pre-filled, and
 the copyable Zelle number. Bill layout — the ask left, the rails right, stacking on a phone.
 It heads the sheet page **including the pre-season "awaiting the docket" state** (§7.10) — a
 new member's first visit is when they are primed to pay — and the ledger. Payment stays
@@ -774,7 +785,7 @@ ruling: **once a pick locks it releases visibility for everyone.**
 - **A side the clerk filed** keeps the dashed treatment (a dashed rule on the line plus the
   Auto tag); an assigned x2 is the hollow chip.
 - **Empty states, each with its reason:** no week ("Court convenes September 1"), no cases
-  posted, the pre-season preview ("Nothing to open yet"), and the pre-first-lock week
+  posted, the pre-season preview ("Court convenes Thursday, September 3"), and the pre-first-lock week
   ("Nothing has locked yet. Sheets open here case by case at kickoff; the first case kicks off
   Thursday 7:15 PM CT."). **The mid-week running lede is retired (Brad, 2026-09-12):** the
   "N of M cases locked · next to open · the number is sealed until …" count read as noise
@@ -897,8 +908,8 @@ board falls back to the flat ranked `.docket-ledger-table` / `.docket-card` comp
 
 **The room's one ceremonial dark surface**, the reservation §6.10 was holding. Chambers to
 oxblood through the game slots (the same ramp `.page-hero` uses, so it reads as the room's
-terminus rather than a foreign surface), bone text, `--game-accent-light` for the eyebrow per
-§6.4's dark-surface note.
+terminus rather than a foreign surface), bone text, the champion's name as the heading with no
+eyebrow above it (ADR-066; "The record is closed." ends the totals line instead).
 
 It renders **only when every week of the season is graded**, so it appears once, in January.
 That gate is the primitive's whole justification: a dark band on a page members visit weekly
@@ -1014,9 +1025,9 @@ now opens on the *current* week (§8.3), this page is the **sole home of a membe
 record**: the struck week, the no-sheet charge, the prize receipt, and each graded week's sheet
 all live here, laid open for reading a season end to end.
 
-- **Hero:** the platform `.page-hero docket-hero`, the eyebrow stating rank ("Leading the
-  field" / "Rank N of M"), the name with the avatar, and the three season totals in one
-  Newsreader line (points after the drop, wins, off by, across N weeks). Before any week
+- **Hero:** the platform `.page-hero docket-hero`, the name with the avatar (no eyebrow above
+  it, ADR-066; the rank opens the body instead, "Sits 4th of 7"), and the three season totals
+  in one Newsreader line (points after the drop, wins, off by, across N weeks). Before any week
   grades, it says so plainly and the body is the "Nothing graded yet" empty card.
 - **The standing sentence** (`.docket-your-standing`, reused): where the line sits, the gap to
   the leader and to the next line, and which week the drop forgave. Same voice as the ledger's
@@ -1113,8 +1124,8 @@ fading the field". Members only. The record argues; the page does not.
   games and tiebreaker predictions of `SeasonLedger.week_numbers` and nothing else, grades every
   side with `sheets._result` (the engine's rule, never a second one), excludes reserve slots,
   and makes no market call and no API call. Every count carries its denominator. The hero
-  eyebrow states the evidence ("Argued from the record · Weeks 1 to 2"); the foot restates it
-  with the way back ("The ledger ›").
+  lead states the evidence (every count from the N graded weeks on the record; no eyebrow,
+  ADR-066); the foot restates it with the way back ("The ledger ›").
 - **Composition: The Clerk's Tally Sheet** (the dealt lead, seed d7aa686a, Brad's choice on the
   decision page). One white sheet (`.docket-brief-sheet`: `--bg-card`, `--radius-lg`,
   `--shadow-md`, max 62rem) of `.docket-section-head`s over `.docket-brief-line`s ruled by
@@ -1153,9 +1164,8 @@ fading the field". Members only. The record argues; the page does not.
 - **Empty state:** before any grade, the room's `.docket-empty` card, "Nothing graded yet".
 - **Anti-goals:** no market data or line movement, no projections, no pick grades, no
   sportsbook chrome (§6.10). The Brief counts; it never advises.
-- **Open question (fix 8, awaiting Brad's ruling):** the platform craft floor bans a kicker or
-  eyebrow above an H1, while this room's §6.8 sanctions `.docket-eyebrow` on every hero and the
-  Brief's hero follows the room; this records the eyebrow as built, not as a new rule.
+- **Hero eyebrow (fix 8), ruled 2026-09-24:** retired with every eyebrow above a heading in
+  both rooms (ADR-066, §6.8). The Brief's hero is the H1 and the lead.
 
 Locked by `tests/test_docket_brief.py` and `tests/test_design_p2_s2_3_1.py` (the phone
 block's placement).

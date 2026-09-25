@@ -473,7 +473,7 @@ def test_render_endpoint_returns_the_letter(app, client):
     data = resp.get_json()
     assert resp.status_code == 200 and data['errors'] == []
     assert '<strong' in data['html'] and 'Week 3' in data['html']
-    assert data['plain'].startswith('From the Commish\nWeek 3')
+    assert data['plain'].startswith('Week 3\n')      # opens on the headline (ADR-066)
 
 
 def test_render_endpoint_blank_subject_uses_a_stand_in(app, client):
