@@ -20,6 +20,10 @@ from models.records import (
 from models.user import User
 from utils.identifier import normalize_identifier
 
+# A 2025 Survivor member's USERNAME happens to be an email address; the link
+# map names members by username, so it carries this one (Brad, 2026-09-28).
+USERNAMES_THAT_ARE_EMAILS = {'yeoaaron40@gmail.com'}
+
 CROWN = "\U0001F451"
 TROPHY = "\U0001F3C6"
 DEFAULT = "\U0001F3C8"
@@ -496,7 +500,10 @@ def test_cfb_2025_link_map_names_only_archive_names_and_carries_no_identity(app)
     names = {row['name'] for row in get_season_2025()['standings']}
     assert set(links) <= names
     for value in links.values():
-        assert isinstance(value, str) and value and '@' not in value
+        # A username, never an email: the one '@' allowed is a member whose
+        # username IS an email address (Brad, 2026-09-28: link him anyway).
+        assert isinstance(value, str) and value
+        assert '@' not in value or value in USERNAMES_THAT_ARE_EMAILS, value
         assert not value.isdigit()
     for forbidden in ('"email"', '"user_id"', '"id"', '"password"'):
         assert forbidden not in raw
