@@ -381,7 +381,9 @@ def test_sheets_carries_no_mutation_forms(monkeypatch, client, member):
     _hold(member, week, thu)
     db.session.commit()
     at(monkeypatch, '2026-09-06T18:00:00')      # closed (past Sun 12:00 PM CT)
-    html = _page(client)
+    # The page's own content only: the navbar's "Step Out" is a POST form
+    # with a CSRF token on every signed-in page (logout is POST-only).
+    html = _page(client).split('<main id="main-content">', 1)[1].split('</main>', 1)[0]
     assert 'method="post"' not in html.lower()
     assert 'data-docket-action="' not in html
     assert 'csrf_token' not in html
