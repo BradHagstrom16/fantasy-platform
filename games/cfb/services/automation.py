@@ -733,6 +733,7 @@ def run_scores(prefetched=None, notify=True, retry_open=True):
         'details': summary,
         'week_results': results,
         'opened': opened,
+        'open_line': open_line,
     }
 
 

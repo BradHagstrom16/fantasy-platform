@@ -153,7 +153,8 @@ def _cli(app, *args):
 
 def test_cfb_skipped_is_idle_and_error_is_recorded_though_exit_0(app):
     with patch('games.cfb.services.automation.run_scores', return_value={
-            'status': 'skipped', 'details': 'No incomplete weeks past deadline'}):
+            'status': 'skipped', 'details': 'No incomplete weeks past deadline',
+            'week_results': [], 'opened': False, 'open_line': None}):
         assert _cli(app, 'cfb', 'sync', '--mode', 'scores').exit_code == 0
     with patch('games.cfb.services.automation.run_setup', return_value={
             'status': 'error', 'details': 'Odds API unreachable'}):
@@ -163,6 +164,35 @@ def test_cfb_skipped_is_idle_and_error_is_recorded_though_exit_0(app):
         'cfb-scores', 'idle', 'No incomplete weeks past deadline')
     assert (setup.job, setup.outcome, setup.exit_code) == (
         'cfb-setup', 'error', 0)
+
+
+@pytest.mark.parametrize('scores, outcome, summary', [
+    # The ADR-062 open retry opened the week: real work, though no week graded.
+    ({'status': 'skipped', 'week_results': [], 'opened': True,
+      'open_line': 'Opened Week 5',
+      'details': 'No incomplete weeks past deadline\nOpened Week 5'},
+     'ok', 'Opened Week 5'),
+    # The retry failed on a morning with nothing to grade.
+    ({'status': 'skipped', 'week_results': [], 'opened': False,
+      'open_line': 'Open attempt for Week 5: Odds API down',
+      'details': 'No incomplete weeks past deadline\n'
+                 'Open attempt for Week 5: Odds API down'},
+     'error', 'Open attempt for Week 5: Odds API down'),
+    # A graded run with a STUCK week is an error, and says which week.
+    ({'status': 'processed', 'opened': False, 'open_line': None,
+      'week_results': [{'week_number': 3, 'status': 'pending', 'stuck': True},
+                       {'week_number': 4, 'status': 'completed'}],
+      'details': 'Week 3: pending - 2 games left\n  STUCK: ...\n'
+                 'Week 4: completed - graded'},
+     'error', 'STUCK: Week 3'),
+], ids=['opened', 'open-failed', 'stuck'])
+def test_cfb_scores_outcome_counts_the_open_retry_and_stuck_weeks(
+        app, scores, outcome, summary):
+    with patch('games.cfb.services.automation.run_scores',
+               return_value=scores):
+        assert _cli(app, 'cfb', 'sync', '--mode', 'scores').exit_code == 0
+    run = _only_run()
+    assert (run.job, run.outcome, run.summary) == ('cfb-scores', outcome, summary)
 
 
 def test_cfb_status_records_nothing(app):

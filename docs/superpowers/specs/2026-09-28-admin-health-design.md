@@ -47,7 +47,7 @@ Each scheduled command body goes inside `with record_run(key) as run:` and sets 
 
 | CLI | Key | Outcome source |
 |---|---|---|
-| `games/cfb/cli.py::_run_mode` (not `status`) | `cfb-{mode}` | result `status`: `error` → `error`, `skipped` → `idle`, else `ok`. The CLI still exits 0; the row tells the truth. |
+| `games/cfb/cli.py::_run_mode` (not `status`) | `cfb-{mode}` | result `status`: `error` → `error`, `skipped` → `idle`, else `ok`. For `scores`, a STUCK week or a failed ADR-062 open retry → `error` and a successful retry → `ok`, whatever the status says; that line leads the summary. The CLI still exits 0; the row tells the truth. |
 | `games/docket/cli.py` sync (not `status`) | `docket-{mode}` | `_no_work` under `--scheduled` → `stood_down`; `_fail` / `_check_sync_status` → `error` through the exit code |
 | `games/gameday_cli.py` | `scores-gameday` | summary `idle` → `idle`, `floor` → `stood_down`, `error` → `error` |
 | `games/club_desk_cli.py` desk / paper (not `--dry-run`) | `club-remind` / `club-paper` | `run.exit_code`, plus the desk's own stand-down status |
