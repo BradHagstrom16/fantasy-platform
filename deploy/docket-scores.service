@@ -9,6 +9,10 @@
 
 [Unit]
 Description=The Docket score sync (fetch finals, grade the week)
+# A failure mails the admin inbox and pings healthchecks.io; every success
+# pings it too, the dead-man half (utils/job_alert.py, tests/test_job_alerts.py).
+OnFailure=job-alert@%N.service
+OnSuccess=job-ping@%N.service
 After=network-online.target
 Wants=network-online.target
 
