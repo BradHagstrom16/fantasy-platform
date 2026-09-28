@@ -106,6 +106,10 @@
                                 <li><a class="dropdown-item" href="{{ url_for('tribune.index') }}">
                                     <i class="bi bi-newspaper me-2"></i>The Tribune
                                 </a></li>
+                                {# The club's permanent record: every finished season (core/records). #}
+                                <li><a class="dropdown-item" href="{{ url_for('records.index') }}">
+                                    <i class="bi bi-trophy me-2"></i>The Record
+                                </a></li>
                                 {# Completed games a member played stay reachable
                                    here rather than crowding the switcher
                                    (design review 2026-08-18). #}
@@ -297,7 +301,7 @@
         </div>
         <div class="ccc-footer-utility">
             <div class="container">
-                &copy; 2026 Corrupt Commish Club &middot; Built for the Club, by the Commish
+                &copy; 2026 Corrupt Commish Club &middot; Built for the Club, by the Commish &middot; <a class="ccc-footer-link" href="{{ url_for('records.index') }}">The Record</a>
             </div>
         </div>
     </footer>

@@ -68,6 +68,7 @@ def create_app(config_name=None):
     from core.auth import auth_bp
     from core.main import main_bp
     from core.push import push_bp
+    from core.records import records_bp
     from core.tribune import tribune_bp
 
     app.register_blueprint(auth_bp)
@@ -75,6 +76,7 @@ def create_app(config_name=None):
     app.register_blueprint(admin_bp)
     app.register_blueprint(push_bp)
     app.register_blueprint(tribune_bp)
+    app.register_blueprint(records_bp)
 
     # Web push CLI (flask push test --user ...)
     from core.push.cli import register_push_cli

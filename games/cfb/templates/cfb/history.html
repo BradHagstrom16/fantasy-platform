@@ -100,8 +100,9 @@
     </div>
   </div>
 
-  {# Provenance: one quiet line, no link (club canon + quiet provenance ruling). #}
-  <p class="cfb-archive-provenance">Season one was played at the old clubhouse. The record moved with the club.</p>
+  {# Provenance: one quiet line. The old clubhouse gets no link (club canon);
+     the club's own record does (ADR-068). #}
+  <p class="cfb-archive-provenance">Season one was played at the old clubhouse. The record moved with the club, and <a href="{{ url_for('records.index') }}">keeps every season since</a>.</p>
 
 </div>
 {% endblock %}

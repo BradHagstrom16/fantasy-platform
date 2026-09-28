@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}The Record · Corrupt Commish Club{% endblock %}
+{% block body_class %}records-page{% endblock %}
+{% block content %}
+{# The Record (direction contract in .impeccable/surfaces/): the roll of
+   champions first, newest season first, each name the door into its board;
+   the boards folded under it, the newest open. Read straight from the
+   season_finishes ledger; the recorded name always, the current name only
+   when it differs. #}
+<div class="container records-wrap">
+  <header class="records-masthead">
+    <h1 class="records-title">The Record</h1>
+    <p class="records-lede">Every season the club has closed: who won it, and where everyone finished, kept as it stood the day the season ended.</p>
+  </header>
+
+  {% if boards %}
+  <section class="records-roll" aria-labelledby="records-roll-head">
+    <h2 id="records-roll-head" class="records-head">Champions</h2>
+    <ol class="records-roll-list">
+      {% for c in roll %}
+      <li class="records-champion">
+        <a class="records-champion-link" href="#board-{{ c.game }}-{{ c.season_year }}">
+          <span class="records-line"><span class="records-year">{{ c.season_year }}</span><span class="records-game">{{ c.game_name }}</span></span>
+          <span class="records-champion-name">{% if c.avatar %}<span class="records-avatar" aria-hidden="true">{{ c.avatar }}</span>{% endif %}{{ c.name }}</span>
+          <span class="records-finish">{% if c.detail %}{{ c.detail }}{% endif %}{% if c.now %}{% if c.detail %} · {% endif %}now {{ c.now }}{% endif %}</span>
+        </a>
+      </li>
+      {% endfor %}
+    </ol>
+  </section>
+
+  <section class="records-boards" aria-labelledby="records-boards-head">
+    <h2 id="records-boards-head" class="records-head">The boards</h2>
+    {% for b in boards %}
+    <details class="records-board" id="board-{{ b.game }}-{{ b.season_year }}"{% if loop.first %} open{% endif %}>
+      <summary class="records-board-summary">
+        <span class="records-board-title">{{ b.game_name }} {{ b.season_year }}</span>
+        <span class="records-board-count">{{ b.rows|length }} finisher{{ '' if b.rows|length == 1 else 's' }}<i class="bi bi-chevron-down records-board-chevron" aria-hidden="true"></i></span>
+      </summary>
+      <ol class="records-rows">
+        {% for r in b.rows %}
+        <li class="records-row{% if r.place == 1 %} records-row--first{% endif %}">
+          <span class="records-place">{{ r.place }}</span>
+          <span class="records-name">{% if r.avatar %}<span class="records-avatar" aria-hidden="true">{{ r.avatar }}</span>{% endif %}{{ r.name }}{% if r.now %}<span class="records-now">now {{ r.now }}</span>{% endif %}</span>
+          <span class="records-finish">{{ r.detail or '' }}</span>
+        </li>
+        {% endfor %}
+      </ol>
+      {% if b.archive_url %}
+      <p class="records-archive"><a class="records-archive-link" href="{{ b.archive_url }}">The season as the room keeps it ›</a></p>
+      {% endif %}
+    </details>
+    {% endfor %}
+  </section>
+  {% else %}
+  <div class="records-empty">
+    <p class="records-empty-line">Nothing on the record yet.</p>
+    <p class="records-empty-sub">A season goes on the record the day its game closes it. It will be kept here, with everyone's finish.</p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+  // A champion's name links into its board: open the board the link lands on.
+  (function () {
+    function reveal() {
+      var id = location.hash && location.hash.slice(1);
+      var target = id && document.getElementById(id);
+      if (target && target.tagName === 'DETAILS') { target.open = true; }
+    }
+    reveal();
+    window.addEventListener('hashchange', reveal);
+  })();
+</script>
+{% endblock %}

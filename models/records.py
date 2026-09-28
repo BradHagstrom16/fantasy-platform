@@ -18,6 +18,7 @@ from datetime import UTC, datetime
 
 from flask import g
 from sqlalchemy import func, select
+from sqlalchemy.orm import joinedload
 
 from extensions import db
 from models.user import User
@@ -102,8 +103,11 @@ def seasons_on_record() -> list[tuple[str, int]]:
 
 
 def finishes_for(game: str, season_year: int) -> list[SeasonFinish]:
+    """One season's board, place then name; the linked members ride along
+    (the page prints their avatar and current name, never per row)."""
     return db.session.scalars(
         select(SeasonFinish).filter_by(game=game, season_year=season_year)
+        .options(joinedload(SeasonFinish.user))
         .order_by(SeasonFinish.place, func.lower(SeasonFinish.name),
                   SeasonFinish.name)).all()
 
@@ -112,6 +116,7 @@ def champions() -> list[SeasonFinish]:
     """Every place-1 row, newest season first, then game, then name."""
     return db.session.scalars(
         select(SeasonFinish).filter_by(place=1)
+        .options(joinedload(SeasonFinish.user))
         .order_by(SeasonFinish.season_year.desc(), SeasonFinish.game,
                   func.lower(SeasonFinish.name), SeasonFinish.name)).all()
 
