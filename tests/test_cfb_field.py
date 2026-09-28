@@ -16,6 +16,7 @@ from games.cfb.services.field import (
     most_backed,
     spent_board,
 )
+from models import User
 from tests._cfb_fixtures import (
     PAST_DEADLINE,
     SEASON,
@@ -238,3 +239,81 @@ def test_the_lounge_who_is_left_door_opens_the_field():
     from pathlib import Path
     panel = Path(__file__).resolve().parent.parent / 'games/cfb/templates/cfb/lounge/_panel_live.html'
     assert "url_for('cfb.field') }}\">The field" in panel.read_text()
+
+
+# --- The collapsible board (9.15): conference folds, the crimson shelf -------
+
+def test_a_conference_leads_with_its_spent_lines_most_burned_first(app, season):
+    with app.app_context():
+        field = build_field(SEASON)
+        boards = {b.name: b for b in field.board}
+        big_ten, sec, big_12 = boards['Big Ten'], boards['SEC'], boards['Big 12']
+        assert [line.team.name for line in big_ten.spent_lines] == ['Ohio State', 'Iowa']
+        assert (big_ten.spent_count, big_ten.gone_count) == (2, 0)
+        # The shelf: three survivors on two teams is six; Ohio State keeps one, Iowa two.
+        assert (big_ten.held, big_ten.capacity) == (3, 6)
+        assert (sec.spent_count, sec.gone_count, sec.held) == (1, 1, 0)
+        assert big_12.spent_lines == () and [line.team.name for line in big_12.unspent_lines] == ['Utah']
+
+
+def test_every_conference_folds_closed_and_its_summary_still_informs(app, client, season):
+    page = client.get('/cfb/field').get_data(as_text=True)
+    assert page.count('<details class="cfb-field-conf') == 3
+    assert '<details class="cfb-field-conf has-spent" open' not in page
+    assert '<h3 class="cfb-field-conf-name">Big Ten</h3>' in page
+    assert '<b>2</b> spent' in page and '<b>1</b> gone' in page and 'none spent' in page
+    # The unspent fold into one chip row; a team only the cut burned says so there.
+    assert 'cfb-field-unspent-list' in page and '1 of the cut burned it' in page
+    # The meter is drawn, not read: the visible count is the one announcement.
+    assert 'role="img" aria-label="spent by' not in page
+    assert 'class="cfb-field-meter" aria-hidden="true"' in page
+    # A visitor carries no You tag anywhere on the board.
+    assert 'cfb-you-tag' not in page
+
+
+def test_a_survivor_sees_their_own_spent_lines(app, season):
+    with app.app_context():
+        client = app.test_client()
+        with client.session_transaction() as sess:
+            sess['_user_id'] = db.session.get(User, season['ann_user']).auth_id
+            sess['_fresh'] = True
+    page = client.get('/cfb/field').get_data(as_text=True)
+    # Ann spent Georgia (SEC) and Ohio State (Big Ten): two lines and two
+    # conference summaries carry the tag, plus her name in each spenders list.
+    assert page.count('cfb-field-line is-spent is-gone is-you') == 1        # Georgia
+    assert page.count('cfb-field-line is-spent is-you') == 1                # Ohio State
+    assert page.count('<span class="cfb-you-tag">You</span>') == 6
+
+
+def test_the_late_field_opens_its_spent_lines(app, client, season, monkeypatch):
+    from dataclasses import replace
+
+    import games.cfb.routes as routes
+    real = routes.build_field
+    monkeypatch.setattr(routes, 'build_field', lambda year: replace(real(year), phase='late'))
+    page = client.get('/cfb/field').get_data(as_text=True)
+    assert 'cfb-field-page is-late' in page
+    assert page.count('<details class="cfb-field-conf has-spent" open>') == 2
+    assert '<details class="cfb-field-conf">' in page                        # Big 12, nothing spent
+    assert page.count('<details class="cfb-field-team" open>') == 3
+
+
+def test_the_hero_states_the_field_and_its_lives():
+    from pathlib import Path
+    tpl = (Path(__file__).resolve().parent.parent
+           / 'games/cfb/templates/cfb/field.html').read_text()
+    assert 'of {{ field.total }} still standing' in tpl
+    assert 'cfb-field-bar cfb-field-bar--hero' in tpl
+    assert 'cfb-field-bar cfb-field-bar--mini' in tpl        # the phone's lives under After
+
+
+def test_the_field_css_makes_crimson_the_shelf_and_keeps_the_room_locks():
+    import re
+    from pathlib import Path
+    css = (Path(__file__).resolve().parent.parent / 'static/css/style.css').read_text()
+    start = css.index('/* --- The Field (DESIGN.md 9.15)')
+    block = css[start:css.index('/* Quiet survived-green tint for the champion row', start)]
+    assert re.search(r'\.cfb-field-meter-hold\s*\{\s*background:\s*var\(--cfb-crimson-bright\)', block)
+    assert re.search(r'\.cfb-field-meter-spent\s*\{\s*background:\s*transparent', block)
+    assert not re.search(r'(?<![-\w])border-(left|right)\s*:', block), 'no side stripes in the room'
+    assert 'gold' not in block.lower(), 'no gold in CFB (the Crimson-Ceremony Rule)'
