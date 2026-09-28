@@ -32,6 +32,7 @@ ROOT = Path(__file__).resolve().parent.parent
 ROOM_TEMPLATES = sorted(
     p for p in [*(ROOT / 'games/cfb/templates').rglob('*.html'),
                 *(ROOT / 'games/docket/templates').rglob('*.html'),
+                *(ROOT / 'core/records/templates').rglob('*.html'),
                 ROOT / 'templates/_settle_tab.html']
     if 'lounge' not in p.parts)
 
