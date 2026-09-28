@@ -361,3 +361,14 @@ def test_docket_refuses_before_the_season_is_complete(app):
     _seed_docket(3)
     with pytest.raises(SeasonNotClosed):
         season_finishes(2026)
+
+
+def test_docket_refuses_a_year_that_is_not_the_configured_season(app):
+    # Docket weeks carry no season column yet (season_pass.week_rollups_from_db),
+    # so a complete 2026 would otherwise close 2025 as a zero-finisher board.
+    from games.docket.services.records import season_finishes
+    from games.docket.services.weeks import TOTAL_WEEKS
+    from models.records import SeasonNotClosed
+    _seed_docket(TOTAL_WEEKS)
+    with pytest.raises(SeasonNotClosed, match='2025'):
+        season_finishes(2025)

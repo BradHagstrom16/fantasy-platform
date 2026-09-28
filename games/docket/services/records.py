@@ -6,10 +6,15 @@ drop, wins never dropped), once every week is graded. No second ranking
 and no second formatter: the detail line prints what ledger.html prints.
 """
 from games.docket.services.season_pass import season_ledger
+from games.docket.services.weeks import SEASON_YEAR
 from models.records import FinishDraft, SeasonNotClosed
 
 
 def season_finishes(season_year: int) -> list[FinishDraft]:
+    # The ledger's weeks are not season-scoped (only its roster is), so any
+    # other year would read this season's graded weeks over an empty roster.
+    if season_year != SEASON_YEAR:
+        raise SeasonNotClosed(f'The Docket {season_year} is not the configured season')
     ledger = season_ledger(season_year)
     if not ledger.season_complete:
         raise SeasonNotClosed(
