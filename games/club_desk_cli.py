@@ -17,6 +17,7 @@ from datetime import UTC, datetime
 import click
 from flask.cli import AppGroup
 
+from utils.sync_runs import mark_run, record_run
 from utils.time import PLATFORM_TZ
 
 club_cli = AppGroup('club', help='The Club Desk: cross-game member mail.')
@@ -73,6 +74,11 @@ def _echo_letters(composed, dry_run):
               help='Timer mode: exit 0 when nothing named has a week.')
 def desk_cmd(dry_run, now_raw, anchors, rides, scheduled):
     """One firing of the reminder desk."""
+    with record_run(None if dry_run else 'club-remind'):
+        _desk(dry_run, now_raw, anchors, rides, scheduled)
+
+
+def _desk(dry_run, now_raw, anchors, rides, scheduled):
     from games.club_desk import ANCHOR_SLUGS, SLOTS, run_desk
 
     now = _parse_now(now_raw)
@@ -101,11 +107,17 @@ def desk_cmd(dry_run, now_raw, anchors, rides, scheduled):
         click.echo(f'  {slug}: {why}')
     if not run.anchors:
         if run.exit_code:
-            click.secho('ERROR: nothing to do: no game named in --anchor '
-                        'has a week (out of season or not imported)',
-                        fg='red', err=True)
+            message = ('nothing to do: no game named in --anchor has a week '
+                       '(out of season or not imported)')
+            click.secho(f'ERROR: {message}', fg='red', err=True)
+            mark_run('error', message)
             raise SystemExit(1)
         click.echo('  no tier is due right now')
+        if all(slug in run.skipped for slug in anchor_slugs):
+            mark_run('stood_down', '; '.join(
+                f'{slug}: {why}' for slug, why in run.skipped.items()))
+        else:
+            mark_run('idle', 'no tier is due')
         return
     for anchor in run.anchors:
         rider = (f' + rider {anchor.rider.consumer.slug}/{anchor.rider.tier}'
@@ -124,10 +136,13 @@ def desk_cmd(dry_run, now_raw, anchors, rides, scheduled):
         return
     click.echo(f'  delivered: {run.delivered or "nothing"}; latched: '
                f'{run.latched or "nothing"}')
+    anchors_line = ', '.join(f'{a.consumer.slug}/{a.tier}' for a in run.anchors)
     if run.exit_code:
         click.secho('ERROR: an active reminder tier reached nobody',
                     fg='red', err=True)
+        mark_run('error', f'{anchors_line}: an active reminder tier reached nobody')
         raise SystemExit(run.exit_code)
+    mark_run('ok', f'{anchors_line}: {len(run.composed)} letter(s)')
 
 
 @club_cli.command('paper')
@@ -140,6 +155,11 @@ def desk_cmd(dry_run, now_raw, anchors, rides, scheduled):
               help='Timer mode: exit 0 when nothing is open.')
 def paper_cmd(dry_run, now_raw, scheduled):
     """The Tuesday Paper: open both games, then one letter per member."""
+    with record_run(None if dry_run else 'club-paper'):
+        _paper(dry_run, now_raw, scheduled)
+
+
+def _paper(dry_run, now_raw, scheduled):
     from games.club_desk import run_paper
 
     now = _parse_now(now_raw)
@@ -152,8 +172,13 @@ def paper_cmd(dry_run, now_raw, scheduled):
     if not run.opened:
         if run.exit_code:
             click.secho('ERROR: nothing is open', fg='red', err=True)
+            mark_run('error', '; '.join(run.errors) or 'nothing is open')
             raise SystemExit(1)
         click.echo('  nothing is open right now')
+        if run.errors:
+            mark_run('error', '; '.join(run.errors))
+        else:
+            mark_run('stood_down', 'nothing is open')
         return
     for slug, week in run.opened.items():
         note = ' (already announced)' if run.announced.get(slug) else ''
@@ -172,8 +197,12 @@ def paper_cmd(dry_run, now_raw, scheduled):
         return
     click.echo(f'  delivered sections: {run.delivered or "nothing"}; '
                f'latched: {run.latched or "nothing"}')
+    opened = ', '.join(f'{slug} week {week.week_number}'
+                       for slug, week in run.opened.items())
     if run.exit_code:
+        mark_run('error', f'{opened}: {"; ".join(run.errors) or "a send failed"}')
         raise SystemExit(run.exit_code)
+    mark_run('ok', f'{opened}: {len(run.composed)} letter(s)')
 
 
 def register_club_cli(app):

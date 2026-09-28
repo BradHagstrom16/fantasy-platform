@@ -16,6 +16,9 @@ from models.content import Announcement, CommishNote
 # Web push subscriptions (installable-app The Wire — platform-level, no game import)
 from models.push import PushSubscription
 
+# One row per scheduled job run (the admin dashboard's Jobs list)
+from models.sync_run import SyncRun
+
 # Golf Pick 'Em models
 from games.golf.models import (
     GolfEnrollment,
@@ -62,6 +65,7 @@ __all__ = [
     'Announcement',
     'CommishNote',
     'PushSubscription',
+    'SyncRun',
     'GolfEnrollment',
     'GolfPlayer',
     'GolfTournament',

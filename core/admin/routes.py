@@ -10,6 +10,7 @@ from flask_login import current_user
 from sqlalchemy import func, select
 
 from core.admin import admin_bp
+from core.admin.health import job_rows, latest_credits
 from extensions import db
 from games.cfb.models import CfbEnrollment
 from games.docket.models import DocketEnrollment
@@ -38,25 +39,8 @@ def admin_required(f):
 def dashboard():
     total_users = User.query.count()
 
+    # Live games first; the archived World Cup last.
     games = [
-        {
-            'name': 'World Cup Fantasy',
-            'emoji': '🌍',
-            'slug': 'worldcup',
-            'admin_url': url_for('worldcup.admin_dashboard'),
-            'payments_url': url_for('worldcup.admin_payments'),
-            'enrolled': WorldCupEnrollment.query.count(),
-            'paid': WorldCupEnrollment.query.filter_by(has_paid=True).count(),
-        },
-        {
-            'name': "Golf Pick 'Em",
-            'emoji': '⛳',
-            'slug': 'golf',
-            'admin_url': url_for('golf.admin_dashboard'),
-            'payments_url': url_for('golf.admin_payments'),
-            'enrolled': GolfEnrollment.query.count(),
-            'paid': GolfEnrollment.query.filter_by(has_paid=True).count(),
-        },
         {
             'name': 'CFB Survivor Pool',
             'emoji': '🏈',
@@ -78,6 +62,24 @@ def dashboard():
                 select(func.count()).select_from(DocketEnrollment)
                 .filter(DocketEnrollment.has_paid.is_(True))),
         },
+        {
+            'name': "Golf Pick 'Em",
+            'emoji': '⛳',
+            'slug': 'golf',
+            'admin_url': url_for('golf.admin_dashboard'),
+            'payments_url': url_for('golf.admin_payments'),
+            'enrolled': GolfEnrollment.query.count(),
+            'paid': GolfEnrollment.query.filter_by(has_paid=True).count(),
+        },
+        {
+            'name': 'World Cup Fantasy',
+            'emoji': '🌍',
+            'slug': 'worldcup',
+            'admin_url': url_for('worldcup.admin_dashboard'),
+            'payments_url': url_for('worldcup.admin_payments'),
+            'enrolled': WorldCupEnrollment.query.count(),
+            'paid': WorldCupEnrollment.query.filter_by(has_paid=True).count(),
+        },
     ]
 
     active_games = sum(1 for g in games if g['enrolled'] > 0)
@@ -89,6 +91,8 @@ def dashboard():
         games=games,
         active_games=active_games,
         paid_users=paid_users,
+        job_rows=job_rows(),
+        credits=latest_credits(),
     )
 
 

@@ -26,7 +26,7 @@ from sqlalchemy.orm import joinedload
 
 from core.admin import admin_bp
 from core.admin.routes import admin_required
-from extensions import db
+from extensions import db, limiter
 from games.cfb.models import CfbEnrollment
 from games.cfb.services.announce_blocks import BOARDS as SURVIVOR_BOARDS
 from games.docket.models import DocketEnrollment
@@ -521,11 +521,14 @@ def announce(announcement_id=None):
 
 
 @admin_bp.route('/announce/render', methods=['POST'])
+@limiter.exempt
 @admin_required
 def announce_render():
     """The composer's live preview: the letter as it stands, as JSON
     ``{html, plain, errors}``. Stores nothing and sends nothing; a blank
-    subject previews under a stand-in headline."""
+    subject previews under a stand-in headline. Exempt from the global
+    200-per-hour default: the composer calls it after every pause in typing,
+    so one writing session passes 200."""
     values = _form_values()
     values['subject'] = values['subject'][:MAX_SUBJECT] or 'Your headline here'
     values['headline'] = values['headline'][:MAX_SUBJECT]

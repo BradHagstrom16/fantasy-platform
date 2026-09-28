@@ -289,3 +289,12 @@ def test_the_live_preview_follows_the_controls(client, admin):
     data = client.post('/admin/announce/render', data=_form(
         'preview', headline='Carnage', cta='survivor')).get_json()
     assert 'Carnage</h1>' in data['html'] and '/cfb/results"' in data['html']
+
+
+def test_the_live_preview_is_never_rate_limited(client, admin):
+    """The composer re-renders 400 ms after every pause in typing, so one
+    writing session passes the global 200-per-hour default (prod, 2026-09-28:
+    226 renders, "The preview could not refresh (429)"). The route is exempt."""
+    for _ in range(201):
+        resp = client.post('/admin/announce/render', data=_form('preview'))
+        assert resp.status_code == 200, resp.status_code

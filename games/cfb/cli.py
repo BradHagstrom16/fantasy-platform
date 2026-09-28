@@ -28,6 +28,7 @@ from flask.cli import AppGroup
 from extensions import db
 from games.cfb.constants import DEV_SEED_TEAMS, TEAM_CONFERENCES
 from games.cfb.models import CfbEnrollment, CfbTeam
+from utils.sync_runs import mark_run, record_run
 
 cfb_cli = AppGroup('cfb', help="CFB Survivor Pool management commands.")
 
@@ -57,8 +58,53 @@ def populate_teams_cmd():
     click.echo(f'Added {added} teams to cfb_team table.')
 
 
+# The sync result's status, as the admin dashboard's run outcome. The CLI
+# exits 0 on every status (a failed open emails the admin itself), so the
+# run row is where an 'error' shows up.
+_RUN_OUTCOMES = {'error': 'error', 'skipped': 'idle'}
+
+
+def _scores_outcome(result):
+    """The scores run's outcome and summary. Its status only counts graded
+    weeks, and the row keeps one line, so a STUCK week or the ADR-062 open
+    retry (the only work on many mornings) leads the summary instead."""
+    stuck = [r['week_number'] for r in result['week_results'] if r.get('stuck')]
+    open_line = result['open_line']
+    failed_open = open_line is not None and not result['opened']
+    head = []
+    if stuck:
+        head.append('STUCK: Week ' + ', '.join(map(str, stuck)))
+    if open_line:
+        head.append(open_line)
+    if stuck or failed_open:
+        outcome = 'error'
+    elif result['opened']:
+        outcome = 'ok'
+    else:
+        outcome = _RUN_OUTCOMES.get(result['status'], 'ok')
+    summary = result['details']
+    if head:
+        summary = '; '.join(head) + '\n' + summary
+    return outcome, summary
+
+
 def _run_mode(mode):
-    """Execute a sync mode and print results."""
+    """Execute a sync mode, print results, and record the run (not status)."""
+    with record_run(None if mode == 'status' else f'cfb-{mode}'):
+        result = _dispatch_mode(mode)
+        if result is None:
+            return
+        if mode == 'scores':
+            mark_run(*_scores_outcome(result))
+        else:
+            mark_run(_RUN_OUTCOMES.get(result.get('status'), 'ok'),
+                     result.get('details'))
+
+    click.echo(f"\n[cfb sync --mode {mode}]")
+    click.echo(result.get('details', str(result)))
+
+
+def _dispatch_mode(mode):
     if mode == 'setup':
         from games.cfb.services.automation import run_setup
         result = run_setup()
@@ -72,7 +118,7 @@ def _run_mode(mode):
         from games.cfb.services.game_logic import check_and_process_autopicks
         results = check_and_process_autopicks()
         result = {
-            'status': 'processed',
+            'status': 'processed' if results else 'skipped',
             'details': '\n'.join(results) if results else 'No auto-picks needed',
         }
     elif mode == 'status':
@@ -80,10 +126,8 @@ def _run_mode(mode):
         result = run_status()
     else:
         click.echo(f"Unknown mode: {mode}")
-        return
-
-    click.echo(f"\n[cfb sync --mode {mode}]")
-    click.echo(result.get('details', str(result)))
+        return None
+    return result
 
 
 @cfb_cli.command('sync')
