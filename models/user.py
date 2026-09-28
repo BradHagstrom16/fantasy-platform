@@ -11,7 +11,6 @@ from flask_login import UserMixin
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from extensions import db
-from utils.identifier import normalize_identifier
 
 
 class User(UserMixin, db.Model):
@@ -89,29 +88,29 @@ class User(UserMixin, db.Model):
     # Reserved avatars \u2014 always the ``\U\u2026`` escapes here, never a literal
     # non-BMP char (a literal can break import as an invalid surrogate pair).
     ADMIN_AVATAR = '\U0001F451'     # crown \u2014 platform admins only
-    CHAMPION_AVATAR = '\U0001F3C6'  # trophy \u2014 the reigning Survivor champion only
+    CHAMPION_AVATAR = '\U0001F3C6'  # trophy \u2014 every reigning club champion
     DEFAULT_AVATAR = '\U0001F3C8'   # football \u2014 anyone who never chose
-    # The 2025 Survivor champion reigns through the 2026 season. Re-point this
-    # when the 2026 title resolves (the 2025 archive stores only a display
-    # name, so the identity has to be declared here). Matched case-insensitively
-    # through the same fold every auth lookup uses.
-    REIGNING_CHAMPION_USERNAME = 'cubbies22'
 
     @property
     def is_reigning_champion(self) -> bool:
-        """True for the one account that wears the trophy this season."""
-        return normalize_identifier(self.username) == normalize_identifier(
-            self.REIGNING_CHAMPION_USERNAME)
+        """True for a linked place-1 finisher of any game's most recently
+        closed season (ADR-068: derived from the season_finishes ledger,
+        never declared; tied champions all reign). The import is deferred
+        because models.records imports this module; a transient user (id
+        None) is never a member of the set."""
+        from models.records import reigning_champion_user_ids
+        return self.id in reigning_champion_user_ids()
 
     def get_avatar(self) -> str:
         """Return the user's avatar emoji, or the platform default.
 
         Two glyphs are reserved and enforced here \u2014 so every get_avatar()
         call site inherits the rule, not just the picker: the crown renders
-        for every platform admin, the trophy for the reigning Survivor
-        champion. Precedence: admin crown > champion trophy > stored choice
-        > default. Anyone else who has a reserved glyph stored renders the
-        default instead.
+        for every platform admin, the trophy for every reigning champion
+        (the linked place-1 finishers of each game's latest closed season,
+        co-champions included). Precedence:
+        admin crown > champion trophy > stored choice > default. Anyone
+        else who has a reserved glyph stored renders the default instead.
         """
         if self.is_admin:
             return self.ADMIN_AVATAR

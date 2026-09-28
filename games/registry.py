@@ -15,12 +15,16 @@ from typing import Any, Literal
 
 from games.cfb.services import enrollment as _cfb_enrollment
 from games.cfb.services import lounge as _cfb_lounge
+from games.cfb.services import records as _cfb_records
 from games.docket.services import enrollment as _docket_enrollment
 from games.docket.services import lounge as _docket_lounge
+from games.docket.services import records as _docket_records
 from games.golf.services import enrollment as _golf_enrollment
 from games.worldcup.services import enrollment as _worldcup_enrollment
 from games.worldcup.services import lounge as _worldcup_lounge
+from games.worldcup.services import records as _worldcup_records
 from games.worldcup.services import state as _worldcup_state
+from models.records import FinishDraft
 
 GameStatus = Literal['coming_soon', 'open', 'closed', 'completed']
 
@@ -73,6 +77,14 @@ class GameRegistryEntry:
     # both fall-'26 games close at the shared Week 1 deadline, Sat Sep 5
     # 11:00 AM CT); late membership is granted via admin enrollment only.
     join_open: Callable[[], bool] | None = None
+    # The club's permanent record (ADR-068): (season_year) -> the finished
+    # season's board as models.records.FinishDraft rows, place 1 first, or
+    # raise models.records.SeasonNotClosed while the season still runs
+    # (InvalidBoard for a source the record cannot trust, the 2025 link map).
+    # `flask records close` is its only caller; core/records/ reaches a game
+    # through this and never imports one. None for a game whose board has
+    # not shipped (golf until Phase U7).
+    season_finishes: Callable[[int], list[FinishDraft]] | None = None
 
 
 # Populated in Tasks 3, 5, 8. Intentionally empty at file-creation time so
@@ -99,6 +111,7 @@ GAMES: list[GameRegistryEntry] = [
         # Archival full-page lounge tree, kept intact for the frozen-WC
         # regression net and a possible revival. See lounge_mode's docstring.
         lounge_mode='page',
+        season_finishes=_worldcup_records.season_finishes,
     ),
     GameRegistryEntry(
         slug='cfb',
@@ -120,6 +133,7 @@ GAMES: list[GameRegistryEntry] = [
         lounge_state=_cfb_lounge.cfb_lounge_state,
         lounge_context=_cfb_lounge.build_lounge_context,
         join_open=_cfb_lounge.join_window_open,
+        season_finishes=_cfb_records.season_finishes,
     ),
     GameRegistryEntry(
         slug='docket',
@@ -144,6 +158,7 @@ GAMES: list[GameRegistryEntry] = [
         lounge_state=_docket_lounge.docket_lounge_state,
         lounge_context=_docket_lounge.build_lounge_context,
         join_open=_docket_lounge.join_window_open,
+        season_finishes=_docket_records.season_finishes,
     ),
     GameRegistryEntry(
         slug='golf',

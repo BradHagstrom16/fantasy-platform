@@ -19,6 +19,9 @@ from models.push import PushSubscription
 # One row per scheduled job run (the admin dashboard's Jobs list)
 from models.sync_run import SyncRun
 
+# The club's permanent record: every finished season's board (ADR-068)
+from models.records import SeasonFinish
+
 # Golf Pick 'Em models
 from games.golf.models import (
     GolfEnrollment,
@@ -66,6 +69,7 @@ __all__ = [
     'CommishNote',
     'PushSubscription',
     'SyncRun',
+    'SeasonFinish',
     'GolfEnrollment',
     'GolfPlayer',
     'GolfTournament',

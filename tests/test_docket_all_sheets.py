@@ -323,7 +323,9 @@ def test_no_n_plus_one(app, monkeypatch):
     db.session.expire_all()
     # The week is the caller's: its fields are read before the listener so
     # the count below is the service's own five statements (the roster ids,
-    # enrollments with their users, games, picks, predictions), no more.
+    # enrollments with their users, games, picks, predictions) plus the one
+    # champion read every avatar shares (ADR-068: derived once per request,
+    # never per member), no more.
     _ = (week.id, week.deadline_at, week.tiebreaker_game_id, week.week_number)
     statements = []
 
@@ -343,7 +345,7 @@ def test_no_n_plus_one(app, monkeypatch):
     finally:
         event.remove(db.engine, 'before_cursor_execute', count)
     assert len(board.members) == 3
-    assert len(statements) == 5, statements
+    assert len(statements) == 6, statements
 
 
 # ── the page ──────────────────────────────────────────────────────────────
