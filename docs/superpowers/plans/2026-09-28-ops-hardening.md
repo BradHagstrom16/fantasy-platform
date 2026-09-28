@@ -81,6 +81,9 @@ journalctl -u job-alert@club-remind.service -n 20 --no-pager
 ### 5. Set each check's schedule in healthchecks.io
 
 Each check is created by its job's first ping, with a default one-day period.
+Or create them ahead of time: a check whose **slug** is the job's name (e.g.
+`docket-scores`) is the one that job's pings land on, and a new check stays
+quiet until its first ping.
 Give each one its real schedule: **Schedule → Cron**, timezone
 `America/Chicago`. Extra pings (the December/January extra firings, a
 hand-fire) are harmless; a *missing* expected ping is what alerts.
@@ -89,7 +92,7 @@ hand-fire) are harmless; a *missing* expected ping is what alerts.
 |---|---|---|
 | `club-remind` | `0 * * * *` | 30 min |
 | `club-paper` | `15 6 * * 2` | 1 h |
-| `scores-gameday` | `30 13-23 * * *` | 1 h |
+| `scores-gameday` | `30 13,15,17,19,21,23 * * *` (the odd hours: December fires only every other hour, so an hourly cron would alert all month) | 1 h |
 | `cfb-setup` | `0 9 * * 1` | 1 h |
 | `cfb-spreads` | `0 6 * * 5` | 1 h |
 | `cfb-scores` | `0 8 * * 0-4` | 1 h |
