@@ -52,6 +52,17 @@ class User(UserMixin, db.Model):
         """
         return self.auth_id
 
+    def rotate_auth_id(self):
+        """Sign out every session and remember cookie this member holds.
+
+        Both cookies carry `auth_id`, so a new value matches none of them.
+        Called on every password change or reset (member or admin): a password
+        change exists to lock someone out, and before this a stolen session
+        stayed signed in. The caller commits, and re-logs in the member's own
+        session when it should survive (core/auth/routes.py::change_password).
+        """
+        self.auth_id = uuid.uuid4().hex
+
     def set_password(self, password):
         """Hash and store password.
 

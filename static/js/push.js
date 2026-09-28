@@ -217,11 +217,12 @@
   }
 
   function wireLogout() {
-    var links = document.querySelectorAll('a.js-logout');
-    if (!links.length) { return; }
-    links.forEach(function (link) {
-      link.addEventListener('click', function (event) {
-        var href = link.getAttribute('href');
+    // A form since /logout went POST-only. form.submit() below does not fire
+    // another submit event, so the unsubscribe runs once.
+    var forms = document.querySelectorAll('form.js-logout');
+    if (!forms.length) { return; }
+    forms.forEach(function (form) {
+      form.addEventListener('submit', function (event) {
         event.preventDefault();
         // getRegistration() (not .ready) so logout still completes when no
         // worker is active — .ready never resolves without one, hanging the nav.
@@ -234,7 +235,7 @@
             return postJSON('/push/unsubscribe', { endpoint: endpoint }).catch(function () {});
           });
         }).catch(function () {}).finally(function () {
-          window.location.href = href;
+          form.submit();
         });
       });
     });

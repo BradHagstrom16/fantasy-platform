@@ -11,8 +11,22 @@ from flask_login import current_user
 from sqlalchemy import select
 from werkzeug.middleware.proxy_fix import ProxyFix
 
-from config import config
+from config import DEV_SECRET_KEY, config
 from extensions import csrf, db, limiter, login_manager, migrate
+
+
+def refuse_default_secret_key(config_name, secret_key):
+    """Refuse to run production on a blank or the public development key.
+
+    SECRET_KEY signs the session and remember cookies and the password-reset
+    tokens. The development fallback is readable in this public repo, so a
+    production box that lost its .env line would hand anyone a way to sign a
+    cookie as any member. Fail the boot instead (Gunicorn and every timer job).
+    """
+    if config_name == 'production' and secret_key in ('', DEV_SECRET_KEY):
+        raise RuntimeError(
+            'SECRET_KEY is blank or the development default. Set a real '
+            'SECRET_KEY in /home/deploy/fantasy-platform/.env.')
 
 
 def create_app(config_name=None):
@@ -22,6 +36,11 @@ def create_app(config_name=None):
 
     app = Flask(__name__)
     app.config.from_object(config[config_name])
+    refuse_default_secret_key(config_name, app.config['SECRET_KEY'])
+
+    # Before any blueprint, so an error while registering one is reported too.
+    from utils.observability import init_sentry
+    init_sentry(app, config_name)
 
     # Initialize extensions
     db.init_app(app)
