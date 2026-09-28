@@ -55,7 +55,9 @@ def ping(ping_key, unit, *, fail=False, attempts=3, backoff=2):
     for attempt in range(1, attempts + 1):
         try:
             with urllib.request.urlopen(url, timeout=10) as resp:
-                if resp.status == 200:
+                # 201 Created is the answer to the ping that auto-creates a
+                # new check (`?create=1`); both mean the ping landed.
+                if 200 <= resp.status < 300:
                     return True
                 reason = f'HTTP {resp.status}'
         except (urllib.error.URLError, OSError) as exc:

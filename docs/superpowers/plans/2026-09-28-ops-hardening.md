@@ -81,6 +81,9 @@ journalctl -u job-alert@club-remind.service -n 20 --no-pager
 ### 5. Set each check's schedule in healthchecks.io
 
 Each check is created by its job's first ping, with a default one-day period.
+Or create them ahead of time: a check whose **slug** is the job's name (e.g.
+`docket-scores`) is the one that job's pings land on, and a new check stays
+quiet until its first ping.
 Give each one its real schedule: **Schedule → Cron**, timezone
 `America/Chicago`. Extra pings (the December/January extra firings, a
 hand-fire) are harmless; a *missing* expected ping is what alerts.
@@ -89,7 +92,7 @@ hand-fire) are harmless; a *missing* expected ping is what alerts.
 |---|---|---|
 | `club-remind` | `0 * * * *` | 30 min |
 | `club-paper` | `15 6 * * 2` | 1 h |
-| `scores-gameday` | `30 13-23 * * *` | 1 h |
+| `scores-gameday` | **OnCalendar**, not Cron: see below | 1 h |
 | `cfb-setup` | `0 9 * * 1` | 1 h |
 | `cfb-spreads` | `0 6 * * 5` | 1 h |
 | `cfb-scores` | `0 8 * * 0-4` | 1 h |
@@ -97,6 +100,22 @@ hand-fire) are harmless; a *missing* expected ping is what alerts.
 | `docket-lines` | `0 7 * * 2-5` | 1 h |
 | `docket-scores` | `0 8 * * 0,1,3-6` | 1 h |
 | `docket-deadline` | `2,32 12 * * 0` | 1 h |
+
+`scores-gameday` has two cadences (hourly January–November, every other hour
+in December, plus 00:30 all year), which no single cron can express. Set it to
+**Schedule → OnCalendar** and paste the timer's four lines, one per line (the
+timezone is inline, and healthchecks.io accepts it that way, the same as
+systemd):
+
+```
+*-01..11-* 13..23:30:00 America/Chicago
+*-01..11-* 00:30:00 America/Chicago
+*-12-* 13..23/2:30:00 America/Chicago
+*-12-* 00:30:00 America/Chicago
+```
+
+These must stay identical to the `OnCalendar=` lines in
+`deploy/scores-gameday.timer`. Edit the check whenever the timer changes.
 
 Timers keep firing (and pinging) out of season. `--scheduled` exits 0, which
 counts as a success. When a timer is **disabled** (Survivor after its last CFP

@@ -114,6 +114,19 @@ def test_ping_url(fail, suffix):
     assert url == f'https://hc-ping.com/KEY/club-remind{suffix}?create=1'
 
 
+def test_the_ping_that_creates_a_check_counts_as_delivered(caplog):
+    """healthchecks.io answers 201 Created when ?create=1 makes a new check
+    (seen on the droplet's first ping, 2026-09-28); no retry, no warning."""
+    created = _ok_response()
+    created.status = 201
+    with patch('utils.job_alert.urllib.request.urlopen', return_value=created) as urlopen, \
+            patch('utils.job_alert.time.sleep') as sleep:
+        assert job_alert.ping('KEY', 'club-remind') is True
+    assert urlopen.call_count == 1
+    sleep.assert_not_called()
+    assert 'failed' not in caplog.text
+
+
 def test_a_ping_that_cannot_connect_retries_then_gives_up_quietly(caplog):
     with patch('utils.job_alert.urllib.request.urlopen',
                side_effect=urllib.error.URLError('down')) as urlopen, \
