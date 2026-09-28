@@ -7557,7 +7557,7 @@ body.game-cfb .list-group {
   text-align: center;
 }
 /* The one link in the provenance line (the club's own record, ADR-068):
-   the Field's link treatment, bone on the midnight ground, never the room's
+   bone-muted and underlined on the midnight ground, never the room's
    default link pigment. */
 .cfb-archive-provenance a {
   color: var(--cfb-bone-muted);
@@ -17005,8 +17005,9 @@ body.game-docket .back-link:focus-visible {
    The platform's light world, no new token: the Tribune's reading room
    register (Teko masthead, one Newsreader lede, a 2px gold rule, a 40rem
    column, hairlines and never cards) worn by the club's roll of champions
-   and the boards folded under it. `.records-*` only; the Tribune's classes
-   stay the Tribune's. */
+   and the boards folded under it. `.records-*` only (plus the footer's one
+   link at the end of this section); the Tribune's classes stay the
+   Tribune's. */
 .records-page main { padding-bottom: 3rem; }
 .records-wrap { max-width: 60rem; padding-top: 2.25rem; }
 .records-page ::selection { background: rgba(201,162,39,.35); color: var(--text-primary); }
@@ -17168,8 +17169,9 @@ body.game-docket .back-link:focus-visible {
   line-height: 1.5;
   color: var(--text-primary);
 }
-/* The champion's line: the platform's tint-only convention, inset so the
-   place and the finish never touch the band's edge. */
+/* The champion's line: the platform's tint-only convention. The band runs
+   .5rem past the column on each side and pads the content back in, so the
+   place and the finish never touch its edge. */
 .records-row--first { background: rgba(201,162,39,.08); padding: .55rem .5rem; margin: 0 -.5rem; }
 .records-place {
   font-family: var(--font-teko);

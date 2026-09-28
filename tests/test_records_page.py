@@ -3,6 +3,8 @@ season_finishes ledger, its nav entry points, and its CSS section."""
 import re
 from pathlib import Path
 
+from sqlalchemy import event
+
 from extensions import db
 from models.records import FinishDraft, record_season
 from models.user import User
@@ -80,14 +82,97 @@ def test_linked_rows_carry_the_avatar_and_the_current_name_only_when_it_differs(
     assert 'now brad' not in page
 
 
+def _board(page, game, year):
+    start = page.index(f'id="board-{game}-{year}"')
+    return page[start:page.index('</details>', start)]
+
+
 def test_each_board_links_the_room_archive(client, app):
     _seed()
+    record_season('docket', 2026, [FinishDraft(None, 'Docket Winner', 1, None, None)])
     page = client.get('/records').data.decode()
     with app.test_request_context():
         from flask import url_for
-        assert url_for('cfb.history') in page
-        assert url_for('worldcup.leaderboard') in page
-        assert url_for('docket.ledger') not in page
+        assert url_for('cfb.history') in _board(page, 'cfb', 2025)
+        assert url_for('worldcup.leaderboard') in _board(page, 'worldcup', 2026)
+    # The Docket keeps no public archive of a season yet: its ledger is
+    # members-only and always the current season, so its board links nowhere.
+    assert 'records-archive-link' not in _board(page, 'docket', 2026)
+
+
+def test_every_season_archive_is_a_public_page(client, app):
+    """The page is public, so an archive it links must answer an anonymous
+    visitor, never bounce them to a join page."""
+    from flask import url_for
+
+    from core.records.routes import SEASON_ARCHIVES
+    with app.test_request_context():
+        urls = [url_for(endpoint) for endpoint in SEASON_ARCHIVES.values()]
+    for url in urls:
+        assert client.get(url).status_code == 200, url
+
+
+def test_tied_champions_each_take_a_line_of_the_roll(client):
+    record_season('worldcup', 2026, [
+        FinishDraft(None, 'Co One', 1, None, '300.0 pts'),
+        FinishDraft(None, 'Co Two', 1, None, '300.0 pts'),
+        FinishDraft(None, 'Third', 3, None, '10.0 pts'),
+    ])
+    page = client.get('/records').data.decode()
+    assert page.count('class="records-champion"') == 2
+    assert page.count('href="#board-worldcup-2026"') == 2
+    assert page.count('id="board-worldcup-2026"') == 1
+
+
+def test_two_seasons_of_one_game_are_two_boards_the_newest_open(client):
+    record_season('cfb', 2025, [FinishDraft(None, 'Old Champ', 1, None, None)])
+    record_season('cfb', 2026, [FinishDraft(None, 'New Champ', 1, None, None)])
+    page = client.get('/records').data.decode()
+    opened = re.findall(r'<details[^>]*records-board[^>]*>', page)
+    assert [('board-cfb-2026' in d, ' open' in d) for d in opened] == [
+        (True, True), (False, False)]
+
+
+def test_an_unlinked_champion_in_the_roll_has_no_avatar_and_no_now_line(client):
+    record_season('cfb', 2025, [FinishDraft(None, 'Nobody We Know', 1, None, None)])
+    page = client.get('/records').data.decode()
+    roll = page[page.index('records-roll-list'):page.index('records-boards')]
+    assert 'Nobody We Know' in roll
+    assert 'records-avatar' not in roll and 'now ' not in roll
+
+
+def test_a_member_gets_the_record_private(client):
+    _seed()
+    _login(client, _user('member'))
+    resp = client.get('/records')
+    assert resp.status_code == 200
+    assert 'no-store' in resp.headers['Cache-Control']
+
+
+def test_the_page_reads_the_record_in_a_fixed_number_of_statements(client, app):
+    """Linked members ride along with their rows: more finishers on a board
+    never means more queries."""
+    cub, brad = _seed()
+
+    def statements_for_page():
+        seen = []
+
+        def count(conn, cursor, statement, parameters, context, executemany):
+            seen.append(statement)
+        event.listen(db.engine, 'before_cursor_execute', count)
+        try:
+            assert client.get('/records').status_code == 200
+        finally:
+            event.remove(db.engine, 'before_cursor_execute', count)
+        return len(seen)
+
+    before = statements_for_page()
+    extra = [_user(f'extra{i}') for i in range(5)]
+    record_season('cfb', 2025, [
+        FinishDraft(cub.id, 'Fourth & Pine', 1, 'champion', None),
+        *(FinishDraft(u.id, u.username, 2, 'eliminated', None) for u in extra),
+    ], force=True)
+    assert statements_for_page() == before
 
 
 def test_empty_record_reads_as_a_promise(client):

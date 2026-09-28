@@ -11,17 +11,19 @@ from games.registry import get_entry
 from models.records import champions, finishes_for, seasons_on_record
 
 # The room's own archive of a season, by endpoint name so this module never
-# imports a game. A season with no entry simply shows no link.
+# imports a game. A season with no entry simply shows no link. Only a PUBLIC
+# page pinned to that season belongs here: this page is public, and a live
+# room page (the Docket's ledger is members-only and always the current
+# season) would send a visitor to a join page or to the wrong year. The
+# Docket's entry waits for its season-scoped archive (§E PR 4).
 SEASON_ARCHIVES = {
     ('cfb', 2025): 'cfb.history',
     ('worldcup', 2026): 'worldcup.leaderboard',
-    ('docket', 2026): 'docket.ledger',
 }
 
 
 def _game_name(slug: str) -> str:
-    entry = get_entry(slug)
-    return entry.short_name or entry.display_name
+    return get_entry(slug).short_name
 
 
 def _row(finish) -> dict:
