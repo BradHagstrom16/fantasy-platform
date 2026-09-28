@@ -12,6 +12,12 @@
             {{ active_games }} active league{{ 's' if active_games != 1 }} ·
             {{ paid_users }} paid
         </p>
+        {% if credits %}
+        <p class="admin-masthead-sub admin-credits">
+            {{ '{:,}'.format(credits.odds_credits_remaining) }} Odds API credits left,
+            as of {{ (credits.finished_at or credits.started_at)|ct }}
+        </p>
+        {% endif %}
     </div>
 </header>
 
@@ -38,6 +44,35 @@
             <span class="admin-action-sub">Edit the home-page note</span>
         </a>
     </div>
+
+    <h2 class="section-heading">Scheduled Jobs</h2>
+    <hr class="gold-rule gold-rule--left">
+    {% if job_rows %}
+    <div class="admin-league-list admin-job-list">
+        {% for row in job_rows %}
+        <div class="admin-league-row admin-job-row">
+            <span class="admin-league-game">{{ row.label }}</span>
+            <span class="admin-job-outcome admin-job-outcome--{{ row.run.outcome }}">
+                <i class="bi {{ row.outcome_icon }}" aria-hidden="true"></i>{{ row.outcome_word }}
+            </span>
+            <span class="admin-league-meta">
+                {{ row.run.started_at|ct }}{% if row.duration %} · {{ row.duration }}{% endif %}{% if row.run.via == 'shell' %} · by hand{% endif %}
+            </span>
+            {% if row.run.summary %}
+            <p class="admin-job-summary">{{ row.run.summary }}</p>
+            {% endif %}
+            {% if row.recent_error %}
+            <p class="admin-job-note">
+                <i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i>
+                Failed {{ row.recent_error.started_at|ct }}{% if row.recent_error.summary %}: {{ row.recent_error.summary }}{% endif %}
+            </p>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p class="admin-job-empty">No job has recorded a run yet. The next timer firing adds the first row.</p>
+    {% endif %}
 
     <h2 class="section-heading">The Leagues</h2>
     <hr class="gold-rule gold-rule--left">

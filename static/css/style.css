@@ -594,6 +594,48 @@ html[data-app-state="subscribed"] .app-panel[data-state="subscribed"] {
   margin-left: auto;
 }
 
+/* Scheduled Jobs (open-items §H): one league-row per job's latest run.
+   The outcome is a word with a leading icon on a semantic tint, never
+   colour alone; the summary and a recent failure wrap to their own lines. */
+.admin-job-list,
+.admin-job-empty {
+  margin-bottom: 2.75rem;
+}
+.admin-job-outcome {
+  display: inline-flex;
+  align-items: center;
+  gap: .35em;
+  padding: .15em .6em;
+  border-radius: .25rem;
+  font-family: 'Teko', sans-serif;
+  font-size: .95rem;
+  font-weight: 500;
+  letter-spacing: .06em;
+  line-height: 1.3;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  background: var(--bg-muted);
+}
+.admin-job-outcome--ok { color: var(--success); background: var(--success-bg); }
+.admin-job-outcome--error { color: var(--danger); background: var(--danger-bg); }
+.admin-job-outcome--stood_down,
+.admin-job-outcome--running { color: var(--warning-text); background: var(--warning-bg); }
+.admin-job-summary,
+.admin-job-note {
+  flex: 1 1 100%;
+  margin: 0;
+  font-family: 'Newsreader', Georgia, serif;
+  font-size: .9rem;
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+.admin-job-note { color: var(--danger); }
+.admin-job-note i { margin-right: .25em; }
+.admin-job-empty {
+  font-family: 'Newsreader', Georgia, serif;
+  color: var(--text-secondary);
+}
+
 /* Left-aligned variant of the gold-rule pill (under section headings),
    replacing per-template inline margin overrides. */
 .gold-rule.gold-rule--left {

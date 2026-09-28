@@ -28,6 +28,7 @@ from flask.cli import AppGroup
 from extensions import db
 from games.cfb.constants import DEV_SEED_TEAMS, TEAM_CONFERENCES
 from games.cfb.models import CfbEnrollment, CfbTeam
+from utils.sync_runs import mark_run, record_run
 
 cfb_cli = AppGroup('cfb', help="CFB Survivor Pool management commands.")
 
@@ -57,8 +58,26 @@ def populate_teams_cmd():
     click.echo(f'Added {added} teams to cfb_team table.')
 
 
+# The sync result's status, as the admin dashboard's run outcome. The CLI
+# exits 0 on every status (a failed open emails the admin itself), so the
+# run row is where an 'error' shows up.
+_RUN_OUTCOMES = {'error': 'error', 'skipped': 'idle'}
+
+
 def _run_mode(mode):
-    """Execute a sync mode and print results."""
+    """Execute a sync mode, print results, and record the run (not status)."""
+    with record_run(None if mode == 'status' else f'cfb-{mode}'):
+        result = _dispatch_mode(mode)
+        if result is None:
+            return
+        mark_run(_RUN_OUTCOMES.get(result.get('status'), 'ok'),
+                 result.get('details'))
+
+    click.echo(f"\n[cfb sync --mode {mode}]")
+    click.echo(result.get('details', str(result)))
+
+
+def _dispatch_mode(mode):
     if mode == 'setup':
         from games.cfb.services.automation import run_setup
         result = run_setup()
@@ -72,7 +91,7 @@ def _run_mode(mode):
         from games.cfb.services.game_logic import check_and_process_autopicks
         results = check_and_process_autopicks()
         result = {
-            'status': 'processed',
+            'status': 'processed' if results else 'skipped',
             'details': '\n'.join(results) if results else 'No auto-picks needed',
         }
     elif mode == 'status':
@@ -80,10 +99,8 @@ def _run_mode(mode):
         result = run_status()
     else:
         click.echo(f"Unknown mode: {mode}")
-        return
-
-    click.echo(f"\n[cfb sync --mode {mode}]")
-    click.echo(result.get('details', str(result)))
+        return None
+    return result
 
 
 @cfb_cli.command('sync')

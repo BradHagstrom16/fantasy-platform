@@ -16,6 +16,8 @@ Runs games/gameday.run_game_day and turns its summary into an exit code:
 import click
 from flask.cli import AppGroup
 
+from utils.sync_runs import mark_run, record_run
+
 scores_cli = AppGroup('scores', help='Cross-game score passes.')
 
 
@@ -25,9 +27,30 @@ scores_cli = AppGroup('scores', help='Cross-game score passes.')
                    'exit 0 either way).')
 def game_day_cmd(scheduled):
     """One game-day tick: fetch finals for any sport a game is waiting on."""
+    with record_run('scores-gameday'):
+        _game_day()
+
+
+# The pass's status as the admin dashboard's run outcome: standing down at
+# the credit floor is by design, idle is an hour with nothing due.
+_RUN_OUTCOMES = {'idle': 'idle', 'floor': 'stood_down', 'error': 'error'}
+
+
+def _run_summary(summary):
+    if summary['errors']:
+        return '; '.join(summary['errors'])
+    if summary['status'] == 'floor':
+        return f'credit floor: {summary["remaining"]} left'
+    if summary['fetched']:
+        return f'fetched: {", ".join(summary["fetched"])}'
+    return f'wanted: {", ".join(summary["wanted"]) or "nothing"}'
+
+
+def _game_day():
     from games.gameday import run_game_day
 
     summary = run_game_day()
+    mark_run(_RUN_OUTCOMES.get(summary['status'], 'ok'), _run_summary(summary))
     click.echo(f'\n[scores game-day] {summary["status"]}')
     click.echo(f'  wanted: {", ".join(summary["wanted"]) or "nothing"}')
     if summary['fetched']:

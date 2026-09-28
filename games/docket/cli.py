@@ -141,6 +141,7 @@ from games.docket.services.weeks import (
     week_number_for,
 )
 from games.docket.utils import now_utc, to_naive_utc
+from utils.sync_runs import mark_run, record_run
 
 docket_cli = AppGroup('docket', help="The Docket (NFL+CFB pick'em) commands.")
 
@@ -154,6 +155,7 @@ def _fail(message):
     "it printed something" is not a success signal.
     """
     click.secho(f'ERROR: {message}', fg='red', err=True)
+    mark_run('error', message)
     raise SystemExit(1)
 
 
@@ -173,6 +175,7 @@ def _no_work(message, scheduled):
     """
     if scheduled:
         click.echo(f'Standing down: {message}')
+        mark_run('stood_down', message)
         raise SystemExit(0)
     _fail(message)
 
@@ -473,7 +476,11 @@ def sync_cmd(mode, week, force, force_odds, days_from, scheduled):
     if mode == 'status':
         _run_status()
         return
+    with record_run(f'docket-{mode}'):
+        _sync(mode, week, force, force_odds, days_from, scheduled)
 
+
+def _sync(mode, week, force, force_odds, days_from, scheduled):
     week_number = _resolve_week_number(week, scheduled)
     if mode == 'setup':
         # No _require_week: setup is the mode that creates it.
@@ -489,6 +496,7 @@ def sync_cmd(mode, week, force, force_odds, days_from, scheduled):
     elif mode == 'deadline':
         _require_week(week_number, scheduled)
         _run_deadline(week_number, force)
+    mark_run('ok', f'week {week_number}')
 
 
 @docket_cli.command('recalc')

@@ -16,6 +16,8 @@ seconds. Only a *sustained* outage raises OddsApiError.
 Credit logging lives here, in the wrapper: every response handed back to a
 caller logs the API's x-requests-remaining / x-requests-used headers, so burn
 is reported on every call from every caller with no per-call-site discipline.
+The same number goes to the recorded job run in progress (utils/sync_runs.py),
+which is where the admin dashboard reads the balance.
 
 Mirrors the Golf sync's _make_request (games/golf/services/sync.py) and the
 World Cup _api_get (games/worldcup/services/sync.py, PR #82).
@@ -25,6 +27,8 @@ import random
 import time
 
 import requests
+
+from utils.sync_runs import note_credits
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +54,9 @@ def _log_credits(resp, url):
     used = resp.headers.get('x-requests-used', 'unknown')
     logger.info('Odds API credits: %s remaining, %s used (GET %s)',
                 remaining, used, url)
+    # The admin dashboard's balance: the run in progress keeps the lowest.
+    if remaining.isdigit():
+        note_credits(int(remaining))
 
 
 def odds_api_get(url, params=None, timeout=30, retries=ODDS_API_MAX_RETRIES):

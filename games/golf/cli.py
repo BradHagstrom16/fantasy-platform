@@ -34,6 +34,7 @@ from games.golf.services.sync import (
     seed_schedule,
 )
 from games.golf.utils import GOLF_LEAGUE_TZ
+from utils.sync_runs import mark_run, record_run
 
 # Create a CLI group so commands are: flask golf sync-run, flask golf check-wd, etc.
 golf_cli = AppGroup('golf', help="Golf Pick 'Em management commands.")
@@ -59,6 +60,24 @@ def _make_api_and_sync():
 ]), required=True)
 def sync_run_cmd(mode):
     """Unified automation entrypoint for scheduled tasks."""
+    with record_run(SYNC_RUN_JOBS.get(mode)):
+        _sync_run(mode)
+
+
+# The golf-* unit each timer-fired mode records under (utils/sync_runs.py);
+# the unit names are not all the mode's name. withdrawals, earnings and all
+# have no unit and record nothing.
+SYNC_RUN_JOBS = {
+    'schedule': 'golf-schedule',
+    'field': 'golf-field',
+    'live': 'golf-live',
+    'live-with-wd': 'golf-live-wd',
+    'results': 'golf-results',
+    'remind': 'golf-remind',
+}
+
+
+def _sync_run(mode):
     # Reminders never touch the API — short-circuit before building the client
     # so 'remind' works with no SLASHGOLF_API_KEY set (it's the golf-remind timer
     # entrypoint; the standalone `flask golf remind` stays as an alias).
@@ -206,9 +225,10 @@ def sync_run_cmd(mode):
                 else:
                     click.echo("  Not ready (API status not Complete/Official yet)")
 
-    except Exception:
+    except Exception as exc:
         import logging
         logging.getLogger(__name__).exception("sync-run failed")
+        mark_run('error', f'{type(exc).__name__}: {exc}')
         exit_code = 1
 
     sys.exit(exit_code)
