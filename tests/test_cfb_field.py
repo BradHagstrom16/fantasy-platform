@@ -79,7 +79,7 @@ def season(app):
         _outcome(w2, cy, lives=0, eliminated=True, lost=True)
         _outcome(w2, dee, lives=2)
         db.session.commit()
-        return {k: v.id for k, v in e.items()} | {'ann_user': ann.id, 'utah': utah.id}
+        return {k: v.id for k, v in e.items()} | {'ann_user': ann.id, 'cy_user': cy.id, 'utah': utah.id}
 
 
 def test_the_cut_week_by_week(app, season):
@@ -271,18 +271,37 @@ def test_every_conference_folds_closed_and_its_summary_still_informs(app, client
     assert 'cfb-you-tag' not in page
 
 
-def test_a_survivor_sees_their_own_spent_lines(app, season):
+def _field_page_as(app, user_id):
     with app.app_context():
         client = app.test_client()
         with client.session_transaction() as sess:
-            sess['_user_id'] = db.session.get(User, season['ann_user']).auth_id
+            sess['_user_id'] = db.session.get(User, user_id).auth_id
             sess['_fresh'] = True
-    page = client.get('/cfb/field').get_data(as_text=True)
+    return client.get('/cfb/field').get_data(as_text=True)
+
+
+def _conf_summary(page, name):
+    start = page.index(f'<h3 class="cfb-field-conf-name">{name}</h3>')
+    return page[start:page.index('</summary>', start)]
+
+
+def test_a_survivor_sees_their_own_spent_lines(app, season):
+    page = _field_page_as(app, season['ann_user'])
     # Ann spent Georgia (SEC) and Ohio State (Big Ten): two lines and two
     # conference summaries carry the tag, plus her name in each spenders list.
     assert page.count('cfb-field-line is-spent is-gone is-you') == 1        # Georgia
     assert page.count('cfb-field-line is-spent is-you') == 1                # Ohio State
     assert page.count('<span class="cfb-you-tag">You</span>') == 6
+    # Her Week 3 Utah pick is still open (9.9): Big 12 carries no tag.
+    assert 'cfb-you-tag' not in _conf_summary(page, 'Big 12')
+
+
+def test_an_eliminated_viewer_carries_no_you_tag(app, season):
+    """Cy is out: he burned Iowa (Big Ten) and Utah, but the board names
+    survivors only, so like a visitor he is tagged nowhere."""
+    page = _field_page_as(app, season['cy_user'])
+    assert 'cfb-you-tag' not in page
+    assert 'is-you' not in page
 
 
 def test_the_late_field_opens_its_spent_lines(app, client, season, monkeypatch):
@@ -298,13 +317,17 @@ def test_the_late_field_opens_its_spent_lines(app, client, season, monkeypatch):
     assert page.count('<details class="cfb-field-team" open>') == 3
 
 
-def test_the_hero_states_the_field_and_its_lives():
-    from pathlib import Path
-    tpl = (Path(__file__).resolve().parent.parent
-           / 'games/cfb/templates/cfb/field.html').read_text()
-    assert 'of {{ field.total }} still standing' in tpl
-    assert 'cfb-field-bar cfb-field-bar--hero' in tpl
-    assert 'cfb-field-bar cfb-field-bar--mini' in tpl        # the phone's lives under After
+def test_the_hero_states_the_field_and_its_lives(app, client, season):
+    page = client.get('/cfb/field').get_data(as_text=True)
+    hero = page[page.index('cfb-hero--field'):page.index('cfb-field-page')]
+    assert ('<span class="cfb-field-num">3</span> '
+            '<span class="cfb-field-num-label">of 4 still standing</span>') in hero
+    assert ('<span class="cfb-field-num">1</span> '
+            '<span class="cfb-field-num-label">cut</span>') in hero
+    # The lives split after the latest week on the record (Week 2), not the first.
+    assert 'aria-label="2 with two lives, 1 with one, 1 out"' in hero
+    assert '2 weeks on the record.' in hero
+    assert 'cfb-field-bar cfb-field-bar--mini' in page       # the phone's lives under After
 
 
 def test_the_field_css_makes_crimson_the_shelf_and_keeps_the_room_locks():

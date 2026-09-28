@@ -719,19 +719,14 @@ def field():
     # The viewer's own spent lines carry the You tag (7.2's current-user
     # crimson). The board lists survivors only, so an eliminated viewer, like
     # a visitor, gets none.
-    viewer_enrollment_id = None
-    if current_user.is_authenticated:
-        viewer = CfbEnrollment.query.filter_by(
-            user_id=current_user.id, season_year=season_year
-        ).first()
-        viewer_enrollment_id = viewer.id if viewer else None
+    viewer_user_id = current_user.id if current_user.is_authenticated else None
     viewer_team_ids = {
         line.team.id
         for conf in field_board.board for line in conf.lines
-        if any(s.enrollment.id == viewer_enrollment_id for s in line.spent_by)
-    } if viewer_enrollment_id else set()
+        if any(s.enrollment.user_id == viewer_user_id for s in line.spent_by)
+    } if viewer_user_id else set()
     return render_template('cfb/field.html', field=field_board,
-                           viewer_enrollment_id=viewer_enrollment_id,
+                           viewer_user_id=viewer_user_id,
                            viewer_team_ids=viewer_team_ids)
 
 

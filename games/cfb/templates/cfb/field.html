@@ -94,7 +94,7 @@
               </summary>
               <ul class="cfb-field-spenders">
                 {% for s in line.spent_by %}
-                <li><a class="cfb-name-link" href="{{ url_for('cfb.player', enrollment_id=s.enrollment.id) }}">{{ s.enrollment.get_display_name() }}</a>{% if s.enrollment.id == viewer_enrollment_id %}<span class="cfb-you-tag">You</span>{% endif %} <span class="cfb-field-when">{{ s.week_label }}</span></li>
+                <li><a class="cfb-name-link" href="{{ url_for('cfb.player', enrollment_id=s.enrollment.id) }}">{{ s.enrollment.get_display_name() }}</a>{% if viewer_user_id and s.enrollment.user_id == viewer_user_id %}<span class="cfb-you-tag">You</span>{% endif %} <span class="cfb-field-when">{{ s.week_label }}</span></li>
                 {% endfor %}
                 {% if line.spent_by_out %}<li class="cfb-field-out-note">{{ line.spent_by_out }} of the cut burned it too.</li>{% endif %}
               </ul>
