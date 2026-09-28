@@ -6,6 +6,7 @@ record line, the two dry runs, and the regressions that keep every legacy
 announce path standalone. The 12-state matrix (tests/test_club_desk_matrix.py)
 is the spec of who gets what; this file is everything around it.
 """
+import os
 import re
 from datetime import UTC, datetime, timedelta
 from unittest.mock import patch
@@ -561,8 +562,12 @@ def test_friday_spreads_and_the_retry_still_announce_standalone(app):
     db.session.commit()
     from games.cfb.services.automation import run_spread_update
     legacy, patcher = capture('games.cfb.services.reminders.send_platform_email')
-    with patcher, patch('games.cfb.services.automation._fetch_and_lock_lines',
-                        return_value=(0, 'n/a')), \
+    # Friday morning before the Week 4 lock: pinned, since the real clock
+    # passed that deadline on 2026-09-26 and the pass then has no week to open.
+    friday = {'CFB_FAKE_NOW': '2026-09-25T09:00:00', 'ENVIRONMENT': 'testing'}
+    with patcher, patch.dict(os.environ, friday), \
+            patch('games.cfb.services.automation._fetch_and_lock_lines',
+                  return_value=(0, 'n/a')), \
             patch('games.cfb.services.automation.send_platform_email',
                   return_value=True):
         result = run_spread_update()

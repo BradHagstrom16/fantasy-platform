@@ -7124,14 +7124,90 @@ body.game-cfb .list-group {
 .cfb-archive-outcome-champion { color: var(--cfb-survived); font-weight: 600; }
 
 /* --- The Field (DESIGN.md 9.15): the Inventory Sheet -------------------
-   What is spent and what is still on the shelf, per line. The spent board
-   leads as ruled lines under conference heads (The Pool's chip, a hairline
-   meter of spent vs held, the count); the cut table and most backed fold
-   beneath as native details. Midnight ramp + hairlines, no crimson, no
-   charts; ash carries "spent", muted bone carries "held" (structure, not
-   hue: the meter's label says the numbers). */
-.cfb-field-intro { margin-bottom: 1.25rem; }
-.cfb-field-intro .cfb-eyebrow { display: block; margin-bottom: .4rem; }
+   What is spent and what is still on the shelf. Crimson IS the shelf: the
+   identity color marks inventory the still-standing hold (and the viewer's
+   own lines), never consequence (6.5); a team drains toward the empty
+   hairline track as survivors burn it. Conferences fold closed and state
+   their facts on the summary, so the crimson on screen stays countable (the
+   Crimson-Pressure Rule). Survivor-state color stays on the lives split. */
+
+/* The hero tally: the field's two numbers at display weight (6.8). Scoped to
+   the Field; .cfb-hero-field stays the player card's line. */
+.cfb-field-tally {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: .4rem 2.25rem;
+  margin: .9rem 0 0;
+}
+.cfb-field-tally-line { display: flex; align-items: baseline; gap: .55rem; margin: 0; }
+.cfb-field-num {
+  font-family: 'Teko', sans-serif;
+  font-weight: 600;
+  font-size: clamp(3.75rem, 8vw, 5.5rem);
+  line-height: .78;
+  letter-spacing: -.01em;
+  font-variant-numeric: tabular-nums;
+  color: var(--cfb-white);
+}
+.cfb-field-num-label {
+  font-family: 'Teko', sans-serif;
+  font-weight: 500;
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  line-height: 1;
+  letter-spacing: .01em;
+  color: var(--cfb-white);
+}
+.cfb-field-hero-split { max-width: 30rem; margin-top: 1.15rem; }
+/* On the gradient the ash "out" segment would sink into the crimson end, so
+   the hero bar sits on a dark track with 2px gaps and a bone outline. */
+.cfb-field-bar.cfb-field-bar--hero {
+  height: 10px;
+  gap: 2px;
+  border-radius: 5px;
+  background: rgba(14,10,12,.6);
+  box-shadow: 0 0 0 1px rgba(243,239,230,.35);
+}
+.cfb-hero--field .cfb-field-bar-key {
+  margin-top: .45rem;
+  font-size: 1rem;
+  color: rgba(243,239,230,.92);
+}
+.cfb-hero--field .cfb-field-bar-key b { color: var(--cfb-white); }
+.cfb-hero--field .cfb-field-sep { color: rgba(243,239,230,.6); }
+.cfb-field-hero-note {
+  margin: .7rem 0 0;
+  font-family: 'Newsreader', Georgia, serif;
+  font-size: 1rem;
+  color: rgba(243,239,230,.92);   /* the hero's worst-corner floor (A2.0) */
+}
+
+/* The board's head: the section heading in the eyebrow's register, and the
+   progressive Open all control. */
+.cfb-field-intro { margin-bottom: 1rem; }
+.cfb-field-intro-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: .35rem;
+}
+.cfb-field-intro .cfb-field-board-head { margin: 0; line-height: 1.2; color: var(--cfb-bone); }
+.cfb-field-toggle {
+  min-height: 44px;
+  padding: .3rem .9rem;
+  font-family: 'Teko', sans-serif;
+  font-weight: 500;
+  font-size: .95rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--cfb-bone);
+  background: transparent;
+  border: 1px solid var(--cfb-hairline-strong);
+  border-radius: var(--radius);
+}
+.cfb-field-toggle:hover { border-color: var(--cfb-bone-muted); color: var(--cfb-white); }
+.cfb-field-toggle:focus-visible { outline: 2px solid var(--cfb-crimson-bright); outline-offset: 2px; }
 .cfb-field-page .cfb-field-note {
   font-family: 'Newsreader', Georgia, serif;
   font-size: 1rem;
@@ -7140,48 +7216,81 @@ body.game-cfb .list-group {
   max-width: 68ch;
   margin: 0 0 .75rem;
 }
-.cfb-field-conf { margin: 0 0 1.75rem; }
+
+/* The conference folds. Closed, a summary still informs: the name, the teams
+   and what is spent or gone, and the conference's shelf as one meter. Open,
+   the room's 2px crimson rule marks the active container. */
+.cfb-field-conf { border-bottom: 1px solid var(--cfb-hairline-strong); }
+.cfb-field-conf:first-of-type { border-top: 1px solid var(--cfb-hairline-strong); }
+.cfb-field-conf > summary { list-style: none; cursor: pointer; }
+.cfb-field-conf > summary::-webkit-details-marker { display: none; }
 .cfb-field-conf-head {
   display: flex;
-  align-items: baseline;
-  gap: .6rem;
-  padding-bottom: .35rem;
-  border-bottom: 1px solid var(--cfb-hairline-strong);
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .5rem 1rem;
+  min-height: 56px;
+  padding: .55rem 0;
 }
+.cfb-field-conf[open] > summary { box-shadow: inset 0 -2px 0 var(--cfb-crimson); }
+.cfb-field-conf > summary:focus-visible { outline: 2px solid var(--cfb-crimson-bright); outline-offset: 2px; border-radius: .3rem; }
+.cfb-field-conf > summary:hover .cfb-field-caret { background: var(--cfb-bone); }
 .cfb-field-conf-name {
+  margin: 0;
   font-family: 'Teko', sans-serif;
   font-weight: 600;
-  font-size: 1.25rem;
+  font-size: 1.5rem;
+  line-height: 1;
   letter-spacing: .04em;
   text-transform: uppercase;
   color: var(--cfb-white);
 }
+.cfb-field-conf-head .cfb-you-tag { margin-left: 0; }
+.cfb-field-conf-fact {
+  flex: 1 1 auto;
+  text-align: right;
+  font-family: 'Teko', sans-serif;
+  font-weight: 500;
+  font-size: 1.05rem;
+  letter-spacing: .03em;
+  font-variant-numeric: tabular-nums;
+  color: var(--cfb-bone-muted);
+  white-space: nowrap;
+}
+.cfb-field-conf-fact b { font-weight: 600; color: var(--cfb-white); }
+.cfb-field-meter.cfb-field-meter--conf { flex: 0 0 8rem; }
+.cfb-field-conf-body { padding: .35rem 0 1.25rem; }
+
 .cfb-field-lines { list-style: none; margin: 0; padding: 0; }
 .cfb-field-line { border-bottom: 1px solid var(--cfb-hairline); }
 .cfb-field-team > summary { list-style: none; cursor: pointer; }
 .cfb-field-team > summary::-webkit-details-marker { display: none; }
 .cfb-field-team-head {
   display: grid;
-  grid-template-columns: minmax(9rem, 14rem) minmax(4rem, 1fr) auto auto;
+  grid-template-columns: minmax(9rem, 16rem) minmax(4rem, 1fr) auto auto;
   align-items: center;
   gap: .75rem 1rem;
   min-height: 44px;
   padding: .45rem 0;
 }
-.cfb-field-team-head--still .cfb-team-chip { opacity: .85; }
-.cfb-field-caret--none { visibility: hidden; }   /* keeps every meter on one track */
-.cfb-field-hero-pair { display: inline-flex; align-items: baseline; gap: inherit; white-space: nowrap; }
+.cfb-field-team-name { display: flex; align-items: center; gap: .45rem; min-width: 0; }
+.cfb-field-team-name .cfb-you-tag { margin-left: 0; }
 .cfb-field-team > summary:focus-visible { outline: 2px solid var(--cfb-crimson-bright); outline-offset: 2px; border-radius: .3rem; }
 .cfb-field-team > summary:hover .cfb-team-chip { border-color: var(--cfb-bone-muted); }
+
+/* The shelf meter: crimson-bright is what the still-standing hold (4.5:1 on
+   canvas, a fill never text); the spent share is the empty track, outlined
+   so its full length still reads. */
 .cfb-field-meter {
   display: flex;
-  height: 6px;
-  border-radius: 3px;
+  height: 8px;
+  border-radius: 4px;
   overflow: hidden;
-  background: var(--cfb-hairline);
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--cfb-hairline-strong);
 }
-.cfb-field-meter-spent { background: var(--cfb-eliminated); }
-.cfb-field-meter-hold { background: rgba(243,239,230,.55); }
+.cfb-field-meter-hold { background: var(--cfb-crimson-bright); }
+.cfb-field-meter-spent { background: transparent; }
 .cfb-field-count {
   font-family: 'Teko', sans-serif;
   font-weight: 500;
@@ -7195,8 +7304,26 @@ body.game-cfb .list-group {
 }
 .cfb-field-count b { font-weight: 600; color: var(--cfb-white); }
 .cfb-field-sep { color: var(--cfb-bone-subtle); }
-.cfb-field-line.is-gone .cfb-team-chip { text-decoration: line-through; text-decoration-color: var(--cfb-bone-subtle); color: var(--cfb-bone-muted); }
+
+/* Gone: no survivor still holds it. The chip turns to ash with white text
+   (ash as a background, 6.4) and strikes through; the meter is all track. */
+.cfb-field-line.is-gone .cfb-team-chip {
+  color: var(--cfb-white);
+  background: var(--cfb-eliminated);
+  border-color: transparent;
+  text-decoration: line-through;
+  text-decoration-color: rgba(251,247,240,.7);
+}
+/* The viewer's own spent line: the sanctioned current-user crimson tint with
+   the structural You tag; the tint bleeds past the rule's ends without
+   moving the line off the shared track. */
+.cfb-field-line.is-you {
+  background: rgba(197,5,12,.12);
+  box-shadow: -.6rem 0 0 rgba(197,5,12,.12), .6rem 0 0 rgba(197,5,12,.12);
+}
+
 .cfb-field-caret {
+  flex: none;
   width: .6rem;
   height: .4rem;
   background: var(--cfb-bone-subtle);
@@ -7204,6 +7331,7 @@ body.game-cfb .list-group {
   transition: transform var(--transition);
 }
 .cfb-field-team[open] > summary .cfb-field-caret,
+.cfb-field-conf[open] > summary .cfb-field-caret,
 .cfb-field-fold[open] > summary .cfb-field-caret { transform: rotate(180deg); }
 .cfb-field-spenders {
   list-style: none;
@@ -7225,6 +7353,13 @@ body.game-cfb .list-group {
   margin-left: .35rem;
 }
 .cfb-field-out-note { color: var(--cfb-bone-subtle); font-size: .92rem; }
+
+/* The unspent: one wrapped row of the Pool's chips, each a full shelf, so
+   each carries a 2px crimson underline, the rule the room uses for "active". */
+.cfb-field-unspent { margin-top: 1rem; }
+.cfb-field-unspent .cfb-eyebrow { display: block; margin-bottom: .5rem; }
+.cfb-field-unspent-list { list-style: none; margin: 0; padding: 0; }
+.cfb-field-unspent-list .cfb-team-chip { box-shadow: inset 0 -2px 0 var(--cfb-crimson); }
 
 /* The folds beneath the shelf. */
 .cfb-field-fold {
@@ -7260,6 +7395,7 @@ body.game-cfb .list-group {
   overflow: hidden;
   background: var(--cfb-hairline);
 }
+.cfb-field-bar.cfb-field-bar--mini { display: none; }
 .cfb-field-seg.is-two { background: var(--cfb-survived); }
 .cfb-field-seg.is-one { background: rgba(100,219,160,.4); }
 .cfb-field-seg.is-out { background: var(--cfb-eliminated); }
@@ -7293,26 +7429,32 @@ body.game-cfb .list-group {
   color: var(--cfb-bone);
 }
 @media (max-width: 767.98px) {
-  /* The cut table keeps its five counts; the bar column steps aside so the
-     numbers fit without a sideways scroll on a phone. */
+  /* A 16px gutter on the Field and its hero (the platform phone floor). */
+  .cfb-field-page,
+  .cfb-hero--field > .container { padding-left: 1rem; padding-right: 1rem; }
+  /* The cut table keeps its five counts; the bar column steps aside and a
+     small split rides under each After count instead, so a phone keeps the
+     field's lives without a sideways scroll. */
   .cfb-field-bar-head, .cfb-field-bar-cell { display: none; }
+  .cfb-field-bar.cfb-field-bar--mini { display: flex; width: 2.75rem; height: 5px; gap: 1px; margin: .3rem auto 0; }
   .cfb-field-table th, .cfb-field-table td { padding-left: .35rem; padding-right: .35rem; }
   .cfb-field-table th { white-space: normal; font-size: .8rem; line-height: 1.15; }
   .cfb-field-th-long { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
   .cfb-field-th-short { display: inline; }
-  /* The hero's counts stack as their own lines on a phone: a separator
-     belongs only between two items on one line. */
-  .cfb-hero--field .cfb-hero-field { flex-direction: column; align-items: flex-start; gap: .15rem; }
-  .cfb-hero--field .cfb-hero-field-sep { display: none; }
+  .cfb-field-tally { gap: .35rem 1.5rem; }
+  /* A conference summary: name, tag, fact and caret on one line, its shelf
+     meter full width beneath. */
+  .cfb-field-conf-head .cfb-field-meter--conf { order: 5; flex-basis: 100%; }
   .cfb-field-count { min-width: 0; }
-  .cfb-field-team-head,
-  .cfb-field-team-head--still {
+  .cfb-field-team-head {
     grid-template-columns: 1fr auto auto;
     grid-template-areas: "chip count caret" "meter meter meter";
     row-gap: .35rem;
     column-gap: .6rem;
   }
-  .cfb-field-team-head .cfb-team-chip { grid-area: chip; }
+  /* The chip keeps its own width: stretched across the column it read as a
+     text field. */
+  .cfb-field-team-head .cfb-field-team-name { grid-area: chip; justify-self: start; }
   .cfb-field-team-head .cfb-field-meter { grid-area: meter; }
   .cfb-field-team-head .cfb-field-count { grid-area: count; }
   .cfb-field-team-head .cfb-field-caret { grid-area: caret; align-self: center; }

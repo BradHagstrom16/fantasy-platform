@@ -73,8 +73,38 @@ class TeamLine:
 
 @dataclass(frozen=True, slots=True)
 class ConferenceBoard:
+    """One conference fold. Its summary states the facts a closed fold still
+    owes the reader (spent, gone, the shelf's share), and it opens on the
+    spent lines, most burned first, over one row of the unspent (9.15)."""
     name: str
     lines: tuple[TeamLine, ...]
+
+    @property
+    def spent_lines(self) -> tuple[TeamLine, ...]:
+        return tuple(sorted((line for line in self.lines if line.spent),
+                            key=lambda line: (-line.spent, line.team.name.casefold())))
+
+    @property
+    def unspent_lines(self) -> tuple[TeamLine, ...]:
+        return tuple(line for line in self.lines if not line.spent)
+
+    @property
+    def spent_count(self) -> int:
+        return sum(1 for line in self.lines if line.spent)
+
+    @property
+    def gone_count(self) -> int:
+        return sum(1 for line in self.lines if line.spent and not line.holders)
+
+    @property
+    def held(self) -> int:
+        """Survivor-team holdings still on the shelf across the conference."""
+        return sum(line.holders for line in self.lines)
+
+    @property
+    def capacity(self) -> int:
+        """Every survivor holding every team here: the shelf when full."""
+        return sum(line.holders + line.spent for line in self.lines)
 
 
 @dataclass(frozen=True, slots=True)
