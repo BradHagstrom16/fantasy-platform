@@ -14,6 +14,7 @@ import pytest
 import tests._cfb_fixtures as cfbf
 import tests._docket_fixtures as dkf
 from extensions import db
+from games.cfb.constants import SEASON_SCHEDULE
 from games.cfb.services.reminders import _push_pick_nag
 from games.cfb.utils import make_aware
 from games.club_desk import run_desk
@@ -169,23 +170,31 @@ def test_format_time_left_compact(left, phrase):
 
 
 def test_every_nag_fits_the_one_line_budget(app):
-    """The longest real copy of each tier: an 11:30 kickoff-shaped deadline
-    and the widest time-left phrase either final window can print."""
-    cfb_week = cfbf.make_week(14, deadline=datetime(2026, 11, 28, 11, 30))
+    """The longest real copy of each tier: an 11:30 kickoff-shaped deadline,
+    the widest time-left phrase either final window can print, and every
+    CFB week name, the round names up to "Conference Championship Week"."""
+    cfb_weeks = [cfbf.make_week(14, deadline=datetime(2026, 11, 28, 11, 30))]
+    for number, special in SEASON_SCHEDULE['special_weeks'].items():
+        week = cfbf.make_week(number, deadline=datetime(2026, 11, 28, 11, 30))
+        week.round_name = special['name']
+        cfb_weeks.append(week)
     dk_week = dkf.make_week(1)
     db.session.commit()
-    deadline = make_aware(cfb_week.deadline)
-    payloads = []
     with patch(_CFB_PUSH) as cfb_sp, patch(_DK_PUSH) as dk_sp:
-        _push_pick_nag(cfb_week, {'type': 'warning'}, deadline,
-                       deadline - timedelta(hours=25), [7])
-        _push_pick_nag(cfb_week, {'type': 'final'}, deadline,
-                       deadline - timedelta(hours=2, minutes=30), [7])
+        for cfb_week in cfb_weeks:
+            deadline = make_aware(cfb_week.deadline)
+            _push_pick_nag(cfb_week, {'type': 'warning'}, deadline,
+                           deadline - timedelta(hours=25), [7])
+            _push_pick_nag(cfb_week, {'type': 'final'}, deadline,
+                           deadline - timedelta(hours=2, minutes=30), [7])
         for tier, back in (('48h', 48), ('24h', 24), ('2h', 2.5)):
             _push_deadline_nag(dk_week, tier,
                                dk_week.deadline_at - timedelta(hours=back), [7])
     payloads = [c.kwargs for c in cfb_sp.call_args_list + dk_sp.call_args_list]
-    assert len(payloads) == 5
+    assert len(payloads) == 2 * len(cfb_weeks) + 3
+    bodies = {kw['body'] for kw in payloads}
+    assert 'Conference Championship Week: no pick yet.' in bodies
+    assert 'Last call: Conference Championship Week.' in bodies
     for kw in payloads:
         assert len(kw['title']) <= TITLE_BUDGET, kw['title']
         assert len(kw['body']) <= BODY_BUDGET, kw['body']

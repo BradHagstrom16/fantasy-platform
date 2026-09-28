@@ -285,13 +285,17 @@ def _push_pick_nag(week, window, deadline, now, user_ids):
     ttl = max(int((deadline - now).total_seconds()), 0)
     # The phone stacks title / "from CCC" / body, and the title is one
     # line: the title carries the whole message, the body one short line.
+    # A round name runs to 28 characters ("Conference Championship Week"),
+    # so December and January drop the filler to keep the body one line.
     week_name = get_week_display_name(week)
     if window['type'] == 'final':
         title = f'CFB pick locks in {format_time_left_compact(deadline, now)}'
-        body = f'Last call for {week_name}. No pick on file.'
+        body = (f'Last call: {week_name}.' if week.round_name
+                else f'Last call for {week_name}. No pick on file.')
     else:
         title = f'CFB pick due {format_deadline_compact(deadline)}'
-        body = f'{week_name}: no pick on file yet.'
+        body = (f'{week_name}: no pick yet.' if week.round_name
+                else f'{week_name}: no pick on file yet.')
     send_push(user_ids, title=title, body=body,
               url=f'/cfb/pick/{week.week_number}',
               tag=f'cfb-w{week.week_number}-nag',
