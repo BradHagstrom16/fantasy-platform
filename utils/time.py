@@ -23,7 +23,7 @@ module) the moment any game utility touches ``utils.time`` first.
 """
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
 PLATFORM_TZ = ZoneInfo('America/Chicago')
@@ -87,9 +87,49 @@ def format_deadline_short(
     """
     if dt is None:
         return 'TBD'
+    local, zone = _local_with_zone(dt, tz)
+    return f"{local.strftime('%A, %b %-d · %-I:%M %p')} {zone}"
+
+
+def format_deadline_compact(
+    dt: datetime | None,
+    tz: ZoneInfo | None = None,
+) -> str:
+    """'Sat 11 AM CT' / 'Sat 11:30 AM CT': the deadline for a push title.
+
+    A notification title is one line on a phone, so this is the short line's
+    compact sibling: short weekday, no date, minutes only when there are
+    some. Same input contract as ``format_deadline_short``.
+    """
+    if dt is None:
+        return 'TBD'
+    local, zone = _local_with_zone(dt, tz)
+    clock = local.strftime('%-I:%M %p' if local.minute else '%-I %p')
+    return f"{local.strftime('%a')} {clock} {zone}"
+
+
+def format_time_left_compact(deadline: datetime, now: datetime) -> str:
+    """'2 hrs' / '1 hr 30 min' / '45 min': the time left for a push title.
+
+    Rounded to the nearest quarter hour for the reason the email's phrase
+    is (a timer fires up to a minute late, and "1 hr 59 min" is precision
+    without truth); never under 15 minutes. ``deadline`` and ``now`` share
+    one convention (both aware, or both naive in the same zone).
+    """
+    quarters = max(round((deadline - now) / timedelta(minutes=15)), 1)
+    hours, minutes = divmod(quarters * 15, 60)
+    parts = []
+    if hours:
+        parts.append(f"{hours} hr{'s' if hours != 1 else ''}")
+    if minutes:
+        parts.append(f'{minutes} min')
+    return ' '.join(parts)
+
+
+def _local_with_zone(dt: datetime, tz: ZoneInfo | None) -> tuple[datetime, str]:
+    """The display-zone datetime and its short zone label ('CT')."""
     if dt.tzinfo is None:
         dt = dt.replace(tzinfo=_UTC)
     local = dt.astimezone(tz or WORLDCUP_TZ)
     zone = local.strftime('%Z')
-    return (f"{local.strftime('%A, %b %-d · %-I:%M %p')} "
-            f"{_ZONE_LABELS.get(zone, zone)}")
+    return local, _ZONE_LABELS.get(zone, zone)

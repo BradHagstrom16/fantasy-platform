@@ -367,7 +367,7 @@ def test_time_left_phrase_rounds_to_the_quarter_hour(left, phrase):
 
 def test_final_copy_says_the_time_actually_left(app):
     """The final window spans two firings, so "one hour" would be wrong at
-    the first: subject, headline, lede and push body all carry the phrase."""
+    the first: subject, headline, lede and push title all carry the phrase."""
     _seed_reminder_week()
     sent, patcher = _capture_emails(DESK_SEND)
     pushed = []
@@ -377,7 +377,7 @@ def test_final_copy_says_the_time_actually_left(app):
     assert sent[0]['subject'] == 'FINAL, 2 hours left: CFB Survivor, Week 1'
     assert 'CFB Survivor, Week 1: final call, 2 hours left' in sent[0]['body']
     assert 'the deadline is 2 hours away' in sent[0]['body']
-    assert pushed[0]['body'] == 'Picks lock in 2 hours. No pick on file.'
+    assert pushed[0]['title'] == 'CFB pick locks in 2 hrs'
 
 
 # ── §8.18 — reminder recipients ───────────────────────────────────────────

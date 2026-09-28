@@ -227,7 +227,7 @@ def notify_picks_open(week, recipients):
 # Push feed (PR 4): the verdict stamp as a case finals
 # ---------------------------------------------------------------------------
 # Called after sync_scores commits, from gameday.apply and both CLI callers.
-# The copy is the clerk's: "Nebraska -3.5: WIN. 7 sheets had them." Never
+# The copy is the clerk's: "WIN: Nebraska -3.5" / "7 sheets had them." Never
 # raises (send_push swallows its own errors); an unreadable side is skipped.
 DOCKET_ROOM_URL = '/docket/'
 DOCKET_VERDICT_TTL = 6 * 3600
@@ -276,7 +276,9 @@ def push_docket_verdicts(verdict_games):
                     n = side_counts.get((p.market, p.side), 1)
                     send_push(
                         [p.user_id],
-                        title=f'{_side_phrase(p, game)}: {word}.',
+                        # The verdict leads: the phone keeps the title to
+                        # one line, and a long team name truncates at the end.
+                        title=f'{word}: {_side_phrase(p, game)}',
                         body=f'{n} {"sheet" if n == 1 else "sheets"} had them.',
                         url=DOCKET_ROOM_URL,
                         # Market is in the tag: a sheet can hold this game's

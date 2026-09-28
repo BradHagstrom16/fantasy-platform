@@ -32,11 +32,7 @@
 </div>
 {%- endmacro %}
 <section class="hl-panel hl-panel--docket" aria-label="The Docket">
-  <header class="hl-panel-head">
-    <span class="hl-panel-mark" aria-hidden="true">{{ h.entry.emoji }}</span>
-    <span class="hl-panel-name">{{ h.entry.lounge_label or h.entry.short_name or h.entry.display_name }}</span>
-    <span class="hl-panel-court">{{ g.court_line }}</span>
-  </header>
+  {% include 'main/_hl_panel_head.html' %}
 
   {% if g.viewer_mode == 'view' %}
   <div class="summons summons--info">

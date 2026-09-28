@@ -994,7 +994,7 @@ def member(enrollment_id):
 # The Brief (DESIGN.md 8.13): the analyst layer, argued from graded weeks
 # --------------------------------------------------------------------------
 
-# The members' rows sort like the ledger (8.9): a known key, stably over the
+# How each member plays sorts like the ledger (8.9): a known key, stably over the
 # ledger order, each with its natural first direction; the rank column keeps
 # the official order whatever the sort. A key of None is a blank (the dash
 # the page prints): blanks follow every measured row in both directions.
@@ -1003,8 +1003,8 @@ BRIEF_SORTS = {
     'contrarian': ('against the field', lambda r: r.contrarian_share, 'desc'),
     'favorites': ('favorites', lambda r: r.favorites, 'desc'),
     'underdogs': ('underdogs', lambda r: r.underdogs, 'desc'),
-    'x2': ('the x2', lambda r: (r.x2.wins, -r.x2.losses) if r.x2.decided else None, 'desc'),
-    'number': ('off by', lambda r: r.avg_off_tenths, 'asc'),
+    'overs': ('overs', lambda r: r.overs, 'desc'),
+    'unders': ('unders', lambda r: r.unders, 'desc'),
     'best': ('best week', lambda r: r.best_points if r.best_week else None, 'desc'),
 }
 
@@ -1047,7 +1047,7 @@ def _weeks_counted(week_numbers) -> str:
 @enrollment_required('docket')
 def brief():
     """The Brief: the field's habits, the consensus and the lone wolf, the
-    x2 ledger, the number, and the members' rows, from graded weeks only.
+    x2 ledger, the number, and how each member plays, from graded weeks only.
     Presentation (the sort) is derived here, never in Jinja."""
     ledger = season_ledger()
     the_brief = build_brief(ledger)

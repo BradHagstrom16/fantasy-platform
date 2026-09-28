@@ -55,6 +55,7 @@ from games.docket.utils import to_naive_utc
 from models.user import User
 from utils.email_layout import items_block
 from utils.push import send_push
+from utils.time import format_deadline_compact, format_time_left_compact
 
 SCORING_SLOTS = 8
 
@@ -195,11 +196,18 @@ def _push_deadline_nag(week, tier, now_naive, user_ids):
     if not user_ids:
         return
     ttl = max(int((week.deadline_at - now_naive).total_seconds()), 0)
-    title = ('Last call: your sheet.' if tier == '2h'
-             else 'Your Docket sheet is due.')
+    # The phone stacks title / "from CCC" / body, and the title is one
+    # line: the title carries the whole message, the body one short line.
+    if tier == '2h':
+        left = format_time_left_compact(week.deadline_at, now_naive)
+        title = f'Docket closes in {left}'
+        body = f'Last call for Week {week.week_number}. Sides still open.'
+    else:
+        title = f'Docket closes {format_deadline_compact(week.deadline_at)}'
+        body = f'{COUNTDOWNS[tier]} Sides still open.'
     send_push(user_ids,
               title=title,
-              body=f'{COUNTDOWNS[tier]} Sides still open.',
+              body=body,
               url='/docket/',
               tag=f'docket-w{week.week_number}-nag',
               topic=f'docket-w{week.week_number}',

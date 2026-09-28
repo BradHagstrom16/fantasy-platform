@@ -15,6 +15,7 @@ from zoneinfo import ZoneInfo
 
 from flask import current_app
 
+from utils.time import format_deadline_compact as _platform_deadline_compact
 from utils.time import format_deadline_short as _platform_deadline_short
 
 logger = logging.getLogger(__name__)
@@ -135,6 +136,14 @@ def format_deadline_short(deadline):
     if deadline is None:
         return 'TBD'
     return _platform_deadline_short(make_aware(deadline), tz=_get_pool_tz())
+
+
+def format_deadline_compact(deadline):
+    """'Sat 11 AM CT': the push title's deadline, under the same pool
+    wall-clock contract as ``format_deadline_short``."""
+    if deadline is None:
+        return 'TBD'
+    return _platform_deadline_compact(make_aware(deadline), tz=_get_pool_tz())
 
 
 def format_relative(delta):
