@@ -1,0 +1,38 @@
+# What a scheduled job's failure tells someone (ops hardening, ADR-067).
+#
+# Every deploy/*.service with a timer carries
+#     OnFailure=job-alert@%N.service
+# so when, say, docket-scores.service exits non-zero, systemd starts
+# job-alert@docket-scores.service, and %i below is "docket-scores". That run
+# pings healthchecks.io's /fail for the job (a path that does not depend on our
+# own mail), then emails ADMIN_EMAIL the job's last 40 journal lines
+# (utils/job_alert.py). It imports no game code, so a deploy that breaks the
+# app's import still gets reported.
+#
+# This template must never carry OnFailure= or OnSuccess= itself: an alert that
+# fails would start another alert (tests/test_job_alerts.py). A failed alert
+# shows in `systemctl --failed` and the journal, and healthchecks' dead-man
+# still fires when the job stops checking in.
+#
+# Nothing enables this unit; systemd starts it on demand. To see one for real
+# (sends the email and turns the job's check red until its next success):
+#     sudo systemctl start job-alert@club-remind.service
+
+[Unit]
+Description=Failure alert for %i.service (mail + healthchecks)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=deploy
+Group=deploy
+# Reads the failed unit's journal; deploy is not in this group on the box.
+SupplementaryGroups=systemd-journal
+WorkingDirectory=/home/deploy/fantasy-platform
+EnvironmentFile=/home/deploy/fantasy-platform/.env
+Environment=ENVIRONMENT=production
+NoNewPrivileges=true
+PrivateTmp=true
+TimeoutStartSec=2m
+ExecStart=/home/deploy/fantasy-platform/venv/bin/python -m utils.job_alert fail %i

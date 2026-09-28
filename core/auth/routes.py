@@ -156,7 +156,9 @@ def register():
     return render_template('auth/register.html')
 
 
-@auth_bp.route('/logout')
+# POST only: a GET logout could be fired by any page (an <img src="/logout">)
+# to sign a member out. The navbar's "Step Out" is a form with the CSRF token.
+@auth_bp.route('/logout', methods=['POST'])
 @login_required
 def logout():
     logout_user()
@@ -240,6 +242,7 @@ def reset_password(token):
             flash('Passwords do not match.', 'error')
         else:
             user.set_password(new_password)
+            user.rotate_auth_id()
             db.session.commit()
             flash('Password reset successfully. Please log in with your new password.', 'success')
             return redirect(url_for('auth.login'))
@@ -262,8 +265,14 @@ def change_password():
         elif new_password != confirm_password:
             flash('New passwords do not match.', 'error')
         else:
-            current_user.set_password(new_password)
+            user = current_user._get_current_object()
+            user.set_password(new_password)
+            user.rotate_auth_id()
             db.session.commit()
+            # Every other session is signed out by the rotation; sign this
+            # one back in under the new auth_id, with a fresh remember cookie
+            # (login always sets one).
+            login_user(user, remember=True)
             flash('Password changed successfully!', 'success')
             return redirect(url_for('main.index'))
 

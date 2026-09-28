@@ -140,6 +140,7 @@ def reset_password(user_id):
     user = db.get_or_404(User, user_id)
     temp_password = 'changeme123'
     user.set_password(temp_password)
+    user.rotate_auth_id()
     db.session.commit()
     flash(f'Password for {user.get_display_name()} reset to: {temp_password}', 'warning')
     return redirect(url_for('admin.users'))

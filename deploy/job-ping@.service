@@ -1,0 +1,29 @@
+# The dead-man half of the job alerts (ops hardening, ADR-067).
+#
+# Every deploy/*.service with a timer carries
+#     OnSuccess=job-ping@%N.service
+# so each clean run pings healthchecks.io for that job (check name = %i, created
+# on its first ping). healthchecks.io alerts when a job stops checking in on the
+# schedule set for it there, which catches what OnFailure= cannot: a timer
+# disabled by mistake, a box that is down, a firing that never happened.
+# A blank HEALTHCHECKS_PING_KEY makes this a no-op (utils/job_alert.py).
+#
+# Like job-alert@, it must never carry OnFailure= or OnSuccess= itself
+# (tests/test_job_alerts.py). Nothing enables it; systemd starts it on demand.
+
+[Unit]
+Description=Healthchecks ping for %i.service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=deploy
+Group=deploy
+WorkingDirectory=/home/deploy/fantasy-platform
+EnvironmentFile=/home/deploy/fantasy-platform/.env
+Environment=ENVIRONMENT=production
+NoNewPrivileges=true
+PrivateTmp=true
+TimeoutStartSec=1m
+ExecStart=/home/deploy/fantasy-platform/venv/bin/python -m utils.job_alert ok %i

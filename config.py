@@ -13,10 +13,15 @@ load_dotenv()
 
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 
+# The development fallback key. Production refuses to boot on it (or on a
+# blank key): app.py::refuse_default_secret_key. A key anyone can read in this
+# public repo would let them sign a session cookie for any member.
+DEV_SECRET_KEY = 'dev-secret-key-change-in-production'
+
 
 class Config:
     """Base configuration."""
-    SECRET_KEY = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
+    SECRET_KEY = os.environ.get('SECRET_KEY', DEV_SECRET_KEY)
 
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or \
         'sqlite:///' + os.path.join(BASE_DIR, 'instance', 'fantasy_platform.db')
@@ -101,6 +106,15 @@ class Config:
     VAPID_PUBLIC_KEY = os.environ.get('VAPID_PUBLIC_KEY', '')
     VAPID_SUBJECT = os.environ.get('VAPID_SUBJECT', '')
 
+    # Error tracking (utils/observability.py). Blank = Sentry is never
+    # initialized, the blank-config-hides-feature convention.
+    SENTRY_DSN = os.environ.get('SENTRY_DSN', '')
+
+    # Dead-man pings for the scheduled jobs (utils/job_alert.py, fired by the
+    # deploy/job-ping@ and job-alert@ templates). A healthchecks.io project
+    # ping key; blank = no pings, and the failure email still goes out.
+    HEALTHCHECKS_PING_KEY = os.environ.get('HEALTHCHECKS_PING_KEY', '')
+
     # Rate limiting (Flask-Limiter reads this at init_app; extensions.py
     # deliberately passes no storage_uri so this key stays authoritative).
     # memory:// is correct for single-process dev; production overrides below.
@@ -119,6 +133,12 @@ class ProductionConfig(Config):
     SESSION_COOKIE_SECURE = True
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = 'Lax'
+    # Flask-Login's remember cookie lives 365 days and carries the member's
+    # auth_id, so it gets the session cookie's flags: never over plain HTTP,
+    # never readable by page script, never sent on a cross-site POST.
+    REMEMBER_COOKIE_SECURE = True
+    REMEMBER_COOKIE_HTTPONLY = True
+    REMEMBER_COOKIE_SAMESITE = 'Lax'
     # Managed Postgres closes idle connections; long-lived Gunicorn workers
     # must re-check before use and recycle before the provider's idle timeout.
     SQLALCHEMY_ENGINE_OPTIONS: ClassVar[dict] = {
