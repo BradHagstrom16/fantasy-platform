@@ -149,6 +149,80 @@ echo "==> Installing/updating Python dependencies..."
 # act, documented in constraints.txt's own header.
 venv/bin/pip install -r requirements.txt -c constraints.txt --quiet
 
+# A pg_dump before every migration run (ADR-067). `flask db upgrade` used to run
+# with no backup of its own; a migration that dropped or rewrote the wrong data
+# could only be undone from DO's daily snapshot, up to a day stale. This one is
+# taken seconds before the schema moves, on every deploy (not only when a
+# migration is pending), so a broken pg_dump shows up on a quiet deploy rather
+# than on the one that needed it. Custom format, restored with pg_restore
+# (runbook: docs/superpowers/plans/2026-09-28-ops-hardening.md).
+#
+# A failed dump STOPS the deploy before anything migrates. SKIP_DB_BACKUP=1
+# deploys without one, and counts as a warning so the run cannot report success.
+#
+# Rewritten by tests/test-deploy-guards.sh (SED 6); keep it literal, at column 0.
+backup_dir=/home/deploy/backups
+backup_keep=10
+
+# Prints its own failure reason; the caller decides what a failure means.
+backup_database() {
+    local url stamp sha final partial
+    # The app's own reading of .env, never a hand-parse of it. It also refuses
+    # a non-Postgres URL, which is what a stray ENVIRONMENT=development would
+    # leave production pointed at (the SQLite fallback).
+    if ! url=$(venv/bin/python -c 'from config import ProductionConfig as C; print(C.SQLALCHEMY_DATABASE_URI)'); then
+        echo "    !! could not read DATABASE_URL through config.py (above)." >&2
+        return 1
+    fi
+    case "$url" in
+        postgresql+*://*) url="postgresql://${url#*://}" ;;   # SQLAlchemy driver suffix
+        postgresql://*|postgres://*) ;;
+        *)  echo "    !! DATABASE_URL is not a Postgres URL; nothing to back up." >&2
+            return 1 ;;
+    esac
+    stamp=$(date -u +%Y%m%dT%H%M%SZ)
+    sha=$(git rev-parse --short HEAD 2>/dev/null) || sha=""
+    # The UTC stamp sorts by name, which the pruning below relies on.
+    final="$backup_dir/pre-migrate-$stamp${sha:+-$sha}.dump"
+    partial="$final.partial"
+    install -d -m 700 "$backup_dir" || return 1
+    # Written under a .partial name and renamed only once pg_dump succeeds, so a
+    # half-written file can never be mistaken for a backup. umask 077: the dump
+    # holds every member's email, phone and password hash. (The URL, password
+    # included, is in pg_dump's argv for the few seconds it runs; nobody but
+    # deploy and root log in to this box.)
+    if ! (umask 077 && pg_dump --format=custom --file "$partial" --dbname "$url"); then
+        rm -f "$partial"
+        echo "    !! pg_dump failed (above)." >&2
+        return 1
+    fi
+    mv -f "$partial" "$final" || return 1
+    echo "    $final"
+
+    # Keep the newest $backup_keep. A glob expands in sorted order, and the
+    # names sort by their UTC stamp, so the oldest come first.
+    local dumps=("$backup_dir"/pre-migrate-*.dump)
+    local excess=$(( ${#dumps[@]} - backup_keep ))
+    if [ "$excess" -gt 0 ]; then
+        rm -f "${dumps[@]:0:excess}"
+        echo "    pruned $excess older backup(s); keeping the newest $backup_keep"
+    fi
+}
+
+if [ -n "${SKIP_DB_BACKUP:-}" ]; then
+    deploy_warnings=$((deploy_warnings + 1))
+    echo "!! WARNING: SKIP_DB_BACKUP is set — migrating WITHOUT a fresh backup." >&2
+else
+    echo "==> Backing up the database before migrating..."
+    if ! backup_database; then
+        echo "!! DEPLOY STOPPED before migrations: the database backup failed." >&2
+        echo "!! Nothing was migrated, no unit was synced and the app was not restarted;" >&2
+        echo "!! the pulled code is on disk. Fix the backup and re-run ./deploy.sh, or" >&2
+        echo "!! deploy without one:  SKIP_DB_BACKUP=1 ./deploy.sh" >&2
+        exit 1
+    fi
+fi
+
 echo "==> Applying database migrations..."
 ENVIRONMENT=production FLASK_APP=app.py venv/bin/flask db upgrade
 

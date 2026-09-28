@@ -61,6 +61,7 @@ sed -e 's|^cd /home/deploy/fantasy-platform$|cd "$(dirname "$0")"|' \
     -e 's|^unit_dir=/etc/systemd/system$|unit_dir="$(dirname "$0")/etc-systemd"|' \
     -e "s|^unit_owner=root:root\$|unit_owner=$HARNESS_USER|" \
     -e 's|^preset_dir=/etc/systemd/system-preset$|preset_dir="$(dirname "$0")/etc-preset"|' \
+    -e 's|^backup_dir=/home/deploy/backups$|backup_dir="$(dirname "$0")/backups"|' \
     "$REPO_SCRIPT" > "$SANDBOX/deploy.sh"
 chmod +x "$SANDBOX/deploy.sh"
 
@@ -89,6 +90,13 @@ fi
 if ! grep -q 'preset_dir="$(dirname "$0")/etc-preset"' "$SANDBOX/deploy.sh"; then
     [ -n "${ALLOW_MISSING_LOCK_SED:-}" ] || { echo "SED 5 MISSED"; exit 1; }
     echo "(no preset_dir line — legacy baseline)"
+fi
+
+# SED 6 points the pre-migrate pg_dump (ADR-067) at the sandbox, not the
+# deploy user's real ~/backups.
+if ! grep -q 'backup_dir="$(dirname "$0")/backups"' "$SANDBOX/deploy.sh"; then
+    [ -n "${ALLOW_MISSING_LOCK_SED:-}" ] || { echo "SED 6 MISSED"; exit 1; }
+    echo "(no backup_dir line — legacy baseline)"
 fi
 
 cp "$SANDBOX/deploy.sh" "$SANDBOX/deploy.sh.pristine"
@@ -296,11 +304,41 @@ PIP
 
 # `db upgrade` is the step two concurrent deploys must never overlap on, so it
 # is also the natural place to hold the lock open for the concurrency tests.
+# Every call is appended to order-log beside pg_dump's, so the backup cases can
+# assert the dump came BEFORE `db upgrade` (and that a failed dump means no
+# upgrade at all).
 cat > "$SANDBOX/venv/bin/flask" <<'FLASK'
 #!/bin/bash
+echo "flask $*" >> "$SANDBOX/order-log"
 if [ -n "${SLOW_MIGRATION:-}" ]; then /bin/sleep "$SLOW_MIGRATION"; fi
 exit 0
 FLASK
+
+# deploy.sh reads DATABASE_URL through config.py with venv/bin/python -c. The
+# shim answers with FAKE_DB_URL, so a case can hand it a SQLite URL.
+cat > "$SANDBOX/venv/bin/python" <<'PYTHON'
+#!/bin/bash
+echo "${FAKE_DB_URL:-postgresql://doadmin:pw@db.example.invalid:25060/defaultdb?sslmode=require}"
+PYTHON
+
+# pg_dump: writes a small file where --file says, or with PG_DUMP_FAIL set,
+# writes part of one and exits 1 (the way a dropped connection mid-dump does),
+# so a case can prove the .partial is cleaned up.
+cat > "$SHIMS/pg_dump" <<'PGDUMP'
+#!/bin/bash
+echo "pg_dump $*" >> "$SANDBOX/order-log"
+out=""
+while [ $# -gt 0 ]; do
+    case "$1" in --file) out="$2"; shift ;; esac
+    shift
+done
+if [ -n "${PG_DUMP_FAIL:-}" ]; then
+    echo "half a dump" > "$out"
+    echo "pg_dump: error: connection to server lost" >&2
+    exit 1
+fi
+echo "PGDMP fake dump" > "$out"
+PGDUMP
 
 # systemctl, bare (no sudo): deploy.sh's only unprivileged call is the
 # read-only `is-enabled` behind the step-9 double-enable guard (ADR-065). It
@@ -320,12 +358,13 @@ fi
 exit 0
 SYSTEMCTL
 
-chmod +x "$SHIMS"/* "$SANDBOX/venv/bin/pip" "$SANDBOX/venv/bin/flask"
+chmod +x "$SHIMS"/* "$SANDBOX/venv/bin/pip" "$SANDBOX/venv/bin/flask" "$SANDBOX/venv/bin/python"
 export SANDBOX
 export PATH="$SHIMS:$PATH"
 
 reset_state() {
-    rm -f "$SANDBOX/pull-count" "$SANDBOX/sudo-log" "$SANDBOX/deploy.lock"
+    rm -f "$SANDBOX/pull-count" "$SANDBOX/sudo-log" "$SANDBOX/deploy.lock" "$SANDBOX/order-log"
+    rm -rf "$SANDBOX/backups"
     cp -p "$SANDBOX/deploy.sh.pristine" "$SANDBOX/deploy.sh"
     # Units land for real (see the sudo shim), so a case that distinguishes
     # installed from in-sync has to start from a known-empty unit directory.
@@ -458,8 +497,8 @@ reset_state
 # why an earlier version of this test passed locally and failed there). So build
 # an explicit bin dir: symlink exactly what deploy.sh calls, and nothing else.
 mkdir -p "$SANDBOX/shims-noflock"
-for s in git sudo sleep systemctl; do cp "$SHIMS/$s" "$SANDBOX/shims-noflock/"; done
-for b in dirname basename sha256sum shasum stat diff head cat cksum rm mv install kill; do
+for s in git sudo sleep systemctl pg_dump; do cp "$SHIMS/$s" "$SANDBOX/shims-noflock/"; done
+for b in dirname basename sha256sum shasum stat diff head cat cksum rm mv install kill date; do
     src="$(command -v "$b" 2>/dev/null)" && ln -sf "$src" "$SANDBOX/shims-noflock/$b"
 done
 # The GNU-stat translation shim, where one was needed, has to win over the
@@ -856,6 +895,82 @@ ENABLED_TIMERS='cfb-remind.timer docket-remind.timer' MUTATE_PULLS=0 \
 check "exit code in a rollback state" "$?" "0"
 check "old timers alone (a rollback) are not warned" \
       "$(grep -c 'enabled beside' "$SANDBOX/ab2.out")" "0"
+echo
+
+# Cases BA–BE cover the pre-migrate backup (ADR-067): a pg_dump before every
+# `flask db upgrade`, a failed dump stopping the deploy before anything
+# migrates, and the retention. They sit before T so T's safety net covers them.
+
+echo "=== BA: a normal deploy dumps the database, then migrates ==="
+reset_state
+MUTATE_PULLS=0 "$SANDBOX/deploy.sh" > "$SANDBOX/ba.out" 2>&1
+check "exit code" "$?" "0"
+check "one dump written" "$(ls "$SANDBOX/backups"/pre-migrate-*.dump 2>/dev/null | wc -l | tr -d ' ')" "1"
+check "no .partial left behind" "$(ls "$SANDBOX/backups"/*.partial 2>/dev/null | wc -l | tr -d ' ')" "0"
+check "pg_dump ran first" "$(head -1 "$SANDBOX/order-log" | cut -d' ' -f1)" "pg_dump"
+check "then the migration" "$(sed -n 2p "$SANDBOX/order-log")" "flask db upgrade"
+check "custom format, to a .partial" \
+      "$(grep -c -- '--format=custom --file .*\.dump\.partial --dbname postgresql://' "$SANDBOX/order-log")" "1"
+check "backup dir is private (700)" "$(stat -c '%a' "$SANDBOX/backups" 2>/dev/null || stat -f '%Lp' "$SANDBOX/backups")" "700"
+dump_file="$(ls "$SANDBOX/backups"/pre-migrate-*.dump | head -1)"
+check "dump is private (600)" "$(stat -c '%a' "$dump_file" 2>/dev/null || stat -f '%Lp' "$dump_file")" "600"
+check "reached the end" "$(grep -c 'Done. App is live' "$SANDBOX/ba.out")" "1"
+echo
+
+echo "=== BB: pg_dump fails ⇒ the deploy stops before anything migrates ==="
+reset_state
+PG_DUMP_FAIL=1 MUTATE_PULLS=0 "$SANDBOX/deploy.sh" > "$SANDBOX/bb.out" 2>&1
+check "exit code" "$?" "1"
+check "db upgrade never ran" "$(grep -c 'flask db upgrade' "$SANDBOX/order-log")" "0"
+check "no .partial left behind" "$(ls "$SANDBOX/backups"/*.partial 2>/dev/null | wc -l | tr -d ' ')" "0"
+check "no dump counted as a backup" "$(ls "$SANDBOX/backups"/*.dump 2>/dev/null | wc -l | tr -d ' ')" "0"
+check "said why it stopped" "$(grep -c 'DEPLOY STOPPED before migrations' "$SANDBOX/bb.out")" "1"
+check "offered the override" "$(grep -c 'SKIP_DB_BACKUP=1 ./deploy.sh' "$SANDBOX/bb.out")" "1"
+check "did not restart the app" "$(grep -c 'Restarting application' "$SANDBOX/bb.out")" "0"
+echo
+
+echo "=== BC: a non-Postgres DATABASE_URL (a stray SQLite fallback) ⇒ stopped, not dumped ==="
+reset_state
+FAKE_DB_URL='sqlite:////home/deploy/fantasy-platform/instance/fantasy_platform.db' MUTATE_PULLS=0 \
+    "$SANDBOX/deploy.sh" > "$SANDBOX/bc.out" 2>&1
+check "exit code" "$?" "1"
+check "named the problem" "$(grep -c 'not a Postgres URL' "$SANDBOX/bc.out")" "1"
+# Nothing ran at all, so order-log may not exist: count from an empty stream.
+check "pg_dump never ran" "$(cat "$SANDBOX/order-log" 2>/dev/null | grep -c '^pg_dump')" "0"
+check "db upgrade never ran" "$(cat "$SANDBOX/order-log" 2>/dev/null | grep -c 'flask db upgrade')" "0"
+# The SQLAlchemy driver suffix is stripped for libpq, not refused.
+reset_state
+FAKE_DB_URL='postgresql+psycopg2://u:p@db.example.invalid/defaultdb' MUTATE_PULLS=0 \
+    "$SANDBOX/deploy.sh" > "$SANDBOX/bc2.out" 2>&1
+check "a +driver URL still deploys" "$?" "0"
+check "handed to pg_dump without the driver" \
+      "$(grep -c -- '--dbname postgresql://u:p@db.example.invalid/defaultdb' "$SANDBOX/order-log")" "1"
+echo
+
+echo "=== BD: SKIP_DB_BACKUP=1 ⇒ migrates without a dump, warned, exit non-zero ==="
+reset_state
+SKIP_DB_BACKUP=1 MUTATE_PULLS=0 "$SANDBOX/deploy.sh" > "$SANDBOX/bd.out" 2>&1
+check "exit code (warned ⇒ non-zero)" "$?" "1"
+check "pg_dump never ran" "$(grep -c '^pg_dump' "$SANDBOX/order-log")" "0"
+check "the migration still ran" "$(grep -c 'flask db upgrade' "$SANDBOX/order-log")" "1"
+check "warned" "$(grep -c 'migrating WITHOUT a fresh backup' "$SANDBOX/bd.out")" "1"
+check "counted exactly one warning" "$(grep -c 'with 1 warning' "$SANDBOX/bd.out")" "1"
+check "did not claim success" "$(grep -c 'Done. App is live' "$SANDBOX/bd.out")" "0"
+echo
+
+echo "=== BE: retention keeps the newest 10 ==="
+reset_state
+mkdir -p "$SANDBOX/backups"
+for d in 01 02 03 04 05 06 07 08 09 10 11 12; do
+    echo old > "$SANDBOX/backups/pre-migrate-202601${d}T000000Z-abc1234.dump"
+done
+MUTATE_PULLS=0 "$SANDBOX/deploy.sh" > "$SANDBOX/be.out" 2>&1
+check "exit code" "$?" "0"
+check "ten dumps kept" "$(ls "$SANDBOX/backups"/pre-migrate-*.dump | wc -l | tr -d ' ')" "10"
+check "the three oldest pruned" \
+      "$(ls "$SANDBOX/backups" | grep -c -E 'pre-migrate-2026010[123]T')" "0"
+check "the new dump kept" "$(grep -c 'PGDMP fake dump' "$SANDBOX/backups"/pre-migrate-*.dump | grep -c ':1$')" "1"
+check "reported the prune" "$(grep -c 'pruned 3 older backup' "$SANDBOX/be.out")" "1"
 echo
 
 echo "=== T: across every case above, no privileged call was aimed outside the sandbox ==="
