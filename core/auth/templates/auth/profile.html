@@ -48,7 +48,7 @@
 
                 {# Reserved glyphs are assigned by User.get_avatar(), so the
                    picker is hidden for anyone wearing one: admins (crown) and
-                   the reigning Survivor champion (trophy). #}
+                   every reigning club champion (trophy, ADR-068). #}
                 {% if current_user.is_admin or current_user.is_reigning_champion %}
                 <div class="mb-3">
                     <label class="form-label">Avatar</label>
@@ -57,7 +57,7 @@
                         {% if current_user.is_admin %}
                         As Commish, your avatar is the crown, reserved for admins.
                         {% else %}
-                        As reigning Survivor champion, your avatar is the trophy this season.
+                        As a reigning club champion, your avatar is the trophy this season.
                         {% endif %}
                     </div>
                 </div>

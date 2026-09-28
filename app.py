@@ -84,6 +84,14 @@ def create_app(config_name=None):
     from core.tribune.cli import register_tribune_cli
     register_tribune_cli(app)
 
+    # The club's permanent record CLI (flask records close / show, ADR-068)
+    from core.records.cli import register_records_cli
+    register_records_cli(app)
+    # Every request derives the reigning champions once (one query, cached
+    # on g for the avatars); never a set cached before the request began.
+    from models.records import clear_reigning_champion_cache
+    app.before_request(clear_reigning_champion_cache)
+
     # Register golf blueprint
     from games.golf import golf_bp
     app.register_blueprint(golf_bp)

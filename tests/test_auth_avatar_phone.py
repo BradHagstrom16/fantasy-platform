@@ -8,7 +8,7 @@ from models.user import User
 from utils.phone import normalize_us_phone
 
 CROWN = "\U0001F451"     # crown — reserved for platform admins
-TROPHY = "\U0001F3C6"    # trophy — reserved for the reigning Survivor champion
+TROPHY = "\U0001F3C6"    # trophy — reserved for every reigning club champion
 DEFAULT = "\U0001F3C8"   # football — the default for anyone who never chose
 BASEBALL = "⚾"      # the picker slot the trophy vacated
 SOCCER = "⚽"        # the retired World Cup-era default
@@ -78,13 +78,13 @@ def test_admin_gets_crown_even_with_no_stored_emoji():
     assert u.get_avatar() == CROWN
 
 
-def test_non_admin_with_crown_falls_back_to_default():
+def test_non_admin_with_crown_falls_back_to_default(app):
     """A non-admin who has the crown stored renders the default instead."""
     u = User(username="b", email="b@t.com", is_admin=False, avatar_emoji=CROWN)
     assert u.get_avatar() == DEFAULT
 
 
-def test_non_admin_keeps_their_chosen_emoji():
+def test_non_admin_keeps_their_chosen_emoji(app):
     """A non-admin renders their own chosen (non-crown) emoji."""
     u = User(username="b", email="b@t.com", is_admin=False, avatar_emoji="🦊")
     assert u.get_avatar() == "🦊"
@@ -110,7 +110,7 @@ def test_default_avatar_is_football():
     assert User.DEFAULT_AVATAR != SOCCER
 
 
-def test_user_who_never_chose_renders_football():
+def test_user_who_never_chose_renders_football(app):
     """A NULL avatar_emoji renders the football — legacy accounts included, since
     the default lives only in get_avatar(), never in the row."""
     u = User(username="fresh", email="fresh@t.com")
@@ -136,43 +136,60 @@ def test_baseball_fills_the_trophy_slot():
     assert len(sports) == 15
 
 
-def test_non_champion_with_trophy_falls_back_to_default():
+def test_non_champion_with_trophy_falls_back_to_default(app):
     """A stored trophy on anyone but the champion renders the default instead."""
     u = User(username="pretender", email="p@t.com", avatar_emoji=TROPHY)
     assert u.get_avatar() == DEFAULT
 
 
-def test_reigning_champion_constant_is_cubbies22():
-    """The 2025 Survivor champion reigns through the 2026 season."""
-    assert User.REIGNING_CHAMPION_USERNAME == 'cubbies22'
+def _crown_on_the_record(app, user_id, game='cfb', season_year=2025):
+    """Close a season on the record with this member in first place (ADR-068:
+    the reigning champion is derived from season_finishes, never declared)."""
+    from models.records import FinishDraft, record_season
+    with app.app_context():
+        record_season(game, season_year, [
+            FinishDraft(user_id=user_id, name='Champ', place=1, outcome='champion',
+                        detail=None),
+        ])
 
 
-def test_reigning_champion_gets_trophy_regardless_of_choice():
+def test_no_declared_champion_constant():
+    """The champion is read from the record, never typed into the model."""
+    assert not hasattr(User, 'REIGNING_CHAMPION_USERNAME')
+
+
+def test_reigning_champion_gets_trophy_regardless_of_choice(app):
     """The reigning champion renders the trophy even with a stored pick."""
-    u = User(username=User.REIGNING_CHAMPION_USERNAME, email="c@t.com",
-             avatar_emoji=BASEBALL)
-    assert u.get_avatar() == TROPHY
-    assert u.is_reigning_champion is True
-
-
-def test_reigning_champion_match_is_case_insensitive():
-    """Username case never decides who the champion is (same fold as login)."""
-    u = User(username="Cubbies22", email="c2@t.com")
+    cid = _make_user(app, 'champ', avatar_emoji=BASEBALL)
+    _crown_on_the_record(app, cid)
+    u = db.session.get(User, cid)
     assert u.is_reigning_champion is True
     assert u.get_avatar() == TROPHY
 
 
-def test_non_champion_is_not_reigning_champion():
-    """Everyone else — including a near-miss username — is not the champion."""
-    assert User(username="cubbies2", email="x@t.com").is_reigning_champion is False
-    assert User(username="cubbies220", email="y@t.com").is_reigning_champion is False
+def test_only_the_latest_closed_season_reigns(app):
+    """A past champion hands the trophy on when the game's next season closes."""
+    old = _make_user(app, 'old')
+    new = _make_user(app, 'new')
+    _crown_on_the_record(app, old, season_year=2025)
+    _crown_on_the_record(app, new, season_year=2026)
+    assert db.session.get(User, old).get_avatar() == DEFAULT
+    assert db.session.get(User, new).get_avatar() == TROPHY
 
 
-def test_champion_who_is_admin_gets_crown():
+def test_non_champion_is_not_reigning_champion(app):
+    """Everyone else on the board is not the champion."""
+    cid = _make_user(app, 'champ')
+    other = _make_user(app, 'other')
+    _crown_on_the_record(app, cid)
+    assert db.session.get(User, other).is_reigning_champion is False
+
+
+def test_champion_who_is_admin_gets_crown(app):
     """Crown outranks trophy: an admin champion still renders the crown."""
-    u = User(username=User.REIGNING_CHAMPION_USERNAME, email="c@t.com",
-             is_admin=True)
-    assert u.get_avatar() == CROWN
+    cid = _make_user(app, 'boss', is_admin=True)
+    _crown_on_the_record(app, cid, game='worldcup', season_year=2026)
+    assert db.session.get(User, cid).get_avatar() == CROWN
 
 
 # --- profile page rendering ---------------------------------------------
@@ -188,10 +205,11 @@ def test_profile_admin_sees_reserved_note_not_picker(app, client):
 
 def test_profile_champion_sees_reserved_note_not_picker(app, client):
     """The reigning champion's profile shows the trophy note and hides the picker."""
-    cid = _make_user(app, User.REIGNING_CHAMPION_USERNAME)
+    cid = _make_user(app, 'champ')
+    _crown_on_the_record(app, cid)
     _login(client, cid)
     data = client.get('/profile').data.decode()
-    assert 'reigning Survivor champion' in data
+    assert 'reigning club champion' in data
     assert TROPHY in data
     assert 'id="avatarTabContent"' not in data  # picker element hidden
     assert 'reserved for admins' not in data
