@@ -290,6 +290,25 @@ def test_the_number_names_who_saved_none(app, client, season):
     assert 'No number saved:' in page and '>Dee</a>.' in page
 
 
+def test_a_number_on_a_game_with_no_final_is_still_saved(app, season):
+    """Week 2's tiebreaker game never went final: Dee's number there has
+    nothing to be measured against, but she saved it, so she is not listed
+    as having saved none."""
+    with app.app_context():
+        from games.docket.models import DocketGame, DocketWeek
+        w2 = db.session.scalar(db.select(DocketWeek).filter_by(week_number=2))
+        db.session.get(DocketGame, w2.tiebreaker_game_id).is_final = False
+        dee = make_user('dee')
+        make_enrollment(dee, display_name='Dee')
+        _result(w2, dee, 0, 0, 0)
+        db.session.add(DocketTiebreakerPrediction(user_id=dee.id, week_id=w2.id,
+                                                  prediction_tenths=470))
+        db.session.commit()
+        number = build_brief().number
+        assert 'Dee' not in [e.get_display_name() for e in number.unsaved]
+        assert 'Dee' not in [e.get_display_name() for e, _w, _o in number.rows]
+
+
 def test_the_page_leads_with_the_short_of_it_and_its_doors(app, client, season):
     with app.app_context():
         from models.user import User

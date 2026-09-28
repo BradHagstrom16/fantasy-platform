@@ -317,9 +317,12 @@ def build_brief(ledger: SeasonLedger | None = None) -> Brief:
         ((rows_by_user[uid].enrollment, len(offs), round(sum(offs) / len(offs)))
          for uid, offs in offs_by_user.items()),
         key=lambda row: (row[2], row[0].get_display_name().casefold())))
+    # Saved is saved: a number on a game with no final score (postponed,
+    # never scored) never reaches offs_by_user, but its member did save one.
+    saved_by = {pred.user_id for pred in predictions}
     unsaved = tuple(sorted(
         (row.enrollment for row in ledger.rows
-         if row.enrollment.user_id not in offs_by_user),
+         if row.enrollment.user_id not in saved_by),
         key=lambda e: e.get_display_name().casefold()))
     number = NumberSection(rows=number_rows, closest=closest, over=over,
                            under=under, on_the_number=on_the_number,
