@@ -23,7 +23,7 @@ def upgrade():
     sa.Column('game', sa.String(length=20), nullable=False),
     sa.Column('season_year', sa.Integer(), nullable=False),
     sa.Column('user_id', sa.Integer(), nullable=True),
-    sa.Column('name', sa.String(length=80), nullable=False),
+    sa.Column('name', sa.String(length=100), nullable=False),
     sa.Column('place', sa.Integer(), nullable=False),
     sa.Column('outcome', sa.String(length=30), nullable=True),
     sa.Column('detail', sa.String(length=200), nullable=True),
@@ -31,7 +31,8 @@ def upgrade():
     sa.Column('closed_at', sa.DateTime(timezone=True), nullable=False),
     sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
     sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('game', 'season_year', 'name', name='uq_season_finish_game_year_name')
+    sa.UniqueConstraint('game', 'season_year', 'name', name='uq_season_finish_game_year_name'),
+    sa.UniqueConstraint('game', 'season_year', 'user_id', name='uq_season_finish_game_year_user')
     )
     with op.batch_alter_table('season_finishes', schema=None) as batch_op:
         batch_op.create_index('ix_season_finish_game_year', ['game', 'season_year'], unique=False)

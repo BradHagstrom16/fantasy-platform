@@ -12,6 +12,7 @@ from flask.cli import AppGroup
 
 from games.registry import GAMES, get_entry
 from models.records import (
+    InvalidBoard,
     SeasonAlreadyOnRecord,
     SeasonNotClosed,
     finishes_for,
@@ -36,25 +37,25 @@ def _print_board(rows):
 def close(game, year, force):
     """Put a finished season's board on record through the game's registry seam.
 
-    Refuses while the game says the season still runs, and refuses a season
-    already on record unless --force. A Survivor close of 2026 or later needs
-    the season-scoped outcome reads (PR 3 of the §E sequence); a Docket close
-    needs its scoped ledger (PR 4). Survivor 2025 reads the frozen archive
-    plus games/cfb/data/season_2025_links.json.
+    Refuses while the game says the season still runs, a board the record
+    will not hold (empty, not a competition rank, a name or member twice),
+    and a season already on record unless --force. Survivor 2025 reads the
+    frozen archive plus games/cfb/data/season_2025_links.json. The Survivor
+    and Docket live reads are not season-scoped until PRs 3 and 4 of the §E
+    sequence, which is safe while their tables hold one season and must land
+    before a second season's rows exist.
     """
     entry = get_entry(game)
     if entry.season_finishes is None:
-        click.echo(f'{entry.display_name} has no records seam yet.')
+        click.echo(f'{entry.display_name} has no records seam yet.', err=True)
         sys.exit(1)
     try:
-        drafts = entry.season_finishes(year)
-    except (SeasonNotClosed, LookupError) as exc:
-        click.echo(str(exc))
+        rows = record_season(game, year, entry.season_finishes(year), force=force)
+    except (SeasonNotClosed, InvalidBoard) as exc:
+        click.echo(str(exc), err=True)
         sys.exit(1)
-    try:
-        rows = record_season(game, year, drafts, force=force)
     except SeasonAlreadyOnRecord as exc:
-        click.echo(f'{exc}. Pass --force to rewrite it.')
+        click.echo(f'{exc}. Pass --force to rewrite it.', err=True)
         sys.exit(1)
     click.echo(f'{entry.display_name} {year}: {len(rows)} finishers on record.')
     _print_board(rows)

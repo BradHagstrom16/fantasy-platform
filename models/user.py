@@ -93,11 +93,11 @@ class User(UserMixin, db.Model):
 
     @property
     def is_reigning_champion(self) -> bool:
-        """True for the linked winner of any game's most recently closed
-        season (ADR-068: derived from the season_finishes ledger, never
-        declared). The import is deferred so models.user keeps no ORM side
-        effect at import time; a transient user (id None) is never a member
-        of the set."""
+        """True for a linked place-1 finisher of any game's most recently
+        closed season (ADR-068: derived from the season_finishes ledger,
+        never declared; tied champions all reign). The import is deferred
+        because models.records imports this module; a transient user (id
+        None) is never a member of the set."""
         from models.records import reigning_champion_user_ids
         return self.id in reigning_champion_user_ids()
 
@@ -107,7 +107,8 @@ class User(UserMixin, db.Model):
         Two glyphs are reserved and enforced here \u2014 so every get_avatar()
         call site inherits the rule, not just the picker: the crown renders
         for every platform admin, the trophy for every reigning champion
-        (one per game, the winner of its latest closed season). Precedence:
+        (the linked place-1 finishers of each game's latest closed season,
+        co-champions included). Precedence:
         admin crown > champion trophy > stored choice > default. Anyone
         else who has a reserved glyph stored renders the default instead.
         """

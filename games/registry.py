@@ -24,6 +24,7 @@ from games.worldcup.services import enrollment as _worldcup_enrollment
 from games.worldcup.services import lounge as _worldcup_lounge
 from games.worldcup.services import records as _worldcup_records
 from games.worldcup.services import state as _worldcup_state
+from models.records import FinishDraft
 
 GameStatus = Literal['coming_soon', 'open', 'closed', 'completed']
 
@@ -78,11 +79,12 @@ class GameRegistryEntry:
     join_open: Callable[[], bool] | None = None
     # The club's permanent record (ADR-068): (season_year) -> the finished
     # season's board as models.records.FinishDraft rows, place 1 first, or
-    # raise models.records.SeasonNotClosed while the season still runs.
+    # raise models.records.SeasonNotClosed while the season still runs
+    # (InvalidBoard for a source the record cannot trust, the 2025 link map).
     # `flask records close` is its only caller; core/records/ reaches a game
     # through this and never imports one. None for a game whose board has
     # not shipped (golf until Phase U7).
-    season_finishes: Callable[[int], list] | None = None
+    season_finishes: Callable[[int], list[FinishDraft]] | None = None
 
 
 # Populated in Tasks 3, 5, 8. Intentionally empty at file-creation time so

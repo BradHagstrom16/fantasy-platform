@@ -1,11 +1,14 @@
 """The club's permanent record (open-items §E, ADR-068): the season_finishes
 table, the reigning champion derived from it, and the per-game builders."""
+import json
+
 import pytest
 from flask import g
 
 from extensions import db
 from models.records import (
     FinishDraft,
+    InvalidBoard,
     SeasonAlreadyOnRecord,
     SeasonFinish,
     champions,
@@ -15,6 +18,7 @@ from models.records import (
     seasons_on_record,
 )
 from models.user import User
+from utils.identifier import normalize_identifier
 
 CROWN = "\U0001F451"
 TROPHY = "\U0001F3C6"
@@ -75,11 +79,64 @@ def test_record_season_force_rewrites_the_same_names(app):
     assert len(finishes_for('cfb', 2025)) == 2
 
 
+@pytest.mark.parametrize('places, reason', [
+    ((), 'empty'),
+    ((2, 3), 'not a competition rank'),
+    ((1, 2, 2, 3), 'not a competition rank'),
+    ((1, 1, 2), 'not a competition rank'),
+])
+def test_record_season_refuses_a_board_the_trophy_cannot_read(app, places, reason):
+    record_season('cfb', 2025, _drafts(('Kept', 1)))
+    drafts = _drafts(*((f'P{i}', place) for i, place in enumerate(places)))
+    with pytest.raises(InvalidBoard, match=reason):
+        record_season('cfb', 2025, drafts, force=True)
+    # Refused before the delete: the season on record still stands.
+    assert [r.name for r in finishes_for('cfb', 2025)] == ['Kept']
+
+
+def test_record_season_refuses_a_name_twice(app):
+    with pytest.raises(InvalidBoard, match='recorded twice: Same'):
+        record_season('docket', 2026, _drafts(('Same', 1), ('Same', 2)))
+    assert finishes_for('docket', 2026) == []
+
+
+def test_record_season_refuses_one_member_under_two_names(app):
+    a = _user('a')
+    with pytest.raises(InvalidBoard, match='one member under two names'):
+        record_season('cfb', 2025, _drafts(('A', 1, a.id), ('Also A', 2, a.id)))
+
+
+def test_the_ledger_holds_one_row_per_member_per_season(app):
+    """The database's own guard beside the writer's: (game, season, user_id)
+    is unique, while any number of unlinked names still fit."""
+    from sqlalchemy.exc import IntegrityError
+    a = _user('a')
+    record_season('cfb', 2025, _drafts(('A', 1, a.id), ('X', 2), ('Y', 2)))
+    db.session.add(SeasonFinish(game='cfb', season_year=2025, user_id=a.id,
+                                name='A again', place=4, field_size=4))
+    with pytest.raises(IntegrityError):
+        db.session.commit()
+    db.session.rollback()
+
+
+def test_the_recorded_name_is_as_wide_as_a_display_name(app):
+    width = User.display_name.type.length
+    assert SeasonFinish.name.type.length == width
+    rows = record_season('docket', 2026, _drafts(('N' * width, 1)))
+    assert rows[0].name == 'N' * width
+
+
 # --- reads -------------------------------------------------------------------
 
 def test_finishes_for_orders_by_place_then_name(app):
     record_season('docket', 2026, _drafts(('Zed', 2), ('Amy', 1), ('Bob', 2)))
     assert [r.name for r in finishes_for('docket', 2026)] == ['Amy', 'Bob', 'Zed']
+
+
+def test_finishes_for_orders_a_shared_place_case_blind_on_both_engines(app):
+    # Binary order would put 'Zed' first; the ledger's own order is case-blind.
+    record_season('docket', 2026, _drafts(('Amy', 1), ('Zed', 2), ('bob', 2)))
+    assert [r.name for r in finishes_for('docket', 2026)] == ['Amy', 'bob', 'Zed']
 
 
 def test_champions_are_place_one_rows_newest_season_first(app):
@@ -106,6 +163,15 @@ def test_reigning_champion_is_the_latest_closed_season_per_game(app):
     record_season('cfb', 2026, _drafts(('B', 1, b.id), ('A', 2, a.id)))
     record_season('docket', 2026, _drafts(('C', 1, c.id)))
     assert reigning_champion_user_ids() == frozenset({b.id, c.id})
+
+
+def test_each_game_reigns_from_its_own_latest_year(app):
+    """Production's first state: Survivor 2025 beside the World Cup 2026.
+    The latest year overall must not hide an older game's champion."""
+    a, b, c = _user('a'), _user('b'), _user('c')
+    record_season('cfb', 2025, _drafts(('A', 1, a.id), ('B', 2, b.id)))
+    record_season('worldcup', 2026, _drafts(('C', 1, c.id), ('B', 2, b.id)))
+    assert reigning_champion_user_ids() == frozenset({a.id, c.id})
 
 
 def test_unlinked_champion_crowns_nobody(app):
@@ -136,6 +202,27 @@ def test_each_request_derives_the_champions_afresh(app, client):
     g._reigning_champion_ids = frozenset({999})
     assert client.get('/login').status_code == 200
     assert reigning_champion_user_ids() == frozenset()
+
+
+def test_the_error_page_survives_a_failed_transaction(app, client):
+    """The navbar avatar now reads the record, so a view that dies after a
+    failed flush must not take the styled 500 page down with it."""
+    from flask_login import current_user
+    app.config['PROPAGATE_EXCEPTIONS'] = False
+    member = _user('member')
+
+    @app.route('/_test/fails-mid-transaction')
+    def fails_mid_transaction():
+        assert current_user.is_authenticated
+        db.session.add(User(username='member', email='dupe@test.com'))
+        db.session.flush()
+
+    with client.session_transaction() as sess:
+        sess['_user_id'] = member.auth_id
+        sess['_fresh'] = True
+    resp = client.get('/_test/fails-mid-transaction')
+    assert resp.status_code == 500
+    assert b'The Commish hit a snag.' in resp.data
 
 
 def test_user_reads_the_trophy_from_the_record(app):
@@ -269,6 +356,74 @@ def test_cfb_refuses_an_open_season(app):
         season_finishes(2026)
 
 
+def test_cfb_refuses_a_sole_survivor_while_the_week_is_still_grading(app):
+    """Saturday night: B's game went final and left A alone, so the lounge
+    says 'post', but the week has not completed. A's own game could still
+    lose and revive the pool, and B has no outcome row yet."""
+    from games.cfb.services.lounge import cfb_lounge_state
+    from games.cfb.services.records import season_finishes
+    from models.records import SeasonNotClosed
+    from tests._cfb_fixtures import make_enrollment, make_pick, make_team, make_week
+    a, b = _user('a'), _user('b')
+    make_enrollment(a, lives=1)
+    make_enrollment(b, lives=0, eliminated=True)
+    week = make_week(5, is_active=True)
+    make_pick(a, week, make_team('Army'))
+    make_pick(b, week, make_team('Navy'), is_correct=False)
+    db.session.commit()
+    assert cfb_lounge_state() == 'post'
+    with pytest.raises(SeasonNotClosed, match='Week 5 is still being graded'):
+        season_finishes(2026)
+
+
+def test_cfb_refuses_a_year_that_is_not_the_configured_season(app):
+    from games.cfb.services.records import season_finishes
+    from models.records import SeasonNotClosed
+    _seed_cfb_closed_season()
+    for year in (2024, 2027):
+        with pytest.raises(SeasonNotClosed, match=str(year)):
+            season_finishes(year)
+
+
+def test_cfb_final_week_with_several_survivors(app):
+    """The season ends on the final playoff week with more than one standing:
+    the official order places the survivors (ties share), then the fallen."""
+    from games.cfb.models import CfbWeekOutcome
+    from games.cfb.services.lounge import FINAL_WEEK_NUMBER
+    from games.cfb.services.records import season_finishes
+    from tests._cfb_fixtures import make_enrollment, make_week
+    top, twin1, twin2, out = _user('top'), _user('twin1'), _user('twin2'), _user('out')
+    make_enrollment(top, lives=2).cumulative_spread = 10.0
+    make_enrollment(twin1, lives=1).cumulative_spread = 4.0
+    make_enrollment(twin2, lives=1).cumulative_spread = 4.0
+    make_enrollment(out, lives=0, eliminated=True)
+    week = make_week(FINAL_WEEK_NUMBER, is_playoff=True, is_complete=True)
+    db.session.add(CfbWeekOutcome(week_id=week.id, user_id=out.id, lives_remaining=0,
+                                  is_eliminated=True, lost_life=True))
+    db.session.commit()
+    drafts = season_finishes(2026)
+    assert [(d.place, d.name, d.outcome) for d in drafts] == [
+        (1, 'top', 'champion'), (2, 'twin1', 'survived'), (2, 'twin2', 'survived'),
+        (4, 'out', 'eliminated')]
+    assert drafts[3].detail.startswith(f'Out Week {FINAL_WEEK_NUMBER}')
+
+
+def test_cfb_revived_player_is_out_the_week_they_fell_last(app):
+    champ, late, early = _seed_cfb_closed_season()
+    from games.cfb.models import CfbWeekOutcome
+    from games.cfb.services.records import season_finishes
+    from tests._cfb_fixtures import make_week
+    # 'early' fell in Week 2, was revived by a pool wipe, and fell again in Week 4.
+    week4 = make_week(4, is_complete=True)
+    db.session.add(CfbWeekOutcome(week_id=week4.id, user_id=early.id, lives_remaining=0,
+                                  is_eliminated=True, lost_life=True))
+    db.session.commit()
+    by_name = {d.name: d for d in season_finishes(2026)}
+    assert by_name['early'].detail.startswith('Out Week 4')
+    assert by_name['early'].place == 2
+    assert by_name['Late Out'].place == 3
+
+
 # --- the CFB builder (2025: the frozen archive plus the link map) -------------
 
 def test_cfb_2025_reads_the_archive_and_links_named_accounts(app, tmp_path, monkeypatch):
@@ -297,20 +452,47 @@ def test_cfb_2025_unknown_username_in_the_link_map_fails_loudly(app, tmp_path, m
     links = tmp_path / 'links.json'
     links.write_text('{"Fourth & Pine": "nobody-here"}', encoding='utf-8')
     monkeypatch.setattr(cfb_records, 'LINKS_2025_PATH', links)
-    with pytest.raises(LookupError, match='nobody-here'):
+    with pytest.raises(InvalidBoard, match='nobody-here'):
         cfb_records.season_finishes(2025)
+
+
+def test_cfb_2025_link_map_key_missing_from_the_archive_fails_loudly(app, tmp_path, monkeypatch):
+    """A typo'd key would otherwise link nobody without a word."""
+    from games.cfb.services import records as cfb_records
+    _user('cubbies22')
+    links = tmp_path / 'links.json'
+    links.write_text('{"Fourth &  Pine": "cubbies22"}', encoding='utf-8')
+    monkeypatch.setattr(cfb_records, 'LINKS_2025_PATH', links)
+    with pytest.raises(InvalidBoard, match='Fourth &  Pine'):
+        cfb_records.season_finishes(2025)
+
+
+def test_cfb_2025_one_account_linked_twice_is_refused_at_the_record(app, tmp_path, monkeypatch):
+    from games.cfb.services import records as cfb_records
+    from games.cfb.services.history import get_season_2025
+    _user('cubbies22')
+    other = get_season_2025()['standings'][1]['name']
+    links = tmp_path / 'links.json'
+    links.write_text(json.dumps({'Fourth & Pine': 'cubbies22', other: 'Cubbies22'}),
+                     encoding='utf-8')
+    monkeypatch.setattr(cfb_records, 'LINKS_2025_PATH', links)
+    with pytest.raises(InvalidBoard, match='one member under two names'):
+        record_season('cfb', 2025, cfb_records.season_finishes(2025))
+    assert finishes_for('cfb', 2025) == []
 
 
 def test_cfb_2025_link_map_names_only_archive_names_and_carries_no_identity(app):
     """The committed map: every key is a 2025 standings name, every value a
     username (never an email or an id), and none of the archive's forbidden
     keys reach this file either."""
-    import json
-
     from games.cfb.services import records as cfb_records
     from games.cfb.services.history import get_season_2025
     raw = cfb_records.LINKS_2025_PATH.read_text(encoding='utf-8')
-    links = json.loads(raw)
+    pairs = json.loads(raw, object_pairs_hook=list)
+    links = dict(pairs)
+    assert len(links) == len(pairs), 'a name appears twice in the link map'
+    assert len({normalize_identifier(v) for v in links.values()}) == len(links), (
+        'one username linked to two names')
     names = {row['name'] for row in get_season_2025()['standings']}
     assert set(links) <= names
     for value in links.values():

@@ -2,8 +2,9 @@
 
 The registry's ``season_finishes`` seam: the season ledger's rows, in the
 ledger's own order and with the ledger's own figures (points after the
-drop, wins never dropped), once every week is graded. No second ranking
-and no second formatter: the detail line prints what ledger.html prints.
+drop, wins never dropped), once every week is graded. No second ranking:
+the place is the ledger's own rank. The detail line mirrors ledger.html's
+formatting (points to one decimal, whole wins).
 """
 from games.docket.services.season_pass import season_ledger
 from games.docket.services.weeks import SEASON_YEAR

@@ -166,6 +166,10 @@ def create_app(config_name=None):
 
     @app.errorhandler(500)
     def server_error(e):
+        # A view that died mid-transaction leaves the session unusable, and
+        # the page itself reads the database (the navbar avatar's reigning
+        # champion, ADR-068): roll back first or the error page errors too.
+        db.session.rollback()
         return render_template('errors/500.html'), 500
 
     # CLI commands

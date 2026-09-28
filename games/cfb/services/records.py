@@ -10,7 +10,11 @@ calls. Two sources:
   frozen (ADR-057, tests/test_cfb_history.py); links live in this second
   file so the archive never carries an identity.
 - 2026 and later: the live tables, only once the lounge says the season
-  is 'post' (a sole survivor, or the final playoff week complete).
+  is 'post' (a sole survivor, or the final playoff week complete) AND no
+  week is mid-grading. Per-game grading marks a loser eliminated the moment
+  their game goes final, but the week's outcome rows (and the whole-pool
+  revival rule) wait for the week to complete, so a Saturday-night sole
+  survivor is not yet a champion.
 
 Place is competition rank. Survivors take the official standings' ranks;
 every eliminated player ranks after every survivor, by out week alone
@@ -26,11 +30,11 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import joinedload
 
 from extensions import db
-from games.cfb.models import CfbEnrollment, CfbWeek, CfbWeekOutcome
+from games.cfb.models import CfbEnrollment, CfbPick, CfbWeek, CfbWeekOutcome
 from games.cfb.services.game_logic import get_official_standings
 from games.cfb.services.history import get_season_2025
 from games.cfb.services.lounge import cfb_lounge_state
-from models.records import FinishDraft, SeasonNotClosed
+from models.records import FinishDraft, InvalidBoard, SeasonNotClosed
 from models.user import User
 from utils.identifier import normalize_identifier
 
@@ -58,6 +62,14 @@ def season_finishes(season_year: int) -> list[FinishDraft]:
     if (season_year != current_app.config['CFB_SEASON_YEAR']
             or cfb_lounge_state() != 'post'):
         raise SeasonNotClosed(f'Survivor {season_year} has not concluded')
+    grading = db.session.scalar(
+        select(CfbWeek.week_number)
+        .join(CfbPick, CfbPick.week_id == CfbWeek.id)
+        .where(CfbWeek.is_complete.is_(False), CfbPick.is_correct.is_not(None))
+        .order_by(CfbWeek.week_number).limit(1))
+    if grading is not None:
+        raise SeasonNotClosed(
+            f'Survivor {season_year}: Week {grading} is still being graded')
     return _live_season(season_year)
 
 
@@ -73,12 +85,11 @@ def _live_season(season_year: int) -> list[FinishDraft]:
         )
         for e in survivors
     ]
-    eliminated = (
-        CfbEnrollment.query
+    eliminated = list(db.session.scalars(
+        select(CfbEnrollment)
         .filter_by(season_year=season_year, is_eliminated=True)
         .options(joinedload(CfbEnrollment.user))
-        .all()
-    )
+    ))
     # The week that eliminated each player: the LAST outcome carrying the
     # elimination with its lost life (a revived player can fall twice).
     out_week = dict(db.session.execute(
@@ -106,12 +117,17 @@ def _live_season(season_year: int) -> list[FinishDraft]:
 def _archive_2025() -> list[FinishDraft]:
     standings = get_season_2025()['standings']
     links = json.loads(LINKS_2025_PATH.read_text(encoding='utf-8'))
+    # The map is hand-kept: a key that misses the archive (a typo, a stray
+    # space) would otherwise link nobody without a word.
+    strays = sorted(set(links) - {row['name'] for row in standings})
+    if strays:
+        raise InvalidBoard(f'The link map names {strays}, not in the 2025 archive')
     user_ids = {}
     for name, username in links.items():
         user = db.session.scalar(select(User).filter(
             func.lower(User.username) == normalize_identifier(username)))
         if user is None:
-            raise LookupError(f'{name!r} links to {username!r}, which is not a member')
+            raise InvalidBoard(f'{name!r} links to {username!r}, which is not a member')
         user_ids[name] = user.id
     survivors = [row for row in standings if row['outcome'] == 'champion']
     fallen = [row for row in standings if row['outcome'] != 'champion']

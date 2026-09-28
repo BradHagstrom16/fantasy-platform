@@ -1,10 +1,14 @@
 """``flask records close`` / ``show`` (ADR-068) and the seam lock: core/records
 and models/records reach a game only through games.registry."""
+import dataclasses
+import json
 import re
 from pathlib import Path
 
+import pytest
+
 from models.records import finishes_for
-from tests.test_records import _seed_cfb_closed_season, _seed_wc, _user
+from tests.test_records import _seed_cfb_closed_season, _seed_docket, _seed_wc, _user
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -20,7 +24,7 @@ def test_close_records_a_decided_world_cup(app):
     assert '1  wc_a' in result.output and '487.0 pts' in result.output
     rows = finishes_for('worldcup', 2026)
     assert [(r.place, r.user_id) for r in rows] == [(1, a.id), (2, b.id), (2, c.id)]
-    assert 'World Cup' in result.output or '2026 FIFA World Cup' in result.output
+    assert 'World Cup' in result.output
 
 
 def test_close_refuses_a_season_already_on_record_unless_forced(app):
@@ -55,7 +59,17 @@ def test_close_rejects_an_unknown_game(app):
     assert result.exit_code == 2
 
 
-def test_close_cfb_2025_names_the_members_still_unlinked(app):
+@pytest.fixture()
+def one_link(tmp_path, monkeypatch):
+    """A link map of one name, so these tests never move when the committed
+    map gains the links the Commish adds after the first close."""
+    from games.cfb.services import records as cfb_records
+    links = tmp_path / 'links.json'
+    links.write_text(json.dumps({'Fourth & Pine': 'cubbies22'}), encoding='utf-8')
+    monkeypatch.setattr(cfb_records, 'LINKS_2025_PATH', links)
+
+
+def test_close_cfb_2025_names_the_members_still_unlinked(app, one_link):
     _user('cubbies22')
     result = _run(app, 'close', 'cfb', '2025')
     assert result.exit_code == 0, result.output
@@ -66,11 +80,56 @@ def test_close_cfb_2025_names_the_members_still_unlinked(app):
     assert re.search(r'^\s*1\s+Fourth & Pine', result.output, re.M)
 
 
-def test_close_cfb_2025_fails_when_the_link_map_names_a_stranger(app):
+def test_close_cfb_2025_fails_when_the_link_map_names_a_stranger(app, one_link):
     result = _run(app, 'close', 'cfb', '2025')
     assert result.exit_code == 1
-    assert 'cubbies22' in result.output
+    assert 'cubbies22' in result.output and 'not a member' in result.output
     assert finishes_for('cfb', 2025) == []
+
+
+def test_close_a_finished_docket_season(app):
+    from games.docket.services.weeks import TOTAL_WEEKS
+    alice, bob = _seed_docket(TOTAL_WEEKS)
+    result = _run(app, 'close', 'docket', '2026')
+    assert result.exit_code == 0, result.output
+    assert '90.0 points' in result.output
+    assert [(r.place, r.user_id) for r in finishes_for('docket', 2026)] == [
+        (1, alice.id), (2, bob.id)]
+
+
+def test_close_refuses_a_docket_season_one_week_short(app):
+    from games.docket.services.weeks import TOTAL_WEEKS
+    _seed_docket(TOTAL_WEEKS - 1)
+    result = _run(app, 'close', 'docket', '2026')
+    assert result.exit_code == 1
+    assert f'{TOTAL_WEEKS - 1} of {TOTAL_WEEKS} weeks graded' in result.output
+    assert finishes_for('docket', 2026) == []
+
+
+def _seam_returning(monkeypatch, fn):
+    from core.records import cli
+    from games.registry import get_entry
+    entry = dataclasses.replace(get_entry('worldcup'), season_finishes=fn)
+    monkeypatch.setattr(cli, 'get_entry', lambda slug: entry)
+
+
+def test_close_refuses_an_invalid_board_with_its_reason(app, monkeypatch):
+    _seam_returning(monkeypatch, lambda year: [])
+    result = _run(app, 'close', 'worldcup', '2026')
+    assert result.exit_code == 1
+    assert 'the board is empty' in result.output
+    assert finishes_for('worldcup', 2026) == []
+
+
+def test_a_builder_bug_is_never_dressed_as_a_refusal(app, monkeypatch):
+    """Only the named refusals print a message; a KeyError inside a game's
+    builder keeps its traceback."""
+    def broken(year):
+        return {}[57]
+    _seam_returning(monkeypatch, broken)
+    result = _run(app, 'close', 'worldcup', '2026')
+    assert result.exit_code == 1
+    assert isinstance(result.exception, KeyError)
 
 
 def test_close_a_live_cfb_season(app):

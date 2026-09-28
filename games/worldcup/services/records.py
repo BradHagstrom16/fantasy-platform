@@ -7,8 +7,10 @@ competition rank. Nothing here writes, and no existing WC module changes;
 this file is the second sanctioned post-archive addition
 (docs/worldcup-archive-invariants.md).
 """
+from sqlalchemy import select
 from sqlalchemy.orm import joinedload
 
+from extensions import db
 from games.worldcup.constants import SEASON_YEAR
 from games.worldcup.models import WorldCupEnrollment
 from games.worldcup.services.state import worldcup_state
@@ -19,13 +21,12 @@ def season_finishes(season_year: int) -> list[FinishDraft]:
     """Every enrolled member's finish, place 1 first, once the Final is decided."""
     if season_year != SEASON_YEAR or worldcup_state() != 'post':
         raise SeasonNotClosed(f'World Cup {season_year} is not a decided tournament')
-    enrollments = (
-        WorldCupEnrollment.query
+    enrollments = db.session.scalars(
+        select(WorldCupEnrollment)
         .filter_by(season_year=season_year)
         .options(joinedload(WorldCupEnrollment.user))
         .order_by(WorldCupEnrollment.total_score.desc(), WorldCupEnrollment.id.asc())
-        .all()
-    )
+    ).all()
     return [
         FinishDraft(
             user_id=e.user_id,

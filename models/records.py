@@ -12,13 +12,15 @@ reseeded or archived later without the club losing who won what. ``name``
 is frozen as the season recorded it (the 2025 CFB season has names and no
 accounts), ``user_id`` links it to a member when one is known.
 """
+from collections import Counter
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
 from flask import g
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from extensions import db
+from models.user import User
 
 _G_KEY = '_reigning_champion_ids'
 
@@ -46,11 +48,21 @@ class SeasonAlreadyOnRecord(Exception):
     """Rows exist for this game and season; pass force to rewrite them."""
 
 
+class InvalidBoard(Exception):
+    """A board the record will not hold: empty, places that are not a
+    competition rank, a name or a member twice, or (Survivor 2025) a link map
+    that names a stranger or a name the archive never had."""
+
+
 class SeasonFinish(db.Model):
     __tablename__ = 'season_finishes'
     __table_args__ = (
         db.UniqueConstraint('game', 'season_year', 'name',
                             name='uq_season_finish_game_year_name'),
+        # One finish per member per season. NULLs are distinct on both
+        # engines, so any number of unlinked names still fit.
+        db.UniqueConstraint('game', 'season_year', 'user_id',
+                            name='uq_season_finish_game_year_user'),
         db.Index('ix_season_finish_game_year', 'game', 'season_year'),
     )
 
@@ -63,8 +75,9 @@ class SeasonFinish(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True,
                         index=True)
     # The name as the season recorded it; frozen even when the member later
-    # renames (the live pages follow the rename, the record does not).
-    name = db.Column(db.String(80), nullable=False)
+    # renames (the live pages follow the rename, the record does not). As
+    # wide as the platform display name it copies.
+    name = db.Column(db.String(User.display_name.type.length), nullable=False)
     # Competition rank: 1 + the count who finished strictly better.
     place = db.Column(db.Integer, nullable=False)
     outcome = db.Column(db.String(30), nullable=True)
@@ -91,7 +104,8 @@ def seasons_on_record() -> list[tuple[str, int]]:
 def finishes_for(game: str, season_year: int) -> list[SeasonFinish]:
     return db.session.scalars(
         select(SeasonFinish).filter_by(game=game, season_year=season_year)
-        .order_by(SeasonFinish.place, SeasonFinish.name)).all()
+        .order_by(SeasonFinish.place, func.lower(SeasonFinish.name),
+                  SeasonFinish.name)).all()
 
 
 def champions() -> list[SeasonFinish]:
@@ -99,7 +113,7 @@ def champions() -> list[SeasonFinish]:
     return db.session.scalars(
         select(SeasonFinish).filter_by(place=1)
         .order_by(SeasonFinish.season_year.desc(), SeasonFinish.game,
-                  SeasonFinish.name)).all()
+                  func.lower(SeasonFinish.name), SeasonFinish.name)).all()
 
 
 def reigning_champion_user_ids() -> frozenset[int]:
@@ -129,10 +143,35 @@ def clear_reigning_champion_cache() -> None:
     g.pop(_G_KEY, None)
 
 
+def _check_board(game: str, season_year: int, drafts: list[FinishDraft]) -> None:
+    """The one boundary where three games' builders feed a permanent ledger:
+    refuse what the trophy and the page cannot read. Competition rank means
+    every place is 1 + the count placed strictly better, so a board without
+    a place 1 fails here too."""
+    label = f'{game} {season_year}'
+    if not drafts:
+        raise InvalidBoard(f'{label}: the board is empty')
+    places = [d.place for d in drafts]
+    if any(p != 1 + sum(1 for o in places if o < p) for p in places):
+        raise InvalidBoard(
+            f'{label}: places {sorted(places)} are not a competition rank')
+    names = Counter(d.name for d in drafts)
+    twice = sorted(name for name, n in names.items() if n > 1)
+    if twice:
+        raise InvalidBoard(f'{label}: recorded twice: {", ".join(twice)}')
+    members = Counter(d.user_id for d in drafts if d.user_id is not None)
+    twice = sorted(uid for uid, n in members.items() if n > 1)
+    if twice:
+        raise InvalidBoard(
+            f'{label}: one member under two names (user ids {twice})')
+
+
 def record_season(game: str, season_year: int, drafts: list[FinishDraft], *,
                   force: bool = False) -> list[SeasonFinish]:
-    """Write a finished season's board. Refuses an already-recorded season
-    unless ``force``, which replaces its rows in the same transaction."""
+    """Write a finished season's board. Refuses a board ``_check_board``
+    rejects, and an already-recorded season unless ``force``, which replaces
+    its rows in the same transaction."""
+    _check_board(game, season_year, drafts)
     existing = finishes_for(game, season_year)
     if existing and not force:
         raise SeasonAlreadyOnRecord(f'{game} {season_year} is already on record')

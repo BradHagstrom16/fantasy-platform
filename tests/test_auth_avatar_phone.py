@@ -122,7 +122,7 @@ def test_football_still_selectable():
     assert DEFAULT in _all_selectable()
 
 
-# --- trophy reserved for the reigning Survivor champion ------------------
+# --- trophy reserved for every reigning club champion ------------------
 
 def test_trophy_not_selectable_in_categories():
     """The trophy is excluded from the selectable avatar list (reserved)."""
@@ -144,13 +144,14 @@ def test_non_champion_with_trophy_falls_back_to_default(app):
 
 def _crown_on_the_record(app, user_id, game='cfb', season_year=2025):
     """Close a season on the record with this member in first place (ADR-068:
-    the reigning champion is derived from season_finishes, never declared)."""
+    the reigning champion is derived from season_finishes, never declared).
+    Written in the fixture's own app context, so the writer clears the same
+    ``g`` a later read in this test uses."""
     from models.records import FinishDraft, record_season
-    with app.app_context():
-        record_season(game, season_year, [
-            FinishDraft(user_id=user_id, name='Champ', place=1, outcome='champion',
-                        detail=None),
-        ])
+    record_season(game, season_year, [
+        FinishDraft(user_id=user_id, name='Champ', place=1, outcome='champion',
+                    detail=None),
+    ])
 
 
 def test_no_declared_champion_constant():

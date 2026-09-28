@@ -27,8 +27,8 @@ What exploration established:
 
 ### D1. `models/records.py::SeasonFinish` → table `season_finishes`
 Columns (conventions of `models/content.py`: commented columns, `DateTime(timezone=True)` + `default=lambda: datetime.now(UTC)`):
-`id` · `game String(20)` (registry slug) · `season_year Integer` · `user_id` FK `users.id` nullable, indexed (NULL = never linked) · `name String(80)` (the name as the season recorded it; frozen) · `place Integer` (competition rank, ties share) · `outcome String(30)` nullable (`champion` / `survived` / `eliminated` for CFB; NULL elsewhere) · `detail String(200)` nullable · `field_size Integer` · `closed_at`.
-`UniqueConstraint('game','season_year','name', name='uq_season_finish_game_year_name')`, `Index('ix_season_finish_game_year', 'game','season_year')`, `user = db.relationship('User')`.
+`id` · `game String(20)` (registry slug) · `season_year Integer` · `user_id` FK `users.id` nullable, indexed (NULL = never linked) · `name String(100)` (the name as the season recorded it; frozen; as wide as `User.display_name`) · `place Integer` (competition rank, ties share) · `outcome String(30)` nullable (`champion` / `survived` / `eliminated` for CFB; NULL elsewhere) · `detail String(200)` nullable · `field_size Integer` · `closed_at`.
+`UniqueConstraint('game','season_year','name', name='uq_season_finish_game_year_name')`, `UniqueConstraint('game','season_year','user_id', name='uq_season_finish_game_year_user')` (NULLs distinct, so unlinked names all fit), `Index('ix_season_finish_game_year', 'game','season_year')`, `user = db.relationship('User')`.
 
 Module-level, in the same file: `FinishDraft` frozen dataclass (`user_id, name, place, outcome, detail`); `SeasonNotClosed`, `SeasonAlreadyOnRecord`; `seasons_on_record()`, `finishes_for(game, year)`, `champions()`, `reigning_champion_user_ids()`, `record_season(game, year, drafts, *, force=False)` (refuses existing rows unless `force`, which deletes and rewrites in one transaction; `field_size = len(drafts)`; commits; clears the `g` cache). Re-export in `models/__init__.py`; one migration chained on `cac4d3e60af5`.
 
