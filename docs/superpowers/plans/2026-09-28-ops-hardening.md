@@ -154,7 +154,7 @@ Record the result here:
 | Date | Dump | rc | users / alembic / docket_pick / cfb_pick (live → restored) |
 |---|---|---|---|
 | 2026-09-28 (local, `ccc_local`) | same flags, Postgres 18.6 | 0 | 61 / b7c4e2a91d05 / 110 / 27 → identical |
-| _prod, pending_ | | | |
+| 2026-09-28 (prod, scratch `restore_rehearsal` on the managed cluster) | `pre-migrate-20260928T175346Z-e6df60a.dump`, 203 KB, `--exit-on-error`, restored in 1 s | 0 | 61 / b7c4e2a91d05 / 656 / 122 → identical; all 30 tables' row counts identical; scratch database dropped |
 
 ---
 
