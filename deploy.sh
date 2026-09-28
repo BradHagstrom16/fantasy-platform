@@ -166,18 +166,7 @@ backup_keep=10
 
 # Prints its own failure reason; the caller decides what a failure means.
 backup_database() {
-    local target password url stamp sha final partial
-    # Two lines from the app's own reading of .env: the password, then the URL
-    # without it (utils/backup_target.py). The password goes to pg_dump as
-    # PGPASSWORD, never in its argv, which any local user can read. The module
-    # also refuses a non-Postgres URL, which is what a stray
-    # ENVIRONMENT=development would leave production pointed at.
-    if ! target=$(venv/bin/python -m utils.backup_target); then
-        echo "    !! could not get a Postgres DATABASE_URL through config.py (above)." >&2
-        return 1
-    fi
-    password=${target%%$'\n'*}
-    url=${target#*$'\n'}
+    local stamp sha final partial
     stamp=$(date -u +%Y%m%dT%H%M%SZ)
     sha=$(git rev-parse --short HEAD 2>/dev/null) || sha=""
     # The UTC stamp sorts by name, which the pruning below relies on.
@@ -185,11 +174,15 @@ backup_database() {
     partial="$final.partial"
     install -d -m 700 "$backup_dir" || return 1
     # Written under a .partial name and renamed only once pg_dump succeeds, so a
-    # half-written file can never be mistaken for a backup. umask 077: the dump
-    # holds every member's email, phone and password hash.
-    if ! (umask 077 && PGPASSWORD="$password" pg_dump --format=custom --file "$partial" --dbname "$url"); then
+    # half-written file can never be mistaken for a backup. utils/backup_target.py
+    # runs pg_dump itself: it reads DATABASE_URL through config.py (the app's
+    # own reading of .env), refuses a non-Postgres URL (what a stray
+    # ENVIRONMENT=development would leave behind), hands pg_dump the password
+    # as PGPASSWORD rather than in its world-readable argv, and dumps under
+    # umask 077. The password never passes through this script.
+    if ! venv/bin/python -m utils.backup_target dump "$partial"; then
         rm -f "$partial"
-        echo "    !! pg_dump failed (above)." >&2
+        echo "    !! the backup failed (above)." >&2
         return 1
     fi
     mv -f "$partial" "$final" || return 1

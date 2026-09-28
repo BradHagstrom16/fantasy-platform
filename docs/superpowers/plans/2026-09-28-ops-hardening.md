@@ -112,15 +112,14 @@ same managed cluster and never touches `defaultdb`.
 ```bash
 ssh deploy@104.131.28.136
 cd ~/fantasy-platform
-# The same split deploy.sh uses: the password goes in PGPASSWORD, never argv.
-target=$(venv/bin/python -m utils.backup_target)
-export PGPASSWORD=${target%%$'\n'*}
-url=${target#*$'\n'}
+# The same reading deploy.sh uses: the password goes in PGPASSWORD, never argv.
+export PGPASSWORD="$(venv/bin/python -m utils.backup_target password)"
+url="$(venv/bin/python -m utils.backup_target url)"
 scratch="${url/\/defaultdb/\/restore_rehearsal}"      # same cluster, another database
 latest=$(ls -1 ~/backups/pre-migrate-*.dump | tail -1)
 
 psql "$url" -c 'CREATE DATABASE restore_rehearsal'
-pg_restore --no-owner --no-acl --dbname "$scratch" "$latest"; echo "rc=$?"
+pg_restore --exit-on-error --no-owner --no-acl --dbname "$scratch" "$latest"; echo "rc=$?"
 
 q="select (select count(*) from users), (select version_num from alembic_version),
           (select count(*) from docket_pick), (select count(*) from cfb_pick)"
@@ -153,17 +152,25 @@ live one. The broken database stays intact for comparison.
    way. `deploy.sh` always `git pull`s the current branch, so checking out an
    older commit on the box would either be undone by that pull or, on a
    detached HEAD, stop the deploy.
-3. Restore into a fresh database on the cluster:
-   `psql "$url" -c 'CREATE DATABASE restored_<date>'` (with `url` and
-   `PGPASSWORD` set as in the rehearsal above), then `pg_restore
-   --no-owner --no-acl --dbname <that database's URL> ~/backups/<the
-   pre-migrate dump>`. Use the dump the bad deploy itself took: its name
-   carries that deploy's UTC time and short SHA, and it was taken seconds
+3. Restore into a fresh database on the cluster, with `url` and `PGPASSWORD`
+   set as in the rehearsal above. Use the dump the bad deploy itself took: its
+   name carries that deploy's UTC time and short SHA, and it was taken seconds
    before the migration ran.
-4. In `.env`, point `DATABASE_URL` at `restored_<date>`.
-5. `./deploy.sh`. It pulls the revert, dumps the restored database, and
-   `flask db upgrade` finds nothing to apply: the restored database is at the
-   pre-migration revision, and the revert removed the migration.
+   ```bash
+   psql "$url" -c 'CREATE DATABASE restored_<date>'
+   restored="${url/\/defaultdb/\/restored_<date>}"
+   pg_restore --exit-on-error --no-owner --no-acl --dbname "$restored" ~/backups/<that dump>
+   echo "rc=$?"
+   ```
+4. **Only with `rc=0`,** run the rehearsal's count query against `$restored`
+   and check it reads as the club did before the bad deploy (members, the
+   alembic revision before the bad migration, picks). A non-zero rc or a
+   count that looks wrong means stop: drop `restored_<date>` and try the
+   previous dump or DO's daily backup instead.
+5. In `.env`, point `DATABASE_URL` at `restored_<date>`, then `./deploy.sh`.
+   It pulls the revert, dumps the restored database, and `flask db upgrade`
+   finds nothing to apply: the restored database is at the pre-migration
+   revision, and the revert removed the migration.
 6. Start the timers again. Once you are satisfied, drop the broken database.
 
 DigitalOcean's managed cluster also keeps its own daily backups (dashboard →

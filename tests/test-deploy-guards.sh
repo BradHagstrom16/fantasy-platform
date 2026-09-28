@@ -314,18 +314,19 @@ if [ -n "${SLOW_MIGRATION:-}" ]; then /bin/sleep "$SLOW_MIGRATION"; fi
 exit 0
 FLASK
 
-# deploy.sh asks `venv/bin/python -m utils.backup_target` for two lines: the
-# password, then the URL without it (the split itself is pytest's:
-# tests/test_backup_target.py). NOT_POSTGRES makes it refuse, as it does for
-# the SQLite fallback.
+# deploy.sh runs `venv/bin/python -m utils.backup_target dump <file>`, which
+# runs pg_dump itself (the URL split and the PGPASSWORD handoff are pytest's:
+# tests/test_backup_target.py). The shim hands off to the pg_dump shim the
+# same way; NOT_POSTGRES makes it refuse, as the module does for SQLite.
 cat > "$SANDBOX/venv/bin/python" <<'PYTHON'
 #!/bin/bash
 if [ -n "${NOT_POSTGRES:-}" ]; then
     echo "DATABASE_URL is not a Postgres URL (sqlite); nothing to back up." >&2
     exit 1
 fi
-echo "s3cret-pw"
-echo "postgresql://doadmin@db.example.invalid:25060/defaultdb?sslmode=require"
+[ "$1 $2 $3" = "-m utils.backup_target dump" ] || { echo "python shim: unexpected $*" >&2; exit 2; }
+umask 077
+exec pg_dump --format=custom --file "$4" --dbname "postgresql://fixture_user@db.example.invalid/fixture_db"
 PYTHON
 
 # pg_dump: writes a small file where --file says, or with PG_DUMP_FAIL set,
@@ -334,7 +335,6 @@ PYTHON
 cat > "$SHIMS/pg_dump" <<'PGDUMP'
 #!/bin/bash
 echo "pg_dump $*" >> "$SANDBOX/order-log"
-echo "${PGPASSWORD-<unset>}" > "$SANDBOX/pg_dump-env"
 out=""
 while [ $# -gt 0 ]; do
     case "$1" in --file) out="$2"; shift ;; esac
@@ -372,7 +372,7 @@ export PATH="$SHIMS:$PATH"
 
 reset_state() {
     rm -f "$SANDBOX/pull-count" "$SANDBOX/sudo-log" "$SANDBOX/deploy.lock" "$SANDBOX/order-log"
-    rm -rf "$SANDBOX/backups" "$SANDBOX/pg_dump-env"
+    rm -rf "$SANDBOX/backups"
     cp -p "$SANDBOX/deploy.sh.pristine" "$SANDBOX/deploy.sh"
     # Units land for real (see the sudo shim), so a case that distinguishes
     # installed from in-sync has to start from a known-empty unit directory.
@@ -919,8 +919,6 @@ check "pg_dump ran first" "$(head -1 "$SANDBOX/order-log" | cut -d' ' -f1)" "pg_
 check "then the migration" "$(sed -n 2p "$SANDBOX/order-log")" "flask db upgrade"
 check "custom format, to a .partial" \
       "$(grep -c -- '--format=custom --file .*\.dump\.partial --dbname postgresql://' "$SANDBOX/order-log")" "1"
-check "the password reached pg_dump as PGPASSWORD" "$(cat "$SANDBOX/pg_dump-env")" "s3cret-pw"
-check "and never in its argv" "$(grep -c 's3cret-pw' "$SANDBOX/order-log")" "0"
 check "backup dir is private (700)" "$(stat -c '%a' "$SANDBOX/backups" 2>/dev/null || stat -f '%Lp' "$SANDBOX/backups")" "700"
 dump_file="$(ls "$SANDBOX/backups"/pre-migrate-*.dump | head -1)"
 check "dump is private (600)" "$(stat -c '%a' "$dump_file" 2>/dev/null || stat -f '%Lp' "$dump_file")" "600"
