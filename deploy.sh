@@ -166,20 +166,18 @@ backup_keep=10
 
 # Prints its own failure reason; the caller decides what a failure means.
 backup_database() {
-    local url stamp sha final partial
-    # The app's own reading of .env, never a hand-parse of it. It also refuses
-    # a non-Postgres URL, which is what a stray ENVIRONMENT=development would
-    # leave production pointed at (the SQLite fallback).
-    if ! url=$(venv/bin/python -c 'from config import ProductionConfig as C; print(C.SQLALCHEMY_DATABASE_URI)'); then
-        echo "    !! could not read DATABASE_URL through config.py (above)." >&2
+    local target password url stamp sha final partial
+    # Two lines from the app's own reading of .env: the password, then the URL
+    # without it (utils/backup_target.py). The password goes to pg_dump as
+    # PGPASSWORD, never in its argv, which any local user can read. The module
+    # also refuses a non-Postgres URL, which is what a stray
+    # ENVIRONMENT=development would leave production pointed at.
+    if ! target=$(venv/bin/python -m utils.backup_target); then
+        echo "    !! could not get a Postgres DATABASE_URL through config.py (above)." >&2
         return 1
     fi
-    case "$url" in
-        postgresql+*://*) url="postgresql://${url#*://}" ;;   # SQLAlchemy driver suffix
-        postgresql://*|postgres://*) ;;
-        *)  echo "    !! DATABASE_URL is not a Postgres URL; nothing to back up." >&2
-            return 1 ;;
-    esac
+    password=${target%%$'\n'*}
+    url=${target#*$'\n'}
     stamp=$(date -u +%Y%m%dT%H%M%SZ)
     sha=$(git rev-parse --short HEAD 2>/dev/null) || sha=""
     # The UTC stamp sorts by name, which the pruning below relies on.
@@ -188,10 +186,8 @@ backup_database() {
     install -d -m 700 "$backup_dir" || return 1
     # Written under a .partial name and renamed only once pg_dump succeeds, so a
     # half-written file can never be mistaken for a backup. umask 077: the dump
-    # holds every member's email, phone and password hash. (The URL, password
-    # included, is in pg_dump's argv for the few seconds it runs; nobody but
-    # deploy and root log in to this box.)
-    if ! (umask 077 && pg_dump --format=custom --file "$partial" --dbname "$url"); then
+    # holds every member's email, phone and password hash.
+    if ! (umask 077 && PGPASSWORD="$password" pg_dump --format=custom --file "$partial" --dbname "$url"); then
         rm -f "$partial"
         echo "    !! pg_dump failed (above)." >&2
         return 1

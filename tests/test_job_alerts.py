@@ -114,11 +114,33 @@ def test_ping_url(fail, suffix):
     assert url == f'https://hc-ping.com/KEY/club-remind{suffix}?create=1'
 
 
-def test_a_ping_that_cannot_connect_never_raises(caplog):
+def test_a_ping_that_cannot_connect_retries_then_gives_up_quietly(caplog):
     with patch('utils.job_alert.urllib.request.urlopen',
-               side_effect=urllib.error.URLError('down')):
+               side_effect=urllib.error.URLError('down')) as urlopen, \
+            patch('utils.job_alert.time.sleep') as sleep:
         assert job_alert.ping('SECRETKEY', 'club-remind') is False
+    assert urlopen.call_count == 3
+    assert [c.args[0] for c in sleep.call_args_list] == [2, 4]
     assert 'SECRETKEY' not in caplog.text
+
+
+def test_a_transient_failure_is_recovered_by_a_retry():
+    with patch('utils.job_alert.urllib.request.urlopen',
+               side_effect=[urllib.error.URLError('blip'), _ok_response()]) as urlopen, \
+            patch('utils.job_alert.time.sleep'):
+        assert job_alert.ping('KEY', 'club-paper') is True
+    assert urlopen.call_count == 2
+
+
+def test_the_retries_fit_inside_the_ping_units_timeout():
+    """Every attempt's 10 s timeout plus the pauses between them must finish
+    before job-ping@'s 1-minute TimeoutStartSec kills the run."""
+    import inspect
+    params = inspect.signature(job_alert.ping).parameters
+    attempts, backoff = params['attempts'].default, params['backoff'].default
+    worst = attempts * 10 + sum(backoff * n for n in range(1, attempts))
+    assert 'TimeoutStartSec=1m' in _section(PING, 'Service')
+    assert worst < 60
 
 
 def test_journal_tail_reads_the_units_last_lines():

@@ -25,6 +25,7 @@ import logging
 import os
 import subprocess
 import sys
+import time
 import urllib.error
 import urllib.request
 
@@ -39,22 +40,32 @@ PING_BASE = 'https://hc-ping.com'
 JOURNAL_LINES = 40
 
 
-def ping(ping_key, unit, *, fail=False):
+def ping(ping_key, unit, *, fail=False, attempts=3, backoff=2):
     """Tell healthchecks.io the job ran (or failed). Never raises.
 
     `?create=1` makes the first ping for a new job create its check, so adding a
-    timer needs no dashboard step before its schedule is set there.
+    timer needs no dashboard step before its schedule is set there. A dropped
+    ping of a weekly job would read as a missed run for a whole week, so it
+    retries a few times (healthchecks.io's own advice); three 10 s attempts and
+    their pauses fit inside job-ping@'s 1-minute TimeoutStartSec.
     """
     if not ping_key:
         return False
     url = f'{PING_BASE}/{ping_key}/{unit}{"/fail" if fail else ""}?create=1'
-    try:
-        with urllib.request.urlopen(url, timeout=10) as resp:
-            return resp.status == 200
-    except (urllib.error.URLError, OSError) as exc:
+    for attempt in range(1, attempts + 1):
+        try:
+            with urllib.request.urlopen(url, timeout=10) as resp:
+                if resp.status == 200:
+                    return True
+                reason = f'HTTP {resp.status}'
+        except (urllib.error.URLError, OSError) as exc:
+            reason = str(exc)
         # The key is in the URL, so log the job and the reason, never the URL.
-        logger.warning('healthchecks ping for %s failed: %s', unit, exc)
-        return False
+        logger.warning('healthchecks ping for %s failed (attempt %d/%d): %s',
+                       unit, attempt, attempts, reason)
+        if attempt < attempts:
+            time.sleep(backoff * attempt)
+    return False
 
 
 def journal_tail(unit):

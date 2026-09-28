@@ -23,7 +23,8 @@ def refuse_default_secret_key(config_name, secret_key):
     production box that lost its .env line would hand anyone a way to sign a
     cookie as any member. Fail the boot instead (Gunicorn and every timer job).
     """
-    if config_name == 'production' and secret_key in ('', DEV_SECRET_KEY):
+    if config_name == 'production' and (
+            not secret_key.strip() or secret_key == DEV_SECRET_KEY):
         raise RuntimeError(
             'SECRET_KEY is blank or the development default. Set a real '
             'SECRET_KEY in /home/deploy/fantasy-platform/.env.')

@@ -8,7 +8,7 @@ from unittest.mock import patch
 
 from flask import Flask
 
-from utils.observability import init_sentry
+from utils.observability import init_sentry, scrub_event
 
 
 def _app(dsn):
@@ -36,6 +36,26 @@ def test_dsn_initializes_with_the_privacy_options(monkeypatch):
     assert kwargs['send_default_pii'] is False
     assert kwargs['max_request_body_size'] == 'never'
     assert kwargs['traces_sample_rate'] == 0
+    assert kwargs['include_local_variables'] is False
+    assert kwargs['before_send'] is scrub_event
+
+
+def test_scrub_drops_the_query_string_and_referer_and_redacts_reset_tokens():
+    event = {'request': {
+        'url': 'https://cccfantasy.com/reset-password/IjEyMw.abc-DEF_1',
+        'query_string': 'next=/docket/sheets&q=alice@example.com',
+        'headers': {'Referer': 'https://cccfantasy.com/reset-password/IjEyMw.abc',
+                    'User-Agent': 'x'},
+    }}
+    request = scrub_event(event, {})['request']
+    assert request['url'] == 'https://cccfantasy.com/reset-password/[redacted]'
+    assert 'query_string' not in request
+    assert request['headers'] == {'User-Agent': 'x'}
+
+
+def test_scrub_leaves_an_event_without_a_request_alone():
+    event = {'exception': {'values': []}}
+    assert scrub_event(event, {}) == {'exception': {'values': []}}
 
 
 def test_the_testing_app_runs_without_sentry(app):

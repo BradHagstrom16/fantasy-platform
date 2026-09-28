@@ -112,7 +112,10 @@ same managed cluster and never touches `defaultdb`.
 ```bash
 ssh deploy@104.131.28.136
 cd ~/fantasy-platform
-url=$(venv/bin/python -c 'from config import ProductionConfig as C; print(C.SQLALCHEMY_DATABASE_URI)')
+# The same split deploy.sh uses: the password goes in PGPASSWORD, never argv.
+target=$(venv/bin/python -m utils.backup_target)
+export PGPASSWORD=${target%%$'\n'*}
+url=${target#*$'\n'}
 scratch="${url/\/defaultdb/\/restore_rehearsal}"      # same cluster, another database
 latest=$(ls -1 ~/backups/pre-migrate-*.dump | tail -1)
 
@@ -125,6 +128,7 @@ psql "$url"     -Atc "$q"      # live
 psql "$scratch" -Atc "$q"      # restored: must match, or differ only by picks made since the dump
 
 psql "$url" -c 'DROP DATABASE restore_rehearsal'
+unset PGPASSWORD
 ```
 
 Record the result here:
@@ -144,12 +148,23 @@ live one. The broken database stays intact for comparison.
 1. Stop writes: `sudo systemctl stop fantasy-platform` and every enabled game
    timer (`systemctl list-timers --no-pager`, then
    `sudo systemctl stop <name>.timer …`).
-2. `psql "$url" -c 'CREATE DATABASE restored_<date>'` and `pg_restore --no-owner
-   --no-acl --dbname <that url> ~/backups/<the pre-migrate dump>`.
-3. In `.env`, point `DATABASE_URL` at `restored_<date>`. Check out the commit
-   *before* the bad migration (the dump's name carries the short SHA it was
-   taken under), then run `./deploy.sh`.
-4. Start the timers again. Once satisfied, drop the broken database.
+2. Take the bad migration out of `main` **first**, from your Mac, never on the
+   droplet: `git revert <the PR's squash commit>`, push, and merge it the usual
+   way. `deploy.sh` always `git pull`s the current branch, so checking out an
+   older commit on the box would either be undone by that pull or, on a
+   detached HEAD, stop the deploy.
+3. Restore into a fresh database on the cluster:
+   `psql "$url" -c 'CREATE DATABASE restored_<date>'` (with `url` and
+   `PGPASSWORD` set as in the rehearsal above), then `pg_restore
+   --no-owner --no-acl --dbname <that database's URL> ~/backups/<the
+   pre-migrate dump>`. Use the dump the bad deploy itself took: its name
+   carries that deploy's UTC time and short SHA, and it was taken seconds
+   before the migration ran.
+4. In `.env`, point `DATABASE_URL` at `restored_<date>`.
+5. `./deploy.sh`. It pulls the revert, dumps the restored database, and
+   `flask db upgrade` finds nothing to apply: the restored database is at the
+   pre-migration revision, and the revert removed the migration.
+6. Start the timers again. Once you are satisfied, drop the broken database.
 
 DigitalOcean's managed cluster also keeps its own daily backups (dashboard →
 Databases → Backups); those are the fallback when `~/backups` is gone.

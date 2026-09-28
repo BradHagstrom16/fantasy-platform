@@ -314,11 +314,18 @@ if [ -n "${SLOW_MIGRATION:-}" ]; then /bin/sleep "$SLOW_MIGRATION"; fi
 exit 0
 FLASK
 
-# deploy.sh reads DATABASE_URL through config.py with venv/bin/python -c. The
-# shim answers with FAKE_DB_URL, so a case can hand it a SQLite URL.
+# deploy.sh asks `venv/bin/python -m utils.backup_target` for two lines: the
+# password, then the URL without it (the split itself is pytest's:
+# tests/test_backup_target.py). NOT_POSTGRES makes it refuse, as it does for
+# the SQLite fallback.
 cat > "$SANDBOX/venv/bin/python" <<'PYTHON'
 #!/bin/bash
-echo "${FAKE_DB_URL:-postgresql://doadmin:pw@db.example.invalid:25060/defaultdb?sslmode=require}"
+if [ -n "${NOT_POSTGRES:-}" ]; then
+    echo "DATABASE_URL is not a Postgres URL (sqlite); nothing to back up." >&2
+    exit 1
+fi
+echo "s3cret-pw"
+echo "postgresql://doadmin@db.example.invalid:25060/defaultdb?sslmode=require"
 PYTHON
 
 # pg_dump: writes a small file where --file says, or with PG_DUMP_FAIL set,
@@ -327,6 +334,7 @@ PYTHON
 cat > "$SHIMS/pg_dump" <<'PGDUMP'
 #!/bin/bash
 echo "pg_dump $*" >> "$SANDBOX/order-log"
+echo "${PGPASSWORD-<unset>}" > "$SANDBOX/pg_dump-env"
 out=""
 while [ $# -gt 0 ]; do
     case "$1" in --file) out="$2"; shift ;; esac
@@ -364,7 +372,7 @@ export PATH="$SHIMS:$PATH"
 
 reset_state() {
     rm -f "$SANDBOX/pull-count" "$SANDBOX/sudo-log" "$SANDBOX/deploy.lock" "$SANDBOX/order-log"
-    rm -rf "$SANDBOX/backups"
+    rm -rf "$SANDBOX/backups" "$SANDBOX/pg_dump-env"
     cp -p "$SANDBOX/deploy.sh.pristine" "$SANDBOX/deploy.sh"
     # Units land for real (see the sudo shim), so a case that distinguishes
     # installed from in-sync has to start from a known-empty unit directory.
@@ -911,6 +919,8 @@ check "pg_dump ran first" "$(head -1 "$SANDBOX/order-log" | cut -d' ' -f1)" "pg_
 check "then the migration" "$(sed -n 2p "$SANDBOX/order-log")" "flask db upgrade"
 check "custom format, to a .partial" \
       "$(grep -c -- '--format=custom --file .*\.dump\.partial --dbname postgresql://' "$SANDBOX/order-log")" "1"
+check "the password reached pg_dump as PGPASSWORD" "$(cat "$SANDBOX/pg_dump-env")" "s3cret-pw"
+check "and never in its argv" "$(grep -c 's3cret-pw' "$SANDBOX/order-log")" "0"
 check "backup dir is private (700)" "$(stat -c '%a' "$SANDBOX/backups" 2>/dev/null || stat -f '%Lp' "$SANDBOX/backups")" "700"
 dump_file="$(ls "$SANDBOX/backups"/pre-migrate-*.dump | head -1)"
 check "dump is private (600)" "$(stat -c '%a' "$dump_file" 2>/dev/null || stat -f '%Lp' "$dump_file")" "600"
@@ -931,20 +941,13 @@ echo
 
 echo "=== BC: a non-Postgres DATABASE_URL (a stray SQLite fallback) ⇒ stopped, not dumped ==="
 reset_state
-FAKE_DB_URL='sqlite:////home/deploy/fantasy-platform/instance/fantasy_platform.db' MUTATE_PULLS=0 \
-    "$SANDBOX/deploy.sh" > "$SANDBOX/bc.out" 2>&1
+NOT_POSTGRES=1 MUTATE_PULLS=0 "$SANDBOX/deploy.sh" > "$SANDBOX/bc.out" 2>&1
 check "exit code" "$?" "1"
 check "named the problem" "$(grep -c 'not a Postgres URL' "$SANDBOX/bc.out")" "1"
 # Nothing ran at all, so order-log may not exist: count from an empty stream.
 check "pg_dump never ran" "$(cat "$SANDBOX/order-log" 2>/dev/null | grep -c '^pg_dump')" "0"
 check "db upgrade never ran" "$(cat "$SANDBOX/order-log" 2>/dev/null | grep -c 'flask db upgrade')" "0"
-# The SQLAlchemy driver suffix is stripped for libpq, not refused.
-reset_state
-FAKE_DB_URL='postgresql+psycopg2://u:p@db.example.invalid/defaultdb' MUTATE_PULLS=0 \
-    "$SANDBOX/deploy.sh" > "$SANDBOX/bc2.out" 2>&1
-check "a +driver URL still deploys" "$?" "0"
-check "handed to pg_dump without the driver" \
-      "$(grep -c -- '--dbname postgresql://u:p@db.example.invalid/defaultdb' "$SANDBOX/order-log")" "1"
+check "said why it stopped" "$(grep -c 'DEPLOY STOPPED before migrations' "$SANDBOX/bc.out")" "1"
 echo
 
 echo "=== BD: SKIP_DB_BACKUP=1 ⇒ migrates without a dump, warned, exit non-zero ==="

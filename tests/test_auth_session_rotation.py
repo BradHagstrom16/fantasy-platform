@@ -184,7 +184,7 @@ def test_navbar_logs_out_with_a_form_not_a_link(app):
 
 # ---- production refuses the default SECRET_KEY -----------------------------
 
-@pytest.mark.parametrize('key', ['', DEV_SECRET_KEY])
+@pytest.mark.parametrize('key', ['', '   ', DEV_SECRET_KEY])
 def test_production_refuses_a_blank_or_default_secret_key(key):
     with pytest.raises(RuntimeError, match='SECRET_KEY'):
         refuse_default_secret_key('production', key)
