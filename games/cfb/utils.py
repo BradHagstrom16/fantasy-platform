@@ -216,7 +216,7 @@ def get_week_short_label(week):
         return "?"
     if hasattr(week, 'round_name') and week.round_name:
         # Keys must match the round names automation writes — i.e. the
-        # SEASON_SCHEDULE['special_weeks'] names (locked by
+        # season calendar's special_weeks names (locked by
         # tests/test_cfb_automation.py).
         label_map = {
             "Conference Championship Week": "CCW",
@@ -255,19 +255,21 @@ def get_playoff_teams():
 def get_cfp_eliminated_teams():
     """Return team names that have been eliminated from the CFP.
 
-    A team is eliminated if they lost in any game during a playoff week
-    where results have been recorded.
+    A team is eliminated if they lost in any game during one of the
+    configured season's playoff weeks where results have been recorded.
     """
     # Lazy imports to avoid circular dependency
     from extensions import db
     from games.cfb.models import CfbGame, CfbWeek
+    from games.cfb.services.weeks import current_season
 
     eliminated = set()
 
     playoff_games = (
         db.session.query(CfbGame)
         .join(CfbWeek)
-        .filter(CfbWeek.is_playoff_week.is_(True), CfbGame.home_team_won.is_not(None))
+        .filter(CfbWeek.season_year == current_season(),
+                CfbWeek.is_playoff_week.is_(True), CfbGame.home_team_won.is_not(None))
         .all()
     )
 

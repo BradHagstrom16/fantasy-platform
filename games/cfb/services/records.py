@@ -65,7 +65,8 @@ def season_finishes(season_year: int) -> list[FinishDraft]:
     grading = db.session.scalar(
         select(CfbWeek.week_number)
         .join(CfbPick, CfbPick.week_id == CfbWeek.id)
-        .where(CfbWeek.is_complete.is_(False), CfbPick.is_correct.is_not(None))
+        .where(CfbWeek.season_year == season_year,
+               CfbWeek.is_complete.is_(False), CfbPick.is_correct.is_not(None))
         .order_by(CfbWeek.week_number).limit(1))
     if grading is not None:
         raise SeasonNotClosed(
@@ -95,7 +96,8 @@ def _live_season(season_year: int) -> list[FinishDraft]:
     out_week = dict(db.session.execute(
         select(CfbWeekOutcome.user_id, func.max(CfbWeek.week_number))
         .join(CfbWeek, CfbWeek.id == CfbWeekOutcome.week_id)
-        .filter(CfbWeekOutcome.is_eliminated.is_(True),
+        .filter(CfbWeek.season_year == season_year,
+                CfbWeekOutcome.is_eliminated.is_(True),
                 CfbWeekOutcome.lost_life.is_(True))
         .group_by(CfbWeekOutcome.user_id)
     ).all())

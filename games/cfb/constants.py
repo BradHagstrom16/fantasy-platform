@@ -12,6 +12,8 @@ The FBS_MASTER_TEAMS list is the master reference for:
 Update annually: Check for conference realignment, new FBS transitions.
 """
 
+from datetime import UTC, datetime
+
 from utils.odds_api import sport_base_url
 
 # The Odds API sport key for NCAAF
@@ -21,29 +23,50 @@ SPORT_KEY = 'americanfootball_ncaaf'
 # the shared client (utils/odds_api.py); the client layer hardcodes no sport.
 API_BASE_URL = sport_base_url(SPORT_KEY)
 
-# Season schedule configuration
-# Update these values before each season
-SEASON_SCHEDULE = {
-    # Date of the Thursday of Week 1 (Thursday before Labor Day, Mon Sep 7 2026)
-    'week_1_start': '2026-09-03',
+# Season calendars, one per season (ADR-069): add next season's entry when
+# its dates exist. Every reader goes through season_schedule(year) with the
+# configured CFB_SEASON_YEAR, so a season with no entry fails loudly.
+SEASON_SCHEDULES = {
+    2026: {
+        # Date of the Thursday of Week 1 (Thursday before Labor Day, Mon Sep 7 2026)
+        'week_1_start': '2026-09-03',
 
-    # Default deadline: Saturday at 11:00 AM Central
-    'default_deadline_day': 'Saturday',
-    'default_deadline_hour': 11,
-    'default_deadline_minute': 0,
+        # Default deadline: Saturday at 11:00 AM Central
+        'default_deadline_day': 'Saturday',
+        'default_deadline_hour': 11,
+        'default_deadline_minute': 0,
 
-    # Regular season runs weeks 1-14
-    'regular_season_weeks': 14,
+        # Regular season runs weeks 1-14
+        'regular_season_weeks': 14,
 
-    # Special weeks (Conference Championship Week and CFP rounds)
-    'special_weeks': {
-        15: {'name': 'Conference Championship Week', 'is_playoff': False},
-        16: {'name': 'CFP First Round', 'is_playoff': True},
-        17: {'name': 'CFP Quarterfinals', 'is_playoff': True},
-        18: {'name': 'CFP Semifinals', 'is_playoff': True},
-        19: {'name': 'CFP National Championship', 'is_playoff': True},
+        # Special weeks (Conference Championship Week and CFP rounds)
+        'special_weeks': {
+            15: {'name': 'Conference Championship Week', 'is_playoff': False},
+            16: {'name': 'CFP First Round', 'is_playoff': True},
+            17: {'name': 'CFP Quarterfinals', 'is_playoff': True},
+            18: {'name': 'CFP Semifinals', 'is_playoff': True},
+            19: {'name': 'CFP National Championship', 'is_playoff': True},
+        },
+
+        # The season's enrollment deadline (ruled 2026-08-18): self-serve
+        # joining closes Sat Sep 5 2026 11:00 AM CT (16:00 UTC; CDT is
+        # UTC-5), the shared club cutoff (ADR-050) and the same instant as
+        # The Docket's ENROLLMENT_DEADLINE_UTC (equality-locked in tests).
+        'enrollment_deadline_utc': datetime(2026, 9, 5, 16, 0, tzinfo=UTC),
+
+        # The season-live instant (design review 2026-08-19): the lounge
+        # flips pre -> live at Tue Sep 1 2026 6:00 AM CT (11:00 UTC), the
+        # same instant as The Docket's Week 1 boundary by construction
+        # (equality-locked to games/docket/services/weeks.boundary_utc(1)).
+        'season_live_utc': datetime(2026, 9, 1, 11, 0, tzinfo=UTC),
     },
 }
+
+
+def season_schedule(year):
+    """The calendar of season ``year``; a KeyError when it has none."""
+    return SEASON_SCHEDULES[year]
+
 
 # Each entry: (short_display_name, odds_api_full_name, odds_api_id, conference, is_2026_incoming)
 # Total: 138 teams (136 FBS 2025 + 2 incoming 2026)

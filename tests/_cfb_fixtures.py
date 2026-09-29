@@ -55,18 +55,19 @@ def make_enrollment(user, *, lives=2, eliminated=False, season=SEASON,
     return e
 
 
-def make_team(name):
-    """Create a CfbTeam by name."""
-    t = CfbTeam(name=name)
+def make_team(name, *, season_year=SEASON):
+    """Create a CfbTeam by name in ``season_year``'s pool."""
+    t = CfbTeam(name=name, season_year=season_year)
     db.session.add(t)
     db.session.flush()
     return t
 
 
 def make_week(number=1, *, deadline=None, is_playoff=False, is_active=False,
-              is_complete=False):
+              is_complete=False, season_year=SEASON):
     """Create a CfbWeek with a past deadline by default."""
     w = CfbWeek(
+        season_year=season_year,
         week_number=number,
         start_date=(deadline or PAST_DEADLINE) - timedelta(days=2),
         deadline=deadline or PAST_DEADLINE,

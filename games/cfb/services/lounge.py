@@ -19,22 +19,28 @@ section 3.6). The WC imports below are the ruled C1 design: the farewell
 strip (spec 3.5) and the archived WC tile (spec 3.4) read frozen 2026
 archive facts through the WC lounge module's helpers.
 """
-from datetime import UTC, date, datetime
+from datetime import date, datetime
 from types import SimpleNamespace
 from typing import Any, Literal
 
-from flask import current_app
 from sqlalchemy.orm import joinedload
 
 from extensions import db
-from games.cfb.constants import SEASON_SCHEDULE
+from games.cfb.constants import season_schedule
 from games.cfb.models import CfbEnrollment, CfbGame, CfbPick, CfbWeek, CfbWeekOutcome
 from games.cfb.services.field import field_delta_line
 from games.cfb.services.game_logic import (
     get_game_for_team,
     get_official_standings,
 )
-from games.cfb.services.week_state import OVERLAP, room_weeks
+from games.cfb.services.week_state import OVERLAP, latest_complete_week, room_weeks
+from games.cfb.services.weeks import (
+    complete_weeks,
+    current_season,
+    season_weeks,
+    week_by_number,
+    week_query,
+)
 from games.cfb.utils import (
     deadline_has_passed,
     format_relative,
@@ -48,11 +54,6 @@ from games.worldcup.services import lounge as worldcup_lounge
 
 CfbLoungeState = Literal['pre', 'live', 'post']
 
-# The championship week -- the highest special week in the locked schedule
-# (week 19, CFP National Championship). Its completion with >1 active
-# player is the tiebreak-conclusion trigger for 'post'.
-FINAL_WEEK_NUMBER = max(SEASON_SCHEDULE['special_weeks'])
-
 # Who's Left phase thresholds (C1 spec 3.2 -- C2 constants, tunable):
 # names take over at <= max(FLOOR, half the field); endgame at <= MAX.
 WHOS_LEFT_NAMES_FLOOR = 10
@@ -63,41 +64,45 @@ _COUNT_WORDS = ['No', 'One', 'Two', 'Three', 'Four', 'Five',
 
 
 def _season_year() -> int:
-    return current_app.config.get('CFB_SEASON_YEAR', 2026)
+    return current_season()
 
 
 def _week_1_kickoff() -> date:
-    return date.fromisoformat(SEASON_SCHEDULE['week_1_start'])
+    return date.fromisoformat(season_schedule(_season_year())['week_1_start'])
 
 
-# The season's enrollment deadline (ruled 2026-08-18): self-serve joining
-# closes Sat Sep 5 2026 11:00 AM CT (16:00 UTC; CDT is UTC-5) — the shared
-# club cutoff (ADR-050), the same instant as The Docket's own
-# ENROLLMENT_DEADLINE_UTC (equality-locked in tests). This was originally the
-# same instant as both games' Week 1 pick deadline; The Docket's pick
-# deadline moved to Sunday 12:00 PM CT (2026-09-09) but the join cutoff stayed
-# here. A season constant rather than a DB read: the window must resolve
-# identically against empty tables.
-ENROLLMENT_DEADLINE_UTC = datetime(2026, 9, 5, 16, 0, tzinfo=UTC)
+def final_week_number() -> int:
+    """The championship week -- the highest special week in the season's
+    calendar (week 19, CFP National Championship in 2026). Its completion
+    with >1 active player is the tiebreak-conclusion trigger for 'post'."""
+    return max(season_schedule(_season_year())['special_weeks'])
 
 
-# The season-live instant (design review 2026-08-19): the lounge flips
-# pre -> live at Tue Sep 1 2026 6:00 AM CT (11:00 UTC; CDT is UTC-5) — the
-# same instant as The Docket's Week 1 boundary by construction, so both
-# headliners go live together when the real Week-1 import lands and picks
-# open. A time gate rather than a data gate on purpose: preview imports
-# exist before the season by design (Week 1 was activated 2026-08-19 so
-# members can read the board), so neither "a week is active" nor "a spread
-# is posted" can mean live. Equality-locked to
-# games/docket/services/weeks.boundary_utc(1) in tests.
-SEASON_LIVE_UTC = datetime(2026, 9, 1, 11, 0, tzinfo=UTC)
+def enrollment_deadline_utc() -> datetime:
+    """The season's enrollment deadline, the shared club cutoff (ADR-050).
+    This was originally the same instant as both games' Week 1 pick
+    deadline; The Docket's pick deadline moved to Sunday 12:00 PM CT
+    (2026-09-09) but the join cutoff stayed. A calendar constant rather
+    than a DB read: the window must resolve identically against empty
+    tables."""
+    return season_schedule(_season_year())['enrollment_deadline_utc']
+
+
+def season_live_utc() -> datetime:
+    """The season-live instant: the lounge flips pre -> live here. A time
+    gate rather than a data gate on purpose: preview imports exist before
+    the season by design (Week 1 was activated 2026-08-19 so members can
+    read the board), so neither "a week is active" nor "a spread is
+    posted" can mean live. Equality-locked to the Docket's Week 1
+    boundary in tests."""
+    return season_schedule(_season_year())['season_live_utc']
 
 
 def join_window_open() -> bool:
     """Whether self-serve enrollment is still open. Strict at the instant,
     matching the pick deadline's own rule. Late seats are granted by the
     Commish through admin enrollment, never through /cfb/join."""
-    return get_utc_time() < ENROLLMENT_DEADLINE_UTC
+    return get_utc_time() < enrollment_deadline_utc()
 
 
 # Roster-count display floor (design review 2026-08-18): below this many
@@ -141,16 +146,16 @@ def cfb_lounge_state() -> CfbLoungeState:
     ).count()
     if active == 1 and eliminated > 0:
         return 'post'
-    final_week_complete = CfbWeek.query.filter(
-        CfbWeek.week_number >= FINAL_WEEK_NUMBER,
+    final_week_complete = week_query().filter(
+        CfbWeek.week_number >= final_week_number(),
         CfbWeek.is_complete.is_(True),
     ).first() is not None
     if final_week_complete and active > 1:
         return 'post'
-    season_started = CfbWeek.query.filter(
+    season_started = week_query().filter(
         db.or_(CfbWeek.is_active.is_(True), CfbWeek.is_complete.is_(True))
     ).first() is not None
-    season_live = get_utc_time() >= SEASON_LIVE_UTC
+    season_live = get_utc_time() >= season_live_utc()
     return 'live' if (season_started and season_live) else 'pre'
 
 
@@ -202,7 +207,7 @@ def _context_pre(user, enrollment) -> dict:
 
     # Decree countdown target: week 1's DB deadline when the row exists,
     # else the WEEK_1_START constant with first-kickoff copy (C1 3.6).
-    week1 = CfbWeek.query.filter_by(week_number=1).first()
+    week1 = week_by_number(1)
     # The preview affordance (design review 2026-08-19, Issue 1A): once the
     # Week-1 board is imported, an enrolled member can read the slate before
     # picks open — the decree routes to the room's lines-pending board.
@@ -372,11 +377,7 @@ def _context_live(user, enrollment) -> dict:
     standings_active, ranks = get_official_standings(season_year)
     standings_rows = _standings_rows(standings_active, ranks, user)
 
-    latest_complete = (
-        CfbWeek.query.filter_by(is_complete=True)
-        .order_by(CfbWeek.week_number.desc())
-        .first()
-    )
+    latest_complete = latest_complete_week()
     cuts_line = cuts_sentence(latest_complete, all_enrollments)
     whos_left = _whos_left(
         room.pick, standings_active, user,
@@ -387,8 +388,7 @@ def _context_live(user, enrollment) -> dict:
     # against the survivors after the week before the latest on record.
     whos_left['delta_line'] = field_delta_line(
         all_enrollments,
-        [w for w in CfbWeek.query.order_by(CfbWeek.week_number).all()
-         if deadline_has_passed(w.deadline)])
+        [w for w in season_weeks() if deadline_has_passed(w.deadline)])
 
     summons = None
     eliminated_module = None
@@ -687,6 +687,7 @@ def _eliminated_module(user) -> dict:
             CfbWeekOutcome.lost_life.is_(True),
         )
         .join(CfbWeek)
+        .filter(CfbWeek.season_year == _season_year())
         .order_by(CfbWeek.week_number.asc())
         .first()
     )
@@ -703,6 +704,7 @@ def _eliminated_module(user) -> dict:
         .filter_by(user_id=user.id)
         .filter(CfbPick.is_correct.is_(True))
         .join(CfbWeek)
+        .filter(CfbWeek.season_year == _season_year())
         .options(joinedload(CfbPick.team))
         .order_by(CfbWeek.week_number.asc())
         .all()
@@ -840,7 +842,7 @@ def _context_post(user, enrollment) -> dict:
     total = CfbEnrollment.query.filter_by(season_year=season_year).count()
     standings_active, ranks = get_official_standings(season_year)
     active = len(standings_active)
-    weeks_played = CfbWeek.query.filter_by(is_complete=True).count()
+    weeks_played = len(complete_weeks(season_year))
 
     # The post state carries either a sole survivor (active == 1) or a
     # tiebreak conclusion (final playoff week complete with > 1 active);
@@ -886,6 +888,7 @@ def _context_post(user, enrollment) -> dict:
             CfbPick.query
             .filter_by(user_id=champ_enrollment.user_id)
             .join(CfbWeek)
+            .filter(CfbWeek.season_year == season_year)
             .options(joinedload(CfbPick.team), joinedload(CfbPick.week))
             .order_by(CfbWeek.week_number.desc())
             .first()

@@ -523,26 +523,27 @@ def test_admin_enroll_still_works_post_window(app):
 
 # == the shared enrollment deadline (ADR-050 invariant) =====================
 
-def test_both_games_share_one_enrollment_deadline_instant():
+def test_both_games_share_one_enrollment_deadline_instant(app):
     """ADR-050: the club has one self-serve enrollment cutoff, shared by both
-    headliners. Both games now pin it as a literal UTC constant (Sat Sep 5
-    11:00 AM CT); until 2026-09-09 The Docket derived its cutoff from
-    deadline_utc(1), but the weekly pick deadline then moved to Sunday while
-    the enrollment cutoff deliberately stayed Saturday, so the join window is
-    a season constant of its own. Nothing but this test enforces that the two
-    literals agree, and DUAL_PRE/WINDOW_CLOSED assume they do — lock it."""
-    from games.cfb.services.lounge import ENROLLMENT_DEADLINE_UTC as cfb_deadline
+    headliners. Both games pin it as a season constant (Sat Sep 5 11:00 AM
+    CT; CFB's lives in its season calendar, ADR-069); until 2026-09-09 The
+    Docket derived its cutoff from deadline_utc(1), but the weekly pick
+    deadline then moved to Sunday while the enrollment cutoff deliberately
+    stayed Saturday, so the join window is a season constant of its own.
+    Nothing but this test enforces that the two agree, and
+    DUAL_PRE/WINDOW_CLOSED assume they do — lock it."""
+    from games.cfb.services.lounge import enrollment_deadline_utc
     from games.docket.services.lounge import ENROLLMENT_DEADLINE_UTC as docket_deadline
-    assert docket_deadline == cfb_deadline
+    assert docket_deadline == enrollment_deadline_utc()
 
 
-def test_both_games_share_one_season_live_instant():
+def test_both_games_share_one_season_live_instant(app):
     """Design review 2026-08-19 (the preseason gate): the CFB lounge flips
-    pre → live at SEASON_LIVE_UTC and The Docket at its Week-1 boundary.
-    Both headliners must go live together Tuesday morning — the same
-    one-cutoff reasoning as the enrollment-deadline lock above, and the
-    same exposure: CFB pins a literal UTC constant while the docket derives
+    pre → live at its calendar's season_live_utc and The Docket at its
+    Week-1 boundary. Both headliners must go live together Tuesday morning
+    — the same one-cutoff reasoning as the enrollment-deadline lock above,
+    and the same exposure: CFB pins a UTC instant while the docket derives
     its boundary from CT wall-clock math."""
-    from games.cfb.services.lounge import SEASON_LIVE_UTC
+    from games.cfb.services.lounge import season_live_utc
     from games.docket.services import weeks
-    assert weeks.boundary_utc(1) == SEASON_LIVE_UTC
+    assert weeks.boundary_utc(1) == season_live_utc()

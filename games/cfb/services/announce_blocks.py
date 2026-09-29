@@ -15,7 +15,8 @@ board's name.
 from flask import current_app
 from sqlalchemy.orm import joinedload
 
-from games.cfb.models import CfbEnrollment, CfbGame, CfbPick, CfbWeek
+from games.cfb.models import CfbEnrollment, CfbGame, CfbPick
+from games.cfb.services import weeks as week_reads
 from games.cfb.services.game_logic import get_official_standings, pick_distribution
 from games.cfb.services.lounge import cuts_sentence, field_impact_sentence
 from games.cfb.services.week_state import latest_complete_week
@@ -39,7 +40,7 @@ def _finished_week(args, *, allowed):
         if week is None:
             raise ValueError('has no finished week to show yet.')
         return week
-    week = CfbWeek.query.filter_by(week_number=number).first()
+    week = week_reads.week_by_number(number)
     if week is None:
         raise ValueError(f'has no Week {number}.')
     if not week.is_complete:

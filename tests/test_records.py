@@ -393,7 +393,7 @@ def test_cfb_final_week_with_several_survivors(app):
     """The season ends on the final playoff week with more than one standing:
     the official order places the survivors (ties share), then the fallen."""
     from games.cfb.models import CfbWeekOutcome
-    from games.cfb.services.lounge import FINAL_WEEK_NUMBER
+    from games.cfb.services.lounge import final_week_number
     from games.cfb.services.records import season_finishes
     from tests._cfb_fixtures import make_enrollment, make_week
     top, twin1, twin2, out = _user('top'), _user('twin1'), _user('twin2'), _user('out')
@@ -401,7 +401,7 @@ def test_cfb_final_week_with_several_survivors(app):
     make_enrollment(twin1, lives=1).cumulative_spread = 4.0
     make_enrollment(twin2, lives=1).cumulative_spread = 4.0
     make_enrollment(out, lives=0, eliminated=True)
-    week = make_week(FINAL_WEEK_NUMBER, is_playoff=True, is_complete=True)
+    week = make_week(final_week_number(), is_playoff=True, is_complete=True)
     db.session.add(CfbWeekOutcome(week_id=week.id, user_id=out.id, lives_remaining=0,
                                   is_eliminated=True, lost_life=True))
     db.session.commit()
@@ -409,7 +409,7 @@ def test_cfb_final_week_with_several_survivors(app):
     assert [(d.place, d.name, d.outcome) for d in drafts] == [
         (1, 'top', 'champion'), (2, 'twin1', 'survived'), (2, 'twin2', 'survived'),
         (4, 'out', 'eliminated')]
-    assert drafts[3].detail.startswith(f'Out Week {FINAL_WEEK_NUMBER}')
+    assert drafts[3].detail.startswith(f'Out Week {final_week_number()}')
 
 
 def test_cfb_revived_player_is_out_the_week_they_fell_last(app):

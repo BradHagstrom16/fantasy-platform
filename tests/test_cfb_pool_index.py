@@ -61,7 +61,7 @@ def test_pool_uses_stored_conference_for_offmaster_team(app):
     """A team off the master list groups by its stored conference column
     (CfbTeam.get_conference()), never dumped into 'Unknown'."""
     from games.cfb.models import CfbTeam
-    db.session.add(CfbTeam(name='Directional State', conference='Big Sky'))
+    db.session.add(CfbTeam(name='Directional State', conference='Big Sky', season_year=2026))
     db.session.commit()
 
     groups, total, conf_count = pool_teams_by_conference()

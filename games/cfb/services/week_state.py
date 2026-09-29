@@ -16,13 +16,16 @@ Three weeks matter:
 - the **lead** -- the week the room talks about: the reveal week while it
   is unfinished, else the pick week, else the reveal week's verdict.
 
-Imports only the models and utils, so both ``routes`` and
-``services.lounge`` can use it without a cycle.
+All three are the configured season's (services/weeks.py, ADR-069).
+
+Imports only the models, utils and the season's week reads, so both
+``routes`` and ``services.lounge`` can use it without a cycle.
 """
 from dataclasses import dataclass, field
 from datetime import datetime
 
 from games.cfb.models import CfbGame, CfbWeek
+from games.cfb.services.weeks import active_week, complete_weeks, season_weeks
 from games.cfb.utils import deadline_has_passed
 
 OPEN = 'open'          # the pick week leads; nothing older is unfinished
@@ -38,8 +41,7 @@ def _has_games(week) -> bool:
 
 def reveal_week():
     """The latest week whose deadline has passed and that has games."""
-    weeks = CfbWeek.query.order_by(CfbWeek.week_number.desc()).all()
-    for week in weeks:
+    for week in reversed(season_weeks()):
         if deadline_has_passed(week.deadline) and _has_games(week):
             return week
     return None
@@ -47,7 +49,7 @@ def reveal_week():
 
 def pick_week():
     """The active week while its deadline is ahead; None otherwise."""
-    week = CfbWeek.query.filter_by(is_active=True).first()
+    week = active_week()
     if week is None or deadline_has_passed(week.deadline):
         return None
     return week
@@ -55,8 +57,8 @@ def pick_week():
 
 def latest_complete_week():
     """The highest-numbered complete week (the lounge's aftermath fallback)."""
-    return (CfbWeek.query.filter_by(is_complete=True)
-            .order_by(CfbWeek.week_number.desc()).first())
+    complete = complete_weeks()
+    return complete[-1] if complete else None
 
 
 def pending_games(week) -> list:
@@ -100,7 +102,7 @@ def room_weeks() -> RoomWeeks:
 
     # Degenerate: an active week past its deadline with no games (nobody's
     # reveal week, nobody's pick week). It still has to render.
-    active = CfbWeek.query.filter_by(is_active=True).first()
+    active = active_week()
     if active is not None:
         state = VERDICT if active.is_complete else LOCKED
         return RoomWeeks(state, active, None, None, pending_games(active),

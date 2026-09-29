@@ -266,7 +266,7 @@ def test_run_setup_alerts_on_unresolvable_team_names(mock_get, mock_send, app):
 @patch('games.cfb.services.odds_api.requests.get')
 def test_run_setup_applies_special_week_names_and_flags(
         mock_get, mock_send, app):
-    """§8.14: special weeks get SEASON_SCHEDULE round names + playoff flags
+    """§8.14: special weeks get the season calendar's round names + playoff flags
     (week 15 CCW stays regular-season per DQ-3)."""
     from games.cfb.services.automation import run_setup
     alabama, georgia = _prep_setup(app)
@@ -918,17 +918,17 @@ def test_apply_scores_skips_decided_and_no_contest_games(app):
     assert no_contest.home_score is None
 
 
-# ── §8.14 — short-label map matches SEASON_SCHEDULE round names ──────────
+# ── §8.14 — short-label map matches the calendar's round names ───────────
 
 def test_week_short_labels_match_season_schedule_round_names(app):
     """§3: get_week_short_label's map must key on the round names automation
-    actually writes (SEASON_SCHEDULE) — weeks 16/19 rendered 'W16'/'W19'
+    actually writes (the season calendar) — weeks 16/19 rendered 'W16'/'W19'
     because the map expected 'CFP Round 1'/'CFP Championship'."""
-    from games.cfb.constants import SEASON_SCHEDULE
+    from games.cfb.constants import season_schedule
     from games.cfb.utils import get_week_short_label
     expected = {15: 'CCW', 16: 'R1', 17: 'QF', 18: 'SF', 19: 'F'}
 
-    for number, info in SEASON_SCHEDULE['special_weeks'].items():
+    for number, info in season_schedule(2026)['special_weeks'].items():
         week = make_week(number)
         week.round_name = info['name']
         assert get_week_short_label(week) == expected[number], info['name']
@@ -941,10 +941,10 @@ def test_week_1_start_is_a_thursday_in_the_current_season(app):
     fall in the configured CFB season year and on a Thursday."""
     from datetime import datetime
 
-    from games.cfb.constants import SEASON_SCHEDULE
+    from games.cfb.constants import season_schedule
 
     season_year = app.config['CFB_SEASON_YEAR']
-    anchor = datetime.strptime(SEASON_SCHEDULE['week_1_start'], '%Y-%m-%d')
+    anchor = datetime.strptime(season_schedule(season_year)['week_1_start'], '%Y-%m-%d')
 
     assert anchor.year == season_year      # not a leftover prior-season date
     assert anchor.weekday() == 3           # Thursday (the cadence assumption)
