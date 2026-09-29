@@ -33,6 +33,7 @@ from sqlalchemy.exc import IntegrityError
 
 from extensions import db
 from games.docket.models import DocketPick, DocketWeek
+from games.docket.services import week_reads
 from games.docket.services.enrollment import roster_user_ids
 from games.docket.services.grading.autopick import (
     complete_player_input,
@@ -243,8 +244,7 @@ def run_deadline_pass(week_number=None, force=False) -> dict:
     """
     if week_number is None:
         week_number = _current_week_number()
-    week = db.session.scalar(
-        select(DocketWeek).filter_by(week_number=week_number))
+    week = week_reads.week_by_number(week_number)
     if week is None:
         raise DeadlinePassError(
             f'no docket week {week_number} — run `flask docket sync '

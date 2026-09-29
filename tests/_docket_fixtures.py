@@ -58,13 +58,14 @@ def make_enrollment(user, **kwargs):
     return enrollment
 
 
-def make_week(week_number=1):
-    start, end = week_bounds_utc(week_number)
+def make_week(week_number=1, *, season_year=SEASON_YEAR):
+    start, end = week_bounds_utc(week_number, season_year)
     week = DocketWeek(
+        season_year=season_year,
         week_number=week_number,
         start_at=to_naive_utc(start),
         end_at=to_naive_utc(end),
-        deadline_at=to_naive_utc(deadline_utc(week_number)),
+        deadline_at=to_naive_utc(deadline_utc(week_number, season_year)),
     )
     db.session.add(week)
     db.session.flush()

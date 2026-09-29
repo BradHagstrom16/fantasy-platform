@@ -32,7 +32,8 @@ from sqlalchemy import or_, select
 
 from extensions import db
 from games.docket.models import DocketGame, DocketWeek
-from games.docket.services.weeks import deadline_utc, week_bounds_utc
+from games.docket.services import week_reads
+from games.docket.services.weeks import SEASON_YEAR, deadline_utc, week_bounds_utc
 from games.docket.utils import now_utc, to_naive_utc
 from utils.odds_api import OddsApiError, odds_api_get, sport_base_url
 
@@ -70,13 +71,14 @@ _TIME_FMT = '%Y-%m-%dT%H:%M:%SZ'
 
 
 def ensure_week(week_number):
-    """Get or create the DocketWeek row, bounds/deadline stored naive UTC."""
-    week = db.session.scalar(
-        select(DocketWeek).filter_by(week_number=week_number))
+    """Get or create this season's DocketWeek row, bounds/deadline stored
+    naive UTC."""
+    week = week_reads.week_by_number(week_number)
     if week:
         return week
     start_aware, end_aware = week_bounds_utc(week_number)
     week = DocketWeek(
+        season_year=SEASON_YEAR,
         week_number=week_number,
         start_at=to_naive_utc(start_aware),
         end_at=to_naive_utc(end_aware),

@@ -27,7 +27,8 @@ from flask import current_app
 from sqlalchemy import select
 
 from extensions import db
-from games.docket.models import DocketGame, DocketPick, DocketWeek
+from games.docket.models import DocketGame, DocketPick
+from games.docket.services import week_reads
 from games.docket.services.importer import SPORTS, decode_payload
 from utils.odds_api import OddsApiError, odds_api_get, sport_base_url
 
@@ -149,8 +150,7 @@ def sync_scores(week_number, days_from=MAX_DAYS_FROM,
         logger.warning('ODDS_API_KEY not configured; cannot fetch scores.')
         return {'status': 'error', 'errors': ['ODDS_API_KEY not configured']}
 
-    week = db.session.scalar(
-        select(DocketWeek).filter_by(week_number=week_number))
+    week = week_reads.week_by_number(week_number)
     if week is None:
         return {'status': 'error',
                 'errors': [f'no docket week {week_number}']}

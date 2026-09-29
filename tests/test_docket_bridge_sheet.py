@@ -13,6 +13,7 @@ def _seed(db, tiebreaker=True):
     from games.docket.models import DocketGame, DocketWeek
 
     week = DocketWeek(
+        season_year=2026,
         week_number=1,
         start_at=datetime(2026, 9, 1, 11, 0),
         end_at=datetime(2026, 9, 8, 11, 0),

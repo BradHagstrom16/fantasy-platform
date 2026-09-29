@@ -26,17 +26,15 @@ from pathlib import Path
 # sys.path, not the repo root (same gotcha as verify_worldcup_scoring.py).
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from sqlalchemy import select  # noqa: E402
 
 from app import create_app  # noqa: E402
-from extensions import db  # noqa: E402
-from games.docket.models import DocketWeek  # noqa: E402
 from games.docket.services.bridge_sheet import (  # noqa: E402
     build_sheet_rows,
     rows_to_csv,
     set_tiebreaker,
 )
 from games.docket.services.importer import import_week  # noqa: E402
+from games.docket.services.week_reads import week_by_number  # noqa: E402
 
 
 def main():
@@ -67,8 +65,7 @@ def main():
             if import_status == 'error':
                 return 1
 
-        week = db.session.scalar(
-            select(DocketWeek).filter_by(week_number=args.week))
+        week = week_by_number(args.week)
         if week is None:
             print(f'error: docket week {args.week} does not exist '
                   f'(run without --skip-import to create it)', file=sys.stderr)

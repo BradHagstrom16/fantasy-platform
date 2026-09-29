@@ -36,6 +36,7 @@ def _mk_week(db, number=1):
     from games.docket.models import DocketWeek
 
     week = DocketWeek(
+        season_year=2026,
         week_number=number,
         start_at=datetime(2026, 9, 1, 11, 0),
         end_at=datetime(2026, 9, 8, 11, 0),
@@ -106,7 +107,9 @@ def test_api_event_id_is_globally_unique(app):
                  away_team='Texas Longhorns')
 
 
-def test_week_number_is_unique(app):
+def test_week_number_is_unique_within_a_season(app):
+    """ADR-069: unique with season_year; the next season reuses the number
+    (tests/test_season_scoping.py)."""
     from extensions import db
 
     _mk_week(db, number=1)

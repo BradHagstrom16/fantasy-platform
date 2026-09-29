@@ -51,6 +51,7 @@ def main() -> int:
             DocketTiebreakerPrediction,
             DocketWeekResult,
         )
+        from games.docket.services.week_reads import season_weeks
         from games.docket.services.weeks import SEASON_YEAR
         from models.user import User
         from utils.identifier import normalize_identifier
@@ -79,7 +80,11 @@ def main() -> int:
                   f'{user.username} (user_id={user.id}). Nothing to do.')
             return 0
 
-        graded_weeks = DocketWeekResult.query.filter_by(user_id=user.id).count()
+        # This season's rows only: a past season's picks and results are
+        # the record of that season (ADR-069) and stay.
+        week_ids = [week.id for week in season_weeks()]
+        graded_weeks = DocketWeekResult.query.filter_by(user_id=user.id).filter(
+            DocketWeekResult.week_id.in_(week_ids)).count()
         if graded_weeks:
             print('ABORT: refusing to unenroll — this user already has '
                   f'{graded_weeks} graded DocketWeekResult row(s). Removing '
@@ -87,10 +92,12 @@ def main() -> int:
                   'math; handle this case manually instead.')
             return 1
 
-        pick_count = DocketPick.query.filter_by(user_id=user.id).count()
-        prediction_count = DocketTiebreakerPrediction.query.filter_by(
-            user_id=user.id
-        ).count()
+        picks = DocketPick.query.filter_by(user_id=user.id).filter(
+            DocketPick.week_id.in_(week_ids))
+        predictions = DocketTiebreakerPrediction.query.filter_by(
+            user_id=user.id).filter(DocketTiebreakerPrediction.week_id.in_(week_ids))
+        pick_count = picks.count()
+        prediction_count = predictions.count()
 
         print('Planning to delete:')
         print(f'  User:                       {user.username} '
@@ -107,12 +114,8 @@ def main() -> int:
             return 0
 
         try:
-            DocketTiebreakerPrediction.query.filter_by(
-                user_id=user.id
-            ).delete(synchronize_session=False)
-            DocketPick.query.filter_by(
-                user_id=user.id
-            ).delete(synchronize_session=False)
+            predictions.delete(synchronize_session=False)
+            picks.delete(synchronize_session=False)
             db.session.delete(enrollment)
             db.session.commit()
         except Exception as exc:

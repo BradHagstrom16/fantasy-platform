@@ -9,10 +9,8 @@ latest graded week; ``week=N`` is refused until week N grades), so an
 announcement can never show a sheet before its week is decided. A
 ``ValueError`` is the admin's error line, worded to follow the board's name.
 """
-from sqlalchemy import select
 
-from extensions import db
-from games.docket.models import DocketWeek
+from games.docket.services import week_reads
 from games.docket.services.purse import season_purse
 from games.docket.services.record import (
     around_the_docket,
@@ -35,7 +33,7 @@ def _graded_week(args, *, allowed):
         if not graded:
             raise ValueError('has no graded week to show yet.')
         number = graded[-1]
-    week = db.session.scalar(select(DocketWeek).filter_by(week_number=number))
+    week = week_reads.week_by_number(number)
     if week is None:
         raise ValueError(f'has no Week {number}.')
     if week.default_error_tenths is None:

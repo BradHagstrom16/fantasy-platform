@@ -41,6 +41,7 @@ def _materialize(case, week_grades):
 
     for grade in week_grades:
         week = DocketWeek(
+            season_year=2026,
             week_number=grade.week_number,
             start_at=datetime(2026, 9, 1, 11, 0),
             end_at=datetime(2026, 9, 8, 11, 0),

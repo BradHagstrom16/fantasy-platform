@@ -19,7 +19,8 @@ from sqlalchemy.orm import joinedload
 
 from extensions import db
 from games.club_desk import PaperConsumer, ReminderConsumer, Say
-from games.docket.models import DocketEnrollment, DocketGame, DocketWeek
+from games.docket.models import DocketEnrollment, DocketGame
+from games.docket.services import week_reads
 from games.docket.services.notifications import sheet_url
 from games.docket.services.opener import open_week as _open_by_number
 from games.docket.services.payment import payment_nudge_for
@@ -64,7 +65,7 @@ def _week(now):
     number = week_number_for(now)
     if number is None:
         return None
-    return db.session.scalar(select(DocketWeek).filter_by(week_number=number))
+    return week_reads.week_by_number(number)
 
 
 def _deadline(week):
@@ -203,8 +204,7 @@ def _record_week(week):
     or when it was never imported)."""
     if week.week_number <= 1:
         return None
-    return db.session.scalar(
-        select(DocketWeek).filter_by(week_number=week.week_number - 1))
+    return week_reads.week_by_number(week.week_number - 1, week.season_year)
 
 
 def _graded(week):

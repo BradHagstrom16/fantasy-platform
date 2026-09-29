@@ -20,7 +20,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import joinedload
 
 from extensions import db
-from games.docket.models import DocketEnrollment, DocketWeek, DocketWeekResult
+from games.docket.models import DocketEnrollment, DocketWeekResult
+from games.docket.services import week_reads
 from games.docket.services.enrollment import roster_user_ids_as_of
 from games.docket.services.grading.season import (
     player_week_rows,
@@ -33,7 +34,7 @@ from games.docket.services.grading.snapshots import (
     SeasonStanding,
     WeekRollup,
 )
-from games.docket.services.weeks import SEASON_YEAR, TOTAL_WEEKS
+from games.docket.services.weeks import SEASON_CALENDARS, SEASON_YEAR
 
 
 @dataclass(frozen=True, slots=True)
@@ -143,7 +144,7 @@ class WeekStanding:
 class SeasonLedger:
     rows: tuple[LedgerRow, ...]
     week_numbers: tuple[int, ...]   # graded weeks, ascending
-    total_weeks: int                # TOTAL_WEEKS, never a literal
+    total_weeks: int                # the season calendar's, never a literal
     season_complete: bool           # every week graded; gates the ceremony
     verdicts: tuple[LedgerVerdict, ...] = ()   # one per graded week
     movement_week: int | None = None  # the graded week the rows' moves refer to
@@ -173,27 +174,26 @@ class SeasonLedger:
         return self.rows[0] if self.rows else None
 
 
-def week_rollups_from_db() -> tuple[WeekRollup, ...]:
-    """Every GRADED week as a pure WeekRollup, ascending by week number.
+def week_rollups_from_db(season_year: int = SEASON_YEAR) -> tuple[WeekRollup, ...]:
+    """Every GRADED week of the season as a pure WeekRollup, ascending by
+    week number.
 
     A week with no result rows is not graded and is absent entirely: it
     charges nobody a default error and does not count toward the drop.
 
-    Docket weeks carry no season column (week_number is globally unique and
-    SEASON_YEAR is a module constant in services/weeks.py), so week reads are
-    not season-scoped and must not pretend to be. Only the roster is.
+    The season is the week's column (ADR-069): the result rows are the ones
+    whose week is this season's, so another season's graded weeks never
+    reach this season's ledger, and the roster is the season's too.
     """
+    weeks = {week.id: week for week in week_reads.season_weeks(season_year)}
+    if not weeks:
+        return ()
     results = db.session.scalars(
-        select(DocketWeekResult).order_by(DocketWeekResult.week_id)).all()
+        select(DocketWeekResult)
+        .filter(DocketWeekResult.week_id.in_(list(weeks)))
+        .order_by(DocketWeekResult.week_id)).all()
     if not results:
         return ()
-
-    week_ids = {row.week_id for row in results}
-    weeks = {
-        week.id: week
-        for week in db.session.scalars(
-            select(DocketWeek).filter(DocketWeek.id.in_(week_ids)))
-    }
 
     by_week: dict[int, list[DocketWeekResult]] = {}
     for row in results:
@@ -244,14 +244,13 @@ def season_ledger(season_year: int = SEASON_YEAR, *,
              .filter_by(season_year=season_year)
              .options(joinedload(DocketEnrollment.user)))
     if through_week is not None:
-        week = db.session.scalar(
-            select(DocketWeek).filter_by(week_number=through_week))
+        week = week_reads.week_by_number(through_week, season_year)
         query = query.filter(DocketEnrollment.user_id.in_(
             roster_user_ids_as_of(week.deadline_at, season_year)))
     enrollments = db.session.scalars(query).all()
     by_player_id = {str(e.user_id): e for e in enrollments}
 
-    rollups = week_rollups_from_db()
+    rollups = week_rollups_from_db(season_year)
     if through_week is not None:
         rollups = tuple(r for r in rollups if r.week_number <= through_week)
     standings = season_standings(rollups, tuple(by_player_id))
@@ -298,11 +297,12 @@ def season_ledger(season_year: int = SEASON_YEAR, *,
                              r.enrollment.get_display_name().lower()))
 
     week_numbers = tuple(r.week_number for r in rollups)
+    total_weeks = SEASON_CALENDARS[season_year].total_weeks
     return SeasonLedger(
         rows=tuple(rows),
         week_numbers=week_numbers,
-        total_weeks=TOTAL_WEEKS,
-        season_complete=len(week_numbers) == TOTAL_WEEKS,
+        total_weeks=total_weeks,
+        season_complete=len(week_numbers) == total_weeks,
         verdicts=tuple(verdicts),
         movement_week=rollups[-1].week_number if len(rollups) > 1 else None,
     )
@@ -342,11 +342,10 @@ def week_standings(week_number: int,
     Ranking comes from the pure engine's key, reused; only the enrollment
     join for names and avatars happens here.
     """
-    week = db.session.scalar(
-        select(DocketWeek).filter_by(week_number=week_number))
+    week = week_reads.week_by_number(week_number, season_year)
     if week is None or week.default_error_tenths is None:
         return None
-    rollup = next((r for r in week_rollups_from_db()
+    rollup = next((r for r in week_rollups_from_db(season_year)
                    if r.week_number == week_number), None)
     if rollup is None:
         return None

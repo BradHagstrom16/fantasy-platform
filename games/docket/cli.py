@@ -29,10 +29,11 @@ preview lines ship as the frozen Week 1 numbers. The wipe (flask shell;
 picks are zero pre-season, and the tiebreaker FK must clear before its game
 rows can go)::
 
-    from sqlalchemy import delete, select
+    from sqlalchemy import delete
     from extensions import db
-    from games.docket.models import DocketGame, DocketWeek
-    w = db.session.scalar(select(DocketWeek).filter_by(week_number=1))
+    from games.docket.models import DocketGame
+    from games.docket.services.week_reads import week_by_number
+    w = week_by_number(1)
     w.tiebreaker_game_id = None; db.session.flush()
     db.session.execute(delete(DocketGame).where(DocketGame.week_id == w.id))
     db.session.delete(w); db.session.commit()
@@ -112,10 +113,9 @@ from extensions import db
 from games.docket.models import (
     DocketGame,
     DocketPick,
-    DocketWeek,
     DocketWeekResult,
 )
-from games.docket.services import edge
+from games.docket.services import edge, week_reads
 from games.docket.services.bridge_sheet import set_tiebreaker
 from games.docket.services.deadline_pass import (
     DeadlinePassError,
@@ -199,8 +199,7 @@ def _resolve_week_number(week, scheduled=False):
 
 
 def _get_week(week_number):
-    return db.session.scalar(
-        select(DocketWeek).filter_by(week_number=week_number))
+    return week_reads.week_by_number(week_number)
 
 
 def _require_week(week_number, scheduled):
@@ -420,8 +419,7 @@ def _run_status():
     click.echo(f'  current week: {current if current else "out of season"}')
     click.echo(f'  enrolled players: {len(roster_user_ids())}')
 
-    weeks = db.session.scalars(
-        select(DocketWeek).order_by(DocketWeek.week_number)).all()
+    weeks = week_reads.season_weeks()
     if not weeks:
         click.echo('  no weeks imported yet')
         return
@@ -520,9 +518,7 @@ def recalc_cmd(week):
         weeks = [target]
     else:
         now = to_naive_utc(now_utc())
-        weeks = db.session.scalars(
-            select(DocketWeek).filter(DocketWeek.deadline_at <= now)
-            .order_by(DocketWeek.week_number)).all()
+        weeks = [w for w in week_reads.season_weeks() if w.deadline_at <= now]
         if not weeks:
             click.echo('No week has reached its deadline yet.')
             return
@@ -594,8 +590,7 @@ def repair_deadline_cmd(week):
             _fail(f'no docket week {week}')
         weeks = [target]
     else:
-        weeks = db.session.scalars(
-            select(DocketWeek).order_by(DocketWeek.week_number)).all()
+        weeks = week_reads.season_weeks()
         if not weeks:
             click.echo('No docket weeks exist yet.')
             return

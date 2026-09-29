@@ -552,9 +552,9 @@ def test_docket_refuses_before_the_season_is_complete(app):
         season_finishes(2026)
 
 
-def test_docket_refuses_a_year_that_is_not_the_configured_season(app):
-    # Docket weeks carry no season column yet (season_pass.week_rollups_from_db),
-    # so a complete 2026 would otherwise close 2025 as a zero-finisher board.
+def test_docket_refuses_a_year_with_no_calendar(app):
+    # A complete 2026 never closes 2025: the ledger reads each season's own
+    # weeks (ADR-069), and a year with no calendar has none to read.
     from games.docket.services.records import season_finishes
     from games.docket.services.weeks import TOTAL_WEEKS
     from models.records import SeasonNotClosed

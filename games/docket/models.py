@@ -65,12 +65,16 @@ class DocketWeek(db.Model):
     Weeks partition time continuously at Tuesday 06:00 America/Chicago
     boundaries; a game belongs to the week containing its kickoff. The
     stored bounds/deadline are those CT wall-clock instants converted to
-    naive UTC at creation.
+    naive UTC at creation. Week numbers restart every season
+    (``season_year``, ADR-069): read weeks by number through
+    games/docket/services/week_reads.py, never the whole table.
     """
     __tablename__ = 'docket_week'
 
     id = db.Column(db.Integer, primary_key=True)
-    week_number = db.Column(db.Integer, unique=True, nullable=False)
+    # The season this week belongs to (ADR-069); unique with week_number.
+    season_year = db.Column(db.Integer, nullable=False)
+    week_number = db.Column(db.Integer, nullable=False)
     start_at = db.Column(db.DateTime, nullable=False)
     end_at = db.Column(db.DateTime, nullable=False)
     deadline_at = db.Column(db.DateTime, nullable=False)
@@ -130,6 +134,11 @@ class DocketWeek(db.Model):
 
     tiebreaker_game = db.relationship(
         'DocketGame', foreign_keys=[tiebreaker_game_id])
+
+    __table_args__ = (
+        db.UniqueConstraint('season_year', 'week_number',
+                            name='uq_docket_week_season_number'),
+    )
 
     def __repr__(self):
         return f'<DocketWeek {self.week_number}>'
