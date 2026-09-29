@@ -5,14 +5,14 @@ Flask CLI commands for CFB management.
 Commands are namespaced under the 'cfb' AppGroup.
 
 Usage:
-    flask cfb populate-teams          # Seed the 2026 season team pool (one-shot)
+    flask cfb populate-teams          # Seed the configured season's team pool (one-shot)
     flask cfb sync --mode setup       # Create next week + import games
     flask cfb sync --mode spreads     # Update spreads from API
     flask cfb sync --mode scores      # Fetch scores + auto-process
     flask cfb sync --mode autopick    # Process missed-deadline auto-picks
     flask cfb sync --mode status      # Print season summary
     flask cfb recalc-spreads          # Recompute every cumulative spread under the current rule
-    flask cfb repair-week-dates --week N   # Re-derive a regular-season week's start/deadline from SEASON_SCHEDULE
+    flask cfb repair-week-dates --week N   # Re-derive a regular-season week's start/deadline from the season calendar
 
 Pick reminders are the Club Desk's (``flask club desk``, games/club_desk_cli.py;
 unit deploy/club-remind.*, ADR-065 step 9): the ``remind`` mode that lived
@@ -28,6 +28,7 @@ from flask.cli import AppGroup
 from extensions import db
 from games.cfb.constants import DEV_SEED_TEAMS, TEAM_CONFERENCES
 from games.cfb.models import CfbEnrollment, CfbTeam
+from games.cfb.services import weeks as week_reads
 from utils.sync_runs import mark_run, record_run
 
 cfb_cli = AppGroup('cfb', help="CFB Survivor Pool management commands.")
@@ -35,27 +36,28 @@ cfb_cli = AppGroup('cfb', help="CFB Survivor Pool management commands.")
 
 @cfb_cli.command('populate-teams')
 def populate_teams_cmd():
-    """Seed the CfbTeam table with the 2026 season's 49 teams.
+    """Seed the configured season's pool with the 49 teams (ADR-069).
 
-    One-shot initial seed for a fresh season (refuses if the table is
-    non-empty) — used both for dev/test databases and the deliberate
-    first prod seed. Later corrections go through the admin Manage
-    Teams page.
+    One-shot initial seed for a fresh season (refuses if the season already
+    has teams; a past season's pool is its own rows and never counts) —
+    used both for dev/test databases and the deliberate first prod seed.
+    Later corrections go through the admin Manage Teams page.
     """
-    existing = CfbTeam.query.count()
+    season_year = week_reads.current_season()
+    existing = week_reads.team_query(season_year).count()
     if existing > 0:
-        click.echo(f'CfbTeam table already has {existing} teams. Skipping.')
+        click.echo(f'The {season_year} pool already has {existing} teams. Skipping.')
         return
 
     added = 0
     for name in DEV_SEED_TEAMS:
         conference = TEAM_CONFERENCES.get(name, 'Unknown')
-        team = CfbTeam(name=name, conference=conference)
+        team = CfbTeam(name=name, conference=conference, season_year=season_year)
         db.session.add(team)
         added += 1
 
     db.session.commit()
-    click.echo(f'Added {added} teams to cfb_team table.')
+    click.echo(f'Added {added} teams to the {season_year} pool.')
 
 
 # The sync result's status, as the admin dashboard's run outcome. The CLI
@@ -196,7 +198,7 @@ def recalc_spreads_cmd():
 @click.option('--week', 'week_number', required=True, type=int,
               help='Regular-season week number to re-derive.')
 def repair_week_dates_cmd(week_number):
-    """Re-derive one week's start_date/deadline from SEASON_SCHEDULE.
+    """Re-derive one week's start_date/deadline from the season calendar.
 
     Operator repair for the 2026-09-07 incident: run_setup handed aware
     Chicago datetimes to naive columns and Postgres cast them in its GMT
@@ -205,13 +207,12 @@ def repair_week_dates_cmd(week_number):
     that fix. Prints old -> new per column and commits. Idempotent.
 
     Refuses (exit 1, no write) a playoff or named-round week — those are
-    hand-scheduled, and SEASON_SCHEDULE's rigid Saturday cadence is wrong for
+    hand-scheduled, and the calendar's rigid Saturday cadence is wrong for
     them — and a completed week, whose dates are history.
     """
-    from games.cfb.models import CfbWeek
     from games.cfb.services.automation import _calculate_week_dates
 
-    week = CfbWeek.query.filter_by(week_number=week_number).first()
+    week = week_reads.week_by_number(week_number)
     if week is None:
         click.echo(f"[cfb repair-week-dates] no Week {week_number} exists")
         raise SystemExit(1)

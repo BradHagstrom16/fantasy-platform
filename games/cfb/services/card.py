@@ -15,10 +15,10 @@ from games.cfb.models import (
     CfbEnrollment,
     CfbGame,
     CfbPick,
-    CfbTeam,
     CfbWeek,
     CfbWeekOutcome,
 )
+from games.cfb.services import weeks as week_reads
 from games.cfb.services.game_logic import get_official_standings
 from games.cfb.services.week_state import room_weeks
 from games.cfb.utils import (
@@ -45,7 +45,7 @@ def build_player_card(user_id, enrollment, *, revealed_only=False):
     ``enrollment`` may be None for a platform admin reading Your Card
     without a seat (the coming_soon bypass); the template handles it.
     """
-    current_week = CfbWeek.query.filter_by(is_active=True).first()
+    current_week = week_reads.active_week()
     in_cfp = current_week and is_week_playoff(current_week)
     # Your Card is about the week the room leads with (the reveal week
     # while it is unfinished), not the week that happens to be open.
@@ -55,6 +55,7 @@ def build_player_card(user_id, enrollment, *, revealed_only=False):
     user_picks = (
         CfbPick.query.filter_by(user_id=user_id)
         .join(CfbWeek)
+        .filter(CfbWeek.season_year == week_reads.current_season())
         .options(contains_eager(CfbPick.week), joinedload(CfbPick.team))
         .order_by(CfbWeek.week_number)
         .all()
@@ -97,7 +98,7 @@ def build_player_card(user_id, enrollment, *, revealed_only=False):
             pick.spread_data = None
             pick.game_data = None
 
-    all_teams = CfbTeam.query.order_by(CfbTeam.name).all()
+    all_teams = week_reads.season_teams()
 
     if in_cfp:
         relevant_picks = [p for p in user_picks if is_week_playoff(p.week)]
@@ -290,11 +291,12 @@ def build_season_ledger(enrollment, card):
     it is skipped rather than invented.
     """
     room = card['room']
-    weeks = db.session.scalars(select(CfbWeek).order_by(CfbWeek.week_number)).all()
+    weeks = week_reads.season_weeks(enrollment.season_year)
     outcome_by_week = {
         o.week_id: o
         for o in db.session.scalars(
             select(CfbWeekOutcome).filter_by(user_id=enrollment.user_id)
+            .filter(CfbWeekOutcome.week_id.in_([w.id for w in weeks]))
         )
     }
     picks_by_week = {p.week_id: p for p in card['user_picks']}

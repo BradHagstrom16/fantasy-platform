@@ -8,7 +8,7 @@ per member, and exits 0. Idempotent.
 `repair-week-dates --week N` is the repair after the 2026-09-07 incident
 (run_setup stored Week 2's aware 11:00 CT deadline as 16:00 through the
 Postgres session-zone cast): it recomputes a regular-season week's
-start_date/deadline from SEASON_SCHEDULE, prints old -> new, and refuses
+start_date/deadline from the season calendar, prints old -> new, and refuses
 the manually scheduled weeks (playoff / named rounds) and completed weeks.
 """
 from datetime import datetime
@@ -98,7 +98,7 @@ def test_repair_week_dates_is_idempotent(app, runner):
 @pytest.mark.parametrize('field', ['is_playoff_week', 'round_name', 'is_complete'])
 def test_repair_week_dates_refuses_manual_and_finished_weeks(app, runner, field):
     """CFP weeks are hand-scheduled (the rigid Saturday cadence in
-    SEASON_SCHEDULE is wrong for them, tests/test_cfb_cfp_datemath.py) and a
+    the season calendar is wrong for them, tests/test_cfb_cfp_datemath.py) and a
     completed week's dates are history: neither is rewritten from the
     schedule, exit 1, no write."""
     week_id = _shifted_week_2()

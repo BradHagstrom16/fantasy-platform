@@ -72,6 +72,7 @@ def _make_week(number=1, active=False, complete=False, playoff=False,
                deadline=None):
     from games.cfb.models import CfbWeek
     w = CfbWeek(
+        season_year=2026,
         week_number=number,
         start_date=datetime(2026, 9, 3, 0, 0),
         deadline=deadline or datetime(2026, 9, 5, 11, 0),
@@ -150,7 +151,7 @@ def test_state_pre_when_week_rows_exist_but_none_started(app):
 
 
 def test_state_live_when_a_week_is_active(app):
-    # The resolver reads the clock since the SEASON_LIVE_UTC gate (design
+    # The resolver reads the clock since the season-live gate (design
     # review 2026-08-19): live states pin an in-season anchor.
     from games.cfb.services.lounge import cfb_lounge_state
     with app.app_context(), patch.dict(os.environ, LIVE_PRE):
@@ -571,7 +572,7 @@ W4_DEADLINE = datetime(2026, 9, 26, 11, 0)
 
 def _make_team(name):
     from games.cfb.models import CfbTeam
-    t = CfbTeam(name=name)
+    t = CfbTeam(name=name, season_year=2026)
     db.session.add(t)
     db.session.commit()
     return t

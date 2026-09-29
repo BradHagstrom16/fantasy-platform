@@ -14,11 +14,12 @@ from flask import current_app
 from extensions import db
 from games.cfb.constants import (
     API_BASE_URL,
-    SEASON_SCHEDULE,
     SHORT_TO_API,
     TEAM_NAME_MAP,
+    season_schedule,
 )
-from games.cfb.models import CfbEnrollment, CfbGame, CfbPick, CfbTeam, CfbWeek
+from games.cfb.models import CfbEnrollment, CfbGame, CfbPick, CfbWeek
+from games.cfb.services import weeks as week_reads
 from games.cfb.services.score_fetcher import ScoreFetcher
 from games.cfb.utils import (
     deadline_has_passed,
@@ -76,16 +77,18 @@ def _send_admin_email(subject: str, body: str) -> bool:
 
 
 def _calculate_week_dates(week_number):
-    """Compute start_date and deadline for a given week number.
+    """Compute start_date and deadline for a given week number of the
+    configured season.
 
     Returns (start_date, deadline) as timezone-aware Chicago datetimes.
     """
-    week_1_start = datetime.strptime(SEASON_SCHEDULE['week_1_start'], '%Y-%m-%d')
+    schedule = season_schedule(week_reads.current_season())
+    week_1_start = datetime.strptime(schedule['week_1_start'], '%Y-%m-%d')
     start_date = week_1_start + timedelta(weeks=week_number - 1)
 
     # Deadline: Saturday at configured hour
-    deadline_hour = SEASON_SCHEDULE['default_deadline_hour']
-    deadline_minute = SEASON_SCHEDULE['default_deadline_minute']
+    deadline_hour = schedule['default_deadline_hour']
+    deadline_minute = schedule['default_deadline_minute']
 
     # Find the Saturday of the week starting on Thursday
     days_until_saturday = (5 - start_date.weekday()) % 7
@@ -101,9 +104,7 @@ def _calculate_week_dates(week_number):
 def _lowest_orphan_week():
     """Lowest-numbered incomplete week with 0 games — a prior setup run's
     failed import that must be retried before advancing (audit §5.2)."""
-    weeks = (CfbWeek.query.filter_by(is_complete=False)
-             .order_by(CfbWeek.week_number).all())
-    for week in weeks:
+    for week in week_reads.incomplete_weeks():
         if CfbGame.query.filter_by(week_id=week.id).count() == 0:
             return week
     return None
@@ -121,9 +122,7 @@ def _week_to_open():
     that has locked. If two weeks qualify (an admin created N+2 early), N+1
     wins until its deadline passes.
     """
-    weeks = (CfbWeek.query.filter_by(is_complete=False)
-             .order_by(CfbWeek.week_number).all())
-    for week in weeks:
+    for week in week_reads.incomplete_weeks():
         if deadline_has_passed(week.deadline):
             continue
         if CfbGame.query.filter_by(week_id=week.id).count() == 0:
@@ -133,13 +132,14 @@ def _week_to_open():
 
 
 def _unresolvable_team_names():
-    """CfbTeam names that no Odds API name maps to (master-list drift).
+    """The season's CfbTeam names that no Odds API name maps to
+    (master-list drift).
 
     A team whose name is absent from SHORT_TO_API can never be matched to
     an API event, so its games are silently never imported or scored.
     """
     return sorted(
-        t.name for t in CfbTeam.query.all() if t.name not in SHORT_TO_API
+        t.name for t in week_reads.season_teams() if t.name not in SHORT_TO_API
     )
 
 
@@ -175,7 +175,7 @@ def _get_special_week_info(week_number):
 
     Returns dict with 'is_playoff' and 'round_name', or None for regular weeks.
     """
-    special = SEASON_SCHEDULE.get('special_weeks', {}).get(week_number)
+    special = season_schedule(week_reads.current_season())['special_weeks'].get(week_number)
     if special:
         return {
             'is_playoff': special.get('is_playoff', False),
@@ -217,8 +217,8 @@ def _import_games_for_week(week, start_date, end_date):
         logger.error("Events API returned a malformed body: %s", e)
         return 0
 
-    # Build team lookup
-    teams_by_name = {t.name: t for t in CfbTeam.query.all()}
+    # Build team lookup: the week's own season's pool
+    teams_by_name = {t.name: t for t in week_reads.season_teams(week.season_year)}
 
     imported = 0
     skipped_untracked = []
@@ -305,11 +305,13 @@ def run_setup():
         start_date = make_aware(week.start_date)
         logger.info("Retrying game import for orphaned Week %d", next_week_num)
     else:
-        last_week = CfbWeek.query.order_by(CfbWeek.week_number.desc()).first()
+        season_year = week_reads.current_season()
+        last_week = week_reads.latest_week(season_year)
         next_week_num = (last_week.week_number + 1) if last_week else 1
 
-        max_weeks = SEASON_SCHEDULE['regular_season_weeks']
-        special_weeks = SEASON_SCHEDULE.get('special_weeks', {})
+        schedule = season_schedule(season_year)
+        max_weeks = schedule['regular_season_weeks']
+        special_weeks = schedule['special_weeks']
         max_week = max(max_weeks, max(special_weeks.keys()) if special_weeks else max_weeks)
 
         if next_week_num > max_week:
@@ -318,6 +320,7 @@ def run_setup():
         start_date, deadline = _calculate_week_dates(next_week_num)
         special = _get_special_week_info(next_week_num)
         week = CfbWeek(
+            season_year=season_year,
             week_number=next_week_num,
             start_date=start_date,
             deadline=deadline,
@@ -541,7 +544,7 @@ def run_spread_update(announce=True):
     # pick, so it is the moment is_active moves here (ADR-062).
     opened = False
     if not week.is_active and any(g.home_team_spread is not None for g in games):
-        CfbWeek.query.update({'is_active': False})
+        week_reads.deactivate_all()
         week.is_active = True
         db.session.commit()
         opened = True
@@ -610,7 +613,7 @@ def run_scores(prefetched=None, notify=True, retry_open=True):
 
     Returns a status dict with results for each week processed.
     """
-    weeks = CfbWeek.query.filter_by(is_complete=False).all()
+    weeks = week_reads.incomplete_weeks()
     results = []
     stuck_weeks = []
 
@@ -742,17 +745,19 @@ def run_status():
 
     Returns a status dict with season overview.
     """
-    weeks = CfbWeek.query.order_by(CfbWeek.week_number).all()
-    active_week = CfbWeek.query.filter_by(is_active=True).first()
+    season_year = week_reads.current_season()
+    weeks = week_reads.season_weeks(season_year)
+    active_week = week_reads.active_week(season_year)
 
-    season_year = current_app.config.get('CFB_SEASON_YEAR', 2026)
     total_enrollments = CfbEnrollment.query.filter_by(season_year=season_year).count()
     active_enrollments = CfbEnrollment.query.filter_by(
         is_eliminated=False, season_year=season_year
     ).count()
 
-    total_games = CfbGame.query.count()
-    total_picks = CfbPick.query.count()
+    total_games = CfbGame.query.join(CfbWeek).filter(
+        CfbWeek.season_year == season_year).count()
+    total_picks = CfbPick.query.join(CfbWeek).filter(
+        CfbWeek.season_year == season_year).count()
     complete_weeks = sum(1 for w in weeks if w.is_complete)
 
     lines = [

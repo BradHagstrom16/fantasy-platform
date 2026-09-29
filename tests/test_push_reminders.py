@@ -14,7 +14,7 @@ import pytest
 import tests._cfb_fixtures as cfbf
 import tests._docket_fixtures as dkf
 from extensions import db
-from games.cfb.constants import SEASON_SCHEDULE
+from games.cfb.constants import season_schedule
 from games.cfb.services.reminders import _push_pick_nag
 from games.cfb.utils import make_aware
 from games.club_desk import run_desk
@@ -174,7 +174,7 @@ def test_every_nag_fits_the_one_line_budget(app):
     the widest time-left phrase either final window can print, and every
     CFB week name, the round names up to "Conference Championship Week"."""
     cfb_weeks = [cfbf.make_week(14, deadline=datetime(2026, 11, 28, 11, 30))]
-    for number, special in SEASON_SCHEDULE['special_weeks'].items():
+    for number, special in season_schedule(2026)['special_weeks'].items():
         week = cfbf.make_week(number, deadline=datetime(2026, 11, 28, 11, 30))
         week.round_name = special['name']
         cfb_weeks.append(week)

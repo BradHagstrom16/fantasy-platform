@@ -81,15 +81,24 @@ class CfbTeam(db.Model):
     """A college football team available in the pool.
 
     Teams are added/removed by the admin via the Manage Teams page.
-    Presence in this table means the team is active for the current season.
+    A row belongs to one season's pool (``season_year``); the same school
+    in a later season is a new row, so a past season's picks keep pointing
+    at the pool they were made from (ADR-069). Read the live pool through
+    games/cfb/services/weeks.py, never the whole table.
     The full FBS universe lives in constants.FBS_MASTER_TEAMS.
     """
     __tablename__ = 'cfb_team'
 
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100), unique=True, nullable=False)
+    # The season whose pool this row is (ADR-069); unique with the name.
+    season_year = db.Column(db.Integer, nullable=False)
+    name = db.Column(db.String(100), nullable=False)
     conference = db.Column(db.String(50))
     national_title_odds = db.Column(db.String(16), nullable=True)
+
+    __table_args__ = (
+        db.UniqueConstraint('season_year', 'name', name='uq_cfb_team_season_name'),
+    )
 
     def get_conference(self):
         """Look up conference from master list (in case DB value is stale)."""
@@ -104,11 +113,15 @@ class CfbWeek(db.Model):
 
     Weeks 1-14: regular season. Week 15: Conference Championship.
     Weeks 16-19: CFP rounds. Only one week is active at a time.
+    Week numbers restart every season (``season_year``, ADR-069): read weeks
+    through games/cfb/services/weeks.py, never the whole table.
     """
     __tablename__ = 'cfb_week'
 
     id = db.Column(db.Integer, primary_key=True)
-    week_number = db.Column(db.Integer, unique=True, nullable=False)
+    # The season this week belongs to (ADR-069); unique with week_number.
+    season_year = db.Column(db.Integer, nullable=False)
+    week_number = db.Column(db.Integer, nullable=False)
     start_date = db.Column(db.DateTime, nullable=False)
     deadline = db.Column(db.DateTime, nullable=False)
     is_active = db.Column(db.Boolean, default=False)
@@ -126,6 +139,11 @@ class CfbWeek(db.Model):
     # once >=1 letter carrying this week's section was delivered; the de-dup
     # guarantee lives in this flag, not in any timer cadence (D24-eng shape).
     last_reminder_type = db.Column(db.String(10), nullable=True)
+
+    __table_args__ = (
+        db.UniqueConstraint('season_year', 'week_number',
+                            name='uq_cfb_week_season_number'),
+    )
 
     @validates('start_date', 'deadline')
     def _wall_clock(self, _key, value):

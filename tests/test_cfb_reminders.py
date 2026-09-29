@@ -15,7 +15,7 @@ from zoneinfo import ZoneInfo
 import pytest
 
 from extensions import db
-from games.cfb.constants import SEASON_SCHEDULE
+from games.cfb.constants import season_schedule
 from games.cfb.services.game_logic import process_week_results
 from games.cfb.services.reminders import (
     REMINDER_WINDOWS,
@@ -334,10 +334,11 @@ def test_default_week_survivor_and_docket_windows_are_disjoint():
     hand start too. Both spans come from each game's own deadline rule."""
     docket_deadline = docket_deadline_utc(3).astimezone(CT)
     assert docket_deadline.strftime('%a %H:%M') == 'Sun 12:00'
-    assert SEASON_SCHEDULE['default_deadline_day'] == 'Saturday'
+    schedule = season_schedule(2026)
+    assert schedule['default_deadline_day'] == 'Saturday'
     cfb_deadline = (docket_deadline - timedelta(days=1)).replace(
-        hour=SEASON_SCHEDULE['default_deadline_hour'],
-        minute=SEASON_SCHEDULE['default_deadline_minute'])
+        hour=schedule['default_deadline_hour'],
+        minute=schedule['default_deadline_minute'])
     survivor = [(cfb_deadline - w['start'], cfb_deadline - w['end'])
                 for w in REMINDER_WINDOWS]
     tolerance = timedelta(minutes=docket_reminders.TOLERANCE_MINUTES)

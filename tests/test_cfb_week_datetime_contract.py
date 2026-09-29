@@ -24,7 +24,7 @@ CHICAGO = ZoneInfo('America/Chicago')
 
 def test_aware_pool_tz_week_dates_are_stripped_to_wall_clock(app):
     week = CfbWeek(
-        week_number=2,
+        season_year=2026, week_number=2,
         start_date=datetime(2026, 9, 10, 0, 0, tzinfo=CHICAGO),
         deadline=datetime(2026, 9, 12, 11, 0, tzinfo=CHICAGO),
     )
@@ -38,7 +38,7 @@ def test_aware_utc_week_deadline_is_converted_to_pool_wall_clock(app):
     """An aware value in ANY zone lands as the pool's wall clock, never as
     the foreign zone's digits — the Postgres failure shape, inverted."""
     week = CfbWeek(
-        week_number=2,
+        season_year=2026, week_number=2,
         start_date=datetime(2026, 9, 10, 5, 0, tzinfo=UTC),
         deadline=datetime(2026, 9, 12, 16, 0, tzinfo=UTC),
     )
@@ -50,7 +50,7 @@ def test_naive_week_dates_pass_through_untouched(app):
     """The admin form and the fixtures already hand over naive wall clock;
     normalization must be a no-op for them, not a second conversion."""
     week = CfbWeek(
-        week_number=1,
+        season_year=2026, week_number=1,
         start_date=datetime(2026, 9, 3, 0, 0),
         deadline=datetime(2026, 9, 5, 11, 0),
     )
@@ -78,7 +78,7 @@ def test_aware_deadline_survives_the_postgres_round_trip(app):
     from extensions import db
 
     week = CfbWeek(
-        week_number=2,
+        season_year=2026, week_number=2,
         start_date=datetime(2026, 9, 10, 0, 0, tzinfo=CHICAGO),
         deadline=datetime(2026, 9, 12, 11, 0, tzinfo=CHICAGO),
     )
@@ -103,7 +103,7 @@ def test_the_bypass_the_model_guards_against_is_real_on_postgres(app):
 
     db.session.execute(
         db.insert(CfbWeek.__table__).values(
-            week_number=3,
+            season_year=2026, week_number=3,
             start_date=datetime(2026, 9, 17, 0, 0, tzinfo=CHICAGO),
             deadline=datetime(2026, 9, 19, 11, 0, tzinfo=CHICAGO)))
     db.session.commit()

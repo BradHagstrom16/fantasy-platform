@@ -25,7 +25,8 @@ def test_my_picks_groups_offmaster_team_by_stored_conference(client, app):
     make_enrollment(member)
     # An available pool team whose name is off the master list but whose
     # conference column is set: get_conference() must fall back to it.
-    db.session.add(CfbTeam(name='Directional State', conference='Pioneer League'))
+    db.session.add(CfbTeam(name='Directional State', conference='Pioneer League',
+                           season_year=2026))
     db.session.commit()
 
     _login(client, member)

@@ -27,9 +27,9 @@ from games.cfb.models import (
     CfbGame,
     CfbPick,
     CfbTeam,
-    CfbWeek,
     CfbWeekOutcome,
 )
+from games.cfb.services import weeks as week_reads
 from games.cfb.services.game_logic import get_week_user_statuses
 from games.cfb.utils import (
     deadline_has_passed,
@@ -129,9 +129,10 @@ class Field:
 
 
 def _revealed_weeks(season_year):
-    """Weeks whose deadline has passed, ascending; the record's extent."""
-    weeks = CfbWeek.query.order_by(CfbWeek.week_number).all()
-    return [w for w in weeks if deadline_has_passed(w.deadline)]
+    """The season's weeks whose deadline has passed, ascending; the
+    record's extent."""
+    return [w for w in week_reads.season_weeks(season_year)
+            if deadline_has_passed(w.deadline)]
 
 
 def attrition_rows(enrollments, weeks) -> tuple[AttritionRow, ...]:
@@ -187,10 +188,11 @@ def attrition_rows(enrollments, weeks) -> tuple[AttritionRow, ...]:
     return tuple(rows)
 
 
-def spent_board(enrollments, weeks) -> tuple[ConferenceBoard, ...]:
+def spent_board(enrollments, weeks, season_year=None) -> tuple[ConferenceBoard, ...]:
     """Every pool team by conference: who burned it (still standing, in
     week order), how many eliminated players also burned it, and how many
-    survivors still hold it. Regular-season picks only: the CFP reset makes
+    survivors still hold it; the pool is ``season_year``'s (None = the
+    configured season). Regular-season picks only: the CFP reset makes
     every playoff team pickable again (1.10), so a playoff-week pick spends
     nothing on this board.
     """
@@ -215,7 +217,7 @@ def spent_board(enrollments, weeks) -> tuple[ConferenceBoard, ...]:
                 week_label=labels[pick.week_id]))
         elif pick.user_id in out_users:
             spent_out[pick.team_id] += 1
-    teams = CfbTeam.query.order_by(CfbTeam.name).all()
+    teams = week_reads.season_teams(season_year)
     by_conf = defaultdict(list)
     for team in teams:
         line = TeamLine(team=team, spent_by=tuple(spent.get(team.id, ())),
@@ -272,7 +274,7 @@ def build_field(season_year) -> Field:
         phase = 'mid'
     return Field(
         weeks=attrition_rows(enrollments, weeks),
-        board=spent_board(enrollments, weeks),
+        board=spent_board(enrollments, weeks, season_year),
         backed=most_backed(weeks),
         survivors=survivors, total=total, revealed_weeks=revealed, phase=phase,
     )

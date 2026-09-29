@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 from functools import wraps
 
 from flask import (
+    abort,
     current_app,
     flash,
     jsonify,
@@ -27,6 +28,7 @@ from games.cfb import cfb_bp
 from games.cfb.constants import FBS_MASTER_TEAMS
 from games.cfb.models import CfbEnrollment, CfbGame, CfbPick, CfbTeam, CfbWeek
 from games.cfb.services import board as board_service
+from games.cfb.services import weeks as week_reads
 from games.cfb.services.card import build_player_card, build_season_ledger
 from games.cfb.services.field import build_field
 from games.cfb.services.game_logic import (
@@ -257,7 +259,7 @@ def _lead_card(room, games_by_team, viewer_pick, enrollment):
         else:
             card['headline'] = 'In the books.'
             card['derivation'] = None
-        following = CfbWeek.query.filter_by(week_number=lead.week_number + 1).first()
+        following = week_reads.week_by_number(lead.week_number + 1)
         if following is not None and CfbGame.query.filter_by(week_id=following.id).count():
             card['next_line'] = f'{get_week_display_name(following)} opens with its lines.'
         else:
@@ -305,7 +307,7 @@ def index():
     # 2026-09-07 / 2026-09-08).
     room = room_weeks()
     call_week = room.pick
-    active_week = CfbWeek.query.filter_by(is_active=True).first()
+    active_week = week_reads.active_week()
 
     viewer_enrollment = None
     if current_user.is_authenticated:
@@ -392,12 +394,13 @@ def index():
         champion_picks = (
             CfbPick.query.filter_by(user_id=champion.user_id)
             .join(CfbWeek)
+            .filter(CfbWeek.season_year == season_year)
             .options(contains_eager(CfbPick.week), joinedload(CfbPick.team))
             .order_by(CfbWeek.week_number)
             .all()
         )
         champion_correct = sum(1 for p in champion_picks if p.is_correct is True)
-        weeks_played = CfbWeek.query.filter_by(is_complete=True).count()
+        weeks_played = len(week_reads.complete_weeks(season_year))
 
         champion_week_ids = {p.week_id for p in champion_picks}
         champion_games_by_team = {}
@@ -489,7 +492,7 @@ def weekly_results(week_number=None):
     season_year = current_app.config.get('CFB_SEASON_YEAR', 2026)
     current_time = get_current_time()
 
-    all_weeks = CfbWeek.query.order_by(CfbWeek.week_number).all()
+    all_weeks = week_reads.season_weeks(season_year)
     viewable_weeks = []
     for w in all_weeks:
         deadline = make_aware(w.deadline)
@@ -503,7 +506,9 @@ def weekly_results(week_number=None):
             flash('No weekly results available yet. Check back after the first week deadline.', 'info')
             return redirect(url_for('cfb.index'))
 
-    week = CfbWeek.query.filter_by(week_number=week_number).first_or_404()
+    week = week_reads.week_by_number(week_number, season_year)
+    if week is None:
+        abort(404)
     deadline = make_aware(week.deadline)
 
     if current_time <= deadline:
@@ -750,7 +755,9 @@ def make_pick(week_number):
         flash('Sorry, you have been eliminated from the pool.', 'error')
         return redirect(url_for('cfb.index'))
 
-    week = CfbWeek.query.filter_by(week_number=week_number).first_or_404()
+    week = week_reads.week_by_number(week_number, season_year)
+    if week is None:
+        abort(404)
 
     if deadline_has_passed(week.deadline):
         flash('The deadline for this week has passed.', 'error')
@@ -781,7 +788,7 @@ def make_pick(week_number):
                 return redirect(url_for('cfb.make_pick', week_number=week_number))
 
             team = db.session.get(CfbTeam, team_id)
-            if not team:
+            if not team or team.season_year != week.season_year:
                 flash('Invalid team selection.', 'error')
                 return redirect(url_for('cfb.make_pick', week_number=week_number))
 
@@ -927,7 +934,7 @@ def make_pick(week_number):
 
     playoff = is_week_playoff(week)
     pool_ledger = []
-    all_teams = db.session.scalars(select(CfbTeam).order_by(CfbTeam.name)).all()
+    all_teams = week_reads.season_teams(week.season_year)
     for team in all_teams:
         if team.id in team_game:
             continue  # playing this week -> shown on the board with its state
@@ -1036,7 +1043,7 @@ def player(enrollment_id):
 def admin_dashboard():
     """Admin dashboard — weeks overview."""
     season_year = current_app.config.get('CFB_SEASON_YEAR', 2026)
-    weeks = CfbWeek.query.order_by(CfbWeek.week_number).all()
+    weeks = week_reads.season_weeks(season_year)
     total_users = CfbEnrollment.query.filter_by(season_year=season_year).count()
     active_users = CfbEnrollment.query.filter_by(
         season_year=season_year, is_eliminated=False
@@ -1073,7 +1080,8 @@ def admin_create_week():
             flash('Invalid date format.', 'error')
             return redirect(url_for('cfb.admin_create_week'))
 
-        existing = CfbWeek.query.filter_by(week_number=week_number).first()
+        season_year = week_reads.current_season()
+        existing = week_reads.week_by_number(week_number, season_year)
         if existing:
             flash(f'Week {week_number} already exists!', 'error')
             return redirect(url_for('cfb.admin_create_week'))
@@ -1082,6 +1090,7 @@ def admin_create_week():
         round_name = request.form.get('round_name', '').strip() or None
 
         new_week = CfbWeek(
+            season_year=season_year,
             week_number=week_number,
             start_date=start_date,
             deadline=deadline,
@@ -1112,7 +1121,7 @@ def admin_activate_week(week_id):
         flash(f'Week {week.week_number} has no lines yet. Run the spreads '
               'sync or enter one on Manage Games first.', 'warning')
         return redirect(url_for('cfb.admin_dashboard'))
-    CfbWeek.query.update({'is_active': False})
+    week_reads.deactivate_all()
     week.is_active = True
     db.session.commit()
     flash(f'Week {week.week_number} is now active. The next scores run '
@@ -1169,7 +1178,7 @@ def admin_manage_games(week_id):
         flash('Game added successfully!', 'success')
         return redirect(url_for('cfb.admin_manage_games', week_id=week_id))
 
-    teams = CfbTeam.query.order_by(CfbTeam.name).all()
+    teams = week_reads.season_teams(week.season_year)
     games = CfbGame.query.filter_by(week_id=week_id).all()
 
     return render_template('cfb/admin/manage_games.html', week=week, teams=teams, games=games)
@@ -1440,7 +1449,7 @@ def admin_users():
     # Active-week pick status for the commish: who has (and hasn't) a pick in.
     # Always the raw is_active week, so the column keeps its audit value after
     # the deadline (a lingering "No pick" then means autopick missed someone).
-    active_week = CfbWeek.query.filter_by(is_active=True).first()
+    active_week = week_reads.active_week(season_year)
     picks_by_user = {}
     picked_count = active_total = 0
     if active_week is not None:
@@ -1538,8 +1547,9 @@ def admin_update_payment(user_id):
 @cfb_bp.route('/admin/manage-teams', methods=['GET', 'POST'])
 @cfb_admin_required
 def admin_manage_teams():
-    """Add/remove teams from the pool using the FBS master list."""
-    existing_teams = {t.name: t for t in CfbTeam.query.all()}
+    """Add/remove teams from this season's pool using the FBS master list."""
+    season_year = week_reads.current_season()
+    existing_teams = {t.name: t for t in week_reads.season_teams(season_year)}
 
     # A team can't be removed if it's still referenced anywhere — by a pick
     # (would strand it) or by a scheduled game (a bare delete FK-500s on
@@ -1572,7 +1582,8 @@ def admin_manage_teams():
         added = 0
         for short_name, _api_name, _api_id, conference, _is_incoming in FBS_MASTER_TEAMS:
             if short_name in selected_names and short_name not in existing_teams:
-                new_team = CfbTeam(name=short_name, conference=conference)
+                new_team = CfbTeam(name=short_name, conference=conference,
+                                   season_year=season_year)
                 db.session.add(new_team)
                 added += 1
 

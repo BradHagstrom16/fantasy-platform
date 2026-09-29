@@ -8,19 +8,18 @@ cumulative spread calculation.
 import logging
 from collections import Counter
 
-from flask import current_app
 from sqlalchemy import select
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import contains_eager, joinedload
 
 from extensions import db
 from games.cfb.models import (
     CfbEnrollment,
     CfbGame,
     CfbPick,
-    CfbTeam,
     CfbWeek,
     CfbWeekOutcome,
 )
+from games.cfb.services.weeks import current_season, incomplete_weeks, season_teams
 from games.cfb.utils import (
     deadline_has_passed,
     get_cfp_eliminated_teams,
@@ -36,7 +35,7 @@ logger = logging.getLogger(__name__)
 
 def _get_season_year():
     """Get the configured CFB season year."""
-    return current_app.config.get('CFB_SEASON_YEAR', 2026)
+    return current_season()
 
 
 # ---------------------------------------------------------------------------
@@ -51,8 +50,10 @@ def get_game_for_team(week_id, team_id):
 
 
 def get_used_team_ids(user_id, week, *, exclude_current=True):
-    """Return set of team IDs the user has already picked in the current phase."""
-    q = db.session.query(CfbPick.team_id).join(CfbWeek)
+    """Return set of team IDs the user has already picked in the current
+    phase of ``week``'s season."""
+    q = (db.session.query(CfbPick.team_id).join(CfbWeek)
+         .filter(CfbWeek.season_year == week.season_year))
 
     if is_week_playoff(week):
         q = q.filter(CfbWeek.is_playoff_week.is_(True))
@@ -73,9 +74,10 @@ def get_used_team_ids(user_id, week, *, exclude_current=True):
 def pool_teams_by_conference():
     """The eligible team pool grouped by conference, for display.
 
-    Pool membership is row existence in cfb_team (there is no boolean
-    flag). Teams group by CfbTeam.get_conference() -- the master-list
-    conference, falling back to the stored row value then 'Unknown', so an
+    Pool membership is row existence in cfb_team for the configured
+    season (there is no boolean flag). Teams group by
+    CfbTeam.get_conference() -- the master-list conference, falling back
+    to the stored row value then 'Unknown', so an
     admin-added team off the master list still lands in its real
     conference. Groups are ordered by size DESC then conference name ASC;
     teams within a group keep the name order the query returns.
@@ -85,7 +87,7 @@ def pool_teams_by_conference():
     viewer's spent-team set is applied at the call site so this stays
     cacheable and directly testable.
     """
-    teams = db.session.scalars(select(CfbTeam).order_by(CfbTeam.name)).all()
+    teams = season_teams()
 
     by_conf = {}
     for team in teams:
@@ -201,13 +203,15 @@ def calculate_cumulative_spread(enrollment):
     A pick's spread never enters the total before its week's deadline,
     even when that game has already kicked off (a Thursday kickoff locks
     the pick, it does not settle the spread) -- the standings must not
-    leak a hidden pick through its spread. Lifetime means lifetime: no
-    season filter (one season exists today), and no CFP reset.
+    leak a hidden pick through its spread. Lifetime means the enrollment's
+    season (ADR-069), with no CFP reset.
     """
     picks = (
         CfbPick.query
         .filter_by(user_id=enrollment.user_id)
-        .options(joinedload(CfbPick.week))
+        .join(CfbWeek)
+        .filter(CfbWeek.season_year == enrollment.season_year)
+        .options(contains_eager(CfbPick.week))
         .all()
     )
     total = 0.0
@@ -230,12 +234,15 @@ def calculate_cumulative_spread(enrollment):
 # ---------------------------------------------------------------------------
 
 def _eliminated_in_another_week(user_id, week_id):
-    """True when a completed week other than ``week_id`` eliminated the
-    player — its outcome snapshot carries the elimination WITH the lost
-    life (a later week's snapshot only inherits ``is_eliminated``)."""
-    outcomes = CfbWeekOutcome.query.filter(
+    """True when a completed week of the same season, other than
+    ``week_id``, eliminated the player — its outcome snapshot carries the
+    elimination WITH the lost life (a later week's snapshot only inherits
+    ``is_eliminated``)."""
+    season_year = db.session.get(CfbWeek, week_id).season_year
+    outcomes = CfbWeekOutcome.query.join(CfbWeek).filter(
         CfbWeekOutcome.user_id == user_id,
         CfbWeekOutcome.week_id != week_id,
+        CfbWeek.season_year == season_year,
     ).all()
     return any(o.eliminated_this_week for o in outcomes)
 
@@ -412,7 +419,7 @@ def process_week_results(week_id, season_year=None):
             # earlier week (a Monday night) was graded; it grades, but its
             # loss is no lost life, no cut and no revival.
             out_before = set(get_elimination_weeks(
-                list(enrollment_by_user), week.week_number))
+                list(enrollment_by_user), week.week_number, week.season_year))
 
             # DQ-2: active players with no pick lose a life
             no_pick_eliminated = 0
@@ -542,7 +549,7 @@ def get_week_user_statuses(week, enrollments, picks):
         out_before = set(get_elimination_weeks(
             [e.user_id for e in enrollments
              if e.user_id not in outcome_by_user and e.is_eliminated],
-            week.week_number))
+            week.week_number, week.season_year))
 
     statuses = {}
     for enrollment in enrollments:
@@ -569,8 +576,9 @@ def get_week_user_statuses(week, enrollments, picks):
     return statuses
 
 
-def get_elimination_weeks(user_ids, before_week_number):
-    """The week each player was knocked out, for weeks before this one.
+def get_elimination_weeks(user_ids, before_week_number, season_year=None):
+    """The week each player was knocked out, for the season's weeks before
+    this one (``season_year`` None = the configured season).
 
     Reads the CfbWeekOutcome snapshots (the column form of
     ``eliminated_this_week``: is_eliminated AND lost_life). Each player
@@ -586,6 +594,8 @@ def get_elimination_weeks(user_ids, before_week_number):
     """
     if not user_ids:
         return {}
+    if season_year is None:
+        season_year = _get_season_year()
     rows = db.session.execute(
         select(CfbWeekOutcome.user_id, CfbWeek)
         .join(CfbWeek, CfbWeekOutcome.week_id == CfbWeek.id)
@@ -594,6 +604,7 @@ def get_elimination_weeks(user_ids, before_week_number):
             CfbWeekOutcome.is_eliminated.is_(True),
             CfbWeekOutcome.lost_life.is_(True),
             CfbWeek.week_number < before_week_number,
+            CfbWeek.season_year == season_year,
         )
     ).all()
     weeks = {}
@@ -789,7 +800,7 @@ def check_and_process_autopicks():
     becomes a DQ-2 life loss at processing, so it needs a human in the loop
     (audit §4). The CLI path previously dropped these.
     """
-    weeks = CfbWeek.query.filter_by(is_complete=False).all()
+    weeks = incomplete_weeks()
     results = []
     failures = []  # (week_number, username, reason)
     for week in weeks:

@@ -24,7 +24,8 @@ the CFB CLI exits 0 on a week error, so this consumer raises instead: the
 game-day unit must fail loudly where the daily unit mails.
 """
 from games.cfb.constants import SPORT_KEY
-from games.cfb.models import CfbGame, CfbWeek
+from games.cfb.models import CfbGame
+from games.cfb.services.weeks import incomplete_weeks
 from games.cfb.utils import deadline_has_passed, get_current_time, make_aware
 from games.gameday import GAME_COULD_HAVE_ENDED, GAME_DAY_WINDOW, GameDayConsumer
 
@@ -33,7 +34,7 @@ def wants(sport):
     if sport != SPORT_KEY:
         return False
     now = get_current_time()
-    for week in CfbWeek.query.filter_by(is_complete=False).all():
+    for week in incomplete_weeks():
         if not deadline_has_passed(week.deadline):
             continue
         for game in CfbGame.query.filter_by(week_id=week.id).all():

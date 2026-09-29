@@ -16,6 +16,7 @@ from sqlalchemy.orm import joinedload
 
 from extensions import db
 from games.cfb.models import CfbEnrollment, CfbPick, CfbWeek, CfbWeekOutcome
+from games.cfb.services import weeks as week_reads
 from games.cfb.services.payment import payment_nudge_for
 from games.cfb.services.reminders import (
     REMINDER_ORDER,
@@ -38,8 +39,7 @@ LIVES_WORDS = {2: 'Two lives in hand.', 1: 'One life in hand.'}
 
 
 def _season():
-    from flask import current_app
-    return current_app.config.get('CFB_SEASON_YEAR', 2026)
+    return week_reads.current_season()
 
 
 def _pick_url(week):
@@ -52,7 +52,7 @@ def _pick_url(week):
 
 def _week(now):
     """The active week, the one the legacy pass reminds for."""
-    return db.session.scalar(select(CfbWeek).filter_by(is_active=True))
+    return week_reads.active_week()
 
 
 def _deadline(week):
@@ -135,7 +135,7 @@ def _has_lines(week):
 
 def _candidate(now):
     """The open week (active, with lines), announced or not."""
-    week = db.session.scalar(select(CfbWeek).filter_by(is_active=True))
+    week = week_reads.active_week()
     if week is None or not _has_lines(week):
         return None
     return week
@@ -155,11 +155,9 @@ def _open_week(now):
 
 def _record_week(week):
     """Survivor's "last week" is the latest complete week before this one."""
-    return db.session.scalar(
-        select(CfbWeek)
-        .filter(CfbWeek.is_complete.is_(True),
-                CfbWeek.week_number < week.week_number)
-        .order_by(CfbWeek.week_number.desc()))
+    earlier = [w for w in week_reads.complete_weeks(week.season_year)
+               if w.week_number < week.week_number]
+    return earlier[-1] if earlier else None
 
 
 def _last_week_line(outcome, pick):
@@ -209,7 +207,8 @@ def _sections(week, record_week, now):
             out_week = db.session.scalar(
                 select(CfbWeek.week_number).join(CfbWeekOutcome)
                 .filter(CfbWeekOutcome.user_id == enrollment.user_id,
-                        CfbWeekOutcome.is_eliminated.is_(True))
+                        CfbWeekOutcome.is_eliminated.is_(True),
+                        CfbWeek.season_year == season)
                 .order_by(CfbWeek.week_number))
             out = (f'Out after Week {out_week}.' if out_week
                    else 'Out of the running.')

@@ -5,7 +5,7 @@ that had no direct test, and *characterizes* the one deferred decision so a
 future change to it is deliberate:
 
   - ``_calculate_week_dates`` regular-season cadence (Saturday 11am Central,
-    weekly), anchored on ``SEASON_SCHEDULE['week_1_start']``.
+    weekly), anchored on ``season_schedule(2026)['week_1_start']``.
   - The §3 deferral: weeks 16-19 (CFP) currently get the SAME rigid Saturday
     cadence even though the real playoff is Thu/Fri quarterfinals and a Monday
     National Championship. Postseason automation is deferred for season one
@@ -32,7 +32,7 @@ from flask import template_rendered
 
 import games.registry as registry
 from extensions import db
-from games.cfb.constants import SEASON_SCHEDULE
+from games.cfb.constants import season_schedule
 from games.cfb.models import CfbPick
 from games.cfb.services.automation import CHICAGO_TZ, _calculate_week_dates
 from games.cfb.utils import get_cfp_eliminated_teams
@@ -94,7 +94,7 @@ def _eligible_names(templates):
 def test_week_1_dates_are_thursday_start_saturday_11am_deadline(app):
     """Week 1 anchors on week_1_start (Thu 2026-09-03); the deadline is that
     week's Saturday at 11:00 Central — the cadence every later week inherits."""
-    anchor = datetime.strptime(SEASON_SCHEDULE['week_1_start'], '%Y-%m-%d')
+    anchor = datetime.strptime(season_schedule(2026)['week_1_start'], '%Y-%m-%d')
     start, deadline = _calculate_week_dates(1)
 
     assert start.replace(tzinfo=None) == anchor          # Thu 2026-09-03
@@ -111,7 +111,7 @@ def test_regular_season_weeks_are_weekly_saturday_11am(app):
     America/Chicago DST fall-back (early November) doesn't read as a drift."""
     from datetime import timedelta
 
-    last = SEASON_SCHEDULE['regular_season_weeks']  # 14
+    last = season_schedule(2026)['regular_season_weeks']  # 14
     prev = None
     for n in range(1, last + 1):
         _, deadline = _calculate_week_dates(n)
