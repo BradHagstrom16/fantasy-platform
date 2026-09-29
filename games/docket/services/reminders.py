@@ -41,6 +41,7 @@ reminder, and every other game on the platform makes the same trade (Golf's
 recap and reminder paths both name it). If it is ever built, it should be
 built once for all games, not here.
 """
+import logging
 from datetime import timedelta
 
 from extensions import db
@@ -56,6 +57,8 @@ from models.user import User
 from utils.email_layout import items_block
 from utils.push import send_push
 from utils.time import format_deadline_compact, format_time_left_compact
+
+logger = logging.getLogger(__name__)
 
 SCORING_SLOTS = 8
 
@@ -190,25 +193,52 @@ def reminder_letter(recipient, context, tier):
     )
 
 
+def _nag_body_tail(state):
+    """What the member owes next, in the sheet's own words (the ladder
+    ``picks.next_step`` climbs): sides first, then the x2, then the number.
+    One fact, never the list: the push says what to do when it's opened."""
+    remaining = SCORING_SLOTS - state['scoring_count']
+    if remaining == SCORING_SLOTS:
+        return 'No sides picked yet.'
+    if remaining > 0:
+        return f"{remaining} more side{'' if remaining == 1 else 's'} to pick."
+    if state['best'] is None:
+        return 'Now pick your x2.'
+    return 'Now your tiebreaker number.'
+
+
 def _push_deadline_nag(week, tier, now_naive, user_ids):
     """The deadline nag as a push (T11): the buzz twin of the reminder email.
-    Never raises (send_push swallows its own errors)."""
+    Never raises: send_push swallows its own errors, and a member whose sheet
+    can't be read is logged and skipped, so the desk still latches the tier."""
     if not user_ids:
         return
     ttl = max(int((week.deadline_at - now_naive).total_seconds()), 0)
-    # The phone stacks title / "from CCC" / body, and the title is one
-    # line: the title carries the whole message, the body one short line.
-    if tier == '2h':
+    # iOS stacks title / "from CCC" / body, and the title is one line: the
+    # title carries the deadline, the body what this member still owes, so
+    # it goes one member at a time.
+    last_call = tier == '2h'
+    if last_call:
         left = format_time_left_compact(week.deadline_at, now_naive)
         title = f'Docket closes in {left}'
-        body = f'Last call for Week {week.week_number}. Sides still open.'
     else:
         title = f'Docket closes {format_deadline_compact(week.deadline_at)}'
-        body = f'{COUNTDOWNS[tier]} Sides still open.'
-    send_push(user_ids,
-              title=title,
-              body=body,
-              url='/docket/',
-              tag=f'docket-w{week.week_number}-nag',
-              topic=f'docket-w{week.week_number}',
-              ttl=ttl, urgency='normal', app_badge=1)
+    for user_id in user_ids:
+        try:
+            tail = _nag_body_tail(sheet_state(user_id, week, now=now_naive))
+        except Exception:
+            # A failed read poisons the session on Postgres; roll back so the
+            # next member's read, and the desk's latch commit, still land.
+            db.session.rollback()
+            logger.exception('Docket nag push: sheet read failed for user %s',
+                             user_id)
+            continue
+        body = (f'Last call for Week {week.week_number}. {tail}' if last_call
+                else f'Week {week.week_number}: {tail[0].lower()}{tail[1:]}')
+        send_push([user_id],
+                  title=title,
+                  body=body,
+                  url='/docket/',
+                  tag=f'docket-w{week.week_number}-nag',
+                  topic=f'docket-w{week.week_number}',
+                  ttl=ttl, urgency='normal', app_badge=1)

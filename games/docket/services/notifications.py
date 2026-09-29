@@ -87,6 +87,20 @@ def _side_phrase(pick, game):
     return f'{team} {"PK" if pick.line_value == 0 else f"{number:+g}"}'
 
 
+def _verdict_body(pick, game, n):
+    """'Miami Dolphins 17, Buffalo Bills 20. 1 other sheet had it.' — the
+    final (away first, as the slate prints a case) and who shared the side.
+    ``n`` counts every scoring sheet on it, this one included."""
+    score = (f'{game.away_team} {game.away_score}, '
+             f'{game.home_team} {game.home_score}.')
+    it = 'it' if pick.market == 'total' else 'them'
+    others = n - 1
+    if others == 0:
+        return f'{score} Only your sheet had {it}.'
+    sheets = 'sheet' if others == 1 else 'sheets'
+    return f'{score} {others} other {sheets} had {it}.'
+
+
 def send_each(recipients, subject, build_body):
     """Send one message per recipient; return how many were accepted.
 
@@ -227,8 +241,9 @@ def notify_picks_open(week, recipients):
 # Push feed (PR 4): the verdict stamp as a case finals
 # ---------------------------------------------------------------------------
 # Called after sync_scores commits, from gameday.apply and both CLI callers.
-# The copy is the clerk's: "WIN: Nebraska -3.5" / "7 sheets had them." Never
-# raises (send_push swallows its own errors); an unreadable side is skipped.
+# The copy is the clerk's: "WIN: Nebraska -3.5" / "Iowa 20, Nebraska 24. 6 other
+# sheets had them." Never raises (send_push swallows its own errors); an
+# unreadable side is skipped.
 DOCKET_ROOM_URL = '/docket/'
 DOCKET_VERDICT_TTL = 6 * 3600
 _SCORING_SLOT_MAX = 8  # slots 1-8 score; slot 9 is the dormant reserve (D6)
@@ -277,9 +292,10 @@ def push_docket_verdicts(verdict_games):
                     send_push(
                         [p.user_id],
                         # The verdict leads: the phone keeps the title to
-                        # one line, and a long team name truncates at the end.
+                        # one line, and a long team name truncates at the
+                        # end. The body names the game the title can't.
                         title=f'{word}: {_side_phrase(p, game)}',
-                        body=f'{n} {"sheet" if n == 1 else "sheets"} had them.',
+                        body=_verdict_body(p, game, n),
                         url=DOCKET_ROOM_URL,
                         # Market is in the tag: a sheet can hold this game's
                         # spread AND its total, and a per-game tag would let the

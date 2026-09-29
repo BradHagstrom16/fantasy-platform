@@ -351,10 +351,10 @@ def test_test_push_delivers_to_own_endpoint(app, client):
         assert resp.status_code == 200
         assert resp.get_json()['delivered'] == 1
         wp.assert_called_once()
-        # The test dispatch speaks for The Wire; the body/url/tag are unchanged.
+        # The test dispatch names The Wire and says what will land on it.
         payload = json.loads(wp.call_args.kwargs['data'])
-        assert payload['title'] == 'Message from the wire.'
-        assert payload['body'] == 'See you Saturday. Tap to come back.'
+        assert payload['title'] == "You're on the Wire."
+        assert payload['body'] == 'Pick deadlines and results will land here.'
         assert payload['url'] == '/app'
         assert payload['tag'] == 'test'
 

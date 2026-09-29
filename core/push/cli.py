@@ -11,7 +11,7 @@ from sqlalchemy import func, select
 from extensions import db
 from models import User
 from utils.identifier import normalize_identifier
-from utils.push import send_push
+from utils.push import TEST_BODY, TEST_TITLE, send_push
 
 push_cli = AppGroup('push', help='Web push admin/debug commands.')
 
@@ -32,8 +32,8 @@ def test(identifier):
         return
     delivered = send_push(
         [user.id],
-        title='Message from the wire.',
-        body='See you Saturday. Tap to come back.',
+        title=TEST_TITLE,
+        body=TEST_BODY,
         url='/app',
         tag='test',
         ttl=600,

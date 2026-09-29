@@ -123,8 +123,8 @@ def test_flip_pushes_every_scoring_side_with_the_tally(app):
     b = make_user('b')
     make_enrollment(b)
     _pick(a, week, game, 'spread', 'home', 1, -3.5)   # WIN
-    _pick(b, week, game, 'spread', 'home', 1, -3.5)   # WIN (2 sheets had them)
-    _pick(a, week, game, 'total', 'under', 2, 51.5)   # WIN (1 sheet)
+    _pick(b, week, game, 'spread', 'home', 1, -3.5)   # WIN (1 other sheet had them)
+    _pick(a, week, game, 'total', 'under', 2, 51.5)   # WIN (only this sheet)
     game.home_score, game.away_score, game.is_final = 24, 14, True
     db.session.commit()
     with patch(_PATH) as sp:
@@ -134,10 +134,13 @@ def test_flip_pushes_every_scoring_side_with_the_tally(app):
     home_calls = [c for c in calls if 'Home Team' in c['title']]
     assert len(home_calls) == 2
     assert all(c['title'] == 'WIN: Home Team -3.5' for c in home_calls)
-    assert any('2 sheets had them' in c['body'] for c in home_calls)
+    # The body names the game the title can't: the final, away first, then
+    # who else shared the side ("them" for a team, "it" for a total).
+    assert all(c['body'] == 'Away Team 14, Home Team 24. 1 other sheet had them.'
+               for c in home_calls)
     under = [c for c in calls if 'Under' in c['title']][0]
     assert under['title'] == 'WIN: Under 51.5'
-    assert under['body'] == '1 sheet had them.'
+    assert under['body'] == 'Away Team 14, Home Team 24. Only your sheet had it.'
     # One distinct tag per market so both verdicts survive on a device that
     # holds this game's spread and its total.
     assert {c['tag'] for c in calls} == {
