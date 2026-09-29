@@ -21,6 +21,7 @@ from sqlalchemy.orm import joinedload
 
 from extensions import db
 from games.docket.models import DocketEnrollment, DocketGame, DocketWeek
+from games.docket.services import week_reads
 from games.docket.services.deadline_pass import check_designation
 from games.docket.services.importer import import_week
 from games.docket.services.notifications import notify_picks_open
@@ -88,8 +89,7 @@ def open_week(week_number, *, force_odds=False, announce=True,
     it is what lets this extraction ship with every test unchanged.
     """
     summary = importer(week_number, force_odds=force_odds)
-    week = db.session.scalar(
-        select(DocketWeek).filter_by(week_number=week_number))
+    week = week_reads.week_by_number(week_number)
     if week is None:
         return OpenResult(summary=summary, week=None, rule_outcome=None,
                           problems=(), announced=0)

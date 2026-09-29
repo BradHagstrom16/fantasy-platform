@@ -450,3 +450,285 @@ def test_cfp_eliminations_are_this_seasons(two_seasons):
               spread=-3.0, winner='home')
     db.session.commit()
     assert get_cfp_eliminated_teams() == set()
+
+
+# === The Docket =============================================================
+
+def _docket_week(number, season_year=2026):
+    from datetime import datetime
+
+    from games.docket.models import DocketWeek
+    week = DocketWeek(season_year=season_year, week_number=number,
+                      start_at=datetime(season_year, 9, 1, 11, 0),
+                      end_at=datetime(season_year, 9, 8, 11, 0),
+                      deadline_at=datetime(season_year, 9, 6, 17, 0))
+    db.session.add(week)
+    db.session.flush()
+    return week
+
+
+def test_docket_week_carries_a_required_season(app):
+    from games.docket.models import DocketWeek
+
+    assert DocketWeek.__table__.c.season_year.nullable is False
+
+
+def test_docket_fixture_defaults_to_the_current_season(app):
+    from tests._docket_fixtures import make_week as make_docket_week
+
+    assert make_docket_week(1).season_year == 2026
+
+
+def test_same_docket_week_number_fits_in_two_seasons_not_one(app):
+    _docket_week(1, 2025)
+    _docket_week(1, 2026)
+    db.session.commit()
+    with pytest.raises(IntegrityError):
+        _docket_week(1, 2026)
+    db.session.rollback()
+
+
+@pytest.mark.postgres
+def test_postgres_carries_the_named_docket_season_pair(app):
+    inspector = sa.inspect(db.engine)
+    uniques = {c['name']: c['column_names']
+               for c in inspector.get_unique_constraints('docket_week')}
+    assert uniques == {'uq_docket_week_season_number': ['season_year', 'week_number']}
+
+
+# --- the Docket's per-year calendar -----------------------------------------
+
+def _calendar_2025():
+    from datetime import UTC, datetime
+
+    from games.docket.services.weeks import SeasonCalendar
+    return SeasonCalendar(week_1_boundary_local=datetime(2025, 9, 2, 6, 0),
+                          total_weeks=19, first_nfl_week=2,
+                          enrollment_deadline_utc=datetime(2025, 9, 6, 16, 0, tzinfo=UTC))
+
+
+def test_the_docket_calendar_is_keyed_by_season():
+    from games.docket.services import weeks
+
+    calendar = weeks.SEASON_CALENDARS[weeks.SEASON_YEAR]
+    assert calendar.week_1_boundary_local == weeks.WEEK_1_BOUNDARY_LOCAL
+    assert calendar.total_weeks == weeks.TOTAL_WEEKS
+    assert calendar.first_nfl_week == weeks.FIRST_NFL_WEEK
+    with pytest.raises(KeyError):
+        weeks.boundary_utc(1, season_year=1999)
+
+
+def test_the_docket_week_math_follows_the_season(monkeypatch):
+    from datetime import UTC, datetime
+
+    from games.docket.services import weeks
+
+    monkeypatch.setitem(weeks.SEASON_CALENDARS, 2025, _calendar_2025())
+    assert weeks.boundary_utc(1, season_year=2025) == datetime(2025, 9, 2, 11, 0, tzinfo=UTC)
+    assert weeks.deadline_utc(1, season_year=2025) == datetime(2025, 9, 7, 17, 0, tzinfo=UTC)
+    assert weeks.week_number_for(datetime(2025, 9, 3, tzinfo=UTC), season_year=2025) == 1
+    assert weeks.week_number_for(datetime(2025, 9, 3, tzinfo=UTC)) is None
+
+
+def test_the_docket_enrollment_deadline_comes_from_its_calendar():
+    from games.docket.services import lounge, weeks
+
+    assert (weeks.SEASON_CALENDARS[weeks.SEASON_YEAR].enrollment_deadline_utc
+            == lounge.ENROLLMENT_DEADLINE_UTC)
+
+
+def test_both_calendars_share_the_club_instants_every_season(app):
+    """ADR-050 and the 2026-08-19 preseason gate, per season: every season
+    both calendars carry shares one enrollment cutoff and one live instant."""
+    from games.cfb.constants import SEASON_SCHEDULES
+    from games.docket.services import weeks
+
+    shared = SEASON_SCHEDULES.keys() & weeks.SEASON_CALENDARS.keys()
+    assert shared
+    for year in shared:
+        cfb, docket = SEASON_SCHEDULES[year], weeks.SEASON_CALENDARS[year]
+        assert cfb['enrollment_deadline_utc'] == docket.enrollment_deadline_utc
+        assert cfb['season_live_utc'] == weeks.boundary_utc(1, season_year=year)
+
+
+# --- the Docket's two-season seed -------------------------------------------
+
+@pytest.fixture
+def docket_two_seasons(app, monkeypatch):
+    from datetime import datetime
+
+    from games.docket.models import DocketEnrollment, DocketWeekResult
+    from games.docket.services import weeks
+    from tests._docket_fixtures import (
+        make_enrollment,
+        make_game,
+        make_user,
+    )
+    from tests._docket_fixtures import make_week as make_docket_week
+
+    monkeypatch.setitem(weeks.SEASON_CALENDARS, 2025, _calendar_2025())
+    monkeypatch.setenv('DOCKET_FAKE_NOW', '2026-09-10T12:00:00')   # 2026 Week 2
+
+    both, fresh = make_user('both'), make_user('fresh')
+    for user in (both, fresh):
+        db.session.add(DocketEnrollment(user_id=user.id, season_year=2025,
+                                        created_at=datetime(2025, 8, 20, 12, 0)))
+        make_enrollment(user)
+
+    def graded(week, points):
+        week.default_error_tenths = 0
+        for user, pts in zip((both, fresh), points, strict=True):
+            db.session.add(DocketWeekResult(
+                user_id=user.id, week_id=week.id, points=pts, wins=int(pts),
+                error_tenths=0, graded_at=week.end_at))
+        return week
+
+    old_weeks = [graded(make_docket_week(n, season_year=2025), (8.0, 1.0))
+                 for n in range(1, 20)]
+    for week in old_weeks:
+        week.record_notified = False
+    w1 = graded(make_docket_week(1), (2.0, 6.0))
+    w2 = make_docket_week(2)
+    make_game(w2, kickoff=datetime(2026, 9, 12, 16, 0), home='Georgia Bulldogs',
+              away='Texas Longhorns')
+    db.session.commit()
+    return {'both': both, 'fresh': fresh, 'old_weeks': old_weeks,
+            'weeks': [w1, w2]}
+
+
+def test_docket_week_reads_are_this_seasons(docket_two_seasons):
+    from games.docket.services import week_reads
+
+    w1, w2 = docket_two_seasons['weeks']
+    assert week_reads.week_by_number(1) == w1
+    assert week_reads.week_by_number(19) is None
+    assert week_reads.week_by_number(19, season_year=2025).season_year == 2025
+    assert week_reads.season_weeks() == [w1, w2]
+    assert len(week_reads.season_weeks(2025)) == 19
+
+
+def test_the_ledger_reads_this_seasons_graded_weeks(docket_two_seasons):
+    from games.docket.services.season_pass import season_ledger, week_rollups_from_db
+
+    assert [r.week_number for r in week_rollups_from_db()] == [1]
+    ledger = season_ledger()
+    assert ledger.week_numbers == (1,)
+    assert ledger.season_complete is False
+    assert ledger.rows[0].enrollment.user_id == docket_two_seasons['fresh'].id
+    past = season_ledger(2025)
+    assert past.season_complete is True
+    assert past.rows[0].enrollment.user_id == docket_two_seasons['both'].id
+
+
+def test_week_standings_read_this_seasons_week(docket_two_seasons):
+    from games.docket.services.season_pass import week_standings
+
+    standing = week_standings(1)
+    assert standing is not None
+    assert standing.rows[0].enrollment.user_id == docket_two_seasons['fresh'].id
+
+
+def test_the_docket_records_builder_closes_any_graded_season(docket_two_seasons):
+    from games.docket.services.records import season_finishes
+    from models.records import SeasonNotClosed
+
+    drafts = season_finishes(2025)
+    assert [(d.user_id, d.place) for d in drafts] == [
+        (docket_two_seasons['both'].id, 1), (docket_two_seasons['fresh'].id, 2)]
+    with pytest.raises(SeasonNotClosed):
+        season_finishes(2026)
+
+
+def test_the_docket_desk_and_record_pass_read_this_season(docket_two_seasons):
+    from games.docket.services import desk, record
+
+    w1, w2 = docket_two_seasons['weeks']
+    assert desk._record_week(w2) == w1
+    assert [w.season_year for w in record.pending_weeks()] == [2026]
+
+
+def test_the_docket_board_reads_this_seasons_week(docket_two_seasons):
+    from games.docket.services.announce_blocks import _graded_week
+
+    assert _graded_week({'week': '1'}, allowed=('week',)) == docket_two_seasons['weeks'][0]
+    with pytest.raises(ValueError, match='has no Week 19'):
+        _graded_week({'week': '19'}, allowed=('week',))
+
+
+def test_the_importer_makes_this_seasons_week_beside_last_seasons(docket_two_seasons):
+    from games.docket.services.importer import ensure_week
+
+    week = ensure_week(3)
+    assert (week.season_year, week.week_number) == (2026, 3)
+    assert ensure_week(2) == docket_two_seasons['weeks'][1]
+
+
+def test_the_all_sheets_nav_lists_this_seasons_weeks(docket_two_seasons):
+    from games.docket.models import DocketGame
+    from games.docket.routes import _posted_week_numbers
+
+    old = docket_two_seasons['old_weeks'][6]
+    db.session.add(DocketGame(week_id=old.id, sport='americanfootball_nfl',
+                              api_event_id='old-7', home_team='A', away_team='B',
+                              kickoff=old.start_at))
+    db.session.commit()
+    assert list(_posted_week_numbers()) == [2]
+
+
+def test_the_docket_cli_reads_this_seasons_week(docket_two_seasons):
+    from games.docket.cli import _get_week
+
+    assert _get_week(1) == docket_two_seasons['weeks'][0]
+
+
+# --- the Docket's source lock ------------------------------------------------
+
+DOCKET_UNSCOPED = re.compile(
+    r'\b(DocketWeek\.query|select\(DocketWeek\)|filter_by\(week_number=)')
+DOCKET_READS = Path(__file__).resolve().parent.parent / 'games' / 'docket'
+
+
+def test_docket_reads_weeks_only_through_the_season_helpers():
+    offenders = []
+    for path in sorted(DOCKET_READS.rglob('*.py')):
+        if path == DOCKET_READS / 'services' / 'week_reads.py':
+            continue
+        for number, line in enumerate(path.read_text().splitlines(), 1):
+            if DOCKET_UNSCOPED.search(line):
+                offenders.append(f'{path.relative_to(DOCKET_READS)}:{number}: {line.strip()}')
+    assert offenders == []
+
+
+def test_the_unenroll_script_leaves_last_seasons_record(app, docket_two_seasons, monkeypatch):
+    """scripts/docket_unenroll_user.py removes this season's seat and picks
+    only; a past season's picks and results are that season's record."""
+    import importlib.util
+    import sys
+
+    from games.docket.models import DocketEnrollment, DocketPick, DocketWeekResult
+    from tests._docket_fixtures import make_user
+
+    spec = importlib.util.spec_from_file_location(
+        'docket_unenroll_user', Path(__file__).resolve().parent.parent / 'scripts'
+        / 'docket_unenroll_user.py')
+    script = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(script)
+
+    late = make_user('late')
+    db.session.add(DocketEnrollment(user_id=late.id, season_year=2025))
+    db.session.add(DocketEnrollment(user_id=late.id, season_year=2026))
+    old_week, (_w1, w2) = docket_two_seasons['old_weeks'][0], docket_two_seasons['weeks']
+    old_game = w2.games[0]
+    db.session.add(DocketWeekResult(user_id=late.id, week_id=old_week.id, points=1.0,
+                                    wins=1, error_tenths=0, graded_at=old_week.end_at))
+    for week in (old_week, w2):
+        db.session.add(DocketPick(user_id=late.id, week_id=week.id, game_id=old_game.id,
+                                  market='spread', side='home', slot=1,
+                                  line_value=-3.5, book='draftkings'))
+    db.session.commit()
+
+    monkeypatch.setattr(script, 'create_app', lambda: app)
+    monkeypatch.setattr(sys, 'argv', ['docket_unenroll_user.py', 'late', '--confirm'])
+    assert script.main() == 0
+    assert DocketEnrollment.query.filter_by(user_id=late.id).one().season_year == 2025
+    assert [p.week_id for p in DocketPick.query.filter_by(user_id=late.id)] == [old_week.id]

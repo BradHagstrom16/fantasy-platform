@@ -37,6 +37,7 @@ from games.docket.blueprint import docket_bp
 from games.docket.models import DocketEnrollment, DocketGame, DocketWeek
 from games.docket.services import picks as picks_service
 from games.docket.services import receipts as receipts_service
+from games.docket.services import week_reads
 from games.docket.services.bridge_sheet import SPORT_LABELS
 from games.docket.services.brief import build_brief
 from games.docket.services.enrollment import get_enrollment
@@ -553,18 +554,14 @@ RESULT_WORDS = {
 
 
 def _posted_week_numbers() -> list[int]:
-    """Week numbers holding at least one imported game, ascending — the
-    weeks All Sheets can navigate between. A week with no games has no
-    sheets to show, so it is never a nav stop."""
-    return sorted(db.session.scalars(
-        select(DocketWeek.week_number)
-        .join(DocketGame, DocketGame.week_id == DocketWeek.id)
-        .distinct()))
+    """This season's week numbers holding at least one imported game,
+    ascending — the weeks All Sheets can navigate between. A week with no
+    games has no sheets to show, so it is never a nav stop."""
+    return week_reads.posted_week_numbers()
 
 
 def _week_by_number(week_number: int) -> DocketWeek | None:
-    return db.session.scalar(
-        select(DocketWeek).filter_by(week_number=week_number))
+    return week_reads.week_by_number(week_number)
 
 
 def _sheets_week_nav(week, posted, current_week):

@@ -17,7 +17,7 @@ KICK = datetime(2026, 9, 5, 18, 0)
 def _seed_week(db, *, stamp_frozen_kickoff=True):
     from games.docket.models import DocketGame, DocketWeek
 
-    week = DocketWeek(week_number=1,
+    week = DocketWeek(season_year=2026, week_number=1,
                       start_at=datetime(2026, 9, 1, 11, 0),
                       end_at=datetime(2026, 9, 8, 11, 0),
                       deadline_at=DEADLINE)
@@ -103,7 +103,7 @@ def test_build_week_snapshot_requires_designation(app):
     from extensions import db
     from games.docket.models import DocketGame, DocketWeek
 
-    week = DocketWeek(week_number=2,
+    week = DocketWeek(season_year=2026, week_number=2,
                       start_at=datetime(2026, 9, 8, 11, 0),
                       end_at=datetime(2026, 9, 15, 11, 0),
                       deadline_at=datetime(2026, 9, 12, 16, 0))

@@ -44,6 +44,7 @@ from games.docket.models import (
     DocketTiebreakerPrediction,
     DocketWeek,
 )
+from games.docket.services import week_reads
 from games.docket.services.grading.snapshots import (
     BACKUP_SLOT,
     SCORING_SLOTS,
@@ -102,9 +103,7 @@ def current_week(now=None) -> DocketWeek | None:
     """The week containing now, or None outside the season/import window."""
     if now is None:
         now = now_naive()
-    return DocketWeek.query.filter(
-        DocketWeek.start_at <= now, DocketWeek.end_at > now
-    ).first()
+    return week_reads.week_containing(now)
 
 
 def upcoming_week(now=None) -> DocketWeek | None:
@@ -116,9 +115,7 @@ def upcoming_week(now=None) -> DocketWeek | None:
     boundary, so nothing pickable can ever come from here."""
     if now is None:
         now = now_naive()
-    return db.session.scalars(
-        select(DocketWeek).filter(DocketWeek.start_at > now)
-        .order_by(DocketWeek.start_at)).first()
+    return week_reads.next_week_after(now)
 
 
 def game_locked(game: DocketGame, now) -> bool:

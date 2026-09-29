@@ -33,10 +33,9 @@ import logging
 from dataclasses import dataclass
 from datetime import timedelta
 
-from sqlalchemy import select
-
 from extensions import db
 from games.docket.models import DocketWeek
+from games.docket.services import week_reads
 from games.docket.services.notifications import send_each
 from games.docket.services.purse import season_purse
 from games.docket.services.season_pass import season_ledger, week_standings
@@ -243,7 +242,7 @@ def pending_weeks(now=None):
     Paper's to carry; it is logged, not returned."""
     now = now or now_utc()
     weeks = db.session.scalars(
-        select(DocketWeek)
+        week_reads.week_query()
         .filter(DocketWeek.default_error_tenths.is_not(None),
                 DocketWeek.record_notified.is_(False))
         .order_by(DocketWeek.week_number)).all()

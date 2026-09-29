@@ -21,6 +21,7 @@ from games.docket.models import (
     DocketTiebreakerPrediction,
     DocketWeek,
 )
+from games.docket.services import week_reads
 from games.docket.services.grading.snapshots import BACKUP_SLOT, Market, Side
 from games.docket.services.picks import describe_pick
 from games.docket.services.season_pass import SeasonLedger, season_ledger
@@ -186,7 +187,7 @@ def build_brief(ledger: SeasonLedger | None = None) -> Brief:
     if ledger is None:
         ledger = season_ledger()
     weeks = db.session.scalars(
-        select(DocketWeek)
+        week_reads.week_query()
         .filter(DocketWeek.week_number.in_(list(ledger.week_numbers)))
         .options(joinedload(DocketWeek.tiebreaker_game))
         .order_by(DocketWeek.week_number)

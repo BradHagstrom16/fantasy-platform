@@ -7,15 +7,15 @@ the place is the ledger's own rank. The detail line mirrors ledger.html's
 formatting (points to one decimal, whole wins).
 """
 from games.docket.services.season_pass import season_ledger
-from games.docket.services.weeks import SEASON_YEAR
+from games.docket.services.weeks import SEASON_CALENDARS
 from models.records import FinishDraft, SeasonNotClosed
 
 
 def season_finishes(season_year: int) -> list[FinishDraft]:
-    # The ledger's weeks are not season-scoped (only its roster is), so any
-    # other year would read this season's graded weeks over an empty roster.
-    if season_year != SEASON_YEAR:
-        raise SeasonNotClosed(f'The Docket {season_year} is not the configured season')
+    # The year comes from the operator's command line: one with no calendar
+    # has no Docket season to close.
+    if season_year not in SEASON_CALENDARS:
+        raise SeasonNotClosed(f'The Docket has no {season_year} season')
     ledger = season_ledger(season_year)
     if not ledger.season_complete:
         raise SeasonNotClosed(

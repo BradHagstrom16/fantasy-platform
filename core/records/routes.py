@@ -15,7 +15,7 @@ from models.records import champions, finishes_for, seasons_on_record
 # page pinned to that season belongs here: this page is public, and a live
 # room page (the Docket's ledger is members-only and always the current
 # season) would send a visitor to a join page or to the wrong year. The
-# Docket's entry waits for its season-scoped archive (§E PR 4).
+# Docket's entry waits for a public page pinned to one season.
 SEASON_ARCHIVES = {
     ('cfb', 2025): 'cfb.history',
     ('worldcup', 2026): 'worldcup.leaderboard',

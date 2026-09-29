@@ -31,8 +31,8 @@ from sqlalchemy import func, select
 
 from extensions import db
 from games.docket.blueprint import docket_bp
-from games.docket.models import DocketEnrollment, DocketGame, DocketWeek
-from games.docket.services import admin_ops
+from games.docket.models import DocketEnrollment, DocketGame
+from games.docket.services import admin_ops, week_reads
 from games.docket.services.admin_ops import AdminOpError
 from games.docket.services.deadline_pass import check_designation
 from games.docket.services.enrollment import get_enrollment
@@ -59,8 +59,7 @@ def docket_admin_required(f):
 
 
 def _week_or_none(week_number):
-    return db.session.scalar(
-        select(DocketWeek).filter_by(week_number=week_number))
+    return week_reads.week_by_number(week_number)
 
 
 def _week_games(week):
@@ -106,8 +105,7 @@ def _refuse(exc: AdminOpError):
 @docket_bp.route('/admin/')
 @docket_admin_required
 def admin_dashboard():
-    weeks = db.session.scalars(
-        select(DocketWeek).order_by(DocketWeek.week_number)).all()
+    weeks = week_reads.season_weeks()
     now = now_naive()
     rows = []
     for week in weeks:

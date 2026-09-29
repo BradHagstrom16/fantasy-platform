@@ -40,10 +40,9 @@ def close(game, year, force):
     Refuses while the game says the season still runs, a board the record
     will not hold (empty, not a competition rank, a name or member twice),
     and a season already on record unless --force. Survivor 2025 reads the
-    frozen archive plus games/cfb/data/season_2025_links.json. Survivor's
-    live reads are season-scoped (ADR-069); the Docket's are not until PR 4
-    of the §E sequence, which is safe while its table holds one season and
-    must land before a second Docket season's rows exist.
+    frozen archive plus games/cfb/data/season_2025_links.json. Both games'
+    live reads are season-scoped (ADR-069), so a past season closes from
+    its own rows.
     """
     entry = get_entry(game)
     if entry.season_finishes is None:

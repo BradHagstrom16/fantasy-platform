@@ -15,7 +15,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import joinedload
 
 from extensions import db
-from games.docket.models import DocketPick, DocketWeek
+from games.docket.models import DocketPick
+from games.docket.services import week_reads
 from games.docket.services.bridge_sheet import SPORT_LABELS
 from games.docket.services.grading.snapshots import BACKUP_SLOT
 from games.docket.services.picks import describe_pick
@@ -50,8 +51,7 @@ def pick_history(week_numbers, user_ids) -> dict[int, dict[int, tuple[HistoryLin
     user_ids = tuple(user_ids)
     if not week_numbers or not user_ids:
         return {}
-    weeks = db.session.scalars(
-        select(DocketWeek).filter(DocketWeek.week_number.in_(week_numbers))).all()
+    weeks = week_reads.weeks_by_numbers(week_numbers)
     number_by_week_id = {week.id: week.week_number for week in weeks}
     picks = db.session.scalars(
         select(DocketPick)

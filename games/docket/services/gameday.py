@@ -20,6 +20,7 @@ from sqlalchemy import select
 
 from extensions import db
 from games.docket.models import DocketGame, DocketWeek
+from games.docket.services import week_reads
 from games.docket.services.enrollment import roster_user_ids_as_of
 from games.docket.services.grading_pass import try_grade_week
 from games.docket.services.importer import SPORTS
@@ -57,7 +58,7 @@ def _owning_weeks(sports):
     now = now_naive()
     week_ids = select(_qualifying(sports, now).subquery().c.week_id).distinct()
     return db.session.scalars(
-        select(DocketWeek).where(DocketWeek.id.in_(week_ids))
+        week_reads.week_query().where(DocketWeek.id.in_(week_ids))
         .order_by(DocketWeek.week_number)).all()
 
 
