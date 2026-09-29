@@ -283,15 +283,20 @@ def _push_pick_nag(week, window, deadline, now, user_ids):
     if not user_ids:
         return
     ttl = max(int((deadline - now).total_seconds()), 0)
-    # The phone stacks title / "from CCC" / body, and the title is one
-    # line: the title carries the whole message, the body one short line.
-    # A round name runs to 28 characters ("Conference Championship Week"),
-    # so December and January drop the filler to keep the body one line.
+    # iOS stacks title / "from CCC" / body: the title is one line and
+    # carries the deadline, the body at most two. A round name runs to 28
+    # characters ("Conference Championship Week"), so the round weeks drop
+    # the filler to stay inside that.
     week_name = get_week_display_name(week)
     if window['type'] == 'final':
         title = f'CFB pick locks in {format_time_left_compact(deadline, now)}'
-        body = (f'Last call: {week_name}.' if week.round_name
-                else f'Last call for {week_name}. No pick on file.')
+        # The final carries the consequence that bites, MISS_RULE's in
+        # push length: the Commish spends one of your teams for you. The
+        # title already says which pick, so a round week names no round.
+        missing = ('No pick yet.' if week.round_name
+                   else f'No pick for {week_name}.')
+        body = (f'{missing} Miss it and the Commish picks your biggest '
+                'favorite left.')
     else:
         title = f'CFB pick due {format_deadline_compact(deadline)}'
         body = (f'{week_name}: no pick yet.' if week.round_name
@@ -675,6 +680,21 @@ def _picked_team_display(game, team_id):
     return game.get_away_team_display()
 
 
+def _survive_body(tally):
+    """'You survive. So do 6 others. 3 fell. 31 remain.' — the pool's tally
+    for this run, each clause plural-safe; a clause with nothing to say
+    drops (no one else) or turns (nobody fell)."""
+    parts = ['You survive.']
+    others = max(tally['survived'] - 1, 0)
+    if others == 1:
+        parts.append('So does 1 other.')
+    elif others:
+        parts.append(f'So do {others} others.')
+    parts.append(f'{tally["fell"]} fell.' if tally['fell'] else 'Nobody fell.')
+    parts.append(f'{tally["remaining"]} remain.')
+    return ' '.join(parts)
+
+
 def push_survivor_verdicts(week, result):
     """Buzz each member their game verdict and the elimination ceremony.
 
@@ -726,23 +746,41 @@ def push_survivor_verdicts(week, result):
             team = _picked_team_display(games.get(game_id), team_id)
             if is_correct:
                 title = f'{team} won.'
-                body = 'You survive.'
-                if tally:
-                    others = max(tally['survived'] - 1, 0)
-                    body = (f'You survive. So do {others} others. '
-                            f'{tally["fell"]} fell. {tally["remaining"]} remain.')
+                body = _survive_body(tally) if tally else 'You survive.'
             else:
                 lives = enr[user_id].lives_remaining if user_id in enr else 0
                 title = f'{team} lost.'
-                body = f'You lose a life. {lives} left.'
+                body = f'You lose a life. Down to {lives}.'
             send_push([user_id], title=title, body=body, url=CFB_ROOM_URL,
                       tag=f'cfb-game-{game_id}', ttl=VERDICT_TTL, urgency='high')
 
+        # The ceremony says why: `graded` carries no eliminated member (they
+        # get this instead of a game verdict), so read their losing pick
+        # from the week itself; no losing pick means the DQ-2 no-pick. The
+        # cause is garnish like the tally: a failed read drops it.
         remaining = tally['remaining'] if tally else None
+        lost_picks = None
+        if eliminated:
+            try:
+                lost_picks = {p.user_id: p for p in CfbPick.query.options(
+                    joinedload(CfbPick.team)).filter(
+                        CfbPick.week_id == week.id,
+                        CfbPick.user_id.in_(eliminated),
+                        CfbPick.is_correct.is_(False)).all()}
+            except Exception:
+                db.session.rollback()
+                logger.warning('CFB ceremony cause read failed; cause-free '
+                               'bodies', exc_info=True)
         for user_id in eliminated:
             title = f'Your run ends at Week {week.week_number}.'
-            body = (f'{remaining} remain.' if remaining is not None
-                    else 'Your Survivor run is over.')
+            parts = []
+            if lost_picks is not None:
+                pick = lost_picks.get(user_id)
+                parts.append(f'{pick.team.name} lost.' if pick
+                             else 'No pick on file.')
+            if remaining is not None:
+                parts.append(f'{remaining} remain.')
+            body = ' '.join(parts) or 'Your Survivor run is over.'
             send_push([user_id], title=title, body=body, url=CFB_ROOM_URL,
                       tag=f'cfb-elim-{week.week_number}', ttl=VERDICT_TTL,
                       urgency='high')

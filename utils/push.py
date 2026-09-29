@@ -54,6 +54,10 @@ PUSH_TIMEOUT_SEC = 10
 PUSH_WALLCLOCK_BUDGET_SEC = 120
 # Push-service statuses that mean the subscription is dead — prune the row.
 _PRUNE_STATUSES = (404, 410)
+# The fixed test dispatch (the /app button and `flask push test`): it proves
+# the device is armed and says what will arrive on it.
+TEST_TITLE = "You're on the Wire."
+TEST_BODY = 'Pick deadlines and results will land here.'
 
 
 def _vapid_config():

@@ -34,7 +34,7 @@ from flask_login import current_user, login_required
 from core.push import push_bp
 from extensions import db, limiter
 from models.push import PushSubscription
-from utils.push import send_push_to_endpoint
+from utils.push import TEST_BODY, TEST_TITLE, send_push_to_endpoint
 
 logger = logging.getLogger(__name__)
 
@@ -167,15 +167,15 @@ def unsubscribe():
 @login_required
 @limiter.limit('1 per minute', key_func=_test_endpoint_key)
 def test_push():
-    """Send the fixed 'Message from the wire.' push to ONE of the caller's own
-    devices (the posted endpoint), so a member can confirm the wire works."""
+    """Send the fixed test push (utils.push.TEST_TITLE) to ONE of the caller's
+    own devices (the posted endpoint), so a member can confirm the Wire works."""
     endpoint = _json_dict().get('endpoint')
     if not isinstance(endpoint, str) or not endpoint:
         return jsonify({'ok': False, 'error': 'missing_endpoint'}), 400
     delivered = send_push_to_endpoint(
         current_user.id, endpoint,
-        title='Message from the wire.',
-        body='See you Saturday. Tap to come back.',
+        title=TEST_TITLE,
+        body=TEST_BODY,
         url='/app',
         tag='test',
     )

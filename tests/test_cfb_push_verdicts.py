@@ -151,11 +151,29 @@ def test_survive_pushes_with_tally(app):
     calls = {c.args[0][0]: c.kwargs for c in sp.call_args_list}
     kw = calls[u.id]
     assert kw['title'] == 'Ohio State won.'
-    assert kw['body'].startswith('You survive. So do 1 others.')
-    assert 'remain' in kw['body']
+    # 2 survived, nobody fell, both still alive.
+    assert kw['body'] == 'You survive. So does 1 other. Nobody fell. 2 remain.'
     assert kw['tag'] == f'cfb-game-{game.id}'
     assert kw['ttl'] == 6 * 3600 and kw['urgency'] == 'high'
     assert 'app_badge' not in kw  # verdicts never badge
+
+
+def test_survive_tally_drops_empty_clauses(app):
+    """No one else survived: no "So do 0 others." A fall is counted."""
+    week, home, away, game = _seed_one_game('home')
+    u = make_user('a')
+    make_enrollment(u, lives=2)
+    loser = make_user('b')
+    make_enrollment(loser, lives=2)
+    db.session.commit()
+    result = {'graded': [(u.id, game.id, home.id, True),
+                         (loser.id, game.id, away.id, False)],
+              'eliminated_user_ids': []}
+    with patch(_PATH) as sp:
+        push_survivor_verdicts(week, result)
+    calls = {c.args[0][0]: c.kwargs for c in sp.call_args_list}
+    assert calls[u.id]['body'] == 'You survive. 1 fell. 2 remain.'
+    assert calls[loser.id]['body'] == 'You lose a life. Down to 2.'
 
 
 def test_loss_with_a_life_left(app):
@@ -170,7 +188,7 @@ def test_loss_with_a_life_left(app):
         push_survivor_verdicts(week, result)
     kw = sp.call_args.kwargs
     assert kw['title'] == 'Michigan lost.'
-    assert kw['body'] == 'You lose a life. 1 left.'
+    assert kw['body'] == 'You lose a life. Down to 1.'
     assert kw['tag'] == f'cfb-game-{game.id}'
 
 
@@ -178,6 +196,7 @@ def test_loss_that_eliminates_gets_the_ceremony_not_a_game_push(app):
     week, home, away, game = _seed_one_game('home')
     u = make_user('a')
     make_enrollment(u, lives=0, eliminated=True)
+    make_pick(u, week, away, is_correct=False)
     db.session.commit()
     result = {'graded': [(u.id, game.id, away.id, False)],
               'eliminated_user_ids': [u.id]}
@@ -187,7 +206,8 @@ def test_loss_that_eliminates_gets_the_ceremony_not_a_game_push(app):
     kw = sp.call_args.kwargs
     assert kw['tag'] == f'cfb-elim-{week.week_number}'
     assert kw['title'] == f'Your run ends at Week {week.week_number}.'
-    assert 'remain' in kw['body']
+    # The ceremony says why: the game verdict it replaces never went out.
+    assert kw['body'] == 'Michigan lost. 0 remain.'
 
 
 def test_dq2_no_pick_elimination_ceremony_but_survivor_gets_nothing(app):
@@ -205,9 +225,10 @@ def test_dq2_no_pick_elimination_ceremony_but_survivor_gets_nothing(app):
     assert spared.id not in result['eliminated_user_ids']
     with patch(_PATH) as sp:
         push_survivor_verdicts(week, result)
-    pushed = {c.args[0][0] for c in sp.call_args_list}
+    pushed = {c.args[0][0]: c.kwargs for c in sp.call_args_list}
     assert doomed.id in pushed      # ceremony
     assert spared.id not in pushed  # no game, still alive → silent
+    assert pushed[doomed.id]['body'].startswith('No pick on file. ')
 
 
 def test_tally_read_failure_falls_back_to_short_body(app):
