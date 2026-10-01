@@ -659,6 +659,29 @@ def test_cli_paper_dry_run_prints_the_plan(app):
     assert 'would send 1 letter(s)' in result.output
 
 
+@pytest.mark.parametrize('sent_before, note', [
+    (False, '(graded, carried in this Paper)'),
+    (True, '(graded, already sent)'),
+])
+def test_cli_paper_record_line_reads_the_flag_as_the_paper_found_it(
+        app, monkeypatch, sent_before, note):
+    """The 2026-09-29 journal printed "already sent" for the record that
+    Paper had just carried, because the line read the flag after the latch."""
+    app.config['SITE_URL'] = SITE
+    seeded = seed('owes', 'incomplete')
+    week3 = _grade_docket_week3(seeded, monkeypatch,
+                                wins_by_user={seeded.user: 6})
+    week3.record_notified = sent_before
+    db.session.commit()
+    sent, patcher = capture()
+    cfb_open, docket_open = paper_openers(seeded)
+    with patcher, cfb_open, docket_open:
+        result = app.test_cli_runner().invoke(
+            args=['club', 'paper', '--now', '2026-09-22T06:15'])
+    assert result.exit_code == 0, result.output
+    assert f'record: docket week 3 {note}' in result.output
+
+
 def test_cli_scheduled_out_of_season_exits_zero(app):
     runner = app.test_cli_runner()
     result = runner.invoke(args=['club', 'desk', '--scheduled',

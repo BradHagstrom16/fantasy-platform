@@ -419,6 +419,7 @@ class PaperRun:
     opened: dict = field(default_factory=dict)      # slug -> week
     announced: dict = field(default_factory=dict)   # slug -> already announced
     record_week: object | None = None
+    record_was_sent: bool = False   # the record's flag as this run found it
     composed: list[Composed] = field(default_factory=list)
     delivered: dict = field(default_factory=dict)   # slug -> sections delivered (with a button)
     record_delivered: int = 0
@@ -523,6 +524,7 @@ def run_paper(now, *, dry_run=False, scheduled=False) -> PaperRun:
         record_week = consumer.record_week(week)
         if slug == 'docket':
             run.record_week = record_week
+            run.record_was_sent = bool(record_week and record_week.record_notified)
         for user_id, say in consumer.sections(week, record_week, now).items():
             says_by_user.setdefault(user_id, []).append(say)
 

@@ -185,9 +185,14 @@ def _paper(dry_run, now_raw, scheduled):
         click.echo(f'  open: {slug} week {week.week_number}{note}')
     if run.record_week is not None:
         graded = run.record_week.default_error_tenths is not None
+        if run.record_was_sent:
+            sent = ', already sent'
+        elif 'docket-record' in run.latched:
+            sent = ', carried in this Paper'
+        else:
+            sent = ''
         click.echo(f'  record: docket week {run.record_week.week_number} '
-                   f'({"graded" if graded else "not graded yet"}'
-                   f'{", already sent" if run.record_week.record_notified else ""})')
+                   f'({"graded" if graded else "not graded yet"}{sent})')
     for item in run.composed:
         user = item.user
         click.echo(f'  -> {user.get_display_name()} {_who(user, dry_run)}: '
