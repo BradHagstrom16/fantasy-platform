@@ -449,15 +449,19 @@ def _sheet_success(week, action):
     return _back_to_sheet()
 
 
+def _sheet_changed(week, action):
+    """Every member mutation ends here: stamp the sheet for its receipt
+    (services/receipts.py; the desk mails the sheet once the sitting is
+    over, never the route), then confirm in words."""
+    receipts_service.touch(current_user.id, week)
+    return _sheet_success(week, action)
+
+
 @docket_bp.route('/picks/set', methods=['POST'])
 @enrollment_required('docket')
 def set_pick():
     """Add a pick, or move a held market to its other side."""
     week = picks_service.current_week()
-    # Counted before the write: the sheet receipt fires on the one mutation
-    # that takes the scoring count from 7 to 8 (services/receipts.py).
-    before = (receipts_service.scoring_count(current_user.id, week)
-              if week is not None else 0)
     try:
         pick = picks_service.set_pick(
             current_user.id,
@@ -469,11 +473,6 @@ def set_pick():
         )
     except PickError as err:
         return _sheet_error(err)
-    after = receipts_service.scoring_count(current_user.id, week)
-    if receipts_service.sheet_just_filed(before, after):
-        # After the commit, never gating it: a refused send is a log line.
-        receipts_service.send_sheet_receipt(
-            current_user, get_enrollment(current_user.id), week)
     # One pick is "held"; only the whole sheet is ever "filed" (the ask
     # ladder and the filed card own that word).
     if pick.slot == BACKUP_SLOT:
@@ -481,7 +480,7 @@ def set_pick():
                   'thrown out.')
     else:
         action = f'Held, slot {pick.slot}.'
-    return _sheet_success(week, action)
+    return _sheet_changed(week, action)
 
 
 @docket_bp.route('/picks/remove', methods=['POST'])
@@ -498,7 +497,7 @@ def remove_pick():
         )
     except PickError as err:
         return _sheet_error(err)
-    return _sheet_success(week, 'Pick removed.')
+    return _sheet_changed(week, 'Pick removed.')
 
 
 @docket_bp.route('/best', methods=['POST'])
@@ -520,7 +519,7 @@ def set_best():
             action = f'x2 set: {picks_service.describe_pick(row)}.'
     except PickError as err:
         return _sheet_error(err)
-    return _sheet_success(week, action)
+    return _sheet_changed(week, action)
 
 
 @docket_bp.route('/tiebreaker', methods=['POST'])
@@ -538,7 +537,7 @@ def set_tiebreaker():
                   f'{picks_service.format_tenths(row.prediction_tenths)}.')
     else:
         action = 'Number cleared.'
-    return _sheet_success(week, action)
+    return _sheet_changed(week, action)
 
 
 # --------------------------------------------------------------------------

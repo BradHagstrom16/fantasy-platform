@@ -25,6 +25,10 @@ from games.docket.services.notifications import sheet_url
 from games.docket.services.opener import open_week as _open_by_number
 from games.docket.services.payment import payment_nudge_for
 from games.docket.services.picks import sheet_state
+from games.docket.services.receipts import (
+    compose_receipts,
+    mark_receipt_sent,
+)
 from games.docket.services.record import (
     ordinal,
     points_text,
@@ -148,6 +152,16 @@ def _push(week, tier, now, user_ids):
     _push_deadline_nag(week, tier, to_naive_utc(now), user_ids)
 
 
+def _receipts(week, now):
+    """The sheet receipts owed at this firing (services/receipts.py: owed,
+    filed, the sitting over or the docket closed)."""
+    return compose_receipts(week, to_naive_utc(now))
+
+
+def _receipt_sent(row, now):
+    mark_receipt_sent(row, to_naive_utc(now))
+
+
 REMINDER = ReminderConsumer(
     slug=SLUG,
     week=_week,
@@ -162,6 +176,8 @@ REMINDER = ReminderConsumer(
     tier_sent=_tier_sent,
     mark_sent=_mark_sent,
     push=_push,
+    receipts=_receipts,
+    receipt_sent=_receipt_sent,
 )
 
 

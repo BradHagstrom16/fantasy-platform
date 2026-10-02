@@ -59,6 +59,7 @@ from games.docket.models import (
     DocketGame,
     DocketPick,
     DocketTiebreakerPrediction,
+    DocketSheetReceipt,
     DocketWeekResult,
     DocketLineCorrection,
 )
@@ -93,6 +94,7 @@ __all__ = [
     'DocketGame',
     'DocketPick',
     'DocketTiebreakerPrediction',
+    'DocketSheetReceipt',
     'DocketWeekResult',
     'DocketLineCorrection',
 ]

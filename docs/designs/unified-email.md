@@ -349,7 +349,7 @@ Existing deployment pipeline covers this (`deploy.sh` syncs unit files; a unit e
 
 ## NOT in scope
 
-- Receipts, line-correction and redesignation notices: event-driven, nothing to merge.
+- Line-correction and redesignation notices: event-driven, nothing to merge. (The Docket's sheet receipt joined the reminder desk on 2026-10-02, ADR-070: `ReminderConsumer.receipts` drains it as its own letter after the reminders; CFB's stays per pick, from the route.)
 - Per-member email-vs-push preference: a separate feature with its own profile UI.
 - Wiring golf: one consumer plus one line when golf's reminders are built.
 - Folding Survivor's Sunday recap into the Paper: the verdict is time-sensitive (ADR-063).
