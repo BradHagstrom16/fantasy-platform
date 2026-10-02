@@ -60,6 +60,14 @@ def _echo_letters(composed, dry_run):
                    f'"{item.letter.subject}" [{item.anchor}{rider}]')
 
 
+def _echo_receipts(receipts, dry_run):
+    for item in receipts:
+        user = item.user
+        click.echo(f'  receipt -> {user.get_display_name()} '
+                   f'{_who(user, dry_run)}: "{item.letter.subject}" '
+                   f'[{item.consumer.slug}]')
+
+
 @club_cli.command('desk')
 @click.option('--dry-run', is_flag=True,
               help='Compose and print; send nothing, write nothing.')
@@ -105,20 +113,14 @@ def _desk(dry_run, now_raw, anchors, rides, scheduled):
 
     for slug, why in run.skipped.items():
         click.echo(f'  {slug}: {why}')
+    if not run.anchors and run.exit_code:
+        message = ('nothing to do: no game named in --anchor has a week '
+                   '(out of season or not imported)')
+        click.secho(f'ERROR: {message}', fg='red', err=True)
+        mark_run('error', message)
+        raise SystemExit(1)
     if not run.anchors:
-        if run.exit_code:
-            message = ('nothing to do: no game named in --anchor has a week '
-                       '(out of season or not imported)')
-            click.secho(f'ERROR: {message}', fg='red', err=True)
-            mark_run('error', message)
-            raise SystemExit(1)
         click.echo('  no tier is due right now')
-        if all(slug in run.skipped for slug in anchor_slugs):
-            mark_run('stood_down', '; '.join(
-                f'{slug}: {why}' for slug, why in run.skipped.items()))
-        else:
-            mark_run('idle', 'no tier is due')
-        return
     for anchor in run.anchors:
         rider = (f' + rider {anchor.rider.consumer.slug}/{anchor.rider.tier}'
                  if anchor.rider else '')
@@ -127,22 +129,33 @@ def _desk(dry_run, now_raw, anchors, rides, scheduled):
                    f'{anchor.deadline.astimezone(PLATFORM_TZ):%a %-I:%M %p} CT)'
                    f'{rider}')
     _echo_letters(run.composed, dry_run)
+    _echo_receipts(run.receipts, dry_run)
     for error in run.errors:
         click.secho(f'  ERROR: {error}', fg='red', err=True)
     if dry_run:
         latch = ', '.join(f'{k}={v}' for k, v in run.latched.items()) or 'nothing'
-        click.echo(f'  would send {len(run.composed)} letter(s); would latch: '
-                   f'{latch}')
+        click.echo(f'  would send {len(run.composed)} letter(s) and '
+                   f'{len(run.receipts)} receipt(s); would latch: {latch}')
         return
-    click.echo(f'  delivered: {run.delivered or "nothing"}; latched: '
-               f'{run.latched or "nothing"}')
-    anchors_line = ', '.join(f'{a.consumer.slug}/{a.tier}' for a in run.anchors)
+    receipts = sum(run.delivered_receipts.values())
+    click.echo(f'  delivered: {run.delivered or "nothing"}; receipts: '
+               f'{receipts}; latched: {run.latched or "nothing"}')
+    if not run.anchors and not receipts:
+        if all(slug in run.skipped for slug in anchor_slugs):
+            mark_run('stood_down', '; '.join(
+                f'{slug}: {why}' for slug, why in run.skipped.items()))
+        else:
+            mark_run('idle', 'no tier is due')
+        return
+    anchors_line = (', '.join(f'{a.consumer.slug}/{a.tier}'
+                              for a in run.anchors) or 'no tier due')
     if run.exit_code:
         click.secho('ERROR: an active reminder tier reached nobody',
                     fg='red', err=True)
         mark_run('error', f'{anchors_line}: an active reminder tier reached nobody')
         raise SystemExit(run.exit_code)
-    mark_run('ok', f'{anchors_line}: {len(run.composed)} letter(s)')
+    mark_run('ok', f'{anchors_line}: {len(run.composed)} letter(s), '
+                   f'{receipts} receipt(s)')
 
 
 @club_cli.command('paper')

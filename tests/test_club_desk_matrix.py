@@ -9,6 +9,7 @@ CAPTURED RENDERED letters (the desk's one send site patched), never a
 mocked builder: the recipient, which game owns the subject, which sections
 or rider the letter carries, and which flags latch afterwards.
 """
+from datetime import timedelta
 from unittest.mock import patch
 
 import pytest
@@ -16,7 +17,7 @@ import pytest
 from extensions import db
 from games.cfb.models import CfbWeek
 from games.club_desk import run_desk, run_paper
-from games.docket.models import DocketWeek
+from games.docket.models import DocketSheetReceipt, DocketWeek
 from tests._club_desk_fixtures import (
     D_AT,
     DOCKET_STATES,
@@ -93,6 +94,50 @@ def test_reminder_slot(app, slot, survivor, docket_state):
     assert cfb_week.last_reminder_type == latches.get('cfb')
     assert docket_week.last_reminder_tier == latches.get('docket')
     assert run.latched == latches
+
+
+@pytest.mark.parametrize('slot', ['F', 'S', 'D'])
+@pytest.mark.parametrize(('survivor', 'docket_state'), STATES)
+def test_an_owed_sheet_receipt_never_moves_the_matrix(
+        app, slot, survivor, docket_state):
+    """The desk drains Docket sheet receipts on the same firing
+    (services/receipts.py). With the seeded member also owed a receipt,
+    every reminder outcome above stands unchanged; the receipt rides as its
+    own letter only for a filed sheet (the 'complete' state), after the
+    reminders."""
+    app.config['SITE_URL'] = SITE
+    seeded = seed(survivor, docket_state)
+    if seeded.docket_enrollment is not None:
+        db.session.add(DocketSheetReceipt(
+            user_id=seeded.user.id, week_id=seeded.docket.week4.id,
+            touched_at=(AT[slot] - timedelta(hours=1)).replace(tzinfo=None)))
+        db.session.commit()
+    owner, rider, latches = _expect_slot(slot, survivor, docket_state)
+
+    sent, patcher = capture()
+    with patcher, patch('games.cfb.services.reminders.send_push'), \
+            patch('games.docket.services.reminders.send_push'):
+        run = run_desk(AT[slot], anchors=('cfb', 'docket'), rides=('F', 'S'))
+
+    assert run.exit_code == 0
+    reminders = [s for s in sent if not s['subject'].startswith('Sheet filed')]
+    receipts = [s for s in sent if s['subject'].startswith('Sheet filed')]
+    if owner is None:
+        assert reminders == []
+    else:
+        assert len(reminders) == 1
+        expected = (CFB_SUBJECT if owner == 'cfb' else DOCKET_SUBJECT)[slot]
+        assert reminders[0]['subject'] == expected
+        assert (RIDER_MARK in reminders[0]['plain']) is rider
+    assert run.latched == latches
+    if docket_state == 'complete':
+        assert [r['subject'] for r in receipts] == [
+            'Sheet filed: The Docket, Week 4']
+        assert sent.index(receipts[0]) == len(sent) - 1
+        assert run.delivered_receipts == {'docket': 1}
+    else:
+        assert receipts == []
+        assert run.delivered_receipts == {}
 
 
 def test_paper_names_a_survivor_round(app):

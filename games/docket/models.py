@@ -315,6 +315,43 @@ class DocketTiebreakerPrediction(db.Model):
                 f'w{self.week_id} {self.prediction_tenths}>')
 
 
+class DocketSheetReceipt(db.Model):
+    """The receipt owed for one member's sheet in one week (Brad,
+    2026-10-02, amending the "Filed only" ruling; services/receipts.py).
+
+    ``touched_at`` is the member's last edit of the sheet (every member
+    mutation route stamps it); ``sent_at`` is when the Club Desk last mailed
+    the sheet. The receipt is OWED while ``sent_at`` is null or behind
+    ``touched_at``; the desk's hourly firing mails each owed, filed sheet
+    once and stamps ``sent_at``. One row per (user, week); both columns are
+    naive UTC under the D6 contract.
+    """
+    __tablename__ = 'docket_sheet_receipt'
+    __table_args__ = (
+        db.UniqueConstraint('user_id', 'week_id',
+                            name='uq_docket_sheet_receipt_user_week'),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'),
+                        nullable=False, index=True)
+    week_id = db.Column(db.Integer, db.ForeignKey('docket_week.id'),
+                        nullable=False, index=True)
+    touched_at = db.Column(db.DateTime, nullable=False)
+    sent_at = db.Column(db.DateTime, nullable=True)
+    # Audit timestamp (the first touch of the week): real wall clock, never
+    # the fake-now seam, stripped to naive UTC like every docket table.
+    created_at = db.Column(
+        db.DateTime, default=lambda: to_naive_utc(datetime.now(UTC)))
+
+    user = db.relationship('User', foreign_keys=[user_id])
+    week = db.relationship('DocketWeek', foreign_keys=[week_id])
+
+    def __repr__(self):
+        return (f'<DocketSheetReceipt u{self.user_id} w{self.week_id} '
+                f'touched={self.touched_at} sent={self.sent_at}>')
+
+
 class DocketWeekResult(db.Model):
     """Per-user week grade, written by the grading pass (D14).
 

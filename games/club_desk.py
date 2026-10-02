@@ -89,6 +89,13 @@ class ReminderConsumer:
     source of the rider line. ``tier_sent`` / ``mark_sent`` wrap the game's
     per-week flag; ``mark_sent`` stages only (monotonic, no commit).
     ``push`` buzzes the game's own recipients with its own tag.
+
+    ``receipts(week, now)`` (optional) is the game's sheet receipts owed at
+    this firing, ``[(user, letter, token)]``, mailed as their own letters
+    after the reminders (the Docket, services/receipts.py); ``receipt_sent
+    (token, now)`` stages the mark on acceptance (no commit). A member who
+    already gets a letter carrying this game's section this firing gets no
+    receipt and is marked anyway: the reminder wins.
     """
     slug: str
     week: Callable[[datetime], object | None]
@@ -103,6 +110,8 @@ class ReminderConsumer:
     tier_sent: Callable[[object, str], bool]
     mark_sent: Callable[[object, str], None]
     push: Callable[[object, str, datetime, list], None]
+    receipts: Callable[[object, datetime], list] | None = None
+    receipt_sent: Callable[[object, datetime], None] | None = None
 
 
 @dataclass(frozen=True)
@@ -190,12 +199,24 @@ class Composed:
 
 
 @dataclass
+class Receipt:
+    """One sheet receipt the desk would send: its own letter, after the
+    reminders, marked through the game's ``receipt_sent`` on acceptance."""
+    consumer: ReminderConsumer
+    user: object
+    letter: Letter
+    token: object
+
+
+@dataclass
 class DeskRun:
     now: datetime
     anchors: list[Anchor] = field(default_factory=list)
     skipped: dict = field(default_factory=dict)     # slug -> why (no week)
     composed: list[Composed] = field(default_factory=list)
+    receipts: list[Receipt] = field(default_factory=list)
     delivered: dict = field(default_factory=dict)   # slug -> letters delivered
+    delivered_receipts: dict = field(default_factory=dict)  # slug -> receipts
     pushed: dict = field(default_factory=dict)      # slug -> user ids pushed
     latched: dict = field(default_factory=dict)     # slug -> tier
     recipients: dict = field(default_factory=dict)  # slug -> recipient count
@@ -324,15 +345,51 @@ def _send(run):
             logger.warning('Desk letter to user %s was not accepted', user.id)
 
 
+def _compose_receipts(consumers, anchors, now, run):
+    """Every game's owed sheet receipts at this firing, on every firing
+    that has a week (a tier need not be due). The reminder wins: a member
+    whose letter this firing already carries the game's section is marked
+    sent without a receipt."""
+    for consumer in consumers:
+        if consumer.slug not in anchors or consumer.receipts is None:
+            continue
+        week = consumer.week(now)
+        if week is None:
+            continue
+        reminded = {c.user.id for c in run.composed if consumer.slug in c.games}
+        for user, letter, token in consumer.receipts(week, now):
+            if user.id in reminded:
+                consumer.receipt_sent(token, now)
+                continue
+            run.receipts.append(Receipt(consumer=consumer, user=user,
+                                        letter=letter, token=token))
+
+
+def _send_receipts(run):
+    """A refused receipt stays owed (its row is not marked), so the next
+    firing tries again; it never fails the run."""
+    for receipt in run.receipts:
+        user = receipt.user
+        plain, html = render_letter(receipt.letter)
+        if send_platform_email(user.email, receipt.letter.subject, plain, html):
+            receipt.consumer.receipt_sent(receipt.token, run.now)
+            slug = receipt.consumer.slug
+            run.delivered_receipts[slug] = run.delivered_receipts.get(slug, 0) + 1
+        else:
+            logger.warning('Desk receipt to user %s was not accepted', user.id)
+
+
 def run_desk(now, *, anchors=ANCHOR_SLUGS, rides=(), dry_run=False,
              scheduled=False) -> DeskRun:
     """One firing of the reminder desk at ``now`` (aware).
 
     ``anchors`` names the games the desk may lead for, ``rides`` the slots
     that may carry a rider (both live on the unit's ``ExecStart`` line in
-    production). Returns the run record; ``exit_code`` is 1 when an active
-    anchor with recipients delivered to nobody, or when nothing named in
-    ``anchors`` has a week and the run was not ``scheduled``.
+    production). The same firing drains each anchored game's owed sheet
+    receipts (``ReminderConsumer.receipts``), tier due or not. Returns the
+    run record; ``exit_code`` is 1 when an active anchor with recipients
+    delivered to nobody, or when nothing named in ``anchors`` has a week
+    and the run was not ``scheduled``; a refused receipt never sets it.
     """
     run = DeskRun(now=now, dry_run=dry_run)
     consumers = _reminder_consumers()
@@ -347,6 +404,7 @@ def run_desk(now, *, anchors=ANCHOR_SLUGS, rides=(), dry_run=False,
     pushes = {}
     for anchor in run.anchors:
         pushes.update(_compose_slot(anchor, now, run))
+    _compose_receipts(consumers, anchors, now, run)
     if dry_run:
         carried = _games_with_recipients(run)
         for anchor in run.anchors:
@@ -356,6 +414,7 @@ def run_desk(now, *, anchors=ANCHOR_SLUGS, rides=(), dry_run=False,
         return run
 
     _send(run)
+    _send_receipts(run)
 
     # Push rides on each game's own recipients regardless of the mail
     # outcome (a mail outage is exactly when push matters), with each

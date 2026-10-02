@@ -172,6 +172,8 @@ receipt; the sheet stays the record.
   options "filed + on the record" and "any change, hourly" were declined). The trigger is
   the 7→8 transition, stateless by design; a removal followed by a new side sends the sheet
   again. Code: `games/<game>/services/receipts.py`; doctrine `games/docket/DESIGN.md` §9.
+  **Amended 2026-10-02** (the last entry below): the Docket's receipt is now one per sitting,
+  through the hourly desk.
 
 ### 2026-09-04 — All Sheets: per-case reveal at kickoff (Brad)
 
@@ -219,3 +221,31 @@ operator ran `flask docket recalc 1`.
   week the morning after Monday Night Football; it is simply no longer the last chance.
 - Locked by `tests/test_docket_cli.py` (`test_scores_mode_catches_up_the_previous_ungraded_week`,
   `..._leaves_a_graded_previous_week_alone`, `..._catch_up_that_is_not_ready_stays_exit_zero`).
+
+### 2026-10-02 — Receipts, amended: one per sitting, through the desk (Brad)
+
+The "Filed only" receipt fired the moment the eighth side was held, but the sheet's ask ladder
+then asks for the x2, the number and (optionally) the reserve, so in the normal flow the letter
+read "Still open on your sheet: No headliner named. No combined-score number recorded." by the
+time it was opened; and a removal followed by a new side re-sent it, so the tinkerers drew three
+to ten a week (prod journal: Week 2, 19 members and 32 receipts; Week 4, 19 and 30). Options put
+to Brad: fire on the last obligation (instant and stateless, but it cannot see a reserve held after
+the number and leaves volume where it is), debounce through the hourly Club Desk, a five-minute
+timer of its own, keep the trigger and reword the open-items block.
+
+- **One receipt per sitting, through the hourly desk.** Every member edit stamps the member's
+  `docket_sheet_receipt` row; each `club-remind` firing mails every owed, FILED sheet (eight
+  sides the member held) as it stands, once, after a ten-minute quiet period, and marks it sent.
+  The letter carries all eight sides, the x2, the number and the reserve. Up to an hour late, by
+  decision: the sheet page answers "did it go through" at once.
+- **The noon firing still mails.** A member who edits in Sunday's last hour gets the sheet they
+  themselves filed from the 12:00 firing (two minutes before the autopick pass), worded as
+  closed; the quiet period is waived there. An autopicked sheet never gets a receipt, so this
+  stays a receipt for what the member filed, not the post-deadline letter the 2026-09-04 ruling
+  declined.
+- A change after a sent receipt resends once as "Sheet updated"; a reminder in the same firing
+  satisfies the receipt; a refused send is retried next hour. Nothing mails from a route.
+
+Code: `games/docket/services/receipts.py` (the touch and the drain) and the receipt step in
+`games/club_desk.py`; doctrine `games/docket/DESIGN.md` §9; ADR-070.
+`tests/test_docket_sheet_receipt.py`, `tests/test_club_desk_matrix.py`.
