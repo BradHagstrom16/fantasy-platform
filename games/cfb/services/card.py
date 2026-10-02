@@ -78,8 +78,9 @@ def build_player_card(user_id, enrollment, *, revealed_only=False):
         pick.week_display = {
             'display_name': get_week_display_name(pick.week),
             'short_label': get_week_short_label(pick.week),
+            # A named regular-season week is championship weekend.
             'badge_type': 'playoff' if is_week_playoff(pick.week) else (
-                'conference' if pick.week.week_number == 15 else None
+                'conference' if pick.week.round_name else None
             ),
         }
 
@@ -193,7 +194,7 @@ def build_player_card(user_id, enrollment, *, revealed_only=False):
             'display_name': get_week_display_name(display_week),
             'short_label': get_week_short_label(display_week),
             'badge_type': 'playoff' if is_week_playoff(display_week) else (
-                'conference' if display_week.week_number == 15 else None
+                'conference' if display_week.round_name else None
             ),
             'progress_text': get_week_display_name(display_week),
         }

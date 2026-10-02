@@ -196,7 +196,7 @@ def is_autopick(pick, week):
 def get_week_display_name(week):
     """Get the full display name for a week.
 
-    Returns "Week 1"–"Week 14" for regular season,
+    Returns "Week N" for a regular-season week,
     or the custom round_name for special weeks.
     """
     if not week:
@@ -209,7 +209,7 @@ def get_week_display_name(week):
 def get_week_short_label(week):
     """Get the short label for a week (used in navigation buttons).
 
-    Returns "W1"–"W14" for regular season,
+    Returns "WN" for a regular-season week,
     "CCW", "R1", "QF", "SF", "F" for special weeks.
     """
     if not week:

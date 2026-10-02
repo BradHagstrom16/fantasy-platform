@@ -7,14 +7,16 @@ future change to it is deliberate:
   - ``_calculate_week_dates`` regular-season cadence (Saturday 11am Central,
     weekly), anchored on ``season_schedule(2026)['week_1_start']``.
   - The §3 deferral: weeks 16-19 (CFP) currently get the SAME rigid Saturday
-    cadence even though the real playoff is Thu/Fri quarterfinals and a Monday
-    National Championship. Postseason automation is deferred for season one
-    (manual weekly setup per the runbook); this lock makes any future
-    real-CFP-schedule fix update the test on purpose rather than by surprise.
+    cadence even though the real playoff is not weekly (2026-27: quarterfinals
+    Wed Dec 30 and Fri Jan 1, semifinals Jan 14-15, the final Mon Jan 25).
+    Week 16 (first round, Dec 18-19) happens to fit its slot; the later
+    rounds are the December plan's (docs/open-items.md section I, due before
+    setup creates Week 17 on Mon Dec 14). This lock makes that fix update the
+    test on purpose rather than by surprise.
   - ``get_cfp_eliminated_teams`` (a playoff-week loser is out) and the
     ``make_pick`` route guard that bars picking a CFP-eliminated team.
 
-Phase-scoping itself (DQ-3 week-15 regular pool, the week-16 reset, DQ-7
+Phase-scoping itself (DQ-3 week-14 regular pool, the week-16 reset, DQ-7
 lifetime cumulative spread) is already locked in tests/test_cfb_used_teams.py —
 not duplicated here.
 
@@ -111,7 +113,7 @@ def test_regular_season_weeks_are_weekly_saturday_11am(app):
     America/Chicago DST fall-back (early November) doesn't read as a drift."""
     from datetime import timedelta
 
-    last = season_schedule(2026)['regular_season_weeks']  # 14
+    last = season_schedule(2026)['regular_season_weeks']  # 13
     prev = None
     for n in range(1, last + 1):
         _, deadline = _calculate_week_dates(n)
@@ -125,13 +127,14 @@ def test_regular_season_weeks_are_weekly_saturday_11am(app):
 def test_cfp_weeks_use_the_same_rigid_saturday_cadence_audit_s3_deferral(app):
     """Audit §3 deferral, characterized.
 
-    CFP postseason automation is DEFERRED for season one: real CFP rounds are
-    Thu/Fri quarterfinals around Jan 1 and a Monday National Championship, but
-    _calculate_week_dates still hands weeks 16-19 the rigid Saturday-11am weekly
-    cadence. That mismatch is why those weeks are set up MANUALLY per the
-    runbook. This test pins the current (deferred) behavior on purpose — if a
-    future change teaches the schedule the real CFP dates, update this lock
-    deliberately rather than discovering the break in production.
+    CFP postseason automation is DEFERRED: the real rounds after the first
+    are not weekly (quarterfinals Wed Dec 30 and Fri Jan 1, semifinals Jan
+    14-15, a Monday final Jan 25), but _calculate_week_dates still hands
+    weeks 16-19 the rigid Saturday-11am weekly cadence. The December plan
+    (docs/open-items.md section I) fixes weeks 17-19 before setup creates
+    Week 17 on Mon Dec 14. This test pins the current (deferred) behavior on
+    purpose — when that plan teaches the schedule the real CFP dates, update
+    this lock deliberately rather than discovering the break in production.
     """
     from datetime import timedelta
 

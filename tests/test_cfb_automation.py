@@ -267,10 +267,10 @@ def test_run_setup_alerts_on_unresolvable_team_names(mock_get, mock_send, app):
 def test_run_setup_applies_special_week_names_and_flags(
         mock_get, mock_send, app):
     """§8.14: special weeks get the season calendar's round names + playoff flags
-    (week 15 CCW stays regular-season per DQ-3)."""
+    (week 14 CCW stays regular-season per DQ-3)."""
     from games.cfb.services.automation import run_setup
     alabama, georgia = _prep_setup(app)
-    for n in range(1, 15):
+    for n in range(1, 14):
         w = make_week(n)
         make_game(w, alabama, georgia)
     db.session.commit()
@@ -278,10 +278,46 @@ def test_run_setup_applies_special_week_names_and_flags(
 
     result = run_setup()
 
-    assert result['week_number'] == 15
-    week15 = CfbWeek.query.filter_by(week_number=15).first()
-    assert week15.round_name == 'Conference Championship Week'
-    assert week15.is_playoff_week is False
+    assert result['week_number'] == 14
+    week14 = CfbWeek.query.filter_by(week_number=14).first()
+    assert week14.round_name == 'Conference Championship Week'
+    assert week14.is_playoff_week is False
+
+
+@patch('games.cfb.services.automation.send_platform_email', return_value=True)
+@patch('games.cfb.services.odds_api.requests.get')
+def test_run_setup_steps_over_army_navy_week(mock_get, mock_send, app):
+    """ADR-071: the Mondays after Week 13 create championship weekend (14),
+    then CFP First Round (16) on its own Thu-Wed week, never a Week 15:
+    Army-Navy week has no pick (Brad, 2026-10-02). Setup reads no clock, so
+    three runs in a row are the Mon Nov 30, Dec 7 and Dec 14 firings."""
+    from games.cfb.services import weeks as week_reads
+    from games.cfb.services.automation import run_setup
+    alabama, georgia = _prep_setup(app)
+    for n in range(1, 14):
+        make_game(make_week(n), alabama, georgia)
+    db.session.commit()
+    mock_get.return_value = _api_response([_setup_event()])
+
+    created = [run_setup()['week_number'] for _ in range(3)]
+
+    assert created == [14, 16, 17]
+    assert week_reads.week_by_number(15) is None
+    import_starts = [c.kwargs['params']['commenceTimeFrom']
+                     for c in mock_get.call_args_list]
+    assert import_starts == ['2026-12-03T06:00:00Z', '2026-12-17T06:00:00Z',
+                             '2026-12-24T06:00:00Z']
+    rows = {n: week_reads.week_by_number(n) for n in created}
+    assert [(rows[n].round_name, rows[n].is_playoff_week) for n in created] == [
+        ('Conference Championship Week', False),
+        ('CFP First Round', True),
+        ('CFP Quarterfinals', True),
+    ]
+    assert [rows[n].deadline.replace(tzinfo=None) for n in created] == [
+        datetime(2026, 12, 5, 11, 0),
+        datetime(2026, 12, 19, 11, 0),
+        datetime(2026, 12, 26, 11, 0),
+    ]
 
 
 # ── §5/§8.15 — spread updates: bookmaker selection + NULL surfacing ──────
@@ -926,7 +962,7 @@ def test_week_short_labels_match_season_schedule_round_names(app):
     because the map expected 'CFP Round 1'/'CFP Championship'."""
     from games.cfb.constants import season_schedule
     from games.cfb.utils import get_week_short_label
-    expected = {15: 'CCW', 16: 'R1', 17: 'QF', 18: 'SF', 19: 'F'}
+    expected = {14: 'CCW', 16: 'R1', 17: 'QF', 18: 'SF', 19: 'F'}
 
     for number, info in season_schedule(2026)['special_weeks'].items():
         week = make_week(number)

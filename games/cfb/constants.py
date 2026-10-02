@@ -36,12 +36,20 @@ SEASON_SCHEDULES = {
         'default_deadline_hour': 11,
         'default_deadline_minute': 0,
 
-        # Regular season runs weeks 1-14
-        'regular_season_weeks': 14,
+        # Week N is the Nth Thursday-to-Wednesday week from week_1_start.
+        # Plain regular-season weeks run 1-13 (Saturdays Sep 5 - Nov 28).
+        'regular_season_weeks': 13,
 
-        # Special weeks (Conference Championship Week and CFP rounds)
+        # Army-Navy week (Dec 10-16; the game is Sat Dec 12): the pool makes
+        # no pick (Brad, 2026-10-02). Setup steps over it, so every pool week
+        # keeps the number of its calendar week (ADR-071).
+        'no_pick_weeks': (15,),
+
+        # Special weeks (Conference Championship Week and CFP rounds). The
+        # championship line's shape is read by Brad's survivor-edge skill
+        # (tests/test_cfb_season_calendar.py).
         'special_weeks': {
-            15: {'name': 'Conference Championship Week', 'is_playoff': False},
+            14: {'name': 'Conference Championship Week', 'is_playoff': False},
             16: {'name': 'CFP First Round', 'is_playoff': True},
             17: {'name': 'CFP Quarterfinals', 'is_playoff': True},
             18: {'name': 'CFP Semifinals', 'is_playoff': True},
@@ -68,9 +76,29 @@ def season_schedule(year):
     return SEASON_SCHEDULES[year]
 
 
+def next_pool_week(year, number):
+    """The pool week after week ``number`` of season ``year``, stepping over
+    the calendar's no-pick weeks (ADR-071)."""
+    following = number + 1
+    while following in season_schedule(year)['no_pick_weeks']:
+        following += 1
+    return following
+
+
+def pool_week_name(year, number):
+    """What the calendar calls week ``number``: its round name, else
+    ``Week N`` (the name setup gives the week when it creates it)."""
+    special = season_schedule(year)['special_weeks'].get(number)
+    return special['name'] if special else f'Week {number}'
+
+
 # Each entry: (short_display_name, odds_api_full_name, odds_api_id, conference, is_2026_incoming)
 # Total: 138 teams (136 FBS 2025 + 2 incoming 2026)
-# Source: The Odds API /participants endpoint (Feb 2026, 1 credit)
+# Source: The Odds API /participants endpoint (Feb 2026, 1 credit).
+# Conferences as of the 2026 season (realignment effective Jul 1 2026,
+# checked 2026-10-02): five Mountain West schools and Texas State to the
+# Pac-12; Northern Illinois, UTEP and North Dakota State to the Mountain
+# West; Louisiana Tech to the Sun Belt; Sacramento State to the MAC.
 FBS_MASTER_TEAMS = [
     ("Air Force", "Air Force Falcons", "par_01hqmkr2bze9waa4p2cd9c93wb", "Mountain West", False),
     ("Akron", "Akron Zips", "par_01hqmkr2c0ee7t9ccymz73x0gq", "MAC", False),
@@ -85,7 +113,7 @@ FBS_MASTER_TEAMS = [
     ("BYU", "BYU Cougars", "par_01hqmkr2cdfde99znq0bc5q8wx", "Big 12", False),
     ("Ball State", "Ball State Cardinals", "par_01hqmkr2ceekga6842w12xg325", "MAC", False),
     ("Baylor", "Baylor Bears", "par_01hqmkr2cfe1jv74t5p0r5v2xv", "Big 12", False),
-    ("Boise State", "Boise State Broncos", "par_01hqmkr2chfcya2w0tgx1azh4n", "Mountain West", False),
+    ("Boise State", "Boise State Broncos", "par_01hqmkr2chfcya2w0tgx1azh4n", "Pac-12", False),
     ("Boston College", "Boston College Eagles", "par_01hqmkr2cjevbv90gt5bs4y9a2", "ACC", False),
     ("Bowling Green", "Bowling Green Falcons", "par_01hqmkr2ckex0vc4kb1hegwrrb", "MAC", False),
     ("Buffalo", "Buffalo Bulls", "par_01hqmkr2cpe4nsepap11jqmgw9", "MAC", False),
@@ -96,7 +124,7 @@ FBS_MASTER_TEAMS = [
     ("Clemson", "Clemson Tigers", "par_01hqmkr2d2fcnaynkrvhm371ve", "ACC", False),
     ("Coastal Carolina", "Coastal Carolina Chanticleers", "par_01hqmkr2d3etysw7j5tpj0asyg", "Sun Belt", False),
     ("Colorado", "Colorado Buffaloes", "par_01hqmkr2d5etwsffw4mexxmfkx", "Big 12", False),
-    ("Colorado State", "Colorado State Rams", "par_01hqmkr2d6fbga7wnz6exjc105", "Mountain West", False),
+    ("Colorado State", "Colorado State Rams", "par_01hqmkr2d6fbga7wnz6exjc105", "Pac-12", False),
     ("Delaware", "Delaware Blue Hens", "par_01hqmkr2dbeqy9b03q4mfvbvtq", "CUSA", False),
     ("Duke", "Duke Blue Devils", "par_01hqmkr2dfew5v52gvwc7s1gye", "ACC", False),
     ("East Carolina", "East Carolina Pirates", "par_01hqmkr2dgfhkb1jg6rm1a93b1", "American", False),
@@ -105,7 +133,7 @@ FBS_MASTER_TEAMS = [
     ("Florida", "Florida Gators", "par_01hqmkr2drebetw7r2b9tfw68e", "SEC", False),
     ("Florida Atlantic", "Florida Atlantic Owls", "par_01hqmkr2dqf6g91ztm242pvzxs", "American", False),
     ("Florida State", "Florida State Seminoles", "par_01hqmkr2dtfmh82gmjkbn6r8d6", "ACC", False),
-    ("Fresno State", "Fresno State Bulldogs", "par_01hqmkr2dwf4kasz5jvn0fs6ra", "Mountain West", False),
+    ("Fresno State", "Fresno State Bulldogs", "par_01hqmkr2dwf4kasz5jvn0fs6ra", "Pac-12", False),
     ("Georgia", "Georgia Bulldogs", "par_01hqmkr2e0fdnsz5qjew534wzk", "SEC", False),
     ("Georgia Southern", "Georgia Southern Eagles", "par_01hqmkr2e1ffhr0m9r3vzjbjy0", "Sun Belt", False),
     ("Georgia State", "Georgia State Panthers", "par_01hqmkr2e2fbzsjjy474ewkjpb", "Sun Belt", False),
@@ -125,7 +153,7 @@ FBS_MASTER_TEAMS = [
     ("Kentucky", "Kentucky Wildcats", "par_01hqmkr2eyew3t5xv5afre6s8r", "SEC", False),
     ("LSU", "LSU Tigers", "par_01hqmkr2f0etjr70y0vrjjrcdx", "SEC", False),
     ("Liberty", "Liberty Flames", "par_01hqmkr2f4efktw3c1xrkmzw0h", "CUSA", False),
-    ("Louisiana Tech", "Louisiana Tech Bulldogs", "par_01hqmkr2f7ey7rvpa8hszjqs8d", "CUSA", False),
+    ("Louisiana Tech", "Louisiana Tech Bulldogs", "par_01hqmkr2f7ey7rvpa8hszjqs8d", "Sun Belt", False),
     ("Louisiana-Lafayette", "Louisiana Ragin Cajuns", "par_01hqmkr2f6fyxbqqjpngmae1qn", "Sun Belt", False),
     ("Louisville", "Louisville Cardinals", "par_01hqmkr2f8fdcahme30st5637r", "ACC", False),
     ("Marshall", "Marshall Thundering Herd", "par_01hqmkr2fbfcevjpy984k1y1hx", "Sun Belt", False),
@@ -147,9 +175,9 @@ FBS_MASTER_TEAMS = [
     ("New Mexico", "New Mexico Lobos", "par_01hqmkr2g7efcfxq3k8sa8fvz1", "Mountain West", False),
     ("New Mexico State", "New Mexico State Aggies", "par_01hqmkr2g8fvjj5njrwq4c8k3x", "CUSA", False),
     ("North Carolina", "North Carolina Tar Heels", "par_01hqmkr2gaeat8apmsdpbs2t31", "ACC", False),
-    ("North Dakota State", "North Dakota State Bison", "par_01jjsgdbqs7bh06n0k4k30f9wv", "Missouri Valley", True),
+    ("North Dakota State", "North Dakota State Bison", "par_01jjsgdbqs7bh06n0k4k30f9wv", "Mountain West", True),
     ("North Texas", "North Texas Mean Green", "par_01hqmkr2gcefhgxqq8sn2fy8j3", "American", False),
-    ("Northern Illinois", "Northern Illinois Huskies", "par_01hqmkr2gfe4sqx2ycewqv4vvz", "MAC", False),
+    ("Northern Illinois", "Northern Illinois Huskies", "par_01hqmkr2gfe4sqx2ycewqv4vvz", "Mountain West", False),
     ("Northwestern", "Northwestern Wildcats", "par_01hqmkr2gheq72jspsbj8dw4pt", "Big Ten", False),
     ("Notre Dame", "Notre Dame Fighting Irish", "par_01hqmkr2gjf5aesn5m3zcf29fr", "Independent", False),
     ("Ohio", "Ohio Bobcats", "par_01hqmkr2gme4whh6vfj7ntexjj", "MAC", False),
@@ -166,9 +194,9 @@ FBS_MASTER_TEAMS = [
     ("Rice", "Rice Owls", "par_01hqmkr2h3f36vmekfxsaaxdp3", "American", False),
     ("Rutgers", "Rutgers Scarlet Knights", "par_01hqmkr2h4e3wgvkjw2rh4qcfj", "Big Ten", False),
     ("SMU", "SMU Mustangs", "par_01hqmkr2h6e2yt96ndfc5kqr1m", "ACC", False),
-    ("Sacramento State", "Sacramento State Hornets", "par_01jjsgdbqrg9d1r4fy2bj4svcy", "Big Sky", True),
+    ("Sacramento State", "Sacramento State Hornets", "par_01jjsgdbqrg9d1r4fy2bj4svcy", "MAC", True),
     ("Sam Houston", "Sam Houston State Bearkats", "par_01hqmkr2hffpdrjxadkz42ppw5", "CUSA", False),
-    ("San Diego State", "San Diego State Aztecs", "par_01hqmkr2hhehdttrcgv6ekzszd", "Mountain West", False),
+    ("San Diego State", "San Diego State Aztecs", "par_01hqmkr2hhehdttrcgv6ekzszd", "Pac-12", False),
     ("San Jose State", "San Jose State Spartans", "par_01hqmkr2hkfmzsf7mhhg5gb33d", "Mountain West", False),
     ("South Alabama", "South Alabama Jaguars", "par_01hqmkr2hnfdxsb91dzrmwfvyr", "Sun Belt", False),
     ("South Carolina", "South Carolina Gamecocks", "par_01hqmkr2hpfvxsygyfnkpd0pq9", "SEC", False),
@@ -181,7 +209,7 @@ FBS_MASTER_TEAMS = [
     ("Tennessee", "Tennessee Volunteers", "par_01hqmkr2jae6na0v519gjm9q9b", "SEC", False),
     ("Texas", "Texas Longhorns", "par_01hqmkr2jde19td0j9ksjv0z5k", "SEC", False),
     ("Texas A&M", "Texas A&M Aggies", "par_01hqmkr2jbfwmsgbbzss4f4rrp", "SEC", False),
-    ("Texas State", "Texas State Bobcats", "par_01hqmkr2jffzzv7d4tphyftx7e", "Sun Belt", False),
+    ("Texas State", "Texas State Bobcats", "par_01hqmkr2jffzzv7d4tphyftx7e", "Pac-12", False),
     ("Texas Tech", "Texas Tech Red Raiders", "par_01hqmkr2jgepz9bx1bcjka55m1", "Big 12", False),
     ("Toledo", "Toledo Rockets", "par_01hqmkr2jhe00vnd66demmm6k1", "MAC", False),
     ("Troy", "Troy Trojans", "par_01hqmkr2jketn9e8k27nk1b4p5", "Sun Belt", False),
@@ -195,10 +223,10 @@ FBS_MASTER_TEAMS = [
     ("UMass", "UMass Minutemen", "par_01hqmkr2jwemesyt4amdtgq2wb", "MAC", False),
     ("UNLV", "UNLV Rebels", "par_01hqmkr2jxem0rdgyfbckwa611", "Mountain West", False),
     ("USC", "USC Trojans", "par_01hqmkr2jyf0xb3g282ddm9gjn", "Big Ten", False),
-    ("UTEP", "UTEP Miners", "par_01hqmkr2k0fjxv6cjwb9j6dpds", "CUSA", False),
+    ("UTEP", "UTEP Miners", "par_01hqmkr2k0fjxv6cjwb9j6dpds", "Mountain West", False),
     ("UTSA", "UTSA Roadrunners", "par_01hqmkr2k1fnwtfm0hcaxm928z", "American", False),
     ("Utah", "Utah Utes", "par_01hqmkr2k4e6mrb4f7kj54rcd2", "Big 12", False),
-    ("Utah State", "Utah State Aggies", "par_01hqmkr2k2frts2aqztas39w6d", "Mountain West", False),
+    ("Utah State", "Utah State Aggies", "par_01hqmkr2k2frts2aqztas39w6d", "Pac-12", False),
     ("Vanderbilt", "Vanderbilt Commodores", "par_01hqmkr2k7f8ksrb7fqw7g81g9", "SEC", False),
     ("Virginia", "Virginia Cavaliers", "par_01hqmkr2k9edpbevdc3fgmd6n7", "ACC", False),
     ("Virginia Tech", "Virginia Tech Hokies", "par_01hqmkr2kafdt8mg973a6kztm3", "ACC", False),
