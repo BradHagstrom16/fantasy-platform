@@ -95,3 +95,34 @@ def test_verdict_for_a_pick(app, is_correct, eliminated, no_contest, headline, l
     assert card['headline'] == headline
     assert card['state'] == 'Final'
     assert card['derivation'] == line
+
+
+def _verdict_after(week_number, round_name=None):
+    lead = SimpleNamespace(week_number=week_number, round_name=round_name)
+    return SimpleNamespace(lead=lead, state=VERDICT, pending=[])
+
+
+def test_next_line_names_championship_weekend_before_it_is_created(app):
+    card = _lead_card(_verdict_after(13), {}, None, None)
+    assert card['next_line'] == 'Conference Championship Week is not on the board yet.'
+
+
+def test_next_line_steps_over_army_navy_week(app):
+    """ADR-071: no pool week follows championship weekend until the CFP's
+    first round, so the card never promises a Week 15."""
+    card = _lead_card(_verdict_after(14, 'Conference Championship Week'),
+                      {}, None, None)
+    assert card['next_line'] == 'CFP First Round is not on the board yet.'
+
+
+def test_next_line_points_at_cfp_first_round_once_it_has_games(app):
+    from extensions import db
+    from tests._cfb_fixtures import make_game, make_team, make_week
+    first_round = make_week(16, is_playoff=True)
+    first_round.round_name = 'CFP First Round'
+    make_game(first_round, make_team('Alabama'), make_team('Georgia'))
+    db.session.commit()
+
+    card = _lead_card(_verdict_after(14, 'Conference Championship Week'),
+                      {}, None, None)
+    assert card['next_line'] == 'CFP First Round opens with its lines.'

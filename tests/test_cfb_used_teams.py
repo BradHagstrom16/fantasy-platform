@@ -3,10 +3,11 @@
 Regression locks for two of Brad's binding rulings, both intended as
 implemented (no code change):
 
-  DQ-3 — weeks 1-15 share one "regular-season" used-team pool; the
-         Conference Championship (week 15, is_playoff_week=False)
-         consumes a regular-season team. The pool resets at week 16;
-         weeks 16-19 (CFP) share a separate playoff pool.
+  DQ-3 — weeks 1-14 share one "regular-season" used-team pool; the
+         Conference Championship (week 14 in 2026, is_playoff_week=False)
+         consumes a regular-season team. Week 15 (Army-Navy) has no pick
+         (ADR-071). The pool resets at week 16; weeks 16-19 (CFP) share a
+         separate playoff pool.
   DQ-7 — the cumulative-spread tiebreaker is lifetime: it sums every
          pick across both phases with no CFP reset.
 
@@ -29,7 +30,7 @@ from tests._cfb_fixtures import (
     make_week,
 )
 
-# ── DQ-3 — regular-season pool spans weeks 1-15 ───────────────────────────
+# ── DQ-3 — regular-season pool spans weeks 1-14 ───────────────────────────
 
 def test_regular_season_weeks_share_one_pool(app):
     """A team picked in week 1 is 'used' when evaluating week 2."""
@@ -45,23 +46,23 @@ def test_regular_season_weeks_share_one_pool(app):
     assert team.id in used
 
 
-def test_week_15_consumes_a_regular_season_team(app):
-    """DQ-3: week 15 (Conf Championship, is_playoff_week=False) lives in the
-    regular pool — a week-15 pick counts as used in week 3 and vice versa."""
+def test_championship_week_consumes_a_regular_season_team(app):
+    """DQ-3: week 14 (Conf Championship, is_playoff_week=False) lives in the
+    regular pool — a week-14 pick counts as used in week 3 and vice versa."""
     w3 = make_week(3, is_playoff=False)
-    w15 = make_week(15, is_playoff=False)
+    w14 = make_week(14, is_playoff=False)
     user = make_user('p1')
     cc_team = make_team('Champs')
-    make_pick(user, w15, cc_team)
+    make_pick(user, w14, cc_team)
     db.session.commit()
 
-    # week-15 pick is 'used' when looking at an earlier regular week
+    # week-14 pick is 'used' when looking at an earlier regular week
     assert cc_team.id in get_used_team_ids(user.id, w3)
-    # and the reverse: an earlier pick is 'used' when evaluating week 15
+    # and the reverse: an earlier pick is 'used' when evaluating week 14
     reg_team = make_team('Early')
     make_pick(user, w3, reg_team)
     db.session.commit()
-    assert reg_team.id in get_used_team_ids(user.id, w15)
+    assert reg_team.id in get_used_team_ids(user.id, w14)
 
 
 # ── DQ-3 — playoff pool is isolated and resets at week 16 ─────────────────

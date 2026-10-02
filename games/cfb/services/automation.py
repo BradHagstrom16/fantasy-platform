@@ -16,6 +16,7 @@ from games.cfb.constants import (
     API_BASE_URL,
     SHORT_TO_API,
     TEAM_NAME_MAP,
+    next_pool_week,
     season_schedule,
 )
 from games.cfb.models import CfbEnrollment, CfbGame, CfbPick, CfbWeek
@@ -307,7 +308,9 @@ def run_setup():
     else:
         season_year = week_reads.current_season()
         last_week = week_reads.latest_week(season_year)
-        next_week_num = (last_week.week_number + 1) if last_week else 1
+        # Steps over a no-pick week (Army-Navy, ADR-071).
+        next_week_num = (next_pool_week(season_year, last_week.week_number)
+                         if last_week else 1)
 
         schedule = season_schedule(season_year)
         max_weeks = schedule['regular_season_weeks']

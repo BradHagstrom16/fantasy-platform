@@ -111,8 +111,10 @@ class CfbTeam(db.Model):
 class CfbWeek(db.Model):
     """A week in the CFB Survivor season.
 
-    Weeks 1-14: regular season. Week 15: Conference Championship.
-    Weeks 16-19: CFP rounds. Only one week is active at a time.
+    Week N is the Nth Thursday-to-Wednesday week of the season calendar
+    (games/cfb/constants.py). 2026: weeks 1-13 regular season, Week 14
+    Conference Championship, no Week 15 (Army-Navy, ADR-071), weeks 16-19
+    CFP rounds. Only one week is active at a time.
     Week numbers restart every season (``season_year``, ADR-069): read weeks
     through games/cfb/services/weeks.py, never the whole table.
     """

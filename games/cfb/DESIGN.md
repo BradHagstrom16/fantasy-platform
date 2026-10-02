@@ -103,7 +103,7 @@ The rules are stable; the psychology evolves. The interface should respond:
 These are Brad's binding rulings (pre-launch audit, closed 2026-06-24) plus shipped mechanics. Design and copy must match them exactly — never claim more than the rules support:
 
 - **Two lives**; second loss eliminates. One pick per week, win outright.
-- **A regular-season team is consumed on use.** Week 15 (Conf Championships) consumes a regular-season team — intended. The **CFP reset** activates at week 16: any of the 12 playoff teams is pickable even if used in the regular season.
+- **A regular-season team is consumed on use.** Championship weekend (Week 14 in 2026) consumes a regular-season team — intended. **Army–Navy week (Week 15 in 2026) has no pick** (Brad, 2026-10-02): setup steps over it, so every pool week keeps its calendar week's number (ADR-071). The **CFP reset** activates at week 16: any of the 12 playoff teams is pickable even if used in the regular season.
 - **Missed pick:** the deadline surrenders the choice. Post-deadline autopick assigns the largest available favorite (consuming that team and its spread). Autopick is the safety net, not a substitute for the penalty — result processing covers active enrollments, not just picks, so a no-pick week costs a life when no pick could be assigned.
 - **Canceled/postponed games = "No Contest" push semantics:** no life loss, counts as survived, spread excluded from the tiebreaker, team stays consumed, the week can complete.
 - **Spread locks at first fetch** (Tuesday lines); manual admin entries also lock. **16.5+-point favorites are ineligible** — the spread is a survivor rule, never a wagering line.

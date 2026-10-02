@@ -227,7 +227,7 @@ def test_every_nag_fits_the_one_line_budget(app):
     """The longest real copy of each tier: an 11:30 kickoff-shaped deadline,
     the widest time-left phrase either final window can print, and every
     CFB week name, the round names up to "Conference Championship Week"."""
-    cfb_weeks = [cfbf.make_week(14, deadline=datetime(2026, 11, 28, 11, 30))]
+    cfb_weeks = [cfbf.make_week(13, deadline=datetime(2026, 11, 28, 11, 30))]
     for number, special in season_schedule(2026)['special_weeks'].items():
         week = cfbf.make_week(number, deadline=datetime(2026, 11, 28, 11, 30))
         week.round_name = special['name']

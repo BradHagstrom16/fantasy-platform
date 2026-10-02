@@ -25,7 +25,12 @@ from sqlalchemy.orm import contains_eager, joinedload
 
 from extensions import db
 from games.cfb import cfb_bp
-from games.cfb.constants import FBS_MASTER_TEAMS
+from games.cfb.constants import (
+    FBS_MASTER_TEAMS,
+    next_pool_week,
+    pool_week_name,
+    season_schedule,
+)
 from games.cfb.models import CfbEnrollment, CfbGame, CfbPick, CfbTeam, CfbWeek
 from games.cfb.services import board as board_service
 from games.cfb.services import weeks as week_reads
@@ -259,11 +264,15 @@ def _lead_card(room, games_by_team, viewer_pick, enrollment):
         else:
             card['headline'] = 'In the books.'
             card['derivation'] = None
-        following = week_reads.week_by_number(lead.week_number + 1)
+        # The next pool week, past a no-pick week (Army-Navy, ADR-071).
+        season_year = week_reads.current_season()
+        following_number = next_pool_week(season_year, lead.week_number)
+        following = week_reads.week_by_number(following_number)
         if following is not None and CfbGame.query.filter_by(week_id=following.id).count():
             card['next_line'] = f'{get_week_display_name(following)} opens with its lines.'
         else:
-            card['next_line'] = f'Week {lead.week_number + 1} is not on the board yet.'
+            card['next_line'] = (f'{pool_week_name(season_year, following_number)} '
+                                 'is not on the board yet.')
         card['headline'] = f"{label}: {card['headline']}"
         return card
 
@@ -1105,7 +1114,15 @@ def admin_create_week():
         flash(f'{display_name} created successfully!', 'success')
         return redirect(url_for('cfb.admin_dashboard'))
 
-    return render_template('cfb/admin/create_week.html')
+    # The week-number reference, read from the season calendar.
+    season_year = week_reads.current_season()
+    schedule = season_schedule(season_year)
+    reference = [(f"Weeks 1-{schedule['regular_season_weeks']}", 'Regular Season')]
+    for number in sorted({*schedule['special_weeks'], *schedule['no_pick_weeks']}):
+        name = ('No pool week (no pick)' if number in schedule['no_pick_weeks']
+                else pool_week_name(season_year, number))
+        reference.append((f'Week {number}', name))
+    return render_template('cfb/admin/create_week.html', reference=reference)
 
 
 @cfb_bp.route('/admin/week/<int:week_id>/activate', methods=['POST'])

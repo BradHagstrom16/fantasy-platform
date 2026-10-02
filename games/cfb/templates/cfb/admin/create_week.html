@@ -21,7 +21,7 @@
                         <label for="week_number" class="form-label">Week Number</label>
                         <input type="number" class="form-control" id="week_number"
                                name="week_number" min="1" max="20" required>
-                        <small class="form-text text-muted">1-15 for regular season, 16-20 for playoffs</small>
+                        <small class="form-text text-muted">The season calendar is below</small>
                     </div>
 
                     <div class="card mb-3 bg-light">
@@ -32,14 +32,14 @@
                                 <label class="form-check-label" for="is_playoff_week">
                                     <strong>This is a playoff week</strong>
                                 </label>
-                                <small class="form-text d-block text-muted">Check this for CFP weeks (16+): allows team reuse</small>
+                                <small class="form-text d-block text-muted">Check this for CFP weeks: allows team reuse</small>
                             </div>
                             <div class="mb-3">
                                 <label for="round_name" class="form-label">Custom Display Name</label>
                                 <input type="text" class="form-control" id="round_name"
-                                       name="round_name" placeholder="e.g., CFP Round 1" maxlength="100">
+                                       name="round_name" placeholder="e.g., CFP First Round" maxlength="100">
                                 <small class="form-text text-muted">
-                                    Examples: "Conference Championship Week", "CFP Quarterfinals", "CFP Championship"
+                                    Examples: "Conference Championship Week", "CFP Quarterfinals", "CFP National Championship"
                                 </small>
                             </div>
                         </div>
@@ -67,12 +67,9 @@
             <div class="card-header"><h6 class="mb-0">Week Number Reference</h6></div>
             <div class="card-body">
                 <ul class="mb-0 small text-muted">
-                    <li><strong>Weeks 1-14:</strong> Regular Season</li>
-                    <li><strong>Week 15:</strong> Conference Championships</li>
-                    <li><strong>Week 16:</strong> CFP Round 1</li>
-                    <li><strong>Week 17:</strong> CFP Quarterfinals</li>
-                    <li><strong>Week 18:</strong> CFP Semifinals</li>
-                    <li><strong>Week 19:</strong> CFP Championship</li>
+                    {% for label, name in reference %}
+                    <li><strong>{{ label }}:</strong> {{ name }}</li>
+                    {% endfor %}
                 </ul>
             </div>
         </div>

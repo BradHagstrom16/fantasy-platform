@@ -483,3 +483,22 @@ def test_post_lounge_champion_and_final_field_link(app, monkeypatch):
     assert 'home-shell--post' in html
     link = f'<a class="roll-name-link" {_href(cid)}>Jordan Champ</a>'
     assert html.count(link) == 2            # the champion banner + the final field
+
+
+def test_championship_weekend_pick_carries_the_conference_badge(app):
+    """The badge follows the calendar's named regular-season week, never a
+    hardcoded week number (championship weekend is Week 14 in 2026, ADR-071)."""
+    user = make_user('champ')
+    enrollment = make_enrollment(user)
+    week3 = make_week(3)
+    week14 = make_week(14)
+    week14.round_name = 'Conference Championship Week'
+    make_pick(user, week3, make_team('Georgia'))
+    make_pick(user, week14, make_team('Clemson'))
+    db.session.commit()
+
+    card = build_player_card(user.id, enrollment)
+
+    badges = {p.week.week_number: p.week_display['badge_type']
+              for p in card['user_picks']}
+    assert badges == {3: None, 14: 'conference'}
