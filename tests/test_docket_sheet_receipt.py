@@ -333,6 +333,41 @@ def test_a_reminder_in_the_same_firing_satisfies_the_receipt(
     assert _row(member).sent_at == firing
 
 
+def test_a_refused_reminder_leaves_the_receipt_it_would_have_satisfied_owed(
+        client, member, monkeypatch):
+    """The reminder satisfies the receipt only once it is accepted; a
+    refused reminder letter leaves the row owed, so the member is not left
+    with neither."""
+    _week, games = _week_with_games()
+    firing = DEADLINE - timedelta(hours=2)
+    _sitting(client, games, monkeypatch, when=firing - timedelta(minutes=30),
+             x2=False, number=False, reserve=False)
+
+    calls, patched = capture(accept=lambda to: False)
+    with patched:
+        run_desk(firing.replace(tzinfo=UTC), anchors=('docket',))
+
+    assert [c['subject'] for c in calls] == ['Two hours left: The Docket, Week 1']
+    assert _row(member).sent_at is None
+
+
+def test_a_dry_run_at_a_reminder_tier_stages_no_receipt_mark(
+        client, member, monkeypatch):
+    _week, games = _week_with_games()
+    firing = DEADLINE - timedelta(hours=2)
+    _sitting(client, games, monkeypatch, when=firing - timedelta(minutes=30),
+             x2=False, number=False, reserve=False)
+
+    with patch(SEND, side_effect=AssertionError('sent')):
+        run = run_desk(firing.replace(tzinfo=UTC), anchors=('docket',),
+                       dry_run=True)
+
+    assert [c.letter.subject for c in run.composed] == [
+        'Two hours left: The Docket, Week 1']
+    assert run.receipts == []
+    assert _row(member).sent_at is None
+
+
 def test_a_refused_send_leaves_the_receipt_owed_for_the_next_firing(
         client, member, monkeypatch):
     _week, games = _week_with_games()

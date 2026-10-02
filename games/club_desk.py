@@ -95,7 +95,8 @@ class ReminderConsumer:
     after the reminders (the Docket, services/receipts.py); ``receipt_sent
     (token, now)`` stages the mark on acceptance (no commit). A member who
     already gets a letter carrying this game's section this firing gets no
-    receipt and is marked anyway: the reminder wins.
+    receipt and is marked once that letter is accepted: the reminder wins,
+    and a refused reminder leaves the receipt owed.
     """
     slug: str
     week: Callable[[datetime], object | None]
@@ -215,6 +216,7 @@ class DeskRun:
     skipped: dict = field(default_factory=dict)     # slug -> why (no week)
     composed: list[Composed] = field(default_factory=list)
     receipts: list[Receipt] = field(default_factory=list)
+    satisfied: dict = field(default_factory=dict)   # (slug, user id) -> [(consumer, token)]
     delivered: dict = field(default_factory=dict)   # slug -> letters delivered
     delivered_receipts: dict = field(default_factory=dict)  # slug -> receipts
     pushed: dict = field(default_factory=dict)      # slug -> user ids pushed
@@ -341,6 +343,10 @@ def _send(run):
         if send_platform_email(user.email, composed.letter.subject, plain, html):
             for slug in composed.games:
                 run.delivered[slug] = run.delivered.get(slug, 0) + 1
+                # The accepted letter carries this game's section, so it
+                # satisfies the receipt the member was owed.
+                for consumer, token in run.satisfied.pop((slug, user.id), []):
+                    consumer.receipt_sent(token, run.now)
         else:
             logger.warning('Desk letter to user %s was not accepted', user.id)
 
@@ -348,8 +354,10 @@ def _send(run):
 def _compose_receipts(consumers, anchors, now, run):
     """Every game's owed sheet receipts at this firing, on every firing
     that has a week (a tier need not be due). The reminder wins: a member
-    whose letter this firing already carries the game's section is marked
-    sent without a receipt."""
+    whose letter this firing already carries the game's section gets no
+    receipt; the token is recorded and marked only once that letter is
+    accepted (``_send``), never at composition, so a dry run stages
+    nothing and a refused reminder leaves the receipt owed."""
     for consumer in consumers:
         if consumer.slug not in anchors or consumer.receipts is None:
             continue
@@ -359,7 +367,8 @@ def _compose_receipts(consumers, anchors, now, run):
         reminded = {c.user.id for c in run.composed if consumer.slug in c.games}
         for user, letter, token in consumer.receipts(week, now):
             if user.id in reminded:
-                consumer.receipt_sent(token, now)
+                run.satisfied.setdefault((consumer.slug, user.id), []).append(
+                    (consumer, token))
                 continue
             run.receipts.append(Receipt(consumer=consumer, user=user,
                                         letter=letter, token=token))
