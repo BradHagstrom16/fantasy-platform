@@ -28,9 +28,10 @@ colors:
 > `games/golf/`, read both.
 >
 > Authored 2026-10-06 (U0, design-first, from the approved Pay Sheet preview built on the real 2026
-> season). §7 is reconciled against what ships at the end of each Phase U cluster (U1 standings first);
-> later clusters extend this file rather than re-deriving it. The legacy "Greenside Ledger"
-> (`~/Golf_Pick_Em/DESIGN.md`) is reference, not doctrine.
+> season). §7 is reconciled against what ships at the end of each Phase U cluster: it was reconciled
+> from U1 (The Sheet) and U3 (The Board) on 2026-10-06, and §7.5 to §7.9 stay contracts until their
+> clusters ship. Later clusters extend this file rather than re-deriving it. The legacy "Greenside
+> Ledger" (`~/Golf_Pick_Em/DESIGN.md`) is reference, not doctrine.
 
 ---
 
@@ -115,11 +116,12 @@ participation and inspection (the pick, the sheet, the board, the scorecard, the
 ## 4. Product State Model
 
 ### 4.1 Tournament states
-- **Upcoming:** on the schedule, field not yet set. "Field publishes Monday."
+- **Upcoming:** on the schedule, field not yet set. "The field publishes Tuesday."
 - **Open:** field ≥ 50, picks open; the lock stated as a literal time.
 - **Locked:** lock passed, first tee not yet struck. Picks revealed.
 - **Live (on the course):** Thursday to Sunday; the `Live` chip in course green; figures PROJECTED.
-- **Settling:** final round played, results not finalized; still PROJECTED, "Banks Monday".
+- **Settling:** final round played, results not finalized; still PROJECTED, "Projected until
+  results are official".
 - **Banked:** `results_finalized`; figures in ink; the double rule; penalties settled.
 
 ### 4.2 Member week states
@@ -215,7 +217,7 @@ Platform faces only (Teko display, Newsreader body; the Newsroom Rule). Pay Shee
   Season Book" (schedule), "House Rules". Dynamic-noun dispensation applies (platform §3).
 - Copy voice is the grill-room bookkeeper's: dry, exact, money-literate, with the Commish's wry
   authority in headings, leads and empty states, never in error messages. Errors name the problem
-  and the recovery plainly ("That field isn't published yet. Picks open Monday.").
+  and the recovery plainly ("That field isn't published yet. Picks open Tuesday.").
 - Register glossary (use consistently): **the sheet** (season standings), **your line**, **the
   board** (one tournament's results), **the field** (the pick list), **spend / spent** (use a
   golfer), **banked / projected**, **the pot** (the penalty side pot), **the lock** (the deadline,
@@ -230,28 +232,41 @@ over an H1/H2/H3. No glyphs on game-body labels (`◈`/`◇` are lounge ceremony
 
 ### 6.9 Material rules
 - Paper, not bone: the room's ground is `--golf-paper`; cards are not the container. The sheet is
-  rows separated by `--golf-rule` hairlines at equal height (56px on mobile); a heavier 2px ink rule
-  opens the board; the double rule closes a banked figure.
+  rows separated by `--golf-rule` hairlines, equal in height within a state (56px for a name alone,
+  63px for a name over its pencil pick line); a heavier 2px ink rule opens the sheet and the board;
+  the double rule closes a banked figure.
 - One texture only: the burn hatch (45° pencil hatching inside a 1px pencil frame) on the pick page.
 - The pen appears as fills (CTA, active pill), as the 3px bracket on your line, as the 8% wash on
-  your sheet row, and as chip outlines. Never as a page-scale field.
+  your sheet row, and as chip outlines. Never as a page-scale field. The bracket is the room's one
+  sanctioned side-stripe (§6.10).
 - Elevation: none inside the sheet. The join hero uses the platform `.page-hero` gradient in the pen
   family; nothing else lifts.
 
 ### 6.10 Prohibited visual directions
 A second dark room. Gold anywhere in the room. Red for under par or any "good". Green as identity (a
 fill, a wash, a button). A podium, avatar rings, a winner band, medals. Cards as the row container,
-cards inside cards, side-stripes (`.col-divider` retires at U1). A Teko column of money. Emoji as
+cards inside cards, side-stripes (`.col-divider` left the standings at U1; the class itself retires
+with admin payments at U6). A Teko column of money. Emoji as
 icons (the legacy 🏆🥈🥉🔄👑 pills are retired; the override is the "Commish" chip). Sparklines or
 trend arrows beside figures (the Record Room's season race is the one chart, and it is opt-in).
 Hiding used golfers. Tinting majors.
 
+The member's avatar is not an icon: `User.get_avatar()`, the platform's mark on every standings
+surface (its crown and trophy reserved inside it), stays on every sheet and board row, emoji and all
+(Brad, 2026-10-06). The emoji ban covers icons the room draws, never the member's own mark.
+
+The side-stripe ban has one sanctioned exception: the 3px pen bracket, drawn as
+`.golf-your-line::before` and as the inset edge of `.golf-sheet-row--me`. It is identity, never
+status or decoration (§6.5); it marks the member's own line and nothing else; no other primitive in
+the room carries a colored edge. A detector `side-tab` finding on the bracket cites this line.
+
 ### 6.11 Root rules restated (because `--target games/golf` drops the root file)
 The Eyebrow Rule (ADR-066, §6.8). The Two-Color Rule (the pen appears only under `body.game-golf`).
-No side-stripes; `.row-current-user` overrides the tint only. Gradient text is retired. `--text-muted`
-is for dark substrates only (this room uses `--text-secondary` = pencil). Every `/static/*` URL
-carries `?v={{ asset_version }}`. Country flags are self-hosted SVG. Touch targets ≥ 44px, body ≥ 16px,
-`prefers-reduced-motion` honored, no color-only state. Settle the Tab is the platform partial.
+No side-stripes, the pen bracket excepted (§6.10); `.row-current-user` overrides the tint only.
+Gradient text is retired. `--text-muted` is for dark substrates only (this room uses
+`--text-secondary` = pencil). Every `/static/*` URL carries `?v={{ asset_version }}`. Country flags
+are self-hosted SVG. Touch targets ≥ 44px, body ≥ 16px, `prefers-reduced-motion` honored, no
+color-only state. Settle the Tab is the platform partial.
 
 ### 6.12 Named rules
 - **Pencil-and-Ink Rule:** a projected figure is never drawn in ink; a banked figure is never drawn
@@ -265,27 +280,63 @@ carries `?v={{ asset_version }}`. Country flags are self-hosted SVG. Touch targe
 ## 7. Component Doctrine (build contract; reconciled per cluster)
 
 Class prefix `golf-` (firewall-locked). Each primitive below is a contract; its CSS lands with the
-cluster that first ships it and this section is reconciled from the built surface.
+cluster that first ships it and this section is reconciled from the built surface. Reconciled from
+U1 and U3 (2026-10-06): §7.1 to §7.4, §7.10, §7.13 and §7.16 to §7.24. Still contracts: §7.5 to §7.9.
 
 ### 7.1 The sheet — `.golf-sheet`, `.golf-sheet-row`, `.golf-sheet-row--me`
-Equal-height rows (56px mobile), hairline rules, three cells: rank (Teko), name + pencil pick line
-(`.golf-pick-line`: golfer · position · figure), money (`.golf-money` with `--projected` / `--banked`
-and the `.golf-state` word). The member's row carries the pen wash and a 3px inset pen bracket.
-Mobile and desktop are the same single column up to ~720px; the Record Room widens.
+A `<table class="golf-sheet">` with visually hidden column heads (rank, member and pick, money) and
+each name a row header. It opens on a 2px ink rule and closes on a hairline; rows part on hairlines
+and are equal within a state: 56px for a name alone (`.golf-sheet--plain`, the sheet between events)
+and 63px for a name over its pencil pick line. Three cells: rank (`.golf-sheet-rank`, Teko, the
+competition rank as "1" or "T2"), name (`.golf-sheet-name`, the avatar, the name and
+`.golf-pick-line`: golfer · position · figure on The Sheet, golfer · position · to par on The
+Board), money (`.golf-sheet-money` holding `.golf-money` with `--projected` / `--banked`). A
+projected figure is pencil with a tilde and a 1px underline; a banked figure is ink over a 3px
+double rule; a Cut, WD or DQ is a certain $0 and takes no tilde. The `.golf-state` word sits on
+every row while an event is live; when every line shares one state it sits once, in
+`.golf-sheet-head` over the money column (The Sheet between events, The Board always). The member's
+row carries the pen wash and the 3px pen bracket, both bleeding .5rem into the page gutters so rank
+and money stay on the shared columns. Every line shows; the sheet is never truncated (§7.10). The
+column is 720px; from 1100px The Sheet alone gains a 300px margin column (§7.16). The Board stays a
+single column; the Record Room widens.
 
 ### 7.2 Your line — `.golf-your-line`, `.golf-hero-figure`
-Pen bracket in the margin, `.golf-label` "Your line", the hero figure (§6.6), one pencil line: rank
-of n · this week's golfer · position · figure with its state.
+The 3px pen bracket in the margin (`::before`, §6.10). A head row (`.golf-your-line-head`) holds the
+`.golf-label` "Your line" and its `.golf-state` word on one baseline. The hero figure (§6.6) is
+`--projected` (pencil, a tilde, a single 1px pencil rule) or `--banked` (ink over a double rule that
+draws once on load: the ruling-off, §6.12, drawn still under `prefers-reduced-motion`). One pencil
+line follows (`.golf-your-line-sub`): rank of n · this week's golfer · position · figure, or the
+next pick, or the "Spend a golfer" link when the field is open and no pick is in. On The Board the
+same block is "Your pick": the week's figure, the golfer, the backup, their chips. For a viewer with
+no pick, or before the lock, it leads with the purse instead: the label "Purse" (with the
+`Est. purse` chip when estimated), the figure in plain ink with no rule and no state word ("TBD"
+when unknown), then the member's own pick with "Change", or the pick action (§7.24) when the field
+is open. A viewer with no line on The Sheet gets no block; "Take a seat" stands in for it
+(`.golf-line--lead`) while the room takes seats.
 
 ### 7.3 The context line — `.golf-context`
-One Newsreader line under the sub-nav: the `Live` chip when on the course, event, round, "projected
-as of 4:00 PM CT" or "Banked Mon Apr 13" or "Picks lock Thu Apr 16 · 6:05 AM CT".
+One Newsreader line under the sub-nav (under the H1 on The Board). Its facts are items
+(`.golf-context-items > span`), each led by a middle dot, and a dot never opens a line: the row
+hangs one dot-width into a clipped margin, so the first item and the first after a wrap show none.
+`.golf-nowrap` keeps a fact whole. On The Sheet: the `Live` chip when on the course, the event
+(linked to its board), the round, then "Projected as of 4:00 PM CT" (with the weekday once that day
+is past), "first read at noon CT" before the first read, or "Projected until results are official"
+for a played-out event whose results are not final. Between events: the next event and "picks lock
+Thu Apr 16 · 6:05 AM CT" or "the field publishes Tuesday". After the last: "every line is banked".
+On The Board: its chips (`Live`, `Major ×1.5`, `Team event`) and the event's dates, then the same
+read line, the lock, or the one word "Banked". A banked board states no finalized date (ruling
+2026-10-06). The lock is always the short form from `games/golf/utils.format_lock`; Club Letters
+keep the platform's long form.
 
-### 7.4 The chips — `.golf-chip`, `--pen`, `--live`, `--deduction`, `--ink`
-Teko 500, 0.9rem, 0.1em, uppercase, 1px outline, 2px radius, a word always. `--pen`: Used, your
-backup state. `--live`: Live, On the course (with the 7px dot). `--deduction`: Cut, WD, DQ, Penalty
-$15, Unpaid. `--ink`: Major ×1.5, Team event, Commish, Est. purse. The penalty chip also carries the
-legacy `badge-penalty` class (test-locked presence).
+### 7.4 The chips — `.golf-chip`, `--pen`, `--live`, `--deduction`
+Teko 500, 0.9rem, 0.1em, uppercase, a 1px outline in the chip's own color, 2px radius, no fill. The
+bare chip is ink (there is no `--ink` modifier): Major ×1.5, Team event, Est. purse, and Commish (The
+Board only, the override note in its `title`). `--pen`: Used, your backup state. `--live`: Live, On
+the course (with the 7px dot). `--deduction`: Cut, WD, DQ, Penalty $15, and Unpaid (on an unpaid
+member's sheet row, beside the name; public like the sheet, by Brad's ruling of 2026-10-06). A chip is a word, with one exception: on a pick line the
+penalty chip reads "Penalty $15" from 576px and "$15" below it, where a Cut or DQ chip always sits
+beside it and the word stays for screen readers (`.golf-chip-word`). The penalty chip also carries
+the legacy `badge-penalty` class (test-locked presence).
 
 ### 7.5 The strike — `.golf-used`
 `text-decoration: line-through` 1.5px in pencil plus "Used · Wk 13 · Masters" beneath.
@@ -306,7 +357,11 @@ Scorecard tiles: an ink top rule, hairline cells, `.golf-label` over a Teko valu
 qualifier ("4th of 19", "29 of 31").
 
 ### 7.10 The fold — `.golf-fold`
-A pencil line that opens a `<details>`: "… 9 more lines", "Didn't pick (3)", "Used golfers (12)".
+A pencil line that opens a `<details>`: a 44px summary with a CSS caret (a drawn corner, no glyph)
+that turns when open, and its body in `.golf-fold-body`. Built folds, all closed by default: "Didn't
+pick (3)" under the sheet and the board, "The marks" and "House Rules" in the margin. "Used golfers
+(12)" arrives with the pick page. A fold never holds lines of the sheet: every line shows (ruling
+2026-10-06).
 
 ### 7.11 Sub-nav — `.subnav-golf`
 Background `#0F110D`, `--subnav-accent #2439C8`, `--subnav-accent-rgb 36, 57, 200`. Label "THE PAY
@@ -321,8 +376,10 @@ Platform shape (`page-hero` in the pen family, the How It Works list in the thes
 current display name under `#join-current-name`, `.btn-game` "Take a seat"); collects no name.
 
 ### 7.13 Empty states
-Reward participation: "No field yet. The Sony Open publishes its field Monday; picks open then." /
-"Nobody has spent a golfer yet. Your first line is the sheet's first line."
+Reward participation, in `.golf-empty` (§7.21): "Nobody has a line yet. The first member to take a
+seat is the sheet's first line." / "Nobody spent a golfer on this one." / "No picks are in yet.
+Every pick stays hidden until the lock." Before a field exists: "The field publishes Tuesday. Picks
+open then."
 
 ### 7.14 Settle the Tab — `.settle-tab`
 The platform partial, room surfaces only; the pot's unpaid penalties ride the same card.
@@ -331,6 +388,57 @@ The platform partial, room surfaces only; the pot's unpaid penalties ride the sa
 `#primary_player_id`, `#backup_player_id`, form names `primary_player_id` / `backup_player_id`;
 `#tournament_id`, `#user_id`, `.ts-select`, `override_note`; `.payment-toggle[data-user-id]`,
 `.penalty-group > .penalty-input` + `.penalty-save[data-user-id]`, `meta[name="csrf-token"]`.
+
+### 7.16 The page and its margin: `.golf-page`, `.golf-page--margin`, `.golf-margin`
+`.golf-page` is the room's column: 720px, centered, 1rem gutters, pen links on a 1px underline, a
+2px pen focus ring. `.golf-page--margin` (The Sheet only) is that same single column up to 1100px,
+with `.golf-margin` stacked under the sheet; from 1100px it is a grid of the 720px column
+(`.golf-main`) and a 300px margin across an 80px gap, the margin sticky beside the sheet. The
+context line spans both.
+
+### 7.17 Marginalia: `.golf-note`
+A note in the margin opens on a hairline: a `.golf-label`, then `.golf-note-lead` (ink) and
+`.golf-note-line` (pencil, its values in ink). Built notes: "Next pick" (the event, its chips, the
+purse, the lock, your pick with "Change" or the pick action) and "Prize Pool" (§7.18).
+`.golf-note--folds` holds the two margin folds. A note is not a card: no fill, no frame, no lift.
+
+### 7.18 The pot: `.golf-pot`
+A three-line `<dl>` ledger in Newsreader tabular figures: "Entry $25 × n", "Penalty pot", and "In
+the pool" (`.golf-pot-sum`) under a single 1px ink rule. Never a double rule: the pot is a running
+sum, not a banked figure (Ruling-Off Rule, §6.12).
+
+### 7.19 The marks: `.golf-marks`
+The room's legend, inside "The marks" fold: each mark drawn in its own material (a pencil figure, an
+ink figure, the Live chip, Cut / WD / DQ, the penalty, Unpaid) beside one line that says what it
+means. A new mark on the sheet earns its line here.
+
+### 7.20 The week pager: `.golf-pager`, `.golf-pager-week`
+The Board is a leaf of the Season Book. A `<nav>` on a hairline at the top of the page: the previous
+week's event, "Week 13 of 32" (`.golf-pager-week`), the next week's event. Drawn chevrons, 44px
+targets, an empty `.golf-pager-end` at either end of the season. The week cell is the nav's position,
+not a label of the title, so it is set like its neighbours (Newsreader 0.95rem, sentence case, pencil),
+never in `.golf-label`'s Teko caps: those over the H1 would read as an eyebrow (§6.8). The count is
+the season's highest week number.
+
+### 7.21 The plain line and the empty state: `.golf-line`, `.golf-empty`
+`.golf-line` is one pencil sentence on a hairline under the board (penalties assessed at a major,
+the team-event rule, the read times) or under the sheet ("Every line has a pick on the Masters.");
+`--lead` is the unruled line that stands where your line would. `.golf-empty` takes the sheet's
+place and its rules (2px ink above, a hairline below), in ink.
+
+### 7.22 The foot: `.golf-foot`
+The page's closing links on a hairline, each a 44px target: "The Sheet", "The Season Book", "Last
+banked: {event}".
+
+### 7.23 The titles: `.golf-title`, `.golf-title--page`, `.golf-sheet-head`
+`.golf-title` is the H1 at 1.9rem ("The Sheet"); `--page` is The Board's H1 at 2.4rem (1.9rem up to
+768px), "The Board: {event}". `.golf-sheet-head` is the baseline row over a sheet: the H1 or the
+`.golf-label` "The board" at left, the shared state word at right.
+
+### 7.24 The pick action: `.btn.golf-btn`
+The platform `.btn-game` dressed for the room: the pen as a fill (§6.9), 1.25rem, 3px radius, a 2px
+pen focus ring. "Spend a golfer", once per screen, and only with an open field and no pick in (on
+The Sheet, only for a member with a line); a member with a pick gets the "Change" link instead.
 
 ## 8. Season surfaces (U4 to U7; written when built)
 The scorecard, the Record Room (season race, superlatives, Form Guide, Burn List, Still on the
@@ -345,7 +453,8 @@ the rule, never around it.
   `tests/test_golf_scoring.py`.
 - **Projected is never a stored truth:** `points_earned` is written only by result processing; live
   figures come from `utils.calculate_projected_earnings` (major ×1.5 applied once). An unfinalized
-  board says PROJECTED and never the word "Earnings". `tests/test_golf_conformance.py`.
+  board says PROJECTED and never the word "Earnings"; a finalized board says BANKED and never
+  PROJECTED. `tests/test_golf_conformance.py`.
 - **The penalty is derived:** owed = incidents × `PENALTY_PER_INCIDENT` − `penalty_paid`; refreshed
   live by `refresh_tournament_penalties`; never hand-written. `tests/test_golf_penalty.py`.
 - **A tournament never auto-completes:** only a sync confirming official results sets `complete` and
@@ -356,7 +465,24 @@ the rule, never around it.
   `utils/reminders.py::tier_already_sent`). `tests/test_golf_automation.py`.
 - **The `golf-*` timer cadence is the API budget** (free SlashGolf tier, ~115 of 250 calls a month).
   `tests/test_golf_timers.py`.
-- **No per-row queries on the sheet or the board** (query-count locks). `tests/test_golf_cleanup.py`.
+- **No per-row queries on the sheet or the board:** both are built by
+  `games/golf/services/sheet.py`, pure builders over rows the route already loaded; every sort and
+  rank happens there, in competition rank (ties share and gap), never in a template.
+  `tests/test_golf_sheet.py`; the route query-count locks stay in `tests/test_golf_cleanup.py`.
+- **Nothing shows before the lock:** until the lock passes, no other member's golfer or name reaches
+  the board template; the page states only how many picks are in. `tests/test_golf_sheet.py`.
+- **The week turns over at the lock, never at a status:** the Board opens, the Sheet pencils a week
+  and the next pick moves on when `is_deadline_passed()` does (the pick form's own test). A sync
+  writes `active` from Thursday midnight and the request hook moves `upcoming` up to a refresh
+  interval late, so status alone is wrong on both sides of the lock. Status decides the next pick
+  only for a tournament with no deadline yet (`upcoming`), because the lock reads a missing
+  deadline as open. `tests/test_golf_sheet.py`.
+- **One clock:** `games/golf/utils.get_current_time()` is the room's now and honors `GOLF_FAKE_NOW`
+  only when `ENVIRONMENT` is `development` or `testing` (a naive value is UTC, a malformed one falls
+  back to real time, production never reads it). The lock (`is_deadline_passed`),
+  `update_status_from_time`, the routes' event clock and the `golf_current_time` template value all
+  read it; the lock is stated through `format_lock`. The sync, CLI and reminder clocks still read
+  real time. `tests/test_golf_time_seam.py`.
 - **Enrollment is explicit:** pick and override paths never create `GolfEnrollment` rows.
   `tests/test_golf_auto_enroll_removed.py`.
 - **The name:** registry `display_name` "The Pay Sheet", `short_name='Golf'` (string-locked),

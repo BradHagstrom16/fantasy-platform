@@ -18,7 +18,7 @@ from datetime import UTC, datetime
 
 from extensions import db
 from games.golf.constants import PURSE_ESTIMATES
-from games.golf.utils import GOLF_LEAGUE_TZ, format_score_to_par
+from games.golf.utils import GOLF_LEAGUE_TZ, format_score_to_par, get_current_time
 
 logger = logging.getLogger(__name__)
 
@@ -205,7 +205,7 @@ class GolfTournament(db.Model):
         """Check if pick deadline has passed."""
         if not self.pick_deadline:
             return False
-        now = datetime.now(GOLF_LEAGUE_TZ)
+        now = get_current_time()
         deadline = self.pick_deadline
         if deadline.tzinfo is None:
             deadline = deadline.replace(tzinfo=GOLF_LEAGUE_TZ)
@@ -227,7 +227,7 @@ class GolfTournament(db.Model):
         do that after verifying results are finalized via the API. This prevents
         premature completion marking.
         """
-        now = current_time or datetime.now(GOLF_LEAGUE_TZ)
+        now = current_time or get_current_time()
         if self.status == 'complete':
             return self.status
 
@@ -695,6 +695,16 @@ class GolfPick(db.Model):
                 return not self._early_wd(self._backup_result_cache)
 
         return False
+
+    def prime_results(self, results_by_player):
+        """Hand this pick the tournament's already-loaded results.
+
+        Fills the transient caches ``is_backup_activated`` memoizes on, so a
+        page that loaded every result once reads ``display_active_player_id``
+        without a query per row (the sheet and the board, DESIGN.md §9).
+        """
+        self._primary_result_cache = results_by_player.get(self.primary_player_id)
+        self._backup_result_cache = results_by_player.get(self.backup_player_id)
 
     @property
     def display_active_player_id(self):

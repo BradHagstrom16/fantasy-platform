@@ -1,11 +1,14 @@
-{# Major missed-cut/DQ penalty badge (ADR-034). Reads `penalty_per_incident`
-   from the golf context processor, so callers must import `with context`:
+{# Major missed-cut/DQ penalty chip (ADR-034; DESIGN.md §7.4). Reads
+   `penalty_per_incident` from the golf context processor, so callers must
+   import `with context`:
    {% from 'golf/_penalty_badge.html' import penalty_badge with context %}
-   Guarded on pick.show_penalty_badge (live OR finalized major, flag set). #}
-{% macro penalty_badge(pick, extra_class='', label='', wrap=false) -%}
+   Guarded on pick.show_penalty_badge (live OR finalized major, flag set).
+   `compact` hides the word on a phone, where the pick line has no room for
+   it and a Cut or DQ chip already sits beside the amount. #}
+{% macro penalty_badge(pick, extra_class='', compact=false, wrap=false) -%}
   {%- if pick.show_penalty_badge -%}
-    {%- if wrap %}<div>{% endif -%}
-    <span class="badge-penalty{% if extra_class %} {{ extra_class }}{% endif %}" title="Missed major cut or DQ — ${{ penalty_per_incident }} to the pot">&minus;${{ penalty_per_incident }}{{ label }}</span>
+    {%- if wrap %}<div>{% endif %}
+    <span class="golf-chip golf-chip--deduction badge-penalty{% if extra_class %} {{ extra_class }}{% endif %}" title="Missed cut or DQ at a major: ${{ penalty_per_incident }} to the pot">{% if compact %}<span class="golf-chip-word">Penalty </span>{% else %}Penalty {% endif %}${{ penalty_per_incident }}</span>
     {%- if wrap %}</div>{% endif -%}
   {%- endif -%}
 {%- endmacro %}

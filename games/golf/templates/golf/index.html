@@ -1,261 +1,223 @@
 {% extends "base.html" %}
-{% from 'golf/_penalty_badge.html' import penalty_badge with context %}
+{% from 'golf/_sheet.html' import dollars, money, pick_line, read_time with context %}
 
-{% block title %}The Pay Sheet — Standings{% endblock %}
+{% block title %}The Sheet · The Pay Sheet{% endblock %}
 
 {% block content %}
-<!-- Hero -->
-<div class="page-hero">
-    <div class="hero-glow"></div>
-    <div class="container">
-        <div class="row align-items-end">
-            <div class="col-md-7">
-                <h1 class="mb-1">The Pay Sheet</h1>
-                <p class="lead mb-0">{{ season_year }} Season Standings</p>
-            </div>
-            <div class="col-md-5 text-md-end mt-3 mt-md-0">
-                {% set total = all_tournaments|length %}
-                {% set done = completed_tournaments|length %}
-                {% if total > 0 %}
-                <div class="d-inline-block text-start" style="min-width:200px;">
-                    <div class="d-flex justify-content-between mb-1">
-                        <small class="hero-progress-label">Season Progress</small>
-                        <small class="hero-progress-value">{{ done }}/{{ total }}</small>
-                    </div>
-                    <div class="progress" style="height:6px;background:rgba(255,255,255,.12);border-radius:3px;">
-                        <div class="progress-bar" role="progressbar" style="width:{{ (done / total * 100)|round }}%;background:var(--game-accent);border-radius:3px;"></div>
-                    </div>
-                </div>
-                {% endif %}
-            </div>
-        </div>
-    </div>
-</div>
+<div class="golf-page golf-page--margin">
 
-<div class="container pb-5">
-
-    {% if active_tournament %}
-    <!-- Active Tournament Banner -->
-    <div class="card border-warning mb-4 animate-in">
-        <div class="card-body py-3">
-            <div class="row align-items-center">
-                <div class="col-md-8">
-                    <div class="d-flex align-items-center gap-2">
-                        <span class="badge bg-success" style="animation:pulseGold 2s infinite;">LIVE</span>
-                        <h5 class="mb-0">{{ active_tournament.name }}</h5>
-                    </div>
-                    <small class="text-muted">
-                        Purse: {% if active_tournament.effective_purse %}${{ '{:,.0f}'.format(active_tournament.effective_purse) }}{% if active_tournament.purse_is_estimate %} <span class="text-muted small">(est.)</span>{% endif %}{% else %}TBD{% endif %}
-                        {% if active_tournament.is_major %}<span class="badge badge-major ms-1">MAJOR</span>{% endif %}
-                        {% if active_tournament.is_team_event %}<span class="badge bg-info text-dark ms-1" style="font-size:.65rem;">TEAM</span>{% endif %}
-                    </small>
-                </div>
-                <div class="col-md-4 text-md-end mt-2 mt-md-0">
-                    <a href="{{ url_for('golf.tournament_detail', tournament_id=active_tournament.id) }}" class="btn btn-primary btn-sm">
-                        View Leaderboard <i class="bi bi-arrow-right ms-1"></i>
-                    </a>
-                </div>
-            </div>
-        </div>
-    </div>
-    {% endif %}
-
-    {% if next_tournament and current_user.is_authenticated and not user_has_picked_next %}
-    <!-- CTA: Make Your Pick -->
-    <div class="card mb-4 animate-in stagger-1 golf-pick-cta">
-        <div class="card-body py-3">
-            <div class="row align-items-center">
-                <div class="col-md-8">
-                    <h6 class="mb-1" style="color:var(--game-primary);">
-                        <i class="bi bi-flag-fill me-1" style="color:var(--game-accent);"></i> Picks Open: {{ next_tournament.name }}
-                    </h6>
-                    <small class="text-muted">Deadline: {{ next_tournament.get_deadline_display() }}</small>
-                </div>
-                <div class="col-md-4 text-md-end mt-2 mt-md-0">
-                    <a href="{{ url_for('golf.make_pick', tournament_id=next_tournament.id) }}" class="btn btn-warning btn-sm">
-                        Make Your Pick <i class="bi bi-arrow-right ms-1"></i>
-                    </a>
-                </div>
-            </div>
-        </div>
-    </div>
-    {% endif %}
-
-    <!-- Standings Table -->
-    <div class="card animate-in stagger-2">
-        <div class="card-header d-flex justify-content-between align-items-center">
-            <span><i class="bi bi-trophy me-2"></i>Season Standings</span>
-            <small class="text-muted" style="text-transform:none;font-weight:400;">{{ users|length }} players</small>
-        </div>
-        <div class="card-body p-0">
-            {% if users %}
-            <div class="table-responsive">
-                <table class="table table-golf table-hover mb-0 align-middle">
-                    <thead>
-                        <tr>
-                            <th style="width:50px;">#</th>
-                            <th>Player</th>
-                            <th class="text-end">Points</th>
-                            <th class="text-center d-none d-md-table-cell">Score</th>
-                            {% if active_tournament %}
-                            <th class="text-center d-none d-sm-table-cell col-divider">This Week</th>
-                            <th class="text-end d-none d-md-table-cell">Proj. Earnings</th>
-                            {% endif %}
-                            <th class="text-center" style="width:60px;">Paid</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for u in users %}
-                        {% set uid = u.user.id %}
-                        <tr class="{% if current_user.is_authenticated and uid == current_user.id %}row-current-user{% endif %}{% if loop.index == 1 %} row-leader{% endif %}">
-                            <td>
-                                <span class="fw-bold {% if loop.index <= 3 %}text-gold{% endif %}">{{ loop.index }}</span>
-                            </td>
-                            <td>
-                                <span class="me-1">{{ u.user.get_avatar() }}</span><span class="fw-semibold">{{ u.user.get_display_name() }}</span>
-                                {% if current_user.is_authenticated and uid == current_user.id %}
-                                <span class="badge bg-primary ms-1" style="font-size:.6rem;">YOU</span>
-                                {% endif %}
-                            </td>
-                            <td class="text-end">
-                                <strong>${{ '{:,.0f}'.format(u.total_points) }}</strong>
-                            </td>
-                            <td class="text-center d-none d-md-table-cell">
-                                {% if cumulative_scores.get(uid) %}
-                                    {% set cs = cumulative_scores[uid] %}
-                                    <span class="{% if cs.total < 0 %}text-success{% elif cs.total > 0 %}text-danger{% endif %}">
-                                        {{ cs.display or 'E' }}
-                                    </span>
-                                {% else %}
-                                    <span class="text-muted">—</span>
-                                {% endif %}
-                            </td>
-                            {% if active_tournament %}
-                            <td class="text-center d-none d-sm-table-cell col-divider">
-                                {% set pick = active_picks.get(uid) %}
-                                {% if pick %}
-                                    {% set active_id = pick.display_active_player_id %}
-                                    {% set result = active_results.get(active_id) %}
-                                    {% if result %}
-                                        {% if result.final_position %}
-                                            <span class="badge bg-light text-dark border">{{ result.final_position }}</span>
-                                        {% endif %}
-                                        {% if result.score_to_par is not none %}
-                                            <small class="{% if result.score_to_par < 0 %}text-success{% elif result.score_to_par > 0 %}text-danger{% endif %}">
-                                                {{ format_score_to_par(result.score_to_par) }}
-                                            </small>
-                                        {% endif %}
-                                        {{ penalty_badge(pick, extra_class='ms-1') }}
-                                    {% else %}
-                                        <span class="text-muted">—</span>
-                                    {% endif %}
-                                {% else %}
-                                    <span class="text-muted small">No pick</span>
-                                {% endif %}
-                            </td>
-                            <td class="text-end d-none d-md-table-cell">
-                                {% if pick %}
-                                    {% set active_id = pick.display_active_player_id %}
-                                    {% set result = active_results.get(active_id) %}
-                                    {% if result and result.final_position %}
-                                        {% set proj = calculate_projected_earnings(result.final_position, active_tournament.effective_purse or 0, all_positions, active_tournament.is_major) %}
-                                        {% if proj > 0 %}
-                                            <span class="text-success fw-semibold">${{ '{:,.0f}'.format(proj) }}</span>
-                                        {% else %}
-                                            <span class="text-muted">$0</span>
-                                        {% endif %}
-                                    {% else %}
-                                        <span class="text-muted">—</span>
-                                    {% endif %}
-                                {% else %}
-                                    <span class="text-muted">—</span>
-                                {% endif %}
-                            </td>
-                            {% endif %}
-                            <td class="text-center">
-                                {% if u.has_paid %}
-                                    <i class="bi bi-check-circle-fill text-success"></i>
-                                {% else %}
-                                    <i class="bi bi-x-circle text-muted"></i>
-                                {% endif %}
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-            {% else %}
-            <div class="text-center py-5">
-                <i class="bi bi-flag golf-empty-icon"></i>
-                <h5 class="mt-3">No Players Yet</h5>
-                <p class="text-muted">The {{ season_year }} season hasn't started yet.</p>
-                {% if not current_user.is_authenticated %}
-                <a href="{{ url_for('auth.register') }}" class="btn btn-warning">Join Now</a>
-                {% endif %}
-            </div>
-            {% endif %}
-        </div>
-        {% if entry_total > 0 or total_penalty_pot > 0 %}
-        <div class="card-footer d-flex flex-wrap justify-content-between align-items-baseline gap-2">
-            <span class="golf-pool-label">Prize Pool</span>
-            <span class="golf-pool-figures">
-                <span class="text-muted">Entry fees</span> ${{ '{:,.0f}'.format(entry_total) }}
-                {% if total_penalty_pot > 0 %}
-                    <span class="text-muted mx-1">+</span>
-                    <span class="text-muted">penalties</span> ${{ '{:,.0f}'.format(total_penalty_pot) }}
-                {% endif %}
-                <span class="text-muted mx-1">=</span>
-                <strong>${{ '{:,.0f}'.format(entry_total + total_penalty_pot) }}</strong>
+    {# The context line: the event on the course and how fresh its money is, or the next lock. #}
+    <p class="golf-context">
+        <span class="golf-context-items">
+        {% if clock %}
+            <span>
+                {%- if clock.on_course %}<span class="golf-chip golf-chip--live">Live</span> {% endif -%}
+                <a href="{{ url_for('golf.tournament_detail', tournament_id=clock.tournament.id) }}">{{ clock.tournament.name }}</a>
             </span>
-        </div>
+            <span class="golf-nowrap">{{ clock.round_label }}</span>
+            {% if not clock.on_course %}
+            <span class="golf-nowrap"><span class="golf-state">Projected</span> until results are official</span>
+            {% elif clock.last_read %}
+            <span class="golf-nowrap"><span class="golf-state">Projected</span> as of {{ read_time(clock) }}</span>
+            {% else %}
+            <span class="golf-nowrap">first read at noon CT</span>
+            {% endif %}
+        {% elif next_tournament %}
+            <span>{{ next_tournament.name }}</span>
+            <span class="golf-nowrap">{% if field_open %}picks lock {{ next_lock }}{% else %}the field publishes Tuesday{% endif %}</span>
+        {% else %}
+            <span>{{ season_year }} season</span>
+            <span class="golf-nowrap">every line is banked</span>
         {% endif %}
-    </div>
+        </span>
+    </p>
 
-    {% if completed_tournaments %}
-    <!-- Completed Tournaments -->
-    <div class="card mt-4 animate-in stagger-3">
-        <div class="card-header">
-            <i class="bi bi-check2-circle me-2"></i>Completed Tournaments
-        </div>
-        <div class="card-body p-0">
-            <div class="table-responsive">
-                <table class="table table-golf table-hover mb-0 align-middle">
-                    <thead>
-                        <tr>
-                            <th>Wk</th>
-                            <th>Tournament</th>
-                            <th class="text-end d-none d-sm-table-cell">Purse</th>
-                            <th class="text-center">Status</th>
-                            <th></th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for t in completed_tournaments|reverse %}
-                        <tr>
-                            <td><span class="text-muted">{{ t.week_number or '—' }}</span></td>
-                            <td>
-                                {{ t.name }}
-                                {% if t.is_major %}<span class="badge badge-major">MAJOR</span>{% endif %}
-                            </td>
-                            <td class="text-end d-none d-sm-table-cell">{% if t.effective_purse %}${{ '{:,.0f}'.format(t.effective_purse) }}{% else %}TBD{% endif %}</td>
-                            <td class="text-center">
-                                {% if t.results_finalized %}
-                                    <span class="badge bg-success">Final</span>
-                                {% else %}
-                                    <span class="badge bg-warning text-dark">Pending</span>
-                                {% endif %}
-                            </td>
-                            <td class="text-end">
-                                <a href="{{ url_for('golf.tournament_detail', tournament_id=t.id) }}" class="btn btn-outline-secondary btn-sm">View</a>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+    <div class="golf-main">
+
+        {% if sheet.mine %}
+        {% set me = sheet.mine %}
+        <section class="golf-your-line" aria-labelledby="golf-your-line-label">
+            <div class="golf-your-line-head">
+                <span class="golf-label" id="golf-your-line-label">Your line</span>
+                <span class="golf-state{% if not me.projected %} golf-state--banked{% endif %}">{{ 'Projected' if me.projected else 'Banked' }}</span>
             </div>
-        </div>
-    </div>
-    {% endif %}
+            <div class="golf-hero-figure golf-hero-figure--{{ 'projected' if me.projected else 'banked' }}">{% if me.projected %}~{% endif %}{{ dollars(me.total) }}</div>
+            <p class="golf-your-line-sub">
+                <strong>{{ me.place }}</strong> of {{ sheet.rows|length }}
+                {% if clock %}
+                    · This week: {% if me.week %}{{ pick_line(me.week, figure=true) }}{% else %}no pick{% endif %}
+                {% elif next_tournament and next_pick %}
+                    · Next: {{ next_pick.primary_player.last_name }} at the {{ next_tournament.name }}
+                {% elif next_tournament and field_open %}
+                    · No pick in for the {{ next_tournament.name }}.
+                    <a class="golf-nowrap" href="{{ url_for('golf.make_pick', tournament_id=next_tournament.id) }}">Spend a golfer</a>
+                {% endif %}
+            </p>
+        </section>
+        {% elif can_join %}
+        <p class="golf-line golf-line--lead">You have no line on this sheet yet. <a href="{{ url_for('golf.join') }}">Take a seat</a>.</p>
+        {% endif %}
 
+        <div class="golf-sheet-head">
+            <h1 class="golf-title">The Sheet</h1>
+            {% if sheet.rows and not clock %}<span class="golf-state golf-state--banked">Banked</span>{% endif %}
+        </div>
+
+        {% if sheet.rows %}
+        <table class="golf-sheet{% if not clock %} golf-sheet--plain{% endif %}">
+            <thead class="visually-hidden">
+                <tr>
+                    <th scope="col">Rank</th>
+                    <th scope="col">Member{% if clock %} and this week's pick{% endif %}</th>
+                    <th scope="col">Season total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in sheet.rows %}
+                <tr class="golf-sheet-row{% if row.is_me %} golf-sheet-row--me{% endif %}">
+                    <td class="golf-sheet-rank">{{ row.rank_label }}</td>
+                    <th scope="row" class="golf-sheet-name">
+                        <span class="golf-sheet-avatar">{{ row.user.get_avatar() }}</span>{{ row.user.get_display_name() }}
+                        {%- if row.is_me %}<span class="visually-hidden"> (your line)</span>{% endif %}
+                        {%- if row.unpaid %} <span class="golf-chip golf-chip--deduction">Unpaid</span>{% endif %}
+                        {% if clock -%}
+                        <span class="golf-pick-line">
+                            {%- if row.week %}{{ pick_line(row.week, figure=true) }}{% else %}No pick{% endif -%}
+                        </span>
+                        {%- endif %}
+                    </th>
+                    <td class="golf-sheet-money">{{ money(row.total, row.projected, state=clock is not none) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        {% if clock and sheet.didnt_pick %}
+        <details class="golf-fold">
+            <summary>Didn't pick ({{ sheet.didnt_pick|length }})</summary>
+            <p class="golf-fold-body">
+                {% for user in sheet.didnt_pick %}{{ user.get_display_name() }}{% if not loop.last %}, {% endif %}{% endfor %}.
+                No pick is $0 for the week. No penalty, no autopick.
+            </p>
+        </details>
+        {% elif clock %}
+        <p class="golf-line">Every line has a pick on the {{ clock.tournament.name }}.</p>
+        {% endif %}
+
+        <p class="golf-foot">
+            {% if last_board %}
+            <a href="{{ url_for('golf.tournament_detail', tournament_id=last_board.id) }}">Last banked: {{ last_board.name }}</a>
+            {% endif %}
+            <a href="{{ url_for('golf.schedule') }}">The Season Book</a>
+        </p>
+
+        {% else %}
+        <p class="golf-empty">Nobody has a line yet. The first member to take a seat is the sheet's first line.</p>
+        {% endif %}
+
+    </div>
+
+    <aside class="golf-margin" aria-label="Notes on the sheet">
+
+        {% if next_tournament %}
+        <section class="golf-note" aria-labelledby="golf-next-pick-label">
+            <span class="golf-label" id="golf-next-pick-label">Next pick</span>
+            <p class="golf-note-lead">
+                {{ next_tournament.name }}
+                {% if next_tournament.is_major %}<span class="golf-chip">Major ×1.5</span>{% endif %}
+                {% if next_tournament.is_team_event %}<span class="golf-chip">Team event</span>{% endif %}
+            </p>
+            {% if next_tournament.effective_purse %}
+            <p class="golf-note-line">
+                Purse <strong>{{ dollars(next_tournament.effective_purse) }}</strong>
+                {%- if next_tournament.purse_is_estimate %} <span class="golf-chip">Est. purse</span>{% endif %}
+            </p>
+            {% endif %}
+            {% if field_open %}
+            <p class="golf-note-line">Picks lock <strong class="golf-nowrap">{{ next_lock }}</strong></p>
+            {% if next_pick %}
+            <p class="golf-note-line">
+                Your pick: <strong>{{ next_pick.primary_player.full_name() }}</strong>, backup {{ next_pick.backup_player.full_name() }}.
+                <a href="{{ url_for('golf.make_pick', tournament_id=next_tournament.id) }}">Change</a>
+            </p>
+            {% elif sheet.mine %}
+            <a class="btn btn-game golf-btn" href="{{ url_for('golf.make_pick', tournament_id=next_tournament.id) }}">Spend a golfer</a>
+            {% endif %}
+            {% else %}
+            <p class="golf-note-line">The field publishes Tuesday. Picks open then.</p>
+            {% endif %}
+        </section>
+        {% endif %}
+
+        {% if sheet.rows %}
+        <section class="golf-note" aria-labelledby="golf-pot-label">
+            <span class="golf-label" id="golf-pot-label">Prize Pool</span>
+            <dl class="golf-pot">
+                <div>
+                    <dt>Entry ${{ entry_fee }} × {{ sheet.rows|length }}</dt>
+                    <dd>{{ dollars(entry_total) }}</dd>
+                </div>
+                <div>
+                    <dt>Penalty pot</dt>
+                    <dd>{{ dollars(total_penalty_pot) }}</dd>
+                </div>
+                <div class="golf-pot-sum">
+                    <dt>In the pool</dt>
+                    <dd>{{ dollars(entry_total + total_penalty_pot) }}</dd>
+                </div>
+            </dl>
+        </section>
+        {% endif %}
+
+        <section class="golf-note golf-note--folds" aria-label="The marks and House Rules">
+            <details class="golf-fold">
+                <summary>The marks</summary>
+                <dl class="golf-marks">
+                    <div>
+                        <dt><span class="golf-money golf-money--projected">~Pencil</span></dt>
+                        <dd>Projected. Live, from position; not money yet.</dd>
+                    </div>
+                    <div>
+                        <dt><span class="golf-money golf-money--banked">Ink</span></dt>
+                        <dd>Banked. Results are official.</dd>
+                    </div>
+                    <div>
+                        <dt><span class="golf-chip golf-chip--live">Live</span></dt>
+                        <dd>A tournament is on the course.</dd>
+                    </div>
+                    <div>
+                        <dt>
+                            <span class="golf-chip golf-chip--deduction">Cut</span>
+                            <span class="golf-chip golf-chip--deduction">WD</span>
+                            <span class="golf-chip golf-chip--deduction">DQ</span>
+                        </dt>
+                        <dd>Out of the money this week.</dd>
+                    </div>
+                    <div>
+                        <dt><span class="golf-chip golf-chip--deduction"><span class="golf-chip-word">Penalty </span>${{ penalty_per_incident }}</span></dt>
+                        <dd>Penalty. Cut or DQ at a major: ${{ penalty_per_incident }} to the pot.</dd>
+                    </div>
+                    <div>
+                        <dt><span class="golf-chip golf-chip--deduction">Unpaid</span></dt>
+                        <dd>The entry fee is not in.</dd>
+                    </div>
+                </dl>
+            </details>
+            <details class="golf-fold">
+                <summary>House Rules</summary>
+                <ul class="golf-fold-body">
+                    <li>Each week, pick one golfer and one backup, both from the field.</li>
+                    <li>Your golfer's prize money is your score. Majors pay ×1.5.</li>
+                    <li>A golfer counts once a season. Only the golfer who counted is spent.</li>
+                    <li>If your primary withdraws before finishing round 2, the backup counts and the primary returns to your pool.</li>
+                    <li>A missed cut or DQ at a major costs ${{ penalty_per_incident }} to the pot.</li>
+                    <li>Picks lock at the first Thursday tee time. Everyone's picks stay hidden until then.</li>
+                    <li>No pick is $0 for the week. No penalty, no autopick.</li>
+                    <li>One season total. Highest wins.</li>
+                </ul>
+            </details>
+        </section>
+
+    </aside>
 </div>
 {% endblock %}

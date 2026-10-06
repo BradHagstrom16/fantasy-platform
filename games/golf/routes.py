@@ -18,7 +18,7 @@ from flask import (
     url_for,
 )
 from flask_login import current_user, login_required
-from sqlalchemy import and_, func
+from sqlalchemy import func, select
 from sqlalchemy.orm import joinedload
 
 from extensions import db
@@ -34,8 +34,15 @@ from games.golf.models import (
     GolfTournamentField,
     GolfTournamentResult,
 )
+from games.golf.services.sheet import (
+    build_board,
+    build_sheet,
+    event_clock,
+    live_event,
+    week_lines,
+)
 from games.golf.utils import (
-    calculate_projected_earnings,
+    format_lock,
     format_score_to_par,
     get_current_time,
 )
@@ -137,43 +144,32 @@ def refresh_tournament_states():
 # Helpers
 # ============================================================================
 
-def get_cumulative_scores(user_ids, season_year):
-    """Calculate cumulative score to par using a single efficient query."""
-    if not user_ids:
-        return {}
+def _season_enrollments(season_year):
+    """A season's enrollees with their users loaded (no query per row)."""
+    return db.session.scalars(
+        select(GolfEnrollment)
+        .options(joinedload(GolfEnrollment.user))
+        .filter_by(season_year=season_year)
+    ).all()
 
-    rows = (
-        db.session.query(
-            GolfPick.user_id,
-            func.sum(GolfTournamentResult.score_to_par)
-        )
-        .join(GolfTournament, GolfPick.tournament_id == GolfTournament.id)
-        .join(
-            GolfTournamentResult,
-            and_(
-                GolfTournamentResult.tournament_id == GolfPick.tournament_id,
-                GolfTournamentResult.player_id == GolfPick.active_player_id
-            )
-        )
-        .filter(
-            GolfTournament.status == 'complete',
-            GolfTournament.season_year == season_year,
-            GolfPick.active_player_id.isnot(None),
-            GolfTournamentResult.score_to_par.isnot(None)
-        )
-        .group_by(GolfPick.user_id)
-        .all()
-    )
 
-    score_map = dict(rows)
-    cumulative = {}
-    for uid in user_ids:
-        total = score_map.get(uid, 0) or 0
-        cumulative[uid] = {
-            'total': total,
-            'display': format_score_to_par(total)
-        }
-    return cumulative
+def _tournament_picks(tournament_id):
+    """A tournament's picks with the member and both golfers loaded."""
+    return db.session.scalars(
+        select(GolfPick)
+        .options(
+            joinedload(GolfPick.user),
+            joinedload(GolfPick.primary_player),
+            joinedload(GolfPick.backup_player),
+        )
+        .filter_by(tournament_id=tournament_id)
+    ).all()
+
+
+def _tournament_results(tournament_id):
+    return db.session.scalars(
+        select(GolfTournamentResult).filter_by(tournament_id=tournament_id)
+    ).all()
 
 
 # ============================================================================
@@ -182,73 +178,63 @@ def get_cumulative_scores(user_ids, season_year):
 
 @golf_bp.route('/')
 def index():
-    """The Pay Sheet standings page."""
+    """The Sheet: the season's standings."""
     season_year = current_app.config['SEASON_YEAR']
-
-    # Get all enrolled users for this season, ordered by total_points.
-    # Eager-load .user so building the standings rows doesn't fire a query
-    # per enrollee (N+1, audit §5).
-    enrollments = (
-        GolfEnrollment.query
-        .options(joinedload(GolfEnrollment.user))
-        .filter_by(season_year=season_year)
-        .order_by(GolfEnrollment.total_points.desc())
-        .all()
-    )
+    viewer_id = current_user.id if current_user.is_authenticated else None
 
     # Standings are golf-enrollment-scoped (ADR-036): only current-season golf
-    # enrollees appear. The board is NOT padded with every platform user —
-    # that polluted it with World Cup / CFB-only accounts sitting at 0 points.
-    users = []
-    for enrollment in enrollments:
-        users.append({
-            'user': enrollment.user,
-            'enrollment': enrollment,
-            'total_points': enrollment.total_points,
-            'has_paid': enrollment.has_paid,
-        })
-
-    # Tournament data
-    all_tournaments = (
-        GolfTournament.query
+    # enrollees have a line. The sheet is never padded with platform users.
+    enrollments = _season_enrollments(season_year)
+    tournaments = db.session.scalars(
+        select(GolfTournament)
         .filter_by(season_year=season_year)
         .order_by(GolfTournament.start_date)
-        .all()
+    ).all()
+
+    # The week turns over at the lock (the pick form's own test), never at a
+    # status. The event the sheet is pencilling, on the course or played and
+    # not yet final, is past its lock; its picks and results load once and
+    # every row reads from them.
+    event = live_event([t for t in tournaments if t.is_deadline_passed()])
+    lines = clock = None
+    if event:
+        results = _tournament_results(event.id)
+        lines = week_lines(event, _tournament_picks(event.id), results)
+        clock = event_clock(event, results, get_current_time())
+    sheet = build_sheet(enrollments, viewer_id, lines)
+
+    # The next pick is the first tournament still before its lock. Status
+    # decides only for one with no deadline yet, which the lock reads as open
+    # forever (a field sync that never ran leaves a played week without one).
+    next_tournament = next(
+        (t for t in tournaments
+         if (not t.is_deadline_passed() if t.pick_deadline else t.status == 'upcoming')),
+        None,
+    )
+    field_open = bool(next_tournament and next_tournament.has_sufficient_field())
+    next_pick = None
+    if next_tournament and sheet.mine:
+        next_pick = db.session.scalar(
+            select(GolfPick)
+            .options(
+                joinedload(GolfPick.primary_player),
+                joinedload(GolfPick.backup_player),
+            )
+            .filter_by(user_id=viewer_id, tournament_id=next_tournament.id)
+        )
+
+    # A signed-in visitor with no line is offered a seat while the room takes them.
+    # (Imported here like games/common.py does: the registry imports every game.)
+    from games.registry import get_entry
+    entry = get_entry('golf')
+    can_join = (
+        current_user.is_authenticated
+        and sheet.mine is None
+        and entry.status == 'open'
+        and (entry.join_open is None or entry.join_open())
     )
 
-    completed_tournaments = [t for t in all_tournaments if t.status == 'complete']
-    active_tournament = next((t for t in all_tournaments if t.status == 'active'), None)
-    upcoming_tournaments = [t for t in all_tournaments if t.status == 'upcoming']
-    next_tournament = upcoming_tournaments[0] if upcoming_tournaments else None
-
-    # Cumulative scores
-    all_user_ids = [u['user'].id for u in users]
-    cumulative_scores = get_cumulative_scores(all_user_ids, season_year)
-
-    # Active tournament picks and results
-    active_picks = {}
-    active_results = {}
-    all_positions = []
-    if active_tournament:
-        picks = GolfPick.query.filter_by(tournament_id=active_tournament.id).all()
-        for pick in picks:
-            active_picks[pick.user_id] = pick
-
-        results = GolfTournamentResult.query.filter_by(
-            tournament_id=active_tournament.id
-        ).all()
-        for result in results:
-            active_results[result.player_id] = result
-            if result.final_position:
-                all_positions.append(result.final_position)
-
-    # Check if current user has picked for next tournament
-    user_has_picked_next = False
-    if current_user.is_authenticated and next_tournament:
-        user_has_picked_next = GolfPick.query.filter_by(
-            user_id=current_user.id,
-            tournament_id=next_tournament.id
-        ).first() is not None
+    banked_boards = [t for t in tournaments if t.results_finalized]
 
     # Prize pool: entry fees (season-scoped enrollments) + the major cut/DQ
     # side pot (ADR-034). Pot = flagged picks x $15 across the active season.
@@ -265,19 +251,16 @@ def index():
     total_penalty_pot = penalty_pick_count * PENALTY_PER_INCIDENT
 
     return render_template('golf/index.html',
-        users=users,
-        all_tournaments=all_tournaments,
-        completed_tournaments=completed_tournaments,
-        active_tournament=active_tournament,
+        sheet=sheet,
+        clock=clock,
         next_tournament=next_tournament,
-        cumulative_scores=cumulative_scores,
-        active_picks=active_picks,
-        active_results=active_results,
-        all_positions=all_positions,
-        user_has_picked_next=user_has_picked_next,
+        next_lock=format_lock(next_tournament.pick_deadline) if next_tournament else None,
+        field_open=field_open,
+        next_pick=next_pick,
+        last_board=banked_boards[-1] if banked_boards else None,
+        can_join=can_join,
         entry_total=entry_total,
         total_penalty_pot=total_penalty_pot,
-        calculate_projected_earnings=calculate_projected_earnings,
     )
 
 
@@ -330,51 +313,51 @@ def schedule():
 
 @golf_bp.route('/tournament/<int:tournament_id>')
 def tournament_detail(tournament_id):
-    """Tournament detail/results page."""
+    """The Board: one tournament's picks and what each is worth."""
     tournament = db.get_or_404(GolfTournament, tournament_id)
+    viewer_id = current_user.id if current_user.is_authenticated else None
 
-    # Get all picks for this tournament. Eager-load the user + player
-    # relationships the standings table renders (sort key, avatar, primary /
-    # backup / active names) so each pick row doesn't fire its own queries
-    # (N+1, audit §5).
-    picks = (
-        GolfPick.query
-        .options(
-            joinedload(GolfPick.user),
-            joinedload(GolfPick.primary_player),
-            joinedload(GolfPick.backup_player),
-            joinedload(GolfPick.active_player),
+    picks = _tournament_picks(tournament_id)
+    my_pick = next((p for p in picks if p.user_id == viewer_id), None)
+
+    # Picks open to the room at the lock, the pick form's own test, never at a
+    # status (a sync writes 'active' from Thursday midnight, before the first
+    # tee). Until then the template is handed the viewer's own pick and a
+    # count, never another member's golfer.
+    locked = tournament.is_deadline_passed()
+    board = clock = None
+    can_pick = False
+    if locked:
+        results = _tournament_results(tournament_id)
+        board = build_board(
+            week_lines(tournament, picks, results),
+            _season_enrollments(tournament.season_year),
+            viewer_id,
         )
-        .filter_by(tournament_id=tournament_id)
-        .all()
-    )
+        if not tournament.results_finalized:
+            clock = event_clock(tournament, results, get_current_time())
+    else:
+        can_pick = tournament.has_sufficient_field()
 
-    # Get results
-    results = GolfTournamentResult.query.filter_by(
-        tournament_id=tournament_id
+    # The board is one leaf of the Season Book: its neighbours ride the pager.
+    season = db.session.scalars(
+        select(GolfTournament)
+        .filter_by(season_year=tournament.season_year)
+        .order_by(GolfTournament.start_date)
     ).all()
-    results_map = {r.player_id: r for r in results}
-
-    # All positions for projected earnings calculation
-    all_positions = [r.final_position for r in results if r.final_position]
-
-    # Determine if picks should be visible (after deadline)
-    picks_visible = tournament.is_deadline_passed()
-
-    # Check if any backup was activated
-    any_backup_activated = any(
-        p.active_player_id == p.backup_player_id and p.active_player_id is not None
-        for p in picks
-    )
+    at = season.index(tournament)
 
     return render_template('golf/tournament_detail.html',
         tournament=tournament,
-        picks=picks,
-        results_map=results_map,
-        all_positions=all_positions,
-        picks_visible=picks_visible,
-        any_backup_activated=any_backup_activated,
-        calculate_projected_earnings=calculate_projected_earnings,
+        previous_week=season[at - 1] if at else None,
+        next_week=season[at + 1] if at + 1 < len(season) else None,
+        weeks=max(t.week_number or 0 for t in season),
+        board=board,
+        clock=clock,
+        my_pick=my_pick,
+        lines_in=len(picks),
+        can_pick=can_pick,
+        lock=format_lock(tournament.pick_deadline),
     )
 
 

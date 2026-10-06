@@ -4,6 +4,8 @@ The Pay Sheet — Utility Functions
 Shared helpers for formatting, parsing, and calculations.
 """
 import logging
+import os
+from datetime import UTC, datetime
 from zoneinfo import ZoneInfo
 
 logger = logging.getLogger(__name__)
@@ -12,10 +14,62 @@ logger = logging.getLogger(__name__)
 GOLF_LEAGUE_TZ = ZoneInfo('America/Chicago')
 
 
+def _fake_now_utc():
+    """Return the GOLF_FAKE_NOW override as an aware-UTC datetime, or None.
+
+    The same non-production seam as CFB_FAKE_NOW (games/cfb/utils.py): active
+    only when ENVIRONMENT is development/testing; a naive ISO string is UTC;
+    a malformed value is logged and ignored. Production never reads it.
+    """
+    if os.environ.get('ENVIRONMENT') not in ('development', 'testing'):
+        return None
+    fake = os.environ.get('GOLF_FAKE_NOW')
+    if not fake:
+        return None
+    try:
+        dt = datetime.fromisoformat(fake.replace('Z', '+00:00'))
+    except ValueError:
+        logger.warning(
+            'GOLF_FAKE_NOW is not a valid ISO 8601 datetime: %r — '
+            'falling back to real time', fake,
+        )
+        return None
+    if dt.tzinfo:
+        return dt.astimezone(UTC)
+    return dt.replace(tzinfo=UTC)
+
+
 def get_current_time():
-    """Get current time in the golf league timezone."""
-    from datetime import datetime
+    """Current time in the golf league timezone (aware).
+
+    The canonical "now" for the room's pages and the tournament clock
+    (lock passed, status from time); honors the GOLF_FAKE_NOW seam.
+    """
+    fake = _fake_now_utc()
+    if fake is not None:
+        return fake.astimezone(GOLF_LEAGUE_TZ)
     return datetime.now(GOLF_LEAGUE_TZ)
+
+
+def league_time(dt):
+    """A stored tournament datetime as aware league time.
+
+    Tournament dates and the pick lock are league wall clock when naive.
+    """
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=GOLF_LEAGUE_TZ)
+    return dt.astimezone(GOLF_LEAGUE_TZ)
+
+
+def format_lock(deadline):
+    """'Thu Apr 16 · 6:05 AM CT': the lock as the room states it (DESIGN.md §7.3).
+
+    The short weekday keeps the context line to one line on a phone; Club
+    Letters keep the platform's long form (``utils.time.format_deadline_short``).
+    """
+    if deadline is None:
+        return 'TBD'
+    return f"{league_time(deadline).strftime('%a %b %-d · %-I:%M %p')} CT"
 
 
 def format_score_to_par(score) -> str | None:
