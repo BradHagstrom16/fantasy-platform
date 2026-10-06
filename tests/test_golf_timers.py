@@ -1,4 +1,4 @@
-"""Golf Pick 'Em's systemd units (deploy/golf-*).
+"""The Pay Sheet's systemd units (deploy/golf-*).
 
 Same rationale as tests/test_cfb_timers.py: `systemd-analyze verify` on the
 droplet checks syntax, not whether an ExecStart names a real mode or a timer

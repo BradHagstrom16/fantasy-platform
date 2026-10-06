@@ -45,6 +45,10 @@ class GameRegistryEntry:
     # the partial slug-agnostic when an entry omits them.
     short_name: str = ''
     launch_label: str = ''
+    # The format line a room introduces itself with when its display name
+    # alone does not say what the game is ("Golf One & Done" under "The Pay
+    # Sheet", ADR-072). Empty for games whose name carries the format.
+    format_label: str = ''
     # Lounge panel header billing (2026-08-18 design review): the full game
     # name a cold visitor can parse, worn only by the headliner panels.
     # Empty falls back to short_name (navbar/tiles keep their own labels).
@@ -162,10 +166,10 @@ GAMES: list[GameRegistryEntry] = [
     ),
     GameRegistryEntry(
         slug='golf',
-        display_name="Golf Pick 'Em",
+        display_name="The Pay Sheet",
         description=(
-            'Season-long PGA Tour fantasy. Pick one golfer per tournament. '
-            'Points = prize money.'
+            'Golf One & Done. Pick a golfer, bank their earnings, spend them '
+            'once. Season-long PGA Tour; points are prize money.'
         ),
         emoji='⛳',
         status='coming_soon',
@@ -176,6 +180,7 @@ GAMES: list[GameRegistryEntry] = [
         admin_enroll=_golf_enrollment.admin_enroll,
         short_name='Golf',
         launch_label='2027',
+        format_label='Golf One & Done',
     ),
 ]
 

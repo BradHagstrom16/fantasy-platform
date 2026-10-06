@@ -1,5 +1,5 @@
 """
-Golf Pick 'Em — Constants
+The Pay Sheet — Constants
 ============================
 League-specific constants for tournament filtering, purse estimates,
 and season configuration.

@@ -1,5 +1,5 @@
 """
-Golf Pick 'Em — Blueprint Definition
+The Pay Sheet — Blueprint Definition
 ======================================
 Season-long PGA Tour fantasy game. Pick one golfer per tournament,
 points = actual prize money earned, each golfer usable once per season.

@@ -9,7 +9,7 @@ game section.
 
 Two locks:
 
-1. **The rooms' templates.** Every `*-eyebrow` element in a CFB or Docket
+1. **The rooms' templates.** Every `*-eyebrow` element in a CFB, Docket or Pay Sheet (golf)
    room template (and the shared Settle the Tab include; the lounge partials
    are lounge chrome and out of scope) is followed by something
    that is not a heading: not an `<h1>`-`<h6>` and not an element whose class
@@ -32,6 +32,7 @@ ROOT = Path(__file__).resolve().parent.parent
 ROOM_TEMPLATES = sorted(
     p for p in [*(ROOT / 'games/cfb/templates').rglob('*.html'),
                 *(ROOT / 'games/docket/templates').rglob('*.html'),
+                *(ROOT / 'games/golf/templates').rglob('*.html'),
                 *(ROOT / 'core/records/templates').rglob('*.html'),
                 ROOT / 'templates/_settle_tab.html']
     if 'lounge' not in p.parts)

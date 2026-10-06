@@ -237,8 +237,8 @@ def test_golf_subnav_label_reads_the_configured_season(app):
     hardcoded '2026' would read wrong the day the 2027 season is configured."""
     app.config['SEASON_YEAR'] = 2031
     html = app.test_client().get('/golf/').get_data(as_text=True)
-    assert 'Golf 2031' in html
-    assert 'Golf 2026' not in html
+    assert 'Golf One &amp; Done · 2031' in html
+    assert '2026' not in html.split('subnav-label-sub')[1][:40]
 
 
 # ── Reminder de-dup (audit §6 HIGH) ──────────────────────────────────────────

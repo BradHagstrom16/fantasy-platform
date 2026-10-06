@@ -1,5 +1,5 @@
 """
-Golf Pick 'Em — CLI Commands
+The Pay Sheet — CLI Commands
 ===============================
 Flask CLI commands for API sync, data processing, and maintenance.
 All commands are namespaced under the 'golf' AppGroup to avoid
@@ -37,7 +37,7 @@ from games.golf.utils import GOLF_LEAGUE_TZ
 from utils.sync_runs import mark_run, record_run
 
 # Create a CLI group so commands are: flask golf sync-run, flask golf check-wd, etc.
-golf_cli = AppGroup('golf', help="Golf Pick 'Em management commands.")
+golf_cli = AppGroup('golf', help="The Pay Sheet management commands.")
 
 
 def _make_api_and_sync():

@@ -1,5 +1,5 @@
 """
-Golf Pick 'Em — Tournament Reminder & Notification Module
+The Pay Sheet — Tournament Reminder & Notification Module
 ===========================================================
 
 Handles three types of member emails, all Club Letters (ADR-058:
@@ -140,7 +140,7 @@ def _picks_open_letter(*, tournament_name, deadline_short, purse, pick_url,
     """
     return Letter(
         subject=f'Picks are open: Golf, {tournament_name}',
-        headline=f"Golf Pick 'Em, {tournament_name}: picks are open",
+        headline=f"The Pay Sheet, {tournament_name}: picks are open",
         game_slug='golf',
         season=season_year,
         preheader=f'Deadline {deadline_short}.',
@@ -239,18 +239,18 @@ def _reminder_letter(*, tournament_name, deadline_short, time_remaining,
         subject = f'FINAL, 1 hour left: Golf, {tournament_name}'
         # The final window is T-1h +/- TOLERANCE_MINUTES, so the body says
         # the time actually left, never a flat "one hour" (CFB's rule too).
-        headline = (f"Golf Pick 'Em, {tournament_name}: final call, "
+        headline = (f"The Pay Sheet, {tournament_name}: final call, "
                     f"about {time_remaining} left")
         lede = [f'Your pick for {tournament_name} is not in and the deadline '
                 f'is about {time_remaining} away.']
     elif window['type'] == 'reminder':
         subject = f'Pick due in 12 hours: Golf, {tournament_name}'
-        headline = f"Golf Pick 'Em, {tournament_name}: your pick is due in 12 hours"
+        headline = f"The Pay Sheet, {tournament_name}: your pick is due in 12 hours"
         lede = [f'About {time_remaining} left. One more reminder comes at '
                 f'one hour.']
     else:
         subject = f'Pick due in 24 hours: Golf, {tournament_name}'
-        headline = f"Golf Pick 'Em, {tournament_name}: your pick is due in 24 hours"
+        headline = f"The Pay Sheet, {tournament_name}: your pick is due in 24 hours"
         lede = [f'About {time_remaining} left. More reminders come at 12 '
                 f'hours and at one hour.']
     return Letter(
@@ -319,7 +319,7 @@ def send_admin_field_alert(tournament_id_or_obj, field_count: int) -> bool:
 
     body = f"""Hi {ADMIN_ALERT_NAME},
 
-This is an automated alert from Golf Pick 'Em.
+This is an automated alert from The Pay Sheet.
 
 FIELD SYNC ISSUE DETECTED
 
@@ -344,7 +344,7 @@ Admin Dashboard: {site_url}/admin
 
 This alert will only be sent once per tournament.
 
-Corrupt Commish Club · Golf Pick 'Em Automated Alert System
+Corrupt Commish Club · The Pay Sheet Automated Alert System
 """
 
     return send_platform_email(recipient, subject, body)
@@ -397,7 +397,7 @@ def _recap_letter(*, display_name, tournament_name, golfer_name, position,
 
     return Letter(
         subject=f'Results: Golf, {tournament_name}',
-        headline=f"Golf Pick 'Em, {tournament_name}: results are in",
+        headline=f"The Pay Sheet, {tournament_name}: results are in",
         game_slug='golf',
         season=season_year,
         preheader=f'{tournament_name}: your week, settled.',
@@ -697,7 +697,7 @@ def run_reminder_check():
 
     print()
     print("=" * 60)
-    print("Golf Pick 'Em Reminder Check")
+    print("The Pay Sheet Reminder Check")
     print(f"Time: {now.strftime('%A, %B %d, %Y at %I:%M %p %Z')}")
     print("=" * 60)
 

@@ -662,7 +662,7 @@ def test_footer_names_the_membership(letters):
         elif slug == 'docket':
             line = 'Sent to you as a member of The Docket 2026.'
         elif slug == 'golf':
-            line = "Sent to you as a member of Golf Pick 'Em 2026."
+            line = "Sent to you as a member of The Pay Sheet 2026."
         else:
             line = 'Sent to you as a member of the Corrupt Commish Club.'
         assert line in m['plain'] and line in _text(m['html']), name
@@ -1086,7 +1086,7 @@ def test_golf_final_reminder_says_the_time_actually_left(app):
             time_remaining='1 hour, 30 minutes', purse=20_000_000, golfers_used=4,
             pick_url='https://cccfantasy.com/golf/pick/1',
             window={'hours': 1, 'type': 'final'}, season_year=2026)
-    assert letter.headline == ("Golf Pick 'Em, The Memorial: final call, "
+    assert letter.headline == ("The Pay Sheet, The Memorial: final call, "
                                "about 1 hour, 30 minutes left")
     assert letter.lede == ['Your pick for The Memorial is not in and the '
                            'deadline is about 1 hour, 30 minutes away.']

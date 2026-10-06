@@ -63,7 +63,7 @@ def dashboard():
                 .filter(DocketEnrollment.has_paid.is_(True))),
         },
         {
-            'name': "Golf Pick 'Em",
+            'name': "The Pay Sheet",
             'emoji': '⛳',
             'slug': 'golf',
             'admin_url': url_for('golf.admin_dashboard'),

@@ -54,7 +54,7 @@ __all__ = [
 
 CLUB_NAME = 'Corrupt Commish Club'
 GAME_NAMES = {'cfb': 'CFB Survivor', 'docket': 'The Docket',
-              'golf': "Golf Pick 'Em"}
+              'golf': "The Pay Sheet"}
 # The lounge accent per game (tokens.css --lounge-*-accent): the CTA fill and
 # the rule over the letter. Club business (auth, announcements) wears no game
 # color.

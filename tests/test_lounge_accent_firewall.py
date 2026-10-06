@@ -29,9 +29,10 @@ LOUNGE_TOKENS = (
 ROOM_HEXES = (
     'c5050c', 'e8282f', 'e8464c',                    # CFB crimson family
     '6e1f2e', 'a63446', '8a3b4a', '421219', 'c4707e', 'd06a7a',  # Docket wine family
+    '2439c8', '1a2a8f', '4a5cd6', '8c9bff', 'e9ebe4',  # The Pay Sheet pen family + paper
 )
 
-ROOM_CLASS_PREFIX = re.compile(r'^(docket|cfb|wc)-')
+ROOM_CLASS_PREFIX = re.compile(r'^(docket|cfb|wc|golf)-')
 
 
 def _lounge_template_paths():

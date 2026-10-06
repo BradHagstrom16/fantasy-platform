@@ -49,12 +49,12 @@ class Config:
     SMTP_PORT = int(os.environ.get('SMTP_PORT', '587'))
     SITE_URL = os.environ.get('SITE_URL', 'http://localhost:5000')
 
-    # Golf Pick 'Em Settings
+    # The Pay Sheet Settings
     SEASON_YEAR = int(os.environ.get('SEASON_YEAR', '2026'))
     ENTRY_FEE = int(os.environ.get('ENTRY_FEE', '25'))
     SYNC_MODE = os.environ.get('SYNC_MODE', 'standard').lower()
     FIXED_DEADLINE_HOUR_CT = int(os.environ.get('FIXED_DEADLINE_HOUR_CT', '7'))
-    # SlashGolf (RapidAPI) key for the Golf Pick 'Em sync. Plumbed through
+    # SlashGolf (RapidAPI) key for the The Pay Sheet sync. Plumbed through
     # config so app-context callers read current_app.config['SLASHGOLF_API_KEY']
     # rather than os.environ directly — the MAIL_FROM_ADDRESS gotcha: a key read
     # via current_app.config.get() that has no os.environ.get() line here is

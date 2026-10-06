@@ -13,7 +13,7 @@ def _login_admin(client):
 def test_dashboard_lists_all_four_leagues(app, client):
     _login_admin(client)
     data = client.get('/admin/').data.decode()
-    for name in ('World Cup Fantasy', 'Golf Pick', 'CFB Survivor Pool',
+    for name in ('World Cup Fantasy', 'The Pay Sheet', 'CFB Survivor Pool',
                  'The Docket'):
         assert name in data, name
 

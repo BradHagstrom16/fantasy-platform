@@ -1,5 +1,5 @@
 """
-Golf Pick 'Em — Services
+The Pay Sheet — Services
 ===========================
 API sync, email notifications, and business logic.
 """
