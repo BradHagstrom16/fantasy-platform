@@ -244,7 +244,7 @@ def test_validate_availability_rejects_used_player(app):
     errors = pick.validate_availability(SEASON)
 
     # Exact match: only the used-player error, nothing else (both are in-field).
-    assert errors == ['Primary player has already been used this season.']
+    assert errors == ['Your primary has already been spent this season. Choose another golfer.']
 
 
 def test_validate_availability_rejects_non_field_player(app):
@@ -260,7 +260,7 @@ def test_validate_availability_rejects_non_field_player(app):
     errors = pick.validate_availability(SEASON)
 
     # Exact match: only the non-field backup error (neither player is used).
-    assert errors == ['Backup player is not in the tournament field.']
+    assert errors == ['Your backup is not in this field. Choose a golfer from the field.']
 
 
 # ============================================================================

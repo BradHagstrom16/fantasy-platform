@@ -5590,7 +5590,12 @@ ul.golf-fold-body {
   letter-spacing: .06em;
   line-height: 1.2;
 }
+/* Bootstrap empties a focused .btn (its hover variables are unset on
+   .btn-game); the pick action keeps its fill and takes the ring. */
 .btn.golf-btn:focus-visible {
+  background: var(--game-primary);
+  border-color: var(--game-primary);
+  color: var(--text-on-dark);
   outline: 2px solid var(--game-primary);
   outline-offset: 3px;
 }
@@ -5738,6 +5743,421 @@ ul.golf-fold-body {
 }
 .golf-empty + .golf-btn { margin-top: 1rem; }
 
+/* ── The pick page (U2): Spend a Golfer ────────────────────────────
+   games/golf/DESIGN.md §7.5 to §7.8. One question at a time: the open slot
+   wears the pen frame, a field row fills it, and the page turns back to the
+   slots. The form's two selects are the truth; .golf-pick--js (set by the
+   page's script) trades them for the slots' own text. */
+
+/* The purse: the page's one Teko figure, plain ink, no rule and no state word. */
+.golf-purse { margin: 1rem 0 1.25rem; }
+.golf-purse-head {
+  display: flex;
+  align-items: baseline;
+  gap: .75rem;
+  margin-bottom: .375rem;
+}
+
+/* The facts (§7.8): label over value, two columns on a phone. */
+.golf-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem 1.25rem;
+  margin: 0 0 1.75rem;
+  padding-top: .875rem;
+  border-top: 1px solid var(--golf-rule);
+}
+.golf-facts-lead { grid-column: 1 / -1; }
+.golf-facts dt { margin-bottom: .3rem; }
+.golf-facts dd {
+  margin: 0;
+  font-weight: 500;
+  font-size: 1.05rem;
+  line-height: 1.3;
+  font-variant-numeric: tabular-nums lining-nums;
+  color: var(--text-primary);
+}
+.golf-facts-note {
+  font-weight: 400;
+  font-size: .95rem;
+  color: var(--text-secondary);
+}
+
+/* The slots (§7.6): two ruled 56px frames. Filled is ink, empty is dashed
+   pencil, and the open one, the question being asked, is the pen. */
+.golf-slots {
+  display: grid;
+  gap: .5rem;
+  scroll-margin-top: 8rem;
+}
+.golf-slot {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: .75rem;
+  min-height: 56px;
+  padding: .4375rem .75rem .375rem;
+  border: 1px solid var(--text-primary);
+  border-radius: 2px;
+  transition: border-color .2s cubic-bezier(.16, 1, .3, 1),
+              box-shadow .2s cubic-bezier(.16, 1, .3, 1);
+}
+.golf-slot:focus { outline: none; }
+.golf-slot > .golf-label { grid-column: 1 / -1; }
+.golf-slot-select {
+  grid-column: 1 / -1;
+  width: 100%;
+  min-height: 44px;
+  margin-top: .25rem;
+  padding: .375rem .5rem;
+  border: 1px solid var(--text-secondary);
+  border-radius: 2px;
+  background: var(--surface-card);
+  color: var(--text-primary);
+  font: inherit;
+}
+.golf-slot-select:focus-visible,
+.golf-search:focus-visible,
+.golf-slot-change:focus-visible,
+.golf-field-pick:focus-visible,
+.golf-linkbtn:focus-visible {
+  outline: 2px solid var(--game-primary);
+  outline-offset: 2px;
+}
+.golf-slot-value {
+  grid-column: 1;
+  margin: .1875rem 0 0;
+  font-weight: 500;
+  font-size: 1.1rem;
+  line-height: 1.3;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+.golf-slot.golf-slot--empty {
+  border-style: dashed;
+  border-color: var(--text-secondary);
+}
+.golf-slot--empty .golf-slot-value {
+  font-weight: 400;
+  font-size: .95rem;
+  color: var(--text-secondary);
+}
+.golf-slot.golf-slot--open {
+  border-style: solid;
+  border-color: var(--game-primary);
+  box-shadow: inset 0 0 0 1px var(--game-primary);
+}
+.golf-slot--open > .golf-label { color: var(--game-primary); }
+.golf-pick--js .golf-slot > .golf-label { grid-column: 1; }
+.golf-pick--js .golf-slot-select { display: none; }
+.golf-slot-change {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+}
+.golf-slot-rule {
+  margin: .5rem 0 0;
+  font-size: .95rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+/* The room's text actions: Change, Keep, a row's Primary or Backup. Pen and
+   underlined like its links, each a full touch target. */
+.golf-slot-change,
+.golf-field-pick,
+.golf-linkbtn {
+  padding: 0;
+  border: 0;
+  border-radius: 2px;
+  background: none;
+  color: var(--game-primary);
+  font: inherit;
+  font-size: 1rem;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.golf-slot-change,
+.golf-field-pick {
+  min-width: 44px;
+  min-height: 44px;
+}
+.golf-slot-change:hover,
+.golf-field-pick:hover,
+.golf-linkbtn:hover { color: var(--game-primary-dark); }
+
+/* Lock it in: under the slots once both are in. */
+.golf-pick-commit { margin-top: 1rem; }
+.golf-pick-commit .golf-btn { min-width: 12rem; }
+.golf-pick-note {
+  margin: .625rem 0 0;
+  font-size: .95rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+.golf-pick-commit .golf-btn[hidden] ~ .golf-pick-note { margin-top: 0; }
+
+/* The field (§7.7): its head asks the open question and counts what is left. */
+.golf-field-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: .375rem 1rem;
+  margin: 2.25rem 0 .625rem;
+}
+.golf-field-head .golf-label { margin: 0; }
+.golf-field-count {
+  font-size: .95rem;
+  font-variant-numeric: tabular-nums lining-nums;
+  color: var(--text-secondary);
+}
+.golf-search {
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  padding: .5rem .75rem;
+  border: 1px solid var(--text-secondary);
+  border-radius: 2px;
+  background: var(--surface-card);
+  color: var(--text-primary);
+  font: inherit;
+  caret-color: var(--game-primary);
+  -webkit-appearance: none;
+  appearance: none;
+}
+.golf-search::placeholder {
+  color: var(--text-secondary);
+  opacity: 1;
+}
+.golf-burn-key {
+  margin: .625rem 0 0;
+  font-size: .95rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+.golf-field {
+  margin: .75rem 0 0;
+  padding: 0;
+  list-style: none;
+  border-top: 2px solid var(--text-primary);
+  border-bottom: 1px solid var(--golf-rule);
+}
+.golf-field-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: .75rem;
+  min-height: 56px;
+  padding: .375rem 0;
+  border-top: 1px solid var(--golf-rule);
+}
+.golf-field-row:first-child { border-top: 0; }
+.golf-field-name {
+  grid-column: 1;
+  font-weight: 500;
+  font-size: 1.05rem;
+  line-height: 1.3;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+.golf-field-act {
+  grid-column: 2;
+  grid-row: 1;
+  justify-self: end;
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+}
+.golf-field-sub {
+  grid-column: 1;
+  overflow: hidden;
+  font-size: .95rem;
+  line-height: 1.35;
+  font-variant-numeric: tabular-nums lining-nums;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.golf-field-act > .golf-chip { vertical-align: baseline; }
+/* A row is one tap: the action's target is the whole row. */
+.golf-field-pick {
+  min-height: 28px;
+  text-align: right;
+}
+.golf-field-pick::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+}
+.golf-field-row:has(.golf-field-pick:hover),
+.golf-field-row:has(.golf-field-pick:focus-visible) {
+  background: rgba(36, 57, 200, .04);
+  box-shadow: -.5rem 0 0 rgba(36, 57, 200, .04), .5rem 0 0 rgba(36, 57, 200, .04);
+}
+.golf-field-row:has(.golf-field-pick:active) {
+  background: var(--golf-pen-wash);
+  box-shadow: -.5rem 0 0 var(--golf-pen-wash), .5rem 0 0 var(--golf-pen-wash);
+}
+/* The golfers in the slots: the pen wash, bled into the gutters like your sheet row. */
+.golf-field-row.golf-field-row--mine {
+  background: var(--golf-pen-wash);
+  box-shadow: -.5rem 0 0 var(--golf-pen-wash), .5rem 0 0 var(--golf-pen-wash);
+}
+
+/* The strike (§7.5): a spent golfer stays in his place, struck in pencil. */
+.golf-used {
+  font-weight: 400;
+  color: var(--text-secondary);
+  text-decoration: line-through;
+  text-decoration-thickness: 1.5px;
+  text-decoration-color: var(--text-secondary);
+}
+
+/* The burn hatch (§6.9, the room's one texture): pencil hatching in a pencil
+   frame, as wide as the share of the room that still has him. */
+.golf-burn {
+  grid-column: 2;
+  justify-self: end;
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  font-size: .95rem;
+  line-height: 1.35;
+  font-variant-numeric: tabular-nums lining-nums;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+.golf-burn-pct {
+  display: inline-block;
+  min-width: 2.5em;
+  text-align: right;
+}
+.golf-burn-bar {
+  position: relative;
+  width: 56px;
+  height: 10px;
+  border: 1px solid var(--text-secondary);
+}
+.golf-burn-bar::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--have, 0%);
+  background: repeating-linear-gradient(
+    135deg,
+    var(--text-secondary) 0 1px,
+    transparent 1px 4px
+  );
+}
+.golf-field-none { border-top: 0; }
+
+/* The H1's event drops whole when it does not fit beside the colon. */
+.golf-title-event { display: inline-block; }
+
+/* Used golfers: a ruled week column inside the fold, the golfer over the
+   event he went in, so a long event wraps under its own name. */
+.golf-fold-body.golf-spent {
+  padding-left: 0;
+  list-style: none;
+}
+.golf-fold-body.golf-spent > li {
+  display: grid;
+  grid-template-columns: 3.25rem minmax(0, 1fr);
+  column-gap: .75rem;
+  align-items: baseline;
+  margin: 0;
+  padding: .5rem 0;
+}
+.golf-fold-body.golf-spent > li + li { border-top: 1px solid var(--golf-rule); }
+.golf-spent-week {
+  font-variant-numeric: tabular-nums lining-nums;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+.golf-spent-name {
+  font-weight: 500;
+  font-size: 1rem;
+  line-height: 1.35;
+}
+.golf-spent-event {
+  display: block;
+  font-weight: 400;
+  font-size: .95rem;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+.golf-field + .golf-fold,
+section + .golf-fold { border-top: 0; }
+
+/* Still on the board: the member's top unspent earners, a short ledger. */
+.golf-still { margin: 1.75rem 0 0; }
+.golf-still-lead {
+  margin: .375rem 0 0;
+  font-size: .95rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+.golf-still-list {
+  margin: .625rem 0 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--text-primary);
+}
+.golf-still-list > li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: .625rem 0;
+  border-top: 1px solid var(--golf-rule);
+}
+.golf-still-list > li:first-child { border-top: 0; }
+.golf-still-name {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+.golf-still-note {
+  margin-left: .375rem;
+  font-weight: 400;
+  font-size: .95rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+@media (min-width: 576px) {
+  .golf-facts { grid-template-columns: 1.4fr 1fr 1.4fr; }
+  .golf-facts-lead { grid-column: auto; }
+  .golf-slots { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .golf-burn-bar { width: 96px; }
+  .golf-burn-key { display: none; }
+  /* With the room, the event follows the name, as Still on the board's note does. */
+  .golf-spent-event {
+    display: inline;
+    margin-left: .375rem;
+  }
+}
+
+/* On a phone the hatch keeps its number and the line above the field says
+   what it measures; the words stay for screen readers. */
+@media (max-width: 575px) {
+  /* The count keeps one place under the head, whatever its length. */
+  .golf-field-head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .golf-burn-word {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
 @media (max-width: 768px) {
   .golf-title--page { font-size: 1.9rem; }
 }
@@ -5763,6 +6183,7 @@ ul.golf-fold-body {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .golf-slot { transition: none; }
   .golf-hero-figure.golf-hero-figure--banked::after { animation: none; }
   .golf-fold > summary::after { transition: none; }
 }

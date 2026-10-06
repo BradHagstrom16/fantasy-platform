@@ -680,7 +680,7 @@ def test_each_game_states_its_consequence_and_the_tab_names_its_game(letters):
     assert 'Still open on your sheet:\n- Sides committed: 0 of 8.' in reminder
     assert '- No headliner named.\n- No combined-score number recorded.' in reminder
     golf_open = letters['golf-picks-open']['plain']
-    assert 'Each golfer can be used once this season' in golf_open
+    assert 'Each golfer can be spent once this season' in golf_open
     assert 'Your season\nSeason total: $0\nGolfers used: 0' in golf_open
 
 

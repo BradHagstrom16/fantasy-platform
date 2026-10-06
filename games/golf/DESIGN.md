@@ -29,9 +29,10 @@ colors:
 >
 > Authored 2026-10-06 (U0, design-first, from the approved Pay Sheet preview built on the real 2026
 > season). §7 is reconciled against what ships at the end of each Phase U cluster: it was reconciled
-> from U1 (The Sheet) and U3 (The Board) on 2026-10-06, and §7.5 to §7.9 stay contracts until their
-> clusters ship. Later clusters extend this file rather than re-deriving it. The legacy "Greenside
-> Ledger" (`~/Golf_Pick_Em/DESIGN.md`) is reference, not doctrine.
+> from U1 (The Sheet) and U3 (The Board), then from U2 (the pick page), all on 2026-10-06, and §7.9
+> (the tiles) stays a contract until its cluster ships. Later clusters extend this file rather than
+> re-deriving it. The legacy "Greenside Ledger" (`~/Golf_Pick_Em/DESIGN.md`) is reference, not
+> doctrine.
 
 ---
 
@@ -222,13 +223,19 @@ Platform faces only (Teko display, Newsreader body; the Newsroom Rule). Pay Shee
   board** (one tournament's results), **the field** (the pick list), **spend / spent** (use a
   golfer), **banked / projected**, **the pot** (the penalty side pot), **the lock** (the deadline,
   always stated as a literal time), **the Commish** (overrides), **the Record Room** (stats).
-- On the pick page, one word per control: **Primary**, **Backup**, **Change**, **Lock it in**.
+- On the pick page, one word per control: **Primary**, **Backup**, **Change**, **Keep** (a reopened
+  slot), **Lock it in**.
 - No em dashes or double hyphens in UI copy (platform Copy Discipline).
 
 ### 6.8 Labels, never eyebrows
 No eyebrow above a heading (ADR-066): heroes, mastheads and in-page headlines carry their fact in
 the heading or the line under it. `.golf-label` sits over a list, a value, a fold or a tile, never
-over an H1/H2/H3. No glyphs on game-body labels (`◈`/`◇` are lounge ceremony).
+over an H1/H2/H3. A label may be a section's own heading: an `<h2 class="golf-label">` over the
+list it heads ("The field", "Still on the board"; ruling 2026-10-06). That is a label set as the
+heading, not one above it: nothing heading-sized follows, and the list's opening ink rule carries
+the weight a display H2 would, so the H1 stays the page's one heading in display type.
+`tests/test_eyebrow_above_heading.py` holds `.golf-label` to the rule. No glyphs on game-body labels
+(`◈`/`◇` are lounge ceremony).
 
 ### 6.9 Material rules
 - Paper, not bone: the room's ground is `--golf-paper`; cards are not the container. The sheet is
@@ -237,8 +244,9 @@ over an H1/H2/H3. No glyphs on game-body labels (`◈`/`◇` are lounge ceremony
   the double rule closes a banked figure.
 - One texture only: the burn hatch (45° pencil hatching inside a 1px pencil frame) on the pick page.
 - The pen appears as fills (CTA, active pill), as the 3px bracket on your line, as the 8% wash on
-  your sheet row, and as chip outlines. Never as a page-scale field. The bracket is the room's one
-  sanctioned side-stripe (§6.10).
+  your sheet row, and as chip outlines; on the pick page, as the open slot's frame (§7.6), the
+  chosen rows' wash (§7.7) and the text actions (§7.25). Never as a page-scale field. The bracket
+  is the room's one sanctioned side-stripe (§6.10).
 - Elevation: none inside the sheet. The join hero uses the platform `.page-hero` gradient in the pen
   family; nothing else lifts.
 
@@ -281,7 +289,8 @@ color-only state. Settle the Tab is the platform partial.
 
 Class prefix `golf-` (firewall-locked). Each primitive below is a contract; its CSS lands with the
 cluster that first ships it and this section is reconciled from the built surface. Reconciled from
-U1 and U3 (2026-10-06): §7.1 to §7.4, §7.10, §7.13 and §7.16 to §7.24. Still contracts: §7.5 to §7.9.
+U1 and U3 (2026-10-06): §7.1 to §7.4, §7.10, §7.13 and §7.16 to §7.24. Reconciled from U2
+(2026-10-06): §7.5 to §7.8, §7.10, §7.15, §7.24 and §7.25 to §7.28. Still a contract: §7.9.
 
 ### 7.1 The sheet — `.golf-sheet`, `.golf-sheet-row`, `.golf-sheet-row--me`
 A `<table class="golf-sheet">` with visually hidden column heads (rank, member and pick, money) and
@@ -331,7 +340,8 @@ keep the platform's long form.
 ### 7.4 The chips — `.golf-chip`, `--pen`, `--live`, `--deduction`
 Teko 500, 0.9rem, 0.1em, uppercase, a 1px outline in the chip's own color, 2px radius, no fill. The
 bare chip is ink (there is no `--ink` modifier): Major ×1.5, Team event, Est. purse, and Commish (The
-Board only, the override note in its `title`). `--pen`: Used, your backup state. `--live`: Live, On
+Board only, the override note in its `title`). `--pen`: Used, your backup state, and Primary /
+Backup on the chosen field rows (§7.7). `--live`: Live, On
 the course (with the 7px dot). `--deduction`: Cut, WD, DQ, Penalty $15, and Unpaid (on an unpaid
 member's sheet row, beside the name; public like the sheet, by Brad's ruling of 2026-10-06). A chip is a word, with one exception: on a pick line the
 penalty chip reads "Penalty $15" from 576px and "$15" below it, where a Cut or DQ chip always sits
@@ -339,18 +349,65 @@ beside it and the word stays for screen readers (`.golf-chip-word`). The penalty
 the legacy `badge-penalty` class (test-locked presence).
 
 ### 7.5 The strike — `.golf-used`
-`text-decoration: line-through` 1.5px in pencil plus "Used · Wk 13 · Masters" beneath.
+`text-decoration: line-through` 1.5px in pencil, on the name set in pencil at weight 400. A spent
+golfer stays in his money-order place in the field (§7.7), never filtered out (§2.3): the pen `Used`
+chip sits where a row's action would, and the week he went sits beneath in pencil ("Wk 13 · Masters
+Tournament"; "Spent this season" when no pick names the week), on one line with an ellipsis on a
+phone. His row keeps its hatch and takes no action.
 
 ### 7.6 The pick slots — `.golf-slot`, `.golf-slot--empty`
-Two ruled 56px frames: Primary (name + Change) and Backup (dashed when empty, with its one-line rule).
+Two ruled 56px frames (`.golf-slots`), 1px with a 2px radius: a `.golf-label` (Primary, Backup) over
+the golfer's name (`.golf-slot-value`, Newsreader 500, 1.1rem), with Change at right. Filled is ink.
+`--empty` is dashed pencil and holds its prompt in pencil ("Choose a golfer from the field below." /
+"Choose a second golfer from the field."). `.golf-slot--open`, the question being asked, is the pen
+frame (the 1px border plus a 1px inset, 2px in all) and its label turns pen; one slot is open at a
+time, the first empty one. Change (§7.25) reopens a filled slot and reads Keep while it is open;
+Keep closes it unchanged. A slot filled this sitting and a saved one are drawn alike (ruling
+2026-10-06): pencil and ink stay the money's (§1.4), and on this page a pencil name is a spent
+golfer (§7.5), so a pencilled choice would read as spent. Whether the pick is saved is said in
+words at the pick action (§7.24), because one post saves both slots. Stacked on a phone, side by
+side from 576px. The backup's one-line rule
+(`.golf-slot-rule`, pencil) sits under both: "Your backup plays only if your primary withdraws
+before finishing round 2." Without the script the slots hold the form's own selects
+(`.golf-slot-select`, 44px); `.golf-pick--js`, set by the page's script, trades them for the slots'
+own text (§7.15).
 
 ### 7.7 The field — `.golf-field`, `.golf-burn`
-The searchable list (`.golf-search`, 44px): name, YTD money in pencil, the burn hatch with "64% still
-have him". Used rows struck (§7.5). Keeps `#primary_player_id` / `#backup_player_id` and the form
-field names as JS hooks whether Tom Select stays or a native list replaces it.
+A native list over the form's two real selects (§7.15). Tom Select left this page; the admin
+override page keeps it until U6. The head (`.golf-field-head`) is an `<h2>` set as the `.golf-label`
+"The field", which asks the open question ("The field · spend your primary", "· name a backup"),
+with the count in pencil at right (`.golf-field-count`, "71 of 82 yours to spend"; under the label
+on a phone). The search (`.golf-search`, 44px, shown by the script) folds case, punctuation and
+accents ("jj" finds "J.J.", "hojgaard" finds "Højgaard"), matches every word typed and turns the
+count to "3 of 82 match"; Escape clears it. No match: one `.golf-line`, "Nobody in this field
+matches “x”.", with "Clear the search" (`.golf-linkbtn`, §7.25).
+
+`.golf-field` is every golfer in the field in money order (season prize money, then name), under a
+2px ink rule, on `--golf-rule` hairlines. A row (`.golf-field-row`) is 56px for a name alone and 61
+to 62px with its pencil line: the name (Newsreader 500, 1.05rem) over "YTD $1,234,567"
+(`.golf-field-sub`), the action at right, the hatch beneath the action. The action
+(`.golf-field-pick`, §7.25) is one word, the open slot's (Primary, then Backup), and its target is
+the whole row; with no slot open the rows carry no action. Hover and focus lay a 4% pen wash on the
+row. A golfer in a slot (`.golf-field-row--mine`) wears the pen wash, bled into the gutters like
+your sheet row (§7.1), and a pen chip naming his slot in place of the action. A spent golfer is
+struck (§7.5).
+
+The hatch (`.golf-burn`, the room's one texture, §6.9): `.golf-burn-bar` is a 1px pencil frame, 10px
+tall, 56px wide on a phone and 96px from 576px, hatched as wide as the share of the room that still
+has him; `.golf-burn-pct` is a fixed-width, right-aligned figure, so every bar shares an edge. From
+576px the row reads "64% still have him". On a phone it reads "64%" (the words stay for screen
+readers) and one pencil line above the list (`.golf-burn-key`) says what the hatch measures: "The
+hatch is the share of the room that still has him." No hatch before the season's first burn and no
+money line before the first banked tournament: the page draws nothing where there is no signal.
 
 ### 7.8 The facts grid — `.golf-facts`
-Two columns of label-over-value (purse, lock, used this season, field · available).
+The purse block (`.golf-purse`) leads: the `.golf-label` "Purse" (with the `Est. purse` chip when
+estimated) over the page's one Teko figure (`.golf-hero-figure`, §6.6) in plain ink, with no rule
+and no state word; "TBD" when unknown. The facts follow under a hairline, a `<dl>` of label over
+value (Newsreader 500, 1.05rem, tabular; `.golf-facts-note` is the pencil qualifier): Picks lock
+(`.golf-facts-lead`, its own line on a phone), Golfers used ("11 this season"), Yours to spend ("71
+of 82 in the field"; absent until the field publishes). Two columns on a phone, three across from
+576px.
 
 ### 7.9 The tiles — `.golf-tiles`
 Scorecard tiles: an ink top rule, hairline cells, `.golf-label` over a Teko value with a pencil
@@ -359,9 +416,14 @@ qualifier ("4th of 19", "29 of 31").
 ### 7.10 The fold — `.golf-fold`
 A pencil line that opens a `<details>`: a 44px summary with a CSS caret (a drawn corner, no glyph)
 that turns when open, and its body in `.golf-fold-body`. Built folds, all closed by default: "Didn't
-pick (3)" under the sheet and the board, "The marks" and "House Rules" in the margin. "Used golfers
-(12)" arrives with the pick page. A fold never holds lines of the sheet: every line shows (ruling
-2026-10-06).
+pick (3)" under the sheet and the board, "The marks" and "House Rules" in the margin, and "Used
+golfers (12)" under the field on the pick page: every golfer the member has spent this season, in
+this field or not, by week, as a ruled week column (`.golf-spent`, an `<ol>` in the fold body):
+"Wk 13" in pencil tabular figures in its own 3.25rem column, then the golfer (Newsreader 500) over
+the event in pencil, on hairlines; from 576px the event follows the name, as Still on the board's
+note does (§7.26). A long event wraps under its own name, never under the week. A golfer no pick
+accounts for runs last with an empty week. A fold never holds lines of the sheet: every line shows
+(ruling 2026-10-06).
 
 ### 7.11 Sub-nav — `.subnav-golf`
 Background `#0F110D`, `--subnav-accent #2439C8`, `--subnav-accent-rgb 36, 57, 200`. Label "THE PAY
@@ -388,6 +450,18 @@ The platform partial, room surfaces only; the pot's unpaid penalties ride the sa
 `#primary_player_id`, `#backup_player_id`, form names `primary_player_id` / `backup_player_id`;
 `#tournament_id`, `#user_id`, `.ts-select`, `override_note`; `.payment-toggle[data-user-id]`,
 `.penalty-group > .penalty-input` + `.penalty-save[data-user-id]`, `meta[name="csrf-token"]`.
+
+On the pick page `#primary_player_id` and `#backup_player_id` are two real selects under those
+names, the form's truth with or without the script. The page's own script also reads:
+`#golf-pick-form` with `data-saved-primary` / `data-saved-backup`; `[data-slots]`,
+`[data-slot="primary"]` / `[data-slot="backup"]`, `[data-slot-value]`, `[data-slot-change]`;
+`[data-commit]`, `[data-note-ready]`, `[data-note-change]` (rendered only with a saved pick),
+`[data-note-saved]`, `[data-pick-status]` (the polite live
+region); `[data-field-question]`, `[data-field-count]`, `[data-search-wrap]`, `#golf-field-search`,
+`[data-burn-key]`, `[data-field-none]`, `[data-field-query]`, `[data-field-clear]`; and on each row
+`[data-row]` with `data-id`, `data-name` and `data-search`, plus `[data-pick]`, `[data-pick-word]`
+and `[data-chip]`. It sets `.golf-pick--js` on the form and toggles `.golf-slot--open`,
+`.golf-slot--empty` and `.golf-field-row--mine`.
 
 ### 7.16 The page and its margin: `.golf-page`, `.golf-page--margin`, `.golf-margin`
 `.golf-page` is the room's column: 720px, centered, 1rem gutters, pen links on a 1px underline, a
@@ -440,6 +514,44 @@ The platform `.btn-game` dressed for the room: the pen as a fill (§6.9), 1.25re
 pen focus ring. "Spend a golfer", once per screen, and only with an open field and no pick in (on
 The Sheet, only for a member with a line); a member with a pick gets the "Change" link instead.
 
+On the pick page the action reads "Lock it in" (`.golf-pick-commit`, under the slots, 12rem wide at
+least). It shows once both slots are filled and stands down on a saved, unchanged pick. One pencil
+line (`.golf-pick-note`) under it says whether the pick is saved: "Not saved yet. Once it's in, you
+can change it until {lock}." on a first pick; "Not saved yet. Until you lock it in, your pick stays
+{primary}, with {backup} as your backup." on a change to a saved one (the server writes the names);
+"Your pick is in. Change either golfer until {lock}." when nothing has changed. Without the script
+the action always shows, beside the line for what the server holds. A focused pick action keeps its pen fill: Bootstrap empties a focused
+`.btn` whose hover variables are unset, as they are on `.btn-game`, so `.btn.golf-btn:focus-visible`
+restates the fill and sets the ring 3px off it.
+
+### 7.25 The text actions: `.golf-slot-change`, `.golf-field-pick`, `.golf-linkbtn`
+Buttons that read as the room's links: pen, a 1px underline 3px below, 1rem, no fill and no frame,
+the darker pen on hover, a 2px pen focus ring. Change and Keep on a slot (§7.6), a row's Primary or
+Backup (§7.7), "Clear the search". The slot and row actions are 44px touch targets (a row's is the
+whole row); `.golf-linkbtn` sits inside a sentence. The filled pen button stays the pick action's
+alone (§7.24).
+
+### 7.26 Still on the board: `.golf-still`, `.golf-still-list`
+Under the field and its fold on the pick page: the member's five top earners not yet spent, by money
+banked this season, in this field or not. An `<h2>` set as the `.golf-label` "Still on the board",
+one pencil lead ("Your top earners not yet spent, by money won this season."), then a short ledger
+under a 1px ink rule, on hairlines: the name (Newsreader 500) with "in this field" or "not in this
+field" in pencil, the figure in `.golf-money` at right. Absent before the first banked tournament.
+The Record Room's fuller list (§8) arrives with its own cluster.
+
+### 7.27 The event in the title: `.golf-title-event`
+The pick page's H1 is `.golf-title--page` (§7.23), "Spend a Golfer: {event}". The event is an inline
+block: a name that does not fit beside the colon drops whole to its own line.
+
+### 7.28 The leaf turn: the pick page's motion
+Choosing a golfer inks him into the open slot and turns the page back to the slots, where the next
+question is the open one. Two things move: the pen frame passes between the slots (border and inset,
+.2s, `cubic-bezier(.16, 1, .3, 1)`), and the page scrolls back to the slots when they are off
+screen. Focus lands on the newly open slot, or on the pick action once both are in, and a polite
+live region says what was chosen and what is next. Under `prefers-reduced-motion` the frame and the
+scroll are instant; the turn still happens. Nothing else on the page moves but the fold caret
+(§7.10).
+
 ## 8. Season surfaces (U4 to U7; written when built)
 The scorecard, the Record Room (season race, superlatives, Form Guide, Burn List, Still on the
 Board), the champion fold and the lounge panels extend §7 in their own clusters.
@@ -483,6 +595,29 @@ the rule, never around it.
   `update_status_from_time`, the routes' event clock and the `golf_current_time` template value all
   read it; the lock is stated through `format_lock`. The sync, CLI and reminder clocks still read
   real time. `tests/test_golf_time_seam.py`.
+- **A spent golfer is struck, never filtered out** (§2.3): the field lists every golfer in it in
+  money order; a spent one keeps his place as a struck row with no action, and is a disabled option
+  in both selects. `tests/test_golf_pick_page.py`.
+- **The search fold exists twice:** `games/golf/services/field.py::search_key` writes each row's
+  `data-search` and the page script's `fold` reads the query. The two change together.
+  `tests/test_golf_pick_page.py`.
+- **The pick form posts with no script:** two real selects, the CSRF token and a submit; the script
+  only fills the selects, and the page loads no library. `tests/test_golf_pick_page.py`.
+- **The saved pick comes from the server:** the script reads `data-saved-primary` /
+  `data-saved-backup` off the form, never a select a reload may have refilled.
+  `tests/test_golf_pick_page.py`.
+- **No query per golfer on the pick page:** `build_field` is a pure builder over maps the view loads
+  once (`ytd_earnings`, `remaining_pct_map`, `spent_weeks` in `games/golf/services/stats.py`); the
+  query count does not grow with the field. `tests/test_golf_pick_page.py`.
+- **The burn share's room is the season's enrollees:** `remaining_pct_map` is the complement of the
+  rounded burn share, and is None, never a map of 100s, before the season's first burn. Season
+  money is banked tournaments only. `tests/test_golf_stats.py`.
+- **An unpublished field takes no pick:** a GET renders the facts and the empty state (§7.13); a
+  POST writes nothing. `tests/test_golf_pick_page.py`.
+- **Past the lock the pick page redirects to that week's Board** (the week turns over at the lock,
+  above). `tests/test_golf_pick_page.py`.
+- **A refused pick writes nothing:** it says why, and a refused change keeps the saved pick.
+  `tests/test_golf_pick_page.py`.
 - **Enrollment is explicit:** pick and override paths never create `GolfEnrollment` rows.
   `tests/test_golf_auto_enroll_removed.py`.
 - **The name:** registry `display_name` "The Pay Sheet", `short_name='Golf'` (string-locked),

@@ -75,11 +75,11 @@ ADMIN_ALERT_NAME = "Commish"
 # The one rule every golf letter restates (picks-open in full, reminders in
 # brief). Golf has no payment gate (ADR-056 covers CFB + Docket only), so no
 # tab strip rides these letters.
-PICK_RULE = ('Pick a primary golfer and a backup. Each golfer can be used '
+PICK_RULE = ('Pick a primary golfer and a backup. Each golfer can be spent '
              'once this season. Points are the actual prize money your '
              'golfer earns.')
 PICK_RULE_BRIEF = ('Pick a primary golfer and a backup before the deadline. '
-                   'Each golfer can be used once this season.')
+                   'Each golfer can be spent once this season.')
 
 
 def _admin_alert_recipient() -> str:
@@ -144,13 +144,13 @@ def _picks_open_letter(*, tournament_name, deadline_short, purse, pick_url,
         game_slug='golf',
         season=season_year,
         preheader=f'Deadline {deadline_short}.',
-        lede=['The field is set. Time to make your pick.'],
+        lede=['The field is set. Time to spend a golfer.'],
         facts=[('Deadline', deadline_short), ('Purse', f'${purse:,}')],
         extras=[result_block('Your season', [
             ('Season total', f'${season_total:,}'),
             ('Golfers used', str(golfers_used)),
         ])],
-        cta=('Make your pick', pick_url),
+        cta=('Spend a golfer', pick_url),
         supporting=[PICK_RULE],
     )
 
@@ -263,7 +263,7 @@ def _reminder_letter(*, tournament_name, deadline_short, time_remaining,
         facts=[('Deadline', deadline_short),
                ('Purse', f'${purse:,}'),
                ('Golfers used', str(golfers_used))],
-        cta=('Make your pick', pick_url),
+        cta=('Spend a golfer', pick_url),
         supporting=[PICK_RULE_BRIEF],
     )
 
@@ -372,10 +372,10 @@ def _recap_letter(*, display_name, tournament_name, golfer_name, position,
             if score:
                 finish = f'{finish} ({score})'
             facts.append(('Finish', finish))
-        facts.append(('Earnings', f'${earnings:,}'))
+        facts.append(('Banked', f'${earnings:,}'))
     else:
         facts.append(('Your pick', 'No pick submitted'))
-        facts.append(('Earnings', '$0'))
+        facts.append(('Banked', '$0'))
 
     top3_rows = []
     for i, entry in enumerate(top_3, 1):
@@ -405,7 +405,7 @@ def _recap_letter(*, display_name, tournament_name, golfer_name, position,
         lede=['Here is how your week went.'],
         facts=facts,
         extras=extras,
-        cta=('View standings', results_url),
+        cta=('Open the sheet', results_url),
     )
 
 
