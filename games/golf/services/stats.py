@@ -94,7 +94,8 @@ def spent_weeks(user_id, season_year):
 
     Read from the member's resolved picks (``active_player_id``, the golfer
     who counted). A usage row with no such pick (one entered by hand) has no
-    week to name and is simply absent here.
+    week to name and is simply absent here. A golfer an override left counting
+    in two weeks is named by the first, the week he was spent.
     """
     rows = db.session.execute(
         select(GolfPick.active_player_id, GolfTournament.week_number, GolfTournament.name)
@@ -105,4 +106,7 @@ def spent_weeks(user_id, season_year):
                GolfPick.points_earned.is_not(None))
         .order_by(GolfTournament.start_date)
     ).all()
-    return {player_id: SpentWeek(week, name) for player_id, week, name in rows}
+    weeks = {}
+    for player_id, week, name in rows:
+        weeks.setdefault(player_id, SpentWeek(week, name))
+    return weeks

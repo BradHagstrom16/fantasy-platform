@@ -181,6 +181,25 @@ def test_spent_weeks_names_the_week_the_golfer_counted(app, season):
     }
 
 
+def test_spent_weeks_names_the_first_week_a_golfer_counted_twice(app, season):
+    """An override can leave one golfer counting in two weeks (clear_resolution
+    keeps his usage while another resolved pick names him): the week he was
+    spent is the first, whatever order the rows were written in."""
+    member = _member(season, 'viewer')
+    twice, other = _golfer('Twice'), _golfer('Other')
+    later = _tournament(season, 'Later Week', 14)
+    first = _tournament(season, 'First Week', 9)
+    db.session.add_all([
+        GolfPick(user_id=member.id, tournament_id=week.id,
+                 primary_player_id=twice.id, backup_player_id=other.id,
+                 active_player_id=twice.id, points_earned=10)
+        for week in (later, first)
+    ])
+    db.session.commit()
+
+    assert spent_weeks(member.id, season) == {twice.id: SpentWeek(9, 'First Week')}
+
+
 def test_spent_weeks_skips_unresolved_picks_other_members_and_seasons(app, season):
     member, other = _member(season, 'viewer'), _member(season, 'other')
     a, b, c, d = (_golfer(name) for name in ('Alpha', 'Bravo', 'Charlie', 'Delta'))
