@@ -191,10 +191,10 @@ def index():
         .order_by(GolfTournament.start_date)
     ).all()
 
-    # The event the sheet is pencilling: on the course, or played and not yet
-    # final. Its picks and results load once; every row reads from them. Only
-    # a tournament past its lock (the pick form's own test) can be that event:
-    # a sync writes 'active' from Thursday midnight, before the first tee.
+    # The week turns over at the lock (the pick form's own test), never at a
+    # status. The event the sheet is pencilling, on the course or played and
+    # not yet final, is past its lock; its picks and results load once and
+    # every row reads from them.
     event = live_event([t for t in tournaments if t.is_deadline_passed()])
     lines = clock = None
     if event:
@@ -203,7 +203,13 @@ def index():
         clock = event_clock(event, results, get_current_time())
     sheet = build_sheet(enrollments, viewer_id, lines)
 
-    next_tournament = next((t for t in tournaments if t.status == 'upcoming'), None)
+    # The next pick is still upcoming and before its lock. The status alone
+    # lags the lock by up to a refresh interval; the lock alone reads a
+    # missing deadline (a field sync that never ran) as open forever.
+    next_tournament = next(
+        (t for t in tournaments if t.status == 'upcoming' and not t.is_deadline_passed()),
+        None,
+    )
     field_open = bool(next_tournament and next_tournament.has_sufficient_field())
     next_pick = None
     if next_tournament and sheet.mine:

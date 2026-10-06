@@ -31,6 +31,7 @@ from games.golf.services.sheet import (
     build_board,
     build_sheet,
     competition_ranks,
+    live_event,
     ordinal,
     week_lines,
 )
@@ -259,6 +260,19 @@ def test_week_line_settling_is_still_a_projection(app, season, sunday):
 
     line = _lines(t)[member.id]
     assert line.figure == 1_800_000 and line.in_pencil
+
+
+def test_live_event_is_the_latest_locked_week_not_yet_banked():
+    banked = GolfTournament(name='Banked', status='complete', results_finalized=True)
+    settling = GolfTournament(name='Settling', status='complete', results_finalized=False)
+    live = GolfTournament(name='Live', status='upcoming', results_finalized=False)
+
+    # The status is never read: a just-locked week the hook still holds as
+    # 'upcoming' outranks last week's settling one.
+    assert live_event([banked, settling, live]) is live
+    assert live_event([banked, settling]) is settling
+    assert live_event([banked]) is None
+    assert live_event([]) is None
 
 
 def test_week_lines_fire_no_query_per_pick(app, season, sunday):
@@ -596,21 +610,27 @@ def test_board_page_hides_every_other_pick_until_the_lock(app, client, season, m
     assert '<table' not in body
 
 
-def _synced_active_before_the_lock(app, client, season, monkeypatch):
-    """A sync marked the Masters active at Thursday midnight; the first tee is 7:40.
+def _masters_inside_the_refresh(app, client, season, monkeypatch, status, now):
+    """The Masters (first tee 7:40 AM CT) read at ``now`` with ``status`` held.
 
-    6:00 AM CT Thursday, inside the request hook's refresh interval, so the
-    status the sync wrote is the status the page reads.
+    Inside the request hook's refresh interval, so the status a sync wrote (or
+    the hook has yet to correct) is the status the page reads.
     """
-    monkeypatch.setenv('GOLF_FAKE_NOW', '2026-04-09T11:00:00')
+    monkeypatch.setenv('GOLF_FAKE_NOW', now)
     monkeypatch.setitem(app.config, '_GOLF_LAST_STATUS_REFRESH', get_current_time())
-    t = _tournament(season, status='active')
+    t = _tournament(season, status=status)
     me = _member(season, 'viewer', display_name='ViewerLine')
     rival = _member(season, 'rival', display_name='RivalLine')
     _pick(me, t, _golfer('Minegolfer'), _golfer('Mysparegolfer'))
     _pick(rival, t, _golfer('Secretgolfer'), _golfer('Hiddenspare'))
     _login(client, me)
     return t
+
+
+def _synced_active_before_the_lock(app, client, season, monkeypatch):
+    """A sync marked the Masters active at Thursday midnight; it is 6:00 AM CT."""
+    return _masters_inside_the_refresh(app, client, season, monkeypatch,
+                                       status='active', now='2026-04-09T11:00:00')
 
 
 def test_board_page_opens_at_the_lock_not_at_a_synced_status(app, client, season, monkeypatch):
@@ -632,6 +652,28 @@ def test_sheet_page_pencils_a_week_only_past_its_lock(app, client, season, monke
     assert 'Secretgolfer' not in body and 'Hiddenspare' not in body
     assert 'golf-pick-line' not in body and "Didn't pick (" not in body
     assert 'RivalLine' in body                                  # the line itself still shows
+
+
+def test_sheet_page_turns_over_at_the_lock_before_the_status_does(app, client, season, monkeypatch):
+    # 8:00 AM CT Thursday, twenty minutes past the lock; the hook has not yet
+    # moved the Masters off 'upcoming', and its field is published.
+    t = _masters_inside_the_refresh(app, client, season, monkeypatch,
+                                    status='upcoming', now='2026-04-09T13:00:00')
+    players = [GolfPlayer(api_player_id=f'F{i}', first_name='Field', last_name=f'Player{i}')
+               for i in range(50)]
+    db.session.add_all(players)
+    db.session.flush()
+    db.session.add_all(GolfTournamentField(tournament_id=t.id, player_id=p.id) for p in players)
+    db.session.commit()
+
+    body = client.get('/golf/').get_data(as_text=True)
+
+    # No pick action on a locked week, and no lock stated in the past tense.
+    assert f'/golf/pick/{t.id}' not in body
+    assert 'Thu Apr 9 · 7:40 AM CT' not in body
+    # The week is the sheet's: every pick open, in its first round.
+    assert 'Secretgolfer' in body and 'Minegolfer' in body
+    assert 'Round 1' in body and 'first read at noon CT' in body
 
 
 def test_board_page_open_field_offers_the_action(app, client, season, monkeypatch):

@@ -278,10 +278,12 @@ def event_clock(tournament, results, now):
     )
 
 
-def live_event(tournaments):
-    """The tournament the sheet is pencilling: on the course, else settling."""
-    for status in ('active', 'complete'):
-        for tournament in tournaments:
-            if tournament.status == status and not tournament.results_finalized:
-                return tournament
-    return None
+def live_event(locked):
+    """The tournament the sheet is pencilling: on the course, else settling.
+
+    ``locked`` is the season's tournaments already past their lock, in start
+    order; the latest whose results are not final is the one. No status is
+    read: a sync writes 'active' early and the request hook moves 'upcoming'
+    late, so only the lock says when a week turns over.
+    """
+    return next((t for t in reversed(locked) if not t.results_finalized), None)
