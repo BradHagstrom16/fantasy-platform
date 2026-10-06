@@ -474,9 +474,9 @@ class GolfPick(db.Model):
             for entry in GolfTournamentField.query.filter_by(tournament_id=self.tournament_id)
         ]
         if self.primary_player_id not in field_player_ids:
-            errors.append('Primary player is not in the tournament field.')
+            errors.append('Your primary is not in this field. Choose a golfer from the field.')
         if self.backup_player_id not in field_player_ids:
-            errors.append('Backup player is not in the tournament field.')
+            errors.append('Your backup is not in this field. Choose a golfer from the field.')
 
         existing_usage = GolfSeasonPlayerUsage.query.filter(
             GolfSeasonPlayerUsage.user_id == self.user_id,
@@ -485,9 +485,9 @@ class GolfPick(db.Model):
         ).all()
         used_ids = {usage.player_id for usage in existing_usage}
         if self.primary_player_id in used_ids:
-            errors.append('Primary player has already been used this season.')
+            errors.append('Your primary has already been spent this season. Choose another golfer.')
         if self.backup_player_id in used_ids:
-            errors.append('Backup player has already been used this season.')
+            errors.append('Your backup has already been spent this season. Choose another golfer.')
 
         return errors
 

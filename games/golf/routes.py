@@ -34,6 +34,7 @@ from games.golf.models import (
     GolfTournamentField,
     GolfTournamentResult,
 )
+from games.golf.services.field import build_field, top_unspent_ids
 from games.golf.services.sheet import (
     build_board,
     build_sheet,
@@ -41,6 +42,7 @@ from games.golf.services.sheet import (
     live_event,
     week_lines,
 )
+from games.golf.services.stats import remaining_pct_map, spent_weeks, ytd_earnings
 from games.golf.utils import (
     format_lock,
     format_score_to_par,
@@ -388,62 +390,32 @@ def results():
 @login_required
 @enrollment_required('golf')
 def make_pick(tournament_id):
-    """Pick submission form."""
+    """Spend a Golfer: the week's primary and backup."""
     tournament = db.get_or_404(GolfTournament, tournament_id)
     season_year = current_app.config['SEASON_YEAR']
+    lock = format_lock(tournament.pick_deadline)
 
-    # Check deadline
+    # The week turns over at the lock (DESIGN.md §9): past it the pick is
+    # closed and that week's board is open.
     if tournament.is_deadline_passed():
-        flash('The pick deadline for this tournament has passed.', 'error')
-        return redirect(url_for('golf.index'))
+        flash(f'Picks for the {tournament.name} locked {lock}.', 'error')
+        return redirect(url_for('golf.tournament_detail', tournament_id=tournament.id))
 
-    # Check field availability
-    if not tournament.has_sufficient_field():
-        flash('The tournament field is not yet available. Check back later.', 'info')
-        return redirect(url_for('golf.schedule'))
-
-    # Enrollment is required; decorator above already short-circuits,
-    # but we still need the object for used-player-ids lookup.
-    enrollment = GolfEnrollment.query.filter_by(
-        user_id=current_user.id, season_year=season_year
-    ).first()
-
-    # Get used player IDs for this season
-    used_player_ids = enrollment.get_used_player_ids()
-
-    # Get existing pick for this tournament (if editing)
-    existing_pick = GolfPick.query.filter_by(
-        user_id=current_user.id, tournament_id=tournament_id
-    ).first()
-
-    # If editing, the current pick's players aren't "used" for availability purposes
-    if existing_pick:
-        used_player_ids = [
-            pid for pid in used_player_ids
-            if pid not in (existing_pick.primary_player_id, existing_pick.backup_player_id)
-        ]
-
-    # Get available players (in tournament field, not already used)
-    field_entries = (
-        GolfTournamentField.query
-        .filter_by(tournament_id=tournament_id)
-        .join(GolfPlayer)
-        .order_by(GolfPlayer.last_name)
-        .all()
+    field_open = tournament.has_sufficient_field()
+    existing_pick = db.session.scalar(
+        select(GolfPick).filter_by(user_id=current_user.id, tournament_id=tournament_id)
     )
-    available_players = [
-        entry.player for entry in field_entries
-        if entry.player_id not in used_player_ids
-    ]
 
     if request.method == 'POST':
         primary_id = request.form.get('primary_player_id', type=int)
         backup_id = request.form.get('backup_player_id', type=int)
 
-        if not primary_id or not backup_id:
-            flash('Please select both a primary and backup player.', 'error')
+        if not field_open:
+            flash("That field isn't published yet. Picks open Tuesday.", 'error')
+        elif not primary_id or not backup_id:
+            flash('Name both a primary and a backup.', 'error')
         elif primary_id == backup_id:
-            flash('Primary and backup players must be different.', 'error')
+            flash('Your primary and your backup must be two different golfers.', 'error')
         else:
             if existing_pick:
                 existing_pick.primary_player_id = primary_id
@@ -472,17 +444,52 @@ def make_pick(tournament_id):
                 primary_player = db.session.get(GolfPlayer, primary_id)
                 backup_player = db.session.get(GolfPlayer, backup_id)
                 flash(
-                    f'Pick submitted: {primary_player.full_name()} '
-                    f'(backup: {backup_player.full_name()})',
+                    f'{primary_player.full_name()} is your pick for the {tournament.name}, '
+                    f'with {backup_player.full_name()} as your backup. '
+                    f'You can change it until {lock}.',
                     'success'
                 )
-                return redirect(url_for('golf.my_picks'))
+                return redirect(url_for('golf.index'))
+
+    # Every golfer the member has spent this season: struck in the field,
+    # never filtered out of it (DESIGN.md §2.3).
+    used = {
+        usage.player_id: usage.player
+        for usage in db.session.scalars(
+            select(GolfSeasonPlayerUsage)
+            .options(joinedload(GolfSeasonPlayerUsage.player))
+            .filter_by(user_id=current_user.id, season_year=season_year)
+        )
+    }
+
+    field = None
+    if field_open:
+        players = db.session.scalars(
+            select(GolfPlayer)
+            .join(GolfTournamentField, GolfTournamentField.player_id == GolfPlayer.id)
+            .where(GolfTournamentField.tournament_id == tournament_id)
+        ).all()
+        ytd = ytd_earnings(season_year)
+        top_ids = top_unspent_ids(ytd, used)
+        top = {
+            player.id: player
+            for player in db.session.scalars(select(GolfPlayer).where(GolfPlayer.id.in_(top_ids)))
+        } if top_ids else {}
+        field = build_field(
+            players,
+            used,
+            ytd,
+            remaining_pct_map(season_year, [player.id for player in players]),
+            spent_weeks(current_user.id, season_year),
+            [top[player_id] for player_id in top_ids],
+        )
 
     return render_template('golf/make_pick.html',
         tournament=tournament,
-        available_players=available_players,
+        lock=lock,
+        field=field,
+        used_count=len(used),
         existing_pick=existing_pick,
-        used_player_ids=used_player_ids,
     )
 
 

@@ -339,9 +339,15 @@ Ordered by user impact.
       line, every line in competition rank with the pencil pick line, a margin column from 1100px
       (next pick, Prize Pool, the marks, House Rules), `games/golf/services/sheet.py`, `GOLF_FAKE_NOW`.
       One column is the phone layout (no card tree); season-to-par and the paid column left the page.
-- [ ] **U2 Make pick** — burn-% per option (port `stats.remaining_pct_map`), punctuation-normalized
+- [x] **U2 Make pick** — burn-% per option (port `stats.remaining_pct_map`), punctuation-normalized
       search (`jj` → `J.J.`), two-way mutual exclusion, "N available · M used", empty-field state; CCC
-      email chrome for the four emails (retire the standalone green/gold).
+      email chrome for the four emails (retire the standalone green/gold). **Built 2026-10-06 as Spend
+      a Golfer** (one PR): one question at a time (the open slot in the pen frame, a field row fills
+      it, the page turns back to the slots), every golfer in the field in money order with the spent
+      ones struck and the week they went, the burn hatch, Used golfers and Still on the board,
+      `games/golf/services/field.py` + `services/stats.py`. Tom Select left this page for a native
+      list over two real selects (the admin override page keeps it until U6). The emails were already
+      Club Letters (ADR-058); they took the room's words only (spend, banked, the sheet).
 - [x] **U3 Tournament detail** — Your Pick card, Penalties Assessed card, "updates at noon, 4 PM and
       8 PM Central · last synced" banner, competition ranking, "Didn't pick (N)" `<details>`, team/major
       stakes bands, legend, mobile cards. **Built 2026-10-06 as The Board** (with U1): a week pager

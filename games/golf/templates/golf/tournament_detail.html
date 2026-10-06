@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from 'golf/_sheet.html' import dollars, money, pick_line, read_time with context %}
+{% from 'golf/_sheet.html' import dollars, event_dates, money, pick_line, read_time with context %}
 
 {% block title %}The Board: {{ tournament.name }} · The Pay Sheet{% endblock %}
 
@@ -37,7 +37,7 @@
                 {%- if clock and clock.on_course %}<span class="golf-chip golf-chip--live">Live</span> {% endif -%}
                 {%- if tournament.is_major %}<span class="golf-chip">Major ×1.5</span> {% endif -%}
                 {%- if tournament.is_team_event %}<span class="golf-chip">Team event</span> {% endif -%}
-                {{ tournament.start_date.strftime('%b %-d') }}–{{ tournament.end_date.strftime('%b %-d') if tournament.start_date.month != tournament.end_date.month else tournament.end_date.strftime('%-d') }}
+                {{ event_dates(tournament) }}
             </span>
         {% if banked %}
             <span class="golf-nowrap"><span class="golf-state golf-state--banked">Banked</span></span>

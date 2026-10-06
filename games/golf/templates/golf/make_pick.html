@@ -1,154 +1,362 @@
 {% extends "base.html" %}
+{% from 'golf/_sheet.html' import dollars, event_dates with context %}
 
-{% block title %}The Pay Sheet — Make Pick{% endblock %}
-
-{% block head %}
-<link href="https://cdn.jsdelivr.net/npm/tom-select@2.4.3/dist/css/tom-select.bootstrap5.min.css" rel="stylesheet">
-{% endblock %}
+{% block title %}Spend a Golfer: {{ tournament.name }} · The Pay Sheet{% endblock %}
 
 {% block content %}
-<div class="page-hero">
-    <div class="hero-glow"></div>
-    <div class="container">
-        <h1>Make Your Pick</h1>
-        <p class="lead mb-0">{{ tournament.name }}</p>
+{% set pick = existing_pick %}
+<div class="golf-page">
+
+    <h1 class="golf-title golf-title--page">Spend a Golfer: <span class="golf-title-event">{{ tournament.name }}</span></h1>
+
+    <p class="golf-context">
+        <span class="golf-context-items">
+            <span class="golf-nowrap">
+                {%- if tournament.is_major %}<span class="golf-chip">Major ×1.5</span> {% endif -%}
+                {%- if tournament.is_team_event %}<span class="golf-chip">Team event</span> {% endif -%}
+                {{ event_dates(tournament) }}
+            </span>
+            {% if tournament.week_number %}<span class="golf-nowrap">Week {{ tournament.week_number }}</span>{% endif %}
+        </span>
+    </p>
+
+    {# What it pays, when it locks, what you have left: the four answers before the list. #}
+    <div class="golf-purse">
+        <div class="golf-purse-head">
+            <span class="golf-label">Purse</span>
+            {% if tournament.purse_is_estimate %}<span class="golf-chip">Est. purse</span>{% endif %}
+        </div>
+        <div class="golf-hero-figure">{% if tournament.effective_purse %}{{ dollars(tournament.effective_purse) }}{% else %}TBD{% endif %}</div>
     </div>
-</div>
 
-<div class="container pb-5">
-    <div class="row g-4">
-        <!-- Pick Form -->
-        <div class="col-lg-8">
-            <div class="card animate-in">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <span><i class="bi bi-flag me-2"></i>{{ 'Edit Pick' if existing_pick else 'Submit Pick' }}</span>
-                    <span class="badge bg-light text-dark border">{{ available_players|length }} available</span>
-                </div>
-                <div class="card-body">
-                    {% if existing_pick %}
-                    <div class="alert alert-info py-2 mb-3">
-                        <small>
-                            <i class="bi bi-info-circle me-1"></i>
-                            Current pick: <strong>{{ existing_pick.primary_player.full_name() }}</strong>
-                            / Backup: <strong>{{ existing_pick.backup_player.full_name() }}</strong>
-                        </small>
-                    </div>
-                    {% endif %}
+    <dl class="golf-facts">
+        <div class="golf-facts-lead">
+            <dt class="golf-label">Picks lock</dt>
+            <dd>{{ lock }}</dd>
+        </div>
+        <div>
+            <dt class="golf-label">Golfers used</dt>
+            <dd>{{ used_count }} <span class="golf-facts-note">this season</span></dd>
+        </div>
+        {% if field %}
+        <div>
+            <dt class="golf-label">Yours to spend</dt>
+            <dd>{{ field.available }} <span class="golf-facts-note">of {{ field.rows|length }} in the field</span></dd>
+        </div>
+        {% endif %}
+    </dl>
 
-                    <form method="POST" action="{{ url_for('golf.make_pick', tournament_id=tournament.id) }}">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+    {% if not field %}
+    <p class="golf-empty">The field publishes Tuesday. Picks open then.</p>
 
-                        <div class="mb-4">
-                            <label for="primary_player_id" class="form-label">Primary Player</label>
-                            <select name="primary_player_id" id="primary_player_id" class="form-select" required>
-                                <option value="">Search for a player...</option>
-                                {% for player in available_players %}
-                                <option value="{{ player.id }}"
-                                    {% if existing_pick and existing_pick.primary_player_id == player.id %}selected{% endif %}>
-                                    {{ player.full_name() }}
-                                </option>
-                                {% endfor %}
-                            </select>
-                            <div class="form-text">Your main pick. This player's earnings = your points.</div>
-                        </div>
+    {% else %}
+    {# The pick: two real selects (the form posts without the script below);
+       with it, the slots show the choice and the field's rows fill them. #}
+    <form class="golf-pick" id="golf-pick-form" method="POST" autocomplete="off"
+          action="{{ url_for('golf.make_pick', tournament_id=tournament.id) }}"
+          data-saved-primary="{{ pick.primary_player_id if pick else '' }}"
+          data-saved-backup="{{ pick.backup_player_id if pick else '' }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <script>document.currentScript.parentElement.classList.add('golf-pick--js');</script>
 
-                        <div class="mb-4">
-                            <label for="backup_player_id" class="form-label">Backup Player</label>
-                            <select name="backup_player_id" id="backup_player_id" class="form-select" required>
-                                <option value="">Search for a player...</option>
-                                {% for player in available_players %}
-                                <option value="{{ player.id }}"
-                                    {% if existing_pick and existing_pick.backup_player_id == player.id %}selected{% endif %}>
-                                    {{ player.full_name() }}
-                                </option>
-                                {% endfor %}
-                            </select>
-                            <div class="form-text">Activates only if primary WDs before completing Round 2.</div>
-                        </div>
-
-                        <button type="submit" class="btn btn-warning w-100">
-                            <i class="bi bi-check-lg me-1"></i>
-                            {{ 'Update Pick' if existing_pick else 'Submit Pick' }}
-                        </button>
-                    </form>
-                </div>
+        <div class="golf-slots" data-slots>
+            <div class="golf-slot" data-slot="primary" tabindex="-1">
+                <label class="golf-label" for="primary_player_id">Primary</label>
+                <select class="golf-slot-select" id="primary_player_id" name="primary_player_id" required>
+                    <option value="">Choose your primary</option>
+                    {% for row in field.by_name %}
+                    <option value="{{ row.player.id }}"
+                        {%- if row.used %} disabled{% endif %}
+                        {%- if pick and pick.primary_player_id == row.player.id %} selected{% endif %}>
+                        {{- row.player.full_name() }}{% if row.used %} (used){% endif -%}
+                    </option>
+                    {% endfor %}
+                </select>
+                <p class="golf-slot-value" data-slot-value hidden></p>
+                <button type="button" class="golf-slot-change" data-slot-change hidden>Change</button>
+            </div>
+            <div class="golf-slot" data-slot="backup" tabindex="-1">
+                <label class="golf-label" for="backup_player_id">Backup</label>
+                <select class="golf-slot-select" id="backup_player_id" name="backup_player_id" required
+                        aria-describedby="golf-backup-rule">
+                    <option value="">Choose your backup</option>
+                    {% for row in field.by_name %}
+                    <option value="{{ row.player.id }}"
+                        {%- if row.used %} disabled{% endif %}
+                        {%- if pick and pick.backup_player_id == row.player.id %} selected{% endif %}>
+                        {{- row.player.full_name() }}{% if row.used %} (used){% endif -%}
+                    </option>
+                    {% endfor %}
+                </select>
+                <p class="golf-slot-value" data-slot-value hidden></p>
+                <button type="button" class="golf-slot-change" data-slot-change hidden>Change</button>
             </div>
         </div>
+        <p class="golf-slot-rule" id="golf-backup-rule">Your backup plays only if your primary withdraws before finishing round 2.</p>
 
-        <!-- Sidebar -->
-        <div class="col-lg-4">
-            <!-- Tournament Info -->
-            <div class="card mb-3 animate-in stagger-1">
-                <div class="card-header">
-                    <i class="bi bi-info-circle me-2"></i>Tournament Info
-                </div>
-                <div class="card-body">
-                    <dl class="mb-0">
-                        <dt style="font-size:.8rem;" class="text-muted text-uppercase">Purse</dt>
-                        <dd class="fw-bold">
-                            {% if tournament.effective_purse %}
-                            ${{ '{:,.0f}'.format(tournament.effective_purse) }}{% if tournament.purse_is_estimate %} <span class="text-muted small">(est.)</span>{% endif %}
-                            {% else %}
-                            TBD
-                            {% endif %}
-                            {% if tournament.is_major %}<span class="badge bg-warning text-dark ms-1">MAJOR 1.5x</span>{% endif %}
-                            {% if tournament.is_team_event %}<span class="badge bg-info text-dark ms-1">TEAM</span>{% endif %}
-                        </dd>
-                        <dt style="font-size:.8rem;" class="text-muted text-uppercase">Deadline</dt>
-                        <dd class="fw-bold" id="deadline-display">{{ tournament.get_deadline_display() }}</dd>
-                        <dt style="font-size:.8rem;" class="text-muted text-uppercase">Field Size</dt>
-                        <dd class="mb-0 fw-bold">{{ tournament.get_field_count() }} players</dd>
-                    </dl>
-                </div>
-            </div>
-
-            <!-- Rules -->
-            <div class="card animate-in stagger-2">
-                <div class="card-header">
-                    <i class="bi bi-book me-2"></i>Quick Rules
-                </div>
-                <div class="card-body">
-                    <ul class="list-unstyled mb-0" style="font-size:.88rem;">
-                        <li class="mb-2"><i class="bi bi-check2 text-gold me-2"></i>Pick one primary + one backup per tournament</li>
-                        <li class="mb-2"><i class="bi bi-check2 text-gold me-2"></i>Points = actual prize money earned</li>
-                        <li class="mb-2"><i class="bi bi-check2 text-gold me-2"></i>Each golfer usable only once per season</li>
-                        <li class="mb-2"><i class="bi bi-check2 text-gold me-2"></i>Backup activates only if primary WDs before R2</li>
-                        <li class="mb-2"><i class="bi bi-check2 text-gold me-2"></i>Majors earn 1.5x points</li>
-                        <li><i class="bi bi-check2 text-gold me-2"></i>Team events: both partners earn the full team payout</li>
-                    </ul>
-                </div>
-            </div>
+        <div class="golf-pick-commit">
+            <button type="submit" class="btn btn-game golf-btn" data-commit>Lock it in</button>
+            <p class="golf-pick-note" data-note-ready>You can change it any time until <span class="golf-nowrap">{{ lock }}</span>.</p>
+            <p class="golf-pick-note" data-note-saved hidden>Your pick is in. Change either golfer until <span class="golf-nowrap">{{ lock }}</span>.</p>
         </div>
-    </div>
+        <p class="visually-hidden" aria-live="polite" data-pick-status></p>
+    </form>
+
+    <section aria-labelledby="golf-field-label">
+        <div class="golf-field-head">
+            <h2 class="golf-label" id="golf-field-label">The field<span data-field-question></span></h2>
+            <span class="golf-field-count" aria-live="polite" data-field-count>{{ field.available }} of {{ field.rows|length }} yours to spend</span>
+        </div>
+        <div class="golf-search-wrap" data-search-wrap hidden>
+            <input class="golf-search" type="search" id="golf-field-search" placeholder="Search the field"
+                   aria-label="Search the field" autocomplete="off" autocapitalize="off" spellcheck="false"
+                   enterkeyhint="search">
+        </div>
+        {% if field.has_burn %}
+        <p class="golf-burn-key" data-burn-key>The hatch is the share of the room that still has him.</p>
+        {% endif %}
+
+        <ul class="golf-field">
+            {% for row in field.rows %}
+            {% set name = row.player.full_name() %}
+            <li class="golf-field-row{% if row.used %} golf-field-row--used{% endif %}" data-row
+                data-id="{{ row.player.id }}" data-name="{{ name }}" data-search="{{ row.search }}">
+                {% if row.used %}
+                <span class="golf-field-name golf-used">{{ name }}</span>
+                <span class="golf-field-act"><span class="golf-chip golf-chip--pen">Used</span></span>
+                <span class="golf-field-sub">
+                    {%- if row.used_week %}{% if row.used_week.week_number %}Wk {{ row.used_week.week_number }} · {% endif %}{{ row.used_week.tournament }}{% else %}Spent this season{% endif -%}
+                </span>
+                {% else %}
+                <span class="golf-field-name">{{ name }}</span>
+                <span class="golf-field-act">
+                    <button type="button" class="golf-field-pick" data-pick hidden><span data-pick-word>Primary</span><span class="visually-hidden">: {{ name }}</span></button>
+                    <span class="golf-chip golf-chip--pen" data-chip hidden></span>
+                </span>
+                {% if field.has_money %}<span class="golf-field-sub">YTD {{ dollars(row.ytd) }}</span>{% endif %}
+                {% endif %}
+                {% if row.remaining is not none %}
+                <span class="golf-burn">
+                    <span class="golf-burn-bar" style="--have: {{ row.remaining }}%" aria-hidden="true"></span>
+                    <span><span class="golf-burn-pct">{{ row.remaining }}%</span><span class="golf-burn-word"> still have him</span></span>
+                </span>
+                {% endif %}
+            </li>
+            {% endfor %}
+        </ul>
+        <p class="golf-line golf-field-none" data-field-none hidden>
+            Nobody in this field matches “<span data-field-query></span>”.
+            <button type="button" class="golf-linkbtn" data-field-clear>Clear the search</button>
+        </p>
+    </section>
+
+    {% if field.spent %}
+    <details class="golf-fold">
+        <summary>Used golfers ({{ field.spent|length }})</summary>
+        <ul class="golf-fold-body">
+            {% for golfer in field.spent %}
+            <li>{{ golfer.player.full_name() }}
+                {%- if golfer.week %}<span class="golf-fold-note"> · {% if golfer.week.week_number %}Wk {{ golfer.week.week_number }} · {% endif %}{{ golfer.week.tournament }}</span>{% endif -%}
+            </li>
+            {% endfor %}
+        </ul>
+    </details>
+    {% endif %}
+
+    {% if field.still_on_board %}
+    <section class="golf-still" aria-labelledby="golf-still-label">
+        <h2 class="golf-label" id="golf-still-label">Still on the board</h2>
+        <p class="golf-still-lead">Your top earners not yet spent, by money won this season.</p>
+        <ul class="golf-still-list">
+            {% for earner in field.still_on_board %}
+            <li>
+                <span class="golf-still-name">{{ earner.player.full_name() }}
+                    <span class="golf-still-note">{{ 'in this field' if earner.in_field else 'not in this field' }}</span>
+                </span>
+                <span class="golf-money">{{ dollars(earner.ytd) }}</span>
+            </li>
+            {% endfor %}
+        </ul>
+    </section>
+    {% endif %}
+
+    <p class="golf-line">Each golfer is yours once a season. Only the golfer who counts is spent.</p>
+    {% if tournament.is_major %}
+    <p class="golf-line">A major pays ×1.5. A missed cut or a DQ costs ${{ penalty_per_incident }} to the pot.</p>
+    {% endif %}
+    {% if tournament.is_team_event %}
+    <p class="golf-line">Team event: the full team payout counts for your golfer.</p>
+    {% endif %}
+    {% endif %}
+
+    <p class="golf-foot">
+        <a href="{{ url_for('golf.index') }}">The Sheet</a>
+        <a href="{{ url_for('golf.tournament_detail', tournament_id=tournament.id) }}">The Board</a>
+        <a href="{{ url_for('golf.schedule') }}">The Season Book</a>
+    </p>
 </div>
 {% endblock %}
 
 {% block scripts %}
-<script src="https://cdn.jsdelivr.net/npm/tom-select@2.4.3/dist/js/tom-select.complete.min.js"></script>
+{% if field %}
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const primarySelect = new TomSelect('#primary_player_id', {
-        placeholder: 'Search for a player...',
-        allowEmptyOption: true,
-        onChange: function(value) {
-            // Disable selected primary in backup dropdown
-            if (backupSelect) {
-                backupSelect.clearOptions();
-                const options = document.querySelectorAll('#primary_player_id option');
-                options.forEach(opt => {
-                    if (opt.value && opt.value !== value) {
-                        backupSelect.addOption({value: opt.value, text: opt.text});
-                    }
-                });
-                backupSelect.refreshOptions(false);
-            }
+/* Spend a Golfer: one question at a time. The two selects stay the form's
+   truth (#primary_player_id, #backup_player_id); this fills them from the
+   field's rows, turns back to the slots after each choice, and filters the
+   field as the member types. */
+(function () {
+    'use strict';
+    var form = document.getElementById('golf-pick-form');
+    if (!form) return;
+
+    var SLOTS = ['primary', 'backup'];
+    var WORD = { primary: 'Primary', backup: 'Backup' };
+    var PROMPT = { primary: 'Choose a golfer from the field below.', backup: 'Choose a second golfer from the field.' };
+    var QUESTION = { primary: ' · spend your primary', backup: ' · name a backup' };
+
+    var selects = {
+        primary: document.getElementById('primary_player_id'),
+        backup: document.getElementById('backup_player_id')
+    };
+    var slots = {};
+    SLOTS.forEach(function (slot) { slots[slot] = form.querySelector('[data-slot="' + slot + '"]'); });
+    var slotsBox = form.querySelector('[data-slots]');
+    var commit = form.querySelector('[data-commit]');
+    var noteReady = form.querySelector('[data-note-ready]');
+    var noteSaved = form.querySelector('[data-note-saved]');
+    var status = form.querySelector('[data-pick-status]');
+    var question = document.querySelector('[data-field-question]');
+    var count = document.querySelector('[data-field-count]');
+    var search = document.getElementById('golf-field-search');
+    var none = document.querySelector('[data-field-none]');
+    var burnKey = document.querySelector('[data-burn-key]');
+    var rows = Array.prototype.slice.call(document.querySelectorAll('[data-row]'));
+    var names = {};
+    rows.forEach(function (row) { names[row.dataset.id] = row.dataset.name; });
+
+    // What the server holds, never what a reload left in the selects.
+    var saved = { primary: form.dataset.savedPrimary, backup: form.dataset.savedBackup };
+    var total = rows.length;
+    var spendable = rows.filter(function (row) { return row.querySelector('[data-pick]'); }).length;
+    var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    // The same fold as games/golf/services/field.py::search_key, so "jj"
+    // finds "J.J." and "hojgaard" finds "Højgaard".
+    function fold(text) {
+        return text.toLowerCase()
+            .replace(/ø/g, 'o').replace(/æ/g, 'ae').replace(/œ/g, 'oe')
+            .replace(/ł/g, 'l').replace(/đ/g, 'd').replace(/ß/g, 'ss')
+            .normalize('NFKD').replace(/[^a-z0-9]/g, '');
+    }
+
+    function nextOpen() {
+        if (!selects.primary.value) return 'primary';
+        if (!selects.backup.value) return 'backup';
+        return null;
+    }
+    var open = nextOpen();
+
+    function render() {
+        var chosen = { primary: selects.primary.value, backup: selects.backup.value };
+
+        SLOTS.forEach(function (slot) {
+            var el = slots[slot];
+            var value = el.querySelector('[data-slot-value]');
+            var change = el.querySelector('[data-slot-change]');
+            el.classList.toggle('golf-slot--open', open === slot);
+            el.classList.toggle('golf-slot--empty', !chosen[slot]);
+            value.hidden = false;
+            value.textContent = chosen[slot] ? names[chosen[slot]] : PROMPT[slot];
+            change.hidden = !chosen[slot];
+            change.textContent = open === slot ? 'Keep' : 'Change';
+        });
+
+        rows.forEach(function (row) {
+            var pick = row.querySelector('[data-pick]');
+            if (!pick) return;                      // a spent golfer: struck, no action
+            var chip = row.querySelector('[data-chip]');
+            var id = row.dataset.id;
+            var role = id === chosen.primary ? 'primary' : id === chosen.backup ? 'backup' : null;
+            row.classList.toggle('golf-field-row--mine', !!role);
+            chip.hidden = !role;
+            chip.textContent = role ? WORD[role] : '';
+            pick.hidden = !open || !!role;
+            if (open) pick.querySelector('[data-pick-word]').textContent = WORD[open];
+        });
+
+        question.textContent = open ? QUESTION[open] : '';
+
+        var both = chosen.primary && chosen.backup;
+        var dirty = chosen.primary !== saved.primary || chosen.backup !== saved.backup;
+        commit.hidden = !(both && dirty);
+        noteReady.hidden = !(both && dirty);
+        noteSaved.hidden = !(both && !dirty);
+    }
+
+    function filter() {
+        var raw = search.value.trim();
+        var tokens = raw.split(/\s+/).map(fold).filter(Boolean);
+        var shown = 0;
+        rows.forEach(function (row) {
+            var hit = tokens.every(function (token) { return row.dataset.search.indexOf(token) !== -1; });
+            row.hidden = !hit;
+            if (hit) shown += 1;
+        });
+        count.textContent = tokens.length
+            ? shown + ' of ' + total + (shown === 1 ? ' matches' : ' match')
+            : spendable + ' of ' + total + ' yours to spend';
+        none.hidden = shown > 0;
+        if (burnKey) burnKey.hidden = shown === 0;
+        none.querySelector('[data-field-query]').textContent = raw;
+    }
+
+    // The leaf turn: back to the slots, where the next question is the open one.
+    function turnBack(target) {
+        var box = slotsBox.getBoundingClientRect();
+        if (box.top < 0 || box.bottom > window.innerHeight) {
+            slotsBox.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
         }
+        target.focus({ preventScroll: true });
+    }
+
+    function choose(id) {
+        var slot = open;
+        selects[slot].value = id;
+        search.value = '';
+        filter();
+        open = nextOpen();
+        render();
+        status.textContent = WORD[slot] + ': ' + names[id] + '. ' +
+            (open ? 'Now name your ' + open + '.' : 'Both are in. Lock it in.');
+        turnBack(open ? slots[open] : (commit.hidden ? slots[slot] : commit));
+    }
+
+    rows.forEach(function (row) {
+        var pick = row.querySelector('[data-pick]');
+        if (pick) pick.addEventListener('click', function () { choose(row.dataset.id); });
     });
 
-    const backupSelect = new TomSelect('#backup_player_id', {
-        placeholder: 'Search for a player...',
-        allowEmptyOption: true,
+    SLOTS.forEach(function (slot) {
+        slots[slot].querySelector('[data-slot-change]').addEventListener('click', function () {
+            open = open === slot ? nextOpen() : slot;
+            render();
+            if (open === slot) status.textContent = 'Choose a new ' + slot + ' from the field.';
+        });
     });
-});
+
+    search.addEventListener('input', filter);
+    search.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape' && search.value) { search.value = ''; filter(); }
+    });
+    none.querySelector('[data-field-clear]').addEventListener('click', function () {
+        search.value = '';
+        filter();
+        search.focus();
+    });
+
+    document.querySelector('[data-search-wrap]').hidden = false;
+    render();
+})();
 </script>
+{% endif %}
 {% endblock %}

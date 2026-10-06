@@ -2,11 +2,16 @@
    its two materials and the pencil pick line under a name. Used by The Sheet
    (index.html) and The Board (tournament_detail.html). pick_line() calls the
    penalty chip, which reads the golf context processor, so import with context:
-   {% from 'golf/_sheet.html' import dollars, money, pick_line, read_time with context %} #}
+   {% from 'golf/_sheet.html' import dollars, event_dates, money, pick_line, read_time with context %} #}
 {% from 'golf/_penalty_badge.html' import penalty_badge with context %}
 
 {% macro dollars(amount) -%}
   ${{ '{:,.0f}'.format(amount) }}
+{%- endmacro %}
+
+{# An event's dates: "Apr 16–19", or "Apr 30–May 3" across a month's end. #}
+{% macro event_dates(tournament) -%}
+  {{ tournament.start_date.strftime('%b %-d') }}–{{ tournament.end_date.strftime('%b %-d') if tournament.start_date.month != tournament.end_date.month else tournament.end_date.strftime('%-d') }}
 {%- endmacro %}
 
 {# A money figure: pencil with a tilde while projected, ink with the double rule
