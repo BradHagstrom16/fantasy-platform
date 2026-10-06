@@ -5478,7 +5478,7 @@ body.game-golf ::selection {
   box-shadow: .5rem 0 0 var(--golf-pen-wash);
 }
 
-/* The chips: a word, always (§7.4). */
+/* The chips (§7.4): a word, always; the penalty chip alone drops its word on a phone. */
 .golf-chip {
   display: inline-block;
   padding: 1px 6px 0;
@@ -5554,7 +5554,7 @@ ul.golf-fold-body {
 }
 .golf-fold-body li + li { margin-top: .375rem; }
 
-/* Marginalia: a note opens on an ink rule, a label, then its value. */
+/* Marginalia: a note opens on a hairline, a label, then its value. */
 .golf-note {
   padding: .75rem 0 1.5rem;
   border-top: 1px solid var(--golf-rule);
