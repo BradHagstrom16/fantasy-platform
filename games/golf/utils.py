@@ -1,5 +1,5 @@
 """
-Golf Pick 'Em — Utility Functions
+The Pay Sheet — Utility Functions
 ===================================
 Shared helpers for formatting, parsing, and calculations.
 """

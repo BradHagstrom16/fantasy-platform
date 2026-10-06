@@ -1,4 +1,4 @@
-"""Golf Pick 'Em enrollment service — registry integration point."""
+"""The Pay Sheet enrollment service — registry integration point."""
 
 from flask import current_app
 

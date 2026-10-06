@@ -22,7 +22,7 @@ from models.sync_run import SyncRun
 # The club's permanent record: every finished season's board (ADR-068)
 from models.records import SeasonFinish
 
-# Golf Pick 'Em models
+# The Pay Sheet models
 from games.golf.models import (
     GolfEnrollment,
     GolfPlayer,

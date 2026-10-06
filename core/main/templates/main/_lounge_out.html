@@ -82,7 +82,7 @@ its provenance.
           <span class="out-coming-strip-icon" aria-hidden="true">{{ game.emoji }}</span>
           <div class="out-coming-strip-text">
             <div class="out-coming-strip-title">{{ game.display_name }}</div>
-            <div class="out-coming-strip-meta">Opens {{ game.launch_label or 'TBA' }}</div>
+            <div class="out-coming-strip-meta">{% if game.format_label %}{{ game.format_label }} · {% endif %}Opens {{ game.launch_label or 'TBA' }}</div>
           </div>
         </div>
         {% endfor %}

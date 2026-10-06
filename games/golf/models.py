@@ -1,5 +1,5 @@
 """
-Golf Pick 'Em — Database Models
+The Pay Sheet — Database Models
 =================================
 SQLAlchemy models for the golf pick 'em fantasy league.
 
@@ -33,7 +33,7 @@ PENALTY_PER_INCIDENT = 15
 
 class GolfEnrollment(db.Model):
     """
-    Tracks which users are enrolled in Golf Pick 'Em for a given season.
+    Tracks which users are enrolled in The Pay Sheet for a given season.
     Stores golf-specific user data (total_points, has_paid) that does NOT
     belong on the shared User model.
     """

@@ -184,15 +184,28 @@
         "displayName": "Live Orange",
         "canonical": "#FF8A3C"
       },
-      "golf-green": {
+      "golf-pen": {
         "role": "tertiary",
-        "displayName": "Augusta Green",
-        "canonical": "#006747"
+        "displayName": "Ballpoint Pen",
+        "canonical": "#2439C8",
+        "tonalRamp": {
+          "pressed": "#1A2A8F",
+          "pen": "#2439C8",
+          "lift": "#4A5CD6",
+          "bright": "#8C9BFF"
+        }
       },
-      "golf-gold": {
+      "golf-paper": {
         "role": "tertiary",
-        "displayName": "Augusta Gold",
-        "canonical": "#B8993E"
+        "displayName": "Waterproof Paper",
+        "canonical": "#E9EBE4",
+        "tonalRamp": {
+          "paper": "#E9EBE4",
+          "surface": "#F7F8F3",
+          "rule": "#C9CDC2",
+          "pencil": "#5A6253",
+          "ink": "#15190F"
+        }
       },
       "cfb-crimson": {
         "role": "tertiary",
@@ -465,7 +478,7 @@
       },
       {
         "name": "The Two-Color Rule",
-        "body": "CCC is purple plus gold on bone. Game tertiaries (Golf green, CFB crimson, WC navy/red, Docket oxblood/garnet) layer only when the surface is scoped under a body.game-<slug> class. A platform-chrome surface that introduces a third color outside the CCC duo without that scoping is a design failure.",
+        "body": "CCC is purple plus gold on bone. Game tertiaries (the Pay Sheet's pen blue, CFB crimson, WC navy/red, Docket oxblood/garnet) layer only when the surface is scoped under a body.game-<slug> class. A platform-chrome surface that introduces a third color outside the CCC duo without that scoping is a design failure.",
         "section": "colors"
       },
       {
@@ -542,7 +555,7 @@
       "Don't apply --metal-gold outside primary-CTA contexts. It is the trophy; decorating with it dilutes it.",
       "Don't introduce repeating identical card grids (icon + heading + text, same size, eight in a row). PRODUCT.md flags this as an anti-reference under \"generic SaaS dashboards.\"",
       "Don't apply the hero-metric template (big number + small label + supporting stats + gradient accent) without justification. Listed in shared design laws as an absolute ban for SaaS cliches.",
-      "Don't add a third top-level color outside CCC purple plus gold without scoping it under a game class. WC navy/red, CFB crimson, Golf green only ever appear on body.game-worldcup / body.game-cfb / body.game-golf surfaces.",
+      "Don't add a third top-level color outside CCC purple plus gold without scoping it under a game class. WC navy/red, CFB crimson, the Pay Sheet's pen blue only ever appear on body.game-worldcup / body.game-cfb / body.game-golf surfaces.",
       "Don't use match.stage|title in Jinja templates. Use the stage_label SSoT helper. (Documented gotcha in CLAUDE.md; surfaces as a typography slip.)",
       "Don't mock dark mode on light surfaces. The auth pages (Tribunal Black backdrop) plus each game's named ceremonial dark primitive (the World Cup .wc-champion-banner, The Docket's .docket-verdict-banner) are the platform-default first-party dark surfaces; otherwise bone-on-light is the default. Carve-out: a game may establish a *dark room* as its entire body substrate when its games/<slug>/DESIGN.md documents the choice and scopes it under body.game-<slug> only (never a global dark mode) — e.g., CFB Survivor's warm-midnight room (games/cfb/DESIGN.md). What stays banned is an *undocumented* third dark register. New game-scoped dark primitives, or a documented dark room, belong in the game's DESIGN.md.",
       "Don't use bounce or elastic easing on motion. Card hover is the only deliberately overshooting curve in the system; everywhere else, ease out with cubic-bezier(0.4, 0, 0.2, 1) or steeper exponential curves.",

@@ -1,7 +1,7 @@
 """
-Golf Pick 'Em — Routes
+The Pay Sheet — Routes
 ========================
-All route handlers for the Golf Pick 'Em game.
+All route handlers for the The Pay Sheet game.
 Mounted at /golf/ via blueprint url_prefix.
 """
 import logging
@@ -74,11 +74,24 @@ def golf_admin_required(f):
 # Context Processor — inject golf-specific globals into golf templates
 # ============================================================================
 
+def _viewer_is_golf_admin():
+    """The sub-nav's Admin pill: platform admin, or the season's enrollment admin."""
+    if not current_user.is_authenticated:
+        return False
+    if current_user.is_admin:
+        return True
+    enrollment = GolfEnrollment.query.filter_by(
+        user_id=current_user.id, season_year=current_app.config['SEASON_YEAR']
+    ).first()
+    return bool(enrollment and enrollment.is_admin)
+
+
 @golf_bp.context_processor
 def inject_golf_globals():
     """Inject golf-specific variables into all golf templates."""
     return {
         'body_class': 'game-golf',
+        'golf_is_admin': _viewer_is_golf_admin(),
         'golf_current_time': get_current_time(),
         'season_year': current_app.config['SEASON_YEAR'],
         'entry_fee': current_app.config['ENTRY_FEE'],
@@ -169,7 +182,7 @@ def get_cumulative_scores(user_ids, season_year):
 
 @golf_bp.route('/')
 def index():
-    """Golf Pick 'Em standings page."""
+    """The Pay Sheet standings page."""
     season_year = current_app.config['SEASON_YEAR']
 
     # Get all enrolled users for this season, ordered by total_points.
@@ -272,13 +285,13 @@ def index():
 @login_required
 @game_must_be_open('golf')
 def join():
-    """Enrollment page for Golf Pick 'Em."""
+    """Enrollment page for The Pay Sheet."""
     season_year = current_app.config['SEASON_YEAR']
     existing = GolfEnrollment.query.filter_by(
         user_id=current_user.id, season_year=season_year
     ).first()
     if existing:
-        flash("You are already enrolled in Golf Pick 'Em!", 'info')
+        flash("You are already enrolled in The Pay Sheet!", 'info')
         return redirect(url_for('golf.index'))
 
     if request.method == 'POST':
@@ -288,7 +301,7 @@ def join():
         )
         db.session.add(enrollment)
         db.session.commit()
-        flash("Welcome to Golf Pick 'Em!", 'success')
+        flash("Welcome to The Pay Sheet!", 'success')
         return redirect(url_for('golf.index'))
 
     return render_template('golf/join.html')
@@ -784,7 +797,7 @@ def admin_override_pick():
                 # Never create enrollment rows from admin paths — admins add
                 # users via Platform Admin → Enrollments first.
                 errors.append(
-                    "User must be enrolled in Golf Pick 'Em before an admin "
+                    "User must be enrolled in The Pay Sheet before an admin "
                     'override can be applied. Add them via Admin → Enrollments first.'
                 )
 

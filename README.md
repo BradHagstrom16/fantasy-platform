@@ -70,7 +70,7 @@ fantasy-platform/
 | CFB Survivor Pool | ✅ Live (2026 season) |
 | The Docket (NFL + CFB pick'em) | ✅ Live (2026 season) |
 | World Cup Fantasy Pool | 🏆 Archived (2026 tournament complete) |
-| Golf Pick 'Em | 🔜 Coming soon (~Jan 2027) |
+| The Pay Sheet (Golf One & Done) | 🔜 Coming soon (~Jan 2027) |
 
 Statuses mirror `games/registry.py` (the SSoT). Flip a game's `status` there
 (`coming_soon` → `open` at launch, `open` → `completed` when a season is

@@ -1179,13 +1179,23 @@ html[data-app-state="subscribed"] .app-panel[data-state="subscribed"] {
 
 /* ── 2. Game-Specific Overrides ──────────────────────────── */
 
-/* Golf overrides */
+/* The Pay Sheet (golf) overrides. One hue, the pen, fills both the primary and
+   the accent slot by design (games/golf/DESIGN.md §6.3); the four platform
+   tokens below are the room's paper rebase, the whole of it (§6.2). */
 body.game-golf {
-  --game-primary:            #006747;
-  --game-primary-dark:       #00432e;
-  --game-primary-light:      #1a7a57;
-  --game-accent:             #b8993e;
-  --game-accent-light:       #d4b55a;
+  --game-primary:            #2439C8;
+  --game-primary-dark:       #1A2A8F;
+  --game-primary-light:      #4A5CD6;
+  --game-accent:             #2439C8;
+  --game-accent-light:       #8C9BFF;
+  --bg-page:                 #E9EBE4;
+  --surface-card:            #F7F8F3;
+  --text-primary:            #15190F;
+  --text-secondary:          #5A6253;
+  --golf-rule:               #C9CDC2;
+  --golf-marker:             #B3261E;
+  --golf-course:             #006747;
+  --golf-pen-wash:           rgba(36, 57, 200, .08);
 }
 
 /* === HOME (CCC) ============================================== */
@@ -4500,7 +4510,8 @@ body.game-golf {
    its lounge accent tokens (tokens.css, the single source of the hues).
    Components consume var(--hl-accent) / var(--hl-ground) with CCC
    fallbacks; templates only ever emit the class, never a color. Adding a
-   third headliner (Golf, ~Jan 2027) means one new token pair and one new
+   third headliner (The Pay Sheet, golf, ~Jan 2027: the --lounge-golf-* pen
+   pair, games/golf/DESIGN.md §3) means one new token pair and one new
    mapping rule here, nothing else. */
 .home-shell .hl-panel--cfb,
 .home-shell .join--cfb {
@@ -5100,7 +5111,10 @@ body.game-cfb .card.settle-tab {
   .settle-copy { transition: none; }
 }
 
-/* === GOLF PICK 'EM === */
+/* === THE PAY SHEET (golf) === */
+/* Doctrine: games/golf/DESIGN.md. The rules below the rebase (body.game-golf,
+   above) are the pre-U1 generic port and retire surface by surface as the
+   .golf-* sheet primitives land (U1 standings first). */
 
 /* Golf table — dark green header, themed hover */
 .table-golf > thead > tr > th {
@@ -11330,8 +11344,8 @@ main { flex: 1; }
 .game-subnav.is-overflow-right .subnav-scroll::after  { opacity: 1; }
 .subnav-worldcup .subnav-scroll::before { background: linear-gradient(to left, rgba(0,18,46,0), #00122e); }
 .subnav-worldcup .subnav-scroll::after  { background: linear-gradient(to right, rgba(0,18,46,0), #00122e); }
-.subnav-golf     .subnav-scroll::before { background: linear-gradient(to left, rgba(0,26,13,0), #001a0d); }
-.subnav-golf     .subnav-scroll::after  { background: linear-gradient(to right, rgba(0,26,13,0), #001a0d); }
+.subnav-golf     .subnav-scroll::before { background: linear-gradient(to left, rgba(15,17,13,0), #0F110D); }
+.subnav-golf     .subnav-scroll::after  { background: linear-gradient(to right, rgba(15,17,13,0), #0F110D); }
 .subnav-cfb      .subnav-scroll::before { background: linear-gradient(to left, rgba(10,8,15,0), #0a080f); }
 .subnav-cfb      .subnav-scroll::after  { background: linear-gradient(to right, rgba(10,8,15,0), #0a080f); }
 .subnav-docket   .subnav-scroll::before { background: linear-gradient(to left, rgba(24,12,16,0), #180C10); }
@@ -11339,7 +11353,7 @@ main { flex: 1; }
 
 /* Per-game palettes */
 .subnav-worldcup { background: #00122e; --subnav-accent: #BF0A30; --subnav-accent-rgb: 191,10,48; }
-.subnav-golf     { background: #001a0d; --subnav-accent: #b8993e; --subnav-accent-rgb: 184,153,62; }
+.subnav-golf     { background: #0F110D; --subnav-accent: #2439C8; --subnav-accent-rgb: 36,57,200; }
 .subnav-cfb      { background: #0a080f; --subnav-accent: #C5050C; --subnav-accent-rgb: 197,5,12; }
 .subnav-docket   { background: #180C10; --subnav-accent: #A63446; --subnav-accent-rgb: 166,52,70; }
 
@@ -11360,6 +11374,24 @@ main { flex: 1; }
   flex-shrink: 0;
 }
 .subnav-game-label:hover { opacity: .7; color: #fff; }
+/* The Pay Sheet's format line under its label ("Golf One & Done · 2027"):
+   Newsreader, no tracking, dimmed; hidden with the label text on phones. */
+.subnav-golf .subnav-game-label {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: .35rem;
+  align-items: center;
+  line-height: 1.05;
+}
+.subnav-golf .subnav-label-glyph { grid-row: 1 / span 2; }
+.subnav-label-sub {
+  font-family: 'Newsreader', Georgia, serif;
+  font-weight: 400;
+  font-size: .75rem;
+  letter-spacing: 0;
+  text-transform: none;
+  color: rgba(255,255,255,.6);
+}
 
 /* Pill container — scrolls horizontally on mobile */
 .subnav-pills {
@@ -12516,6 +12548,7 @@ hr { border-color: var(--border); opacity: 1; }
      The JS-gated .subnav-scroll edge fades in the GAME SUB-NAV section are
      the single scroll-hint mechanism.) */
   .subnav-label-text { display: none; }
+  .subnav-label-sub { display: none; }
 }
 
 @media (max-width: 576px) {

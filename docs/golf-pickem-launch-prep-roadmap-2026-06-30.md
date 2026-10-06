@@ -1,4 +1,4 @@
-# Golf Pick 'Em — Pre-Launch Hardening Roadmap
+# The Pay Sheet (Golf One & Done; was Golf Pick 'Em until 2026-10-06, ADR-072) — Pre-Launch Hardening Roadmap
 
 ## Context
 
@@ -326,10 +326,13 @@ legacy app. Every cluster reads top-level `DESIGN.md` + `games/golf/DESIGN.md`; 
 `Golf_Pick_Em/DESIGN.md` ("The Greenside Ledger") is reference, not doctrine — the room is CCC-branded.
 Ordered by user impact.
 
-- [ ] **U0** Author `games/golf/DESIGN.md` (does not exist yet): Golf palette (Augusta green `#006747` +
-      gold `#b8993e`), accent-rank, register, named primitives incl. the pill vocabulary (Backup ↳
-      replaces, Override 👑, Penalty $15, Unpaid, Projected/Banked, Used). Subnav pills **Standings ·
-      Schedule · Results · Stats · My Scorecard · Admin**.
+- [x] **U0** Author `games/golf/DESIGN.md`. Done 2026-10-06 (ADR-072): the room is **The Pay Sheet (Golf
+      One & Done)**, a light paper room with the ballpoint pen `#2439C8` as its one hue (blue is personal,
+      green `#006747` is environmental, red `#B3261E` is a deduction, pencil/ink is projected/banked, a strike
+      is a used golfer; no gold, no podium, no emoji pills: the override is the "Commish" ink chip). The
+      Augusta green + gold tokens are retired; "Golf Pick 'Em" is renamed in live code. Subnav pills
+      **Standings · Schedule · Results · Stats · My Scorecard · Admin** (Stats lands with U5). Each later
+      cluster runs impeccable new-work on its surface with the world pinned and reconciles §7 from what ships.
 - [ ] **U1 Standings** — pills, legend bar, League Rules card, next-pick thread card during live play,
       shared-rank ties (the platform's competition-rank convention), mobile card rendering,
       projected-vs-banked.

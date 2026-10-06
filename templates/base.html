@@ -196,8 +196,11 @@
     {% elif request.blueprint == 'golf' %}
     <nav class="game-subnav subnav-golf" aria-label="Golf section">
         <div class="container">
-            <a class="subnav-game-label" href="{{ url_for('golf.index') }}">
-                ⛳ <span class="subnav-label-text">Golf {{ season_year }}</span>
+            <a class="subnav-game-label" href="{{ url_for('golf.index') }}"
+               aria-label="The Pay Sheet home">
+                <span class="subnav-label-glyph" aria-hidden="true">⛳</span>
+                <span class="subnav-label-text">The Pay Sheet</span>
+                <span class="subnav-label-sub">Golf One &amp; Done · {{ season_year }}</span>
             </a>
             <div class="subnav-scroll">
                 <div class="subnav-pills">
@@ -205,9 +208,15 @@
                        href="{{ url_for('golf.index') }}">Standings</a>
                     <a class="subnav-pill {% if request.endpoint == 'golf.schedule' %}active{% endif %}"
                        href="{{ url_for('golf.schedule') }}">Schedule</a>
+                    <a class="subnav-pill {% if request.endpoint == 'golf.results' %}active{% endif %}"
+                       href="{{ url_for('golf.results') }}">Results</a>
                     {% if current_user.is_authenticated %}
                     <a class="subnav-pill {% if request.endpoint == 'golf.my_picks' %}active{% endif %}"
-                       href="{{ url_for('golf.my_picks') }}">My Picks</a>
+                       href="{{ url_for('golf.my_picks') }}">My Scorecard</a>
+                    {% endif %}
+                    {% if golf_is_admin %}
+                    <a class="subnav-pill {% if request.endpoint and request.endpoint.startswith('golf.admin') %}active{% endif %}"
+                       href="{{ url_for('golf.admin_dashboard') }}">Admin</a>
                     {% endif %}
                 </div>
             </div>

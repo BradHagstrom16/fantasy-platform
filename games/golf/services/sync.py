@@ -1,5 +1,5 @@
 """
-Golf Pick 'Em — API Sync Module
+The Pay Sheet — API Sync Module
 =================================
 Sync tournament data from SlashGolf API.
 

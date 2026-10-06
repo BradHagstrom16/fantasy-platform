@@ -4,30 +4,35 @@
 
 ## The layering
 
-This repo hosts multiple games (Golf, CFB, World Cup) under one Flask blueprint structure. Design doctrine is split in two:
+This repo hosts multiple games (CFB Survivor, The Docket, The Pay Sheet, the archived World Cup) under one Flask blueprint structure. Design doctrine is split in two:
 
 - **Top-level `DESIGN.md`** (repo root) — platform-foundation doctrine: CCC palette framework, typography, elevation, motion, design laws, cross-game components. Authoritative for **cross-game / platform** concerns.
-- **`games/<slug>/DESIGN.md`** (per-game) — specialization: palette extensions, accent rank, register vocabulary, named primitives unique to that game. Authoritative for surfaces **under that game's directory**. Current files: `games/cfb/DESIGN.md` (the flagship's design contract) and `games/worldcup/DESIGN.md` (archived game; frozen). Golf's is planned for the ~Jan 2027 UI phase.
+- **`games/<slug>/DESIGN.md`** (per-game) — specialization: palette extensions, accent rank, register vocabulary, named primitives unique to that game. Authoritative for surfaces **under that game's directory**. Current files: `games/cfb/DESIGN.md` (the dark midnight room), `games/docket/DESIGN.md` (the light court-paper room), `games/golf/DESIGN.md` (The Pay Sheet, the light paper room; U0, 2026-10-06) and `games/worldcup/DESIGN.md` (archived game; frozen).
 
 ## How the per-game file gets loaded (the rule)
 
-The **stock** impeccable loader (`scripts/context.mjs`) emits only the top-level `PRODUCT.md` / `DESIGN.md`. It does **not** discover per-game files. So the convention is enforced as a hard rule in `CLAUDE.md`:
+Since impeccable v4 the loader resolves **exactly one** `DESIGN.md`: with `--target <path>` it walks up from the target to the nearest directory holding `PRODUCT.md` *or* `DESIGN.md` and resolves each doc there, falling back to the repo root only for what that directory lacks. So `impeccable context --target games/<slug>/…` loads `games/<slug>/DESIGN.md` plus the root `PRODUCT.md` and **drops the root `DESIGN.md`**; a run with no `--target` loads only the root pair (re-verified 2026-10-05, impeccable v4.3). Two consequences:
+
+1. Every per-game file carries `extends: ../../DESIGN.md` in its frontmatter and **restates the root rules it depends on** (the Eyebrow Rule, the Two-Color Rule, the side-stripe ban, the em-dash ban, the tint-only current-user row): CFB §6.10, Docket §6.8, golf §6.11.
+2. The layering is still enforced as a hard rule in `CLAUDE.md`, because a session that never runs the loader needs it too:
 
 > When working any UI surface under `games/<slug>/`, read `games/<slug>/DESIGN.md` alongside the top-level `DESIGN.md` **before** producing design output.
 
-Pick the active game from the surface in focus (the file path, route, or template being worked on). Keep platform-foundation decisions anchored to the top-level file; defer game-specific palette/accent/register/primitive decisions to the per-game file.
+Pick the active game from the surface in focus (the file path, route, or template being worked on). Keep platform-foundation decisions anchored to the top-level file; defer game-specific palette/accent/register/primitive decisions to the per-game file. The root frontmatter keeps one or two headline tokens per game (`cfb-crimson`, `docket-oxblood`, `golf-pen`, …) so the platform's `.impeccable/design.json` sidecar sees every room; each room's full family lives only in its own file, and a test per room keeps the doc's frontmatter equal to the CSS under `body.game-<slug>` (`tests/test_cfb_dark_foundation.py`, `tests/test_golf_design_doc.py`).
+
+**What else is committed:** `.impeccable/config.json` (detector exceptions, each with its `--reason`), the `design.json` sidecar, and the per-surface briefs under `games/<slug>/.impeccable/surfaces/` (each surface's scope, mode and direction contract, written by impeccable's new-work flow before that surface is built). `config.local.json` and session output stay ignored.
 
 This keeps project-specific knowledge in the project (where it belongs and survives every impeccable upgrade), instead of in a global tool patch.
 
 ## Running the loader in this repo
 
-The impeccable setup step's project-relative invocation (`node .agents/skills/impeccable/scripts/context.mjs`) does **not** work here — impeccable is a *global* install and this repo has no `.agents/` directory, so it fails with `MODULE_NOT_FOUND`. Use the skill's base directory instead:
+The impeccable setup step's project-relative invocation (`.agents/skills/impeccable/scripts/impeccable context`) does **not** work here — impeccable is a *global* install and this repo has no `.agents/` directory. Use the skill's base directory instead, from the repo root, with the surface as the target:
 
 ```bash
-node ~/.claude/skills/impeccable/scripts/context.mjs
+~/.claude/skills/impeccable/scripts/impeccable context --target games/golf/templates/golf/index.html
 ```
 
-(`~/.claude/skills/impeccable` is a symlink to the canonical global install at `~/.agents/skills/impeccable`.)
+(`~/.claude/skills/impeccable` is a symlink to the canonical global install at `~/.agents/skills/impeccable`. The v4 launcher is a self-contained binary; the old `node …/context.mjs` form is gone.)
 
 ## Keeping impeccable current
 

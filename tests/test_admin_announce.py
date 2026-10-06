@@ -48,7 +48,7 @@ def _enroll_cfb(user_id, eliminated=False, season=2026):
 
 
 def _enroll_golf(user_id, season=2026):
-    """Enroll a user in Golf Pick 'Em for the given season."""
+    """Enroll a user in The Pay Sheet for the given season."""
     e = GolfEnrollment(user_id=user_id, season_year=season)
     db.session.add(e)
     db.session.commit()
