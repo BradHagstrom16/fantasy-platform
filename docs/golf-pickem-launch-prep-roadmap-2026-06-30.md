@@ -333,15 +333,21 @@ Ordered by user impact.
       Augusta green + gold tokens are retired; "Golf Pick 'Em" is renamed in live code. Subnav pills
       **Standings · Schedule · Results · Stats · My Scorecard · Admin** (Stats lands with U5). Each later
       cluster runs impeccable new-work on its surface with the world pinned and reconciles §7 from what ships.
-- [ ] **U1 Standings** — pills, legend bar, League Rules card, next-pick thread card during live play,
+- [x] **U1 Standings** — pills, legend bar, League Rules card, next-pick thread card during live play,
       shared-rank ties (the platform's competition-rank convention), mobile card rendering,
-      projected-vs-banked.
+      projected-vs-banked. **Built 2026-10-06 as The Sheet** (with U3, one PR): the context line, Your
+      line, every line in competition rank with the pencil pick line, a margin column from 1100px
+      (next pick, Prize Pool, the marks, House Rules), `games/golf/services/sheet.py`, `GOLF_FAKE_NOW`.
+      One column is the phone layout (no card tree); season-to-par and the paid column left the page.
 - [ ] **U2 Make pick** — burn-% per option (port `stats.remaining_pct_map`), punctuation-normalized
       search (`jj` → `J.J.`), two-way mutual exclusion, "N available · M used", empty-field state; CCC
       email chrome for the four emails (retire the standalone green/gold).
-- [ ] **U3 Tournament detail** — Your Pick card, Penalties Assessed card, "updates at noon, 4 PM and
+- [x] **U3 Tournament detail** — Your Pick card, Penalties Assessed card, "updates at noon, 4 PM and
       8 PM Central · last synced" banner, competition ranking, "Didn't pick (N)" `<details>`, team/major
-      stakes bands, legend, mobile cards.
+      stakes bands, legend, mobile cards. **Built 2026-10-06 as The Board** (with U1): a week pager
+      through the Season Book, Your pick (the purse with no pick), the board ranked by the week's
+      figure, the Major ×1.5 / Team event chips, penalties assessed, the read times, "Didn't pick (N)";
+      no other member's golfer renders before the lock. The marks legend lives on The Sheet.
 - [ ] **U4 Member Scorecard** — `/golf/member/<id>` replacing self-only `my_picks` (keep `/golf/my-picks`
       as the redirect alias): tiles (Rank ordinal, Total, In the Money, Golfers Used, Overrides, Best
       Pick, Missed Cuts at Majors + pot status), idle-golfer muting, Used Golfers card, Commissioner's

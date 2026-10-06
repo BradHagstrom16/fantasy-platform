@@ -1,0 +1,38 @@
+{# The sheet's shared marks (games/golf/DESIGN.md §7.1 to §7.4): the money in
+   its two materials and the pencil pick line under a name. Used by The Sheet
+   (index.html) and The Board (tournament_detail.html). pick_line() calls the
+   penalty chip, which reads the golf context processor, so import with context:
+   {% from 'golf/_sheet.html' import dollars, money, pick_line, read_time with context %} #}
+{% from 'golf/_penalty_badge.html' import penalty_badge with context %}
+
+{% macro dollars(amount) -%}
+  ${{ '{:,.0f}'.format(amount) }}
+{%- endmacro %}
+
+{# A money figure: pencil with a tilde while projected, ink with the double rule
+   once banked. `state` adds the word above it (Projected / Banked). #}
+{% macro money(amount, pencil, state=false, tilde=true) -%}
+  {%- if state %}<span class="golf-state{% if not pencil %} golf-state--banked{% endif %}">{{ 'Projected' if pencil else 'Banked' }}</span>{% endif -%}
+  <span class="golf-money golf-money--{{ 'projected' if pencil else 'banked' }}">{% if pencil and tilde %}~{% endif %}{{ dollars(amount) }}</span>
+{%- endmacro %}
+
+{# The pencil line under a name: golfer · position · the week's figure, with the
+   deduction, penalty and backup marks. `figure` adds the week's dollars (the
+   sheet); `to_par` adds the golfer's score and the Commish chip (the board).
+   The penalty chip sits beside the Cut or DQ and drops its word on a phone. #}
+{% macro pick_line(week, figure=false, to_par=false) -%}
+  {{ week.golfer.last_name }}
+  {%- if week.replaces %} · Backup, replaces {{ week.replaces.last_name }}{% endif -%}
+  {%- if week.deduction %} · <span class="golf-chip golf-chip--deduction">{{ week.deduction }}</span>{% endif -%}
+  {{ penalty_badge(week.pick, compact=true) }}
+  {%- if week.position %} · {{ week.position }}{% endif -%}
+  {%- if to_par and week.to_par and not week.deduction %} · {{ week.to_par|replace('-', '−') }}{% endif -%}
+  {%- if figure and week.in_pencil %} · ~{{ dollars(week.figure) }}{% endif -%}
+  {%- if to_par and week.pick.admin_override %} <span class="golf-chip" title="{{ week.pick.admin_override_note or 'Set by the Commish' }}">Commish</span>{% endif -%}
+{%- endmacro %}
+
+{# When the leaderboard was last read: the time, with its day once that day is past. #}
+{% macro read_time(clock) -%}
+  {%- if clock.last_read.date() != golf_current_time.date() %}{{ clock.last_read.strftime('%A') }} {% endif -%}
+  {{ clock.last_read.strftime('%-I:%M %p') }} CT
+{%- endmacro %}

@@ -5112,9 +5112,9 @@ body.game-cfb .card.settle-tab {
 }
 
 /* === THE PAY SHEET (golf) === */
-/* Doctrine: games/golf/DESIGN.md. The rules below the rebase (body.game-golf,
-   above) are the pre-U1 generic port and retire surface by surface as the
-   .golf-* sheet primitives land (U1 standings first). */
+/* Doctrine: games/golf/DESIGN.md. The sheet primitives (U1 standings, U3 the
+   board) close this section; the rules above them are the pre-U1 generic port,
+   still dressing schedule, my picks and admin until their clusters retire them. */
 
 /* Golf table — dark green header, themed hover */
 .table-golf > thead > tr > th {
@@ -5132,11 +5132,6 @@ body.game-cfb .card.settle-tab {
    color only (.table-cfb crimson, .table-worldcup red) — never a stripe. */
 .row-current-user > td {
   background: rgba(184,153,62,.08) !important;
-}
-
-/* Leader row — subtle green tint */
-.table-golf .row-leader > td {
-  background: rgba(0,103,71,.04) !important;
 }
 
 /* Column divider — visual separator between season and tournament data */
@@ -5172,46 +5167,10 @@ body.game-cfb .card.settle-tab {
   white-space: nowrap;
 }
 
-/* Prize-pool footer (standings card) — entry fees + major penalty pot */
-.golf-pool-label {
-  font-family: 'Teko', sans-serif;
-  font-size: .95rem;
-  font-weight: 600;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-  color: var(--game-primary);
-}
-.golf-pool-figures {
-  font-size: .9rem;
-  color: var(--text-primary);
-}
-
-/* Pick CTA banner */
-.golf-pick-cta {
-  border-top: 3px solid var(--game-primary);
-  background: linear-gradient(135deg, rgba(0,103,71,.04) 0%, var(--bg-card) 100%);
-}
-
 /* Empty state icon */
 .golf-empty-icon {
   font-size: 3rem;
   color: var(--game-accent);
-}
-
-/* Hero season progress — label + value */
-.hero-progress-label {
-  letter-spacing: .08em;
-  font-weight: 700;
-  font-family: 'Teko', sans-serif;
-  color: rgba(255,255,255,.55);
-  font-size: .75rem;
-  text-transform: uppercase;
-}
-
-.hero-progress-value {
-  color: var(--game-accent);
-  font-weight: 700;
-  font-family: 'Teko', sans-serif;
 }
 
 /* Tom Select overrides — golf palette integration */
@@ -5242,6 +5201,584 @@ body.game-golf .ts-dropdown .option.active {
     padding: .6rem .75rem !important;
     font-size: 1rem !important;
   }
+}
+
+/* ── The sheet primitives (U1 standings, U3 the board) ─────────────
+   games/golf/DESIGN.md §7. Paper, hairlines, pencil and ink: no cards, no
+   elevation. Teko sets the hero figure, rank markers, labels and chips;
+   every column of money is Newsreader with tabular figures. */
+
+body.game-golf ::selection {
+  background: rgba(36, 57, 200, .18);
+  color: var(--text-primary);
+}
+
+/* The page: one 720px column; a margin column joins it from 1100px. */
+.golf-page {
+  max-width: calc(720px + 2rem);
+  margin: 0 auto;
+  padding: 1.25rem 1rem 2.5rem;
+}
+.golf-page a:not(.btn) {
+  color: var(--game-primary);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+.golf-page a:not(.btn):hover { color: var(--game-primary-dark); }
+.golf-page a:focus-visible,
+.golf-page summary:focus-visible {
+  outline: 2px solid var(--game-primary);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+.golf-margin { margin-top: 2.5rem; }
+
+@media (min-width: 1100px) {
+  .golf-page--margin {
+    max-width: calc(1100px + 2rem);
+    display: grid;
+    grid-template-columns: minmax(0, 720px) 300px;
+    column-gap: 80px;
+    align-items: start;
+  }
+  .golf-page--margin > .golf-context { grid-column: 1 / -1; }
+  .golf-page--margin > .golf-margin {
+    margin-top: 0;
+    position: sticky;
+    top: 7.5rem;
+    max-height: calc(100vh - 8.5rem);
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--golf-rule) transparent;
+  }
+}
+
+/* Sanctioned caption classes (§6.6). */
+.golf-label {
+  display: block;
+  font-family: 'Teko', sans-serif;
+  font-weight: 500;
+  font-size: .95rem;
+  letter-spacing: .14em;
+  line-height: 1;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+.golf-context {
+  margin: 0 0 .875rem;
+  font-size: .95rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+/* The line's facts, each led by its dot. The row hangs one dot-width into
+   a clipped margin, so the dot that would open a line (the first, or the
+   first after a wrap) never shows. */
+.golf-context,
+.golf-context-items { --golf-dot: 1.1em; }
+.golf-context:has(> .golf-context-items) {
+  padding: 2px 0;
+  overflow: hidden;
+}
+.golf-context-items {
+  display: flex;
+  flex-wrap: wrap;
+  margin-left: calc(-1 * var(--golf-dot));
+}
+.golf-context-items > span::before {
+  content: '·';
+  display: inline-block;
+  width: var(--golf-dot);
+  text-align: center;
+}
+.golf-context .golf-chip { margin-right: .25rem; }
+.golf-context .golf-state { display: inline; }
+.golf-nowrap { white-space: nowrap; }
+
+/* The state word beside every figure: PROJECTED or BANKED. */
+.golf-state {
+  display: block;
+  font-family: 'Teko', sans-serif;
+  font-weight: 500;
+  font-size: .8rem;
+  letter-spacing: .14em;
+  line-height: 1;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+.golf-state--banked { color: var(--text-primary); }
+
+/* The money: pencil while projected, ink with the double rule once banked. */
+.golf-money {
+  font-family: 'Newsreader', Georgia, serif;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums lining-nums;
+  white-space: nowrap;
+}
+.golf-money.golf-money--projected {
+  font-weight: 400;
+  color: var(--text-secondary);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 4px;
+}
+.golf-money.golf-money--banked {
+  color: var(--text-primary);
+  border-bottom: 3px double var(--text-primary);
+  padding-bottom: 1px;
+}
+
+/* Your line: the pen bracket in the margin, one Teko figure per screen. */
+.golf-your-line {
+  position: relative;
+  margin: 0 0 1.75rem;
+  padding: .5rem 0 .625rem .875rem;
+}
+.golf-your-line::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: .375rem;
+  bottom: .375rem;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--game-primary);
+}
+.golf-your-line-head {
+  display: flex;
+  align-items: baseline;
+  gap: .75rem;
+  margin-bottom: .375rem;
+}
+.golf-hero-figure {
+  display: inline-block;
+  font-family: 'Teko', sans-serif;
+  font-weight: 600;
+  font-size: clamp(52px, 17.5vw, 72px);
+  line-height: .9;
+  letter-spacing: .01em;
+  font-variant-numeric: lining-nums;
+  color: var(--text-primary);
+}
+.golf-hero-figure.golf-hero-figure--projected { color: var(--text-secondary); }
+.golf-hero-figure.golf-hero-figure--projected::after {
+  content: '';
+  display: block;
+  margin-top: .125rem;
+  border-top: 1px solid var(--text-secondary);
+}
+/* The ruling-off (§6.12): the double rule draws once, under a banked figure only. */
+.golf-hero-figure.golf-hero-figure--banked::after {
+  content: '';
+  display: block;
+  margin-top: .125rem;
+  border-top: 6px double var(--text-primary);
+  transform-origin: left center;
+  animation: golf-rule-off .6s cubic-bezier(.16, 1, .3, 1) .2s backwards;
+}
+@keyframes golf-rule-off {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+.golf-your-line-sub {
+  margin: .5rem 0 0;
+  font-size: .95rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+.golf-your-line-sub strong {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+.golf-your-line .golf-btn { margin-top: .875rem; }
+
+/* The head over a sheet: its H1 and, when every line shares one, the state word. */
+.golf-sheet-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: 0 0 .375rem;
+}
+.golf-title {
+  margin: 0;
+  font-size: 1.9rem;
+  line-height: 1.05;
+  color: var(--text-primary);
+  text-wrap: balance;
+}
+.golf-title--page {
+  margin: 0 0 .375rem;
+  font-size: 2.4rem;
+}
+
+/* The sheet: equal rows, hairlines, rank · name over its pencil line · money. */
+.golf-sheet {
+  width: 100%;
+  border-collapse: collapse;
+  border-top: 2px solid var(--text-primary);
+  border-bottom: 1px solid var(--golf-rule);
+}
+.golf-sheet td,
+.golf-sheet th {
+  height: 56px;
+  padding: 9px 0;
+  border-top: 1px solid var(--golf-rule);
+  vertical-align: top;
+  text-align: left;
+}
+.golf-sheet tbody tr:first-child > * { border-top: 0; }
+.golf-sheet .golf-sheet-rank {
+  width: 3rem;
+  padding-top: 11px;
+  font-family: 'Teko', sans-serif;
+  font-weight: 600;
+  font-size: 1.5rem;
+  line-height: 1;
+  font-variant-numeric: lining-nums;
+  color: var(--text-primary);
+}
+.golf-sheet .golf-sheet-name {
+  padding-right: .75rem;
+  font-weight: 500;
+  line-height: 1.35;
+  color: var(--text-primary);
+}
+.golf-sheet-avatar { margin-right: .3rem; }
+.golf-sheet .golf-sheet-money {
+  width: 1%;
+  text-align: right;
+  white-space: nowrap;
+}
+.golf-sheet-money .golf-state { margin-bottom: 3px; }
+.golf-sheet.golf-sheet--plain td,
+.golf-sheet.golf-sheet--plain th { vertical-align: middle; }
+.golf-sheet.golf-sheet--plain .golf-sheet-rank { padding-top: 12px; }
+.golf-pick-line {
+  display: block;
+  margin-top: 1px;
+  font-weight: 400;
+  font-size: .95rem;
+  line-height: 1.4;
+  color: var(--text-secondary);
+}
+/* Your row, at its true rank: the pen wash and the 3px bracket (§7.1). */
+.golf-sheet tr.golf-sheet-row--me > * { background: var(--golf-pen-wash); }
+.golf-sheet tr.golf-sheet-row--me > .golf-sheet-rank { position: relative; }
+.golf-sheet tr.golf-sheet-row--me > .golf-sheet-rank::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -.5rem;
+  width: .5rem;
+  background: var(--golf-pen-wash);
+  box-shadow: inset 3px 0 0 var(--game-primary);
+}
+.golf-sheet tr.golf-sheet-row--me > .golf-sheet-money {
+  box-shadow: .5rem 0 0 var(--golf-pen-wash);
+}
+
+/* The chips: a word, always (§7.4). */
+.golf-chip {
+  display: inline-block;
+  padding: 1px 6px 0;
+  border: 1px solid currentColor;
+  border-radius: 2px;
+  background: transparent;
+  font-family: 'Teko', sans-serif;
+  font-weight: 500;
+  font-size: .9rem;
+  letter-spacing: .1em;
+  line-height: 1.2;
+  text-transform: uppercase;
+  white-space: nowrap;
+  vertical-align: 1px;
+  color: var(--text-primary);
+}
+.golf-pick-line .golf-chip,
+.golf-sheet-name > .golf-chip {
+  padding-top: 2px;
+  line-height: 1;
+  vertical-align: baseline;
+}
+.golf-chip.golf-chip--pen { color: var(--game-primary); }
+.golf-chip.golf-chip--deduction { color: var(--golf-marker); }
+.golf-chip.golf-chip--live { color: var(--golf-course); }
+.golf-chip.golf-chip--live::before {
+  content: '';
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 5px;
+  border-radius: 50%;
+  background: var(--golf-course);
+  vertical-align: 1px;
+}
+
+/* The fold: a pencil line that opens (§7.10). */
+.golf-fold { border-top: 1px solid var(--golf-rule); }
+.golf-sheet + .golf-fold { border-top: 0; }
+.golf-fold > summary {
+  display: flex;
+  align-items: center;
+  gap: .625rem;
+  min-height: 44px;
+  font-size: .95rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+  list-style: none;
+}
+.golf-fold > summary::-webkit-details-marker { display: none; }
+.golf-fold > summary::after {
+  content: '';
+  width: 7px;
+  height: 7px;
+  margin-left: auto;
+  margin-right: 4px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: translateY(-2px) rotate(45deg);
+  transition: transform .2s cubic-bezier(.16, 1, .3, 1);
+}
+.golf-fold[open] > summary::after { transform: translateY(2px) rotate(-135deg); }
+.golf-fold > summary:hover { color: var(--text-primary); }
+.golf-fold-body {
+  margin: 0;
+  padding: 0 0 1rem;
+  font-size: .95rem;
+  line-height: 1.55;
+  color: var(--text-primary);
+}
+ul.golf-fold-body {
+  padding-left: 1.1rem;
+}
+.golf-fold-body li + li { margin-top: .375rem; }
+
+/* Marginalia: a note opens on an ink rule, a label, then its value. */
+.golf-note {
+  padding: .75rem 0 1.5rem;
+  border-top: 1px solid var(--golf-rule);
+}
+.golf-note > .golf-label { margin-bottom: .5rem; }
+.golf-note-lead {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 500;
+  line-height: 1.3;
+  color: var(--text-primary);
+}
+.golf-note-line {
+  margin: .25rem 0 0;
+  font-size: .95rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+.golf-note-line strong {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+.golf-note .golf-btn { margin-top: .875rem; }
+.golf-note.golf-note--folds { padding-bottom: 0; }
+.golf-note--folds > .golf-fold:first-of-type { border-top: 0; }
+
+/* The pick action: the pen as a fill (§6.9). */
+.btn.golf-btn {
+  padding: .625rem 1.125rem .4375rem;
+  border-radius: 3px;
+  font-weight: 500;
+  font-size: 1.25rem;
+  letter-spacing: .06em;
+  line-height: 1.2;
+}
+.btn.golf-btn:focus-visible {
+  outline: 2px solid var(--game-primary);
+  outline-offset: 3px;
+}
+
+/* The pot: a three-line ledger with its sum under a single rule. */
+.golf-pot {
+  width: 100%;
+  margin: 0;
+  font-size: .95rem;
+  color: var(--text-secondary);
+}
+.golf-pot > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: .1875rem 0;
+}
+.golf-pot dt { font-weight: 400; }
+.golf-pot dd {
+  margin: 0;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums lining-nums;
+  color: var(--text-primary);
+}
+.golf-pot > .golf-pot-sum {
+  margin-top: .25rem;
+  padding-top: .375rem;
+  border-top: 1px solid var(--text-primary);
+  color: var(--text-primary);
+}
+.golf-pot-sum dt { font-weight: 500; }
+
+/* The marks: each chip or figure beside what it means. */
+.golf-marks {
+  margin: 0;
+  padding: 0 0 1rem;
+  font-size: .95rem;
+  line-height: 1.45;
+}
+.golf-marks > div {
+  display: grid;
+  grid-template-columns: 7.75rem minmax(0, 1fr);
+  column-gap: .75rem;
+  align-items: baseline;
+  padding: .3125rem 0;
+}
+.golf-marks dt { font-weight: 400; }
+.golf-marks dd {
+  margin: 0;
+  color: var(--text-secondary);
+}
+
+/* The week pager: this board's neighbours in the Season Book. */
+.golf-pager {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  column-gap: .75rem;
+  margin: -.5rem 0 1rem;
+  border-bottom: 1px solid var(--golf-rule);
+}
+.golf-pager a,
+.golf-pager .golf-pager-end {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  min-height: 44px;
+  padding: .25rem 0;
+  font-size: .95rem;
+  line-height: 1.25;
+  text-decoration: none;
+}
+.golf-pager a:hover .golf-pager-name { text-decoration: underline; text-underline-offset: 3px; }
+.golf-pager .golf-pager-next {
+  justify-content: flex-end;
+  text-align: right;
+}
+.golf-pager-name { text-wrap: balance; }
+.golf-pager-week {
+  font-family: 'Teko', sans-serif;
+  font-weight: 500;
+  font-size: .95rem;
+  letter-spacing: .14em;
+  line-height: 1;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--text-secondary);
+}
+.golf-pager a::before,
+.golf-pager a.golf-pager-next::after {
+  content: '';
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-left: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(45deg);
+}
+.golf-pager a.golf-pager-next::before { content: none; }
+.golf-pager a.golf-pager-next::after { transform: rotate(-135deg); }
+.golf-pager a.golf-pager-prev::after { content: none; }
+
+/* A plain line under the board: penalties, the read times, an empty state. */
+.golf-line {
+  margin: 0;
+  padding: .625rem 0;
+  border-top: 1px solid var(--golf-rule);
+  font-size: .95rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+.golf-sheet + .golf-line,
+.golf-empty + .golf-line { border-top: 0; }
+.golf-line strong {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+.golf-line.golf-line--lead {
+  margin-bottom: 1.75rem;
+  padding: 0;
+  border-top: 0;
+}
+.golf-empty {
+  margin: 0;
+  padding: 1.25rem 0;
+  border-top: 2px solid var(--text-primary);
+  border-bottom: 1px solid var(--golf-rule);
+  color: var(--text-primary);
+}
+/* The foot of a page: standalone links, each a full touch target. */
+.golf-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: 1.25rem;
+  margin: 0;
+  border-top: 1px solid var(--golf-rule);
+  font-size: .95rem;
+  color: var(--text-secondary);
+}
+.golf-sheet + .golf-foot,
+.golf-empty + .golf-foot { border-top: 0; }
+.golf-foot a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}
+.golf-empty + .golf-btn { margin-top: 1rem; }
+
+@media (max-width: 768px) {
+  .golf-title--page { font-size: 1.9rem; }
+}
+
+/* On a phone the penalty chip is its amount; the Cut or DQ chip beside it
+   and the hidden word carry the rest. (575px, not Bootstrap's 575.98px: a
+   frozen World Cup lock reads the first 575.98px block in this file.) */
+@media (max-width: 575px) {
+  .golf-chip-word {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 420px) {
+  .golf-sheet .golf-sheet-rank { width: 2.75rem; }
+  .golf-sheet .golf-sheet-name { padding-right: .5rem; }
+  .golf-marks > div { grid-template-columns: 7rem minmax(0, 1fr); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .golf-hero-figure.golf-hero-figure--banked::after { animation: none; }
+  .golf-fold > summary::after { transition: none; }
+}
+
+/* The penalty chip keeps its legacy class (test-locked presence); as a chip
+   it sheds the pre-U1 tint. Bare .badge-penalty still dresses admin payments. */
+.golf-chip.badge-penalty {
+  padding: 1px 6px 0;
+  border: 1px solid currentColor;
+  border-radius: 2px;
+  background: transparent;
+  font-weight: 500;
+  font-size: .9rem;
+  line-height: 1.2;
 }
 
 /* CFB overrides */

@@ -379,8 +379,10 @@ def test_tournament_detail_renders_avatar(app, client):
 # ============================================================================
 
 def test_final_mode_gated_on_results_finalized(app, client):
-    """Complete-but-unfinalized shows Projected; a finalized one shows Earnings.
+    """Complete-but-unfinalized says Projected; a finalized board says Banked.
 
+    The two money states are named in words and never share a board
+    (games/golf/DESIGN.md §2.2); an unfinalized board never says "Earnings".
     Two tournaments so the assertion doesn't depend on a mid-test mutation being
     visible across the shared fixture session.
     """
@@ -398,9 +400,10 @@ def test_final_mode_gated_on_results_finalized(app, client):
 
     body = client.get(f'/golf/tournament/{pending.id}').get_data(as_text=True)
     assert 'Projected' in body
+    assert 'Banked' not in body
     assert 'Earnings' not in body
 
-    # Finalized → earnings mode.
+    # Finalized → banked mode.
     p3, p4 = _make_player('P3', 'C', 'Three'), _make_player('P4', 'D', 'Four')
     final = _make_tournament(name='Final Open', status='complete',
                              results_finalized=True)
@@ -410,7 +413,8 @@ def test_final_mode_gated_on_results_finalized(app, client):
     _make_pick(member, final, p3, p4, active_player_id=p3.id, points_earned=100000)
 
     body2 = client.get(f'/golf/tournament/{final.id}').get_data(as_text=True)
-    assert 'Earnings' in body2
+    assert 'Banked' in body2
+    assert 'Projected' not in body2
 
 
 # ============================================================================

@@ -1,204 +1,172 @@
 {% extends "base.html" %}
-{% from 'golf/_penalty_badge.html' import penalty_badge with context %}
+{% from 'golf/_sheet.html' import dollars, money, pick_line, read_time with context %}
 
-{% block title %}The Pay Sheet — {{ tournament.name }}{% endblock %}
+{% block title %}The Board: {{ tournament.name }} · The Pay Sheet{% endblock %}
 
 {% block content %}
-<div class="page-hero">
-    <div class="hero-glow"></div>
-    <div class="container">
-        <div class="row align-items-end">
-            <div class="col-md-8">
-                <h1 class="mb-1">{{ tournament.name }}</h1>
-                <p class="lead mb-0">
-                    {{ tournament.start_date.strftime('%b %d') }} – {{ tournament.end_date.strftime('%b %d, %Y') }}
-                    {% if tournament.is_major %}<span class="badge bg-warning text-dark ms-2">MAJOR</span>{% endif %}
-                    {% if tournament.is_team_event %}<span class="badge bg-info text-dark ms-2">TEAM</span>{% endif %}
-                </p>
-            </div>
-            <div class="col-md-4 text-md-end mt-2 mt-md-0">
-                {% if tournament.status == 'active' %}
-                    <span class="badge bg-success fs-6">LIVE</span>
-                {% elif tournament.status == 'complete' %}
-                    <span class="badge bg-secondary fs-6">COMPLETE</span>
-                {% else %}
-                    <span class="badge bg-light text-dark border fs-6">UPCOMING</span>
-                {% endif %}
-            </div>
-        </div>
-    </div>
-</div>
+{% set banked = tournament.results_finalized %}
+{% set mine = board.mine.week if board and board.mine else none %}
+<div class="golf-page">
 
-<div class="container pb-5">
+    {# The board is one leaf of the Season Book: its neighbours ride the pager. #}
+    <nav class="golf-pager" aria-label="Season Book">
+        {% if previous_week %}
+        <a class="golf-pager-prev" href="{{ url_for('golf.tournament_detail', tournament_id=previous_week.id) }}">
+            <span class="golf-pager-name"><span class="visually-hidden">Previous week: </span>{{ previous_week.name }}</span>
+        </a>
+        {% else %}
+        <span class="golf-pager-end"></span>
+        {% endif %}
+        <span class="golf-pager-week">
+            {%- if tournament.week_number %}Week {{ tournament.week_number }} of {{ weeks }}{% else %}The Season Book{% endif -%}
+        </span>
+        {% if next_week %}
+        <a class="golf-pager-next" href="{{ url_for('golf.tournament_detail', tournament_id=next_week.id) }}">
+            <span class="golf-pager-name"><span class="visually-hidden">Next week: </span>{{ next_week.name }}</span>
+        </a>
+        {% else %}
+        <span class="golf-pager-end"></span>
+        {% endif %}
+    </nav>
 
-    <!-- Tournament Stats -->
-    <div class="row g-3 mb-4">
-        <div class="col-6 col-md-3">
-            <div class="stat-block animate-in stagger-1">
-                <div class="stat-value" style="font-size:1.6rem;">
-                    {% if tournament.effective_purse %}${{ '{:,.0f}'.format(tournament.effective_purse) }}{% if tournament.purse_is_estimate %} <span class="text-muted" style="font-size:.6rem;">(est.)</span>{% endif %}{% else %}TBD{% endif %}
-                </div>
-                <div class="stat-label">Purse</div>
-            </div>
-        </div>
-        <div class="col-6 col-md-3">
-            <div class="stat-block animate-in stagger-2">
-                <div class="stat-value">{{ tournament.get_field_count() }}</div>
-                <div class="stat-label">Field Size</div>
-            </div>
-        </div>
-        <div class="col-6 col-md-3">
-            <div class="stat-block animate-in stagger-3">
-                <div class="stat-value">{{ picks|length }}</div>
-                <div class="stat-label">Picks</div>
-            </div>
-        </div>
-        <div class="col-6 col-md-3">
-            <div class="stat-block animate-in stagger-4">
-                {# Best Pick only once results are FINALIZED — same gate as the
-                   row-level earnings cell, so a complete-but-unfinalized event
-                   can't leak final earnings here (audit §4). #}
-                {% set max_pts = namespace(val=0) %}
-                {% for p in picks if tournament.results_finalized and p.points_earned is not none and p.points_earned > max_pts.val %}
-                    {% set max_pts.val = p.points_earned %}
-                {% endfor %}
-                <div class="stat-value" style="font-size:1.6rem;">
-                    {% if max_pts.val > 0 %}${{ '{:,.0f}'.format(max_pts.val) }}{% else %}—{% endif %}
-                </div>
-                <div class="stat-label">Best Pick</div>
-            </div>
-        </div>
-    </div>
+    <h1 class="golf-title golf-title--page">The Board: {{ tournament.name }}</h1>
 
-    {% if not picks_visible and tournament.status == 'upcoming' %}
-    <!-- Picks Not Visible Yet -->
-    <div class="card animate-in stagger-5">
-        <div class="card-body text-center py-5">
-            <i class="bi bi-eye-slash golf-empty-icon"></i>
-            <h5 class="mt-3">Picks Hidden Until Deadline</h5>
-            <p class="text-muted">Picks become visible after {{ tournament.get_deadline_display() }}</p>
-            {% if current_user.is_authenticated %}
-            <a href="{{ url_for('golf.make_pick', tournament_id=tournament.id) }}" class="btn btn-warning">
-                Make Your Pick
-            </a>
+    <p class="golf-context">
+        <span class="golf-context-items">
+            <span class="golf-nowrap">
+                {%- if clock and clock.on_course %}<span class="golf-chip golf-chip--live">Live</span> {% endif -%}
+                {%- if tournament.is_major %}<span class="golf-chip">Major ×1.5</span> {% endif -%}
+                {%- if tournament.is_team_event %}<span class="golf-chip">Team event</span> {% endif -%}
+                {{ tournament.start_date.strftime('%b %-d') }}–{{ tournament.end_date.strftime('%b %-d') if tournament.start_date.month != tournament.end_date.month else tournament.end_date.strftime('%-d') }}
+            </span>
+        {% if banked %}
+            <span class="golf-nowrap"><span class="golf-state golf-state--banked">Banked</span></span>
+        {% elif clock and not clock.on_course %}
+            <span class="golf-nowrap">{{ clock.round_label }}</span>
+            <span class="golf-nowrap"><span class="golf-state">Projected</span> until results are official</span>
+        {% elif clock and clock.last_read %}
+            <span class="golf-nowrap">{{ clock.round_label }}</span>
+            <span class="golf-nowrap"><span class="golf-state">Projected</span> as of {{ read_time(clock) }}</span>
+        {% elif clock %}
+            <span class="golf-nowrap">{{ clock.round_label }}</span>
+            <span class="golf-nowrap">first read at noon CT</span>
+        {% else %}
+            <span class="golf-nowrap">picks lock {{ lock }}</span>
+        {% endif %}
+        </span>
+    </p>
+
+    {# Your pick: the week's figure once the board is open; the purse until then, or with no pick. #}
+    <section class="golf-your-line" aria-labelledby="golf-your-pick-label">
+        {% if mine %}
+        <div class="golf-your-line-head">
+            <span class="golf-label" id="golf-your-pick-label">Your pick</span>
+            <span class="golf-state{% if banked %} golf-state--banked{% endif %}">{{ 'Banked' if banked else 'Projected' }}</span>
+        </div>
+        <div class="golf-hero-figure golf-hero-figure--{{ 'banked' if banked else 'projected' }}">{% if mine.in_pencil %}~{% endif %}{{ dollars(mine.figure or 0) }}</div>
+        <p class="golf-your-line-sub">
+            <strong>{{ mine.golfer.full_name() }}</strong>
+            {%- if mine.replaces %} · Backup, replaces {{ mine.replaces.last_name }}{% endif -%}
+            {%- if mine.deduction %} · <span class="golf-chip golf-chip--deduction">{{ mine.deduction }}</span>{% endif -%}
+            {%- if mine.position %} · {{ mine.place }}{% endif -%}
+            {%- if mine.figure is none %} · no read yet{% endif -%}
+            {%- if not mine.replaces %} · backup {{ mine.idle.last_name }}{% if banked %} unused{% endif %}{% endif -%}
+            {%- if mine.used %} <span class="golf-chip golf-chip--pen">Used</span>{% endif %}
+        </p>
+        {% else %}
+        <div class="golf-your-line-head">
+            <span class="golf-label" id="golf-your-pick-label">Purse</span>
+            {% if tournament.purse_is_estimate %}<span class="golf-chip">Est. purse</span>{% endif %}
+        </div>
+        <div class="golf-hero-figure">{% if tournament.effective_purse %}{{ dollars(tournament.effective_purse) }}{% else %}TBD{% endif %}</div>
+        <p class="golf-your-line-sub">
+            {% if my_pick and not board %}
+                Your pick: <strong>{{ my_pick.primary_player.full_name() }}</strong>, backup {{ my_pick.backup_player.full_name() }}.
+                <a href="{{ url_for('golf.make_pick', tournament_id=tournament.id) }}">Change</a>
+            {% elif board %}
+                {{ board.rows|length }} {{ 'pick' if board.rows|length == 1 else 'picks' }} on the board
+                {%- if current_user.is_authenticated %}. You had no pick here{% endif %}.
+            {% elif can_pick %}
+                The field is published.{% if current_user.is_authenticated %} You have no pick in yet.{% endif %}
+            {% else %}
+                The field publishes Tuesday. Picks open then.
             {% endif %}
-        </div>
+        </p>
+        {% if not board and not my_pick and can_pick and current_user.is_authenticated %}
+        <a class="btn btn-game golf-btn" href="{{ url_for('golf.make_pick', tournament_id=tournament.id) }}">Spend a golfer</a>
+        {% endif %}
+        {% endif %}
+    </section>
+
+    {% if not board %}
+    <p class="golf-empty">
+        {% if lines_in %}{{ lines_in }} {{ 'pick is' if lines_in == 1 else 'picks are' }} in.{% else %}No picks are in yet.{% endif %}
+        Every pick stays hidden until the lock.
+    </p>
+
+    {% elif board.rows %}
+    <div class="golf-sheet-head">
+        <span class="golf-label">The board</span>
+        <span class="golf-state{% if banked %} golf-state--banked{% endif %}">{{ 'Banked' if banked else 'Projected' }}</span>
     </div>
+    <table class="golf-sheet">
+        <thead class="visually-hidden">
+            <tr>
+                <th scope="col">Rank</th>
+                <th scope="col">Member and pick</th>
+                <th scope="col">This week</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in board.rows %}
+            <tr class="golf-sheet-row{% if row.is_me %} golf-sheet-row--me{% endif %}">
+                <td class="golf-sheet-rank">{{ row.rank_label }}</td>
+                <th scope="row" class="golf-sheet-name">
+                    <span class="golf-sheet-avatar">{{ row.user.get_avatar() }}</span>{{ row.user.get_display_name() }}
+                    {%- if row.is_me %}<span class="visually-hidden"> (your pick)</span>{% endif %}
+                    <span class="golf-pick-line">{{ pick_line(row.week, to_par=true) }}</span>
+                </th>
+                <td class="golf-sheet-money">{{ money(row.week.figure or 0, not banked, tilde=row.week.in_pencil) }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
 
     {% else %}
-    <!-- Picks Table -->
-    <div class="card animate-in stagger-5">
-        <div class="card-header d-flex justify-content-between align-items-center">
-            <span><i class="bi bi-people me-2"></i>Picks</span>
-            {% if not picks_visible %}
-            <small class="text-muted" style="text-transform:none;font-weight:400;">Picks hidden until deadline</small>
-            {% endif %}
-        </div>
-        <div class="card-body p-0">
-            {% if picks %}
-            <div class="table-responsive">
-                <table class="table table-golf table-hover mb-0 align-middle">
-                    <thead>
-                        <tr>
-                            <th>Player</th>
-                            <th>Primary Pick</th>
-                            {% if any_backup_activated %}
-                            <th class="d-none d-md-table-cell">Backup</th>
-                            {% endif %}
-                            {% if tournament.status in ('active', 'complete') %}
-                            <th class="text-center">Position</th>
-                            <th class="text-center d-none d-sm-table-cell">Score</th>
-                            <th class="text-end">
-                                {# Final earnings only once results are FINALIZED — a complete-but-
-                                   unfinalized tournament still shows projected (audit §4). #}
-                                {% if tournament.results_finalized %}Earnings{% else %}Projected{% endif %}
-                            </th>
-                            {% endif %}
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for pick in picks|sort(attribute='user.username') %}
-                        <tr class="{% if current_user.is_authenticated and pick.user_id == current_user.id %}row-current-user{% endif %}">
-                            <td>
-                                <span class="me-1">{{ pick.user.get_avatar() }}</span><span class="fw-semibold">{{ pick.user.get_display_name() }}</span>
-                                {% if pick.admin_override %}
-                                <span class="badge bg-warning text-dark" style="font-size:.55rem;">OVERRIDE</span>
-                                {% endif %}
-                                {{ penalty_badge(pick) }}
-                            </td>
-                            <td>
-                                {% if picks_visible %}
-                                    {{ pick.primary_player.full_name() }}
-                                    {% if pick.active_player_id == pick.backup_player_id and pick.active_player_id is not none %}
-                                        <span class="badge bg-info text-dark" style="font-size:.6rem;">WD</span>
-                                    {% endif %}
-                                {% else %}
-                                    <span class="text-muted">Hidden</span>
-                                {% endif %}
-                            </td>
-                            {% if any_backup_activated %}
-                            <td class="d-none d-md-table-cell">
-                                {% if picks_visible %}
-                                    {{ pick.backup_player.full_name() }}
-                                    {% if pick.active_player_id == pick.backup_player_id and pick.active_player_id is not none %}
-                                        <span class="badge bg-success" style="font-size:.6rem;">ACTIVE</span>
-                                    {% endif %}
-                                {% else %}
-                                    <span class="text-muted">Hidden</span>
-                                {% endif %}
-                            </td>
-                            {% endif %}
-                            {% if tournament.status in ('active', 'complete') %}
-                            {% set active_id = pick.display_active_player_id %}
-                            {% set result = results_map.get(active_id) %}
-                            <td class="text-center">
-                                {% if result and result.final_position %}
-                                    <span class="badge bg-light text-dark border">{{ result.final_position }}</span>
-                                {% else %}
-                                    <span class="text-muted">—</span>
-                                {% endif %}
-                            </td>
-                            <td class="text-center d-none d-sm-table-cell">
-                                {% if result and result.score_to_par is not none %}
-                                    <span class="{% if result.score_to_par < 0 %}text-success{% elif result.score_to_par > 0 %}text-danger{% endif %}">
-                                        {{ format_score_to_par(result.score_to_par) }}
-                                    </span>
-                                {% else %}
-                                    <span class="text-muted">—</span>
-                                {% endif %}
-                            </td>
-                            <td class="text-end">
-                                {% if tournament.results_finalized and pick.points_earned is not none %}
-                                    <strong {% if pick.points_earned > 0 %}class="text-success"{% endif %}>
-                                        ${{ '{:,.0f}'.format(pick.points_earned) }}
-                                    </strong>
-                                {% elif result and result.final_position %}
-                                    {% set proj = calculate_projected_earnings(result.final_position, tournament.effective_purse or 0, all_positions, tournament.is_major) %}
-                                    <span class="text-muted">${{ '{:,.0f}'.format(proj) }}</span>
-                                {% else %}
-                                    <span class="text-muted">—</span>
-                                {% endif %}
-                            </td>
-                            {% endif %}
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-            {% else %}
-            <div class="text-center py-5">
-                <i class="bi bi-people" style="font-size:2.5rem;color:var(--text-secondary);"></i>
-                <h6 class="mt-3 text-muted">No picks submitted yet</h6>
-            </div>
-            {% endif %}
-        </div>
-    </div>
+    <p class="golf-empty">Nobody spent a golfer on this one.</p>
     {% endif %}
 
-    <div class="mt-3">
-        <a href="{{ url_for('golf.schedule') }}" class="btn btn-outline-secondary btn-sm">
-            <i class="bi bi-arrow-left me-1"></i>Back to Schedule
-        </a>
-    </div>
+    {% if board %}
+    {% if tournament.is_major %}
+    <p class="golf-line">
+        Penalties assessed: <strong>{{ board.penalties }}</strong> · {{ dollars(board.penalties * penalty_per_incident) }} to the pot.
+        A missed cut or DQ at a major costs ${{ penalty_per_incident }}.
+    </p>
+    {% endif %}
+    {% if tournament.is_team_event %}
+    <p class="golf-line">Team event: the full team payout counts for your golfer.</p>
+    {% endif %}
+    {% if clock %}
+    <p class="golf-line">
+        Reads at noon, 4 PM and 8 PM CT, Thursday to Sunday
+        {%- if clock.last_read %} · last read {{ read_time(clock) }}{% endif %}.
+        {% if not clock.on_course %}The board banks when results are official.{% endif %}
+    </p>
+    {% endif %}
+    {% if board.didnt_pick %}
+    <details class="golf-fold">
+        <summary>Didn't pick ({{ board.didnt_pick|length }})</summary>
+        <p class="golf-fold-body">
+            {% for user in board.didnt_pick %}{{ user.get_display_name() }}{% if not loop.last %}, {% endif %}{% endfor %}.
+            No pick is $0 for the week. No penalty, no autopick.
+        </p>
+    </details>
+    {% endif %}
+    {% endif %}
+
+    <p class="golf-foot">
+        <a href="{{ url_for('golf.index') }}">The Sheet</a>
+        <a href="{{ url_for('golf.schedule') }}">The Season Book</a>
+    </p>
 </div>
 {% endblock %}
