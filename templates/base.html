@@ -196,7 +196,9 @@
     {% elif request.blueprint == 'golf' %}
     <nav class="game-subnav subnav-golf" aria-label="Golf section">
         <div class="container">
-            <a class="subnav-game-label" href="{{ url_for('golf.index') }}">
+            <a class="subnav-game-label" href="{{ url_for('golf.index') }}"
+               aria-label="The Pay Sheet home">
+                <span class="subnav-label-glyph" aria-hidden="true">⛳</span>
                 <span class="subnav-label-text">The Pay Sheet</span>
                 <span class="subnav-label-sub">Golf One &amp; Done · {{ season_year }}</span>
             </a>

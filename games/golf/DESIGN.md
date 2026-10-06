@@ -310,7 +310,10 @@ A pencil line that opens a `<details>`: "… 9 more lines", "Didn't pick (3)", "
 
 ### 7.11 Sub-nav — `.subnav-golf`
 Background `#0F110D`, `--subnav-accent #2439C8`, `--subnav-accent-rgb 36, 57, 200`. Label "THE PAY
-SHEET" with "Golf One & Done · {{ season_year }}" as its small line. Pills: Standings · Schedule ·
+SHEET" with "Golf One & Done · {{ season_year }}" as its small line, behind the platform's ⛳ glyph:
+that glyph is the sub-nav lockup every room shares (⚽ 🏈 ⚖️), the collapsed mark on phones where the
+text hides, and `aria-hidden` beside an `aria-label` on the link; it is navigation chrome, not a
+room icon, so §6.10's emoji ban does not reach it. Pills: Standings · Schedule ·
 Results · Stats · My Scorecard (members) · Admin (golf admins). The platform scroll-fade applies.
 
 ### 7.12 Join page

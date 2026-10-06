@@ -11376,7 +11376,14 @@ main { flex: 1; }
 .subnav-game-label:hover { opacity: .7; color: #fff; }
 /* The Pay Sheet's format line under its label ("Golf One & Done · 2027"):
    Newsreader, no tracking, dimmed; hidden with the label text on phones. */
-.subnav-golf .subnav-game-label { display: inline-flex; flex-direction: column; line-height: 1.05; }
+.subnav-golf .subnav-game-label {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: .35rem;
+  align-items: center;
+  line-height: 1.05;
+}
+.subnav-golf .subnav-label-glyph { grid-row: 1 / span 2; }
 .subnav-label-sub {
   font-family: 'Newsreader', Georgia, serif;
   font-weight: 400;
