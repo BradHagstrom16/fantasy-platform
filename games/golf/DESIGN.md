@@ -251,6 +251,10 @@ icons (the legacy 🏆🥈🥉🔄👑 pills are retired; the override is the "C
 trend arrows beside figures (the Record Room's season race is the one chart, and it is opt-in).
 Hiding used golfers. Tinting majors.
 
+The member's avatar is not an icon: `User.get_avatar()`, the platform's mark on every standings
+surface (its crown and trophy reserved inside it), stays on every sheet and board row, emoji and all
+(Brad, 2026-10-06). The emoji ban covers icons the room draws, never the member's own mark.
+
 The side-stripe ban has one sanctioned exception: the 3px pen bracket, drawn as
 `.golf-your-line::before` and as the inset edge of `.golf-sheet-row--me`. It is identity, never
 status or decoration (§6.5); it marks the member's own line and nothing else; no other primitive in
@@ -329,7 +333,7 @@ Teko 500, 0.9rem, 0.1em, uppercase, a 1px outline in the chip's own color, 2px r
 bare chip is ink (there is no `--ink` modifier): Major ×1.5, Team event, Est. purse, and Commish (The
 Board only, the override note in its `title`). `--pen`: Used, your backup state. `--live`: Live, On
 the course (with the 7px dot). `--deduction`: Cut, WD, DQ, Penalty $15, and Unpaid (on an unpaid
-member's sheet row, beside the name). A chip is a word, with one exception: on a pick line the
+member's sheet row, beside the name; public like the sheet, by Brad's ruling of 2026-10-06). A chip is a word, with one exception: on a pick line the
 penalty chip reads "Penalty $15" from 576px and "$15" below it, where a Cut or DQ chip always sits
 beside it and the word stays for screen readers (`.golf-chip-word`). The penalty chip also carries
 the legacy `badge-penalty` class (test-locked presence).
@@ -411,7 +415,10 @@ means. A new mark on the sheet earns its line here.
 ### 7.20 The week pager: `.golf-pager`, `.golf-pager-week`
 The Board is a leaf of the Season Book. A `<nav>` on a hairline at the top of the page: the previous
 week's event, "Week 13 of 32" (`.golf-pager-week`), the next week's event. Drawn chevrons, 44px
-targets, an empty `.golf-pager-end` at either end of the season.
+targets, an empty `.golf-pager-end` at either end of the season. The week cell is the nav's position,
+not a label of the title, so it is set like its neighbours (Newsreader 0.95rem, sentence case, pencil),
+never in `.golf-label`'s Teko caps: those over the H1 would read as an eyebrow (§6.8). The count is
+the season's highest week number.
 
 ### 7.21 The plain line and the empty state: `.golf-line`, `.golf-empty`
 `.golf-line` is one pencil sentence on a hairline under the board (penalties assessed at a major,

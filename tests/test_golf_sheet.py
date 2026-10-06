@@ -34,6 +34,7 @@ from games.golf.services.sheet import (
     ordinal,
     week_lines,
 )
+from games.golf.utils import get_current_time
 from models.user import User
 from tests._registry_helpers import set_status
 
@@ -529,7 +530,7 @@ def test_board_page_live(app, client, season, sunday):
     assert '<h1 class="golf-title golf-title--page">The Board: Masters Tournament</h1>' in body
     assert 'Major ×1.5' in body
     # The pager: this leaf's neighbour in the Season Book.
-    assert 'Week 13 of 2' in body and 'Valero Texas Open' in body
+    assert 'Week 13 of 13' in body and 'Valero Texas Open' in body
     # Your pick, in pencil.
     assert 'Your pick' in body
     assert 'golf-hero-figure--projected">~$2,700,000' in body
@@ -593,6 +594,44 @@ def test_board_page_hides_every_other_pick_until_the_lock(app, client, season, m
     assert '2 picks are in' in body
     assert 'Every pick stays hidden until the lock' in body
     assert '<table' not in body
+
+
+def _synced_active_before_the_lock(app, client, season, monkeypatch):
+    """A sync marked the Masters active at Thursday midnight; the first tee is 7:40.
+
+    6:00 AM CT Thursday, inside the request hook's refresh interval, so the
+    status the sync wrote is the status the page reads.
+    """
+    monkeypatch.setenv('GOLF_FAKE_NOW', '2026-04-09T11:00:00')
+    monkeypatch.setitem(app.config, '_GOLF_LAST_STATUS_REFRESH', get_current_time())
+    t = _tournament(season, status='active')
+    me = _member(season, 'viewer', display_name='ViewerLine')
+    rival = _member(season, 'rival', display_name='RivalLine')
+    _pick(me, t, _golfer('Minegolfer'), _golfer('Mysparegolfer'))
+    _pick(rival, t, _golfer('Secretgolfer'), _golfer('Hiddenspare'))
+    _login(client, me)
+    return t
+
+
+def test_board_page_opens_at_the_lock_not_at_a_synced_status(app, client, season, monkeypatch):
+    t = _synced_active_before_the_lock(app, client, season, monkeypatch)
+
+    body = client.get(f'/golf/tournament/{t.id}').get_data(as_text=True)
+
+    assert 'Minegolfer' in body
+    assert 'Secretgolfer' not in body and 'Hiddenspare' not in body
+    assert '2 picks are in' in body
+    assert '<table' not in body
+
+
+def test_sheet_page_pencils_a_week_only_past_its_lock(app, client, season, monkeypatch):
+    _synced_active_before_the_lock(app, client, season, monkeypatch)
+
+    body = client.get('/golf/').get_data(as_text=True)
+
+    assert 'Secretgolfer' not in body and 'Hiddenspare' not in body
+    assert 'golf-pick-line' not in body and "Didn't pick (" not in body
+    assert 'RivalLine' in body                                  # the line itself still shows
 
 
 def test_board_page_open_field_offers_the_action(app, client, season, monkeypatch):

@@ -192,8 +192,10 @@ def index():
     ).all()
 
     # The event the sheet is pencilling: on the course, or played and not yet
-    # final. Its picks and results load once; every row reads from them.
-    event = live_event(tournaments)
+    # final. Its picks and results load once; every row reads from them. Only
+    # a tournament past its lock (the pick form's own test) can be that event:
+    # a sync writes 'active' from Thursday midnight, before the first tee.
+    event = live_event([t for t in tournaments if t.is_deadline_passed()])
     lines = clock = None
     if event:
         results = _tournament_results(event.id)
@@ -311,9 +313,11 @@ def tournament_detail(tournament_id):
     picks = _tournament_picks(tournament_id)
     my_pick = next((p for p in picks if p.user_id == viewer_id), None)
 
-    # Picks open to the room at the lock. Until then the template is handed
-    # the viewer's own pick and a count, never another member's golfer.
-    locked = tournament.status != 'upcoming' or tournament.is_deadline_passed()
+    # Picks open to the room at the lock, the pick form's own test, never at a
+    # status (a sync writes 'active' from Thursday midnight, before the first
+    # tee). Until then the template is handed the viewer's own pick and a
+    # count, never another member's golfer.
+    locked = tournament.is_deadline_passed()
     board = clock = None
     can_pick = False
     if locked:
@@ -340,7 +344,7 @@ def tournament_detail(tournament_id):
         tournament=tournament,
         previous_week=season[at - 1] if at else None,
         next_week=season[at + 1] if at + 1 < len(season) else None,
-        weeks=len(season),
+        weeks=max(t.week_number or 0 for t in season),
         board=board,
         clock=clock,
         my_pick=my_pick,

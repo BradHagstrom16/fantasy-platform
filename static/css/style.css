@@ -5669,13 +5669,11 @@ ul.golf-fold-body {
   text-align: right;
 }
 .golf-pager-name { text-wrap: balance; }
+/* The leaf's place in the book, in the neighbours' own Newsreader: a caption
+   set in the label's Teko caps would read as an eyebrow over the H1. */
 .golf-pager-week {
-  font-family: 'Teko', sans-serif;
-  font-weight: 500;
   font-size: .95rem;
-  letter-spacing: .14em;
-  line-height: 1;
-  text-transform: uppercase;
+  line-height: 1.25;
   white-space: nowrap;
   color: var(--text-secondary);
 }
