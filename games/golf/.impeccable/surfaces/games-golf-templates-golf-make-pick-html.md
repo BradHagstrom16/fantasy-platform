@@ -27,4 +27,6 @@ Signature interaction: the leaf turn. Choosing a golfer inks him into the open s
 
 Decisions carried from planning: Tom Select is replaced by the native list (the admin override page keeps it until U6). The burn share's denominator is the season's enrollees. A GET before the field is published renders the facts and the empty state; a POST there writes nothing. Past the lock the page redirects to that week's Board. After "Lock it in" the member lands on The Sheet. With a saved pick and no change, the pick action stands down and a pencil line says the pick is in. "Used golfers (N)" lists every golfer the member has spent, by week.
 
+Review rulings (2026-10-06, PR #263): a chosen slot and a saved one are drawn alike, and the line under "Lock it in" says whether the pick is saved (pencil and ink stay the money's; a pencil name here is a spent golfer); "The field" and "Still on the board" are labels set as their sections' headings, which §6.8 now names and the eyebrow lock checks; "Used golfers" is a ruled week column inside the shared fold, the fold itself unchanged.
+
 Unresolved: none.

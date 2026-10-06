@@ -5896,7 +5896,7 @@ ul.golf-fold-body {
   line-height: 1.5;
   color: var(--text-secondary);
 }
-.golf-pick-commit .golf-btn[hidden] + .golf-pick-note { margin-top: 0; }
+.golf-pick-commit .golf-btn[hidden] ~ .golf-pick-note { margin-top: 0; }
 
 /* The field (§7.7): its head asks the open question and counts what is left. */
 .golf-field-head {
@@ -6057,7 +6057,38 @@ ul.golf-fold-body {
 /* The H1's event drops whole when it does not fit beside the colon. */
 .golf-title-event { display: inline-block; }
 
-.golf-fold-note { color: var(--text-secondary); }
+/* Used golfers: a ruled week column inside the fold, the golfer over the
+   event he went in, so a long event wraps under its own name. */
+.golf-fold-body.golf-spent {
+  padding-left: 0;
+  list-style: none;
+}
+.golf-fold-body.golf-spent > li {
+  display: grid;
+  grid-template-columns: 3.25rem minmax(0, 1fr);
+  column-gap: .75rem;
+  align-items: baseline;
+  margin: 0;
+  padding: .5rem 0;
+}
+.golf-fold-body.golf-spent > li + li { border-top: 1px solid var(--golf-rule); }
+.golf-spent-week {
+  font-variant-numeric: tabular-nums lining-nums;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+.golf-spent-name {
+  font-weight: 500;
+  font-size: 1rem;
+  line-height: 1.35;
+}
+.golf-spent-event {
+  display: block;
+  font-weight: 400;
+  font-size: .95rem;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
 .golf-field + .golf-fold,
 section + .golf-fold { border-top: 0; }
 
@@ -6102,6 +6133,11 @@ section + .golf-fold { border-top: 0; }
   .golf-slots { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .golf-burn-bar { width: 96px; }
   .golf-burn-key { display: none; }
+  /* With the room, the event follows the name, as Still on the board's note does. */
+  .golf-spent-event {
+    display: inline;
+    margin-left: .375rem;
+  }
 }
 
 /* On a phone the hatch keeps its number and the line above the field says

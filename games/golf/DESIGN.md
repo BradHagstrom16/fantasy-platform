@@ -230,7 +230,12 @@ Platform faces only (Teko display, Newsreader body; the Newsroom Rule). Pay Shee
 ### 6.8 Labels, never eyebrows
 No eyebrow above a heading (ADR-066): heroes, mastheads and in-page headlines carry their fact in
 the heading or the line under it. `.golf-label` sits over a list, a value, a fold or a tile, never
-over an H1/H2/H3. No glyphs on game-body labels (`◈`/`◇` are lounge ceremony).
+over an H1/H2/H3. A label may be a section's own heading: an `<h2 class="golf-label">` over the
+list it heads ("The field", "Still on the board"; ruling 2026-10-06). That is a label set as the
+heading, not one above it: nothing heading-sized follows, and the list's opening ink rule carries
+the weight a display H2 would, so the H1 stays the page's one heading in display type.
+`tests/test_eyebrow_above_heading.py` holds `.golf-label` to the rule. No glyphs on game-body labels
+(`◈`/`◇` are lounge ceremony).
 
 ### 6.9 Material rules
 - Paper, not bone: the room's ground is `--golf-paper`; cards are not the container. The sheet is
@@ -357,7 +362,11 @@ the golfer's name (`.golf-slot-value`, Newsreader 500, 1.1rem), with Change at r
 "Choose a second golfer from the field."). `.golf-slot--open`, the question being asked, is the pen
 frame (the 1px border plus a 1px inset, 2px in all) and its label turns pen; one slot is open at a
 time, the first empty one. Change (§7.25) reopens a filled slot and reads Keep while it is open;
-Keep closes it unchanged. Stacked on a phone, side by side from 576px. The backup's one-line rule
+Keep closes it unchanged. A slot filled this sitting and a saved one are drawn alike (ruling
+2026-10-06): pencil and ink stay the money's (§1.4), and on this page a pencil name is a spent
+golfer (§7.5), so a pencilled choice would read as spent. Whether the pick is saved is said in
+words at the pick action (§7.24), because one post saves both slots. Stacked on a phone, side by
+side from 576px. The backup's one-line rule
 (`.golf-slot-rule`, pencil) sits under both: "Your backup plays only if your primary withdraws
 before finishing round 2." Without the script the slots hold the form's own selects
 (`.golf-slot-select`, 44px); `.golf-pick--js`, set by the page's script, trades them for the slots'
@@ -409,8 +418,12 @@ A pencil line that opens a `<details>`: a 44px summary with a CSS caret (a drawn
 that turns when open, and its body in `.golf-fold-body`. Built folds, all closed by default: "Didn't
 pick (3)" under the sheet and the board, "The marks" and "House Rules" in the margin, and "Used
 golfers (12)" under the field on the pick page: every golfer the member has spent this season, in
-this field or not, by week, each with its week in pencil (`.golf-fold-note`). A fold never holds
-lines of the sheet: every line shows (ruling 2026-10-06).
+this field or not, by week, as a ruled week column (`.golf-spent`, an `<ol>` in the fold body):
+"Wk 13" in pencil tabular figures in its own 3.25rem column, then the golfer (Newsreader 500) over
+the event in pencil, on hairlines; from 576px the event follows the name, as Still on the board's
+note does (§7.26). A long event wraps under its own name, never under the week. A golfer no pick
+accounts for runs last with an empty week. A fold never holds lines of the sheet: every line shows
+(ruling 2026-10-06).
 
 ### 7.11 Sub-nav — `.subnav-golf`
 Background `#0F110D`, `--subnav-accent #2439C8`, `--subnav-accent-rgb 36, 57, 200`. Label "THE PAY
@@ -442,7 +455,8 @@ On the pick page `#primary_player_id` and `#backup_player_id` are two real selec
 names, the form's truth with or without the script. The page's own script also reads:
 `#golf-pick-form` with `data-saved-primary` / `data-saved-backup`; `[data-slots]`,
 `[data-slot="primary"]` / `[data-slot="backup"]`, `[data-slot-value]`, `[data-slot-change]`;
-`[data-commit]`, `[data-note-ready]`, `[data-note-saved]`, `[data-pick-status]` (the polite live
+`[data-commit]`, `[data-note-ready]`, `[data-note-change]` (rendered only with a saved pick),
+`[data-note-saved]`, `[data-pick-status]` (the polite live
 region); `[data-field-question]`, `[data-field-count]`, `[data-search-wrap]`, `#golf-field-search`,
 `[data-burn-key]`, `[data-field-none]`, `[data-field-query]`, `[data-field-clear]`; and on each row
 `[data-row]` with `data-id`, `data-name` and `data-search`, plus `[data-pick]`, `[data-pick-word]`
@@ -501,9 +515,12 @@ pen focus ring. "Spend a golfer", once per screen, and only with an open field a
 The Sheet, only for a member with a line); a member with a pick gets the "Change" link instead.
 
 On the pick page the action reads "Lock it in" (`.golf-pick-commit`, under the slots, 12rem wide at
-least). It shows once both slots are filled and stands down on a saved, unchanged pick, where one
-pencil line (`.golf-pick-note`) says "Your pick is in. Change either golfer until {lock}." Without
-the script it always shows. A focused pick action keeps its pen fill: Bootstrap empties a focused
+least). It shows once both slots are filled and stands down on a saved, unchanged pick. One pencil
+line (`.golf-pick-note`) under it says whether the pick is saved: "Not saved yet. Once it's in, you
+can change it until {lock}." on a first pick; "Not saved yet. Until you lock it in, your pick stays
+{primary}, with {backup} as your backup." on a change to a saved one (the server writes the names);
+"Your pick is in. Change either golfer until {lock}." when nothing has changed. Without the script
+the action always shows, beside the line for what the server holds. A focused pick action keeps its pen fill: Bootstrap empties a focused
 `.btn` whose hover variables are unset, as they are on `.btn-game`, so `.btn.golf-btn:focus-visible`
 restates the fill and sets the ring 3px off it.
 

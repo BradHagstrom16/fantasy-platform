@@ -350,6 +350,11 @@ def test_a_spent_golfer_is_struck_not_hidden(app, client, season, tuesday):
     assert '49 <span class="golf-facts-note">of 50 in the field</span>' in body
     assert '49 of 50 yours to spend' in body
     assert 'Used golfers (1)' in body
+    # The fold is a ruled week column: the week, then the golfer over his event.
+    spent_list = body.split('<ol class="golf-fold-body golf-spent">')[1].split('</ol>')[0]
+    assert '<span class="golf-spent-week">Wk 12</span>' in spent_list
+    assert re.search(r'<span class="golf-spent-name">Field Player00<span class="golf-spent-event">'
+                     r'<span class="visually-hidden">, </span>Valero Texas Open</span>', spent_list)
 
 
 def test_field_rows_carry_the_money_in_money_order(app, client, season, tuesday):
@@ -400,6 +405,47 @@ def test_pick_page_shows_a_saved_pick(app, client, season, tuesday):
     assert f'data-saved-primary="{players[3].id}"' in body
     assert f'data-saved-backup="{players[7].id}"' in body
     assert 'Your pick is in. Change either golfer until' in body
+
+
+def _note(body, hook):
+    """The pick action's note with this data hook: its <p> tag and its text."""
+    match = re.search(rf'<p class="golf-pick-note" {hook}( hidden)?>(.*?)</p>', body, re.S)
+    assert match, f'no {hook} note'
+    return bool(match.group(1)), re.sub(r'<[^>]+>', '', match.group(2))
+
+
+def test_the_pick_note_says_whether_the_pick_is_saved(app, client, season, tuesday):
+    """A chosen slot and a saved one are drawn alike, so the line under Lock it
+    in says which (DESIGN.md §7.24). Without the script the server's state
+    shows; the script then shows the one note that fits."""
+    me = _member(season)
+    t = _tournament(season)
+    players = _field(t)
+    _login(client, me)
+
+    # No pick yet: what is chosen is not saved until it is locked in.
+    body = client.get(f'/golf/pick/{t.id}').get_data(as_text=True)
+    assert _note(body, 'data-note-ready') == (
+        False, "Not saved yet. Once it's in, you can change it until Thu Apr 9 · 7:40 AM CT.")
+    assert '<p class="golf-pick-note" data-note-change' not in body
+    assert _note(body, 'data-note-saved')[0] is True
+
+    # A saved pick: it is in, and a change names the pick that stands until then.
+    db.session.add(GolfPick(user_id=me.id, tournament_id=t.id,
+                            primary_player_id=players[3].id, backup_player_id=players[7].id))
+    db.session.commit()
+    body = client.get(f'/golf/pick/{t.id}').get_data(as_text=True)
+    assert _note(body, 'data-note-saved') == (
+        False, 'Your pick is in. Change either golfer until Thu Apr 9 · 7:40 AM CT.')
+    assert _note(body, 'data-note-change') == (
+        True, 'Not saved yet. Until you lock it in, your pick stays Field Player03, '
+              'with Field Player07 as your backup.')
+    assert _note(body, 'data-note-ready')[0] is True
+
+    # The script picks between them.
+    source = TEMPLATE.read_text()
+    assert "noteReady.hidden = !(both && dirty && !noteChange);" in source
+    assert "if (noteChange) noteChange.hidden = !(both && dirty);" in source
 
 
 def test_pick_page_query_count_does_not_grow_with_the_field(app, client, season, tuesday):

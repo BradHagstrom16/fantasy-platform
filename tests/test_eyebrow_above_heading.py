@@ -10,11 +10,14 @@ game section.
 Two locks:
 
 1. **The rooms' templates.** Every `*-eyebrow` element in a CFB, Docket or Pay Sheet (golf)
-   room template (and the shared Settle the Tab include; the lounge partials
-   are lounge chrome and out of scope) is followed by something
+   room template, and every `.golf-label` (the Pay Sheet's label, games/golf/DESIGN.md
+   §6.8), in those templates and the shared Settle the Tab include (the lounge
+   partials are lounge chrome and out of scope), is followed by something
    that is not a heading: not an `<h1>`-`<h6>` and not an element whose class
    names a headline or title. Jinja statements and comments are stripped
-   first, so a branch never hides the element that follows.
+   first, so a branch never hides the element that follows. A label set ON a
+   heading (`<h2 class="golf-label">The field</h2>` over its list) is that
+   heading, not one above it, and passes.
 2. **The Club Letter.** `Letter` has no eyebrow, and the rendered email
    (HTML and plain text) and the Tribune page copy open on the headline.
 """
@@ -37,7 +40,7 @@ ROOM_TEMPLATES = sorted(
                 ROOT / 'templates/_settle_tab.html']
     if 'lounge' not in p.parts)
 
-EYEBROW = re.compile(r'class="[^"]*\b[a-z-]*eyebrow\b')
+EYEBROW = re.compile(r'class="[^"]*\b(?:[a-z-]*eyebrow|golf-label)\b')
 TAG = re.compile(r'<(/?)([a-zA-Z][a-zA-Z0-9]*)\b([^>]*)>')
 HEADING_CLASS = re.compile(
     r'class="[^"]*(?:headline|title|settle-tab-lead|champion-name)')
@@ -85,6 +88,12 @@ def test_detector_catches_an_eyebrow_above_a_heading():
         '<span class="cfb-eyebrow">Picks Lock</span><strong>in 3d</strong>')
     assert not eyebrows_above_headings(
         '<span class="docket-eyebrow">How the sheet works</span><ol></ol>')
+    # The Pay Sheet's label is held to the same rule; set on a heading, it is the heading.
+    assert eyebrows_above_headings(
+        '<span class="golf-label">Week 13 of 32</span><h1 class="golf-title">The Board</h1>')
+    assert not eyebrows_above_headings(
+        '<h2 class="golf-label" id="f">The field<span data-q></span></h2>'
+        '<span class="golf-field-count">71 of 82</span><ul class="golf-field"></ul>')
 
 
 @pytest.mark.parametrize('path', ROOM_TEMPLATES, ids=lambda p: str(p.relative_to(ROOT)))

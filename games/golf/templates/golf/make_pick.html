@@ -94,10 +94,15 @@
         </div>
         <p class="golf-slot-rule" id="golf-backup-rule">Your backup plays only if your primary withdraws before finishing round 2.</p>
 
+        {# Whether the pick is saved is said here, at the action that saves it;
+           a chosen slot and a saved one are drawn alike (DESIGN.md §7.24). #}
         <div class="golf-pick-commit">
             <button type="submit" class="btn btn-game golf-btn" data-commit>Lock it in</button>
-            <p class="golf-pick-note" data-note-ready>You can change it any time until <span class="golf-nowrap">{{ lock }}</span>.</p>
-            <p class="golf-pick-note" data-note-saved hidden>Your pick is in. Change either golfer until <span class="golf-nowrap">{{ lock }}</span>.</p>
+            <p class="golf-pick-note" data-note-ready{% if pick %} hidden{% endif %}>Not saved yet. Once it's in, you can change it until <span class="golf-nowrap">{{ lock }}</span>.</p>
+            {% if pick %}
+            <p class="golf-pick-note" data-note-change hidden>Not saved yet. Until you lock it in, your pick stays {{ pick.primary_player.full_name() }}, with {{ pick.backup_player.full_name() }} as your backup.</p>
+            {% endif %}
+            <p class="golf-pick-note" data-note-saved{% if not pick %} hidden{% endif %}>Your pick is in. Change either golfer until <span class="golf-nowrap">{{ lock }}</span>.</p>
         </div>
         <p class="visually-hidden" aria-live="polite" data-pick-status></p>
     </form>
@@ -153,13 +158,17 @@
     {% if field.spent %}
     <details class="golf-fold">
         <summary>Used golfers ({{ field.spent|length }})</summary>
-        <ul class="golf-fold-body">
+        {# A ruled week column: the week he went, then the golfer over the event. #}
+        <ol class="golf-fold-body golf-spent">
             {% for golfer in field.spent %}
-            <li>{{ golfer.player.full_name() }}
-                {%- if golfer.week %}<span class="golf-fold-note"> · {% if golfer.week.week_number %}Wk {{ golfer.week.week_number }} · {% endif %}{{ golfer.week.tournament }}</span>{% endif -%}
+            <li>
+                <span class="golf-spent-week">{% if golfer.week and golfer.week.week_number %}Wk {{ golfer.week.week_number }}{% endif %}</span>
+                <span class="golf-spent-name">{{ golfer.player.full_name() }}
+                    {%- if golfer.week %}<span class="golf-spent-event"><span class="visually-hidden">, </span>{{ golfer.week.tournament }}</span>{% endif -%}
+                </span>
             </li>
             {% endfor %}
-        </ul>
+        </ol>
     </details>
     {% endif %}
 
@@ -223,6 +232,7 @@
     var slotsBox = form.querySelector('[data-slots]');
     var commit = form.querySelector('[data-commit]');
     var noteReady = form.querySelector('[data-note-ready]');
+    var noteChange = form.querySelector('[data-note-change]');   // only with a saved pick
     var noteSaved = form.querySelector('[data-note-saved]');
     var status = form.querySelector('[data-pick-status]');
     var question = document.querySelector('[data-field-question]');
@@ -289,7 +299,10 @@
         var both = chosen.primary && chosen.backup;
         var dirty = chosen.primary !== saved.primary || chosen.backup !== saved.backup;
         commit.hidden = !(both && dirty);
-        noteReady.hidden = !(both && dirty);
+        // Unsaved: a first pick says when it can still change; a change names
+        // the saved pick that stands until it is locked in.
+        noteReady.hidden = !(both && dirty && !noteChange);
+        if (noteChange) noteChange.hidden = !(both && dirty);
         noteSaved.hidden = !(both && !dirty);
     }
 
