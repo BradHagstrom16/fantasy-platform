@@ -29,8 +29,9 @@ colors:
 >
 > Authored 2026-10-06 (U0, design-first, from the approved Pay Sheet preview built on the real 2026
 > season). §7 is reconciled against what ships at the end of each Phase U cluster: it was reconciled
-> from U1 (The Sheet) and U3 (The Board), then from U2 (the pick page), all on 2026-10-06, and §7.9
-> (the tiles) stays a contract until its cluster ships. Later clusters extend this file rather than
+> from U1 (The Sheet) and U3 (The Board), then from U2 (the pick page), then from U4 (the scorecard)
+> and U5 (the Record Room), all on 2026-10-06; §8 was written from U4 and U5 the same day, and §7.9
+> (the tiles) was reconciled from the scorecard then. Later clusters extend this file rather than
 > re-deriving it. The legacy "Greenside Ledger" (`~/Golf_Pick_Em/DESIGN.md`) is reference, not
 > doctrine.
 
@@ -290,7 +291,9 @@ color-only state. Settle the Tab is the platform partial.
 Class prefix `golf-` (firewall-locked). Each primitive below is a contract; its CSS lands with the
 cluster that first ships it and this section is reconciled from the built surface. Reconciled from
 U1 and U3 (2026-10-06): §7.1 to §7.4, §7.10, §7.13 and §7.16 to §7.24. Reconciled from U2
-(2026-10-06): §7.5 to §7.8, §7.10, §7.15, §7.24 and §7.25 to §7.28. Still a contract: §7.9.
+(2026-10-06): §7.5 to §7.8, §7.10, §7.15, §7.24 and §7.25 to §7.28. Reconciled from U4 and U5
+(2026-10-06): §7.9, §7.11, §7.22 and §7.29 to §7.32, with the season surfaces themselves in §8.
+Nothing in §7 is still a contract.
 
 ### 7.1 The sheet — `.golf-sheet`, `.golf-sheet-row`, `.golf-sheet-row--me`
 A `<table class="golf-sheet">` with visually hidden column heads (rank, member and pick, money) and
@@ -409,9 +412,16 @@ value (Newsreader 500, 1.05rem, tabular; `.golf-facts-note` is the pencil qualif
 of 82 in the field"; absent until the field publishes). Two columns on a phone, three across from
 576px.
 
-### 7.9 The tiles — `.golf-tiles`
-Scorecard tiles: an ink top rule, hairline cells, `.golf-label` over a Teko value with a pencil
-qualifier ("4th of 19", "29 of 31").
+### 7.9 The tiles — `.golf-tiles`, `.golf-tiles--pair`, `.golf-tiles-note`
+Scorecard tiles, a `<dl>`: a 2px ink top rule, a hairline below, hairline cells (`.75rem` padding,
+a 1px `--golf-rule` between), the `.golf-label` over its value. The value is NOT Teko, as the
+contract said: it is Newsreader 500 at 1.25rem (1.15rem up to 575px), tabular lining figures, in
+ink, with `.golf-tiles-note` as the pencil qualifier at .95rem ("29 **of 31**"). The one Teko figure
+on the scorecard is the season total (§6.6, §8.2); the tiles read as the facts grid does (§7.8).
+Three tiles hold three across on a phone. `--pair` is the two-tile row under the weeks (Best pick,
+Missed cuts at majors): the figure leads alone and its note takes the line under it; up to 575px the
+pair stacks on a hairline. A fold directly under the pair adds no rule of its own (the pair closes on
+its hairline).
 
 ### 7.10 The fold — `.golf-fold`
 A pencil line that opens a `<details>`: a 44px summary with a CSS caret (a drawn corner, no glyph)
@@ -430,8 +440,10 @@ Background `#0F110D`, `--subnav-accent #2439C8`, `--subnav-accent-rgb 36, 57, 20
 SHEET" with "Golf One & Done · {{ season_year }}" as its small line, behind the platform's ⛳ glyph:
 that glyph is the sub-nav lockup every room shares (⚽ 🏈 ⚖️), the collapsed mark on phones where the
 text hides, and `aria-hidden` beside an `aria-label` on the link; it is navigation chrome, not a
-room icon, so §6.10's emoji ban does not reach it. Pills: Standings · Schedule ·
-Results · Stats · My Scorecard (members) · Admin (golf admins). The platform scroll-fade applies.
+room icon, so §6.10's emoji ban does not reach it. Pills: Standings · Schedule · Results · Stats
+(the Record Room, `/golf/stats`) · My Scorecard (the member's own scorecard, `/golf/member/<id>`,
+shown to a member with a line; active only on that member's own card, never on another's) · Admin
+(golf admins). `/golf/my-picks` redirects to the member's scorecard. The platform scroll-fade applies.
 
 ### 7.12 Join page
 Platform shape (`page-hero` in the pen family, the How It Works list in the thesis's words, the
@@ -502,7 +514,9 @@ place and its rules (2px ink above, a hairline below), in ink.
 
 ### 7.22 The foot: `.golf-foot`
 The page's closing links on a hairline, each a 44px target: "The Sheet", "The Season Book", "Last
-banked: {event}".
+banked: {event}"; on the scorecard "The Sheet", "The Record Room", "The Season Book"; on the Record
+Room "The Sheet", "Your scorecard" (a member with a line, the current season only), "The Season
+Book". A leaf before the foot leaves 2.75rem above it.
 
 ### 7.23 The titles: `.golf-title`, `.golf-title--page`, `.golf-sheet-head`
 `.golf-title` is the H1 at 1.9rem ("The Sheet"); `--page` is The Board's H1 at 2.4rem (1.9rem up to
@@ -537,7 +551,7 @@ banked this season, in this field or not. An `<h2>` set as the `.golf-label` "St
 one pencil lead ("Your top earners not yet spent, by money won this season."), then a short ledger
 under a 1px ink rule, on hairlines: the name (Newsreader 500) with "in this field" or "not in this
 field" in pencil, the figure in `.golf-money` at right. Absent before the first banked tournament.
-The Record Room's fuller list (§8) arrives with its own cluster.
+The Record Room's list is the room's (§8.18).
 
 ### 7.27 The event in the title: `.golf-title-event`
 The pick page's H1 is `.golf-title--page` (§7.23), "Spend a Golfer: {event}". The event is an inline
@@ -552,9 +566,208 @@ live region says what was chosen and what is next. Under `prefers-reduced-motion
 scroll are instant; the turn still happens. Nothing else on the page moves but the fold caret
 (§7.10).
 
-## 8. Season surfaces (U4 to U7; written when built)
-The scorecard, the Record Room (season race, superlatives, Form Guide, Burn List, Still on the
-Board), the champion fold and the lounge panels extend §7 in their own clusters.
+### 7.29 The quiet link: `a.golf-quiet`
+A link that reads as ink until it is pointed at: `color: inherit`, no underline; on hover and
+focus-visible the pen with a 1px underline 3px below. For a column of names or events (the names on
+The Sheet and The Board to their scorecards, the event on a scorecard week, the members in the race's
+standings and the Commissioner's ledger), where a column of pen-blue would spend the pen on what is
+not the member's own (§6.5). Never on a `.btn`; a lone link in a sentence stays the room's pen link.
+
+### 7.30 The tap target: `a.golf-tap`
+A link in a line of text with a full touch target: `.8rem` of vertical padding reaches 44px without
+moving the line it sits in. The other season in a context line, "Change" on your open week.
+
+### 7.31 The room's select and the card head: `.golf-select`, `.golf-card-head`, `.golf-switch`, `.golf-switch-label`, `.golf-switch-go`
+`.golf-select` is the room's `<select>`: 44px tall, a 1px pencil (`--text-secondary`) border, 2px
+radius, the card surface, the page's own font; a 2px pen focus ring 2px off. `.golf-card-head` is
+the scorecard's head row, the `--page` H1 at left and the member switcher at right (a wrapping flex
+row, `.375rem 1.5rem` gaps). The switcher is a GET form that works with no script: the pencil label
+"Member" (.95rem), the select (13rem at most on a desk; the full row, stretching, up to 575px) and
+"View", a `.golf-linkbtn` 44px square. It carries the selected season as a hidden field when the
+card is not this season's.
+
+### 7.32 Your open week: `.golf-weeks-row--open`, `.golf-weeks-act`, `.golf-pick-lock`
+The viewer's own open week on the scorecard takes the pen wash across the row, bled .5rem into both
+gutters like the sheet's `--me` row, and NO bracket: the bracket marks your line (§7.2, §8.2); the
+active week is personal and the wash says so (ruling 2026-10-06). The pick and the lock in the
+pick line are ink 500 (`strong`); the lock sits on its own line (`.golf-pick-lock`); the pick action
+(§7.24) stands under them with `.625rem` above. An open week has no figure, so its name cell spans
+the money column too (`colspan="2"`) and the lock fits on its line on a phone. Another member's open
+week carries none of this but the span: its pick is hidden until the lock (§8.4).
+
+## 8. Season surfaces (U4 the scorecard, U5 the Record Room; reconciled 2026-10-06)
+
+The same paper, hairlines, pencil and ink as §7; the scorecard's one Teko figure is the season total
+and the Record Room's season race is the room's one chart. Both are `.golf-page`s and run no script
+they need: the switcher is a form, the race is drawn by the server, the Burn List shows every row
+without its script. Two enhancement scripts live in `static/js/golf/` (`season-replay.js`,
+`burn-list.js`), not a blueprint static dir (ruling 2026-10-06, Brad). The event in a sentence is set
+after "the" through `games/golf/utils.the_event` ("the Masters Tournament", "the American Express"),
+here and on The Sheet.
+
+### 8.1 The scorecard — `/golf/member/<id>`, "Latest week first"
+Structure locked by Brad (2026-10-06): the card opens on the week in play and reads back to the
+first tee. In order: the card head with the switcher (§7.31), the context line, the total, three
+tiles, the weeks newest first, one plain line, the pair of tiles, the Used golfers fold, the
+Commissioner's ledger, the foot. The H1 is `.golf-title--page`: "Your Scorecard" or "{Name}'s
+Scorecard". The context line (§7.3) says "{year} season · {n} of {m} weeks banked", or "no weeks on
+the schedule yet", then the other season as an `a.golf-tap` ("{year} season"): that link IS the
+season selector, there is no control for it. Every member's card shows the same sections, Used
+golfers included (ruling 2026-10-06, Brad); what differs for another member is the bracket, the
+wash, the open week and the pick action.
+
+### 8.2 The total — `.golf-your-line`, `.golf-your-line--theirs`, `.golf-hero-figure`
+§7.2's block with the `.golf-label` "Total won", the state word at right (Projected, or Banked in
+`--banked`), the one Teko figure (`~` before a projected one, in pencil; banked in ink) over the
+double rule, then "**4th** of 19" (Newsreader, the place in ink 500) with the Unpaid `--deduction`
+chip when owed. The pen bracket marks the viewer's own card only: another member's total is
+`--theirs`, no bracket, no left padding (ruling 2026-10-06).
+
+### 8.3 The three tiles — `.golf-tiles`
+§7.9, directly under the total: In the money ("29 **of 31**", or the note "No weeks banked yet" alone),
+Golfers used, Commish overrides. All three always show, zeros included.
+
+### 8.4 The weeks — `.golf-weeks`, `.golf-weeks-head`, `.golf-weeks-no`, `.golf-pick-line`, `.golf-pick-aside`, `.golf-pick-dot`
+The sheet's table (§7.1) with a week number where the rank would be: `.golf-sheet-head.golf-weeks-head`
+carries the `.golf-label` "The weeks, newest first" and the state word Banked once a week has
+banked. `.golf-weeks-no` is a 3.25rem pencil column, "Wk 32", tabular, top-aligned with the name;
+the event is an `a.golf-quiet` to its own page with the week's chips after it (Live in `--live`,
+"Major ×1.5", "Team event"); the pick line under the name, the money at right. A thead exists for
+the reader only. Every state of a row, in words:
+- **Banked:** the shared pick line in `spent` mode (`_sheet.html`): the golfer who counted wears the
+  Used chip (`--pen`), then finish and to-par; the Commish's note is printed in words, quoted, on
+  its own aside (a `title` is out of a phone's reach; The Board keeps the note in the chip's title);
+  the idle backup is named, "backup Clark", never struck (a strike means spent, §7.5). The aside
+  follows on the line from 576px with a " · " dot (`.golf-pick-dot`, `white-space: pre`); up to 575px
+  it takes its own line and the dot hides. A line with no figure yet says " · no read yet". The
+  money in ink, double-ruled, `$0` included.
+- **Live:** the Live chip, the same pick line, the money as a projected read: the state word
+  Projected before a pencil figure, its tilde when the read is in pencil.
+- **Pending:** "{Primary}, backup {Backup} · results pending", no money.
+- **Your open week, pick in:** the `--open` row (§7.32): "Your pick: **Primary**, backup {Backup}.
+  Change" (an `a.golf-tap`), then "Picks lock **{time}**" on its own line.
+- **Your open week, no pick:** "No pick in yet." and the lock line, then the room's filled button
+  "Spend a golfer" (§7.24, `.golf-weeks-act`), once on the page; before the field publishes, "The
+  field publishes Tuesday. Picks open then." and no button.
+- **Another member's open week:** "Hidden until the lock, {time}", no wash, no action.
+- **No pick:** "No pick", no money.
+With no week played: `.golf-empty` "No week has been played yet. The first line goes in after the
+first lock." Under the table one `.golf-line`: "{n} weeks still to play. The Season Book has …".
+
+### 8.5 The pair — `.golf-tiles--pair`
+Best pick (the dollars, then "{Golfer}, {Event}" as the note; "Nothing banked yet") and Missed cuts
+at majors (the count; the note "${x} still owed to the pot" or "Settled, ${x} paid"). The note under
+the figure, the two stacked up to 575px (§7.9).
+
+### 8.6 Used golfers — `.golf-fold`, `.golf-spent`
+§7.10's fold, "Used golfers ({n})", closed, directly on the pair's hairline with no rule of its own:
+every golfer this member has spent this season, by week, the ruled week column. On every card, the
+viewer's or another member's (ruling 2026-10-06, Brad). Absent until a golfer is spent.
+
+### 8.7 The Commissioner's ledger — `.golf-still.golf-ledger`, `.golf-ledger-count`
+§7.26's short ledger reused: the `.golf-label` "The Commissioner's ledger" as the `<h2>`, the lead
+"Picks the Commish set by hand this season, on weeks already locked.", then the room's members with
+an override, avatar and name (an `a.golf-quiet` to their card; this card's own member gets the pencil
+note "this scorecard" instead of a link), the count at right in ink 500 tabular. Empty: "The Commish
+has not set a pick by hand this season." It shows on every card so an override is never a secret.
+
+### 8.8 The Record Room — `/golf/stats`, "A contents line and five leaves"
+Structure locked by Brad (2026-10-06). `.golf-page--margin.golf-room`: the H1 "The Record Room",
+the context line ("{year} season · 12 of 32 events banked", the other season as an `a.golf-tap`),
+the contents line, then the five leaves in `.golf-main` and the foot. The room carries no personal
+tiles: it links to your scorecard from the foot and the standings. Every empty state is a sentence,
+never a blank: "The race starts when the first tournament banks.", "Nobody has banked a dollar yet.
+The race starts with the first one.", "Nothing to say yet. The lines go in when the first tournament
+banks.", "No prize money is banked yet.", "Nobody has spent a golfer yet. The first banked tournament
+starts the list.", "Every golfer with prize money has been spent by somebody."
+
+### 8.9 The contents line — `.golf-margin.golf-contents`, `.golf-contents-list`
+A `<nav>` between hairlines: the `.golf-label` "In this room" and an `<ol>` of the five leaves as
+in-page links (.95rem, 44px targets, wrapping, 1.25rem apart). Up to 575px the label is visually
+hidden and the line is the links alone. From 1100px it moves to the margin column beside the leaves
+(grid row 3, column 2) under a 2px ink rule, the links stacked on hairlines.
+
+### 8.10 The leaf — `.golf-leaf`, `.golf-leaf-head`, `.golf-leaf-lead`
+Each leaf is a `<section>` on a 2px ink top rule, 2.75rem above (none on the first), .75rem of
+padding, `scroll-margin-top: 8rem` for the contents links. `.golf-leaf-head` is the baseline row:
+the `.golf-label` as the `<h2>` at left, a state word or count at right. `.golf-leaf-lead` is one
+pencil sentence (.95rem, 62ch). A leaf's list opens on a hairline and closes on one: the ink rule
+is the leaf's.
+
+### 8.11 The season race — `.golf-race`, `.golf-race-plot`, `.golf-race-svg`, `.golf-race-line`
+The room's one chart: banked money, week by week, every member a line. Drawn by the server, finished
+and still; it moves only when a member plays it (ruling 2026-10-06, Brad: "opt-in", never autoplays).
+The lead "Banked money, week by week, through {the event}." and the state word Banked. The plot is
+`clamp(220px, 46vw, 320px)` tall; the SVG stretches to it (`preserveAspectRatio="none"`,
+non-scaling strokes), so the words of the plot are HTML text over it, not SVG text, and keep their
+size on a phone. Materials: hairline grid lines with the floor in ink; the pack in pencil 1px at .5
+opacity (`--pack`); every member at rank 1 in ink 2px (`--leader`), a shared lead never being one
+member's; your line in the pen 3px (`--you`), drawn last. No trend arrows, no gold or green dots: the
+legacy page's marks did not come over. The SVG carries an `aria-label` that says the count of
+tournaments and who leads.
+
+### 8.12 The race's words — `.golf-race-marks`, `.golf-race-tick`, `.golf-race-month`, `.golf-race-name`, `.golf-race-name--below`, `.golf-race-dot`
+Pencil tabular at .8125rem over the plot, `aria-hidden`, positioned by `--x`/`--y` percentages: the
+money ticks beside the grid, the months along the floor (a month at the right edge is set back
+whole, `--end`). Two names at most sit at their lines' last points, Newsreader 500 in a halo of paper
+(`text-shadow` in `--bg-page`, eight directions): yours in the pen, the lead's in ink, as a name or
+how many share it ("3 tied"); the upper above its line, the lower below (`--below`). A single event
+is one point per line at the plot's right end (`.golf-race-dot`, 9px in ink or pen with a paper ring;
+the pack 5px pencil at .5) and no replay.
+
+### 8.13 The key and the controls — `.golf-race-bar`, `.golf-race-key`, `.golf-race-swatch`, `.golf-race-play`, `.golf-race-scrub`, `.golf-race-range`, `.golf-race-readout`, `.golf-race-playhead`, `.golf-race-baton`
+The bar over the plot (44px, wrapping): the key as pencil .95rem items with a 22px swatch each: You
+(pen 3px), the leader or leaders by name ("Cox, in the lead", "Cox and Rao, tied for the lead",
+"3 members, tied for the lead", ", level with you" when you share it) with the ink 2px swatch, "The
+room" with the pencil 1px. "Play the season" (`.golf-linkbtn`, 44px) at right is hidden until the script shows it. The
+scrubber under the plot, hidden the same way: the readout "Through {event}" in pencil, and a range
+the width of the plot's drawn span (`--pad-left`/`--pad-right`), 44px tall, a 2px ink track, a 20px
+pen thumb with a 2px paper border (16px in Firefox), a 2px pen focus ring. Playing or scrubbing
+(`.golf-race--scrubbing`): a dashed pencil playhead crosses, the lines reveal up to it (a clip
+rect), a baton dot rides your line and the leader's, the names fade. Under
+`prefers-reduced-motion` the season does not play; the slider still steps it, and the rows below
+take no transition.
+
+### 8.14 The race's standings and its table — `.golf-race-standings`, `.golf-race-row`, `.golf-race-row--me`, `.golf-race-rank`, `.golf-race-member`
+Under the plot, every line in the sheet's order between hairlines: a 3rem rank column (Teko 600,
+1.5rem, lining, competition rank), avatar and name (an `a.golf-quiet` to the scorecard; "(your line)"
+for the reader), the money in `.golf-money`. Your row takes the pen wash bled .5rem into the gutters
+and the 3px bracket, like the sheet's `--me`. When the season plays the rows change places
+(`transform .5s cubic-bezier(.16, 1, .3, 1)`) so the lead changing hands is watched. A visually
+hidden `<table>` with the caption "The season race: banked total after each tournament" holds every
+member's total after every event for a screen reader; the JSON payload for the replay is a
+`data-race-data` script.
+
+### 8.15 The lines — `.golf-lines`
+Superlatives are lines, never awards: a `<dl>` where each line is a pencil term (.95rem, 400) over
+one sentence (1.05rem, 62ch, `text-wrap: pretty`) with the member's name in 600 and the money in
+`.golf-money`, on hairlines, no label in Teko and no medal. Five at most: Pick of the season
+("**Cox** spent Scottie Scheffler at the Masters Tournament for $4,200,000"), Most consistent, WD
+survivor, Most missed cuts, Coldest pick (its sum only when there is one). Each but the first shows
+only when it has a subject.
+
+### 8.16 Form Guide — `.golf-still-list.golf-form`, `.golf-form-sub`
+The tour's own money: `.golf-still-list` (§7.26) of the season's top earners, the name over a pencil
+sub-line in tabular figures ("12 events · best 1st · 2 missed cuts"), the prize at right. The lead:
+"The season's top earners on tour, by their own prize money."
+
+### 8.17 The Burn List — `.golf-field.golf-burnlist`, `.golf-burn-find`, `.golf-burn-more`, `.golf-field-count`
+The field's rows and the field's hatch (§7.7) with no action: every golfer the room has spent, the
+most spent first, the name, the sub-line "Spent by 7 · $1,240,000 banked" (allowed to wrap), and the
+hatch spanning both lines at right, "43% still have him" (`--have`). The count in the leaf head
+("31 golfers", `aria-live`). With its script the list opens on twelve rows and "Show all {N}"
+(`.golf-linkbtn`, 44px) opens the rest; the search `.golf-search` ("Find a golfer") appears and
+filters by `data-search`, with the field's none line "Nobody has spent “{q}”. Clear the search"; the
+count follows. Without the script every row shows and nothing is hidden.
+
+### 8.18 Still on the Board — `.golf-still-list`
+The Burn List's complement: the top earners nobody in the room has spent, by money won this season,
+name and prize on the short ledger (§7.26). The pick page's version is the member's own five; this
+one is the room's.
+
+### 8.19 Still to come
+The champion fold and the lounge panels (U7) extend §7 and §8 in their own cluster; the Record Room
+gains nothing until then.
 
 ## 9. Engineering Invariants
 Contracts that guard scoring correctness and admin operations. All test-locked; change the test with
@@ -598,9 +811,10 @@ the rule, never around it.
 - **A spent golfer is struck, never filtered out** (§2.3): the field lists every golfer in it in
   money order; a spent one keeps his place as a struck row with no action, and is a disabled option
   in both selects. `tests/test_golf_pick_page.py`.
-- **The search fold exists twice:** `games/golf/services/field.py::search_key` writes each row's
-  `data-search` and the page script's `fold` reads the query. The two change together.
-  `tests/test_golf_pick_page.py`.
+- **The search fold exists three times:** `games/golf/services/field.py::search_key` writes each
+  row's `data-search`; the pick page's script and the Burn List's (`static/js/golf/burn-list.js`)
+  each fold the typed query the same way. The three change together.
+  `tests/test_golf_pick_page.py`, `tests/test_golf_record_room.py`.
 - **The pick form posts with no script:** two real selects, the CSRF token and a submit; the script
   only fills the selects, and the page loads no library. `tests/test_golf_pick_page.py`.
 - **The saved pick comes from the server:** the script reads `data-saved-primary` /
@@ -618,6 +832,40 @@ the rule, never around it.
   above). `tests/test_golf_pick_page.py`.
 - **A refused pick writes nothing:** it says why, and a refused change keeps the saved pick.
   `tests/test_golf_pick_page.py`.
+- **The scorecard is public and secret by the lock:** `/golf/member/<id>` carries no decorator, like
+  the sheet and the board. A week is revealed at its lock or once banked
+  (`games/golf/services/scorecard.py::revealed`; the lock reads a missing deadline as open, and a
+  banked week can lack one). Until then its pick is dropped in the builder for everyone but its
+  member, and the Commissioner's ledger counts revealed weeks only. `/golf/my-picks` is the old
+  address and redirects to the member's own scorecard. `tests/test_golf_scorecard.py`.
+- **The scorecard's rank and total are the sheet's own row:** the view builds the same
+  `build_sheet`, with the live event's `week_lines` when one is on the course, and the card takes
+  the member's row from it, pencil included. `tests/test_golf_scorecard.py`.
+- **Missed cuts at majors is the flag, never a status:** the tile and its pot count
+  `penalty_triggered`, the flag the scoring wrote, so they always equal
+  `GolfEnrollment.penalty_owed()` whatever casing a result's status arrived in.
+  `tests/test_golf_scorecard.py`.
+- **The Record Room reads banked tournaments only** (`results_finalized`, never a status), and the
+  room is the season's enrollees: the race draws every one of them, in the sheet's order and in
+  competition rank; a pick by anyone else is not the room's. A missed cut is read whatever its
+  casing. A superlative names the golfer the board names (the backup when he counted).
+  `tests/test_golf_stats.py`, `tests/test_golf_record_room.py`.
+- **No query per week, member or golfer on the season surfaces:** `build_scorecard` is a pure
+  builder over rows the view loads once, and every Record Room aggregate in
+  `games/golf/services/stats.py` runs a fixed number of grouped queries and takes the room's names
+  as a map (no name is looked up per row). Both routes' query counts are locked against a growing
+  season. `tests/test_golf_scorecard.py`, `tests/test_golf_record_room.py`.
+- **A season is a query argument:** the scorecard and the Record Room take `?season=` and default
+  to the configured season. The scorecard is a 404 for a member with no line that season; the
+  Record Room is a 404 for a season with no tournaments, the configured one excepted. A past
+  season takes no pick. `tests/test_golf_scorecard.py`, `tests/test_golf_record_room.py`.
+- **The season race is drawn by the server, finished and still:** the geometry is
+  `stats.race_chart_geometry`, pure arithmetic; the replay script's payload is the same coordinates
+  the polylines were drawn from. The room's two scripts (`static/js/golf/season-replay.js`,
+  `burn-list.js`) are local, versioned and load no library; their controls are `hidden` until the
+  script shows them, the page is whole without them, the replay ranks in competition rank like the
+  server, and under `prefers-reduced-motion` the season does not play (the slider still steps it).
+  `tests/test_golf_stats.py`, `tests/test_golf_record_room.py`.
 - **Enrollment is explicit:** pick and override paths never create `GolfEnrollment` rows.
   `tests/test_golf_auto_enroll_removed.py`.
 - **The name:** registry `display_name` "The Pay Sheet", `short_name='Golf'` (string-locked),

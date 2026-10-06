@@ -1,0 +1,301 @@
+{% extends "base.html" %}
+{% from 'golf/_sheet.html' import dollars with context %}
+
+{% block title %}The Record Room · The Pay Sheet{% endblock %}
+
+{% macro pct(value, of) -%}
+  {{ '%.2f'|format(100 * value / of) }}%
+{%- endmacro %}
+
+{% block content %}
+{% set season_arg = selected_season if not this_season else none %}
+{% set leader = race.series[0] if race.series else none %}
+{% set mine = race.series|selectattr('user_id', 'equalto', viewer_id)|first if race.series else none %}
+{# Everyone at rank 1 leads: a shared lead is never one member's. #}
+{% set leaders = race.series|selectattr('is_leader')|list %}
+{% set others = leaders|rejectattr('user_id', 'equalto', viewer_id)|list %}
+{% set i_lead = mine and mine.is_leader %}
+<div class="golf-page golf-page--margin golf-room">
+
+    <h1 class="golf-title golf-title--page">The Record Room</h1>
+
+    <p class="golf-context">
+        <span class="golf-context-items">
+            <span class="golf-nowrap">{{ selected_season }} season</span>
+            <span class="golf-nowrap">{% if progress.total %}{{ progress.banked }} of {{ progress.total }} {{ 'event' if progress.total == 1 else 'events' }} banked{% else %}the schedule is not posted yet{% endif %}</span>
+            {% for year in seasons if year != selected_season %}
+            <span class="golf-nowrap"><a class="golf-tap" href="{{ url_for('golf.record_room', season=year if year != season_year else none) }}">{{ year }} season</a></span>
+            {% endfor %}
+        </span>
+    </p>
+
+    {# The contents line: the room's five leaves, and where each one is. #}
+    <nav class="golf-margin golf-contents" aria-labelledby="golf-contents-label">
+        <span class="golf-label" id="golf-contents-label">In this room</span>
+        <ol class="golf-contents-list">
+            <li><a href="#golf-race">The season race</a></li>
+            <li><a href="#golf-lines">The lines</a></li>
+            <li><a href="#golf-form">Form Guide</a></li>
+            <li><a href="#golf-burn">The Burn List</a></li>
+            <li><a href="#golf-unspent">Still on the Board</a></li>
+        </ol>
+    </nav>
+
+    <div class="golf-main">
+
+        {# Leaf 1: the season race, the room's one chart. It is drawn finished
+           and still; it moves only when a member plays it. #}
+        <section class="golf-leaf" id="golf-race" aria-labelledby="golf-race-label">
+            <div class="golf-leaf-head">
+                <h2 class="golf-label" id="golf-race-label">The season race</h2>
+                {% if has_race %}<span class="golf-state golf-state--banked">Banked</span>{% endif %}
+            </div>
+            {% if not has_race %}
+            <p class="golf-leaf-lead">{% if race.count %}Nobody has banked a dollar yet. The race starts with the first one.{% else %}The race starts when the first tournament banks.{% endif %}</p>
+            {% else %}
+            <p class="golf-leaf-lead">Banked money, week by week, through {{ race.tournaments[-1].the }}.</p>
+
+            <figure class="golf-race"{% if chart.replay %} data-race{% endif %}>
+                <div class="golf-race-bar">
+                    <ul class="golf-race-key">
+                        {% if mine %}<li><span class="golf-race-swatch golf-race-swatch--you" aria-hidden="true"></span>You</li>{% endif %}
+                        {% if others %}
+                        <li><span class="golf-race-swatch golf-race-swatch--leader" aria-hidden="true"></span>
+                            {%- if others|length == 1 %}{{ others[0].name }}{% elif others|length == 2 %}{{ others[0].name }} and {{ others[1].name }}{% else %}{{ others|length }} members{% endif -%}
+                            {%- if i_lead %}, level with you{% elif leaders|length == 1 %}, in the lead{% else %}, tied for the lead{% endif -%}
+                        </li>
+                        {% endif %}
+                        {% if chart.lines|selectattr('role', 'equalto', 'pack')|list %}<li><span class="golf-race-swatch golf-race-swatch--pack" aria-hidden="true"></span>The room</li>{% endif %}
+                    </ul>
+                    {% if chart.replay %}
+                    <button type="button" class="golf-linkbtn golf-race-play" data-race-play hidden>Play the season</button>
+                    {% endif %}
+                </div>
+
+                <div class="golf-race-plot">
+                    <svg class="golf-race-svg" viewBox="0 0 {{ chart.width }} {{ chart.height }}" preserveAspectRatio="none" role="img"
+                         aria-label="Banked money across {{ race.count }} {{ 'tournament' if race.count == 1 else 'tournaments' }}. {% if leaders|length == 1 %}{{ 'You lead' if i_lead else leader.name ~ ' leads' }} with {{ dollars(leader.final) }}.{% else %}{{ leaders|length }} members are tied for the lead at {{ dollars(leader.final) }}.{% if i_lead %} You are one of them.{% endif %}{% endif %}{% if mine and not mine.is_leader %} You are {{ mine.rank_label }} with {{ dollars(mine.final) }}.{% endif %} The standings below carry every line.">
+                        {% if chart.replay %}
+                        <defs>
+                            <clipPath id="golf-race-reveal">
+                                <rect data-race-clip x="0" y="0" width="{{ chart.width }}" height="{{ chart.height }}"/>
+                            </clipPath>
+                        </defs>
+                        {% endif %}
+                        {% for tick in chart.y_ticks %}
+                        <line class="golf-race-grid{% if not tick.value %} golf-race-grid--floor{% endif %}" x1="{{ chart.pad_left }}" x2="{{ chart.width - chart.pad_right }}" y1="{{ '%.1f'|format(tick.y) }}" y2="{{ '%.1f'|format(tick.y) }}"/>
+                        {% endfor %}
+                        <g{% if chart.replay %} clip-path="url(#golf-race-reveal)"{% endif %}>
+                            {% for role in ('pack', 'leader', 'you') %}
+                            {% for line in chart.lines if line.role == role %}
+                            <polyline class="golf-race-line golf-race-line--{{ role }}" points="{{ line.points }}"/>
+                            {% endfor %}
+                            {% endfor %}
+                        </g>
+                        {% if chart.replay %}
+                        <line class="golf-race-playhead" data-race-playhead x1="0" x2="0" y1="{{ chart.pad_top }}" y2="{{ chart.baseline_y }}"/>
+                        {% endif %}
+                    </svg>
+
+                    {# The plot's words sit over it as text, so they keep their size on a phone. #}
+                    <div class="golf-race-marks" aria-hidden="true">
+                        {% for tick in chart.y_ticks if tick.label %}
+                        <span class="golf-race-tick" style="--x: {{ pct(chart.pad_left, chart.width) }}; --y: {{ pct(tick.y, chart.height) }}">{{ tick.label }}</span>
+                        {% endfor %}
+                        {% for tick in chart.x_ticks %}
+                        {# A month that opens at the plot's right edge is set back from it, or it would hang off the page. #}
+                        <span class="golf-race-month{% if tick.x > chart.width - chart.pad_right - 36 %} golf-race-month--end{% endif %}" style="--x: {{ pct(tick.x, chart.width) }}; --y: {{ pct(chart.baseline_y, chart.height) }}">{{ tick.label }}</span>
+                        {% endfor %}
+                        {% if race.count == 1 %}
+                        {% for role in ('pack', 'leader', 'you') %}
+                        {% for line in chart.lines if line.role == role %}
+                        <span class="golf-race-dot golf-race-dot--{{ role }}" style="--x: {{ pct(line.end_x, chart.width) }}; --y: {{ pct(line.end_y, chart.height) }}"></span>
+                        {% endfor %}
+                        {% endfor %}
+                        {% endif %}
+                        {# Two names at most: yours, and the lead's (a name, or how many share it). #}
+                        {% for line in chart.lines if line.label %}
+                        <span class="golf-race-name golf-race-name--{{ line.role }}{% if line.label_below %} golf-race-name--below{% endif %}" style="--x: {{ pct(chart.pad_right, chart.width) }}; --y: {{ pct(line.label_y, chart.height) }}">{{ line.label }}</span>
+                        {% endfor %}
+                        {% if chart.replay %}
+                        {% for role in ('leader', 'you') if chart.lines|selectattr('role', 'equalto', role)|list %}
+                        <span class="golf-race-dot golf-race-dot--{{ role }} golf-race-baton" data-race-baton="{{ role }}"></span>
+                        {% endfor %}
+                        {% endif %}
+                    </div>
+                </div>
+
+                {% if chart.replay %}
+                <div class="golf-race-scrub" data-race-scrub-wrap hidden>
+                    <label class="golf-race-readout" for="golf-race-scrub"><span class="visually-hidden">Week of the season: </span><span data-race-readout>Through {{ race.tournaments[-1].the }}</span></label>
+                    <input type="range" class="golf-race-range" id="golf-race-scrub" data-race-scrub
+                           min="0" max="{{ race.count - 1 }}" step="1" value="{{ race.count - 1 }}"
+                           aria-valuetext="{{ race.tournaments[-1].name }}">
+                </div>
+                {% endif %}
+            </figure>
+
+            <ol class="golf-race-standings" data-race-standings aria-label="The race's standings, by banked money">
+                {% for s in race.series %}
+                <li class="golf-race-row{% if s.user_id == viewer_id %} golf-race-row--me{% endif %}" data-race-row data-user-id="{{ s.user_id }}">
+                    <span class="golf-race-rank" data-race-rank>{{ s.rank_label }}</span>
+                    <span class="golf-race-member">
+                        <span class="golf-sheet-avatar">{{ room[s.user_id].get_avatar() }}</span><a class="golf-quiet" href="{{ url_for('golf.member_scorecard', user_id=s.user_id, season=season_arg) }}">{{ s.name }}</a>
+                        {%- if s.user_id == viewer_id %}<span class="visually-hidden"> (your line)</span>{% endif %}
+                    </span>
+                    <span class="golf-money" data-race-value>{{ dollars(s.final) }}</span>
+                </li>
+                {% endfor %}
+            </ol>
+
+            {# The race as a table, for a screen reader: every member's banked total after every tournament. #}
+            <div class="visually-hidden">
+                <table>
+                    <caption>The season race: banked total after each tournament</caption>
+                    <thead>
+                        <tr><th scope="col">Member</th>{% for t in race.tournaments %}<th scope="col">{{ t.name }}</th>{% endfor %}</tr>
+                    </thead>
+                    <tbody>
+                        {% for s in race.series %}
+                        <tr><th scope="row">{{ s.name }}</th>{% for value in s.cumulative %}<td>{{ dollars(value) }}</td>{% endfor %}</tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            {% if chart.replay %}
+            <script type="application/json" data-race-data>{{ chart.replay|tojson }}</script>
+            {% endif %}
+            {% endif %}
+        </section>
+
+        {# Leaf 2: the lines. A name and a number each; no medals. #}
+        <section class="golf-leaf" id="golf-lines" aria-labelledby="golf-lines-label">
+            <div class="golf-leaf-head">
+                <h2 class="golf-label" id="golf-lines-label">The lines</h2>
+            </div>
+            {% if not lines.pick_of_season %}
+            <p class="golf-leaf-lead">Nothing to say yet. The lines go in when the first tournament banks.</p>
+            {% else %}
+            <dl class="golf-lines">
+                {% set best = lines.pick_of_season %}
+                <div>
+                    <dt>Pick of the season</dt>
+                    <dd><strong>{{ best.member }}</strong> spent {{ best.golfer.full_name() }} at {{ the_event(best.event) }} for <span class="golf-money">{{ dollars(best.amount) }}</span>.</dd>
+                </div>
+                {% if lines.most_consistent %}
+                <div>
+                    <dt>Most consistent</dt>
+                    <dd><strong>{{ lines.most_consistent.member }}</strong> finished in the money {{ lines.most_consistent.count }} of {{ lines.most_consistent.played }} {{ 'week' if lines.most_consistent.played == 1 else 'weeks' }}.</dd>
+                </div>
+                {% endif %}
+                {% if lines.wd_survivor %}
+                <div>
+                    <dt>WD survivor</dt>
+                    <dd><strong>{{ lines.wd_survivor.member }}</strong> had a backup step in {{ lines.wd_survivor.count }} {{ 'time' if lines.wd_survivor.count == 1 else 'times' }}.</dd>
+                </div>
+                {% endif %}
+                {% if lines.most_cuts %}
+                <div>
+                    <dt>Most missed cuts</dt>
+                    <dd><strong>{{ lines.most_cuts.member }}</strong> missed {{ lines.most_cuts.count }} {{ 'cut' if lines.most_cuts.count == 1 else 'cuts' }} in {{ lines.most_cuts.played }} {{ 'week' if lines.most_cuts.played == 1 else 'weeks' }}.</dd>
+                </div>
+                {% endif %}
+                {% if lines.coldest_pick %}
+                {% set cold = lines.coldest_pick %}
+                <div>
+                    <dt>Coldest pick</dt>
+                    <dd><strong>{{ cold.member }}</strong> spent {{ cold.golfer.full_name() }} at {{ the_event(cold.event) }}{% if cold.amount %}, a {{ dollars(cold.amount) }} purse,{% endif %} for <span class="golf-money">$0</span>.</dd>
+                </div>
+                {% endif %}
+            </dl>
+            {% endif %}
+        </section>
+
+        {# Leaf 3: the Form Guide, the tour's own money. #}
+        <section class="golf-leaf" id="golf-form" aria-labelledby="golf-form-label">
+            <div class="golf-leaf-head">
+                <h2 class="golf-label" id="golf-form-label">Form Guide</h2>
+            </div>
+            {% if not form.form_guide %}
+            <p class="golf-leaf-lead">No prize money is banked yet.</p>
+            {% else %}
+            <p class="golf-leaf-lead">The season's top earners on tour, by their own prize money.</p>
+            <ol class="golf-still-list golf-form">
+                {% for row in form.form_guide %}
+                <li>
+                    <span class="golf-still-name">{{ row.player.full_name() }}
+                        <span class="golf-form-sub">{{ row.events }} {{ 'event' if row.events == 1 else 'events' }}
+                            {%- if row.best_finish %} · best {{ row.best_place }}{% endif %} · {% if row.cuts %}{{ row.cuts }} missed {{ 'cut' if row.cuts == 1 else 'cuts' }}{% else %}no missed cuts{% endif %}</span>
+                    </span>
+                    <span class="golf-money">{{ dollars(row.prize) }}</span>
+                </li>
+                {% endfor %}
+            </ol>
+            {% endif %}
+        </section>
+
+        {# Leaf 4: the Burn List. The hatch is the pick page's: the share of the room that still has him. #}
+        <section class="golf-leaf" id="golf-burn" aria-labelledby="golf-burn-label">
+            <div class="golf-leaf-head">
+                <h2 class="golf-label" id="golf-burn-label">The Burn List</h2>
+                {% if burn %}<span class="golf-field-count" data-burn-count aria-live="polite">{{ burn|length }} {{ 'golfer' if burn|length == 1 else 'golfers' }} spent</span>{% endif %}
+            </div>
+            {% if not burn %}
+            <p class="golf-leaf-lead">Nobody has spent a golfer yet. The first banked tournament starts the list.</p>
+            {% else %}
+            <p class="golf-leaf-lead">Every golfer the room has spent, the most spent first, with what the room banked on him. The hatch is the share of the room that still has him.</p>
+            <div class="golf-burn-find" data-burn-search-wrap hidden>
+                <label class="visually-hidden" for="golf-burn-search">Search the Burn List</label>
+                <input type="search" class="golf-search" id="golf-burn-search" placeholder="Find a golfer" autocomplete="off" spellcheck="false">
+            </div>
+            <ul class="golf-field golf-burnlist" data-burn-list>
+                {% for row in burn %}
+                <li class="golf-field-row" data-row data-search="{{ search_key(row.player.full_name()) }}">
+                    <span class="golf-field-name">{{ row.player.full_name() }}</span>
+                    <span class="golf-field-sub">Spent by {{ row.times_used }} · {{ dollars(row.total_return) }} banked</span>
+                    <span class="golf-burn">
+                        <span class="golf-burn-bar" style="--have: {{ 100 - row.pct_burned }}%" aria-hidden="true"></span>
+                        <span><span class="golf-burn-pct">{{ 100 - row.pct_burned }}%</span><span class="golf-burn-word"> still have him</span></span>
+                    </span>
+                </li>
+                {% endfor %}
+            </ul>
+            <p class="golf-line golf-field-none" data-burn-none hidden>Nobody has spent “<span data-burn-query></span>”. <button type="button" class="golf-linkbtn" data-burn-clear>Clear the search</button></p>
+            <p class="golf-burn-more"><button type="button" class="golf-linkbtn" data-burn-more hidden>Show all</button></p>
+            {% endif %}
+        </section>
+
+        {# Leaf 5: Still on the Board, the Burn List's complement. #}
+        <section class="golf-leaf" id="golf-unspent" aria-labelledby="golf-unspent-label">
+            <div class="golf-leaf-head">
+                <h2 class="golf-label" id="golf-unspent-label">Still on the Board</h2>
+            </div>
+            {% if not form.still_on_board %}
+            <p class="golf-leaf-lead">{% if form.form_guide %}Every golfer with prize money has been spent by somebody.{% else %}No prize money is banked yet.{% endif %}</p>
+            {% else %}
+            <p class="golf-leaf-lead">The top earners nobody in the room has spent, by money won this season.</p>
+            <ol class="golf-still-list">
+                {% for row in form.still_on_board %}
+                <li>
+                    <span class="golf-still-name">{{ row.player.full_name() }}</span>
+                    <span class="golf-money">{{ dollars(row.prize) }}</span>
+                </li>
+                {% endfor %}
+            </ol>
+            {% endif %}
+        </section>
+
+        <p class="golf-foot">
+            <a href="{{ url_for('golf.index') }}">The Sheet</a>
+            {% if golf_has_line and this_season %}<a href="{{ url_for('golf.member_scorecard', user_id=current_user.id) }}">Your scorecard</a>{% endif %}
+            <a href="{{ url_for('golf.schedule') }}">The Season Book</a>
+        </p>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{% if has_race and chart.replay %}<script src="{{ url_for('static', filename='js/golf/season-replay.js') }}?v={{ asset_version }}" defer></script>{% endif %}
+{% if burn %}<script src="{{ url_for('static', filename='js/golf/burn-list.js') }}?v={{ asset_version }}" defer></script>{% endif %}
+{% endblock %}

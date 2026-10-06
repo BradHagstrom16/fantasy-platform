@@ -95,6 +95,23 @@ def top_unspent_ids(ytd, used_ids, limit=STILL_ON_BOARD):
     return [pid for pid, _money in earners[:limit]]
 
 
+def spent_golfers(used, weeks):
+    """A member's spent golfers by the week they went, the unaccounted last.
+
+    ``used`` maps the spent golfers by id; ``weeks`` names the week each
+    counted (``{player_id: SpentWeek}``). The pick page and the scorecard
+    both list them.
+    """
+    return sorted(
+        (SpentGolfer(player, weeks.get(pid)) for pid, player in used.items()),
+        key=lambda golfer: (
+            golfer.week is None,
+            (golfer.week.week_number or 0) if golfer.week else 0,
+            _by_name(golfer.player),
+        ),
+    )
+
+
 def build_field(players, used, ytd, remaining, weeks, top_unspent=()):
     """The field as the pick page lists it.
 
@@ -122,17 +139,9 @@ def build_field(players, used, ytd, remaining, weeks, top_unspent=()):
         key=lambda row: (-row.ytd, _by_name(row.player)),
     )
     in_field = {row.player.id for row in rows}
-    spent = sorted(
-        (SpentGolfer(player, weeks.get(pid)) for pid, player in used.items()),
-        key=lambda golfer: (
-            golfer.week is None,
-            (golfer.week.week_number or 0) if golfer.week else 0,
-            _by_name(golfer.player),
-        ),
-    )
     return Field(
         rows=rows,
-        spent=spent,
+        spent=spent_golfers(used, weeks),
         still_on_board=[
             UnspentEarner(player, ytd.get(player.id, 0), player.id in in_field)
             for player in top_unspent

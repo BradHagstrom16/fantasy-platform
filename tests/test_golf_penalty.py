@@ -710,7 +710,7 @@ def test_tournament_detail_hides_penalty_badge_when_not_finalized(app, client, m
     assert 'badge-penalty' not in resp.get_data(as_text=True)
 
 
-def test_my_picks_shows_penalty_badge_for_finalized_major(app, client, monkeypatch):
+def test_scorecard_shows_penalty_badge_for_finalized_major(app, client, monkeypatch):
     _set_status(monkeypatch, 'golf', 'open')
     member = _make_user('member')
     _make_enrollment(member)
@@ -723,6 +723,8 @@ def test_my_picks_shows_penalty_badge_for_finalized_major(app, client, monkeypat
     db.session.commit()
     _login(client, member)
 
-    resp = client.get('/golf/my-picks')
+    # /golf/my-picks is the old address; the page is the member's scorecard.
+    resp = client.get('/golf/my-picks', follow_redirects=True)
     assert resp.status_code == 200
+    assert resp.request.path == f'/golf/member/{member.id}'
     assert 'badge-penalty' in resp.get_data(as_text=True)

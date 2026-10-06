@@ -72,6 +72,15 @@ def format_lock(deadline):
     return f"{league_time(deadline).strftime('%a %b %-d · %-I:%M %p')} CT"
 
 
+def the_event(name):
+    """An event's name after "the", for a sentence: 'the Masters Tournament'.
+
+    A name that brings its own article keeps one: 'The American Express' is
+    'the American Express', never 'the The American Express'.
+    """
+    return f"the {name[4:] if name[:4].lower() == 'the ' else name}"
+
+
 def format_score_to_par(score) -> str | None:
     """
     Format integer score to par for display.

@@ -47,9 +47,9 @@
                 {% if clock %}
                     · This week: {% if me.week %}{{ pick_line(me.week, figure=true) }}{% else %}no pick{% endif %}
                 {% elif next_tournament and next_pick %}
-                    · Next: {{ next_pick.primary_player.last_name }} at the {{ next_tournament.name }}
+                    · Next: {{ next_pick.primary_player.last_name }} at {{ the_event(next_tournament.name) }}
                 {% elif next_tournament and field_open %}
-                    · No pick in for the {{ next_tournament.name }}.
+                    · No pick in for {{ the_event(next_tournament.name) }}.
                     <a class="golf-nowrap" href="{{ url_for('golf.make_pick', tournament_id=next_tournament.id) }}">Spend a golfer</a>
                 {% endif %}
             </p>
@@ -77,7 +77,7 @@
                 <tr class="golf-sheet-row{% if row.is_me %} golf-sheet-row--me{% endif %}">
                     <td class="golf-sheet-rank">{{ row.rank_label }}</td>
                     <th scope="row" class="golf-sheet-name">
-                        <span class="golf-sheet-avatar">{{ row.user.get_avatar() }}</span>{{ row.user.get_display_name() }}
+                        <span class="golf-sheet-avatar">{{ row.user.get_avatar() }}</span><a class="golf-quiet" href="{{ url_for('golf.member_scorecard', user_id=row.user.id) }}">{{ row.user.get_display_name() }}</a>
                         {%- if row.is_me %}<span class="visually-hidden"> (your line)</span>{% endif %}
                         {%- if row.unpaid %} <span class="golf-chip golf-chip--deduction">Unpaid</span>{% endif %}
                         {% if clock -%}
@@ -101,7 +101,7 @@
             </p>
         </details>
         {% elif clock %}
-        <p class="golf-line">Every line has a pick on the {{ clock.tournament.name }}.</p>
+        <p class="golf-line">Every line has a pick on {{ the_event(clock.tournament.name) }}.</p>
         {% endif %}
 
         <p class="golf-foot">

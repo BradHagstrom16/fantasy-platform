@@ -122,7 +122,7 @@
             <tr class="golf-sheet-row{% if row.is_me %} golf-sheet-row--me{% endif %}">
                 <td class="golf-sheet-rank">{{ row.rank_label }}</td>
                 <th scope="row" class="golf-sheet-name">
-                    <span class="golf-sheet-avatar">{{ row.user.get_avatar() }}</span>{{ row.user.get_display_name() }}
+                    <span class="golf-sheet-avatar">{{ row.user.get_avatar() }}</span><a class="golf-quiet" href="{{ url_for('golf.member_scorecard', user_id=row.user.id, season=tournament.season_year if tournament.season_year != season_year else none) }}">{{ row.user.get_display_name() }}</a>
                     {%- if row.is_me %}<span class="visually-hidden"> (your pick)</span>{% endif %}
                     <span class="golf-pick-line">{{ pick_line(row.week, to_par=true) }}</span>
                 </th>

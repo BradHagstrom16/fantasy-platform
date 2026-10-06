@@ -9,6 +9,7 @@ from datetime import UTC, datetime
 from functools import wraps
 
 from flask import (
+    abort,
     current_app,
     flash,
     jsonify,
@@ -18,8 +19,8 @@ from flask import (
     url_for,
 )
 from flask_login import current_user, login_required
-from sqlalchemy import func, select
-from sqlalchemy.orm import joinedload
+from sqlalchemy import and_, func, select
+from sqlalchemy.orm import contains_eager, joinedload
 
 from extensions import db
 from games.common import enrollment_required, game_must_be_open
@@ -34,7 +35,8 @@ from games.golf.models import (
     GolfTournamentField,
     GolfTournamentResult,
 )
-from games.golf.services.field import build_field, top_unspent_ids
+from games.golf.services.field import build_field, search_key, top_unspent_ids
+from games.golf.services.scorecard import build_scorecard, revealed
 from games.golf.services.sheet import (
     build_board,
     build_sheet,
@@ -42,11 +44,23 @@ from games.golf.services.sheet import (
     live_event,
     week_lines,
 )
-from games.golf.services.stats import remaining_pct_map, spent_weeks, ytd_earnings
+from games.golf.services.stats import (
+    burn_list,
+    field_form,
+    override_tally,
+    race_chart_geometry,
+    remaining_pct_map,
+    season_progress,
+    season_race,
+    spent_weeks,
+    superlatives,
+    ytd_earnings,
+)
 from games.golf.utils import (
     format_lock,
     format_score_to_par,
     get_current_time,
+    the_event,
 )
 from models.user import User
 
@@ -83,29 +97,34 @@ def golf_admin_required(f):
 # Context Processor — inject golf-specific globals into golf templates
 # ============================================================================
 
-def _viewer_is_golf_admin():
-    """The sub-nav's Admin pill: platform admin, or the season's enrollment admin."""
+def _viewer_enrollment():
+    """The viewer's line this season, or None: the sub-nav's two member pills."""
     if not current_user.is_authenticated:
-        return False
-    if current_user.is_admin:
-        return True
-    enrollment = GolfEnrollment.query.filter_by(
-        user_id=current_user.id, season_year=current_app.config['SEASON_YEAR']
-    ).first()
-    return bool(enrollment and enrollment.is_admin)
+        return None
+    return db.session.scalar(
+        select(GolfEnrollment).filter_by(
+            user_id=current_user.id, season_year=current_app.config['SEASON_YEAR'],
+        )
+    )
 
 
 @golf_bp.context_processor
 def inject_golf_globals():
     """Inject golf-specific variables into all golf templates."""
+    enrollment = _viewer_enrollment()
     return {
         'body_class': 'game-golf',
-        'golf_is_admin': _viewer_is_golf_admin(),
+        # Admin pill: platform admin, or the season's enrollment admin.
+        'golf_is_admin': current_user.is_authenticated and bool(
+            current_user.is_admin or (enrollment and enrollment.is_admin)),
+        # My Scorecard pill: only a member with a line has a scorecard.
+        'golf_has_line': enrollment is not None,
         'golf_current_time': get_current_time(),
         'season_year': current_app.config['SEASON_YEAR'],
         'entry_fee': current_app.config['ENTRY_FEE'],
         'penalty_per_incident': PENALTY_PER_INCIDENT,
         'format_score_to_par': format_score_to_par,
+        'the_event': the_event,
     }
 
 
@@ -174,6 +193,42 @@ def _tournament_results(tournament_id):
     ).all()
 
 
+def _season_tournaments(season_year):
+    return db.session.scalars(
+        select(GolfTournament)
+        .filter_by(season_year=season_year)
+        .order_by(GolfTournament.start_date)
+    ).all()
+
+
+def _next_tournament(tournaments):
+    """The next pick: the first tournament still before its lock.
+
+    Status decides only for one with no deadline yet, which the lock reads as
+    open forever (a field sync that never ran leaves a played week without one).
+    """
+    return next(
+        (t for t in tournaments
+         if (not t.is_deadline_passed() if t.pick_deadline else t.status == 'upcoming')),
+        None,
+    )
+
+
+def _selected_season():
+    """The season a season-aware page is showing: ``?season=``, else this one."""
+    raw = request.args.get('season')
+    if raw is None:
+        return current_app.config['SEASON_YEAR']
+    if not raw.isdecimal():
+        abort(404)
+    return int(raw)
+
+
+def _room_names(enrollments):
+    """{user_id: display name} for a season's enrollees: the room, named once."""
+    return {e.user_id: e.user.get_display_name() for e in enrollments}
+
+
 # ============================================================================
 # Public Routes
 # ============================================================================
@@ -187,11 +242,7 @@ def index():
     # Standings are golf-enrollment-scoped (ADR-036): only current-season golf
     # enrollees have a line. The sheet is never padded with platform users.
     enrollments = _season_enrollments(season_year)
-    tournaments = db.session.scalars(
-        select(GolfTournament)
-        .filter_by(season_year=season_year)
-        .order_by(GolfTournament.start_date)
-    ).all()
+    tournaments = _season_tournaments(season_year)
 
     # The week turns over at the lock (the pick form's own test), never at a
     # status. The event the sheet is pencilling, on the course or played and
@@ -205,14 +256,7 @@ def index():
         clock = event_clock(event, results, get_current_time())
     sheet = build_sheet(enrollments, viewer_id, lines)
 
-    # The next pick is the first tournament still before its lock. Status
-    # decides only for one with no deadline yet, which the lock reads as open
-    # forever (a field sync that never ran leaves a played week without one).
-    next_tournament = next(
-        (t for t in tournaments
-         if (not t.is_deadline_passed() if t.pick_deadline else t.status == 'upcoming')),
-        None,
-    )
+    next_tournament = _next_tournament(tournaments)
     field_open = bool(next_tournament and next_tournament.has_sufficient_field())
     next_pick = None
     if next_tournament and sheet.mine:
@@ -383,6 +427,142 @@ def results():
 
 
 # ============================================================================
+# Season surfaces: the scorecard and the Record Room (DESIGN.md §8)
+# ============================================================================
+
+@golf_bp.route('/member')
+def member_lookup():
+    """The member switcher's landing: ``?user_id=`` on to the scorecard's own URL."""
+    raw = request.args.get('user_id', '')
+    season = request.args.get('season', '')
+    # isdecimal(), not isdigit(): isdigit() passes characters int() refuses.
+    if raw.isdecimal():
+        return redirect(url_for(
+            'golf.member_scorecard', user_id=int(raw),
+            season=int(season) if season.isdecimal() else None,
+        ))
+    if _viewer_enrollment():
+        return redirect(url_for('golf.member_scorecard', user_id=current_user.id))
+    return redirect(url_for('golf.index'))
+
+
+@golf_bp.route('/member/<int:user_id>')
+def member_scorecard(user_id):
+    """A member's scorecard: their season, the newest week first.
+
+    Public like the sheet and the board. Secrecy is the lock's: until a week
+    is revealed, nobody but the member is handed its pick.
+    """
+    season_year = _selected_season()
+    member = db.get_or_404(User, user_id)
+    seasons = sorted(db.session.scalars(
+        select(GolfEnrollment.season_year).filter_by(user_id=user_id)
+    ), reverse=True)
+    if season_year not in seasons:
+        abort(404)
+    viewer_id = current_user.id if current_user.is_authenticated else None
+    this_season = season_year == current_app.config['SEASON_YEAR']
+
+    enrollments = _season_enrollments(season_year)
+    enrollment = next(e for e in enrollments if e.user_id == user_id)
+    tournaments = _season_tournaments(season_year)
+
+    # The sheet's own event and lines, so the rank, the total and the week in
+    # pencil are the ones the sheet is showing.
+    event = live_event([t for t in tournaments if t.is_deadline_passed()])
+    lines = None
+    if event:
+        lines = week_lines(event, _tournament_picks(event.id), _tournament_results(event.id))
+    sheet = build_sheet(enrollments, viewer_id, lines)
+
+    picks = db.session.scalars(
+        select(GolfPick)
+        .join(GolfTournament, GolfPick.tournament_id == GolfTournament.id)
+        .options(
+            contains_eager(GolfPick.tournament),
+            joinedload(GolfPick.primary_player),
+            joinedload(GolfPick.backup_player),
+        )
+        .where(GolfPick.user_id == user_id, GolfTournament.season_year == season_year)
+    ).all()
+    results = db.session.scalars(
+        select(GolfTournamentResult)
+        .join(GolfPick, and_(
+            GolfPick.tournament_id == GolfTournamentResult.tournament_id,
+            GolfTournamentResult.player_id.in_(
+                [GolfPick.primary_player_id, GolfPick.backup_player_id]),
+        ))
+        .join(GolfTournament, GolfTournament.id == GolfPick.tournament_id)
+        .where(GolfPick.user_id == user_id, GolfTournament.season_year == season_year)
+    ).all()
+    usage = {
+        row.player_id: row.player for row in db.session.scalars(
+            select(GolfSeasonPlayerUsage)
+            .options(joinedload(GolfSeasonPlayerUsage.player))
+            .filter_by(user_id=user_id, season_year=season_year)
+        )
+    }
+    ledger = override_tally(
+        season_year, [t.id for t in tournaments if revealed(t)], _room_names(enrollments),
+    )
+
+    next_tournament = _next_tournament(tournaments) if this_season else None
+    card = build_scorecard(
+        member, viewer_id, sheet, tournaments, picks, results, usage, ledger,
+        enrollment.penalty_paid, live=event, live_lines=lines,
+        next_tournament=next_tournament,
+    )
+    return render_template('golf/member_scorecard.html',
+        card=card,
+        room={e.user_id: e.user for e in enrollments},
+        selected_season=season_year,
+        this_season=this_season,
+        seasons=seasons,
+        members=sorted(
+            (e.user for e in enrollments), key=lambda user: user.get_display_name().casefold(),
+        ),
+        banked_weeks=sum(1 for t in tournaments if t.results_finalized),
+        season_weeks=len(tournaments),
+        next_lock=format_lock(next_tournament.pick_deadline) if next_tournament else None,
+        field_open=bool(card.is_me and next_tournament and next_tournament.has_sufficient_field()),
+    )
+
+
+@golf_bp.route('/stats')
+def record_room():
+    """The Record Room: the season's race, its lines, and the golfers' ledgers."""
+    season_year = _selected_season()
+    seasons = sorted(
+        set(db.session.scalars(select(GolfTournament.season_year).distinct()))
+        | {current_app.config['SEASON_YEAR']},
+        reverse=True,
+    )
+    if season_year not in seasons:
+        abort(404)
+    viewer_id = current_user.id if current_user.is_authenticated else None
+
+    enrollments = _season_enrollments(season_year)
+    names = _room_names(enrollments)
+    race = season_race(season_year, names)
+    return render_template('golf/record_room.html',
+        room={e.user_id: e.user for e in enrollments},
+        # A season with banked events and no money in them has no race to draw.
+        has_race=race['max_value'] > 0,
+        selected_season=season_year,
+        this_season=season_year == current_app.config['SEASON_YEAR'],
+        seasons=seasons,
+        progress=season_progress(season_year),
+        race=race,
+        chart=race_chart_geometry(race, viewer_id=viewer_id if viewer_id in names else None),
+        viewer_id=viewer_id,
+        lines=superlatives(season_year, names),
+        form=field_form(season_year),
+        burn=burn_list(season_year),
+        search_key=search_key,
+    )
+
+
+# ============================================================================
 # Authenticated Routes
 # ============================================================================
 
@@ -497,46 +677,8 @@ def make_pick(tournament_id):
 @login_required
 @enrollment_required('golf')
 def my_picks():
-    """User's pick history for the season."""
-    season_year = current_app.config['SEASON_YEAR']
-
-    enrollment = GolfEnrollment.query.filter_by(
-        user_id=current_user.id, season_year=season_year
-    ).first()
-
-    tournaments = (
-        GolfTournament.query
-        .filter_by(season_year=season_year)
-        .order_by(GolfTournament.start_date)
-        .all()
-    )
-
-    picks = GolfPick.query.filter_by(user_id=current_user.id).all()
-    picks_map = {p.tournament_id: p for p in picks}
-
-    # Calculate stats
-    total_points = enrollment.total_points if enrollment else 0
-    picks_made = len(picks_map)
-    best_pick = None
-    if picks:
-        completed_picks = [p for p in picks if p.points_earned is not None and p.points_earned > 0]
-        if completed_picks:
-            best_pick = max(completed_picks, key=lambda p: p.points_earned)
-
-    # Get used players count
-    used_count = GolfSeasonPlayerUsage.query.filter_by(
-        user_id=current_user.id, season_year=season_year
-    ).count()
-
-    return render_template('golf/my_picks.html',
-        enrollment=enrollment,
-        tournaments=tournaments,
-        picks_map=picks_map,
-        total_points=total_points,
-        picks_made=picks_made,
-        best_pick=best_pick,
-        used_count=used_count,
-    )
+    """The old pick-history address: the page is the member's scorecard now."""
+    return redirect(url_for('golf.member_scorecard', user_id=current_user.id))
 
 
 # ============================================================================

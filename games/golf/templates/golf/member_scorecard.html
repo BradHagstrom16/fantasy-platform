@@ -1,0 +1,210 @@
+{% extends "base.html" %}
+{% from 'golf/_sheet.html' import dollars, money, pick_line with context %}
+
+{% set whose = 'Your' if card.is_me else card.member.get_display_name() ~ "'s" %}
+{% set line = card.line %}
+
+{% block title %}{{ whose }} Scorecard · The Pay Sheet{% endblock %}
+
+{% block content %}
+<div class="golf-page">
+
+    <div class="golf-card-head">
+        <h1 class="golf-title golf-title--page">{{ whose }} Scorecard</h1>
+        {# The member switcher: a real select and a submit, so it works with no script. #}
+        <form class="golf-switch" method="get" action="{{ url_for('golf.member_lookup') }}">
+            <label class="golf-switch-label" for="golf-switch-member">Member</label>
+            <select class="golf-select" id="golf-switch-member" name="user_id">
+                {% for user in members %}
+                <option value="{{ user.id }}"{% if user.id == card.member.id %} selected{% endif %}>{{ user.get_display_name() }}</option>
+                {% endfor %}
+            </select>
+            {% if not this_season %}<input type="hidden" name="season" value="{{ selected_season }}">{% endif %}
+            <button type="submit" class="golf-linkbtn golf-switch-go">View</button>
+        </form>
+    </div>
+
+    <p class="golf-context">
+        <span class="golf-context-items">
+            <span class="golf-nowrap">{{ selected_season }} season</span>
+            <span class="golf-nowrap">{% if season_weeks %}{{ banked_weeks }} of {{ season_weeks }} weeks banked{% else %}no weeks on the schedule yet{% endif %}</span>
+            {% for year in seasons if year != selected_season %}
+            <span class="golf-nowrap"><a class="golf-tap" href="{{ url_for('golf.member_scorecard', user_id=card.member.id, season=year if year != season_year else none) }}">{{ year }} scorecard</a></span>
+            {% endfor %}
+        </span>
+    </p>
+
+    {# The total: the page's one Teko figure. The pen bracket is the viewer's own line only. #}
+    <section class="golf-your-line{% if not card.is_me %} golf-your-line--theirs{% endif %}" aria-labelledby="golf-total-label">
+        <div class="golf-your-line-head">
+            <span class="golf-label" id="golf-total-label">Total won</span>
+            <span class="golf-state{% if not line.projected %} golf-state--banked{% endif %}">{{ 'Projected' if line.projected else 'Banked' }}</span>
+        </div>
+        <div class="golf-hero-figure golf-hero-figure--{{ 'projected' if line.projected else 'banked' }}">{% if line.projected %}~{% endif %}{{ dollars(line.total) }}</div>
+        <p class="golf-your-line-sub">
+            <strong>{{ line.place }}</strong> of {{ card.members }}
+            {%- if line.unpaid %} <span class="golf-chip golf-chip--deduction">Unpaid</span>{% endif %}
+        </p>
+    </section>
+
+    <dl class="golf-tiles">
+        <div>
+            <dt class="golf-label">In the money</dt>
+            {% if card.played %}
+            <dd>{{ card.cashes }} <span class="golf-tiles-note">of {{ card.played }}</span></dd>
+            {% else %}
+            <dd><span class="golf-tiles-note">No weeks banked yet</span></dd>
+            {% endif %}
+        </div>
+        <div>
+            <dt class="golf-label">Golfers used</dt>
+            <dd>{{ card.used }}</dd>
+        </div>
+        <div>
+            <dt class="golf-label">Commish overrides</dt>
+            <dd>{{ card.overrides }}</dd>
+        </div>
+    </dl>
+
+    <div class="golf-sheet-head golf-weeks-head">
+        <h2 class="golf-label" id="golf-weeks-label">The weeks, newest first</h2>
+        {% if card.played %}<span class="golf-state golf-state--banked">Banked</span>{% endif %}
+    </div>
+
+    {% if card.weeks %}
+    <table class="golf-sheet golf-weeks" aria-labelledby="golf-weeks-label">
+        <thead class="visually-hidden">
+            <tr>
+                <th scope="col">Week</th>
+                <th scope="col">Event and pick</th>
+                <th scope="col">Money</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for week in card.weeks %}
+            {% set t = week.tournament %}
+            {% set mine_open = week.state == 'open' and card.is_me %}
+            <tr class="golf-sheet-row{% if mine_open %} golf-weeks-row--open{% endif %}">
+                <td class="golf-weeks-no">{% if t.week_number %}Wk {{ t.week_number }}{% endif %}</td>
+                {# An open week has no figure: its cell takes the money column too, so the lock fits on its line. #}
+                <th scope="row" class="golf-sheet-name"{% if week.state == 'open' %} colspan="2"{% endif %}>
+                    <a class="golf-quiet" href="{{ url_for('golf.tournament_detail', tournament_id=t.id) }}">{{ t.name }}</a>
+                    {%- if week.state == 'live' %} <span class="golf-chip golf-chip--live">Live</span>{% endif %}
+                    {%- if t.is_major %} <span class="golf-chip">Major ×1.5</span>{% endif %}
+                    {%- if t.is_team_event %} <span class="golf-chip">Team event</span>{% endif %}
+                    <span class="golf-pick-line">
+                    {%- if week.hidden -%}
+                        Hidden until the lock{% if next_lock %}, <span class="golf-nowrap">{{ next_lock }}</span>{% endif %}
+                    {%- elif week.state == 'open' -%}
+                        {%- if week.pick -%}
+                            Your pick: <strong>{{ week.pick.primary_player.last_name }}</strong>, backup {{ week.pick.backup_player.last_name }}.
+                            <a class="golf-nowrap golf-tap" href="{{ url_for('golf.make_pick', tournament_id=t.id) }}">Change</a>
+                        {%- elif field_open -%}
+                            No pick in yet.
+                        {%- else -%}
+                            The field publishes Tuesday. Picks open then.
+                        {%- endif -%}
+                        {%- if next_lock and (week.pick or field_open) %}<span class="golf-pick-lock">Picks lock <strong class="golf-nowrap">{{ next_lock }}</strong></span>{% endif -%}
+                    {%- elif week.line -%}
+                        {{ pick_line(week.line, to_par=true, spent=true) }}
+                        {%- if week.line.figure is none %} · no read yet{% endif -%}
+                    {%- elif week.pick -%}
+                        {{ week.pick.primary_player.last_name }}, backup {{ week.pick.backup_player.last_name }} · results pending
+                    {%- else -%}
+                        No pick
+                    {%- endif -%}
+                    </span>
+                    {# The pick action (§7.24): the pen as a fill, once on the page, on your own open week. #}
+                    {% if mine_open and not week.pick and field_open %}
+                    <a class="btn btn-game golf-btn golf-weeks-act" href="{{ url_for('golf.make_pick', tournament_id=t.id) }}">Spend a golfer</a>
+                    {% endif %}
+                </th>
+                {% if week.state != 'open' %}
+                <td class="golf-sheet-money">
+                    {%- if week.state == 'banked' -%}
+                        {{ money((week.line.figure or 0) if week.line else 0, false) }}
+                    {%- elif week.state == 'live' and week.line and week.line.figure is not none -%}
+                        {{ money(week.line.figure, true, state=true, tilde=week.line.in_pencil) }}
+                    {%- endif -%}
+                </td>
+                {% endif %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="golf-empty">No week has been played yet. The first line goes in after the first lock.</p>
+    {% endif %}
+
+    {% if card.to_play %}
+    <p class="golf-line">{{ card.to_play }} {{ 'week' if card.to_play == 1 else 'weeks' }} still to play. <a href="{{ url_for('golf.schedule') }}">The Season Book</a> has them.</p>
+    {% endif %}
+
+    <dl class="golf-tiles golf-tiles--pair">
+        <div>
+            <dt class="golf-label">Best pick</dt>
+            {% if card.best %}
+            <dd>{{ dollars(card.best.pick.points_earned) }} <span class="golf-tiles-note">{{ card.best.golfer.full_name() }}, {{ card.best.pick.tournament.name }}</span></dd>
+            {% else %}
+            <dd><span class="golf-tiles-note">Nothing banked yet</span></dd>
+            {% endif %}
+        </div>
+        <div>
+            <dt class="golf-label">Missed cuts at majors</dt>
+            <dd>{{ card.major_cuts }}
+                {% if card.pot_outstanding -%}
+                <span class="golf-tiles-note">{{ dollars(card.pot_outstanding) }} still owed to the pot</span>
+                {%- elif card.pot_owed -%}
+                <span class="golf-tiles-note">Settled, {{ dollars(card.pot_owed) }} paid</span>
+                {%- endif %}
+            </dd>
+        </div>
+    </dl>
+
+    {% if card.spent %}
+    <details class="golf-fold">
+        <summary>Used golfers ({{ card.spent|length }})</summary>
+        <ol class="golf-fold-body golf-spent">
+            {% for golfer in card.spent %}
+            <li>
+                <span class="golf-spent-week">{% if golfer.week and golfer.week.week_number %}Wk {{ golfer.week.week_number }}{% endif %}</span>
+                <span class="golf-spent-name">{{ golfer.player.full_name() }}
+                    {%- if golfer.week %}<span class="golf-spent-event"><span class="visually-hidden">, </span>{{ golfer.week.tournament }}</span>{% endif -%}
+                </span>
+            </li>
+            {% endfor %}
+        </ol>
+    </details>
+    {% endif %}
+
+    <section class="golf-still golf-ledger" aria-labelledby="golf-ledger-label">
+        <h2 class="golf-label" id="golf-ledger-label">The Commissioner's ledger</h2>
+        {% if card.ledger %}
+        <p class="golf-still-lead">Picks the Commish set by hand this season, on weeks already locked.</p>
+        <ul class="golf-still-list">
+            {% for row in card.ledger %}
+            <li>
+                <span class="golf-still-name">
+                    <span class="golf-sheet-avatar">{{ room[row.user_id].get_avatar() }}</span>
+                    {%- if row.user_id == card.member.id -%}
+                    {{ row.name }} <span class="golf-still-note">this scorecard</span>
+                    {%- else -%}
+                    <a class="golf-quiet" href="{{ url_for('golf.member_scorecard', user_id=row.user_id, season=selected_season if not this_season else none) }}">{{ row.name }}</a>
+                    {%- endif -%}
+                </span>
+                <span class="golf-ledger-count">{{ row.count }}</span>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p class="golf-still-lead">The Commish has not set a pick by hand this season.</p>
+        {% endif %}
+    </section>
+
+    <p class="golf-foot">
+        <a href="{{ url_for('golf.index') }}">The Sheet</a>
+        <a href="{{ url_for('golf.record_room', season=selected_season if not this_season else none) }}">The Record Room</a>
+        <a href="{{ url_for('golf.schedule') }}">The Season Book</a>
+    </p>
+</div>
+{% endblock %}
