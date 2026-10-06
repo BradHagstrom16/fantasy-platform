@@ -6188,6 +6188,565 @@ section + .golf-fold { border-top: 0; }
   .golf-fold > summary::after { transition: none; }
 }
 
+/* ── Season surfaces (U4 the scorecard, U5 the Record Room) ─────────
+   games/golf/DESIGN.md §8. The same paper, hairlines, pencil and ink; the
+   one Teko figure on the scorecard is the season total, and the Record
+   Room's season race is the room's one chart. */
+
+/* A link that reads as ink until it is pointed at: a column of pen-blue
+   names or events would spend the pen on what is not the member's own. */
+.golf-page a.golf-quiet:not(.btn) {
+  color: inherit;
+  text-decoration: none;
+}
+.golf-page a.golf-quiet:not(.btn):hover,
+.golf-page a.golf-quiet:not(.btn):focus-visible {
+  color: var(--game-primary);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+/* The room's select: the scorecard's member switcher. */
+.golf-select {
+  min-height: 44px;
+  max-width: 100%;
+  padding: .375rem .5rem;
+  border: 1px solid var(--text-secondary);
+  border-radius: 2px;
+  background: var(--surface-card);
+  color: var(--text-primary);
+  font: inherit;
+}
+.golf-select:focus-visible {
+  outline: 2px solid var(--game-primary);
+  outline-offset: 2px;
+}
+
+/* The scorecard's head: its H1 with the member switcher beside it. */
+.golf-card-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: .375rem 1.5rem;
+  margin-bottom: .375rem;
+}
+.golf-card-head .golf-title--page { margin: 0; }
+.golf-switch {
+  display: flex;
+  align-items: center;
+  gap: .625rem;
+  min-width: 0;
+}
+.golf-switch-label {
+  font-size: .95rem;
+  color: var(--text-secondary);
+}
+.golf-switch .golf-select {
+  min-width: 0;
+  max-width: 13rem;
+}
+.golf-switch-go {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+/* Another member's total carries no bracket: the pen marks the viewer's own line. */
+.golf-your-line.golf-your-line--theirs { padding-left: 0; }
+.golf-your-line.golf-your-line--theirs::before { content: none; }
+
+/* The tiles (§7.9): an ink rule, hairline cells, a label over its value. */
+.golf-tiles {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 0 0 2rem;
+  border-top: 2px solid var(--text-primary);
+  border-bottom: 1px solid var(--golf-rule);
+}
+.golf-tiles > div {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: .3rem;
+  padding: .75rem .75rem .625rem 0;
+}
+.golf-tiles > div + div {
+  padding-left: .75rem;
+  border-left: 1px solid var(--golf-rule);
+}
+.golf-tiles dt { line-height: 1.1; }
+.golf-tiles dd {
+  margin: 0;
+  font-weight: 500;
+  font-size: 1.25rem;
+  line-height: 1.25;
+  font-variant-numeric: tabular-nums lining-nums;
+  color: var(--text-primary);
+}
+.golf-tiles-note {
+  font-weight: 400;
+  font-size: .95rem;
+  color: var(--text-secondary);
+}
+.golf-tiles.golf-tiles--pair {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 1.75rem 0 0;
+}
+/* In the pair the figure leads alone and its note takes the line under it. */
+.golf-tiles--pair .golf-tiles-note { display: block; }
+/* The pair closes on its own hairline; the fold under it adds none. */
+.golf-tiles + .golf-fold { border-top: 0; }
+
+/* The weeks: the sheet's rows, a week number where the rank would be. */
+.golf-sheet-head.golf-weeks-head { margin-bottom: .5rem; }
+.golf-weeks-head .golf-label { margin: 0; }
+.golf-sheet.golf-weeks .golf-weeks-no {
+  width: 3.25rem;
+  padding-top: 11px;
+  font-size: .95rem;
+  line-height: 1.35;
+  font-variant-numeric: tabular-nums lining-nums;
+  white-space: nowrap;
+  color: var(--text-secondary);
+}
+.golf-sheet.golf-weeks .golf-sheet-name > .golf-chip {
+  margin-left: .25rem;
+}
+.golf-weeks .golf-pick-line .golf-chip { margin-left: .125rem; }
+/* The backup who did not count follows the pick on its line; on a phone it
+   takes its own, so no dot is left hanging at a wrap. */
+.golf-pick-dot { white-space: pre; }
+/* Your own open week: the active week takes the pen wash (no bracket: that is
+   your line's), the pick and the lock in ink, the lock on its own line, and
+   the pick action (§7.24) under them. */
+.golf-sheet tr.golf-weeks-row--open > * { background: var(--golf-pen-wash); }
+.golf-sheet tr.golf-weeks-row--open > .golf-weeks-no { position: relative; }
+.golf-sheet tr.golf-weeks-row--open > .golf-weeks-no::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -.5rem;
+  width: .5rem;
+  background: var(--golf-pen-wash);
+}
+.golf-sheet tr.golf-weeks-row--open > .golf-sheet-name {
+  box-shadow: .5rem 0 0 var(--golf-pen-wash);
+}
+.golf-weeks .golf-pick-line strong {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+.golf-pick-lock { display: block; }
+.btn.golf-btn.golf-weeks-act { margin: .625rem 0 .375rem; }
+/* A link in a line of text, with a full touch target: the padding reaches
+   44px without moving the line it sits in. */
+.golf-page a.golf-tap:not(.btn) { padding: .8rem 0; }
+.golf-ledger-count {
+  font-weight: 500;
+  font-variant-numeric: tabular-nums lining-nums;
+  color: var(--text-primary);
+}
+
+/* The Record Room: a contents line, then five leaves, each on its own ink rule. */
+.golf-margin.golf-contents {
+  margin: 0 0 1.75rem;
+  padding: .75rem 0 .25rem;
+  border-top: 1px solid var(--golf-rule);
+  border-bottom: 1px solid var(--golf-rule);
+}
+.golf-contents-list {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 1.25rem;
+  margin: .125rem 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: .95rem;
+}
+.golf-contents-list a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}
+.golf-leaf {
+  margin-top: 2.75rem;
+  padding-top: .75rem;
+  border-top: 2px solid var(--text-primary);
+  scroll-margin-top: 8rem;
+}
+.golf-main > .golf-leaf:first-child { margin-top: 0; }
+.golf-leaf-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: .25rem 1rem;
+}
+.golf-leaf-head .golf-label { margin: 0; }
+.golf-leaf-lead {
+  max-width: 62ch;
+  margin: .5rem 0 0;
+  font-size: .95rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+/* A leaf's list opens on a hairline: the leaf's own rule is the ink one. */
+.golf-leaf .golf-still-list,
+.golf-leaf .golf-field {
+  margin-top: .875rem;
+  border-top: 1px solid var(--golf-rule);
+  border-bottom: 1px solid var(--golf-rule);
+}
+.golf-leaf + .golf-foot { margin-top: 2.75rem; }
+
+/* The season race. The drawing stretches to its box; its words are set
+   over it as text, so they keep their size when the box is a phone's. */
+.golf-race { margin: .875rem 0 0; }
+.golf-race-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0 1rem;
+  min-height: 44px;
+  margin-bottom: .5rem;
+}
+.golf-race-key {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .25rem 1.125rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: .95rem;
+  color: var(--text-secondary);
+}
+.golf-race-key li {
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+}
+.golf-race-swatch {
+  width: 22px;
+  border-top: 3px solid var(--game-primary);
+}
+.golf-race-swatch.golf-race-swatch--leader { border-top: 2px solid var(--text-primary); }
+.golf-race-swatch.golf-race-swatch--pack { border-top: 1px solid var(--text-secondary); }
+.golf-race-play { min-height: 44px; }
+.golf-race-plot {
+  position: relative;
+  height: clamp(220px, 46vw, 320px);
+}
+.golf-race-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.golf-race-svg line,
+.golf-race-svg polyline { vector-effect: non-scaling-stroke; }
+.golf-race-grid {
+  stroke: var(--golf-rule);
+  stroke-width: 1;
+}
+.golf-race-grid.golf-race-grid--floor { stroke: var(--text-primary); }
+.golf-race-line {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.golf-race-line.golf-race-line--pack {
+  stroke: var(--text-secondary);
+  stroke-width: 1;
+  opacity: .5;
+}
+.golf-race-line.golf-race-line--leader {
+  stroke: var(--text-primary);
+  stroke-width: 2;
+}
+.golf-race-line.golf-race-line--you {
+  stroke: var(--game-primary);
+  stroke-width: 3;
+}
+.golf-race-playhead {
+  stroke: var(--text-secondary);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+  opacity: 0;
+}
+.golf-race--scrubbing .golf-race-playhead { opacity: 1; }
+.golf-race-marks {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  font-size: .8125rem;
+  line-height: 1;
+  font-variant-numeric: tabular-nums lining-nums;
+  color: var(--text-secondary);
+}
+.golf-race-marks > span {
+  position: absolute;
+  white-space: nowrap;
+}
+.golf-race-tick {
+  left: var(--x);
+  top: var(--y);
+  margin-left: 5px;
+  transform: translateY(calc(-100% - 3px));
+}
+.golf-race-month {
+  left: var(--x);
+  top: var(--y);
+  margin-top: 7px;
+}
+.golf-race-month.golf-race-month--end { transform: translateX(-100%); }
+/* A line's name sits over its last point, in a halo of paper so the lines
+   behind it do not run through the letters. */
+.golf-race-name {
+  right: var(--x);
+  top: var(--y);
+  transform: translateY(calc(-100% - 6px));
+  font-weight: 500;
+  text-shadow:
+    -2px 0 0 var(--bg-page), 2px 0 0 var(--bg-page),
+    0 -2px 0 var(--bg-page), 0 2px 0 var(--bg-page),
+    -1px -1px 0 var(--bg-page), 1px -1px 0 var(--bg-page),
+    -1px 1px 0 var(--bg-page), 1px 1px 0 var(--bg-page);
+  color: var(--text-primary);
+  transition: opacity .2s cubic-bezier(.16, 1, .3, 1);
+}
+.golf-race-name.golf-race-name--you { color: var(--game-primary); }
+/* The lower of two names sits under its line, clear of the line above it. */
+.golf-race-name.golf-race-name--below { transform: translateY(6px); }
+.golf-race--scrubbing .golf-race-name { opacity: 0; }
+.golf-race-dot {
+  left: var(--x);
+  top: var(--y);
+  width: 9px;
+  height: 9px;
+  margin: -4.5px 0 0 -4.5px;
+  border-radius: 50%;
+  background: var(--text-primary);
+  box-shadow: 0 0 0 2px var(--bg-page);
+}
+.golf-race-dot.golf-race-dot--you { background: var(--game-primary); }
+.golf-race-dot.golf-race-dot--pack {
+  width: 5px;
+  height: 5px;
+  margin: -2.5px 0 0 -2.5px;
+  background: var(--text-secondary);
+  box-shadow: none;
+  opacity: .5;
+}
+.golf-race-dot.golf-race-baton { opacity: 0; }
+.golf-race--scrubbing .golf-race-dot.golf-race-baton { opacity: 1; }
+
+/* The scrubber: a ruled track the width of the plot, the pen for its thumb. */
+.golf-race-scrub { margin-top: 1.625rem; }
+.golf-race-readout {
+  display: block;
+  font-size: .95rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+.golf-race-range {
+  display: block;
+  width: calc(100% - var(--pad-left, 0%) - var(--pad-right, 0%));
+  height: 44px;
+  margin: 0 0 0 var(--pad-left, 0%);
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.golf-race-range:focus-visible {
+  outline: 2px solid var(--game-primary);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+.golf-race-range::-webkit-slider-runnable-track {
+  height: 2px;
+  background: var(--text-primary);
+}
+.golf-race-range::-moz-range-track {
+  height: 2px;
+  background: var(--text-primary);
+}
+.golf-race-range::-webkit-slider-thumb {
+  width: 20px;
+  height: 20px;
+  margin-top: -9px;
+  border: 2px solid var(--bg-page);
+  border-radius: 50%;
+  background: var(--game-primary);
+  -webkit-appearance: none;
+  appearance: none;
+}
+.golf-race-range::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--bg-page);
+  border-radius: 50%;
+  background: var(--game-primary);
+}
+
+/* The race's standings: every line, in the sheet's order; the rows change
+   places when the season is played. */
+.golf-race-standings {
+  margin: 1.25rem 0 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--golf-rule);
+  border-bottom: 1px solid var(--golf-rule);
+}
+.golf-race-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 3rem minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: .75rem;
+  min-height: 44px;
+  padding: .25rem 0;
+  transition: transform .5s cubic-bezier(.16, 1, .3, 1);
+}
+.golf-race-row + .golf-race-row { border-top: 1px solid var(--golf-rule); }
+.golf-race-rank {
+  font-family: 'Teko', sans-serif;
+  font-weight: 600;
+  font-size: 1.5rem;
+  line-height: 1;
+  padding-top: 3px;
+  font-variant-numeric: lining-nums;
+  color: var(--text-primary);
+}
+.golf-race-member {
+  font-weight: 500;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+  color: var(--text-primary);
+}
+/* Your row: the pen wash and the bracket, bled into the gutters like the sheet's. */
+.golf-race-row.golf-race-row--me {
+  background: var(--golf-pen-wash);
+  box-shadow: -.5rem 0 0 var(--golf-pen-wash), .5rem 0 0 var(--golf-pen-wash);
+}
+.golf-race-row.golf-race-row--me::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -.5rem;
+  width: 3px;
+  background: var(--game-primary);
+}
+
+/* The lines: a label over one sentence, a name and a number in each. */
+.golf-lines { margin: .5rem 0 0; }
+.golf-lines > div {
+  padding: .75rem 0 .875rem;
+  border-top: 1px solid var(--golf-rule);
+}
+.golf-lines > div:first-child { border-top: 0; }
+/* The line's name is a pencil sub-line, not a second label under the leaf's own. */
+.golf-lines dt {
+  margin-bottom: .125rem;
+  font-weight: 400;
+  font-size: .95rem;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+.golf-lines dd {
+  max-width: 62ch;
+  margin: 0;
+  font-size: 1.05rem;
+  line-height: 1.45;
+  color: var(--text-primary);
+  text-wrap: pretty;
+}
+.golf-lines dd strong { font-weight: 600; }
+
+/* Form Guide: the golfer over his season, his prize money at right. */
+.golf-form-sub {
+  display: block;
+  font-weight: 400;
+  font-size: .95rem;
+  line-height: 1.45;
+  font-variant-numeric: tabular-nums lining-nums;
+  color: var(--text-secondary);
+}
+
+/* The Burn List: the field's rows and the field's hatch, with no action. */
+.golf-burn-find { margin-top: .875rem; }
+.golf-burnlist .golf-field-sub {
+  white-space: normal;
+  overflow: visible;
+}
+.golf-burnlist .golf-burn {
+  grid-row: 1 / span 2;
+  align-self: center;
+}
+.golf-burn-more { margin: 0; }
+.golf-burn-more .golf-linkbtn { min-height: 44px; }
+
+@media (min-width: 1100px) {
+  .golf-page--margin > .golf-title { grid-column: 1 / -1; }
+  /* The contents line moves to the margin and stays beside the leaves. */
+  .golf-room > .golf-main {
+    grid-column: 1;
+    grid-row: 3;
+  }
+  .golf-room > .golf-margin.golf-contents {
+    grid-column: 2;
+    grid-row: 3;
+    margin: 0;
+    padding: .75rem 0 0;
+    border-top: 2px solid var(--text-primary);
+    border-bottom: 0;
+  }
+  .golf-room .golf-contents-list {
+    display: block;
+    margin-top: .375rem;
+  }
+  .golf-room .golf-contents-list li + li { border-top: 1px solid var(--golf-rule); }
+  .golf-room .golf-contents-list a { display: flex; }
+}
+
+@media (max-width: 575px) {
+  /* Three tiles hold on a phone; the pair stacks, its notes run long. */
+  .golf-tiles.golf-tiles--pair { grid-template-columns: minmax(0, 1fr); }
+  .golf-tiles.golf-tiles--pair > div + div {
+    padding-left: 0;
+    border-left: 0;
+    border-top: 1px solid var(--golf-rule);
+  }
+  .golf-tiles dd { font-size: 1.15rem; }
+  .golf-switch { width: 100%; }
+  .golf-pick-aside { display: block; }
+  .golf-pick-dot { display: none; }
+  /* 3. On a phone the contents line is the links alone. */
+  .golf-contents > .golf-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .golf-margin.golf-contents { padding: .125rem 0; }
+  .golf-contents-list { margin-top: 0; }
+  .golf-switch .golf-select {
+    flex: 1;
+    max-width: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .golf-race-row,
+  .golf-race-name { transition: none; }
+}
+
 /* The penalty chip keeps its legacy class (test-locked presence); as a chip
    it sheds the pre-U1 tint. Bare .badge-penalty still dresses admin payments. */
 .golf-chip.badge-penalty {

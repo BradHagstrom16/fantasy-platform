@@ -24,9 +24,13 @@
 {# The pencil line under a name: golfer · position · the week's figure, with the
    deduction, penalty and backup marks. `figure` adds the week's dollars (the
    sheet); `to_par` adds the golfer's score and the Commish chip (the board).
-   The penalty chip sits beside the Cut or DQ and drops its word on a phone. #}
-{% macro pick_line(week, figure=false, to_par=false) -%}
+   `spent` is the scorecard's: the Used chip on the golfer who counted, the
+   Commish's note in words (a title is out of a phone's reach), and the
+   backup who did not count. The penalty chip sits beside the Cut or DQ and
+   drops its word on a phone. #}
+{% macro pick_line(week, figure=false, to_par=false, spent=false) -%}
   {{ week.golfer.last_name }}
+  {%- if spent and week.used %} <span class="golf-chip golf-chip--pen">Used</span>{% endif -%}
   {%- if week.replaces %} · Backup, replaces {{ week.replaces.last_name }}{% endif -%}
   {%- if week.deduction %} · <span class="golf-chip golf-chip--deduction">{{ week.deduction }}</span>{% endif -%}
   {{ penalty_badge(week.pick, compact=true) }}
@@ -34,6 +38,8 @@
   {%- if to_par and week.to_par and not week.deduction %} · {{ week.to_par|replace('-', '−') }}{% endif -%}
   {%- if figure and week.in_pencil %} · ~{{ dollars(week.figure) }}{% endif -%}
   {%- if to_par and week.pick.admin_override %} <span class="golf-chip" title="{{ week.pick.admin_override_note or 'Set by the Commish' }}">Commish</span>{% endif -%}
+  {%- if spent and week.pick.admin_override and week.pick.admin_override_note %}<span class="golf-pick-aside"><span class="golf-pick-dot"> · </span>“{{ week.pick.admin_override_note }}”</span>{% endif -%}
+  {%- if spent and not week.replaces %}<span class="golf-pick-aside"><span class="golf-pick-dot"> · </span>backup {{ week.idle.last_name }}</span>{% endif -%}
 {%- endmacro %}
 
 {# When the leaderboard was last read: the time, with its day once that day is past. #}

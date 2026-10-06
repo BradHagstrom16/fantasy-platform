@@ -354,15 +354,24 @@ Ordered by user impact.
       through the Season Book, Your pick (the purse with no pick), the board ranked by the week's
       figure, the Major ×1.5 / Team event chips, penalties assessed, the read times, "Didn't pick (N)";
       no other member's golfer renders before the lock. The marks legend lives on The Sheet.
-- [ ] **U4 Member Scorecard** — `/golf/member/<id>` replacing self-only `my_picks` (keep `/golf/my-picks`
+- [x] **U4 Member Scorecard** — `/golf/member/<id>` replacing self-only `my_picks` (keep `/golf/my-picks`
       as the redirect alias): tiles (Rank ordinal, Total, In the Money, Golfers Used, Overrides, Best
       Pick, Missed Cuts at Majors + pot status), idle-golfer muting, Used Golfers card, Commissioner's
       Ledger, member switcher, server-side pick secrecy; **season selector** (2026 archive ↔ current).
-- [ ] **U5 Stats Hub** — port `Golf_Pick_Em/stats.py` → `games/golf/services/stats.py` (+ its ~50
-      tests): Season Race SVG (server-side geometry) + "Play the season" replay JS
-      (`games/golf/static/js/season-replay.js`, `burn-list.js` — the blueprint's `static/` dir doesn't
-      exist yet), superlatives, Form Guide, Burn List, Still on the Board; reduced-motion + SR mirror
-      table preserved; season-aware so 2026 is browsable.
+      **Built 2026-10-06 as the scorecard** (with U5, one PR): the weeks newest first, from the open
+      pick back to week 1; the total as the page's one Teko figure with the sheet's own rank; public
+      and secret by the lock (`games/golf/services/scorecard.py`); the golfer who counted wears the
+      Used chip and the other is named as the backup, never struck; Used golfers shows on every
+      member's card; `?season=` for a member with a line in more than one season.
+- [x] **U5 Stats Hub** — port `Golf_Pick_Em/stats.py` → `games/golf/services/stats.py` (+ its ~50
+      tests): Season Race SVG (server-side geometry) + "Play the season" replay JS, superlatives,
+      Form Guide, Burn List, Still on the Board; reduced-motion + SR mirror table preserved;
+      season-aware so 2026 is browsable. **Built 2026-10-06 as The Record Room** (`/golf/stats`): a
+      contents line and five leaves; the race drawn finished and still, played only on request;
+      banked tournaments only, the room is the season's enrollees, competition rank in the page and
+      in the replay. The scripts live in `static/js/golf/` (`season-replay.js`, `burn-list.js`), not
+      a blueprint static dir: nginx serves `/static/` with the long cache (Brad, 2026-10-06). The
+      legacy page's scorecard tiles and its up/down replay marks did not come over.
 - [ ] **U6 Admin** — API-usage meter (parse `api_calls.log` against the 250 budget),
       confirm-before-reresolve gate on override (deferred from PR 5), admin tables on `.table-golf`.
 - [ ] **U7 Season archive / champion** — 2026 champion + final board; lounge integration

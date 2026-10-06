@@ -13,6 +13,7 @@ render from them (games/golf/DESIGN.md §2, §7, §9):
 Every clock-dependent test pins GOLF_FAKE_NOW (the conftest app fixture pins
 ENVIRONMENT=testing), so none of them reads the real date.
 """
+import re
 from datetime import datetime
 from pathlib import Path
 
@@ -697,7 +698,10 @@ def test_sheet_templates_carry_no_pre_u1_markup(name):
     source = (TEMPLATES / name).read_text()
     for retired in ('table-golf', 'row-leader', 'col-divider', 'golf-pool',
                     'hero-progress', 'golf-pick-cta', 'text-gold', 'page-hero',
-                    'row-current-user', 'loop.index', 'style="', 'card'):
+                    'row-current-user', 'loop.index', 'style="'):
         assert retired not in source, f'{name} still carries {retired!r}'
+    # No card as a container (the class, not the word: a row's name links to
+    # the member's scorecard).
+    assert not re.search(r'class="(?:[^"]* )?card(?:-[a-z-]+)?[ "]', source)
     # Copy discipline: no em dashes or double hyphens in the room's copy.
     assert '—' not in source and ' -- ' not in source
