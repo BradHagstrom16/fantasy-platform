@@ -203,11 +203,12 @@ def index():
         clock = event_clock(event, results, get_current_time())
     sheet = build_sheet(enrollments, viewer_id, lines)
 
-    # The next pick is still upcoming and before its lock. The status alone
-    # lags the lock by up to a refresh interval; the lock alone reads a
-    # missing deadline (a field sync that never ran) as open forever.
+    # The next pick is the first tournament still before its lock. Status
+    # decides only for one with no deadline yet, which the lock reads as open
+    # forever (a field sync that never ran leaves a played week without one).
     next_tournament = next(
-        (t for t in tournaments if t.status == 'upcoming' and not t.is_deadline_passed()),
+        (t for t in tournaments
+         if (not t.is_deadline_passed() if t.pick_deadline else t.status == 'upcoming')),
         None,
     )
     field_open = bool(next_tournament and next_tournament.has_sufficient_field())

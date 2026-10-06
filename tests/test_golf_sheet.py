@@ -652,6 +652,8 @@ def test_sheet_page_pencils_a_week_only_past_its_lock(app, client, season, monke
     assert 'Secretgolfer' not in body and 'Hiddenspare' not in body
     assert 'golf-pick-line' not in body and "Didn't pick (" not in body
     assert 'RivalLine' in body                                  # the line itself still shows
+    # Still the next pick: the pick form takes picks until 7:40.
+    assert 'Next: Minegolfer at the Masters Tournament' in body
 
 
 def test_sheet_page_turns_over_at_the_lock_before_the_status_does(app, client, season, monkeypatch):

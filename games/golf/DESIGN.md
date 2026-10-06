@@ -474,8 +474,9 @@ the rule, never around it.
 - **The week turns over at the lock, never at a status:** the Board opens, the Sheet pencils a week
   and the next pick moves on when `is_deadline_passed()` does (the pick form's own test). A sync
   writes `active` from Thursday midnight and the request hook moves `upcoming` up to a refresh
-  interval late, so status alone is wrong on both sides of the lock. The next pick also stays
-  `upcoming`, because a missing deadline reads as open. `tests/test_golf_sheet.py`.
+  interval late, so status alone is wrong on both sides of the lock. Status decides the next pick
+  only for a tournament with no deadline yet (`upcoming`), because the lock reads a missing
+  deadline as open. `tests/test_golf_sheet.py`.
 - **One clock:** `games/golf/utils.get_current_time()` is the room's now and honors `GOLF_FAKE_NOW`
   only when `ENVIRONMENT` is `development` or `testing` (a naive value is UTC, a malformed one falls
   back to real time, production never reads it). The lock (`is_deadline_passed`),
