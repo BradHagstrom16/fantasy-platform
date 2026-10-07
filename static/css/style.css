@@ -4649,7 +4649,7 @@ body.game-golf {
 }
 /* On a phone the money takes the line under the name instead of the
    column beside it, so no name has to break. */
-@media (max-width: 575.98px) {
+@media (max-width: 575px) {
   .home-shell .hl-panel--golf .roll-row { grid-template-columns: 36px 1fr; row-gap: .15rem; }
   .home-shell .hl-panel--golf .roll-pts { grid-column: 2; justify-self: start; }
 }
