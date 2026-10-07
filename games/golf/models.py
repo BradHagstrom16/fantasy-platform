@@ -496,15 +496,22 @@ class GolfPick(db.Model):
 
         Call before re-resolving a pick (e.g., after admin override or
         re-processing). Only deletes the old active player's usage if that
-        player isn't active in any other resolved pick for this user.
+        player isn't active in any other resolved pick of this user's in the
+        same season (a golfer spent last season is a different ledger).
         """
         if self.active_player_id:
-            other_active = GolfPick.query.filter(
-                GolfPick.user_id == self.user_id,
-                GolfPick.active_player_id == self.active_player_id,
-                GolfPick.id != self.id,
-                GolfPick.points_earned.isnot(None),
-            ).first()
+            other_active = (
+                GolfPick.query
+                .join(GolfTournament, GolfPick.tournament_id == GolfTournament.id)
+                .filter(
+                    GolfPick.user_id == self.user_id,
+                    GolfPick.active_player_id == self.active_player_id,
+                    GolfPick.id != self.id,
+                    GolfPick.points_earned.isnot(None),
+                    GolfTournament.season_year == season_year,
+                )
+                .first()
+            )
             if not other_active:
                 GolfSeasonPlayerUsage.query.filter_by(
                     user_id=self.user_id,

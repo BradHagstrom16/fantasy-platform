@@ -195,7 +195,9 @@ def test_both_games_share_one_roster_count_floor():
     (0 would silently defeat the floor), so pin the ADR-051 magnitude too."""
     from games.cfb.services import lounge as cfb_lounge
     from games.docket.services import lounge as docket_lounge
+    from games.golf.services import lounge as golf_lounge
     assert cfb_lounge.ROSTER_COUNT_FLOOR == docket_lounge.ROSTER_COUNT_FLOOR
+    assert cfb_lounge.ROSTER_COUNT_FLOOR == golf_lounge.ROSTER_COUNT_FLOOR
     assert cfb_lounge.ROSTER_COUNT_FLOOR == 6
 
 

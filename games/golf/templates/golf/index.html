@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% from 'golf/_sheet.html' import dollars, money, pick_line, read_time with context %}
+{% from 'golf/_champion.html' import champion_fold with context %}
 
 {% block title %}The Sheet · The Pay Sheet{% endblock %}
 
@@ -25,14 +26,22 @@
         {% elif next_tournament %}
             <span>{{ next_tournament.name }}</span>
             <span class="golf-nowrap">{% if field_open %}picks lock {{ next_lock }}{% else %}the field publishes Tuesday{% endif %}</span>
-        {% else %}
+        {% elif season_final %}
             <span>{{ season_year }} season</span>
             <span class="golf-nowrap">every line is banked</span>
+        {% else %}
+            <span>{{ season_year }} season</span>
+            <span class="golf-nowrap">the schedule is not posted yet</span>
         {% endif %}
         </span>
     </p>
 
     <div class="golf-main">
+
+        {# Final (§4.3): the champion recorded, the fold leads the sheet. #}
+        {% if champions %}
+        {{ champion_fold(champions, champion_line[0], champion_line[1], champion_line[2]) }}
+        {% endif %}
 
         {% if sheet.mine %}
         {% set me = sheet.mine %}
@@ -60,7 +69,7 @@
 
         <div class="golf-sheet-head">
             <h1 class="golf-title">The Sheet</h1>
-            {% if sheet.rows and not clock %}<span class="golf-state golf-state--banked">Banked</span>{% endif %}
+            {% if sheet.rows and not clock and schedule_posted %}<span class="golf-state golf-state--banked">Banked</span>{% endif %}
         </div>
 
         {% if sheet.rows %}

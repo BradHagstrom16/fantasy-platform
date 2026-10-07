@@ -4509,10 +4509,10 @@ body.game-golf {
    Slug-suffixed hooks map each headliner's panel and conversion card onto
    its lounge accent tokens (tokens.css, the single source of the hues).
    Components consume var(--hl-accent) / var(--hl-ground) with CCC
-   fallbacks; templates only ever emit the class, never a color. Adding a
-   third headliner (The Pay Sheet, golf, ~Jan 2027: the --lounge-golf-* pen
-   pair, games/golf/DESIGN.md §3) means one new token pair and one new
-   mapping rule here, nothing else. */
+   fallbacks; templates only ever emit the class, never a color. The third
+   headliner (The Pay Sheet, golf, U7 2026-10-06: the --lounge-golf-* pen
+   pair, games/golf/DESIGN.md §3) cost one token pair, one mapping rule, and
+   the trio grid below. */
 .home-shell .hl-panel--cfb,
 .home-shell .join--cfb {
   --hl-accent: var(--lounge-cfb-accent);
@@ -4532,6 +4532,16 @@ body.game-golf {
   --hl-wash: linear-gradient(200deg,
       color-mix(in srgb, var(--lounge-docket-ground) 32%, transparent),
       color-mix(in srgb, var(--lounge-docket-ground) 8%, transparent) 55%);
+}
+.home-shell .hl-panel--golf,
+.home-shell .join--golf {
+  --hl-accent: var(--lounge-golf-accent);
+  --hl-accent-bright: var(--lounge-golf-accent-bright);
+  --hl-ground: var(--lounge-golf-ground);
+  /* The pen is a cool, saturated blue on purple: a middle hand on the wash. */
+  --hl-wash: linear-gradient(180deg,
+      color-mix(in srgb, var(--lounge-golf-ground) 24%, transparent),
+      color-mix(in srgb, var(--lounge-golf-ground) 6%, transparent) 55%);
 }
 
 /* --- The Undercard (Variant D): stage, duo grid, seam, panels, cards ---
@@ -4627,6 +4637,56 @@ body.game-golf {
   }
   .home-shell .hl-duo--paired > *:nth-child(2) { order: 1; }
   .home-shell .hl-duo--paired > *:nth-child(3) { order: 3; }
+}
+
+/* A summons phrase that stays whole at a wrap: a place with its dot, a lock
+   with its "CT." (the Pay Sheet's live card). */
+.home-shell .hl-nowrap { white-space: nowrap; }
+
+/* The Pay Sheet's final sheet on the bill: the money is wider than a
+   points figure, so the figure sets smaller and the name column may shrink
+   and break a long name rather than run under the money. */
+.home-shell .hl-panel--golf .roll-meta { min-width: 0; }
+/* The money keeps a real gap from the name and the You chip in a trio column. */
+.home-shell .hl-panel--golf .roll-row { column-gap: .75rem; }
+.home-shell .hl-panel--golf .roll-pts {
+  margin-left: .25rem;
+  font-size: 1.1rem;
+  white-space: nowrap;
+}
+/* On a phone the money takes the line under the name instead of the
+   column beside it, so no name has to break. */
+@media (max-width: 575px) {
+  .home-shell .hl-panel--golf .roll-row { grid-template-columns: 36px 1fr; row-gap: .15rem; }
+  .home-shell .hl-panel--golf .roll-pts { grid-column: 2; justify-self: start; }
+}
+
+/* Three headliners (U7, The Pay Sheet): three equal columns from 1100px,
+   two gold hairlines at the gaps and no seal (the seal is the pair's
+   centre; a trio has none). Below 1100px the base single column: three
+   panels stacked, no seams, no seal. Not two-and-one: a full-width third
+   panel would bill that game as the undercard, and the lounge bills every
+   headliner as an equal (root DESIGN.md §1.6). */
+@media (min-width: 1100px) {
+  .home-shell .hl-duo--trio {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    column-gap: 2rem;
+    align-items: stretch;
+  }
+  .home-shell .hl-duo--trio::before,
+  .home-shell .hl-duo--trio::after {
+    content: '';
+    position: absolute;
+    top: 8px;
+    bottom: 8px;
+    width: 1px;
+    background: linear-gradient(180deg, transparent,
+        rgba(201, 162, 39, .5) 18%, rgba(201, 162, 39, .5) 82%, transparent);
+  }
+  /* The seams sit in the gaps: a third of the width less a third of the
+     gaps, plus half a gap, from each edge. */
+  .home-shell .hl-duo--trio::before { left: calc((100% - 4rem) / 3 + 1rem); }
+  .home-shell .hl-duo--trio::after { right: calc((100% - 4rem) / 3 + 1rem); }
 }
 
 /* Headliner panel: Ceremonial ground carrying the game's wash. */
@@ -5114,7 +5174,7 @@ body.game-cfb .card.settle-tab {
 /* === THE PAY SHEET (golf) === */
 /* Doctrine: games/golf/DESIGN.md. The sheet primitives (U1 standings, U3 the
    board) close this section; the rules above them are the pre-U1 generic port,
-   still dressing schedule, my picks and admin until their clusters retire them. */
+   still dressing the schedule page until its own pass retires them. */
 
 /* Golf table — dark green header, themed hover */
 .table-golf > thead > tr > th {
@@ -5132,14 +5192,6 @@ body.game-cfb .card.settle-tab {
    color only (.table-cfb crimson, .table-worldcup red) — never a stripe. */
 .row-current-user > td {
   background: rgba(184,153,62,.08) !important;
-}
-
-/* Column divider — visual separator between season and tournament data */
-.col-divider {
-  border-left: 2px solid rgba(0,103,71,.12) !important;
-}
-.table-golf > thead > tr > th.col-divider {
-  border-left: 2px solid rgba(0,103,71,.25) !important;
 }
 
 /* Major tournament badge */
@@ -5171,36 +5223,6 @@ body.game-cfb .card.settle-tab {
 .golf-empty-icon {
   font-size: 3rem;
   color: var(--game-accent);
-}
-
-/* Tom Select overrides — golf palette integration */
-body.game-golf .ts-control {
-  border-color: rgba(0,103,71,.15);
-  border-radius: var(--radius);
-}
-body.game-golf .ts-control:focus-within {
-  border-color: var(--game-primary-light);
-  box-shadow: 0 0 0 3px rgba(0,103,71,.15);
-}
-body.game-golf .ts-dropdown {
-  border-color: rgba(0,103,71,.12);
-  box-shadow: var(--shadow-md);
-  border-radius: var(--radius);
-}
-body.game-golf .ts-dropdown .option.active {
-  background: rgba(0,103,71,.08);
-  color: var(--game-primary-dark);
-}
-
-@media (max-width: 767px) {
-  body.game-golf .ts-control {
-    min-height: 48px !important;
-    font-size: 1rem !important;
-  }
-  body.game-golf .ts-dropdown .option {
-    padding: .6rem .75rem !important;
-    font-size: 1rem !important;
-  }
 }
 
 /* ── The sheet primitives (U1 standings, U3 the board) ─────────────
@@ -6840,6 +6862,266 @@ body.game-cfb {
   --shadow-md:               0 6px 20px rgba(8,3,4,.6);
   --shadow-lg:               0 12px 40px rgba(8,3,4,.65);
 }
+
+
+/* ── The champion fold (U7, §8.23): the winner on an ink rule, the figure
+   banked, one pencil line on whether the club's record has it. No band, no
+   fill, no gold: the room's materials say it. */
+.golf-champion {
+  margin: 0 0 2.25rem;
+  padding-top: .75rem;
+  border-top: 2px solid var(--text-primary);
+}
+.golf-champion > .golf-label { margin: 0 0 .5rem; }
+.golf-champion-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.golf-champion-list > li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: .25rem 1rem;
+  padding: .375rem 0 .5rem;
+}
+.golf-champion-list > li + li { border-top: 1px solid var(--golf-rule); }
+.golf-champion-name {
+  font-weight: 500;
+  font-size: 1.35rem;
+  line-height: 1.25;
+  color: var(--text-primary);
+}
+.golf-champion-list .golf-money { font-size: 1.25rem; }
+/* The fold's line opens the race leaf under it; the leaf keeps its ink rule. */
+.golf-main > .golf-champion + .golf-leaf { margin-top: 2.25rem; }
+
+/* ── The back office (U6): the ledger book ──────────────────────────
+   games/golf/DESIGN.md §8.20 to §8.22. The commissioner's pages are leaves
+   of one book on the room's paper: the same sheet, chips, folds and text
+   actions, and one new mark, the meter (the burn hatch, the room's one
+   texture, drawn as the month's reads). */
+
+/* The book line: the five pages of the book, the one in hand unlinked. */
+.golf-book {
+  margin: 0 0 1.75rem;
+  padding: .75rem 0 .25rem;
+  border-top: 1px solid var(--golf-rule);
+  border-bottom: 1px solid var(--golf-rule);
+}
+.golf-book-here {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+.golf-leaf-aside {
+  font-size: .95rem;
+  font-variant-numeric: tabular-nums lining-nums;
+  color: var(--text-secondary);
+}
+/* A ledger's tiles open on a hairline (the ledger's own rule is the ink one)
+   and close on theirs; a foot under them adds no rule. */
+.golf-leaf .golf-tiles {
+  margin: .875rem 0 0;
+  border-top: 1px solid var(--golf-rule);
+}
+.golf-tiles + .golf-foot { border-top: 0; }
+.golf-leaf .golf-sheet { margin-top: .875rem; }
+
+/* The meter: the month's reads as the burn hatch, the figure beside it. */
+.golf-meter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .5rem 1rem;
+  margin: .875rem 0 0;
+}
+.golf-meter-figure {
+  font-weight: 500;
+  font-size: 1.25rem;
+  line-height: 1.25;
+  font-variant-numeric: tabular-nums lining-nums;
+  color: var(--text-primary);
+}
+.golf-burn-bar.golf-meter-bar {
+  flex: 1 1 10rem;
+  max-width: 20rem;
+  height: 12px;
+}
+.golf-meter + .golf-line { margin-top: .625rem; }
+
+/* The book's sheets: a state or an action where the money column would be,
+   and the entry fee's check at the end of a roster row. */
+.golf-sheet .golf-sheet-state {
+  width: 1%;
+  text-align: right;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+.golf-sheet-state form { display: inline; }
+.golf-sheet-state .golf-state { display: inline; }
+.golf-sheet .golf-sheet-fee {
+  width: 1%;
+  padding-left: .75rem;
+  text-align: right;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+/* A tile's note stays with its figure ("$15 out", never "out" alone); on a
+   phone, where three tiles share the width, every note takes the line under
+   its figure and every value is a two-line box, so the three figures share a
+   baseline whether or not a label wraps or a note exists. */
+.golf-tiles dd .golf-tiles-note { white-space: nowrap; }
+@media (max-width: 575px) {
+  .golf-tiles:not(.golf-tiles--pair) dd { min-height: 3rem; }
+  .golf-tiles:not(.golf-tiles--pair) dd .golf-tiles-note { display: block; }
+}
+/* An email is one word: it breaks at the @ first (a <wbr> in the markup),
+   and anywhere only when the local part alone is wider than the column. */
+.golf-email { overflow-wrap: anywhere; }
+/* The book's text actions (Process, Save, Cancel, Write it differently)
+   are full 44px targets; the rows already stand that tall. */
+.golf-field-act .golf-linkbtn,
+.golf-sheet-state .golf-linkbtn,
+.golf-penalty-field .golf-linkbtn,
+.golf-confirm-act .golf-linkbtn,
+.golf-pen > .golf-linkbtn {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}
+.golf-pen > .golf-linkbtn { margin-top: 1.25rem; }
+
+/* The check: a native checkbox in the pen, a 44px target, its state chip beside it. */
+.golf-check {
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  min-height: 44px;
+  cursor: pointer;
+}
+.golf-check > input {
+  width: 22px;
+  height: 22px;
+  margin: 0;
+  accent-color: var(--game-primary);
+  cursor: pointer;
+}
+.golf-check > input:focus-visible {
+  outline: 2px solid var(--game-primary);
+  outline-offset: 2px;
+}
+/* On a phone the chip drops under its check so a roster row keeps its money. */
+@media (max-width: 575px) {
+  .golf-sheet-fee .golf-check {
+    flex-direction: column;
+    align-items: flex-end;
+    gap: .25rem;
+  }
+}
+
+/* The penalty line on a tab row: owed, outstanding, and the paid figure's input. */
+.golf-penalty {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .375rem .625rem;
+  margin-top: .375rem;
+  font-size: .95rem;
+  color: var(--text-secondary);
+}
+.golf-penalty-field {
+  display: inline-flex;
+  align-items: center;
+  gap: .375rem;
+  white-space: nowrap;
+}
+.golf-penalty-field > .golf-input { width: 6.5rem; }
+
+/* Recent overrides: the member and the date on one line, the event under it. */
+.golf-recent {
+  margin: .875rem 0 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--golf-rule);
+  border-bottom: 1px solid var(--golf-rule);
+}
+.golf-recent > li {
+  padding: .625rem 0;
+  border-top: 1px solid var(--golf-rule);
+}
+.golf-recent > li:first-child { border-top: 0; }
+.golf-recent-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.golf-recent-line,
+.golf-recent-date {
+  font-size: .95rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+.golf-recent-date {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums lining-nums;
+}
+.golf-recent-line { display: block; }
+
+/* The room's input, the select's twin (§7.31): 44px, a pencil frame, the pen ring. */
+.golf-input {
+  min-height: 44px;
+  max-width: 100%;
+  padding: .5rem .625rem;
+  border: 1px solid var(--text-secondary);
+  border-radius: 2px;
+  background: var(--surface-card);
+  color: var(--text-primary);
+  font: inherit;
+}
+.golf-input:focus-visible {
+  outline: 2px solid var(--game-primary);
+  outline-offset: 2px;
+}
+textarea.golf-input { width: 100%; resize: vertical; }
+
+/* The pen (the override form): a label over each control, two across from 576px. */
+.golf-pen-field { margin: 1rem 0 0; }
+.golf-pen-field > .golf-label { margin-bottom: .375rem; }
+.golf-pen-field > .golf-select { width: 100%; }
+.golf-pen-grid { display: grid; column-gap: 1.5rem; }
+@media (min-width: 576px) {
+  .golf-pen-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+.golf-pen .golf-line { margin-top: 1rem; }
+.golf-pen .golf-btn { margin-top: 1.25rem; }
+.golf-pen-note {
+  display: block;
+  font-size: .95rem;
+  font-style: italic;
+  color: var(--text-secondary);
+}
+
+/* The confirm (the gate): a note on the ink rule, the money in ink, two actions. */
+.golf-confirm {
+  margin: 0 0 1.75rem;
+  padding: .75rem 0 1.25rem;
+  border-top: 2px solid var(--text-primary);
+  border-bottom: 1px solid var(--golf-rule);
+}
+.golf-confirm > .golf-label { margin-bottom: .5rem; }
+.golf-confirm-act {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .75rem 1.25rem;
+  margin-top: 1rem;
+}
+.golf-confirm-act .golf-btn { margin: 0; }
 
 /* === CFB SURVIVOR POOL === */
 

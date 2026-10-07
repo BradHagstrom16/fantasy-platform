@@ -17,10 +17,10 @@ Mirrors the CFB §7 conformance work. Locks the platform-integration fixes:
 - Email HTML safety: dynamic user/tournament/golfer names are escaped.
 
 Golf tests run against in-memory SQLite via create_app('testing').
-The confirm-before-reresolve gate the standalone carries is intentionally
-NOT ported here — see test_admin_override_complete_tournament_reresolves_
-immediately for the reconciliation of the roadmap's named
-test_admin_override_requires_confirm_for_complete.
+The confirm-before-re-resolve gate (Golf Phase U6): an override on a
+complete tournament recomputes the member's money, so the first POST renders
+the consequence and commits nothing; only ``confirm=1`` re-resolves. Ported
+from the standalone's test_override_confirmation_gate.
 """
 from datetime import UTC, datetime, timedelta
 
@@ -421,15 +421,18 @@ def test_final_mode_gated_on_results_finalized(app, client):
 # Admin override hardening
 # ============================================================================
 
-def _override_post(client, tournament, user, primary, backup, note='t'):
-    return client.post('/golf/admin/override-pick', data={
+def _override_post(client, tournament, user, primary, backup, note='t', confirm=False):
+    data = {
         'csrf_token': 'x',
         'tournament_id': tournament.id,
         'user_id': user.id,
         'primary_player_id': primary.id,
         'backup_player_id': backup.id,
         'override_note': note,
-    }, follow_redirects=True)
+    }
+    if confirm:
+        data['confirm'] = '1'  # the U6 gate: a complete tournament re-resolves only on confirm
+    return client.post('/golf/admin/override-pick', data=data, follow_redirects=True)
 
 
 def test_admin_override_rejects_used_or_non_field_player(app, client, monkeypatch):
@@ -579,7 +582,7 @@ def test_admin_override_complete_resolution_failure_rolls_back(app, client, monk
     # No GolfTournamentResult rows → resolve_pick() returns False.
     _login(client, admin)
 
-    resp = _override_post(client, tournament, member, a, b)
+    resp = _override_post(client, tournament, member, a, b, confirm=True)
     assert 'could not be resolved' in resp.get_data(as_text=True)
     with app.app_context():
         assert GolfPick.query.filter_by(
@@ -616,19 +619,8 @@ def test_admin_override_excludes_own_pick_players_from_used_ids(app, client, mon
     assert f'{elsewhere.full_name()} (used)' in body
 
 
-def test_admin_override_complete_tournament_reresolves_immediately(app, client, monkeypatch):
-    """Reconciles the roadmap's test_admin_override_requires_confirm_for_complete.
-
-    The standalone gates a completed-tournament override behind a two-step
-    confirm preview. That confirm gate is a new interaction surface (a preview
-    screen), out of scope for this conformance PR and deferred to a later
-    hardening/UI slice. This test documents+locks the CURRENT behavior: a valid
-    override on a complete tournament re-resolves and commits in one step.
-    """
-    _set_status(monkeypatch, 'golf', 'open')
-    admin = _make_user('gadmin', is_admin=True)
-    member = _make_user('member')
-    enrollment = _make_enrollment(member)
+def _banked_tournament_with_two_golfers():
+    """A complete, finalized event where A won $250,000 and B missed the cut."""
     tournament = _make_tournament(status='complete', results_finalized=True)
     a = _make_player('A', 'Alpha', 'One')
     b = _make_player('B', 'Bravo', 'Two')
@@ -636,14 +628,142 @@ def test_admin_override_complete_tournament_reresolves_immediately(app, client, 
     _add_to_field(tournament, b)
     _make_result(tournament, a, earnings=250000, final_position='1')
     _make_result(tournament, b, earnings=0, final_position='CUT', status='cut')
+    return tournament, a, b
+
+
+def test_admin_override_on_a_complete_tournament_requires_confirm(app, client, monkeypatch):
+    """The first POST on a complete tournament renders the consequence and
+    commits nothing: no pick, no usage, the member's total untouched."""
+    _set_status(monkeypatch, 'golf', 'open')
+    admin = _make_user('gadmin', is_admin=True)
+    member = _make_user('member', display_name='Casey Member')
+    enrollment = _make_enrollment(member)
+    tournament, a, b = _banked_tournament_with_two_golfers()
     _login(client, admin)
 
-    resp = _override_post(client, tournament, member, a, b)
+    resp = client.post('/golf/admin/override-pick', data={
+        'csrf_token': 'x',
+        'tournament_id': tournament.id,
+        'user_id': member.id,
+        'primary_player_id': a.id,
+        'backup_player_id': b.id,
+        'override_note': 'late entry',
+    })
+    assert resp.status_code == 200
+    body = resp.get_data(as_text=True)
+    assert 'Confirm before re-resolving' in body
+    assert 'Casey Member' in body
+    assert 'Alpha One' in body
+    assert 'name="confirm" value="1"' in body
+    assert 'value="late entry"' in body
+    with app.app_context():
+        assert GolfPick.query.filter_by(
+            user_id=member.id, tournament_id=tournament.id).first() is None
+        assert GolfSeasonPlayerUsage.query.filter_by(user_id=member.id).count() == 0
+        assert db.session.get(GolfEnrollment, enrollment.id).total_points == 0
+
+
+def test_admin_override_confirm_keeps_an_existing_pick_until_confirmed(app, client, monkeypatch):
+    """With a resolved pick in place, the unconfirmed POST shows old -> new
+    and leaves the pick, its money and its usage exactly as they were."""
+    _set_status(monkeypatch, 'golf', 'open')
+    admin = _make_user('gadmin', is_admin=True)
+    member = _make_user('member')
+    _make_enrollment(member)
+    tournament, a, b = _banked_tournament_with_two_golfers()
+    c = _make_player('C', 'Charlie', 'Three')
+    d = _make_player('D', 'Delta', 'Four')
+    _add_to_field(tournament, c)
+    _add_to_field(tournament, d)
+    _make_result(tournament, c, earnings=100000, final_position='5')
+    _make_result(tournament, d, earnings=0, final_position='CUT', status='cut')
+    _make_pick(member, tournament, c, d, active_player_id=c.id, points_earned=100000)
+    _mark_used(member, c)
+    _login(client, admin)
+
+    body = _override_post(client, tournament, member, a, b).get_data(as_text=True)
+    assert 'Confirm before re-resolving' in body
+    assert 'Charlie Three' in body and 'Alpha One' in body
+    with app.app_context():
+        pick = GolfPick.query.filter_by(
+            user_id=member.id, tournament_id=tournament.id).first()
+        assert pick.primary_player_id == c.id
+        assert pick.points_earned == 100000
+        assert GolfSeasonPlayerUsage.query.filter_by(
+            user_id=member.id, player_id=c.id).count() == 1
+
+
+def test_admin_override_confirmed_commits_and_reresolves(app, client, monkeypatch):
+    """confirm=1 writes the override, re-resolves the pick and recalculates
+    the season total in one step."""
+    _set_status(monkeypatch, 'golf', 'open')
+    admin = _make_user('gadmin', is_admin=True)
+    member = _make_user('member')
+    enrollment = _make_enrollment(member)
+    tournament, a, b = _banked_tournament_with_two_golfers()
+    _login(client, admin)
+
+    resp = client.post('/golf/admin/override-pick', data={
+        'csrf_token': 'x',
+        'tournament_id': tournament.id,
+        'user_id': member.id,
+        'primary_player_id': a.id,
+        'backup_player_id': b.id,
+        'override_note': 't',
+        'confirm': '1',
+    }, follow_redirects=True)
     assert resp.status_code == 200
     with app.app_context():
         pick = GolfPick.query.filter_by(
             user_id=member.id, tournament_id=tournament.id).first()
         assert pick is not None
-        assert pick.points_earned == 250000  # re-resolved immediately, no confirm
+        assert pick.points_earned == 250000
         e = db.session.get(GolfEnrollment, enrollment.id)
         assert e.total_points == 250000
+
+
+def test_admin_override_upcoming_tournament_needs_no_confirm(app, client, monkeypatch):
+    """Before the event, an override changes no money: it saves in one step."""
+    _set_status(monkeypatch, 'golf', 'open')
+    admin = _make_user('gadmin', is_admin=True)
+    member = _make_user('member')
+    _make_enrollment(member)
+    tournament = _make_tournament(status='upcoming')
+    a = _make_player('A', 'Alpha', 'One')
+    b = _make_player('B', 'Bravo', 'Two')
+    _add_to_field(tournament, a)
+    _add_to_field(tournament, b)
+    _login(client, admin)
+
+    body = _override_post(client, tournament, member, a, b).get_data(as_text=True)
+    assert 'Confirm before re-resolving' not in body
+    with app.app_context():
+        assert GolfPick.query.filter_by(
+            user_id=member.id, tournament_id=tournament.id).first() is not None
+
+
+def test_clear_resolution_is_season_scoped(app):
+    """Clearing this season's pick drops this season's usage row even when the
+    same golfer counted for the member in an earlier season."""
+    member = _make_user('member')
+    _make_enrollment(member)
+    _make_enrollment(member, season_year=SEASON - 1)
+    golfer = _make_player('X', 'Xavier', 'Ten')
+    other = _make_player('Y', 'Yves', 'Eleven')
+    old = _make_tournament(name='Last Year Open', status='complete',
+                           results_finalized=True, season_year=SEASON - 1)
+    this = _make_tournament(status='complete', results_finalized=True)
+    _make_pick(member, old, golfer, other, active_player_id=golfer.id, points_earned=5000)
+    _mark_used(member, golfer, season_year=SEASON - 1)
+    pick = _make_pick(member, this, golfer, other, active_player_id=golfer.id,
+                      points_earned=7000)
+    _mark_used(member, golfer)
+
+    pick.clear_resolution(SEASON)
+    db.session.commit()
+
+    assert pick.points_earned is None and pick.active_player_id is None
+    assert GolfSeasonPlayerUsage.query.filter_by(
+        user_id=member.id, player_id=golfer.id, season_year=SEASON).count() == 0
+    assert GolfSeasonPlayerUsage.query.filter_by(
+        user_id=member.id, player_id=golfer.id, season_year=SEASON - 1).count() == 1

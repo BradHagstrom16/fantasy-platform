@@ -1,0 +1,35 @@
+{# The Pay Sheet conversion card: the club's third corner on the logged-out
+   bill. The room's voice, the literal lock when the schedule has one.
+   Zero .golf-* classes: identity here is copy plus the lounge accent hooks
+   (join--golf). The seat stays open all season while the game is open
+   (Brad, 2026-10-06); the ask retires only when the registry closes it. #}
+{% set g = h.ctx %}
+<div class="join hl-conv join--golf">
+  <div class="join-head">
+    <div class="seal">◇ Opening Round &middot; The Pay Sheet &rsquo;{{ '%02d'|format(g.season_year % 100) }}</div>
+    {# Floor-gated display count — see the CFB card's twin comment. #}
+    {% if g.roster_count > 0 %}
+    <div class="count">
+      <span class="v">{{ g.roster_count }}</span> seat{{ '' if g.roster_count == 1 else 's' }} at the table
+    </div>
+    {% endif %}
+  </div>
+  <span class="join-icon" aria-hidden="true">{{ h.entry.emoji }}</span>
+  <h2 class="join-title">{{ h.entry.display_name }}</h2>
+  {# Genre line for the cold visitor: the name alone doesn't say golf. #}
+  <p class="hl-conv-sub">Golf One &amp; Done across the PGA Tour season</p>
+  <ul class="hl-tape">
+    <li>One golfer a week, with a backup</li>
+    <li>His prize money is your score</li>
+    <li>Spend each golfer once</li>
+  </ul>
+  <div class="hl-conv-meta">{% if g.first_lock %}{{ g.first_event }} locks <span class="hl-nowrap">{{ g.first_lock }}</span>{% else %}The schedule posts in January{% endif %}</div>
+  {% if h.join_open %}
+  <a class="hl-cta" href="{{ url_for('auth.register', next=url_for(h.entry.blueprint_join)) }}">
+    Join the Pay Sheet
+    <i class="bi bi-arrow-right" aria-hidden="true"></i>
+  </a>
+  {% else %}
+  <div class="hl-conv-closed">The sheet is closed. Late seats are granted by the Commish.</div>
+  {% endif %}
+</div>

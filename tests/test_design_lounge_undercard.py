@@ -53,6 +53,19 @@ def test_paired_headliners_are_equal_height():
     )
 
 
+def test_trio_headliners_are_equal_too():
+    """`.hl-duo--trio` (U7, The Pay Sheet as a third headliner): three equal
+    columns, stretched to one height, no seal (the seal is the pair's
+    centre). The pair's rule is untouched by it."""
+    region = _home_region()
+    body = _rule_body(region, '.home-shell .hl-duo--trio')
+    assert 'repeat(3, minmax(0, 1fr))' in body
+    assert re.search(r'align-items:\s*stretch', body)
+    assert '.hl-duo--trio .hl-seal' not in region
+    paired = _rule_body(region, '.home-shell .hl-duo--paired')
+    assert 'minmax(0, 1fr) minmax(0, 1fr)' in paired
+
+
 def test_game_tiles_stay_on_one_row():
     """`.court-games` lays every tile on one line, count-agnostically."""
     region = _home_region()

@@ -35,7 +35,18 @@ from games.golf.models import (
     GolfTournamentField,
     GolfTournamentResult,
 )
+from games.golf.services.api_usage import read_api_usage
 from games.golf.services.field import build_field, search_key, top_unspent_ids
+from games.golf.services.reads import (
+    next_tournament as _next_tournament,
+)
+from games.golf.services.reads import (
+    season_enrollments,
+    season_final,
+    season_tournaments,
+    tournament_picks,
+    tournament_results,
+)
 from games.golf.services.scorecard import build_scorecard, revealed
 from games.golf.services.sheet import (
     build_board,
@@ -62,6 +73,7 @@ from games.golf.utils import (
     get_current_time,
     the_event,
 )
+from models.records import finishes_for
 from models.user import User
 
 logger = logging.getLogger(__name__)
@@ -124,6 +136,7 @@ def inject_golf_globals():
         'entry_fee': current_app.config['ENTRY_FEE'],
         'penalty_per_incident': PENALTY_PER_INCIDENT,
         'format_score_to_par': format_score_to_par,
+        'format_lock': format_lock,
         'the_event': the_event,
     }
 
@@ -165,53 +178,27 @@ def refresh_tournament_states():
 # Helpers
 # ============================================================================
 
-def _season_enrollments(season_year):
-    """A season's enrollees with their users loaded (no query per row)."""
-    return db.session.scalars(
-        select(GolfEnrollment)
-        .options(joinedload(GolfEnrollment.user))
-        .filter_by(season_year=season_year)
-    ).all()
+def _champions(season_year, fallback):
+    """The season's champion(s) for the fold, once every event is banked.
 
-
-def _tournament_picks(tournament_id):
-    """A tournament's picks with the member and both golfers loaded."""
-    return db.session.scalars(
-        select(GolfPick)
-        .options(
-            joinedload(GolfPick.user),
-            joinedload(GolfPick.primary_player),
-            joinedload(GolfPick.backup_player),
-        )
-        .filter_by(tournament_id=tournament_id)
-    ).all()
-
-
-def _tournament_results(tournament_id):
-    return db.session.scalars(
-        select(GolfTournamentResult).filter_by(tournament_id=tournament_id)
-    ).all()
-
-
-def _season_tournaments(season_year):
-    return db.session.scalars(
-        select(GolfTournament)
-        .filter_by(season_year=season_year)
-        .order_by(GolfTournament.start_date)
-    ).all()
-
-
-def _next_tournament(tournaments):
-    """The next pick: the first tournament still before its lock.
-
-    Status decides only for one with no deadline yet, which the lock reads as
-    open forever (a field sync that never ran leaves a played week without one).
+    From the club's record when the Commish has closed the season (the
+    linked place-1 rows, one query), else ``fallback``: the page's own
+    leaders, with ``on_record`` False so the fold says the record is still
+    open. Each champion is {user, name, figure}.
     """
-    return next(
-        (t for t in tournaments
-         if (not t.is_deadline_passed() if t.pick_deadline else t.status == 'upcoming')),
-        None,
-    )
+    on_record = [row for row in finishes_for('golf', season_year) if row.place == 1]
+    if on_record:
+        return [{'user': row.user, 'name': row.name, 'figure': row.detail}
+                for row in on_record], True
+    return fallback, False
+
+
+def _champion_line(on_record, season_year, open_text, open_url, open_link):
+    """The fold's pencil sentence and its link."""
+    if on_record:
+        return ('On the club’s record.',
+                url_for('records.index') + f'#board-golf-{season_year}', 'The Record')
+    return open_text, open_url, open_link
 
 
 def _selected_season():
@@ -241,8 +228,8 @@ def index():
 
     # Standings are golf-enrollment-scoped (ADR-036): only current-season golf
     # enrollees have a line. The sheet is never padded with platform users.
-    enrollments = _season_enrollments(season_year)
-    tournaments = _season_tournaments(season_year)
+    enrollments = season_enrollments(season_year)
+    tournaments = season_tournaments(season_year)
 
     # The week turns over at the lock (the pick form's own test), never at a
     # status. The event the sheet is pencilling, on the course or played and
@@ -251,8 +238,8 @@ def index():
     event = live_event([t for t in tournaments if t.is_deadline_passed()])
     lines = clock = None
     if event:
-        results = _tournament_results(event.id)
-        lines = week_lines(event, _tournament_picks(event.id), results)
+        results = tournament_results(event.id)
+        lines = week_lines(event, tournament_picks(event.id), results)
         clock = event_clock(event, results, get_current_time())
     sheet = build_sheet(enrollments, viewer_id, lines)
 
@@ -282,6 +269,16 @@ def index():
 
     banked_boards = [t for t in tournaments if t.results_finalized]
 
+    # Final (DESIGN.md §4.3): every event banked, the champion leads the sheet.
+    final = season_final(tournaments)
+    champions, on_record = (_champions(season_year, [
+        {'user': row.user, 'name': row.user.get_display_name(), 'figure': f'${row.total:,.0f}'}
+        for row in sheet.rows if row.rank == 1
+    ]) if final and sheet.rows else ([], False))
+    champion_line = _champion_line(
+        on_record, season_year, 'The season is banked.',
+        url_for('golf.record_room'), 'The Record Room')
+
     # Prize pool: entry fees (season-scoped enrollments) + the major cut/DQ
     # side pot (ADR-034). Pot = flagged picks x $15 across the active season.
     entry_total = len(enrollments) * current_app.config['ENTRY_FEE']
@@ -304,6 +301,10 @@ def index():
         field_open=field_open,
         next_pick=next_pick,
         last_board=banked_boards[-1] if banked_boards else None,
+        schedule_posted=bool(tournaments),
+        season_final=final,
+        champions=champions,
+        champion_line=champion_line,
         can_join=can_join,
         entry_total=entry_total,
         total_penalty_pot=total_penalty_pot,
@@ -363,7 +364,7 @@ def tournament_detail(tournament_id):
     tournament = db.get_or_404(GolfTournament, tournament_id)
     viewer_id = current_user.id if current_user.is_authenticated else None
 
-    picks = _tournament_picks(tournament_id)
+    picks = tournament_picks(tournament_id)
     my_pick = next((p for p in picks if p.user_id == viewer_id), None)
 
     # Picks open to the room at the lock, the pick form's own test, never at a
@@ -374,10 +375,10 @@ def tournament_detail(tournament_id):
     board = clock = None
     can_pick = False
     if locked:
-        results = _tournament_results(tournament_id)
+        results = tournament_results(tournament_id)
         board = build_board(
             week_lines(tournament, picks, results),
-            _season_enrollments(tournament.season_year),
+            season_enrollments(tournament.season_year),
             viewer_id,
         )
         if not tournament.results_finalized:
@@ -463,16 +464,16 @@ def member_scorecard(user_id):
     viewer_id = current_user.id if current_user.is_authenticated else None
     this_season = season_year == current_app.config['SEASON_YEAR']
 
-    enrollments = _season_enrollments(season_year)
+    enrollments = season_enrollments(season_year)
     enrollment = next(e for e in enrollments if e.user_id == user_id)
-    tournaments = _season_tournaments(season_year)
+    tournaments = season_tournaments(season_year)
 
     # The sheet's own event and lines, so the rank, the total and the week in
     # pencil are the ones the sheet is showing.
     event = live_event([t for t in tournaments if t.is_deadline_passed()])
     lines = None
     if event:
-        lines = week_lines(event, _tournament_picks(event.id), _tournament_results(event.id))
+        lines = week_lines(event, tournament_picks(event.id), tournament_results(event.id))
     sheet = build_sheet(enrollments, viewer_id, lines)
 
     picks = db.session.scalars(
@@ -541,17 +542,32 @@ def record_room():
         abort(404)
     viewer_id = current_user.id if current_user.is_authenticated else None
 
-    enrollments = _season_enrollments(season_year)
+    enrollments = season_enrollments(season_year)
     names = _room_names(enrollments)
     race = season_race(season_year, names)
+    room = {e.user_id: e.user for e in enrollments}
+    progress = season_progress(season_year)
+
+    # Final: every event banked, the champion fold leads the room.
+    final = progress.total > 0 and progress.banked == progress.total
+    champions, on_record = (_champions(season_year, [
+        {'user': room[s['user_id']], 'name': s['name'], 'figure': f"${s['final']:,}"}
+        for s in race['series'] if s['is_leader']
+    ]) if final and race['series'] else ([], False))
+    champion_line = _champion_line(
+        on_record, season_year,
+        'The season is banked and not on the club’s record yet; the Commish closes it.',
+        url_for('golf.index'), 'The Sheet')
     return render_template('golf/record_room.html',
-        room={e.user_id: e.user for e in enrollments},
+        room=room,
+        champions=champions,
+        champion_line=champion_line,
         # A season with banked events and no money in them has no race to draw.
         has_race=race['max_value'] > 0,
         selected_season=season_year,
         this_season=season_year == current_app.config['SEASON_YEAR'],
         seasons=seasons,
-        progress=season_progress(season_year),
+        progress=progress,
         race=race,
         chart=race_chart_geometry(race, viewer_id=viewer_id if viewer_id in names else None),
         viewer_id=viewer_id,
@@ -685,6 +701,31 @@ def my_picks():
 # Admin Routes
 # ============================================================================
 
+def _penalty_counts(season_year):
+    """{user_id: flagged picks} this season, one grouped query (ADR-034)."""
+    return dict(
+        db.session.query(GolfPick.user_id, func.count(GolfPick.id))
+        .join(GolfTournament, GolfPick.tournament_id == GolfTournament.id)
+        .filter(
+            GolfPick.penalty_triggered.is_(True),
+            GolfTournament.season_year == season_year,
+        )
+        .group_by(GolfPick.user_id)
+        .all()
+    )
+
+
+def _penalty_summary(enrollments, season_year):
+    """owed / paid / outstanding per enrollee, from the derived count."""
+    counts = _penalty_counts(season_year)
+    summary = {}
+    for e in enrollments:
+        owed = counts.get(e.user_id, 0) * PENALTY_PER_INCIDENT
+        paid = e.penalty_paid or 0
+        summary[e.user_id] = {'owed': owed, 'paid': paid, 'outstanding': max(0, owed - paid)}
+    return summary
+
+
 @golf_bp.route('/admin/')
 @golf_admin_required
 def admin_dashboard():
@@ -697,23 +738,27 @@ def admin_dashboard():
     complete_count = sum(1 for t in tournaments if t.status == 'complete')
     pending_finalization = [t for t in tournaments if t.status == 'complete' and not t.results_finalized]
 
-    enrollments = GolfEnrollment.query.filter_by(season_year=season_year).all()
+    enrollments = season_enrollments(season_year)
     total_enrolled = len(enrollments)
     total_paid = sum(1 for e in enrollments if e.has_paid)
+    banked_count = sum(1 for t in tournaments if t.results_finalized)
+    penalties = _penalty_summary(enrollments, season_year)
 
-    total_users = User.query.count()
-    total_players = GolfPlayer.query.count()
-
+    now = get_current_time()
     return render_template('golf/admin/dashboard.html',
-        tournaments=tournaments,
+        tournaments=sorted(tournaments, key=lambda t: t.start_date),
         upcoming_count=upcoming_count,
         active_count=active_count,
         complete_count=complete_count,
-        pending_finalization=pending_finalization,
+        banked_count=banked_count,
+        pending_finalization=sorted(pending_finalization, key=lambda t: t.start_date),
         total_enrolled=total_enrolled,
         total_paid=total_paid,
-        total_users=total_users,
-        total_players=total_players,
+        penalty_pot=sum(p['owed'] for p in penalties.values()),
+        penalty_outstanding=sum(p['outstanding'] for p in penalties.values()),
+        # The API-usage meter: the month so far against the free tier.
+        api_usage=read_api_usage(now),
+        reads_month=now.strftime('%B %Y'),
     )
 
 
@@ -723,14 +768,23 @@ def admin_tournaments():
     """Tournament management page."""
     season_year = current_app.config['SEASON_YEAR']
 
-    tournaments = (
-        GolfTournament.query
-        .filter_by(season_year=season_year)
-        .order_by(GolfTournament.start_date)
+    tournaments = season_tournaments(season_year)
+    # One grouped query for the field sizes: no count per row.
+    field_counts = dict(
+        db.session.query(GolfTournamentField.tournament_id, func.count(GolfTournamentField.id))
+        .join(GolfTournament, GolfTournamentField.tournament_id == GolfTournament.id)
+        .filter(GolfTournament.season_year == season_year)
+        .group_by(GolfTournamentField.tournament_id)
         .all()
     )
 
-    return render_template('golf/admin/tournaments.html', tournaments=tournaments)
+    return render_template('golf/admin/tournaments.html',
+        tournaments=tournaments,
+        field_counts=field_counts,
+        banked_count=sum(1 for t in tournaments if t.results_finalized),
+        to_settle=sum(1 for t in tournaments
+                      if t.status == 'complete' and not t.results_finalized),
+    )
 
 
 @golf_bp.route('/admin/users')
@@ -739,13 +793,13 @@ def admin_users():
     """Golf user management page."""
     season_year = current_app.config['SEASON_YEAR']
 
-    users = User.query.order_by(User.username).all()
-    enrollments = GolfEnrollment.query.filter_by(season_year=season_year).all()
-    enrollment_map = {e.user_id: e for e in enrollments}
+    # This season's enrollees, the roster: never every platform user.
+    enrollments = sorted(season_enrollments(season_year),
+                         key=lambda e: e.user.get_display_name().casefold())
 
     return render_template('golf/admin/users.html',
-        users=users,
-        enrollment_map=enrollment_map,
+        enrollments=enrollments,
+        total_paid=sum(1 for e in enrollments if e.has_paid),
     )
 
 
@@ -755,37 +809,16 @@ def admin_payments():
     """Payment tracking page."""
     season_year = current_app.config['SEASON_YEAR']
 
-    enrollments = (
-        GolfEnrollment.query
-        .filter_by(season_year=season_year)
-        .all()
-    )
+    enrollments = sorted(season_enrollments(season_year),
+                         key=lambda e: e.user.get_display_name().casefold())
 
     total_paid = sum(1 for e in enrollments if e.has_paid)
     total_unpaid = sum(1 for e in enrollments if not e.has_paid)
     total_collected = total_paid * current_app.config['ENTRY_FEE']
 
-    # Major cut/DQ side pot (ADR-034): one grouped query for flagged-pick counts,
-    # then owed/paid/outstanding per enrollment + pot totals.
-    penalty_counts = dict(
-        db.session.query(GolfPick.user_id, func.count(GolfPick.id))
-        .join(GolfTournament, GolfPick.tournament_id == GolfTournament.id)
-        .filter(
-            GolfPick.penalty_triggered.is_(True),
-            GolfTournament.season_year == season_year,
-        )
-        .group_by(GolfPick.user_id)
-        .all()
-    )
-    penalty_summary = {}
-    for e in enrollments:
-        owed = penalty_counts.get(e.user_id, 0) * PENALTY_PER_INCIDENT
-        paid = e.penalty_paid or 0
-        penalty_summary[e.user_id] = {
-            'owed': owed,
-            'paid': paid,
-            'outstanding': max(0, owed - paid),
-        }
+    # Major cut/DQ side pot (ADR-034): owed/paid/outstanding per enrollment
+    # from one grouped query, then the pot totals.
+    penalty_summary = _penalty_summary(enrollments, season_year)
     total_penalty_pot = sum(s['owed'] for s in penalty_summary.values())
     total_penalty_collected = sum(s['paid'] for s in penalty_summary.values())
 
@@ -862,13 +895,18 @@ def admin_override_pick():
         .all()
     )
 
-    users = User.query.order_by(User.username).all()
+    # The member select is this season's enrollees: an override can only be
+    # written for a member with a line (validated again on POST).
+    users = sorted((e.user for e in season_enrollments(season_year)),
+                   key=lambda u: u.get_display_name().casefold())
 
     selected_tournament = None
     selected_user = None
     field_players = []
     existing_pick = None
     used_player_ids = []
+    pending_confirm = False
+    consequence = None
 
     if request.method == 'POST':
         tournament_id = request.form.get('tournament_id', type=int)
@@ -943,60 +981,88 @@ def admin_override_pick():
                     tournament_id=tournament_id, user_id=user_id,
                 ))
 
-            # Validated — safe to mutate.
-            if existing_pick:
-                # Clear old resolution for completed tournaments
-                if selected_tournament.status == 'complete':
-                    existing_pick.clear_resolution(season_year)
-                existing_pick.primary_player_id = primary_id
-                existing_pick.backup_player_id = backup_id
-                existing_pick.admin_override = True
-                existing_pick.admin_override_note = override_note or 'Admin override'
-                existing_pick.updated_at = datetime.now(UTC)
-                pick = existing_pick
+            if selected_tournament.status == 'complete' and request.form.get('confirm') != '1':
+                # The gate (U6): re-resolving a complete tournament rewrites the
+                # member's money for the week and the season total, and at a
+                # major the x1.5 and the missed-cut penalty re-fire. The first
+                # POST says so and commits nothing; the confirm form below
+                # re-posts the same selections with confirm=1.
+                new_primary = db.session.get(GolfPlayer, primary_id)
+                new_backup = db.session.get(GolfPlayer, backup_id)
+                pending_confirm = True
+                consequence = {
+                    'member': selected_user.get_display_name(),
+                    'event': selected_tournament.name,
+                    'is_major': selected_tournament.is_major,
+                    'current_total': enrollment.total_points or 0,
+                    'current_points': existing_pick.points_earned if existing_pick else None,
+                    'old_primary': existing_pick.primary_player.full_name() if existing_pick else None,
+                    'old_backup': existing_pick.backup_player.full_name() if existing_pick else None,
+                    'new_primary': new_primary.full_name(),
+                    'new_backup': new_backup.full_name(),
+                    'new_primary_id': primary_id,
+                    'new_backup_id': backup_id,
+                    'note': override_note,
+                }
             else:
-                pick = GolfPick(
-                    user_id=user_id,
-                    tournament_id=tournament_id,
-                    primary_player_id=primary_id,
-                    backup_player_id=backup_id,
-                    admin_override=True,
-                    admin_override_note=override_note or 'Admin override',
-                )
-                db.session.add(pick)
-
-            # Re-resolve for completed tournaments (enrollment guaranteed above).
-            # A failed resolve leaves cleared resolution + stale totals — roll the
-            # whole override back rather than persist that inconsistent state.
-            if selected_tournament.status == 'complete':
-                db.session.flush()
-                if not pick.resolve_pick():
-                    db.session.rollback()
-                    flash(
-                        'Override could not be resolved — result data is missing '
-                        'for the selected players.',
-                        'error',
+                # Validated — safe to mutate.
+                if existing_pick:
+                    # Clear old resolution for completed tournaments
+                    if selected_tournament.status == 'complete':
+                        existing_pick.clear_resolution(season_year)
+                    existing_pick.primary_player_id = primary_id
+                    existing_pick.backup_player_id = backup_id
+                    existing_pick.admin_override = True
+                    existing_pick.admin_override_note = override_note or 'Admin override'
+                    existing_pick.updated_at = datetime.now(UTC)
+                    pick = existing_pick
+                else:
+                    pick = GolfPick(
+                        user_id=user_id,
+                        tournament_id=tournament_id,
+                        primary_player_id=primary_id,
+                        backup_player_id=backup_id,
+                        admin_override=True,
+                        admin_override_note=override_note or 'Admin override',
                     )
-                    return redirect(url_for(
-                        'golf.admin_override_pick',
-                        tournament_id=tournament_id, user_id=user_id,
-                    ))
-                enrollment.calculate_total_points()
+                    db.session.add(pick)
 
-            db.session.commit()
+                # Re-resolve for completed tournaments (enrollment guaranteed above).
+                # A failed resolve leaves cleared resolution + stale totals — roll the
+                # whole override back rather than persist that inconsistent state.
+                if selected_tournament.status == 'complete':
+                    db.session.flush()
+                    if not pick.resolve_pick():
+                        db.session.rollback()
+                        flash(
+                            'Override could not be resolved — result data is missing '
+                            'for the selected players.',
+                            'error',
+                        )
+                        return redirect(url_for(
+                            'golf.admin_override_pick',
+                            tournament_id=tournament_id, user_id=user_id,
+                        ))
+                    enrollment.calculate_total_points()
 
-            primary_player = db.session.get(GolfPlayer, primary_id)
-            backup_player = db.session.get(GolfPlayer, backup_id)
-            flash(
-                f'Override saved for {selected_user.username}: '
-                f'{primary_player.full_name()} / {backup_player.full_name()}',
-                'success'
-            )
-            return redirect(url_for('golf.admin_override_pick'))
+                db.session.commit()
 
-    # For GET or when loading form data
-    tournament_id = request.args.get('tournament_id', type=int)
-    user_id = request.args.get('user_id', type=int)
+                primary_player = db.session.get(GolfPlayer, primary_id)
+                backup_player = db.session.get(GolfPlayer, backup_id)
+                flash(
+                    f'Override saved for {selected_user.username}: '
+                    f'{primary_player.full_name()} / {backup_player.full_name()}',
+                    'success'
+                )
+                return redirect(url_for('golf.admin_override_pick'))
+
+    # For GET or when loading form data (a pending confirm re-renders the
+    # form around the POSTed selection).
+    if pending_confirm:
+        tournament_id, user_id = selected_tournament.id, selected_user.id
+    else:
+        tournament_id = request.args.get('tournament_id', type=int)
+        user_id = request.args.get('user_id', type=int)
 
     if tournament_id:
         selected_tournament = db.session.get(GolfTournament, tournament_id)
@@ -1031,15 +1097,24 @@ def admin_override_pick():
                                        existing_pick.backup_player_id)
                     ]
 
-    # Recent overrides
-    recent_overrides = (
-        GolfPick.query
-        .filter_by(admin_override=True)
-        .join(GolfTournament)
-        .filter(GolfTournament.season_year == season_year)
+    # Recent overrides, with the member, the event and both golfers loaded.
+    recent_overrides = db.session.scalars(
+        select(GolfPick)
+        .options(
+            joinedload(GolfPick.user),
+            joinedload(GolfPick.tournament),
+            joinedload(GolfPick.primary_player),
+            joinedload(GolfPick.backup_player),
+        )
+        .join(GolfTournament, GolfPick.tournament_id == GolfTournament.id)
+        .filter(GolfPick.admin_override.is_(True), GolfTournament.season_year == season_year)
         .order_by(GolfPick.updated_at.desc())
         .limit(10)
-        .all()
+    ).all()
+    override_count = db.session.scalar(
+        select(func.count(GolfPick.id))
+        .join(GolfTournament, GolfPick.tournament_id == GolfTournament.id)
+        .filter(GolfPick.admin_override.is_(True), GolfTournament.season_year == season_year)
     )
 
     return render_template('golf/admin/override_pick.html',
@@ -1051,6 +1126,9 @@ def admin_override_pick():
         existing_pick=existing_pick,
         used_player_ids=used_player_ids,
         recent_overrides=recent_overrides,
+        override_count=override_count,
+        pending_confirm=pending_confirm,
+        consequence=consequence,
     )
 
 

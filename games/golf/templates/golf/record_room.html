@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% from 'golf/_sheet.html' import dollars with context %}
+{% from 'golf/_champion.html' import champion_fold with context %}
 
 {% block title %}The Record Room · The Pay Sheet{% endblock %}
 
@@ -42,6 +43,11 @@
     </nav>
 
     <div class="golf-main">
+
+        {# Final (§4.3): the champion recorded, the fold leads the room. #}
+        {% if champions %}
+        {{ champion_fold(champions, champion_line[0], champion_line[1], champion_line[2], season_arg=season_arg) }}
+        {% endif %}
 
         {# Leaf 1: the season race, the room's one chart. It is drawn finished
            and still; it moves only when a member plays it. #}

@@ -253,11 +253,10 @@ def test_transient_user_is_never_the_champion(app):
 
 # --- the registry seam --------------------------------------------------------
 
-def test_registry_carries_a_season_finishes_callable_per_closed_game():
+def test_registry_carries_a_season_finishes_callable_per_game():
     from games.registry import get_entry
-    for slug in ('worldcup', 'cfb', 'docket'):
+    for slug in ('worldcup', 'cfb', 'docket', 'golf'):
         assert callable(get_entry(slug).season_finishes), slug
-    assert get_entry('golf').season_finishes is None
 
 
 # --- the World Cup builder ----------------------------------------------------

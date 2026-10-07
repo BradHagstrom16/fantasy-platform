@@ -29,6 +29,7 @@ import re
 from pathlib import Path
 from unittest.mock import patch
 
+import pytest
 from flask_login import AnonymousUserMixin
 
 from extensions import db
@@ -406,12 +407,13 @@ def test_strip_css_uses_dark_substrate_tokens_only():
         )
 
 
-def test_registry_cadence_copy_carries_no_date_that_can_go_stale():
+@pytest.mark.parametrize('slug', ['docket', 'golf'])
+def test_registry_cadence_copy_carries_no_date_that_can_go_stale(slug):
     """D21-eng static cadence: a weekly rhythm, not a launch date. A hardcoded
     'Opens Sep 1' would read wrong from Sep 2 onward with nothing to update
     it, which is the prose drift games/docket/DESIGN.md warns against."""
     from games.registry import get_entry
-    cadence = get_entry('docket').lounge_cadence
+    cadence = get_entry(slug).lounge_cadence
     assert cadence
     assert not re.search(
         r'\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\w*\s+\d', cadence)
@@ -423,4 +425,5 @@ def test_second_bill_field_defaults_empty_for_other_games():
     entries that omit it render the strip without a cadence line."""
     from games.registry import get_entry
     assert get_entry('cfb').lounge_cadence == ''
-    assert get_entry('golf').lounge_cadence == ''
+    # The Pay Sheet carries one since U7 (the field's weekly rhythm).
+    assert get_entry('golf').lounge_cadence

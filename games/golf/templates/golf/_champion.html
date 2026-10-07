@@ -1,0 +1,21 @@
+{# The champion fold (games/golf/DESIGN.md §8.23): the season's winner(s) on
+   an ink rule, the figure banked, one pencil line saying whether the club's
+   record has it yet. `champions` is a list of {user, name, figure}; `line`
+   is the pencil sentence; `link_url` / `link_text` close it. Import with
+   context (the avatar reads the request's champion cache). #}
+{% macro champion_fold(champions, line, link_url, link_text, season_arg=none) -%}
+<section class="golf-champion" id="golf-champion" aria-labelledby="golf-champion-label">
+    <h2 class="golf-label" id="golf-champion-label">{{ 'Champions, tied' if champions|length > 1 else 'Champion' }}</h2>
+    <ul class="golf-champion-list">
+        {% for c in champions %}
+        <li>
+            <span class="golf-champion-name">
+                {%- if c.user %}<span class="golf-sheet-avatar">{{ c.user.get_avatar() }}</span><a class="golf-quiet" href="{{ url_for('golf.member_scorecard', user_id=c.user.id, season=season_arg) }}">{{ c.name }}</a>{% else %}{{ c.name }}{% endif -%}
+            </span>
+            <span class="golf-money golf-money--banked">{{ c.figure }}</span>
+        </li>
+        {% endfor %}
+    </ul>
+    <p class="golf-line">{{ line }} <a href="{{ link_url }}">{{ link_text }}</a></p>
+</section>
+{%- endmacro %}

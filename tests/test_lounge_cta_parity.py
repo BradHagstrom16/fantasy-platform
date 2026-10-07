@@ -22,11 +22,12 @@ import pytest
 REPO = Path(__file__).resolve().parent.parent
 CFB_LOUNGE = REPO / 'games' / 'cfb' / 'templates' / 'cfb' / 'lounge'
 DOCKET_LOUNGE = REPO / 'games' / 'docket' / 'templates' / 'docket' / 'lounge'
+GOLF_LOUNGE = REPO / 'games' / 'golf' / 'templates' / 'golf' / 'lounge'
 
 
 def _panel_files():
     files = []
-    for d in (CFB_LOUNGE, DOCKET_LOUNGE):
+    for d in (CFB_LOUNGE, DOCKET_LOUNGE, GOLF_LOUNGE):
         files.extend(sorted(d.glob('*.html')))
     return files
 
@@ -85,6 +86,11 @@ NAMED_SOLID_CTAS = [
     (DOCKET_LOUNGE / '_panel_live.html', 'Open Your Sheet'),  # live member
     (DOCKET_LOUNGE / '_panel_live.html', 'Join the Docket'),  # live visitor convert
     (DOCKET_LOUNGE / '_conv_card.html', 'Join the Docket'),  # anonymous convert
+    (GOLF_LOUNGE / '_panel_pre.html', 'Enter the Room'),     # enrolled
+    (GOLF_LOUNGE / '_panel_pre.html', 'Take a Seat'),        # unenrolled join
+    (GOLF_LOUNGE / '_panel_live.html', 'Spend a Golfer'),    # live member, pick wanted
+    (GOLF_LOUNGE / '_panel_live.html', 'Take a Seat'),       # live visitor convert
+    (GOLF_LOUNGE / '_conv_card.html', 'Join the Pay Sheet'),  # anonymous convert
 ]
 
 

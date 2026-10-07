@@ -170,7 +170,7 @@ def test_record_room_is_public_with_a_contents_line_and_five_leaves(app, client,
     assert re.findall(r'href="#([a-z-]+)"', contents) == leaves
     assert re.findall(r'<section class="golf-leaf" id="([a-z-]+)"', body) == leaves
     # Each leaf's label is its own heading; nothing sits above an H2.
-    assert len(re.findall(r'<h2 class="golf-label" id="golf-[a-z]+-label">', body)) == 5
+    assert len(re.findall(r'<h2 class="golf-label" id="golf-(?:race|lines|form|burn|unspent)-label">', body)) == 5
     assert body.count('<h1') == 1
 
 
@@ -401,6 +401,41 @@ def test_record_room_reads_one_season(app, client, season):
 
     assert client.get('/golf/stats', query_string={'season': season - 5}).status_code == 404
     assert client.get('/golf/stats', query_string={'season': 'next'}).status_code == 404
+
+
+def test_record_room_of_a_banked_season_names_the_champion(app, client, season):
+    """Every event banked: the fold leads the room with the race's leader
+    and says the Commish has not closed the record yet; no /records link."""
+    alice, bob, _g, _events = _two_events(season)
+    body = _page(client)
+    fold = _leaf(body, 'golf-champion')
+    assert '>Champion</h2>' in fold
+    assert f'href="/golf/member/{alice.id}">Alice</a>' in fold
+    assert 'golf-money--banked">$2,300,000' in fold
+    assert 'Bob' not in fold
+    assert 'not on the club' in fold and '/records' not in fold
+    assert body.index('id="golf-champion"') < body.index('id="golf-race"')
+
+
+def test_record_room_links_the_record_once_the_season_is_closed(app, client, season):
+    from models.records import FinishDraft, record_season
+    alice, bob, _g, _events = _two_events(season)
+    record_season('golf', season, [
+        FinishDraft(alice.id, 'Alice', 1, 'champion', '$2,300,000'),
+        FinishDraft(bob.id, 'Bob', 2, None, '$400,000'),
+    ])
+    body = _page(client)
+    fold = _leaf(body, 'golf-champion')
+    assert 'On the club’s record.' in fold
+    assert f'href="/records#board-golf-{season}"' in fold
+    assert 'golf-money--banked">$2,300,000' in fold
+
+
+def test_record_room_of_a_running_season_has_no_champion(app, client, season):
+    _two_events(season)
+    _event(season, 'Masters Tournament', datetime(2026, 4, 9), finalized=False)
+    body = _page(client)
+    assert 'golf-champion' not in body
 
 
 def test_record_room_of_a_season_with_no_tournaments_is_not_a_404(app, client, season):

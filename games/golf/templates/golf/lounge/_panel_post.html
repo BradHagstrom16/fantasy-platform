@@ -1,0 +1,42 @@
+{# The Pay Sheet post-season headliner panel: the sheet is banked. The
+   champion, the season's money, and the top of the final sheet; the
+   Record Room holds the gravity. Lounge classes only. #}
+{% set g = h.ctx %}
+<section class="hl-panel hl-panel--golf" aria-label="The Pay Sheet">
+  {% include 'main/_hl_panel_head.html' %}
+
+  <div class="summons summons--info">
+    <div class="summons-eyebrow summons-eyebrow--info">◇ The Sheet Is Banked</div>
+    {% if g.champions %}
+    <div class="summons-line">Champion{{ 's' if g.champions|length > 1 else '' }} &middot; {% for c in g.champions %}{{ c.name }}{% if not loop.last %} and {% endif %}{% endfor %}</div>
+    <p class="summons-sub">{{ g.champions[0].money }} across {{ g.events }} event{{ '' if g.events == 1 else 's' }}.</p>
+    {% else %}
+    <div class="summons-line">The season is banked.</div>
+    <p class="summons-sub">{{ g.events }} event{{ '' if g.events == 1 else 's' }}, every line settled.</p>
+    {% endif %}
+    <div class="field-impact">
+      <a class="route-link" href="{{ url_for('golf.record_room') }}">The Record Room &rsaquo;</a>
+    </div>
+  </div>
+
+  {% if g.top %}
+  <div class="hl-standings">
+    <div class="sec-head">
+      <div class="t">The final sheet</div>
+      <a class="more" href="{{ url_for(h.entry.blueprint_index) }}">Full sheet &rsaquo;</a>
+    </div>
+    <div class="rolls">
+      {%- for row in g.top -%}
+      <div class="roll-row{% if row.is_you %} roll-row--you{% endif %}">
+        <div class="roll-rank{% if row.rank == 1 %} roll-rank--gold{% endif %}">{{ row.rank }}</div>
+        <div class="roll-meta">
+          <div class="roll-name">{{ row.avatar }}<a class="roll-name-link" href="{{ url_for('golf.member_scorecard', user_id=row.user_id) }}">{{ row.name }}</a>{% if row.is_you %}<span class="roll-you-chip">You</span>{% endif %}</div>
+          <div class="roll-tagline">{{ row.word }}</div>
+        </div>
+        <div class="roll-pts">{{ row.money }}</div>
+      </div>
+      {%- endfor -%}
+    </div>
+  </div>
+  {% endif %}
+</section>

@@ -90,11 +90,14 @@ def _board(page, game, year):
 def test_each_board_links_the_room_archive(client, app):
     _seed()
     record_season('docket', 2026, [FinishDraft(None, 'Docket Winner', 1, None, None)])
+    record_season('golf', 2026, [FinishDraft(None, 'Golf Winner', 1, 'champion', '$1')])
     page = client.get('/records').data.decode()
     with app.test_request_context():
         from flask import url_for
         assert url_for('cfb.history') in _board(page, 'cfb', 2025)
         assert url_for('worldcup.leaderboard') in _board(page, 'worldcup', 2026)
+        # The Pay Sheet's archive is the Record Room pinned to that season.
+        assert url_for('golf.record_room', season=2026) in _board(page, 'golf', 2026)
     # The Docket keeps no public archive of a season yet: its ledger is
     # members-only and always the current season, so its board links nowhere.
     assert 'records-archive-link' not in _board(page, 'docket', 2026)
@@ -103,11 +106,10 @@ def test_each_board_links_the_room_archive(client, app):
 def test_every_season_archive_is_a_public_page(client, app):
     """The page is public, so an archive it links must answer an anonymous
     visitor, never bounce them to a join page."""
-    from flask import url_for
 
-    from core.records.routes import SEASON_ARCHIVES
+    from core.records.routes import SEASON_ARCHIVES, archive_url
     with app.test_request_context():
-        urls = [url_for(endpoint) for endpoint in SEASON_ARCHIVES.values()]
+        urls = [archive_url(value) for value in SEASON_ARCHIVES.values()]
     for url in urls:
         assert client.get(url).status_code == 200, url
 
