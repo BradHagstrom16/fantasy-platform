@@ -24,6 +24,28 @@
                     <i class="bi bi-pencil-square me-2"></i>Override Pick
                 </div>
                 <div class="card-body">
+                    {% if pending_confirm %}
+                    <div class="alert alert-warning" role="alert">
+                        <strong>Confirm before re-resolving</strong>
+                        <p>{{ consequence.event }} is complete, so saving this recalculates
+                        {{ consequence.member }}'s money for the week and the season total
+                        (currently ${{ '{:,}'.format(consequence.current_total) }}).
+                        {% if consequence.is_major %}It is a major: the 1.5&times; multiplier and the missed-cut penalty re-fire.{% endif %}</p>
+                        {% if consequence.old_primary %}<p>Currently {{ consequence.old_primary }} / {{ consequence.old_backup }}.</p>{% endif %}
+                        <p>Changing to <strong>{{ consequence.new_primary }}</strong> / <strong>{{ consequence.new_backup }}</strong>.</p>
+                        <form method="POST" action="{{ url_for('golf.admin_override_pick') }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                            <input type="hidden" name="tournament_id" value="{{ selected_tournament.id }}">
+                            <input type="hidden" name="user_id" value="{{ selected_user.id }}">
+                            <input type="hidden" name="primary_player_id" value="{{ consequence.new_primary_id }}">
+                            <input type="hidden" name="backup_player_id" value="{{ consequence.new_backup_id }}">
+                            <input type="hidden" name="override_note" value="{{ consequence.note }}">
+                            <input type="hidden" name="confirm" value="1">
+                            <button type="submit" class="btn btn-danger">Confirm and re-resolve</button>
+                            <a href="{{ url_for('golf.admin_override_pick') }}" class="btn btn-outline-secondary">Cancel</a>
+                        </form>
+                    </div>
+                    {% endif %}
                     <form method="POST" action="{{ url_for('golf.admin_override_pick') }}">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
 

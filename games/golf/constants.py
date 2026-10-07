@@ -17,6 +17,11 @@ EXCLUDED_TOURNAMENTS = {
     'Presidents Cup',
 }
 
+# The SlashGolf free tier (RapidAPI): calls per month. The golf-* timer cadence
+# is the budget (tests/test_golf_timers.py); the admin meter only reports
+# against this (services/api_usage.py).
+API_MONTHLY_LIMIT = 250
+
 # Ignore any API events starting on or after this date
 SEASON_CUTOFF_DATE = datetime(2026, 8, 24, tzinfo=UTC)
 

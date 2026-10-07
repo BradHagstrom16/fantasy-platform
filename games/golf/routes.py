@@ -35,6 +35,7 @@ from games.golf.models import (
     GolfTournamentField,
     GolfTournamentResult,
 )
+from games.golf.services.api_usage import read_api_usage
 from games.golf.services.field import build_field, search_key, top_unspent_ids
 from games.golf.services.reads import (
     next_tournament as _next_tournament,
@@ -657,23 +658,22 @@ def admin_dashboard():
     complete_count = sum(1 for t in tournaments if t.status == 'complete')
     pending_finalization = [t for t in tournaments if t.status == 'complete' and not t.results_finalized]
 
-    enrollments = GolfEnrollment.query.filter_by(season_year=season_year).all()
+    enrollments = season_enrollments(season_year)
     total_enrolled = len(enrollments)
     total_paid = sum(1 for e in enrollments if e.has_paid)
-
-    total_users = User.query.count()
-    total_players = GolfPlayer.query.count()
+    banked_count = sum(1 for t in tournaments if t.results_finalized)
 
     return render_template('golf/admin/dashboard.html',
         tournaments=tournaments,
         upcoming_count=upcoming_count,
         active_count=active_count,
         complete_count=complete_count,
+        banked_count=banked_count,
         pending_finalization=pending_finalization,
         total_enrolled=total_enrolled,
         total_paid=total_paid,
-        total_users=total_users,
-        total_players=total_players,
+        # The API-usage meter: the month so far against the free tier.
+        api_usage=read_api_usage(get_current_time()),
     )
 
 
@@ -699,14 +699,11 @@ def admin_users():
     """Golf user management page."""
     season_year = current_app.config['SEASON_YEAR']
 
-    users = User.query.order_by(User.username).all()
-    enrollments = GolfEnrollment.query.filter_by(season_year=season_year).all()
-    enrollment_map = {e.user_id: e for e in enrollments}
+    # This season's enrollees, the roster: never every platform user.
+    enrollments = sorted(season_enrollments(season_year),
+                         key=lambda e: e.user.get_display_name().casefold())
 
-    return render_template('golf/admin/users.html',
-        users=users,
-        enrollment_map=enrollment_map,
-    )
+    return render_template('golf/admin/users.html', enrollments=enrollments)
 
 
 @golf_bp.route('/admin/payments')
@@ -822,13 +819,18 @@ def admin_override_pick():
         .all()
     )
 
-    users = User.query.order_by(User.username).all()
+    # The member select is this season's enrollees: an override can only be
+    # written for a member with a line (validated again on POST).
+    users = sorted((e.user for e in season_enrollments(season_year)),
+                   key=lambda u: u.get_display_name().casefold())
 
     selected_tournament = None
     selected_user = None
     field_players = []
     existing_pick = None
     used_player_ids = []
+    pending_confirm = False
+    consequence = None
 
     if request.method == 'POST':
         tournament_id = request.form.get('tournament_id', type=int)
@@ -903,60 +905,88 @@ def admin_override_pick():
                     tournament_id=tournament_id, user_id=user_id,
                 ))
 
-            # Validated — safe to mutate.
-            if existing_pick:
-                # Clear old resolution for completed tournaments
-                if selected_tournament.status == 'complete':
-                    existing_pick.clear_resolution(season_year)
-                existing_pick.primary_player_id = primary_id
-                existing_pick.backup_player_id = backup_id
-                existing_pick.admin_override = True
-                existing_pick.admin_override_note = override_note or 'Admin override'
-                existing_pick.updated_at = datetime.now(UTC)
-                pick = existing_pick
+            if selected_tournament.status == 'complete' and request.form.get('confirm') != '1':
+                # The gate (U6): re-resolving a complete tournament rewrites the
+                # member's money for the week and the season total, and at a
+                # major the x1.5 and the missed-cut penalty re-fire. The first
+                # POST says so and commits nothing; the confirm form below
+                # re-posts the same selections with confirm=1.
+                new_primary = db.session.get(GolfPlayer, primary_id)
+                new_backup = db.session.get(GolfPlayer, backup_id)
+                pending_confirm = True
+                consequence = {
+                    'member': selected_user.get_display_name(),
+                    'event': selected_tournament.name,
+                    'is_major': selected_tournament.is_major,
+                    'current_total': enrollment.total_points or 0,
+                    'current_points': existing_pick.points_earned if existing_pick else None,
+                    'old_primary': existing_pick.primary_player.full_name() if existing_pick else None,
+                    'old_backup': existing_pick.backup_player.full_name() if existing_pick else None,
+                    'new_primary': new_primary.full_name(),
+                    'new_backup': new_backup.full_name(),
+                    'new_primary_id': primary_id,
+                    'new_backup_id': backup_id,
+                    'note': override_note,
+                }
             else:
-                pick = GolfPick(
-                    user_id=user_id,
-                    tournament_id=tournament_id,
-                    primary_player_id=primary_id,
-                    backup_player_id=backup_id,
-                    admin_override=True,
-                    admin_override_note=override_note or 'Admin override',
-                )
-                db.session.add(pick)
-
-            # Re-resolve for completed tournaments (enrollment guaranteed above).
-            # A failed resolve leaves cleared resolution + stale totals — roll the
-            # whole override back rather than persist that inconsistent state.
-            if selected_tournament.status == 'complete':
-                db.session.flush()
-                if not pick.resolve_pick():
-                    db.session.rollback()
-                    flash(
-                        'Override could not be resolved — result data is missing '
-                        'for the selected players.',
-                        'error',
+                # Validated — safe to mutate.
+                if existing_pick:
+                    # Clear old resolution for completed tournaments
+                    if selected_tournament.status == 'complete':
+                        existing_pick.clear_resolution(season_year)
+                    existing_pick.primary_player_id = primary_id
+                    existing_pick.backup_player_id = backup_id
+                    existing_pick.admin_override = True
+                    existing_pick.admin_override_note = override_note or 'Admin override'
+                    existing_pick.updated_at = datetime.now(UTC)
+                    pick = existing_pick
+                else:
+                    pick = GolfPick(
+                        user_id=user_id,
+                        tournament_id=tournament_id,
+                        primary_player_id=primary_id,
+                        backup_player_id=backup_id,
+                        admin_override=True,
+                        admin_override_note=override_note or 'Admin override',
                     )
-                    return redirect(url_for(
-                        'golf.admin_override_pick',
-                        tournament_id=tournament_id, user_id=user_id,
-                    ))
-                enrollment.calculate_total_points()
+                    db.session.add(pick)
 
-            db.session.commit()
+                # Re-resolve for completed tournaments (enrollment guaranteed above).
+                # A failed resolve leaves cleared resolution + stale totals — roll the
+                # whole override back rather than persist that inconsistent state.
+                if selected_tournament.status == 'complete':
+                    db.session.flush()
+                    if not pick.resolve_pick():
+                        db.session.rollback()
+                        flash(
+                            'Override could not be resolved — result data is missing '
+                            'for the selected players.',
+                            'error',
+                        )
+                        return redirect(url_for(
+                            'golf.admin_override_pick',
+                            tournament_id=tournament_id, user_id=user_id,
+                        ))
+                    enrollment.calculate_total_points()
 
-            primary_player = db.session.get(GolfPlayer, primary_id)
-            backup_player = db.session.get(GolfPlayer, backup_id)
-            flash(
-                f'Override saved for {selected_user.username}: '
-                f'{primary_player.full_name()} / {backup_player.full_name()}',
-                'success'
-            )
-            return redirect(url_for('golf.admin_override_pick'))
+                db.session.commit()
 
-    # For GET or when loading form data
-    tournament_id = request.args.get('tournament_id', type=int)
-    user_id = request.args.get('user_id', type=int)
+                primary_player = db.session.get(GolfPlayer, primary_id)
+                backup_player = db.session.get(GolfPlayer, backup_id)
+                flash(
+                    f'Override saved for {selected_user.username}: '
+                    f'{primary_player.full_name()} / {backup_player.full_name()}',
+                    'success'
+                )
+                return redirect(url_for('golf.admin_override_pick'))
+
+    # For GET or when loading form data (a pending confirm re-renders the
+    # form around the POSTed selection).
+    if pending_confirm:
+        tournament_id, user_id = selected_tournament.id, selected_user.id
+    else:
+        tournament_id = request.args.get('tournament_id', type=int)
+        user_id = request.args.get('user_id', type=int)
 
     if tournament_id:
         selected_tournament = db.session.get(GolfTournament, tournament_id)
@@ -1011,6 +1041,8 @@ def admin_override_pick():
         existing_pick=existing_pick,
         used_player_ids=used_player_ids,
         recent_overrides=recent_overrides,
+        pending_confirm=pending_confirm,
+        consequence=consequence,
     )
 
 

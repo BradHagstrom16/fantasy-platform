@@ -50,6 +50,7 @@ from games.golf.models import (
     GolfTournamentField,
     GolfTournamentResult,
 )
+from games.golf.services.api_usage import api_log_dir
 from games.golf.utils import (
     GOLF_LEAGUE_TZ,
     calculate_projected_earnings,
@@ -82,9 +83,7 @@ def _ensure_api_call_logging() -> None:
     _api_call_logging_configured = True  # set first: a failure must not retry every call
     if API_CALL_LOGGER.handlers:
         return
-    log_dir = os.environ.get("GOLF_API_LOG_DIR") or os.path.join(
-        os.path.dirname(__file__), "..", "logs"
-    )
+    log_dir = api_log_dir()
     try:
         os.makedirs(log_dir, exist_ok=True)
         handler = RotatingFileHandler(
@@ -92,7 +91,11 @@ def _ensure_api_call_logging() -> None:
             maxBytes=500_000,  # ~500KB per file
             backupCount=3,
         )
-        handler.setFormatter(logging.Formatter("%(asctime)s\t%(message)s"))
+        # Stamped in UTC whatever the box's clock: the admin meter
+        # (services/api_usage.py) reads asctime as UTC.
+        formatter = logging.Formatter("%(asctime)s\t%(message)s")
+        formatter.converter = time.gmtime
+        handler.setFormatter(formatter)
         API_CALL_LOGGER.addHandler(handler)
     except OSError as exc:
         logger.warning("API call file logging disabled (could not open %s: %s)", log_dir, exc)
