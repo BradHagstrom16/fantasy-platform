@@ -48,7 +48,8 @@ def test_rank_column_gaps_after_a_tie_and_leads_with_the_highest_spread(client, 
     html = client.get('/cfb/').get_data(as_text=True)
 
     assert _rank_cells(html) == ['1', '1', '3']
-    assert html.index('>amy<') < html.index('>viewer<')
+    body = html[html.index('<main'):]   # the navbar's member chip names the viewer too
+    assert body.index('>amy<') < body.index('>viewer<')
 
 
 # -- the rule text follows the code: room copy + doctrine ---------------------

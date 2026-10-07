@@ -79,6 +79,22 @@
                            href="{{ url_for(game.blueprint_index) }}">{{ game.short_name or game.display_name }}</a>
                     </li>
                     {% endfor %}
+                    {% if current_user.is_authenticated %}
+                    {# The club's two pages, after the rooms and off them by the
+                       desktop hairline (.nav-item--club). Text only, like the
+                       switcher: no icon in the bar. Members only; anonymous
+                       visitors reach The Record from the footer. #}
+                    {# Every Club Letter on the record (core/tribune). #}
+                    <li class="nav-item nav-item--club">
+                        <a class="nav-link {% if request.blueprint == 'tribune' %}active{% endif %}"
+                           href="{{ url_for('tribune.index') }}">Tribune</a>
+                    </li>
+                    {# The club's permanent record: every finished season (core/records). #}
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.blueprint == 'records' %}active{% endif %}"
+                           href="{{ url_for('records.index') }}">Record</a>
+                    </li>
+                    {% endif %}
                 </ul>
 
                 <ul class="navbar-nav">
@@ -92,8 +108,13 @@
                         </li>
                         {% endif %}
                         <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
-                                {{ current_user.get_avatar() }} {{ current_user.get_display_name() }}
+                            {# The member chip: an outlined toggle with a chevron
+                               that turns when open, so the account menu reads as
+                               a menu, not as one more link. #}
+                            <a class="nav-link dropdown-toggle nav-account" href="#" role="button"
+                               data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="menu">
+                                <span class="nav-account-who">{{ current_user.get_avatar() }} <span class="nav-account-name">{{ current_user.get_display_name() }}</span></span>
+                                <i class="bi bi-chevron-down nav-account-chevron" aria-hidden="true"></i>
                             </a>
                             <ul class="dropdown-menu dropdown-menu-end">
                                 <li><a class="dropdown-item" href="{{ url_for('auth.profile') }}">
@@ -101,14 +122,6 @@
                                 </a></li>
                                 <li><a class="dropdown-item" href="{{ url_for('auth.change_password') }}">
                                     <i class="bi bi-key me-2"></i>Change Password
-                                </a></li>
-                                {# Every Club Letter on the record (core/tribune). #}
-                                <li><a class="dropdown-item" href="{{ url_for('tribune.index') }}">
-                                    <i class="bi bi-newspaper me-2"></i>The Tribune
-                                </a></li>
-                                {# The club's permanent record: every finished season (core/records). #}
-                                <li><a class="dropdown-item" href="{{ url_for('records.index') }}">
-                                    <i class="bi bi-trophy me-2"></i>The Record
                                 </a></li>
                                 {# Completed games a member played stay reachable
                                    here rather than crowding the switcher

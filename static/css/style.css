@@ -199,6 +199,89 @@
   background: var(--gold);
   border-radius: 1px;
 }
+/* The club's two pages (Tribune, Record) sit after the rooms in the same
+   switcher list; on desktop the brand's faint bone hairline repeats before
+   them so rooms and club pages read as two groups. `:not(:first-child)`:
+   a member with no active game has Tribune first, which already carries the
+   brand hairline above, so the rule never doubles. Desktop-only like its
+   sibling; the mobile stack groups by order alone. */
+@media (min-width: 992px) {
+  .navbar.navbar-dark .navbar-nav.me-auto > .nav-item--club:not(:first-child) {
+    margin-left: .5rem;
+    padding-left: 1rem;
+    border-left: 1px solid rgba(243, 239, 230, .14);
+  }
+}
+/* The member chip: the account toggle wears a 1px bone outline and a chevron
+   so it reads as a menu, not as one more nav link. It drops the gold
+   underline every other nav-link carries (and with it Bootstrap's caret, also
+   drawn on ::after); hover, keyboard focus and the open state turn the
+   outline gold instead. Flat gold only (the Trophy Rule). */
+.navbar.navbar-dark .nav-link.nav-account {
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  border: 1px solid rgba(243, 239, 230, .22);
+  border-radius: var(--radius);
+  padding: .35rem .75rem;
+  transition: color var(--transition), background var(--transition), border-color var(--transition);
+}
+.navbar.navbar-dark .nav-link.nav-account::after { content: none; }
+.navbar.navbar-dark .nav-link.nav-account:hover,
+.navbar.navbar-dark .nav-link.nav-account:focus-visible,
+.navbar.navbar-dark .nav-link.nav-account[aria-expanded="true"] {
+  border-color: var(--gold);
+}
+.navbar .nav-account-who {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  min-width: 0;
+}
+/* Display names run to 100 characters; a long one truncates at every width
+   so it never pushes the chevron out of the chip. */
+.navbar .nav-account-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.navbar .nav-account-chevron {
+  display: inline-block;
+  flex-shrink: 0;
+  font-size: .8em;
+  line-height: 1;
+  transition: transform .18s cubic-bezier(.4, 0, .2, 1);
+}
+.navbar .nav-account[aria-expanded="true"] .nav-account-chevron {
+  transform: rotate(180deg);
+}
+@media (prefers-reduced-motion: reduce) {
+  .navbar .nav-account-chevron { transition: none; }
+}
+@media (min-width: 992px) {
+  .navbar.navbar-dark .nav-link.nav-account { margin-left: .35rem; }
+  /* The bar at 992px also carries the admin link, so the name is capped
+     instead of wrapping the bar. */
+  .navbar .nav-account-name { max-width: 12rem; }
+}
+/* In the mobile collapse the chip is a full-width row, name left and chevron
+   alone on the right: the row reads as "this expands". */
+@media (max-width: 991px) {
+  .navbar.navbar-dark .nav-link.nav-account {
+    display: flex;
+    justify-content: space-between;
+    margin-top: .5rem;
+    padding: .6rem .85rem;
+  }
+  /* A zero basis and width take the name out of the row's min-content, so
+     a long unbroken name truncates inside the chip instead of widening the
+     whole collapse past the viewport. */
+  .navbar .nav-account-who {
+    flex: 1 1 0;
+    width: 0;
+  }
+}
 .navbar.navbar-dark .btn-warning {
   background: var(--metal-gold-flat);
   border: none;
@@ -12891,15 +12974,9 @@ main { flex: 1; }
 
 .navbar .dropdown-divider { border-color: rgba(255,255,255,.1); }
 
-/* The user-menu toggle is a `.nav-link`, so it inherits the gold underline
-   `::after` above. Bootstrap's caret is also drawn on `::after`, and the two
-   collide into a ~10px gold nub under the username at rest. Drop the caret
-   borders so the toggle collapses to the same clean hover-underline as its
-   sibling links (the avatar + name already signal the menu). */
-.navbar .dropdown-toggle::after {
-  border: 0;
-  margin: 0;
-}
+/* The user-menu toggle's ::after (Bootstrap's caret, and the gold underline
+   above) is switched off by the member chip, `.nav-account` in the CCC
+   NAVBAR block; its chevron is a real icon instead. */
 
 .navbar-toggler {
   border-color: rgba(212,168,32,.35);
