@@ -238,8 +238,17 @@
   gap: .4rem;
   min-width: 0;
 }
+/* Display names run to 100 characters; a long one truncates at every width
+   so it never pushes the chevron out of the chip. */
+.navbar .nav-account-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .navbar .nav-account-chevron {
   display: inline-block;
+  flex-shrink: 0;
   font-size: .8em;
   line-height: 1;
   transition: transform .18s cubic-bezier(.4, 0, .2, 1);
@@ -252,14 +261,9 @@
 }
 @media (min-width: 992px) {
   .navbar.navbar-dark .nav-link.nav-account { margin-left: .35rem; }
-  /* Display names run to 100 characters; the bar at 992px also carries the
-     admin link, so a long name truncates instead of wrapping the bar. */
-  .navbar .nav-account-name {
-    max-width: 12rem;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
+  /* The bar at 992px also carries the admin link, so the name is capped
+     instead of wrapping the bar. */
+  .navbar .nav-account-name { max-width: 12rem; }
 }
 /* In the mobile collapse the chip is a full-width row, name left and chevron
    alone on the right: the row reads as "this expands". */
@@ -269,6 +273,13 @@
     justify-content: space-between;
     margin-top: .5rem;
     padding: .6rem .85rem;
+  }
+  /* A zero basis and width take the name out of the row's min-content, so
+     a long unbroken name truncates inside the chip instead of widening the
+     whole collapse past the viewport. */
+  .navbar .nav-account-who {
+    flex: 1 1 0;
+    width: 0;
   }
 }
 .navbar.navbar-dark .btn-warning {
