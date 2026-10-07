@@ -41,7 +41,7 @@
       Choose Your
       <span class="home-metal-text">Games</span>
     </h1>
-    <p class="greet-sub">Two games on the card. Play one, or play both.</p>
+    <p class="greet-sub">{% if headliners|length == 3 %}Three games on the card. Play one, or play them all.{% else %}Two games on the card. Play one, or play both.{% endif %}</p>
     {% endif %}
     {% if current_user.is_authenticated %}
     {# Distribution nudge for the installable app; push.js hides it once this
@@ -52,7 +52,9 @@
     {% endif %}
   </div>
 
-  <div class="hl-duo{% if headliners|length == 2 %} hl-duo--paired{% endif %}">
+  {# Two headliners pair at the seam with the seal; three take the trio grid
+     (two seams, no seal); one stands full width. #}
+  <div class="hl-duo{% if headliners|length == 2 %} hl-duo--paired{% elif headliners|length == 3 %} hl-duo--trio{% endif %}">
     {% if headliners|length == 2 %}
       {% set _wk = headliners[0].ctx.get('week_number') %}
       {% set _same_week = _wk and headliners[1].ctx.get('week_number') == _wk %}

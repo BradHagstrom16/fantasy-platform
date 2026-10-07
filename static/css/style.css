@@ -4509,10 +4509,10 @@ body.game-golf {
    Slug-suffixed hooks map each headliner's panel and conversion card onto
    its lounge accent tokens (tokens.css, the single source of the hues).
    Components consume var(--hl-accent) / var(--hl-ground) with CCC
-   fallbacks; templates only ever emit the class, never a color. Adding a
-   third headliner (The Pay Sheet, golf, ~Jan 2027: the --lounge-golf-* pen
-   pair, games/golf/DESIGN.md §3) means one new token pair and one new
-   mapping rule here, nothing else. */
+   fallbacks; templates only ever emit the class, never a color. The third
+   headliner (The Pay Sheet, golf, U7 2026-10-06: the --lounge-golf-* pen
+   pair, games/golf/DESIGN.md §3) cost one token pair, one mapping rule, and
+   the trio grid below. */
 .home-shell .hl-panel--cfb,
 .home-shell .join--cfb {
   --hl-accent: var(--lounge-cfb-accent);
@@ -4532,6 +4532,16 @@ body.game-golf {
   --hl-wash: linear-gradient(200deg,
       color-mix(in srgb, var(--lounge-docket-ground) 32%, transparent),
       color-mix(in srgb, var(--lounge-docket-ground) 8%, transparent) 55%);
+}
+.home-shell .hl-panel--golf,
+.home-shell .join--golf {
+  --hl-accent: var(--lounge-golf-accent);
+  --hl-accent-bright: var(--lounge-golf-accent-bright);
+  --hl-ground: var(--lounge-golf-ground);
+  /* The pen is a cool, saturated blue on purple: a middle hand on the wash. */
+  --hl-wash: linear-gradient(180deg,
+      color-mix(in srgb, var(--lounge-golf-ground) 24%, transparent),
+      color-mix(in srgb, var(--lounge-golf-ground) 6%, transparent) 55%);
 }
 
 /* --- The Undercard (Variant D): stage, duo grid, seam, panels, cards ---
@@ -4627,6 +4637,34 @@ body.game-golf {
   }
   .home-shell .hl-duo--paired > *:nth-child(2) { order: 1; }
   .home-shell .hl-duo--paired > *:nth-child(3) { order: 3; }
+}
+
+/* Three headliners (U7, The Pay Sheet): three equal columns from 1100px,
+   two gold hairlines at the gaps and no seal (the seal is the pair's
+   centre; a trio has none). Below 1100px the base single column: three
+   panels stacked, no seams, no seal. Not two-and-one: a full-width third
+   panel would bill that game as the undercard, and the lounge bills every
+   headliner as an equal (root DESIGN.md §1.6). */
+@media (min-width: 1100px) {
+  .home-shell .hl-duo--trio {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    column-gap: 2rem;
+    align-items: stretch;
+  }
+  .home-shell .hl-duo--trio::before,
+  .home-shell .hl-duo--trio::after {
+    content: '';
+    position: absolute;
+    top: 8px;
+    bottom: 8px;
+    width: 1px;
+    background: linear-gradient(180deg, transparent,
+        rgba(201, 162, 39, .5) 18%, rgba(201, 162, 39, .5) 82%, transparent);
+  }
+  /* The seams sit in the gaps: a third of the width less a third of the
+     gaps, plus half a gap, from each edge. */
+  .home-shell .hl-duo--trio::before { left: calc((100% - 4rem) / 3 + 1rem); }
+  .home-shell .hl-duo--trio::after { right: calc((100% - 4rem) / 3 + 1rem); }
 }
 
 /* Headliner panel: Ceremonial ground carrying the game's wash. */

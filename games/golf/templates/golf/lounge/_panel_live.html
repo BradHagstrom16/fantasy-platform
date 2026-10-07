@@ -1,0 +1,47 @@
+{# The Pay Sheet live headliner panel: the week in play, in the room's
+   words. A member gets their line (the money, the place, this week's
+   golfer), the next lock and the leader; the one ask is a pick still to
+   make on an open field ("Spend a Golfer"), else the door into the room.
+   A visitor gets the sell while the seat is open. Lounge classes only;
+   the money is a figure with its word (projected / banked), never the
+   room's pencil or ink. #}
+{% set g = h.ctx %}
+<section class="hl-panel hl-panel--golf" aria-label="The Pay Sheet">
+  {% include 'main/_hl_panel_head.html' %}
+
+  {% if g.viewer_mode == 'view' %}
+  <div class="summons summons--info">
+    <div class="summons-eyebrow summons-eyebrow--info">◇ {% if g.week_number %}Week {{ g.week_number }} &middot; {% endif %}The Pay Sheet</div>
+    <div class="summons-line">One golfer a week. His prize money is yours.</div>
+    <p class="summons-sub">Spend each golfer once; the sheet is the season&rsquo;s money.{% if g.leader %} {{ g.leader.name }} leads with {{ g.leader.money }}{% if g.leader.projected %}, projected{% endif %}.{% endif %}</p>
+    {% if h.join_open %}
+    <a class="hl-cta" href="{{ url_for(h.entry.blueprint_join) }}">Take a Seat</a>
+    {% endif %}
+  </div>
+
+  {% else %}
+  <div class="summons">
+    <div class="summons-eyebrow summons-eyebrow--info">◇ {% if g.week_number %}Week {{ g.week_number }} &middot; {% endif %}{{ g.event_name or 'Between events' }}</div>
+    {% if g.mine %}
+    <div class="summons-line">{{ g.mine.money }} {{ g.mine.word }} &middot; {{ g.mine.place }} of {{ g.field }}</div>
+    {% if g.mine.this_week %}
+    <p class="summons-sub">This week: {{ g.mine.this_week }}.</p>
+    {% elif g.beat != 'open' %}
+    <p class="summons-sub">No pick on {{ g.event_the }}.</p>
+    {% endif %}
+    {% else %}
+    <div class="summons-line">Your seat is at the table.</div>
+    {% endif %}
+    <div class="summons-meta">
+      {% if g.next_lock %}<span>{{ g.next_event }} locks {{ g.next_lock }}.</span>{% elif g.next_event %}<span>{{ g.next_event }} is next; the field publishes Tuesday.</span>{% endif %}
+      {% if g.leader and not (g.mine and g.mine.leads) %}<span>{{ g.leader.name }}{% if g.leader.tied %} and company{% endif %} lead{% if not g.leader.tied %}s{% endif %} with {{ g.leader.money }}.</span>{% endif %}
+    </div>
+    {% if g.pick_wanted %}
+    <a class="hl-cta" href="{{ url_for('golf.make_pick', tournament_id=g.next_id) }}">Spend a Golfer</a>
+    <div class="commish-echo">No pick is $0 for the week. No penalty, no autopick.</div>
+    {% else %}
+    <a class="hl-cta" href="{{ url_for(h.entry.blueprint_index) }}">Enter the Room</a>
+    {% endif %}
+  </div>
+  {% endif %}
+</section>

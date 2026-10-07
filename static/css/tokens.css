@@ -92,4 +92,7 @@
   --lounge-docket-ground: #6E1F2E;       /* Law-book oxblood (wash ground) */
   --lounge-docket-accent: #A63446;       /* Stamp garnet (action) */
   --lounge-docket-accent-bright: #D06A7A; /* garnet text on purple, AA */
+  --lounge-golf-ground: #1A2A8F;         /* The Pay Sheet's pen, deep (wash ground) */
+  --lounge-golf-accent: #2439C8;         /* The pen (action) */
+  --lounge-golf-accent-bright: #8C9BFF;  /* pen text on purple, AA large */
 }

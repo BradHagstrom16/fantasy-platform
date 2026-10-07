@@ -317,6 +317,20 @@ def test_cfb_entry_lounge_context_is_build_lounge_context(app):
     assert get_entry('cfb').lounge_context is build_lounge_context
 
 
+def test_golf_entry_lounge_callables_are_the_module_entry_points(app):
+    """The Pay Sheet's pair (U7), wired behind the flip: golf stays
+    coming_soon and unfeatured, so lounge_games() never seats it until Phase
+    L; the identity locks hold meanwhile. No join_open: status alone decides
+    (the seat stays open all season, Brad 2026-10-06)."""
+    from games.golf.services.lounge import build_lounge_context, golf_lounge_state
+    from games.registry import get_entry
+    entry = get_entry('golf')
+    assert entry.lounge_state is golf_lounge_state
+    assert entry.lounge_context is build_lounge_context
+    assert entry.join_open is None
+    assert entry.lounge_label == 'The Pay Sheet'
+
+
 # ── build_home_context dispatch through the seam (C2 slice 2) ─────────────
 
 def test_build_home_context_dispatches_through_featured_lounge_context(app, monkeypatch):

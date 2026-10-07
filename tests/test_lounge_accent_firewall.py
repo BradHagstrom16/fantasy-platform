@@ -23,6 +23,9 @@ LOUNGE_TOKENS = (
     '--lounge-docket-ground:',
     '--lounge-docket-accent:',
     '--lounge-docket-accent-bright:',
+    '--lounge-golf-ground:',
+    '--lounge-golf-accent:',
+    '--lounge-golf-accent-bright:',
 )
 
 # Every room-family hex, both games, bright variants included. Case-folded.
@@ -72,7 +75,7 @@ def test_lounge_templates_never_reference_game_room_vars():
     would half-apply. The --lounge-*/--hl-* indirection is the only path."""
     for path in _lounge_template_paths():
         src = path.read_text()
-        for var in ('--game-primary', '--game-accent', '--cfb-', '--docket-rule'):
+        for var in ('--game-primary', '--game-accent', '--cfb-', '--docket-rule', '--golf-'):
             assert var not in src, f'{path.name} references room var {var}'
 
 
@@ -108,8 +111,10 @@ def test_hl_accent_mapping_uses_lounge_tokens_only():
     lounge tokens."""
     home_css = _home_region()
     for selector in ('.home-shell .hl-panel--cfb', '.home-shell .hl-panel--docket',
-                     '.home-shell .join--cfb', '.home-shell .join--docket'):
+                     '.home-shell .hl-panel--golf', '.home-shell .join--cfb',
+                     '.home-shell .join--docket', '.home-shell .join--golf'):
         assert selector in home_css, f'missing accent mapping for {selector}'
     for token in ('var(--lounge-cfb-accent)', 'var(--lounge-docket-accent)',
-                  'var(--lounge-docket-ground)'):
+                  'var(--lounge-docket-ground)', 'var(--lounge-golf-accent)',
+                  'var(--lounge-golf-ground)'):
         assert token in home_css, f'mapping does not consume {token}'

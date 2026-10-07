@@ -1,0 +1,32 @@
+{# The Pay Sheet pre-season headliner panel: the season has not locked a
+   pick yet. The club's decree seal band (No 004), then the opening event
+   and its lock, literally. No .golf-* classes reach the lounge; the panel
+   wears the lounge's own primitives under the golf accent hooks, and the
+   CTA is the solid pen .hl-cta in every state (ADR-052). #}
+{% set g = h.ctx %}
+<section class="hl-panel hl-panel--golf" aria-label="The Pay Sheet">
+  {% include 'main/_hl_panel_head.html' %}
+
+  <div class="decree">
+    <div class="decree-seal">
+      <div class="s">By Decree of the Commish <span class="num">No 004</span></div>
+      <div class="s decree-seal-year">The Pay Sheet &rsquo;{{ '%02d'|format(g.season_year % 100) }}</div>
+    </div>
+  </div>
+
+  <div class="summons">
+    <div class="summons-eyebrow summons-eyebrow--info">◇ Opening Round</div>
+    {% if g.first_lock %}
+    <div class="summons-line">{{ g.first_event }} opens the season. Picks lock {{ g.first_lock }}.</div>
+    {% else %}
+    <div class="summons-line">The schedule posts in January.</div>
+    {% endif %}
+    <p class="summons-sub">One golfer a week, with a backup. His prize money is yours. Spend him once; the sheet is the season&rsquo;s money.</p>
+    {% if g.is_enrolled %}
+    <a class="hl-cta" href="{{ url_for(h.entry.blueprint_index) }}">Enter the Room</a>
+    {% elif h.join_open %}
+    <a class="hl-cta" href="{{ url_for(h.entry.blueprint_join) }}">Take a Seat</a>
+    <div class="commish-echo">Join the Pay Sheet. One golfer a week, all season.</div>
+    {% endif %}
+  </div>
+</section>

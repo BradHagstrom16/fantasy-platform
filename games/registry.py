@@ -20,6 +20,7 @@ from games.docket.services import enrollment as _docket_enrollment
 from games.docket.services import lounge as _docket_lounge
 from games.docket.services import records as _docket_records
 from games.golf.services import enrollment as _golf_enrollment
+from games.golf.services import lounge as _golf_lounge
 from games.golf.services import records as _golf_records
 from games.worldcup.services import enrollment as _worldcup_enrollment
 from games.worldcup.services import lounge as _worldcup_lounge
@@ -183,6 +184,14 @@ GAMES: list[GameRegistryEntry] = [
         short_name='Golf',
         launch_label='2027',
         format_label='Golf One & Done',
+        lounge_label='The Pay Sheet',
+        lounge_cadence='The field posts Tuesday. Picks lock at the first tee.',
+        # Wired behind the flip (U7): nothing renders until Phase L sets
+        # status 'open' and is_featured True (lounge_games() needs both). No
+        # join_open: the seat stays open all season while the game is open
+        # (Brad, 2026-10-06), so status alone decides.
+        lounge_state=_golf_lounge.golf_lounge_state,
+        lounge_context=_golf_lounge.build_lounge_context,
     ),
 ]
 
