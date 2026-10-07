@@ -189,12 +189,16 @@ def test_footer_carries_the_record_for_everyone(client):
     assert 'The Record' in anon
 
 
-def test_account_dropdown_carries_the_record_for_members(client):
+def test_navbar_carries_the_record_for_members(client):
     # Log in before any request: Flask-Login caches the anonymous user on g
     # for the fixture's one app context otherwise.
     _login(client, _user('member'))
     home = client.get('/profile').data.decode()
-    assert 'dropdown-item" href="/records"' in home
+    switcher = home[home.index('navbar-nav me-auto'):]
+    switcher = switcher[:switcher.index('</ul>')]
+    assert 'href="/records"' in switcher
+    menu = home[home.index('dropdown-menu'):]
+    assert 'href="/records"' not in menu[:menu.index('</ul>')]
 
 
 def test_the_2025_archive_points_at_the_record(client):

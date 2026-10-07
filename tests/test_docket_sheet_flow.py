@@ -599,7 +599,9 @@ def test_number_card_states_its_default_and_saves(monkeypatch, client, member):
     at(monkeypatch, IN_WEEK1)
     html = client.get('/docket/').data.decode()
     assert 'Save number' in html
-    assert '>Record<' not in html
+    # The number card's button is 'Save number', never the old 'Record'
+    # (the navbar's club link says Record, so read the page body only).
+    assert '>Record<' not in html[html.index('<main'):]
     assert 'Your prediction' in html
     assert 'Skip it and the line stands in as your number.' in html
     client.post('/docket/tiebreaker',
