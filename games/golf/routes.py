@@ -134,6 +134,7 @@ def inject_golf_globals():
         'entry_fee': current_app.config['ENTRY_FEE'],
         'penalty_per_incident': PENALTY_PER_INCIDENT,
         'format_score_to_par': format_score_to_par,
+        'format_lock': format_lock,
         'the_event': the_event,
     }
 
@@ -646,6 +647,31 @@ def my_picks():
 # Admin Routes
 # ============================================================================
 
+def _penalty_counts(season_year):
+    """{user_id: flagged picks} this season, one grouped query (ADR-034)."""
+    return dict(
+        db.session.query(GolfPick.user_id, func.count(GolfPick.id))
+        .join(GolfTournament, GolfPick.tournament_id == GolfTournament.id)
+        .filter(
+            GolfPick.penalty_triggered.is_(True),
+            GolfTournament.season_year == season_year,
+        )
+        .group_by(GolfPick.user_id)
+        .all()
+    )
+
+
+def _penalty_summary(enrollments, season_year):
+    """owed / paid / outstanding per enrollee, from the derived count."""
+    counts = _penalty_counts(season_year)
+    summary = {}
+    for e in enrollments:
+        owed = counts.get(e.user_id, 0) * PENALTY_PER_INCIDENT
+        paid = e.penalty_paid or 0
+        summary[e.user_id] = {'owed': owed, 'paid': paid, 'outstanding': max(0, owed - paid)}
+    return summary
+
+
 @golf_bp.route('/admin/')
 @golf_admin_required
 def admin_dashboard():
@@ -662,18 +688,23 @@ def admin_dashboard():
     total_enrolled = len(enrollments)
     total_paid = sum(1 for e in enrollments if e.has_paid)
     banked_count = sum(1 for t in tournaments if t.results_finalized)
+    penalties = _penalty_summary(enrollments, season_year)
 
+    now = get_current_time()
     return render_template('golf/admin/dashboard.html',
-        tournaments=tournaments,
+        tournaments=sorted(tournaments, key=lambda t: t.start_date),
         upcoming_count=upcoming_count,
         active_count=active_count,
         complete_count=complete_count,
         banked_count=banked_count,
-        pending_finalization=pending_finalization,
+        pending_finalization=sorted(pending_finalization, key=lambda t: t.start_date),
         total_enrolled=total_enrolled,
         total_paid=total_paid,
+        penalty_pot=sum(p['owed'] for p in penalties.values()),
+        penalty_outstanding=sum(p['outstanding'] for p in penalties.values()),
         # The API-usage meter: the month so far against the free tier.
-        api_usage=read_api_usage(get_current_time()),
+        api_usage=read_api_usage(now),
+        reads_month=now.strftime('%B %Y'),
     )
 
 
@@ -683,14 +714,23 @@ def admin_tournaments():
     """Tournament management page."""
     season_year = current_app.config['SEASON_YEAR']
 
-    tournaments = (
-        GolfTournament.query
-        .filter_by(season_year=season_year)
-        .order_by(GolfTournament.start_date)
+    tournaments = season_tournaments(season_year)
+    # One grouped query for the field sizes: no count per row.
+    field_counts = dict(
+        db.session.query(GolfTournamentField.tournament_id, func.count(GolfTournamentField.id))
+        .join(GolfTournament, GolfTournamentField.tournament_id == GolfTournament.id)
+        .filter(GolfTournament.season_year == season_year)
+        .group_by(GolfTournamentField.tournament_id)
         .all()
     )
 
-    return render_template('golf/admin/tournaments.html', tournaments=tournaments)
+    return render_template('golf/admin/tournaments.html',
+        tournaments=tournaments,
+        field_counts=field_counts,
+        banked_count=sum(1 for t in tournaments if t.results_finalized),
+        to_settle=sum(1 for t in tournaments
+                      if t.status == 'complete' and not t.results_finalized),
+    )
 
 
 @golf_bp.route('/admin/users')
@@ -703,7 +743,10 @@ def admin_users():
     enrollments = sorted(season_enrollments(season_year),
                          key=lambda e: e.user.get_display_name().casefold())
 
-    return render_template('golf/admin/users.html', enrollments=enrollments)
+    return render_template('golf/admin/users.html',
+        enrollments=enrollments,
+        total_paid=sum(1 for e in enrollments if e.has_paid),
+    )
 
 
 @golf_bp.route('/admin/payments')
@@ -712,37 +755,16 @@ def admin_payments():
     """Payment tracking page."""
     season_year = current_app.config['SEASON_YEAR']
 
-    enrollments = (
-        GolfEnrollment.query
-        .filter_by(season_year=season_year)
-        .all()
-    )
+    enrollments = sorted(season_enrollments(season_year),
+                         key=lambda e: e.user.get_display_name().casefold())
 
     total_paid = sum(1 for e in enrollments if e.has_paid)
     total_unpaid = sum(1 for e in enrollments if not e.has_paid)
     total_collected = total_paid * current_app.config['ENTRY_FEE']
 
-    # Major cut/DQ side pot (ADR-034): one grouped query for flagged-pick counts,
-    # then owed/paid/outstanding per enrollment + pot totals.
-    penalty_counts = dict(
-        db.session.query(GolfPick.user_id, func.count(GolfPick.id))
-        .join(GolfTournament, GolfPick.tournament_id == GolfTournament.id)
-        .filter(
-            GolfPick.penalty_triggered.is_(True),
-            GolfTournament.season_year == season_year,
-        )
-        .group_by(GolfPick.user_id)
-        .all()
-    )
-    penalty_summary = {}
-    for e in enrollments:
-        owed = penalty_counts.get(e.user_id, 0) * PENALTY_PER_INCIDENT
-        paid = e.penalty_paid or 0
-        penalty_summary[e.user_id] = {
-            'owed': owed,
-            'paid': paid,
-            'outstanding': max(0, owed - paid),
-        }
+    # Major cut/DQ side pot (ADR-034): owed/paid/outstanding per enrollment
+    # from one grouped query, then the pot totals.
+    penalty_summary = _penalty_summary(enrollments, season_year)
     total_penalty_pot = sum(s['owed'] for s in penalty_summary.values())
     total_penalty_collected = sum(s['paid'] for s in penalty_summary.values())
 
@@ -1021,15 +1043,24 @@ def admin_override_pick():
                                        existing_pick.backup_player_id)
                     ]
 
-    # Recent overrides
-    recent_overrides = (
-        GolfPick.query
-        .filter_by(admin_override=True)
-        .join(GolfTournament)
-        .filter(GolfTournament.season_year == season_year)
+    # Recent overrides, with the member, the event and both golfers loaded.
+    recent_overrides = db.session.scalars(
+        select(GolfPick)
+        .options(
+            joinedload(GolfPick.user),
+            joinedload(GolfPick.tournament),
+            joinedload(GolfPick.primary_player),
+            joinedload(GolfPick.backup_player),
+        )
+        .join(GolfTournament, GolfPick.tournament_id == GolfTournament.id)
+        .filter(GolfPick.admin_override.is_(True), GolfTournament.season_year == season_year)
         .order_by(GolfPick.updated_at.desc())
         .limit(10)
-        .all()
+    ).all()
+    override_count = db.session.scalar(
+        select(func.count(GolfPick.id))
+        .join(GolfTournament, GolfPick.tournament_id == GolfTournament.id)
+        .filter(GolfPick.admin_override.is_(True), GolfTournament.season_year == season_year)
     )
 
     return render_template('golf/admin/override_pick.html',
@@ -1041,6 +1072,7 @@ def admin_override_pick():
         existing_pick=existing_pick,
         used_player_ids=used_player_ids,
         recent_overrides=recent_overrides,
+        override_count=override_count,
         pending_confirm=pending_confirm,
         consequence=consequence,
     )

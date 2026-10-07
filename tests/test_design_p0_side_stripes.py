@@ -26,7 +26,6 @@ GAME_SCOPED_PATTERNS = [
     r'\.lives-indicator',
     r'\bcfb\b',              # CFB blueprint (any class containing the cfb word)
     r'\bgolf\b',             # Golf blueprint (any class containing the golf word)
-    r'\.col-divider',        # Golf-only column divider between season/tournament data
     r'\.elimination-alert',  # CFB Survivor "you're out" callout
 ]
 

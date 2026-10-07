@@ -1,122 +1,104 @@
 {% extends "base.html" %}
+{% from 'golf/_sheet.html' import dollars, event_dates with context %}
 
-{% block title %}Golf Admin — Dashboard{% endblock %}
+{% block title %}The Back Office · The Pay Sheet{% endblock %}
 
 {% block content %}
-<div class="page-hero">
-    <div class="hero-glow"></div>
-    <div class="container">
-        <div class="d-flex justify-content-between align-items-end">
-            <div>
-                <h1 class="mb-1">Golf Admin</h1>
-                <p class="lead mb-0">{{ season_year }} Season Dashboard</p>
-            </div>
-            <div>
-                <span class="admin-badge">Admin</span>
-            </div>
-        </div>
-    </div>
-</div>
+<div class="golf-page">
 
-<div class="container pb-5">
+    <h1 class="golf-title golf-title--page">The Back Office</h1>
 
-    <!-- Stats Row -->
-    <div class="row g-3 mb-4">
-        <div class="col-6 col-lg-3">
-            <div class="stat-block animate-in stagger-1">
-                <div class="stat-value">{{ upcoming_count }}</div>
-                <div class="stat-label">Upcoming</div>
-            </div>
-        </div>
-        <div class="col-6 col-lg-3">
-            <div class="stat-block animate-in stagger-2">
-                <div class="stat-value text-success">{{ active_count }}</div>
-                <div class="stat-label">Active</div>
-            </div>
-        </div>
-        <div class="col-6 col-lg-3">
-            <div class="stat-block animate-in stagger-3">
-                <div class="stat-value">{{ complete_count }}</div>
-                <div class="stat-label">Complete</div>
-            </div>
-        </div>
-        <div class="col-6 col-lg-3">
-            <div class="stat-block animate-in stagger-4">
-                <div class="stat-value">{{ total_enrolled }}</div>
-                <div class="stat-label">Enrolled</div>
-            </div>
-        </div>
-    </div>
+    <p class="golf-context">
+        <span class="golf-context-items">
+            <span class="golf-nowrap">{{ season_year }} season</span>
+            <span class="golf-nowrap">{% if tournaments %}{{ banked_count }} of {{ tournaments|length }} {{ 'event' if tournaments|length == 1 else 'events' }} banked{% else %}the schedule is not posted yet{% endif %}</span>
+            <span class="golf-nowrap">{{ api_usage.calls }} of {{ api_usage.limit }} reads this month</span>
+        </span>
+    </p>
 
-    <div class="row g-4">
-        <!-- Quick Links -->
-        <div class="col-md-6">
-            <div class="card animate-in stagger-5">
-                <div class="card-header">
-                    <i class="bi bi-grid me-2"></i>Quick Links
-                </div>
-                <div class="list-group list-group-flush">
-                    <a href="{{ url_for('golf.admin_tournaments') }}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
-                        <span><i class="bi bi-calendar3 me-2 text-gold"></i>Tournaments</span>
-                        <span class="badge bg-primary rounded-pill">{{ tournaments|length }}</span>
-                    </a>
-                    <a href="{{ url_for('golf.admin_users') }}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
-                        <span><i class="bi bi-people me-2 text-gold"></i>Users</span>
-                        <span class="badge bg-primary rounded-pill">{{ total_enrolled }}</span>
-                    </a>
-                    <a href="{{ url_for('golf.admin_payments') }}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
-                        <span><i class="bi bi-credit-card me-2 text-gold"></i>Payments</span>
-                        <span class="badge bg-success rounded-pill">{{ total_paid }}/{{ total_enrolled }}</span>
-                    </a>
-                    <a href="{{ url_for('golf.admin_override_pick') }}" class="list-group-item list-group-item-action">
-                        <i class="bi bi-pencil-square me-2 text-gold"></i>Override Pick
-                    </a>
-                </div>
-            </div>
-        </div>
+    {% include 'golf/admin/_book.html' %}
 
-        <!-- Alerts & Info -->
-        <div class="col-md-6">
+    <div class="golf-main">
+
+        {# Ledger 1: what needs doing. Played events not yet banked, Process on each row. #}
+        <section class="golf-leaf" id="golf-settle" aria-labelledby="golf-settle-label">
+            <div class="golf-leaf-head">
+                <h2 class="golf-label" id="golf-settle-label">To settle</h2>
+                {% if pending_finalization %}<span class="golf-leaf-aside">{{ pending_finalization|length }} {{ 'event' if pending_finalization|length == 1 else 'events' }}</span>{% endif %}
+            </div>
             {% if pending_finalization %}
-            <div class="card border-warning mb-3 animate-in stagger-5">
-                <div class="card-header" style="color:var(--game-accent);">
-                    <i class="bi bi-exclamation-triangle me-2"></i>Pending Finalization
-                </div>
-                <div class="card-body">
-                    {% for t in pending_finalization %}
-                    <div class="d-flex justify-content-between align-items-center {% if not loop.last %}mb-2{% endif %}">
-                        <span>{{ t.name }}</span>
-                        <form method="POST" action="{{ url_for('golf.admin_process_results', tournament_id=t.id) }}" class="d-inline">
-                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                            <button type="submit" class="btn btn-warning btn-sm">Process</button>
-                        </form>
-                    </div>
-                    {% endfor %}
-                </div>
-            </div>
+            <p class="golf-leaf-lead">Played and not yet banked. Process scores every pick on the event from the results on file; the event banks when the sync confirms the official results.</p>
+            <ul class="golf-field">
+                {% for t in pending_finalization %}
+                <li class="golf-field-row">
+                    <span class="golf-field-name"><a class="golf-quiet" href="{{ url_for('golf.tournament_detail', tournament_id=t.id) }}">{{ t.name }}</a>{% if t.is_major %} <span class="golf-chip">Major ×1.5</span>{% endif %}{% if t.is_team_event %} <span class="golf-chip">Team event</span>{% endif %}</span>
+                    <span class="golf-field-sub">{% if t.week_number %}Wk {{ t.week_number }} · {% endif %}{{ event_dates(t) }} · complete, not banked</span>
+                    <form class="golf-field-act" method="POST" action="{{ url_for('golf.admin_process_results', tournament_id=t.id) }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="golf-linkbtn">Process</button>
+                    </form>
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <p class="golf-leaf-lead">Nothing to settle. Every played event is banked.</p>
             {% endif %}
+        </section>
 
-            <div class="card animate-in stagger-6">
-                <div class="card-header">
-                    <i class="bi bi-bar-chart me-2"></i>Season Summary
-                </div>
-                <div class="card-body">
-                    <dl class="row mb-0">
-                        <dt class="col-7" style="font-size:.85rem;">Enrolled Users</dt>
-                        <dd class="col-5 text-end fw-bold">{{ total_enrolled }}</dd>
-
-                        <dt class="col-7" style="font-size:.85rem;">Paid</dt>
-                        <dd class="col-5 text-end fw-bold text-success">{{ total_paid }}</dd>
-
-                        <dt class="col-7" style="font-size:.85rem;">Unpaid</dt>
-                        <dd class="col-5 text-end fw-bold {% if total_enrolled - total_paid > 0 %}text-danger{% endif %}">{{ total_enrolled - total_paid }}</dd>
-
-                        <dt class="col-7 mb-0" style="font-size:.85rem;">Collected</dt>
-                        <dd class="col-5 text-end fw-bold mb-0">${{ '{:,.0f}'.format(total_paid * entry_fee) }}</dd>
-                    </dl>
-                </div>
+        {# Ledger 2: the tab, in three figures; the line-by-line page is one tap away. #}
+        <section class="golf-leaf" id="golf-tab" aria-labelledby="golf-tab-label">
+            <div class="golf-leaf-head">
+                <h2 class="golf-label" id="golf-tab-label">The tab</h2>
+                <span class="golf-leaf-aside">${{ entry_fee }} a seat</span>
             </div>
-        </div>
+            <dl class="golf-tiles">
+                <div>
+                    <dt class="golf-label">Paid</dt>
+                    <dd>{{ total_paid }} <span class="golf-tiles-note">of {{ total_enrolled }}</span></dd>
+                </div>
+                <div>
+                    <dt class="golf-label">Collected</dt>
+                    <dd>{{ dollars(total_paid * entry_fee) }}</dd>
+                </div>
+                <div>
+                    <dt class="golf-label">Penalty pot</dt>
+                    <dd>{{ dollars(penalty_pot) }}{% if penalty_outstanding %} <span class="golf-tiles-note">{{ dollars(penalty_outstanding) }} out</span>{% endif %}</dd>
+                </div>
+            </dl>
+            <p class="golf-foot">
+                <a href="{{ url_for('golf.admin_payments') }}">The Tab, line by line</a>
+                <a href="{{ url_for('golf.admin_users') }}">The Roster</a>
+            </p>
+        </section>
+
+        {# Ledger 3: the reads. The meter is the burn hatch, the room's one
+           texture, as wide as the share of the month's reads already spent. #}
+        <section class="golf-leaf" id="golf-reads" aria-labelledby="golf-reads-label">
+            <div class="golf-leaf-head">
+                <h2 class="golf-label" id="golf-reads-label">The reads</h2>
+                <span class="golf-leaf-aside">{{ reads_month }}</span>
+            </div>
+            <p class="golf-leaf-lead">SlashGolf on the free tier: {{ api_usage.limit }} reads a month. The timers spend about 115; this is what the sync's log shows since the first.</p>
+            <div class="golf-meter" role="img" aria-label="{{ api_usage.calls }} of {{ api_usage.limit }} reads spent this month">
+                <span class="golf-meter-figure">{{ api_usage.calls }} <span class="golf-tiles-note">of {{ api_usage.limit }}</span></span>
+                <span class="golf-burn-bar golf-meter-bar" style="--have: {{ [api_usage.pct, 100]|min }}%"></span>
+            </div>
+            <p class="golf-line">
+                {%- if api_usage.over_budget -%}
+                    <strong>Over the month's budget</strong> by {{ api_usage.calls - api_usage.limit }}.
+                {%- elif api_usage.pct >= 80 -%}
+                    <strong>Four fifths of the month's reads are spent.</strong> {{ api_usage.remaining }} left.
+                {%- else -%}
+                    <strong>{{ api_usage.remaining }} left.</strong>
+                {%- endif %}
+                {% if api_usage.last_call %}Last read {{ api_usage.last_call.strftime('%A %-I:%M %p') }} CT.{% else %}No reads yet this month.{% endif %}
+            </p>
+            {% if api_usage.by_endpoint %}
+            <p class="golf-line">{% for endpoint, n in api_usage.by_endpoint|dictsort(by='value', reverse=true) %}{{ endpoint }} {{ n }}{% if not loop.last %} · {% endif %}{% endfor %}</p>
+            {% endif %}
+            <p class="golf-line">RapidAPI counts from the subscription day, not the first, so read this as a floor. The timers are the budget; this only reports.</p>
+        </section>
+
     </div>
 </div>
 {% endblock %}

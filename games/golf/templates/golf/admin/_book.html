@@ -1,0 +1,16 @@
+{# The book line (games/golf/DESIGN.md §8.20): the five pages of the back
+   office, and where each one is. The page in hand is named, not linked. #}
+<nav class="golf-book" aria-label="The back office">
+    <span class="golf-label">In this book</span>
+    <ol class="golf-contents-list">
+        {% for endpoint, name in [
+            ('golf.admin_dashboard', 'The Back Office'),
+            ('golf.admin_tournaments', 'Settle the Book'),
+            ('golf.admin_users', 'The Roster'),
+            ('golf.admin_payments', 'The Tab'),
+            ('golf.admin_override_pick', "The Commish's Pen"),
+        ] %}
+        <li>{% if request.endpoint == endpoint %}<span class="golf-book-here" aria-current="page">{{ name }}</span>{% else %}<a href="{{ url_for(endpoint) }}">{{ name }}</a>{% endif %}</li>
+        {% endfor %}
+    </ol>
+</nav>

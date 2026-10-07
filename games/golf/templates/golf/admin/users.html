@@ -1,82 +1,63 @@
 {% extends "base.html" %}
+{% from 'golf/_sheet.html' import dollars with context %}
 
-{% block title %}Golf Admin — Users{% endblock %}
+{% block title %}The Roster · The Pay Sheet{% endblock %}
 
 {% block content %}
-<div class="page-hero">
-    <div class="hero-glow"></div>
-    <div class="container">
-        <h1>User Management</h1>
-        <p class="lead mb-0">{{ season_year }} Golf Enrollments</p>
-    </div>
-</div>
+<div class="golf-page">
 
-<div class="container pb-5">
-    <div class="card animate-in">
-        <div class="card-header d-flex justify-content-between align-items-center">
-            <span><i class="bi bi-people me-2"></i>Users</span>
-            <small class="text-muted" style="text-transform:none;font-weight:400;">{{ enrollments|length }} enrolled</small>
-        </div>
-        <div class="card-body p-0">
-            <div class="table-responsive">
-                <table class="table table-hover mb-0 align-middle">
-                    <thead>
-                        <tr>
-                            <th>Username</th>
-                            <th class="d-none d-md-table-cell">Email</th>
-                            <th class="text-center">Enrolled</th>
-                            <th class="text-end d-none d-sm-table-cell">Points</th>
-                            <th class="text-center">Paid</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for enrollment in enrollments %}
-                        {% set user = enrollment.user %}
-                        <tr>
-                            <td>
-                                <span class="fw-semibold">{{ user.get_display_name() }}</span>
-                                {% if user.is_admin %}<span class="admin-badge ms-1">Admin</span>{% endif %}
-                            </td>
-                            <td class="d-none d-md-table-cell">
-                                <small class="text-muted">{{ user.email }}</small>
-                            </td>
-                            <td class="text-center">
-                                {% if enrollment %}
-                                    <i class="bi bi-check-circle-fill text-success"></i>
-                                {% else %}
-                                    <i class="bi bi-dash-circle text-muted"></i>
-                                {% endif %}
-                            </td>
-                            <td class="text-end d-none d-sm-table-cell">
-                                {% if enrollment %}
-                                    <strong>${{ '{:,.0f}'.format(enrollment.total_points) }}</strong>
-                                {% else %}
-                                    <span class="text-muted">—</span>
-                                {% endif %}
-                            </td>
-                            <td class="text-center">
-                                {% if enrollment %}
-                                <div class="form-check form-switch d-flex justify-content-center mb-0">
-                                    <input class="form-check-input payment-toggle" type="checkbox"
-                                           data-user-id="{{ user.id }}"
-                                           {% if enrollment.has_paid %}checked{% endif %}>
-                                </div>
-                                {% else %}
-                                    <span class="text-muted">—</span>
-                                {% endif %}
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+    <h1 class="golf-title golf-title--page">The Roster</h1>
+
+    <p class="golf-context">
+        <span class="golf-context-items">
+            <span class="golf-nowrap">{{ season_year }} season</span>
+            <span class="golf-nowrap">{{ enrollments|length }} {{ 'seat' if enrollments|length == 1 else 'seats' }}</span>
+            {% if enrollments %}<span class="golf-nowrap">{{ total_paid }} paid</span>{% endif %}
+        </span>
+    </p>
+
+    {% include 'golf/admin/_book.html' %}
+
+    <div class="golf-main">
+        <section class="golf-leaf" aria-labelledby="golf-roster-label">
+            <div class="golf-leaf-head">
+                <h2 class="golf-label" id="golf-roster-label">Every seat</h2>
             </div>
-        </div>
-    </div>
-
-    <div class="mt-3">
-        <a href="{{ url_for('golf.admin_dashboard') }}" class="btn btn-outline-secondary btn-sm">
-            <i class="bi bi-arrow-left me-1"></i>Back to Dashboard
-        </a>
+            {% if enrollments %}
+            <p class="golf-leaf-lead">This season's enrollees, with the money on their line. A seat is granted through the platform's enrollments; the check marks the entry fee paid.</p>
+            <table class="golf-sheet golf-sheet--plain" aria-labelledby="golf-roster-label">
+                <thead class="visually-hidden">
+                    <tr>
+                        <th scope="col">Member</th>
+                        <th scope="col">Banked</th>
+                        <th scope="col">Entry fee</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for e in enrollments %}
+                    {% set user = e.user %}
+                    <tr class="golf-sheet-row">
+                        <th scope="row" class="golf-sheet-name">
+                            <span class="golf-sheet-avatar">{{ user.get_avatar() }}</span><a class="golf-quiet" href="{{ url_for('golf.member_scorecard', user_id=user.id) }}">{{ user.get_display_name() }}</a>
+                            {%- if user.is_admin or e.is_admin %} <span class="golf-chip">Commish</span>{% endif %}
+                            <span class="golf-pick-line">{{ user.email }}</span>
+                        </th>
+                        <td class="golf-sheet-money"><span class="golf-money golf-money--banked">{{ dollars(e.total_points or 0) }}</span></td>
+                        <td class="golf-sheet-fee">
+                            <label class="golf-check">
+                                <input class="payment-toggle" type="checkbox" data-user-id="{{ e.user_id }}"{% if e.has_paid %} checked{% endif %}
+                                       aria-label="{{ user.get_display_name() }} paid the entry fee">
+                                <span class="golf-chip js-paid-status{% if not e.has_paid %} golf-chip--deduction{% endif %}">{{ 'Paid' if e.has_paid else 'Unpaid' }}</span>
+                            </label>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p class="golf-empty">Nobody has a seat yet. Members take one at the join page; the Commish grants one through the platform's enrollments.</p>
+            {% endif %}
+        </section>
     </div>
 </div>
 {% endblock %}
@@ -84,11 +65,14 @@
 {% block scripts %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+
+    /* The entry-fee check: flip the chip in place, no reload. */
     document.querySelectorAll('.payment-toggle').forEach(function(toggle) {
         toggle.addEventListener('change', function() {
             const userId = this.dataset.userId;
             const hasPaid = this.checked;
-            const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+            const chip = this.closest('tr').querySelector('.js-paid-status');
 
             fetch(`{{ url_for('golf.admin_update_payment', user_id=0) }}`.replace('0', userId), {
                 method: 'POST',
@@ -100,13 +84,14 @@ document.addEventListener('DOMContentLoaded', function() {
             })
             .then(r => r.json())
             .then(data => {
-                if (!data.success) {
+                if (data.success) {
+                    chip.classList.toggle('golf-chip--deduction', !data.has_paid);
+                    chip.textContent = data.has_paid ? 'Paid' : 'Unpaid';
+                } else {
                     toggle.checked = !hasPaid;
                 }
             })
-            .catch(() => {
-                toggle.checked = !hasPaid;
-            });
+            .catch(() => { toggle.checked = !hasPaid; });
         });
     });
 });

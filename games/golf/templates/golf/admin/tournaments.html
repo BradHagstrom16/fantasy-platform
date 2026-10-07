@@ -1,96 +1,71 @@
 {% extends "base.html" %}
+{% from 'golf/_sheet.html' import event_dates with context %}
 
-{% block title %}Golf Admin — Tournaments{% endblock %}
+{% block title %}Settle the Book · The Pay Sheet{% endblock %}
 
 {% block content %}
-<div class="page-hero">
-    <div class="hero-glow"></div>
-    <div class="container">
-        <h1>Tournament Management</h1>
-        <p class="lead mb-0">{{ season_year }} Season</p>
-    </div>
-</div>
+<div class="golf-page">
 
-<div class="container pb-5">
-    <div class="card animate-in">
-        <div class="card-body p-0">
+    <h1 class="golf-title golf-title--page">Settle the Book</h1>
+
+    <p class="golf-context">
+        <span class="golf-context-items">
+            <span class="golf-nowrap">{{ season_year }} season</span>
+            <span class="golf-nowrap">{% if tournaments %}{{ banked_count }} of {{ tournaments|length }} {{ 'event' if tournaments|length == 1 else 'events' }} banked{% else %}the schedule is not posted yet{% endif %}</span>
+            {% if to_settle %}<span class="golf-nowrap">{{ to_settle }} to settle</span>{% endif %}
+        </span>
+    </p>
+
+    {% include 'golf/admin/_book.html' %}
+
+    <div class="golf-main">
+        <section class="golf-leaf" aria-labelledby="golf-book-label">
+            <div class="golf-leaf-head">
+                <h2 class="golf-label" id="golf-book-label">The season book</h2>
+            </div>
             {% if tournaments %}
-            <div class="table-responsive">
-                <table class="table table-hover mb-0 align-middle">
-                    <thead>
-                        <tr>
-                            <th style="width:50px;">Wk</th>
-                            <th>Tournament</th>
-                            <th class="d-none d-md-table-cell">Dates</th>
-                            <th class="text-center">Status</th>
-                            <th class="text-center d-none d-sm-table-cell">Field</th>
-                            <th class="text-center d-none d-md-table-cell">Finalized</th>
-                            <th class="text-end">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for t in tournaments %}
-                        <tr>
-                            <td><span class="text-muted fw-bold">{{ t.week_number or '—' }}</span></td>
-                            <td>
-                                <a href="{{ url_for('golf.tournament_detail', tournament_id=t.id) }}" class="text-decoration-none fw-semibold">
-                                    {{ t.name }}
-                                </a>
-                                {% if t.is_major %}<span class="badge bg-warning text-dark" style="font-size:.55rem;">MAJOR</span>{% endif %}
-                                {% if t.is_team_event %}<span class="badge bg-info text-dark" style="font-size:.55rem;">TEAM</span>{% endif %}
-                            </td>
-                            <td class="d-none d-md-table-cell">
-                                <small>{{ t.start_date.strftime('%b %d') }} – {{ t.end_date.strftime('%b %d') }}</small>
-                            </td>
-                            <td class="text-center">
-                                {% if t.status == 'active' %}
-                                    <span class="badge bg-success">Live</span>
-                                {% elif t.status == 'complete' %}
-                                    <span class="badge bg-secondary">Complete</span>
-                                {% else %}
-                                    <span class="badge bg-light text-dark border">Upcoming</span>
-                                {% endif %}
-                            </td>
-                            <td class="text-center d-none d-sm-table-cell">
-                                {{ t.get_field_count() }}
-                            </td>
-                            <td class="text-center d-none d-md-table-cell">
-                                {% if t.status == 'complete' %}
-                                    {% if t.results_finalized %}
-                                        <i class="bi bi-check-circle-fill text-success"></i>
-                                    {% else %}
-                                        <i class="bi bi-exclamation-circle-fill text-warning"></i>
-                                    {% endif %}
-                                {% else %}
-                                    <span class="text-muted">—</span>
-                                {% endif %}
-                            </td>
-                            <td class="text-end">
-                                {% if t.status == 'complete' and not t.results_finalized %}
-                                <form method="POST" action="{{ url_for('golf.admin_process_results', tournament_id=t.id) }}" class="d-inline">
-                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                                    <button type="submit" class="btn btn-warning btn-sm">Process</button>
+            <p class="golf-leaf-lead">Every event on the schedule and where it stands. Process scores a played event's picks from the results on file; it banks when the sync confirms the official results.</p>
+            <table class="golf-sheet golf-weeks" aria-labelledby="golf-book-label">
+                <thead class="visually-hidden">
+                    <tr>
+                        <th scope="col">Week</th>
+                        <th scope="col">Event</th>
+                        <th scope="col">State</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for t in tournaments %}
+                    <tr class="golf-sheet-row">
+                        <td class="golf-weeks-no">{% if t.week_number %}Wk {{ t.week_number }}{% endif %}</td>
+                        <th scope="row" class="golf-sheet-name">
+                            <a class="golf-quiet" href="{{ url_for('golf.tournament_detail', tournament_id=t.id) }}">{{ t.name }}</a>
+                            {%- if t.status == 'active' %} <span class="golf-chip golf-chip--live">Live</span>{% endif %}
+                            {%- if t.is_major %} <span class="golf-chip">Major ×1.5</span>{% endif %}
+                            {%- if t.is_team_event %} <span class="golf-chip">Team event</span>{% endif %}
+                            <span class="golf-pick-line">{{ event_dates(t) }} · {{ field_counts.get(t.id, 0) }} in the field{% if t.pick_deadline and not t.is_deadline_passed() %} · locks <span class="golf-nowrap">{{ format_lock(t.pick_deadline) }}</span>{% endif %}</span>
+                        </th>
+                        <td class="golf-sheet-state">
+                            {%- if t.results_finalized -%}
+                                <span class="golf-state golf-state--banked">Banked</span>
+                            {%- elif t.status == 'complete' -%}
+                                <form method="POST" action="{{ url_for('golf.admin_process_results', tournament_id=t.id) }}">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="golf-linkbtn">Process</button>
                                 </form>
-                                {% endif %}
-                                <a href="{{ url_for('golf.tournament_detail', tournament_id=t.id) }}" class="btn btn-outline-secondary btn-sm">View</a>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+                            {%- elif t.status == 'active' -%}
+                                <span class="golf-state">On the course</span>
+                            {%- else -%}
+                                <span class="golf-state">Upcoming</span>
+                            {%- endif -%}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
             {% else %}
-            <div class="text-center py-5">
-                <p class="text-muted">No tournaments loaded. Run <code>flask golf sync-schedule</code> to import.</p>
-            </div>
+            <p class="golf-empty">No events on the book. Seed the schedule with <code>flask golf seed-schedule</code>, then sync it.</p>
             {% endif %}
-        </div>
-    </div>
-
-    <div class="mt-3">
-        <a href="{{ url_for('golf.admin_dashboard') }}" class="btn btn-outline-secondary btn-sm">
-            <i class="bi bi-arrow-left me-1"></i>Back to Dashboard
-        </a>
+        </section>
     </div>
 </div>
 {% endblock %}
