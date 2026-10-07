@@ -372,12 +372,30 @@ Ordered by user impact.
       in the replay. The scripts live in `static/js/golf/` (`season-replay.js`, `burn-list.js`), not
       a blueprint static dir: nginx serves `/static/` with the long cache (Brad, 2026-10-06). The
       legacy page's scorecard tiles and its up/down replay marks did not come over.
-- [ ] **U6 Admin** — API-usage meter (parse `api_calls.log` against the 250 budget),
+- [x] **U6 Admin** — API-usage meter (parse `api_calls.log` against the 250 budget),
       confirm-before-reresolve gate on override (deferred from PR 5), admin tables on `.table-golf`.
-- [ ] **U7 Season archive / champion** — 2026 champion + final board; lounge integration
-      (`lounge_state`/`lounge_context`) as a separate decision.
-- [ ] Bundled: `lazy='dynamic'`/`backref` cleanup; season-scope `clear_resolution`
-      (`models.py:501-507`); 2026 result-status casing in display code.
+      **Built 2026-10-06 as The Back Office** (one PR with U7): the five admin pages are leaves of one
+      ledger book on the `.golf-*` primitives (the dashboard is three ledgers in the order they need
+      doing: To settle, The tab, The reads; then Settle the Book, The Roster, The Tab, The Commish's
+      Pen). The meter (`games/golf/services/api_usage.py`) reads the sync's call log (now stamped in
+      UTC) against `API_MONTHLY_LIMIT` in the league's month, display only. The gate is the
+      standalone's: a complete-tournament override renders its consequence and commits nothing until
+      `confirm=1`. Lists are this season's enrollees. Tom Select and `.col-divider` retired;
+      `.table-golf` survives on the schedule page only.
+- [x] **U7 Season archive / champion** — 2026 champion + final board; lounge integration
+      (`lounge_state`/`lounge_context`) as a separate decision. **Built 2026-10-06** (with U6):
+      `games/golf/services/records.py::season_finishes` puts a banked season on the club's record
+      (`flask records close golf YEAR`; any year, every row linked); `/records` links golf 2026 to
+      the Record Room pinned to 2026; the champion fold leads The Sheet and the Record Room once
+      every event is banked; a season with no schedule reads as Pre. **The lounge is built, behind
+      the flip** (Brad's ruling): `games/golf/services/lounge.py`, four partials under
+      `templates/golf/lounge/`, the `--lounge-golf-*` pen pair, decree seal No 004, and the trio
+      grid (`.hl-duo--trio`) for three headliners; the seat stays open all season while the game is
+      open (no `join_open`). Nothing renders until Phase L flips golf `open` + featured.
+- [x] Bundled: season-scope `clear_resolution` (done at U6); 2026 result-status casing is folded in
+      the display code (`stats.MISSED_CUT`, U5).
+- [ ] `lazy='dynamic'`/`backref` cleanup — its own PR before Phase L: it touches every golf query
+      path and must be reviewable alone (CLAUDE.md lists it as deferred to ~Jan 2027).
 
 ## Phase L — Launch
 

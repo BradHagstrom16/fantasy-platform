@@ -237,6 +237,45 @@ def test_the_roster_and_the_tab_carry_the_chip_and_the_check(app, client):
     assert 'golf-chip js-paid-status golf-chip--deduction">Unpaid' in tab
 
 
+def test_the_gate_is_the_pens_only_fill(app, client):
+    """Under the gate the page has one pen fill, Confirm and re-resolve; the
+    form's own save becomes a text action (OWN-WORLD: one fill per page)."""
+    season = app.config['SEASON_YEAR']
+    admin = _user('padmin', is_admin=True)
+    member = _user('member', display_name='Casey Member')
+    _enroll(member, season)
+    t = _event(season, 'RBC Heritage', 16, 4, finalized=True)
+    a = GolfPlayer(api_player_id='A', first_name='Alpha', last_name='One')
+    b = GolfPlayer(api_player_id='B', first_name='Bravo', last_name='Two')
+    db.session.add_all([a, b])
+    db.session.commit()
+    db.session.add_all([GolfTournamentField(tournament_id=t.id, player_id=a.id),
+                        GolfTournamentField(tournament_id=t.id, player_id=b.id)])
+    db.session.commit()
+    _login(client, admin)
+
+    body = client.post('/golf/admin/override-pick', data={
+        'csrf_token': 'x', 'tournament_id': t.id, 'user_id': member.id,
+        'primary_player_id': a.id, 'backup_player_id': b.id, 'override_note': 'late',
+    }).get_data(as_text=True)
+
+    assert body.count('golf-btn') == 1
+    assert 'Confirm and re-resolve' in body
+    assert 'class="golf-linkbtn">Write it differently</button>' in body
+    assert 'Write the override' not in body
+
+
+def test_emails_break_at_the_at_sign(app, client):
+    season = app.config['SEASON_YEAR']
+    admin = _user('padmin', is_admin=True)
+    member = _user('jacksonkolakowski', display_name='Double J')
+    _enroll(member, season)
+    _login(client, admin)
+    for path in ('/golf/admin/users', '/golf/admin/payments'):
+        body = client.get(path).get_data(as_text=True)
+        assert 'jacksonkolakowski<wbr>@test.com' in body, path
+
+
 def test_the_pen_renders_the_field_as_real_selects(app, client):
     season = app.config['SEASON_YEAR']
     admin = _user('padmin', is_admin=True)

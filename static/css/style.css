@@ -4639,6 +4639,21 @@ body.game-golf {
   .home-shell .hl-duo--paired > *:nth-child(3) { order: 3; }
 }
 
+/* The Pay Sheet's final sheet on the bill: the money is wider than a
+   points figure, so the figure sets smaller and the name column may shrink
+   and break a long name rather than run under the money. */
+.home-shell .hl-panel--golf .roll-meta { min-width: 0; }
+.home-shell .hl-panel--golf .roll-pts {
+  font-size: 1.1rem;
+  white-space: nowrap;
+}
+/* On a phone the money takes the line under the name instead of the
+   column beside it, so no name has to break. */
+@media (max-width: 575.98px) {
+  .home-shell .hl-panel--golf .roll-row { grid-template-columns: 36px 1fr; row-gap: .15rem; }
+  .home-shell .hl-panel--golf .roll-pts { grid-column: 2; justify-self: start; }
+}
+
 /* Three headliners (U7, The Pay Sheet): three equal columns from 1100px,
    two gold hairlines at the gaps and no seal (the seal is the pair's
    centre; a trio has none). Below 1100px the base single column: three
@@ -6957,8 +6972,21 @@ body.game-cfb {
   .golf-tiles:not(.golf-tiles--pair) dd { min-height: 3rem; }
   .golf-tiles:not(.golf-tiles--pair) dd .golf-tiles-note { display: block; }
 }
-/* An email is one word; it breaks before the row does. */
+/* An email is one word: it breaks at the @ first (a <wbr> in the markup),
+   and anywhere only when the local part alone is wider than the column. */
 .golf-email { overflow-wrap: anywhere; }
+/* The book's text actions (Process, Save, Cancel, Write it differently)
+   are full 44px targets; the rows already stand that tall. */
+.golf-field-act .golf-linkbtn,
+.golf-sheet-state .golf-linkbtn,
+.golf-penalty-field .golf-linkbtn,
+.golf-confirm-act .golf-linkbtn,
+.golf-pen > .golf-linkbtn {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}
+.golf-pen > .golf-linkbtn { margin-top: 1.25rem; }
 
 /* The check: a native checkbox in the pen, a 44px target, its state chip beside it. */
 .golf-check {

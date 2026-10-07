@@ -106,7 +106,12 @@
                 <textarea class="golf-input" id="override_note" name="override_note" rows="2" placeholder="Why the Commish wrote it">{{ consequence.note if consequence else '' }}</textarea>
                 <span class="golf-pen-note">Printed on the member&rsquo;s scorecard, in quotes.</span>
             </div>
+            {% if pending_confirm %}
+            {# The gate's confirm is the page's one fill; writing it differently is a text action. #}
+            <button type="submit" class="golf-linkbtn">Write it differently</button>
+            {% else %}
             <button type="submit" class="btn btn-game golf-btn">Write the override</button>
+            {% endif %}
             {% elif selected_tournament %}
             <p class="golf-empty">The field publishes Tuesday. The pen waits for it.</p>
             {% else %}
