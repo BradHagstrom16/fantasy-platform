@@ -167,6 +167,8 @@ def _context_live(user, is_enrolled: bool, tournaments, enrollments) -> dict:
             'projected': top.projected,
             'tied': sum(1 for r in sheet.rows if r.rank == 1) > 1,
         }
+    # The sheet so far: the same rows, the top three, for a member's card.
+    ctx['top'] = _top_rows(sheet) if is_enrolled else []
     if is_enrolled and sheet.mine is not None:
         me = sheet.mine
         pick_in = coming is not None and db.session.scalar(
@@ -201,9 +203,16 @@ def _context_post(user, tournaments, enrollments) -> dict:
                        'user_id': r.user.id} for r in champions],
         # The Commish note's champion slot reads .display_name (CFB's shim).
         'champion_team': SimpleNamespace(display_name=name) if champions else None,
-        'top': [{
-            'rank': r.rank, 'rank_label': r.rank_label, 'user_id': r.user.id,
-            'name': r.user.get_display_name(), 'avatar': r.user.get_avatar(),
-            'money': _money(r.total), 'is_you': r.is_me,
-        } for r in sheet.rows[:TOP]],
+        'top': _top_rows(sheet),
     }
+
+
+def _top_rows(sheet) -> list[dict]:
+    """The top of the sheet for the lounge's standings rows: rank, name,
+    the money with its word, and whether the row is the viewer's."""
+    return [{
+        'rank': r.rank, 'rank_label': r.rank_label, 'user_id': r.user.id,
+        'name': r.user.get_display_name(), 'avatar': r.user.get_avatar(),
+        'money': _money(r.total), 'word': 'projected' if r.projected else 'banked',
+        'is_you': r.is_me,
+    } for r in sheet.rows[:TOP]]

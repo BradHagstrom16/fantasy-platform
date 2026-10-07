@@ -181,6 +181,9 @@ def test_live_context_reads_the_sheet_for_a_member(app, monkeypatch):
     assert ctx['leader']['name'] == 'Rival' or ctx['leader']['name'] == 'Me'
     assert ctx['field'] == 2
     assert ctx['pick_wanted'] is True and ctx['mine']['pick_in'] is False
+    # The sheet so far rides the member's card: the same rows, their word.
+    assert [(r['rank'], r['word']) for r in ctx['top']][:1] in ([(1, 'projected')], [(1, 'banked')])
+    assert any(r['is_you'] for r in ctx['top'])
 
     db.session.add(GolfPick(user_id=me.id, tournament_id=rbc.id,
                             primary_player_id=scheffler.id, backup_player_id=spare.id))
@@ -194,6 +197,7 @@ def test_live_context_reads_the_sheet_for_a_member(app, monkeypatch):
     db.session.commit()
     ctx = build_lounge_context(visitor, 'live')
     assert ctx['viewer_mode'] == 'view' and 'mine' not in ctx and 'pick_wanted' not in ctx
+    assert ctx['top'] == []
     assert ctx['leader']['name'] in ('Rival', 'Me')
     assert rival.id  # the rival's line is on the sheet the leader came from
 
@@ -247,6 +251,9 @@ def test_live_context_query_count_does_not_grow_with_the_room(app, monkeypatch):
     def _before(conn, cursor, statement, parameters, context, executemany):
         counter['n'] += 1
 
+    # Warm the request-scoped champion cache the avatars read (one query per
+    # request, however many rows); both measured calls then skip it alike.
+    build_lounge_context(me, 'live')
     event.listen(db.engine, 'before_cursor_execute', _before)
     try:
         build_lounge_context(me, 'live')

@@ -126,6 +126,8 @@ def test_golf_member_in_season_is_asked_to_spend_a_golfer(app, client, monkeypat
     assert '$250,000 banked' in golf_panel and '1st of 1' in golf_panel
     assert 'RBC Heritage locks' in golf_panel
     assert f'class="hl-cta" href="/golf/pick/{rbc.id}">Spend a Golfer</a>' in golf_panel
+    assert 'The sheet, so far' in golf_panel and 'roll-you-chip">You</span>' in golf_panel
+    assert '<span class="hl-nowrap">&middot; 1st of 1</span>' in golf_panel
 
     db.session.add(GolfPick(user_id=me.id, tournament_id=rbc.id,
                             primary_player_id=1, backup_player_id=2))

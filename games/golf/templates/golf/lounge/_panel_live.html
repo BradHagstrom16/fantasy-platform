@@ -23,7 +23,7 @@
   <div class="summons">
     <div class="summons-eyebrow summons-eyebrow--info">◇ {% if g.week_number %}Week {{ g.week_number }} &middot; {% endif %}{{ g.event_name or 'Between events' }}</div>
     {% if g.mine %}
-    <div class="summons-line">{{ g.mine.money }} {{ g.mine.word }} &middot; {{ g.mine.place }} of {{ g.field }}</div>
+    <div class="summons-line">{{ g.mine.money }} {{ g.mine.word }} <span class="hl-nowrap">&middot; {{ g.mine.place }} of {{ g.field }}</span></div>
     {% if g.mine.this_week %}
     <p class="summons-sub">This week: {{ g.mine.this_week }}.</p>
     {% elif g.beat != 'open' %}
@@ -33,7 +33,7 @@
     <div class="summons-line">Your seat is at the table.</div>
     {% endif %}
     <div class="summons-meta">
-      {% if g.next_lock %}<span>{{ g.next_event }} locks {{ g.next_lock }}.</span>{% elif g.next_event %}<span>{{ g.next_event }} is next; the field publishes Tuesday.</span>{% endif %}
+      {% if g.next_lock %}<span>{{ g.next_event }} locks <span class="hl-nowrap">{{ g.next_lock }}.</span></span>{% elif g.next_event %}<span>{{ g.next_event }} is next; the field publishes Tuesday.</span>{% endif %}
       {% if g.leader and not (g.mine and g.mine.leads) %}<span>{{ g.leader.name }}{% if g.leader.tied %} and company{% endif %} lead{% if not g.leader.tied %}s{% endif %} with {{ g.leader.money }}.</span>{% endif %}
     </div>
     {% if g.pick_wanted %}
@@ -43,5 +43,28 @@
     <a class="hl-cta" href="{{ url_for(h.entry.blueprint_index) }}">Enter the Room</a>
     {% endif %}
   </div>
+
+  {# The sheet so far: the top three, the money with its word, the viewer's
+     row marked; the full sheet is one tap into the room. #}
+  {% if g.top %}
+  <div class="hl-standings">
+    <div class="sec-head">
+      <div class="t">The sheet, so far</div>
+      <a class="more" href="{{ url_for(h.entry.blueprint_index) }}">Full sheet &rsaquo;</a>
+    </div>
+    <div class="rolls">
+      {%- for row in g.top -%}
+      <div class="roll-row{% if row.is_you %} roll-row--you{% endif %}">
+        <div class="roll-rank{% if row.rank == 1 %} roll-rank--gold{% endif %}">{{ row.rank }}</div>
+        <div class="roll-meta">
+          <div class="roll-name">{{ row.avatar }}<a class="roll-name-link" href="{{ url_for('golf.member_scorecard', user_id=row.user_id) }}">{{ row.name }}</a>{% if row.is_you %}<span class="roll-you-chip">You</span>{% endif %}</div>
+          <div class="roll-tagline">{{ row.word }}</div>
+        </div>
+        <div class="roll-pts">{{ row.money }}</div>
+      </div>
+      {%- endfor -%}
+    </div>
+  </div>
+  {% endif %}
   {% endif %}
 </section>

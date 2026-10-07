@@ -4639,6 +4639,10 @@ body.game-golf {
   .home-shell .hl-duo--paired > *:nth-child(3) { order: 3; }
 }
 
+/* A summons phrase that stays whole at a wrap: a place with its dot, a lock
+   with its "CT." (the Pay Sheet's live card). */
+.home-shell .hl-nowrap { white-space: nowrap; }
+
 /* The Pay Sheet's final sheet on the bill: the money is wider than a
    points figure, so the figure sets smaller and the name column may shrink
    and break a long name rather than run under the money. */
