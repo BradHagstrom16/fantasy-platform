@@ -4647,7 +4647,10 @@ body.game-golf {
    points figure, so the figure sets smaller and the name column may shrink
    and break a long name rather than run under the money. */
 .home-shell .hl-panel--golf .roll-meta { min-width: 0; }
+/* The money keeps a real gap from the name and the You chip in a trio column. */
+.home-shell .hl-panel--golf .roll-row { column-gap: .75rem; }
 .home-shell .hl-panel--golf .roll-pts {
+  margin-left: .25rem;
   font-size: 1.1rem;
   white-space: nowrap;
 }

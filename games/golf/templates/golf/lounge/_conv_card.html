@@ -23,7 +23,7 @@
     <li>His prize money is your score</li>
     <li>Spend each golfer once</li>
   </ul>
-  <div class="hl-conv-meta">{% if g.first_lock %}{{ g.first_event }} locks {{ g.first_lock }}{% else %}The schedule posts in January{% endif %}</div>
+  <div class="hl-conv-meta">{% if g.first_lock %}{{ g.first_event }} locks <span class="hl-nowrap">{{ g.first_lock }}</span>{% else %}The schedule posts in January{% endif %}</div>
   {% if h.join_open %}
   <a class="hl-cta" href="{{ url_for('auth.register', next=url_for(h.entry.blueprint_join)) }}">
     Join the Pay Sheet

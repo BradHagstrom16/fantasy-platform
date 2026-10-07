@@ -17,7 +17,7 @@
   <div class="summons">
     <div class="summons-eyebrow summons-eyebrow--info">◇ Opening Round</div>
     {% if g.first_lock %}
-    <div class="summons-line">{{ g.first_event }} opens the season. Picks lock {{ g.first_lock }}.</div>
+    <div class="summons-line">{{ g.first_event }} opens the season. Picks lock <span class="hl-nowrap">{{ g.first_lock }}.</span></div>
     {% else %}
     <div class="summons-line">The schedule posts in January.</div>
     {% endif %}
