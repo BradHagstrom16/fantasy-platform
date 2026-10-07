@@ -214,6 +214,18 @@ def test_settle_the_book_lists_the_season_with_its_states(app, client):
     assert f'href="/golf/tournament/{live.id}"' in body
 
 
+def test_process_button_reaches_the_scoring_pass(app, client):
+    """The Book's Process button posts here; the handler must call the sync's real method."""
+    season = app.config['SEASON_YEAR']
+    _login(client, _user('padmin', is_admin=True))
+    played = _event(season, 'RBC Heritage', 16, 4, finalized=False)
+
+    resp = client.post(f'/golf/admin/process-results/{played.id}', follow_redirects=True)
+
+    assert resp.status_code == 200
+    assert 'Processed results for 0 picks.' in resp.get_data(as_text=True)
+
+
 def test_the_roster_and_the_tab_carry_the_chip_and_the_check(app, client):
     season = app.config['SEASON_YEAR']
     admin = _user('padmin', is_admin=True, display_name='The Commish')

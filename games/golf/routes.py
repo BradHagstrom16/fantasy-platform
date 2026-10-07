@@ -1147,7 +1147,7 @@ def admin_process_results(tournament_id):
     sync_mode = current_app.config.get('SYNC_MODE', 'standard')
     api = SlashGolfAPI(api_key, sync_mode=sync_mode)
     sync = TournamentSync(api, sync_mode=sync_mode)
-    processed = sync.processtournament_picks(tournament)
+    processed = sync.process_tournament_picks(tournament)
 
     flash(f'Processed results for {processed} picks.', 'success')
     return redirect(url_for('golf.admin_tournaments'))
