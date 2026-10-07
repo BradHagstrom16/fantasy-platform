@@ -53,8 +53,7 @@ class PushSubscription(db.Model):
     # Bumped on every app open (upsert). Also the eviction key.
     last_seen_at = db.Column(db.DateTime, default=lambda: datetime.now(UTC))
 
-    user = db.relationship('User', backref=db.backref('push_subscriptions',
-                                                      lazy='dynamic'))
+    user = db.relationship('User')
 
     @classmethod
     def upsert(cls, user_id, endpoint, p256dh, auth, user_agent=None):

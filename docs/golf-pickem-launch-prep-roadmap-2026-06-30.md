@@ -394,8 +394,9 @@ Ordered by user impact.
       open (no `join_open`). Nothing renders until Phase L flips golf `open` + featured.
 - [x] Bundled: season-scope `clear_resolution` (done at U6); 2026 result-status casing is folded in
       the display code (`stats.MISSED_CUT`, U5).
-- [ ] `lazy='dynamic'`/`backref` cleanup — its own PR before Phase L: it touches every golf query
-      path and must be reviewable alone (CLAUDE.md lists it as deferred to ~Jan 2027).
+- [x] `lazy='dynamic'`/`backref` cleanup — its own PR before Phase L (2026-10-07). It touched no
+      query path: no collection side was ever read, so every relationship is now a plain many-to-one
+      on the child (`tests/test_golf_model_relationships.py`).
 
 ## Phase L — Launch
 
