@@ -31,7 +31,10 @@ colors:
 > season). §7 is reconciled against what ships at the end of each Phase U cluster: it was reconciled
 > from U1 (The Sheet) and U3 (The Board), then from U2 (the pick page), then from U4 (the scorecard)
 > and U5 (the Record Room), all on 2026-10-06; §8 was written from U4 and U5 the same day, and §7.9
-> (the tiles) was reconciled from the scorecard then. Later clusters extend this file rather than
+> (the tiles) was reconciled from the scorecard then. §7, §8 and §9 were reconciled from U6 (The
+> Back Office) and U7 (the record, the champion, the lounge) on 2026-10-06, the champion fold and the
+> lounge panels taking §8.19 to §8.24, the back office its marks in §7.15 and its invariants in §9.
+> Phase U is complete; the file now describes a built room. Later work extends this file rather than
 > re-deriving it. The legacy "Greenside Ledger" (`~/Golf_Pick_Em/DESIGN.md`) is reference, not
 > doctrine.
 
@@ -109,8 +112,18 @@ The room lives under `/golf/`, scoped by `body.game-golf`. The lounge (`/`) stay
 and gold; The Pay Sheet enters it only through content, copy and its accent signature (the
 `--lounge-golf-*` pair and the `.hl-panel--golf` / `.join--golf` mapping, root `DESIGN.md` §5), never
 through this room's paper, pen variables or `.golf-*` classes (`tests/test_lounge_accent_firewall.py`).
-Substrate contrast at the threshold is by design: purple outside, paper inside. Lounge integration is
-U7's own decision (roadmap); until then the registry shows the coming-soon tile.
+Substrate contrast at the threshold is by design: purple outside, paper inside.
+
+Lounge integration is built (U7) and sits behind the flip: the registry entry carries
+`lounge_label` "The Pay Sheet", a `lounge_cadence` line and the golf lounge module, and nothing
+renders on `/` until Phase L sets `status='open'` and `is_featured=True` together; until then the
+registry shows the coming-soon tile. The seat stays open all season while the game is open: the
+golf entry sets no `join_open`, so status alone decides and the lounge's ask retires only when the
+registry closes the game (Brad, 2026-10-06). The panels (§8.24) are the lounge's own primitives
+and nothing else, the firewall in both directions: no `.golf-*` class, no room hex and no
+`--golf-*` variable reaches them, and the money on the bill is a figure with its word ("$1,240,000
+projected", "banked"), never the room's pencil or ink. The pen reaches the lounge only as the
+`--lounge-golf-*` pair the root file owns.
 
 The lounge owns orientation (what is this game, when does it lock, take a seat); the room owns
 participation and inspection (the pick, the sheet, the board, the scorecard, the record room).
@@ -243,7 +256,10 @@ the weight a display H2 would, so the H1 stays the page's one heading in display
   rows separated by `--golf-rule` hairlines, equal in height within a state (56px for a name alone,
   63px for a name over its pencil pick line); a heavier 2px ink rule opens the sheet and the board;
   the double rule closes a banked figure.
-- One texture only: the burn hatch (45° pencil hatching inside a 1px pencil frame) on the pick page.
+- One texture only: the burn hatch (45° pencil hatching inside a 1px pencil frame). It has two
+  homes: the field on the pick page (§7.7), and the back office's meter (§8.21), where the same
+  hatch is drawn as wide as the share of the month's API reads already spent. It is still the
+  room's one texture; the Record Room's Burn List reuses the field's.
 - The pen appears as fills (CTA, active pill), as the 3px bracket on your line, as the 8% wash on
   your sheet row, and as chip outlines; on the pick page, as the open slot's frame (§7.6), the
   chosen rows' wash (§7.7) and the text actions (§7.25). Never as a page-scale field. The bracket
@@ -254,8 +270,8 @@ the weight a display H2 would, so the H1 stays the page's one heading in display
 ### 6.10 Prohibited visual directions
 A second dark room. Gold anywhere in the room. Red for under par or any "good". Green as identity (a
 fill, a wash, a button). A podium, avatar rings, a winner band, medals. Cards as the row container,
-cards inside cards, side-stripes (`.col-divider` left the standings at U1; the class itself retires
-with admin payments at U6). A Teko column of money. Emoji as
+cards inside cards, side-stripes (`.col-divider` left the standings at U1 and the CSS at U6; the
+class is retired). A Teko column of money. Emoji as
 icons (the legacy 🏆🥈🥉🔄👑 pills are retired; the override is the "Commish" chip). Sparklines or
 trend arrows beside figures (the Record Room's season race is the one chart, and it is opt-in).
 Hiding used golfers. Tinting majors.
@@ -376,8 +392,8 @@ before finishing round 2." Without the script the slots hold the form's own sele
 own text (§7.15).
 
 ### 7.7 The field — `.golf-field`, `.golf-burn`
-A native list over the form's two real selects (§7.15). Tom Select left this page; the admin
-override page keeps it until U6. The head (`.golf-field-head`) is an `<h2>` set as the `.golf-label`
+A native list over the form's two real selects (§7.15). Tom Select is gone from the room: it left
+this page at U2 and the Commish's Pen at U6, which posts four native `.golf-select`s (§8.22). The head (`.golf-field-head`) is an `<h2>` set as the `.golf-label`
 "The field", which asks the open question ("The field · spend your primary", "· name a backup"),
 with the count in pencil at right (`.golf-field-count`, "71 of 82 yours to spend"; under the label
 on a phone). The search (`.golf-search`, 44px, shown by the script) folds case, punctuation and
@@ -418,7 +434,11 @@ a 1px `--golf-rule` between), the `.golf-label` over its value. The value is NOT
 contract said: it is Newsreader 500 at 1.25rem (1.15rem up to 575px), tabular lining figures, in
 ink, with `.golf-tiles-note` as the pencil qualifier at .95rem ("29 **of 31**"). The one Teko figure
 on the scorecard is the season total (§6.6, §8.2); the tiles read as the facts grid does (§7.8).
-Three tiles hold three across on a phone. `--pair` is the two-tile row under the weeks (Best pick,
+Three tiles hold three across on a phone, and there every value is a two-line box with the note on
+the line under its figure (`.golf-tiles:not(.golf-tiles--pair) dd { min-height: 3rem }` and the
+note `display: block` up to 575px), so the three figures share a baseline whether or not a label
+wraps or a note exists; from 576px the note stays on the figure's line and never wraps alone
+("$15 out", never "out"). `--pair` is the two-tile row under the weeks (Best pick,
 Missed cuts at majors): the figure leads alone and its note takes the line under it; up to 575px the
 pair stacks on a hairline. A fold directly under the pair adds no rule of its own (the pair closes on
 its hairline).
@@ -443,7 +463,9 @@ text hides, and `aria-hidden` beside an `aria-label` on the link; it is navigati
 room icon, so §6.10's emoji ban does not reach it. Pills: Standings · Schedule · Results · Stats
 (the Record Room, `/golf/stats`) · My Scorecard (the member's own scorecard, `/golf/member/<id>`,
 shown to a member with a line; active only on that member's own card, never on another's) · Admin
-(golf admins). `/golf/my-picks` redirects to the member's scorecard. The platform scroll-fade applies.
+(golf admins; the pill opens The Back Office, §8.20, and stays active across every `golf.admin*`
+endpoint). As built: Standings · Schedule · Results · Stats · My Scorecard · Admin, in that order.
+`/golf/my-picks` redirects to the member's scorecard. The platform scroll-fade applies.
 
 ### 7.12 Join page
 Platform shape (`page-hero` in the pen family, the How It Works list in the thesis's words, the
@@ -460,8 +482,13 @@ The platform partial, room surfaces only; the pot's unpaid penalties ride the sa
 
 ### 7.15 JS hooks (preserve)
 `#primary_player_id`, `#backup_player_id`, form names `primary_player_id` / `backup_player_id`;
-`#tournament_id`, `#user_id`, `.ts-select`, `override_note`; `.payment-toggle[data-user-id]`,
-`.penalty-group > .penalty-input` + `.penalty-save[data-user-id]`, `meta[name="csrf-token"]`.
+`#tournament_id`, `#user_id`, `#override_note` / `override_note`; `.payment-toggle[data-user-id]`
+with `.js-paid-status` (the Paid / Unpaid chip in the same row, the one the toggle flips in place;
+the script never reads `.badge`), `.penalty-group > .penalty-input` + `.penalty-save[data-user-id]`,
+`meta[name="csrf-token"]`. The back office's classes beside them: `.golf-check` (the label around
+the toggle), `.golf-input` (the penalty figure and the note), `.golf-select` on the pen's four
+selects (event, member, primary, backup). `.ts-select` is gone: Tom Select left the room at U6.
+`tests/test_golf_admin_pages.py` holds the hooks.
 
 On the pick page `#primary_player_id` and `#backup_player_id` are two real selects under those
 names, the form's truth with or without the script. The page's own script also reads:
@@ -595,7 +622,7 @@ pick line are ink 500 (`strong`); the lock sits on its own line (`.golf-pick-loc
 the money column too (`colspan="2"`) and the lock fits on its line on a phone. Another member's open
 week carries none of this but the span: its pick is hidden until the lock (§8.4).
 
-## 8. Season surfaces (U4 the scorecard, U5 the Record Room; reconciled 2026-10-06)
+## 8. Season surfaces (U4 the scorecard, U5 the Record Room, U6 The Back Office, U7 the champion and the lounge; reconciled 2026-10-06)
 
 The same paper, hairlines, pencil and ink as §7; the scorecard's one Teko figure is the season total
 and the Record Room's season race is the room's one chart. Both are `.golf-page`s and run no script
@@ -765,9 +792,167 @@ The Burn List's complement: the top earners nobody in the room has spent, by mon
 name and prize on the short ledger (§7.26). The pick page's version is the member's own five; this
 one is the room's.
 
-### 8.19 Still to come
-The champion fold and the lounge panels (U7) extend §7 and §8 in their own cluster; the Record Room
-gains nothing until then.
+### 8.19 The Pre line on The Sheet
+Before the schedule is posted the context line (§7.3) reads "{year} season · the schedule is not
+posted yet": there is no event to name, no lock to state and no champion. The same two items open
+every back-office page's context line while the book is empty ("the schedule is not posted yet"
+where the banked count would be). Once the last event banks the line reads "{year} season · every
+line is banked" and the champion fold (§8.23) leads the sheet. The Pre state is the season's
+(§4.3); the lounge says it in its own words (§8.24).
+
+### 8.20 The back office: the ledger book — `.golf-book`, `.golf-book-here`
+The commissioner's pages are leaves of one book on the room's paper, never a dashboard of stat
+tiles over cards of links and alerts (the admin surface brief, FORM: the ledger book, Brad's lock of
+2026-10-06). Five pages under `/golf/admin/`, each a `.golf-page` of the same head: the
+`.golf-title--page` H1 naming the page ("The Back Office", "Settle the Book", "The Roster", "The
+Tab", "The Commish's Pen"), the context line, then the book line. The book line (`_book.html`) is a
+`<nav>` between hairlines: the `.golf-label` "In this book" and the five names on the contents
+list (§8.9, `.golf-contents-list`, 44px targets, wrapping to two rows on a phone); the page in hand
+is `.golf-book-here`, ink 500, `aria-current="page"`, unlinked. Below 1100px and above it the book
+is one 720px column: a ledger is read top to bottom, never side by side. Every leaf keeps the sheet,
+the chips, the folds and the text actions of §7; the pages carry no card, no Bootstrap badge, no
+icon font, no inline style but a share the server computed, and no eyebrow
+(`tests/test_golf_admin_pages.py`).
+
+The dashboard ("The Back Office") is three ledgers in the order they need doing, each a
+`.golf-leaf` (§8.10) with its `.golf-label` as the `<h2>` and `.golf-leaf-aside` (pencil, .95rem,
+tabular) as the count at right. **To settle:** the played events not yet banked as `.golf-field`
+rows (name as an `a.golf-quiet` to its board, its Major ×1.5 / Team event chips, the pencil
+sub-line "Wk 16 · Apr 16 to 19 · complete, not banked"), each with Process (`.golf-linkbtn`, a POST
+form) where the field's action sits; with nothing to settle, one lead: "Nothing to settle. Every
+played event is banked." **The tab:** three tiles (§7.9) under a hairline (`.golf-leaf .golf-tiles`
+opens on a hairline; the ledger's own rule is the ink one): Paid "12 **of 19**", Collected, Penalty
+pot with "$15 out" as its note, then two links in a `.golf-foot` with no rule of its own
+(`.golf-tiles + .golf-foot`). **The reads:** the meter (§8.21). The context line carries the season,
+the banked count and "112 of 250 reads this month".
+
+The other leaves. **Settle the Book** (`tournaments.html`): the season book as the weeks table
+(§8.4, `.golf-sheet.golf-weeks`): the week column, the event (quiet link, Live chip while
+`status == 'active'`, the major and team chips, the dates · the field count · the lock while it is
+open), and `.golf-sheet-state` where the money column would be: "Banked" (`.golf-state--banked`),
+Process on a complete event, "On the course", or "Upcoming". **The Roster** (`users.html`): a
+`.golf-sheet--plain` of this season's enrollees: avatar, name (quiet link to the scorecard), the
+Commish chip for an admin, the email on the pick line (`.golf-email`, `overflow-wrap: anywhere`, so
+an address breaks before the row does), the banked money in ink, and the entry-fee check
+(`.golf-sheet-fee`, §8.21). **The Tab** (`payments.html`): the same three tiles, then "Line by line"
+(the unpaid count as the aside): every enrollee with the check, and under a member who owes a
+penalty the penalty line (§8.21). **The Commish's Pen** (`override_pick.html`, §8.22). Each page's
+empty state is a sentence in `.golf-empty` ("Nobody has a seat yet, so there is no tab.").
+
+### 8.21 The back office's marks — `.golf-meter`, `.golf-check`, `.golf-input`, `.golf-sheet-fee`, `.golf-sheet-state`, `.golf-penalty`, `.golf-leaf-aside`, `.golf-email`
+**The meter** (`.golf-meter`, the dashboard's signature mark): the month's SlashGolf reads as the
+burn hatch, the room's one texture (§6.9). A wrapping flex row: `.golf-meter-figure` ("112 **of
+250**", Newsreader 500, 1.25rem, tabular, ink, the limit as a `.golf-tiles-note`) beside
+`.golf-burn-bar.golf-meter-bar`, the field's 1px pencil frame grown to 12px tall and 10rem to 20rem
+wide, hatched to `--have`, the share spent (capped at 100). The row is `role="img"` with the figure
+as its label. The `.golf-line` under it says what is left and when the last read was, in words:
+"**131 left.** Last read Tuesday 6:05 AM CT."; past four fifths the sentence leads in ink 500
+("**Four fifths of the month's reads are spent.** 42 left."); over the budget it says by how many.
+No color alone says it. A second line breaks the count down by endpoint; a third says what the
+meter is: "RapidAPI counts from the subscription day, not the first, so read this as a floor. The
+timers are the budget; this only reports." (§9).
+
+**The check** (`.golf-check`): the entry-fee toggle is a native checkbox in the pen
+(`accent-color: var(--game-primary)`, 22px, a 2px pen focus ring), wrapped in a 44px label with its
+chip beside it: the bare ink chip "Paid" or the `--deduction` chip "Unpaid" (the Red-Is-A-Deduction
+Rule, §6.12), the chip carrying `.js-paid-status` so the script flips it in place. The cell is
+`.golf-sheet-fee`, right-aligned at the end of the row; on a phone the chip drops under its check so
+the roster row keeps its money. `.golf-sheet-state` is the same end cell holding a state word or a
+Process form instead.
+
+**The input** (`.golf-input`): the select's twin (§7.31): 44px, a 1px pencil frame, 2px radius, the
+card surface, the page's own font, the 2px pen ring 2px off. `textarea.golf-input` fills its column
+and resizes vertically. **The penalty line** (`.golf-penalty`, the legacy `penalty-group` beside
+it): under an owing member's name on The Tab, a pencil .95rem row: "Penalty owed **$30**" with the
+outstanding figure as a `--deduction` chip ("$15 out", with the legacy `badge-penalty` class) or
+"· settled", then `.golf-penalty-field`: the label "Paid $", a 6.5rem number `.golf-input`, and Save
+as a `.golf-linkbtn`. Saving reloads the page so owed, outstanding and the pot recompute.
+
+### 8.22 The Commish's Pen — `.golf-pen`, `.golf-pen-grid`, `.golf-pen-field`, `.golf-pen-note`, `.golf-confirm`, `.golf-confirm-act`, `.golf-recent`
+The override form is a `<form class="golf-pen">` of `.golf-pen-field`s, each a `.golf-label` over
+its control, two across from 576px (`.golf-pen-grid`): Event and Member (the room's `.golf-select`,
+§7.31, full width; choosing either reloads the page with that field, the page's only script), then,
+once the field is loaded, Primary and Backup (native selects over the field, a used golfer disabled
+and marked "(used)"), and The note (a `textarea.golf-input` with the pencil italic `.golf-pen-note`
+"Printed on the member's scorecard, in quotes."). The pick on the book is stated in a `.golf-line`
+("On the book: **Scheffler**, backup Clark" with the Commish chip when it is already an override).
+The one pen fill on the page is "Write the override" (`.btn.golf-btn`, §7.24). No field yet: the
+empty state "The field publishes Tuesday. The pen waits for it."
+
+**The confirm** (`.golf-confirm`, the gate): when the event is complete, the first save renders the
+consequence above the form and commits nothing. A section on a 2px ink rule closing on a hairline:
+the `.golf-label` "Confirm before re-resolving", then the marginalia's own lines (§7.17,
+`.golf-note-lead` in ink, `.golf-note-line` in pencil with its figures in ink): the event is
+complete; what re-resolving recalculates and the member's season total now; the pick on the book
+and its money; the change proposed. `.golf-confirm-act` holds the two actions: "Confirm and
+re-resolve", a `.btn.golf-btn` carrying the same selections and `confirm=1` as hidden fields, and
+Cancel as a `.golf-linkbtn`. Under the gate the confirm is the page's one fill: the form's own
+action becomes the text action "Write it differently" (`tests/test_golf_admin_pages.py`).
+
+**Recent overrides** (`.golf-recent`): a leaf under the form, a list between hairlines, each item
+on a hairline: `.golf-recent-head` (the member in `.golf-still-name` at left, the date at right in
+pencil tabular), `.golf-recent-line` (event · primary, backup) in pencil, and the note quoted in
+`.golf-pen-note`. Empty: "No overrides yet this season." The context line counts the season's
+overrides.
+
+### 8.23 The champion fold — `.golf-champion`, `.golf-champion-list`, `.golf-champion-name`
+When every event of a season is banked (§4.3 Final), the champion leads The Sheet and the Record
+Room: a `<section class="golf-champion">` on a 2px ink rule, above your line on The Sheet and above
+the race leaf in the Record Room (the leaf keeps its own ink rule, 2.25rem below the fold), rendered
+by the `champion_fold` macro in `_champion.html` (imported with context: the avatar reads the
+request's champion cache). The `.golf-label` as the `<h2>`: "Champion", or "Champions, tied" when
+the place is shared. One `<li>` per champion on hairlines: the avatar and the name
+(`.golf-champion-name`, Newsreader 500, 1.35rem, ink; an `a.golf-quiet` to the scorecard when the
+row is linked) at left, the figure at right as `.golf-money--banked` at 1.25rem (ink, the double
+rule: the season is banked). No band, no fill, no gold, no enlargement: the room's materials say it
+(§2.5 No podium holds; the fold is a section of the page, not a marked row).
+
+Two sources (`routes.py::_champions`): once the Commish has closed the season (`flask records close
+golf YEAR`), the club's record's place-1 rows for the game and year (`finishes_for`, one query), the
+name and the stored `detail` figure; before that, the page's own leaders: on The Sheet the rows at
+rank 1 of the sheet it just built, in the Record Room the race's `is_leader` series. Two sentences
+(`_champion_line`), one `.golf-line` under the list with its link: on the record, "On the club's
+record." with "The Record" (to `/records#board-golf-{year}`); not yet, The Sheet says "The season
+is banked." with "The Record Room", and the Record Room says "The season is banked and not on the
+club's record yet; the Commish closes it." with "The Sheet". The fold never renders with no champion
+or before the last event banks.
+
+### 8.24 The lounge panels (U7)
+The Pay Sheet's presence on `/`, behind the flip (§3). Four templates under
+`games/golf/templates/golf/lounge/`, every one in the lounge's own primitives (`.hl-panel`,
+`.decree`, `.summons`, `.hl-cta`, `.hl-standings`, `.join.hl-conv`; root `DESIGN.md` §5) under the
+golf accent hooks: `.hl-panel--golf` and `.join--golf` map `--hl-accent` / `--hl-accent-bright` /
+`--hl-ground` onto `--lounge-golf-accent` `#2439C8`, `--lounge-golf-accent-bright` `#8C9BFF` and
+`--lounge-golf-ground` `#1A2A8F` (the pen, the pen bright, the pen pressed, re-declared as lounge
+tokens in `tokens.css`), with a middle-hand wash (24% to 6% of the ground, 180deg: the pen is a
+cool saturated blue on purple). Every action is the solid `.hl-cta` (ADR-052): "Take a Seat",
+"Enter the Room", "Spend a Golfer", "Join the Pay Sheet".
+
+- **Pre** (`_panel_pre.html`): the decree seal band ("By Decree of the Commish No 004 · The Pay
+  Sheet '27"), the ◇ "Opening Round" summons (the lounge's own eyebrow, ADR-052; not this room's),
+  "{Sony Open} opens the season. Picks lock {Thu Jan 15 · 9:00 AM CT}." or "The schedule posts in
+  January.", one line of the thesis, and the seat or the door.
+- **Live** (`_panel_live.html`): for a member, "Week 16 · RBC Heritage" over their line as a figure
+  with its word ("$1,240,000 projected · 4th of 19"), this week's golfer and position, then the next
+  lock and the leader in the meta line; the one ask is "Spend a Golfer" when the next field is open
+  and no pick is in (the echo: "No pick is $0 for the week. No penalty, no autopick."), else "Enter
+  the Room". A visitor gets the sell and the leader's figure while the seat is open.
+- **Post** (`_panel_post.html`): "The Sheet Is Banked", the champion or champions by name with the
+  money across the events, the Record Room as the route link, and the top three of the final sheet
+  as the lounge's own `.hl-standings` rolls (the lounge's gold on rank 1 is lounge chrome, §2.5),
+  "banked" as each tagline.
+- **The conversion card** (`_conv_card.html`): the club's third corner on the logged-out bill: the
+  ◇ seal, the floor-gated seat count, the ⛳ mark, the name, the genre line "Golf One & Done across
+  the PGA Tour season", three tape lines, the first lock, and the ask; closed, "The sheet is closed.
+  Late seats are granted by the Commish."
+
+`services/lounge.py` is the registry-bound pair: `golf_lounge_state()` reads the season's schedule
+(no events: pre; every event banked: post; a lock passed: live) and `build_lounge_context` builds
+the per-state data from the sheet's own builder (`services/sheet.py`) over rows loaded once, so the
+lounge says the same money the room does; the roster floor is the shared `ROSTER_COUNT_FLOOR`. With
+three headliners the bill takes `.hl-duo--trio`: three equal columns from 1100px on two gold
+hairlines and no seal, one stacked column below, never two-and-one (the lounge bills every headliner
+as an equal).
 
 ## 9. Engineering Invariants
 Contracts that guard scoring correctness and admin operations. All test-locked; change the test with
@@ -866,6 +1051,42 @@ the rule, never around it.
   script shows them, the page is whole without them, the replay ranks in competition rank like the
   server, and under `prefers-reduced-motion` the season does not play (the slider still steps it).
   `tests/test_golf_stats.py`, `tests/test_golf_record_room.py`.
+- **The meter is display only; the `golf-*` timer cadence stays the budget:**
+  `services/api_usage.py::read_api_usage` counts every attempt that reached RapidAPI
+  (`status != 0`: a 4xx, a 5xx and every retry included; a network failure never left the box) in
+  the league's month over the live call log and its three rotations; the sync stamps the log in UTC
+  and the meter reads it in league time. A missing log reads as nothing spent. Nothing here gates a
+  call. `tests/test_golf_api_usage.py`, `tests/test_golf_timers.py`.
+- **A complete-tournament override needs `confirm=1`:** the first POST on a complete event renders
+  the consequence (§8.22) and commits nothing; only the re-post carrying `confirm=1` re-resolves.
+  `tests/test_golf_conformance.py`.
+- **`clear_resolution` is season-scoped:** re-resolving a pick on a complete event clears its usage
+  and money for that season only. `tests/test_golf_conformance.py`.
+- **The admin lists are this season's enrollees** (the roster, the tab, the dashboard's counts and
+  the pen's member select), and every admin route is behind the two-tier `golf_admin_required`
+  (platform admin, then this season's enrollment admin; a prior season's admin is refused; every
+  mutating route rejects GET). `tests/test_golf_admin_route_matrix.py`. The admin templates carry no
+  pre-U markup (no card, badge, stat block, Tom Select, icon font or eyebrow) and keep every §7.15
+  hook. `tests/test_golf_admin_pages.py`.
+- **The record seam:** `services/records.py::season_finishes(year)` closes any year whose every
+  event is banked (`results_finalized`; a season with no schedule or an open event raises
+  `SeasonNotClosed`), ranked by the stored season total in competition rank (ties share and gap),
+  every row linked to its user, the champion outcome at place 1 (tied leaders are both champions);
+  a past season closes from its own rows. Wired through the registry's `season_finishes`.
+  `tests/test_golf_records.py`.
+- **The champion fold's two sources and the Pre line:** the fold renders only once every event is
+  banked, from the record's place-1 rows when the season is closed and from the page's own leaders
+  until then, the sentence saying which; before the schedule is posted the context line says so and
+  no fold renders. `tests/test_golf_sheet.py`, `tests/test_golf_record_room.py`.
+- **The lounge is read-only:** `services/lounge.py` never imports `services/sync`,
+  `services/reminders`, `golf/cli` or `legacy_import`; it resolves the state from the schedule and
+  its locks, works on empty tables (every foreign render of `/` runs on them), and its query count
+  does not grow with the room. `tests/test_golf_lounge.py`. The panels pass the accent firewall (no
+  `golf-` class, no `--golf-*` or `--game-*` var, the `--lounge-golf-*` pair only) and CTA parity
+  (every action a solid `.hl-cta`). `tests/test_lounge_accent_firewall.py`,
+  `tests/test_lounge_cta_parity.py`. Three headliners take `.hl-duo--trio`, equal columns on two
+  seams and no seal; two still pair. `tests/test_lounge_trio.py`,
+  `tests/test_design_lounge_undercard.py`.
 - **Enrollment is explicit:** pick and override paths never create `GolfEnrollment` rows.
   `tests/test_golf_auto_enroll_removed.py`.
 - **The name:** registry `display_name` "The Pay Sheet", `short_name='Golf'` (string-locked),

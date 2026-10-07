@@ -6891,7 +6891,7 @@ body.game-cfb {
 .golf-main > .golf-champion + .golf-leaf { margin-top: 2.25rem; }
 
 /* ── The back office (U6): the ledger book ──────────────────────────
-   games/golf/DESIGN.md §8.20 to §8.24. The commissioner's pages are leaves
+   games/golf/DESIGN.md §8.20 to §8.22. The commissioner's pages are leaves
    of one book on the room's paper: the same sheet, chips, folds and text
    actions, and one new mark, the meter (the burn hatch, the room's one
    texture, drawn as the month's reads). */
