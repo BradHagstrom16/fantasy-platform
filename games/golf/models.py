@@ -60,7 +60,7 @@ class GolfEnrollment(db.Model):
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(UTC))
 
     # Relationships
-    user = db.relationship('User', backref=db.backref('golf_enrollments', lazy='dynamic'))
+    user = db.relationship('User')
 
     __table_args__ = (
         db.UniqueConstraint('user_id', 'season_year', name='unique_golf_enrollment'),
@@ -137,8 +137,6 @@ class GolfPlayer(db.Model):
     updated_at = db.Column(db.DateTime, default=lambda: datetime.now(UTC),
                            onupdate=lambda: datetime.now(UTC))
 
-    # Relationships
-    tournament_results = db.relationship('GolfTournamentResult', backref='player', lazy='dynamic')
 
     def full_name(self):
         """Return full name."""
@@ -192,10 +190,6 @@ class GolfTournament(db.Model):
     updated_at = db.Column(db.DateTime, default=lambda: datetime.now(UTC),
                            onupdate=lambda: datetime.now(UTC))
 
-    # Relationships
-    picks = db.relationship('GolfPick', backref='tournament', lazy='dynamic')
-    results = db.relationship('GolfTournamentResult', backref='tournament', lazy='dynamic')
-    field = db.relationship('GolfTournamentField', backref='tournament', lazy='dynamic')
 
     __table_args__ = (
         db.UniqueConstraint('api_tourn_id', 'season_year', name='unique_golf_tournament_per_season'),
@@ -301,7 +295,8 @@ class GolfTournamentField(db.Model):
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(UTC))
 
     # Relationships
-    player = db.relationship('GolfPlayer', backref='field_entries')
+    tournament = db.relationship('GolfTournament')
+    player = db.relationship('GolfPlayer')
 
     __table_args__ = (
         db.UniqueConstraint('tournament_id', 'player_id', name='unique_golf_player_tournament_field'),
@@ -329,7 +324,7 @@ class GolfSeasonPlayerUsage(db.Model):
         db.UniqueConstraint('user_id', 'player_id', 'season_year', name='unique_golf_player_usage'),
     )
 
-    user = db.relationship('User', backref=db.backref('golf_season_usages', lazy='dynamic'))
+    user = db.relationship('User')
     player = db.relationship('GolfPlayer')
 
     def __repr__(self):
@@ -379,6 +374,10 @@ class GolfTournamentResult(db.Model):
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(UTC))
     updated_at = db.Column(db.DateTime, default=lambda: datetime.now(UTC),
                            onupdate=lambda: datetime.now(UTC))
+
+    # Relationships
+    tournament = db.relationship('GolfTournament')
+    player = db.relationship('GolfPlayer')
 
     __table_args__ = (
         db.UniqueConstraint('tournament_id', 'player_id', name='unique_golf_player_tournament_result'),
@@ -456,10 +455,11 @@ class GolfPick(db.Model):
                            onupdate=lambda: datetime.now(UTC))
 
     # Relationships
-    user = db.relationship('User', backref=db.backref('golf_picks', lazy='dynamic'))
-    primary_player = db.relationship('GolfPlayer', foreign_keys=[primary_player_id], backref='primary_picks')
-    backup_player = db.relationship('GolfPlayer', foreign_keys=[backup_player_id], backref='backup_picks')
-    active_player = db.relationship('GolfPlayer', foreign_keys=[active_player_id], backref='active_picks')
+    user = db.relationship('User')
+    tournament = db.relationship('GolfTournament')
+    primary_player = db.relationship('GolfPlayer', foreign_keys=[primary_player_id])
+    backup_player = db.relationship('GolfPlayer', foreign_keys=[backup_player_id])
+    active_player = db.relationship('GolfPlayer', foreign_keys=[active_player_id])
 
     __table_args__ = (
         db.UniqueConstraint('user_id', 'tournament_id', name='unique_golf_user_tournament_pick'),
