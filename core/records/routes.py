@@ -11,15 +11,26 @@ from games.registry import get_entry
 from models.records import champions, finishes_for, seasons_on_record
 
 # The room's own archive of a season, by endpoint name so this module never
-# imports a game. A season with no entry simply shows no link. Only a PUBLIC
-# page pinned to that season belongs here: this page is public, and a live
-# room page (the Docket's ledger is members-only and always the current
-# season) would send a visitor to a join page or to the wrong year. The
-# Docket's entry waits for a public page pinned to one season.
+# imports a game: a bare endpoint, or ``(endpoint, kwargs)`` for a page that
+# takes the season as a query (the Pay Sheet's Record Room, ``?season=``). A
+# season with no entry simply shows no link. Only a PUBLIC page pinned to
+# that season belongs here: this page is public, and a live room page (the
+# Docket's ledger is members-only and always the current season) would send
+# a visitor to a join page or to the wrong year. The Docket's entry waits for
+# a public page pinned to one season.
 SEASON_ARCHIVES = {
     ('cfb', 2025): 'cfb.history',
     ('worldcup', 2026): 'worldcup.leaderboard',
+    ('golf', 2026): ('golf.record_room', {'season': 2026}),
 }
+
+
+def archive_url(value) -> str:
+    """The URL of a SEASON_ARCHIVES value: an endpoint, or one with its query."""
+    if isinstance(value, tuple):
+        endpoint, kwargs = value
+        return url_for(endpoint, **kwargs)
+    return url_for(value)
 
 
 def _game_name(slug: str) -> str:
@@ -50,12 +61,12 @@ def index():
     ]
     boards = []
     for game, season_year in seasons_on_record():
-        endpoint = SEASON_ARCHIVES.get((game, season_year))
+        archive = SEASON_ARCHIVES.get((game, season_year))
         boards.append({
             'game': game,
             'season_year': season_year,
             'game_name': _game_name(game),
             'rows': [_row(row) for row in finishes_for(game, season_year)],
-            'archive_url': url_for(endpoint) if endpoint else None,
+            'archive_url': archive_url(archive) if archive else None,
         })
     return render_template('records/index.html', roll=roll, boards=boards)

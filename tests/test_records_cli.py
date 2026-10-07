@@ -48,8 +48,11 @@ def test_close_refuses_an_open_season(app):
     assert finishes_for('cfb', 2026) == []
 
 
-def test_close_refuses_a_game_without_a_seam(app):
-    result = _run(app, 'close', 'golf', '2027')
+def test_close_refuses_a_game_without_a_seam(app, monkeypatch):
+    """Every real game has a seam since golf's (U7); the refusal stays for
+    a game whose board has not shipped, so it is exercised on a patched entry."""
+    _seam_returning(monkeypatch, None)
+    result = _run(app, 'close', 'worldcup', '2026')
     assert result.exit_code == 1
     assert 'no records seam' in result.output
 

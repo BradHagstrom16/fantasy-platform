@@ -20,6 +20,7 @@ from games.docket.services import enrollment as _docket_enrollment
 from games.docket.services import lounge as _docket_lounge
 from games.docket.services import records as _docket_records
 from games.golf.services import enrollment as _golf_enrollment
+from games.golf.services import records as _golf_records
 from games.worldcup.services import enrollment as _worldcup_enrollment
 from games.worldcup.services import lounge as _worldcup_lounge
 from games.worldcup.services import records as _worldcup_records
@@ -178,6 +179,7 @@ GAMES: list[GameRegistryEntry] = [
         blueprint_join='golf.join',
         get_enrollment=_golf_enrollment.get_enrollment,
         admin_enroll=_golf_enrollment.admin_enroll,
+        season_finishes=_golf_records.season_finishes,
         short_name='Golf',
         launch_label='2027',
         format_label='Golf One & Done',
