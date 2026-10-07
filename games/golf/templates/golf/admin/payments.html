@@ -60,14 +60,16 @@
                     <tr class="golf-sheet-row">
                         <th scope="row" class="golf-sheet-name">
                             <span class="golf-sheet-avatar">{{ user.get_avatar() }}</span><a class="golf-quiet" href="{{ url_for('golf.member_scorecard', user_id=user.id) }}">{{ user.get_display_name() }}</a>
-                            <span class="golf-pick-line">{{ user.email }}</span>
+                            <span class="golf-pick-line golf-email">{{ user.email }}</span>
                             {% if ps.owed %}
                             <span class="penalty-group golf-penalty">
                                 <span>Penalty owed <strong>{{ dollars(ps.owed) }}</strong>{% if ps.outstanding %} <span class="golf-chip golf-chip--deduction badge-penalty">{{ dollars(ps.outstanding) }} out</span>{% else %} · settled{% endif %}</span>
-                                <label for="penalty-paid-{{ e.user_id }}">Paid $</label>
-                                <input type="number" min="0" step="1" class="golf-input penalty-input"
-                                       id="penalty-paid-{{ e.user_id }}" data-user-id="{{ e.user_id }}" value="{{ ps.paid }}">
-                                <button type="button" class="golf-linkbtn penalty-save" data-user-id="{{ e.user_id }}">Save</button>
+                                <span class="golf-penalty-field">
+                                    <label for="penalty-paid-{{ e.user_id }}">Paid $</label>
+                                    <input type="number" min="0" step="1" class="golf-input penalty-input"
+                                           id="penalty-paid-{{ e.user_id }}" data-user-id="{{ e.user_id }}" value="{{ ps.paid }}">
+                                    <button type="button" class="golf-linkbtn penalty-save" data-user-id="{{ e.user_id }}">Save</button>
+                                </span>
                             </span>
                             {% endif %}
                         </th>

@@ -119,14 +119,15 @@
                 <h2 class="golf-label" id="golf-recent-label">Recent overrides</h2>
             </div>
             {% if recent_overrides %}
-            <ul class="golf-still-list">
+            <ul class="golf-recent">
                 {% for pick in recent_overrides %}
                 <li>
-                    <span>
-                        <span class="golf-still-name">{{ pick.user.get_display_name() }}</span><span class="golf-still-note">{{ pick.tournament.name }} · {{ pick.primary_player.full_name() }}, backup {{ pick.backup_player.full_name() }}</span>
-                        {% if pick.admin_override_note %}<span class="golf-pen-note">“{{ pick.admin_override_note }}”</span>{% endif %}
+                    <span class="golf-recent-head">
+                        <span class="golf-still-name">{{ pick.user.get_display_name() }}</span>
+                        <span class="golf-recent-date">{{ pick.updated_at.strftime('%b %-d') }}</span>
                     </span>
-                    <span class="golf-still-note">{{ pick.updated_at.strftime('%b %-d') }}</span>
+                    <span class="golf-recent-line">{{ pick.tournament.name }} · {{ pick.primary_player.full_name() }}, backup {{ pick.backup_player.full_name() }}</span>
+                    {% if pick.admin_override_note %}<span class="golf-pen-note">“{{ pick.admin_override_note }}”</span>{% endif %}
                 </li>
                 {% endfor %}
             </ul>

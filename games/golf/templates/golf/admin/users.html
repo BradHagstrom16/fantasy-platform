@@ -40,7 +40,7 @@
                         <th scope="row" class="golf-sheet-name">
                             <span class="golf-sheet-avatar">{{ user.get_avatar() }}</span><a class="golf-quiet" href="{{ url_for('golf.member_scorecard', user_id=user.id) }}">{{ user.get_display_name() }}</a>
                             {%- if user.is_admin or e.is_admin %} <span class="golf-chip">Commish</span>{% endif %}
-                            <span class="golf-pick-line">{{ user.email }}</span>
+                            <span class="golf-pick-line golf-email">{{ user.email }}</span>
                         </th>
                         <td class="golf-sheet-money"><span class="golf-money golf-money--banked">{{ dollars(e.total_points or 0) }}</span></td>
                         <td class="golf-sheet-fee">
