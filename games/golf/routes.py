@@ -36,6 +36,15 @@ from games.golf.models import (
     GolfTournamentResult,
 )
 from games.golf.services.field import build_field, search_key, top_unspent_ids
+from games.golf.services.reads import (
+    next_tournament as _next_tournament,
+)
+from games.golf.services.reads import (
+    season_enrollments,
+    season_tournaments,
+    tournament_picks,
+    tournament_results,
+)
 from games.golf.services.scorecard import build_scorecard, revealed
 from games.golf.services.sheet import (
     build_board,
@@ -165,55 +174,6 @@ def refresh_tournament_states():
 # Helpers
 # ============================================================================
 
-def _season_enrollments(season_year):
-    """A season's enrollees with their users loaded (no query per row)."""
-    return db.session.scalars(
-        select(GolfEnrollment)
-        .options(joinedload(GolfEnrollment.user))
-        .filter_by(season_year=season_year)
-    ).all()
-
-
-def _tournament_picks(tournament_id):
-    """A tournament's picks with the member and both golfers loaded."""
-    return db.session.scalars(
-        select(GolfPick)
-        .options(
-            joinedload(GolfPick.user),
-            joinedload(GolfPick.primary_player),
-            joinedload(GolfPick.backup_player),
-        )
-        .filter_by(tournament_id=tournament_id)
-    ).all()
-
-
-def _tournament_results(tournament_id):
-    return db.session.scalars(
-        select(GolfTournamentResult).filter_by(tournament_id=tournament_id)
-    ).all()
-
-
-def _season_tournaments(season_year):
-    return db.session.scalars(
-        select(GolfTournament)
-        .filter_by(season_year=season_year)
-        .order_by(GolfTournament.start_date)
-    ).all()
-
-
-def _next_tournament(tournaments):
-    """The next pick: the first tournament still before its lock.
-
-    Status decides only for one with no deadline yet, which the lock reads as
-    open forever (a field sync that never ran leaves a played week without one).
-    """
-    return next(
-        (t for t in tournaments
-         if (not t.is_deadline_passed() if t.pick_deadline else t.status == 'upcoming')),
-        None,
-    )
-
-
 def _selected_season():
     """The season a season-aware page is showing: ``?season=``, else this one."""
     raw = request.args.get('season')
@@ -241,8 +201,8 @@ def index():
 
     # Standings are golf-enrollment-scoped (ADR-036): only current-season golf
     # enrollees have a line. The sheet is never padded with platform users.
-    enrollments = _season_enrollments(season_year)
-    tournaments = _season_tournaments(season_year)
+    enrollments = season_enrollments(season_year)
+    tournaments = season_tournaments(season_year)
 
     # The week turns over at the lock (the pick form's own test), never at a
     # status. The event the sheet is pencilling, on the course or played and
@@ -251,8 +211,8 @@ def index():
     event = live_event([t for t in tournaments if t.is_deadline_passed()])
     lines = clock = None
     if event:
-        results = _tournament_results(event.id)
-        lines = week_lines(event, _tournament_picks(event.id), results)
+        results = tournament_results(event.id)
+        lines = week_lines(event, tournament_picks(event.id), results)
         clock = event_clock(event, results, get_current_time())
     sheet = build_sheet(enrollments, viewer_id, lines)
 
@@ -363,7 +323,7 @@ def tournament_detail(tournament_id):
     tournament = db.get_or_404(GolfTournament, tournament_id)
     viewer_id = current_user.id if current_user.is_authenticated else None
 
-    picks = _tournament_picks(tournament_id)
+    picks = tournament_picks(tournament_id)
     my_pick = next((p for p in picks if p.user_id == viewer_id), None)
 
     # Picks open to the room at the lock, the pick form's own test, never at a
@@ -374,10 +334,10 @@ def tournament_detail(tournament_id):
     board = clock = None
     can_pick = False
     if locked:
-        results = _tournament_results(tournament_id)
+        results = tournament_results(tournament_id)
         board = build_board(
             week_lines(tournament, picks, results),
-            _season_enrollments(tournament.season_year),
+            season_enrollments(tournament.season_year),
             viewer_id,
         )
         if not tournament.results_finalized:
@@ -463,16 +423,16 @@ def member_scorecard(user_id):
     viewer_id = current_user.id if current_user.is_authenticated else None
     this_season = season_year == current_app.config['SEASON_YEAR']
 
-    enrollments = _season_enrollments(season_year)
+    enrollments = season_enrollments(season_year)
     enrollment = next(e for e in enrollments if e.user_id == user_id)
-    tournaments = _season_tournaments(season_year)
+    tournaments = season_tournaments(season_year)
 
     # The sheet's own event and lines, so the rank, the total and the week in
     # pencil are the ones the sheet is showing.
     event = live_event([t for t in tournaments if t.is_deadline_passed()])
     lines = None
     if event:
-        lines = week_lines(event, _tournament_picks(event.id), _tournament_results(event.id))
+        lines = week_lines(event, tournament_picks(event.id), tournament_results(event.id))
     sheet = build_sheet(enrollments, viewer_id, lines)
 
     picks = db.session.scalars(
@@ -541,7 +501,7 @@ def record_room():
         abort(404)
     viewer_id = current_user.id if current_user.is_authenticated else None
 
-    enrollments = _season_enrollments(season_year)
+    enrollments = season_enrollments(season_year)
     names = _room_names(enrollments)
     race = season_race(season_year, names)
     return render_template('golf/record_room.html',
@@ -1069,7 +1029,7 @@ def admin_process_results(tournament_id):
     sync_mode = current_app.config.get('SYNC_MODE', 'standard')
     api = SlashGolfAPI(api_key, sync_mode=sync_mode)
     sync = TournamentSync(api, sync_mode=sync_mode)
-    processed = sync.process_tournament_picks(tournament)
+    processed = sync.processtournament_picks(tournament)
 
     flash(f'Processed results for {processed} picks.', 'success')
     return redirect(url_for('golf.admin_tournaments'))
