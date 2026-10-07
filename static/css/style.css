@@ -6804,6 +6804,39 @@ body.game-cfb {
 }
 
 
+/* ── The champion fold (U7, §8.23): the winner on an ink rule, the figure
+   banked, one pencil line on whether the club's record has it. No band, no
+   fill, no gold: the room's materials say it. */
+.golf-champion {
+  margin: 0 0 2.25rem;
+  padding-top: .75rem;
+  border-top: 2px solid var(--text-primary);
+}
+.golf-champion > .golf-label { margin: 0 0 .5rem; }
+.golf-champion-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.golf-champion-list > li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: .25rem 1rem;
+  padding: .375rem 0 .5rem;
+}
+.golf-champion-list > li + li { border-top: 1px solid var(--golf-rule); }
+.golf-champion-name {
+  font-weight: 500;
+  font-size: 1.35rem;
+  line-height: 1.25;
+  color: var(--text-primary);
+}
+.golf-champion-list .golf-money { font-size: 1.25rem; }
+/* The fold's line opens the race leaf under it; the leaf keeps its ink rule. */
+.golf-main > .golf-champion + .golf-leaf { margin-top: 2.25rem; }
+
 /* ── The back office (U6): the ledger book ──────────────────────────
    games/golf/DESIGN.md §8.20 to §8.24. The commissioner's pages are leaves
    of one book on the room's paper: the same sheet, chips, folds and text
@@ -6877,8 +6910,15 @@ body.game-cfb {
   white-space: nowrap;
   vertical-align: middle;
 }
-/* A tile's note stays with its figure ("$15 out", never "out" alone). */
+/* A tile's note stays with its figure ("$15 out", never "out" alone); on a
+   phone, where three tiles share the width, every note takes the line under
+   its figure and every value is a two-line box, so the three figures share a
+   baseline whether or not a label wraps or a note exists. */
 .golf-tiles dd .golf-tiles-note { white-space: nowrap; }
+@media (max-width: 575px) {
+  .golf-tiles:not(.golf-tiles--pair) dd { min-height: 3rem; }
+  .golf-tiles:not(.golf-tiles--pair) dd .golf-tiles-note { display: block; }
+}
 /* An email is one word; it breaks before the row does. */
 .golf-email { overflow-wrap: anywhere; }
 

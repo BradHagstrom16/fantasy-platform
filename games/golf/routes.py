@@ -42,6 +42,7 @@ from games.golf.services.reads import (
 )
 from games.golf.services.reads import (
     season_enrollments,
+    season_final,
     season_tournaments,
     tournament_picks,
     tournament_results,
@@ -72,6 +73,7 @@ from games.golf.utils import (
     get_current_time,
     the_event,
 )
+from models.records import finishes_for
 from models.user import User
 
 logger = logging.getLogger(__name__)
@@ -176,6 +178,29 @@ def refresh_tournament_states():
 # Helpers
 # ============================================================================
 
+def _champions(season_year, fallback):
+    """The season's champion(s) for the fold, once every event is banked.
+
+    From the club's record when the Commish has closed the season (the
+    linked place-1 rows, one query), else ``fallback``: the page's own
+    leaders, with ``on_record`` False so the fold says the record is still
+    open. Each champion is {user, name, figure}.
+    """
+    on_record = [row for row in finishes_for('golf', season_year) if row.place == 1]
+    if on_record:
+        return [{'user': row.user, 'name': row.name, 'figure': row.detail}
+                for row in on_record], True
+    return fallback, False
+
+
+def _champion_line(on_record, season_year, open_text, open_url, open_link):
+    """The fold's pencil sentence and its link."""
+    if on_record:
+        return ('On the club’s record.',
+                url_for('records.index') + f'#board-golf-{season_year}', 'The Record')
+    return open_text, open_url, open_link
+
+
 def _selected_season():
     """The season a season-aware page is showing: ``?season=``, else this one."""
     raw = request.args.get('season')
@@ -244,6 +269,16 @@ def index():
 
     banked_boards = [t for t in tournaments if t.results_finalized]
 
+    # Final (DESIGN.md §4.3): every event banked, the champion leads the sheet.
+    final = season_final(tournaments)
+    champions, on_record = (_champions(season_year, [
+        {'user': row.user, 'name': row.user.get_display_name(), 'figure': f'${row.total:,.0f}'}
+        for row in sheet.rows if row.rank == 1
+    ]) if final and sheet.rows else ([], False))
+    champion_line = _champion_line(
+        on_record, season_year, 'The season is banked.',
+        url_for('golf.record_room'), 'The Record Room')
+
     # Prize pool: entry fees (season-scoped enrollments) + the major cut/DQ
     # side pot (ADR-034). Pot = flagged picks x $15 across the active season.
     entry_total = len(enrollments) * current_app.config['ENTRY_FEE']
@@ -266,6 +301,10 @@ def index():
         field_open=field_open,
         next_pick=next_pick,
         last_board=banked_boards[-1] if banked_boards else None,
+        schedule_posted=bool(tournaments),
+        season_final=final,
+        champions=champions,
+        champion_line=champion_line,
         can_join=can_join,
         entry_total=entry_total,
         total_penalty_pot=total_penalty_pot,
@@ -506,14 +545,29 @@ def record_room():
     enrollments = season_enrollments(season_year)
     names = _room_names(enrollments)
     race = season_race(season_year, names)
+    room = {e.user_id: e.user for e in enrollments}
+    progress = season_progress(season_year)
+
+    # Final: every event banked, the champion fold leads the room.
+    final = progress.total > 0 and progress.banked == progress.total
+    champions, on_record = (_champions(season_year, [
+        {'user': room[s['user_id']], 'name': s['name'], 'figure': f"${s['final']:,}"}
+        for s in race['series'] if s['is_leader']
+    ]) if final and race['series'] else ([], False))
+    champion_line = _champion_line(
+        on_record, season_year,
+        'The season is banked and not on the club’s record yet; the Commish closes it.',
+        url_for('golf.index'), 'The Sheet')
     return render_template('golf/record_room.html',
-        room={e.user_id: e.user for e in enrollments},
+        room=room,
+        champions=champions,
+        champion_line=champion_line,
         # A season with banked events and no money in them has no race to draw.
         has_race=race['max_value'] > 0,
         selected_season=season_year,
         this_season=season_year == current_app.config['SEASON_YEAR'],
         seasons=seasons,
-        progress=season_progress(season_year),
+        progress=progress,
         race=race,
         chart=race_chart_geometry(race, viewer_id=viewer_id if viewer_id in names else None),
         viewer_id=viewer_id,

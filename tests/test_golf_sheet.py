@@ -529,6 +529,57 @@ def test_sheet_page_empty_state(app, client, season):
     assert '<table' not in body
 
 
+def test_sheet_with_no_schedule_reads_as_pre(app, client, season):
+    """A season with no events yet is Pre (DESIGN.md §4.3), never "every line
+    is banked": the context line says the schedule is not posted."""
+    _member(season, 'early')
+    body = client.get('/golf/').get_data(as_text=True)
+    assert 'the schedule is not posted yet' in body
+    assert 'every line is banked' not in body
+    assert 'golf-champion' not in body
+
+
+def test_sheet_of_a_banked_season_leads_with_the_champion(app, client, season):
+    """Every event banked: the champion fold opens the sheet (the Record Room
+    leads the Final state), the figure in ink, a tie named as one."""
+    champ = _member(season, 'champ', display_name='Casey Champion', total=4_200_000)
+    _member(season, 'second', total=750_000)
+    _tournament(season, name='Sony Open in Hawaii', status='complete', finalized=True, week=1)
+    _tournament(season, name='Masters Tournament', status='complete', finalized=True, week=13)
+
+    body = client.get('/golf/').get_data(as_text=True)
+
+    assert '2 of 2' not in body and 'every line is banked' in body
+    fold = body[body.index('id="golf-champion"'):body.index('</section>', body.index('id="golf-champion"'))]
+    assert '>Champion</h2>' in fold
+    assert f'href="/golf/member/{champ.id}">Casey Champion</a>' in fold
+    assert 'golf-money--banked">$4,200,000' in fold
+    assert 'The season is banked.' in fold and 'href="/golf/stats"' in fold
+    assert 'second' not in fold
+    assert body.index('id="golf-champion"') < body.index('The Sheet</h1>')
+
+
+def test_sheet_names_tied_champions_and_the_record_once_closed(app, client, season):
+    from models.records import FinishDraft, record_season
+    a = _member(season, 'alex', display_name='Alex', total=900)
+    b = _member(season, 'blake', display_name='Blake', total=900)
+    _tournament(season, name='Sony Open in Hawaii', status='complete', finalized=True, week=1)
+
+    body = client.get('/golf/').get_data(as_text=True)
+    assert 'Champions, tied' in body
+    assert 'Alex' in body and 'Blake' in body
+
+    record_season('golf', season, [
+        FinishDraft(a.id, 'Alex', 1, 'champion', '$900'),
+        FinishDraft(b.id, 'Blake', 1, 'champion', '$900'),
+    ])
+    body = client.get('/golf/').get_data(as_text=True)
+    fold = body[body.index('id="golf-champion"'):body.index('</section>', body.index('id="golf-champion"'))]
+    assert 'On the club’s record.' in fold
+    assert f'href="/records#board-golf-{season}"' in fold
+    assert 'The season is banked.' not in fold
+
+
 # ============================================================================
 # /golf/tournament/<id> — The Board
 # ============================================================================
