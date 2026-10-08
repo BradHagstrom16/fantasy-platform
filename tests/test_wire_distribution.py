@@ -12,6 +12,8 @@ Locks:
     resolving to the button in the tab instead of the iPhone steps, and a
     non-iOS browser without push (or whose worker never registers) landing
     on the nopush panel so "Checking" always ends
+  - /app reads "subscribed" only once the server has claimed the browser's
+    subscription for the member signed in now (push.js, a source lock)
   - the account menu carries The Wire for members only, on The Wire or not
     (it is also the way to Turn off and Send a test)
   - the lounge strip renders for a member who is not on The Wire
@@ -122,6 +124,18 @@ def test_android_tab_resolves_to_the_button_not_the_iphone_steps(app, client):
     # After every iOS and standalone branch, before the iPhone-steps default.
     assert script.index("else if (standalone) { state = 'checking'; }") < android
     assert android < script.index("else { state = 'tab'; }")
+
+
+def test_app_says_subscribed_only_after_the_server_claims_the_subscription():
+    # A shared browser can still hold another member's subscription: /app
+    # waits on the ownership upsert before it reads as "subscribed" (#268).
+    src = (REPO / 'static/js/push.js').read_text()
+    resolve = src[src.index('function resolveAppState(reg)'):src.index('function restoreCta(btn)')]
+    assert 'claimSubscription(reg).then' in resolve
+    assert "setState(claim.ok ? 'subscribed' : 'unsubscribed')" in resolve
+    assert "if (sub) { setState('subscribed')" not in resolve
+    # One upsert per /app open: the load handler leaves it to resolveAppState.
+    assert 'if (isStandalone() && !onApp) { upsertOnOpen(reg); }' in src
 
 
 # ── The account menu ─────────────────────────────────────────────────────

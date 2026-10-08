@@ -4,8 +4,10 @@
  * open bumps last_seen_at + clears the icon badge. On /app: resolves the
  * subscribed / unsubscribed / denied state that the pre-paint script left as
  * "checking" (an installed app, or a non-iOS browser that takes push in the
- * tab), falls to "nopush" when the worker never registers, and wires the Turn
- * on button, the Turn off button, and the test dispatch. Logout is
+ * tab), "subscribed" only once the server has claimed the browser's
+ * subscription for the member signed in now, falls to "nopush" when the
+ * worker never registers, and wires the Turn on button, the Turn off button,
+ * and the test dispatch. Logout is
  * intercepted everywhere so a shared device unsubscribes before the next
  * member signs in. The "Turn on The Wire" nudges on other pages are the
  * server's to show or omit (core/context.py::member_on_the_wire): this
@@ -91,26 +93,43 @@
     });
   }
 
-  // Bump last_seen_at on every standalone open and every /app open
-  // (pushsubscriptionchange is unreliable, so upsert on open). The upsert
-  // follows ownership, so a shared phone's subscription re-points to whoever
-  // is signed in now, on the tab path as much as the installed one.
+  // Re-claim this browser's subscription for whoever is signed in now. The
+  // upsert follows ownership, so a shared phone's subscription re-points to
+  // the current member, and it bumps last_seen_at (pushsubscriptionchange is
+  // unreliable, so upsert on open). Resolves {sub, ok}, or null when the
+  // browser holds no subscription; a failed request rejects.
+  function claimSubscription(reg) {
+    return reg.pushManager.getSubscription().then(function (sub) {
+      if (!sub) { return null; }
+      return postJSON('/push/subscribe', subscriptionPayload(sub))
+        .then(postedOk)
+        .then(function (ok) { return { sub: sub, ok: ok }; });
+    });
+  }
+
+  // Best-effort heartbeat on every standalone open and every /app open that
+  // resolveAppState does not resolve: never flip state or drop the local sub,
+  // so a lapsed session stays subscribed pending re-auth.
   function upsertOnOpen(reg) {
     if (!reg.pushManager) { return; }   // an iPhone Safari tab: nothing to heartbeat
-    reg.pushManager.getSubscription().then(function (sub) {
-      // Best-effort heartbeat: validate the response so a lapsed session no
-      // longer reads as success, but never flip state or drop the local sub —
-      // the user stays subscribed pending re-auth.
-      if (sub) { postJSON('/push/subscribe', subscriptionPayload(sub)).then(postedOk); }
+    claimSubscription(reg).then(function (claim) {
+      if (claim && !claim.ok) { logError('heartbeat refused', null); }
     }).catch(function (err) { logError('heartbeat failed', err); });
   }
 
-  // Resolve the last states the pre-paint script left as "checking".
+  // Resolve the last states the pre-paint script left as "checking". A
+  // subscription already in this browser reads as "subscribed" only once the
+  // server has re-pointed it to the member signed in now; until then it may
+  // still be another member's, so the page offers Turn on, which claims it.
   function resolveAppState(reg) {
-    if (el.getAttribute('data-app-state') !== 'checking') { return; }
+    if (el.getAttribute('data-app-state') !== 'checking') { upsertOnOpen(reg); return; }
     if (Notification.permission === 'denied') { setState('denied'); return; }
-    reg.pushManager.getSubscription().then(function (sub) {
-      if (sub) { setState('subscribed'); return; }
+    claimSubscription(reg).then(function (claim) {
+      if (claim) {
+        if (!claim.ok) { logError('claim refused', null); }
+        setState(claim.ok ? 'subscribed' : 'unsubscribed');
+        return;
+      }
       if (Notification.permission === 'granted' && canSubscribe()) {
         // Granted but no subscription (revoked/expired) → silently re-subscribe.
         // Background path: any failure (incl. a lapsed session) falls back to
@@ -126,7 +145,10 @@
         }).catch(function () { setState('unsubscribed'); });
       }
       setState('unsubscribed');
-    }).catch(function () { setState('unsubscribed'); });
+    }).catch(function (err) {
+      logError('claim failed', err);
+      setState('unsubscribed');
+    });
   }
 
   function restoreCta(btn) {
@@ -258,7 +280,8 @@
   window.addEventListener('load', function () {
     var onApp = !!document.querySelector('.app-card');
     navigator.serviceWorker.register('/sw.js', { scope: '/' }).then(function (reg) {
-      if (isStandalone() || onApp) { upsertOnOpen(reg); }
+      // On /app, resolveAppState makes the one upsert (and waits on it).
+      if (isStandalone() && !onApp) { upsertOnOpen(reg); }
       if (isStandalone()) { clearBadge(); }
       if (onApp) {
         resolveAppState(reg);
