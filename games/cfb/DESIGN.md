@@ -569,7 +569,7 @@ Administrative components identify the affected player, show current state, expl
 | Family | Classes |
 |---|---|
 | Hero content | `.cfb-hero`, `.cfb-hero-field`, `.cfb-hero-field-sep`, `.cfb-count`, `.cfb-count-cut` |
-| Weekly-call status | `.cfb-status-row/-item/-num/-label/-total`, `.cfb-deadline`, `.cfb-eliminated-note` |
+| Weekly-call status | `.cfb-status-row/-item/-num/-label/-total`, `.cfb-deadline`, `.cfb-eliminated-note`, `.cfb-wire-note` (The Wire nudge under a held pick, ADR-074: the deadline line's Newsreader in bone-muted, "Get a push notification the hour {team} goes final.", the link in bone with the name-link underline; `js-buzz-link` hides it on a subscribed device) |
 | Current-user / member link | `.cfb-you-tag`, `.cfb-name-link` |
 | Pick / slate | `.cfb-holding/-team/-note`, `.cfb-slate-head/-count`, `.cfb-matchup`, `.cfb-kickoff`, `.cfb-team-name/-id`, `.cfb-home-tag`, `.cfb-at`, `.cfb-out-reason`, `.cfb-confirm-pick/-line`, `.cfb-empty-slate` |
 | Verdict | `.cfb-verdict` (+`.is-survived/.is-lost/.is-pending`), `-team`, `-nopick`, `-matchup`, `-score`, `-outcome`, `-chip`, `-lives`, `-lives-label` |

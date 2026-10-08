@@ -386,6 +386,7 @@ Test buzz (4A): `POST /push/test`, login + CSRF, sends to the posted endpoint on
 | 512 icons | two: `any` (tile) + `maskable` (badger 80% on Council Purple bleed) | cropped chin under Android's mask |
 | Copy length | consequence in the first 40 characters of the body; the 2h nag body changes ("Picks lock in 1 hour.") | Android's one-line collapse hides the point; the 2h replacement looks unchanged |
 | "Get the buzz" link | one text line in the lounge shell greet, hidden client-side once this device is subscribed; the same link in `/profile`'s `.auth-link-row` | members who never open profile never find it |
+| Distribution, round two (2026-10-08, ADR-074) | after two overlap reads at 4 subscribers and none new since the letter's first day, Brad kept the nag pushes and turned down the kickoff reveal for now. The ask moved instead: every surface says "push notifications" and the verb is "Turn on The Wire"; the lounge greet's text link became the Wire strip; The Wire joined the account menu; a nudge follows a pick in both rooms; Android Chrome gets the button in the tab; the iPhone steps follow the iOS 26 share sheet (View More) | the name never said what it did, the letter pointed at a menu item that did not exist, and Android members saw iPhone steps with no button |
 | CTA color | Trophy gold `.btn-primary` (cross-model ruling, 6A) | an undocumented third auth-page button |
 
 ### Approved Mockups

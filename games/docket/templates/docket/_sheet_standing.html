@@ -48,6 +48,10 @@
       <p class="docket-filed-note">A reserve is optional: your next tap on a case you haven't picked holds one.</p>
       {% endif %}
     {% endif %}
+    {# The Wire nudge (ADR-074): a filed sheet is the moment a member wants
+       the verdicts. js-buzz-link: push.js hides it on a subscribed device. #}
+    <p class="docket-filed-note docket-wire-note js-buzz-link">Get a push notification the
+      hour each side is decided. <a href="{{ url_for('push.app_page') }}">Turn on The Wire</a></p>
   </div>
 
   {% elif sheet.scoring_count == 0 %}

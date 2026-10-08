@@ -43,14 +43,9 @@
     </h1>
     <p class="greet-sub">{% if headliners|length == 3 %}Three games on the card. Play one, or play them all.{% else %}Two games on the card. Play one, or play both.{% endif %}</p>
     {% endif %}
-    {% if current_user.is_authenticated %}
-    {# Distribution nudge for the installable app; push.js hides it once this
-       device is already subscribed. #}
-    <p class="greet-buzz js-buzz-link">
-      <a href="{{ url_for('push.app_page') }}">Get on the wire</a>
-    </p>
-    {% endif %}
   </div>
+
+  {% if current_user.is_authenticated %}{% include 'main/_lounge_wire.html' %}{% endif %}
 
   {# Two headliners pair at the seam with the seal; three take the trio grid
      (two seams, no seal); one stands full width. #}

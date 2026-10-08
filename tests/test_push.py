@@ -304,11 +304,11 @@ def test_app_page_uses_letter_card_and_no_disabled_button(app, client):
     _login(client, auth_id)
     body = client.get('/app').get_data(as_text=True)
     assert 'auth-card--letter' in body
-    # "What comes over the wire" appears in the Safari-tab state only (design decision).
-    assert body.count('What comes over the wire') == 1
+    # "What comes over The Wire" appears in the Safari-tab state only (design decision).
+    assert body.count('What comes over The Wire') == 1
     # The feature is The Wire on every rendered surface; "buzz" never reaches a member.
     assert 'The Wire' in body
-    assert 'Get on the wire' in body
+    assert 'Turn on The Wire' in body
     assert 'buzz' not in body.lower()
     # No disabled CTA in any state (design review 5A).
     assert 'disabled' not in body

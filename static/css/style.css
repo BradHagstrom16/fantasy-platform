@@ -431,9 +431,11 @@ body.auth-page .alert-success {
 
 /* === /APP · THE WIRE (installable app, PR 2) ===
    The install-and-wire page. Logged-in utility auth register with the
-   left-aligned Club Letter anatomy (.auth-card--letter): eyebrow -> H1 ->
-   lede -> steps/facts -> one CTA -> supporting line. Two-Color Rule holds
-   (purple + gold on bone, no third color). One authored motion: the
+   left-aligned Club Letter anatomy (.auth-card--letter): H1 -> lede ->
+   steps/facts -> one CTA -> supporting line. No eyebrow over the heading
+   (ADR-066, met at the 2026-10-08 rework): every panel names The Wire as
+   the Club's push notifications in its heading or lede. Two-Color Rule
+   holds (purple + gold on bone, no third color). One authored motion: the
    unsubscribed -> subscribed swap. */
 
 /* .auth-card--letter: the left-aligned utility card for step-shaped pages.
@@ -442,18 +444,6 @@ body.auth-page .auth-card.auth-card--letter { text-align: left; max-width: 460px
 body.auth-page .auth-card--letter h1,
 body.auth-page .auth-card--letter .auth-title { text-align: left; }
 
-.auth-eyebrow {
-  display: block;
-  font-family: var(--font-teko);
-  font-weight: 500;
-  font-size: .85rem;
-  letter-spacing: .14em;
-  text-transform: uppercase;
-  /* Gold lifted to --gold-dark on bone, matching the auth links (Commish Gold
-     itself is too light on bone). */
-  color: var(--gold-dark);
-  margin-bottom: .5rem;
-}
 .app-card .auth-title { font-weight: 600; font-size: 2rem; line-height: 1.05; margin-bottom: .85rem; }
 .app-lede { font-family: var(--font-news); font-size: 1.05rem; line-height: 1.6; color: var(--text-primary); margin-bottom: 1.25rem; }
 .app-body { font-family: var(--font-news); font-size: 1rem; line-height: 1.65; color: var(--text-primary); margin-bottom: 1rem; }
@@ -465,6 +455,10 @@ body.auth-page .auth-card--letter .auth-title { text-align: left; }
 .app-steps { font-family: var(--font-news); font-size: 1rem; line-height: 1.5; padding-left: 1.25rem; margin-bottom: 1.25rem; }
 .app-steps li { margin-bottom: .6rem; }
 .app-steps li:last-child { margin-bottom: 0; }
+.app-steps li::marker { font-family: var(--font-teko); font-weight: 600; color: var(--purple-700); }
+/* The recovery line rides inside its step, a step quieter than the step. */
+.app-step-aside { display: block; font-style: italic; font-size: .9rem; color: var(--text-secondary); margin-top: .15rem; }
+.app-steps--plain { list-style: none; padding-left: 0; }
 .app-rule { border: 0; border-top: 2px solid var(--gold); opacity: 1; margin: 1.5rem 0 1.25rem; }
 .app-cta-wrap { display: grid; margin-bottom: .75rem; }
 .app-back { margin-top: 1.25rem; }
@@ -503,14 +497,6 @@ body.auth-page .app-secondary:hover { background: var(--purple-700); color: var(
 }
 .app-cta[aria-busy="true"] { opacity: .8; }
 
-/* Lounge / profile "Get on the wire" distribution link (push.js hides it on a
-   device already subscribed). */
-.greet-buzz { margin: .6rem 0 0; }
-.greet-buzz a {
-  font-family: var(--font-teko); text-transform: uppercase; letter-spacing: .08em;
-  font-size: .9rem; color: var(--gold);
-}
-.greet-buzz a:hover { color: var(--gold-light); }
 
 /* Panel visibility: default (no JS) shows the install steps; the pre-paint
    inline script sets data-app-state and CSS reveals exactly one panel. */
@@ -1934,6 +1920,73 @@ body.game-golf {
   color: var(--bone-dim);
   margin: 0.75rem 0 0;
 }
+
+/* --- The Wire strip (ADR-074): the lounge's standing ask to turn on push
+   notifications, between the greet and the headliners. Club chrome between
+   two gold hairlines, never a card; the name in gold, the definition in
+   bone, one gold-outline action. Centered under the greet on phones, a
+   copy | action row from md. push.js hides it ([hidden]) on a subscribed
+   device. --- */
+.home-shell .wire-strip {
+  display: grid;
+  gap: 0.9rem;
+  justify-items: center;
+  text-align: center;
+  margin: 0 0 1.75rem;
+  padding: 1.1rem 0;
+  border-top: 1px solid rgba(242,211,107,.35);
+  border-bottom: 1px solid rgba(242,211,107,.35);
+}
+@media (min-width: 768px) {
+  .home-shell .wire-strip {
+    grid-template-columns: 1fr auto;
+    justify-items: start;
+    align-items: center;
+    gap: 1.5rem;
+    text-align: left;
+    padding: 1.1rem 0.25rem;
+  }
+}
+.home-shell .wire-strip-title {
+  font-family: var(--font-teko);
+  font-weight: 600;
+  font-size: 1.45rem;
+  line-height: 1.1;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--bone);
+  margin: 0;
+  text-wrap: balance;
+}
+.home-shell .wire-strip-name { color: var(--gold-light); }
+.home-shell .wire-strip-sep { color: rgba(242,211,107,.5); margin: 0 0.4rem; }
+/* Phones: the name takes its own line so the definition never breaks
+   after "Push". */
+@media (max-width: 767.98px) {
+  .home-shell .wire-strip-name { display: block; }
+  .home-shell .wire-strip-sep { display: none; }
+}
+.home-shell .wire-strip-line {
+  font-family: var(--font-news);
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: var(--bone-dim);
+  max-width: 60ch;
+  margin: 0.35rem 0 0;
+  text-wrap: pretty;
+}
+/* The shared .cta-outline at gold strength: this is the strip's one action. */
+.home-shell .wire-strip .wire-strip-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 44px;
+  margin-top: 0;
+  white-space: nowrap;
+  border-color: var(--gold);
+  color: var(--gold-light);
+}
+.home-shell .wire-strip .wire-strip-cta:hover { background: rgba(242,211,107,.1); color: var(--gold-light); }
 
 /* --- Pre-state: countdown card.
    S4.1.2 PI-3 — Ceremonial recipe lock. Border opacity normalized from
@@ -7600,6 +7653,24 @@ body.game-cfb .alert-warning { background: rgba(243,239,230,.05); border-color: 
   font-family: 'Newsreader', Georgia, serif;
   color: var(--cfb-bone-muted);
 }
+/* The Wire nudge under a held pick (ADR-074): the deadline line's voice, the
+   link in bone with the room's name-link underline. */
+.cfb-wire-note {
+  margin: .85rem 0 0;
+  font-family: 'Newsreader', Georgia, serif;
+  font-size: .95rem;
+  color: var(--cfb-bone-muted);
+}
+.cfb-wire-note a {
+  color: var(--cfb-bone);
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-color: var(--cfb-bone-subtle);
+  text-underline-offset: .15em;
+  white-space: nowrap;
+}
+.cfb-wire-note a:hover,
+.cfb-wire-note a:focus-visible { color: var(--cfb-bone); text-decoration-color: currentColor; }
 
 /* Current-user identification that does not lean on the crimson tint alone
    (survivor identity by structure + label, games/cfb/DESIGN.md S5). A crimson
@@ -17110,6 +17181,20 @@ body.game-docket .form-select:focus {
   color: var(--text-secondary);
 }
 .docket-filed-note + .docket-filed-note { margin-top: .25rem; }
+/* The Wire nudge closing the filed card (ADR-074): a .docket-filed-note with
+   the link in the room's primary over a garnet underline. */
+.docket-filed-note.docket-wire-note { margin-top: .6rem; }
+.docket-wire-note a {
+  font-style: normal;
+  font-weight: 600;
+  color: var(--game-primary);
+  text-decoration: underline;
+  text-decoration-color: var(--game-accent);
+  text-underline-offset: .15em;
+  white-space: nowrap;
+}
+.docket-wire-note a:hover { color: var(--game-accent); }
+.docket-wire-note a:focus-visible { outline: 2px solid var(--game-accent); outline-offset: 2px; }
 /* Closed: the Cold-Docket treatment, the reason stated in the note. */
 .docket-filed.is-closed {
   background: var(--bg-card);

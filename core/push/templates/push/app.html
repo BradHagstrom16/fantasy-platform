@@ -6,8 +6,9 @@
 {% block head %}
 {# Decide the visible state BEFORE first paint so a standalone open never
    flashes the install steps. Six branches resolve here from server login
-   state + device facts; push.js resolves the last two (subscribed vs
-   unsubscribed vs denied) once getSubscription() settles. With JS off, no
+   state + device facts; push.js resolves the last three (subscribed vs
+   unsubscribed vs denied) once getSubscription() settles, for an installed
+   app and for a phone browser that can take push in the tab. With JS off, no
    data-app-state is set and the CSS default shows the install steps. #}
 <script>
 (function () {
@@ -19,7 +20,9 @@
     var standalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches)
       || window.navigator.standalone === true;
     var ua = window.navigator.userAgent || '';
-    var iOS = /iPad|iPhone|iPod/.test(ua);
+    // iPadOS Safari reports a Mac user agent; touch points give it away.
+    var iOS = /iPad|iPhone|iPod/.test(ua)
+      || (/Macintosh/.test(ua) && window.navigator.maxTouchPoints > 1);
     // An iOS in-app browser (Gmail, CriOS, FxiOS, a WebView) is not Safari and
     // cannot Add to Home Screen; send them to Safari first.
     var iosInApp = iOS && !standalone
@@ -34,6 +37,9 @@
     else if (iosInApp) { state = 'inapp'; }
     else if (standalone && !canPush) { state = 'unsupported'; }
     else if (standalone) { state = 'checking'; }
+    // Android Chrome (and any phone browser outside iOS) takes push right in
+    // the tab; only iOS needs the home screen first.
+    else if (!iOS && canPush) { state = 'checking'; }
     else { state = 'tab'; }
     el.setAttribute('data-app-state', state);
   } catch (err) {
@@ -49,87 +55,95 @@
   <a href="{{ url_for('main.index') }}">Back to the lounge</a>
 </p>
 {% endmacro %}
+{# The iOS 26 Safari path, as members see it (Brad's screenshots,
+   2026-10-08): Share sits in the center of the bottom bar, Add to Home
+   Screen hides behind View More. Compact tab layout tucks Share under the
+   ⋯ button, hence the recovery line. #}
+{% macro iphone_steps() %}
+<ol class="app-steps">
+  <li>Tap <strong>Share</strong>, the box with the arrow at the bottom center
+    of Safari. <span class="app-step-aside">Don't see it? Tap <strong>⋯</strong> first.</span></li>
+  <li>Tap <strong>View More</strong>.</li>
+  <li>Tap <strong>Add to Home Screen</strong>, then <strong>Add</strong>.</li>
+  <li>Open <strong>CCC</strong> from your home screen and tap
+    <strong>Turn on The Wire</strong>.</li>
+</ol>
+{% endmacro %}
 <div class="auth-wrapper">
   <div class="card auth-card auth-card--letter app-card">
 
-    {# ---- Safari tab: install steps (also the no-JS default) ---- #}
+    {# Every panel names The Wire as what it is, the Club's push
+       notifications, once, in its heading or its lede (no eyebrow above
+       the heading, ADR-066). #}
+
+    {# ---- iPhone Safari tab: install steps (also the no-JS default) ---- #}
     <section class="app-panel" data-state="tab">
-      <span class="auth-eyebrow">Corrupt Commish Club · The Wire</span>
-      <h1 class="auth-title">Put the Club on your home screen</h1>
-      <p class="app-lede">Two taps. Then the Club can reach you on the wire when your game goes
-        final and when a deadline is close.</p>
-      <ol class="app-steps">
-        <li>Tap <strong>Share</strong> (the box with the arrow) at the bottom of Safari.</li>
-        <li>Choose <strong>Add to Home Screen</strong>, then <strong>Add</strong>.</li>
-        <li>Open <strong>CCC</strong> from your home screen and tap <em>Get on the wire</em>.</li>
-      </ol>
+      <h1 class="auth-title">Push notifications on your iPhone</h1>
+      <p class="app-lede">That's The Wire: a note on your lock screen the hour your
+        game goes final, and before a deadline when you haven't picked. On iPhone
+        the Club goes on your home screen first. Four taps:</p>
+      {{ iphone_steps() }}
       <hr class="app-rule">
-      <h2 class="app-subhead">What comes over the wire</h2>
-      <p class="app-body">Your pick's game going final. A deadline 24 hours and 1
-        hour out when you haven't picked.</p>
-      <p class="app-note">Picks open, recaps and receipts stay in your inbox.
-        Needs iOS 16.4 or newer.</p>
+      <h2 class="app-subhead">What comes over The Wire</h2>
+      <p class="app-body">Your game going final. A deadline closing when you haven't
+        picked.</p>
+      <p class="app-note">Picks open, recaps and receipts stay in your inbox.</p>
       <p class="app-body">Already added it? Open CCC from your home screen instead.</p>
       {{ back_to_lounge() }}
     </section>
 
     {# ---- iOS in-app browser: go to Safari first ---- #}
     <section class="app-panel" data-state="inapp">
-      <span class="auth-eyebrow">Corrupt Commish Club · The Wire</span>
       <h1 class="auth-title">Open this in Safari first</h1>
-      <p class="app-lede">This page can only add the Club to your home screen from
-        Safari. Tap your browser's menu, then <strong>Open in Safari</strong>, and
+      <p class="app-lede">The Wire, the Club's push notifications, starts in Safari
+        on iPhone. Tap your browser's menu, then <strong>Open in Safari</strong>, and
         come back here.</p>
       <hr class="app-rule">
       <h2 class="app-subhead">Then</h2>
-      <ol class="app-steps">
-        <li>Tap <strong>Share</strong> (the box with the arrow) at the bottom of Safari.</li>
-        <li>Choose <strong>Add to Home Screen</strong>, then <strong>Add</strong>.</li>
-        <li>Open <strong>CCC</strong> from your home screen and tap <em>Get on the wire</em>.</li>
-      </ol>
+      {{ iphone_steps() }}
       {{ back_to_lounge() }}
     </section>
 
-    {# ---- Standalone, checking (transient until getSubscription resolves) ---- #}
+    {# ---- Checking (transient until getSubscription resolves) ---- #}
     <section class="app-panel" data-state="checking">
-      <span class="auth-eyebrow">Corrupt Commish Club · The Wire</span>
       <h1 class="auth-title">The Wire</h1>
       <p class="app-lede">Checking this phone.</p>
     </section>
 
-    {# ---- Standalone, unsubscribed: the wire button ---- #}
+    {# ---- Ready to turn on: installed iPhone, or any phone browser that can
+         take push right in the tab (Android Chrome) ---- #}
     <section class="app-panel" data-state="unsubscribed">
-      <span class="auth-eyebrow">Corrupt Commish Club · The Wire</span>
-      <h1 class="auth-title">You're in. One more tap.</h1>
-      <p class="app-lede">This phone can hear the verdicts once you allow it. Your
-        phone will ask; that's the Club.</p>
+      <h1 class="auth-title">Push notifications are one tap away</h1>
+      <p class="app-lede">That's The Wire: a note on this phone the hour your game
+        goes final, and before a deadline when you haven't picked. Tap the button;
+        when your phone asks, choose <strong>Allow</strong>.</p>
       <div class="app-cta-wrap">
         <button type="button" class="btn btn-primary btn-lg app-cta" id="push-cta">
-          Get on the wire
+          Turn on The Wire
         </button>
       </div>
       <p class="app-inline-status" id="push-status" role="status" aria-live="polite"></p>
-      <p class="app-note">Per device. Each phone opts in on its own. Email keeps
-        coming either way.</p>
+      <p class="app-note">Each phone turns it on by itself. Email keeps coming
+        either way.</p>
       {{ back_to_lounge() }}
     </section>
 
-    {# ---- Standalone, subscribed: status + test dispatch ---- #}
+    {# ---- Subscribed: status + test dispatch ---- #}
     <section class="app-panel" data-state="subscribed">
-      <span class="auth-eyebrow">Corrupt Commish Club · The Wire</span>
-      <h1 class="auth-title">You're on the wire</h1>
+      <h1 class="auth-title">You're on The Wire</h1>
       <div class="app-status-row">
         <span class="app-live-dot" aria-hidden="true"></span>
-        <span class="app-status-label">This phone hears the Club</span>
+        <span class="app-status-label">Push notifications on</span>
         <button type="button" class="app-turn-off" id="push-turn-off">Turn off</button>
       </div>
-      <p class="app-body">Next up: verdicts land the hour your game goes final,
-        Saturday and Sunday. A Thursday game hits the wire Saturday.</p>
+      <p class="app-body">Next up: results land the hour your game goes final,
+        Saturday and Sunday (a Thursday game lands Saturday), and a note comes
+        before any deadline you haven't picked for.</p>
       <hr class="app-rule">
-      <h2 class="app-subhead">Not hearing it?</h2>
+      <h2 class="app-subhead">Not getting them?</h2>
       <div class="app-cta-wrap">
         <button type="button" class="btn btn-outline-secondary btn-lg app-secondary" id="push-test">
-          Send a test dispatch
+          Send a test notification
         </button>
       </div>
       <p class="app-inline-status" id="push-test-status" role="status" aria-live="polite"></p>
@@ -139,36 +153,41 @@
 
     {# ---- Denied ---- #}
     <section class="app-panel" data-state="denied">
-      <span class="auth-eyebrow">Corrupt Commish Club · The Wire</span>
-      <h1 class="auth-title">You're off the wire</h1>
-      <p class="app-lede" id="push-denied-lede">To turn it back on, open Settings,
-        then Notifications, then CCC, and allow notifications. Then come back here.</p>
+      <h1 class="auth-title">Notifications are off for CCC</h1>
+      <p class="app-lede" id="push-denied-lede">Your phone is blocking The Wire, the
+        Club's push notifications. To let them through:</p>
+      <ul class="app-steps app-steps--plain">
+        <li><strong>iPhone:</strong> open Settings, then Notifications, then CCC, and
+          allow notifications.</li>
+        <li><strong>Android:</strong> tap the icon left of the address in Chrome, then
+          Permissions, and allow Notifications.</li>
+      </ul>
+      <p class="app-body">Then come back here.</p>
       {{ back_to_lounge() }}
     </section>
 
     {# ---- Desktop ---- #}
     <section class="app-panel" data-state="desktop">
-      <span class="auth-eyebrow">Corrupt Commish Club · The Wire</span>
-      <h1 class="auth-title">The wire lives on your phone</h1>
-      <p class="app-lede">Open cccfantasy.com/app on your phone to add the Club to
-        your home screen and get on the wire.</p>
+      <h1 class="auth-title">The Wire lives on your phone</h1>
+      <p class="app-lede">The Wire is the Club's push notifications, and they go to
+        your phone. Open <strong>cccfantasy.com/app</strong> there and it walks you
+        through it.</p>
       {{ back_to_lounge() }}
     </section>
 
     {# ---- Old iOS (installed but no Web Push) ---- #}
     <section class="app-panel" data-state="unsupported">
-      <span class="auth-eyebrow">Corrupt Commish Club · The Wire</span>
-      <h1 class="auth-title">The wire needs a newer iPhone</h1>
-      <p class="app-lede">This iPhone can't get on the wire, but email keeps coming either way.</p>
+      <h1 class="auth-title">This iPhone can't get The Wire</h1>
+      <p class="app-lede">The Club's push notifications need a newer version of iOS.
+        Email keeps coming either way.</p>
       {{ back_to_lounge() }}
     </section>
 
     {# ---- Signed out ---- #}
     <section class="app-panel" data-state="signin">
-      <span class="auth-eyebrow">Corrupt Commish Club · The Wire</span>
       <h1 class="auth-title">Sign in first</h1>
-      <p class="app-lede">Sign in, then come back here to put the Club on your phone
-        and get on the wire.</p>
+      <p class="app-lede">The Wire is the Club's push notifications. Sign in, then
+        come back here to turn them on.</p>
       <div class="app-cta-wrap">
         <a class="btn btn-primary btn-lg app-cta"
            href="{{ url_for('auth.login', next=url_for('push.app_page')) }}">Sign In</a>
