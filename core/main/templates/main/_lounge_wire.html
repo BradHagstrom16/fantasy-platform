@@ -1,0 +1,22 @@
+{# The Wire strip: the lounge's standing ask to turn on the Club's push
+   notifications (ADR-074). Club chrome, not a game: lounge purple, bone and
+   gold only, never a room class or var (the accent firewall scans this file).
+   Between two gold hairlines, never a card. Omitted for a member already on
+   The Wire on any device (on_the_wire, core/context.py): this member, not
+   this device. The spaces around the middot keep the heading's accessible
+   name "The Wire Push notifications from the Club", two words apart, where
+   the spans sit inline. #}
+{% if not on_the_wire() %}
+<section class="wire-strip" aria-labelledby="wire-strip-title">
+  <div class="wire-strip-copy">
+    <h2 class="wire-strip-title" id="wire-strip-title">
+      <span class="wire-strip-name">The Wire</span> <span class="wire-strip-sep" aria-hidden="true">&middot;</span> Push notifications from the Club
+    </h2>
+    <p class="wire-strip-line">Know the hour your game goes final, and get a heads-up
+      before a deadline when you haven't picked.</p>
+  </div>
+  <a class="cta-outline wire-strip-cta" href="{{ url_for('push.app_page') }}">
+    <i class="bi bi-bell" aria-hidden="true"></i>Turn on The Wire
+  </a>
+</section>
+{% endif %}

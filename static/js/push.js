@@ -3,9 +3,15 @@
  * On every page: registers the push-only service worker, and on a standalone
  * open bumps last_seen_at + clears the icon badge. On /app: resolves the
  * subscribed / unsubscribed / denied state that the pre-paint script left as
- * "checking", and wires the wire button, the turn-off link, and the test dispatch.
- * Logout is intercepted everywhere so a shared device unsubscribes before the
- * next member signs in.
+ * "checking" (an installed app, or a non-iOS browser that takes push in the
+ * tab), "subscribed" only once the server has claimed the browser's
+ * subscription for the member signed in now, falls to "nopush" when the
+ * worker never registers, and wires the Turn on button, the Turn off button,
+ * and the test dispatch. Logout is
+ * intercepted everywhere so a shared device unsubscribes before the next
+ * member signs in. The "Turn on The Wire" nudges on other pages are the
+ * server's to show or omit (core/context.py::member_on_the_wire): this
+ * script never hides them.
  */
 (function () {
   'use strict';
@@ -68,6 +74,11 @@
 
   function setState(s) { el.setAttribute('data-app-state', s); }
 
+  function logError(what, err) {
+    // The one diagnostic a member can read back to the Commish.
+    if (window.console && console.error) { console.error('The Wire: ' + what, err); }
+  }
+
   function status(id, msg, isError) {
     var node = document.getElementById(id);
     if (!node) { return; }
@@ -82,23 +93,43 @@
     });
   }
 
-  // Bump last_seen_at on every standalone open (pushsubscriptionchange is
-  // unreliable, so upsert on open).
-  function upsertOnOpen(reg) {
-    reg.pushManager.getSubscription().then(function (sub) {
-      // Best-effort heartbeat: validate the response so a lapsed session no
-      // longer reads as success, but never flip state or drop the local sub —
-      // the user stays subscribed pending re-auth.
-      if (sub) { postJSON('/push/subscribe', subscriptionPayload(sub)).then(postedOk); }
+  // Re-claim this browser's subscription for whoever is signed in now. The
+  // upsert follows ownership, so a shared phone's subscription re-points to
+  // the current member, and it bumps last_seen_at (pushsubscriptionchange is
+  // unreliable, so upsert on open). Resolves {sub, ok}, or null when the
+  // browser holds no subscription; a failed request rejects.
+  function claimSubscription(reg) {
+    return reg.pushManager.getSubscription().then(function (sub) {
+      if (!sub) { return null; }
+      return postJSON('/push/subscribe', subscriptionPayload(sub))
+        .then(postedOk)
+        .then(function (ok) { return { sub: sub, ok: ok }; });
     });
   }
 
-  // Resolve the last states the pre-paint script left as "checking".
+  // Best-effort heartbeat on every standalone open and every /app open that
+  // resolveAppState does not resolve: never flip state or drop the local sub,
+  // so a lapsed session stays subscribed pending re-auth.
+  function upsertOnOpen(reg) {
+    if (!reg.pushManager) { return; }   // an iPhone Safari tab: nothing to heartbeat
+    claimSubscription(reg).then(function (claim) {
+      if (claim && !claim.ok) { logError('heartbeat refused', null); }
+    }).catch(function (err) { logError('heartbeat failed', err); });
+  }
+
+  // Resolve the last states the pre-paint script left as "checking". A
+  // subscription already in this browser reads as "subscribed" only once the
+  // server has re-pointed it to the member signed in now; until then it may
+  // still be another member's, so the page offers Turn on, which claims it.
   function resolveAppState(reg) {
-    if (el.getAttribute('data-app-state') !== 'checking') { return; }
+    if (el.getAttribute('data-app-state') !== 'checking') { upsertOnOpen(reg); return; }
     if (Notification.permission === 'denied') { setState('denied'); return; }
-    reg.pushManager.getSubscription().then(function (sub) {
-      if (sub) { setState('subscribed'); return; }
+    claimSubscription(reg).then(function (claim) {
+      if (claim) {
+        if (!claim.ok) { logError('claim refused', null); }
+        setState(claim.ok ? 'subscribed' : 'unsubscribed');
+        return;
+      }
       if (Notification.permission === 'granted' && canSubscribe()) {
         // Granted but no subscription (revoked/expired) → silently re-subscribe.
         // Background path: any failure (incl. a lapsed session) falls back to
@@ -114,13 +145,16 @@
         }).catch(function () { setState('unsubscribed'); });
       }
       setState('unsubscribed');
-    }).catch(function () { setState('unsubscribed'); });
+    }).catch(function (err) {
+      logError('claim failed', err);
+      setState('unsubscribed');
+    });
   }
 
   function restoreCta(btn) {
     btn.removeAttribute('aria-busy');
     btn.disabled = false;
-    btn.textContent = 'Get on the wire';
+    btn.textContent = 'Turn on The Wire';
   }
 
   function wireCta(reg) {
@@ -151,12 +185,13 @@
             });
           });
         });
-      }).catch(function () {
+      }).catch(function (err) {
+        logError('turn on failed', err);
         // Never leave the phone half-armed: drop the browser subscription.
         reg.pushManager.getSubscription().then(function (s) { if (s) { s.unsubscribe(); } });
         restoreCta(btn);
         status('push-status',
-          'Couldn’t get you on the wire. Try once more; email keeps coming either way.', true);
+          'Couldn’t turn on The Wire. Try once more; email keeps coming either way.', true);
       });
     });
   }
@@ -180,12 +215,13 @@
       }).then(function (ok) {
         if (ok) {
           setState('unsubscribed');
-          status('push-status', 'You’re off the wire on this phone.', false);
+          status('push-status', 'The Wire is off on this phone.', false);
         } else {
-          status('push-status', 'Couldn’t take you off the wire. Try once more.', true);
+          status('push-status', 'Couldn’t turn off The Wire. Try once more.', true);
         }
-      }).catch(function () {
-        status('push-status', 'Couldn’t take you off the wire. Try once more.', true);
+      }).catch(function (err) {
+        logError('turn off failed', err);
+        status('push-status', 'Couldn’t turn off The Wire. Try once more.', true);
       });
     });
   }
@@ -196,7 +232,7 @@
     btn.addEventListener('click', function () {
       btn.disabled = true;
       reg.pushManager.getSubscription().then(function (sub) {
-        if (!sub) { status('push-test-status', 'Get on the wire first.', false); return; }
+        if (!sub) { status('push-test-status', 'Turn on The Wire first.', false); return; }
         return postJSON('/push/test', { endpoint: sub.endpoint }).then(function (resp) {
           // A followed login redirect reports resp.ok=true; only a genuine,
           // non-redirected 200 means the test actually sent.
@@ -241,29 +277,25 @@
     });
   }
 
-  // Hide the "Get on the wire" distribution links once this device is subscribed.
-  function hideBuzzLinkIfSubscribed(reg) {
-    var links = document.querySelectorAll('.js-buzz-link');
-    if (!links.length) { return; }
-    reg.pushManager.getSubscription().then(function (sub) {
-      if (sub) { links.forEach(function (n) { n.hidden = true; }); }
-    }).catch(function () {});
-  }
-
   window.addEventListener('load', function () {
+    var onApp = !!document.querySelector('.app-card');
     navigator.serviceWorker.register('/sw.js', { scope: '/' }).then(function (reg) {
-      if (isStandalone()) {
-        upsertOnOpen(reg);
-        clearBadge();
-      }
-      if (document.querySelector('.app-card')) {
+      // On /app, resolveAppState makes the one upsert (and waits on it).
+      if (isStandalone() && !onApp) { upsertOnOpen(reg); }
+      if (isStandalone()) { clearBadge(); }
+      if (onApp) {
         resolveAppState(reg);
         wireCta(reg);
         wireTurnOff(reg);
         wireTest(reg);
       }
-      hideBuzzLinkIfSubscribed(reg);
-    }).catch(function () { /* registration failed; email still works */ });
+    }).catch(function (err) {
+      // The worker never registered (/sw.js unreachable or mis-served, storage
+      // blocked). Email still works; on /app say so instead of leaving the
+      // member on "Checking this phone." forever.
+      logError('service worker registration failed', err);
+      if (el.getAttribute('data-app-state') === 'checking') { setState('nopush'); }
+    });
     wireLogout();
   });
 })();

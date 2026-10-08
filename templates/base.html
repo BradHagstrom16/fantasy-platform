@@ -123,6 +123,12 @@
                                 <li><a class="dropdown-item" href="{{ url_for('auth.change_password') }}">
                                     <i class="bi bi-key me-2"></i>Change Password
                                 </a></li>
+                                {# The Wire (push notifications): always here, since
+                                   /app is also where a member turns it off or sends
+                                   a test (ADR-074). #}
+                                <li><a class="dropdown-item" href="{{ url_for('push.app_page') }}">
+                                    <i class="bi bi-bell me-2"></i>The Wire
+                                </a></li>
                                 {# Completed games a member played stay reachable
                                    here rather than crowding the switcher
                                    (design review 2026-08-18). #}

@@ -11,8 +11,9 @@ Two locks:
 
 1. **The rooms' templates.** Every `*-eyebrow` element in a CFB, Docket or Pay Sheet (golf)
    room template, and every `.golf-label` (the Pay Sheet's label, games/golf/DESIGN.md
-   §6.8), in those templates and the shared Settle the Tab include (the lounge
-   partials are lounge chrome and out of scope), is followed by something
+   §6.8), in those templates, the shared Settle the Tab include and The Wire's
+   `/app` (`core/push/templates`, converted 2026-10-08; the lounge partials are
+   lounge chrome and out of scope), is followed by something
    that is not a heading: not an `<h1>`-`<h6>` and not an element whose class
    names a headline or title. Jinja statements and comments are stripped
    first, so a branch never hides the element that follows. A label set ON a
@@ -37,6 +38,7 @@ ROOM_TEMPLATES = sorted(
                 *(ROOT / 'games/docket/templates').rglob('*.html'),
                 *(ROOT / 'games/golf/templates').rglob('*.html'),
                 *(ROOT / 'core/records/templates').rglob('*.html'),
+                *(ROOT / 'core/push/templates').rglob('*.html'),
                 ROOT / 'templates/_settle_tab.html']
     if 'lounge' not in p.parts)
 

@@ -274,6 +274,13 @@
                                         <a href="{{ url_for('cfb.make_pick', week_number=call_week.week_number) }}"
                                            class="btn btn-outline-light btn-sm ms-1">Change Pick</a>
                                     </div>
+                                    {# The Wire nudge (ADR-074): the moment after a pick is
+                                       the moment a member wants the final. Omitted for a
+                                       member already on The Wire on any device. #}
+                                    {% if not on_the_wire() %}
+                                    <p class="cfb-wire-note">Get a push notification the hour {{ user_pick.team.name }} goes final.
+                                        <a href="{{ url_for('push.app_page') }}">Turn on The Wire</a></p>
+                                    {% endif %}
                                 {% else %}
                                     <a href="{{ url_for('cfb.make_pick', week_number=call_week.week_number) }}"
                                        class="btn btn-game">Make Your Pick</a>

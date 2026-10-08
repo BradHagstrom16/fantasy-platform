@@ -5,9 +5,26 @@ from pathlib import Path
 
 from flask import current_app
 from flask_login import current_user
+from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 
+from extensions import db
 from games.registry import joined_games
+from models.push import PushSubscription
+
+
+def member_on_the_wire() -> bool:
+    """Does the signed-in member hold any live push subscription, on any
+    device? The Wire's distribution nudges (the lounge strip, the room
+    nudges, the profile link) are omitted for them (ADR-074, "this member,
+    not this device", Brad 2026-10-08): a member who turned it on once is
+    never asked again, on any device, until every one of their devices is
+    gone. One query, called at most once per page."""
+    if not current_user.is_authenticated:
+        return False
+    return db.session.scalar(
+        select(PushSubscription.id)
+        .filter_by(user_id=current_user.id).limit(1)) is not None
 
 
 def _compute_asset_version() -> str:
@@ -75,6 +92,11 @@ def register_context_processors(app):
     @app.context_processor
     def inject_asset_version():
         return {'asset_version': asset_version}
+
+    @app.context_processor
+    def inject_on_the_wire():
+        # A callable, not a value: the query runs only where a template asks.
+        return {'on_the_wire': member_on_the_wire}
 
     @app.context_processor
     def inject_vapid_public_key():

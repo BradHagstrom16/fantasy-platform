@@ -48,6 +48,16 @@
       <p class="docket-filed-note">A reserve is optional: your next tap on a case you haven't picked holds one.</p>
       {% endif %}
     {% endif %}
+    {# The Wire nudge (ADR-074): a filed sheet is the moment a member wants
+       the verdicts, so it closes the filed card and the closed card alike,
+       until the last scoring side is final (the promise is spent then; the
+       tally's pending count is every scoring side without a final result).
+       Omitted for a member already on The Wire on any device. #}
+    {% if not on_the_wire()
+          and not (viewer_record and viewer_record.tally and viewer_record.tally.pending == 0) %}
+    <p class="docket-filed-note docket-wire-note">Get a push notification the
+      hour each side is decided. <a href="{{ url_for('push.app_page') }}">Turn on The Wire</a></p>
+    {% endif %}
   </div>
 
   {% elif sheet.scoring_count == 0 %}
