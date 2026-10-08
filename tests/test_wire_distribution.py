@@ -4,20 +4,30 @@ already are: the lounge strip, the account menu, and the moment after a pick in
 each room.
 
 Locks:
-  - /app: no eyebrow over any heading (ADR-066), every member-facing panel
-    names "push notifications", one verb ("Turn on The Wire"), the iOS 26
-    Safari path (Share, View More, Add to Home Screen), and Android Chrome
-    resolving to the button in the tab instead of the iPhone steps
+  - /app: the old eyebrow class is gone (the Eyebrow Rule itself is
+    tests/test_eyebrow_above_heading.py, which globs core/push/templates),
+    every panel a member can rest on names "push notifications" (the
+    transient "checking" excepted), one verb ("Turn on The Wire"), the iOS 26
+    Safari path (Share, View More, Add to Home Screen), Android Chrome
+    resolving to the button in the tab instead of the iPhone steps, and a
+    non-iOS browser without push (or whose worker never registers) landing
+    on the nopush panel so "Checking" always ends
   - the account menu carries The Wire for members only, never the
     js-buzz-link hide (it is also the way to Turn off and Send a test)
   - the lounge strip renders for a member and hides through js-buzz-link
-  - the CFB nudge rides only inside the held-pick branch of the weekly call
-  - the Docket nudge closes the filed card, and only the filed card
+  - the CFB nudge renders under a held pick in the open week, names the
+    team, and is absent with no pick or for an eliminated member; its source
+    sits only inside the held-pick branch of the weekly call
+  - the Docket nudge closes the filed card and the closed card, not the
+    blank, partial or x2/number cards, and leaves once every scoring side is
+    final (the promise is spent)
 """
 import re
+from datetime import datetime
 from pathlib import Path
 
 from extensions import db
+from tests import _cfb_fixtures as cfb
 from tests._docket_fixtures import (
     IN_WEEK1,
     at,
@@ -27,7 +37,12 @@ from tests._docket_fixtures import (
     make_user,
     make_week,
 )
-from tests.test_docket_sheet_flow import KICK_SAT, _file, _file_eight_with_x2_and_number
+from tests.test_docket_sheet_flow import (
+    KICK_SAT,
+    _file,
+    _file_eight_with_x2_and_number,
+    _final,
+)
 
 REPO = Path(__file__).resolve().parent.parent
 PANEL = re.compile(r'<section class="app-panel" data-state="(\w+)">(.*?)</section>', re.S)
@@ -56,7 +71,7 @@ def test_every_member_panel_says_push_notifications(app, client):
     _member(client)
     body = client.get('/app').get_data(as_text=True)
     panels = dict(PANEL.findall(body))
-    assert len(panels) == 9
+    assert len(panels) == 10
     # "checking" is the transient half second before push.js settles; every
     # panel a member can rest on names the thing plainly.
     for state, html in panels.items():
@@ -87,6 +102,11 @@ def test_android_tab_resolves_to_the_button_not_the_iphone_steps(app, client):
     body = client.get('/app').get_data(as_text=True)
     script = body[body.index('var state;'):body.index("el.setAttribute('data-app-state', state)")]
     android = script.index("else if (!iOS && canPush) { state = 'checking'; }")
+    # A non-iOS browser without push is told so; only iOS falls to the steps.
+    assert android < script.index("else if (!iOS) { state = 'nopush'; }") \
+        < script.index("else { state = 'tab'; }")
+    # "checking" needs the worker API too, or push.js could never resolve it.
+    assert "('serviceWorker' in navigator)" in body[:body.index('var state;')]
     # After every iOS and standalone branch, before the iPhone-steps default.
     assert script.index("else if (standalone) { state = 'checking'; }") < android
     assert android < script.index("else { state = 'tab'; }")
@@ -128,6 +148,43 @@ def test_lounge_strip_absent_for_visitors(client):
 
 # ── The rooms ────────────────────────────────────────────────────────────
 
+CFB_DEADLINE = datetime(2026, 9, 5, 11, 0)       # Sat 11:00 CT: Week 1 locks
+CFB_PICKING = '2026-09-01T17:00:00'              # the Tuesday before: open
+
+
+def _cfb_room(monkeypatch, client, *, pick=True, eliminated=False):
+    """The Survivor hub for an enrolled member while Week 1 is open."""
+    week = cfb.make_week(1, deadline=CFB_DEADLINE, is_active=True)
+    navy, dog = cfb.make_team('Navy'), cfb.make_team('South Carolina')
+    cfb.make_game(week, navy, dog, spread=-7.0)
+    user = cfb.make_user('cfbwire')
+    cfb.make_enrollment(user, eliminated=eliminated)
+    if pick:
+        cfb.make_pick(user, week, navy)
+    db.session.commit()
+    login(client, user)
+    monkeypatch.setenv('CFB_FAKE_NOW', CFB_PICKING)
+    return client.get('/cfb/').get_data(as_text=True)
+
+
+def test_cfb_nudge_renders_under_a_held_pick_and_names_the_team(monkeypatch, client):
+    html = _cfb_room(monkeypatch, client)
+    assert html.count('cfb-wire-note js-buzz-link') == 1
+    text = _text(html)
+    assert 'Get a push notification the hour Navy goes final.' in text
+    assert 'Turn on The Wire' in text
+
+
+def test_cfb_nudge_absent_without_a_pick(monkeypatch, client):
+    assert 'cfb-wire-note' not in _cfb_room(monkeypatch, client, pick=False)
+
+
+def test_cfb_nudge_absent_for_an_eliminated_member(monkeypatch, client):
+    html = _cfb_room(monkeypatch, client, eliminated=True)
+    assert 'Your season ended.' in html
+    assert 'cfb-wire-note' not in html
+
+
 def test_cfb_nudge_rides_only_the_held_pick_branch():
     src = (REPO / 'games/cfb/templates/cfb/index.html').read_text()
     held = src.index('{% if user_pick %}')
@@ -138,7 +195,7 @@ def test_cfb_nudge_rides_only_the_held_pick_branch():
     assert 'the hour {{ user_pick.team.name }} goes final' in src
 
 
-def test_docket_nudge_closes_the_filed_card(monkeypatch, app, client):
+def _docket_week(monkeypatch, client):
     user = make_user('docketwire')
     make_enrollment(user)
     db.session.commit()
@@ -149,6 +206,11 @@ def test_docket_nudge_closes_the_filed_card(monkeypatch, app, client):
     week.tiebreaker_game_id = games[7].id
     db.session.commit()
     at(monkeypatch, IN_WEEK1)
+    return week, games
+
+
+def test_docket_nudge_closes_the_filed_card(monkeypatch, app, client):
+    week, games = _docket_week(monkeypatch, client)
 
     _file(client, games[0])
     partial = client.get('/docket/').get_data(as_text=True)
@@ -156,7 +218,35 @@ def test_docket_nudge_closes_the_filed_card(monkeypatch, app, client):
 
     _file_eight_with_x2_and_number(client, week, games)
     html = client.get('/docket/').get_data(as_text=True)
-    card = re.search(r'<div class="docket-filed">(.*?)</div>\s*$', html, re.S | re.M)
+    # The filed card is the only card on the page, so one nudge on the page
+    # is one nudge on the card.
+    assert html.count('<div class="docket-filed"') == 1
     assert html.count('docket-wire-note js-buzz-link') == 1
-    assert card and 'docket-wire-note' in card.group(1)
     assert 'the hour each side is decided' in _text(html)
+
+
+def test_docket_nudge_stays_on_the_closed_card_until_the_last_side_is_final(
+        monkeypatch, app, client):
+    """Sunday afternoon the card is closed and nothing is decided: the
+    promise stands. Two finals in, it still stands for the six to play. Once
+    every scoring side is final there is nothing left to promise."""
+    week, games = _docket_week(monkeypatch, client)
+    _file_eight_with_x2_and_number(client, week, games)
+    at(monkeypatch, '2026-09-06T18:00:00')          # closed, Sunday 1 PM CT
+    html = client.get('/docket/').get_data(as_text=True)
+    assert 'is-closed' in html
+    assert html.count('docket-wire-note js-buzz-link') == 1
+
+    _final(games[0], home=30, away=20)
+    _final(games[1], home=20, away=30)
+    db.session.commit()
+    html = client.get('/docket/').get_data(as_text=True)
+    assert 'docket-filed-record' in html                # the running record leads
+    assert html.count('docket-wire-note js-buzz-link') == 1
+
+    for game in games[2:]:
+        _final(game, home=30, away=20)
+    db.session.commit()
+    html = client.get('/docket/').get_data(as_text=True)
+    assert 'is-closed' in html
+    assert 'docket-wire-note' not in html

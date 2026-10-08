@@ -293,7 +293,7 @@ def test_app_page_has_all_device_panels(app, client):
     _login(client, auth_id)
     body = client.get('/app').get_data(as_text=True)
     for state in ('tab', 'inapp', 'checking', 'unsubscribed', 'subscribed',
-                  'denied', 'desktop', 'unsupported', 'signin'):
+                  'denied', 'desktop', 'unsupported', 'nopush', 'signin'):
         assert f'data-state="{state}"' in body, state
     # The pre-paint script decides the state before first paint.
     assert 'data-app-state' in body

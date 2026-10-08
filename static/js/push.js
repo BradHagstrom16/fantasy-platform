@@ -1,12 +1,16 @@
 /* Corrupt Commish Club — web push client.
  *
- * On every page: registers the push-only service worker, and on a standalone
- * open bumps last_seen_at + clears the icon badge. On /app: resolves the
- * subscribed / unsubscribed / denied state that the pre-paint script left as
- * "checking" (an installed app, or a phone browser that takes push in the
- * tab), and wires the Turn on button, the turn-off link, and the test dispatch.
- * Logout is intercepted everywhere so a shared device unsubscribes before the
- * next member signs in.
+ * On every page: registers the push-only service worker, on a standalone open
+ * bumps last_seen_at + clears the icon badge, and hides the "Turn on The Wire"
+ * nudges (.js-buzz-link) on a device that holds a subscription. That device
+ * remembers it in localStorage (WIRE_FLAG) so base.html's pre-paint script can
+ * hide the nudges before first paint; the flag is corrected against the live
+ * subscription on every load. On /app: resolves the subscribed / unsubscribed
+ * / denied state that the pre-paint script left as "checking" (an installed
+ * app, or a non-iOS browser that takes push in the tab), falls to "nopush"
+ * when the worker never registers, and wires the Turn on button, the Turn off
+ * button, and the test dispatch. Logout is intercepted everywhere so a shared
+ * device unsubscribes before the next member signs in.
  */
 (function () {
   'use strict';
@@ -67,7 +71,28 @@
     return { endpoint: sub.endpoint, keys: json.keys };
   }
 
-  function setState(s) { el.setAttribute('data-app-state', s); }
+  // The device's own memory of being on The Wire, read by base.html before
+  // paint. Storage can be blocked (private window): then the nudges show
+  // until the load-time check below hides them, which is the old behavior.
+  var WIRE_FLAG = 'ccc-wire-on';
+  function rememberWire(on) {
+    el.classList.toggle('wire-on', on);
+    try {
+      if (on) { window.localStorage.setItem(WIRE_FLAG, '1'); }
+      else { window.localStorage.removeItem(WIRE_FLAG); }
+    } catch (err) { /* storage blocked */ }
+  }
+
+  function setState(s) {
+    el.setAttribute('data-app-state', s);
+    if (s === 'subscribed') { rememberWire(true); }
+    else if (s === 'unsubscribed' || s === 'denied') { rememberWire(false); }
+  }
+
+  function logError(what, err) {
+    // The one diagnostic a member can read back to the Commish.
+    if (window.console && console.error) { console.error('The Wire: ' + what, err); }
+  }
 
   function status(id, msg, isError) {
     var node = document.getElementById(id);
@@ -83,15 +108,18 @@
     });
   }
 
-  // Bump last_seen_at on every standalone open (pushsubscriptionchange is
-  // unreliable, so upsert on open).
+  // Bump last_seen_at on every standalone open and every /app open
+  // (pushsubscriptionchange is unreliable, so upsert on open). The upsert
+  // follows ownership, so a shared phone's subscription re-points to whoever
+  // is signed in now, on the tab path as much as the installed one.
   function upsertOnOpen(reg) {
+    if (!reg.pushManager) { return; }   // an iPhone Safari tab: nothing to heartbeat
     reg.pushManager.getSubscription().then(function (sub) {
       // Best-effort heartbeat: validate the response so a lapsed session no
       // longer reads as success, but never flip state or drop the local sub —
       // the user stays subscribed pending re-auth.
       if (sub) { postJSON('/push/subscribe', subscriptionPayload(sub)).then(postedOk); }
-    });
+    }).catch(function (err) { logError('heartbeat failed', err); });
   }
 
   // Resolve the last states the pre-paint script left as "checking".
@@ -152,7 +180,8 @@
             });
           });
         });
-      }).catch(function () {
+      }).catch(function (err) {
+        logError('turn on failed', err);
         // Never leave the phone half-armed: drop the browser subscription.
         reg.pushManager.getSubscription().then(function (s) { if (s) { s.unsubscribe(); } });
         restoreCta(btn);
@@ -185,7 +214,8 @@
         } else {
           status('push-status', 'Couldn’t turn off The Wire. Try once more.', true);
         }
-      }).catch(function () {
+      }).catch(function (err) {
+        logError('turn off failed', err);
         status('push-status', 'Couldn’t turn off The Wire. Try once more.', true);
       });
     });
@@ -236,35 +266,46 @@
             return postJSON('/push/unsubscribe', { endpoint: endpoint }).catch(function () {});
           });
         }).catch(function () {}).finally(function () {
+          rememberWire(false);
           form.submit();
         });
       });
     });
   }
 
-  // Hide the "Turn on The Wire" distribution links once this device is subscribed.
+  // Hide the "Turn on The Wire" distribution links once this device is
+  // subscribed, and settle the device's memory of it either way. An iPhone
+  // Safari tab has no pushManager (the subscription lives in the home-screen
+  // app), so it cannot know and the nudges stay. Every path fails open: a
+  // nudge is never hidden from a member who is not on The Wire.
   function hideBuzzLinkIfSubscribed(reg) {
+    if (!reg.pushManager) { return; }
     var links = document.querySelectorAll('.js-buzz-link');
-    if (!links.length) { return; }
     reg.pushManager.getSubscription().then(function (sub) {
+      rememberWire(!!sub);
       if (sub) { links.forEach(function (n) { n.hidden = true; }); }
     }).catch(function () {});
   }
 
   window.addEventListener('load', function () {
+    var onApp = !!document.querySelector('.app-card');
     navigator.serviceWorker.register('/sw.js', { scope: '/' }).then(function (reg) {
-      if (isStandalone()) {
-        upsertOnOpen(reg);
-        clearBadge();
-      }
-      if (document.querySelector('.app-card')) {
+      if (isStandalone() || onApp) { upsertOnOpen(reg); }
+      if (isStandalone()) { clearBadge(); }
+      if (onApp) {
         resolveAppState(reg);
         wireCta(reg);
         wireTurnOff(reg);
         wireTest(reg);
       }
       hideBuzzLinkIfSubscribed(reg);
-    }).catch(function () { /* registration failed; email still works */ });
+    }).catch(function (err) {
+      // The worker never registered (/sw.js unreachable or mis-served, storage
+      // blocked). Email still works; on /app say so instead of leaving the
+      // member on "Checking this phone." forever.
+      logError('service worker registration failed', err);
+      if (el.getAttribute('data-app-state') === 'checking') { setState('nopush'); }
+    });
     wireLogout();
   });
 })();

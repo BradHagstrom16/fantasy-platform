@@ -1,12 +1,15 @@
 {# The Wire strip: the lounge's standing ask to turn on the Club's push
    notifications (ADR-074). Club chrome, not a game: lounge purple, bone and
    gold only, never a room class or var (the accent firewall scans this file).
-   Between two gold hairlines, never a card. js-buzz-link: push.js hides the
-   whole strip on a device that already has a subscription. #}
+   Between two gold hairlines, never a card. js-buzz-link: the whole strip
+   hides on a device that turned on The Wire (html.wire-on before paint,
+   push.js after). The spaces around the middot keep the heading's
+   accessible name "The Wire Push notifications from the Club", two words
+   apart, where the spans sit inline. #}
 <section class="wire-strip js-buzz-link" aria-labelledby="wire-strip-title">
   <div class="wire-strip-copy">
     <h2 class="wire-strip-title" id="wire-strip-title">
-      <span class="wire-strip-name">The Wire</span><span class="wire-strip-sep" aria-hidden="true">&middot;</span>Push notifications from the Club
+      <span class="wire-strip-name">The Wire</span> <span class="wire-strip-sep" aria-hidden="true">&middot;</span> Push notifications from the Club
     </h2>
     <p class="wire-strip-line">Know the hour your game goes final, and get a heads-up
       before a deadline when you haven't picked.</p>

@@ -5,11 +5,12 @@
 
 {% block head %}
 {# Decide the visible state BEFORE first paint so a standalone open never
-   flashes the install steps. Six branches resolve here from server login
+   flashes the install steps. Seven branches resolve here from server login
    state + device facts; push.js resolves the last three (subscribed vs
    unsubscribed vs denied) once getSubscription() settles, for an installed
-   app and for a phone browser that can take push in the tab. With JS off, no
-   data-app-state is set and the CSS default shows the install steps. #}
+   app and for a non-iOS browser that can take push in the tab, and falls to
+   nopush when the worker never registers. With JS off, no data-app-state is
+   set and the CSS default shows the install steps. #}
 <script>
 (function () {
   var el = document.documentElement;
@@ -28,18 +29,24 @@
     var iosInApp = iOS && !standalone
       && (/CriOS|FxiOS|EdgiOS|GSA|FBAN|FBAV|Instagram|Line|OKHttp/.test(ua)
           || !/Safari/.test(ua));
-    var canPush = ('PushManager' in window) && ('Notification' in window);
+    // The same three facts push.js needs before it can resolve "checking";
+    // a browser missing any of them must never be sent there.
+    var canPush = ('serviceWorker' in navigator) && ('PushManager' in window)
+      && ('Notification' in window);
 
     var state;
     if (!loggedIn && standalone) { window.location.replace('/login?next=/app'); return; }
     else if (!loggedIn) { state = 'signin'; }
     else if (!coarse && wide) { state = 'desktop'; }
     else if (iosInApp) { state = 'inapp'; }
-    else if (standalone && !canPush) { state = 'unsupported'; }
+    else if (standalone && !canPush) { state = iOS ? 'unsupported' : 'nopush'; }
     else if (standalone) { state = 'checking'; }
-    // Android Chrome (and any phone browser outside iOS) takes push right in
-    // the tab; only iOS needs the home screen first.
+    // Any non-iOS browser not classed as desktop (Android Chrome, a narrow or
+    // touch laptop window) takes push right in the tab; only iOS needs the
+    // home screen first. One without the push APIs (an Android in-app
+    // WebView) is told so, never shown the iPhone steps.
     else if (!iOS && canPush) { state = 'checking'; }
+    else if (!iOS) { state = 'nopush'; }
     else { state = 'tab'; }
     el.setAttribute('data-app-state', state);
   } catch (err) {
@@ -72,9 +79,10 @@
 <div class="auth-wrapper">
   <div class="card auth-card auth-card--letter app-card">
 
-    {# Every panel names The Wire as what it is, the Club's push
-       notifications, once, in its heading or its lede (no eyebrow above
-       the heading, ADR-066). #}
+    {# Every panel a member can rest on names The Wire as what it is, the
+       Club's push notifications, in its heading, lede or status line; the
+       transient "checking" panel is the one exception. No eyebrow above a
+       heading (ADR-066). #}
 
     {# ---- iPhone Safari tab: install steps (also the no-JS default) ---- #}
     <section class="app-panel" data-state="tab">
@@ -110,8 +118,8 @@
       <p class="app-lede">Checking this phone.</p>
     </section>
 
-    {# ---- Ready to turn on: installed iPhone, or any phone browser that can
-         take push right in the tab (Android Chrome) ---- #}
+    {# ---- Ready to turn on: installed iPhone, or any non-iOS browser that
+         can take push right in the tab (Android Chrome) ---- #}
     <section class="app-panel" data-state="unsubscribed">
       <h1 class="auth-title">Push notifications are one tap away</h1>
       <p class="app-lede">That's The Wire: a note on this phone the hour your game
@@ -136,9 +144,9 @@
         <span class="app-status-label">Push notifications on</span>
         <button type="button" class="app-turn-off" id="push-turn-off">Turn off</button>
       </div>
-      <p class="app-body">Next up: results land the hour your game goes final,
-        Saturday and Sunday (a Thursday game lands Saturday), and a note comes
-        before any deadline you haven't picked for.</p>
+      <p class="app-body">Next up: results land the hour your game goes final
+        (a Survivor pick that plays Thursday waits for Saturday's lock), and a
+        note comes before any deadline you haven't picked for.</p>
       <hr class="app-rule">
       <h2 class="app-subhead">Not getting them?</h2>
       <div class="app-cta-wrap">
@@ -180,6 +188,16 @@
       <h1 class="auth-title">This iPhone can't get The Wire</h1>
       <p class="app-lede">The Club's push notifications need a newer version of iOS.
         Email keeps coming either way.</p>
+      {{ back_to_lounge() }}
+    </section>
+
+    {# ---- No push here: a non-iOS browser without the push APIs (an Android
+         in-app WebView), or one whose service worker never registered ---- #}
+    <section class="app-panel" data-state="nopush">
+      <h1 class="auth-title">This browser can't take The Wire</h1>
+      <p class="app-lede">The Club's push notifications need a browser that can
+        take them. Open <strong>cccfantasy.com/app</strong> in Chrome, or reload
+        to try again. Email keeps coming either way.</p>
       {{ back_to_lounge() }}
     </section>
 

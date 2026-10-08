@@ -559,7 +559,9 @@ every open pill as the reserve; success was never confirmed in words. Six contra
   mark, "Sheet closed", "Your Week N sheet is on the record.", "The docket closed Sunday 12:00
   PM CT. Verdicts to follow."). Both close on The Wire nudge (`.docket-wire-note`, ADR-074): "Get
   a push notification the hour each side is decided." with "Turn on The Wire" in the room's
-  primary over a garnet underline; `js-buzz-link` hides it on a subscribed device. The stamp is the Stamped-Side grammar at card scale (garnet
+  primary over a garnet underline, until the last scoring side is final (the promise is spent;
+  `viewer_record.tally.pending == 0`); `js-buzz-link` hides it on a device that turned on The
+  Wire (the installed app, Android Chrome; an iPhone Safari tab cannot see the subscription). The stamp is the Stamped-Side grammar at card scale (garnet
   border + 8% tint + weight step); the closed state is the Cold-Docket treatment with its reason
   in the note. `sheet_state` carries each pick's `label` (`describe_pick`) so the card names the
   x2 from the same snapshot the rail prints. Locked by `tests/test_docket_sheet_flow.py`.
