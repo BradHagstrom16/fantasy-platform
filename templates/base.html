@@ -41,22 +41,6 @@
     <!-- Platform CSS — cache-busted per deploy via `?v={{ asset_version }}` -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v={{ asset_version }}">
 
-    {# The Wire (ADR-074): a device that turned on The Wire remembers it
-       (push.js keeps the flag), so the "Turn on The Wire" nudges
-       (.js-buzz-link) are hidden before first paint instead of painting and
-       vanishing once push.js settles. push.js corrects the flag against the
-       live subscription on every load. A Jinja comment: the rendered page
-       never carries "buzz" (tests/test_push.py). #}
-    <script>
-    (function () {
-      try {
-        if (window.localStorage.getItem('ccc-wire-on') === '1') {
-          document.documentElement.classList.add('wire-on');
-        }
-      } catch (err) { /* storage blocked: the nudges show until push.js hides them */ }
-    })();
-    </script>
-
     {% block head %}{% endblock %}
 </head>
 <body class="{% block body_class %}{{ body_class|default('') }}{% endblock %}" data-vapid-key="{{ vapid_public_key }}">

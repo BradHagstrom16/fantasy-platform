@@ -515,13 +515,6 @@ html[data-app-state="unsupported"] .app-panel[data-state="unsupported"],
 html[data-app-state="nopush"] .app-panel[data-state="nopush"],
 html[data-app-state="signin"] .app-panel[data-state="signin"] { display: block; }
 
-/* The Wire's distribution nudges (.js-buzz-link, ADR-074): a device that
-   turned on The Wire remembers it (push.js keeps a localStorage flag), and
-   base.html's pre-paint script sets html.wire-on from it, so the nudges never
-   paint and then vanish. push.js confirms against the live subscription on
-   every load and corrects the flag and the class either way. */
-html.wire-on .js-buzz-link { display: none; }
-
 /* The single authored moment: turning on The Wire. */
 html[data-app-state="subscribed"] .app-panel[data-state="subscribed"] {
   animation: app-swap-in .2s cubic-bezier(.4, 0, .2, 1) both;
@@ -1934,8 +1927,8 @@ body.game-golf {
    notifications, between the greet and the headliners. Club chrome between
    two gold hairlines, never a card; the name in gold, the definition in
    bone, one gold-outline action. Centered under the greet on phones, a
-   copy | action row from md. Hidden on a device that turned on The Wire
-   (html.wire-on before paint, [hidden] once push.js confirms). --- */
+   copy | action row from md. The server omits it for a member already on
+   The Wire on any device (on_the_wire, core/context.py). --- */
 .home-shell .wire-strip {
   display: grid;
   gap: 0.9rem;

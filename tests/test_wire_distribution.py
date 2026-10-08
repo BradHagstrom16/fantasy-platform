@@ -12,21 +12,25 @@ Locks:
     resolving to the button in the tab instead of the iPhone steps, and a
     non-iOS browser without push (or whose worker never registers) landing
     on the nopush panel so "Checking" always ends
-  - the account menu carries The Wire for members only, never the
-    js-buzz-link hide (it is also the way to Turn off and Send a test)
-  - the lounge strip renders for a member and hides through js-buzz-link
+  - the account menu carries The Wire for members only, on The Wire or not
+    (it is also the way to Turn off and Send a test)
+  - the lounge strip renders for a member who is not on The Wire
   - the CFB nudge renders under a held pick in the open week, names the
     team, and is absent with no pick or for an eliminated member; its source
     sits only inside the held-pick branch of the weekly call
   - the Docket nudge closes the filed card and the closed card, not the
     blank, partial or x2/number cards, and leaves once every scoring side is
     final (the promise is spent)
+  - this member, not this device (Brad 2026-10-08): a member who holds any
+    push subscription row sees none of the strip, the profile link or the
+    two room nudges, on any device, and still sees the menu item
 """
 import re
 from datetime import datetime
 from pathlib import Path
 
 from extensions import db
+from models.push import PushSubscription
 from tests import _cfb_fixtures as cfb
 from tests._docket_fixtures import (
     IN_WEEK1,
@@ -57,6 +61,14 @@ def _member(client, name='wiremember'):
 
 def _text(html):
     return re.sub(r'\s+', ' ', re.sub(r'<[^>]+>', ' ', html))
+
+
+def _on_the_wire(user):
+    """One live subscription row for the member, any device."""
+    db.session.add(PushSubscription(
+        user_id=user.id, endpoint=f'https://push.example/{user.username}',
+        p256dh='k', auth='a'))
+    db.session.commit()
 
 
 # ── /app ─────────────────────────────────────────────────────────────────
@@ -120,9 +132,16 @@ MENU_ITEM = re.compile(r'<a class="dropdown-item" href="/app">\s*<i class="bi bi
 def test_account_menu_carries_the_wire_for_members(app, client):
     _member(client)
     body = client.get('/profile').get_data(as_text=True)
-    item = MENU_ITEM.search(body)
-    assert item, 'The Wire missing from the account menu'
-    assert 'js-buzz-link' not in item.group(0)
+    assert MENU_ITEM.search(body), 'The Wire missing from the account menu'
+    assert 'Turn on The Wire' in body                  # the profile link too
+
+
+def test_account_menu_stays_for_a_member_on_the_wire_but_the_profile_link_goes(app, client):
+    user = _member(client)
+    _on_the_wire(user)
+    body = client.get('/profile').get_data(as_text=True)
+    assert MENU_ITEM.search(body), 'the menu item is also the way to Turn off'
+    assert 'Turn on The Wire' not in body
 
 
 def test_account_menu_absent_for_visitors(client):
@@ -131,18 +150,27 @@ def test_account_menu_absent_for_visitors(client):
 
 # ── The lounge strip ─────────────────────────────────────────────────────
 
-def test_lounge_strip_renders_for_a_member_and_hides_when_subscribed(app, client):
+def test_lounge_strip_renders_for_a_member(app, client):
     _member(client)
     body = client.get('/').get_data(as_text=True)
-    strip = re.search(r'<section class="wire-strip js-buzz-link"(.*?)</section>', body, re.S)
+    strip = re.search(r'<section class="wire-strip"(.*?)</section>', body, re.S)
     assert strip, 'lounge strip missing'
     text = _text(strip.group(1))
     assert 'Push notifications from the Club' in text
     assert 'Turn on The Wire' in text
-    assert body.count('wire-strip js-buzz-link') == 1
+    assert body.count('class="wire-strip"') == 1
 
 
 def test_lounge_strip_absent_for_visitors(client):
+    assert 'wire-strip' not in client.get('/').get_data(as_text=True)
+
+
+def test_lounge_strip_omitted_for_a_member_on_the_wire(app, client):
+    """This member, not this device: one subscription row on any device and
+    the lounge stops asking, with nothing painted to hide."""
+    user = _member(client)
+    assert 'wire-strip' in client.get('/').get_data(as_text=True)
+    _on_the_wire(user)
     assert 'wire-strip' not in client.get('/').get_data(as_text=True)
 
 
@@ -152,7 +180,7 @@ CFB_DEADLINE = datetime(2026, 9, 5, 11, 0)       # Sat 11:00 CT: Week 1 locks
 CFB_PICKING = '2026-09-01T17:00:00'              # the Tuesday before: open
 
 
-def _cfb_room(monkeypatch, client, *, pick=True, eliminated=False):
+def _cfb_room(monkeypatch, client, *, pick=True, eliminated=False, on_wire=False):
     """The Survivor hub for an enrolled member while Week 1 is open."""
     week = cfb.make_week(1, deadline=CFB_DEADLINE, is_active=True)
     navy, dog = cfb.make_team('Navy'), cfb.make_team('South Carolina')
@@ -162,6 +190,8 @@ def _cfb_room(monkeypatch, client, *, pick=True, eliminated=False):
     if pick:
         cfb.make_pick(user, week, navy)
     db.session.commit()
+    if on_wire:
+        _on_the_wire(user)
     login(client, user)
     monkeypatch.setenv('CFB_FAKE_NOW', CFB_PICKING)
     return client.get('/cfb/').get_data(as_text=True)
@@ -169,10 +199,16 @@ def _cfb_room(monkeypatch, client, *, pick=True, eliminated=False):
 
 def test_cfb_nudge_renders_under_a_held_pick_and_names_the_team(monkeypatch, client):
     html = _cfb_room(monkeypatch, client)
-    assert html.count('cfb-wire-note js-buzz-link') == 1
+    assert html.count('cfb-wire-note') == 1
     text = _text(html)
     assert 'Get a push notification the hour Navy goes final.' in text
     assert 'Turn on The Wire' in text
+
+
+def test_cfb_nudge_omitted_for_a_member_on_the_wire(monkeypatch, client):
+    html = _cfb_room(monkeypatch, client, on_wire=True)
+    assert 'Your pick' in html and 'Navy' in html         # the pick still shows
+    assert 'cfb-wire-note' not in html
 
 
 def test_cfb_nudge_absent_without_a_pick(monkeypatch, client):
@@ -188,17 +224,19 @@ def test_cfb_nudge_absent_for_an_eliminated_member(monkeypatch, client):
 def test_cfb_nudge_rides_only_the_held_pick_branch():
     src = (REPO / 'games/cfb/templates/cfb/index.html').read_text()
     held = src.index('{% if user_pick %}')
-    nudge = src.index('cfb-wire-note js-buzz-link')
+    nudge = src.index('class="cfb-wire-note"')
     branch_end = src.index('{% else %}', held)
     assert held < nudge < branch_end
     assert src.count('cfb-wire-note') == 1
     assert 'the hour {{ user_pick.team.name }} goes final' in src
 
 
-def _docket_week(monkeypatch, client):
+def _docket_week(monkeypatch, client, *, on_wire=False):
     user = make_user('docketwire')
     make_enrollment(user)
     db.session.commit()
+    if on_wire:
+        _on_the_wire(user)
     login(client, user)
     week = make_week(1)
     games = [make_game(week, kickoff=KICK_SAT, home=f'Home {i}', away=f'Away {i}')
@@ -221,8 +259,16 @@ def test_docket_nudge_closes_the_filed_card(monkeypatch, app, client):
     # The filed card is the only card on the page, so one nudge on the page
     # is one nudge on the card.
     assert html.count('<div class="docket-filed"') == 1
-    assert html.count('docket-wire-note js-buzz-link') == 1
+    assert html.count('docket-wire-note') == 1
     assert 'the hour each side is decided' in _text(html)
+
+
+def test_docket_nudge_omitted_for_a_member_on_the_wire(monkeypatch, app, client):
+    week, games = _docket_week(monkeypatch, client, on_wire=True)
+    _file_eight_with_x2_and_number(client, week, games)
+    html = client.get('/docket/').get_data(as_text=True)
+    assert 'Sheet filed' in html
+    assert 'docket-wire-note' not in html
 
 
 def test_docket_nudge_stays_on_the_closed_card_until_the_last_side_is_final(
@@ -235,14 +281,14 @@ def test_docket_nudge_stays_on_the_closed_card_until_the_last_side_is_final(
     at(monkeypatch, '2026-09-06T18:00:00')          # closed, Sunday 1 PM CT
     html = client.get('/docket/').get_data(as_text=True)
     assert 'is-closed' in html
-    assert html.count('docket-wire-note js-buzz-link') == 1
+    assert html.count('docket-wire-note') == 1
 
     _final(games[0], home=30, away=20)
     _final(games[1], home=20, away=30)
     db.session.commit()
     html = client.get('/docket/').get_data(as_text=True)
     assert 'docket-filed-record' in html                # the running record leads
-    assert html.count('docket-wire-note js-buzz-link') == 1
+    assert html.count('docket-wire-note') == 1
 
     for game in games[2:]:
         _final(game, home=30, away=20)

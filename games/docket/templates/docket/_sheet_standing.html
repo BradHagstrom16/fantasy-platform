@@ -52,9 +52,10 @@
        the verdicts, so it closes the filed card and the closed card alike,
        until the last scoring side is final (the promise is spent then; the
        tally's pending count is every scoring side without a final result).
-       js-buzz-link: hidden on a device that turned on The Wire. #}
-    {% if not (viewer_record and viewer_record.tally and viewer_record.tally.pending == 0) %}
-    <p class="docket-filed-note docket-wire-note js-buzz-link">Get a push notification the
+       Omitted for a member already on The Wire on any device. #}
+    {% if not on_the_wire()
+          and not (viewer_record and viewer_record.tally and viewer_record.tally.pending == 0) %}
+    <p class="docket-filed-note docket-wire-note">Get a push notification the
       hour each side is decided. <a href="{{ url_for('push.app_page') }}">Turn on The Wire</a></p>
     {% endif %}
   </div>

@@ -1,16 +1,15 @@
 /* Corrupt Commish Club — web push client.
  *
- * On every page: registers the push-only service worker, on a standalone open
- * bumps last_seen_at + clears the icon badge, and hides the "Turn on The Wire"
- * nudges (.js-buzz-link) on a device that holds a subscription. That device
- * remembers it in localStorage (WIRE_FLAG) so base.html's pre-paint script can
- * hide the nudges before first paint; the flag is corrected against the live
- * subscription on every load. On /app: resolves the subscribed / unsubscribed
- * / denied state that the pre-paint script left as "checking" (an installed
- * app, or a non-iOS browser that takes push in the tab), falls to "nopush"
- * when the worker never registers, and wires the Turn on button, the Turn off
- * button, and the test dispatch. Logout is intercepted everywhere so a shared
- * device unsubscribes before the next member signs in.
+ * On every page: registers the push-only service worker, and on a standalone
+ * open bumps last_seen_at + clears the icon badge. On /app: resolves the
+ * subscribed / unsubscribed / denied state that the pre-paint script left as
+ * "checking" (an installed app, or a non-iOS browser that takes push in the
+ * tab), falls to "nopush" when the worker never registers, and wires the Turn
+ * on button, the Turn off button, and the test dispatch. Logout is
+ * intercepted everywhere so a shared device unsubscribes before the next
+ * member signs in. The "Turn on The Wire" nudges on other pages are the
+ * server's to show or omit (core/context.py::member_on_the_wire): this
+ * script never hides them.
  */
 (function () {
   'use strict';
@@ -71,23 +70,7 @@
     return { endpoint: sub.endpoint, keys: json.keys };
   }
 
-  // The device's own memory of being on The Wire, read by base.html before
-  // paint. Storage can be blocked (private window): then the nudges show
-  // until the load-time check below hides them, which is the old behavior.
-  var WIRE_FLAG = 'ccc-wire-on';
-  function rememberWire(on) {
-    el.classList.toggle('wire-on', on);
-    try {
-      if (on) { window.localStorage.setItem(WIRE_FLAG, '1'); }
-      else { window.localStorage.removeItem(WIRE_FLAG); }
-    } catch (err) { /* storage blocked */ }
-  }
-
-  function setState(s) {
-    el.setAttribute('data-app-state', s);
-    if (s === 'subscribed') { rememberWire(true); }
-    else if (s === 'unsubscribed' || s === 'denied') { rememberWire(false); }
-  }
+  function setState(s) { el.setAttribute('data-app-state', s); }
 
   function logError(what, err) {
     // The one diagnostic a member can read back to the Commish.
@@ -266,25 +249,10 @@
             return postJSON('/push/unsubscribe', { endpoint: endpoint }).catch(function () {});
           });
         }).catch(function () {}).finally(function () {
-          rememberWire(false);
           form.submit();
         });
       });
     });
-  }
-
-  // Hide the "Turn on The Wire" distribution links once this device is
-  // subscribed, and settle the device's memory of it either way. An iPhone
-  // Safari tab has no pushManager (the subscription lives in the home-screen
-  // app), so it cannot know and the nudges stay. Every path fails open: a
-  // nudge is never hidden from a member who is not on The Wire.
-  function hideBuzzLinkIfSubscribed(reg) {
-    if (!reg.pushManager) { return; }
-    var links = document.querySelectorAll('.js-buzz-link');
-    reg.pushManager.getSubscription().then(function (sub) {
-      rememberWire(!!sub);
-      if (sub) { links.forEach(function (n) { n.hidden = true; }); }
-    }).catch(function () {});
   }
 
   window.addEventListener('load', function () {
@@ -298,7 +266,6 @@
         wireTurnOff(reg);
         wireTest(reg);
       }
-      hideBuzzLinkIfSubscribed(reg);
     }).catch(function (err) {
       // The worker never registered (/sw.js unreachable or mis-served, storage
       // blocked). Email still works; on /app say so instead of leaving the
