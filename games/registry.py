@@ -11,14 +11,17 @@ Consumed by:
 """
 from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Any, Literal
 
 from games.cfb.services import enrollment as _cfb_enrollment
 from games.cfb.services import lounge as _cfb_lounge
 from games.cfb.services import records as _cfb_records
+from games.cfb.services import wire_preview as _cfb_wire
 from games.docket.services import enrollment as _docket_enrollment
 from games.docket.services import lounge as _docket_lounge
 from games.docket.services import records as _docket_records
+from games.docket.services import wire_preview as _docket_wire
 from games.golf.services import enrollment as _golf_enrollment
 from games.golf.services import lounge as _golf_lounge
 from games.golf.services import records as _golf_records
@@ -91,6 +94,13 @@ class GameRegistryEntry:
     # through this and never imports one. None for a game whose board has
     # not shipped (golf until Phase U7).
     season_finishes: Callable[[int], list[FinishDraft]] | None = None
+    # The Wire's live preview (ADR-074, PR B): (user_id, now) -> the one
+    # push this member would get next from this game as {title, body,
+    # when}, built by the sender's own copy functions, or None when the
+    # game has nothing to promise (not enrolled, no open week, the pick
+    # already graded). `/app` reads it only through wire_preview_for();
+    # core/push never imports a game. None for a game with no push feed.
+    wire_preview: Callable[[int, datetime], dict | None] | None = None
 
 
 # Populated in Tasks 3, 5, 8. Intentionally empty at file-creation time so
@@ -140,6 +150,7 @@ GAMES: list[GameRegistryEntry] = [
         lounge_context=_cfb_lounge.build_lounge_context,
         join_open=_cfb_lounge.join_window_open,
         season_finishes=_cfb_records.season_finishes,
+        wire_preview=_cfb_wire.wire_preview,
     ),
     GameRegistryEntry(
         slug='docket',
@@ -165,6 +176,7 @@ GAMES: list[GameRegistryEntry] = [
         lounge_context=_docket_lounge.build_lounge_context,
         join_open=_docket_lounge.join_window_open,
         season_finishes=_docket_records.season_finishes,
+        wire_preview=_docket_wire.wire_preview,
     ),
     GameRegistryEntry(
         slug='golf',
@@ -276,6 +288,20 @@ def lounge_games() -> list[GameRegistryEntry]:
         and entry.lounge_state is not None
         and entry.lounge_context is not None
     ]
+
+
+def wire_preview_for(user_id: int, now: datetime) -> dict | None:
+    """The one push a member would get next, from the first game in billing
+    order that has something to promise (ADR-074, PR B): Survivor locks on
+    Saturday and the Docket on Sunday, so the earlier promise leads. None
+    when no game has one; `/app` then shows the real test dispatch."""
+    for entry in GAMES:
+        if entry.wire_preview is None:
+            continue
+        preview = entry.wire_preview(user_id, now)
+        if preview is not None:
+            return preview
+    return None
 
 
 def lounge_game() -> GameRegistryEntry | None:

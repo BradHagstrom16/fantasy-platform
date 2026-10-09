@@ -141,6 +141,19 @@ def test_flip_pushes_every_scoring_side_with_the_tally(app):
     under = [c for c in calls if 'Under' in c['title']][0]
     assert under['title'] == 'WIN: Under 51.5'
     assert under['body'] == 'Away Team 14, Home Team 24. Only your sheet had it.'
+    # One source (PR B): the sender and The Wire's preview both read
+    # verdict_push_copy / verdict_push_title and shared_side_phrase.
+    from games.docket.services.notifications import (
+        shared_side_phrase,
+        verdict_push_copy,
+        verdict_push_title,
+    )
+    home_pick = next(p for p in DocketPick.query.filter_by(user_id=a.id)
+                     if p.market == 'spread')
+    assert (home_calls[0]['title'], home_calls[0]['body']) == verdict_push_copy(
+        'WIN', home_pick, game, 2)
+    assert verdict_push_title('WIN', home_pick, game) == 'WIN: Home Team -3.5'
+    assert shared_side_phrase(home_pick, 2) == '1 other sheet had them.'
     # One distinct tag per market so both verdicts survive on a device that
     # holds this game's spread and its total.
     assert {c['tag'] for c in calls} == {

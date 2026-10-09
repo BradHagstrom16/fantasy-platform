@@ -26,7 +26,16 @@ Locks:
   - this member, not this device (Brad 2026-10-08): a member who holds any
     push subscription row sees none of the strip, the profile link or the
     two room nudges, on any device, and still sees the menu item
+  - the three overdrive moments (PR B): core/push imports nothing under
+    games. but the registry; the notification preview paints on the tab,
+    unsubscribed and subscribed panels only; the install coach (the step
+    glyphs, the fixed pointer shown only on the tab panel and the no-JS
+    default, Android's install button hidden inside the unsubscribed
+    panel); push.js morphs the button into the card through a view
+    transition and fires the first dispatch once; the strip carries the
+    live wire and its script, with the heading untouched
 """
+import ast
 import re
 from datetime import datetime
 from pathlib import Path
@@ -136,6 +145,99 @@ def test_app_says_subscribed_only_after_the_server_claims_the_subscription():
     assert "if (sub) { setState('subscribed')" not in resolve
     # One upsert per /app open: the load handler leaves it to resolveAppState.
     assert 'if (isStandalone() && !onApp) { upsertOnOpen(reg); }' in src
+
+
+# ── The overdrive moments (PR B) ─────────────────────────────────────────
+
+def test_core_push_imports_no_game_but_the_registry():
+    """The hijack lock: `/app` reaches a game's preview only through
+    games.registry (the seam tests/test_registry_seam.py guards for the
+    lounge), never a game module."""
+    for path in sorted((REPO / 'core/push').rglob('*.py')):
+        for node in ast.walk(ast.parse(path.read_text())):
+            names = []
+            if isinstance(node, ast.ImportFrom):
+                names = [node.module or '']
+            elif isinstance(node, ast.Import):
+                names = [alias.name for alias in node.names]
+            for name in names:
+                if name.startswith('games'):
+                    assert name == 'games.registry', f'{path.name} imports {name}'
+
+
+def test_preview_paints_on_the_tab_unsubscribed_and_subscribed_panels(app, client):
+    _member(client)
+    panels = dict(PANEL.findall(client.get('/app').get_data(as_text=True)))
+    with_card = {s for s, html in panels.items() if 'app-wire-screen' in html}
+    assert with_card == {'tab', 'unsubscribed', 'subscribed'}
+    # The card the button becomes carries the shared transition name.
+    assert 'app-wire--target' in panels['subscribed']
+    assert 'app-wire--target' not in panels['unsubscribed']
+    # Nothing we send says "from CCC": the app name and "now" are the chrome
+    # the phone draws, and the title and body are the sender's own words.
+    assert 'from CCC' not in panels['tab']
+
+
+def test_install_coach_markup_sits_where_it_should(app, client):
+    _member(client)
+    body = client.get('/app').get_data(as_text=True)
+    panels = dict(PANEL.findall(body))
+    # One pointer, outside every panel.
+    assert body.count('class="app-coach"') == 1
+    assert not any('app-coach' in html for html in panels.values())
+    # A glyph on each iPhone step, in both panels that show the steps.
+    for state in ('tab', 'inapp'):
+        assert panels[state].count('app-step-glyph') == 4, state
+    # Android's install button: hidden, inside the unsubscribed panel only.
+    holders = [s for s, html in panels.items() if 'id="app-install"' in html]
+    assert holders == ['unsubscribed']
+    assert re.search(r'id="app-install"\s+hidden', panels['unsubscribed'])
+    assert 'app-install' not in panels['nopush']
+
+
+def test_install_coach_pointer_shows_only_on_the_tab_panel():
+    css = (REPO / 'static/css/style.css').read_text()
+    shown = re.findall(r'html(?:\[data-app-state="(\w+)"\]|:not\(\[data-app-state\]\)) \.app-coach', css)
+    assert set(shown) == {'tab', ''}, shown
+    assert '@media (display-mode: standalone)' in css
+    coach = css[css.index('.app-coach {'):css.index('.app-cta-wrap .app-install')]
+    assert 'var(--coach-x, 50%)' in coach
+    assert 'coach-bounce' in coach and '2;' in coach.split('coach-bounce')[1][:40]
+    assert '@media (prefers-reduced-motion: reduce)' in coach
+
+
+def test_push_js_morphs_the_button_and_fires_the_first_dispatch_once():
+    src = (REPO / 'static/js/push.js').read_text()
+    assert 'document.startViewTransition' in src
+    assert "setState('subscribed')" in src[src.index('function morphToSubscribed'):]
+    assert 'prefers-reduced-motion' in src
+    assert "if (ok) { morphToSubscribed(); firstDispatch(sub); return; }" in src
+    first = src[src.index('function firstDispatch(sub)'):src.index('function wireCta(reg)')]
+    assert "postJSON('/push/test', { endpoint: sub.endpoint })" in first
+    assert 'resp.status === 429' in first           # already sent, not an error
+    assert 'firstDispatchSent' in first
+    assert "window.addEventListener('beforeinstallprompt'" in src
+    css = (REPO / 'static/css/style.css').read_text()
+    assert '#push-cta { view-transition-name: wire-card; }' in css
+    assert '.app-wire--target .app-wire-screen { view-transition-name: wire-card; }' in css
+
+
+def test_lounge_strip_carries_the_live_wire(app, client):
+    _member(client)
+    body = client.get('/').get_data(as_text=True)
+    strip = re.search(r'<section class="wire-strip"(.*?)</section>', body, re.S).group(1)
+    for cls in ('wire-strip-art', 'wire-strip-wire', 'wire-strip-pulse', 'wire-strip-phone'):
+        assert strip.count(f'class="{cls}"') == 1, cls
+    assert re.search(r'js/wire-strip\.js\?v=\w+', strip)
+    # The heading's accessible name keeps its two phrases apart.
+    assert ('<span class="wire-strip-name">The Wire</span> '
+            '<span class="wire-strip-sep" aria-hidden="true">&middot;</span> '
+            'Push notifications from the Club') in strip
+    css = (REPO / 'static/css/style.css').read_text()
+    live = css[css.index('.home-shell .wire-strip-art'):css.index('/* --- Pre-state: countdown card.')]
+    assert 'IntersectionObserver' in (REPO / 'static/js/wire-strip.js').read_text()
+    assert 'infinite' not in live                 # the pulse travels once
+    assert '@media (prefers-reduced-motion: reduce)' in live
 
 
 # ── The account menu ─────────────────────────────────────────────────────

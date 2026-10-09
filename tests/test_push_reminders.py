@@ -67,6 +67,22 @@ def test_cfb_nag_payload_final_changes_the_body(app):
                           'your biggest favorite left.')
 
 
+def test_cfb_nag_sends_exactly_the_shared_copy(app):
+    """One source (PR B): the sender and The Wire's preview both read
+    nag_push_copy, so the preview can never drift from what lands."""
+    from games.cfb.services.reminders import nag_push_copy
+    week = cfbf.make_week(1, deadline=_CFB_DEADLINE)
+    db.session.commit()
+    deadline = make_aware(week.deadline)
+    for tier, back in (('warning', timedelta(hours=25)),
+                       ('final', timedelta(hours=2, minutes=30))):
+        with patch(_CFB_PUSH) as sp:
+            _push_pick_nag(week, {'type': tier}, deadline, deadline - back, [7])
+        kw = sp.call_args.kwargs
+        assert (kw['title'], kw['body']) == nag_push_copy(
+            week, tier, deadline, deadline - back)
+
+
 def test_cfb_nag_empty_recipients_is_noop(app):
     week = cfbf.make_week(1, deadline=_CFB_DEADLINE)
     db.session.commit()
@@ -111,6 +127,22 @@ def test_docket_nag_payload(app):
     assert kw['title'] == 'Docket closes Sun 12 PM CT'
     # The body is this member's next step, in the sheet's words.
     assert kw['body'] == 'Week 1: no sides picked yet.'
+
+
+def test_docket_nag_sends_exactly_the_shared_copy(app):
+    """One source (PR B): the sender and The Wire's preview both read
+    nag_push_copy over the same sheet_state."""
+    from games.docket.services.picks import sheet_state
+    from games.docket.services.reminders import nag_push_copy
+    week = dkf.make_week(1)
+    db.session.commit()
+    for tier, back in (('48h', 48), ('24h', 24), ('2h', 2.5)):
+        now_naive = week.deadline_at - timedelta(hours=back)
+        with patch(_DK_PUSH) as sp:
+            _push_deadline_nag(week, tier, now_naive, [7])
+        kw = sp.call_args.kwargs
+        assert (kw['title'], kw['body']) == nag_push_copy(
+            week, tier, sheet_state(7, week, now=now_naive), now_naive)
 
 
 def test_docket_nag_2h_body_differs(app):

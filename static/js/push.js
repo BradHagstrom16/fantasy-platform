@@ -6,9 +6,10 @@
  * "checking" (an installed app, or a non-iOS browser that takes push in the
  * tab), "subscribed" only once the server has claimed the browser's
  * subscription for the member signed in now, falls to "nopush" when the
- * worker never registers, and wires the Turn on button, the Turn off button,
- * and the test dispatch. Logout is
- * intercepted everywhere so a shared device unsubscribes before the next
+ * worker never registers, and wires the Turn on button (which morphs into
+ * the notification preview on Allow and fires the first push itself), the
+ * Turn off button, the test dispatch, and Android's one-tap install. Logout
+ * is intercepted everywhere so a shared device unsubscribes before the next
  * member signs in. The "Turn on The Wire" nudges on other pages are the
  * server's to show or omit (core/context.py::member_on_the_wire): this
  * script never hides them.
@@ -157,6 +158,39 @@
     btn.textContent = 'Turn on The Wire';
   }
 
+  function reducedMotion() {
+    return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  }
+
+  // The moment (ADR-074, PR B): Allow turns the button into the notification.
+  // The button and the subscribed panel's card share view-transition-name
+  // wire-card, so a browser with view transitions morphs one into the other;
+  // the rest get the plain swap-in, and reduced motion an instant swap.
+  function morphToSubscribed() {
+    if (document.startViewTransition && !reducedMotion()) {
+      el.classList.add('app-morph');
+      document.startViewTransition(function () { setState('subscribed'); });
+      return;
+    }
+    setState('subscribed');
+  }
+
+  // The first push, fired once by the page itself as the card settles, so
+  // the phone makes its sound while the member is still looking. The route
+  // is rate-limited per device: a 429 means one already went (the manual
+  // button, a reload) and is not an error. Nothing here touches the status
+  // lines; the manual "Send a test" keeps its own.
+  var firstDispatchSent = false;
+  function firstDispatch(sub) {
+    if (firstDispatchSent) { return; }
+    firstDispatchSent = true;
+    postJSON('/push/test', { endpoint: sub.endpoint }).then(function (resp) {
+      if (resp.redirected || !(resp.ok || resp.status === 429)) {
+        logError('first dispatch refused', resp.status);
+      }
+    }).catch(function (err) { logError('first dispatch failed', err); });
+  }
+
   function wireCta(reg) {
     var btn = document.getElementById('push-cta');
     if (!btn) { return; }
@@ -179,7 +213,7 @@
               return;
             }
             return postedOk(resp).then(function (ok) {
-              if (ok) { setState('subscribed'); return; }
+              if (ok) { morphToSubscribed(); firstDispatch(sub); return; }
               sub.unsubscribe().catch(function () {});
               throw new Error('subscribe post failed');
             });
@@ -252,6 +286,35 @@
     });
   }
 
+  // Android's one-tap install (the install coach, PR B): Chrome offers
+  // beforeinstallprompt when the site is installable and not yet installed.
+  // Keep the event, show the second button, and prompt on tap. When the
+  // event never fires (installed already, iOS, another browser) the button
+  // stays hidden, so nothing promises an install the browser cannot give.
+  function wireInstall() {
+    var btn = document.getElementById('app-install');
+    if (!btn) { return; }
+    var deferred = null;
+    window.addEventListener('beforeinstallprompt', function (event) {
+      event.preventDefault();
+      deferred = event;
+      btn.hidden = false;
+    });
+    window.addEventListener('appinstalled', function () { btn.hidden = true; deferred = null; });
+    btn.addEventListener('click', function () {
+      if (!deferred) { return; }
+      var prompting = deferred;
+      deferred = null;
+      btn.hidden = true;
+      prompting.prompt();
+      if (prompting.userChoice) {
+        prompting.userChoice.then(function (choice) {
+          if (!choice || choice.outcome !== 'accepted') { deferred = prompting; btn.hidden = false; }
+        }).catch(function () {});
+      }
+    });
+  }
+
   function wireLogout() {
     // A form since /logout went POST-only. form.submit() below does not fire
     // another submit event, so the unsubscribe runs once.
@@ -288,6 +351,7 @@
         wireCta(reg);
         wireTurnOff(reg);
         wireTest(reg);
+        wireInstall();
       }
     }).catch(function (err) {
       // The worker never registered (/sw.js unreachable or mis-served, storage

@@ -207,25 +207,38 @@ def _nag_body_tail(state):
     return 'Now your tiebreaker number.'
 
 
-def _push_deadline_nag(week, tier, now_naive, user_ids):
-    """The deadline nag as a push (T11): the buzz twin of the reminder email.
-    Never raises: send_push swallows its own errors, and a member whose sheet
-    can't be read is logged and skipped, so the desk still latches the tier."""
-    if not user_ids:
-        return
-    ttl = max(int((week.deadline_at - now_naive).total_seconds()), 0)
-    # iOS stacks title / "from CCC" / body, and the title is one line: the
-    # title carries the deadline, the body what this member still owes, so
-    # it goes one member at a time.
+def nag_push_copy(week, tier, state, now_naive):
+    """``(title, body)`` of one member's deadline nag push for ``tier``
+    (``'48h'``, ``'24h'`` or ``'2h'``) over their ``sheet_state``. Pure: the
+    sender and The Wire's live preview on /app (services/wire_preview.py)
+    both read it, so what the preview shows is what lands.
+
+    iOS stacks title / "from CCC" / body, and the title is one line: the
+    title carries the deadline, the body what this member still owes.
+    """
     last_call = tier == '2h'
     if last_call:
         left = format_time_left_compact(week.deadline_at, now_naive)
         title = f'Docket closes in {left}'
     else:
         title = f'Docket closes {format_deadline_compact(week.deadline_at)}'
+    tail = _nag_body_tail(state)
+    body = (f'Last call for Week {week.week_number}. {tail}' if last_call
+            else f'Week {week.week_number}: {tail[0].lower()}{tail[1:]}')
+    return title, body
+
+
+def _push_deadline_nag(week, tier, now_naive, user_ids):
+    """The deadline nag as a push (T11): the buzz twin of the reminder email.
+    Never raises: send_push swallows its own errors, and a member whose sheet
+    can't be read is logged and skipped, so the desk still latches the tier.
+    The body is this member's next step, so it goes one member at a time."""
+    if not user_ids:
+        return
+    ttl = max(int((week.deadline_at - now_naive).total_seconds()), 0)
     for user_id in user_ids:
         try:
-            tail = _nag_body_tail(sheet_state(user_id, week, now=now_naive))
+            state = sheet_state(user_id, week, now=now_naive)
         except Exception:
             # A failed read poisons the session on Postgres; roll back so the
             # next member's read, and the desk's latch commit, still land.
@@ -233,8 +246,7 @@ def _push_deadline_nag(week, tier, now_naive, user_ids):
             logger.exception('Docket nag push: sheet read failed for user %s',
                              user_id)
             continue
-        body = (f'Last call for Week {week.week_number}. {tail}' if last_call
-                else f'Week {week.week_number}: {tail[0].lower()}{tail[1:]}')
+        title, body = nag_push_copy(week, tier, state, now_naive)
         send_push([user_id],
                   title=title,
                   body=body,

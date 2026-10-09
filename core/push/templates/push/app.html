@@ -62,17 +62,57 @@
   <a href="{{ url_for('main.index') }}">Back to the lounge</a>
 </p>
 {% endmacro %}
+{# The live preview (ADR-074, PR B): the one push this member gets next,
+   drawn as a lock-screen banner in the Club's own tokens. `preview` is the
+   route's: the sender's own copy for a pick owed or held (the registry
+   seam, games/<slug>/services/wire_preview.py), else the real test
+   dispatch. The app name and "now" are what the phone draws around a
+   notification, never copy we send; nothing here is invented. The label
+   over the card is a label over a value, not a heading (ADR-066). #}
+{% macro wire_card(label, morph=False) %}
+{% if preview %}
+<div class="app-wire{% if morph %} app-wire--target{% endif %}">
+  <p class="app-wire-when">{{ label }}: {{ preview.when }}</p>
+  <div class="app-wire-screen" role="img"
+       aria-label="On your lock screen: {{ preview.title }} {{ preview.body }}">
+    <div class="app-wire-banner">
+      <img class="app-wire-icon" alt=""
+           src="{{ url_for('static', filename='img/pwa/icon-192.png') }}?v={{ asset_version }}">
+      <div class="app-wire-text">
+        <span class="app-wire-app">CCC</span><span class="app-wire-time">now</span>
+        <strong class="app-wire-title">{{ preview.title }}</strong>
+        <span class="app-wire-body">{{ preview.body }}</span>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endmacro %}
 {# The iOS 26 Safari path, as members see it (Brad's screenshots,
    2026-10-08): Share sits in the center of the bottom bar, Add to Home
    Screen hides behind View More. Compact tab layout tucks Share under the
-   ⋯ button, hence the recovery line. #}
+   ⋯ button, hence the recovery line. Each step carries a glyph of the
+   control it names (the install coach, PR B), drawn in one stroke. #}
+{% macro step_glyph(name) %}
+<svg class="app-step-glyph" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+  {%- if name == 'share' -%}
+  <path d="M12 15V4M8.5 7.5 12 4l3.5 3.5M6 11v8.5A1.5 1.5 0 0 0 7.5 21h9a1.5 1.5 0 0 0 1.5-1.5V11"/>
+  {%- elif name == 'more' -%}
+  <circle cx="12" cy="12" r="9"/><path d="M10.5 8.5 14 12l-3.5 3.5"/>
+  {%- elif name == 'add' -%}
+  <rect x="3.5" y="3.5" width="17" height="17" rx="4"/><path d="M12 8v8M8 12h8"/>
+  {%- else -%}
+  <rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M10.5 18h3"/><rect x="9.5" y="6" width="5" height="5" rx="1.2"/>
+  {%- endif -%}
+</svg>
+{% endmacro %}
 {% macro iphone_steps() %}
-<ol class="app-steps">
-  <li>Tap <strong>Share</strong>, the box with the arrow at the bottom center
+<ol class="app-steps app-steps--coach">
+  <li>{{ step_glyph('share') }}Tap <strong>Share</strong>, the box with the arrow at the bottom center
     of Safari. <span class="app-step-aside">Don't see it? Tap <strong>⋯</strong> first.</span></li>
-  <li>Tap <strong>View More</strong>.</li>
-  <li>Tap <strong>Add to Home Screen</strong>, then <strong>Add</strong>.</li>
-  <li>Open <strong>CCC</strong> from your home screen and tap
+  <li>{{ step_glyph('more') }}Tap <strong>View More</strong>.</li>
+  <li>{{ step_glyph('add') }}Tap <strong>Add to Home Screen</strong>, then <strong>Add</strong>.</li>
+  <li>{{ step_glyph('open') }}Open <strong>CCC</strong> from your home screen and tap
     <strong>Turn on The Wire</strong>.</li>
 </ol>
 {% endmacro %}
@@ -91,6 +131,7 @@
         game goes final, and before a deadline when you haven't picked. On iPhone
         the Club goes on your home screen first. Four taps:</p>
       {{ iphone_steps() }}
+      {{ wire_card('What lands') }}
       <hr class="app-rule">
       <h2 class="app-subhead">What comes over The Wire</h2>
       <p class="app-body">Your game going final. A deadline closing when you haven't
@@ -125,9 +166,15 @@
       <p class="app-lede">That's The Wire: a note on this phone the hour your game
         goes final, and before a deadline when you haven't picked. Tap the button;
         when your phone asks, choose <strong>Allow</strong>.</p>
+      {{ wire_card('What lands') }}
       <div class="app-cta-wrap">
         <button type="button" class="btn btn-primary btn-lg app-cta" id="push-cta">
           Turn on The Wire
+        </button>
+        {# Android Chrome's one-tap install: push.js reveals this only when the
+           browser offers beforeinstallprompt, so it never appears elsewhere. #}
+        <button type="button" class="btn btn-lg app-secondary app-install" id="app-install" hidden>
+          Install CCC on your home screen
         </button>
       </div>
       <p class="app-inline-status" id="push-status" role="status" aria-live="polite"></p>
@@ -144,9 +191,11 @@
         <span class="app-status-label">Push notifications on</span>
         <button type="button" class="app-turn-off" id="push-turn-off">Turn off</button>
       </div>
-      <p class="app-body">Next up: results land the hour your game goes final
-        (a Survivor pick that plays Thursday waits for Saturday's lock), and a
-        note comes before any deadline you haven't picked for.</p>
+      {# The card the Turn on button becomes (view-transition-name: wire-card). #}
+      {{ wire_card('Next on your lock screen', morph=True) }}
+      <p class="app-body">Results land the hour your game goes final (a Survivor
+        pick that plays Thursday waits for Saturday's lock), and a note comes
+        before any deadline you haven't picked for.</p>
       <hr class="app-rule">
       <h2 class="app-subhead">Not getting them?</h2>
       <div class="app-cta-wrap">
@@ -214,5 +263,17 @@
     </section>
 
   </div>
+</div>
+{# The install coach (PR B): a fixed pointer at the bottom center of the
+   viewport, where Safari keeps Share, bouncing twice toward it and then
+   resting. CSS shows it only on the iPhone Safari tab panel (and the no-JS
+   default, which is the same panel), never standalone, never on any other
+   state, and never bounces under reduced motion. Its target is one custom
+   property, --coach-x, so a layout change moves it in one place. #}
+<div class="app-coach" aria-hidden="true">
+  <span class="app-coach-label">Start here</span>
+  <svg class="app-coach-arrow" viewBox="0 0 24 24" focusable="false">
+    <path d="M12 4v15M6 13l6 6 6-6"/>
+  </svg>
 </div>
 {% endblock %}

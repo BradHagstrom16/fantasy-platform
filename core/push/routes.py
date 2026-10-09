@@ -21,6 +21,7 @@ install-and-wire page (The Wire), and the subscribe / unsubscribe / test JSON en
 """
 import hashlib
 import logging
+from datetime import UTC, datetime
 from urllib.parse import urlparse
 
 from flask import (
@@ -33,6 +34,7 @@ from flask_login import current_user, login_required
 
 from core.push import push_bp
 from extensions import db, limiter
+from games.registry import wire_preview_for
 from models.push import PushSubscription
 from utils.push import TEST_BODY, TEST_TITLE, send_push_to_endpoint
 
@@ -82,11 +84,23 @@ def _test_endpoint_key() -> str:
     return 'pushtest:' + (request.remote_addr or 'anon')
 
 
+# The preview's fallback: the real test dispatch, which is also the first
+# push a phone gets a few seconds after Turn on (push.js fires it).
+_TEST_PREVIEW = {'title': TEST_TITLE, 'body': TEST_BODY,
+                 'when': 'Seconds after you turn it on'}
+
+
 @push_bp.route('/app')
 def app_page():
-    """The install-and-wire page (The Wire). Anonymous callers see a sign-in prompt; the
-    device-fact branching lives in push.js (PR 2 expands it)."""
-    return render_template('push/app.html')
+    """The install-and-wire page (The Wire). Anonymous callers see a sign-in
+    prompt; the device-fact branching lives in push.js. A member's page
+    carries the live preview (ADR-074, PR B): the one push they would get
+    next, read through the registry seam only, else the test dispatch."""
+    preview = None
+    if current_user.is_authenticated:
+        preview = (wire_preview_for(current_user.id, datetime.now(UTC))
+                   or _TEST_PREVIEW)
+    return render_template('push/app.html', preview=preview)
 
 
 @push_bp.route('/sw.js')

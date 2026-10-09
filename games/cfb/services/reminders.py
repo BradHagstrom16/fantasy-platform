@@ -277,18 +277,19 @@ def reminder_letter(recipient, context, tier):
     )
 
 
-def _push_pick_nag(week, window, deadline, now, user_ids):
-    """The deadline nag as a push (T11): the buzz twin of the reminder email.
-    Never raises (send_push swallows its own errors)."""
-    if not user_ids:
-        return
-    ttl = max(int((deadline - now).total_seconds()), 0)
-    # iOS stacks title / "from CCC" / body: the title is one line and
-    # carries the deadline, the body at most two. A round name runs to 28
-    # characters ("Conference Championship Week"), so the round weeks drop
-    # the filler to stay inside that.
+def nag_push_copy(week, tier, deadline, now):
+    """``(title, body)`` of the deadline nag push for ``tier`` (``'warning'``
+    or ``'final'``). Pure: the sender and The Wire's live preview on /app
+    (services/wire_preview.py) both read it, so what the preview shows is
+    what lands.
+
+    iOS stacks title / "from CCC" / body: the title is one line and
+    carries the deadline, the body at most two. A round name runs to 28
+    characters ("Conference Championship Week"), so the round weeks drop
+    the filler to stay inside that.
+    """
     week_name = get_week_display_name(week)
-    if window['type'] == 'final':
+    if tier == 'final':
         title = f'CFB pick locks in {format_time_left_compact(deadline, now)}'
         # The final carries the consequence that bites, MISS_RULE's in
         # push length: the Commish spends one of your teams for you. The
@@ -301,6 +302,16 @@ def _push_pick_nag(week, window, deadline, now, user_ids):
         title = f'CFB pick due {format_deadline_compact(deadline)}'
         body = (f'{week_name}: no pick yet.' if week.round_name
                 else f'{week_name}: no pick on file yet.')
+    return title, body
+
+
+def _push_pick_nag(week, window, deadline, now, user_ids):
+    """The deadline nag as a push (T11): the buzz twin of the reminder email.
+    Never raises (send_push swallows its own errors)."""
+    if not user_ids:
+        return
+    ttl = max(int((deadline - now).total_seconds()), 0)
+    title, body = nag_push_copy(week, window['type'], deadline, now)
     send_push(user_ids, title=title, body=body,
               url=f'/cfb/pick/{week.week_number}',
               tag=f'cfb-w{week.week_number}-nag',
@@ -695,6 +706,31 @@ def _survive_body(tally):
     return ' '.join(parts)
 
 
+def verdict_push_copy(team, is_correct, *, lives=0, tally=None):
+    """``(title, body)`` of one member's game verdict push. Pure: the sender
+    and The Wire's live preview on /app both read it. A survive with no
+    tally (a failed count, or the preview, which cannot know the pool's
+    night) keeps the sentence the tally would have opened with."""
+    if is_correct:
+        return f'{team} won.', (_survive_body(tally) if tally else 'You survive.')
+    return f'{team} lost.', f'You lose a life. Down to {lives}.'
+
+
+def elimination_push_copy(week_number, lost_team_name, remaining, *,
+                          cause_known=True):
+    """``(title, body)`` of the ceremony push. ``lost_team_name`` None with
+    ``cause_known`` means the DQ-2 no-pick; ``cause_known`` False drops the
+    cause (a failed read). ``remaining`` None drops the tally."""
+    title = f'Your run ends at Week {week_number}.'
+    parts = []
+    if cause_known:
+        parts.append(f'{lost_team_name} lost.' if lost_team_name
+                     else 'No pick on file.')
+    if remaining is not None:
+        parts.append(f'{remaining} remain.')
+    return title, (' '.join(parts) or 'Your Survivor run is over.')
+
+
 def push_survivor_verdicts(week, result):
     """Buzz each member their game verdict and the elimination ceremony.
 
@@ -744,13 +780,9 @@ def push_survivor_verdicts(week, result):
             if user_id in eliminated:
                 continue  # the ceremony speaks for a run that ended
             team = _picked_team_display(games.get(game_id), team_id)
-            if is_correct:
-                title = f'{team} won.'
-                body = _survive_body(tally) if tally else 'You survive.'
-            else:
-                lives = enr[user_id].lives_remaining if user_id in enr else 0
-                title = f'{team} lost.'
-                body = f'You lose a life. Down to {lives}.'
+            lives = enr[user_id].lives_remaining if user_id in enr else 0
+            title, body = verdict_push_copy(team, is_correct, lives=lives,
+                                            tally=tally)
             send_push([user_id], title=title, body=body, url=CFB_ROOM_URL,
                       tag=f'cfb-game-{game_id}', ttl=VERDICT_TTL, urgency='high')
 
@@ -772,15 +804,10 @@ def push_survivor_verdicts(week, result):
                 logger.warning('CFB ceremony cause read failed; cause-free '
                                'bodies', exc_info=True)
         for user_id in eliminated:
-            title = f'Your run ends at Week {week.week_number}.'
-            parts = []
-            if lost_picks is not None:
-                pick = lost_picks.get(user_id)
-                parts.append(f'{pick.team.name} lost.' if pick
-                             else 'No pick on file.')
-            if remaining is not None:
-                parts.append(f'{remaining} remain.')
-            body = ' '.join(parts) or 'Your Survivor run is over.'
+            pick = lost_picks.get(user_id) if lost_picks is not None else None
+            title, body = elimination_push_copy(
+                week.week_number, pick.team.name if pick else None, remaining,
+                cause_known=lost_picks is not None)
             send_push([user_id], title=title, body=body, url=CFB_ROOM_URL,
                       tag=f'cfb-elim-{week.week_number}', ttl=VERDICT_TTL,
                       urgency='high')
