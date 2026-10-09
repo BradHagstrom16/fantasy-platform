@@ -153,7 +153,7 @@ def test_core_push_imports_no_game_but_the_registry():
     """The hijack lock: `/app` reaches a game's preview only through
     games.registry (the seam tests/test_registry_seam.py guards for the
     lounge), never a game module."""
-    for path in sorted((REPO / 'core/push').glob('*.py')):
+    for path in sorted((REPO / 'core/push').rglob('*.py')):
         for node in ast.walk(ast.parse(path.read_text())):
             names = []
             if isinstance(node, ast.ImportFrom):
