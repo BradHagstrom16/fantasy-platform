@@ -5,7 +5,13 @@
    The Wire on any device (on_the_wire, core/context.py): this member, not
    this device. The spaces around the middot keep the heading's accessible
    name "The Wire Push notifications from the Club", two words apart, where
-   the spans sit inline. #}
+   the spans sit inline.
+
+   The live wire (PR B): a hairline runs from the copy into a phone glyph.
+   When the strip enters view, wire-strip.js adds is-live once and a gold
+   pulse travels the wire, then the phone gives one shake and lights. No JS,
+   or reduced motion: the still wire with the phone lit. Strokes take their
+   color from CSS (lounge tokens), never a hex here. #}
 {% if not on_the_wire() %}
 <section class="wire-strip" aria-labelledby="wire-strip-title">
   <div class="wire-strip-copy">
@@ -15,8 +21,18 @@
     <p class="wire-strip-line">Know the hour your game goes final, and get a heads-up
       before a deadline when you haven't picked.</p>
   </div>
+  <svg class="wire-strip-art" viewBox="0 0 220 36" aria-hidden="true" focusable="false">
+    <path class="wire-strip-wire" d="M2 18 H140 Q150 18 152 14 T164 18 H190"/>
+    <path class="wire-strip-pulse" d="M2 18 H140 Q150 18 152 14 T164 18 H190" pathLength="100"/>
+    <g class="wire-strip-phone">
+      <rect x="196" y="4" width="18" height="28" rx="3.5"/>
+      <path d="M203 28h4"/>
+      <path class="wire-strip-ring" d="M190 11a9 9 0 0 1 0 14M187 8a13 13 0 0 1 0 20"/>
+    </g>
+  </svg>
   <a class="cta-outline wire-strip-cta" href="{{ url_for('push.app_page') }}">
     <i class="bi bi-bell" aria-hidden="true"></i>Turn on The Wire
   </a>
+  <script src="{{ url_for('static', filename='js/wire-strip.js') }}?v={{ asset_version }}" defer></script>
 </section>
 {% endif %}

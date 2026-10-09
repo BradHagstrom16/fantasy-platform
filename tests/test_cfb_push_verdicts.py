@@ -156,6 +156,15 @@ def test_survive_pushes_with_tally(app):
     assert kw['tag'] == f'cfb-game-{game.id}'
     assert kw['ttl'] == 6 * 3600 and kw['urgency'] == 'high'
     assert 'app_badge' not in kw  # verdicts never badge
+    # One source (PR B): the sender and The Wire's preview both read
+    # verdict_push_copy, so the preview can never drift from what lands.
+    from games.cfb.services.reminders import verdict_push_copy
+    tally = {'survived': 2, 'fell': 0, 'remaining': 2}
+    assert (kw['title'], kw['body']) == verdict_push_copy(
+        'Ohio State', True, lives=2, tally=tally)
+    assert verdict_push_copy('Ohio State', True) == ('Ohio State won.', 'You survive.')
+    assert verdict_push_copy('Ohio State', False, lives=1) == (
+        'Ohio State lost.', 'You lose a life. Down to 1.')
 
 
 def test_survive_tally_drops_empty_clauses(app):

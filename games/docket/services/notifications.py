@@ -87,18 +87,37 @@ def _side_phrase(pick, game):
     return f'{team} {"PK" if pick.line_value == 0 else f"{number:+g}"}'
 
 
-def _verdict_body(pick, game, n):
-    """'Miami Dolphins 17, Buffalo Bills 20. 1 other sheet had it.' — the
-    final (away first, as the slate prints a case) and who shared the side.
-    ``n`` counts every scoring sheet on it, this one included."""
-    score = (f'{game.away_team} {game.away_score}, '
-             f'{game.home_team} {game.home_score}.')
+def shared_side_phrase(pick, n):
+    """'1 other sheet had it.' / 'Only your sheet had them.': who shared the
+    side. ``n`` counts every scoring sheet on it, this one included."""
     it = 'it' if pick.market == 'total' else 'them'
     others = n - 1
     if others == 0:
-        return f'{score} Only your sheet had {it}.'
+        return f'Only your sheet had {it}.'
     sheets = 'sheet' if others == 1 else 'sheets'
-    return f'{score} {others} other {sheets} had {it}.'
+    return f'{others} other {sheets} had {it}.'
+
+
+def _verdict_body(pick, game, n):
+    """'Miami Dolphins 17, Buffalo Bills 20. 1 other sheet had it.' — the
+    final (away first, as the slate prints a case) and who shared the side."""
+    score = (f'{game.away_team} {game.away_score}, '
+             f'{game.home_team} {game.home_score}.')
+    return f'{score} {shared_side_phrase(pick, n)}'
+
+
+def verdict_push_title(word, pick, game):
+    """'WIN: Nebraska -3.5': the stamp word and the side lead (the phone
+    keeps the title to one line, and a long team name truncates at the
+    end). Pure: the sender and The Wire's live preview on /app
+    (services/wire_preview.py) both read it."""
+    return f'{word}: {_side_phrase(pick, game)}'
+
+
+def verdict_push_copy(word, pick, game, n):
+    """``(title, body)`` of one scoring side's verdict push: the title
+    above, and a body naming the game the title can't."""
+    return verdict_push_title(word, pick, game), _verdict_body(pick, game, n)
 
 
 def send_each(recipients, subject, build_body):
@@ -289,13 +308,11 @@ def push_docket_verdicts(verdict_games):
                     if corrected and before.get(p.id) == after:
                         continue  # this side did not flip
                     n = side_counts.get((p.market, p.side), 1)
+                    title, body = verdict_push_copy(word, p, game, n)
                     send_push(
                         [p.user_id],
-                        # The verdict leads: the phone keeps the title to
-                        # one line, and a long team name truncates at the
-                        # end. The body names the game the title can't.
-                        title=f'{word}: {_side_phrase(p, game)}',
-                        body=_verdict_body(p, game, n),
+                        title=title,
+                        body=body,
                         url=DOCKET_ROOM_URL,
                         # Market is in the tag: a sheet can hold this game's
                         # spread AND its total, and a per-game tag would let the
