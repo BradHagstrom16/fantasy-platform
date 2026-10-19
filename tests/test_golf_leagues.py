@@ -4,6 +4,7 @@ Golf is one game with two leagues inside it, Handicap (the house league) and
 Pollyanna. Each league is a row in ``golf_league`` carrying its own entry fee
 and penalty; every enrollment, pick and golfer usage belongs to exactly one.
 """
+import re
 from contextlib import contextmanager
 from datetime import UTC, datetime, timedelta
 
@@ -1062,3 +1063,121 @@ def test_the_shared_pages_resolve_to_the_viewers_league(app, golf_leagues):
         assert f'/golf/handicap/tournament/{banked_id}' in body
         assert '/golf/pollyanna/' not in body
         assert _lands(anonymous.get('/golf/leaderboard'), '/golf/handicap/')
+
+
+# --- Task B1: the league stamp and the sub-nav switch -------------------------
+
+def _context_line(body):
+    """The text of the page's ``.golf-context`` line."""
+    return body.split('class="golf-context">', 1)[1].split('</p>', 1)[0]
+
+
+def _title(body):
+    return body.split('<title>', 1)[1].split('</title>', 1)[0]
+
+
+def _words(markup):
+    """The rendered text of a fragment, tags gone, whitespace folded."""
+    return ' '.join(re.sub(r'<[^>]+>', ' ', markup).split())
+
+
+def test_every_league_page_is_stamped_and_only_a_member_of_both_sees_the_switch(
+        app, golf_leagues, monkeypatch):
+    """Every league page names its league in the title and opens its context
+    line with it; the sub-nav switch to the other sheet shows only to a member
+    holding a line on both."""
+    from tests._registry_helpers import set_status
+
+    set_status(monkeypatch, 'golf', 'open')
+    handicap, pollyanna = golf_leagues['handicap'], golf_leagues['pollyanna']
+    brad = _member('brad_stamp', handicap, pollyanna, app=app)
+    db.session.get(User, brad).is_admin = True
+    db.session.commit()
+    han = _member('han_stamp', handicap, app=app)
+    event = _season_event(app, 'Stamp Open', status='upcoming', deadline_in=timedelta(days=2))
+    event_id = event.id
+
+    pages = [
+        '/golf/pollyanna/', f'/golf/pollyanna/tournament/{event_id}',
+        f'/golf/pollyanna/member/{brad}', '/golf/pollyanna/stats',
+        f'/golf/pollyanna/pick/{event_id}', '/golf/pollyanna/admin/',
+        '/golf/pollyanna/admin/tournaments', '/golf/pollyanna/admin/users',
+        '/golf/pollyanna/admin/payments', '/golf/pollyanna/admin/override-pick',
+    ]
+    with _viewer(app, brad) as client:
+        for path in pages:
+            resp = client.get(path)
+            assert resp.status_code == 200, path
+            body = resp.get_data(as_text=True)
+            assert 'Pollyanna Pay Sheet' in _title(body), path
+            context = _context_line(body)
+            assert 'Pollyanna Pay Sheet' in context and 'Handicap' not in context, path
+            # The stamp opens the line: nothing precedes it but markup.
+            assert _words(context).startswith('Pollyanna Pay Sheet'), path
+        on_handicap = client.get('/golf/handicap/').get_data(as_text=True)
+        switch = on_handicap.split('subnav-pill--switch')[1].split('</a>')[0]
+        assert 'href="/golf/pollyanna/"' in switch and 'Pollyanna Pay Sheet' in switch
+        assert on_handicap.count('subnav-pill--switch') == 1
+        on_pollyanna = client.get('/golf/pollyanna/').get_data(as_text=True)
+        assert 'href="/golf/handicap/"' in on_pollyanna.split('subnav-pill--switch')[1]
+
+    with _viewer(app, han) as client:
+        body = client.get('/golf/handicap/').get_data(as_text=True)
+        assert 'subnav-pill--switch' not in body
+        assert 'Handicap Pay Sheet' in _context_line(body)
+    with _viewer(app) as anonymous:
+        assert 'subnav-pill--switch' not in anonymous.get('/golf/pollyanna/').get_data(as_text=True)
+
+
+def test_shared_pages_keep_the_league_the_viewer_came_from(app, golf_leagues):
+    """The Schedule pill on a league page carries its league as a query arg,
+    and the shared pages honor it, so a viewer stepping off a Pollyanna page
+    is not flipped back to their own league; a bad value is ignored."""
+    season = app.config['SEASON_YEAR']
+    han = _member('han_steps_over', golf_leagues['handicap'], app=app)
+    banked = _season_event(app, 'Shared Stamp Banked')
+    banked_id = banked.id
+
+    with _viewer(app) as anonymous:
+        page = anonymous.get('/golf/pollyanna/').get_data(as_text=True)
+        assert 'href="/golf/schedule?league=pollyanna"' in page
+        schedule = anonymous.get('/golf/schedule?league=pollyanna').get_data(as_text=True)
+        assert f'Pollyanna Pay Sheet · {season}' in schedule
+        assert f'/golf/pollyanna/tournament/{banked_id}' in schedule
+        assert '/golf/handicap/' not in schedule
+        assert _lands(anonymous.get('/golf/leaderboard?league=pollyanna'), '/golf/pollyanna/')
+        assert _lands(anonymous.get('/golf/?league=pollyanna'), '/golf/pollyanna/')
+        wrong = anonymous.get('/golf/schedule?league=nowhere').get_data(as_text=True)
+        assert f'Handicap Pay Sheet · {season}' in wrong
+
+    with _viewer(app, han) as client:
+        schedule = client.get('/golf/schedule?league=pollyanna').get_data(as_text=True)
+        assert f'Pollyanna Pay Sheet · {season}' in schedule
+        assert f'/golf/pollyanna/tournament/{banked_id}' in schedule
+
+
+def test_record_room_lists_only_this_leagues_seasons(app, golf_leagues):
+    """The Record Room's season switcher is the league's own seasons: a prior
+    season with Handicap lines and events is not offered on the Pollyanna
+    room, and asking for it there is a 404."""
+    handicap = golf_leagues['handicap']
+    season = app.config['SEASON_YEAR']
+    past = User(username='past_handicap', email='past_handicap@example.com')
+    past.set_password('x')
+    db.session.add(past)
+    db.session.flush()
+    db.session.add(GolfEnrollment(user_id=past.id, league_id=handicap.id, season_year=season - 1))
+    db.session.add(GolfTournament(
+        api_tourn_id='B1-last-year', name='Last Year Open', season_year=season - 1,
+        start_date=datetime(season - 1, 3, 5), end_date=datetime(season - 1, 3, 8),
+        pick_deadline=datetime(season - 1, 3, 5), purse=1_000_000, status='complete',
+        results_finalized=True))
+    db.session.commit()
+
+    with _viewer(app) as anonymous:
+        handicap_room = anonymous.get('/golf/handicap/stats').get_data(as_text=True)
+        assert f'href="/golf/handicap/stats?season={season - 1}">{season - 1} season</a>' in handicap_room
+        pollyanna_room = anonymous.get('/golf/pollyanna/stats').get_data(as_text=True)
+        assert f'{season - 1} season' not in pollyanna_room
+        assert anonymous.get(f'/golf/pollyanna/stats?season={season - 1}').status_code == 404
+        assert anonymous.get(f'/golf/handicap/stats?season={season - 1}').status_code == 200

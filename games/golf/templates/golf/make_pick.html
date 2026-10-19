@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% from 'golf/_sheet.html' import dollars, event_dates with context %}
 
-{% block title %}Spend a Golfer: {{ tournament.name }} · The Pay Sheet{% endblock %}
+{% block title %}Spend a Golfer: {{ tournament.name }} · {{ golf_league.name }}{% endblock %}
 
 {% block content %}
 {% set pick = existing_pick %}
@@ -11,6 +11,7 @@
 
     <p class="golf-context">
         <span class="golf-context-items">
+            <span class="golf-nowrap">{{ golf_league.name }}</span>
             <span class="golf-nowrap">
                 {%- if tournament.is_major %}<span class="golf-chip">Major ×1.5</span> {% endif -%}
                 {%- if tournament.is_team_event %}<span class="golf-chip">Team event</span> {% endif -%}

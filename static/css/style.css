@@ -13590,6 +13590,27 @@ main { flex: 1; }
   outline-offset: 2px;
 }
 
+/* The Pay Sheet's switch (ADR-075): a member on more than one sheet gets a
+   pill per other league after the page pills. It is a door, not a page of
+   this sheet: a hairline stands before it and it reads in pen-bright, the
+   small-text pen on the sub-nav (6.7:1 on #0F110D; "blue is personal"). */
+.subnav-golf .subnav-pill--switch {
+  color: var(--game-accent-light);
+  margin-left: .35rem;
+  position: relative;
+}
+.subnav-golf .subnav-pill--switch::before {
+  content: '';
+  position: absolute;
+  left: -.375rem;
+  top: 50%;
+  width: 1px;
+  height: 1.25rem;
+  transform: translateY(-50%);
+  background: rgba(255,255,255,.22);
+}
+.subnav-golf .subnav-pill--switch:hover { color: #fff; }
+
 /* Spec C Plan 1 — mobile compactions: fit 6 pills on 375px without scroll */
 @media (max-width: 575.98px) {
   .subnav-pills { gap: .25rem; }

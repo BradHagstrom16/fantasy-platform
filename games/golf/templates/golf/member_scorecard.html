@@ -4,7 +4,7 @@
 {% set whose = 'Your' if card.is_me else card.member.get_display_name() ~ "'s" %}
 {% set line = card.line %}
 
-{% block title %}{{ whose }} Scorecard · The Pay Sheet{% endblock %}
+{% block title %}{{ whose }} Scorecard · {{ golf_league.name }}{% endblock %}
 
 {% block content %}
 <div class="golf-page">
@@ -26,6 +26,7 @@
 
     <p class="golf-context">
         <span class="golf-context-items">
+            <span class="golf-nowrap">{{ golf_league.name }}</span>
             <span class="golf-nowrap">{{ selected_season }} season</span>
             <span class="golf-nowrap">{% if season_weeks %}{{ banked_weeks }} of {{ season_weeks }} weeks banked{% else %}no weeks on the schedule yet{% endif %}</span>
             {% for year in seasons if year != selected_season %}

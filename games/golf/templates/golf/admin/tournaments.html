@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% from 'golf/_sheet.html' import event_dates with context %}
 
-{% block title %}Settle the Book · The Pay Sheet{% endblock %}
+{% block title %}Settle the Book · {{ golf_league.name }}{% endblock %}
 
 {% block content %}
 <div class="golf-page">
@@ -10,6 +10,7 @@
 
     <p class="golf-context">
         <span class="golf-context-items">
+            <span class="golf-nowrap">{{ golf_league.name }}</span>
             <span class="golf-nowrap">{{ season_year }} season</span>
             <span class="golf-nowrap">{% if tournaments %}{{ banked_count }} of {{ tournaments|length }} {{ 'event' if tournaments|length == 1 else 'events' }} banked{% else %}the schedule is not posted yet{% endif %}</span>
             {% if to_settle %}<span class="golf-nowrap">{{ to_settle }} to settle</span>{% endif %}

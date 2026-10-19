@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% from 'golf/_sheet.html' import dollars with context %}
 
-{% block title %}The Commish's Pen · The Pay Sheet{% endblock %}
+{% block title %}The Commish's Pen · {{ golf_league.name }}{% endblock %}
 
 {% block content %}
 <div class="golf-page">
@@ -10,6 +10,7 @@
 
     <p class="golf-context">
         <span class="golf-context-items">
+            <span class="golf-nowrap">{{ golf_league.name }}</span>
             <span class="golf-nowrap">{{ season_year }} season</span>
             <span class="golf-nowrap">{{ override_count }} {{ 'override' if override_count == 1 else 'overrides' }} this season</span>
         </span>

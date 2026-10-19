@@ -2,7 +2,7 @@
 {% from 'golf/_sheet.html' import dollars, money, pick_line, read_time with context %}
 {% from 'golf/_champion.html' import champion_fold with context %}
 
-{% block title %}The Sheet · The Pay Sheet{% endblock %}
+{% block title %}The Sheet · {{ golf_league.name }}{% endblock %}
 
 {% block content %}
 <div class="golf-page golf-page--margin">
@@ -10,6 +10,7 @@
     {# The context line: the event on the course and how fresh its money is, or the next lock. #}
     <p class="golf-context">
         <span class="golf-context-items">
+            <span class="golf-nowrap">{{ golf_league.name }}</span>
         {% if clock %}
             <span>
                 {%- if clock.on_course %}<span class="golf-chip golf-chip--live">Live</span> {% endif -%}

@@ -234,8 +234,8 @@ Branch `golf-two-leagues-b` from `main` after PR A. Every task here runs `impecc
 - Modify: `static/css/style.css` (golf section) only if the switch needs a modifier
 - Test: `tests/test_golf_leagues.py`, `tests/test_eyebrow_above_heading.py`
 
-- [ ] **Step 1:** Failing test `test_every_league_page_is_stamped_and_only_a_member_of_both_sees_the_switch`: each listed page's rendered HTML contains the league name in the context line; Brad's render of `/golf/handicap/` has a pill to `/golf/pollyanna/`; a Handicap-only member's render has none.
-- [ ] **Step 2:** Run; FAIL. **Step 3:** Implement under impeccable. **Step 4:** PASS; run `tests/test_design_*.py`, `tests/test_eyebrow_above_heading.py`. **Step 5:** Commit: `golf: the league stamp and the sub-nav switch`
+- [x] **Step 1:** Failing test `test_every_league_page_is_stamped_and_only_a_member_of_both_sees_the_switch`: each listed page's rendered HTML contains the league name in the context line; Brad's render of `/golf/handicap/` has a pill to `/golf/pollyanna/`; a Handicap-only member's render has none. Carried from PR A's review: `test_shared_pages_keep_the_league_the_viewer_came_from` (the Schedule pill and the room's door carry `?league=`), `test_record_room_lists_only_this_leagues_seasons`.
+- [x] **Step 2:** Run; FAIL. **Step 3:** Implement under impeccable. **Step 4:** PASS; run `tests/test_design_*.py`, `tests/test_eyebrow_above_heading.py`. **Step 5:** Commit: `golf: the league stamp and the sub-nav switch`
 
 ### Task B2: The join page with two sheets
 

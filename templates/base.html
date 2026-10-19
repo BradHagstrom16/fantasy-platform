@@ -227,8 +227,9 @@
                 <div class="subnav-pills">
                     <a class="subnav-pill {% if request.endpoint == 'golf.index' %}active{% endif %}"
                        href="{{ url_for('golf.index') }}">Standings</a>
+                    {# The shared pages carry the page's league as a query arg so the step off a league page keeps it (ADR-075). #}
                     <a class="subnav-pill {% if request.endpoint == 'golf.schedule' %}active{% endif %}"
-                       href="{{ url_for('golf.schedule') }}">Schedule</a>
+                       href="{{ url_for('golf.schedule', league=golf_league.slug) }}">Schedule</a>
                     <a class="subnav-pill {% if request.endpoint == 'golf.results' %}active{% endif %}"
                        href="{{ url_for('golf.results') }}">Results</a>
                     <a class="subnav-pill {% if request.endpoint == 'golf.record_room' %}active{% endif %}"
@@ -240,6 +241,13 @@
                     {% if golf_is_admin %}
                     <a class="subnav-pill {% if request.endpoint and request.endpoint.startswith('golf.admin') %}active{% endif %}"
                        href="{{ url_for('golf.admin_dashboard') }}">Admin</a>
+                    {% endif %}
+                    {# The switch: a member holding a line on more than one sheet gets a door to each other one (ADR-075). #}
+                    {% if golf_lines|length > 1 %}
+                    {% for line in golf_lines if line.league_id != golf_league.id %}
+                    <a class="subnav-pill subnav-pill--switch"
+                       href="{{ url_for('golf.index', league=line.league.slug) }}">{{ line.league.name }}</a>
+                    {% endfor %}
                     {% endif %}
                 </div>
             </div>

@@ -141,7 +141,10 @@ def _pull_league(endpoint, values):
     g.pop('golf_lines', None)
     slug = values.pop('league', None)
     if slug is None:
-        g.golf_league = viewer_league()
+        # A shared page (the schedule, the room's door) stays in the league the
+        # viewer stepped off when the link says so; else the viewer's own.
+        asked = request.args.get('league')
+        g.golf_league = (league_by_slug(asked) if asked else None) or viewer_league()
         return
     g.golf_league = league_by_slug(slug)
     if g.golf_league is None:
@@ -681,8 +684,10 @@ def record_room():
     """The Record Room: the league's season race, its lines, and the golfers' ledgers."""
     season_year = _selected_season()
     league = g.golf_league
+    # The league's own seasons: a year it held a line in, and the configured one.
     seasons = sorted(
-        set(db.session.scalars(select(GolfTournament.season_year).distinct()))
+        set(db.session.scalars(select(GolfEnrollment.season_year)
+                               .where(GolfEnrollment.league_id == league.id).distinct()))
         | {current_app.config['SEASON_YEAR']},
         reverse=True,
     )
