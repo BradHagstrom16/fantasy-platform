@@ -446,6 +446,7 @@ def test_reminder_passes_loop_both_leagues_and_latch_once(app, golf_leagues, mon
     db.session.commit()
     _result(event, a, earnings=300)
     _result(event, b, earnings=10)
+    _pick(han, handicap, event, b, a)    # Han's late pick puts him in Handicap's top 3
     sync = TournamentSync(SlashGolfAPI(api_key='test-key'))
     sync.process_tournament_picks(event)
     assert sorted((m['to'], m['plain'].split(',')[0]) for m in sent) == sorted([
@@ -458,6 +459,11 @@ def test_reminder_passes_loop_both_leagues_and_latch_once(app, golf_leagues, mon
         # Each league ranks its own two lines: the pick that banked $300 leads.
         picked = (m['to'], slug) in {(brad.email, 'handicap'), (cy.email, 'pollyanna')}
         assert f"Rank: {1 if picked else 2} of 2\n" in m['plain']
+        # The week's top 3 stays in its league: Cy (a Pollyanna pick) is never
+        # on a Handicap letter, Han (a Handicap pick) never on a Pollyanna one.
+        ours, theirs = ('han_rem', 'cy_rem') if slug == 'handicap' else ('cy_rem', 'han_rem')
+        assert ours in m['plain'] and ours in m['html']
+        assert theirs not in m['plain'] and theirs not in m['html']
     assert db.session.get(GolfTournament, event.id).recap_email_sent is True
     sync.process_tournament_picks(db.session.get(GolfTournament, event.id))
     assert len(sent) == 4
@@ -794,3 +800,265 @@ def test_admin_pages_scope_to_the_league_and_settle_the_book_is_platform_only(ap
     with _viewer(app, brad) as client:
         assert client.get('/golf/pollyanna/admin/tournaments').status_code == 200
         assert client.get('/golf/handicap/admin/users').status_code == 200
+
+
+# --- PR #270 review: the cross-league seams, each with both leagues seeded ---
+
+def _flat(resp):
+    """A response body with its whitespace runs folded to one space."""
+    import re
+    return re.sub(r'\s+', ' ', resp.get_data(as_text=True))
+
+
+def test_override_pick_is_this_leagues_line_and_this_leagues_spend(app, golf_leagues):
+    """The Pollyanna commissioner's pen: a Handicap-only member has nothing to
+    override, and a golfer Brad spent on his Handicap line is open on his
+    Pollyanna line. Pins ``get_enrollment(user_id, league)``, the league-scoped
+    ``get_used_player_ids`` on POST and GET, the re-total of the one line, and
+    the member select and recent overrides read from this league only."""
+    handicap, pollyanna = golf_leagues['handicap'], golf_leagues['pollyanna']
+    commish = _member('polly_pen', pollyanna, app=app, admin_in=pollyanna,
+                      display_name='Polly Pen')
+    han = _member('han_pen', handicap, app=app, display_name='Han Handicaponly')
+    brad = _member('brad_pen', handicap, pollyanna, app=app, display_name='Brad Twolines')
+    event = _season_event(app, 'Override Open')
+    scheffler, rory, spare = _golfer('O1', 'Scheffler'), _golfer('O2', 'McIlroy'), _golfer('O3', 'Spare')
+    for player, money in ((scheffler, 500), (rory, 100), (spare, 7)):
+        db.session.add(GolfTournamentField(tournament_id=event.id, player_id=player.id))
+        _result(event, player, earnings=money)
+    brad_user, han_user = db.session.get(User, brad), db.session.get(User, han)
+    h_pick = _pick(brad_user, handicap, event, scheffler, spare)
+    p_pick = _pick(brad_user, pollyanna, event, rory, spare)
+    han_pick = _pick(han_user, handicap, event, spare, rory)
+    han_pick.admin_override = True          # a Handicap override on the record
+    assert h_pick.resolve_pick() and p_pick.resolve_pick() and han_pick.resolve_pick()
+    db.session.commit()
+    for line in GolfEnrollment.query.all():
+        line.calculate_total_points()
+    db.session.commit()
+    event_id, h_pick_id, p_pick_id = event.id, h_pick.id, p_pick.id
+    ids = {'scheffler': scheffler.id, 'rory': rory.id, 'spare': spare.id}
+    assert get_enrollment(brad, pollyanna).total_points == 100
+    assert get_enrollment(brad, handicap).total_points == 500
+
+    with _viewer(app, commish) as client:
+        page = client.get(f'/golf/pollyanna/admin/override-pick?tournament_id={event_id}'
+                          f'&user_id={brad}')
+        assert page.status_code == 200
+        body = page.get_data(as_text=True)
+        assert 'Brad Twolines' in body
+        assert 'Han Handicaponly' not in body       # neither in the select nor the recent list
+        # Scheffler is spent on Brad's Handicap line only: nothing is used here.
+        assert '(used)' not in body
+        assert f'<option value="{ids["scheffler"]}" disabled>' not in body
+
+        refused = client.post('/golf/pollyanna/admin/override-pick', data={
+            'tournament_id': event_id, 'user_id': han, 'confirm': '1',
+            'primary_player_id': ids['scheffler'], 'backup_player_id': ids['rory'],
+        }, follow_redirects=True)
+        assert 'has no line on the Pollyanna Pay Sheet' in refused.get_data(as_text=True)
+
+        filing = {'tournament_id': event_id, 'user_id': brad,
+                  'primary_player_id': ids['scheffler'], 'backup_player_id': ids['rory']}
+        gate = client.post('/golf/pollyanna/admin/override-pick', data=filing)
+        assert gate.status_code == 200          # a complete event asks first
+        assert 'already been used' not in gate.get_data(as_text=True)
+        saved = client.post('/golf/pollyanna/admin/override-pick',
+                            data={**filing, 'confirm': '1'}, follow_redirects=True)
+        saved_body = saved.get_data(as_text=True)
+        assert 'Override saved for brad_pen' in saved_body
+        assert 'already been used' not in saved_body
+        assert 'Han Handicaponly' not in saved_body
+
+    db.session.expire_all()
+    assert [p.league_id for p in GolfPick.query.filter_by(user_id=han)] == [handicap.id]
+    rewritten = db.session.get(GolfPick, p_pick_id)
+    assert (rewritten.primary_player_id, rewritten.active_player_id) == (ids['scheffler'], ids['scheffler'])
+    assert rewritten.admin_override is True and rewritten.points_earned == 500
+    assert get_enrollment(brad, pollyanna).total_points == 500     # this line's pick alone
+    assert _usage_ids(brad_user, pollyanna) == {ids['scheffler']}
+    kept = db.session.get(GolfPick, h_pick_id)
+    assert (kept.primary_player_id, kept.points_earned, kept.admin_override) == (
+        ids['scheffler'], 500, False)
+    assert _usage_ids(brad_user, handicap) == {ids['scheffler']}
+    assert get_enrollment(brad, handicap).total_points == 500
+
+
+def test_the_pot_and_the_tab_are_each_leagues_fee_lines_and_penalties(app, golf_leagues):
+    """The Sheet's prize pool and The Tab: each league's entry fee x its own
+    lines, and its own flagged picks x its own penalty. Brad's flagged
+    Handicap pick never reaches the Pollyanna pot or his Pollyanna row. Pins
+    ``season_enrollments(..., league.id)`` and the ``league_id`` filter on the
+    penalty counts (the Sheet's and ``_penalty_counts``)."""
+    handicap, pollyanna = golf_leagues['handicap'], golf_leagues['pollyanna']
+    pollyanna.entry_fee, pollyanna.penalty_per_incident = 30, 20
+    db.session.commit()
+    brad = _member('brad_pot', handicap, pollyanna, app=app, display_name='Brad Bothpots')
+    _member('han_pot', handicap, app=app, display_name='Han Handicappot')
+    _member('cy_pot', pollyanna, app=app, display_name='Cy Pollypot')
+    commish = _member('polly_purse', pollyanna, app=app, admin_in=pollyanna)
+    platform = _user('pot_platform')
+    platform.is_admin = True
+    db.session.commit()
+    platform = platform.id
+    event = _season_event(app, 'Pot Major')
+    event.is_major, event.results_finalized, event.week_number = True, True, 1
+    cut, made = _golfer('PT1', 'Cutman'), _golfer('PT2', 'Madeit')
+    _result(event, cut, status='cut', earnings=0)
+    _result(event, made, earnings=80)
+    flagged = _pick(db.session.get(User, brad), handicap, event, cut, made)
+    flagged.penalty_triggered = True
+    db.session.commit()
+
+    with _viewer(app) as client:
+        house = _flat(client.get('/golf/handicap/'))
+        assert 'Entry $25 × 2</dt> <dd>$50</dd>' in house
+        assert 'Penalty pot</dt> <dd>$15</dd>' in house
+        assert 'In the pool</dt> <dd>$65</dd>' in house
+        polly = _flat(client.get('/golf/pollyanna/'))
+        assert 'Entry $30 × 3</dt> <dd>$90</dd>' in polly
+        assert 'Penalty pot</dt> <dd>$0</dd>' in polly
+        assert 'In the pool</dt> <dd>$90</dd>' in polly
+        assert '$20 to the pot' in polly and '$15 to the pot' not in polly
+
+    with _viewer(app, commish) as client:
+        tab = _flat(client.get('/golf/pollyanna/admin/payments'))
+        assert '$30 a seat' in tab and '$20 a missed cut at a major' in tab
+        assert 'Penalty pot</dt> <dd>$0</dd>' in tab
+        assert 'Brad Bothpots' in tab and 'Han Handicappot' not in tab
+        assert 'Penalty owed' not in tab          # Brad's Handicap flag is not on this tab
+
+    with _viewer(app, platform) as client:      # the control: the flag is on the Handicap tab
+        house_tab = _flat(client.get('/golf/handicap/admin/payments'))
+        assert 'Penalty owed <strong>$15</strong>' in house_tab
+        assert 'Penalty pot</dt> <dd>$15' in house_tab
+        assert 'Cy Pollypot' not in house_tab
+
+
+def test_a_golfer_spent_on_one_sheet_is_open_on_the_other_pick_page(app, golf_leagues, monkeypatch):
+    """Spend a Golfer: Scheffler spent on Brad's Handicap line is struck there
+    and refused there, and open and accepted on his Pollyanna line. Pins the
+    ``league_id`` filter on the page's usage read and ``validate_availability``."""
+    from tests._registry_helpers import set_status
+
+    set_status(monkeypatch, 'golf', 'open')
+    monkeypatch.setenv('GOLF_FAKE_NOW', '2026-04-07T15:00:00')   # Tuesday of Masters week
+    handicap, pollyanna = golf_leagues['handicap'], golf_leagues['pollyanna']
+    season = app.config['SEASON_YEAR']
+    brad = _member('brad_field', handicap, pollyanna, app=app)
+    masters = GolfTournament(
+        api_tourn_id='PR-masters', name='Masters Tournament', season_year=season,
+        start_date=datetime(2026, 4, 9), end_date=datetime(2026, 4, 12),
+        pick_deadline=datetime(2026, 4, 9, 7, 40), purse=10_000_000,
+        status='upcoming', week_number=13,
+    )
+    db.session.add(masters)
+    db.session.commit()
+    field = [_golfer(f'K{i:02d}', f'Fieldgolfer{i:02d}') for i in range(50)]
+    db.session.add_all(GolfTournamentField(tournament_id=masters.id, player_id=p.id) for p in field)
+    scheffler = field[0]
+    db.session.add(GolfSeasonPlayerUsage(user_id=brad, league_id=handicap.id,
+                                         player_id=scheffler.id, season_year=season))
+    db.session.commit()
+    event_id, sid = masters.id, scheffler.id
+    struck = '<span class="golf-field-name golf-used">Pat Fieldgolfer00</span>'
+    disabled = f'<option value="{sid}" disabled>Pat Fieldgolfer00 (used)</option>'
+
+    with _viewer(app, brad) as client:
+        polly = client.get(f'/golf/pollyanna/pick/{event_id}').get_data(as_text=True)
+        assert struck not in polly and disabled not in polly
+        assert polly.count(f'<option value="{sid}">Pat Fieldgolfer00</option>') == 2
+        house = client.get(f'/golf/handicap/pick/{event_id}').get_data(as_text=True)
+        assert struck in house and house.count(disabled) == 2
+
+        accepted = client.post(f'/golf/pollyanna/pick/{event_id}', data={
+            'primary_player_id': sid, 'backup_player_id': field[1].id})
+        assert _lands(accepted, '/golf/pollyanna/')
+        refused = client.post(f'/golf/handicap/pick/{event_id}', data={
+            'primary_player_id': sid, 'backup_player_id': field[2].id})
+        assert refused.status_code == 200
+        assert 'Your primary has already been spent this season.' in refused.get_data(as_text=True)
+
+    db.session.expire_all()
+    picks = GolfPick.query.filter_by(user_id=brad, tournament_id=event_id).all()
+    assert [(p.league_id, p.primary_player_id) for p in picks] == [(pollyanna.id, sid)]
+
+
+def test_the_lounge_panel_shows_a_pollyanna_member_their_own_sheet(app, golf_leagues, monkeypatch):
+    """The lounge's golf panel for a Pollyanna-only member: the league is
+    Pollyanna, the leader and the top rows are Pollyanna's (the Handicap
+    rival's bigger total is not on it), and the panel's links stay in
+    /golf/pollyanna/. Pins ``enrollments_for`` choosing the panel's league
+    and ``season_enrollments(..., league.id)`` building its sheet."""
+    from types import SimpleNamespace
+
+    from flask import render_template
+
+    from games.golf.services.lounge import build_lounge_context
+    from games.registry import get_entry
+
+    handicap, pollyanna = golf_leagues['handicap'], golf_leagues['pollyanna']
+    season = app.config['SEASON_YEAR']
+    polly = _member('polly_lounge', pollyanna, app=app, display_name='Polly Leader')
+    peer = _member('polly_peer', pollyanna, app=app, display_name='Polly Peer')
+    rival = _member('han_rival', handicap, app=app, display_name='Han Rival')
+    for user_id, league, total in ((polly, pollyanna, 1_000_000), (peer, pollyanna, 200_000),
+                                   (rival, handicap, 3_000_000)):
+        get_enrollment(user_id, league).total_points = total
+    masters = GolfTournament(
+        api_tourn_id='PR-lounge-m', name='Masters Tournament', season_year=season,
+        week_number=13, start_date=datetime(2026, 4, 9), end_date=datetime(2026, 4, 12),
+        pick_deadline=datetime(2026, 4, 9, 7, 40), purse=10_000_000, status='active')
+    rbc = GolfTournament(
+        api_tourn_id='PR-lounge-r', name='RBC Heritage', season_year=season,
+        week_number=14, start_date=datetime(2026, 4, 16), end_date=datetime(2026, 4, 19),
+        pick_deadline=datetime(2026, 4, 16, 6, 5), purse=10_000_000, status='upcoming')
+    db.session.add_all([masters, rbc])
+    db.session.commit()
+    field = [_golfer(f'LG{i:02d}', f'Loungegolfer{i:02d}') for i in range(60)]
+    db.session.add_all(GolfTournamentField(tournament_id=rbc.id, player_id=p.id) for p in field)
+    db.session.commit()
+    monkeypatch.setenv('GOLF_FAKE_NOW', '2026-04-12T21:30:00')   # Masters Sunday
+    rbc_id = rbc.id
+
+    ctx = build_lounge_context(db.session.get(User, polly), 'live')
+
+    assert ctx['league'] == 'pollyanna'
+    assert ctx['leader']['name'] == 'Polly Leader'
+    assert [row['name'] for row in ctx['top']] == ['Polly Leader', 'Polly Peer']
+    assert ctx['field'] == 2 and ctx['pick_wanted'] is True and ctx['next_id'] == rbc_id
+
+    with app.test_request_context('/'):
+        html = render_template('golf/lounge/_panel_live.html',
+                               h=SimpleNamespace(ctx=ctx, entry=get_entry('golf'), join_open=False))
+    assert f'href="/golf/pollyanna/pick/{rbc_id}"' in html
+    assert f'/golf/pollyanna/member/{polly}' in html
+    assert '/golf/handicap/' not in html
+    assert 'Han Rival' not in html
+
+
+def test_the_shared_pages_resolve_to_the_viewers_league(app, golf_leagues):
+    """/golf/schedule and /golf/leaderboard carry no league in their URL: a
+    Pollyanna-only member's links and landing are Pollyanna's, an anonymous
+    visitor's the house league's. Pins ``viewer_league`` and the url_defaults
+    hook filling the league on a league-less golf page."""
+    pollyanna = golf_leagues['pollyanna']
+    cy = _member('cy_shared', pollyanna, app=app)
+    banked = _season_event(app, 'Shared Banked')
+    coming = _season_event(app, 'Shared Coming', status='upcoming', deadline_in=timedelta(days=2))
+    banked_id, coming_id = banked.id, coming.id
+
+    with _viewer(app, cy) as client:
+        schedule = client.get('/golf/schedule')
+        assert schedule.status_code == 200
+        body = schedule.get_data(as_text=True)
+        assert f'/golf/pollyanna/tournament/{banked_id}' in body
+        assert f'/golf/pollyanna/pick/{coming_id}' in body
+        assert '/golf/handicap/' not in body
+        assert _lands(client.get('/golf/leaderboard'), '/golf/pollyanna/')
+
+    with _viewer(app) as anonymous:
+        body = anonymous.get('/golf/schedule').get_data(as_text=True)
+        assert f'/golf/handicap/tournament/{banked_id}' in body
+        assert '/golf/pollyanna/' not in body
+        assert _lands(anonymous.get('/golf/leaderboard'), '/golf/handicap/')

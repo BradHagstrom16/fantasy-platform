@@ -261,9 +261,16 @@ def test_new_user_defaults(app, tmp_path):
 
 # --- enrollments -----------------------------------------------------------
 
-def test_enrollment_carries_totals_has_paid_penalty_paid_not_is_admin(app, tmp_path):
+def test_enrollment_carries_totals_has_paid_penalty_paid_not_is_admin(app, tmp_path, golf_leagues):
     casey, _ = _seed_platform_users()
     report = _import(_legacy(tmp_path))
+
+    # No league named: every row lands on the house league's sheet (ADR-075).
+    assert report.outcome == 'committed', report.render()
+    assert 'season 2026 into the Handicap Pay Sheet (handicap)' in report.render()
+    for model in (GolfEnrollment, GolfPick, GolfSeasonPlayerUsage):
+        rows = db.session.scalars(select(model)).all()
+        assert rows and {r.league_id for r in rows} == {golf_leagues['handicap'].id}, model.__name__
 
     e = db.session.scalars(select(GolfEnrollment).filter_by(user_id=casey.id, season_year=SEASON)).one()
     assert e.total_points == 1_150_000
