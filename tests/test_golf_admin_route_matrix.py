@@ -58,11 +58,15 @@ POST_ROUTES = [
     '/golf/handicap/admin/update-payment/999',
     '/golf/handicap/admin/process-results/999',
     '/golf/handicap/admin/override-pick',
+    '/golf/handicap/admin/commissioner/999',
+    '/golf/handicap/admin/move/999',
 ]
 
 POST_ONLY_ROUTES = [
     '/golf/handicap/admin/update-payment/999',
     '/golf/handicap/admin/process-results/999',
+    '/golf/handicap/admin/commissioner/999',
+    '/golf/handicap/admin/move/999',
 ]
 
 

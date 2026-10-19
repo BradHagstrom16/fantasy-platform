@@ -1,5 +1,5 @@
 {# The book line (games/golf/DESIGN.md §8.20): the five pages of the back
-   office, and where each one is. The page in hand is named, not linked. #}
+   office (four for a league commissioner), and where each one is. The page in hand is named, not linked. #}
 <nav class="golf-book" aria-label="The back office">
     <span class="golf-label">In this book</span>
     <ol class="golf-contents-list">
@@ -10,7 +10,10 @@
             ('golf.admin_payments', 'The Tab'),
             ('golf.admin_override_pick', "The Commish's Pen"),
         ] %}
+        {# Settle the Book is platform admin's alone (ruling 10): a league commissioner's book has four leaves. #}
+        {% if current_user.is_admin or endpoint != 'golf.admin_tournaments' %}
         <li>{% if request.endpoint == endpoint %}<span class="golf-book-here" aria-current="page">{{ name }}</span>{% else %}<a href="{{ url_for(endpoint) }}">{{ name }}</a>{% endif %}</li>
+        {% endif %}
         {% endfor %}
     </ol>
 </nav>

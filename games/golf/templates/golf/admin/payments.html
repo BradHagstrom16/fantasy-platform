@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% from 'golf/_sheet.html' import dollars with context %}
 
-{% block title %}The Tab · The Pay Sheet{% endblock %}
+{% block title %}The Tab · {{ golf_league.name }}{% endblock %}
 
 {% block content %}
 <div class="golf-page">
@@ -10,6 +10,7 @@
 
     <p class="golf-context">
         <span class="golf-context-items">
+            <span class="golf-nowrap">{{ golf_league.name }}</span>
             <span class="golf-nowrap">{{ season_year }} season</span>
             <span class="golf-nowrap">${{ entry_fee }} a seat</span>
             <span class="golf-nowrap">${{ penalty_per_incident }} a missed cut at a major</span>

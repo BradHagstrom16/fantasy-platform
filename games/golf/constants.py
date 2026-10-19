@@ -17,6 +17,13 @@ LEAGUE_SEED = (
     ('pollyanna', 'Pollyanna Pay Sheet', 2, 25),
 )
 
+# Who each sheet is for, one line each on the join page (placeholders Brad
+# replaces; keyed by slug like LEAGUE_SEED).
+LEAGUE_BLURBS = {
+    'handicap': 'The Thursday crowd that came over from the old site.',
+    'pollyanna': 'The group that moved over from Splash.',
+}
+
 # Tournaments to EXCLUDE from the league
 # (opposite-field events, playoffs finale, special events)
 EXCLUDED_TOURNAMENTS = {

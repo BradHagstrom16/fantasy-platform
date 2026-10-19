@@ -36,6 +36,7 @@ from sqlalchemy.orm import contains_eager, joinedload
 from extensions import db
 from games.common import enrollment_required, game_must_be_open
 from games.golf import golf_bp
+from games.golf.constants import LEAGUE_BLURBS
 from games.golf.models import (
     GolfEnrollment,
     GolfLeague,
@@ -50,6 +51,7 @@ from games.golf.services.api_usage import read_api_usage
 from games.golf.services.enrollment import enrollments_for, get_enrollment
 from games.golf.services.field import build_field, search_key, top_unspent_ids
 from games.golf.services.leagues import house_league, league_by_slug, leagues
+from games.golf.services.payment import payment_nudge_for
 from games.golf.services.reads import (
     next_tournament as _next_tournament,
 )
@@ -135,13 +137,17 @@ def viewer_league() -> GolfLeague:
 
 @golf_bp.url_value_preprocessor
 def _pull_league(endpoint, values):
-    """Resolve ``g.golf_league`` before the view: the URL's league, else the
-    viewer's. An unknown slug is the club's 404, with ``g.golf_league`` None
-    (the one boundary the sub-nav and the context processor tolerate)."""
+    """Resolve ``g.golf_league`` before the view: the path's league, else a
+    ``?league=`` query (an unknown value is ignored), else the viewer's. An
+    unknown path slug is the club's 404, with ``g.golf_league`` None (the one
+    boundary the sub-nav and the context processor tolerate)."""
     g.pop('golf_lines', None)
     slug = values.pop('league', None)
     if slug is None:
-        g.golf_league = viewer_league()
+        # The shared schedule stays in the league the viewer stepped off (every
+        # in-room link carries it, ``_push_league``); else the viewer's own.
+        asked = request.args.get('league')
+        g.golf_league = (league_by_slug(asked) if asked else None) or viewer_league()
         return
     g.golf_league = league_by_slug(slug)
     if g.golf_league is None:
@@ -150,10 +156,12 @@ def _pull_league(endpoint, values):
 
 @golf_bp.url_defaults
 def _push_league(endpoint, values):
-    """Inside the room, a league page's url_for stays in the page's league."""
+    """Inside the room, a league page's url_for stays in the page's league; a
+    link to the shared schedule carries it as a query arg (``_pull_league``)."""
     if ('league' not in values and has_request_context() and request.blueprint == 'golf'
             and g.get('golf_league') is not None
-            and current_app.url_map.is_endpoint_expecting(endpoint, 'league')):
+            and (endpoint == 'golf.schedule'
+                 or current_app.url_map.is_endpoint_expecting(endpoint, 'league'))):
         values['league'] = g.golf_league.slug
 
 
@@ -422,6 +430,8 @@ def index():
     return render_template('golf/index.html',
         sheet=sheet,
         clock=clock,
+        # Settle the Tab (ADR-056): this league's line, this league's fee.
+        payment_nudge=payment_nudge_for(_viewer_line(), getattr(current_user, 'is_admin', False)),
         next_tournament=next_tournament,
         next_lock=format_lock(next_tournament.pick_deadline) if next_tournament else None,
         field_open=field_open,
@@ -474,7 +484,8 @@ def join():
                 flash(f'Welcome to the {league.name}!', 'success')
         return redirect(url_for('golf.index', league=league.slug))
 
-    return render_template('golf/join.html', leagues=all_leagues, joined=joined)
+    return render_template('golf/join.html', leagues=all_leagues, joined=joined,
+                           blurbs=LEAGUE_BLURBS)
 
 
 @golf_bp.route('/leaderboard')
@@ -681,8 +692,10 @@ def record_room():
     """The Record Room: the league's season race, its lines, and the golfers' ledgers."""
     season_year = _selected_season()
     league = g.golf_league
+    # The league's own seasons: a year it held a line in, and the configured one.
     seasons = sorted(
-        set(db.session.scalars(select(GolfTournament.season_year).distinct()))
+        set(db.session.scalars(select(GolfEnrollment.season_year)
+                               .where(GolfEnrollment.league_id == league.id).distinct()))
         | {current_app.config['SEASON_YEAR']},
         reverse=True,
     )
@@ -832,12 +845,29 @@ def make_pick(tournament_id):
             [top[player_id] for player_id in top_ids],
         )
 
+    # The other sheet (ADR-075): a member of more than one league is told, on
+    # each league's pick page, what this week holds on each other one. One
+    # query per other line, never per golfer.
+    other_sheets = [
+        {
+            'league': line.league,
+            'pick': db.session.scalar(select(GolfPick).where(
+                GolfPick.user_id == current_user.id,
+                GolfPick.league_id == line.league_id,
+                GolfPick.tournament_id == tournament.id,
+            )),
+            'url': url_for('golf.make_pick', league=line.league.slug, tournament_id=tournament.id),
+        }
+        for line in _viewer_lines() if line.league_id != league.id
+    ]
+
     return render_template('golf/make_pick.html',
         tournament=tournament,
         lock=lock,
         field=field,
         used_count=len(used),
         existing_pick=existing_pick,
+        other_sheets=other_sheets,
     )
 
 
@@ -901,6 +931,7 @@ def admin_dashboard():
     banked_count = sum(1 for t in tournaments if t.results_finalized)
     penalties = _penalty_summary(enrollments, season_year, league)
 
+    # The month's reads are platform admin's (Brad's ruling 10).
     now = get_current_time()
     return render_template('golf/admin/dashboard.html',
         tournaments=sorted(tournaments, key=lambda t: t.start_date),
@@ -914,7 +945,7 @@ def admin_dashboard():
         penalty_pot=sum(p['owed'] for p in penalties.values()),
         penalty_outstanding=sum(p['outstanding'] for p in penalties.values()),
         # The API-usage meter: the month so far against the free tier.
-        api_usage=read_api_usage(now),
+        api_usage=read_api_usage(now) if current_user.is_admin else None,
         reads_month=now.strftime('%B %Y'),
     )
 
@@ -958,7 +989,75 @@ def admin_users():
     return render_template('golf/admin/users.html',
         enrollments=enrollments,
         total_paid=sum(1 for e in enrollments if e.has_paid),
+        other_league=_other_league(g.golf_league),
     )
+
+
+def _other_league(league):
+    """The other sheet (two leagues exist, ADR-075): ``leagues()`` minus this one."""
+    return next(other for other in leagues() if other.id != league.id)
+
+
+@golf_bp.route('/<league>/admin/commissioner/<int:user_id>', methods=['POST'])
+@golf_admin_required
+@golf_platform_admin_required
+def admin_commissioner(user_id):
+    """The Roster's commissioner toggle (Brad's ruling 11): platform admin
+    makes or removes a league commissioner on that league's line."""
+    action = request.form.get('action')
+    if action not in ('make', 'remove'):
+        abort(400)
+    line = get_enrollment(user_id, g.golf_league)
+    if line is None:
+        abort(404)
+    line.is_admin = action == 'make'
+    db.session.commit()
+    name = line.user.get_display_name()
+    if line.is_admin:
+        flash(f'{name} holds the {g.golf_league.name} pen now.', 'success')
+    else:
+        flash(f'{name} no longer holds the {g.golf_league.name} pen.', 'success')
+    return redirect(url_for('golf.admin_users'))
+
+
+@golf_bp.route('/<league>/admin/move/<int:user_id>', methods=['POST'])
+@golf_admin_required
+@golf_platform_admin_required
+def admin_move_line(user_id):
+    """Fix a mis-join (platform admin only): move the member's line to the
+    other league, while no pick is on it and the other sheet has no line of
+    theirs. Past that, Brad hand-fixes in the shell."""
+    league = g.golf_league
+    line = get_enrollment(user_id, league)
+    if line is None:
+        abort(404)
+    other = _other_league(league)
+    name = line.user.get_display_name()
+    season_year = current_app.config['SEASON_YEAR']
+    has_pick = db.session.scalar(
+        select(GolfPick.id)
+        .join(GolfTournament, GolfPick.tournament_id == GolfTournament.id)
+        .where(GolfPick.user_id == user_id, GolfPick.league_id == league.id,
+               GolfTournament.season_year == season_year)
+        .limit(1))
+    if has_pick is not None:
+        flash(f'{name} already has a pick on the {league.name} this season, so the line '
+              f'stays. A move past the first pick is a shell job.', 'error')
+    elif get_enrollment(user_id, other) is not None:
+        flash(f'{name} is already on the {other.name}; there is nothing to move.', 'error')
+    else:
+        # The pen is a sheet's appointment and does not travel with the line;
+        # the paid mark travels only when the other sheet charges the same fee.
+        dropped_paid = line.has_paid and other.entry_fee != league.entry_fee
+        line.league_id = other.id
+        line.is_admin = False
+        if dropped_paid:
+            line.has_paid = False
+        db.session.commit()
+        note = (f' Marked unpaid: the {other.name} fee is ${other.entry_fee}.'
+                if dropped_paid else '')
+        flash(f'Moved {name} to the {other.name}.{note}', 'success')
+    return redirect(url_for('golf.admin_users'))
 
 
 @golf_bp.route('/<league>/admin/payments')

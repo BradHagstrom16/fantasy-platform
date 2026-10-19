@@ -40,7 +40,7 @@
                 <option value="">Select a game</option>
                 {% for entry in open_entries %}
                 <option value="{{ entry.slug }}">
-                  {{ entry.emoji }} {{ entry.display_name }}
+                  {{ entry.emoji }} {{ entry.display_name }}{% if entry.admin_enroll_note %} · {{ entry.admin_enroll_note }}{% endif %}
                 </option>
                 {% endfor %}
               </select>

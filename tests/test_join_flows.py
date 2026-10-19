@@ -221,7 +221,7 @@ def test_golf_join_page_marks_held_sheet_and_duplicate_post_writes_nothing(app, 
     resp = client.get('/golf/join', follow_redirects=False)
     assert resp.status_code == 200
     page = resp.get_data(as_text=True)
-    assert 'Joined.' in page and 'href="/golf/handicap/"' in page
+    assert 're on this sheet' in page and 'href="/golf/handicap/"' in page
     assert 'value="handicap"' not in page and 'value="pollyanna"' in page
     # Joining the held sheet again is refused with a flash and sent to it.
     resp = client.post('/golf/join', data={'csrf_token': 'x', 'league': 'handicap'},

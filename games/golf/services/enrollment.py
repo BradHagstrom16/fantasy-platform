@@ -42,6 +42,13 @@ def get_enrollment(user_id: int, league: GolfLeague | None = None) -> GolfEnroll
     ))
 
 
+def house_enrollment(user_id: int) -> GolfEnrollment | None:
+    """The user's current-season line in the house league, or None: the
+    already-seated check that pairs with ``admin_enroll`` on the platform's
+    enrollments page (a member of the other league alone is not seated)."""
+    return get_enrollment(user_id, house_league())
+
+
 def admin_enroll(user_id: int, league: GolfLeague | None = None) -> GolfEnrollment:
     """Idempotently enroll a user in a league for the current season
     (no league seats the house league)."""

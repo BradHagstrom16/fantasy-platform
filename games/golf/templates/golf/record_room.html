@@ -2,7 +2,7 @@
 {% from 'golf/_sheet.html' import dollars with context %}
 {% from 'golf/_champion.html' import champion_fold with context %}
 
-{% block title %}The Record Room · The Pay Sheet{% endblock %}
+{% block title %}The Record Room · {{ golf_league.name }}{% endblock %}
 
 {% macro pct(value, of) -%}
   {{ '%.2f'|format(100 * value / of) }}%
@@ -22,6 +22,7 @@
 
     <p class="golf-context">
         <span class="golf-context-items">
+            <span class="golf-nowrap">{{ golf_league.name }}</span>
             <span class="golf-nowrap">{{ selected_season }} season</span>
             <span class="golf-nowrap">{% if progress.total %}{{ progress.banked }} of {{ progress.total }} {{ 'event' if progress.total == 1 else 'events' }} banked{% else %}the schedule is not posted yet{% endif %}</span>
             {% for year in seasons if year != selected_season %}

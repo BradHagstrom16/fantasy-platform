@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% from 'golf/_sheet.html' import dollars, event_dates with context %}
 
-{% block title %}The Back Office · The Pay Sheet{% endblock %}
+{% block title %}The Back Office · {{ golf_league.name }}{% endblock %}
 
 {% block content %}
 <div class="golf-page">
@@ -10,9 +10,10 @@
 
     <p class="golf-context">
         <span class="golf-context-items">
+            <span class="golf-nowrap">{{ golf_league.name }}</span>
             <span class="golf-nowrap">{{ season_year }} season</span>
             <span class="golf-nowrap">{% if tournaments %}{{ banked_count }} of {{ tournaments|length }} {{ 'event' if tournaments|length == 1 else 'events' }} banked{% else %}the schedule is not posted yet{% endif %}</span>
-            <span class="golf-nowrap">{{ api_usage.calls }} of {{ api_usage.limit }} reads this month</span>
+            {% if api_usage %}<span class="golf-nowrap">{{ api_usage.calls }} of {{ api_usage.limit }} reads this month</span>{% endif %}
         </span>
     </p>
 
@@ -20,6 +21,9 @@
 
     <div class="golf-main">
 
+        {# Settling the book and the month's reads are platform admin's (ruling 10):
+           a league commissioner's page is the tab alone. #}
+        {% if current_user.is_admin %}
         {# Ledger 1: what needs doing. Played events not yet banked, Process on each row. #}
         <section class="golf-leaf" id="golf-settle" aria-labelledby="golf-settle-label">
             <div class="golf-leaf-head">
@@ -44,6 +48,7 @@
             <p class="golf-leaf-lead">Nothing to settle. Every played event is banked.</p>
             {% endif %}
         </section>
+        {% endif %}
 
         {# Ledger 2: the tab, in three figures; the line-by-line page is one tap away. #}
         <section class="golf-leaf" id="golf-tab" aria-labelledby="golf-tab-label">
@@ -73,6 +78,7 @@
 
         {# Ledger 3: the reads. The meter is the burn hatch, the room's one
            texture, as wide as the share of the month's reads already spent. #}
+        {% if api_usage %}
         <section class="golf-leaf" id="golf-reads" aria-labelledby="golf-reads-label">
             <div class="golf-leaf-head">
                 <h2 class="golf-label" id="golf-reads-label">The reads</h2>
@@ -98,6 +104,7 @@
             {% endif %}
             <p class="golf-line">RapidAPI counts from the subscription day, not the first, so read this as a floor. The timers are the budget; this only reports.</p>
         </section>
+        {% endif %}
 
     </div>
 </div>

@@ -684,6 +684,8 @@ def test_each_game_states_its_consequence_and_the_tab_names_its_game(letters):
     golf_open = letters['golf-picks-open']['plain']
     assert 'Each golfer can be spent once this season' in golf_open
     assert 'Your season\nSeason total: $0\nGolfers used: 0' in golf_open
+    # The strip names the league, never the game: a member of both sheets pays each.
+    assert 'Settle the tab. Handicap Pay Sheet: the $25 entry is due' in golf_open
 
 
 def test_record_says_the_week_in_digits_and_the_docket_around_it(letters):

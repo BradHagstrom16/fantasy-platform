@@ -7221,7 +7221,7 @@ body.game-cfb {
    actions, and one new mark, the meter (the burn hatch, the room's one
    texture, drawn as the month's reads). */
 
-/* The book line: the five pages of the book, the one in hand unlinked. */
+/* The book line: the pages of the book (five, four for a league commissioner), the one in hand unlinked. */
 .golf-book {
   margin: 0 0 1.75rem;
   padding: .75rem 0 .25rem;
@@ -7440,6 +7440,120 @@ textarea.golf-input { width: 100%; resize: vertical; }
   margin-top: 1rem;
 }
 .golf-confirm-act .golf-btn { margin: 0; }
+
+/* The join page (DESIGN.md §7.12, ADR-075): the platform join shape (hero,
+   card, .btn-game) with the room's materials inside the card. House rules as
+   a term over its line on hairlines, once; then the sheets, each a section on
+   a 2px ink rule naming who it is for, its own fee and one seat button. */
+.golf-join-rules { margin: 0; }
+.golf-join-rule { padding: .95rem 0; border-top: 1px solid var(--golf-rule); }
+.golf-join-rule:first-child { border-top: 0; padding-top: 0; }
+.golf-join-rule:last-child { padding-bottom: 0; }
+.golf-join-rule dt {
+  font-family: 'Teko', sans-serif;
+  font-weight: 600;
+  font-size: 1.05rem;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--text-primary);
+  margin-bottom: .15rem;
+}
+.golf-join-rule dd {
+  margin: 0;
+  font-family: 'Newsreader', Georgia, serif;
+  font-size: 1rem;
+  line-height: 1.55;
+  color: var(--text-secondary);
+  max-width: 62ch;
+}
+.golf-join-name {
+  margin: 1.5rem 0 0;
+  padding-top: 1rem;
+  border-top: 1px solid var(--golf-rule);
+  font-family: 'Newsreader', Georgia, serif;
+  font-size: 1rem;
+  color: var(--text-secondary);
+}
+.golf-join-name strong { color: var(--text-primary); font-weight: 500; }
+.golf-join-sheets { margin-top: 1.75rem; }
+.golf-join-sheet { padding: 1rem 0 1.5rem; border-top: 2px solid var(--text-primary); }
+.golf-join-sheet:last-child { padding-bottom: 0; }
+.golf-join-sheet-name {
+  font-family: 'Teko', sans-serif;
+  font-weight: 600;
+  font-size: 1.5rem;
+  letter-spacing: .02em;
+  text-transform: uppercase;
+  color: var(--text-primary);
+  margin: 0 0 .25rem;
+}
+.golf-join-sheet-who {
+  margin: 0 0 .5rem;
+  font-family: 'Newsreader', Georgia, serif;
+  font-size: 1.05rem;
+  line-height: 1.5;
+  color: var(--text-primary);
+  max-width: 55ch;
+}
+.golf-join-sheet-fee {
+  margin: 0 0 1rem;
+  font-family: 'Newsreader', Georgia, serif;
+  font-size: 1rem;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums lining-nums;
+}
+.golf-join-sheet-fee strong { color: var(--text-primary); font-weight: 500; }
+.golf-join-held {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 .5rem;
+  margin: 0;
+  min-height: 44px;
+  font-family: 'Newsreader', Georgia, serif;
+  font-size: 1rem;
+  color: var(--text-primary);
+}
+.golf-join-held a {
+  color: var(--game-primary);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  padding: .8rem 0;
+}
+.golf-join-held a:hover { color: var(--game-primary-dark); }
+.golf-join-sheet .btn-game { margin: 0; }
+
+/* The other sheet on the pick page (ADR-075): one pencil line per other
+   league the member plays, under the facts, the golfers in ink. */
+.golf-other-sheets { margin: -1rem 0 1.75rem; }
+.golf-other-sheet { margin: 0; font-size: 1rem; }
+.golf-other-sheet strong { color: var(--text-primary); font-weight: 500; }
+
+/* The Roster's controls (ADR-075): two text actions on the member's line,
+   platform admin only; the forms sit inline so the line reads as a sentence. */
+.golf-roster-acts form { display: inline; }
+.golf-roster-acts .golf-linkbtn { font-size: .95rem; }
+.golf-roster-acts-dot { white-space: pre; }
+
+/* Settle the Tab on The Sheet (ADR-056; ADR-075 D4): a leaf under your line,
+   never the platform card (no gold, no card in the room). The Unpaid chip is
+   the one red word; the rails are a sentence, the Zelle number selectable. */
+.golf-your-line + .golf-settle { margin-top: 1.75rem; }
+.golf-settle { padding-bottom: 1rem; border-bottom: 1px solid var(--golf-rule); margin-bottom: 2.25rem; }
+.golf-settle .golf-leaf-lead strong { color: var(--text-primary); font-weight: 500; }
+.golf-settle-rails {
+  margin: .25rem 0 0;
+  font-size: 1rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+.golf-settle-zelle {
+  color: var(--text-primary);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums lining-nums;
+  white-space: nowrap;
+  user-select: all;
+}
 
 /* === CFB SURVIVOR POOL === */
 
@@ -13589,6 +13703,28 @@ main { flex: 1; }
   outline: 2px solid var(--gold-light);
   outline-offset: 2px;
 }
+
+/* The Pay Sheet's switch (ADR-075): a member on more than one sheet gets a
+   pill per other league after the page pills. It is a door, not a page of
+   this sheet: a hairline stands before it and it reads in pen-bright, the
+   small-text pen on the sub-nav (7.5:1 on #0F110D; "blue is personal"). */
+.subnav-golf .subnav-pill--switch {
+  color: var(--game-accent-light);
+  margin-left: .35rem;
+  position: relative;
+  flex-shrink: 0;  /* the longest label: keeps its width, the row scrolls */
+}
+.subnav-golf .subnav-pill--switch::before {
+  content: '';
+  position: absolute;
+  left: -.375rem;
+  top: 50%;
+  width: 1px;
+  height: 1.25rem;
+  transform: translateY(-50%);
+  background: rgba(255,255,255,.22);
+}
+.subnav-golf .subnav-pill--switch:hover { color: #fff; }
 
 /* Spec C Plan 1 — mobile compactions: fit 6 pills on 375px without scroll */
 @media (max-width: 575.98px) {

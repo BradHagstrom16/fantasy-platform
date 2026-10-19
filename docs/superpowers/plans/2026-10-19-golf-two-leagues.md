@@ -234,8 +234,8 @@ Branch `golf-two-leagues-b` from `main` after PR A. Every task here runs `impecc
 - Modify: `static/css/style.css` (golf section) only if the switch needs a modifier
 - Test: `tests/test_golf_leagues.py`, `tests/test_eyebrow_above_heading.py`
 
-- [ ] **Step 1:** Failing test `test_every_league_page_is_stamped_and_only_a_member_of_both_sees_the_switch`: each listed page's rendered HTML contains the league name in the context line; Brad's render of `/golf/handicap/` has a pill to `/golf/pollyanna/`; a Handicap-only member's render has none.
-- [ ] **Step 2:** Run; FAIL. **Step 3:** Implement under impeccable. **Step 4:** PASS; run `tests/test_design_*.py`, `tests/test_eyebrow_above_heading.py`. **Step 5:** Commit: `golf: the league stamp and the sub-nav switch`
+- [x] **Step 1:** Failing test `test_every_league_page_is_stamped_and_only_a_member_of_both_sees_the_switch`: each listed page's rendered HTML contains the league name in the context line; Brad's render of `/golf/handicap/` has a pill to `/golf/pollyanna/`; a Handicap-only member's render has none. Carried from PR A's review: `test_shared_pages_keep_the_league_the_viewer_came_from` (the Schedule pill and the room's door carry `?league=`), `test_record_room_lists_only_this_leagues_seasons`.
+- [x] **Step 2:** Run; FAIL. **Step 3:** Implement under impeccable. **Step 4:** PASS; run `tests/test_design_*.py`, `tests/test_eyebrow_above_heading.py`. **Step 5:** Commit: `golf: the league stamp and the sub-nav switch`
 
 ### Task B2: The join page with two sheets
 
@@ -245,7 +245,7 @@ Branch `golf-two-leagues-b` from `main` after PR A. Every task here runs `impecc
 
 Copy: one block per league in ordinal order with its name, its fee from the row, a one-line "who this sheet is for" placeholder Brad replaces (`Handicap`: "The Thursday crowd that came over from the old site."; `Pollyanna`: "The group that moved over from Splash."), and one `.btn-game` per league reading "Take a seat on the {name}"; a league the viewer is already on shows "You're on this sheet" and a link to its standings instead of the button. The rules card stays once, above both.
 
-- [ ] **Step 1:** Failing test `test_join_page_offers_both_sheets_and_marks_the_joined_one`. **Step 2:** FAIL. **Step 3:** Implement under impeccable. **Step 4:** PASS. **Step 5:** Commit: `golf: the join page offers both sheets`
+- [x] **Step 1:** Failing test `test_join_page_offers_both_sheets_and_marks_the_joined_one`. **Step 2:** FAIL. **Step 3:** Implement under impeccable. **Step 4:** PASS. **Step 5:** Commit: `golf: the join page offers both sheets`
 
 ### Task B3: The other sheet on the pick page
 
@@ -255,7 +255,7 @@ Copy: one block per league in ordinal order with its name, its fee from the row,
 
 **Interfaces:** `other_sheets: list[dict]` with `league` (the row), `pick` (`GolfPick | None` for this tournament in that league), `url` (`url_for('golf.make_pick', league=..., tournament_id=...)`); empty for a member of one league. Rendered after the facts list as one `golf-pick-line` per entry: "On the {name}: {Primary}, backup {Backup} · change" or "Nothing filed on the {name} yet · pick there".
 
-- [ ] **Step 1:** Failing test `test_pick_page_tells_a_member_of_both_what_the_other_sheet_holds` (both strings; a one-league member sees neither). **Step 2:** FAIL. **Step 3:** Implement. **Step 4:** PASS (and `tests/test_golf_cleanup.py`'s query counts: one extra query per other league at most). **Step 5:** Commit: `golf: the pick page names the other sheet`
+- [x] **Step 1:** Failing test `test_pick_page_tells_a_member_of_both_what_the_other_sheet_holds` (both strings; a one-league member sees neither). **Step 2:** FAIL. **Step 3:** Implement. **Step 4:** PASS (and `tests/test_golf_cleanup.py`'s query counts: one extra query per other league at most). **Step 5:** Commit: `golf: the pick page names the other sheet` (also the A2 minors: `get_used_player_ids` docstring, `GolfPick.__repr__`)
 
 ### Task B4: The Roster's controls and the Back Office scope
 
@@ -270,8 +270,8 @@ Copy: one block per league in ordinal order with its name, its fee from the row,
 - The Roster shows both controls to platform admin only (CSRF forms, POST); the book nav omits "Settle the Book" and the dashboard omits the API meter for a non-platform admin.
 - `/admin/enrollments` (`core/admin/enrollments.py`): the golf precheck becomes `get_enrollment(user_id, house_league())` (today's `get_enrollment(user_id)` reports a Pollyanna-only member as already enrolled), `admin_enroll` keeps seating the house league, and the page says so beside golf ('Seats the Handicap Pay Sheet'); test in `tests/test_golf_leagues.py` (final review of PR A, Important #1).
 
-- [ ] **Step 1:** Failing tests: `test_platform_admin_appoints_and_removes_a_commissioner`; `test_move_refuses_once_a_pick_exists`; `test_move_switches_the_line`; `test_league_commissioner_cannot_post_to_the_other_league_or_settle_the_book` (Review Focus 4: a POST to `/golf/handicap/admin/update-payment/<id>` by the Pollyanna commissioner leaves `has_paid` False; `/golf/pollyanna/admin/process-results/<id>` 302s; the Pollyanna dashboard has no meter and no Settle the Book link).
-- [ ] **Step 2:** FAIL. **Step 3:** Implement under impeccable. **Step 4:** PASS; full suite + ruff. **Step 5:** Commit: `golf: commissioner toggle, the move, and the back office scope`.
+- [x] **Step 1:** Failing tests: `test_platform_admin_appoints_and_removes_a_commissioner`; `test_move_refuses_once_a_pick_exists_or_the_other_line_is_held`; `test_move_switches_the_line`; `test_league_commissioner_cannot_post_to_the_other_league_or_settle_the_book` (Review Focus 4: a POST to `/golf/handicap/admin/update-payment/<id>` by the Pollyanna commissioner leaves `has_paid` False; `/golf/pollyanna/admin/process-results/<id>` 302s; the Pollyanna dashboard has no meter and no Settle the Book link).
+- [x] **Step 2:** FAIL. **Step 3:** Implement under impeccable. **Step 4:** PASS; full suite + ruff. **Step 5:** Commit: `golf: commissioner toggle, the move, and the back office scope`. Carried from PR A's review: `test_admin_enrollments_seats_the_house_league_and_says_so` (registry `admin_enrolled` + `admin_enroll_note`), `test_platform_dashboard_counts_each_league_once` (one dashboard row per league).
 
 ### Task B5: Settle the Tab for golf (D4)
 
@@ -281,11 +281,12 @@ Copy: one block per league in ordinal order with its name, its fee from the row,
 - Test: `tests/test_golf_payment_nudge.py` (new; mirrors `tests/test_cfb_payment_nudge.py`), `tests/test_payment_rails.py`
 
 **Interfaces:**
-- `payment_nudge_for(user, league: GolfLeague) -> dict | None`: `None` unless the viewer holds a line in `league` with `has_paid` False and is neither platform admin nor that league's commissioner, or when `PAYMENT_VENMO_HANDLE` and `PAYMENT_ZELLE_PHONE` are both blank; otherwise the dict `utils/payment.py` builds (Venmo link, Zelle number) plus `amount = league.entry_fee` and `league_name = league.name`. Room surfaces only (never the join page or the lounge, ADR-056); `has_paid` stays admin-confirmed.
+- `payment_nudge_for(line, is_platform_admin) -> dict | None` (as built, Step 3): `None` when the viewer holds no line in the league, the line is paid, the viewer is platform admin or that line carries the pen, or `utils/payment.py::payment_rails` returns None (either rail blank or the Zelle number unparseable); otherwise the rails (Venmo link, Zelle number) plus `entry_fee = league.entry_fee` and `league_name = league.name`. Room surfaces only (never the join page or the lounge, ADR-056); `has_paid` stays admin-confirmed.
 - The card is a `.golf-*` leaf on the league's sheet (impeccable, `games/golf/DESIGN.md`; red stays a deduction: "Unpaid" is the one red word); the letter's footnote strip names the league's fee and Brad's rails.
 
-- [ ] **Step 1:** Failing tests: `test_nudge_shows_for_an_unpaid_line_in_that_league_only` (Brad unpaid in Pollyanna, paid in Handicap: the Pollyanna sheet carries the card with Pollyanna's fee, the Handicap sheet does not); `test_nudge_hides_for_admins_commissioners_and_blank_rails`; `test_picks_open_letter_carries_the_leagues_fee_strip`.
-- [ ] **Step 2:** FAIL. **Step 3:** Implement under impeccable. **Step 4:** PASS; full suite + ruff; the D3 assertion audit in the PR body. **Step 5:** Commit: `golf: Settle the Tab per league`. Smoke the sheet, the four Back Office pages and the card on 5099; open PR B; CodeRabbit clean; merge.
+- [x] **Step 1:** Failing tests: `test_nudge_shows_for_an_unpaid_line_in_that_league_only` (Brad unpaid in Pollyanna, paid in Handicap: the Pollyanna sheet carries the card with Pollyanna's fee, the Handicap sheet does not); `test_nudge_hides_for_admins_commissioners_and_blank_rails`; `test_picks_open_letter_carries_the_leagues_fee_strip` (+ `test_no_member_self_mark_control`).
+- [x] **Step 2:** FAIL. **Step 3:** Implement under impeccable (the gate takes the line, `payment_nudge_for(line, is_platform_admin)`, the CFB/Docket shape; the card is a `.golf-leaf` of the room's own, not the platform partial; `tab_block` gained `name=` so the strip names the league). **Step 4:** PASS; full suite + ruff; the D3 assertion audit in the PR body. **Step 5:** Commit: `golf: Settle the Tab per league`.
+- [x] **Step 6:** Smoke the sheet, the four Back Office pages and the card on 5099 (done 2026-10-19 via /browse; report `.gstack/browse-reports/2026-10-19-1741-golf-prb/`, local, not committed); open PR B (draft). CodeRabbit clean; merge: Brad's.
 
 ---
 
@@ -336,8 +337,9 @@ Branch `golf-two-leagues-c` from `main` after PR B.
 
 **Files:**
 - Modify: `ARCHITECTURE_DECISION_LOG.md` (ADR-075: two leagues in one game; options: two registry slugs, one slug with a league dimension; choice and rationale from Part 1)
-- Modify: `games/golf/DESIGN.md` (§3 the room's URL carries the league; §9 invariants: every league read is league-scoped, the URL is the league, the usage key is per league, the commissioner is the league enrollment, Settle the Book is platform-only, the record is per division)
-- Modify: `CLAUDE.md` (golf bullet: two leagues, `/golf/<league>/`, `flask golf league list|set`, `import-legacy --league`; records bullet: division; the `records close golf` line)
+- Modify: `games/golf/DESIGN.md` (§3 the room's URL carries the league; §9 invariants: every league read is league-scoped, the URL is the league, the usage key is per league, the commissioner is the league enrollment, Settle the Book is platform-only, the record is per division; the PR B reconciliations: §6.11 and §7.14 (Settle the Tab is the room's own `.golf-leaf` on The Sheet since PR B, not the platform partial; the entry fee only, no penalties), §7.11 (the small line is the league's name beside the season, the switch pill `.subnav-pill--switch` for a member of both, the Schedule pill's `?league=`), §7.12 (the two-sheet join page, `LEAGUE_BLURBS`, "Take a seat on the {name}"), §7.8 (the other-sheet line under the facts), §8.20 (the Roster's controls, the commissioner's four-leaf book and tab-only dashboard), the §9 "The name" bullet)
+- Modify: `CLAUDE.md` (golf bullet: two leagues, `/golf/<league>/`, `flask golf league list|set`, `import-legacy --league`; records bullet: division; the `records close golf` line; the Payment rails bullet: golf's per-league gate, the commissioner exclusion, `tests/test_golf_payment_nudge.py`)
+- Modify: `ARCHITECTURE_DECISION_LOG.md` ADR-056's row (the rails now cover the Pay Sheet, per league)
 - Modify: `docs/golf-pickem-launch-prep-roadmap-2026-06-30.md` (the prod import runbook adds `--league handicap`)
 - Test: `tests/test_golf_design_doc.py`, `tests/test_design_*.py`
 

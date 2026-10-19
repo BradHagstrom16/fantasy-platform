@@ -434,14 +434,18 @@ def stat_block(stats) -> Block:
     return Block(plain, _inset(rows))
 
 
-def tab_block(nudge, game_slug) -> Block | None:
+def tab_block(nudge, game_slug, *, name=None) -> Block | None:
     """The "Settle the tab" strip for a member who still owes the buy-in
     (gate: games/<game>/services/payment.py). A text link under a hairline,
     never a second button: the letter's CTA stays the CTA. Names the game so
-    a dual member never pays one pool believing it covered the other."""
+    a dual member never pays one pool believing it covered the other; ``name``
+    narrows it to the league when a game has more than one (the Pay Sheet's
+    two sheets, ADR-075)."""
     if not nudge:
         return None
-    name, accent = GAME_NAMES[game_slug], GAME_ACCENTS[game_slug]
+    # Zelle carries no prefilled memo, so a league's strip asks for the league in it.
+    memo = f'your name and the {name}' if name else 'your name'
+    name, accent = name or GAME_NAMES[game_slug], GAME_ACCENTS[game_slug]
     fee, venmo, zelle = (nudge['entry_fee'], nudge['venmo_url'],
                          nudge['zelle_phone'])
     html = Markup(
@@ -451,12 +455,12 @@ def tab_block(nudge, game_slug) -> Block | None:
         '{name}: the ${fee} entry is due. <a href="{venmo}" '
         'style="color:{accent}; font-weight:600;">Pay on Venmo</a> (amount '
         'and your name filled in), or Zelle <strong style="color:{ink};">'
-        '{zelle}</strong>: put your name in the memo.</p>'
+        '{zelle}</strong>: put {memo} in the memo.</p>'
     ).format(rule=RULE, f=BODY_FONT, sec=SECONDARY, ink=INK, name=name,
-             fee=fee, venmo=venmo, accent=accent, zelle=zelle)
+             fee=fee, venmo=venmo, accent=accent, zelle=zelle, memo=memo)
     plain = (f'Settle the tab. {name}: the ${fee} entry is due. Pay on Venmo '
              f'(amount and your name filled in): {venmo}\n'
-             f'Or Zelle {zelle}: put your name in the memo.')
+             f'Or Zelle {zelle}: put {memo} in the memo.')
     return Block(plain, html)
 
 

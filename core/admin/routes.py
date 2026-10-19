@@ -5,7 +5,7 @@ Platform-level admin: user management, overview.
 """
 from functools import wraps
 
-from flask import flash, redirect, render_template, request, url_for
+from flask import current_app, flash, redirect, render_template, request, url_for
 from flask_login import current_user
 from sqlalchemy import func, select
 
@@ -15,7 +15,7 @@ from extensions import db
 from games.cfb.models import CfbEnrollment
 from games.docket.models import DocketEnrollment
 from games.golf.models import GolfEnrollment
-from games.golf.services.leagues import house_league
+from games.golf.services.leagues import leagues as golf_leagues
 from games.worldcup.models import WorldCupEnrollment
 from models.user import User
 from utils.display_name import normalize_display_name
@@ -40,9 +40,28 @@ def admin_required(f):
 def dashboard():
     total_users = User.query.count()
 
-    # The Pay Sheet's admin pages are league pages; the platform page opens
-    # the house league's (ADR-075).
-    golf_house = house_league().slug
+    # The Pay Sheet is one game of two leagues (ADR-075): one row per league,
+    # each counting its own seats this season, each opening its own Back Office.
+    golf_season = current_app.config['SEASON_YEAR']
+    golf_rows = [
+        {
+            'name': f'The Pay Sheet · {league.name}',
+            'emoji': '⛳',
+            'slug': 'golf',
+            'admin_url': url_for('golf.admin_dashboard', league=league.slug),
+            'payments_url': url_for('golf.admin_payments', league=league.slug),
+            'enrolled': db.session.scalar(
+                select(func.count()).select_from(GolfEnrollment)
+                .filter(GolfEnrollment.league_id == league.id,
+                        GolfEnrollment.season_year == golf_season)),
+            'paid': db.session.scalar(
+                select(func.count()).select_from(GolfEnrollment)
+                .filter(GolfEnrollment.league_id == league.id,
+                        GolfEnrollment.season_year == golf_season,
+                        GolfEnrollment.has_paid.is_(True))),
+        }
+        for league in golf_leagues()
+    ]
 
     # Live games first; the archived World Cup last.
     games = [
@@ -67,15 +86,7 @@ def dashboard():
                 select(func.count()).select_from(DocketEnrollment)
                 .filter(DocketEnrollment.has_paid.is_(True))),
         },
-        {
-            'name': "The Pay Sheet",
-            'emoji': '⛳',
-            'slug': 'golf',
-            'admin_url': url_for('golf.admin_dashboard', league=golf_house),
-            'payments_url': url_for('golf.admin_payments', league=golf_house),
-            'enrolled': GolfEnrollment.query.count(),
-            'paid': GolfEnrollment.query.filter_by(has_paid=True).count(),
-        },
+        *golf_rows,
         {
             'name': 'World Cup Fantasy',
             'emoji': '🌍',
@@ -87,7 +98,7 @@ def dashboard():
         },
     ]
 
-    active_games = sum(1 for g in games if g['enrolled'] > 0)
+    active_games = len({g['slug'] for g in games if g['enrolled'] > 0})
     paid_users = sum(g['paid'] for g in games)
 
     return render_template(

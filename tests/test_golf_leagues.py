@@ -4,15 +4,18 @@ Golf is one game with two leagues inside it, Handicap (the house league) and
 Pollyanna. Each league is a row in ``golf_league`` carrying its own entry fee
 and penalty; every enrollment, pick and golfer usage belongs to exactly one.
 """
+import re
 from contextlib import contextmanager
 from datetime import UTC, datetime, timedelta
 
 import pytest
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
 from extensions import db
 from games.golf.models import (
     GolfEnrollment,
+    GolfLeague,
     GolfPick,
     GolfPlayer,
     GolfSeasonPlayerUsage,
@@ -1062,3 +1065,454 @@ def test_the_shared_pages_resolve_to_the_viewers_league(app, golf_leagues):
         assert f'/golf/handicap/tournament/{banked_id}' in body
         assert '/golf/pollyanna/' not in body
         assert _lands(anonymous.get('/golf/leaderboard'), '/golf/handicap/')
+
+
+# --- Task B1: the league stamp and the sub-nav switch -------------------------
+
+def _context_line(body):
+    """The text of the page's ``.golf-context`` line."""
+    return body.split('class="golf-context">', 1)[1].split('</p>', 1)[0]
+
+
+def _title(body):
+    return body.split('<title>', 1)[1].split('</title>', 1)[0]
+
+
+def _words(markup):
+    """The rendered text of a fragment, tags gone, whitespace folded."""
+    return ' '.join(re.sub(r'<[^>]+>', ' ', markup).split())
+
+
+def test_every_league_page_is_stamped_and_only_a_member_of_both_sees_the_switch(
+        app, golf_leagues, monkeypatch):
+    """Every league page names its league in the title and opens its context
+    line with it; the sub-nav switch to the other sheet shows only to a member
+    holding a line on both."""
+    from tests._registry_helpers import set_status
+
+    set_status(monkeypatch, 'golf', 'open')
+    handicap, pollyanna = golf_leagues['handicap'], golf_leagues['pollyanna']
+    brad = _member('brad_stamp', handicap, pollyanna, app=app)
+    db.session.get(User, brad).is_admin = True
+    db.session.commit()
+    han = _member('han_stamp', handicap, app=app)
+    event = _season_event(app, 'Stamp Open', status='upcoming', deadline_in=timedelta(days=2))
+    event_id = event.id
+
+    pages = [
+        '/golf/pollyanna/', f'/golf/pollyanna/tournament/{event_id}',
+        f'/golf/pollyanna/member/{brad}', '/golf/pollyanna/stats',
+        f'/golf/pollyanna/pick/{event_id}', '/golf/pollyanna/admin/',
+        '/golf/pollyanna/admin/tournaments', '/golf/pollyanna/admin/users',
+        '/golf/pollyanna/admin/payments', '/golf/pollyanna/admin/override-pick',
+    ]
+    with _viewer(app, brad) as client:
+        for path in pages:
+            resp = client.get(path)
+            assert resp.status_code == 200, path
+            body = resp.get_data(as_text=True)
+            assert 'Pollyanna Pay Sheet' in _title(body), path
+            context = _context_line(body)
+            assert 'Pollyanna Pay Sheet' in context and 'Handicap' not in context, path
+            # The stamp opens the line: nothing precedes it but markup.
+            assert _words(context).startswith('Pollyanna Pay Sheet'), path
+        on_handicap = client.get('/golf/handicap/').get_data(as_text=True)
+        switch = on_handicap.split('subnav-pill--switch')[1].split('</a>')[0]
+        assert 'href="/golf/pollyanna/"' in switch and 'Pollyanna Pay Sheet' in switch
+        assert on_handicap.count('subnav-pill--switch') == 1
+        on_pollyanna = client.get('/golf/pollyanna/').get_data(as_text=True)
+        assert 'href="/golf/handicap/"' in on_pollyanna.split('subnav-pill--switch')[1]
+
+    with _viewer(app, han) as client:
+        body = client.get('/golf/handicap/').get_data(as_text=True)
+        assert 'subnav-pill--switch' not in body
+        assert 'Handicap Pay Sheet' in _context_line(body)
+    with _viewer(app) as anonymous:
+        assert 'subnav-pill--switch' not in anonymous.get('/golf/pollyanna/').get_data(as_text=True)
+
+
+def test_shared_pages_keep_the_league_the_viewer_came_from(app, golf_leagues):
+    """The Schedule pill on a league page carries its league as a query arg,
+    and the shared pages honor it, so a viewer stepping off a Pollyanna page
+    is not flipped back to their own league; a bad value is ignored."""
+    season = app.config['SEASON_YEAR']
+    han = _member('han_steps_over', golf_leagues['handicap'], app=app)
+    banked = _season_event(app, 'Shared Stamp Banked')
+    banked_id = banked.id
+
+    with _viewer(app) as anonymous:
+        page = anonymous.get('/golf/pollyanna/').get_data(as_text=True)
+        assert 'href="/golf/schedule?league=pollyanna"' in page
+        schedule = anonymous.get('/golf/schedule?league=pollyanna').get_data(as_text=True)
+        assert f'Pollyanna Pay Sheet · {season}' in schedule
+        assert f'/golf/pollyanna/tournament/{banked_id}' in schedule
+        assert '/golf/handicap/' not in schedule
+        # Every in-room schedule link carries it too, not only the pill.
+        board = anonymous.get(f'/golf/pollyanna/tournament/{banked_id}').get_data(as_text=True)
+        assert 'href="/golf/schedule?league=pollyanna">The Season Book' in board
+        assert _lands(anonymous.get('/golf/leaderboard?league=pollyanna'), '/golf/pollyanna/')
+        assert _lands(anonymous.get('/golf/?league=pollyanna'), '/golf/pollyanna/')
+        wrong = anonymous.get('/golf/schedule?league=nowhere').get_data(as_text=True)
+        assert f'Handicap Pay Sheet · {season}' in wrong
+
+    with _viewer(app, han) as client:
+        schedule = client.get('/golf/schedule?league=pollyanna').get_data(as_text=True)
+        assert f'Pollyanna Pay Sheet · {season}' in schedule
+        assert f'/golf/pollyanna/tournament/{banked_id}' in schedule
+
+
+def test_record_room_lists_only_this_leagues_seasons(app, golf_leagues):
+    """The Record Room's season switcher is the league's own seasons: a prior
+    season with Handicap lines and events is not offered on the Pollyanna
+    room, and asking for it there is a 404."""
+    handicap = golf_leagues['handicap']
+    season = app.config['SEASON_YEAR']
+    past = User(username='past_handicap', email='past_handicap@example.com')
+    past.set_password('x')
+    db.session.add(past)
+    db.session.flush()
+    db.session.add(GolfEnrollment(user_id=past.id, league_id=handicap.id, season_year=season - 1))
+    db.session.add(GolfTournament(
+        api_tourn_id='B1-last-year', name='Last Year Open', season_year=season - 1,
+        start_date=datetime(season - 1, 3, 5), end_date=datetime(season - 1, 3, 8),
+        pick_deadline=datetime(season - 1, 3, 5), purse=1_000_000, status='complete',
+        results_finalized=True))
+    db.session.commit()
+
+    with _viewer(app) as anonymous:
+        handicap_room = anonymous.get('/golf/handicap/stats').get_data(as_text=True)
+        assert f'href="/golf/handicap/stats?season={season - 1}">{season - 1} season</a>' in handicap_room
+        pollyanna_room = anonymous.get('/golf/pollyanna/stats').get_data(as_text=True)
+        assert f'{season - 1} season' not in pollyanna_room
+        assert anonymous.get(f'/golf/pollyanna/stats?season={season - 1}').status_code == 404
+        assert anonymous.get(f'/golf/handicap/stats?season={season - 1}').status_code == 200
+
+
+# --- Task B2: the join page with two sheets ----------------------------------
+
+def test_join_page_offers_both_sheets_and_marks_the_joined_one(app, golf_leagues, monkeypatch):
+    """One rules card, then a block per sheet in ordinal order: its name, its
+    own fee, who it is for, and one seat button; a sheet the member already
+    holds says so and links its standings instead."""
+    from tests._registry_helpers import set_status
+
+    set_status(monkeypatch, 'golf', 'open')
+    handicap, pollyanna = golf_leagues['handicap'], golf_leagues['pollyanna']
+    pollyanna.entry_fee = 40
+    db.session.commit()
+    newcomer = _member('join_newcomer', app=app)
+    han = _member('join_han', handicap, app=app)
+
+    with _viewer(app, newcomer) as client:
+        page = client.get('/golf/join').get_data(as_text=True)
+        assert page.index('Handicap Pay Sheet') < page.index('Pollyanna Pay Sheet')
+        assert 'The Thursday crowd that came over from the old site.' in page
+        assert 'The group that moved over from Splash.' in page
+        assert 'Take a seat on the Handicap Pay Sheet' in page
+        assert 'Take a seat on the Pollyanna Pay Sheet' in page
+        assert '$25' in page and '$40' in page
+        assert page.count('name="league"') == 2
+        assert "You're on this sheet" not in page and '&#39;re on this sheet' not in page
+        copy = page.split('page-hero', 1)[1].split('<footer', 1)[0]
+        assert '—' not in copy and '&mdash;' not in copy
+
+    with _viewer(app, han) as client:
+        page = client.get('/golf/join').get_data(as_text=True)
+        held = page.split('Handicap Pay Sheet', 1)[1].split('Pollyanna Pay Sheet', 1)[0]
+        assert 're on this sheet' in held and 'href="/golf/handicap/"' in held
+        assert 'Take a seat on the Handicap Pay Sheet' not in page
+        assert 'Take a seat on the Pollyanna Pay Sheet' in page
+        assert page.count('name="league"') == 1
+
+
+# --- Task B3: the other sheet on the pick page --------------------------------
+
+def test_pick_page_tells_a_member_of_both_what_the_other_sheet_holds(app, golf_leagues, monkeypatch):
+    """A member of both leagues sees one line per other sheet under the facts:
+    what is filed there this week with a change link, or that nothing is,
+    with a link to pick there. A one-league member sees neither."""
+    from tests._registry_helpers import set_status
+
+    set_status(monkeypatch, 'golf', 'open')
+    handicap, pollyanna = golf_leagues['handicap'], golf_leagues['pollyanna']
+    han = _member('han_one_sheet', handicap, app=app)
+    brad = _member('brad_two_sheets', handicap, pollyanna, app=app)
+    event = _season_event(app, 'Other Sheet Open', status='upcoming', deadline_in=timedelta(days=2))
+    field = [_golfer(f'O{i:02d}', f'Othergolfer{i:02d}') for i in range(50)]
+    db.session.add_all(GolfTournamentField(tournament_id=event.id, player_id=p.id) for p in field)
+    db.session.commit()
+    event_id, primary, backup = event.id, field[0].id, field[1].id
+
+    with _viewer(app, brad) as client:
+        page = client.get(f'/golf/pollyanna/pick/{event_id}').get_data(as_text=True)
+        assert 'Nothing filed on the Handicap Pay Sheet yet' in page
+        assert f'href="/golf/handicap/pick/{event_id}">pick there</a>' in page
+        assert 'Pollyanna Pay Sheet yet' not in page
+        client.post(f'/golf/handicap/pick/{event_id}',
+                    data={'primary_player_id': primary, 'backup_player_id': backup})
+        page = client.get(f'/golf/pollyanna/pick/{event_id}').get_data(as_text=True)
+        line = page.split('class="golf-pick-line golf-other-sheet">', 1)[1].split('</p>', 1)[0]
+        assert line.startswith('On the Handicap Pay Sheet: <strong>Othergolfer00</strong>, '
+                               'backup <strong>Othergolfer01</strong>')
+        assert f'href="/golf/handicap/pick/{event_id}">change</a>' in line
+        assert 'Nothing filed' not in page
+        # The other way round, the Handicap page says Pollyanna holds nothing yet.
+        page = client.get(f'/golf/handicap/pick/{event_id}').get_data(as_text=True)
+        assert 'Nothing filed on the Pollyanna Pay Sheet yet' in page
+        assert 'On the Handicap Pay Sheet' not in page
+
+    with _viewer(app, han) as client:
+        page = client.get(f'/golf/handicap/pick/{event_id}').get_data(as_text=True)
+        assert 'golf-other-sheet' not in page
+        assert 'Nothing filed' not in page and 'On the ' not in _context_line(page)
+
+    # The other sheet costs one query per other line, golfers included (the
+    # plan's bound): Brad's Pollyanna page runs one more than a one-league
+    # member's, with a Handicap pick to name.
+    cy = _member('cy_one_sheet_count', pollyanna, app=app)
+    with _viewer(app, cy) as client:
+        baseline = _queries(client, f'/golf/pollyanna/pick/{event_id}')
+    with _viewer(app, brad) as client:
+        with_other = _queries(client, f'/golf/pollyanna/pick/{event_id}')
+    assert with_other == baseline + 1
+
+
+def _queries(client, path):
+    """The SQL statements one GET runs (the status-refresh throttle warmed first)."""
+    from sqlalchemy import event
+    client.get(path)
+    db.session.remove()
+    count = 0
+
+    def _tick(*_args):
+        nonlocal count
+        count += 1
+    event.listen(db.engine, 'before_cursor_execute', _tick)
+    try:
+        assert client.get(path).status_code == 200
+    finally:
+        event.remove(db.engine, 'before_cursor_execute', _tick)
+    return count
+
+
+# --- Task B4: the Roster's controls and the Back Office scope -----------------
+
+def _platform_admin(username):
+    user = _user(username)
+    user.is_admin = True
+    db.session.commit()
+    return user.id
+
+
+def _line_of(user_id, league):
+    return db.session.scalar(select(GolfEnrollment).where(
+        GolfEnrollment.user_id == user_id, GolfEnrollment.league_id == league.id))
+
+
+def test_platform_admin_appoints_and_removes_a_commissioner(app, golf_leagues):
+    """The Roster's commissioner toggle (platform admin only): make and remove
+    flip is_admin on that league's line; a member with no line there is a 404;
+    a bad action is a 400."""
+    handicap, pollyanna = golf_leagues['handicap'], golf_leagues['pollyanna']
+    brad = _platform_admin('brad_appoints')
+    cy = _member('cy_appointed', pollyanna, app=app, display_name='Cy Appointed')
+    han = _member('han_elsewhere', handicap, app=app)
+
+    with _viewer(app, brad) as client:
+        roster = client.get('/golf/pollyanna/admin/users').get_data(as_text=True)
+        assert f'action="/golf/pollyanna/admin/commissioner/{cy}"' in roster
+        assert 'Make commish' in roster and 'Remove commish' not in roster
+        assert f'action="/golf/pollyanna/admin/move/{cy}"' in roster
+        assert 'Move to the Handicap Pay Sheet' in roster
+        acts = roster.split('golf-roster-acts', 1)[1].split('</span>', 1)[0]
+        assert 'golf-pick-dot' not in acts   # the separator must survive a phone
+
+        made = client.post(f'/golf/pollyanna/admin/commissioner/{cy}', data={'action': 'make'})
+        assert _lands(made, '/golf/pollyanna/admin/users')
+        assert _line_of(cy, pollyanna).is_admin is True
+        roster = client.get('/golf/pollyanna/admin/users').get_data(as_text=True)
+        assert 'Remove commish' in roster and 'Commish</span>' in roster
+
+        removed = client.post(f'/golf/pollyanna/admin/commissioner/{cy}', data={'action': 'remove'})
+        assert _lands(removed, '/golf/pollyanna/admin/users')
+        assert _line_of(cy, pollyanna).is_admin is False
+
+        assert client.post(f'/golf/pollyanna/admin/commissioner/{cy}',
+                           data={'action': 'crown'}).status_code == 400
+        assert client.post(f'/golf/pollyanna/admin/commissioner/{han}',
+                           data={'action': 'make'}).status_code == 404
+        assert _line_of(han, handicap).is_admin is False
+
+
+def test_move_switches_the_line(app, golf_leagues):
+    """A mis-join is fixed by the move: the line's league_id becomes the
+    other league; the flash names the destination."""
+    handicap, pollyanna = golf_leagues['handicap'], golf_leagues['pollyanna']
+    brad = _platform_admin('brad_moves')
+    # Appointed on the wrong sheet too: the pen does not travel with the line.
+    cy = _member('cy_misjoined', pollyanna, app=app, display_name='Cy Misjoined',
+                 admin_in=pollyanna)
+
+    with _viewer(app, brad) as client:
+        moved = client.post(f'/golf/pollyanna/admin/move/{cy}', follow_redirects=True)
+        assert moved.status_code == 200
+        assert 'Cy Misjoined' in moved.get_data(as_text=True)
+        assert 'Handicap Pay Sheet' in moved.get_data(as_text=True)
+    assert _line_of(cy, pollyanna) is None
+    assert _line_of(cy, handicap) is not None
+    assert _line_of(cy, handicap).is_admin is False
+    assert GolfEnrollment.query.filter_by(user_id=cy).count() == 1
+
+
+def test_move_carries_the_paid_mark_only_at_the_same_fee(app, golf_leagues):
+    """Paying one sheet never reads as covering the other: the paid mark
+    travels with a moved line at an equal fee, and is cleared, and said so,
+    when the other sheet charges a different one."""
+    handicap, pollyanna = golf_leagues['handicap'], golf_leagues['pollyanna']
+    brad = _platform_admin('brad_moves_paid')
+    same = _member('cy_paid_same', pollyanna, app=app, display_name='Cy Paid Same')
+    differs = _member('cy_paid_differs', pollyanna, app=app, display_name='Cy Paid Differs')
+    for uid in (same, differs):
+        _line_of(uid, pollyanna).has_paid = True
+    handicap.entry_fee = pollyanna.entry_fee
+    db.session.commit()
+
+    with _viewer(app, brad) as client:
+        kept = client.post(f'/golf/pollyanna/admin/move/{same}', follow_redirects=True)
+        assert 'Marked unpaid' not in kept.get_data(as_text=True)
+    assert _line_of(same, handicap).has_paid is True
+
+    handicap = db.session.get(GolfLeague, handicap.id)
+    handicap.entry_fee = pollyanna.entry_fee + 10
+    db.session.commit()
+    with _viewer(app, brad) as client:
+        dropped = client.post(f'/golf/pollyanna/admin/move/{differs}', follow_redirects=True)
+        assert f'Marked unpaid: the Handicap Pay Sheet fee is ${handicap.entry_fee}.' in (
+            dropped.get_data(as_text=True))
+    assert _line_of(differs, handicap).has_paid is False
+
+
+def test_move_refuses_once_a_pick_exists_or_the_other_line_is_held(app, golf_leagues):
+    """The move writes nothing when the line already holds a pick this season,
+    or when the member already has a line on the other sheet."""
+    handicap, pollyanna = golf_leagues['handicap'], golf_leagues['pollyanna']
+    brad = _platform_admin('brad_refused')
+    cy = _member('cy_has_picked', pollyanna, app=app)
+    both = _member('brad_on_both', handicap, pollyanna, app=app)
+    event = _season_event(app, 'Move Refused Open', status='upcoming', deadline_in=timedelta(days=2))
+    a, b = _golfer('MR01', 'Movegolfer01'), _golfer('MR02', 'Movegolfer02')
+    db.session.add(GolfPick(user_id=cy, league_id=pollyanna.id, tournament_id=event.id,
+                            primary_player_id=a.id, backup_player_id=b.id))
+    db.session.commit()
+
+    with _viewer(app, brad) as client:
+        refused = client.post(f'/golf/pollyanna/admin/move/{cy}', follow_redirects=True)
+        assert 'already has a pick' in refused.get_data(as_text=True)
+        assert _line_of(cy, pollyanna) is not None and _line_of(cy, handicap) is None
+
+        refused = client.post(f'/golf/pollyanna/admin/move/{both}', follow_redirects=True)
+        assert 'already on the Handicap Pay Sheet' in refused.get_data(as_text=True)
+        assert _line_of(both, pollyanna) is not None and _line_of(both, handicap) is not None
+
+        assert client.post('/golf/pollyanna/admin/move/999999').status_code == 404
+
+
+def test_league_commissioner_cannot_post_to_the_other_league_or_settle_the_book(app, golf_leagues):
+    """Review Focus 4: the Pollyanna commissioner's POSTs to a Handicap admin
+    route, to Settle the Book, and to the platform-only roster controls are
+    bounced with a flash and write nothing; their Back Office shows no
+    Settle the Book, no To settle ledger, no meter and no roster controls."""
+    handicap, pollyanna = golf_leagues['handicap'], golf_leagues['pollyanna']
+    commish = _member('polly_commish_rf4', pollyanna, app=app, admin_in=pollyanna)
+    cy = _member('cy_rf4', pollyanna, app=app, display_name='Cy Rf4')
+    han = _member('han_rf4', handicap, app=app)
+    event_id = _season_event(app, 'RF4 Played').id
+
+    with _viewer(app, commish) as client:
+        paid = client.post(f'/golf/handicap/admin/update-payment/{han}', json={'has_paid': True})
+        assert _lands(paid, '/golf/handicap/')
+        assert _line_of(han, handicap).has_paid is False
+
+        settled = client.post(f'/golf/pollyanna/admin/process-results/{event_id}', follow_redirects=True)
+        assert 'Platform admin only.' in settled.get_data(as_text=True)
+
+        for path in (f'/golf/pollyanna/admin/commissioner/{cy}', f'/golf/pollyanna/admin/move/{cy}'):
+            bounced = client.post(path, data={'action': 'make'}, follow_redirects=True)
+            assert 'Platform admin only.' in bounced.get_data(as_text=True), path
+        assert _line_of(cy, pollyanna).is_admin is False and _line_of(cy, handicap) is None
+
+        office = client.get('/golf/pollyanna/admin/').get_data(as_text=True)
+        assert office.count('golf-leaf') and 'id="golf-tab"' in office
+        assert 'id="golf-reads"' not in office and 'reads this month' not in office
+        assert 'id="golf-settle"' not in office and 'To settle' not in office
+        assert 'Settle the Book' not in office and '/admin/tournaments' not in office
+        roster = client.get('/golf/pollyanna/admin/users').get_data(as_text=True)
+        assert 'Make commish' not in roster and 'Move to the' not in roster
+        assert 'Settle the Book' not in roster
+
+    brad = _platform_admin('brad_rf4')
+    with _viewer(app, brad) as client:
+        office = client.get('/golf/pollyanna/admin/').get_data(as_text=True)
+        assert 'id="golf-reads"' in office and 'id="golf-settle"' in office
+        assert 'Settle the Book' in office
+
+
+def test_the_pen_is_the_sheets_not_the_members(app, golf_leagues):
+    """A commissioner who plays both sheets holds the pen on one: the Handicap
+    commissioner's Pollyanna line opens no Pollyanna admin page and writes
+    nothing there, while their own Back Office opens."""
+    handicap, pollyanna = golf_leagues['handicap'], golf_leagues['pollyanna']
+    pen = _member('pen_handicap', handicap, pollyanna, app=app, admin_in=handicap)
+    cy = _member('cy_pen_scope', pollyanna, app=app)
+
+    with _viewer(app, pen) as client:
+        assert client.get('/golf/handicap/admin/users').status_code == 200
+        assert _lands(client.get('/golf/pollyanna/admin/users'), '/golf/pollyanna/')
+        paid = client.post(f'/golf/pollyanna/admin/update-payment/{cy}', json={'has_paid': True})
+        assert _lands(paid, '/golf/pollyanna/')
+    assert _line_of(cy, pollyanna).has_paid is False
+
+
+def test_admin_enrollments_seats_the_house_league_and_says_so(app, golf_leagues, monkeypatch):
+    """/admin/enrollments seats golf into the house league and says so beside
+    it; its already-enrolled check is the house line, so a Pollyanna-only
+    member can be seated in Handicap there."""
+    from tests._registry_helpers import set_status
+
+    set_status(monkeypatch, 'golf', 'open')
+    handicap, pollyanna = golf_leagues['handicap'], golf_leagues['pollyanna']
+    brad = _platform_admin('brad_seats')
+    cy = _member('cy_seated', pollyanna, app=app, display_name='Cy Seated')
+
+    with _viewer(app, brad) as client:
+        page = client.get('/admin/enrollments').get_data(as_text=True)
+        assert 'value="golf"' in page and 'Seats the Handicap Pay Sheet' in page
+        seated = client.post('/admin/enrollments', data={'user_id': cy, 'game_slug': 'golf'},
+                             follow_redirects=True)
+        assert 'Enrolled Cy Seated' in seated.get_data(as_text=True)
+        assert _line_of(cy, handicap) is not None and _line_of(cy, pollyanna) is not None
+        again = client.post('/admin/enrollments', data={'user_id': cy, 'game_slug': 'golf'},
+                            follow_redirects=True)
+        assert 'already enrolled' in again.get_data(as_text=True)
+        assert GolfEnrollment.query.filter_by(user_id=cy).count() == 2
+
+
+def test_platform_dashboard_counts_each_league_once(app, golf_leagues):
+    """The platform dashboard lists one row per golf league, each counting its
+    own seats this season, so a member of both is never counted twice in a
+    row and a prior season's paid line is not counted at all (ADR-069)."""
+    handicap, pollyanna = golf_leagues['handicap'], golf_leagues['pollyanna']
+    brad = _platform_admin('brad_counts')
+    both = _member('both_counted', handicap, pollyanna, app=app)
+    _line_of(both, handicap).has_paid = True
+    db.session.add(GolfEnrollment(user_id=brad, league_id=handicap.id,
+                                  season_year=app.config['SEASON_YEAR'] - 1, has_paid=True))
+    db.session.commit()
+
+    with _viewer(app, brad) as client:
+        page = client.get('/admin/').get_data(as_text=True)
+        handicap_row = page.split('Handicap Pay Sheet', 1)[1].split('</div>', 1)[0]
+        pollyanna_row = page.split('Pollyanna Pay Sheet', 1)[1].split('</div>', 1)[0]
+        assert '1 enrolled · 1 paid' in handicap_row and '/golf/handicap/admin/' in handicap_row
+        assert '1 enrolled · 0 paid' in pollyanna_row and '/golf/pollyanna/admin/payments' in pollyanna_row
+        assert '2 enrolled' not in page

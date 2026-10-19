@@ -101,6 +101,13 @@ class GameRegistryEntry:
     # already graded). `/app` reads it only through wire_preview_for();
     # core/push never imports a game. None for a game with no push feed.
     wire_preview: Callable[[int, datetime], dict | None] | None = None
+    # The platform's enrollments page (ADR-075): the already-seated check
+    # that pairs with admin_enroll when it is narrower than get_enrollment
+    # (golf's admin_enroll seats the house league, so a member of the other
+    # league alone is not yet seated), and the one line the page says beside
+    # the game. None falls back to get_enrollment; '' says nothing.
+    admin_enrolled: Callable[[int], Any | None] | None = None
+    admin_enroll_note: str = ''
 
 
 # Populated in Tasks 3, 5, 8. Intentionally empty at file-creation time so
@@ -192,6 +199,8 @@ GAMES: list[GameRegistryEntry] = [
         blueprint_join='golf.join',
         get_enrollment=_golf_enrollment.get_enrollment,
         admin_enroll=_golf_enrollment.admin_enroll,
+        admin_enrolled=_golf_enrollment.house_enrollment,
+        admin_enroll_note='Seats the Handicap Pay Sheet',
         season_finishes=_golf_records.season_finishes,
         short_name='Golf',
         launch_label='2027',
